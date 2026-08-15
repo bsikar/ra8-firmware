@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <unicorn/unicorn.h>
 
+#include "emu_elf.h"
 #include "ra8_attributes.h"
 
 #ifdef __cplusplus
@@ -44,17 +45,16 @@ extern "C" {
  * (all-Secure) path.
  *
  * @param[in,out] uc      Active Unicorn engine.
- * @param[in]     elf     Loaded (Secure) ELF image.
- * @param[in]     elf_len ELF image length in bytes.
+ * @param[in]     elf Open Secure ELF source used for symbol resolution.
  * @return Nothing.
  * @pre @p uc is initialised and the image is loaded.
  * @pre The PPB is mapped as RAM (SAU_TYPE is seedable).
  * @post On a TZ image the SAU_TYPE seed + BLXNS hook are armed.
- * @post One stderr line reports the armed site (or the missing-BLXNS warning).
+ * @post One injected error sink line reports the armed site (or the missing-BLXNS warning).
  * @note Not thread-safe; call once during single-threaded setup.
  * @since 0.1.0
  */
-RA8_PRIV void emu_tz_install(uc_engine* uc, const uint8_t* elf, long elf_len);
+void emu_tz_install(uc_engine* uc, const emu_elf_source_t* elf);
 
 /**
  * @brief Patch cmse_check_address_range to `BX LR` (flat-domain model).
@@ -69,16 +69,16 @@ RA8_PRIV void emu_tz_install(uc_engine* uc, const uint8_t* elf, long elf_len);
  * (a code hook would force single-stepping); absent in non-TZ firmware.
  *
  * @param[in,out] uc      Active Unicorn engine.
- * @param[in]     elf     Loaded (Secure) ELF image.
- * @param[in]     elf_len ELF image length in bytes.
+ * @param[in]     elf Open Secure ELF source used for symbol resolution.
  * @return Nothing.
  * @pre The image is loaded into @p uc memory.
- * @pre @p elf is resident for symbol resolution.
+ * @pre @p elf remains open for symbol resolution.
  * @post A TZ image has its range-check entry patched; others are untouched.
  * @note Not thread-safe; call once during single-threaded setup.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_tz_patch_cmse(uc_engine* uc, const uint8_t* elf, long elf_len);
+void emu_tz_patch_cmse(uc_engine* uc, const emu_elf_source_t* elf);
 
 /**
  * @brief Track the NS image's actual vector base (--ns load path).
@@ -90,8 +90,10 @@ RA8_PRIV void emu_tz_patch_cmse(uc_engine* uc, const uint8_t* elf, long elf_len)
  * @post The BLXNS world switch falls back to @p base when VTOR_NS is unset.
  * @note Not thread-safe; single-threaded setup only.
  * @since 0.1.0
+  * @details Track the ns image's actual vector base (--ns load path); this step is contained within the emu TrustZone model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_tz_set_ns_vector_base(uint32_t base);
+void emu_tz_set_ns_vector_base(uint32_t base);
 
 /**
  * @brief The tracked NS vector-table fallback base.
@@ -103,8 +105,10 @@ RA8_PRIV void emu_tz_set_ns_vector_base(uint32_t base);
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details The tracked ns vector-table fallback base; this step is contained within the emu TrustZone model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV uint32_t emu_tz_ns_vector_base(void);
+uint32_t emu_tz_ns_vector_base(void);
 
 #ifdef __cplusplus
 }

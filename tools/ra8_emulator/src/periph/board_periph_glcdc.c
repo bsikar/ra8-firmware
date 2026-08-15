@@ -46,6 +46,7 @@
 
 #include "board_periph.h"
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief GLCDC register-window geometry (ra8_glcdc_regs.h). */
 typedef enum : uint64_t {
@@ -150,8 +151,18 @@ typedef struct {
 
 static glcdc_state_t s_glcdc;
 
-/** @brief Bytes per pixel for an FLM6.FORMAT code (HUM Ch 63 Table 63.11). */
-static uint32_t glcdc_bpp_for_format(uint8_t fmt)
+/**
+ * @brief Bytes per pixel for an FLM6.FORMAT code (HUM Ch 63 Table 63.11).
+ * @details Bytes per pixel for an flm6.format code (hum ch 63 table 63.11); this step is contained within the board periph glcdc model and uses bounded caller or module-owned storage.
+ * @param[in] fmt Fmt input used by the operation.
+ * @return The glcdc bpp for format result produced by the board periph glcdc model.
+ * @retval value The operation-specific glcdc bpp for format value.
+ * @pre Arguments satisfy the ranges documented for glcdc bpp for format. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph glcdc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_glcdc_bpp_for_format(uint8_t fmt)
 {
   switch (fmt) {
     case (uint8_t)k_glcdc_fmt_argb8888:
@@ -166,8 +177,18 @@ static uint32_t glcdc_bpp_for_format(uint8_t fmt)
   }
 }
 
-/** @brief True iff @p addr is inside an emulated RAM window a framebuffer uses. */
-static bool glcdc_addr_is_ram(uint32_t addr)
+/**
+ * @brief True iff @p addr is inside an emulated RAM window a framebuffer uses.
+ * @details True iff @p addr is inside an emulated ram window a framebuffer uses; this step is contained within the board periph glcdc model and uses bounded caller or module-owned storage.
+ * @param[in] addr Guest address involved in the operation.
+ * @return The glcdc addr is ram result produced by the board periph glcdc model.
+ * @retval true The glcdc addr is ram condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for glcdc addr is ram. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph glcdc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_glcdc_addr_is_ram(uint32_t addr)
 {
   const bool in_dtcm = (addr >= (uint32_t)k_glcdc_dtcm_base) && (addr < (uint32_t)k_glcdc_dtcm_end);
   const bool in_sram = (addr >= (uint32_t)k_glcdc_sram_base) && (addr < (uint32_t)k_glcdc_sram_end);
@@ -200,9 +221,10 @@ static bool glcdc_addr_is_ram(uint32_t addr)
  * @note Pure decode; touches no emulated memory.
  * @since 0.1.0
  */
-static bool glcdc_layer_decode(const glcdc_layer_t* layer, uint8_t num, board_glcdc_fb_t* out)
+RA8_INTERNAL static bool
+internal_glcdc_layer_decode(const glcdc_layer_t* layer, uint8_t num, board_glcdc_fb_t* out)
 {
-  if (!layer->flmrd || !glcdc_addr_is_ram(layer->saddr)) {
+  if (!layer->flmrd || !internal_glcdc_addr_is_ram(layer->saddr)) {
     return false;
   }
   const uint32_t stride =
@@ -211,7 +233,7 @@ static bool glcdc_layer_decode(const glcdc_layer_t* layer, uint8_t num, board_gl
     (layer->flm5 >> (uint32_t)k_glcdc_lnnum_shift) & (uint32_t)k_glcdc_lnnum_mask;
   const uint8_t fmt =
     (uint8_t)((layer->fmt >> (uint32_t)k_glcdc_fmt_shift) & (uint32_t)k_glcdc_fmt_mask);
-  const uint32_t bpp    = glcdc_bpp_for_format(fmt);
+  const uint32_t bpp    = internal_glcdc_bpp_for_format(fmt);
   const uint32_t height = lnnum + 1U;
   const uint32_t width  = stride / bpp;
   if ((stride == 0U) || (width == 0U) || (width > (uint32_t)k_glcdc_max_dim) ||
@@ -235,14 +257,23 @@ bool board_periph_glcdc_get_framebuffer(board_glcdc_fb_t* out)
   }
   /* GR1 is the upper layer the e-reader and glcdc_render draw into; prefer it,
    * then fall back to GR2 when only the lower layer is fetching. */
-  if (glcdc_layer_decode(&s_glcdc.gr1, 1U, out)) {
+  if (internal_glcdc_layer_decode(&s_glcdc.gr1, 1U, out)) {
     return true;
   }
-  return glcdc_layer_decode(&s_glcdc.gr2, 2U, out);
+  return internal_glcdc_layer_decode(&s_glcdc.gr2, 2U, out);
 }
 
-/** @brief Snoop one register write into the matching layer / BG shadow field. */
-static void glcdc_snoop(uint64_t off, uint32_t value)
+/**
+ * @brief Snoop one register write into the matching layer / BG shadow field.
+ * @details Snoop one register write into the matching layer / bg shadow field; this step is contained within the board periph glcdc model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for glcdc snoop. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph glcdc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_glcdc_snoop(uint64_t off, uint32_t value)
 {
   switch (off) {
     /* HUM Ch 63 "BG_EN" p 3759 */ /* background-plane operation enable. */
@@ -297,16 +328,40 @@ static void glcdc_snoop(uint64_t off, uint32_t value)
   }
 }
 
-/** @brief MMIO write snoop inside the GLCDC window (observe-only, never owns). */
-static void glcdc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write snoop inside the GLCDC window (observe-only, never owns).
+ * @details MMIO write snoop inside the glcdc window (observe-only, never owns); this step is contained within the board periph glcdc model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for glcdc write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph glcdc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_glcdc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)size;
   s_glcdc.uc = uc; /* stash for the report's framebuffer read */
-  glcdc_snoop(addr - (uint64_t)k_glcdc_base, (uint32_t)value);
+  internal_glcdc_snoop(addr - (uint64_t)k_glcdc_base, (uint32_t)value);
 }
 
-/** @brief Read stub: an observe block never owns reads (the sparse model does). */
-static uint64_t glcdc_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief Read stub: an observe block never owns reads (the sparse model does).
+ * @details Read stub: an observe block never owns reads (the sparse model does); this step is contained within the board periph glcdc model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The glcdc read result produced by the board periph glcdc model.
+ * @retval value The operation-specific glcdc read value.
+ * @pre Arguments satisfy the ranges documented for glcdc read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph glcdc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_glcdc_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)addr;
@@ -314,25 +369,52 @@ static uint64_t glcdc_read(uc_engine* uc, uint64_t addr, unsigned size)
   return 0U;
 }
 
-/** @brief Stash the engine each chunk so the report can read framebuffer RAM. */
-static void glcdc_tick(uc_engine* uc)
+/**
+ * @brief Stash the engine each chunk so the report can read framebuffer RAM.
+ * @details Stash the engine each chunk so the report can read framebuffer ram; this step is contained within the board periph glcdc model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for glcdc tick. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph glcdc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_glcdc_tick(uc_engine* uc)
 {
   s_glcdc.uc = uc;
 }
 
-/** @brief Clear the GLCDC model on reset / process start. */
-static void glcdc_reset(void)
+/**
+ * @brief Clear the GLCDC model on reset / process start.
+ * @details Clear the glcdc model on reset / process start; this step is contained within the board periph glcdc model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for glcdc reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph glcdc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_glcdc_reset(void)
 {
   s_glcdc = (glcdc_state_t){};
 }
 
-/** @brief FNV-1a-32 over the active framebuffer, read out of emulated RAM. */
-static bool glcdc_hash_framebuffer(const board_glcdc_fb_t* fb, uint32_t* out_crc)
+/**
+ * @brief FNV-1a-32 over the active framebuffer, read out of emulated RAM.
+ * @details Fnv-1a-32 over the active framebuffer, read out of emulated ram; this step is contained within the board periph glcdc model and uses bounded caller or module-owned storage.
+ * @param[in] fb Fb input used by the operation.
+ * @param[out] out_crc Destination receiving the out crc result.
+ * @return The glcdc hash framebuffer result produced by the board periph glcdc model.
+ * @retval true The glcdc hash framebuffer condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for glcdc hash framebuffer. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph glcdc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_glcdc_hash_framebuffer(const board_glcdc_fb_t* fb,
+                                                         uint32_t*               out_crc)
 {
   if (s_glcdc.uc == nullptr) {
     return false;
   }
-  const uint32_t bpp        = glcdc_bpp_for_format(fb->format);
+  const uint32_t bpp        = internal_glcdc_bpp_for_format(fb->format);
   const uint64_t line_bytes = (uint64_t)fb->width * (uint64_t)bpp;
   const uint64_t total      = line_bytes * (uint64_t)fb->height;
   if ((total == 0U) || (total > (uint64_t)k_glcdc_max_fb_bytes)) {
@@ -350,7 +432,7 @@ static bool glcdc_hash_framebuffer(const board_glcdc_fb_t* fb, uint32_t* out_crc
       if (want > (uint64_t)k_glcdc_read_chunk) {
         want = (uint64_t)k_glcdc_read_chunk;
       }
-      if (uc_mem_read(s_glcdc.uc, row_base + done, buf, (size_t)want) != UC_ERR_OK) {
+      if (emu_mem_read(s_glcdc.uc, row_base + done, buf, (size_t)want) != UC_ERR_OK) {
         return false;
       }
       for (uint64_t i = 0U; i < want; ++i) {
@@ -364,7 +446,7 @@ static bool glcdc_hash_framebuffer(const board_glcdc_fb_t* fb, uint32_t* out_crc
 }
 
 /** @brief Human label for an FLM6.FORMAT code. */
-static const char* glcdc_format_name(uint8_t fmt)
+RA8_INTERNAL static const char* internal_glcdc_format_name(uint8_t fmt)
 {
   switch (fmt) {
     case (uint8_t)k_glcdc_fmt_argb8888:
@@ -382,37 +464,42 @@ static const char* glcdc_format_name(uint8_t fmt)
   }
 }
 
-/** @brief End-of-run GLCDC section: the active framebuffer + its content hash. */
-static void glcdc_report(void)
+/**
+ * @brief End-of-run GLCDC section: the active framebuffer + its content hash.
+ * @details End-of-run glcdc section: the active framebuffer + its content hash; this step is contained within the board periph glcdc model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for glcdc report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph glcdc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_glcdc_report(void)
 {
   board_glcdc_fb_t fb = {};
   if (!board_periph_glcdc_get_framebuffer(&fb)) {
     return; /* No graphics layer programmed: stay quiet. */
   }
   uint32_t    crc    = 0U;
-  const bool  hashed = glcdc_hash_framebuffer(&fb, &crc);
+  const bool  hashed = internal_glcdc_hash_framebuffer(&fb, &crc);
   const char* enab   = fb.enabled ? "scanning" : "idle";
   if (hashed) {
-    (void)fprintf(stderr,
-                  "  GLCDC         : layer%u fb=0x%08X %ux%u %s stride=%u crc=%08X (%s)\n",
-                  (unsigned)fb.layer,
-                  fb.base,
-                  fb.width,
-                  fb.height,
-                  glcdc_format_name(fb.format),
-                  fb.stride,
-                  crc,
-                  enab);
+    (void)priv_emu_io_errf("  GLCDC         : layer%u fb=0x%08X %ux%u %s stride=%u crc=%08X (%s)\n",
+                           (unsigned)fb.layer,
+                           fb.base,
+                           fb.width,
+                           fb.height,
+                           internal_glcdc_format_name(fb.format),
+                           fb.stride,
+                           crc,
+                           enab);
   } else {
-    (void)fprintf(stderr,
-                  "  GLCDC         : layer%u fb=0x%08X %ux%u %s stride=%u (%s)\n",
-                  (unsigned)fb.layer,
-                  fb.base,
-                  fb.width,
-                  fb.height,
-                  glcdc_format_name(fb.format),
-                  fb.stride,
-                  enab);
+    (void)priv_emu_io_errf("  GLCDC         : layer%u fb=0x%08X %ux%u %s stride=%u (%s)\n",
+                           (unsigned)fb.layer,
+                           fb.base,
+                           fb.width,
+                           fb.height,
+                           internal_glcdc_format_name(fb.format),
+                           fb.stride,
+                           enab);
   }
 }
 
@@ -422,21 +509,21 @@ typedef enum : uint32_t {
 } glcdc_order_t;
 
 /** @brief GLCDC block descriptor: observe-only snoop over the register window. */
-static const board_periph_block_t k_glcdc_block = {
+static const board_periph_block_t s_k_glcdc_block = {
   .base    = (uint64_t)k_glcdc_base,
   .span    = (uint64_t)k_glcdc_span,
   .order   = (uint32_t)k_glcdc_block_order,
-  .read    = glcdc_read,
-  .write   = glcdc_write,
-  .tick    = glcdc_tick,
-  .reset   = glcdc_reset,
-  .report  = glcdc_report,
+  .read    = internal_glcdc_read,
+  .write   = internal_glcdc_write,
+  .tick    = internal_glcdc_tick,
+  .reset   = internal_glcdc_reset,
+  .report  = internal_glcdc_report,
   .name    = "GLCDC",
   .observe = true,
 };
 
 /** @brief Register the GLCDC block before main (host constructor). */
-[[gnu::constructor]] static void glcdc_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_glcdc_block_register(void)
 {
-  board_periph_register_block(&k_glcdc_block);
+  board_periph_register_block(&s_k_glcdc_block);
 }

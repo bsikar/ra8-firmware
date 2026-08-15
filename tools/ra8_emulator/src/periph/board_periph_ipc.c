@@ -51,6 +51,7 @@
 #include <stdio.h>
 
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /**
  * @brief Per-tick order slot for the IPC block.
@@ -166,8 +167,9 @@ static ipc_state_t s_ipc;
  *
  * @note Pure decode; touches no model state.
  * @since 0.1.0
+  * @details Decode a window offset to its channel index and register offset; this step is contained within the board periph ipc model and uses bounded caller or module-owned storage.
  */
-static bool ipc_decode(uint64_t off, uint32_t* ch, uint32_t* reg)
+RA8_INTERNAL static bool internal_ipc_decode(uint64_t off, uint32_t* ch, uint32_t* reg)
 {
   if (off < (uint64_t)k_ipc_ch0_off) {
     return false;
@@ -203,8 +205,9 @@ static bool ipc_decode(uint64_t off, uint32_t* ch, uint32_t* reg)
  *
  * @note HUM Ch 3.2.10 "IPC0STA0" p 214 -- field layout.
  * @since 0.1.0
+  * @details Compose one channel's live sta value from its shadows; this step is contained within the board periph ipc model and uses bounded caller or module-owned storage.
  */
-static uint32_t ipc_sta_value(uint32_t ch)
+RA8_INTERNAL static uint32_t internal_ipc_sta_value(uint32_t ch)
 {
   const ipc_fifo_t* f   = &s_ipc.fifo[ch];
   uint32_t          sta = s_ipc.sta[ch];
@@ -238,8 +241,9 @@ static uint32_t ipc_sta_value(uint32_t ch)
  *
  * @note HUM Ch 3.2.13 "IPC0RXD0" p 216 -- a read pops one FIFO stage.
  * @since 0.1.0
+  * @details Pop the oldest word off a channel's message fifo (rxd read); this step is contained within the board periph ipc model and uses bounded caller or module-owned storage.
  */
-static uint32_t ipc_fifo_pop(uint32_t ch)
+RA8_INTERNAL static uint32_t internal_ipc_fifo_pop(uint32_t ch)
 {
   ipc_fifo_t* f = &s_ipc.fifo[ch];
   if (f->count == 0U) {
@@ -253,20 +257,32 @@ static uint32_t ipc_fifo_pop(uint32_t ch)
   return w;
 }
 
-/** @brief Read an IPC register: STA composes live status, RXD pops the FIFO. */
-static uint64_t ipc_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief Read an IPC register: STA composes live status, RXD pops the FIFO.
+ * @details Read an ipc register: sta composes live status, rxd pops the fifo; this step is contained within the board periph ipc model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The ipc read result produced by the board periph ipc model.
+ * @retval value The operation-specific ipc read value.
+ * @pre Arguments satisfy the ranges documented for ipc read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ipc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_ipc_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
   const uint64_t off = addr - (uint64_t)k_ipc_base;
   uint32_t       ch  = 0U;
   uint32_t       reg = 0U;
-  if (ipc_decode(off, &ch, &reg)) {
+  if (internal_ipc_decode(off, &ch, &reg)) {
     if (reg == (uint32_t)k_ipc_reg_sta) {
-      return (uint64_t)ipc_sta_value(ch);
+      return (uint64_t)internal_ipc_sta_value(ch);
     }
     if (reg == (uint32_t)k_ipc_reg_rxd) {
-      return (uint64_t)ipc_fifo_pop(ch);
+      return (uint64_t)internal_ipc_fifo_pop(ch);
     }
   }
   /* Semaphores and the NMI window are not modelled: read as 0. */
@@ -289,8 +305,9 @@ static uint64_t ipc_read(uc_engine* uc, uint64_t addr, unsigned size)
  *
  * @note HUM Ch 3.2.12 "IPC0TXD0" p 215-216 -- a write pushes one FIFO stage.
  * @since 0.1.0
+  * @details Push one word onto a channel's message fifo (txd write); this step is contained within the board periph ipc model and uses bounded caller or module-owned storage.
  */
-static void ipc_fifo_push(uint32_t ch, uint32_t value)
+RA8_INTERNAL static void internal_ipc_fifo_push(uint32_t ch, uint32_t value)
 {
   ipc_fifo_t* f = &s_ipc.fifo[ch];
   if (f->count >= (uint32_t)k_ipc_fifo_depth) {
@@ -317,8 +334,9 @@ static void ipc_fifo_push(uint32_t ch, uint32_t value)
  *
  * @note HUM Ch 3.2.14 "IPC0CLR0" p 216-217 -- field layout.
  * @since 0.1.0
+  * @details Apply a clr write: w1c irq lines, fifo reset, error-latch clears; this step is contained within the board periph ipc model and uses bounded caller or module-owned storage.
  */
-static void ipc_clr_write(uint32_t ch, uint32_t value)
+RA8_INTERNAL static void internal_ipc_clr_write(uint32_t ch, uint32_t value)
 {
   s_ipc.sta[ch] &= ~(value & (uint32_t)k_ipc_sta_irq_mask);
   ipc_fifo_t* f = &s_ipc.fifo[ch];
@@ -334,14 +352,26 @@ static void ipc_clr_write(uint32_t ch, uint32_t value)
   }
 }
 
-/** @brief Write an IPC register: ISET latches + raises, TXD pushes, CLR clears. */
-static void ipc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief Write an IPC register: ISET latches + raises, TXD pushes, CLR clears.
+ * @details Write an ipc register: iset latches + raises, txd pushes, clr clears; this step is contained within the board periph ipc model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for ipc write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ipc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_ipc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)size;
   const uint64_t off = addr - (uint64_t)k_ipc_base;
   uint32_t       ch  = 0U;
   uint32_t       reg = 0U;
-  if (!ipc_decode(off, &ch, &reg)) {
+  if (!internal_ipc_decode(off, &ch, &reg)) {
     return; /* semaphore / NMI window write: benign no-op */
   }
   if (reg == (uint32_t)k_ipc_reg_iset) {
@@ -359,20 +389,19 @@ static void ipc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
     board_periph_icu_raise_event(uc, event);
     s_ipc.wakes++;
     if (board_periph_trace()) {
-      (void)fprintf(stderr,
-                    "  IPC           : ch%u ISET 0x%02X -> raise 0x%03X\n",
-                    ch,
-                    bits,
-                    (unsigned)event);
+      (void)priv_emu_io_errf("  IPC           : ch%u ISET 0x%02X -> raise 0x%03X\n",
+                             ch,
+                             bits,
+                             (unsigned)event);
     }
     return;
   }
   if (reg == (uint32_t)k_ipc_reg_txd) {
-    ipc_fifo_push(ch, (uint32_t)value);
+    internal_ipc_fifo_push(ch, (uint32_t)value);
     return;
   }
   if (reg == (uint32_t)k_ipc_reg_clr) {
-    ipc_clr_write(ch, (uint32_t)value);
+    internal_ipc_clr_write(ch, (uint32_t)value);
   }
 }
 
@@ -381,41 +410,54 @@ static void ipc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
  * =============================================================================
  */
 
-/** @brief Clear the IPC channel shadows and the run counters. */
-static void ipc_reset(void)
+/**
+ * @brief Clear the IPC channel shadows and the run counters.
+ * @details Clear the ipc channel shadows and the run counters; this step is contained within the board periph ipc model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for ipc reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ipc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_ipc_reset(void)
 {
   s_ipc = (ipc_state_t){};
 }
 
-/** @brief Print the IPC send / wake / FIFO totals when the path was exercised. */
-static void ipc_report(void)
+/**
+ * @brief Print the IPC send / wake / FIFO totals when the path was exercised.
+ * @details Print the ipc send / wake / fifo totals when the path was exercised; this step is contained within the board periph ipc model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for ipc report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ipc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_ipc_report(void)
 {
   if ((s_ipc.sends == 0U) && (s_ipc.wakes == 0U) && (s_ipc.pushes == 0U) && (s_ipc.pops == 0U)) {
     return;
   }
-  (void)fprintf(stderr,
-                "  IPC           : sends=%u wakes=%u fifo pushes=%u pops=%u\n",
-                s_ipc.sends,
-                s_ipc.wakes,
-                s_ipc.pushes,
-                s_ipc.pops);
+  (void)priv_emu_io_errf("  IPC           : sends=%u wakes=%u fifo pushes=%u pops=%u\n",
+                         s_ipc.sends,
+                         s_ipc.wakes,
+                         s_ipc.pushes,
+                         s_ipc.pops);
 }
 
 /** @brief IPC register window + reset / report (no tick: event-driven only). */
-static const board_periph_block_t k_ipc_block = {
+static const board_periph_block_t s_k_ipc_block = {
   .base   = (uint64_t)k_ipc_base,
   .span   = (uint64_t)k_ipc_span,
   .order  = (uint32_t)k_ipc_block_order,
-  .read   = ipc_read,
-  .write  = ipc_write,
+  .read   = internal_ipc_read,
+  .write  = internal_ipc_write,
   .tick   = nullptr,
-  .reset  = ipc_reset,
-  .report = ipc_report,
+  .reset  = internal_ipc_reset,
+  .report = internal_ipc_report,
   .name   = "IPC",
 };
 
 /** @brief Self-register the IPC window before main runs (decentralised). */
-[[gnu::constructor]] static void board_periph_ipc_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_board_periph_ipc_register(void)
 {
-  board_periph_register_block(&k_ipc_block);
+  board_periph_register_block(&s_k_ipc_block);
 }

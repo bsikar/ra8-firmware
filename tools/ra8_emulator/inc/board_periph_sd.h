@@ -26,8 +26,9 @@
 /**
  * @brief Attach an SD-card image from a host file.
  *
- * @details Reads the whole file into memory as the card's block store and
- * arms the model. Idempotent-ish: a second call replaces the image.
+ * @details Copies the file into a private anonymous sparse working descriptor
+ * with fixed-size transfers, so firmware writes never mutate the source. A
+ * second successful call closes and replaces the prior working descriptor.
  *
  * @param[in] path Host path to a raw FAT image (512-byte sectors).
  * @return true if the image loaded and the card is armed; false on I/O error.
@@ -35,7 +36,7 @@
  * @pre `path` is non-null.
  * @pre Called once during ra8_emulator start-up (single-threaded).
  * @post On success @ref board_sd_attached returns true.
- * @post On failure no card is attached.
+ * @post On failure any previously attached card remains attached.
  * @note Not thread-safe.
  * @since 0.1.0
  */
@@ -52,37 +53,44 @@ bool board_sd_attach(const char* path);
  * @post No state is modified.
  * @note Not thread-safe.
  * @since 0.1.0
+  * @details Report whether an sd-card image is currently attached; this step is contained within the board periph SD model and uses bounded caller or module-owned storage.
  */
 bool board_sd_attached(void);
 
 /**
- * @brief Create a blank, FAT-formatted SD card in memory and attach it.
+ * @brief Create a blank, FAT-formatted sparse SD card and attach it.
  *
- * @details Formats an empty FAT16 or FAT32 volume (complete BPB + FAT media /
- * EOC markers, valid to a host `fsck_msdos` and the firmware's ra8_fs) so a card
- * of an arbitrary size / format can be set up with no pre-built image.
+ * @details Sizes an anonymous sparse raw-file backend, then formats an empty
+ * FAT16 or FAT32 volume with fixed one-sector buffers (complete BPB + FAT media
+ * / EOC markers, valid to a host `fsck_msdos` and the firmware's ra8_fs).
  *
  * @param[in] total_sectors Card size in 512-byte sectors (>= 64).
  * @param[in] fat_bits      16 for FAT16, 32 for FAT32 (other values -> FAT16).
  * @param[in] label         Up to 11-char volume label (NULL -> blank).
  *
  * @return true on success (a blank card is attached and serving).
- * @retval false Size too small or allocation failed.
+ * @retval false Size too small, sparse-file creation failed, or formatting failed.
  * @pre Called once during ra8_emulator start-up (single-threaded).
  * @post On success @ref board_sd_attached returns true.
  * @note Not thread-safe.
  * @since 0.1.0
+  * @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
 bool board_sd_attach_blank(uint32_t total_sectors, uint8_t fat_bits, const char* label);
 
 /**
- * @brief Write the current SD-card image (with any firmware writes) to a file.
+ * @brief Transactionally publish the current SD-card image to a file.
+ * @details Copies through a bounded buffer into a same-directory private file,
+ * then syncs and renames only after the complete image is present.
  *
  * @param[in] path Output path for the raw card image.
  * @return true on success.
  * @retval false No card attached, or the file could not be written.
  * @pre A card is attached.
- * @post The host file holds the current card contents.
+ * @pre @p path is non-null, NUL-terminated, and names an accessible parent.
+ * @post On success the host file atomically holds the current card contents.
+ * @post On failure an existing target remains unchanged.
  * @note Not thread-safe.
  * @since 0.1.0
  */
@@ -99,6 +107,9 @@ bool board_sd_save(const char* path);
  * @post No card state is modified.
  * @note Not thread-safe.
  * @since 0.1.0
+  * @details Read back the attached card's summary (for the status view / report); this step is contained within the board periph SD model and uses bounded caller or module-owned storage.
+ * @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
 void board_sd_info(bool* attached, uint64_t* bytes, uint8_t* fat_bits, const char** label);
 
@@ -114,7 +125,7 @@ void board_sd_info(bool* attached, uint64_t* bytes, uint8_t* fat_bits, const cha
  * @pre A card is attached (@ref board_sd_attached is true).
  * @pre None.
  * @post The model's command / response state may advance.
- * @post The backing image is never modified (read path only).
+ * @post Reads leave storage unchanged; accepted write/erase commands update it.
  * @note Not thread-safe.
  * @since 0.1.0
  */
@@ -133,8 +144,8 @@ uint8_t board_sd_exchange(uint8_t tx);
  * @param[in]  lba Logical block address (SDHC block units).
  * @param[out] dst Destination for 512 bytes; must hold at least 512 bytes.
  *
- * @return true if a card is attached and @p lba is within the image.
- * @retval false No card attached, or @p lba is past the end of the image.
+ * @return true if a card is attached, @p lba is in range, and the exact read succeeds.
+ * @retval false No card is attached, the block is out of range, or backend I/O failed.
  * @pre @p dst is non-null and sized for >= 512 bytes.
  * @pre A card image is attached (@ref board_sd_attached is true).
  * @post On true, @p dst holds the block; the backing image is unmodified.
@@ -158,12 +169,14 @@ bool board_sd_read_block(uint32_t lba, uint8_t* dst);
  * @param[in] lba Logical block address (SDHC block units).
  * @param[in] src Source of 512 bytes; must hold at least 512 bytes.
  *
- * @return true if a card is attached and a full block fits at @p lba.
- * @retval false No card attached, or @p lba is past the end of the image.
+ * @return true if a card is attached, a full block fits, and the exact write succeeds.
+ * @retval false No card is attached, the block is out of range, or backend I/O failed.
  * @pre @p src is non-null and sized for >= 512 bytes.
  * @pre A card image is attached (@ref board_sd_attached is true).
  * @post On true, the block at @p lba holds @p src.
- * @post On false, the backing image is left unchanged.
+ * @post On validation failure the backing image is unchanged.
+ * @post On host-I/O failure the return value is false; a short positioned write
+ *       may have made the progress reported internally by the raw-I/O seam.
  * @note Not thread-safe.
  * @since 0.1.0
  */

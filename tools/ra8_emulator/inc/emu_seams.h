@@ -34,6 +34,7 @@
 #include <stdint.h>
 #include <unicorn/unicorn.h>
 
+#include "emu_elf.h"
 #include "ra8_attributes.h"
 
 #ifdef __cplusplus
@@ -64,7 +65,7 @@ extern "C" {
  * @see emu_mve_nocp_emulate()  Handles the MVE loads/stores that raise NoCP.
  * @since 0.1.0
  */
-RA8_PRIV bool emulate_mve(uc_engine* uc, uint32_t pc0, const uint8_t code0[4]);
+bool emulate_mve(uc_engine* uc, uint32_t pc0, const uint8_t code0[4]);
 
 /**
  * @brief Emulate an MVE contiguous load/store from the NoCP UsageFault.
@@ -96,7 +97,7 @@ RA8_PRIV bool emulate_mve(uc_engine* uc, uint32_t pc0, const uint8_t code0[4]);
  * @see emulate_mve()  Handles the MVE forms that do trap as invalid.
  * @since 0.1.0
  */
-RA8_PRIV bool emu_mve_nocp_emulate(uc_engine* uc, uint32_t pc);
+bool emu_mve_nocp_emulate(uc_engine* uc, uint32_t pc);
 
 /**
  * @brief Test and clear the "NoCP fault serviced by the MVE seam" latch.
@@ -117,8 +118,9 @@ RA8_PRIV bool emu_mve_nocp_emulate(uc_engine* uc, uint32_t pc);
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @see emu_mve_nocp_emulate()  Sets the latch.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool emu_mve_nocp_take(void);
+bool emu_mve_nocp_take(void);
 
 /**
  * @brief Report whether an invalid-instruction trap at @p pc is the bogus one
@@ -148,8 +150,9 @@ RA8_PRIV bool emu_mve_nocp_take(void);
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @see emu_mve_nocp_emulate()  Arms this.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool emu_mve_nocp_spurious(uint32_t pc);
+bool emu_mve_nocp_spurious(uint32_t pc);
 
 /**
  * @brief Count of MVE instructions emulated this run (run-end telemetry).
@@ -161,8 +164,10 @@ RA8_PRIV bool emu_mve_nocp_spurious(uint32_t pc);
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Count of mve instructions emulated this run (run-end telemetry); this step is contained within the emu seams model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV uint64_t emu_mve_emulated_count(void);
+uint64_t emu_mve_emulated_count(void);
 
 /**
  * @brief Scan the loaded image and install a hook at every immediate long-shift.
@@ -180,18 +185,17 @@ RA8_PRIV uint64_t emu_mve_emulated_count(void);
  * firmware that contains no long shifts.
  *
  * @param[in,out] uc  Unicorn engine to install the hooks on.
- * @param[in]     elf In-memory ELF image (still alive at call time).
- * @param[in]     len Length of @p elf in bytes.
+ * @param[in]     elf Open immutable ELF source.
  * @return Nothing.
  * @pre @p elf is a 32-bit ARM ELF (already validated by load_elf).
  * @pre The M85 profile is selected (the caller gates on the primary core).
  * @post One UC_HOOK_CODE per long-shift site is armed (up to the site cap).
- * @post One stderr summary line is printed when any site was hooked.
+ * @post One injected error sink summary line is printed when any site was hooked.
  * @note Not thread-safe; call once during setup before the run loop.
  * @see div0_seam_install()  The companion image-scan seam.
  * @since 0.1.0
  */
-RA8_PRIV void long_shift_seam_install(uc_engine* uc, const uint8_t* elf, long len);
+void long_shift_seam_install(uc_engine* uc, const emu_elf_source_t* elf);
 
 /**
  * @brief Emulate a register-form Armv8.1-M long shift (LSLL/ASRL) that trapped.
@@ -220,7 +224,7 @@ RA8_PRIV void long_shift_seam_install(uc_engine* uc, const uint8_t* elf, long le
  * @see long_shift_seam_install()  Handles the immediate form, which never traps.
  * @since 0.1.0
  */
-RA8_PRIV bool emulate_long_shift_reg(uc_engine* uc, uint32_t pc, const uint8_t code[4]);
+bool emulate_long_shift_reg(uc_engine* uc, uint32_t pc, const uint8_t code[4]);
 
 /** @brief UDIV/SDIV decode masks + fault field bits for the div-0 seam. */
 typedef enum : uint32_t {
@@ -254,18 +258,17 @@ typedef enum : uint32_t {
  * false-positive is harmless: the site is only ever patched after opt-in, and
  * emulate_div0_patched() re-decodes before acting.
  *
- * @param[in] elf In-memory ELF image (still alive at call time).
- * @param[in] len Length of @p elf in bytes.
+ * @param[in] elf Open immutable ELF source.
  * @return Nothing.
  * @pre @p elf is a 32-bit ARM ELF (already validated by load_elf).
- * @pre @p len is the true byte length of @p elf.
+ * @pre @p elf remains open throughout the bounded segment scan.
  * @post Up to the site cap of divide sites are tracked, none patched yet.
  * @post The armed flag is cleared (a fresh scan starts un-armed).
  * @note Not thread-safe; call once during setup before the run loop.
  * @see div0_patch_sites()  Arms the tracked sites on firmware opt-in.
  * @since 0.1.0
  */
-RA8_PRIV void div0_seam_install(const uint8_t* elf, long len);
+void div0_seam_install(const emu_elf_source_t* elf);
 
 /**
  * @brief Overwrite every tracked divide with UDF so divide-by-zero can trap.
@@ -290,7 +293,7 @@ RA8_PRIV void div0_seam_install(const uint8_t* elf, long len);
  * @note Not thread-safe (single engine).
  * @since 0.1.0
  */
-RA8_PRIV void div0_patch_sites(uc_engine* uc);
+void div0_patch_sites(uc_engine* uc);
 
 /**
  * @brief Service an undefined-instruction trap that landed on an armed divide.
@@ -318,8 +321,9 @@ RA8_PRIV void div0_patch_sites(uc_engine* uc);
  *       and PC are advanced.
  * @note Not thread-safe (single engine).
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool emulate_div0_patched(uc_engine* uc, uint32_t pc, const uint8_t code[4]);
+bool emulate_div0_patched(uc_engine* uc, uint32_t pc, const uint8_t code[4]);
 
 /**
  * @brief Whether a trapping divide-by-zero is latched for the run loop.
@@ -331,8 +335,10 @@ RA8_PRIV bool emulate_div0_patched(uc_engine* uc, uint32_t pc, const uint8_t cod
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Whether a trapping divide-by-zero is latched for the run loop; this step is contained within the emu seams model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool emu_div0_fault_pending(void);
+bool emu_div0_fault_pending(void);
 
 /**
  * @brief Clear the latched divide-by-zero fault.
@@ -347,8 +353,9 @@ RA8_PRIV bool emu_div0_fault_pending(void);
  * @post No divide-by-zero is pending.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_div0_clear_fault(void);
+void emu_div0_clear_fault(void);
 
 /**
  * @brief PC of the divide that latched the pending fault.
@@ -360,8 +367,10 @@ RA8_PRIV void emu_div0_clear_fault(void);
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Pc of the divide that latched the pending fault; this step is contained within the emu seams model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV uint32_t emu_div0_fault_pc(void);
+uint32_t emu_div0_fault_pc(void);
 
 /**
  * @brief Count one synthesised divide-by-zero UsageFault (telemetry).
@@ -372,8 +381,10 @@ RA8_PRIV uint32_t emu_div0_fault_pc(void);
  * @post The run's div-0 trap count grew by one.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Count one synthesised divide-by-zero usagefault (telemetry); this step is contained within the emu seams model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_div0_count_trap(void);
+void emu_div0_count_trap(void);
 
 /**
  * @brief Drop the armed state after a warm reboot re-loads the image.
@@ -388,8 +399,9 @@ RA8_PRIV void emu_div0_count_trap(void);
  * @post The next div0_patch_sites() call patches again.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_div0_disarm(void);
+void emu_div0_disarm(void);
 
 /**
  * @brief UC_HOOK_INSN_INVALID dispatcher: service or report a trapped opcode.
@@ -413,8 +425,9 @@ RA8_PRIV void emu_div0_disarm(void);
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @see emu_insn_seams_install()  Arms this dispatcher.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool on_invalid_insn(uc_engine* uc, void* user);
+bool on_invalid_insn(uc_engine* uc, void* user);
 
 /**
  * @brief Arm the invalid-instruction dispatcher on the engine.
@@ -426,8 +439,11 @@ RA8_PRIV bool on_invalid_insn(uc_engine* uc, void* user);
  * @post The UC_HOOK_INSN_INVALID hook is installed for the whole run.
  * @note Not thread-safe; call once during single-threaded setup.
  * @since 0.1.0
+  * @details Arm the invalid-instruction dispatcher on the engine; this step is contained within the emu seams model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_insn_seams_install(uc_engine* uc);
+void emu_insn_seams_install(uc_engine* uc);
 
 /**
  * @brief Count of LOB (DLS/LE) instructions emulated this run (telemetry).
@@ -439,8 +455,10 @@ RA8_PRIV void emu_insn_seams_install(uc_engine* uc);
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Count of lob (dls/le) instructions emulated this run (telemetry); this step is contained within the emu seams model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV uint64_t emu_lob_emulated_count(void);
+uint64_t emu_lob_emulated_count(void);
 
 /**
  * @brief Synthesise a UsageFault (#6) for a trapped divide-by-zero.
@@ -462,8 +480,9 @@ RA8_PRIV uint64_t emu_lob_emulated_count(void);
  *       basic frame stacked and IPSR == 6.
  * @note Faithful to Armv8-M CCR.DIV_0_TRP semantics; no time advances.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void div0_synth_usagefault(uc_engine* uc, uint32_t vtor_base);
+void div0_synth_usagefault(uc_engine* uc, uint32_t vtor_base);
 
 /**
  * @brief Opt in to the --fast-sd block-serving seam for this run.
@@ -474,17 +493,18 @@ RA8_PRIV void div0_synth_usagefault(uc_engine* uc, uint32_t vtor_base);
  * @post fast_sd_seam_install() will arm the block hook when possible.
  * @note Not thread-safe; single-threaded setup only.
  * @since 0.1.0
+  * @details Opt in to the --fast-sd block-serving seam for this run; this step is contained within the emu seams model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_fast_sd_enable(void);
+void emu_fast_sd_enable(void);
 
 /**
  * @brief Install the `--fast-sd` block-read hook if opted-in and the symbol exists.
  *
  * @param[in,out] uc  Active Unicorn engine.
- * @param[in]     elf Loaded ELF image (for symbol resolution).
- * @param[in]     len ELF image length in bytes.
+ * @param[in]     elf Open ELF source used for symbol resolution.
  * @return Nothing.
- * @pre @p uc is initialised and @p elf holds @p len valid bytes.
+ * @pre @p uc is initialised and @p elf remains open.
  * @pre The SD card model is attached when the fast path should serve blocks.
  * @post With the opt-in and the symbol present, a UC_HOOK_CODE serves whole
  *       512-byte blocks at ra8_sdmmc_spi_read_block's entry; otherwise
@@ -492,8 +512,10 @@ RA8_PRIV void emu_fast_sd_enable(void);
  * @note A firmware without the symbol (no SD path) is reported once and left
  *       on the default per-byte MMIO path.
  * @since 0.1.0
+  * @details Install the `--fast-sd` block-read hook if opted-in and the symbol exists; this step is contained within the emu seams model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void fast_sd_seam_install(uc_engine* uc, const uint8_t* elf, long len);
+void fast_sd_seam_install(uc_engine* uc, const emu_elf_source_t* elf);
 
 #ifdef __cplusplus
 }

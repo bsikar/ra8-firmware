@@ -36,7 +36,7 @@ extern "C" {
  * @brief The whole run's mutable state, threaded through the phase helpers.
  *
  * @details One bundle of the setup products (config, guards, presentation
- * geometry + buffers, click classification) plus every counter the chunk loop
+ * geometry + streamed surface, click classification) plus every loop counter
  * mutates, so the loop body and the run-end finalizer become small phase
  * helpers over @c st-> instead of one 500-line function over three dozen
  * locals. Field semantics are unchanged from the pre-split locals.
@@ -48,46 +48,45 @@ extern "C" {
  * @since 0.1.0
  */
 typedef struct {
-  const emu_run_cfg_t* cfg;              /**< Setup products (engine, image, CLI knobs). */
-  run_guards_t         guards;           /**< Env-tunable budgets + stop conditions.     */
-  uint16_t             panel_w;          /**< Firmware render width in pixels.           */
-  uint16_t             panel_h;          /**< Firmware render height in pixels.          */
-  uint16_t             disp_w;           /**< Displayed width (rotation-swapped).        */
-  uint16_t             disp_h;           /**< Displayed height (rotation-swapped).       */
-  uint16_t             comp_w;           /**< Composite (panel + sidebar) width.         */
-  uint16_t             comp_h;           /**< Composite (panel + sidebar) height.        */
-  board_view_t*        view;             /**< Live window (NULL when headless).          */
-  uint16_t*            panel_fb;         /**< GLCDC render scratch (or NULL).            */
-  uint16_t*            rot_fb;           /**< Rotation scratch (or NULL).                */
-  uint16_t*            composite;        /**< Composite frame buffer (or NULL).          */
-  board_overlay_btn_t  click_btn;        /**< Classified --click target button.          */
-  bool                 click_was_tab;    /**< --click landed on a console tab.           */
-  int                  reboot_count;     /**< --reboot warm reboots remaining.           */
-  uint32_t             run_pc;           /**< Current resume PC.                         */
-  uint32_t             chunks;           /**< Outer chunks executed so far.              */
-  uint32_t             last_boot_chunk;  /**< Chunk of the last (re)boot.                */
-  uint32_t             settle_left;      /**< Post-click drain countdown.                */
-  uint32_t             rec_frames;       /**< --record frames written.                   */
-  uint32_t             prof_idle_run;    /**< Consecutive profiler-idle chunks.          */
-  uint32_t             idle_run;         /**< Consecutive steady-idle chunks.            */
-  uint32_t             usb_stop_run;     /**< USB device settle countup.                 */
-  uint32_t             usbh_stop_run;    /**< USB host settle countup.                   */
-  uint64_t             prof_idle_prev_i; /**< Prior total insns (profiler).              */
-  uint64_t             idle_sig_prev;    /**< Prior idle-signature sum.                  */
-  uint64_t             last_present_us;  /**< wall-us of the last live present.          */
-  uint32_t             prof_prev_pc;     /**< PC charged by the wall profiler.           */
-  double               prof_prev_t;      /**< Start time of the prior chunk.             */
-  clock_t              t0;               /**< CPU-time origin for the guard.             */
-  uc_err               err;              /**< Latest uc_emu_start status.                */
-  bool                 prof_stopped;     /**< Profiler stop fired.                       */
-  bool                 idle_stopped;     /**< Idle steady-state stop fired.              */
-  bool                 usb_stopped;      /**< USB / banner early stop fired.             */
-  bool                 stop_sym_hit;     /**< --stop-sym threshold reached.              */
-  bool                 timed_out;        /**< Wall-clock guard fired.                    */
-  bool                 closed;           /**< Live window was closed.                    */
-  bool                 button_fired;     /**< Headless click button fired once.          */
-  bool                 slider_grab;      /**< Battery slider grabbed by a drag.          */
-  board_overlay_btn_t  held_btn;         /**< SW held down (released on up).             */
+  const emu_run_cfg_t*          cfg;              /**< Setup products (engine, image, CLI knobs). */
+  run_guards_t                  guards;           /**< Env-tunable budgets + stop conditions.     */
+  uint16_t                      panel_w;          /**< Firmware render width in pixels.           */
+  uint16_t                      panel_h;          /**< Firmware render height in pixels.          */
+  uint16_t                      disp_w;           /**< Displayed width (rotation-swapped).        */
+  uint16_t                      disp_h;           /**< Displayed height (rotation-swapped).       */
+  uint16_t                      comp_w;           /**< Composite (panel + sidebar) width.         */
+  uint16_t                      comp_h;           /**< Composite (panel + sidebar) height.        */
+  emu_presentation_workspace_t* presentation;     /**< Owned raw-fd presentation surface.         */
+  board_view_storage_t          view_storage;     /**< Caller-owned live-view handle storage.     */
+  board_view_t*                 view;             /**< Live window (NULL when headless).          */
+  board_overlay_btn_t           click_btn;        /**< Classified --click target button.          */
+  bool                          click_was_tab;    /**< --click landed on a console tab.           */
+  int                           reboot_count;     /**< --reboot warm reboots remaining.           */
+  uint32_t                      run_pc;           /**< Current resume PC.                         */
+  uint32_t                      chunks;           /**< Outer chunks executed so far.              */
+  uint32_t                      last_boot_chunk;  /**< Chunk of the last (re)boot.                */
+  uint32_t                      settle_left;      /**< Post-click drain countdown.                */
+  uint32_t                      rec_frames;       /**< --record frames written.                   */
+  uint32_t                      prof_idle_run;    /**< Consecutive profiler-idle chunks.          */
+  uint32_t                      idle_run;         /**< Consecutive steady-idle chunks.            */
+  uint32_t                      usb_stop_run;     /**< USB device settle countup.                 */
+  uint32_t                      usbh_stop_run;    /**< USB host settle countup.                   */
+  uint64_t                      prof_idle_prev_i; /**< Prior total insns (profiler).              */
+  uint64_t                      idle_sig_prev;    /**< Prior idle-signature sum.                  */
+  uint64_t                      last_present_us;  /**< wall-us of the last live present.          */
+  uint32_t                      prof_prev_pc;     /**< PC charged by the wall profiler.           */
+  double                        prof_prev_t;      /**< Start time of the prior chunk.             */
+  clock_t                       t0;               /**< CPU-time origin for the guard.             */
+  uc_err                        err;              /**< Latest uc_emu_start status.                */
+  bool                          prof_stopped;     /**< Profiler stop fired.                       */
+  bool                          idle_stopped;     /**< Idle steady-state stop fired.              */
+  bool                          usb_stopped;      /**< USB / banner early stop fired.             */
+  bool                          stop_sym_hit;     /**< --stop-sym threshold reached.              */
+  bool                          timed_out;        /**< Wall-clock guard fired.                    */
+  bool                          closed;           /**< Live window was closed.                    */
+  bool                          button_fired;     /**< Headless click button fired once.          */
+  bool                          slider_grab;      /**< Battery slider grabbed by a drag.          */
+  board_overlay_btn_t           held_btn;         /**< SW held down (released on up).             */
 } run_loop_t;
 
 /**
@@ -111,8 +110,10 @@ typedef struct {
  * @post @p run_pc_io and @p err_out reflect the loop's final state.
  * @note Not thread-safe; this is the single-threaded run core.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool run_inner(uc_engine* uc, uint32_t vtor_base, uint32_t* run_pc_io, uc_err* err_out);
+RA8_PRIV bool
+priv_run_inner(uc_engine* uc, uint32_t vtor_base, uint32_t* run_pc_io, uc_err* err_out);
 
 /**
  * @brief Print the run-end report (stop summary, verdict, --dump-sym probes).
@@ -123,29 +124,29 @@ RA8_PRIV bool run_inner(uc_engine* uc, uint32_t vtor_base, uint32_t* run_pc_io, 
  * @param[in] st The run state (final counters + flags).
  * @return void
  * @pre The run loop has ended and @p st reflects its outcome.
- * @pre stderr is the report stream.
- * @post The report section has been written to stderr.
+ * @pre injected error sink is the report stream.
+ * @post The report section has been written to injected error sink.
  * @post No engine or process state changes beyond output.
  * @note Not thread-safe; part of the single-threaded report.
  * @since 0.1.0
  */
-RA8_PRIV void run_report(const run_loop_t* st);
+RA8_PRIV void priv_run_report(const run_loop_t* st);
 
 /**
  * @brief Write the --ppm snapshot and the --record summary line.
  *
  * @details Defined in emu_run_report.c; called by emu_run_and_report.
  *
- * @param[in] st The run state (buffers + output paths).
+ * @param[in] st The run state (presentation surface + output paths).
  * @return void
  * @pre The run loop has ended and @p st reflects its outcome.
- * @pre stderr is the report stream.
+ * @pre injected error sink is the report stream.
  * @post The --ppm file is written and/or the --record line printed as requested.
  * @post No engine or process state changes beyond output.
  * @note Not thread-safe; part of the single-threaded report.
  * @since 0.1.0
  */
-RA8_PRIV void run_write_outputs(const run_loop_t* st);
+RA8_PRIV void priv_run_write_outputs(const run_loop_t* st);
 
 /**
  * @brief Hold the live window on the final frame until the user closes it.
@@ -153,7 +154,7 @@ RA8_PRIV void run_write_outputs(const run_loop_t* st);
  * @details Defined in emu_run_report.c; called by emu_run_and_report. Inert in
  * headless mode.
  *
- * @param[in] st The run state (window + buffers).
+ * @param[in] st The run state (window + presentation surface).
  * @return void
  * @pre The run loop has ended and @p st reflects its outcome.
  * @pre @p st->view is a live window or NULL.
@@ -162,27 +163,28 @@ RA8_PRIV void run_write_outputs(const run_loop_t* st);
  * @note Not thread-safe; part of the single-threaded report.
  * @since 0.1.0
  */
-RA8_PRIV void run_hold_view(const run_loop_t* st);
+RA8_PRIV void priv_run_hold_view(const run_loop_t* st);
 
 /**
- * @brief Save the SD image, release buffers + engine, map the exit code.
+ * @brief Save the SD image, close owned descriptors + engine, map the exit code.
  *
  * @details Defined in emu_run_report.c; called by emu_run_and_report as the
  * final teardown step.
  *
- * @param[in] st The run state (buffers, engine, stop flags).
+ * @param[in] st The run state (surface, engine, stop flags).
  * @return The process exit status (::emu_exit_t).
  * @retval k_emu_exit_ok      Clean run-to-budget.
  * @retval k_emu_exit_bkpt    Firmware executed a BKPT.
  * @retval k_emu_exit_fault   Emulation fault ended the run.
  * @retval k_emu_exit_timeout Wall-clock budget reached.
  * @pre The run loop has ended and outputs have been written.
- * @pre @p st owns the buffers / engine / image being released.
- * @post The buffers, image and engine have been freed / closed.
+ * @pre @p st owns the surface descriptor, engine, and image being closed.
+ * @post The surface descriptor, image, and engine have been closed.
  * @note Not thread-safe; part of the single-threaded teardown.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV int run_cleanup(const run_loop_t* st);
+RA8_PRIV int priv_run_cleanup(const run_loop_t* st);
 
 #ifdef __cplusplus
 }

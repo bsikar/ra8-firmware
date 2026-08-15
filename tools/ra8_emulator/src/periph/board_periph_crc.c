@@ -32,6 +32,7 @@
 #include <stdio.h>
 
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief Bit-width masks for the CRC unit model. */
 typedef enum : uint32_t {
@@ -93,8 +94,20 @@ typedef struct {
 
 static crc_state_t s_crc;
 
-/** @brief Fold one byte into a reflected (LSB-first) CRC of any width. */
-static uint32_t crc_step_reflected(uint32_t crc, uint8_t byte, uint32_t poly)
+/**
+ * @brief Fold one byte into a reflected (LSB-first) CRC of any width.
+ * @details Fold one byte into a reflected (lsb-first) crc of any width; this step is contained within the board periph CRC model and uses bounded caller or module-owned storage.
+ * @param[in] crc Crc input used by the operation.
+ * @param[in] byte One data byte received from or sent to the emulated interface.
+ * @param[in] poly Poly input used by the operation.
+ * @return The CRC step reflected result produced by the board periph CRC model.
+ * @retval value The operation-specific CRC step reflected value.
+ * @pre Arguments satisfy the ranges documented for CRC step reflected. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph CRC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_crc_step_reflected(uint32_t crc, uint8_t byte, uint32_t poly)
 {
   crc ^= (uint32_t)byte;
   for (uint32_t i = 0U; i < 8U; i++) {
@@ -103,8 +116,22 @@ static uint32_t crc_step_reflected(uint32_t crc, uint8_t byte, uint32_t poly)
   return crc;
 }
 
-/** @brief Fold one byte into an MSB-first CRC of @p width bits. */
-static uint32_t crc_step_forward(uint32_t crc, uint8_t byte, uint32_t poly, uint32_t width)
+/**
+ * @brief Fold one byte into an MSB-first CRC of @p width bits.
+ * @details Fold one byte into an msb-first crc of @p width bits; this step is contained within the board periph CRC model and uses bounded caller or module-owned storage.
+ * @param[in] crc Crc input used by the operation.
+ * @param[in] byte One data byte received from or sent to the emulated interface.
+ * @param[in] poly Poly input used by the operation.
+ * @param[in] width Width of the affected region in pixels.
+ * @return The CRC step forward result produced by the board periph CRC model.
+ * @retval value The operation-specific CRC step forward value.
+ * @pre Arguments satisfy the ranges documented for CRC step forward. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph CRC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t
+internal_crc_step_forward(uint32_t crc, uint8_t byte, uint32_t poly, uint32_t width)
 {
   const uint32_t top = 1U << (width - 1U);
   const uint32_t msk = (width >= 32U) ? (uint32_t)k_u32_all : ((1U << width) - 1U);
@@ -119,24 +146,32 @@ static uint32_t crc_step_forward(uint32_t crc, uint8_t byte, uint32_t poly, uint
   return crc & msk;
 }
 
-/** @brief Fold one input byte into CRCDOR using the CRCCR0.GPS polynomial. */
-static void crc_fold_byte(uint8_t byte)
+/**
+ * @brief Fold one input byte into CRCDOR using the CRCCR0.GPS polynomial.
+ * @details Fold one input byte into crcdor using the crccr0.gps polynomial; this step is contained within the board periph CRC model and uses bounded caller or module-owned storage.
+ * @param[in] byte One data byte received from or sent to the emulated interface.
+ * @pre Arguments satisfy the ranges documented for CRC fold byte. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph CRC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_crc_fold_byte(uint8_t byte)
 {
   switch ((uint32_t)(s_crc.cr0 & (uint8_t)k_crc_gps_mask)) {
     case (uint32_t)k_crc_gps_8:
-      s_crc.dor = crc_step_forward(s_crc.dor, byte, (uint32_t)k_crc_poly_8_fwd, 8U);
+      s_crc.dor = internal_crc_step_forward(s_crc.dor, byte, (uint32_t)k_crc_poly_8_fwd, 8U);
       break;
     case (uint32_t)k_crc_gps_16:
-      s_crc.dor = crc_step_reflected(s_crc.dor, byte, (uint32_t)k_crc_poly_16_refl);
+      s_crc.dor = internal_crc_step_reflected(s_crc.dor, byte, (uint32_t)k_crc_poly_16_refl);
       break;
     case (uint32_t)k_crc_gps_ccitt:
-      s_crc.dor = crc_step_forward(s_crc.dor, byte, (uint32_t)k_crc_poly_ccitt_fwd, 16U);
+      s_crc.dor = internal_crc_step_forward(s_crc.dor, byte, (uint32_t)k_crc_poly_ccitt_fwd, 16U);
       break;
     case (uint32_t)k_crc_gps_32:
-      s_crc.dor = crc_step_reflected(s_crc.dor, byte, (uint32_t)k_crc_poly_32_refl);
+      s_crc.dor = internal_crc_step_reflected(s_crc.dor, byte, (uint32_t)k_crc_poly_32_refl);
       break;
     case (uint32_t)k_crc_gps_32c:
-      s_crc.dor = crc_step_reflected(s_crc.dor, byte, (uint32_t)k_crc_poly_32c_refl);
+      s_crc.dor = internal_crc_step_reflected(s_crc.dor, byte, (uint32_t)k_crc_poly_32c_refl);
       break;
     default:
       break; /* GPS=0: no calculation. */
@@ -144,8 +179,15 @@ static void crc_fold_byte(uint8_t byte)
   s_crc.bytes++;
 }
 
-/** @brief Reset the CRC unit to power-on state. */
-static void crc_reset(void)
+/**
+ * @brief Reset the CRC unit to power-on state.
+ * @details Reset the crc unit to power-on state; this step is contained within the board periph CRC model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for CRC reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph CRC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_crc_reset(void)
 {
   s_crc.cr0   = 0U;
   s_crc.cr1   = 0U;
@@ -153,8 +195,20 @@ static void crc_reset(void)
   s_crc.bytes = 0U;
 }
 
-/** @brief MMIO read inside the CRC window. */
-static uint64_t crc_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the CRC window.
+ * @details MMIO read inside the crc window; this step is contained within the board periph CRC model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The CRC read result produced by the board periph CRC model.
+ * @retval value The operation-specific CRC read value.
+ * @pre Arguments satisfy the ranges documented for CRC read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph CRC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_crc_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -173,8 +227,20 @@ static uint64_t crc_read(uc_engine* uc, uint64_t addr, unsigned size)
   return 0U;
 }
 
-/** @brief MMIO write inside the CRC window. */
-static void crc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the CRC window.
+ * @details MMIO write inside the crc window; this step is contained within the board periph CRC model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for CRC write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph CRC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_crc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   const uint64_t off = addr - (uint64_t)k_crc_base;
@@ -200,7 +266,7 @@ static void crc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
       n = 1U;
     }
     for (unsigned i = 0U; i < n; i++) {
-      crc_fold_byte((uint8_t)((value >> (8U * i)) & (uint32_t)k_byte_mask));
+      internal_crc_fold_byte((uint8_t)((value >> (8U * i)) & (uint32_t)k_byte_mask));
     }
     return;
   }
@@ -216,34 +282,40 @@ static void crc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
   }
 }
 
-/** @brief End-of-run CRC section: last result + bytes folded. */
-static void crc_report(void)
+/**
+ * @brief End-of-run CRC section: last result + bytes folded.
+ * @details End-of-run crc section: last result + bytes folded; this step is contained within the board periph CRC model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for CRC report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph CRC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_crc_report(void)
 {
   if (s_crc.bytes == 0U) {
     return; /* Untouched: stay quiet. */
   }
-  (void)fprintf(stderr,
-                "  CRC           : GPS=%u CRCDOR=0x%08X bytes=%u\n",
-                (unsigned)(s_crc.cr0 & (uint8_t)k_crc_gps_mask),
-                s_crc.dor,
-                s_crc.bytes);
+  (void)priv_emu_io_errf("  CRC           : GPS=%u CRCDOR=0x%08X bytes=%u\n",
+                         (unsigned)(s_crc.cr0 & (uint8_t)k_crc_gps_mask),
+                         s_crc.dor,
+                         s_crc.bytes);
 }
 
 /** @brief CRC block descriptor (self-registered with the core). */
-static const board_periph_block_t k_crc_block = {
+static const board_periph_block_t s_k_crc_block = {
   .base   = (uint32_t)k_crc_base,
   .span   = (uint32_t)k_crc_span,
   .order  = (uint32_t)k_crc_block_order,
-  .read   = crc_read,
-  .write  = crc_write,
+  .read   = internal_crc_read,
+  .write  = internal_crc_write,
   .tick   = nullptr,
-  .reset  = crc_reset,
-  .report = crc_report,
+  .reset  = internal_crc_reset,
+  .report = internal_crc_report,
   .name   = "CRC",
 };
 
 /** @brief Register the CRC block before main (host constructor). */
-[[gnu::constructor]] static void crc_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_crc_block_register(void)
 {
-  board_periph_register_block(&k_crc_block);
+  board_periph_register_block(&s_k_crc_block);
 }

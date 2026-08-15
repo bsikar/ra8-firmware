@@ -47,6 +47,7 @@
 
 #include "board_periph_block.h"
 #include "board_usb.h"
+#include "emu_host_io_internal.h"
 #include "ra8_usb_regs.h"
 
 /* =============================================================================
@@ -177,62 +178,139 @@ static usbhs_state_t s_hs;
  * =============================================================================
  */
 
-/** @brief 16-bit shadow word index for a window byte offset. */
-static uint32_t hs_word(uint64_t off)
+/**
+ * @brief 16-bit shadow word index for a window byte offset.
+ * @details 16-bit shadow word index for a window byte offset; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The hs word result produced by the board periph usbhs host model.
+ * @retval value The operation-specific hs word value.
+ * @pre Arguments satisfy the ranges documented for hs word. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_hs_word(uint64_t off)
 {
   return (uint32_t)((off & ~(uint64_t)1U) / 2U);
 }
 
-/** @brief Read a 16-bit shadow register at window byte offset @p off. */
-static uint16_t hs_reg(uint16_t off)
+/**
+ * @brief Read a 16-bit shadow register at window byte offset @p off.
+ * @details Read a 16-bit shadow register at window byte offset @p off; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The hs reg result produced by the board periph usbhs host model.
+ * @retval value The operation-specific hs reg value.
+ * @pre Arguments satisfy the ranges documented for hs reg. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_hs_reg(uint16_t off)
 {
-  return s_hs.reg[hs_word((uint64_t)off)];
+  return s_hs.reg[internal_hs_word((uint64_t)off)];
 }
 
-/** @brief Write a 16-bit shadow register at window byte offset @p off. */
-static void hs_set(uint16_t off, uint16_t value)
+/**
+ * @brief Write a 16-bit shadow register at window byte offset @p off.
+ * @details Write a 16-bit shadow register at window byte offset @p off; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for hs set. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_hs_set(uint16_t off, uint16_t value)
 {
-  s_hs.reg[hs_word((uint64_t)off)] = value;
+  s_hs.reg[internal_hs_word((uint64_t)off)] = value;
 }
 
-/** @brief OR @p bits into the 16-bit shadow register at @p off. */
-static void hs_or(uint16_t off, uint16_t bits)
+/**
+ * @brief OR @p bits into the 16-bit shadow register at @p off.
+ * @details Or @p bits into the 16-bit shadow register at @p off; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] bits Bits input used by the operation.
+ * @pre Arguments satisfy the ranges documented for hs or. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_hs_or(uint16_t off, uint16_t bits)
 {
-  hs_set(off, (uint16_t)(hs_reg(off) | bits));
+  internal_hs_set(off, (uint16_t)(internal_hs_reg(off) | bits));
 }
 
-/** @brief Currently-selected CFIFO pipe (CFIFOSEL.CURPIPE[3:0], modulo pipe count). */
-static uint8_t hs_curpipe(void)
+/**
+ * @brief Currently-selected CFIFO pipe (CFIFOSEL.CURPIPE[3:0], modulo pipe count).
+ * @details Currently-selected cfifo pipe (cfifosel.curpipe[3:0], modulo pipe count); this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @return The hs curpipe result produced by the board periph usbhs host model.
+ * @retval value The operation-specific hs curpipe value.
+ * @pre Arguments satisfy the ranges documented for hs curpipe. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static uint8_t internal_hs_curpipe(void)
 {
-  const uint16_t sel = hs_reg((uint16_t)k_ra8_usb_off_cfifosel) & (uint16_t)k_ra8_fifosel_curpipe;
+  const uint16_t sel =
+    internal_hs_reg((uint16_t)k_ra8_usb_off_cfifosel) & (uint16_t)k_ra8_fifosel_curpipe;
   return (uint8_t)(sel % (uint8_t)k_usbhs_pipes);
 }
 
-/** @brief The host pipe currently selected by PIPESEL (modulo pipe count). */
-static uint8_t hs_pipesel(void)
+/**
+ * @brief The host pipe currently selected by PIPESEL (modulo pipe count).
+ * @details The host pipe currently selected by pipesel (modulo pipe count); this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @return The hs pipesel result produced by the board periph usbhs host model.
+ * @retval value The operation-specific hs pipesel value.
+ * @pre Arguments satisfy the ranges documented for hs pipesel. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static uint8_t internal_hs_pipesel(void)
 {
-  return (uint8_t)(hs_reg((uint16_t)k_ra8_usb_off_pipesel) % (uint8_t)k_usbhs_pipes);
+  return (uint8_t)(internal_hs_reg((uint16_t)k_ra8_usb_off_pipesel) % (uint8_t)k_usbhs_pipes);
 }
 
-/** @brief True when @p off is inside the PIPECTR[9] array window. */
-static bool hs_is_pipectr(uint64_t off)
+/**
+ * @brief True when @p off is inside the PIPECTR[9] array window.
+ * @details True when @p off is inside the pipectr[9] array window; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The hs is pipectr result produced by the board periph usbhs host model.
+ * @retval true The hs is pipectr condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for hs is pipectr. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_hs_is_pipectr(uint64_t off)
 {
   const uint64_t lo = (uint64_t)k_ra8_usb_off_pipectr;
   const uint64_t hi = lo + ((uint64_t)k_ra8_usb_pipectr_count * 2U);
   return (off >= lo) && (off < hi);
 }
 
-/** @brief PIPECTR array index (PIPE1..PIPE9, modulo pipe count) for @p off. */
-static uint8_t hs_pipectr_index(uint64_t off)
+/**
+ * @brief PIPECTR array index (PIPE1..PIPE9, modulo pipe count) for @p off.
+ * @details Pipectr array index (pipe1..pipe9, modulo pipe count) for @p off; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The hs pipectr index result produced by the board periph usbhs host model.
+ * @retval value The operation-specific hs pipectr index value.
+ * @pre Arguments satisfy the ranges documented for hs pipectr index. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static uint8_t internal_hs_pipectr_index(uint64_t off)
 {
   const uint8_t p = (uint8_t)(((off - (uint64_t)k_ra8_usb_off_pipectr) / 2U) + 1U);
   return (uint8_t)(p % (uint8_t)k_usbhs_pipes);
 }
 
-/** @brief Bytes still available for the host to read on the selected IN staging. */
-static uint16_t hs_cfifo_dtln(void)
+/**
+ * @brief Bytes still available for the host to read on the selected IN staging.
+ * @details Bytes still available for the host to read on the selected in staging; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @return The hs cfifo dtln result produced by the board periph usbhs host model.
+ * @retval value The operation-specific hs cfifo dtln value.
+ * @pre Arguments satisfy the ranges documented for hs cfifo dtln. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_hs_cfifo_dtln(void)
 {
-  const uint8_t p = hs_curpipe();
+  const uint8_t p = internal_hs_curpipe();
   if (p == 0U) {
     return (uint16_t)(s_hs.din_len - s_hs.din_rd);
   }
@@ -244,10 +322,18 @@ static uint16_t hs_cfifo_dtln(void)
  * =============================================================================
  */
 
-/** @brief Append @p size bytes of @p value (LSB-first) to the selected OUT pipe. */
-static void hs_cfifo_write(uint32_t value, unsigned size)
+/**
+ * @brief Append @p size bytes of @p value (LSB-first) to the selected OUT pipe.
+ * @details Append @p size bytes of @p value (lsb-first) to the selected out pipe; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @param[in] value Register or payload value involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @pre Arguments satisfy the ranges documented for hs cfifo write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_hs_cfifo_write(uint32_t value, unsigned size)
 {
-  const uint8_t p = hs_curpipe();
+  const uint8_t p = internal_hs_curpipe();
   for (unsigned i = 0U; (i < size) && (s_hs.pout_len[p] < (uint16_t)k_usbhs_pkt_cap); i++) {
     s_hs.pout[p][s_hs.pout_len[p]] =
       (uint8_t)((value >> (i * (unsigned)k_usbhs_byte_bits)) & (uint32_t)k_usbhs_byte_mask);
@@ -255,10 +341,19 @@ static void hs_cfifo_write(uint32_t value, unsigned size)
   }
 }
 
-/** @brief Read @p size bytes (LSB-first) from the selected IN staging buffer. */
-static uint32_t hs_cfifo_read(unsigned size)
+/**
+ * @brief Read @p size bytes (LSB-first) from the selected IN staging buffer.
+ * @details Read @p size bytes (lsb-first) from the selected in staging buffer; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The hs cfifo read result produced by the board periph usbhs host model.
+ * @retval value The operation-specific hs cfifo read value.
+ * @pre Arguments satisfy the ranges documented for hs cfifo read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_hs_cfifo_read(unsigned size)
 {
-  const uint8_t  p    = hs_curpipe();
+  const uint8_t  p    = internal_hs_curpipe();
   uint8_t*       data = (p == 0U) ? s_hs.din : s_hs.pin[p];
   uint16_t*      rd   = (p == 0U) ? &s_hs.din_rd : &s_hs.pin_rd[p];
   const uint16_t len  = (p == 0U) ? s_hs.din_len : s_hs.pin_len[p];
@@ -275,10 +370,17 @@ static uint32_t hs_cfifo_read(unsigned size)
  * =============================================================================
  */
 
-/** @brief Deliver the selected bulk pipe's accumulated OUT payload to the device. */
-static void hs_bulk_out_commit(uc_engine* uc)
+/**
+ * @brief Deliver the selected bulk pipe's accumulated OUT payload to the device.
+ * @details Deliver the selected bulk pipe's accumulated out payload to the device; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for hs bulk out commit. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_hs_bulk_out_commit(uc_engine* uc)
 {
-  const uint8_t p = hs_curpipe();
+  const uint8_t p = internal_hs_curpipe();
   if (p == 0U) {
     /* DCP OUT: a control-write data stage (e.g. a DFU_DNLOAD block). Deliver it
      * to the device and gate BEMP on the device draining it. A zero-length DCP
@@ -297,25 +399,33 @@ static void hs_bulk_out_commit(uc_engine* uc)
    * packet from its CFIFO: raising it now lets the polled host push the next
    * OUT packet immediately, overwriting the undrained bank (which wedged the
    * multi-packet WRITE(10) data stage -- the device saw only the last chunk and
-   * never produced the CSW). hs_bempsts_read() raises BEMP on device drain. */
+   * never produced the CSW). internal_hs_bempsts_read() raises BEMP on device drain. */
   s_hs.pout_wait[p] = true;
   s_hs.pout_len[p]  = 0U;
 }
 
-/** @brief BEMPSTS read: raise a pipe's BEMP once the device has drained its OUT packet. */
-static uint16_t hs_bempsts_read(void)
+/**
+ * @brief BEMPSTS read: raise a pipe's BEMP once the device has drained its OUT packet.
+ * @details Bempsts read: raise a pipe's bemp once the device has drained its out packet; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @return The hs bempsts read result produced by the board periph usbhs host model.
+ * @retval value The operation-specific hs bempsts read value.
+ * @pre Arguments satisfy the ranges documented for hs bempsts read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_hs_bempsts_read(void)
 {
   if (s_hs.pout_wait[0] && board_usb_bridge_dcp_out_consumed()) {
     s_hs.pout_wait[0] = false; /* DCP control-write data stage drained by device. */
-    hs_or((uint16_t)k_ra8_usb_off_bempsts, (uint16_t)k_usbhs_dcp_bit);
+    internal_hs_or((uint16_t)k_ra8_usb_off_bempsts, (uint16_t)k_usbhs_dcp_bit);
   }
   for (uint8_t p = 1U; p < (uint8_t)k_usbhs_pipes; p++) {
     if (s_hs.pout_wait[p] && board_usb_bridge_bulk_out_consumed(s_hs.pipe_ep[p])) {
       s_hs.pout_wait[p] = false;
-      hs_or((uint16_t)k_ra8_usb_off_bempsts, (uint16_t)(1U << p));
+      internal_hs_or((uint16_t)k_ra8_usb_off_bempsts, (uint16_t)(1U << p));
     }
   }
-  return hs_reg((uint16_t)k_ra8_usb_off_bempsts);
+  return internal_hs_reg((uint16_t)k_ra8_usb_off_bempsts);
 }
 
 /**
@@ -329,13 +439,16 @@ static uint16_t hs_bempsts_read(void)
  * the device's DCPCTR.CCPL.
  *
  * @param[in,out] uc Unicorn engine (mark-configured pends the device DVST IRQ).
+  * @pre Arguments satisfy the ranges documented for hs ctrl status complete. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
  */
-static void hs_ctrl_status_complete(uc_engine* uc)
+RA8_INTERNAL static void internal_hs_ctrl_status_complete(uc_engine* uc)
 {
   s_hs.din_len   = 0U;
   s_hs.din_rd    = 0U;
   s_hs.din_ready = true;
-  hs_or((uint16_t)k_ra8_usb_off_brdysts, (uint16_t)k_usbhs_dcp_bit);
+  internal_hs_or((uint16_t)k_ra8_usb_off_brdysts, (uint16_t)k_usbhs_dcp_bit);
   if (s_hs.ctrl_breq == (uint8_t)k_usbhs_breq_set_config) {
     board_usb_bridge_mark_configured(uc);
   }
@@ -355,18 +468,22 @@ static void hs_ctrl_status_complete(uc_engine* uc)
  *
  * @param[in,out] uc Unicorn engine (bulk-IN collection pends the device BEMP).
  * @return The BRDYSTS value to report.
+  * @retval value The operation-specific hs brdysts read value.
+ * @pre Arguments satisfy the ranges documented for hs brdysts read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
  */
-static uint16_t hs_brdysts_read(uc_engine* uc)
+RA8_INTERNAL static uint16_t internal_hs_brdysts_read(uc_engine* uc)
 {
   if (s_hs.ctrl_status_pending && board_usb_bridge_dev_took_ccpl()) {
     s_hs.ctrl_status_pending = false;
-    hs_ctrl_status_complete(uc);
+    internal_hs_ctrl_status_complete(uc);
   }
   if (!s_hs.din_ready && board_usb_bridge_dcp_in_ready()) {
     s_hs.din_len   = board_usb_bridge_dcp_in_take(s_hs.din, (uint16_t)k_usbhs_din_cap);
     s_hs.din_rd    = 0U;
     s_hs.din_ready = true;
-    hs_or((uint16_t)k_ra8_usb_off_brdysts, (uint16_t)k_usbhs_dcp_bit);
+    internal_hs_or((uint16_t)k_ra8_usb_off_brdysts, (uint16_t)k_usbhs_dcp_bit);
   }
   for (uint8_t p = 1U; p < (uint8_t)k_usbhs_pipes; p++) {
     const bool armed = (s_hs.pipe_pid[p] & (uint16_t)k_ra8_pid_mask) == (uint16_t)k_ra8_pid_buf;
@@ -379,18 +496,25 @@ static uint16_t hs_brdysts_read(uc_engine* uc)
       s_hs.pin_rd[p]    = 0U;
       s_hs.pin_ready[p] = true;
       s_hs.bulk_in++;
-      hs_or((uint16_t)k_ra8_usb_off_brdysts, (uint16_t)(1U << p));
+      internal_hs_or((uint16_t)k_ra8_usb_off_brdysts, (uint16_t)(1U << p));
     }
   }
-  return hs_reg((uint16_t)k_ra8_usb_off_brdysts);
+  return internal_hs_reg((uint16_t)k_ra8_usb_off_brdysts);
 }
 
-/** @brief Apply a BRDYSTS W0C write: a written 0 clears that bit, a 1 preserves it. */
-static void hs_brdysts_write(uint16_t value)
+/**
+ * @brief Apply a BRDYSTS W0C write: a written 0 clears that bit, a 1 preserves it.
+ * @details Apply a brdysts w0c write: a written 0 clears that bit, a 1 preserves it; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for hs brdysts write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_hs_brdysts_write(uint16_t value)
 {
-  const uint16_t before  = hs_reg((uint16_t)k_ra8_usb_off_brdysts);
+  const uint16_t before  = internal_hs_reg((uint16_t)k_ra8_usb_off_brdysts);
   const uint16_t cleared = (uint16_t)(before & (uint16_t)~value); /* 1 -> 0 transitions. */
-  hs_set((uint16_t)k_ra8_usb_off_brdysts, (uint16_t)(before & value));
+  internal_hs_set((uint16_t)k_ra8_usb_off_brdysts, (uint16_t)(before & value));
   if ((cleared & (uint16_t)k_usbhs_dcp_bit) != 0U) {
     s_hs.din_ready = false; /* host consumed the DCP IN packet; allow a re-latch. */
   }
@@ -406,13 +530,19 @@ static void hs_brdysts_write(uint16_t value)
  * =============================================================================
  */
 
-/** @brief Copy USBREQ..USBLENG from the shadow into the 8-byte SETUP buffer. */
-static void hs_capture_setup(void)
+/**
+ * @brief Copy USBREQ..USBLENG from the shadow into the 8-byte SETUP buffer.
+ * @details Copy usbreq..usbleng from the shadow into the 8-byte setup buffer; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for hs capture setup. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_hs_capture_setup(void)
 {
-  const uint16_t req             = hs_reg((uint16_t)k_ra8_usb_off_usbreq);
-  const uint16_t val             = hs_reg((uint16_t)k_ra8_usb_off_usbval);
-  const uint16_t indx            = hs_reg((uint16_t)k_ra8_usb_off_usbindx);
-  const uint16_t leng            = hs_reg((uint16_t)k_ra8_usb_off_usbleng);
+  const uint16_t req             = internal_hs_reg((uint16_t)k_ra8_usb_off_usbreq);
+  const uint16_t val             = internal_hs_reg((uint16_t)k_ra8_usb_off_usbval);
+  const uint16_t indx            = internal_hs_reg((uint16_t)k_ra8_usb_off_usbindx);
+  const uint16_t leng            = internal_hs_reg((uint16_t)k_ra8_usb_off_usbleng);
   s_hs.setup[k_usbhs_setup_bmrt] = (uint8_t)(req & (uint16_t)k_usbhs_byte_mask);
   s_hs.setup[k_usbhs_setup_breq] =
     (uint8_t)((req >> (uint16_t)k_usbhs_byte_bits) & (uint16_t)k_usbhs_byte_mask);
@@ -427,11 +557,18 @@ static void hs_capture_setup(void)
     (uint8_t)((leng >> (uint16_t)k_usbhs_byte_bits) & (uint16_t)k_usbhs_byte_mask);
 }
 
-/** @brief Launch a SETUP (DCPCTR.SUREQ write): deliver it and latch SACK. */
-static void hs_setup_launch(uc_engine* uc)
+/**
+ * @brief Launch a SETUP (DCPCTR.SUREQ write): deliver it and latch SACK.
+ * @details Launch a setup (dcpctr.sureq write): deliver it and latch sack; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for hs setup launch. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_hs_setup_launch(uc_engine* uc)
 {
-  hs_capture_setup();
-  const uint16_t leng = hs_reg((uint16_t)k_ra8_usb_off_usbleng);
+  internal_hs_capture_setup();
+  const uint16_t leng = internal_hs_reg((uint16_t)k_ra8_usb_off_usbleng);
   s_hs.ctrl_breq      = s_hs.setup[k_usbhs_setup_breq];
   s_hs.ctrl_read =
     ((s_hs.setup[k_usbhs_setup_bmrt] & (uint8_t)k_usbhs_setup_dir_in) != 0U) && (leng != 0U);
@@ -449,17 +586,24 @@ static void hs_setup_launch(uc_engine* uc)
   s_hs.setups++;
 
   /* The SIE latches SACK when the device ACKs the SETUP; the host gates on it. */
-  hs_or((uint16_t)k_ra8_usb_off_intsts1, (uint16_t)(1U << k_ra8_int1_bit_sack));
+  internal_hs_or((uint16_t)k_ra8_usb_off_intsts1, (uint16_t)(1U << k_ra8_int1_bit_sack));
 }
 
-/** @brief Handle a DCPCTR.CCPL rising edge: drive the control-transfer status stage. */
-static void hs_ccpl_status(uc_engine* uc)
+/**
+ * @brief Handle a DCPCTR.CCPL rising edge: drive the control-transfer status stage.
+ * @details Handle a dcpctr.ccpl rising edge: drive the control-transfer status stage; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for hs ccpl status. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_hs_ccpl_status(uc_engine* uc)
 {
   if (s_hs.ctrl_read) {
     /* Control-read OUT status: let the device close its side, then report the
      * buffer empty so the host's best-effort BEMP wait returns promptly. */
     board_usb_bridge_ctrl_status(uc);
-    hs_or((uint16_t)k_ra8_usb_off_bempsts, (uint16_t)k_usbhs_dcp_bit);
+    internal_hs_or((uint16_t)k_ra8_usb_off_bempsts, (uint16_t)k_usbhs_dcp_bit);
     return;
   }
   /* A host-to-device control write the DEVICE must apply -- every one except
@@ -473,29 +617,37 @@ static void hs_ccpl_status(uc_engine* uc)
    *    device DCP-OUT staging -- before the device had drained the block, so
    *    the firmware image never lands. The device pulses CCPL only after it
    *    drains the data stage and applies the request, which is exactly the
-   *    completion to wait on. hs_brdysts_read() finishes the stage on it. */
+   *    completion to wait on. internal_hs_brdysts_read() finishes the stage on it. */
   if (s_hs.ctrl_breq != (uint8_t)k_usbhs_breq_set_addr) {
     s_hs.ctrl_status_pending = true;
     return;
   }
   /* SET_ADDRESS: SIE-owned, no device CCPL to wait on -- complete now. */
-  hs_ctrl_status_complete(uc);
+  internal_hs_ctrl_status_complete(uc);
 }
 
-/** @brief Apply a DCPCTR write: SUREQ launches a SETUP, CCPL drives the status. */
-static void hs_dcpctr_write(uc_engine* uc, uint16_t value)
+/**
+ * @brief Apply a DCPCTR write: SUREQ launches a SETUP, CCPL drives the status.
+ * @details Apply a dcpctr write: sureq launches a setup, ccpl drives the status; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for hs dcpctr write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_hs_dcpctr_write(uc_engine* uc, uint16_t value)
 {
-  const uint16_t before = hs_reg((uint16_t)k_ra8_usb_off_dcpctr);
+  const uint16_t before = internal_hs_reg((uint16_t)k_ra8_usb_off_dcpctr);
   const uint16_t sureq  = (uint16_t)(1U << k_ra8_dcpctr_bit_sureq);
   const uint16_t ccpl   = (uint16_t)(1U << k_ra8_dcpctr_bit_ccpl);
   if ((value & sureq) != 0U) {
-    hs_setup_launch(uc);
+    internal_hs_setup_launch(uc);
   }
   if (((value & ccpl) != 0U) && ((before & ccpl) == 0U)) {
-    hs_ccpl_status(uc);
+    internal_hs_ccpl_status(uc);
   }
   /* SUREQ self-clears once the SIE has delivered the token; never latch it. */
-  hs_set((uint16_t)k_ra8_usb_off_dcpctr, (uint16_t)(value & (uint16_t)~sureq));
+  internal_hs_set((uint16_t)k_ra8_usb_off_dcpctr, (uint16_t)(value & (uint16_t)~sureq));
 }
 
 /* =============================================================================
@@ -503,10 +655,18 @@ static void hs_dcpctr_write(uc_engine* uc, uint16_t value)
  * =============================================================================
  */
 
-/** @brief Apply a CFIFOCTR write: BCLR flushes the buffer, BVAL commits a bulk OUT. */
-static void hs_cfifoctr_write(uc_engine* uc, uint16_t value)
+/**
+ * @brief Apply a CFIFOCTR write: BCLR flushes the buffer, BVAL commits a bulk OUT.
+ * @details Apply a cfifoctr write: bclr flushes the buffer, bval commits a bulk out; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for hs cfifoctr write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_hs_cfifoctr_write(uc_engine* uc, uint16_t value)
 {
-  const uint8_t p = hs_curpipe();
+  const uint8_t p = internal_hs_curpipe();
   if ((value & (uint16_t)k_ra8_fifoctr_bclr) != 0U) {
     if (p == 0U) {
       s_hs.din_len   = 0U;
@@ -518,15 +678,23 @@ static void hs_cfifoctr_write(uc_engine* uc, uint16_t value)
     }
   }
   if ((value & (uint16_t)k_ra8_fifoctr_bval) != 0U) {
-    hs_bulk_out_commit(uc);
+    internal_hs_bulk_out_commit(uc);
   }
 }
 
-/** @brief Apply a DVSTCTR0 write, bridging a host bus-reset edge onto the device. */
-static void hs_dvstctr0_write(uc_engine* uc, uint16_t value)
+/**
+ * @brief Apply a DVSTCTR0 write, bridging a host bus-reset edge onto the device.
+ * @details Apply a dvstctr0 write, bridging a host bus-reset edge onto the device; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for hs dvstctr0 write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_hs_dvstctr0_write(uc_engine* uc, uint16_t value)
 {
   const bool usbrst = (value & (uint16_t)(1U << k_usbhs_dvstctr_usbrst)) != 0U;
-  hs_set((uint16_t)k_ra8_usb_off_dvstctr0, value);
+  internal_hs_set((uint16_t)k_ra8_usb_off_dvstctr0, value);
   if (s_hs.prev_usbrst && !usbrst) {
     board_usb_bridge_bus_reset(uc); /* USBRST released: device returns to Default. */
   }
@@ -538,8 +706,19 @@ static void hs_dvstctr0_write(uc_engine* uc, uint16_t value)
  * =============================================================================
  */
 
-/** @brief Read one USBHS host register at window byte offset @p off. */
-static uint64_t hs_read(uc_engine* uc, uint64_t off, unsigned size)
+/**
+ * @brief Read one USBHS host register at window byte offset @p off.
+ * @details Read one usbhs host register at window byte offset @p off; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The hs read result produced by the board periph usbhs host model.
+ * @retval value The operation-specific hs read value.
+ * @pre Arguments satisfy the ranges documented for hs read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_hs_read(uc_engine* uc, uint64_t off, unsigned size)
 {
   switch ((uint16_t)off) {
     case (uint16_t)k_ra8_usbhs_off_pllsta:
@@ -547,34 +726,45 @@ static uint64_t hs_read(uc_engine* uc, uint64_t off, unsigned size)
     case (uint16_t)k_ra8_usb_off_syssts0:
       return board_usb_dev_attached() ? (uint64_t)k_usbhs_lnst_j : 0U;
     case (uint16_t)k_ra8_usb_off_dvstctr0: {
-      uint16_t v = hs_reg((uint16_t)k_ra8_usb_off_dvstctr0);
+      uint16_t v = internal_hs_reg((uint16_t)k_ra8_usb_off_dvstctr0);
       if (board_usb_dev_attached()) {
         v = (uint16_t)(v | (uint16_t)k_usbhs_rhst_fs); /* connected FS device speed. */
       }
       return (uint64_t)v;
     }
     case (uint16_t)k_ra8_usb_off_cfifo:
-      return (uint64_t)hs_cfifo_read(size);
+      return (uint64_t)internal_hs_cfifo_read(size);
     case (uint16_t)k_ra8_usb_off_cfifoctr:
       return (uint64_t)((uint16_t)k_ra8_fifoctr_frdy |
-                        (hs_cfifo_dtln() & (uint16_t)k_ra8_fifoctr_dtln));
+                        (internal_hs_cfifo_dtln() & (uint16_t)k_ra8_fifoctr_dtln));
     case (uint16_t)k_ra8_usb_off_brdysts:
-      return (uint64_t)hs_brdysts_read(uc);
+      return (uint64_t)internal_hs_brdysts_read(uc);
     case (uint16_t)k_ra8_usb_off_bempsts:
-      return (uint64_t)hs_bempsts_read();
+      return (uint64_t)internal_hs_bempsts_read();
     case (uint16_t)k_ra8_usb_off_pipemaxp:
-      return (uint64_t)s_hs.pipe_maxp[hs_pipesel()];
+      return (uint64_t)s_hs.pipe_maxp[internal_hs_pipesel()];
     default:
       break;
   }
-  if (hs_is_pipectr(off)) {
-    return (uint64_t)s_hs.pipe_pid[hs_pipectr_index(off)];
+  if (internal_hs_is_pipectr(off)) {
+    return (uint64_t)s_hs.pipe_pid[internal_hs_pipectr_index(off)];
   }
-  return (uint64_t)hs_reg((uint16_t)off);
+  return (uint64_t)internal_hs_reg((uint16_t)off);
 }
 
-/** @brief Write one USBHS host register at window byte offset @p off. */
-static void hs_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t value)
+/**
+ * @brief Write one USBHS host register at window byte offset @p off.
+ * @details Write one usbhs host register at window byte offset @p off; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for hs write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_hs_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t value)
 {
   const uint16_t v16 = (uint16_t)value;
   switch ((uint16_t)off) {
@@ -583,41 +773,41 @@ static void hs_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t value)
     case (uint16_t)((uint16_t)k_ra8_usb_off_cfifo + (uint16_t)k_usbhs_cfifo_h):
     /* CFIFOHH tail. */
     case (uint16_t)((uint16_t)k_ra8_usb_off_cfifo + (uint16_t)k_usbhs_cfifo_hh):
-      hs_cfifo_write((uint32_t)value, size); /* full width: HS CFIFO is 32-bit (MBW=32). */
+      internal_hs_cfifo_write((uint32_t)value, size); /* full width: HS CFIFO is 32-bit (MBW=32). */
       return;
     case (uint16_t)k_ra8_usb_off_cfifoctr:
-      hs_cfifoctr_write(uc, v16);
+      internal_hs_cfifoctr_write(uc, v16);
       return;
     case (uint16_t)k_ra8_usb_off_dcpctr:
-      hs_dcpctr_write(uc, v16);
+      internal_hs_dcpctr_write(uc, v16);
       return;
     case (uint16_t)k_ra8_usb_off_dvstctr0:
-      hs_dvstctr0_write(uc, v16);
+      internal_hs_dvstctr0_write(uc, v16);
       return;
     case (uint16_t)k_ra8_usb_off_brdysts:
-      hs_brdysts_write(v16);
+      internal_hs_brdysts_write(v16);
       return;
     case (uint16_t)k_ra8_usb_off_bempsts:
     case (uint16_t)k_ra8_usb_off_nrdysts:
     case (uint16_t)k_ra8_usb_off_intsts0:
     case (uint16_t)k_ra8_usb_off_intsts1:
-      hs_set((uint16_t)off, (uint16_t)(hs_reg((uint16_t)off) & v16)); /* W0C. */
+      internal_hs_set((uint16_t)off, (uint16_t)(internal_hs_reg((uint16_t)off) & v16)); /* W0C. */
       return;
     case (uint16_t)k_ra8_usb_off_pipecfg:
-      s_hs.pipe_ep[hs_pipesel()] = (uint8_t)(v16 & (uint16_t)k_usbhs_epnum_mask);
-      hs_set((uint16_t)off, v16);
+      s_hs.pipe_ep[internal_hs_pipesel()] = (uint8_t)(v16 & (uint16_t)k_usbhs_epnum_mask);
+      internal_hs_set((uint16_t)off, v16);
       return;
     case (uint16_t)k_ra8_usb_off_pipemaxp:
-      s_hs.pipe_maxp[hs_pipesel()] = v16;
+      s_hs.pipe_maxp[internal_hs_pipesel()] = v16;
       return;
     default:
       break;
   }
-  if (hs_is_pipectr(off)) {
-    s_hs.pipe_pid[hs_pipectr_index(off)] = v16;
+  if (internal_hs_is_pipectr(off)) {
+    s_hs.pipe_pid[internal_hs_pipectr_index(off)] = v16;
     return;
   }
-  hs_set((uint16_t)off, v16);
+  internal_hs_set((uint16_t)off, v16);
 }
 
 /* =============================================================================
@@ -627,12 +817,12 @@ static void hs_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t value)
 
 uint64_t board_usbhs_host_reg_read(uc_engine* uc, uint64_t off, unsigned size)
 {
-  return hs_read(uc, off, size);
+  return internal_hs_read(uc, off, size);
 }
 
 void board_usbhs_host_reg_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t value)
 {
-  hs_write(uc, off, size, value);
+  internal_hs_write(uc, off, size, value);
 }
 
 uint32_t board_usbhs_host_shadow_handoff(uint16_t* dst_words, uint32_t word_capacity)
@@ -676,8 +866,12 @@ uint32_t board_usbhs_host_shadow_handoff(uint16_t* dst_words, uint32_t word_capa
  * @param[in]     addr Absolute MMIO address inside the window.
  * @param[in]     size Access width in bytes.
  * @return The register value, zero-extended to 64 bits.
+  * @retval value The operation-specific usbhs block read value.
+ * @pre Arguments satisfy the ranges documented for usbhs block read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
  */
-static uint64_t usbhs_block_read(uc_engine* uc, uint64_t addr, unsigned size)
+RA8_INTERNAL static uint64_t internal_usbhs_block_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   const uint64_t off = addr - (uint64_t)k_usbhs_base;
   if ((uint16_t)off == (uint16_t)k_ra8_usbhs_off_pllsta) {
@@ -686,11 +880,11 @@ static uint64_t usbhs_block_read(uc_engine* uc, uint64_t addr, unsigned size)
   }
   if (board_usb_roles_swapped()) {
     if (off >= (uint64_t)k_usbhs_dev_span) {
-      return (uint64_t)hs_reg((uint16_t)off); /* PHY page (LPSTS): local shadow. */
+      return (uint64_t)internal_hs_reg((uint16_t)off); /* PHY page (LPSTS): local shadow. */
     }
     return board_usb_dev_reg_read(uc, off, size);
   }
-  return hs_read(uc, off, size);
+  return internal_hs_read(uc, off, size);
 }
 
 /**
@@ -706,8 +900,12 @@ static uint64_t usbhs_block_read(uc_engine* uc, uint64_t addr, unsigned size)
  * @param[in]     addr  Absolute MMIO address inside the window.
  * @param[in]     size  Access width in bytes.
  * @param[in]     value Value the firmware wrote.
+  * @pre Arguments satisfy the ranges documented for usbhs block write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
  */
-static void usbhs_block_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+RA8_INTERNAL static void
+internal_usbhs_block_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   const uint64_t off = addr - (uint64_t)k_usbhs_base;
   /* Role declaration (HUM Ch 37.2.1 SYSCFG.DPRPU, p 2060): only the device
@@ -719,45 +917,57 @@ static void usbhs_block_write(uc_engine* uc, uint64_t addr, unsigned size, uint6
   }
   if (board_usb_roles_swapped()) {
     if (off >= (uint64_t)k_usbhs_dev_span) {
-      hs_set((uint16_t)off, (uint16_t)value); /* PHY page (LPSTS): local shadow. */
+      internal_hs_set((uint16_t)off, (uint16_t)value); /* PHY page (LPSTS): local shadow. */
       return;
     }
     board_usb_dev_reg_write(uc, off, size, value);
     return;
   }
-  hs_write(uc, off, size, value);
+  internal_hs_write(uc, off, size, value);
 }
 
-/** @brief Reset the USBHS host model to power-on state. */
-static void usbhs_reset(void)
+/**
+ * @brief Reset the USBHS host model to power-on state.
+ * @details Reset the usbhs host model to power-on state; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for usbhs reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_usbhs_reset(void)
 {
   s_hs = (usbhs_state_t){};
 }
 
-/** @brief End-of-run summary: enumeration + bulk traffic bridged to the device. */
-static void usbhs_report(void)
+/**
+ * @brief End-of-run summary: enumeration + bulk traffic bridged to the device.
+ * @details End-of-run summary: enumeration + bulk traffic bridged to the device; this step is contained within the board periph usbhs host model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for usbhs report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph usbhs host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_usbhs_report(void)
 {
   if (s_hs.setups == 0U) {
     return; /* the loop's host side never came up this run; stay silent. */
   }
-  (void)fprintf(stderr,
-                "  %s host   : %u SETUP(s), %u bulk-OUT, %u bulk-IN (chip-internal loop)\n",
-                board_usb_roles_swapped() ? "USB-FS" : "USB-HS",
-                s_hs.setups,
-                s_hs.bulk_out,
-                s_hs.bulk_in);
+  (void)priv_emu_io_errf(
+    "  %s host   : %u SETUP(s), %u bulk-OUT, %u bulk-IN (chip-internal loop)\n",
+    board_usb_roles_swapped() ? "USB-FS" : "USB-HS",
+    s_hs.setups,
+    s_hs.bulk_out,
+    s_hs.bulk_in);
 }
 
 /** @brief USBHS host block descriptor (loop-only: owns 0x40351000 with --usbhs-loop). */
-static const board_periph_block_t k_usbhs_block = {
+static const board_periph_block_t s_k_usbhs_block = {
   .base      = (uint64_t)k_usbhs_base,
   .span      = (uint64_t)k_usbhs_span,
   .order     = (uint32_t)k_usbhs_report_ord,
-  .read      = usbhs_block_read,
-  .write     = usbhs_block_write,
+  .read      = internal_usbhs_block_read,
+  .write     = internal_usbhs_block_write,
   .tick      = nullptr,
-  .reset     = usbhs_reset,
-  .report    = usbhs_report,
+  .reset     = internal_usbhs_reset,
+  .report    = internal_usbhs_report,
   .name      = "USBHS-host",
   .observe   = false,
   .device    = k_board_block_dev_any,
@@ -765,7 +975,7 @@ static const board_periph_block_t k_usbhs_block = {
 };
 
 /** @brief Register the USBHS host block before main (host constructor). */
-[[gnu::constructor]] static void usbhs_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_usbhs_block_register(void)
 {
-  board_periph_register_block(&k_usbhs_block);
+  board_periph_register_block(&s_k_usbhs_block);
 }

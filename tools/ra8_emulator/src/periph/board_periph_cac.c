@@ -39,6 +39,7 @@
 #include <stdio.h>
 
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief CAC block geometry (ra8_cac_regs.h, r_cac_regs_t). */
 typedef enum : uint64_t {
@@ -80,8 +81,15 @@ typedef struct {
 
 static cac_state_t s_cac;
 
-/** @brief Complete one measurement: latch an in-window count and set MENDF. */
-static void cac_measure(void)
+/**
+ * @brief Complete one measurement: latch an in-window count and set MENDF.
+ * @details Complete one measurement: latch an in-window count and set mendf; this step is contained within the board periph cac model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for cac measure. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph cac model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_cac_measure(void)
 {
   /* Report the midpoint of the firmware's programmed window: in-band by
    * construction, so FERRF stays clear and the measurement reads healthy. */
@@ -90,14 +98,33 @@ static void cac_measure(void)
   s_cac.meas++;
 }
 
-/** @brief Reset the CAC model to power-on state. */
-static void cac_reset(void)
+/**
+ * @brief Reset the CAC model to power-on state.
+ * @details Reset the cac model to power-on state; this step is contained within the board periph cac model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for cac reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph cac model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_cac_reset(void)
 {
   s_cac = (cac_state_t){};
 }
 
-/** @brief MMIO read inside the CAC window. */
-static uint64_t cac_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the CAC window.
+ * @details MMIO read inside the cac window; this step is contained within the board periph cac model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The cac read result produced by the board periph cac model.
+ * @retval value The operation-specific cac read value.
+ * @pre Arguments satisfy the ranges documented for cac read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph cac model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_cac_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -120,8 +147,20 @@ static uint64_t cac_read(uc_engine* uc, uint64_t addr, unsigned size)
   return 0U;
 }
 
-/** @brief MMIO write inside the CAC window. */
-static void cac_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the CAC window.
+ * @details MMIO write inside the cac window; this step is contained within the board periph cac model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for cac write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph cac model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_cac_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
@@ -129,7 +168,7 @@ static void cac_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
   if (off == (uint64_t)k_cac_off_cacr0) {
     s_cac.cacr0 = (uint8_t)value;
     if (((uint8_t)value & (uint8_t)k_cac_cacr0_cfme) != 0U) {
-      cac_measure(); /* CFME=1 starts a measurement; it completes at once. */
+      internal_cac_measure(); /* CFME=1 starts a measurement; it completes at once. */
     }
   } else if (off == (uint64_t)k_cac_off_caicr) {
     /* CAICR clear bits are write-1-to-clear of the matching CASTR flags. */
@@ -149,35 +188,41 @@ static void cac_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
   }
 }
 
-/** @brief End-of-run CAC section: measurements + last count and window. */
-static void cac_report(void)
+/**
+ * @brief End-of-run CAC section: measurements + last count and window.
+ * @details End-of-run cac section: measurements + last count and window; this step is contained within the board periph cac model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for cac report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph cac model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_cac_report(void)
 {
   if (s_cac.meas == 0U) {
     return; /* Untouched: stay quiet. */
   }
-  (void)fprintf(stderr,
-                "  CAC           : measurements=%u count=%u window=[%u,%u]\n",
-                s_cac.meas,
-                (unsigned)s_cac.cacntbr,
-                (unsigned)s_cac.callvr,
-                (unsigned)s_cac.caulvr);
+  (void)priv_emu_io_errf("  CAC           : measurements=%u count=%u window=[%u,%u]\n",
+                         s_cac.meas,
+                         (unsigned)s_cac.cacntbr,
+                         (unsigned)s_cac.callvr,
+                         (unsigned)s_cac.caulvr);
 }
 
 /** @brief CAC block descriptor (self-registered with the core). */
-static const board_periph_block_t k_cac_block = {
+static const board_periph_block_t s_k_cac_block = {
   .base   = (uint64_t)k_cac_base,
   .span   = (uint64_t)k_cac_span,
   .order  = (uint32_t)k_cac_block_order,
-  .read   = cac_read,
-  .write  = cac_write,
+  .read   = internal_cac_read,
+  .write  = internal_cac_write,
   .tick   = nullptr,
-  .reset  = cac_reset,
-  .report = cac_report,
+  .reset  = internal_cac_reset,
+  .report = internal_cac_report,
   .name   = "CAC",
 };
 
 /** @brief Register the CAC block before main (host constructor). */
-[[gnu::constructor]] static void cac_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_cac_block_register(void)
 {
-  board_periph_register_block(&k_cac_block);
+  board_periph_register_block(&s_k_cac_block);
 }

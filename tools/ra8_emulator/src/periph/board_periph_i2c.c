@@ -40,6 +40,7 @@
 #include "board_periph.h"
 #include "board_periph_block.h"
 #include "board_periph_i2c_internal.h"
+#include "emu_host_io_internal.h"
 
 /**
  * @brief I3C-in-I2C-mode (IIC_B) block geometry (ra8_i3c_i2c_regs.h).
@@ -265,7 +266,7 @@ static i2c_device_t  s_i2c_dev[k_i3c_dev_max];
 static gt911_state_t s_gt911;
 
 /** @brief Find the registered device answering @p addr_7b, or NULL. */
-static i2c_device_t* i2c_device_find(uint8_t addr_7b)
+RA8_INTERNAL static i2c_device_t* internal_i2c_device_find(uint8_t addr_7b)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_i3c_dev_max; i++) {
     if (s_i2c_dev[i].present && (s_i2c_dev[i].addr_7b == addr_7b)) {
@@ -276,11 +277,11 @@ static i2c_device_t* i2c_device_find(uint8_t addr_7b)
 }
 
 /** @brief Register a device model in the first free bus slot (drop if full). */
-void i2c_device_register(uint8_t addr_7b,
-                         void (*wr)(void*, uint8_t),
-                         uint32_t (*rd)(void*, uint8_t*, uint32_t),
-                         void (*stop)(void*),
-                         void* ctx)
+void priv_i2c_device_register(uint8_t addr_7b,
+                              void (*wr)(void*, uint8_t),
+                              uint32_t (*rd)(void*, uint8_t*, uint32_t),
+                              void (*stop)(void*),
+                              void* ctx)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_i3c_dev_max; i++) {
     if (!s_i2c_dev[i].present) {
@@ -325,8 +326,16 @@ bool board_periph_touch_seq_push(uint16_t x, uint16_t y)
   return true;
 }
 
-/** @brief Arm the head of the injected sequence FIFO when nothing is pending. */
-static void gt911_arm_next_from_seq(gt911_state_t* g)
+/**
+ * @brief Arm the head of the injected sequence FIFO when nothing is pending.
+ * @details Arm the head of the injected sequence fifo when nothing is pending; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @param[in,out] g G state or storage updated in place by the operation.
+ * @pre Arguments satisfy the ranges documented for gt911 arm next from seq. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gt911_arm_next_from_seq(gt911_state_t* g)
 {
   if (!g->click_pending && (g->seq_pos < g->seq_len)) {
     g->click_x       = g->seq_x[g->seq_pos];
@@ -351,8 +360,17 @@ bool board_periph_touch_last(uint16_t* x, uint16_t* y)
   return true;
 }
 
-/** @brief Controller -> GT911: pointer bytes first (MSB,LSB), then payload. */
-static void gt911_write(void* ctx, uint8_t byte)
+/**
+ * @brief Controller -> GT911: pointer bytes first (MSB,LSB), then payload.
+ * @details Controller -> gt911: pointer bytes first (msb,lsb), then payload; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @param[in,out] ctx Opaque callback context identifying module-owned device state.
+ * @param[in] byte One data byte received from or sent to the emulated interface.
+ * @pre Arguments satisfy the ranges documented for gt911 write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gt911_write(void* ctx, uint8_t byte)
 {
   gt911_state_t* g = (gt911_state_t*)ctx;
   if (g->ptr_bytes < (uint8_t)k_gt911_ptr_bytes) {
@@ -371,20 +389,44 @@ static void gt911_write(void* ctx, uint8_t byte)
   }
 }
 
-/** @brief Fill @p buf with the GT911 status byte for the current frame. */
-static uint32_t gt911_read_status(gt911_state_t* g, uint8_t* buf)
+/**
+ * @brief Fill @p buf with the GT911 status byte for the current frame.
+ * @details Fill @p buf with the gt911 status byte for the current frame; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @param[in,out] g G state or storage updated in place by the operation.
+ * @param[in,out] buf Bounded byte buffer read or updated by the operation.
+ * @return The gt911 read status result produced by the board periph I2C model.
+ * @retval value The operation-specific gt911 read status value.
+ * @pre Arguments satisfy the ranges documented for gt911 read status. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_gt911_read_status(gt911_state_t* g, uint8_t* buf)
 {
   /* Auto-arm the next queued raw point (multi-tap sequence path) so a status
    * read reports buffer-ready while the FIFO is non-empty. A single-shot
    * --click (seq_len == 0) is unaffected: the arm is a no-op and the directly
    * injected contact still reports ready on its own. */
-  gt911_arm_next_from_seq(g);
+  internal_gt911_arm_next_from_seq(g);
   buf[0] = g->click_pending ? (uint8_t)(k_gt911_status_ready | k_gt911_status_one) : 0U;
   return 1U;
 }
 
-/** @brief Fill @p buf with one GT911 point0 record for the armed contact. */
-static uint32_t gt911_read_point0(gt911_state_t* g, uint8_t* buf, uint32_t max)
+/**
+ * @brief Fill @p buf with one GT911 point0 record for the armed contact.
+ * @details Fill @p buf with one gt911 point0 record for the armed contact; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @param[in,out] g G state or storage updated in place by the operation.
+ * @param[in,out] buf Bounded byte buffer read or updated by the operation.
+ * @param[in] max Capacity of the destination or operation in elements.
+ * @return The gt911 read point0 result produced by the board periph I2C model.
+ * @retval value The operation-specific gt911 read point0 value.
+ * @pre Arguments satisfy the ranges documented for gt911 read point0. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t
+internal_gt911_read_point0(gt911_state_t* g, uint8_t* buf, uint32_t max)
 {
   if (max < (uint32_t)k_gt911_point_bytes) {
     return 0U;
@@ -406,8 +448,20 @@ static uint32_t gt911_read_point0(gt911_state_t* g, uint8_t* buf, uint32_t max)
   return (uint32_t)k_gt911_point_bytes;
 }
 
-/** @brief GT911 -> controller: answer a read at the current register pointer. */
-static uint32_t gt911_read(void* ctx, uint8_t* buf, uint32_t max)
+/**
+ * @brief GT911 -> controller: answer a read at the current register pointer.
+ * @details Gt911 -> controller: answer a read at the current register pointer; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @param[in,out] ctx Opaque callback context identifying module-owned device state.
+ * @param[in,out] buf Bounded byte buffer read or updated by the operation.
+ * @param[in] max Capacity of the destination or operation in elements.
+ * @return The gt911 read result produced by the board periph I2C model.
+ * @retval value The operation-specific gt911 read value.
+ * @pre Arguments satisfy the ranges documented for gt911 read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_gt911_read(void* ctx, uint8_t* buf, uint32_t max)
 {
   gt911_state_t* g = (gt911_state_t*)ctx;
   if (g->reg_ptr == (uint16_t)k_gt911_reg_product) {
@@ -422,16 +476,24 @@ static uint32_t gt911_read(void* ctx, uint8_t* buf, uint32_t max)
     return n;
   }
   if (g->reg_ptr == (uint16_t)k_gt911_reg_status) {
-    return gt911_read_status(g, buf);
+    return internal_gt911_read_status(g, buf);
   }
   if (g->reg_ptr == (uint16_t)k_gt911_reg_point0) {
-    return gt911_read_point0(g, buf, max);
+    return internal_gt911_read_point0(g, buf, max);
   }
   return 0U;
 }
 
-/** @brief STOP / transfer end: reset the GT911 pointer-capture state. */
-static void gt911_stop(void* ctx)
+/**
+ * @brief STOP / transfer end: reset the GT911 pointer-capture state.
+ * @details Stop / transfer end: reset the gt911 pointer-capture state; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @param[in,out] ctx Opaque callback context identifying module-owned device state.
+ * @pre Arguments satisfy the ranges documented for gt911 stop. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gt911_stop(void* ctx)
 {
   gt911_state_t* g = (gt911_state_t*)ctx;
   g->ptr_bytes     = 0U;
@@ -448,14 +510,31 @@ static void gt911_stop(void* ctx)
  * =============================================================================
  */
 
-/** @brief Index of the I3C shadow word for @p off (already range-checked). */
-static uint32_t i3c_word(uint64_t off)
+/**
+ * @brief Index of the I3C shadow word for @p off (already range-checked).
+ * @details Index of the i3c shadow word for @p off (already range-checked); this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The I3C word result produced by the board periph I2C model.
+ * @retval value The operation-specific I3C word value.
+ * @pre Arguments satisfy the ranges documented for I3C word. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_i3c_word(uint64_t off)
 {
   return (uint32_t)(off / 4U);
 }
 
-/** @brief Begin a transaction (START or repeated-START): arm the address phase. */
-static void i3c_open_transfer(void)
+/**
+ * @brief Begin a transaction (START or repeated-START): arm the address phase.
+ * @details Begin a transaction (start or repeated-start): arm the address phase; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for I3C open transfer. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_i3c_open_transfer(void)
 {
   s_i3c.busy      = true;
   s_i3c.addr_done = false;
@@ -475,11 +554,18 @@ typedef enum : uint32_t {
   k_i2c_console_line_cap = 48U, /**< Max chars in an "I2C addr=.. .." line. */
 } i2c_console_t;
 
-/** @brief Close a transaction (STOP): release the bus and notify the device. */
-static void i3c_close_transfer(void)
+/**
+ * @brief Close a transaction (STOP): release the bus and notify the device.
+ * @details Close a transaction (stop): release the bus and notify the device; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for I3C close transfer. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_i3c_close_transfer(void)
 {
   if (s_i3c.acked) {
-    i2c_device_t* dev = i2c_device_find(s_i3c.target_7b);
+    i2c_device_t* dev = internal_i2c_device_find(s_i3c.target_7b);
     if (dev != nullptr) {
       if (dev->stop != nullptr) {
         dev->stop(dev->ctx);
@@ -504,15 +590,23 @@ static void i3c_close_transfer(void)
   s_i3c.ntst      = (uint32_t)k_i3c_ntst_tdbef0;
 }
 
-/** @brief Consume the address byte after a (re)START: select + ACK a device. */
-static void i3c_address_phase(uint8_t address_byte)
+/**
+ * @brief Consume the address byte after a (re)START: select + ACK a device.
+ * @details Consume the address byte after a (re)start: select + ack a device; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @param[in] address_byte Address byte input used by the operation.
+ * @pre Arguments satisfy the ranges documented for I3C address phase. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_i3c_address_phase(uint8_t address_byte)
 {
   s_i3c.target_7b =
     (uint8_t)((uint32_t)address_byte >> (uint32_t)k_i3c_addr_shift) & (uint8_t)k_i3c_addr_mask7;
   s_i3c.reading   = ((uint32_t)address_byte & (uint32_t)k_i3c_addr_rnw) != 0U;
   s_i3c.addr_done = true;
 
-  i2c_device_t* dev = i2c_device_find(s_i3c.target_7b);
+  i2c_device_t* dev = internal_i2c_device_find(s_i3c.target_7b);
   if (dev == nullptr) {
     /* No device at this address: NACK the address (scan reports ack=0). */
     s_i3c.acked = false;
@@ -541,8 +635,16 @@ static void i3c_address_phase(uint8_t address_byte)
  * =============================================================================
  */
 
-/** @brief Enter / leave target mode when the firmware (re)programmes MSDVAD. */
-static void i3c_periph_open(uint32_t msdvad)
+/**
+ * @brief Enter / leave target mode when the firmware (re)programmes MSDVAD.
+ * @details Enter / leave target mode when the firmware (re)programmes msdvad; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @param[in] msdvad Msdvad input used by the operation.
+ * @pre Arguments satisfy the ranges documented for I3C periph open. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_i3c_periph_open(uint32_t msdvad)
 {
   const uint8_t addr =
     (uint8_t)(((uint32_t)msdvad >> (uint32_t)k_i3c_addr_shift) & (uint32_t)k_i3c_addr_mask7);
@@ -556,8 +658,14 @@ static void i3c_periph_open(uint32_t msdvad)
  * @details A new transaction starts on the firmware's first status poll after
  *          the previous one completes: the synthetic controller "writes" a byte
  *          (NTST.RDBFF0 raised) that rotates per transaction, so the firmware's
- *          echo-back is a meaningful round-trip rather than a fixed constant. */
-static uint32_t i3c_periph_ntst(void)
+ *          echo-back is a meaningful round-trip rather than a fixed constant.  * @return The I3C periph ntst result produced by the board periph I2C model.
+ * @retval value The operation-specific I3C periph ntst value.
+ * @pre Arguments satisfy the ranges documented for I3C periph ntst. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_i3c_periph_ntst(void)
 {
   if (s_i3c.periph_phase == (uint8_t)k_i3c_periph_idle) {
     s_i3c.periph_rx_byte =
@@ -571,15 +679,32 @@ static uint32_t i3c_periph_ntst(void)
   return (uint32_t)k_i3c_ntst_tdbef0; /* tx_armed: controller is reading the echo */
 }
 
-/** @brief Target-mode NTDTBP0 read: hand the firmware the written byte, go to TX. */
-static uint32_t i3c_periph_rx_read(void)
+/**
+ * @brief Target-mode NTDTBP0 read: hand the firmware the written byte, go to TX.
+ * @details Target-mode ntdtbp0 read: hand the firmware the written byte, go to tx; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @return The I3C periph rx read result produced by the board periph I2C model.
+ * @retval value The operation-specific I3C periph rx read value.
+ * @pre Arguments satisfy the ranges documented for I3C periph rx read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_i3c_periph_rx_read(void)
 {
   s_i3c.periph_phase = (uint8_t)k_i3c_periph_tx_armed;
   return (uint32_t)s_i3c.periph_rx_byte;
 }
 
-/** @brief Target-mode NTDTBP0 write: capture + verify the firmware echo, end xfer. */
-static void i3c_periph_tx_write(uint8_t byte)
+/**
+ * @brief Target-mode NTDTBP0 write: capture + verify the firmware echo, end xfer.
+ * @details Target-mode ntdtbp0 write: capture + verify the firmware echo, end xfer; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @param[in] byte One data byte received from or sent to the emulated interface.
+ * @pre Arguments satisfy the ranges documented for I3C periph tx write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_i3c_periph_tx_write(uint8_t byte)
 {
   if (byte != s_i3c.periph_rx_byte) {
     s_i3c.periph_echo_bad = true;
@@ -588,35 +713,52 @@ static void i3c_periph_tx_write(uint8_t byte)
   s_i3c.periph_phase = (uint8_t)k_i3c_periph_idle;
 }
 
-/** @brief Handle a write to NTDTBP0 (address byte, then controller TX payload). */
-static void i3c_ntdtbp0_write(uint32_t value)
+/**
+ * @brief Handle a write to NTDTBP0 (address byte, then controller TX payload).
+ * @details Handle a write to ntdtbp0 (address byte, then controller tx payload); this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for I3C ntdtbp0 write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_i3c_ntdtbp0_write(uint32_t value)
 {
   const uint8_t byte = (uint8_t)(value & (uint32_t)k_i3c_byte_mask);
   if (s_i3c.periph_mode) {
     /* Target mode: the firmware is the peripheral pushing its echo byte. */
-    i3c_periph_tx_write(byte);
+    internal_i3c_periph_tx_write(byte);
     return;
   }
   if (!s_i3c.addr_done) {
-    i3c_address_phase(byte);
+    internal_i3c_address_phase(byte);
     return;
   }
   if (!s_i3c.acked) {
     return; /* NACKed address: swallow further writes until STOP */
   }
-  i2c_device_t* dev = i2c_device_find(s_i3c.target_7b);
+  i2c_device_t* dev = internal_i2c_device_find(s_i3c.target_7b);
   if ((dev != nullptr) && (dev->write != nullptr)) {
     dev->write(dev->ctx, byte);
   }
   s_i3c.ntst |= (uint32_t)k_i3c_ntst_tdbef0; /* buffer empty again for the next */
 }
 
-/** @brief Serve one NTDTBP0 read from the staged device response. */
-static uint32_t i3c_ntdtbp0_read(void)
+/**
+ * @brief Serve one NTDTBP0 read from the staged device response.
+ * @details Serve one ntdtbp0 read from the staged device response; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @return The I3C ntdtbp0 read result produced by the board periph I2C model.
+ * @retval value The operation-specific I3C ntdtbp0 read value.
+ * @pre Arguments satisfy the ranges documented for I3C ntdtbp0 read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_i3c_ntdtbp0_read(void)
 {
   if (s_i3c.periph_mode) {
     /* Target mode: the firmware is the peripheral draining the written byte. */
-    return i3c_periph_rx_read();
+    return internal_i3c_periph_rx_read();
   }
   if (!s_i3c.rx_primed) {
     /* FSP's controller RXI handler drops the first RDBFF0 read before real payload. */
@@ -632,22 +774,40 @@ static uint32_t i3c_ntdtbp0_read(void)
   return (uint32_t)b;
 }
 
-/** @brief Dispatch a CNDCTL write -> START / repeated-START / STOP. */
-static void i3c_cndctl_write(uint32_t value)
+/**
+ * @brief Dispatch a CNDCTL write -> START / repeated-START / STOP.
+ * @details Dispatch a cndctl write -> start / repeated-start / stop; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for I3C cndctl write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_i3c_cndctl_write(uint32_t value)
 {
   if ((value & ((uint32_t)k_i3c_cndctl_stcnd | (uint32_t)k_i3c_cndctl_srcnd)) != 0U) {
-    i3c_open_transfer();
+    internal_i3c_open_transfer();
   } else if ((value & (uint32_t)k_i3c_cndctl_spcnd) != 0U) {
-    i3c_close_transfer();
+    internal_i3c_close_transfer();
   }
 }
 
-/** @brief Read a register from the modelled I3C/IIC_B channel. */
-static uint64_t i3c_reg_read(uint64_t off)
+/**
+ * @brief Read a register from the modelled I3C/IIC_B channel.
+ * @details Read a register from the modelled i3c/iic_b channel; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The I3C reg read result produced by the board periph I2C model.
+ * @retval value The operation-specific I3C reg read value.
+ * @pre Arguments satisfy the ranges documented for I3C reg read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_i3c_reg_read(uint64_t off)
 {
   if (off == (uint64_t)k_i3c_off_ntst) {
     if (s_i3c.periph_mode) {
-      return i3c_periph_ntst();
+      return internal_i3c_periph_ntst();
     }
     return s_i3c.ntst;
   }
@@ -659,24 +819,33 @@ static uint64_t i3c_reg_read(uint64_t off)
     return s_i3c.busy ? 0U : (uint32_t)k_i3c_bcst_bfref;
   }
   if (off == (uint64_t)k_i3c_off_ntdtbp0) {
-    return i3c_ntdtbp0_read();
+    return internal_i3c_ntdtbp0_read();
   }
-  return s_i3c.reg[i3c_word(off)]; /* reflect every other register */
+  return s_i3c.reg[internal_i3c_word(off)]; /* reflect every other register */
 }
 
-/** @brief Write a register on the modelled I3C/IIC_B channel. */
-static void i3c_reg_write(uint64_t off, uint32_t value)
+/**
+ * @brief Write a register on the modelled I3C/IIC_B channel.
+ * @details Write a register on the modelled i3c/iic_b channel; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for I3C reg write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_i3c_reg_write(uint64_t off, uint32_t value)
 {
-  s_i3c.reg[i3c_word(off)] = value; /* shadow keeps "configure then verify" working */
+  s_i3c.reg[internal_i3c_word(off)] = value; /* shadow keeps "configure then verify" working */
   if (off == (uint64_t)k_i3c_off_msdvad) {
     /* Own-address programming = the firmware is coming up as an addressed
      * target. The controller path never writes MSDVAD, so this cleanly selects
      * target mode (the external-controller stimulus in i3c_periph_*). */
-    i3c_periph_open(value);
+    internal_i3c_periph_open(value);
   } else if (off == (uint64_t)k_i3c_off_cndctl) {
-    i3c_cndctl_write(value);
+    internal_i3c_cndctl_write(value);
   } else if (off == (uint64_t)k_i3c_off_ntdtbp0) {
-    i3c_ntdtbp0_write(value);
+    internal_i3c_ntdtbp0_write(value);
   } else if (off == (uint64_t)k_i3c_off_bst) {
     /* BST condition / fault flags are write-0-to-clear: keep only bits still
      * written as 1 (the driver clears by reading then masking the bit out). */
@@ -684,28 +853,59 @@ static void i3c_reg_write(uint64_t off, uint32_t value)
   }
 }
 
-/** @brief MMIO read inside the I3C/IIC_B window. */
-static uint64_t i3c_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the I3C/IIC_B window.
+ * @details MMIO read inside the i3c/iic_b window; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The I3C read result produced by the board periph I2C model.
+ * @retval value The operation-specific I3C read value.
+ * @pre Arguments satisfy the ranges documented for I3C read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_i3c_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
-  return i3c_reg_read(addr - (uint64_t)k_i3c_base);
+  return internal_i3c_reg_read(addr - (uint64_t)k_i3c_base);
 }
 
-/** @brief MMIO write inside the I3C/IIC_B window. */
-static void i3c_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the I3C/IIC_B window.
+ * @details MMIO write inside the i3c/iic_b window; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for I3C write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_i3c_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
-  i3c_reg_write(addr - (uint64_t)k_i3c_base, (uint32_t)value);
+  internal_i3c_reg_write(addr - (uint64_t)k_i3c_base, (uint32_t)value);
 }
 
-/** @brief Clear the I3C channel + GT911 state and (re)populate the bus. */
-static void i3c_reset(void)
+/**
+ * @brief Clear the I3C channel + GT911 state and (re)populate the bus.
+ * @details Clear the i3c channel + gt911 state and (re)populate the bus; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for I3C reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_i3c_reset(void)
 {
   s_i3c   = (i3c_state_t){};
   s_gt911 = (gt911_state_t){};
-  board_i2c_imu_fuel_reset(); /* lay the IMU + fuel-gauge register files (CLI-set SOC) */
+  priv_board_i2c_imu_fuel_reset(); /* lay the IMU + fuel-gauge register files (CLI-set SOC) */
   /* Populate the modelled I2C bus: the EK-RA8D2 carrier's GT911 touch
    * controller answers at its default 7-bit address on I3C/IIC_B channel 0, so
    * the firmware's real ra8_touch -> ra8_i3c_transfer -> GT911 path returns data
@@ -714,54 +914,63 @@ static void i3c_reset(void)
   for (uint32_t i = 0U; i < (uint32_t)k_i3c_dev_max; i++) {
     s_i2c_dev[i] = (i2c_device_t){};
   }
-  i2c_device_register((uint8_t)k_gt911_addr_7b, gt911_write, gt911_read, gt911_stop, &s_gt911);
+  priv_i2c_device_register((uint8_t)k_gt911_addr_7b,
+                           internal_gt911_write,
+                           internal_gt911_read,
+                           internal_gt911_stop,
+                           &s_gt911);
   /* LSM6DSO IMU at 0x6B + MAX17048-class fuel gauge at 0x36 (battery SOC +
    * charge direction) register themselves from the devices TU. */
-  board_i2c_imu_fuel_register();
+  priv_board_i2c_imu_fuel_register();
 }
 
-/** @brief Print the GT911 touch line when the firmware drained any contact. */
-static void i3c_report(void)
+/**
+ * @brief Print the GT911 touch line when the firmware drained any contact.
+ * @details Print the gt911 touch line when the firmware drained any contact; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for I3C report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph I2C model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_i3c_report(void)
 {
   if (s_gt911.reported > 0U) {
-    (void)fprintf(stderr,
-                  "  I3C/I2C GT911 : %u touch frame(s) drained via ra8_touch -> I3C\n",
-                  s_gt911.reported);
+    (void)priv_emu_io_errf("  I3C/I2C GT911 : %u touch frame(s) drained via ra8_touch -> I3C\n",
+                           s_gt911.reported);
   }
-  if (board_i2c_imu_reads() > 0U) {
-    (void)fprintf(stderr,
-                  "  I3C/I2C LSM6DSO: %u register read(s) answered (WHO_AM_I + samples)\n",
-                  board_i2c_imu_reads());
+  if (priv_board_i2c_imu_reads() > 0U) {
+    (void)priv_emu_io_errf("  I3C/I2C LSM6DSO: %u register read(s) answered (WHO_AM_I + samples)\n",
+                           priv_board_i2c_imu_reads());
   }
   if (s_i3c.periph_mode) {
     /* Target mode: report how many controller write+read round-trips the
      * firmware's IIC_B peripheral accepted, and whether every byte it echoed
      * back matched the byte the synthetic controller wrote. */
     const bool echo_ok = (s_i3c.periph_xfers > 0U) && !s_i3c.periph_echo_bad;
-    (void)fprintf(stderr,
-                  "  I3C/I2C target: addr=0x%02X %u peripheral write+read xfer(s) accepted,"
-                  " echo=%s\n",
-                  (unsigned)s_i3c.periph_addr_7b,
-                  (unsigned)s_i3c.periph_xfers,
-                  echo_ok ? "Y" : "N");
+    (void)priv_emu_io_errf(
+      "  I3C/I2C target: addr=0x%02X %u peripheral write+read xfer(s) accepted,"
+      " echo=%s\n",
+      (unsigned)s_i3c.periph_addr_7b,
+      (unsigned)s_i3c.periph_xfers,
+      echo_ok ? "Y" : "N");
   }
 }
 
 /** @brief This block's descriptor (static lifetime; the core keeps the pointer). */
-static const board_periph_block_t k_i3c_block = {
+static const board_periph_block_t s_k_i3c_block = {
   .base   = (uint64_t)k_i3c_base,
   .span   = (uint64_t)k_i3c_span,
   .order  = (uint32_t)k_block_order_i2c,
-  .read   = i3c_read,
-  .write  = i3c_write,
+  .read   = internal_i3c_read,
+  .write  = internal_i3c_write,
   .tick   = nullptr,
-  .reset  = i3c_reset,
-  .report = i3c_report,
+  .reset  = internal_i3c_reset,
+  .report = internal_i3c_report,
   .name   = "I3C/I2C+GT911",
 };
 
 /** @brief Self-register the I3C/I2C block before main runs (decentralized). */
-[[gnu::constructor]] static void board_periph_i2c_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_board_periph_i2c_register(void)
 {
-  board_periph_register_block(&k_i3c_block);
+  board_periph_register_block(&s_k_i3c_block);
 }

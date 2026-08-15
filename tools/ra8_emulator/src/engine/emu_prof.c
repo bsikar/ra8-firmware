@@ -22,6 +22,7 @@
 #include <time.h>
 
 #include "emu_elf.h"
+#include "emu_host_io_internal.h"
 
 /** @brief Nanoseconds per second (timespec tv_nsec -> seconds). */
 static const double s_nsec_per_sec = 1.0e9;
@@ -51,18 +52,19 @@ enum : uint32_t {
   k_prof_top_n    = 40U,   /**< Top entries printed in the report. */
 };
 typedef struct {
-  uint32_t    lo;    /**< Function entry (Thumb bit cleared). */
-  uint32_t    hi;    /**< Function end (lo + st_size).        */
-  const char* name;  /**< Pointer into the ELF string table.  */
-  double      secs;  /**< Wall seconds (wall mode).           */
-  uint64_t    insns; /**< Instructions executed (insn mode).  */
-  uint64_t    calls; /**< Entries to this fn (insn mode).     */
+  uint32_t lo;          /**< Function entry (Thumb bit cleared). */
+  uint32_t hi;          /**< Function end (lo + st_size).        */
+  uint64_t name_offset; /**< Source offset of the symbol name.   */
+  double   secs;        /**< Wall seconds (wall mode).           */
+  uint64_t insns;       /**< Instructions executed (insn mode).  */
+  uint64_t calls;       /**< Entries to this fn (insn mode).     */
 } prof_sym_t;
-static prof_sym_t  s_prof[k_prof_max_syms];
-static uint32_t    s_prof_n       = 0U;
-static double      s_prof_total_s = 0.0;
-static uint64_t    s_prof_total_i = 0U;
-static prof_mode_t s_prof_mode    = k_prof_off;
+static prof_sym_t              s_prof[k_prof_max_syms];
+static const emu_elf_source_t* s_prof_elf; /**< Borrowed run-long source for names. */
+static uint32_t                s_prof_n       = 0U;
+static double                  s_prof_total_s = 0.0;
+static uint64_t                s_prof_total_i = 0U;
+static prof_mode_t             s_prof_mode    = k_prof_off;
 
 /* ---------------------------------------------------------------------------
  * Ozone-style call-stack tracing (insn mode only). On top of the per-function
@@ -97,8 +99,19 @@ static bool     s_prof_stop_hit = false;                       /**< Set when STO
 static uint64_t s_incl[k_prof_max_syms];                       /**< Inclusive weight (report). */
 static uint64_t s_self[k_prof_max_syms];                       /**< Self (leaf) weight.        */
 
-/** @brief qsort comparator: order the FUNC symbols by entry address. */
-static int prof_cmp(const void* a, const void* b)
+/**
+ * @brief qsort comparator: order the FUNC symbols by entry address.
+ * @details Qsort comparator: order the func symbols by entry address; this step is contained within the emu prof model and uses bounded caller or module-owned storage.
+ * @param[in] a A input used by the operation.
+ * @param[in] b B input used by the operation.
+ * @return The prof cmp result produced by the emu prof model.
+ * @retval value The operation-specific prof cmp value.
+ * @pre Arguments satisfy the ranges documented for prof cmp. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu prof model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static int internal_prof_cmp(const void* a, const void* b)
 {
   const uint32_t la = ((const prof_sym_t*)a)->lo;
   const uint32_t lb = ((const prof_sym_t*)b)->lo;
@@ -111,52 +124,40 @@ static int prof_cmp(const void* a, const void* b)
   return 0;
 }
 
-/** @brief Collect the STT_FUNC symbols of one SHT_SYMTAB section into s_prof. */
-static void prof_collect_symtab(const uint8_t* elf,
-                                const uint8_t* sh,
-                                uint32_t       shoff,
-                                uint16_t       shentsize,
-                                uint16_t       shnum)
+/**
+ * @brief Collect one sized STT_FUNC symbol into the bounded profiler table.
+ * @details Retains only address bounds and the immutable source-name offset.
+ * @param[in] symbol Bounds-checked symbol entry.
+ * @param[in] ctx Unused callback context.
+ * @return Whether symbol iteration should continue.
+ * @retval true The symbol was skipped or collected below the fixed cap.
+ * @retval false The fixed profiler-symbol capacity was exhausted.
+ * @pre @p symbol is non-null.
+ * @pre The profiler source remains open.
+ * @post `s_prof_n` never exceeds ::k_prof_max_syms.
+ * @post Collected entries retain no pointer into source bytes.
+ * @note Not thread-safe; profiler setup is single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_prof_symbol(const emu_elf_symbol_t* symbol, void* ctx)
 {
-  uint32_t sym_off     = 0U;
-  uint32_t sym_size    = 0U;
-  uint32_t sym_link    = 0U;
-  uint32_t sym_entsize = 0U;
-  (void)memcpy(&sym_off, sh + 16, 4);
-  (void)memcpy(&sym_size, sh + (uint32_t)k_elf_sh_size_off, 4);
-  (void)memcpy(&sym_link, sh + (uint32_t)k_elf_sh_link_off, 4);
-  (void)memcpy(&sym_entsize, sh + (uint32_t)k_elf_sh_entsize_off, 4);
-  if ((sym_entsize < 16U) || (sym_link >= shnum)) {
-    return;
+  (void)ctx;
+  if (((symbol->info & (uint8_t)k_elf_st_type_mask) != 2U) || (symbol->size == 0U) ||
+      (symbol->name_offset == 0U)) {
+    return true;
   }
-  const uint8_t* strsh   = elf + shoff + ((size_t)(uint32_t)sym_link * shentsize);
-  uint32_t       str_off = 0U;
-  (void)memcpy(&str_off, strsh + 16, 4);
-  const uint32_t nsym = sym_size / sym_entsize;
-  for (uint32_t s = 0U; (s < nsym) && (s_prof_n < (uint32_t)k_prof_max_syms); s++) {
-    const uint8_t* sym      = elf + sym_off + ((size_t)s * sym_entsize);
-    uint32_t       st_name  = 0U;
-    uint32_t       st_value = 0U;
-    uint32_t       st_size  = 0U;
-    (void)memcpy(&st_name, sym + 0, 4);
-    (void)memcpy(&st_value, sym + 4, 4);
-    (void)memcpy(&st_size, sym + 8, 4);
-    if (((sym[k_elf_sym_info_off] & (uint8_t)k_elf_st_type_mask) != 2U) || (st_size == 0U) ||
-        (st_name == 0U)) { /* STT_FUNC */
-      continue;
-    }
-    s_prof[s_prof_n].lo    = st_value & ~1U;
-    s_prof[s_prof_n].hi    = (st_value & ~1U) + st_size;
-    s_prof[s_prof_n].name  = (const char*)(elf + str_off + st_name);
-    s_prof[s_prof_n].secs  = 0.0;
-    s_prof[s_prof_n].insns = 0U;
-    s_prof[s_prof_n].calls = 0U;
-    s_prof_n++;
+  if (s_prof_n >= (uint32_t)k_prof_max_syms) {
+    return false;
   }
+  const uint32_t lo = symbol->value & ~1U;
+  s_prof[s_prof_n] =
+    (prof_sym_t){.lo = lo, .hi = lo + symbol->size, .name_offset = symbol->name_offset};
+  s_prof_n++;
+  return true;
 }
 
 /** @brief Collect + sort FUNC symbols (RA8_EMU_PROFILE only) for PC bucketing. */
-void prof_load(const uint8_t* elf, long len)
+void prof_load(const emu_elf_source_t* elf)
 {
   const char* mode = getenv("RA8_EMU_PROFILE");
   if (mode == nullptr) {
@@ -165,34 +166,28 @@ void prof_load(const uint8_t* elf, long len)
   }
   s_prof_mode =
     ((strcmp(mode, "full") == 0) || (strcmp(mode, "insn") == 0)) ? k_prof_insn : k_prof_wall;
-  if (len < (long)k_elf_ehdr_size) {
-    return;
-  }
-  uint32_t shoff = 0U;
-  (void)memcpy(&shoff, elf + 32, 4);
-  const uint16_t shentsize = (uint16_t)(elf[46] | (elf[47] << 8));
-  const uint16_t shnum     = (uint16_t)(elf[48] | (elf[49] << 8));
-  if (shoff == 0U) {
-    return;
-  }
-  for (uint16_t i = 0U; i < shnum; i++) {
-    const uint8_t* sh      = elf + shoff + ((size_t)(uint32_t)i * shentsize);
-    uint32_t       sh_type = 0U;
-    (void)memcpy(&sh_type, sh + 4, 4);
-    if (sh_type != 2U) { /* SHT_SYMTAB */
-      continue;
-    }
-    prof_collect_symtab(elf, sh, shoff, shentsize, shnum);
-  }
-  qsort(s_prof, (size_t)s_prof_n, sizeof(s_prof[0]), prof_cmp);
-  (void)fprintf(stderr,
-                "  [profile] %s; %u FUNC symbols\n",
-                (s_prof_mode == k_prof_insn) ? "per-instruction (exact, slow)" : "wall-time sample",
-                (unsigned)s_prof_n);
+  s_prof_n   = 0U;
+  s_prof_elf = elf;
+  (void)elf_foreach_symbol(elf, internal_prof_symbol, nullptr);
+  qsort(s_prof, (size_t)s_prof_n, sizeof(s_prof[0]), internal_prof_cmp);
+  (void)priv_emu_io_errf("  [profile] %s; %u FUNC symbols\n",
+                         (s_prof_mode == k_prof_insn) ? "per-instruction (exact, slow)"
+                                                      : "wall-time sample",
+                         (unsigned)s_prof_n);
 }
 
-/** @brief Binary-search the FUNC symbol owning @p pc; returns s_prof_n if none. */
-static uint32_t prof_find(uint32_t pc)
+/**
+ * @brief Binary-search the FUNC symbol owning @p pc; returns s_prof_n if none.
+ * @details Binary-search the func symbol owning @p pc; returns s_prof_n if none; this step is contained within the emu prof model and uses bounded caller or module-owned storage.
+ * @param[in] pc Guest program-counter value associated with the operation.
+ * @return The prof find result produced by the emu prof model.
+ * @retval value The operation-specific prof find value.
+ * @pre Arguments satisfy the ranges documented for prof find. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu prof model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_prof_find(uint32_t pc)
 {
   uint32_t lo = 0U;
   uint32_t hi = s_prof_n;
@@ -218,14 +213,21 @@ void prof_add(uint32_t pc, double dt)
     return;
   }
   s_prof_total_s += dt;
-  const uint32_t idx = prof_find(pc);
+  const uint32_t idx = internal_prof_find(pc);
   if (idx < s_prof_n) {
     s_prof[idx].secs += dt;
   }
 }
 
-/** @brief Halve the sample store (merge adjacent pairs) when it fills up. */
-static void prof_decimate(void)
+/**
+ * @brief Halve the sample store (merge adjacent pairs) when it fills up.
+ * @details Halve the sample store (merge adjacent pairs) when it fills up; this step is contained within the emu prof model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for prof decimate. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu prof model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_prof_decimate(void)
 {
   uint32_t dst = 0U;
   for (uint32_t i = 0U; i < s_samp_n; i += 2U) {
@@ -241,11 +243,19 @@ static void prof_decimate(void)
   s_samp_every *= 2U; /* coarser cadence keeps the next fill the same span. */
 }
 
-/** @brief Append the live call chain as one chronological sample of @p weight insns. */
-static void prof_sample(uint32_t weight)
+/**
+ * @brief Append the live call chain as one chronological sample of @p weight insns.
+ * @details Append the live call chain as one chronological sample of @p weight insns; this step is contained within the emu prof model and uses bounded caller or module-owned storage.
+ * @param[in] weight Weight input used by the operation.
+ * @pre Arguments satisfy the ranges documented for prof sample. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu prof model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_prof_sample(uint32_t weight)
 {
   if (s_samp_n >= (uint32_t)k_prof_max_samples) {
-    prof_decimate();
+    internal_prof_decimate();
   }
   uint32_t d = s_pstk_n;
   if (d > (uint32_t)k_prof_max_depth) {
@@ -259,8 +269,16 @@ static void prof_sample(uint32_t weight)
   s_samp_n++;
 }
 
-/** @brief Fold @p f (PC's owning FUNC index) into the live call chain (push/pop). */
-static void prof_stack_update(uint32_t f)
+/**
+ * @brief Fold @p f (PC's owning FUNC index) into the live call chain (push/pop).
+ * @details Fold @p f (pc's owning func index) into the live call chain (push/pop); this step is contained within the emu prof model and uses bounded caller or module-owned storage.
+ * @param[in] f F input used by the operation.
+ * @pre Arguments satisfy the ranges documented for prof stack update. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu prof model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_prof_stack_update(uint32_t f)
 {
   if (f >= s_prof_n) {
     return; /* unknown region -- keep the current leaf (it gets the self time). */
@@ -280,24 +298,36 @@ static void prof_stack_update(uint32_t f)
   }
 }
 
-/** @brief UC_HOOK_CODE per instruction: tally instructions + calls + call chain. */
 /* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
-static void prof_insn_hook(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+/**
+ * @brief Perform prof insn hook for the emu prof model.
+ * @details Perform prof insn hook for the emu prof model; this step is contained within the emu prof model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] address Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in,out] user Hook context supplied when the callback was registered.
+ * @pre Arguments satisfy the ranges documented for prof insn hook. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu prof model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_prof_insn_hook(uc_engine* uc, uint64_t address, uint32_t size, void* user)
 {
   (void)size;
   (void)user;
   s_prof_total_i++;
-  const uint32_t idx = prof_find((uint32_t)address);
+  const uint32_t idx = internal_prof_find((uint32_t)address);
   if (idx < s_prof_n) {
     s_prof[idx].insns++;
     if ((uint32_t)address == s_prof[idx].lo) {
       s_prof[idx].calls++; /* PC at the entry point -> a fresh call (approx). */
     }
   }
-  prof_stack_update(idx);
+  internal_prof_stack_update(idx);
   s_samp_acc++;
   if (s_samp_acc >= s_samp_every) {
-    prof_sample((uint32_t)s_samp_acc);
+    internal_prof_sample((uint32_t)s_samp_acc);
     s_samp_acc = 0U;
   }
   if ((s_prof_stop_pc != 0U) && ((uint32_t)address == s_prof_stop_pc)) {
@@ -306,141 +336,261 @@ static void prof_insn_hook(uc_engine* uc, uint64_t address, uint32_t size, void*
   }
 }
 
-/* @brief Write the captured call chains as a speedscope "sampled" profile JSON. */
+/**
+ * @brief Convert a host-I/O result to the profiler writer's boolean accumulator.
+ * @details Keeps each writer expression explicit while preserving the first failure.
+ * @param[in] result Raw descriptor operation result.
+ * @return True only for complete success.
+ * @retval true @p result reports k_emu_io_ok.
+ * @retval false @p result reports any failure or truncation.
+ * @pre @p result is fully initialised.
+ * @pre The caller has not discarded an earlier failure.
+ * @post No profiler or descriptor state changes.
+ * @post The returned value depends only on @p result.status.
+ * @note Pure value predicate; thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_prof_io_ok(emu_io_result_t result)
+{
+  return result.status == k_emu_io_ok;
+}
+
+/** @brief Sink configuration for one streamed profiler symbol name. */
+typedef struct {
+  int  fd;         /**< Explicit file descriptor, ignored for error sink. */
+  char escape;     /**< Character escaped with backslash, or NUL.         */
+  bool error_sink; /**< Route bytes to the injected error sink.           */
+  bool ok;         /**< Sticky exact-output success.                      */
+} prof_name_sink_t;
+
+/**
+ * @brief Emit one transient source-name chunk to a selected sink.
+ * @details Writes directly to the chosen descriptor or injected error sink.
+ * @param[in] bytes Name bytes without a terminating NUL.
+ * @param[in] length Transient chunk length.
+ * @param[in,out] opaque ::prof_name_sink_t output state.
+ * @return True while every write succeeds.
+ * @retval true The complete chunk was emitted.
+ * @retval false A sink operation failed.
+ * @pre @p bytes spans @p length readable bytes.
+ * @pre @p opaque selects a valid sink.
+ * @post Every input byte is emitted, with selected escaping.
+ * @post Failure latches `ok=false` and stops string streaming.
+ * @note Consumes the transient chunk before returning.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_prof_name_chunk(const char* bytes, size_t length, void* opaque)
+{
+  prof_name_sink_t* const sink = (prof_name_sink_t*)opaque;
+  if ((sink->escape == '\0') && sink->error_sink) {
+    sink->ok = internal_prof_io_ok(priv_emu_io_err_bytes(bytes, length));
+    return sink->ok;
+  }
+  for (size_t index = 0U; (index < length) && sink->ok; index++) {
+    if ((sink->escape != '\0') && (bytes[index] == sink->escape || bytes[index] == '\\')) {
+      sink->ok = internal_prof_io_ok(priv_emu_io_file_char(sink->fd, '\\'));
+    }
+    if (sink->ok) {
+      sink->ok = internal_prof_io_ok(priv_emu_io_file_char(sink->fd, bytes[index]));
+    }
+  }
+  return sink->ok;
+}
+
+/**
+ * @brief Stream one retained-offset symbol name to a file or error sink.
+ * @details Resolves the retained offset against the still-open source in bounded chunks.
+ * @param[in] symbol Profiler symbol index.
+ * @param[in] fd Explicit file descriptor, ignored for error sink.
+ * @param[in] escape File-sink quote character to escape, or NUL.
+ * @param[in] error_sink Whether to use the injected error sink.
+ * @return True only after a terminating NUL and exact output.
+ * @retval true The complete name was emitted exactly.
+ * @retval false The index/source was invalid or a read/write failed.
+ * @pre @p symbol is below `s_prof_n` and `s_prof_elf` remains open.
+ * @pre File mode supplies a valid @p fd.
+ * @post Output bytes match the old resident-string walk exactly.
+ * @post No source byte pointer survives the call.
+ * @note Reads only bounded transient name chunks.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_prof_name(uint32_t symbol, int fd, char escape, bool error_sink)
+{
+  if ((symbol >= s_prof_n) || (s_prof_elf == nullptr)) {
+    return false;
+  }
+  prof_name_sink_t sink = {.fd = fd, .escape = escape, .error_sink = error_sink, .ok = true};
+  return elf_string_foreach(s_prof_elf,
+                            s_prof[symbol].name_offset,
+                            internal_prof_name_chunk,
+                            &sink) &&
+         sink.ok;
+}
+
 /**
  * @brief Write the speedscope `shared.frames` array: one entry per symbol.
- *
- * @details
- * Frame names come from the ELF symbol table and are emitted inside JSON
- * strings, so `"` and `\` are escaped as they are copied.
- *
- * @param[in,out] f Open output stream positioned after the `"frames":[`.
- *
- * @pre @p f is non-NULL and writable.
+ * @details Escapes JSON quote and backslash characters while copying ELF symbol names.
+ * @param[in] fd Raw output descriptor positioned after the `"frames":[`.
+ * @return True only when every raw write completed.
+ * @retval true All frame objects were written.
+ * @retval false At least one descriptor operation failed.
+ * @pre @p fd is a valid writable descriptor.
  * @pre `s_prof_n` frames are populated.
- * @post Exactly `s_prof_n` comma-separated objects are written.
+ * @post Exactly `s_prof_n` objects are attempted in order.
  * @post The enclosing bracket is left for the caller to close.
- *
  * @note Not thread-safe; the profiler is single-threaded host-side.
+ * @since 0.1.0
  */
-static void prof_json_frames(FILE* f)
+RA8_INTERNAL static bool internal_prof_json_frames(int fd)
 {
+  bool ok = true;
   for (uint32_t i = 0U; i < s_prof_n; i++) {
-    (void)fputs((i == 0U) ? "{\"name\":\"" : ",{\"name\":\"", f);
-    for (const char* p = s_prof[i].name; *p != '\0'; p++) { /* JSON-escape. */
-      if ((*p == '"') || (*p == '\\')) {
-        (void)fputc('\\', f);
-      }
-      (void)fputc(*p, f);
-    }
-    (void)fputs("\"}", f);
+    ok = internal_prof_io_ok(
+           priv_emu_io_file_text(fd, (i == 0U) ? "{\"name\":\"" : ",{\"name\":\"")) &&
+         ok;
+    ok = internal_prof_name(i, fd, '"', false) && ok;
+    ok = internal_prof_io_ok(priv_emu_io_file_text(fd, "\"}")) && ok;
   }
+  return ok;
 }
 
 /**
  * @brief Write the speedscope `samples` array: one frame-index stack per sample.
+ * @details Emits each root-to-leaf frame-index vector with JSON delimiters.
  *
- * @param[in,out] f Open output stream positioned after the `"samples":[`.
+ * @param[in] fd Raw output descriptor positioned after the `"samples":[`.
+ * @return True only when every raw write completed.
+ * @retval true All sample arrays were written.
+ * @retval false At least one descriptor operation failed.
  *
- * @pre @p f is non-NULL and writable.
+ * @pre @p fd is a valid writable descriptor.
  * @pre `s_samp_n` samples are populated with matching depths in `s_samp_d`.
  * @post Exactly `s_samp_n` comma-separated arrays are written.
  * @post The enclosing bracket is left for the caller to close.
  *
  * @note Not thread-safe; the profiler is single-threaded host-side.
+ * @since 0.1.0
  */
-static void prof_json_samples(FILE* f)
+RA8_INTERNAL static bool internal_prof_json_samples(int fd)
 {
+  bool ok = true;
   for (uint32_t i = 0U; i < s_samp_n; i++) {
-    (void)fputc((i == 0U) ? '[' : ',', f);
+    ok = internal_prof_io_ok(priv_emu_io_file_char(fd, (i == 0U) ? '[' : ',')) && ok;
     if (i != 0U) {
-      (void)fputc('[', f);
+      ok = internal_prof_io_ok(priv_emu_io_file_char(fd, '[')) && ok;
     }
     for (uint8_t j = 0U; j < s_samp_d[i]; j++) {
-      (void)fprintf(f, (j == 0U) ? "%u" : ",%u", (unsigned)s_samp[i][j]);
+      ok = internal_prof_io_ok(
+             priv_emu_io_filef(fd, (j == 0U) ? "%u" : ",%u", (unsigned)s_samp[i][j])) &&
+           ok;
     }
-    (void)fputc(']', f);
+    ok = internal_prof_io_ok(priv_emu_io_file_char(fd, ']')) && ok;
   }
+  return ok;
 }
 
 /**
  * @brief Write the speedscope `weights` array, parallel to the samples array.
+ * @details Emits the instruction weight corresponding to every captured sample.
  *
- * @param[in,out] f Open output stream positioned after the `"weights":[`.
+ * @param[in] fd Raw output descriptor positioned after the `"weights":[`.
+ * @return True only when every raw write completed.
+ * @retval true All weights were written.
+ * @retval false At least one descriptor operation failed.
  *
- * @pre @p f is non-NULL and writable.
+ * @pre @p fd is a valid writable descriptor.
  * @pre `s_samp_w` holds `s_samp_n` weights.
  * @post Exactly `s_samp_n` comma-separated integers are written.
  * @post The enclosing bracket is left for the caller to close.
  *
  * @note Not thread-safe; the profiler is single-threaded host-side.
+ * @since 0.1.0
  */
-static void prof_json_weights(FILE* f)
+RA8_INTERNAL static bool internal_prof_json_weights(int fd)
 {
+  bool ok = true;
   for (uint32_t i = 0U; i < s_samp_n; i++) {
-    (void)fprintf(f, (i == 0U) ? "%u" : ",%u", (unsigned)s_samp_w[i]);
+    ok =
+      internal_prof_io_ok(priv_emu_io_filef(fd, (i == 0U) ? "%u" : ",%u", (unsigned)s_samp_w[i])) &&
+      ok;
   }
+  return ok;
 }
 
 /**
  * @brief Write the flamechart page's `FRAMES` array as JavaScript string literals.
  *
  * @details
- * The same frame names as @ref prof_json_frames, but the viewer markup quotes
+ * The same frame names as @ref internal_prof_json_frames, but the viewer markup quotes
  * with `'`, so `'` and `\` are the characters escaped here.
  *
- * @param[in,out] f Open output stream positioned after the `FRAMES=[`.
+ * @param[in] fd Raw output descriptor positioned after the `FRAMES=[`.
+ * @return True only when every raw write completed.
+ * @retval true All quoted names were written.
+ * @retval false At least one descriptor operation failed.
  *
- * @pre @p f is non-NULL and writable.
+ * @pre @p fd is a valid writable descriptor.
  * @pre `s_prof_n` frames are populated.
  * @post Exactly `s_prof_n` comma-separated quoted names are written.
  * @post The enclosing bracket is left for the caller to close.
  *
  * @note Not thread-safe; the profiler is single-threaded host-side.
+ * @since 0.1.0
  */
-static void prof_js_frames(FILE* f)
+RA8_INTERNAL static bool internal_prof_js_frames(int fd)
 {
+  bool ok = true;
   for (uint32_t i = 0U; i < s_prof_n; i++) {
-    (void)fputs((i == 0U) ? "'" : ",'", f);
-    for (const char* p = s_prof[i].name; *p != '\0'; p++) { /* escape ' and backslash for JS. */
-      if ((*p == '\'') || (*p == '\\')) {
-        (void)fputc('\\', f);
-      }
-      (void)fputc(*p, f);
-    }
-    (void)fputc('\'', f);
+    ok = internal_prof_io_ok(priv_emu_io_file_text(fd, (i == 0U) ? "'" : ",'")) && ok;
+    ok = internal_prof_name(i, fd, '\'', false) && ok;
+    ok = internal_prof_io_ok(priv_emu_io_file_char(fd, '\'')) && ok;
   }
+  return ok;
 }
 
-static void prof_write_speedscope(const char* path)
+/**
+ * @brief Perform prof write speedscope for the emu prof model.
+ * @details Perform prof write speedscope for the emu prof model; this step is contained within the emu prof model and uses bounded caller or module-owned storage.
+ * @param[in] path NUL-terminated host path used by the operation.
+ * @pre Arguments satisfy the ranges documented for prof write speedscope. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu prof model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_prof_write_speedscope(const char* path)
 {
   if ((s_samp_n == 0U) || (s_prof_n == 0U)) {
     return;
   }
-  FILE* f = fopen(path, "w");
-  if (f == nullptr) {
+  emu_io_txn_t txn = {.fd = -1};
+  if (priv_emu_io_txn_begin(path, &txn).status != k_emu_io_ok) {
     return;
   }
   uint64_t total = 0U;
   for (uint32_t i = 0U; i < s_samp_n; i++) {
     total += s_samp_w[i];
   }
-  (void)fprintf(f,
-                "{\"$schema\":\"https://www.speedscope.app/file-format-schema.json\",\n"
-                " \"name\":\"ra8_emulator boot\",\"activeProfileIndex\":0,\n"
-                " \"shared\":{\"frames\":[");
-  prof_json_frames(f);
-  (void)fprintf(f,
-                "]},\n"
-                " \"profiles\":[{\"type\":\"sampled\",\"name\":\"boot\",\"unit\":\"none\",\n"
-                "  \"startValue\":0,\"endValue\":%llu,\n"
-                "  \"samples\":[",
-                (unsigned long long)total);
-  prof_json_samples(f);
-  (void)fputs("],\n  \"weights\":[", f);
-  prof_json_weights(f);
-  (void)fputs("]}]}\n", f);
-  (void)fclose(f);
+  bool ok = internal_prof_io_ok(
+    priv_emu_io_file_text(txn.fd,
+                          "{\"$schema\":\"https://www.speedscope.app/file-format-schema.json\",\n"
+                          " \"name\":\"ra8_emulator boot\",\"activeProfileIndex\":0,\n"
+                          " \"shared\":{\"frames\":["));
+  ok = internal_prof_json_frames(txn.fd) && ok;
+  ok = internal_prof_io_ok(priv_emu_io_filef(
+         txn.fd,
+         "]},\n"
+         " \"profiles\":[{\"type\":\"sampled\",\"name\":\"boot\",\"unit\":\"none\",\n"
+         "  \"startValue\":0,\"endValue\":%llu,\n"
+         "  \"samples\":[",
+         (unsigned long long)total)) &&
+       ok;
+  ok = internal_prof_json_samples(txn.fd) && ok;
+  ok = internal_prof_io_ok(priv_emu_io_file_text(txn.fd, "],\n  \"weights\":[")) && ok;
+  ok = internal_prof_json_weights(txn.fd) && ok;
+  ok = internal_prof_io_ok(priv_emu_io_file_text(txn.fd, "]}]}\n")) && ok;
+  if (!ok || (priv_emu_io_txn_commit(&txn).status != k_emu_io_ok)) {
+    priv_emu_io_txn_abort(&txn);
+  }
 }
 
 /* Self-contained flamechart viewer markup. The page embeds the profile arrays
@@ -448,7 +598,7 @@ static void prof_write_speedscope(const char* path)
  * -- the Ozone timeline, but as a local file that opens in any browser with no
  * upload and no external site. Single-quoted HTML/JS strings keep the C literal
  * free of escapes; pure 7-bit ASCII. */
-static const char k_prof_html_head[] =
+static const char s_k_prof_html_head[] =
   "<!doctype html><html><head><meta charset='utf-8'><title>ra8_emulator profile</title>\n"
   "<style>\n"
   "body{margin:0;font:12px Menlo,monospace;background:#1e1e1e;color:#ddd}\n"
@@ -464,7 +614,7 @@ static const char k_prof_html_head[] =
   "search:<input id='q' size='18' oninput='onSearch()'></div>\n"
   "<canvas id='fc'></canvas><div id='tip'></div>\n<script>\n";
 
-static const char k_prof_html_js[] =
+static const char s_k_prof_html_js[] =
   "var cv=document.getElementById('fc'),ctx=cv.getContext('2d'),tip=document.getElementById('tip');\n"
   "document.getElementById('title').textContent=TITLE;\n"
   "var ROW=18,total=0,i;for(i=0;i<WEIGHTS.length;i++)total+=WEIGHTS[i];\n"
@@ -494,7 +644,7 @@ static const char k_prof_html_js[] =
   " var n=FRAMES[R.f],to=incl[R.f]||0,se=self[R.f]||0;\n"
   " tip.innerHTML=n+'<br>this block: '+((R.b-R.a)/total*100).toFixed(2)+'% ('+(R.b-R.a)+' insns)'+\n"
   "  '<br>total '+(to/total*100).toFixed(2)+'%  self '+(se/total*100).toFixed(2)+'%';\n"
-  " tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+14)+'px';};\n"
+  " tip.style.display='block';tip.style.left=(e.clientX+14)+'priv_px';tip.style.top=(e.clientY+14)+'priv_px';};\n"
   "cv.onmouseleave=function(){tip.style.display='none';};\n"
   "cv.onclick=function(e){var R=pick(e.offsetX,e.offsetY);if(R){vx0=R.a;vx1=R.b;draw();}};\n"
   "function resetView(){vx0=0;vx1=total;draw();}\n"
@@ -503,41 +653,52 @@ static const char k_prof_html_js[] =
   "  ' insns  (hover for self/total, click a block to zoom, Reset to zoom out)';\n"
   "window.onresize=resize;resize();\n";
 
-/** @brief Write a self-contained, locally-openable HTML flamechart of the samples. */
-static void prof_write_html(const char* path, uint64_t total)
+/**
+ * @brief Write a self-contained, locally-openable HTML flamechart of the samples.
+ * @details Write a self-contained, locally-openable html flamechart of the samples; this step is contained within the emu prof model and uses bounded caller or module-owned storage.
+ * @param[in] path NUL-terminated host path used by the operation.
+ * @param[in] total Total count used to normalize or report the operation.
+ * @pre Arguments satisfy the ranges documented for prof write html. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu prof model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_prof_write_html(const char* path, uint64_t total)
 {
   if ((s_samp_n == 0U) || (s_prof_n == 0U)) {
     return;
   }
-  FILE* f = fopen(path, "w");
-  if (f == nullptr) {
+  emu_io_txn_t txn = {.fd = -1};
+  if (priv_emu_io_txn_begin(path, &txn).status != k_emu_io_ok) {
     return;
   }
-  (void)fputs(k_prof_html_head, f);
-  (void)fputs("var FRAMES=[", f);
-  prof_js_frames(f);
-  (void)fputs("];\n", f);
+  bool ok = internal_prof_io_ok(priv_emu_io_file_text(txn.fd, s_k_prof_html_head));
+  ok      = internal_prof_io_ok(priv_emu_io_file_text(txn.fd, "var FRAMES=[")) && ok;
+  ok      = internal_prof_js_frames(txn.fd) && ok;
+  ok      = internal_prof_io_ok(priv_emu_io_file_text(txn.fd, "];\n")) && ok;
   /* SAMPLES / WEIGHTS are plain integer arrays, so the JSON the speedscope
    * writer emits is already valid JavaScript -- the same two helpers serve. */
-  (void)fputs("var SAMPLES=[", f);
-  prof_json_samples(f);
-  (void)fputs("];\n", f);
-  (void)fputs("var WEIGHTS=[", f);
-  prof_json_weights(f);
-  (void)fputs("];\n", f);
-  (void)fprintf(f,
-                "var TITLE='ra8_emulator flamechart -- %llu insns, %u samples';\n",
-                (unsigned long long)total,
-                (unsigned)s_samp_n);
-  (void)fputs(k_prof_html_js, f);
-  (void)fputs("</script></body></html>\n", f);
-  (void)fclose(f);
+  ok = internal_prof_io_ok(priv_emu_io_file_text(txn.fd, "var SAMPLES=[")) && ok;
+  ok = internal_prof_json_samples(txn.fd) && ok;
+  ok = internal_prof_io_ok(priv_emu_io_file_text(txn.fd, "];\nvar WEIGHTS=[")) && ok;
+  ok = internal_prof_json_weights(txn.fd) && ok;
+  ok = internal_prof_io_ok(
+         priv_emu_io_filef(txn.fd,
+                           "];\nvar TITLE='ra8_emulator flamechart -- %llu insns, %u samples';\n",
+                           (unsigned long long)total,
+                           (unsigned)s_samp_n)) &&
+       ok;
+  ok = internal_prof_io_ok(priv_emu_io_file_text(txn.fd, s_k_prof_html_js)) && ok;
+  ok = internal_prof_io_ok(priv_emu_io_file_text(txn.fd, "</script></body></html>\n")) && ok;
+  if (!ok || (priv_emu_io_txn_commit(&txn).status != k_emu_io_ok)) {
+    priv_emu_io_txn_abort(&txn);
+  }
 }
 
 /** @brief Fraction-to-per-cent scale (fraction * 100.0 == per-cent). */
 static const double s_percent_scale = 100.0;
 
-/** @brief Boot-timeline "phase" collapse constants for prof_print_boot_timeline. */
+/** @brief Boot-timeline "phase" collapse constants for internal_prof_print_boot_timeline. */
 typedef enum : uint32_t {
   k_no_fn        = 0xFFFFFFFFU, /**< Sentinel for "no phase frame".        */
   k_phase_depth  = 2U,          /**< Chain depth used as the boot "phase". */
@@ -545,8 +706,17 @@ typedef enum : uint32_t {
   k_phase_pct_x1 = 100U,        /**< Per-cent base: keep segments >= 1%.   */
 } prof_phase_t;
 
-/** @brief Reset then fill s_incl/s_self from the samples; return total weight. */
-static uint64_t prof_accumulate_incl_self(void)
+/**
+ * @brief Reset then fill s_incl/s_self from the samples; return total weight.
+ * @details Reset then fill s_incl/s_self from the samples; return total weight; this step is contained within the emu prof model and uses bounded caller or module-owned storage.
+ * @return The prof accumulate incl self result produced by the emu prof model.
+ * @retval value The operation-specific prof accumulate incl self value.
+ * @pre Arguments satisfy the ranges documented for prof accumulate incl self. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu prof model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_prof_accumulate_incl_self(void)
 {
   /* Inclusive (anywhere on the chain) + self (leaf) weights, from the samples.
    * No recursion (NASA Rule 1) -> each function appears at most once per sample,
@@ -570,15 +740,22 @@ static uint64_t prof_accumulate_incl_self(void)
   return total;
 }
 
-/** @brief Print the boot timeline: each contiguous shallow-depth phase run. */
-static void prof_print_boot_timeline(uint64_t total)
+/**
+ * @brief Print the boot timeline: each contiguous shallow-depth phase run.
+ * @details Print the boot timeline: each contiguous shallow-depth phase run; this step is contained within the emu prof model and uses bounded caller or module-owned storage.
+ * @param[in] total Total count used to normalize or report the operation.
+ * @pre Arguments satisfy the ranges documented for prof print boot timeline. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu prof model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_prof_print_boot_timeline(uint64_t total)
 {
   /* Phase timeline: collapse each sample's chain to a fixed shallow depth (the
    * major subsystem under main) and print each contiguous run as a boot phase,
    * so the terminal shows "what ran when" even without opening speedscope. */
-  (void)fprintf(stderr,
-                "  [profile] boot timeline (phase = call depth %u; start%% .. width%%):\n",
-                (unsigned)k_phase_depth);
+  (void)priv_emu_io_errf("  [profile] boot timeline (phase = call depth %u; start%% .. width%%):\n",
+                         (unsigned)k_phase_depth);
   uint64_t cum   = 0U;
   uint64_t segw  = 0U;
   uint32_t segfn = (uint32_t)k_no_fn;
@@ -598,11 +775,15 @@ static void prof_print_boot_timeline(uint64_t total)
                         (((uint32_t)k_phase_pct_x1 * segw) >= total) &&
                         (lines < (uint32_t)k_phase_lines);
       if (show) {
-        (void)fprintf(stderr,
-                      "    %5.1f%%  +%4.1f%%  %s\n",
-                      s_percent_scale * (double)cum / (double)total,
-                      s_percent_scale * (double)segw / (double)total,
-                      (segfn < s_prof_n) ? s_prof[segfn].name : "?");
+        (void)priv_emu_io_errf("    %5.1f%%  +%4.1f%%  ",
+                               s_percent_scale * (double)cum / (double)total,
+                               s_percent_scale * (double)segw / (double)total);
+        if (segfn < s_prof_n) {
+          (void)internal_prof_name(segfn, -1, '\0', true);
+        } else {
+          (void)priv_emu_io_err_text("?");
+        }
+        (void)priv_emu_io_err_text("\n");
         lines++;
       }
       cum += segw;
@@ -615,18 +796,28 @@ static void prof_print_boot_timeline(uint64_t total)
   }
 }
 
-/** @brief Print the inclusive/self table (sorted by inclusive weight). */
-static void prof_print_incl_self_table(const char* html, const char* out, uint64_t total)
+/**
+ * @brief Print the inclusive/self table (sorted by inclusive weight).
+ * @details Print the inclusive/self table (sorted by inclusive weight); this step is contained within the emu prof model and uses bounded caller or module-owned storage.
+ * @param[in] html Html input used by the operation.
+ * @param[in] out Destination storage receiving the computed result.
+ * @param[in] total Total count used to normalize or report the operation.
+ * @pre Arguments satisfy the ranges documented for prof print incl self table. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu prof model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_prof_print_incl_self_table(const char* html, const char* out, uint64_t total)
 {
   /* Inclusive/self table -- the "why is it slow" view (sorted by inclusive). */
-  (void)fprintf(stderr,
-                "  [profile] flamechart GUI -> %s  (interactive: hover/zoom/search)\n"
-                "  [profile] %u samples over %llu insns  (also %s for speedscope.app)\n"
-                "       self%%    total%%  function\n",
-                html,
-                (unsigned)s_samp_n,
-                (unsigned long long)total,
-                out);
+  (void)priv_emu_io_errf("  [profile] flamechart GUI -> %s  (interactive: hover/zoom/search)\n"
+                         "  [profile] %u samples over %llu insns  (also %s for speedscope.app)\n"
+                         "       self%%    total%%  function\n",
+                         html,
+                         (unsigned)s_samp_n,
+                         (unsigned long long)total,
+                         out);
   for (uint32_t k = 0U; k < (uint32_t)k_prof_top_n; k++) {
     uint32_t best  = s_prof_n;
     uint64_t bestv = 0U;
@@ -639,17 +830,24 @@ static void prof_print_incl_self_table(const char* html, const char* out, uint64
     if ((best == s_prof_n) || (bestv == 0U)) {
       break;
     }
-    (void)fprintf(stderr,
-                  "    %8.2f%%  %7.2f%%  %s\n",
-                  s_percent_scale * (double)s_self[best] / (double)total,
-                  s_percent_scale * (double)s_incl[best] / (double)total,
-                  s_prof[best].name);
+    (void)priv_emu_io_errf("    %8.2f%%  %7.2f%%  ",
+                           s_percent_scale * (double)s_self[best] / (double)total,
+                           s_percent_scale * (double)s_incl[best] / (double)total);
+    (void)internal_prof_name(best, -1, '\0', true);
+    (void)priv_emu_io_err_text("\n");
     s_incl[best] = 0U; /* consume so the next pick is the runner-up. */
   }
 }
 
-/** @brief Speedscope export + inclusive/self breakdown + phase timeline (insn mode). */
-static void prof_report_flamechart(void)
+/**
+ * @brief Speedscope export + inclusive/self breakdown + phase timeline (insn mode).
+ * @details Speedscope export + inclusive/self breakdown + phase timeline (insn mode); this step is contained within the emu prof model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for prof report flamechart. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu prof model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_prof_report_flamechart(void)
 {
   const char* out = getenv("RA8_EMU_PROFILE_OUT");
   if ((out == nullptr) || (out[0] == '\0')) {
@@ -659,15 +857,15 @@ static void prof_report_flamechart(void)
   if ((html == nullptr) || (html[0] == '\0')) {
     html = "ra8_emulator_profile.html";
   }
-  prof_write_speedscope(out);
+  internal_prof_write_speedscope(out);
 
-  const uint64_t total = prof_accumulate_incl_self();
+  const uint64_t total = internal_prof_accumulate_incl_self();
   if (total == 0U) {
     return;
   }
-  prof_write_html(html, total); /* self-contained local GUI flamechart. */
-  prof_print_boot_timeline(total);
-  prof_print_incl_self_table(html, out, total);
+  internal_prof_write_html(html, total); /* self-contained local GUI flamechart. */
+  internal_prof_print_boot_timeline(total);
+  internal_prof_print_incl_self_table(html, out, total);
 }
 
 /** @brief Print the top hot functions (by wall time or instruction count) at run end. */
@@ -679,12 +877,11 @@ void prof_report(void)
     return;
   }
   if (insn) {
-    (void)fprintf(stderr,
-                  "  [profile] %llu instructions; hottest (by instruction count):\n"
-                  "     %%insn       instructions       calls  function\n",
-                  (unsigned long long)s_prof_total_i);
+    (void)priv_emu_io_errf("  [profile] %llu instructions; hottest (by instruction count):\n"
+                           "     %%insn       instructions       calls  function\n",
+                           (unsigned long long)s_prof_total_i);
   } else {
-    (void)fprintf(stderr, "  [profile] %.2fs wall sampled; hottest (by wall time):\n", tot);
+    (void)priv_emu_io_errf("  [profile] %.2fs wall sampled; hottest (by wall time):\n", tot);
   }
   for (uint32_t k = 0U; k < (uint32_t)k_prof_top_n; k++) {
     uint32_t best  = s_prof_n;
@@ -700,24 +897,22 @@ void prof_report(void)
       break;
     }
     if (insn) {
-      (void)fprintf(stderr,
-                    "    %6.2f%%  %15llu  %10llu  %s\n",
-                    s_percent_scale * bestv / tot,
-                    (unsigned long long)s_prof[best].insns,
-                    (unsigned long long)s_prof[best].calls,
-                    s_prof[best].name);
+      (void)priv_emu_io_errf("    %6.2f%%  %15llu  %10llu  ",
+                             s_percent_scale * bestv / tot,
+                             (unsigned long long)s_prof[best].insns,
+                             (unsigned long long)s_prof[best].calls);
+      (void)internal_prof_name(best, -1, '\0', true);
+      (void)priv_emu_io_err_text("\n");
       s_prof[best].insns = 0U;
     } else {
-      (void)fprintf(stderr,
-                    "    %6.2f%%  %8.2fs  %s\n",
-                    s_percent_scale * bestv / tot,
-                    bestv,
-                    s_prof[best].name);
+      (void)priv_emu_io_errf("    %6.2f%%  %8.2fs  ", s_percent_scale * bestv / tot, bestv);
+      (void)internal_prof_name(best, -1, '\0', true);
+      (void)priv_emu_io_err_text("\n");
       s_prof[best].secs = 0.0;
     }
   }
   if (insn && (s_samp_n > 0U)) {
-    prof_report_flamechart(); /* speedscope export + inclusive/self + timeline. */
+    internal_prof_report_flamechart(); /* speedscope export + inclusive/self + timeline. */
   }
 }
 
@@ -725,8 +920,9 @@ void prof_report(void)
 void emu_prof_install(uc_engine* uc)
 {
   if (s_prof_mode == k_prof_insn) {
-    static uc_hook s_h_prof;
-    (void)uc_hook_add(uc, &s_h_prof, UC_HOOK_CODE, (void*)prof_insn_hook, nullptr, 1, 0);
+    static uc_hook local_h_prof;
+    (void)
+      uc_hook_add(uc, &local_h_prof, UC_HOOK_CODE, (void*)internal_prof_insn_hook, nullptr, 1, 0);
   }
 }
 

@@ -3,7 +3,7 @@
  * @brief Emulator text-console surfaces: UART echo, ITM/SWO echo, escapes
  *
  * @details
- * The two text endpoints ra8_emulator surfaces on stdout plus the CLI string
+ * The two text endpoints ra8_emulator surfaces on injected output sink plus the CLI string
  * decoder that feeds them:
  *
  *  - `[uart] SCIn:` lines -- the SCI_B model's transmitted bytes, assembled
@@ -115,10 +115,10 @@ typedef enum : uint32_t {
  * @see console_tx_sink()  The UART-side echo counterpart.
  * @since 0.1.0
  */
-RA8_PRIV void emu_console_install(uc_engine* uc);
+void emu_console_install(uc_engine* uc);
 
 /**
- * @brief Flush the pending [uart] line to stdout with its channel prefix.
+ * @brief Flush the pending [uart] line to injected output sink with its channel prefix.
  *
  * @details Terminates and prints the accumulated line as `[uart] SCIn: ...`;
  * a no-op when nothing is buffered. The run-end report calls this so bytes
@@ -127,13 +127,14 @@ RA8_PRIV void emu_console_install(uc_engine* uc);
  * @param[in] channel SCI channel number used in the printed prefix.
  * @return Nothing.
  * @pre The console TX sink has been collecting bytes (or the buffer is empty).
- * @pre stdout is writable.
+ * @pre injected output sink is writable.
  * @post The line buffer is empty.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @see console_tx_sink()  Fills the buffer this flushes.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void console_flush_line(uint8_t channel);
+void console_flush_line(uint8_t channel);
 
 /**
  * @brief SCI TX sink: print each transmitted byte (prefixed line + raw mirror).
@@ -148,13 +149,14 @@ RA8_PRIV void console_flush_line(uint8_t channel);
  * @param[in] byte    The transmitted data byte.
  * @return Nothing.
  * @pre The board_periph SCI model routes TX bytes here.
- * @pre stdout is writable.
+ * @pre injected output sink is writable.
  * @post The byte is buffered or the completed line has been printed.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @see console_flush_line()  Forces out a partial line.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void console_tx_sink(uint8_t channel, uint8_t byte);
+void console_tx_sink(uint8_t channel, uint8_t byte);
 
 /**
  * @brief Decode a C-style escaped --input string into a raw byte buffer.
@@ -175,8 +177,9 @@ RA8_PRIV void console_tx_sink(uint8_t channel, uint8_t byte);
  * @post At most @p cap bytes of @p out are written.
  * @note Pure transformation; thread-safe.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV uint32_t decode_escapes(const char* in, uint8_t* out, uint32_t cap);
+uint32_t decode_escapes(const char* in, uint8_t* out, uint32_t cap);
 
 /**
  * @brief Reset the in-flight ITM line (warm-reboot support).
@@ -191,8 +194,10 @@ RA8_PRIV uint32_t decode_escapes(const char* in, uint8_t* out, uint32_t cap);
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @see emu_console_install()  Arms the echo this resets.
  * @since 0.1.0
+  * @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_console_reset(void);
+void emu_console_reset(void);
 
 #ifdef __cplusplus
 }

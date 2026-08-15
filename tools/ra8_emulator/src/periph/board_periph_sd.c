@@ -31,13 +31,9 @@
 
 #include "board_periph_sd.h"
 
-#include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <sys/mman.h>
-#include <unistd.h>
 
 #include "board_console.h"
 #include "board_periph_sd_internal.h"
@@ -81,7 +77,7 @@ typedef enum : uint8_t {
 } board_sd_cmd_idx_t;
 
 /** @brief The single modelled SD card (declared in board_periph_sd_internal.h). */
-board_sd_state_t s_sd;
+board_sd_state_t local_sd = {.image_fd = -1};
 
 /**
  * @brief CRC16-CCITT (poly 0x1021, init 0) over a buffer.
@@ -100,7 +96,7 @@ board_sd_state_t s_sd;
  * @note Pure function.
  * @since 0.1.0
  */
-static uint16_t board_sd_crc16(const uint8_t* data, uint32_t len)
+RA8_INTERNAL static uint16_t internal_board_sd_crc16(const uint8_t* data, uint32_t len)
 {
   uint16_t crc = 0U;
   for (uint32_t i = 0U; i < len; i++) {
@@ -126,7 +122,9 @@ static uint16_t board_sd_crc16(const uint8_t* data, uint32_t len)
  * @param[in]  c   Card state carrying the backing image.
  * @param[in]  off Byte offset of the block inside the image.
  * @param[out] blk Destination for exactly 512 bytes.
- * @return None.
+ * @return Whether the positioned backend read succeeded.
+ * @retval true The requested in-range bytes were read and the tail zero-filled.
+ * @retval false The sparse backend read failed.
  * @pre `c` and `blk` are non-null.
  * @pre A backing image is attached (or every byte reads back zero).
  * @post `blk` holds the image bytes at `off`, zero-filled past the image end.
@@ -134,12 +132,16 @@ static uint16_t board_sd_crc16(const uint8_t* data, uint32_t len)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void board_sd_fill_block(const board_sd_state_t* c, uint64_t off, uint8_t* blk)
+RA8_INTERNAL static bool
+internal_board_sd_fill_block(const board_sd_state_t* c, uint64_t off, uint8_t* blk)
 {
-  for (uint32_t i = 0U; i < (uint32_t)k_sd_block; ++i) {
-    const uint64_t a = off + (uint64_t)i;
-    blk[i]           = (a < c->image_len) ? c->image[a] : 0U;
+  (void)memset(blk, 0, (size_t)k_sd_block);
+  if (off >= c->image_len) {
+    return true;
   }
+  const uint64_t available = c->image_len - off;
+  const size_t count = (available < (uint64_t)k_sd_block) ? (size_t)available : (size_t)k_sd_block;
+  return priv_board_sd_storage_read(off, blk, count);
 }
 
 /**
@@ -155,13 +157,15 @@ static void board_sd_fill_block(const board_sd_state_t* c, uint64_t off, uint8_t
  * @post `c->resp_len` is set; `c->resp_pos` is left for the caller.
  * @note Not thread-safe.
  * @since 0.1.0
+  * @details Stage the r1 + data-token + payload + crc16 reply for a block read; this step is contained within the board periph SD model and uses bounded caller or module-owned storage.
  */
-static void board_sd_stage_block(board_sd_state_t* c, const uint8_t* payload, uint32_t len)
+RA8_INTERNAL static void
+internal_board_sd_stage_block(board_sd_state_t* c, const uint8_t* payload, uint32_t len)
 {
   c->resp[0] = (uint8_t)k_sd_r1_ready;
   c->resp[1] = (uint8_t)k_sd_tok_data;
   memcpy(&c->resp[2], payload, len);
-  const uint16_t crc     = board_sd_crc16(&c->resp[2], len);
+  const uint16_t crc     = internal_board_sd_crc16(&c->resp[2], len);
   c->resp[2U + len]      = (uint8_t)(crc >> (uint16_t)k_sd_byte_bits);
   c->resp[2U + len + 1U] = (uint8_t)(crc & (uint16_t)k_sd_byte_mask);
   c->resp_len            = 2U + len + 2U;
@@ -199,12 +203,18 @@ static void board_sd_stage_block(board_sd_state_t* c, const uint8_t* payload, ui
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void board_sd_begin_read(board_sd_state_t* c, uint8_t idx, uint32_t arg)
+RA8_INTERNAL static void
+internal_board_sd_begin_read(board_sd_state_t* c, uint8_t idx, uint32_t arg)
 {
   uint8_t        blk[k_sd_block] = {};
   const uint64_t off             = (uint64_t)arg * (uint64_t)k_sd_block;
-  board_sd_fill_block(c, off, blk);
-  board_sd_stage_block(c, blk, (uint32_t)k_sd_block);
+  if (!internal_board_sd_fill_block(c, off, blk)) {
+    c->resp[0]  = (uint8_t)k_sd_r1_param_err;
+    c->resp_len = 1U;
+    c->rd_multi = false;
+    return;
+  }
+  internal_board_sd_stage_block(c, blk, (uint32_t)k_sd_block);
   c->rd_multi = (idx == (uint8_t)k_sd_idx_cmd18);
   c->rd_off   = off + (uint64_t)k_sd_block;
 }
@@ -213,7 +223,7 @@ static void board_sd_begin_read(board_sd_state_t* c, uint8_t idx, uint32_t arg)
  * @brief Stage the next block of an open CMD18 stream (token + payload + CRC).
  *
  * @details Mid-stream blocks carry no R1 -- the card just emits the next
- * data-start token once the block is ready. Reuses ::board_sd_stage_block for
+ * data-start token once the block is ready. Reuses ::internal_board_sd_stage_block for
  * the framing and skips its leading R1 slot by starting the drain at the
  * token. Advances the stream offset by one block.
  *
@@ -226,11 +236,17 @@ static void board_sd_begin_read(board_sd_state_t* c, uint8_t idx, uint32_t arg)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void board_sd_read_stream_next(board_sd_state_t* c)
+RA8_INTERNAL static void internal_board_sd_read_stream_next(board_sd_state_t* c)
 {
   uint8_t blk[k_sd_block] = {};
-  board_sd_fill_block(c, c->rd_off, blk);
-  board_sd_stage_block(c, blk, (uint32_t)k_sd_block);
+  if (!internal_board_sd_fill_block(c, c->rd_off, blk)) {
+    c->resp[0]  = (uint8_t)k_sd_read_error;
+    c->resp_len = 1U;
+    c->resp_pos = 0U;
+    c->rd_multi = false;
+    return;
+  }
+  internal_board_sd_stage_block(c, blk, (uint32_t)k_sd_block);
   c->resp_pos = 1U; /* skip the R1 slot: mid-stream blocks carry none. */
   c->rd_off += (uint64_t)k_sd_block;
 }
@@ -253,7 +269,7 @@ static void board_sd_read_stream_next(board_sd_state_t* c)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void board_sd_stop_read(board_sd_state_t* c, uint8_t r1)
+RA8_INTERNAL static void internal_board_sd_stop_read(board_sd_state_t* c, uint8_t r1)
 {
   c->rd_multi = false;
   c->resp[0]  = (uint8_t)k_sd_idle; /* stuff byte (tail of the cut stream). */
@@ -283,7 +299,8 @@ static void board_sd_stop_read(board_sd_state_t* c, uint8_t r1)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void board_sd_begin_write(board_sd_state_t* c, uint8_t idx, uint32_t arg, uint8_t r1)
+RA8_INTERNAL static void
+internal_board_sd_begin_write(board_sd_state_t* c, uint8_t idx, uint32_t arg, uint8_t r1)
 {
   c->resp[0]  = r1;
   c->resp_len = 1U;
@@ -313,8 +330,10 @@ static void board_sd_begin_write(board_sd_state_t* c, uint8_t idx, uint32_t arg,
  * @post Any queued response is non-empty with `resp_pos` reset to 0.
  *
  * @note Not thread-safe; the emulator is single-threaded host-side.
+  * @pre The call executes on the emulator's single owning thread.
+ * @since 0.1.0
  */
-static void sd_write_token(board_sd_state_t* c, uint8_t tx)
+RA8_INTERNAL static void internal_sd_write_token(board_sd_state_t* c, uint8_t tx)
 {
   if ((tx == (uint8_t)k_sd_tok_data) || (tx == (uint8_t)k_sd_tok_wmulti)) {
     c->wr_phase = k_sd_wr_data;
@@ -338,17 +357,18 @@ static void sd_write_token(board_sd_state_t* c, uint8_t tx)
  * @param[in]     tx Byte the host clocked out.
  *
  * @pre @p c is non-NULL and `c->wr_phase` is ::k_sd_wr_data.
- * @pre `c->image` is non-NULL when `c->image_len` is non-zero.
+ * @pre `c->image_fd` owns the writable sparse backend when attached.
  * @post Writes landing past the image end are dropped, never out of bounds.
  * @post The phase advances to CRC once a full block has been taken.
  *
  * @note Not thread-safe; the emulator is single-threaded host-side.
+  * @details Absorb one payload byte of a write block; this step is contained within the board periph SD model and uses bounded caller or module-owned storage.
+ * @since 0.1.0
  */
-static void sd_write_data(board_sd_state_t* c, uint8_t tx)
+RA8_INTERNAL static void internal_sd_write_data(board_sd_state_t* c, uint8_t tx)
 {
-  const uint64_t a = c->wr_off + (uint64_t)c->wr_cnt;
-  if (a < c->image_len) {
-    c->image[a] = tx;
+  if (c->wr_cnt < (uint32_t)k_sd_block) {
+    c->wr_block[c->wr_cnt] = tx;
   }
   c->wr_cnt++;
   if (c->wr_cnt >= (uint32_t)k_sd_block) {
@@ -372,19 +392,22 @@ static void sd_write_data(board_sd_state_t* c, uint8_t tx)
  * @post A multi-block write returns to the token phase, a single one to idle.
  *
  * @note Not thread-safe; the emulator is single-threaded host-side.
+  * @pre The call executes on the emulator's single owning thread.
+ * @since 0.1.0
  */
-static void sd_write_crc(board_sd_state_t* c)
+RA8_INTERNAL static void internal_sd_write_crc(board_sd_state_t* c)
 {
   c->wr_cnt++;
   if (c->wr_cnt < (uint32_t)k_sd_crc_len) {
     return;
   }
-  c->resp[0]  = (uint8_t)k_sd_data_accept;
-  c->resp[1]  = (uint8_t)k_sd_busy;
-  c->resp[2]  = (uint8_t)k_sd_idle;
-  c->resp_len = 3U;
-  c->resp_pos = 0U;
-  c->wr_cnt   = 0U;
+  const bool write_ok = priv_board_sd_storage_write(c->wr_off, c->wr_block, (size_t)k_sd_block);
+  c->resp[0]          = write_ok ? (uint8_t)k_sd_data_accept : (uint8_t)k_sd_data_error;
+  c->resp[1]          = (uint8_t)k_sd_busy;
+  c->resp[2]          = (uint8_t)k_sd_idle;
+  c->resp_len         = 3U;
+  c->resp_pos         = 0U;
+  c->wr_cnt           = 0U;
   if (c->wr_multi) {
     c->wr_off += (uint64_t)k_sd_block; /* next block of the multi-write. */
     c->wr_phase = k_sd_wr_token;
@@ -411,19 +434,19 @@ static void sd_write_crc(board_sd_state_t* c)
  * @retval 0xFF Bus idle while collecting the data phase.
  * @pre `c->wr_phase != k_sd_wr_idle`.
  * @pre A writable backing image is attached.
- * @post Captured payload bytes are written into `c->image`.
+ * @post A complete payload is committed to the sparse backend in one exact write.
  * @post On block completion the data-response token is staged in `c->resp`.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static uint8_t board_sd_write_byte(board_sd_state_t* c, uint8_t tx)
+RA8_INTERNAL static uint8_t internal_board_sd_write_byte(board_sd_state_t* c, uint8_t tx)
 {
   if (c->wr_phase == k_sd_wr_token) {
-    sd_write_token(c, tx);
+    internal_sd_write_token(c, tx);
   } else if (c->wr_phase == k_sd_wr_data) {
-    sd_write_data(c, tx);
+    internal_sd_write_data(c, tx);
   } else {
-    sd_write_crc(c);
+    internal_sd_write_crc(c);
   }
   return (uint8_t)k_sd_idle;
 }
@@ -437,8 +460,8 @@ static uint8_t board_sd_write_byte(board_sd_state_t* c, uint8_t tx)
  * present their real size to the firmware instead of a fixed 8 MiB. CSD v2.0
  * capacity is `(C_SIZE + 1) * 512 KiB`; a card smaller than one 512 KiB unit
  * falls back to the fixed `k_sd_csd_csize`. Hands the block to
- * `board_sd_stage_block()` for streaming. Extracted verbatim from the CMD9
- * arm of `board_sd_process_cmd()`.
+ * `internal_board_sd_stage_block()` for streaming. Extracted verbatim from the CMD9
+ * arm of `internal_board_sd_process_cmd()`.
  *
  * @param[in,out] c Card state whose response buffer receives the CSD block.
  * @return None.
@@ -449,7 +472,7 @@ static uint8_t board_sd_write_byte(board_sd_state_t* c, uint8_t tx)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void board_sd_cmd_send_csd(board_sd_state_t* c)
+RA8_INTERNAL static void internal_board_sd_cmd_send_csd(board_sd_state_t* c)
 {
   uint8_t csd[k_sd_csd_len];
   memset(csd, 0, sizeof(csd));
@@ -463,7 +486,7 @@ static void board_sd_cmd_send_csd(board_sd_state_t* c)
   csd[k_sd_csd_csize_b8] =
     (uint8_t)((csize >> (uint32_t)k_sd_byte_bits) & (uint16_t)k_sd_byte_mask);
   csd[k_sd_csd_off] = (uint8_t)(csize & (uint16_t)k_sd_byte_mask);
-  board_sd_stage_block(c, csd, (uint32_t)k_sd_csd_len);
+  internal_board_sd_stage_block(c, csd, (uint32_t)k_sd_csd_len);
 }
 
 /**
@@ -473,7 +496,7 @@ static void board_sd_cmd_send_csd(board_sd_state_t* c)
  * Builds the fixed R1/R3/R7 responses for the card-identification and block-len
  * commands. Returns whether `idx` was one of these so the caller can fall
  * through to the data-transfer dispatch otherwise. Extracted verbatim from the
- * corresponding arms of `board_sd_process_cmd()`.
+ * corresponding arms of `internal_board_sd_process_cmd()`.
  *
  * @param[in,out] c   Card state whose response buffer is populated.
  * @param[in]     idx 6-bit command index already masked from the frame.
@@ -488,7 +511,8 @@ static void board_sd_cmd_send_csd(board_sd_state_t* c)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static bool board_sd_dispatch_ident(board_sd_state_t* c, uint8_t idx, uint8_t r1)
+RA8_INTERNAL static bool
+internal_board_sd_dispatch_ident(board_sd_state_t* c, uint8_t idx, uint8_t r1)
 {
   switch (idx) {
     case (uint8_t)k_sd_idx_cmd0:
@@ -545,7 +569,8 @@ static bool board_sd_dispatch_ident(board_sd_state_t* c, uint8_t idx, uint8_t r1
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void board_sd_cmd_erase_bound(board_sd_state_t* c, uint32_t* bound, uint32_t arg, uint8_t r1)
+RA8_INTERNAL static void
+internal_board_sd_cmd_erase_bound(board_sd_state_t* c, uint32_t* bound, uint32_t arg, uint8_t r1)
 {
   *bound      = arg;
   c->resp[0]  = r1;
@@ -570,14 +595,16 @@ static void board_sd_cmd_erase_bound(board_sd_state_t* c, uint32_t* bound, uint3
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void board_sd_cmd_erase(board_sd_state_t* c, uint8_t r1)
+RA8_INTERNAL static void internal_board_sd_cmd_erase(board_sd_state_t* c, uint8_t r1)
 {
   if (c->erase_end >= c->erase_start) {
     const uint64_t lo  = (uint64_t)c->erase_start * (uint64_t)k_sd_block;
     const uint64_t hi  = ((uint64_t)c->erase_end + 1U) * (uint64_t)k_sd_block;
     const uint64_t end = (hi < c->image_len) ? hi : c->image_len;
     if (lo < end) {
-      memset(&c->image[lo], 0, (size_t)(end - lo));
+      if (!priv_board_sd_storage_zero(lo, end - lo)) {
+        r1 = (uint8_t)k_sd_r1_param_err;
+      }
     }
   }
   c->resp[0]  = r1;
@@ -589,9 +616,9 @@ static void board_sd_cmd_erase(board_sd_state_t* c, uint8_t r1)
  *
  * @details
  * Dispatches the block read/write, stop, and erase commands, plus the CMD9 CSD
- * reply (via `board_sd_cmd_send_csd()`). Any unrecognised index falls to the
+ * reply (via `internal_board_sd_cmd_send_csd()`). Any unrecognised index falls to the
  * default R1 reply. Extracted verbatim from the corresponding arms of
- * `board_sd_process_cmd()`; called only after `board_sd_dispatch_ident()`
+ * `internal_board_sd_process_cmd()`; called only after `internal_board_sd_dispatch_ident()`
  * declines the frame.
  *
  * @param[in,out] c   Card state whose response / stream is updated.
@@ -600,37 +627,38 @@ static void board_sd_cmd_erase(board_sd_state_t* c, uint8_t r1)
  * @param[in]     r1  Pre-computed R1 status byte (idle vs ready).
  * @return None.
  * @pre `c` is non-null with a staging response buffer.
- * @pre `board_sd_dispatch_ident()` already declined `idx`.
+ * @pre `internal_board_sd_dispatch_ident()` already declined `idx`.
  * @post `c->resp` / `c->resp_len` (and any read/write stream state) describe the reply.
  * @post The backing image is modified only for the erase (CMD38) command.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void board_sd_dispatch_data(board_sd_state_t* c, uint8_t idx, uint32_t arg, uint8_t r1)
+RA8_INTERNAL static void
+internal_board_sd_dispatch_data(board_sd_state_t* c, uint8_t idx, uint32_t arg, uint8_t r1)
 {
   switch (idx) {
     case (uint8_t)k_sd_idx_cmd9: /* SEND_CSD: 16-byte CSD v2.0 data block. */
-      board_sd_cmd_send_csd(c);
+      internal_board_sd_cmd_send_csd(c);
       break;
     case (uint8_t)k_sd_idx_cmd17: /* READ_SINGLE_BLOCK   (SDHC: arg = block). */
     case (uint8_t)k_sd_idx_cmd18: /* READ_MULTIPLE_BLOCK -- streams to CMD12. */
-      board_sd_begin_read(c, idx, arg);
+      internal_board_sd_begin_read(c, idx, arg);
       break;
     case (uint8_t)k_sd_idx_cmd12: /* STOP_TRANSMISSION: end a CMD18 stream. */
-      board_sd_stop_read(c, r1);
+      internal_board_sd_stop_read(c, r1);
       break;
     case (uint8_t)k_sd_idx_cmd24: /* WRITE_SINGLE_BLOCK   */
     case (uint8_t)k_sd_idx_cmd25: /* WRITE_MULTIPLE_BLOCK */
-      board_sd_begin_write(c, idx, arg, r1);
+      internal_board_sd_begin_write(c, idx, arg, r1);
       break;
     case (uint8_t)k_sd_idx_cmd32: /* ERASE_WR_BLK_START (SDHC: arg = block). */
-      board_sd_cmd_erase_bound(c, &c->erase_start, arg, r1);
+      internal_board_sd_cmd_erase_bound(c, &c->erase_start, arg, r1);
       break;
     case (uint8_t)k_sd_idx_cmd33: /* ERASE_WR_BLK_END (SDHC: arg = block). */
-      board_sd_cmd_erase_bound(c, &c->erase_end, arg, r1);
+      internal_board_sd_cmd_erase_bound(c, &c->erase_end, arg, r1);
       break;
     case (uint8_t)k_sd_idx_cmd38: /* ERASE: zero the latched [start, end] range. */
-      board_sd_cmd_erase(c, r1);
+      internal_board_sd_cmd_erase(c, r1);
       break;
     default:
       c->resp[0]  = r1;
@@ -650,8 +678,9 @@ static void board_sd_dispatch_data(board_sd_state_t* c, uint8_t idx, uint32_t ar
  * @post The backing image is not modified.
  * @note Not thread-safe.
  * @since 0.1.0
+  * @details Build the response for a completed 6-byte command frame; this step is contained within the board periph SD model and uses bounded caller or module-owned storage.
  */
-static void board_sd_process_cmd(board_sd_state_t* c)
+RA8_INTERNAL static void internal_board_sd_process_cmd(board_sd_state_t* c)
 {
   const uint8_t  idx     = (uint8_t)(c->cmd[0] & (uint8_t)k_sd_idx_mask);
   const uint32_t arg     = ((uint32_t)c->cmd[1] << (uint32_t)k_sd_arg_sh0) |
@@ -669,90 +698,91 @@ static void board_sd_process_cmd(board_sd_state_t* c)
     c->resp_len = 1U;
     return;
   }
-  if (board_sd_dispatch_ident(c, idx, r1)) {
+  if (internal_board_sd_dispatch_ident(c, idx, r1)) {
     return;
   }
-  board_sd_dispatch_data(c, idx, arg, r1);
+  internal_board_sd_dispatch_data(c, idx, arg, r1);
 }
 
 uint8_t board_sd_exchange(uint8_t tx)
 {
-  if (s_sd.resp_pos < s_sd.resp_len) {
-    return s_sd.resp[s_sd.resp_pos++];
+  if (local_sd.resp_pos < local_sd.resp_len) {
+    return local_sd.resp[local_sd.resp_pos++];
   }
-  if (s_sd.wr_phase != k_sd_wr_idle) {
-    return board_sd_write_byte(&s_sd, tx);
+  if (local_sd.wr_phase != k_sd_wr_idle) {
+    return internal_board_sd_write_byte(&local_sd, tx);
   }
-  if (s_sd.collecting) {
-    s_sd.cmd[s_sd.cmd_idx] = tx;
-    s_sd.cmd_idx++;
-    if (s_sd.cmd_idx >= (uint32_t)k_sd_cmd_len) {
-      s_sd.collecting = false;
-      board_sd_process_cmd(&s_sd);
+  if (local_sd.collecting) {
+    local_sd.cmd[local_sd.cmd_idx] = tx;
+    local_sd.cmd_idx++;
+    if (local_sd.cmd_idx >= (uint32_t)k_sd_cmd_len) {
+      local_sd.collecting = false;
+      internal_board_sd_process_cmd(&local_sd);
     }
     return (uint8_t)k_sd_idle;
   }
   if ((tx & (uint8_t)k_sd_cmd_mask) == (uint8_t)k_sd_cmd_start) {
-    s_sd.collecting = true;
-    s_sd.cmd[0]     = tx;
-    s_sd.cmd_idx    = 1U;
+    local_sd.collecting = true;
+    local_sd.cmd[0]     = tx;
+    local_sd.cmd_idx    = 1U;
     return (uint8_t)k_sd_idle;
   }
-  if (s_sd.rd_multi) {
+  if (local_sd.rd_multi) {
     /* Open CMD18 stream: the host clocking idle is fetching the next block.
      * The command-start check above stays first so a CMD12 frame interrupts
      * the stream instead of being swallowed as read clocking. */
-    board_sd_read_stream_next(&s_sd);
-    return s_sd.resp[s_sd.resp_pos++];
+    internal_board_sd_read_stream_next(&local_sd);
+    return local_sd.resp[local_sd.resp_pos++];
   }
   return (uint8_t)k_sd_idle;
 }
 
 bool board_sd_read_block(uint32_t lba, uint8_t* dst)
 {
-  if (!s_sd.attached || (s_sd.image == nullptr) || (dst == nullptr)) {
+  if (!local_sd.attached || (local_sd.image_fd < 0) || (dst == nullptr)) {
     return false;
   }
   /* Same SDHC block-addressing as the CMD17 path: arg is a block index. */
   const uint64_t off = (uint64_t)lba * (uint64_t)k_sd_block;
-  if (off >= s_sd.image_len) {
+  if (off >= local_sd.image_len) {
     return false; /* past the end of the card -- let the real driver error out. */
   }
-  board_sd_fill_block(&s_sd, off, dst);
+  uint8_t block[k_sd_block];
+  if (!internal_board_sd_fill_block(&local_sd, off, block)) {
+    return false;
+  }
+  (void)memcpy(dst, block, sizeof(block));
   return true;
 }
 
 bool board_sd_write_block(uint32_t lba, const uint8_t* src)
 {
-  if (!s_sd.attached || (s_sd.image == nullptr) || (src == nullptr)) {
+  if (!local_sd.attached || (local_sd.image_fd < 0) || (src == nullptr)) {
     return false;
   }
   /* Same SDHC block-addressing as the CMD24 path: arg is a block index. */
   const uint64_t off = (uint64_t)lba * (uint64_t)k_sd_block;
-  if (off >= s_sd.image_len) {
+  if (off >= local_sd.image_len) {
     return false; /* past the end of the card -- let the real driver error out. */
   }
-  if ((off + (uint64_t)k_sd_block) > s_sd.image_len) {
+  if ((off + (uint64_t)k_sd_block) > local_sd.image_len) {
     return false; /* a full block would run off the end of the image. */
   }
-  for (uint32_t i = 0U; i < (uint32_t)k_sd_block; ++i) {
-    s_sd.image[off + (uint64_t)i] = src[i];
-  }
-  return true;
+  return priv_board_sd_storage_write(off, src, (size_t)k_sd_block);
 }
 
 void board_sd_reset(void)
 {
-  s_sd.collecting = false;
-  s_sd.app_cmd    = false;
-  s_sd.ready      = false;
-  s_sd.cmd_idx    = 0U;
-  s_sd.resp_len   = 0U;
-  s_sd.resp_pos   = 0U;
-  s_sd.wr_phase   = k_sd_wr_idle;
-  s_sd.wr_multi   = false;
-  s_sd.wr_off     = 0U;
-  s_sd.wr_cnt     = 0U;
-  s_sd.rd_multi   = false;
-  s_sd.rd_off     = 0U;
+  local_sd.collecting = false;
+  local_sd.app_cmd    = false;
+  local_sd.ready      = false;
+  local_sd.cmd_idx    = 0U;
+  local_sd.resp_len   = 0U;
+  local_sd.resp_pos   = 0U;
+  local_sd.wr_phase   = k_sd_wr_idle;
+  local_sd.wr_multi   = false;
+  local_sd.wr_off     = 0U;
+  local_sd.wr_cnt     = 0U;
+  local_sd.rd_multi   = false;
+  local_sd.rd_off     = 0U;
 }

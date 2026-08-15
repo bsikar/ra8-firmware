@@ -29,6 +29,7 @@
 #include <stdio.h>
 
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief AGT block geometry (ra8_agt_regs.h, 16-bit view). */
 typedef enum : uint64_t {
@@ -151,8 +152,19 @@ static gpt_state_t s_gpt[k_gpt_count];
  * =============================================================================
  */
 
-/** @brief Dispatch an AGT register read for channel @p ch at byte offset @p off. */
-static uint64_t agt_reg_read(uint32_t ch, uint64_t off)
+/**
+ * @brief Dispatch an AGT register read for channel @p ch at byte offset @p off.
+ * @details Dispatch an agt register read for channel @p ch at byte offset @p off; this step is contained within the board periph timer model and uses bounded caller or module-owned storage.
+ * @param[in] ch Selected channel identifier.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The agt reg read result produced by the board periph timer model.
+ * @retval value The operation-specific agt reg read value.
+ * @pre Arguments satisfy the ranges documented for agt reg read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph timer model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_agt_reg_read(uint32_t ch, uint64_t off)
 {
   const agt_state_t* a = &s_agt[ch];
   if (off == (uint64_t)k_agt_off_agt) {
@@ -173,8 +185,18 @@ static uint64_t agt_reg_read(uint32_t ch, uint64_t off)
   return 0U;
 }
 
-/** @brief Dispatch an AGT register write; AGTCR.TSTART arms / status is RW1C. */
-static void agt_reg_write(uint32_t ch, uint64_t off, uint32_t value)
+/**
+ * @brief Dispatch an AGT register write; AGTCR.TSTART arms / status is RW1C.
+ * @details Dispatch an agt register write; agtcr.tstart arms / status is rw1c; this step is contained within the board periph timer model and uses bounded caller or module-owned storage.
+ * @param[in] ch Selected channel identifier.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for agt reg write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph timer model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_agt_reg_write(uint32_t ch, uint64_t off, uint32_t value)
 {
   agt_state_t* a = &s_agt[ch];
   if (off == (uint64_t)k_agt_off_agt) {
@@ -196,8 +218,17 @@ static void agt_reg_write(uint32_t ch, uint64_t off, uint32_t value)
   }
 }
 
-/** @brief Advance one running AGT channel by one chunk; raise events on wrap. */
-static void agt_tick_channel(uc_engine* uc, uint32_t ch)
+/**
+ * @brief Advance one running AGT channel by one chunk; raise events on wrap.
+ * @details Advance one running agt channel by one chunk; raise events on wrap; this step is contained within the board periph timer model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] ch Selected channel identifier.
+ * @pre Arguments satisfy the ranges documented for agt tick channel. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph timer model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_agt_tick_channel(uc_engine* uc, uint32_t ch)
 {
   agt_state_t* a = &s_agt[ch];
   if ((a->cr & (uint8_t)k_agtcr_tstart) == 0U) {
@@ -219,22 +250,48 @@ static void agt_tick_channel(uc_engine* uc, uint32_t ch)
   }
 }
 
-/** @brief MMIO read inside the AGT window: route to the addressed channel. */
-static uint64_t agt_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the AGT window: route to the addressed channel.
+ * @details MMIO read inside the agt window: route to the addressed channel; this step is contained within the board periph timer model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The agt read result produced by the board periph timer model.
+ * @retval value The operation-specific agt read value.
+ * @pre Arguments satisfy the ranges documented for agt read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph timer model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_agt_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
   const uint32_t ch = (uint32_t)((addr - (uint64_t)k_agt_base) / (uint64_t)k_agt_stride);
-  return agt_reg_read(ch, (addr - (uint64_t)k_agt_base) % (uint64_t)k_agt_stride);
+  return internal_agt_reg_read(ch, (addr - (uint64_t)k_agt_base) % (uint64_t)k_agt_stride);
 }
 
-/** @brief MMIO write inside the AGT window: route to the addressed channel. */
-static void agt_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the AGT window: route to the addressed channel.
+ * @details MMIO write inside the agt window: route to the addressed channel; this step is contained within the board periph timer model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for agt write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph timer model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_agt_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
   const uint32_t ch = (uint32_t)((addr - (uint64_t)k_agt_base) / (uint64_t)k_agt_stride);
-  agt_reg_write(ch, (addr - (uint64_t)k_agt_base) % (uint64_t)k_agt_stride, (uint32_t)value);
+  internal_agt_reg_write(ch,
+                         (addr - (uint64_t)k_agt_base) % (uint64_t)k_agt_stride,
+                         (uint32_t)value);
 }
 
 /* =============================================================================
@@ -242,8 +299,19 @@ static void agt_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
  * =============================================================================
  */
 
-/** @brief Dispatch a GPT register read for channel @p ch at byte offset @p off. */
-static uint64_t gpt_reg_read(uint32_t ch, uint64_t off)
+/**
+ * @brief Dispatch a GPT register read for channel @p ch at byte offset @p off.
+ * @details Dispatch a gpt register read for channel @p ch at byte offset @p off; this step is contained within the board periph timer model and uses bounded caller or module-owned storage.
+ * @param[in] ch Selected channel identifier.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The GPT reg read result produced by the board periph timer model.
+ * @retval value The operation-specific GPT reg read value.
+ * @pre Arguments satisfy the ranges documented for GPT reg read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph timer model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_gpt_reg_read(uint32_t ch, uint64_t off)
 {
   const gpt_state_t* g = &s_gpt[ch];
   if (off == (uint64_t)k_gpt_off_gtcnt) {
@@ -261,8 +329,18 @@ static uint64_t gpt_reg_read(uint32_t ch, uint64_t off)
   return 0U; /* GTWP / GTSTR / GTSTP / GTCLR read as 0 in this model */
 }
 
-/** @brief Dispatch a GPT register write; GTSTR/GTSTP gate the counter. */
-static void gpt_reg_write(uint32_t ch, uint64_t off, uint32_t value)
+/**
+ * @brief Dispatch a GPT register write; GTSTR/GTSTP gate the counter.
+ * @details Dispatch a gpt register write; gtstr/gtstp gate the counter; this step is contained within the board periph timer model and uses bounded caller or module-owned storage.
+ * @param[in] ch Selected channel identifier.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for GPT reg write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph timer model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gpt_reg_write(uint32_t ch, uint64_t off, uint32_t value)
 {
   gpt_state_t* g = &s_gpt[ch];
   if (off == (uint64_t)k_gpt_off_gtcnt) {
@@ -290,8 +368,17 @@ static void gpt_reg_write(uint32_t ch, uint64_t off, uint32_t value)
   }
 }
 
-/** @brief Advance one running GPT channel by one chunk; raise overflow events. */
-static void gpt_tick_channel(uc_engine* uc, uint32_t ch)
+/**
+ * @brief Advance one running GPT channel by one chunk; raise overflow events.
+ * @details Advance one running gpt channel by one chunk; raise overflow events; this step is contained within the board periph timer model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] ch Selected channel identifier.
+ * @pre Arguments satisfy the ranges documented for GPT tick channel. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph timer model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gpt_tick_channel(uc_engine* uc, uint32_t ch)
 {
   gpt_state_t* g = &s_gpt[ch];
   if ((g->cr & (uint32_t)k_gtcr_cst) == 0U) {
@@ -312,22 +399,48 @@ static void gpt_tick_channel(uc_engine* uc, uint32_t ch)
   }
 }
 
-/** @brief MMIO read inside the GPT window: route to the addressed channel. */
-static uint64_t gpt_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the GPT window: route to the addressed channel.
+ * @details MMIO read inside the gpt window: route to the addressed channel; this step is contained within the board periph timer model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The GPT read result produced by the board periph timer model.
+ * @retval value The operation-specific GPT read value.
+ * @pre Arguments satisfy the ranges documented for GPT read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph timer model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_gpt_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
   const uint32_t ch = (uint32_t)((addr - (uint64_t)k_gpt_base) / (uint64_t)k_gpt_stride);
-  return gpt_reg_read(ch, (addr - (uint64_t)k_gpt_base) % (uint64_t)k_gpt_stride);
+  return internal_gpt_reg_read(ch, (addr - (uint64_t)k_gpt_base) % (uint64_t)k_gpt_stride);
 }
 
-/** @brief MMIO write inside the GPT window: route to the addressed channel. */
-static void gpt_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the GPT window: route to the addressed channel.
+ * @details MMIO write inside the gpt window: route to the addressed channel; this step is contained within the board periph timer model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for GPT write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph timer model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_gpt_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
   const uint32_t ch = (uint32_t)((addr - (uint64_t)k_gpt_base) / (uint64_t)k_gpt_stride);
-  gpt_reg_write(ch, (addr - (uint64_t)k_gpt_base) % (uint64_t)k_gpt_stride, (uint32_t)value);
+  internal_gpt_reg_write(ch,
+                         (addr - (uint64_t)k_gpt_base) % (uint64_t)k_gpt_stride,
+                         (uint32_t)value);
 }
 
 /* =============================================================================
@@ -335,19 +448,34 @@ static void gpt_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
  * =============================================================================
  */
 
-/** @brief Advance every running AGT channel, then every running GPT channel. */
-static void timer_tick(uc_engine* uc)
+/**
+ * @brief Advance every running AGT channel, then every running GPT channel.
+ * @details Advance every running agt channel, then every running gpt channel; this step is contained within the board periph timer model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for timer tick. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph timer model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_timer_tick(uc_engine* uc)
 {
   for (uint32_t ch = 0U; ch < (uint32_t)k_agt_count; ch++) {
-    agt_tick_channel(uc, ch);
+    internal_agt_tick_channel(uc, ch);
   }
   for (uint32_t ch = 0U; ch < (uint32_t)k_gpt_count; ch++) {
-    gpt_tick_channel(uc, ch);
+    internal_gpt_tick_channel(uc, ch);
   }
 }
 
-/** @brief Clear all AGT + GPT channel state. */
-static void timer_reset(void)
+/**
+ * @brief Clear all AGT + GPT channel state.
+ * @details Clear all agt + gpt channel state; this step is contained within the board periph timer model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for timer reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph timer model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_timer_reset(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_agt_count; i++) {
     s_agt[i] = (agt_state_t){};
@@ -357,27 +485,32 @@ static void timer_reset(void)
   }
 }
 
-/** @brief Print one line per AGT / GPT channel that raised any event. */
-static void timer_report(void)
+/**
+ * @brief Print one line per AGT / GPT channel that raised any event.
+ * @details Print one line per agt / gpt channel that raised any event; this step is contained within the board periph timer model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for timer report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph timer model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_timer_report(void)
 {
   for (uint32_t ch = 0U; ch < (uint32_t)k_agt_count; ch++) {
     if (s_agt[ch].underflows > 0U) {
-      (void)fprintf(stderr,
-                    "  AGT%u          : counter=0x%04X underflows=%u (running=%s)\n",
-                    ch,
-                    s_agt[ch].counter,
-                    s_agt[ch].underflows,
-                    (s_agt[ch].cr & (uint8_t)k_agtcr_tstart) ? "yes" : "no");
+      (void)priv_emu_io_errf("  AGT%u          : counter=0x%04X underflows=%u (running=%s)\n",
+                             ch,
+                             s_agt[ch].counter,
+                             s_agt[ch].underflows,
+                             (s_agt[ch].cr & (uint8_t)k_agtcr_tstart) ? "yes" : "no");
     }
   }
   for (uint32_t ch = 0U; ch < (uint32_t)k_gpt_count; ch++) {
     if (s_gpt[ch].overflows > 0U) {
-      (void)fprintf(stderr,
-                    "  GPT%u          : cnt=0x%08X period=0x%08X overflows=%u\n",
-                    ch,
-                    s_gpt[ch].cnt,
-                    s_gpt[ch].period,
-                    s_gpt[ch].overflows);
+      (void)priv_emu_io_errf("  GPT%u          : cnt=0x%08X period=0x%08X overflows=%u\n",
+                             ch,
+                             s_gpt[ch].cnt,
+                             s_gpt[ch].period,
+                             s_gpt[ch].overflows);
     }
   }
 }
@@ -388,25 +521,25 @@ static void timer_report(void)
  * order, and registration order between them is irrelevant. */
 
 /** @brief AGT register window + the combined timer tick / reset / report. */
-static const board_periph_block_t k_agt_block = {
+static const board_periph_block_t s_k_agt_block = {
   .base   = (uint64_t)k_agt_base,
   .span   = (uint64_t)k_agt_span,
   .order  = (uint32_t)k_block_order_timer,
-  .read   = agt_read,
-  .write  = agt_write,
-  .tick   = timer_tick,
-  .reset  = timer_reset,
-  .report = timer_report,
+  .read   = internal_agt_read,
+  .write  = internal_agt_write,
+  .tick   = internal_timer_tick,
+  .reset  = internal_timer_reset,
+  .report = internal_timer_report,
   .name   = "AGT",
 };
 
 /** @brief GPT register window (tick / reset / report handled by the AGT block). */
-static const board_periph_block_t k_gpt_block = {
+static const board_periph_block_t s_k_gpt_block = {
   .base   = (uint64_t)k_gpt_base,
   .span   = (uint64_t)k_gpt_span,
   .order  = (uint32_t)k_block_order_timer,
-  .read   = gpt_read,
-  .write  = gpt_write,
+  .read   = internal_gpt_read,
+  .write  = internal_gpt_write,
   .tick   = nullptr,
   .reset  = nullptr,
   .report = nullptr,
@@ -414,8 +547,8 @@ static const board_periph_block_t k_gpt_block = {
 };
 
 /** @brief Self-register both timer windows before main runs (decentralized). */
-[[gnu::constructor]] static void board_periph_timer_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_board_periph_timer_register(void)
 {
-  board_periph_register_block(&k_agt_block);
-  board_periph_register_block(&k_gpt_block);
+  board_periph_register_block(&s_k_agt_block);
+  board_periph_register_block(&s_k_gpt_block);
 }

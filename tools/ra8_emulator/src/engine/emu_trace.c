@@ -17,6 +17,7 @@
 #include <stdio.h>
 
 #include "emu_elf.h"
+#include "emu_host_io_internal.h"
 
 /* =============================================================================
  * Function-entry seam helpers -- emulate "return <r0> to LR" and hook one ELF
@@ -39,55 +40,46 @@ void eth_hook_return(uc_engine* uc, uint32_t r0)
 }
 
 /** @brief Hook one symbol (if present) to @p cb; record it for the report. */
-void eth_seam_hook(uc_engine* uc, const uint8_t* elf, long len, const char* name, void* cb)
+void eth_seam_hook(uc_engine* uc, const emu_elf_source_t* elf, const char* name, void* cb)
 {
-  const uint32_t addr = elf_sym_addr(elf, len, name, nullptr);
+  const uint32_t addr = elf_sym_addr(elf, name, nullptr);
   if (addr == 0U) {
     return;
   }
   enum : uint8_t {
     k_seam_hook_slots = 24U, /**< Max symbols the seam can hook across one run. */
   };
-  static uc_hook  s_handles[k_seam_hook_slots];
-  static uint32_t s_n;
-  if (s_n < (uint32_t)(sizeof(s_handles) / sizeof(s_handles[0]))) {
-    (void)uc_hook_add(uc, &s_handles[s_n], UC_HOOK_CODE, cb, nullptr, addr, addr);
-    s_n++;
+  static uc_hook  local_handles[k_seam_hook_slots];
+  static uint32_t local_n;
+  if (local_n < (uint32_t)(sizeof(local_handles) / sizeof(local_handles[0]))) {
+    (void)uc_hook_add(uc, &local_handles[local_n], UC_HOOK_CODE, cb, nullptr, addr, addr);
+    local_n++;
   }
 }
 
+/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
 /**
- * @brief Generic `--trace-sym` hook: log the first time control reaches a named
- *        symbol, plus the calling LR, so a stuck bring-up sequence is visible.
- *
- * @details Installed by ::sym_trace_install over each `--trace-sym <name>`. The
- * UC_HOOK_CODE fires on every execution of the symbol's entry address; we print
- * the entry address and the link register (return address) so a poll loop that
- * re-enters, or a thread that reaches step N but never N+1, is obvious in the
- * log without a full instruction trace.
- *
- * @param[in] uc      Active Unicorn engine (read for LR).
- * @param[in] address Entry address that fired the hook.
- * @param[in] size    Decoded instruction size (unused).
- * @param[in] user    The symbol name passed at install (stable argv pointer).
- *
- * @pre @p user names the hooked symbol.
- * @post One stderr line is emitted per hit.
- *
- * @note Not thread-safe; the run loop is single-threaded host-side.
+ * @brief Perform on sym trace for the emu trace model.
+ * @details Perform on sym trace for the emu trace model; this step is contained within the emu trace model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] address Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in,out] user Hook context supplied when the callback was registered.
+ * @pre Arguments satisfy the ranges documented for on sym trace. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu trace model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  * @since 0.1.0
  */
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
-static void on_sym_trace(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+RA8_INTERNAL static void
+internal_on_sym_trace(uc_engine* uc, uint64_t address, uint32_t size, void* user)
 {
   (void)size;
   uint32_t lr = 0U;
   (void)uc_reg_read(uc, UC_ARM_REG_LR, &lr);
-  (void)fprintf(stderr,
-                "  [symtrace] %s @ 0x%08X  (LR 0x%08X)\n",
-                (const char*)user,
-                (unsigned)address,
-                lr);
+  (void)priv_emu_io_errf("  [symtrace] %s @ 0x%08X  (LR 0x%08X)\n",
+                         (const char*)user,
+                         (unsigned)address,
+                         lr);
 }
 
 /**
@@ -95,30 +87,34 @@ static void on_sym_trace(uc_engine* uc, uint64_t address, uint32_t size, void* u
  *
  * @param[in,out] uc    Active Unicorn engine.
  * @param[in]     elf   Loaded ELF image (for symbol resolution).
- * @param[in]     len   ELF image length in bytes.
  * @param[in]     names Symbol names from the CLI (stable for the run).
  * @param[in]     count Number of names in @p names.
  *
- * @pre @p uc is initialised and @p elf holds @p len valid bytes.
- * @post A UC_HOOK_CODE fires ::on_sym_trace at each resolved symbol's entry.
+ * @pre @p uc is initialised and @p elf is a validated loaded image.
+ * @post A UC_HOOK_CODE fires ::internal_on_sym_trace at each resolved symbol's entry.
  *
  * @note A name that does not resolve is reported once and skipped.
  * @since 0.1.0
  */
-void sym_trace_install(uc_engine*         uc,
-                       const uint8_t*     elf,
-                       long               len,
-                       const char* const* names,
-                       uint32_t           count)
+void sym_trace_install(uc_engine*              uc,
+                       const emu_elf_source_t* elf,
+                       const char* const*      names,
+                       uint32_t                count)
 {
-  static uc_hook s_th[k_trace_sym_max];
+  static uc_hook local_th[k_trace_sym_max];
   for (uint32_t i = 0U; (i < count) && (i < (uint32_t)k_trace_sym_max); i++) {
-    const uint32_t addr = elf_sym_addr(elf, len, names[i], nullptr);
+    const uint32_t addr = elf_sym_addr(elf, names[i], nullptr);
     if (addr == 0U) {
-      (void)fprintf(stderr, "  [symtrace] %s: symbol not found -- skipped\n", names[i]);
+      (void)priv_emu_io_errf("  [symtrace] %s: symbol not found -- skipped\n", names[i]);
       continue;
     }
-    (void)uc_hook_add(uc, &s_th[i], UC_HOOK_CODE, (void*)on_sym_trace, (void*)names[i], addr, addr);
-    (void)fprintf(stderr, "  [symtrace] %s armed @ 0x%08X\n", names[i], (unsigned)addr);
+    (void)uc_hook_add(uc,
+                      &local_th[i],
+                      UC_HOOK_CODE,
+                      (void*)internal_on_sym_trace,
+                      (void*)names[i],
+                      addr,
+                      addr);
+    (void)priv_emu_io_errf("  [symtrace] %s armed @ 0x%08X\n", names[i], (unsigned)addr);
   }
 }

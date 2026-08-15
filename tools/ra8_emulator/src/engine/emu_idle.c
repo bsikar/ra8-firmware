@@ -47,8 +47,11 @@
  * @post No judgement is returned unless the branch is unconditional `b.n`.
  *
  * @note Not thread-safe; the emulator is single-threaded host-side.
+  * @retval true The idle back edge condition holds or completed successfully; false otherwise.
+ * @since 0.1.0
  */
-static bool idle_back_edge(uc_engine* uc, uint32_t at, uint16_t hw, uint32_t aligned, bool* done)
+RA8_INTERNAL static bool
+internal_idle_back_edge(uc_engine* uc, uint32_t at, uint16_t hw, uint32_t aligned, bool* done)
 {
   *done = false;
   if ((hw & (uint16_t)k_op_bn_mask) != (uint16_t)k_op_bn_base) {
@@ -68,7 +71,7 @@ static bool idle_back_edge(uc_engine* uc, uint32_t at, uint16_t hw, uint32_t ali
   /* pc is enclosed by [target, at]: require a wait (cpsie/wfi) in the body. */
   for (uint32_t k = target; k <= at; k += (uint32_t)k_thumb_hw_bytes) {
     uint16_t bhw = 0U;
-    if (uc_mem_read(uc, (uint64_t)k, &bhw, sizeof(bhw)) != UC_ERR_OK) {
+    if (emu_mem_read(uc, (uint64_t)k, &bhw, sizeof(bhw)) != UC_ERR_OK) {
       return false;
     }
     if ((bhw == (uint16_t)k_op_cpsie_i) || (bhw == (uint16_t)k_op_wfi)) {
@@ -118,7 +121,7 @@ bool idle_spin_at(uc_engine* uc, uint32_t pc)
 {
   const uint32_t aligned = pc & ~1U;
   uint16_t       hw0     = 0U;
-  if (uc_mem_read(uc, (uint64_t)aligned, &hw0, sizeof(hw0)) != UC_ERR_OK) {
+  if (emu_mem_read(uc, (uint64_t)aligned, &hw0, sizeof(hw0)) != UC_ERR_OK) {
     return false;
   }
   /* Case 1: the core is literally on a halt instruction. */
@@ -130,11 +133,11 @@ bool idle_spin_at(uc_engine* uc, uint32_t pc)
   for (uint32_t j = 0U; j < (uint32_t)k_idle_scan_fwd; j++) {
     const uint32_t at = aligned + (j * (uint32_t)k_thumb_hw_bytes);
     uint16_t       hw = 0U;
-    if (uc_mem_read(uc, (uint64_t)at, &hw, sizeof(hw)) != UC_ERR_OK) {
+    if (emu_mem_read(uc, (uint64_t)at, &hw, sizeof(hw)) != UC_ERR_OK) {
       return false;
     }
     bool       done    = false;
-    const bool verdict = idle_back_edge(uc, at, hw, aligned, &done);
+    const bool verdict = internal_idle_back_edge(uc, at, hw, aligned, &done);
     if (done) {
       return verdict;
     }

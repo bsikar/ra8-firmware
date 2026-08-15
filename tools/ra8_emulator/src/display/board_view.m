@@ -27,9 +27,9 @@
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/QuartzCore.h>
 #include <stdint.h>
-#include <stdlib.h>
 
 #include "board_input.h"
+#include "board_view_provider_internal.h"
 
 /**
  * @brief Layer-backed content view that shows the latest frame and records clicks.
@@ -167,11 +167,25 @@
 @end
 
 struct board_view {
-  NSWindow*       window;
-  BoardImageView* view;
+  NSWindow*       window; /**< Framework-owned window.     */
+  BoardImageView* view;   /**< Framework-owned image view. */
+  uint16_t        width;  /**< Current surface width.      */
+  uint16_t        height; /**< Current surface height.     */
 };
 
-/** @brief Install a minimal main menu so Cmd+Q (Quit) works under the manual pump. */
+static_assert(sizeof(board_view_t) <= sizeof(board_view_storage_t),
+              "board view storage is too small");
+static_assert(alignof(board_view_t) <= alignof(board_view_storage_t),
+              "board view storage alignment is insufficient");
+
+/**
+ * @brief Install a minimal main menu so Cmd+Q (Quit) works under the manual pump.
+ * @details Install a minimal main menu so cmd+q (quit) works under the manual pump; this step is contained within the board view model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for board view install menu. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
 static void board_view_install_menu(void)
 {
   if ([NSApp mainMenu] != nil) {
@@ -190,9 +204,12 @@ static void board_view_install_menu(void)
   [NSApp setMainMenu:menubar];
 }
 
-board_view_t* board_view_open(uint16_t width_px, uint16_t height_px, const char* title)
+board_view_t* board_view_open(board_view_storage_t* storage,
+                              uint16_t              width_px,
+                              uint16_t              height_px,
+                              const char*           title)
 {
-  if ((width_px == 0U) || (height_px == 0U)) {
+  if ((storage == nullptr) || (width_px == 0U) || (height_px == 0U)) {
     return nullptr;
   }
   @autoreleasepool {
@@ -215,6 +232,10 @@ board_view_t* board_view_open(uint16_t width_px, uint16_t height_px, const char*
       [win setTitle:[NSString stringWithUTF8String:title]];
     }
     BoardImageView* v = [[BoardImageView alloc] initWithFrame:rect];
+    if (v == nil) {
+      [win close];
+      return nullptr;
+    }
     /* Layer-backed, contents-driven: the window server composites the frame, so
      * a cursor drag's event flood cannot make it flicker. Never redraw means
      * AppKit leaves the contents we set alone; nearest filter keeps pixels crisp
@@ -231,58 +252,63 @@ board_view_t* board_view_open(uint16_t width_px, uint16_t height_px, const char*
     [win makeFirstResponder:v]; /* route keyDown: to the content view (UART typing) */
     [NSApp activateIgnoringOtherApps:YES];
 
-    board_view_t* bv = (board_view_t*)calloc(1U, sizeof(*bv));
-    if (bv == nullptr) {
-      return nullptr;
-    }
-    bv->window = win;
-    bv->view   = v;
+    board_view_t* bv = (board_view_t*)(void*)storage;
+    bv->window       = win;
+    bv->view         = v;
+    bv->width        = width_px;
+    bv->height       = height_px;
     return bv;
   }
 }
 
-void board_view_present(board_view_t*   view,
-                        const uint16_t* rgb565,
-                        uint16_t        width_px,
-                        uint16_t        height_px)
+/**
+ * @brief Perform board view present for the board view model.
+ * @details Perform board view present for the board view model; this step is contained within the board view model and uses bounded caller or module-owned storage.
+ * @param[in,out] view Authoritative memory or presentation view accessed by the operation.
+ * @param[in,out] presentation Descriptor-backed presentation workspace accessed by the operation.
+ * @pre Arguments satisfy the ranges documented for board view present. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+void board_view_present(board_view_t* view, emu_presentation_workspace_t* presentation)
 {
-  if ((view == nullptr) || (rgb565 == nullptr) || (width_px == 0U) || (height_px == 0U)) {
+  if ((view == nullptr) || (presentation == nullptr) ||
+      (presentation->composite_width != view->width) ||
+      (presentation->composite_height != view->height)) {
     return;
   }
   @autoreleasepool {
-    const size_t n    = (size_t)width_px * (size_t)height_px;
-    uint32_t*    argb = (uint32_t*)malloc(n * sizeof(uint32_t));
-    if (argb == nullptr) {
+    int snapshot_fd = -1;
+    if (!emu_presentation_snapshot(presentation, &snapshot_fd)) {
       return;
     }
-    for (size_t i = 0U; i < n; i++) {
-      const uint16_t p  = rgb565[i];
-      const uint32_t r5 = (uint32_t)((p >> 11) & 0x1FU);
-      const uint32_t g6 = (uint32_t)((p >> 5) & 0x3FU);
-      const uint32_t b5 = (uint32_t)(p & 0x1FU);
-      const uint32_t r  = (r5 << 3) | (r5 >> 2);
-      const uint32_t g  = (g6 << 2) | (g6 >> 4);
-      const uint32_t b  = (b5 << 3) | (b5 >> 2);
-      argb[i]           = (r << 16) | (g << 8) | b; /* 0x00RRGGBB, drawn opaque */
+    const size_t provider_bytes =
+      (presentation->surface_bytes / sizeof(uint16_t)) * sizeof(uint32_t);
+    CGDataProviderRef provider = priv_board_view_provider_create(snapshot_fd, provider_bytes);
+    if (provider == NULL) {
+      return;
     }
-    CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
-    CGContextRef    bmp =
-      CGBitmapContextCreate(argb,
-                            (size_t)width_px,
-                            (size_t)height_px,
-                            8,
-                            (size_t)width_px * 4U,
-                            cs,
-                            kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little);
-    CGImageRef img = (bmp != NULL) ? CGBitmapContextCreateImage(bmp) : NULL;
-    if (bmp != NULL) {
-      CGContextRelease(bmp);
+    CGColorSpaceRef cs  = CGColorSpaceCreateDeviceRGB();
+    CGImageRef      img = NULL;
+    if (cs != NULL) {
+      img = CGImageCreate((size_t)view->width,
+                          (size_t)view->height,
+                          8U,
+                          32U,
+                          (size_t)view->width * sizeof(uint32_t),
+                          cs,
+                          kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little,
+                          provider,
+                          NULL,
+                          false,
+                          kCGRenderingIntentDefault);
+      CGColorSpaceRelease(cs);
     }
-    CGColorSpaceRelease(cs);
-    free(argb);
+    CGDataProviderRelease(provider);
     if (img != NULL) {
-      view->view.fbWidth  = width_px;
-      view->view.fbHeight = height_px;
+      view->view.fbWidth  = view->width;
+      view->view.fbHeight = view->height;
       /* Drive the layer contents directly. Disable implicit actions so the
        * contents swap is immediate (no default cross-fade) and commit now so the
        * new frame shows without waiting on the run loop. The layer retains the
@@ -296,6 +322,17 @@ void board_view_present(board_view_t*   view,
   }
 }
 
+/**
+ * @brief Perform board view pump for the board view model.
+ * @details Perform board view pump for the board view model; this step is contained within the board view model and uses bounded caller or module-owned storage.
+ * @param[in,out] view Authoritative memory or presentation view accessed by the operation.
+ * @return The board view pump result produced by the board view model.
+ * @retval true The board view pump condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for board view pump. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
 bool board_view_pump(board_view_t* view)
 {
   if (view == nullptr) {
@@ -313,6 +350,19 @@ bool board_view_pump(board_view_t* view)
   }
 }
 
+/**
+ * @brief Perform board view poll click for the board view model.
+ * @details Perform board view poll click for the board view model; this step is contained within the board view model and uses bounded caller or module-owned storage.
+ * @param[in,out] view Authoritative memory or presentation view accessed by the operation.
+ * @param[in,out] x Horizontal coordinate in pixels.
+ * @param[in,out] y Vertical coordinate in pixels.
+ * @return The board view poll click result produced by the board view model.
+ * @retval true The board view poll click condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for board view poll click. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
 bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y)
 {
   if ((view == nullptr) || (view->view == nil) || (x == nullptr) || (y == nullptr)) {
@@ -327,6 +377,19 @@ bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y)
   return true;
 }
 
+/**
+ * @brief Perform board view poll drag for the board view model.
+ * @details Perform board view poll drag for the board view model; this step is contained within the board view model and uses bounded caller or module-owned storage.
+ * @param[in,out] view Authoritative memory or presentation view accessed by the operation.
+ * @param[in,out] x Horizontal coordinate in pixels.
+ * @param[in,out] y Vertical coordinate in pixels.
+ * @return The board view poll drag result produced by the board view model.
+ * @retval true The board view poll drag condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for board view poll drag. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
 bool board_view_poll_drag(board_view_t* view, uint16_t* x, uint16_t* y)
 {
   if ((view == nullptr) || (view->view == nil) || (x == nullptr) || (y == nullptr)) {
@@ -341,6 +404,17 @@ bool board_view_poll_drag(board_view_t* view, uint16_t* x, uint16_t* y)
   return true;
 }
 
+/**
+ * @brief Perform board view poll release for the board view model.
+ * @details Perform board view poll release for the board view model; this step is contained within the board view model and uses bounded caller or module-owned storage.
+ * @param[in,out] view Authoritative memory or presentation view accessed by the operation.
+ * @return The board view poll release result produced by the board view model.
+ * @retval true The board view poll release condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for board view poll release. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
 bool board_view_poll_release(board_view_t* view)
 {
   if ((view == nullptr) || (view->view == nil)) {
@@ -353,6 +427,17 @@ bool board_view_poll_release(board_view_t* view)
   return true;
 }
 
+/**
+ * @brief Perform board view poll scroll for the board view model.
+ * @details Perform board view poll scroll for the board view model; this step is contained within the board view model and uses bounded caller or module-owned storage.
+ * @param[in,out] view Authoritative memory or presentation view accessed by the operation.
+ * @return The board view poll scroll result produced by the board view model.
+ * @retval value The operation-specific board view poll scroll value.
+ * @pre Arguments satisfy the ranges documented for board view poll scroll. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
 int32_t board_view_poll_scroll(board_view_t* view)
 {
   if ((view == nullptr) || (view->view == nil)) {
@@ -363,15 +448,30 @@ int32_t board_view_poll_scroll(board_view_t* view)
   return n;
 }
 
+/**
+ * @brief Perform board view close for the board view model.
+ * @details Perform board view close for the board view model; this step is contained within the board view model and uses bounded caller or module-owned storage.
+ * @param[in,out] view Authoritative memory or presentation view accessed by the operation.
+ * @pre Arguments satisfy the ranges documented for board view close. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
 void board_view_close(board_view_t* view)
 {
   if (view == nullptr) {
     return;
   }
   @autoreleasepool {
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    view->view.layer.contents = nil;
+    [CATransaction commit];
+    [CATransaction flush];
     [view->window close];
     view->window = nil;
     view->view   = nil;
+    view->width  = 0U;
+    view->height = 0U;
   }
-  free(view);
 }

@@ -19,7 +19,7 @@
  *
  * The block is **observe-only**: it snoops the PRCR window so the sparse
  * fallback continues to serve reads and record writes exactly as before,
- * while the protected blocks consult ::board_prcr_group_unlocked to decide
+ * while the protected blocks consult ::priv_board_prcr_group_unlocked to decide
  * whether to accept a store. Bench-confirmed on an EK-RA8D2 by J-Link:
  * writing VBTBKR0 with PRCR locked reads back @c 0x00000000; after
  * @c PRCR = 0xA502 the identical write reads back intact.
@@ -40,6 +40,7 @@
 
 #include "board_periph_block.h"
 #include "board_periph_prcr_internal.h"
+#include "emu_host_io_internal.h"
 #include "ra8_attributes.h"
 
 /** @brief PRCR window geometry (HUM Ch 13.2.1 p 522). */
@@ -76,13 +77,17 @@ static prcr_state_t s_prcr;
  *
  * @details HUM Ch 13.2.1 p 522 gives PRCR a reset value of 0x0000, so no
  * group is write-enabled until firmware presents the key.
+  * @pre Arguments satisfy the ranges documented for prcr reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph prcr model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static void prcr_reset(void)
+RA8_INTERNAL static void internal_prcr_reset(void)
 {
   s_prcr = (prcr_state_t){};
 }
 
-RA8_PRIV bool board_prcr_group_unlocked(uint16_t group_mask)
+RA8_PRIV bool priv_board_prcr_group_unlocked(uint16_t group_mask)
 {
   return (uint16_t)(s_prcr.groups & group_mask) == group_mask;
 }
@@ -93,8 +98,17 @@ RA8_PRIV bool board_prcr_group_unlocked(uint16_t group_mask)
  * @details The sparse fallback answers PRCR reads (the block snoops rather
  * than owns its window), so this exists only to satisfy the descriptor's
  * required @c read slot.
+  * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The prcr read result produced by the board periph prcr model.
+ * @retval value The operation-specific prcr read value.
+ * @pre Arguments satisfy the ranges documented for prcr read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph prcr model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static uint64_t prcr_read(uc_engine* uc, uint64_t addr, unsigned size)
+RA8_INTERNAL static uint64_t internal_prcr_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)addr;
@@ -110,8 +124,17 @@ static uint64_t prcr_read(uc_engine* uc, uint64_t addr, unsigned size)
  * permit the write to the PRCn bits." A write whose key byte is not 0xA5 is
  * discarded and leaves the mask untouched -- modelled here so firmware that
  * forgets the key gets the silicon result (no unlock) rather than a free one.
+  * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for prcr write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph prcr model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static void prcr_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+RA8_INTERNAL static void
+internal_prcr_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)addr;
@@ -127,39 +150,46 @@ static void prcr_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
   }
 }
 
-/** @brief End-of-run PRCR section: unlock traffic and any key mistakes. */
-static void prcr_report(void)
+/**
+ * @brief End-of-run PRCR section: unlock traffic and any key mistakes.
+ * @details End-of-run prcr section: unlock traffic and any key mistakes; this step is contained within the board periph prcr model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for prcr report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph prcr model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_prcr_report(void)
 {
   if (s_prcr.bad_key != 0U) {
     /* Loud: a PRCR write without the 0xA5 key unlocks nothing on silicon. */
-    (void)fprintf(stderr,
-                  "  SYSC-PRCR     : unlocks=%u REJECTED=%u (missing 0xA5 key in PRKEY[7:0])\n",
-                  s_prcr.unlocks,
-                  s_prcr.bad_key);
+    (void)priv_emu_io_errf(
+      "  SYSC-PRCR     : unlocks=%u REJECTED=%u (missing 0xA5 key in PRKEY[7:0])\n",
+      s_prcr.unlocks,
+      s_prcr.bad_key);
     return;
   }
   if (s_prcr.unlocks == 0U) {
     return; /* Untouched: stay quiet. */
   }
-  (void)fprintf(stderr, "  SYSC-PRCR     : unlocks=%u\n", s_prcr.unlocks);
+  (void)priv_emu_io_errf("  SYSC-PRCR     : unlocks=%u\n", s_prcr.unlocks);
 }
 
 /** @brief PRCR block descriptor (observe-only: snoops, does not own). */
-static const board_periph_block_t k_prcr_block = {
+static const board_periph_block_t s_k_prcr_block = {
   .base    = (uint64_t)k_prcr_base,
   .span    = (uint64_t)k_prcr_span,
   .order   = (uint32_t)k_prcr_block_order,
-  .read    = prcr_read,
-  .write   = prcr_write,
+  .read    = internal_prcr_read,
+  .write   = internal_prcr_write,
   .tick    = nullptr,
-  .reset   = prcr_reset,
-  .report  = prcr_report,
+  .reset   = internal_prcr_reset,
+  .report  = internal_prcr_report,
   .name    = "SYSC-PRCR",
   .observe = true,
 };
 
 /** @brief Register the PRCR block before main (host constructor). */
-[[gnu::constructor]] static void prcr_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_prcr_block_register(void)
 {
-  board_periph_register_block(&k_prcr_block);
+  board_periph_register_block(&s_k_prcr_block);
 }

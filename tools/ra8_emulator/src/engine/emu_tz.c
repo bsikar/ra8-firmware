@@ -19,10 +19,12 @@
 #include "emu_console.h"
 #include "emu_elf.h"
 #include "emu_exc.h"
+#include "emu_host_io_internal.h"
+#include "emu_memory_access.h"
 
 /**
  * @brief Fallback NS vector-table base for the BLXNS world switch.
- * @details ::on_blxns first reads the live VTOR_NS word (the Secure boot's
+ * @details ::internal_on_blxns first reads the live VTOR_NS word (the Secure boot's
  *          ``ra8_tz_secure_boot_jump_ns`` stores the NS vector base to the
  *          0xE002ED08 alias -- plain PPB RAM here -- right before its BLXNS),
  *          so a single-image TZ app whose NS half lives at its MRAM LMA
@@ -33,7 +35,7 @@
  *          to the loaded NS image's minimum PT_LOAD p_vaddr, so an XIP NS
  *          image linked at the OSPI window (0x90000000, VMA == LMA, no copy)
  *          still transitions correctly.
- * @note Single-threaded; set once before the run loop and read in ::on_blxns.
+ * @note Single-threaded; set once before the run loop and read in ::internal_on_blxns.
  * @since 0.1.0
  */
 static uint32_t s_ns_vector_base = (uint32_t)k_ns_sram2_base;
@@ -64,8 +66,8 @@ typedef enum : uint32_t {
  *          performs the switch by hand in ra8_emulator's single flat domain: it
  *          reads the NS initial MSP (NS vector[0]) and the NS reset handler (NS
  *          vector[1]) from the NS run base, sets SP + PC to them (Thumb bit
- *          masked), and stops the chunk so the run loop resumes executing the NS
- *          reset handler -- ThreadX and the e-reader threads then run directly.
+ *          masked), and stops the chunk so the run loop resumes executing the
+ * NS reset handler -- ThreadX and the e-reader threads then run directly.
  *          Mirrors the existing SG-stub-by-address TrustZone workaround.
  *
  * @param[in] uc      Unicorn engine mid-chunk at the BLXNS.
@@ -82,7 +84,8 @@ typedef enum : uint32_t {
  * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static void on_blxns(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+RA8_INTERNAL static void
+internal_on_blxns(uc_engine* uc, uint64_t address, uint32_t size, void* user)
 {
   (void)address;
   (void)size;
@@ -93,17 +96,17 @@ static void on_blxns(uc_engine* uc, uint64_t address, uint32_t size, void* user)
    * 0x02080000, SRAM2 run alias 0x32100000, or OSPI XIP) with no per-app
    * knowledge. Fall back to ::s_ns_vector_base when the app never wrote it. */
   uint32_t vector_base = 0U;
-  (void)uc_mem_read(uc, (uint64_t)k_scb_vtor_ns_addr, &vector_base, sizeof(vector_base));
+  (void)emu_mem_read(uc, (uint64_t)k_scb_vtor_ns_addr, &vector_base, sizeof(vector_base));
   if (vector_base == 0U) {
     vector_base = s_ns_vector_base;
   }
   uint32_t ns_msp   = 0U;
   uint32_t ns_reset = 0U;
-  (void)uc_mem_read(uc, (uint64_t)vector_base, &ns_msp, sizeof(ns_msp));
-  (void)uc_mem_read(uc,
-                    (uint64_t)vector_base + (uint64_t)sizeof(uint32_t),
-                    &ns_reset,
-                    sizeof(ns_reset));
+  (void)emu_mem_read(uc, (uint64_t)vector_base, &ns_msp, sizeof(ns_msp));
+  (void)emu_mem_read(uc,
+                     (uint64_t)vector_base + (uint64_t)sizeof(uint32_t),
+                     &ns_reset,
+                     sizeof(ns_reset));
   const uint32_t ns_pc = ns_reset & ~1U; /* mask the Thumb bit for the PC write */
   (void)uc_reg_write(uc, UC_ARM_REG_SP, &ns_msp);
   (void)uc_reg_write(uc, UC_ARM_REG_PC, &ns_pc);
@@ -129,13 +132,14 @@ static void on_blxns(uc_engine* uc, uint64_t address, uint32_t size, void* user)
  * @post Emulated memory is unchanged (reads only).
  * @post Any returned address lies within [@p from, @p from + @p size).
  * @note Not thread-safe.
+  * @since 0.1.0
  */
-static uint32_t emu_tz_find_blxns(uc_engine* uc, uint32_t from, uint32_t size)
+RA8_INTERNAL static uint32_t internal_emu_tz_find_blxns(uc_engine* uc, uint32_t from, uint32_t size)
 {
   for (uint32_t a = from; (a + (uint32_t)k_thumb_hw_bytes) <= (from + size);
        a += (uint32_t)k_thumb_hw_bytes) {
     uint16_t hw = 0U;
-    (void)uc_mem_read(uc, (uint64_t)a, &hw, sizeof(hw));
+    (void)emu_mem_read(uc, (uint64_t)a, &hw, sizeof(hw));
     if (((uint32_t)hw & (uint32_t)k_blxns_mask) == (uint32_t)k_blxns_match) {
       return a;
     }
@@ -143,48 +147,51 @@ static uint32_t emu_tz_find_blxns(uc_engine* uc, uint32_t from, uint32_t size)
   return 0U;
 }
 
-/** @brief Implementation of `emu_tz_install()` -- SAU seed + BLXNS scan/hook. */
-void emu_tz_install(uc_engine* uc, const uint8_t* elf, long elf_len)
+/** @brief Implementation of `emu_tz_install()` -- SAU seed + BLXNS scan/hook.
+ */
+void emu_tz_install(uc_engine* uc, const emu_elf_source_t* elf)
 {
   /* TrustZone S->NS boot seams -- armed whenever the firmware links the secure
    * boot's ra8_tz_secure_boot_jump_ns: a two-image --ns app, OR a single-image
    * app whose NS half is embedded at its MRAM LMA (cpu1_pingpong_ipc). The
    * Secure boot bails to its fallback main() unless SAU_TYPE.SREGION >= 4/5;
-   * ra8_emulator maps the PPB as plain RAM (SAU_TYPE reads 0), so seed the M85's
-   * 8-region count to let the real SAU programming + NS-image copy + BLXNS
-   * run. Firmware without the symbol keeps its current (all-Secure) path. */
+   * ra8_emulator maps the PPB as plain RAM (SAU_TYPE reads 0), so seed the
+   * M85's 8-region count to let the real SAU programming + NS-image copy +
+   * BLXNS run. Firmware without the symbol keeps its current (all-Secure) path.
+   */
   uint32_t       jn_size = 0U;
-  const uint32_t jump_ns = elf_sym_addr(elf, elf_len, "ra8_tz_secure_boot_jump_ns", &jn_size);
+  const uint32_t jump_ns = elf_sym_addr(elf, "ra8_tz_secure_boot_jump_ns", &jn_size);
   if ((jump_ns == 0U) || (jn_size < (uint32_t)k_thumb_hw_bytes)) {
     return; /* Not a TrustZone image: keep the all-Secure path. */
   }
   const uint32_t sau_type = (uint32_t)k_sau_type_regs;
-  (void)uc_mem_write(uc, (uint64_t)k_sau_type_addr, &sau_type, sizeof(sau_type));
+  (void)emu_mem_write(uc, (uint64_t)k_sau_type_addr, &sau_type, sizeof(sau_type));
 
   /* Hand-emulate the Secure->NS BLXNS in ra8_tz_secure_boot_jump_ns.
    * Unicorn's all-Secure M33 cannot really switch worlds, so resolve the
    * BLXNS site from the Secure symtab (scan the function for the BLXNS
-   * opcode) and hook it to enter NS manually (see on_blxns). Without this
+   * opcode) and hook it to enter NS manually (see internal_on_blxns). Without this
    * the BLXNS stalls and the NS world never runs. */
-  const uint32_t blxns_at = emu_tz_find_blxns(uc, jump_ns, jn_size);
+  const uint32_t blxns_at = internal_emu_tz_find_blxns(uc, jump_ns, jn_size);
   if (blxns_at == 0U) {
-    (void)fprintf(stderr,
-                  "ra8_emulator: TZ warning: no BLXNS found in ra8_tz_secure_boot_jump_ns\n");
+    (void)priv_emu_io_errf("ra8_emulator: TZ warning: no BLXNS found in "
+                           "ra8_tz_secure_boot_jump_ns\n");
     return;
   }
   uc_hook h_blxns;
   (void)uc_hook_add(uc,
                     &h_blxns,
                     UC_HOOK_CODE,
-                    (void*)on_blxns,
+                    (void*)internal_on_blxns,
                     nullptr,
                     (uint64_t)blxns_at,
                     (uint64_t)blxns_at);
-  (void)fprintf(stderr, "ra8_emulator: TZ BLXNS seam armed @ 0x%08X\n", blxns_at);
+  (void)priv_emu_io_errf("ra8_emulator: TZ BLXNS seam armed @ 0x%08X\n", blxns_at);
 }
 
-/** @brief Implementation of `emu_tz_patch_cmse()` -- flat-domain range check. */
-void emu_tz_patch_cmse(uc_engine* uc, const uint8_t* elf, long elf_len)
+/** @brief Implementation of `emu_tz_patch_cmse()` -- flat-domain range check.
+ */
+void emu_tz_patch_cmse(uc_engine* uc, const emu_elf_source_t* elf)
 {
   /* TrustZone NSC pointer validation. The Non-Secure-Callable veneers guard
    * their pointer args with cmse_check_address_range(), which issues Armv8-M
@@ -193,20 +200,21 @@ void emu_tz_patch_cmse(uc_engine* uc, const uint8_t* elf, long elf_len)
    * has no SAU/IDAU configured (ra8_emulator maps the PPB as plain RAM, so the
    * core's internal SAU stays at its reset all-Secure state); a native TT thus
    * reports every address as Secure, the NS range-check fails, and the veneer
-   * returns k_ra8_err_invalid_arg -- stalling CGC/SD bring-up. ra8_emulator collapses
-   * the Secure/Non-Secure split into one flat, fully-accessible domain, so every
-   * NS pointer the veneers pass (each already null-checked before the range check)
-   * is valid. Model that by patching the routine's entry to `BX LR`: r0 still
-   * holds the first argument (the pointer `p`) at entry, so an immediate return
-   * yields p != NULL == "address OK". This is a one-time 2-byte memory patch
-   * (the function image is already copied into Unicorn memory by load_elf), not a
-   * UC_HOOK_CODE -- a code hook forces Unicorn to single-step the whole run
+   * returns k_ra8_err_invalid_arg -- stalling CGC/SD bring-up. ra8_emulator
+   * collapses the Secure/Non-Secure split into one flat, fully-accessible
+   * domain, so every NS pointer the veneers pass (each already null-checked
+   * before the range check) is valid. Model that by patching the routine's
+   * entry to `BX LR`: r0 still holds the first argument (the pointer `p`) at
+   * entry, so an immediate return yields p != NULL == "address OK". This is a
+   * one-time 2-byte memory patch (the function image is already copied into
+   * Unicorn memory by load_elf), not a UC_HOOK_CODE -- a code hook forces
+   * Unicorn to single-step the whole run
    * (~10x slower), whereas the patch has zero steady-state cost. Absent in
    * non-TZ firmware (symbol not found -> no patch). */
-  const uint32_t cmse_check_addr = elf_sym_addr(elf, elf_len, "cmse_check_address_range", nullptr);
+  const uint32_t cmse_check_addr = elf_sym_addr(elf, "cmse_check_address_range", nullptr);
   if (cmse_check_addr != 0U) {
     const uint16_t bx_lr = (uint16_t)k_thumb_bx_lr;
-    (void)uc_mem_write(uc, (uint64_t)cmse_check_addr, &bx_lr, sizeof(bx_lr));
+    (void)emu_mem_write(uc, (uint64_t)cmse_check_addr, &bx_lr, sizeof(bx_lr));
   }
 }
 

@@ -49,6 +49,7 @@
 #include "board_console.h"
 #include "board_net.h"
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 #include "ra8_etha_regs.h"
 #include "ra8_ether_regs.h"
 #include "ra8_rmac_regs.h"
@@ -166,8 +167,9 @@ static eth_state_t s_eth;
  * @post Bytes past the window read as zero.
  * @note Not thread-safe.
  * @since 0.1.0
+  * @details Read up to @p size bytes little-endian from the register shadow; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
  */
-static uint64_t eth_shadow_read(uint64_t off, unsigned size)
+RA8_INTERNAL static uint64_t internal_eth_shadow_read(uint64_t off, unsigned size)
 {
   uint64_t v = 0U;
   for (unsigned i = 0U; (i < size) && ((off + (uint64_t)i) < (uint64_t)k_eth_win_span); ++i) {
@@ -189,22 +191,43 @@ static uint64_t eth_shadow_read(uint64_t off, unsigned size)
  * @post Bytes past the window are dropped.
  * @note Not thread-safe.
  * @since 0.1.0
+  * @details Write up to @p size bytes little-endian into the register shadow; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
  */
-static void eth_shadow_write(uint64_t off, unsigned size, uint64_t value)
+RA8_INTERNAL static void internal_eth_shadow_write(uint64_t off, unsigned size, uint64_t value)
 {
   for (unsigned i = 0U; (i < size) && ((off + (uint64_t)i) < (uint64_t)k_eth_win_span); ++i) {
     s_eth.win[off + (uint64_t)i] = (uint8_t)(value >> (k_eth_shift_byte * i));
   }
 }
 
-/** @brief Read a 32-bit shadow register at window offset @p off. */
-static uint32_t eth_shadow_u32(uint64_t off)
+/**
+ * @brief Read a 32-bit shadow register at window offset @p off.
+ * @details Read a 32-bit shadow register at window offset @p off; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The Ethernet shadow u32 result produced by the board periph Ethernet model.
+ * @retval value The operation-specific Ethernet shadow u32 value.
+ * @pre Arguments satisfy the ranges documented for Ethernet shadow u32. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph Ethernet model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_eth_shadow_u32(uint64_t off)
 {
-  return (uint32_t)eth_shadow_read(off, k_eth_reg32_bytes);
+  return (uint32_t)internal_eth_shadow_read(off, k_eth_reg32_bytes);
 }
 
-/** @brief Assemble a little-endian 32-bit value from four bytes @p p[0..3]. */
-static uint32_t eth_bytes_u32(const uint8_t* p)
+/**
+ * @brief Assemble a little-endian 32-bit value from four bytes @p p[0..3].
+ * @details Assemble a little-endian 32-bit value from four bytes @p p[0..3]; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
+ * @param[in] p Module-owned state object processed by the operation.
+ * @return The Ethernet bytes u32 result produced by the board periph Ethernet model.
+ * @retval value The operation-specific Ethernet bytes u32 value.
+ * @pre Arguments satisfy the ranges documented for Ethernet bytes u32. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph Ethernet model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_eth_bytes_u32(const uint8_t* p)
 {
   uint32_t v = 0U;
   for (unsigned i = 0U; i < k_eth_reg32_bytes; ++i) {
@@ -213,29 +236,69 @@ static uint32_t eth_bytes_u32(const uint8_t* p)
   return v;
 }
 
-/** @brief Read an 8-byte descriptor header from emulated memory @p addr. */
-static void eth_desc_read(uc_engine* uc, uint32_t addr, uint8_t* out8)
+/**
+ * @brief Read an 8-byte descriptor header from emulated memory @p addr.
+ * @details Read an 8-byte descriptor header from emulated memory @p addr; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in,out] out8 Out8 state or storage updated in place by the operation.
+ * @pre Arguments satisfy the ranges documented for Ethernet desc read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph Ethernet model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_eth_desc_read(uc_engine* uc, uint32_t addr, uint8_t* out8)
 {
-  (void)uc_mem_read(uc, (uint64_t)addr, out8, (size_t)k_eth_desc_bytes);
+  (void)emu_mem_read(uc, (uint64_t)addr, out8, (size_t)k_eth_desc_bytes);
 }
 
-/** @brief Decode the DT (descriptor type) field of an 8-byte header. */
-static uint32_t eth_desc_dt(const uint8_t* d8)
+/**
+ * @brief Decode the DT (descriptor type) field of an 8-byte header.
+ * @details Decode the dt (descriptor type) field of an 8-byte header; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
+ * @param[in] d8 D8 input used by the operation.
+ * @return The Ethernet desc dt result produced by the board periph Ethernet model.
+ * @retval value The operation-specific Ethernet desc dt value.
+ * @pre Arguments satisfy the ranges documented for Ethernet desc dt. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph Ethernet model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_eth_desc_dt(const uint8_t* d8)
 {
   return ((uint32_t)d8[k_eth_desc_dt_byte] >> k_eth_desc_dt_shift) & (uint32_t)k_eth_desc_dt_lo;
 }
 
-/** @brief Decode the 12-bit DS (descriptor size) field of an 8-byte header. */
-static uint32_t eth_desc_ds(const uint8_t* d8)
+/**
+ * @brief Decode the 12-bit DS (descriptor size) field of an 8-byte header.
+ * @details Decode the 12-bit ds (descriptor size) field of an 8-byte header; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
+ * @param[in] d8 D8 input used by the operation.
+ * @return The Ethernet desc ds result produced by the board periph Ethernet model.
+ * @retval value The operation-specific Ethernet desc ds value.
+ * @pre Arguments satisfy the ranges documented for Ethernet desc ds. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph Ethernet model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_eth_desc_ds(const uint8_t* d8)
 {
   return (uint32_t)d8[0] |
          (((uint32_t)d8[k_eth_desc_ds_byte1] & (uint32_t)k_eth_desc_ds_hi) << k_eth_shift_byte);
 }
 
-/** @brief Decode the 32-bit PTR (buffer / chain address) of an 8-byte header. */
-static uint32_t eth_desc_ptr(const uint8_t* d8)
+/**
+ * @brief Decode the 32-bit PTR (buffer / chain address) of an 8-byte header.
+ * @details Decode the 32-bit ptr (buffer / chain address) of an 8-byte header; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
+ * @param[in] d8 D8 input used by the operation.
+ * @return The Ethernet desc ptr result produced by the board periph Ethernet model.
+ * @retval value The operation-specific Ethernet desc ptr value.
+ * @pre Arguments satisfy the ranges documented for Ethernet desc ptr. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph Ethernet model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_eth_desc_ptr(const uint8_t* d8)
 {
-  return eth_bytes_u32(&d8[k_eth_desc_ptr_off]);
+  return internal_eth_bytes_u32(&d8[k_eth_desc_ptr_off]);
 }
 
 /**
@@ -251,14 +314,15 @@ static uint32_t eth_desc_ptr(const uint8_t* d8)
  * @post Other descriptor bytes are untouched.
  * @note Not thread-safe.
  * @since 0.1.0
+  * @details Write the dt field of the descriptor at emulated address @p addr; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
  */
-static void eth_desc_set_dt(uc_engine* uc, uint32_t addr, uint32_t dt)
+RA8_INTERNAL static void internal_eth_desc_set_dt(uc_engine* uc, uint32_t addr, uint32_t dt)
 {
   uint8_t b = 0U;
-  (void)uc_mem_read(uc, (uint64_t)addr + (uint64_t)k_eth_desc_dt_byte, &b, 1U);
+  (void)emu_mem_read(uc, (uint64_t)addr + (uint64_t)k_eth_desc_dt_byte, &b, 1U);
   b = (uint8_t)((b & (uint8_t)k_eth_desc_dt_lo) |
                 (uint8_t)((dt & (uint32_t)k_eth_desc_dt_lo) << k_eth_desc_dt_shift));
-  (void)uc_mem_write(uc, (uint64_t)addr + (uint64_t)k_eth_desc_dt_byte, &b, 1U);
+  (void)emu_mem_write(uc, (uint64_t)addr + (uint64_t)k_eth_desc_dt_byte, &b, 1U);
 }
 
 /**
@@ -274,38 +338,72 @@ static void eth_desc_set_dt(uc_engine* uc, uint32_t addr, uint32_t dt)
  * @post Other descriptor bytes are untouched.
  * @note Not thread-safe.
  * @since 0.1.0
+  * @details Write the 12-bit ds field of the descriptor at address @p addr; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
  */
-static void eth_desc_set_ds(uc_engine* uc, uint32_t addr, uint32_t ds)
+RA8_INTERNAL static void internal_eth_desc_set_ds(uc_engine* uc, uint32_t addr, uint32_t ds)
 {
   const uint8_t lo = (uint8_t)(ds & (uint32_t)k_eth_byte_mask);
   uint8_t       hi = 0U;
-  (void)uc_mem_read(uc, (uint64_t)addr + (uint64_t)k_eth_desc_ds_byte1, &hi, 1U);
+  (void)emu_mem_read(uc, (uint64_t)addr + (uint64_t)k_eth_desc_ds_byte1, &hi, 1U);
   hi = (uint8_t)((hi & (uint8_t)k_eth_desc_ds_keep) |
                  (uint8_t)((ds >> k_eth_shift_byte) & (uint32_t)k_eth_desc_ds_hi));
-  (void)uc_mem_write(uc, (uint64_t)addr, &lo, 1U);
-  (void)uc_mem_write(uc, (uint64_t)addr + (uint64_t)k_eth_desc_ds_byte1, &hi, 1U);
+  (void)emu_mem_write(uc, (uint64_t)addr, &lo, 1U);
+  (void)emu_mem_write(uc, (uint64_t)addr + (uint64_t)k_eth_desc_ds_byte1, &hi, 1U);
 }
 
 /* ------------------------------------------------------------------------- */
 /* Sub-block address predicates (bases + offsets from the register headers). */
 /* ------------------------------------------------------------------------- */
 
-/** @brief True if @p addr is the given @p off in either ETHA port window. */
-static bool eth_is_etha_reg(uint64_t addr, uint64_t off)
+/**
+ * @brief True if @p addr is the given @p off in either ETHA port window.
+ * @details True if @p addr is the given @p off in either etha port window; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The Ethernet is etha reg result produced by the board periph Ethernet model.
+ * @retval true The Ethernet is etha reg condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for Ethernet is etha reg. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph Ethernet model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_eth_is_etha_reg(uint64_t addr, uint64_t off)
 {
   return (addr == (uint64_t)k_ra8_etha0_base_addr + off) ||
          (addr == (uint64_t)k_ra8_etha1_base_addr + off);
 }
 
-/** @brief True if @p addr is the given @p off in either RMAC port window. */
-static bool eth_is_rmac_reg(uint64_t addr, uint64_t off)
+/**
+ * @brief True if @p addr is the given @p off in either RMAC port window.
+ * @details True if @p addr is the given @p off in either rmac port window; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The Ethernet is rmac reg result produced by the board periph Ethernet model.
+ * @retval true The Ethernet is rmac reg condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for Ethernet is rmac reg. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph Ethernet model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_eth_is_rmac_reg(uint64_t addr, uint64_t off)
 {
   return (addr == (uint64_t)k_ra8_rmac0_base_addr + off) ||
          (addr == (uint64_t)k_ra8_rmac1_base_addr + off);
 }
 
-/** @brief True if @p addr is one of GWCA GWDCC[0..31]; sets @p *queue. */
-static bool eth_is_gwdcc(uint64_t addr, uint32_t* queue)
+/**
+ * @brief True if @p addr is one of GWCA GWDCC[0..31]; sets @p *queue.
+ * @details True if @p addr is one of gwca gwdcc[0..31]; sets @p; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in,out] queue Queue state or storage updated in place by the operation.
+ * @return The Ethernet is gwdcc result produced by the board periph Ethernet model.
+ * @retval true The Ethernet is gwdcc condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for Ethernet is gwdcc. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph Ethernet model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_eth_is_gwdcc(uint64_t addr, uint32_t* queue)
 {
   const uint64_t base = (uint64_t)k_ra8_gwca0_base_addr + (uint64_t)k_ra8_gwca_off_gwdcc_base;
   const uint64_t top  = base + ((uint64_t)k_eth_phy_reg_count * (uint64_t)k_eth_reg32_bytes);
@@ -320,8 +418,18 @@ static bool eth_is_gwdcc(uint64_t addr, uint32_t* queue)
 /* PHY (MDIO) model. */
 /* ------------------------------------------------------------------------- */
 
-/** @brief Read a modelled Clause-22 PHY register (out-of-range reads 0). */
-static uint16_t eth_phy_read(uint32_t reg)
+/**
+ * @brief Read a modelled Clause-22 PHY register (out-of-range reads 0).
+ * @details Read a modelled clause-22 phy register (out-of-range reads 0); this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
+ * @param[in] reg Register index or value selected by the operation.
+ * @return The Ethernet phy read result produced by the board periph Ethernet model.
+ * @retval value The operation-specific Ethernet phy read value.
+ * @pre Arguments satisfy the ranges documented for Ethernet phy read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph Ethernet model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_eth_phy_read(uint32_t reg)
 {
   if (reg >= (uint32_t)k_eth_phy_reg_count) {
     return 0U;
@@ -342,8 +450,9 @@ static uint16_t eth_phy_read(uint32_t reg)
  * @post Any other register stores @p value verbatim.
  * @note Not thread-safe.
  * @since 0.1.0
+  * @details Write a modelled clause-22 phy register (self-clearing bmcr bits); this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
  */
-static void eth_phy_write(uint32_t reg, uint16_t value)
+RA8_INTERNAL static void internal_eth_phy_write(uint32_t reg, uint16_t value)
 {
   if (reg >= (uint32_t)k_eth_phy_reg_count) {
     return;
@@ -374,7 +483,7 @@ static void eth_phy_write(uint32_t reg, uint16_t value)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void eth_mpsm_exec(uint64_t mpsm_off, uint32_t value)
+RA8_INTERNAL static void internal_eth_mpsm_exec(uint64_t mpsm_off, uint32_t value)
 {
   const uint32_t pop =
     (value >> (uint32_t)k_ra8_rmac_shift_mpsm_pop) & (uint32_t)k_ra8_rmac_mask_mpsm_op;
@@ -385,12 +494,12 @@ static void eth_mpsm_exec(uint64_t mpsm_off, uint32_t value)
   const bool c45 = (value & (uint32_t)k_eth_mpsm_mff) != 0U;
   uint32_t   out = value & ~(uint32_t)k_ra8_rmac_mpsm_psme; /* PSME self-clears. */
   if (!c45 && (pop == (uint32_t)k_ra8_rmac_mdio_op_c22_read)) {
-    out = ((uint32_t)eth_phy_read(pra) & (uint32_t)k_ra8_rmac_mask_mpsm_data)
+    out = ((uint32_t)internal_eth_phy_read(pra) & (uint32_t)k_ra8_rmac_mask_mpsm_data)
           << (uint32_t)k_ra8_rmac_shift_mpsm_prd;
   } else if (!c45 && (pop == (uint32_t)k_ra8_rmac_mdio_op_c22_write)) {
-    eth_phy_write(pra, (uint16_t)prd);
+    internal_eth_phy_write(pra, (uint16_t)prd);
   }
-  eth_shadow_write(mpsm_off, k_eth_reg32_bytes, out);
+  internal_eth_shadow_write(mpsm_off, k_eth_reg32_bytes, out);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -417,46 +526,56 @@ static void eth_mpsm_exec(uint64_t mpsm_off, uint32_t value)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void eth_tx_kick_queue(uc_engine* uc, uint32_t queue)
+RA8_INTERNAL static void internal_eth_tx_kick_queue(uc_engine* uc, uint32_t queue)
 {
   if (s_eth.linkfix_base == 0U) {
     return;
   }
   uint8_t        lf[k_eth_desc_bytes];
   const uint32_t lf_addr = s_eth.linkfix_base + (queue * (uint32_t)k_eth_desc_bytes);
-  eth_desc_read(uc, lf_addr, lf);
-  const uint32_t chain = eth_desc_ptr(lf);
+  internal_eth_desc_read(uc, lf_addr, lf);
+  const uint32_t chain = internal_eth_desc_ptr(lf);
   if (chain == 0U) {
     return;
   }
   uint8_t head[k_eth_desc_bytes];
-  eth_desc_read(uc, chain, head);
-  if (eth_desc_dt(head) != (uint32_t)k_ra8_gwdcc_dt_fsingle) {
+  internal_eth_desc_read(uc, chain, head);
+  if (internal_eth_desc_dt(head) != (uint32_t)k_ra8_gwdcc_dt_fsingle) {
     return; /* multi-fragment / empty head is unmodelled here -- honest no-op. */
   }
-  const uint32_t len = eth_desc_ds(head);
-  const uint32_t buf = eth_desc_ptr(head);
+  const uint32_t len = internal_eth_desc_ds(head);
+  const uint32_t buf = internal_eth_desc_ptr(head);
   if ((len == 0U) || (len > (uint32_t)k_eth_frame_max) || (buf == 0U)) {
     return;
   }
   uint8_t frame[k_eth_frame_max];
-  if (uc_mem_read(uc, (uint64_t)buf, frame, (size_t)len) != UC_ERR_OK) {
+  if (emu_mem_read(uc, (uint64_t)buf, frame, (size_t)len) != UC_ERR_OK) {
     return;
   }
   board_net_on_tx(frame, len);
-  eth_desc_set_dt(uc, chain, (uint32_t)k_ra8_gwdcc_dt_fempty);
+  internal_eth_desc_set_dt(uc, chain, (uint32_t)k_ra8_gwdcc_dt_fempty);
   s_eth.tx_frames++;
   char ln[k_eth_console_cap];
   (void)snprintf(ln, sizeof(ln), "ETH tx q%u %uB", (unsigned)queue, (unsigned)len);
   board_console_push(k_board_console_ch_net, ln);
 }
 
-/** @brief Fire ::eth_tx_kick_queue for every set bit of a GWTRC word. */
-static void eth_gwtrc_kick(uc_engine* uc, uint32_t bits, uint32_t base_queue)
+/**
+ * @brief Fire ::internal_eth_tx_kick_queue for every set bit of a GWTRC word.
+ * @details Fire ::internal_eth_tx_kick_queue for every set bit of a gwtrc word; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] bits Bits input used by the operation.
+ * @param[in] base_queue Base queue input used by the operation.
+ * @pre Arguments satisfy the ranges documented for Ethernet gwtrc kick. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph Ethernet model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_eth_gwtrc_kick(uc_engine* uc, uint32_t bits, uint32_t base_queue)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_eth_phy_reg_count; ++i) {
     if ((bits & (1UL << i)) != 0U) {
-      eth_tx_kick_queue(uc, base_queue + i);
+      internal_eth_tx_kick_queue(uc, base_queue + i);
     }
   }
 }
@@ -480,20 +599,22 @@ static void eth_gwtrc_kick(uc_engine* uc, uint32_t bits, uint32_t base_queue)
  * @post The walk is bounded by ::k_eth_ring_walk_max (NASA P10 Rule 2).
  * @note Not thread-safe.
  * @since 0.1.0
+  * @details Walk an rx ring from @p chain for the next fempty slot; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
  */
-static bool eth_rx_find_slot(uc_engine* uc, uint32_t chain, uint32_t* out_slot)
+RA8_INTERNAL static bool
+internal_eth_rx_find_slot(uc_engine* uc, uint32_t chain, uint32_t* out_slot)
 {
   uint32_t cur = chain;
   for (uint32_t i = 0U; i < (uint32_t)k_eth_ring_walk_max; ++i) {
     uint8_t d8[k_eth_desc_bytes];
-    eth_desc_read(uc, cur, d8);
-    const uint32_t dt = eth_desc_dt(d8);
+    internal_eth_desc_read(uc, cur, d8);
+    const uint32_t dt = internal_eth_desc_dt(d8);
     if (dt == (uint32_t)k_ra8_gwdcc_dt_fempty) {
       *out_slot = cur;
       return true;
     }
     if ((dt == (uint32_t)k_ra8_gwdcc_dt_link) || (dt == (uint32_t)k_ra8_gwdcc_dt_linkfix)) {
-      const uint32_t next = eth_desc_ptr(d8);
+      const uint32_t next = internal_eth_desc_ptr(d8);
       if ((next == 0U) || (next == cur)) {
         return false;
       }
@@ -524,17 +645,17 @@ static bool eth_rx_find_slot(uc_engine* uc, uint32_t chain, uint32_t* out_slot)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void eth_rx_drain_peer(uc_engine* uc, uint32_t chain)
+RA8_INTERNAL static void internal_eth_rx_drain_peer(uc_engine* uc, uint32_t chain)
 {
   for (uint32_t n = 0U; n < (uint32_t)k_eth_rx_inject_max; ++n) {
     uint32_t slot = 0U;
-    if (!eth_rx_find_slot(uc, chain, &slot)) {
+    if (!internal_eth_rx_find_slot(uc, chain, &slot)) {
       return; /* ring full -- backpressure, peer frame stays queued. */
     }
     uint8_t d8[k_eth_desc_bytes];
-    eth_desc_read(uc, slot, d8);
-    const uint32_t cap = eth_desc_ds(d8);
-    const uint32_t buf = eth_desc_ptr(d8);
+    internal_eth_desc_read(uc, slot, d8);
+    const uint32_t cap = internal_eth_desc_ds(d8);
+    const uint32_t buf = internal_eth_desc_ptr(d8);
     if ((buf == 0U) || (cap == 0U)) {
       return;
     }
@@ -544,31 +665,39 @@ static void eth_rx_drain_peer(uc_engine* uc, uint32_t chain)
     if (got == 0U) {
       return; /* peer has nothing more. */
     }
-    (void)uc_mem_write(uc, (uint64_t)buf, frame, (size_t)got);
-    eth_desc_set_ds(uc, slot, got);
-    eth_desc_set_dt(uc, slot, (uint32_t)k_ra8_gwdcc_dt_fsingle);
+    (void)emu_mem_write(uc, (uint64_t)buf, frame, (size_t)got);
+    internal_eth_desc_set_ds(uc, slot, got);
+    internal_eth_desc_set_dt(uc, slot, (uint32_t)k_ra8_gwdcc_dt_fsingle);
     s_eth.rx_frames++;
   }
 }
 
-/** @brief Per-tick RX pump: stage peer frames once the GWCA is in OPERATION. */
-static void eth_tick(uc_engine* uc)
+/**
+ * @brief Per-tick RX pump: stage peer frames once the GWCA is in OPERATION.
+ * @details Per-tick rx pump: stage peer frames once the gwca is in operation; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for Ethernet tick. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph Ethernet model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_eth_tick(uc_engine* uc)
 {
   if ((s_eth.linkfix_base == 0U) || (s_eth.rx_queue == (uint32_t)k_eth_queue_none)) {
     return;
   }
   const uint64_t gwmc_woff =
     ((uint64_t)k_ra8_gwca0_base_addr - (uint64_t)k_eth_win_base) + (uint64_t)k_ra8_gwca_off_gwmc;
-  const uint32_t opc = eth_shadow_u32(gwmc_woff) & (uint32_t)k_ra8_gwmc_opc_mask;
+  const uint32_t opc = internal_eth_shadow_u32(gwmc_woff) & (uint32_t)k_ra8_gwmc_opc_mask;
   if (opc != (uint32_t)k_ra8_gwmc_opc_operation) {
     return; /* rings only live in OPERATION mode. */
   }
   uint8_t        lf[k_eth_desc_bytes];
   const uint32_t lf_addr = s_eth.linkfix_base + (s_eth.rx_queue * (uint32_t)k_eth_desc_bytes);
-  eth_desc_read(uc, lf_addr, lf);
-  const uint32_t chain = eth_desc_ptr(lf);
+  internal_eth_desc_read(uc, lf_addr, lf);
+  const uint32_t chain = internal_eth_desc_ptr(lf);
   if (chain != 0U) {
-    eth_rx_drain_peer(uc, chain);
+    internal_eth_rx_drain_peer(uc, chain);
   }
 }
 
@@ -590,28 +719,29 @@ static void eth_tick(uc_engine* uc)
  * @post Status registers converge to their commanded / modelled value.
  * @note Not thread-safe.
  * @since 0.1.0
+  * @details MMIO read handler for the r-switch window; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
  */
-static uint64_t eth_read(uc_engine* uc, uint64_t addr, unsigned size)
+RA8_INTERNAL static uint64_t internal_eth_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   const uint64_t off   = addr - (uint64_t)k_eth_win_base;
   uint32_t       queue = 0U;
-  if (eth_is_etha_reg(addr, (uint64_t)k_ra8_etha_off_eams)) {
+  if (internal_eth_is_etha_reg(addr, (uint64_t)k_ra8_etha_off_eams)) {
     /* EAMS.OPS mirrors the commanded EAMC.OPC (the mode machine converges). */
     /* HUM Ch 32.3.1.2 "EAMS : Mode Status Register" p 1631 */
     const uint64_t eamc = off - ((uint64_t)k_ra8_etha_off_eams - (uint64_t)k_ra8_etha_off_eamc);
-    return eth_shadow_u32(eamc) & (uint32_t)k_ra8_etha_mask_ops;
+    return internal_eth_shadow_u32(eamc) & (uint32_t)k_ra8_etha_mask_ops;
   }
   if (addr == (uint64_t)k_ra8_gwca0_base_addr + (uint64_t)k_ra8_gwca_off_gwms) {
     /* GWMS.OPS mirrors the commanded GWMC.OPC. */
     /* HUM Ch 34.3.2 "GWMS : Mode Status Register" p 1792 */
     const uint64_t gwmc = off - ((uint64_t)k_ra8_gwca_off_gwms - (uint64_t)k_ra8_gwca_off_gwmc);
-    return eth_shadow_u32(gwmc) & (uint32_t)k_ra8_gwmc_opc_mask;
+    return internal_eth_shadow_u32(gwmc) & (uint32_t)k_ra8_gwmc_opc_mask;
   }
   if (addr == (uint64_t)k_ra8_gwca0_base_addr + (uint64_t)k_ra8_gwca_off_gwarirm) {
     /* GWARIRM.ARR (AXI-init done) follows the ARIOG request. */
     /* HUM Ch 34 "Ethernet CPU Agent (GWCA)" p 1787 */
-    const uint32_t v = eth_shadow_u32(off);
+    const uint32_t v = internal_eth_shadow_u32(off);
     return ((v & (uint32_t)k_eth_gwarirm_ariog) != 0U) ? (v | (uint32_t)k_eth_gwarirm_arr) : v;
   }
   if (addr == (uint64_t)k_ra8_coma_base_addr + (uint64_t)k_ra8_coma_off_cabpirm) {
@@ -619,23 +749,23 @@ static uint64_t eth_read(uc_engine* uc, uint64_t addr, unsigned size)
      * ~512 clocks later); modelling it lets the board bring-up's non-emulator
      * BPR poll converge. */
     /* HUM Ch 31.3.2.7 "CABPIRM" p 1599 */
-    const uint32_t v = eth_shadow_u32(off);
+    const uint32_t v = internal_eth_shadow_u32(off);
     return ((v & (uint32_t)k_ra8_coma_cabpirm_bpiog) != 0U) ? (v | (uint32_t)k_ra8_coma_cabpirm_bpr)
                                                             : v;
   }
-  if (eth_is_gwdcc(addr, &queue)) {
+  if (internal_eth_is_gwdcc(addr, &queue)) {
     /* GWDCC.BALR self-clears after the reload completes. */
     /* HUM Ch 34.3 "GWDCCi" p 1811 */
-    return eth_shadow_u32(off) & ~(uint32_t)k_ra8_gwdcc_balr;
+    return internal_eth_shadow_u32(off) & ~(uint32_t)k_ra8_gwdcc_balr;
   }
-  if (eth_is_rmac_reg(addr, (uint64_t)k_ra8_rmac_off_mtgfce)) {
+  if (internal_eth_is_rmac_reg(addr, (uint64_t)k_ra8_rmac_off_mtgfce)) {
     return s_eth.tx_frames;
   }
-  if (eth_is_rmac_reg(addr, (uint64_t)k_eth_rmac_off_mrfc) ||
-      eth_is_rmac_reg(addr, (uint64_t)k_ra8_rmac_off_mrgfce)) {
+  if (internal_eth_is_rmac_reg(addr, (uint64_t)k_eth_rmac_off_mrfc) ||
+      internal_eth_is_rmac_reg(addr, (uint64_t)k_ra8_rmac_off_mrgfce)) {
     return s_eth.rx_frames;
   }
-  return eth_shadow_read(off, size);
+  return internal_eth_shadow_read(off, size);
 }
 
 /**
@@ -652,41 +782,50 @@ static uint64_t eth_read(uc_engine* uc, uint64_t addr, unsigned size)
  * @post GWDCBAC1 captures the ring base; a GWDCC write records the RX queue.
  * @note Not thread-safe.
  * @since 0.1.0
+  * @details MMIO write handler for the r-switch window; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
  */
-static void eth_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+RA8_INTERNAL static void
+internal_eth_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   const uint64_t off   = addr - (uint64_t)k_eth_win_base;
   uint32_t       queue = 0U;
   if (addr == (uint64_t)k_ra8_gwca0_base_addr + (uint64_t)k_ra8_gwca_off_gwtrc0) {
-    eth_shadow_write(off, size, 0U); /* request register clears when consumed. */
-    eth_gwtrc_kick(uc, (uint32_t)value, 0U);
+    internal_eth_shadow_write(off, size, 0U); /* request register clears when consumed. */
+    internal_eth_gwtrc_kick(uc, (uint32_t)value, 0U);
     return;
   }
   if (addr == (uint64_t)k_ra8_gwca0_base_addr + (uint64_t)k_ra8_gwca_off_gwtrc1) {
-    eth_shadow_write(off, size, 0U);
-    eth_gwtrc_kick(uc, (uint32_t)value, (uint32_t)k_eth_phy_reg_count);
+    internal_eth_shadow_write(off, size, 0U);
+    internal_eth_gwtrc_kick(uc, (uint32_t)value, (uint32_t)k_eth_phy_reg_count);
     return;
   }
   if (addr == (uint64_t)k_ra8_gwca0_base_addr + (uint64_t)k_ra8_gwca_off_gwdcbac1) {
     /* Capture the descriptor-chain base so the DMA can walk the rings. */
     /* HUM Ch 34 "Ethernet CPU Agent (GWCA)" p 1787 */
     s_eth.linkfix_base = (uint32_t)value;
-    eth_shadow_write(off, size, value);
+    internal_eth_shadow_write(off, size, value);
     return;
   }
-  if (eth_is_rmac_reg(addr, (uint64_t)k_ra8_rmac_off_mpsm) &&
+  if (internal_eth_is_rmac_reg(addr, (uint64_t)k_ra8_rmac_off_mpsm) &&
       ((value & (uint32_t)k_ra8_rmac_mpsm_psme) != 0U)) {
-    eth_mpsm_exec(off, (uint32_t)value);
+    internal_eth_mpsm_exec(off, (uint32_t)value);
     return;
   }
-  eth_shadow_write(off, size, value);
-  if (eth_is_gwdcc(addr, &queue) && ((value & (uint32_t)k_ra8_gwdcc_dqt) == 0U)) {
+  internal_eth_shadow_write(off, size, value);
+  if (internal_eth_is_gwdcc(addr, &queue) && ((value & (uint32_t)k_ra8_gwdcc_dqt) == 0U)) {
     s_eth.rx_queue = queue; /* GWDCC.DQT == 0 marks the reception queue. */
   }
 }
 
-/** @brief Reset the R-Switch model and re-seed the modelled PHY register file. */
-static void eth_reset(void)
+/**
+ * @brief Reset the R-Switch model and re-seed the modelled PHY register file.
+ * @details Reset the r-switch model and re-seed the modelled phy register file; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for Ethernet reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph Ethernet model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_eth_reset(void)
 {
   s_eth                           = (eth_state_t){};
   s_eth.rx_queue                  = (uint32_t)k_eth_queue_none;
@@ -695,35 +834,41 @@ static void eth_reset(void)
   s_eth.phy[k_eth_phy_reg_anlpar] = (uint16_t)k_eth_phy_anlpar_seed;
 }
 
-/** @brief End-of-run R-Switch section: frames moved through the register model. */
-static void eth_report(void)
+/**
+ * @brief End-of-run R-Switch section: frames moved through the register model.
+ * @details End-of-run r-switch section: frames moved through the register model; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for Ethernet report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph Ethernet model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_eth_report(void)
 {
   if ((s_eth.tx_frames == 0U) && (s_eth.rx_frames == 0U)) {
     return; /* not a networking run -- stay quiet. */
   }
-  (void)fprintf(stderr,
-                "  R-Switch      : TX %u frame(s) RX %u frame(s) via GWCA/ETHA/RMAC "
-                "regs; link 100M/FD (MDIO)\n",
-                s_eth.tx_frames,
-                s_eth.rx_frames);
+  (void)priv_emu_io_errf("  R-Switch      : TX %u frame(s) RX %u frame(s) via GWCA/ETHA/RMAC "
+                         "regs; link 100M/FD (MDIO)\n",
+                         s_eth.tx_frames,
+                         s_eth.rx_frames);
 }
 
 /** @brief R-Switch cluster block descriptor. */
-static const board_periph_block_t k_eth_block = {
+static const board_periph_block_t s_k_eth_block = {
   .base   = (uint64_t)k_eth_win_base,
   .span   = (uint64_t)k_eth_win_span,
   .order  = (uint32_t)k_eth_block_order,
-  .read   = eth_read,
-  .write  = eth_write,
-  .tick   = eth_tick,
-  .reset  = eth_reset,
-  .report = eth_report,
+  .read   = internal_eth_read,
+  .write  = internal_eth_write,
+  .tick   = internal_eth_tick,
+  .reset  = internal_eth_reset,
+  .report = internal_eth_report,
   .name   = "R-Switch(ETH)",
 };
 
 /** @brief Register the R-Switch block + seed the PHY file before main runs. */
-[[gnu::constructor]] static void eth_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_eth_block_register(void)
 {
-  eth_reset();
-  board_periph_register_block(&k_eth_block);
+  internal_eth_reset();
+  board_periph_register_block(&s_k_eth_block);
 }

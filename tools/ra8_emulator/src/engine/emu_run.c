@@ -3,7 +3,7 @@
  * @brief Chunked run loop + report implementation (see emu_run.h)
  *
  * @details
- * The presentation-buffer setup, run-guard environment knobs, the chunked
+ * The streamed-presentation setup, run-guard environment knobs, the chunked
  * run loop with its inner exception-resolve loop, the run-end report and the
  * exit-code mapping -- moved verbatim out of the ra8_emulator main translation
  * unit (the loop body is unchanged; the former main() locals it consumed now
@@ -34,6 +34,7 @@
 #include "emu_elf.h"
 #include "emu_engine.h"
 #include "emu_exc.h"
+#include "emu_host_io_internal.h"
 #include "emu_memmap.h"
 #include "emu_mmio.h"
 #include "emu_mpu.h"
@@ -53,7 +54,7 @@
  * phase without either.
  *
  * @invariant Exactly one value is returned per phase-helper call.
- * @see run_loop()  The driver that dispatches on it.
+ * @see internal_run_loop()  The driver that dispatches on it.
  * @since 0.1.0
  */
 typedef enum : uint8_t {
@@ -79,49 +80,40 @@ typedef enum : uint8_t {
  * @note Not thread-safe; part of single-threaded setup.
  * @since 0.1.0
  */
-static void run_setup_geometry(const emu_run_cfg_t* cfg, run_loop_t* st)
+RA8_INTERNAL static void internal_run_setup_geometry(const emu_run_cfg_t* cfg, run_loop_t* st)
 {
-  st->panel_w = cfg->view_w;
-  st->panel_h = cfg->view_h;
-  const bool rot_swap =
-    (cfg->rotate_deg == (uint32_t)k_rotate_90) || (cfg->rotate_deg == (uint32_t)k_rotate_270);
-  st->disp_w = rot_swap ? st->panel_h : st->panel_w;
-  st->disp_h = rot_swap ? st->panel_w : st->panel_h;
-  st->comp_w = board_overlay_total_width(st->disp_w);
-  st->comp_h = board_overlay_total_height(st->disp_h);
+  st->presentation = cfg->presentation;
+  st->panel_w      = cfg->presentation->panel_width;
+  st->panel_h      = cfg->presentation->panel_height;
+  st->disp_w       = cfg->presentation->display_width;
+  st->disp_h       = cfg->presentation->display_height;
+  st->comp_w       = cfg->presentation->composite_width;
+  st->comp_h       = cfg->presentation->composite_height;
 }
 
 /**
- * @brief Open the live window (if requested) and allocate the frame buffers.
+ * @brief Open the live window over the owned raw-fd surface when requested.
  *
- * @details --view opens a window (headless fallback on failure). Any of --view
- * / --ppm / --click / --record needs the panel + composite buffers; a non-zero
- * rotation additionally needs the rotation scratch. Allocated once for the run.
+ * @details --view opens a window using caller-owned handle storage and an
+ * immutable raw-fd snapshot per present. Failure preserves the established
+ * headless fallback; frame storage and bounded scratch were prepared by main.
  *
  * @param[in]     cfg The run configuration (output-mode flags + rotation).
- * @param[in,out] st  The run state (geometry read; view/buffers written).
+ * @param[in,out] st  The run state (geometry read; view handle written).
  * @return void
- * @pre ::run_setup_geometry has filled @p st geometry.
+ * @pre ::internal_run_setup_geometry has filled @p st geometry.
  * @pre @p cfg and @p st are non-NULL.
  * @post @p st->view is a window handle or NULL (headless).
- * @post The buffers are allocated iff an output mode needs them.
- * @note Not thread-safe; performs window open + malloc during setup.
+ * @post The bound presentation workspace remains unchanged.
+ * @note Not thread-safe; performs the platform window open during setup.
  * @since 0.1.0
  */
-static void run_open_view_buffers(const emu_run_cfg_t* cfg, run_loop_t* st)
+RA8_INTERNAL static void internal_run_open_view(const emu_run_cfg_t* cfg, run_loop_t* st)
 {
   if (cfg->want_view) {
-    st->view = board_view_open(st->comp_w, st->comp_h, cfg->win_title);
+    st->view = board_view_open(&st->view_storage, st->comp_w, st->comp_h, cfg->win_title);
     if (st->view == nullptr) {
-      (void)fprintf(stderr, "ra8_emulator: could not open window; continuing headless\n");
-    }
-  }
-  if ((st->view != nullptr) || (cfg->ppm_path != nullptr) || cfg->want_click ||
-      (cfg->record_dir != nullptr)) {
-    st->panel_fb  = (uint16_t*)malloc((size_t)st->panel_w * (size_t)st->panel_h * sizeof(uint16_t));
-    st->composite = (uint16_t*)malloc((size_t)st->comp_w * (size_t)st->comp_h * sizeof(uint16_t));
-    if (cfg->rotate_deg != (uint32_t)k_rotate_0) {
-      st->rot_fb = (uint16_t*)malloc((size_t)st->disp_w * (size_t)st->disp_h * sizeof(uint16_t));
+      (void)priv_emu_io_errf("ra8_emulator: could not open window; continuing headless\n");
     }
   }
 }
@@ -137,19 +129,19 @@ static void run_open_view_buffers(const emu_run_cfg_t* cfg, run_loop_t* st)
  * @param[in]     cfg The run configuration (--click coordinates + flag).
  * @param[in,out] st  The run state (click_was_tab / click_btn written).
  * @return void
- * @pre ::run_setup_geometry has filled @p st->disp_w.
+ * @pre ::internal_run_setup_geometry has filled @p st->disp_w.
  * @pre @p cfg and @p st are non-NULL.
  * @post @p st->click_was_tab and @p st->click_btn reflect the click target.
  * @post A tab click has already switched the active console channel.
  * @note Not thread-safe; part of single-threaded setup.
  * @since 0.1.0
  */
-static void run_classify_click(const emu_run_cfg_t* cfg, run_loop_t* st)
+RA8_INTERNAL static void internal_run_classify_click(const emu_run_cfg_t* cfg, run_loop_t* st)
 {
   if (!cfg->want_click) {
     return;
   }
-  (void)fprintf(stderr, "ra8_emulator: --click armed at (%d,%d)\n", cfg->click_x, cfg->click_y);
+  (void)priv_emu_io_errf("ra8_emulator: --click armed at (%d,%d)\n", cfg->click_x, cfg->click_y);
   uint32_t click_tab_idx = 0U;
   if (board_overlay_hit_console_tab((uint16_t)cfg->click_x,
                                     (uint16_t)cfg->click_y,
@@ -169,7 +161,7 @@ static void run_classify_click(const emu_run_cfg_t* cfg, run_loop_t* st)
  * @brief Populate the run state from the config before the chunk loop.
  *
  * @details Zeroes the mutable counters, derives the presentation geometry,
- * opens the window / buffers, reads the run-guard env knobs, classifies a
+ * opens the window over the bound surface, reads run guards, classifies a
  * headless --click, and seeds the resume PC / reboot count / CPU-time origin.
  *
  * @param[in]  cfg The setup products (see ::emu_run_cfg_t).
@@ -178,11 +170,11 @@ static void run_classify_click(const emu_run_cfg_t* cfg, run_loop_t* st)
  * @pre @p cfg is fully populated and @p st is non-NULL.
  * @pre The engine referenced by @p cfg is ready to run.
  * @post @p st is fully initialized for the first chunk.
- * @post The window / buffers / guards / click are all resolved.
+ * @post The window / presentation / guards / click are all resolved.
  * @note Not thread-safe; this is the single-threaded setup entry.
  * @since 0.1.0
  */
-static void run_loop_setup(const emu_run_cfg_t* cfg, run_loop_t* st)
+RA8_INTERNAL static void internal_run_loop_setup(const emu_run_cfg_t* cfg, run_loop_t* st)
 {
   *st              = (run_loop_t){};
   st->cfg          = cfg;
@@ -191,10 +183,10 @@ static void run_loop_setup(const emu_run_cfg_t* cfg, run_loop_t* st)
   st->reboot_count = cfg->reboot_count;
   st->run_pc       = cfg->initial_pc;
   st->err          = UC_ERR_OK;
-  run_setup_geometry(cfg, st);
-  run_open_view_buffers(cfg, st);
+  internal_run_setup_geometry(cfg, st);
+  internal_run_open_view(cfg, st);
   st->guards = run_read_guards(cfg, st->view);
-  run_classify_click(cfg, st);
+  internal_run_classify_click(cfg, st);
   st->t0 = clock();
 }
 
@@ -216,8 +208,9 @@ static void run_loop_setup(const emu_run_cfg_t* cfg, run_loop_t* st)
  * @post On k_loop_continue, @p st->run_pc / last_boot_chunk are updated.
  * @note Not thread-safe; part of the single-threaded run loop.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-static loop_action_t run_loop_prologue(run_loop_t* st)
+RA8_INTERNAL static loop_action_t internal_run_loop_prologue(run_loop_t* st)
 {
   const emu_run_cfg_t* cfg = st->cfg;
   /* RA8_EMU_PROFILE: charge the wall time of the previous chunk to the
@@ -234,13 +227,15 @@ static loop_action_t run_loop_prologue(run_loop_t* st)
   emu_view_publish(st->run_pc, st->chunks); /* PC + chunk counter for the board view. */
 
   /* --reboot N: after each boot's settle window force a power-on warm reboot;
-   * the reset-retained models (VBATT backup) survive, proving reset-survival. */
+   * the reset-retained models (VBATT backup) survive, proving reset-survival.
+   */
   if ((st->reboot_count > 0) && ((st->chunks - st->last_boot_chunk) >= (uint32_t)k_reboot_settle)) {
     st->reboot_count--;
     board_periph_reset_set_cause(true, false, false, false); /* power-on reboot */
-    st->run_pc = warm_reboot(cfg->uc, cfg->elf, cfg->elf_len, cfg->want_trace);
+    st->run_pc = warm_reboot(cfg->uc, cfg->elf, cfg->want_trace);
     if (st->run_pc == 0U) {
-      return k_loop_break; /* reboot failed to reload the image -- end the run */
+      return k_loop_break; /* reboot failed to reload the image -- end the run
+                            */
     }
     st->last_boot_chunk = st->chunks;
     return k_loop_continue;
@@ -251,9 +246,10 @@ static loop_action_t run_loop_prologue(run_loop_t* st)
   bool iwdt_rst = false;
   if (board_periph_reset_take_request(&wdt_rst, &iwdt_rst)) {
     board_periph_reset_set_cause(false, false, wdt_rst, iwdt_rst);
-    st->run_pc = warm_reboot(cfg->uc, cfg->elf, cfg->elf_len, cfg->want_trace);
+    st->run_pc = warm_reboot(cfg->uc, cfg->elf, cfg->want_trace);
     if (st->run_pc == 0U) {
-      return k_loop_break; /* reboot failed to reload the image -- end the run */
+      return k_loop_break; /* reboot failed to reload the image -- end the run
+                            */
     }
     st->last_boot_chunk = st->chunks;
     return k_loop_continue;
@@ -278,7 +274,7 @@ static loop_action_t run_loop_prologue(run_loop_t* st)
  * @note Not thread-safe; part of the single-threaded run loop.
  * @since 0.1.0
  */
-static void run_loop_tick_inputs(run_loop_t* st)
+RA8_INTERNAL static void internal_run_loop_tick_inputs(run_loop_t* st)
 {
   const emu_run_cfg_t* cfg = st->cfg;
   emu_exc_arm_systick(); /* one SysTick period per outer chunk. */
@@ -289,7 +285,8 @@ static void run_loop_tick_inputs(run_loop_t* st)
   board_net_tick();
 
   /* Drain buffered keystrokes into the console UART RX (the SCI channel --input
-   * targets), from the live window (keyDown) and the headless --keys injector. */
+   * targets), from the live window (keyDown) and the headless --keys injector.
+   */
   char key_byte = 0;
   while (board_input_pop_key(&key_byte)) {
     const uint8_t kb = (uint8_t)key_byte;
@@ -325,7 +322,7 @@ static void run_loop_tick_inputs(run_loop_t* st)
 }
 
 /**
- * @brief Run one chunk via run_inner and service its post-chunk resets.
+ * @brief Run one chunk via priv_run_inner and service its post-chunk resets.
  *
  * @details Runs the inner exception-resolve loop, then ends the run on a fault
  * or a profiler STOP_PC, or warm-reboots on an AIRCR.SYSRESETREQ (a failed
@@ -341,25 +338,27 @@ static void run_loop_tick_inputs(run_loop_t* st)
  * @post @p st->run_pc / err reflect the chunk's outcome.
  * @note Not thread-safe; part of the single-threaded run loop.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-static loop_action_t run_loop_run_chunk(run_loop_t* st)
+RA8_INTERNAL static loop_action_t internal_run_loop_run_chunk(run_loop_t* st)
 {
   const emu_run_cfg_t* cfg = st->cfg;
-  if (run_inner(cfg->uc, cfg->vtor_base, &st->run_pc, &st->err)) {
+  if (priv_run_inner(cfg->uc, cfg->vtor_base, &st->run_pc, &st->err)) {
     return k_loop_break;
   }
   if (emu_prof_stop_hit()) {
     st->prof_stopped = true; /* RA8_EMU_STOP_PC reached -- end the profiled run. */
     return k_loop_break;
   }
-  /* AIRCR.SYSRESETREQ: latch a software-reset cause and warm reboot the firmware
-   * from its reset vector, then keep running. */
+  /* AIRCR.SYSRESETREQ: latch a software-reset cause and warm reboot the
+   * firmware from its reset vector, then keep running. */
   if (emu_exc_reboot_requested()) {
     board_periph_reset_set_cause(false, true, false, false); /* software reset */
-    st->run_pc = warm_reboot(cfg->uc, cfg->elf, cfg->elf_len, cfg->want_trace);
+    st->run_pc = warm_reboot(cfg->uc, cfg->elf, cfg->want_trace);
     emu_exc_clear_reboot_request();
     if (st->run_pc == 0U) {
-      return k_loop_break; /* reboot failed to reload the image -- end the run */
+      return k_loop_break; /* reboot failed to reload the image -- end the run
+                            */
     }
     return k_loop_continue;
   }
@@ -376,30 +375,26 @@ static loop_action_t run_loop_run_chunk(run_loop_t* st)
  * @param[in,out] st The run state.
  * @return void
  * @pre @p st is initialized and its engine is ready.
- * @pre With --record, @p st->composite is allocated.
+ * @pre With --record, @p st->presentation owns an open raw surface.
  * @post cpu1 has advanced one step.
  * @post A recorded frame count reflects any PPM written this chunk.
  * @note Not thread-safe; part of the single-threaded run loop.
  * @since 0.1.0
  */
-static void run_loop_record(run_loop_t* st)
+RA8_INTERNAL static void internal_run_loop_record(run_loop_t* st)
 {
   const emu_run_cfg_t* cfg = st->cfg;
-  /* Dual-core: step cpu1 interleaved with cpu0; a cpu1 fault just stops cpu1. */
+  /* Dual-core: step cpu1 interleaved with cpu0; a cpu1 fault just stops cpu1.
+   */
   emu_cpu1_step();
-  /* --record: dump the composite every k_record_every chunks as a numbered PPM. */
-  if ((cfg->record_dir != nullptr) && (st->composite != nullptr) &&
+  if (emu_memmap_is_poisoned(cfg->memory)) {
+    return;
+  }
+  /* --record: dump the composite every k_record_every chunks as a numbered PPM.
+   */
+  if ((cfg->record_dir != nullptr) && (st->presentation->fd >= 0) &&
       ((st->chunks % (uint32_t)k_record_every) == 0U)) {
-    build_composite(cfg->uc,
-                    st->panel_fb,
-                    st->rot_fb,
-                    st->composite,
-                    st->panel_w,
-                    st->panel_h,
-                    st->disp_w,
-                    st->disp_h,
-                    cfg->rotate_deg,
-                    cfg->win_title);
+    const bool built = build_composite(cfg->uc, st->presentation, cfg->win_title);
     enum : uint16_t {
       k_rec_path_cap = 1024U, /**< Recorded-frame path: `record_dir/frame_NNNNNN.ppm`. */
     };
@@ -409,7 +404,7 @@ static void run_loop_record(run_loop_t* st)
                    "%s/frame_%06u.ppm",
                    cfg->record_dir,
                    (unsigned)st->rec_frames);
-    if (write_ppm(fpath, st->composite, st->comp_w, st->comp_h) == 0) {
+    if (built && (write_ppm(fpath, st->presentation) == 0)) {
       st->rec_frames++;
     }
   }
@@ -425,14 +420,14 @@ static void run_loop_record(run_loop_t* st)
  *
  * @param[in,out] st The run state.
  * @return void
- * @pre @p st->view is a live window and its buffers are allocated.
+ * @pre @p st->view is live and its presentation surface is open.
  * @pre @p st->chunks is a multiple of k_view_present_every.
  * @post Either a frame was presented or the host CPU was yielded.
  * @post @p st->last_present_us tracks the last present time.
  * @note Not thread-safe; part of the single-threaded run loop.
  * @since 0.1.0
  */
-static void run_view_maybe_present(run_loop_t* st)
+RA8_INTERNAL static void internal_run_view_maybe_present(run_loop_t* st)
 {
   const emu_run_cfg_t* cfg    = st->cfg;
   struct timespec      ts_now = {};
@@ -440,18 +435,10 @@ static void run_view_maybe_present(run_loop_t* st)
   const uint64_t now_us = ((uint64_t)ts_now.tv_sec * (uint64_t)k_us_per_s) +
                           ((uint64_t)ts_now.tv_nsec / (uint64_t)k_ns_per_us);
   if ((now_us - st->last_present_us) >= (uint64_t)k_view_frame_us) {
-    build_composite(cfg->uc,
-                    st->panel_fb,
-                    st->rot_fb,
-                    st->composite,
-                    st->panel_w,
-                    st->panel_h,
-                    st->disp_w,
-                    st->disp_h,
-                    cfg->rotate_deg,
-                    cfg->win_title);
-    board_view_present(st->view, st->composite, st->comp_w, st->comp_h);
-    st->last_present_us = now_us;
+    if (build_composite(cfg->uc, st->presentation, cfg->win_title)) {
+      board_view_present(st->view, st->presentation);
+      st->last_present_us = now_us;
+    }
   } else {
     (void)usleep((useconds_t)k_view_yield_us);
   }
@@ -471,12 +458,13 @@ static void run_view_maybe_present(run_loop_t* st)
  * @retval k_loop_break The window was closed.
  * @retval k_loop_next  The window is still open; proceed.
  * @pre @p st->view is a live window.
- * @pre @p st is initialized and its buffers are allocated.
+ * @pre @p st is initialized and its presentation surface is open.
  * @post On k_loop_break, @p st->closed is true.
  * @note Not thread-safe; part of the single-threaded run loop.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-static loop_action_t run_loop_view(run_loop_t* st)
+RA8_INTERNAL static loop_action_t internal_run_loop_view(run_loop_t* st)
 {
   uint16_t cx = 0U;
   uint16_t cy = 0U;
@@ -502,7 +490,7 @@ static loop_action_t run_loop_view(run_loop_t* st)
   }
   emu_view_wheel(board_view_poll_scroll(st->view)); /* wheel pages the scrollback. */
   if ((st->chunks % (uint32_t)k_view_present_every) == 0U) {
-    run_view_maybe_present(st);
+    internal_run_view_maybe_present(st);
   }
   if (board_view_pump(st->view)) {
     st->closed = true;
@@ -512,7 +500,8 @@ static loop_action_t run_loop_view(run_loop_t* st)
 }
 
 /**
- * @brief Run the bounded post-click tail and the CPU-time wall guard (headless).
+ * @brief Run the bounded post-click tail and the CPU-time wall guard
+ * (headless).
  *
  * @details After the headless --click input lands (a drained touch or a fired
  * on-screen button) a bounded settle tail runs so the dumped frame shows the
@@ -527,8 +516,9 @@ static loop_action_t run_loop_view(run_loop_t* st)
  * @post On a wall-guard stop, @p st->timed_out is true.
  * @note Not thread-safe; part of the single-threaded run loop.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-static loop_action_t run_loop_click_tail(run_loop_t* st)
+RA8_INTERNAL static loop_action_t internal_run_loop_click_tail(run_loop_t* st)
 {
   const bool click_acted = (st->click_btn != k_board_overlay_btn_none)
                              ? st->button_fired
@@ -566,7 +556,7 @@ static loop_action_t run_loop_click_tail(run_loop_t* st)
  * @note Not thread-safe; part of the single-threaded run loop.
  * @since 0.1.0
  */
-static bool run_stop_prof_idle(run_loop_t* st)
+RA8_INTERNAL static bool internal_run_stop_prof_idle(run_loop_t* st)
 {
   if (!((emu_prof_mode() == k_prof_insn) && (st->cfg->record_dir == nullptr) &&
         (st->chunks >= st->guards.prof_idle_arm))) {
@@ -605,7 +595,7 @@ static bool run_stop_prof_idle(run_loop_t* st)
  * @note Not thread-safe; part of the single-threaded run loop.
  * @since 0.1.0
  */
-static bool run_stop_idle(run_loop_t* st)
+RA8_INTERNAL static bool internal_run_stop_idle(run_loop_t* st)
 {
   if (!((st->guards.idle_stop_chunks > 0U) && (st->cfg->record_dir == nullptr))) {
     return false;
@@ -645,7 +635,7 @@ static bool run_stop_idle(run_loop_t* st)
  * @note Not thread-safe; part of the single-threaded run loop.
  * @since 0.1.0
  */
-static bool run_stop_usb(run_loop_t* st)
+RA8_INTERNAL static bool internal_run_stop_usb(run_loop_t* st)
 {
   const bool recording = (st->cfg->record_dir != nullptr);
   if ((st->guards.usb_stop_settle > 0U) && !recording && board_usb_configured()) {
@@ -682,8 +672,9 @@ static bool run_stop_usb(run_loop_t* st)
  * @post @p st->usb_stopped is set true only when true is returned.
  * @note Not thread-safe; part of the single-threaded run loop.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-static bool run_stop_banner(run_loop_t* st)
+RA8_INTERNAL static bool internal_run_stop_banner(run_loop_t* st)
 {
   const char* const stop_on = st->guards.stop_on;
   if (stop_on == nullptr) {
@@ -718,15 +709,16 @@ static bool run_stop_banner(run_loop_t* st)
  * @post @p st->stop_sym_hit is set true only when true is returned.
  * @note Not thread-safe; part of the single-threaded run loop.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-static bool run_stop_sym(run_loop_t* st)
+RA8_INTERNAL static bool internal_run_stop_sym(run_loop_t* st)
 {
   const emu_run_cfg_t* cfg = st->cfg;
   if (cfg->stop_sym_addr == 0U) {
     return false;
   }
   uint32_t sv = 0U;
-  if ((uc_mem_read(cfg->uc, (uint64_t)cfg->stop_sym_addr, &sv, sizeof(sv)) == UC_ERR_OK) &&
+  if ((emu_mem_read(cfg->uc, (uint64_t)cfg->stop_sym_addr, &sv, sizeof(sv)) == UC_ERR_OK) &&
       (sv >= cfg->stop_sym_thresh)) {
     st->stop_sym_hit = true;
     return true;
@@ -749,8 +741,9 @@ static bool run_stop_sym(run_loop_t* st)
  * @post @p st->timed_out is set true only when true is returned.
  * @note Not thread-safe; part of the single-threaded run loop.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-static bool run_stop_wall(run_loop_t* st)
+RA8_INTERNAL static bool internal_run_stop_wall(run_loop_t* st)
 {
   if (st->guards.wall_guard_on &&
       (((double)(clock() - st->t0) / (double)CLOCKS_PER_SEC) >= st->guards.wall_s)) {
@@ -778,11 +771,12 @@ static bool run_stop_wall(run_loop_t* st)
  * @post The stop-cause flag for the firing stop is set.
  * @note Not thread-safe; part of the single-threaded run loop.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-static loop_action_t run_loop_headless(run_loop_t* st)
+RA8_INTERNAL static loop_action_t internal_run_loop_headless(run_loop_t* st)
 {
-  if (run_stop_prof_idle(st) || run_stop_idle(st) || run_stop_usb(st) || run_stop_banner(st) ||
-      run_stop_sym(st) || run_stop_wall(st)) {
+  if (internal_run_stop_prof_idle(st) || internal_run_stop_idle(st) || internal_run_stop_usb(st) ||
+      internal_run_stop_banner(st) || internal_run_stop_sym(st) || internal_run_stop_wall(st)) {
     return k_loop_break;
   }
   return k_loop_next;
@@ -803,16 +797,17 @@ static loop_action_t run_loop_headless(run_loop_t* st)
  * @post The relevant stop-cause / closed flag is set on k_loop_break.
  * @note Not thread-safe; part of the single-threaded run loop.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-static loop_action_t run_loop_present_and_stops(run_loop_t* st)
+RA8_INTERNAL static loop_action_t internal_run_loop_present_and_stops(run_loop_t* st)
 {
   if (st->view != nullptr) {
-    return run_loop_view(st);
+    return internal_run_loop_view(st);
   }
   if (st->cfg->want_click) {
-    return run_loop_click_tail(st);
+    return internal_run_loop_click_tail(st);
   }
-  return run_loop_headless(st);
+  return internal_run_loop_headless(st);
 }
 
 /**
@@ -825,32 +820,43 @@ static loop_action_t run_loop_present_and_stops(run_loop_t* st)
  *
  * @param[in,out] st The run state.
  * @return void
- * @pre @p st is fully initialized by ::run_loop_setup.
+ * @pre @p st is fully initialized by ::internal_run_loop_setup.
  * @pre The engine and seams are ready.
  * @post @p st holds the run's final PC, counters and stop-cause flags.
  * @note Not thread-safe; this IS the single-threaded run.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-static void run_loop(run_loop_t* st)
+RA8_INTERNAL static void internal_run_loop(run_loop_t* st)
 {
   for (; st->chunks < st->guards.max_chunks; st->chunks++) {
-    const loop_action_t pro = run_loop_prologue(st);
+    const loop_action_t pro = internal_run_loop_prologue(st);
     if (pro == k_loop_break) {
       break;
     }
     if (pro == k_loop_continue) {
       continue;
     }
-    run_loop_tick_inputs(st);
-    const loop_action_t chunk = run_loop_run_chunk(st);
+    internal_run_loop_tick_inputs(st);
+    const loop_action_t chunk = internal_run_loop_run_chunk(st);
+    if (emu_memmap_is_poisoned(st->cfg->memory)) {
+      (void)emu_memmap_reconcile(st->cfg->memory);
+      st->err = UC_ERR_RESOURCE;
+      break;
+    }
     if (chunk == k_loop_break) {
       break;
     }
     if (chunk == k_loop_continue) {
       continue;
     }
-    run_loop_record(st);
-    if (run_loop_present_and_stops(st) == k_loop_break) {
+    internal_run_loop_record(st);
+    if (emu_memmap_is_poisoned(st->cfg->memory)) {
+      (void)emu_memmap_reconcile(st->cfg->memory);
+      st->err = UC_ERR_RESOURCE;
+      break;
+    }
+    if (internal_run_loop_present_and_stops(st) == k_loop_break) {
       break;
     }
   }
@@ -859,10 +865,10 @@ static void run_loop(run_loop_t* st)
 int emu_run_and_report(const emu_run_cfg_t* cfg)
 {
   run_loop_t st = {};
-  run_loop_setup(cfg, &st);
-  run_loop(&st);
-  run_report(&st);
-  run_write_outputs(&st);
-  run_hold_view(&st);
-  return run_cleanup(&st);
+  internal_run_loop_setup(cfg, &st);
+  internal_run_loop(&st);
+  priv_run_report(&st);
+  priv_run_write_outputs(&st);
+  priv_run_hold_view(&st);
+  return priv_run_cleanup(&st);
 }

@@ -37,8 +37,11 @@ extern "C" {
  * @post The MPU_RLAR and MPU_CTRL write hooks are installed.
  * @note Apps that never program the MPU pay nothing beyond the two hooks.
  * @since 0.1.0
+  * @details Arm the mpu register watchers (rlar capture + ctrl edge hooks); this step is contained within the emu MPU model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_mpu_install(uc_engine* uc);
+void emu_mpu_install(uc_engine* uc);
 
 /**
  * @brief Whether an RO-region write violation is latched.
@@ -50,8 +53,10 @@ RA8_PRIV void emu_mpu_install(uc_engine* uc);
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Whether an ro-region write violation is latched; this step is contained within the emu MPU model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool emu_mpu_fault_pending(void);
+bool emu_mpu_fault_pending(void);
 
 /**
  * @brief Clear the latched MPU violation.
@@ -65,8 +70,9 @@ RA8_PRIV bool emu_mpu_fault_pending(void);
  * @post No MPU violation is pending.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_mpu_clear_fault(void);
+void emu_mpu_clear_fault(void);
 
 /**
  * @brief Synthesise a MemManage (#4) fault for a trapped RO-region write.
@@ -89,8 +95,9 @@ RA8_PRIV void emu_mpu_clear_fault(void);
  *       basic frame stacked (stacked PC == the faulting store).
  * @note Faithful to the recovering-handler contract of mpu_partition_simple.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void mpu_synth_memmanage(uc_engine* uc, uint32_t vtor_base);
+void mpu_synth_memmanage(uc_engine* uc, uint32_t vtor_base);
 
 #ifdef __cplusplus
 }

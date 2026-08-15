@@ -24,6 +24,8 @@
 #include <stdint.h>
 #include <unicorn/unicorn.h>
 
+#include "emu_elf.h"
+#include "emu_memmap.h"
 #include "ra8_attributes.h"
 
 #ifdef __cplusplus
@@ -48,8 +50,9 @@ extern "C" {
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @see emu_cpu1_step()  Consumes the release latch.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_cpu1_notify_mmio_write(uint64_t mmio_abs, uint64_t value);
+void emu_cpu1_notify_mmio_write(uint64_t mmio_abs, uint64_t value);
 
 /**
  * @brief Create the second emulator engine for cpu1, if the image carries one.
@@ -58,23 +61,36 @@ RA8_PRIV void emu_cpu1_notify_mmio_write(uint64_t mmio_abs, uint64_t value);
  * Only dual-core firmware (a PT_LOAD segment in the MRAM_CPU1 window) gets a
  * cpu1 engine, so single-core apps pay nothing. The engine maps the same
  * regions as cpu0 but binds the on-chip SRAM (and its NS alias) to the shared
- * host buffer so cross-core IPC over shared SRAM is coherent, maps the
- * peripheral windows through the same MMIO model, and loads the full ELF so
- * cpu1 can boot from its own vector table when released. The engine is left
- * idle -- emu_cpu1_step() boots it on the CPU1ACTCSR release.
+ * authoritative sparse backing so cross-core IPC over shared SRAM is coherent,
+ * maps the peripheral windows through the same MMIO model, and loads the full
+ * ELF so cpu1 can boot from its own vector table when released. The engine is
+ * left idle -- emu_cpu1_step() boots it on the CPU1ACTCSR release.
  *
- * @param[in] elf     The firmware image (cpu0 + cpu1).
- * @param[in] elf_len Length of @p elf, bytes.
+ * @param[in] elf Open firmware source carrying cpu0 and optional cpu1 segments.
+ * @param[in,out] memory Open caller-owned backing shared with cpu0.
  * @return Nothing (the engine handle stays module-private).
- * @pre emu_memmap_init() succeeded (the shared SRAM backing exists).
- * @pre @p elf is a valid ELF still resident (called before it is freed).
+ * @pre emu_memmap_open() and the cpu0 attach succeeded.
+ * @pre @p elf is valid and remains open for cpu1 detection and loading.
  * @post On a dual-core image a Cortex-M33 engine mirrors cpu0's map with
  *       shared SRAM; otherwise no engine exists and stepping is a no-op.
  * @post No cpu1 instruction has executed yet (idle until released).
  * @note cpu1's PPB / peripheral writes stay private to its engine.
  * @since 0.1.0
  */
-RA8_PRIV void emu_cpu1_init(const uint8_t* elf, long elf_len);
+void emu_cpu1_init(const emu_elf_source_t* elf, emu_memmap_workspace_t* memory);
+
+/**
+ * @brief Detach and close the optional cpu1 engine.
+ * @param[in,out] memory Backing supplied to ::emu_cpu1_init.
+ * @return Nothing.
+ * @post The cpu1 binding no longer participates in publications.
+ * @post Repeated calls are harmless.
+ * @since 0.1.0
+  * @details Detach and close the optional cpu1 engine; this step is contained within the emu cpu1 model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for emu cpu1 close. @pre The call executes on the emulator's single owning thread.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ */
+void emu_cpu1_close(emu_memmap_workspace_t* memory);
 
 /**
  * @brief Boot cpu1 on a pending release, then step it one interleave chunk.
@@ -92,8 +108,9 @@ RA8_PRIV void emu_cpu1_init(const uint8_t* elf, long elf_len);
  * @post cpu1 advanced up to one interleave chunk (or stayed idle/halted).
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_cpu1_step(void);
+void emu_cpu1_step(void);
 
 #ifdef __cplusplus
 }

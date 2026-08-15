@@ -35,6 +35,7 @@
 #include <stdio.h>
 
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief PVD status-window geometry (ra8_lvd_regs.h). */
 typedef enum : uint64_t {
@@ -67,14 +68,33 @@ typedef struct {
 
 static lvd_state_t s_lvd;
 
-/** @brief Reset the LVD model to power-on state. */
-static void lvd_reset(void)
+/**
+ * @brief Reset the LVD model to power-on state.
+ * @details Reset the lvd model to power-on state; this step is contained within the board periph lvd model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for lvd reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph lvd model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_lvd_reset(void)
 {
   s_lvd = (lvd_state_t){};
 }
 
-/** @brief MMIO read inside the PVD status window. */
-static uint64_t lvd_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the PVD status window.
+ * @details MMIO read inside the pvd status window; this step is contained within the board periph lvd model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The lvd read result produced by the board periph lvd model.
+ * @retval value The operation-specific lvd read value.
+ * @pre Arguments satisfy the ranges documented for lvd read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph lvd model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_lvd_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -92,8 +112,20 @@ static uint64_t lvd_read(uc_engine* uc, uint64_t addr, unsigned size)
   return 0U;
 }
 
-/** @brief MMIO write inside the PVD status window. */
-static void lvd_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the PVD status window.
+ * @details MMIO write inside the pvd status window; this step is contained within the board periph lvd model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for lvd write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph lvd model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_lvd_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
@@ -106,30 +138,37 @@ static void lvd_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
   /* PVDmSR writes (DET write-0-to-clear) are absorbed: MON stays "above". */
 }
 
-/** @brief End-of-run LVD section: status reads served. */
-static void lvd_report(void)
+/**
+ * @brief End-of-run LVD section: status reads served.
+ * @details End-of-run lvd section: status reads served; this step is contained within the board periph lvd model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for lvd report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph lvd model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_lvd_report(void)
 {
   if (s_lvd.reads == 0U) {
     return; /* Untouched: stay quiet. */
   }
-  (void)fprintf(stderr, "  LVD/PVD       : status reads=%u (MON=above, DET=0)\n", s_lvd.reads);
+  (void)priv_emu_io_errf("  LVD/PVD       : status reads=%u (MON=above, DET=0)\n", s_lvd.reads);
 }
 
 /** @brief LVD status-window descriptor (self-registered with the core). */
-static const board_periph_block_t k_lvd_block = {
+static const board_periph_block_t s_k_lvd_block = {
   .base   = (uint64_t)k_lvd_base,
   .span   = (uint64_t)k_lvd_span,
   .order  = (uint32_t)k_lvd_block_order,
-  .read   = lvd_read,
-  .write  = lvd_write,
+  .read   = internal_lvd_read,
+  .write  = internal_lvd_write,
   .tick   = nullptr,
-  .reset  = lvd_reset,
-  .report = lvd_report,
+  .reset  = internal_lvd_reset,
+  .report = internal_lvd_report,
   .name   = "LVD/PVD",
 };
 
 /** @brief Register the LVD status window before main (host constructor). */
-[[gnu::constructor]] static void lvd_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_lvd_block_register(void)
 {
-  board_periph_register_block(&k_lvd_block);
+  board_periph_register_block(&s_k_lvd_block);
 }

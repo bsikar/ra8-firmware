@@ -25,8 +25,9 @@
 #include "board_periph_sd.h"
 #include "board_usb.h"
 #include "emu_exc.h"
-#include "emu_memmap.h"
+#include "emu_host_io_internal.h"
 #include "emu_mmio.h"
+#include "emu_view_surface_internal.h"
 
 /* Touch on the EK-RA8D2 is now modelled end-to-end: the firmware's real
  * ra8_touch_open / ra8_touch_read run unchanged and drive the GoodIX GT911 over
@@ -34,25 +35,6 @@
  * models as an I2C bus with a GT911 device. ra8_emulator feeds --click / window
  * clicks into that device (board_periph_touch_inject), so a tap returns through
  * the genuine ra8_touch -> I3C -> GT911 path -- there is no function-level stub. */
-
-/* GLCDC graphics-layer 1 (GR1) framebuffer registers + field decode. The HAL
- * programs FLM6.FORMAT[30:28], FLM3.LNOFF[31:16] (line stride in bytes), and
- * FLM5.LNNUM[26:16] (lines - 1); reverse those to recover the framebuffer. */
-typedef enum : uint64_t {
-  k_glcdc_gr1_saddr = 0x4034310CUL, /**< GR[0].FLM2 framebuffer base.      */
-  k_glcdc_gr1_flm3  = 0x40343110UL, /**< GR[0].FLM3 line stride (LNOFF).   */
-  k_glcdc_gr1_flm5  = 0x40343118UL, /**< GR[0].FLM5 lines (LNNUM/DATANUM). */
-  k_glcdc_gr1_fmt   = 0x4034311CUL, /**< GR[0].FLM6 pixel FORMAT.          */
-} glcdc_gr_t;
-
-typedef enum : uint32_t {
-  k_glcdc_fmt_rgb565  = 2U,      /**< FLM6.FORMAT code for RGB565.             */
-  k_glcdc_fmt_shift   = 28U,     /**< FORMAT[30:28].                           */
-  k_glcdc_fmt_mask    = 0x7U,    /**< FORMAT field width.                      */
-  k_glcdc_high_shift  = 16U,     /**< FLM3 stride / FLM5 lnnum live in [*:16]. */
-  k_glcdc_stride_mask = 0xFFFFU, /**< FLM3.LNOFF is 16 bits.                   */
-  k_glcdc_lnnum_mask  = 0x7FFU,  /**< FLM5.LNNUM is 11 bits.                   */
-} glcdc_decode_t;
 
 /* Run-state telemetry the board view shows (updated by the run loop each
  * present): the current PC, the emulation-chunk counter, and whether the run
@@ -82,120 +64,16 @@ static board_primary_core_t s_primary_core = k_core_m85;
 static bool                 s_low_power    = false;
 
 /**
- * @enum colour_pack_t
- * @brief Field masks/shifts for 24-bit RGB888 <-> 16-bit RGB565 packing.
+ * @brief Snapshot the LED / USB / UART / IRQ / switch / battery / SD state.
+ * @details Snapshot the led / usb / uart / irq / switch / battery / sd state; this step is contained within the emu view model and uses bounded caller or module-owned storage.
+ * @param[in,out] st Board-status snapshot used to render or report state.
+ * @param[in] app_name App name input used by the operation.
+ * @pre Arguments satisfy the ranges documented for fill status hw. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-typedef enum : uint32_t {
-  k_rgb888_r_shift = 16U,         /**< Red byte position in 0x00RRGGBB.         */
-  k_rgb888_g_shift = 8U,          /**< Green byte position in 0x00RRGGBB.       */
-  k_rgb565_r5_keep = 0xF8U,       /**< Top 5 bits of an 8-bit red channel.      */
-  k_rgb565_g6_keep = 0xFCU,       /**< Top 6 bits of an 8-bit green channel.    */
-  k_rgb565_r_pos   = 8U,          /**< Red field shift when packing RGB565.     */
-  k_rgb565_g_pos   = 3U,          /**< Green field shift when packing RGB565.   */
-  k_rgb565_b_drop  = 3U,          /**< Bits dropped from an 8-bit blue channel. */
-  k_rgb888_mask    = 0x00FFFFFFU, /**< 24-bit colour (BG_BGC low bytes).        */
-  k_rgb565_r_shift = 11U,         /**< Red field position in RGB565.            */
-  k_rgb565_g_shift = 5U,          /**< Green field position in RGB565.          */
-  k_rgb565_5bit    = 0x1FU,       /**< 5-bit channel mask (red / blue).         */
-  k_rgb565_6bit    = 0x3FU,       /**< 6-bit channel mask (green).              */
-} colour_pack_t;
-
-/** @brief Pack a 0x00RRGGBB colour into RGB565. */
-static uint16_t rgb888_to_565(uint32_t rgb)
-{
-  const uint32_t r = (rgb >> (uint32_t)k_rgb888_r_shift) & (uint32_t)k_byte_mask;
-  const uint32_t g = (rgb >> (uint32_t)k_rgb888_g_shift) & (uint32_t)k_byte_mask;
-  const uint32_t b = rgb & (uint32_t)k_byte_mask;
-  return (uint16_t)(((r & (uint32_t)k_rgb565_r5_keep) << (uint32_t)k_rgb565_r_pos) |
-                    ((g & (uint32_t)k_rgb565_g6_keep) << (uint32_t)k_rgb565_g_pos) |
-                    (b >> (uint32_t)k_rgb565_b_drop));
-}
-
-/** @brief True if addr is in an emulated RAM region a framebuffer could use. */
-static bool addr_is_ram(uint32_t addr)
-{
-  return (((addr >= (uint32_t)k_dtcm_base) && (addr < (uint32_t)k_dtcm_end)) ||
-          ((addr >= (uint32_t)k_sram_base) && (addr < (uint32_t)k_sram_end)) ||
-          ((addr >= (uint32_t)k_sdram_base) && (addr < (uint32_t)k_sdram_end)));
-}
-
-/**
- * @brief Build the current display frame (RGB565) from emulated GLCDC state.
- *
- * @details
- * Fills the buffer with the BG_BGC background colour (what lcd_color_cycle
- * scans out), then, if GR1 has an RGB565 framebuffer programmed in emulated
- * RAM, blits it over the top-left -- so apps that draw real pixels into a
- * graphics layer (e.g. display_pal_animation) show their actual content. The
- * GR1 base/stride/lines are read live each call, so a double-buffered or
- * animating app updates frame to frame.
- *
- * @param[in]  uc Unicorn engine (read-only here).
- * @param[out] fb RGB565 frame buffer of width*height pixels.
- * @param[in]  width_px  Frame width.
- * @param[in]  height_px Frame height.
- */
-static void build_frame(uc_engine* uc, uint16_t* fb, uint16_t width_px, uint16_t height_px)
-{
-  /* Read GLCDC registers from the stable shadow (mmio_peek), never the guest-
-   * facing toggling read -- otherwise a firmware that never programs the GLCDC
-   * makes the panel strobe black<->white (see mmio_peek). */
-  const uint16_t bg = rgb888_to_565(mmio_peek((uint64_t)k_glcdc_bg_bgc) & (uint32_t)k_rgb888_mask);
-  const size_t   n  = (size_t)width_px * (size_t)height_px;
-  for (size_t i = 0U; i < n; i++) {
-    fb[i] = bg;
-  }
-
-  const uint32_t saddr = mmio_peek((uint64_t)k_glcdc_gr1_saddr);
-  const uint32_t fmt   = (mmio_peek((uint64_t)k_glcdc_gr1_fmt) >> (uint32_t)k_glcdc_fmt_shift) &
-                         (uint32_t)k_glcdc_fmt_mask;
-  if (!addr_is_ram(saddr) || (fmt != (uint32_t)k_glcdc_fmt_rgb565)) {
-    return; /* no graphics layer -- background-only frame */
-  }
-  const uint32_t stride = (mmio_peek((uint64_t)k_glcdc_gr1_flm3) >> (uint32_t)k_glcdc_high_shift) &
-                          (uint32_t)k_glcdc_stride_mask;
-  const uint32_t lnnum  = (mmio_peek((uint64_t)k_glcdc_gr1_flm5) >> (uint32_t)k_glcdc_high_shift) &
-                          (uint32_t)k_glcdc_lnnum_mask;
-  if (stride < 2U) {
-    return;
-  }
-  const uint32_t fb_w = stride / 2U; /* RGB565: 2 bytes per pixel */
-  const uint32_t fb_h = lnnum + 1U;
-  const uint32_t cw   = (fb_w < (uint32_t)width_px) ? fb_w : (uint32_t)width_px;
-  const uint32_t ch   = (fb_h < (uint32_t)height_px) ? fb_h : (uint32_t)height_px;
-  for (uint32_t y = 0U; y < ch; y++) {
-    (void)uc_mem_read(uc,
-                      (uint64_t)saddr + ((uint64_t)y * (uint64_t)stride),
-                      &fb[(size_t)y * (size_t)width_px],
-                      (size_t)cw * sizeof(uint16_t));
-  }
-}
-
-/** @brief Write an RGB565 frame to a binary PPM (P6) for headless inspection. */
-int write_ppm(const char* path, const uint16_t* fb, uint16_t width_px, uint16_t height_px)
-{
-  FILE* f = fopen(path, "wb"); /* alloc-allow: host dev tool, not firmware */
-  if (f == nullptr) {
-    return -1;
-  }
-  (void)fprintf(f, "P6\n%u %u\n255\n", (unsigned)width_px, (unsigned)height_px);
-  const size_t n = (size_t)width_px * (size_t)height_px;
-  for (size_t i = 0U; i < n; i++) {
-    const uint16_t p      = fb[i];
-    const uint32_t r5     = (uint32_t)((p >> (uint32_t)k_rgb565_r_shift) & (uint32_t)k_rgb565_5bit);
-    const uint32_t g6     = (uint32_t)((p >> (uint32_t)k_rgb565_g_shift) & (uint32_t)k_rgb565_6bit);
-    const uint32_t b5     = (uint32_t)(p & (uint32_t)k_rgb565_5bit);
-    const uint8_t  rgb[3] = {(uint8_t)((r5 << 3) | (r5 >> 2)),
-                             (uint8_t)((g6 << 2) | (g6 >> 4)),
-                             (uint8_t)((b5 << 3) | (b5 >> 2))};
-    (void)fwrite(rgb, 1U, 3U, f);
-  }
-  (void)fclose(f);
-  return 0;
-}
-
-/** @brief Snapshot the LED / USB / UART / IRQ / switch / battery / SD state. */
-static void fill_status_hw(board_status_t* st, const char* app_name)
+RA8_INTERNAL static void internal_fill_status_hw(board_status_t* st, const char* app_name)
 {
   static const char* const k_led_labels[k_overlay_led_count] = {"LED1", "LED2", "LED3"};
   *st                                                        = (board_status_t){};
@@ -237,8 +115,9 @@ static void fill_status_hw(board_status_t* st, const char* app_name)
  * @post `st->console_active_ch` reflects the current channel.
  *
  * @note Not thread-safe; the viewer is single-threaded host-side.
+  * @since 0.1.0
  */
-static void fill_console_tabs(board_status_t* st)
+RA8_INTERNAL static void internal_fill_console_tabs(board_status_t* st)
 {
   st->console_ch_count  = (uint32_t)k_board_console_ch_count;
   st->console_active_ch = (uint32_t)s_view_console_ch;
@@ -272,8 +151,10 @@ static void fill_console_tabs(board_status_t* st)
  * @post `s_view_log_seen` is updated to @p total.
  *
  * @note Not thread-safe; the viewer is single-threaded host-side.
+  * @retval value The operation-specific console advance scroll value.
+ * @since 0.1.0
  */
-static uint32_t console_advance_scroll(uint32_t avail, uint32_t total)
+RA8_INTERNAL static uint32_t internal_console_advance_scroll(uint32_t avail, uint32_t total)
 {
   if (s_view_autoscroll) {
     s_view_scroll = 0U; /* follow the live tail */
@@ -293,16 +174,25 @@ static uint32_t console_advance_scroll(uint32_t avail, uint32_t total)
   return s_view_scroll;
 }
 
-static void fill_status_console(board_status_t* st)
+/**
+ * @brief Perform fill status console for the emu view model.
+ * @details Perform fill status console for the emu view model; this step is contained within the emu view model and uses bounded caller or module-owned storage.
+ * @param[in,out] st Board-status snapshot used to render or report state.
+ * @pre Arguments satisfy the ranges documented for fill status console. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_fill_status_console(board_status_t* st)
 {
-  fill_console_tabs(st);
+  internal_fill_console_tabs(st);
   /* Console window: copy up to k_overlay_console_rows lines from the active
    * channel's scrollback ring, starting `scroll` lines back from the newest,
    * so the mouse-wheel can page through history. console[0] is the newest
    * visible line (= ring line `scroll`). */
   const uint32_t avail  = board_console_count(s_view_console_ch);
   const uint32_t total  = board_console_total(s_view_console_ch);
-  const uint32_t scroll = console_advance_scroll(avail, total);
+  const uint32_t scroll = internal_console_advance_scroll(avail, total);
   uint32_t       rows   = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_overlay_console_rows; i++) {
     const char* line = board_console_line(s_view_console_ch, scroll + i);
@@ -337,46 +227,15 @@ static void fill_status_console(board_status_t* st)
  * @param[out] st        Status struct to fill.
  * @param[in]  app_name  Window / app title to caption the sidebar with.
  * @return Nothing.
+  * @pre Arguments satisfy the ranges documented for fill status. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static void fill_status(board_status_t* st, const char* app_name)
+RA8_INTERNAL static void internal_fill_status(board_status_t* st, const char* app_name)
 {
-  fill_status_hw(st, app_name);
-  fill_status_console(st);
-}
-
-/**
- * @brief Rotate a row-major RGB565 panel (@p sw x @p sh) into @p dst, @p deg CW.
- *
- * @param[in]  src Source RGB565 panel, row-major, @p sw by @p sh.
- * @param[in]  sw  Source panel width in pixels.
- * @param[in]  sh  Source panel height in pixels.
- * @param[out] dst Destination RGB565 buffer sized for the rotated panel.
- * @param[in]  deg Clockwise rotation in degrees (0, 90, 180, 270).
- * @return Nothing.
- */
-static void rotate_panel(const uint16_t* src, uint16_t sw, uint16_t sh, uint16_t* dst, uint32_t deg)
-{
-  for (uint16_t y = 0U; y < sh; y++) {
-    for (uint16_t x = 0U; x < sw; x++) {
-      const uint16_t p  = src[((size_t)y * (size_t)sw) + (size_t)x];
-      uint32_t       dx = x;
-      uint32_t       dy = y;
-      uint32_t       dw = sw;
-      if (deg == (uint32_t)k_rotate_90) {
-        dx = (uint32_t)(sh - 1U - y);
-        dy = x;
-        dw = sh;
-      } else if (deg == (uint32_t)k_rotate_180) {
-        dx = (uint32_t)(sw - 1U - x);
-        dy = (uint32_t)(sh - 1U - y);
-      } else if (deg == (uint32_t)k_rotate_270) {
-        dx = y;
-        dy = (uint32_t)(sw - 1U - x);
-        dw = sh;
-      }
-      dst[((size_t)dy * (size_t)dw) + (size_t)dx] = p;
-    }
-  }
+  internal_fill_status_hw(st, app_name);
+  internal_fill_status_console(st);
 }
 
 /** @brief Map a click in the rotated displayed panel back to native panel coords. */
@@ -509,30 +368,25 @@ board_overlay_btn_t route_click(uint16_t cx,
   return k_board_overlay_btn_none;
 }
 
-void build_composite(uc_engine*  uc,
-                     uint16_t*   panel_fb,
-                     uint16_t*   rot_fb,
-                     uint16_t*   composite,
-                     uint16_t    panel_w,
-                     uint16_t    panel_h,
-                     uint16_t    disp_w,
-                     uint16_t    disp_h,
-                     uint32_t    rotate_deg,
-                     const char* app_name)
+bool build_composite(uc_engine*                    uc,
+                     emu_presentation_workspace_t* presentation,
+                     const char*                   app_name)
 {
-  build_frame(uc, panel_fb, panel_w, panel_h);
-  const uint16_t* shown = panel_fb;
-  if ((rotate_deg != (uint32_t)k_rotate_0) && (rot_fb != nullptr)) {
-    rotate_panel(panel_fb, panel_w, panel_h, rot_fb, rotate_deg);
-    shown = rot_fb;
-  }
   board_status_t st = {};
-  fill_status(&st, app_name);
-  board_overlay_compose(composite, shown, disp_w, disp_h, &st);
+  internal_fill_status(&st, app_name);
+  return priv_emu_view_surface_build(uc, presentation, &st);
 }
 
-/** @brief Trim trailing space/tab/CR/LF in place. */
-static void panel_rstrip(char* s)
+/**
+ * @brief Trim trailing space/tab/CR/LF in place.
+ * @details Trim trailing space/tab/cr/lf in place; this step is contained within the emu view model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @pre Arguments satisfy the ranges documented for panel rstrip. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_panel_rstrip(char* s)
 {
   size_t n = strlen(s);
   while (n > 0U) {
@@ -565,8 +419,10 @@ static void panel_rstrip(char* s)
  * @post On false, `*key` and `*val` are untouched.
  *
  * @note Not thread-safe; the viewer is single-threaded host-side.
+  * @retval true The panel split kv condition holds or completed successfully; false otherwise.
+ * @since 0.1.0
  */
-static bool panel_split_kv(char* line, char** key, char** val)
+RA8_INTERNAL static bool internal_panel_split_kv(char* line, char** key, char** val)
 {
   char* p = line;
   while ((*p == ' ') || (*p == '\t')) {
@@ -584,8 +440,8 @@ static bool panel_split_kv(char* line, char** key, char** val)
   while ((*v == ' ') || (*v == '\t')) {
     v++;
   }
-  panel_rstrip(p);
-  panel_rstrip(v);
+  internal_panel_rstrip(p);
+  internal_panel_rstrip(v);
   *key = p;
   *val = v;
   return true;
@@ -603,8 +459,10 @@ static bool panel_split_kv(char* line, char** key, char** val)
  * @post A value longer than the field is truncated rather than rejected.
  *
  * @note Not thread-safe; the viewer is single-threaded host-side.
+  * @details Copy the panel `name` value into @p out, stripping optional quotes; this step is contained within the emu view model and uses bounded caller or module-owned storage.
+ * @since 0.1.0
  */
-static void panel_set_name(board_panel_t* out, const char* val)
+RA8_INTERNAL static void internal_panel_set_name(board_panel_t* out, const char* val)
 {
   const char* s = val;
   size_t      n = strlen(s);
@@ -632,54 +490,91 @@ static void panel_set_name(board_panel_t* out, const char* val)
  * @post Unknown keys are ignored so newer configs stay loadable.
  *
  * @note Not thread-safe; the viewer is single-threaded host-side.
+  * @details Apply one recognised `key=value` pair to @p out; unknown keys are ignored; this step is contained within the emu view model and uses bounded caller or module-owned storage.
+ * @since 0.1.0
  */
-static void panel_apply_kv(board_panel_t* out, const char* key, const char* val)
+RA8_INTERNAL static void
+internal_panel_apply_kv(board_panel_t* out, const char* key, const char* val)
 {
   if (strncmp(key, "width", sizeof("width")) == 0) {
     out->width = (uint16_t)strtol(val, nullptr, (int)k_strtol_base10);
   } else if (strncmp(key, "height", sizeof("height")) == 0) {
     out->height = (uint16_t)strtol(val, nullptr, (int)k_strtol_base10);
   } else if (strncmp(key, "name", sizeof("name")) == 0) {
-    panel_set_name(out, val);
+    internal_panel_set_name(out, val);
   } else {
     /* Unknown key: ignored on purpose. */
   }
 }
 
 /**
- * @brief Load a panel descriptor (name / width / height) from a TOML-ish file.
- *
- * @details
- * A flat ``key = value`` panel descriptor (see ``tools/ra8_emulator/panels/``), so
- * the board emulator becomes whatever display a config describes -- not just the
- * EK-RA8D2 1024x600. Dependency-free bounded parser (strncmp / strtol, no
- * dynamic allocation beyond the FILE handle); blank lines and '#' comments are
- * ignored and quotes are stripped from the name.
- *
- * @param[in]  path Panel config path.
- * @param[out] out  Filled descriptor on success.
- * @return true if a valid width/height were parsed.
+ * @brief Parse bounded panel-config text already loaded into memory.
+ * @details Splits newline-delimited records in place and applies recognised key/value pairs.
+ * @param[in,out] text Writable NUL-terminated config text.
+ * @param[in,out] out Descriptor receiving recognised values.
+ * @return True when every input line respected the configured bound.
+ * @retval true All lines were bounded and parsed or ignored.
+ * @retval false At least one line exceeded k_panel_line_max.
+ * @pre @p text is non-null, writable, and NUL-terminated.
+ * @pre @p out is non-null and initialised by the caller.
+ * @post Newline separators inspected by the parser are replaced with NUL.
+ * @post Recognised keys update @p out in input order.
+ * @note Not thread-safe; the viewer is single-threaded host-side.
+ * @since 0.1.0
  */
-bool load_panel(const char* path, board_panel_t* out)
+RA8_INTERNAL static bool internal_parse_panel(char* text, board_panel_t* out)
 {
-  (void)memset(out, 0, sizeof(*out));
-  FILE* f = fopen(path, "r"); /* alloc-allow: host dev tool, not firmware */
-  if (f == nullptr) {
-    (void)fprintf(stderr, "ra8_emulator: cannot open panel config %s\n", path);
-    return false;
-  }
-  char line[k_panel_line_max];
-  while (fgets(line, (int)sizeof(line), f) != nullptr) {
+  char* line = text;
+  while (*line != '\0') {
+    char* const end = strchr(line, '\n');
+    if (end != nullptr) {
+      *end = '\0';
+    }
+    if (strlen(line) >= (size_t)k_panel_line_max) {
+      return false;
+    }
     char* key = nullptr;
     char* val = nullptr;
-    if (panel_split_kv(line, &key, &val)) {
-      panel_apply_kv(out, key, val);
+    if (internal_panel_split_kv(line, &key, &val)) {
+      internal_panel_apply_kv(out, key, val);
     }
+    if (end == nullptr) {
+      break;
+    }
+    line = end + 1;
   }
-  (void)fclose(f);
-  if ((out->width == 0U) || (out->width > (uint16_t)k_panel_dim_max) || (out->height == 0U) ||
-      (out->height > (uint16_t)k_panel_dim_max)) {
-    (void)fprintf(stderr, "ra8_emulator: panel %s: width/height missing or out of range\n", path);
+  return true;
+}
+
+/* See the public header for the documented contract. */
+bool load_panel(const char* path, board_panel_t* out)
+{
+  enum : size_t {
+    k_panel_file_cap = 4096U, /**< Maximum accepted panel-description byte count. */
+  };
+  if ((path == nullptr) || (out == nullptr)) {
+    return false;
+  }
+  (void)memset(out, 0, sizeof(*out));
+  emu_io_file_t file = {.fd = -1, .size = 0};
+  if ((priv_emu_io_open_read(path, &file).status != k_emu_io_ok) || (file.size <= 0) ||
+      ((uint64_t)file.size > k_panel_file_cap)) {
+    if (file.fd >= 0) {
+      (void)priv_emu_io_close(&file);
+    }
+    (void)priv_emu_io_errf("ra8_emulator: cannot open panel config %s\n", path);
+    return false;
+  }
+  const size_t length = (size_t)file.size;
+  char         config[k_panel_file_cap + 1U];
+  const bool   read_ok = priv_emu_io_read_exact(file.fd, config, length).status == k_emu_io_ok;
+  config[length]       = '\0';
+  (void)priv_emu_io_close(&file);
+  const bool valid = read_ok && internal_parse_panel(config, out) && (out->width != 0U) &&
+                     (out->width <= (uint16_t)k_panel_dim_max) && (out->height != 0U) &&
+                     (out->height <= (uint16_t)k_panel_dim_max);
+  if (!valid) {
+    (void)priv_emu_io_errf("ra8_emulator: panel %s: width/height missing or out of range\n", path);
     return false;
   }
   return true;

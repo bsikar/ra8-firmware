@@ -20,9 +20,9 @@
 #include "ra8_usb_regs.h"
 
 /** @brief INTSTS0 value the device reads: event bits OR computed fields. */
-uint16_t usb_intsts0(void)
+uint16_t priv_usb_intsts0(void)
 {
-  uint16_t v = s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_intsts0)];
+  uint16_t v = s_usb.reg[internal_usb_word((uint64_t)k_ra8_usb_off_intsts0)];
   v &= (uint16_t)((1U << k_ra8_int0_bit_brdy) | (1U << k_ra8_int0_bit_nrdy) |
                   (1U << k_ra8_int0_bit_bemp) | (1U << k_ra8_int0_bit_ctrt) |
                   (1U << k_ra8_int0_bit_dvst) | (1U << k_ra8_int0_bit_vbse));
@@ -36,17 +36,17 @@ uint16_t usb_intsts0(void)
 }
 
 /** @brief Set an INTSTS0 event bit in the shadow (host asserts it). */
-void usb_intsts0_set(uint8_t bit)
+void priv_usb_intsts0_set(uint8_t bit)
 {
-  const uint32_t w = usb_word((uint64_t)k_ra8_usb_off_intsts0);
+  const uint32_t w = internal_usb_word((uint64_t)k_ra8_usb_off_intsts0);
   s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << bit));
 }
 
 /** @brief Raise the device controller interrupt (USBFS_INT, or USBHS after a role swap). */
-void usb_raise_irq(uc_engine* uc)
+void priv_usb_raise_irq(uc_engine* uc)
 {
   if (s_raise != nullptr) {
-    s_raise(uc, s_dev_irq_event);
+    s_raise(uc, local_dev_irq_event);
     s_usb_irqs++;
   }
 }
@@ -56,48 +56,85 @@ void usb_raise_irq(uc_engine* uc)
  * =============================================================================
  */
 
-/** @brief Currently-selected CFIFO pipe number (CFIFOSEL.CURPIPE[3:0]). */
-static uint8_t cfifo_pipe(void)
+/**
+ * @brief Currently-selected CFIFO pipe number (CFIFOSEL.CURPIPE[3:0]).
+ * @details Currently-selected cfifo pipe number (cfifosel.curpipe[3:0]); this step is contained within the board USB dev model and uses bounded caller or module-owned storage.
+ * @return The cfifo pipe result produced by the board USB dev model.
+ * @retval value The operation-specific cfifo pipe value.
+ * @pre Arguments satisfy the ranges documented for cfifo pipe. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB dev model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint8_t internal_cfifo_pipe(void)
 {
-  const uint16_t sel = s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_cfifosel)];
+  const uint16_t sel = s_usb.reg[internal_usb_word((uint64_t)k_ra8_usb_off_cfifosel)];
   return (uint8_t)(sel & (uint16_t)k_ra8_fifosel_curpipe);
 }
 
-/** @brief True when CFIFOSEL selects the IN direction (device writes / fills). */
-static bool cfifo_is_in(void)
+/**
+ * @brief True when CFIFOSEL selects the IN direction (device writes / fills).
+ * @details True when cfifosel selects the in direction (device writes / fills); this step is contained within the board USB dev model and uses bounded caller or module-owned storage.
+ * @return The cfifo is in result produced by the board USB dev model.
+ * @retval true The cfifo is in condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for cfifo is in. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB dev model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_cfifo_is_in(void)
 {
-  const uint16_t sel = s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_cfifosel)];
+  const uint16_t sel = s_usb.reg[internal_usb_word((uint64_t)k_ra8_usb_off_cfifosel)];
   return (sel & (uint16_t)k_ra8_fifosel_isel) != 0U;
 }
 
 /** @brief The device-IN staging buffer CFIFOSEL currently points at. */
-static usb_in_buf_t* cfifo_in_buf(void)
+RA8_INTERNAL static usb_in_buf_t* internal_cfifo_in_buf(void)
 {
-  const uint8_t p = cfifo_pipe();
+  const uint8_t p = internal_cfifo_pipe();
   return (p == 0U) ? &s_usb.dcp_in : &s_usb.pipe_in[p % k_usb_pipe_count];
 }
 
 /** @brief The device-OUT staging buffer CFIFOSEL currently points at. */
-static usb_out_buf_t* cfifo_out_buf(void)
+RA8_INTERNAL static usb_out_buf_t* internal_cfifo_out_buf(void)
 {
-  const uint8_t p = cfifo_pipe();
+  const uint8_t p = internal_cfifo_pipe();
   return (p == 0U) ? &s_usb.dcp_out : &s_usb.pipe_out[p % k_usb_pipe_count];
 }
 
-/** @brief Bytes still available for the device to read on the selected OUT buf. */
-static uint16_t cfifo_dtln(void)
+/**
+ * @brief Bytes still available for the device to read on the selected OUT buf.
+ * @details Bytes still available for the device to read on the selected out buf; this step is contained within the board USB dev model and uses bounded caller or module-owned storage.
+ * @return The cfifo dtln result produced by the board USB dev model.
+ * @retval value The operation-specific cfifo dtln value.
+ * @pre Arguments satisfy the ranges documented for cfifo dtln. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB dev model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_cfifo_dtln(void)
 {
-  if (cfifo_is_in()) {
+  if (internal_cfifo_is_in()) {
     return 0U;
   }
-  const usb_out_buf_t* b = cfifo_out_buf();
+  const usb_out_buf_t* b = internal_cfifo_out_buf();
   return (uint16_t)(b->len - b->rd);
 }
 
-/** @brief Service a CFIFO data-port read: drain one unit (1..4 bytes) from the OUT buffer. */
-static uint32_t cfifo_read_port(unsigned size)
+/**
+ * @brief Service a CFIFO data-port read: drain one unit (1..4 bytes) from the OUT buffer.
+ * @details Service a cfifo data-port read: drain one unit (1..4 bytes) from the out buffer; this step is contained within the board USB dev model and uses bounded caller or module-owned storage.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The cfifo read port result produced by the board USB dev model.
+ * @retval value The operation-specific cfifo read port value.
+ * @pre Arguments satisfy the ranges documented for cfifo read port. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB dev model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_cfifo_read_port(unsigned size)
 {
-  usb_out_buf_t* b = cfifo_out_buf();
+  usb_out_buf_t* b = internal_cfifo_out_buf();
   uint32_t       v = 0U;
   for (unsigned i = 0U; (i < size) && (b->rd < b->len); i++) {
     v |= (uint32_t)((uint32_t)b->data[b->rd] << (i * k_usb_byte_bits));
@@ -106,32 +143,49 @@ static uint32_t cfifo_read_port(unsigned size)
   return v;
 }
 
-/** @brief Service a CFIFO data-port write: append one unit (1..4 bytes) to the IN buffer. */
-static void cfifo_write_port(uint32_t value, unsigned size)
+/**
+ * @brief Service a CFIFO data-port write: append one unit (1..4 bytes) to the IN buffer.
+ * @details Service a cfifo data-port write: append one unit (1..4 bytes) to the in buffer; this step is contained within the board USB dev model and uses bounded caller or module-owned storage.
+ * @param[in] value Register or payload value involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @pre Arguments satisfy the ranges documented for cfifo write port. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB dev model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_cfifo_write_port(uint32_t value, unsigned size)
 {
-  usb_in_buf_t* b = cfifo_in_buf();
+  usb_in_buf_t* b = internal_cfifo_in_buf();
   for (unsigned i = 0U; (i < size) && (b->len < (uint16_t)sizeof(b->data)); i++) {
     b->data[b->len] = (uint8_t)((value >> (i * k_usb_byte_bits)) & k_usb_byte_mask);
     b->len++;
   }
 }
 
-/** @brief Apply a CFIFOCTR write: BCLR clears the buffer, BVAL commits an IN. */
-static void cfifoctr_write(uint16_t value)
+/**
+ * @brief Apply a CFIFOCTR write: BCLR clears the buffer, BVAL commits an IN.
+ * @details Apply a cfifoctr write: bclr clears the buffer, bval commits an in; this step is contained within the board USB dev model and uses bounded caller or module-owned storage.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for cfifoctr write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB dev model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_cfifoctr_write(uint16_t value)
 {
   if ((value & (uint16_t)k_ra8_fifoctr_bclr) != 0U) {
-    if (cfifo_is_in()) {
-      usb_in_buf_t* b = cfifo_in_buf();
+    if (internal_cfifo_is_in()) {
+      usb_in_buf_t* b = internal_cfifo_in_buf();
       b->len          = 0U;
       b->valid        = false;
     } else {
-      usb_out_buf_t* b = cfifo_out_buf();
+      usb_out_buf_t* b = internal_cfifo_out_buf();
       b->rd            = b->len; /* drop the remainder of the OUT buffer. */
     }
   }
   if ((value & (uint16_t)k_ra8_fifoctr_bval) != 0U) {
-    if (cfifo_is_in()) {
-      cfifo_in_buf()->valid = true; /* IN buffer committed; ready for the host. */
+    if (internal_cfifo_is_in()) {
+      internal_cfifo_in_buf()->valid = true; /* IN buffer committed; ready for the host. */
     }
   }
 }
@@ -141,20 +195,30 @@ static void cfifoctr_write(uint16_t value)
  * =============================================================================
  */
 
-/** @brief CFIFOCTR read value: FRDY always ready, DTLN = OUT bytes available. */
-static uint16_t cfifoctr_read(void)
+/**
+ * @brief CFIFOCTR read value: FRDY always ready, DTLN = OUT bytes available.
+ * @details Cfifoctr read value: frdy always ready, dtln = out bytes available; this step is contained within the board USB dev model and uses bounded caller or module-owned storage.
+ * @return The cfifoctr read result produced by the board USB dev model.
+ * @retval value The operation-specific cfifoctr read value.
+ * @pre Arguments satisfy the ranges documented for cfifoctr read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB dev model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_cfifoctr_read(void)
 {
-  return (uint16_t)((uint16_t)k_ra8_fifoctr_frdy | (cfifo_dtln() & (uint16_t)k_ra8_fifoctr_dtln));
+  return (uint16_t)((uint16_t)k_ra8_fifoctr_frdy |
+                    (internal_cfifo_dtln() & (uint16_t)k_ra8_fifoctr_dtln));
 }
 
 /** @brief Read one device-controller register; @p off is the byte offset into the window. */
-uint32_t usb_reg_read(uint64_t off, unsigned size)
+uint32_t priv_usb_reg_read(uint64_t off, unsigned size)
 {
   switch ((uint16_t)off) {
     case (uint16_t)k_ra8_usb_off_intsts0:
-      return usb_intsts0();
+      return priv_usb_intsts0();
     case (uint16_t)k_ra8_usb_off_cfifoctr:
-      return cfifoctr_read();
+      return internal_cfifoctr_read();
     case (uint16_t)k_ra8_usb_off_cfifo:
     case (uint16_t)((uint16_t)k_ra8_usb_off_cfifo + (uint16_t)k_usb_cfifo_h):  /* CFIFOH tail.  */
     case (uint16_t)((uint16_t)k_ra8_usb_off_cfifo + (uint16_t)k_usb_cfifo_hh): /* CFIFOHH tail. */
@@ -162,7 +226,7 @@ uint32_t usb_reg_read(uint64_t off, unsigned size)
        * (MBW=32) with 16/8-bit residual reads through the CFIFOH / CFIFOHH
        * aliases (HUM Ch 37.2.7 "CFIFO, DnFIFO : FIFO Port Register" p 2069-2070); the FS
        * instance uses 16-bit accesses at the base port. */
-      return cfifo_read_port(size);
+      return internal_cfifo_read_port(size);
     case (uint16_t)k_ra8_usb_off_syssts0:
       return (uint16_t)0x0003U; /* LNST = J-state: device pull-up seen. */
     case (uint16_t)k_ra8_usb_off_dvstctr0: {
@@ -172,21 +236,21 @@ uint32_t usb_reg_read(uint64_t off, unsigned size)
        * re-aims the USBX framework at it. The modelled loop is a full-speed
        * link (the FS controller's ceiling caps it in either polarity), so
        * report FS from the moment the device has left Powered. */
-      uint16_t v = s_usb.reg[usb_word(off)];
+      uint16_t v = s_usb.reg[internal_usb_word(off)];
       if (s_usb.dvsq != (uint16_t)k_ra8_dvsq_powered) {
         v = (uint16_t)(v | (uint16_t)k_usb_rhst_fs);
       }
       return v;
     }
     case (uint16_t)k_ra8_usb_off_frmnum:
-      return s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_frmnum)];
+      return s_usb.reg[internal_usb_word((uint64_t)k_ra8_usb_off_frmnum)];
     default:
-      return s_usb.reg[usb_word(off)];
+      return s_usb.reg[internal_usb_word(off)];
   }
 }
 
 /** @brief Write one device-controller register; @p off is the byte offset into the window. */
-void usb_reg_write(uint64_t off, uint32_t value, unsigned size)
+void priv_usb_reg_write(uint64_t off, uint32_t value, unsigned size)
 {
   const uint16_t v16 = (uint16_t)value;
   switch ((uint16_t)off) {
@@ -197,20 +261,20 @@ void usb_reg_write(uint64_t off, uint32_t value, unsigned size)
        * (MBW=32) with 16/8-bit residual writes through the CFIFOH / CFIFOHH
        * aliases (HUM Ch 37.2.7 "CFIFO, DnFIFO : FIFO Port Register" p 2069-2070); truncating to
        * 16 bits here zeroed bytes 2-3 of every descriptor word in Config B. */
-      cfifo_write_port(value, size);
+      internal_cfifo_write_port(value, size);
       return;
     case (uint16_t)k_ra8_usb_off_cfifoctr:
-      cfifoctr_write(v16);
+      internal_cfifoctr_write(v16);
       return;
     case (uint16_t)k_ra8_usb_off_intsts0:
       /* W0C on the event bits: a written 0 clears, a 1 preserves. */
-      s_usb.reg[usb_word(off)] &= v16;
+      s_usb.reg[internal_usb_word(off)] &= v16;
       if ((v16 & (uint16_t)k_ra8_intsts0_mask_valid) == 0U) {
         s_usb.setup_valid = false;
       }
       return;
     default:
-      s_usb.reg[usb_word(off)] = v16;
+      s_usb.reg[internal_usb_word(off)] = v16;
       return;
   }
 }
@@ -227,7 +291,7 @@ uint64_t board_usb_read(uc_engine* uc, uint64_t addr, unsigned size, bool* handl
     /* Config B: the polled ra8_usb_host_* driver owns the USBFS controller. */
     return board_usbhs_host_reg_read(uc, addr - (uint64_t)k_usb_base, size);
   }
-  return (uint64_t)usb_reg_read(addr - (uint64_t)k_usb_base, size);
+  return (uint64_t)priv_usb_reg_read(addr - (uint64_t)k_usb_base, size);
 }
 
 void board_usb_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value, bool* handled)
@@ -249,5 +313,5 @@ void board_usb_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value
     board_usbhs_host_reg_write(uc, off, size, value);
     return;
   }
-  usb_reg_write(off, (uint32_t)value, size);
+  priv_usb_reg_write(off, (uint32_t)value, size);
 }

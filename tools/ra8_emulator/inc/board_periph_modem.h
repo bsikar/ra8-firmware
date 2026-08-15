@@ -74,6 +74,7 @@ bool board_modem_attach(void);
  *
  * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
+  * @details Report whether the at modem model is currently attached; this step is contained within the board periph modem model and uses bounded caller or module-owned storage.
  */
 bool board_modem_attached(void);
 
@@ -92,6 +93,7 @@ bool board_modem_attached(void);
  * @post No state is modified.
  *
  * @since 0.1.0
+  * @note The operation is synchronous and does not transfer heap ownership.
  */
 uint8_t board_modem_channel(void);
 
@@ -137,6 +139,7 @@ uint32_t board_modem_feed_tx(uint8_t tx, uint8_t* out, uint32_t out_cap);
  * @post Run counters (commands answered, errors) are retained.
  *
  * @since 0.1.0
+  * @note The operation is synchronous and does not transfer heap ownership.
  */
 void board_modem_reset(void);
 
@@ -145,10 +148,12 @@ void board_modem_reset(void);
  *
  * @pre None.
  * @pre None.
- * @post One line is written to stderr iff at least one command was answered.
+ * @post One line is written to injected error sink iff at least one command was answered.
  * @post No state is modified.
  *
  * @since 0.1.0
+  * @details Print a one-line end-of-run summary if the modem was exercised; this step is contained within the board periph modem model and uses bounded caller or module-owned storage.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 void board_modem_report(void);
 

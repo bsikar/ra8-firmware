@@ -19,6 +19,8 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @brief One channel's scrollback ring.
  *
@@ -42,7 +44,7 @@ typedef struct {
 static console_ring_t s_rings[k_board_console_ch_count];
 
 /** @brief Tab captions, indexed by ::board_console_ch_t (also the ALL prefix). */
-static const char* const k_channel_names[k_board_console_ch_count] = {
+static const char* const s_k_channel_names[k_board_console_ch_count] = {
   "ALL",  /**< k_board_console_ch_all  */
   "UART", /**< k_board_console_ch_uart */
   "ITM",  /**< k_board_console_ch_itm  */
@@ -66,7 +68,7 @@ const char* board_console_name(board_console_ch_t ch)
   if ((uint32_t)ch >= (uint32_t)k_board_console_ch_count) {
     return "?";
   }
-  return k_channel_names[(uint32_t)ch];
+  return s_k_channel_names[(uint32_t)ch];
 }
 
 /**
@@ -86,7 +88,7 @@ const char* board_console_name(board_console_ch_t ch)
  * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static void slot_copy(char* dst, const char* src)
+RA8_INTERNAL static void internal_slot_copy(char* dst, const char* src)
 {
   if (dst == nullptr) {
     return;
@@ -120,7 +122,7 @@ static void slot_copy(char* dst, const char* src)
  * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static void ring_push(console_ring_t* ring, const char* line)
+RA8_INTERNAL static void internal_ring_push(console_ring_t* ring, const char* line)
 {
   if (ring == nullptr) {
     return;
@@ -128,7 +130,7 @@ static void ring_push(console_ring_t* ring, const char* line)
   if (ring->head >= (uint32_t)k_board_console_ring_depth) {
     ring->head = 0U; /* defensive: keep the slot index in range */
   }
-  slot_copy(ring->lines[ring->head], line);
+  internal_slot_copy(ring->lines[ring->head], line);
   ring->head = (ring->head + 1U) % (uint32_t)k_board_console_ring_depth;
   if (ring->count < (uint32_t)k_board_console_ring_depth) {
     ring->count++;
@@ -153,7 +155,8 @@ static void ring_push(console_ring_t* ring, const char* line)
  * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static void format_all_line(board_console_ch_t ch, const char* line, char* out)
+RA8_INTERNAL static void
+internal_format_all_line(board_console_ch_t ch, const char* line, char* out)
 {
   if (out == nullptr) {
     return;
@@ -195,10 +198,10 @@ void board_console_push(board_console_ch_t ch, const char* line)
   if (line == nullptr) {
     return;
   }
-  ring_push(&s_rings[(uint32_t)ch], line);
+  internal_ring_push(&s_rings[(uint32_t)ch], line);
   char all_line[k_board_console_line_cap];
-  format_all_line(ch, line, all_line);
-  ring_push(&s_rings[(uint32_t)k_board_console_ch_all], all_line);
+  internal_format_all_line(ch, line, all_line);
+  internal_ring_push(&s_rings[(uint32_t)k_board_console_ch_all], all_line);
 }
 
 uint32_t board_console_count(board_console_ch_t ch)

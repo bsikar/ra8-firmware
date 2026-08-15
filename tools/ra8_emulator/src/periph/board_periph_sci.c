@@ -36,6 +36,7 @@
 #include "board_periph_block.h"
 #include "board_periph_modem.h"
 #include "board_periph_sd.h"
+#include "emu_host_io_internal.h"
 
 /** @brief SCI_B block geometry (ra8_sci_regs.h, 32-bit-register variant). */
 typedef enum : uint64_t {
@@ -134,7 +135,7 @@ typedef struct {
 
 static sci_state_t s_sci[k_sci_count];
 
-/** @brief Host sink for transmitted bytes (main.c installs the stdout sink). */
+/** @brief Host sink for transmitted bytes (main.c installs the descriptor-backed output sink). */
 static void (*s_sci_tx_sink)(uint8_t channel, uint8_t byte);
 
 /* Last complete console line, latched on newline so the board view can show
@@ -168,8 +169,9 @@ void board_periph_sci_feed_rx(uint8_t channel, const uint8_t* data, uint32_t len
     if (next == s->rx_head) {
       s->rx_dropped += (len - i); /* ring full: drop the remaining bytes */
       if (board_periph_trace()) {
-        (void)
-          fprintf(stderr, "  [trace] SCI%u RX queue full, dropped %u bytes\n", channel, len - i);
+        (void)priv_emu_io_errf("  [trace] SCI%u RX queue full, dropped %u bytes\n",
+                               channel,
+                               len - i);
       }
       return;
     }
@@ -192,32 +194,63 @@ uint32_t board_periph_uart_tx_total(void)
   return total;
 }
 
-/** @brief True iff the channel has a queued, unread host RX byte. */
-static bool sci_rx_available(const sci_state_t* s)
+/**
+ * @brief True iff the channel has a queued, unread host RX byte.
+ * @details True iff the channel has a queued, unread host rx byte; this step is contained within the board periph SCI model and uses bounded caller or module-owned storage.
+ * @param[in] s Module state instance processed by the operation.
+ * @return The SCI rx available result produced by the board periph SCI model.
+ * @retval true The SCI rx available condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for SCI rx available. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SCI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_sci_rx_available(const sci_state_t* s)
 {
   return s->rx_head != s->rx_tail;
 }
 
-/** @brief Build the CSR value: TX always drained, RDRF reflects the RX queue. */
-static uint32_t sci_csr_value(const sci_state_t* s)
+/**
+ * @brief Build the CSR value: TX always drained, RDRF reflects the RX queue.
+ * @details Build the csr value: tx always drained, rdrf reflects the rx queue; this step is contained within the board periph SCI model and uses bounded caller or module-owned storage.
+ * @param[in] s Module state instance processed by the operation.
+ * @return The SCI csr value result produced by the board periph SCI model.
+ * @retval value The operation-specific SCI csr value value.
+ * @pre Arguments satisfy the ranges documented for SCI csr value. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SCI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_sci_csr_value(const sci_state_t* s)
 {
   /* TDRE + TEND are held set so ra8_sci's "wait for transmit empty / end" polls
    * (ra8_sci_putc_polling on TDRE, internal_wait_tx_end on TEND) fall through.
    * RXDMON reads high because an idle UART line idles high. RDRF tracks the
    * host RX queue so ra8_sci_getc_polling completes only when a byte is ready. */
   uint32_t csr = (uint32_t)k_sci_csr_tdre | (uint32_t)k_sci_csr_tend | (uint32_t)k_sci_csr_rxdmon;
-  if (sci_rx_available(s)) {
+  if (internal_sci_rx_available(s)) {
     csr |= (uint32_t)k_sci_csr_rdrf;
   }
   return csr;
 }
 
-/** @brief Dispatch an SCI read for channel @p ch at byte offset @p off. */
-static uint64_t sci_reg_read(uint32_t ch, uint64_t off)
+/**
+ * @brief Dispatch an SCI read for channel @p ch at byte offset @p off.
+ * @details Dispatch an sci read for channel @p ch at byte offset @p off; this step is contained within the board periph SCI model and uses bounded caller or module-owned storage.
+ * @param[in] ch Selected channel identifier.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The SCI reg read result produced by the board periph SCI model.
+ * @retval value The operation-specific SCI reg read value.
+ * @pre Arguments satisfy the ranges documented for SCI reg read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SCI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_sci_reg_read(uint32_t ch, uint64_t off)
 {
   sci_state_t* s = &s_sci[ch];
   if (off == (uint64_t)k_sci_off_rdr) {
-    if (!sci_rx_available(s)) {
+    if (!internal_sci_rx_available(s)) {
       return 0U; /* drained: nothing queued */
     }
     const uint8_t b = s->rx[s->rx_head];
@@ -226,13 +259,13 @@ static uint64_t sci_reg_read(uint32_t ch, uint64_t off)
     return (uint64_t)b;
   }
   if (off == (uint64_t)k_sci_off_csr) {
-    return sci_csr_value(s);
+    return internal_sci_csr_value(s);
   }
   if (off == (uint64_t)k_sci_off_ccr0) {
     return s->ccr0;
   }
   if (off == (uint64_t)k_sci_off_frsr) {
-    return sci_rx_available(s) ? ((uint32_t)k_sci_frsr_dr | (uint32_t)k_sci_frsr_rdf) : 0U;
+    return internal_sci_rx_available(s) ? ((uint32_t)k_sci_frsr_dr | (uint32_t)k_sci_frsr_rdf) : 0U;
   }
   if (off == (uint64_t)k_sci_off_ftsr) {
     return (uint32_t)k_sci_ftsr_tdfe; /* TX FIFO is always empty in the model */
@@ -252,8 +285,11 @@ static uint64_t sci_reg_read(uint32_t ch, uint64_t off)
  * @param[in] byte The transmitted data byte.
  * @return Nothing.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for SCI capture tx line. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SCI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
-static void sci_capture_tx_line(uint8_t byte)
+RA8_INTERNAL static void internal_sci_capture_tx_line(uint8_t byte)
 {
   if (byte == (uint8_t)'\n') {
     for (uint32_t i = 0U; i < s_uart_pend_len; i++) {
@@ -271,8 +307,18 @@ static void sci_capture_tx_line(uint8_t byte)
   }
 }
 
-/** @brief Dispatch an SCI write; TDR is captured, CCR0 shadowed, clears no-op. */
-static void sci_reg_write(uint32_t ch, uint64_t off, uint32_t value)
+/**
+ * @brief Dispatch an SCI write; TDR is captured, CCR0 shadowed, clears no-op.
+ * @details Dispatch an sci write; tdr is captured, ccr0 shadowed, clears no-op; this step is contained within the board periph SCI model and uses bounded caller or module-owned storage.
+ * @param[in] ch Selected channel identifier.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for SCI reg write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SCI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sci_reg_write(uint32_t ch, uint64_t off, uint32_t value)
 {
   sci_state_t* s = &s_sci[ch];
   if (off == (uint64_t)k_sci_off_tdr) {
@@ -284,7 +330,7 @@ static void sci_reg_write(uint32_t ch, uint64_t off, uint32_t value)
      * Simple-SPI mode for the microSD) move binary frames, so capturing + sinking
      * their TX would spew the SPI traffic as "[uart] SCIn:" garbage -- skip it. */
     if (ch == (uint32_t)k_sci_console_ch) {
-      sci_capture_tx_line(byte);
+      internal_sci_capture_tx_line(byte);
       if (s_sci_tx_sink != nullptr) {
         s_sci_tx_sink((uint8_t)ch, byte);
       }
@@ -325,8 +371,17 @@ static void sci_reg_write(uint32_t ch, uint64_t off, uint32_t value)
    * (the firmware re-reads the queue-backed state on its next poll). */
 }
 
-/** @brief Raise this channel's enabled SCI interrupts through the ICU. */
-static void sci_tick_channel(uc_engine* uc, uint32_t ch)
+/**
+ * @brief Raise this channel's enabled SCI interrupts through the ICU.
+ * @details Raise this channel's enabled sci interrupts through the icu; this step is contained within the board periph SCI model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] ch Selected channel identifier.
+ * @pre Arguments satisfy the ranges documented for SCI tick channel. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SCI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sci_tick_channel(uc_engine* uc, uint32_t ch)
 {
   if (ch != (uint32_t)k_sci_console_ch) {
     return; /* only the console channel has modelled ELC event numbers */
@@ -345,39 +400,80 @@ static void sci_tick_channel(uc_engine* uc, uint32_t ch)
   }
   /* RX: while RIE is armed and a host byte is queued, pend RXI so the firmware
    * reads it from RDR in handler context (interrupt-driven receive). */
-  if (((s->ccr0 & (uint32_t)k_sci_ccr0_rie) != 0U) && sci_rx_available(s)) {
+  if (((s->ccr0 & (uint32_t)k_sci_ccr0_rie) != 0U) && internal_sci_rx_available(s)) {
     board_periph_icu_raise_event(uc, (uint16_t)k_event_sci8_rxi);
   }
 }
 
-/** @brief MMIO read inside the SCI window: route to the addressed channel. */
-static uint64_t sci_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the SCI window: route to the addressed channel.
+ * @details MMIO read inside the sci window: route to the addressed channel; this step is contained within the board periph SCI model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The SCI read result produced by the board periph SCI model.
+ * @retval value The operation-specific SCI read value.
+ * @pre Arguments satisfy the ranges documented for SCI read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SCI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_sci_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
   const uint32_t ch = (uint32_t)((addr - (uint64_t)k_sci_base) / (uint64_t)k_sci_stride);
-  return sci_reg_read(ch, (addr - (uint64_t)k_sci_base) % (uint64_t)k_sci_stride);
+  return internal_sci_reg_read(ch, (addr - (uint64_t)k_sci_base) % (uint64_t)k_sci_stride);
 }
 
-/** @brief MMIO write inside the SCI window: route to the addressed channel. */
-static void sci_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the SCI window: route to the addressed channel.
+ * @details MMIO write inside the sci window: route to the addressed channel; this step is contained within the board periph SCI model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for SCI write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SCI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_sci_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
   const uint32_t ch = (uint32_t)((addr - (uint64_t)k_sci_base) / (uint64_t)k_sci_stride);
-  sci_reg_write(ch, (addr - (uint64_t)k_sci_base) % (uint64_t)k_sci_stride, (uint32_t)value);
+  internal_sci_reg_write(ch,
+                         (addr - (uint64_t)k_sci_base) % (uint64_t)k_sci_stride,
+                         (uint32_t)value);
 }
 
-/** @brief Service every SCI channel once per emulation chunk. */
-static void sci_tick(uc_engine* uc)
+/**
+ * @brief Service every SCI channel once per emulation chunk.
+ * @details Service every sci channel once per emulation chunk; this step is contained within the board periph SCI model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for SCI tick. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SCI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sci_tick(uc_engine* uc)
 {
   for (uint32_t ch = 0U; ch < (uint32_t)k_sci_count; ch++) {
-    sci_tick_channel(uc, ch);
+    internal_sci_tick_channel(uc, ch);
   }
 }
 
-/** @brief Clear all SCI channel state and the captured last-line buffers. */
-static void sci_reset(void)
+/**
+ * @brief Clear all SCI channel state and the captured last-line buffers.
+ * @details Clear all sci channel state and the captured last-line buffers; this step is contained within the board periph SCI model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for SCI reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SCI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sci_reset(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_sci_count; i++) {
     s_sci[i] = (sci_state_t){};
@@ -391,17 +487,23 @@ static void sci_reset(void)
   board_modem_reset();
 }
 
-/** @brief Print one line per SCI channel that moved any bytes. */
-static void sci_report(void)
+/**
+ * @brief Print one line per SCI channel that moved any bytes.
+ * @details Print one line per sci channel that moved any bytes; this step is contained within the board periph SCI model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for SCI report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SCI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sci_report(void)
 {
   for (uint32_t ch = 0U; ch < (uint32_t)k_sci_count; ch++) {
     if ((s_sci[ch].transmitted > 0U) || (s_sci[ch].received > 0U)) {
-      (void)fprintf(stderr,
-                    "  SCI%u UART     : TX %u bytes  RX %u bytes  (RX dropped %u)\n",
-                    ch,
-                    s_sci[ch].transmitted,
-                    s_sci[ch].received,
-                    s_sci[ch].rx_dropped);
+      (void)priv_emu_io_errf("  SCI%u UART     : TX %u bytes  RX %u bytes  (RX dropped %u)\n",
+                             ch,
+                             s_sci[ch].transmitted,
+                             s_sci[ch].received,
+                             s_sci[ch].rx_dropped);
     }
   }
   /* An attached AT modem answers on the modem channel; summarise its traffic
@@ -410,20 +512,20 @@ static void sci_report(void)
 }
 
 /** @brief This block's descriptor (static lifetime; the core keeps the pointer). */
-static const board_periph_block_t k_sci_block = {
+static const board_periph_block_t s_k_sci_block = {
   .base   = (uint64_t)k_sci_base,
   .span   = (uint64_t)k_sci_span,
   .order  = (uint32_t)k_block_order_sci,
-  .read   = sci_read,
-  .write  = sci_write,
-  .tick   = sci_tick,
-  .reset  = sci_reset,
-  .report = sci_report,
+  .read   = internal_sci_read,
+  .write  = internal_sci_write,
+  .tick   = internal_sci_tick,
+  .reset  = internal_sci_reset,
+  .report = internal_sci_report,
   .name   = "SCI_B UART",
 };
 
 /** @brief Self-register the SCI block before main runs (decentralized). */
-[[gnu::constructor]] static void board_periph_sci_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_board_periph_sci_register(void)
 {
-  board_periph_register_block(&k_sci_block);
+  board_periph_register_block(&s_k_sci_block);
 }

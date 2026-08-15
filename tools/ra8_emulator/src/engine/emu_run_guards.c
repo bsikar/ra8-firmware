@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 
+#include "emu_host_io_internal.h"
 #include "emu_prof.h"
 #include "emu_run.h"
 #include "emu_view.h"
@@ -47,7 +48,7 @@ enum : uint32_t {
  * @note Not thread-safe; getenv is called on the single setup thread.
  * @since 0.1.0
  */
-static uint32_t guard_env_u32(const char* name, uint32_t dflt)
+RA8_INTERNAL static uint32_t internal_guard_env_u32(const char* name, uint32_t dflt)
 {
   const char* const e = getenv(name);
   if (e == nullptr) {
@@ -67,7 +68,7 @@ static uint32_t guard_env_u32(const char* name, uint32_t dflt)
  * @param[in] name The environment variable name.
  * @param[in] dflt Value returned when live-view or unset / non-positive.
  * @param[in] view The live window handle (NULL when headless).
- * @return @p dflt when a window is open, otherwise ::guard_env_u32.
+ * @return @p dflt when a window is open, otherwise ::internal_guard_env_u32.
  * @retval dflt A live --view window suppresses the override.
  * @pre @p name is a valid NUL-terminated string.
  * @pre @p view is NULL or a valid window handle.
@@ -76,12 +77,13 @@ static uint32_t guard_env_u32(const char* name, uint32_t dflt)
  * @note Not thread-safe; part of single-threaded setup.
  * @since 0.1.0
  */
-static uint32_t guard_env_u32_headless(const char* name, uint32_t dflt, const board_view_t* view)
+RA8_INTERNAL static uint32_t
+internal_guard_env_u32_headless(const char* name, uint32_t dflt, const board_view_t* view)
 {
   if (view != nullptr) {
     return dflt;
   }
-  return guard_env_u32(name, dflt);
+  return internal_guard_env_u32(name, dflt);
 }
 
 /**
@@ -102,7 +104,7 @@ static uint32_t guard_env_u32_headless(const char* name, uint32_t dflt, const bo
  * @note Not thread-safe; part of single-threaded setup.
  * @since 0.1.0
  */
-static void guard_read_wall(double* wall_s, bool* wall_guard_on)
+RA8_INTERNAL static void internal_guard_read_wall(double* wall_s, bool* wall_guard_on)
 {
   const char* const e_wall = getenv("RA8_EMU_WALL_S");
   if (e_wall == nullptr) {
@@ -132,11 +134,12 @@ static void guard_read_wall(double* wall_s, bool* wall_guard_on)
  * @pre @p view is NULL or a valid window handle.
  * @post With headless --record-secs, @p max_chunks equals the recording window.
  * @post With --record active, the frame directory exists and the banner printed.
- * @note Not thread-safe; performs mkdir + stderr output during setup.
+ * @note Not thread-safe; performs mkdir + injected error sink output during setup.
  * @since 0.1.0
  */
-static void
-guard_setup_record(const emu_run_cfg_t* cfg, const board_view_t* view, uint32_t* max_chunks)
+RA8_INTERNAL static void internal_guard_setup_record(const emu_run_cfg_t* cfg,
+                                                     const board_view_t*  view,
+                                                     uint32_t*            max_chunks)
 {
   const char* const record_dir  = cfg->record_dir;
   const uint32_t    record_secs = cfg->record_secs;
@@ -145,11 +148,11 @@ guard_setup_record(const emu_run_cfg_t* cfg, const board_view_t* view, uint32_t*
   }
   if (record_dir != nullptr) {
     (void)mkdir(record_dir, (mode_t)k_record_dir_mode);
-    (void)fprintf(stderr,
-                  "ra8_emulator: recording to %s/frame_NNNNNN.ppm (every %u chunks, ~%u fps)\n",
-                  record_dir,
-                  (unsigned)k_record_every,
-                  (unsigned)k_record_fps);
+    (void)priv_emu_io_errf(
+      "ra8_emulator: recording to %s/frame_NNNNNN.ppm (every %u chunks, ~%u fps)\n",
+      record_dir,
+      (unsigned)k_record_every,
+      (unsigned)k_record_fps);
   }
 }
 
@@ -170,7 +173,7 @@ guard_setup_record(const emu_run_cfg_t* cfg, const board_view_t* view, uint32_t*
  * @note Not thread-safe; part of single-threaded setup.
  * @since 0.1.0
  */
-static const char* guard_read_stop_on(const board_view_t* view)
+RA8_INTERNAL static const char* internal_guard_read_stop_on(const board_view_t* view)
 {
   const char* stop_on = getenv("RA8_EMU_STOP_ON");
   if ((stop_on != nullptr) && ((stop_on[0] == '\0') || (view != nullptr))) {
@@ -194,7 +197,7 @@ static const char* guard_read_stop_on(const board_view_t* view)
  * @note Not thread-safe; part of single-threaded setup.
  * @since 0.1.0
  */
-static void guard_apply_stop_pc(void)
+RA8_INTERNAL static void internal_guard_apply_stop_pc(void)
 {
   const char* const e_spc = getenv("RA8_EMU_STOP_PC");
   if (e_spc != nullptr) {
@@ -224,7 +227,8 @@ static void guard_apply_stop_pc(void)
  * @note Not thread-safe; part of single-threaded setup.
  * @since 0.1.0
  */
-static void guard_read_prof_idle(uint32_t* insns, uint32_t* need, uint32_t* arm)
+RA8_INTERNAL static void
+internal_guard_read_prof_idle(uint32_t* insns, uint32_t* need, uint32_t* arm)
 {
   enum : uint32_t {
     k_prof_idle_insns = 4000U, /**< Per-chunk insns below which a chunk is idle. */
@@ -253,7 +257,7 @@ run_guards_t run_read_guards(const emu_run_cfg_t* cfg, const board_view_t* view)
   /* RA8_EMU_CLICK_SETTLE=N: widen the post-click drain for a tap that kicks off
    * a long operation (e.g. opening a big book from SD). Unset keeps the default. */
   const uint32_t click_settle_chunks =
-    guard_env_u32("RA8_EMU_CLICK_SETTLE", (uint32_t)k_click_settle_chunks);
+    internal_guard_env_u32("RA8_EMU_CLICK_SETTLE", (uint32_t)k_click_settle_chunks);
 
   /* Chunked run: one SysTick (one ThreadX tick) per outer chunk. Headless runs
    * stop on a chunk budget + wall-clock guard; --view runs until the window is
@@ -263,21 +267,21 @@ run_guards_t run_read_guards(const emu_run_cfg_t* cfg, const board_view_t* view)
     (view != nullptr) ? (uint32_t)k_view_max_chunks : (uint32_t)k_run_max_chunks;
   double wall_s        = (double)k_run_wall_s;
   bool   wall_guard_on = true;
-  guard_read_wall(&wall_s, &wall_guard_on);
-  max_chunks = guard_env_u32_headless("RA8_EMU_MAX_CHUNKS", max_chunks, view);
-  guard_setup_record(cfg, view, &max_chunks);
+  internal_guard_read_wall(&wall_s, &wall_guard_on);
+  max_chunks = internal_guard_env_u32_headless("RA8_EMU_MAX_CHUNKS", max_chunks, view);
+  internal_guard_setup_record(cfg, view, &max_chunks);
 
   /* Headless-only early-stop knobs: idle steady-state (IDLE_STOP), USB device
    * CONFIGURED (USB_STOP) and USB host complete (USBH_STOP). Off (0) by default. */
-  const uint32_t    idle_stop_chunks = guard_env_u32_headless("RA8_EMU_IDLE_STOP", 0U, view);
-  const uint32_t    usb_stop_settle  = guard_env_u32_headless("RA8_EMU_USB_STOP", 0U, view);
-  const uint32_t    usbh_stop_settle = guard_env_u32_headless("RA8_EMU_USBH_STOP", 0U, view);
-  const char* const stop_on          = guard_read_stop_on(view);
-  guard_apply_stop_pc();
+  const uint32_t idle_stop_chunks = internal_guard_env_u32_headless("RA8_EMU_IDLE_STOP", 0U, view);
+  const uint32_t usb_stop_settle  = internal_guard_env_u32_headless("RA8_EMU_USB_STOP", 0U, view);
+  const uint32_t usbh_stop_settle = internal_guard_env_u32_headless("RA8_EMU_USBH_STOP", 0U, view);
+  const char* const stop_on       = internal_guard_read_stop_on(view);
+  internal_guard_apply_stop_pc();
   uint32_t prof_idle_insns = 0U;
   uint32_t prof_idle_need  = 0U;
   uint32_t prof_idle_arm   = 0U;
-  guard_read_prof_idle(&prof_idle_insns, &prof_idle_need, &prof_idle_arm);
+  internal_guard_read_prof_idle(&prof_idle_insns, &prof_idle_need, &prof_idle_arm);
 
   return (run_guards_t){
     .click_settle_chunks = click_settle_chunks,

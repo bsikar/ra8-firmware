@@ -3,7 +3,7 @@
  * @brief The chunked emulation run loop, report and exit-code mapping
  *
  * @details
- * Owns everything after setup: the presentation buffers, the run-guard
+ * Owns everything after setup: the streamed presentation surface, the run-guard
  * environment knobs (RA8_EMU_WALL_S / MAX_CHUNKS / IDLE_STOP / USB_STOP /
  * USBH_STOP / STOP_ON / STOP_PC / CLICK_SETTLE / the profiler idle-stop
  * tunables), the chunked run loop with its inner exception-resolve loop and
@@ -25,6 +25,9 @@
 #include <unicorn/unicorn.h>
 
 #include "board_view.h"
+#include "emu_elf.h"
+#include "emu_memmap.h"
+#include "emu_presentation.h"
 #include "ra8_attributes.h"
 
 #ifdef __cplusplus
@@ -65,10 +68,10 @@ typedef enum : uint32_t {
  * @enum emu_exit_t
  * @brief Process exit codes for the #67 run-every-example matrix.
  *
- * @details The matrix keys off the process exit code (not the stderr banner):
- * a clean run-to-budget returns success; a firmware BKPT, an emulation fault,
- * or the wall-clock timeout each return a distinct non-zero code so a wedged or
- * trapped run is distinguishable from a healthy one.
+ * @details The matrix keys off the process exit code (not the injected error
+ * sink banner): a clean run-to-budget returns success; a firmware BKPT, an
+ * emulation fault, or the wall-clock timeout each return a distinct non-zero
+ * code so a wedged or trapped run is distinguishable from a healthy one.
  */
 typedef enum : int {
   k_emu_exit_ok      = 0, /**< Clean run-to-budget (no fault/BKPT/timeout).   */
@@ -89,10 +92,10 @@ typedef enum : uint32_t {
   k_cs_op_shift     = 12U,   /**< CSEL-family op = hw2[13:12].       */
   k_cs_op_mask      = 0x3U,  /**< 2-bit op field.                    */
   /* Assorted. */
-  k_max_panel_px    = 4096U, /**< Largest accepted --size dimension.   */
-  k_record_dir_mode = 0755U, /**< mkdir mode for the --record dir.     */
-  k_dump_sym_max    = 8U,    /**< Max --dump-sym globals per run.      */
-  k_sectors_per_mib = 2048U, /**< 512-byte sectors per MiB (--sd-new). */
+  k_max_panel_px    = k_emu_presentation_max_panel_px, /**< Largest --size dimension.            */
+  k_record_dir_mode = 0755U,                           /**< mkdir mode for the --record dir.     */
+  k_dump_sym_max    = 8U,                              /**< Max --dump-sym globals per run.      */
+  k_sectors_per_mib = 2048U,                           /**< 512-byte sectors per MiB (--sd-new). */
 } emu_misc_t;
 
 /** @brief 64-bit byte/size units used by --sd-new card sizing. */
@@ -111,36 +114,37 @@ typedef enum : uint64_t {
  * produce, so the run loop, report and exit-code mapping consume exactly the
  * state they always did.
  *
- * @invariant The referenced buffers/strings outlive emu_run_and_report()
- *            (argv strings and the run-long ELF image).
+ * @invariant Referenced strings, ELF source, and presentation workspace outlive
+ *            emu_run_and_report().
  * @see emu_run_and_report()  The consumer.
  * @since 0.1.0
  */
 typedef struct {
-  uc_engine*         uc;              /**< The prepared cpu0 engine.                 */
-  uint8_t*           elf;             /**< Firmware image (owned; freed at run end). */
-  long               elf_len;         /**< Image length in bytes.                    */
-  uint32_t           initial_pc;      /**< Reset-vector PC (Thumb bit set).          */
-  uint32_t           vtor_base;       /**< VTOR fallback (the MRAM vector base).     */
-  bool               want_trace;      /**< --trace (forwarded to warm reboots).      */
-  bool               want_view;       /**< --view (live window requested).           */
-  bool               want_click;      /**< --click armed.                            */
-  int                click_x;         /**< --click column (composite pixels).        */
-  int                click_y;         /**< --click row (composite pixels).           */
-  const char*        ppm_path;        /**< --ppm output path (NULL when unused).     */
-  const char*        record_dir;      /**< --record directory (NULL when unused).    */
-  uint32_t           record_secs;     /**< --record-secs bound (0 = unbounded).      */
-  uint32_t           rotate_deg;      /**< --rotate display rotation.                */
-  int                reboot_count;    /**< --reboot N scheduled warm reboots.        */
-  const char*        save_sd_path;    /**< --save-sd dump path (NULL when unused).   */
-  uint32_t           stop_sym_addr;   /**< --stop-sym resolved address (0 = off).    */
-  uint32_t           stop_sym_thresh; /**< --stop-sym threshold value.               */
-  const char* const* dump_sym_names;  /**< --dump-sym names (argv-backed).           */
-  const uint32_t*    dump_sym_addrs;  /**< --dump-sym resolved addresses.            */
-  uint32_t           dump_sym_n;      /**< Count of --dump-sym entries.              */
-  uint16_t           view_w;          /**< Panel width in pixels.                    */
-  uint16_t           view_h;          /**< Panel height in pixels.                   */
-  const char*        win_title;       /**< Window / sidebar caption.                 */
+  uc_engine*                    uc;              /**< The prepared cpu0 engine.               */
+  emu_elf_source_t*             elf;             /**< Open caller-owned firmware source.      */
+  uint32_t                      initial_pc;      /**< Reset-vector PC (Thumb bit set).        */
+  uint32_t                      vtor_base;       /**< VTOR fallback (the MRAM vector base).   */
+  bool                          want_trace;      /**< --trace (forwarded to warm reboots).    */
+  bool                          want_view;       /**< --view (live window requested).         */
+  bool                          want_click;      /**< --click armed.                          */
+  int                           click_x;         /**< --click column (composite pixels).      */
+  int                           click_y;         /**< --click row (composite pixels).         */
+  const char*                   ppm_path;        /**< --ppm output path (NULL when unused).   */
+  const char*                   record_dir;      /**< --record directory (NULL when unused).  */
+  uint32_t                      record_secs;     /**< --record-secs bound (0 = unbounded).    */
+  uint32_t                      rotate_deg;      /**< --rotate display rotation.              */
+  int                           reboot_count;    /**< --reboot N scheduled warm reboots.      */
+  const char*                   save_sd_path;    /**< --save-sd dump path (NULL when unused). */
+  uint32_t                      stop_sym_addr;   /**< --stop-sym resolved address (0 = off).  */
+  uint32_t                      stop_sym_thresh; /**< --stop-sym threshold value.             */
+  const char* const*            dump_sym_names;  /**< --dump-sym names (argv-backed).         */
+  const uint32_t*               dump_sym_addrs;  /**< --dump-sym resolved addresses.          */
+  uint32_t                      dump_sym_n;      /**< Count of --dump-sym entries.            */
+  uint16_t                      view_w;          /**< Panel width in pixels.                  */
+  uint16_t                      view_h;          /**< Panel height in pixels.                 */
+  const char*                   win_title;       /**< Window / sidebar caption.               */
+  emu_presentation_workspace_t* presentation;    /**< Owned streamed frame surface.           */
+  emu_memmap_workspace_t*       memory;          /**< Authoritative aliased-memory backing.   */
 } emu_run_cfg_t;
 
 /**
@@ -187,24 +191,26 @@ typedef struct {
  * @pre @p cfg outlives the call.
  * @post RA8_EMU_STOP_PC (if set) has been handed to the profiler.
  * @post With --record active, the frame directory exists (mkdir) and the
- *       recording banner has been printed to stderr.
+ *       recording banner has been printed to injected error sink.
  * @note Not thread-safe; call once during setup.
  * @since 0.1.0
  */
-RA8_PRIV run_guards_t run_read_guards(const emu_run_cfg_t* cfg, const board_view_t* view);
+run_guards_t run_read_guards(const emu_run_cfg_t* cfg, const board_view_t* view);
 
 /**
- * @brief Run the firmware to a stop condition, print the report, map the exit code.
+ * @brief Run the firmware to a stop condition, print the report, map the exit
+ * code.
  *
  * @details
- * Allocates the presentation buffers (window / --ppm / --record / --click),
+ * Uses the caller-prepared raw-fd presentation surface (window / --ppm /
+ * --record / --click),
  * reads the run-guard environment knobs, executes the chunked run loop --
  * one SysTick period per outer chunk, exceptions resolved to a steady state
  * by the inner loop, cpu1 interleaved, seven stop conditions -- then prints
  * the run-end report (stop cause, telemetry, peripheral summaries, MMIO
  * table, --dump-sym probes), writes the --ppm / --record outputs, holds the
- * live window until closed, saves the SD image, releases the buffers and the
- * engine, and returns the #67 matrix exit code.
+ * live window until closed, saves the SD image, closes owned descriptors and
+ * the engine, and returns the #67 matrix exit code.
  *
  * @param[in] cfg The setup products (see ::emu_run_cfg_t).
  * @return Process exit status.
@@ -214,11 +220,12 @@ RA8_PRIV run_guards_t run_read_guards(const emu_run_cfg_t* cfg, const board_view
  * @retval 3 Wall-clock budget reached before a clean stop.
  * @pre @p cfg is fully populated and its engine is ready to run.
  * @pre The seams / hooks are installed.
- * @post The engine is closed and the image buffer freed.
+ * @post The engine and caller-owned ELF source are closed.
  * @note Not thread-safe; this IS the single-threaded run.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV int emu_run_and_report(const emu_run_cfg_t* cfg);
+int emu_run_and_report(const emu_run_cfg_t* cfg);
 
 #ifdef __cplusplus
 }

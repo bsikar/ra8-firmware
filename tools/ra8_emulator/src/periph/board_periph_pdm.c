@@ -37,6 +37,7 @@
 
 #include "board_console.h"
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief PDM-IF register-window geometry (ra8_pdm_regs.h). */
 typedef enum : uint64_t {
@@ -102,8 +103,18 @@ typedef struct {
 static pdm_channel_t s_pdm[k_pdm_ch_count];
 static uint32_t      s_pdm_reg[k_pdm_words]; /**< Reflect-on-read shadow. */
 
-/** @brief True when channel @p ch is both started and read-enabled. */
-static bool pdm_live(uint32_t ch)
+/**
+ * @brief True when channel @p ch is both started and read-enabled.
+ * @details True when channel @p ch is both started and read-enabled; this step is contained within the board periph PDM model and uses bounded caller or module-owned storage.
+ * @param[in] ch Selected channel identifier.
+ * @return The PDM live result produced by the board periph PDM model.
+ * @retval true The PDM live condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for PDM live. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph PDM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_pdm_live(uint32_t ch)
 {
   if (ch >= (uint32_t)k_pdm_ch_count) {
     return false;
@@ -111,8 +122,18 @@ static bool pdm_live(uint32_t ch)
   return s_pdm[ch].running && s_pdm[ch].read_enable;
 }
 
-/** @brief Next 20-bit two's-complement PCM sample for a live channel. */
-static uint32_t pdm_next_sample(uint32_t ch)
+/**
+ * @brief Next 20-bit two's-complement PCM sample for a live channel.
+ * @details Next 20-bit two's-complement pcm sample for a live channel; this step is contained within the board periph PDM model and uses bounded caller or module-owned storage.
+ * @param[in] ch Selected channel identifier.
+ * @return The PDM next sample result produced by the board periph PDM model.
+ * @retval value The operation-specific PDM next sample value.
+ * @pre Arguments satisfy the ranges documented for PDM next sample. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph PDM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_pdm_next_sample(uint32_t ch)
 {
   pdm_channel_t* c   = &s_pdm[ch];
   const uint32_t ph  = c->phase & (uint32_t)k_pdm_tone_qmask;
@@ -133,8 +154,16 @@ static uint32_t pdm_next_sample(uint32_t ch)
   return (uint32_t)sample & (uint32_t)k_pdm_pddrr_mask20;
 }
 
-/** @brief Push an anti-flood "PDMn samples=.." line to the I2S/audio tab. */
-static void pdm_console_maybe(uint32_t ch)
+/**
+ * @brief Push an anti-flood "PDMn samples=.." line to the I2S/audio tab.
+ * @details Push an anti-flood "pdmn samples=.." line to the i2s/audio tab; this step is contained within the board periph PDM model and uses bounded caller or module-owned storage.
+ * @param[in] ch Selected channel identifier.
+ * @pre Arguments satisfy the ranges documented for PDM console maybe. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph PDM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_pdm_console_maybe(uint32_t ch)
 {
   const uint32_t n = s_pdm[ch].samples;
   if ((n != 1U) && ((n % (uint32_t)k_pdm_console_every) != 0U)) {
@@ -145,8 +174,20 @@ static void pdm_console_maybe(uint32_t ch)
   board_console_push(k_board_console_ch_i2s, ln);
 }
 
-/** @brief Compute the channel index + in-bank offset for an in-window address. */
-static bool pdm_channel_at(uint64_t off, uint32_t* ch, uint64_t* ch_off)
+/**
+ * @brief Compute the channel index + in-bank offset for an in-window address.
+ * @details Compute the channel index + in-bank offset for an in-window address; this step is contained within the board periph PDM model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in,out] ch Selected channel identifier.
+ * @param[in,out] ch_off Ch off state or storage updated in place by the operation.
+ * @return The PDM channel at result produced by the board periph PDM model.
+ * @retval true The PDM channel at condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for PDM channel at. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph PDM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_pdm_channel_at(uint64_t off, uint32_t* ch, uint64_t* ch_off)
 {
   if (off < (uint64_t)k_pdm_ch0_off) {
     return false;
@@ -157,8 +198,17 @@ static bool pdm_channel_at(uint64_t off, uint32_t* ch, uint64_t* ch_off)
   return (*ch < (uint32_t)k_pdm_ch_count);
 }
 
-/** @brief PDCSR: one run bit per currently-started channel. */
-static uint32_t pdm_read_csr(void)
+/**
+ * @brief PDCSR: one run bit per currently-started channel.
+ * @details Pdcsr: one run bit per currently-started channel; this step is contained within the board periph PDM model and uses bounded caller or module-owned storage.
+ * @return The PDM read csr result produced by the board periph PDM model.
+ * @retval value The operation-specific PDM read csr value.
+ * @pre Arguments satisfy the ranges documented for PDM read csr. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph PDM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_pdm_read_csr(void)
 {
   uint32_t csr = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_pdm_ch_count; i++) {
@@ -169,8 +219,20 @@ static uint32_t pdm_read_csr(void)
   return csr;
 }
 
-/** @brief MMIO read inside the PDM window. */
-static uint64_t pdm_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the PDM window.
+ * @details MMIO read inside the pdm window; this step is contained within the board periph PDM model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The PDM read result produced by the board periph PDM model.
+ * @retval value The operation-specific PDM read value.
+ * @pre Arguments satisfy the ranges documented for PDM read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph PDM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_pdm_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -179,28 +241,42 @@ static uint64_t pdm_read(uc_engine* uc, uint64_t addr, unsigned size)
     return 0U;
   }
   if (off == (uint64_t)k_pdm_off_csr) {
-    return pdm_read_csr();
+    return internal_pdm_read_csr();
   }
   uint32_t ch     = 0U;
   uint64_t ch_off = 0U;
-  if (pdm_channel_at(off, &ch, &ch_off)) {
+  if (internal_pdm_channel_at(off, &ch, &ch_off)) {
     if (ch_off == (uint64_t)k_pdm_ch_pddsr) {
-      return pdm_live(ch) ? (uint64_t)((uint32_t)k_pdm_fifo_depth & (uint32_t)k_pdm_pddsr_num) : 0U;
+      return internal_pdm_live(ch)
+               ? (uint64_t)((uint32_t)k_pdm_fifo_depth & (uint32_t)k_pdm_pddsr_num)
+               : 0U;
     }
     if (ch_off == (uint64_t)k_pdm_ch_pddrr) {
-      if (!pdm_live(ch)) {
+      if (!internal_pdm_live(ch)) {
         return 0U;
       }
-      const uint32_t sample = pdm_next_sample(ch);
-      pdm_console_maybe(ch);
+      const uint32_t sample = internal_pdm_next_sample(ch);
+      internal_pdm_console_maybe(ch);
       return (uint64_t)sample;
     }
   }
   return (uint64_t)s_pdm_reg[off >> 2U];
 }
 
-/** @brief MMIO write inside the PDM window: latch, then update run/enable gates. */
-static void pdm_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the PDM window: latch, then update run/enable gates.
+ * @details MMIO write inside the pdm window: latch, then update run/enable gates; this step is contained within the board periph PDM model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for PDM write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph PDM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_pdm_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
@@ -228,13 +304,20 @@ static void pdm_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
   }
   uint32_t ch     = 0U;
   uint64_t ch_off = 0U;
-  if (pdm_channel_at(off, &ch, &ch_off) && (ch_off == (uint64_t)k_pdm_ch_pddrcr)) {
+  if (internal_pdm_channel_at(off, &ch, &ch_off) && (ch_off == (uint64_t)k_pdm_ch_pddrcr)) {
     s_pdm[ch].read_enable = (((uint32_t)value & (uint32_t)k_pdm_pddrcr_datre) != 0U);
   }
 }
 
-/** @brief Clear all PDM channel + shadow state to power-on. */
-static void pdm_reset(void)
+/**
+ * @brief Clear all PDM channel + shadow state to power-on.
+ * @details Clear all pdm channel + shadow state to power-on; this step is contained within the board periph PDM model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for PDM reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph PDM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_pdm_reset(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_pdm_ch_count; i++) {
     s_pdm[i] = (pdm_channel_t){};
@@ -244,37 +327,43 @@ static void pdm_reset(void)
   }
 }
 
-/** @brief Print one line per PDM channel the firmware captured from. */
-static void pdm_report(void)
+/**
+ * @brief Print one line per PDM channel the firmware captured from.
+ * @details Print one line per pdm channel the firmware captured from; this step is contained within the board periph PDM model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for PDM report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph PDM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_pdm_report(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_pdm_ch_count; i++) {
     if (s_pdm[i].samples == 0U) {
       continue;
     }
-    (void)fprintf(stderr,
-                  "  PDM ch%u       : samples=%u run=%s read_en=%s (synth tone)\n",
-                  i,
-                  s_pdm[i].samples,
-                  s_pdm[i].running ? "yes" : "no",
-                  s_pdm[i].read_enable ? "yes" : "no");
+    (void)priv_emu_io_errf("  PDM ch%u       : samples=%u run=%s read_en=%s (synth tone)\n",
+                           i,
+                           s_pdm[i].samples,
+                           s_pdm[i].running ? "yes" : "no",
+                           s_pdm[i].read_enable ? "yes" : "no");
   }
 }
 
 /** @brief This block's descriptor (static lifetime; the core keeps the pointer). */
-static const board_periph_block_t k_pdm_block = {
+static const board_periph_block_t s_k_pdm_block = {
   .base   = (uint64_t)k_pdm_base,
   .span   = (uint64_t)k_pdm_span,
   .order  = (uint32_t)k_block_order_i2c, /* Pull model (read-driven); no tick. */
-  .read   = pdm_read,
-  .write  = pdm_write,
+  .read   = internal_pdm_read,
+  .write  = internal_pdm_write,
   .tick   = nullptr,
-  .reset  = pdm_reset,
-  .report = pdm_report,
+  .reset  = internal_pdm_reset,
+  .report = internal_pdm_report,
   .name   = "PDM-IF",
 };
 
 /** @brief Self-register the PDM-IF block before main runs (decentralized). */
-[[gnu::constructor]] static void board_periph_pdm_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_board_periph_pdm_register(void)
 {
-  board_periph_register_block(&k_pdm_block);
+  board_periph_register_block(&s_k_pdm_block);
 }

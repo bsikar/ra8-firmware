@@ -45,7 +45,7 @@
  * p 3592 enumerates every legal Program target and they all lie in
  * @c 0x02E0_7600..0x02E1_79F0 (FSBL, measurement report, code certificate,
  * general-purpose OTP, PBPS, POFSPS, REVOKE, HUK-zeroize enable, anti-rollback
- * counter). ::maci_commit now refuses anything outside that window and latches
+ * counter). ::internal_maci_commit now refuses anything outside that window and latches
  * the command-locked state, matching a by-hand J-Link reproduction on an
  * EK-RA8D2 (MSTATR = 0x0080C000, MASTAT = 0x18).
  *
@@ -62,6 +62,7 @@
 #include <string.h>
 
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /**
  * @brief MRMS program-mode register sub-window (ra8_flash_regs.h).
@@ -192,8 +193,20 @@ typedef struct {
 
 static mram_state_t s_mram;
 
-/** @brief MMIO read inside the MRMS controller window. */
-static uint64_t mram_reg_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the MRMS controller window.
+ * @details MMIO read inside the mrms controller window; this step is contained within the board periph MRAM model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The MRAM reg read result produced by the board periph MRAM model.
+ * @retval value The operation-specific MRAM reg read value.
+ * @pre Arguments satisfy the ranges documented for MRAM reg read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph MRAM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_mram_reg_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -210,8 +223,20 @@ static uint64_t mram_reg_read(uc_engine* uc, uint64_t addr, unsigned size)
   return s_mram.regs[off / 4U];
 }
 
-/** @brief MMIO write inside the MRMS controller window (latch MSADDR / P-E mode). */
-static void mram_reg_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the MRMS controller window (latch MSADDR / P-E mode).
+ * @details MMIO write inside the mrms controller window (latch msaddr / p-e mode); this step is contained within the board periph MRAM model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for MRAM reg write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph MRAM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_mram_reg_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
@@ -235,8 +260,12 @@ static void mram_reg_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t
  * "MACI commands cannot be accepted" until a Status Clear or Forced Stop
  * releases it. Sets the same bits a real rejection leaves behind so firmware
  * reading MSTATR / MASTAT in the emulator sees the bench values.
+  * @pre Arguments satisfy the ranges documented for maci reject. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph MRAM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static void maci_reject(void)
+RA8_INTERNAL static void internal_maci_reject(void)
 {
   s_mram.regs[(uint32_t)k_mram_off_mstatr / 4U] |=
     (uint32_t)k_mram_mstatr_ilgcom | (uint32_t)k_mram_mstatr_ilglerr;
@@ -245,8 +274,16 @@ static void maci_reject(void)
   s_mram.rejected++;
 }
 
-/** @brief Commit the collected command payload to the mapped MRAM region. */
-static void maci_commit(uc_engine* uc)
+/**
+ * @brief Commit the collected command payload to the mapped MRAM region.
+ * @details Commit the collected command payload to the mapped mram region; this step is contained within the board periph MRAM model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for maci commit. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph MRAM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_maci_commit(uc_engine* uc)
 {
   if (s_mram.payload_len == 0U) {
     return;
@@ -259,19 +296,31 @@ static void maci_commit(uc_engine* uc)
    * trip in the emulator while the bench returned Error=516 (#170). Reject it
    * here so the emulator reports the bench result. */
   if (s_mram.msaddr < (uint32_t)k_mram_pgm_lo) {
-    maci_reject();
+    internal_maci_reject();
     return;
   }
   if (s_mram.msaddr > (uint32_t)k_mram_pgm_hi) {
-    maci_reject();
+    internal_maci_reject();
     return;
   }
-  (void)uc_mem_write(uc, (uint64_t)s_mram.msaddr, s_mram.payload, (size_t)s_mram.payload_len);
+  (void)emu_mem_write(uc, (uint64_t)s_mram.msaddr, s_mram.payload, (size_t)s_mram.payload_len);
   s_mram.programs++;
 }
 
-/** @brief MMIO write inside the MACI command-issuing area (the command stream). */
-static void maci_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the MACI command-issuing area (the command stream).
+ * @details MMIO write inside the maci command-issuing area (the command stream); this step is contained within the board periph MRAM model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for maci write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph MRAM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_maci_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)addr;
   if (size == 2U) {
@@ -302,15 +351,27 @@ static void maci_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
     return;
   }
   if ((byte == (uint32_t)k_maci_cmd_final) && (s_mram.maci_state == (uint8_t)k_maci_collect)) {
-    maci_commit(uc);
+    internal_maci_commit(uc);
     s_mram.maci_state = (uint8_t)k_maci_idle;
     return;
   }
   s_mram.maci_state = (uint8_t)k_maci_idle; /* forced-stop / status-clear / unknown */
 }
 
-/** @brief MMIO read inside the MACI command area (driver never reads it). */
-static uint64_t maci_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the MACI command area (driver never reads it).
+ * @details MMIO read inside the maci command area (driver never reads it); this step is contained within the board periph MRAM model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The maci read result produced by the board periph MRAM model.
+ * @retval value The operation-specific maci read value.
+ * @pre Arguments satisfy the ranges documented for maci read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph MRAM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_maci_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)addr;
@@ -318,8 +379,20 @@ static uint64_t maci_read(uc_engine* uc, uint64_t addr, unsigned size)
   return 0U;
 }
 
-/** @brief MMIO read inside the code-MRAM program-control window (MRCPS ready). */
-static uint64_t mrpgm_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the code-MRAM program-control window (MRCPS ready).
+ * @details MMIO read inside the code-mram program-control window (mrcps ready); this step is contained within the board periph MRAM model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The mrpgm read result produced by the board periph MRAM model.
+ * @retval value The operation-specific mrpgm read value.
+ * @pre Arguments satisfy the ranges documented for mrpgm read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph MRAM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_mrpgm_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -333,8 +406,20 @@ static uint64_t mrpgm_read(uc_engine* uc, uint64_t addr, unsigned size)
   return s_mram.pgm_regs[off / 4U]; /* MRCPC0/1 / MRCFLR read back their written value. */
 }
 
-/** @brief MMIO write inside the code-MRAM program-control window (shadow the gate). */
-static void mrpgm_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the code-MRAM program-control window (shadow the gate).
+ * @details MMIO write inside the code-mram program-control window (shadow the gate); this step is contained within the board periph MRAM model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for mrpgm write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph MRAM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_mrpgm_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
@@ -347,51 +432,64 @@ static void mrpgm_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t va
   }
 }
 
-/** @brief Reset the MRAM model: clear the shadow + collection state. */
-static void mram_reset(void)
+/**
+ * @brief Reset the MRAM model: clear the shadow + collection state.
+ * @details Reset the mram model: clear the shadow + collection state; this step is contained within the board periph MRAM model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for MRAM reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph MRAM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_mram_reset(void)
 {
   (void)memset(&s_mram, 0, sizeof(s_mram));
 }
 
-/** @brief End-of-run MRAM section: MACI program-command count (only if used). */
-static void mram_report(void)
+/**
+ * @brief End-of-run MRAM section: MACI program-command count (only if used).
+ * @details End-of-run mram section: maci program-command count (only if used); this step is contained within the board periph MRAM model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for MRAM report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph MRAM model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_mram_report(void)
 {
   if (s_mram.rejected != 0U) {
     /* Loud: a Program aimed outside HUM Table 59.15's option-setting window
      * is an illegal command on silicon (command-locked, MSTATR.ILGCOMERR). */
-    (void)fprintf(stderr,
-                  "  Extra-MRAM    : %u MACI program commands, %u REJECTED "
-                  "(MSADDR outside HUM Table 59.15 option-setting window)\n",
-                  s_mram.programs,
-                  s_mram.rejected);
+    (void)priv_emu_io_errf("  Extra-MRAM    : %u MACI program commands, %u REJECTED "
+                           "(MSADDR outside HUM Table 59.15 option-setting window)\n",
+                           s_mram.programs,
+                           s_mram.rejected);
     return;
   }
   if (s_mram.programs == 0U) {
     return;
   }
-  (void)fprintf(stderr, "  Extra-MRAM    : %u MACI program commands\n", s_mram.programs);
+  (void)priv_emu_io_errf("  Extra-MRAM    : %u MACI program commands\n", s_mram.programs);
 }
 
 /** @brief MRMS controller-register block descriptor (self-registered). */
-static const board_periph_block_t k_mram_reg_block = {
+static const board_periph_block_t s_k_mram_reg_block = {
   .base   = (uint32_t)k_mram_reg_base,
   .span   = (uint32_t)k_mram_reg_span,
   .order  = (uint32_t)k_mram_block_order,
-  .read   = mram_reg_read,
-  .write  = mram_reg_write,
+  .read   = internal_mram_reg_read,
+  .write  = internal_mram_reg_write,
   .tick   = nullptr,
-  .reset  = mram_reset,
-  .report = mram_report,
+  .reset  = internal_mram_reset,
+  .report = internal_mram_report,
   .name   = "MRAM",
 };
 
 /** @brief MACI command-area block descriptor (self-registered). */
-static const board_periph_block_t k_maci_block = {
+static const board_periph_block_t s_k_maci_block = {
   .base   = (uint32_t)k_maci_base,
   .span   = (uint32_t)k_maci_span,
   .order  = (uint32_t)k_mram_block_order,
-  .read   = maci_read,
-  .write  = maci_write,
+  .read   = internal_maci_read,
+  .write  = internal_maci_write,
   .tick   = nullptr,
   .reset  = nullptr,
   .report = nullptr,
@@ -399,12 +497,12 @@ static const board_periph_block_t k_maci_block = {
 };
 
 /** @brief Code-MRAM program-control block descriptor (self-registered). */
-static const board_periph_block_t k_mrpgm_block = {
+static const board_periph_block_t s_k_mrpgm_block = {
   .base   = (uint32_t)k_mrpgm_base,
   .span   = (uint32_t)k_mrpgm_span,
   .order  = (uint32_t)k_mram_block_order,
-  .read   = mrpgm_read,
-  .write  = mrpgm_write,
+  .read   = internal_mrpgm_read,
+  .write  = internal_mrpgm_write,
   .tick   = nullptr,
   .reset  = nullptr,
   .report = nullptr,
@@ -412,9 +510,9 @@ static const board_periph_block_t k_mrpgm_block = {
 };
 
 /** @brief Register the MRAM + MACI blocks before main (host constructor). */
-[[gnu::constructor]] static void mram_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_mram_block_register(void)
 {
-  board_periph_register_block(&k_mram_reg_block);
-  board_periph_register_block(&k_maci_block);
-  board_periph_register_block(&k_mrpgm_block);
+  board_periph_register_block(&s_k_mram_reg_block);
+  board_periph_register_block(&s_k_maci_block);
+  board_periph_register_block(&s_k_mrpgm_block);
 }

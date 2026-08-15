@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <unicorn/unicorn.h>
 
+#include "emu_elf.h"
 #include "ra8_attributes.h"
 
 #ifdef __cplusplus
@@ -61,8 +62,9 @@ typedef enum : uint32_t {
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @see eth_seam_hook()  Installs the seams that call this.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void eth_hook_return(uc_engine* uc, uint32_t r0);
+void eth_hook_return(uc_engine* uc, uint32_t r0);
 
 /**
  * @brief Hook one symbol (if present) to @p cb; record it for the report.
@@ -73,40 +75,39 @@ RA8_PRIV void eth_hook_return(uc_engine* uc, uint32_t r0);
  * fixed handle pool shared across all callers.
  *
  * @param[in,out] uc   Unicorn engine.
- * @param[in]     elf  Loaded ELF image (symbol resolution).
- * @param[in]     len  ELF image length in bytes.
+ * @param[in]     elf  Open ELF source used for symbol resolution.
  * @param[in]     name Symbol to hook.
  * @param[in]     cb   UC_HOOK_CODE callback to fire at the entry.
  * @return Nothing.
- * @pre @p elf is resident and valid for symbol resolution.
+ * @pre @p elf remains open and valid for symbol resolution.
  * @pre @p cb matches the UC_HOOK_CODE ABI.
  * @post On a resolved symbol one more entry hook is armed (pool permitting).
  * @note Not thread-safe; call during single-threaded setup.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void
-eth_seam_hook(uc_engine* uc, const uint8_t* elf, long len, const char* name, void* cb);
+void eth_seam_hook(uc_engine* uc, const emu_elf_source_t* elf, const char* name, void* cb);
 
 /**
  * @brief Install a `--trace-sym` entry hook for every requested symbol present.
  *
  * @param[in,out] uc    Active Unicorn engine.
- * @param[in]     elf   Loaded ELF image (for symbol resolution).
- * @param[in]     len   ELF image length in bytes.
+ * @param[in]     elf   Open ELF source used for symbol resolution.
  * @param[in]     names Symbol names from the CLI (stable for the run).
  * @param[in]     count Number of names in @p names.
  * @return Nothing.
- * @pre @p uc is initialised and @p elf holds @p len valid bytes.
+ * @pre @p uc is initialised and @p elf remains open.
  * @pre @p names entries outlive the run (argv pointers).
  * @post A UC_HOOK_CODE logs each resolved symbol's entries (+LR).
  * @note A name that does not resolve is reported once and skipped.
  * @since 0.1.0
+  * @details Install a `--trace-sym` entry hook for every requested symbol present; this step is contained within the emu trace model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void sym_trace_install(uc_engine*         uc,
-                                const uint8_t*     elf,
-                                long               len,
-                                const char* const* names,
-                                uint32_t           count);
+void sym_trace_install(uc_engine*              uc,
+                       const emu_elf_source_t* elf,
+                       const char* const*      names,
+                       uint32_t                count);
 
 #ifdef __cplusplus
 }

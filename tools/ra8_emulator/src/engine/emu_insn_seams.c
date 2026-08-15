@@ -22,6 +22,7 @@
 
 #include "emu_engine.h"
 #include "emu_exc.h"
+#include "emu_host_io_internal.h"
 #include "emu_seams.h"
 
 /** @brief Thumb halfword-two field decode for the conditional-select family. */
@@ -88,8 +89,14 @@ typedef enum : uint32_t {
  * @param[in] cond 4-bit ARM condition code (0..15).
  * @param[in] xpsr Current xPSR (APSR flags live in the top nibble).
  * @return true if the condition holds.
+  * @details Evaluate an arm condition code against the apsr flags; this step is contained within the emu insn seams model and uses bounded caller or module-owned storage.
+ * @retval true The cond holds condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for cond holds. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu insn seams model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static bool cond_holds(uint32_t cond, uint32_t xpsr)
+RA8_INTERNAL static bool internal_cond_holds(uint32_t cond, uint32_t xpsr)
 {
   const bool n = ((xpsr >> (uint32_t)k_apsr_n) & 1U) != 0U;
   const bool z = ((xpsr >> (uint32_t)k_apsr_z) & 1U) != 0U;
@@ -144,8 +151,10 @@ static bool cond_holds(uint32_t cond, uint32_t xpsr)
  * @post No state is modified (pure predicate).
  * @note Not thread-safe by inheritance only; the predicate itself is pure.
  * @since 0.1.0
+  * @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-static bool cs_reserved_reg(uint32_t reg)
+RA8_INTERNAL static bool internal_cs_reserved_reg(uint32_t reg)
 {
   return (reg == (uint32_t)k_cs_reg_sp) || (reg == (uint32_t)k_cs_reg_pc);
 }
@@ -164,8 +173,14 @@ static bool cs_reserved_reg(uint32_t reg)
  * @param[in]     pc   Address of the trapped instruction.
  * @param[in]     code The 4 instruction bytes already read at @p pc.
  * @return true if a conditional-select was recognised, executed, and PC advanced.
+  * @retval true The emulate cond select condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for emulate cond select. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu insn seams model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static bool emulate_cond_select(uc_engine* uc, uint32_t pc, const uint8_t* code)
+RA8_INTERNAL static bool
+internal_emulate_cond_select(uc_engine* uc, uint32_t pc, const uint8_t* code)
 {
   const uint16_t hw1 = (uint16_t)(code[0] | ((uint16_t)code[1] << 8));
   const uint16_t hw2 = (uint16_t)(code[2] | ((uint16_t)code[3] << 8));
@@ -185,7 +200,8 @@ static bool emulate_cond_select(uc_engine* uc, uint32_t pc, const uint8_t* code)
    * would execute here as CSEL r3, r2, sp, EQ and silently corrupt r3. Reserved
    * operands mean this is not a conditional select; fall through and let the
    * long-shift seam claim it. */
-  if (cs_reserved_reg(rn) || cs_reserved_reg(rd) || cs_reserved_reg(rm)) {
+  if (internal_cs_reserved_reg(rn) || internal_cs_reserved_reg(rd) ||
+      internal_cs_reserved_reg(rm)) {
     return false;
   }
 
@@ -197,7 +213,7 @@ static bool emulate_cond_select(uc_engine* uc, uint32_t pc, const uint8_t* code)
   (void)uc_reg_read(uc, k_arm_reg_id[rm], &vm);
 
   uint32_t result;
-  if (cond_holds(cond, xpsr)) {
+  if (internal_cond_holds(cond, xpsr)) {
     result = vn;
   } else {
     switch (op) {
@@ -240,8 +256,13 @@ static bool emulate_cond_select(uc_engine* uc, uint32_t pc, const uint8_t* code)
  * @param[in]     pc   Address of the trapped instruction.
  * @param[in]     code The 4 instruction bytes already read at @p pc.
  * @return true if a DSB/DMB/ISB barrier was recognised and PC advanced past it.
+  * @retval true The emulate barrier condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for emulate barrier. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu insn seams model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static bool emulate_barrier(uc_engine* uc, uint32_t pc, const uint8_t* code)
+RA8_INTERNAL static bool internal_emulate_barrier(uc_engine* uc, uint32_t pc, const uint8_t* code)
 {
   enum : uint16_t {
     k_barrier_hw1       = 0xF3BFU, /**< First half-word of DSB/DMB/ISB.       */
@@ -289,8 +310,10 @@ static bool emulate_barrier(uc_engine* uc, uint32_t pc, const uint8_t* code)
  * @post On false, no state changes.
  * @note Not thread-safe.
  * @since 0.1.0
+  * @retval true The emulate sec scrub condition holds or completed successfully; false otherwise.
  */
-static bool emulate_sec_scrub(uc_engine* uc, uint32_t pc, const uint8_t code[4])
+RA8_INTERNAL static bool
+internal_emulate_sec_scrub(uc_engine* uc, uint32_t pc, const uint8_t code[4])
 {
   const uint16_t hw0 = (uint16_t)(((uint16_t)code[1] << (uint16_t)k_byte_bits) | (uint16_t)code[0]);
   if ((hw0 != (uint16_t)k_clrm_hw0) && (hw0 != (uint16_t)k_vscclrm_hw0_s) &&
@@ -329,8 +352,20 @@ enum : uint32_t {
 /** @brief Count of LOB instructions emulated this run (run-end telemetry). */
 static uint64_t s_lob_emulated = 0U;
 
-/** @brief Emulate a DLS/LE Low-Overhead-Branch instruction; true iff handled. */
-static bool emulate_lob(uc_engine* uc, uint32_t pc, const uint8_t code[4])
+/**
+ * @brief Emulate a DLS/LE Low-Overhead-Branch instruction; true iff handled.
+ * @details Emulate a dls/le low-overhead-branch instruction; true iff handled; this step is contained within the emu insn seams model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] pc Guest program-counter value associated with the operation.
+ * @param[in] code Instruction, status, or command code decoded by the operation.
+ * @return The emulate lob result produced by the emu insn seams model.
+ * @retval true The emulate lob condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for emulate lob. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu insn seams model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_emulate_lob(uc_engine* uc, uint32_t pc, const uint8_t code[4])
 {
   const uint16_t hw1 = (uint16_t)(code[0] | ((uint16_t)code[1] << (uint16_t)k_byte_bits));
   const uint16_t hw2 = (uint16_t)(code[2] | ((uint16_t)code[3] << (uint16_t)k_byte_bits));
@@ -386,7 +421,7 @@ static bool emulate_lob(uc_engine* uc, uint32_t pc, const uint8_t code[4])
  * Helium, the register-form long shifts and the hardware loops all arrive as
  * undefined instructions. Each handler writes its result and advances PC; the
  * caller stops the engine so the chunked run loop relaunches from the new PC.
- * Split out of ::dispatch_insn_seam, which keeps the two seams that are about
+ * Split out of ::internal_dispatch_insn_seam, which keeps the two seams that are about
  * ra8_emulator's own machinery (a patched divide, a security scrub) rather than a
  * missing instruction.
  *
@@ -401,24 +436,26 @@ static bool emulate_lob(uc_engine* uc, uint32_t pc, const uint8_t code[4])
  * @post On true, PC points past the emulated instruction.
  * @note Not thread-safe; called from the single-threaded run loop.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-static bool dispatch_armv81_seam(uc_engine* uc, uint32_t pc, const uint8_t code[4])
+RA8_INTERNAL static bool
+internal_dispatch_armv81_seam(uc_engine* uc, uint32_t pc, const uint8_t code[4])
 {
   /* The RA8D2 firmware is built for Cortex-M85 (Armv8.1-M); the nearest core
    * Unicorn offers is M33 (Armv8-M), which lacks the conditional-select family.
    * GCC emits those for branchless index math on the touch path, so
-   * execute them here. emulate_cond_select writes Rd and advances PC past the
+   * execute them here. internal_emulate_cond_select writes Rd and advances PC past the
    * 4-byte instruction; then uc_emu_stop so the chunked run loop relaunches from
    * the new PC -- editing PC and continuing in-place corrupts Unicorn's block /
    * Thumb state (it then misdecodes the next valid instruction), so the
    * stop-then-relaunch contract the SysTick / touch stubs use is required here. */
-  if (emulate_cond_select(uc, pc, code)) {
+  if (internal_emulate_cond_select(uc, pc, code)) {
     return true; /* handled -- run loop resumes at the advanced PC */
   }
 
   /* Older Unicorn builds (the runner's 2.0.1) trap DSB/DMB/ISB as invalid; a
    * barrier is a NOP in this emulator, so advance past it and relaunch. */
-  if (emulate_barrier(uc, pc, code)) {
+  if (internal_emulate_barrier(uc, pc, code)) {
     return true; /* handled -- run loop resumes past the barrier */
   }
 
@@ -439,14 +476,27 @@ static bool dispatch_armv81_seam(uc_engine* uc, uint32_t pc, const uint8_t code[
 
   /* Low-Overhead-Branch (DLS/LE): the M85's hardware-loop ops, absent on the M33.
    * Emulate the loop counter / branch and relaunch. */
-  if (emulate_lob(uc, pc, code)) {
+  if (internal_emulate_lob(uc, pc, code)) {
     return true; /* handled -- run loop resumes at the loop top or past the loop */
   }
   return false;
 }
 
-/** @brief Try each Armv8.1-M / security seam in turn; true (and stop) if handled. */
-static bool dispatch_insn_seam(uc_engine* uc, uint32_t pc, const uint8_t code[4])
+/**
+ * @brief Try each Armv8.1-M / security seam in turn; true (and stop) if handled.
+ * @details Try each armv8.1-m / security seam in turn; true (and stop) if handled; this step is contained within the emu insn seams model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] pc Guest program-counter value associated with the operation.
+ * @param[in] code Instruction, status, or command code decoded by the operation.
+ * @return The dispatch insn seam result produced by the emu insn seams model.
+ * @retval true The dispatch insn seam condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for dispatch insn seam. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu insn seams model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool
+internal_dispatch_insn_seam(uc_engine* uc, uint32_t pc, const uint8_t code[4])
 {
   /* Divide-by-zero trap: a UDIV/SDIV overwritten with UDF once the firmware set
    * CCR.DIV_0_TRP. emulate_div0_patched either latches a UsageFault (zero divisor)
@@ -459,28 +509,36 @@ static bool dispatch_insn_seam(uc_engine* uc, uint32_t pc, const uint8_t code[4]
 
   /* Armv8-M Security Extension register scrub (CLRM / VSCCLRM) on a cmse
    * Non-Secure-Callable return: a NOP in ra8_emulator's single-domain model. */
-  if (emulate_sec_scrub(uc, pc, code)) {
+  if (internal_emulate_sec_scrub(uc, pc, code)) {
     (void)uc_emu_stop(uc);
     return true;
   }
 
-  if (dispatch_armv81_seam(uc, pc, code)) {
+  if (internal_dispatch_armv81_seam(uc, pc, code)) {
     (void)uc_emu_stop(uc);
     return true; /* handled -- run loop resumes past the emulated instruction */
   }
   return false;
 }
 
-/** @brief Report + capstone-disassemble an instruction no seam could decode. */
-static void report_unhandled_insn(uint32_t pc, const uint8_t code[4])
+/**
+ * @brief Report + capstone-disassemble an instruction no seam could decode.
+ * @details Report + capstone-disassemble an instruction no seam could decode; this step is contained within the emu insn seams model and uses bounded caller or module-owned storage.
+ * @param[in] pc Guest program-counter value associated with the operation.
+ * @param[in] code Instruction, status, or command code decoded by the operation.
+ * @pre Arguments satisfy the ranges documented for report unhandled insn. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu insn seams model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_report_unhandled_insn(uint32_t pc, const uint8_t code[4])
 {
-  (void)fprintf(stderr,
-                "  INVALID INSN @ 0x%08X: bytes %02X %02X %02X %02X\n",
-                pc,
-                code[0],
-                code[1],
-                code[2],
-                code[3]);
+  (void)priv_emu_io_errf("  INVALID INSN @ 0x%08X: bytes %02X %02X %02X %02X\n",
+                         pc,
+                         code[0],
+                         code[1],
+                         code[2],
+                         code[3]);
 
   csh cs;
   if (cs_open(CS_ARCH_ARM, (cs_mode)(CS_MODE_THUMB | CS_MODE_MCLASS), &cs) == CS_ERR_OK) {
@@ -489,10 +547,10 @@ static void report_unhandled_insn(uint32_t pc, const uint8_t code[4])
      * pointer width instead of the four instruction bytes that are valid. */
     const size_t n = cs_disasm(cs, code, (size_t)k_cs_insn_len, pc, 1, &insn);
     if (n > 0U) {
-      (void)fprintf(stderr, "  disasm: %s %s\n", insn[0].mnemonic, insn[0].op_str);
+      (void)priv_emu_io_errf("  disasm: %s %s\n", insn[0].mnemonic, insn[0].op_str);
       cs_free(insn, n);
     } else {
-      (void)fprintf(stderr, "  disasm: capstone could not decode it either\n");
+      (void)priv_emu_io_errf("  disasm: capstone could not decode it either\n");
     }
     cs_close(&cs);
   }
@@ -505,9 +563,9 @@ bool on_invalid_insn(uc_engine* uc, void* user)
   uint32_t pc = 0U;
   (void)uc_reg_read(uc, UC_ARM_REG_PC, &pc);
   uint8_t code[4] = {};
-  (void)uc_mem_read(uc, pc, code, sizeof(code));
+  (void)emu_mem_read(uc, pc, code, sizeof(code));
 
-  if (dispatch_insn_seam(uc, pc, code)) {
+  if (internal_dispatch_insn_seam(uc, pc, code)) {
     return true; /* handled -- run loop resumes at the advanced PC */
   }
 
@@ -520,15 +578,16 @@ bool on_invalid_insn(uc_engine* uc, void* user)
     return true;
   }
 
-  report_unhandled_insn(pc, code);
+  internal_report_unhandled_insn(pc, code);
   return false; /* not handled -> stop emulation with UC_ERR_INSN_INVALID */
 }
 
 /** @brief Implementation of `emu_insn_seams_install()` -- arm the dispatcher. */
 void emu_insn_seams_install(uc_engine* uc)
 {
-  static uc_hook s_h_invalid;
-  (void)uc_hook_add(uc, &s_h_invalid, UC_HOOK_INSN_INVALID, (void*)on_invalid_insn, nullptr, 1, 0);
+  static uc_hook local_h_invalid;
+  (void)
+    uc_hook_add(uc, &local_h_invalid, UC_HOOK_INSN_INVALID, (void*)on_invalid_insn, nullptr, 1, 0);
 }
 
 /** @brief Implementation of `emu_lob_emulated_count()` -- plain counter read. */

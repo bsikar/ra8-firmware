@@ -19,6 +19,7 @@
 
 #include "board_periph.h"
 #include "emu_cpu1.h"
+#include "emu_host_io_internal.h"
 
 /** @brief Sparse-model sizing and settle thresholds. */
 typedef enum : uint32_t {
@@ -73,8 +74,16 @@ static uint32_t s_bgc_writes;
 static uint32_t s_bgc_distinct[k_bgc_track_max];
 static uint32_t s_bgc_distinct_n;
 
-/** @brief Record a BG_BGC write; remember the value if it is a new colour. */
-static void bgc_track(uint32_t value)
+/**
+ * @brief Record a BG_BGC write; remember the value if it is a new colour.
+ * @details Record a bg_bgc write; remember the value if it is a new colour; this step is contained within the emu MMIO model and uses bounded caller or module-owned storage.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for bgc track. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu MMIO model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_bgc_track(uint32_t value)
 {
   s_bgc_writes++;
   for (uint32_t i = 0U; i < s_bgc_distinct_n; i++) {
@@ -87,8 +96,18 @@ static void bgc_track(uint32_t value)
   }
 }
 
-/** @brief Find (or add) a slot for a distinct MMIO address; -1 if table full. */
-static int mmio_index(uint64_t addr)
+/**
+ * @brief Find (or add) a slot for a distinct MMIO address; -1 if table full.
+ * @details Find (or add) a slot for a distinct mmio address; -1 if table full; this step is contained within the emu MMIO model and uses bounded caller or module-owned storage.
+ * @param[in] addr Guest address involved in the operation.
+ * @return The MMIO index result produced by the emu MMIO model.
+ * @retval value The operation-specific MMIO index value.
+ * @pre Arguments satisfy the ranges documented for MMIO index. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu MMIO model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static int internal_mmio_index(uint64_t addr)
 {
   if ((s_mmio_cache >= 0) && (s_mmio_addr[s_mmio_cache] == addr)) {
     return s_mmio_cache;
@@ -118,7 +137,7 @@ uint64_t mmio_read(uc_engine* uc, uint64_t offset, unsigned size, void* user)
   if (handled) {
     return modeled;
   }
-  const int idx = mmio_index((uint64_t)k_periph_base + offset);
+  const int idx = internal_mmio_index((uint64_t)k_periph_base + offset);
   if (idx >= 0) {
     s_mmio_rcount[idx]++;
     if (idx == s_mmio_run_slot) {
@@ -175,7 +194,7 @@ void mmio_write(uc_engine* uc, uint64_t offset, unsigned size, uint64_t value, v
    * captures both so the run loop can boot the second engine (see emu_cpu1). */
   emu_cpu1_notify_mmio_write(mmio_abs, value);
   if (mmio_abs == (uint64_t)k_glcdc_bg_bgc) {
-    bgc_track((uint32_t)value);
+    internal_bgc_track((uint32_t)value);
   }
   /* A modelled peripheral block consumes the write first (so GPIO latches,
    * timer control, and ICU event links take real effect); the sparse fallback
@@ -185,7 +204,7 @@ void mmio_write(uc_engine* uc, uint64_t offset, unsigned size, uint64_t value, v
   if (handled) {
     return;
   }
-  const int idx = mmio_index((uint64_t)k_periph_base + offset);
+  const int idx = internal_mmio_index((uint64_t)k_periph_base + offset);
   if (idx >= 0) {
     s_mmio_wcount[idx]++;
     s_mmio_val[idx]     = (uint32_t)value;
@@ -214,46 +233,42 @@ uint32_t emu_mmio_writes(void)
 /** @brief Implementation of `emu_mmio_print_counts()` -- run-end report line. */
 void emu_mmio_print_counts(void)
 {
-  (void)fprintf(stderr,
-                "  MMIO reads    : %u   writes: %u   distinct addrs: %u\n",
-                s_mmio_reads,
-                s_mmio_writes,
-                s_mmio_n);
+  (void)priv_emu_io_errf("  MMIO reads    : %u   writes: %u   distinct addrs: %u\n",
+                         s_mmio_reads,
+                         s_mmio_writes,
+                         s_mmio_n);
 }
 
 /** @brief Implementation of `emu_mmio_print_bgc_and_table()` -- run-end report. */
 void emu_mmio_print_bgc_and_table(void)
 {
   /* GLCDC colour-cycle witness: BG_BGC write count + the distinct colours. */
-  (void)fprintf(stderr,
-                "  BG_BGC writes : %u   distinct colours: %u   [",
-                s_bgc_writes,
-                s_bgc_distinct_n);
+  (void)priv_emu_io_errf("  BG_BGC writes : %u   distinct colours: %u   [",
+                         s_bgc_writes,
+                         s_bgc_distinct_n);
   for (uint32_t i = 0U; i < s_bgc_distinct_n; i++) {
-    (void)fprintf(stderr, "%s0x%06X", (i == 0U) ? "" : " ", s_bgc_distinct[i]);
+    (void)priv_emu_io_errf("%s0x%06X", (i == 0U) ? "" : " ", s_bgc_distinct[i]);
   }
-  (void)fprintf(stderr, "]\n");
-  (void)fprintf(stderr, "    %-12s %10s %10s %12s\n", "addr", "reads", "writes", "last-write");
+  (void)priv_emu_io_errf("]\n");
+  (void)priv_emu_io_errf("    %-12s %10s %10s %12s\n", "addr", "reads", "writes", "last-write");
   const bool     truncated = (s_mmio_n > (uint32_t)k_mmio_print_max);
   const uint32_t shown     = truncated ? (uint32_t)k_mmio_print_max : s_mmio_n;
   for (uint32_t i = 0U; i < shown; i++) {
     if (s_mmio_written[i]) {
-      (void)fprintf(stderr,
-                    "    0x%08llX %10u %10u   0x%08X\n",
-                    (unsigned long long)s_mmio_addr[i],
-                    s_mmio_rcount[i],
-                    s_mmio_wcount[i],
-                    s_mmio_val[i]);
+      (void)priv_emu_io_errf("    0x%08llX %10u %10u   0x%08X\n",
+                             (unsigned long long)s_mmio_addr[i],
+                             s_mmio_rcount[i],
+                             s_mmio_wcount[i],
+                             s_mmio_val[i]);
     } else {
-      (void)fprintf(stderr,
-                    "    0x%08llX %10u %10u %12s\n",
-                    (unsigned long long)s_mmio_addr[i],
-                    s_mmio_rcount[i],
-                    s_mmio_wcount[i],
-                    "-");
+      (void)priv_emu_io_errf("    0x%08llX %10u %10u %12s\n",
+                             (unsigned long long)s_mmio_addr[i],
+                             s_mmio_rcount[i],
+                             s_mmio_wcount[i],
+                             "-");
     }
   }
   if (truncated) {
-    (void)fprintf(stderr, "    ... (%u more)\n", s_mmio_n - shown);
+    (void)priv_emu_io_errf("    ... (%u more)\n", s_mmio_n - shown);
   }
 }

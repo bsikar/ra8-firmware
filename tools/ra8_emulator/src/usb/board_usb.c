@@ -26,6 +26,7 @@
 
 #include "board_console.h"
 #include "board_usb_internal.h"
+#include "emu_host_io_internal.h"
 #include "ra8_elc_regs.h"
 #include "ra8_usb_regs.h"
 
@@ -50,7 +51,7 @@ bool s_roles_swapped;
 /* ICU event the device model pends for its interrupts: USBFS_INT while the
  * device model sits behind the USBFS window (Config A), USBHS_USB_INT_RESUME
  * once the roles swap and the DCD drives the USBHS controller (Config B). */
-uint16_t s_dev_irq_event = (uint16_t)k_ra8_elc_event_usbfs_int;
+uint16_t local_dev_irq_event = (uint16_t)k_ra8_elc_event_usbfs_int;
 
 /* DCP control-OUT "wire" holding buffer (bridge path). The polled host delivers
  * a control-write data stage (e.g. a DFU_DNLOAD block) before the device -- off
@@ -87,29 +88,29 @@ static uint32_t s_log_n;
  */
 
 /** @brief Append one already-formatted line to the enumeration-step log. */
-void usb_log_line(const char* msg)
+void priv_usb_log_line(const char* msg)
 {
   /* Mirror this completed USB event (one SETUP step / state change / bulk
    * buffer -- already coalesced by the caller, never per byte) onto the board
    * view's USB console tab. This is an in-memory store only and does not touch
-   * stdout, so the smoke / golden output stays byte-identical. Pushed outside
+   * injected output sink, so the smoke / golden output stays byte-identical. Pushed outside
    * the s_log cap below so the live tab keeps flowing past the report cap. */
   board_console_push(k_board_console_ch_usb, msg);
   if (s_log_n < (uint32_t)k_usb_log_cap) {
     (void)snprintf(s_log[s_log_n], sizeof(s_log[0]), "%s", msg);
     if (s_trace) {
-      (void)fprintf(stderr, "  [usb] %s\n", s_log[s_log_n]);
+      (void)priv_emu_io_errf("  [usb] %s\n", s_log[s_log_n]);
     }
     s_log_n++;
   }
 }
 
 /** @brief Append a "<label>: <n> byte(s)"-style line built from one count. */
-void usb_log_count(const char* label, unsigned n)
+void priv_usb_log_count(const char* label, unsigned n)
 {
   char line[k_usb_log_width];
   (void)snprintf(line, sizeof(line), "%s: %u byte(s)", label, n);
-  usb_log_line(line);
+  priv_usb_log_line(line);
 }
 
 void board_usb_tick(uc_engine* uc)
@@ -126,7 +127,7 @@ void board_usb_tick(uc_engine* uc)
    * still pump the device's level-triggered DCP-OUT receive so a control-write
    * data stage the host delivered before the device armed still lands. */
   if (s_external_host) {
-    bridge_pump_device(uc);
+    priv_bridge_pump_device(uc);
     return;
   }
   /* Self-loop bench (register-level USBHS host model, board_usb_host.c): the
@@ -138,20 +139,20 @@ void board_usb_tick(uc_engine* uc)
   }
   switch ((usb_host_phase_t)s_host_phase) {
     case k_phase_idle:
-      host_run_idle_phase(uc);
+      priv_host_run_idle_phase(uc);
       break;
     case k_phase_reset:
-      host_run_reset_phase(uc);
+      priv_host_run_reset_phase(uc);
       break;
     case k_phase_setup:
-      host_run_setup_phase(uc);
+      priv_host_run_setup_phase(uc);
       break;
     case k_phase_configured:
-      host_run_configured_phase(uc);
+      priv_host_run_configured_phase(uc);
       break;
     case k_phase_done:
     default:
-      host_echo_read_in(uc); /* keep draining any late echo. */
+      priv_host_echo_read_in(uc); /* keep draining any late echo. */
       break;
   }
 }
@@ -163,23 +164,23 @@ void board_usb_tick(uc_engine* uc)
 
 void board_usb_init(bool trace)
 {
-  s_usb              = (usb_state_t){};
-  s_trace            = trace;
-  s_host_phase       = (uint8_t)k_phase_idle;
-  s_host_step        = 0U;
-  s_host_substate    = (uint8_t)k_sub_deliver;
-  s_host_wait        = 0U;
-  s_configured       = false;
-  s_usb_irqs         = 0U;
-  s_echo_out_len     = 0U;
-  s_echo_out_sent    = 0U;
-  s_echo_in_got      = 0U;
-  s_log_n            = 0U;
-  s_dcp_hold_len     = 0U;
-  s_dcp_hold_pending = false;
-  s_roles_swapped    = false;
-  s_dev_irq_event    = (uint16_t)k_ra8_elc_event_usbfs_int;
-  s_usb.dvsq         = (uint16_t)k_ra8_dvsq_powered;
+  s_usb               = (usb_state_t){};
+  s_trace             = trace;
+  s_host_phase        = (uint8_t)k_phase_idle;
+  s_host_step         = 0U;
+  s_host_substate     = (uint8_t)k_sub_deliver;
+  s_host_wait         = 0U;
+  s_configured        = false;
+  s_usb_irqs          = 0U;
+  s_echo_out_len      = 0U;
+  s_echo_out_sent     = 0U;
+  s_echo_in_got       = 0U;
+  s_log_n             = 0U;
+  s_dcp_hold_len      = 0U;
+  s_dcp_hold_pending  = false;
+  s_roles_swapped     = false;
+  local_dev_irq_event = (uint16_t)k_ra8_elc_event_usbfs_int;
+  s_usb.dvsq          = (uint16_t)k_ra8_dvsq_powered;
 }
 
 void board_usb_set_irq_raiser(board_usb_irq_raiser_t raise)
@@ -208,7 +209,7 @@ uint32_t board_usb_echo_received(void)
 }
 
 /** @brief Print the device-state name for the report line. */
-static const char* usb_dvsq_name(uint16_t dvsq)
+RA8_INTERNAL static const char* internal_usb_dvsq_name(uint16_t dvsq)
 {
   switch (dvsq & (uint16_t)k_ra8_intsts0_mask_dvsq) {
     case (uint16_t)k_ra8_dvsq_powered:
@@ -243,7 +244,7 @@ const char* board_usb_state_string(void)
         return "CONFIGURED";
     }
   }
-  return usb_dvsq_name(s_usb.dvsq);
+  return internal_usb_dvsq_name(s_usb.dvsq);
 }
 
 void board_usb_report(void)
@@ -251,29 +252,26 @@ void board_usb_report(void)
   if ((s_usb_irqs == 0U) && (s_log_n == 0U)) {
     return; /* USB never came up in this run; stay silent. */
   }
-  (void)fprintf(stderr,
-                "  USB-FS        : %u IRQ(s), device state %s\n",
-                s_usb_irqs,
-                usb_dvsq_name(s_usb.dvsq));
+  (void)priv_emu_io_errf("  USB-FS        : %u IRQ(s), device state %s\n",
+                         s_usb_irqs,
+                         internal_usb_dvsq_name(s_usb.dvsq));
   for (uint32_t i = 0U; i < s_log_n; i++) {
-    (void)fprintf(stderr, "    usb: %s\n", s_log[i]);
+    (void)priv_emu_io_errf("    usb: %s\n", s_log[i]);
   }
   if (s_configured) {
-    (void)fprintf(stderr, "  USB: device CONFIGURED (%s)\n", usb_class_active_str());
+    (void)priv_emu_io_errf("  USB: device CONFIGURED (%s)\n", priv_usb_class_active_str());
   } else {
-    (void)fprintf(stderr, "  USB: enumeration INCOMPLETE (device did not reach CONFIGURED)\n");
+    (void)priv_emu_io_errf("  USB: enumeration INCOMPLETE (device did not reach CONFIGURED)\n");
   }
   if (s_hid_reports > 0U) {
-    (void)fprintf(stderr,
-                  "  USB HID       : %u mouse report(s), cursor (%d,%d) buttons 0x%02X\n",
-                  s_hid_reports,
-                  (int)s_hid_cx,
-                  (int)s_hid_cy,
-                  (unsigned)s_hid_buttons);
+    (void)priv_emu_io_errf("  USB HID       : %u mouse report(s), cursor (%d,%d) buttons 0x%02X\n",
+                           s_hid_reports,
+                           (int)s_hid_cx,
+                           (int)s_hid_cy,
+                           (unsigned)s_hid_buttons);
   }
   if ((s_msc_blocks > 0U) || (s_msc_read_ok > 0U)) {
-    (void)fprintf(
-      stderr,
+    (void)priv_emu_io_errf(
       "  USB MSC       : capacity %u blocks x %uB, INQUIRY %s, sector read %u byte(s)\n",
       s_msc_blocks,
       s_msc_block_len,
@@ -281,16 +279,15 @@ void board_usb_report(void)
       s_msc_read_ok);
   }
   if (s_echo_out_len > 0U) {
-    (void)fprintf(stderr,
-                  "  USB CDC echo  : sent %u byte(s) OUT, read %u byte(s) IN\n",
-                  s_echo_out_sent,
-                  s_echo_in_got);
+    (void)priv_emu_io_errf("  USB CDC echo  : sent %u byte(s) OUT, read %u byte(s) IN\n",
+                           s_echo_out_sent,
+                           s_echo_in_got);
   }
   if (s_loop_latched) {
-    (void)fprintf(stderr,
-                  "  USB self-loop : fw host drove %u SETUP(s), %u bulk-OUT, %u bulk-IN pkt(s)\n",
-                  s_loop_setups,
-                  s_loop_bulk_out_pkts,
-                  s_loop_bulk_in_pkts);
+    (void)priv_emu_io_errf(
+      "  USB self-loop : fw host drove %u SETUP(s), %u bulk-OUT, %u bulk-IN pkt(s)\n",
+      s_loop_setups,
+      s_loop_bulk_out_pkts,
+      s_loop_bulk_in_pkts);
   }
 }

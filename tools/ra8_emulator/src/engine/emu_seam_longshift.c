@@ -51,8 +51,10 @@
 #include <string.h>
 
 #include "emu_elf.h"
+#include "emu_elf_source_internal.h"
 #include "emu_engine.h"
 #include "emu_exc.h"
+#include "emu_host_io_internal.h"
 #include "emu_seams.h"
 
 /* Armv8.1-M long-shift family (LSLL / LSRL / ASRL), both the immediate form
@@ -117,16 +119,16 @@ typedef enum : uint32_t {
  * @brief One decoded immediate-or-register Armv8.1-M long shift.
  *
  * @details
- * Produced by ::long_shift_decode and consumed by ::long_shift_begin. The
+ * Produced by ::internal_long_shift_decode and consumed by ::internal_long_shift_begin. The
  * register form carries the shift amount in a register that can only be read
  * once the core is at the instruction, so the amount is resolved separately by
- * ::long_shift_amount rather than being decoded here.
+ * ::internal_long_shift_amount rather than being decoded here.
  *
  * @invariant @c rdalo is even; @c rdahi is never 0b1111.
  * @invariant Exactly one of @c by_reg / immediate use is meaningful: when
  *            @c by_reg is false @c imm holds the amount, otherwise @c rm names
  *            the register that does.
- * @see long_shift_decode
+ * @see internal_long_shift_decode
  */
 typedef struct {
   uint32_t rdalo;  /**< Low destination register index (even).            */
@@ -155,8 +157,14 @@ typedef struct {
  * @return true if @p hw1/@p hw2 form a plain long shift; false otherwise.
  * @pre @p out is non-null.
  * @post On true, @p out is fully written; on false, it is untouched.
+  * @retval true The long shift decode condition holds or completed successfully; false otherwise.
+ * @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static bool long_shift_decode(uint16_t hw1, uint16_t hw2, long_shift_insn_t* out)
+RA8_INTERNAL static bool
+internal_long_shift_decode(uint16_t hw1, uint16_t hw2, long_shift_insn_t* out)
 {
   if ((hw1 & (uint16_t)k_lsh_hw1_mask) != (uint16_t)k_lsh_hw1_match) {
     return false;
@@ -211,10 +219,15 @@ static bool long_shift_decode(uint16_t hw1, uint16_t hw2, long_shift_insn_t* out
  * @param[in,out] uc   Unicorn engine to read Rm from.
  * @param[in]     insn Decoded instruction.
  * @return Shift amount in bits; negative means shift the opposite direction.
- * @pre @p insn came from a successful ::long_shift_decode.
+ * @pre @p insn came from a successful ::internal_long_shift_decode.
  * @post No engine state is modified (register read only).
+  * @retval value The operation-specific long shift amount value.
+ * @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static int32_t long_shift_amount(uc_engine* uc, const long_shift_insn_t* insn)
+RA8_INTERNAL static int32_t internal_long_shift_amount(uc_engine* uc, const long_shift_insn_t* insn)
 {
   if (!insn->by_reg) {
     return (int32_t)insn->imm;
@@ -243,8 +256,13 @@ static int32_t long_shift_amount(uc_engine* uc, const long_shift_insn_t* insn)
  * @return The shifted value.
  * @pre @p op is one of the three plain long-shift operations.
  * @post The result is defined for every @p shift, including >= 64.
+  * @retval value The operation-specific long shift apply value.
+ * @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static uint64_t long_shift_apply(uint64_t val, uint32_t op, int32_t shift)
+RA8_INTERNAL static uint64_t internal_long_shift_apply(uint64_t val, uint32_t op, int32_t shift)
 {
   uint32_t left = (op == (uint32_t)k_lsh_op_lsll) ? 1U : 0U;
   int32_t  n    = shift;
@@ -300,7 +318,7 @@ static uc_hook s_lsh_hooks[k_lsh_hooks_max];
  * @invariant @c active is true only between a site and its immediately
  *            following instruction.
  * @invariant At most one active entry exists per @c at address.
- * @see on_long_shift
+ * @see internal_on_long_shift
  */
 typedef struct {
   bool     active; /**< A captured result is waiting to be written back. */
@@ -334,7 +352,7 @@ static long_shift_pending_t s_lsh_pending[k_lsh_pending_max];
  * @pre The table is initialised (it is zeroed at load, and per-run by install).
  * @post No entry is modified by the lookup itself.
  */
-static long_shift_pending_t* long_shift_slot(uint32_t at, bool want_active)
+RA8_INTERNAL static long_shift_pending_t* internal_long_shift_slot(uint32_t at, bool want_active)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_lsh_pending_max; i++) {
     if (s_lsh_pending[i].active && (s_lsh_pending[i].at == at)) {
@@ -359,8 +377,14 @@ static long_shift_pending_t* long_shift_slot(uint32_t at, bool want_active)
  * @return true when @p addr holds an immediate long shift.
  * @pre The image scan has run (an empty table simply answers false).
  * @post No state is modified (read-only predicate).
+  * @details Report whether @p addr is a long-shift site found by the image scan; this step is contained within the emu seam longshift model and uses bounded caller or module-owned storage.
+ * @retval true The long shift is site condition holds or completed successfully; false otherwise.
+ * @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static bool long_shift_is_site(uint32_t addr)
+RA8_INTERNAL static bool internal_long_shift_is_site(uint32_t addr)
 {
   for (uint32_t i = 0U; i < s_lsh_site_count; i++) {
     if (s_lsh_sites[i] == addr) {
@@ -387,29 +411,33 @@ static bool long_shift_is_site(uint32_t addr)
  * @post ::s_lsh_pending is armed, or left untouched on an unreadable /
  *       non-matching site (a scan false positive).
  * @note Not thread-safe.
+  * @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
+ * @since 0.1.0
  */
-static void long_shift_begin(uc_engine* uc, uint32_t address)
+RA8_INTERNAL static void internal_long_shift_begin(uc_engine* uc, uint32_t address)
 {
   uint8_t code[k_lsh_insn_len] = {};
-  if (uc_mem_read(uc, address, code, sizeof(code)) != UC_ERR_OK) {
+  if (emu_mem_read(uc, address, code, sizeof(code)) != UC_ERR_OK) {
     return;
   }
   const uint16_t    hw1  = (uint16_t)(code[0] | ((uint16_t)code[1] << (uint16_t)k_byte_bits));
   const uint16_t    hw2  = (uint16_t)(code[2] | ((uint16_t)code[3] << (uint16_t)k_byte_bits));
   long_shift_insn_t insn = {};
-  if (!long_shift_decode(hw1, hw2, &insn)) {
+  if (!internal_long_shift_decode(hw1, hw2, &insn)) {
     return; /* scan false-positive at a never-executed address: leave it alone. */
   }
   uint32_t lo = 0U;
   uint32_t hi = 0U;
   (void)uc_reg_read(uc, k_arm_reg_id[insn.rdalo], &lo);
   (void)uc_reg_read(uc, k_arm_reg_id[insn.rdahi], &hi);
-  const uint64_t val  = ((uint64_t)hi << (uint64_t)k_lsh_word_bits) | (uint64_t)lo;
-  const uint64_t res  = long_shift_apply(val, insn.op, long_shift_amount(uc, &insn));
-  uint32_t       nzcv = 0U;
+  const uint64_t val = ((uint64_t)hi << (uint64_t)k_lsh_word_bits) | (uint64_t)lo;
+  const uint64_t res =
+    internal_long_shift_apply(val, insn.op, internal_long_shift_amount(uc, &insn));
+  uint32_t nzcv = 0U;
   (void)uc_reg_read(uc, UC_ARM_REG_APSR_NZCV, &nzcv);
   const uint32_t        at   = address + (uint32_t)k_lsh_insn_len;
-  long_shift_pending_t* slot = long_shift_slot(at, false);
+  long_shift_pending_t* slot = internal_long_shift_slot(at, false);
   if (slot == nullptr) {
     return; /* table full: leave the core's (wrong) ORRS result rather than
              * write back against the wrong instruction. Unreachable in practice
@@ -441,8 +469,11 @@ static void long_shift_begin(uc_engine* uc, uint32_t address)
  * @pre @p slot is a non-null, armed entry.
  * @post @p slot is disarmed and the register pair holds the result.
  * @note Not thread-safe.
+  * @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
+ * @since 0.1.0
  */
-static void long_shift_commit(uc_engine* uc, long_shift_pending_t* slot)
+RA8_INTERNAL static void internal_long_shift_commit(uc_engine* uc, long_shift_pending_t* slot)
 {
   (void)uc_reg_write(uc, k_arm_reg_id[slot->rdalo], &slot->lo);
   (void)uc_reg_write(uc, k_arm_reg_id[slot->rdahi], &slot->hi);
@@ -450,38 +481,31 @@ static void long_shift_commit(uc_engine* uc, long_shift_pending_t* slot)
   slot->active = false;
 }
 
+/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
 /**
- * @brief UC_HOOK_CODE: run both phases of the long-shift seam at one address.
- *
- * @details
- * Commits any result staged by the preceding instruction first, then stages a
- * new one if this address is itself a long-shift site. Doing both in a single
- * dispatcher is what makes back-to-back long shifts correct: were the commit
- * and the capture separate hooks on the same address, their relative order
- * would be Unicorn's registration order rather than the program order.
- *
- * @param[in,out] uc      Unicorn engine.
- * @param[in]     address Address of the instruction about to execute.
- * @param[in]     size    Reported instruction size (unused).
- * @param[in]     user    Hook user pointer (unused).
- * @return Nothing.
- * @pre @p address is a scanned site or the instruction following one.
- * @post At most one result is staged when the hook returns.
- * @note Not thread-safe.
+ * @brief Perform on long shift for the emu seam longshift model.
+ * @details Perform on long shift for the emu seam longshift model; this step is contained within the emu seam longshift model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] address Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in,out] user Hook context supplied when the callback was registered.
+ * @pre Arguments satisfy the ranges documented for on long shift. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu seam longshift model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  * @since 0.1.0
  */
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
-static void on_long_shift(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+RA8_INTERNAL static void
+internal_on_long_shift(uc_engine* uc, uint64_t address, uint32_t size, void* user)
 {
   (void)size;
   (void)user;
   const uint32_t        pc   = (uint32_t)address;
-  long_shift_pending_t* slot = long_shift_slot(pc, true);
+  long_shift_pending_t* slot = internal_long_shift_slot(pc, true);
   if (slot != nullptr) {
-    long_shift_commit(uc, slot);
+    internal_long_shift_commit(uc, slot);
   }
-  if (long_shift_is_site(pc)) {
-    long_shift_begin(uc, pc);
+  if (internal_long_shift_is_site(pc)) {
+    internal_long_shift_begin(uc, pc);
   }
 }
 
@@ -490,7 +514,7 @@ bool emulate_long_shift_reg(uc_engine* uc, uint32_t pc, const uint8_t code[4])
   const uint16_t    hw1  = (uint16_t)(code[0] | ((uint16_t)code[1] << (uint16_t)k_byte_bits));
   const uint16_t    hw2  = (uint16_t)(code[2] | ((uint16_t)code[3] << (uint16_t)k_byte_bits));
   long_shift_insn_t insn = {};
-  if (!long_shift_decode(hw1, hw2, &insn) || !insn.by_reg) {
+  if (!internal_long_shift_decode(hw1, hw2, &insn) || !insn.by_reg) {
     return false; /* not ours: the immediate form never traps, it mis-executes. */
   }
   uint32_t lo = 0U;
@@ -498,9 +522,10 @@ bool emulate_long_shift_reg(uc_engine* uc, uint32_t pc, const uint8_t code[4])
   (void)uc_reg_read(uc, k_arm_reg_id[insn.rdalo], &lo);
   (void)uc_reg_read(uc, k_arm_reg_id[insn.rdahi], &hi);
   const uint64_t val = ((uint64_t)hi << (uint64_t)k_lsh_word_bits) | (uint64_t)lo;
-  const uint64_t res = long_shift_apply(val, insn.op, long_shift_amount(uc, &insn));
-  lo                 = (uint32_t)res;
-  hi                 = (uint32_t)(res >> (uint64_t)k_lsh_word_bits);
+  const uint64_t res =
+    internal_long_shift_apply(val, insn.op, internal_long_shift_amount(uc, &insn));
+  lo = (uint32_t)res;
+  hi = (uint32_t)(res >> (uint64_t)k_lsh_word_bits);
   (void)uc_reg_write(uc, k_arm_reg_id[insn.rdalo], &lo);
   (void)uc_reg_write(uc, k_arm_reg_id[insn.rdahi], &hi);
   uint32_t next = pc + (uint32_t)k_lsh_insn_len;
@@ -508,35 +533,40 @@ bool emulate_long_shift_reg(uc_engine* uc, uint32_t pc, const uint8_t code[4])
   return true;
 }
 
+/** @brief Engine and bounded installed-hook count for a streamed scan. */
+typedef struct {
+  uc_engine* uc;      /**< Engine receiving targeted hooks. */
+  uint32_t   n_hooks; /**< Running installed-site count.    */
+} long_shift_scan_t;
+
 /**
- * @brief Scan one executable segment for long-shift sites, arming hooks.
- *
- * @details
- * Records each site's execution address and arms a hook there and at the
- * instruction that follows it, so ::on_long_shift can run both phases.
- *
- * @param[in]     uc       Engine to arm hooks on.
- * @param[in]     elf      Base of the resident ELF image.
- * @param[in]     p_offset Segment file offset.
- * @param[in]     p_vaddr  Segment virtual base (hook VA = p_vaddr + off).
- * @param[in]     p_filesz Segment size in the file, bytes.
- * @param[in,out] n_hooks  Running installed-site count, advanced per hook.
- * @return false if the global site cap (::k_lsh_sites_max) was reached and the
- *         caller must stop scanning further segments; true otherwise.
+ * @brief Scan one transient segment chunk and arm long-shift hooks.
+ * @details Records immediate-form sites and hooks each site plus its tail instruction.
+ * @param[in,out] scan Engine and running installed-site count.
+ * @param[in] bytes Transient executable bytes.
+ * @param[in] length Number of readable transient bytes.
+ * @param[in] vaddr Virtual address corresponding to @p bytes.
+ * @return Whether scanning may continue.
+ * @retval true The complete chunk was scanned below the fixed site cap.
+ * @retval false The fixed site cap was reached.
+ * @pre @p scan and @p bytes are non-null.
+ * @pre @p bytes spans @p length readable bytes.
+ * @post Every accepted site has both execution hooks installed.
+ * @post `scan->n_hooks` never exceeds ::k_lsh_sites_max.
+ * @note The transient bytes are not retained.
+ * @since 0.1.0
  */
-static bool install_seg_hooks(uc_engine*     uc,
-                              const uint8_t* elf,
-                              uint32_t       p_offset,
-                              uint32_t       p_vaddr,
-                              uint32_t       p_filesz,
-                              uint32_t*      n_hooks)
+RA8_INTERNAL static bool internal_install_seg_hooks(long_shift_scan_t* scan,
+                                                    const uint8_t*     bytes,
+                                                    size_t             length,
+                                                    uint32_t           vaddr)
 {
-  for (uint32_t off = 0U; (off + (uint32_t)k_lsh_insn_len) <= p_filesz; off += 2U) {
-    const uint8_t*    p    = elf + p_offset + off;
+  for (size_t off = 0U; (off + k_lsh_insn_len) <= length; off += 2U) {
+    const uint8_t*    p    = &bytes[off];
     const uint16_t    hw1  = (uint16_t)(p[0] | ((uint16_t)p[1] << (uint16_t)k_byte_bits));
     const uint16_t    hw2  = (uint16_t)(p[2] | ((uint16_t)p[3] << (uint16_t)k_byte_bits));
     long_shift_insn_t insn = {};
-    if (!long_shift_decode(hw1, hw2, &insn)) {
+    if (!internal_long_shift_decode(hw1, hw2, &insn)) {
       continue;
     }
     if (insn.by_reg) {
@@ -547,29 +577,75 @@ static bool install_seg_hooks(uc_engine*     uc,
        * MIS-EXECUTES -- has to be intercepted here. */
       continue;
     }
-    if (*n_hooks >= (uint32_t)k_lsh_sites_max) {
-      (void)fprintf(stderr, "  long-shift seam: site cap %u reached\n", (unsigned)k_lsh_sites_max);
+    if (scan->n_hooks >= (uint32_t)k_lsh_sites_max) {
+      (void)priv_emu_io_errf("  long-shift seam: site cap %u reached\n", (unsigned)k_lsh_sites_max);
       return false;
     }
-    const uint64_t va             = (uint64_t)p_vaddr + (uint64_t)off;
+    const uint64_t va             = (uint64_t)vaddr + off;
     const uint64_t tail           = va + (uint64_t)k_lsh_insn_len;
     s_lsh_sites[s_lsh_site_count] = (uint32_t)va;
     s_lsh_site_count++;
-    (void)uc_hook_add(uc,
-                      &s_lsh_hooks[(size_t)(*n_hooks) * 2U],
+    (void)uc_hook_add(scan->uc,
+                      &s_lsh_hooks[(size_t)scan->n_hooks * 2U],
                       UC_HOOK_CODE,
-                      (void*)on_long_shift,
+                      (void*)internal_on_long_shift,
                       nullptr,
                       va,
                       va);
-    (void)uc_hook_add(uc,
-                      &s_lsh_hooks[((size_t)(*n_hooks) * 2U) + 1U],
+    (void)uc_hook_add(scan->uc,
+                      &s_lsh_hooks[((size_t)scan->n_hooks * 2U) + 1U],
                       UC_HOOK_CODE,
-                      (void*)on_long_shift,
+                      (void*)internal_on_long_shift,
                       nullptr,
                       tail,
                       tail);
-    (*n_hooks)++;
+    scan->n_hooks++;
+  }
+  return true;
+}
+
+/**
+ * @brief Stream and scan one executable segment through bounded scratch.
+ * @details Preserves a two-byte overlap so split Thumb-2 instructions are decoded once.
+ * @param[in] segment Bounds-checked executable segment.
+ * @param[in,out] opaque ::long_shift_scan_t scan state.
+ * @return Whether executable-segment iteration may continue.
+ * @retval true The complete segment was scanned.
+ * @retval false A source read failed or the fixed site cap was reached.
+ * @pre @p segment is non-null and its source remains open.
+ * @pre @p opaque points to writable scan state.
+ * @post Every discovered immediate-form site is recorded and hooked.
+ * @post No transient source byte pointer is retained.
+ * @note Stack scratch is fixed at 4096 bytes.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_long_shift_segment(const elf_exec_segment_t* segment,
+                                                     void*                     opaque)
+{
+  enum : size_t {
+    k_lsh_scan_scratch = 4096U, /**< Transient instruction-scan bytes. */
+  };
+  long_shift_scan_t* const scan = (long_shift_scan_t*)opaque;
+  uint8_t                  bytes[k_lsh_scan_scratch];
+  uint32_t                 base = 0U;
+  while ((base + (uint32_t)k_lsh_insn_len) <= segment->filesz) {
+    const uint32_t left   = segment->filesz - base;
+    const size_t   length = (left < sizeof(bytes)) ? (size_t)left : sizeof(bytes);
+    emu_elf_view_t view   = {};
+    if (priv_emu_elf_read(segment->source,
+                          (uint64_t)segment->offset + base,
+                          length,
+                          bytes,
+                          sizeof(bytes),
+                          &view)
+            .status != k_emu_elf_io_ok ||
+        !internal_install_seg_hooks(scan, bytes, length, segment->vaddr + base)) {
+      return false;
+    }
+    if (length == left) {
+      break;
+    }
+    base += (uint32_t)length - 2U;
   }
   return true;
 }
@@ -579,9 +655,9 @@ static bool install_seg_hooks(uc_engine*     uc,
  *
  * @details
  * Walks the ELF32 PT_LOAD program headers, and for each executable segment scans
- * its bytes on 2-byte boundaries for the long-shift encoding (::long_shift_decode).
+ * its bytes on 2-byte boundaries for the long-shift encoding (::internal_long_shift_decode).
  * A targeted UC_HOOK_CODE is installed at each site's VMA, and at the following
- * instruction, so ::on_long_shift can emulate it. Matches use the segment's VMA
+ * instruction, so ::internal_on_long_shift can emulate it. Matches use the segment's VMA
  * (p_vaddr), so a `.sram_text` ramfunc region is hooked at its execution address
  * even though it is not yet copied at install time. A scan false-positive (a
  * halfword pair inside data or mid-instruction that happens to match) is
@@ -591,57 +667,23 @@ static bool install_seg_hooks(uc_engine*     uc,
  *
  * @param[in,out] uc  Unicorn engine to install the hooks on.
  * @param[in]     elf In-memory ELF image (still alive at call time).
- * @param[in]     len Length of @p elf in bytes.
  * @return Nothing.
  * @pre @p elf is a 32-bit ARM ELF (already validated by load_elf).
  * @post One UC_HOOK_CODE pair per long-shift site (up to ::k_lsh_sites_max) is armed.
  * @note Not thread-safe; call once during setup before the run loop.
  * @since 0.1.0
  */
-void long_shift_seam_install(uc_engine* uc, const uint8_t* elf, long len)
+void long_shift_seam_install(uc_engine* uc, const emu_elf_source_t* elf)
 {
-  if ((elf == nullptr) || (len < (long)k_elf_ehdr_size)) {
-    return;
-  }
-  uint32_t phoff = 0U;
-  (void)memcpy(&phoff, elf + (uint32_t)k_elf_e_phoff_off, 4);
-  const uint16_t phentsize = (uint16_t)(elf[42] | (elf[43] << 8));
-  const uint16_t phnum     = (uint16_t)(elf[44] | (elf[45] << 8));
-  /* Bound the program-header table against the file before walking it: a
-   * malformed e_phoff/e_phnum would otherwise OOB-read past `elf`. load_elf has
-   * already validated the ELF/ARM magic, so this only guards a truncated image. */
-  if (((uint64_t)phoff + ((uint64_t)phnum * (uint64_t)phentsize)) > (uint64_t)len) {
+  if (elf == nullptr) {
     return;
   }
   s_lsh_site_count = 0U;
   (void)memset(s_lsh_pending, 0, sizeof(s_lsh_pending));
-  uint32_t n_hooks = 0U;
-  for (uint16_t i = 0U; i < phnum; i++) {
-    const uint8_t* ph       = elf + phoff + ((size_t)(uint32_t)i * phentsize);
-    uint32_t       p_type   = 0U;
-    uint32_t       p_offset = 0U;
-    uint32_t       p_vaddr  = 0U;
-    uint32_t       p_filesz = 0U;
-    uint32_t       p_flags  = 0U;
-    (void)memcpy(&p_type, ph + 0, 4);
-    (void)memcpy(&p_offset, ph + (uint32_t)k_elf_ph_offset_off, 4);
-    (void)memcpy(&p_vaddr, ph + (uint32_t)k_elf_ph_vaddr_off, 4);
-    (void)memcpy(&p_filesz, ph + (uint32_t)k_elf_ph_filesz_off, 4);
-    (void)memcpy(&p_flags, ph + (uint32_t)k_elf_ph_flags_off, 4);
-    if ((p_type != (uint32_t)k_elf_pt_load) || (p_filesz < (uint32_t)k_lsh_insn_len) ||
-        ((p_flags & (uint32_t)k_elf_pf_x) == 0U)) {
-      continue;
-    }
-    if (((uint64_t)p_offset + (uint64_t)p_filesz) > (uint64_t)len) {
-      continue; /* truncated / out-of-file segment -- skip. */
-    }
-    if (!install_seg_hooks(uc, elf, p_offset, p_vaddr, p_filesz, &n_hooks)) {
-      return;
-    }
-  }
-  if (n_hooks > 0U) {
-    (void)fprintf(stderr,
-                  "  long-shift seam: emulating %u Armv8.1-M LSLL/LSRL/ASRL site(s)\n",
-                  (unsigned)n_hooks);
+  long_shift_scan_t scan = {.uc = uc};
+  (void)elf_foreach_exec_segment(elf, internal_long_shift_segment, &scan);
+  if (scan.n_hooks > 0U) {
+    (void)priv_emu_io_errf("  long-shift seam: emulating %u Armv8.1-M LSLL/LSRL/ASRL site(s)\n",
+                           (unsigned)scan.n_hooks);
   }
 }

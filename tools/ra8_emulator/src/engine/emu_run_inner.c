@@ -7,7 +7,7 @@
  * low-power budget, the zero-time relaunch + run-ending stop checks, and the
  * exception boundary (EXC_RETURN unstack + tail-chain, MPU / div-0 fault
  * synthesis, tick / PendSV take). Split out of emu_run.c so each TU stays under
- * the file-size bar. The contract for run_inner() lives on its declaration in
+ * the file-size bar. The contract for priv_run_inner() lives on its declaration in
  * emu_run_internal.h.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -25,15 +25,15 @@
 
 /**
  * @enum inner_action_t
- * @brief Loop-control verdict a run_inner boundary helper hands back.
+ * @brief Loop-control verdict a priv_run_inner boundary helper hands back.
  *
  * @details The inner exception-resolve loop either re-enters (a zero-time
  * relaunch, tail-chain or fault-synthesis) or ends (fault / BKPT / stop /
- * quiescent budget). The helpers return this so run_inner stays a thin driver.
+ * quiescent budget). The helpers return this so priv_run_inner stays a thin driver.
  *
  * @invariant Exactly one value is returned per helper call.
- * @see run_inner_check_stops()  First consumer.
- * @see run_inner_take_exception()  Second consumer.
+ * @see internal_run_inner_check_stops()  First consumer.
+ * @see internal_run_inner_take_exception()  Second consumer.
  * @since 0.1.0
  */
 typedef enum : uint8_t {
@@ -64,7 +64,7 @@ typedef enum : uint8_t {
  * @note Not thread-safe; part of the single-threaded run core.
  * @since 0.1.0
  */
-static size_t run_inner_budget(uc_engine* uc, uint32_t run_pc)
+RA8_INTERNAL static size_t internal_run_inner_budget(uc_engine* uc, uint32_t run_pc)
 {
   size_t busy_budget = (size_t)k_run_chunk_insns;
   if (emu_low_power()) {
@@ -95,7 +95,8 @@ static size_t run_inner_budget(uc_engine* uc, uint32_t run_pc)
  * @note Not thread-safe; part of the single-threaded run core.
  * @since 0.1.0
  */
-static bool run_inner_check_stops(uc_engine* uc, bool* faulted, inner_action_t* act)
+RA8_INTERNAL static bool
+internal_run_inner_check_stops(uc_engine* uc, bool* faulted, inner_action_t* act)
 {
   (void)uc;
   if (emu_seam_take_relaunch()) {
@@ -124,7 +125,7 @@ static bool run_inner_check_stops(uc_engine* uc, bool* faulted, inner_action_t* 
 /**
  * @brief Take the pending exception (or end) at the chunk boundary.
  *
- * @details Runs only when ::run_inner_check_stops fell through. An EXC_RETURN
+ * @details Runs only when ::internal_run_inner_check_stops fell through. An EXC_RETURN
  * branch is unstacked and the NVIC re-checked so a still-pending lower-priority
  * exception tail-chains (PendSV right after SysTick) as hardware would; an
  * emulation error ends the run as a fault; MPU / div-0 faults are synthesised
@@ -137,21 +138,21 @@ static bool run_inner_check_stops(uc_engine* uc, bool* faulted, inner_action_t* 
  * @param[in,out] run_pc    Resume PC in, post-boundary PC out.
  * @param[in]     err       The chunk's final uc_emu_start status.
  * @param[out]    faulted   Set true iff @p err ended the run as a fault.
- * @return The loop action for run_inner.
+ * @return The loop action for priv_run_inner.
  * @retval k_inner_continue A boundary was resolved; re-enter the loop.
  * @retval k_inner_break    An emulation fault or quiescence ended the run.
  * @pre @p run_pc and @p faulted are non-NULL.
- * @pre The chunk returned and ::run_inner_check_stops returned false.
+ * @pre The chunk returned and ::internal_run_inner_check_stops returned false.
  * @post @p run_pc reflects the post-boundary PC.
  * @post @p faulted is true only on a returned ::k_inner_break via @p err.
  * @note Not thread-safe; part of the single-threaded run core.
  * @since 0.1.0
  */
-static inner_action_t run_inner_take_exception(uc_engine* uc,
-                                               uint32_t   vtor_base,
-                                               uint32_t*  run_pc,
-                                               uc_err     err,
-                                               bool*      faulted)
+RA8_INTERNAL static inner_action_t internal_run_inner_take_exception(uc_engine* uc,
+                                                                     uint32_t   vtor_base,
+                                                                     uint32_t*  run_pc,
+                                                                     uc_err     err,
+                                                                     bool*      faulted)
 {
   uint64_t exc_ret_pc = 0U;
   if (emu_exc_take_exc_return(&exc_ret_pc)) {
@@ -213,24 +214,24 @@ static inner_action_t run_inner_take_exception(uc_engine* uc,
   return k_inner_break;
 }
 
-bool run_inner(uc_engine* uc, uint32_t vtor_base, uint32_t* run_pc_io, uc_err* err_out)
+bool priv_run_inner(uc_engine* uc, uint32_t vtor_base, uint32_t* run_pc_io, uc_err* err_out)
 {
   uint32_t run_pc  = *run_pc_io;
   uc_err   err     = UC_ERR_OK;
   bool     faulted = false;
   for (uint32_t inner = 0U; inner < (uint32_t)k_run_inner_max; inner++) {
     emu_exc_clear_pendsv_stop(); /* set by on_icsr_write iff this run ends on PENDSVSET */
-    const size_t run_budget = run_inner_budget(uc, run_pc);
+    const size_t run_budget = internal_run_inner_budget(uc, run_pc);
     err                     = uc_emu_start(uc, (uint64_t)run_pc | 1U, 0, 0, run_budget);
     (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
     inner_action_t act = k_inner_continue;
-    if (run_inner_check_stops(uc, &faulted, &act)) {
+    if (internal_run_inner_check_stops(uc, &faulted, &act)) {
       if (act == k_inner_break) {
         break;
       }
       continue;
     }
-    if (run_inner_take_exception(uc, vtor_base, &run_pc, err, &faulted) == k_inner_break) {
+    if (internal_run_inner_take_exception(uc, vtor_base, &run_pc, err, &faulted) == k_inner_break) {
       break;
     }
   }

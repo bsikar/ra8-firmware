@@ -1,10 +1,10 @@
 /**
  * @file board_periph_sd_format.c
- * @brief Blank-card FAT16/FAT32 in-memory formatters (--sd-new)
+ * @brief Blank-card FAT16/FAT32 sparse-sector formatters (--sd-new)
  *
  * @details
- * The pure image-buffer formatters board_sd_attach_blank uses to build an
- * empty FAT volume in memory -- moved verbatim out of board_periph_sd.c. No
+ * The bounded sector formatters board_sd_attach_blank uses to build an empty
+ * FAT volume in an anonymous sparse file. No
  * peripheral block is registered here (registration is constructor-based and
  * stays with the card model), so this helper TU rides the board_periph_*.c
  * build glob with no CMake edit.
@@ -17,9 +17,10 @@
 #include <string.h>
 
 #include "board_periph_sd_internal.h"
+#include "emu_host_io_internal.h"
 
 /* ----------------------------------------------------------------------------
- * Blank-card creation (--sd-new): format an empty FAT volume in memory so a
+ * Blank-card creation (--sd-new): format an empty FAT volume in sparse storage so a
  * size/format can be set up with no pre-built image. The BPB is complete enough
  * to satisfy a host `fsck_msdos` and the firmware's ra8_fs mount alike.
  * --------------------------------------------------------------------------*/
@@ -36,15 +37,37 @@ typedef enum : uint8_t {
   k_le_byte_mask = 0xFFU, /**< Low-byte mask.                 */
 } sd_le_const_t;
 
-/** @brief Little-endian 16-bit store into the image. */
-static void sd_put16(uint8_t* p, uint16_t v)
+/**
+ * @brief Store one 16-bit image field in little-endian order.
+ * @details Writes both bytes explicitly so serialization is host-independent.
+ * @param[out] p Destination spanning two bytes.
+ * @param[in] v Value to encode.
+ * @pre @p p is non-null and writable for two bytes.
+ * @pre @p v may be any `uint16_t` value.
+ * @post Exactly two bytes contain @p v least-significant byte first.
+ * @post No byte beyond the two-byte field is changed.
+ * @note Pure apart from caller output and thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sd_put16(uint8_t* p, uint16_t v)
 {
   p[k_le_byte0] = (uint8_t)(v & (uint16_t)k_le_byte_mask);
   p[k_le_byte1] = (uint8_t)((v >> (uint16_t)k_le_shift_b1) & (uint16_t)k_le_byte_mask);
 }
 
-/** @brief Little-endian 32-bit store into the image. */
-static void sd_put32(uint8_t* p, uint32_t v)
+/**
+ * @brief Store one 32-bit image field in little-endian order.
+ * @details Writes all four bytes explicitly so serialization is host-independent.
+ * @param[out] p Destination spanning four bytes.
+ * @param[in] v Value to encode.
+ * @pre @p p is non-null and writable for four bytes.
+ * @pre @p v may be any `uint32_t` value.
+ * @post Exactly four bytes contain @p v least-significant byte first.
+ * @post No byte beyond the four-byte field is changed.
+ * @note Pure apart from caller output and thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sd_put32(uint8_t* p, uint32_t v)
 {
   p[k_le_byte0] = (uint8_t)(v & (uint32_t)k_le_byte_mask);
   p[k_le_byte1] = (uint8_t)((v >> (uint32_t)k_le_shift_b1) & (uint32_t)k_le_byte_mask);
@@ -127,8 +150,19 @@ typedef enum : uint32_t {
   k_fat32_ent2_off      = 8U,          /**< FAT32 entry-2 byte offset.          */
 } sd_bpb_val_t;
 
-/** @brief Write the shared boot prologue (jump + OEM) and the 0x55AA signature. */
-static void sd_boot_frame(uint8_t* img, const char* oem)
+/**
+ * @brief Write the shared boot prologue and trailing boot signature.
+ * @details Installs the deterministic jump, exact eight-byte OEM field, and 0x55AA marker.
+ * @param[out] img Zeroed boot-sector buffer.
+ * @param[in] oem Exact eight-byte OEM spelling.
+ * @pre @p img spans one writable ::k_fmt_sec_bytes sector.
+ * @pre @p oem spans at least ::k_bpb_oem_len readable bytes.
+ * @post Named prologue and signature bytes are initialized.
+ * @post All bytes outside those fixed fields remain unchanged.
+ * @note Pure apart from caller-owned sector and thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sd_boot_frame(uint8_t* img, const char* oem)
 {
   img[k_bpb_jmp0] = (uint8_t)k_bpb_jmp_b0;
   img[k_bpb_jmp1] = (uint8_t)k_bpb_jmp_b1;
@@ -139,7 +173,7 @@ static void sd_boot_frame(uint8_t* img, const char* oem)
 }
 
 /** @brief Pad an ASCII volume label to the 11-byte 8.3 field (space-filled). */
-void sd_label_field(uint8_t* dst, const char* label)
+void priv_board_sd_label_field(uint8_t* dst, const char* label)
 {
   bool past_end = (label == nullptr);
   for (uint32_t i = 0U; i < (uint32_t)k_fmt_label_len; i++) {
@@ -165,6 +199,7 @@ void sd_label_field(uint8_t* dst, const char* label)
  * @param[out] fatsz         Receives the per-copy FAT length in sectors.
  *
  * @return Sectors per cluster.
+ * @retval spc Power-of-two sectors per cluster, at most ::k_fmt_spc_max.
  *
  * @pre @p fatsz is non-NULL.
  * @pre @p total_sectors leaves room for the reserved and root regions.
@@ -172,8 +207,10 @@ void sd_label_field(uint8_t* dst, const char* label)
  * @post `*fatsz` covers every cluster the returned size yields.
  *
  * @note Thread-safe: pure arithmetic over its arguments.
+ * @since 0.1.0
  */
-static uint32_t fat16_solve_geometry(uint32_t total_sectors, uint32_t root_sectors, uint32_t* fatsz)
+RA8_INTERNAL static uint32_t
+internal_fat16_solve_geometry(uint32_t total_sectors, uint32_t root_sectors, uint32_t* fatsz)
 {
   uint32_t spc = 1U;
   for (;;) {
@@ -197,6 +234,8 @@ static uint32_t fat16_solve_geometry(uint32_t total_sectors, uint32_t root_secto
 
 /**
  * @brief Write the FAT16 BIOS Parameter Block into sector 0 of @p img.
+ * @details Serializes deterministic geometry, identifiers, label, and FAT16 type
+ * fields into the already zeroed sector without touching another sector.
  *
  * @param[out] img           Card image.
  * @param[in]  total_sectors Card size in sectors.
@@ -210,53 +249,87 @@ static uint32_t fat16_solve_geometry(uint32_t total_sectors, uint32_t root_secto
  * @post The label and "FAT16   " type string are space-padded to width.
  *
  * @note Not thread-safe with respect to @p img.
+ * @since 0.1.0
  */
-static void fat16_write_bpb(uint8_t*    img,
-                            uint32_t    total_sectors,
-                            uint32_t    spc,
-                            uint32_t    fatsz,
-                            const char* label)
+RA8_INTERNAL static void internal_fat16_write_bpb(uint8_t*    img,
+                                                  uint32_t    total_sectors,
+                                                  uint32_t    spc,
+                                                  uint32_t    fatsz,
+                                                  const char* label)
 {
-  sd_boot_frame(img, "MSDOS5.0");
-  sd_put16(&img[k_bpb_bytes_per_sec], (uint16_t)k_fmt_sec_bytes);
+  internal_sd_boot_frame(img, "MSDOS5.0");
+  internal_sd_put16(&img[k_bpb_bytes_per_sec], (uint16_t)k_fmt_sec_bytes);
   img[k_bpb_sec_per_clus] = (uint8_t)spc;
-  sd_put16(&img[k_bpb_resv_sec], (uint16_t)k_fmt_resv_f16);
+  internal_sd_put16(&img[k_bpb_resv_sec], (uint16_t)k_fmt_resv_f16);
   img[k_bpb_num_fats] = (uint8_t)k_bpb_num_fats_val;
-  sd_put16(&img[k_bpb_root_ents], (uint16_t)k_fmt_root_ents);
+  internal_sd_put16(&img[k_bpb_root_ents], (uint16_t)k_fmt_root_ents);
   if (total_sectors < (uint32_t)k_fmt_totsec16_max) {
-    sd_put16(&img[k_bpb_totsec16], (uint16_t)total_sectors);
+    internal_sd_put16(&img[k_bpb_totsec16], (uint16_t)total_sectors);
   } else {
-    sd_put32(&img[k_bpb_totsec32], total_sectors);
+    internal_sd_put32(&img[k_bpb_totsec32], total_sectors);
   }
   img[k_bpb_media] = (uint8_t)k_bpb_media_fixed;
-  sd_put16(&img[k_bpb_fatsz16], (uint16_t)fatsz);
-  sd_put16(&img[k_bpb_sec_per_trk], (uint16_t)k_bpb_sec_per_trk_val);
-  sd_put16(&img[k_bpb_num_heads], (uint16_t)k_bpb_num_heads_val);
+  internal_sd_put16(&img[k_bpb_fatsz16], (uint16_t)fatsz);
+  internal_sd_put16(&img[k_bpb_sec_per_trk], (uint16_t)k_bpb_sec_per_trk_val);
+  internal_sd_put16(&img[k_bpb_num_heads], (uint16_t)k_bpb_num_heads_val);
   img[k_bpb16_drive_num] = (uint8_t)k_bpb_drive_num_val;
   img[k_bpb16_boot_sig]  = (uint8_t)k_bpb_ext_boot_sig;
-  sd_put32(&img[k_bpb16_volid], (uint32_t)k_fmt_volid | total_sectors);
-  sd_label_field(&img[k_bpb16_vol_label], label);
+  internal_sd_put32(&img[k_bpb16_volid], (uint32_t)k_fmt_volid | total_sectors);
+  priv_board_sd_label_field(&img[k_bpb16_vol_label], label);
   (void)memcpy(&img[k_bpb16_fstype], "FAT16   ", (size_t)k_bpb_fstype_len);
 }
 
-uint32_t sd_format_fat16(uint8_t* img, uint32_t total_sectors, const char* label)
+/**
+ * @brief Write one complete sector at its checked positioned offset.
+ * @details Converts the sector number to a 64-bit byte offset and delegates exact host I/O.
+ * @param[in] image_fd Open sparse working-image descriptor.
+ * @param[in] sector Zero-based sector number.
+ * @param[in] data Source spanning exactly ::k_fmt_sec_bytes bytes.
+ * @return Whether exact positioned I/O succeeded.
+ * @retval true Complete sector was written.
+ * @retval false Host positioned write failed.
+ * @pre @p image_fd is open and writable.
+ * @pre @p data is non-null and sector lies within prepared image geometry.
+ * @post Success replaces exactly the selected sector.
+ * @post Descriptor stream position is unchanged.
+ * @note Not thread-safe for overlapping sector writes.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_write_sector(int image_fd, uint32_t sector, const uint8_t* data)
+{
+  const uint64_t        offset = (uint64_t)sector * (uint64_t)k_fmt_sec_bytes;
+  const emu_io_result_t result =
+    priv_emu_io_pwrite_exact(image_fd, data, (size_t)k_fmt_sec_bytes, (off_t)offset);
+  return result.status == k_emu_io_ok;
+}
+
+bool priv_board_sd_format_fat16(int         image_fd,
+                                uint32_t    total_sectors,
+                                const char* label,
+                                uint32_t*   out_spc)
 {
   const uint32_t root_sectors = (((uint32_t)k_fmt_root_ents * (uint32_t)k_bpb_dir_ent_size) +
                                  ((uint32_t)k_fmt_sec_bytes - 1U)) /
                                 (uint32_t)k_fmt_sec_bytes;
   uint32_t       fatsz        = 1U;
-  const uint32_t spc          = fat16_solve_geometry(total_sectors, root_sectors, &fatsz);
+  const uint32_t spc          = internal_fat16_solve_geometry(total_sectors, root_sectors, &fatsz);
 
-  fat16_write_bpb(img, total_sectors, spc, fatsz, label);
+  uint8_t boot[k_fmt_sec_bytes] = {};
+  uint8_t fat[k_fmt_sec_bytes]  = {};
+  internal_fat16_write_bpb(boot, total_sectors, spc, fatsz, label);
+  internal_sd_put16(&fat[k_le_byte0], (uint16_t)k_fat16_eoc_clus0);
+  internal_sd_put16(&fat[k_fat_ent1_off], (uint16_t)k_fat16_eoc_clus1);
 
-  /* FAT[0] media + FAT[1] EOC, in both FAT copies. */
-  for (uint32_t f = 0U; f < (uint32_t)k_bpb_num_fats_val; f++) {
-    uint8_t* fat =
-      &img[(size_t)((uint32_t)k_fmt_resv_f16 + (f * fatsz)) * (uint32_t)k_fmt_sec_bytes];
-    sd_put16(&fat[k_le_byte0], (uint16_t)k_fat16_eoc_clus0);
-    sd_put16(&fat[k_fat_ent1_off], (uint16_t)k_fat16_eoc_clus1);
+  if (!internal_write_sector(image_fd, 0U, boot)) {
+    return false;
   }
-  return spc;
+  for (uint32_t f = 0U; f < (uint32_t)k_bpb_num_fats_val; ++f) {
+    if (!internal_write_sector(image_fd, (uint32_t)k_fmt_resv_f16 + (f * fatsz), fat)) {
+      return false;
+    }
+  }
+  *out_spc = spc;
+  return true;
 }
 
 /**
@@ -283,8 +356,8 @@ uint32_t sd_format_fat16(uint8_t* img, uint32_t total_sectors, const char* label
  *       (operates only on caller-provided locals).
  * @since 0.1.0
  */
-static uint32_t
-sd_fat32_geometry(uint32_t total_sectors, uint32_t* out_fatsz, uint32_t* out_clusters)
+RA8_INTERNAL static uint32_t
+internal_sd_fat32_geometry(uint32_t total_sectors, uint32_t* out_fatsz, uint32_t* out_clusters)
 {
   uint32_t spc      = 1U;
   uint32_t fatsz    = 1U;
@@ -314,52 +387,83 @@ sd_fat32_geometry(uint32_t total_sectors, uint32_t* out_fatsz, uint32_t* out_clu
   return spc;
 }
 
-/** @brief Format an empty FAT32 volume; returns the chosen sectors-per-cluster. */
-uint32_t sd_format_fat32(uint8_t* img, uint32_t total_sectors, const char* label)
+/**
+ * @brief Serialize one deterministic FAT32 BIOS Parameter Block.
+ * @details Writes common geometry, FAT32 root/FSInfo locations, volume identity,
+ * space-padded label, and type string into an already zeroed boot sector.
+ * @param[out] img Zeroed boot-sector buffer.
+ * @param[in] total_sectors Exact card sector count.
+ * @param[in] spc Solved sectors per cluster.
+ * @param[in] fatsz Solved sectors per FAT copy.
+ * @param[in] label Optional NUL-terminated volume label.
+ * @pre @p img spans one writable ::k_fmt_sec_bytes sector.
+ * @pre @p spc and @p fatsz came from ::internal_sd_fat32_geometry.
+ * @post FAT32 BPB, extended fields, signature, and label are initialized.
+ * @post Bytes outside named fields remain zero.
+ * @note Pure apart from caller-owned sector; thread-safe for distinct buffers.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_fat32_write_bpb(uint8_t*    img,
+                                                  uint32_t    total_sectors,
+                                                  uint32_t    spc,
+                                                  uint32_t    fatsz,
+                                                  const char* label)
+{
+  internal_sd_boot_frame(img, "MSDOS5.0");
+  internal_sd_put16(&img[k_bpb_bytes_per_sec], (uint16_t)k_fmt_sec_bytes);
+  img[k_bpb_sec_per_clus] = (uint8_t)spc;
+  internal_sd_put16(&img[k_bpb_resv_sec], (uint16_t)k_fmt_resv_f32);
+  img[k_bpb_num_fats] = (uint8_t)k_bpb_num_fats_val;
+  internal_sd_put16(&img[k_bpb_root_ents], 0U); /* root entries: 0 for FAT32 */
+  internal_sd_put16(&img[k_bpb_totsec16], 0U);  /* totsec16: 0, use totsec32 */
+  img[k_bpb_media] = (uint8_t)k_bpb_media_fixed;
+  internal_sd_put16(&img[k_bpb_fatsz16], 0U); /* fatsz16: 0 for FAT32 */
+  internal_sd_put16(&img[k_bpb_sec_per_trk], (uint16_t)k_bpb_sec_per_trk_val);
+  internal_sd_put16(&img[k_bpb_num_heads], (uint16_t)k_bpb_num_heads_val);
+  internal_sd_put32(&img[k_bpb_totsec32], total_sectors);
+  internal_sd_put32(&img[k_bpb_fatsz32], fatsz); /* BPB_FATSz32 */
+  internal_sd_put32(&img[k_bpb32_root_clus], (uint32_t)k_fat32_root_clus);
+  internal_sd_put16(&img[k_bpb32_fsinfo_sec], (uint16_t)k_fat32_fsinfo_sec);
+  internal_sd_put16(&img[k_bpb32_bkboot_sec], (uint16_t)k_fat32_bkboot_sec);
+  img[k_bpb32_drive_num] = (uint8_t)k_bpb_drive_num_val;
+  img[k_bpb32_boot_sig]  = (uint8_t)k_bpb_ext_boot_sig;
+  internal_sd_put32(&img[k_bpb32_volid], (uint32_t)k_fmt_volid | total_sectors);
+  priv_board_sd_label_field(&img[k_bpb32_vol_label], label);
+  (void)memcpy(&img[k_bpb32_fstype], "FAT32   ", (size_t)k_bpb_fstype_len);
+}
+
+bool priv_board_sd_format_fat32(int         image_fd,
+                                uint32_t    total_sectors,
+                                const char* label,
+                                uint32_t*   out_spc)
 {
   uint32_t       fatsz    = 0U;
   uint32_t       clusters = 0U;
-  const uint32_t spc      = sd_fat32_geometry(total_sectors, &fatsz, &clusters);
-  sd_boot_frame(img, "MSDOS5.0");
-  sd_put16(&img[k_bpb_bytes_per_sec], (uint16_t)k_fmt_sec_bytes);
-  img[k_bpb_sec_per_clus] = (uint8_t)spc;
-  sd_put16(&img[k_bpb_resv_sec], (uint16_t)k_fmt_resv_f32);
-  img[k_bpb_num_fats] = (uint8_t)k_bpb_num_fats_val;
-  sd_put16(&img[k_bpb_root_ents], 0U); /* root entries: 0 for FAT32 */
-  sd_put16(&img[k_bpb_totsec16], 0U);  /* totsec16: 0, use totsec32 */
-  img[k_bpb_media] = (uint8_t)k_bpb_media_fixed;
-  sd_put16(&img[k_bpb_fatsz16], 0U); /* fatsz16: 0 for FAT32 */
-  sd_put16(&img[k_bpb_sec_per_trk], (uint16_t)k_bpb_sec_per_trk_val);
-  sd_put16(&img[k_bpb_num_heads], (uint16_t)k_bpb_num_heads_val);
-  sd_put32(&img[k_bpb_totsec32], total_sectors);
-  sd_put32(&img[k_bpb_fatsz32], fatsz); /* BPB_FATSz32 */
-  sd_put32(&img[k_bpb32_root_clus], (uint32_t)k_fat32_root_clus);
-  sd_put16(&img[k_bpb32_fsinfo_sec], (uint16_t)k_fat32_fsinfo_sec);
-  sd_put16(&img[k_bpb32_bkboot_sec], (uint16_t)k_fat32_bkboot_sec);
-  img[k_bpb32_drive_num] = (uint8_t)k_bpb_drive_num_val;
-  img[k_bpb32_boot_sig]  = (uint8_t)k_bpb_ext_boot_sig;
-  sd_put32(&img[k_bpb32_volid], (uint32_t)k_fmt_volid | total_sectors);
-  sd_label_field(&img[k_bpb32_vol_label], label);
-  (void)memcpy(&img[k_bpb32_fstype], "FAT32   ", (size_t)k_bpb_fstype_len);
-  /* FSInfo sector (lead + struct + trail signatures). */
-  uint8_t* fsi = &img[(size_t)(uint32_t)k_fat32_fsinfo_sec * (uint32_t)k_fmt_sec_bytes];
-  sd_put32(&fsi[k_fsi_off_lead], (uint32_t)k_fsi_lead_sig);
-  sd_put32(&fsi[k_fsi_off_struc], (uint32_t)k_fsi_struc_sig);
-  sd_put32(&fsi[k_fsi_off_free],
-           (clusters > 0U) ? (clusters - 1U) : (uint32_t)k_fsi_free_unknown); /* free clusters    */
-  sd_put32(&fsi[k_fsi_off_nxtfree], (uint32_t)k_fsi_nxt_free);                /* nxt free cluster */
-  sd_put32(&fsi[k_fsi_off_trail], (uint32_t)k_fsi_trail_sig);
-  /* Backup boot copy at sector 6. */
-  (void)memcpy(&img[(size_t)(uint32_t)k_fat32_bkboot_sec * (uint32_t)k_fmt_sec_bytes],
-               img,
-               (size_t)k_fmt_sec_bytes);
-  /* FAT[0..2]: media + EOC + root-cluster EOC, in both FAT copies. */
-  for (uint32_t f = 0U; f < (uint32_t)k_bpb_num_fats_val; f++) {
-    uint8_t* fat =
-      &img[(size_t)((uint32_t)k_fmt_resv_f32 + (f * fatsz)) * (uint32_t)k_fmt_sec_bytes];
-    sd_put32(&fat[k_le_byte0], (uint32_t)k_fat32_eoc_media);
-    sd_put32(&fat[k_fat32_ent1_off], (uint32_t)k_fat32_eoc);
-    sd_put32(&fat[k_fat32_ent2_off], (uint32_t)k_fat32_eoc);
+  const uint32_t spc      = internal_sd_fat32_geometry(total_sectors, &fatsz, &clusters);
+  uint8_t        boot[k_fmt_sec_bytes] = {};
+  uint8_t        fsi[k_fmt_sec_bytes]  = {};
+  uint8_t        fat[k_fmt_sec_bytes]  = {};
+  internal_fat32_write_bpb(boot, total_sectors, spc, fatsz, label);
+  internal_sd_put32(&fsi[k_fsi_off_lead], (uint32_t)k_fsi_lead_sig);
+  internal_sd_put32(&fsi[k_fsi_off_struc], (uint32_t)k_fsi_struc_sig);
+  internal_sd_put32(&fsi[k_fsi_off_free],
+                    (clusters > 0U) ? (clusters - 1U) : (uint32_t)k_fsi_free_unknown);
+  internal_sd_put32(&fsi[k_fsi_off_nxtfree], (uint32_t)k_fsi_nxt_free);
+  internal_sd_put32(&fsi[k_fsi_off_trail], (uint32_t)k_fsi_trail_sig);
+  internal_sd_put32(&fat[k_le_byte0], (uint32_t)k_fat32_eoc_media);
+  internal_sd_put32(&fat[k_fat32_ent1_off], (uint32_t)k_fat32_eoc);
+  internal_sd_put32(&fat[k_fat32_ent2_off], (uint32_t)k_fat32_eoc);
+
+  if (!internal_write_sector(image_fd, 0U, boot) ||
+      !internal_write_sector(image_fd, (uint32_t)k_fat32_fsinfo_sec, fsi) ||
+      !internal_write_sector(image_fd, (uint32_t)k_fat32_bkboot_sec, boot)) {
+    return false;
   }
-  return spc;
+  for (uint32_t f = 0U; f < (uint32_t)k_bpb_num_fats_val; f++) {
+    if (!internal_write_sector(image_fd, (uint32_t)k_fmt_resv_f32 + (f * fatsz), fat)) {
+      return false;
+    }
+  }
+  *out_spc = spc;
+  return true;
 }

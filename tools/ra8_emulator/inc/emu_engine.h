@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <unicorn/unicorn.h>
 
+#include "emu_memory_access.h"
 #include "ra8_attributes.h"
 
 #ifdef __cplusplus
@@ -60,11 +61,13 @@ extern const int k_arm_reg_id[16];
  * @post No engine state is modified beyond the read itself.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @retval value The operation-specific rd32 value.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
 static inline uint32_t rd32(uc_engine* uc, uint64_t addr)
 {
   uint32_t v = 0U;
-  (void)uc_mem_read(uc, addr, &v, sizeof(v));
+  (void)emu_mem_read(uc, addr, &v, sizeof(v));
   return v;
 }
 
@@ -83,10 +86,11 @@ static inline uint32_t rd32(uc_engine* uc, uint64_t addr)
  * @post On success the word at @p addr holds @p v.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
 static inline void wr32(uc_engine* uc, uint64_t addr, uint32_t v)
 {
-  (void)uc_mem_write(uc, addr, &v, sizeof(v));
+  (void)emu_mem_write(uc, addr, &v, sizeof(v));
 }
 
 /**
@@ -103,6 +107,8 @@ static inline void wr32(uc_engine* uc, uint64_t addr, uint32_t v)
  * @post No engine state is modified beyond the read itself.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @retval value The operation-specific reg get value.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
 static inline uint32_t reg_get(uc_engine* uc, int reg)
 {
@@ -126,6 +132,7 @@ static inline uint32_t reg_get(uc_engine* uc, int reg)
  * @post On success the register holds @p v.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
 static inline void reg_set(uc_engine* uc, int reg, uint32_t v)
 {
@@ -148,8 +155,9 @@ static inline void reg_set(uc_engine* uc, int reg, uint32_t v)
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @see emu_seam_take_relaunch()  The run-loop consumer.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_seam_request_relaunch(void);
+void emu_seam_request_relaunch(void);
 
 /**
  * @brief Consume the zero-time seam-relaunch latch.
@@ -166,8 +174,9 @@ RA8_PRIV void emu_seam_request_relaunch(void);
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @see emu_seam_request_relaunch()  The seam-side producer.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool emu_seam_take_relaunch(void);
+bool emu_seam_take_relaunch(void);
 
 #ifdef __cplusplus
 }

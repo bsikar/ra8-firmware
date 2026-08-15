@@ -11,7 +11,7 @@
  * driver that forgets the unlock appears to work and changes nothing.
  *
  * @c board_periph_prcr.c snoops PRCR and keeps the live group mask; the
- * blocks that model protected registers ask ::board_prcr_group_unlocked
+ * blocks that model protected registers ask ::priv_board_prcr_group_unlocked
  * before accepting a write, so the emulator drops exactly the writes the
  * silicon drops. This header is the seam between them.
  *
@@ -38,7 +38,7 @@ extern "C" {
  * mandatory 0xA5 write key and are not part of the retained mask.
  *
  * @invariant Each value sets exactly one bit.
- * @see board_prcr_group_unlocked
+ * @see priv_board_prcr_group_unlocked
  */
 typedef enum : uint16_t {
   k_board_prcr_grp0_cgc = 0x0001U, /**< PRC0: clock generation circuit.       */
@@ -68,8 +68,9 @@ typedef enum : uint16_t {
  *
  * @note Not thread-safe; ra8_emulator drives all blocks from one thread.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool board_prcr_group_unlocked(uint16_t group_mask);
+RA8_PRIV bool priv_board_prcr_group_unlocked(uint16_t group_mask);
 
 #ifdef __cplusplus
 }

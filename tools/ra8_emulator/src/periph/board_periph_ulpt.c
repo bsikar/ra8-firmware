@@ -46,6 +46,7 @@
 #include <stdio.h>
 
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /**
  * @brief Per-tick order slot for the ULPT block.
@@ -154,8 +155,19 @@ static ulpt_channel_t s_ulpt[k_ulpt_count];
  * =============================================================================
  */
 
-/** @brief Current 32-bit value of the register cell that contains @p off. */
-static uint32_t ulpt_cell_value(const ulpt_channel_t* c, uint64_t off)
+/**
+ * @brief Current 32-bit value of the register cell that contains @p off.
+ * @details Current 32-bit value of the register cell that contains @p off; this step is contained within the board periph ulpt model and uses bounded caller or module-owned storage.
+ * @param[in] c Active controller, card, or command state processed by the operation.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The ulpt cell value result produced by the board periph ulpt model.
+ * @retval value The operation-specific ulpt cell value value.
+ * @pre Arguments satisfy the ranges documented for ulpt cell value. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ulpt model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_ulpt_cell_value(const ulpt_channel_t* c, uint64_t off)
 {
   /* HUM Ch 25.2.6 "ULPT : ULPT Counter Register" p 1198 */
   if (off < (uint64_t)k_ulpt_off_cma) {
@@ -189,8 +201,18 @@ static uint32_t ulpt_cell_value(const ulpt_channel_t* c, uint64_t off)
   return c->ioc;
 }
 
-/** @brief Byte offset of the start of the register cell that contains @p off. */
-static uint64_t ulpt_cell_base(uint64_t off)
+/**
+ * @brief Byte offset of the start of the register cell that contains @p off.
+ * @details Byte offset of the start of the register cell that contains @p off; this step is contained within the board periph ulpt model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The ulpt cell base result produced by the board periph ulpt model.
+ * @retval value The operation-specific ulpt cell base value.
+ * @pre Arguments satisfy the ranges documented for ulpt cell base. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ulpt model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_ulpt_cell_base(uint64_t off)
 {
   if (off < (uint64_t)k_ulpt_off_cma) {
     return (uint64_t)k_ulpt_off_cnt;
@@ -209,8 +231,20 @@ static uint64_t ulpt_cell_base(uint64_t off)
  * =============================================================================
  */
 
-/** @brief Read @p size bytes little-endian from the addressed ULPT channel. */
-static uint64_t ulpt_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief Read @p size bytes little-endian from the addressed ULPT channel.
+ * @details Read @p size bytes little-endian from the addressed ulpt channel; this step is contained within the board periph ulpt model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The ulpt read result produced by the board periph ulpt model.
+ * @retval value The operation-specific ulpt read value.
+ * @pre Arguments satisfy the ranges documented for ulpt read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ulpt model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_ulpt_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   const uint64_t rel = addr - (uint64_t)k_ulpt_base;
@@ -219,8 +253,8 @@ static uint64_t ulpt_read(uc_engine* uc, uint64_t addr, unsigned size)
     return 0U;
   }
   const uint64_t off  = rel % (uint64_t)k_ulpt_stride;
-  const uint32_t cell = ulpt_cell_value(&s_ulpt[ch], off);
-  const uint32_t lane = (uint32_t)(off - ulpt_cell_base(off));
+  const uint32_t cell = internal_ulpt_cell_value(&s_ulpt[ch], off);
+  const uint32_t lane = (uint32_t)(off - internal_ulpt_cell_base(off));
   uint64_t       v    = 0U;
   for (unsigned i = 0U; i < size; i++) {
     const uint32_t b = lane + (uint32_t)i;
@@ -233,8 +267,17 @@ static uint64_t ulpt_read(uc_engine* uc, uint64_t addr, unsigned size)
   return v;
 }
 
-/** @brief Apply a write to ULPTCR: TSTART arms, TCSTF tracks it, TUNDF clears on 0. */
-static void ulpt_write_cr(ulpt_channel_t* c, uint8_t value)
+/**
+ * @brief Apply a write to ULPTCR: TSTART arms, TCSTF tracks it, TUNDF clears on 0.
+ * @details Apply a write to ulptcr: tstart arms, tcstf tracks it, tundf clears on 0; this step is contained within the board periph ulpt model and uses bounded caller or module-owned storage.
+ * @param[in,out] c Active controller, card, or command state processed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for ulpt write cr. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ulpt model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_ulpt_write_cr(ulpt_channel_t* c, uint8_t value)
 {
   /* HUM Ch 25.2.1 "ULPTCR : ULPT Control Register" p 1190 -- TUNDF is
    * write-0-to-clear (ra8_ulpt_stop clears it by writing 0); TSTART is RW and
@@ -244,8 +287,20 @@ static void ulpt_write_cr(ulpt_channel_t* c, uint8_t value)
   c->cr = (uint8_t)(start | (start != 0U ? (uint8_t)k_ulpt_cr_tcstf : 0U) | status_keep);
 }
 
-/** @brief Write @p size bytes little-endian into the addressed ULPT channel. */
-static void ulpt_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief Write @p size bytes little-endian into the addressed ULPT channel.
+ * @details Write @p size bytes little-endian into the addressed ulpt channel; this step is contained within the board periph ulpt model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for ulpt write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ulpt model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_ulpt_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   const uint64_t rel = addr - (uint64_t)k_ulpt_base;
@@ -269,7 +324,7 @@ static void ulpt_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
     /* HUM Ch 25 "Ultra-Low-Power Timer (ULPT)" p 1187 -- ULPTCMB */
     c->cmpb = (uint32_t)value;
   } else if (off == (uint64_t)k_ulpt_off_cr) {
-    ulpt_write_cr(c, (uint8_t)value);
+    internal_ulpt_write_cr(c, (uint8_t)value);
   } else if (off == (uint64_t)k_ulpt_off_mr1) {
     /* HUM Ch 25.2.2 "ULPTMR1 : ULPT Mode Register 1" p 1192 */
     c->mr1 = (uint8_t)value;
@@ -291,8 +346,17 @@ static void ulpt_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
  * =============================================================================
  */
 
-/** @brief Advance one running ULPT channel by one chunk; raise its underflow event. */
-static void ulpt_tick_channel(uc_engine* uc, uint32_t ch)
+/**
+ * @brief Advance one running ULPT channel by one chunk; raise its underflow event.
+ * @details Advance one running ulpt channel by one chunk; raise its underflow event; this step is contained within the board periph ulpt model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] ch Selected channel identifier.
+ * @pre Arguments satisfy the ranges documented for ulpt tick channel. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ulpt model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_ulpt_tick_channel(uc_engine* uc, uint32_t ch)
 {
   ulpt_channel_t* c = &s_ulpt[ch];
   /* HUM Ch 25.2.1 "ULPTCR : ULPT Control Register" p 1190 -- TSTART gate */
@@ -318,16 +382,24 @@ static void ulpt_tick_channel(uc_engine* uc, uint32_t ch)
       board_periph_icu_raise_event(uc, (uint16_t)k_ulpt_event_ch0_underflow);
     }
     if (board_periph_trace()) {
-      (void)fprintf(stderr, "  ULPT%u         : underflow (reload=0x%08X)\n", ch, c->reload);
+      (void)priv_emu_io_errf("  ULPT%u         : underflow (reload=0x%08X)\n", ch, c->reload);
     }
   }
 }
 
-/** @brief Advance every running ULPT channel one chunk. */
-static void ulpt_tick(uc_engine* uc)
+/**
+ * @brief Advance every running ULPT channel one chunk.
+ * @details Advance every running ulpt channel one chunk; this step is contained within the board periph ulpt model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for ulpt tick. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ulpt model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_ulpt_tick(uc_engine* uc)
 {
   for (uint32_t ch = 0U; ch < (uint32_t)k_ulpt_count; ch++) {
-    ulpt_tick_channel(uc, ch);
+    internal_ulpt_tick_channel(uc, ch);
   }
 }
 
@@ -336,46 +408,59 @@ static void ulpt_tick(uc_engine* uc)
  * =============================================================================
  */
 
-/** @brief Clear every ULPT channel to its power-on state. */
-static void ulpt_reset(void)
+/**
+ * @brief Clear every ULPT channel to its power-on state.
+ * @details Clear every ulpt channel to its power-on state; this step is contained within the board periph ulpt model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for ulpt reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ulpt model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_ulpt_reset(void)
 {
   for (uint32_t ch = 0U; ch < (uint32_t)k_ulpt_count; ch++) {
     s_ulpt[ch] = (ulpt_channel_t){};
   }
 }
 
-/** @brief Print each ULPT channel that underflowed at least once. */
-static void ulpt_report(void)
+/**
+ * @brief Print each ULPT channel that underflowed at least once.
+ * @details Print each ulpt channel that underflowed at least once; this step is contained within the board periph ulpt model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for ulpt report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ulpt model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_ulpt_report(void)
 {
   for (uint32_t ch = 0U; ch < (uint32_t)k_ulpt_count; ch++) {
     const ulpt_channel_t* c = &s_ulpt[ch];
     if (c->underflows == 0U) {
       continue;
     }
-    (void)fprintf(stderr,
-                  "  ULPT%u         : counter=0x%08X underflows=%u (running=%s)\n",
-                  ch,
-                  c->counter,
-                  c->underflows,
-                  (c->cr & (uint8_t)k_ulpt_cr_tstart) ? "yes" : "no");
+    (void)priv_emu_io_errf("  ULPT%u         : counter=0x%08X underflows=%u (running=%s)\n",
+                           ch,
+                           c->counter,
+                           c->underflows,
+                           (c->cr & (uint8_t)k_ulpt_cr_tstart) ? "yes" : "no");
   }
 }
 
 /** @brief ULPT register window + the down-count tick / reset / report. */
-static const board_periph_block_t k_ulpt_block = {
+static const board_periph_block_t s_k_ulpt_block = {
   .base   = (uint64_t)k_ulpt_base,
   .span   = (uint64_t)k_ulpt_span,
   .order  = (uint32_t)k_ulpt_block_order,
-  .read   = ulpt_read,
-  .write  = ulpt_write,
-  .tick   = ulpt_tick,
-  .reset  = ulpt_reset,
-  .report = ulpt_report,
+  .read   = internal_ulpt_read,
+  .write  = internal_ulpt_write,
+  .tick   = internal_ulpt_tick,
+  .reset  = internal_ulpt_reset,
+  .report = internal_ulpt_report,
   .name   = "ULPT",
 };
 
 /** @brief Self-register the ULPT window before main runs (decentralized). */
-[[gnu::constructor]] static void board_periph_ulpt_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_board_periph_ulpt_register(void)
 {
-  board_periph_register_block(&k_ulpt_block);
+  board_periph_register_block(&s_k_ulpt_block);
 }

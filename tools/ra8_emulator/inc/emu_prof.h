@@ -29,6 +29,7 @@
 #include <stdint.h>
 #include <unicorn/unicorn.h>
 
+#include "emu_elf.h"
 #include "ra8_attributes.h"
 
 #ifdef __cplusplus
@@ -65,8 +66,9 @@ typedef enum : uint8_t {
  * @post No state is modified.
  * @note Thread-safe (pure system-clock read).
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV double board_now_s(void);
+double board_now_s(void);
 
 /**
  * @brief Collect + sort FUNC symbols (RA8_EMU_PROFILE only) for PC bucketing.
@@ -76,18 +78,17 @@ RA8_PRIV double board_now_s(void);
  * and name, and sorts by entry address so per-PC lookup can binary-search.
  * With the variable unset the profiler stays off at zero cost.
  *
- * @param[in] elf In-memory ELF image (name pointers alias into it).
- * @param[in] len Length of @p elf in bytes.
+ * @param[in] elf Open ELF source; symbol names are retained as source offsets.
  * @return Nothing.
- * @pre @p elf is a validated ELF32 image of @p len bytes.
- * @pre The image buffer outlives the run (names are borrowed, not copied).
+ * @pre @p elf is a validated ELF32 source.
+ * @pre The source remains open through the run-end profiler report.
  * @post The symbol table is loaded and the mode is latched.
- * @post One `[profile]` stderr line is printed when profiling is enabled.
+ * @post One `[profile]` injected error sink line is printed when profiling is enabled.
  * @note Not thread-safe; call once during setup.
  * @see emu_prof_install()  Arms the per-instruction hook afterwards.
  * @since 0.1.0
  */
-RA8_PRIV void prof_load(const uint8_t* elf, long len);
+void prof_load(const emu_elf_source_t* elf);
 
 /**
  * @brief Attribute wall seconds to the function owning @p pc (wall mode).
@@ -104,8 +105,9 @@ RA8_PRIV void prof_load(const uint8_t* elf, long len);
  *       @p dt; otherwise nothing changed.
  * @note Not thread-safe; the run loop is single-threaded.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void prof_add(uint32_t pc, double dt);
+void prof_add(uint32_t pc, double dt);
 
 /**
  * @brief Print the top hot functions (by wall time or instruction count).
@@ -117,13 +119,14 @@ RA8_PRIV void prof_add(uint32_t pc, double dt);
  *
  * @return Nothing.
  * @pre The run has ended (totals are final).
- * @pre stderr is writable.
+ * @pre injected error sink is writable.
  * @post The report (if any) has been written; per-symbol counters are
  *       consumed by the top-N selection.
  * @note Not thread-safe; call once at run end.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void prof_report(void);
+void prof_report(void);
 
 /**
  * @brief Arm the per-instruction profiling hook (insn mode only).
@@ -141,7 +144,7 @@ RA8_PRIV void prof_report(void);
  * @note Not thread-safe; call once during setup.
  * @since 0.1.0
  */
-RA8_PRIV void emu_prof_install(uc_engine* uc);
+void emu_prof_install(uc_engine* uc);
 
 /**
  * @brief The latched profiler mode.
@@ -155,8 +158,10 @@ RA8_PRIV void emu_prof_install(uc_engine* uc);
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details The latched profiler mode; this step is contained within the emu prof model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV prof_mode_t emu_prof_mode(void);
+prof_mode_t emu_prof_mode(void);
 
 /**
  * @brief Total instructions retired under the per-instruction hook.
@@ -171,8 +176,9 @@ RA8_PRIV prof_mode_t emu_prof_mode(void);
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV uint64_t emu_prof_total_insns(void);
+uint64_t emu_prof_total_insns(void);
 
 /**
  * @brief Set the RA8_EMU_STOP_PC early-stop address (0 disables).
@@ -188,8 +194,9 @@ RA8_PRIV uint64_t emu_prof_total_insns(void);
  * @post The stop address is latched for the run.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_prof_set_stop_pc(uint32_t pc);
+void emu_prof_set_stop_pc(uint32_t pc);
 
 /**
  * @brief Whether the RA8_EMU_STOP_PC address was reached.
@@ -201,8 +208,10 @@ RA8_PRIV void emu_prof_set_stop_pc(uint32_t pc);
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Whether the ra8_emu_stop_pc address was reached; this step is contained within the emu prof model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool emu_prof_stop_hit(void);
+bool emu_prof_stop_hit(void);
 
 #ifdef __cplusplus
 }

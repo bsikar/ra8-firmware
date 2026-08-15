@@ -42,6 +42,7 @@
 #include "board_console.h"
 #include "board_periph_block.h"
 #include "board_periph_sd.h"
+#include "emu_host_io_internal.h"
 
 /** @brief Console-tap line buffer capacity for an SDHI block summary. */
 typedef enum : uint32_t {
@@ -154,23 +155,47 @@ typedef struct {
 
 static sdhi_state_t s_sdhi;
 
-/** @brief Word index of register at byte offset @p off inside the shadow. */
-static uint32_t sdhi_word(uint64_t off)
+/**
+ * @brief Word index of register at byte offset @p off inside the shadow.
+ * @details Word index of register at byte offset @p off inside the shadow; this step is contained within the board periph SDHI model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The SDHI word result produced by the board periph SDHI model.
+ * @retval value The operation-specific SDHI word value.
+ * @pre Arguments satisfy the ranges documented for SDHI word. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SDHI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_sdhi_word(uint64_t off)
 {
   return (uint32_t)(off / 4U);
 }
 
-/** @brief Copy the latched response words into the SD_RSP* shadow registers. */
-static void sdhi_publish_response(void)
+/**
+ * @brief Copy the latched response words into the SD_RSP* shadow registers.
+ * @details Copy the latched response words into the sd_rsp; this step is contained within the board periph SDHI model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for SDHI publish response. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SDHI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sdhi_publish_response(void)
 {
-  s_sdhi.regs[sdhi_word(k_sdhi_off_sd_rsp10)] = s_sdhi.rsp[0];
-  s_sdhi.regs[sdhi_word(k_sdhi_off_sd_rsp32)] = s_sdhi.rsp[1];
-  s_sdhi.regs[sdhi_word(k_sdhi_off_sd_rsp54)] = s_sdhi.rsp[2];
-  s_sdhi.regs[sdhi_word(k_sdhi_off_sd_rsp76)] = s_sdhi.rsp[3];
+  s_sdhi.regs[internal_sdhi_word(k_sdhi_off_sd_rsp10)] = s_sdhi.rsp[0];
+  s_sdhi.regs[internal_sdhi_word(k_sdhi_off_sd_rsp32)] = s_sdhi.rsp[1];
+  s_sdhi.regs[internal_sdhi_word(k_sdhi_off_sd_rsp54)] = s_sdhi.rsp[2];
+  s_sdhi.regs[internal_sdhi_word(k_sdhi_off_sd_rsp76)] = s_sdhi.rsp[3];
 }
 
-/** @brief Encode the attached card's capacity into a CSD v2 response (CMD9). */
-static void sdhi_make_csd(void)
+/**
+ * @brief Encode the attached card's capacity into a CSD v2 response (CMD9).
+ * @details Encode the attached card's capacity into a csd v2 response (cmd9); this step is contained within the board periph SDHI model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for SDHI make csd. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SDHI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sdhi_make_csd(void)
 {
   uint64_t bytes = 0U;
   board_sd_info(nullptr, &bytes, nullptr, nullptr);
@@ -185,20 +210,35 @@ static void sdhi_make_csd(void)
   s_sdhi.rsp[0] = 0U;
 }
 
-/** @brief Load the block at the current LBA into the staging buffer (read phase). */
-static void sdhi_load_block(void)
+/**
+ * @brief Load the block at the current LBA into the staging buffer (read phase).
+ * @details Load the block at the current lba into the staging buffer (read phase); this step is contained within the board periph SDHI model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for SDHI load block. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SDHI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sdhi_load_block(void)
 {
   (void)memset(s_sdhi.stage, 0, sizeof(s_sdhi.stage));
   (void)board_sd_read_block(s_sdhi.lba, s_sdhi.stage);
   s_sdhi.word_idx = 0U;
-  s_sdhi.regs[sdhi_word(k_sdhi_off_sd_info2)] |= (uint32_t)k_sdhi_info2_bre;
+  s_sdhi.regs[internal_sdhi_word(k_sdhi_off_sd_info2)] |= (uint32_t)k_sdhi_info2_bre;
 }
 
-/** @brief Arm a read data phase for CMD17 (single) or CMD18 (multi). */
-static void sdhi_begin_read(bool multi)
+/**
+ * @brief Arm a read data phase for CMD17 (single) or CMD18 (multi).
+ * @details Arm a read data phase for cmd17 (single) or cmd18 (multi); this step is contained within the board periph SDHI model and uses bounded caller or module-owned storage.
+ * @param[in] multi Multi input used by the operation.
+ * @pre Arguments satisfy the ranges documented for SDHI begin read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SDHI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sdhi_begin_read(bool multi)
 {
   s_sdhi.xfer        = (uint8_t)k_sdhi_xfer_read;
-  s_sdhi.blocks_left = multi ? s_sdhi.regs[sdhi_word(k_sdhi_off_sd_seccnt)] : 1U;
+  s_sdhi.blocks_left = multi ? s_sdhi.regs[internal_sdhi_word(k_sdhi_off_sd_seccnt)] : 1U;
   if (s_sdhi.blocks_left == 0U) {
     s_sdhi.blocks_left = 1U;
   }
@@ -210,20 +250,28 @@ static void sdhi_begin_read(bool multi)
                  (unsigned)s_sdhi.lba,
                  (unsigned)s_sdhi.blocks_left);
   board_console_push(k_board_console_ch_sd, ln);
-  sdhi_load_block();
+  internal_sdhi_load_block();
 }
 
-/** @brief Arm a write data phase for CMD24 (single) or CMD25 (multi). */
-static void sdhi_begin_write(bool multi)
+/**
+ * @brief Arm a write data phase for CMD24 (single) or CMD25 (multi).
+ * @details Arm a write data phase for cmd24 (single) or cmd25 (multi); this step is contained within the board periph SDHI model and uses bounded caller or module-owned storage.
+ * @param[in] multi Multi input used by the operation.
+ * @pre Arguments satisfy the ranges documented for SDHI begin write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SDHI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sdhi_begin_write(bool multi)
 {
   s_sdhi.xfer        = (uint8_t)k_sdhi_xfer_write;
-  s_sdhi.blocks_left = multi ? s_sdhi.regs[sdhi_word(k_sdhi_off_sd_seccnt)] : 1U;
+  s_sdhi.blocks_left = multi ? s_sdhi.regs[internal_sdhi_word(k_sdhi_off_sd_seccnt)] : 1U;
   if (s_sdhi.blocks_left == 0U) {
     s_sdhi.blocks_left = 1U;
   }
   (void)memset(s_sdhi.stage, 0, sizeof(s_sdhi.stage));
   s_sdhi.word_idx = 0U;
-  s_sdhi.regs[sdhi_word(k_sdhi_off_sd_info2)] |= (uint32_t)k_sdhi_info2_bwe;
+  s_sdhi.regs[internal_sdhi_word(k_sdhi_off_sd_info2)] |= (uint32_t)k_sdhi_info2_bwe;
   /* Console SD tab: one line per block-write command (CMD24/CMD25). */
   char ln[k_sdhi_console_line_cap];
   (void)snprintf(ln,
@@ -234,8 +282,17 @@ static void sdhi_begin_write(bool multi)
   board_console_push(k_board_console_ch_sd, ln);
 }
 
-/** @brief Decode the identification + addressing commands into a response. */
-static void sdhi_exec_ident(uint32_t idx, uint32_t arg)
+/**
+ * @brief Decode the identification + addressing commands into a response.
+ * @details Decode the identification + addressing commands into a response; this step is contained within the board periph SDHI model and uses bounded caller or module-owned storage.
+ * @param[in] idx Bounded index of the selected entry.
+ * @param[in] arg Arg input used by the operation.
+ * @pre Arguments satisfy the ranges documented for SDHI exec ident. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SDHI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sdhi_exec_ident(uint32_t idx, uint32_t arg)
 {
   (void)arg;
   if ((idx == (uint32_t)k_sdhi_acmd41_op_cond) && (s_sdhi.app_cmd != 0U)) {
@@ -262,7 +319,7 @@ static void sdhi_exec_ident(uint32_t idx, uint32_t arg)
       s_sdhi.rsp[0] = (uint32_t)k_sdhi_rca_value;
       break;
     case (uint32_t)k_sdhi_cmd9_send_csd:
-      sdhi_make_csd();
+      internal_sdhi_make_csd();
       break;
     default:
       s_sdhi.rsp[0] = (uint32_t)k_sdhi_r1_ready;
@@ -270,11 +327,19 @@ static void sdhi_exec_ident(uint32_t idx, uint32_t arg)
   }
 }
 
-/** @brief Execute the latched command, build its response, raise RSPEND. */
-static void sdhi_exec_command(uint32_t cmd)
+/**
+ * @brief Execute the latched command, build its response, raise RSPEND.
+ * @details Execute the latched command, build its response, raise rspend; this step is contained within the board periph SDHI model and uses bounded caller or module-owned storage.
+ * @param[in] cmd Cmd input used by the operation.
+ * @pre Arguments satisfy the ranges documented for SDHI exec command. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SDHI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sdhi_exec_command(uint32_t cmd)
 {
   const uint32_t idx = cmd & (uint32_t)k_sdhi_cmd_index_mask;
-  const uint32_t arg = s_sdhi.regs[sdhi_word(k_sdhi_off_sd_arg)];
+  const uint32_t arg = s_sdhi.regs[internal_sdhi_word(k_sdhi_off_sd_arg)];
 
   s_sdhi.rsp[0] = (uint32_t)k_sdhi_r1_ready;
   s_sdhi.rsp[1] = 0U;
@@ -284,37 +349,46 @@ static void sdhi_exec_command(uint32_t cmd)
   switch (idx) {
     case (uint32_t)k_sdhi_cmd17_read1:
       s_sdhi.lba = arg;
-      sdhi_begin_read(false);
+      internal_sdhi_begin_read(false);
       break;
     case (uint32_t)k_sdhi_cmd18_readm:
       s_sdhi.lba = arg;
-      sdhi_begin_read(true);
+      internal_sdhi_begin_read(true);
       break;
     case (uint32_t)k_sdhi_cmd24_write1:
       s_sdhi.lba = arg;
-      sdhi_begin_write(false);
+      internal_sdhi_begin_write(false);
       break;
     case (uint32_t)k_sdhi_cmd25_writem:
       s_sdhi.lba = arg;
-      sdhi_begin_write(true);
+      internal_sdhi_begin_write(true);
       break;
     case (uint32_t)k_sdhi_cmd12_stop:
       s_sdhi.xfer = (uint8_t)k_sdhi_xfer_none;
       break;
     default:
-      sdhi_exec_ident(idx, arg);
+      internal_sdhi_exec_ident(idx, arg);
       break;
   }
   /* CMD55 sets app_cmd; every other command clears the one-shot prefix. */
   if (idx != (uint32_t)k_sdhi_cmd55_app_cmd) {
     s_sdhi.app_cmd = 0U;
   }
-  sdhi_publish_response();
-  s_sdhi.regs[sdhi_word(k_sdhi_off_sd_info1)] |= (uint32_t)k_sdhi_info1_rspend;
+  internal_sdhi_publish_response();
+  s_sdhi.regs[internal_sdhi_word(k_sdhi_off_sd_info1)] |= (uint32_t)k_sdhi_info1_rspend;
 }
 
-/** @brief Serve one 32-bit FIFO word from the staging buffer (read phase). */
-static uint32_t sdhi_buf_read(void)
+/**
+ * @brief Serve one 32-bit FIFO word from the staging buffer (read phase).
+ * @details Serve one 32-bit fifo word from the staging buffer (read phase); this step is contained within the board periph SDHI model and uses bounded caller or module-owned storage.
+ * @return The SDHI buf read result produced by the board periph SDHI model.
+ * @retval value The operation-specific SDHI buf read value.
+ * @pre Arguments satisfy the ranges documented for SDHI buf read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SDHI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_sdhi_buf_read(void)
 {
   if (s_sdhi.xfer != (uint8_t)k_sdhi_xfer_read) {
     return 0U;
@@ -335,16 +409,24 @@ static uint32_t sdhi_buf_read(void)
   }
   if (s_sdhi.blocks_left > 0U) {
     s_sdhi.lba++;
-    sdhi_load_block();
+    internal_sdhi_load_block();
   } else {
     s_sdhi.xfer = (uint8_t)k_sdhi_xfer_none;
-    s_sdhi.regs[sdhi_word(k_sdhi_off_sd_info2)] &= ~(uint32_t)k_sdhi_info2_bre;
+    s_sdhi.regs[internal_sdhi_word(k_sdhi_off_sd_info2)] &= ~(uint32_t)k_sdhi_info2_bre;
   }
   return word;
 }
 
-/** @brief Capture one 32-bit FIFO word into the staging buffer (write phase). */
-static void sdhi_buf_write(uint32_t word)
+/**
+ * @brief Capture one 32-bit FIFO word into the staging buffer (write phase).
+ * @details Capture one 32-bit fifo word into the staging buffer (write phase); this step is contained within the board periph SDHI model and uses bounded caller or module-owned storage.
+ * @param[in] word Instruction or register word processed by the operation.
+ * @pre Arguments satisfy the ranges documented for SDHI buf write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SDHI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sdhi_buf_write(uint32_t word)
 {
   if (s_sdhi.xfer != (uint8_t)k_sdhi_xfer_write) {
     return;
@@ -372,64 +454,104 @@ static void sdhi_buf_write(uint32_t word)
     s_sdhi.lba++;
   } else {
     s_sdhi.xfer = (uint8_t)k_sdhi_xfer_none;
-    s_sdhi.regs[sdhi_word(k_sdhi_off_sd_info2)] &= ~(uint32_t)k_sdhi_info2_bwe;
+    s_sdhi.regs[internal_sdhi_word(k_sdhi_off_sd_info2)] &= ~(uint32_t)k_sdhi_info2_bwe;
   }
 }
 
-/** @brief MMIO read inside the SDHI window (SD_BUF0 is a live FIFO). */
-static uint64_t sdhi_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the SDHI window (SD_BUF0 is a live FIFO).
+ * @details MMIO read inside the sdhi window (sd_buf0 is a live fifo); this step is contained within the board periph SDHI model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The SDHI read result produced by the board periph SDHI model.
+ * @retval value The operation-specific SDHI read value.
+ * @pre Arguments satisfy the ranges documented for SDHI read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SDHI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_sdhi_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
   const uint64_t off = addr - (uint64_t)k_sdhi_base;
   if (off == (uint64_t)k_sdhi_off_sd_buf0) {
-    return (uint64_t)sdhi_buf_read();
+    return (uint64_t)internal_sdhi_buf_read();
   }
-  if (sdhi_word(off) >= (uint32_t)k_sdhi_words) {
+  if (internal_sdhi_word(off) >= (uint32_t)k_sdhi_words) {
     return 0U;
   }
-  return (uint64_t)s_sdhi.regs[sdhi_word(off)];
+  return (uint64_t)s_sdhi.regs[internal_sdhi_word(off)];
 }
 
-/** @brief MMIO write inside the SDHI window (SD_CMD issues; SD_BUF0 captures). */
-static void sdhi_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the SDHI window (SD_CMD issues; SD_BUF0 captures).
+ * @details MMIO write inside the sdhi window (sd_cmd issues; sd_buf0 captures); this step is contained within the board periph SDHI model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for SDHI write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SDHI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_sdhi_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
   const uint64_t off = addr - (uint64_t)k_sdhi_base;
   if (off == (uint64_t)k_sdhi_off_sd_buf0) {
-    sdhi_buf_write((uint32_t)value);
+    internal_sdhi_buf_write((uint32_t)value);
     return;
   }
   if (off == (uint64_t)k_sdhi_off_soft_rst) {
     /* The driver writes 0 then 1; clear the FIFO/command engine either way. */
-    s_sdhi.xfer                                 = (uint8_t)k_sdhi_xfer_none;
-    s_sdhi.word_idx                             = 0U;
-    s_sdhi.blocks_left                          = 0U;
-    s_sdhi.app_cmd                              = 0U;
-    s_sdhi.regs[sdhi_word(off)]                 = (uint32_t)value;
-    s_sdhi.regs[sdhi_word(k_sdhi_off_sd_info1)] = 0U;
-    s_sdhi.regs[sdhi_word(k_sdhi_off_sd_info2)] = 0U;
+    s_sdhi.xfer                                          = (uint8_t)k_sdhi_xfer_none;
+    s_sdhi.word_idx                                      = 0U;
+    s_sdhi.blocks_left                                   = 0U;
+    s_sdhi.app_cmd                                       = 0U;
+    s_sdhi.regs[internal_sdhi_word(off)]                 = (uint32_t)value;
+    s_sdhi.regs[internal_sdhi_word(k_sdhi_off_sd_info1)] = 0U;
+    s_sdhi.regs[internal_sdhi_word(k_sdhi_off_sd_info2)] = 0U;
     return;
   }
-  if (sdhi_word(off) < (uint32_t)k_sdhi_words) {
-    s_sdhi.regs[sdhi_word(off)] = (uint32_t)value;
+  if (internal_sdhi_word(off) < (uint32_t)k_sdhi_words) {
+    s_sdhi.regs[internal_sdhi_word(off)] = (uint32_t)value;
   }
   if (off == (uint64_t)k_sdhi_off_sd_cmd) {
-    sdhi_exec_command((uint32_t)value);
+    internal_sdhi_exec_command((uint32_t)value);
   }
 }
 
-/** @brief Reset the SDHI model: zero the shadow + command/data-phase engine. */
-static void sdhi_reset(void)
+/**
+ * @brief Reset the SDHI model: zero the shadow + command/data-phase engine.
+ * @details Reset the sdhi model: zero the shadow + command/data-phase engine; this step is contained within the board periph SDHI model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for SDHI reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SDHI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sdhi_reset(void)
 {
   (void)memset(&s_sdhi, 0, sizeof(s_sdhi));
 }
 
-/** @brief Decode the SD_OPTION shadow into the host bus-width lane count. */
-static uint32_t sdhi_bus_lanes(void)
+/**
+ * @brief Decode the SD_OPTION shadow into the host bus-width lane count.
+ * @details Decode the sd_option shadow into the host bus-width lane count; this step is contained within the board periph SDHI model and uses bounded caller or module-owned storage.
+ * @return The SDHI bus lanes result produced by the board periph SDHI model.
+ * @retval value The operation-specific SDHI bus lanes value.
+ * @pre Arguments satisfy the ranges documented for SDHI bus lanes. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SDHI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_sdhi_bus_lanes(void)
 {
-  const uint32_t opt = s_sdhi.regs[sdhi_word(k_sdhi_off_sd_option)];
+  const uint32_t opt = s_sdhi.regs[internal_sdhi_word(k_sdhi_off_sd_option)];
   if ((opt & (uint32_t)k_sdhi_option_width_bit) != 0U) {
     return (uint32_t)k_sdhi_lanes_1bit;
   }
@@ -439,34 +561,40 @@ static uint32_t sdhi_bus_lanes(void)
   return (uint32_t)k_sdhi_lanes_4bit;
 }
 
-/** @brief End-of-run SDHI section: block I/O counts (only if the bus was used). */
-static void sdhi_report(void)
+/**
+ * @brief End-of-run SDHI section: block I/O counts (only if the bus was used).
+ * @details End-of-run sdhi section: block i/o counts (only if the bus was used); this step is contained within the board periph SDHI model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for SDHI report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SDHI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sdhi_report(void)
 {
   if ((s_sdhi.reads == 0U) && (s_sdhi.writes == 0U)) {
     return;
   }
-  (void)fprintf(stderr,
-                "  SDHI card     : %u block reads  %u block writes  %u-bit bus\n",
-                s_sdhi.reads,
-                s_sdhi.writes,
-                (unsigned)sdhi_bus_lanes());
+  (void)priv_emu_io_errf("  SDHI card     : %u block reads  %u block writes  %u-bit bus\n",
+                         s_sdhi.reads,
+                         s_sdhi.writes,
+                         (unsigned)internal_sdhi_bus_lanes());
 }
 
 /** @brief SDHI0 block descriptor (self-registered with the core). */
-static const board_periph_block_t k_sdhi_block = {
+static const board_periph_block_t s_k_sdhi_block = {
   .base   = (uint32_t)k_sdhi_base,
   .span   = (uint32_t)k_sdhi_span,
   .order  = (uint32_t)k_sdhi_block_order,
-  .read   = sdhi_read,
-  .write  = sdhi_write,
+  .read   = internal_sdhi_read,
+  .write  = internal_sdhi_write,
   .tick   = nullptr,
-  .reset  = sdhi_reset,
-  .report = sdhi_report,
+  .reset  = internal_sdhi_reset,
+  .report = internal_sdhi_report,
   .name   = "SDHI",
 };
 
 /** @brief Register the SDHI block before main (host constructor). */
-[[gnu::constructor]] static void sdhi_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_sdhi_block_register(void)
 {
-  board_periph_register_block(&k_sdhi_block);
+  board_periph_register_block(&s_k_sdhi_block);
 }

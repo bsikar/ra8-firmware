@@ -44,11 +44,11 @@ typedef enum : uint32_t {
  * @note Not thread-safe; call from reset/registration paths only.
  * @since 0.1.0
  */
-RA8_PRIV void i2c_device_register(uint8_t addr_7b,
-                                  void (*wr)(void*, uint8_t),
-                                  uint32_t (*rd)(void*, uint8_t*, uint32_t),
-                                  void (*stop)(void*),
-                                  void* ctx);
+RA8_PRIV void priv_i2c_device_register(uint8_t addr_7b,
+                                       void (*wr)(void*, uint8_t),
+                                       uint32_t (*rd)(void*, uint8_t*, uint32_t),
+                                       void (*stop)(void*),
+                                       void* ctx);
 
 /**
  * @brief Re-lay the IMU + fuel-gauge register files (block reset path).
@@ -59,20 +59,24 @@ RA8_PRIV void i2c_device_register(uint8_t addr_7b,
  * @post WHO_AM_I / VCELL / SOC / VERSION / CRATE read their seeded values.
  * @note Not thread-safe; single-threaded reset path only.
  * @since 0.1.0
+  * @details Re-lay the imu + fuel-gauge register files (block reset path); this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void board_i2c_imu_fuel_reset(void);
+RA8_PRIV void priv_board_i2c_imu_fuel_reset(void);
 
 /**
  * @brief Register the LSM6DSO + MAX17048 devices on the modelled bus.
  *
  * @return Nothing.
  * @pre The registry was just cleared by the block reset.
- * @pre board_i2c_imu_fuel_reset() ran (register files are laid).
+ * @pre priv_board_i2c_imu_fuel_reset() ran (register files are laid).
  * @post Both devices answer their 7-bit addresses.
  * @note Not thread-safe; single-threaded reset path only.
  * @since 0.1.0
+  * @details Register the lsm6dso + max17048 devices on the modelled bus; this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void board_i2c_imu_fuel_register(void);
+RA8_PRIV void priv_board_i2c_imu_fuel_register(void);
 
 /**
  * @brief IMU register reads answered this run (report telemetry).
@@ -84,8 +88,10 @@ RA8_PRIV void board_i2c_imu_fuel_register(void);
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Imu register reads answered this run (report telemetry); this step is contained within the board periph I2C model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV uint32_t board_i2c_imu_reads(void);
+RA8_PRIV uint32_t priv_board_i2c_imu_reads(void);
 
 #ifdef __cplusplus
 }

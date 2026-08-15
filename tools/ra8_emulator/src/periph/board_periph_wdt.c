@@ -42,6 +42,7 @@
 
 #include "board_periph.h"
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief WDT0 block geometry (ra8_wdt_regs.h, r_wdt_regs_t). */
 typedef enum : uint64_t {
@@ -85,8 +86,16 @@ typedef struct {
 
 static wdt_state_t s_wdt;
 
-/** @brief Per-chunk advance: run the armed down-counter; reset on underflow. */
-static void wdt_tick(uc_engine* uc)
+/**
+ * @brief Per-chunk advance: run the armed down-counter; reset on underflow.
+ * @details Per-chunk advance: run the armed down-counter; reset on underflow; this step is contained within the board periph watchdog model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for watchdog tick. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph watchdog model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_wdt_tick(uc_engine* uc)
 {
   (void)uc;
   if (!s_wdt.armed || s_wdt.fired) {
@@ -106,14 +115,33 @@ static void wdt_tick(uc_engine* uc)
   }
 }
 
-/** @brief Reset the WDT model to power-on state. */
-static void wdt_reset(void)
+/**
+ * @brief Reset the WDT model to power-on state.
+ * @details Reset the wdt model to power-on state; this step is contained within the board periph watchdog model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for watchdog reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph watchdog model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_wdt_reset(void)
 {
   s_wdt = (wdt_state_t){};
 }
 
-/** @brief MMIO read inside the WDT window. */
-static uint64_t wdt_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the WDT window.
+ * @details MMIO read inside the wdt window; this step is contained within the board periph watchdog model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The watchdog read result produced by the board periph watchdog model.
+ * @retval value The operation-specific watchdog read value.
+ * @pre Arguments satisfy the ranges documented for watchdog read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph watchdog model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_wdt_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -131,8 +159,20 @@ static uint64_t wdt_read(uc_engine* uc, uint64_t addr, unsigned size)
   return 0U;
 }
 
-/** @brief MMIO write inside the WDT window. */
-static void wdt_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the WDT window.
+ * @details MMIO write inside the wdt window; this step is contained within the board periph watchdog model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for watchdog write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph watchdog model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_wdt_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
@@ -154,34 +194,40 @@ static void wdt_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
   }
 }
 
-/** @brief End-of-run WDT section: refreshes and whether it fired a reset. */
-static void wdt_report(void)
+/**
+ * @brief End-of-run WDT section: refreshes and whether it fired a reset.
+ * @details End-of-run wdt section: refreshes and whether it fired a reset; this step is contained within the board periph watchdog model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for watchdog report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph watchdog model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_wdt_report(void)
 {
   if ((s_wdt.refreshes == 0U) && !s_wdt.fired) {
     return; /* Untouched: stay quiet. */
   }
-  (void)fprintf(stderr,
-                "  WDT0          : refreshes=%u armed=%u reset_fired=%u\n",
-                s_wdt.refreshes,
-                (unsigned)s_wdt.armed,
-                (unsigned)s_wdt.fired);
+  (void)priv_emu_io_errf("  WDT0          : refreshes=%u armed=%u reset_fired=%u\n",
+                         s_wdt.refreshes,
+                         (unsigned)s_wdt.armed,
+                         (unsigned)s_wdt.fired);
 }
 
 /** @brief WDT0 block descriptor (self-registered with the core). */
-static const board_periph_block_t k_wdt_block = {
+static const board_periph_block_t s_k_wdt_block = {
   .base   = (uint64_t)k_wdt_base,
   .span   = (uint64_t)k_wdt_span,
   .order  = (uint32_t)k_wdt_block_order,
-  .read   = wdt_read,
-  .write  = wdt_write,
-  .tick   = wdt_tick,
-  .reset  = wdt_reset,
-  .report = wdt_report,
+  .read   = internal_wdt_read,
+  .write  = internal_wdt_write,
+  .tick   = internal_wdt_tick,
+  .reset  = internal_wdt_reset,
+  .report = internal_wdt_report,
   .name   = "WDT0",
 };
 
 /** @brief Register the WDT0 block before main (host constructor). */
-[[gnu::constructor]] static void wdt_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_wdt_block_register(void)
 {
-  board_periph_register_block(&k_wdt_block);
+  board_periph_register_block(&s_k_wdt_block);
 }

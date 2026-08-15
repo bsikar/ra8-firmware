@@ -26,13 +26,18 @@
 /**
  * @brief Report that no desktop window is available on this build.
  *
- * @param[in] width_px  Content width in pixels (unused, headless).
- * @param[in] height_px Content height in pixels (unused, headless).
- * @param[in] title     Window title (unused, headless).
+ * @param[in,out] storage Caller-owned handle storage (unused, headless).
+ * @param[in]     width_px  Content width in pixels (unused, headless).
+ * @param[in]     height_px Content height in pixels (unused, headless).
+ * @param[in]     title     Window title (unused, headless).
  * @return Always nullptr -- there is no window server off the APPLE path.
  */
-board_view_t* board_view_open(uint16_t width_px, uint16_t height_px, const char* title)
+board_view_t* board_view_open(board_view_storage_t* storage,
+                              uint16_t              width_px,
+                              uint16_t              height_px,
+                              const char*           title)
 {
+  (void)storage;
   (void)width_px;
   (void)height_px;
   (void)title;
@@ -40,22 +45,15 @@ board_view_t* board_view_open(uint16_t width_px, uint16_t height_px, const char*
 }
 
 /**
- * @brief No-op frame upload (no window to present to).
+ * @brief No-op surface presentation (no window to present to).
  *
- * @param[in] view      Always nullptr from board_view_open (unused).
- * @param[in] rgb565    Framebuffer base (unused, headless).
- * @param[in] width_px  Framebuffer width in pixels (unused, headless).
- * @param[in] height_px Framebuffer height in pixels (unused, headless).
+ * @param[in]     view         Always nullptr from board_view_open (unused).
+ * @param[in,out] presentation Fd-backed surface (unused, headless).
  */
-void board_view_present(board_view_t*   view,
-                        const uint16_t* rgb565,
-                        uint16_t        width_px,
-                        uint16_t        height_px)
+void board_view_present(board_view_t* view, emu_presentation_workspace_t* presentation)
 {
   (void)view;
-  (void)rgb565;
-  (void)width_px;
-  (void)height_px;
+  (void)presentation;
 }
 
 /**

@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <unicorn/unicorn.h>
 
+#include "emu_elf.h"
 #include "ra8_attributes.h"
 
 #ifdef __cplusplus
@@ -43,19 +44,19 @@ extern "C" {
  * there and board_usb.c's device-mode virtual host is untouched.
  *
  * @param[in,out] uc  Active Unicorn engine.
- * @param[in]     elf Loaded ELF image (symbol resolution).
- * @param[in]     len ELF image length in bytes.
+ * @param[in]     elf Open ELF source used for symbol resolution.
  * @return true when a seam family was installed (the register-level USBHS
  *         host model must then stay dormant -- see board_usb_host.h).
  * @retval true  hmsc- or primitive-level seams now shadow the host API.
  * @retval false No usb-host seams; the register path is the real one.
- * @pre @p uc is initialised and @p elf holds @p len bytes.
+ * @pre @p uc is initialised and @p elf remains open.
  * @pre Not running under --usbhs-loop (the caller gates that mode).
  * @post On a host app, the linked host API answers a virtual device.
  * @note No effect on device-mode apps (the hooked symbols are never called).
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool usbh_seam_install(uc_engine* uc, const uint8_t* elf, long len);
+bool usbh_seam_install(uc_engine* uc, const emu_elf_source_t* elf);
 
 /**
  * @brief Whether the virtual host-mode device served its final request.
@@ -72,8 +73,9 @@ RA8_PRIV bool usbh_seam_install(uc_engine* uc, const uint8_t* elf, long len);
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool emu_usbh_done(void);
+bool emu_usbh_done(void);
 
 #ifdef __cplusplus
 }
