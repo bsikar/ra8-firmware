@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_keyboard.h"
 #include "unity_minimal.h"
 
@@ -38,8 +39,10 @@ enum : int32_t {
 /** @brief Shared laid-out grid. */
 static ra8_kbd_layout_t s_kb;
 
-/** @brief Find the char key whose unshifted char is @p ch in the active layer. */
-static uint8_t key_of(char ch)
+#include "support/ra8_keyboard_test_contracts.h"
+
+/** @copydoc internal_key_of */
+RA8_INTERNAL static uint8_t internal_key_of(char ch)
 {
   for (uint8_t i = 0U; i < s_kb.count; i++) {
     if ((s_kb.keys[i].kind == k_ra8_kbd_key_char) && (s_kb.keys[i].ch_lower == ch)) {
@@ -49,8 +52,8 @@ static uint8_t key_of(char ch)
   return (uint8_t)k_ra8_kbd_no_hit;
 }
 
-/** @brief Find the first key of a given non-char kind. */
-static uint8_t key_of_kind(ra8_kbd_key_kind_t kind)
+/** @copydoc internal_key_of_kind */
+RA8_INTERNAL static uint8_t internal_key_of_kind(ra8_kbd_key_kind_t kind)
 {
   for (uint8_t i = 0U; i < s_kb.count; i++) {
     if (s_kb.keys[i].kind == kind) {
@@ -60,8 +63,8 @@ static uint8_t key_of_kind(ra8_kbd_key_kind_t kind)
   return (uint8_t)k_ra8_kbd_no_hit;
 }
 
-/** @brief Find the layer-toggle key that switches to layer @p aux. */
-static uint8_t key_of_layer(uint8_t aux)
+/** @copydoc internal_key_of_layer */
+RA8_INTERNAL static uint8_t internal_key_of_layer(uint8_t aux)
 {
   for (uint8_t i = 0U; i < s_kb.count; i++) {
     if ((s_kb.keys[i].kind == k_ra8_kbd_key_layer) && (s_kb.keys[i].aux == aux)) {
@@ -71,8 +74,8 @@ static uint8_t key_of_layer(uint8_t aux)
   return (uint8_t)k_ra8_kbd_no_hit;
 }
 
-/** @brief Tap a key's centre and apply it. */
-static void tap(ra8_kbd_text_t* t, uint8_t idx)
+/** @copydoc internal_tap */
+RA8_INTERNAL static void internal_tap(ra8_kbd_text_t* t, uint8_t idx)
 {
   TEST_ASSERT(idx < (uint8_t)(sizeof(s_kb.keys) / sizeof(s_kb.keys[0])));
   const ra8_ui_rect_t* r  = &s_kb.keys[idx].rect;
@@ -82,16 +85,17 @@ static void tap(ra8_kbd_text_t* t, uint8_t idx)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_kbd_apply(t, &s_kb, idx));
 }
 
-/** @brief Type lowercase printable chars (must be on the active layer). */
-static void type_lc(ra8_kbd_text_t* t, const char* s)
+/** @copydoc internal_type_lc */
+RA8_INTERNAL static void internal_type_lc(ra8_kbd_text_t* t, const char* s)
 {
   for (uint32_t i = 0U; s[i] != '\0'; i++) {
-    tap(t, key_of(s[i]));
+    internal_tap(t, internal_key_of(s[i]));
   }
 }
 
 /**
- * @test test_layout_letters
+ * @copydoc internal_test_layout_letters
+ * @test internal_test_layout_letters
  * @brief 31 keys in-frame; lowercase letters, SHIFT, and a 123 layer key.
  *
  * @par MC/DC:
@@ -103,9 +107,9 @@ static void type_lc(ra8_kbd_text_t* t, const char* s)
  * false arm would be an out-of-frame key -- the defect the conjunction exists to
  * catch -- so no false vector is driven. The frame-reject OR
  * `(w <= 0) || (h <= 0)` is held at its both-false control here; its N+1 vectors
- * live in test_frame_reject_mcdc.
+ * live in internal_test_frame_reject_mcdc.
  */
-static void test_layout_letters(void)
+RA8_INTERNAL static void internal_test_layout_letters(void)
 {
   TEST_BEGIN("keyboard letters layer: 31 keys, lowercase + shift + 123");
   const ra8_ui_rect_t frame = {.x = k_fx, .y = k_fy, .w = k_fw, .h = k_fh};
@@ -118,19 +122,20 @@ static void test_layout_letters(void)
     TEST_ASSERT((r->x >= k_fx) && ((r->x + r->w) <= (k_fx + k_fw)));
     TEST_ASSERT((r->y >= k_fy) && ((r->y + r->h) <= (k_fy + k_fh)));
   }
-  TEST_ASSERT(key_of('q') != (uint8_t)k_ra8_kbd_no_hit);
-  TEST_ASSERT(key_of_kind(k_ra8_kbd_key_shift) != (uint8_t)k_ra8_kbd_no_hit);
-  TEST_ASSERT(key_of_kind(k_ra8_kbd_key_layer) != (uint8_t)k_ra8_kbd_no_hit);
-  TEST_ASSERT(key_of('9') == (uint8_t)k_ra8_kbd_no_hit); /* digits are on the 123 layer */
+  TEST_ASSERT(internal_key_of('q') != (uint8_t)k_ra8_kbd_no_hit);
+  TEST_ASSERT(internal_key_of_kind(k_ra8_kbd_key_shift) != (uint8_t)k_ra8_kbd_no_hit);
+  TEST_ASSERT(internal_key_of_kind(k_ra8_kbd_key_layer) != (uint8_t)k_ra8_kbd_no_hit);
+  TEST_ASSERT(internal_key_of('9') == (uint8_t)k_ra8_kbd_no_hit); /* digits are on the 123 layer */
   TEST_END("keyboard letters layer: 31 keys, lowercase + shift + 123");
 }
 
 /**
- * @test test_typing_layers
+ * @copydoc internal_test_typing_layers
+ * @test internal_test_typing_layers
  * @brief Case + the 123/ABC layer toggle (digit) + commit.
  *
  * @par MC/DC:
- * Decision (in the test's `key_of` lookup, driven by every `type_lc`):
+ * Decision (in the test's `internal_key_of` lookup, driven by every `internal_type_lc`):
  * `(keys[i].kind == k_ra8_kbd_key_char) && (keys[i].ch_lower == ch)`
  * (2 conditions, AND). Scanning the laid-out grid supplies all three states in a
  * single pass -- N+1 = 3:
@@ -141,7 +146,7 @@ static void test_layout_letters(void)
  * production `ra8_kbd_apply` path under test is a switch on key kind with no
  * compound boolean.
  */
-static void test_typing_layers(void)
+RA8_INTERNAL static void internal_test_typing_layers(void)
 {
   TEST_BEGIN("keyboard typing: case + layer toggle + digit + commit");
   const ra8_ui_rect_t frame = {.x = k_fx, .y = k_fy, .w = k_fw, .h = k_fh};
@@ -150,40 +155,41 @@ static void test_typing_layers(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_kbd_text_init(&t));
 
   /* One-shot SHIFT capitalises only the next char: "Hi". */
-  tap(&t, key_of_kind(k_ra8_kbd_key_shift));
+  internal_tap(&t, internal_key_of_kind(k_ra8_kbd_key_shift));
   TEST_ASSERT(s_kb.shift);
-  type_lc(&t, "hi");
+  internal_type_lc(&t, "hi");
   TEST_ASSERT(!s_kb.shift);
   TEST_ASSERT_EQ(0, strcmp(t.buf, "Hi"));
 
   /* SPACE, then 123 -> numbers, type '9'. */
-  tap(&t, key_of_kind(k_ra8_kbd_key_space));
-  tap(&t, key_of_layer((uint8_t)k_ra8_kbd_layer_numbers)); /* 123 */
+  internal_tap(&t, internal_key_of_kind(k_ra8_kbd_key_space));
+  internal_tap(&t, internal_key_of_layer((uint8_t)k_ra8_kbd_layer_numbers)); /* 123 */
   TEST_ASSERT_EQ(k_ra8_kbd_layer_numbers, s_kb.layer);
-  type_lc(&t, "9");
+  internal_type_lc(&t, "9");
   TEST_ASSERT_EQ(0, strcmp(t.buf, "Hi 9"));
 
   /* #+= -> symbols, type '['; then 123 -> numbers; then ABC -> letters. */
-  tap(&t, key_of_layer((uint8_t)k_ra8_kbd_layer_symbols)); /* #+= */
+  internal_tap(&t, internal_key_of_layer((uint8_t)k_ra8_kbd_layer_symbols)); /* #+= */
   TEST_ASSERT_EQ(k_ra8_kbd_layer_symbols, s_kb.layer);
-  type_lc(&t, "[");
+  internal_type_lc(&t, "[");
   TEST_ASSERT_EQ(0, strcmp(t.buf, "Hi 9["));
-  tap(&t, key_of_layer((uint8_t)k_ra8_kbd_layer_numbers)); /* 123 (from symbols) */
+  internal_tap(&t,
+               internal_key_of_layer((uint8_t)k_ra8_kbd_layer_numbers)); /* 123 (from symbols) */
   TEST_ASSERT_EQ(k_ra8_kbd_layer_numbers, s_kb.layer);
-  tap(&t, key_of_layer((uint8_t)k_ra8_kbd_layer_letters)); /* ABC */
+  internal_tap(&t, internal_key_of_layer((uint8_t)k_ra8_kbd_layer_letters)); /* ABC */
   TEST_ASSERT_EQ(k_ra8_kbd_layer_letters, s_kb.layer);
 
   /* BACKSPACE removes the '['; RETURN commits. */
-  tap(&t, key_of_kind(k_ra8_kbd_key_backspace));
+  internal_tap(&t, internal_key_of_kind(k_ra8_kbd_key_backspace));
   TEST_ASSERT_EQ(0, strcmp(t.buf, "Hi 9"));
   TEST_ASSERT(!t.committed);
-  tap(&t, key_of_kind(k_ra8_kbd_key_enter));
+  internal_tap(&t, internal_key_of_kind(k_ra8_kbd_key_enter));
   TEST_ASSERT(t.committed);
   TEST_END("keyboard typing: case + layer toggle + digit + commit");
 }
 
-/** @brief Is char @p c reachable as a char key on the active layer? */
-static bool reachable_here(char c)
+/** @copydoc internal_reachable_here */
+RA8_INTERNAL static bool internal_reachable_here(char c)
 {
   for (uint8_t i = 0U; i < s_kb.count; i++) {
     if ((s_kb.keys[i].kind == k_ra8_kbd_key_char) && (s_kb.keys[i].ch_lower == c)) {
@@ -194,11 +200,12 @@ static bool reachable_here(char c)
 }
 
 /**
- * @test test_all_ascii_symbols
+ * @copydoc internal_test_all_ascii_symbols
+ * @test internal_test_all_ascii_symbols
  * @brief Every printable ASCII symbol + digit is reachable across the layers.
  *
  * @par MC/DC:
- * Decision (in the test's `reachable_here` scan):
+ * Decision (in the test's `internal_reachable_here` scan):
  * `(keys[i].kind == k_ra8_kbd_key_char) && (keys[i].ch_lower == c)`
  * (2 conditions, AND). Sweeping every char across all three layers drives all
  * three states -- N+1 = 3:
@@ -208,7 +215,7 @@ static bool reachable_here(char c)
  * The F and T,F rows each pair with T,T to prove C1 and C2 independent. The
  * `if (!found)` layer-advance checks are single-condition.
  */
-static void test_all_ascii_symbols(void)
+RA8_INTERNAL static void internal_test_all_ascii_symbols(void)
 {
   TEST_BEGIN("keyboard covers every printable ASCII symbol + digit");
   const ra8_ui_rect_t frame = {.x = k_fx, .y = k_fy, .w = k_fw, .h = k_fh};
@@ -222,18 +229,20 @@ static void test_all_ascii_symbols(void)
     /* Letters layer. */
     TEST_ASSERT_EQ(k_ra8_ok, ra8_kbd_layout_init(&s_kb, &frame));
     TEST_ASSERT_EQ(k_ra8_ok, ra8_kbd_text_init(&tmp));
-    found = reachable_here(c);
+    found = internal_reachable_here(c);
     /* -> numbers (123). */
     if (!found) {
-      TEST_ASSERT_EQ(k_ra8_ok,
-                     ra8_kbd_apply(&tmp, &s_kb, key_of_layer((uint8_t)k_ra8_kbd_layer_numbers)));
-      found = reachable_here(c);
+      TEST_ASSERT_EQ(
+        k_ra8_ok,
+        ra8_kbd_apply(&tmp, &s_kb, internal_key_of_layer((uint8_t)k_ra8_kbd_layer_numbers)));
+      found = internal_reachable_here(c);
     }
     /* -> symbols (#+=). */
     if (!found) {
-      TEST_ASSERT_EQ(k_ra8_ok,
-                     ra8_kbd_apply(&tmp, &s_kb, key_of_layer((uint8_t)k_ra8_kbd_layer_symbols)));
-      found = reachable_here(c);
+      TEST_ASSERT_EQ(
+        k_ra8_ok,
+        ra8_kbd_apply(&tmp, &s_kb, internal_key_of_layer((uint8_t)k_ra8_kbd_layer_symbols)));
+      found = internal_reachable_here(c);
     }
     TEST_ASSERT(found);
   }
@@ -241,7 +250,8 @@ static void test_all_ascii_symbols(void)
 }
 
 /**
- * @test test_glyph_and_edges
+ * @copydoc internal_test_glyph_and_edges
+ * @test internal_test_glyph_and_edges
  * @brief ra8_kbd_key_glyph tracks SHIFT; empty backspace + overflow are no-ops.
  *
  * @par MC/DC:
@@ -249,32 +259,32 @@ static void test_all_ascii_symbols(void)
  * ra8_kbd_key_glyph). This case drives C1=F,C2=F (the 'q' and enter keys ->
  * guard false, glyph returned) and C1=T (nullptr kb -> 0); the C2=T
  * (key_idx >= count) leg that completes N+1 = 3 is supplied by
- * test_key_glyph_guard_mcdc. The test's own `key_of` lookup additionally drives
+ * internal_test_key_glyph_guard_mcdc. The test's own `internal_key_of` lookup additionally drives
  * `(keys[i].kind == char) && (keys[i].ch_lower == ch)` through all three states
  * (non-char C1=F, wrong-glyph C1=T,C2=F, match C1=T,C2=T) across the key scan.
  * The apply/backspace/overflow edges are single-condition guards.
  */
-static void test_glyph_and_edges(void)
+RA8_INTERNAL static void internal_test_glyph_and_edges(void)
 {
   TEST_BEGIN("keyboard glyph/case + edge no-ops");
   const ra8_ui_rect_t frame = {.x = k_fx, .y = k_fy, .w = k_fw, .h = k_fh};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_kbd_layout_init(&s_kb, &frame));
-  const uint8_t q = key_of('q');
+  const uint8_t q = internal_key_of('q');
   TEST_ASSERT_EQ('q', ra8_kbd_key_glyph(&s_kb, q));
   s_kb.shift = true;
   TEST_ASSERT_EQ('Q', ra8_kbd_key_glyph(&s_kb, q));
   s_kb.shift = false;
-  TEST_ASSERT_EQ(0, ra8_kbd_key_glyph(&s_kb, key_of_kind(k_ra8_kbd_key_enter)));
+  TEST_ASSERT_EQ(0, ra8_kbd_key_glyph(&s_kb, internal_key_of_kind(k_ra8_kbd_key_enter)));
   TEST_ASSERT_EQ(0, ra8_kbd_key_glyph(nullptr, 0U));
 
   ra8_kbd_text_t t;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_kbd_text_init(&t));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_kbd_apply(&t, &s_kb, key_of_kind(k_ra8_kbd_key_backspace)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_kbd_apply(&t, &s_kb, internal_key_of_kind(k_ra8_kbd_key_backspace)));
   TEST_ASSERT_EQ(0, t.len);
   TEST_ASSERT_EQ(k_ra8_kbd_no_hit, ra8_kbd_hit(&s_kb, -100, -100));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_kbd_apply(&t, &s_kb, (uint8_t)k_ra8_kbd_no_hit));
   TEST_ASSERT_EQ(0, t.len);
-  const uint8_t a = key_of('a');
+  const uint8_t a = internal_key_of('a');
   for (uint32_t i = 0U; i < k_keyboard_scan_rounds; i++) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_kbd_apply(&t, &s_kb, a));
   }
@@ -283,7 +293,8 @@ static void test_glyph_and_edges(void)
 }
 
 /**
- * @test test_frame_reject_mcdc
+ * @copydoc internal_test_frame_reject_mcdc
+ * @test internal_test_frame_reject_mcdc
  *
  * @par MC/DC:
  * Decision: `if (frame->w <= 0 || frame->h <= 0)` (2 conditions, OR) in the
@@ -296,7 +307,7 @@ static void test_glyph_and_edges(void)
  * V1 vs V2 prove w independently flips the decision; V1 vs V3 prove the same
  * for h.
  */
-static void test_frame_reject_mcdc(void)
+RA8_INTERNAL static void internal_test_frame_reject_mcdc(void)
 {
   TEST_BEGIN("layout frame-reject MC/DC: w<=0 || h<=0");
   const ra8_ui_rect_t v1_ok = {.x = k_fx, .y = k_fy, .w = k_fw, .h = k_fh};
@@ -309,7 +320,8 @@ static void test_frame_reject_mcdc(void)
 }
 
 /**
- * @test test_key_glyph_guard_mcdc
+ * @copydoc internal_test_key_glyph_guard_mcdc
+ * @test internal_test_key_glyph_guard_mcdc
  *
  * @par MC/DC:
  * Decision: `if (kb == nullptr || key_idx >= kb->count)` (2 conditions, OR) in
@@ -321,12 +333,12 @@ static void test_frame_reject_mcdc(void)
  * V1 vs V2 prove kb independently flips the guard; V1 vs V3 prove the same for
  * key_idx.
  */
-static void test_key_glyph_guard_mcdc(void)
+RA8_INTERNAL static void internal_test_key_glyph_guard_mcdc(void)
 {
   TEST_BEGIN("key-glyph guard MC/DC: kb==nullptr || key_idx>=count");
   const ra8_ui_rect_t frame = {.x = k_fx, .y = k_fy, .w = k_fw, .h = k_fh};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_kbd_layout_init(&s_kb, &frame));
-  const uint8_t q = key_of('q');
+  const uint8_t q = internal_key_of('q');
   TEST_ASSERT(ra8_kbd_key_glyph(&s_kb, q) != (char)0);     /* V1: F,F */
   TEST_ASSERT_EQ(0, ra8_kbd_key_glyph(nullptr, 0U));       /* V2: T,- */
   TEST_ASSERT_EQ(0, ra8_kbd_key_glyph(&s_kb, s_kb.count)); /* V3: F,T */
@@ -334,7 +346,8 @@ static void test_key_glyph_guard_mcdc(void)
 }
 
 /**
- * @test test_null_guards
+ * @copydoc internal_test_null_guards
+ * @test internal_test_null_guards
  * @brief NULL arguments are rejected.
  *
  * @par MC/DC:
@@ -344,7 +357,7 @@ static void test_key_glyph_guard_mcdc(void)
  * guard in ra8_kbd_hit. Each is one condition; the `w <= 0 || h <= 0` frame OR
  * is never reached because the null check returns first)
  */
-static void test_null_guards(void)
+RA8_INTERNAL static void internal_test_null_guards(void)
 {
   TEST_BEGIN("keyboard null guards");
   const ra8_ui_rect_t frame = {.x = 0, .y = 0, .w = 10, .h = 10};
@@ -361,13 +374,12 @@ static void test_null_guards(void)
  */
 int32_t main(void)
 {
-  test_layout_letters();
-  test_typing_layers();
-  test_all_ascii_symbols();
-  test_glyph_and_edges();
-  test_frame_reject_mcdc();
-  test_key_glyph_guard_mcdc();
-  test_null_guards();
-  (void)fprintf(stderr, "[OK ] test_ra8_keyboard.c\n");
+  internal_test_layout_letters();
+  internal_test_typing_layers();
+  internal_test_all_ascii_symbols();
+  internal_test_glyph_and_edges();
+  internal_test_frame_reject_mcdc();
+  internal_test_key_glyph_guard_mcdc();
+  internal_test_null_guards();
   return 0;
 }
