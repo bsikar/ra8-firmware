@@ -20,6 +20,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 
@@ -533,7 +534,7 @@ ra8_err_t ra8_ov5640_write_reg(ra8_ov5640_t* dev, uint16_t reg, uint8_t value)
  * @note Not thread-safe with respect to the same sensor instance.
  * @since 0.1.0
  */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 internal_ov5640_update_bits(ra8_ov5640_t* dev, uint16_t reg, uint8_t mask, uint8_t value)
 {
   uint8_t   current = 0U;
@@ -562,7 +563,7 @@ internal_ov5640_update_bits(ra8_ov5640_t* dev, uint16_t reg, uint8_t mask, uint8
  * @note Not thread-safe with respect to the same sensor instance.
  * @since 0.1.0
  */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 internal_ov5640_verify(ra8_ov5640_t* dev, const ra8_ov5640_reg_expect_t* expected, uint32_t count)
 {
   for (uint32_t i = 0U; i < count; i += 1U) {
@@ -593,7 +594,7 @@ internal_ov5640_verify(ra8_ov5640_t* dev, const ra8_ov5640_reg_expect_t* expecte
  * @note Not thread-safe with respect to the same sensor instance.
  * @since 0.1.0
  */
-static ra8_err_t internal_ov5640_read_chip_id(ra8_ov5640_t* dev, uint16_t* out_id)
+RA8_INTERNAL static ra8_err_t internal_ov5640_read_chip_id(ra8_ov5640_t* dev, uint16_t* out_id)
 {
   uint8_t   hi  = 0U;
   uint8_t   lo  = 0U;
@@ -647,7 +648,7 @@ ra8_err_t ra8_ov5640_probe(ra8_ov5640_t* dev, uint16_t* out_id)
  * @note Applies the required MCU-reset delay at the matching table row.
  * @since 0.1.0
  */
-static ra8_err_t internal_ov5640_write_vga_base(ra8_ov5640_t* dev)
+RA8_INTERNAL static ra8_err_t internal_ov5640_write_vga_base(ra8_ov5640_t* dev)
 {
   const uint32_t count = (uint32_t)(sizeof(s_ov5640_vga_uyvy) / sizeof(ra8_ov5640_reg_write_t));
   for (uint32_t i = 0U; i < count; i += 1U) {
@@ -678,7 +679,7 @@ static ra8_err_t internal_ov5640_write_vga_base(ra8_ov5640_t* dev)
  * @note Preserves unrelated bits in every shared control register.
  * @since 0.1.0
  */
-static ra8_err_t internal_ov5640_configure_jpeg(ra8_ov5640_t* dev)
+RA8_INTERNAL static ra8_err_t internal_ov5640_configure_jpeg(ra8_ov5640_t* dev)
 {
   static const ra8_ov5640_reg_write_t jpeg_writes[] = {
     {(uint16_t)k_ov5640_reg_jpeg_quality, (uint8_t)k_ra8_ov5640_jpeg_quant_scale_default},
@@ -738,7 +739,7 @@ static ra8_err_t internal_ov5640_configure_jpeg(ra8_ov5640_t* dev)
  * @note Not thread-safe with respect to the same sensor instance.
  * @since 0.1.0
  */
-static ra8_err_t internal_ov5640_verify_uyvy(ra8_ov5640_t* dev)
+RA8_INTERNAL static ra8_err_t internal_ov5640_verify_uyvy(ra8_ov5640_t* dev)
 {
   static const ra8_ov5640_reg_expect_t expected[] = {
     {(uint16_t)k_ov5640_reg_format, (uint8_t)k_ov5640_byte_mask, (uint8_t)k_ov5640_format_yuyv},
@@ -765,7 +766,7 @@ static ra8_err_t internal_ov5640_verify_uyvy(ra8_ov5640_t* dev)
  * @note Not thread-safe with respect to the same sensor instance.
  * @since 0.1.0
  */
-static ra8_err_t internal_ov5640_verify_jpeg(ra8_ov5640_t* dev)
+RA8_INTERNAL static ra8_err_t internal_ov5640_verify_jpeg(ra8_ov5640_t* dev)
 {
   static const ra8_ov5640_reg_expect_t expected[] = {
     {(uint16_t)k_ov5640_reg_system_reset02, (uint8_t)k_ov5640_jpeg_reset_mask, 0x00U},
@@ -860,8 +861,8 @@ ra8_err_t ra8_ov5640_set_jpeg_quantization_scale(ra8_ov5640_t* dev, uint8_t quan
  * @note The helper stops at the first transport error.
  * @since 0.1.0
  */
-static ra8_err_t internal_ov5640_read_jpeg_status(ra8_ov5640_t*                 dev,
-                                                  ra8_ov5640_jpeg_status_raw_t* raw)
+RA8_INTERNAL static ra8_err_t internal_ov5640_read_jpeg_status(ra8_ov5640_t*                 dev,
+                                                               ra8_ov5640_jpeg_status_raw_t* raw)
 {
   ra8_err_t err = ra8_ov5640_read_reg(dev, (uint16_t)k_ov5640_reg_jpeg_length_hi, &raw->length_hi);
   if (err == k_ra8_ok) {

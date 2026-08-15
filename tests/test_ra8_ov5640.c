@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_ov5640.h"
 #include "unity_minimal.h"
@@ -200,7 +201,7 @@ static ov5640_mock_t s_mock;
  * @note Tests may override individual fields after reset.
  * @since 0.1.0
  */
-static void mock_reset(void)
+RA8_INTERNAL static void internal_mock_reset(void)
 {
   memset(&s_mock, 0, sizeof(s_mock));
   s_mock.primary_present                       = true;
@@ -223,7 +224,7 @@ static void mock_reset(void)
  * @note Unsupported addresses never respond.
  * @since 0.1.0
  */
-static bool mock_address_present(uint8_t address)
+RA8_INTERNAL static bool internal_mock_address_present(uint8_t address)
 {
   if (address == (uint8_t)k_ra8_ov5640_addr_primary) {
     return s_mock.primary_present;
@@ -251,14 +252,15 @@ static bool mock_address_present(uint8_t address)
  * @note A forced read error takes precedence over address presence.
  * @since 0.1.0
  */
-static ra8_err_t mock_read(void* ctx, uint8_t address, uint16_t reg, uint8_t* out_value)
+RA8_INTERNAL static ra8_err_t
+internal_mock_read(void* ctx, uint8_t address, uint16_t reg, uint8_t* out_value)
 {
   (void)ctx;
   s_mock.read_count++;
   if (s_mock.forced_read_error != k_ra8_ok) {
     return s_mock.forced_read_error;
   }
-  if (!mock_address_present(address)) {
+  if (!internal_mock_address_present(address)) {
     return k_ra8_err_nack;
   }
   *out_value =
@@ -283,13 +285,14 @@ static ra8_err_t mock_read(void* ctx, uint8_t address, uint16_t reg, uint8_t* ou
  * @note Writes beyond log capacity still update registers and counters.
  * @since 0.1.0
  */
-static ra8_err_t mock_write(void* ctx, uint8_t address, uint16_t reg, uint8_t value)
+RA8_INTERNAL static ra8_err_t
+internal_mock_write(void* ctx, uint8_t address, uint16_t reg, uint8_t value)
 {
   (void)ctx;
   if (s_mock.write_count == s_mock.fail_write_at) {
     return k_ra8_err_nack;
   }
-  if (!mock_address_present(address)) {
+  if (!internal_mock_address_present(address)) {
     return k_ra8_err_nack;
   }
   if (s_mock.write_count < (uint32_t)k_test_write_log_capacity) {
@@ -316,7 +319,7 @@ static ra8_err_t mock_write(void* ctx, uint8_t address, uint16_t reg, uint8_t va
  * @note No real time elapses in this mock.
  * @since 0.1.0
  */
-static void mock_delay(void* ctx, uint32_t milliseconds)
+RA8_INTERNAL static void internal_mock_delay(void* ctx, uint32_t milliseconds)
 {
   (void)ctx;
   if (s_mock.delay_count < (uint32_t)k_test_delay_log_capacity) {
@@ -327,13 +330,18 @@ static void mock_delay(void* ctx, uint32_t milliseconds)
 
 /**
  * @brief Count successful mock writes to one sensor register.
+ * @details Scans only the initialized prefix of the bounded write journal.
  * @param[in] reg Sensor register address to count.
  * @return Number of matching entries in the bounded write log.
+ * @retval uint32_t The exact number of retained writes targeting @p reg.
  * @pre The mock write count does not exceed its log capacity.
+ * @pre Every initialized journal entry contains a complete register address.
  * @post Mock state remains unchanged.
+ * @post The result includes every and only the matching initialized entries.
+ * @note Failed writes are not appended and therefore are not counted.
  * @since 0.1.0
  */
-static uint32_t mock_write_count_for_reg(uint16_t reg)
+RA8_INTERNAL static uint32_t internal_mock_write_count_for_reg(uint16_t reg)
 {
   uint32_t count = 0U;
   for (uint32_t write_index = 0U; write_index < s_mock.write_count; write_index += 1U) {
@@ -356,12 +364,12 @@ static uint32_t mock_write_count_for_reg(uint16_t reg)
  * @note The opaque context is intentionally null.
  * @since 0.1.0
  */
-static ra8_ov5640_bus_t make_bus(void)
+RA8_INTERNAL static ra8_ov5640_bus_t internal_make_bus(void)
 {
   const ra8_ov5640_bus_t bus = {
-    .read_reg  = mock_read,
-    .write_reg = mock_write,
-    .delay_ms  = mock_delay,
+    .read_reg  = internal_mock_read,
+    .write_reg = internal_mock_write,
+    .delay_ms  = internal_mock_delay,
     .ctx       = nullptr,
   };
   return bus;
@@ -379,10 +387,10 @@ static ra8_ov5640_bus_t make_bus(void)
  * @note Initialization failure is recorded as a test assertion.
  * @since 0.1.0
  */
-static ra8_ov5640_t make_device(void)
+RA8_INTERNAL static ra8_ov5640_t internal_make_device(void)
 {
   ra8_ov5640_t           dev = {};
-  const ra8_ov5640_bus_t bus = make_bus();
+  const ra8_ov5640_bus_t bus = internal_make_bus();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ov5640_init(&dev, &bus));
   return dev;
 }
@@ -400,12 +408,12 @@ static ra8_ov5640_t make_device(void)
  * @note This test performs no SCCB transfer.
  * @since 0.1.0
  */
-static void test_init_validates_transport(void)
+RA8_INTERNAL static void internal_test_init_validates_transport(void)
 {
   TEST_BEGIN("ov5640: init validates transport");
-  mock_reset();
+  internal_mock_reset();
   ra8_ov5640_t           dev = {};
-  const ra8_ov5640_bus_t bus = make_bus();
+  const ra8_ov5640_bus_t bus = internal_make_bus();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ov5640_init(nullptr, &bus));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ov5640_init(&dev, nullptr));
   ra8_ov5640_bus_t invalid = bus;
@@ -436,11 +444,11 @@ static void test_init_validates_transport(void)
  * @note Register zero is deliberately treated as valid.
  * @since 0.1.0
  */
-static void test_raw_register_access(void)
+RA8_INTERNAL static void internal_test_raw_register_access(void)
 {
   TEST_BEGIN("ov5640: raw register access forwards transport");
-  mock_reset();
-  ra8_ov5640_t dev = make_device();
+  internal_mock_reset();
+  ra8_ov5640_t dev = internal_make_device();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ov5640_write_reg(&dev, 0U, (uint8_t)k_test_read_poison));
   uint8_t value = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ov5640_read_reg(&dev, 0U, &value));
@@ -469,11 +477,11 @@ static void test_raw_register_access(void)
  * @note Only one address is enabled for the secondary-address phase.
  * @since 0.1.0
  */
-static void test_probe_both_addresses(void)
+RA8_INTERNAL static void internal_test_probe_both_addresses(void)
 {
   TEST_BEGIN("ov5640: probe checks both legal addresses");
-  mock_reset();
-  ra8_ov5640_t dev = make_device();
+  internal_mock_reset();
+  ra8_ov5640_t dev = internal_make_device();
   uint16_t     id  = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ov5640_probe(&dev, &id));
   TEST_ASSERT_EQ(k_ra8_ov5640_chip_id, id);
@@ -500,11 +508,11 @@ static void test_probe_both_addresses(void)
  * @note Transport errors are represented by address absence here.
  * @since 0.1.0
  */
-static void test_probe_not_found(void)
+RA8_INTERNAL static void internal_test_probe_not_found(void)
 {
   TEST_BEGIN("ov5640: probe rejects missing and wrong ID");
-  mock_reset();
-  ra8_ov5640_t dev       = make_device();
+  internal_mock_reset();
+  ra8_ov5640_t dev       = internal_make_device();
   uint16_t     id        = UINT16_MAX;
   s_mock.primary_present = false;
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_ov5640_probe(&dev, &id));
@@ -534,11 +542,11 @@ static void test_probe_not_found(void)
  * @note Driver readback verification also runs through the mock.
  * @since 0.1.0
  */
-static void test_configure_uyvy(void)
+RA8_INTERNAL static void internal_test_configure_uyvy(void)
 {
   TEST_BEGIN("ov5640: configure VGA UYVY");
-  mock_reset();
-  ra8_ov5640_t dev = make_device();
+  internal_mock_reset();
+  ra8_ov5640_t dev = internal_make_device();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ov5640_configure(&dev, k_ra8_ov5640_mode_vga_uyvy));
   TEST_ASSERT(s_mock.write_count > (uint32_t)k_test_min_scene_write_count);
   TEST_ASSERT_EQ(k_test_sw_reset_hold, s_mock.writes[0].value);
@@ -559,11 +567,15 @@ static void test_configure_uyvy(void)
 
 /**
  * @brief Assert final JPEG register state after configuration.
+ * @details Checks reset, timing, JPEG, ISP, PLL, VFIFO, and clock fields.
  * @pre `s_mock.regs` contains a completed JPEG configuration scene.
+ * @pre The mock register array covers the complete 16-bit address space.
  * @post Every required JPEG, timing, and clock field is checked.
+ * @post The register fixture remains unchanged.
+ * @note Assertion failure terminates the current test process.
  * @since 0.1.0
  */
-static void assert_jpeg_register_state(void)
+RA8_INTERNAL static void internal_assert_jpeg_register_state(void)
 {
   TEST_ASSERT_EQ(0U,
                  s_mock.regs[(uint16_t)k_test_reg_system_reset02] &
@@ -595,28 +607,36 @@ static void assert_jpeg_register_state(void)
 
 /**
  * @brief Assert clock writes remain confined to the qualified base scene.
+ * @details Counts each PLL, root, pixel, and source-select register write.
  * @pre The mock write log contains a completed JPEG configuration.
+ * @pre Its retained entry count is within the journal capacity.
  * @post Every clock-register write count is checked.
+ * @post The write journal remains unchanged.
+ * @note The source selector is deliberately written twice by the qualified scene.
  * @since 0.1.0
  */
-static void assert_jpeg_clock_write_counts(void)
+RA8_INTERNAL static void internal_assert_jpeg_clock_write_counts(void)
 {
-  TEST_ASSERT_EQ(1U, mock_write_count_for_reg((uint16_t)k_test_reg_pll_bit_mode));
-  TEST_ASSERT_EQ(1U, mock_write_count_for_reg((uint16_t)k_test_reg_pll_sys_div));
-  TEST_ASSERT_EQ(1U, mock_write_count_for_reg((uint16_t)k_test_reg_pll_multiplier));
-  TEST_ASSERT_EQ(1U, mock_write_count_for_reg((uint16_t)k_test_reg_pll_pre_div));
-  TEST_ASSERT_EQ(1U, mock_write_count_for_reg((uint16_t)k_test_reg_clock_root));
-  TEST_ASSERT_EQ(1U, mock_write_count_for_reg((uint16_t)k_test_reg_pclk_divider));
-  TEST_ASSERT_EQ(2U, mock_write_count_for_reg((uint16_t)k_test_reg_clock_select));
+  TEST_ASSERT_EQ(1U, internal_mock_write_count_for_reg((uint16_t)k_test_reg_pll_bit_mode));
+  TEST_ASSERT_EQ(1U, internal_mock_write_count_for_reg((uint16_t)k_test_reg_pll_sys_div));
+  TEST_ASSERT_EQ(1U, internal_mock_write_count_for_reg((uint16_t)k_test_reg_pll_multiplier));
+  TEST_ASSERT_EQ(1U, internal_mock_write_count_for_reg((uint16_t)k_test_reg_pll_pre_div));
+  TEST_ASSERT_EQ(1U, internal_mock_write_count_for_reg((uint16_t)k_test_reg_clock_root));
+  TEST_ASSERT_EQ(1U, internal_mock_write_count_for_reg((uint16_t)k_test_reg_pclk_divider));
+  TEST_ASSERT_EQ(2U, internal_mock_write_count_for_reg((uint16_t)k_test_reg_clock_select));
 }
 
 /**
  * @brief Assert the ordered JPEG transition tail and stream lifecycle.
+ * @details Verifies the seven final writes plus reset hold/wake ordering.
  * @pre The mock write log contains a completed JPEG configuration.
+ * @pre The log contains at least the fixed transition-tail length.
  * @post Tail register ordering and the reset-to-wake transition are checked.
+ * @post The write journal and register fixture remain unchanged.
+ * @note The helper also pins the exact two-entry stream-state sequence.
  * @since 0.1.0
  */
-static void assert_jpeg_transition_order(void)
+RA8_INTERNAL static void internal_assert_jpeg_transition_order(void)
 {
   const uint32_t tail = s_mock.write_count - (uint32_t)k_test_jpeg_tail_write_count;
   TEST_ASSERT_EQ(k_test_reg_format, s_mock.writes[tail].reg);
@@ -653,15 +673,15 @@ static void assert_jpeg_transition_order(void)
  * @note The test observes final register state after readback verification.
  * @since 0.1.0
  */
-static void test_configure_jpeg(void)
+RA8_INTERNAL static void internal_test_configure_jpeg(void)
 {
   TEST_BEGIN("ov5640: configure VGA JPEG");
-  mock_reset();
-  ra8_ov5640_t dev = make_device();
+  internal_mock_reset();
+  ra8_ov5640_t dev = internal_make_device();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ov5640_configure(&dev, k_ra8_ov5640_mode_vga_jpeg));
-  assert_jpeg_register_state();
-  assert_jpeg_clock_write_counts();
-  assert_jpeg_transition_order();
+  internal_assert_jpeg_register_state();
+  internal_assert_jpeg_clock_write_counts();
+  internal_assert_jpeg_transition_order();
   TEST_ASSERT_EQ(4U, s_mock.delay_count);
   TEST_ASSERT_EQ(k_test_reset_guard_ms, s_mock.delays[0]);
   TEST_ASSERT_EQ(k_test_reset_guard_ms, s_mock.delays[1]);
@@ -683,28 +703,28 @@ static void test_configure_jpeg(void)
  * @note UYVY and JPEG readback corruption are tested separately.
  * @since 0.1.0
  */
-static void test_configure_failures(void)
+RA8_INTERNAL static void internal_test_configure_failures(void)
 {
   TEST_BEGIN("ov5640: configure propagates failures");
-  mock_reset();
+  internal_mock_reset();
   ra8_ov5640_t fresh = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ov5640_configure(nullptr, k_ra8_ov5640_mode_vga_uyvy));
   TEST_ASSERT_EQ(k_ra8_err_not_initialized,
                  ra8_ov5640_configure(&fresh, k_ra8_ov5640_mode_vga_uyvy));
-  ra8_ov5640_t dev = make_device();
+  ra8_ov5640_t dev = internal_make_device();
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_ov5640_configure(&dev, (ra8_ov5640_mode_t)UINT8_MAX));
   s_mock.fail_write_at = 0U;
   TEST_ASSERT_EQ(k_ra8_err_nack, ra8_ov5640_configure(&dev, k_ra8_ov5640_mode_vga_uyvy));
 
-  mock_reset();
-  dev                  = make_device();
+  internal_mock_reset();
+  dev                  = internal_make_device();
   s_mock.corrupt_read  = true;
   s_mock.corrupt_reg   = (uint16_t)k_test_reg_format;
   s_mock.corrupt_value = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ov5640_configure(&dev, k_ra8_ov5640_mode_vga_uyvy));
 
-  mock_reset();
-  dev                  = make_device();
+  internal_mock_reset();
+  dev                  = internal_make_device();
   s_mock.corrupt_read  = true;
   s_mock.corrupt_reg   = (uint16_t)k_test_reg_jpeg_mode;
   s_mock.corrupt_value = 0U;
@@ -725,11 +745,11 @@ static void test_configure_failures(void)
  * @note Lower sensor scale values represent higher JPEG quality.
  * @since 0.1.0
  */
-static void test_jpeg_quantization_scale(void)
+RA8_INTERNAL static void internal_test_jpeg_quantization_scale(void)
 {
   TEST_BEGIN("ov5640: JPEG quantization scale");
-  mock_reset();
-  ra8_ov5640_t dev                               = make_device();
+  internal_mock_reset();
+  ra8_ov5640_t dev                               = internal_make_device();
   s_mock.regs[(uint16_t)k_test_reg_jpeg_quality] = (uint8_t)k_test_upper_bits_fixture;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ov5640_set_jpeg_quantization_scale(&dev, (uint8_t)k_test_quant_scale_fixture));
@@ -763,11 +783,11 @@ static void test_jpeg_quantization_scale(void)
  * @note The caller stops streaming when a frame-coherent length is required.
  * @since 0.1.0
  */
-static void test_jpeg_status(void)
+RA8_INTERNAL static void internal_test_jpeg_status(void)
 {
   TEST_BEGIN("ov5640: JPEG status");
-  mock_reset();
-  ra8_ov5640_t dev                                   = make_device();
+  internal_mock_reset();
+  ra8_ov5640_t dev                                   = internal_make_device();
   s_mock.regs[(uint16_t)k_test_reg_jpeg_length_hi]   = 0x01U;
   s_mock.regs[(uint16_t)k_test_reg_jpeg_length_mid]  = 0x23U;
   s_mock.regs[(uint16_t)k_test_reg_jpeg_length_lo]   = 0x45U;
@@ -816,11 +836,11 @@ static void test_jpeg_status(void)
  * @note The mock does not model image timing after wake.
  * @since 0.1.0
  */
-static void test_stream_control(void)
+RA8_INTERNAL static void internal_test_stream_control(void)
 {
   TEST_BEGIN("ov5640: stream control");
-  mock_reset();
-  ra8_ov5640_t dev = make_device();
+  internal_mock_reset();
+  ra8_ov5640_t dev = internal_make_device();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ov5640_stream_set(&dev, false));
   TEST_ASSERT_EQ(k_test_sw_standby, s_mock.regs[(uint16_t)k_test_reg_sw_reset]);
   TEST_ASSERT_EQ(k_test_stream_settle_ms, s_mock.delays[0]);
@@ -837,29 +857,33 @@ static void test_stream_control(void)
 
 /**
  * @brief Run OV5640 probe and mode-configuration MC/DC vectors.
+ * @details Executes every transport, probe, format, status, and stream group.
  * @par MC/DC:
  * Decisions: libs/ra8_ov5640/src/ra8_ov5640.c@ra8_ov5640_configure,
  * libs/ra8_ov5640/src/ra8_ov5640.c@ra8_ov5640_probe.
  * @pre Unity test accounting is initialized.
+ * @pre The in-memory register and journal capacities match their enum bounds.
  * @post Every OV5640 transport and mode vector group has executed once.
+ * @post Any failed assertion has terminated before this helper returns.
+ * @note This single dispatcher keeps the executable entry point minimal.
  * @since 0.1.0
  */
-static void test_mcdc_ov5640_modes(void)
+RA8_INTERNAL static void internal_test_mcdc_ov5640_modes(void)
 {
-  test_init_validates_transport();
-  test_raw_register_access();
-  test_probe_both_addresses();
-  test_probe_not_found();
-  test_configure_uyvy();
-  test_configure_jpeg();
-  test_configure_failures();
-  test_jpeg_quantization_scale();
-  test_jpeg_status();
-  test_stream_control();
+  internal_test_init_validates_transport();
+  internal_test_raw_register_access();
+  internal_test_probe_both_addresses();
+  internal_test_probe_not_found();
+  internal_test_configure_uyvy();
+  internal_test_configure_jpeg();
+  internal_test_configure_failures();
+  internal_test_jpeg_quantization_scale();
+  internal_test_jpeg_status();
+  internal_test_stream_control();
 }
 
 int main(void)
 {
-  test_mcdc_ov5640_modes();
+  internal_test_mcdc_ov5640_modes();
   return 0;
 }
