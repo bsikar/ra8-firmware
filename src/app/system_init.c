@@ -50,6 +50,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "trustzone_init.h"
@@ -105,7 +106,7 @@ extern uint32_t g_ra8_ls_stack_top; /* from vector_table.c / linker. */
  * @note Not thread-safe; reset-path use only.
  * @since 0.1.0
  */
-static inline uint32_t internal_read32(uintptr_t addr)
+RA8_INTERNAL static inline uint32_t internal_read32(uintptr_t addr)
 {
   return *(volatile uint32_t*)addr;
 }
@@ -125,7 +126,7 @@ static inline uint32_t internal_read32(uintptr_t addr)
  * @note Not thread-safe; reset-path use only.
  * @since 0.1.0
  */
-static inline void internal_write32(uintptr_t addr, uint32_t value)
+RA8_INTERNAL static inline void internal_write32(uintptr_t addr, uint32_t value)
 {
   *(volatile uint32_t*)addr = value;
 }
@@ -144,7 +145,7 @@ static inline void internal_write32(uintptr_t addr, uint32_t value)
  * @note Not thread-safe; reset-path use only.
  * @since 0.1.0
  */
-static inline void internal_dsb(void)
+RA8_INTERNAL static inline void internal_dsb(void)
 {
 #ifndef RA8_OFF_TARGET
   __asm__ volatile("dsb 0xF" ::: "memory");
@@ -164,7 +165,7 @@ static inline void internal_dsb(void)
  * @note Not thread-safe; reset-path use only.
  * @since 0.1.0
  */
-static inline void internal_isb(void)
+RA8_INTERNAL static inline void internal_isb(void)
 {
 #ifndef RA8_OFF_TARGET
   __asm__ volatile("isb 0xF" ::: "memory");
@@ -184,7 +185,7 @@ static inline void internal_isb(void)
  * @note Not thread-safe; reset-path use only.
  * @since 0.1.0
  */
-static inline void internal_disable_irq(void)
+RA8_INTERNAL static inline void internal_disable_irq(void)
 {
 #ifndef RA8_OFF_TARGET
   __asm__ volatile("cpsid i" ::: "memory");
@@ -209,7 +210,7 @@ static inline void internal_disable_irq(void)
  * @note Not thread-safe; reset-path use only.
  * @since 0.1.0
  */
-static void internal_set_vtor(void)
+RA8_INTERNAL static void internal_set_vtor(void)
 {
   /* Vector table sits at the start of the .vectors section, which
    * the linker pins to the start of MRAM (`0x02000000`). The SCB
@@ -231,7 +232,7 @@ static void internal_set_vtor(void)
  * @note Not thread-safe; reset-path use only.
  * @since 0.1.0
  */
-static void internal_enable_fpu(void)
+RA8_INTERNAL static void internal_enable_fpu(void)
 {
   enum : uint32_t {
     k_ra8_cpacr_cp10_cp11_full_access = 0x00F00000UL, /**< RA8 cpacr cp10 cp11 full access. */
@@ -257,7 +258,7 @@ static void internal_enable_fpu(void)
  * @note Not thread-safe; reset-path use only.
  * @since 0.1.0
  */
-static void internal_enable_fpu_lazy_stack(void)
+RA8_INTERNAL static void internal_enable_fpu_lazy_stack(void)
 {
   enum : uint32_t {
     k_ra8_fpccr_lspen = 1UL << 30, /**< RA8 fpccr lspen. */
@@ -271,7 +272,7 @@ static void internal_enable_fpu_lazy_stack(void)
 /**
  * @brief Invalidate and enable the Cortex-M85 I-cache.
  */
-[[maybe_unused]] static void internal_enable_icache(void)
+RA8_INTERNAL [[maybe_unused]] static void internal_enable_icache(void)
 {
   /* Invalidate, then set CCR.IC. */
   internal_dsb();
@@ -296,7 +297,7 @@ static void internal_enable_fpu_lazy_stack(void)
  * invalid, so a bulk CCR.DC = 1 write is safe. A production build
  * should add a real CCSIDR-driven loop.
  */
-[[maybe_unused]] static void internal_enable_dcache(void)
+RA8_INTERNAL [[maybe_unused]] static void internal_enable_dcache(void)
 {
   enum : uint32_t { k_ra8_ccr_dc = 1UL << 16 /**< RA8 ccr dc. */ };
   uint32_t ccr = internal_read32(k_ra8_scb_ccr_addr);
@@ -309,7 +310,7 @@ static void internal_enable_fpu_lazy_stack(void)
 /**
  * @brief Enable branch-target prediction (CCR.BP on Cortex-M85).
  */
-[[maybe_unused]] static void internal_enable_branch_predictor(void)
+RA8_INTERNAL [[maybe_unused]] static void internal_enable_branch_predictor(void)
 {
   enum : uint32_t { k_ra8_ccr_bp = 1UL << 18 /**< RA8 ccr bp. */ };
   uint32_t ccr = internal_read32(k_ra8_scb_ccr_addr);
@@ -333,7 +334,7 @@ static void internal_enable_fpu_lazy_stack(void)
  * @note Not thread-safe; reset-path use only.
  * @since 0.1.0
  */
-static void internal_set_priority_grouping(void)
+RA8_INTERNAL static void internal_set_priority_grouping(void)
 {
   enum : uint32_t {
     k_ra8_aircr_vectkey    = 0x05FA0000UL, /**< Required write key.     */
@@ -389,7 +390,7 @@ enum : uint32_t {
 /**
  * @brief Program a single MPU region via RNR/RBAR/RLAR.
  */
-[[maybe_unused]] static void
+RA8_INTERNAL [[maybe_unused]] static void
 internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enable)
 {
   internal_write32(k_ra8_mpu_rnr_addr, region);
@@ -400,7 +401,7 @@ internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enab
 /**
  * @brief Programme and enable the Cortex-M85 core MPU.
  */
-[[maybe_unused]] static void internal_mpu_init(void)
+RA8_INTERNAL [[maybe_unused]] static void internal_mpu_init(void)
 {
   enum : uint32_t {
     k_ra8_mpu_ctrl_enable     = 1UL << 0,     /**< RA8 MPU control enable.     */
@@ -454,7 +455,7 @@ internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enab
  * @note Not thread-safe; single-threaded boot only.
  * @since 0.1.0
  */
-[[noreturn, gnu::noinline]] static void internal_halt_secure_clock_fault(void)
+RA8_INTERNAL [[noreturn, gnu::noinline]] static void internal_halt_secure_clock_fault(void)
 {
   while (1) {
     __asm__ volatile("wfi");
