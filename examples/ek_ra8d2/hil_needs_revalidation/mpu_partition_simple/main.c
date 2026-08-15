@@ -69,8 +69,8 @@ typedef enum : uint32_t {
 
 /** @brief MAIR slot encoding + probe sentinel. */
 typedef enum : uint8_t {
-  k_mpu_simple_attr_normal_wb = 0xFFU, /**< MPU simple attr normal wb.                 */
-  k_mpu_simple_probe_byte     = 0x42U, /**< Sentinel byte written by mpu_simple_probe. */
+  k_mpu_simple_attr_normal_wb = 0xFFU, /**< MPU simple attr normal wb.                          */
+  k_mpu_simple_probe_byte     = 0x42U, /**< Sentinel byte written by internal_mpu_simple_probe. */
 } mpu_simple_attr_t;
 
 /** @brief Heartbeat cadence + UART line rate. */
@@ -133,8 +133,17 @@ volatile uint32_t g_mpu_simple_match = 0U;
  */
 volatile uint32_t g_mpu_simple_fault_count = 0U;
 
-/** @brief Park the CPU after fatal init failure (only on UART/CGC/LED bring-up). */
-static void mpu_simple_panic_halt(void)
+/**
+ * @brief Park the CPU after a fatal UART, clock, LED, or MPU setup failure.
+ * @details Retains the failing register and diagnostic state in a permanent WFI loop.
+ * @pre Reset startup initialized the exception and stack environment.
+ * @pre A required setup step has failed.
+ * @post Control never returns to the caller.
+ * @post The deliberate read-only probe is not attempted after setup failure.
+ * @note An interrupt can wake one iteration, but the terminal loop resumes.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_mpu_simple_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -180,31 +189,37 @@ static const ra8_mpu_cfg_t s_cfg = {
  * called first and the BSP-private BRR computation reads the live
  * PCLKA value.
  *
+ * @pre Reset startup completed data and BSS initialization.
+ * @pre Board clocks and GPIO are in their reset-compatible state.
+ * @post On return the timebase, console, and all three diagnostic LEDs are ready.
+ * @post Any failed prerequisite has entered the terminal panic loop.
+ * @note Single-shot boot helper; it is not reentrant.
+ *
  * @since 0.1.0
  */
-static void mpu_simple_setup_or_halt(void)
+RA8_INTERNAL static void internal_mpu_simple_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    mpu_simple_panic_halt();
+    internal_mpu_simple_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    mpu_simple_panic_halt();
+    internal_mpu_simple_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    mpu_simple_panic_halt();
+    internal_mpu_simple_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_mpu_simple_baud) != k_ra8_ok) {
-    mpu_simple_panic_halt();
+    internal_mpu_simple_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    mpu_simple_panic_halt();
+    internal_mpu_simple_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
-    mpu_simple_panic_halt();
+    internal_mpu_simple_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led3) != k_ra8_ok) {
-    mpu_simple_panic_halt();
+    internal_mpu_simple_panic_halt();
   }
 }
 
@@ -228,9 +243,17 @@ static void mpu_simple_setup_or_halt(void)
  *         ``k_ra8_err_hw_error`` and the caller knows the fault
  *         path executed.
  *
+ * @retval k_ra8_ok The host/off-target store completed and read back.
+ * @retval k_ra8_err_hw_error Silicon recovery skipped the protected store.
+ * @pre ::s_ro_buffer is covered by the configured read-only MPU region.
+ * @pre The recovering MemManage handler is installed on silicon.
+ * @post The probe byte is unchanged when a silicon MemManage fault is recovered.
+ * @post No address outside ::s_ro_buffer is written.
+ * @note The hardware-error code is the expected positive signal on silicon.
+ *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t mpu_simple_probe(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_mpu_simple_probe(void)
 {
   s_ro_buffer[0] = (uint8_t)k_mpu_simple_probe_byte;
   /* cppcheck-suppress knownConditionTrueFalse -- host: the write succeeds; silicon: the MemManage handler skipped the store. */
@@ -253,7 +276,7 @@ static void mpu_simple_setup_or_halt(void)
  * 2 or 4 bytes accordingly, bumps the fault counter, sets the
  * thread-context banner flag, and returns. The exception-return
  * mechanism then resumes execution past the offending store, and
- * ``mpu_simple_probe`` reads back 0x00 (the original buffer
+ * ``internal_mpu_simple_probe`` reads back 0x00 (the original buffer
  * contents) and reports ``k_ra8_err_hw_error`` -- which is the
  * success signal here, not a real failure.
  *
@@ -269,16 +292,19 @@ static void mpu_simple_setup_or_halt(void)
  * synthesised C return.
  *
  * @par MC/DC:
- * The C helper ``mpu_simple_fault_recover`` carries one compound
+ * The C helper ``internal_mpu_simple_fault_recover`` carries one compound
  * decision: ``(lr & 4U) == 0U`` (was MSP active at exception
  * entry?). MC/DC vectors: thread-mode MSP (vector 1, kernel/handler
  * stack), thread-mode PSP (vector 2, application stack). Both
  * vectors are exercised in unit tests that mock the LR value.
  *
+ * @param[in,out] frame Cortex-M exception frame whose stacked PC is advanced.
  * @pre A MemManage fault has been entered.
+ * @pre @p frame addresses a complete writable basic exception frame.
  * @post The stacked PC has been advanced past the faulting
  *       instruction, ``g_mpu_simple_fault_count`` has been
  *       incremented, and CFSR.MMFSR is intentionally left latched.
+ * @post ::s_fault_pending is set for deferred thread-context reporting.
  *
  * @note Runs at the architecturally fixed MemManage priority.
  * @since 0.1.0
@@ -286,8 +312,8 @@ static void mpu_simple_setup_or_halt(void)
 /* Non-static + used: the inline assembly in MemManage_Handler
  * references this symbol by name, so it must survive LTO and the
  * dead-code stripper. */
-RA8_INTERNAL [[gnu::used]] static void mpu_simple_fault_recover(uint32_t* frame);
-RA8_INTERNAL [[gnu::used]] static void mpu_simple_fault_recover(uint32_t* frame)
+RA8_INTERNAL [[gnu::used]] static void internal_mpu_simple_fault_recover(uint32_t* frame);
+RA8_INTERNAL [[gnu::used]] static void internal_mpu_simple_fault_recover(uint32_t* frame)
 {
   /* Advance the stacked PC past the faulting store. The compiler
    * emits ``strb r3, [r2]`` for the probe, which is 16 bits on
@@ -325,13 +351,14 @@ void                MemManage_Handler(void)
                    "mrseq r0, msp                         \n"
                    "mrsne r0, psp                         \n"
                    "push  {lr}                            \n"
-                   "bl    mpu_simple_fault_recover        \n"
+                   "bl    internal_mpu_simple_fault_recover        \n"
                    "pop   {lr}                            \n"
                    "bx    lr                              \n");
 }
 #endif /* !RA8_OFF_TARGET */
 
 /**
+ * @var s_mpu_simple_banner
  * @brief Greeting line for the "fault handled" banner.
  *
  * @details
@@ -342,29 +369,36 @@ void                MemManage_Handler(void)
  * all outside that set, so this banner reads as a positive signal
  * to the HIL alive checker.
  *
+ * @note Immutable console bytes written after exception return.
  * @since 0.1.0
  */
-static const uint8_t k_mpu_simple_banner[] = "mpu: fault handled, recovered\r\n";
+static const uint8_t s_mpu_simple_banner[] = "mpu: fault handled, recovered\r\n";
 
 /**
  * @brief Emit the banner once after the recovering handler fires.
- *
+ * @details Writes the fixed positive-recovery marker from thread context after
+ *          the exception handler has deferred reporting through its flag.
+ * @pre The board console has been initialized.
+ * @pre ::s_fault_pending was set by the recovering handler.
+ * @post The complete recovery banner has been offered to the console.
+ * @post No MPU or exception-frame state is modified.
+ * @note Runs in thread context, never from the MemManage handler.
  * @since 0.1.0
  */
-static void mpu_simple_emit_banner(void)
+RA8_INTERNAL static void internal_mpu_simple_emit_banner(void)
 {
-  (void)ra8_board_uart_console_write(k_mpu_simple_banner, sizeof(k_mpu_simple_banner) - 1U);
+  (void)ra8_board_uart_console_write(s_mpu_simple_banner, sizeof(s_mpu_simple_banner) - 1U);
 }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  mpu_simple_setup_or_halt();
+  internal_mpu_simple_setup_or_halt();
   ra8_isr_globals_enable();
 
   if (ra8_mpu_configure(&s_cfg) != k_ra8_ok) {
-    mpu_simple_panic_halt();
+    internal_mpu_simple_panic_halt();
   }
 
   /* Probe drives the deliberate fault. On silicon the recovering
@@ -373,7 +407,7 @@ int32_t main(void)
    * skipped the write that would have written 0x42), so the probe
    * returns k_ra8_err_hw_error. On the host fake the store just
    * succeeds and the probe returns k_ra8_ok. */
-  if (mpu_simple_probe() == k_ra8_ok) {
+  if (internal_mpu_simple_probe() == k_ra8_ok) {
     /* Host path: MPU did not arm (or fake). Latch LED3 as a
      * diagnostic but keep the main loop spinning so the HIL probe
      * sees forward progress. */
@@ -385,13 +419,13 @@ int32_t main(void)
   while (1) {
     if (s_fault_pending != 0U) {
       s_fault_pending = 0U;
-      mpu_simple_emit_banner();
+      internal_mpu_simple_emit_banner();
     }
     g_mpu_simple_match += 1U;
     (void)ra8_board_led_toggle(k_ra8_board_led1);
     ra8_delay_ms((uint32_t)k_mpu_simple_period_ms);
   }
-  mpu_simple_panic_halt();
+  internal_mpu_simple_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

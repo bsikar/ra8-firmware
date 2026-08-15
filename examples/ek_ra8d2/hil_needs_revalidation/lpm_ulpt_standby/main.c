@@ -50,6 +50,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_elc_regs.h"
@@ -77,18 +78,30 @@ typedef enum : uint8_t {
   k_lus_channel = 0U, /**< ULPT0 (its underflow is the wake source). */
 } lus_chan_t;
 
-/** @brief Boot banner -- emitted once before the first standby entry. */
-static const uint8_t k_lus_boot_msg[] = "lpm_ulpt: boot\r\n";
+/**
+ * @var s_lus_boot_msg
+ * @brief Boot banner emitted once before the first standby entry.
+ * @details Provides a deterministic console marker that setup completed.
+ * @note Immutable bytes written with an explicit compile-time length.
+ * @since 0.1.0
+ */
+static const uint8_t s_lus_boot_msg[] = "lpm_ulpt: boot\r\n";
 
-/** @brief Wake banner -- this is the HIL gate string (one per wake). */
-static const uint8_t k_lus_wake_msg[] = "lpm_ulpt: wake\r\n";
+/**
+ * @var s_lus_wake_msg
+ * @brief Wake banner and per-underflow HIL gate string.
+ * @details Emitted after each standby return to expose ULPT wake liveness.
+ * @note Immutable bytes written with an explicit compile-time length.
+ * @since 0.1.0
+ */
+static const uint8_t s_lus_wake_msg[] = "lpm_ulpt: wake\r\n";
 
 /**
  * @var g_lpm_ulpt_wake_count
  * @brief Liveness counter -- bumped in the ULPT0 underflow ISR.
  *
  * @details
- * Incremented from ``lus_ulpt_isr`` each time a ULPT0 underflow cancels
+ * Incremented from ``internal_lus_ulpt_isr`` each time a ULPT0 underflow cancels
  * Software Standby. Exposed (non-static, volatile) so a J-Link session
  * can watch the wake cadence without the UART.
  *
@@ -99,7 +112,18 @@ static const uint8_t k_lus_wake_msg[] = "lpm_ulpt: wake\r\n";
  */
 volatile uint32_t g_lpm_ulpt_wake_count = 0U;
 
-static void lus_panic_halt(void)
+/**
+ * @brief Park the processor after an unrecoverable setup or arm failure.
+ * @details Enters a permanent wait loop so register and counter state remains
+ *          available to a debugger without continuing into standby.
+ * @pre Reset startup initialized the exception and stack environment.
+ * @pre The caller has determined that wake behavior cannot proceed safely.
+ * @post Control never returns to the caller.
+ * @post No further standby transition is requested by the application.
+ * @note An interrupt can wake one iteration, but the terminal loop resumes.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_lus_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -121,12 +145,14 @@ static void lus_panic_halt(void)
  * @param[in] ctx Unused registration context.
  *
  * @pre Registered for ``k_ra8_elc_event_ulpt0_ulpti`` via ra8_isr_register.
+ * @pre @p ctx is the unused context registered by this application.
  * @post ``g_lpm_ulpt_wake_count`` has advanced by exactly one.
+ * @post No wake-source or timer configuration is modified.
  *
  * @note Not re-entrant; a single ULPT channel drives it.
  * @since 0.1.0
  */
-static void lus_ulpt_isr(void* ctx)
+RA8_INTERNAL static void internal_lus_ulpt_isr(void* ctx)
 {
   (void)ctx;
   g_lpm_ulpt_wake_count++;
@@ -146,13 +172,18 @@ static void lus_ulpt_isr(void* ctx)
  *
  * @return ``k_ra8_ok`` once TCSTF = 1, else the status-read error or
  *         ``k_ra8_err_hw_timeout`` if the bound is reached.
+ * @retval k_ra8_ok The hardware confirms the count operation started.
+ * @retval k_ra8_err_hw_timeout The bounded poll expired before TCSTF asserted.
  *
  * @pre ``ra8_ulpt_start`` has set TSTART = 1 on @p channel.
+ * @pre @p channel identifies an initialized ULPT instance.
  * @post On ``k_ra8_ok`` the ULPT counter is confirmed running.
+ * @post The poll never exceeds ::k_lus_tcstf_poll_limit status reads.
+ * @note A HAL status-read error is propagated unchanged.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t lus_wait_count_started(uint8_t channel)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_lus_wait_count_started(uint8_t channel)
 {
   const uint8_t tcstf_mask = (uint8_t)(1U << (uint8_t)k_ra8_ulpt_bit_tcstf);
   for (uint32_t i = 0U; i < (uint32_t)k_lus_tcstf_poll_limit; ++i) {
@@ -184,25 +215,26 @@ static void lus_ulpt_isr(void* ctx)
  * @post LPM block has LPSCR.LPMD = 0 (System Active) until
  *       ``ra8_lpm_enter_sleep`` is called.
  *
+ * @note Single-shot boot helper; it is not reentrant.
  * @since 0.1.0
  */
-static void lus_setup_or_halt(void)
+RA8_INTERNAL static void internal_lus_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    lus_panic_halt();
+    internal_lus_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    lus_panic_halt();
+    internal_lus_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    lus_panic_halt();
+    internal_lus_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_lus_baud) != k_ra8_ok) {
-    lus_panic_halt();
+    internal_lus_panic_halt();
   }
   if (ra8_ulpt_init() != k_ra8_ok) {
-    lus_panic_halt();
+    internal_lus_panic_halt();
   }
   const ra8_lpm_config_t lpm_cfg = {
     .io_port_keep     = false,
@@ -212,13 +244,13 @@ static void lus_setup_or_halt(void)
     .sscr_low_power   = k_ra8_lpm_ss2lp_default,
   };
   if (ra8_lpm_init(&lpm_cfg) != k_ra8_ok) {
-    lus_panic_halt();
+    internal_lus_panic_halt();
   }
   /* Keep LOCO running (LCSTP = 0) so ULPTLCLK survives Software Standby:
    * HUM Table 11.3 footnote *2 (p 433) -- with IWDT unused and
    * LOCOCR.LCSTP = 0, LOCO is not stopped in Software Standby. */
   if (ra8_lpm_set_clock_stop(k_ra8_lpm_clock_loco, false) != k_ra8_ok) {
-    lus_panic_halt();
+    internal_lus_panic_halt();
   }
 }
 
@@ -237,23 +269,26 @@ static void lus_setup_or_halt(void)
  * (covered in the host unit test).
  *
  * @return ``k_ra8_ok`` on success, else the first failing step's error.
+ * @retval k_ra8_ok Both NVIC event routing and asynchronous wake detection are armed.
  *
- * @pre ``lus_setup_or_halt`` has run; interrupts not yet enabled.
+ * @pre ``internal_lus_setup_or_halt`` has run; interrupts not yet enabled.
  * @pre LPM block initialised so WUPEN writes take effect.
  *
- * @post On success ULPT0_ULPTI vectors to ``lus_ulpt_isr`` and
+ * @post On success ULPT0_ULPTI vectors to ``internal_lus_ulpt_isr`` and
  *       WUPEN1.ULP0U is asserted.
+ * @post On failure, no later arm step is attempted.
  *
+ * @note Must run before global interrupts are enabled.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t lus_arm_wake(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_lus_arm_wake(void)
 {
   ra8_err_t err = ra8_isr_init();
   if (err != k_ra8_ok) {
     return err;
   }
   err = ra8_isr_register(k_ra8_elc_event_ulpt0_ulpti,
-                         lus_ulpt_isr,
+                         internal_lus_ulpt_isr,
                          nullptr,
                          (uint8_t)k_ra8_isr_prio_default,
                          nullptr);
@@ -267,14 +302,14 @@ static void lus_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  lus_setup_or_halt();
+  internal_lus_setup_or_halt();
 
-  if (lus_arm_wake() != k_ra8_ok) {
-    lus_panic_halt();
+  if (internal_lus_arm_wake() != k_ra8_ok) {
+    internal_lus_panic_halt();
   }
   ra8_isr_globals_enable();
 
-  (void)ra8_board_uart_console_write(k_lus_boot_msg, (size_t)(sizeof(k_lus_boot_msg) - 1U));
+  (void)ra8_board_uart_console_write(s_lus_boot_msg, (size_t)(sizeof(s_lus_boot_msg) - 1U));
 
   while (1) {
     /* Re-arm the ULPT countdown, then drop into Software Standby until
@@ -283,7 +318,7 @@ int32_t main(void)
     if (ra8_ulpt_start((uint8_t)k_lus_channel, (uint32_t)k_lus_period_ticks) != k_ra8_ok) {
       break;
     }
-    if (lus_wait_count_started((uint8_t)k_lus_channel) != k_ra8_ok) {
+    if (internal_lus_wait_count_started((uint8_t)k_lus_channel) != k_ra8_ok) {
       break;
     }
     if (ra8_lpm_enter_sleep(k_ra8_sleep_mode_software_std) != k_ra8_ok) {
@@ -292,12 +327,12 @@ int32_t main(void)
     if (ra8_ulpt_stop((uint8_t)k_lus_channel) != k_ra8_ok) {
       break;
     }
-    if (ra8_board_uart_console_write(k_lus_wake_msg, (size_t)(sizeof(k_lus_wake_msg) - 1U)) !=
+    if (ra8_board_uart_console_write(s_lus_wake_msg, (size_t)(sizeof(s_lus_wake_msg) - 1U)) !=
         k_ra8_ok) {
       break;
     }
   }
-  lus_panic_halt();
+  internal_lus_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

@@ -51,6 +51,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -79,9 +80,22 @@ typedef enum : uint8_t {
   k_poeg_demo_group       = 0U, /**< POEG group gating GPT0.      */
 } poeg_demo_unit_t;
 
-/** @brief Output line tags. */
-static const uint8_t k_poeg_demo_ok_msg[]  = "poeg: pwm=run shutoff=highZ reenable=on ok=Y\r\n";
-static const uint8_t k_poeg_demo_bad_msg[] = "poeg: pwm=? shutoff=? reenable=? ok=N\r\n";
+/**
+ * @var s_poeg_demo_ok_msg
+ * @brief Success banner for a complete safe-shutoff and re-enable cycle.
+ * @details Records the expected PWM, high-impedance, and recovery verdicts.
+ * @note Immutable console bytes with an explicit compile-time length.
+ * @since 0.1.0
+ */
+static const uint8_t s_poeg_demo_ok_msg[] = "poeg: pwm=run shutoff=highZ reenable=on ok=Y\r\n";
+/**
+ * @var s_poeg_demo_bad_msg
+ * @brief Failure banner for an incomplete POEG safety cycle.
+ * @details Provides a deterministic negative marker for HIL log matching.
+ * @note Immutable console bytes with an explicit compile-time length.
+ * @since 0.1.0
+ */
+static const uint8_t s_poeg_demo_bad_msg[] = "poeg: pwm=? shutoff=? reenable=? ok=N\r\n";
 
 /**
  * @var g_poeg_shutoffs
@@ -115,39 +129,58 @@ volatile uint32_t g_poeg_heartbeat = 0U;
  */
 volatile uint32_t g_poeg_mismatch = 0U;
 
-/** @brief Park forever after a fatal init failure. */
-static void poeg_demo_panic_halt(void)
+/**
+ * @brief Park forever after a fatal initialization failure.
+ * @details Retains GPT, POEG, and setup state for inspection in a permanent WFI loop.
+ * @pre Reset startup initialized the exception and stack environment.
+ * @pre A required setup or arming step has failed.
+ * @post Control never returns to the caller.
+ * @post No further output-enable transition is attempted.
+ * @note An interrupt can wake one iteration, but the terminal loop resumes.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_poeg_demo_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-/** @brief Bring CGC + SysTick + MSTP + SCI console + LEDs up. */
-static void poeg_demo_setup_or_halt(void)
+/**
+ * @brief Bring CGC + SysTick + MSTP + SCI console + LEDs up.
+ * @details Initializes every dependency required to configure and observe the
+ *          GPT/POEG cycle, stopping terminally on the first failure.
+ * @pre Reset startup completed data and BSS initialization.
+ * @pre Board clocks and GPIO are in their reset-compatible state.
+ * @post On return the timebase, console, module clocks, and two LEDs are ready.
+ * @post Any failed prerequisite has entered the terminal panic loop.
+ * @note Single-shot boot helper; it is not reentrant.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_poeg_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
   if (ra8_cgc_init() != k_ra8_ok) {
-    poeg_demo_panic_halt();
+    internal_poeg_demo_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    poeg_demo_panic_halt();
+    internal_poeg_demo_panic_halt();
   }
   if (ra8_mstp_init() != k_ra8_ok) {
-    poeg_demo_panic_halt();
+    internal_poeg_demo_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    poeg_demo_panic_halt();
+    internal_poeg_demo_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_poeg_demo_baud) != k_ra8_ok) {
-    poeg_demo_panic_halt();
+    internal_poeg_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    poeg_demo_panic_halt();
+    internal_poeg_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
-    poeg_demo_panic_halt();
+    internal_poeg_demo_panic_halt();
   }
 }
 
@@ -169,9 +202,10 @@ static void poeg_demo_setup_or_halt(void)
  * @par MC/DC:
  * Single decision ``ra8_gpt_init != ok`` at the call site -- 2 vectors
  * (golden + the null-cfg / bad-channel rejects covered in the host test).
+ * @note Single-caller boot configuration; not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t poeg_demo_arm_gpt(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_poeg_demo_arm_gpt(void)
 {
   const ra8_gpt_cfg_t cfg = {
     .mode       = k_ra8_gpt_mode_saw_pwm,
@@ -204,9 +238,10 @@ static void poeg_demo_setup_or_halt(void)
  * @par MC/DC:
  * Single decision ``ra8_poeg_init != ok`` at the call site -- 2 vectors
  * (golden + the null-cfg / bad-group rejects covered in the host test).
+ * @note Single-caller boot configuration; not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t poeg_demo_arm_poeg(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_poeg_demo_arm_poeg(void)
 {
   const ra8_poeg_cfg_t cfg = {
     .enable_pin      = true,
@@ -236,7 +271,7 @@ static void poeg_demo_setup_or_halt(void)
  * @retval k_ra8_ok        Cycle ran; ``*out_ok`` is 0 or 1.
  * @retval k_ra8_err_null_ptr ``out_ok`` was NULL.
  *
- * @pre ::poeg_demo_arm_gpt and ::poeg_demo_arm_poeg succeeded.
+ * @pre ::internal_poeg_demo_arm_gpt and ::internal_poeg_demo_arm_poeg succeeded.
  * @pre GPT0 is counting.
  * @post ``g_poeg_last_status`` holds the post-assert POEGG snapshot.
  * @post ``*out_ok`` is 0 or 1.
@@ -244,9 +279,10 @@ static void poeg_demo_setup_or_halt(void)
  * @par MC/DC:
  * Decision ``ok = shutoff && reenabled && running`` (3 conditions). The host
  * test supplies N+1 = 4 vectors, varying each condition independently.
+ * @note Mutates the shared HIL status snapshot and is not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t poeg_demo_cycle(uint8_t* out_ok)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_poeg_demo_cycle(uint8_t* out_ok)
 {
   RA8_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
   *out_ok = 0U;
@@ -303,37 +339,37 @@ static void poeg_demo_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  poeg_demo_setup_or_halt();
+  internal_poeg_demo_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the SysTick
    * path (ra8_emulator does not advance DWT_CYCCNT). No NVIC sources are armed. */
   ra8_isr_globals_enable();
 
-  if (poeg_demo_arm_gpt() != k_ra8_ok) {
-    poeg_demo_panic_halt();
+  if (internal_poeg_demo_arm_gpt() != k_ra8_ok) {
+    internal_poeg_demo_panic_halt();
   }
-  if (poeg_demo_arm_poeg() != k_ra8_ok) {
-    poeg_demo_panic_halt();
+  if (internal_poeg_demo_arm_poeg() != k_ra8_ok) {
+    internal_poeg_demo_panic_halt();
   }
 
   while (1) {
     uint8_t         ok   = 0U;
-    const ra8_err_t err  = poeg_demo_cycle(&ok);
+    const ra8_err_t err  = internal_poeg_demo_cycle(&ok);
     const uint8_t   good = (err == k_ra8_ok && ok != 0U) ? 1U : 0U;
     if (good != 0U) {
-      (void)ra8_board_uart_console_write(k_poeg_demo_ok_msg,
-                                         (size_t)(sizeof(k_poeg_demo_ok_msg) - 1U));
+      (void)ra8_board_uart_console_write(s_poeg_demo_ok_msg,
+                                         (size_t)(sizeof(s_poeg_demo_ok_msg) - 1U));
       (void)ra8_board_led_toggle(k_ra8_board_led1);
       ++g_poeg_shutoffs;
     } else {
-      (void)ra8_board_uart_console_write(k_poeg_demo_bad_msg,
-                                         (size_t)(sizeof(k_poeg_demo_bad_msg) - 1U));
+      (void)ra8_board_uart_console_write(s_poeg_demo_bad_msg,
+                                         (size_t)(sizeof(s_poeg_demo_bad_msg) - 1U));
       (void)ra8_board_led_toggle(k_ra8_board_led2);
       ++g_poeg_mismatch;
     }
     ++g_poeg_heartbeat;
     ra8_delay_ms((uint32_t)k_poeg_demo_period_ms);
   }
-  poeg_demo_panic_halt();
+  internal_poeg_demo_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

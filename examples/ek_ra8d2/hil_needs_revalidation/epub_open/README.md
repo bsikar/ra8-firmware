@@ -21,9 +21,9 @@ byte-twiddling parse layer meets real SD timing and the FAT read path, not a
      seed -- `zlib.crc32` of `OEBPS/chapter1.xhtml`),
    - Dublin Core metadata parses with a non-empty title.
 
-miniz (ZIP + DEFLATE) and tinyxml2 (XML) run zero-heap through the
-`ra8_epub_miniz_alloc` arena + the arena-backed `operator new` (#139); no
-allocation reaches the trapped firmware heap.
+miniz (ZIP + DEFLATE) runs through the `ra8_epub_miniz_alloc` arena and the
+bounded XML reader uses explicit caller workspace; no allocation reaches the
+trapped firmware heap.
 
 ## The gate is memprobe, not the console
 

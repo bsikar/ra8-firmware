@@ -36,6 +36,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -59,18 +60,30 @@ typedef enum : uint8_t {
 } rng_demo_byte_t;
 
 /** @brief Fixed prefix and CR/LF tail used on every emit. */
-static const uint8_t k_rng_demo_prefix[] = "rng: ";
-static const uint8_t k_rng_demo_eol[]    = "\r\n";
+static const uint8_t s_rng_demo_prefix[] = "rng: ";
+static const uint8_t s_rng_demo_eol[]    = "\r\n";
 
 /**
  * @brief Verdict line emitted only after a non-stuck sample is dumped.
  * @details Deliberately does NOT claim entropy -- ra8_psa_crypto_random returns a
  *          deterministic software stub on this silicon (no working RSIP TRNG).
  */
-static const uint8_t k_rng_demo_pass_msg[] = "rng: PRNG stub OK (deterministic, NOT entropy)\r\n";
+static const uint8_t s_rng_demo_pass_msg[] = "rng: PRNG stub OK (deterministic, NOT entropy)\r\n";
 
-/** @brief Park forever after a fatal init failure. */
-static void rng_demo_panic_halt(void)
+/**
+ * @brief Park the processor after a fatal setup or entropy-path failure.
+ *
+ * @details Executes wait-for-interrupt indefinitely so a failed diagnostic
+ * cannot continue producing output that could be mistaken for valid samples.
+ *
+ * @pre A required setup step or runtime entropy check has failed.
+ * @pre No remaining foreground recovery operation can make progress safely.
+ * @post This function does not return.
+ * @post The processor remains in a low-activity wait loop.
+ * @note This terminal path preserves the diagnostic failure state for probing.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_rng_demo_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -80,15 +93,23 @@ static void rng_demo_panic_halt(void)
 /**
  * @brief Convert a nibble to its ASCII hex representation.
  *
+ * @details Masks the input to four bits and maps values below ten to decimal
+ * digits and the remaining values to lowercase hexadecimal letters.
+ *
  * @param[in] nibble Lower 4 bits used; upper 4 bits ignored.
  * @return ASCII byte in '0'..'9' or 'a'..'f'.
+ * @retval 0x30..0x39 Decimal ASCII digit for nibble values zero through nine.
+ * @retval 0x61..0x66 Lowercase ASCII letter for nibble values ten through fifteen.
  *
- * @pre None.
+ * @pre The caller accepts that bits above the low nibble are discarded.
+ * @pre The execution character set uses contiguous ASCII digit and letter codes.
  * @post Return value is a printable ASCII character.
+ * @post The input value and all shared state remain unchanged.
+ * @note The conversion deliberately emits lowercase hexadecimal.
  *
  * @since 0.1.0
  */
-static uint8_t rng_demo_nibble_to_hex(uint8_t nibble)
+RA8_INTERNAL static uint8_t internal_rng_demo_nibble_to_hex(uint8_t nibble)
 {
   uint8_t n = (uint8_t)(nibble & (uint8_t)k_rng_demo_nibble_mask);
   if (n < (uint8_t)k_rng_demo_alpha_threshold) {
@@ -97,33 +118,48 @@ static uint8_t rng_demo_nibble_to_hex(uint8_t nibble)
   return (uint8_t)('a' + (n - (uint8_t)k_rng_demo_alpha_threshold));
 }
 
-/** @brief Bring CGC + SysTick + SCI8 + LED1 + PSA crypto up. */
-static void rng_demo_setup_or_halt(void)
+/**
+ * @brief Bring CGC, SysTick, SCI8, LED1, and PSA crypto up.
+ *
+ * @details Initializes each prerequisite in dependency order and transfers to
+ * ::internal_rng_demo_panic_halt on the first error.
+ *
+ * @pre The function runs during single-threaded application startup.
+ * @pre EK-RA8D2 board registers are accessible through the platform mapping.
+ * @post On return, timing, console, LED1, and the PSA crypto facade are ready.
+ * @post Any prerequisite failure prevents a return to the caller.
+ * @note The helper centralizes the fail-closed startup policy for this demo.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_rng_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
   if (ra8_cgc_init() != k_ra8_ok) {
-    rng_demo_panic_halt();
+    internal_rng_demo_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    rng_demo_panic_halt();
+    internal_rng_demo_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    rng_demo_panic_halt();
+    internal_rng_demo_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_rng_demo_baud) != k_ra8_ok) {
-    rng_demo_panic_halt();
+    internal_rng_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    rng_demo_panic_halt();
+    internal_rng_demo_panic_halt();
   }
   if (ra8_psa_crypto_init() != k_ra8_ok) {
-    rng_demo_panic_halt();
+    internal_rng_demo_panic_halt();
   }
 }
 
 /**
  * @brief Emit one hex line of TRNG output.
+ *
+ * @details Requests one bounded sample, rejects an all-equal stuck pattern,
+ * converts every byte to lowercase hex, and emits the sample plus verdict.
  *
  * @par MC/DC:
  * Compound decision: ``random != ok || sci_write_prefix != ok ||
@@ -136,13 +172,16 @@ static void rng_demo_setup_or_halt(void)
  * @retval k_ra8_ok           Line transmitted.
  * @retval k_ra8_err_hw_error Underlying primitive failed.
  *
- * @pre rng_demo_setup_or_halt() returned cleanly.
+ * @pre ::internal_rng_demo_setup_or_halt returned cleanly.
+ * @pre The console sink can accept the fixed prefix, payload, and line ending.
  * @post On success 70 bytes (6 prefix + 64 hex + 2 EOL) plus the fixed
  *       ``"trng: entropy OK\r\n"`` verdict line have been sent.
+ * @post On failure, the function returns before reporting a successful verdict.
+ * @note The PSA backend is deterministic on this silicon and is not claimed as entropy.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t rng_demo_emit_one_line(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_rng_demo_emit_one_line(void)
 {
   uint8_t        rng[k_rng_demo_bytes_per_line]                                     = {};
   uint8_t        hex[(uint16_t)k_rng_demo_bytes_per_line * k_rng_demo_hex_per_byte] = {};
@@ -171,25 +210,26 @@ static void rng_demo_setup_or_halt(void)
   }
   for (uint8_t i = 0U; i < (uint8_t)k_rng_demo_bytes_per_line; ++i) {
     const size_t hi = (size_t)i * (size_t)k_rng_demo_hex_per_byte;
-    hex[hi]         = rng_demo_nibble_to_hex((uint8_t)(rng[i] >> (uint8_t)k_rng_demo_nibble_shift));
-    hex[hi + 1U]    = rng_demo_nibble_to_hex(rng[i]);
+    hex[hi] =
+      internal_rng_demo_nibble_to_hex((uint8_t)(rng[i] >> (uint8_t)k_rng_demo_nibble_shift));
+    hex[hi + 1U] = internal_rng_demo_nibble_to_hex(rng[i]);
   }
 
-  if (ra8_board_uart_console_write(k_rng_demo_prefix, (size_t)(sizeof(k_rng_demo_prefix) - 1U)) !=
+  if (ra8_board_uart_console_write(s_rng_demo_prefix, (size_t)(sizeof(s_rng_demo_prefix) - 1U)) !=
       k_ra8_ok) {
     return k_ra8_err_hw_error;
   }
   if (ra8_board_uart_console_write(hex, (size_t)hex_len) != k_ra8_ok) {
     return k_ra8_err_hw_error;
   }
-  if (ra8_board_uart_console_write(k_rng_demo_eol, (size_t)(sizeof(k_rng_demo_eol) - 1U)) !=
+  if (ra8_board_uart_console_write(s_rng_demo_eol, (size_t)(sizeof(s_rng_demo_eol) - 1U)) !=
       k_ra8_ok) {
     return k_ra8_err_hw_error;
   }
   /* Success-only verdict for the HIL scrape; fire-and-forget so it adds
    * no decision to the documented MC/DC vector set above. */
-  (void)ra8_board_uart_console_write(k_rng_demo_pass_msg,
-                                     (size_t)(sizeof(k_rng_demo_pass_msg) - 1U));
+  (void)ra8_board_uart_console_write(s_rng_demo_pass_msg,
+                                     (size_t)(sizeof(s_rng_demo_pass_msg) - 1U));
   return k_ra8_ok;
 }
 
@@ -197,17 +237,17 @@ static void rng_demo_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  rng_demo_setup_or_halt();
+  internal_rng_demo_setup_or_halt();
   ra8_isr_globals_enable();
 
   while (1) {
-    if (rng_demo_emit_one_line() != k_ra8_ok) {
+    if (internal_rng_demo_emit_one_line() != k_ra8_ok) {
       break;
     }
     (void)ra8_board_led_toggle(k_ra8_board_led1);
     ra8_delay_ms(k_rng_demo_period_ms);
   }
-  rng_demo_panic_halt();
+  internal_rng_demo_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

@@ -34,6 +34,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
@@ -59,10 +60,10 @@ typedef enum : uint32_t {
 } demo_const_t;
 
 /** @brief SCI8 console TXD = PD02. */
-static const ra8_port_pin_t k_demo_txd =
+static const ra8_port_pin_t s_demo_txd =
   (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << (uint16_t)k_demo_pin_shift) | (uint16_t)k_ra8_pin_2);
 /** @brief SCI8 console RXD = PD03. */
-static const ra8_port_pin_t k_demo_rxd =
+static const ra8_port_pin_t s_demo_rxd =
   (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << (uint16_t)k_demo_pin_shift) | (uint16_t)k_ra8_pin_3);
 
 /** @brief 256 KiB RAM-disk backing buffer for the slow backend (in SRAM .bss). */
@@ -84,14 +85,39 @@ static ra8_io_stream_uart_state_t s_ust;
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_io_cache_demo";
 
-/** @brief Print a NUL-terminated string on the UART stream. */
-static void demo_print(const char* msg)
+/**
+ * @brief Print a NUL-terminated string on the UART stream.
+ *
+ * @details Delegates bounded string emission to the initialized stream and
+ * intentionally ignores diagnostic-output errors in this terminal demo.
+ *
+ * @param[in] msg NUL-terminated message to emit.
+ * @pre @p msg is non-NULL and readable through its terminator.
+ * @pre ``s_uart`` has been initialized with its caller-owned UART state.
+ * @post The stream has accepted the message or reported an ignored sink error.
+ * @post Cache, filesystem, and block-device state remain unchanged.
+ * @note This single-threaded diagnostic helper performs no retry.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_demo_print(const char* msg)
 {
   (void)ra8_io_stream_puts(&s_uart, msg);
 }
 
-/** @brief Bring up CGC + SysTick + the SCI8 console; halt on any failure. */
-static void demo_setup_or_halt(void)
+/**
+ * @brief Bring up CGC, SysTick, and the SCI8 console; halt on failure.
+ *
+ * @details Resolves CPUCLK0 and PCLKA, initializes the time base, routes both
+ * console pins, and configures SCI8 in dependency order.
+ *
+ * @pre Reset startup has initialized data and BSS storage.
+ * @pre Peripheral register mappings for clocks, pins, and SCI8 are accessible.
+ * @post On return, SCI8 is configured for the requested diagnostic baud.
+ * @post Any required setup failure parks the application before returning.
+ * @note This helper is intended for the single-threaded startup path only.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
@@ -99,8 +125,8 @@ static void demo_setup_or_halt(void)
       (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) ||
       (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz) != k_ra8_ok) ||
       (ra8_time_init(cpuclk0_hz) != k_ra8_ok) ||
-      (ra8_pfs_route_peripheral(k_demo_txd, k_ra8_psel_sci_async, "demo.txd") != k_ra8_ok) ||
-      (ra8_pfs_route_peripheral(k_demo_rxd, k_ra8_psel_sci_async, "demo.rxd") != k_ra8_ok)) {
+      (ra8_pfs_route_peripheral(s_demo_txd, k_ra8_psel_sci_async, "demo.txd") != k_ra8_ok) ||
+      (ra8_pfs_route_peripheral(s_demo_rxd, k_ra8_psel_sci_async, "demo.rxd") != k_ra8_ok)) {
     while (true) {
     }
   }
@@ -115,8 +141,23 @@ static void demo_setup_or_halt(void)
   }
 }
 
-/** @brief Bridge the cached device to ra8_fs, format FAT12, and register the VFS. */
-static ra8_err_t demo_mount(ra8_fs_mount_t** out_mnt)
+/**
+ * @brief Bridge the cached device to ra8_fs, format FAT12, and register the VFS.
+ *
+ * @details Constructs the RAM backend and cache decorator in caller-owned
+ * storage, formats a FAT12 volume, mounts it, and registers the ``ram`` prefix.
+ *
+ * @param[out] out_mnt Receives the mounted FAT filesystem on success.
+ * @return Error from the first block-device, format, mount, or VFS operation.
+ * @retval k_ra8_ok The cached FAT12 volume was mounted and registered.
+ * @pre @p out_mnt addresses writable pointer storage.
+ * @pre The static RAM disk and cache buffers retain their full declared capacity.
+ * @post On success, @p out_mnt identifies the VFS-registered mount.
+ * @post On failure, later construction stages are not attempted.
+ * @note The backing storage and cache lifetime equal the firmware lifetime.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_demo_mount(ra8_fs_mount_t** out_mnt)
 {
   RA8_CHECK_NULL_PTR(out_mnt, s_tag, "out_mnt");
   RA8_RETURN_ON_ERROR(
@@ -141,8 +182,25 @@ static ra8_err_t demo_mount(ra8_fs_mount_t** out_mnt)
   return k_ra8_ok;
 }
 
-/** @brief Read `ram:/HELLO.TXT` once and byte-compare it against `expect`. */
-static ra8_err_t demo_read_once(const uint8_t* expect)
+/**
+ * @brief Read ``ram:/HELLO.TXT`` once and compare it against @p expect.
+ *
+ * @details Opens the file through VFS, reads exactly the configured payload,
+ * closes the handle, then validates both length and contents.
+ *
+ * @param[in] expect Expected payload bytes for the comparison.
+ * @return Filesystem error or the explicit length/content verdict.
+ * @retval k_ra8_ok The complete payload matched @p expect.
+ * @retval k_ra8_err_invalid_size The file length differed from the payload size.
+ * @retval k_ra8_err_checksum_mismatch At least one byte differed.
+ * @pre @p expect addresses at least ``k_demo_payload`` readable bytes.
+ * @pre The ``ram`` VFS mount and ``HELLO.TXT`` file already exist.
+ * @post The read handle is closed after a successful read operation.
+ * @post Cache statistics reflect the block accesses performed by this read.
+ * @note The comparison buffer is bounded on the stack by the payload constant.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_demo_read_once(const uint8_t* expect)
 {
   RA8_CHECK_NULL_PTR(expect, s_tag, "expect");
   ra8_fs_file_t* f = nullptr;
@@ -160,13 +218,30 @@ static ra8_err_t demo_read_once(const uint8_t* expect)
   return k_ra8_ok;
 }
 
-/** @brief Write the file once, re-read it `k_demo_reads` times through the cache. */
-static ra8_err_t demo_run(uint32_t* out_hits, uint32_t* out_misses)
+/**
+ * @brief Write the file once and re-read it repeatedly through the cache.
+ *
+ * @details Mounts the cached volume, creates a deterministic payload, writes it,
+ * verifies every configured read pass, and returns cache hit/miss counters.
+ *
+ * @param[out] out_hits Receives the cache-hit count.
+ * @param[out] out_misses Receives the cache-miss count.
+ * @return Error from the first mount, write, read, or stats operation.
+ * @retval k_ra8_ok Every read matched and at least one cache hit was observed.
+ * @retval k_ra8_err_checksum_mismatch Data differed or no hit was recorded.
+ * @pre Both output pointers address writable 32-bit storage.
+ * @pre The VFS mount table has room for the ``ram`` prefix.
+ * @post On success, both output counters contain the final cache statistics.
+ * @post The verified file remains present on the mounted FAT12 volume.
+ * @note The deterministic payload makes repeated cache reads byte-comparable.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_demo_run(uint32_t* out_hits, uint32_t* out_misses)
 {
   RA8_CHECK_NULL_PTR(out_hits, s_tag, "out_hits");
   RA8_CHECK_NULL_PTR(out_misses, s_tag, "out_misses");
   ra8_fs_mount_t* mnt = nullptr;
-  RA8_RETURN_ON_ERROR(demo_mount(&mnt), s_tag, "mount stage");
+  RA8_RETURN_ON_ERROR(internal_demo_mount(&mnt), s_tag, "mount stage");
 
   uint8_t data[(size_t)k_demo_payload];
   for (uint32_t i = 0; i < (uint32_t)k_demo_payload; ++i) {
@@ -177,7 +252,7 @@ static ra8_err_t demo_run(uint32_t* out_hits, uint32_t* out_misses)
                       "write");
 
   for (uint32_t pass = 0; pass < (uint32_t)k_demo_reads; ++pass) {
-    RA8_RETURN_ON_ERROR(demo_read_once(data), s_tag, "reread");
+    RA8_RETURN_ON_ERROR(internal_demo_read_once(data), s_tag, "reread");
   }
 
   RA8_RETURN_ON_ERROR(ra8_io_blockdev_cache_stats(&s_cstate, out_hits, out_misses), s_tag, "stats");
@@ -196,22 +271,22 @@ static ra8_err_t demo_run(uint32_t* out_hits, uint32_t* out_misses)
 int main(void)
 {
   ra8_log_init();
-  demo_setup_or_halt();
+  internal_demo_setup_or_halt();
   (void)ra8_io_stream_uart_init(&s_uart, &s_ust, (uint8_t)k_demo_uart_chan);
   (void)ra8_io_log_attach(&s_uart); /* route ra8_log into the UART stream too */
-  demo_print("ra8_io_cache_demo: boot\r\n");
+  internal_demo_print("ra8_io_cache_demo: boot\r\n");
 
   uint32_t        hits   = 0;
   uint32_t        misses = 0;
-  const ra8_err_t e      = demo_run(&hits, &misses);
+  const ra8_err_t e      = internal_demo_run(&hits, &misses);
   if (e == k_ra8_ok) {
-    demo_print("ra8_io_cache_demo: re-read x8 hits=");
+    internal_demo_print("ra8_io_cache_demo: re-read x8 hits=");
     (void)ra8_io_stream_put_u32(&s_uart, hits);
-    demo_print(" misses=");
+    internal_demo_print(" misses=");
     (void)ra8_io_stream_put_u32(&s_uart, misses);
-    demo_print(" ram:/HELLO.TXT PASS\r\n");
+    internal_demo_print(" ram:/HELLO.TXT PASS\r\n");
   } else {
-    demo_print("ra8_io_cache_demo: FAIL\r\n");
+    internal_demo_print("ra8_io_cache_demo: FAIL\r\n");
   }
   (void)ra8_sci_flush((uint8_t)k_demo_uart_chan);
   while (true) {
