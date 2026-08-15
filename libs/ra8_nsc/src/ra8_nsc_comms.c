@@ -18,6 +18,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_i3c.h"
@@ -346,6 +347,7 @@ RA8_NSC_VENEER ra8_err_t ra8_nsc_spi_xfer8(uint8_t channel, uint8_t tx, uint8_t*
  * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
+RA8_INTERNAL
 static uint8_t internal_spi_unit_bytes(ra8_spi_bit_width_t bit_width)
 {
   switch (bit_width) {
@@ -392,6 +394,7 @@ static uint8_t internal_spi_unit_bytes(ra8_spi_bit_width_t bit_width)
  * @note Static helper; pure function.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_spi_byte_span(uint8_t bytes_per_unit, uint32_t len, uint32_t* out_span)
 {
   const uint64_t span = (uint64_t)bytes_per_unit * (uint64_t)len;

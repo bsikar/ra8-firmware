@@ -17,6 +17,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -55,6 +56,7 @@ static char s_msg_scratch[k_ra8_nsc_log_msg_max_len];
  * @note Static helper; not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_safe_strcpy(char* dst, const char* src, uint32_t cap)
 {
   uint32_t i = 0U;

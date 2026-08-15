@@ -31,6 +31,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_net_pal.h"
 #include "ra8_nsc.h"
@@ -44,7 +45,11 @@ typedef enum : uint16_t {
 } test_eth_len_t;
 
 /**
- * @test test_mcdc_ra8_nsc_eth
+ * @test internal_test_mcdc_ra8_nsc_eth
+ * @brief Verify MC/DC coverage of the Ethernet frame-length validator.
+ *
+ * @details Drives accepted, zero, maximum, and over-limit frame lengths and
+ *          distinguishes veneer rejection from the uninitialized PAL result.
  *
  * @par MC/DC:
  * Decision: ``ra8_nsc_eth_send`` line 53,
@@ -58,27 +63,36 @@ typedef enum : uint16_t {
  * - V3: len=1519 -> C1=F, C2=T -> dec T -> invalid_arg
  * V1+V3 vary C2 only (decision flips); V1+V2 vary C1 only.
  * DO-178C 6.4.4.3 minimal MC/DC subset.
+ *
+ * @pre The network PAL remains intentionally uninitialized.
+ * @pre The static frame buffer is readable for every accepted length.
+ * @post Both invalid lengths return k_ra8_err_invalid_arg.
+ * @post Valid and maximum lengths pass the veneer validator.
+ *
+ * @note A non-invalid-argument PAL error proves the forwarding branch ran.
+ * @since 0.1.0
  */
-static void test_mcdc_ra8_nsc_eth(void)
+RA8_INTERNAL
+static void internal_test_mcdc_ra8_nsc_eth(void)
 {
   TEST_BEGIN("ra8_nsc_eth_send MC/DC: length validator OR");
-  static const uint8_t s_frame[1600] = {};
+  static const uint8_t frame[1600] = {};
 
   /* V1: valid length -> validator dec F.  PAL is not initialized in
    * this TU, so the tail call returns not_initialized -- that proves
    * the validator did not short-circuit out with invalid_arg. */
-  const ra8_err_t v1 = ra8_nsc_eth_send(s_frame, (uint16_t)k_test_eth_len_ok);
+  const ra8_err_t v1 = ra8_nsc_eth_send(frame, (uint16_t)k_test_eth_len_ok);
   TEST_ASSERT(v1 != k_ra8_err_invalid_arg);
 
   /* V2: len=0 -> dec T via C1 -> invalid_arg. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_nsc_eth_send(s_frame, (uint16_t)k_test_eth_len_zero));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_nsc_eth_send(frame, (uint16_t)k_test_eth_len_zero));
 
   /* V3: len=1519 (one past max) -> dec T via C2 -> invalid_arg. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_nsc_eth_send(s_frame, (uint16_t)k_test_eth_len_over));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_nsc_eth_send(frame, (uint16_t)k_test_eth_len_over));
 
   /* Bonus: maximum still accepted (not part of the N+1 set, but
    * confirms the ``>`` is strict). */
-  const ra8_err_t v_max = ra8_nsc_eth_send(s_frame, (uint16_t)k_test_eth_len_max);
+  const ra8_err_t v_max = ra8_nsc_eth_send(frame, (uint16_t)k_test_eth_len_max);
   TEST_ASSERT(v_max != k_ra8_err_invalid_arg);
 
   TEST_END("ra8_nsc_eth_send MC/DC: length validator OR");
@@ -86,7 +100,6 @@ static void test_mcdc_ra8_nsc_eth(void)
 
 int32_t main(void)
 {
-  test_mcdc_ra8_nsc_eth();
-  (void)fprintf(stderr, "[OK ] test_ra8_nsc_eth.c\n");
+  internal_test_mcdc_ra8_nsc_eth();
   return 0;
 }

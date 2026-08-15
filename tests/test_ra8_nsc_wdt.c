@@ -22,6 +22,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_nsc.h"
@@ -39,15 +40,27 @@ typedef enum : uint8_t {
 } t_wdt_probe_t;
 
 /**
- * @test test_nsc_wdt_start_arms
+ * @test internal_test_nsc_wdt_start_arms
  * @brief ``ra8_nsc_wdt_start`` forwards the fixed Secure config into ``ra8_wdt_init``
  *        and arms the counter (k_ra8_ok).
+ *
+ * @details Resets the host register map and checks that the argument-free NSC
+ *          veneer accepts its fixed legal watchdog configuration.
  *
  * @par MC/DC:
  * (no compound decisions under test -- the veneer is an argument-free forward
  * into ra8_wdt_init; the single outcome asserted is its k_ra8_ok return.)
+ *
+ * @pre The fake WDT register mapping is available.
+ * @pre No other test concurrently owns the fake watchdog registers.
+ * @post The start veneer returns k_ra8_ok.
+ * @post The secure watchdog has accepted its fixed configuration.
+ *
+ * @note The host fake does not model watchdog time progression.
+ * @since 0.1.0
  */
-static void test_nsc_wdt_start_arms(void)
+RA8_INTERNAL
+static void internal_test_nsc_wdt_start_arms(void)
 {
   TEST_BEGIN("ra8_nsc_wdt_start arms the secure WDT");
   ra8_fake_mmap_reset();
@@ -59,14 +72,26 @@ static void test_nsc_wdt_start_arms(void)
 }
 
 /**
- * @test test_nsc_wdt_refresh_kicks
+ * @test internal_test_nsc_wdt_refresh_kicks
  * @brief ``ra8_nsc_wdt_refresh`` issues the WDTRR heartbeat (final byte 0xFF).
+ *
+ * @details Arms the secure watchdog, replaces WDTRR with a sentinel, invokes
+ *          the refresh veneer, and inspects the final unlock byte.
  *
  * @par MC/DC:
  * (no compound decisions under test -- the veneer is an argument-free forward
  * into ra8_wdt_refresh_deferred; the assertion is over the WDTRR unlock byte.)
+ *
+ * @pre The fake WDT register mapping is available.
+ * @pre The start veneer succeeds before WDTRR is probed.
+ * @post WDTRR contains k_ra8_wdt_refresh_b.
+ * @post The sentinel value has been overwritten by the refresh sequence.
+ *
+ * @note The host register exposes the final byte of the two-byte sequence.
+ * @since 0.1.0
  */
-static void test_nsc_wdt_refresh_kicks(void)
+RA8_INTERNAL
+static void internal_test_nsc_wdt_refresh_kicks(void)
 {
   TEST_BEGIN("ra8_nsc_wdt_refresh writes the WDTRR unlock byte");
   ra8_fake_mmap_reset();
@@ -86,8 +111,7 @@ static void test_nsc_wdt_refresh_kicks(void)
  */
 int32_t main(void)
 {
-  test_nsc_wdt_start_arms();
-  test_nsc_wdt_refresh_kicks();
-  (void)fprintf(stderr, "[OK  ] test_ra8_nsc_wdt.c\n");
+  internal_test_nsc_wdt_start_arms();
+  internal_test_nsc_wdt_refresh_kicks();
   return 0;
 }
