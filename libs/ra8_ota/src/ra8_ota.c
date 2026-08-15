@@ -6,10 +6,10 @@
  * Plain-C implementation of the state machine declared in
  * ``ra8_ota.h``. The module owns three statics:
  *
- *   - ``s_ra8_ota_state``  -- single-byte state machine value.
- *   - ``s_ra8_ota_cfg``    -- copy of the caller's configuration (function
+ *   - ``g_ra8_ota_state``  -- single-byte state machine value.
+ *   - ``g_ra8_ota_cfg``    -- copy of the caller's configuration (function
  *                     pointers + URLs + bank metadata).
- *   - ``s_ra8_ota_buf``    -- 4 KiB streaming chunk buffer used both for
+ *   - ``g_ra8_ota_buf``    -- 4 KiB streaming chunk buffer used both for
  *                     the manifest fetch and the firmware download.
  *   - ``s_manifest`` -- cached decoded manifest from the most
  *                     recent ``ra8_ota_check_for_update`` call.
@@ -48,13 +48,13 @@
 static const char* const s_tag = "ra8_ota";
 
 /** @brief Current state-machine value (shared; contract in ra8_ota_internal.h). */
-ra8_ota_state_t s_ra8_ota_state = k_ra8_ota_state_idle;
+ra8_ota_state_t g_ra8_ota_state = k_ra8_ota_state_idle;
 
 /** @brief Configuration captured at init time (shared; contract in ra8_ota_internal.h). */
-ra8_ota_cfg_t s_ra8_ota_cfg;
+ra8_ota_cfg_t g_ra8_ota_cfg;
 
 /** @brief True once ``ra8_ota_init`` succeeded (shared; contract in ra8_ota_internal.h). */
-bool s_ra8_ota_initialized = false;
+bool g_ra8_ota_initialized = false;
 
 /** @brief Cached decoded manifest from the most recent check. */
 static ra8_ota_manifest_t s_manifest;
@@ -69,25 +69,26 @@ static uint32_t s_bytes_done = 0U;
 static ra8_err_t s_last_err = k_ra8_ok;
 
 /** @brief Streaming buffer (shared; contract in ra8_ota_internal.h). */
-uint8_t s_ra8_ota_buf[k_ra8_ota_chunk_bytes];
+uint8_t g_ra8_ota_buf[k_ra8_ota_chunk_bytes];
 
 /* =============================================================================
  * Internal helpers
  * ============================================================================= */
 
-/** @brief Implementation of `ra8_ota_internal_set_state()` -- latch state + progress fan-out. */
-void ra8_ota_internal_set_state(ra8_ota_state_t new_state, ra8_err_t err)
+/** @brief Implementation of `priv_ota_set_state()` -- latch state + progress fan-out. */
+RA8_PRIV
+void priv_ota_set_state(ra8_ota_state_t new_state, ra8_err_t err)
 {
-  s_ra8_ota_state = new_state;
+  g_ra8_ota_state = new_state;
   s_last_err      = err;
-  if (s_ra8_ota_cfg.on_progress != nullptr) {
+  if (g_ra8_ota_cfg.on_progress != nullptr) {
     const ra8_ota_progress_t snap = {
       .state       = new_state,
       .bytes_done  = s_bytes_done,
       .bytes_total = s_manifest_valid ? s_manifest.image_size_bytes : 0U,
       .last_err    = err,
     };
-    s_ra8_ota_cfg.on_progress(&snap);
+    g_ra8_ota_cfg.on_progress(&snap);
   }
 }
 
@@ -95,7 +96,7 @@ void ra8_ota_internal_set_state(ra8_ota_state_t new_state, ra8_err_t err)
  * @brief Drain the network stream and accumulate up to ``cap`` bytes.
  *
  * @details
- * Loops calling the user-supplied ``s_ra8_ota_cfg.net.read`` callback until
+ * Loops calling the user-supplied ``g_ra8_ota_cfg.net.read`` callback until
  * either ``cap`` bytes have been collected or the backend reports EOF
  * (``got == 0``). The loop is bounded by ``cap + 1`` iterations
  * (NASA Rule 2). Returns the byte count via ``out_n``.
@@ -108,7 +109,7 @@ void ra8_ota_internal_set_state(ra8_ota_state_t new_state, ra8_err_t err)
  * @retval k_ra8_ok        Drain completed (possibly short on EOF).
  * @retval other          Whatever the network backend returned.
  *
- * @pre Module is initialized and ``s_ra8_ota_cfg.net.read`` is set.
+ * @pre Module is initialized and ``g_ra8_ota_cfg.net.read`` is set.
  * @pre ``dst`` and ``out_n`` are non-NULL.
  * @post On success ``*out_n`` reflects bytes written into ``dst``.
  * @post On failure ``*out_n`` is unspecified.
@@ -117,7 +118,7 @@ void ra8_ota_internal_set_state(ra8_ota_state_t new_state, ra8_err_t err)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_drain(uint8_t* dst, uint32_t cap, uint32_t* out_n)
+static ra8_err_t internal_drain(uint8_t* dst, uint32_t cap, uint32_t* out_n)
 {
   uint32_t total = 0U;
   /* Bounded loop: each iteration must consume >= 1 byte or hit EOF. */
@@ -127,7 +128,7 @@ static ra8_err_t priv_drain(uint8_t* dst, uint32_t cap, uint32_t* out_n)
     }
     uint32_t        got = 0U;
     const ra8_err_t e =
-      s_ra8_ota_cfg.net.read(s_ra8_ota_cfg.net.ctx, dst + total, cap - total, &got);
+      g_ra8_ota_cfg.net.read(g_ra8_ota_cfg.net.ctx, dst + total, cap - total, &got);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -149,8 +150,8 @@ static ra8_err_t priv_drain(uint8_t* dst, uint32_t cap, uint32_t* out_n)
  *
  * @details
  * Verifies the module is in the un-initialized state, runs the full
- * ``ra8_ota_internal_validate_cfg`` check on ``cfg``, then captures the descriptor
- * by-value into ``s_ra8_ota_cfg`` and resets the state machine to
+ * ``priv_ota_validate_cfg`` check on ``cfg``, then captures the descriptor
+ * by-value into ``g_ra8_ota_cfg`` and resets the state machine to
  * ``k_ra8_ota_state_idle``.
  *
  * @param[in] cfg Configuration descriptor (function pointers + URLs).
@@ -180,19 +181,19 @@ static ra8_err_t priv_drain(uint8_t* dst, uint32_t cap, uint32_t* out_n)
  */
 ra8_err_t ra8_ota_init(const ra8_ota_cfg_t* cfg)
 {
-  if (s_ra8_ota_initialized) {
+  if (g_ra8_ota_initialized) {
     return k_ra8_err_invalid_state;
   }
-  const ra8_err_t e = ra8_ota_internal_validate_cfg(cfg);
+  const ra8_err_t e = priv_ota_validate_cfg(cfg);
   if (e != k_ra8_ok) {
     return e;
   }
-  (void)memcpy(&s_ra8_ota_cfg, cfg, sizeof s_ra8_ota_cfg);
-  s_ra8_ota_state       = k_ra8_ota_state_idle;
+  (void)memcpy(&g_ra8_ota_cfg, cfg, sizeof g_ra8_ota_cfg);
+  g_ra8_ota_state       = k_ra8_ota_state_idle;
   s_manifest_valid      = false;
   s_bytes_done          = 0U;
   s_last_err            = k_ra8_ok;
-  s_ra8_ota_initialized = true;
+  g_ra8_ota_initialized = true;
   /* run_as_thread is honoured by an external adapter -- on host the
    * caller drives ra8_ota_run_step() directly. */
   return k_ra8_ok;
@@ -209,8 +210,8 @@ ra8_err_t ra8_ota_init(const ra8_ota_cfg_t* cfg)
  * @retval k_ra8_ok Always succeeds.
  *
  * @pre None (safe to call before init).
- * @post ``s_ra8_ota_initialized`` is false.
- * @post ``s_ra8_ota_cfg`` is zeroed.
+ * @post ``g_ra8_ota_initialized`` is false.
+ * @post ``g_ra8_ota_cfg`` is zeroed.
  *
  * @see ra8_ota_init()
  *
@@ -222,12 +223,12 @@ ra8_err_t ra8_ota_init(const ra8_ota_cfg_t* cfg)
  */
 ra8_err_t ra8_ota_deinit(void)
 {
-  s_ra8_ota_initialized = false;
-  s_ra8_ota_state       = k_ra8_ota_state_idle;
+  g_ra8_ota_initialized = false;
+  g_ra8_ota_state       = k_ra8_ota_state_idle;
   s_manifest_valid      = false;
   s_bytes_done          = 0U;
   s_last_err            = k_ra8_ok;
-  (void)memset(&s_ra8_ota_cfg, 0, sizeof s_ra8_ota_cfg);
+  (void)memset(&g_ra8_ota_cfg, 0, sizeof g_ra8_ota_cfg);
   return k_ra8_ok;
 }
 
@@ -235,7 +236,7 @@ ra8_err_t ra8_ota_deinit(void)
  * @brief Return the current OTA state-machine value.
  *
  * @details
- * Reads the latched ``s_ra8_ota_state`` directly. ``s_ra8_ota_state`` is a single byte,
+ * Reads the latched ``g_ra8_ota_state`` directly. ``g_ra8_ota_state`` is a single byte,
  * so a torn read is impossible on the target.
  *
  * @return ra8_ota_state_t outcome.
@@ -255,53 +256,53 @@ ra8_err_t ra8_ota_deinit(void)
  */
 ra8_ota_state_t ra8_ota_get_state(void)
 {
-  return s_ra8_ota_state;
+  return g_ra8_ota_state;
 }
 
 /**
- * @brief Open the manifest URL and drain its payload into ``s_ra8_ota_buf``.
+ * @brief Open the manifest URL and drain its payload into ``g_ra8_ota_buf``.
  *
  * @details
- * Calls ``s_ra8_ota_cfg.net.open`` on the configured manifest URL, validates
+ * Calls ``g_ra8_ota_cfg.net.open`` on the configured manifest URL, validates
  * the advertised content length is below ``k_ra8_ota_manifest_max_bytes``,
- * then drains via ``priv_drain`` and appends a NUL byte so the JSON
+ * then drains via ``internal_drain`` and appends a NUL byte so the JSON
  * helpers may use ``strstr``.
  *
- * @param[out] out_got Bytes received (NUL terminator added at ``s_ra8_ota_buf[got]``).
+ * @param[out] out_got Bytes received (NUL terminator added at ``g_ra8_ota_buf[got]``).
  *
  * @return ra8_err_t outcome.
- * @retval k_ra8_ok                Payload fetched into ``s_ra8_ota_buf``.
+ * @retval k_ra8_ok                Payload fetched into ``g_ra8_ota_buf``.
  * @retval k_ra8_err_invalid_size  Server advertised too large a body.
  * @retval other                  Whatever the network backend returned.
  *
  * @pre Module is initialized.
  * @pre ``out_got`` non-NULL.
- * @post On success ``s_ra8_ota_buf[0..*out_got]`` holds the payload + trailing NUL.
+ * @post On success ``g_ra8_ota_buf[0..*out_got]`` holds the payload + trailing NUL.
  * @post On failure the network connection has been closed.
  *
  * @note Static helper; not thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fetch_manifest_payload(uint32_t* out_got)
+static ra8_err_t internal_fetch_manifest_payload(uint32_t* out_got)
 {
   uint32_t  content_len = 0U;
   ra8_err_t e =
-    s_ra8_ota_cfg.net.open(s_ra8_ota_cfg.net.ctx, s_ra8_ota_cfg.manifest_url, &content_len);
+    g_ra8_ota_cfg.net.open(g_ra8_ota_cfg.net.ctx, g_ra8_ota_cfg.manifest_url, &content_len);
   if (e != k_ra8_ok) {
     return e;
   }
   if (content_len > k_ra8_ota_manifest_max_bytes) {
-    (void)s_ra8_ota_cfg.net.close(s_ra8_ota_cfg.net.ctx);
+    (void)g_ra8_ota_cfg.net.close(g_ra8_ota_cfg.net.ctx);
     return k_ra8_err_invalid_size;
   }
   uint32_t got = 0U;
-  e            = priv_drain(s_ra8_ota_buf, k_ra8_ota_manifest_max_bytes - 1U, &got);
-  (void)s_ra8_ota_cfg.net.close(s_ra8_ota_cfg.net.ctx);
+  e            = internal_drain(g_ra8_ota_buf, k_ra8_ota_manifest_max_bytes - 1U, &got);
+  (void)g_ra8_ota_cfg.net.close(g_ra8_ota_cfg.net.ctx);
   if (e != k_ra8_ok) {
     return e;
   }
-  s_ra8_ota_buf[got] = 0U; /* NUL terminate so JSON helpers can use strstr. */
+  g_ra8_ota_buf[got] = 0U; /* NUL terminate so JSON helpers can use strstr. */
   *out_got           = got;
   return k_ra8_ok;
 }
@@ -336,30 +337,30 @@ static ra8_err_t priv_fetch_manifest_payload(uint32_t* out_got)
  */
 ra8_err_t ra8_ota_check_for_update(ra8_ota_manifest_t* out_manifest)
 {
-  if (!s_ra8_ota_initialized) {
+  if (!g_ra8_ota_initialized) {
     return k_ra8_err_not_initialized;
   }
   RA8_CHECK_NULL_PTR(out_manifest, s_tag, "out_manifest");
-  if (s_ra8_ota_state != k_ra8_ota_state_idle) {
+  if (g_ra8_ota_state != k_ra8_ota_state_idle) {
     return k_ra8_err_invalid_state;
   }
-  ra8_ota_internal_set_state(k_ra8_ota_state_checking, k_ra8_ok);
+  priv_ota_set_state(k_ra8_ota_state_checking, k_ra8_ok);
 
   uint32_t  got = 0U;
-  ra8_err_t e   = priv_fetch_manifest_payload(&got);
+  ra8_err_t e   = internal_fetch_manifest_payload(&got);
   if (e != k_ra8_ok) {
-    ra8_ota_internal_set_state(k_ra8_ota_state_error, e);
+    priv_ota_set_state(k_ra8_ota_state_error, e);
     return e;
   }
 
-  e = ra8_ota_internal_manifest_decode((const char*)s_ra8_ota_buf, out_manifest);
+  e = priv_ota_manifest_decode((const char*)g_ra8_ota_buf, out_manifest);
   if (e != k_ra8_ok) {
-    ra8_ota_internal_set_state(k_ra8_ota_state_error, e);
+    priv_ota_set_state(k_ra8_ota_state_error, e);
     return e;
   }
   (void)memcpy(&s_manifest, out_manifest, sizeof s_manifest);
   s_manifest_valid = true;
-  ra8_ota_internal_set_state(k_ra8_ota_state_idle, k_ra8_ok);
+  priv_ota_set_state(k_ra8_ota_state_idle, k_ra8_ok);
   return k_ra8_ok;
 }
 
@@ -368,7 +369,7 @@ ra8_err_t ra8_ota_check_for_update(ra8_ota_manifest_t* out_manifest)
  *
  * @details
  * Computes a chunk size capped at ``k_ra8_ota_chunk_bytes``, drains it
- * via ``priv_drain``, updates the SHA-256 accumulator, programs it
+ * via ``internal_drain``, updates the SHA-256 accumulator, programs it
  * into flash at ``addr_base + *in_out_done`` and bumps the running
  * counter.
  *
@@ -390,31 +391,31 @@ ra8_err_t ra8_ota_check_for_update(ra8_ota_manifest_t* out_manifest)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_download_chunk(uint32_t addr_base, uint32_t* in_out_done, uint32_t total)
+static ra8_err_t internal_download_chunk(uint32_t addr_base, uint32_t* in_out_done, uint32_t total)
 {
   const uint32_t remaining = total - *in_out_done;
   const uint32_t want = (remaining < k_ra8_ota_chunk_bytes) ? remaining : k_ra8_ota_chunk_bytes;
   uint32_t       got  = 0U;
-  ra8_err_t      e    = priv_drain(s_ra8_ota_buf, want, &got);
+  ra8_err_t      e    = internal_drain(g_ra8_ota_buf, want, &got);
   if (e != k_ra8_ok) {
     return e;
   }
   if (got == 0U) {
     return k_ra8_err_hw_error;
   }
-  e = s_ra8_ota_cfg.crypto.sha256_update(s_ra8_ota_cfg.crypto.ctx, s_ra8_ota_buf, got);
+  e = g_ra8_ota_cfg.crypto.sha256_update(g_ra8_ota_cfg.crypto.ctx, g_ra8_ota_buf, got);
   if (e != k_ra8_ok) {
     return e;
   }
-  e = s_ra8_ota_cfg.flash.program(s_ra8_ota_cfg.flash.ctx,
+  e = g_ra8_ota_cfg.flash.program(g_ra8_ota_cfg.flash.ctx,
                                   addr_base + *in_out_done,
-                                  s_ra8_ota_buf,
+                                  g_ra8_ota_buf,
                                   got);
   if (e != k_ra8_ok) {
     return e;
   }
   *in_out_done += got;
-  ra8_ota_internal_set_state(k_ra8_ota_state_downloading, k_ra8_ok);
+  priv_ota_set_state(k_ra8_ota_state_downloading, k_ra8_ok);
   return k_ra8_ok;
 }
 
@@ -442,22 +443,22 @@ static ra8_err_t priv_download_chunk(uint32_t addr_base, uint32_t* in_out_done, 
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_prepare_bank(const ra8_ota_manifest_t* manifest)
+static ra8_err_t internal_prepare_bank(const ra8_ota_manifest_t* manifest)
 {
-  ra8_err_t e = s_ra8_ota_cfg.flash.erase(s_ra8_ota_cfg.flash.ctx,
-                                          s_ra8_ota_cfg.flash.inactive_bank_addr,
+  ra8_err_t e = g_ra8_ota_cfg.flash.erase(g_ra8_ota_cfg.flash.ctx,
+                                          g_ra8_ota_cfg.flash.inactive_bank_addr,
                                           manifest->image_size_bytes);
   if (e != k_ra8_ok) {
     return e;
   }
-  return s_ra8_ota_cfg.crypto.sha256_init(s_ra8_ota_cfg.crypto.ctx);
+  return g_ra8_ota_cfg.crypto.sha256_init(g_ra8_ota_cfg.crypto.ctx);
 }
 
 /**
  * @brief Drain chunks until the entire image is downloaded or an error fires.
  *
  * @details
- * Loops calling ``priv_download_chunk`` until ``s_bytes_done`` reaches
+ * Loops calling ``internal_download_chunk`` until ``s_bytes_done`` reaches
  * ``manifest->image_size_bytes``. Bounded by
  * ``(k_ra8_ota_max_image_bytes / k_ra8_ota_chunk_bytes) + 1`` iterations
  * (NASA Rule 2).
@@ -467,7 +468,7 @@ static ra8_err_t priv_prepare_bank(const ra8_ota_manifest_t* manifest)
  * @return ra8_err_t outcome.
  * @retval k_ra8_ok           Download completed.
  * @retval k_ra8_err_hw_error Chunk count exceeded the static cap.
- * @retval other             Whatever ``priv_download_chunk`` returned.
+ * @retval other             Whatever ``internal_download_chunk`` returned.
  *
  * @pre Module is in ``downloading``.
  * @pre ``manifest`` non-NULL.
@@ -478,7 +479,7 @@ static ra8_err_t priv_prepare_bank(const ra8_ota_manifest_t* manifest)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_download_loop(const ra8_ota_manifest_t* manifest)
+static ra8_err_t internal_download_loop(const ra8_ota_manifest_t* manifest)
 {
   const uint32_t max_chunks = (k_ra8_ota_max_image_bytes / k_ra8_ota_chunk_bytes) + 1U;
   uint32_t       chunks     = 0U;
@@ -490,9 +491,9 @@ static ra8_err_t priv_download_loop(const ra8_ota_manifest_t* manifest)
       e = k_ra8_err_hw_error; /* GCOVR_EXCL_LINE */
       break;                  /* GCOVR_EXCL_LINE */
     }
-    e = priv_download_chunk(s_ra8_ota_cfg.flash.inactive_bank_addr,
-                            &s_bytes_done,
-                            manifest->image_size_bytes);
+    e = internal_download_chunk(g_ra8_ota_cfg.flash.inactive_bank_addr,
+                                &s_bytes_done,
+                                manifest->image_size_bytes);
     if (e != k_ra8_ok) {
       break;
     }
@@ -506,8 +507,8 @@ static ra8_err_t priv_download_loop(const ra8_ota_manifest_t* manifest)
  *
  * @details
  * On a fresh start (``s_bytes_done == 0``) erases the bank and primes
- * the SHA accumulator via ``priv_prepare_bank``. Then opens the image
- * URL and runs ``priv_download_loop``. On success the state machine
+ * the SHA accumulator via ``internal_prepare_bank``. Then opens the image
+ * URL and runs ``internal_download_loop``. On success the state machine
  * lands in ``verifying``; on failure it lands in ``error``.
  *
  * @param[in] manifest Manifest describing the image to fetch.
@@ -532,44 +533,44 @@ static ra8_err_t priv_download_loop(const ra8_ota_manifest_t* manifest)
  */
 ra8_err_t ra8_ota_download_to_inactive_bank(const ra8_ota_manifest_t* manifest)
 {
-  if (!s_ra8_ota_initialized) {
+  if (!g_ra8_ota_initialized) {
     return k_ra8_err_not_initialized;
   }
   RA8_CHECK_NULL_PTR(manifest, s_tag, "manifest");
-  if (ra8_ota_internal_download_state_invalid((uint32_t)k_ra8_ota_state_idle,
-                                              (uint32_t)k_ra8_ota_state_downloading,
-                                              (uint32_t)s_ra8_ota_state)) {
+  if (priv_ota_download_state_invalid((uint32_t)k_ra8_ota_state_idle,
+                                      (uint32_t)k_ra8_ota_state_downloading,
+                                      (uint32_t)g_ra8_ota_state)) {
     return k_ra8_err_invalid_state;
   }
-  if (manifest->image_size_bytes > s_ra8_ota_cfg.flash.bank_size_bytes) {
-    ra8_ota_internal_set_state(k_ra8_ota_state_error, k_ra8_err_invalid_size);
+  if (manifest->image_size_bytes > g_ra8_ota_cfg.flash.bank_size_bytes) {
+    priv_ota_set_state(k_ra8_ota_state_error, k_ra8_err_invalid_size);
     return k_ra8_err_invalid_size;
   }
 
   if (s_bytes_done == 0U) {
-    const ra8_err_t e = priv_prepare_bank(manifest);
+    const ra8_err_t e = internal_prepare_bank(manifest);
     if (e != k_ra8_ok) {
-      ra8_ota_internal_set_state(k_ra8_ota_state_error, e);
+      priv_ota_set_state(k_ra8_ota_state_error, e);
       return e;
     }
   }
 
   uint32_t  content_len = 0U;
-  ra8_err_t e = s_ra8_ota_cfg.net.open(s_ra8_ota_cfg.net.ctx, manifest->image_url, &content_len);
+  ra8_err_t e = g_ra8_ota_cfg.net.open(g_ra8_ota_cfg.net.ctx, manifest->image_url, &content_len);
   if (e != k_ra8_ok) {
-    ra8_ota_internal_set_state(k_ra8_ota_state_error, e);
+    priv_ota_set_state(k_ra8_ota_state_error, e);
     return e;
   }
-  ra8_ota_internal_set_state(k_ra8_ota_state_downloading, k_ra8_ok);
+  priv_ota_set_state(k_ra8_ota_state_downloading, k_ra8_ok);
 
-  e = priv_download_loop(manifest);
-  (void)s_ra8_ota_cfg.net.close(s_ra8_ota_cfg.net.ctx);
+  e = internal_download_loop(manifest);
+  (void)g_ra8_ota_cfg.net.close(g_ra8_ota_cfg.net.ctx);
 
   if (e != k_ra8_ok) {
-    ra8_ota_internal_set_state(k_ra8_ota_state_error, e);
+    priv_ota_set_state(k_ra8_ota_state_error, e);
     return e;
   }
-  ra8_ota_internal_set_state(k_ra8_ota_state_verifying, k_ra8_ok);
+  priv_ota_set_state(k_ra8_ota_state_verifying, k_ra8_ok);
   return k_ra8_ok;
 }
 
@@ -577,7 +578,7 @@ ra8_err_t ra8_ota_download_to_inactive_bank(const ra8_ota_manifest_t* manifest)
  * @brief Latch the inactive bank as the next boot bank and reboot.
  *
  * @details
- * Calls ``s_ra8_ota_cfg.flash.set_startup`` to mark the inactive bank as the
+ * Calls ``g_ra8_ota_cfg.flash.set_startup`` to mark the inactive bank as the
  * boot bank, then invokes ``ra8_ota_system_reset_hook`` (which on
  * hardware overrides to ``NVIC_SystemReset`` and on host is a no-op
  * for testability).
@@ -601,20 +602,20 @@ ra8_err_t ra8_ota_download_to_inactive_bank(const ra8_ota_manifest_t* manifest)
  */
 ra8_err_t ra8_ota_commit_and_reboot(void)
 {
-  if (!s_ra8_ota_initialized) {
+  if (!g_ra8_ota_initialized) {
     return k_ra8_err_not_initialized;
   }
-  if (s_ra8_ota_state != k_ra8_ota_state_committing) {
+  if (g_ra8_ota_state != k_ra8_ota_state_committing) {
     return k_ra8_err_invalid_state;
   }
-  const ra8_err_t e = s_ra8_ota_cfg.flash.set_startup(s_ra8_ota_cfg.flash.ctx,
-                                                      s_ra8_ota_cfg.flash.inactive_bank_index,
+  const ra8_err_t e = g_ra8_ota_cfg.flash.set_startup(g_ra8_ota_cfg.flash.ctx,
+                                                      g_ra8_ota_cfg.flash.inactive_bank_index,
                                                       true);
   if (e != k_ra8_ok) {
-    ra8_ota_internal_set_state(k_ra8_ota_state_error, e);
+    priv_ota_set_state(k_ra8_ota_state_error, e);
     return e;
   }
-  ra8_ota_internal_set_state(k_ra8_ota_state_done, k_ra8_ok);
+  priv_ota_set_state(k_ra8_ota_state_done, k_ra8_ok);
   /* On hardware ra8_ota_system_reset_hook is overridden to call
    * NVIC_SystemReset; in the host build it is a no-op. */
   ra8_ota_system_reset_hook();
@@ -625,7 +626,7 @@ ra8_err_t ra8_ota_commit_and_reboot(void)
  * @brief Drive one transition based on the current state.
  *
  * @details
- * Switches on ``s_ra8_ota_state`` and dispatches to the matching public-API
+ * Switches on ``g_ra8_ota_state`` and dispatches to the matching public-API
  * function (``check_for_update``, ``download_to_inactive_bank``,
  * ``verify_signature`` or ``commit_and_reboot``). Terminal states
  * (``done`` / ``error``) return ``k_ra8_ok`` so the caller may stop
@@ -645,9 +646,9 @@ ra8_err_t ra8_ota_commit_and_reboot(void)
  * @post Side effects bounded to documented state.
  */
 RA8_INTERNAL
-static ra8_err_t priv_step_dispatch(void)
+static ra8_err_t internal_step_dispatch(void)
 {
-  switch (s_ra8_ota_state) {
+  switch (g_ra8_ota_state) {
     case k_ra8_ota_state_idle: {
       /* If a previous run_step already fetched and validated the
        * manifest, advance to download instead of re-fetching it. */
@@ -658,7 +659,7 @@ static ra8_err_t priv_step_dispatch(void)
       return ra8_ota_check_for_update(&m);
     }
     /* checking and downloading are always resolved synchronously within a
-     * single API call; priv_step_dispatch is never entered while the SM
+     * single API call; internal_step_dispatch is never entered while the SM
      * holds one of these transient states in the host build. */
     case k_ra8_ota_state_checking:
     case k_ra8_ota_state_downloading:
@@ -682,8 +683,8 @@ static ra8_err_t priv_step_dispatch(void)
  * @brief Drive the OTA state machine one step forward.
  *
  * @details
- * Thin wrapper over ``priv_step_dispatch`` that gates on
- * ``s_ra8_ota_initialized``. Intended for callers that opted out of running
+ * Thin wrapper over ``internal_step_dispatch`` that gates on
+ * ``g_ra8_ota_initialized``. Intended for callers that opted out of running
  * the OTA worker as a background thread.
  *
  * @return ra8_err_t outcome.
@@ -705,10 +706,10 @@ static ra8_err_t priv_step_dispatch(void)
  */
 ra8_err_t ra8_ota_run_step(void)
 {
-  if (!s_ra8_ota_initialized) {
+  if (!g_ra8_ota_initialized) {
     return k_ra8_err_not_initialized;
   }
-  return priv_step_dispatch();
+  return internal_step_dispatch();
 }
 
 /**
@@ -738,14 +739,14 @@ ra8_err_t ra8_ota_run_step(void)
  */
 ra8_err_t ra8_ota_run_full_update(void)
 {
-  if (!s_ra8_ota_initialized) {
+  if (!g_ra8_ota_initialized) {
     return k_ra8_err_not_initialized;
   }
   /* Bounded by the longest legal sequence (idle -> checking ->
    * downloading -> verifying -> committing -> done). Six steps is
    * the upper bound; pad to ``k_ra8_ota_state_count`` for safety. */
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_ota_state_count; ++i) {
-    if ((s_ra8_ota_state == k_ra8_ota_state_done) || (s_ra8_ota_state == k_ra8_ota_state_error)) {
+    if ((g_ra8_ota_state == k_ra8_ota_state_done) || (g_ra8_ota_state == k_ra8_ota_state_error)) {
       break;
     }
     const ra8_err_t e = ra8_ota_run_step();

@@ -7,9 +7,9 @@
  * signature-verification responsibility so the orchestration TU stays
  * under the per-file line budget:
  *
- *   - ``priv_rehash_bank`` re-derives the inactive-bank SHA-256 after
+ *   - ``internal_rehash_bank`` re-derives the inactive-bank SHA-256 after
  *     the streamed program pass.
- *   - ``priv_bind_manifest_material`` binds the manifest metadata
+ *   - ``internal_bind_manifest_material`` binds the manifest metadata
  *     (version / URL / size) plus the image digest into the canonical
  *     material the server ECDSA signature authenticates (T5-05).
  *   - ``ra8_ota_verify_signature`` (public API) compares the re-derived
@@ -19,7 +19,7 @@
  * The verify path reads the module-static state defined in ``ra8_ota.c``
  * (configuration, state byte, init flag, streaming buffer) through the
  * ``extern`` declarations in ``ra8_ota_internal.h`` and drives state
- * transitions through ``ra8_ota_internal_set_state``. The read-only log
+ * transitions through ``priv_ota_set_state``. The read-only log
  * tag is duplicated locally (cheap, correct for an immutable literal).
  * No malloc anywhere (NASA Rule 3); every loop has a static upper bound
  * (NASA Rule 2).
@@ -46,8 +46,8 @@ static const char* const s_tag = "ra8_ota";
  *
  * @details
  * Re-initialises the SHA accumulator then walks the inactive bank in
- * ``k_ra8_ota_chunk_bytes`` chunks via ``s_ra8_ota_cfg.flash.readback``,
- * feeding each one to ``s_ra8_ota_cfg.crypto.sha256_update``. Finalises
+ * ``k_ra8_ota_chunk_bytes`` chunks via ``g_ra8_ota_cfg.flash.readback``,
+ * feeding each one to ``g_ra8_ota_cfg.crypto.sha256_update``. Finalises
  * into ``out_digest``. Loop is bounded by
  * ``(k_ra8_ota_max_image_bytes / k_ra8_ota_chunk_bytes) + 1``.
  *
@@ -67,9 +67,9 @@ static const char* const s_tag = "ra8_ota";
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_rehash_bank(const ra8_ota_manifest_t* m, uint8_t out_digest[32])
+static ra8_err_t internal_rehash_bank(const ra8_ota_manifest_t* m, uint8_t out_digest[32])
 {
-  ra8_err_t e = s_ra8_ota_cfg.crypto.sha256_init(s_ra8_ota_cfg.crypto.ctx);
+  ra8_err_t e = g_ra8_ota_cfg.crypto.sha256_init(g_ra8_ota_cfg.crypto.ctx);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -81,20 +81,20 @@ static ra8_err_t priv_rehash_bank(const ra8_ota_manifest_t* m, uint8_t out_diges
     }
     const uint32_t remaining = m->image_size_bytes - offset;
     const uint32_t want = (remaining < k_ra8_ota_chunk_bytes) ? remaining : k_ra8_ota_chunk_bytes;
-    e = s_ra8_ota_cfg.flash.readback(s_ra8_ota_cfg.flash.ctx,
-                                     s_ra8_ota_cfg.flash.inactive_bank_addr + offset,
-                                     s_ra8_ota_buf,
+    e = g_ra8_ota_cfg.flash.readback(g_ra8_ota_cfg.flash.ctx,
+                                     g_ra8_ota_cfg.flash.inactive_bank_addr + offset,
+                                     g_ra8_ota_buf,
                                      want);
     if (e != k_ra8_ok) {
       return e;
     }
-    e = s_ra8_ota_cfg.crypto.sha256_update(s_ra8_ota_cfg.crypto.ctx, s_ra8_ota_buf, want);
+    e = g_ra8_ota_cfg.crypto.sha256_update(g_ra8_ota_cfg.crypto.ctx, g_ra8_ota_buf, want);
     if (e != k_ra8_ok) {
       return e;
     }
     offset += want;
   }
-  return s_ra8_ota_cfg.crypto.sha256_final(s_ra8_ota_cfg.crypto.ctx, out_digest);
+  return g_ra8_ota_cfg.crypto.sha256_final(g_ra8_ota_cfg.crypto.ctx, out_digest);
 }
 
 /**
@@ -106,7 +106,7 @@ static ra8_err_t priv_rehash_bank(const ra8_ota_manifest_t* m, uint8_t out_diges
  * canonical layout: the NUL-padded ``version`` / ``image_url`` char arrays plus
  * a 4-byte little-endian image size, then the image digest.
  *
- * @see priv_bind_manifest_material
+ * @see internal_bind_manifest_material
  */
 typedef enum : uint8_t {
   k_ra8_ota_size_field_bytes = 4U, /**< Little-endian width of ``image_size_bytes``. */
@@ -123,7 +123,7 @@ typedef enum : uint8_t {
  * the 4-byte little-endian image size, then ``image_digest`` concatenated in that
  * order (T5-05). Every field is fixed-width (the NUL-padded ``version`` / ``image_url``
  * char arrays and a 4-byte little-endian size), so the concatenation is an
- * unambiguous canonical encoding; ``ra8_ota_internal_manifest_decode`` zero-fills
+ * unambiguous canonical encoding; ``priv_ota_manifest_decode`` zero-fills
  * the manifest before decode so the padding is deterministic. The hash streams
  * through the injected SHA-256 interface, the same engine that produced
  * ``image_digest``.
@@ -146,9 +146,9 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_bind_manifest_material(const ra8_ota_manifest_t* manifest,
-                                             const uint8_t*            image_digest,
-                                             uint8_t out_bound[k_ra8_ota_sha256_bytes])
+static ra8_err_t internal_bind_manifest_material(const ra8_ota_manifest_t* manifest,
+                                                 const uint8_t*            image_digest,
+                                                 uint8_t out_bound[k_ra8_ota_sha256_bytes])
 {
   RA8_CHECK_NULL_PTR(manifest, s_tag, "bind: manifest");
   RA8_CHECK_NULL_PTR(image_digest, s_tag, "bind: image_digest");
@@ -177,27 +177,27 @@ static ra8_err_t priv_bind_manifest_material(const ra8_ota_manifest_t* manifest,
   static_assert(sizeof segments / sizeof segments[0] == sizeof lengths / sizeof lengths[0],
                 "segments[] and lengths[] must describe the same number of chunks");
 
-  ra8_err_t e = s_ra8_ota_cfg.crypto.sha256_init(s_ra8_ota_cfg.crypto.ctx);
+  ra8_err_t e = g_ra8_ota_cfg.crypto.sha256_init(g_ra8_ota_cfg.crypto.ctx);
   if (e != k_ra8_ok) {
     return e;
   }
   for (uint8_t i = 0U; i < (uint8_t)(sizeof segments / sizeof segments[0]); ++i) {
-    e = s_ra8_ota_cfg.crypto.sha256_update(s_ra8_ota_cfg.crypto.ctx, segments[i], lengths[i]);
+    e = g_ra8_ota_cfg.crypto.sha256_update(g_ra8_ota_cfg.crypto.ctx, segments[i], lengths[i]);
     if (e != k_ra8_ok) {
       return e;
     }
   }
-  return s_ra8_ota_cfg.crypto.sha256_final(s_ra8_ota_cfg.crypto.ctx, out_bound);
+  return g_ra8_ota_cfg.crypto.sha256_final(g_ra8_ota_cfg.crypto.ctx, out_bound);
 }
 
 /**
  * @brief Verify the freshly-programmed bank against the manifest signature.
  *
  * @details
- * Re-hashes the inactive bank via ``priv_rehash_bank`` and compares the digest
+ * Re-hashes the inactive bank via ``internal_rehash_bank`` and compares the digest
  * against ``manifest->image_sha256``. On a match it binds the manifest metadata
  * (version / URL / size) into the signed material via
- * ``priv_bind_manifest_material`` and invokes the configured ECDSA verifier over
+ * ``internal_bind_manifest_material`` and invokes the configured ECDSA verifier over
  * that metadata-bound digest, so a MITM that alters the declared version
  * (defeating anti-rollback), redirects the URL, or changes the size cannot ride a
  * signature made over the bare image digest (T5-05). On success the state machine
@@ -226,25 +226,25 @@ static ra8_err_t priv_bind_manifest_material(const ra8_ota_manifest_t* manifest,
  */
 ra8_err_t ra8_ota_verify_signature(const ra8_ota_manifest_t* manifest)
 {
-  if (!s_ra8_ota_initialized) {
+  if (!g_ra8_ota_initialized) {
     return k_ra8_err_not_initialized;
   }
   RA8_CHECK_NULL_PTR(manifest, s_tag, "manifest");
-  if (s_ra8_ota_state != k_ra8_ota_state_verifying) {
+  if (g_ra8_ota_state != k_ra8_ota_state_verifying) {
     return k_ra8_err_invalid_state;
   }
 
   uint8_t   digest[k_ra8_ota_sha256_bytes] = {};
-  ra8_err_t e                              = priv_rehash_bank(manifest, digest);
+  ra8_err_t e                              = internal_rehash_bank(manifest, digest);
   if (e != k_ra8_ok) {
-    ra8_ota_internal_set_state(k_ra8_ota_state_error, e);
+    priv_ota_set_state(k_ra8_ota_state_error, e);
     return e;
   }
   /* Constant-time compare: this digest gates the ECDSA signature check, so a
    * data-dependent early-out would leak how many leading bytes of the expected
    * hash matched -- a byte-at-a-time forgery primitive (T5-12). */
   if (!ra8_ct_equal(digest, manifest->image_sha256, k_ra8_ota_sha256_bytes)) {
-    ra8_ota_internal_set_state(k_ra8_ota_state_error, k_ra8_err_crc_mismatch);
+    priv_ota_set_state(k_ra8_ota_state_error, k_ra8_err_crc_mismatch);
     return k_ra8_err_crc_mismatch;
   }
   /* Bind the manifest metadata (version/url/size) into the material the ECDSA
@@ -252,20 +252,20 @@ ra8_err_t ra8_ota_verify_signature(const ra8_ota_manifest_t* manifest)
    * redirected URL, or a changed size cannot ride a signature made over the bare
    * image digest (T5-05). */
   uint8_t bound[k_ra8_ota_sha256_bytes] = {};
-  e                                     = priv_bind_manifest_material(manifest, digest, bound);
+  e                                     = internal_bind_manifest_material(manifest, digest, bound);
   if (e != k_ra8_ok) {
-    ra8_ota_internal_set_state(k_ra8_ota_state_error, e);
+    priv_ota_set_state(k_ra8_ota_state_error, e);
     return e;
   }
-  e = s_ra8_ota_cfg.crypto.ecdsa_verify(s_ra8_ota_cfg.crypto.ctx,
-                                        s_ra8_ota_cfg.pubkey_handle,
+  e = g_ra8_ota_cfg.crypto.ecdsa_verify(g_ra8_ota_cfg.crypto.ctx,
+                                        g_ra8_ota_cfg.pubkey_handle,
                                         bound,
                                         manifest->signature,
                                         manifest->signature_len);
   if (e != k_ra8_ok) {
-    ra8_ota_internal_set_state(k_ra8_ota_state_error, k_ra8_err_hw_error);
+    priv_ota_set_state(k_ra8_ota_state_error, k_ra8_err_hw_error);
     return k_ra8_err_hw_error;
   }
-  ra8_ota_internal_set_state(k_ra8_ota_state_committing, k_ra8_ok);
+  priv_ota_set_state(k_ra8_ota_state_committing, k_ra8_ok);
   return k_ra8_ok;
 }
