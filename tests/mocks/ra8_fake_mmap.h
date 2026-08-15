@@ -26,7 +26,9 @@ extern "C" {
  * place -- only clears their contents.
  *
  * @pre Called from a host (`RA8_OFF_TARGET`) test binary.
+ * @pre No MMIO-backed production routine is running concurrently.
  * @post Every byte in the mapped hardware windows reads zero.
+ * @post The mappings remain installed at their target virtual addresses.
  *
  * @note Not thread-safe. Tests are single-threaded.
  * @since 0.1.0

@@ -55,9 +55,13 @@ typedef enum : uint8_t {
 
 /**
  * @brief Reset the region table to empty.
- *
+ * @details Discards every recorded world classification without touching the
+ * caller-owned memory those records described.
+ * @return Nothing.
+ * @pre No range query is executing concurrently.
+ * @pre The fake has process-lifetime static storage.
  * @post No regions tagged.
- *
+ * @post A subsequent query treats every range as unclassified.
  * @note Test-only.
  * @since 0.1.0
  */
