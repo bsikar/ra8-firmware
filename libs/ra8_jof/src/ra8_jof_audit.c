@@ -314,6 +314,91 @@ RA8_INTERNAL static uint32_t internal_duplicate_count(const ra8_jof_audit_record
   return matches;
 }
 
+/** @brief Mutable state shared by the bounded per-tile audit operation. */
+typedef struct internal_audit_context_t {
+  ra8_jof_pread_fn           pread;           /**< Injected positioned reader.     */
+  void*                      pread_ctx;       /**< Reader-specific context.        */
+  ra8_jof_audit_workspace_t* workspace;       /**< Caller-owned reusable storage.  */
+  ra8_jof_audit_result_t*    candidate;       /**< Transactional result candidate. */
+  uint32_t                   expected_offset; /**< Next canonical payload offset.  */
+} internal_audit_context_t;
+
+/**
+ * @brief Audit one index entry and its decoded tile evidence.
+ * @details Reads the canonical record, checks stored coverage, decodes through
+ * caller scratch, validates edge geometry, and accumulates diagnostic evidence.
+ * @param[in,out] context Mutable bounded audit state and caller workspaces.
+ * @param[in] index_number Zero-based index record to audit.
+ * @return Canonical read, decode, or validation status.
+ * @retval k_ra8_ok One record and its tile evidence were completed.
+ * @retval k_ra8_err_validation_failed Stored offset arithmetic was invalid.
+ * @retval other Injected read, tile decode, or dimension derivation failed.
+ * @pre @p context is non-null and all workspace spans passed overlap checks.
+ * @pre @p index_number is below the parsed tile count and record capacity.
+ * @post Success initializes exactly the selected record and advances coverage.
+ * @post Failure never increments the decoded-tile count for an incomplete tile.
+ * @note Duplicate fingerprints are diagnostic candidates, not equality proof.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_audit_tile(internal_audit_context_t* context, uint32_t index_number)
+{
+  uint8_t        index[k_ra8_jof_index_entry] = {};
+  const uint64_t index_at = (uint64_t)context->candidate->info.index_off +
+                            ((uint64_t)index_number * (uint64_t)k_ra8_jof_index_entry);
+  ra8_err_t      rc =
+    internal_read_exact(context->pread, context->pread_ctx, index_at, index, sizeof(index));
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+  ra8_jof_audit_record_t* const record = &context->workspace->records[index_number];
+  *record                              = (ra8_jof_audit_record_t){
+    .offset = internal_rd_u32(&index[k_ra8_jof_idx_ofs_offset]),
+    .length = internal_rd_u32(&index[k_ra8_jof_idx_ofs_length]),
+  };
+  if (record->offset != context->expected_offset) {
+    context->candidate->coverage_errors++;
+  }
+  const uint64_t next = (uint64_t)record->offset + (uint64_t)record->length;
+  if (next > UINT32_MAX) {
+    return k_ra8_err_validation_failed;
+  }
+  context->expected_offset = (uint32_t)next;
+
+  const uint16_t tx = (uint16_t)(index_number % (uint32_t)context->candidate->info.tile_cols);
+  const uint16_t ty = (uint16_t)(index_number / (uint32_t)context->candidate->info.tile_cols);
+  rc                = ra8_jof_read_tile(context->pread,
+                                        context->pread_ctx,
+                                        &context->candidate->info,
+                                        tx,
+                                        ty,
+                                        context->workspace->scratch,
+                                        context->workspace->scratch_cap,
+                                        context->workspace->tile,
+                                        context->workspace->tile_cap,
+                                        &record->width,
+                                        &record->height);
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+  record->payload =
+    (uint32_t)record->width * (uint32_t)record->height * (uint32_t)context->candidate->info.bpp;
+  uint16_t want_w = 0U;
+  uint16_t want_h = 0U;
+  rc              = ra8_jof_tile_dims(&context->candidate->info, tx, ty, &want_w, &want_h);
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+  if ((record->width != want_w) || (record->height != want_h)) {
+    context->candidate->geometry_errors++;
+  }
+  record->content_hash = internal_hash(context->workspace->tile, record->payload, &record->uniform);
+  context->candidate->duplicate_candidates +=
+    internal_duplicate_count(context->workspace->records, index_number, record);
+  context->candidate->decoded_tiles++;
+  return k_ra8_ok;
+}
+
 ra8_err_t ra8_jof_audit(ra8_jof_pread_fn           pread,
                         void*                      pread_ctx,
                         uint64_t                   total_size,
@@ -338,61 +423,18 @@ ra8_err_t ra8_jof_audit(ra8_jof_pread_fn           pread,
     return rc;
   }
 
-  uint32_t expected_offset = (uint32_t)k_ra8_jof_hdr_bytes;
+  internal_audit_context_t context = {.pread           = pread,
+                                      .pread_ctx       = pread_ctx,
+                                      .workspace       = workspace,
+                                      .candidate       = &candidate,
+                                      .expected_offset = (uint32_t)k_ra8_jof_hdr_bytes};
   for (uint32_t i = 0U; i < candidate.info.tile_count; ++i) {
-    uint8_t        index[k_ra8_jof_index_entry] = {};
-    const uint64_t index_at =
-      (uint64_t)candidate.info.index_off + ((uint64_t)i * (uint64_t)k_ra8_jof_index_entry);
-    rc = internal_read_exact(pread, pread_ctx, index_at, index, sizeof(index));
+    rc = internal_audit_tile(&context, i);
     if (rc != k_ra8_ok) {
       return rc;
     }
-    ra8_jof_audit_record_t* const record = &workspace->records[i];
-    *record                              = (ra8_jof_audit_record_t){
-      .offset = internal_rd_u32(&index[k_ra8_jof_idx_ofs_offset]),
-      .length = internal_rd_u32(&index[k_ra8_jof_idx_ofs_length]),
-    };
-    if (record->offset != expected_offset) {
-      candidate.coverage_errors++;
-    }
-    const uint64_t next = (uint64_t)record->offset + (uint64_t)record->length;
-    if (next > UINT32_MAX) {
-      return k_ra8_err_validation_failed;
-    }
-    expected_offset = (uint32_t)next;
-
-    const uint16_t tx = (uint16_t)(i % (uint32_t)candidate.info.tile_cols);
-    const uint16_t ty = (uint16_t)(i / (uint32_t)candidate.info.tile_cols);
-    rc                = ra8_jof_read_tile(pread,
-                                          pread_ctx,
-                                          &candidate.info,
-                                          tx,
-                                          ty,
-                                          workspace->scratch,
-                                          workspace->scratch_cap,
-                                          workspace->tile,
-                                          workspace->tile_cap,
-                                          &record->width,
-                                          &record->height);
-    if (rc != k_ra8_ok) {
-      return rc;
-    }
-    record->payload =
-      (uint32_t)record->width * (uint32_t)record->height * (uint32_t)candidate.info.bpp;
-    uint16_t want_w = 0U;
-    uint16_t want_h = 0U;
-    rc              = ra8_jof_tile_dims(&candidate.info, tx, ty, &want_w, &want_h);
-    if (rc != k_ra8_ok) {
-      return rc;
-    }
-    if ((record->width != want_w) || (record->height != want_h)) {
-      candidate.geometry_errors++;
-    }
-    record->content_hash = internal_hash(workspace->tile, record->payload, &record->uniform);
-    candidate.duplicate_candidates += internal_duplicate_count(workspace->records, i, record);
-    candidate.decoded_tiles++;
   }
-  if (expected_offset != candidate.info.index_off) {
+  if (context.expected_offset != candidate.info.index_off) {
     candidate.coverage_errors++;
   }
   *out = candidate;

@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_jpeg_sw.h"
@@ -54,8 +55,8 @@ typedef enum : uint16_t {
   k_jt_mse_psnr30_max = 65U,                        /**< MSE for PSNR ~= 30 dB. */
 } ra8_jpeg_test_const_t;
 
-/** @brief Fill an RGB888 buffer with a deterministic gradient. */
-static void fill_gradient(uint8_t* rgb, uint16_t w, uint16_t h)
+/** @brief Fill an RGB888 buffer with a deterministic gradient. @details Exercises the fill gradient path with bounded caller-owned fixture state and verifies its documented result. @param[in,out] rgb Interleaved RGB fixture pixels. @param[in] w Image width value or receiver exercised by this helper. @param[in] h Image height value or receiver exercised by this helper. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_fill_gradient(uint8_t* rgb, uint16_t w, uint16_t h)
 {
   for (uint16_t y = 0U; y < h; y++) {
     for (uint16_t x = 0U; x < w; x++) {
@@ -68,7 +69,7 @@ static void fill_gradient(uint8_t* rgb, uint16_t w, uint16_t h)
 }
 
 /**
- * @test test_mcdc_decode_pad_byte_chain
+ * @test internal_test_mcdc_decode_pad_byte_chain
  * @par MC/DC:
  * Decision ra8_jpeg_sw_decode line 1639 inner pad-skip while-loop:
  *   `d->cursor < d->src_len && d->src[d->cursor] == 0xFF` (2 conds).
@@ -77,9 +78,8 @@ static void fill_gradient(uint8_t* rgb, uint16_t w, uint16_t h)
  *   V_many_pad : 0xFF 0xFF 0xFF then marker   -> loop iterates
  *   V_pad_eob  : trailing 0xFF run hitting EOB -> C1=F (cursor==len)
  * Same sub-decisions also exist in get_dimensions line 1400 and are
- * hit by V_one_pad / V_many_pad through that path.
- */
-static void test_mcdc_decode_pad_byte_chain(void)
+ * hit by V_one_pad / V_many_pad through that path. @brief Verify mcdc decode pad byte chain behavior. @details Executes the mcdc decode pad byte chain scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_decode_pad_byte_chain(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC decode/get_dimensions: pad-byte while-loop");
   uint8_t  out[k_jpeg_out_large] = {};
@@ -118,7 +118,7 @@ static void test_mcdc_decode_pad_byte_chain(void)
 }
 
 /**
- * @test test_mcdc_get_dimensions_seglen_independent
+ * @test internal_test_mcdc_get_dimensions_seglen_independent
  * @par MC/DC:
  * Decision ra8_jpeg_sw_get_dimensions line 1416:
  *   `seglen < 2U || (uint32_t)seglen > jpeg_len - i`.
@@ -128,9 +128,8 @@ static void test_mcdc_decode_pad_byte_chain(void)
  *   V_short_after_app : APP0 with seglen=1 mid-stream -> C1=T
  *   V_over_after_app  : APP0 with seglen=0xFFFF       -> C2=T
  *   V_ok              : APP0 with seglen=4 + 2 payload bytes, then
- *                       valid SOF0 -> C1=F C2=F (success)
- */
-static void test_mcdc_get_dimensions_seglen_independent(void)
+ *                       valid SOF0 -> C1=F C2=F (success) @brief Verify mcdc get dimensions seglen independent behavior. @details Executes the mcdc get dimensions seglen independent scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_get_dimensions_seglen_independent(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC get_dimensions: seglen<2 vs seglen>buf");
   uint16_t w = 0U;
@@ -173,7 +172,7 @@ static void test_mcdc_get_dimensions_seglen_independent(void)
 }
 
 /**
- * @test test_mcdc_decode_sos_without_sof
+ * @test internal_test_mcdc_decode_sos_without_sof
  * @par MC/DC:
  * SOS handling in ra8_jpeg_sw_decode requires SOF0 first; this guards
  * the `if (!got_sof)` branch (independent of the SOS-validation
@@ -181,9 +180,8 @@ static void test_mcdc_get_dimensions_seglen_independent(void)
  * round-trip tests where !got_sof is false.
  *   V_no_sof : SOI -> SOS directly             -> protocol_error
  *   V_with_sof: SOI -> SOF0 -> DQT -> DHT -> SOS (round-trip path,
- *               already covered) -> ok
- */
-static void test_mcdc_decode_sos_without_sof(void)
+ *               already covered) -> ok @brief Verify mcdc decode sos without sof behavior. @details Executes the mcdc decode sos without sof scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_decode_sos_without_sof(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC decode: SOS arrives before SOF0");
   uint8_t              out[k_jpeg_out_large] = {};
@@ -213,7 +211,7 @@ static void test_mcdc_decode_sos_without_sof(void)
 }
 
 /**
- * @test test_mcdc_decode_dht_tc_th_independent
+ * @test internal_test_mcdc_decode_dht_tc_th_independent
  * @par MC/DC:
  * Decision dec_parse_dht line 1041:
  *   `if (tc >= k_ra8_jpeg_huff_classes || th >= k_ra8_jpeg_huff_ids)` (2 conds).
@@ -232,9 +230,8 @@ static void test_mcdc_decode_sos_without_sof(void)
  *
  * Layout (per-vector): SOI, DHT_marker, len=0x13 (19), tc_th, 16x 0x00
  * (BITS list -- all-zero so total=0 symbols) and EOI. Total = 23 bytes;
- * the framing satisfies `len <= src_len - cursor` (19 <= 23-4 = 19).
- */
-static void test_mcdc_decode_dht_tc_th_independent(void)
+ * the framing satisfies `len <= src_len - cursor` (19 <= 23-4 = 19). @brief Verify mcdc decode dht tc th independent behavior. @details Executes the mcdc decode dht tc th independent scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_decode_dht_tc_th_independent(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC dec_parse_dht: tc/th independence pairs");
   uint8_t  out[k_jpeg_out_small] = {};
@@ -268,7 +265,7 @@ static void test_mcdc_decode_dht_tc_th_independent(void)
 }
 
 /**
- * @test test_mcdc_decode_sof0_ncomp1
+ * @test internal_test_mcdc_decode_sof0_ncomp1
  * @par MC/DC:
  * Decision dec_parse_sof0 line 1104:
  *   `if (d->ncomp != 1U && d->ncomp != 3U)` (2 conds).
@@ -280,9 +277,8 @@ static void test_mcdc_decode_dht_tc_th_independent(void)
  *             decoder loop continues, hits EOI, returns protocol_error).
  *
  * Layout: SOI + SOF0(ncomp=1, 16x16, single component id=1, hv=0x11,
- * qid=0) + EOI.
- */
-static void test_mcdc_decode_sof0_ncomp1(void)
+ * qid=0) + EOI. @brief Verify mcdc decode sof0 ncomp1 behavior. @details Executes the mcdc decode sof0 ncomp1 scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_decode_sof0_ncomp1(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC dec_parse_sof0: ncomp=1 pair");
   uint8_t              out[k_jpeg_out_small] = {};
@@ -319,7 +315,7 @@ static void test_mcdc_decode_sof0_ncomp1(void)
 }
 
 /**
- * @test test_mcdc_decode_sof0_444_chroma
+ * @test internal_test_mcdc_decode_sof0_444_chroma
  * @par MC/DC:
  * Decision dec_parse_sof0 line 1131 `is_444 = (hmax==1 && vmax==1)`
  * (2 conds). Existing 4:2:0 round-trip leaves is_444 with only F,-
@@ -333,9 +329,8 @@ static void test_mcdc_decode_sof0_ncomp1(void)
  * Combined with the existing F,- vector from the round-trip, line 1131
  * has F,-, T,T, T,F: closes both pairs.
  *
- * Layout per fixture: SOI + SOF0(ncomp=3, 16x16) + EOI.
- */
-static void test_mcdc_decode_sof0_444_chroma(void)
+ * Layout per fixture: SOI + SOF0(ncomp=3, 16x16) + EOI. @brief Verify mcdc decode sof0 444 chroma behavior. @details Executes the mcdc decode sof0 444 chroma scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_decode_sof0_444_chroma(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC dec_parse_sof0: 4:4:4 + hmax/vmax pairs");
   uint8_t  out[k_jpeg_out_small] = {};
@@ -371,7 +366,7 @@ static void test_mcdc_decode_sof0_444_chroma(void)
 }
 
 /**
- * @test test_mcdc_decode_sof0_is420_subconditions
+ * @test internal_test_mcdc_decode_sof0_is420_subconditions
  * @par MC/DC:
  * Decision dec_parse_sof0 line 1132/1133 `is_420` (6 conds).
  * Existing covered rows: T,F,-,-,-,- (round-trip lo-quality 4:2:0
@@ -385,9 +380,8 @@ static void test_mcdc_decode_sof0_444_chroma(void)
  *                 (closes C4-pair)
  *   V_TTTT_F_:   comp_h[2]=2 -> T,T,T,T,F,- (closes C5-pair)
  *   V_TTTTT_F:   comp_v[2]=2 -> T,T,T,T,T,F (closes C6-pair)
- * Each of these is_420=F variants triggers line 1134 not_supported.
- */
-static void test_mcdc_decode_sof0_is420_subconditions(void)
+ * Each of these is_420=F variants triggers line 1134 not_supported. @brief Verify mcdc decode sof0 is420 subconditions behavior. @details Executes the mcdc decode sof0 is420 subconditions scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_decode_sof0_is420_subconditions(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC dec_parse_sof0: is_420 6-cond independence");
   uint8_t  out[k_jpeg_out_small] = {};
@@ -437,7 +431,7 @@ static void test_mcdc_decode_sof0_is420_subconditions(void)
 }
 
 /**
- * @test test_mcdc_decode_sos_dc_ac_id_independent
+ * @test internal_test_mcdc_decode_sos_dc_ac_id_independent
  * @par MC/DC:
  * Decision dec_parse_sos line 1184:
  *   `if (comp_dc_id[idx] >= k_ra8_jpeg_huff_ids ||
@@ -453,9 +447,8 @@ static void test_mcdc_decode_sof0_is420_subconditions(void)
  * V_T_F and V_F_T close C1-pair and C2-pair respectively.
  *
  * Layout: SOI + SOF0(ncomp=1, 16x16, comp_id=1) + SOS(ns=1, cs=1,
- * tdta) + Ss/Se/AhAl(0,63,0) + EOI.
- */
-static void test_mcdc_decode_sos_dc_ac_id_independent(void)
+ * tdta) + Ss/Se/AhAl(0,63,0) + EOI. @brief Verify mcdc decode sos dc ac id independent behavior. @details Executes the mcdc decode sos dc ac id independent scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_decode_sos_dc_ac_id_independent(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC dec_parse_sos: dc_id/ac_id independence pairs");
   uint8_t  out[k_jpeg_out_small] = {};
@@ -510,7 +503,7 @@ static void test_mcdc_decode_sos_dc_ac_id_independent(void)
 }
 
 /**
- * @test test_mcdc_get_dimensions_padding_truncated
+ * @test internal_test_mcdc_get_dimensions_padding_truncated
  *
  * @par MC/DC:
  * Decision at libs/ra8_jpeg/src/ra8_jpeg_sw.c
@@ -522,9 +515,8 @@ static void test_mcdc_decode_sos_dc_ac_id_independent(void)
  *  - V_TT (existing pad_jpeg): C1=T, C2=T -> stay in loop.
  *  - V_TF (existing pad_jpeg): C1=T, C2=F -> exit on non-pad byte.
  *  - V_FX (this fixture):      C1=F       -> exit on i >= jpeg_len.
- * V_TT + V_FX isolate C1; V_TT + V_TF isolate C2. N+1 = 3.
- */
-static void test_mcdc_get_dimensions_padding_truncated(void)
+ * V_TT + V_FX isolate C1; V_TT + V_TF isolate C2. N+1 = 3. @brief Verify mcdc get dimensions padding truncated behavior. @details Executes the mcdc get dimensions padding truncated scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_get_dimensions_padding_truncated(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC get_dimensions: pad-run extends to EOF");
   uint16_t w = 0U;
@@ -537,7 +529,7 @@ static void test_mcdc_get_dimensions_padding_truncated(void)
 }
 
 /**
- * @test test_mcdc_get_dimensions_soi_mid_walk
+ * @test internal_test_mcdc_get_dimensions_soi_mid_walk
  *
  * @par MC/DC:
  * Decision at libs/ra8_jpeg/src/ra8_jpeg_sw.c
@@ -548,9 +540,8 @@ static void test_mcdc_get_dimensions_padding_truncated(void)
  *  - V_FF (existing pad_jpeg):       C1=F, C2=F -> fall-through to seglen.
  *  - V_FT (existing soi_eoi_jpeg):   C1=F, C2=T -> continue (EOI).
  *  - V_TX (this fixture):            C1=T       -> continue (SOI).
- * V_FF + V_TX isolate C1; V_FF + V_FT isolate C2. N+1 = 3.
- */
-static void test_mcdc_get_dimensions_soi_mid_walk(void)
+ * V_FF + V_TX isolate C1; V_FF + V_FT isolate C2. N+1 = 3. @brief Verify mcdc get dimensions soi mid walk behavior. @details Executes the mcdc get dimensions soi mid walk scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_get_dimensions_soi_mid_walk(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC get_dimensions: SOI mid-walk continue");
   uint16_t w = 0U;
@@ -582,7 +573,7 @@ static void test_mcdc_get_dimensions_soi_mid_walk(void)
 }
 
 /**
- * @test test_mcdc_get_dimensions_skip_appn
+ * @test internal_test_mcdc_get_dimensions_skip_appn
  *
  * @par MC/DC:
  * Decision at libs/ra8_jpeg/src/ra8_jpeg_sw.c
@@ -599,9 +590,8 @@ static void test_mcdc_get_dimensions_soi_mid_walk(void)
  * a SOF range walk) is exempt; V_TTTT + V_TTF- isolate C3; V_TTTT +
  * V_TTTF isolate C4. C2-pair remains structurally dead (no valid mk
  * is simultaneously >=0xFFC0 yet >0xFFCF without first failing C1);
- * documented per DO-178C 6.4.4.3.
- */
-static void test_mcdc_get_dimensions_skip_appn(void)
+ * documented per DO-178C 6.4.4.3. @brief Verify mcdc get dimensions skip appn behavior. @details Executes the mcdc get dimensions skip appn scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_get_dimensions_skip_appn(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC get_dimensions: skip APP0 + JPG marker");
   uint16_t w = 0U;
@@ -633,7 +623,7 @@ static void test_mcdc_get_dimensions_skip_appn(void)
 }
 
 /**
- * @test test_mcdc_decode_skip_appn_marker
+ * @test internal_test_mcdc_decode_skip_appn_marker
  *
  * @par MC/DC:
  * Decision at libs/ra8_jpeg/src/ra8_jpeg_sw.c (decode_scan)
@@ -643,26 +633,25 @@ static void test_mcdc_get_dimensions_skip_appn(void)
  *   drives C1=F by feeding APP0 mid-stream and producing a successful
  *   round-trip decode -- the APP0 is dispatched to the
  *   ``dec_skip_segment`` else-arm, hitting the C1=F vector that
- *   round-trip alone never produced (C1=T baseline already covered).
- */
-static void test_mcdc_decode_skip_appn_marker(void)
+ *   round-trip alone never produced (C1=T baseline already covered). @brief Verify mcdc decode skip appn marker behavior. @details Executes the mcdc decode skip appn marker scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_decode_skip_appn_marker(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC decode: skip APPn marker mid-stream");
-  static uint8_t s_rgb_in[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t s_rgb_out[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t s_jpeg[(uint32_t)k_jt_jpeg_cap];
-  fill_gradient(s_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  static uint8_t local_rgb_in[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t local_rgb_out[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t local_jpeg[(uint32_t)k_jt_jpeg_cap];
+  internal_fill_gradient(local_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
   uint32_t produced = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_jpeg_sw_encode(s_rgb_in,
+                 ra8_jpeg_sw_encode(local_rgb_in,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                    s_jpeg,
+                                    local_jpeg,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &produced));
   /* Splice an APP0 marker into the encoded stream right after SOI. */
-  static uint8_t       s_spliced[(uint32_t)k_jt_jpeg_cap + 16U];
+  static uint8_t       local_spliced[(uint32_t)k_jt_jpeg_cap + 16U];
   static const uint8_t app0_payload[] = {
     0xFFU,
     0xE0U,
@@ -673,21 +662,25 @@ static void test_mcdc_decode_skip_appn_marker(void)
     0x49U,
     0x46U,
   };
-  s_spliced[0] = k_byte_mask;
-  s_spliced[1] = k_jpeg_marker_soi;
+  local_spliced[0] = k_byte_mask;
+  local_spliced[1] = k_jpeg_marker_soi;
   for (uint32_t i = 0U; i < (uint32_t)sizeof app0_payload; ++i) {
-    s_spliced[2U + i] = app0_payload[i];
+    local_spliced[2U + i] = app0_payload[i];
   }
   for (uint32_t i = 2U; i < produced; ++i) {
-    s_spliced[(uint32_t)sizeof app0_payload + i] = s_jpeg[i];
+    local_spliced[(uint32_t)sizeof app0_payload + i] = local_jpeg[i];
   }
   uint32_t spliced_len = produced + (uint32_t)sizeof app0_payload;
 
   uint16_t dw = 0U;
   uint16_t dh = 0U;
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_jpeg_sw_decode(s_spliced, spliced_len, s_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_jpeg_sw_decode(local_spliced,
+                                    spliced_len,
+                                    local_rgb_out,
+                                    (uint32_t)k_jt_rgb_bytes,
+                                    &dw,
+                                    &dh));
   TEST_ASSERT_EQ(k_jt_w, dw);
   TEST_END("jpeg_sw MC/DC decode: skip APPn marker mid-stream");
 }
@@ -695,18 +688,17 @@ static void test_mcdc_decode_skip_appn_marker(void)
 int32_t main(void)
 {
   ra8_fake_mmap_reset();
-  test_mcdc_decode_pad_byte_chain();
-  test_mcdc_get_dimensions_seglen_independent();
-  test_mcdc_decode_sos_without_sof();
-  test_mcdc_decode_dht_tc_th_independent();
-  test_mcdc_decode_sof0_ncomp1();
-  test_mcdc_decode_sof0_444_chroma();
-  test_mcdc_decode_sof0_is420_subconditions();
-  test_mcdc_decode_sos_dc_ac_id_independent();
-  test_mcdc_get_dimensions_padding_truncated();
-  test_mcdc_get_dimensions_soi_mid_walk();
-  test_mcdc_get_dimensions_skip_appn();
-  test_mcdc_decode_skip_appn_marker();
-  (void)fprintf(stderr, "[OK ] test_ra8_jpeg_sw_hdr_mcdc.c\n");
+  internal_test_mcdc_decode_pad_byte_chain();
+  internal_test_mcdc_get_dimensions_seglen_independent();
+  internal_test_mcdc_decode_sos_without_sof();
+  internal_test_mcdc_decode_dht_tc_th_independent();
+  internal_test_mcdc_decode_sof0_ncomp1();
+  internal_test_mcdc_decode_sof0_444_chroma();
+  internal_test_mcdc_decode_sof0_is420_subconditions();
+  internal_test_mcdc_decode_sos_dc_ac_id_independent();
+  internal_test_mcdc_get_dimensions_padding_truncated();
+  internal_test_mcdc_get_dimensions_soi_mid_walk();
+  internal_test_mcdc_get_dimensions_skip_appn();
+  internal_test_mcdc_decode_skip_appn_marker();
   return 0;
 }

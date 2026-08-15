@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_jpeg_sw.h"
@@ -101,7 +102,7 @@ static ra8_jpeg_stream_state_t s_js;
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t js_refill(ra8_jpeg_stream_state_t* st)
+RA8_INTERNAL static ra8_err_t internal_js_refill(ra8_jpeg_stream_state_t* st)
 {
   while ((st->eof == 0U) && (st->win_len < st->win_cap)) {
     size_t          got = 0U;
@@ -134,13 +135,13 @@ static ra8_err_t js_refill(ra8_jpeg_stream_state_t* st)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t js_slide(ra8_jpeg_stream_state_t* st, uint32_t consumed)
+RA8_INTERNAL static ra8_err_t internal_js_slide(ra8_jpeg_stream_state_t* st, uint32_t consumed)
 {
   if (consumed > 0U) {
     (void)memmove(st->win, &st->win[consumed], (size_t)(st->win_len - consumed));
     st->win_len -= consumed;
   }
-  return js_refill(st);
+  return internal_js_refill(st);
 }
 
 /**
@@ -162,7 +163,8 @@ static ra8_err_t js_slide(ra8_jpeg_stream_state_t* st, uint32_t consumed)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t js_bind_geometry(ra8_jpeg_stream_state_t* st, ra8_jpeg_sw_geom_fn on_geom)
+RA8_INTERNAL static ra8_err_t internal_js_bind_geometry(ra8_jpeg_stream_state_t* st,
+                                                        ra8_jpeg_sw_geom_fn      on_geom)
 {
   const ra8_jpeg_dec_ctx_t* d = &st->dec;
   st->channels =
@@ -211,8 +213,9 @@ static ra8_err_t js_bind_geometry(ra8_jpeg_stream_state_t* st, ra8_jpeg_sw_geom_
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t
-js_parse_markers(ra8_jpeg_stream_state_t* st, ra8_jpeg_sw_geom_fn on_geom, uint32_t* out_scan_pos)
+RA8_INTERNAL static ra8_err_t internal_js_parse_markers(ra8_jpeg_stream_state_t* st,
+                                                        ra8_jpeg_sw_geom_fn      on_geom,
+                                                        uint32_t*                out_scan_pos)
 {
   bool got_sof   = false;
   bool geom_done = false;
@@ -224,12 +227,12 @@ js_parse_markers(ra8_jpeg_stream_state_t* st, ra8_jpeg_sw_geom_fn on_geom, uint3
     st->dec.src_len                     = st->win_len;
     st->dec.cursor                      = 0U;
     ra8_jpeg_dec_marker_action_t action = k_ra8_jpeg_dec_continue;
-    ra8_err_t                    err    = ra8_jpeg_sw_priv_dispatch(&st->dec, &got_sof, &action);
+    ra8_err_t                    err    = priv_jpeg_sw_dispatch(&st->dec, &got_sof, &action);
     if (err != k_ra8_ok) {
       return err;
     }
     if (got_sof && !geom_done) {
-      err = js_bind_geometry(st, on_geom);
+      err = internal_js_bind_geometry(st, on_geom);
       if (err != k_ra8_ok) {
         return err;
       }
@@ -242,7 +245,7 @@ js_parse_markers(ra8_jpeg_stream_state_t* st, ra8_jpeg_sw_geom_fn on_geom, uint3
     if (action == k_ra8_jpeg_dec_eoi) {
       return k_ra8_err_protocol_error; /* EOI before any scan */
     }
-    err = js_slide(st, st->dec.cursor);
+    err = internal_js_slide(st, st->dec.cursor);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -269,12 +272,12 @@ js_parse_markers(ra8_jpeg_stream_state_t* st, ra8_jpeg_sw_geom_fn on_geom, uint3
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void js_emit_mcu(const ra8_jpeg_stream_state_t* st,
-                        const uint8_t*                 y_tile,
-                        const uint8_t*                 cb_tile,
-                        const uint8_t*                 cr_tile,
-                        uint16_t                       mx,
-                        uint16_t                       rows)
+RA8_INTERNAL static void internal_js_emit_mcu(const ra8_jpeg_stream_state_t* st,
+                                              const uint8_t*                 y_tile,
+                                              const uint8_t*                 cb_tile,
+                                              const uint8_t*                 cr_tile,
+                                              uint16_t                       mx,
+                                              uint16_t                       rows)
 {
   const ra8_jpeg_dec_ctx_t* d      = &st->dec;
   const uint32_t            stride = (uint32_t)d->width * (uint32_t)st->channels;
@@ -294,12 +297,12 @@ static void js_emit_mcu(const ra8_jpeg_stream_state_t* st,
       const int32_t  cb  = (int32_t)cb_tile[((uint32_t)cy * (uint32_t)k_ra8_jpeg_block_dim) + cx];
       const int32_t  cr  = (int32_t)cr_tile[((uint32_t)cy * (uint32_t)k_ra8_jpeg_block_dim) + cx];
       const uint32_t idx = ((uint32_t)r * stride) + (px * (uint32_t)st->channels);
-      ra8_jpeg_sw_ycc_to_rgb(y,
-                             cb,
-                             cr,
-                             &st->stripe[idx],
-                             &st->stripe[idx + 1U],
-                             &st->stripe[idx + 2U]);
+      priv_jpeg_sw_ycc_to_rgb(y,
+                              cb,
+                              cr,
+                              &st->stripe[idx],
+                              &st->stripe[idx + 1U],
+                              &st->stripe[idx + 2U]);
     }
   }
 }
@@ -322,11 +325,12 @@ static void js_emit_mcu(const ra8_jpeg_stream_state_t* st,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t js_scan_margin(ra8_jpeg_stream_state_t* st, ra8_jpeg_bitreader_t* br)
+RA8_INTERNAL static ra8_err_t internal_js_scan_margin(ra8_jpeg_stream_state_t* st,
+                                                      ra8_jpeg_bitreader_t*    br)
 {
   if ((st->eof == 0U) && ((st->win_len - br->pos) < (uint32_t)k_ra8_jpeg_sw_stream_scan_margin)) {
     const uint32_t  shift = br->pos;
-    const ra8_err_t err   = js_slide(st, shift);
+    const ra8_err_t err   = internal_js_slide(st, shift);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -351,36 +355,36 @@ static ra8_err_t js_scan_margin(ra8_jpeg_stream_state_t* st, ra8_jpeg_bitreader_
  * @retval k_ra8_ok                 MCU decoded and emitted into the stripe.
  * @retval k_ra8_err_protocol_error Entropy stream corrupt / truncated.
  * @retval other                    Propagated from the pull callback.
- * @pre The geometry and tables are bound (post `js_parse_markers()`).
+ * @pre The geometry and tables are bound (post `internal_js_parse_markers()`).
  * @pre All three tile buffers are writable.
  * @post `br` advanced past one MCU's blocks.
  * @post On error the scan aborts.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t js_decode_mcu(ra8_jpeg_stream_state_t* st,
-                               ra8_jpeg_bitreader_t*    br,
-                               uint8_t*                 y_tile,
-                               uint8_t*                 cb_tile,
-                               uint8_t*                 cr_tile,
-                               uint16_t                 mx,
-                               uint16_t                 rows)
+RA8_INTERNAL static ra8_err_t internal_js_decode_mcu(ra8_jpeg_stream_state_t* st,
+                                                     ra8_jpeg_bitreader_t*    br,
+                                                     uint8_t*                 y_tile,
+                                                     uint8_t*                 cb_tile,
+                                                     uint8_t*                 cr_tile,
+                                                     uint16_t                 mx,
+                                                     uint16_t                 rows)
 {
-  ra8_err_t err = js_scan_margin(st, br);
+  ra8_err_t err = internal_js_scan_margin(st, br);
   if (err != k_ra8_ok) {
     return err;
   }
-  err = ra8_jpeg_sw_priv_mcu_y(&st->dec, br, y_tile, st->mcu_w);
+  err = priv_jpeg_sw_mcu_y(&st->dec, br, y_tile, st->mcu_w);
   if (err != k_ra8_ok) {
     return err;
   }
   if (st->dec.ncomp == 3U) {
-    err = ra8_jpeg_sw_priv_mcu_chroma(&st->dec, br, cb_tile, cr_tile);
+    err = priv_jpeg_sw_mcu_chroma(&st->dec, br, cb_tile, cr_tile);
     if (err != k_ra8_ok) {
       return err;
     }
   }
-  js_emit_mcu(st, y_tile, cb_tile, cr_tile, mx, rows);
+  internal_js_emit_mcu(st, y_tile, cb_tile, cr_tile, mx, rows);
   return k_ra8_ok;
 }
 
@@ -395,14 +399,14 @@ static ra8_err_t js_decode_mcu(ra8_jpeg_stream_state_t* st,
  * @retval k_ra8_ok                 Every stripe emitted.
  * @retval k_ra8_err_protocol_error Entropy stream corrupt / truncated.
  * @retval other                    Propagated from pull / the stripe sink.
- * @pre `js_parse_markers()` succeeded (geometry + tables bound).
+ * @pre `internal_js_parse_markers()` succeeded (geometry + tables bound).
  * @pre `scan_pos <= st->win_len`.
  * @post On success `mcus_y` stripes were emitted in order.
  * @post On any error emission stops at the failing stripe.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t js_scan(ra8_jpeg_stream_state_t* st, uint32_t scan_pos)
+RA8_INTERNAL static ra8_err_t internal_js_scan(ra8_jpeg_stream_state_t* st, uint32_t scan_pos)
 {
   ra8_jpeg_dec_ctx_t*  d  = &st->dec;
   ra8_jpeg_bitreader_t br = {
@@ -425,7 +429,7 @@ static ra8_err_t js_scan(ra8_jpeg_stream_state_t* st, uint32_t scan_pos)
     const uint32_t left = (uint32_t)d->height - y0;
     const uint16_t rows = (uint16_t)((left < (uint32_t)st->mcu_h) ? left : (uint32_t)st->mcu_h);
     for (uint16_t mx = 0U; mx < st->mcus_x; mx++) {
-      const ra8_err_t err = js_decode_mcu(st, &br, y_tile, cb_tile, cr_tile, mx, rows);
+      const ra8_err_t err = internal_js_decode_mcu(st, &br, y_tile, cb_tile, cr_tile, mx, rows);
       if (err != k_ra8_ok) {
         return err;
       }
@@ -462,13 +466,13 @@ static ra8_err_t js_scan(ra8_jpeg_stream_state_t* st, uint32_t scan_pos)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t js_begin(ra8_jpeg_stream_state_t* st,
-                          ra8_jpeg_sw_pull_fn      pull,
-                          void*                    pull_ctx,
-                          uint8_t*                 window,
-                          uint32_t                 window_cap,
-                          ra8_jpeg_sw_rows_fn      on_rows,
-                          void*                    cb_ctx)
+RA8_INTERNAL static ra8_err_t internal_js_begin(ra8_jpeg_stream_state_t* st,
+                                                ra8_jpeg_sw_pull_fn      pull,
+                                                void*                    pull_ctx,
+                                                uint8_t*                 window,
+                                                uint32_t                 window_cap,
+                                                ra8_jpeg_sw_rows_fn      on_rows,
+                                                void*                    cb_ctx)
 {
   (void)memset(st, 0, sizeof(*st));
   st->pull      = pull;
@@ -477,17 +481,17 @@ static ra8_err_t js_begin(ra8_jpeg_stream_state_t* st,
   st->win_cap   = window_cap;
   st->on_rows   = on_rows;
   st->cb_ctx    = cb_ctx;
-  ra8_err_t err = js_refill(st);
+  ra8_err_t err = internal_js_refill(st);
   if (err != k_ra8_ok) {
     return err;
   }
   if (st->win_len < (uint32_t)k_ra8_jpeg_stream_soi_bytes) {
     return k_ra8_err_invalid_size;
   }
-  if (read_be16(st->win) != (uint16_t)k_ra8_jpeg_marker_soi) {
+  if (internal_read_be16(st->win) != (uint16_t)k_ra8_jpeg_marker_soi) {
     return k_ra8_err_protocol_error;
   }
-  return js_slide(st, (uint32_t)k_ra8_jpeg_stream_soi_bytes);
+  return internal_js_slide(st, (uint32_t)k_ra8_jpeg_stream_soi_bytes);
 }
 
 ra8_err_t ra8_jpeg_sw_decode_stripes(ra8_jpeg_sw_pull_fn pull,
@@ -505,15 +509,15 @@ ra8_err_t ra8_jpeg_sw_decode_stripes(ra8_jpeg_sw_pull_fn pull,
   if (window_cap < (uint32_t)k_ra8_jpeg_sw_stream_min_window) {
     return k_ra8_err_invalid_size;
   }
-  ra8_jpeg_stream_state_t* st  = &s_js;
-  ra8_err_t                err = js_begin(st, pull, pull_ctx, window, window_cap, on_rows, cb_ctx);
+  ra8_jpeg_stream_state_t* st = &s_js;
+  ra8_err_t err = internal_js_begin(st, pull, pull_ctx, window, window_cap, on_rows, cb_ctx);
   if (err != k_ra8_ok) {
     return err;
   }
   uint32_t scan_pos = 0U;
-  err               = js_parse_markers(st, on_geom, &scan_pos);
+  err               = internal_js_parse_markers(st, on_geom, &scan_pos);
   if (err != k_ra8_ok) {
     return err;
   }
-  return js_scan(st, scan_pos);
+  return internal_js_scan(st, scan_pos);
 }

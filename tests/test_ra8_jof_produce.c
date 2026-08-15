@@ -34,6 +34,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_img_arena.h"
 #include "ra8_jof.h"
@@ -152,8 +153,8 @@ typedef struct {
   size_t         chunk; /**< Max bytes per pull (0=all). */
 } t_pull_t;
 
-/** @brief ::ra8_jof_pull_fn over a ::t_pull_t. */
-static ra8_err_t t_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+/** @brief ::ra8_jof_pull_fn over a ::t_pull_t. @details Exercises the t pull path with bounded caller-owned fixture state and verifies its documented result. @param[in,out] ctx Injected callback context whose ownership remains with the test. @param[out] buf Byte buffer read or written by the exercised callback. @param[in] cap Capacity of the associated byte buffer in bytes. @param[out] got Receives the number of bytes transferred. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_t_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   t_pull_t*    p    = (t_pull_t*)ctx;
   const size_t left = p->n - p->pos;
@@ -167,8 +168,8 @@ static ra8_err_t t_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
   return k_ra8_ok;
 }
 
-/** @brief Deterministic pattern channel at (x, y, c). */
-static uint8_t pix(uint32_t x, uint32_t y, uint32_t c)
+/** @brief Deterministic pattern channel at (x, y, c). @details Exercises the pix path with bounded caller-owned fixture state and verifies its documented result. @param[in] x Pixel column coordinate. @param[in] y Pixel row coordinate. @param[in] c Pixel channel index. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static uint8_t internal_pix(uint32_t x, uint32_t y, uint32_t c)
 {
   return (uint8_t)((x ^ y) + (c * k_t_pix_ch_stride) + ((x + y) >> 2U));
 }
@@ -178,8 +179,8 @@ static uint8_t pix(uint32_t x, uint32_t y, uint32_t c)
  * ---------------------------------------------------------------------------
  */
 
-/** @brief Append a PNG chunk (length/type/data/crc) into `s_src`. */
-static void png_chunk(const char* type, const uint8_t* data, uint32_t len)
+/** @brief Append a PNG chunk (length/type/data/crc) into `s_src`. @details Exercises the png chunk path with bounded caller-owned fixture state and verifies its documented result. @param[in] type Four-byte PNG chunk type. @param[in] data Readable fixture payload bytes. @param[in] len Length of the associated byte sequence. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_png_chunk(const char* type, const uint8_t* data, uint32_t len)
 {
   uint8_t* p = &s_src[s_src_len];
   p[0]       = (uint8_t)(len >> k_t_be32_hi_shift);
@@ -198,8 +199,8 @@ static void png_chunk(const char* type, const uint8_t* data, uint32_t len)
   s_src_len += k_t_chunk_overhead + (size_t)len;
 }
 
-/** @brief PNG paeth predictor (builder-side twin). */
-static uint8_t t_paeth(uint8_t a, uint8_t b, uint8_t c)
+/** @brief PNG paeth predictor (builder-side twin). @details Exercises the t paeth path with bounded caller-owned fixture state and verifies its documented result. @param[in] a Scalar fixture input. @param[in] b Scalar fixture input. @param[in] c Pixel channel index. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static uint8_t internal_t_paeth(uint8_t a, uint8_t b, uint8_t c)
 {
   const int32_t p  = (int32_t)a + (int32_t)b - (int32_t)c;
   const int32_t pa = (p > (int32_t)a) ? (p - (int32_t)a) : ((int32_t)a - p);
@@ -234,11 +235,10 @@ static uint8_t t_paeth(uint8_t a, uint8_t b, uint8_t c)
  * @post The result depends only on the arguments -- no hidden state.
  * @post The same inputs always yield the same byte.
  *
- * @note Thread-safe: pure function.
- */
-static uint8_t png_sample(uint32_t x, uint32_t y, uint32_t c, bool palette)
+ * @note Thread-safe: pure function. @retval value The computed fixture value for the supplied inputs. @since 0.1.0 */
+RA8_INTERNAL static uint8_t internal_png_sample(uint32_t x, uint32_t y, uint32_t c, bool palette)
 {
-  return palette ? (uint8_t)((x + y) % k_t_plte_entries) : pix(x, y, c);
+  return palette ? (uint8_t)((x + y) % k_t_plte_entries) : internal_pix(x, y, c);
 }
 
 /**
@@ -262,21 +262,24 @@ static uint8_t png_sample(uint32_t x, uint32_t y, uint32_t c, bool palette)
  * @post Row 0 and column 0 neighbours read as 0, per the PNG spec.
  * @post No read leaves the row for the left neighbour when `k < ch`.
  *
- * @note Thread-safe: reads only its arguments.
- */
-static uint8_t
-png_predictor(const uint8_t* row, uint32_t k, uint32_t y, uint32_t ch, uint8_t f, bool palette)
+ * @note Thread-safe: reads only its arguments. @retval value The computed fixture value for the supplied inputs. @since 0.1.0 */
+RA8_INTERNAL static uint8_t internal_png_predictor(const uint8_t* row,
+                                                   uint32_t       k,
+                                                   uint32_t       y,
+                                                   uint32_t       ch,
+                                                   uint8_t        f,
+                                                   bool           palette)
 {
   const uint32_t px_x = (k / ch);
   const uint32_t px_c = (k % ch);
   const uint8_t  left = (k >= ch) ? row[k - ch] : 0U;
   uint8_t        up   = 0U;
   if (y > 0U) {
-    up = png_sample(px_x, y - 1U, px_c, palette);
+    up = internal_png_sample(px_x, y - 1U, px_c, palette);
   }
   uint8_t ul = 0U;
   if ((y > 0U) && (k >= ch)) {
-    ul = png_sample(px_x - 1U, y - 1U, px_c, palette);
+    ul = internal_png_sample(px_x - 1U, y - 1U, px_c, palette);
   }
   if (f == 1U) {
     return left;
@@ -287,7 +290,7 @@ png_predictor(const uint8_t* row, uint32_t k, uint32_t y, uint32_t ch, uint8_t f
   if (f == 3U) {
     return (uint8_t)(((uint32_t)left + (uint32_t)up) / 2U);
   }
-  return t_paeth(left, up, ul);
+  return internal_t_paeth(left, up, ul);
 }
 
 /**
@@ -309,10 +312,13 @@ png_predictor(const uint8_t* row, uint32_t k, uint32_t y, uint32_t ch, uint8_t f
  * @post Every byte has had its predictor subtracted, modulo 256.
  * @post A filter type of 0 leaves the row byte-identical.
  *
- * @note Not thread-safe with respect to @p row.
- */
-static void
-png_filter_row(uint8_t* row, uint32_t rowb, uint32_t y, uint32_t ch, uint8_t f, bool palette)
+ * @note Not thread-safe with respect to @p row. @since 0.1.0 */
+RA8_INTERNAL static void internal_png_filter_row(uint8_t* row,
+                                                 uint32_t rowb,
+                                                 uint32_t y,
+                                                 uint32_t ch,
+                                                 uint8_t  f,
+                                                 bool     palette)
 {
   if (f == 0U) {
     return;
@@ -320,7 +326,7 @@ png_filter_row(uint8_t* row, uint32_t rowb, uint32_t y, uint32_t ch, uint8_t f, 
   for (uint32_t i = rowb; i > 0U; i--) {
     const uint32_t k    = i - 1U;
     const uint8_t  cur  = row[k];
-    const uint8_t  pred = png_predictor(row, k, y, ch, f, palette);
+    const uint8_t  pred = internal_png_predictor(row, k, y, ch, f, palette);
     row[k]              = (uint8_t)(cur - pred);
   }
 }
@@ -339,9 +345,9 @@ png_filter_row(uint8_t* row, uint32_t rowb, uint32_t y, uint32_t ch, uint8_t f, 
  * @post `s_raw` holds spec-filtered scanlines of the pattern.
  * @post No other state mutated.
  * @note Not thread-safe (shared scratch).
- * @since 0.1.0
- */
-static size_t png_fill_raw(uint32_t w, uint32_t h, uint32_t ch, bool palette, bool use_filters)
+ * @since 0.1.0 @details Exercises the png fill raw path with bounded caller-owned fixture state and verifies its documented result. */
+RA8_INTERNAL static size_t
+internal_png_fill_raw(uint32_t w, uint32_t h, uint32_t ch, bool palette, bool use_filters)
 {
   const uint32_t rowb = w * ch;
   size_t         o    = 0U;
@@ -351,12 +357,12 @@ static size_t png_fill_raw(uint32_t w, uint32_t h, uint32_t ch, bool palette, bo
     uint8_t* row    = &s_raw[o + 1U];
     for (uint32_t x = 0U; x < w; x++) {
       for (uint32_t c = 0U; c < ch; c++) {
-        row[(x * ch) + c] = png_sample(x, y, c, palette);
+        row[(x * ch) + c] = internal_png_sample(x, y, c, palette);
       }
     }
     /* Filter in place. The predictor regenerates the previous UNFILTERED row
      * from the pattern, so filtering never reads an already-filtered byte. */
-    png_filter_row(row, rowb, y, ch, f, palette);
+    internal_png_filter_row(row, rowb, y, ch, f, palette);
     o += 1U + (size_t)rowb;
   }
   return o;
@@ -374,9 +380,9 @@ static size_t png_fill_raw(uint32_t w, uint32_t h, uint32_t ch, bool palette, bo
  * @post `s_src`/`s_src_len` hold a well-formed PNG.
  * @post No other state mutated.
  * @note Not thread-safe (shared scratch).
- * @since 0.1.0
- */
-static void png_build(uint32_t w, uint32_t h, uint8_t color_type, bool with_trns, bool use_filters)
+ * @since 0.1.0 @details Exercises the png build path with bounded caller-owned fixture state and verifies its documented result. */
+RA8_INTERNAL static void
+internal_png_build(uint32_t w, uint32_t h, uint8_t color_type, bool with_trns, bool use_filters)
 {
   static const uint8_t sig[8]    = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
   const uint32_t       ch_map[7] = {1U, 0U, 3U, 1U, 2U, 0U, 4U};
@@ -395,7 +401,7 @@ static void png_build(uint32_t w, uint32_t h, uint8_t color_type, bool with_trns
   ihdr[k_t_ihdr_off_h_b3]        = (uint8_t)(h & k_t_byte_mask);
   ihdr[8]                        = 8U; /* bit depth */
   ihdr[k_t_ihdr_off_ct]          = color_type;
-  png_chunk("IHDR", ihdr, sizeof(ihdr));
+  internal_png_chunk("IHDR", ihdr, sizeof(ihdr));
   if (color_type == 3U) {
     uint8_t plte[k_t_plte_bytes] = {};
     for (uint32_t i = 0U; i < k_t_plte_entries; i++) {
@@ -403,20 +409,20 @@ static void png_build(uint32_t w, uint32_t h, uint8_t color_type, bool with_trns
       plte[(i * 3U) + 1U] = (uint8_t)(k_t_plte_g_base + (i * k_t_plte_g_step));
       plte[(i * 3U) + 2U] = (uint8_t)(k_t_plte_b_base + (i * k_t_plte_b_step));
     }
-    png_chunk("PLTE", plte, sizeof(plte));
+    internal_png_chunk("PLTE", plte, sizeof(plte));
     if (with_trns) {
       const uint8_t trns[3] = {255U, 128U, 64U}; /* entries 3+4 default opaque */
-      png_chunk("tRNS", trns, sizeof(trns));
+      internal_png_chunk("tRNS", trns, sizeof(trns));
     }
   }
-  const size_t rawn = png_fill_raw(w, h, ch, color_type == 3U, use_filters);
+  const size_t rawn = internal_png_fill_raw(w, h, ch, color_type == 3U, use_filters);
   mz_ulong     zlen = (mz_ulong)sizeof(s_zbuf);
   TEST_ASSERT_EQ(MZ_OK, mz_compress(s_zbuf, &zlen, s_raw, (mz_ulong)rawn));
   /* Split the zlib stream across two IDAT chunks (chunk-crossing coverage). */
   const uint32_t half = (uint32_t)zlen / 2U;
-  png_chunk("IDAT", s_zbuf, half);
-  png_chunk("IDAT", &s_zbuf[half], (uint32_t)zlen - half);
-  png_chunk("IEND", NULL, 0U);
+  internal_png_chunk("IDAT", s_zbuf, half);
+  internal_png_chunk("IDAT", &s_zbuf[half], (uint32_t)zlen - half);
+  internal_png_chunk("IEND", NULL, 0U);
 }
 
 /* ---------------------------------------------------------------------------
@@ -424,16 +430,19 @@ static void png_build(uint32_t w, uint32_t h, uint8_t color_type, bool with_trns
  * ---------------------------------------------------------------------------
  */
 
-/** @brief Run the producer over `s_src` into a fresh memstore. */
-static ra8_err_t
-produce(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t chunk, ra8_jof_info_t* info)
+/** @brief Run the producer over `s_src` into a fresh memstore. @details Exercises the produce path with bounded caller-owned fixture state and verifies its documented result. @param[in] tile_w Tile width in pixels. @param[in] tile_h Tile height in pixels. @param[in] codec JOF tile-codec selector. @param[in] chunk Fixture chunk state or bytes. @param[in,out] info Parsed JOF metadata used by the exercised operation. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_produce(uint16_t        tile_w,
+                                               uint16_t        tile_h,
+                                               uint8_t         codec,
+                                               size_t          chunk,
+                                               ra8_jof_info_t* info)
 {
-  static t_pull_t s_pull;
-  s_pull  = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = chunk};
-  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  static t_pull_t local_pull;
+  local_pull = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = chunk};
+  s_store    = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   const ra8_jof_produce_cfg_t cfg = {
-    .pull       = t_pull,
-    .pull_ctx   = &s_pull,
+    .pull       = internal_t_pull,
+    .pull_ctx   = &local_pull,
     .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &s_store,
     .tile_w     = tile_w,
@@ -460,27 +469,27 @@ produce(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t chunk, ra8_jof_i
  * @param[in] y      Pixel row in the full image.
  * @param[in] ch     Channel within the pixel.
  *
- * @return The sample the decoder is required to produce.
+ * @return The sample the decoder is required to internal_produce.
  *
  * @pre The fixture for @p ctx_ct has been built.
  * @pre @p x and @p y lie inside the image.
  * @post The result depends only on the arguments and the built fixture.
  * @post Unhandled colour types yield 0, which no fixture produces.
  *
- * @note Not thread-safe; reads the file-scope reference image.
- */
-static uint8_t expected_sample(uint8_t ctx_ct, uint32_t x, uint32_t y, uint32_t ch)
+ * @note Not thread-safe; reads the file-scope reference image. @retval value The computed fixture value for the supplied inputs. @since 0.1.0 */
+RA8_INTERNAL static uint8_t
+internal_expected_sample(uint8_t ctx_ct, uint32_t x, uint32_t y, uint32_t ch)
 {
   if (ctx_ct == k_t_ct_jpeg_ref) {
     return s_ref[(((y * (uint32_t)k_t_jpg_w) + x) * 3U) + ch];
   }
   if (ctx_ct == 0U) {
-    return pix(x, y, 0U);
+    return internal_pix(x, y, 0U);
   }
   if ((ctx_ct == 2U) || (ctx_ct == 6U) || (ctx_ct > 6U)) {
     /* Greyscale+alpha, truecolour+alpha and every colour type above them keep
      * the source channel value, so they share one expectation. */
-    return pix(x, y, ch);
+    return internal_pix(x, y, ch);
   }
   if (ctx_ct == 3U) {
     const uint32_t idx     = (x + y) % k_t_plte_entries;
@@ -494,7 +503,7 @@ static uint8_t expected_sample(uint8_t ctx_ct, uint32_t x, uint32_t y, uint32_t 
     return (idx < 3U) ? trns[idx] : (uint8_t)k_t_alpha_opaque;
   }
   if (ctx_ct == 4U) {
-    return (ch < 3U) ? pix(x, y, 0U) : pix(x, y, 1U);
+    return (ch < 3U) ? internal_pix(x, y, 0U) : internal_pix(x, y, 1U);
   }
   return 0U;
 }
@@ -514,20 +523,19 @@ static uint8_t expected_sample(uint8_t ctx_ct, uint32_t x, uint32_t y, uint32_t 
  * @post Every sample of the tile has been compared.
  * @post A mismatch aborts the process.
  *
- * @note Not thread-safe; reads the file-scope decode buffers.
- */
-static void check_tile_pixels(const ra8_jof_info_t* info,
-                              uint8_t               ctx_ct,
-                              uint32_t              x0,
-                              uint32_t              y0,
-                              uint32_t              w,
-                              uint32_t              h)
+ * @note Not thread-safe; reads the file-scope decode buffers. @details Exercises the check tile pixels path with bounded caller-owned fixture state and verifies its documented result. @since 0.1.0 */
+RA8_INTERNAL static void internal_check_tile_pixels(const ra8_jof_info_t* info,
+                                                    uint8_t               ctx_ct,
+                                                    uint32_t              x0,
+                                                    uint32_t              y0,
+                                                    uint32_t              w,
+                                                    uint32_t              h)
 {
   for (uint32_t r = 0U; r < h; r++) {
     for (uint32_t c = 0U; c < w; c++) {
       for (uint32_t ch = 0U; ch < info->bpp; ch++) {
         const uint8_t got = s_cell[(((r * w) + c) * info->bpp) + ch];
-        const uint8_t exp = expected_sample(ctx_ct, x0 + c, y0 + r, ch);
+        const uint8_t exp = internal_expected_sample(ctx_ct, x0 + c, y0 + r, ch);
         TEST_ASSERT_EQ(exp, got);
       }
     }
@@ -544,9 +552,8 @@ static void check_tile_pixels(const ra8_jof_info_t* info,
  * @post Every tile byte was compared (test exits on mismatch).
  * @post The store is unmodified.
  * @note Not thread-safe.
- * @since 0.1.0
- */
-static void check_tiles(const ra8_jof_info_t* info, uint8_t ctx_ct)
+ * @since 0.1.0 @details Exercises the check tiles path with bounded caller-owned fixture state and verifies its documented result. */
+RA8_INTERNAL static void internal_check_tiles(const ra8_jof_info_t* info, uint8_t ctx_ct)
 {
   for (uint16_t ty = 0U; ty < info->tile_rows; ty++) {
     for (uint16_t tx = 0U; tx < info->tile_cols; tx++) {
@@ -564,12 +571,12 @@ static void check_tiles(const ra8_jof_info_t* info, uint8_t ctx_ct)
                                        (uint32_t)sizeof(s_cell),
                                        &w,
                                        &h));
-      check_tile_pixels(info,
-                        ctx_ct,
-                        (uint32_t)tx * info->tile_w,
-                        (uint32_t)ty * info->tile_h,
-                        w,
-                        h);
+      internal_check_tile_pixels(info,
+                                 ctx_ct,
+                                 (uint32_t)tx * info->tile_w,
+                                 (uint32_t)ty * info->tile_h,
+                                 w,
+                                 h);
     }
   }
 }
@@ -588,9 +595,9 @@ static void check_tiles(const ra8_jof_info_t* info, uint8_t ctx_ct)
  *
  * @pre @p lhs is non-null.
  * @pre @p rhs is non-null.
- * @post Neither operand is modified.
- */
-static bool ta_info_equal(const ra8_jof_info_t* lhs, const ra8_jof_info_t* rhs)
+ * @post Neither operand is modified. @retval true The named fixture condition holds. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static bool internal_ta_info_equal(const ra8_jof_info_t* lhs,
+                                                const ra8_jof_info_t* rhs)
 {
   return (lhs->width == rhs->width) && (lhs->height == rhs->height) &&
          (lhs->tile_w == rhs->tile_w) && (lhs->tile_h == rhs->tile_h) &&
@@ -601,7 +608,7 @@ static bool ta_info_equal(const ra8_jof_info_t* lhs, const ra8_jof_info_t* rhs)
 }
 
 /**
- * @test test_produce_png_colortypes
+ * @test internal_test_produce_png_colortypes
  * @brief Every supported PNG colour type transcodes with byte parity, all
  *        five row filters exercised, IDAT split across chunks, and the
  *        builder itself cross-checked against the vendored stb decoder.
@@ -609,11 +616,10 @@ static bool ta_info_equal(const ra8_jof_info_t* lhs, const ra8_jof_info_t* rhs)
  * @par MC/DC:
  * Decision (png geometry): `has_trns != 0 ? RGBA : RGB` for palette images
  * (1 condition): colour type 3 runs once with tRNS (4 bpp) and once
- * without (3 bpp) -- both outcomes observed via `info.bpp`.
- */
-static void test_produce_png_colortypes(void)
+ * without (3 bpp) -- both outcomes observed via `info.bpp`. @details Executes the produce png colortypes scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_produce_png_colortypes(void)
 {
-  TEST_BEGIN("produce: PNG colour types 0/2/3/3+tRNS/4/6, filtered rows, parity");
+  TEST_BEGIN("internal_produce: PNG colour types 0/2/3/3+tRNS/4/6, filtered rows, parity");
   const struct {
     uint8_t ct;   /**< Ct.   */
     bool    trns; /**< Trns. */
@@ -627,7 +633,7 @@ static void test_produce_png_colortypes(void)
     {6U, false, 4U},
   };
   for (uint32_t i = 0U; i < 6U; i++) {
-    png_build(k_t_png_w, k_t_png_h, cases[i].ct, cases[i].trns, true);
+    internal_png_build(k_t_png_w, k_t_png_h, cases[i].ct, cases[i].trns, true);
     /* Cross-check the hand-rolled builder against stb before trusting it. */
     ra8_img_arena_t arena = {.base = s_stb_arena, .cap = sizeof(s_stb_arena)};
     ra8_img_arena_bind(&arena);
@@ -647,9 +653,12 @@ static void test_produce_png_colortypes(void)
     ra8_img_arena_unbind();
 
     ra8_jof_info_t info = {};
-    TEST_ASSERT_EQ(
-      k_ra8_ok,
-      produce((uint16_t)k_t_tile, (uint16_t)k_t_tile, (uint8_t)k_ra8_jof_codec_deflate, 0U, &info));
+    TEST_ASSERT_EQ(k_ra8_ok,
+                   internal_produce((uint16_t)k_t_tile,
+                                    (uint16_t)k_t_tile,
+                                    (uint8_t)k_ra8_jof_codec_deflate,
+                                    0U,
+                                    &info));
     TEST_ASSERT_EQ(cases[i].bpp, info.bpp);
     TEST_ASSERT_EQ(k_t_png_w, info.width);
     TEST_ASSERT_EQ(k_t_png_h, info.height);
@@ -658,14 +667,14 @@ static void test_produce_png_colortypes(void)
     TEST_ASSERT_EQ(
       k_ra8_ok,
       ra8_jof_parse(ra8_jof_memstore_pread, &s_store, (uint64_t)s_store.len, &reparsed));
-    TEST_ASSERT(ta_info_equal(&info, &reparsed));
-    check_tiles(&info, cases[i].ct);
+    TEST_ASSERT(internal_ta_info_equal(&info, &reparsed));
+    internal_check_tiles(&info, cases[i].ct);
   }
-  TEST_END("produce: PNG colour types 0/2/3/3+tRNS/4/6, filtered rows, parity");
+  TEST_END("internal_produce: PNG colour types 0/2/3/3+tRNS/4/6, filtered rows, parity");
 }
 
 /**
- * @test test_produce_jpeg_parity
+ * @test internal_test_produce_jpeg_parity
  * @brief JPEG stripe-transcode parity: paged tiles == the whole-buffer
  *        `ra8_jpeg_sw_decode()` reference, both codecs, dribbled input.
  *
@@ -674,15 +683,14 @@ static void test_produce_png_colortypes(void)
  * - Vector 1: valid JPEG head          -> true  (this test)
  * - Vector 2: PNG head (0x89, 'P')     -> false via condition 1 (PNG test)
  * - Vector 3: crafted 0xFF, 0x00 head  -> false via condition 2
- *   (test_produce_reject's bad-magic case, in the sibling reject suite)
- */
-static void test_produce_jpeg_parity(void)
+ *   (test_produce_reject's bad-magic case, in the sibling reject suite) @details Executes the produce jpeg parity scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_produce_jpeg_parity(void)
 {
-  TEST_BEGIN("produce: JPEG stripes == whole decode, raw + deflate codecs");
+  TEST_BEGIN("internal_produce: JPEG stripes == whole decode, raw + deflate codecs");
   for (uint32_t y = 0U; y < k_t_jpg_h; y++) {
     for (uint32_t x = 0U; x < k_t_jpg_w; x++) {
       for (uint32_t c = 0U; c < 3U; c++) {
-        s_rgb[(((y * k_t_jpg_w) + x) * 3U) + c] = pix(x, y, c);
+        s_rgb[(((y * k_t_jpg_w) + x) * 3U) + c] = internal_pix(x, y, c);
       }
     }
   }
@@ -708,14 +716,15 @@ static void test_produce_jpeg_parity(void)
   const size_t  chunks[2] = {0U, 7U}; /* whole pulls, then a dribble stress */
   for (uint32_t i = 0U; i < 2U; i++) {
     ra8_jof_info_t info = {};
-    TEST_ASSERT_EQ(k_ra8_ok,
-                   produce((uint16_t)k_t_tile, (uint16_t)k_t_tile, codecs[i], chunks[i], &info));
+    TEST_ASSERT_EQ(
+      k_ra8_ok,
+      internal_produce((uint16_t)k_t_tile, (uint16_t)k_t_tile, codecs[i], chunks[i], &info));
     TEST_ASSERT_EQ(3U, info.bpp);
     TEST_ASSERT_EQ(k_t_jpg_w, info.width);
     TEST_ASSERT_EQ(k_t_jpg_h, info.height);
-    check_tiles(&info, k_t_ct_jpeg_ref);
+    internal_check_tiles(&info, k_t_ct_jpeg_ref);
   }
-  TEST_END("produce: JPEG stripes == whole decode, raw + deflate codecs");
+  TEST_END("internal_produce: JPEG stripes == whole decode, raw + deflate codecs");
 }
 
 /**
@@ -729,11 +738,10 @@ static void test_produce_jpeg_parity(void)
  * @pre The shared source/store buffers are available.
  * @post `s_src` holds the big test PNG; all budget invariants held.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static uint32_t produce_bounded_budget(void)
+ * @since 0.1.0 @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static uint32_t internal_produce_bounded_budget(void)
 {
-  png_build(k_t_big_w, k_t_big_h, 0U, false, false);
+  internal_png_build(k_t_big_w, k_t_big_h, 0U, false, false);
   const uint64_t decoded = (uint64_t)k_t_big_w * (uint64_t)k_t_big_h;
   const uint32_t need    = ra8_jof_work_bytes((uint16_t)k_t_big_w,
                                               (uint16_t)k_t_big_h,
@@ -752,14 +760,13 @@ static uint32_t produce_bounded_budget(void)
 /**
  * @brief Spot-check page-back parity at the four corners of the tile grid.
  *
- * @param[in] info Parsed atlas info from the bounded-RAM produce run.
+ * @param[in] info Parsed atlas info from the bounded-RAM internal_produce run.
  *
  * @pre `s_store` holds the produced atlas.
  * @post Every sampled corner pixel matched the generator pattern.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void produce_bounded_check_corners(const ra8_jof_info_t* info)
+ * @since 0.1.0 @details Exercises the produce bounded check corners path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_produce_bounded_check_corners(const ra8_jof_info_t* info)
 {
   const uint16_t corners[4][2] = {
     {0U, 0U},
@@ -785,14 +792,14 @@ static void produce_bounded_check_corners(const ra8_jof_info_t* info)
     const uint32_t y0 = (uint32_t)corners[i][1] * info->tile_h;
     for (uint32_t r = 0U; r < h; r += k_t_probe_row_step) {
       for (uint32_t c = 0U; c < w; c += k_t_probe_col_step) {
-        TEST_ASSERT_EQ(pix(x0 + c, y0 + r, 0U), s_cell[(r * w) + c]);
+        TEST_ASSERT_EQ(internal_pix(x0 + c, y0 + r, 0U), s_cell[(r * w) + c]);
       }
     }
   }
 }
 
 /**
- * @test test_produce_bounded_ram
+ * @test internal_test_produce_bounded_ram
  * @brief A source whose decoded size (8 MiB+) dwarfs the fixed working set
  *        transcodes inside it: the #231 bounded high-water proof.
  *
@@ -804,19 +811,18 @@ static void produce_bounded_check_corners(const ra8_jof_info_t* info)
  *
  * @par MC/DC:
  * (bounded-budget inequalities + parity spot checks; the producer's
- * compound decisions carry vectors in the sibling tests.)
- */
-static void test_produce_bounded_ram(void)
+ * compound decisions carry vectors in the sibling tests.) @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_produce_bounded_ram(void)
 {
-  TEST_BEGIN("produce: decoded size >> fixed working set (bounded RAM high-water)");
-  const uint32_t need = produce_bounded_budget();
+  TEST_BEGIN("internal_produce: decoded size >> fixed working set (bounded RAM high-water)");
+  const uint32_t need = internal_produce_bounded_budget();
 
-  static t_pull_t s_pull;
-  s_pull  = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
-  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  static t_pull_t local_pull;
+  local_pull = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
+  s_store    = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   const ra8_jof_produce_cfg_t cfg = {
-    .pull       = t_pull,
-    .pull_ctx   = &s_pull,
+    .pull       = internal_t_pull,
+    .pull_ctx   = &local_pull,
     .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &s_store,
     .tile_w     = (uint16_t)k_t_big_tile,
@@ -833,12 +839,12 @@ static void test_produce_bounded_ram(void)
   TEST_ASSERT_EQ(k_t_big_h, info.height);
   TEST_ASSERT_EQ((k_t_big_w / k_t_big_tile) * (k_t_big_h / k_t_big_tile), info.tile_count);
   /* Page-back spot parity at the four corners of the grid. */
-  produce_bounded_check_corners(&info);
-  TEST_END("produce: decoded size >> fixed working set (bounded RAM high-water)");
+  internal_produce_bounded_check_corners(&info);
+  TEST_END("internal_produce: decoded size >> fixed working set (bounded RAM high-water)");
 }
 
 /**
- * @test test_produce_work_bytes
+ * @test internal_test_produce_work_bytes
  * @brief The arena calculator rejects nonsense inputs and scales sanely.
  *
  * @par MC/DC:
@@ -848,11 +854,10 @@ static void test_produce_bounded_ram(void)
  * - Vector 2: width 0       -> true  (varies condition 1)
  * - Vector 3: width 40000   -> true  (varies condition 2)
  * - Vector 4: height 0      -> true  (varies condition 3)
- * - Vector 5: height 40000  -> true  (varies condition 4)
- */
-static void test_produce_work_bytes(void)
+ * - Vector 5: height 40000  -> true  (varies condition 4) @details Executes the produce work bytes scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_produce_work_bytes(void)
 {
-  TEST_BEGIN("produce: work-arena calculator bounds");
+  TEST_BEGIN("internal_produce: work-arena calculator bounds");
   TEST_ASSERT(ra8_jof_work_bytes(1024U, 1024U, 128U, 128U) > 0U);
   TEST_ASSERT_EQ(0U, ra8_jof_work_bytes(0U, 1024U, 128U, 128U));
   TEST_ASSERT_EQ(0U, ra8_jof_work_bytes(40000U, 1024U, 128U, 128U));
@@ -865,7 +870,7 @@ static void test_produce_work_bytes(void)
   /* Monotone-ish sanity: a taller band costs more arena. */
   TEST_ASSERT(ra8_jof_work_bytes(1024U, 1024U, 128U, 256U) >
               ra8_jof_work_bytes(1024U, 1024U, 128U, 64U));
-  TEST_END("produce: work-arena calculator bounds");
+  TEST_END("internal_produce: work-arena calculator bounds");
 }
 
 /**
@@ -880,10 +885,9 @@ static void test_produce_work_bytes(void)
  */
 int32_t main(void)
 {
-  test_produce_png_colortypes();
-  test_produce_jpeg_parity();
-  test_produce_bounded_ram();
-  test_produce_work_bytes();
-  (void)fprintf(stderr, "[OK  ] test_ra8_jof_produce.c\n");
+  internal_test_produce_png_colortypes();
+  internal_test_produce_jpeg_parity();
+  internal_test_produce_bounded_ram();
+  internal_test_produce_work_bytes();
   return 0;
 }

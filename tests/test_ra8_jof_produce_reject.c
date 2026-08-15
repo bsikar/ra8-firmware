@@ -30,6 +30,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_jof.h"
 #include "ra8_jof_produce.h"
@@ -149,8 +150,8 @@ typedef struct {
   size_t         chunk; /**< Max bytes per pull (0=all). */
 } t_pull_t;
 
-/** @brief ::ra8_jof_pull_fn over a ::t_pull_t. */
-static ra8_err_t t_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+/** @brief ::ra8_jof_pull_fn over a ::t_pull_t. @details Exercises the t pull path with bounded caller-owned fixture state and verifies its documented result. @param[in,out] ctx Injected callback context whose ownership remains with the test. @param[out] buf Byte buffer read or written by the exercised callback. @param[in] cap Capacity of the associated byte buffer in bytes. @param[out] got Receives the number of bytes transferred. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_t_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   t_pull_t*    p    = (t_pull_t*)ctx;
   const size_t left = p->n - p->pos;
@@ -164,13 +165,14 @@ static ra8_err_t t_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
   return k_ra8_ok;
 }
 
-/** @brief Failing pull source (error propagation check). */
+/* Failing pull source (error propagation check). */
 /* The pointer parameters below cannot be const: this mock implements a
  * function-pointer interface (the DI seam under test), so its signature is
  * fixed by the typedef it is assigned to -- adding const changes the
  * function type and the assignment stops compiling. */
 // NOLINTNEXTLINE(readability-non-const-parameter)
-static ra8_err_t t_pull_fail(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+/** @brief Provide the file-local t pull fail test helper. @details Exercises the t pull fail path with bounded caller-owned fixture state and verifies its documented result. @param[in,out] ctx Injected callback context whose ownership remains with the test. @param[out] buf Byte buffer read or written by the exercised callback. @param[in] cap Capacity of the associated byte buffer in bytes. @param[out] got Receives the number of bytes transferred. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_t_pull_fail(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   (void)ctx;
   (void)buf;
@@ -185,8 +187,8 @@ static ra8_err_t t_pull_fail(void* ctx, uint8_t* buf, size_t cap, size_t* got)
  * ---------------------------------------------------------------------------
  */
 
-/** @brief Append a PNG chunk (length/type/data/crc) into `s_src`. */
-static void png_chunk(const char* type, const uint8_t* data, uint32_t len)
+/** @brief Append a PNG chunk (length/type/data/crc) into `s_src`. @details Exercises the png chunk path with bounded caller-owned fixture state and verifies its documented result. @param[in] type Four-byte PNG chunk type. @param[in] data Readable fixture payload bytes. @param[in] len Length of the associated byte sequence. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_png_chunk(const char* type, const uint8_t* data, uint32_t len)
 {
   uint8_t* p = &s_src[s_src_len];
   p[0]       = (uint8_t)(len >> k_t_be32_hi_shift);
@@ -226,9 +228,8 @@ static void png_chunk(const char* type, const uint8_t* data, uint32_t len)
  * @post Palette samples are below ::k_t_plte_entries.
  *
  * @note Not thread-safe; writes the file-scope staging buffer.
- * @since 0.1.0
- */
-static size_t png_fill_raw(uint32_t w, uint32_t h, uint32_t ch, bool palette)
+ * @since 0.1.0 @retval value The computed fixture value for the supplied inputs. */
+RA8_INTERNAL static size_t internal_png_fill_raw(uint32_t w, uint32_t h, uint32_t ch, bool palette)
 {
   size_t o = 0U;
   for (uint32_t y = 0U; y < h; y++) {
@@ -266,7 +267,8 @@ static size_t png_fill_raw(uint32_t w, uint32_t h, uint32_t ch, bool palette)
  * @note Not thread-safe; writes the file-scope source buffer.
  * @since 0.1.0
  */
-static void png_build(uint32_t w, uint32_t h, uint8_t color_type, bool with_trns)
+RA8_INTERNAL static void
+internal_png_build(uint32_t w, uint32_t h, uint8_t color_type, bool with_trns)
 {
   static const uint8_t sig[8]  = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
   const bool           palette = (color_type == 3U);
@@ -284,7 +286,7 @@ static void png_build(uint32_t w, uint32_t h, uint8_t color_type, bool with_trns
   ihdr[k_t_ihdr_off_h_b3]        = (uint8_t)(h & k_t_byte_mask);
   ihdr[k_t_ihdr_off_depth]       = 8U;
   ihdr[k_t_ihdr_off_ct]          = color_type;
-  png_chunk("IHDR", ihdr, sizeof(ihdr));
+  internal_png_chunk("IHDR", ihdr, sizeof(ihdr));
   if (palette) {
     uint8_t plte[k_t_plte_bytes] = {};
     for (uint32_t i = 0U; i < k_t_plte_entries; i++) {
@@ -292,32 +294,35 @@ static void png_build(uint32_t w, uint32_t h, uint8_t color_type, bool with_trns
       plte[(i * 3U) + 1U] = (uint8_t)(k_t_plte_g_base + (i * k_t_plte_g_step));
       plte[(i * 3U) + 2U] = (uint8_t)(k_t_plte_b_base + (i * k_t_plte_b_step));
     }
-    png_chunk("PLTE", plte, sizeof(plte));
+    internal_png_chunk("PLTE", plte, sizeof(plte));
     if (with_trns) {
       const uint8_t trns[3] = {255U, 128U, 64U}; /* entries 3+4 default opaque */
-      png_chunk("tRNS", trns, sizeof(trns));
+      internal_png_chunk("tRNS", trns, sizeof(trns));
     }
   }
-  const size_t rawn = png_fill_raw(w, h, ch, palette);
+  const size_t rawn = internal_png_fill_raw(w, h, ch, palette);
   mz_ulong     zlen = (mz_ulong)sizeof(s_zbuf);
   TEST_ASSERT_EQ(MZ_OK, mz_compress(s_zbuf, &zlen, s_raw, (mz_ulong)rawn));
   /* Split the zlib stream across two IDAT chunks (chunk-crossing coverage). */
   const uint32_t half = (uint32_t)zlen / 2U;
-  png_chunk("IDAT", s_zbuf, half);
-  png_chunk("IDAT", &s_zbuf[half], (uint32_t)zlen - half);
-  png_chunk("IEND", NULL, 0U);
+  internal_png_chunk("IDAT", s_zbuf, half);
+  internal_png_chunk("IDAT", &s_zbuf[half], (uint32_t)zlen - half);
+  internal_png_chunk("IEND", NULL, 0U);
 }
 
-/** @brief Run the producer over `s_src` into a fresh memstore. */
-static ra8_err_t
-produce(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t chunk, ra8_jof_info_t* info)
+/** @brief Run the producer over `s_src` into a fresh memstore. @details Exercises the produce path with bounded caller-owned fixture state and verifies its documented result. @param[in] tile_w Tile width in pixels. @param[in] tile_h Tile height in pixels. @param[in] codec JOF tile-codec selector. @param[in] chunk Fixture chunk state or bytes. @param[in,out] info Parsed JOF metadata used by the exercised operation. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_produce(uint16_t        tile_w,
+                                               uint16_t        tile_h,
+                                               uint8_t         codec,
+                                               size_t          chunk,
+                                               ra8_jof_info_t* info)
 {
-  static t_pull_t s_pull;
-  s_pull  = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = chunk};
-  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  static t_pull_t local_pull;
+  local_pull = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = chunk};
+  s_store    = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   const ra8_jof_produce_cfg_t cfg = {
-    .pull       = t_pull,
-    .pull_ctx   = &s_pull,
+    .pull       = internal_t_pull,
+    .pull_ctx   = &local_pull,
     .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &s_store,
     .tile_w     = tile_w,
@@ -341,14 +346,16 @@ produce(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t chunk, ra8_jof_i
  * @post The producer returned @p want (test exits otherwise).
  * @post Shared state may hold a partial atlas (discarded).
  * @note Not thread-safe.
- * @since 0.1.0
- */
-static void expect_produce_err(ra8_err_t want)
+ * @since 0.1.0 @details Exercises the expect produce err path with bounded caller-owned fixture state and verifies its documented result. */
+RA8_INTERNAL static void internal_expect_produce_err(ra8_err_t want)
 {
   ra8_jof_info_t info = {};
-  TEST_ASSERT_EQ(
-    want,
-    produce((uint16_t)k_t_tile, (uint16_t)k_t_tile, (uint8_t)k_ra8_jof_codec_deflate, 0U, &info));
+  TEST_ASSERT_EQ(want,
+                 internal_produce((uint16_t)k_t_tile,
+                                  (uint16_t)k_t_tile,
+                                  (uint8_t)k_ra8_jof_codec_deflate,
+                                  0U,
+                                  &info));
 }
 
 /**
@@ -356,19 +363,18 @@ static void expect_produce_err(ra8_err_t want)
  * @pre The shared source/store buffers are available.
  * @post Both malformed sniff inputs returned their rejection code.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void produce_reject_sniff(void)
+ * @since 0.1.0 @details Exercises the produce reject sniff path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_produce_reject_sniff(void)
 {
   /* Not a JPEG/PNG at all (0xFF then junk: sniff condition-2 vector). */
   s_src[0] = k_t_hostile_lead_byte;
   s_src[1] = 0x00U;
   memset(&s_src[2], k_tap_fill_jpeg_body, (size_t)k_tap_jpeg_body_len);
   s_src_len = k_t_hostile_sniff_len;
-  expect_produce_err(k_ra8_err_not_supported);
+  internal_expect_produce_err(k_ra8_err_not_supported);
   /* Too short to sniff. */
   s_src_len = 4U;
-  expect_produce_err(k_ra8_err_protocol_error);
+  internal_expect_produce_err(k_ra8_err_protocol_error);
 }
 
 /**
@@ -376,14 +382,13 @@ static void produce_reject_sniff(void)
  * @pre The shared source/store buffers are available.
  * @post The pull error and each bad-config guard returned their codes.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void produce_reject_pull_and_cfg(void)
+ * @since 0.1.0 @details Exercises the produce reject pull and cfg path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_produce_reject_pull_and_cfg(void)
 {
   ra8_jof_info_t info = {};
   s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   const ra8_jof_produce_cfg_t cfg = {
-    .pull     = t_pull_fail,
+    .pull     = internal_t_pull_fail,
     .pull_ctx = NULL,
     .sink     = ra8_jof_memstore_sink,
     .sink_ctx = &s_store,
@@ -412,54 +417,53 @@ static void produce_reject_pull_and_cfg(void)
  * @pre The shared source/store buffers are available.
  * @post Interlace, depth, colour-type, geometry and chunk faults were rejected.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void produce_reject_png_ihdr(void)
+ * @since 0.1.0 @details Exercises the produce reject png ihdr path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_produce_reject_png_ihdr(void)
 {
   /* Interlaced PNG (IHDR interlace byte at sig 8 + chunk hdr 8 + offset 12). */
-  png_build(k_t_png_w, k_t_png_h, 0U, false);
+  internal_png_build(k_t_png_w, k_t_png_h, 0U, false);
   s_src[k_t_src_off_interlace] = 1U;
-  expect_produce_err(k_ra8_err_not_supported);
+  internal_expect_produce_err(k_ra8_err_not_supported);
   /* 16-bit depth. */
-  png_build(k_t_png_w, k_t_png_h, 0U, false);
+  internal_png_build(k_t_png_w, k_t_png_h, 0U, false);
   s_src[k_t_src_off_depth] = 16U;
-  expect_produce_err(k_ra8_err_not_supported);
+  internal_expect_produce_err(k_ra8_err_not_supported);
   /* Unknown colour type. */
-  png_build(k_t_png_w, k_t_png_h, 0U, false);
+  internal_png_build(k_t_png_w, k_t_png_h, 0U, false);
   s_src[k_t_src_off_ct] = k_t_plte_entries;
-  expect_produce_err(k_ra8_err_not_supported);
+  internal_expect_produce_err(k_ra8_err_not_supported);
   /* Oversize width / height vs the caps (big-endian IHDR fields). */
-  png_build(k_t_png_w, k_t_png_h, 0U, false);
+  internal_png_build(k_t_png_w, k_t_png_h, 0U, false);
   s_src[k_t_src_off_w_b0] = 0x00U;
   s_src[k_t_src_off_w_b1] = 0x01U;
   s_src[k_t_src_off_w_b2] = 0x00U;
   s_src[k_t_src_off_w_b3] = 0x00U; /* width = 65536 */
-  expect_produce_err(k_ra8_err_invalid_size);
-  png_build(k_t_png_w, k_t_png_h, 0U, false);
+  internal_expect_produce_err(k_ra8_err_invalid_size);
+  internal_png_build(k_t_png_w, k_t_png_h, 0U, false);
   s_src[k_t_src_off_h_b0] = 0x00U;
   s_src[k_t_src_off_h_b1] = 0x01U;
   s_src[k_t_src_off_h_b2] = 0x00U;
   s_src[k_t_src_off_h_b3] = 0x00U; /* height = 65536 */
-  expect_produce_err(k_ra8_err_invalid_size);
+  internal_expect_produce_err(k_ra8_err_invalid_size);
   /* Zero width (PNG IHDR direct-geometry vector). */
-  png_build(k_t_png_w, k_t_png_h, 0U, false);
+  internal_png_build(k_t_png_w, k_t_png_h, 0U, false);
   s_src[k_t_src_off_w_b0] = 0U;
   s_src[k_t_src_off_w_b1] = 0U;
   s_src[k_t_src_off_w_b2] = 0U;
   s_src[k_t_src_off_w_b3] = 0U;
-  expect_produce_err(k_ra8_err_invalid_size);
+  internal_expect_produce_err(k_ra8_err_invalid_size);
   /* Truncated IDAT (cut the source in half). */
-  png_build(k_t_png_w, k_t_png_h, 0U, false);
+  internal_png_build(k_t_png_w, k_t_png_h, 0U, false);
   s_src_len = s_src_len / 2U;
-  expect_produce_err(k_ra8_err_protocol_error);
+  internal_expect_produce_err(k_ra8_err_protocol_error);
   /* Palette image with no PLTE: strip it by renaming the chunk type. */
-  png_build(k_t_png_w, k_t_png_h, 3U, false);
+  internal_png_build(k_t_png_w, k_t_png_h, 3U, false);
   memcpy(&s_src[8U + 8U + (size_t)k_t_png_ihdr_len + 4U + 4U], "yLTE", 4U); /* PLTE -> ancillary */
-  expect_produce_err(k_ra8_err_validation_failed);
+  internal_expect_produce_err(k_ra8_err_validation_failed);
   /* tRNS on a non-palette image. */
-  png_build(k_t_png_w, k_t_png_h, 3U, true);
+  internal_png_build(k_t_png_w, k_t_png_h, 3U, true);
   s_src[k_t_src_off_ct] = 2U; /* IHDR says RGB but tRNS+PLTE follow: tRNS now rejects */
-  expect_produce_err(k_ra8_err_not_supported);
+  internal_expect_produce_err(k_ra8_err_not_supported);
 }
 
 /**
@@ -467,20 +471,19 @@ static void produce_reject_png_ihdr(void)
  * @pre The shared source/store buffers are available.
  * @post Under-budgeted work and sink both propagated their error codes.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void produce_reject_budget(void)
+ * @since 0.1.0 @details Exercises the produce reject budget path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_produce_reject_budget(void)
 {
   /* Work arena too small (fail-closed budget). */
   {
-    png_build(k_t_png_w, k_t_png_h, 0U, false);
-    static t_pull_t s_pull;
-    s_pull  = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
-    s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+    internal_png_build(k_t_png_w, k_t_png_h, 0U, false);
+    static t_pull_t local_pull;
+    local_pull = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
+    s_store    = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
     ra8_jof_info_t              info = {};
     const ra8_jof_produce_cfg_t cfg  = {
-      .pull     = t_pull,
-      .pull_ctx = &s_pull,
+      .pull     = internal_t_pull,
+      .pull_ctx = &local_pull,
       .sink     = ra8_jof_memstore_sink,
       .sink_ctx = &s_store,
       .tile_w   = (uint16_t)k_t_tile,
@@ -493,14 +496,14 @@ static void produce_reject_budget(void)
   }
   /* Sink runs out of room (store cap tiny) -> no_mem propagates. */
   {
-    png_build(k_t_png_w, k_t_png_h, 0U, false);
-    static t_pull_t s_pull;
-    s_pull  = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
-    s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = k_t_starved_store_cap, .len = 0U};
+    internal_png_build(k_t_png_w, k_t_png_h, 0U, false);
+    static t_pull_t local_pull;
+    local_pull = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
+    s_store    = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = k_t_starved_store_cap, .len = 0U};
     ra8_jof_info_t              info = {};
     const ra8_jof_produce_cfg_t cfg  = {
-      .pull     = t_pull,
-      .pull_ctx = &s_pull,
+      .pull     = internal_t_pull,
+      .pull_ctx = &local_pull,
       .sink     = ra8_jof_memstore_sink,
       .sink_ctx = &s_store,
       .tile_w   = (uint16_t)k_t_tile,
@@ -514,7 +517,7 @@ static void produce_reject_budget(void)
 }
 
 /**
- * @test test_produce_reject
+ * @test internal_test_produce_reject
  * @brief Hostile / unsupported sources are rejected fail-closed with the
  *        contracted codes -- this is untrusted EPUB content.
  *
@@ -530,20 +533,19 @@ static void produce_reject_budget(void)
  *
  * Decision (PLTE accept): `len == 0 || len % 3 != 0 || len > 768 ||
  * has_plte` (4 conditions) -- vectors: valid PLTE (parity tests), len
- * indivisible by 3, oversize PLTE, duplicate PLTE.
- */
-static void test_produce_reject(void)
+ * indivisible by 3, oversize PLTE, duplicate PLTE. @details Executes the produce reject scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_produce_reject(void)
 {
-  TEST_BEGIN("produce: hostile / unsupported sources fail closed");
-  produce_reject_sniff();
-  produce_reject_pull_and_cfg();
-  produce_reject_png_ihdr();
-  produce_reject_budget();
+  TEST_BEGIN("internal_produce: hostile / unsupported sources fail closed");
+  internal_produce_reject_sniff();
+  internal_produce_reject_pull_and_cfg();
+  internal_produce_reject_png_ihdr();
+  internal_produce_reject_budget();
   /* PLTE MC/DC vectors: indivisible length, oversize, duplicate. */
-  png_build(k_t_png_w, k_t_png_h, 3U, false);
+  internal_png_build(k_t_png_w, k_t_png_h, 3U, false);
   s_src[8U + 8U + k_t_png_ihdr_len + 4U + 3U] = k_t_plte_bad_len; /* PLTE length 15 -> 14 */
-  expect_produce_err(k_ra8_err_validation_failed);
-  TEST_END("produce: hostile / unsupported sources fail closed");
+  internal_expect_produce_err(k_ra8_err_validation_failed);
+  TEST_END("internal_produce: hostile / unsupported sources fail closed");
 }
 
 /**
@@ -558,7 +560,6 @@ static void test_produce_reject(void)
  */
 int32_t main(void)
 {
-  test_produce_reject();
-  (void)fprintf(stderr, "[OK  ] test_ra8_jof_produce_reject.c\n");
+  internal_test_produce_reject();
   return 0;
 }

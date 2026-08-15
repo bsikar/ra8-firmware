@@ -10,14 +10,14 @@
  * always provides well-formed inputs.  This file drives those paths
  * directly:
  *
- *   br_fill / ra8_jpeg_sw_br_get_bits:
+ *   br_fill / priv_jpeg_sw_br_get_bits:
  *     - Buffer exhausted before any byte is read (lines 104-105).
  *     - Buffer ends after a 0xFF marker-start byte (lines 111-112).
  *     - Refill branch taken but br_fill succeeds (lines 157-161).
  *     - Refill branch taken but br_fill cannot satisfy nbits < n
  *       (lines 157-159).
  *
- *   ra8_jpeg_sw_htab_decode:
+ *   priv_jpeg_sw_htab_decode:
  *     - Empty stream: br->nbits == 0 after br_fill (line 264).
  *     - valptr overrun: j >= h->total inside the match branch
  *       (line 276).
@@ -40,10 +40,10 @@
  * - V_TT: nbits=0, had_eoi=0 -> both T -> enter loop
  *         (all bit-reader tests start here)
  * - V_TF: nbits=0, had_eoi set mid-loop -> C1=T, C2=F -> exit loop
- *         (test_br_fill_empty_buffer: pos>=len sets had_eoi=1 inside
+ *         (internal_test_br_fill_empty_buffer: pos>=len sets had_eoi=1 inside
  *         the loop; the next condition check sees T,F)
  * - V_FX: nbits=32 > 24 -> C1=F -> exit immediately
- *         (test_br_get_bits_refill_and_succeed: after reading 4 bytes,
+ *         (internal_test_br_get_bits_refill_and_succeed: after reading 4 bytes,
  *         nbits=32 and the loop exits without checking had_eoi)
  * V_TT + V_TF isolate C2; V_TT + V_FX isolate C1. N+1 = 3.
  *
@@ -58,6 +58,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_jpeg_sw.h"
@@ -74,14 +75,14 @@ typedef enum : uint8_t {
 } jpeg_sw_cov_fixture_t;
 
 /* ------------------------------------------------------------------ */
-/* Bit-reader helpers: br_fill / ra8_jpeg_sw_br_get_bits */
+/* Bit-reader helpers: br_fill / priv_jpeg_sw_br_get_bits */
 /* ------------------------------------------------------------------ */
 
 /**
  * @brief Verify br_fill sets had_eoi when the buffer is empty.
  *
  * @details
- * Calls ra8_jpeg_sw_br_get_bits() with a zero-length buffer and
+ * Calls priv_jpeg_sw_br_get_bits() with a zero-length buffer and
  * nbits=0, which forces the first br_fill invocation to find
  * pos >= len immediately and set had_eoi = 1 (lines 104-105).
  * After br_fill returns with nbits still 0, the inner
@@ -93,13 +94,12 @@ typedef enum : uint8_t {
  * - V_T: pos=0, len=0 -> 0 >= 0 = true -> had_eoi=1 (this test).
  * - V_F: pos=0 < len=N -> false -> byte is read (tests 2 and 3).
  * N+1 = 2.
- * @since 0.1.0
- */
-static void test_br_fill_empty_buffer(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_br_fill_empty_buffer(void)
 {
   TEST_BEGIN("jpeg_sw_cov br_fill: empty buffer sets had_eoi");
   ra8_jpeg_bitreader_t br = {};
-  int32_t              r  = ra8_jpeg_sw_br_get_bits(&br, 8U);
+  int32_t              r  = priv_jpeg_sw_br_get_bits(&br, 8U);
   TEST_ASSERT_EQ(-1, r);
   TEST_ASSERT_EQ(1, br.had_eoi);
   TEST_END("jpeg_sw_cov br_fill: empty buffer sets had_eoi");
@@ -112,7 +112,7 @@ static void test_br_fill_empty_buffer(void)
  * A one-byte buffer containing 0xFF causes br_fill to consume the
  * byte as a potential marker-start, then find pos >= len before
  * reading the second byte, setting had_eoi = 1 (lines 111-112).
- * nbits stays 0, so ra8_jpeg_sw_br_get_bits returns -1.
+ * nbits stays 0, so priv_jpeg_sw_br_get_bits returns -1.
  * Lines 111, 112, 157, 158, 159 covered.
  *
  * @par MC/DC:
@@ -122,16 +122,15 @@ static void test_br_fill_empty_buffer(void)
  * - V_F: longer buffer where the byte after 0xFF is available
  *        (exercised by the full decode round-trip in test_ra8_jpeg_sw.c).
  * N+1 = 2.
- * @since 0.1.0
- */
-static void test_br_fill_marker_at_end_of_stream(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_br_fill_marker_at_end_of_stream(void)
 {
   TEST_BEGIN("jpeg_sw_cov br_fill: 0xFF at end-of-stream sets had_eoi");
   static const uint8_t buf[] = {0xFFU};
   ra8_jpeg_bitreader_t br    = {};
   br.buf                     = buf;
   br.len                     = (uint32_t)sizeof buf;
-  int32_t r                  = ra8_jpeg_sw_br_get_bits(&br, 1U);
+  int32_t r                  = priv_jpeg_sw_br_get_bits(&br, 1U);
   TEST_ASSERT_EQ(-1, r);
   TEST_ASSERT_EQ(1, br.had_eoi);
   TEST_END("jpeg_sw_cov br_fill: 0xFF at end-of-stream sets had_eoi");
@@ -142,7 +141,7 @@ static void test_br_fill_marker_at_end_of_stream(void)
  *
  * @details
  * Starts with nbits=0 and a 4-byte all-zero buffer.  The call to
- * ra8_jpeg_sw_br_get_bits(br, 4) finds nbits(0) < n(4), so the
+ * priv_jpeg_sw_br_get_bits(br, 4) finds nbits(0) < n(4), so the
  * outer `if` block is entered (line 156).  br_fill reads all four
  * bytes (32 bits), after which nbits(32) >= n(4).  The inner check
  * `if (br->nbits < n)` (line 158) is false, so execution falls
@@ -158,22 +157,21 @@ static void test_br_fill_marker_at_end_of_stream(void)
  * - Inner V_F: br_fill raised nbits to 32 >= 4 -> not taken (this).
  * - Inner V_T: br_fill cannot raise nbits -> return -1 (tests 1+2).
  * N+1 = 2 per condition.
- * @since 0.1.0
- */
-static void test_br_get_bits_refill_and_succeed(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_br_get_bits_refill_and_succeed(void)
 {
   TEST_BEGIN("jpeg_sw_cov br_get_bits: refill branch succeeds (line 161)");
   static const uint8_t buf[] = {0x00U, 0x00U, 0x00U, 0x00U};
   ra8_jpeg_bitreader_t br    = {};
   br.buf                     = buf;
   br.len                     = (uint32_t)sizeof buf;
-  int32_t r                  = ra8_jpeg_sw_br_get_bits(&br, 4U);
+  int32_t r                  = priv_jpeg_sw_br_get_bits(&br, 4U);
   TEST_ASSERT_EQ(0, r);
   TEST_END("jpeg_sw_cov br_get_bits: refill branch succeeds (line 161)");
 }
 
 /* ------------------------------------------------------------------ */
-/* ra8_jpeg_sw_htab_decode error paths */
+/* priv_jpeg_sw_htab_decode error paths */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -190,14 +188,13 @@ static void test_br_get_bits_refill_and_succeed(void)
  * - V_T: empty stream -> nbits=0 -> return -1 (this test).
  * - V_F: any non-empty stream -> nbits > 0 -> continue (tests 5-7).
  * N+1 = 2.
- * @since 0.1.0
- */
-static void test_htab_decode_empty_stream(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_htab_decode_empty_stream(void)
 {
   TEST_BEGIN("jpeg_sw_cov htab_decode: empty stream -> return -1 (line 264)");
   ra8_jpeg_htab_t      h  = {};
   ra8_jpeg_bitreader_t br = {};
-  int32_t              r  = ra8_jpeg_sw_htab_decode(&br, &h);
+  int32_t              r  = priv_jpeg_sw_htab_decode(&br, &h);
   TEST_ASSERT_EQ(-1, r);
   TEST_END("jpeg_sw_cov htab_decode: empty stream -> return -1 (line 264)");
 }
@@ -217,16 +214,15 @@ static void test_htab_decode_empty_stream(void)
  * - V_T: j=0, total=0 -> 0 >= 0 = true -> return -1 (this test).
  * - V_F: j < total -> return symbol (full decode round-trip).
  * N+1 = 2.
- * @since 0.1.0
- */
-static void test_htab_decode_valptr_overrun(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_htab_decode_valptr_overrun(void)
 {
   TEST_BEGIN("jpeg_sw_cov htab_decode: j >= total -> return -1 (line 276)");
   ra8_jpeg_htab_t h = {};
   /* Build a 1-symbol, 1-bit table: bits[0]=1, vals[0]=0x42. */
   h.bits[0] = 1U;
   h.vals[0] = k_jpeg_huff_symbol;
-  ra8_jpeg_sw_htab_build(&h);
+  priv_jpeg_sw_htab_build(&h);
   /* Corrupt total so that j = valptr[0] + 0 = 0 >= total = 0. */
   h.total = 0U;
   /* Stream: one zero byte.  First bit extracted as code=0. */
@@ -234,7 +230,7 @@ static void test_htab_decode_valptr_overrun(void)
   ra8_jpeg_bitreader_t br    = {};
   br.buf                     = buf;
   br.len                     = (uint32_t)sizeof buf;
-  int32_t r                  = ra8_jpeg_sw_htab_decode(&br, &h);
+  int32_t r                  = priv_jpeg_sw_htab_decode(&br, &h);
   TEST_ASSERT_EQ(-1, r);
   TEST_END("jpeg_sw_cov htab_decode: j >= total -> return -1 (line 276)");
 }
@@ -256,23 +252,22 @@ static void test_htab_decode_valptr_overrun(void)
  * - V_T: stream exhausted mid-loop -> bit=-1 -> return -1 (this test).
  * - V_F: stream still has bits -> bit>=0 -> continue (tests 5, 7).
  * N+1 = 2.
- * @since 0.1.0
- */
-static void test_htab_decode_underflow_in_loop(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_htab_decode_underflow_in_loop(void)
 {
   TEST_BEGIN("jpeg_sw_cov htab_decode: loop stream underflow (line 282)");
   /* Empty table: all bits[i]=0 so all maxcode[i]=-1.
-   * ra8_jpeg_sw_htab_build leaves every maxcode entry at -1 when
+   * priv_jpeg_sw_htab_build leaves every maxcode entry at -1 when
    * the corresponding bits[i] is zero. */
   ra8_jpeg_htab_t h = {};
-  ra8_jpeg_sw_htab_build(&h);
+  priv_jpeg_sw_htab_build(&h);
   /* One-byte stream: 8 bits total.  1 consumed at line 268, then
    * 7 more in the loop, exhausting the accumulator at iteration 7. */
   static const uint8_t buf[] = {0x80U};
   ra8_jpeg_bitreader_t br    = {};
   br.buf                     = buf;
   br.len                     = (uint32_t)sizeof buf;
-  int32_t r                  = ra8_jpeg_sw_htab_decode(&br, &h);
+  int32_t r                  = priv_jpeg_sw_htab_decode(&br, &h);
   TEST_ASSERT_EQ(-1, r);
   TEST_END("jpeg_sw_cov htab_decode: loop stream underflow (line 282)");
 }
@@ -289,24 +284,23 @@ static void test_htab_decode_underflow_in_loop(void)
  * @par MC/DC:
  * Decision `if (code <= h->maxcode[i])` (line 273, single condition):
  * - V_F: maxcode[i]=-1 and code>=0 -> false -> extend code (this test
- *        and test_htab_decode_underflow_in_loop).
+ *        and internal_test_htab_decode_underflow_in_loop).
  * - V_T: code <= maxcode[i] -> enter match branch (test_htab_decode_
  *        valptr_overrun and the full decode round-trip).
  * N+1 = 2.
- * @since 0.1.0
- */
-static void test_htab_decode_table_miss(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_htab_decode_table_miss(void)
 {
   TEST_BEGIN("jpeg_sw_cov htab_decode: table miss after 16 iters (line 286)");
   ra8_jpeg_htab_t h = {};
-  ra8_jpeg_sw_htab_build(&h);
+  priv_jpeg_sw_htab_build(&h);
   /* Three zero bytes = 24 bits.  1 for line 268 + 16 in loop = 17
    * bits consumed; 7 spare bits prevent loop underflow. */
   static const uint8_t buf[] = {0x00U, 0x00U, 0x00U};
   ra8_jpeg_bitreader_t br    = {};
   br.buf                     = buf;
   br.len                     = (uint32_t)sizeof buf;
-  int32_t r                  = ra8_jpeg_sw_htab_decode(&br, &h);
+  int32_t r                  = priv_jpeg_sw_htab_decode(&br, &h);
   TEST_ASSERT_EQ(-1, r);
   TEST_END("jpeg_sw_cov htab_decode: table miss after 16 iters (line 286)");
 }
@@ -327,9 +321,8 @@ static void test_htab_decode_table_miss(void)
  * - V_T: len=3 -> return invalid_size (this test).
  * - V_F: len>=4 -> continue (all other get_dimensions tests).
  * N+1 = 2.
- * @since 0.1.0
- */
-static void test_get_dim_too_short(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_get_dim_too_short(void)
 {
   TEST_BEGIN("jpeg_sw_cov get_dimensions: jpeg_len<4 -> invalid_size (line 495)");
   static const uint8_t buf[] = {0xFFU, 0xD8U, 0xFFU};
@@ -353,9 +346,8 @@ static void test_get_dim_too_short(void)
  * - V_T: byte=0x00 != 0xFF -> return protocol_error (this test).
  * - V_F: byte=0xFF -> continue pad-skip (all well-formed inputs).
  * N+1 = 2.
- * @since 0.1.0
- */
-static void test_get_dim_non_marker_byte(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_get_dim_non_marker_byte(void)
 {
   TEST_BEGIN("jpeg_sw_cov get_dimensions: non-FF byte -> protocol_error (line 503)");
   /* SOI then a non-marker byte with enough length to enter the loop. */
@@ -382,9 +374,8 @@ static void test_get_dim_non_marker_byte(void)
  * - V_T: pad run reaches EOF -> return protocol_error (this test).
  * - V_F: pad run stops before EOF -> continue parsing (all well-formed).
  * N+1 = 2.
- * @since 0.1.0
- */
-static void test_get_dim_pad_run_to_eof(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_get_dim_pad_run_to_eof(void)
 {
   TEST_BEGIN("jpeg_sw_cov get_dimensions: pad run to EOF (line 511)");
   /* SOI (2 bytes) + 6 pad bytes of 0xFF.  Loop condition: 2+4=6<=8.
@@ -422,9 +413,8 @@ static void test_get_dim_pad_run_to_eof(void)
  * - V_T: not enough bytes for seglen -> return protocol_error (this).
  * - V_F: at least 2 bytes remain -> read seglen (all other paths).
  * N+1 = 2.
- * @since 0.1.0
- */
-static void test_get_dim_marker_then_truncated(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_get_dim_marker_then_truncated(void)
 {
   TEST_BEGIN("jpeg_sw_cov get_dimensions: truncated after marker (line 520)");
   /* SOI + two 0xFF pad bytes + 0xC0 marker byte only (no seglen). */
@@ -451,9 +441,8 @@ static void test_get_dim_marker_then_truncated(void)
  * - V_F: seglen>=8 -> read precision (tests 13 and get_dimensions
  *        happy path).
  * N+1 = 2.
- * @since 0.1.0
- */
-static void test_get_dim_sof0_seglen_too_small(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_get_dim_sof0_seglen_too_small(void)
 {
   TEST_BEGIN("jpeg_sw_cov get_dimensions: SOF0 seglen<8 -> protocol_error (line 528)");
   /* SOI + SOF0 marker + seglen=5 + 3 payload bytes. */
@@ -489,9 +478,8 @@ static void test_get_dim_sof0_seglen_too_small(void)
  * - V_T: precision=12 != 8 -> return not_supported (this test).
  * - V_F: precision=8 -> read dimensions (get_dimensions happy path).
  * N+1 = 2.
- * @since 0.1.0
- */
-static void test_get_dim_sof0_bad_precision(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_get_dim_sof0_bad_precision(void)
 {
   TEST_BEGIN("jpeg_sw_cov get_dimensions: SOF0 precision!=8 -> not_supported (line 532)");
   /* SOI + SOF0 marker + seglen=11 + precision=12 (0x0C) + dims. */
@@ -534,19 +522,18 @@ static void test_get_dim_sof0_bad_precision(void)
 int32_t main(void)
 {
   ra8_fake_mmap_reset();
-  test_br_fill_empty_buffer();
-  test_br_fill_marker_at_end_of_stream();
-  test_br_get_bits_refill_and_succeed();
-  test_htab_decode_empty_stream();
-  test_htab_decode_valptr_overrun();
-  test_htab_decode_underflow_in_loop();
-  test_htab_decode_table_miss();
-  test_get_dim_too_short();
-  test_get_dim_non_marker_byte();
-  test_get_dim_pad_run_to_eof();
-  test_get_dim_marker_then_truncated();
-  test_get_dim_sof0_seglen_too_small();
-  test_get_dim_sof0_bad_precision();
-  (void)fprintf(stderr, "[OK ] test_ra8_jpeg_sw_cov.c\n");
+  internal_test_br_fill_empty_buffer();
+  internal_test_br_fill_marker_at_end_of_stream();
+  internal_test_br_get_bits_refill_and_succeed();
+  internal_test_htab_decode_empty_stream();
+  internal_test_htab_decode_valptr_overrun();
+  internal_test_htab_decode_underflow_in_loop();
+  internal_test_htab_decode_table_miss();
+  internal_test_get_dim_too_short();
+  internal_test_get_dim_non_marker_byte();
+  internal_test_get_dim_pad_run_to_eof();
+  internal_test_get_dim_marker_then_truncated();
+  internal_test_get_dim_sof0_seglen_too_small();
+  internal_test_get_dim_sof0_bad_precision();
   return 0;
 }

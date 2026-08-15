@@ -22,9 +22,9 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_jof.h"
 #include "ra8_jof_produce.h"
@@ -78,7 +78,7 @@ static const uint8_t s_png_sig[8] =
  * @note Pure over its output; thread-safe.
  * @since 0.1.0
  */
-static void wr_be32(uint8_t* buf, uint32_t v)
+RA8_INTERNAL static void internal_wr_be32(uint8_t* buf, uint32_t v)
 {
   buf[0] = (uint8_t)((v >> k_p_sh24) & k_p_byte_mask);
   buf[1] = (uint8_t)((v >> k_p_sh16) & k_p_byte_mask);
@@ -100,12 +100,12 @@ static void wr_be32(uint8_t* buf, uint32_t v)
  * @note Not thread-safe beyond its output.
  * @since 0.1.0
  */
-static void make_png(uint8_t* buf, uint32_t w, uint32_t h)
+RA8_INTERNAL static void internal_make_png(uint8_t* buf, uint32_t w, uint32_t h)
 {
   (void)memset(buf, 0, (size_t)k_p_png_ihdr);
   (void)memcpy(buf, s_png_sig, sizeof(s_png_sig));
-  wr_be32(&buf[k_p_ihdr_w_ofs], w);
-  wr_be32(&buf[k_p_ihdr_h_ofs], h);
+  internal_wr_be32(&buf[k_p_ihdr_w_ofs], w);
+  internal_wr_be32(&buf[k_p_ihdr_h_ofs], h);
 }
 
 /**
@@ -124,13 +124,13 @@ static void make_png(uint8_t* buf, uint32_t w, uint32_t h)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_probe_null_guards(void)
+RA8_INTERNAL static void internal_test_probe_null_guards(void)
 {
   TEST_BEGIN("probe_dims: three null-pointer guards");
   uint8_t  hdr[k_p_hdr_cap] = {};
   uint16_t w                = 0U;
   uint16_t h                = 0U;
-  make_png(hdr, k_p_w, k_p_h);
+  internal_make_png(hdr, k_p_w, k_p_h);
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_probe_dims(nullptr, (size_t)k_p_png_ihdr, &w, &h));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, nullptr, &h));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, nullptr));
@@ -153,13 +153,13 @@ static void test_probe_null_guards(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_probe_too_short(void)
+RA8_INTERNAL static void internal_test_probe_too_short(void)
 {
   TEST_BEGIN("probe_dims: below the sniff window");
   uint8_t  hdr[k_p_hdr_cap] = {};
   uint16_t w                = 0U;
   uint16_t h                = 0U;
-  make_png(hdr, k_p_w, k_p_h);
+  internal_make_png(hdr, k_p_w, k_p_h);
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_jof_probe_dims(hdr, 0U, &w, &h));
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
                  ra8_jof_probe_dims(hdr, (size_t)(k_p_sniff_min - 1U), &w, &h));
@@ -181,18 +181,18 @@ static void test_probe_too_short(void)
  * priv_png_dims's single-condition `len < k_ra8_jof_png_ihdr_end` truncation guard
  * (full IHDR -> k_ra8_ok; IHDR cut short -> not_supported). The valid PNG passes
  * through priv_probe_sniff's SOI && and range || decisions in one direction only;
- * their independent-influence MC/DC is owned by test_probe_jpeg_dispatch and
- * test_probe_range_guard.)
+ * their independent-influence MC/DC is owned by internal_test_probe_jpeg_dispatch and
+ * internal_test_probe_range_guard.)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_probe_png(void)
+RA8_INTERNAL static void internal_test_probe_png(void)
 {
   TEST_BEGIN("probe_dims: PNG IHDR arm and its truncation guard");
   uint8_t  hdr[k_p_hdr_cap] = {};
   uint16_t w                = 0U;
   uint16_t h                = 0U;
-  make_png(hdr, k_p_w, k_p_h);
+  internal_make_png(hdr, k_p_w, k_p_h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
   TEST_ASSERT_EQ(k_p_w, w);
   TEST_ASSERT_EQ(k_p_h, h);
@@ -220,24 +220,24 @@ static void test_probe_png(void)
  * - V4 w=40000, h=400   -> C3 T -> T (k_ra8_err_invalid_size).
  * - V5 w=640,   h=40000 -> C4 T -> T (k_ra8_err_invalid_size).
  * The all-false control V1 (valid 640x400 PNG -> F -> k_ra8_ok) is exercised by the
- * sibling test_probe_png. Each Vk vs V1 flips exactly one condition and the outcome.
- * N+1 = 5 vectors for N=4 (4 here + the control in test_probe_png).
+ * sibling internal_test_probe_png. Each Vk vs V1 flips exactly one condition and the outcome.
+ * N+1 = 5 vectors for N=4 (4 here + the control in internal_test_probe_png).
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_probe_range_guard(void)
+RA8_INTERNAL static void internal_test_probe_range_guard(void)
 {
   TEST_BEGIN("probe_dims: zero and over-cap geometry");
   uint8_t  hdr[k_p_hdr_cap] = {};
   uint16_t w                = 0U;
   uint16_t h                = 0U;
-  make_png(hdr, 0U, k_p_h);
+  internal_make_png(hdr, 0U, k_p_h);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
-  make_png(hdr, k_p_w, 0U);
+  internal_make_png(hdr, k_p_w, 0U);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
-  make_png(hdr, k_p_over_dim, k_p_h);
+  internal_make_png(hdr, k_p_over_dim, k_p_h);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
-  make_png(hdr, k_p_w, k_p_over_dim);
+  internal_make_png(hdr, k_p_w, k_p_over_dim);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
   TEST_END("probe_dims: zero and over-cap geometry");
 }
@@ -263,7 +263,7 @@ static void test_probe_range_guard(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_probe_unknown_magic(void)
+RA8_INTERNAL static void internal_test_probe_unknown_magic(void)
 {
   TEST_BEGIN("probe_dims: unknown magic and RIFF-but-not-WEBP");
   uint8_t  hdr[k_p_hdr_cap] = {};
@@ -307,7 +307,7 @@ static void test_probe_unknown_magic(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_probe_jpeg_dispatch(void)
+RA8_INTERNAL static void internal_test_probe_jpeg_dispatch(void)
 {
   TEST_BEGIN("probe_dims: JPEG SOI dispatch arm");
   uint8_t  hdr[k_p_hdr_cap] = {};
@@ -338,12 +338,11 @@ static void test_probe_jpeg_dispatch(void)
  */
 int32_t main(void)
 {
-  test_probe_null_guards();
-  test_probe_too_short();
-  test_probe_png();
-  test_probe_range_guard();
-  test_probe_unknown_magic();
-  test_probe_jpeg_dispatch();
-  (void)fprintf(stderr, "[OK  ] test_ra8_jof_probe_dims.c\n");
+  internal_test_probe_null_guards();
+  internal_test_probe_too_short();
+  internal_test_probe_png();
+  internal_test_probe_range_guard();
+  internal_test_probe_unknown_magic();
+  internal_test_probe_jpeg_dispatch();
   return 0;
 }

@@ -56,7 +56,7 @@
  * `ra8_jpeg_sw_encode.c`.
  *
  * @invariant `pos <= cap` whenever `overflow` is false.
- * @invariant `bit_cnt < 8` between `ra8_jpeg_sw_priv_enc_put_bits()` calls.
+ * @invariant `bit_cnt < 8` between `priv_jpeg_sw_enc_put_bits()` calls.
  *
  * @see ra8_jpeg_sw_encode()  Public API that owns the single instance.
  * @since 0.1.0
@@ -103,7 +103,7 @@ typedef struct {
  * @note Internal primitive; not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_jpeg_sw_priv_enc_emit_u16(ra8_jpeg_enc_ctx_t* e, uint16_t v);
+RA8_PRIV void priv_jpeg_sw_enc_emit_u16(ra8_jpeg_enc_ctx_t* e, uint16_t v);
 
 /**
  * @brief Push `n` bits MSB-first into the entropy stream with stuffing.
@@ -124,7 +124,7 @@ RA8_PRIV void ra8_jpeg_sw_priv_enc_emit_u16(ra8_jpeg_enc_ctx_t* e, uint16_t v);
  * @note Internal primitive; not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_jpeg_sw_priv_enc_put_bits(ra8_jpeg_enc_ctx_t* e, uint32_t code, uint8_t n);
+RA8_PRIV void priv_jpeg_sw_enc_put_bits(ra8_jpeg_enc_ctx_t* e, uint32_t code, uint8_t n);
 
 /**
  * @brief Flush any partial byte at the end of a scan with 1-fill.
@@ -136,14 +136,14 @@ RA8_PRIV void ra8_jpeg_sw_priv_enc_put_bits(ra8_jpeg_enc_ctx_t* e, uint32_t code
  * @param[in,out] e Encoder context (bit buffer + cursor mutate).
  *
  * @pre `e` is non-NULL (module-internal call chain).
- * @pre All scan data was emitted via `ra8_jpeg_sw_priv_enc_put_bits()`.
+ * @pre All scan data was emitted via `priv_jpeg_sw_enc_put_bits()`.
  * @post `e->bit_cnt == 0`.
  * @post The last entropy byte, if partial, is 1-padded in `dst`.
  *
  * @note Internal primitive; not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_jpeg_sw_priv_enc_flush_bits(ra8_jpeg_enc_ctx_t* e);
+RA8_PRIV void priv_jpeg_sw_enc_flush_bits(ra8_jpeg_enc_ctx_t* e);
 
 /**
  * @brief Build the four Annex K.3.3 Huffman code/size LUTs.
@@ -167,11 +167,11 @@ RA8_PRIV void ra8_jpeg_sw_priv_enc_flush_bits(ra8_jpeg_enc_ctx_t* e);
  * @note Internal primitive; not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_jpeg_sw_priv_enc_build_huff(ra8_jpeg_enc_ctx_t* e,
-                                              uint16_t*           total_dc_l,
-                                              uint16_t*           total_ac_l,
-                                              uint16_t*           total_dc_c,
-                                              uint16_t*           total_ac_c);
+RA8_PRIV void priv_jpeg_sw_enc_build_huff(ra8_jpeg_enc_ctx_t* e,
+                                          uint16_t*           total_dc_l,
+                                          uint16_t*           total_ac_l,
+                                          uint16_t*           total_dc_c,
+                                          uint16_t*           total_ac_c);
 
 /**
  * @brief Emit the SOI/APP0/DQT/SOF0/DHT/SOS header segments.
@@ -188,7 +188,7 @@ RA8_PRIV void ra8_jpeg_sw_priv_enc_build_huff(ra8_jpeg_enc_ctx_t* e,
  * @param[in]     total_dc_c Chroma DC symbol count.
  * @param[in]     total_ac_c Chroma AC symbol count.
  *
- * @pre `ra8_jpeg_sw_priv_enc_build_huff()` populated the totals.
+ * @pre `priv_jpeg_sw_enc_build_huff()` populated the totals.
  * @pre `e->qy`/`e->qc` hold the scaled quantization tables.
  * @post `e->pos` advanced past every header segment.
  * @post Header bytes are byte-identical to the pre-split encoder.
@@ -196,10 +196,10 @@ RA8_PRIV void ra8_jpeg_sw_priv_enc_build_huff(ra8_jpeg_enc_ctx_t* e,
  * @note Internal primitive; not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_jpeg_sw_priv_enc_headers(ra8_jpeg_enc_ctx_t* e,
-                                           uint16_t            w,
-                                           uint16_t            h,
-                                           uint16_t            total_dc_l,
-                                           uint16_t            total_ac_l,
-                                           uint16_t            total_dc_c,
-                                           uint16_t            total_ac_c);
+RA8_PRIV void priv_jpeg_sw_enc_headers(ra8_jpeg_enc_ctx_t* e,
+                                       uint16_t            w,
+                                       uint16_t            h,
+                                       uint16_t            total_dc_l,
+                                       uint16_t            total_ac_l,
+                                       uint16_t            total_dc_c,
+                                       uint16_t            total_ac_c);

@@ -32,6 +32,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_jpeg_sw.h"
@@ -51,13 +52,13 @@ static const char* s_tag = "JPEG_SW";
  * sliding window; this unit keeps their definitions plus the
  * whole-buffer `ra8_jpeg_sw_decode()` driver. */
 
-/** @brief Implementation of `ra8_jpeg_sw_priv_skip_segment()` -- bounds-checked cursor hop. */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_skip_segment(ra8_jpeg_dec_ctx_t* d)
+/** @brief Implementation of `priv_jpeg_sw_skip_segment()` -- bounds-checked cursor hop. */
+RA8_PRIV ra8_err_t priv_jpeg_sw_skip_segment(ra8_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
     return k_ra8_err_protocol_error;
   }
-  uint16_t len = read_be16(&d->src[d->cursor]);
+  uint16_t len = internal_read_be16(&d->src[d->cursor]);
   if (len < 2U || (uint32_t)len > d->src_len - d->cursor) {
     return k_ra8_err_protocol_error;
   }
@@ -65,13 +66,13 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_skip_segment(ra8_jpeg_dec_ctx_t* d)
   return k_ra8_ok;
 }
 
-/** @brief Implementation of `ra8_jpeg_sw_priv_parse_dqt()` -- T.81 B.2.4.1 de-zigzag parse. */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_dqt(ra8_jpeg_dec_ctx_t* d)
+/** @brief Implementation of `priv_jpeg_sw_parse_dqt()` -- T.81 B.2.4.1 de-zigzag parse. */
+RA8_PRIV ra8_err_t priv_jpeg_sw_parse_dqt(ra8_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
     return k_ra8_err_protocol_error;
   }
-  uint16_t len = read_be16(&d->src[d->cursor]);
+  uint16_t len = internal_read_be16(&d->src[d->cursor]);
   if (len < 2U || (uint32_t)len > d->src_len - d->cursor) {
     return k_ra8_err_protocol_error;
   }
@@ -103,8 +104,8 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_dqt(ra8_jpeg_dec_ctx_t* d)
  * Consumes exactly one Huffman-table record starting at `d->cursor`
  * (T.81 sec B.2.4.2): the TcTh selector byte, the 16-entry BITS list
  * and the HUFFVAL symbol list, then canonical-builds the table via
- * `ra8_jpeg_sw_htab_build()`. Called in a loop by
- * `ra8_jpeg_sw_priv_parse_dht()` until the segment is exhausted.
+ * `priv_jpeg_sw_htab_build()`. Called in a loop by
+ * `priv_jpeg_sw_parse_dht()` until the segment is exhausted.
  *
  * @param[in,out] d   Decoder context (cursor advances; table written).
  * @param[in]     end One-past-the-end offset of the DHT segment.
@@ -122,7 +123,7 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_dqt(ra8_jpeg_dec_ctx_t* d)
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t dec_parse_dht_one(ra8_jpeg_dec_ctx_t* d, uint32_t end)
+RA8_INTERNAL static ra8_err_t internal_dec_parse_dht_one(ra8_jpeg_dec_ctx_t* d, uint32_t end)
 {
   uint8_t tc_th = d->src[d->cursor];
   d->cursor++;
@@ -151,24 +152,24 @@ static ra8_err_t dec_parse_dht_one(ra8_jpeg_dec_ctx_t* d, uint32_t end)
     h->vals[i] = d->src[d->cursor];
     d->cursor++;
   }
-  ra8_jpeg_sw_htab_build(h);
+  priv_jpeg_sw_htab_build(h);
   return k_ra8_ok;
 }
 
-/** @brief Implementation of `ra8_jpeg_sw_priv_parse_dht()` -- T.81 B.2.4.2 record loop. */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_dht(ra8_jpeg_dec_ctx_t* d)
+/** @brief Implementation of `priv_jpeg_sw_parse_dht()` -- T.81 B.2.4.2 record loop. */
+RA8_PRIV ra8_err_t priv_jpeg_sw_parse_dht(ra8_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
     return k_ra8_err_protocol_error;
   }
-  uint16_t len = read_be16(&d->src[d->cursor]);
+  uint16_t len = internal_read_be16(&d->src[d->cursor]);
   if (len < 2U || (uint32_t)len > d->src_len - d->cursor) {
     return k_ra8_err_protocol_error;
   }
   uint32_t end = d->cursor + len;
   d->cursor += 2U;
   while (d->cursor < end) {
-    ra8_err_t e = dec_parse_dht_one(d, end);
+    ra8_err_t e = internal_dec_parse_dht_one(d, end);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -183,7 +184,7 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_dht(ra8_jpeg_dec_ctx_t* d)
  * Consumes `d->ncomp` three-byte component records (T.81 sec B.2.2:
  * Ci, HiVi, Tqi) starting at `*s`, filling the per-component arrays
  * and folding the running `hmax`/`vmax` maxima exactly as the previous
- * monolithic `ra8_jpeg_sw_priv_parse_sof0()` body did.
+ * monolithic `priv_jpeg_sw_parse_sof0()` body did.
  *
  * @param[in,out] d Decoder context (component tables + hmax/vmax written).
  * @param[in,out] s Byte cursor into the SOF0 payload (advances 3/comp).
@@ -196,7 +197,7 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_dht(ra8_jpeg_dec_ctx_t* d)
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void dec_parse_sof0_components(ra8_jpeg_dec_ctx_t* d, uint32_t* s)
+RA8_INTERNAL static void internal_dec_parse_sof0_components(ra8_jpeg_dec_ctx_t* d, uint32_t* s)
 {
   d->hmax = 0U;
   d->vmax = 0U;
@@ -234,14 +235,14 @@ static void dec_parse_sof0_components(ra8_jpeg_dec_ctx_t* d, uint32_t* s)
  * @retval k_ra8_err_not_supported Any other chroma layout.
  *
  * @pre `d` is non-NULL (module-internal call chain).
- * @pre `dec_parse_sof0_components()` ran for this frame.
+ * @pre `internal_dec_parse_sof0_components()` ran for this frame.
  * @post No decoder state is mutated.
  * @post Return value fully determines whether the scan may proceed.
  *
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t dec_check_chroma_layout(const ra8_jpeg_dec_ctx_t* d)
+RA8_INTERNAL static ra8_err_t internal_dec_check_chroma_layout(const ra8_jpeg_dec_ctx_t* d)
 {
   /* Only 4:4:4 (1,1,1) and 4:2:0 (2,1,1) accepted. */
   if (d->ncomp == 3U) {
@@ -255,13 +256,13 @@ static ra8_err_t dec_check_chroma_layout(const ra8_jpeg_dec_ctx_t* d)
   return k_ra8_ok;
 }
 
-/** @brief Implementation of `ra8_jpeg_sw_priv_parse_sof0()` -- T.81 B.2.2 frame header. */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_sof0(ra8_jpeg_dec_ctx_t* d)
+/** @brief Implementation of `priv_jpeg_sw_parse_sof0()` -- T.81 B.2.2 frame header. */
+RA8_PRIV ra8_err_t priv_jpeg_sw_parse_sof0(ra8_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
     return k_ra8_err_protocol_error;
   }
-  uint16_t len = read_be16(&d->src[d->cursor]);
+  uint16_t len = internal_read_be16(&d->src[d->cursor]);
   if (len < 8U || (uint32_t)len > d->src_len - d->cursor) {
     return k_ra8_err_protocol_error;
   }
@@ -271,9 +272,9 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_sof0(ra8_jpeg_dec_ctx_t* d)
   if (precision != 8U) {
     return k_ra8_err_not_supported;
   }
-  d->height = read_be16(&d->src[s]);
+  d->height = internal_read_be16(&d->src[s]);
   s += 2U;
-  d->width = read_be16(&d->src[s]);
+  d->width = internal_read_be16(&d->src[s]);
   s += 2U;
   d->ncomp = d->src[s];
   s++;
@@ -283,18 +284,18 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_sof0(ra8_jpeg_dec_ctx_t* d)
   if (((uint32_t)d->ncomp * 3U) + (s - d->cursor) > (uint32_t)len) {
     return k_ra8_err_protocol_error;
   }
-  dec_parse_sof0_components(d, &s);
+  internal_dec_parse_sof0_components(d, &s);
   d->cursor += len;
-  return dec_check_chroma_layout(d);
+  return internal_dec_check_chroma_layout(d);
 }
 
-/** @brief Implementation of `ra8_jpeg_sw_priv_parse_sos()` -- T.81 B.2.3 selector binding. */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_sos(ra8_jpeg_dec_ctx_t* d)
+/** @brief Implementation of `priv_jpeg_sw_parse_sos()` -- T.81 B.2.3 selector binding. */
+RA8_PRIV ra8_err_t priv_jpeg_sw_parse_sos(ra8_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
     return k_ra8_err_protocol_error;
   }
-  uint16_t len = read_be16(&d->src[d->cursor]);
+  uint16_t len = internal_read_be16(&d->src[d->cursor]);
   if (len < 6U || (uint32_t)len > d->src_len - d->cursor) {
     return k_ra8_err_protocol_error;
   }
@@ -356,12 +357,12 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_sos(ra8_jpeg_dec_ctx_t* d)
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t
-dec_block_ac(ra8_jpeg_dec_ctx_t* d, ra8_jpeg_bitreader_t* br, uint8_t ci, int32_t* outblk)
+RA8_INTERNAL static ra8_err_t
+internal_dec_block_ac(ra8_jpeg_dec_ctx_t* d, ra8_jpeg_bitreader_t* br, uint8_t ci, int32_t* outblk)
 {
   uint8_t k = 1U;
   while (k < (uint8_t)k_ra8_jpeg_block_size) {
-    int32_t rs = ra8_jpeg_sw_htab_decode(br, &d->hac[d->comp_ac_id[ci]]);
+    int32_t rs = priv_jpeg_sw_htab_decode(br, &d->hac[d->comp_ac_id[ci]]);
     if (rs < 0) {
       return k_ra8_err_protocol_error;
     }
@@ -378,61 +379,61 @@ dec_block_ac(ra8_jpeg_dec_ctx_t* d, ra8_jpeg_bitreader_t* br, uint8_t ci, int32_
     if (k >= (uint8_t)k_ra8_jpeg_block_size) {
       return k_ra8_err_protocol_error;
     }
-    int32_t v = ra8_jpeg_sw_br_get_bits(br, ssss);
+    int32_t v = priv_jpeg_sw_br_get_bits(br, ssss);
     if (v < 0) {
       return k_ra8_err_protocol_error;
     }
-    v                   = ra8_jpeg_sw_huff_extend(v, ssss);
+    v                   = priv_jpeg_sw_huff_extend(v, ssss);
     outblk[s_zigzag[k]] = v * (int32_t)d->qtab[d->comp_qid[ci]][s_zigzag[k]];
     k++;
   }
   return k_ra8_ok;
 }
 
-/** @brief Implementation of `ra8_jpeg_sw_priv_block()` -- T.81 F.2.2 DC diff + AC run-length. */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_block(ra8_jpeg_dec_ctx_t*   d,
-                                          ra8_jpeg_bitreader_t* br,
-                                          uint8_t               ci,
-                                          int32_t*              outblk)
+/** @brief Implementation of `priv_jpeg_sw_block()` -- T.81 F.2.2 DC diff + AC run-length. */
+RA8_PRIV ra8_err_t priv_jpeg_sw_block(ra8_jpeg_dec_ctx_t*   d,
+                                      ra8_jpeg_bitreader_t* br,
+                                      uint8_t               ci,
+                                      int32_t*              outblk)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_block_size; i++) {
     outblk[i] = 0;
   }
   /* DC. */
-  int32_t t = ra8_jpeg_sw_htab_decode(br, &d->hdc[d->comp_dc_id[ci]]);
+  int32_t t = priv_jpeg_sw_htab_decode(br, &d->hdc[d->comp_dc_id[ci]]);
   if (t < 0) {
     return k_ra8_err_protocol_error;
   }
-  int32_t r = ra8_jpeg_sw_br_get_bits(br, (uint8_t)t);
-  /* mcdc-deactivated: ra8_jpeg_sw_br_get_bits returns -1 only when the bitstream
+  int32_t r = priv_jpeg_sw_br_get_bits(br, (uint8_t)t);
+  /* mcdc-deactivated: priv_jpeg_sw_br_get_bits returns -1 only when the bitstream
    * is exhausted; reaching this branch with t != 0 requires a
    * truncated entropy-coded segment after every parser stage has
    * succeeded -- the public-API contract (well-formed JFIF stream
    * with EOI) makes this branch unreachable. Defensive guard for
    * fault injection. */
-  // mcdc-deactivated: ra8_jpeg_sw_priv_block ra8_jpeg_sw_br_get_bits exhaustion guard; well-formed JFIF streams (public-API contract) cannot exhaust the bitstream mid-coefficient with t != 0 because every parser stage upstream has validated the segment-length budget.
+  // mcdc-deactivated: priv_jpeg_sw_block priv_jpeg_sw_br_get_bits exhaustion guard; well-formed JFIF streams (public-API contract) cannot exhaust the bitstream mid-coefficient with t != 0 because every parser stage upstream has validated the segment-length budget.
   if (r < 0 && t != 0) {
     return k_ra8_err_protocol_error;
   }
-  int32_t diff = ra8_jpeg_sw_huff_extend(r, (uint8_t)t);
+  int32_t diff = priv_jpeg_sw_huff_extend(r, (uint8_t)t);
   d->comp_dc_pred[ci] += diff;
   outblk[0] = d->comp_dc_pred[ci] * (int32_t)d->qtab[d->comp_qid[ci]][0];
 
   /* AC. */
-  return dec_block_ac(d, br, ci, outblk);
+  return internal_dec_block_ac(d, br, ci, outblk);
 }
 
 /* ------------------------------------------------------------------ */
 /* Public API: decode */
 /* ------------------------------------------------------------------ */
 
-/** @brief Implementation of `ra8_jpeg_sw_priv_idct_into()` -- IDCT + level shift + clamp. */
-RA8_PRIV void ra8_jpeg_sw_priv_idct_into(int32_t* coeffs, uint8_t* tile)
+/** @brief Implementation of `priv_jpeg_sw_idct_into()` -- IDCT + level shift + clamp. */
+RA8_PRIV void priv_jpeg_sw_idct_into(int32_t* coeffs, uint8_t* tile)
 {
-  ra8_jpeg_sw_idct8x8(coeffs);
+  priv_jpeg_sw_idct8x8(coeffs);
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_block_size; i++) {
     int32_t v = coeffs[i] + (int32_t)k_ra8_jpeg_level_offset;
-    tile[i]   = clamp_u8(v);
+    tile[i]   = internal_clamp_u8(v);
   }
 }
 
@@ -458,11 +459,11 @@ RA8_PRIV void ra8_jpeg_sw_priv_idct_into(int32_t* coeffs, uint8_t* tile)
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void dec_copy_block_to_tile(const uint8_t* blk,
-                                   uint8_t*       y_tile,
-                                   uint8_t        bx,
-                                   uint8_t        by,
-                                   uint16_t       mcu_w_px)
+RA8_INTERNAL static void internal_dec_copy_block_to_tile(const uint8_t* blk,
+                                                         uint8_t*       y_tile,
+                                                         uint8_t        bx,
+                                                         uint8_t        by,
+                                                         uint16_t       mcu_w_px)
 {
   for (uint8_t r = 0U; r < (uint8_t)k_ra8_jpeg_block_dim; r++) {
     for (uint8_t c = 0U; c < (uint8_t)k_ra8_jpeg_block_dim; c++) {
@@ -473,44 +474,44 @@ static void dec_copy_block_to_tile(const uint8_t* blk,
   }
 }
 
-/** @brief Implementation of `ra8_jpeg_sw_priv_mcu_y()` -- hmax*vmax luma block loop. */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_mcu_y(ra8_jpeg_dec_ctx_t*   d,
-                                          ra8_jpeg_bitreader_t* br,
-                                          uint8_t*              y_tile,
-                                          uint16_t              mcu_w_px)
+/** @brief Implementation of `priv_jpeg_sw_mcu_y()` -- hmax*vmax luma block loop. */
+RA8_PRIV ra8_err_t priv_jpeg_sw_mcu_y(ra8_jpeg_dec_ctx_t*   d,
+                                      ra8_jpeg_bitreader_t* br,
+                                      uint8_t*              y_tile,
+                                      uint16_t              mcu_w_px)
 {
   int32_t coeffs[(uint32_t)k_ra8_jpeg_block_size];
   for (uint8_t by = 0U; by < d->vmax; by++) {
     for (uint8_t bx = 0U; bx < d->hmax; bx++) {
-      ra8_err_t e = ra8_jpeg_sw_priv_block(d, br, 0U, coeffs);
+      ra8_err_t e = priv_jpeg_sw_block(d, br, 0U, coeffs);
       if (e != k_ra8_ok) {
         return e;
       }
       uint8_t blk[(uint32_t)k_ra8_jpeg_block_size];
-      ra8_jpeg_sw_priv_idct_into(coeffs, blk);
-      dec_copy_block_to_tile(blk, y_tile, bx, by, mcu_w_px);
+      priv_jpeg_sw_idct_into(coeffs, blk);
+      internal_dec_copy_block_to_tile(blk, y_tile, bx, by, mcu_w_px);
     }
   }
   return k_ra8_ok;
 }
 
-/** @brief Implementation of `ra8_jpeg_sw_priv_mcu_chroma()` -- one Cb then one Cr block. */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_mcu_chroma(ra8_jpeg_dec_ctx_t*   d,
-                                               ra8_jpeg_bitreader_t* br,
-                                               uint8_t*              cb_tile,
-                                               uint8_t*              cr_tile)
+/** @brief Implementation of `priv_jpeg_sw_mcu_chroma()` -- one Cb then one Cr block. */
+RA8_PRIV ra8_err_t priv_jpeg_sw_mcu_chroma(ra8_jpeg_dec_ctx_t*   d,
+                                           ra8_jpeg_bitreader_t* br,
+                                           uint8_t*              cb_tile,
+                                           uint8_t*              cr_tile)
 {
   int32_t   coeffs[(uint32_t)k_ra8_jpeg_block_size];
-  ra8_err_t e = ra8_jpeg_sw_priv_block(d, br, 1U, coeffs);
+  ra8_err_t e = priv_jpeg_sw_block(d, br, 1U, coeffs);
   if (e != k_ra8_ok) {
     return e;
   }
-  ra8_jpeg_sw_priv_idct_into(coeffs, cb_tile);
-  e = ra8_jpeg_sw_priv_block(d, br, 2U, coeffs);
+  priv_jpeg_sw_idct_into(coeffs, cb_tile);
+  e = priv_jpeg_sw_block(d, br, 2U, coeffs);
   if (e != k_ra8_ok) {
     return e;
   }
-  ra8_jpeg_sw_priv_idct_into(coeffs, cr_tile);
+  priv_jpeg_sw_idct_into(coeffs, cr_tile);
   return k_ra8_ok;
 }
 
@@ -544,15 +545,15 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_mcu_chroma(ra8_jpeg_dec_ctx_t*   d,
  * @note Not thread-safe; caller serializes via decoder context.
  * @since 0.1.0
  */
-static void dec_emit_mcu_rgb(const ra8_jpeg_dec_ctx_t* d,
-                             const uint8_t*            y_tile,
-                             const uint8_t*            cb_tile,
-                             const uint8_t*            cr_tile,
-                             uint16_t                  mx,
-                             uint16_t                  my,
-                             uint16_t                  mcu_w_px,
-                             uint16_t                  mcu_h_px,
-                             uint8_t*                  out_buf)
+RA8_INTERNAL static void internal_dec_emit_mcu_rgb(const ra8_jpeg_dec_ctx_t* d,
+                                                   const uint8_t*            y_tile,
+                                                   const uint8_t*            cb_tile,
+                                                   const uint8_t*            cr_tile,
+                                                   uint16_t                  mx,
+                                                   uint16_t                  my,
+                                                   uint16_t                  mcu_w_px,
+                                                   uint16_t                  mcu_h_px,
+                                                   uint8_t*                  out_buf)
 {
   for (uint16_t r = 0U; r < mcu_h_px; r++) {
     uint16_t py = (uint16_t)((my * mcu_h_px) + r);
@@ -578,7 +579,7 @@ static void dec_emit_mcu_rgb(const ra8_jpeg_dec_ctx_t* d,
       }
       uint32_t idx =
         (((uint32_t)py * (uint32_t)d->width) + (uint32_t)px) * (uint32_t)k_ra8_jpeg_rgb_components;
-      ra8_jpeg_sw_ycc_to_rgb(y, cb, cr, &out_buf[idx], &out_buf[idx + 1U], &out_buf[idx + 2U]);
+      priv_jpeg_sw_ycc_to_rgb(y, cb, cr, &out_buf[idx], &out_buf[idx + 1U], &out_buf[idx + 2U]);
     }
   }
 }
@@ -587,7 +588,7 @@ static void dec_emit_mcu_rgb(const ra8_jpeg_dec_ctx_t* d,
  * @brief Decode one MCU (luma + optional chroma) and emit its RGB pixels.
  *
  * @details
- * Loop body of `dec_decode_scan()`: entropy-decodes the MCU's
+ * Loop body of `internal_dec_decode_scan()`: entropy-decodes the MCU's
  * `hmax*vmax` luma blocks into `y_tile`, the Cb/Cr pair for
  * 3-component streams, and converts the reconstructed tiles into
  * output RGB at MCU position (mx, my).
@@ -615,28 +616,28 @@ static void dec_emit_mcu_rgb(const ra8_jpeg_dec_ctx_t* d,
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t dec_decode_mcu(ra8_jpeg_dec_ctx_t*   d,
-                                ra8_jpeg_bitreader_t* br,
-                                uint8_t*              y_tile,
-                                uint8_t*              cb_tile,
-                                uint8_t*              cr_tile,
-                                uint16_t              mx,
-                                uint16_t              my,
-                                uint16_t              mcu_w_px,
-                                uint16_t              mcu_h_px,
-                                uint8_t*              out_buf)
+RA8_INTERNAL static ra8_err_t internal_dec_decode_mcu(ra8_jpeg_dec_ctx_t*   d,
+                                                      ra8_jpeg_bitreader_t* br,
+                                                      uint8_t*              y_tile,
+                                                      uint8_t*              cb_tile,
+                                                      uint8_t*              cr_tile,
+                                                      uint16_t              mx,
+                                                      uint16_t              my,
+                                                      uint16_t              mcu_w_px,
+                                                      uint16_t              mcu_h_px,
+                                                      uint8_t*              out_buf)
 {
-  ra8_err_t e = ra8_jpeg_sw_priv_mcu_y(d, br, y_tile, mcu_w_px);
+  ra8_err_t e = priv_jpeg_sw_mcu_y(d, br, y_tile, mcu_w_px);
   if (e != k_ra8_ok) {
     return e;
   }
   if (d->ncomp == 3U) {
-    e = ra8_jpeg_sw_priv_mcu_chroma(d, br, cb_tile, cr_tile);
+    e = priv_jpeg_sw_mcu_chroma(d, br, cb_tile, cr_tile);
     if (e != k_ra8_ok) {
       return e;
     }
   }
-  dec_emit_mcu_rgb(d, y_tile, cb_tile, cr_tile, mx, my, mcu_w_px, mcu_h_px, out_buf);
+  internal_dec_emit_mcu_rgb(d, y_tile, cb_tile, cr_tile, mx, my, mcu_w_px, mcu_h_px, out_buf);
   return k_ra8_ok;
 }
 
@@ -659,7 +660,7 @@ static ra8_err_t dec_decode_mcu(ra8_jpeg_dec_ctx_t*   d,
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void dec_scan_begin(ra8_jpeg_dec_ctx_t* d, ra8_jpeg_bitreader_t* br)
+RA8_INTERNAL static void internal_dec_scan_begin(ra8_jpeg_dec_ctx_t* d, ra8_jpeg_bitreader_t* br)
 {
   br->buf     = d->src;
   br->len     = d->src_len;
@@ -678,8 +679,8 @@ static void dec_scan_begin(ra8_jpeg_dec_ctx_t* d, ra8_jpeg_bitreader_t* br)
  * @details
  * T.81 sec F.2.2 scan decode: sizes the MCU grid from the SOF0
  * sampling factors, primes the bit reader and DC predictors via
- * `dec_scan_begin()`, then walks every MCU through
- * `dec_decode_mcu()`, which reconstructs and emits its RGB pixels.
+ * `internal_dec_scan_begin()`, then walks every MCU through
+ * `internal_dec_decode_mcu()`, which reconstructs and emits its RGB pixels.
  *
  * @param[in,out] d           Decoder context (cursor lands after the scan).
  * @param[out]    out_buf     Destination RGB888 image buffer.
@@ -698,7 +699,8 @@ static void dec_scan_begin(ra8_jpeg_dec_ctx_t* d, ra8_jpeg_bitreader_t* br)
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t dec_decode_scan(ra8_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32_t out_buf_len)
+RA8_INTERNAL static ra8_err_t
+internal_dec_decode_scan(ra8_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32_t out_buf_len)
 {
   uint32_t need = (uint32_t)d->width * (uint32_t)d->height * (uint32_t)k_ra8_jpeg_rgb_components;
   if (out_buf_len < need) {
@@ -706,10 +708,10 @@ static ra8_err_t dec_decode_scan(ra8_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32
   }
 
   ra8_jpeg_bitreader_t br;
-  dec_scan_begin(d, &br);
+  internal_dec_scan_begin(d, &br);
 
   /*
-   * Cross-function invariant: ra8_jpeg_sw_priv_parse_sof0() only returns
+   * Cross-function invariant: priv_jpeg_sw_parse_sof0() only returns
    * success for the 4:4:4 and 4:2:0 chroma layouts (and grayscale), all
    * of which set hmax and vmax to a non-zero value.
    * The clang static analyzer (scan-build, core.DivideZero) cannot follow
@@ -731,8 +733,16 @@ static ra8_err_t dec_decode_scan(ra8_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32
 
   for (uint16_t my = 0U; my < mcus_y; my++) {
     for (uint16_t mx = 0U; mx < mcus_x; mx++) {
-      ra8_err_t e =
-        dec_decode_mcu(d, &br, y_tile, cb_tile, cr_tile, mx, my, mcu_w_px, mcu_h_px, out_buf);
+      ra8_err_t e = internal_dec_decode_mcu(d,
+                                            &br,
+                                            y_tile,
+                                            cb_tile,
+                                            cr_tile,
+                                            mx,
+                                            my,
+                                            mcu_w_px,
+                                            mcu_h_px,
+                                            out_buf);
       if (e != k_ra8_ok) {
         return e;
       }
@@ -746,10 +756,10 @@ static ra8_err_t dec_decode_scan(ra8_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32
  * @brief Handle a non-SOF marker in the decode dispatch chain.
  *
  * @details
- * Tail of `ra8_jpeg_sw_priv_dispatch()`: routes the already-extracted
+ * Tail of `priv_jpeg_sw_dispatch()`: routes the already-extracted
  * marker code to the DQT/DHT/SOS parsers, flags EOI, consumes RST
  * markers as standalone bytes, and skips unrecognized APPn/COM
- * segments via `ra8_jpeg_sw_priv_skip_segment()`.
+ * segments via `priv_jpeg_sw_skip_segment()`.
  *
  * @param[in,out] d       Decoder context (cursor advances).
  * @param[in]     mk      Marker code (0xFFxx) to route.
@@ -769,22 +779,22 @@ static ra8_err_t dec_decode_scan(ra8_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t dec_dispatch_tail(ra8_jpeg_dec_ctx_t*           d,
-                                   uint16_t                      mk,
-                                   bool                          got_sof,
-                                   ra8_jpeg_dec_marker_action_t* action)
+RA8_INTERNAL static ra8_err_t internal_dec_dispatch_tail(ra8_jpeg_dec_ctx_t*           d,
+                                                         uint16_t                      mk,
+                                                         bool                          got_sof,
+                                                         ra8_jpeg_dec_marker_action_t* action)
 {
   if (mk == (uint16_t)k_ra8_jpeg_marker_dqt) {
-    return ra8_jpeg_sw_priv_parse_dqt(d);
+    return priv_jpeg_sw_parse_dqt(d);
   }
   if (mk == (uint16_t)k_ra8_jpeg_marker_dht) {
-    return ra8_jpeg_sw_priv_parse_dht(d);
+    return priv_jpeg_sw_parse_dht(d);
   }
   if (mk == (uint16_t)k_ra8_jpeg_marker_sos) {
     if (!got_sof) {
       return k_ra8_err_protocol_error;
     }
-    ra8_err_t e = ra8_jpeg_sw_priv_parse_sos(d);
+    ra8_err_t e = priv_jpeg_sw_parse_sos(d);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -799,13 +809,13 @@ static ra8_err_t dec_dispatch_tail(ra8_jpeg_dec_ctx_t*           d,
     /* Standalone marker, no length. */
     return k_ra8_ok;
   }
-  return ra8_jpeg_sw_priv_skip_segment(d);
+  return priv_jpeg_sw_skip_segment(d);
 }
 
-/** @brief Implementation of `ra8_jpeg_sw_priv_dispatch()` -- marker extraction + routing. */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_dispatch(ra8_jpeg_dec_ctx_t*           d,
-                                             bool*                         got_sof,
-                                             ra8_jpeg_dec_marker_action_t* action)
+/** @brief Implementation of `priv_jpeg_sw_dispatch()` -- marker extraction + routing. */
+RA8_PRIV ra8_err_t priv_jpeg_sw_dispatch(ra8_jpeg_dec_ctx_t*           d,
+                                         bool*                         got_sof,
+                                         ra8_jpeg_dec_marker_action_t* action)
 {
   *action = k_ra8_jpeg_dec_continue;
   if (d->src[d->cursor] != (uint8_t)k_ra8_jpeg_marker_byte) {
@@ -822,27 +832,27 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_dispatch(ra8_jpeg_dec_ctx_t*           d,
   uint16_t mk = (uint16_t)(k_jpeg_marker_ff00 | m);
 
   if (mk == (uint16_t)k_ra8_jpeg_marker_sof0) {
-    ra8_err_t e = ra8_jpeg_sw_priv_parse_sof0(d);
+    ra8_err_t e = priv_jpeg_sw_parse_sof0(d);
     if (e != k_ra8_ok) {
       return e;
     }
     *got_sof = true;
     return k_ra8_ok;
-    // mcdc-deactivated: ra8_jpeg_sw_priv_dispatch unsupported-SOFn detector (SOF1..SOFF excluding DHT/SOF8); identical co-dependence rationale as the SOF0 detector decision in ra8_jpeg_sw_get_dimensions -- markers >= 0xFFC1 in the JPEG spec are always <= 0xFFCF.
+    // mcdc-deactivated: priv_jpeg_sw_dispatch unsupported-SOFn detector (SOF1..SOFF excluding DHT/SOF8); identical co-dependence rationale as the SOF0 detector decision in ra8_jpeg_sw_get_dimensions -- markers >= 0xFFC1 in the JPEG spec are always <= 0xFFCF.
   }
   if (mk >= k_jpeg_marker_sof1 && mk <= k_jpeg_marker_sof_hi &&
       mk != (uint16_t)k_ra8_jpeg_marker_dht && mk != k_jpeg_marker_jpg) {
     return k_ra8_err_not_supported;
   }
-  return dec_dispatch_tail(d, mk, *got_sof, action);
+  return internal_dec_dispatch_tail(d, mk, *got_sof, action);
 }
 
 /**
  * @brief Marker-walk driver for the whole-buffer decode.
  *
  * @details
- * Loops `ra8_jpeg_sw_priv_dispatch()` over the stream until an SOS
- * hands off to `dec_decode_scan()`, an EOI ends the walk without a
+ * Loops `priv_jpeg_sw_dispatch()` over the stream until an SOS
+ * hands off to `internal_dec_decode_scan()`, an EOI ends the walk without a
  * scan (protocol error), or the stream is exhausted.
  *
  * @param[in,out] d           Initialised decoder context (cursor at 2).
@@ -865,23 +875,23 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_dispatch(ra8_jpeg_dec_ctx_t*           d,
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t dec_run(ra8_jpeg_dec_ctx_t* d,
-                         uint8_t*            out_buf,
-                         uint32_t            out_buf_len,
-                         uint16_t*           out_w,
-                         uint16_t*           out_h)
+RA8_INTERNAL static ra8_err_t internal_dec_run(ra8_jpeg_dec_ctx_t* d,
+                                               uint8_t*            out_buf,
+                                               uint32_t            out_buf_len,
+                                               uint16_t*           out_w,
+                                               uint16_t*           out_h)
 {
   bool got_sof = false;
   while (d->cursor < d->src_len) {
     ra8_jpeg_dec_marker_action_t action = k_ra8_jpeg_dec_continue;
-    ra8_err_t                    e      = ra8_jpeg_sw_priv_dispatch(d, &got_sof, &action);
+    ra8_err_t                    e      = priv_jpeg_sw_dispatch(d, &got_sof, &action);
     if (e != k_ra8_ok) {
       return e;
     }
     if (action == k_ra8_jpeg_dec_scan) {
       *out_w = d->width;
       *out_h = d->height;
-      return dec_decode_scan(d, out_buf, out_buf_len);
+      return internal_dec_decode_scan(d, out_buf, out_buf_len);
     }
     if (action == k_ra8_jpeg_dec_eoi) {
       break;
@@ -909,16 +919,16 @@ ra8_err_t ra8_jpeg_sw_decode(const uint8_t* jpeg_buf,
    * allocate as `static` so it doesn't blow the stack budget the
    * project enforces via `-Wstack-usage`. The codec is documented
    * as not thread-safe, so the static is fine. */
-  static ra8_jpeg_dec_ctx_t s_d;
-  ra8_jpeg_dec_ctx_t*       d = &s_d;
+  static ra8_jpeg_dec_ctx_t local_d;
+  ra8_jpeg_dec_ctx_t*       d = &local_d;
   memset(d, 0, sizeof(*d));
   d->src     = jpeg_buf;
   d->src_len = jpeg_len;
 
-  if (read_be16(jpeg_buf) != (uint16_t)k_ra8_jpeg_marker_soi) {
+  if (internal_read_be16(jpeg_buf) != (uint16_t)k_ra8_jpeg_marker_soi) {
     return k_ra8_err_protocol_error;
   }
   d->cursor = 2U;
 
-  return dec_run(d, out_buf, out_buf_len, out_w, out_h);
+  return internal_dec_run(d, out_buf, out_buf_len, out_w, out_h);
 }

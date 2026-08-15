@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_io_compress.h"
 #include "ra8_jof.h"
@@ -86,21 +87,21 @@ static uint8_t s_cmpbuf[k_t_payload + (k_t_payload / 8U) + k_t_codec_slack];
 /** @brief Deflate compressor scratch (miniz tdefl). */
 alignas(8) static uint8_t s_dfl[k_ra8_io_compress_scratch_bytes];
 
-/** @brief Deterministic source pixel channel at (x, y, c). */
-static uint8_t pix(uint32_t x, uint32_t y, uint32_t c)
+/** @brief Deterministic source pixel channel at (x, y, c). @details Exercises the pix path with bounded caller-owned fixture state and verifies its documented result. @param[in] x Pixel column coordinate. @param[in] y Pixel row coordinate. @param[in] c Pixel channel index. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static uint8_t internal_pix(uint32_t x, uint32_t y, uint32_t c)
 {
   return (uint8_t)(((x * 3U) + (y * k_t_pix_y_stride) + (c * k_t_pix_c_stride)) & k_t_byte_mask);
 }
 
-/** @brief Append little-endian u16 to the store (hand producer). */
-static void put_u16(uint16_t v)
+/** @brief Append little-endian u16 to the store (hand producer). @details Exercises the put u16 path with bounded caller-owned fixture state and verifies its documented result. @param[in] v Integer value serialized into the fixture stream. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_put_u16(uint16_t v)
 {
   const uint8_t b[2] = {(uint8_t)(v & 0xFFU), (uint8_t)(v >> 8U)};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_memstore_sink(&s_store, b, sizeof(b)));
 }
 
-/** @brief Append little-endian u32 to the store (hand producer). */
-static void put_u32(uint32_t v)
+/** @brief Append little-endian u32 to the store (hand producer). @details Exercises the put u32 path with bounded caller-owned fixture state and verifies its documented result. @param[in] v Integer value serialized into the fixture stream. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_put_u32(uint32_t v)
 {
   const uint8_t b[4] = {(uint8_t)(v & 0xFFU),
                         (uint8_t)((v >> 8U) & 0xFFU),
@@ -109,8 +110,8 @@ static void put_u32(uint32_t v)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_memstore_sink(&s_store, b, sizeof(b)));
 }
 
-/** @brief Append raw bytes to the store (hand producer). */
-static void put_bytes(const uint8_t* p, size_t n)
+/** @brief Append raw bytes to the store (hand producer). @details Exercises the put bytes path with bounded caller-owned fixture state and verifies its documented result. @param[in] p Readable fixture byte sequence. @param[in] n Number of bytes or elements supplied. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_put_bytes(const uint8_t* p, size_t n)
 {
   TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_memstore_sink(&s_store, p, n));
 }
@@ -124,22 +125,21 @@ static void put_bytes(const uint8_t* p, size_t n)
  * @pre `s_store` is initialised and empty.
  * @post 32 header bytes are appended to `s_store`.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void build_atlas_header(uint8_t codec, uint32_t count)
+ * @since 0.1.0 @details Exercises the build atlas header path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_build_atlas_header(uint8_t codec, uint32_t count)
 {
   const uint8_t magic[4] = {'J', 'O', 'F', '1'};
-  put_bytes(magic, sizeof(magic));
-  put_u16((uint16_t)k_t_img_w);
-  put_u16((uint16_t)k_t_img_h);
-  put_u16((uint16_t)k_t_tile);
-  put_u16((uint16_t)k_t_tile);
+  internal_put_bytes(magic, sizeof(magic));
+  internal_put_u16((uint16_t)k_t_img_w);
+  internal_put_u16((uint16_t)k_t_img_h);
+  internal_put_u16((uint16_t)k_t_tile);
+  internal_put_u16((uint16_t)k_t_tile);
   const uint8_t bpp_codec[2] = {(uint8_t)k_t_bpp, codec};
-  put_bytes(bpp_codec, sizeof(bpp_codec));
-  put_u16(0U);
-  put_u32(count);
+  internal_put_bytes(bpp_codec, sizeof(bpp_codec));
+  internal_put_u16(0U);
+  internal_put_u32(count);
   const uint8_t zeros[12] = {};
-  put_bytes(zeros, sizeof(zeros));
+  internal_put_bytes(zeros, sizeof(zeros));
 }
 
 /**
@@ -156,9 +156,9 @@ static void build_atlas_header(uint8_t codec, uint32_t count)
  * @pre `s_store` has the header already written.
  * @post The tile stream is appended and its byte length returned.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static uint32_t build_atlas_encode_tile(uint32_t x0, uint32_t y0, uint8_t codec)
+ * @since 0.1.0 @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static uint32_t
+internal_build_atlas_encode_tile(uint32_t x0, uint32_t y0, uint8_t codec)
 {
   const uint32_t tw = ((k_t_img_w - x0) < k_t_tile) ? (k_t_img_w - x0) : k_t_tile;
   const uint32_t th = ((k_t_img_h - y0) < k_t_tile) ? (k_t_img_h - y0) : k_t_tile;
@@ -166,13 +166,13 @@ static uint32_t build_atlas_encode_tile(uint32_t x0, uint32_t y0, uint8_t codec)
   for (uint32_t r = 0U; r < th; r++) {
     for (uint32_t c = 0U; c < tw; c++) {
       for (uint32_t ch = 0U; ch < k_t_bpp; ch++) {
-        s_tilebuf[o] = pix(x0 + c, y0 + r, ch);
+        s_tilebuf[o] = internal_pix(x0 + c, y0 + r, ch);
         o++;
       }
     }
   }
   if (codec == (uint8_t)k_ra8_jof_codec_raw) {
-    put_bytes(s_tilebuf, o);
+    internal_put_bytes(s_tilebuf, o);
     return o;
   }
   uint32_t clen = 0U;
@@ -184,7 +184,7 @@ static uint32_t build_atlas_encode_tile(uint32_t x0, uint32_t y0, uint8_t codec)
                                  s_dfl,
                                  (uint32_t)sizeof(s_dfl),
                                  &clen));
-  put_bytes(s_cmpbuf, clen);
+  internal_put_bytes(s_cmpbuf, clen);
   return clen;
 }
 
@@ -196,16 +196,15 @@ static uint32_t build_atlas_encode_tile(uint32_t x0, uint32_t y0, uint8_t codec)
  * @post `s_store` holds a structurally complete atlas.
  * @post The store length equals the footer's total_size.
  * @note Not thread-safe.
- * @since 0.1.0
- */
-static void build_atlas(uint8_t codec)
+ * @since 0.1.0 @details Exercises the build atlas path with bounded caller-owned fixture state and verifies its documented result. */
+RA8_INTERNAL static void internal_build_atlas(uint8_t codec)
 {
   s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   const uint32_t cols  = (k_t_img_w + k_t_tile - 1U) / k_t_tile;
   const uint32_t rows  = (k_t_img_h + k_t_tile - 1U) / k_t_tile;
   const uint32_t count = cols * rows;
 
-  build_atlas_header(codec, count);
+  internal_build_atlas_header(codec, count);
 
   /* Tile streams + index bookkeeping. */
   uint32_t offs[16] = {};
@@ -214,7 +213,7 @@ static void build_atlas(uint8_t codec)
   for (uint32_t ty = 0U; ty < rows; ty++) {
     for (uint32_t tx = 0U; tx < cols; tx++) {
       offs[n] = (uint32_t)s_store.len;
-      lens[n] = build_atlas_encode_tile(tx * k_t_tile, ty * k_t_tile, codec);
+      lens[n] = internal_build_atlas_encode_tile(tx * k_t_tile, ty * k_t_tile, codec);
       n++;
     }
   }
@@ -222,18 +221,18 @@ static void build_atlas(uint8_t codec)
   /* Index + footer. */
   const uint32_t index_off = (uint32_t)s_store.len;
   for (uint32_t i = 0U; i < count; i++) {
-    put_u32(offs[i]);
-    put_u32(lens[i]);
+    internal_put_u32(offs[i]);
+    internal_put_u32(lens[i]);
   }
-  put_u32(index_off);
-  put_u32(count);
-  put_u32((uint32_t)s_store.len + 8U); /* total = current + remaining 8 footer bytes */
+  internal_put_u32(index_off);
+  internal_put_u32(count);
+  internal_put_u32((uint32_t)s_store.len + 8U); /* total = current + remaining 8 footer bytes */
   const uint8_t fmagic[4] = {'J', 'O', 'F', 'E'};
-  put_bytes(fmagic, sizeof(fmagic));
+  internal_put_bytes(fmagic, sizeof(fmagic));
 }
 
-/** @brief Parse the store under test into @p info, returning the code. */
-static ra8_err_t parse_store(ra8_jof_info_t* info)
+/** @brief Parse the store under test into @p info, returning the code. @details Exercises the parse store path with bounded caller-owned fixture state and verifies its documented result. @param[in,out] info Parsed JOF metadata used by the exercised operation. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_parse_store(ra8_jof_info_t* info)
 {
   return ra8_jof_parse(ra8_jof_memstore_pread, &s_store, (uint64_t)s_store.len, info);
 }
@@ -248,16 +247,15 @@ static ra8_err_t parse_store(ra8_jof_info_t* info)
  * @post The result never exceeds ::k_t_tile.
  * @post The result never runs past @p img_dim.
  * @note Pure; thread-safe.
- * @since 0.1.0
- */
-static uint16_t clamped_tile_dim(uint32_t img_dim, uint32_t origin)
+ * @since 0.1.0 @details Exercises the clamped tile dim path with bounded caller-owned fixture state and verifies its documented result. @retval value The computed fixture value for the supplied inputs. */
+RA8_INTERNAL static uint16_t internal_clamped_tile_dim(uint32_t img_dim, uint32_t origin)
 {
   const uint32_t rest = img_dim - origin;
   return (uint16_t)((rest < k_t_tile) ? rest : k_t_tile);
 }
 
 /**
- * @brief Compare a decoded tile in ::s_cell against the ::pix oracle.
+ * @brief Compare a decoded tile in ::s_cell against the ::internal_pix oracle.
  * @param[in] x0 Tile origin column on the canvas.
  * @param[in] y0 Tile origin row on the canvas.
  * @param[in] w  Decoded tile width, already edge-clamped.
@@ -267,36 +265,35 @@ static uint16_t clamped_tile_dim(uint32_t img_dim, uint32_t origin)
  * @post Every channel of every decoded pixel compared equal to the oracle.
  * @post No fixture state is mutated.
  * @note Not thread-safe (reads the shared ::s_cell).
- * @since 0.1.0
- */
-static void assert_tile_pixels(uint32_t x0, uint32_t y0, uint16_t w, uint16_t h)
+ * @since 0.1.0 @details Exercises the assert tile pixels path with bounded caller-owned fixture state and verifies its documented result. */
+RA8_INTERNAL static void
+internal_assert_tile_pixels(uint32_t x0, uint32_t y0, uint16_t w, uint16_t h)
 {
   for (uint32_t r = 0U; r < h; r++) {
     for (uint32_t c = 0U; c < w; c++) {
       for (uint32_t ch = 0U; ch < k_t_bpp; ch++) {
-        TEST_ASSERT_EQ(pix(x0 + c, y0 + r, ch), s_cell[(((r * w) + c) * k_t_bpp) + ch]);
+        TEST_ASSERT_EQ(internal_pix(x0 + c, y0 + r, ch), s_cell[(((r * w) + c) * k_t_bpp) + ch]);
       }
     }
   }
 }
 
 /**
- * @test test_jof_roundtrip
+ * @test internal_test_jof_roundtrip
  * @brief Both codecs round-trip: every tile pages back byte-identical to the
  *        generator pattern, edge tiles clamped.
  *
  * @par MC/DC:
  * (byte-parity oracle over the full tile grid; the reader's compound
- * decisions get their vectors in the hostile-atlas tests below.)
- */
-static void test_jof_roundtrip(void)
+ * decisions get their vectors in the hostile-atlas tests below.) @details Executes the jof roundtrip scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_jof_roundtrip(void)
 {
   TEST_BEGIN("jof: raw + deflate round-trip, byte parity");
   const uint8_t codecs[2] = {(uint8_t)k_ra8_jof_codec_raw, (uint8_t)k_ra8_jof_codec_deflate};
   for (uint32_t ci = 0U; ci < 2U; ci++) {
-    build_atlas(codecs[ci]);
+    internal_build_atlas(codecs[ci]);
     ra8_jof_info_t info = {};
-    TEST_ASSERT_EQ(k_ra8_ok, parse_store(&info));
+    TEST_ASSERT_EQ(k_ra8_ok, internal_parse_store(&info));
     TEST_ASSERT_EQ(k_t_img_w, info.width);
     TEST_ASSERT_EQ(k_t_img_h, info.height);
     TEST_ASSERT_EQ(3U, info.tile_cols);
@@ -321,17 +318,17 @@ static void test_jof_roundtrip(void)
                                          &h));
         const uint32_t x0 = (uint32_t)tx * k_t_tile;
         const uint32_t y0 = (uint32_t)ty * k_t_tile;
-        TEST_ASSERT_EQ(clamped_tile_dim(k_t_img_w, x0), w);
-        TEST_ASSERT_EQ(clamped_tile_dim(k_t_img_h, y0), h);
-        assert_tile_pixels(x0, y0, w, h);
+        TEST_ASSERT_EQ(internal_clamped_tile_dim(k_t_img_w, x0), w);
+        TEST_ASSERT_EQ(internal_clamped_tile_dim(k_t_img_h, y0), h);
+        internal_assert_tile_pixels(x0, y0, w, h);
       }
     }
   }
   TEST_END("jof: raw + deflate round-trip, byte parity");
 }
 
-/** @brief Corrupt one byte of the stored atlas at @p off (XOR flip). */
-static void flip(size_t off)
+/** @brief Corrupt one byte of the stored atlas at @p off (XOR internal_flip). @details Exercises the flip path with bounded caller-owned fixture state and verifies its documented result. @param[in] off Byte offset into the fixture stream. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_flip(size_t off)
 {
   s_store_buf[off] ^= k_t_byte_mask;
 }
@@ -342,20 +339,19 @@ static void flip(size_t off)
  * @pre The shared store buffers are available.
  * @post Each malformed length/magic returned its rejection code.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void hostile_header_size_and_magic(ra8_jof_info_t* info)
+ * @since 0.1.0 @details Exercises the hostile header size and magic path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_hostile_header_size_and_magic(ra8_jof_info_t* info)
 {
   /* Undersize + oversize backing. */
-  build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_raw);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_parse(ra8_jof_memstore_pread, &s_store, 4U, info));
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_size,
     ra8_jof_parse(ra8_jof_memstore_pread, &s_store, ((uint64_t)UINT32_MAX) + 64U, info));
 
   /* Header magic. */
-  flip(0U);
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
+  internal_flip(0U);
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_parse_store(info));
 }
 
 /**
@@ -364,28 +360,27 @@ static void hostile_header_size_and_magic(ra8_jof_info_t* info)
  * @pre The shared store buffers are available.
  * @post Every zero or over-cap dimension returned k_ra8_err_validation_failed.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void hostile_header_dims(ra8_jof_info_t* info)
+ * @since 0.1.0 @details Exercises the hostile header dims path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_hostile_header_dims(ra8_jof_info_t* info)
 {
   /* Zero width / height / tile_w / tile_h. */
   const uint8_t zero_fields[4] = {4U, 6U, 8U, 10U};
   for (uint32_t i = 0U; i < 4U; i++) {
-    build_atlas((uint8_t)k_ra8_jof_codec_raw);
+    internal_build_atlas((uint8_t)k_ra8_jof_codec_raw);
     s_store_buf[zero_fields[i]]      = 0U;
     s_store_buf[zero_fields[i] + 1U] = 0U;
-    TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
+    TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_parse_store(info));
   }
 
   /* Over-cap dimensions (33000 > 32768). */
-  build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_raw);
   s_store_buf[4]                = (uint8_t)(k_t_dim_over_cap & k_t_byte_mask);
   s_store_buf[k_t_off_width_hi] = (uint8_t)(k_t_dim_over_cap >> 8U);
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
-  build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_parse_store(info));
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_raw);
   s_store_buf[6]                 = (uint8_t)(k_t_dim_over_cap & k_t_byte_mask);
   s_store_buf[k_t_off_height_hi] = (uint8_t)(k_t_dim_over_cap >> 8U);
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_parse_store(info));
 }
 
 /**
@@ -394,35 +389,34 @@ static void hostile_header_dims(ra8_jof_info_t* info)
  * @pre The shared store buffers are available.
  * @post Every corrupt encoding/reserved/count field was rejected.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void hostile_header_encoding(ra8_jof_info_t* info)
+ * @since 0.1.0 @details Exercises the hostile header encoding path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_hostile_header_encoding(ra8_jof_info_t* info)
 {
   /* bpp MC/DC vectors 2..4 (vector 1 is the valid round-trip above). */
   const uint8_t bad_bpp[3] = {0U, 2U, 5U};
   for (uint32_t i = 0U; i < 3U; i++) {
-    build_atlas((uint8_t)k_ra8_jof_codec_raw);
+    internal_build_atlas((uint8_t)k_ra8_jof_codec_raw);
     s_store_buf[k_t_off_bpp] = bad_bpp[i];
-    TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
+    TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_parse_store(info));
   }
 
   /* Unknown codec. */
-  build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_raw);
   s_store_buf[k_t_off_codec] = 2U;
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_parse_store(info));
 
   /* Non-zero reserved bytes (both runs). */
-  build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_raw);
   s_store_buf[k_t_off_reserved_a] = 1U;
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
-  build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_parse_store(info));
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_raw);
   s_store_buf[k_t_off_reserved_b] = 1U;
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_parse_store(info));
 
   /* Header tile-count mismatch. */
-  build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_raw);
   s_store_buf[16] = k_t_pix_y_stride;
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_parse_store(info));
 }
 
 /**
@@ -431,31 +425,30 @@ static void hostile_header_encoding(ra8_jof_info_t* info)
  * @pre The shared store buffers are available.
  * @post Every footer corruption and out-of-range index was rejected.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void hostile_header_footer(ra8_jof_info_t* info)
+ * @since 0.1.0 @details Exercises the hostile header footer path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_hostile_header_footer(ra8_jof_info_t* info)
 {
   /* Footer corruption: magic, count, total, index_off. */
-  build_atlas((uint8_t)k_ra8_jof_codec_raw);
-  flip(s_store.len - 1U);
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
-  build_atlas((uint8_t)k_ra8_jof_codec_raw);
-  flip(s_store.len - (size_t)k_t_ftr + 4U); /* footer tile count */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
-  build_atlas((uint8_t)k_ra8_jof_codec_raw);
-  flip(s_store.len - (size_t)k_t_ftr + 8U); /* footer total size */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
-  build_atlas((uint8_t)k_ra8_jof_codec_raw);
-  flip(s_store.len - (size_t)k_t_ftr); /* index offset */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  internal_flip(s_store.len - 1U);
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_parse_store(info));
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  internal_flip(s_store.len - (size_t)k_t_ftr + 4U); /* footer tile count */
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_parse_store(info));
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  internal_flip(s_store.len - (size_t)k_t_ftr + 8U); /* footer total size */
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_parse_store(info));
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  internal_flip(s_store.len - (size_t)k_t_ftr); /* index offset */
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_parse_store(info));
 
   /* Index offset below the header start. */
-  build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_raw);
   s_store_buf[s_store.len - (size_t)k_t_ftr]      = 8U;
   s_store_buf[s_store.len - (size_t)k_t_ftr + 1U] = 0U;
   s_store_buf[s_store.len - (size_t)k_t_ftr + 2U] = 0U;
   s_store_buf[s_store.len - (size_t)k_t_ftr + 3U] = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_parse_store(info));
 }
 
 /**
@@ -464,18 +457,17 @@ static void hostile_header_footer(ra8_jof_info_t* info)
  * @pre The shared store buffers are available.
  * @post Both null arguments returned k_ra8_err_null_ptr.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void hostile_header_null_guards(ra8_jof_info_t* info)
+ * @since 0.1.0 @details Exercises the hostile header null guards path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_hostile_header_null_guards(ra8_jof_info_t* info)
 {
-  build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_raw);
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_parse(NULL, &s_store, (uint64_t)s_store.len, info));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_jof_parse(ra8_jof_memstore_pread, &s_store, (uint64_t)s_store.len, NULL));
 }
 
 /**
- * @test test_jof_hostile_header
+ * @test internal_test_jof_hostile_header
  * @brief Every header/footer/cross-check rejection fires fail-closed.
  *
  * @par MC/DC:
@@ -490,18 +482,17 @@ static void hostile_header_null_guards(ra8_jof_info_t* info)
  * (2 conditions)
  * - Vector 1: valid size          -> false (baseline)
  * - Vector 2: size = 4            -> true  (varies condition 1)
- * - Vector 3: size = 2^32 + 64    -> true  (varies condition 2)
- */
-static void test_jof_hostile_header(void)
+ * - Vector 3: size = 2^32 + 64    -> true  (varies condition 2) @details Executes the jof hostile header scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_jof_hostile_header(void)
 {
   TEST_BEGIN("jof: hostile header / footer / cross-checks rejected");
   ra8_jof_info_t info = {};
 
-  hostile_header_size_and_magic(&info);
-  hostile_header_dims(&info);
-  hostile_header_encoding(&info);
-  hostile_header_footer(&info);
-  hostile_header_null_guards(&info);
+  internal_hostile_header_size_and_magic(&info);
+  internal_hostile_header_dims(&info);
+  internal_hostile_header_encoding(&info);
+  internal_hostile_header_footer(&info);
+  internal_hostile_header_null_guards(&info);
 
   TEST_END("jof: hostile header / footer / cross-checks rejected");
 }
@@ -527,17 +518,16 @@ static void test_jof_hostile_header(void)
  * @pre `s_store` holds a parsed atlas.
  * @post No state beyond @p out / @p w / @p h is modified.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static ra8_err_t hostile_read_tile(ra8_jof_info_t* info,
-                                   uint16_t        col,
-                                   uint16_t        row,
-                                   uint8_t*        scratch,
-                                   uint32_t        scratch_cap,
-                                   uint8_t*        out,
-                                   uint32_t        out_cap,
-                                   uint16_t*       w,
-                                   uint16_t*       h)
+ * @since 0.1.0 @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static ra8_err_t internal_hostile_read_tile(ra8_jof_info_t* info,
+                                                         uint16_t        col,
+                                                         uint16_t        row,
+                                                         uint8_t*        scratch,
+                                                         uint32_t        scratch_cap,
+                                                         uint8_t*        out,
+                                                         uint32_t        out_cap,
+                                                         uint16_t*       w,
+                                                         uint16_t*       h)
 {
   return ra8_jof_read_tile(ra8_jof_memstore_pread,
                            &s_store,
@@ -553,7 +543,124 @@ static ra8_err_t hostile_read_tile(ra8_jof_info_t* info,
 }
 
 /**
- * @test test_jof_hostile_tiles
+ * @brief Assert hostile JOF index offset and length rejection vectors.
+ * @details Rebuilds a valid raw atlas before corrupting each index field so
+ * every vector is independent of mutations made by the preceding vector.
+ * @param[in] scratch_cap Capacity of the file-local inflate scratch buffer.
+ * @param[in] cell_cap Capacity of the file-local decoded-cell buffer.
+ * @pre Both capacities describe their complete file-local arrays.
+ * @pre The atlas builder and memstore parser are available.
+ * @post All malformed index vectors have returned validation failure.
+ * @post The file-local atlas may contain the final corrupted vector.
+ * @note Single-threaded hostile-index fixture helper.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_assert_hostile_index_entries(uint32_t scratch_cap,
+                                                               uint32_t cell_cap)
+{
+  ra8_jof_info_t info = {};
+  uint16_t       w    = 0U;
+  uint16_t       h    = 0U;
+
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_parse_store(&info));
+  s_store_buf[info.index_off] = 8U;
+  TEST_ASSERT_EQ(
+    k_ra8_err_validation_failed,
+    internal_hostile_read_tile(&info, 0U, 0U, s_scratch, scratch_cap, s_cell, cell_cap, &w, &h));
+
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_parse_store(&info));
+  s_store_buf[info.index_off + 6U] = k_t_byte_mask;
+  TEST_ASSERT_EQ(
+    k_ra8_err_validation_failed,
+    internal_hostile_read_tile(&info, 0U, 0U, s_scratch, scratch_cap, s_cell, cell_cap, &w, &h));
+
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_raw);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_parse_store(&info));
+  s_store_buf[info.index_off + 4U] ^= 0x01U;
+  TEST_ASSERT_EQ(
+    k_ra8_err_validation_failed,
+    internal_hostile_read_tile(&info, 0U, 0U, s_scratch, scratch_cap, s_cell, cell_cap, &w, &h));
+}
+
+/**
+ * @brief Assert corrupt-deflate and caller-capacity rejection vectors.
+ * @details Uses one parsed deflate atlas to exercise corrupt payload, short
+ * scratch, null scratch, and undersized output handling.
+ * @param[in] scratch_cap Capacity of the file-local inflate scratch buffer.
+ * @param[in] cell_cap Capacity of the file-local decoded-cell buffer.
+ * @pre Both capacities describe their complete file-local arrays.
+ * @pre The deflate atlas builder produces a parseable index.
+ * @post Every payload/storage vector has returned its documented error.
+ * @post The decoded-cell bounds remain intact after rejected reads.
+ * @note Single-threaded hostile-payload fixture helper.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_assert_hostile_deflate(uint32_t scratch_cap, uint32_t cell_cap)
+{
+  ra8_jof_info_t info = {};
+  uint16_t       w    = 0U;
+  uint16_t       h    = 0U;
+
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_deflate);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_parse_store(&info));
+  internal_flip((size_t)k_t_hdr + 2U);
+  TEST_ASSERT_EQ(
+    k_ra8_err_validation_failed,
+    internal_hostile_read_tile(&info, 0U, 0U, s_scratch, scratch_cap, s_cell, cell_cap, &w, &h));
+
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_deflate);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_parse_store(&info));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_size,
+    internal_hostile_read_tile(&info, 0U, 0U, s_scratch, 2U, s_cell, cell_cap, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 internal_hostile_read_tile(&info, 0U, 0U, NULL, 0U, s_cell, cell_cap, &w, &h));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_size,
+    internal_hostile_read_tile(&info, 0U, 0U, s_scratch, scratch_cap, s_cell, 16U, &w, &h));
+}
+
+/**
+ * @brief Assert tile-grid bounds and dimension-helper null handling.
+ * @details Builds one valid deflate atlas, then addresses the first column
+ * beyond the grid, the first row beyond the grid, and a null info descriptor.
+ * @param[in] scratch_cap Capacity of the file-local inflate scratch buffer.
+ * @param[in] cell_cap Capacity of the file-local decoded-cell buffer.
+ * @pre Both capacities describe their complete file-local arrays.
+ * @pre The deflate atlas builder produces a parseable index.
+ * @post Both grid overruns have returned ::k_ra8_err_out_of_range.
+ * @post The null dimension descriptor has returned ::k_ra8_err_null_ptr.
+ * @note Single-threaded hostile-geometry fixture helper.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_assert_hostile_tile_bounds(uint32_t scratch_cap,
+                                                             uint32_t cell_cap)
+{
+  ra8_jof_info_t info = {};
+  uint16_t       w    = 0U;
+  uint16_t       h    = 0U;
+
+  internal_build_atlas((uint8_t)k_ra8_jof_codec_deflate);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_parse_store(&info));
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range,
+                 internal_hostile_read_tile(&info,
+                                            (uint16_t)info.tile_cols,
+                                            0U,
+                                            s_scratch,
+                                            scratch_cap,
+                                            s_cell,
+                                            cell_cap,
+                                            &w,
+                                            &h));
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range,
+                 ra8_jof_tile_dims(&info, 0U, (uint16_t)info.tile_rows, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_tile_dims(NULL, 0U, 0U, &w, &h));
+}
+
+/**
+ * @test internal_test_jof_hostile_tiles
  * @brief Per-tile stream corruption is rejected at read time, fail-closed.
  *
  * @par MC/DC:
@@ -561,77 +668,26 @@ static ra8_err_t hostile_read_tile(ra8_jof_info_t* info,
  * (2 conditions)
  * - Vector 1: valid entry                  -> false (round-trip baseline)
  * - Vector 2: toff = 8                     -> true  (varies condition 1)
- * - Vector 3: tlen inflated past the index -> true  (varies condition 2)
- */
-static void test_jof_hostile_tiles(void)
+ * - Vector 3: tlen inflated past the index -> true  (varies condition 2) @details Executes the jof hostile tiles scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_jof_hostile_tiles(void)
 {
   TEST_BEGIN("jof: hostile tile streams / index entries rejected");
-  ra8_jof_info_t info = {};
-  uint16_t       w    = 0U;
-  uint16_t       h    = 0U;
-  const uint32_t scap = (uint32_t)sizeof(s_scratch);
-  const uint32_t ccap = (uint32_t)sizeof(s_cell);
+  const uint32_t scratch_cap = (uint32_t)sizeof(s_scratch);
+  const uint32_t cell_cap    = (uint32_t)sizeof(s_cell);
 
-  /* Vector 2: entry offset points into the header. */
-  build_atlas((uint8_t)k_ra8_jof_codec_raw);
-  TEST_ASSERT_EQ(k_ra8_ok, parse_store(&info));
-  s_store_buf[info.index_off] = 8U; /* entry 0 offset lo byte */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 hostile_read_tile(&info, 0U, 0U, s_scratch, scap, s_cell, ccap, &w, &h));
-
-  /* Vector 3: entry length runs past the tile-stream region. */
-  build_atlas((uint8_t)k_ra8_jof_codec_raw);
-  TEST_ASSERT_EQ(k_ra8_ok, parse_store(&info));
-  s_store_buf[info.index_off + 6U] = k_t_byte_mask; /* entry 0 length high bytes */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 hostile_read_tile(&info, 0U, 0U, s_scratch, scap, s_cell, ccap, &w, &h));
-
-  /* Raw codec: stored length != payload. */
-  build_atlas((uint8_t)k_ra8_jof_codec_raw);
-  TEST_ASSERT_EQ(k_ra8_ok, parse_store(&info));
-  s_store_buf[info.index_off + 4U] ^= 0x01U; /* off-by-one length */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 hostile_read_tile(&info, 0U, 0U, s_scratch, scap, s_cell, ccap, &w, &h));
-
-  /* Deflate codec: corrupt stream body -> inflate failure. */
-  build_atlas((uint8_t)k_ra8_jof_codec_deflate);
-  TEST_ASSERT_EQ(k_ra8_ok, parse_store(&info));
-  flip((size_t)k_t_hdr + 2U);
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 hostile_read_tile(&info, 0U, 0U, s_scratch, scap, s_cell, ccap, &w, &h));
-
-  /* Deflate codec: scratch too small for the stored stream. */
-  build_atlas((uint8_t)k_ra8_jof_codec_deflate);
-  TEST_ASSERT_EQ(k_ra8_ok, parse_store(&info));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 hostile_read_tile(&info, 0U, 0U, s_scratch, 2U, s_cell, ccap, &w, &h));
-  /* Deflate codec: NULL scratch is rejected. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 hostile_read_tile(&info, 0U, 0U, NULL, 0U, s_cell, ccap, &w, &h));
-
-  /* Output too small for the payload. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 hostile_read_tile(&info, 0U, 0U, s_scratch, scap, s_cell, 16U, &w, &h));
-
-  /* Grid bounds + dims helper. */
-  TEST_ASSERT_EQ(
-    k_ra8_err_out_of_range,
-    hostile_read_tile(&info, (uint16_t)info.tile_cols, 0U, s_scratch, scap, s_cell, ccap, &w, &h));
-  TEST_ASSERT_EQ(k_ra8_err_out_of_range,
-                 ra8_jof_tile_dims(&info, 0U, (uint16_t)info.tile_rows, &w, &h));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jof_tile_dims(NULL, 0U, 0U, &w, &h));
+  internal_assert_hostile_index_entries(scratch_cap, cell_cap);
+  internal_assert_hostile_deflate(scratch_cap, cell_cap);
+  internal_assert_hostile_tile_bounds(scratch_cap, cell_cap);
   TEST_END("jof: hostile tile streams / index entries rejected");
 }
-
 /**
- * @test test_jof_memstore
+ * @test internal_test_jof_memstore
  * @brief The memstore sink/pread pair enforces its bounds.
  *
  * @par MC/DC:
  * (single-condition guards: full-store append, at/after-end read, and the
- * NULL rejections -- one vector each.)
- */
-static void test_jof_memstore(void)
+ * NULL rejections -- one vector each.) @details Executes the jof memstore scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_jof_memstore(void)
 {
   TEST_BEGIN("jof: memstore sink/pread bounds");
   uint8_t            tiny_buf[8] = {};
@@ -667,10 +723,9 @@ static void test_jof_memstore(void)
  */
 int32_t main(void)
 {
-  test_jof_roundtrip();
-  test_jof_hostile_header();
-  test_jof_hostile_tiles();
-  test_jof_memstore();
-  (void)fprintf(stderr, "[OK  ] test_ra8_jof.c\n");
+  internal_test_jof_roundtrip();
+  internal_test_jof_hostile_header();
+  internal_test_jof_hostile_tiles();
+  internal_test_jof_memstore();
   return 0;
 }

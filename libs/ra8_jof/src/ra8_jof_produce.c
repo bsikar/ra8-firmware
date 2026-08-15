@@ -7,7 +7,7 @@
  * producer owns the band accumulator (one tile row of decoded pixels), the
  * tile cut + intra-encode + sink stage, and the trailing index/footer
  * emission; the pixel rows arrive from `ra8_jpeg_sw_decode_stripes()` (JPEG)
- * or `ra8_jof_priv_png_rows()` (PNG), both bounded-RAM by construction. Every
+ * or `priv_jof_png_rows()` (PNG), both bounded-RAM by construction. Every
  * streaming buffer is carved from the caller's `work` arena through the bump
  * allocator -- the producer allocates nothing on the heap. The whole-frame
  * WebP arm (#290) is dispatched here but lives in the sibling
@@ -76,8 +76,8 @@ static const uint8_t s_prod_webp_riff[k_ra8_jof_magic_len] =
 static const uint8_t s_prod_webp_webp[k_ra8_jof_magic_len] =
   {'W', 'E', 'B', 'P'}; /* MAGIC-OK: the WEBP form-type fourCC */
 
-/** @brief Implementation of `ra8_jof_priv_bump_take()` -- aligned linear carve. */
-RA8_PRIV void* ra8_jof_priv_bump_take(ra8_jof_bump_t* bump, size_t len)
+/** @brief Implementation of `priv_jof_bump_take()` -- aligned linear carve. */
+RA8_PRIV void* priv_jof_bump_take(ra8_jof_bump_t* bump, size_t len)
 {
   if ((bump == nullptr) || (len == 0U)) {
     return nullptr;
@@ -109,7 +109,7 @@ RA8_PRIV void* ra8_jof_priv_bump_take(ra8_jof_bump_t* bump, size_t len)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_wr_u16(uint8_t* buf, uint16_t v)
+RA8_INTERNAL static void internal_wr_u16(uint8_t* buf, uint16_t v)
 {
   buf[0] = (uint8_t)(v & (uint16_t)k_ra8_jof_byte_mask);
   buf[1] = (uint8_t)((uint32_t)v >> k_ra8_jof_le_sh8);
@@ -128,7 +128,7 @@ static void priv_wr_u16(uint8_t* buf, uint16_t v)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_wr_u32(uint8_t* buf, uint32_t v)
+RA8_INTERNAL static void internal_wr_u32(uint8_t* buf, uint32_t v)
 {
   buf[0] = (uint8_t)(v & (uint32_t)k_ra8_jof_byte_mask);
   buf[1] = (uint8_t)((v >> k_ra8_jof_le_sh8) & (uint32_t)k_ra8_jof_byte_mask);
@@ -154,7 +154,8 @@ static void priv_wr_u32(uint8_t* buf, uint32_t v)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_sink(ra8_jof_prod_state_t* st, const uint8_t* buf, size_t len)
+RA8_INTERNAL static ra8_err_t
+internal_sink(ra8_jof_prod_state_t* st, const uint8_t* buf, size_t len)
 {
   if ((uint64_t)len > ((uint64_t)UINT32_MAX - (uint64_t)st->written)) {
     return k_ra8_err_invalid_size;
@@ -172,7 +173,7 @@ static ra8_err_t priv_sink(ra8_jof_prod_state_t* st, const uint8_t* buf, size_t 
  * ---------------------------------------------------------------------------
  */
 
-RA8_PRIV ra8_err_t ra8_jof_priv_prefix_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+RA8_PRIV ra8_err_t priv_jof_prefix_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   ra8_jof_prefix_pull_t* pfx = (ra8_jof_prefix_pull_t*)ctx;
   if (pfx->pos < pfx->head_len) {
@@ -206,21 +207,21 @@ RA8_PRIV ra8_err_t ra8_jof_priv_prefix_pull(void* ctx, uint8_t* buf, size_t cap,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_emit_header(ra8_jof_prod_state_t* st)
+RA8_INTERNAL static ra8_err_t internal_emit_header(ra8_jof_prod_state_t* st)
 {
   uint8_t hdr[k_ra8_jof_hdr_bytes] = {};
   hdr[0]                           = 'J';
   hdr[1]                           = 'O';
   hdr[2]                           = 'F';
   hdr[3]                           = '1';
-  priv_wr_u16(&hdr[k_ra8_jof_ofs_width], st->w);
-  priv_wr_u16(&hdr[k_ra8_jof_ofs_height], st->h);
-  priv_wr_u16(&hdr[k_ra8_jof_ofs_tile_w], st->cfg->tile_w);
-  priv_wr_u16(&hdr[k_ra8_jof_ofs_tile_h], st->cfg->tile_h);
+  internal_wr_u16(&hdr[k_ra8_jof_ofs_width], st->w);
+  internal_wr_u16(&hdr[k_ra8_jof_ofs_height], st->h);
+  internal_wr_u16(&hdr[k_ra8_jof_ofs_tile_w], st->cfg->tile_w);
+  internal_wr_u16(&hdr[k_ra8_jof_ofs_tile_h], st->cfg->tile_h);
   hdr[k_ra8_jof_ofs_bpp]   = st->bpp;
   hdr[k_ra8_jof_ofs_codec] = st->cfg->codec;
-  priv_wr_u32(&hdr[k_ra8_jof_ofs_tile_count], st->tile_count);
-  return priv_sink(st, hdr, sizeof(hdr));
+  internal_wr_u32(&hdr[k_ra8_jof_ofs_tile_count], st->tile_count);
+  return internal_sink(st, hdr, sizeof(hdr));
 }
 
 /**
@@ -239,7 +240,7 @@ static ra8_err_t priv_emit_header(ra8_jof_prod_state_t* st)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_carve_pixel_path(ra8_jof_prod_state_t* st)
+RA8_INTERNAL static ra8_err_t internal_carve_pixel_path(ra8_jof_prod_state_t* st)
 {
   const uint16_t tw          = st->cfg->tile_w;
   const uint16_t th          = st->cfg->tile_h;
@@ -251,16 +252,15 @@ static ra8_err_t priv_carve_pixel_path(ra8_jof_prod_state_t* st)
   if ((band_bytes > (uint64_t)UINT32_MAX) || (stage_bytes > (uint64_t)UINT32_MAX)) {
     return k_ra8_err_invalid_size;
   }
-  st->band  = ra8_jof_priv_bump_take(st->bump, (size_t)band_bytes);
-  st->stage = ra8_jof_priv_bump_take(st->bump, (size_t)stage_bytes);
-  st->idx =
-    ra8_jof_priv_bump_take(st->bump, (size_t)st->tile_count * (size_t)k_ra8_jof_index_entry);
+  st->band  = priv_jof_bump_take(st->bump, (size_t)band_bytes);
+  st->stage = priv_jof_bump_take(st->bump, (size_t)stage_bytes);
+  st->idx   = priv_jof_bump_take(st->bump, (size_t)st->tile_count * (size_t)k_ra8_jof_index_entry);
   if ((st->band == nullptr) || (st->stage == nullptr) || (st->idx == nullptr)) {
     return k_ra8_err_invalid_size;
   }
   if (st->cfg->codec == (uint8_t)k_ra8_jof_codec_deflate) {
     st->cmp_cap = ra8_jof_stored_bound((uint32_t)stage_bytes);
-    st->cmp     = ra8_jof_priv_bump_take(st->bump, (size_t)st->cmp_cap);
+    st->cmp     = priv_jof_bump_take(st->bump, (size_t)st->cmp_cap);
     if (st->cmp == nullptr) {
       return k_ra8_err_invalid_size;
     }
@@ -290,10 +290,7 @@ static ra8_err_t priv_carve_pixel_path(ra8_jof_prod_state_t* st)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_jof_priv_on_geom(void*    ctx,
-                                        uint16_t width,
-                                        uint16_t height,
-                                        uint8_t  channels)
+RA8_PRIV ra8_err_t priv_jof_on_geom(void* ctx, uint16_t width, uint16_t height, uint8_t channels)
 {
   ra8_jof_prod_state_t* st = (ra8_jof_prod_state_t*)ctx;
   if (st->geom_done != 0U) {
@@ -313,11 +310,11 @@ RA8_PRIV ra8_err_t ra8_jof_priv_on_geom(void*    ctx,
   st->tile_cols  = (uint16_t)cols;
   st->tile_rows  = (uint16_t)rows;
   st->tile_count = cols * rows;
-  ra8_err_t err  = priv_carve_pixel_path(st);
+  ra8_err_t err  = internal_carve_pixel_path(st);
   if (err != k_ra8_ok) {
     return err;
   }
-  err = priv_emit_header(st);
+  err = internal_emit_header(st);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -346,7 +343,7 @@ RA8_PRIV ra8_err_t ra8_jof_priv_on_geom(void*    ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_encode_tile(ra8_jof_prod_state_t* st, uint32_t payload)
+RA8_INTERNAL static ra8_err_t internal_encode_tile(ra8_jof_prod_state_t* st, uint32_t payload)
 {
   const uint8_t* out_bytes = st->stage;
   uint32_t       out_len   = payload;
@@ -360,9 +357,9 @@ static ra8_err_t priv_encode_tile(ra8_jof_prod_state_t* st, uint32_t payload)
     out_len   = clen;
   }
   uint8_t* entry = &st->idx[(size_t)st->tiles_done * (size_t)k_ra8_jof_index_entry];
-  priv_wr_u32(&entry[k_ra8_jof_idx_ofs_offset], st->written);
-  priv_wr_u32(&entry[k_ra8_jof_idx_ofs_length], out_len);
-  const ra8_err_t err = priv_sink(st, out_bytes, (size_t)out_len);
+  internal_wr_u32(&entry[k_ra8_jof_idx_ofs_offset], st->written);
+  internal_wr_u32(&entry[k_ra8_jof_idx_ofs_length], out_len);
+  const ra8_err_t err = internal_sink(st, out_bytes, (size_t)out_len);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -388,7 +385,7 @@ static ra8_err_t priv_encode_tile(ra8_jof_prod_state_t* st, uint32_t payload)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_flush_band(ra8_jof_prod_state_t* st, uint32_t th)
+RA8_INTERNAL static ra8_err_t internal_flush_band(ra8_jof_prod_state_t* st, uint32_t th)
 {
   const uint32_t stride = (uint32_t)st->w * (uint32_t)st->bpp;
   for (uint32_t tx = 0U; tx < (uint32_t)st->tile_cols; tx++) {
@@ -402,7 +399,7 @@ static ra8_err_t priv_flush_band(ra8_jof_prod_state_t* st, uint32_t th)
                    &st->band[((size_t)r * (size_t)stride) + ((size_t)x0 * (size_t)st->bpp)],
                    (size_t)row_bytes);
     }
-    const ra8_err_t err = priv_encode_tile(st, row_bytes * th);
+    const ra8_err_t err = internal_encode_tile(st, row_bytes * th);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -410,12 +407,12 @@ static ra8_err_t priv_flush_band(ra8_jof_prod_state_t* st, uint32_t th)
   return k_ra8_ok;
 }
 
-RA8_PRIV ra8_err_t ra8_jof_priv_on_rows(void*          ctx,
-                                        const uint8_t* px,
-                                        uint16_t       width,
-                                        uint16_t       y0,
-                                        uint16_t       nrows,
-                                        uint8_t        channels)
+RA8_PRIV ra8_err_t priv_jof_on_rows(void*          ctx,
+                                    const uint8_t* px,
+                                    uint16_t       width,
+                                    uint16_t       y0,
+                                    uint16_t       nrows,
+                                    uint8_t        channels)
 {
   ra8_jof_prod_state_t* st = (ra8_jof_prod_state_t*)ctx;
   RA8_CHECK_NULL_PTR(px, s_tag, "px must not be nullptr");
@@ -442,7 +439,7 @@ RA8_PRIV ra8_err_t ra8_jof_priv_on_rows(void*          ctx,
     src += (size_t)take * (size_t)stride;
     left -= take;
     if (st->band_fill == (uint32_t)st->cfg->tile_h) {
-      const ra8_err_t err = priv_flush_band(st, st->band_fill);
+      const ra8_err_t err = internal_flush_band(st, st->band_fill);
       if (err != k_ra8_ok) {
         return err;
       }
@@ -454,7 +451,7 @@ RA8_PRIV ra8_err_t ra8_jof_priv_on_rows(void*          ctx,
 
 /**
  * @brief JPEG geometry adapter: bind geometry, then carve the MCU stripe.
- * @details Wraps ::ra8_jof_priv_on_geom for `ra8_jpeg_sw_decode_stripes()`, which
+ * @details Wraps ::priv_jof_on_geom for `ra8_jpeg_sw_decode_stripes()`, which
  *          additionally needs a caller-owned stripe buffer sized
  *          `width * stripe_rows * channels`.
  * @param[in]  ctx            The producer state.
@@ -467,7 +464,7 @@ RA8_PRIV ra8_err_t ra8_jof_priv_on_rows(void*          ctx,
  * @return Result code.
  * @retval k_ra8_ok               Geometry bound; stripe carved.
  * @retval k_ra8_err_invalid_size Caps exceeded or arena exhausted.
- * @retval other                  Propagated from ::ra8_jof_priv_on_geom.
+ * @retval other                  Propagated from ::priv_jof_on_geom.
  * @pre @p out_stripe / @p out_stripe_cap are writable.
  * @pre `st->bump` has the JPEG carve set available.
  * @post On success the stripe buffer is bound for the scan.
@@ -476,21 +473,21 @@ RA8_PRIV ra8_err_t ra8_jof_priv_on_rows(void*          ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_jpeg_geom(void*     ctx,
-                                uint16_t  width,
-                                uint16_t  height,
-                                uint8_t   channels,
-                                uint16_t  stripe_rows,
-                                uint8_t** out_stripe,
-                                uint32_t* out_stripe_cap)
+RA8_INTERNAL static ra8_err_t internal_jpeg_geom(void*     ctx,
+                                                 uint16_t  width,
+                                                 uint16_t  height,
+                                                 uint8_t   channels,
+                                                 uint16_t  stripe_rows,
+                                                 uint8_t** out_stripe,
+                                                 uint32_t* out_stripe_cap)
 {
   ra8_jof_prod_state_t* st  = (ra8_jof_prod_state_t*)ctx;
-  const ra8_err_t       err = ra8_jof_priv_on_geom(ctx, width, height, channels);
+  const ra8_err_t       err = priv_jof_on_geom(ctx, width, height, channels);
   if (err != k_ra8_ok) {
     return err;
   }
   const uint32_t cap = (uint32_t)width * (uint32_t)stripe_rows * (uint32_t)channels;
-  uint8_t*       buf = ra8_jof_priv_bump_take(st->bump, (size_t)cap);
+  uint8_t*       buf = priv_jof_bump_take(st->bump, (size_t)cap);
   if (buf == nullptr) {
     return k_ra8_err_invalid_size;
   }
@@ -521,25 +518,26 @@ static ra8_err_t priv_jpeg_geom(void*     ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_finish(ra8_jof_prod_state_t* st, ra8_jof_info_t* out_info)
+RA8_INTERNAL static ra8_err_t internal_finish(ra8_jof_prod_state_t* st, ra8_jof_info_t* out_info)
 {
   if (st->tiles_done != st->tile_count) {
     return k_ra8_err_validation_failed;
   }
   const uint32_t index_off = st->written;
-  ra8_err_t err = priv_sink(st, st->idx, (size_t)st->tile_count * (size_t)k_ra8_jof_index_entry);
+  ra8_err_t      err =
+    internal_sink(st, st->idx, (size_t)st->tile_count * (size_t)k_ra8_jof_index_entry);
   if (err != k_ra8_ok) {
     return err;
   }
   uint8_t ftr[k_ra8_jof_footer_bytes] = {};
-  priv_wr_u32(&ftr[k_ra8_jof_ftr_index_off], index_off);
-  priv_wr_u32(&ftr[k_ra8_jof_ftr_tile_count], st->tile_count);
-  priv_wr_u32(&ftr[k_ra8_jof_ftr_total_size], st->written + (uint32_t)k_ra8_jof_footer_bytes);
+  internal_wr_u32(&ftr[k_ra8_jof_ftr_index_off], index_off);
+  internal_wr_u32(&ftr[k_ra8_jof_ftr_tile_count], st->tile_count);
+  internal_wr_u32(&ftr[k_ra8_jof_ftr_total_size], st->written + (uint32_t)k_ra8_jof_footer_bytes);
   ftr[k_ra8_jof_ftr_magic]      = 'J';
   ftr[k_ra8_jof_ftr_magic + 1U] = 'O';
   ftr[k_ra8_jof_ftr_magic + 2U] = 'F';
   ftr[k_ra8_jof_ftr_magic + 3U] = 'E';
-  err                           = priv_sink(st, ftr, sizeof(ftr));
+  err                           = internal_sink(st, ftr, sizeof(ftr));
   if (err != k_ra8_ok) {
     return err;
   }
@@ -572,7 +570,7 @@ static ra8_err_t priv_finish(ra8_jof_prod_state_t* st, ra8_jof_info_t* out_info)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_check_cfg(const ra8_jof_produce_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_check_cfg(const ra8_jof_produce_cfg_t* cfg)
 {
   if ((cfg->tile_w == 0U) || (cfg->tile_h == 0U)) {
     return k_ra8_err_invalid_arg;
@@ -638,7 +636,8 @@ ra8_jof_work_bytes(uint16_t max_width, uint16_t max_height, uint16_t tile_w, uin
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_init_state(ra8_jof_prod_state_t* st, const ra8_jof_produce_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_init_state(ra8_jof_prod_state_t*        st,
+                                                  const ra8_jof_produce_cfg_t* cfg)
 {
   (void)memset(st, 0, sizeof(*st));
   st->cfg        = cfg;
@@ -652,7 +651,7 @@ static ra8_err_t priv_init_state(ra8_jof_prod_state_t* st, const ra8_jof_produce
                 : (uint16_t)k_ra8_jof_max_dim;
   if (cfg->codec == (uint8_t)k_ra8_jof_codec_deflate) {
     st->dfl_len = (uint32_t)k_ra8_io_compress_scratch_bytes;
-    st->dfl     = ra8_jof_priv_bump_take(st->bump, (size_t)st->dfl_len);
+    st->dfl     = priv_jof_bump_take(st->bump, (size_t)st->dfl_len);
     if (st->dfl == nullptr) {
       return k_ra8_err_invalid_size;
     }
@@ -677,7 +676,7 @@ static ra8_err_t priv_init_state(ra8_jof_prod_state_t* st, const ra8_jof_produce
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_sniff_head(const ra8_jof_produce_cfg_t* cfg, uint8_t* head)
+RA8_INTERNAL static ra8_err_t internal_sniff_head(const ra8_jof_produce_cfg_t* cfg, uint8_t* head)
 {
   size_t head_len = 0U;
   while (head_len < (size_t)k_ra8_jof_sniff_bytes) {
@@ -709,7 +708,7 @@ static ra8_err_t priv_sniff_head(const ra8_jof_produce_cfg_t* cfg, uint8_t* head
  * @retval k_ra8_err_not_supported The head is not JPEG/PNG/WebP.
  * @retval k_ra8_err_invalid_size  The arena cannot fit the decoder set.
  * @retval other                   Propagated from the decoders.
- * @pre `priv_init_state()` succeeded.
+ * @pre `internal_init_state()` succeeded.
  * @pre @p pfx replays @p head before the live source.
  * @post On success every source row reached the band accumulator.
  * @post On error the transcode aborts.
@@ -717,36 +716,36 @@ static ra8_err_t priv_sniff_head(const ra8_jof_produce_cfg_t* cfg, uint8_t* head
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-priv_dispatch(ra8_jof_prod_state_t* st, const uint8_t* head, ra8_jof_prefix_pull_t* pfx)
+RA8_INTERNAL static ra8_err_t
+internal_dispatch(ra8_jof_prod_state_t* st, const uint8_t* head, ra8_jof_prefix_pull_t* pfx)
 {
   if ((head[0] == (uint8_t)k_ra8_jof_jpeg_soi_first) &&
       (head[1] == (uint8_t)k_ra8_jof_jpeg_soi_second)) {
-    uint8_t* window = ra8_jof_priv_bump_take(st->bump, (size_t)k_ra8_jpeg_sw_stream_min_window);
+    uint8_t* window = priv_jof_bump_take(st->bump, (size_t)k_ra8_jpeg_sw_stream_min_window);
     if (window == nullptr) {
       return k_ra8_err_invalid_size;
     }
-    return ra8_jpeg_sw_decode_stripes(ra8_jof_priv_prefix_pull,
+    return ra8_jpeg_sw_decode_stripes(priv_jof_prefix_pull,
                                       pfx,
                                       window,
                                       (uint32_t)k_ra8_jpeg_sw_stream_min_window,
-                                      priv_jpeg_geom,
-                                      ra8_jof_priv_on_rows,
+                                      internal_jpeg_geom,
+                                      priv_jof_on_rows,
                                       st);
   }
   if (memcmp(head, s_prod_png_sig, sizeof(s_prod_png_sig)) == 0) {
-    return ra8_jof_priv_png_rows(ra8_jof_priv_prefix_pull,
-                                 pfx,
-                                 st->bump,
-                                 st->cap_w,
-                                 st->cap_h,
-                                 ra8_jof_priv_on_geom,
-                                 ra8_jof_priv_on_rows,
-                                 st);
+    return priv_jof_png_rows(priv_jof_prefix_pull,
+                             pfx,
+                             st->bump,
+                             st->cap_w,
+                             st->cap_h,
+                             priv_jof_on_geom,
+                             priv_jof_on_rows,
+                             st);
   }
   if ((memcmp(head, s_prod_webp_riff, sizeof(s_prod_webp_riff)) == 0) &&
       (memcmp(&head[k_ra8_jof_webp_fourcc_ofs], s_prod_webp_webp, sizeof(s_prod_webp_webp)) == 0)) {
-    return ra8_jof_priv_webp_transcode(st, pfx);
+    return priv_jof_webp_transcode(st, pfx);
   }
   return k_ra8_err_not_supported; /* not a JPEG/PNG/WebP source */
 }
@@ -766,7 +765,7 @@ priv_dispatch(ra8_jof_prod_state_t* st, const uint8_t* head, ra8_jof_prefix_pull
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_rd_be32(const uint8_t* buf)
+RA8_INTERNAL static uint32_t internal_rd_be32(const uint8_t* buf)
 {
   return ((uint32_t)buf[0] << k_ra8_jof_le_sh24) | ((uint32_t)buf[1] << k_ra8_jof_le_sh16) |
          ((uint32_t)buf[2] << k_ra8_jof_le_sh8) | (uint32_t)buf[3];
@@ -788,7 +787,7 @@ static uint32_t priv_rd_be32(const uint8_t* buf)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_is_webp(const uint8_t* data)
+RA8_INTERNAL static bool internal_is_webp(const uint8_t* data)
 {
   return (memcmp(data, s_prod_webp_riff, sizeof(s_prod_webp_riff)) == 0) &&
          (memcmp(&data[k_ra8_jof_webp_fourcc_ofs], s_prod_webp_webp, sizeof(s_prod_webp_webp)) ==
@@ -811,17 +810,18 @@ static bool priv_is_webp(const uint8_t* data)
  * @post On success both outputs hold the IHDR fields verbatim, unvalidated.
  * @post On failure neither output is written.
  * @note Pure apart from the outputs; thread-safe.
- * @see priv_rd_be32()
+ * @see internal_rd_be32()
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_png_dims(const uint8_t* data, size_t len, uint32_t* out_w, uint32_t* out_h)
+RA8_INTERNAL static ra8_err_t
+internal_png_dims(const uint8_t* data, size_t len, uint32_t* out_w, uint32_t* out_h)
 {
   if (len < (size_t)k_ra8_jof_png_ihdr_end) {
     return k_ra8_err_not_supported; /* IHDR truncated */
   }
-  *out_w = priv_rd_be32(&data[k_ra8_jof_png_ihdr_w]);
-  *out_h = priv_rd_be32(&data[k_ra8_jof_png_ihdr_h]);
+  *out_w = internal_rd_be32(&data[k_ra8_jof_png_ihdr_w]);
+  *out_h = internal_rd_be32(&data[k_ra8_jof_png_ihdr_h]);
   return k_ra8_ok;
 }
 
@@ -829,7 +829,7 @@ static ra8_err_t priv_png_dims(const uint8_t* data, size_t len, uint32_t* out_w,
  * @brief Sniff the container, read its declared geometry and range-check it.
  * @details The probing algorithm behind ::ra8_jof_probe_dims, split from
  *          it so the public entry carries only the null-pointer contract. The
- *          dispatch order mirrors ::priv_dispatch, which is what keeps "the
+ *          dispatch order mirrors ::internal_dispatch, which is what keeps "the
  *          caller can size it" and "the producer will decode it" in step.
  *
  *          JPEG is answered by ::ra8_jpeg_sw_get_dimensions directly: that
@@ -851,11 +851,12 @@ static ra8_err_t priv_png_dims(const uint8_t* data, size_t len, uint32_t* out_w,
  * @post On success both outputs hold a non-zero, in-range dimension.
  * @post On any error neither output is written.
  * @note Not thread-safe beyond its arguments.
- * @see priv_png_dims(), priv_is_webp(), ra8_webp_get_info()
+ * @see internal_png_dims(), internal_is_webp(), ra8_webp_get_info()
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_probe_sniff(const uint8_t* data, size_t len, uint16_t* out_w, uint16_t* out_h)
+RA8_INTERNAL static ra8_err_t
+internal_probe_sniff(const uint8_t* data, size_t len, uint16_t* out_w, uint16_t* out_h)
 {
   if (len < (size_t)k_ra8_jof_sniff_bytes) {
     return k_ra8_err_not_supported; /* too short to carry any accepted magic */
@@ -867,11 +868,11 @@ static ra8_err_t priv_probe_sniff(const uint8_t* data, size_t len, uint16_t* out
     return ra8_jpeg_sw_get_dimensions(data, (uint32_t)len, out_w, out_h);
   }
   if (memcmp(data, s_prod_png_sig, sizeof(s_prod_png_sig)) == 0) {
-    const ra8_err_t rc = priv_png_dims(data, len, &w, &h);
+    const ra8_err_t rc = internal_png_dims(data, len, &w, &h);
     if (rc != k_ra8_ok) {
       return rc;
     }
-  } else if (priv_is_webp(data)) {
+  } else if (internal_is_webp(data)) {
     const ra8_err_t rc = ra8_webp_get_info(data, len, &w, &h);
     if (rc != k_ra8_ok) {
       return rc;
@@ -893,7 +894,7 @@ ra8_err_t ra8_jof_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, u
   RA8_CHECK_NULL_PTR(data, s_tag, "data must not be nullptr");
   RA8_CHECK_NULL_PTR(out_w, s_tag, "out_w must not be nullptr");
   RA8_CHECK_NULL_PTR(out_h, s_tag, "out_h must not be nullptr");
-  return priv_probe_sniff(data, len, out_w, out_h);
+  return internal_probe_sniff(data, len, out_w, out_h);
 }
 
 /**
@@ -906,7 +907,7 @@ ra8_err_t ra8_jof_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, u
  * @retval k_ra8_ok                    Atlas fully written to the sink.
  * @retval k_ra8_err_validation_failed The decoder under-delivered.
  * @retval other                       Propagated from the flush / trailer.
- * @pre `priv_dispatch()` returned success.
+ * @pre `internal_dispatch()` returned success.
  * @pre @p out_info is writable.
  * @post On success the sink holds one complete, parseable atlas.
  * @post On error the partial atlas must be discarded.
@@ -914,20 +915,20 @@ ra8_err_t ra8_jof_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, u
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_epilogue(ra8_jof_prod_state_t* st, ra8_jof_info_t* out_info)
+RA8_INTERNAL static ra8_err_t internal_epilogue(ra8_jof_prod_state_t* st, ra8_jof_info_t* out_info)
 {
   // mcdc-deactivated: post-decode contract guard; both in-tree decoders return success only after the geometry hook fired and every declared row was delivered (short/hostile streams abort inside the decoder), so neither condition can be flipped through the public producer entry.
   if ((st->geom_done == 0U) || (st->rows_seen != (uint32_t)st->h)) {
     return k_ra8_err_validation_failed; /* decoder under-delivered */
   }
   if (st->band_fill > 0U) {
-    const ra8_err_t err = priv_flush_band(st, st->band_fill);
+    const ra8_err_t err = internal_flush_band(st, st->band_fill);
     if (err != k_ra8_ok) {
       return err;
     }
     st->band_fill = 0U;
   }
-  return priv_finish(st, out_info);
+  return internal_finish(st, out_info);
 }
 
 /**
@@ -946,8 +947,8 @@ static ra8_err_t priv_epilogue(ra8_jof_prod_state_t* st, ra8_jof_info_t* out_inf
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_produce_args_ok(const ra8_jof_produce_cfg_t* cfg,
-                                      const ra8_jof_info_t*        out_info)
+RA8_INTERNAL static ra8_err_t internal_produce_args_ok(const ra8_jof_produce_cfg_t* cfg,
+                                                       const ra8_jof_info_t*        out_info)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   RA8_CHECK_NULL_PTR(out_info, s_tag, "out_info must not be nullptr");
@@ -959,21 +960,21 @@ static ra8_err_t priv_produce_args_ok(const ra8_jof_produce_cfg_t* cfg,
 
 ra8_err_t ra8_jof_produce(const ra8_jof_produce_cfg_t* cfg, ra8_jof_info_t* out_info)
 {
-  ra8_err_t err = priv_produce_args_ok(cfg, out_info);
+  ra8_err_t err = internal_produce_args_ok(cfg, out_info);
   if (err != k_ra8_ok) {
     return err;
   }
-  err = priv_check_cfg(cfg);
+  err = internal_check_cfg(cfg);
   if (err != k_ra8_ok) {
     return err;
   }
   ra8_jof_prod_state_t* st = &s_prod;
-  err                      = priv_init_state(st, cfg);
+  err                      = internal_init_state(st, cfg);
   if (err != k_ra8_ok) {
     return err;
   }
   uint8_t head[k_ra8_jof_sniff_bytes] = {};
-  err                                 = priv_sniff_head(cfg, head);
+  err                                 = internal_sniff_head(cfg, head);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -984,9 +985,9 @@ ra8_err_t ra8_jof_produce(const ra8_jof_produce_cfg_t* cfg, ra8_jof_info_t* out_
     .inner     = cfg->pull,
     .inner_ctx = cfg->pull_ctx,
   };
-  err = priv_dispatch(st, head, &pfx);
+  err = internal_dispatch(st, head, &pfx);
   if (err != k_ra8_ok) {
     return err;
   }
-  return priv_epilogue(st, out_info);
+  return internal_epilogue(st, out_info);
 }

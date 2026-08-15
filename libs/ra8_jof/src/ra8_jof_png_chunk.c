@@ -48,7 +48,7 @@ static const uint8_t s_png_sig[k_ra8_png_sig_bytes] =
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_jof_png_priv_pull_exact(ra8_png_state_t* st, uint8_t* buf, uint32_t len)
+RA8_PRIV ra8_err_t priv_jof_png_pull_exact(ra8_png_state_t* st, uint8_t* buf, uint32_t len)
 {
   uint32_t done = 0U;
   while (done < len) {
@@ -81,14 +81,14 @@ RA8_PRIV ra8_err_t ra8_jof_png_priv_pull_exact(ra8_png_state_t* st, uint8_t* buf
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_jof_png_priv_skip(ra8_png_state_t* st, uint32_t len)
+RA8_PRIV ra8_err_t priv_jof_png_skip(ra8_png_state_t* st, uint32_t len)
 {
   uint8_t  scratch[k_ra8_png_skip_chunk];
   uint32_t left = len;
   while (left > 0U) {
     const uint32_t take =
       (left < (uint32_t)k_ra8_png_skip_chunk) ? left : (uint32_t)k_ra8_png_skip_chunk;
-    const ra8_err_t err = ra8_jof_png_priv_pull_exact(st, scratch, take);
+    const ra8_err_t err = priv_jof_png_pull_exact(st, scratch, take);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -114,12 +114,12 @@ RA8_PRIV ra8_err_t ra8_jof_png_priv_skip(ra8_png_state_t* st, uint32_t len)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_jof_png_priv_chunk_hdr(ra8_png_state_t* st,
-                                              uint32_t*        out_len,
-                                              uint32_t*        out_type)
+RA8_PRIV ra8_err_t priv_jof_png_chunk_hdr(ra8_png_state_t* st,
+                                          uint32_t*        out_len,
+                                          uint32_t*        out_type)
 {
   uint8_t         hdr[k_ra8_png_chunk_hdr] = {};
-  const ra8_err_t err                      = ra8_jof_png_priv_pull_exact(st, hdr, sizeof(hdr));
+  const ra8_err_t err                      = priv_jof_png_pull_exact(st, hdr, sizeof(hdr));
   if (err != k_ra8_ok) {
     return err;
   }
@@ -152,7 +152,7 @@ RA8_PRIV ra8_err_t ra8_jof_png_priv_chunk_hdr(ra8_png_state_t* st,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t png_src_channels(uint8_t color_type)
+RA8_INTERNAL static uint8_t internal_png_src_channels(uint8_t color_type)
 {
   switch (color_type) {
     case k_ra8_png_color_gray:
@@ -191,8 +191,8 @@ static uint8_t png_src_channels(uint8_t color_type)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-png_check_ihdr(ra8_png_state_t* st, const uint8_t* ihdr, uint16_t max_w, uint16_t max_h)
+RA8_INTERNAL static ra8_err_t
+internal_png_check_ihdr(ra8_png_state_t* st, const uint8_t* ihdr, uint16_t max_w, uint16_t max_h)
 {
   const uint32_t w32 = ((uint32_t)ihdr[0] << k_ra8_png_be_sh24) |
                        ((uint32_t)ihdr[1] << k_ra8_png_be_sh16) |
@@ -209,7 +209,7 @@ png_check_ihdr(ra8_png_state_t* st, const uint8_t* ihdr, uint16_t max_w, uint16_
   if (ihdr[k_ra8_png_ihdr_ofs_depth] != (uint8_t)k_ra8_png_depth_8) {
     return k_ra8_err_not_supported;
   }
-  st->src_ch = png_src_channels(ihdr[k_ra8_png_ihdr_ofs_color]);
+  st->src_ch = internal_png_src_channels(ihdr[k_ra8_png_ihdr_ofs_color]);
   if (st->src_ch == 0U) {
     return k_ra8_err_not_supported;
   }
@@ -231,7 +231,7 @@ png_check_ihdr(ra8_png_state_t* st, const uint8_t* ihdr, uint16_t max_w, uint16_
 /**
  * @brief Read the IHDR chunk (must be first) and validate its payload.
  * @details Enforces the IHDR-first rule and the exact 13-byte payload
- *          length, then delegates the field checks to ::png_check_ihdr and
+ *          length, then delegates the field checks to ::internal_png_check_ihdr and
  *          skips the trailing CRC.
  * @param[in,out] st    Decoder state (geometry fields written).
  * @param[in]     max_w Fail-closed width cap.
@@ -248,11 +248,12 @@ png_check_ihdr(ra8_png_state_t* st, const uint8_t* ihdr, uint16_t max_w, uint16_
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t png_parse_ihdr(ra8_png_state_t* st, uint16_t max_w, uint16_t max_h)
+RA8_INTERNAL static ra8_err_t
+internal_png_parse_ihdr(ra8_png_state_t* st, uint16_t max_w, uint16_t max_h)
 {
   uint32_t  len  = 0U;
   uint32_t  type = 0U;
-  ra8_err_t err  = ra8_jof_png_priv_chunk_hdr(st, &len, &type);
+  ra8_err_t err  = priv_jof_png_chunk_hdr(st, &len, &type);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -260,15 +261,15 @@ static ra8_err_t png_parse_ihdr(ra8_png_state_t* st, uint16_t max_w, uint16_t ma
     return k_ra8_err_protocol_error;
   }
   uint8_t ihdr[k_ra8_png_ihdr_len] = {};
-  err                              = ra8_jof_png_priv_pull_exact(st, ihdr, sizeof(ihdr));
+  err                              = priv_jof_png_pull_exact(st, ihdr, sizeof(ihdr));
   if (err != k_ra8_ok) {
     return err;
   }
-  err = png_check_ihdr(st, ihdr, max_w, max_h);
+  err = internal_png_check_ihdr(st, ihdr, max_w, max_h);
   if (err != k_ra8_ok) {
     return err;
   }
-  return ra8_jof_png_priv_skip(st, (uint32_t)k_ra8_png_crc_bytes);
+  return priv_jof_png_skip(st, (uint32_t)k_ra8_png_crc_bytes);
 }
 
 /**
@@ -289,19 +290,19 @@ static ra8_err_t png_parse_ihdr(ra8_png_state_t* st, uint16_t max_w, uint16_t ma
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t png_parse_plte(ra8_png_state_t* st, uint32_t len)
+RA8_INTERNAL static ra8_err_t internal_png_parse_plte(ra8_png_state_t* st, uint32_t len)
 {
   if ((len == 0U) || ((len % (uint32_t)k_ra8_png_ch_3) != 0U) ||
       (len > (uint32_t)k_ra8_png_plte_max) || (st->has_plte != 0U)) {
     return k_ra8_err_validation_failed;
   }
-  const ra8_err_t err = ra8_jof_png_priv_pull_exact(st, st->palette, len);
+  const ra8_err_t err = priv_jof_png_pull_exact(st, st->palette, len);
   if (err != k_ra8_ok) {
     return err;
   }
   st->plte_count = (uint16_t)(len / (uint32_t)k_ra8_png_ch_3);
   st->has_plte   = 1U;
-  return ra8_jof_png_priv_skip(st, (uint32_t)k_ra8_png_crc_bytes);
+  return priv_jof_png_skip(st, (uint32_t)k_ra8_png_crc_bytes);
 }
 
 /**
@@ -324,7 +325,7 @@ static ra8_err_t png_parse_plte(ra8_png_state_t* st, uint32_t len)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t png_parse_trns(ra8_png_state_t* st, uint32_t len)
+RA8_INTERNAL static ra8_err_t internal_png_parse_trns(ra8_png_state_t* st, uint32_t len)
 {
   if (st->color_type != (uint8_t)k_ra8_png_color_pal) {
     return k_ra8_err_not_supported;
@@ -332,13 +333,13 @@ static ra8_err_t png_parse_trns(ra8_png_state_t* st, uint32_t len)
   if ((len > (uint32_t)k_ra8_png_trns_max) || (st->has_plte == 0U) || (st->has_trns != 0U)) {
     return k_ra8_err_validation_failed;
   }
-  const ra8_err_t err = ra8_jof_png_priv_pull_exact(st, st->trns, len);
+  const ra8_err_t err = priv_jof_png_pull_exact(st, st->trns, len);
   if (err != k_ra8_ok) {
     return err;
   }
   st->trns_count = (uint16_t)len;
   st->has_trns   = 1U;
-  return ra8_jof_png_priv_skip(st, (uint32_t)k_ra8_png_crc_bytes);
+  return priv_jof_png_skip(st, (uint32_t)k_ra8_png_crc_bytes);
 }
 
 /**
@@ -357,17 +358,17 @@ static ra8_err_t png_parse_trns(ra8_png_state_t* st, uint32_t len)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_jof_png_priv_prologue(ra8_png_state_t* st, uint16_t max_w, uint16_t max_h)
+RA8_PRIV ra8_err_t priv_jof_png_prologue(ra8_png_state_t* st, uint16_t max_w, uint16_t max_h)
 {
   uint8_t         sig[k_ra8_png_sig_bytes] = {};
-  const ra8_err_t err                      = ra8_jof_png_priv_pull_exact(st, sig, sizeof(sig));
+  const ra8_err_t err                      = priv_jof_png_pull_exact(st, sig, sizeof(sig));
   if (err != k_ra8_ok) {
     return err;
   }
   if (memcmp(sig, s_png_sig, sizeof(sig)) != 0) {
     return k_ra8_err_protocol_error;
   }
-  return png_parse_ihdr(st, max_w, max_h);
+  return internal_png_parse_ihdr(st, max_w, max_h);
 }
 
 /**
@@ -386,18 +387,18 @@ RA8_PRIV ra8_err_t ra8_jof_png_priv_prologue(ra8_png_state_t* st, uint16_t max_w
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_jof_png_priv_pre_idat(ra8_png_state_t* st, uint32_t len, uint32_t type)
+RA8_PRIV ra8_err_t priv_jof_png_pre_idat(ra8_png_state_t* st, uint32_t len, uint32_t type)
 {
   if (type == (uint32_t)k_ra8_png_type_plte) {
-    return png_parse_plte(st, len);
+    return internal_png_parse_plte(st, len);
   }
   if (type == (uint32_t)k_ra8_png_type_trns) {
-    return png_parse_trns(st, len);
+    return internal_png_parse_trns(st, len);
   }
   if (type == (uint32_t)k_ra8_png_type_iend) {
     return k_ra8_err_protocol_error; /* IEND before any IDAT */
   }
-  return ra8_jof_png_priv_skip(st, len + (uint32_t)k_ra8_png_crc_bytes);
+  return priv_jof_png_skip(st, len + (uint32_t)k_ra8_png_crc_bytes);
 }
 
 /**
@@ -418,16 +419,16 @@ RA8_PRIV ra8_err_t ra8_jof_png_priv_pre_idat(ra8_png_state_t* st, uint32_t len, 
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_jof_png_priv_finish(ra8_png_state_t* st)
+RA8_PRIV ra8_err_t priv_jof_png_finish(ra8_png_state_t* st)
 {
   uint32_t len  = st->pending_len;
   uint32_t type = st->pending_type;
   if (st->pending_valid == 0U) {
-    ra8_err_t err = ra8_jof_png_priv_skip(st, (uint32_t)k_ra8_png_crc_bytes); /* last IDAT's CRC */
+    ra8_err_t err = priv_jof_png_skip(st, (uint32_t)k_ra8_png_crc_bytes); /* last IDAT's CRC */
     if (err != k_ra8_ok) {
       return err;
     }
-    err = ra8_jof_png_priv_chunk_hdr(st, &len, &type);
+    err = priv_jof_png_chunk_hdr(st, &len, &type);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -439,11 +440,11 @@ RA8_PRIV ra8_err_t ra8_jof_png_priv_finish(ra8_png_state_t* st)
     if (type == (uint32_t)k_ra8_png_type_idat) {
       return k_ra8_err_protocol_error; /* IDAT after the stream completed */
     }
-    ra8_err_t err = ra8_jof_png_priv_skip(st, len + (uint32_t)k_ra8_png_crc_bytes);
+    ra8_err_t err = priv_jof_png_skip(st, len + (uint32_t)k_ra8_png_crc_bytes);
     if (err != k_ra8_ok) {
       return err;
     }
-    err = ra8_jof_png_priv_chunk_hdr(st, &len, &type);
+    err = priv_jof_png_chunk_hdr(st, &len, &type);
     if (err != k_ra8_ok) {
       return err;
     }

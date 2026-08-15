@@ -79,7 +79,7 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint16_t priv_rd_u16(const uint8_t* buf, uint8_t off)
+RA8_INTERNAL static uint16_t internal_rd_u16(const uint8_t* buf, uint8_t off)
 {
   return (uint16_t)((uint16_t)buf[off + k_ra8_jof_le_b0] |
                     (uint16_t)((uint16_t)buf[off + k_ra8_jof_le_b1] << k_ra8_jof_le_sh8));
@@ -100,7 +100,7 @@ static uint16_t priv_rd_u16(const uint8_t* buf, uint8_t off)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_rd_u32(const uint8_t* buf, uint8_t off)
+RA8_INTERNAL static uint32_t internal_rd_u32(const uint8_t* buf, uint8_t off)
 {
   return (uint32_t)buf[off + k_ra8_jof_le_b0] |
          ((uint32_t)buf[off + k_ra8_jof_le_b1] << k_ra8_jof_le_sh8) |
@@ -123,7 +123,7 @@ static uint32_t priv_rd_u32(const uint8_t* buf, uint8_t off)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_ceil_div(uint32_t n, uint32_t d)
+RA8_INTERNAL static uint32_t internal_ceil_div(uint32_t n, uint32_t d)
 {
   return (n + d - 1U) / d;
 }
@@ -148,8 +148,11 @@ static uint32_t priv_ceil_div(uint32_t n, uint32_t d)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-priv_pread_exact(ra8_jof_pread_fn pread, void* pread_ctx, uint64_t off, uint8_t* buf, size_t len)
+RA8_INTERNAL static ra8_err_t internal_pread_exact(ra8_jof_pread_fn pread,
+                                                   void*            pread_ctx,
+                                                   uint64_t         off,
+                                                   uint8_t*         buf,
+                                                   size_t           len)
 {
   size_t          got = 0U;
   const ra8_err_t err = pread(pread_ctx, off, buf, len, &got);
@@ -221,12 +224,12 @@ ra8_err_t ra8_jof_memstore_pread(void* ctx, uint64_t offset, uint8_t* buf, size_
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_parse_hdr_fields(const uint8_t* hdr, ra8_jof_info_t* info)
+RA8_INTERNAL static ra8_err_t internal_parse_hdr_fields(const uint8_t* hdr, ra8_jof_info_t* info)
 {
-  info->width  = priv_rd_u16(hdr, (uint8_t)k_ra8_jof_ofs_width);
-  info->height = priv_rd_u16(hdr, (uint8_t)k_ra8_jof_ofs_height);
-  info->tile_w = priv_rd_u16(hdr, (uint8_t)k_ra8_jof_ofs_tile_w);
-  info->tile_h = priv_rd_u16(hdr, (uint8_t)k_ra8_jof_ofs_tile_h);
+  info->width  = internal_rd_u16(hdr, (uint8_t)k_ra8_jof_ofs_width);
+  info->height = internal_rd_u16(hdr, (uint8_t)k_ra8_jof_ofs_height);
+  info->tile_w = internal_rd_u16(hdr, (uint8_t)k_ra8_jof_ofs_tile_w);
+  info->tile_h = internal_rd_u16(hdr, (uint8_t)k_ra8_jof_ofs_tile_h);
   info->bpp    = hdr[k_ra8_jof_ofs_bpp];
   info->codec  = hdr[k_ra8_jof_ofs_codec];
   if (info->width == 0U) {
@@ -273,7 +276,7 @@ static ra8_err_t priv_parse_hdr_fields(const uint8_t* hdr, ra8_jof_info_t* info)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_check_reserved(const uint8_t* hdr)
+RA8_INTERNAL static ra8_err_t internal_check_reserved(const uint8_t* hdr)
 {
   for (uint8_t i = (uint8_t)k_ra8_jof_ofs_reserved; i < (uint8_t)k_ra8_jof_ofs_tile_count; ++i) {
     if (hdr[i] != 0U) {
@@ -307,11 +310,13 @@ static ra8_err_t priv_check_reserved(const uint8_t* hdr)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-priv_check_cross(ra8_jof_info_t* info, uint32_t hdr_count, const uint8_t* ftr, uint64_t total_size)
+RA8_INTERNAL static ra8_err_t internal_check_cross(ra8_jof_info_t* info,
+                                                   uint32_t        hdr_count,
+                                                   const uint8_t*  ftr,
+                                                   uint64_t        total_size)
 {
-  const uint32_t cols = priv_ceil_div(info->width, info->tile_w);
-  const uint32_t rows = priv_ceil_div(info->height, info->tile_h);
+  const uint32_t cols = internal_ceil_div(info->width, info->tile_w);
+  const uint32_t rows = internal_ceil_div(info->height, info->tile_h);
   const uint32_t want = cols * rows;
   if (want > (uint32_t)k_ra8_jof_max_tiles) {
     return k_ra8_err_validation_failed;
@@ -319,9 +324,9 @@ priv_check_cross(ra8_jof_info_t* info, uint32_t hdr_count, const uint8_t* ftr, u
   if (hdr_count != want) {
     return k_ra8_err_validation_failed;
   }
-  const uint32_t ftr_count = priv_rd_u32(ftr, (uint8_t)k_ra8_jof_ftr_tile_count);
-  const uint32_t ftr_total = priv_rd_u32(ftr, (uint8_t)k_ra8_jof_ftr_total_size);
-  const uint32_t index_off = priv_rd_u32(ftr, (uint8_t)k_ra8_jof_ftr_index_off);
+  const uint32_t ftr_count = internal_rd_u32(ftr, (uint8_t)k_ra8_jof_ftr_tile_count);
+  const uint32_t ftr_total = internal_rd_u32(ftr, (uint8_t)k_ra8_jof_ftr_total_size);
+  const uint32_t index_off = internal_rd_u32(ftr, (uint8_t)k_ra8_jof_ftr_index_off);
   if (ftr_count != want) {
     return k_ra8_err_validation_failed;
   }
@@ -365,23 +370,23 @@ priv_check_cross(ra8_jof_info_t* info, uint32_t hdr_count, const uint8_t* ftr, u
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_parse_header_region(ra8_jof_pread_fn pread,
-                                          void*            pread_ctx,
-                                          uint8_t*         hdr,
-                                          ra8_jof_info_t*  out_info)
+RA8_INTERNAL static ra8_err_t internal_parse_header_region(ra8_jof_pread_fn pread,
+                                                           void*            pread_ctx,
+                                                           uint8_t*         hdr,
+                                                           ra8_jof_info_t*  out_info)
 {
-  ra8_err_t err = priv_pread_exact(pread, pread_ctx, 0U, hdr, (size_t)k_ra8_jof_hdr_bytes);
+  ra8_err_t err = internal_pread_exact(pread, pread_ctx, 0U, hdr, (size_t)k_ra8_jof_hdr_bytes);
   if (err != k_ra8_ok) {
     return err;
   }
   if (memcmp(&hdr[k_ra8_jof_ofs_magic], s_magic_hdr, sizeof(s_magic_hdr)) != 0) {
     return k_ra8_err_validation_failed;
   }
-  err = priv_parse_hdr_fields(hdr, out_info);
+  err = internal_parse_hdr_fields(hdr, out_info);
   if (err != k_ra8_ok) {
     return err;
   }
-  return priv_check_reserved(hdr);
+  return internal_check_reserved(hdr);
 }
 
 ra8_err_t ra8_jof_parse(ra8_jof_pread_fn pread,
@@ -396,24 +401,24 @@ ra8_err_t ra8_jof_parse(ra8_jof_pread_fn pread,
     return k_ra8_err_invalid_size;
   }
   uint8_t   hdr[k_ra8_jof_hdr_bytes] = {};
-  ra8_err_t err                      = priv_parse_header_region(pread, pread_ctx, hdr, out_info);
+  ra8_err_t err = internal_parse_header_region(pread, pread_ctx, hdr, out_info);
   if (err != k_ra8_ok) {
     return err;
   }
   uint8_t ftr[k_ra8_jof_footer_bytes] = {};
-  err = priv_pread_exact(pread,
-                         pread_ctx,
-                         total_size - (uint64_t)k_ra8_jof_footer_bytes,
-                         ftr,
-                         sizeof(ftr));
+  err = internal_pread_exact(pread,
+                             pread_ctx,
+                             total_size - (uint64_t)k_ra8_jof_footer_bytes,
+                             ftr,
+                             sizeof(ftr));
   if (err != k_ra8_ok) {
     return err;
   }
   if (memcmp(&ftr[k_ra8_jof_ftr_magic], s_magic_ftr, sizeof(s_magic_ftr)) != 0) {
     return k_ra8_err_validation_failed;
   }
-  const uint32_t hdr_count = priv_rd_u32(hdr, (uint8_t)k_ra8_jof_ofs_tile_count);
-  return priv_check_cross(out_info, hdr_count, ftr, total_size);
+  const uint32_t hdr_count = internal_rd_u32(hdr, (uint8_t)k_ra8_jof_ofs_tile_count);
+  return internal_check_cross(out_info, hdr_count, ftr, total_size);
 }
 
 /* ---------------------------------------------------------------------------
@@ -475,21 +480,21 @@ uint32_t ra8_jof_stored_bound(uint32_t raw_bytes)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_index_entry(ra8_jof_pread_fn      pread,
-                                  void*                 pread_ctx,
-                                  const ra8_jof_info_t* info,
-                                  uint32_t              n,
-                                  uint32_t*             out_off,
-                                  uint32_t*             out_len)
+RA8_INTERNAL static ra8_err_t internal_index_entry(ra8_jof_pread_fn      pread,
+                                                   void*                 pread_ctx,
+                                                   const ra8_jof_info_t* info,
+                                                   uint32_t              n,
+                                                   uint32_t*             out_off,
+                                                   uint32_t*             out_len)
 {
   uint8_t        entry[k_ra8_jof_index_entry] = {};
   const uint64_t eoff = (uint64_t)info->index_off + ((uint64_t)n * (uint64_t)k_ra8_jof_index_entry);
-  const ra8_err_t err = priv_pread_exact(pread, pread_ctx, eoff, entry, sizeof(entry));
+  const ra8_err_t err = internal_pread_exact(pread, pread_ctx, eoff, entry, sizeof(entry));
   if (err != k_ra8_ok) {
     return err;
   }
-  const uint32_t toff = priv_rd_u32(entry, (uint8_t)k_ra8_jof_idx_ofs_offset);
-  const uint32_t tlen = priv_rd_u32(entry, (uint8_t)k_ra8_jof_idx_ofs_length);
+  const uint32_t toff = internal_rd_u32(entry, (uint8_t)k_ra8_jof_idx_ofs_offset);
+  const uint32_t tlen = internal_rd_u32(entry, (uint8_t)k_ra8_jof_idx_ofs_length);
   const uint64_t tend = (uint64_t)toff + (uint64_t)tlen;
   if ((toff < (uint32_t)k_ra8_jof_hdr_bytes) || (tend > (uint64_t)info->index_off)) {
     return k_ra8_err_validation_failed;
@@ -528,27 +533,27 @@ static ra8_err_t priv_index_entry(ra8_jof_pread_fn      pread,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_decode_stream(ra8_jof_pread_fn      pread,
-                                    void*                 pread_ctx,
-                                    const ra8_jof_info_t* info,
-                                    uint32_t              toff,
-                                    uint32_t              tlen,
-                                    uint32_t              payload,
-                                    uint8_t*              scratch,
-                                    uint32_t              scratch_cap,
-                                    uint8_t*              out_px)
+RA8_INTERNAL static ra8_err_t internal_decode_stream(ra8_jof_pread_fn      pread,
+                                                     void*                 pread_ctx,
+                                                     const ra8_jof_info_t* info,
+                                                     uint32_t              toff,
+                                                     uint32_t              tlen,
+                                                     uint32_t              payload,
+                                                     uint8_t*              scratch,
+                                                     uint32_t              scratch_cap,
+                                                     uint8_t*              out_px)
 {
   if (info->codec == (uint8_t)k_ra8_jof_codec_raw) {
     if (tlen != payload) {
       return k_ra8_err_validation_failed;
     }
-    return priv_pread_exact(pread, pread_ctx, toff, out_px, payload);
+    return internal_pread_exact(pread, pread_ctx, toff, out_px, payload);
   }
   RA8_CHECK_NULL_PTR(scratch, s_tag, "scratch must not be nullptr for deflate");
   if (tlen > scratch_cap) {
     return k_ra8_err_invalid_size;
   }
-  const ra8_err_t err = priv_pread_exact(pread, pread_ctx, toff, scratch, tlen);
+  const ra8_err_t err = internal_pread_exact(pread, pread_ctx, toff, scratch, tlen);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -585,30 +590,30 @@ static ra8_err_t priv_decode_stream(ra8_jof_pread_fn      pread,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fetch_decode(ra8_jof_pread_fn      pread,
-                                   void*                 pread_ctx,
-                                   const ra8_jof_info_t* info,
-                                   uint32_t              n,
-                                   uint32_t              payload,
-                                   uint8_t*              scratch,
-                                   uint32_t              scratch_cap,
-                                   uint8_t*              out_px)
+RA8_INTERNAL static ra8_err_t internal_fetch_decode(ra8_jof_pread_fn      pread,
+                                                    void*                 pread_ctx,
+                                                    const ra8_jof_info_t* info,
+                                                    uint32_t              n,
+                                                    uint32_t              payload,
+                                                    uint8_t*              scratch,
+                                                    uint32_t              scratch_cap,
+                                                    uint8_t*              out_px)
 {
   uint32_t        toff = 0U;
   uint32_t        tlen = 0U;
-  const ra8_err_t err  = priv_index_entry(pread, pread_ctx, info, n, &toff, &tlen);
+  const ra8_err_t err  = internal_index_entry(pread, pread_ctx, info, n, &toff, &tlen);
   if (err != k_ra8_ok) {
     return err;
   }
-  return priv_decode_stream(pread,
-                            pread_ctx,
-                            info,
-                            toff,
-                            tlen,
-                            payload,
-                            scratch,
-                            scratch_cap,
-                            out_px);
+  return internal_decode_stream(pread,
+                                pread_ctx,
+                                info,
+                                toff,
+                                tlen,
+                                payload,
+                                scratch,
+                                scratch_cap,
+                                out_px);
 }
 
 /**
@@ -630,11 +635,11 @@ static ra8_err_t priv_fetch_decode(ra8_jof_pread_fn      pread,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_read_args_ok(ra8_jof_pread_fn      pread,
-                                   const ra8_jof_info_t* info,
-                                   const uint8_t*        out_px,
-                                   const uint16_t*       out_w,
-                                   const uint16_t*       out_h)
+RA8_INTERNAL static ra8_err_t internal_read_args_ok(ra8_jof_pread_fn      pread,
+                                                    const ra8_jof_info_t* info,
+                                                    const uint8_t*        out_px,
+                                                    const uint16_t*       out_w,
+                                                    const uint16_t*       out_h)
 {
   RA8_CHECK_NULL_PTR(pread, s_tag, "pread must not be nullptr");
   RA8_CHECK_NULL_PTR(info, s_tag, "info must not be nullptr");
@@ -656,7 +661,7 @@ ra8_err_t ra8_jof_read_tile(ra8_jof_pread_fn      pread,
                             uint16_t*             out_w,
                             uint16_t*             out_h)
 {
-  const ra8_err_t nz = priv_read_args_ok(pread, info, out_px, out_w, out_h);
+  const ra8_err_t nz = internal_read_args_ok(pread, info, out_px, out_w, out_h);
   if (nz != k_ra8_ok) {
     return nz;
   }
@@ -671,7 +676,7 @@ ra8_err_t ra8_jof_read_tile(ra8_jof_pread_fn      pread,
     return k_ra8_err_invalid_size;
   }
   const uint32_t n = ((uint32_t)tile_y * (uint32_t)info->tile_cols) + (uint32_t)tile_x;
-  err = priv_fetch_decode(pread, pread_ctx, info, n, payload, scratch, scratch_cap, out_px);
+  err = internal_fetch_decode(pread, pread_ctx, info, n, payload, scratch, scratch_cap, out_px);
   if (err != k_ra8_ok) {
     return err;
   }
