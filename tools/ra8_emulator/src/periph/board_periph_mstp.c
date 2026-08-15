@@ -11,7 +11,7 @@
  *
  * The gate ENFORCEMENT lives in the board_periph core: before dispatching an
  * MMIO access to any owning block, @c board_periph.c calls
- * ::board_mstp_addr_stopped and -- when the peripheral is module-stopped --
+ * ::priv_board_mstp_addr_stopped and -- when the peripheral is module-stopped --
  * reads 0 / drops the write, matching the silicon (a stopped module is
  * unclocked and does not respond). This file is only the register window plus
  * the reset hook and the end-of-run "you touched an unclocked peripheral"
@@ -31,6 +31,7 @@
 
 #include "board_periph_block.h"
 #include "board_periph_mstp_internal.h"
+#include "emu_host_io_internal.h"
 #include "ra8_attributes.h"
 
 /** @brief Per-tick order slot for the MSTP block (just before SYSC-PRCR). */
@@ -38,54 +39,84 @@ typedef enum : uint32_t {
   k_mstp_block_order = 168U, /**< Groups with the PRCR / power-domain blocks. */
 } mstp_order_t;
 
-/** @brief MMIO read of MSTPCRA..E: answer from the tracked shadow. */
-static uint64_t mstp_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read of MSTPCRA..E: answer from the tracked shadow.
+ * @details MMIO read of mstpcra..e: answer from the tracked shadow; this step is contained within the board periph module-stop model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The module-stop read result produced by the board periph module-stop model.
+ * @retval value The operation-specific module-stop read value.
+ * @pre Arguments satisfy the ranges documented for module-stop read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph module-stop model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_mstp_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
-  return (uint64_t)board_mstp_read_reg(addr - (uint64_t)k_board_mstp_win_base, size);
+  return (uint64_t)priv_board_mstp_read_reg(addr - (uint64_t)k_board_mstp_win_base, size);
 }
 
-/** @brief MMIO write of MSTPCRA..E: fold into the shadow (ungate/re-gate). */
-static void mstp_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write of MSTPCRA..E: fold into the shadow (ungate/re-gate).
+ * @details MMIO write of mstpcra..e: fold into the shadow (ungate/re-gate); this step is contained within the board periph module-stop model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for module-stop write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph module-stop model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_mstp_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
-  board_mstp_apply_write(addr - (uint64_t)k_board_mstp_win_base, size, (uint32_t)value);
+  priv_board_mstp_apply_write(addr - (uint64_t)k_board_mstp_win_base, size, (uint32_t)value);
 }
 
-/** @brief End-of-run section: make any access to an unclocked block LOUD. */
-static void mstp_report(void)
+/**
+ * @brief End-of-run section: make any access to an unclocked block LOUD.
+ * @details End-of-run section: make any access to an unclocked block loud; this step is contained within the board periph module-stop model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for module-stop report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph module-stop model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_mstp_report(void)
 {
-  const uint32_t r = board_mstp_gated_read_count();
-  const uint32_t w = board_mstp_gated_write_count();
+  const uint32_t r = priv_board_mstp_gated_read_count();
+  const uint32_t w = priv_board_mstp_gated_write_count();
   if ((r == 0U) && (w == 0U)) {
     return; /* Clean: every peripheral the firmware touched was clocked. */
   }
   /* Loud: firmware read/wrote a module-stopped peripheral. On silicon those
    * reads return 0 and writes vanish -- the exact masked-pass this block ends. */
-  (void)fprintf(stderr,
-                "  MSTP-GATING   : DROPPED %u read(s)+%u write(s) to module-stopped "
-                "peripheral(s) (last: %s) -- firmware forgot to cancel module-stop\n",
-                r,
-                w,
-                board_mstp_last_gated_name());
+  (void)priv_emu_io_errf("  MSTP-GATING   : DROPPED %u read(s)+%u write(s) to module-stopped "
+                         "peripheral(s) (last: %s) -- firmware forgot to cancel module-stop\n",
+                         r,
+                         w,
+                         priv_board_mstp_last_gated_name());
 }
 
 /** @brief MSTP block descriptor (owns MSTPCRA..E; self-registered). */
-static const board_periph_block_t k_mstp_block = {
+static const board_periph_block_t s_k_mstp_block = {
   .base   = (uint64_t)k_board_mstp_win_base,
   .span   = (uint64_t)k_board_mstp_win_span,
   .order  = (uint32_t)k_mstp_block_order,
-  .read   = mstp_read,
-  .write  = mstp_write,
+  .read   = internal_mstp_read,
+  .write  = internal_mstp_write,
   .tick   = nullptr,
-  .reset  = board_mstp_reset,
-  .report = mstp_report,
+  .reset  = priv_board_mstp_reset,
+  .report = internal_mstp_report,
   .name   = "MSTP",
 };
 
 /** @brief Register the MSTP block before main (host constructor). */
-[[gnu::constructor]] static void mstp_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_mstp_block_register(void)
 {
-  board_periph_register_block(&k_mstp_block);
-  board_mstp_reset();
+  board_periph_register_block(&s_k_mstp_block);
+  priv_board_mstp_reset();
 }

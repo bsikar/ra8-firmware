@@ -14,7 +14,8 @@
  * register address range plus read / write / tick / reset function pointers --
  * and registers that descriptor with the core. Registration is decentralized:
 [[gnu::constructor]]  * each block file self-registers from a file-scope @c
- * that runs before @c main (ra8_emulator is a host program, so constructors are a
+ * that runs before @c main (ra8_emulator is a host program, so constructors are
+a
  * sound startup mechanism), so ADDING A BLOCK is exactly "(a) a new
  * board_periph_<blk>.c and (b) a CMakeLists source line" -- no other file
  * changes. Registration order does not matter: MMIO dispatch is by disjoint
@@ -36,6 +37,8 @@
 
 #include <stdint.h>
 #include <unicorn/unicorn.h>
+
+#include "emu_memory_access.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -100,15 +103,15 @@ typedef void (*board_periph_report_fn)(void);
  * @brief Which modelled device(s) expose a given peripheral block.
  *
  * @details
- * Nearly every RA8 peripheral register base is byte-identical across the family,
- * so a block is device-agnostic (::k_board_block_dev_any) and answers on every
- * modelled device. A block that models hardware present on ONE device only --
- * the RA8P1's Arm Ethos-U55 NPU, which does not exist on the RA8D2 -- tags
- * itself so the core dispatches it ONLY when that device is the active emulation
- * target (see ::board_periph_set_device). On
- * any other device the tagged block is skipped and its address window falls
- * through to the sparse fallback, exactly as an unmodelled reserved region does,
- * which keeps the RA8D2 dispatch byte-for-behaviour unchanged.
+ * Nearly every RA8 peripheral register base is byte-identical across the
+ * family, so a block is device-agnostic (::k_board_block_dev_any) and answers
+ * on every modelled device. A block that models hardware present on ONE device
+ * only -- the RA8P1's Arm Ethos-U55 NPU, which does not exist on the RA8D2 --
+ * tags itself so the core dispatches it ONLY when that device is the active
+ * emulation target (see ::board_periph_set_device). On any other device the
+ * tagged block is skipped and its address window falls through to the sparse
+ * fallback, exactly as an unmodelled reserved region does, which keeps the
+ * RA8D2 dispatch byte-for-behaviour unchanged.
  *
  * @invariant Left zero (``k_board_block_dev_any``) by every device-agnostic
  *            block's designated initializer, so existing blocks need no edit.
@@ -133,20 +136,20 @@ typedef enum : uint8_t {
  * registration order: blocks tick in ascending @c order (ties keep registration
  * order), preserving the historical AGT/GPT-before-SCI cadence.
  *
- * @c observe selects the block's ownership mode. A normal (``observe == false``)
- * block OWNS its window: the core answers an in-range MMIO read from @c read and
- * a write from @c write, reports the access handled, and the caller's sparse
- * fallback never sees it. An observe-only (``observe == true``) block instead
- * SNOOPS its window: the core still calls @c write so the block can shadow the
- * register stream, but reports the access NOT handled so the caller's sparse
- * model continues to serve reads and record writes. This is for a window that
- * something outside the registry already reads back (e.g. main.c's panel
- * compositor reads the GLCDC graphics-layer registers from the sparse shadow to
- * build the @c --ppm / live frame); an owning block would divert those writes
- * from the sparse shadow and blank the compositor, so the GLCDC model snoops
- * instead -- it decodes the active framebuffer descriptor without disturbing the
- * existing read path. An observe block's @c read is never called (the sparse
- * model answers); supply a stub for it.
+ * @c observe selects the block's ownership mode. A normal (``observe ==
+ * false``) block OWNS its window: the core answers an in-range MMIO read from
+ * @c read and a write from @c write, reports the access handled, and the
+ * caller's sparse fallback never sees it. An observe-only (``observe == true``)
+ * block instead SNOOPS its window: the core still calls @c write so the block
+ * can shadow the register stream, but reports the access NOT handled so the
+ * caller's sparse model continues to serve reads and record writes. This is for
+ * a window that something outside the registry already reads back (e.g.
+ * main.c's panel compositor reads the GLCDC graphics-layer registers from the
+ * sparse shadow to build the @c --ppm / live frame); an owning block would
+ * divert those writes from the sparse shadow and blank the compositor, so the
+ * GLCDC model snoops instead -- it decodes the active framebuffer descriptor
+ * without disturbing the existing read path. An observe block's @c read is
+ * never called (the sparse model answers); supply a stub for it.
  */
 typedef struct {
   uint64_t               base;      /**< Absolute window base address.                           */
@@ -164,7 +167,8 @@ typedef struct {
 } board_periph_block_t;
 
 /**
- * @brief Recommended @c order values so parallel blocks tick in a stable cadence.
+ * @brief Recommended @c order values so parallel blocks tick in a stable
+ * cadence.
  *
  * @details
  * A block picks one of these for ::board_periph_block_t::order. Spacing leaves
@@ -187,14 +191,17 @@ typedef enum : uint32_t {
  * Called by each block file from a file-scope @c __attribute__((constructor)),
  * so every block is registered before @c main runs. The core keeps the supplied
  * pointer (the descriptor must be static) and dispatches MMIO / tick / reset
- * through it. Registering more blocks than the fixed registry capacity drops the
- * extra (a build-time assert in the core guards the common case); registration
- * order is irrelevant to behaviour.
+ * through it. Registering more blocks than the fixed registry capacity drops
+ * the extra (a build-time assert in the core guards the common case);
+ * registration order is irrelevant to behaviour.
  *
  * @param[in] block Static block descriptor to add (ignored if NULL).
  * @return Nothing.
  * @post Subsequent ::board_periph_read / _write / _tick / reset see @p block.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board periph register block. @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 void board_periph_register_block(const board_periph_block_t* block);
 
@@ -212,6 +219,9 @@ void board_periph_register_block(const board_periph_block_t* block);
  * @param[in]     event ELC event number the block is asserting.
  * @return Nothing.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board periph icu raise event. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph block model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 void board_periph_icu_raise_event(uc_engine* uc, uint16_t event);
 
@@ -230,6 +240,10 @@ void board_periph_icu_raise_event(uc_engine* uc, uint16_t event);
  * @return The IELSR slot index [0, 95] when a DTCE-enabled slot links @p event,
  *         or a value >= 96 when none does.
  * @since 0.1.0
+  * @retval value The operation-specific board periph icu DTC slot value.
+ * @pre Arguments satisfy the ranges documented for board periph icu DTC slot. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph block model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 uint32_t board_periph_icu_dtc_slot(uint16_t event);
 
@@ -238,6 +252,11 @@ uint32_t board_periph_icu_dtc_slot(uint16_t event);
  *
  * @return true when the run was started with --trace, else false.
  * @since 0.1.0
+  * @details Whether --trace is active (blocks log transitions when true); this step is contained within the board periph block model and uses bounded caller or module-owned storage.
+ * @retval true The board periph trace condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for board periph trace. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph block model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 bool board_periph_trace(void);
 

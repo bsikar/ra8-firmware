@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "board_console.h"
+#include "emu_host_io_internal.h"
 
 /** @brief Offsets into the frames this stub synthesises (RFC 826 / RFC 793). */
 typedef enum : uint8_t {
@@ -178,15 +179,33 @@ static uint32_t s_rxq_tail;
  * =============================================================================
  */
 
-/** @brief Store a 16-bit value big-endian (network order) at @p p. */
-static void put16(uint8_t* p, uint16_t v)
+/**
+ * @brief Store a 16-bit value big-endian (network order) at @p p.
+ * @details Store a 16-bit value big-endian (network order) at @p p; this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @param[in,out] p Module-owned state object processed by the operation.
+ * @param[in] v Register or payload value processed by the operation.
+ * @pre Arguments satisfy the ranges documented for put16. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_put16(uint8_t* p, uint16_t v)
 {
   p[0] = (uint8_t)(v >> 8);
   p[1] = (uint8_t)(v & (uint32_t)k_byte_mask);
 }
 
-/** @brief Store a 32-bit value big-endian at @p p. */
-static void put32(uint8_t* p, uint32_t v)
+/**
+ * @brief Store a 32-bit value big-endian at @p p.
+ * @details Store a 32-bit value big-endian at @p p; this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @param[in,out] p Module-owned state object processed by the operation.
+ * @param[in] v Register or payload value processed by the operation.
+ * @pre Arguments satisfy the ranges documented for put32. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_put32(uint8_t* p, uint32_t v)
 {
   p[0] = (uint8_t)(v >> (uint32_t)k_shift24);
   p[1] = (uint8_t)((v >> 16) & (uint32_t)k_byte_mask);
@@ -194,21 +213,53 @@ static void put32(uint8_t* p, uint32_t v)
   p[3] = (uint8_t)(v & (uint32_t)k_byte_mask);
 }
 
-/** @brief Read a big-endian 16-bit value from @p p. */
-static uint16_t get16(const uint8_t* p)
+/**
+ * @brief Read a big-endian 16-bit value from @p p.
+ * @details Read a big-endian 16-bit value from @p p; this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @param[in] p Module-owned state object processed by the operation.
+ * @return The get16 result produced by the board net model.
+ * @retval value The operation-specific get16 value.
+ * @pre Arguments satisfy the ranges documented for get16. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_get16(const uint8_t* p)
 {
   return (uint16_t)(((uint16_t)p[0] << 8) | (uint16_t)p[1]);
 }
 
-/** @brief Read a big-endian 32-bit value from @p p. */
-static uint32_t get32(const uint8_t* p)
+/**
+ * @brief Read a big-endian 32-bit value from @p p.
+ * @details Read a big-endian 32-bit value from @p p; this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @param[in] p Module-owned state object processed by the operation.
+ * @return The get32 result produced by the board net model.
+ * @retval value The operation-specific get32 value.
+ * @pre Arguments satisfy the ranges documented for get32. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_get32(const uint8_t* p)
 {
   return ((uint32_t)p[0] << (uint32_t)k_shift24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) |
          (uint32_t)p[3];
 }
 
-/** @brief 16-bit one's-complement checksum over @p len bytes at @p d. */
-static uint16_t net_checksum(const uint8_t* d, uint32_t len, uint32_t seed)
+/**
+ * @brief 16-bit one's-complement checksum over @p len bytes at @p d.
+ * @details 16-bit one's-complement checksum over @p len bytes at @p d; this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @param[in] d D input used by the operation.
+ * @param[in] len Number of payload bytes to process.
+ * @param[in] seed Seed input used by the operation.
+ * @return The net checksum result produced by the board net model.
+ * @retval value The operation-specific net checksum value.
+ * @pre Arguments satisfy the ranges documented for net checksum. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_net_checksum(const uint8_t* d, uint32_t len, uint32_t seed)
 {
   uint32_t sum = seed;
   for (uint32_t i = 0U; (i + 1U) < len; i += 2U) {
@@ -223,8 +274,17 @@ static uint16_t net_checksum(const uint8_t* d, uint32_t len, uint32_t seed)
   return (uint16_t)(~sum & (uint32_t)k_u16_mask);
 }
 
-/** @brief Queue a built frame for the firmware to receive (drops if ring full). */
-static void net_queue(const uint8_t* frame, uint32_t len)
+/**
+ * @brief Queue a built frame for the firmware to receive (drops if ring full).
+ * @details Queue a built frame for the firmware to receive (drops if ring full); this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @param[in] frame Frame input used by the operation.
+ * @param[in] len Number of payload bytes to process.
+ * @pre Arguments satisfy the ranges documented for net queue. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_net_queue(const uint8_t* frame, uint32_t len)
 {
   const uint32_t next = (s_rxq_tail + 1U) % (uint32_t)k_net_qdepth;
   if ((next == s_rxq_head) || (len > (uint32_t)k_net_buf)) {
@@ -235,12 +295,22 @@ static void net_queue(const uint8_t* frame, uint32_t len)
   s_rxq_tail            = next;
 }
 
-/** @brief Fill the 14-byte Ethernet header into @p f. */
-static void net_eth_hdr(uint8_t* f, const uint8_t* dst, uint16_t ethertype)
+/**
+ * @brief Fill the 14-byte Ethernet header into @p f.
+ * @details Fill the 14-byte ethernet header into @p f; this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @param[in,out] f F state or storage updated in place by the operation.
+ * @param[in] dst Destination storage receiving the result.
+ * @param[in] ethertype Ethertype input used by the operation.
+ * @pre Arguments satisfy the ranges documented for net Ethernet hdr. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_net_eth_hdr(uint8_t* f, const uint8_t* dst, uint16_t ethertype)
 {
   (void)memcpy(&f[0], dst, k_mac_len);
   (void)memcpy(&f[6], s_peer_mac, k_mac_len);
-  put16(&f[k_eth_ethertype_off], ethertype);
+  internal_put16(&f[k_eth_ethertype_off], ethertype);
 }
 
 /* =============================================================================
@@ -248,8 +318,15 @@ static void net_eth_hdr(uint8_t* f, const uint8_t* dst, uint16_t ethertype)
  * =============================================================================
  */
 
-/** @brief Build + queue an ARP request asking who-has the firmware's IP. */
-static void net_send_arp_request(void)
+/**
+ * @brief Build + queue an ARP request asking who-has the firmware's IP.
+ * @details Build + queue an arp request asking who-has the firmware's ip; this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for net send arp request. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_net_send_arp_request(void)
 {
   static const uint8_t bcast[k_mac_len] = {(uint8_t)k_byte_mask,
                                            (uint8_t)k_byte_mask,
@@ -259,36 +336,45 @@ static void net_send_arp_request(void)
                                            (uint8_t)k_byte_mask};
   uint8_t              f[k_eth_hdr + k_arp_len];
   (void)memset(f, 0, sizeof(f));
-  net_eth_hdr(f, bcast, (uint16_t)k_eth_arp);
+  internal_net_eth_hdr(f, bcast, (uint16_t)k_eth_arp);
   uint8_t* a = &f[k_eth_hdr];
-  put16(&a[0], 1U);                   /* htype = Ethernet. */
-  put16(&a[2], (uint16_t)k_eth_ipv4); /* ptype = IPv4.     */
+  internal_put16(&a[0], 1U);                   /* htype = Ethernet. */
+  internal_put16(&a[2], (uint16_t)k_eth_ipv4); /* ptype = IPv4.     */
   a[4]              = (uint8_t)k_mac_len;
   a[k_arp_plen_off] = (uint8_t)k_arp_plen;
-  put16(&a[6], 1U); /* op = request. */
+  internal_put16(&a[6], 1U); /* op = request. */
   (void)memcpy(&a[8], s_peer_mac, k_mac_len);
-  put32(&a[k_arp_spa_off], (uint32_t)k_net_peer_ip);
-  put32(&a[k_arp_tpa_off], (uint32_t)k_net_fw_ip);
-  net_queue(f, sizeof(f));
+  internal_put32(&a[k_arp_spa_off], (uint32_t)k_net_peer_ip);
+  internal_put32(&a[k_arp_tpa_off], (uint32_t)k_net_fw_ip);
+  internal_net_queue(f, sizeof(f));
 }
 
-/** @brief Build + queue an ARP reply giving the peer's MAC to the firmware. */
-static void net_send_arp_reply(const uint8_t* to_mac, uint32_t to_ip)
+/**
+ * @brief Build + queue an ARP reply giving the peer's MAC to the firmware.
+ * @details Build + queue an arp reply giving the peer's mac to the firmware; this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @param[in] to_mac To mac input used by the operation.
+ * @param[in] to_ip To ip input used by the operation.
+ * @pre Arguments satisfy the ranges documented for net send arp reply. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_net_send_arp_reply(const uint8_t* to_mac, uint32_t to_ip)
 {
   uint8_t f[k_eth_hdr + k_arp_len];
   (void)memset(f, 0, sizeof(f));
-  net_eth_hdr(f, to_mac, (uint16_t)k_eth_arp);
+  internal_net_eth_hdr(f, to_mac, (uint16_t)k_eth_arp);
   uint8_t* a = &f[k_eth_hdr];
-  put16(&a[0], 1U);
-  put16(&a[2], (uint16_t)k_eth_ipv4);
+  internal_put16(&a[0], 1U);
+  internal_put16(&a[2], (uint16_t)k_eth_ipv4);
   a[4]              = (uint8_t)k_mac_len;
   a[k_arp_plen_off] = (uint8_t)k_arp_plen;
-  put16(&a[6], 2U); /* op = reply. */
+  internal_put16(&a[6], 2U); /* op = reply. */
   (void)memcpy(&a[8], s_peer_mac, k_mac_len);
-  put32(&a[k_arp_spa_off], (uint32_t)k_net_peer_ip);
+  internal_put32(&a[k_arp_spa_off], (uint32_t)k_net_peer_ip);
   (void)memcpy(&a[k_arp_tha_off], to_mac, k_mac_len);
-  put32(&a[k_arp_tpa_off], to_ip);
-  net_queue(f, sizeof(f));
+  internal_put32(&a[k_arp_tpa_off], to_ip);
+  internal_net_queue(f, sizeof(f));
 }
 
 /* =============================================================================
@@ -296,42 +382,59 @@ static void net_send_arp_reply(const uint8_t* to_mac, uint32_t to_ip)
  * =============================================================================
  */
 
-/** @brief Fill a 20-byte IPv4 header (no options) + compute its checksum. */
-static void net_ip_hdr(uint8_t* ip, uint8_t proto, uint16_t payload_len)
+/**
+ * @brief Fill a 20-byte IPv4 header (no options) + compute its checksum.
+ * @details Fill a 20-byte ipv4 header (no options) + compute its checksum; this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @param[in,out] ip Ip state or storage updated in place by the operation.
+ * @param[in] proto Proto input used by the operation.
+ * @param[in] payload_len Bound for the payload data.
+ * @pre Arguments satisfy the ranges documented for net ip hdr. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_net_ip_hdr(uint8_t* ip, uint8_t proto, uint16_t payload_len)
 {
   (void)memset(ip, 0, k_ip_hdr);
   ip[0] = (uint8_t)k_ipv4_ver_ihl; /* version 4, IHL 5. */
-  put16(&ip[2], (uint16_t)(k_ip_hdr + payload_len));
-  put16(&ip[4], (uint16_t)k_ip_ident);    /* identification. */
-  put16(&ip[6], (uint16_t)k_ip_flag_df);  /* don't fragment. */
-  ip[8]              = (uint8_t)k_ip_ttl; /* TTL.            */
+  internal_put16(&ip[2], (uint16_t)(k_ip_hdr + payload_len));
+  internal_put16(&ip[4], (uint16_t)k_ip_ident);   /* identification. */
+  internal_put16(&ip[6], (uint16_t)k_ip_flag_df); /* don't fragment. */
+  ip[8]              = (uint8_t)k_ip_ttl;         /* TTL.            */
   ip[k_ip_proto_off] = proto;
-  put32(&ip[k_ip_src_off], (uint32_t)k_net_peer_ip);
-  put32(&ip[k_ip_dst_off], (uint32_t)k_net_fw_ip);
-  put16(&ip[k_ip_csum_off], net_checksum(ip, k_ip_hdr, 0U));
+  internal_put32(&ip[k_ip_src_off], (uint32_t)k_net_peer_ip);
+  internal_put32(&ip[k_ip_dst_off], (uint32_t)k_net_fw_ip);
+  internal_put16(&ip[k_ip_csum_off], internal_net_checksum(ip, k_ip_hdr, 0U));
 }
 
-/** @brief Build + queue an ICMP echo request to the firmware. */
-static void net_send_ping(void)
+/**
+ * @brief Build + queue an ICMP echo request to the firmware.
+ * @details Build + queue an icmp echo request to the firmware; this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for net send ping. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_net_send_ping(void)
 {
   if (!s_fw_mac_known) {
     return;
   }
   uint8_t f[k_eth_hdr + k_ip_hdr + k_icmp_hdr + 16U];
   (void)memset(f, 0, sizeof(f));
-  net_eth_hdr(f, s_fw_mac, (uint16_t)k_eth_ipv4);
+  internal_net_eth_hdr(f, s_fw_mac, (uint16_t)k_eth_ipv4);
   const uint16_t icmp_len = (uint16_t)(k_icmp_hdr + 16U);
-  net_ip_hdr(&f[k_eth_hdr], (uint8_t)k_ip_proto_icmp, icmp_len);
+  internal_net_ip_hdr(&f[k_eth_hdr], (uint8_t)k_ip_proto_icmp, icmp_len);
   uint8_t* ic = &f[k_eth_hdr + k_ip_hdr];
   ic[0]       = 8U; /* echo request. */
   s_ping_seq++;
-  put16(&ic[4], (uint16_t)k_icmp_ident); /* identifier. */
-  put16(&ic[6], s_ping_seq);
+  internal_put16(&ic[4], (uint16_t)k_icmp_ident); /* identifier. */
+  internal_put16(&ic[6], s_ping_seq);
   for (uint32_t i = 0U; i < 16U; i++) {
     ic[k_icmp_hdr + i] = (uint8_t)((uint32_t)k_icmp_pat_base + i); /* payload pattern. */
   }
-  put16(&ic[2], net_checksum(ic, icmp_len, 0U));
-  net_queue(f, sizeof(f));
+  internal_put16(&ic[2], internal_net_checksum(ic, icmp_len, 0U));
+  internal_net_queue(f, sizeof(f));
 }
 
 /* =============================================================================
@@ -339,8 +442,19 @@ static void net_send_ping(void)
  * =============================================================================
  */
 
-/** @brief Build + queue a TCP segment to the firmware echo port (flags+payload). */
-static void net_send_tcp(uint8_t flags, const uint8_t* payload, uint16_t payload_len)
+/**
+ * @brief Build + queue a TCP segment to the firmware echo port (flags+payload).
+ * @details Build + queue a tcp segment to the firmware echo port (flags+payload); this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @param[in] flags Flags input used by the operation.
+ * @param[in] payload Payload input used by the operation.
+ * @param[in] payload_len Bound for the payload data.
+ * @pre Arguments satisfy the ranges documented for net send tcp. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_net_send_tcp(uint8_t flags, const uint8_t* payload, uint16_t payload_len)
 {
   if (!s_fw_mac_known) {
     return;
@@ -351,16 +465,16 @@ static void net_send_tcp(uint8_t flags, const uint8_t* payload, uint16_t payload
     return;
   }
   (void)memset(f, 0, sizeof(f));
-  net_eth_hdr(f, s_fw_mac, (uint16_t)k_eth_ipv4);
-  net_ip_hdr(&f[k_eth_hdr], (uint8_t)k_ip_proto_tcp, tcp_len);
+  internal_net_eth_hdr(f, s_fw_mac, (uint16_t)k_eth_ipv4);
+  internal_net_ip_hdr(&f[k_eth_hdr], (uint8_t)k_ip_proto_tcp, tcp_len);
   uint8_t* t = &f[k_eth_hdr + k_ip_hdr];
-  put16(&t[0], (uint16_t)k_net_peer_port);
-  put16(&t[2], (uint16_t)k_net_echo_port);
-  put32(&t[4], s_tcp_our_seq);
-  put32(&t[8], s_tcp_their_seq);
+  internal_put16(&t[0], (uint16_t)k_net_peer_port);
+  internal_put16(&t[2], (uint16_t)k_net_echo_port);
+  internal_put32(&t[4], s_tcp_our_seq);
+  internal_put32(&t[8], s_tcp_their_seq);
   t[k_tcp_off_dataoff] = (uint8_t)k_tcp_data_off; /* data offset = 5 32-bit words. */
   t[k_tcp_off_flags]   = flags;
-  put16(&t[k_tcp_off_window], (uint16_t)k_tcp_window); /* window. */
+  internal_put16(&t[k_tcp_off_window], (uint16_t)k_tcp_window); /* window. */
   if (payload_len > 0U) {
     (void)memcpy(&t[k_tcp_off_payload], payload, payload_len);
   }
@@ -369,51 +483,86 @@ static void net_send_tcp(uint8_t flags, const uint8_t* payload, uint16_t payload
     ((uint32_t)k_net_peer_ip >> 16) + ((uint32_t)k_net_peer_ip & (uint32_t)k_u16_mask) +
     ((uint32_t)k_net_fw_ip >> 16) + ((uint32_t)k_net_fw_ip & (uint32_t)k_u16_mask) +
     (uint32_t)k_ip_proto_tcp + (uint32_t)tcp_len;
-  put16(&t[16], net_checksum(t, tcp_len, pseudo));
-  net_queue(f, (uint32_t)k_eth_hdr + (uint32_t)k_ip_hdr + (uint32_t)tcp_len);
+  internal_put16(&t[16], internal_net_checksum(t, tcp_len, pseudo));
+  internal_net_queue(f, (uint32_t)k_eth_hdr + (uint32_t)k_ip_hdr + (uint32_t)tcp_len);
 }
 
-/** @brief Open the TCP connection: send SYN with our initial sequence number. */
-static void net_send_syn(void)
+/**
+ * @brief Open the TCP connection: send SYN with our initial sequence number.
+ * @details Open the tcp connection: send syn with our initial sequence number; this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for net send syn. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_net_send_syn(void)
 {
   s_tcp_our_seq = (uint32_t)k_tcp_isn; /* deterministic ISN. */
-  net_send_tcp((uint8_t)k_tcp_syn, nullptr, 0U);
+  internal_net_send_tcp((uint8_t)k_tcp_syn, nullptr, 0U);
 }
 
-/** @brief Send the test payload to the established echo connection. */
-static void net_send_data(void)
+/**
+ * @brief Send the test payload to the established echo connection.
+ * @details Send the test payload to the established echo connection; this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for net send data. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_net_send_data(void)
 {
   const uint16_t n = (uint16_t)(sizeof(s_tcp_payload) - 1U);
-  net_send_tcp((uint8_t)(k_tcp_psh | k_tcp_ack), s_tcp_payload, n);
+  internal_net_send_tcp((uint8_t)(k_tcp_psh | k_tcp_ack), s_tcp_payload, n);
   s_tcp_our_seq += (uint32_t)n;
 }
 
-/** @brief ESTAB state: echo-match the payload, then start our active (FIN) close. */
-static void net_tcp_on_estab(uint32_t seq, const uint8_t* pdata, uint32_t plen)
+/**
+ * @brief ESTAB state: echo-match the payload, then start our active (FIN) close.
+ * @details Estab state: echo-match the payload, then start our active (fin) close; this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @param[in] seq Seq input used by the operation.
+ * @param[in] pdata Pdata input used by the operation.
+ * @param[in] plen Plen input used by the operation.
+ * @pre Arguments satisfy the ranges documented for net tcp on estab. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_net_tcp_on_estab(uint32_t seq, const uint8_t* pdata, uint32_t plen)
 {
   s_tcp_echoed = plen;
   s_tcp_match =
     (plen == (uint32_t)(sizeof(s_tcp_payload) - 1U)) && (memcmp(pdata, s_tcp_payload, plen) == 0);
   s_tcp_their_seq = seq + plen;
-  net_send_tcp((uint8_t)k_tcp_ack, nullptr, 0U);
-  net_send_tcp((uint8_t)(k_tcp_fin | k_tcp_ack), nullptr, 0U);
+  internal_net_send_tcp((uint8_t)k_tcp_ack, nullptr, 0U);
+  internal_net_send_tcp((uint8_t)(k_tcp_fin | k_tcp_ack), nullptr, 0U);
   s_tcp_our_seq += 1U; /* FIN consumes one. */
   s_state = (uint8_t)k_net_fin;
   if (s_trace) {
-    (void)fprintf(stderr, "  [net] TCP echo %u byte(s) match=%s\n", plen, s_tcp_match ? "Y" : "N");
+    (void)priv_emu_io_errf("  [net] TCP echo %u byte(s) match=%s\n", plen, s_tcp_match ? "Y" : "N");
   }
 }
 
-/** @brief Handle an inbound TCP segment: drive the connect / echo / close FSM. */
-static void net_rx_tcp(const uint8_t* t, uint32_t len)
+/**
+ * @brief Handle an inbound TCP segment: drive the connect / echo / close FSM.
+ * @details Handle an inbound tcp segment: drive the connect / echo / close fsm; this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @param[in] t T input used by the operation.
+ * @param[in] len Number of payload bytes to process.
+ * @pre Arguments satisfy the ranges documented for net rx tcp. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_net_rx_tcp(const uint8_t* t, uint32_t len)
 {
   if (len < (uint32_t)k_tcp_hdr) {
     return;
   }
-  if ((get16(&t[0]) != (uint16_t)k_net_echo_port) || (get16(&t[2]) != (uint16_t)k_net_peer_port)) {
+  if ((internal_get16(&t[0]) != (uint16_t)k_net_echo_port) ||
+      (internal_get16(&t[2]) != (uint16_t)k_net_peer_port)) {
     return;
   }
-  const uint32_t seq   = get32(&t[4]);
+  const uint32_t seq   = internal_get32(&t[4]);
   const uint8_t  flags = t[13];
   const uint32_t doff =
     (uint32_t)((t[k_tcp_off_dataoff] >> (uint32_t)k_tcp_doff_shift) & (uint32_t)k_ip_ihl_mask) *
@@ -424,20 +573,19 @@ static void net_rx_tcp(const uint8_t* t, uint32_t len)
   const uint32_t plen  = len - doff;
   const uint8_t* pdata = &t[doff];
   if (s_trace) {
-    (void)fprintf(stderr,
-                  "  [net] RX TCP flags=0x%02X seq=%u ack=%u plen=%u (state %u)\n",
-                  (unsigned)flags,
-                  seq,
-                  get32(&t[8]),
-                  plen,
-                  (unsigned)s_state);
+    (void)priv_emu_io_errf("  [net] RX TCP flags=0x%02X seq=%u ack=%u plen=%u (state %u)\n",
+                           (unsigned)flags,
+                           seq,
+                           internal_get32(&t[8]),
+                           plen,
+                           (unsigned)s_state);
   }
 
   if ((s_state == (uint8_t)k_net_syn) && ((flags & (uint8_t)k_tcp_syn) != 0U) &&
       ((flags & (uint8_t)k_tcp_ack) != 0U)) {
     s_tcp_their_seq = seq + 1U; /* their SYN consumes one sequence number. */
     s_tcp_our_seq += 1U;        /* our SYN consumed one.                   */
-    net_send_tcp((uint8_t)k_tcp_ack, nullptr, 0U);
+    internal_net_send_tcp((uint8_t)k_tcp_ack, nullptr, 0U);
     /* Defer the payload a few ticks so the firmware's accept() binds the socket
      * and the echo thread is waiting in receive() before the data arrives. */
     s_tcp_need_data  = true;
@@ -446,12 +594,12 @@ static void net_rx_tcp(const uint8_t* t, uint32_t len)
     return;
   }
   if ((s_state == (uint8_t)k_net_estab) && (plen > 0U)) {
-    net_tcp_on_estab(seq, pdata, plen);
+    internal_net_tcp_on_estab(seq, pdata, plen);
     return;
   }
   if ((s_state == (uint8_t)k_net_fin) && ((flags & (uint8_t)k_tcp_fin) != 0U)) {
     s_tcp_their_seq = seq + plen + 1U; /* their FIN consumes one. */
-    net_send_tcp((uint8_t)k_tcp_ack, nullptr, 0U);
+    internal_net_send_tcp((uint8_t)k_tcp_ack, nullptr, 0U);
     s_state = (uint8_t)k_net_done;
     return;
   }
@@ -462,15 +610,24 @@ static void net_rx_tcp(const uint8_t* t, uint32_t len)
  * =============================================================================
  */
 
-/** @brief Handle an inbound ARP frame (learn the firmware MAC / answer who-has). */
-static void net_rx_arp(const uint8_t* a, uint32_t len)
+/**
+ * @brief Handle an inbound ARP frame (learn the firmware MAC / answer who-has).
+ * @details Handle an inbound arp frame (learn the firmware mac / answer who-has); this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @param[in] a A input used by the operation.
+ * @param[in] len Number of payload bytes to process.
+ * @pre Arguments satisfy the ranges documented for net rx arp. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_net_rx_arp(const uint8_t* a, uint32_t len)
 {
   if (len < (uint32_t)k_arp_len) {
     return;
   }
-  const uint16_t op  = get16(&a[6]);
-  const uint32_t spa = get32(&a[14]);
-  const uint32_t tpa = get32(&a[24]);
+  const uint16_t op  = internal_get16(&a[6]);
+  const uint32_t spa = internal_get32(&a[14]);
+  const uint32_t tpa = internal_get32(&a[24]);
   if (spa == (uint32_t)k_net_fw_ip) {
     (void)memcpy(s_fw_mac, &a[8], k_mac_len); /* sender HW = firmware MAC. */
     s_fw_mac_known = true;
@@ -479,34 +636,52 @@ static void net_rx_arp(const uint8_t* a, uint32_t len)
     }
   }
   if ((op == 1U) && (tpa == (uint32_t)k_net_peer_ip)) {
-    net_send_arp_reply(&a[8], spa); /* firmware asked who-has us. */
+    internal_net_send_arp_reply(&a[8], spa); /* firmware asked who-has us. */
   }
   if (s_fw_mac_known && (s_state == (uint8_t)k_net_arp)) {
-    net_send_ping();
+    internal_net_send_ping();
     s_state = (uint8_t)k_net_ping;
     s_wait  = 0U;
   }
 }
 
-/** @brief Handle an inbound ICMP echo reply (count a successful ping). */
-static void net_rx_icmp(const uint8_t* ic, uint32_t len)
+/**
+ * @brief Handle an inbound ICMP echo reply (count a successful ping).
+ * @details Handle an inbound icmp echo reply (count a successful ping); this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @param[in] ic Ic input used by the operation.
+ * @param[in] len Number of payload bytes to process.
+ * @pre Arguments satisfy the ranges documented for net rx icmp. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_net_rx_icmp(const uint8_t* ic, uint32_t len)
 {
   if ((len >= (uint32_t)k_icmp_hdr) && (ic[0] == 0U)) { /* echo reply. */
     s_pings++;
     if (s_state == (uint8_t)k_net_ping) {
       if (s_trace) {
-        (void)fprintf(stderr,
-                      "  [net] ICMP echo reply from 192.168.1.42 -- ping ok; opening TCP\n");
+        (void)priv_emu_io_errf(
+          "  [net] ICMP echo reply from 192.168.1.42 -- ping ok; opening TCP\n");
       }
-      net_send_syn(); /* ping proven; connect to the echo server. */
+      internal_net_send_syn(); /* ping proven; connect to the echo server. */
       s_state = (uint8_t)k_net_syn;
       s_wait  = 0U;
     }
   }
 }
 
-/** @brief Handle an inbound IPv4 frame, dispatching by protocol. */
-static void net_rx_ipv4(const uint8_t* ip, uint32_t len)
+/**
+ * @brief Handle an inbound IPv4 frame, dispatching by protocol.
+ * @details Handle an inbound ipv4 frame, dispatching by protocol; this step is contained within the board net model and uses bounded caller or module-owned storage.
+ * @param[in] ip Ip input used by the operation.
+ * @param[in] len Number of payload bytes to process.
+ * @pre Arguments satisfy the ranges documented for net rx ipv4. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board net model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_net_rx_ipv4(const uint8_t* ip, uint32_t len)
 {
   if (len < (uint32_t)k_ip_hdr) {
     return;
@@ -520,15 +695,15 @@ static void net_rx_ipv4(const uint8_t* ip, uint32_t len)
    * upper-layer payload (e.g. a bare TCP ACK would otherwise look like 6 data
    * bytes). */
   uint32_t       actual   = len;
-  const uint16_t ip_total = get16(&ip[2]);
+  const uint16_t ip_total = internal_get16(&ip[2]);
   if (((uint32_t)ip_total >= ihl) && ((uint32_t)ip_total <= len)) {
     actual = (uint32_t)ip_total;
   }
   const uint8_t proto = ip[9];
   if (proto == (uint8_t)k_ip_proto_icmp) {
-    net_rx_icmp(&ip[ihl], actual - ihl);
+    internal_net_rx_icmp(&ip[ihl], actual - ihl);
   } else if (proto == (uint8_t)k_ip_proto_tcp) {
-    net_rx_tcp(&ip[ihl], actual - ihl);
+    internal_net_rx_tcp(&ip[ihl], actual - ihl);
   }
 }
 
@@ -539,20 +714,19 @@ void board_net_on_tx(const uint8_t* frame, uint32_t len)
     return;
   }
   if (s_trace) {
-    (void)fprintf(stderr,
-                  "  [net] firmware TX %u bytes ethertype 0x%04X\n",
-                  len,
-                  (unsigned)get16(&frame[k_eth_ethertype_off]));
+    (void)priv_emu_io_errf("  [net] firmware TX %u bytes ethertype 0x%04X\n",
+                           len,
+                           (unsigned)internal_get16(&frame[k_eth_ethertype_off]));
   }
-  const uint16_t ethertype = get16(&frame[k_eth_ethertype_off]);
+  const uint16_t ethertype = internal_get16(&frame[k_eth_ethertype_off]);
   /* Console NET tab: one line per frame the firmware transmits. */
   char ln[k_net_console_line_cap];
   (void)snprintf(ln, sizeof(ln), "NET tx eth=0x%04X %uB", (unsigned)ethertype, (unsigned)len);
   board_console_push(k_board_console_ch_net, ln);
   if (ethertype == (uint16_t)k_eth_arp) {
-    net_rx_arp(&frame[k_eth_hdr], len - (uint32_t)k_eth_hdr);
+    internal_net_rx_arp(&frame[k_eth_hdr], len - (uint32_t)k_eth_hdr);
   } else if (ethertype == (uint16_t)k_eth_ipv4) {
-    net_rx_ipv4(&frame[k_eth_hdr], len - (uint32_t)k_eth_hdr);
+    internal_net_rx_ipv4(&frame[k_eth_hdr], len - (uint32_t)k_eth_hdr);
   }
 }
 
@@ -580,7 +754,7 @@ void board_net_tick(void)
 {
   s_wait++;
   if (s_state == (uint8_t)k_net_init) {
-    net_send_arp_request();
+    internal_net_send_arp_request();
     s_state = (uint8_t)k_net_arp;
     s_wait  = 0U;
     return;
@@ -589,7 +763,7 @@ void board_net_tick(void)
     enum : uint32_t { k_net_data_delay = 800U /**< Net data delay. */ };
     s_tcp_estab_wait++;
     if (s_tcp_estab_wait > k_net_data_delay) {
-      net_send_data(); /* connection settled; send the echo payload. */
+      internal_net_send_data(); /* connection settled; send the echo payload. */
       s_tcp_need_data = false;
     }
     return;
@@ -600,11 +774,11 @@ void board_net_tick(void)
   if (s_wait > k_net_retry) {
     s_wait = 0U;
     if (s_state == (uint8_t)k_net_arp) {
-      net_send_arp_request();
+      internal_net_send_arp_request();
     } else if (s_state == (uint8_t)k_net_ping) {
-      net_send_ping();
+      internal_net_send_ping();
     } else if (s_state == (uint8_t)k_net_syn) {
-      net_send_syn();
+      internal_net_send_syn();
     }
   }
 }
@@ -641,7 +815,7 @@ void board_net_init(bool trace)
  * @pre The TCP counters reflect the finished run.
  * @post No state is modified.
  */
-static const char* net_echo_state(void)
+RA8_INTERNAL static const char* internal_net_echo_state(void)
 {
   if (s_tcp_match) {
     return "MATCH";
@@ -657,21 +831,19 @@ void board_net_report(void)
   if (s_state == (uint8_t)k_net_init) {
     return; /* networking never came up in this run. */
   }
-  (void)fprintf(stderr,
-                "  NET peer      : 192.168.1.1 <-> 192.168.1.42  ARP %s  ping %s (%u)\n",
-                s_fw_mac_known ? "resolved" : "--",
-                (s_pings > 0U) ? "ok" : "--",
-                s_pings);
-  (void)fprintf(stderr,
-                "  NET activity  : fw TX %u frame(s), RX polls %u, delivered %u\n",
-                s_tx_frames,
-                s_polls,
-                s_delivered);
+  (void)priv_emu_io_errf("  NET peer      : 192.168.1.1 <-> 192.168.1.42  ARP %s  ping %s (%u)\n",
+                         s_fw_mac_known ? "resolved" : "--",
+                         (s_pings > 0U) ? "ok" : "--",
+                         s_pings);
+  (void)priv_emu_io_errf("  NET activity  : fw TX %u frame(s), RX polls %u, delivered %u\n",
+                         s_tx_frames,
+                         s_polls,
+                         s_delivered);
   if (s_state >= (uint8_t)k_net_syn) {
-    (void)fprintf(stderr,
-                  "  NET TCP       : port 7 %s; echo %s (%u byte(s))\n",
-                  (s_state >= (uint8_t)k_net_estab) ? "established + data sent" : "SYN sent",
-                  net_echo_state(),
-                  s_tcp_echoed);
+    (void)priv_emu_io_errf("  NET TCP       : port 7 %s; echo %s (%u byte(s))\n",
+                           (s_state >= (uint8_t)k_net_estab) ? "established + data sent"
+                                                             : "SYN sent",
+                           internal_net_echo_state(),
+                           s_tcp_echoed);
   }
 }

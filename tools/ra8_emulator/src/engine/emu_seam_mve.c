@@ -117,7 +117,7 @@ static bool s_mve_resume_armed = false;
  * happened the NEXT instruction of the same run arrives at the
  * invalid-instruction hook instead -- also verified standalone, with two
  * consecutive `vstrw.32`. GCC emits exactly such runs (the struct-zero idiom),
- * so BOTH arrival paths are wired to the same decode via ::mve_mem_try: the
+ * so BOTH arrival paths are wired to the same decode via ::internal_mve_mem_try: the
  * NoCP hook through ::emu_mve_nocp_emulate, and the invalid-instruction
  * dispatcher through ::emulate_mve. Wiring only one of them leaves every run
  * of two or more MVE accesses faulting on its second instruction.
@@ -165,14 +165,14 @@ typedef enum : uint32_t {
  * @struct mve_mem_op_t
  * @brief One decoded MVE contiguous load/store.
  *
- * @details Filled by ::mve_mem_decode and consumed by ::mve_mem_exec. Offset
+ * @details Filled by ::internal_mve_mem_decode and consumed by ::internal_mve_mem_exec. Offset
  * forms access `Rn +/- off`; post-index forms access `Rn` first and then write
  * `Rn +/- off` back to the base register.
  *
  * @invariant `qd` is in [0, 7] -- it comes from a 3-bit field.
  * @invariant `rn` is in [0, 15] -- it comes from a 4-bit field and may name SP.
- * @see mve_mem_decode  Produces this.
- * @see mve_mem_exec    Consumes this.
+ * @see internal_mve_mem_decode  Produces this.
+ * @see internal_mve_mem_exec    Consumes this.
  */
 typedef struct {
   uint32_t qd;    /**< Vector register Q0..Q7, from hw2[15:13].         */
@@ -206,7 +206,7 @@ typedef struct {
  * @note Not thread-safe by inheritance only; the decode itself is pure.
  * @since 0.1.0
  */
-static bool mve_mem_decode(uint16_t hw1, uint16_t hw2, mve_mem_op_t* op)
+RA8_INTERNAL static bool internal_mve_mem_decode(uint16_t hw1, uint16_t hw2, mve_mem_op_t* op)
 {
   const uint16_t h1_family = hw1 & (uint16_t)k_mve_mem_h1_mask;
   if (((h1_family != (uint16_t)k_mve_mem_h1_val) && (h1_family != (uint16_t)k_mve_mem_h1_post)) ||
@@ -251,18 +251,18 @@ static bool mve_mem_decode(uint16_t hw1, uint16_t hw2, mve_mem_op_t* op)
  * toolchain does emit (`vstrw.32 q1, [sp, #4]` assembles to ED8D 3F01).
  *
  * @param[in,out] uc Unicorn engine.
- * @param[in]     op Decoded operation from ::mve_mem_decode.
+ * @param[in]     op Decoded operation from ::internal_mve_mem_decode.
  *
  * @return Nothing.
  *
- * @pre @p op was produced by a successful ::mve_mem_decode.
+ * @pre @p op was produced by a successful ::internal_mve_mem_decode.
  * @pre @p uc is stopped inside the NoCP fault for this instruction.
  * @post The 16-byte vector has moved in the requested direction.
  * @post `Rn` holds the computed address iff `op->wback`.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
  */
-static void mve_mem_exec(uc_engine* uc, const mve_mem_op_t* op)
+RA8_INTERNAL static void internal_mve_mem_exec(uc_engine* uc, const mve_mem_op_t* op)
 {
   uint32_t base = 0U;
   (void)uc_reg_read(uc, k_arm_reg_id[op->rn], &base);
@@ -273,7 +273,7 @@ static void mve_mem_exec(uc_engine* uc, const mve_mem_op_t* op)
   uint64_t       lo = 0U;
   uint64_t       hi = 0U;
   if (op->load) {
-    (void)uc_mem_read(uc, (uint64_t)addr, buf, (size_t)k_mve_q_bytes);
+    (void)emu_mem_read(uc, (uint64_t)addr, buf, (size_t)k_mve_q_bytes);
     (void)memcpy(&lo, buf, sizeof(lo));
     (void)memcpy(&hi, buf + sizeof(lo), sizeof(hi));
     (void)uc_reg_write(uc, d_lo, &lo);
@@ -283,7 +283,7 @@ static void mve_mem_exec(uc_engine* uc, const mve_mem_op_t* op)
     (void)uc_reg_read(uc, d_lo + 1, &hi);
     (void)memcpy(buf, &lo, sizeof(lo));
     (void)memcpy(buf + sizeof(lo), &hi, sizeof(hi));
-    (void)uc_mem_write(uc, (uint64_t)addr, buf, (size_t)k_mve_q_bytes);
+    (void)emu_mem_write(uc, (uint64_t)addr, buf, (size_t)k_mve_q_bytes);
   }
   if (op->wback) {
     (void)uc_reg_write(uc, k_arm_reg_id[op->rn], &adjusted);
@@ -314,27 +314,49 @@ static void mve_mem_exec(uc_engine* uc, const mve_mem_op_t* op)
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
  */
-static bool mve_mem_try(uc_engine* uc, const uint8_t code[4])
+RA8_INTERNAL static bool internal_mve_mem_try(uc_engine* uc, const uint8_t code[4])
 {
   const uint16_t hw1 = (uint16_t)(code[0] | ((uint16_t)code[1] << (uint16_t)k_byte_bits));
   const uint16_t hw2 = (uint16_t)(code[2] | ((uint16_t)code[3] << (uint16_t)k_byte_bits));
   mve_mem_op_t   op  = {};
-  if (!mve_mem_decode(hw1, hw2, &op)) {
+  if (!internal_mve_mem_decode(hw1, hw2, &op)) {
     return false;
   }
-  mve_mem_exec(uc, &op);
+  internal_mve_mem_exec(uc, &op);
   return true;
 }
 
-/** @brief Map capstone Q-reg @p qreg to its Unicorn D-register half (low/high). */
-static int mve_q_d(unsigned int qreg, bool high)
+/**
+ * @brief Map capstone Q-reg @p qreg to its Unicorn D-register half (low/high).
+ * @details Map capstone q-reg @p qreg to its unicorn d-register half (low/high); this step is contained within the emu seam mve model and uses bounded caller or module-owned storage.
+ * @param[in] qreg Qreg input used by the operation.
+ * @param[in] high High input used by the operation.
+ * @return The mve q d result produced by the emu seam mve model.
+ * @retval value The operation-specific mve q d value.
+ * @pre Arguments satisfy the ranges documented for mve q d. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu seam mve model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static int internal_mve_q_d(unsigned int qreg, bool high)
 {
   const unsigned int idx = qreg - (unsigned int)ARM_REG_Q0; /* Q index 0..7. */
   return (int)UC_ARM_REG_D0 + (int)(2U * idx) + (high ? 1 : 0);
 }
 
-/** @brief Execute one decoded MVE instruction (no PC change); true iff handled. */
-static bool mve_exec_one(uc_engine* uc, const cs_insn* insn)
+/**
+ * @brief Execute one decoded MVE instruction (no PC change); true iff handled.
+ * @details Execute one decoded mve instruction (no pc change); true iff handled; this step is contained within the emu seam mve model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] insn Insn input used by the operation.
+ * @return The mve exec one result produced by the emu seam mve model.
+ * @retval true The mve exec one condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for mve exec one. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu seam mve model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_mve_exec_one(uc_engine* uc, const cs_insn* insn)
 {
   const cs_arm* d     = &insn->detail->arm;
   const bool    op0_q = (d->op_count == 2) && (d->operands[0].type == ARM_OP_REG) &&
@@ -347,26 +369,26 @@ static bool mve_exec_one(uc_engine* uc, const cs_insn* insn)
       (strstr(insn->mnemonic, ".i32") != nullptr)) {
     const uint32_t imm  = (uint32_t)d->operands[1].imm;
     const uint64_t pair = ((uint64_t)imm << (uint64_t)k_mve_lane_shift) | (uint64_t)imm;
-    (void)uc_reg_write(uc, mve_q_d(d->operands[0].reg, false), &pair);
-    (void)uc_reg_write(uc, mve_q_d(d->operands[0].reg, true), &pair);
+    (void)uc_reg_write(uc, internal_mve_q_d(d->operands[0].reg, false), &pair);
+    (void)uc_reg_write(uc, internal_mve_q_d(d->operands[0].reg, true), &pair);
     return true;
   }
   return false;
 }
 
 /** @brief Lazily open the shared Thumb/M-class Capstone handle; nullptr on failure. */
-static csh* mve_capstone(void)
+RA8_INTERNAL static csh* internal_mve_capstone(void)
 {
-  static csh  s_cs;
-  static bool s_cs_ok = false;
-  if (!s_cs_ok) {
-    if (cs_open(CS_ARCH_ARM, (cs_mode)(CS_MODE_THUMB | CS_MODE_MCLASS), &s_cs) != CS_ERR_OK) {
+  static csh  local_cs;
+  static bool local_cs_ok = false;
+  if (!local_cs_ok) {
+    if (cs_open(CS_ARCH_ARM, (cs_mode)(CS_MODE_THUMB | CS_MODE_MCLASS), &local_cs) != CS_ERR_OK) {
       return nullptr;
     }
-    (void)cs_option(s_cs, CS_OPT_DETAIL, CS_OPT_ON);
-    s_cs_ok = true;
+    (void)cs_option(local_cs, CS_OPT_DETAIL, CS_OPT_ON);
+    local_cs_ok = true;
   }
-  return &s_cs;
+  return &local_cs;
 }
 
 /**
@@ -384,7 +406,7 @@ static csh* mve_capstone(void)
  */
 bool emulate_mve(uc_engine* uc, uint32_t pc0, const uint8_t code0[4])
 {
-  csh* cs = mve_capstone();
+  csh* cs = internal_mve_capstone();
   if (cs == nullptr) {
     return false;
   }
@@ -396,10 +418,10 @@ bool emulate_mve(uc_engine* uc, uint32_t pc0, const uint8_t code0[4])
     /* Contiguous load/store first: capstone renders this family as a legacy
      * `stc p15`, so it must be decoded from the raw encoding, not through the
      * disassembler below. */
-    if (mve_mem_try(uc, code)) {
+    if (internal_mve_mem_try(uc, code)) {
       handled++;
       pc += (uint32_t)k_mve_insn_len;
-      if (uc_mem_read(uc, (uint64_t)pc, code, sizeof(code)) != UC_ERR_OK) {
+      if (emu_mem_read(uc, (uint64_t)pc, code, sizeof(code)) != UC_ERR_OK) {
         break;
       }
       continue;
@@ -409,14 +431,14 @@ bool emulate_mve(uc_engine* uc, uint32_t pc0, const uint8_t code0[4])
     if (n != 1U) {
       break;
     }
-    const bool ok = mve_exec_one(uc, &insn[0]);
+    const bool ok = internal_mve_exec_one(uc, &insn[0]);
     cs_free(insn, n);
     if (!ok) {
       break; /* first non-MVE (valid) instruction -- relaunch resumes here. */
     }
     handled++;
     pc += (uint32_t)k_mve_insn_len;
-    if (uc_mem_read(uc, (uint64_t)pc, code, sizeof(code)) != UC_ERR_OK) {
+    if (emu_mem_read(uc, (uint64_t)pc, code, sizeof(code)) != UC_ERR_OK) {
       break;
     }
   }
@@ -430,10 +452,10 @@ bool emulate_mve(uc_engine* uc, uint32_t pc0, const uint8_t code0[4])
 bool emu_mve_nocp_emulate(uc_engine* uc, uint32_t pc)
 {
   uint8_t code[k_mve_insn_len] = {};
-  if (uc_mem_read(uc, (uint64_t)pc, code, sizeof(code)) != UC_ERR_OK) {
+  if (emu_mem_read(uc, (uint64_t)pc, code, sizeof(code)) != UC_ERR_OK) {
     return false;
   }
-  if (!mve_mem_try(uc, code)) {
+  if (!internal_mve_mem_try(uc, code)) {
     return false;
   }
   const uint32_t next = pc + (uint32_t)k_mve_insn_len;

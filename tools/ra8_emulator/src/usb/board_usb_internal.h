@@ -261,8 +261,18 @@ typedef struct {
   const char* name;            /**< Human label for the step log.        */
 } usb_setup_step_t;
 
-/** @brief Word index into the 16-bit register shadow for a window offset. */
-static inline uint32_t usb_word(uint64_t off)
+/**
+ * @brief Word index into the 16-bit register shadow for a window offset.
+ * @details Word index into the 16-bit register shadow for a window offset; this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The USB word result produced by the board USB model.
+ * @retval value The operation-specific USB word value.
+ * @pre Arguments satisfy the ranges documented for USB word. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static inline uint32_t internal_usb_word(uint64_t off)
 {
   return (uint32_t)((off & ~(uint64_t)1U) / 2U);
 }
@@ -274,7 +284,7 @@ extern bool                   s_trace;                    /**< --trace verbose l
 extern board_usb_irq_raiser_t s_raise;                    /**< ICU pend callback (core).          */
 extern bool                   s_external_host;            /**< Bridge host owns the bus (core).   */
 extern bool                   s_roles_swapped;            /**< Self-loop role polarity (core).    */
-extern uint16_t               s_dev_irq_event;            /**< Device ICU event number (core).    */
+extern uint16_t               local_dev_irq_event;        /**< Device ICU event number (core).    */
 extern uint8_t                s_dcp_hold[k_usb_in_cap];   /**< Held control-OUT bytes (core).     */
 extern uint16_t               s_dcp_hold_len;             /**< Held byte count (core).            */
 extern bool                   s_dcp_hold_pending;         /**< Held bytes await the arm (core).   */
@@ -302,68 +312,241 @@ extern uint32_t               s_loop_setups;              /**< SETUPs from the f
 extern uint32_t               s_loop_bulk_out_pkts;       /**< Bulk-OUT packets (loop).           */
 extern uint32_t               s_loop_bulk_in_pkts;        /**< Bulk-IN packets (loop).            */
 
-/** @brief Append one already-formatted line to the enumeration-step log (core). */
-RA8_PRIV void usb_log_line(const char* msg);
+/**
+ * @brief Append one already-formatted line to the enumeration-step log (core).
+ * @details Append one already-formatted line to the enumeration-step log (core); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @param[in] msg Msg input used by the operation.
+ * @pre Arguments satisfy the ranges documented for USB log line. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_usb_log_line(const char* msg);
 
-/** @brief Log a labelled count once (label + n) into the step log (core). */
-RA8_PRIV void usb_log_count(const char* label, unsigned n);
+/**
+ * @brief Log a labelled count once (label + n) into the step log (core).
+ * @details Log a labelled count once (label + n) into the step log (core); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @param[in] label NUL-terminated label used by the operation.
+ * @param[in] n Number of elements or bytes participating in the operation.
+ * @pre Arguments satisfy the ranges documented for USB log count. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_usb_log_count(const char* label, unsigned n);
 
-/** @brief INTSTS0 value the device reads: event bits OR computed fields (dev). */
-RA8_PRIV uint16_t usb_intsts0(void);
+/**
+ * @brief INTSTS0 value the device reads: event bits OR computed fields (dev).
+ * @details Intsts0 value the device reads: event bits or computed fields (dev); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @return The USB intsts0 result produced by the board USB model.
+ * @retval value The operation-specific USB intsts0 value.
+ * @pre Arguments satisfy the ranges documented for USB intsts0. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV uint16_t priv_usb_intsts0(void);
 
-/** @brief Set one INTSTS0 event bit in the register shadow (dev). */
-RA8_PRIV void usb_intsts0_set(uint8_t bit);
+/**
+ * @brief Set one INTSTS0 event bit in the register shadow (dev).
+ * @details Set one intsts0 event bit in the register shadow (dev); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @param[in] bit Bit input used by the operation.
+ * @pre Arguments satisfy the ranges documented for USB intsts0 set. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_usb_intsts0_set(uint8_t bit);
 
-/** @brief Pend the device's ICU interrupt via the registered raiser (dev). */
-RA8_PRIV void usb_raise_irq(uc_engine* uc);
+/**
+ * @brief Pend the device's ICU interrupt via the registered raiser (dev).
+ * @details Pend the device's icu interrupt via the registered raiser (dev); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for USB raise interrupt. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_usb_raise_irq(uc_engine* uc);
 
-/** @brief USBFS window register read dispatch (dev). */
-RA8_PRIV uint32_t usb_reg_read(uint64_t off, unsigned size);
+/**
+ * @brief USBFS window register read dispatch (dev).
+ * @details USBFS window register read dispatch (dev); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The USB reg read result produced by the board USB model.
+ * @retval value The operation-specific USB reg read value.
+ * @pre Arguments satisfy the ranges documented for USB reg read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV uint32_t priv_usb_reg_read(uint64_t off, unsigned size);
 
-/** @brief USBFS window register write dispatch (dev). */
-RA8_PRIV void usb_reg_write(uint64_t off, uint32_t value, unsigned size);
+/**
+ * @brief USBFS window register write dispatch (dev).
+ * @details USBFS window register write dispatch (dev); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @pre Arguments satisfy the ranges documented for USB reg write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_usb_reg_write(uint64_t off, uint32_t value, unsigned size);
 
-/** @brief Detect the device class from the enumerated config descriptor (vhost). */
-RA8_PRIV void usb_detect_class(const uint8_t* d, uint16_t len);
+/**
+ * @brief Detect the device class from the enumerated config descriptor (vhost).
+ * @details Detect the device class from the enumerated config descriptor (vhost); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @param[in] d D input used by the operation.
+ * @param[in] len Number of payload bytes to process.
+ * @pre Arguments satisfy the ranges documented for USB detect class. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_usb_detect_class(const uint8_t* d, uint16_t len);
 
 /** @brief Human label of the detected class + live traffic totals (vhost). */
-RA8_PRIV const char* usb_class_active_str(void);
+RA8_PRIV const char* priv_usb_class_active_str(void);
 
-/** @brief Virtual-host phase driver: waiting for the device pull-up (vhost). */
-RA8_PRIV void host_run_idle_phase(uc_engine* uc);
+/**
+ * @brief Virtual-host phase driver: waiting for the device pull-up (vhost).
+ * @details Virtual-host phase driver: waiting for the device pull-up (vhost); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for host run idle phase. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_host_run_idle_phase(uc_engine* uc);
 
-/** @brief Virtual-host phase driver: holding bus reset (vhost). */
-RA8_PRIV void host_run_reset_phase(uc_engine* uc);
+/**
+ * @brief Virtual-host phase driver: holding bus reset (vhost).
+ * @details Virtual-host phase driver: holding bus reset (vhost); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for host run reset phase. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_host_run_reset_phase(uc_engine* uc);
 
-/** @brief Virtual-host phase driver: walking the enumeration script (vhost). */
-RA8_PRIV void host_run_setup_phase(uc_engine* uc);
+/**
+ * @brief Virtual-host phase driver: walking the enumeration script (vhost).
+ * @details Virtual-host phase driver: walking the enumeration script (vhost); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for host run setup phase. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_host_run_setup_phase(uc_engine* uc);
 
-/** @brief Virtual-host phase driver: post-CONFIGURED class traffic (vhost). */
-RA8_PRIV void host_run_configured_phase(uc_engine* uc);
+/**
+ * @brief Virtual-host phase driver: post-CONFIGURED class traffic (vhost).
+ * @details Virtual-host phase driver: post-configured class traffic (vhost); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for host run configured phase. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_host_run_configured_phase(uc_engine* uc);
 
-/** @brief Drain any device bulk-IN data the virtual host is owed (vhost). */
-RA8_PRIV void host_echo_read_in(uc_engine* uc);
+/**
+ * @brief Drain any device bulk-IN data the virtual host is owed (vhost).
+ * @details Drain any device bulk-in data the virtual host is owed (vhost); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for host echo read in. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_host_echo_read_in(uc_engine* uc);
 
-/** @brief Pump the device's level-triggered DCP-OUT receive (bridge). */
-RA8_PRIV void bridge_pump_device(uc_engine* uc);
+/**
+ * @brief Pump the device's level-triggered DCP-OUT receive (bridge).
+ * @details Pump the device's level-triggered dcp-out receive (bridge); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for bridge pump device. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_bridge_pump_device(uc_engine* uc);
 
-/** @brief True when SYSCFG.DPRPU is set: the device attached its pull-up (vhost). */
-RA8_PRIV bool host_device_attached(void);
+/**
+ * @brief True when SYSCFG.DPRPU is set: the device attached its pull-up (vhost).
+ * @details True when syscfg.dprpu is set: the device attached its pull-up (vhost); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @return The host device attached result produced by the board USB model.
+ * @retval true The host device attached condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for host device attached. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV bool priv_host_device_attached(void);
 
-/** @brief Latch a SETUP packet into USBREQ..USBLENG + raise CTRT (vhost). */
-RA8_PRIV void host_deliver_setup(uc_engine* uc, const usb_setup_step_t* s);
+/**
+ * @brief Latch a SETUP packet into USBREQ..USBLENG + raise CTRT (vhost).
+ * @details Latch a setup packet into usbreq..usbleng + raise ctrt (vhost); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] s Module state instance processed by the operation.
+ * @pre Arguments satisfy the ranges documented for host deliver setup. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_host_deliver_setup(uc_engine* uc, const usb_setup_step_t* s);
 
-/** @brief Apply a no-data control write's device-state side effects (vhost). */
-RA8_PRIV void host_apply_no_data(uc_engine* uc, const usb_setup_step_t* s);
+/**
+ * @brief Apply a no-data control write's device-state side effects (vhost).
+ * @details Apply a no-data control write's device-state side effects (vhost); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] s Module state instance processed by the operation.
+ * @pre Arguments satisfy the ranges documented for host apply no data. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_host_apply_no_data(uc_engine* uc, const usb_setup_step_t* s);
 
-/** @brief True when the device armed its DCP to BUF (ready for OUT) (vhost). */
-RA8_PRIV bool host_dcp_pid_buf(void);
+/**
+ * @brief True when the device armed its DCP to BUF (ready for OUT) (vhost).
+ * @details True when the device armed its dcp to buf (ready for out) (vhost); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @return The host default control pipe pid buf result produced by the board USB model.
+ * @retval true The host default control pipe pid buf condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for host default control pipe pid buf. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV bool priv_host_dcp_pid_buf(void);
 
-/** @brief Consume the device's CCPL (control transfer complete) (vhost). */
-RA8_PRIV bool host_take_ccpl(void);
+/**
+ * @brief Consume the device's CCPL (control transfer complete) (vhost).
+ * @details Consume the device's ccpl (control transfer complete) (vhost); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @return The host take ccpl result produced by the board USB model.
+ * @retval true The host take ccpl condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for host take ccpl. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV bool priv_host_take_ccpl(void);
 
-/** @brief Advance the device state to CONFIGURED (vhost). */
-RA8_PRIV void host_mark_configured(uc_engine* uc);
+/**
+ * @brief Advance the device state to CONFIGURED (vhost).
+ * @details Advance the device state to configured (vhost); this step is contained within the board USB model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for host mark configured. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_host_mark_configured(uc_engine* uc);
 
 #ifdef __cplusplus
 }

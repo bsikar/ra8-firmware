@@ -85,8 +85,12 @@ static uint32_t     s_mpu_fault_addr;                 /**< Address written.     
  * @note PC is captured here (the store instruction) so the run loop stacks it.
  * @since 0.1.0
  */
-static void
-on_mpu_ro_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t value, void* user)
+RA8_INTERNAL static void internal_on_mpu_ro_write(uc_engine*  uc,
+                                                  uc_mem_type type,
+                                                  uint64_t    addr,
+                                                  int         size,
+                                                  int64_t     value,
+                                                  void*       user)
 {
   (void)type;
   (void)size;
@@ -107,7 +111,7 @@ on_mpu_ro_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_
  * @details
  * Called when the firmware sets MPU_CTRL.ENABLE. Memory hooks are evaluated
  * at access time, so a violating store anywhere in a region's [base, limit]
- * range traps via ::on_mpu_ro_write.
+ * range traps via ::internal_on_mpu_ro_write.
  *
  * @param[in,out] uc Unicorn engine.
  * @return Nothing.
@@ -120,7 +124,7 @@ on_mpu_ro_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_
  *       for apps that do not lock down a region.
  * @since 0.1.0
  */
-static void mpu_install_ro_hooks(uc_engine* uc)
+RA8_INTERNAL static void internal_mpu_install_ro_hooks(uc_engine* uc)
 {
   s_mpu_ro_hook_n = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_mpu_max_regions; i++) {
@@ -130,7 +134,7 @@ static void mpu_install_ro_hooks(uc_engine* uc)
     (void)uc_hook_add(uc,
                       &s_mpu_ro_hook[s_mpu_ro_hook_n],
                       UC_HOOK_MEM_WRITE,
-                      (void*)on_mpu_ro_write,
+                      (void*)internal_on_mpu_ro_write,
                       nullptr,
                       (uint64_t)s_mpu_region[i].base,
                       (uint64_t)s_mpu_region[i].limit);
@@ -154,7 +158,7 @@ static void mpu_install_ro_hooks(uc_engine* uc)
  * @note Idempotent when no hooks are installed.
  * @since 0.1.0
  */
-static void mpu_remove_ro_hooks(uc_engine* uc)
+RA8_INTERNAL static void internal_mpu_remove_ro_hooks(uc_engine* uc)
 {
   for (uint32_t i = 0U; i < s_mpu_ro_hook_n; i++) {
     (void)uc_hook_del(uc, s_mpu_ro_hook[i]);
@@ -187,12 +191,12 @@ static void mpu_remove_ro_hooks(uc_engine* uc)
  * @note AP[2]=1 in RBAR marks the region read-only (no privileged store).
  * @since 0.1.0
  */
-static void on_mpu_rlar_write(uc_engine*  uc,
-                              uc_mem_type type,
-                              uint64_t    addr,
-                              int         size,
-                              int64_t     value,
-                              void*       user)
+RA8_INTERNAL static void internal_on_mpu_rlar_write(uc_engine*  uc,
+                                                    uc_mem_type type,
+                                                    uint64_t    addr,
+                                                    int         size,
+                                                    int64_t     value,
+                                                    void*       user)
 {
   (void)type;
   (void)addr;
@@ -230,12 +234,12 @@ static void on_mpu_rlar_write(uc_engine*  uc,
  * @note Apps that never enable the MPU install no hooks (zero overhead).
  * @since 0.1.0
  */
-static void on_mpu_ctrl_write(uc_engine*  uc,
-                              uc_mem_type type,
-                              uint64_t    addr,
-                              int         size,
-                              int64_t     value,
-                              void*       user)
+RA8_INTERNAL static void internal_on_mpu_ctrl_write(uc_engine*  uc,
+                                                    uc_mem_type type,
+                                                    uint64_t    addr,
+                                                    int         size,
+                                                    int64_t     value,
+                                                    void*       user)
 {
   (void)type;
   (void)addr;
@@ -243,10 +247,10 @@ static void on_mpu_ctrl_write(uc_engine*  uc,
   (void)user;
   const bool enable = ((uint32_t)value & (uint32_t)k_mpu_ctrl_enable_bit) != 0U;
   if (enable && !s_mpu_enabled) {
-    mpu_install_ro_hooks(uc);
+    internal_mpu_install_ro_hooks(uc);
     s_mpu_enabled = true;
   } else if (!enable && s_mpu_enabled) {
-    mpu_remove_ro_hooks(uc);
+    internal_mpu_remove_ro_hooks(uc);
     s_mpu_enabled = false;
   }
 }
@@ -255,7 +259,7 @@ static void on_mpu_ctrl_write(uc_engine*  uc,
  * @brief Synthesise a MemManage (#4) fault for a trapped RO-region write.
  *
  * @details
- * Called by the run loop after ::on_mpu_ro_write latched a violation. Latches
+ * Called by the run loop after ::internal_on_mpu_ro_write latched a violation. Latches
  * CFSR.MMFSR.DACCVIOL + MMARVALID and MMFAR (so a fault handler -- and the HIL
  * alive probe -- see the architectural status), forces PC back to the faulting
  * store so exc_enter stacks *that* address (a recovering handler skips exactly
@@ -293,20 +297,20 @@ void emu_mpu_install(uc_engine* uc)
   /* Armv8-M MPU enforcement: capture each region at its RLAR write, then arm /
    * disarm read-only-region write traps on MPU_CTRL.ENABLE edges. Inert unless
    * the firmware programs and enables the MPU (mpu_partition_simple); a trapped
-   * store synthesises MemManage in the run loop (see on_mpu_ro_write). */
-  static uc_hook s_h_mpu_rlar;
-  static uc_hook s_h_mpu_ctrl;
+   * store synthesises MemManage in the run loop (see internal_on_mpu_ro_write). */
+  static uc_hook local_h_mpu_rlar;
+  static uc_hook local_h_mpu_ctrl;
   (void)uc_hook_add(uc,
-                    &s_h_mpu_rlar,
+                    &local_h_mpu_rlar,
                     UC_HOOK_MEM_WRITE,
-                    (void*)on_mpu_rlar_write,
+                    (void*)internal_on_mpu_rlar_write,
                     nullptr,
                     (uint64_t)k_mpu_rlar,
                     (uint64_t)k_mpu_rlar + 3U);
   (void)uc_hook_add(uc,
-                    &s_h_mpu_ctrl,
+                    &local_h_mpu_ctrl,
                     UC_HOOK_MEM_WRITE,
-                    (void*)on_mpu_ctrl_write,
+                    (void*)internal_on_mpu_ctrl_write,
                     nullptr,
                     (uint64_t)k_mpu_ctrl,
                     (uint64_t)k_mpu_ctrl + 3U);

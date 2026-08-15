@@ -27,6 +27,8 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -42,6 +44,12 @@ typedef enum : uint32_t {
   k_overlay_line_cap         = 128U, /**< Max chars copied per console line.      */
   k_overlay_console_tabs_max = 16U,  /**< Tab-bar capacity (channels = tabs).     */
 } board_overlay_console_t;
+
+/** @brief Fixed composite sidebar geometry shared with checked planners. */
+typedef enum : uint16_t {
+  k_board_overlay_sidebar_width_px = 520U, /**< Pixels added right of panel. */
+  k_board_overlay_min_height_px    = 600U, /**< Minimum composite height.    */
+} board_overlay_geometry_t;
 
 /**
  * @brief On-screen sidebar control a click landed on.
@@ -128,11 +136,53 @@ typedef struct {
   bool     running;       /**< True while the run loop is live (not parked). */
 } board_status_t;
 
+/** @brief Rectangle-fill operation supplied by a bounded presentation surface. */
+typedef bool (*board_overlay_fill_fn)(void*    context,
+                                      uint16_t x,
+                                      uint16_t y,
+                                      uint16_t width,
+                                      uint16_t height,
+                                      uint16_t color);
+
+/** @brief Non-owning drawing surface used by memory and raw-fd compositors. */
+typedef struct {
+  void*                 context; /**< Caller-owned sink context.             */
+  board_overlay_fill_fn fill;    /**< Clipped solid-rectangle writer.        */
+  uint16_t              width;   /**< Complete composite width in pixels.    */
+  uint16_t              height;  /**< Complete composite height in pixels.   */
+  bool                  ok;      /**< Sticky false after a sink write fault. */
+} board_overlay_surface_t;
+
+/**
+ * @brief Draw the status sidebar through a bounded rectangle sink.
+ * @param[in,out] surface Complete composite surface and sticky write state.
+ * @param[in] panel_w Displayed panel width and sidebar origin.
+ * @param[in] st Live peripheral status, or nullptr for a blank sidebar.
+ * @return Whether every clipped rectangle reached the sink.
+ * @retval true The exact sidebar was rendered.
+ * @retval false Surface validation or a sink operation failed.
+ * @pre @p surface and its fill operation are non-null.
+ * @pre Surface dimensions match overlay totals for @p panel_w.
+ * @post A failure remains sticky in @p surface->ok.
+ * @note Distinct surface/context pairs are independent and thread-safe.
+ * @since 0.1.0
+  * @details Draw the status sidebar through a bounded rectangle sink; this step is contained within the board overlay model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
+ */
+bool board_overlay_draw_sidebar(board_overlay_surface_t* surface,
+                                uint16_t                 panel_w,
+                                const board_status_t*    st);
+
 /**
  * @brief Width in pixels the status sidebar adds to the right of the panel.
  *
  * @return Fixed sidebar width (the composite width is panel width + this).
  * @since 0.1.0
+  * @details Width in pixels the status sidebar adds to the right of the panel; this step is contained within the board overlay model and uses bounded caller or module-owned storage.
+ * @retval value The operation-specific board overlay sidebar width value.
+ * @pre Arguments satisfy the ranges documented for board overlay sidebar width. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board overlay model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 uint16_t board_overlay_sidebar_width(void);
 
@@ -142,6 +192,11 @@ uint16_t board_overlay_sidebar_width(void);
  * @param[in] panel_w Panel framebuffer width in pixels.
  * @return @p panel_w plus the sidebar width.
  * @since 0.1.0
+  * @details Total composite width for a panel of width @p panel_w; this step is contained within the board overlay model and uses bounded caller or module-owned storage.
+ * @retval value The operation-specific board overlay total width value.
+ * @pre Arguments satisfy the ranges documented for board overlay total width. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board overlay model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 uint16_t board_overlay_total_width(uint16_t panel_w);
 
@@ -154,6 +209,10 @@ uint16_t board_overlay_total_width(uint16_t panel_w);
  * @param[in] panel_h Panel framebuffer height in pixels.
  * @return The larger of @p panel_h and the sidebar's minimum height.
  * @since 0.1.0
+  * @retval value The operation-specific board overlay total height value.
+ * @pre Arguments satisfy the ranges documented for board overlay total height. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board overlay model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 uint16_t board_overlay_total_height(uint16_t panel_h);
 
@@ -174,6 +233,9 @@ uint16_t board_overlay_total_height(uint16_t panel_h);
  * @param[in]  st      Live peripheral snapshot to render (NULL draws no status).
  * @return Nothing.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board overlay compose. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board overlay model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 void board_overlay_compose(uint16_t*             out,
                            const uint16_t*       panel,
@@ -196,6 +258,10 @@ void board_overlay_compose(uint16_t*             out,
  * @param[in] panel_w Panel width the composite was built with (sidebar origin).
  * @return The button hit, or ::k_board_overlay_btn_none.
  * @since 0.1.0
+  * @retval value The operation-specific board overlay hit button value.
+ * @pre Arguments satisfy the ranges documented for board overlay hit button. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board overlay model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 board_overlay_btn_t board_overlay_hit_button(uint16_t x, uint16_t y, uint16_t panel_w);
 
@@ -216,6 +282,10 @@ board_overlay_btn_t board_overlay_hit_button(uint16_t x, uint16_t y, uint16_t pa
  * @param[out] out_pct Receives the mapped state-of-charge percent (0..100).
  * @return True when @p out_pct was written, false if @p out_pct is NULL.
  * @since 0.1.0
+  * @retval true The board overlay battery pct at condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for board overlay battery pct at. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board overlay model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 bool board_overlay_battery_pct_at(uint16_t x, uint16_t panel_w, uint8_t* out_pct);
 
@@ -238,6 +308,10 @@ bool board_overlay_battery_pct_at(uint16_t x, uint16_t panel_w, uint8_t* out_pct
  * @param[out] out_idx   Receives the hit tab index (0 .. @p tab_count - 1).
  * @return True when a tab was hit and @p out_idx written; false otherwise.
  * @since 0.1.0
+  * @retval true The board overlay hit console tab condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for board overlay hit console tab. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board overlay model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 bool board_overlay_hit_console_tab(uint16_t  x,
                                    uint16_t  y,

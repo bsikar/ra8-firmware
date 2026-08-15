@@ -88,7 +88,7 @@ typedef struct {
  * @brief Parse the ra8_emulator command line into @p out (or print usage).
  *
  * @details
- * With no firmware argument the full usage text is printed to stderr and
+ * With no firmware argument the full usage text is printed to injected error sink and
  * false is returned (the caller exits 2). Otherwise the option loop decodes
  * argv[2..] into @p out with the original loop's exact semantics, including
  * the parse-time side effects: --sd / --sd-new attach the SD model, --eink /
@@ -107,13 +107,13 @@ typedef struct {
  * @pre @p out is non-null.
  * @post On true, @p out->elf_path is argv[1] and all fields hold their
  *       defaults or decoded values.
- * @post On false, stderr carries the usage text and @p out is untouched.
+ * @post On false, injected error sink carries the usage text and @p out is untouched.
  *
  * @note Not thread-safe; call once from main() before setup.
  * @see emu_run_and_report()  Consumes the values via ::emu_run_cfg_t.
  * @since 0.1.0
  */
-RA8_PRIV bool emu_args_parse(int argc, char** argv, emu_args_t* out);
+bool emu_args_parse(int argc, char** argv, emu_args_t* out);
 
 #ifdef __cplusplus
 }

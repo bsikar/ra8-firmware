@@ -18,7 +18,7 @@
  *
  * This seam closes that gap. @c board_periph_mstp_model.c owns the five
  * @c MSTPCRx words and the address->bit gate table; the board_periph core
- * (@c board_periph.c) consults ::board_mstp_addr_stopped before dispatching an
+ * (@c board_periph.c) consults ::priv_board_mstp_addr_stopped before dispatching an
  * MMIO access to an owning block, and drops it -- read 0 / write ignored --
  * exactly as the silicon does when the block is stopped. The model half is
  * kept free of any Unicorn dependency so the gate table is unit-testable on the
@@ -50,7 +50,7 @@ extern "C" {
  * covers both views. @c MSTPCRA..MSTPCRE occupy the first five 32-bit words.
  *
  * @invariant @c k_board_mstp_win_span == 5 * 4 bytes.
- * @see board_mstp_apply_write
+ * @see priv_board_mstp_apply_write
  * @since 0.1.0
  */
 typedef enum : uint64_t {
@@ -72,8 +72,9 @@ typedef enum : uint64_t {
  * @post The dropped-access counters and the family-lookup cache are cleared.
  * @note Not thread-safe; ra8_emulator drives all blocks from one thread.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board module-stop reset. @pre The call executes on the emulator's single owning thread.
  */
-RA8_PRIV void board_mstp_reset(void);
+RA8_PRIV void priv_board_mstp_reset(void);
 
 /**
  * @brief Apply a firmware write to the @c MSTPCRA..MSTPCRE shadow.
@@ -93,8 +94,10 @@ RA8_PRIV void board_mstp_reset(void);
  * @post Bytes of @p value inside the window replace the tracked bytes.
  * @note Not thread-safe; single-threaded run-loop use.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board module-stop apply write. @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void board_mstp_apply_write(uint64_t off, unsigned size, uint32_t value);
+RA8_PRIV void priv_board_mstp_apply_write(uint64_t off, unsigned size, uint32_t value);
 
 /**
  * @brief Read the tracked @c MSTPCRA..MSTPCRE shadow (the read-back path).
@@ -113,8 +116,11 @@ RA8_PRIV void board_mstp_apply_write(uint64_t off, unsigned size, uint32_t value
  * @post No state is mutated (pure read).
  * @note Not thread-safe; single-threaded run-loop use.
  * @since 0.1.0
+  * @retval value The operation-specific board module-stop read reg value.
+ * @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV uint32_t board_mstp_read_reg(uint64_t off, unsigned size);
+RA8_PRIV uint32_t priv_board_mstp_read_reg(uint64_t off, unsigned size);
 
 /**
  * @brief Report whether the peripheral instance owning @p addr is module-stopped.
@@ -135,14 +141,16 @@ RA8_PRIV uint32_t board_mstp_read_reg(uint64_t off, unsigned size);
  * @post No state is mutated (pure query).
  * @note Not thread-safe; single-threaded run-loop / test use.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board module-stop addr stopped. @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool board_mstp_addr_stopped(uint64_t addr);
+RA8_PRIV bool priv_board_mstp_addr_stopped(uint64_t addr);
 
 /**
  * @brief Record that an MMIO access to a module-stopped peripheral was dropped.
  *
  * @details
- * Called by the core dispatch when ::board_mstp_addr_stopped forced a read to 0
+ * Called by the core dispatch when ::priv_board_mstp_addr_stopped forced a read to 0
  * or a write to be discarded. Bumps the dropped-access counter and remembers
  * the offending peripheral's label so the end-of-run report can make the
  * masked bug LOUD instead of silent.
@@ -153,24 +161,36 @@ RA8_PRIV bool board_mstp_addr_stopped(uint64_t addr);
  * @post The matching counter grows by one and the last-gated label is updated.
  * @note Not thread-safe; single-threaded run-loop use.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board module-stop note gated access. @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void board_mstp_note_gated_access(uint64_t addr, bool is_write);
+RA8_PRIV void priv_board_mstp_note_gated_access(uint64_t addr, bool is_write);
 
 /**
  * @brief Number of reads zeroed because their peripheral was module-stopped.
- * @return The dropped-read counter since the last ::board_mstp_reset.
+ * @return The dropped-read counter since the last ::priv_board_mstp_reset.
  * @post No state is mutated.
  * @since 0.1.0
+  * @details Number of reads zeroed because their peripheral was module-stopped; this step is contained within the board periph module-stop model and uses bounded caller or module-owned storage.
+ * @retval value The operation-specific board module-stop gated read count value.
+ * @pre Arguments satisfy the ranges documented for board module-stop gated read count. @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
-RA8_PRIV uint32_t board_mstp_gated_read_count(void);
+RA8_PRIV uint32_t priv_board_mstp_gated_read_count(void);
 
 /**
  * @brief Number of writes dropped because their peripheral was module-stopped.
- * @return The dropped-write counter since the last ::board_mstp_reset.
+ * @return The dropped-write counter since the last ::priv_board_mstp_reset.
  * @post No state is mutated.
  * @since 0.1.0
+  * @details Number of writes dropped because their peripheral was module-stopped; this step is contained within the board periph module-stop model and uses bounded caller or module-owned storage.
+ * @retval value The operation-specific board module-stop gated write count value.
+ * @pre Arguments satisfy the ranges documented for board module-stop gated write count. @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
-RA8_PRIV uint32_t board_mstp_gated_write_count(void);
+RA8_PRIV uint32_t priv_board_mstp_gated_write_count(void);
 
 /**
  * @brief Label of the peripheral whose access was most recently gated off.
@@ -178,7 +198,7 @@ RA8_PRIV uint32_t board_mstp_gated_write_count(void);
  * @post No state is mutated.
  * @since 0.1.0
  */
-RA8_PRIV const char* board_mstp_last_gated_name(void);
+RA8_PRIV const char* priv_board_mstp_last_gated_name(void);
 
 #ifdef __cplusplus
 }

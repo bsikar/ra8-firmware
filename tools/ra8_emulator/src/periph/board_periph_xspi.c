@@ -36,6 +36,7 @@
 
 #include "board_console.h"
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief Console-tap line buffer capacity for an xSPI command summary. */
 typedef enum : uint32_t {
@@ -122,8 +123,8 @@ static xspi_state_t s_xspi;
  * directly: page-program clears flash bits = SETS stored bits (OR), sector
  * erase restores 0xFF = clears stored bytes to 0.
  *
- * @note Access only through ::xspi_flash_byte / ::xspi_do_program /
- *       ::xspi_do_erase so the inversion cannot leak.
+ * @note Access only through ::internal_xspi_flash_byte / ::internal_xspi_do_program /
+ *       ::internal_xspi_do_erase so the inversion cannot leak.
  * @warning Do not memset this to 0xFF -- that would mean "all bits programmed
  *          to 0" AND commit 64 MiB of resident pages per emulator process.
  * @since 0.1.0
@@ -134,17 +135,27 @@ static uint8_t s_xspi_flash_neg[k_xspi_flash_size];
  * @var s_xspi_dirty_hi
  * @brief Exclusive high-water mark of bytes ever programmed/erased this run.
  *
- * @details Lets ::xspi_reset restore only the touched prefix of the 64 MiB
+ * @details Lets ::internal_xspi_reset restore only the touched prefix of the 64 MiB
  * array instead of sweeping (and thereby committing) all of it on every
  * warm reboot of the emulator.
  *
- * @note Updated by ::xspi_do_program and ::xspi_do_erase only.
+ * @note Updated by ::internal_xspi_do_program and ::internal_xspi_do_erase only.
  * @since 0.1.0
  */
 static uint32_t s_xspi_dirty_hi;
 
-/** @brief Current flash content byte at @p addr (0xFF beyond the part). */
-static uint8_t xspi_flash_byte(uint32_t addr)
+/**
+ * @brief Current flash content byte at @p addr (0xFF beyond the part).
+ * @details Current flash content byte at @p addr (0xff beyond the part); this step is contained within the board periph xSPI model and uses bounded caller or module-owned storage.
+ * @param[in] addr Guest address involved in the operation.
+ * @return The xSPI flash byte result produced by the board periph xSPI model.
+ * @retval value The operation-specific xSPI flash byte value.
+ * @pre Arguments satisfy the ranges documented for xSPI flash byte. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph xSPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint8_t internal_xspi_flash_byte(uint32_t addr)
 {
   if (addr >= (uint32_t)k_xspi_flash_size) {
     return (uint8_t)k_xspi_erased;
@@ -152,22 +163,50 @@ static uint8_t xspi_flash_byte(uint32_t addr)
   return (uint8_t)~s_xspi_flash_neg[addr];
 }
 
-/** @brief Raise the dirty high-water mark to cover [0, @p end_excl). */
-static void xspi_mark_dirty(uint32_t end_excl)
+/**
+ * @brief Raise the dirty high-water mark to cover [0, @p end_excl).
+ * @details Raise the dirty high-water mark to cover [0, @p end_excl); this step is contained within the board periph xSPI model and uses bounded caller or module-owned storage.
+ * @param[in] end_excl End excl input used by the operation.
+ * @pre Arguments satisfy the ranges documented for xSPI mark dirty. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph xSPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_xspi_mark_dirty(uint32_t end_excl)
 {
   if (end_excl > s_xspi_dirty_hi) {
     s_xspi_dirty_hi = end_excl;
   }
 }
 
-/** @brief Word index of CDBUF slot-0 entry @p w inside the window shadow. */
-static uint32_t xspi_cdbuf_word(uint32_t w)
+/**
+ * @brief Word index of CDBUF slot-0 entry @p w inside the window shadow.
+ * @details Word index of cdbuf slot-0 entry @p w inside the window shadow; this step is contained within the board periph xSPI model and uses bounded caller or module-owned storage.
+ * @param[in] w W input used by the operation.
+ * @return The xSPI cdbuf word result produced by the board periph xSPI model.
+ * @retval value The operation-specific xSPI cdbuf word value.
+ * @pre Arguments satisfy the ranges documented for xSPI cdbuf word. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph xSPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_xspi_cdbuf_word(uint32_t w)
 {
   return (uint32_t)((k_xspi_off_cdbuf / 4U) + w);
 }
 
-/** @brief Extract the 1/2-byte opcode from a CDT descriptor word. */
-static uint32_t xspi_opcode(uint32_t cdt)
+/**
+ * @brief Extract the 1/2-byte opcode from a CDT descriptor word.
+ * @details Extract the 1/2-byte opcode from a cdt descriptor word; this step is contained within the board periph xSPI model and uses bounded caller or module-owned storage.
+ * @param[in] cdt Cdt input used by the operation.
+ * @return The xSPI opcode result produced by the board periph xSPI model.
+ * @retval value The operation-specific xSPI opcode value.
+ * @pre Arguments satisfy the ranges documented for xSPI opcode. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph xSPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_xspi_opcode(uint32_t cdt)
 {
   const uint32_t cmdsize =
     (cdt >> (uint32_t)k_xspi_cdt_pos_cmdsize) & (uint32_t)k_xspi_cdt_mask_cmdsize;
@@ -179,21 +218,30 @@ static uint32_t xspi_opcode(uint32_t cdt)
   return (cmdfield >> shift) & (uint32_t)k_xspi_cdt_byte;
 }
 
-/** @brief Read @p n bytes (<= 8) from flash@addr into CDD0/CDD1. */
-static void xspi_do_read(uint32_t addr, uint32_t n)
+/**
+ * @brief Read @p n bytes (<= 8) from flash@addr into CDD0/CDD1.
+ * @details Read @p n bytes (<= 8) from flash@addr into cdd0/cdd1; this step is contained within the board periph xSPI model and uses bounded caller or module-owned storage.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] n Number of elements or bytes participating in the operation.
+ * @pre Arguments satisfy the ranges documented for xSPI do read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph xSPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_xspi_do_read(uint32_t addr, uint32_t n)
 {
   uint32_t d0 = 0U;
   uint32_t d1 = 0U;
   for (uint32_t i = 0U; i < n; i++) {
-    const uint8_t b = xspi_flash_byte(addr + i);
+    const uint8_t b = internal_xspi_flash_byte(addr + i);
     if (i < 4U) {
       d0 |= (uint32_t)b << (i * (uint32_t)k_xspi_byte_bits);
     } else {
       d1 |= (uint32_t)b << ((i - 4U) * (uint32_t)k_xspi_byte_bits);
     }
   }
-  s_xspi.regs[xspi_cdbuf_word((uint32_t)k_xspi_cdbuf_data0)] = d0;
-  s_xspi.regs[xspi_cdbuf_word((uint32_t)k_xspi_cdbuf_data1)] = d1;
+  s_xspi.regs[internal_xspi_cdbuf_word((uint32_t)k_xspi_cdbuf_data0)] = d0;
+  s_xspi.regs[internal_xspi_cdbuf_word((uint32_t)k_xspi_cdbuf_data1)] = d1;
   s_xspi.reads++;
   /* Console OSPI tab: one line per manual read command. */
   char ln[k_xspi_console_line_cap];
@@ -201,11 +249,20 @@ static void xspi_do_read(uint32_t addr, uint32_t n)
   board_console_push(k_board_console_ch_ospi, ln);
 }
 
-/** @brief Page-program @p n bytes (<= 8) of CDD0/CDD1 into flash@addr (NOR AND). */
-static void xspi_do_program(uint32_t addr, uint32_t n)
+/**
+ * @brief Page-program @p n bytes (<= 8) of CDD0/CDD1 into flash@addr (NOR AND).
+ * @details Page-program @p n bytes (<= 8) of cdd0/cdd1 into flash@addr (nor and); this step is contained within the board periph xSPI model and uses bounded caller or module-owned storage.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] n Number of elements or bytes participating in the operation.
+ * @pre Arguments satisfy the ranges documented for xSPI do program. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph xSPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_xspi_do_program(uint32_t addr, uint32_t n)
 {
-  const uint32_t d0 = s_xspi.regs[xspi_cdbuf_word((uint32_t)k_xspi_cdbuf_data0)];
-  const uint32_t d1 = s_xspi.regs[xspi_cdbuf_word((uint32_t)k_xspi_cdbuf_data1)];
+  const uint32_t d0 = s_xspi.regs[internal_xspi_cdbuf_word((uint32_t)k_xspi_cdbuf_data0)];
+  const uint32_t d1 = s_xspi.regs[internal_xspi_cdbuf_word((uint32_t)k_xspi_cdbuf_data1)];
   for (uint32_t i = 0U; i < n; i++) {
     if ((addr + i) >= (uint32_t)k_xspi_flash_size) {
       continue;
@@ -217,7 +274,7 @@ static void xspi_do_program(uint32_t addr, uint32_t n)
     /* NOR program clears flash bits only: flash &= b. In the inverted store
      * that is neg = ~(~neg & b) = neg | ~b. */
     s_xspi_flash_neg[addr + i] |= (uint8_t)~b;
-    xspi_mark_dirty(addr + i + 1U);
+    internal_xspi_mark_dirty(addr + i + 1U);
   }
   s_xspi.writes++;
   /* Console OSPI tab: one line per page-program command. */
@@ -226,8 +283,16 @@ static void xspi_do_program(uint32_t addr, uint32_t n)
   board_console_push(k_board_console_ch_ospi, ln);
 }
 
-/** @brief Erase the 4 KiB sector containing @p addr (restore 0xFF). */
-static void xspi_do_erase(uint32_t addr)
+/**
+ * @brief Erase the 4 KiB sector containing @p addr (restore 0xFF).
+ * @details Erase the 4 kib sector containing @p addr (restore 0xff); this step is contained within the board periph xSPI model and uses bounded caller or module-owned storage.
+ * @param[in] addr Guest address involved in the operation.
+ * @pre Arguments satisfy the ranges documented for xSPI do erase. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph xSPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_xspi_do_erase(uint32_t addr)
 {
   const uint32_t base = addr & ~((uint32_t)k_xspi_sector_len - 1U);
   if (base >= (uint32_t)k_xspi_flash_size) {
@@ -235,32 +300,41 @@ static void xspi_do_erase(uint32_t addr)
   }
   /* Erased flash = 0xFF = all-zero bytes in the inverted store. */
   (void)memset(&s_xspi_flash_neg[base], 0, (size_t)k_xspi_sector_len);
-  xspi_mark_dirty(base + (uint32_t)k_xspi_sector_len);
+  internal_xspi_mark_dirty(base + (uint32_t)k_xspi_sector_len);
   s_xspi.erases++;
 }
 
-/** @brief Execute the slot-0 manual command, then raise INTS.CMDCMP. */
-static void xspi_exec_command(void)
+/**
+ * @brief Execute the slot-0 manual command, then raise INTS.CMDCMP.
+ * @details Execute the slot-0 manual command, then raise ints.cmdcmp; this step is contained within the board periph xSPI model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for xSPI exec command. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph xSPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_xspi_exec_command(void)
 {
-  const uint32_t cdt  = s_xspi.regs[xspi_cdbuf_word((uint32_t)k_xspi_cdbuf_cdt)];
-  const uint32_t addr = s_xspi.regs[xspi_cdbuf_word((uint32_t)k_xspi_cdbuf_addr)];
+  const uint32_t cdt  = s_xspi.regs[internal_xspi_cdbuf_word((uint32_t)k_xspi_cdbuf_cdt)];
+  const uint32_t addr = s_xspi.regs[internal_xspi_cdbuf_word((uint32_t)k_xspi_cdbuf_addr)];
   const uint32_t n =
     (cdt >> (uint32_t)k_xspi_cdt_pos_datasize) & (uint32_t)k_xspi_cdt_mask_datasize;
-  switch (xspi_opcode(cdt)) {
+  switch (internal_xspi_opcode(cdt)) {
     case (uint32_t)k_xspi_op_rdid:
-      s_xspi.regs[xspi_cdbuf_word((uint32_t)k_xspi_cdbuf_data0)] = (uint32_t)k_xspi_jedec_cdd0;
+      s_xspi.regs[internal_xspi_cdbuf_word((uint32_t)k_xspi_cdbuf_data0)] =
+        (uint32_t)k_xspi_jedec_cdd0;
       break;
     case (uint32_t)k_xspi_op_rdsr:
-      s_xspi.regs[xspi_cdbuf_word((uint32_t)k_xspi_cdbuf_data0)] = (uint32_t)k_xspi_status_wel;
+      s_xspi.regs[internal_xspi_cdbuf_word((uint32_t)k_xspi_cdbuf_data0)] =
+        (uint32_t)k_xspi_status_wel;
       break;
     case (uint32_t)k_xspi_op_read:
-      xspi_do_read(addr, n);
+      internal_xspi_do_read(addr, n);
       break;
     case (uint32_t)k_xspi_op_pp:
-      xspi_do_program(addr, n);
+      internal_xspi_do_program(addr, n);
       break;
     case (uint32_t)k_xspi_op_erase:
-      xspi_do_erase(addr);
+      internal_xspi_do_erase(addr);
       break;
     default:
       break; /* WREN, 8D/1S software reset, mode switches: no flash effect. */
@@ -268,8 +342,15 @@ static void xspi_exec_command(void)
   s_xspi.regs[(uint32_t)(k_xspi_off_ints / 4U)] |= (uint32_t)k_xspi_ints_cmdcmp;
 }
 
-/** @brief Reset the xSPI model: zero the window, erase the touched flash prefix. */
-static void xspi_reset(void)
+/**
+ * @brief Reset the xSPI model: zero the window, erase the touched flash prefix.
+ * @details Reset the xspi model: zero the window, erase the touched flash prefix; this step is contained within the board periph xSPI model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for xSPI reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph xSPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_xspi_reset(void)
 {
   (void)memset(s_xspi.regs, 0, sizeof(s_xspi.regs));
   /* Only the dirty prefix ever left the erased state; sweeping the whole
@@ -281,8 +362,20 @@ static void xspi_reset(void)
   s_xspi.erases   = 0U;
 }
 
-/** @brief MMIO read inside the xSPI window. */
-static uint64_t xspi_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the xSPI window.
+ * @details MMIO read inside the xspi window; this step is contained within the board periph xSPI model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The xSPI read result produced by the board periph xSPI model.
+ * @retval value The operation-specific xSPI read value.
+ * @pre Arguments satisfy the ranges documented for xSPI read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph xSPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_xspi_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -293,8 +386,20 @@ static uint64_t xspi_read(uc_engine* uc, uint64_t addr, unsigned size)
   return s_xspi.regs[off / 4U];
 }
 
-/** @brief MMIO write inside the xSPI window (TRREQ kicks; INTC is W1C). */
-static void xspi_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the xSPI window (TRREQ kicks; INTC is W1C).
+ * @details MMIO write inside the xspi window (trreq kicks; intc is w1c); this step is contained within the board periph xSPI model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for xSPI write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph xSPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_xspi_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
@@ -310,40 +415,46 @@ static void xspi_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
   s_xspi.regs[off / 4U] = (uint32_t)value;
   if ((off == (uint64_t)k_xspi_off_cdctl0) &&
       (((uint32_t)value & (uint32_t)k_xspi_cdctl0_trreq) != 0U)) {
-    xspi_exec_command();
+    internal_xspi_exec_command();
     /* TRREQ self-clears on completion. */
     s_xspi.regs[off / 4U] &= ~(uint32_t)k_xspi_cdctl0_trreq;
   }
 }
 
-/** @brief End-of-run xSPI section: op counts (only if the bus was used). */
-static void xspi_report(void)
+/**
+ * @brief End-of-run xSPI section: op counts (only if the bus was used).
+ * @details End-of-run xspi section: op counts (only if the bus was used); this step is contained within the board periph xSPI model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for xSPI report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph xSPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_xspi_report(void)
 {
   if ((s_xspi.reads == 0U) && (s_xspi.writes == 0U) && (s_xspi.erases == 0U)) {
     return;
   }
-  (void)fprintf(stderr,
-                "  XSPI flash    : %u reads  %u programs  %u erases\n",
-                s_xspi.reads,
-                s_xspi.writes,
-                s_xspi.erases);
+  (void)priv_emu_io_errf("  XSPI flash    : %u reads  %u programs  %u erases\n",
+                         s_xspi.reads,
+                         s_xspi.writes,
+                         s_xspi.erases);
 }
 
 /** @brief xSPI block descriptor (self-registered with the core). */
-static const board_periph_block_t k_xspi_block = {
+static const board_periph_block_t s_k_xspi_block = {
   .base   = (uint32_t)k_xspi_base,
   .span   = (uint32_t)k_xspi_span,
   .order  = (uint32_t)k_xspi_block_order,
-  .read   = xspi_read,
-  .write  = xspi_write,
+  .read   = internal_xspi_read,
+  .write  = internal_xspi_write,
   .tick   = nullptr,
-  .reset  = xspi_reset,
-  .report = xspi_report,
+  .reset  = internal_xspi_reset,
+  .report = internal_xspi_report,
   .name   = "XSPI",
 };
 
 /** @brief Register the xSPI block before main (host constructor). */
-[[gnu::constructor]] static void xspi_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_xspi_block_register(void)
 {
-  board_periph_register_block(&k_xspi_block);
+  board_periph_register_block(&s_k_xspi_block);
 }

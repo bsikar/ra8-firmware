@@ -58,6 +58,7 @@
 
 #include "board_console.h"
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 #include "ra8_npu_fake_cmd.h"
 
 /**
@@ -208,33 +209,75 @@ static const uint32_t s_npu_id =
   ((uint32_t)k_npu_id_arch_patch << (uint32_t)k_npu_id_arch_patch_pos) |
   ((uint32_t)k_npu_id_product_u55 << (uint32_t)k_npu_id_product_pos);
 
-/** @brief Word index of a byte offset inside the shadow store. */
-static uint32_t npu_word(uint64_t off)
+/**
+ * @brief Word index of a byte offset inside the shadow store.
+ * @details Word index of a byte offset inside the shadow store; this step is contained within the board periph npu model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The npu word result produced by the board periph npu model.
+ * @retval value The operation-specific npu word value.
+ * @pre Arguments satisfy the ranges documented for npu word. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph npu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_npu_word(uint64_t off)
 {
   return (uint32_t)(off >> 2U);
 }
 
-/** @brief Assemble the 64-bit value of a lo/hi shadow-register pair. */
-static uint64_t npu_reg64(uint64_t lo_off)
+/**
+ * @brief Assemble the 64-bit value of a lo/hi shadow-register pair.
+ * @details Assemble the 64-bit value of a lo/hi shadow-register pair; this step is contained within the board periph npu model and uses bounded caller or module-owned storage.
+ * @param[in] lo_off Lo off input used by the operation.
+ * @return The npu reg64 result produced by the board periph npu model.
+ * @retval value The operation-specific npu reg64 value.
+ * @pre Arguments satisfy the ranges documented for npu reg64. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph npu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_npu_reg64(uint64_t lo_off)
 {
-  const uint32_t lo = s_npu.reg[npu_word(lo_off)];
-  const uint32_t hi = s_npu.reg[npu_word(lo_off + (uint64_t)k_npu_reg_hi_off)];
+  const uint32_t lo = s_npu.reg[internal_npu_word(lo_off)];
+  const uint32_t hi = s_npu.reg[internal_npu_word(lo_off + (uint64_t)k_npu_reg_hi_off)];
   return (uint64_t)lo | ((uint64_t)hi << (uint32_t)k_npu_addr_hi_pos);
 }
 
-/** @brief AXI base programmed into BASEP@p idx (0 if unprogrammed). */
-static uint64_t npu_region_base(uint32_t idx)
+/**
+ * @brief AXI base programmed into BASEP@p idx (0 if unprogrammed).
+ * @details Axi base programmed into basep@p idx (0 if unprogrammed); this step is contained within the board periph npu model and uses bounded caller or module-owned storage.
+ * @param[in] idx Bounded index of the selected entry.
+ * @return The npu region base result produced by the board periph npu model.
+ * @retval value The operation-specific npu region base value.
+ * @pre Arguments satisfy the ranges documented for npu region base. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph npu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_npu_region_base(uint32_t idx)
 {
   const uint64_t lo_off =
     (uint64_t)k_npu_off_basep0 + ((uint64_t)idx * (uint64_t)k_npu_basep_stride);
-  return npu_reg64(lo_off);
+  return internal_npu_reg64(lo_off);
 }
 
-/** @brief Read one little-endian 32-bit word from guest memory (bool ok). */
-static bool npu_guest_word(uc_engine* uc, uint64_t addr, uint32_t* out)
+/**
+ * @brief Read one little-endian 32-bit word from guest memory (bool ok).
+ * @details Read one little-endian 32-bit word from guest memory (bool ok); this step is contained within the board periph npu model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[out] out Destination storage receiving the computed result.
+ * @return The npu guest word result produced by the board periph npu model.
+ * @retval true The npu guest word condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for npu guest word. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph npu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_npu_guest_word(uc_engine* uc, uint64_t addr, uint32_t* out)
 {
   uint8_t b[4] = {};
-  if (uc_mem_read(uc, addr, b, sizeof(b)) != UC_ERR_OK) {
+  if (emu_mem_read(uc, addr, b, sizeof(b)) != UC_ERR_OK) {
     return false;
   }
   /* Little-endian assembly over the fixed 4-byte buffer -- the loop keeps the
@@ -247,24 +290,43 @@ static bool npu_guest_word(uc_engine* uc, uint64_t addr, uint32_t* out)
   return true;
 }
 
-/** @brief Latch a STATUS fault bit and stop the engine (honest: no fake done). */
-static void npu_fault(uint32_t status_bit)
+/**
+ * @brief Latch a STATUS fault bit and stop the engine (honest: no fake done).
+ * @details Latch a status fault bit and stop the engine (honest: no fake done); this step is contained within the board periph npu model and uses bounded caller or module-owned storage.
+ * @param[in] status_bit Status bit input used by the operation.
+ * @pre Arguments satisfy the ranges documented for npu fault. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph npu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_npu_fault(uint32_t status_bit)
 {
   s_npu.status = ((uint32_t)1U << status_bit) | ((uint32_t)1U << (uint32_t)k_npu_status_irq_bit);
   s_npu.faults++;
 }
 
-/** @brief Decode the submitted command stream at QBASE per ra8_npu_fake_cmd.h. */
-static npu_dec_t npu_decode(uc_engine* uc, npu_cmd_t* out)
+/**
+ * @brief Decode the submitted command stream at QBASE per ra8_npu_fake_cmd.h.
+ * @details Decode the submitted command stream at qbase per ra8_npu_fake_cmd.h; this step is contained within the board periph npu model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[out] out Destination storage receiving the computed result.
+ * @return The npu decode result produced by the board periph npu model.
+ * @retval value The operation-specific npu decode value.
+ * @pre Arguments satisfy the ranges documented for npu decode. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph npu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static npu_dec_t internal_npu_decode(uc_engine* uc, npu_cmd_t* out)
 {
-  const uint64_t qbase = npu_reg64((uint64_t)k_npu_off_qbase);
-  const uint32_t qsize = s_npu.reg[npu_word((uint64_t)k_npu_off_qsize)];
+  const uint64_t qbase = internal_npu_reg64((uint64_t)k_npu_off_qbase);
+  const uint32_t qsize = s_npu.reg[internal_npu_word((uint64_t)k_npu_off_qsize)];
   if (qsize < (uint32_t)k_ra8_npu_fake_header_bytes) {
     return k_npu_dec_parse;
   }
   uint32_t w[k_ra8_npu_fake_word_num] = {};
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_npu_fake_word_num; i++) {
-    if (!npu_guest_word(uc, qbase + ((uint64_t)i * 4UL), &w[i])) {
+    if (!internal_npu_guest_word(uc, qbase + ((uint64_t)i * 4UL), &w[i])) {
       return k_npu_dec_bus;
     }
   }
@@ -286,9 +348,26 @@ static npu_dec_t npu_decode(uc_engine* uc, npu_cmd_t* out)
   return k_npu_dec_ok;
 }
 
-/** @brief Apply the op to the arenas; fold the output into a checkword (bool ok). */
-static bool
-npu_apply(uc_engine* uc, const npu_cmd_t* c, uint64_t src, uint64_t dst, uint32_t* out_check)
+/**
+ * @brief Apply the op to the arenas; fold the output into a checkword (bool ok).
+ * @details Apply the op to the arenas; fold the output into a checkword (bool ok); this step is contained within the board periph npu model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] c Active controller, card, or command state processed by the operation.
+ * @param[in] src Source storage consumed by the operation.
+ * @param[in] dst Destination storage receiving the result.
+ * @param[out] out_check Destination receiving the out check result.
+ * @return The npu apply result produced by the board periph npu model.
+ * @retval true The npu apply condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for npu apply. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph npu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_npu_apply(uc_engine*       uc,
+                                            const npu_cmd_t* c,
+                                            uint64_t         src,
+                                            uint64_t         dst,
+                                            uint32_t*        out_check)
 {
   uint8_t  buf[k_npu_chunk_bytes] = {};
   uint32_t check                  = (uint32_t)k_npu_fnv_offset;
@@ -301,7 +380,7 @@ npu_apply(uc_engine* uc, const npu_cmd_t* c, uint64_t src, uint64_t dst, uint32_
     if (n > (uint32_t)k_npu_chunk_bytes) {
       n = (uint32_t)k_npu_chunk_bytes;
     }
-    if (uc_mem_read(uc, src + done, buf, n) != UC_ERR_OK) {
+    if (emu_mem_read(uc, src + done, buf, n) != UC_ERR_OK) {
       return false;
     }
     if (c->op == (uint32_t)k_ra8_npu_fake_op_addk) {
@@ -309,7 +388,7 @@ npu_apply(uc_engine* uc, const npu_cmd_t* c, uint64_t src, uint64_t dst, uint32_
         buf[i] = (uint8_t)((buf[i] + c->konst) & (uint32_t)k_ra8_npu_fake_byte_mask);
       }
     }
-    if (uc_mem_write(uc, dst + done, buf, n) != UC_ERR_OK) {
+    if (emu_mem_write(uc, dst + done, buf, n) != UC_ERR_OK) {
       return false;
     }
     for (uint32_t i = 0U; i < n; i++) {
@@ -322,7 +401,7 @@ npu_apply(uc_engine* uc, const npu_cmd_t* c, uint64_t src, uint64_t dst, uint32_
 }
 
 /** @brief Human label for a fake opcode (report / console). */
-static const char* npu_op_name(uint32_t op)
+RA8_INTERNAL static const char* internal_npu_op_name(uint32_t op)
 {
   if (op == (uint32_t)k_ra8_npu_fake_op_copy) {
     return "copy";
@@ -333,14 +412,23 @@ static const char* npu_op_name(uint32_t op)
   return "unknown";
 }
 
-/** @brief Push one completed-job summary line to the DMA/compute console lane. */
-static void npu_console_job(const npu_cmd_t* c, uint32_t check)
+/**
+ * @brief Push one completed-job summary line to the DMA/compute console lane.
+ * @details Push one completed-job summary line to the dma/compute console lane; this step is contained within the board periph npu model and uses bounded caller or module-owned storage.
+ * @param[in] c Active controller, card, or command state processed by the operation.
+ * @param[in] check Check input used by the operation.
+ * @pre Arguments satisfy the ranges documented for npu console job. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph npu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_npu_console_job(const npu_cmd_t* c, uint32_t check)
 {
   char ln[k_npu_line_cap];
   (void)snprintf(ln,
                  sizeof(ln),
                  "NPU %s r%u->r%u %uB check=0x%08X",
-                 npu_op_name(c->op),
+                 internal_npu_op_name(c->op),
                  (unsigned)c->src,
                  (unsigned)c->dst,
                  (unsigned)c->count,
@@ -348,28 +436,36 @@ static void npu_console_job(const npu_cmd_t* c, uint32_t check)
   board_console_push(k_board_console_ch_dma, ln);
 }
 
-/** @brief Run one submitted job: decode -> execute -> latch STATUS + IRQ. */
-static void npu_execute(uc_engine* uc)
+/**
+ * @brief Run one submitted job: decode -> execute -> latch STATUS + IRQ.
+ * @details Run one submitted job: decode -> execute -> latch status + irq; this step is contained within the board periph npu model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for npu execute. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph npu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_npu_execute(uc_engine* uc)
 {
   npu_cmd_t       c   = {};
-  const npu_dec_t dec = npu_decode(uc, &c);
+  const npu_dec_t dec = internal_npu_decode(uc, &c);
   if (dec == k_npu_dec_bus) {
-    npu_fault((uint32_t)k_npu_status_buserr_bit);
+    internal_npu_fault((uint32_t)k_npu_status_buserr_bit);
     return;
   }
   if (dec != k_npu_dec_ok) {
-    npu_fault((uint32_t)k_npu_status_parse_bit);
+    internal_npu_fault((uint32_t)k_npu_status_parse_bit);
     return;
   }
-  const uint64_t src = npu_region_base(c.src);
-  const uint64_t dst = npu_region_base(c.dst);
+  const uint64_t src = internal_npu_region_base(c.src);
+  const uint64_t dst = internal_npu_region_base(c.dst);
   if ((src == 0U) || (dst == 0U)) {
-    npu_fault((uint32_t)k_npu_status_parse_bit);
+    internal_npu_fault((uint32_t)k_npu_status_parse_bit);
     return;
   }
   uint32_t check = 0U;
-  if (!npu_apply(uc, &c, src, dst, &check)) {
-    npu_fault((uint32_t)k_npu_status_buserr_bit);
+  if (!internal_npu_apply(uc, &c, src, dst, &check)) {
+    internal_npu_fault((uint32_t)k_npu_status_buserr_bit);
     return;
   }
   s_npu.status = ((uint32_t)1U << (uint32_t)k_npu_status_cmdend_bit) |
@@ -379,22 +475,43 @@ static void npu_execute(uc_engine* uc)
   s_npu.last_bytes = c.count;
   s_npu.last_check = check;
   board_periph_icu_raise_event(uc, (uint16_t)k_npu_event_irq);
-  npu_console_job(&c, check);
+  internal_npu_console_job(&c, check);
 }
 
-/** @brief Act on an NPU_CMD write: run kicks a job, clear_irq de-asserts the IRQ. */
-static void npu_on_cmd(uc_engine* uc, uint32_t value)
+/**
+ * @brief Act on an NPU_CMD write: run kicks a job, clear_irq de-asserts the IRQ.
+ * @details Act on an npu_cmd write: run kicks a job, clear_irq de-asserts the irq; this step is contained within the board periph npu model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for npu on cmd. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph npu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_npu_on_cmd(uc_engine* uc, uint32_t value)
 {
   if ((value & ((uint32_t)1U << (uint32_t)k_npu_cmd_clear_irq_bit)) != 0U) {
     s_npu.status &= ~((uint32_t)1U << (uint32_t)k_npu_status_irq_bit);
   }
   if ((value & ((uint32_t)1U << (uint32_t)k_npu_cmd_run_bit)) != 0U) {
-    npu_execute(uc);
+    internal_npu_execute(uc);
   }
 }
 
-/** @brief MMIO read inside the NPU window: ID + STATUS are computed, rest shadow. */
-static uint64_t npu_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the NPU window: ID + STATUS are computed, rest shadow.
+ * @details MMIO read inside the npu window: id + status are computed, rest shadow; this step is contained within the board periph npu model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The npu read result produced by the board periph npu model.
+ * @retval value The operation-specific npu read value.
+ * @pre Arguments satisfy the ranges documented for npu read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph npu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_npu_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -409,11 +526,23 @@ static uint64_t npu_read(uc_engine* uc, uint64_t addr, unsigned size)
   if (off == (uint64_t)k_npu_off_status) {
     return (uint64_t)s_npu.status; /* STATUS.reset stays 0: reset is instant. */
   }
-  return (uint64_t)s_npu.reg[npu_word(off)];
+  return (uint64_t)s_npu.reg[internal_npu_word(off)];
 }
 
-/** @brief MMIO write inside the NPU window: latch, then act on CMD / RESET. */
-static void npu_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the NPU window: latch, then act on CMD / RESET.
+ * @details MMIO write inside the npu window: latch, then act on cmd / reset; this step is contained within the board periph npu model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for npu write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph npu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_npu_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)size;
   const uint64_t off = addr - (uint64_t)k_npu_base;
@@ -421,9 +550,9 @@ static void npu_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
     return;
   }
   s_npu.writes++;
-  s_npu.reg[npu_word(off)] = (uint32_t)value;
+  s_npu.reg[internal_npu_word(off)] = (uint32_t)value;
   if (off == (uint64_t)k_npu_off_cmd) {
-    npu_on_cmd(uc, (uint32_t)value);
+    internal_npu_on_cmd(uc, (uint32_t)value);
     return;
   }
   if (off == (uint64_t)k_npu_off_reset) {
@@ -431,50 +560,62 @@ static void npu_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
   }
 }
 
-/** @brief Clear the NPU model to power-on state. */
-static void npu_reset(void)
+/**
+ * @brief Clear the NPU model to power-on state.
+ * @details Clear the npu model to power-on state; this step is contained within the board periph npu model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for npu reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph npu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_npu_reset(void)
 {
   s_npu = (npu_state_t){};
 }
 
-/** @brief End-of-run NPU section: jobs run + last-result checkword, or touch notice. */
-static void npu_report(void)
+/**
+ * @brief End-of-run NPU section: jobs run + last-result checkword, or touch notice.
+ * @details End-of-run npu section: jobs run + last-result checkword, or touch notice; this step is contained within the board periph npu model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for npu report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph npu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_npu_report(void)
 {
   if ((s_npu.jobs == 0U) && (s_npu.faults == 0U)) {
     if ((s_npu.reads != 0U) || (s_npu.writes != 0U)) {
-      (void)fprintf(stderr,
-                    "  NPU(Ethos-U55): window touched r=%u w=%u -- no job kicked\n",
-                    s_npu.reads,
-                    s_npu.writes);
+      (void)priv_emu_io_errf("  NPU(Ethos-U55): window touched r=%u w=%u -- no job kicked\n",
+                             s_npu.reads,
+                             s_npu.writes);
     }
     return;
   }
-  (void)fprintf(stderr,
-                "  NPU(Ethos-U55): jobs=%u faults=%u last=%s bytes=%u check=0x%08X"
-                " (ra8_emulator stand-in, not Vela)\n",
-                s_npu.jobs,
-                s_npu.faults,
-                npu_op_name(s_npu.last_op),
-                s_npu.last_bytes,
-                s_npu.last_check);
+  (void)priv_emu_io_errf("  NPU(Ethos-U55): jobs=%u faults=%u last=%s bytes=%u check=0x%08X"
+                         " (ra8_emulator stand-in, not Vela)\n",
+                         s_npu.jobs,
+                         s_npu.faults,
+                         internal_npu_op_name(s_npu.last_op),
+                         s_npu.last_bytes,
+                         s_npu.last_check);
 }
 
 /** @brief NPU block descriptor (RA8P1-only; self-registered with the core). */
-static const board_periph_block_t k_npu_block = {
+static const board_periph_block_t s_k_npu_block = {
   .base   = (uint64_t)k_npu_base,
   .span   = (uint64_t)k_npu_span,
   .order  = (uint32_t)k_npu_block_order,
-  .read   = npu_read,
-  .write  = npu_write,
+  .read   = internal_npu_read,
+  .write  = internal_npu_write,
   .tick   = nullptr,
-  .reset  = npu_reset,
-  .report = npu_report,
+  .reset  = internal_npu_reset,
+  .report = internal_npu_report,
   .name   = "NPU",
   .device = k_board_block_dev_ra8p1,
 };
 
 /** @brief Register the NPU block before main (host constructor). */
-[[gnu::constructor]] static void npu_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_npu_block_register(void)
 {
-  board_periph_register_block(&k_npu_block);
+  board_periph_register_block(&s_k_npu_block);
 }

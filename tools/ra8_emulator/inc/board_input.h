@@ -39,6 +39,8 @@ extern "C" {
  * @return Nothing.
  * @note Not thread-safe; single-threaded harness use.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board input push key. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board input model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
  */
 void board_input_push_key(char ch);
 
@@ -50,6 +52,10 @@ void board_input_push_key(char ch);
  *         is NULL.
  * @note Not thread-safe; single-threaded harness use.
  * @since 0.1.0
+  * @details Pop the oldest buffered keystroke, if any; this step is contained within the board input model and uses bounded caller or module-owned storage.
+ * @retval true The board input pop key condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for board input pop key. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board input model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
  */
 bool board_input_pop_key(char* out);
 

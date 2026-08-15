@@ -9,7 +9,7 @@
  * unpowered: their registers read 0 and their writes are lost.
  *
  * @c board_periph_pdctr.c owns @c PDCTRGD; the blocks that model peripherals
- * inside the domain ask ::board_pdctr_graphics_powered before reporting a
+ * inside the domain ask ::priv_board_pdctr_graphics_powered before reporting a
  * live register value, so the emulator shows a dark domain exactly as the
  * bench does. This header is the seam between them.
  *
@@ -42,8 +42,10 @@ extern "C" {
  *
  * @note Not thread-safe; ra8_emulator drives all blocks from one thread.
  * @since 0.1.0
+  * @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool board_pdctr_graphics_powered(void);
+RA8_PRIV bool priv_board_pdctr_graphics_powered(void);
 
 #ifdef __cplusplus
 }

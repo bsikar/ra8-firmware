@@ -116,6 +116,7 @@ void board_periph_set_device(board_device_t device);
  * @note Not thread-safe; single-threaded run-loop / setup use.
  * @see board_periph_set_device
  * @since 0.1.0
+  * @pre The call executes on the emulator's single owning thread.
  */
 board_device_t board_periph_device(void);
 
@@ -138,6 +139,8 @@ board_device_t board_periph_device(void);
  * @note Not thread-safe; single-threaded setup use.
  * @see board_periph_usbhs_loop
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board periph set usbhs loop. @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
 void board_periph_set_usbhs_loop(bool on);
 
@@ -150,6 +153,10 @@ void board_periph_set_usbhs_loop(bool on);
  * @note Not thread-safe; single-threaded run-loop / setup use.
  * @see board_periph_set_usbhs_loop
  * @since 0.1.0
+  * @details Report whether the usbhs-host self-loop model is enabled; this step is contained within the board periph model and uses bounded caller or module-owned storage.
+ * @retval true The board periph usbhs loop condition holds or completed successfully; false otherwise.
+ * @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
 bool board_periph_usbhs_loop(void);
 
@@ -162,10 +169,13 @@ bool board_periph_usbhs_loop(void);
  * counters. Call once after the memory map is created and before the run loop.
  *
  * @param[in] trace When true, each LED / GPIO transition and each taken IRQ is
- *                   logged to stderr as it happens (the --trace flag).
+ *                   logged to injected error sink as it happens (the --trace flag).
  * @return Nothing.
  * @post All counters read zero and every block is in its reset state.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board periph init. @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 void board_periph_init(bool trace);
 
@@ -187,6 +197,9 @@ void board_periph_init(bool trace);
  * @param[in] iwdt     true to latch RSTSR1.IWDTRF (independent-watchdog reset).
  * @return Nothing.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board periph reset set cause. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 void board_periph_reset_set_cause(bool power_on, bool software, bool watchdog, bool iwdt);
 
@@ -203,6 +216,9 @@ void board_periph_reset_set_cause(bool power_on, bool software, bool watchdog, b
  * @param[in] iwdt     true for an independent-watchdog reset (RSTSR1.IWDTRF).
  * @return Nothing.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board periph reset request reboot. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 void board_periph_reset_request_reboot(bool watchdog, bool iwdt);
 
@@ -217,6 +233,10 @@ void board_periph_reset_request_reboot(bool watchdog, bool iwdt);
  * @param[out] out_iwdt     Set true if the request was an independent-WDT reset.
  * @return true if a request was pending (and consumed); false otherwise.
  * @since 0.1.0
+  * @retval true The board periph reset take request condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for board periph reset take request. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 bool board_periph_reset_take_request(bool* out_watchdog, bool* out_iwdt);
 
@@ -227,8 +247,8 @@ bool board_periph_reset_take_request(bool* out_watchdog, bool* out_iwdt);
  * The SCI_B model calls @p sink once per byte written to a channel's TDR (the
  * transmit-data register, used by both the polled and interrupt TX paths and by
  * FIFO mode, which also writes TDR). main.c installs a sink that prints each
- * byte to stdout with a clear @c [uart] prefix so a console example's output is
- * captured and greppable. When no sink is installed, transmitted bytes are
+ * byte to injected output sink with a clear @c [uart] prefix so a console example's output is
+ * captured and greppable. When no callback is installed, transmitted bytes are
  * still counted for the end-of-run summary but not echoed.
  *
  * @param[in] sink Callback invoked as @c sink(channel, byte) per TX byte, or
@@ -248,7 +268,7 @@ void board_periph_sci_set_tx_sink(void (*sink)(uint8_t channel, uint8_t byte));
  * queued bytes from reads of RDR oldest-first, and -- if the firmware armed
  * RXI (CCR0.RIE) and routed the channel's RXI event through the ICU -- pends the
  * RXI interrupt so interrupt-driven receive also runs. main.c feeds this from
- * @c --input and/or stdin so a console example sees real input. Bytes beyond
+ * @c --input and @c --keys so a console example sees real input. Bytes beyond
  * the per-channel queue capacity are dropped (reported on @p --trace).
  *
  * @param[in] channel SCI channel index (0..9). Out-of-range is ignored.
@@ -258,6 +278,9 @@ void board_periph_sci_set_tx_sink(void (*sink)(uint8_t channel, uint8_t byte));
  * @post Up to the queue's free space of @p data is readable via RDR and RDRF
  *       reflects availability.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board periph SCI feed rx. @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 void board_periph_sci_feed_rx(uint8_t channel, const uint8_t* data, uint32_t len);
 
@@ -281,6 +304,9 @@ void board_periph_sci_feed_rx(uint8_t channel, const uint8_t* data, uint32_t len
  * @return Nothing.
  * @post The next GT911 status read reports a buffer-ready frame with one point.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board periph touch inject. @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 void board_periph_touch_inject(uint16_t x, uint16_t y);
 
@@ -296,6 +322,10 @@ void board_periph_touch_inject(uint16_t x, uint16_t y);
  *
  * @return Number of contacts reported through the modelled GT911.
  * @since 0.1.0
+  * @retval value The operation-specific board periph touch reported value.
+ * @pre Arguments satisfy the ranges documented for board periph touch reported. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 uint32_t board_periph_touch_reported(void);
 
@@ -316,6 +346,9 @@ uint32_t board_periph_touch_reported(void);
  * @return Nothing.
  * @post The sequence FIFO is empty; the next status read reports "no frame".
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board periph touch seq reset. @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 void board_periph_touch_seq_reset(void);
 
@@ -336,6 +369,10 @@ void board_periph_touch_seq_reset(void);
  * @return true if the point was queued; false if the FIFO is full.
  * @post On true the queued depth grows by one.
  * @since 0.1.0
+  * @retval true The board periph touch seq push condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for board periph touch seq push. @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 bool board_periph_touch_seq_push(uint16_t x, uint16_t y);
 
@@ -352,6 +389,10 @@ bool board_periph_touch_seq_push(uint16_t x, uint16_t y);
  * @return 1 if the LED's pin is currently driven high, else 0 (0 for an
  *         out-of-range @p led).
  * @since 0.1.0
+  * @retval value The operation-specific board periph led level value.
+ * @pre Arguments satisfy the ranges documented for board periph led level. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 uint32_t board_periph_led_level(board_led_id_t led);
 
@@ -395,6 +436,9 @@ void board_periph_gpio_set_input(uint8_t port, uint8_t pin, bool level);
  * @pre The peripheral model has been initialised.
  * @note Not thread-safe; single-threaded harness use.
  * @since 0.1.0
+  * @retval true The board periph GPIO get input condition holds or completed successfully; false otherwise.
+ * @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
  */
 bool board_periph_gpio_get_input(uint8_t port, uint8_t pin);
 
@@ -412,6 +456,10 @@ bool board_periph_gpio_get_input(uint8_t port, uint8_t pin);
  * @param[in] led Board LED identity (::board_led_id_t).
  * @return RGB565 on-colour (0 for an out-of-range @p led).
  * @since 0.1.0
+  * @retval value The operation-specific board periph led color rgb565 value.
+ * @pre Arguments satisfy the ranges documented for board periph led color rgb565. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 uint16_t board_periph_led_color_rgb565(board_led_id_t led);
 
@@ -440,6 +488,10 @@ const char* board_periph_uart_last_line(void);
  *
  * @return Total SCI TX byte count since reset.
  * @since 0.1.0
+  * @retval value The operation-specific board periph uart tx total value.
+ * @pre Arguments satisfy the ranges documented for board periph uart tx total. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 uint32_t board_periph_uart_tx_total(void);
 
@@ -449,6 +501,11 @@ uint32_t board_periph_uart_tx_total(void);
  * @param[in] irq NVIC line number (0-based).
  * @return Times the engine vectored in @p irq (0 if never, or out of range).
  * @since 0.1.0
+  * @details Number of times a given nvic line was taken in this run; this step is contained within the board periph model and uses bounded caller or module-owned storage.
+ * @retval value The operation-specific board periph interrupt count value.
+ * @pre Arguments satisfy the ranges documented for board periph interrupt count. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 uint32_t board_periph_irq_count(uint32_t irq);
 
@@ -457,6 +514,11 @@ uint32_t board_periph_irq_count(uint32_t irq);
  *
  * @return Sum of every taken IRQ (the board view's "IRQ" activity total).
  * @since 0.1.0
+  * @details Total nvic interrupts the icu has delivered in this run; this step is contained within the board periph model and uses bounded caller or module-owned storage.
+ * @retval value The operation-specific board periph interrupt total value.
+ * @pre Arguments satisfy the ranges documented for board periph interrupt total. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 uint32_t board_periph_irq_total(void);
 
@@ -474,6 +536,10 @@ uint32_t board_periph_irq_total(void);
  * @return true if at least one contact has been drained (and @p x / @p y were
  *         written), false otherwise.
  * @since 0.1.0
+  * @retval true The board periph touch last condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for board periph touch last. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 bool board_periph_touch_last(uint16_t* x, uint16_t* y);
 
@@ -489,6 +555,9 @@ bool board_periph_touch_last(uint16_t* x, uint16_t* y);
  * @param[in] soc_pct  State-of-charge percent (clamped to [0, 100]).
  * @param[in] charging true marks the charger attached (CRATE reads positive).
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board periph battery set. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 void board_periph_battery_set(uint8_t soc_pct, bool charging);
 
@@ -498,6 +567,10 @@ void board_periph_battery_set(uint8_t soc_pct, bool charging);
  * @param[out] out_soc      Receives the state-of-charge percent (NULL ok).
  * @param[out] out_charging Receives the charging flag (NULL ok).
  * @since 0.1.0
+  * @details Read back the emulated battery state (for the status overlay); this step is contained within the board periph model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for board periph battery get. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 void board_periph_battery_get(uint8_t* out_soc, bool* out_charging);
 
@@ -507,10 +580,14 @@ void board_periph_battery_get(uint8_t* out_soc, bool* out_charging);
  * @details
  * PD02 TXD / PD03 RXD route to SCI8 on the EK-RA8D2 v1, surfaced as the board's
  * debug-console UART (mirrored from libs/ra8_board_ek_ra8d2). main.c feeds
- * @c --input / stdin to this channel by default.
+ * @c --input and @c --keys to this channel by default.
  *
  * @return The console SCI channel index (8 on the EK-RA8D2).
  * @since 0.1.0
+  * @retval value The operation-specific board periph SCI console channel value.
+ * @pre Arguments satisfy the ranges documented for board periph SCI console channel. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 uint8_t board_periph_sci_console_channel(void);
 
@@ -528,6 +605,10 @@ uint8_t board_periph_sci_console_channel(void);
  * @param[out]    handled True iff a modelled block answered the read.
  * @return The register value when @p *handled is true, else 0.
  * @since 0.1.0
+  * @retval value The operation-specific board periph read value.
+ * @pre Arguments satisfy the ranges documented for board periph read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 uint64_t board_periph_read(uc_engine* uc, uint64_t addr, unsigned size, bool* handled);
 
@@ -541,6 +622,10 @@ uint64_t board_periph_read(uc_engine* uc, uint64_t addr, unsigned size, bool* ha
  * @param[out]    handled True iff a modelled block consumed the write.
  * @return Nothing.
  * @since 0.1.0
+  * @details Dispatch an mmio write to the owning block, if any; this step is contained within the board periph model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for board periph write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 void board_periph_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value, bool* handled);
 
@@ -560,6 +645,9 @@ void board_periph_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t va
  * @param[in,out] uc Unicorn engine (the ICU reads IELSR / NVIC ISER from PPB).
  * @return Nothing.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board periph tick. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 void board_periph_tick(uc_engine* uc);
 
@@ -580,6 +668,9 @@ void board_periph_tick(uc_engine* uc);
  * @param[in] enable true to set the line's enable, false to clear it.
  * @return Nothing.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board periph NVIC set enable. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 void board_periph_nvic_set_enable(uint32_t irq, bool enable);
 
@@ -596,6 +687,10 @@ void board_periph_nvic_set_enable(uint32_t irq, bool enable);
  * @param[out] out_irq Receives the IRQ number (0-based, NVIC line) on success.
  * @return true if a pending IRQ was popped into @p out_irq.
  * @since 0.1.0
+  * @retval true The board periph next interrupt condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for board periph next interrupt. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 bool board_periph_next_irq(uint32_t* out_irq);
 
@@ -605,6 +700,10 @@ bool board_periph_next_irq(uint32_t* out_irq);
  * @param[in] irq IRQ number that the engine just vectored in.
  * @return Nothing.
  * @since 0.1.0
+  * @details Record that nvic irq @p irq was actually taken (for the summary); this step is contained within the board periph model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for board periph note interrupt taken. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 void board_periph_note_irq_taken(uint32_t irq);
 
@@ -651,6 +750,8 @@ typedef struct {
  * @post On false, @p out is untouched.
  * @note Not thread-safe; single-threaded run-loop / report use.
  * @since 0.1.0
+  * @retval true The board periph glcdc get framebuffer condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for board periph glcdc get framebuffer. @pre The call executes on the emulator's single owning thread.
  */
 bool board_periph_glcdc_get_framebuffer(board_glcdc_fb_t* out);
 
@@ -668,6 +769,9 @@ bool board_periph_glcdc_get_framebuffer(board_glcdc_fb_t* out);
  * @param[in,out] uc Unicorn engine (read for any final register state).
  * @return Nothing.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board periph report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 void board_periph_report(uc_engine* uc);
 

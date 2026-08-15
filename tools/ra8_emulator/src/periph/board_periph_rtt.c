@@ -28,7 +28,7 @@
  * per drain so a clobbered block is forgotten and re-discovered.
  *
  * Drained bytes are assembled into lines (CR dropped, latched on LF) and
- * surfaced exactly like the SCI console: each completed line prints to stdout
+ * surfaced exactly like the SCI console: each completed line prints to injected output sink
  * as ``[rtt] <line>`` and lands in the board_console RTT channel, whose newest
  * line the run loop's RA8_EMU_STOP_ON banner guard also checks -- so the EIL
  * gate scrapes an RTT banner the same way it scrapes a UART one.
@@ -48,6 +48,7 @@
 
 #include "board_console.h"
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief SRAM window the control-block scan covers (mirrors main.c's map). */
 typedef enum : uint64_t {
@@ -87,7 +88,7 @@ typedef enum : uint32_t {
  * @note Read-only; compared with memcmp against staged SRAM bytes.
  * @since 0.1.0
  */
-static const char k_rtt_id[k_rtt_id_len] = {'S', 'E', 'G', 'G', 'E', 'R', ' ', 'R', 'T', 'T'};
+static const char s_k_rtt_id[k_rtt_id_len] = {'S', 'E', 'G', 'G', 'E', 'R', ' ', 'R', 'T', 'T'};
 
 /**
  * @brief RTT drain-model state (discovery, line assembly, observability).
@@ -131,11 +132,13 @@ static uint8_t s_rtt_seg[k_rtt_drain_max];
  * @post The returned value is 0 on any read failure.
  * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
+  * @details Read a 32-bit little-endian word from emulated memory; this step is contained within the board periph rtt model and uses bounded caller or module-owned storage.
+ * @retval value The operation-specific rtt rd32 value.
  */
-static uint32_t rtt_rd32(uc_engine* uc, uint64_t addr)
+RA8_INTERNAL static uint32_t internal_rtt_rd32(uc_engine* uc, uint64_t addr)
 {
   uint32_t v = 0U;
-  if (uc_mem_read(uc, addr, &v, sizeof(v)) != UC_ERR_OK) {
+  if (emu_mem_read(uc, addr, &v, sizeof(v)) != UC_ERR_OK) {
     return 0U;
   }
   return v;
@@ -164,17 +167,17 @@ static uint32_t rtt_rd32(uc_engine* uc, uint64_t addr)
  * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static bool rtt_cb_valid(uc_engine* uc, uint64_t cb_addr)
+RA8_INTERNAL static bool internal_rtt_cb_valid(uc_engine* uc, uint64_t cb_addr)
 {
-  const uint32_t max_up = rtt_rd32(uc, cb_addr + (uint64_t)k_rtt_off_max_up);
+  const uint32_t max_up = internal_rtt_rd32(uc, cb_addr + (uint64_t)k_rtt_off_max_up);
   if ((max_up == 0U) || (max_up > (uint32_t)k_rtt_max_up_sane)) {
     return false;
   }
   const uint64_t up0  = cb_addr + (uint64_t)k_rtt_off_up0;
-  const uint32_t buf  = rtt_rd32(uc, up0 + (uint64_t)k_rtt_up_off_buf);
-  const uint32_t size = rtt_rd32(uc, up0 + (uint64_t)k_rtt_up_off_size);
-  const uint32_t wr   = rtt_rd32(uc, up0 + (uint64_t)k_rtt_up_off_wr);
-  const uint32_t rd   = rtt_rd32(uc, up0 + (uint64_t)k_rtt_up_off_rd);
+  const uint32_t buf  = internal_rtt_rd32(uc, up0 + (uint64_t)k_rtt_up_off_buf);
+  const uint32_t size = internal_rtt_rd32(uc, up0 + (uint64_t)k_rtt_up_off_size);
+  const uint32_t wr   = internal_rtt_rd32(uc, up0 + (uint64_t)k_rtt_up_off_wr);
+  const uint32_t rd   = internal_rtt_rd32(uc, up0 + (uint64_t)k_rtt_up_off_rd);
   if ((buf == 0U) || (size == 0U) || (size > (uint32_t)k_rtt_size_sane)) {
     return false;
   }
@@ -185,7 +188,7 @@ static bool rtt_cb_valid(uc_engine* uc, uint64_t cb_addr)
  * @brief Match the staged bytes for a validated control-block ID.
  *
  * @details Walks ::s_rtt_stage memchr-first (candidates share the ID's first
- * byte) and memcmp-confirms each candidate, then ::rtt_cb_valid-checks the
+ * byte) and memcmp-confirms each candidate, then ::internal_rtt_cb_valid-checks the
  * matching guest address. Bounded: every iteration advances at least one
  * byte through the fixed-size stage.
  *
@@ -201,19 +204,20 @@ static bool rtt_cb_valid(uc_engine* uc, uint64_t cb_addr)
  * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static uint64_t rtt_match_stage(uc_engine* uc, uint64_t stage_addr, uint64_t len)
+RA8_INTERNAL static uint64_t
+internal_rtt_match_stage(uc_engine* uc, uint64_t stage_addr, uint64_t len)
 {
   const uint8_t* p    = s_rtt_stage;
   uint64_t       left = len;
   while (left >= (uint64_t)k_rtt_id_len) {
     const uint8_t* hit =
-      memchr(p, (int)k_rtt_id[0], (size_t)(left - ((uint64_t)k_rtt_id_len - 1U)));
+      memchr(p, (int)s_k_rtt_id[0], (size_t)(left - ((uint64_t)k_rtt_id_len - 1U)));
     if (hit == nullptr) {
       return 0U;
     }
-    if (memcmp(hit, k_rtt_id, (size_t)k_rtt_id_len) == 0) {
+    if (memcmp(hit, s_k_rtt_id, (size_t)k_rtt_id_len) == 0) {
       const uint64_t cb = stage_addr + (uint64_t)(hit - s_rtt_stage);
-      if (rtt_cb_valid(uc, cb)) {
+      if (internal_rtt_cb_valid(uc, cb)) {
         return cb;
       }
     }
@@ -228,7 +232,7 @@ static uint64_t rtt_match_stage(uc_engine* uc, uint64_t stage_addr, uint64_t len
  *
  * @details Stages the window through ::s_rtt_stage in ::k_rtt_scan_step
  * sub-reads, carrying an ID-length overlap so a control block straddling a
- * stage boundary still matches, and hands each stage to ::rtt_match_stage --
+ * stage boundary still matches, and hands each stage to ::internal_rtt_match_stage --
  * exactly how the J-Link OB discovers the block on silicon. The first
  * validated match is latched into @c s_rtt.cb_addr. The walk is bounded by
  * the fixed window span (64 sub-reads).
@@ -242,7 +246,7 @@ static uint64_t rtt_match_stage(uc_engine* uc, uint64_t stage_addr, uint64_t len
  * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static void rtt_scan(uc_engine* uc)
+RA8_INTERNAL static void internal_rtt_scan(uc_engine* uc)
 {
   for (uint64_t off = 0U; off < (uint64_t)k_rtt_scan_span; off += (uint64_t)k_rtt_scan_step) {
     /* Stage one step plus the ID-length overlap into the NEXT step (clamped at
@@ -251,13 +255,13 @@ static void rtt_scan(uc_engine* uc)
     if ((off + want) > (uint64_t)k_rtt_scan_span) {
       want = (uint64_t)k_rtt_scan_span - off;
     }
-    if (uc_mem_read(uc, (uint64_t)k_rtt_scan_base + off, s_rtt_stage, (size_t)want) != UC_ERR_OK) {
+    if (emu_mem_read(uc, (uint64_t)k_rtt_scan_base + off, s_rtt_stage, (size_t)want) != UC_ERR_OK) {
       return; /* SRAM window unreadable: give up this scan pass */
     }
     if (want < (uint64_t)k_rtt_id_len) {
       return; /* tail shorter than the ID: nothing left to match */
     }
-    const uint64_t cb = rtt_match_stage(uc, (uint64_t)k_rtt_scan_base + off, want);
+    const uint64_t cb = internal_rtt_match_stage(uc, (uint64_t)k_rtt_scan_base + off, want);
     if (cb != 0U) {
       s_rtt.cb_addr = cb;
       return;
@@ -269,7 +273,7 @@ static void rtt_scan(uc_engine* uc)
  * @brief Feed one drained byte into the line assembler.
  *
  * @details Mirrors the ITM / UART console formatting: CR is dropped, and a
- * LF (or a full buffer) latches the pending text -- printed to stdout as
+ * LF (or a full buffer) latches the pending text -- printed to injected output sink as
  * ``[rtt] <line>`` and pushed into the board_console RTT channel, where the
  * run loop's RA8_EMU_STOP_ON banner guard reads the newest line back.
  *
@@ -282,7 +286,7 @@ static void rtt_scan(uc_engine* uc)
  * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static void rtt_line_feed(uint8_t byte)
+RA8_INTERNAL static void internal_rtt_line_feed(uint8_t byte)
 {
   const char c = (char)byte;
   if (c == '\r') {
@@ -290,8 +294,7 @@ static void rtt_line_feed(uint8_t byte)
   }
   if ((c == '\n') || (s_rtt.line_len >= (uint32_t)k_rtt_line_max)) {
     s_rtt.line[s_rtt.line_len] = '\0';
-    (void)fprintf(stdout, "[rtt] %s\n", s_rtt.line);
-    (void)fflush(stdout);
+    (void)priv_emu_io_outf("[rtt] %s\n", s_rtt.line);
     board_console_push(k_board_console_ch_rtt, s_rtt.line);
     s_rtt.lines++;
     s_rtt.line_len = 0U;
@@ -320,23 +323,23 @@ static void rtt_line_feed(uint8_t byte)
  * @pre @p uc is a live engine with the SRAM window mapped.
  * @post The guest read offset equals the pre-drain write offset (or advanced
  *       by ::k_rtt_drain_max on an oversized backlog).
- * @post Every drained byte passed through ::rtt_line_feed in ring order.
+ * @post Every drained byte passed through ::internal_rtt_line_feed in ring order.
  * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static void rtt_drain(uc_engine* uc)
+RA8_INTERNAL static void internal_rtt_drain(uc_engine* uc)
 {
   uint8_t id_now[k_rtt_id_len];
-  if ((uc_mem_read(uc, s_rtt.cb_addr, id_now, sizeof(id_now)) != UC_ERR_OK) ||
-      (memcmp(id_now, k_rtt_id, sizeof(id_now)) != 0)) {
+  if ((emu_mem_read(uc, s_rtt.cb_addr, id_now, sizeof(id_now)) != UC_ERR_OK) ||
+      (memcmp(id_now, s_k_rtt_id, sizeof(id_now)) != 0)) {
     s_rtt.cb_addr = 0U; /* block gone (reboot / clobber): re-discover by scan */
     return;
   }
   const uint64_t up0  = s_rtt.cb_addr + (uint64_t)k_rtt_off_up0;
-  const uint32_t buf  = rtt_rd32(uc, up0 + (uint64_t)k_rtt_up_off_buf);
-  const uint32_t size = rtt_rd32(uc, up0 + (uint64_t)k_rtt_up_off_size);
-  const uint32_t wr   = rtt_rd32(uc, up0 + (uint64_t)k_rtt_up_off_wr);
-  uint32_t       rd   = rtt_rd32(uc, up0 + (uint64_t)k_rtt_up_off_rd);
+  const uint32_t buf  = internal_rtt_rd32(uc, up0 + (uint64_t)k_rtt_up_off_buf);
+  const uint32_t size = internal_rtt_rd32(uc, up0 + (uint64_t)k_rtt_up_off_size);
+  const uint32_t wr   = internal_rtt_rd32(uc, up0 + (uint64_t)k_rtt_up_off_wr);
+  uint32_t       rd   = internal_rtt_rd32(uc, up0 + (uint64_t)k_rtt_up_off_rd);
   if ((buf == 0U) || (size == 0U) || (size > (uint32_t)k_rtt_size_sane) || (wr >= size) ||
       (rd >= size) || (wr == rd)) {
     return; /* invalid mid-update descriptor, or simply nothing pending */
@@ -346,10 +349,10 @@ static void rtt_drain(uc_engine* uc)
   uint32_t       got   = 0U;
   /* At most two contiguous segments: rd..min(rd+n, size), then a wrap to 0. */
   const uint32_t first = ((size - rd) < n) ? (size - rd) : n;
-  if (uc_mem_read(uc, (uint64_t)buf + (uint64_t)rd, s_rtt_seg, (size_t)first) == UC_ERR_OK) {
+  if (emu_mem_read(uc, (uint64_t)buf + (uint64_t)rd, s_rtt_seg, (size_t)first) == UC_ERR_OK) {
     got = first;
     if ((n > first) &&
-        (uc_mem_read(uc, (uint64_t)buf, &s_rtt_seg[first], (size_t)(n - first)) == UC_ERR_OK)) {
+        (emu_mem_read(uc, (uint64_t)buf, &s_rtt_seg[first], (size_t)(n - first)) == UC_ERR_OK)) {
       got = n;
     }
   }
@@ -357,18 +360,18 @@ static void rtt_drain(uc_engine* uc)
     return; /* ring storage unreadable: leave the offsets untouched */
   }
   for (uint32_t i = 0U; i < got; i++) {
-    rtt_line_feed(s_rtt_seg[i]);
+    internal_rtt_line_feed(s_rtt_seg[i]);
   }
   rd = (rd + got) % size;
   /* Store the advanced read offset back so the firmware sees the drain. */
-  (void)uc_mem_write(uc, up0 + (uint64_t)k_rtt_up_off_rd, &rd, sizeof(rd));
+  (void)emu_mem_write(uc, up0 + (uint64_t)k_rtt_up_off_rd, &rd, sizeof(rd));
   s_rtt.drained += got;
 }
 
 /**
  * @brief Per-chunk advance: discover the control block, then keep it drained.
  *
- * @details While undiscovered, runs ::rtt_scan on a backoff cadence (first at
+ * @details While undiscovered, runs ::internal_rtt_scan on a backoff cadence (first at
  * tick ::k_rtt_scan_first_tick, then doubling the gap up to
  * ::k_rtt_scan_max_gap) so an app that never initialises RTT costs a bounded
  * handful of scans per run instead of one per tick. Once found, drains
@@ -377,21 +380,21 @@ static void rtt_drain(uc_engine* uc)
  *
  * @param[in,out] uc Unicorn engine (all block state lives in guest RAM).
  * @return Nothing.
- * @pre The block registry called ::rtt_reset at init (state is coherent).
+ * @pre The block registry called ::internal_rtt_reset at init (state is coherent).
  * @pre @p uc is a live engine with the SRAM window mapped.
  * @post @c s_rtt.ticks advanced by one.
  * @post Any pending up-buffer bytes of a discovered block were surfaced.
  * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static void rtt_tick(uc_engine* uc)
+RA8_INTERNAL static void internal_rtt_tick(uc_engine* uc)
 {
   s_rtt.ticks++;
   if (s_rtt.cb_addr == 0U) {
     if (s_rtt.ticks < s_rtt.next_scan) {
       return;
     }
-    rtt_scan(uc);
+    internal_rtt_scan(uc);
     if (s_rtt.cb_addr == 0U) {
       /* Exponential backoff, capped: a non-RTT app pays a bounded scan cost. */
       if (s_rtt.scan_gap < (uint32_t)k_rtt_scan_max_gap) {
@@ -401,7 +404,7 @@ static void rtt_tick(uc_engine* uc)
       return;
     }
   }
-  rtt_drain(uc);
+  internal_rtt_drain(uc);
 }
 
 /**
@@ -414,8 +417,9 @@ static void rtt_tick(uc_engine* uc)
  * @post All counters and the in-flight line buffer read zero/empty.
  * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
+  * @details Reset the rtt drain model to power-on state (warm reboot); this step is contained within the board periph rtt model and uses bounded caller or module-owned storage.
  */
-static void rtt_reset(void)
+RA8_INTERNAL static void internal_rtt_reset(void)
 {
   s_rtt           = (rtt_state_t){};
   s_rtt.next_scan = (uint32_t)k_rtt_scan_first_tick;
@@ -427,22 +431,23 @@ static void rtt_reset(void)
  *
  * @return Nothing.
  * @pre The run loop has finished (report cadence owned by the registry).
- * @pre stderr is writable (the summary sink).
+ * @pre injected error sink is writable (the summary sink).
  * @post One summary line is printed iff a control block was discovered.
  * @post Model state is unchanged (pure report).
  * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
+  * @details End-of-run rtt section: block address + drained totals; this step is contained within the board periph rtt model and uses bounded caller or module-owned storage.
  */
-static void rtt_report(void)
+RA8_INTERNAL static void internal_rtt_report(void)
 {
   if (s_rtt.cb_addr == 0U) {
     return; /* no RTT user in this firmware: stay quiet */
   }
-  (void)fprintf(stderr,
-                "  SEGGER RTT    : control block @0x%08llX, drained %u byte(s), %u line(s)\n",
-                (unsigned long long)s_rtt.cb_addr,
-                s_rtt.drained,
-                s_rtt.lines);
+  (void)priv_emu_io_errf(
+    "  SEGGER RTT    : control block @0x%08llX, drained %u byte(s), %u line(s)\n",
+    (unsigned long long)s_rtt.cb_addr,
+    s_rtt.drained,
+    s_rtt.lines);
 }
 
 /**
@@ -454,13 +459,14 @@ static void rtt_report(void)
  * @return Always 0.
  * @retval 0 The only value (unreachable in practice: span is 0).
  * @pre None (the zero-length window means the core never routes here).
- * @pre The descriptor's span stays 0 (see ::k_rtt_block).
+ * @pre The descriptor's span stays 0 (see ::s_k_rtt_block).
  * @post No state is touched.
  * @post The return value is 0.
  * @note Present only because the registry requires a read handler.
  * @since 0.1.0
+  * @details MMIO read stub -- never dispatched (this block owns no window); this step is contained within the board periph rtt model and uses bounded caller or module-owned storage.
  */
-static uint64_t rtt_mmio_read(uc_engine* uc, uint64_t addr, unsigned size)
+RA8_INTERNAL static uint64_t internal_rtt_mmio_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)addr;
@@ -477,13 +483,15 @@ static uint64_t rtt_mmio_read(uc_engine* uc, uint64_t addr, unsigned size)
  * @param[in]     value Written value; unused.
  * @return Nothing.
  * @pre None (the zero-length window means the core never routes here).
- * @pre The descriptor's span stays 0 (see ::k_rtt_block).
+ * @pre The descriptor's span stays 0 (see ::s_k_rtt_block).
  * @post No state is touched.
  * @post The write is discarded.
  * @note Present only because the registry requires a write handler.
  * @since 0.1.0
+  * @details MMIO write stub -- never dispatched (this block owns no window); this step is contained within the board periph rtt model and uses bounded caller or module-owned storage.
  */
-static void rtt_mmio_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+RA8_INTERNAL static void
+internal_rtt_mmio_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)addr;
@@ -497,20 +505,20 @@ typedef enum : uint32_t {
 } rtt_order_t;
 
 /** @brief This block's descriptor: tick/reset/report only, no MMIO window. */
-static const board_periph_block_t k_rtt_block = {
+static const board_periph_block_t s_k_rtt_block = {
   .base   = 0U,
   .span   = 0U, /* RAM-resident protocol: dispatch never routes here. */
   .order  = (uint32_t)k_rtt_block_order,
-  .read   = rtt_mmio_read,
-  .write  = rtt_mmio_write,
-  .tick   = rtt_tick,
-  .reset  = rtt_reset,
-  .report = rtt_report,
+  .read   = internal_rtt_mmio_read,
+  .write  = internal_rtt_mmio_write,
+  .tick   = internal_rtt_tick,
+  .reset  = internal_rtt_reset,
+  .report = internal_rtt_report,
   .name   = "SEGGER RTT",
 };
 
 /** @brief Self-register the RTT drain model before main (host constructor). */
-[[gnu::constructor]] static void rtt_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_rtt_block_register(void)
 {
-  board_periph_register_block(&k_rtt_block);
+  board_periph_register_block(&s_k_rtt_block);
 }

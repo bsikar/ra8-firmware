@@ -42,6 +42,8 @@
 
 #include "board_console.h"
 #include "board_periph_block.h"
+#include "board_periph_riic_devices_internal.h"
+#include "emu_host_io_internal.h"
 
 /** @brief Console-tap line buffer capacity for a RIIC transaction summary. */
 typedef enum : uint32_t {
@@ -145,7 +147,7 @@ typedef enum : uint8_t {
 } riic_tgt_stim_t;
 
 /** @brief The synthetic controller's write payload (echoed back on read). */
-static const uint8_t k_riic_tgt_payload[k_riic_tgt_payload_len] = {
+static const uint8_t s_k_riic_tgt_payload[k_riic_tgt_payload_len] = {
   (uint8_t)k_riic_tgt_payload0,
   (uint8_t)k_riic_tgt_payload1,
 };
@@ -157,26 +159,7 @@ typedef enum : uint32_t {
   k_riic_addr_mask7 = 0x7FU, /**< 7-bit target-address mask.            */
   k_riic_byte_mask  = 0xFFU, /**< One data byte.                        */
   k_riic_dev_rx_max = 64U,   /**< Per-read device response staging cap. */
-  k_riic_dev_max    = 4U,    /**< Device-registry capacity on the bus.  */
 } riic_addr_t;
-
-/**
- * @brief PI4IOE5V6408 I/O-expander constants (ra8_board_ek_ra8d2.c U15).
- *
- * @details
- * The EK-RA8D2 v1 carries the PI4IOE5V6408 at 7-bit address 0x43 on RIIC
- * channel 1. ra8_board_io_expander_apply_project_sw4_defaults programs it with
- * three @c {register, value} writes (output / Hi-Z / direction); the device is
- * auto-incrementing, so the first transmitted byte is the register pointer and
- * the rest are payload. Reads return the addressed register's shadow value
- * (the device-id register answers 0xA0, the PI4IOE5V6408 reset default).
- */
-typedef enum : uint32_t {
-  k_pi4ioe_addr_7b   = 0x43U, /**< EK-RA8D2 U15 default 7-bit address.       */
-  k_pi4ioe_reg_max   = 0x10U, /**< Register-file size modelled (0x00..0x0F). */
-  k_pi4ioe_reg_devid = 0x01U, /**< Device-id register.                       */
-  k_pi4ioe_devid_val = 0xA0U, /**< Device-id reset default the part reports. */
-} pi4ioe_const_t;
 
 /**
  * @brief One RIIC channel: register shadow + a controller transfer machine.
@@ -215,223 +198,8 @@ typedef struct {
   uint8_t  tgt_rd[k_riic_tgt_cap]; /**< Captured echo bytes (bounds-checked).      */
 } riic_state_t;
 
-/**
- * @brief One PI4IOE5V6408 I/O expander on the modelled I2C bus.
- *
- * @details
- * Holds the auto-incrementing register pointer (set by the first transmitted
- * byte) and a small register-file shadow the controller's writes land in. A
- * read returns the addressed register and advances the pointer, so a probe or
- * register write always ACKs and a read-back reflects what was written.
- */
-typedef struct {
-  uint8_t  reg_ptr;                /**< Active auto-incrementing register pointer. */
-  bool     ptr_set;                /**< First byte of this transfer set the ptr.   */
-  uint8_t  file[k_pi4ioe_reg_max]; /**< Register-file shadow.                      */
-  uint32_t writes;                 /**< Register writes the controller landed.     */
-} pi4ioe_state_t;
-
-/**
- * @brief A device on the modelled I2C bus: 7-bit address + read/write callbacks.
- *
- * @details
- * The write callback receives each byte the controller transmits after the
- * address (register pointer, then payload). The read callback fills @p buf with
- * up to @p max response bytes for the device's current state and returns the
- * count; the bus model serves them to the controller one ICDRR read at a time.
- * @c present false means no device answers that address (the bus NACKs).
- */
-typedef struct {
-  bool    present;                                         /**< Slot occupied.      */
-  uint8_t addr_7b;                                         /**< 7-bit address.      */
-  void (*write)(void* ctx, uint8_t byte);                  /**< Controller->device. */
-  uint32_t (*read)(void* ctx, uint8_t* buf, uint32_t max); /**< Device->controller. */
-  void (*stop)(void* ctx);                                 /**< STOP/transfer end.  */
-  void* ctx;                                               /**< Device state.       */
-} riic_device_t;
-
-/** @brief The modelled RIIC channels and the shared bus device registry. */
-static riic_state_t   s_riic[k_riic_count];
-static riic_device_t  s_riic_dev[k_riic_dev_max];
-static pi4ioe_state_t s_pi4ioe;
-
-/* =============================================================================
- * I2C bus device registry -- map a 7-bit address to a device model.
- * =============================================================================
- */
-
-/** @brief Find the registered device answering @p addr_7b, or NULL. */
-static riic_device_t* riic_device_find(uint8_t addr_7b)
-{
-  for (uint32_t i = 0U; i < (uint32_t)k_riic_dev_max; i++) {
-    if (s_riic_dev[i].present && (s_riic_dev[i].addr_7b == addr_7b)) {
-      return &s_riic_dev[i];
-    }
-  }
-  return nullptr;
-}
-
-/** @brief Register a device model in the first free bus slot (drop if full). */
-static void riic_device_register(uint8_t addr_7b,
-                                 void (*wr)(void*, uint8_t),
-                                 uint32_t (*rd)(void*, uint8_t*, uint32_t),
-                                 void (*stop)(void*),
-                                 void* ctx)
-{
-  for (uint32_t i = 0U; i < (uint32_t)k_riic_dev_max; i++) {
-    if (!s_riic_dev[i].present) {
-      s_riic_dev[i] = (riic_device_t){.present = true,
-                                      .addr_7b = addr_7b,
-                                      .write   = wr,
-                                      .read    = rd,
-                                      .stop    = stop,
-                                      .ctx     = ctx};
-      return;
-    }
-  }
-}
-
-/* =============================================================================
- * PI4IOE5V6408 I/O-expander device model -- auto-incrementing register file.
- * =============================================================================
- */
-
-/** @brief Controller -> expander: first byte is the register pointer, then data. */
-static void pi4ioe_write(void* ctx, uint8_t byte)
-{
-  pi4ioe_state_t* p = (pi4ioe_state_t*)ctx;
-  if (!p->ptr_set) {
-    p->reg_ptr = (uint8_t)(byte % (uint8_t)k_pi4ioe_reg_max);
-    p->ptr_set = true;
-    return;
-  }
-  /* Payload byte lands in the addressed register; the pointer auto-increments. */
-  p->file[p->reg_ptr] = byte;
-  p->reg_ptr          = (uint8_t)((p->reg_ptr + 1U) % (uint8_t)k_pi4ioe_reg_max);
-  p->writes++;
-}
-
-/** @brief Expander -> controller: serve the addressed register, then advance. */
-static uint32_t pi4ioe_read(void* ctx, uint8_t* buf, uint32_t max)
-{
-  pi4ioe_state_t* p = (pi4ioe_state_t*)ctx;
-  if (max == 0U) {
-    return 0U;
-  }
-  const uint32_t n = (max < (uint32_t)k_pi4ioe_reg_max) ? max : (uint32_t)k_pi4ioe_reg_max;
-  for (uint32_t i = 0U; i < n; i++) {
-    const uint8_t r = (uint8_t)((p->reg_ptr + i) % (uint8_t)k_pi4ioe_reg_max);
-    buf[i]          = p->file[r];
-  }
-  return n;
-}
-
-/** @brief STOP / transfer end: reset the expander's pointer-capture latch. */
-static void pi4ioe_stop(void* ctx)
-{
-  pi4ioe_state_t* p = (pi4ioe_state_t*)ctx;
-  p->ptr_set        = false;
-}
-
-/* =============================================================================
- * OV5640 camera SCCB device -- 16-bit register pointer + chip-ID responder.
- * =============================================================================
- */
-
-/** @brief OV5640 SCCB sensor constants (cam_ov5640.c / camera_capture). */
-typedef enum : uint16_t {
-  k_ov5640_addr_7b     = 0x3CU,   /**< SCCB 7-bit address (SID low; alt 0x3D). */
-  k_ov5640_reg_id_hi   = 0x300AU, /**< Chip-ID high-byte register.             */
-  k_ov5640_reg_id_lo   = 0x300BU, /**< Chip-ID low-byte register.              */
-  k_ov5640_reg_format  = 0x4300U, /**< DVP output pixel-format register.       */
-  k_ov5640_reg_isp_mux = 0x501FU, /**< ISP output format-mux register.         */
-  k_ov5640_reg_test    = 0x503DU, /**< ISP test-pattern register.              */
-  k_ov5640_id_hi       = 0x56U,   /**< Chip-ID high byte (0x5640 >> 8).        */
-  k_ov5640_id_lo       = 0x40U,   /**< Chip-ID low byte (0x5640 & 0xFF).       */
-  k_ov5640_ptr_bytes   = 2U,      /**< 16-bit big-endian register pointer.     */
-} ov5640_const_t;
-
-/**
- * @brief One OV5640 camera sensor on the SCCB (I2C) bus.
- *
- * @details
- * The OV5640 addresses its register file with a 16-bit big-endian pointer: each
- * transfer writes the pointer high byte then low byte, then either a data byte
- * (register write) or, after a repeated-START, one read byte (register read).
- * The model answers the chip-ID registers so the firmware's VERIFY-FIRST probe
- * reads 0x5640. Configuration writes are accepted, and the three registers the
- * firmware verifies after programming (format, ISP mux, test pattern) latch and
- * read back their last written values; all other registers read 0.
- */
-typedef struct {
-  uint16_t reg_ptr;     /**< Active 16-bit register pointer (MSB-first).  */
-  uint8_t  ptr_bytes;   /**< Pointer bytes captured this transfer (0..2). */
-  uint8_t  reg_format;  /**< Latched 0x4300 DVP output format.            */
-  uint8_t  reg_isp_mux; /**< Latched 0x501F ISP output mux.               */
-  uint8_t  reg_test;    /**< Latched 0x503D test-pattern control.         */
-  uint32_t writes;      /**< Config register writes accepted.             */
-  uint32_t id_reads;    /**< Chip-ID bytes served (report).               */
-} ov5640_state_t;
-
-/** @brief The single modelled OV5640 camera sensor on RIIC channel 1. */
-static ov5640_state_t s_ov5640;
-
-/** @brief Controller -> sensor: first two bytes set the pointer, then data. */
-static void ov5640_write(void* ctx, uint8_t byte)
-{
-  ov5640_state_t* p = (ov5640_state_t*)ctx;
-  if (p->ptr_bytes < (uint8_t)k_ov5640_ptr_bytes) {
-    if (p->ptr_bytes == 0U) {
-      p->reg_ptr = 0U; /* Fresh pointer for this transfer. */
-    }
-    p->reg_ptr = (uint16_t)(((uint16_t)(p->reg_ptr << 8U)) | (uint16_t)byte);
-    p->ptr_bytes++;
-    return;
-  }
-  /* Data byte after the pointer: latch verifier-visible configuration. */
-  if (p->reg_ptr == (uint16_t)k_ov5640_reg_format) {
-    p->reg_format = byte;
-  } else if (p->reg_ptr == (uint16_t)k_ov5640_reg_isp_mux) {
-    p->reg_isp_mux = byte;
-  } else if (p->reg_ptr == (uint16_t)k_ov5640_reg_test) {
-    p->reg_test = byte;
-  } else {
-    /* This register is outside the verifier-visible camera subset. */
-  }
-  p->writes++;
-}
-
-/** @brief Sensor -> controller: serve chip ID, latched verifier registers, or 0. */
-static uint32_t ov5640_read(void* ctx, uint8_t* buf, uint32_t max)
-{
-  ov5640_state_t* p = (ov5640_state_t*)ctx;
-  if (max == 0U) {
-    return 0U;
-  }
-  uint8_t v = 0U;
-  if (p->reg_ptr == (uint16_t)k_ov5640_reg_id_hi) {
-    v = (uint8_t)k_ov5640_id_hi;
-    p->id_reads++;
-  } else if (p->reg_ptr == (uint16_t)k_ov5640_reg_id_lo) {
-    v = (uint8_t)k_ov5640_id_lo;
-    p->id_reads++;
-  } else if (p->reg_ptr == (uint16_t)k_ov5640_reg_format) {
-    v = p->reg_format;
-  } else if (p->reg_ptr == (uint16_t)k_ov5640_reg_isp_mux) {
-    v = p->reg_isp_mux;
-  } else if (p->reg_ptr == (uint16_t)k_ov5640_reg_test) {
-    v = p->reg_test;
-  }
-  buf[0] = v;
-  return 1U;
-}
-
-/** @brief STOP / transfer end: reset the sensor's pointer-capture latch. */
-static void ov5640_stop(void* ctx)
-{
-  ov5640_state_t* p = (ov5640_state_t*)ctx;
-  p->ptr_bytes      = 0U;
-}
+/** @brief The three modelled RIIC controller channels. */
+static riic_state_t s_riic[k_riic_count];
 
 /* =============================================================================
  * RIIC controller model -- the transfer state machine the ra8_i2c.c polling
@@ -439,8 +207,16 @@ static void ov5640_stop(void* ctx)
  * =============================================================================
  */
 
-/** @brief Begin a transaction (START or repeated-START): arm the address phase. */
-static void riic_open_transfer(riic_state_t* s)
+/**
+ * @brief Begin a transaction (START or repeated-START): arm the address phase.
+ * @details Begin a transaction (start or repeated-start): arm the address phase; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @pre Arguments satisfy the ranges documented for RIIC open transfer. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_riic_open_transfer(riic_state_t* s)
 {
   s->busy      = true;
   s->addr_done = false;
@@ -454,11 +230,19 @@ static void riic_open_transfer(riic_state_t* s)
   s->icsr2 = (uint32_t)k_riic_icsr2_tdre;
 }
 
-/** @brief Close a transaction (STOP): release the bus and notify the device. */
-static void riic_close_transfer(riic_state_t* s)
+/**
+ * @brief Close a transaction (STOP): release the bus and notify the device.
+ * @details Close a transaction (stop): release the bus and notify the device; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @pre Arguments satisfy the ranges documented for RIIC close transfer. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_riic_close_transfer(riic_state_t* s)
 {
   if (s->acked) {
-    riic_device_t* dev = riic_device_find(s->target_7b);
+    riic_device_t* dev = priv_riic_device_find(s->target_7b);
     if (dev != nullptr) {
       if (dev->stop != nullptr) {
         dev->stop(dev->ctx);
@@ -483,15 +267,24 @@ static void riic_close_transfer(riic_state_t* s)
   s->icsr2     = (uint32_t)k_riic_icsr2_stop;
 }
 
-/** @brief Consume the address byte after a (re)START: select + ACK a device. */
-static void riic_address_phase(riic_state_t* s, uint8_t address_byte)
+/**
+ * @brief Consume the address byte after a (re)START: select + ACK a device.
+ * @details Consume the address byte after a (re)start: select + ack a device; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @param[in] address_byte Address byte input used by the operation.
+ * @pre Arguments satisfy the ranges documented for RIIC address phase. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_riic_address_phase(riic_state_t* s, uint8_t address_byte)
 {
   s->target_7b =
     (uint8_t)((uint32_t)address_byte >> (uint32_t)k_riic_addr_shift) & (uint8_t)k_riic_addr_mask7;
   s->reading   = ((uint32_t)address_byte & (uint32_t)k_riic_addr_rnw) != 0U;
   s->addr_done = true;
 
-  riic_device_t* dev = riic_device_find(s->target_7b);
+  riic_device_t* dev = priv_riic_device_find(s->target_7b);
   if (dev == nullptr) {
     /* No device at this address: NACK it (scan reports ack=0). */
     s->acked = false;
@@ -511,18 +304,27 @@ static void riic_address_phase(riic_state_t* s, uint8_t address_byte)
   }
 }
 
-/** @brief Handle a write to ICDRT (address byte, then controller TX payload). */
-static void riic_icdrt_write(riic_state_t* s, uint32_t value)
+/**
+ * @brief Handle a write to ICDRT (address byte, then controller TX payload).
+ * @details Handle a write to icdrt (address byte, then controller tx payload); this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for RIIC icdrt write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_riic_icdrt_write(riic_state_t* s, uint32_t value)
 {
   const uint8_t byte = (uint8_t)(value & (uint32_t)k_riic_byte_mask);
   if (!s->addr_done) {
-    riic_address_phase(s, byte);
+    internal_riic_address_phase(s, byte);
     return;
   }
   if (!s->acked) {
     return; /* NACKed address: swallow further writes until STOP */
   }
-  riic_device_t* dev = riic_device_find(s->target_7b);
+  riic_device_t* dev = priv_riic_device_find(s->target_7b);
   if ((dev != nullptr) && (dev->write != nullptr)) {
     dev->write(dev->ctx, byte);
   }
@@ -530,8 +332,18 @@ static void riic_icdrt_write(riic_state_t* s, uint32_t value)
   s->icsr2 |= ((uint32_t)k_riic_icsr2_tdre | (uint32_t)k_riic_icsr2_tend);
 }
 
-/** @brief Serve one ICDRR read from the staged device response. */
-static uint32_t riic_icdrr_read(riic_state_t* s)
+/**
+ * @brief Serve one ICDRR read from the staged device response.
+ * @details Serve one icdrr read from the staged device response; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @return The RIIC icdrr read result produced by the board periph RIIC model.
+ * @retval value The operation-specific RIIC icdrr read value.
+ * @pre Arguments satisfy the ranges documented for RIIC icdrr read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_riic_icdrr_read(riic_state_t* s)
 {
   if (!s->rx_primed) {
     /* The controller-receive flow does one dummy ICDRR read to start the clock
@@ -548,16 +360,26 @@ static uint32_t riic_icdrr_read(riic_state_t* s)
   return (uint32_t)b;
 }
 
-/** @brief Dispatch an ICCR2 write -> START / repeated-START / STOP. */
-static void riic_iccr2_write(riic_state_t* s, uint64_t off, uint32_t value)
+/**
+ * @brief Dispatch an ICCR2 write -> START / repeated-START / STOP.
+ * @details Dispatch an iccr2 write -> start / repeated-start / stop; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for RIIC iccr2 write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_riic_iccr2_write(riic_state_t* s, uint64_t off, uint32_t value)
 {
   if ((value & ((uint32_t)k_riic_iccr2_st | (uint32_t)k_riic_iccr2_rs)) != 0U) {
-    riic_open_transfer(s);
+    internal_riic_open_transfer(s);
     /* ST / RS auto-clear once the condition is issued; the driver spins on RS
      * reading 0 after a repeated-START, so drop both request bits. */
     s->reg[off] = (uint8_t)(value & ~((uint32_t)k_riic_iccr2_st | (uint32_t)k_riic_iccr2_rs));
   } else if ((value & (uint32_t)k_riic_iccr2_sp) != 0U) {
-    riic_close_transfer(s);
+    internal_riic_close_transfer(s);
     s->reg[off] = (uint8_t)(value & ~(uint32_t)k_riic_iccr2_sp);
   }
 }
@@ -569,28 +391,52 @@ static void riic_iccr2_write(riic_state_t* s, uint64_t off, uint32_t value)
  * =============================================================================
  */
 
-/** @brief Arm the write phase: present the address-match + receive-ready state. */
-static void riic_target_begin_write(riic_state_t* s)
+/**
+ * @brief Arm the write phase: present the address-match + receive-ready state.
+ * @details Arm the write phase: present the address-match + receive-ready state; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @pre Arguments satisfy the ranges documented for RIIC target begin write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_riic_target_begin_write(riic_state_t* s)
 {
   s->tgt_phase  = (uint8_t)k_riic_tgt_write;
   s->tgt_wr_pos = 0U;
   s->tgt_icsr2  = (uint32_t)k_riic_icsr2_rdrf; /* address + first data byte ready */
 }
 
-/** @brief Arm the read phase: present transmit-ready + transmit-end for the echo. */
-static void riic_target_begin_read(riic_state_t* s)
+/**
+ * @brief Arm the read phase: present transmit-ready + transmit-end for the echo.
+ * @details Arm the read phase: present transmit-ready + transmit-end for the echo; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @pre Arguments satisfy the ranges documented for RIIC target begin read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_riic_target_begin_read(riic_state_t* s)
 {
   s->tgt_phase  = (uint8_t)k_riic_tgt_read;
   s->tgt_rd_len = 0U;
   s->tgt_icsr2  = (uint32_t)k_riic_icsr2_tdre | (uint32_t)k_riic_icsr2_tend;
 }
 
-/** @brief Close one cycle: verify the echo, then loop the script or quiesce the bus. */
-static void riic_target_complete_read(riic_state_t* s)
+/**
+ * @brief Close one cycle: verify the echo, then loop the script or quiesce the bus.
+ * @details Close one cycle: verify the echo, then loop the script or quiesce the bus; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @pre Arguments satisfy the ranges documented for RIIC target complete read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_riic_target_complete_read(riic_state_t* s)
 {
   bool ok = (s->tgt_rd_len == (uint32_t)k_riic_tgt_payload_len);
   for (uint32_t i = 0U; i < (uint32_t)k_riic_tgt_payload_len; i++) {
-    if (s->tgt_rd[i] != k_riic_tgt_payload[i]) {
+    if (s->tgt_rd[i] != s_k_riic_tgt_payload[i]) {
       ok = false;
     }
   }
@@ -599,15 +445,24 @@ static void riic_target_complete_read(riic_state_t* s)
   }
   s->tgt_cycles++;
   if (s->tgt_cycles < (uint32_t)k_riic_tgt_cycles) {
-    riic_target_begin_write(s);
+    internal_riic_target_begin_write(s);
   } else {
     s->tgt_phase = (uint8_t)k_riic_tgt_done;
     s->tgt_icsr2 = 0U; /* no match, no STOP: dispatch reports no event forever. */
   }
 }
 
-/** @brief (Dis)arm target mode on an ICSER write; latch the firmware's own address. */
-static void riic_target_open(riic_state_t* s, uint32_t icser)
+/**
+ * @brief (Dis)arm target mode on an ICSER write; latch the firmware's own address.
+ * @details (dis)arm target mode on an icser write; latch the firmware's own address; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @param[in] icser Icser input used by the operation.
+ * @pre Arguments satisfy the ranges documented for RIIC target open. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_riic_target_open(riic_state_t* s, uint32_t icser)
 {
   if ((icser & (uint32_t)k_riic_icser_slots) == 0U) {
     s->tgt_armed = false;
@@ -622,11 +477,21 @@ static void riic_target_open(riic_state_t* s, uint32_t icser)
   }
   s->tgt_own_addr = (uint8_t)((uint32_t)sarl >> (uint32_t)k_riic_addr_shift);
   s->tgt_armed    = true;
-  riic_target_begin_write(s);
+  internal_riic_target_begin_write(s);
 }
 
-/** @brief ICSR1 read in target mode: assert the own-address match while active. */
-static uint32_t riic_target_icsr1(const riic_state_t* s)
+/**
+ * @brief ICSR1 read in target mode: assert the own-address match while active.
+ * @details Icsr1 read in target mode: assert the own-address match while active; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in] s Module state instance processed by the operation.
+ * @return The RIIC target icsr1 result produced by the board periph RIIC model.
+ * @retval value The operation-specific RIIC target icsr1 value.
+ * @pre Arguments satisfy the ranges documented for RIIC target icsr1. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_riic_target_icsr1(const riic_state_t* s)
 {
   if (s->tgt_phase == (uint8_t)k_riic_tgt_write) {
     return (uint32_t)k_riic_icsr1_aas0;
@@ -637,8 +502,18 @@ static uint32_t riic_target_icsr1(const riic_state_t* s)
   return 0U;
 }
 
-/** @brief ICCR2 read in target mode: assert TRS only while the controller reads. */
-static uint32_t riic_target_iccr2(const riic_state_t* s)
+/**
+ * @brief ICCR2 read in target mode: assert TRS only while the controller reads.
+ * @details Iccr2 read in target mode: assert trs only while the controller reads; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in] s Module state instance processed by the operation.
+ * @return The RIIC target iccr2 result produced by the board periph RIIC model.
+ * @retval value The operation-specific RIIC target iccr2 value.
+ * @pre Arguments satisfy the ranges documented for RIIC target iccr2. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_riic_target_iccr2(const riic_state_t* s)
 {
   uint32_t v = (uint32_t)s->reg[k_riic_off_iccr2] & ~(uint32_t)k_riic_iccr2_trs;
   if (s->tgt_phase == (uint8_t)k_riic_tgt_read) {
@@ -647,8 +522,18 @@ static uint32_t riic_target_iccr2(const riic_state_t* s)
   return v;
 }
 
-/** @brief ICDRR read in target mode: serve the address byte, then the payload. */
-static uint32_t riic_target_icdrr(riic_state_t* s)
+/**
+ * @brief ICDRR read in target mode: serve the address byte, then the payload.
+ * @details Icdrr read in target mode: serve the address byte, then the payload; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @return The RIIC target icdrr result produced by the board periph RIIC model.
+ * @retval value The operation-specific RIIC target icdrr value.
+ * @pre Arguments satisfy the ranges documented for RIIC target icdrr. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_riic_target_icdrr(riic_state_t* s)
 {
   if (s->tgt_phase != (uint8_t)k_riic_tgt_write) {
     return 0U; /* read-phase SCL-release dummy read / idle: no receive data. */
@@ -658,7 +543,7 @@ static uint32_t riic_target_icdrr(riic_state_t* s)
     /* Step 1: the matched address byte the driver dummy-reads to discard. */
     b = (uint8_t)((uint32_t)s->tgt_own_addr << (uint32_t)k_riic_addr_shift);
   } else if (s->tgt_wr_pos <= (uint32_t)k_riic_tgt_payload_len) {
-    b = k_riic_tgt_payload[s->tgt_wr_pos - 1U];
+    b = s_k_riic_tgt_payload[s->tgt_wr_pos - 1U];
   }
   s->tgt_wr_pos++;
   if (s->tgt_wr_pos > (uint32_t)k_riic_tgt_payload_len) {
@@ -669,8 +554,17 @@ static uint32_t riic_target_icdrr(riic_state_t* s)
   return (uint32_t)b;
 }
 
-/** @brief ICDRT write in target mode: capture the firmware's echo byte. */
-static void riic_target_icdrt(riic_state_t* s, uint8_t byte)
+/**
+ * @brief ICDRT write in target mode: capture the firmware's echo byte.
+ * @details Icdrt write in target mode: capture the firmware's echo byte; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @param[in] byte One data byte received from or sent to the emulated interface.
+ * @pre Arguments satisfy the ranges documented for RIIC target icdrt. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_riic_target_icdrt(riic_state_t* s, uint8_t byte)
 {
   if (s->tgt_phase != (uint8_t)k_riic_tgt_read) {
     return;
@@ -682,40 +576,71 @@ static void riic_target_icdrt(riic_state_t* s, uint8_t byte)
   /* TDRE|TEND stay asserted (begin_read) so fill_tx keeps pushing to completion. */
 }
 
-/** @brief ICSR2 W0C write in target mode: advance the write->read->done script. */
-static void riic_target_icsr2_write(riic_state_t* s, uint32_t value)
+/**
+ * @brief ICSR2 W0C write in target mode: advance the write->read->done script.
+ * @details Icsr2 w0c write in target mode: advance the write->read->done script; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for RIIC target icsr2 write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_riic_target_icsr2_write(riic_state_t* s, uint32_t value)
 {
   s->tgt_icsr2 &= value; /* condition flags are write-0-to-clear. */
   if (s->tgt_phase == (uint8_t)k_riic_tgt_write) {
-    riic_target_begin_read(s); /* receive() cleared STOP -> controller now reads. */
+    internal_riic_target_begin_read(s); /* receive() cleared STOP -> controller now reads. */
   } else if (s->tgt_phase == (uint8_t)k_riic_tgt_read) {
-    riic_target_complete_read(s); /* finish_tx cleared NACKF/STOP -> cycle done. */
+    internal_riic_target_complete_read(s); /* finish_tx cleared NACKF/STOP -> cycle done. */
   }
 }
 
-/** @brief Register read while target mode is armed (own-address responder path). */
-static uint64_t riic_target_reg_read(riic_state_t* s, uint64_t off)
+/**
+ * @brief Register read while target mode is armed (own-address responder path).
+ * @details Register read while target mode is armed (own-address responder path); this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The RIIC target reg read result produced by the board periph RIIC model.
+ * @retval value The operation-specific RIIC target reg read value.
+ * @pre Arguments satisfy the ranges documented for RIIC target reg read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_riic_target_reg_read(riic_state_t* s, uint64_t off)
 {
   if (off == (uint64_t)k_riic_off_icsr1) {
-    return riic_target_icsr1(s);
+    return internal_riic_target_icsr1(s);
   }
   if (off == (uint64_t)k_riic_off_icsr2) {
     return s->tgt_icsr2;
   }
   if (off == (uint64_t)k_riic_off_iccr2) {
-    return riic_target_iccr2(s);
+    return internal_riic_target_iccr2(s);
   }
   if (off == (uint64_t)k_riic_off_icdrr) {
-    return riic_target_icdrr(s);
+    return internal_riic_target_icdrr(s);
   }
   return s->reg[off]; /* reflect every other register */
 }
 
-/** @brief Read a register from one modelled RIIC channel. */
-static uint64_t riic_reg_read(riic_state_t* s, uint64_t off)
+/**
+ * @brief Read a register from one modelled RIIC channel.
+ * @details Read a register from one modelled riic channel; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The RIIC reg read result produced by the board periph RIIC model.
+ * @retval value The operation-specific RIIC reg read value.
+ * @pre Arguments satisfy the ranges documented for RIIC reg read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_riic_reg_read(riic_state_t* s, uint64_t off)
 {
   if (s->tgt_armed) {
-    return riic_target_reg_read(s, off);
+    return internal_riic_target_reg_read(s, off);
   }
   if (off == (uint64_t)k_riic_off_icsr2) {
     return s->icsr2;
@@ -729,32 +654,42 @@ static uint64_t riic_reg_read(riic_state_t* s, uint64_t off)
     return v;
   }
   if (off == (uint64_t)k_riic_off_icdrr) {
-    return riic_icdrr_read(s);
+    return internal_riic_icdrr_read(s);
   }
   return s->reg[off]; /* reflect every other register */
 }
 
-/** @brief Write a register on one modelled RIIC channel. */
-static void riic_reg_write(riic_state_t* s, uint64_t off, uint32_t value)
+/**
+ * @brief Write a register on one modelled RIIC channel.
+ * @details Write a register on one modelled riic channel; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for RIIC reg write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_riic_reg_write(riic_state_t* s, uint64_t off, uint32_t value)
 {
   s->reg[off] = (uint8_t)(value & (uint32_t)k_riic_byte_mask);
   if (off == (uint64_t)k_riic_off_icser) {
     /* ICSER arms / disarms the own-address responder; it is the target trigger. */
-    riic_target_open(s, value);
+    internal_riic_target_open(s, value);
     return;
   }
   if (s->tgt_armed) {
     if (off == (uint64_t)k_riic_off_icdrt) {
-      riic_target_icdrt(s, (uint8_t)(value & (uint32_t)k_riic_byte_mask));
+      internal_riic_target_icdrt(s, (uint8_t)(value & (uint32_t)k_riic_byte_mask));
     } else if (off == (uint64_t)k_riic_off_icsr2) {
-      riic_target_icsr2_write(s, value);
+      internal_riic_target_icsr2_write(s, value);
     }
     return;
   }
   if (off == (uint64_t)k_riic_off_iccr2) {
-    riic_iccr2_write(s, off, value);
+    internal_riic_iccr2_write(s, off, value);
   } else if (off == (uint64_t)k_riic_off_icdrt) {
-    riic_icdrt_write(s, value);
+    internal_riic_icdrt_write(s, value);
   } else if (off == (uint64_t)k_riic_off_icsr2) {
     /* Condition / fault flags are write-0-to-clear: keep only the model's
      * internal flags whose bit is still written as 1 by the driver's RMW. */
@@ -762,8 +697,20 @@ static void riic_reg_write(riic_state_t* s, uint64_t off, uint32_t value)
   }
 }
 
-/** @brief MMIO read inside the RIIC window: route to the addressed channel. */
-static uint64_t riic_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the RIIC window: route to the addressed channel.
+ * @details MMIO read inside the riic window: route to the addressed channel; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The RIIC read result produced by the board periph RIIC model.
+ * @retval value The operation-specific RIIC read value.
+ * @pre Arguments satisfy the ranges documented for RIIC read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_riic_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -772,11 +719,23 @@ static uint64_t riic_read(uc_engine* uc, uint64_t addr, unsigned size)
   if (off >= (uint64_t)k_riic_reg_bytes) {
     return 0U; /* outside the modelled register file */
   }
-  return riic_reg_read(&s_riic[ch], off);
+  return internal_riic_reg_read(&s_riic[ch], off);
 }
 
-/** @brief MMIO write inside the RIIC window: route to the addressed channel. */
-static void riic_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the RIIC window: route to the addressed channel.
+ * @details MMIO write inside the riic window: route to the addressed channel; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for RIIC write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_riic_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
@@ -785,84 +744,62 @@ static void riic_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
   if (off >= (uint64_t)k_riic_reg_bytes) {
     return; /* outside the modelled register file */
   }
-  riic_reg_write(&s_riic[ch], off, (uint32_t)value);
+  internal_riic_reg_write(&s_riic[ch], off, (uint32_t)value);
 }
 
-/** @brief Clear the RIIC channels + expander state and (re)populate the bus. */
-static void riic_reset(void)
+/**
+ * @brief Clear the RIIC channels + expander state and (re)populate the bus.
+ * @details Clear the riic channels + expander state and (re)populate the bus; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for RIIC reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_riic_reset(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_riic_count; i++) {
     s_riic[i] = (riic_state_t){};
   }
-  s_pi4ioe = (pi4ioe_state_t){};
-  /* Seed the expander's device-id register so a read-back of the part probes
-   * its reset default, matching the PI4IOE5V6408. */
-  s_pi4ioe.file[k_pi4ioe_reg_devid] = (uint8_t)k_pi4ioe_devid_val;
-  /* Populate the modelled I2C bus: the EK-RA8D2 carrier's PI4IOE5V6408 I/O
-   * expander (U15) answers at its 7-bit address, so the firmware's real
-   * ra8_i2c_scan / ra8_i2c_write -> RIIC path ACKs instead of needing a stub. */
-  for (uint32_t i = 0U; i < (uint32_t)k_riic_dev_max; i++) {
-    s_riic_dev[i] = (riic_device_t){};
-  }
-  riic_device_register((uint8_t)k_pi4ioe_addr_7b,
-                       pi4ioe_write,
-                       pi4ioe_read,
-                       pi4ioe_stop,
-                       &s_pi4ioe);
-  /* The camera_capture example's OV5640 sensor answers on channel 1 at SCCB
-     0x3C; its chip-ID registers report 0x5640 so the sensor probe passes and
-     the CEU capture path (board_periph_ceu.c) runs headless. */
-  s_ov5640 = (ov5640_state_t){};
-  riic_device_register((uint8_t)k_ov5640_addr_7b,
-                       ov5640_write,
-                       ov5640_read,
-                       ov5640_stop,
-                       &s_ov5640);
+  priv_riic_devices_reset();
 }
 
-/** @brief Print the PI4IOE line and any target-role responder activity. */
-static void riic_report(void)
+/**
+ * @brief Print the PI4IOE line and any target-role responder activity.
+ * @details Print the pi4ioe line and any target-role responder activity; this step is contained within the board periph RIIC model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for RIIC report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RIIC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_riic_report(void)
 {
-  if (s_pi4ioe.writes > 0U) {
-    (void)fprintf(stderr,
-                  "  RIIC PI4IOE   : U15 expander 0x%02X acked %u register write(s)\n",
-                  (unsigned)k_pi4ioe_addr_7b,
-                  s_pi4ioe.writes);
-  }
-  if ((s_ov5640.id_reads > 0U) || (s_ov5640.writes > 0U)) {
-    (void)fprintf(stderr,
-                  "  RIIC OV5640   : SCCB 0x%02X chip-id 0x5640 (%u id read(s), %u cfg write(s))\n",
-                  (unsigned)k_ov5640_addr_7b,
-                  s_ov5640.id_reads,
-                  s_ov5640.writes);
-  }
+  priv_riic_devices_report();
   for (uint32_t ch = 0U; ch < (uint32_t)k_riic_count; ch++) {
     if (s_riic[ch].tgt_cycles > 0U) {
-      (void)fprintf(stderr,
-                    "  RIIC target   : own 0x%02X serviced %u controller write+read "
-                    "cycle(s), echo=%s\n",
-                    (unsigned)s_riic[ch].tgt_own_addr,
-                    (unsigned)s_riic[ch].tgt_cycles,
-                    s_riic[ch].tgt_echo_bad ? "MISMATCH" : "OK");
+      (void)priv_emu_io_errf("  RIIC target   : own 0x%02X serviced %u controller write+read "
+                             "cycle(s), echo=%s\n",
+                             (unsigned)s_riic[ch].tgt_own_addr,
+                             (unsigned)s_riic[ch].tgt_cycles,
+                             s_riic[ch].tgt_echo_bad ? "MISMATCH" : "OK");
     }
   }
 }
 
 /** @brief This block's descriptor (static lifetime; the core keeps the pointer). */
-static const board_periph_block_t k_riic_block = {
+static const board_periph_block_t s_k_riic_block = {
   .base   = (uint64_t)k_riic_base,
   .span   = (uint64_t)k_riic_span,
   .order  = (uint32_t)k_block_order_i2c,
-  .read   = riic_read,
-  .write  = riic_write,
+  .read   = internal_riic_read,
+  .write  = internal_riic_write,
   .tick   = nullptr,
-  .reset  = riic_reset,
-  .report = riic_report,
+  .reset  = internal_riic_reset,
+  .report = internal_riic_report,
   .name   = "RIIC+PI4IOE",
 };
 
 /** @brief Self-register the RIIC block before main runs (decentralized). */
-[[gnu::constructor]] static void board_periph_riic_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_board_periph_riic_register(void)
 {
-  board_periph_register_block(&k_riic_block);
+  board_periph_register_block(&s_k_riic_block);
 }

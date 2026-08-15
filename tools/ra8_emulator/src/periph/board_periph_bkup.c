@@ -63,6 +63,7 @@
 
 #include "board_periph_block.h"
 #include "board_periph_prcr_internal.h"
+#include "emu_host_io_internal.h"
 
 /** @brief VBATT backup window geometry (ra8_bkup_regs.h). */
 typedef enum : uint64_t {
@@ -103,8 +104,15 @@ typedef struct {
 
 static bkup_ctrl_t s_bkup;
 
-/** @brief Reset only the VBATT control state; the backup bytes are retained. */
-static void bkup_reset(void)
+/**
+ * @brief Reset only the VBATT control state; the backup bytes are retained.
+ * @details Reset only the vbatt control state; the backup bytes are retained; this step is contained within the board periph bkup model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for bkup reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph bkup model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_bkup_reset(void)
 {
   s_bkup = (bkup_ctrl_t){};
   /* HUM Ch 12.2.6 p 504 "Value after reset": VBAE = 1, so the access-enable
@@ -116,8 +124,20 @@ static void bkup_reset(void)
    * domain that the survival demo depends on across a --reboot. */
 }
 
-/** @brief MMIO read inside the VBATT backup window (width-aware). */
-static uint64_t bkup_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the VBATT backup window (width-aware).
+ * @details MMIO read inside the vbatt backup window (width-aware); this step is contained within the board periph bkup model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The bkup read result produced by the board periph bkup model.
+ * @retval value The operation-specific bkup read value.
+ * @pre Arguments satisfy the ranges documented for bkup read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph bkup model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_bkup_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   const uint64_t off = addr - (uint64_t)k_bkup_base;
@@ -135,8 +155,20 @@ static uint64_t bkup_read(uc_engine* uc, uint64_t addr, unsigned size)
   return 0U;
 }
 
-/** @brief MMIO write inside the VBATT backup window (width-aware). */
-static void bkup_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the VBATT backup window (width-aware).
+ * @details MMIO write inside the vbatt backup window (width-aware); this step is contained within the board periph bkup model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for bkup write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph bkup model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_bkup_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   const uint64_t off = addr - (uint64_t)k_bkup_base;
@@ -144,7 +176,7 @@ static void bkup_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
    * the VBATT file) under PRC1. Every write below is discarded while that
    * group is locked, with no fault and no flag -- the #131 silicon behaviour.
    * Nested-if (not &&) keeps each decision single-condition. */
-  if (!board_prcr_group_unlocked((uint16_t)k_board_prcr_grp1_lpm)) {
+  if (!priv_board_prcr_group_unlocked((uint16_t)k_board_prcr_grp1_lpm)) {
     if (off >= (uint64_t)k_bkup_off_vbtbkr0) {
       s_bkup.dropped_prc1++;
     }
@@ -170,13 +202,19 @@ static void bkup_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
   }
 }
 
-/** @brief End-of-run VBATT-backup section: writes accepted / dropped this run. */
-static void bkup_report(void)
+/**
+ * @brief End-of-run VBATT-backup section: writes accepted / dropped this run.
+ * @details End-of-run vbatt-backup section: writes accepted / dropped this run; this step is contained within the board periph bkup model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for bkup report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph bkup model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_bkup_report(void)
 {
   if (s_bkup.dropped_prc1 != 0U) {
     /* Loud: firmware wrote VBTBKRn without unlocking PRCR.PRC1 (#131). */
-    (void)fprintf(
-      stderr,
+    (void)priv_emu_io_errf(
       "  VBATT-BKUP    : VBTBKRn writes=%u dropped=%u (PRCR.PRC1 locked: unlock 0xA502)\n",
       s_bkup.writes,
       s_bkup.dropped_prc1);
@@ -184,33 +222,33 @@ static void bkup_report(void)
   }
   if (s_bkup.dropped_vbae != 0U) {
     /* Loud: firmware touched VBTBKRn after clearing VBTBER.VBAE. */
-    (void)fprintf(stderr,
-                  "  VBATT-BKUP    : VBTBKRn writes=%u dropped=%u (VBAE=0: enable VBTBER.VBAE)\n",
-                  s_bkup.writes,
-                  s_bkup.dropped_vbae);
+    (void)priv_emu_io_errf(
+      "  VBATT-BKUP    : VBTBKRn writes=%u dropped=%u (VBAE=0: enable VBTBER.VBAE)\n",
+      s_bkup.writes,
+      s_bkup.dropped_vbae);
     return;
   }
   if (s_bkup.writes == 0U) {
     return; /* Untouched: stay quiet. */
   }
-  (void)fprintf(stderr, "  VBATT-BKUP    : VBTBKRn writes=%u (domain retained)\n", s_bkup.writes);
+  (void)priv_emu_io_errf("  VBATT-BKUP    : VBTBKRn writes=%u (domain retained)\n", s_bkup.writes);
 }
 
 /** @brief VBATT-backup block descriptor (self-registered with the core). */
-static const board_periph_block_t k_bkup_block = {
+static const board_periph_block_t s_k_bkup_block = {
   .base   = (uint64_t)k_bkup_base,
   .span   = (uint64_t)k_bkup_span,
   .order  = (uint32_t)k_bkup_block_order,
-  .read   = bkup_read,
-  .write  = bkup_write,
+  .read   = internal_bkup_read,
+  .write  = internal_bkup_write,
   .tick   = nullptr,
-  .reset  = bkup_reset,
-  .report = bkup_report,
+  .reset  = internal_bkup_reset,
+  .report = internal_bkup_report,
   .name   = "VBATT-BKUP",
 };
 
 /** @brief Register the VBATT-backup block before main (host constructor). */
-[[gnu::constructor]] static void bkup_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_bkup_block_register(void)
 {
-  board_periph_register_block(&k_bkup_block);
+  board_periph_register_block(&s_k_bkup_block);
 }

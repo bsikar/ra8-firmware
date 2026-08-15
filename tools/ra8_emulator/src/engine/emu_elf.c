@@ -1,11 +1,9 @@
 /**
  * @file emu_elf.c
- * @brief ELF32 image services implementation (see emu_elf.h)
- *
- * @details
- * File reading, PT_LOAD segment loading, executable-VMA vector-base derivation
- * and .symtab symbol resolution -- moved verbatim out of the ra8_emulator main
- * translation unit. The contracts live on the declarations in emu_elf.h.
+ * @brief Streaming ELF32 segment, vector-base, and warm-reboot services
+ * @details Program headers and PT_LOAD bytes are read from an independently
+ * owned raw descriptor through bounded stack scratch. No complete image is
+ * allocated, mapped, or retained in process memory.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -14,358 +12,314 @@
 
 #include "emu_elf.h"
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
-#include "board_console.h"
-#include "board_net.h"
-#include "board_periph.h"
-#include "emu_console.h"
-#include "emu_exc.h"
-#include "emu_memmap.h"
-#include "emu_mpu.h"
-#include "emu_seams.h"
-#include "emu_view.h"
+#include "emu_elf_source_internal.h"
+#include "emu_host_io_internal.h"
+#include "emu_memory_access.h"
 
-uint8_t* read_file(const char* path, long* out_len)
+/** @brief Bounded parser and PT_LOAD transfer dimensions. */
+typedef enum : uint32_t {
+  k_elf_program_header_min = 32U,   /**< ELF32 program-header bytes consumed. */
+  k_elf_stream_scratch     = 4096U, /**< Maximum transient segment bytes.     */
+  k_elf_word_high_shift    = 24U,   /**< Shift of byte three in a word.       */
+  k_elf_data_offset        = 5U,    /**< ELF identification data-byte offset. */
+} emu_elf_stream_limit_t;
+
+/** @brief Decoded program-header table geometry. */
+typedef struct {
+  uint32_t offset;     /**< First program-header file offset. */
+  uint16_t entry_size; /**< Bytes per program-header entry.   */
+  uint16_t count;      /**< Program-header entry count.       */
+} emu_elf_program_table_t;
+
+/**
+ * @brief Decode one little-endian 16-bit ELF field.
+ * @details Combines bytes explicitly so host byte order is irrelevant.
+ * @param[in] bytes At least two readable bytes.
+ * @return Decoded host value.
+ * @retval uint16_t The decoded unsigned field.
+ * @pre @p bytes is non-null and two-byte bounded.
+ * @pre The source field uses ELF little-endian encoding.
+ * @post No state changes.
+ * @post The input bytes remain unchanged.
+ * @note Pure and alignment-independent.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_u16(const uint8_t* bytes)
 {
-  FILE* f = fopen(path, "rb");
-  if (f == nullptr) {
-    return nullptr;
-  }
-  (void)fseek(f, 0, SEEK_END);
-  const long len = ftell(f);
-  (void)fseek(f, 0, SEEK_SET);
-  uint8_t* buf = (uint8_t*)malloc((size_t)len);
-  if ((buf != nullptr) && (fread(buf, 1U, (size_t)len, f) != (size_t)len)) {
-    free(buf);
-    buf = nullptr;
-  }
-  (void)fclose(f);
-  *out_len = len;
-  return buf;
+  return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
 }
 
-int load_elf(uc_engine* uc, const uint8_t* elf, long len)
+/**
+ * @brief Decode one little-endian 32-bit ELF field.
+ * @details Combines bytes explicitly so host byte order is irrelevant.
+ * @param[in] bytes At least four readable bytes.
+ * @return Decoded host value.
+ * @retval uint32_t The decoded unsigned field.
+ * @pre @p bytes is non-null and four-byte bounded.
+ * @pre The source field uses ELF little-endian encoding.
+ * @post No state changes.
+ * @post The input bytes remain unchanged.
+ * @note Pure and alignment-independent.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_u32(const uint8_t* bytes)
 {
-  if ((len < (long)k_elf_ehdr_size) ||
-      (memcmp(elf,
+  return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) | ((uint32_t)bytes[2] << 16U) |
+         ((uint32_t)bytes[3] << k_elf_word_high_shift);
+}
+
+/**
+ * @brief Read and validate the ELF32 ARM header and program-table geometry.
+ * @details Rejects wrong magic, class, byte order, machine, and table bounds.
+ * @param[in] source Open source to inspect.
+ * @param[out] table Receives validated program-header geometry.
+ * @param[out] machine Receives e_machine when the fixed header was readable.
+ * @return Whether the source is ELF32 ARM with a wholly bounded table.
+ * @retval true Both the fixed header and complete table geometry are valid.
+ * @retval false The source read or any validation failed.
+ * @pre @p table and @p machine are non-null.
+ * @pre @p source remains open during the exact header read.
+ * @post Success initializes both outputs.
+ * @post Failure performs no out-of-range read.
+ * @note Uses only a 52-byte stack view.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_program_table(const emu_elf_source_t*  source,
+                                                emu_elf_program_table_t* table,
+                                                uint16_t*                machine)
+{
+  uint8_t        bytes[k_elf_ehdr_size] = {};
+  emu_elf_view_t view                   = {};
+  if (priv_emu_elf_read(source, 0U, sizeof(bytes), bytes, sizeof(bytes), &view).status !=
+      k_emu_elf_io_ok) {
+    return false;
+  }
+  *machine = internal_u16(&bytes[k_elf_e_machine_off]);
+  if ((memcmp(bytes,
               "\x7F"
               "ELF",
-              4) != 0) ||
-      (elf[4] != 1) /* ELFCLASS32 */) {
-    (void)fprintf(stderr, "not a 32-bit ELF\n");
-    return -1;
+              4U) != 0) ||
+      (bytes[4] != 1U) || (bytes[k_elf_data_offset] != 1U) ||
+      (*machine != (uint16_t)k_elf_em_arm)) {
+    return false;
   }
-  const uint16_t e_machine =
-    (uint16_t)(elf[k_elf_e_machine_off] | (elf[k_elf_e_machine_off + 1U] << 8));
-  if (e_machine != (uint16_t)k_elf_em_arm) {
-    (void)fprintf(stderr, "ELF e_machine %u != ARM(40)\n", e_machine);
-    return -1;
+  const emu_elf_program_table_t decoded = {
+    .offset     = internal_u32(&bytes[k_elf_e_phoff_off]),
+    .entry_size = internal_u16(&bytes[k_elf_e_phentsize_off]),
+    .count      = internal_u16(&bytes[k_elf_e_phnum_off]),
+  };
+  const uint64_t table_bytes = (uint64_t)decoded.entry_size * decoded.count;
+  if (((decoded.count != 0U) && (decoded.entry_size < k_elf_program_header_min)) ||
+      ((uint64_t)decoded.offset > source->length) ||
+      (table_bytes > (source->length - decoded.offset))) {
+    return false;
   }
-  uint32_t phoff = 0U;
-  (void)memcpy(&phoff, elf + (uint32_t)k_elf_e_phoff_off, 4);
-  uint16_t phentsize =
-    (uint16_t)(elf[k_elf_e_phentsize_off] | (elf[k_elf_e_phentsize_off + 1U] << 8));
-  uint16_t phnum  = (uint16_t)(elf[k_elf_e_phnum_off] | (elf[k_elf_e_phnum_off + 1U] << 8));
-  int      loaded = 0;
-  for (uint16_t i = 0U; i < phnum; i++) {
-    const uint8_t* ph = elf + phoff + ((size_t)(uint32_t)i * phentsize);
-    uint32_t       p_type;
-    uint32_t       p_offset;
-    uint32_t       p_paddr;
-    uint32_t       p_filesz;
-    (void)memcpy(&p_type, ph + 0, 4);
-    (void)memcpy(&p_offset, ph + 4, 4);
-    (void)memcpy(&p_paddr, ph + (uint32_t)k_elf_ph_paddr_off, 4); /* load address (LMA) */
-    (void)memcpy(&p_filesz, ph + 16, 4);
-    if ((p_type != 1U /* PT_LOAD */) || (p_filesz == 0U)) {
-      continue;
-    }
-    if (uc_mem_write(uc, p_paddr, elf + p_offset, p_filesz) != UC_ERR_OK) {
-      (void)fprintf(stderr, "uc_mem_write seg @0x%08X (%u bytes) failed\n", p_paddr, p_filesz);
-      return -1;
-    }
-    (void)fprintf(stderr, "  loaded %u bytes @ 0x%08X\n", p_filesz, p_paddr);
-    loaded++;
-  }
-  return (loaded > 0) ? 0 : -1;
+  *table = decoded;
+  return true;
 }
 
-uint32_t elf_vector_base(const uint8_t* elf, long len)
+/**
+ * @brief Decode one bounds-checked PT_LOAD entry.
+ * @details Reads only the fixed ELF32 header prefix and validates its payload
+ * range.
+ * @param[in] source Open ELF source.
+ * @param[in] table Validated program-table geometry.
+ * @param[in] index Entry index below `table->count`.
+ * @param[out] segment Receives the decoded PT_LOAD descriptor.
+ * @return True only for a non-empty, wholly bounded PT_LOAD entry.
+ * @retval true A usable load segment was published.
+ * @retval false The entry is unreadable, not loadable, empty, or out of range.
+ * @pre All pointers are non-null and @p index is in range.
+ * @pre @p source remains open during the exact read.
+ * @post Success publishes no borrowed byte pointer.
+ * @post Malformed/non-load entries leave @p segment untouched.
+ * @note Uses only 32 bytes of stack scratch.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_load_segment(const emu_elf_source_t*        source,
+                                               const emu_elf_program_table_t* table,
+                                               uint16_t                       index,
+                                               elf_exec_segment_t*            segment)
 {
-  if ((elf == nullptr) || (len < (long)k_elf_ehdr_size)) {
-    return 0U;
+  uint8_t        bytes[k_elf_program_header_min] = {};
+  emu_elf_view_t view                            = {};
+  const uint64_t entry = (uint64_t)table->offset + ((uint64_t)index * table->entry_size);
+  if (priv_emu_elf_read(source, entry, sizeof(bytes), bytes, sizeof(bytes), &view).status !=
+      k_emu_elf_io_ok) {
+    return false;
   }
-  uint32_t phoff = 0U;
-  (void)memcpy(&phoff, elf + (uint32_t)k_elf_e_phoff_off, 4);
-  const uint16_t phentsize = (uint16_t)(elf[42] | (elf[43] << 8));
-  const uint16_t phnum     = (uint16_t)(elf[44] | (elf[45] << 8));
-  if (((uint64_t)phoff + ((uint64_t)phnum * (uint64_t)phentsize)) > (uint64_t)len) {
-    return 0U;
+  const uint32_t type   = internal_u32(bytes);
+  const uint32_t offset = internal_u32(&bytes[k_elf_ph_offset_off]);
+  const uint32_t filesz = internal_u32(&bytes[k_elf_ph_filesz_off]);
+  if ((type != (uint32_t)k_elf_pt_load) || (filesz == 0U) || ((uint64_t)offset > source->length) ||
+      ((uint64_t)filesz > (source->length - offset))) {
+    return false;
   }
-  uint32_t min_vaddr = 0U;
-  bool     found     = false;
-  for (uint16_t i = 0U; i < phnum; i++) {
-    const uint8_t* ph       = elf + phoff + ((size_t)(uint32_t)i * phentsize);
-    uint32_t       p_type   = 0U;
-    uint32_t       p_vaddr  = 0U;
-    uint32_t       p_filesz = 0U;
-    uint32_t       p_flags  = 0U;
-    (void)memcpy(&p_type, ph + 0, 4);
-    (void)memcpy(&p_vaddr, ph + (uint32_t)k_elf_ph_vaddr_off, 4);
-    (void)memcpy(&p_filesz, ph + (uint32_t)k_elf_ph_filesz_off, 4);
-    (void)memcpy(&p_flags, ph + (uint32_t)k_elf_ph_flags_off, 4);
-    if ((p_type != (uint32_t)k_elf_pt_load) || (p_filesz == 0U) ||
-        ((p_flags & (uint32_t)k_elf_pf_x) == 0U)) {
-      continue;
-    }
-    if (!found || (p_vaddr < min_vaddr)) {
-      min_vaddr = p_vaddr;
-      found     = true;
-    }
-  }
-  return found ? min_vaddr : 0U;
+  *segment = (elf_exec_segment_t){
+    .source = source,
+    .offset = offset,
+    .vaddr  = internal_u32(&bytes[k_elf_ph_vaddr_off]),
+    .paddr  = internal_u32(&bytes[k_elf_ph_paddr_off]),
+    .filesz = filesz,
+    .flags  = internal_u32(&bytes[k_elf_ph_flags_off]),
+  };
+  return true;
 }
 
-uint32_t elf_foreach_exec_segment(const uint8_t* elf, long len, elf_exec_segment_fn fn, void* ctx)
+uint32_t elf_foreach_load_segment(const emu_elf_source_t* elf, elf_exec_segment_fn fn, void* ctx)
 {
-  if ((elf == nullptr) || (fn == nullptr) || (len < (long)k_elf_ehdr_size)) {
+  if ((elf == nullptr) || (fn == nullptr)) {
     return 0U;
   }
-  uint32_t phoff = 0U;
-  (void)memcpy(&phoff, elf + (uint32_t)k_elf_e_phoff_off, 4);
-  const uint16_t phentsize = (uint16_t)(elf[42] | (elf[43] << 8));
-  const uint16_t phnum     = (uint16_t)(elf[44] | (elf[45] << 8));
-  if (((uint64_t)phoff + ((uint64_t)phnum * (uint64_t)phentsize)) > (uint64_t)len) {
-    return 0U; /* truncated program-header table -- refuse to walk past the file. */
+  emu_elf_program_table_t table   = {};
+  uint16_t                machine = 0U;
+  if (!internal_program_table(elf, &table, &machine)) {
+    return 0U;
   }
-
   uint32_t visited = 0U;
-  for (uint16_t i = 0U; i < phnum; i++) {
-    const uint8_t* ph       = elf + phoff + ((size_t)(uint32_t)i * phentsize);
-    uint32_t       p_type   = 0U;
-    uint32_t       p_offset = 0U;
-    uint32_t       p_vaddr  = 0U;
-    uint32_t       p_filesz = 0U;
-    uint32_t       p_flags  = 0U;
-    (void)memcpy(&p_type, ph + 0, 4);
-    (void)memcpy(&p_offset, ph + (uint32_t)k_elf_ph_offset_off, 4);
-    (void)memcpy(&p_vaddr, ph + (uint32_t)k_elf_ph_vaddr_off, 4);
-    (void)memcpy(&p_filesz, ph + (uint32_t)k_elf_ph_filesz_off, 4);
-    (void)memcpy(&p_flags, ph + (uint32_t)k_elf_ph_flags_off, 4);
-    const bool executable = ((p_flags & (uint32_t)k_elf_pf_x) != 0U);
-    if ((p_type != (uint32_t)k_elf_pt_load) || (p_filesz == 0U) || !executable) {
+  for (uint16_t index = 0U; index < table.count; index++) {
+    elf_exec_segment_t segment = {};
+    if (!internal_load_segment(elf, &table, index, &segment)) {
       continue;
     }
-    if (((uint64_t)p_offset + (uint64_t)p_filesz) > (uint64_t)len) {
-      continue; /* truncated / out-of-file segment -- skip. */
-    }
-    const elf_exec_segment_t seg = {.bytes = elf + p_offset, .vaddr = p_vaddr, .filesz = p_filesz};
     visited++;
-    if (!fn(&seg, ctx)) {
+    if (!fn(&segment, ctx)) {
       break;
     }
   }
   return visited;
 }
 
-/**
- * @struct elf_symtab_t
- * @brief Where one SHT_SYMTAB section and its string table live in the image.
- *
- * @details
- * Decoded once from a section header so the symbol scan below works from plain
- * offsets instead of re-reading header fields inside its loop.
- *
- * @invariant `entsize` is non-zero, so `count` is always well defined.
- * @see elf_symtab_decode  Fills this in from a section header.
- * @see elf_symtab_find    Consumes it.
- */
+/** @brief Context for streaming PT_LOAD bytes into one Unicorn engine. */
 typedef struct {
-  uint32_t sym_off; /**< File offset of the symbol array.        */
-  uint32_t entsize; /**< Bytes per symbol entry (>= 16).         */
-  uint32_t count;   /**< Symbol entries in the table.            */
-  uint32_t str_off; /**< File offset of the linked string table. */
-} elf_symtab_t;
+  uc_engine* uc;     /**< Destination engine.              */
+  uint32_t   loaded; /**< Completely transferred segments. */
+  bool       failed; /**< Sticky read/write failure.       */
+} emu_elf_load_ctx_t;
 
 /**
- * @brief Decode a section header into ::elf_symtab_t if it is a usable SYMTAB.
- *
- * @param[in]  elf       Base of the mapped ELF image.
- * @param[in]  sh        Section header to decode.
- * @param[in]  shoff     File offset of the section-header table.
- * @param[in]  shentsize Bytes per section header.
- * @param[in]  shnum     Section-header count, bounding the `sh_link` index.
- * @param[out] out       Receives the decoded table on success.
- *
- * @return True when `sh` is an SHT_SYMTAB whose entry size and string-table
- *         link are both usable; false otherwise (the caller skips the section).
- *
- * @pre `elf` and `out` are non-NULL.
- * @pre `sh` points inside the image (the caller bounds-checks it).
- * @post On true, `out->entsize` is non-zero.
- * @post On false, `*out` is untouched.
- *
- * @note Not thread-safe with respect to the image it reads.
+ * @brief Stream one PT_LOAD segment into Unicorn in bounded chunks.
+ * @details Alternates exact positioned reads and Unicorn writes until complete.
+ * @param[in] segment Bounds-checked load segment.
+ * @param[in,out] opaque ::emu_elf_load_ctx_t destination state.
+ * @return True to continue, false on the first transfer failure.
+ * @retval true Every source byte was written successfully.
+ * @retval false A source read or Unicorn write failed.
+ * @pre Both pointers are non-null and the engine target is mapped.
+ * @pre @p segment source remains open.
+ * @post Success writes every segment byte at its LMA.
+ * @post Failure sets the sticky context flag and emits one diagnostic.
+ * @note Stack scratch is fixed at 4096 bytes regardless of segment size.
+ * @since 0.1.0
  */
-static bool elf_symtab_decode(const uint8_t* elf,
-                              const uint8_t* sh,
-                              uint32_t       shoff,
-                              uint16_t       shentsize,
-                              uint16_t       shnum,
-                              elf_symtab_t*  out)
+RA8_INTERNAL static bool internal_stream_segment(const elf_exec_segment_t* segment, void* opaque)
 {
-  uint32_t sh_type = 0U;
-  (void)memcpy(&sh_type, sh + 4, 4);
-  if (sh_type != 2U /* SHT_SYMTAB */) {
-    return false;
+  emu_elf_load_ctx_t* const ctx = (emu_elf_load_ctx_t*)opaque;
+  uint8_t                   scratch[k_elf_stream_scratch];
+  uint32_t                  done = 0U;
+  while (done < segment->filesz) {
+    const uint32_t            remain = segment->filesz - done;
+    const size_t              chunk = (remain < sizeof(scratch)) ? (size_t)remain : sizeof(scratch);
+    emu_elf_view_t            view  = {};
+    const emu_elf_io_result_t read  = priv_emu_elf_read(segment->source,
+                                                        (uint64_t)segment->offset + done,
+                                                        chunk,
+                                                        scratch,
+                                                        sizeof(scratch),
+                                                        &view);
+    if ((read.status != k_emu_elf_io_ok) ||
+        (emu_mem_write(ctx->uc, (uint64_t)segment->paddr + done, view.bytes, chunk) != UC_ERR_OK)) {
+      (void)priv_emu_io_errf("uc_mem_write seg @0x%08X (%u bytes) failed\n",
+                             segment->paddr,
+                             segment->filesz);
+      ctx->failed = true;
+      return false;
+    }
+    done += (uint32_t)chunk;
   }
-  uint32_t sym_off     = 0U;
-  uint32_t sym_size    = 0U;
-  uint32_t sym_link    = 0U;
-  uint32_t sym_entsize = 0U;
-  (void)memcpy(&sym_off, sh + 16, 4);
-  (void)memcpy(&sym_size, sh + (uint32_t)k_elf_sh_size_off, 4);
-  (void)memcpy(&sym_link, sh + (uint32_t)k_elf_sh_link_off, 4);
-  (void)memcpy(&sym_entsize, sh + (uint32_t)k_elf_sh_entsize_off, 4);
-  if ((sym_entsize < 16U) || (sym_link >= shnum)) {
-    return false;
-  }
-  const uint8_t* strsh   = elf + shoff + ((size_t)(uint32_t)sym_link * shentsize);
-  uint32_t       str_off = 0U;
-  (void)memcpy(&str_off, strsh + 16, 4);
-
-  out->sym_off = sym_off;
-  out->entsize = sym_entsize;
-  out->count   = sym_size / sym_entsize;
-  out->str_off = str_off;
+  (void)priv_emu_io_errf("  loaded %u bytes @ 0x%08X\n", segment->filesz, segment->paddr);
+  ctx->loaded++;
   return true;
 }
 
+int load_elf(uc_engine* uc, const emu_elf_source_t* elf)
+{
+  emu_elf_program_table_t table   = {};
+  uint16_t                machine = 0U;
+  if (!internal_program_table(elf, &table, &machine)) {
+    if ((machine == 0U) || (machine == (uint16_t)k_elf_em_arm)) {
+      (void)priv_emu_io_errf("not a 32-bit ELF\n");
+    } else {
+      (void)priv_emu_io_errf("ELF e_machine %u != ARM(40)\n", machine);
+    }
+    return -1;
+  }
+  emu_elf_load_ctx_t ctx = {.uc = uc};
+  (void)elf_foreach_load_segment(elf, internal_stream_segment, &ctx);
+  return (!ctx.failed && (ctx.loaded > 0U)) ? 0 : -1;
+}
+
+uint32_t elf_foreach_exec_segment(const emu_elf_source_t* elf, elf_exec_segment_fn fn, void* ctx)
+{
+  if ((elf == nullptr) || (fn == nullptr)) {
+    return 0U;
+  }
+  emu_elf_program_table_t table   = {};
+  uint16_t                machine = 0U;
+  if (!internal_program_table(elf, &table, &machine)) {
+    return 0U;
+  }
+  uint32_t visited = 0U;
+  for (uint16_t index = 0U; index < table.count; index++) {
+    elf_exec_segment_t segment = {};
+    if (!internal_load_segment(elf, &table, index, &segment) ||
+        ((segment.flags & (uint32_t)k_elf_pf_x) == 0U)) {
+      continue;
+    }
+    visited++;
+    if (!fn(&segment, ctx)) {
+      break;
+    }
+  }
+  return visited;
+}
+
+/** @brief Accumulator for the lowest executable segment VMA. */
+typedef struct {
+  uint32_t base;  /**< Current lowest VMA.           */
+  bool     found; /**< Whether any segment was seen. */
+} emu_elf_vector_ctx_t;
+
 /**
- * @brief Find `name` in one decoded symbol table.
- *
- * @param[in]  elf      Base of the mapped ELF image.
- * @param[in]  len      Image length in bytes, bounding every read.
- * @param[in]  name     Symbol name to match.
- * @param[in]  nlen     `strlen(name) + 1`, so the NUL is compared too.
- * @param[in]  st       Table to search.
- * @param[out] size_out Receives `st_size` on a hit; may be NULL.
- *
- * @return The symbol's value with the Thumb bit cleared, or 0 when absent.
- *
- * @pre `elf`, `name` and `st` are non-NULL.
- * @pre `st->entsize` is non-zero.
- * @post `*size_out` is written only on a hit.
- * @post Every read stays inside the first `len` bytes of the image.
- *
- * @note Not thread-safe with respect to the image it reads.
+ * @brief Fold one executable segment into the lowest-VMA accumulator.
+ * @details Replaces the candidate only when this segment has a lower VMA.
+ * @param[in] segment Bounds-checked executable segment.
+ * @param[in,out] opaque ::emu_elf_vector_ctx_t accumulator.
+ * @return Whether the executable-segment walk should continue.
+ * @retval true Every valid segment is accepted for comparison.
+ * @pre @p segment is non-null.
+ * @pre @p opaque points to a writable accumulator.
+ * @post The accumulator retains the lowest VMA seen so far.
+ * @post No source or emulator state changes.
+ * @note Pure apart from the caller-owned accumulator.
+ * @since 0.1.0
  */
-static uint32_t elf_symtab_find(const uint8_t*      elf,
-                                long                len,
-                                const char*         name,
-                                size_t              nlen,
-                                const elf_symtab_t* st,
-                                uint32_t*           size_out)
+RA8_INTERNAL static bool internal_vector_segment(const elf_exec_segment_t* segment, void* opaque)
 {
-  for (uint32_t s = 0U; s < st->count; s++) {
-    const uint8_t* sym = elf + st->sym_off + ((size_t)s * st->entsize);
-    if (((size_t)(sym - elf) + 16U) > (size_t)len) {
-      break;
-    }
-    uint32_t st_name  = 0U;
-    uint32_t st_value = 0U;
-    uint32_t st_size  = 0U;
-    (void)memcpy(&st_name, sym + 0, 4);
-    (void)memcpy(&st_value, sym + 4, 4);
-    (void)memcpy(&st_size, sym + 8, 4);
-    const size_t pos = (size_t)st->str_off + (size_t)st_name;
-    if ((st_name == 0U) || ((pos + nlen) > (size_t)len)) {
-      continue;
-    }
-    if (memcmp(elf + pos, name, nlen) == 0) {
-      if (size_out != nullptr) {
-        *size_out = st_size;
-      }
-      return st_value & ~1U; /* clear the Thumb bit for the hook address. */
-    }
+  emu_elf_vector_ctx_t* const ctx = (emu_elf_vector_ctx_t*)opaque;
+  if (!ctx->found || (segment->vaddr < ctx->base)) {
+    ctx->base  = segment->vaddr;
+    ctx->found = true;
   }
-  return 0U;
+  return true;
 }
 
-uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name, uint32_t* size_out)
+uint32_t elf_vector_base(const emu_elf_source_t* elf)
 {
-  if (size_out != nullptr) {
-    *size_out = 0U;
-  }
-  if (len < (long)k_elf_ehdr_size) {
-    return 0U;
-  }
-  uint32_t shoff = 0U;
-  (void)memcpy(&shoff, elf + 32, 4);
-  const uint16_t shentsize = (uint16_t)(elf[46] | (elf[47] << 8));
-  const uint16_t shnum     = (uint16_t)(elf[48] | (elf[49] << 8));
-  const size_t   nlen      = strlen(name) + 1U;
-  if ((shoff == 0U) || (shentsize < (uint32_t)k_elf_shentsize_min)) {
-    return 0U;
-  }
-  for (uint16_t i = 0U; i < shnum; i++) {
-    const uint8_t* sh = elf + shoff + ((size_t)(uint32_t)i * shentsize);
-    if (((size_t)(sh - elf) + (size_t)k_elf_shentsize_min) > (size_t)len) {
-      break;
-    }
-    elf_symtab_t st = {};
-    if (!elf_symtab_decode(elf, sh, shoff, shentsize, shnum, &st)) {
-      continue;
-    }
-    const uint32_t hit = elf_symtab_find(elf, len, name, nlen, &st, size_out);
-    if (hit != 0U) {
-      return hit;
-    }
-  }
-  return 0U;
-}
-
-/** @brief Implementation of `warm_reboot()` -- PT_LOAD re-write + model resets. */
-uint32_t warm_reboot(uc_engine* uc, const uint8_t* elf, long len, bool trace)
-{
-  /* 1. Restore the code + .data initial image from the ELF PT_LOAD segments.
-   * The same elf/len loaded successfully at startup, so a failure here means the
-   * engine's memory writes started failing -- report and return PC=0 so the
-   * caller ends the run rather than execute a stale image. */
-  if (load_elf(uc, elf, len) != 0) {
-    (void)fprintf(stderr, "ra8_emulator: warm_reboot: load_elf failed -- ending run\n");
-    return 0U;
-  }
-
-  /* 2. Reset the peripheral + network models (RSTSRn / VBATT backup survive). */
-  board_periph_init(trace);
-  board_net_init(trace);
-
-  /* 3. Clear host-side exception / scheduler bookkeeping. */
-  emu_exc_reset();
-  emu_mpu_clear_fault();
-  emu_div0_clear_fault();
-  emu_div0_disarm(); /* a warm reboot re-loads the image, un-patching sites. */
-  /* Clear the multi-channel console store + the in-flight ITM line, and reset
-   * the tabbed-console view so the rebooted firmware starts with an empty
-   * console on the ALL tab (the SCI model's own reset clears its line buffers). */
-  board_console_reset();
-  emu_console_reset();
-  emu_view_reset_console();
-
-  /* 4. Re-read the Cortex-M reset vector (SP = vectors[0], PC = vectors[1]). */
-  uint32_t sp = 0U;
-  uint32_t pc = 0U;
-  (void)uc_mem_read(uc, emu_memmap_mram_base() + 0U, &sp, 4);
-  (void)uc_mem_read(uc, emu_memmap_mram_base() + 4U, &pc, 4);
-  pc |= 1U; /* Thumb */
-  uint32_t xpsr = (uint32_t)k_xpsr_t_bit;
-  (void)uc_reg_write(uc, UC_ARM_REG_SP, &sp);
-  (void)uc_reg_write(uc, UC_ARM_REG_PC, &pc);
-  (void)uc_reg_write(uc, UC_ARM_REG_XPSR, &xpsr);
-  (void)fprintf(stderr, "ra8_emulator: warm reboot -- reset SP=0x%08X PC=0x%08X\n", sp, pc);
-  return pc;
+  emu_elf_vector_ctx_t ctx = {};
+  (void)elf_foreach_exec_segment(elf, internal_vector_segment, &ctx);
+  return ctx.found ? ctx.base : 0U;
 }

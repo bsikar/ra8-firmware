@@ -38,6 +38,7 @@
 #include <stdio.h>
 
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief RSTSR1 window geometry (ra8_reset_regs.h). */
 typedef enum : uint64_t {
@@ -136,16 +137,35 @@ void board_periph_reset_set_cause(bool power_on, bool software, bool watchdog, b
   }
 }
 
-/** @brief Reset hook: the cause flags are sticky, so this preserves them. */
-static void reset_reset(void)
+/**
+ * @brief Reset hook: the cause flags are sticky, so this preserves them.
+ * @details Reset hook: the cause flags are sticky, so this preserves them; this step is contained within the board periph reset model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for reset reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph reset model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_reset_reset(void)
 {
   /* Intentionally a no-op: the RSTSRn flags must survive a warm reboot so the
    * firmware can read the cause that triggered it. They clear only at process
    * start (static init) where the constructor seeds PORF. */
 }
 
-/** @brief MMIO read inside the RSTSR1 window. */
-static uint64_t reset1_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the RSTSR1 window.
+ * @details MMIO read inside the rstsr1 window; this step is contained within the board periph reset model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The reset1 read result produced by the board periph reset model.
+ * @retval value The operation-specific reset1 read value.
+ * @pre Arguments satisfy the ranges documented for reset1 read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph reset model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_reset1_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)addr;
@@ -153,8 +173,20 @@ static uint64_t reset1_read(uc_engine* uc, uint64_t addr, unsigned size)
   return s_rstsr1;
 }
 
-/** @brief MMIO write inside the RSTSR1 window (write-0-to-clear flags). */
-static void reset1_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the RSTSR1 window (write-0-to-clear flags).
+ * @details MMIO write inside the rstsr1 window (write-0-to-clear flags); this step is contained within the board periph reset model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for reset1 write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph reset model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_reset1_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)addr;
@@ -163,8 +195,20 @@ static void reset1_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t v
   s_rstsr1 &= (uint32_t)value;
 }
 
-/** @brief MMIO read inside the RSTSR0 / RSTSR2 / RSTSR3 window. */
-static uint64_t reset0_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the RSTSR0 / RSTSR2 / RSTSR3 window.
+ * @details MMIO read inside the rstsr0 / rstsr2 / rstsr3 window; this step is contained within the board periph reset model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The reset0 read result produced by the board periph reset model.
+ * @retval value The operation-specific reset0 read value.
+ * @pre Arguments satisfy the ranges documented for reset0 read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph reset model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_reset0_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -181,8 +225,20 @@ static uint64_t reset0_read(uc_engine* uc, uint64_t addr, unsigned size)
   return 0U;
 }
 
-/** @brief MMIO write inside the RSTSR0 / RSTSR2 / RSTSR3 window. */
-static void reset0_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the RSTSR0 / RSTSR2 / RSTSR3 window.
+ * @details MMIO write inside the rstsr0 / rstsr2 / rstsr3 window; this step is contained within the board periph reset model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for reset0 write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph reset model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_reset0_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
@@ -196,42 +252,48 @@ static void reset0_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t v
   }
 }
 
-/** @brief End-of-run reset section: the latched cause flags. */
-static void reset_report(void)
+/**
+ * @brief End-of-run reset section: the latched cause flags.
+ * @details End-of-run reset section: the latched cause flags; this step is contained within the board periph reset model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for reset report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph reset model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_reset_report(void)
 {
   if ((s_rstsr1 == 0U) && ((s_rstsr0 & (uint8_t)k_rstsr0_porf) == 0U)) {
     return; /* nothing notable to report */
   }
-  (void)fprintf(stderr,
-                "  RESET-CAUSE   : RSTSR0=0x%02X RSTSR1=0x%08X (%s%s%s%s)\n",
-                (unsigned)s_rstsr0,
-                s_rstsr1,
-                ((s_rstsr0 & (uint8_t)k_rstsr0_porf) != 0U) ? "POR " : "",
-                ((s_rstsr1 & (uint32_t)k_rstsr1_swrf) != 0U) ? "SW " : "",
-                ((s_rstsr1 & (uint32_t)k_rstsr1_wdtrf) != 0U) ? "WDT " : "",
-                ((s_rstsr1 & (uint32_t)k_rstsr1_iwdtrf) != 0U) ? "IWDT " : "");
+  (void)priv_emu_io_errf("  RESET-CAUSE   : RSTSR0=0x%02X RSTSR1=0x%08X (%s%s%s%s)\n",
+                         (unsigned)s_rstsr0,
+                         s_rstsr1,
+                         ((s_rstsr0 & (uint8_t)k_rstsr0_porf) != 0U) ? "POR " : "",
+                         ((s_rstsr1 & (uint32_t)k_rstsr1_swrf) != 0U) ? "SW " : "",
+                         ((s_rstsr1 & (uint32_t)k_rstsr1_wdtrf) != 0U) ? "WDT " : "",
+                         ((s_rstsr1 & (uint32_t)k_rstsr1_iwdtrf) != 0U) ? "IWDT " : "");
 }
 
 /** @brief RSTSR1 block descriptor (owns the report). */
-static const board_periph_block_t k_reset1_block = {
+static const board_periph_block_t s_k_reset1_block = {
   .base   = (uint64_t)k_rstsr1_base,
   .span   = (uint64_t)k_rstsr1_span,
   .order  = (uint32_t)k_reset_block_order,
-  .read   = reset1_read,
-  .write  = reset1_write,
+  .read   = internal_reset1_read,
+  .write  = internal_reset1_write,
   .tick   = nullptr,
-  .reset  = reset_reset,
-  .report = reset_report,
+  .reset  = internal_reset_reset,
+  .report = internal_reset_report,
   .name   = "RESET-RSTSR1",
 };
 
 /** @brief RSTSR0 / RSTSR2 / RSTSR3 block descriptor. */
-static const board_periph_block_t k_reset0_block = {
+static const board_periph_block_t s_k_reset0_block = {
   .base   = (uint64_t)k_rstsr0_base,
   .span   = (uint64_t)k_rstsr0_span,
   .order  = (uint32_t)k_reset_block_order,
-  .read   = reset0_read,
-  .write  = reset0_write,
+  .read   = internal_reset0_read,
+  .write  = internal_reset0_write,
   .tick   = nullptr,
   .reset  = nullptr,
   .report = nullptr,
@@ -239,9 +301,9 @@ static const board_periph_block_t k_reset0_block = {
 };
 
 /** @brief Register the reset-status windows + seed PORF (cold boot). */
-[[gnu::constructor]] static void reset_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_reset_block_register(void)
 {
   s_rstsr0 |= (uint8_t)k_rstsr0_porf; /* first-ever boot is a power-on reset */
-  board_periph_register_block(&k_reset1_block);
-  board_periph_register_block(&k_reset0_block);
+  board_periph_register_block(&s_k_reset1_block);
+  board_periph_register_block(&s_k_reset0_block);
 }

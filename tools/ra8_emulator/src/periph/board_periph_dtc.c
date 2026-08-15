@@ -53,6 +53,7 @@
 
 #include "board_console.h"
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief Console-tap line buffer capacity for a DTC transfer summary. */
 typedef enum : uint32_t {
@@ -148,8 +149,18 @@ static dtc_state_t s_dtc;
  */
 static uint8_t s_elc[k_elc_span];
 
-/** @brief Bytes per unit for an MRA.SZ code (defaults to byte width). */
-static uint32_t dtc_unit_bytes(uint32_t sz_code)
+/**
+ * @brief Bytes per unit for an MRA.SZ code (defaults to byte width).
+ * @details Bytes per unit for an mra.sz code (defaults to byte width); this step is contained within the board periph DTC model and uses bounded caller or module-owned storage.
+ * @param[in] sz_code Sz code input used by the operation.
+ * @return The DTC unit bytes result produced by the board periph DTC model.
+ * @retval value The operation-specific DTC unit bytes value.
+ * @pre Arguments satisfy the ranges documented for DTC unit bytes. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_dtc_unit_bytes(uint32_t sz_code)
 {
   if (sz_code == (uint32_t)k_mra_sz_word) {
     return 4U;
@@ -160,11 +171,23 @@ static uint32_t dtc_unit_bytes(uint32_t sz_code)
   return 1U;
 }
 
-/** @brief Read a little-endian word of @p bytes from emulated memory. */
-static uint32_t dtc_mem_read(uc_engine* uc, uint64_t addr, uint32_t bytes)
+/**
+ * @brief Read a little-endian word of @p bytes from emulated memory.
+ * @details Read a little-endian word of @p bytes from emulated memory; this step is contained within the board periph DTC model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] bytes Byte storage transferred by the operation.
+ * @return The DTC mem read result produced by the board periph DTC model.
+ * @retval value The operation-specific DTC mem read value.
+ * @pre Arguments satisfy the ranges documented for DTC mem read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_dtc_mem_read(uc_engine* uc, uint64_t addr, uint32_t bytes)
 {
   uint32_t v = 0U;
-  (void)uc_mem_read(uc, addr, &v, (size_t)bytes);
+  (void)emu_mem_read(uc, addr, &v, (size_t)bytes);
   return v;
 }
 
@@ -178,14 +201,14 @@ static uint32_t dtc_mem_read(uc_engine* uc, uint64_t addr, uint32_t bytes)
  * named terms rather than re-deriving shifts at each use.
  */
 typedef struct {
-  uint32_t sar; /**< SAR source address.                             */
-  uint32_t dar; /**< DAR destination address.                        */
-  uint32_t cra; /**< CRA transfer count (block size in block mode).  */
-  uint32_t crb; /**< CRB block count.                                */
-  uint32_t md;  /**< MRA.MD transfer mode (normal / repeat / block). */
-  uint32_t sz;  /**< MRA.SZ unit-width code (see ::dtc_unit_bytes).  */
-  uint32_t sm;  /**< MRA.SM source address mode.                     */
-  uint32_t dm;  /**< MRB.DM destination address mode.                */
+  uint32_t sar; /**< SAR source address.                                     */
+  uint32_t dar; /**< DAR destination address.                                */
+  uint32_t cra; /**< CRA transfer count (block size in block mode).          */
+  uint32_t crb; /**< CRB block count.                                        */
+  uint32_t md;  /**< MRA.MD transfer mode (normal / repeat / block).         */
+  uint32_t sz;  /**< MRA.SZ unit-width code (see ::internal_dtc_unit_bytes). */
+  uint32_t sm;  /**< MRA.SM source address mode.                             */
+  uint32_t dm;  /**< MRB.DM destination address mode.                        */
 } dtc_ti_t;
 
 /**
@@ -199,14 +222,16 @@ typedef struct {
  * @post Every field of @p out is written.
  * @post Emulated memory is unchanged (reads only).
  * @note Not thread-safe.
+  * @details Read and decode the ti block at @p ti_addr into @p out; this step is contained within the board periph DTC model and uses bounded caller or module-owned storage.
+ * @since 0.1.0
  */
-static void dtc_decode_ti(uc_engine* uc, uint32_t ti_addr, dtc_ti_t* out)
+RA8_INTERNAL static void internal_dtc_decode_ti(uc_engine* uc, uint32_t ti_addr, dtc_ti_t* out)
 {
-  const uint32_t mr = dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_mr, 4U);
-  out->sar          = dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_sar, 4U);
-  out->dar          = dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_dar, 4U);
-  out->crb          = dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_crb, 2U);
-  out->cra          = dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_cra, 2U);
+  const uint32_t mr = internal_dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_mr, 4U);
+  out->sar          = internal_dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_sar, 4U);
+  out->dar          = internal_dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_dar, 4U);
+  out->crb          = internal_dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_crb, 2U);
+  out->cra          = internal_dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_cra, 2U);
 
   const uint32_t mra = (mr >> (uint32_t)k_mr_mra_shift) & (uint32_t)k_mr_byte_mask;
   const uint32_t mrb = (mr >> (uint32_t)k_mr_mrb_shift) & (uint32_t)k_mr_byte_mask;
@@ -233,8 +258,9 @@ static void dtc_decode_ti(uc_engine* uc, uint32_t ti_addr, dtc_ti_t* out)
  * @post The return value is 0 or a bounded loop count.
  * @post @p ti is unmodified.
  * @note Not thread-safe with respect to @p ti.
+  * @since 0.1.0
  */
-static uint32_t dtc_unit_count(const dtc_ti_t* ti)
+RA8_INTERNAL static uint32_t internal_dtc_unit_count(const dtc_ti_t* ti)
 {
   uint32_t per_block = ti->cra;
   uint32_t blocks    = 1U;
@@ -258,41 +284,52 @@ static uint32_t dtc_unit_count(const dtc_ti_t* ti)
  *
  * @param[in] uc    Unicorn engine holding the emulated memory.
  * @param[in] ti    Decoded descriptor supplying the addresses and modes.
- * @param[in] units Unit count to move (bounded by ::dtc_unit_count).
+ * @param[in] units Unit count to move (bounded by ::internal_dtc_unit_count).
  * @param[in] unit  Unit width in bytes (1, 2 or 4).
  * @pre @p uc and @p ti are non-null.
  * @pre @p unit is 1, 2 or 4, so the scratch buffer cannot overrun.
  * @post @p units units have been written at the destination.
  * @post @p ti is unmodified.
  * @note Not thread-safe.
+  * @since 0.1.0
  */
-static void dtc_copy_units(uc_engine* uc, const dtc_ti_t* ti, uint32_t units, uint32_t unit)
+RA8_INTERNAL static void
+internal_dtc_copy_units(uc_engine* uc, const dtc_ti_t* ti, uint32_t units, uint32_t unit)
 {
-  uint64_t       s_addr = (uint64_t)ti->sar;
-  uint64_t       d_addr = (uint64_t)ti->dar;
-  const uint64_t s_step = (ti->sm == (uint32_t)k_mr_addr_inc) ? (uint64_t)unit : 0U;
-  const uint64_t d_step = (ti->dm == (uint32_t)k_mr_addr_inc) ? (uint64_t)unit : 0U;
+  uint64_t       local_addr = (uint64_t)ti->sar;
+  uint64_t       d_addr     = (uint64_t)ti->dar;
+  const uint64_t local_step = (ti->sm == (uint32_t)k_mr_addr_inc) ? (uint64_t)unit : 0U;
+  const uint64_t d_step     = (ti->dm == (uint32_t)k_mr_addr_inc) ? (uint64_t)unit : 0U;
   for (uint32_t i = 0U; i < units; ++i) {
     uint8_t tmp[4] = {};
-    (void)uc_mem_read(uc, s_addr, tmp, (size_t)unit);
-    (void)uc_mem_write(uc, d_addr, tmp, (size_t)unit);
-    s_addr += s_step;
+    (void)emu_mem_read(uc, local_addr, tmp, (size_t)unit);
+    (void)emu_mem_write(uc, d_addr, tmp, (size_t)unit);
+    local_addr += local_step;
     d_addr += d_step;
   }
 }
 
-/** @brief Perform the SAR->DAR copy described by one TI block. */
-static void dtc_run_transfer(uc_engine* uc, uint32_t ti_addr)
+/**
+ * @brief Perform the SAR->DAR copy described by one TI block.
+ * @details Perform the sar->dar copy described by one ti block; this step is contained within the board periph DTC model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] ti_addr Address of the ti region.
+ * @pre Arguments satisfy the ranges documented for DTC run transfer. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_dtc_run_transfer(uc_engine* uc, uint32_t ti_addr)
 {
   dtc_ti_t ti = {};
-  dtc_decode_ti(uc, ti_addr, &ti);
+  internal_dtc_decode_ti(uc, ti_addr, &ti);
 
-  const uint32_t units = dtc_unit_count(&ti);
+  const uint32_t units = internal_dtc_unit_count(&ti);
   if (units == 0U) {
     return;
   }
-  const uint32_t unit = dtc_unit_bytes(ti.sz);
-  dtc_copy_units(uc, &ti, units, unit);
+  const uint32_t unit = internal_dtc_unit_bytes(ti.sz);
+  internal_dtc_copy_units(uc, &ti, units, unit);
 
   s_dtc.activations++;
   s_dtc.bytes = units * unit;
@@ -303,8 +340,16 @@ static void dtc_run_transfer(uc_engine* uc, uint32_t ti_addr)
   board_console_push(k_board_console_ch_dma, ln);
 }
 
-/** @brief Run the DTC for ELC software event 0 if a DTCE slot links it. */
-static void dtc_activate_swevt0(uc_engine* uc)
+/**
+ * @brief Run the DTC for ELC software event 0 if a DTCE slot links it.
+ * @details Run the dtc for elc software event 0 if a dtce slot links it; this step is contained within the board periph DTC model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for DTC activate swevt0. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_dtc_activate_swevt0(uc_engine* uc)
 {
   if (s_dtc.dtcvbr == 0U) {
     return; /* Vector base not programmed: nothing to activate. */
@@ -315,11 +360,11 @@ static void dtc_activate_swevt0(uc_engine* uc)
   }
   const uint64_t vt_entry =
     (uint64_t)s_dtc.dtcvbr + ((uint64_t)slot * (uint64_t)k_dtc_vt_entry_bytes);
-  const uint32_t ti_addr = dtc_mem_read(uc, vt_entry, 4U) & (uint32_t)k_dtc_ti_addr_mask;
+  const uint32_t ti_addr = internal_dtc_mem_read(uc, vt_entry, 4U) & (uint32_t)k_dtc_ti_addr_mask;
   if (ti_addr == 0U) {
     return; /* No TI registered for the slot. */
   }
-  dtc_run_transfer(uc, ti_addr);
+  internal_dtc_run_transfer(uc, ti_addr);
   /* Real silicon clears the slot's DTCE and asserts its CPU interrupt on the
    * last transfer (HUM Figure 18.5 p 801). The demo gates on the destination
    * settling (a direct poll), not the ISR, so the model performs the copy and
@@ -329,8 +374,15 @@ static void dtc_activate_swevt0(uc_engine* uc)
    * demo to match=Y. */
 }
 
-/** @brief Reset the DTC model (and the ELC shadow) to power-on state. */
-static void dtc_reset(void)
+/**
+ * @brief Reset the DTC model (and the ELC shadow) to power-on state.
+ * @details Reset the dtc model (and the elc shadow) to power-on state; this step is contained within the board periph DTC model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for DTC reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_dtc_reset(void)
 {
   s_dtc = (dtc_state_t){};
   for (uint32_t i = 0U; i < (uint32_t)k_elc_span; ++i) {
@@ -338,8 +390,20 @@ static void dtc_reset(void)
   }
 }
 
-/** @brief MMIO read inside the DTC control window. */
-static uint64_t dtc_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the DTC control window.
+ * @details MMIO read inside the dtc control window; this step is contained within the board periph DTC model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The DTC read result produced by the board periph DTC model.
+ * @retval value The operation-specific DTC read value.
+ * @pre Arguments satisfy the ranges documented for DTC read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_dtc_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -359,8 +423,20 @@ static uint64_t dtc_read(uc_engine* uc, uint64_t addr, unsigned size)
   return 0U;
 }
 
-/** @brief MMIO write inside the DTC control window. */
-static void dtc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the DTC control window.
+ * @details MMIO write inside the dtc control window; this step is contained within the board periph DTC model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for DTC write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_dtc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
@@ -376,8 +452,20 @@ static void dtc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
   }
 }
 
-/** @brief MMIO read inside the ELC window (transparent byte shadow). */
-static uint64_t elc_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the ELC window (transparent byte shadow).
+ * @details MMIO read inside the elc window (transparent byte shadow); this step is contained within the board periph DTC model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The elc read result produced by the board periph DTC model.
+ * @retval value The operation-specific elc read value.
+ * @pre Arguments satisfy the ranges documented for elc read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_elc_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   const uint64_t off = addr - (uint64_t)k_elc_base;
@@ -388,8 +476,20 @@ static uint64_t elc_read(uc_engine* uc, uint64_t addr, unsigned size)
   return v;
 }
 
-/** @brief MMIO write inside the ELC window: byte shadow + ELSEGR0 trigger. */
-static void elc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the ELC window: byte shadow + ELSEGR0 trigger.
+ * @details MMIO write inside the elc window: byte shadow + elsegr0 trigger; this step is contained within the board periph DTC model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for elc write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_elc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   const uint64_t off = addr - (uint64_t)k_elc_base;
   for (unsigned i = 0U; (i < size) && ((off + (uint64_t)i) < (uint64_t)k_elc_span); ++i) {
@@ -399,43 +499,49 @@ static void elc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
    * software event 0, which activates the DTC if a DTCE-enabled slot links it. */
   if ((off == (uint64_t)k_elc_off_elsegr0) &&
       (((uint8_t)value & (uint8_t)k_elc_elsegr_trigger) == (uint8_t)k_elc_elsegr_trigger)) {
-    dtc_activate_swevt0(uc);
+    internal_dtc_activate_swevt0(uc);
   }
 }
 
-/** @brief End-of-run DTC section: activations and bytes moved. */
-static void dtc_report(void)
+/**
+ * @brief End-of-run DTC section: activations and bytes moved.
+ * @details End-of-run dtc section: activations and bytes moved; this step is contained within the board periph DTC model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for DTC report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_dtc_report(void)
 {
   if (s_dtc.activations == 0U) {
     return; /* Untouched: stay quiet. */
   }
-  (void)fprintf(stderr,
-                "  DTC           : activations=%u last_bytes=%u DTCVBR=0x%08X\n",
-                s_dtc.activations,
-                s_dtc.bytes,
-                s_dtc.dtcvbr);
+  (void)priv_emu_io_errf("  DTC           : activations=%u last_bytes=%u DTCVBR=0x%08X\n",
+                         s_dtc.activations,
+                         s_dtc.bytes,
+                         s_dtc.dtcvbr);
 }
 
 /** @brief DTC control-window descriptor (owns reset + report). */
-static const board_periph_block_t k_dtc_block = {
+static const board_periph_block_t s_k_dtc_block = {
   .base   = (uint64_t)k_dtc_base,
   .span   = (uint64_t)k_dtc_span,
   .order  = (uint32_t)k_dtc_block_order,
-  .read   = dtc_read,
-  .write  = dtc_write,
+  .read   = internal_dtc_read,
+  .write  = internal_dtc_write,
   .tick   = nullptr,
-  .reset  = dtc_reset,
-  .report = dtc_report,
+  .reset  = internal_dtc_reset,
+  .report = internal_dtc_report,
   .name   = "DTC",
 };
 
 /** @brief ELC ELSEGR-window descriptor (the DTC activation trigger). */
-static const board_periph_block_t k_elc_block = {
+static const board_periph_block_t s_k_elc_block = {
   .base   = (uint64_t)k_elc_base,
   .span   = (uint64_t)k_elc_span,
   .order  = (uint32_t)k_dtc_block_order,
-  .read   = elc_read,
-  .write  = elc_write,
+  .read   = internal_elc_read,
+  .write  = internal_elc_write,
   .tick   = nullptr,
   .reset  = nullptr,
   .report = nullptr,
@@ -443,8 +549,8 @@ static const board_periph_block_t k_elc_block = {
 };
 
 /** @brief Register the DTC control + ELC ELSEGR windows before main runs. */
-[[gnu::constructor]] static void dtc_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_dtc_block_register(void)
 {
-  board_periph_register_block(&k_dtc_block);
-  board_periph_register_block(&k_elc_block);
+  board_periph_register_block(&s_k_dtc_block);
+  board_periph_register_block(&s_k_elc_block);
 }

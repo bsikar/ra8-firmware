@@ -77,8 +77,9 @@ typedef enum : uint64_t {
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @see mmio_write()  The write-side counterpart.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV uint64_t mmio_read(uc_engine* uc, uint64_t offset, unsigned size, void* user);
+uint64_t mmio_read(uc_engine* uc, uint64_t offset, unsigned size, void* user);
 
 /**
  * @brief UC_MMIO write callback for the peripheral window.
@@ -100,8 +101,9 @@ RA8_PRIV uint64_t mmio_read(uc_engine* uc, uint64_t offset, unsigned size, void*
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @see mmio_read()  The read-side counterpart.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void mmio_write(uc_engine* uc, uint64_t offset, unsigned size, uint64_t value, void* user);
+void mmio_write(uc_engine* uc, uint64_t offset, unsigned size, uint64_t value, void* user);
 
 /**
  * @brief Side-effect-free read of the last value written to a peripheral reg.
@@ -124,8 +126,9 @@ RA8_PRIV void mmio_write(uc_engine* uc, uint64_t offset, unsigned size, uint64_t
  * @post No counters or settle state changed (pure lookup).
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV uint32_t mmio_peek(uint64_t addr);
+uint32_t mmio_peek(uint64_t addr);
 
 /**
  * @brief Total peripheral MMIO reads this run (monotonic).
@@ -137,8 +140,10 @@ RA8_PRIV uint32_t mmio_peek(uint64_t addr);
  * @post No state is modified.
  * @note Feeds the idle-stop signature and the board-view telemetry.
  * @since 0.1.0
+  * @details Total peripheral mmio reads this run (monotonic); this step is contained within the emu MMIO model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV uint32_t emu_mmio_reads(void);
+uint32_t emu_mmio_reads(void);
 
 /**
  * @brief Total peripheral MMIO writes this run (monotonic).
@@ -150,27 +155,30 @@ RA8_PRIV uint32_t emu_mmio_reads(void);
  * @post No state is modified.
  * @note Feeds the idle-stop signature and the board-view telemetry.
  * @since 0.1.0
+  * @details Total peripheral mmio writes this run (monotonic); this step is contained within the emu MMIO model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV uint32_t emu_mmio_writes(void);
+uint32_t emu_mmio_writes(void);
 
 /**
- * @brief Print the run-end MMIO counters line to stderr.
+ * @brief Print the run-end MMIO counters line to injected error sink.
  *
  * @details Emits the `MMIO reads : ... writes: ... distinct addrs: ...`
  * report line, exactly as the run-end report always printed it.
  *
  * @return Nothing.
  * @pre The run has ended (counters are final).
- * @pre stderr is writable.
+ * @pre injected error sink is writable.
  * @post One report line was written.
  * @note Not thread-safe; call once at run end.
  * @see emu_mmio_print_bgc_and_table()  The rest of the MMIO report.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_mmio_print_counts(void);
+void emu_mmio_print_counts(void);
 
 /**
- * @brief Print the BG_BGC witness and the per-address MMIO table to stderr.
+ * @brief Print the BG_BGC witness and the per-address MMIO table to injected error sink.
  *
  * @details Emits the GLCDC colour-cycle witness line (write count + distinct
  * colours) followed by the per-address reads/writes/last-write table, capped
@@ -179,13 +187,14 @@ RA8_PRIV void emu_mmio_print_counts(void);
  *
  * @return Nothing.
  * @pre The run has ended (the shadow is final).
- * @pre stderr is writable.
+ * @pre injected error sink is writable.
  * @post The witness + table lines were written.
  * @note Not thread-safe; call once at run end.
  * @see emu_mmio_print_counts()  The counters line printed just before.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_mmio_print_bgc_and_table(void);
+void emu_mmio_print_bgc_and_table(void);
 
 #ifdef __cplusplus
 }

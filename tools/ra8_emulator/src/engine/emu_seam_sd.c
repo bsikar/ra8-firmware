@@ -19,6 +19,7 @@
 #include "board_periph_sd.h"
 #include "emu_elf.h"
 #include "emu_engine.h"
+#include "emu_host_io_internal.h"
 #include "emu_seams.h"
 #include "emu_trace.h"
 
@@ -70,32 +71,21 @@ typedef enum : uint16_t {
  */
 static bool s_fast_sd;
 
+/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
 /**
- * @brief UC_HOOK_CODE at `ra8_sdmmc_spi_read_block`: serve one 512-byte block in C.
- *
- * @details
- * Reads the AAPCS arguments (r0 = lba, r1 = destination buffer) at the function's
- * entry. With a card attached and the LBA in range it copies the block straight
- * from the image via ::board_sd_read_block -- byte-identical to the CMD17 stream
- * the per-byte path would produce -- writes it to @c buf, sets the return value to
- * k_ra8_ok and jumps to LR, skipping the SPI block protocol. With no card or a
- * bad LBA it returns immediately so Unicorn runs the real driver (which errors as
- * it would on hardware).
- *
- * @param[in,out] uc      Active Unicorn engine.
- * @param[in]     address Hook site (the resolved entry VMA); unused.
- * @param[in]     size    Instruction size at the site; unused.
- * @param[in]     user    Unused hook cookie.
- *
- * @pre @p uc is at ra8_sdmmc_spi_read_block's entry with args still in r0-r1.
- * @post On the fast path, @c buf holds the block, r0 = k_ra8_ok and PC = LR;
- *       otherwise CPU state is intact and the real body runs.
- *
- * @note Not thread-safe; the run loop is single-threaded.
+ * @brief Perform on sdmmc read block for the emu seam SD model.
+ * @details Perform on sdmmc read block for the emu seam sd model; this step is contained within the emu seam SD model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] address Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in,out] user Hook context supplied when the callback was registered.
+ * @pre Arguments satisfy the ranges documented for on sdmmc read block. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu seam SD model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  * @since 0.1.0
  */
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
-static void on_sdmmc_read_block(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+RA8_INTERNAL static void
+internal_on_sdmmc_read_block(uc_engine* uc, uint64_t address, uint32_t size, void* user)
 {
   (void)address;
   (void)size;
@@ -110,7 +100,7 @@ static void on_sdmmc_read_block(uc_engine* uc, uint64_t address, uint32_t size, 
   if (!board_sd_attached() || (buf_ptr == 0U) || !board_sd_read_block(lba, blk)) {
     return;
   }
-  (void)uc_mem_write(uc, (uint64_t)buf_ptr, blk, sizeof blk);
+  (void)emu_mem_write(uc, (uint64_t)buf_ptr, blk, sizeof blk);
   /* Relaunch as a zero-time seam (no chunk / SysTick cost) so a whole book-sized
    * read drains within one settle window. */
   emu_seam_request_relaunch();
@@ -122,40 +112,37 @@ static void on_sdmmc_read_block(uc_engine* uc, uint64_t address, uint32_t size, 
  *
  * @param[in,out] uc  Active Unicorn engine.
  * @param[in]     elf Loaded ELF image (for symbol resolution).
- * @param[in]     len ELF image length in bytes.
  *
- * @pre @p uc is initialised and @p elf holds @p len valid bytes.
+ * @pre @p uc is initialised and @p elf is a validated loaded image.
  * @post With @c s_fast_sd and the symbol present, a UC_HOOK_CODE fires
- *       ::on_sdmmc_read_block at the function entry; otherwise nothing is armed.
+ *       ::internal_on_sdmmc_read_block at the function entry; otherwise nothing is armed.
  *
  * @note A firmware without ra8_sdmmc_spi_read_block (no SD path) is reported once
  *       and left on the default per-byte MMIO path.
  * @since 0.1.0
  */
-void fast_sd_seam_install(uc_engine* uc, const uint8_t* elf, long len)
+void fast_sd_seam_install(uc_engine* uc, const emu_elf_source_t* elf)
 {
   if (!s_fast_sd) {
     return;
   }
-  const uint32_t addr = elf_sym_addr(elf, len, "ra8_sdmmc_spi_read_block", nullptr);
+  const uint32_t addr = elf_sym_addr(elf, "ra8_sdmmc_spi_read_block", nullptr);
   if (addr == 0U) {
-    (void)fprintf(
-      stderr,
+    (void)priv_emu_io_errf(
       "  [fast-sd] ra8_sdmmc_spi_read_block not found -- SD stays on the per-byte path\n");
     return;
   }
-  static uc_hook s_h;
+  static uc_hook local_h;
   (void)uc_hook_add(uc,
-                    &s_h,
+                    &local_h,
                     UC_HOOK_CODE,
-                    (void*)on_sdmmc_read_block,
+                    (void*)internal_on_sdmmc_read_block,
                     nullptr,
                     (uint64_t)addr,
                     (uint64_t)addr);
-  (void)fprintf(stderr,
-                "  [fast-sd] ra8_sdmmc_spi_read_block block-hook armed @ 0x%08X "
-                "(SD blocks served direct from the image)\n",
-                (unsigned)addr);
+  (void)priv_emu_io_errf("  [fast-sd] ra8_sdmmc_spi_read_block block-hook armed @ 0x%08X "
+                         "(SD blocks served direct from the image)\n",
+                         (unsigned)addr);
 }
 
 /** @brief Implementation of `emu_fast_sd_enable()` -- CLI opt-in latch. */

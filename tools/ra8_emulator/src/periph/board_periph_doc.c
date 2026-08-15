@@ -33,6 +33,7 @@
 #include <stdio.h>
 
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief Result-width masks for the DOC unit (32-bit vs 16-bit mode). */
 typedef enum : uint32_t {
@@ -84,18 +85,35 @@ typedef struct {
 
 static doc_state_t s_doc;
 
-/** @brief Width mask selected by DOCR.DOBW (0 = 16-bit, 1 = 32-bit). */
-static uint32_t doc_width_mask(void)
+/**
+ * @brief Width mask selected by DOCR.DOBW (0 = 16-bit, 1 = 32-bit).
+ * @details Width mask selected by docr.dobw (0 = 16-bit, 1 = 32-bit); this step is contained within the board periph doc model and uses bounded caller or module-owned storage.
+ * @return The doc width mask result produced by the board periph doc model.
+ * @retval value The operation-specific doc width mask value.
+ * @pre Arguments satisfy the ranges documented for doc width mask. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph doc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_doc_width_mask(void)
 {
   return ((s_doc.docr & (uint8_t)k_doc_dobw_mask) != 0U) ? (uint32_t)k_u32_all
                                                          : (uint32_t)k_u16_full;
 }
 
-/** @brief Apply one DODIR operand to DODSR0 per the current DOCR.OMS mode. */
-static void doc_apply(uint32_t dodir)
+/**
+ * @brief Apply one DODIR operand to DODSR0 per the current DOCR.OMS mode.
+ * @details Apply one dodir operand to dodsr0 per the current docr.oms mode; this step is contained within the board periph doc model and uses bounded caller or module-owned storage.
+ * @param[in] dodir Dodir input used by the operation.
+ * @pre Arguments satisfy the ranges documented for doc apply. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph doc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_doc_apply(uint32_t dodir)
 {
   const uint32_t mode = (uint32_t)(s_doc.docr & (uint8_t)k_doc_oms_mask);
-  const uint32_t mask = doc_width_mask();
+  const uint32_t mask = internal_doc_width_mask();
   const uint32_t in   = dodir & mask;
   const uint32_t cur  = s_doc.dodsr0 & mask;
   if (mode == (uint32_t)k_doc_mode_add) {
@@ -119,8 +137,15 @@ static void doc_apply(uint32_t dodir)
   s_doc.ops++;
 }
 
-/** @brief Reset the DOC unit to power-on state. */
-static void doc_reset(void)
+/**
+ * @brief Reset the DOC unit to power-on state.
+ * @details Reset the doc unit to power-on state; this step is contained within the board periph doc model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for doc reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph doc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_doc_reset(void)
 {
   s_doc.docr   = 0U;
   s_doc.dopcf  = 0U;
@@ -129,8 +154,20 @@ static void doc_reset(void)
   s_doc.ops    = 0U;
 }
 
-/** @brief MMIO read inside the DOC window. */
-static uint64_t doc_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the DOC window.
+ * @details MMIO read inside the doc window; this step is contained within the board periph doc model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The doc read result produced by the board periph doc model.
+ * @retval value The operation-specific doc read value.
+ * @pre Arguments satisfy the ranges documented for doc read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph doc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_doc_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -150,8 +187,20 @@ static uint64_t doc_read(uc_engine* uc, uint64_t addr, unsigned size)
   return 0U;
 }
 
-/** @brief MMIO write inside the DOC window. */
-static void doc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the DOC window.
+ * @details MMIO write inside the doc window; this step is contained within the board periph doc model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for doc write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph doc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_doc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
@@ -163,7 +212,7 @@ static void doc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
       s_doc.dopcf = 0U; /* DOPCFCL clears the flag. */
     }
   } else if (off == (uint64_t)k_doc_off_dodir) {
-    doc_apply((uint32_t)value);
+    internal_doc_apply((uint32_t)value);
   } else if (off == (uint64_t)k_doc_off_dodsr0) {
     s_doc.dodsr0 = (uint32_t)value; /* Seed operand A. */
   } else if (off == (uint64_t)k_doc_off_dodsr1) {
@@ -171,35 +220,41 @@ static void doc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
   }
 }
 
-/** @brief End-of-run DOC section: mode, last result, op count. */
-static void doc_report(void)
+/**
+ * @brief End-of-run DOC section: mode, last result, op count.
+ * @details End-of-run doc section: mode, last result, op count; this step is contained within the board periph doc model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for doc report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph doc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_doc_report(void)
 {
   if (s_doc.ops == 0U) {
     return; /* Untouched: stay quiet. */
   }
-  (void)fprintf(stderr,
-                "  DOC           : OMS=%u DODSR0=0x%08X DOPCF=%u ops=%u\n",
-                (unsigned)(s_doc.docr & (uint8_t)k_doc_oms_mask),
-                s_doc.dodsr0,
-                (unsigned)s_doc.dopcf,
-                s_doc.ops);
+  (void)priv_emu_io_errf("  DOC           : OMS=%u DODSR0=0x%08X DOPCF=%u ops=%u\n",
+                         (unsigned)(s_doc.docr & (uint8_t)k_doc_oms_mask),
+                         s_doc.dodsr0,
+                         (unsigned)s_doc.dopcf,
+                         s_doc.ops);
 }
 
 /** @brief DOC block descriptor (self-registered with the core). */
-static const board_periph_block_t k_doc_block = {
+static const board_periph_block_t s_k_doc_block = {
   .base   = (uint32_t)k_doc_base,
   .span   = (uint32_t)k_doc_span,
   .order  = (uint32_t)k_doc_block_order,
-  .read   = doc_read,
-  .write  = doc_write,
+  .read   = internal_doc_read,
+  .write  = internal_doc_write,
   .tick   = nullptr,
-  .reset  = doc_reset,
-  .report = doc_report,
+  .reset  = internal_doc_reset,
+  .report = internal_doc_report,
   .name   = "DOC",
 };
 
 /** @brief Register the DOC block before main (host constructor). */
-[[gnu::constructor]] static void doc_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_doc_block_register(void)
 {
-  board_periph_register_block(&k_doc_block);
+  board_periph_register_block(&s_k_doc_block);
 }

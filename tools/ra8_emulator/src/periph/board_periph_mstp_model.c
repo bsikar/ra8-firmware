@@ -6,7 +6,7 @@
  * Owns the five @c MSTPCRA..MSTPCRE words the RA8D2 uses to clock-gate every
  * peripheral (R_MSTP at @c 0x4020_3000 -- HUM Ch 11.2.6..11.2.10 p 443-450) and
  * the table that maps a peripheral register address to the module-stop bit that
- * governs it. ::board_mstp_addr_stopped answers the one question the ra8_emulator
+ * governs it. ::priv_board_mstp_addr_stopped answers the one question the ra8_emulator
  * core asks per MMIO access: "is the peripheral that owns this address currently
  * unclocked?" -- and if so the core reads 0 / drops the write, matching silicon.
  *
@@ -86,7 +86,7 @@ static const char* s_last_gated = "-";         /**< Label of last gated access. 
  */
 
 /** @brief SCI0..SCI9 (0x40358000, 0x100 stride) -- MSTPCRB31..22, HUM 11.2.7. */
-static const uint16_t k_ids_sci[] = {
+static const uint16_t s_k_ids_sci[] = {
   (uint16_t)k_ra8_mstp_sci0,
   (uint16_t)k_ra8_mstp_sci1,
   (uint16_t)k_ra8_mstp_sci2,
@@ -99,26 +99,26 @@ static const uint16_t k_ids_sci[] = {
   (uint16_t)k_ra8_mstp_sci9,
 };
 /** @brief SPI0..SPI1 (0x4035C000, 0x100 stride) -- MSTPCRB19..18, HUM 11.2.7. */
-static const uint16_t k_ids_spi[] = {
+static const uint16_t s_k_ids_spi[] = {
   (uint16_t)k_ra8_mstp_spi0,
   (uint16_t)k_ra8_mstp_spi1,
 };
 /** @brief IIC0..IIC2 / RIIC (0x4025E000, 0x100 stride) -- MSTPCRB9..7, HUM 11.2.7. */
-static const uint16_t k_ids_riic[] = {
+static const uint16_t s_k_ids_riic[] = {
   (uint16_t)k_ra8_mstp_iic0,
   (uint16_t)k_ra8_mstp_iic1,
   (uint16_t)k_ra8_mstp_iic2,
 };
 /** @brief I3C0 (0x4035F000) -- MSTPCRB4, HUM 11.2.7. */
-static const uint16_t k_ids_i3c[] = {(uint16_t)k_ra8_mstp_i3c};
+static const uint16_t s_k_ids_i3c[] = {(uint16_t)k_ra8_mstp_i3c};
 /** @brief AGT0..AGT1 (0x40221000, 0x100 stride) -- MSTPCRD5..4, HUM 11.2.9. */
-static const uint16_t k_ids_agt[] = {
+static const uint16_t s_k_ids_agt[] = {
   (uint16_t)k_ra8_mstp_agt0,
   (uint16_t)k_ra8_mstp_agt1,
 };
 /** @brief GPT0..GPT13 (0x40322000, 0x100 stride) -- MSTPCRE31..18, GPT4..9 share
  *  MSTPE27, HUM 11.2.10. */
-static const uint16_t k_ids_gpt[] = {
+static const uint16_t s_k_ids_gpt[] = {
   (uint16_t)k_ra8_mstp_gpt0,
   (uint16_t)k_ra8_mstp_gpt1,
   (uint16_t)k_ra8_mstp_gpt2,
@@ -135,49 +135,49 @@ static const uint16_t k_ids_gpt[] = {
   (uint16_t)k_ra8_mstp_gpt13,
 };
 /** @brief ULPT0..ULPT1 (0x40220000, 0x100 stride) -- MSTPCRE9..8, HUM 11.2.10. */
-static const uint16_t k_ids_ulpt[] = {
+static const uint16_t s_k_ids_ulpt[] = {
   (uint16_t)k_ra8_mstp_ulpt0,
   (uint16_t)k_ra8_mstp_ulpt1,
 };
 /** @brief DAC_B0..DAC_B1 (0x40233000, 0x100 stride) -- MSTPCRD20..19, HUM 11.2.9. */
-static const uint16_t k_ids_dac[] = {
+static const uint16_t s_k_ids_dac[] = {
   (uint16_t)k_ra8_mstp_dac12_0,
   (uint16_t)k_ra8_mstp_dac12_1,
 };
 /** @brief SSIE0..SSIE1 (0x4025D000, 0x100 stride) -- MSTPCRC8..7, HUM 11.2.8. */
-static const uint16_t k_ids_ssie[] = {
+static const uint16_t s_k_ids_ssie[] = {
   (uint16_t)k_ra8_mstp_ssie0,
   (uint16_t)k_ra8_mstp_ssie1,
 };
 /** @brief POEG group A..D (0x40212000, 0x100 stride) -- MSTPCRD14..11, HUM 11.2.9. */
-static const uint16_t k_ids_poeg[] = {
+static const uint16_t s_k_ids_poeg[] = {
   (uint16_t)k_ra8_mstp_poeg_a,
   (uint16_t)k_ra8_mstp_poeg_b,
   (uint16_t)k_ra8_mstp_poeg_c,
   (uint16_t)k_ra8_mstp_poeg_d,
 };
 /** @brief CANFD0 (0x40380000) -- MSTPCRC27, HUM 11.2.8. */
-static const uint16_t k_ids_canfd0[] = {(uint16_t)k_ra8_mstp_canfd0};
+static const uint16_t s_k_ids_canfd0[] = {(uint16_t)k_ra8_mstp_canfd0};
 /** @brief CANFD1 (0x40382000) -- MSTPCRC26, HUM 11.2.8. */
-static const uint16_t k_ids_canfd1[] = {(uint16_t)k_ra8_mstp_canfd1};
+static const uint16_t s_k_ids_canfd1[] = {(uint16_t)k_ra8_mstp_canfd1};
 /** @brief CAC (0x40202400) -- MSTPCRC0, HUM 11.2.8. */
-static const uint16_t k_ids_cac[] = {(uint16_t)k_ra8_mstp_cac};
+static const uint16_t s_k_ids_cac[] = {(uint16_t)k_ra8_mstp_cac};
 /** @brief CRC (0x40310000) -- MSTPCRC1, HUM 11.2.8. */
-static const uint16_t k_ids_crc[] = {(uint16_t)k_ra8_mstp_crc};
+static const uint16_t s_k_ids_crc[] = {(uint16_t)k_ra8_mstp_crc};
 /** @brief DOC (0x40311000) -- MSTPCRC13, HUM 11.2.8. */
-static const uint16_t k_ids_doc[] = {(uint16_t)k_ra8_mstp_doc};
+static const uint16_t s_k_ids_doc[] = {(uint16_t)k_ra8_mstp_doc};
 /** @brief CEU (0x40348000) -- MSTPCRC16, HUM 11.2.8. */
-static const uint16_t k_ids_ceu[] = {(uint16_t)k_ra8_mstp_ceu};
+static const uint16_t s_k_ids_ceu[] = {(uint16_t)k_ra8_mstp_ceu};
 /** @brief PDM-IF (0x40256000) -- MSTPCRC24, HUM 11.2.8. */
-static const uint16_t k_ids_pdm[] = {(uint16_t)k_ra8_mstp_pdmif};
+static const uint16_t s_k_ids_pdm[] = {(uint16_t)k_ra8_mstp_pdmif};
 /** @brief ADC_B (0x40338000) -- MSTPCRD21, HUM 11.2.9. */
-static const uint16_t k_ids_adc[] = {(uint16_t)k_ra8_mstp_adc16h};
+static const uint16_t s_k_ids_adc[] = {(uint16_t)k_ra8_mstp_adc16h};
 /** @brief SDHI0 (0x40252000) -- MSTPCRC12, HUM 11.2.8. */
-static const uint16_t k_ids_sdhi[] = {(uint16_t)k_ra8_mstp_sdhi0};
+static const uint16_t s_k_ids_sdhi[] = {(uint16_t)k_ra8_mstp_sdhi0};
 /** @brief XSPI0 / OSPI0 (0x40268000) -- MSTPCRB16, HUM 11.2.7. */
-static const uint16_t k_ids_xspi[] = {(uint16_t)k_ra8_mstp_ospi0};
+static const uint16_t s_k_ids_xspi[] = {(uint16_t)k_ra8_mstp_ospi0};
 /** @brief DRW / D-AVE 2D (0x40444000) -- MSTPCRC6, HUM 11.2.8. */
-static const uint16_t k_ids_drw[] = {(uint16_t)k_ra8_mstp_drw};
+static const uint16_t s_k_ids_drw[] = {(uint16_t)k_ra8_mstp_drw};
 
 /**
  * @brief One strided family of peripheral instances sharing a mapping shape.
@@ -245,111 +245,111 @@ typedef enum : uint32_t {
 } mstp_family_count_t;
 
 /** @brief The gate table: every module-stop-gated modelled peripheral instance. */
-static const mstp_family_t k_families[] = {
+static const mstp_family_t s_k_families[] = {
   {(uint64_t)k_mstp_base_sci,
    (uint64_t)k_mstp_chan_stride,
    (uint32_t)k_mstp_count_10,
-   k_ids_sci,
+   s_k_ids_sci,
    "SCI"},
   {(uint64_t)k_mstp_base_spi,
    (uint64_t)k_mstp_chan_stride,
    (uint32_t)k_mstp_count_2,
-   k_ids_spi,
+   s_k_ids_spi,
    "SPI_B"},
   {(uint64_t)k_mstp_base_riic,
    (uint64_t)k_mstp_chan_stride,
    (uint32_t)k_mstp_count_3,
-   k_ids_riic,
+   s_k_ids_riic,
    "RIIC"},
   {(uint64_t)k_mstp_base_i3c,
    (uint64_t)k_mstp_span_i3c,
    (uint32_t)k_mstp_count_1,
-   k_ids_i3c,
+   s_k_ids_i3c,
    "I3C"},
   {(uint64_t)k_mstp_base_agt,
    (uint64_t)k_mstp_chan_stride,
    (uint32_t)k_mstp_count_2,
-   k_ids_agt,
+   s_k_ids_agt,
    "AGT"},
   {(uint64_t)k_mstp_base_gpt,
    (uint64_t)k_mstp_chan_stride,
    (uint32_t)k_mstp_count_14,
-   k_ids_gpt,
+   s_k_ids_gpt,
    "GPT"},
   {(uint64_t)k_mstp_base_ulpt,
    (uint64_t)k_mstp_chan_stride,
    (uint32_t)k_mstp_count_2,
-   k_ids_ulpt,
+   s_k_ids_ulpt,
    "ULPT"},
   {(uint64_t)k_mstp_base_dac,
    (uint64_t)k_mstp_chan_stride,
    (uint32_t)k_mstp_count_2,
-   k_ids_dac,
+   s_k_ids_dac,
    "DAC_B"},
   {(uint64_t)k_mstp_base_ssie,
    (uint64_t)k_mstp_chan_stride,
    (uint32_t)k_mstp_count_2,
-   k_ids_ssie,
+   s_k_ids_ssie,
    "SSIE"},
   {(uint64_t)k_mstp_base_poeg,
    (uint64_t)k_mstp_chan_stride,
    (uint32_t)k_mstp_count_4,
-   k_ids_poeg,
+   s_k_ids_poeg,
    "POEG"},
   {(uint64_t)k_mstp_base_canfd0,
    (uint64_t)k_mstp_span_canfd,
    (uint32_t)k_mstp_count_1,
-   k_ids_canfd0,
+   s_k_ids_canfd0,
    "CANFD0"},
   {(uint64_t)k_mstp_base_canfd1,
    (uint64_t)k_mstp_span_canfd,
    (uint32_t)k_mstp_count_1,
-   k_ids_canfd1,
+   s_k_ids_canfd1,
    "CANFD1"},
   {(uint64_t)k_mstp_base_cac,
    (uint64_t)k_mstp_span_cac,
    (uint32_t)k_mstp_count_1,
-   k_ids_cac,
+   s_k_ids_cac,
    "CAC"},
   {(uint64_t)k_mstp_base_crc,
    (uint64_t)k_mstp_span_crc,
    (uint32_t)k_mstp_count_1,
-   k_ids_crc,
+   s_k_ids_crc,
    "CRC"},
   {(uint64_t)k_mstp_base_doc,
    (uint64_t)k_mstp_span_doc,
    (uint32_t)k_mstp_count_1,
-   k_ids_doc,
+   s_k_ids_doc,
    "DOC"},
   {(uint64_t)k_mstp_base_ceu,
    (uint64_t)k_mstp_chan_stride,
    (uint32_t)k_mstp_count_1,
-   k_ids_ceu,
+   s_k_ids_ceu,
    "CEU"},
   {(uint64_t)k_mstp_base_pdm,
    (uint64_t)k_mstp_span_pdm,
    (uint32_t)k_mstp_count_1,
-   k_ids_pdm,
+   s_k_ids_pdm,
    "PDM-IF"},
   {(uint64_t)k_mstp_base_adc,
    (uint64_t)k_mstp_span_adc,
    (uint32_t)k_mstp_count_1,
-   k_ids_adc,
+   s_k_ids_adc,
    "ADC_B"},
   {(uint64_t)k_mstp_base_sdhi,
    (uint64_t)k_mstp_span_sdhi,
    (uint32_t)k_mstp_count_1,
-   k_ids_sdhi,
+   s_k_ids_sdhi,
    "SDHI0"},
   {(uint64_t)k_mstp_base_xspi,
    (uint64_t)k_mstp_span_xspi,
    (uint32_t)k_mstp_count_1,
-   k_ids_xspi,
+   s_k_ids_xspi,
    "XSPI0"},
   {(uint64_t)k_mstp_base_drw,
    (uint64_t)k_mstp_span_drw,
    (uint32_t)k_mstp_count_1,
-   k_ids_drw,
+   s_k_ids_drw,
    "DRW"},
 };
 
@@ -367,10 +367,10 @@ static const mstp_family_t k_families[] = {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static const mstp_family_t* mstp_family_for_addr(uint64_t addr, uint32_t* out_idx)
+static const mstp_family_t* internal_mstp_family_for_addr(uint64_t addr, uint32_t* out_idx)
 {
-  for (uint32_t f = 0U; f < (sizeof(k_families) / sizeof(k_families[0])); f++) {
-    const mstp_family_t* fam  = &k_families[f];
+  for (uint32_t f = 0U; f < (sizeof(s_k_families) / sizeof(s_k_families[0])); f++) {
+    const mstp_family_t* fam  = &s_k_families[f];
     const uint64_t       span = fam->stride * (uint64_t)fam->count;
     if ((addr >= fam->base) && (addr < (fam->base + span))) {
       *out_idx = (uint32_t)((addr - fam->base) / fam->stride);
@@ -380,9 +380,19 @@ static const mstp_family_t* mstp_family_for_addr(uint64_t addr, uint32_t* out_id
   return nullptr;
 }
 
-/** @brief True iff the module-stop bit @p id (packed ra8_mstp_t) reads set. */
+/**
+ * @brief True iff the module-stop bit @p id (packed ra8_mstp_t) reads set.
+ * @details True iff the module-stop bit @p id (packed ra8_mstp_t) reads set; this step is contained within the board periph module-stop model model and uses bounded caller or module-owned storage.
+ * @param[in] id Id input used by the operation.
+ * @return The module-stop bit set result produced by the board periph module-stop model model.
+ * @retval true The module-stop bit set condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for module-stop bit set. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph module-stop model model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
-static bool mstp_bit_set(uint16_t id)
+static bool internal_mstp_bit_set(uint16_t id)
 {
   const uint32_t reg = ((uint32_t)id >> (uint32_t)k_mstp_id_reg_shift) & (uint32_t)k_mstp_byte_mask;
   const uint32_t bit = (uint32_t)id & (uint32_t)k_mstp_id_bit_mask;
@@ -397,7 +407,7 @@ static bool mstp_bit_set(uint16_t id)
  * =============================================================================
  */
 
-RA8_PRIV void board_mstp_reset(void)
+RA8_PRIV void priv_board_mstp_reset(void)
 {
   s_mstpcr[0] = (uint32_t)k_mstp_reset_a;
   for (uint32_t r = 1U; r < (uint32_t)k_mstp_reg_count; r++) {
@@ -408,7 +418,7 @@ RA8_PRIV void board_mstp_reset(void)
   s_last_gated   = "-";
 }
 
-RA8_PRIV void board_mstp_apply_write(uint64_t off, unsigned size, uint32_t value)
+RA8_PRIV void priv_board_mstp_apply_write(uint64_t off, unsigned size, uint32_t value)
 {
   for (unsigned i = 0U; i < size; i++) {
     const uint64_t b = off + (uint64_t)i;
@@ -423,7 +433,7 @@ RA8_PRIV void board_mstp_apply_write(uint64_t off, unsigned size, uint32_t value
   }
 }
 
-RA8_PRIV uint32_t board_mstp_read_reg(uint64_t off, unsigned size)
+RA8_PRIV uint32_t priv_board_mstp_read_reg(uint64_t off, unsigned size)
 {
   uint32_t v = 0U;
   for (unsigned i = 0U; i < size; i++) {
@@ -439,20 +449,20 @@ RA8_PRIV uint32_t board_mstp_read_reg(uint64_t off, unsigned size)
   return v;
 }
 
-RA8_PRIV bool board_mstp_addr_stopped(uint64_t addr)
+RA8_PRIV bool priv_board_mstp_addr_stopped(uint64_t addr)
 {
   uint32_t             idx = 0U;
-  const mstp_family_t* fam = mstp_family_for_addr(addr, &idx);
+  const mstp_family_t* fam = internal_mstp_family_for_addr(addr, &idx);
   if (fam == nullptr) {
     return false; /* not gated: unmodelled or a peripheral with no module-stop. */
   }
-  return mstp_bit_set(fam->ids[idx]);
+  return internal_mstp_bit_set(fam->ids[idx]);
 }
 
-RA8_PRIV void board_mstp_note_gated_access(uint64_t addr, bool is_write)
+RA8_PRIV void priv_board_mstp_note_gated_access(uint64_t addr, bool is_write)
 {
   uint32_t             idx = 0U;
-  const mstp_family_t* fam = mstp_family_for_addr(addr, &idx);
+  const mstp_family_t* fam = internal_mstp_family_for_addr(addr, &idx);
   if (fam != nullptr) {
     s_last_gated = fam->name;
   }
@@ -463,17 +473,17 @@ RA8_PRIV void board_mstp_note_gated_access(uint64_t addr, bool is_write)
   }
 }
 
-RA8_PRIV uint32_t board_mstp_gated_read_count(void)
+RA8_PRIV uint32_t priv_board_mstp_gated_read_count(void)
 {
   return s_gated_reads;
 }
 
-RA8_PRIV uint32_t board_mstp_gated_write_count(void)
+RA8_PRIV uint32_t priv_board_mstp_gated_write_count(void)
 {
   return s_gated_writes;
 }
 
-RA8_PRIV const char* board_mstp_last_gated_name(void)
+RA8_PRIV const char* priv_board_mstp_last_gated_name(void)
 {
   return s_last_gated;
 }

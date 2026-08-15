@@ -37,6 +37,7 @@
 #include "board_periph_mstp_internal.h"
 #include "board_usb.h"
 #include "board_usb_host.h"
+#include "emu_host_io_internal.h"
 
 /* =============================================================================
  * ICU / NVIC register map (addresses verified against libs/ra8_hal regs).
@@ -88,7 +89,7 @@ typedef enum : uint32_t {
 static bool s_trace; /**< --trace: log transitions + IRQs as they happen. */
 
 /* Active emulation device -- RA8D2 by default so a run with no --device flag is
- * byte-for-behaviour unchanged. Gates the RA8P1-only NPU block in block_for_addr;
+ * byte-for-behaviour unchanged. Gates the RA8P1-only NPU block in internal_block_for_addr;
  * set once by main.c before the run loop and persisted across warm reboots
  * (board_periph_init does not touch it -- the part is fixed). */
 static board_device_t s_device = k_board_device_ra8d2;
@@ -117,11 +118,10 @@ void board_periph_register_block(const board_periph_block_t* block)
   if (s_block_count >= (uint32_t)k_block_max) {
     /* NEVER drop a block silently: an un-registered block reads as an
      * unmodelled peripheral and fails its apps with no hint of the cause. */
-    (void)fprintf(stderr,
-                  "board_periph: block registry FULL (k_block_max=%u) -- "
-                  "DROPPING '%s'; raise k_block_max\n",
-                  (unsigned)k_block_max,
-                  (block->name != nullptr) ? block->name : "?");
+    (void)priv_emu_io_errf("board_periph: block registry FULL (k_block_max=%u) -- "
+                           "DROPPING '%s'; raise k_block_max\n",
+                           (unsigned)k_block_max,
+                           (block->name != nullptr) ? block->name : "?");
     return;
   }
   s_blocks[s_block_count] = block;
@@ -140,8 +140,11 @@ void board_periph_register_block(const board_periph_block_t* block)
  *
  * @return Nothing.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for board periph build order. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
-static void board_periph_build_order(void)
+RA8_INTERNAL static void internal_board_periph_build_order(void)
 {
   for (uint32_t i = 0U; i < s_block_count; i++) {
     uint32_t j = i;
@@ -154,20 +157,32 @@ static void board_periph_build_order(void)
   s_order_built = true;
 }
 
-/** @brief True iff @p addr is inside [@p base, @p base + @p span). */
-static bool in_range(uint64_t addr, uint64_t base, uint64_t span)
+/**
+ * @brief True iff @p addr is inside [@p base, @p base + @p span).
+ * @details True iff @p addr is inside [@p base, @p base + @p span); this step is contained within the board periph model and uses bounded caller or module-owned storage.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] base Base input used by the operation.
+ * @param[in] span Bounded address span covered by the operation.
+ * @return The in range result produced by the board periph model.
+ * @retval true The in range condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for in range. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_in_range(uint64_t addr, uint64_t base, uint64_t span)
 {
   return (addr >= base) && (addr < (base + span));
 }
 
 /**
- * @brief Last block returned by ::block_for_addr (one-entry dispatch cache).
+ * @brief Last block returned by ::internal_block_for_addr (one-entry dispatch cache).
  *
  * @details
  * The firmware's polled SD-over-Simple-SPI byte protocol hammers a single
  * peripheral block (the SCI window) thousands of times in a row, and every MMIO
  * callback would otherwise re-scan all ~28 registered blocks. Caching the last
- * owner and testing it first collapses that scan to a single ::in_range compare
+ * owner and testing it first collapses that scan to a single ::internal_in_range compare
  * on the overwhelmingly common same-block run. It only changes HOW the owning
  * block is located, never WHICH block answers, so the byte/flag stream the
  * firmware observes is unchanged.
@@ -202,8 +217,18 @@ bool board_periph_usbhs_loop(void)
   return s_usbhs_loop;
 }
 
-/** @brief Whether block @p b is exposed on the active emulation device + run. */
-static bool block_on_active_device(const board_periph_block_t* b)
+/**
+ * @brief Whether block @p b is exposed on the active emulation device + run.
+ * @details Whether block @p b is exposed on the active emulation device + run; this step is contained within the board periph model and uses bounded caller or module-owned storage.
+ * @param[in] b B input used by the operation.
+ * @return The block on active device result produced by the board periph model.
+ * @retval true The block on active device condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for block on active device. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_block_on_active_device(const board_periph_block_t* b)
 {
   if (b->loop_only && !s_usbhs_loop) {
     return false; /* loop-only block, --usbhs-loop off: fall through to sparse. */
@@ -215,14 +240,15 @@ static bool block_on_active_device(const board_periph_block_t* b)
 }
 
 /** @brief Find the registered block owning @p addr on the active device, or NULL. */
-static const board_periph_block_t* block_for_addr(uint64_t addr)
+RA8_INTERNAL static const board_periph_block_t* internal_block_for_addr(uint64_t addr)
 {
-  if ((s_last_block != nullptr) && in_range(addr, s_last_block->base, s_last_block->span)) {
+  if ((s_last_block != nullptr) &&
+      internal_in_range(addr, s_last_block->base, s_last_block->span)) {
     return s_last_block;
   }
   for (uint32_t i = 0U; i < s_block_count; i++) {
-    if (in_range(addr, s_blocks[i]->base, s_blocks[i]->span)) {
-      if (!block_on_active_device(s_blocks[i])) {
+    if (internal_in_range(addr, s_blocks[i]->base, s_blocks[i]->span)) {
+      if (!internal_block_on_active_device(s_blocks[i])) {
         continue; /* RA8P1-only block on a non-RA8P1 run: fall through to sparse. */
       }
       s_last_block = s_blocks[i];
@@ -269,16 +295,38 @@ static uint32_t s_nvic_iser_shadow[k_nvic_enable_words];
  * =============================================================================
  */
 
-/** @brief Read a 32-bit little-endian word from emulated memory. */
-static uint32_t periph_rd32(uc_engine* uc, uint64_t addr)
+/**
+ * @brief Read a 32-bit little-endian word from emulated memory.
+ * @details Read a 32-bit little-endian word from emulated memory; this step is contained within the board periph model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @return The periph rd32 result produced by the board periph model.
+ * @retval value The operation-specific periph rd32 value.
+ * @pre Arguments satisfy the ranges documented for periph rd32. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_periph_rd32(uc_engine* uc, uint64_t addr)
 {
   uint32_t v = 0U;
-  (void)uc_mem_read(uc, addr, &v, sizeof(v));
+  (void)emu_mem_read(uc, addr, &v, sizeof(v));
   return v;
 }
 
-/** @brief True iff NVIC line @p irq is enabled in the set-enable shadow. */
-static bool nvic_enabled(uc_engine* uc, uint32_t irq)
+/**
+ * @brief True iff NVIC line @p irq is enabled in the set-enable shadow.
+ * @details True iff nvic line @p irq is enabled in the set-enable shadow; this step is contained within the board periph model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] irq Interrupt number or state handled by the operation.
+ * @return The NVIC enabled result produced by the board periph model.
+ * @retval true The NVIC enabled condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for NVIC enabled. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_nvic_enabled(uc_engine* uc, uint32_t irq)
 {
   (void)uc; /* enable state is the accumulating shadow, not raw PPB RAM */
   const uint32_t word = irq / 32U;
@@ -288,13 +336,22 @@ static bool nvic_enabled(uc_engine* uc, uint32_t irq)
   return ((s_nvic_iser_shadow[word] >> (irq % 32U)) & 1U) != 0U;
 }
 
-/** @brief Mirror the pended line into NVIC ISPR so firmware can observe it. */
-static void nvic_set_pending(uc_engine* uc, uint32_t irq)
+/**
+ * @brief Mirror the pended line into NVIC ISPR so firmware can observe it.
+ * @details Mirror the pended line into nvic ispr so firmware can observe it; this step is contained within the board periph model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] irq Interrupt number or state handled by the operation.
+ * @pre Arguments satisfy the ranges documented for NVIC set pending. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_nvic_set_pending(uc_engine* uc, uint32_t irq)
 {
   const uint64_t word = (uint64_t)k_nvic_ispr_base + ((uint64_t)(irq / 32U) * 4U);
-  uint32_t       ispr = periph_rd32(uc, word);
+  uint32_t       ispr = internal_periph_rd32(uc, word);
   ispr |= (1U << (irq % 32U));
-  (void)uc_mem_write(uc, word, &ispr, sizeof(ispr));
+  (void)emu_mem_write(uc, word, &ispr, sizeof(ispr));
 }
 
 void board_periph_nvic_set_enable(uint32_t irq, bool enable)
@@ -316,8 +373,16 @@ void board_periph_nvic_set_enable(uint32_t irq, bool enable)
  * =============================================================================
  */
 
-/** @brief Push an IRQ onto the pending ring (drop silently if full). */
-static void irq_ring_push(uint32_t irq)
+/**
+ * @brief Push an IRQ onto the pending ring (drop silently if full).
+ * @details Push an irq onto the pending ring (drop silently if full); this step is contained within the board periph model and uses bounded caller or module-owned storage.
+ * @param[in] irq Interrupt number or state handled by the operation.
+ * @pre Arguments satisfy the ranges documented for interrupt ring push. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_irq_ring_push(uint32_t irq)
 {
   const uint32_t next = (s_irq_tail + 1U) % (uint32_t)k_irq_queue_len;
   if (next == s_irq_head) {
@@ -334,11 +399,11 @@ void board_periph_icu_raise_event(uc_engine* uc, uint16_t event)
       continue;
     }
     s_ielsr[slot] |= (uint32_t)k_ielsr_ir_mask; /* latch IR (W0C by handler) */
-    if (nvic_enabled(uc, slot)) {
-      nvic_set_pending(uc, slot);
-      irq_ring_push(slot);
+    if (internal_nvic_enabled(uc, slot)) {
+      internal_nvic_set_pending(uc, slot);
+      internal_irq_ring_push(slot);
       if (s_trace) {
-        (void)fprintf(stderr, "  [trace] ICU event 0x%03X -> NVIC IRQ %u pended\n", event, slot);
+        (void)priv_emu_io_errf("  [trace] ICU event 0x%03X -> NVIC IRQ %u pended\n", event, slot);
       }
     }
     return; /* one IELSR slot owns a given event */
@@ -357,8 +422,18 @@ uint32_t board_periph_icu_dtc_slot(uint16_t event)
   return (uint32_t)k_icu_ielsr_cnt;
 }
 
-/** @brief Index of the IELSR slot owning @p addr, or k_icu_ielsr_cnt if none. */
-static uint32_t icu_ielsr_slot(uint64_t addr)
+/**
+ * @brief Index of the IELSR slot owning @p addr, or k_icu_ielsr_cnt if none.
+ * @details Index of the ielsr slot owning @p addr, or k_icu_ielsr_cnt if none; this step is contained within the board periph model and uses bounded caller or module-owned storage.
+ * @param[in] addr Guest address involved in the operation.
+ * @return The icu ielsr slot result produced by the board periph model.
+ * @retval value The operation-specific icu ielsr slot value.
+ * @pre Arguments satisfy the ranges documented for icu ielsr slot. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_icu_ielsr_slot(uint64_t addr)
 {
   const uint64_t lo = (uint64_t)k_icu_base + (uint64_t)k_icu_off_ielsr;
   const uint64_t hi = lo + ((uint64_t)k_icu_ielsr_cnt * 4U);
@@ -368,17 +443,36 @@ static uint32_t icu_ielsr_slot(uint64_t addr)
   return (uint32_t)((addr - lo) / 4U);
 }
 
-/** @brief Dispatch an ICU IELSR read from the model's own event-link state. */
-static uint64_t icu_read(uint64_t addr)
+/**
+ * @brief Dispatch an ICU IELSR read from the model's own event-link state.
+ * @details Dispatch an icu ielsr read from the model's own event-link state; this step is contained within the board periph model and uses bounded caller or module-owned storage.
+ * @param[in] addr Guest address involved in the operation.
+ * @return The icu read result produced by the board periph model.
+ * @retval value The operation-specific icu read value.
+ * @pre Arguments satisfy the ranges documented for icu read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_icu_read(uint64_t addr)
 {
-  const uint32_t slot = icu_ielsr_slot(addr);
+  const uint32_t slot = internal_icu_ielsr_slot(addr);
   return (slot < (uint32_t)k_icu_ielsr_cnt) ? s_ielsr[slot] : 0U;
 }
 
-/** @brief Dispatch an ICU IELSR write; IR is W0C, the IELS/DTCE bits are RW. */
-static void icu_write(uint64_t addr, uint32_t value)
+/**
+ * @brief Dispatch an ICU IELSR write; IR is W0C, the IELS/DTCE bits are RW.
+ * @details Dispatch an icu ielsr write; ir is w0c, the iels/dtce bits are rw; this step is contained within the board periph model and uses bounded caller or module-owned storage.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for icu write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_icu_write(uint64_t addr, uint32_t value)
 {
-  const uint32_t slot = icu_ielsr_slot(addr);
+  const uint32_t slot = internal_icu_ielsr_slot(addr);
   if (slot >= (uint32_t)k_icu_ielsr_cnt) {
     return;
   }
@@ -404,8 +498,17 @@ static void icu_write(uint64_t addr, uint32_t value)
  * other peripheral, so board_periph hands it the event-raise via a thin wrapper
  * (the engine is the only extra argument the event-raise needs). */
 
-/** @brief ICU event-raise hook handed to the USB model (see board_usb.h). */
-static void usb_irq_raiser(uc_engine* uc, uint16_t event)
+/**
+ * @brief ICU event-raise hook handed to the USB model (see board_usb.h).
+ * @details Icu event-raise hook handed to the usb model (see board_usb.h); this step is contained within the board periph model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] event Event input used by the operation.
+ * @pre Arguments satisfy the ranges documented for USB interrupt raiser. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_usb_irq_raiser(uc_engine* uc, uint16_t event)
 {
   board_periph_icu_raise_event(uc, event);
 }
@@ -430,7 +533,7 @@ void board_periph_init(bool trace)
   s_trace      = trace;
   s_last_block = nullptr; /* drop the dispatch cache across a warm reboot */
   if (!s_order_built) {
-    board_periph_build_order();
+    internal_board_periph_build_order();
   }
   /* Reset every registered block to its power-on state. */
   for (uint32_t i = 0U; i < s_block_count; i++) {
@@ -455,7 +558,7 @@ void board_periph_init(bool trace)
   /* Bring the USBFS controller model + virtual host up and wire its interrupt
    * pend through this module's ICU/NVIC path (Phase 3, issue #67). */
   board_usb_init(trace);
-  board_usb_set_irq_raiser(usb_irq_raiser);
+  board_usb_set_irq_raiser(internal_usb_irq_raiser);
   /* USBHS HOST-mode model (self-loop peer of the USBFS device above). Dormant
    * until main.c grants the loop AND the firmware selects host mode. */
   board_usb_host_init(trace);
@@ -469,14 +572,14 @@ void board_periph_init(bool trace)
 uint64_t board_periph_read(uc_engine* uc, uint64_t addr, unsigned size, bool* handled)
 {
   *handled                          = true;
-  const board_periph_block_t* block = block_for_addr(addr);
+  const board_periph_block_t* block = internal_block_for_addr(addr);
   if ((block != nullptr) && !block->observe) {
-    if (board_mstp_addr_stopped(addr)) {
+    if (priv_board_mstp_addr_stopped(addr)) {
       /* Module-stopped peripheral: unclocked on silicon, so it reads 0 and the
        * modelled block must NOT answer (#405). This is the same fidelity shape
        * as the #247 graphics power domain -- a block whose enable was never
        * cancelled does nothing on hardware, and now nothing in the emulator. */
-      board_mstp_note_gated_access(addr, false);
+      priv_board_mstp_note_gated_access(addr, false);
       return 0U;
     }
     return block->read(uc, addr, size);
@@ -498,8 +601,8 @@ uint64_t board_periph_read(uc_engine* uc, uint64_t addr, unsigned size, bool* ha
       return usbh_val;
     }
   }
-  if (icu_ielsr_slot(addr) < (uint32_t)k_icu_ielsr_cnt) {
-    return icu_read(addr);
+  if (internal_icu_ielsr_slot(addr) < (uint32_t)k_icu_ielsr_cnt) {
+    return internal_icu_read(addr);
   }
   *handled = false;
   return 0U;
@@ -508,13 +611,13 @@ uint64_t board_periph_read(uc_engine* uc, uint64_t addr, unsigned size, bool* ha
 void board_periph_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value, bool* handled)
 {
   *handled                          = true;
-  const board_periph_block_t* block = block_for_addr(addr);
+  const board_periph_block_t* block = internal_block_for_addr(addr);
   if (block != nullptr) {
-    if (!block->observe && board_mstp_addr_stopped(addr)) {
+    if (!block->observe && priv_board_mstp_addr_stopped(addr)) {
       /* Module-stopped peripheral: unclocked on silicon, so the write is
        * dropped (#405). Reported handled -- the access is consumed and
        * discarded exactly as the hardware discards it (no fault, no flag). */
-      board_mstp_note_gated_access(addr, true);
+      priv_board_mstp_note_gated_access(addr, true);
       return;
     }
     block->write(uc, addr, size, value);
@@ -538,8 +641,8 @@ void board_periph_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t va
       return;
     }
   }
-  if (icu_ielsr_slot(addr) < (uint32_t)k_icu_ielsr_cnt) {
-    icu_write(addr, (uint32_t)value);
+  if (internal_icu_ielsr_slot(addr) < (uint32_t)k_icu_ielsr_cnt) {
+    internal_icu_write(addr, (uint32_t)value);
     return;
   }
   *handled = false;
@@ -554,7 +657,7 @@ void board_periph_tick(uc_engine* uc)
     }
   }
   /* Step the virtual USB host: it advances the chapter-9 enumeration and pends
-   * the USBFS interrupt through ::usb_irq_raiser when it delivers a SETUP. */
+   * the USBFS interrupt through ::internal_usb_irq_raiser when it delivers a SETUP. */
   board_usb_tick(uc);
 }
 
@@ -575,7 +678,7 @@ void board_periph_note_irq_taken(uint32_t irq)
     s_irq_taken[irq]++;
   }
   if (s_trace) {
-    (void)fprintf(stderr, "  [trace] NVIC IRQ %u taken (real exception via VTOR)\n", irq);
+    (void)priv_emu_io_errf("  [trace] NVIC IRQ %u taken (real exception via VTOR)\n", irq);
   }
 }
 
@@ -598,22 +701,29 @@ uint32_t board_periph_irq_total(void)
  * =============================================================================
  */
 
-/** @brief Print the per-IRQ taken totals (or a "none fired" note). */
-static void report_irqs(void)
+/**
+ * @brief Print the per-IRQ taken totals (or a "none fired" note).
+ * @details Print the per-irq taken totals (or a "none fired" note); this step is contained within the board periph model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for report irqs. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_report_irqs(void)
 {
   if (s_irq_total == 0U) {
-    (void)fprintf(stderr, "  NVIC IRQs     : 0 taken (no event-linked, enabled line fired)\n");
+    (void)priv_emu_io_errf("  NVIC IRQs     : 0 taken (no event-linked, enabled line fired)\n");
     return;
   }
-  (void)fprintf(stderr, "  NVIC IRQs     : %u taken  [", s_irq_total);
+  (void)priv_emu_io_errf("  NVIC IRQs     : %u taken  [", s_irq_total);
   bool first = true;
   for (uint32_t i = 0U; i < (uint32_t)k_irq_track_max; i++) {
     if (s_irq_taken[i] > 0U) {
-      (void)fprintf(stderr, "%sIRQ%u x%u", first ? "" : " ", i, s_irq_taken[i]);
+      (void)priv_emu_io_errf("%sIRQ%u x%u", first ? "" : " ", i, s_irq_taken[i]);
       first = false;
     }
   }
-  (void)fprintf(stderr, "]\n");
+  (void)priv_emu_io_errf("]\n");
 }
 
 void board_periph_report(uc_engine* uc)
@@ -624,7 +734,7 @@ void board_periph_report(uc_engine* uc)
     const board_periph_block_t* b = s_blocks[s_block_order[i]];
     /* The core's NVIC-IRQ section sits between SCI and the touch line. */
     if (!irq_done && (b->order >= (uint32_t)k_core_irq_report_order)) {
-      report_irqs();
+      internal_report_irqs();
       irq_done = true;
     }
     if (b->report != nullptr) {
@@ -632,7 +742,7 @@ void board_periph_report(uc_engine* uc)
     }
   }
   if (!irq_done) {
-    report_irqs();
+    internal_report_irqs();
   }
   board_usb_report();
   board_usb_host_report();

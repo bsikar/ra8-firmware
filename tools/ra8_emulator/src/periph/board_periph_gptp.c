@@ -63,6 +63,7 @@
 #include <stdio.h>
 
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 #include "ra8_ether_regs.h"
 
 /**
@@ -166,8 +167,19 @@ static gptp_state_t s_gptp;
 /* Flat config-reflect shadow helpers. */
 /* ------------------------------------------------------------------------- */
 
-/** @brief Read @p size bytes little-endian from the config shadow at @p off. */
-static uint64_t gptp_shadow_read(uint64_t off, unsigned size)
+/**
+ * @brief Read @p size bytes little-endian from the config shadow at @p off.
+ * @details Read @p size bytes little-endian from the config shadow at @p off; this step is contained within the board periph gptp model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The gptp shadow read result produced by the board periph gptp model.
+ * @retval value The operation-specific gptp shadow read value.
+ * @pre Arguments satisfy the ranges documented for gptp shadow read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph gptp model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_gptp_shadow_read(uint64_t off, unsigned size)
 {
   uint64_t v = 0U;
   for (unsigned i = 0U; (i < size) && ((off + (uint64_t)i) < (uint64_t)k_gptp_win_span); ++i) {
@@ -176,18 +188,38 @@ static uint64_t gptp_shadow_read(uint64_t off, unsigned size)
   return v;
 }
 
-/** @brief Write @p size bytes little-endian into the config shadow at @p off. */
-static void gptp_shadow_write(uint64_t off, unsigned size, uint64_t value)
+/**
+ * @brief Write @p size bytes little-endian into the config shadow at @p off.
+ * @details Write @p size bytes little-endian into the config shadow at @p off; this step is contained within the board periph gptp model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for gptp shadow write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph gptp model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gptp_shadow_write(uint64_t off, unsigned size, uint64_t value)
 {
   for (unsigned i = 0U; (i < size) && ((off + (uint64_t)i) < (uint64_t)k_gptp_win_span); ++i) {
     s_gptp.win[off + (uint64_t)i] = (uint8_t)(value >> (k_gptp_shift_byte * i));
   }
 }
 
-/** @brief Read a 32-bit shadow register at window offset @p off. */
-static uint32_t gptp_shadow_u32(uint64_t off)
+/**
+ * @brief Read a 32-bit shadow register at window offset @p off.
+ * @details Read a 32-bit shadow register at window offset @p off; this step is contained within the board periph gptp model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The gptp shadow u32 result produced by the board periph gptp model.
+ * @retval value The operation-specific gptp shadow u32 value.
+ * @pre Arguments satisfy the ranges documented for gptp shadow u32. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph gptp model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_gptp_shadow_u32(uint64_t off)
 {
-  return (uint32_t)gptp_shadow_read(off, k_gptp_reg32_bytes);
+  return (uint32_t)internal_gptp_shadow_read(off, k_gptp_reg32_bytes);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -208,8 +240,11 @@ static uint32_t gptp_shadow_u32(uint64_t off)
  * @post No model state is modified.
  * @note Not thread-safe.
  * @since 0.1.0
+  * @details Resolve a window offset to a timer unit and its in-block offset; this step is contained within the board periph gptp model and uses bounded caller or module-owned storage.
+ * @pre The call executes on the emulator's single owning thread.
  */
-static bool gptp_decode_timer(uint64_t off, uint32_t* out_timer, uint64_t* out_inoff)
+RA8_INTERNAL static bool
+internal_gptp_decode_timer(uint64_t off, uint32_t* out_timer, uint64_t* out_inoff)
 {
   if (off < (uint64_t)k_ra8_gptp_off_timer0) {
     return false;
@@ -245,7 +280,7 @@ static bool gptp_decode_timer(uint64_t off, uint32_t* out_timer, uint64_t* out_i
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void gptp_time_now(uint32_t t, uint64_t* out_sec, uint32_t* out_nsec)
+RA8_INTERNAL static void internal_gptp_time_now(uint32_t t, uint64_t* out_sec, uint32_t* out_nsec)
 {
   const gptp_timer_t* u = &s_gptp.timer[t];
   if (!u->enabled) {
@@ -283,7 +318,7 @@ static void gptp_time_now(uint32_t t, uint64_t* out_sec, uint32_t* out_nsec)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void gptp_tick_timer(uint32_t t)
+RA8_INTERNAL static void internal_gptp_tick_timer(uint32_t t)
 {
   gptp_timer_t* u = &s_gptp.timer[t];
   if (!u->enabled) {
@@ -294,7 +329,7 @@ static void gptp_tick_timer(uint32_t t)
                            (uint64_t)k_ra8_gptp_off_t_ptptivc;
   /* HUM Ch 35.3.2.3 "PTPTIVCt : Timer t Increment Value Configuration Register
    * (t = 0, 1)" p 1928 -- 5.27 fixed-point nanoseconds per clk. */
-  const uint64_t tiv = (uint64_t)gptp_shadow_u32(tiv_off);
+  const uint64_t tiv = (uint64_t)internal_gptp_shadow_u32(tiv_off);
   if (tiv == 0U) {
     return;
   }
@@ -309,8 +344,16 @@ static void gptp_tick_timer(uint32_t t)
 /* Enable / disable / offset commit. */
 /* ------------------------------------------------------------------------- */
 
-/** @brief Apply a PTPTMEC write: start each unit whose bit is set. */
-static void gptp_apply_tmec(uint32_t value)
+/**
+ * @brief Apply a PTPTMEC write: start each unit whose bit is set.
+ * @details Apply a ptptmec write: start each unit whose bit is set; this step is contained within the board periph gptp model and uses bounded caller or module-owned storage.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for gptp apply tmec. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph gptp model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gptp_apply_tmec(uint32_t value)
 {
   /* HUM Ch 35.3.2.1 "PTPTMEC : Timer Enable Configuration Register" p 1927 --
    * writing 1 to bit q sets TEq; other bits are unaffected (write-1-to-set). */
@@ -321,8 +364,16 @@ static void gptp_apply_tmec(uint32_t value)
   }
 }
 
-/** @brief Apply a PTPTMDC write: stop and clear each unit whose bit is set. */
-static void gptp_apply_tmdc(uint32_t value)
+/**
+ * @brief Apply a PTPTMDC write: stop and clear each unit whose bit is set.
+ * @details Apply a ptptmdc write: stop and clear each unit whose bit is set; this step is contained within the board periph gptp model and uses bounded caller or module-owned storage.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for gptp apply tmdc. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph gptp model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gptp_apply_tmdc(uint32_t value)
 {
   /* HUM Ch 35.3.2.2 "PTPTMDC : Timer Disable Configuration Register" p 1928 --
    * writing 1 to bit q clears TEq; a stopped unit's counters read 0, so a stop
@@ -336,8 +387,17 @@ static void gptp_apply_tmdc(uint32_t value)
   }
 }
 
-/** @brief Read PTPTMEC back as the live enable bitmask across the units. */
-static uint32_t gptp_read_tmec(void)
+/**
+ * @brief Read PTPTMEC back as the live enable bitmask across the units.
+ * @details Read ptptmec back as the live enable bitmask across the units; this step is contained within the board periph gptp model and uses bounded caller or module-owned storage.
+ * @return The gptp read tmec result produced by the board periph gptp model.
+ * @retval value The operation-specific gptp read tmec value.
+ * @pre Arguments satisfy the ranges documented for gptp read tmec. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph gptp model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_gptp_read_tmec(void)
 {
   uint32_t v = 0U;
   for (uint32_t t = 0U; t < (uint32_t)k_ra8_gptp_timer_count; ++t) {
@@ -365,19 +425,22 @@ static uint32_t gptp_read_tmec(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void gptp_commit_offset(uint32_t t)
+RA8_INTERNAL static void internal_gptp_commit_offset(uint32_t t)
 {
   const uint64_t base =
     (uint64_t)k_ra8_gptp_off_timer0 + ((uint64_t)t * (uint64_t)k_ra8_gptp_timer_stride);
   /* HUM Ch 35.3.2.6 "PTPTOVCtU : Timer t Offset Value Configuration Register U"
    * p 1930 -- seconds [47:32]. */
-  const uint64_t ovcu = (uint64_t)gptp_shadow_u32(base + (uint64_t)k_ra8_gptp_off_t_ptptovcu);
+  const uint64_t ovcu =
+    (uint64_t)internal_gptp_shadow_u32(base + (uint64_t)k_ra8_gptp_off_t_ptptovcu);
   /* HUM Ch 35.3.2.5 "PTPTOVCMt : Timer t Offset Value Configuration Register M"
    * p 1929 -- seconds [31:0]. */
-  const uint64_t ovcm = (uint64_t)gptp_shadow_u32(base + (uint64_t)k_ra8_gptp_off_t_ptptovcm);
+  const uint64_t ovcm =
+    (uint64_t)internal_gptp_shadow_u32(base + (uint64_t)k_ra8_gptp_off_t_ptptovcm);
   /* HUM Ch 35.3.2.4 "PTPTOVCtL : Timer t Offset Value Configuration Register L"
    * p 1929 -- nanoseconds [29:0]; this write commits the whole offset. */
-  const uint64_t ovcl = (uint64_t)gptp_shadow_u32(base + (uint64_t)k_ra8_gptp_off_t_ptptovcl);
+  const uint64_t ovcl =
+    (uint64_t)internal_gptp_shadow_u32(base + (uint64_t)k_ra8_gptp_off_t_ptptovcl);
   s_gptp.timer[t].off_sec =
     ((ovcu & (uint64_t)k_gptp_mask_sec_u) << (uint64_t)k_gptp_shift_sec_u) | ovcm;
   s_gptp.timer[t].off_nsec = (uint32_t)(ovcl & (uint64_t)k_gptp_mask_nsec);
@@ -405,14 +468,16 @@ static void gptp_commit_offset(uint32_t t)
  * @post On true the L reads refresh this unit's M/U latches.
  * @note Not thread-safe.
  * @since 0.1.0
+  * @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-static bool gptp_read_monitor(uint32_t t, uint64_t inoff, uint32_t* out)
+RA8_INTERNAL static bool internal_gptp_read_monitor(uint32_t t, uint64_t inoff, uint32_t* out)
 {
   gptp_timer_t* u = &s_gptp.timer[t];
   if (inoff == (uint64_t)k_ra8_gptp_off_t_ptpgptptml) {
     uint64_t sec  = 0U;
     uint32_t nsec = 0U;
-    gptp_time_now(t, &sec, &nsec);
+    internal_gptp_time_now(t, &sec, &nsec);
     u->latch_gptp_m = (uint32_t)sec;
     u->latch_gptp_u =
       (uint32_t)((sec >> (uint64_t)k_gptp_shift_sec_u) & (uint64_t)k_gptp_mask_sec_u);
@@ -430,7 +495,7 @@ static bool gptp_read_monitor(uint32_t t, uint64_t inoff, uint32_t* out)
   if (inoff == (uint64_t)k_ra8_gptp_off_t_ptpavtptml) {
     uint64_t sec  = 0U;
     uint32_t nsec = 0U;
-    gptp_time_now(t, &sec, &nsec);
+    internal_gptp_time_now(t, &sec, &nsec);
     const uint64_t avtp = (sec * (uint64_t)k_gptp_ns_per_sec) + (uint64_t)nsec;
     u->latch_avtp_u     = (uint32_t)(avtp >> (uint64_t)k_gptp_shift_sec_u);
     *out                = (uint32_t)avtp;
@@ -461,8 +526,9 @@ static bool gptp_read_monitor(uint32_t t, uint64_t inoff, uint32_t* out)
  * @post An L monitoring read refreshes the addressed unit's M/U latches.
  * @note Not thread-safe.
  * @since 0.1.0
+  * @details MMIO read handler for the gptp window; this step is contained within the board periph gptp model and uses bounded caller or module-owned storage.
  */
-static uint64_t gptp_read(uc_engine* uc, uint64_t addr, unsigned size)
+RA8_INTERNAL static uint64_t internal_gptp_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   const uint64_t off = addr - (uint64_t)k_gptp_win_base;
@@ -472,7 +538,7 @@ static uint64_t gptp_read(uc_engine* uc, uint64_t addr, unsigned size)
     return (uint64_t)k_gptp_ipv_reset;
   }
   if (off == (uint64_t)k_ra8_gptp_off_ptptmec) {
-    return (uint64_t)gptp_read_tmec();
+    return (uint64_t)internal_gptp_read_tmec();
   }
   if (off == (uint64_t)k_ra8_gptp_off_ptptmdc) {
     /* HUM Ch 35.3.2.2 "PTPTMDC : Timer Disable Configuration Register" p 1928 --
@@ -481,13 +547,13 @@ static uint64_t gptp_read(uc_engine* uc, uint64_t addr, unsigned size)
   }
   uint32_t timer = 0U;
   uint64_t inoff = 0U;
-  if (gptp_decode_timer(off, &timer, &inoff)) {
+  if (internal_gptp_decode_timer(off, &timer, &inoff)) {
     uint32_t val = 0U;
-    if (gptp_read_monitor(timer, inoff, &val)) {
+    if (internal_gptp_read_monitor(timer, inoff, &val)) {
       return (uint64_t)val;
     }
   }
-  return gptp_shadow_read(off, size);
+  return internal_gptp_shadow_read(off, size);
 }
 
 /**
@@ -504,47 +570,73 @@ static uint64_t gptp_read(uc_engine* uc, uint64_t addr, unsigned size)
  *       offset; every other register reflects @p value in the shadow.
  * @note Not thread-safe.
  * @since 0.1.0
+  * @details MMIO write handler for the gptp window; this step is contained within the board periph gptp model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-static void gptp_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+RA8_INTERNAL static void
+internal_gptp_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   const uint64_t off = addr - (uint64_t)k_gptp_win_base;
   if (off == (uint64_t)k_ra8_gptp_off_ptptmec) {
-    gptp_apply_tmec((uint32_t)value);
+    internal_gptp_apply_tmec((uint32_t)value);
     return;
   }
   if (off == (uint64_t)k_ra8_gptp_off_ptptmdc) {
-    gptp_apply_tmdc((uint32_t)value);
+    internal_gptp_apply_tmdc((uint32_t)value);
     return;
   }
   if (off == (uint64_t)k_ra8_gptp_off_ptpipv) {
     return; /* PTPIPV is read-only (HUM 35.3.1.1 p 1927) -- drop the write. */
   }
-  gptp_shadow_write(off, size, value);
+  internal_gptp_shadow_write(off, size, value);
   uint32_t timer = 0U;
   uint64_t inoff = 0U;
-  if (gptp_decode_timer(off, &timer, &inoff) && (inoff == (uint64_t)k_ra8_gptp_off_t_ptptovcl)) {
-    gptp_commit_offset(timer);
+  if (internal_gptp_decode_timer(off, &timer, &inoff) &&
+      (inoff == (uint64_t)k_ra8_gptp_off_t_ptptovcl)) {
+    internal_gptp_commit_offset(timer);
   }
 }
 
-/** @brief Per-tick advance for every running timer unit. */
-static void gptp_tick(uc_engine* uc)
+/**
+ * @brief Per-tick advance for every running timer unit.
+ * @details Per-tick advance for every running timer unit; this step is contained within the board periph gptp model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for gptp tick. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph gptp model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gptp_tick(uc_engine* uc)
 {
   (void)uc;
   for (uint32_t t = 0U; t < (uint32_t)k_ra8_gptp_timer_count; ++t) {
-    gptp_tick_timer(t);
+    internal_gptp_tick_timer(t);
   }
 }
 
-/** @brief Reset the GPTP model to its power-on state. */
-static void gptp_reset(void)
+/**
+ * @brief Reset the GPTP model to its power-on state.
+ * @details Reset the gptp model to its power-on state; this step is contained within the board periph gptp model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for gptp reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph gptp model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gptp_reset(void)
 {
   s_gptp = (gptp_state_t){};
 }
 
-/** @brief End-of-run GPTP section: report any unit that advanced. */
-static void gptp_report(void)
+/**
+ * @brief End-of-run GPTP section: report any unit that advanced.
+ * @details End-of-run gptp section: report any unit that advanced; this step is contained within the board periph gptp model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for gptp report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph gptp model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gptp_report(void)
 {
   for (uint32_t t = 0U; t < (uint32_t)k_ra8_gptp_timer_count; ++t) {
     const gptp_timer_t* u = &s_gptp.timer[t];
@@ -553,31 +645,31 @@ static void gptp_report(void)
     }
     uint64_t sec  = 0U;
     uint32_t nsec = 0U;
-    gptp_time_now(t, &sec, &nsec);
-    (void)fprintf(stderr,
-                  "  GPTP timer%u   : gPTP=%llu.%09u s (ESWCLK %llu MHz free-run)\n",
-                  (unsigned)t,
-                  (unsigned long long)sec,
-                  (unsigned)nsec,
-                  (unsigned long long)((uint64_t)k_gptp_eswclk_hz / (uint64_t)k_gptp_hz_per_mhz));
+    internal_gptp_time_now(t, &sec, &nsec);
+    (void)priv_emu_io_errf(
+      "  GPTP timer%u   : gPTP=%llu.%09u s (ESWCLK %llu MHz free-run)\n",
+      (unsigned)t,
+      (unsigned long long)sec,
+      (unsigned)nsec,
+      (unsigned long long)((uint64_t)k_gptp_eswclk_hz / (uint64_t)k_gptp_hz_per_mhz));
   }
 }
 
 /** @brief GPTP block descriptor. */
-static const board_periph_block_t k_gptp_block = {
+static const board_periph_block_t s_k_gptp_block = {
   .base   = (uint64_t)k_gptp_win_base,
   .span   = (uint64_t)k_gptp_win_span,
   .order  = (uint32_t)k_gptp_block_order,
-  .read   = gptp_read,
-  .write  = gptp_write,
-  .tick   = gptp_tick,
-  .reset  = gptp_reset,
-  .report = gptp_report,
+  .read   = internal_gptp_read,
+  .write  = internal_gptp_write,
+  .tick   = internal_gptp_tick,
+  .reset  = internal_gptp_reset,
+  .report = internal_gptp_report,
   .name   = "GPTP",
 };
 
 /** @brief Self-register the GPTP window before main runs (decentralized). */
-[[gnu::constructor]] static void gptp_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_gptp_block_register(void)
 {
-  board_periph_register_block(&k_gptp_block);
+  board_periph_register_block(&s_k_gptp_block);
 }

@@ -48,6 +48,7 @@
 
 #include "board_console.h"
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief Console-tap line buffer capacity for an ADC conversion summary. */
 typedef enum : uint32_t {
@@ -204,51 +205,109 @@ static uint32_t s_adc_reg[k_adc_reg_words];
 static uint32_t s_adc_scans;     /**< Conversions kicked via ADSTR.        */
 static uint16_t s_adc_last_code; /**< Last result code written to an ADDR. */
 
-/** @brief Word index into the backing store for an in-window offset. */
-static uint32_t adc_word(uint64_t off)
+/**
+ * @brief Word index into the backing store for an in-window offset.
+ * @details Word index into the backing store for an in-window offset; this step is contained within the board periph ADC model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The ADC word result produced by the board periph ADC model.
+ * @retval value The operation-specific ADC word value.
+ * @pre Arguments satisfy the ranges documented for ADC word. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ADC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_adc_word(uint64_t off)
 {
   return (uint32_t)(off >> 2U);
 }
 
-/** @brief Read an ADCHCRn slot's raw config word from the backing store. */
-static uint32_t adc_chcr(uint32_t ch)
+/**
+ * @brief Read an ADCHCRn slot's raw config word from the backing store.
+ * @details Read an adchcrn slot's raw config word from the backing store; this step is contained within the board periph ADC model and uses bounded caller or module-owned storage.
+ * @param[in] ch Selected channel identifier.
+ * @return The ADC chcr result produced by the board periph ADC model.
+ * @retval value The operation-specific ADC chcr value.
+ * @pre Arguments satisfy the ranges documented for ADC chcr. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ADC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_adc_chcr(uint32_t ch)
 {
-  return s_adc_reg[adc_word((uint64_t)k_adc_off_adchcr0 +
-                            ((uint64_t)ch * (uint64_t)k_adc_chcr_stride))];
+  return s_adc_reg[internal_adc_word((uint64_t)k_adc_off_adchcr0 +
+                                     ((uint64_t)ch * (uint64_t)k_adc_chcr_stride))];
 }
 
-/** @brief Store a freshly converted code into ADDR[ch] (DATA[15:0], ERR clear). */
-static void adc_set_result(uint32_t ch, uint16_t code)
+/**
+ * @brief Store a freshly converted code into ADDR[ch] (DATA[15:0], ERR clear).
+ * @details Store a freshly converted code into addr[ch] (data[15:0], err clear); this step is contained within the board periph ADC model and uses bounded caller or module-owned storage.
+ * @param[in] ch Selected channel identifier.
+ * @param[in] code Instruction, status, or command code decoded by the operation.
+ * @pre Arguments satisfy the ranges documented for ADC set result. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ADC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_adc_set_result(uint32_t ch, uint16_t code)
 {
   if (ch >= (uint32_t)k_adc_result_regs) {
     return;
   }
   const uint64_t off = (uint64_t)k_adc_off_addr0 + ((uint64_t)ch * (uint64_t)k_adc_addr_stride);
-  s_adc_reg[adc_word(off)] = (uint32_t)code & (uint32_t)k_adc_addr_data;
-  s_adc_last_code          = code;
+  s_adc_reg[internal_adc_word(off)] = (uint32_t)code & (uint32_t)k_adc_addr_data;
+  s_adc_last_code                   = code;
 }
 
-/** @brief Store an extended-analog result into ADEXDR[idx] (DATA[15:0], ERR clear). */
-static void adc_set_ext_result(uint32_t idx, uint16_t code)
+/**
+ * @brief Store an extended-analog result into ADEXDR[idx] (DATA[15:0], ERR clear).
+ * @details Store an extended-analog result into adexdr[idx] (data[15:0], err clear); this step is contained within the board periph ADC model and uses bounded caller or module-owned storage.
+ * @param[in] idx Bounded index of the selected entry.
+ * @param[in] code Instruction, status, or command code decoded by the operation.
+ * @pre Arguments satisfy the ranges documented for ADC set ext result. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ADC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_adc_set_ext_result(uint32_t idx, uint16_t code)
 {
   if (idx >= (uint32_t)k_adc_ext_regs) {
     return;
   }
   const uint64_t off = (uint64_t)k_adc_off_adexdr0 + ((uint64_t)idx * (uint64_t)k_adc_exdr_stride);
-  s_adc_reg[adc_word(off)] = (uint32_t)code & (uint32_t)k_adc_addr_data;
-  s_adc_last_code          = code;
+  s_adc_reg[internal_adc_word(off)] = (uint32_t)code & (uint32_t)k_adc_addr_data;
+  s_adc_last_code                   = code;
 }
 
-/** @brief Read ADSGDCR[group].DIAGVAL[2:0] (self-diagnosis mode) from the store. */
-static uint32_t adc_diagval(uint32_t group)
+/**
+ * @brief Read ADSGDCR[group].DIAGVAL[2:0] (self-diagnosis mode) from the store.
+ * @details Read adsgdcr[group].diagval[2:0] (self-diagnosis mode) from the store; this step is contained within the board periph ADC model and uses bounded caller or module-owned storage.
+ * @param[in] group Peripheral channel or scan-group identifier.
+ * @return The ADC diagval result produced by the board periph ADC model.
+ * @retval value The operation-specific ADC diagval value.
+ * @pre Arguments satisfy the ranges documented for ADC diagval. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ADC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_adc_diagval(uint32_t group)
 {
   const uint64_t off =
     (uint64_t)k_adc_off_adsgdcr0 + ((uint64_t)group * (uint64_t)k_adc_sgdcr_stride);
-  return s_adc_reg[adc_word(off)] & (uint32_t)k_adc_sgdcr_diagval;
+  return s_adc_reg[internal_adc_word(off)] & (uint32_t)k_adc_sgdcr_diagval;
 }
 
-/** @brief Ideal 16-bit self-diagnosis code for the armed DIAGVAL mode. */
-static uint16_t adc_selfdiag_ideal(uint32_t diagval)
+/**
+ * @brief Ideal 16-bit self-diagnosis code for the armed DIAGVAL mode.
+ * @details Ideal 16-bit self-diagnosis code for the armed diagval mode; this step is contained within the board periph ADC model and uses bounded caller or module-owned storage.
+ * @param[in] diagval Diagval input used by the operation.
+ * @return The ADC selfdiag ideal result produced by the board periph ADC model.
+ * @retval value The operation-specific ADC selfdiag ideal value.
+ * @pre Arguments satisfy the ranges documented for ADC selfdiag ideal. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ADC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_adc_selfdiag_ideal(uint32_t diagval)
 {
   switch (diagval) {
     case (uint32_t)k_adc_diagval_mode2:
@@ -260,11 +319,22 @@ static uint16_t adc_selfdiag_ideal(uint32_t diagval)
   }
 }
 
-/** @brief Synthetic ADEXDR code for an extended-analog channel (phys >= base). */
-static uint16_t adc_ext_value(uint32_t phys, uint32_t group)
+/**
+ * @brief Synthetic ADEXDR code for an extended-analog channel (phys >= base).
+ * @details Synthetic adexdr code for an extended-analog channel (phys >= base); this step is contained within the board periph ADC model and uses bounded caller or module-owned storage.
+ * @param[in] phys Phys input used by the operation.
+ * @param[in] group Peripheral channel or scan-group identifier.
+ * @return The ADC ext value result produced by the board periph ADC model.
+ * @retval value The operation-specific ADC ext value value.
+ * @pre Arguments satisfy the ranges documented for ADC ext value. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ADC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_adc_ext_value(uint32_t phys, uint32_t group)
 {
   if (phys == (uint32_t)k_adc_chan_selfdiag) {
-    return adc_selfdiag_ideal(adc_diagval(group));
+    return internal_adc_selfdiag_ideal(internal_adc_diagval(group));
   }
   if (phys == (uint32_t)k_adc_chan_temp) {
     return (uint16_t)k_adc_temp_code;
@@ -272,17 +342,37 @@ static uint16_t adc_ext_value(uint32_t phys, uint32_t group)
   return (uint16_t)k_adc_sample_code; /* internal Vref + any other ext source. */
 }
 
-/** @brief Read ADDOPCRC[slot].ADPRC[1:0] data-format code from the store. */
-static uint32_t adc_adprc(uint32_t slot)
+/**
+ * @brief Read ADDOPCRC[slot].ADPRC[1:0] data-format code from the store.
+ * @details Read addopcrc[slot].adprc[1:0] data-format code from the store; this step is contained within the board periph ADC model and uses bounded caller or module-owned storage.
+ * @param[in] slot Slot input used by the operation.
+ * @return The ADC adprc result produced by the board periph ADC model.
+ * @retval value The operation-specific ADC adprc value.
+ * @pre Arguments satisfy the ranges documented for ADC adprc. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ADC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_adc_adprc(uint32_t slot)
 {
   const uint64_t off =
     (uint64_t)k_adc_off_addopcrc0 + ((uint64_t)slot * (uint64_t)k_adc_chcr_stride);
-  return (s_adc_reg[adc_word(off)] & (uint32_t)k_adc_opcrc_adprc_m) >>
+  return (s_adc_reg[internal_adc_word(off)] & (uint32_t)k_adc_opcrc_adprc_m) >>
          (uint32_t)k_adc_opcrc_adprc_s;
 }
 
-/** @brief Resolution-appropriate mid-scale result code for an ADPRC format. */
-static uint16_t adc_midscale_for_adprc(uint32_t adprc)
+/**
+ * @brief Resolution-appropriate mid-scale result code for an ADPRC format.
+ * @details Resolution-appropriate mid-scale result code for an adprc format; this step is contained within the board periph ADC model and uses bounded caller or module-owned storage.
+ * @param[in] adprc Adprc input used by the operation.
+ * @return The ADC midscale for adprc result produced by the board periph ADC model.
+ * @retval value The operation-specific ADC midscale for adprc value.
+ * @pre Arguments satisfy the ranges documented for ADC midscale for adprc. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ADC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_adc_midscale_for_adprc(uint32_t adprc)
 {
   switch (adprc) {
     case (uint32_t)k_adc_adprc_16bit:
@@ -308,13 +398,18 @@ static uint16_t adc_midscale_for_adprc(uint32_t adprc)
  * data-format. A slot with no ADDR register (the top diagnostic slot) produces
  * no ordinary result; an internal / extended-analog channel reports through
  * ADEXDR instead.
+  * @param[in] group Peripheral channel or scan-group identifier.
+ * @pre Arguments satisfy the ranges documented for ADC convert group. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ADC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static void adc_convert_group(uint32_t group)
+RA8_INTERNAL static void internal_adc_convert_group(uint32_t group)
 {
   uint32_t converted = 0U;
   uint16_t last_code = 0U;
   for (uint32_t slot = 0U; slot < (uint32_t)k_adc_max_channels; slot++) {
-    const uint32_t chcr = adc_chcr(slot);
+    const uint32_t chcr = internal_adc_chcr(slot);
     if ((chcr & (uint32_t)k_adc_chcr_sgsel) != group) {
       continue;
     }
@@ -322,15 +417,15 @@ static void adc_convert_group(uint32_t group)
     if (phys >= (uint32_t)k_adc_ext_chan_base) {
       /* An internal / extended-analog channel (self-diagnosis, temperature
        * sensor, internal Vref) reports through ADEXDR[CNVCS - base], not ADDR[]. */
-      last_code = adc_ext_value(phys, group);
-      adc_set_ext_result(phys - (uint32_t)k_adc_ext_chan_base, last_code);
+      last_code = internal_adc_ext_value(phys, group);
+      internal_adc_set_ext_result(phys - (uint32_t)k_adc_ext_chan_base, last_code);
       converted++;
     } else if (slot < (uint32_t)k_adc_result_regs) {
       /* Normal channel -> its virtual-channel result register ADDR[slot].
        * Resolution is the slot's ADDOPCRCn.ADPRC data-format, so a mid-scale
        * input converts to that format's half-full-scale code. */
-      last_code = adc_midscale_for_adprc(adc_adprc(slot));
-      adc_set_result(slot, last_code);
+      last_code = internal_adc_midscale_for_adprc(internal_adc_adprc(slot));
+      internal_adc_set_result(slot, last_code);
       converted++;
     }
     /* else: a normal channel on a virtual slot with no ADDR result register
@@ -350,8 +445,20 @@ static void adc_convert_group(uint32_t group)
   }
 }
 
-/** @brief MMIO read: ADSR holds ADACT0 idle; everything else reads back. */
-static uint64_t adc_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read: ADSR holds ADACT0 idle; everything else reads back.
+ * @details MMIO read: adsr holds adact0 idle; everything else reads back; this step is contained within the board periph ADC model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The ADC read result produced by the board periph ADC model.
+ * @retval value The operation-specific ADC read value.
+ * @pre Arguments satisfy the ranges documented for ADC read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ADC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_adc_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -359,16 +466,28 @@ static uint64_t adc_read(uc_engine* uc, uint64_t addr, unsigned size)
   if (off == (uint64_t)k_adc_off_adsr) {
     /* Conversion is modelled as instantaneous: ADACT0 reads idle so the
      * driver's busy-poll completes on its first read and fetches ADDR. */
-    return s_adc_reg[adc_word(off)] & ~(uint32_t)k_adc_adact0_mask;
+    return s_adc_reg[internal_adc_word(off)] & ~(uint32_t)k_adc_adact0_mask;
   }
   if (off >= (uint64_t)k_adc_span) {
     return 0U;
   }
-  return s_adc_reg[adc_word(off)];
+  return s_adc_reg[internal_adc_word(off)];
 }
 
-/** @brief MMIO write: ADSTR kicks a scan; other registers latch the value. */
-static void adc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write: ADSTR kicks a scan; other registers latch the value.
+ * @details MMIO write: adstr kicks a scan; other registers latch the value; this step is contained within the board periph ADC model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for ADC write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ADC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_adc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)size;
   const uint64_t off = addr - (uint64_t)k_adc_base;
@@ -378,24 +497,30 @@ static void adc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
   const uint64_t str_lo = (uint64_t)k_adc_off_adstr0;
   const uint64_t str_hi = str_lo + ((uint64_t)k_adc_scan_groups * (uint64_t)k_adc_str_stride);
   if ((off >= str_lo) && (off < str_hi) && ((value & (uint64_t)k_adc_adst_mask) != 0U)) {
-    const uint32_t group     = (uint32_t)((off - str_lo) / (uint64_t)k_adc_str_stride);
-    s_adc_reg[adc_word(off)] = (uint32_t)value;
-    adc_convert_group(group);
+    const uint32_t group              = (uint32_t)((off - str_lo) / (uint64_t)k_adc_str_stride);
+    s_adc_reg[internal_adc_word(off)] = (uint32_t)value;
+    internal_adc_convert_group(group);
     s_adc_scans++;
     board_periph_icu_raise_event(uc, (uint16_t)k_event_adc0_scan_end);
     if (board_periph_trace()) {
-      (void)fprintf(stderr,
-                    "  [trace] ADC_B scan grp%u -> code=%u\n",
-                    group,
-                    (unsigned)s_adc_last_code);
+      (void)priv_emu_io_errf("  [trace] ADC_B scan grp%u -> code=%u\n",
+                             group,
+                             (unsigned)s_adc_last_code);
     }
     return;
   }
-  s_adc_reg[adc_word(off)] = (uint32_t)value;
+  s_adc_reg[internal_adc_word(off)] = (uint32_t)value;
 }
 
-/** @brief Clear all ADC_B register state and observability counters. */
-static void adc_reset(void)
+/**
+ * @brief Clear all ADC_B register state and observability counters.
+ * @details Clear all adc_b register state and observability counters; this step is contained within the board periph ADC model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for ADC reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ADC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_adc_reset(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_adc_reg_words; i++) {
     s_adc_reg[i] = 0U;
@@ -404,34 +529,40 @@ static void adc_reset(void)
   s_adc_last_code = 0U;
 }
 
-/** @brief Print the ADC_B scan count + last reported result code. */
-static void adc_report(void)
+/**
+ * @brief Print the ADC_B scan count + last reported result code.
+ * @details Print the adc_b scan count + last reported result code; this step is contained within the board periph ADC model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for ADC report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ADC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_adc_report(void)
 {
   if (s_adc_scans == 0U) {
     return;
   }
-  (void)fprintf(stderr,
-                "  ADC_B         : scans=%u last_code=%u (0x%03X)\n",
-                s_adc_scans,
-                s_adc_last_code,
-                s_adc_last_code);
+  (void)priv_emu_io_errf("  ADC_B         : scans=%u last_code=%u (0x%03X)\n",
+                         s_adc_scans,
+                         s_adc_last_code,
+                         s_adc_last_code);
 }
 
 /** @brief This block's descriptor (static lifetime; the core keeps the pointer). */
-static const board_periph_block_t k_adc_block = {
+static const board_periph_block_t s_k_adc_block = {
   .base   = (uint64_t)k_adc_base,
   .span   = (uint64_t)k_adc_span,
   .order  = (uint32_t)k_block_order_i2c, /* After the timers/UART; no tick. */
-  .read   = adc_read,
-  .write  = adc_write,
+  .read   = internal_adc_read,
+  .write  = internal_adc_write,
   .tick   = nullptr,
-  .reset  = adc_reset,
-  .report = adc_report,
+  .reset  = internal_adc_reset,
+  .report = internal_adc_report,
   .name   = "ADC_B",
 };
 
 /** @brief Self-register the ADC_B block before main runs (decentralized). */
-[[gnu::constructor]] static void board_periph_adc_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_board_periph_adc_register(void)
 {
-  board_periph_register_block(&k_adc_block);
+  board_periph_register_block(&s_k_adc_block);
 }

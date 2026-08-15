@@ -41,6 +41,7 @@
 #include "board_periph_block.h"
 #include "board_periph_eink.h"
 #include "board_periph_sd.h"
+#include "emu_host_io_internal.h"
 
 /**
  * @brief SPI_B block geometry (ra8_spi_regs.h, 32-bit register file).
@@ -123,14 +124,33 @@ static spi_state_t s_spi[k_spi_count];
  * =============================================================================
  */
 
-/** @brief Index of the shadow word for @p off within a channel (range-checked). */
-static uint32_t spi_word(uint64_t off)
+/**
+ * @brief Index of the shadow word for @p off within a channel (range-checked).
+ * @details Index of the shadow word for @p off within a channel (range-checked); this step is contained within the board periph SPI model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The SPI word result produced by the board periph SPI model.
+ * @retval value The operation-specific SPI word value.
+ * @pre Arguments satisfy the ranges documented for SPI word. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_spi_word(uint64_t off)
 {
   return (uint32_t)(off / 4U);
 }
 
-/** @brief Apply an SPCR write: SPE gates the channel and arms TX-empty. */
-static void spi_spcr_write(spi_state_t* s, uint32_t value)
+/**
+ * @brief Apply an SPCR write: SPE gates the channel and arms TX-empty.
+ * @details Apply an spcr write: spe gates the channel and arms tx-empty; this step is contained within the board periph SPI model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for SPI spcr write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_spi_spcr_write(spi_state_t* s, uint32_t value)
 {
   s->enabled = ((value & (uint32_t)k_spi_spcr_spe) != 0U);
   if (s->enabled) {
@@ -143,21 +163,39 @@ static void spi_spcr_write(spi_state_t* s, uint32_t value)
   }
 }
 
-/** @brief Apply an SPCR2 write: latch whether internal loopback is engaged. */
-static void spi_spcr2_write(spi_state_t* s, uint32_t value)
+/**
+ * @brief Apply an SPCR2 write: latch whether internal loopback is engaged.
+ * @details Apply an spcr2 write: latch whether internal loopback is engaged; this step is contained within the board periph SPI model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for SPI spcr2 write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_spi_spcr2_write(spi_state_t* s, uint32_t value)
 {
   s->loopback = ((value & ((uint32_t)k_spi_spcr2_splp | (uint32_t)k_spi_spcr2_splp2)) != 0U);
 }
 
-/** @brief Handle a write to SPDR: echo the frame and assert receive-full. */
-static void spi_spdr_write(spi_state_t* s, uint32_t value)
+/**
+ * @brief Handle a write to SPDR: echo the frame and assert receive-full.
+ * @details Handle a write to spdr: echo the frame and assert receive-full; this step is contained within the board periph SPI model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for SPI spdr write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_spi_spdr_write(spi_state_t* s, uint32_t value)
 {
   /* SPLP2 ties the outgoing line back to the receive shifter (rx = tx);
    * SPLP inverts it (rx = ~tx). Without loopback, if a `--sd` card is
    * attached it answers the exchange (the genuine ra8_sdmmc_spi path); an
    * `--eink` IT8951 controller answers the ra8_epaper path; else nothing
    * drives the line and the receive shifter clocks in an idle 0. */
-  if ((s->reg[spi_word((uint64_t)k_spi_off_spcr2)] & (uint32_t)k_spi_spcr2_splp) != 0U) {
+  if ((s->reg[internal_spi_word((uint64_t)k_spi_off_spcr2)] & (uint32_t)k_spi_spcr2_splp) != 0U) {
     s->rx = (~value) & (uint32_t)k_spi_byte_mask;
   } else if (s->loopback) {
     s->rx = value;
@@ -174,8 +212,17 @@ static void spi_spdr_write(spi_state_t* s, uint32_t value)
   s->frames++;
 }
 
-/** @brief Handle an SPSRC write (write-1-to-clear the matching SPSR flags). */
-static void spi_spsrc_write(spi_state_t* s, uint32_t value)
+/**
+ * @brief Handle an SPSRC write (write-1-to-clear the matching SPSR flags).
+ * @details Handle an spsrc write (write-1-to-clear the matching spsr flags); this step is contained within the board periph SPI model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for SPI spsrc write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_spi_spsrc_write(spi_state_t* s, uint32_t value)
 {
   /* Every SPSRC clear bit sits at the same position as its SPSR flag, so a
    * written 1 clears that flag; SPTEF is re-asserted because the model's TX
@@ -186,8 +233,19 @@ static void spi_spsrc_write(spi_state_t* s, uint32_t value)
   }
 }
 
-/** @brief Read a register from one modelled SPI_B channel. */
-static uint64_t spi_reg_read(spi_state_t* s, uint64_t off)
+/**
+ * @brief Read a register from one modelled SPI_B channel.
+ * @details Read a register from one modelled spi_b channel; this step is contained within the board periph SPI model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The SPI reg read result produced by the board periph SPI model.
+ * @retval value The operation-specific SPI reg read value.
+ * @pre Arguments satisfy the ranges documented for SPI reg read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_spi_reg_read(spi_state_t* s, uint64_t off)
 {
   if (off == (uint64_t)k_spi_off_spsr) {
     return s->spsr;
@@ -195,46 +253,87 @@ static uint64_t spi_reg_read(spi_state_t* s, uint64_t off)
   if (off == (uint64_t)k_spi_off_spdr) {
     return s->rx; /* receive holding register: the echoed frame */
   }
-  return s->reg[spi_word(off)]; /* reflect every other register */
+  return s->reg[internal_spi_word(off)]; /* reflect every other register */
 }
 
-/** @brief Write a register on one modelled SPI_B channel. */
-static void spi_reg_write(spi_state_t* s, uint64_t off, uint32_t value)
+/**
+ * @brief Write a register on one modelled SPI_B channel.
+ * @details Write a register on one modelled spi_b channel; this step is contained within the board periph SPI model and uses bounded caller or module-owned storage.
+ * @param[in,out] s Module state instance processed by the operation.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for SPI reg write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_spi_reg_write(spi_state_t* s, uint64_t off, uint32_t value)
 {
-  s->reg[spi_word(off)] = value; /* shadow keeps "configure then verify" working */
+  s->reg[internal_spi_word(off)] = value; /* shadow keeps "configure then verify" working */
   if (off == (uint64_t)k_spi_off_spcr) {
-    spi_spcr_write(s, value);
+    internal_spi_spcr_write(s, value);
   } else if (off == (uint64_t)k_spi_off_spcr2) {
-    spi_spcr2_write(s, value);
+    internal_spi_spcr2_write(s, value);
   } else if (off == (uint64_t)k_spi_off_spdr) {
-    spi_spdr_write(s, value);
+    internal_spi_spdr_write(s, value);
   } else if (off == (uint64_t)k_spi_off_spsrc) {
-    spi_spsrc_write(s, value);
+    internal_spi_spsrc_write(s, value);
   }
 }
 
-/** @brief MMIO read inside the SPI_B window: route to the addressed channel. */
-static uint64_t spi_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the SPI_B window: route to the addressed channel.
+ * @details MMIO read inside the spi_b window: route to the addressed channel; this step is contained within the board periph SPI model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The SPI read result produced by the board periph SPI model.
+ * @retval value The operation-specific SPI read value.
+ * @pre Arguments satisfy the ranges documented for SPI read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_spi_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
   const uint32_t ch  = (uint32_t)((addr - (uint64_t)k_spi_base) / (uint64_t)k_spi_stride);
   const uint64_t off = (addr - (uint64_t)k_spi_base) % (uint64_t)k_spi_stride;
-  return spi_reg_read(&s_spi[ch], off);
+  return internal_spi_reg_read(&s_spi[ch], off);
 }
 
-/** @brief MMIO write inside the SPI_B window: route to the addressed channel. */
-static void spi_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the SPI_B window: route to the addressed channel.
+ * @details MMIO write inside the spi_b window: route to the addressed channel; this step is contained within the board periph SPI model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for SPI write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_spi_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
   const uint32_t ch  = (uint32_t)((addr - (uint64_t)k_spi_base) / (uint64_t)k_spi_stride);
   const uint64_t off = (addr - (uint64_t)k_spi_base) % (uint64_t)k_spi_stride;
-  spi_reg_write(&s_spi[ch], off, (uint32_t)value);
+  internal_spi_reg_write(&s_spi[ch], off, (uint32_t)value);
 }
 
-/** @brief Clear all SPI_B channel state to power-on. */
-static void spi_reset(void)
+/**
+ * @brief Clear all SPI_B channel state to power-on.
+ * @details Clear all spi_b channel state to power-on; this step is contained within the board periph SPI model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for SPI reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_spi_reset(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_spi_count; i++) {
     s_spi[i] = (spi_state_t){};
@@ -251,18 +350,21 @@ static void spi_reset(void)
  * push is the model's coalesced transfer-completion point: the polling driver
  * clocks one 8-bit frame per SPDR write inside an unbounded loop and the model
  * exposes no per-transaction / CS-deassert boundary, so a per-frame push would
- * flood the 64-deep ring. The push is in-memory only and never touches stdout,
+ * flood the 64-deep ring. The push is in-memory only and never touches injected output sink,
  * so the smoke / golden gates stay byte-identical.
+  * @pre Arguments satisfy the ranges documented for SPI report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SPI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static void spi_report(void)
+RA8_INTERNAL static void internal_spi_report(void)
 {
   for (uint32_t ch = 0U; ch < (uint32_t)k_spi_count; ch++) {
     if (s_spi[ch].frames > 0U) {
-      (void)fprintf(stderr,
-                    "  SPI%u          : %u frame(s) echoed (loopback=%s)\n",
-                    ch,
-                    s_spi[ch].frames,
-                    s_spi[ch].loopback ? "yes" : "no");
+      (void)priv_emu_io_errf("  SPI%u          : %u frame(s) echoed (loopback=%s)\n",
+                             ch,
+                             s_spi[ch].frames,
+                             s_spi[ch].loopback ? "yes" : "no");
       char ln[k_spi_console_line_cap];
       (void)snprintf(ln,
                      sizeof(ln),
@@ -277,20 +379,20 @@ static void spi_report(void)
 }
 
 /** @brief This block's descriptor (static lifetime; the core keeps the pointer). */
-static const board_periph_block_t k_spi_block = {
+static const board_periph_block_t s_k_spi_block = {
   .base   = (uint64_t)k_spi_base,
   .span   = (uint64_t)k_spi_span,
   .order  = (uint32_t)k_block_order_sci,
-  .read   = spi_read,
-  .write  = spi_write,
+  .read   = internal_spi_read,
+  .write  = internal_spi_write,
   .tick   = nullptr,
-  .reset  = spi_reset,
-  .report = spi_report,
+  .reset  = internal_spi_reset,
+  .report = internal_spi_report,
   .name   = "SPI_B",
 };
 
 /** @brief Self-register the SPI_B block before main runs (decentralized). */
-[[gnu::constructor]] static void board_periph_spi_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_board_periph_spi_register(void)
 {
-  board_periph_register_block(&k_spi_block);
+  board_periph_register_block(&s_k_spi_block);
 }

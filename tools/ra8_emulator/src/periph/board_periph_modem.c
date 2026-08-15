@@ -34,6 +34,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "emu_host_io_internal.h"
+
 /**
  * @enum modem_geom_t
  * @brief Sizing constants for the modem line model (no magic numbers).
@@ -65,7 +67,7 @@ typedef struct {
  * reporting current registration once URCs are enabled). Any command not in
  * this table falls through to ``+CME ERROR: 4``.
  */
-static const modem_reply_t k_modem_script[] = {
+static const modem_reply_t s_k_modem_script[] = {
   {"AT", "\r\nOK\r\n"},
   {"ATE0", "\r\nOK\r\n"},
   {"AT+CMEE=1", "\r\nOK\r\n"},
@@ -76,8 +78,8 @@ static const modem_reply_t k_modem_script[] = {
   {"AT+CGATT?", "\r\n+CGATT: 1\r\n\r\nOK\r\n"},
 };
 
-/** @brief Response for a command not present in ::k_modem_script. */
-static const char k_modem_cme_error[] = "\r\n+CME ERROR: 4\r\n";
+/** @brief Response for a command not present in ::s_k_modem_script. */
+static const char s_k_modem_cme_error[] = "\r\n+CME ERROR: 4\r\n";
 
 /**
  * @struct modem_model_t
@@ -101,8 +103,14 @@ static modem_model_t s_modem;
  * @param[out] out     Destination buffer.
  * @param[in]  out_cap Capacity of @p out in bytes.
  * @return Number of bytes copied (<= @p out_cap).
+  * @details Copy a nul-terminated response into @p out, bounded by @p out_cap; this step is contained within the board periph modem model and uses bounded caller or module-owned storage.
+ * @retval value The operation-specific modem emit value.
+ * @pre Arguments satisfy the ranges documented for modem emit. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph modem model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static uint32_t modem_emit(const char* resp, uint8_t* out, uint32_t out_cap)
+RA8_INTERNAL static uint32_t internal_modem_emit(const char* resp, uint8_t* out, uint32_t out_cap)
 {
   uint32_t n = 0U;
   while ((n < out_cap) && (resp[n] != '\0')) {
@@ -118,19 +126,25 @@ static uint32_t modem_emit(const char* resp, uint8_t* out, uint32_t out_cap)
  * @param[out] out     Destination for the response bytes.
  * @param[in]  out_cap Capacity of @p out in bytes.
  * @return Number of response bytes written.
+  * @details Answer the completed command line in @c s_modem.cmd; this step is contained within the board periph modem model and uses bounded caller or module-owned storage.
+ * @retval value The operation-specific modem answer line value.
+ * @pre Arguments satisfy the ranges documented for modem answer line. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph modem model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static uint32_t modem_answer_line(uint8_t* out, uint32_t out_cap)
+RA8_INTERNAL static uint32_t internal_modem_answer_line(uint8_t* out, uint32_t out_cap)
 {
   s_modem.cmd[s_modem.cmd_len] = '\0';
-  const uint32_t count         = (uint32_t)(sizeof(k_modem_script) / sizeof(k_modem_script[0]));
+  const uint32_t count         = (uint32_t)(sizeof(s_k_modem_script) / sizeof(s_k_modem_script[0]));
   for (uint32_t i = 0U; i < count; i++) {
-    if (strcmp(s_modem.cmd, k_modem_script[i].cmd) == 0) {
+    if (strcmp(s_modem.cmd, s_k_modem_script[i].cmd) == 0) {
       s_modem.answered++;
-      return modem_emit(k_modem_script[i].resp, out, out_cap);
+      return internal_modem_emit(s_k_modem_script[i].resp, out, out_cap);
     }
   }
   s_modem.errors++;
-  return modem_emit(k_modem_cme_error, out, out_cap);
+  return internal_modem_emit(s_k_modem_cme_error, out, out_cap);
 }
 
 bool board_modem_attach(void)
@@ -159,7 +173,7 @@ uint32_t board_modem_feed_tx(uint8_t tx, uint8_t* out, uint32_t out_cap)
     return 0U; /* modems terminate on CR; LF (if any) is not a delimiter */
   }
   if (tx == (uint8_t)k_modem_cr) {
-    const uint32_t n = modem_answer_line(out, out_cap);
+    const uint32_t n = internal_modem_answer_line(out, out_cap);
     s_modem.cmd_len  = 0U;
     return n;
   }
@@ -184,8 +198,7 @@ void board_modem_report(void)
   if ((s_modem.answered == 0U) && (s_modem.errors == 0U)) {
     return;
   }
-  (void)fprintf(stderr,
-                "  AT modem      : %u command(s) answered, %u +CME ERROR\n",
-                s_modem.answered,
-                s_modem.errors);
+  (void)priv_emu_io_errf("  AT modem      : %u command(s) answered, %u +CME ERROR\n",
+                         s_modem.answered,
+                         s_modem.errors);
 }

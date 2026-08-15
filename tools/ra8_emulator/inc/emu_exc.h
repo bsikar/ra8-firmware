@@ -137,8 +137,10 @@ typedef enum : uint32_t {
  * @post No engine state is modified (read-only).
  * @note VTOR lives in PPB RAM here, written by SystemInit at boot.
  * @since 0.1.0
+  * @details Read the handler address for an exception from the vector table; this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV uint32_t exc_vector(uc_engine* uc, uint32_t vtor_base, uint32_t exc_num);
+uint32_t exc_vector(uc_engine* uc, uint32_t vtor_base, uint32_t exc_num);
 
 /**
  * @brief Enter a Cortex-M exception: stack the basic frame and vector in.
@@ -163,7 +165,7 @@ RA8_PRIV uint32_t exc_vector(uc_engine* uc, uint32_t vtor_base, uint32_t exc_num
  * @see exc_return()  The inverse operation.
  * @since 0.1.0
  */
-RA8_PRIV void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler);
+void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler);
 
 /**
  * @brief Perform a Cortex-M exception return for an observed EXC_RETURN branch.
@@ -184,7 +186,7 @@ RA8_PRIV void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler);
  * @see exc_enter()  The inverse operation.
  * @since 0.1.0
  */
-RA8_PRIV void exc_return(uc_engine* uc, uint32_t exc_ret);
+void exc_return(uc_engine* uc, uint32_t exc_ret);
 
 /**
  * @brief Take the highest-priority pending exception, if one may activate now.
@@ -208,8 +210,9 @@ RA8_PRIV void exc_return(uc_engine* uc, uint32_t exc_ret);
  * @post At most one exception is taken per call.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool exc_take_pending(uc_engine* uc, uint32_t vtor_base, bool allow_systick);
+bool exc_take_pending(uc_engine* uc, uint32_t vtor_base, bool allow_systick);
 
 /**
  * @brief True if @p pc sits in a wait-for-interrupt spin (the core is idle).
@@ -230,8 +233,9 @@ RA8_PRIV bool exc_take_pending(uc_engine* uc, uint32_t vtor_base, bool allow_sys
  * @post @p uc is unchanged (a read-only probe).
  * @note Detection only; advancing time stays the run loop's job.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool idle_spin_at(uc_engine* uc, uint32_t pc);
+bool idle_spin_at(uc_engine* uc, uint32_t pc);
 
 /**
  * @brief Advance the DWT cycle counter by one outer chunk's worth of cycles.
@@ -248,8 +252,9 @@ RA8_PRIV bool idle_spin_at(uc_engine* uc, uint32_t pc);
  * @post CYCCNT advanced iff the trace subsystem and counter are enabled.
  * @note Not thread-safe; the run loop is single-threaded host-side.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void dwt_cyccnt_advance(uc_engine* uc);
+void dwt_cyccnt_advance(uc_engine* uc);
 
 /**
  * @brief Arm the core exception hooks (unmapped / INTR / ICSR watch).
@@ -261,8 +266,11 @@ RA8_PRIV void dwt_cyccnt_advance(uc_engine* uc);
  * @note Not thread-safe; call once during single-threaded setup.
  * @see emu_exc_install_scb_nvic()  The second hook batch.
  * @since 0.1.0
+  * @details Arm the core exception hooks (unmapped / intr / icsr watch); this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_exc_install_core(uc_engine* uc);
+void emu_exc_install_core(uc_engine* uc);
 
 /**
  * @brief Arm the SCB control-word and NVIC ISER/ICER write watchers.
@@ -273,8 +281,11 @@ RA8_PRIV void emu_exc_install_core(uc_engine* uc);
  * @post The AIRCR..CCR and ISER/ICER write hooks are live.
  * @note Not thread-safe; call once during single-threaded setup.
  * @since 0.1.0
+  * @details Arm the scb control-word and nvic iser/icer write watchers; this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_exc_install_scb_nvic(uc_engine* uc);
+void emu_exc_install_scb_nvic(uc_engine* uc);
 
 /**
  * @brief Pend the periodic SysTick for this outer chunk.
@@ -285,8 +296,10 @@ RA8_PRIV void emu_exc_install_scb_nvic(uc_engine* uc);
  * @post The tick is armed; exc_take_pending() may take it when permitted.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Pend the periodic systick for this outer chunk; this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_exc_arm_systick(void);
+void emu_exc_arm_systick(void);
 
 /**
  * @brief Consume a latched EXC_RETURN branch (read + clear).
@@ -299,8 +312,10 @@ RA8_PRIV void emu_exc_arm_systick(void);
  * @post The latch is clear.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Consume a latched exc_return branch (read + clear); this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool emu_exc_take_exc_return(uint64_t* out_pc);
+bool emu_exc_take_exc_return(uint64_t* out_pc);
 
 /**
  * @brief Clear the PendSV context-switch stop marker (per relaunch).
@@ -311,8 +326,10 @@ RA8_PRIV bool emu_exc_take_exc_return(uint64_t* out_pc);
  * @post The marker is clear until the next PENDSVSET-triggered stop.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Clear the pendsv context-switch stop marker (per relaunch); this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_exc_clear_pendsv_stop(void);
+void emu_exc_clear_pendsv_stop(void);
 
 /**
  * @brief Whether the last engine stop was a PENDSVSET context-switch stop.
@@ -324,8 +341,10 @@ RA8_PRIV void emu_exc_clear_pendsv_stop(void);
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Whether the last engine stop was a pendsvset context-switch stop; this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool emu_exc_pendsv_stop(void);
+bool emu_exc_pendsv_stop(void);
 
 /**
  * @brief Whether the firmware executed a BKPT (deliberate trap / give-up).
@@ -337,8 +356,10 @@ RA8_PRIV bool emu_exc_pendsv_stop(void);
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Whether the firmware executed a bkpt (deliberate trap / give-up); this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool emu_exc_bkpt_hit(void);
+bool emu_exc_bkpt_hit(void);
 
 /**
  * @brief PC of the BKPT that halted the run.
@@ -350,8 +371,10 @@ RA8_PRIV bool emu_exc_bkpt_hit(void);
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Pc of the bkpt that halted the run; this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV uint32_t emu_exc_bkpt_pc(void);
+uint32_t emu_exc_bkpt_pc(void);
 
 /**
  * @brief Whether AIRCR.SYSRESETREQ requested a warm reboot.
@@ -363,8 +386,10 @@ RA8_PRIV uint32_t emu_exc_bkpt_pc(void);
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Whether aircr.sysresetreq requested a warm reboot; this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool emu_exc_reboot_requested(void);
+bool emu_exc_reboot_requested(void);
 
 /**
  * @brief Clear the latched warm-reboot request (after performing it).
@@ -375,8 +400,10 @@ RA8_PRIV bool emu_exc_reboot_requested(void);
  * @post No reset request is pending.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Clear the latched warm-reboot request (after performing it); this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_exc_clear_reboot_request(void);
+void emu_exc_clear_reboot_request(void);
 
 /**
  * @brief SysTick exceptions taken this run (report telemetry).
@@ -388,8 +415,10 @@ RA8_PRIV void emu_exc_clear_reboot_request(void);
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Systick exceptions taken this run (report telemetry); this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV uint32_t emu_exc_systick_fires(void);
+uint32_t emu_exc_systick_fires(void);
 
 /**
  * @brief PendSV exceptions taken this run (report + idle signature).
@@ -401,8 +430,10 @@ RA8_PRIV uint32_t emu_exc_systick_fires(void);
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Pendsv exceptions taken this run (report + idle signature); this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV uint32_t emu_exc_pendsv_takes(void);
+uint32_t emu_exc_pendsv_takes(void);
 
 /**
  * @brief SVCall exceptions taken this run (report + idle signature).
@@ -414,8 +445,10 @@ RA8_PRIV uint32_t emu_exc_pendsv_takes(void);
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Svcall exceptions taken this run (report + idle signature); this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV uint32_t emu_exc_svc_takes(void);
+uint32_t emu_exc_svc_takes(void);
 
 /**
  * @brief Reset the exception bookkeeping for a warm reboot.
@@ -431,8 +464,9 @@ RA8_PRIV uint32_t emu_exc_svc_takes(void);
  * @post The exception engine is in its boot state.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_exc_reset(void);
+void emu_exc_reset(void);
 
 #ifdef __cplusplus
 }
