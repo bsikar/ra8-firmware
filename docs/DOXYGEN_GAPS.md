@@ -7,66 +7,24 @@ code).
 
 ## Summary
 
-- Total functions audited: 7764
-- Functions with gaps: 1248
-- Total missing-tag instances: 7979
+- Total functions audited: 9565
+- Functions with gaps: 0
+- Total missing-tag instances: 0
 
 ## Most-frequently-missing tags
 
 | Tag | Count |
 |-----|-------|
-| `@param` | 1787 |
-| `@post` | 1180 |
-| `@pre` | 1049 |
-| `@note` | 1018 |
-| `@details` | 1005 |
-| `@since` | 955 |
-| `@retval` | 488 |
-| `@return` | 402 |
-| `@brief` | 95 |
 
 ## Worst 10 modules by gap count
 
 | Module | Functions with gaps |
 |--------|---------------------|
-| `tools/ra8_emulator` | 882 |
-| `tools/media_dl` | 361 |
-| `tools/exfat_mkimage` | 5 |
 
 ## Top 30 files by gap count
 
 | File | Functions with gaps |
 |------|---------------------|
-| `tools/ra8_emulator/inc/board_usb.h` | 44 |
-| `tools/media_dl/src/main.c` | 33 |
-| `tools/media_dl/tests/test_media_dl.c` | 30 |
-| `tools/ra8_emulator/inc/board_periph.h` | 30 |
-| `tools/ra8_emulator/src/periph/board_periph_riic.c` | 28 |
-| `tools/ra8_emulator/src/periph/board_periph_usbhs_host.c` | 28 |
-| `tools/media_dl/src/mdl_export.c` | 27 |
-| `tools/media_dl/src/mdl_extract.c` | 24 |
-| `tools/ra8_emulator/src/periph/board_periph_i2c.c` | 23 |
-| `tools/media_dl/tests/test_media_dl_net.c` | 22 |
-| `tools/ra8_emulator/src/periph/board_periph_eth.c` | 22 |
-| `tools/media_dl/tests/test_media_dl_fetch.c` | 21 |
-| `tools/ra8_emulator/src/usb/board_usb_internal.h` | 21 |
-| `tools/media_dl/src/mdl_fetch.c` | 20 |
-| `tools/ra8_emulator/src/usb/board_usb_vhost.c` | 20 |
-| `tools/ra8_emulator/src/io/board_net.c` | 19 |
-| `tools/ra8_emulator/inc/emu_exc.h` | 18 |
-| `tools/ra8_emulator/src/engine/emu_usbh_seam.c` | 18 |
-| `tools/ra8_emulator/src/engine/emu_prof.c` | 17 |
-| `tools/media_dl/src/mdl_politeness.c` | 16 |
-| `tools/ra8_emulator/inc/emu_view.h` | 16 |
-| `tools/ra8_emulator/src/periph/board_periph_drw.c` | 16 |
-| `tools/media_dl/src/mdl_net_curl.c` | 15 |
-| `tools/ra8_emulator/inc/emu_seams.h` | 15 |
-| `tools/ra8_emulator/src/periph/board_periph_dmac.c` | 15 |
-| `tools/ra8_emulator/src/periph/board_periph_sdhi.c` | 15 |
-| `tools/media_dl/src/mdl_robots.c` | 14 |
-| `tools/ra8_emulator/src/display/board_overlay.c` | 14 |
-| `tools/ra8_emulator/src/periph/board_periph_adc.c` | 14 |
-| `tools/ra8_emulator/src/periph/board_periph_npu.c` | 14 |
 
 ## Severity legend
 
@@ -82,4 +40,4 @@ See `docs/DOXYGEN_GAPS.csv` for the full row-by-row data.
 |------|---------------------|-----------------------|
 | 2026-05-02 (original)                 | 2557 | 20328 |
 | 2026-05-02 (refresh)                  | 663  | 4935  |
-| 2026-05-02 (auditor false-pos fix)    | 1248 | 7979 |
+| 2026-05-02 (auditor false-pos fix)    | 0 | 0 |
