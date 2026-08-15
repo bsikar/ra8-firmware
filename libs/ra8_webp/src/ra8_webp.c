@@ -28,15 +28,15 @@
 #include "src/webp/decode.h" /* WebPGetInfo, WebPDecodeRGBAInto (vendored libwebp) */
 
 /** Component tag used in validation log lines. */
-static const char k_ra8_webp_tag[] = "WEBP";
+static const char s_ra8_webp_tag[] = "WEBP";
 
 ra8_err_t ra8_webp_get_info(const uint8_t* data, size_t size, uint32_t* out_w, uint32_t* out_h)
 {
-  RA8_CHECK_NULL_PTR(data, k_ra8_webp_tag, "data");
-  RA8_CHECK_NULL_PTR(out_w, k_ra8_webp_tag, "out_w");
-  RA8_CHECK_NULL_PTR(out_h, k_ra8_webp_tag, "out_h");
+  RA8_CHECK_NULL_PTR(data, s_ra8_webp_tag, "data");
+  RA8_CHECK_NULL_PTR(out_w, s_ra8_webp_tag, "out_w");
+  RA8_CHECK_NULL_PTR(out_h, s_ra8_webp_tag, "out_h");
   if (size == 0U) {
-    ra8_log_error(k_ra8_webp_tag, "empty WebP buffer");
+    ra8_log_error(s_ra8_webp_tag, "empty WebP buffer");
     return k_ra8_err_invalid_arg;
   }
 
@@ -49,7 +49,7 @@ ra8_err_t ra8_webp_get_info(const uint8_t* data, size_t size, uint32_t* out_w, u
     return k_ra8_err_validation_failed;
   }
   if (((uint32_t)w > k_ra8_webp_max_dim) || ((uint32_t)h > k_ra8_webp_max_dim)) {
-    ra8_log_error(k_ra8_webp_tag, "WebP dimension exceeds cap");
+    ra8_log_error(s_ra8_webp_tag, "WebP dimension exceeds cap");
     return k_ra8_err_not_supported;
   }
 
@@ -96,14 +96,14 @@ static ra8_err_t internal_webp_check_output(const uint8_t* data,
                                             uint32_t*      w,
                                             uint32_t*      h)
 {
-  RA8_RETURN_ON_ERROR(ra8_webp_get_info(data, size, w, h), k_ra8_webp_tag, "info");
+  RA8_RETURN_ON_ERROR(ra8_webp_get_info(data, size, w, h), s_ra8_webp_tag, "info");
   const size_t min_stride = (size_t)*w * (size_t)k_ra8_webp_bytes_per_px;
   if ((out_stride < min_stride) || (((size_t)*h * out_stride) > out_capacity)) {
-    ra8_log_error(k_ra8_webp_tag, "output buffer too small");
+    ra8_log_error(s_ra8_webp_tag, "output buffer too small");
     return k_ra8_err_range_check_failed;
   }
   if (out_stride > (size_t)INT_MAX) {
-    ra8_log_error(k_ra8_webp_tag, "output stride exceeds INT_MAX");
+    ra8_log_error(s_ra8_webp_tag, "output stride exceeds INT_MAX");
     return k_ra8_err_range_check_failed;
   }
   return k_ra8_ok;
@@ -154,7 +154,7 @@ static ra8_err_t internal_webp_decode_impl(const uint8_t*    data,
   uint32_t w = 0U;
   uint32_t h = 0U;
   RA8_RETURN_ON_ERROR(internal_webp_check_output(data, size, out_stride, out_capacity, &w, &h),
-                      k_ra8_webp_tag,
+                      s_ra8_webp_tag,
                       "validate");
 
   ra8_webp_arena_bind(arena);
@@ -193,9 +193,9 @@ ra8_err_t ra8_webp_decode_rgba(const uint8_t*    data,
                                uint32_t*         out_w,
                                uint32_t*         out_h)
 {
-  RA8_CHECK_NULL_PTR(data, k_ra8_webp_tag, "data");
-  RA8_CHECK_NULL_PTR(arena, k_ra8_webp_tag, "arena");
-  RA8_CHECK_NULL_PTR(out_rgba, k_ra8_webp_tag, "out_rgba");
+  RA8_CHECK_NULL_PTR(data, s_ra8_webp_tag, "data");
+  RA8_CHECK_NULL_PTR(arena, s_ra8_webp_tag, "arena");
+  RA8_CHECK_NULL_PTR(out_rgba, s_ra8_webp_tag, "out_rgba");
   return internal_webp_decode_impl(data,
                                    size,
                                    arena,
