@@ -24,7 +24,7 @@ the device (network, modem, removable media):
 | `fuzz_ra8_fs_fat`    | FAT BPB / directory entry walk via `ra8_fs_mount()`      | Removable media              |
 | `fuzz_ra8_jpeg_sw_block` | Focused JPEG Huffman block decoder (dec_block path) | Camera frames                |
 | `fuzz_ra8_stb_image` | `stbi_load_from_memory()` (PNG/JPEG/GIF/BMP, stb_image) | EPUB cover / figure images   |
-| `fuzz_ra8_reflow_xml`| `ra8_epub_xml_parse_opf/ncx/nav()` (tinyxml2 XML parse)  | EPUB manifest / TOC (XML)    |
+| `fuzz_ra8_reflow_xml`| Bounded pull-reader + EPUB OPF/NCX/nav consumers         | EPUB manifest / TOC (XML)    |
 | `fuzz_ra8_stbtt`     | `stbtt_InitFont()` + glyph raster (stb_truetype font)   | EPUB embedded fonts          |
 | `fuzz_ra8_unarch_xz` | `ra8_unarch_xz_unwrap()` (bounded XZ/LZMA2 over SOUP)   | `.tar.xz` comics             |
 | `fuzz_ra8_unarch_tar`| `ra8_unarch_tar_open/next/read()` (ustar/pax/GNU walk)  | `.cbt` / unwrapped tar       |
@@ -183,12 +183,12 @@ These parsers each consume a byte stream that originates outside the
 device's trust boundary (network frames, modem responses, filesystem
 media, and -- most CVE-dense of all -- the memory-unsafe SOUP decoders
 that ingest a fully attacker-controlled EPUB: `miniz` (ZIP), `stb_image`
-(PNG/JPEG/GIF/BMP), `stb_truetype` (embedded fonts), and `tinyxml2` (the
-OPF/NCX/nav manifests)). They are also the parsers with the largest and
+(PNG/JPEG/GIF/BMP), `stb_truetype` (embedded fonts), and the bounded pure-C
+XML reader plus OPF/NCX/nav consumers. They are also the parsers with the largest and
 most state-rich grammar in the codebase, so they are the highest-value
 targets per CPU-second of fuzzing. `fuzz_ra8_stb_image`, `fuzz_ra8_stbtt`,
-and `fuzz_ra8_reflow_xml` reach the stb / tinyxml2 SOUP directly on every
-input, whereas `fuzz_ra8_epub` only reaches the XML layer after miniz has
+and `fuzz_ra8_reflow_xml` reach the stb or XML parser directly on every
+input, whereas `fuzz_ra8_epub` reaches the XML layer only after miniz has
 inflated a well-formed ZIP -- so the three focused harnesses give the
 parsers far more coverage per second. Smaller parsers (e.g. UART command
 shells, internal config blobs) are not yet wrapped because the input is

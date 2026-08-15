@@ -15,7 +15,8 @@ by a zero-heap EPUB container parser (`libs/ra8_epub`).
 
 ## 1. Container / package surface (accepted)
 
-Parsed by `libs/ra8_epub` (miniz for ZIP, tinyxml2 for XML), zero-heap:
+Parsed by `libs/ra8_epub` (miniz for ZIP and the caller-owned bounded pure-C
+reader for XML), zero-heap:
 
 | Surface | Support |
 |---------|---------|

@@ -156,7 +156,7 @@ would misrepresent one of them.
   @ref md_docs_2formats_2JOF section 2.
 - **RABOOK's justification is the weakest of the three, and is partly
   historical.** The device parses EPUB directly today: `libs/ra8_epub` opens
-  the ZIP with miniz and parses the OPF with tinyxml2, and ten firmware
+  the ZIP with miniz and parses the OPF with its bounded pure-C reader, and ten firmware
   applications link it, several of them silicon-validated. "The device cannot
   read an EPUB" is therefore not true, and has not been for some time. The
   defensible part is narrower -- pre-resolving the CSS cascade and
