@@ -58,7 +58,7 @@ static void test_manhwaus_descriptor(void)
   mdl_site_t site;
   TEST_ASSERT(mdl_config_load(config_path, &site) == k_ra8_ok);
   TEST_ASSERT(strcmp(site.host, "manhwaus.net") == 0);
-  TEST_ASSERT(strstr(site.search_url, "{q}") != nullptr);
+  TEST_ASSERT(strcmp(site.search_url, "https://manhwaus.net/search/?s={q}") == 0);
   TEST_ASSERT(site.browse_url[0] != '\0');
 
   size_t len = read_fixture("manhwaus_discovery.html");
@@ -123,8 +123,10 @@ static void test_manhwaus_descriptor(void)
                                  site.page_img_url_contains,
                                  &s_urls) == k_ra8_ok);
   TEST_ASSERT_EQ((uint16_t)2, s_urls.count);
-  TEST_ASSERT(strstr(s_urls.urls[0], "/uploads/") != nullptr);
-  TEST_ASSERT(strstr(s_urls.urls[1], "/uploads/") != nullptr);
+  TEST_ASSERT(strncmp(s_urls.urls[0], "https://ii", strlen("https://ii")) == 0);
+  TEST_ASSERT(strncmp(s_urls.urls[1], "https://ii", strlen("https://ii")) == 0);
+  TEST_ASSERT(strstr(s_urls.urls[0], "/online/") != nullptr);
+  TEST_ASSERT(strstr(s_urls.urls[1], "/chapters/") != nullptr);
   TEST_ASSERT(
     mdl_extract_selector(s_html, len, site.chapter_title_selector, metadata, sizeof(metadata)) ==
     k_ra8_ok);
