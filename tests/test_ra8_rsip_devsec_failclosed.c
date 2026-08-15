@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_rsip_devsec_failclosed.c
- * @brief Production fail-closed test for the RSIP device-security path (issue #216)
+ * @brief Production fail-closed test for the RSIP device-security path (issue
+ * #216)
  *
  * @par Tag
  * [Ring 1 / Core] {World: S}
@@ -12,8 +13,8 @@
  * register map. Issue #216 fail-closes that fiction the same way #214 / #215
  * did: the insecure off-target command path stays behind
  * ``#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)`` and the
- * production ``#else`` returns ``k_ra8_err_not_supported`` for every entry point,
- * writing no fabricated state.
+ * production ``#else`` returns ``k_ra8_err_not_supported`` for every entry
+ * point, writing no fabricated state.
  *
  * The rest of the host build compiles ``ra8_rsip_devsec.c`` under
  * ``RA8_OFF_TARGET`` (the guarded ``#if`` branch -- exercised by ``test_life``
@@ -122,7 +123,8 @@ int32_t main(void)
   test_life_fail_closed();
   test_debug_level_fail_closed();
   test_tamper_dpa_fail_closed();
-  (void)fprintf(stderr,
-                "[OK ] test_ra8_rsip_devsec_failclosed.c -- RSIP device-security fails closed\n");
+  (void)internal_test_output_fd_text(STDERR_FILENO,
+                                     "[OK ] test_ra8_rsip_devsec_failclosed.c -- "
+                                     "RSIP device-security fails closed\n");
   return 0;
 }

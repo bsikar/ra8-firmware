@@ -29,11 +29,11 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "psa/crypto.h"
+#include "support/ra8_test_output.h"
 
 /**
  * @enum t_kat_len_t
@@ -61,12 +61,17 @@ static int s_failures = 0;
 /** @brief Report a check result and accumulate failures. */
 static void check(const char* what, int ok)
 {
+  ra8_test_output_t    output = {};
+  ra8_test_output_fd_t state  = {};
+  (void)internal_test_output_fd_init(&output, &state, STDERR_FILENO);
   if (ok) {
-    (void)fprintf(stderr, "[PASS] %s\n", what);
+    (void)internal_test_output_text(&output, "[PASS] ");
   } else {
-    (void)fprintf(stderr, "[FAIL] %s\n", what);
+    (void)internal_test_output_text(&output, "[FAIL] ");
     s_failures += 1;
   }
+  (void)internal_test_output_text(&output, what);
+  (void)internal_test_output_text(&output, "\n");
 }
 
 /** @brief Decode ``2*n`` hex chars into ``out`` (n bytes). */
@@ -205,9 +210,16 @@ int main(void)
   kat_aes_gcm();
   kat_ecdsa_p256();
   if (s_failures == 0) {
-    (void)fprintf(stderr, "[OK ] test_psa_real_kat.c -- all real-backend KATs passed\n");
+    (void)internal_test_output_fd_text(
+      STDERR_FILENO,
+      "[OK ] test_psa_real_kat.c -- all real-backend KATs passed\n");
     return 0;
   }
-  (void)fprintf(stderr, "[ERR] test_psa_real_kat.c -- %d KAT(s) failed\n", s_failures);
+  ra8_test_output_t    output = {};
+  ra8_test_output_fd_t state  = {};
+  (void)internal_test_output_fd_init(&output, &state, STDERR_FILENO);
+  (void)internal_test_output_text(&output, "[ERR] test_psa_real_kat.c -- ");
+  (void)internal_test_output_i64(&output, (int64_t)s_failures);
+  (void)internal_test_output_text(&output, " KAT(s) failed\n");
   return 1;
 }

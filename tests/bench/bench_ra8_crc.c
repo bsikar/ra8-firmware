@@ -18,7 +18,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "ra8_bench.h"
@@ -35,11 +34,12 @@ typedef enum : uint8_t {
 
 /**
  * @enum crc_bench_guard_t
- * @brief A CRC the benchmark input cannot produce; the comparison exists only to stop the optimiser discarding the loop.
+ * @brief A CRC the benchmark input cannot produce; the comparison exists only
+ * to stop the optimiser discarding the loop.
  */
 typedef enum : uint32_t {
-  k_crc_impossible_result =
-    0xDEADBEEFU, /**< A CRC the input cannot produce; stops the optimiser discarding the loop. */
+  k_crc_impossible_result = 0xDEADBEEFU, /**< A CRC the input cannot produce; stops the optimiser
+                      discarding the loop. */
 } crc_bench_guard_t;
 
 /**
@@ -81,16 +81,17 @@ static void fill_buf(void)
  * function; keep it short.
  */
 // NOLINTNEXTLINE(readability-function-size)
-static void run_one(const char* name, uint32_t len)
+static void
+run_one(ra8_test_output_t* output, ra8_test_output_t* errors, const char* name, uint32_t len)
 {
   uint32_t crc = 0U;
-  RA8_BENCH_TIME(name, len, {
+  RA8_BENCH_TIME(output, name, len, {
     ra8_crc_reset();
     (void)ra8_crc_compute(s_buf, len, &crc);
   });
   /* Touch crc so the optimizer cannot elide the call. */
   if (crc == k_crc_impossible_result) {
-    (void)fprintf(stderr, "unreachable\n");
+    (void)internal_test_output_text(errors, "unreachable\n");
   }
 }
 
@@ -99,14 +100,22 @@ static void run_one(const char* name, uint32_t len)
  */
 int main(void)
 {
-  ra8_bench_print_header("bench_ra8_crc");
-  fill_buf();
-  if (ra8_crc_init(k_ra8_crc_poly_32_ieee802_3) != k_ra8_ok) {
-    (void)fprintf(stderr, "ra8_crc_init failed\n");
+  ra8_test_output_t    output       = {};
+  ra8_test_output_fd_t output_state = {};
+  ra8_test_output_t    errors       = {};
+  ra8_test_output_fd_t error_state  = {};
+  if (!internal_test_output_fd_init(&output, &output_state, STDOUT_FILENO) ||
+      !internal_test_output_fd_init(&errors, &error_state, STDERR_FILENO)) {
     return 1;
   }
-  run_one("crc32_1KiB", (uint32_t)k_bench_crc_1k);
-  run_one("crc32_16KiB", (uint32_t)k_bench_crc_16k);
-  run_one("crc32_1MiB", (uint32_t)k_bench_crc_1m);
+  (void)internal_bench_print_header(&output, "bench_ra8_crc");
+  fill_buf();
+  if (ra8_crc_init(k_ra8_crc_poly_32_ieee802_3) != k_ra8_ok) {
+    (void)internal_test_output_text(&errors, "ra8_crc_init failed\n");
+    return 1;
+  }
+  run_one(&output, &errors, "crc32_1KiB", (uint32_t)k_bench_crc_1k);
+  run_one(&output, &errors, "crc32_16KiB", (uint32_t)k_bench_crc_16k);
+  run_one(&output, &errors, "crc32_1MiB", (uint32_t)k_bench_crc_1m);
   return 0;
 }
