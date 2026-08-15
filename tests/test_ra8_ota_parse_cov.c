@@ -6,31 +6,31 @@
  * Companion to test_ra8_ota.c and test_ra8_ota_cov.c. Targets 17 lines in
  * ra8_ota_parse.c left uncovered by the primary suites:
  *
- *   Line 202 -- priv_validate_cfg_flash: bank_size > k_ra8_ota_max_image_bytes.
- *   Line 216 -- ra8_ota_internal_validate_cfg: crypto sub-validator fails.
- *   Line 268 -- priv_json_str: opening-value-quote strchr returns NULL.
- *   Line 273 -- priv_json_str: closing-value-quote strchr returns NULL.
- *   Line 277 -- priv_json_str: value length exceeds cap.
- *   Line 313 -- ra8_ota_internal_json_u32: key not found in JSON.
- *   Line 334 -- ra8_ota_internal_json_u32: no digits after skip loop.
- *   Line 370 -- priv_hex_nibble: uppercase A-F return arm.
- *   Line 402 -- priv_hex_decode: odd-length hex string.
- *   Line 406 -- priv_hex_decode: decoded bytes exceed out_cap.
- *   Line 452 -- priv_manifest_decode_crypto: sha256 key missing.
- *   Line 461 -- priv_manifest_decode_crypto: signature key missing.
- *   Line 465 -- priv_manifest_decode_crypto: signature hex decodes to 0 bytes.
- *   Line 504 -- ra8_ota_internal_manifest_decode: url key missing.
- *   Line 508 -- ra8_ota_internal_manifest_decode: size key missing.
- *   Line 511 -- ra8_ota_internal_manifest_decode: image_size_bytes == 0.
- *   Line 514 -- ra8_ota_internal_manifest_decode: image_size_bytes > max.
+ *   Line 202 -- internal_validate_cfg_flash: bank_size > k_ra8_ota_max_image_bytes.
+ *   Line 216 -- priv_ota_validate_cfg: crypto sub-validator fails.
+ *   Line 268 -- internal_json_str: opening-value-quote strchr returns NULL.
+ *   Line 273 -- internal_json_str: closing-value-quote strchr returns NULL.
+ *   Line 277 -- internal_json_str: value length exceeds cap.
+ *   Line 313 -- priv_ota_json_u32: key not found in JSON.
+ *   Line 334 -- priv_ota_json_u32: no digits after skip loop.
+ *   Line 370 -- internal_hex_nibble: uppercase A-F return arm.
+ *   Line 402 -- internal_hex_decode: odd-length hex string.
+ *   Line 406 -- internal_hex_decode: decoded bytes exceed out_cap.
+ *   Line 452 -- internal_manifest_decode_crypto: sha256 key missing.
+ *   Line 461 -- internal_manifest_decode_crypto: signature key missing.
+ *   Line 465 -- internal_manifest_decode_crypto: signature hex decodes to 0 bytes.
+ *   Line 504 -- priv_ota_manifest_decode: url key missing.
+ *   Line 508 -- priv_ota_manifest_decode: size key missing.
+ *   Line 511 -- priv_ota_manifest_decode: image_size_bytes == 0.
+ *   Line 514 -- priv_ota_manifest_decode: image_size_bytes > max.
  *
  * All paths are reached through the promoted internal helpers exported by
- * ra8_ota_internal.h: ra8_ota_internal_validate_cfg,
- * ra8_ota_internal_manifest_decode, and ra8_ota_internal_json_u32. The private
- * helpers (priv_json_str, priv_hex_nibble, priv_hex_decode,
- * priv_manifest_decode_crypto) are exercised transitively.
+ * ra8_ota_internal.h: priv_ota_validate_cfg,
+ * priv_ota_manifest_decode, and priv_ota_json_u32. The private
+ * helpers (internal_json_str, internal_hex_nibble, internal_hex_decode,
+ * internal_manifest_decode_crypto) are exercised transitively.
  *
- * ra8_ota_internal_validate_cfg and ra8_ota_internal_manifest_decode are pure
+ * priv_ota_validate_cfg and priv_ota_manifest_decode are pure
  * with respect to module state (documented in ra8_ota_parse.c). No
  * ra8_ota_init call is required.
  *
@@ -60,7 +60,7 @@ typedef enum : uint32_t {
 
 /* =============================================================================
  * Dummy function pointers -- never invoked; exist only to satisfy non-NULL
- * checks inside ra8_ota_internal_validate_cfg.
+ * checks inside priv_ota_validate_cfg.
  * ============================================================================= */
 
 /* The pointer parameters below cannot be const: this mock implements a
@@ -189,7 +189,7 @@ static ra8_err_t dummy_flash_readback(void* ctx, uint32_t addr, uint8_t* dst, ui
  * @return ra8_ota_cfg_t A valid, fully populated configuration.
  *
  * @pre  None.
- * @post Returned struct passes ra8_ota_internal_validate_cfg.
+ * @post Returned struct passes priv_ota_validate_cfg.
  * @note Helper for local test functions only; not for production use.
  * @since 0.1.0
  */
@@ -222,7 +222,7 @@ static ra8_ota_cfg_t priv_make_cfg(void)
  * ============================================================================= */
 
 /**
- * @brief Verify priv_validate_cfg_flash rejects bank_size > k_ra8_ota_max_image_bytes.
+ * @brief Verify internal_validate_cfg_flash rejects bank_size > k_ra8_ota_max_image_bytes.
  *
  * @details Covers libs/ra8_ota/src/ra8_ota_parse.c line 202.
  *          The existing test suite tests bank_size == 0; this test adds the
@@ -230,7 +230,7 @@ static ra8_ota_cfg_t priv_make_cfg(void)
  *
  * @pre  None (pure validator; no module init required).
  * @pre  priv_make_cfg() returns a valid config.
- * @post ra8_ota_internal_validate_cfg returns k_ra8_err_invalid_arg.
+ * @post priv_ota_validate_cfg returns k_ra8_err_invalid_arg.
  * @post No module state mutated.
  *
  * @par MC/DC:
@@ -245,25 +245,25 @@ static void test_validate_cfg_flash_bank_too_large(void)
   TEST_BEGIN("parse_cov: validate_cfg flash bank_size > max -> line 202");
   ra8_ota_cfg_t c         = priv_make_cfg();
   c.flash.bank_size_bytes = (uint32_t)k_ra8_ota_max_image_bytes + 1U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ota_internal_validate_cfg(&c));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_ota_validate_cfg(&c));
   TEST_END("parse_cov: validate_cfg flash bank_size > max -> line 202");
 }
 
 /**
- * @brief Verify ra8_ota_internal_validate_cfg propagates a crypto sub-validator error.
+ * @brief Verify priv_ota_validate_cfg propagates a crypto sub-validator error.
  *
  * @details Covers libs/ra8_ota/src/ra8_ota_parse.c line 216.
- *          Net pointers are all valid so priv_validate_cfg_net returns k_ra8_ok.
- *          crypto.sha256_init is NULL so priv_validate_cfg_crypto returns
+ *          Net pointers are all valid so internal_validate_cfg_net returns k_ra8_ok.
+ *          crypto.sha256_init is NULL so internal_validate_cfg_crypto returns
  *          k_ra8_err_null_ptr which is propagated at line 216.
  *
  * @pre  None (pure validator; no module init required).
  * @pre  priv_make_cfg() returns a valid config.
- * @post ra8_ota_internal_validate_cfg returns k_ra8_err_null_ptr.
+ * @post priv_ota_validate_cfg returns k_ra8_err_null_ptr.
  * @post No module state mutated.
  *
  * @par MC/DC:
- * Decision: `e != k_ra8_ok` after priv_validate_cfg_crypto (1 condition).
+ * Decision: `e != k_ra8_ok` after internal_validate_cfg_crypto (1 condition).
  * - This test: crypto.sha256_init NULL -> e = k_ra8_err_null_ptr -> true -> line 216.
  * - Existing test_ra8_ota.c (full validation success) covers the false arm.
  *
@@ -274,24 +274,24 @@ static void test_validate_cfg_crypto_null(void)
   TEST_BEGIN("parse_cov: validate_cfg crypto null propagates -> line 216");
   ra8_ota_cfg_t c      = priv_make_cfg();
   c.crypto.sha256_init = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ota_internal_validate_cfg(&c));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, priv_ota_validate_cfg(&c));
   TEST_END("parse_cov: validate_cfg crypto null propagates -> line 216");
 }
 
 /**
- * @brief Verify priv_json_str returns invalid_arg when no opening quote follows
+ * @brief Verify internal_json_str returns invalid_arg when no opening quote follows
  *        the key (line 268).
  *
  * @details Covers libs/ra8_ota/src/ra8_ota_parse.c line 268.
  *          The JSON contains the key `"version"` but the value is unquoted and
  *          no further `"` appears in the buffer, so strchr for the opening
  *          value-quote returns NULL.
- *          Exercised transitively: ra8_ota_internal_manifest_decode calls
- *          priv_json_str for the version field first.
+ *          Exercised transitively: priv_ota_manifest_decode calls
+ *          internal_json_str for the version field first.
  *
  * @pre  None (pure parser; no module init required).
  * @pre  json is NUL-terminated.
- * @post ra8_ota_internal_manifest_decode returns k_ra8_err_invalid_arg.
+ * @post priv_ota_manifest_decode returns k_ra8_err_invalid_arg.
  * @post No module state mutated.
  *
  * @par MC/DC:
@@ -303,16 +303,15 @@ static void test_validate_cfg_crypto_null(void)
  */
 static void test_json_str_no_open_quote(void)
 {
-  TEST_BEGIN("parse_cov: priv_json_str no opening quote -> line 268");
+  TEST_BEGIN("parse_cov: internal_json_str no opening quote -> line 268");
   ra8_ota_manifest_t m = {};
   /* "version" key present; value is unquoted; no further `"` in the buffer. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_ota_internal_manifest_decode("{\"version\":nostring}", &m));
-  TEST_END("parse_cov: priv_json_str no opening quote -> line 268");
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_ota_manifest_decode("{\"version\":nostring}", &m));
+  TEST_END("parse_cov: internal_json_str no opening quote -> line 268");
 }
 
 /**
- * @brief Verify priv_json_str returns invalid_arg when the value has no closing
+ * @brief Verify internal_json_str returns invalid_arg when the value has no closing
  *        quote (line 273).
  *
  * @details Covers libs/ra8_ota/src/ra8_ota_parse.c line 273.
@@ -321,7 +320,7 @@ static void test_json_str_no_open_quote(void)
  *
  * @pre  None (pure parser; no module init required).
  * @pre  json is NUL-terminated.
- * @post ra8_ota_internal_manifest_decode returns k_ra8_err_invalid_arg.
+ * @post priv_ota_manifest_decode returns k_ra8_err_invalid_arg.
  * @post No module state mutated.
  *
  * @par MC/DC:
@@ -333,16 +332,15 @@ static void test_json_str_no_open_quote(void)
  */
 static void test_json_str_no_close_quote(void)
 {
-  TEST_BEGIN("parse_cov: priv_json_str no closing quote -> line 273");
+  TEST_BEGIN("parse_cov: internal_json_str no closing quote -> line 273");
   ra8_ota_manifest_t m = {};
   /* Opening quote of value found; buffer ends without a closing quote. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_ota_internal_manifest_decode("{\"version\":\"unclosed}", &m));
-  TEST_END("parse_cov: priv_json_str no closing quote -> line 273");
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_ota_manifest_decode("{\"version\":\"unclosed}", &m));
+  TEST_END("parse_cov: internal_json_str no closing quote -> line 273");
 }
 
 /**
- * @brief Verify priv_json_str returns invalid_size when the string value
+ * @brief Verify internal_json_str returns invalid_size when the string value
  *        exceeds the destination capacity (line 277).
  *
  * @details Covers libs/ra8_ota/src/ra8_ota_parse.c line 277.
@@ -351,7 +349,7 @@ static void test_json_str_no_close_quote(void)
  *
  * @pre  None (pure parser; no module init required).
  * @pre  json is NUL-terminated.
- * @post ra8_ota_internal_manifest_decode returns k_ra8_err_invalid_size.
+ * @post priv_ota_manifest_decode returns k_ra8_err_invalid_size.
  * @post No module state mutated.
  *
  * @par MC/DC:
@@ -363,19 +361,18 @@ static void test_json_str_no_close_quote(void)
  */
 static void test_json_str_value_too_long(void)
 {
-  TEST_BEGIN("parse_cov: priv_json_str value exceeds cap -> line 277");
+  TEST_BEGIN("parse_cov: internal_json_str value exceeds cap -> line 277");
   ra8_ota_manifest_t m = {};
   /* Version value is 32 chars; cap is 32; n+1 = 33 overflows. */
-  TEST_ASSERT_EQ(
-    k_ra8_err_invalid_size,
-    ra8_ota_internal_manifest_decode("{\"version\":\"12345678901234567890123456789012\","
-                                     "\"url\":\"x\"}",
-                                     &m));
-  TEST_END("parse_cov: priv_json_str value exceeds cap -> line 277");
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 priv_ota_manifest_decode("{\"version\":\"12345678901234567890123456789012\","
+                                          "\"url\":\"x\"}",
+                                          &m));
+  TEST_END("parse_cov: internal_json_str value exceeds cap -> line 277");
 }
 
 /**
- * @brief Verify ra8_ota_internal_json_u32 returns invalid_arg when the key is
+ * @brief Verify priv_ota_json_u32 returns invalid_arg when the key is
  *        absent from the JSON document (line 313).
  *
  * @details Covers libs/ra8_ota/src/ra8_ota_parse.c line 313.
@@ -383,7 +380,7 @@ static void test_json_str_value_too_long(void)
  *
  * @pre  None (pure parser; no module init required).
  * @pre  json and key are NUL-terminated; out_v is non-NULL.
- * @post ra8_ota_internal_json_u32 returns k_ra8_err_invalid_arg.
+ * @post priv_ota_json_u32 returns k_ra8_err_invalid_arg.
  * @post out_v is unchanged on failure.
  *
  * @par MC/DC:
@@ -395,16 +392,16 @@ static void test_json_str_value_too_long(void)
  */
 static void test_json_u32_key_not_found(void)
 {
-  TEST_BEGIN("parse_cov: ra8_ota_internal_json_u32 key not found -> line 313");
+  TEST_BEGIN("parse_cov: priv_ota_json_u32 key not found -> line 313");
   uint32_t v = k_t_out_word_seed;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ota_internal_json_u32("{\"foo\":42}", "\"size\"", &v));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_ota_json_u32("{\"foo\":42}", "\"size\"", &v));
   /* out_v must be unchanged on failure. */
   TEST_ASSERT_EQ(0xDEADBEEFUL, v);
-  TEST_END("parse_cov: ra8_ota_internal_json_u32 key not found -> line 313");
+  TEST_END("parse_cov: priv_ota_json_u32 key not found -> line 313");
 }
 
 /**
- * @brief Verify ra8_ota_internal_json_u32 returns invalid_arg when there are no
+ * @brief Verify priv_ota_json_u32 returns invalid_arg when there are no
  *        digit characters after the skip loop (line 334).
  *
  * @details Covers libs/ra8_ota/src/ra8_ota_parse.c line 334.
@@ -413,7 +410,7 @@ static void test_json_u32_key_not_found(void)
  *
  * @pre  None (pure parser; no module init required).
  * @pre  json and key are NUL-terminated; out_v is non-NULL.
- * @post ra8_ota_internal_json_u32 returns k_ra8_err_invalid_arg.
+ * @post priv_ota_json_u32 returns k_ra8_err_invalid_arg.
  * @post out_v is unchanged on failure.
  *
  * @par MC/DC:
@@ -425,29 +422,29 @@ static void test_json_u32_key_not_found(void)
  */
 static void test_json_u32_no_digits(void)
 {
-  TEST_BEGIN("parse_cov: ra8_ota_internal_json_u32 no digits -> line 334");
+  TEST_BEGIN("parse_cov: priv_ota_json_u32 no digits -> line 334");
   uint32_t v = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_ota_internal_json_u32("{\"size\":\"notanumber\"}", "\"size\"", &v));
-  TEST_END("parse_cov: ra8_ota_internal_json_u32 no digits -> line 334");
+                 priv_ota_json_u32("{\"size\":\"notanumber\"}", "\"size\"", &v));
+  TEST_END("parse_cov: priv_ota_json_u32 no digits -> line 334");
 }
 
 /**
- * @brief Verify priv_hex_nibble covers the uppercase A-F return path (line 370).
+ * @brief Verify internal_hex_nibble covers the uppercase A-F return path (line 370).
  *
  * @details Covers libs/ra8_ota/src/ra8_ota_parse.c line 370.
- *          Reached transitively through ra8_ota_internal_manifest_decode when the
+ *          Reached transitively through priv_ota_manifest_decode when the
  *          sha256 and signature fields contain uppercase A-F characters.
  *          The manifest is well-formed so the decode succeeds and the returned
  *          fields reflect the uppercase-decoded bytes.
  *
  * @pre  None (pure parser; no module init required).
  * @pre  json is NUL-terminated; out is non-NULL.
- * @post ra8_ota_internal_manifest_decode returns k_ra8_ok.
+ * @post priv_ota_manifest_decode returns k_ra8_ok.
  * @post image_sha256[0] == 0xAA, image_sha256[1] == 0xBB, signature_len == 2.
  *
  * @par MC/DC:
- * Decision: `ra8_ota_internal_char_in_range(c, 'A', 'F')` (1 condition).
+ * Decision: `priv_ota_char_in_range(c, 'A', 'F')` (1 condition).
  * - This test: c in 'A'..'F' -> true -> uppercase return at line 370.
  * - test_mcdc_hex_nibble_pair_completion in test_ra8_ota.c (c = ':') covers false.
  *
@@ -455,36 +452,35 @@ static void test_json_u32_no_digits(void)
  */
 static void test_hex_nibble_uppercase(void)
 {
-  TEST_BEGIN("parse_cov: priv_hex_nibble uppercase A-F arm -> line 370");
+  TEST_BEGIN("parse_cov: internal_hex_nibble uppercase A-F arm -> line 370");
   ra8_ota_manifest_t m = {};
   /* sha256: 64 uppercase hex chars (32 bytes). signature: "CAFE" (2 bytes). */
-  const ra8_err_t e =
-    ra8_ota_internal_manifest_decode("{ \"version\": \"1.0.0\","
-                                     " \"url\": \"https://x\","
-                                     " \"size\": 256,"
-                                     " \"sha256\": \"AABBCCDDEEFF00112233445566778899"
-                                     "AABBCCDDEEFF00112233445566778899\","
-                                     " \"signature\": \"CAFE\" }",
-                                     &m);
+  const ra8_err_t e = priv_ota_manifest_decode("{ \"version\": \"1.0.0\","
+                                               " \"url\": \"https://x\","
+                                               " \"size\": 256,"
+                                               " \"sha256\": \"AABBCCDDEEFF00112233445566778899"
+                                               "AABBCCDDEEFF00112233445566778899\","
+                                               " \"signature\": \"CAFE\" }",
+                                               &m);
   TEST_ASSERT_EQ(k_ra8_ok, e);
   TEST_ASSERT_EQ(0xAAU, m.image_sha256[0]);
   TEST_ASSERT_EQ(0xBBU, m.image_sha256[1]);
   TEST_ASSERT_EQ(256U, m.image_size_bytes);
   TEST_ASSERT_EQ(2U, m.signature_len);
-  TEST_END("parse_cov: priv_hex_nibble uppercase A-F arm -> line 370");
+  TEST_END("parse_cov: internal_hex_nibble uppercase A-F arm -> line 370");
 }
 
 /**
- * @brief Verify priv_hex_decode returns 0 for an odd-length hex string (line 402).
+ * @brief Verify internal_hex_decode returns 0 for an odd-length hex string (line 402).
  *
  * @details Covers libs/ra8_ota/src/ra8_ota_parse.c line 402.
- *          Reached transitively through ra8_ota_internal_manifest_decode: the
+ *          Reached transitively through priv_ota_manifest_decode: the
  *          sha256 field value is "abc" (3 chars, odd length), which causes
- *          priv_hex_decode to return 0 immediately.
+ *          internal_hex_decode to return 0 immediately.
  *
  * @pre  None (pure parser; no module init required).
  * @pre  json is NUL-terminated; out is non-NULL.
- * @post ra8_ota_internal_manifest_decode returns k_ra8_err_invalid_arg.
+ * @post priv_ota_manifest_decode returns k_ra8_err_invalid_arg.
  * @post No module state mutated.
  *
  * @par MC/DC:
@@ -496,21 +492,21 @@ static void test_hex_nibble_uppercase(void)
  */
 static void test_hex_decode_odd_length(void)
 {
-  TEST_BEGIN("parse_cov: priv_hex_decode odd-length hex -> line 402");
+  TEST_BEGIN("parse_cov: internal_hex_decode odd-length hex -> line 402");
   ra8_ota_manifest_t m = {};
-  /* sha256 hex value "abc" has odd length -> priv_hex_decode returns 0. */
-  const ra8_err_t e = ra8_ota_internal_manifest_decode("{ \"version\": \"1.0.0\","
-                                                       " \"url\": \"https://x\","
-                                                       " \"size\": 256,"
-                                                       " \"sha256\": \"abc\","
-                                                       " \"signature\": \"aabb\" }",
-                                                       &m);
+  /* sha256 hex value "abc" has odd length -> internal_hex_decode returns 0. */
+  const ra8_err_t e = priv_ota_manifest_decode("{ \"version\": \"1.0.0\","
+                                               " \"url\": \"https://x\","
+                                               " \"size\": 256,"
+                                               " \"sha256\": \"abc\","
+                                               " \"signature\": \"aabb\" }",
+                                               &m);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, e);
-  TEST_END("parse_cov: priv_hex_decode odd-length hex -> line 402");
+  TEST_END("parse_cov: internal_hex_decode odd-length hex -> line 402");
 }
 
 /**
- * @brief Verify priv_hex_decode returns 0 when decoded bytes exceed out_cap
+ * @brief Verify internal_hex_decode returns 0 when decoded bytes exceed out_cap
  *        (line 406).
  *
  * @details Covers libs/ra8_ota/src/ra8_ota_parse.c line 406.
@@ -519,7 +515,7 @@ static void test_hex_decode_odd_length(void)
  *
  * @pre  None (pure parser; no module init required).
  * @pre  json is NUL-terminated; out is non-NULL.
- * @post ra8_ota_internal_manifest_decode returns k_ra8_err_invalid_arg.
+ * @post priv_ota_manifest_decode returns k_ra8_err_invalid_arg.
  * @post No module state mutated.
  *
  * @par MC/DC:
@@ -531,37 +527,36 @@ static void test_hex_decode_odd_length(void)
  */
 static void test_hex_decode_exceeds_cap(void)
 {
-  TEST_BEGIN("parse_cov: priv_hex_decode bytes > out_cap -> line 406");
+  TEST_BEGIN("parse_cov: internal_hex_decode bytes > out_cap -> line 406");
   ra8_ota_manifest_t m = {};
   /* sha256 hex: 66 even-length chars -> 33 bytes > k_ra8_ota_sha256_bytes (32). */
-  const ra8_err_t e =
-    ra8_ota_internal_manifest_decode("{ \"version\": \"1.0.0\","
-                                     " \"url\": \"https://x\","
-                                     " \"size\": 256,"
-                                     " \"sha256\": \"aabbccddeeff00112233445566778899"
-                                     "aabbccddeeff00112233445566778899aa\","
-                                     " \"signature\": \"aabb\" }",
-                                     &m);
+  const ra8_err_t e = priv_ota_manifest_decode("{ \"version\": \"1.0.0\","
+                                               " \"url\": \"https://x\","
+                                               " \"size\": 256,"
+                                               " \"sha256\": \"aabbccddeeff00112233445566778899"
+                                               "aabbccddeeff00112233445566778899aa\","
+                                               " \"signature\": \"aabb\" }",
+                                               &m);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, e);
-  TEST_END("parse_cov: priv_hex_decode bytes > out_cap -> line 406");
+  TEST_END("parse_cov: internal_hex_decode bytes > out_cap -> line 406");
 }
 
 /**
- * @brief Verify priv_manifest_decode_crypto propagates error when sha256 key is
+ * @brief Verify internal_manifest_decode_crypto propagates error when sha256 key is
  *        absent (line 452).
  *
  * @details Covers libs/ra8_ota/src/ra8_ota_parse.c line 452.
  *          The version, url, and size fields parse and validate successfully so
- *          priv_manifest_decode_crypto is entered. The sha256 key is absent ->
- *          priv_json_str returns k_ra8_err_invalid_arg -> line 452.
+ *          internal_manifest_decode_crypto is entered. The sha256 key is absent ->
+ *          internal_json_str returns k_ra8_err_invalid_arg -> line 452.
  *
  * @pre  None (pure parser; no module init required).
  * @pre  json is NUL-terminated; out is non-NULL.
- * @post ra8_ota_internal_manifest_decode returns k_ra8_err_invalid_arg.
+ * @post priv_ota_manifest_decode returns k_ra8_err_invalid_arg.
  * @post No module state mutated.
  *
  * @par MC/DC:
- * Decision: `e != k_ra8_ok` after priv_json_str for sha256 (1 condition).
+ * Decision: `e != k_ra8_ok` after internal_json_str for sha256 (1 condition).
  * - This test: sha256 key absent -> error -> true -> line 452.
  * - Normal path (sha256 present and valid) covers the false arm.
  *
@@ -569,33 +564,33 @@ static void test_hex_decode_exceeds_cap(void)
  */
 static void test_manifest_decode_no_sha256(void)
 {
-  TEST_BEGIN("parse_cov: priv_manifest_decode_crypto sha256 missing -> line 452");
+  TEST_BEGIN("parse_cov: internal_manifest_decode_crypto sha256 missing -> line 452");
   ra8_ota_manifest_t m = {};
   /* version, url, size present; sha256 absent. */
-  const ra8_err_t e = ra8_ota_internal_manifest_decode("{ \"version\": \"1.0.0\","
-                                                       " \"url\": \"https://x\","
-                                                       " \"size\": 256 }",
-                                                       &m);
+  const ra8_err_t e = priv_ota_manifest_decode("{ \"version\": \"1.0.0\","
+                                               " \"url\": \"https://x\","
+                                               " \"size\": 256 }",
+                                               &m);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, e);
-  TEST_END("parse_cov: priv_manifest_decode_crypto sha256 missing -> line 452");
+  TEST_END("parse_cov: internal_manifest_decode_crypto sha256 missing -> line 452");
 }
 
 /**
- * @brief Verify priv_manifest_decode_crypto propagates error when signature key
+ * @brief Verify internal_manifest_decode_crypto propagates error when signature key
  *        is absent (line 461).
  *
  * @details Covers libs/ra8_ota/src/ra8_ota_parse.c line 461.
  *          sha256 is a valid 64-char lowercase hex string (32 bytes, n_d == 32).
- *          The signature key is absent -> priv_json_str returns
+ *          The signature key is absent -> internal_json_str returns
  *          k_ra8_err_invalid_arg -> line 461.
  *
  * @pre  None (pure parser; no module init required).
  * @pre  json is NUL-terminated; out is non-NULL.
- * @post ra8_ota_internal_manifest_decode returns k_ra8_err_invalid_arg.
+ * @post priv_ota_manifest_decode returns k_ra8_err_invalid_arg.
  * @post No module state mutated.
  *
  * @par MC/DC:
- * Decision: `e != k_ra8_ok` after priv_json_str for signature (1 condition).
+ * Decision: `e != k_ra8_ok` after internal_json_str for signature (1 condition).
  * - This test: signature key absent -> error -> true -> line 461.
  * - Normal path (signature present) covers the false arm.
  *
@@ -603,72 +598,70 @@ static void test_manifest_decode_no_sha256(void)
  */
 static void test_manifest_decode_no_signature(void)
 {
-  TEST_BEGIN("parse_cov: priv_manifest_decode_crypto signature missing -> line 461");
+  TEST_BEGIN("parse_cov: internal_manifest_decode_crypto signature missing -> line 461");
   ra8_ota_manifest_t m = {};
   /* sha256: 64 lowercase hex chars (32 bytes). signature key absent. */
-  const ra8_err_t e =
-    ra8_ota_internal_manifest_decode("{ \"version\": \"1.0.0\","
-                                     " \"url\": \"https://x\","
-                                     " \"size\": 256,"
-                                     " \"sha256\": \"aabbccddeeff00112233445566778899"
-                                     "aabbccddeeff00112233445566778899\" }",
-                                     &m);
+  const ra8_err_t e = priv_ota_manifest_decode("{ \"version\": \"1.0.0\","
+                                               " \"url\": \"https://x\","
+                                               " \"size\": 256,"
+                                               " \"sha256\": \"aabbccddeeff00112233445566778899"
+                                               "aabbccddeeff00112233445566778899\" }",
+                                               &m);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, e);
-  TEST_END("parse_cov: priv_manifest_decode_crypto signature missing -> line 461");
+  TEST_END("parse_cov: internal_manifest_decode_crypto signature missing -> line 461");
 }
 
 /**
- * @brief Verify priv_manifest_decode_crypto returns invalid_arg when the
+ * @brief Verify internal_manifest_decode_crypto returns invalid_arg when the
  *        signature hex string decodes to zero bytes (line 465).
  *
  * @details Covers libs/ra8_ota/src/ra8_ota_parse.c line 465.
  *          sha256 decodes successfully (n_d == 32). The signature value "abc"
- *          is odd-length so priv_hex_decode returns 0 -> n_s == 0 -> line 465.
+ *          is odd-length so internal_hex_decode returns 0 -> n_s == 0 -> line 465.
  *
  * @pre  None (pure parser; no module init required).
  * @pre  json is NUL-terminated; out is non-NULL.
- * @post ra8_ota_internal_manifest_decode returns k_ra8_err_invalid_arg.
+ * @post priv_ota_manifest_decode returns k_ra8_err_invalid_arg.
  * @post No module state mutated.
  *
  * @par MC/DC:
  * Decision: `n_s == 0U` (1 condition).
- * - This test: odd-length signature hex -> priv_hex_decode = 0 -> true -> line 465.
+ * - This test: odd-length signature hex -> internal_hex_decode = 0 -> true -> line 465.
  * - Normal path (even-length, non-empty signature hex) covers the false arm.
  *
  * @since 0.1.0
  */
 static void test_manifest_decode_sig_malformed(void)
 {
-  TEST_BEGIN("parse_cov: priv_manifest_decode_crypto n_s==0 -> line 465");
+  TEST_BEGIN("parse_cov: internal_manifest_decode_crypto n_s==0 -> line 465");
   ra8_ota_manifest_t m = {};
   /* sha256 OK (64 chars); signature "abc" is odd-length -> n_s = 0. */
-  const ra8_err_t e =
-    ra8_ota_internal_manifest_decode("{ \"version\": \"1.0.0\","
-                                     " \"url\": \"https://x\","
-                                     " \"size\": 256,"
-                                     " \"sha256\": \"aabbccddeeff00112233445566778899"
-                                     "aabbccddeeff00112233445566778899\","
-                                     " \"signature\": \"abc\" }",
-                                     &m);
+  const ra8_err_t e = priv_ota_manifest_decode("{ \"version\": \"1.0.0\","
+                                               " \"url\": \"https://x\","
+                                               " \"size\": 256,"
+                                               " \"sha256\": \"aabbccddeeff00112233445566778899"
+                                               "aabbccddeeff00112233445566778899\","
+                                               " \"signature\": \"abc\" }",
+                                               &m);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, e);
-  TEST_END("parse_cov: priv_manifest_decode_crypto n_s==0 -> line 465");
+  TEST_END("parse_cov: internal_manifest_decode_crypto n_s==0 -> line 465");
 }
 
 /**
- * @brief Verify ra8_ota_internal_manifest_decode propagates error when the url
+ * @brief Verify priv_ota_manifest_decode propagates error when the url
  *        key is absent (line 504).
  *
  * @details Covers libs/ra8_ota/src/ra8_ota_parse.c line 504.
  *          The version field parses successfully; the url key is absent ->
- *          priv_json_str returns k_ra8_err_invalid_arg -> line 504.
+ *          internal_json_str returns k_ra8_err_invalid_arg -> line 504.
  *
  * @pre  None (pure parser; no module init required).
  * @pre  json is NUL-terminated; out is non-NULL.
- * @post ra8_ota_internal_manifest_decode returns k_ra8_err_invalid_arg.
+ * @post priv_ota_manifest_decode returns k_ra8_err_invalid_arg.
  * @post No module state mutated.
  *
  * @par MC/DC:
- * Decision: `e != k_ra8_ok` after priv_json_str for url (1 condition).
+ * Decision: `e != k_ra8_ok` after internal_json_str for url (1 condition).
  * - This test: url key absent -> error -> true -> line 504.
  * - Normal path (url present) covers the false arm.
  *
@@ -679,26 +672,26 @@ static void test_manifest_decode_no_url(void)
   TEST_BEGIN("parse_cov: manifest_decode url missing -> line 504");
   ra8_ota_manifest_t m = {};
   /* version present; url absent. */
-  const ra8_err_t e = ra8_ota_internal_manifest_decode("{ \"version\": \"1.0.0\" }", &m);
+  const ra8_err_t e = priv_ota_manifest_decode("{ \"version\": \"1.0.0\" }", &m);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, e);
   TEST_END("parse_cov: manifest_decode url missing -> line 504");
 }
 
 /**
- * @brief Verify ra8_ota_internal_manifest_decode propagates error when the size
+ * @brief Verify priv_ota_manifest_decode propagates error when the size
  *        key is absent (line 508).
  *
  * @details Covers libs/ra8_ota/src/ra8_ota_parse.c line 508.
  *          version and url parse successfully; the size key is absent ->
- *          ra8_ota_internal_json_u32 returns k_ra8_err_invalid_arg -> line 508.
+ *          priv_ota_json_u32 returns k_ra8_err_invalid_arg -> line 508.
  *
  * @pre  None (pure parser; no module init required).
  * @pre  json is NUL-terminated; out is non-NULL.
- * @post ra8_ota_internal_manifest_decode returns k_ra8_err_invalid_arg.
+ * @post priv_ota_manifest_decode returns k_ra8_err_invalid_arg.
  * @post No module state mutated.
  *
  * @par MC/DC:
- * Decision: `e != k_ra8_ok` after ra8_ota_internal_json_u32 for size (1 condition).
+ * Decision: `e != k_ra8_ok` after priv_ota_json_u32 for size (1 condition).
  * - This test: size key absent -> error -> true -> line 508.
  * - Normal path (size present) covers the false arm.
  *
@@ -710,13 +703,13 @@ static void test_manifest_decode_no_size(void)
   ra8_ota_manifest_t m = {};
   /* version and url present; size absent. */
   const ra8_err_t e =
-    ra8_ota_internal_manifest_decode("{ \"version\": \"1.0.0\", \"url\": \"https://x\" }", &m);
+    priv_ota_manifest_decode("{ \"version\": \"1.0.0\", \"url\": \"https://x\" }", &m);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, e);
   TEST_END("parse_cov: manifest_decode size missing -> line 508");
 }
 
 /**
- * @brief Verify ra8_ota_internal_manifest_decode returns invalid_arg when
+ * @brief Verify priv_ota_manifest_decode returns invalid_arg when
  *        image_size_bytes is zero (line 511).
  *
  * @details Covers libs/ra8_ota/src/ra8_ota_parse.c line 511.
@@ -725,7 +718,7 @@ static void test_manifest_decode_no_size(void)
  *
  * @pre  None (pure parser; no module init required).
  * @pre  json is NUL-terminated; out is non-NULL.
- * @post ra8_ota_internal_manifest_decode returns k_ra8_err_invalid_arg.
+ * @post priv_ota_manifest_decode returns k_ra8_err_invalid_arg.
  * @post No module state mutated.
  *
  * @par MC/DC:
@@ -739,16 +732,16 @@ static void test_manifest_decode_zero_size(void)
 {
   TEST_BEGIN("parse_cov: manifest_decode image_size_bytes == 0 -> line 511");
   ra8_ota_manifest_t m = {};
-  const ra8_err_t    e = ra8_ota_internal_manifest_decode("{ \"version\": \"1.0.0\","
-                                                          " \"url\": \"https://x\","
-                                                          " \"size\": 0 }",
-                                                          &m);
+  const ra8_err_t    e = priv_ota_manifest_decode("{ \"version\": \"1.0.0\","
+                                                  " \"url\": \"https://x\","
+                                                  " \"size\": 0 }",
+                                                  &m);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, e);
   TEST_END("parse_cov: manifest_decode image_size_bytes == 0 -> line 511");
 }
 
 /**
- * @brief Verify ra8_ota_internal_manifest_decode returns invalid_size when
+ * @brief Verify priv_ota_manifest_decode returns invalid_size when
  *        image_size_bytes exceeds k_ra8_ota_max_image_bytes (line 514).
  *
  * @details Covers libs/ra8_ota/src/ra8_ota_parse.c line 514.
@@ -757,7 +750,7 @@ static void test_manifest_decode_zero_size(void)
  *
  * @pre  None (pure parser; no module init required).
  * @pre  json is NUL-terminated; out is non-NULL.
- * @post ra8_ota_internal_manifest_decode returns k_ra8_err_invalid_size.
+ * @post priv_ota_manifest_decode returns k_ra8_err_invalid_size.
  * @post No module state mutated.
  *
  * @par MC/DC:
@@ -772,10 +765,10 @@ static void test_manifest_decode_size_exceeds_max(void)
   TEST_BEGIN("parse_cov: manifest_decode image_size > max -> line 514");
   ra8_ota_manifest_t m = {};
   /* 524289 = 0x80001 > k_ra8_ota_max_image_bytes (0x80000 = 524288). */
-  const ra8_err_t e = ra8_ota_internal_manifest_decode("{ \"version\": \"1.0.0\","
-                                                       " \"url\": \"https://x\","
-                                                       " \"size\": 524289 }",
-                                                       &m);
+  const ra8_err_t e = priv_ota_manifest_decode("{ \"version\": \"1.0.0\","
+                                               " \"url\": \"https://x\","
+                                               " \"size\": 524289 }",
+                                               &m);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, e);
   TEST_END("parse_cov: manifest_decode image_size > max -> line 514");
 }
@@ -803,6 +796,5 @@ int main(void)
   test_manifest_decode_no_size();
   test_manifest_decode_zero_size();
   test_manifest_decode_size_exceeds_max();
-  (void)fprintf(stderr, "[OK  ] test_ra8_ota_parse_cov.c\n");
   return 0;
 }

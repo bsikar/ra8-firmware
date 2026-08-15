@@ -56,7 +56,7 @@ extern "C" {
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t ra8_ota_internal_validate_cfg(const ra8_ota_cfg_t* cfg);
+ra8_err_t priv_ota_validate_cfg(const ra8_ota_cfg_t* cfg);
 
 /**
  * @brief Decode every field of a JSON manifest into an ``ra8_ota_manifest_t``.
@@ -89,7 +89,7 @@ ra8_err_t ra8_ota_internal_validate_cfg(const ra8_ota_cfg_t* cfg);
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t ra8_ota_internal_manifest_decode(const char* json, ra8_ota_manifest_t* out);
+ra8_err_t priv_ota_manifest_decode(const char* json, ra8_ota_manifest_t* out);
 
 /**
  * @brief Parse a JSON-style ``"key": <decimal>`` field into a u32.
@@ -122,13 +122,13 @@ ra8_err_t ra8_ota_internal_manifest_decode(const char* json, ra8_ota_manifest_t*
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t ra8_ota_internal_json_u32(const char* json, const char* key, uint32_t* out_v);
+ra8_err_t priv_ota_json_u32(const char* json, const char* key, uint32_t* out_v);
 
 /**
  * @brief Pure predicate: ASCII char is in inclusive range [lo, hi].
  *
  * @details Reusable for the [0-9] / [a-f] / [A-F] guards in
- *          @c priv_hex_nibble at libs/ra8_ota/src/ra8_ota.c lines
+ *          @c internal_hex_nibble at libs/ra8_ota/src/ra8_ota.c lines
  *          449, 452, 455.
  *
  * @param[in] c  Character under test.
@@ -155,7 +155,7 @@ ra8_err_t ra8_ota_internal_json_u32(const char* json, const char* key, uint32_t*
  * @since 0.1.0
  */
 RA8_PRIV
-bool ra8_ota_internal_char_in_range(char c, char lo, char hi);
+bool priv_ota_char_in_range(char c, char lo, char hi);
 
 /**
  * @brief Pure predicate: state is neither IDLE nor DOWNLOADING.
@@ -187,9 +187,9 @@ bool ra8_ota_internal_char_in_range(char c, char lo, char hi);
  * @since 0.1.0
  */
 RA8_PRIV
-bool ra8_ota_internal_download_state_invalid(uint32_t state_idle_val,
-                                             uint32_t state_downloading_val,
-                                             uint32_t state);
+bool priv_ota_download_state_invalid(uint32_t state_idle_val,
+                                     uint32_t state_downloading_val,
+                                     uint32_t state);
 
 /* =============================================================================
  * Shared mutable module state.
@@ -201,7 +201,7 @@ bool ra8_ota_internal_download_state_invalid(uint32_t state_idle_val,
  * ============================================================================= */
 
 /**
- * @var s_ra8_ota_cfg
+ * @var g_ra8_ota_cfg
  * @brief Module configuration captured by ``ra8_ota_init``; defined in ``ra8_ota.c``.
  * @details Function-pointer interfaces (net / crypto / flash) plus URLs and bank
  *          metadata. Shared read-only with ``ra8_ota_verify.c`` so the verify
@@ -210,10 +210,10 @@ bool ra8_ota_internal_download_state_invalid(uint32_t state_idle_val,
  * @warning Do not redefine; exactly one definition exists in ``ra8_ota.c``.
  * @since 0.1.0
  */
-extern ra8_ota_cfg_t s_ra8_ota_cfg;
+extern ra8_ota_cfg_t g_ra8_ota_cfg;
 
 /**
- * @var s_ra8_ota_state
+ * @var g_ra8_ota_state
  * @brief Current OTA state-machine value; defined in ``ra8_ota.c``.
  * @details Single-byte cooperative state shared with ``ra8_ota_verify.c`` so the
  *          verify entry point can gate on ``k_ra8_ota_state_verifying``.
@@ -221,10 +221,10 @@ extern ra8_ota_cfg_t s_ra8_ota_cfg;
  * @warning Do not redefine; exactly one definition exists in ``ra8_ota.c``.
  * @since 0.1.0
  */
-extern ra8_ota_state_t s_ra8_ota_state;
+extern ra8_ota_state_t g_ra8_ota_state;
 
 /**
- * @var s_ra8_ota_initialized
+ * @var g_ra8_ota_initialized
  * @brief True once ``ra8_ota_init`` has succeeded; defined in ``ra8_ota.c``.
  * @details Shared with ``ra8_ota_verify.c`` so the verify entry point can reject
  *          calls issued before the module is initialized.
@@ -232,10 +232,10 @@ extern ra8_ota_state_t s_ra8_ota_state;
  * @warning Do not redefine; exactly one definition exists in ``ra8_ota.c``.
  * @since 0.1.0
  */
-extern bool s_ra8_ota_initialized;
+extern bool g_ra8_ota_initialized;
 
 /**
- * @var s_ra8_ota_buf
+ * @var g_ra8_ota_buf
  * @brief Streaming chunk buffer reused by the manifest, download and re-hash
  *        paths; defined in ``ra8_ota.c``.
  * @details ``k_ra8_ota_chunk_bytes`` of static scratch shared with
@@ -245,12 +245,12 @@ extern bool s_ra8_ota_initialized;
  * @warning Do not redefine; exactly one definition exists in ``ra8_ota.c``.
  * @since 0.1.0
  */
-extern uint8_t s_ra8_ota_buf[k_ra8_ota_chunk_bytes];
+extern uint8_t g_ra8_ota_buf[k_ra8_ota_chunk_bytes];
 
 /**
  * @brief Set the OTA state-machine value and fire the progress callback.
  *
- * @details Updates ``s_ra8_ota_state`` and the latched last-error, then
+ * @details Updates ``g_ra8_ota_state`` and the latched last-error, then
  *          synthesises a ``ra8_ota_progress_t`` snapshot and forwards it to the
  *          user-registered ``on_progress`` callback when one is present.
  *          Promoted from TU-private static linkage (was ``priv_set_state``) so
@@ -262,7 +262,7 @@ extern uint8_t s_ra8_ota_buf[k_ra8_ota_chunk_bytes];
  *
  * @pre Module is initialized.
  * @pre Caller is the single OTA worker (no concurrent callers).
- * @post ``s_ra8_ota_state`` == ``new_state``.
+ * @post ``g_ra8_ota_state`` == ``new_state``.
  * @post The latched last-error equals ``err``.
  *
  * @note Internal cross-TU helper; not thread-safe -- the OTA module assumes a
@@ -270,7 +270,7 @@ extern uint8_t s_ra8_ota_buf[k_ra8_ota_chunk_bytes];
  * @since 0.1.0
  */
 RA8_PRIV
-void ra8_ota_internal_set_state(ra8_ota_state_t new_state, ra8_err_t err);
+void priv_ota_set_state(ra8_ota_state_t new_state, ra8_err_t err);
 
 #ifdef __cplusplus
 }
