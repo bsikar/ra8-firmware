@@ -468,6 +468,5 @@ int32_t main(void)
   test_io_out_of_range();
   test_init_4bit_widens();
   test_init_4bit_declined_stays_1bit();
-  (void)fprintf(stderr, "[OK  ] test_ra8_sdcard.c\n");
   return 0;
 }

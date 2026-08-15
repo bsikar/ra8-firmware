@@ -25,7 +25,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
@@ -973,6 +972,5 @@ int32_t main(void)
   test_chacha_poly_hash_hmac_error_paths();
   test_hmac_public_variants();
   test_asym_and_kdf_error_paths();
-  (void)fprintf(stderr, "[OK  ] test_ra8_rsip_edge_cases.c\n");
   return 0;
 }

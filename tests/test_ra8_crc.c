@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_crc.c
  * @brief Unit tests for ra8_crc.c (CRC calculator driver)
+ * @details Checks CRC configuration, feed widths, result publication, invalid arguments, and register access through hosted fixtures.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -431,6 +432,5 @@ int32_t main(void)
   test_get_status();
   test_power_transition();
   test_mcdc_is_32bit_poly();
-  (void)fprintf(stderr, "[OK ] test_ra8_crc.c\n");
   return 0;
 }

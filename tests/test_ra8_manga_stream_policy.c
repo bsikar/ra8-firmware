@@ -251,6 +251,5 @@ int32_t main(void)
 {
   test_manga_stream_metadata_scan_resistance();
   test_manga_stream_split_tuning();
-  (void)fprintf(stderr, "[OK  ] test_ra8_manga_stream_policy.c\n");
   return 0;
 }

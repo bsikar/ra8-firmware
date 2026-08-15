@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_glcdc.c
  * @brief Unit tests for the GLCDC driver (ra8_glcdc.c)
+ * @details Exercises GLCDC timing, layer, format, start/stop, interrupt, and invalid-configuration paths in hosted registers.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -991,6 +992,5 @@ int32_t main(void)
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
     s_test_roster[i]();
   }
-  (void)fprintf(stderr, "[OK ] test_ra8_glcdc.c\n");
   return 0;
 }

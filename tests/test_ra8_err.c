@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_err.c
  * @brief Unit tests for ra8_err.h / ra8_err_to_str()
+ * @details Pins public error-code values and representative string mappings so ABI and diagnostic identities cannot drift silently.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -76,6 +77,5 @@ int32_t main(void)
   test_ra8_err_is_error();
   test_ra8_err_to_str_known();
   test_ra8_err_to_str_unknown();
-  (void)fprintf(stderr, "[OK  ] test_ra8_err.c\n");
   return 0;
 }

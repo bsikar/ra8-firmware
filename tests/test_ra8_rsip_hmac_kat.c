@@ -20,7 +20,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -183,6 +182,5 @@ static void test_hmac_sha256_rfc4231(void)
 int32_t main(void)
 {
   test_hmac_sha256_rfc4231();
-  (void)fprintf(stderr, "[OK ] test_ra8_rsip_hmac_kat.c\n");
   return 0;
 }

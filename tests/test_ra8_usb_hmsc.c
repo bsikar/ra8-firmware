@@ -541,6 +541,5 @@ int32_t main(void)
   test_decode_csw_status();
   test_mcdc_hmsc();
   test_mcdc_hmsc_decode_csw_status_and_chain();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_hmsc.c\n");
   return 0;
 }

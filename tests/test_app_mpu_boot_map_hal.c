@@ -175,6 +175,5 @@ int32_t main(void)
   test_app_boot_map_installs_and_enables();
   test_app_verdict_fails_without_apply();
   test_app_boot_map_insufficient_regions();
-  (void)fprintf(stderr, "[OK ] test_app_mpu_boot_map_hal.c\n");
   return 0;
 }

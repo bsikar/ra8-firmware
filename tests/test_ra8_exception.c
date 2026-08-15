@@ -4,8 +4,8 @@
  *
  * @details
  * `ra8_exception_report()` is declared `noreturn` because on target it
- * tail-calls `internal_ra8_fatal_error()`, which halts the CPU. The
- * host implementation of `internal_ra8_fatal_error()` normally calls
+ * tail-calls `ra8_fatal_error()`, which halts the CPU. The
+ * host implementation of `ra8_fatal_error()` normally calls
  * `__builtin_trap()`. To keep the test runnable we override it here
  * with a weak-symbol-clobbering definition that simply records the
  * call and returns via `longjmp()` so the test process survives.
@@ -17,6 +17,7 @@
 #include <setjmp.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_exception.h"
 #include "ra8_fake_mmap.h"
@@ -76,9 +77,9 @@ static uint8_t s_fatal_hit = 0U;
 
 /* Override the weak default in ra8_error_handler.c so the test can
  * invoke ra8_exception_report() without aborting the process. */
-[[noreturn]] void internal_ra8_fatal_error(const char* tag, const char* message, uint32_t err);
+[[noreturn]] void ra8_fatal_error(const char* tag, const char* message, uint32_t err);
 
-void internal_ra8_fatal_error(const char* tag, const char* message, uint32_t err)
+void ra8_fatal_error(const char* tag, const char* message, uint32_t err)
 {
   (void)tag;
   (void)message;
@@ -88,12 +89,21 @@ void internal_ra8_fatal_error(const char* tag, const char* message, uint32_t err
 }
 
 /**
+ * @brief Verify diagnostic capture reads every mapped fault register.
+ * @details Plants distinct values across the fake SCB window and compares every published field.
+ * @pre The fake core-register mapping is installed and writable.
+ * @pre Each poison constant is distinct from the other register fixtures.
+ * @post Every diagnostics member equals its corresponding planted register.
+ * @post The fake mapping remains available to sibling test vectors.
+ * @note Distinct fixtures make register swaps and omissions individually visible.
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_capture_diagnostics_happy(void)
+RA8_INTERNAL static void internal_test_capture_diagnostics_happy(void)
 {
   TEST_BEGIN("ra8_exception_capture_diagnostics fills buffer");
   ra8_fake_mmap_reset();
@@ -126,12 +136,21 @@ static void test_capture_diagnostics_happy(void)
 }
 
 /**
+ * @brief Verify diagnostic capture accepts a null destination safely.
+ * @details Calls the public capture routine without writable output after resetting fake MMIO.
+ * @pre The host fake-MMIO fixture can be reset.
+ * @pre No output storage is supplied to the call.
+ * @post The function returns without a host fault.
+ * @post No caller-visible diagnostic object is published.
+ * @note This isolates the public null guard from register-reading behavior.
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_capture_diagnostics_null(void)
+RA8_INTERNAL static void internal_test_capture_diagnostics_null(void)
 {
   TEST_BEGIN("ra8_exception_capture_diagnostics tolerates NULL");
   ra8_fake_mmap_reset();
@@ -141,12 +160,21 @@ static void test_capture_diagnostics_null(void)
 }
 
 /**
+ * @brief Verify framed exception reporting reaches the fatal backend.
+ * @details Supplies all stacked-register fields and intercepts the reporter's non-returning fatal tail.
+ * @pre Fake MMIO and the longjmp fatal override are active.
+ * @pre The supplied frame remains valid until the reporter transfers control.
+ * @post The ordinary report call site is not reached again.
+ * @post The fatal override records exactly one observation.
+ * @note The reporter snapshots the frame before invoking the fatal policy.
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_exception_report_with_frame(void)
+RA8_INTERNAL static void internal_test_exception_report_with_frame(void)
 {
   TEST_BEGIN("ra8_exception_report logs frame and halts via fatal");
   ra8_fake_mmap_reset();
@@ -164,7 +192,7 @@ static void test_exception_report_with_frame(void)
   };
   if (setjmp(s_fatal_jmp) == 0) {
     ra8_exception_report(&frame, 3U);
-    /* Unreachable once internal_ra8_fatal_error is invoked. */
+    /* Unreachable once ra8_fatal_error is invoked. */
     TEST_FAIL_FMT("%s", "ra8_exception_report returned");
   }
   TEST_ASSERT_EQ(1, s_fatal_hit);
@@ -173,12 +201,21 @@ static void test_exception_report_with_frame(void)
 }
 
 /**
+ * @brief Verify exception reporting accepts a null stacked frame.
+ * @details Invokes the same fatal reporting path without an exception-frame pointer.
+ * @pre Fake MMIO and the longjmp fatal override are active.
+ * @pre The reporter has no staged NMI cause from this vector.
+ * @post The reporter reaches the fatal override without dereferencing null.
+ * @post Exactly one fatal observation is recorded.
+ * @note A missing hardware frame must not suppress the fault report.
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_exception_report_null_frame(void)
+RA8_INTERNAL static void internal_test_exception_report_null_frame(void)
 {
   TEST_BEGIN("ra8_exception_report accepts NULL frame");
   ra8_fake_mmap_reset();
@@ -195,6 +232,14 @@ static void test_exception_report_null_frame(void)
 
 /**
  * @test exception_report_securefault_records_sfsr_sfar
+ * @brief Verify a SecureFault retains its secure status and address.
+ * @details Plants SFSR and SFAR, reports exception seven, and inspects the published last-fault snapshot.
+ * @pre The secure fault registers are writable through fake MMIO.
+ * @pre The longjmp fatal override is armed.
+ * @post The retained exception number, status, address, and frame PC match the fixtures.
+ * @post The fatal override records one completed report.
+ * @note The chosen SFSR marks SFAR as meaningful to the fault consumer.
+ * @since 0.1.0
  *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the SecureFault
@@ -203,7 +248,7 @@ static void test_exception_report_null_frame(void)
  * FALSE here and TRUE in `test_exception_report_nmi_records_cause`,
  * so both outcomes of the condition are exercised across the suite)
  */
-static void test_exception_report_securefault_records_sfsr_sfar(void)
+RA8_INTERNAL static void internal_test_exception_report_securefault_records_sfsr_sfar(void)
 {
   TEST_BEGIN("ra8_exception_report exc 7 snapshots SFSR/SFAR");
   ra8_fake_mmap_reset();
@@ -231,6 +276,14 @@ static void test_exception_report_securefault_records_sfsr_sfar(void)
 
 /**
  * @test exception_report_nmi_records_cause
+ * @brief Verify NMI reporting retains the supplied cause mask.
+ * @details Reports a watchdog-plus-memory NMI and examines the staged exception snapshot.
+ * @pre The longjmp fatal override is armed.
+ * @pre The supplied frame remains valid during the report call.
+ * @post The retained exception number is NMI and its NMISR equals the supplied mask.
+ * @post The retained program counter matches the frame fixture.
+ * @note Sibling plain-fault vectors cover the false branch of NMI classification.
+ * @since 0.1.0
  *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the NMI (exc 2)
@@ -239,7 +292,7 @@ static void test_exception_report_securefault_records_sfsr_sfar(void)
  * taken TRUE here and FALSE in the sibling report tests, covering
  * both outcomes across the suite)
  */
-static void test_exception_report_nmi_records_cause(void)
+RA8_INTERNAL static void internal_test_exception_report_nmi_records_cause(void)
 {
   TEST_BEGIN("ra8_exception_report_nmi records the NMISR cause");
   ra8_fake_mmap_reset();
@@ -265,13 +318,21 @@ static void test_exception_report_nmi_records_cause(void)
 
 /**
  * @test exception_report_clears_stale_nmi_cause
+ * @brief Verify a consumed NMI cause cannot leak into a later fault.
+ * @details Reports an NMI, then a plain HardFault, checking the second snapshot's staged cause.
+ * @pre The longjmp fatal override can be reused for two sequential reports.
+ * @pre Fake MMIO is reset before the first report.
+ * @post The first snapshot retains the supplied NMI cause.
+ * @post The second snapshot reports a zero NMI cause and the new exception number.
+ * @note This pins the one-shot lifetime of the internal NMI staging value.
+ * @since 0.1.0
  *
  * @par MC/DC:
  * (no compound decisions in this test -- proves the NMI staging
  * variable is consumed exactly once: a plain fault report following
  * an NMI report must NOT inherit the previous NMISR cause)
  */
-static void test_exception_report_clears_stale_nmi_cause(void)
+RA8_INTERNAL static void internal_test_exception_report_clears_stale_nmi_cause(void)
 {
   TEST_BEGIN("ra8_exception_report clears the staged NMI cause");
   ra8_fake_mmap_reset();
@@ -300,13 +361,12 @@ static void test_exception_report_clears_stale_nmi_cause(void)
 
 int32_t main(void)
 {
-  test_capture_diagnostics_happy();
-  test_capture_diagnostics_null();
-  test_exception_report_with_frame();
-  test_exception_report_null_frame();
-  test_exception_report_securefault_records_sfsr_sfar();
-  test_exception_report_nmi_records_cause();
-  test_exception_report_clears_stale_nmi_cause();
-  (void)fprintf(stderr, "[OK  ] test_ra8_exception.c\n");
+  internal_test_capture_diagnostics_happy();
+  internal_test_capture_diagnostics_null();
+  internal_test_exception_report_with_frame();
+  internal_test_exception_report_null_frame();
+  internal_test_exception_report_securefault_records_sfsr_sfar();
+  internal_test_exception_report_nmi_records_cause();
+  internal_test_exception_report_clears_stale_nmi_cause();
   return 0;
 }

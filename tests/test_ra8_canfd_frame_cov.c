@@ -317,6 +317,5 @@ int32_t main(void)
   test_receive_empty_fifo_no_data();
   test_receive_full_payload_ext_fd();
   test_receive_standard_classic_ch1();
-  (void)fprintf(stderr, "[OK ] test_ra8_canfd_frame_cov.c\n");
   return 0;
 }

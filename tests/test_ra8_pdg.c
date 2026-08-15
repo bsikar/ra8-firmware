@@ -517,6 +517,5 @@ int32_t main(void)
   test_set_delay_batch_bad_inputs();
   test_set_delay_not_initialized();
   test_delay_ns_to_code_low_band();
-  (void)fprintf(stderr, "[OK ] test_ra8_pdg.c\n");
   return 0;
 }

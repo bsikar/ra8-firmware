@@ -352,6 +352,5 @@ static void test_manga_stream_bounded_and_correct(void)
 int32_t main(void)
 {
   test_manga_stream_bounded_and_correct();
-  (void)fprintf(stderr, "[OK  ] test_ra8_manga_stream.c\n");
   return 0;
 }

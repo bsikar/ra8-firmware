@@ -484,6 +484,5 @@ int32_t main(void)
   test_xfer_multibyte();
   test_xfer_len_zero_and_bad_channel();
   test_xfer_propagates_timeout();
-  (void)fprintf(stderr, "[OK  ] test_ra8_sci_spi.c\n");
   return 0;
 }

@@ -345,6 +345,5 @@ int32_t main(void)
   test_comic_turn_clamp_mcdc();
   test_comic_tap_mcdc();
   test_comic_classify_mcdc();
-  (void)fprintf(stderr, "[OK ] test_app_ereader_shelf_comic.c\n");
   return 0;
 }

@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_layer3_switch.c
  * @brief Unit tests for ra8_layer3_switch.c (Layer-3 switch placeholder)
+ * @details Validates the layer-3 switch facade's configuration, lifecycle, packet guards, and unsupported-path error contract.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -156,6 +157,5 @@ int32_t main(void)
   test_route_add();
   test_route_delete();
   test_status();
-  (void)fprintf(stderr, "[OK ] test_ra8_layer3_switch.c\n");
   return 0;
 }

@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_mpc.c
  * @brief Unit tests for the pin-mux facade (libs/ra8_hal/src/ra8_mpc.c).
+ * @details Checks pin-function selection, write protection, register preservation, and invalid packed-pin rejection through fake PFS state.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -229,6 +230,5 @@ int32_t main(void)
   test_read_pfs_null_out();
   test_read_pfs_roundtrip();
   test_bounds_checks();
-  (void)fprintf(stderr, "[OK  ] test_ra8_mpc.c\n");
   return 0;
 }

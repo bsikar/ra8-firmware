@@ -284,6 +284,5 @@ int32_t main(void)
   test_decode_clamp_to_hw_max();
   test_decode_zero_max_count();
   test_decode_null_args();
-  (void)fprintf(stderr, "[OK ] test_ra8_touch_decode.c\n");
   return 0;
 }

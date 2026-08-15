@@ -253,6 +253,5 @@ int32_t main(void)
   test_inject_ecc_priv_pub();
   test_validate_detects_tamper();
   test_null_args();
-  (void)fprintf(stderr, "[OK ] test_ra8_rsip_key_injection.c\n");
   return 0;
 }

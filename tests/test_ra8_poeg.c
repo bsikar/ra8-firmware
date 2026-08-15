@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_poeg.c
  * @brief Unit tests for ra8_poeg.c (Port Output Enable for GPT)
+ * @details Covers POEG group validation, fault masks, callbacks, clear semantics, and register state using hosted peripheral memory.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -313,6 +314,5 @@ int32_t main(void)
   test_dispatch_no_handler();
   test_attach_bad_group();
   test_power_transition();
-  (void)fprintf(stderr, "[OK  ] test_ra8_poeg.c\n");
   return 0;
 }

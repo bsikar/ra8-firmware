@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_usb_haud.c
  * @brief Unit tests for the native USB host-side Audio class layer
+ * @details Exercises host-audio enumeration, descriptors, transfer setup, attach state, and timeout/error handling against fake USB hardware.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -446,6 +447,5 @@ int32_t main(void)
   test_set_mute_setup_envelope();
   test_iso_invalid_args();
   test_mcdc_haud();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_haud.c\n");
   return 0;
 }

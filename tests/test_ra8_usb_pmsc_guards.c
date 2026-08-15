@@ -298,6 +298,5 @@ int32_t main(void)
   for (size_t i = 0U; i < (sizeof(s_roster) / sizeof(s_roster[0])); ++i) {
     s_roster[i]();
   }
-  (void)fprintf(stderr, "[OK  ] test_ra8_usb_pmsc_guards.c\n");
   return 0;
 }

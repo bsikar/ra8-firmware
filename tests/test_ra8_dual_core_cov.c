@@ -42,7 +42,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "ra8_dual_core.h"
 #include "ra8_err.h"
@@ -323,6 +322,5 @@ int main(void)
    * the ordering-sensitive ACT-state tests above. */
   test_dc_cov_release_act_timeout();
 
-  (void)fprintf(stderr, "[OK  ] test_ra8_dual_core_cov.c\n");
   return 0;
 }

@@ -328,6 +328,5 @@ int32_t main(void)
   test_init_with_security();
   test_deinit_clears_cr();
   test_enter_exit_stop();
-  (void)fprintf(stderr, "[OK  ] test_ra8_sram.c\n");
   return 0;
 }

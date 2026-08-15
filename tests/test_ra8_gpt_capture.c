@@ -356,6 +356,5 @@ int32_t main(void)
   test_event_count_configure_bad_channel();
   test_mcdc_capture_configure_arg_guard();
   test_mcdc_event_count_configure_arg_guard();
-  (void)fprintf(stderr, "[OK ] test_ra8_gpt_capture.c\n");
   return 0;
 }

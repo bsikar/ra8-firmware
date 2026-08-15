@@ -951,6 +951,5 @@ int32_t main(void)
   test_display_area_api_legs();
   test_sleep_legs();
   test_validate_and_size_mcdc();
-  (void)fprintf(stderr, "[OK ] test_ra8_epaper_cov.c\n");
   return 0;
 }

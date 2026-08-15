@@ -165,6 +165,5 @@ int32_t main(void)
   test_mcdc_ra8_ofs();
   test_ra8_ofs_inventory();
   test_ra8_ofs_addresses();
-  (void)fprintf(stderr, "[OK  ] test_ra8_ofs.c\n");
   return 0;
 }

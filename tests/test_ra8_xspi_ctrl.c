@@ -430,6 +430,5 @@ int32_t main(void)
   test_suspend_resume_null();
   test_set_xip_mode_mcdc_addr_bytes();
   test_software_reset_mcdc_cmd_bytes();
-  (void)fprintf(stderr, "[OK ] test_ra8_xspi_ctrl.c\n");
   return 0;
 }

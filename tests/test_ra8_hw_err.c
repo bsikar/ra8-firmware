@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_hw_err.c
  * @brief Unit tests for the bounded wait-flag primitives in ra8_hw_err.h.
+ * @details Pins hardware-error category values and mappings that cross driver, logging, and recovery boundaries.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -220,6 +221,5 @@ int32_t main(void)
   test_clear32_times_out();
   test_null_register_rejected();
   test_zero_budget_immediate_timeout();
-  (void)fprintf(stderr, "[OK  ] test_ra8_hw_err.c\n");
   return 0;
 }

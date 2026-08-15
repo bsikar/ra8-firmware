@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_port_constants.c
  * @brief Unit tests for ra8_port_constants.h packed pin encoding
+ * @details Pins packed port/pin encoding and board LED identities so public hardware constants remain ABI-stable.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -65,6 +66,5 @@ int32_t main(void)
   test_pin_encoding_matches_led_constants();
   test_ra8_pin_macro_roundtrip();
   test_port_count_invariants();
-  (void)fprintf(stderr, "[OK  ] test_ra8_port_constants.c\n");
   return 0;
 }

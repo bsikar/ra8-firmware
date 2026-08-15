@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_ether_phy.c
  * @brief Unit tests for ra8_ether_phy.c (generic MDIO PHY driver)
+ * @details Uses an injected MDIO fixture to verify PHY discovery, reset, link negotiation, register access, and timeout handling.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -317,6 +318,5 @@ int32_t main(void)
   test_autoneg_start();
   test_not_initialized();
   test_mcdc_link_status_resolved_speed_guard();
-  (void)fprintf(stderr, "[OK ] test_ra8_ether_phy.c\n");
   return 0;
 }

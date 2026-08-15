@@ -1,6 +1,7 @@
 /**
  * @file test_adc.c
  * @brief MC/DC unit tests for libs/ra8_hal/src/adc.c
+ * @details Exercises ADC channel and scan-group validation, MSTP control, and fake-register side effects across success and rejection paths.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -105,6 +106,5 @@ int32_t main(void)
 {
   test_mcdc_adc_read_channel_chcr_addr_null();
   test_mcdc_adc_validate_group_cfg_num_channels();
-  (void)fprintf(stderr, "[OK ] test_adc.c\n");
   return 0;
 }

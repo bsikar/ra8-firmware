@@ -561,6 +561,5 @@ int32_t main(void)
   test_dispatch_txi_with_no_handler();
   test_dispatch_rxi_with_no_handler();
   test_eri_dispatch_clears_errors();
-  (void)fprintf(stderr, "[OK  ] test_ra8_sci.c\n");
   return 0;
 }

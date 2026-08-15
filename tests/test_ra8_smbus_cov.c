@@ -585,6 +585,5 @@ int32_t main(void)
   /* count-overflow path */
   test_block_read_count_overflow();
 
-  (void)fprintf(stderr, "[OK ] test_ra8_smbus_cov.c\n");
   return 0;
 }

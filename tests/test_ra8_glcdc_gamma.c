@@ -397,6 +397,5 @@ int32_t main(void)
   test_set_gamma_null_threshold_rejected();
   test_set_gamma_bad_channel_rejected();
   test_mcdc_set_gamma_count_guard();
-  (void)fprintf(stderr, "[OK ] test_ra8_glcdc_gamma.c\n");
   return 0;
 }

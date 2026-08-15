@@ -608,6 +608,5 @@ int32_t main(void)
   test_mcdc_configure_cut_through_pair();
   test_mcdc_eth_frame_parse_quad();
   test_eth_frame_parse_short_frame();
-  (void)fprintf(stderr, "[OK  ] test_ra8_etha_mcdc.c\n");
   return 0;
 }

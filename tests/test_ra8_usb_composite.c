@@ -2,6 +2,7 @@
  * @file test_ra8_usb_composite.c
  * @brief Unit tests for the native USB device-side composite-class
  *        layer
+ * @details Validates composite-device interface routing, descriptor selection, class dispatch, lifecycle, and malformed requests.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -697,6 +698,5 @@ int32_t main(void)
   test_step_loops_without_error();
   test_close_invokes_each_class_close();
   test_mcdc_composite();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_composite.c\n");
   return 0;
 }

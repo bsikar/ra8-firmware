@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_sdhi.c
  * @brief Unit tests for ra8_sdhi.c (SD/MMC Host Interface scaffold)
+ * @details Covers SDHI command, response, PIO transfer, timeout, status, and invalid-input behavior with hosted register fixtures.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -564,6 +565,5 @@ int32_t main(void)
   test_block_xfer_null_args();
   test_block_xfer_zero_count();
   test_attach_dma_toggle();
-  (void)fprintf(stderr, "[OK  ] test_ra8_sdhi.c\n");
   return 0;
 }

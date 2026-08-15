@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_rtc.c
  * @brief Unit tests for the BCD RTC driver (ra8_rtc.c)
+ * @details Exercises BCD calendar conversion, alarm validation, rollover, control state, and register publication through fake RTC storage.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -444,6 +445,5 @@ int32_t main(void)
   test_clock_init_subclock();
   test_clock_init_loco();
   test_clock_init_invalid_src();
-  (void)fprintf(stderr, "[OK ] test_ra8_rtc.c\n");
   return 0;
 }

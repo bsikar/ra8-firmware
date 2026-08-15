@@ -52,7 +52,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
@@ -479,6 +478,5 @@ int32_t main(void)
   test_ecdsa_rejects_ed25519();
   test_rsa_encrypt_reaches_opcode();
   test_rsa_decrypt_reaches_opcode();
-  (void)fprintf(stderr, "[OK  ] test_ra8_rsip_eddsa.c\n");
   return 0;
 }

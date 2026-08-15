@@ -213,7 +213,6 @@ int32_t main(void)
   test_rand_advances_each_call();
   test_rand_within_range();
   test_srand_different_seeds_differ();
-  (void)fprintf(stderr, "[OK  ] test_ra8_rand_stub.c\n");
   return 0;
 }
 

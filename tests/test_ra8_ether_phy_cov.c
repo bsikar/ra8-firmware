@@ -510,6 +510,5 @@ int32_t main(void)
   test_link_status_speed_100half();
   test_link_status_speed_10full();
   test_link_status_speed_10half();
-  (void)fprintf(stderr, "[OK ] test_ra8_ether_phy_cov.c\n");
   return 0;
 }

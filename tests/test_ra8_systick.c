@@ -323,6 +323,5 @@ int32_t main(void)
   test_current_value_reads_cvr();
   test_dwt_enable_sets_bits_preserving_others();
   test_dwt_reset_and_read();
-  (void)fprintf(stderr, "[OK  ] test_ra8_systick.c\n");
   return 0;
 }

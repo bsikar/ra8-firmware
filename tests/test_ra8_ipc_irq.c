@@ -248,6 +248,5 @@ int32_t main(void)
   test_nmi_send_clear_status();
   test_nmi_dispatch_invokes_callback();
   test_install_uninstall_isr();
-  (void)fprintf(stderr, "[OK  ] test_ra8_ipc_irq.c\n");
   return 0;
 }

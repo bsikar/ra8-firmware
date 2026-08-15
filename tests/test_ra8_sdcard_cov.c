@@ -823,6 +823,5 @@ int32_t main(void)
   test_cov_csd_v2_sdxc_card();
   test_cov_deinit_mstp_timeout();
   test_cov_csd_unknown_structure();
-  (void)fprintf(stderr, "[OK  ] test_ra8_sdcard_cov.c\n");
   return 0;
 }

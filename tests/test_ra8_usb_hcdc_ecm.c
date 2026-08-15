@@ -2,6 +2,7 @@
  * @file test_ra8_usb_hcdc_ecm.c
  * @brief Unit tests for the native USB host-side CDC-ECM (Ethernet
  *        over USB) class layer
+ * @details Validates host CDC-ECM enumeration, Ethernet descriptors, frame I/O, notification handling, and bounds.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -449,6 +450,5 @@ int32_t main(void)
   test_pre_init_guards();
   test_filter_mask_bits();
   test_mcdc_hcdc_ecm();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_hcdc_ecm.c\n");
   return 0;
 }

@@ -472,6 +472,5 @@ int32_t main(void)
   test_get_status_vbatt_with_por();
   test_get_status_null();
   test_clear_status();
-  (void)fprintf(stderr, "[OK  ] test_ra8_bkup.c\n");
   return 0;
 }

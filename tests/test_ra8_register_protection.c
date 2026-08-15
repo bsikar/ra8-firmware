@@ -196,6 +196,5 @@ int32_t main(void)
   test_protected_write_relocks_on_break();
   test_inline_unlock_helper_writes_key_plus_prc0();
   test_fsp_class_to_bit_mapping();
-  (void)fprintf(stderr, "[OK  ] test_ra8_register_protection.c\n");
   return 0;
 }

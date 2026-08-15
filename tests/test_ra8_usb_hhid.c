@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_usb_hhid.c
  * @brief Unit tests for the native USB host-side HID class layer
+ * @details Exercises host HID enumeration, report transfers, protocol requests, attachment state, and invalid inputs.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -642,6 +643,5 @@ int32_t main(void)
   test_get_report_caps_at_max_len();
   test_mcdc_hhid();
   test_mcdc_hhid_report_type_or_chain();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_hhid.c\n");
   return 0;
 }

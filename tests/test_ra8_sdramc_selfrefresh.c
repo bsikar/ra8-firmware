@@ -356,6 +356,5 @@ int32_t main(void)
   test_exit_re_enables_sdrfen_after_clearing_sfen();
   test_init_sdsr_busy_times_out();
   test_init_pin_routing_conflict();
-  (void)fprintf(stderr, "[OK ] test_ra8_sdramc_selfrefresh.c\n");
   return 0;
 }

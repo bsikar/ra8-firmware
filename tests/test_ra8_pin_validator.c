@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_pin_validator.c
  * @brief Unit tests for the pin ownership validator
+ * @details Verifies pin ownership reset, claim, duplicate detection, release, and board-constant decoding behavior.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -114,6 +115,5 @@ int32_t main(void)
   test_release_allows_reclaim();
   test_null_owner_rejected();
   test_invalid_pin_rejected();
-  (void)fprintf(stderr, "[OK  ] test_ra8_pin_validator.c\n");
   return 0;
 }

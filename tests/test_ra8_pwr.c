@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_pwr.c
  * @brief Unit tests for the LPM + clock-domain wrapper (libs/ra8_hal/src/ra8_pwr.c).
+ * @details Exercises power-domain acquisition, module-stop transitions, low-power entry guards, and wake configuration through fake registers.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -272,6 +273,5 @@ int32_t main(void)
   test_software_standby_requires_wake_source();
   test_get_clock_hz_forwards_to_cgc();
   test_mcdc_software_standby_wupen();
-  (void)fprintf(stderr, "[OK  ] test_ra8_pwr.c\n");
   return 0;
 }

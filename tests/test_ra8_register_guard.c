@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_register_guard.c
  * @brief Unit tests for ra8_register_guard.h nesting semantics
+ * @details Verifies nested register-protection guard entry and exit compile and preserve the public lifecycle contract.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -47,6 +48,5 @@ int32_t main(void)
 {
   test_enter_exit_compiles();
   test_nested_guards();
-  (void)fprintf(stderr, "[OK  ] test_ra8_register_guard.c\n");
   return 0;
 }

@@ -321,6 +321,5 @@ int32_t main(void)
   test_cov_rx_result_slots_1_2_3();
   test_cov_dispatch_video_buffer_reset();
   test_cov_dispatch_fanout_all_and_none();
-  (void)fprintf(stderr, "[OK  ] test_ra8_mipi_dsi_dispatch_cov.c\n");
   return 0;
 }

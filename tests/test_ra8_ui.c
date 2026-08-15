@@ -16,6 +16,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_ui.h"
 #include "unity_minimal.h"
@@ -43,12 +44,19 @@ typedef enum : uint16_t {
 
 /**
  * @brief Functional: containment edges (inclusive TL, exclusive BR).
+ * @details Checks both included origins, both excluded far edges, and null input.
+ * @pre The fixed rectangle has positive width and height.
+ * @pre The tested coordinates remain representable by `int32_t`.
+ * @post Top-left containment and bottom-right exclusion are proven.
+ * @post The rectangle fixture remains unchanged.
+ * @note Compound-condition independence is supplied by the next vector set.
+ * @since 0.1.0
  *
  * @par MC/DC:
  * (functional edge test; the compound decision itself is covered by
  * test_mcdc_rect_contains)
  */
-static void test_rect_contains_edges(void)
+RA8_INTERNAL static void internal_test_rect_contains_edges(void)
 {
   TEST_BEGIN("ra8_ui rect_contains edges");
   const ra8_ui_rect_t r = {(int32_t)k_ui_rect_x,
@@ -65,7 +73,15 @@ static void test_rect_contains_edges(void)
 }
 
 /**
+ * @brief Prove every rectangle-containment predicate is independently decisive.
+ * @details Supplies the canonical all-true control plus one false arm per edge.
  * @test test_mcdc_rect_contains
+ * @pre The fixed rectangle describes `[10,40) x [20,60)`.
+ * @pre All five fixture points remain within `int32_t` range.
+ * @post The control is contained and each edge-violating point is rejected.
+ * @post The rectangle fixture remains unchanged.
+ * @note This is the minimal N+1 set for the four-term short-circuit AND.
+ * @since 0.1.0
  *
  * @par MC/DC:
  * Decision: `(px >= x) && (px < x+w) && (py >= y) && (py < y+h)`
@@ -78,7 +94,7 @@ static void test_rect_contains_edges(void)
  * - V4: (25,10) C1=T C2=T C3=F      -> Decision F (C3 flips vs V1)
  * - V5: (25,70) C1=T C2=T C3=T C4=F -> Decision F (C4 flips vs V1)
  */
-static void test_mcdc_rect_contains(void)
+RA8_INTERNAL static void internal_test_mcdc_rect_contains(void)
 {
   TEST_BEGIN("ra8_ui rect_contains MC/DC: 4-condition AND");
   const ra8_ui_rect_t r = {(int32_t)k_ui_rect_x,
@@ -95,12 +111,19 @@ static void test_mcdc_rect_contains(void)
 
 /**
  * @brief Functional: hit_test first-match, miss, and NULL guards.
+ * @details Exercises the second target, no target, empty input, and each pointer guard.
+ * @pre The two fixed target rectangles are nonoverlapping.
+ * @pre Action and hit outputs are writable for valid vectors.
+ * @post Matching returns the expected action and misses clear the hit flag.
+ * @post Every null-guard vector returns the documented error.
+ * @note A zero count deliberately permits a null target pointer.
+ * @since 0.1.0
  *
  * @par MC/DC:
  * (functional test; rect_contains decision covered by
  * test_mcdc_rect_contains)
  */
-static void test_hit_test_basic(void)
+RA8_INTERNAL static void internal_test_hit_test_basic(void)
 {
   TEST_BEGIN("ra8_ui hit_test basic");
   const ra8_ui_target_t targets[2] = {
@@ -134,12 +157,19 @@ static void test_hit_test_basic(void)
 
 /**
  * @brief Functional: push/pop/replace/top + overflow + underflow.
+ * @details Drives one navigation stack through its complete bounded lifecycle.
+ * @pre The published navigation depth is greater than one.
+ * @pre The local top outputs are writable.
+ * @post LIFO, replace, root retention, overflow, and null guards are proven.
+ * @post Every stack object remains within its fixed capacity.
+ * @note The root screen cannot be popped by contract.
+ * @since 0.1.0
  *
  * @par MC/DC:
  * (functional test; the guards are single-condition comparisons, not
  * compound decisions)
  */
-static void test_nav_stack(void)
+RA8_INTERNAL static void internal_test_nav_stack(void)
 {
   TEST_BEGIN("ra8_ui nav stack");
   ra8_ui_nav_t nav;
@@ -186,12 +216,19 @@ static void test_nav_stack(void)
 
 /**
  * @brief Functional: init / prev clamp / goto clamp / NULL guards.
+ * @details Exercises empty initialization, edge clamping, movement, and null outputs.
+ * @pre The pager fixture and change flag are writable.
+ * @pre The valid fixture uses a nonzero total page count.
+ * @post Previous and goto operations publish the expected page and change state.
+ * @post Rejected calls leave all accesses within the pager object.
+ * @note Next/goto compound guards are closed by dedicated MC/DC vectors.
+ * @since 0.1.0
  *
  * @par MC/DC:
  * (functional test; pager_next and pager_goto decisions covered by their
  * dedicated MC/DC tests; pager_prev is a single-condition guard)
  */
-static void test_pager_basic(void)
+RA8_INTERNAL static void internal_test_pager_basic(void)
 {
   TEST_BEGIN("ra8_ui pager basic");
   ra8_ui_pager_t p;
@@ -221,7 +258,15 @@ static void test_pager_basic(void)
 }
 
 /**
+ * @brief Prove both pager-next guard predicates are independently decisive.
+ * @details Supplies an advancing control, zero-total arm, and last-page arm.
  * @test test_mcdc_pager_next
+ * @pre The three pager fixtures are initialized to their documented states.
+ * @pre The shared change output is writable.
+ * @post Only the all-true control advances exactly one page.
+ * @post Both false-arm fixtures remain at page zero.
+ * @note This is the minimal N+1 set for the two-term short-circuit AND.
+ * @since 0.1.0
  *
  * @par MC/DC:
  * Decision: `(total > 0) && (current < total - 1)`
@@ -231,7 +276,7 @@ static void test_pager_basic(void)
  * - V2: total=0,current=0 -> C1=F      -> Decision F (C1 flips vs V1)
  * - V3: total=1,current=0 -> C1=T C2=F -> Decision F (C2 flips vs V1)
  */
-static void test_mcdc_pager_next(void)
+RA8_INTERNAL static void internal_test_mcdc_pager_next(void)
 {
   TEST_BEGIN("ra8_ui pager_next MC/DC: total>0 && current<total-1");
   bool changed = false;
@@ -252,7 +297,15 @@ static void test_mcdc_pager_next(void)
 }
 
 /**
+ * @brief Prove both pager-goto clamp predicates are independently decisive.
+ * @details Supplies over-range, zero-total, and in-range target vectors.
  * @test test_mcdc_pager_goto
+ * @pre The three pager fixtures and change output are writable.
+ * @pre Target values remain representable by the pager index type.
+ * @post The over-range target clamps only when total is nonzero.
+ * @post Both no-clamp vectors retain their requested targets.
+ * @note This is the minimal N+1 set for the two-term short-circuit AND.
+ * @since 0.1.0
  *
  * @par MC/DC:
  * Decision: `(total > 0) && (target > total - 1)`  (the clamp guard)
@@ -262,7 +315,7 @@ static void test_mcdc_pager_next(void)
  * - V2: total=0,target=5 -> C1=F      -> Decision F (C1 flips; no clamp)
  * - V3: total=3,target=1 -> C1=T C2=F -> Decision F (C2 flips; no clamp)
  */
-static void test_mcdc_pager_goto(void)
+RA8_INTERNAL static void internal_test_mcdc_pager_goto(void)
 {
   TEST_BEGIN("ra8_ui pager_goto MC/DC: total>0 && target>total-1");
   bool changed = false;
@@ -286,12 +339,12 @@ static void test_mcdc_pager_goto(void)
 
 int main(void)
 {
-  test_rect_contains_edges();
-  test_mcdc_rect_contains();
-  test_hit_test_basic();
-  test_nav_stack();
-  test_pager_basic();
-  test_mcdc_pager_next();
-  test_mcdc_pager_goto();
+  internal_test_rect_contains_edges();
+  internal_test_mcdc_rect_contains();
+  internal_test_hit_test_basic();
+  internal_test_nav_stack();
+  internal_test_pager_basic();
+  internal_test_mcdc_pager_next();
+  internal_test_mcdc_pager_goto();
   return 0;
 }

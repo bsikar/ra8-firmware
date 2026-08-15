@@ -549,6 +549,5 @@ int32_t main(void)
   test_set_pattern_and_enable();
   test_set_blend();
   test_set_color_key();
-  (void)fprintf(stderr, "[OK  ] test_ra8_drw.c\n");
   return 0;
 }

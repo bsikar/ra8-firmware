@@ -483,6 +483,5 @@ int32_t main(void)
   test_mailbox_full_rejection();
   test_mailbox_empty_rejection();
   test_mcdc_ra8_ipc();
-  (void)fprintf(stderr, "[OK  ] test_ra8_ipc_ring.c\n");
   return 0;
 }

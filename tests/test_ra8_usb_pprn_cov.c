@@ -259,6 +259,5 @@ int32_t main(void)
   test_recv_success_drain();
   test_recv_no_data_drain();
   test_handle_setup_callback_stall();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_pprn_cov.c\n");
   return 0;
 }

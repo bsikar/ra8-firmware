@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_cgc_extended.c
  * @brief Extended unit tests for ra8_cgc.c covering previously uncovered paths
+ * @details Targets CGC timeout, rollback, oscillator-state, and previously uncovered validation branches with injected MMIO behavior.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -397,6 +398,5 @@ int32_t main(void)
   test_cgc_usbfs_clock_enable_timeout();
   test_cgc_usbhs_pll_enable_ok();
   test_cgc_usbhs_pll_enable_timeout();
-  (void)fprintf(stderr, "[OK  ] test_ra8_cgc_extended.c\n");
   return 0;
 }

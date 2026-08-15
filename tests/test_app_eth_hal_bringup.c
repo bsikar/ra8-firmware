@@ -128,6 +128,5 @@ int32_t main(void)
 {
   test_eth_hal_bringup_ok();
   test_eth_hal_bringup_coma_timeout();
-  (void)fprintf(stderr, "[OK  ] test_app_eth_hal_bringup.c\n");
   return 0;
 }

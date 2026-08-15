@@ -528,6 +528,5 @@ int32_t main(void)
   test_flash_program_command_timeout_legs();
   test_flash_erase_command_timeout_legs();
   test_flash_cmdcmp_timeout();
-  (void)fprintf(stderr, "[OK ] test_ra8_xspi_program.c\n");
   return 0;
 }

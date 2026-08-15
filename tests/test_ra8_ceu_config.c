@@ -612,6 +612,5 @@ int32_t main(void)
   test_low_pass_set();
   test_capture_mode_set();
   test_frame_drop_set();
-  (void)fprintf(stderr, "[OK ] test_ra8_ceu_config.c\n");
   return 0;
 }

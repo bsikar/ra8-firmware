@@ -775,6 +775,5 @@ int32_t main(void)
   test_attach_and_dispatch();
   test_stop_and_resume();
   test_deinit();
-  (void)fprintf(stderr, "[OK  ] test_ra8_rmac.c\n");
   return 0;
 }

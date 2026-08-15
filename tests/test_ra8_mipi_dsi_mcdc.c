@@ -728,6 +728,5 @@ int32_t main(void)
   test_mcdc_validate_cmd_tx_null_pair();
   test_mcdc_check_link_aux_op_vrun();
   test_mcdc_ulps_exit_clock_lane_state_pair();
-  (void)fprintf(stderr, "[OK ] test_ra8_mipi_dsi_mcdc.c\n");
   return 0;
 }

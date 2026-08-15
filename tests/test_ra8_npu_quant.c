@@ -243,6 +243,5 @@ int32_t main(void)
   test_quantize_saturates();
   test_dequantize_round_trip();
   test_zero_count_is_noop();
-  (void)fprintf(stderr, "[OK ] test_ra8_npu_quant.c\n");
   return 0;
 }

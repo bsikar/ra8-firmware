@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_time.c
  * @brief Unit tests for ra8_time.h SysTick tick counter
+ * @details Checks tick accumulation, monotonic conversions, delays, and wrap behavior against the host-exposed SysTick state.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -149,6 +150,5 @@ int32_t main(void)
   test_now_and_sleep_aliases();
   test_init_rejects_cpu_hz_too_low();
   test_systick_handler_increments_counter();
-  (void)fprintf(stderr, "[OK  ] test_ra8_time.c\n");
   return 0;
 }

@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_fake_time.c
  * @brief Unit tests for the host deterministic time source (tests/mocks/ra8_fake_time.c).
+ * @details Proves the hosted time double advances, sleeps, wraps, and resets deterministically for dependent unit-test fixtures.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -92,6 +93,5 @@ int32_t main(void)
   test_reset_zeros_counter();
   test_advance_ms_matches_count();
   test_advance_zero_is_noop();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fake_time.c\n");
   return 0;
 }

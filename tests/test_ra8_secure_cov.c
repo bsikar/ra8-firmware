@@ -149,6 +149,5 @@ int32_t main(void)
   test_ct_equal_differs();
   test_ct_equal_null();
   test_memzero_clears_and_guards();
-  (void)fprintf(stderr, "[OK ] test_ra8_secure_cov.c\n");
   return 0;
 }

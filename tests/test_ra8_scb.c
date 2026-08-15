@@ -198,6 +198,5 @@ int32_t main(void)
   test_scb_read_fault_status_null();
   test_scb_vtor_roundtrip();
   test_scb_trace_query_and_enable();
-  (void)fprintf(stderr, "[OK  ] test_ra8_scb.c\n");
   return 0;
 }

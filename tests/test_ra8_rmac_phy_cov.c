@@ -441,6 +441,5 @@ int32_t main(void)
   test_link_100full_fallthrough();
   test_link_10full();
   test_link_10half();
-  (void)fprintf(stderr, "[OK ] test_ra8_rmac_phy_cov.c\n");
   return 0;
 }
