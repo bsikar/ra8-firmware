@@ -6,7 +6,7 @@
  * @details
  * Assembles the named panel constants from ra8_panel.h into the HAL's
  * ra8_glcdc_timing_t so callers can hand the EK-RA8D2 panel's timing to the
- * (panel-agnostic) GLCDC driver. Pass &k_ra8_panel_ek_ra8d2_timing into
+ * (panel-agnostic) GLCDC driver. Pass &s_ra8_panel_ek_ra8d2_timing into
  * ra8_glcdc_config_t.timing directly, or into display_cfg_t.panel_timing for
  * the LCD display-PAL backend.
  *
@@ -26,7 +26,7 @@
 /**
  * @brief EK-RA8D2 ER-TFT070-6 RGB timing for ra8_glcdc_init / the LCD backend.
  */
-static const ra8_glcdc_timing_t k_ra8_panel_ek_ra8d2_timing = {
+static const ra8_glcdc_timing_t s_ra8_panel_ek_ra8d2_timing = {
   .h_active = (uint16_t)k_panel_width_px,
   .h_front  = (uint16_t)k_panel_h_front,
   .h_back   = (uint16_t)k_panel_h_back,

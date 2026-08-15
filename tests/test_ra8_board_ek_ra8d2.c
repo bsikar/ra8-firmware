@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -37,14 +38,37 @@ typedef enum : uint8_t {
     0xAAU, /**< Poison in a length out-parameter, so a failing call that skips it is detectable. */
 } board_ek_ra8d2_fixture_t;
 
-static void reset_board_hal_state(void)
+/**
+ * @brief Restore every hosted HAL service used by this board test.
+ * @details Resets the fake map, fake MMIO registry, and pin validator so a
+ *          case cannot inherit state from the preceding roster entry.
+ * @pre The hosted fake-map implementation is linked.
+ * @pre No target-side peripheral access is active.
+ * @post Fake mapped regions and MMIO fault rules are cleared.
+ * @post Pin-validator state is returned to its initial state.
+ * @note Call this immediately before a case that mutates hosted HAL state.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_reset_board_hal_state(void)
 {
   ra8_fake_mmap_reset();
   ra8_fake_mmio_reset();
   ra8_pin_validator_reset();
 }
 
-static void dummy_sw_irq_cb(void* ctx)
+/**
+ * @brief Provide a harmless switch-interrupt callback for binder tests.
+ * @details Accepts the callback context without changing it or any global
+ *          state, allowing the test to exercise a non-null callback path.
+ * @param[in] ctx Opaque callback context supplied by the board API.
+ * @pre The callback may be invoked with a null context.
+ * @pre No callback-owned resource is required.
+ * @post The callback context remains unmodified.
+ * @post No observable state has changed.
+ * @note This callback intentionally performs no target I/O.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_dummy_sw_irq_cb(void* ctx)
 {
   (void)ctx;
 }
@@ -54,12 +78,16 @@ static void dummy_sw_irq_cb(void* ctx)
 /* ------------------------------------------------------------------------- */
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the board_get_info board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the board_get_info scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_board_get_info(void)
+RA8_INTERNAL static void internal_test_board_get_info(void)
 {
   TEST_BEGIN("board_get_info populates strings");
   ra8_board_info_t info = {};
@@ -74,12 +102,16 @@ static void test_board_get_info(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the board_get_info_null board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the board_get_info_null scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_board_get_info_null(void)
+RA8_INTERNAL static void internal_test_board_get_info_null(void)
 {
   TEST_BEGIN("board_get_info rejects NULL");
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_get_info(nullptr));
@@ -91,12 +123,16 @@ static void test_board_get_info_null(void)
 /* ------------------------------------------------------------------------- */
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the led_pin_lookup board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the led_pin_lookup scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_led_pin_lookup(void)
+RA8_INTERNAL static void internal_test_led_pin_lookup(void)
 {
   TEST_BEGIN("led pins match UM Table 24");
   ra8_port_pin_t pin = k_ra8_pin_none;
@@ -121,12 +157,16 @@ static void test_led_pin_lookup(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the led_pin_invalid board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the led_pin_invalid scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_led_pin_invalid(void)
+RA8_INTERNAL static void internal_test_led_pin_invalid(void)
 {
   TEST_BEGIN("led_pin rejects out-of-range / null");
   ra8_port_pin_t pin = k_ra8_pin_none;
@@ -141,12 +181,16 @@ static void test_led_pin_invalid(void)
 /* ------------------------------------------------------------------------- */
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the sw_pin_lookup board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the sw_pin_lookup scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_sw_pin_lookup(void)
+RA8_INTERNAL static void internal_test_sw_pin_lookup(void)
 {
   TEST_BEGIN("sw pins match UM Table 25");
   ra8_port_pin_t pin = k_ra8_pin_none;
@@ -163,12 +207,16 @@ static void test_sw_pin_lookup(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the sw_attach_irq_null_cb board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the sw_attach_irq_null_cb scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_sw_attach_irq_null_cb(void)
+RA8_INTERNAL static void internal_test_sw_attach_irq_null_cb(void)
 {
   TEST_BEGIN("sw_attach_irq rejects NULL callback");
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_sw_attach_irq(k_ra8_board_sw1, nullptr, nullptr));
@@ -180,12 +228,16 @@ static void test_sw_attach_irq_null_cb(void)
 /* ------------------------------------------------------------------------- */
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the audio_pins board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the audio_pins scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_audio_pins(void)
+RA8_INTERNAL static void internal_test_audio_pins(void)
 {
   TEST_BEGIN("audio pins match UM Table 32");
   TEST_ASSERT_EQ(RA8_PIN(k_ra8_port_4, k_ra8_pin_3), k_ra8_board_audio_pin_bclk);
@@ -199,12 +251,16 @@ static void test_audio_pins(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the audio_play_sample_block_validates board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the audio_play_sample_block_validates scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_audio_play_sample_block_validates(void)
+RA8_INTERNAL static void internal_test_audio_play_sample_block_validates(void)
 {
   TEST_BEGIN("audio_play_sample_block rejects bad args");
   int16_t buf[4] = {};
@@ -218,12 +274,16 @@ static void test_audio_play_sample_block_validates(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the audio_init_validates board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the audio_init_validates scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_audio_init_validates(void)
+RA8_INTERNAL static void internal_test_audio_init_validates(void)
 {
   TEST_BEGIN("audio_init validates sample rate / depth / channels");
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_audio_init(0U, 16U, 2U));
@@ -237,12 +297,16 @@ static void test_audio_init_validates(void)
 /* ------------------------------------------------------------------------- */
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the arduino_pins board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the arduino_pins scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_arduino_pins(void)
+RA8_INTERNAL static void internal_test_arduino_pins(void)
 {
   TEST_BEGIN("arduino pins match UM Table 20");
   /* Spot-check the most-cited pins: D6=GTIOC1A=P105, D8=PD01, D13=P102. */
@@ -256,12 +320,16 @@ static void test_arduino_pins(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the arduino_pin_init_invalid_mode board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the arduino_pin_init_invalid_mode scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_arduino_pin_init_invalid_mode(void)
+RA8_INTERNAL static void internal_test_arduino_pin_init_invalid_mode(void)
 {
   TEST_BEGIN("arduino_pin_init rejects unknown mode");
   TEST_ASSERT_EQ(
@@ -275,12 +343,16 @@ static void test_arduino_pin_init_invalid_mode(void)
 /* ------------------------------------------------------------------------- */
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the pmod1_spi_pins board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the pmod1_spi_pins scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_pmod1_spi_pins(void)
+RA8_INTERNAL static void internal_test_pmod1_spi_pins(void)
 {
   TEST_BEGIN("pmod1 SPI pins match UM Table 17");
   TEST_ASSERT_EQ(RA8_PIN(k_ra8_port_8, k_ra8_pin_4), k_ra8_board_pmod1_spi_cs);
@@ -291,12 +363,16 @@ static void test_pmod1_spi_pins(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the pmod2_spi_pins board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the pmod2_spi_pins scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_pmod2_spi_pins(void)
+RA8_INTERNAL static void internal_test_pmod2_spi_pins(void)
 {
   TEST_BEGIN("pmod2 SPI pins match UM Table 19");
   TEST_ASSERT_EQ(RA8_PIN(k_ra8_port_6, k_ra8_pin_4), k_ra8_board_pmod2_spi_cs);
@@ -311,12 +387,16 @@ static void test_pmod2_spi_pins(void)
 /* ------------------------------------------------------------------------- */
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the glcdc_pin_tables_populated board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the glcdc_pin_tables_populated scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_glcdc_pin_tables_populated(void)
+RA8_INTERNAL static void internal_test_glcdc_pin_tables_populated(void)
 {
   TEST_BEGIN("glcdc pin tables non-empty + sized correctly");
   TEST_ASSERT(g_ra8_board_glcdc_rgb888_pin_count > 0U);
@@ -333,12 +413,16 @@ static void test_glcdc_pin_tables_populated(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the glcdc_init_invalid_fmt board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the glcdc_init_invalid_fmt scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_glcdc_init_invalid_fmt(void)
+RA8_INTERNAL static void internal_test_glcdc_init_invalid_fmt(void)
 {
   TEST_BEGIN("glcdc_init rejects bogus format");
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_glcdc_init((ra8_board_glcdc_fmt_t)0xFFU));
@@ -350,12 +434,16 @@ static void test_glcdc_init_invalid_fmt(void)
 /* ------------------------------------------------------------------------- */
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the camera_pins board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the camera_pins scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_camera_pins(void)
+RA8_INTERNAL static void internal_test_camera_pins(void)
 {
   TEST_BEGIN("camera pins match UM Table 35");
   /* Spot-check the unambiguous ones (no jumper / SW switch). */
@@ -367,18 +455,23 @@ static void test_camera_pins(void)
 
 /**
  * @brief Verify both XCLK period bounds independently control rejection.
+ * @details Exercises periods below, above, and inside the camera XCLK
+ *          interval after initializing the hosted module-stop service.
  * @par MC/DC:
  * Decision: libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_camera.c@ra8_board_camera_xclk_start.
  * The PCLKD, 1 Hz, and PCLKD/2 vectors respectively produce periods below,
  * above, and within the accepted interval.
  * @pre Fake MMIO and module-stop state can be reset.
+ * @pre The hosted CGC reports a nonzero PCLKD frequency.
  * @post The two invalid periods are rejected and the valid period starts XCLK.
+ * @post Hosted board state is left available for the following reset.
+ * @note Each vector isolates one boundary of the accepted period interval.
  * @since 0.1.0
  */
-static void test_mcdc_camera_xclk_period_bounds(void)
+RA8_INTERNAL static void internal_test_mcdc_camera_xclk_period_bounds(void)
 {
   TEST_BEGIN("camera XCLK period bounds");
-  reset_board_hal_state();
+  internal_reset_board_hal_state();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   uint32_t pclkd_hz = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cgc_get_clock_hz(k_ra8_clock_id_pclkd, &pclkd_hz));
@@ -389,12 +482,16 @@ static void test_mcdc_camera_xclk_period_bounds(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the xspi_pins board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the xspi_pins scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_xspi_pins(void)
+RA8_INTERNAL static void internal_test_xspi_pins(void)
 {
   TEST_BEGIN("xspi flash pins match UM Table 29");
   TEST_ASSERT_EQ(RA8_PIN(k_ra8_port_1, k_ra8_pin_4), k_ra8_board_xspi_cs);
@@ -404,12 +501,16 @@ static void test_xspi_pins(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the extmem_sizes board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the extmem_sizes scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_extmem_sizes(void)
+RA8_INTERNAL static void internal_test_extmem_sizes(void)
 {
   TEST_BEGIN("extmem sizes are 64 MiB");
   const uint32_t sixty_four_mib = 0x04000000UL;
@@ -419,12 +520,16 @@ static void test_extmem_sizes(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the mipi_dsi_pins board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the mipi_dsi_pins scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_mipi_dsi_pins(void)
+RA8_INTERNAL static void internal_test_mipi_dsi_pins(void)
 {
   TEST_BEGIN("mipi-dsi pins match UM Table 34");
   TEST_ASSERT_EQ(RA8_PIN(k_ra8_port_4, k_ra8_pin_11), k_ra8_board_mipi_dsi_te);
@@ -439,12 +544,16 @@ static void test_mipi_dsi_pins(void)
 /* ------------------------------------------------------------------------- */
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the stubs_return_not_supported board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the stubs_return_not_supported scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_stubs_return_not_supported(void)
+RA8_INTERNAL static void internal_test_stubs_return_not_supported(void)
 {
   TEST_BEGIN("usbhs / mipi-dsi stubs return not_supported");
   /* USBHS device/host promoted to real in commit 28c4ed436; fake hits CGC
@@ -464,12 +573,16 @@ static void test_stubs_return_not_supported(void)
 /* ------------------------------------------------------------------------- */
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the uart_console_pins board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the uart_console_pins scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_uart_console_pins(void)
+RA8_INTERNAL static void internal_test_uart_console_pins(void)
 {
   TEST_BEGIN("uart console pins match UM Table 13");
   /* PD02 / PD03 are the always-wired TXD/RXD; PD04 / PD05 are the
@@ -485,12 +598,16 @@ static void test_uart_console_pins(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the uart_console_init_rejects_zero_baud board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the uart_console_init_rejects_zero_baud scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_uart_console_init_rejects_zero_baud(void)
+RA8_INTERNAL static void internal_test_uart_console_init_rejects_zero_baud(void)
 {
   TEST_BEGIN("uart_console_init rejects baud == 0");
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_uart_console_init(0U));
@@ -498,12 +615,16 @@ static void test_uart_console_init_rejects_zero_baud(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the uart_console_write_validates board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the uart_console_write_validates scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_uart_console_write_validates(void)
+RA8_INTERNAL static void internal_test_uart_console_write_validates(void)
 {
   TEST_BEGIN("uart_console_write validates args + state");
   /* Zero-length write is a no-op success regardless of init state. */
@@ -514,12 +635,16 @@ static void test_uart_console_write_validates(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the uart_console_read_validates board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the uart_console_read_validates scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_uart_console_read_validates(void)
+RA8_INTERNAL static void internal_test_uart_console_read_validates(void)
 {
   TEST_BEGIN("uart_console_read validates args + state");
   uint8_t buf[4]  = {};
@@ -542,12 +667,16 @@ static void test_uart_console_read_validates(void)
 /* ------------------------------------------------------------------------- */
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the ethernet_pins board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the ethernet_pins scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_ethernet_pins(void)
+RA8_INTERNAL static void internal_test_ethernet_pins(void)
 {
   TEST_BEGIN("ethernet pins match UM Table 26");
   TEST_ASSERT_EQ(RA8_PIN(k_ra8_port_1, k_ra8_pin_7), k_ra8_board_eth_pin_mdint);
@@ -570,12 +699,16 @@ static void test_ethernet_pins(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the ethernet_index_constants board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the ethernet_index_constants scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_ethernet_index_constants(void)
+RA8_INTERNAL static void internal_test_ethernet_index_constants(void)
 {
   TEST_BEGIN("ethernet ETHA/RMAC port + PHY addr defaults");
   /* The on-board PHY is on ETHA1 / RMAC1, MDIO addr 0 (PEF7071 strap).
@@ -589,15 +722,19 @@ static void test_ethernet_index_constants(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the board_led_funcs board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the board_led_funcs scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_board_led_funcs(void)
+RA8_INTERNAL static void internal_test_board_led_funcs(void)
 {
   TEST_BEGIN("board_led_funcs forward to hal or return error");
-  reset_board_hal_state();
+  internal_reset_board_hal_state();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_board_led_init(k_ra8_board_led1));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_board_led_on(k_ra8_board_led1));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_led_on((ra8_board_led_id_t)99));
@@ -609,15 +746,19 @@ static void test_board_led_funcs(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the board_sw_funcs board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the board_sw_funcs scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_board_sw_funcs(void)
+RA8_INTERNAL static void internal_test_board_sw_funcs(void)
 {
   TEST_BEGIN("board_sw_funcs forward to hal or return error");
-  reset_board_hal_state();
+  internal_reset_board_hal_state();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_board_sw_init(k_ra8_board_sw1));
   ra8_board_sw_state_t sw_val  = k_ra8_board_sw_released;
   ra8_level_t          ard_val = k_ra8_level_low;
@@ -625,36 +766,45 @@ static void test_board_sw_funcs(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_sw_read((ra8_board_sw_id_t)99, &sw_val));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_sw_read(k_ra8_board_sw1, nullptr));
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_sw_attach_irq(k_ra8_board_sw1, dummy_sw_irq_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_board_sw_attach_irq(k_ra8_board_sw1, internal_dummy_sw_irq_cb, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_board_sw_attach_irq((ra8_board_sw_id_t)99, dummy_sw_irq_cb, nullptr));
+                 ra8_board_sw_attach_irq((ra8_board_sw_id_t)99, internal_dummy_sw_irq_cb, nullptr));
   TEST_END("board_sw_funcs forward to hal or return error");
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the board_xspi_init board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the board_xspi_init scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_board_xspi_init(void)
+RA8_INTERNAL static void internal_test_board_xspi_init(void)
 {
   TEST_BEGIN("board_xspi_pins_init forwards to hal");
-  reset_board_hal_state();
+  internal_reset_board_hal_state();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_board_xspi_pins_init());
   TEST_END("board_xspi_pins_init forwards to hal");
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the board_arduino_gpio_funcs board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the board_arduino_gpio_funcs scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_board_arduino_gpio_funcs(void)
+RA8_INTERNAL static void internal_test_board_arduino_gpio_funcs(void)
 {
   TEST_BEGIN("board_arduino_gpio_funcs forward to hal or return error");
-  reset_board_hal_state();
+  internal_reset_board_hal_state();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_board_arduino_gpio_write(k_ra8_board_arduino_d2, k_ra8_level_high));
   TEST_ASSERT_EQ(k_ra8_err_gpio_invalid_pin,
                  ra8_board_arduino_gpio_write((ra8_board_arduino_pin_t)99, k_ra8_level_high));
@@ -669,15 +819,19 @@ static void test_board_arduino_gpio_funcs(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the board_io_expander board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the board_io_expander scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_board_io_expander(void)
+RA8_INTERNAL static void internal_test_board_io_expander(void)
 {
   TEST_BEGIN("board_io_expander_set_usbhs_device_mode forwards to hal");
-  reset_board_hal_state();
+  internal_reset_board_hal_state();
   /* The fake backs the RIIC block with plain memory and never
    * raises TDRE, so the real ra8_i2c controller driver stalls waiting for
    * the first transmit-data-empty and reports hw_timeout. The contract
@@ -687,42 +841,56 @@ static void test_board_io_expander(void)
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the board_uart_console_flush board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the board_uart_console_flush scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_board_uart_console_flush(void)
+RA8_INTERNAL static void internal_test_board_uart_console_flush(void)
 {
   TEST_BEGIN("board_uart_console_flush forwards to hal");
-  reset_board_hal_state();
+  internal_reset_board_hal_state();
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_board_uart_console_flush());
   TEST_END("board_uart_console_flush forwards to hal");
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * @brief Verify the board_ethernet_init board scenario.
+ * @details Calls the relevant public board API and asserts the exact values or error result for this scenario.
+ * @pre The hosted board and HAL test doubles are linked.
+ * @pre The case begins without a prior Unity failure.
+ * @post Every assertion in the board_ethernet_init scenario has passed.
+ * @post No dynamically owned resource remains live.
+ * @note This case has no compound decision beyond the public contract it exercises.
+ * @since 0.1.0
  */
-static void test_board_ethernet_init(void)
+RA8_INTERNAL static void internal_test_board_ethernet_init(void)
 {
   TEST_BEGIN("board_ethernet_init forwards to hal");
-  reset_board_hal_state();
+  internal_reset_board_hal_state();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_board_ethernet_init());
   TEST_END("board_ethernet_init forwards to hal");
 }
 
 /**
- * @par MC/DC:
- * (no compound decisions in this test -- the CABPIRM.BPR wait is a
- * single-condition bounded poll, not a compound boolean)
+ * @brief Verify Ethernet initialization reports a COMA buffer-pool timeout.
+ * @details Holds CABPIRM.BPR deasserted in the hosted MMIO model and confirms
+ *          that the bounded board initialization wait returns hardware timeout.
+ * @pre Fake MMIO and board HAL state can be reset.
+ * @pre The COMA buffer-pool-ready register can be armed as a failed wait.
+ * @post Ethernet initialization returns k_ra8_err_hw_timeout.
+ * @post The temporary fake-MMIO wait rule is removed.
+ * @note The CABPIRM.BPR wait is a single-condition bounded poll.
+ * @since 0.1.0
  */
-static void test_board_ethernet_init_coma_bpr_timeout(void)
+RA8_INTERNAL static void internal_test_board_ethernet_init_coma_bpr_timeout(void)
 {
   TEST_BEGIN("board_ethernet_init reports CABPIRM.BPR timeout");
-  reset_board_hal_state();
+  internal_reset_board_hal_state();
   /* Arm the COMA buffer-pool-ready register so BPR never asserts: the
    * COMA bring-up's bounded wait exhausts its budget and init returns
    * the real hardware-timeout error instead of the fake success the
@@ -744,41 +912,41 @@ static void test_board_ethernet_init_coma_bpr_timeout(void)
  * @note Order is significant: cases run top to bottom, exactly as before.
  */
 static void (*const s_test_roster[])(void) = {
-  test_board_get_info,
-  test_board_get_info_null,
-  test_led_pin_lookup,
-  test_led_pin_invalid,
-  test_sw_pin_lookup,
-  test_sw_attach_irq_null_cb,
-  test_audio_pins,
-  test_audio_play_sample_block_validates,
-  test_audio_init_validates,
-  test_arduino_pins,
-  test_arduino_pin_init_invalid_mode,
-  test_pmod1_spi_pins,
-  test_pmod2_spi_pins,
-  test_glcdc_pin_tables_populated,
-  test_glcdc_init_invalid_fmt,
-  test_camera_pins,
-  test_mcdc_camera_xclk_period_bounds,
-  test_xspi_pins,
-  test_extmem_sizes,
-  test_mipi_dsi_pins,
-  test_stubs_return_not_supported,
-  test_uart_console_pins,
-  test_uart_console_init_rejects_zero_baud,
-  test_uart_console_write_validates,
-  test_uart_console_read_validates,
-  test_ethernet_pins,
-  test_ethernet_index_constants,
-  test_board_led_funcs,
-  test_board_sw_funcs,
-  test_board_xspi_init,
-  test_board_arduino_gpio_funcs,
-  test_board_io_expander,
-  test_board_uart_console_flush,
-  test_board_ethernet_init,
-  test_board_ethernet_init_coma_bpr_timeout,
+  internal_test_board_get_info,
+  internal_test_board_get_info_null,
+  internal_test_led_pin_lookup,
+  internal_test_led_pin_invalid,
+  internal_test_sw_pin_lookup,
+  internal_test_sw_attach_irq_null_cb,
+  internal_test_audio_pins,
+  internal_test_audio_play_sample_block_validates,
+  internal_test_audio_init_validates,
+  internal_test_arduino_pins,
+  internal_test_arduino_pin_init_invalid_mode,
+  internal_test_pmod1_spi_pins,
+  internal_test_pmod2_spi_pins,
+  internal_test_glcdc_pin_tables_populated,
+  internal_test_glcdc_init_invalid_fmt,
+  internal_test_camera_pins,
+  internal_test_mcdc_camera_xclk_period_bounds,
+  internal_test_xspi_pins,
+  internal_test_extmem_sizes,
+  internal_test_mipi_dsi_pins,
+  internal_test_stubs_return_not_supported,
+  internal_test_uart_console_pins,
+  internal_test_uart_console_init_rejects_zero_baud,
+  internal_test_uart_console_write_validates,
+  internal_test_uart_console_read_validates,
+  internal_test_ethernet_pins,
+  internal_test_ethernet_index_constants,
+  internal_test_board_led_funcs,
+  internal_test_board_sw_funcs,
+  internal_test_board_xspi_init,
+  internal_test_board_arduino_gpio_funcs,
+  internal_test_board_io_expander,
+  internal_test_board_uart_console_flush,
+  internal_test_board_ethernet_init,
+  internal_test_board_ethernet_init_coma_bpr_timeout,
 };
 
 int32_t main(void)
@@ -786,6 +954,5 @@ int32_t main(void)
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
     s_test_roster[i]();
   }
-  (void)fprintf(stderr, "[OK ] test_ra8_board_ek_ra8d2.c\n");
   return 0;
 }
