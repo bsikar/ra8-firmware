@@ -133,16 +133,31 @@ static const uint32_t s_ra8_book_crc_table[k_ra8_book_crc_table_len] = {
  *
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-RA8_NO_RECURSION
-static uint32_t ra8_book_crc32(const uint8_t* data, size_t len)
+uint32_t ra8_book_crc32_extend(uint32_t crc, const uint8_t* data, size_t len)
 {
-  uint32_t crc = k_ra8_book_crc_init;
+  crc ^= k_ra8_book_crc_init;
   for (size_t i = 0U; i < len; ++i) {
     const uint8_t idx = (uint8_t)((crc ^ (uint32_t)data[i]) & (uint32_t)k_ra8_book_crc_byte_mask);
     crc               = s_ra8_book_crc_table[idx] ^ (crc >> (uint32_t)k_ra8_book_crc_byte_bits);
   }
   return crc ^ k_ra8_book_crc_init;
+}
+
+/**
+ * @brief Compute CRC-32/ISO-HDLC over one resident byte span.
+ * @param[in] data Readable bytes.
+ * @param[in] len Number of bytes in @p data.
+ * @return Finalized CRC for the span.
+ * @pre @p data addresses @p len bytes when @p len is non-zero.
+ * @post No state is modified.
+ * @note Thread-safe.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+RA8_NO_RECURSION
+static uint32_t ra8_book_crc32(const uint8_t* data, size_t len)
+{
+  return ra8_book_crc32_extend(0U, data, len);
 }
 
 /**
