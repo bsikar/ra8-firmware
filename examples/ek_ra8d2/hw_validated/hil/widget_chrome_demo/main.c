@@ -528,7 +528,7 @@ static const display_cfg_t k_wd_display_cfg = {
   .width_px          = (uint16_t)k_wd_fb_w,
   .height_px         = (uint16_t)k_wd_fb_h,
   .pixfmt            = k_display_pixfmt_rgb565,
-  .panel_timing      = &k_ra8_panel_ek_ra8d2_timing,
+  .panel_timing      = &s_ra8_panel_ek_ra8d2_timing,
 };
 
 /** @brief Bring up the GLCDC panel and bind ra8_gfx to its framebuffer. */

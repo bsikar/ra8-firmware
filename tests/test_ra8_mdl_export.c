@@ -176,7 +176,7 @@ RA8_INTERNAL static uint64_t internal_export_hash(mdl_storage_t*           stora
 RA8_INTERNAL static void internal_run_formats(mdl_storage_t* storage, uint64_t hashes[5])
 {
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_mkdir(&storage->fs->names, "/chapter"));
-  internal_write_fixture(storage, "/chapter/001.jpg", k_tiny_jpeg, k_tiny_jpeg_len);
+  internal_write_fixture(storage, "/chapter/001.jpg", s_tiny_jpeg, s_tiny_jpeg_len);
   mdl_export_meta_t metadata;
   mdl_meta_init(&metadata);
   (void)memcpy(metadata.series_title, "Portable Series", sizeof("Portable Series"));
