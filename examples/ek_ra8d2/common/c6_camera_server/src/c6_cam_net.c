@@ -22,6 +22,7 @@
 #include "nx_api.h"
 #include "nx_ether_driver_c6.h"
 #include "nxd_dhcp_client.h"
+#include "ra8_attributes.h"
 #include "ra8_c6link.h"
 #include "ra8_err.h"
 #include "tx_api.h"
@@ -66,7 +67,7 @@ static const char s_page[] =
  * @note Exact non-success codes are propagated from NetX.
  * @since 0.1.0
  */
-static UINT c6_cam_net_create(void)
+RA8_INTERNAL static UINT internal_c6_cam_net_create(void)
 {
   UINT status = nx_packet_pool_create(&s_pool,
                                       s_pool_name,
@@ -112,7 +113,7 @@ ra8_err_t c6_cam_net_up(ra8_c6link_t* link, const ra8_c6link_mac_t* mac, c6_cam_
   nx_ether_driver_c6_bind(link);
   nx_ether_driver_c6_set_mac(mac->octet);
   nx_system_initialize();
-  if (c6_cam_net_create() != NX_SUCCESS) {
+  if (internal_c6_cam_net_create() != NX_SUCCESS) {
     return k_ra8_err_not_initialized;
   }
   UINT status = nx_dhcp_create(&s_dhcp, &s_ip, s_dhcp_name);
@@ -159,7 +160,7 @@ ra8_err_t c6_cam_net_up(ra8_c6link_t* link, const ra8_c6link_mac_t* mac, c6_cam_
  * @note Exact non-success codes are propagated from NetX.
  * @since 0.1.0
  */
-static UINT c6_cam_http_send(const void* data, uint32_t bytes)
+RA8_INTERNAL static UINT internal_c6_cam_http_send(const void* data, uint32_t bytes)
 {
   const uint8_t* cursor    = (const uint8_t*)data;
   uint32_t       remaining = bytes;
@@ -207,7 +208,8 @@ static UINT c6_cam_http_send(const void* data, uint32_t bytes)
  * @note Truncation is represented by a return value equal to `cap`.
  * @since 0.1.0
  */
-static uint32_t c6_cam_append(char* out, uint32_t at, uint32_t cap, const char* text)
+RA8_INTERNAL static uint32_t
+internal_c6_cam_append(char* out, uint32_t at, uint32_t cap, const char* text)
 {
   while ((at < cap) && (*text != '\0')) {
     out[at++] = *text++;
@@ -237,7 +239,8 @@ typedef enum : uint32_t {
  * @note No NUL terminator is appended.
  * @since 0.1.0
  */
-static uint32_t c6_cam_append_u32(char* out, uint32_t at, uint32_t cap, uint32_t value)
+RA8_INTERNAL static uint32_t
+internal_c6_cam_append_u32(char* out, uint32_t at, uint32_t cap, uint32_t value)
 {
   char     reverse[k_c6_cam_net_decimal_digits] = {};
   uint32_t count                                = 0U;
@@ -269,36 +272,39 @@ static uint32_t c6_cam_append_u32(char* out, uint32_t at, uint32_t cap, uint32_t
  * @note A zero timestamp suppresses the timestamp header.
  * @since 0.1.0
  */
-static UINT c6_cam_http_response(const char*                  type,
-                                 const void*                  body,
-                                 uint32_t                     body_bytes,
-                                 const c6_cam_frame_timing_t* timing,
-                                 uint32_t                     timestamp_ms)
+RA8_INTERNAL static UINT internal_c6_cam_http_response(const char*                  type,
+                                                       const void*                  body,
+                                                       uint32_t                     body_bytes,
+                                                       const c6_cam_frame_timing_t* timing,
+                                                       uint32_t                     timestamp_ms)
 {
   char     header[320] = {};
-  uint32_t length = c6_cam_append(header, 0U, sizeof(header), "HTTP/1.1 200 OK\r\nContent-Type: ");
-  length          = c6_cam_append(header, length, sizeof(header), type);
+  uint32_t length =
+    internal_c6_cam_append(header, 0U, sizeof(header), "HTTP/1.1 200 OK\r\nContent-Type: ");
+  length = internal_c6_cam_append(header, length, sizeof(header), type);
   if (timing != nullptr) {
-    length = c6_cam_append(header, length, sizeof(header), "\r\nServer-Timing: capture;dur=");
-    length = c6_cam_append_u32(header, length, sizeof(header), timing->capture_ms);
-    length = c6_cam_append(header, length, sizeof(header), ", convert;dur=");
-    length = c6_cam_append_u32(header, length, sizeof(header), timing->convert_ms);
-    length = c6_cam_append(header, length, sizeof(header), ", encode;dur=");
-    length = c6_cam_append_u32(header, length, sizeof(header), timing->encode_ms);
+    length =
+      internal_c6_cam_append(header, length, sizeof(header), "\r\nServer-Timing: capture;dur=");
+    length = internal_c6_cam_append_u32(header, length, sizeof(header), timing->capture_ms);
+    length = internal_c6_cam_append(header, length, sizeof(header), ", convert;dur=");
+    length = internal_c6_cam_append_u32(header, length, sizeof(header), timing->convert_ms);
+    length = internal_c6_cam_append(header, length, sizeof(header), ", encode;dur=");
+    length = internal_c6_cam_append_u32(header, length, sizeof(header), timing->encode_ms);
   }
   if (timestamp_ms != 0U) {
-    length = c6_cam_append(header, length, sizeof(header), "\r\nX-RA8-Timestamp-Ms: ");
-    length = c6_cam_append_u32(header, length, sizeof(header), timestamp_ms);
+    length = internal_c6_cam_append(header, length, sizeof(header), "\r\nX-RA8-Timestamp-Ms: ");
+    length = internal_c6_cam_append_u32(header, length, sizeof(header), timestamp_ms);
   }
-  length      = c6_cam_append(header, length, sizeof(header), "\r\nContent-Length: ");
-  length      = c6_cam_append_u32(header, length, sizeof(header), body_bytes);
-  length      = c6_cam_append(header,
-                              length,
-                              sizeof(header),
-                              "\r\nCache-Control: no-store, no-cache\r\nConnection: close\r\n\r\n");
-  UINT status = c6_cam_http_send(header, length);
+  length = internal_c6_cam_append(header, length, sizeof(header), "\r\nContent-Length: ");
+  length = internal_c6_cam_append_u32(header, length, sizeof(header), body_bytes);
+  length =
+    internal_c6_cam_append(header,
+                           length,
+                           sizeof(header),
+                           "\r\nCache-Control: no-store, no-cache\r\nConnection: close\r\n\r\n");
+  UINT status = internal_c6_cam_http_send(header, length);
   if (status == NX_SUCCESS) {
-    status = c6_cam_http_send(body, body_bytes);
+    status = internal_c6_cam_http_send(body, body_bytes);
   }
   return status;
 }
@@ -316,13 +322,13 @@ static UINT c6_cam_http_response(const char*                  type,
  * @note Clients reconnect after the bounded sequence or any failure.
  * @since 0.1.0
  */
-static UINT c6_cam_http_stream(void)
+RA8_INTERNAL static UINT internal_c6_cam_http_stream(void)
 {
   static const char stream_header[] = "HTTP/1.1 200 OK\r\n"
                                       "Content-Type: multipart/x-mixed-replace; boundary=frame\r\n"
                                       "Cache-Control: no-store, no-cache\r\n"
                                       "Connection: close\r\n\r\n";
-  UINT status = c6_cam_http_send(stream_header, (uint32_t)(sizeof(stream_header) - 1U));
+  UINT status = internal_c6_cam_http_send(stream_header, (uint32_t)(sizeof(stream_header) - 1U));
   for (uint32_t frame_index = 0U;
        (frame_index < (uint32_t)k_c6_cam_stream_frames) && (status == NX_SUCCESS);
        frame_index++) {
@@ -335,19 +341,20 @@ static UINT c6_cam_http_stream(void)
       return NX_NOT_SUCCESSFUL;
     }
     char     part_header[128] = {};
-    uint32_t length = c6_cam_append(part_header,
-                                    0U,
-                                    sizeof(part_header),
-                                    "--frame\r\nContent-Type: image/jpeg\r\nContent-Length: ");
-    length          = c6_cam_append_u32(part_header, length, sizeof(part_header), jpeg_bytes);
-    length          = c6_cam_append(part_header, length, sizeof(part_header), "\r\n\r\n");
-    status          = c6_cam_http_send(part_header, length);
+    uint32_t length =
+      internal_c6_cam_append(part_header,
+                             0U,
+                             sizeof(part_header),
+                             "--frame\r\nContent-Type: image/jpeg\r\nContent-Length: ");
+    length = internal_c6_cam_append_u32(part_header, length, sizeof(part_header), jpeg_bytes);
+    length = internal_c6_cam_append(part_header, length, sizeof(part_header), "\r\n\r\n");
+    status = internal_c6_cam_http_send(part_header, length);
     if (status == NX_SUCCESS) {
-      status = c6_cam_http_send(jpeg, jpeg_bytes);
+      status = internal_c6_cam_http_send(jpeg, jpeg_bytes);
     }
     if (status == NX_SUCCESS) {
       static const char part_tail[] = "\r\n";
-      status = c6_cam_http_send(part_tail, (uint32_t)(sizeof(part_tail) - 1U));
+      status = internal_c6_cam_http_send(part_tail, (uint32_t)(sizeof(part_tail) - 1U));
     }
     if (status == NX_SUCCESS) {
       c6_cam_puts("c6_cam: stream jpeg_bytes=");
@@ -380,7 +387,8 @@ static UINT c6_cam_http_stream(void)
  * @note HTTP decoding beyond this narrow routing grammar is intentionally absent.
  * @since 0.1.0
  */
-static bool c6_cam_request_is(const char* request, uint32_t bytes, const char* path)
+RA8_INTERNAL static bool
+internal_c6_cam_request_is(const char* request, uint32_t bytes, const char* path)
 {
   if ((bytes < (uint32_t)k_c6_cam_http_get_min) || (memcmp(request, "GET ", 4U) != 0)) {
     return false;
@@ -399,19 +407,24 @@ static bool c6_cam_request_is(const char* request, uint32_t bytes, const char* p
 
 /**
  * @brief Capture and serve one JPEG still response.
+ * @details Captures through the configured camera backend, emits the JPEG with
+ * timing metadata on success, and otherwise sends a bounded diagnostic body.
  * @pre Camera state and HTTP packet resources are initialized.
+ * @pre The connected socket may accept one complete response attempt.
  * @post A JPEG or bounded text error response is attempted.
+ * @post Capture timing or the backend error is reported on the console.
  * @note Capture diagnostics are emitted on the console.
  * @since 0.1.0
  */
-static void c6_cam_http_frame(void)
+RA8_INTERNAL static void internal_c6_cam_http_frame(void)
 {
   const uint8_t*        jpeg       = nullptr;
   uint32_t              jpeg_bytes = 0U;
   c6_cam_frame_timing_t timing     = {};
   const ra8_err_t       err        = c6_cam_camera_capture_jpeg(&jpeg, &jpeg_bytes, &timing);
   if (err == k_ra8_ok) {
-    (void)c6_cam_http_response("image/jpeg", jpeg, jpeg_bytes, &timing, timing.timestamp_ms);
+    (void)
+      internal_c6_cam_http_response("image/jpeg", jpeg, jpeg_bytes, &timing, timing.timestamp_ms);
     c6_cam_puts("c6_cam: frame jpeg_bytes=");
     c6_cam_put_u32(jpeg_bytes);
     c6_cam_puts(" capture_ms=");
@@ -424,7 +437,11 @@ static void c6_cam_http_frame(void)
     return;
   }
   static const char failed[] = "camera capture failed\n";
-  (void)c6_cam_http_response("text/plain", failed, (uint32_t)(sizeof(failed) - 1U), nullptr, 0U);
+  (void)internal_c6_cam_http_response("text/plain",
+                                      failed,
+                                      (uint32_t)(sizeof(failed) - 1U),
+                                      nullptr,
+                                      0U);
   c6_cam_puts("c6_cam: frame FAIL err=");
   c6_cam_puts(ra8_err_to_str(err));
   c6_cam_camera_report_last_error();
@@ -433,19 +450,23 @@ static void c6_cam_http_frame(void)
 
 /**
  * @brief Snapshot and serve the current audio window.
+ * @details Requests a stable WAV snapshot from the ping-pong audio backend and
+ * returns either that snapshot or a bounded not-ready response to the client.
  * @pre Audio state and HTTP packet resources are initialized.
+ * @pre The connected socket may accept one complete response attempt.
  * @post A WAV or bounded text not-ready response is attempted.
+ * @post Successful snapshots retain their capture timestamp in the response.
  * @note Successful responses include the capture timestamp.
  * @since 0.1.0
  */
-static void c6_cam_http_audio(void)
+RA8_INTERNAL static void internal_c6_cam_http_audio(void)
 {
   const uint8_t*  wav          = nullptr;
   uint32_t        wav_bytes    = 0U;
   uint32_t        timestamp_ms = 0U;
   const ra8_err_t err          = c6_cam_audio_snapshot_wav(&wav, &wav_bytes, &timestamp_ms);
   if (err == k_ra8_ok) {
-    (void)c6_cam_http_response("audio/wav", wav, wav_bytes, nullptr, timestamp_ms);
+    (void)internal_c6_cam_http_response("audio/wav", wav, wav_bytes, nullptr, timestamp_ms);
     c6_cam_puts("c6_cam: audio wav_bytes=");
     c6_cam_put_u32(wav_bytes);
     c6_cam_puts(" timestamp_ms=");
@@ -454,39 +475,47 @@ static void c6_cam_http_audio(void)
     return;
   }
   static const char unavailable[] = "audio capture not ready\n";
-  (void)c6_cam_http_response("text/plain",
-                             unavailable,
-                             (uint32_t)(sizeof(unavailable) - 1U),
-                             nullptr,
-                             0U);
+  (void)internal_c6_cam_http_response("text/plain",
+                                      unavailable,
+                                      (uint32_t)(sizeof(unavailable) - 1U),
+                                      nullptr,
+                                      0U);
 }
 
 /**
  * @brief Dispatch a bounded HTTP request to one route handler.
+ * @details Matches the request path against the stream, still-frame, audio,
+ * and health endpoints, falling back to the embedded browser page.
  * @param[in] request Extracted request prefix.
  * @param[in] bytes Extracted request-byte count.
  * @pre `request` addresses at least `bytes` readable bytes.
+ * @pre Camera, audio, and HTTP response resources are initialized.
  * @post At most one response handler is invoked.
+ * @post Unrecognized routes receive the embedded browser page.
+ * @note Handler response failures are resolved by the caller's socket teardown.
  * @since 0.1.0
  */
-static void c6_cam_http_dispatch(const char* request, uint32_t bytes)
+RA8_INTERNAL static void internal_c6_cam_http_dispatch(const char* request, uint32_t bytes)
 {
-  if (c6_cam_request_is(request, bytes, "/stream.mjpg")) {
-    (void)c6_cam_http_stream();
-  } else if (c6_cam_request_is(request, bytes, "/frame.jpg")) {
-    c6_cam_http_frame();
-  } else if (c6_cam_request_is(request, bytes, "/audio.wav")) {
-    c6_cam_http_audio();
-  } else if (c6_cam_request_is(request, bytes, "/health")) {
+  if (internal_c6_cam_request_is(request, bytes, "/stream.mjpg")) {
+    (void)internal_c6_cam_http_stream();
+  } else if (internal_c6_cam_request_is(request, bytes, "/frame.jpg")) {
+    internal_c6_cam_http_frame();
+  } else if (internal_c6_cam_request_is(request, bytes, "/audio.wav")) {
+    internal_c6_cam_http_audio();
+  } else if (internal_c6_cam_request_is(request, bytes, "/health")) {
     static const char healthy[] = "PASS c6 camera livestream audio=PASS camera=PASS\n";
-    (void)
-      c6_cam_http_response("text/plain", healthy, (uint32_t)(sizeof(healthy) - 1U), nullptr, 0U);
+    (void)internal_c6_cam_http_response("text/plain",
+                                        healthy,
+                                        (uint32_t)(sizeof(healthy) - 1U),
+                                        nullptr,
+                                        0U);
   } else {
-    (void)c6_cam_http_response("text/html; charset=utf-8",
-                               s_page,
-                               (uint32_t)(sizeof(s_page) - 1U),
-                               nullptr,
-                               0U);
+    (void)internal_c6_cam_http_response("text/html; charset=utf-8",
+                                        s_page,
+                                        (uint32_t)(sizeof(s_page) - 1U),
+                                        nullptr,
+                                        0U);
   }
 }
 
@@ -500,7 +529,7 @@ static void c6_cam_http_dispatch(const char* request, uint32_t bytes)
  * @note Response failures are handled by subsequent socket teardown.
  * @since 0.1.0
  */
-static void c6_cam_http_handle(void)
+RA8_INTERNAL static void internal_c6_cam_http_handle(void)
 {
   NX_PACKET* request_packet = NX_NULL;
   if (nx_tcp_socket_receive(&s_http_socket, &request_packet, NX_WAIT_FOREVER) != NX_SUCCESS) {
@@ -515,7 +544,7 @@ static void c6_cam_http_handle(void)
   ULONG    copied                        = 0U;
   (void)nx_packet_data_extract_offset(request_packet, 0U, request, (ULONG)request_bytes, &copied);
   (void)nx_packet_release(request_packet);
-  c6_cam_http_dispatch(request, (uint32_t)copied);
+  internal_c6_cam_http_dispatch(request, (uint32_t)copied);
 }
 
 void c6_cam_http_serve(void)
@@ -545,7 +574,7 @@ void c6_cam_http_serve(void)
   c6_cam_puts("c6_cam: PASS HTTP camera server listening\r\n");
   while (true) {
     if (nx_tcp_server_socket_accept(&s_http_socket, NX_WAIT_FOREVER) == NX_SUCCESS) {
-      c6_cam_http_handle();
+      internal_c6_cam_http_handle();
       (void)nx_tcp_socket_disconnect(&s_http_socket, NX_WAIT_FOREVER);
       (void)nx_tcp_server_socket_unaccept(&s_http_socket);
     }
