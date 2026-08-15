@@ -21,7 +21,7 @@
 #include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
-#include "ra8_io_stream_internal.h"
+#include "ra8_io_stream_backend.h"
 #include "ra8_sci.h"
 
 /** @brief Module log tag. */
@@ -31,8 +31,8 @@ static const char* const s_tag = "ra8_io_stream_uart";
  * @brief UART sink: write all bytes out of the SCI channel by polling.
  *
  * @details
- * Forwards to `ra8_sci_write_polling`. On success every byte was shifted out, so
- * the accepted count equals `len`.
+ * Forwards to `ra8_sci_write_polling`. On success every byte was shifted out,
+ * so the accepted count equals `len`.
  *
  * @param[in]  ctx         UART sink state (as a void cookie).
  * @param[in]  buf         Source bytes.
@@ -53,8 +53,8 @@ static const char* const s_tag = "ra8_io_stream_uart";
  *
  * @since 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t uart_write(void* ctx, const uint8_t* buf, uint32_t len, uint32_t* out_written)
+RA8_INTERNAL static ra8_err_t
+internal_uart_write(void* ctx, const uint8_t* buf, uint32_t len, uint32_t* out_written)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
@@ -92,8 +92,7 @@ static ra8_err_t uart_write(void* ctx, const uint8_t* buf, uint32_t len, uint32_
  *
  * @since 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t uart_flush(void* ctx)
+RA8_INTERNAL static ra8_err_t internal_uart_flush(void* ctx)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   const ra8_io_stream_uart_state_t* st = (const ra8_io_stream_uart_state_t*)ctx;
@@ -101,9 +100,9 @@ static ra8_err_t uart_flush(void* ctx)
 }
 
 /** @brief UART stream sink vtable. */
-static const ra8_io_stream_iface_t k_uart_iface = {
-  .write = uart_write,
-  .flush = uart_flush,
+static const ra8_io_stream_iface_t s_uart_iface = {
+  .write = internal_uart_write,
+  .flush = internal_uart_flush,
 };
 
 ra8_err_t
@@ -112,7 +111,5 @@ ra8_io_stream_uart_init(ra8_io_stream_t* s, ra8_io_stream_uart_state_t* state, u
   RA8_CHECK_NULL_PTR(s, s_tag, "s must not be nullptr");
   RA8_CHECK_NULL_PTR(state, s_tag, "state must not be nullptr");
   state->channel = channel;
-  s->iface       = &k_uart_iface;
-  s->ctx         = state;
-  return k_ra8_ok;
+  return ra8_io_stream_bind(s, &s_uart_iface, state);
 }

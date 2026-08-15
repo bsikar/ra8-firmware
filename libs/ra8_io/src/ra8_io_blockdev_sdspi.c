@@ -76,7 +76,8 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t sdspi_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_sdspi_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
@@ -110,7 +111,8 @@ static ra8_err_t sdspi_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* bu
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t sdspi_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_sdspi_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
@@ -145,7 +147,7 @@ static ra8_err_t sdspi_write(void* ctx, uint32_t lba, uint32_t count, const uint
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t sdspi_erase(void* ctx, uint32_t lba, uint32_t count)
+RA8_INTERNAL static ra8_err_t internal_sdspi_erase(void* ctx, uint32_t lba, uint32_t count)
 {
   (void)ctx;
   return ra8_sdmmc_spi_erase_blocks(lba, count);
@@ -176,7 +178,7 @@ static ra8_err_t sdspi_erase(void* ctx, uint32_t lba, uint32_t count)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t sdspi_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
+RA8_INTERNAL static ra8_err_t internal_sdspi_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
 {
   (void)ctx;
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -193,18 +195,18 @@ static ra8_err_t sdspi_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
 }
 
 /** @brief SD-SPI backend vtable. `sync` is NULL: the driver writes synchronously. */
-static const ra8_io_blockdev_iface_t k_sdspi_iface = {
-  .read     = sdspi_read,
-  .write    = sdspi_write,
-  .erase    = sdspi_erase,
-  .get_caps = sdspi_get_caps,
+static const ra8_io_blockdev_iface_t s_sdspi_iface = {
+  .read     = internal_sdspi_read,
+  .write    = internal_sdspi_write,
+  .erase    = internal_sdspi_erase,
+  .get_caps = internal_sdspi_get_caps,
   .sync     = nullptr,
 };
 
 ra8_err_t ra8_io_blockdev_sdspi_init(ra8_io_blockdev_t* bd)
 {
   RA8_CHECK_NULL_PTR(bd, s_tag, "bd must not be nullptr");
-  bd->iface = &k_sdspi_iface;
+  bd->iface = &s_sdspi_iface;
   bd->ctx   = nullptr;
   return k_ra8_ok;
 }

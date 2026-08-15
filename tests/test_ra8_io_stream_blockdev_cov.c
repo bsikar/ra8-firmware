@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_io_blockdev.h"
 #include "ra8_io_blockdev_backend.h"
@@ -103,9 +104,9 @@ typedef struct {
  * @post No mock state is mutated.
  *
  * @note Not thread-safe (single-threaded test context).
- * @since 0.1.0
- */
-static ra8_err_t mock_fault_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+ * @since 0.1.0 @details Exercises the mock fault read path with bounded caller-owned fixture state and verifies its documented result. */
+RA8_INTERNAL static ra8_err_t
+internal_mock_fault_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   (void)lba;
@@ -138,7 +139,8 @@ static ra8_err_t mock_fault_read(void* ctx, uint32_t lba, uint32_t count, uint8_
  * @note Not thread-safe (single-threaded test context).
  * @since 0.1.0
  */
-static ra8_err_t mock_fault_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_mock_fault_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)lba;
   (void)count;
@@ -166,9 +168,9 @@ static ra8_err_t mock_fault_write(void* ctx, uint32_t lba, uint32_t count, const
  * @post out->read_only is false.
  *
  * @note Not thread-safe (single-threaded test context).
- * @since 0.1.0
- */
-static ra8_err_t mock_fault_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
+ * @since 0.1.0 @details Exercises the mock fault get caps path with bounded caller-owned fixture state and verifies its documented result. */
+RA8_INTERNAL static ra8_err_t internal_mock_fault_get_caps(const void*             ctx,
+                                                           ra8_io_blockdev_caps_t* out)
 {
   (void)ctx;
   out->block_count             = 16U;
@@ -182,11 +184,11 @@ static ra8_err_t mock_fault_get_caps(const void* ctx, ra8_io_blockdev_caps_t* ou
 }
 
 /** @brief Vtable for the fault-injecting mock block-device backend. */
-static const ra8_io_blockdev_iface_t k_mock_fault_iface = {
-  .read     = mock_fault_read,
-  .write    = mock_fault_write,
+static const ra8_io_blockdev_iface_t s_mock_fault_iface = {
+  .read     = internal_mock_fault_read,
+  .write    = internal_mock_fault_write,
   .erase    = nullptr,
-  .get_caps = mock_fault_get_caps,
+  .get_caps = internal_mock_fault_get_caps,
   .sync     = nullptr,
 };
 
@@ -204,18 +206,19 @@ static const ra8_io_blockdev_iface_t k_mock_fault_iface = {
  *
  * @pre bd and st are zero-initialised on entry.
  * @pre writes_until_fail = 0 causes the very first write to fail.
- * @post bd->iface points to k_mock_fault_iface.
+ * @post bd->iface points to s_mock_fault_iface.
  * @post bd->ctx points to st.
  *
  * @note Not thread-safe (single-threaded test context).
  * @since 0.1.0
  */
-static void
-fixture_fault_init(ra8_io_blockdev_t* bd, mock_fault_state_t* st, uint32_t writes_until_fail)
+RA8_INTERNAL static void internal_fixture_fault_init(ra8_io_blockdev_t*  bd,
+                                                     mock_fault_state_t* st,
+                                                     uint32_t            writes_until_fail)
 {
   st->writes_until_fail = writes_until_fail;
   st->write_count       = 0U;
-  bd->iface             = &k_mock_fault_iface;
+  bd->iface             = &s_mock_fault_iface;
   bd->ctx               = st;
 }
 
@@ -239,16 +242,15 @@ fixture_fault_init(ra8_io_blockdev_t* bd, mock_fault_state_t* st, uint32_t write
  *   -> zero-pad and commit trailing sector.
  * Minimal MC/DC: N+1 = 2 vectors for N = 1 condition.
  *
- * @since 0.1.0
- */
-static void test_bdsink_flush_no_pending_bytes(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_bdsink_flush_no_pending_bytes(void)
 {
   TEST_BEGIN("bdsink_flush fill==0 early return (line 227)");
-  static uint8_t s_disk[(size_t)k_cov_bd_ram_blocks * (size_t)k_ra8_io_block_size_bytes];
+  static uint8_t local_disk[(size_t)k_cov_bd_ram_blocks * (size_t)k_ra8_io_block_size_bytes];
   ra8_io_blockdev_ram_state_t bstate = {};
   ra8_io_blockdev_t           bd     = {};
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_io_blockdev_ram_init(&bd, &bstate, s_disk, k_cov_bd_ram_blocks, false));
+                 ra8_io_blockdev_ram_init(&bd, &bstate, local_disk, k_cov_bd_ram_blocks, false));
   ra8_io_stream_blockdev_state_t sstate = {};
   ra8_io_stream_t                s      = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_blockdev_init(&s, &sstate, &bd, k_cov_bd_start_lba));
@@ -273,16 +275,15 @@ static void test_bdsink_flush_no_pending_bytes(void)
  *   assignment skipped.
  * Minimal MC/DC: N+1 = 2 vectors for N = 1 condition.
  *
- * @since 0.1.0
- */
-static void test_bdsink_write_out_written_nonnull_success(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_bdsink_write_out_written_nonnull_success(void)
 {
   TEST_BEGIN("bdsink_write success *out_written = len (lines 193-195)");
-  static uint8_t s_disk[(size_t)k_cov_bd_ram_blocks * (size_t)k_ra8_io_block_size_bytes];
+  static uint8_t local_disk[(size_t)k_cov_bd_ram_blocks * (size_t)k_ra8_io_block_size_bytes];
   ra8_io_blockdev_ram_state_t bstate = {};
   ra8_io_blockdev_t           bd     = {};
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_io_blockdev_ram_init(&bd, &bstate, s_disk, k_cov_bd_ram_blocks, false));
+                 ra8_io_blockdev_ram_init(&bd, &bstate, local_disk, k_cov_bd_ram_blocks, false));
   ra8_io_stream_blockdev_state_t sstate = {};
   ra8_io_stream_t                s      = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_blockdev_init(&s, &sstate, &bd, k_cov_bd_start_lba));
@@ -312,17 +313,16 @@ static void test_bdsink_write_out_written_nonnull_success(void)
  *   -> loop continues to next iteration.
  * Decision: `out_written != nullptr` in error path (line 187, single condition)
  * - Vector 1 (this test): &written -> true -> *out_written = done (line 188).
- * - Vector 2 (test_bdsink_write_error_propagates_no_out_written): nullptr -> false.
+ * - Vector 2 (internal_test_bdsink_write_error_propagates_no_out_written): nullptr -> false.
  * Both decisions have minimal MC/DC coverage: N+1 = 2 vectors for N = 1 condition.
  *
- * @since 0.1.0
- */
-static void test_bdsink_write_error_propagates_with_out_written(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_bdsink_write_error_propagates_with_out_written(void)
 {
   TEST_BEGIN("bdsink_write error path with out_written (lines 73, 187-190)");
   ra8_io_blockdev_t  bd  = {};
   mock_fault_state_t mst = {};
-  fixture_fault_init(&bd, &mst, k_cov_bd_fail_on_zero);
+  internal_fixture_fault_init(&bd, &mst, k_cov_bd_fail_on_zero);
   ra8_io_stream_blockdev_state_t sstate = {};
   ra8_io_stream_t                s      = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_blockdev_init(&s, &sstate, &bd, k_cov_bd_start_lba));
@@ -338,25 +338,24 @@ static void test_bdsink_write_error_propagates_with_out_written(void)
  * @brief bdsink_write error path skips *out_written when it is nullptr (line 190).
  *
  * @details
- * Same fault-injecting setup as test_bdsink_write_error_propagates_with_out_written
+ * Same fault-injecting setup as internal_test_bdsink_write_error_propagates_with_out_written
  * but passes nullptr for out_written. Line 187 (out_written != nullptr) evaluates
  * false, lines 188-189 are skipped, and line 190 (return e) executes directly.
  * This test supplies the second MC/DC vector for the line-187 decision.
  *
  * @par MC/DC:
  * Decision: `out_written != nullptr` in error path (line 187, single condition)
- * - Vector 1 (test_bdsink_write_error_propagates_with_out_written): true.
+ * - Vector 1 (internal_test_bdsink_write_error_propagates_with_out_written): true.
  * - Vector 2 (this test): nullptr -> false -> skip *out_written assignment.
  * Together they prove `out_written` independently influences the outcome.
  *
- * @since 0.1.0
- */
-static void test_bdsink_write_error_propagates_no_out_written(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_bdsink_write_error_propagates_no_out_written(void)
 {
   TEST_BEGIN("bdsink_write error path nullptr out_written (line 190)");
   ra8_io_blockdev_t  bd  = {};
   mock_fault_state_t mst = {};
-  fixture_fault_init(&bd, &mst, k_cov_bd_fail_on_zero);
+  internal_fixture_fault_init(&bd, &mst, k_cov_bd_fail_on_zero);
   ra8_io_stream_blockdev_state_t sstate = {};
   ra8_io_stream_t                s      = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_blockdev_init(&s, &sstate, &bd, k_cov_bd_start_lba));
@@ -385,10 +384,9 @@ static void test_bdsink_write_error_propagates_no_out_written(void)
  */
 int32_t main(void)
 {
-  test_bdsink_flush_no_pending_bytes();
-  test_bdsink_write_out_written_nonnull_success();
-  test_bdsink_write_error_propagates_with_out_written();
-  test_bdsink_write_error_propagates_no_out_written();
-  (void)fprintf(stderr, "[OK  ] test_ra8_io_stream_blockdev_cov.c\n");
+  internal_test_bdsink_flush_no_pending_bytes();
+  internal_test_bdsink_write_out_written_nonnull_success();
+  internal_test_bdsink_write_error_propagates_with_out_written();
+  internal_test_bdsink_write_error_propagates_no_out_written();
   return 0;
 }

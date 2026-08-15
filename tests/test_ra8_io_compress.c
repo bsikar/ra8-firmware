@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_io_compress.h"
 #include "unity_minimal.h"
@@ -50,7 +51,7 @@ static uint8_t s_scratch[(size_t)k_ra8_io_compress_scratch_bytes];
  * @note Thread-safe only when the static fixture is exclusively owned.
  * @since 0.1.0
  */
-static void fill_payload(void)
+RA8_INTERNAL static void internal_fill_payload(void)
 {
   for (uint32_t i = 0; i < (uint32_t)k_t_payload_bytes; ++i) {
     s_payload[i] = (uint8_t)((i * (uint32_t)k_t_seed_mul) % (uint32_t)k_t_pattern_mod);
@@ -58,7 +59,7 @@ static void fill_payload(void)
 }
 
 /**
- * @test test_round_trip
+ * @test internal_test_round_trip
  * @brief Verify raw-DEFLATE compression and decompression are byte-identical.
  * @details Compresses the deterministic payload, proves it shrinks, inflates it,
  *          and compares the complete restored range.
@@ -72,10 +73,10 @@ static void fill_payload(void)
  * (no compound decisions under test -- a compress then decompress reproduces the
  * input exactly and the compressed form is strictly smaller than the source)
  */
-static void test_round_trip(void)
+RA8_INTERNAL static void internal_test_round_trip(void)
 {
   TEST_BEGIN("compress round-trip");
-  fill_payload();
+  internal_fill_payload();
 
   uint32_t packed_len = 0;
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -110,11 +111,16 @@ static void test_round_trip(void)
  * @post The first stream byte equals the expected CMF declaration.
  * @note Uses the vendored low-level inflater directly to select RFC 1950 mode.
  * @since 0.1.0
+ * @par MC/DC:
+ * (no compound decisions in this test -- `ra8_io_compress_zlib` uses the same
+ * single pointer, scratch-size, compressor-status, overflow, and completion
+ * guards as the raw wrapper. This all-valid vector takes their success arms;
+ * the assertion checks one nonzero length rather than combining conditions.)
  */
-static void test_zlib_round_trip(void)
+RA8_INTERNAL static void internal_test_zlib_round_trip(void)
 {
   TEST_BEGIN("zlib compress round-trip");
-  fill_payload();
+  internal_fill_payload();
 
   uint32_t packed_len = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -138,7 +144,7 @@ static void test_zlib_round_trip(void)
 }
 
 /**
- * @test test_compress_validation
+ * @test internal_test_compress_validation
  * @brief Verify every required compression argument and scratch bound.
  * @details Varies each NULL pointer independently, then supplies undersized scratch.
  * @pre Static fixture buffers exist and @p out_len is writable in non-NULL vectors.
@@ -151,7 +157,7 @@ static void test_zlib_round_trip(void)
  * (no compound decisions under test -- each guard is an independent
  * single-condition check: NULL src/out/scratch/out_len and undersized scratch)
  */
-static void test_compress_validation(void)
+RA8_INTERNAL static void internal_test_compress_validation(void)
 {
   TEST_BEGIN("compress validation");
   uint32_t out_len = 0;
@@ -199,7 +205,7 @@ static void test_compress_validation(void)
 }
 
 /**
- * @test test_compress_overflow
+ * @test internal_test_compress_overflow
  * @brief Verify a bounded output overflow returns no-memory.
  * @details Compresses a nonempty source into an intentionally four-byte destination.
  * @pre The payload and compressor scratch are valid.
@@ -212,10 +218,10 @@ static void test_compress_validation(void)
  * (no compound decisions under test -- an output buffer too small to hold the
  * compressed stream trips the overflow path and returns no_mem)
  */
-static void test_compress_overflow(void)
+RA8_INTERNAL static void internal_test_compress_overflow(void)
 {
   TEST_BEGIN("compress overflow");
-  fill_payload();
+  internal_fill_payload();
   uint32_t out_len = 0;
   uint8_t  tiny[4] = {};
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
@@ -230,7 +236,7 @@ static void test_compress_overflow(void)
 }
 
 /**
- * @test test_decompress_validation
+ * @test internal_test_decompress_validation
  * @brief Verify decompression pointer guards and output-capacity failure.
  * @details Creates one valid raw stream, then varies each required pointer and
  *          supplies an output buffer too small for the declared payload.
@@ -244,10 +250,10 @@ static void test_compress_overflow(void)
  * (no compound decisions under test -- decompress rejects NULL args and an
  * output buffer too small to hold the inflated result, each independently)
  */
-static void test_decompress_validation(void)
+RA8_INTERNAL static void internal_test_decompress_validation(void)
 {
   TEST_BEGIN("decompress validation");
-  fill_payload();
+  internal_fill_payload();
   uint32_t packed_len = 0;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_io_compress(s_payload,
@@ -274,11 +280,10 @@ static void test_decompress_validation(void)
 
 int32_t main(void)
 {
-  test_round_trip();
-  test_zlib_round_trip();
-  test_compress_validation();
-  test_compress_overflow();
-  test_decompress_validation();
-  (void)fprintf(stderr, "[OK  ] test_ra8_io_compress.c\n");
+  internal_test_round_trip();
+  internal_test_zlib_round_trip();
+  internal_test_compress_validation();
+  internal_test_compress_overflow();
+  internal_test_decompress_validation();
   return 0;
 }

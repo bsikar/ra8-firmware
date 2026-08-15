@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_io_blockdev.h"
@@ -48,8 +49,27 @@ static ra8_fs_mount_t*             s_mnt;
 
 /**
  * @brief Build a fresh FAT16 volume with one seeded file and return its mount.
+ *
+ * @details Reclaims the preceding fixture mount, reformats the fixed RAM disk,
+ *          mounts it through the block-device bridge, and seeds HELLO.BIN
+ *          with a deterministic ascending-byte payload.
+ *
+ * @return The mount produced by ::ra8_fs_mount.
+ * @retval nullptr Formatting or mounting did not produce a mount.
+ * @retval non-NULL The fresh volume is mounted and contains the seeded file.
+ *
+ * @pre The file-scope disk and block-device fixtures are exclusively owned by
+ *      this single-threaded test executable.
+ * @pre ::s_disk holds ::k_t_disk_blocks complete logical blocks.
+ * @post Any preceding ::s_mnt mount is released before the disk is reformatted.
+ * @post ::s_mnt contains the current mount result; on success HELLO.BIN
+ *       contains exactly ::k_t_payload deterministic bytes.
+ *
+ * @note This fixture deliberately ignores intermediate status values so each
+ *       caller can assert the observable VFS contract under test.
+ * @since 0.1.0
  */
-static ra8_fs_mount_t* setup_volume(void)
+RA8_INTERNAL static ra8_fs_mount_t* internal_setup_volume(void)
 {
   if (s_mnt != nullptr) {
     (void)ra8_fs_unmount(s_mnt); /* ra8_fs has only 2 mount slots -- free the prior one */
@@ -74,13 +94,12 @@ static ra8_fs_mount_t* setup_volume(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- mount rejects NULL, bad names, duplicates,
- * and a full table via independent single-condition guards)
- */
-static void test_mount_table(void)
+ * and a full table via independent single-condition guards) @brief Verify mount table behavior. @details Executes the mount table scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mount_table(void)
 {
   TEST_BEGIN("vfs mount table");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_init());
-  ra8_fs_mount_t* m = setup_volume();
+  ra8_fs_mount_t* m = internal_setup_volume();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_vfs_mount(nullptr, m));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_vfs_mount("sd", nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_io_vfs_mount("a:b", m)); /* reserved ':' */
@@ -98,13 +117,12 @@ static void test_mount_table(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- open + read-back over a named mount, and
- * a path with no name: prefix is rejected)
- */
-static void test_open_read(void)
+ * a path with no name: prefix is rejected) @brief Verify open read behavior. @details Executes the open read scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_open_read(void)
 {
   TEST_BEGIN("vfs open/read");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_init());
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_mount("sd", setup_volume()));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_mount("sd", internal_setup_volume()));
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_vfs_open("sd:/HELLO.BIN", k_ra8_fs_mode_read, nullptr));
   ra8_fs_file_t*  f = nullptr;
@@ -127,13 +145,12 @@ static void test_open_read(void)
  * (no compound decisions under test -- stat reports presence/size, a missing
  * file yields exists==false with ok, and a DIRECTORY reports as one: #609, where
  * the open-based implementation returned every folder as a zero-byte file with a
- * hardcoded `archive` attribute)
- */
-static void test_stat(void)
+ * hardcoded `archive` attribute) @brief Verify stat behavior. @details Executes the stat scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_stat(void)
 {
   TEST_BEGIN("vfs stat");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_init());
-  ra8_fs_mount_t* m = setup_volume();
+  ra8_fs_mount_t* m = internal_setup_volume();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_mount("sd", m));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(m, "/BOOKS"));
 
@@ -174,13 +191,12 @@ static void test_stat(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- rename within a mount succeeds; a
- * cross-mount rename is rejected; unlink removes the file)
- */
-static void test_rename_unlink(void)
+ * cross-mount rename is rejected; unlink removes the file) @brief Verify rename unlink behavior. @details Executes the rename unlink scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_rename_unlink(void)
 {
   TEST_BEGIN("vfs rename/unlink");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_init());
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_mount("sd", setup_volume()));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_mount("sd", internal_setup_volume()));
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_io_vfs_rename("sd:/HELLO.BIN", "ram:/BYE.BIN"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_rename("sd:/HELLO.BIN", "sd:/BYE.BIN"));
@@ -195,8 +211,8 @@ static void test_rename_unlink(void)
   TEST_END("vfs rename/unlink");
 }
 
-/** @brief listdir callback: count entries. */
-static void count_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
+/** @brief listdir callback: count entries. @details Exercises the count cb path with bounded caller-owned fixture state and verifies its documented result. @param[in] name Directory-entry name reported by the callback. @param[in] attr Filesystem attributes reported for the directory entry. @param[in] size Entry or storage size in bytes. @param[in,out] ctx Injected callback context whose ownership remains with the test. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_count_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)name;
   (void)attr;
@@ -209,17 +225,16 @@ static void count_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
  * @par MC/DC:
  * (no compound decisions under test -- listdir visits the seeded file; mkdir
  * creates a real subdirectory that then lists and rejects a duplicate; unmount
- * makes a name stop resolving)
- */
-static void test_listdir_mkdir_unmount(void)
+ * makes a name stop resolving) @brief Verify listdir mkdir unmount behavior. @details Executes the listdir mkdir unmount scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_listdir_mkdir_unmount(void)
 {
   TEST_BEGIN("vfs listdir/mkdir/unmount");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_init());
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_mount("sd", setup_volume()));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_mount("sd", internal_setup_volume()));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_mount("ospi", s_mnt));
 
   uint32_t n = 0;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_listdir("sd:/", count_cb, &n));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_listdir("sd:/", internal_count_cb, &n));
   TEST_ASSERT(n >= 1U);
 
   /* mkdir now creates a real subdirectory (the #158 ra8_fs mkdir work); a fresh
@@ -228,7 +243,7 @@ static void test_listdir_mkdir_unmount(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_mkdir("sd:/SUB"));
   TEST_ASSERT_EQ(k_ra8_err_exists, ra8_io_vfs_mkdir("sd:/SUB"));
   uint32_t m = 0;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_listdir("sd:/SUB", count_cb, &m));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_listdir("sd:/SUB", internal_count_cb, &m));
   TEST_ASSERT_EQ(0U, m);
 
   /* unmount isolation: dropping "sd" leaves "ospi" working */
@@ -246,13 +261,12 @@ static void test_listdir_mkdir_unmount(void)
  * (no compound decisions under test -- rmdir delegates 1:1, so each case maps
  * to exactly one already-covered ra8_fs_rmdir outcome: NULL path, a path with
  * no `name:` prefix, an unknown mount name, a directory that still holds a
- * file, and the removal that succeeds once it is emptied)
- */
-static void test_rmdir(void)
+ * file, and the removal that succeeds once it is emptied) @brief Verify rmdir behavior. @details Executes the rmdir scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_rmdir(void)
 {
   TEST_BEGIN("vfs rmdir");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_init());
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_mount("sd", setup_volume()));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_mount("sd", internal_setup_volume()));
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_vfs_rmdir(nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_io_vfs_rmdir("noprefix"));
@@ -272,12 +286,11 @@ static void test_rmdir(void)
 
 int32_t main(void)
 {
-  test_mount_table();
-  test_open_read();
-  test_stat();
-  test_rename_unlink();
-  test_listdir_mkdir_unmount();
-  test_rmdir();
-  (void)fprintf(stderr, "[OK  ] test_ra8_io_vfs.c\n");
+  internal_test_mount_table();
+  internal_test_open_read();
+  internal_test_stat();
+  internal_test_rename_unlink();
+  internal_test_listdir_mkdir_unmount();
+  internal_test_rmdir();
   return 0;
 }

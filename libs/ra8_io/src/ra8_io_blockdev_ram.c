@@ -65,7 +65,8 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ram_bounds(const ra8_io_blockdev_ram_state_t* st, uint32_t lba, uint32_t count)
+RA8_INTERNAL static ra8_err_t
+internal_ram_bounds(const ra8_io_blockdev_ram_state_t* st, uint32_t lba, uint32_t count)
 {
   if (count > st->block_count) {
     return k_ra8_err_out_of_range;
@@ -103,12 +104,13 @@ static ra8_err_t ram_bounds(const ra8_io_blockdev_ram_state_t* st, uint32_t lba,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ram_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_ram_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
   const ra8_io_blockdev_ram_state_t* st = (const ra8_io_blockdev_ram_state_t*)ctx;
-  const ra8_err_t                    b  = ram_bounds(st, lba, count);
+  const ra8_err_t                    b  = internal_ram_bounds(st, lba, count);
   if (b != k_ra8_ok) {
     return b;
   }
@@ -146,7 +148,8 @@ static ra8_err_t ram_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ram_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_ram_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
@@ -154,7 +157,7 @@ static ra8_err_t ram_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   if (st->read_only) {
     return k_ra8_err_not_supported;
   }
-  const ra8_err_t b = ram_bounds(st, lba, count);
+  const ra8_err_t b = internal_ram_bounds(st, lba, count);
   if (b != k_ra8_ok) {
     return b;
   }
@@ -191,14 +194,14 @@ static ra8_err_t ram_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ram_erase(void* ctx, uint32_t lba, uint32_t count)
+RA8_INTERNAL static ra8_err_t internal_ram_erase(void* ctx, uint32_t lba, uint32_t count)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   ra8_io_blockdev_ram_state_t* st = (ra8_io_blockdev_ram_state_t*)ctx;
   if (st->read_only) {
     return k_ra8_err_not_supported;
   }
-  const ra8_err_t b = ram_bounds(st, lba, count);
+  const ra8_err_t b = internal_ram_bounds(st, lba, count);
   if (b != k_ra8_ok) {
     return b;
   }
@@ -232,7 +235,7 @@ static ra8_err_t ram_erase(void* ctx, uint32_t lba, uint32_t count)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ram_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
+RA8_INTERNAL static ra8_err_t internal_ram_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -248,11 +251,11 @@ static ra8_err_t ram_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
 }
 
 /** @brief RAM backend vtable. `sync` is NULL: writes hit memory immediately. */
-static const ra8_io_blockdev_iface_t k_ram_iface = {
-  .read     = ram_read,
-  .write    = ram_write,
-  .erase    = ram_erase,
-  .get_caps = ram_get_caps,
+static const ra8_io_blockdev_iface_t s_ram_iface = {
+  .read     = internal_ram_read,
+  .write    = internal_ram_write,
+  .erase    = internal_ram_erase,
+  .get_caps = internal_ram_get_caps,
   .sync     = nullptr,
 };
 
@@ -271,7 +274,7 @@ ra8_err_t ra8_io_blockdev_ram_init(ra8_io_blockdev_t*           bd,
   state->storage     = storage;
   state->block_count = block_count;
   state->read_only   = read_only;
-  bd->iface          = &k_ram_iface;
+  bd->iface          = &s_ram_iface;
   bd->ctx            = state;
   return k_ra8_ok;
 }

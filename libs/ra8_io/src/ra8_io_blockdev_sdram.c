@@ -61,7 +61,7 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t sdram_max_blocks(void)
+RA8_INTERNAL static uint32_t internal_sdram_max_blocks(void)
 {
   return (uint32_t)k_ra8_sdram_size_bytes / (uint32_t)k_ra8_io_block_size_bytes;
 }
@@ -75,7 +75,7 @@ ra8_err_t ra8_io_blockdev_sdram_init(ra8_io_blockdev_t*           bd,
   if (block_count < (uint32_t)k_ra8_io_sdram_min_blocks) {
     return k_ra8_err_invalid_size;
   }
-  if (block_count > sdram_max_blocks()) {
+  if (block_count > internal_sdram_max_blocks()) {
     return k_ra8_err_invalid_size;
   }
   RA8_RETURN_ON_ERROR(ra8_sdramc_init(), s_tag, "sdram bring-up");

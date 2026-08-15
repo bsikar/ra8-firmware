@@ -65,7 +65,7 @@ typedef struct {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static mz_bool compress_put(const void* buf, int len, void* user)
+RA8_INTERNAL static mz_bool internal_compress_put(const void* buf, int len, void* user)
 {
   compress_ctx_t* c = (compress_ctx_t*)user;
   const uint32_t  n = (uint32_t)len;
@@ -107,11 +107,11 @@ static mz_bool compress_put(const void* buf, int len, void* user)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ra8_io_compress_validate(const uint8_t*  src,
-                                          const uint8_t*  out,
-                                          const void*     scratch,
-                                          uint32_t        scratch_len,
-                                          const uint32_t* out_len)
+RA8_INTERNAL static ra8_err_t internal_ra8_io_compress_validate(const uint8_t*  src,
+                                                                const uint8_t*  out,
+                                                                const void*     scratch,
+                                                                uint32_t        scratch_len,
+                                                                const uint32_t* out_len)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -152,14 +152,14 @@ static ra8_err_t ra8_io_compress_validate(const uint8_t*  src,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ra8_io_compress_drive(tdefl_compressor* d,
-                                       compress_ctx_t*   ctx,
-                                       const uint8_t*    src,
-                                       uint32_t          src_len,
-                                       int               flags,
-                                       uint32_t*         out_len)
+RA8_INTERNAL static ra8_err_t internal_ra8_io_compress_drive(tdefl_compressor* d,
+                                                             compress_ctx_t*   ctx,
+                                                             const uint8_t*    src,
+                                                             uint32_t          src_len,
+                                                             int               flags,
+                                                             uint32_t*         out_len)
 {
-  if (tdefl_init(d, compress_put, ctx, flags) != TDEFL_STATUS_OKAY) {
+  if (tdefl_init(d, internal_compress_put, ctx, flags) != TDEFL_STATUS_OKAY) {
     return k_ra8_fail;
   }
   const tdefl_status st = tdefl_compress_buffer(d, src, (size_t)src_len, TDEFL_FINISH);
@@ -181,13 +181,18 @@ ra8_err_t ra8_io_compress(const uint8_t* src,
                           uint32_t       scratch_len,
                           uint32_t*      out_len)
 {
-  const ra8_err_t vr = ra8_io_compress_validate(src, out, scratch, scratch_len, out_len);
+  const ra8_err_t vr = internal_ra8_io_compress_validate(src, out, scratch, scratch_len, out_len);
   if (vr != k_ra8_ok) {
     return vr;
   }
   tdefl_compressor* d   = (tdefl_compressor*)scratch;
   compress_ctx_t    ctx = {.out = out, .cap = out_cap, .len = 0, .overflow = 0};
-  return ra8_io_compress_drive(d, &ctx, src, src_len, (int)TDEFL_DEFAULT_MAX_PROBES, out_len);
+  return internal_ra8_io_compress_drive(d,
+                                        &ctx,
+                                        src,
+                                        src_len,
+                                        (int)TDEFL_DEFAULT_MAX_PROBES,
+                                        out_len);
 }
 
 ra8_err_t ra8_io_compress_zlib(const uint8_t* src,
@@ -198,14 +203,14 @@ ra8_err_t ra8_io_compress_zlib(const uint8_t* src,
                                uint32_t       scratch_len,
                                uint32_t*      out_len)
 {
-  const ra8_err_t vr = ra8_io_compress_validate(src, out, scratch, scratch_len, out_len);
+  const ra8_err_t vr = internal_ra8_io_compress_validate(src, out, scratch, scratch_len, out_len);
   if (vr != k_ra8_ok) {
     return vr;
   }
   tdefl_compressor* d     = (tdefl_compressor*)scratch;
   compress_ctx_t    ctx   = {.out = out, .cap = out_cap, .len = 0, .overflow = 0};
   const int         flags = (int)TDEFL_DEFAULT_MAX_PROBES | (int)TDEFL_WRITE_ZLIB_HEADER;
-  return ra8_io_compress_drive(d, &ctx, src, src_len, flags, out_len);
+  return internal_ra8_io_compress_drive(d, &ctx, src, src_len, flags, out_len);
 }
 
 ra8_err_t ra8_io_decompress(const uint8_t* src,

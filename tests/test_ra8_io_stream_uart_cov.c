@@ -36,6 +36,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_io_stream.h"
@@ -93,9 +94,8 @@ typedef enum : uint8_t {
  * @post All other MMIO registers read zero.
  *
  * @note Not thread-safe; single-threaded test context.
- * @since 0.1.0
- */
-static void fixture_seed_tdre(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. */
+RA8_INTERNAL static void internal_fixture_seed_tdre(void)
 {
   ra8_fake_mmap_reset();
   volatile r_sci_regs_t* reg = ra8_sci((uint8_t)k_uart_cov_channel);
@@ -120,7 +120,7 @@ static void fixture_seed_tdre(void)
  *
  * @par MC/DC:
  * Decision: `if (out_written != nullptr)` -- Vector A (true arm).
- * Pairs with test_write_success_null_out_written (Vector B, false arm)
+ * Pairs with internal_test_write_success_null_out_written (Vector B, false arm)
  * for full MC/DC coverage of the single-condition decision.
  *
  * @pre ra8_fake_mmap is installed (constructor, runs before main).
@@ -131,7 +131,7 @@ static void fixture_seed_tdre(void)
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_write_success_with_out_written(void)
+RA8_INTERNAL static void internal_test_write_success_with_out_written(void)
 {
   TEST_BEGIN("uart write success: out_written supplied");
   ra8_fake_mmap_reset();
@@ -161,12 +161,12 @@ static void test_write_success_with_out_written(void)
  * @details
  * Exercises the same success path (lines 64, 67) but skips the
  * out_written block (lines 65-66) by passing nullptr.  Together with
- * test_write_success_with_out_written this covers both outcomes of the
+ * internal_test_write_success_with_out_written this covers both outcomes of the
  * `if (out_written != nullptr)` decision.
  *
  * @par MC/DC:
  * Decision: `if (out_written != nullptr)` -- Vector B (false arm).
- * Pairs with test_write_success_with_out_written (Vector A, true arm).
+ * Pairs with internal_test_write_success_with_out_written (Vector A, true arm).
  *
  * @pre ra8_fake_mmap is installed (constructor, runs before main).
  * @pre SCI channel 0 is a valid channel (0..9).
@@ -176,7 +176,7 @@ static void test_write_success_with_out_written(void)
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_write_success_null_out_written(void)
+RA8_INTERNAL static void internal_test_write_success_null_out_written(void)
 {
   TEST_BEGIN("uart write success: out_written nullptr");
   ra8_fake_mmap_reset();
@@ -218,10 +218,10 @@ static void test_write_success_null_out_written(void)
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_write_one_byte_tdre_seeded(void)
+RA8_INTERNAL static void internal_test_write_one_byte_tdre_seeded(void)
 {
   TEST_BEGIN("uart write one byte: TDRE pre-seeded, out_written supplied");
-  fixture_seed_tdre();
+  internal_fixture_seed_tdre();
 
   ra8_io_stream_t            s     = {};
   ra8_io_stream_uart_state_t state = {};
@@ -261,7 +261,7 @@ static void test_write_one_byte_tdre_seeded(void)
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_flush_uart_stream(void)
+RA8_INTERNAL static void internal_test_flush_uart_stream(void)
 {
   TEST_BEGIN("uart flush: returns ok in off-target mode");
   ra8_fake_mmap_reset();
@@ -299,10 +299,9 @@ static void test_flush_uart_stream(void)
  */
 int32_t main(void)
 {
-  test_write_success_with_out_written();
-  test_write_success_null_out_written();
-  test_write_one_byte_tdre_seeded();
-  test_flush_uart_stream();
-  (void)fprintf(stderr, "[OK  ] test_ra8_io_stream_uart_cov.c\n");
+  internal_test_write_success_with_out_written();
+  internal_test_write_success_null_out_written();
+  internal_test_write_one_byte_tdre_seeded();
+  internal_test_flush_uart_stream();
   return 0;
 }

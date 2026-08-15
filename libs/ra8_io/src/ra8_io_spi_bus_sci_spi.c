@@ -62,7 +62,7 @@ static const char* const s_tag = "ra8_io_spi_bus_sci_spi";
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t sci_spi_xfer8(void* ctx, uint8_t tx, uint8_t* rx)
+RA8_INTERNAL static ra8_err_t internal_sci_spi_xfer8(void* ctx, uint8_t tx, uint8_t* rx)
 {
   return ra8_sci_spi_xfer8((uint8_t)(uintptr_t)ctx, tx, rx);
 }
@@ -98,8 +98,11 @@ static ra8_err_t sci_spi_xfer8(void* ctx, uint8_t tx, uint8_t* rx)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-sci_spi_write_read(void* ctx, const void* tx, void* rx, uint32_t len, ra8_spi_bit_width_t width)
+RA8_INTERNAL static ra8_err_t internal_sci_spi_write_read(void*               ctx,
+                                                          const void*         tx,
+                                                          void*               rx,
+                                                          uint32_t            len,
+                                                          ra8_spi_bit_width_t width)
 {
   if (width != k_ra8_spi_width_8) {
     return k_ra8_err_not_supported;
@@ -132,16 +135,17 @@ sci_spi_write_read(void* ctx, const void* tx, void* rx, uint32_t len, ra8_spi_bi
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t sci_spi_set_clock(void* ctx, uint32_t baud_hz, uint32_t pclk_hz)
+RA8_INTERNAL static ra8_err_t
+internal_sci_spi_set_clock(void* ctx, uint32_t baud_hz, uint32_t pclk_hz)
 {
   return ra8_sci_spi_set_clock((uint8_t)(uintptr_t)ctx, baud_hz, pclk_hz);
 }
 
 /** @brief SCI Simple-SPI backend vtable -- every row forwards to `ra8_sci_spi_*`. */
-static const ra8_io_spi_bus_iface_t k_sci_spi_iface = {
-  .xfer8      = sci_spi_xfer8,
-  .write_read = sci_spi_write_read,
-  .set_clock  = sci_spi_set_clock,
+static const ra8_io_spi_bus_iface_t s_sci_spi_iface = {
+  .xfer8      = internal_sci_spi_xfer8,
+  .write_read = internal_sci_spi_write_read,
+  .set_clock  = internal_sci_spi_set_clock,
 };
 
 ra8_err_t ra8_io_spi_bus_bind_sci_spi(ra8_io_spi_bus_t* bus, uint8_t channel)
@@ -150,7 +154,7 @@ ra8_err_t ra8_io_spi_bus_bind_sci_spi(ra8_io_spi_bus_t* bus, uint8_t channel)
   if (channel >= (uint8_t)k_ra8_sci_channel_count) {
     return k_ra8_err_invalid_arg;
   }
-  bus->iface = &k_sci_spi_iface;
+  bus->iface = &s_sci_spi_iface;
   bus->ctx   = (void*)(uintptr_t)channel;
   return k_ra8_ok;
 }

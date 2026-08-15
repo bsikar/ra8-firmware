@@ -56,7 +56,8 @@ static uint32_t s_count;
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t native_mount(const ra8_fs_backend_t* backend, void** out_mount)
+RA8_INTERNAL static ra8_err_t internal_native_mount(const ra8_fs_backend_t* backend,
+                                                    void**                  out_mount)
 {
   ra8_fs_mount_t* mount = nullptr;
   const ra8_err_t e     = ra8_fs_mount(backend, &mount);
@@ -82,7 +83,7 @@ static ra8_err_t native_mount(const ra8_fs_backend_t* backend, void** out_mount)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t native_unmount(void* mount_ctx)
+RA8_INTERNAL static ra8_err_t internal_native_unmount(void* mount_ctx)
 {
   return ra8_fs_unmount((ra8_fs_mount_t*)mount_ctx);
 }
@@ -105,7 +106,8 @@ static ra8_err_t native_unmount(void* mount_ctx)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t native_open(void* mount_ctx, const char* path, ra8_fs_mode_t mode, void** out_file)
+RA8_INTERNAL static ra8_err_t
+internal_native_open(void* mount_ctx, const char* path, ra8_fs_mode_t mode, void** out_file)
 {
   ra8_fs_file_t*  file = nullptr;
   const ra8_err_t e    = ra8_fs_open((ra8_fs_mount_t*)mount_ctx, path, mode, &file);
@@ -131,7 +133,7 @@ static ra8_err_t native_open(void* mount_ctx, const char* path, ra8_fs_mode_t mo
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t native_close(void* file_ctx)
+RA8_INTERNAL static ra8_err_t internal_native_close(void* file_ctx)
 {
   return ra8_fs_close((ra8_fs_file_t*)file_ctx);
 }
@@ -154,7 +156,8 @@ static ra8_err_t native_close(void* file_ctx)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t native_read(void* file_ctx, void* buf, uint32_t bytes, uint32_t* out_read)
+RA8_INTERNAL static ra8_err_t
+internal_native_read(void* file_ctx, void* buf, uint32_t bytes, uint32_t* out_read)
 {
   return ra8_fs_read((ra8_fs_file_t*)file_ctx, (uint8_t*)buf, bytes, out_read);
 }
@@ -176,7 +179,7 @@ static ra8_err_t native_read(void* file_ctx, void* buf, uint32_t bytes, uint32_t
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t native_write(void* file_ctx, const void* buf, uint32_t bytes)
+RA8_INTERNAL static ra8_err_t internal_native_write(void* file_ctx, const void* buf, uint32_t bytes)
 {
   return ra8_fs_write((ra8_fs_file_t*)file_ctx, (const uint8_t*)buf, bytes);
 }
@@ -197,7 +200,7 @@ static ra8_err_t native_write(void* file_ctx, const void* buf, uint32_t bytes)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t native_seek(void* file_ctx, uint64_t offset_bytes)
+RA8_INTERNAL static ra8_err_t internal_native_seek(void* file_ctx, uint64_t offset_bytes)
 {
   return ra8_fs_seek((ra8_fs_file_t*)file_ctx, offset_bytes);
 }
@@ -218,7 +221,7 @@ static ra8_err_t native_seek(void* file_ctx, uint64_t offset_bytes)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t native_tell(const void* file_ctx, uint64_t* out_offset)
+RA8_INTERNAL static ra8_err_t internal_native_tell(const void* file_ctx, uint64_t* out_offset)
 {
   return ra8_fs_tell((const ra8_fs_file_t*)file_ctx, out_offset);
 }
@@ -239,7 +242,7 @@ static ra8_err_t native_tell(const void* file_ctx, uint64_t* out_offset)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t native_size(const void* file_ctx, uint64_t* out_bytes)
+RA8_INTERNAL static ra8_err_t internal_native_size(const void* file_ctx, uint64_t* out_bytes)
 {
   return ra8_fs_size((const ra8_fs_file_t*)file_ctx, out_bytes);
 }
@@ -261,7 +264,8 @@ static ra8_err_t native_size(const void* file_ctx, uint64_t* out_bytes)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t native_stat(void* mount_ctx, const char* path, ra8_fs_stat_t* out)
+RA8_INTERNAL static ra8_err_t
+internal_native_stat(void* mount_ctx, const char* path, ra8_fs_stat_t* out)
 {
   return ra8_fs_stat((ra8_fs_mount_t*)mount_ctx, path, out);
 }
@@ -284,10 +288,103 @@ static ra8_err_t native_stat(void* mount_ctx, const char* path, ra8_fs_stat_t* o
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-native_listdir(void* mount_ctx, const char* path, ra8_fs_listdir_cb_t cb, void* cb_ctx)
+RA8_INTERNAL static ra8_err_t
+internal_native_listdir(void* mount_ctx, const char* path, ra8_fs_listdir_cb_t cb, void* cb_ctx)
 {
-  return ra8_fs_listdir((ra8_fs_mount_t*)mount_ctx, path, cb, cb_ctx);
+  ra8_fs_dir_t directory = {};
+  ra8_err_t    err       = ra8_fs_dir_open((ra8_fs_mount_t*)mount_ctx, path, &directory);
+  while (err == k_ra8_ok) {
+    ra8_fs_dirent_t entry   = {};
+    bool            present = false;
+    err                     = ra8_fs_dir_next(&directory, &entry, &present);
+    if ((err != k_ra8_ok) || !present) {
+      break;
+    }
+    cb(entry.name, entry.attr, entry.size_bytes, cb_ctx);
+  }
+  if (directory.is_open) {
+    const ra8_err_t closed = ra8_fs_dir_close(&directory);
+    if (err == k_ra8_ok) {
+      err = closed;
+    }
+  }
+  return err;
+}
+
+/**
+ * @brief Open one native incremental directory cursor.
+ * @details Validates the opaque extent, clears the native cursor object, and
+ *          delegates path resolution to the mounted FAT/exFAT implementation.
+ * @param[in,out] mount_ctx Native mounted context.
+ * @param[in] path Directory path.
+ * @param[out] directory_state Caller-owned native cursor workspace.
+ * @param[in] state_bytes Accessible workspace extent.
+ * @return Workspace or native open status.
+ * @retval k_ra8_ok The workspace owns one open native cursor.
+ * @retval k_ra8_err_no_mem The supplied workspace is too small.
+ * @retval k_ra8_err_* Native cursor-open failure.
+ * @pre Required pointers are non-NULL.
+ * @pre @p state_bytes describes the writable extent at @p directory_state.
+ * @post Success holds no filesystem lock.
+ * @post Failure leaves no native cursor resource retained by this adapter.
+ * @note No format-private allocation occurs.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+RA8_INTERNAL static ra8_err_t internal_native_dir_open(void*       mount_ctx,
+                                                       const char* path,
+                                                       void*       directory_state,
+                                                       uint32_t    state_bytes)
+{
+  if (state_bytes < (uint32_t)sizeof(ra8_fs_dir_t)) {
+    return k_ra8_err_no_mem;
+  }
+  ra8_fs_dir_t* directory = (ra8_fs_dir_t*)directory_state;
+  *directory              = (ra8_fs_dir_t){};
+  return ra8_fs_dir_open((ra8_fs_mount_t*)mount_ctx, path, directory);
+}
+
+/**
+ * @brief Copy one native directory-cursor entry without retaining a lock.
+ * @details Delegates one incremental step to the caller-owned native cursor.
+ * @param[in,out] directory_state Open native cursor workspace.
+ * @param[out] out Stable copied native entry.
+ * @param[out] out_entry True when @p out contains an entry; false at clean end.
+ * @return Native cursor iteration status.
+ * @retval k_ra8_ok One entry was copied or clean end was observed.
+ * @retval k_ra8_err_* Native media, corruption, or lifecycle failure.
+ * @pre All pointers are non-NULL.
+ * @pre @p directory_state owns an open native cursor.
+ * @post No filesystem lock remains held.
+ * @post Success with @p out_entry true fully initializes @p out.
+ * @note The cursor remains caller-owned across calls.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+RA8_INTERNAL static ra8_err_t
+internal_native_dir_next(void* directory_state, ra8_fs_dirent_t* out, bool* out_entry)
+{
+  return ra8_fs_dir_next((ra8_fs_dir_t*)directory_state, out, out_entry);
+}
+
+/**
+ * @brief Close and consume one native directory cursor.
+ * @details Delegates lifecycle teardown to the native filesystem cursor.
+ * @param[in,out] directory_state Open native cursor workspace.
+ * @return Native cursor-close status.
+ * @retval k_ra8_ok The native cursor was consumed.
+ * @retval k_ra8_err_* Native cursor lifecycle failure.
+ * @pre @p directory_state is non-NULL.
+ * @pre The workspace owns one open native cursor.
+ * @post Success clears the native cursor lifecycle state.
+ * @post No filesystem lock remains held.
+ * @note Caller storage itself is never freed or retained.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+RA8_INTERNAL static ra8_err_t internal_native_dir_close(void* directory_state)
+{
+  return ra8_fs_dir_close((ra8_fs_dir_t*)directory_state);
 }
 
 /**
@@ -306,7 +403,7 @@ native_listdir(void* mount_ctx, const char* path, ra8_fs_listdir_cb_t cb, void* 
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t native_unlink(void* mount_ctx, const char* path)
+RA8_INTERNAL static ra8_err_t internal_native_unlink(void* mount_ctx, const char* path)
 {
   return ra8_fs_unlink((ra8_fs_mount_t*)mount_ctx, path);
 }
@@ -328,7 +425,8 @@ static ra8_err_t native_unlink(void* mount_ctx, const char* path)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t native_rename(void* mount_ctx, const char* old_path, const char* new_path)
+RA8_INTERNAL static ra8_err_t
+internal_native_rename(void* mount_ctx, const char* old_path, const char* new_path)
 {
   return ra8_fs_rename((ra8_fs_mount_t*)mount_ctx, old_path, new_path);
 }
@@ -349,7 +447,7 @@ static ra8_err_t native_rename(void* mount_ctx, const char* old_path, const char
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t native_mkdir(void* mount_ctx, const char* path)
+RA8_INTERNAL static ra8_err_t internal_native_mkdir(void* mount_ctx, const char* path)
 {
   return ra8_fs_mkdir((ra8_fs_mount_t*)mount_ctx, path);
 }
@@ -370,7 +468,7 @@ static ra8_err_t native_mkdir(void* mount_ctx, const char* path)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t native_rmdir(void* mount_ctx, const char* path)
+RA8_INTERNAL static ra8_err_t internal_native_rmdir(void* mount_ctx, const char* path)
 {
   return ra8_fs_rmdir((ra8_fs_mount_t*)mount_ctx, path);
 }
@@ -391,7 +489,7 @@ static ra8_err_t native_rmdir(void* mount_ctx, const char* path)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t native_free_space(void* mount_ctx, ra8_fs_space_t* out)
+RA8_INTERNAL static ra8_err_t internal_native_free_space(void* mount_ctx, ra8_fs_space_t* out)
 {
   return ra8_fs_free_space((ra8_fs_mount_t*)mount_ctx, out);
 }
@@ -411,7 +509,7 @@ static ra8_err_t native_free_space(void* mount_ctx, ra8_fs_space_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool exfat_probe(const ra8_fs_backend_t* backend)
+RA8_INTERNAL static bool internal_exfat_probe(const ra8_fs_backend_t* backend)
 {
   ra8_fs_type_t type = k_ra8_fs_type_unknown;
   if (ra8_fs_probe(backend, &type) != k_ra8_ok) {
@@ -435,7 +533,7 @@ static bool exfat_probe(const ra8_fs_backend_t* backend)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool fat_probe(const ra8_fs_backend_t* backend)
+RA8_INTERNAL static bool internal_fat_probe(const ra8_fs_backend_t* backend)
 {
   ra8_fs_type_t type = k_ra8_fs_type_unknown;
   if (ra8_fs_probe(backend, &type) != k_ra8_ok) {
@@ -451,89 +549,103 @@ static bool fat_probe(const ra8_fs_backend_t* backend)
 }
 
 /** @brief Complete native operation table; no explicit durable-sync seam exists. */
-static const ra8_io_fsfmt_ops_t k_native_ops = {
-  .probe      = fat_probe,
-  .mount      = native_mount,
-  .unmount    = native_unmount,
-  .open       = native_open,
-  .close      = native_close,
-  .read       = native_read,
-  .write      = native_write,
-  .seek       = native_seek,
-  .tell       = native_tell,
-  .size       = native_size,
+static const ra8_io_fsfmt_ops_t s_native_ops = {
+  .probe      = internal_fat_probe,
+  .mount      = internal_native_mount,
+  .unmount    = internal_native_unmount,
+  .open       = internal_native_open,
+  .close      = internal_native_close,
+  .read       = internal_native_read,
+  .write      = internal_native_write,
+  .seek       = internal_native_seek,
+  .tell       = internal_native_tell,
+  .size       = internal_native_size,
   .sync       = nullptr,
-  .stat       = native_stat,
-  .listdir    = native_listdir,
-  .unlink     = native_unlink,
-  .rename     = native_rename,
-  .mkdir      = native_mkdir,
-  .rmdir      = native_rmdir,
-  .free_space = native_free_space,
+  .stat       = internal_native_stat,
+  .listdir    = internal_native_listdir,
+  .dir_open   = internal_native_dir_open,
+  .dir_next   = internal_native_dir_next,
+  .dir_close  = internal_native_dir_close,
+  .unlink     = internal_native_unlink,
+  .rename     = internal_native_rename,
+  .mkdir      = internal_native_mkdir,
+  .rmdir      = internal_native_rmdir,
+  .free_space = internal_native_free_space,
 };
 
 /** @brief Native FAT12/16/32 descriptor. */
-static const ra8_io_fsfmt_t k_fmt_fat = {
+static const ra8_io_fsfmt_t s_fmt_fat = {
   .name = "fat",
   .caps =
     {
-      .max_name_len             = (uint16_t)k_fat_max_name_utf8,
-      .read_only                = false,
-      .supports_mkdir           = true,
-      .supports_rmdir           = true,
-      .supports_streaming_write = true,
-      .supports_timestamps      = true,
-      .supports_free_space      = true,
-      .supports_sync            = false,
-      .atomic_rename            = false,
-      .durable_sync             = false,
-      .unicode_names            = true,
-      .case_sensitive           = false,
+      .directory_workspace_bytes = sizeof(ra8_fs_dir_t),
+      .max_name_len              = (uint16_t)k_fat_max_name_utf8,
+      .max_open_directories      = UINT16_MAX,
+      .directory_workspace_align = (uint8_t)_Alignof(ra8_fs_dir_t),
+      .read_only                 = false,
+      .supports_mkdir            = true,
+      .supports_rmdir            = true,
+      .supports_streaming_write  = true,
+      .supports_timestamps       = true,
+      .supports_free_space       = true,
+      .supports_dir_cursor       = true,
+      .supports_sync             = false,
+      .atomic_rename             = false,
+      .durable_sync              = false,
+      .unicode_names             = true,
+      .case_sensitive            = false,
     },
-  .ops = &k_native_ops,
+  .ops = &s_native_ops,
 };
 
 /** @brief Native exFAT descriptor; shares byte-identical ra8_fs dispatch. */
-static const ra8_io_fsfmt_ops_t k_exfat_ops = {
-  .probe      = exfat_probe,
-  .mount      = native_mount,
-  .unmount    = native_unmount,
-  .open       = native_open,
-  .close      = native_close,
-  .read       = native_read,
-  .write      = native_write,
-  .seek       = native_seek,
-  .tell       = native_tell,
-  .size       = native_size,
+static const ra8_io_fsfmt_ops_t s_exfat_ops = {
+  .probe      = internal_exfat_probe,
+  .mount      = internal_native_mount,
+  .unmount    = internal_native_unmount,
+  .open       = internal_native_open,
+  .close      = internal_native_close,
+  .read       = internal_native_read,
+  .write      = internal_native_write,
+  .seek       = internal_native_seek,
+  .tell       = internal_native_tell,
+  .size       = internal_native_size,
   .sync       = nullptr,
-  .stat       = native_stat,
-  .listdir    = native_listdir,
-  .unlink     = native_unlink,
-  .rename     = native_rename,
-  .mkdir      = native_mkdir,
-  .rmdir      = native_rmdir,
-  .free_space = native_free_space,
+  .stat       = internal_native_stat,
+  .listdir    = internal_native_listdir,
+  .dir_open   = internal_native_dir_open,
+  .dir_next   = internal_native_dir_next,
+  .dir_close  = internal_native_dir_close,
+  .unlink     = internal_native_unlink,
+  .rename     = internal_native_rename,
+  .mkdir      = internal_native_mkdir,
+  .rmdir      = internal_native_rmdir,
+  .free_space = internal_native_free_space,
 };
 
 /** @brief Native exFAT descriptor. */
-static const ra8_io_fsfmt_t k_fmt_exfat = {
+static const ra8_io_fsfmt_t s_fmt_exfat = {
   .name = "exfat",
   .caps =
     {
-      .max_name_len             = (uint16_t)k_exfat_max_name_utf8,
-      .read_only                = false,
-      .supports_mkdir           = true,
-      .supports_rmdir           = true,
-      .supports_streaming_write = true,
-      .supports_timestamps      = true,
-      .supports_free_space      = true,
-      .supports_sync            = false,
-      .atomic_rename            = false,
-      .durable_sync             = false,
-      .unicode_names            = true,
-      .case_sensitive           = false,
+      .directory_workspace_bytes = sizeof(ra8_fs_dir_t),
+      .max_name_len              = (uint16_t)k_exfat_max_name_utf8,
+      .max_open_directories      = UINT16_MAX,
+      .directory_workspace_align = (uint8_t)_Alignof(ra8_fs_dir_t),
+      .read_only                 = false,
+      .supports_mkdir            = true,
+      .supports_rmdir            = true,
+      .supports_streaming_write  = true,
+      .supports_timestamps       = true,
+      .supports_free_space       = true,
+      .supports_dir_cursor       = true,
+      .supports_sync             = false,
+      .atomic_rename             = false,
+      .durable_sync              = false,
+      .unicode_names             = true,
+      .case_sensitive            = false,
     },
-  .ops = &k_exfat_ops,
+  .ops = &s_exfat_ops,
 };
 
 /**
@@ -553,6 +665,15 @@ static const ra8_io_fsfmt_t k_fmt_exfat = {
 RA8_INTERNAL
 static ra8_err_t internal_validate_caps(const ra8_io_fsfmt_t* fmt)
 {
+  if (fmt->caps.supports_dir_cursor) {
+    const uint8_t align = fmt->caps.directory_workspace_align;
+    if ((fmt->ops->dir_open == nullptr) || (fmt->ops->dir_next == nullptr) ||
+        (fmt->ops->dir_close == nullptr) || (fmt->caps.directory_workspace_bytes == 0U) ||
+        (fmt->caps.max_open_directories == 0U) || (align == 0U) ||
+        (((uint32_t)align & ((uint32_t)align - 1U)) != 0U)) {
+      return k_ra8_err_invalid_arg;
+    }
+  }
   if (fmt->caps.supports_streaming_write) {
     if (fmt->ops->write == nullptr) {
       return k_ra8_err_invalid_arg;
@@ -594,8 +715,8 @@ static ra8_err_t internal_validate_caps(const ra8_io_fsfmt_t* fmt)
 ra8_err_t ra8_io_fsfmt_init(void)
 {
   s_count = 0U;
-  RA8_RETURN_ON_ERROR(ra8_io_fsfmt_register(&k_fmt_exfat), s_tag, "register exfat");
-  RA8_RETURN_ON_ERROR(ra8_io_fsfmt_register(&k_fmt_fat), s_tag, "register fat");
+  RA8_RETURN_ON_ERROR(ra8_io_fsfmt_register(&s_fmt_exfat), s_tag, "register exfat");
+  RA8_RETURN_ON_ERROR(ra8_io_fsfmt_register(&s_fmt_fat), s_tag, "register fat");
   return k_ra8_ok;
 }
 
@@ -628,19 +749,19 @@ ra8_err_t ra8_io_fsfmt_get_builtin(ra8_fs_type_t type, const ra8_io_fsfmt_t** ou
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   if (type == k_ra8_fs_type_exfat) {
-    *out = &k_fmt_exfat;
+    *out = &s_fmt_exfat;
     return k_ra8_ok;
   }
   if (type == k_ra8_fs_type_fat12) {
-    *out = &k_fmt_fat;
+    *out = &s_fmt_fat;
     return k_ra8_ok;
   }
   if (type == k_ra8_fs_type_fat16) {
-    *out = &k_fmt_fat;
+    *out = &s_fmt_fat;
     return k_ra8_ok;
   }
   if (type == k_ra8_fs_type_fat32) {
-    *out = &k_fmt_fat;
+    *out = &s_fmt_fat;
     return k_ra8_ok;
   }
   return k_ra8_err_invalid_arg;

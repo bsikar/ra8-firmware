@@ -23,7 +23,7 @@
 #include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
-#include "ra8_io_stream_internal.h"
+#include "ra8_io_stream_backend.h"
 
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_io_stream_ram";
@@ -54,8 +54,8 @@ static const char* const s_tag = "ra8_io_stream_ram";
  *
  * @since 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t ram_write(void* ctx, const uint8_t* buf, uint32_t len, uint32_t* out_written)
+RA8_INTERNAL static ra8_err_t
+internal_ram_write(void* ctx, const uint8_t* buf, uint32_t len, uint32_t* out_written)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
@@ -72,8 +72,8 @@ static ra8_err_t ram_write(void* ctx, const uint8_t* buf, uint32_t len, uint32_t
 }
 
 /** @brief RAM stream sink vtable. `flush` is NULL: writes land in memory. */
-static const ra8_io_stream_iface_t k_ram_iface = {
-  .write = ram_write,
+static const ra8_io_stream_iface_t s_ram_iface = {
+  .write = internal_ram_write,
   .flush = nullptr,
 };
 
@@ -91,9 +91,7 @@ ra8_err_t ra8_io_stream_ram_init(ra8_io_stream_t*           s,
   state->buf = buf;
   state->cap = cap;
   state->len = 0;
-  s->iface   = &k_ram_iface;
-  s->ctx     = state;
-  return k_ra8_ok;
+  return ra8_io_stream_bind(s, &s_ram_iface, state);
 }
 
 ra8_err_t ra8_io_stream_ram_used(const ra8_io_stream_ram_state_t* state, uint32_t* out_used)

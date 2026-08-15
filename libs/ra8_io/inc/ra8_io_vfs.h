@@ -65,6 +65,14 @@ typedef enum : uint8_t {
  */
 typedef struct ra8_io_vfs_file ra8_io_vfs_file_t;
 
+/** @brief Caller-owned format-neutral directory cursor. */
+typedef struct {
+  const ra8_io_fsfmt_t* format;      /**< Format owning the cursor state. */
+  void*                 state;       /**< Caller-supplied format state.   */
+  uint32_t              state_bytes; /**< Accessible state extent.        */
+  bool                  is_open;     /**< VFS lifecycle guard.            */
+} ra8_io_vfs_dir_t;
+
 /**
  * @struct ra8_io_vfs_stat_t
  * @brief Metadata returned by ::ra8_io_vfs_stat.
@@ -371,6 +379,46 @@ ra8_io_vfs_file_write(ra8_io_vfs_file_t* file, const void* buf, uint32_t bytes);
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_io_vfs_listdir(const char* path, ra8_fs_listdir_cb_t cb, void* ctx);
+
+/**
+ * @brief Query cursor workspace requirements for a qualified directory path.
+ * @param[in] path Qualified VFS path whose mount selects the format.
+ * @param[out] out_bytes Required caller workspace bytes.
+ * @param[out] out_align Required power-of-two workspace alignment.
+ * @param[out] out_max_open Maximum concurrently open cursors.
+ * @return Resolution or capability status.
+ * @retval k_ra8_err_not_supported The mounted format declines cursor support.
+ * @pre Output pointers and @p path are non-NULL.
+ * @post Success reports immutable registered-format facts.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_io_vfs_dir_requirements(const char* path,
+                                                    uint32_t*   out_bytes,
+                                                    uint8_t*    out_align,
+                                                    uint16_t*   out_max_open);
+
+/**
+ * @brief Open a format-neutral incremental directory cursor.
+ * @param[in] path Qualified VFS directory path.
+ * @param[out] directory Idle caller-owned cursor facade.
+ * @param[in,out] workspace Format-private caller storage.
+ * @param[in] workspace_bytes Accessible workspace extent.
+ * @return Resolution, capability, workspace, or format-open status.
+ * @pre Required pointers are non-NULL and workspace meets reported requirements.
+ * @post Success retains no mount-table lock or borrowed path pointer.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_io_vfs_dir_open(const char*       path,
+                                            ra8_io_vfs_dir_t* directory,
+                                            void*             workspace,
+                                            uint32_t          workspace_bytes);
+
+/** @brief Copy one stable entry or report clean end-of-directory. */
+[[nodiscard]] ra8_err_t
+ra8_io_vfs_dir_next(ra8_io_vfs_dir_t* directory, ra8_fs_dirent_t* out, bool* out_entry);
+
+/** @brief Close and consume one caller-owned VFS directory cursor. */
+[[nodiscard]] ra8_err_t ra8_io_vfs_dir_close(ra8_io_vfs_dir_t* directory);
 
 /**
  * @brief Create a directory named `"name:/path"`.

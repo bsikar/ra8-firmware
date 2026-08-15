@@ -68,8 +68,11 @@ static const char* const s_tag = "ra8_io_i2c_bus_i3c";
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-i3c_compat_write(void* ctx, uint8_t addr, const uint8_t* data, uint32_t len, bool send_stop)
+RA8_INTERNAL static ra8_err_t internal_i3c_compat_write(void*          ctx,
+                                                        uint8_t        addr,
+                                                        const uint8_t* data,
+                                                        uint32_t       len,
+                                                        bool           send_stop)
 {
   return ra8_i3c_write((uint8_t)(uintptr_t)ctx, addr, data, len, !send_stop);
 }
@@ -103,7 +106,8 @@ i3c_compat_write(void* ctx, uint8_t addr, const uint8_t* data, uint32_t len, boo
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t i3c_compat_read(void* ctx, uint8_t addr, uint8_t* data, uint32_t len)
+RA8_INTERNAL static ra8_err_t
+internal_i3c_compat_read(void* ctx, uint8_t addr, uint8_t* data, uint32_t len)
 {
   return ra8_i3c_read((uint8_t)(uintptr_t)ctx, addr, data, len, false);
 }
@@ -138,21 +142,21 @@ static ra8_err_t i3c_compat_read(void* ctx, uint8_t addr, uint8_t* data, uint32_
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t i3c_compat_transfer(void*          ctx,
-                                     uint8_t        addr,
-                                     const uint8_t* wr,
-                                     uint32_t       wr_len,
-                                     uint8_t*       rd,
-                                     uint32_t       rd_len)
+RA8_INTERNAL static ra8_err_t internal_i3c_compat_transfer(void*          ctx,
+                                                           uint8_t        addr,
+                                                           const uint8_t* wr,
+                                                           uint32_t       wr_len,
+                                                           uint8_t*       rd,
+                                                           uint32_t       rd_len)
 {
   return ra8_i3c_transfer((uint8_t)(uintptr_t)ctx, addr, wr, wr_len, rd, rd_len);
 }
 
 /** @brief I3C I2C-compat backend vtable -- every row forwards to `ra8_i3c_*`. */
-static const ra8_io_i2c_bus_iface_t k_i3c_compat_iface = {
-  .write    = i3c_compat_write,
-  .read     = i3c_compat_read,
-  .transfer = i3c_compat_transfer,
+static const ra8_io_i2c_bus_iface_t s_i3c_compat_iface = {
+  .write    = internal_i3c_compat_write,
+  .read     = internal_i3c_compat_read,
+  .transfer = internal_i3c_compat_transfer,
 };
 
 ra8_err_t ra8_io_i2c_bus_bind_i3c_compat(ra8_io_i2c_bus_t* bus, uint8_t channel)
@@ -161,7 +165,7 @@ ra8_err_t ra8_io_i2c_bus_bind_i3c_compat(ra8_io_i2c_bus_t* bus, uint8_t channel)
   if (channel >= (uint8_t)k_ra8_i3c_i2c_channel_count) {
     return k_ra8_err_invalid_arg;
   }
-  bus->iface = &k_i3c_compat_iface;
+  bus->iface = &s_i3c_compat_iface;
   bus->ctx   = (void*)(uintptr_t)channel;
   return k_ra8_ok;
 }

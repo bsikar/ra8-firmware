@@ -68,7 +68,8 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t bd_read_sector(ra8_io_blockdev_vsource_ctx_t* ctx, uint32_t lba)
+RA8_INTERNAL static ra8_err_t internal_bd_read_sector(ra8_io_blockdev_vsource_ctx_t* ctx,
+                                                      uint32_t                       lba)
 {
   return ra8_io_blockdev_read(ctx->bd, lba, (uint32_t)k_ra8_io_bd_vsource_one_block, ctx->scratch);
 }
@@ -101,13 +102,13 @@ static ra8_err_t bd_read_sector(ra8_io_blockdev_vsource_ctx_t* ctx, uint32_t lba
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t bd_copy_slice(ra8_io_blockdev_vsource_ctx_t* ctx,
-                               uint32_t                       lba,
-                               uint32_t                       in_block,
-                               uint32_t                       n,
-                               uint8_t*                       dst)
+RA8_INTERNAL static ra8_err_t internal_bd_copy_slice(ra8_io_blockdev_vsource_ctx_t* ctx,
+                                                     uint32_t                       lba,
+                                                     uint32_t                       in_block,
+                                                     uint32_t                       n,
+                                                     uint8_t*                       dst)
 {
-  const ra8_err_t err = bd_read_sector(ctx, lba);
+  const ra8_err_t err = internal_bd_read_sector(ctx, lba);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -165,9 +166,9 @@ typedef struct {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t bd_read_head(ra8_io_blockdev_vsource_ctx_t* ctx,
-                              ra8_io_bd_vsource_cursor_t*    cur,
-                              uint64_t                       block_bytes)
+RA8_INTERNAL static ra8_err_t internal_bd_read_head(ra8_io_blockdev_vsource_ctx_t* ctx,
+                                                    ra8_io_bd_vsource_cursor_t*    cur,
+                                                    uint64_t                       block_bytes)
 {
   const uint32_t head_in_block = (uint32_t)(cur->cur % block_bytes);
   if (head_in_block == 0U) {
@@ -177,8 +178,11 @@ static ra8_err_t bd_read_head(ra8_io_blockdev_vsource_ctx_t* ctx,
   if (head_n > cur->remain) {
     head_n = cur->remain;
   }
-  const ra8_err_t err =
-    bd_copy_slice(ctx, (uint32_t)(cur->cur / block_bytes), head_in_block, head_n, cur->out);
+  const ra8_err_t err = internal_bd_copy_slice(ctx,
+                                               (uint32_t)(cur->cur / block_bytes),
+                                               head_in_block,
+                                               head_n,
+                                               cur->out);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -214,9 +218,9 @@ static ra8_err_t bd_read_head(ra8_io_blockdev_vsource_ctx_t* ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t bd_read_middle(ra8_io_blockdev_vsource_ctx_t* ctx,
-                                ra8_io_bd_vsource_cursor_t*    cur,
-                                uint64_t                       block_bytes)
+RA8_INTERNAL static ra8_err_t internal_bd_read_middle(ra8_io_blockdev_vsource_ctx_t* ctx,
+                                                      ra8_io_bd_vsource_cursor_t*    cur,
+                                                      uint64_t                       block_bytes)
 {
   const uint32_t mid_blocks = (uint32_t)((uint64_t)cur->remain / block_bytes);
   if (mid_blocks == 0U) {
@@ -260,14 +264,14 @@ static ra8_err_t bd_read_middle(ra8_io_blockdev_vsource_ctx_t* ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t bd_read_tail(ra8_io_blockdev_vsource_ctx_t* ctx,
-                              ra8_io_bd_vsource_cursor_t*    cur,
-                              uint64_t                       block_bytes)
+RA8_INTERNAL static ra8_err_t internal_bd_read_tail(ra8_io_blockdev_vsource_ctx_t* ctx,
+                                                    ra8_io_bd_vsource_cursor_t*    cur,
+                                                    uint64_t                       block_bytes)
 {
   if (cur->remain == 0U) {
     return k_ra8_ok;
   }
-  return bd_copy_slice(ctx, (uint32_t)(cur->cur / block_bytes), 0U, cur->remain, cur->out);
+  return internal_bd_copy_slice(ctx, (uint32_t)(cur->cur / block_bytes), 0U, cur->remain, cur->out);
 }
 
 ra8_err_t ra8_io_blockdev_vsource_init(ra8_io_blockdev_vsource_ctx_t* ctx,
@@ -294,17 +298,17 @@ ra8_err_t ra8_io_blockdev_vsource_read(void* ctx, uint64_t offset, uint8_t* buf,
   ra8_io_bd_vsource_cursor_t cur = {.cur = offset, .out = buf, .remain = len};
 
   /* Unaligned head: the byte offset does not start on a sector boundary. */
-  ra8_err_t err = bd_read_head(c, &cur, block_bytes);
+  ra8_err_t err = internal_bd_read_head(c, &cur, block_bytes);
   if (err != k_ra8_ok) {
     return err;
   }
 
   /* Aligned middle: whole sectors copied straight into the caller buffer. */
-  err = bd_read_middle(c, &cur, block_bytes);
+  err = internal_bd_read_middle(c, &cur, block_bytes);
   if (err != k_ra8_ok) {
     return err;
   }
 
   /* Unaligned tail: a partial final sector. */
-  return bd_read_tail(c, &cur, block_bytes);
+  return internal_bd_read_tail(c, &cur, block_bytes);
 }

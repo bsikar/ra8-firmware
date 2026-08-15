@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_io_blockdev.h"
@@ -61,9 +62,8 @@ static uint8_t s_small[(size_t)k_test_small_blocks * (size_t)k_ra8_io_block_size
 /**
  * @par MC/DC:
  * (no compound decisions under test -- init rejects each NULL argument and the
- * zero-size case via independent single-condition guards)
- */
-static void test_ram_init_validation(void)
+ * zero-size case via independent single-condition guards) @brief Verify ram init validation behavior. @details Executes the ram init validation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_ram_init_validation(void)
 {
   TEST_BEGIN("ram init validation");
   ra8_io_blockdev_t           bd    = {};
@@ -82,9 +82,8 @@ static void test_ram_init_validation(void)
 
 /**
  * @par MC/DC:
- * (no compound decisions under test -- asserts each reported capability field)
- */
-static void test_ram_caps(void)
+ * (no compound decisions under test -- asserts each reported capability field) @brief Verify ram caps behavior. @details Executes the ram caps scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_ram_caps(void)
 {
   TEST_BEGIN("ram caps");
   ra8_io_blockdev_t           bd    = {};
@@ -105,9 +104,8 @@ static void test_ram_caps(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- write then read-back equality + a
- * multi-block transfer)
- */
-static void test_ram_read_write_roundtrip(void)
+ * multi-block transfer) @brief Verify ram read write roundtrip behavior. @details Executes the ram read write roundtrip scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_ram_read_write_roundtrip(void)
 {
   TEST_BEGIN("ram read/write round-trip");
   ra8_io_blockdev_t           bd    = {};
@@ -131,9 +129,8 @@ static void test_ram_read_write_roundtrip(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- the bounds helper is two independent
- * single-condition guards; each rejection path is hit)
- */
-static void test_ram_bounds(void)
+ * single-condition guards; each rejection path is hit) @brief Verify ram bounds behavior. @details Executes the ram bounds scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_ram_bounds(void)
 {
   TEST_BEGIN("ram bounds");
   ra8_io_blockdev_t           bd    = {};
@@ -151,9 +148,8 @@ static void test_ram_bounds(void)
 
 /**
  * @par MC/DC:
- * (no compound decisions under test -- erase zero-fills; read-back is all zero)
- */
-static void test_ram_erase(void)
+ * (no compound decisions under test -- erase zero-fills; read-back is all zero) @brief Verify ram erase behavior. @details Executes the ram erase scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_ram_erase(void)
 {
   TEST_BEGIN("ram erase");
   ra8_io_blockdev_t           bd    = {};
@@ -181,9 +177,8 @@ static void test_ram_erase(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- a read-only device rejects write/erase
- * but still serves reads)
- */
-static void test_ram_read_only(void)
+ * but still serves reads) @brief Verify ram read only behavior. @details Executes the ram read only scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_ram_read_only(void)
 {
   TEST_BEGIN("ram read-only");
   ra8_io_blockdev_t           bd    = {};
@@ -203,9 +198,8 @@ static void test_ram_read_only(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- an unbound / NULL handle is rejected on
- * every entry point)
- */
-static void test_unbound_handle(void)
+ * every entry point) @brief Verify unbound handle behavior. @details Executes the unbound handle scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_unbound_handle(void)
 {
   TEST_BEGIN("unbound handle");
   ra8_io_blockdev_t      bd                                     = {}; /* iface == nullptr */
@@ -223,13 +217,13 @@ static void test_unbound_handle(void)
  * =============================================================================
  */
 
-/** @brief Fake read: succeed without touching memory. */
 /* The pointer parameters below cannot be const: this mock implements a
  * function-pointer interface (the DI seam under test), so its signature is
  * fixed by the typedef it is assigned to -- adding const changes the
  * function type and the assignment stops compiling. */
 // NOLINTNEXTLINE(readability-non-const-parameter)
-static ra8_err_t fk_read(void* c, uint32_t l, uint32_t n, uint8_t* b)
+/** @brief Fake block read that succeeds without touching memory. @details Exercises the fk read path with bounded caller-owned fixture state and verifies its documented result. @param[in,out] c Backend callback context. @param[in] l Starting logical block address. @param[in] n Number of logical blocks, bytes, or entries requested. @param[in,out] b Block index or data-buffer argument exercised by the helper. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_fk_read(void* c, uint32_t l, uint32_t n, uint8_t* b)
 {
   (void)c;
   (void)l;
@@ -238,8 +232,8 @@ static ra8_err_t fk_read(void* c, uint32_t l, uint32_t n, uint8_t* b)
   return k_ra8_ok;
 }
 
-/** @brief Fake write: succeed without touching memory. */
-static ra8_err_t fk_write(void* c, uint32_t l, uint32_t n, const uint8_t* b)
+/** @brief Fake write: succeed without touching memory. @details Exercises the fk write path with bounded caller-owned fixture state and verifies its documented result. @param[in,out] c Backend callback context. @param[in] l Starting logical block address. @param[in] n Number of logical blocks, bytes, or entries requested. @param[in] b Block index or data-buffer argument exercised by the helper. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_fk_write(void* c, uint32_t l, uint32_t n, const uint8_t* b)
 {
   (void)c;
   (void)l;
@@ -248,8 +242,8 @@ static ra8_err_t fk_write(void* c, uint32_t l, uint32_t n, const uint8_t* b)
   return k_ra8_ok;
 }
 
-/** @brief Fake erase: succeed without touching memory. */
-static ra8_err_t fk_erase(void* c, uint32_t l, uint32_t n)
+/** @brief Fake erase: succeed without touching memory. @details Exercises the fk erase path with bounded caller-owned fixture state and verifies its documented result. @param[in,out] c Backend callback context. @param[in] l Starting logical block address. @param[in] n Number of logical blocks, bytes, or entries requested. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_fk_erase(void* c, uint32_t l, uint32_t n)
 {
   (void)c;
   (void)l;
@@ -257,8 +251,8 @@ static ra8_err_t fk_erase(void* c, uint32_t l, uint32_t n)
   return k_ra8_ok;
 }
 
-/** @brief Fake caps reporting an all-ones (flash-like) erase value. */
-static ra8_err_t fk_caps_ones(const void* c, ra8_io_blockdev_caps_t* out)
+/** @brief Fake caps reporting an all-ones (flash-like) erase value. @details Exercises the fk caps ones path with bounded caller-owned fixture state and verifies its documented result. @param[in] c Backend callback context. @param[out] out Caller-owned result object populated by the callback. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_fk_caps_ones(const void* c, ra8_io_blockdev_caps_t* out)
 {
   (void)c;
   *out                     = (ra8_io_blockdev_caps_t){};
@@ -270,32 +264,31 @@ static ra8_err_t fk_caps_ones(const void* c, ra8_io_blockdev_caps_t* out)
 }
 
 /** @brief Fake backend with NO erase / NO sync callback. */
-static const ra8_io_blockdev_iface_t k_fk_iface_no_erase = {
-  .read     = fk_read,
-  .write    = fk_write,
+static const ra8_io_blockdev_iface_t s_fk_iface_no_erase = {
+  .read     = internal_fk_read,
+  .write    = internal_fk_write,
   .erase    = nullptr,
-  .get_caps = fk_caps_ones,
+  .get_caps = internal_fk_caps_ones,
   .sync     = nullptr,
 };
 
 /** @brief Fake all-ones-erase backend (erase present, value 0xFF). */
-static const ra8_io_blockdev_iface_t k_fk_iface_ones = {
-  .read     = fk_read,
-  .write    = fk_write,
-  .erase    = fk_erase,
-  .get_caps = fk_caps_ones,
+static const ra8_io_blockdev_iface_t s_fk_iface_ones = {
+  .read     = internal_fk_read,
+  .write    = internal_fk_write,
+  .erase    = internal_fk_erase,
+  .get_caps = internal_fk_caps_ones,
   .sync     = nullptr,
 };
 
 /**
  * @par MC/DC:
  * (no compound decisions under test -- a NULL erase callback maps to
- * not-supported, a NULL sync callback maps to ok)
- */
-static void test_dispatch_optional_callbacks(void)
+ * not-supported, a NULL sync callback maps to ok) @brief Verify dispatch optional callbacks behavior. @details Executes the dispatch optional callbacks scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_dispatch_optional_callbacks(void)
 {
   TEST_BEGIN("dispatch optional callbacks");
-  ra8_io_blockdev_t bd = {.iface = &k_fk_iface_no_erase, .ctx = nullptr};
+  ra8_io_blockdev_t bd = {.iface = &s_fk_iface_no_erase, .ctx = nullptr};
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_io_blockdev_erase(&bd, 0, 1));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_sync(&bd));
   TEST_END("dispatch optional callbacks");
@@ -304,12 +297,11 @@ static void test_dispatch_optional_callbacks(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- the FS erase trampoline refuses to
- * advertise erase on an all-ones medium so the formatter zero-writes)
- */
-static void test_fs_bridge_erase_value_gate(void)
+ * advertise erase on an all-ones medium so the formatter zero-writes) @brief Verify fs bridge erase value gate behavior. @details Executes the fs bridge erase value gate scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_fs_bridge_erase_value_gate(void)
 {
   TEST_BEGIN("fs bridge erase-value gate");
-  ra8_io_blockdev_t bd = {.iface = &k_fk_iface_ones, .ctx = nullptr};
+  ra8_io_blockdev_t bd = {.iface = &s_fk_iface_ones, .ctx = nullptr};
   ra8_fs_backend_t  be = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_as_fs_backend(&bd, &be));
   TEST_ASSERT_NOT_NULL(be.erase_blocks);
@@ -319,7 +311,7 @@ static void test_fs_bridge_erase_value_gate(void)
 }
 
 /**
- * @test test_mcdc_fs_bridge_erase_64bit_guard
+ * @test internal_test_mcdc_fs_bridge_erase_64bit_guard
  * @brief The bridge refuses erase coordinates past the fabric's 32-bit reach.
  *
  * @par MC/DC:
@@ -331,9 +323,8 @@ static void test_fs_bridge_erase_value_gate(void)
  * - V2: lba = 2^32, count = 1  -> T (short-circuit) -> out_of_range.
  * - V3: lba = 0, count = 2^32  -> F,T -> out_of_range.
  * Vectors 1+2 prove lba's independence; 1+3 prove count's. N+1 = 3 vectors
- * for N=2 conditions: minimal MC/DC.
- */
-static void test_mcdc_fs_bridge_erase_64bit_guard(void)
+ * for N=2 conditions: minimal MC/DC. @details Executes the mcdc fs bridge erase 64bit guard scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_fs_bridge_erase_64bit_guard(void)
 {
   TEST_BEGIN("fs bridge MC/DC: 64-bit erase coordinates past 32 bits refused");
   ra8_io_blockdev_t           bd    = {};
@@ -359,9 +350,8 @@ static void test_mcdc_fs_bridge_erase_64bit_guard(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- formats FAT16 on the ramdisk via the
- * bridge, mounts it, writes a file, and reads it back byte-identical)
- */
-static void test_fs_bridge_fat_roundtrip(void)
+ * bridge, mounts it, writes a file, and reads it back byte-identical) @brief Verify fs bridge fat roundtrip behavior. @details Executes the fs bridge fat roundtrip scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_fs_bridge_fat_roundtrip(void)
 {
   TEST_BEGIN("fs bridge FAT round-trip");
   ra8_io_blockdev_t           bd    = {};
@@ -400,17 +390,16 @@ static void test_fs_bridge_fat_roundtrip(void)
 
 int32_t main(void)
 {
-  test_ram_init_validation();
-  test_ram_caps();
-  test_ram_read_write_roundtrip();
-  test_ram_bounds();
-  test_ram_erase();
-  test_ram_read_only();
-  test_unbound_handle();
-  test_dispatch_optional_callbacks();
-  test_fs_bridge_erase_value_gate();
-  test_mcdc_fs_bridge_erase_64bit_guard();
-  test_fs_bridge_fat_roundtrip();
-  (void)fprintf(stderr, "[OK  ] test_ra8_io_blockdev.c\n");
+  internal_test_ram_init_validation();
+  internal_test_ram_caps();
+  internal_test_ram_read_write_roundtrip();
+  internal_test_ram_bounds();
+  internal_test_ram_erase();
+  internal_test_ram_read_only();
+  internal_test_unbound_handle();
+  internal_test_dispatch_optional_callbacks();
+  internal_test_fs_bridge_erase_value_gate();
+  internal_test_mcdc_fs_bridge_erase_64bit_guard();
+  internal_test_fs_bridge_fat_roundtrip();
   return 0;
 }

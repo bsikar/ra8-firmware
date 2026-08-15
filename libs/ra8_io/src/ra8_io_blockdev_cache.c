@@ -52,7 +52,8 @@ static const char* const s_tag = "ra8_io_blockdev_cache";
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t cache_find(const ra8_io_blockdev_cache_state_t* st, uint32_t lba)
+RA8_INTERNAL static uint32_t internal_cache_find(const ra8_io_blockdev_cache_state_t* st,
+                                                 uint32_t                             lba)
 {
   for (uint32_t i = 0; i < st->n_slots; ++i) {
     if (!st->slots[i].valid) {
@@ -86,7 +87,7 @@ static uint32_t cache_find(const ra8_io_blockdev_cache_state_t* st, uint32_t lba
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t cache_pick_victim(const ra8_io_blockdev_cache_state_t* st)
+RA8_INTERNAL static uint32_t internal_cache_pick_victim(const ra8_io_blockdev_cache_state_t* st)
 {
   uint32_t best = 0;
   for (uint32_t i = 0; i < st->n_slots; ++i) {
@@ -125,10 +126,11 @@ static uint32_t cache_pick_victim(const ra8_io_blockdev_cache_state_t* st)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t cache_read_block(ra8_io_blockdev_cache_state_t* st, uint32_t lba, uint8_t* dst)
+RA8_INTERNAL static ra8_err_t
+internal_cache_read_block(ra8_io_blockdev_cache_state_t* st, uint32_t lba, uint8_t* dst)
 {
   st->clock++;
-  const uint32_t hit  = cache_find(st, lba);
+  const uint32_t hit  = internal_cache_find(st, lba);
   const size_t   span = (size_t)k_ra8_io_block_size_bytes;
   if (hit != st->n_slots) {
     st->hits++;
@@ -137,7 +139,7 @@ static ra8_err_t cache_read_block(ra8_io_blockdev_cache_state_t* st, uint32_t lb
     return k_ra8_ok;
   }
   st->misses++;
-  const uint32_t v = cache_pick_victim(st);
+  const uint32_t v = internal_cache_pick_victim(st);
   RA8_RETURN_ON_ERROR(ra8_io_blockdev_read(st->under, lba, 1, &st->data[(size_t)v * span]),
                       s_tag,
                       "backend read");
@@ -172,15 +174,15 @@ static ra8_err_t cache_read_block(ra8_io_blockdev_cache_state_t* st, uint32_t lb
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-cache_write_block(ra8_io_blockdev_cache_state_t* st, uint32_t lba, const uint8_t* src)
+RA8_INTERNAL static ra8_err_t
+internal_cache_write_block(ra8_io_blockdev_cache_state_t* st, uint32_t lba, const uint8_t* src)
 {
   RA8_RETURN_ON_ERROR(ra8_io_blockdev_write(st->under, lba, 1, src), s_tag, "backend write");
   st->clock++;
   const size_t span = (size_t)k_ra8_io_block_size_bytes;
-  uint32_t     idx  = cache_find(st, lba);
+  uint32_t     idx  = internal_cache_find(st, lba);
   if (idx == st->n_slots) {
-    idx = cache_pick_victim(st);
+    idx = internal_cache_pick_victim(st);
   }
   (void)memcpy(&st->data[(size_t)idx * span], src, span);
   st->slots[idx].lba      = lba;
@@ -192,7 +194,7 @@ cache_write_block(ra8_io_blockdev_cache_state_t* st, uint32_t lba, const uint8_t
 /**
  * @brief Cache vtable: read `count` blocks at `lba` into `buf`.
  *
- * @details Iterates the range one block at a time through ::cache_read_block.
+ * @details Iterates the range one block at a time through ::internal_cache_read_block.
  *
  * @param[in]  ctx   Cache state (as a void cookie).
  * @param[in]  lba   First logical block address.
@@ -214,14 +216,17 @@ cache_write_block(ra8_io_blockdev_cache_state_t* st, uint32_t lba, const uint8_t
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t cache_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_cache_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
   ra8_io_blockdev_cache_state_t* st   = (ra8_io_blockdev_cache_state_t*)ctx;
   const size_t                   span = (size_t)k_ra8_io_block_size_bytes;
   for (uint32_t i = 0; i < count; ++i) {
-    RA8_RETURN_ON_ERROR(cache_read_block(st, lba + i, &buf[(size_t)i * span]), s_tag, "read block");
+    RA8_RETURN_ON_ERROR(internal_cache_read_block(st, lba + i, &buf[(size_t)i * span]),
+                        s_tag,
+                        "read block");
   }
   return k_ra8_ok;
 }
@@ -229,7 +234,7 @@ static ra8_err_t cache_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* bu
 /**
  * @brief Cache vtable: write `count` blocks from `buf` at `lba`.
  *
- * @details Iterates the range one block at a time through ::cache_write_block.
+ * @details Iterates the range one block at a time through ::internal_cache_write_block.
  *
  * @param[in] ctx   Cache state (as a void cookie).
  * @param[in] lba   First logical block address.
@@ -251,14 +256,15 @@ static ra8_err_t cache_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* bu
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t cache_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_cache_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
   ra8_io_blockdev_cache_state_t* st   = (ra8_io_blockdev_cache_state_t*)ctx;
   const size_t                   span = (size_t)k_ra8_io_block_size_bytes;
   for (uint32_t i = 0; i < count; ++i) {
-    RA8_RETURN_ON_ERROR(cache_write_block(st, lba + i, &buf[(size_t)i * span]),
+    RA8_RETURN_ON_ERROR(internal_cache_write_block(st, lba + i, &buf[(size_t)i * span]),
                         s_tag,
                         "write block");
   }
@@ -290,7 +296,7 @@ static ra8_err_t cache_write(void* ctx, uint32_t lba, uint32_t count, const uint
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t cache_erase(void* ctx, uint32_t lba, uint32_t count)
+RA8_INTERNAL static ra8_err_t internal_cache_erase(void* ctx, uint32_t lba, uint32_t count)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   ra8_io_blockdev_cache_state_t* st = (ra8_io_blockdev_cache_state_t*)ctx;
@@ -334,7 +340,7 @@ static ra8_err_t cache_erase(void* ctx, uint32_t lba, uint32_t count)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t cache_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
+RA8_INTERNAL static ra8_err_t internal_cache_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -365,7 +371,7 @@ static ra8_err_t cache_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t cache_sync(void* ctx)
+RA8_INTERNAL static ra8_err_t internal_cache_sync(void* ctx)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   const ra8_io_blockdev_cache_state_t* st = (const ra8_io_blockdev_cache_state_t*)ctx;
@@ -373,12 +379,12 @@ static ra8_err_t cache_sync(void* ctx)
 }
 
 /** @brief Caching block-device vtable. */
-static const ra8_io_blockdev_iface_t k_cache_iface = {
-  .read     = cache_read,
-  .write    = cache_write,
-  .erase    = cache_erase,
-  .get_caps = cache_get_caps,
-  .sync     = cache_sync,
+static const ra8_io_blockdev_iface_t s_cache_iface = {
+  .read     = internal_cache_read,
+  .write    = internal_cache_write,
+  .erase    = internal_cache_erase,
+  .get_caps = internal_cache_get_caps,
+  .sync     = internal_cache_sync,
 };
 
 /**
@@ -386,7 +392,7 @@ static const ra8_io_blockdev_iface_t k_cache_iface = {
  *
  * @details Records the caller-owned backend, data buffer, and slot array on
  *          `state` and zeroes the monotonic clock and the hit/miss counters.
- *          The slot array itself is reset separately by ::cache_reset_slots.
+ *          The slot array itself is reset separately by ::internal_cache_reset_slots.
  *
  * @param[out] state   Cache state to populate (already null-checked).
  * @param[in]  under   Wrapped backend (must out-live the cache).
@@ -406,11 +412,11 @@ static const ra8_io_blockdev_iface_t k_cache_iface = {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void cache_state_init(ra8_io_blockdev_cache_state_t* state,
-                             const ra8_io_blockdev_t*       under,
-                             uint8_t*                       data,
-                             ra8_io_blockdev_cache_slot_t*  slots,
-                             uint32_t                       n_slots)
+RA8_INTERNAL static void internal_cache_state_init(ra8_io_blockdev_cache_state_t* state,
+                                                   const ra8_io_blockdev_t*       under,
+                                                   uint8_t*                       data,
+                                                   ra8_io_blockdev_cache_slot_t*  slots,
+                                                   uint32_t                       n_slots)
 {
   state->under   = under;
   state->data    = data;
@@ -442,7 +448,8 @@ static void cache_state_init(ra8_io_blockdev_cache_state_t* state,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void cache_reset_slots(ra8_io_blockdev_cache_slot_t* slots, uint32_t n_slots)
+RA8_INTERNAL static void internal_cache_reset_slots(ra8_io_blockdev_cache_slot_t* slots,
+                                                    uint32_t                      n_slots)
 {
   for (uint32_t i = 0; i < n_slots; ++i) {
     slots[i].valid    = false;
@@ -466,9 +473,9 @@ ra8_err_t ra8_io_blockdev_cache_init(ra8_io_blockdev_t*             bd,
   if (n_slots == 0U) {
     return k_ra8_err_invalid_size;
   }
-  cache_state_init(state, under, data, slots, n_slots);
-  cache_reset_slots(slots, n_slots);
-  bd->iface = &k_cache_iface;
+  internal_cache_state_init(state, under, data, slots, n_slots);
+  internal_cache_reset_slots(slots, n_slots);
+  bd->iface = &s_cache_iface;
   bd->ctx   = state;
   return k_ra8_ok;
 }

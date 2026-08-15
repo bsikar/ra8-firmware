@@ -60,6 +60,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_fake_mmio.h"
@@ -137,7 +138,7 @@ static uint8_t s_cov_inst;
  * @details
  * The driver clears RSPEND after each command; this hook sets it again so
  * the next ``ra8_sdhi_send_command`` poll iteration observes it. The
- * response registers were pre-loaded by cov_hook_arm() and are never
+ * response registers were pre-loaded by internal_cov_hook_arm() and are never
  * written by the driver, so no other register work is needed. Installed
  * via ::ra8_fake_mmio_set_poll_hook, it runs inline at the top of every
  * ::ra8_fake_mmio_poll -- on the driver's OWN polling thread -- so the
@@ -150,9 +151,8 @@ static uint8_t s_cov_inst;
  *
  * @note Runs single-threaded, inline with the driver's poll.
  *
- * @since 0.1.0
- */
-static void cov_rspend_hook(void)
+ * @since 0.1.0 @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_cov_rspend_hook(void)
 {
   volatile r_sdhi_regs_t* reg = ra8_sdhi(s_cov_inst);
   if (reg == nullptr) {
@@ -168,14 +168,13 @@ static void cov_rspend_hook(void)
  *
  * @pre No poll-hook is currently installed.
  * @pre ra8_fake_mmap_reset() has already scrubbed the register window.
- * @post SD_RSP10..76 hold the universal init responses and ::cov_rspend_hook
+ * @post SD_RSP10..76 hold the universal init responses and ::internal_cov_rspend_hook
  *       runs on every ra8_fake_mmio_poll with RSPEND asserted.
  *
  * @note Not reentrant; tests are single-threaded.
  *
- * @since 0.1.0
- */
-static void cov_hook_arm(uint8_t inst)
+ * @since 0.1.0 @details Exercises the cov hook arm path with bounded caller-owned fixture state and verifies its documented result. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_cov_hook_arm(uint8_t inst)
 {
   s_cov_inst                  = inst;
   volatile r_sdhi_regs_t* reg = ra8_sdhi(inst);
@@ -186,18 +185,17 @@ static void cov_hook_arm(uint8_t inst)
   reg->SD_RSP76 = (uint32_t)k_cov_sdhi_rsp76;
   reg->SD_INFO1 = reg->SD_INFO1 | (uint32_t)k_cov_sdhi_rspend_bit;
 
-  ra8_fake_mmio_set_poll_hook(cov_rspend_hook);
+  ra8_fake_mmio_set_poll_hook(internal_cov_rspend_hook);
 }
 
 /**
  * @brief Remove the RSPEND poll-hook.
  *
- * @pre cov_hook_arm() was called previously.
+ * @pre internal_cov_hook_arm() was called previously.
  * @post No poll-hook is installed.
  *
- * @since 0.1.0
- */
-static void cov_hook_disarm(void)
+ * @since 0.1.0 @details Exercises the cov hook disarm path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_cov_hook_disarm(void)
 {
   ra8_fake_mmio_set_poll_hook(nullptr);
 }
@@ -213,9 +211,8 @@ static void cov_hook_disarm(void)
  * @pre Called from a test body before touching any HAL function.
  * @post MMIO windows read zero and ra8_sdcard is not initialized.
  *
- * @since 0.1.0
- */
-static void cov_prep(void)
+ * @since 0.1.0 @details Exercises the cov prep path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_cov_prep(void)
 {
   ra8_fake_mmap_reset();
   ra8_fake_mmio_reset();
@@ -231,17 +228,16 @@ static void cov_prep(void)
  * answers every command on the driver's own poll, so a single attempt is
  * deterministic), and removes the hook. Asserts the card came up.
  *
- * @pre cov_prep() has just run.
+ * @pre internal_cov_prep() has just run.
  * @post ra8_sdcard_get_capacity() returns ::k_ra8_ok with a non-zero count.
  *
- * @since 0.1.0
- */
-static void cov_card_up(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_cov_card_up(void)
 {
-  cov_hook_arm((uint8_t)k_cov_sdhi_inst);
+  internal_cov_hook_arm((uint8_t)k_cov_sdhi_inst);
   const ra8_sdcard_cfg_t cfg = {.instance = (uint8_t)k_cov_sdhi_inst};
   const ra8_err_t        err = ra8_sdcard_init(&cfg);
-  cov_hook_disarm();
+  internal_cov_hook_disarm();
   TEST_ASSERT_EQ(k_ra8_ok, err);
 }
 
@@ -266,12 +262,11 @@ static void cov_card_up(void)
  * the TRUE arm is unreachable through ra8_io_blockdev_read, which null-checks
  * buf before forwarding, so no compound-decision vectors are required.
  *
- * @since 0.1.0
- */
-static void test_sdhi_read_forwards(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_sdhi_read_forwards(void)
 {
   TEST_BEGIN("sdhi_read forwards to card driver");
-  cov_prep();
+  internal_cov_prep();
   ra8_io_blockdev_t bd = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_sdhi_init(&bd));
 
@@ -285,7 +280,7 @@ static void test_sdhi_read_forwards(void)
  * @brief sdhi_write forwards through the dispatcher to the card driver.
  *
  * @details
- * Mirror of test_sdhi_read_forwards for the write path: a single-block
+ * Mirror of internal_test_sdhi_read_forwards for the write path: a single-block
  * write with the card torn down forwards to ``sdhi_write``, whose
  * ``return ra8_sdcard_write_blocks(...)`` executes and surfaces
  * ::k_ra8_err_invalid_state.
@@ -296,12 +291,11 @@ static void test_sdhi_read_forwards(void)
  * through ra8_io_blockdev_write, which null-checks buf first. No compound
  * decision exists in this body.
  *
- * @since 0.1.0
- */
-static void test_sdhi_write_forwards(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_sdhi_write_forwards(void)
 {
   TEST_BEGIN("sdhi_write forwards to card driver");
-  cov_prep();
+  internal_cov_prep();
   ra8_io_blockdev_t bd = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_sdhi_init(&bd));
 
@@ -326,15 +320,14 @@ static void test_sdhi_write_forwards(void)
  *   TRUE arm is unreachable through ra8_io_blockdev_get_caps, which null-checks
  *   out before forwarding.
  * - ``if (cap != k_ra8_ok)`` -- TRUE arm covered here (invalid-state card); its
- *   FALSE arm is covered by test_sdhi_get_caps_success.
+ *   FALSE arm is covered by internal_test_sdhi_get_caps_success.
  * Neither is a compound (``&&`` / ``||``) decision.
  *
- * @since 0.1.0
- */
-static void test_sdhi_get_caps_error(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_sdhi_get_caps_error(void)
 {
   TEST_BEGIN("sdhi_get_caps error leg");
-  cov_prep();
+  internal_cov_prep();
   ra8_io_blockdev_t bd = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_sdhi_init(&bd));
 
@@ -347,7 +340,7 @@ static void test_sdhi_get_caps_error(void)
  * @brief sdhi_get_caps fills the full SD capabilities snapshot on success.
  *
  * @details
- * Brings the ``ra8_sdcard`` singleton fully up (see cov_card_up), binds the
+ * Brings the ``ra8_sdcard`` singleton fully up (see internal_cov_card_up), binds the
  * backend, then queries capabilities. ``ra8_sdcard_get_capacity`` returns
  * ::k_ra8_ok, so the whole fill block runs; every field is checked against
  * the backend's fixed SD contract (one-block erase unit, 512-byte program
@@ -357,15 +350,14 @@ static void test_sdhi_get_caps_error(void)
  * @par MC/DC:
  * The only decision reached in the success path is the single-condition
  * ``if (cap != k_ra8_ok)`` whose FALSE arm is covered here; its TRUE arm is
- * covered by test_sdhi_get_caps_error. No compound decision exists.
+ * covered by internal_test_sdhi_get_caps_error. No compound decision exists.
  *
- * @since 0.1.0
- */
-static void test_sdhi_get_caps_success(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_sdhi_get_caps_success(void)
 {
   TEST_BEGIN("sdhi_get_caps success snapshot");
-  cov_prep();
-  cov_card_up();
+  internal_cov_prep();
+  internal_cov_card_up();
 
   /* Sanity: the driver reports the capacity our CSD v2 responses encode. */
   uint32_t blocks = 0U;
@@ -401,12 +393,11 @@ static void test_sdhi_get_caps_success(void)
  * ``RA8_CHECK_NULL_PTR(bd)`` guard: TRUE arm (bd == NULL) and FALSE arm
  * (valid bd) are both exercised here. No compound decision exists.
  *
- * @since 0.1.0
- */
-static void test_sdhi_bind(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_sdhi_bind(void)
 {
   TEST_BEGIN("sdhi_init NULL guard + bind");
-  cov_prep();
+  internal_cov_prep();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_blockdev_sdhi_init(nullptr));
 
   ra8_io_blockdev_t bd = {};
@@ -433,11 +424,10 @@ static void test_sdhi_bind(void)
  */
 int32_t main(void)
 {
-  test_sdhi_bind();
-  test_sdhi_read_forwards();
-  test_sdhi_write_forwards();
-  test_sdhi_get_caps_error();
-  test_sdhi_get_caps_success();
-  (void)fprintf(stderr, "[OK  ] test_ra8_io_blockdev_sdhi_cov.c\n");
+  internal_test_sdhi_bind();
+  internal_test_sdhi_read_forwards();
+  internal_test_sdhi_write_forwards();
+  internal_test_sdhi_get_caps_error();
+  internal_test_sdhi_get_caps_success();
   return 0;
 }

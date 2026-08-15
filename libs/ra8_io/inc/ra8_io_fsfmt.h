@@ -66,18 +66,22 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef struct {
-  uint16_t max_name_len;             /**< Max UTF-8 bytes in one name, excluding NUL.  */
-  bool     read_only;                /**< true => no writes/creates/erases.            */
-  bool     supports_mkdir;           /**< true => sub-directory creation.              */
-  bool     supports_rmdir;           /**< true => empty-directory removal.             */
-  bool     supports_streaming_write; /**< true => open-for-write streaming.            */
-  bool     supports_timestamps;      /**< true => stat reports entry timestamps.       */
-  bool     supports_free_space;      /**< true => a cheap free-space query exists.     */
-  bool     supports_sync;            /**< true => an explicit software sync op exists. */
-  bool     atomic_rename;            /**< true => rename is power-loss atomic.         */
-  bool     durable_sync;             /**< true => sync reaches non-volatile media.     */
-  bool     unicode_names;            /**< true => public names are strict UTF-8.       */
-  bool     case_sensitive;           /**< true => names compare case-sensitive.        */
+  uint32_t directory_workspace_bytes; /**< Caller bytes required per cursor.            */
+  uint16_t max_name_len;              /**< Max UTF-8 bytes in one name, excluding NUL.  */
+  uint16_t max_open_directories;      /**< Concurrent caller-owned cursors.             */
+  uint8_t  directory_workspace_align; /**< Required cursor-workspace alignment.         */
+  bool     read_only;                 /**< true => no writes/creates/erases.            */
+  bool     supports_mkdir;            /**< true => sub-directory creation.              */
+  bool     supports_rmdir;            /**< true => empty-directory removal.             */
+  bool     supports_streaming_write;  /**< true => open-for-write streaming.            */
+  bool     supports_timestamps;       /**< true => stat reports entry timestamps.       */
+  bool     supports_free_space;       /**< true => a cheap free-space query exists.     */
+  bool     supports_dir_cursor;       /**< true => incremental directory cursor exists. */
+  bool     supports_sync;             /**< true => an explicit software sync op exists. */
+  bool     atomic_rename;             /**< true => rename is power-loss atomic.         */
+  bool     durable_sync;              /**< true => sync reaches non-volatile media.     */
+  bool     unicode_names;             /**< true => public names are strict UTF-8.       */
+  bool     case_sensitive;            /**< true => names compare case-sensitive.        */
 } ra8_io_fsfmt_caps_t;
 
 /**
@@ -123,6 +127,17 @@ typedef ra8_err_t (*ra8_io_fsfmt_listdir_fn_t)(void*               mount_ctx,
                                                const char*         path,
                                                ra8_fs_listdir_cb_t cb,
                                                void*               cb_ctx);
+/** @brief Open a format-private directory cursor in caller workspace. */
+typedef ra8_err_t (*ra8_io_fsfmt_dir_open_fn_t)(void*       mount_ctx,
+                                                const char* path,
+                                                void*       directory_state,
+                                                uint32_t    state_bytes);
+/** @brief Copy the next stable entry from a format-private cursor. */
+typedef ra8_err_t (*ra8_io_fsfmt_dir_next_fn_t)(void*            directory_state,
+                                                ra8_fs_dirent_t* out,
+                                                bool*            out_entry);
+/** @brief Close and consume a format-private directory cursor. */
+typedef ra8_err_t (*ra8_io_fsfmt_dir_close_fn_t)(void* directory_state);
 /** @brief Apply a one-path namespace mutation. */
 typedef ra8_err_t (*ra8_io_fsfmt_path_fn_t)(void* mount_ctx, const char* path);
 /** @brief Rename within one mounted format. */
@@ -144,24 +159,27 @@ typedef ra8_err_t (*ra8_io_fsfmt_space_fn_t)(void* mount_ctx, ra8_fs_space_t* ou
  * @since 0.1.0
  */
 typedef struct {
-  ra8_io_fsfmt_probe_fn_t   probe;      /**< Recognise an on-disk volume.          */
-  ra8_io_fsfmt_mount_fn_t   mount;      /**< Bind a block backend.                 */
-  ra8_io_fsfmt_unmount_fn_t unmount;    /**< Release a mounted context.            */
-  ra8_io_fsfmt_open_fn_t    open;       /**< Open a file stream.                   */
-  ra8_io_fsfmt_close_fn_t   close;      /**< Close a file stream.                  */
-  ra8_io_fsfmt_read_fn_t    read;       /**< Read stream bytes.                    */
-  ra8_io_fsfmt_write_fn_t   write;      /**< Write stream bytes.                   */
-  ra8_io_fsfmt_seek_fn_t    seek;       /**< Set stream offset.                    */
-  ra8_io_fsfmt_tell_fn_t    tell;       /**< Query stream offset.                  */
-  ra8_io_fsfmt_size_fn_t    size;       /**< Query stream size.                    */
-  ra8_io_fsfmt_sync_fn_t    sync;       /**< Flush software state, when supported. */
-  ra8_io_fsfmt_stat_fn_t    stat;       /**< Query path metadata.                  */
-  ra8_io_fsfmt_listdir_fn_t listdir;    /**< Enumerate a directory.                */
-  ra8_io_fsfmt_path_fn_t    unlink;     /**< Remove a plain file.                  */
-  ra8_io_fsfmt_rename_fn_t  rename;     /**< Rename within the mount.              */
-  ra8_io_fsfmt_path_fn_t    mkdir;      /**< Create a directory.                   */
-  ra8_io_fsfmt_path_fn_t    rmdir;      /**< Remove an empty directory.            */
-  ra8_io_fsfmt_space_fn_t   free_space; /**< Query free/total bytes.               */
+  ra8_io_fsfmt_probe_fn_t     probe;      /**< Recognise an on-disk volume.          */
+  ra8_io_fsfmt_mount_fn_t     mount;      /**< Bind a block backend.                 */
+  ra8_io_fsfmt_unmount_fn_t   unmount;    /**< Release a mounted context.            */
+  ra8_io_fsfmt_open_fn_t      open;       /**< Open a file stream.                   */
+  ra8_io_fsfmt_close_fn_t     close;      /**< Close a file stream.                  */
+  ra8_io_fsfmt_read_fn_t      read;       /**< Read stream bytes.                    */
+  ra8_io_fsfmt_write_fn_t     write;      /**< Write stream bytes.                   */
+  ra8_io_fsfmt_seek_fn_t      seek;       /**< Set stream offset.                    */
+  ra8_io_fsfmt_tell_fn_t      tell;       /**< Query stream offset.                  */
+  ra8_io_fsfmt_size_fn_t      size;       /**< Query stream size.                    */
+  ra8_io_fsfmt_sync_fn_t      sync;       /**< Flush software state, when supported. */
+  ra8_io_fsfmt_stat_fn_t      stat;       /**< Query path metadata.                  */
+  ra8_io_fsfmt_listdir_fn_t   listdir;    /**< Enumerate a directory.                */
+  ra8_io_fsfmt_dir_open_fn_t  dir_open;   /**< Open incremental directory cursor.    */
+  ra8_io_fsfmt_dir_next_fn_t  dir_next;   /**< Copy next cursor entry.               */
+  ra8_io_fsfmt_dir_close_fn_t dir_close;  /**< Close incremental directory cursor.   */
+  ra8_io_fsfmt_path_fn_t      unlink;     /**< Remove a plain file.                  */
+  ra8_io_fsfmt_rename_fn_t    rename;     /**< Rename within the mount.              */
+  ra8_io_fsfmt_path_fn_t      mkdir;      /**< Create a directory.                   */
+  ra8_io_fsfmt_path_fn_t      rmdir;      /**< Remove an empty directory.            */
+  ra8_io_fsfmt_space_fn_t     free_space; /**< Query free/total bytes.               */
 } ra8_io_fsfmt_ops_t;
 
 /**
@@ -175,7 +193,7 @@ typedef struct {
  *
  * @since 0.1.0
  */
-typedef struct {
+typedef struct ra8_io_fsfmt {
   const char*               name; /**< Short format name, e.g. "fat" / "exfat". */
   ra8_io_fsfmt_caps_t       caps; /**< What the format supports.                */
   const ra8_io_fsfmt_ops_t* ops;  /**< Runtime dispatch table.                  */

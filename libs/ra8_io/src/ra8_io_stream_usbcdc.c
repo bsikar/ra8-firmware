@@ -21,7 +21,7 @@
 #include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
-#include "ra8_io_stream_internal.h"
+#include "ra8_io_stream_backend.h"
 #include "ra8_usb_pal.h"
 
 /** @brief Module log tag. */
@@ -63,8 +63,8 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t usbcdc_write(void* ctx, const uint8_t* buf, uint32_t len, uint32_t* out_written)
+RA8_INTERNAL static ra8_err_t
+internal_usbcdc_write(void* ctx, const uint8_t* buf, uint32_t len, uint32_t* out_written)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
@@ -89,9 +89,10 @@ static ra8_err_t usbcdc_write(void* ctx, const uint8_t* buf, uint32_t len, uint3
   return k_ra8_ok;
 }
 
-/** @brief USB-CDC stream sink vtable. `flush` is NULL: the PAL queues directly. */
-static const ra8_io_stream_iface_t k_usbcdc_iface = {
-  .write = usbcdc_write,
+/** @brief USB-CDC stream sink vtable. `flush` is NULL: the PAL queues directly.
+ */
+static const ra8_io_stream_iface_t s_usbcdc_iface = {
+  .write = internal_usbcdc_write,
   .flush = nullptr,
 };
 
@@ -101,7 +102,5 @@ ra8_io_stream_usbcdc_init(ra8_io_stream_t* s, ra8_io_stream_usbcdc_state_t* stat
   RA8_CHECK_NULL_PTR(s, s_tag, "s must not be nullptr");
   RA8_CHECK_NULL_PTR(state, s_tag, "state must not be nullptr");
   state->ep_addr = ep_addr;
-  s->iface       = &k_usbcdc_iface;
-  s->ctx         = state;
-  return k_ra8_ok;
+  return ra8_io_stream_bind(s, &s_usbcdc_iface, state);
 }

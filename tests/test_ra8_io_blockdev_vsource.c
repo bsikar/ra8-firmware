@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_io_blockdev.h"
 #include "ra8_io_blockdev_ram.h"
@@ -70,8 +71,8 @@ static ra8_io_blockdev_ram_state_t   s_state;
 static ra8_io_blockdev_vsource_ctx_t s_ctx;
 static ra8_vsource_obj_t             s_objs[(size_t)k_t_objs];
 
-/** @brief Bind a RAM block device and fill it with a deterministic pattern. */
-static void t_setup_disk(void)
+/** @brief Bind a RAM block device and fill it with a deterministic pattern. @details Exercises the t setup disk path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_t_setup_disk(void)
 {
   s_bd    = (ra8_io_blockdev_t){};
   s_state = (ra8_io_blockdev_ram_state_t){};
@@ -85,9 +86,8 @@ static void t_setup_disk(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- init rejects each NULL argument via
- * independent single-condition guards, then binds the device)
- */
-static void test_init_validation(void)
+ * independent single-condition guards, then binds the device) @brief Verify init validation behavior. @details Executes the init validation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_init_validation(void)
 {
   TEST_BEGIN("bdvs init validation");
   ra8_io_blockdev_vsource_ctx_t ctx = {};
@@ -101,14 +101,13 @@ static void test_init_validation(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- the read callback rejects each NULL
- * argument independently)
- */
-static void test_read_validation(void)
+ * argument independently) @brief Verify read validation behavior. @details Executes the read validation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_read_validation(void)
 {
   TEST_BEGIN("bdvs read validation");
   uint8_t buf[(size_t)k_t_block_len] = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_blockdev_vsource_read(nullptr, 0U, buf, k_t_block_len));
-  t_setup_disk();
+  internal_t_setup_disk();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_vsource_init(&s_ctx, &s_bd));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_io_blockdev_vsource_read(&s_ctx, 0U, nullptr, k_t_block_len));
@@ -118,12 +117,11 @@ static void test_read_validation(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- a sector-aligned read of one whole block
- * matches the golden reference byte-for-byte)
- */
-static void test_aligned_block(void)
+ * matches the golden reference byte-for-byte) @brief Verify aligned block behavior. @details Executes the aligned block scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_aligned_block(void)
 {
   TEST_BEGIN("bdvs aligned whole block");
-  t_setup_disk();
+  internal_t_setup_disk();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_vsource_init(&s_ctx, &s_bd));
   uint8_t got[(size_t)k_t_block_len] = {};
   /* Read block index 2 (byte offset 1024) through the adapter. */
@@ -137,12 +135,11 @@ static void test_aligned_block(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- an unaligned read entirely inside one
- * sector goes through the bounce buffer and matches the golden bytes)
- */
-static void test_unaligned_head_only(void)
+ * sector goes through the bounce buffer and matches the golden bytes) @brief Verify unaligned head only behavior. @details Executes the unaligned head only scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_unaligned_head_only(void)
 {
   TEST_BEGIN("bdvs unaligned head within one sector");
-  t_setup_disk();
+  internal_t_setup_disk();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_vsource_init(&s_ctx, &s_bd));
   uint8_t got[(size_t)k_t_head_len] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_vsource_read(&s_ctx, k_t_head_off, got, k_t_head_len));
@@ -153,12 +150,11 @@ static void test_unaligned_head_only(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- an unaligned span crossing sector
- * boundaries exercises head + aligned middle + tail and matches the golden bytes)
- */
-static void test_unaligned_span(void)
+ * boundaries exercises head + aligned middle + tail and matches the golden bytes) @brief Verify unaligned span behavior. @details Executes the unaligned span scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_unaligned_span(void)
 {
   TEST_BEGIN("bdvs unaligned multi-sector span");
-  t_setup_disk();
+  internal_t_setup_disk();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_vsource_init(&s_ctx, &s_bd));
   uint8_t got[(size_t)k_t_span_len] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_vsource_read(&s_ctx, k_t_span_off, got, k_t_span_len));
@@ -169,12 +165,11 @@ static void test_unaligned_span(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- a read past the device end is rejected by
- * the underlying block device, not silently truncated)
- */
-static void test_out_of_range(void)
+ * the underlying block device, not silently truncated) @brief Verify out of range behavior. @details Executes the out of range scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_out_of_range(void)
 {
   TEST_BEGIN("bdvs read past device end");
-  t_setup_disk();
+  internal_t_setup_disk();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_vsource_init(&s_ctx, &s_bd));
   uint8_t got[(size_t)k_t_block_len] = {};
   /* Aligned read one block past the end. */
@@ -189,12 +184,11 @@ static void test_out_of_range(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- registering the adapter as a paged source
- * and paging through ::ra8_vsource_loader yields the golden bytes)
- */
-static void test_vsource_wiring(void)
+ * and paging through ::ra8_vsource_loader yields the golden bytes) @brief Verify vsource wiring behavior. @details Executes the vsource wiring scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_vsource_wiring(void)
 {
   TEST_BEGIN("bdvs wired into ra8_vsource_add_paged");
-  t_setup_disk();
+  internal_t_setup_disk();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_vsource_init(&s_ctx, &s_bd));
 
   ra8_vsource_t vs = {};
@@ -214,13 +208,12 @@ static void test_vsource_wiring(void)
 
 int32_t main(void)
 {
-  test_init_validation();
-  test_read_validation();
-  test_aligned_block();
-  test_unaligned_head_only();
-  test_unaligned_span();
-  test_out_of_range();
-  test_vsource_wiring();
-  (void)fprintf(stderr, "[OK  ] test_ra8_io_blockdev_vsource.c\n");
+  internal_test_init_validation();
+  internal_test_read_validation();
+  internal_test_aligned_block();
+  internal_test_unaligned_head_only();
+  internal_test_unaligned_span();
+  internal_test_out_of_range();
+  internal_test_vsource_wiring();
   return 0;
 }

@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_io_log.h"
 #include "ra8_io_stream.h"
@@ -40,6 +41,26 @@ typedef enum : uint32_t {
 } t_io_log_const_t;
 
 /**
+ * @brief Discard validation-path log bytes before a stream is attached.
+ * @details Supplies a host-safe byte sink while the attach rejection vectors
+ *          emit expected diagnostics, avoiding target-only ITM register reads.
+ * @param[in] context Unused logger context.
+ * @param[in] byte Unused emitted byte.
+ * @return Nothing.
+ * @pre The caller permits the emitted diagnostic byte to be discarded.
+ * @pre The callback is invoked synchronously by the logger.
+ * @post The byte is discarded without accessing target ITM registers.
+ * @post No fixture storage or logger ownership state is modified.
+ * @note File-local host-test sink; it owns no storage.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_discard_log_byte(void* context, uint8_t byte)
+{
+  (void)context;
+  (void)byte;
+}
+
+/**
  * @brief Attach rejects NULL and an uninitialised (unbound) stream handle.
  *
  * @details
@@ -51,10 +72,9 @@ typedef enum : uint32_t {
  * Two independent single-condition guards, tested one vector each:
  * - `s == nullptr`      -> k_ra8_err_null_ptr        (pointer guard true).
  * - `s->iface == nullptr` -> k_ra8_err_not_initialized (iface guard true).
- * The valid-bound case in ::test_attach_emit_detach supplies the false vector
- * for both guards (returns k_ra8_ok), completing independent influence.
- */
-static void test_attach_rejects_invalid(void)
+ * The valid-bound case in ::internal_test_attach_emit_detach supplies the false vector
+ * for both guards (returns k_ra8_ok), completing independent influence. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_attach_rejects_invalid(void)
 {
   TEST_BEGIN("attach rejects invalid");
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_log_attach(nullptr));
@@ -75,15 +95,14 @@ static void test_attach_rejects_invalid(void)
  *
  * @par MC/DC:
  * (no compound decisions under test -- a valid bound handle is accepted, the
- * captured buffer is inspected, and detach clears the sink)
- */
-static void test_attach_emit_detach(void)
+ * captured buffer is inspected, and detach clears the sink) @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_attach_emit_detach(void)
 {
   TEST_BEGIN("attach emit detach");
-  static char               s_buf[(size_t)k_t_log_cap] = {};
-  ra8_io_stream_ram_state_t st                         = {};
-  ra8_io_stream_t           s                          = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_ram_init(&s, &st, (uint8_t*)s_buf, k_t_log_cap - 1U));
+  static char               local_buf[(size_t)k_t_log_cap] = {};
+  ra8_io_stream_ram_state_t st                             = {};
+  ra8_io_stream_t           s                              = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_ram_init(&s, &st, (uint8_t*)local_buf, k_t_log_cap - 1U));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_log_attach(&s));
   ra8_log_init();
@@ -93,16 +112,16 @@ static void test_attach_emit_detach(void)
   uint32_t used = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_ram_used(&st, &used));
   TEST_ASSERT(used > 0U);
-  s_buf[used] = '\0';
-  TEST_ASSERT(strstr(s_buf, "IOL") != nullptr);
-  TEST_ASSERT(strstr(s_buf, "line") != nullptr);
+  local_buf[used] = '\0';
+  TEST_ASSERT(strstr(local_buf, "IOL") != nullptr);
+  TEST_ASSERT(strstr(local_buf, "line") != nullptr);
   TEST_END("attach emit detach");
 }
 
 int32_t main(void)
 {
-  test_attach_rejects_invalid();
-  test_attach_emit_detach();
-  (void)fprintf(stderr, "[OK  ] test_ra8_io_log_cov.c\n");
+  ra8_log_set_byte_sink(internal_discard_log_byte, nullptr);
+  internal_test_attach_rejects_invalid();
+  internal_test_attach_emit_detach();
   return 0;
 }

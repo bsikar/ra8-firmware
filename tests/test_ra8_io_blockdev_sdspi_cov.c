@@ -40,6 +40,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_io_blockdev.h"
 #include "ra8_io_blockdev_sdspi.h"
@@ -114,9 +115,8 @@ static cov_mock_spi_t s_mock = {};
  *
  * @pre None.
  * @post s_mock is fully zeroed.
- * @since 0.1.0
- */
-static void mock_reset(void)
+ * @since 0.1.0 @details Exercises the mock reset path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_mock_reset(void)
 {
   memset(&s_mock, 0, sizeof(s_mock));
 }
@@ -128,9 +128,8 @@ static void mock_reset(void)
  *
  * @pre rx_len tracks the queue fill.
  * @post b is queued when space remains; otherwise dropped.
- * @since 0.1.0
- */
-static void mock_queue_byte(uint8_t b)
+ * @since 0.1.0 @details Exercises the mock queue byte path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_mock_queue_byte(uint8_t b)
 {
   if (s_mock.rx_len < (uint32_t)k_cov_mock_buf_bytes) {
     s_mock.rx_queue[s_mock.rx_len] = b;
@@ -146,12 +145,11 @@ static void mock_queue_byte(uint8_t b)
  *
  * @pre data is non-NULL or len == 0.
  * @post Each byte is appended in order.
- * @since 0.1.0
- */
-static void mock_queue_bytes(const uint8_t* data, uint32_t len)
+ * @since 0.1.0 @details Exercises the mock queue bytes path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_mock_queue_bytes(const uint8_t* data, uint32_t len)
 {
   for (uint32_t i = 0U; i < len; i++) {
-    mock_queue_byte(data[i]);
+    internal_mock_queue_byte(data[i]);
   }
 }
 
@@ -162,12 +160,11 @@ static void mock_queue_bytes(const uint8_t* data, uint32_t len)
  *
  * @pre None.
  * @post count idle bytes are appended.
- * @since 0.1.0
- */
-static void mock_queue_idle(uint32_t count)
+ * @since 0.1.0 @details Exercises the mock queue idle path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_mock_queue_idle(uint32_t count)
 {
   for (uint32_t i = 0U; i < count; i++) {
-    mock_queue_byte((uint8_t)k_cov_mock_idle_byte);
+    internal_mock_queue_byte((uint8_t)k_cov_mock_idle_byte);
   }
 }
 
@@ -182,9 +179,8 @@ static void mock_queue_idle(uint32_t count)
  *
  * @pre None.
  * @post s_mock.clock_hz == hz.
- * @since 0.1.0
- */
-static ra8_err_t mock_set_clock(void* ctx, uint32_t hz)
+ * @since 0.1.0 @details Exercises the mock set clock path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static ra8_err_t internal_mock_set_clock(void* ctx, uint32_t hz)
 {
   (void)ctx;
   s_mock.clock_hz = hz;
@@ -202,9 +198,8 @@ static ra8_err_t mock_set_clock(void* ctx, uint32_t hz)
  *
  * @pre None.
  * @post s_mock.cs_asserted == asserted.
- * @since 0.1.0
- */
-static ra8_err_t mock_cs(void* ctx, bool asserted)
+ * @since 0.1.0 @details Exercises the mock cs path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static ra8_err_t internal_mock_cs(void* ctx, bool asserted)
 {
   (void)ctx;
   s_mock.cs_asserted = asserted;
@@ -229,9 +224,9 @@ static ra8_err_t mock_cs(void* ctx, bool asserted)
  *
  * @pre len > 0.
  * @post rx (when non-NULL) holds the next len queued bytes.
- * @since 0.1.0
- */
-static ra8_err_t mock_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static ra8_err_t
+internal_mock_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
 {
   (void)ctx;
   (void)tx;
@@ -250,9 +245,9 @@ static ra8_err_t mock_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t l
 
 /** @brief Mock transport descriptor wired to the three shims above. */
 static const ra8_sdmmc_spi_transport_t s_mock_transport = {
-  .set_clock = mock_set_clock,
-  .cs        = mock_cs,
-  .xfer      = mock_xfer,
+  .set_clock = internal_mock_set_clock,
+  .cs        = internal_mock_cs,
+  .xfer      = internal_mock_xfer,
   .ctx       = nullptr,
 };
 
@@ -294,14 +289,13 @@ typedef enum : uint32_t {
  *
  * @pre The queue has room for nine bytes.
  * @post cs-assert idle + 6 frame idles + R1 + cs-release idle are queued.
- * @since 0.1.0
- */
-static void queue_command_response_r1(uint8_t r1)
+ * @since 0.1.0 @details Exercises the queue command response r1 path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_queue_command_response_r1(uint8_t r1)
 {
-  mock_queue_idle(1U);
-  mock_queue_idle((uint32_t)k_cov_cmd_frame_len);
-  mock_queue_byte(r1);
-  mock_queue_idle(1U);
+  internal_mock_queue_idle(1U);
+  internal_mock_queue_idle((uint32_t)k_cov_cmd_frame_len);
+  internal_mock_queue_byte(r1);
+  internal_mock_queue_idle(1U);
 }
 
 /**
@@ -312,18 +306,17 @@ static void queue_command_response_r1(uint8_t r1)
  *
  * @pre The queue has room for the framing.
  * @post The R1 + tail + cs-release framing is queued.
- * @since 0.1.0
- */
-static void queue_command_response_r3_or_r7(uint8_t r1, uint32_t tail_word)
+ * @since 0.1.0 @details Exercises the queue command response r3 or r7 path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_queue_command_response_r3_or_r7(uint8_t r1, uint32_t tail_word)
 {
-  mock_queue_idle(1U);
-  mock_queue_idle((uint32_t)k_cov_cmd_frame_len);
-  mock_queue_byte(r1);
-  mock_queue_byte((uint8_t)((tail_word >> k_shift_byte3) & k_byte_mask));
-  mock_queue_byte((uint8_t)((tail_word >> 16U) & k_byte_mask));
-  mock_queue_byte((uint8_t)((tail_word >> 8U) & k_byte_mask));
-  mock_queue_byte((uint8_t)(tail_word & k_byte_mask));
-  mock_queue_idle(1U);
+  internal_mock_queue_idle(1U);
+  internal_mock_queue_idle((uint32_t)k_cov_cmd_frame_len);
+  internal_mock_queue_byte(r1);
+  internal_mock_queue_byte((uint8_t)((tail_word >> k_shift_byte3) & k_byte_mask));
+  internal_mock_queue_byte((uint8_t)((tail_word >> 16U) & k_byte_mask));
+  internal_mock_queue_byte((uint8_t)((tail_word >> 8U) & k_byte_mask));
+  internal_mock_queue_byte((uint8_t)(tail_word & k_byte_mask));
+  internal_mock_queue_idle(1U);
 }
 
 /**
@@ -333,9 +326,8 @@ static void queue_command_response_r3_or_r7(uint8_t r1, uint32_t tail_word)
  *
  * @pre out points at k_ra8_sdmmc_spi_csd_response_len writable bytes.
  * @post out encodes CSD_STRUCTURE=1 and C_SIZE=0xFFFF.
- * @since 0.1.0
- */
-static void build_csd_v2_32gib(uint8_t* out)
+ * @since 0.1.0 @details Exercises the build csd v2 32gib path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_build_csd_v2_32gib(uint8_t* out)
 {
   memset(out, 0, (size_t)k_ra8_sdmmc_spi_csd_response_len);
   out[0]                         = k_sdspi_csd_v2_byte0; /* CSD_STRUCTURE = 1. */
@@ -351,20 +343,19 @@ static void build_csd_v2_32gib(uint8_t* out)
  *
  * @pre csd points at k_ra8_sdmmc_spi_csd_response_len bytes.
  * @post The full CS-bracketed CSD read is queued.
- * @since 0.1.0
- */
-static void queue_csd_read(const uint8_t* csd)
+ * @since 0.1.0 @details Exercises the queue csd read path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_queue_csd_read(const uint8_t* csd)
 {
-  mock_queue_idle(1U);
-  mock_queue_idle((uint32_t)k_cov_cmd_frame_len);
-  mock_queue_byte((uint8_t)k_cov_r1_ready);
-  mock_queue_byte((uint8_t)k_cov_data_token_start);
+  internal_mock_queue_idle(1U);
+  internal_mock_queue_idle((uint32_t)k_cov_cmd_frame_len);
+  internal_mock_queue_byte((uint8_t)k_cov_r1_ready);
+  internal_mock_queue_byte((uint8_t)k_cov_data_token_start);
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_sdmmc_spi_csd_response_len; i++) {
-    mock_queue_byte(csd[i]);
+    internal_mock_queue_byte(csd[i]);
   }
-  mock_queue_byte(0U);
-  mock_queue_byte(0U);
-  mock_queue_idle(1U);
+  internal_mock_queue_byte(0U);
+  internal_mock_queue_byte(0U);
+  internal_mock_queue_idle(1U);
 }
 
 /**
@@ -375,20 +366,19 @@ static void queue_csd_read(const uint8_t* csd)
  *
  * @pre The queue is empty.
  * @post Enough RX bytes are queued to satisfy a full ra8_sdmmc_spi_init.
- * @since 0.1.0
- */
-static void queue_full_init_sdhc_32gib(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_queue_full_init_sdhc_32gib(void)
 {
-  mock_queue_idle(k_sdspi_wakeup_clocks); /* Wake-up dummy clocks. */
-  queue_command_response_r1((uint8_t)k_cov_r1_idle);
-  queue_command_response_r3_or_r7((uint8_t)k_cov_r1_idle, (uint32_t)k_cov_cmd8_echo);
-  queue_command_response_r1((uint8_t)k_cov_r1_idle);  /* CMD55.  */
-  queue_command_response_r1((uint8_t)k_cov_r1_ready); /* ACMD41. */
-  queue_command_response_r3_or_r7((uint8_t)k_cov_r1_ready, (uint32_t)k_cov_ocr_ccs_ready);
+  internal_mock_queue_idle(k_sdspi_wakeup_clocks); /* Wake-up dummy clocks. */
+  internal_queue_command_response_r1((uint8_t)k_cov_r1_idle);
+  internal_queue_command_response_r3_or_r7((uint8_t)k_cov_r1_idle, (uint32_t)k_cov_cmd8_echo);
+  internal_queue_command_response_r1((uint8_t)k_cov_r1_idle);  /* CMD55.  */
+  internal_queue_command_response_r1((uint8_t)k_cov_r1_ready); /* ACMD41. */
+  internal_queue_command_response_r3_or_r7((uint8_t)k_cov_r1_ready, (uint32_t)k_cov_ocr_ccs_ready);
   uint8_t csd[k_ra8_sdmmc_spi_csd_response_len];
-  build_csd_v2_32gib(csd);
-  queue_csd_read(csd);
-  queue_command_response_r1((uint8_t)k_cov_r1_ready); /* CMD16. */
+  internal_build_csd_v2_32gib(csd);
+  internal_queue_csd_read(csd);
+  internal_queue_command_response_r1((uint8_t)k_cov_r1_ready); /* CMD16. */
 }
 
 /**
@@ -399,18 +389,17 @@ static void queue_full_init_sdhc_32gib(void)
  *
  * @pre A preceding CMD24 R1 has been queued.
  * @post The write data phase and busy wait are fully queued.
- * @since 0.1.0
- */
-static void queue_write_block_tail(uint8_t data_response, uint32_t busy_bytes)
+ * @since 0.1.0 @details Exercises the queue write block tail path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_queue_write_block_tail(uint8_t data_response, uint32_t busy_bytes)
 {
-  mock_queue_idle(1U);                                   /* data-token TX slot.   */
-  mock_queue_idle((uint32_t)k_ra8_sdmmc_spi_block_size); /* 512 payload TX slots. */
-  mock_queue_idle(2U);                                   /* 2 CRC TX slots.       */
-  mock_queue_byte(data_response);                        /* response token byte.  */
+  internal_mock_queue_idle(1U);                                   /* data-token TX slot.   */
+  internal_mock_queue_idle((uint32_t)k_ra8_sdmmc_spi_block_size); /* 512 payload TX slots. */
+  internal_mock_queue_idle(2U);                                   /* 2 CRC TX slots.       */
+  internal_mock_queue_byte(data_response);                        /* response token byte.  */
   for (uint32_t i = 0U; i < busy_bytes; i++) {
-    mock_queue_byte(0x00U); /* card busy 0x00. */
+    internal_mock_queue_byte(0x00U); /* card busy 0x00. */
   }
-  mock_queue_byte((uint8_t)k_cov_mock_idle_byte); /* busy released 0xFF. */
+  internal_mock_queue_byte((uint8_t)k_cov_mock_idle_byte); /* busy released 0xFF. */
 }
 
 /**
@@ -418,17 +407,16 @@ static void queue_write_block_tail(uint8_t data_response, uint32_t busy_bytes)
  *
  * @pre The queue is positioned at a command boundary.
  * @post One full erase sequence (two R1 commands + a busy wait) is queued.
- * @since 0.1.0
- */
-static void queue_erase_blocks_ok(void)
+ * @since 0.1.0 @details Exercises the queue erase blocks ok path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_queue_erase_blocks_ok(void)
 {
-  queue_command_response_r1((uint8_t)k_cov_r1_ready); /* CMD32. */
-  queue_command_response_r1((uint8_t)k_cov_r1_ready); /* CMD33. */
-  mock_queue_idle(1U);
-  mock_queue_idle((uint32_t)k_cov_cmd_frame_len);
-  mock_queue_byte((uint8_t)k_cov_r1_ready);
-  mock_queue_byte((uint8_t)k_cov_busy_done);
-  mock_queue_idle(1U);
+  internal_queue_command_response_r1((uint8_t)k_cov_r1_ready); /* CMD32. */
+  internal_queue_command_response_r1((uint8_t)k_cov_r1_ready); /* CMD33. */
+  internal_mock_queue_idle(1U);
+  internal_mock_queue_idle((uint32_t)k_cov_cmd_frame_len);
+  internal_mock_queue_byte((uint8_t)k_cov_r1_ready);
+  internal_mock_queue_byte((uint8_t)k_cov_busy_done);
+  internal_mock_queue_idle(1U);
 }
 
 /**
@@ -438,19 +426,18 @@ static void queue_erase_blocks_ok(void)
  *
  * @pre block points at k_ra8_sdmmc_spi_block_size bytes.
  * @post One complete CMD17 read session is queued.
- * @since 0.1.0
- */
-static void queue_read_back(const uint8_t* block)
+ * @since 0.1.0 @details Exercises the queue read back path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_queue_read_back(const uint8_t* block)
 {
-  mock_queue_idle(1U);
-  mock_queue_idle((uint32_t)k_cov_cmd_frame_len);
-  mock_queue_byte((uint8_t)k_cov_r1_ready);
-  mock_queue_byte((uint8_t)k_cov_data_token_start);
-  mock_queue_bytes(block, (uint32_t)k_ra8_sdmmc_spi_block_size);
+  internal_mock_queue_idle(1U);
+  internal_mock_queue_idle((uint32_t)k_cov_cmd_frame_len);
+  internal_mock_queue_byte((uint8_t)k_cov_r1_ready);
+  internal_mock_queue_byte((uint8_t)k_cov_data_token_start);
+  internal_mock_queue_bytes(block, (uint32_t)k_ra8_sdmmc_spi_block_size);
   const uint16_t crc = ra8_sdmmc_spi_crc16(block, (uint32_t)k_ra8_sdmmc_spi_block_size);
-  mock_queue_byte((uint8_t)((crc >> 8U) & k_byte_mask));
-  mock_queue_byte((uint8_t)(crc & k_byte_mask));
-  mock_queue_idle(1U);
+  internal_mock_queue_byte((uint8_t)((crc >> 8U) & k_byte_mask));
+  internal_mock_queue_byte((uint8_t)(crc & k_byte_mask));
+  internal_mock_queue_idle(1U);
 }
 
 /**
@@ -466,25 +453,24 @@ static void queue_read_back(const uint8_t* block)
  *
  * @pre Each blocks[i] points at k_ra8_sdmmc_spi_block_size bytes.
  * @post One complete CMD18 + CMD12 session is queued.
- * @since 0.1.0
- */
-static void queue_multi_read(const uint8_t* const* blocks, uint32_t count)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_queue_multi_read(const uint8_t* const* blocks, uint32_t count)
 {
-  mock_queue_idle(1U);                            /* cs_assert post-byte.  */
-  mock_queue_idle((uint32_t)k_cov_cmd_frame_len); /* CMD18 frame TX slots. */
-  mock_queue_byte((uint8_t)k_cov_r1_ready);       /* CMD18 R1.             */
+  internal_mock_queue_idle(1U);                            /* cs_assert post-byte.  */
+  internal_mock_queue_idle((uint32_t)k_cov_cmd_frame_len); /* CMD18 frame TX slots. */
+  internal_mock_queue_byte((uint8_t)k_cov_r1_ready);       /* CMD18 R1.             */
   for (uint32_t b = 0U; b < count; b++) {
-    mock_queue_byte((uint8_t)k_cov_data_token_start);
-    mock_queue_bytes(blocks[b], (uint32_t)k_ra8_sdmmc_spi_block_size);
+    internal_mock_queue_byte((uint8_t)k_cov_data_token_start);
+    internal_mock_queue_bytes(blocks[b], (uint32_t)k_ra8_sdmmc_spi_block_size);
     const uint16_t crc = ra8_sdmmc_spi_crc16(blocks[b], (uint32_t)k_ra8_sdmmc_spi_block_size);
-    mock_queue_byte((uint8_t)((crc >> 8U) & k_byte_mask));
-    mock_queue_byte((uint8_t)(crc & k_byte_mask));
+    internal_mock_queue_byte((uint8_t)((crc >> 8U) & k_byte_mask));
+    internal_mock_queue_byte((uint8_t)(crc & k_byte_mask));
   }
-  mock_queue_idle((uint32_t)k_cov_cmd_frame_len); /* CMD12 frame TX slots.  */
-  mock_queue_idle(1U);                            /* stuff byte, discarded. */
-  mock_queue_byte((uint8_t)k_cov_r1_ready);       /* CMD12 R1.              */
-  mock_queue_byte((uint8_t)k_cov_busy_done);      /* busy released 0xFF.    */
-  mock_queue_idle(1U);                            /* cs_release post-byte.  */
+  internal_mock_queue_idle((uint32_t)k_cov_cmd_frame_len); /* CMD12 frame TX slots.  */
+  internal_mock_queue_idle(1U);                            /* stuff byte, discarded. */
+  internal_mock_queue_byte((uint8_t)k_cov_r1_ready);       /* CMD12 R1.              */
+  internal_mock_queue_byte((uint8_t)k_cov_busy_done);      /* busy released 0xFF.    */
+  internal_mock_queue_idle(1U);                            /* cs_release post-byte.  */
 }
 
 /**
@@ -492,11 +478,10 @@ static void queue_multi_read(const uint8_t* const* blocks, uint32_t count)
  *
  * @pre None.
  * @post s_mock is cleared and the driver is un-initialized.
- * @since 0.1.0
- */
-static void per_test_setup(void)
+ * @since 0.1.0 @details Exercises the per test setup path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_per_test_setup(void)
 {
-  mock_reset();
+  internal_mock_reset();
   (void)ra8_sdmmc_spi_deinit();
 }
 
@@ -507,12 +492,11 @@ static void per_test_setup(void)
  *
  * @pre bd is non-NULL and zero-initialised.
  * @post The driver is initialised and bd dispatches to the SD-SPI backend.
- * @since 0.1.0
- */
-static void fixture_card_up(ra8_io_blockdev_t* bd)
+ * @since 0.1.0 @details Exercises the fixture card up path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_fixture_card_up(ra8_io_blockdev_t* bd)
 {
-  per_test_setup();
-  queue_full_init_sdhc_32gib();
+  internal_per_test_setup();
+  internal_queue_full_init_sdhc_32gib();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_init(&s_mock_transport));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_sdspi_init(bd));
 }
@@ -541,13 +525,12 @@ static void fixture_card_up(ra8_io_blockdev_t* bd)
  *   CMD18 read; failure covered by the torn-down driver read below.
  * Each single-condition decision is exercised in both senses: minimal MC/DC.
  *
- * @since 0.1.0
- */
-static void test_sdspi_read_bulk_and_error(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_sdspi_read_bulk_and_error(void)
 {
   TEST_BEGIN("sdspi_read CMD18 forward + driver error");
   ra8_io_blockdev_t bd = {};
-  fixture_card_up(&bd);
+  internal_fixture_card_up(&bd);
 
   /* Two deterministic payloads with distinct fill patterns. */
   uint8_t block0[k_ra8_sdmmc_spi_block_size];
@@ -557,7 +540,7 @@ static void test_sdspi_read_bulk_and_error(void)
     block1[i] = (uint8_t)((i * k_sdspi_pattern_stride) + 1U);
   }
   const uint8_t* blocks[2] = {block0, block1};
-  queue_multi_read(blocks, 2U);
+  internal_queue_multi_read(blocks, 2U);
 
   uint8_t buf[(size_t)2U * (size_t)k_ra8_sdmmc_spi_block_size];
   memset(buf, k_sdspi_cov_fill, sizeof(buf));
@@ -587,16 +570,15 @@ static void test_sdspi_read_bulk_and_error(void)
  * unreachable through ra8_io_blockdev_write, which null-checks buf before
  * forwarding. No compound (&&/||) decision exists in this body.
  *
- * @since 0.1.0
- */
-static void test_sdspi_write_forwards(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_sdspi_write_forwards(void)
 {
   TEST_BEGIN("sdspi_write forwards single block");
   ra8_io_blockdev_t bd = {};
-  fixture_card_up(&bd);
+  internal_fixture_card_up(&bd);
 
-  queue_command_response_r1((uint8_t)k_cov_r1_ready); /* CMD24 R1. */
-  queue_write_block_tail((uint8_t)k_cov_data_resp_accept, 1U);
+  internal_queue_command_response_r1((uint8_t)k_cov_r1_ready); /* CMD24 R1. */
+  internal_queue_write_block_tail((uint8_t)k_cov_data_resp_accept, 1U);
 
   uint8_t buf[k_ra8_sdmmc_spi_block_size];
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_sdmmc_spi_block_size; i++) {
@@ -618,18 +600,17 @@ static void test_sdspi_write_forwards(void)
  * ra8_sdmmc_spi_erase_blocks. No boolean decision (compound or otherwise)
  * lives in this body; the single success forward covers both statements.
  *
- * @since 0.1.0
- */
-static void test_sdspi_erase_forwards(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_sdspi_erase_forwards(void)
 {
   TEST_BEGIN("sdspi_erase forwards probe-and-verify");
   ra8_io_blockdev_t bd = {};
-  fixture_card_up(&bd);
+  internal_fixture_card_up(&bd);
 
   uint8_t zeros[k_ra8_sdmmc_spi_block_size] = {};
-  queue_erase_blocks_ok(); /* probe erase [0,1).        */
-  queue_read_back(zeros);  /* probe read-back all zero. */
-  queue_erase_blocks_ok(); /* erase the rest [1,64).    */
+  internal_queue_erase_blocks_ok(); /* probe erase [0,1).        */
+  internal_queue_read_back(zeros);  /* probe read-back all zero. */
+  internal_queue_erase_blocks_ok(); /* erase the rest [1,64).    */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_erase(&bd, 0U, 64U));
   TEST_END("sdspi_erase forwards probe-and-verify");
 }
@@ -654,13 +635,12 @@ static void test_sdspi_erase_forwards(void)
  *   covered by the torn-down driver query below.
  * Both decisions are driven in both senses: minimal MC/DC.
  *
- * @since 0.1.0
- */
-static void test_sdspi_get_caps_and_error(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_sdspi_get_caps_and_error(void)
 {
   TEST_BEGIN("sdspi_get_caps snapshot + driver error");
   ra8_io_blockdev_t bd = {};
-  fixture_card_up(&bd);
+  internal_fixture_card_up(&bd);
 
   uint32_t cap = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_get_capacity(&cap));
@@ -696,15 +676,14 @@ static void test_sdspi_get_caps_and_error(void)
  * `RA8_CHECK_NULL_PTR(bd)` guard: the TRUE arm (bd == NULL) and FALSE arm
  * (valid bd) are both exercised here. No compound decision exists.
  *
- * @since 0.1.0
- */
-static void test_sdspi_bind(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_sdspi_bind(void)
 {
   TEST_BEGIN("sdspi_init NULL guard + bind");
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_blockdev_sdspi_init(nullptr));
 
   ra8_io_blockdev_t bd = {};
-  fixture_card_up(&bd);
+  internal_fixture_card_up(&bd);
   ra8_io_blockdev_caps_t caps = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_get_caps(&bd, &caps));
   TEST_END("sdspi_init NULL guard + bind");
@@ -729,11 +708,10 @@ static void test_sdspi_bind(void)
  */
 int32_t main(void)
 {
-  test_sdspi_bind();
-  test_sdspi_read_bulk_and_error();
-  test_sdspi_write_forwards();
-  test_sdspi_erase_forwards();
-  test_sdspi_get_caps_and_error();
-  (void)fprintf(stderr, "[OK  ] test_ra8_io_blockdev_sdspi_cov.c\n");
+  internal_test_sdspi_bind();
+  internal_test_sdspi_read_bulk_and_error();
+  internal_test_sdspi_write_forwards();
+  internal_test_sdspi_erase_forwards();
+  internal_test_sdspi_get_caps_and_error();
   return 0;
 }
