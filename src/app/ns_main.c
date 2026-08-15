@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_nsc.h"
 #include "ra8_wdt_supervisor.h"
@@ -187,7 +188,7 @@ extern volatile uint32_t g_ra8_threadx_systick_ready;
  * @note Runs in NS handler mode; not callable from thread context.
  * @since 0.1.0
  */
-static void ns_systick_handler(void)
+RA8_INTERNAL static void internal_systick_handler(void)
 {
   if (g_ra8_threadx_systick_ready != 0U) {
     _tx_timer_interrupt();
@@ -208,7 +209,7 @@ static void ns_systick_handler(void)
  * @note Not thread-safe; terminal error path only.
  * @since 0.1.0
  */
-[[noreturn]] static void ns_panic_halt(void)
+RA8_INTERNAL [[noreturn]] static void internal_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -231,7 +232,7 @@ static void ns_systick_handler(void)
  * @note Runs on the NS UI thread; not thread-safe across threads.
  * @since 0.1.0
  */
-static void ui_thread_entry(ULONG thread_input)
+RA8_INTERNAL static void internal_ui_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
   (void)ra8_nsc_log_emit("UI", "UI thread started");
@@ -265,7 +266,7 @@ static void ui_thread_entry(ULONG thread_input)
  * @note Runs on the NS system thread; not thread-safe across threads.
  * @since 0.1.0
  */
-static void sys_thread_entry(ULONG thread_input)
+RA8_INTERNAL static void internal_sys_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
 
@@ -292,7 +293,7 @@ static void sys_thread_entry(ULONG thread_input)
  *          ``ra8_nsc_wdt_refresh`` veneer (the library default would call the
  *          WDT directly, which faults in NS); register the UI and system
  *          workers with their deadlines; then start the supervisor thread. Any
- *          failure is unrecoverable this early, so it parks in ::ns_panic_halt.
+ *          failure is unrecoverable this early, so it parks in ::internal_panic_halt.
  * @return Nothing.
  * @note Returns only on full success; otherwise never returns (halts).
  * @pre ::ra8_nsc_periph_init has completed (Secure clocks + substrate up).
@@ -302,10 +303,10 @@ static void sys_thread_entry(ULONG thread_input)
  * @note Not thread-safe; boot-time only.
  * @since 0.1.0
  */
-static void ns_wdt_setup(void)
+RA8_INTERNAL static void internal_wdt_setup(void)
 {
   if (ra8_nsc_wdt_start() != k_ra8_ok) {
-    ns_panic_halt();
+    internal_panic_halt();
   }
   const ra8_wdt_sup_cfg_t sup_cfg = {
     .stack             = s_sup_stack,
@@ -314,25 +315,25 @@ static void ns_wdt_setup(void)
     .refresh_period_ms = (uint32_t)k_ns_wdt_refresh_ms,
   };
   if (ra8_wdt_supervisor_init(&sup_cfg) != k_ra8_ok) {
-    ns_panic_halt();
+    internal_panic_halt();
   }
   /* Route refresh through the NSC veneer -- the WDT is Secure-owned, so the
    * library's default direct ra8_wdt_refresh_deferred would fault in NS. */
   if (ra8_wdt_supervisor_set_refresh_hook(ra8_nsc_wdt_refresh) != k_ra8_ok) {
-    ns_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_wdt_supervisor_register_thread("ui",
                                          (uint32_t)k_ns_wdt_ui_deadline_ms,
                                          &s_ui_wdt_handle) != k_ra8_ok) {
-    ns_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_wdt_supervisor_register_thread("sys",
                                          (uint32_t)k_ns_wdt_sys_deadline_ms,
                                          &s_sys_wdt_handle) != k_ra8_ok) {
-    ns_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_wdt_supervisor_start() != k_ra8_ok) {
-    ns_panic_halt();
+    internal_panic_halt();
   }
 }
 
@@ -344,7 +345,7 @@ void tx_application_define(void* first_unused_memory)
   (void)first_unused_memory;
 
   /* Arm the WDT + start the check-in supervisor before any worker runs. */
-  ns_wdt_setup();
+  internal_wdt_setup();
 
   /* Create the UI thread. A failed create is unrecoverable this early: the
    * WDT supervisor already registered the "ui"/"sys" deadlines, so a missing
@@ -355,7 +356,7 @@ void tx_application_define(void* first_unused_memory)
    * without tripping -Wcast-qual (same pattern as ra8_wdt_supervisor). */
   if (tx_thread_create(&s_ui_thread,
                        (CHAR*)(uintptr_t)"UI Thread",
-                       ui_thread_entry,
+                       internal_ui_thread_entry,
                        0UL,
                        s_ui_thread_stack,
                        k_ns_ui_thread_stack_size,
@@ -363,13 +364,13 @@ void tx_application_define(void* first_unused_memory)
                        k_ns_ui_priority, /* Preemption threshold */
                        TX_NO_TIME_SLICE,
                        TX_AUTO_START) != TX_SUCCESS) {
-    ns_panic_halt();
+    internal_panic_halt();
   }
 
   /* Create the System/Storage thread */
   if (tx_thread_create(&s_sys_thread,
                        (CHAR*)(uintptr_t)"System Thread",
-                       sys_thread_entry,
+                       internal_sys_thread_entry,
                        0UL,
                        s_sys_thread_stack,
                        k_ns_sys_thread_stack_size,
@@ -377,7 +378,7 @@ void tx_application_define(void* first_unused_memory)
                        k_ns_sys_priority, /* Preemption threshold */
                        TX_NO_TIME_SLICE,
                        TX_AUTO_START) != TX_SUCCESS) {
-    ns_panic_halt();
+    internal_panic_halt();
   }
 }
 
@@ -426,7 +427,7 @@ void tx_application_define(void* first_unused_memory)
 
   /* Call Secure-side substrate initialization via NSC veneer gateway */
   if (ra8_nsc_periph_init() != k_ra8_ok) {
-    ns_panic_halt();
+    internal_panic_halt();
   }
 
   /* Announce the Non-Secure world is live before handing off to ThreadX.
@@ -437,7 +438,7 @@ void tx_application_define(void* first_unused_memory)
   /* Enter ThreadX RTOS kernel (never returns) */
   tx_kernel_enter();
 
-  ns_panic_halt();
+  internal_panic_halt();
 }
 
 /* =============================================================================
@@ -460,7 +461,7 @@ typedef void (*ns_exc_handler_t)(void);
  * @note Runs in NS exception context.
  * @since 0.1.0
  */
-[[noreturn]] static void ns_nmi_halt(void)
+RA8_INTERNAL [[noreturn]] static void internal_nmi_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -470,18 +471,18 @@ typedef void (*ns_exc_handler_t)(void);
 [[gnu::section(".ns_vectors"), gnu::used]] const ns_exc_handler_t g_ra8_ns_vector_table[16] = {
   (ns_exc_handler_t)&g_ra8_ls_ns_stack_top, /* 0 Initial MSP_NS */
   ns_reset_handler,                         /* 1 Reset          */
-  ns_nmi_halt,                              /* 2 NMI            */
-  ns_nmi_halt,                              /* 3 HardFault      */
-  ns_nmi_halt,                              /* 4 MemManage      */
-  ns_nmi_halt,                              /* 5 BusFault       */
-  ns_nmi_halt,                              /* 6 UsageFault     */
-  ns_nmi_halt,                              /* 7 SecureFault    */
+  internal_nmi_halt,                        /* 2 NMI            */
+  internal_nmi_halt,                        /* 3 HardFault      */
+  internal_nmi_halt,                        /* 4 MemManage      */
+  internal_nmi_halt,                        /* 5 BusFault       */
+  internal_nmi_halt,                        /* 6 UsageFault     */
+  internal_nmi_halt,                        /* 7 SecureFault    */
   0,                                        /* 8 Reserved       */
   0,                                        /* 9 Reserved       */
   0,                                        /* 10 Reserved      */
-  ns_nmi_halt,                              /* 11 SVCall        */
-  ns_nmi_halt,                              /* 12 DebugMonitor  */
+  internal_nmi_halt,                        /* 11 SVCall        */
+  internal_nmi_halt,                        /* 12 DebugMonitor  */
   0,                                        /* 13 Reserved      */
   PendSV_Handler,                           /* 14 PendSV        */
-  ns_systick_handler,                       /* 15 SysTick       */
+  internal_systick_handler,                 /* 15 SysTick       */
 };
