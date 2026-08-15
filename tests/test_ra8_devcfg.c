@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_devcfg.h"
 #include "ra8_err.h"
 #include "unity_minimal.h"
@@ -78,16 +79,41 @@ static int s_write_budget = -1;
 
 /**
  * @brief Reset the mock to a blank (all-0xFF) window with unlimited writes.
+
+ *
+ * @details Restores every simulated medium byte to its erased value, clears the write-fault budget, and resets loaded configuration state.
+ * @pre The RAM medium and configuration singleton are exclusively owned by this test vector.
+ * @pre Every supplied range lies within its documented mock-store or record capacity.
+ * @post Every write remains within the fixed RAM medium and caller-owned output storage.
+ * @post No heap allocation, host stream, or physical nonvolatile medium is accessed.
+ * @note Test-only and not reentrant because the medium and driver state have file scope.
+ * @since Version 0.1.0
  */
-static void dc_mock_blank(void)
+RA8_INTERNAL
+static void internal_dc_mock_blank(void)
 {
   (void)memset(s_mem, (int)k_dc_blank_byte, sizeof s_mem);
   s_write_budget = -1;
   ra8_devcfg_reset();
 }
 
-/** @brief Mock ::ra8_devcfg_read_fn_t reading from ::s_mem. */
-static ra8_err_t dc_mock_read(uint32_t offset, uint8_t* dst, uint32_t len)
+/** @brief Mock ::ra8_devcfg_read_fn_t reading from ::s_mem.
+ *
+ * @details Copies one bounded range from the erased-state RAM medium while rejecting null destinations and forged extents.
+ * @param[in] offset First medium byte to read.
+ * @param[out] dst Writable destination buffer.
+ * @param[in] len Requested byte count.
+ * @return Mock store read status.
+ * @retval k_ra8_ok The complete bounded range was copied.
+ * @pre The RAM medium and configuration singleton are exclusively owned by this test vector.
+ * @pre Every supplied range lies within its documented mock-store or record capacity.
+ * @post Every write remains within the fixed RAM medium and caller-owned output storage.
+ * @post No heap allocation, host stream, or physical nonvolatile medium is accessed.
+ * @note Test-only and not reentrant because the medium and driver state have file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_dc_mock_read(uint32_t offset, uint8_t* dst, uint32_t len)
 {
   if (dst == nullptr) {
     return k_ra8_err_null_ptr;
@@ -99,8 +125,23 @@ static ra8_err_t dc_mock_read(uint32_t offset, uint8_t* dst, uint32_t len)
   return k_ra8_ok;
 }
 
-/** @brief Mock ::ra8_devcfg_write_fn_t writing into ::s_mem with fault budget. */
-static ra8_err_t dc_mock_write(uint32_t offset, const uint8_t* src, uint32_t len)
+/** @brief Mock ::ra8_devcfg_write_fn_t writing into ::s_mem with fault budget.
+ *
+ * @details Applies the configured write-fault budget, then copies one bounded source range into the simulated durable medium.
+ * @param[in] offset First medium byte to program.
+ * @param[in] src Source bytes to persist.
+ * @param[in] len Requested byte count.
+ * @return Mock store write status.
+ * @retval k_ra8_ok The complete bounded range was persisted.
+ * @pre The RAM medium and configuration singleton are exclusively owned by this test vector.
+ * @pre Every supplied range lies within its documented mock-store or record capacity.
+ * @post Every write remains within the fixed RAM medium and caller-owned output storage.
+ * @post No heap allocation, host stream, or physical nonvolatile medium is accessed.
+ * @note Test-only and not reentrant because the medium and driver state have file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_dc_mock_write(uint32_t offset, const uint8_t* src, uint32_t len)
 {
   if (src == nullptr) {
     return k_ra8_err_null_ptr;
@@ -119,12 +160,27 @@ static ra8_err_t dc_mock_write(uint32_t offset, const uint8_t* src, uint32_t len
 }
 
 /** @brief The mock store injected by every logic test. */
-static const ra8_devcfg_store_t s_mock = {.read = dc_mock_read, .write = dc_mock_write};
+static const ra8_devcfg_store_t s_mock = {.read  = internal_dc_mock_read,
+                                          .write = internal_dc_mock_write};
 
 /**
  * @brief Build a populated record with the given VCOM and flags.
+
+ *
+ * @details Builds a deterministic configuration record with fixed identity/calibration fields and caller-selected VCOM and flags.
+ * @param[in] vcom Panel VCOM magnitude in millivolts.
+ * @param[in] flags Record validity and provisioning flags.
+ * @return Populated value-owned configuration record.
+ * @retval populated All deterministic body fields, VCOM, and flags are initialized.
+ * @pre The RAM medium and configuration singleton are exclusively owned by this test vector.
+ * @pre Every supplied range lies within its documented mock-store or record capacity.
+ * @post Every write remains within the fixed RAM medium and caller-owned output storage.
+ * @post No heap allocation, host stream, or physical nonvolatile medium is accessed.
+ * @note Test-only and not reentrant because the medium and driver state have file scope.
+ * @since Version 0.1.0
  */
-static ra8_devcfg_record_t dc_make_rec(uint16_t vcom, uint32_t flags)
+RA8_INTERNAL
+static ra8_devcfg_record_t internal_dc_make_rec(uint16_t vcom, uint32_t flags)
 {
   ra8_devcfg_record_t r = {};
   (void)memcpy(r.body.serial, "SN-0001", sizeof("SN-0001") - 1U);
@@ -142,8 +198,20 @@ static ra8_devcfg_record_t dc_make_rec(uint16_t vcom, uint32_t flags)
   return r;
 }
 
-/** @brief Poke one byte inside copy 0 of the mock memory. */
-static void dc_poke_copy0(uint8_t field_off, uint8_t value)
+/** @brief Poke one byte inside copy 0 of the mock memory.
+ *
+ * @details Overwrites one byte in copy zero so individual header/body validation gates can be failed independently.
+ * @param[in] field_off Byte offset within copy zero.
+ * @param[in] value Replacement byte value.
+ * @pre The RAM medium and configuration singleton are exclusively owned by this test vector.
+ * @pre Every supplied range lies within its documented mock-store or record capacity.
+ * @post Every write remains within the fixed RAM medium and caller-owned output storage.
+ * @post No heap allocation, host stream, or physical nonvolatile medium is accessed.
+ * @note Test-only and not reentrant because the medium and driver state have file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static void internal_dc_poke_copy0(uint8_t field_off, uint8_t value)
 {
   s_mem[(uint32_t)k_ra8_devcfg_copy0_off + field_off] = value;
 }
@@ -154,16 +222,27 @@ static void dc_poke_copy0(uint8_t field_off, uint8_t value)
  */
 
 /**
- * @test dc_commit_load_roundtrip -- a committed record reloads field-for-field.
+ * @test internal_dc_commit_load_roundtrip -- a committed record reloads field-for-field.
+
+ * @brief Commits a fully populated record, reloads it through the injected store, and compares every persisted field exactly.
+ *
+ * @details Commits a fully populated record, reloads it through the injected store, and compares every persisted field exactly.
+ * @pre The RAM medium and configuration singleton are exclusively owned by this test vector.
+ * @pre Every supplied range lies within its documented mock-store or record capacity.
+ * @post Every write remains within the fixed RAM medium and caller-owned output storage.
+ * @post No heap allocation, host stream, or physical nonvolatile medium is accessed.
+ * @note Test-only and not reentrant because the medium and driver state have file scope.
+ * @since Version 0.1.0
  */
-static void dc_commit_load_roundtrip(void)
+RA8_INTERNAL
+static void internal_dc_commit_load_roundtrip(void)
 {
   TEST_BEGIN("devcfg: commit/load round-trip");
-  dc_mock_blank();
-  const ra8_devcfg_record_t rec =
-    dc_make_rec((uint16_t)k_dc_good_mv,
-                (uint32_t)k_ra8_devcfg_flag_provisioned | (uint32_t)k_ra8_devcfg_flag_vcom_valid |
-                  (uint32_t)k_ra8_devcfg_flag_touch_valid);
+  internal_dc_mock_blank();
+  const ra8_devcfg_record_t rec = internal_dc_make_rec((uint16_t)k_dc_good_mv,
+                                                       (uint32_t)k_ra8_devcfg_flag_provisioned |
+                                                         (uint32_t)k_ra8_devcfg_flag_vcom_valid |
+                                                         (uint32_t)k_ra8_devcfg_flag_touch_valid);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_commit(&s_mock, &rec));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_load(&s_mock));
 
@@ -184,7 +263,7 @@ static void dc_commit_load_roundtrip(void)
 }
 
 /**
- * @test dc_validation_chain_mcdc -- the four independent integrity gates.
+ * @test internal_dc_validation_chain_mcdc -- the four independent integrity gates.
  *
  * @par MC/DC:
  * Decision (accept a copy): `magic_ok && schema_ok && reclen_ok && crc_ok`
@@ -197,49 +276,62 @@ static void dc_commit_load_roundtrip(void)
  * - Vector 5: one body byte flipped (CRC fails), others  -> UNPROVISIONED.
  * Vectors 1+2 show magic, 1+3 schema, 1+4 record_len and 1+5 CRC each
  * independently drive acceptance. N+1 = 5 vectors for N=4 conditions.
+
+ * @brief Varies magic, schema, record length, and CRC independently around one valid copy to cover the validation conjunction.
+ *
+ * @details Varies magic, schema, record length, and CRC independently around one valid copy to cover the validation conjunction.
+ * @pre The RAM medium and configuration singleton are exclusively owned by this test vector.
+ * @pre Every supplied range lies within its documented mock-store or record capacity.
+ * @post Every write remains within the fixed RAM medium and caller-owned output storage.
+ * @post No heap allocation, host stream, or physical nonvolatile medium is accessed.
+ * @note Test-only and not reentrant because the medium and driver state have file scope.
+ * @since Version 0.1.0
  */
-static void dc_validation_chain_mcdc(void)
+RA8_INTERNAL
+static void internal_dc_validation_chain_mcdc(void)
 {
   TEST_BEGIN("devcfg MC/DC: validation 4-gate chain");
   const ra8_devcfg_record_t rec =
-    dc_make_rec((uint16_t)k_dc_good_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
+    internal_dc_make_rec((uint16_t)k_dc_good_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
 
   /* Vector 1 -- pristine valid copy 0. */
-  dc_mock_blank();
+  internal_dc_mock_blank();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_commit(&s_mock, &rec));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_load(&s_mock));
 
   /* Vector 2 -- corrupt the magic word. */
   ra8_devcfg_reset();
-  dc_poke_copy0((uint8_t)k_ra8_devcfg_off_magic,
-                s_mem[k_ra8_devcfg_copy0_off] ^ (uint8_t)k_dc_bit_flip);
+  internal_dc_poke_copy0((uint8_t)k_ra8_devcfg_off_magic,
+                         s_mem[k_ra8_devcfg_copy0_off] ^ (uint8_t)k_dc_bit_flip);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_devcfg_load(&s_mock));
 
   /* Vector 3 -- a schema from a newer, unknown writer. */
-  dc_mock_blank();
+  internal_dc_mock_blank();
   (void)ra8_devcfg_commit(&s_mock, &rec);
-  dc_poke_copy0((uint8_t)k_ra8_devcfg_off_schema, (uint8_t)k_dc_bad_schema);
+  internal_dc_poke_copy0((uint8_t)k_ra8_devcfg_off_schema, (uint8_t)k_dc_bad_schema);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_devcfg_load(&s_mock));
 
   /* Vector 4 -- a wrong record_len. */
-  dc_mock_blank();
+  internal_dc_mock_blank();
   (void)ra8_devcfg_commit(&s_mock, &rec);
-  dc_poke_copy0((uint8_t)k_ra8_devcfg_off_reclen,
-                s_mem[k_ra8_devcfg_copy0_off + k_ra8_devcfg_off_reclen] ^ (uint8_t)k_dc_bit_flip);
+  internal_dc_poke_copy0((uint8_t)k_ra8_devcfg_off_reclen,
+                         s_mem[k_ra8_devcfg_copy0_off + k_ra8_devcfg_off_reclen] ^
+                           (uint8_t)k_dc_bit_flip);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_devcfg_load(&s_mock));
 
   /* Vector 5 -- one body byte flipped so the CRC no longer matches. */
-  dc_mock_blank();
+  internal_dc_mock_blank();
   (void)ra8_devcfg_commit(&s_mock, &rec);
-  dc_poke_copy0((uint8_t)k_ra8_devcfg_off_serial,
-                s_mem[k_ra8_devcfg_copy0_off + k_ra8_devcfg_off_serial] ^ (uint8_t)k_dc_bit_flip);
+  internal_dc_poke_copy0((uint8_t)k_ra8_devcfg_off_serial,
+                         s_mem[k_ra8_devcfg_copy0_off + k_ra8_devcfg_off_serial] ^
+                           (uint8_t)k_dc_bit_flip);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_devcfg_load(&s_mock));
   TEST_ASSERT(ra8_devcfg_is_blank());
   TEST_END("devcfg MC/DC: validation 4-gate chain");
 }
 
 /**
- * @test dc_resolution_mcdc -- two-copy selection by validity and sequence.
+ * @test internal_dc_resolution_mcdc -- two-copy selection by validity and sequence.
  *
  * @par MC/DC:
  * Decision (both survive): `valid0 && valid1` (2 conditions).
@@ -250,19 +342,30 @@ static void dc_validation_chain_mcdc(void)
  * Vectors 1+2 prove valid0, 1+3 prove valid1 independently affect the outcome.
  * The higher-seq tie-break (`rec0.seq >= rec1.seq`) is exercised in both
  * directions: copy 0 newer and copy 1 newer.
+
+ * @brief Exercises all two-copy validity combinations and both sequence-order outcomes, including the no-valid-copy failure.
+ *
+ * @details Exercises all two-copy validity combinations and both sequence-order outcomes, including the no-valid-copy failure.
+ * @pre The RAM medium and configuration singleton are exclusively owned by this test vector.
+ * @pre Every supplied range lies within its documented mock-store or record capacity.
+ * @post Every write remains within the fixed RAM medium and caller-owned output storage.
+ * @post No heap allocation, host stream, or physical nonvolatile medium is accessed.
+ * @note Test-only and not reentrant because the medium and driver state have file scope.
+ * @since Version 0.1.0
  */
-static void dc_resolution_mcdc(void)
+RA8_INTERNAL
+static void internal_dc_resolution_mcdc(void)
 {
   TEST_BEGIN("devcfg MC/DC: two-copy resolution");
   const ra8_devcfg_record_t r0 =
-    dc_make_rec((uint16_t)k_dc_good_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
+    internal_dc_make_rec((uint16_t)k_dc_good_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
   const ra8_devcfg_record_t r1 =
-    dc_make_rec((uint16_t)k_dc_other_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
+    internal_dc_make_rec((uint16_t)k_dc_other_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
   uint16_t mv = 0U;
 
   /* Vector 1 -- both valid. commit #1 -> copy0 seq1 (good_mv);
    * commit #2 -> copy1 seq2 (other_mv). Higher seq (copy1) wins. */
-  dc_mock_blank();
+  internal_dc_mock_blank();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_commit(&s_mock, &r0));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_commit(&s_mock, &r1));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_load(&s_mock));
@@ -277,7 +380,7 @@ static void dc_resolution_mcdc(void)
   TEST_ASSERT_EQ(k_dc_good_mv, mv);
 
   /* Vector 2 -- copy0 blank, copy1 valid. */
-  dc_mock_blank();
+  internal_dc_mock_blank();
   (void)ra8_devcfg_commit(&s_mock, &r0); /* copy0 */
   (void)ra8_devcfg_commit(&s_mock, &r1); /* copy1 */
   (void)memset(&s_mem[k_ra8_devcfg_copy0_off],
@@ -288,31 +391,42 @@ static void dc_resolution_mcdc(void)
   TEST_ASSERT_EQ(k_dc_other_mv, mv);
 
   /* Vector 3 -- copy0 valid, copy1 blank. */
-  dc_mock_blank();
+  internal_dc_mock_blank();
   (void)ra8_devcfg_commit(&s_mock, &r0); /* copy0 */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_load(&s_mock));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_get_vcom_mv(&mv));
   TEST_ASSERT_EQ(k_dc_good_mv, mv);
 
   /* Vector 4 -- neither valid. */
-  dc_mock_blank();
+  internal_dc_mock_blank();
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_devcfg_load(&s_mock));
   TEST_END("devcfg MC/DC: two-copy resolution");
 }
 
 /**
- * @test dc_torn_write_recovery -- a header-write failure keeps the last good copy.
+ * @test internal_dc_torn_write_recovery -- a header-write failure keeps the last good copy.
+
+ * @brief Fails the second copy header write after its body lands and proves the prior complete copy remains the sole survivor.
+ *
+ * @details Fails the second copy header write after its body lands and proves the prior complete copy remains the sole survivor.
+ * @pre The RAM medium and configuration singleton are exclusively owned by this test vector.
+ * @pre Every supplied range lies within its documented mock-store or record capacity.
+ * @post Every write remains within the fixed RAM medium and caller-owned output storage.
+ * @post No heap allocation, host stream, or physical nonvolatile medium is accessed.
+ * @note Test-only and not reentrant because the medium and driver state have file scope.
+ * @since Version 0.1.0
  */
-static void dc_torn_write_recovery(void)
+RA8_INTERNAL
+static void internal_dc_torn_write_recovery(void)
 {
   TEST_BEGIN("devcfg: torn-write recovery");
   const ra8_devcfg_record_t good =
-    dc_make_rec((uint16_t)k_dc_good_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
+    internal_dc_make_rec((uint16_t)k_dc_good_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
   const ra8_devcfg_record_t next =
-    dc_make_rec((uint16_t)k_dc_other_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
+    internal_dc_make_rec((uint16_t)k_dc_other_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
 
   /* Seed copy0 as the last-good record. */
-  dc_mock_blank();
+  internal_dc_mock_blank();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_commit(&s_mock, &good)); /* copy0, seq1 */
 
   /* Next commit targets copy1; allow the body write, fail the header write. */
@@ -329,14 +443,25 @@ static void dc_torn_write_recovery(void)
 }
 
 /**
- * @test dc_commit_body_write_fault -- a body-write failure is propagated.
+ * @test internal_dc_commit_body_write_fault -- a body-write failure is propagated.
+
+ * @brief Fails the first body write and verifies commit propagates the fault without creating a loadable record.
+ *
+ * @details Fails the first body write and verifies commit propagates the fault without creating a loadable record.
+ * @pre The RAM medium and configuration singleton are exclusively owned by this test vector.
+ * @pre Every supplied range lies within its documented mock-store or record capacity.
+ * @post Every write remains within the fixed RAM medium and caller-owned output storage.
+ * @post No heap allocation, host stream, or physical nonvolatile medium is accessed.
+ * @note Test-only and not reentrant because the medium and driver state have file scope.
+ * @since Version 0.1.0
  */
-static void dc_commit_body_write_fault(void)
+RA8_INTERNAL
+static void internal_dc_commit_body_write_fault(void)
 {
   TEST_BEGIN("devcfg: body write fault propagates");
   const ra8_devcfg_record_t rec =
-    dc_make_rec((uint16_t)k_dc_good_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
-  dc_mock_blank();
+    internal_dc_make_rec((uint16_t)k_dc_good_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
+  internal_dc_mock_blank();
   s_write_budget = 0; /* fail the very first (body) write */
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_devcfg_commit(&s_mock, &rec));
   s_write_budget = -1;
@@ -345,7 +470,7 @@ static void dc_commit_body_write_fault(void)
 }
 
 /**
- * @test dc_vcom_gate_mcdc -- the VCOM validity flag and plausible-range window.
+ * @test internal_dc_vcom_gate_mcdc -- the VCOM validity flag and plausible-range window.
  *
  * @par MC/DC:
  * Decision (reject VCOM): `(mv < vcom_min) || (mv > vcom_max)` (2 conditions).
@@ -355,8 +480,19 @@ static void dc_commit_body_write_fault(void)
  * Vectors 1+2 prove the low bound, 1+3 the high bound, each independently
  * affects the outcome. The separate valid-flag guard is checked both ways, and
  * the two poison values 0 and 0xFFFF are rejected by the range.
+
+ * @brief Covers initialization, validity-flag, lower-bound, upper-bound, and poison-value checks for published panel VCOM.
+ *
+ * @details Covers initialization, validity-flag, lower-bound, upper-bound, and poison-value checks for published panel VCOM.
+ * @pre The RAM medium and configuration singleton are exclusively owned by this test vector.
+ * @pre Every supplied range lies within its documented mock-store or record capacity.
+ * @post Every write remains within the fixed RAM medium and caller-owned output storage.
+ * @post No heap allocation, host stream, or physical nonvolatile medium is accessed.
+ * @note Test-only and not reentrant because the medium and driver state have file scope.
+ * @since Version 0.1.0
  */
-static void dc_vcom_gate_mcdc(void)
+RA8_INTERNAL
+static void internal_dc_vcom_gate_mcdc(void)
 {
   TEST_BEGIN("devcfg MC/DC: VCOM validity + range");
   uint16_t mv = 0U;
@@ -366,43 +502,43 @@ static void dc_vcom_gate_mcdc(void)
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_devcfg_get_vcom_mv(&mv));
 
   /* Vector 1 -- valid flag set, value in range. */
-  dc_mock_blank();
+  internal_dc_mock_blank();
   ra8_devcfg_record_t rec =
-    dc_make_rec((uint16_t)k_dc_good_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
+    internal_dc_make_rec((uint16_t)k_dc_good_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
   (void)ra8_devcfg_commit(&s_mock, &rec);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_load(&s_mock));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_get_vcom_mv(&mv));
   TEST_ASSERT_EQ(k_dc_good_mv, mv);
 
   /* valid flag CLEAR -> refused even though the value is fine. */
-  dc_mock_blank();
-  rec = dc_make_rec((uint16_t)k_dc_good_mv, (uint32_t)k_ra8_devcfg_flag_provisioned);
+  internal_dc_mock_blank();
+  rec = internal_dc_make_rec((uint16_t)k_dc_good_mv, (uint32_t)k_ra8_devcfg_flag_provisioned);
   (void)ra8_devcfg_commit(&s_mock, &rec);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_load(&s_mock));
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_devcfg_get_vcom_mv(&mv));
 
   /* Vector 2 -- below the window. */
-  dc_mock_blank();
-  rec = dc_make_rec((uint16_t)k_dc_low_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
+  internal_dc_mock_blank();
+  rec = internal_dc_make_rec((uint16_t)k_dc_low_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
   (void)ra8_devcfg_commit(&s_mock, &rec);
   (void)ra8_devcfg_load(&s_mock);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_devcfg_get_vcom_mv(&mv));
 
   /* Vector 3 -- above the window. */
-  dc_mock_blank();
-  rec = dc_make_rec((uint16_t)k_dc_high_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
+  internal_dc_mock_blank();
+  rec = internal_dc_make_rec((uint16_t)k_dc_high_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
   (void)ra8_devcfg_commit(&s_mock, &rec);
   (void)ra8_devcfg_load(&s_mock);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_devcfg_get_vcom_mv(&mv));
 
   /* poison values 0 and 0xFFFF. */
-  dc_mock_blank();
-  rec = dc_make_rec((uint16_t)k_dc_zero_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
+  internal_dc_mock_blank();
+  rec = internal_dc_make_rec((uint16_t)k_dc_zero_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
   (void)ra8_devcfg_commit(&s_mock, &rec);
   (void)ra8_devcfg_load(&s_mock);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_devcfg_get_vcom_mv(&mv));
-  dc_mock_blank();
-  rec = dc_make_rec((uint16_t)k_dc_blank_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
+  internal_dc_mock_blank();
+  rec = internal_dc_make_rec((uint16_t)k_dc_blank_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
   (void)ra8_devcfg_commit(&s_mock, &rec);
   (void)ra8_devcfg_load(&s_mock);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_devcfg_get_vcom_mv(&mv));
@@ -410,15 +546,26 @@ static void dc_vcom_gate_mcdc(void)
 }
 
 /**
- * @test dc_null_arg_guards -- every public entry rejects NULL arguments.
+ * @test internal_dc_null_arg_guards -- every public entry rejects NULL arguments.
+
+ * @brief Drives every public null callback, record, store, and output guard plus pre-load access rejection.
+ *
+ * @details Drives every public null callback, record, store, and output guard plus pre-load access rejection.
+ * @pre The RAM medium and configuration singleton are exclusively owned by this test vector.
+ * @pre Every supplied range lies within its documented mock-store or record capacity.
+ * @post Every write remains within the fixed RAM medium and caller-owned output storage.
+ * @post No heap allocation, host stream, or physical nonvolatile medium is accessed.
+ * @note Test-only and not reentrant because the medium and driver state have file scope.
+ * @since Version 0.1.0
  */
-static void dc_null_arg_guards(void)
+RA8_INTERNAL
+static void internal_dc_null_arg_guards(void)
 {
   TEST_BEGIN("devcfg: null-argument guards");
-  const ra8_devcfg_store_t  no_read  = {.read = nullptr, .write = dc_mock_write};
-  const ra8_devcfg_store_t  no_write = {.read = dc_mock_read, .write = nullptr};
+  const ra8_devcfg_store_t  no_read  = {.read = nullptr, .write = internal_dc_mock_write};
+  const ra8_devcfg_store_t  no_write = {.read = internal_dc_mock_read, .write = nullptr};
   const ra8_devcfg_record_t rec =
-    dc_make_rec((uint16_t)k_dc_good_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
+    internal_dc_make_rec((uint16_t)k_dc_good_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
   const ra8_devcfg_body_t* body = nullptr;
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_devcfg_load(nullptr));
@@ -437,9 +584,20 @@ static void dc_null_arg_guards(void)
 }
 
 /**
- * @test dc_default_store_backend -- the extra-MRAM store via its RAM shadow.
+ * @test internal_dc_default_store_backend -- the extra-MRAM store via its RAM shadow.
+
+ * @brief Exercises the production default-store RAM shadow for blank detection, persistence, range guards, and null buffers.
+ *
+ * @details Exercises the production default-store RAM shadow for blank detection, persistence, range guards, and null buffers.
+ * @pre The RAM medium and configuration singleton are exclusively owned by this test vector.
+ * @pre Every supplied range lies within its documented mock-store or record capacity.
+ * @post Every write remains within the fixed RAM medium and caller-owned output storage.
+ * @post No heap allocation, host stream, or physical nonvolatile medium is accessed.
+ * @note Test-only and not reentrant because the medium and driver state have file scope.
+ * @since Version 0.1.0
  */
-static void dc_default_store_backend(void)
+RA8_INTERNAL
+static void internal_dc_default_store_backend(void)
 {
   TEST_BEGIN("devcfg: extra-MRAM default store");
   const ra8_devcfg_store_t* ds = ra8_devcfg_default_store();
@@ -454,7 +612,7 @@ static void dc_default_store_backend(void)
 
   /* Commit then load persists through the shadow. */
   const ra8_devcfg_record_t rec =
-    dc_make_rec((uint16_t)k_dc_good_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
+    internal_dc_make_rec((uint16_t)k_dc_good_mv, (uint32_t)k_ra8_devcfg_flag_vcom_valid);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_commit(ds, &rec));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_devcfg_load(ds));
   uint16_t mv = 0U;
@@ -473,13 +631,13 @@ static void dc_default_store_backend(void)
 
 int main(void)
 {
-  dc_commit_load_roundtrip();
-  dc_validation_chain_mcdc();
-  dc_resolution_mcdc();
-  dc_torn_write_recovery();
-  dc_commit_body_write_fault();
-  dc_vcom_gate_mcdc();
-  dc_null_arg_guards();
-  dc_default_store_backend();
+  internal_dc_commit_load_roundtrip();
+  internal_dc_validation_chain_mcdc();
+  internal_dc_resolution_mcdc();
+  internal_dc_torn_write_recovery();
+  internal_dc_commit_body_write_fault();
+  internal_dc_vcom_gate_mcdc();
+  internal_dc_null_arg_guards();
+  internal_dc_default_store_backend();
   return 0;
 }
