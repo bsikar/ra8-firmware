@@ -25,6 +25,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_intrinsics.h"
@@ -64,13 +65,13 @@ typedef enum : uint32_t {
 } ra8_mpu_shcsr_bits_t;
 
 /* Test whether `value` is a positive power of two -- see implementation for details. */
-static inline bool ra8_mpu_is_pow2(uint32_t value)
+RA8_INTERNAL static inline bool internal_is_pow2(uint32_t value)
 {
   return (value != 0U) && ((value & (value - 1U)) == 0U);
 }
 
 /* Map a (priv, unpriv) permission pair onto the Armv8-M AP code -- see implementation for details. */
-static uint8_t ra8_mpu_encode_ap(ra8_mpu_perm_t priv, ra8_mpu_perm_t unpriv)
+RA8_INTERNAL static uint8_t internal_encode_ap(ra8_mpu_perm_t priv, ra8_mpu_perm_t unpriv)
 {
   /* Arm Cortex-M85 TRM "MPU_RBAR" -- AP[1:0] table. */
   if (priv == k_ra8_mpu_perm_rw && unpriv == k_ra8_mpu_perm_none) {
@@ -89,7 +90,7 @@ static uint8_t ra8_mpu_encode_ap(ra8_mpu_perm_t priv, ra8_mpu_perm_t unpriv)
 }
 
 /* Read the implemented region count from `MPU_TYPE -- see implementation for details. */
-static uint8_t ra8_mpu_dregion_count(void)
+RA8_INTERNAL static uint8_t internal_dregion_count(void)
 {
   /* Arm Cortex-M85 TRM "MPU_TYPE": DREGION lives in bits 15:8. */
   const uint32_t type = ra8_mpu_regs()->TYPE;
@@ -98,27 +99,27 @@ static uint8_t ra8_mpu_dregion_count(void)
 }
 
 /* Validate a single region descriptor -- see implementation for details. */
-static ra8_err_t ra8_mpu_validate_region(const ra8_mpu_region_t* r)
+RA8_INTERNAL static ra8_err_t internal_validate_region(const ra8_mpu_region_t* r)
 {
-  if (!ra8_mpu_is_pow2(r->size) || r->size < (uint32_t)k_ra8_mpu_min_region_size) {
+  if (!internal_is_pow2(r->size) || r->size < (uint32_t)k_ra8_mpu_min_region_size) {
     return k_ra8_err_invalid_arg;
   }
   if ((r->base & (uintptr_t)(r->size - 1U)) != 0U) {
     return k_ra8_err_invalid_arg;
   }
-  if (ra8_mpu_encode_ap(r->priv, r->unpriv) == (uint8_t)k_ra8_mpu_ap_invalid) {
+  if (internal_encode_ap(r->priv, r->unpriv) == (uint8_t)k_ra8_mpu_ap_invalid) {
     return k_ra8_err_invalid_arg;
   }
   return k_ra8_ok;
 }
 
 /* Build the MPU_RBAR value for a region descriptor -- see implementation for details. */
-static uint32_t ra8_mpu_build_rbar(const ra8_mpu_region_t* r)
+RA8_INTERNAL static uint32_t internal_build_rbar(const ra8_mpu_region_t* r)
 {
   /* Arm Cortex-M85 TRM "MPU_RBAR": BASE[31:5] | SH[4:3] | AP[2:1] | XN[0]. */
   const uint32_t base = (uint32_t)r->base & (uint32_t)k_ra8_mpu_rbar_base_mask;
   const uint32_t ap =
-    ((uint32_t)ra8_mpu_encode_ap(r->priv, r->unpriv) << (uint32_t)k_ra8_mpu_rbar_ap_shift) &
+    ((uint32_t)internal_encode_ap(r->priv, r->unpriv) << (uint32_t)k_ra8_mpu_rbar_ap_shift) &
     (uint32_t)k_ra8_mpu_rbar_ap_mask;
   const uint32_t sh = ((uint32_t)r->shareable << (uint32_t)k_ra8_mpu_rbar_sh_shift) &
                       (uint32_t)k_ra8_mpu_rbar_sh_mask;
@@ -127,7 +128,7 @@ static uint32_t ra8_mpu_build_rbar(const ra8_mpu_region_t* r)
 }
 
 /* Build the MPU_RLAR value for a region descriptor -- see implementation for details. */
-static uint32_t ra8_mpu_build_rlar(const ra8_mpu_region_t* r)
+RA8_INTERNAL static uint32_t internal_build_rlar(const ra8_mpu_region_t* r)
 {
   /* Arm Cortex-M85 TRM "MPU_RLAR": LIMIT[31:5] | AttrIndx[3:1] | EN[0]. */
   const uint32_t limit_inclusive = (uint32_t)(r->base + r->size - 1U);
@@ -138,16 +139,16 @@ static uint32_t ra8_mpu_build_rlar(const ra8_mpu_region_t* r)
 }
 
 /* Write a single region's RBAR/RLAR pair via MPU_RNR selection -- see implementation for details. */
-static void ra8_mpu_program_region(uint8_t region, const ra8_mpu_region_t* r)
+RA8_INTERNAL static void internal_program_region(uint8_t region, const ra8_mpu_region_t* r)
 {
   volatile r_mpu_regs_t* mpu = ra8_mpu_regs();
   mpu->RNR                   = (uint32_t)region;
-  mpu->RBAR                  = ra8_mpu_build_rbar(r);
-  mpu->RLAR                  = ra8_mpu_build_rlar(r);
+  mpu->RBAR                  = internal_build_rbar(r);
+  mpu->RLAR                  = internal_build_rlar(r);
 }
 
 /* Disable a single region by clearing RLAR -- see implementation for details. */
-static void ra8_mpu_clear_region(uint8_t region)
+RA8_INTERNAL static void internal_clear_region(uint8_t region)
 {
   volatile r_mpu_regs_t* mpu = ra8_mpu_regs();
   mpu->RNR                   = (uint32_t)region;
@@ -155,14 +156,14 @@ static void ra8_mpu_clear_region(uint8_t region)
 }
 
 /* Sole writer of MPU_CTRL for wholesale (re)configuration -- see implementation for details. */
-static void ra8_mpu_write_ctrl(uint32_t ctrl)
+RA8_INTERNAL static void internal_write_ctrl(uint32_t ctrl)
 {
   /* Arm Cortex-M85 TRM "MPU_CTRL": ENABLE[0] | HFNMIENA[1] | PRIVDEFENA[2]. */
   ra8_mpu_regs()->CTRL = ctrl;
 }
 
 /* Write the MAIR0/MAIR1 attribute-indirection pair -- see implementation for details. */
-static void ra8_mpu_write_mair(uint32_t mair0, uint32_t mair1)
+RA8_INTERNAL static void internal_write_mair(uint32_t mair0, uint32_t mair1)
 {
   volatile r_mpu_regs_t* mpu = ra8_mpu_regs();
   /* Arm Cortex-M85 TRM "MPU_MAIR0 / MPU_MAIR1": attribute-indirection bytes. */
@@ -171,7 +172,7 @@ static void ra8_mpu_write_mair(uint32_t mair0, uint32_t mair1)
 }
 
 /* Build the MPU_CTRL value from the static config -- see implementation for details. */
-static uint32_t ra8_mpu_build_ctrl(const ra8_mpu_cfg_t* cfg)
+RA8_INTERNAL static uint32_t internal_build_ctrl(const ra8_mpu_cfg_t* cfg)
 {
   uint32_t ctrl = (uint32_t)k_ra8_mpu_ctrl_enable;
   if (cfg->privdefena) {
@@ -184,9 +185,9 @@ static uint32_t ra8_mpu_build_ctrl(const ra8_mpu_cfg_t* cfg)
 }
 
 /* Validate the whole config block before any register write -- see implementation for details. */
-static ra8_err_t ra8_mpu_validate_cfg(const ra8_mpu_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_validate_cfg(const ra8_mpu_cfg_t* cfg)
 {
-  const uint8_t implemented = ra8_mpu_dregion_count();
+  const uint8_t implemented = internal_dregion_count();
   if (cfg->region_count > implemented) {
     return k_ra8_err_invalid_arg;
   }
@@ -194,7 +195,7 @@ static ra8_err_t ra8_mpu_validate_cfg(const ra8_mpu_cfg_t* cfg)
     return k_ra8_err_null_ptr;
   }
   for (uint8_t i = 0U; i < cfg->region_count; ++i) {
-    const ra8_err_t err = ra8_mpu_validate_region(&cfg->regions[i]);
+    const ra8_err_t err = internal_validate_region(&cfg->regions[i]);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -205,23 +206,23 @@ static ra8_err_t ra8_mpu_validate_cfg(const ra8_mpu_cfg_t* cfg)
 ra8_err_t ra8_mpu_configure(const ra8_mpu_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
-  const ra8_err_t verr = ra8_mpu_validate_cfg(cfg);
+  const ra8_err_t verr = internal_validate_cfg(cfg);
   if (verr != k_ra8_ok) {
     return verr;
   }
 
   /* Arm Cortex-M85 TRM "MPU_CTRL": disable before reprogramming. */
-  ra8_mpu_write_ctrl(0U);
-  ra8_mpu_write_mair(cfg->mair0, cfg->mair1);
+  internal_write_ctrl(0U);
+  internal_write_mair(cfg->mair0, cfg->mair1);
 
   for (uint8_t i = 0U; i < cfg->region_count; ++i) {
-    ra8_mpu_program_region(i, &cfg->regions[i]);
+    internal_program_region(i, &cfg->regions[i]);
   }
-  const uint8_t implemented = ra8_mpu_dregion_count();
+  const uint8_t implemented = internal_dregion_count();
   for (uint8_t i = cfg->region_count; i < implemented; ++i) {
-    ra8_mpu_clear_region(i);
+    internal_clear_region(i);
   }
-  ra8_mpu_write_ctrl(ra8_mpu_build_ctrl(cfg));
+  internal_write_ctrl(internal_build_ctrl(cfg));
 
   /* Enable MemManage fault dispatch via SHCSR.MEMFAULTENA (bit 16).
    * Without this bit, every MPU permission violation silently escalates
@@ -258,14 +259,14 @@ ra8_err_t ra8_mpu_disable(void)
 ra8_err_t ra8_mpu_set_region(uint8_t region, const ra8_mpu_region_t* region_cfg)
 {
   RA8_CHECK_NULL_PTR(region_cfg, s_tag, "region_cfg must not be nullptr");
-  if (region >= ra8_mpu_dregion_count()) {
+  if (region >= internal_dregion_count()) {
     return k_ra8_err_invalid_arg;
   }
-  const ra8_err_t verr = ra8_mpu_validate_region(region_cfg);
+  const ra8_err_t verr = internal_validate_region(region_cfg);
   if (verr != k_ra8_ok) {
     return verr;
   }
-  ra8_mpu_program_region(region, region_cfg);
+  internal_program_region(region, region_cfg);
   return k_ra8_ok;
 }
 
@@ -418,29 +419,29 @@ ra8_err_t ra8_mpu_apply_boot_map(void)
   /* Precondition: the silicon must implement at least the map's region count.
      On the RA8D2 M85 (16 regions) this always holds; the guard keeps the boot
      path from installing a truncated, half-covered map on an unexpected part. */
-  const uint8_t implemented = ra8_mpu_dregion_count();
+  const uint8_t implemented = internal_dregion_count();
   if (implemented < (uint8_t)k_ra8_mpu_boot_region_count) {
     return k_ra8_err_invalid_arg;
   }
 
   /* Arm Cortex-M85 TRM "MPU_CTRL": disable before reprogramming. */
-  ra8_mpu_write_ctrl(0U);
-  ra8_mpu_write_mair((uint32_t)k_ra8_mpu_boot_mair0, (uint32_t)k_ra8_mpu_boot_mair1);
+  internal_write_ctrl(0U);
+  internal_write_mair((uint32_t)k_ra8_mpu_boot_mair0, (uint32_t)k_ra8_mpu_boot_mair1);
 
   /* Clear any stale high-index regions FIRST, then install the map, so an
      aborted reprogram never leaves a stale enabled region beside the new map,
      and the last register write reflects the highest map region. */
   for (uint8_t i = (uint8_t)k_ra8_mpu_boot_region_count; i < implemented; ++i) {
-    ra8_mpu_clear_region(i);
+    internal_clear_region(i);
   }
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_mpu_boot_region_count; ++i) {
-    ra8_mpu_program_region(i, &s_ra8_mpu_boot_regions[i]);
+    internal_program_region(i, &s_ra8_mpu_boot_regions[i]);
   }
 
   /* Retire the region writes, enable the MPU with PRIVDEFENA, then flush the
      pipeline so the very next access sees the new attribute map. */
   ra8_hw_dsb();
-  ra8_mpu_write_ctrl((uint32_t)k_ra8_mpu_ctrl_enable | (uint32_t)k_ra8_mpu_ctrl_privdefena);
+  internal_write_ctrl((uint32_t)k_ra8_mpu_ctrl_enable | (uint32_t)k_ra8_mpu_ctrl_privdefena);
   ra8_hw_dsb();
   ra8_hw_isb();
   return k_ra8_ok;
