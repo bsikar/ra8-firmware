@@ -219,7 +219,7 @@ static void test_mcdc_fill_rect_565_clip(void)
  * ARGB8888 per-pixel fallback), the true branch being test_mcdc_fill_rect_565_clip.
  * The ARGB8888 path never enters internal_fill_rect_565, so its
  * `(x1<=x0)||(y1<=y0)` guard is not reached; the compound guards it does traverse
- * -- `(w<=0)||(h<=0)` in ra8_gfx_rect and s_gfx_text_plot's `(x<clip_x0)||(y<clip_y0)`
+ * -- `(w<=0)||(h<=0)` in ra8_gfx_rect and priv_gfx_text_plot's `(x<clip_x0)||(y<clip_y0)`
  * and `(x>=clip_x1)||(y>=clip_y1)` clip checks -- are all-false control vectors,
  * their independence vectors living in test_mcdc_fill_rect_565_clip and
  * test_clip_confines_drawing. No new compound vector is introduced here.

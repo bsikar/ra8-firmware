@@ -375,7 +375,7 @@ uint64_t ra8_book_container_table_entry(const uint8_t* table, uint32_t idx)
 /**
  * @struct ra8_book_container_view_t
  * @brief Parsed, bounds-checked view of a resident "RBKC" container file.
- * @details Populated by `s_container_view()`; every pointer aims into the
+ * @details Populated by `internal_container_view()`; every pointer aims into the
  *          caller's file buffer and every extent was verified against
  *          @c file_len, so the inflate loop can trust it without re-checking.
  * @invariant `table` covers `chunk_count + 1` entries; `payload` covers
@@ -424,10 +424,10 @@ typedef struct {
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_container_view(const uint8_t*             bytes,
-                                  size_t                     file_len,
-                                  size_t                     scratch_cap,
-                                  ra8_book_container_view_t* out_view)
+static ra8_err_t internal_container_view(const uint8_t*             bytes,
+                                         size_t                     file_len,
+                                         size_t                     scratch_cap,
+                                         ra8_book_container_view_t* out_view)
 {
   if (file_len < k_ra8_book_container_header_len) {
     return k_ra8_err_invalid_size;
@@ -478,7 +478,7 @@ static ra8_err_t s_container_view(const uint8_t*             bytes,
  * (truncated / corrupt stream). On success @p scratch holds the reassembled
  * flat blob of exactly `view->total` bytes.
  *
- * @param[in]  view    Validated view from `s_container_view()`.
+ * @param[in]  view    Validated view from `internal_container_view()`.
  * @param[in]  inflate Caller decompressor (see @ref ra8_book_inflate_fn).
  * @param[out] scratch Destination for the reassembled blob.
  *
@@ -487,7 +487,7 @@ static ra8_err_t s_container_view(const uint8_t*             bytes,
  * @retval k_ra8_err_invalid_size A chunk inflated to the wrong length.
  * @retval k_ra8_err_*            The inflater's own error, returned verbatim.
  *
- * @pre @p view was accepted by `s_container_view()` for this scratch capacity.
+ * @pre @p view was accepted by `internal_container_view()` for this scratch capacity.
  * @pre @p inflate and @p scratch are non-NULL (checked by the caller).
  * @post On k_ra8_ok, `scratch[0..view->total)` is the flat blob.
  * @post On any error @p scratch contents are unspecified.
@@ -497,9 +497,9 @@ static ra8_err_t s_container_view(const uint8_t*             bytes,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_inflate_chunks(const ra8_book_container_view_t* view,
-                                  ra8_book_inflate_fn              inflate,
-                                  uint8_t*                         scratch)
+static ra8_err_t internal_inflate_chunks(const ra8_book_container_view_t* view,
+                                         ra8_book_inflate_fn              inflate,
+                                         uint8_t*                         scratch)
 {
   for (uint32_t i = 0U; i < view->chunk_count; ++i) { /* bound: validated chunk_count */
     const uint64_t off      = ra8_book_container_table_entry(view->table, i);
@@ -560,20 +560,20 @@ static ra8_err_t s_inflate_chunks(const ra8_book_container_view_t* view,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_open_body(const uint8_t*      bytes,
-                             size_t              file_len,
-                             ra8_book_inflate_fn inflate,
-                             void*               scratch,
-                             size_t              scratch_cap,
-                             const void**        out_base,
-                             size_t*             out_size)
+static ra8_err_t internal_open_body(const uint8_t*      bytes,
+                                    size_t              file_len,
+                                    ra8_book_inflate_fn inflate,
+                                    void*               scratch,
+                                    size_t              scratch_cap,
+                                    const void**        out_base,
+                                    size_t*             out_size)
 {
   ra8_book_container_view_t view = {};
-  ra8_err_t                 err  = s_container_view(bytes, file_len, scratch_cap, &view);
+  ra8_err_t                 err  = internal_container_view(bytes, file_len, scratch_cap, &view);
   if (err != k_ra8_ok) {
     return err;
   }
-  err = s_inflate_chunks(&view, inflate, (uint8_t*)scratch);
+  err = internal_inflate_chunks(&view, inflate, (uint8_t*)scratch);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -600,11 +600,11 @@ ra8_err_t ra8_book_open(const void*         file,
   RA8_CHECK_NULL_PTR(out_base, s_tag_book, "open: null out_base");
   RA8_CHECK_NULL_PTR(out_size, s_tag_book, "open: null out_size");
 
-  return s_open_body((const uint8_t*)file,
-                     file_len,
-                     inflate,
-                     scratch,
-                     scratch_cap,
-                     out_base,
-                     out_size);
+  return internal_open_body((const uint8_t*)file,
+                            file_len,
+                            inflate,
+                            scratch,
+                            scratch_cap,
+                            out_base,
+                            out_size);
 }

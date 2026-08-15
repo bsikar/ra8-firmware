@@ -80,11 +80,11 @@ static const char* const s_tag = "ra8_rabook_gray4";
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static uint8_t s_bilinear_sample(const uint8_t* src,
-                                 uint16_t       src_w,
-                                 uint16_t       src_h,
-                                 uint64_t       sx_fp,
-                                 uint64_t       sy_fp)
+static uint8_t internal_bilinear_sample(const uint8_t* src,
+                                        uint16_t       src_w,
+                                        uint16_t       src_h,
+                                        uint64_t       sx_fp,
+                                        uint64_t       sy_fp)
 {
   assert(src != nullptr);
   assert(src_w > 0U);
@@ -131,7 +131,7 @@ static uint8_t s_bilinear_sample(const uint8_t* src,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static void s_pack_nibbles(const uint8_t* gray_pixels, uint32_t n_pixels, uint8_t* out)
+static void internal_pack_nibbles(const uint8_t* gray_pixels, uint32_t n_pixels, uint8_t* out)
 {
   for (uint32_t i = 0U; i < n_pixels; i++) {
     uint8_t nib = (uint8_t)((gray_pixels[i] + (uint8_t)k_ra8_rabook_gray4_round_half) /
@@ -216,7 +216,7 @@ ra8_err_t ra8_rabook_gray4_downscale(const uint8_t* src,
 
     for (uint16_t dx = 0U; dx < dst_w; dx++) {
       uint64_t sx_fp                   = (uint64_t)dx * x_step;
-      dst[((uint32_t)dy * dst_w) + dx] = s_bilinear_sample(src, src_w, src_h, sx_fp, sy_fp);
+      dst[((uint32_t)dy * dst_w) + dx] = internal_bilinear_sample(src, src_w, src_h, sx_fp, sy_fp);
     }
   }
 
@@ -248,7 +248,7 @@ ra8_err_t ra8_rabook_gray4_encode(const uint8_t* gray_pixels,
   }
 
   (void)memset(out, 0, n_bytes);
-  s_pack_nibbles(gray_pixels, n_pixels, out);
+  internal_pack_nibbles(gray_pixels, n_pixels, out);
 
   *out_size = n_bytes;
   return k_ra8_ok;

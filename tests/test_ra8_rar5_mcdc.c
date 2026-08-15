@@ -316,7 +316,7 @@ static void test_mcdc_apply_run(void)
  * @par MC/DC:
  * (no compound decisions under test -- exercises the single-condition
  * `st->consumed >= block_end` and `if (last)` branches of
- * libs/ra8_comic/src/ra8_rar5.c@s_decode_stream: a two-block stream crosses a
+ * libs/ra8_comic/src/ra8_rar5.c@internal_decode_stream: a two-block stream crosses a
  * non-last block boundary (consumed >= block_end true, last false -> opens the
  * next block), and a single last block decoded with an over-large unpacked size
  * reaches the last-block boundary with output incomplete (last true -> break ->

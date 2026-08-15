@@ -82,7 +82,7 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t s_crc_update(uint32_t crc, const uint8_t* data, uint32_t len)
+static uint32_t internal_crc_update(uint32_t crc, const uint8_t* data, uint32_t len)
 {
   for (uint32_t i = 0U; i < len; i++) {
     crc ^= (uint32_t)data[i];
@@ -112,7 +112,7 @@ static uint32_t s_crc_update(uint32_t crc, const uint8_t* data, uint32_t len)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_check_buffer_members(const ra8_rabook_buffers_t* buf)
+static ra8_err_t internal_check_buffer_members(const ra8_rabook_buffers_t* buf)
 {
   RA8_CHECK_NULL_PTR(buf, s_tag_rabook, "buf");
 
@@ -146,7 +146,7 @@ static ra8_err_t s_check_buffer_members(const ra8_rabook_buffers_t* buf)
 ra8_err_t ra8_rabook_compile_init(ra8_rabook_ctx_t* ctx, const ra8_rabook_buffers_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag_rabook, "ctx");
-  const ra8_err_t buf_err = s_check_buffer_members(buf);
+  const ra8_err_t buf_err = internal_check_buffer_members(buf);
   if (buf_err != k_ra8_ok) {
     return buf_err;
   }
@@ -222,7 +222,7 @@ uint32_t ra8_rabook_intern(ra8_rabook_ctx_t* ctx, const char* str)
  */
 RA8_INTERNAL
 static uint32_t
-s_append_attrs(ra8_rabook_ctx_t* ctx, const ra8_book_attr_t* attrs, uint16_t attr_count)
+internal_append_attrs(ra8_rabook_ctx_t* ctx, const ra8_book_attr_t* attrs, uint16_t attr_count)
 {
   if (attr_count == 0U) {
     return (uint32_t)k_ra8_book_nil;
@@ -262,7 +262,7 @@ uint32_t ra8_rabook_add_element(ra8_rabook_ctx_t*      ctx,
     return (uint32_t)k_ra8_book_nil;
   }
 
-  const uint32_t first_attr = s_append_attrs(ctx, attrs, attr_count);
+  const uint32_t first_attr = internal_append_attrs(ctx, attrs, attr_count);
 
   const uint32_t   idx  = ctx->node_count;
   ra8_book_node_t* node = &ctx->buf.nodes[idx];
@@ -382,14 +382,14 @@ uint32_t ra8_rabook_add_chapter(ra8_rabook_ctx_t* ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t s_append_image_descriptor(ra8_rabook_ctx_t* ctx,
-                                          uint32_t          id_off,
-                                          uint16_t          width,
-                                          uint16_t          height,
-                                          uint8_t           format,
-                                          uint8_t           pixel_format,
-                                          uint32_t          data_off,
-                                          uint32_t          data_size)
+static uint32_t internal_append_image_descriptor(ra8_rabook_ctx_t* ctx,
+                                                 uint32_t          id_off,
+                                                 uint16_t          width,
+                                                 uint16_t          height,
+                                                 uint8_t           format,
+                                                 uint8_t           pixel_format,
+                                                 uint32_t          data_off,
+                                                 uint32_t          data_size)
 {
   const uint32_t    idx = ctx->image_count;
   ra8_book_image_t* img = &ctx->buf.images[idx];
@@ -447,14 +447,14 @@ uint32_t ra8_rabook_add_image(ra8_rabook_ctx_t* ctx,
     ctx->image_pool_size += data_size;
   }
 
-  return s_append_image_descriptor(ctx,
-                                   id_off,
-                                   width,
-                                   height,
-                                   format,
-                                   pixel_format,
-                                   data_off,
-                                   data_size);
+  return internal_append_image_descriptor(ctx,
+                                          id_off,
+                                          width,
+                                          height,
+                                          format,
+                                          pixel_format,
+                                          data_off,
+                                          data_size);
 }
 
 uint32_t ra8_rabook_add_image_external(ra8_rabook_ctx_t* ctx,
@@ -493,14 +493,14 @@ uint32_t ra8_rabook_add_image_external(ra8_rabook_ctx_t* ctx,
   }
 
   *out_data_off = data_off;
-  return s_append_image_descriptor(ctx,
-                                   id_off,
-                                   width,
-                                   height,
-                                   format,
-                                   pixel_format,
-                                   data_off,
-                                   data_size);
+  return internal_append_image_descriptor(ctx,
+                                          id_off,
+                                          width,
+                                          height,
+                                          format,
+                                          pixel_format,
+                                          data_off,
+                                          data_size);
 }
 
 uint32_t
@@ -584,7 +584,7 @@ typedef struct {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_compute_layout(const ra8_rabook_ctx_t* ctx, ra8_rabook_layout_t* lay)
+static ra8_err_t internal_compute_layout(const ra8_rabook_ctx_t* ctx, ra8_rabook_layout_t* lay)
 {
   const uint64_t chap_bytes = (uint64_t)ctx->chapter_count * (uint64_t)k_ra8_book_sizeof_chapter;
   const uint64_t node_bytes = (uint64_t)ctx->node_count * (uint64_t)k_ra8_book_sizeof_node;
@@ -650,9 +650,9 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void s_segments(const ra8_rabook_ctx_t*    ctx,
-                       const ra8_rabook_layout_t* lay,
-                       ra8_rabook_segment_t       seg[k_rabook_segment_count])
+static void internal_segments(const ra8_rabook_ctx_t*    ctx,
+                              const ra8_rabook_layout_t* lay,
+                              ra8_rabook_segment_t       seg[k_rabook_segment_count])
 {
   seg[k_rabook_segment_chapters] =
     (ra8_rabook_segment_t){(const uint8_t*)ctx->buf.chapters, lay->off_node - lay->off_chap};
@@ -688,11 +688,11 @@ static void s_segments(const ra8_rabook_ctx_t*    ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_read_exact(ra8_rabook_image_read_fn read,
-                              void*                    read_ctx,
-                              uint32_t                 offset,
-                              uint8_t*                 dst,
-                              uint32_t                 len)
+static ra8_err_t internal_read_exact(ra8_rabook_image_read_fn read,
+                                     void*                    read_ctx,
+                                     uint32_t                 offset,
+                                     uint8_t*                 dst,
+                                     uint32_t                 len)
 {
   uint32_t        got = 0U;
   const ra8_err_t err = read(read_ctx, offset, dst, len, &got);
@@ -722,7 +722,7 @@ static ra8_err_t s_read_exact(ra8_rabook_image_read_fn read,
  */
 RA8_INTERNAL
 static ra8_err_t
-s_write_exact(ra8_rabook_write_fn write, void* write_ctx, const uint8_t* src, uint32_t len)
+internal_write_exact(ra8_rabook_write_fn write, void* write_ctx, const uint8_t* src, uint32_t len)
 {
   if (len == 0U) {
     return k_ra8_ok;
@@ -756,18 +756,18 @@ s_write_exact(ra8_rabook_write_fn write, void* write_ctx, const uint8_t* src, ui
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_crc_image_pool(const ra8_rabook_ctx_t*  ctx,
-                                  ra8_rabook_image_read_fn read,
-                                  void*                    read_ctx,
-                                  uint8_t*                 scratch,
-                                  uint32_t                 scratch_cap,
-                                  uint32_t*                crc)
+static ra8_err_t internal_crc_image_pool(const ra8_rabook_ctx_t*  ctx,
+                                         ra8_rabook_image_read_fn read,
+                                         void*                    read_ctx,
+                                         uint8_t*                 scratch,
+                                         uint32_t                 scratch_cap,
+                                         uint32_t*                crc)
 {
   if (ctx->image_pool_size == 0U) {
     return k_ra8_ok;
   }
   if (ctx->image_pool_mode != (uint8_t)k_rabook_pool_external) {
-    *crc = s_crc_update(*crc, ctx->buf.image_pool, ctx->image_pool_size);
+    *crc = internal_crc_update(*crc, ctx->buf.image_pool, ctx->image_pool_size);
     return k_ra8_ok;
   }
   uint32_t offset = 0U;
@@ -776,11 +776,11 @@ static ra8_err_t s_crc_image_pool(const ra8_rabook_ctx_t*  ctx,
     if (span > scratch_cap) {
       span = scratch_cap;
     }
-    const ra8_err_t err = s_read_exact(read, read_ctx, offset, scratch, span);
+    const ra8_err_t err = internal_read_exact(read, read_ctx, offset, scratch, span);
     if (err != k_ra8_ok) {
       return err;
     }
-    *crc = s_crc_update(*crc, scratch, span);
+    *crc = internal_crc_update(*crc, scratch, span);
     offset += span;
   }
   return k_ra8_ok;
@@ -804,7 +804,7 @@ static ra8_err_t s_crc_image_pool(const ra8_rabook_ctx_t*  ctx,
  */
 RA8_INTERNAL
 static ra8_book_header_t
-s_make_header(const ra8_rabook_ctx_t* ctx, const ra8_rabook_layout_t* lay, uint32_t crc)
+internal_make_header(const ra8_rabook_ctx_t* ctx, const ra8_rabook_layout_t* lay, uint32_t crc)
 {
   ra8_book_header_t hdr = {};
   (void)memcpy(hdr.magic, "RABOOK1", sizeof(hdr.magic));
@@ -856,19 +856,19 @@ s_make_header(const ra8_rabook_ctx_t* ctx, const ra8_rabook_layout_t* lay, uint3
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_write_image_pool(const ra8_rabook_ctx_t*  ctx,
-                                    ra8_rabook_image_read_fn read,
-                                    void*                    read_ctx,
-                                    ra8_rabook_write_fn      write,
-                                    void*                    write_ctx,
-                                    uint8_t*                 scratch,
-                                    uint32_t                 scratch_cap)
+static ra8_err_t internal_write_image_pool(const ra8_rabook_ctx_t*  ctx,
+                                           ra8_rabook_image_read_fn read,
+                                           void*                    read_ctx,
+                                           ra8_rabook_write_fn      write,
+                                           void*                    write_ctx,
+                                           uint8_t*                 scratch,
+                                           uint32_t                 scratch_cap)
 {
   if (ctx->image_pool_size == 0U) {
     return k_ra8_ok;
   }
   if (ctx->image_pool_mode != (uint8_t)k_rabook_pool_external) {
-    return s_write_exact(write, write_ctx, ctx->buf.image_pool, ctx->image_pool_size);
+    return internal_write_exact(write, write_ctx, ctx->buf.image_pool, ctx->image_pool_size);
   }
   uint32_t offset = 0U;
   while (offset < ctx->image_pool_size) {
@@ -876,9 +876,9 @@ static ra8_err_t s_write_image_pool(const ra8_rabook_ctx_t*  ctx,
     if (span > scratch_cap) {
       span = scratch_cap;
     }
-    ra8_err_t err = s_read_exact(read, read_ctx, offset, scratch, span);
+    ra8_err_t err = internal_read_exact(read, read_ctx, offset, scratch, span);
     if (err == k_ra8_ok) {
-      err = s_write_exact(write, write_ctx, scratch, span);
+      err = internal_write_exact(write, write_ctx, scratch, span);
     }
     if (err != k_ra8_ok) {
       return err;
@@ -910,19 +910,19 @@ static ra8_err_t s_write_image_pool(const ra8_rabook_ctx_t*  ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_crc_body(const ra8_rabook_ctx_t*    ctx,
-                            const ra8_rabook_segment_t seg[k_rabook_segment_count],
-                            ra8_rabook_image_read_fn   read,
-                            void*                      read_ctx,
-                            uint8_t*                   scratch,
-                            uint32_t                   scratch_cap,
-                            uint32_t*                  out_crc)
+static ra8_err_t internal_crc_body(const ra8_rabook_ctx_t*    ctx,
+                                   const ra8_rabook_segment_t seg[k_rabook_segment_count],
+                                   ra8_rabook_image_read_fn   read,
+                                   void*                      read_ctx,
+                                   uint8_t*                   scratch,
+                                   uint32_t                   scratch_cap,
+                                   uint32_t*                  out_crc)
 {
   uint32_t crc = (uint32_t)k_rabook_crc_init;
   for (uint8_t i = 0U; i < (uint8_t)k_rabook_segment_count; ++i) {
-    crc = s_crc_update(crc, seg[i].data, seg[i].len);
+    crc = internal_crc_update(crc, seg[i].data, seg[i].len);
   }
-  const ra8_err_t err = s_crc_image_pool(ctx, read, read_ctx, scratch, scratch_cap, &crc);
+  const ra8_err_t err = internal_crc_image_pool(ctx, read, read_ctx, scratch, scratch_cap, &crc);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -954,24 +954,25 @@ static ra8_err_t s_crc_body(const ra8_rabook_ctx_t*    ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_write_book(const ra8_rabook_ctx_t*    ctx,
-                              const ra8_book_header_t*   hdr,
-                              const ra8_rabook_segment_t seg[k_rabook_segment_count],
-                              ra8_rabook_image_read_fn   read,
-                              void*                      read_ctx,
-                              ra8_rabook_write_fn        write,
-                              void*                      write_ctx,
-                              uint8_t*                   scratch,
-                              uint32_t                   scratch_cap)
+static ra8_err_t internal_write_book(const ra8_rabook_ctx_t*    ctx,
+                                     const ra8_book_header_t*   hdr,
+                                     const ra8_rabook_segment_t seg[k_rabook_segment_count],
+                                     ra8_rabook_image_read_fn   read,
+                                     void*                      read_ctx,
+                                     ra8_rabook_write_fn        write,
+                                     void*                      write_ctx,
+                                     uint8_t*                   scratch,
+                                     uint32_t                   scratch_cap)
 {
-  ra8_err_t err = s_write_exact(write, write_ctx, (const uint8_t*)hdr, (uint32_t)sizeof(*hdr));
+  ra8_err_t err =
+    internal_write_exact(write, write_ctx, (const uint8_t*)hdr, (uint32_t)sizeof(*hdr));
   for (uint8_t i = 0U; (i < (uint8_t)k_rabook_segment_count) && (err == k_ra8_ok); ++i) {
-    err = s_write_exact(write, write_ctx, seg[i].data, seg[i].len);
+    err = internal_write_exact(write, write_ctx, seg[i].data, seg[i].len);
   }
   if (err != k_ra8_ok) {
     return err;
   }
-  return s_write_image_pool(ctx, read, read_ctx, write, write_ctx, scratch, scratch_cap);
+  return internal_write_image_pool(ctx, read, read_ctx, write, write_ctx, scratch, scratch_cap);
 }
 
 /**
@@ -997,12 +998,12 @@ static ra8_err_t s_write_book(const ra8_rabook_ctx_t*    ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_validate_stream_args(const ra8_rabook_ctx_t*  ctx,
-                                        ra8_rabook_image_read_fn image_read,
-                                        ra8_rabook_write_fn      write,
-                                        const uint8_t*           scratch,
-                                        uint32_t                 scratch_cap,
-                                        const uint32_t*          out_len)
+static ra8_err_t internal_validate_stream_args(const ra8_rabook_ctx_t*  ctx,
+                                               ra8_rabook_image_read_fn image_read,
+                                               ra8_rabook_write_fn      write,
+                                               const uint8_t*           scratch,
+                                               uint32_t                 scratch_cap,
+                                               const uint32_t*          out_len)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag_rabook, "ctx");
   RA8_CHECK_NULL_PTR((const void*)write, s_tag_rabook, "write");
@@ -1031,25 +1032,33 @@ ra8_err_t ra8_rabook_finalize_stream(const ra8_rabook_ctx_t*  ctx,
                                      uint32_t*                out_len)
 {
   const ra8_err_t arg_err =
-    s_validate_stream_args(ctx, image_read, write, scratch, scratch_cap, out_len);
+    internal_validate_stream_args(ctx, image_read, write, scratch, scratch_cap, out_len);
   if (arg_err != k_ra8_ok) {
     return arg_err;
   }
 
   ra8_rabook_layout_t lay     = {};
-  const ra8_err_t     lay_err = s_compute_layout(ctx, &lay);
+  const ra8_err_t     lay_err = internal_compute_layout(ctx, &lay);
   if (lay_err != k_ra8_ok) {
     return lay_err;
   }
   ra8_rabook_segment_t seg[k_rabook_segment_count] = {};
-  s_segments(ctx, &lay, seg);
+  internal_segments(ctx, &lay, seg);
   uint32_t  crc = 0U;
-  ra8_err_t err = s_crc_body(ctx, seg, image_read, image_ctx, scratch, scratch_cap, &crc);
+  ra8_err_t err = internal_crc_body(ctx, seg, image_read, image_ctx, scratch, scratch_cap, &crc);
   if (err != k_ra8_ok) {
     return err;
   }
-  const ra8_book_header_t hdr = s_make_header(ctx, &lay, crc);
-  err = s_write_book(ctx, &hdr, seg, image_read, image_ctx, write, write_ctx, scratch, scratch_cap);
+  const ra8_book_header_t hdr = internal_make_header(ctx, &lay, crc);
+  err                         = internal_write_book(ctx,
+                                                    &hdr,
+                                                    seg,
+                                                    image_read,
+                                                    image_ctx,
+                                                    write,
+                                                    write_ctx,
+                                                    scratch,
+                                                    scratch_cap);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -1084,7 +1093,7 @@ typedef struct {
  */
 RA8_INTERNAL
 static ra8_err_t
-s_memory_write(void* opaque, const uint8_t* src, uint32_t requested, uint32_t* out_written)
+internal_memory_write(void* opaque, const uint8_t* src, uint32_t requested, uint32_t* out_written)
 {
   ra8_rabook_memory_sink_t* sink = (ra8_rabook_memory_sink_t*)opaque;
   *out_written                   = 0U;
@@ -1117,8 +1126,9 @@ s_memory_write(void* opaque, const uint8_t* src, uint32_t requested, uint32_t* o
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-s_validate_memory_finalize(ra8_rabook_ctx_t* ctx, const void** out_blob, const uint32_t* out_len)
+static ra8_err_t internal_validate_memory_finalize(ra8_rabook_ctx_t* ctx,
+                                                   const void**      out_blob,
+                                                   const uint32_t*   out_len)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag_rabook, "ctx");
   RA8_CHECK_NULL_PTR(out_blob, s_tag_rabook, "out_blob");
@@ -1128,20 +1138,26 @@ s_validate_memory_finalize(ra8_rabook_ctx_t* ctx, const void** out_blob, const u
     return k_ra8_err_no_mem;
   }
   ra8_rabook_layout_t lay = {};
-  RA8_RETURN_ON_ERROR(s_compute_layout(ctx, &lay), s_tag_rabook, "layout");
+  RA8_RETURN_ON_ERROR(internal_compute_layout(ctx, &lay), s_tag_rabook, "layout");
   return (lay.total <= ctx->buf.out_cap) ? k_ra8_ok : k_ra8_err_invalid_size;
 }
 
 ra8_err_t ra8_rabook_finalize(ra8_rabook_ctx_t* ctx, const void** out_blob, uint32_t* out_len)
 {
-  const ra8_err_t arg_err = s_validate_memory_finalize(ctx, out_blob, out_len);
+  const ra8_err_t arg_err = internal_validate_memory_finalize(ctx, out_blob, out_len);
   if (arg_err != k_ra8_ok) {
     return arg_err;
   }
   ra8_rabook_memory_sink_t sink = {.data = ctx->buf.out, .cap = ctx->buf.out_cap};
   uint32_t                 len  = 0U;
-  const ra8_err_t          err =
-    ra8_rabook_finalize_stream(ctx, nullptr, nullptr, s_memory_write, &sink, nullptr, 0U, &len);
+  const ra8_err_t          err  = ra8_rabook_finalize_stream(ctx,
+                                                             nullptr,
+                                                             nullptr,
+                                                             internal_memory_write,
+                                                             &sink,
+                                                             nullptr,
+                                                             0U,
+                                                             &len);
   if (err != k_ra8_ok) {
     return err;
   }

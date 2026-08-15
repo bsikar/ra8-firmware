@@ -73,7 +73,7 @@ typedef enum : uint32_t {
  */
 RA8_INTERNAL
 static ra8_err_t
-s_add_member(ra8_comic_t* c, const ra8_rar_entry_t* ent, const char* name, uint16_t nlen)
+internal_add_member(ra8_comic_t* c, const ra8_rar_entry_t* ent, const char* name, uint16_t nlen)
 {
   if (ent->is_file == 0U) {
     return k_ra8_ok;
@@ -135,7 +135,7 @@ ra8_err_t ra8_comic_cbr_open(ra8_comic_t* c)
     if (ra8_rar_next(&c->rar, off, nb, (uint16_t)sizeof(nb), &ent) != k_ra8_ok) {
       break; /* tolerate trailing junk: keep the pages parsed so far */
     }
-    const ra8_err_t ae = s_add_member(c, &ent, nb, ent.name_len);
+    const ra8_err_t ae = internal_add_member(c, &ent, nb, ent.name_len);
     if (ae != k_ra8_ok) {
       return ae; /* capacity / policy breach -- a real error, propagate */
     }

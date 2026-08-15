@@ -315,7 +315,7 @@ ra8_rar5_copy_match(uint8_t* out, size_t* out_pos, size_t unp, uint32_t length, 
  * `len > k_ra8_rar5_delta_scratch || channels == 0`: the descriptor parser only
  * ever yields channels >= 1, so a zero channel count is unreachable through the
  * public decode path and can only be exercised by a direct call. Production callers
- * remain ::s_apply_one_filter in `ra8_rar5.c`.
+ * remain ::internal_apply_one_filter in `ra8_rar5.c`.
  * @since Version 0.1.0
  */
 RA8_PRIV void
@@ -341,7 +341,7 @@ ra8_rar5_filter_delta(ra8_rar5_state_t* st, uint8_t* d, uint32_t len, uint32_t c
  * Promoted from file-static so the host suite can reach the `i < max` clamp leg of
  * `c < count && i < max` directly, without crafting a BD length list whose zero run
  * happens to overshoot the 20-entry array. Production caller remains
- * ::s_read_bd_lengths in `ra8_rar5_tables.c`.
+ * ::internal_read_bd_lengths in `ra8_rar5_tables.c`.
  * @since Version 0.1.0
  */
 RA8_PRIV uint32_t ra8_rar5_fill_zeros(uint8_t* out, uint32_t start, uint32_t count, uint32_t max);
@@ -368,7 +368,7 @@ RA8_PRIV uint32_t ra8_rar5_fill_zeros(uint8_t* out, uint32_t start, uint32_t cou
  * copy-with-no-previous leg and the `i < k_ra8_rar5_huff_total` clamp leg of
  * `c < count && i < k_ra8_rar5_huff_total` directly. The two `||` decisions
  * (is_long / is_zero) stay covered by the ::ra8_rar5_read_tables round-trip.
- * Production caller remains ::s_read_full_table in `ra8_rar5_tables.c`.
+ * Production caller remains ::internal_read_full_table in `ra8_rar5_tables.c`.
  * @since Version 0.1.0
  */
 RA8_PRIV ra8_err_t ra8_rar5_apply_run(ra8_rar5_state_t* st,

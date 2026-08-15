@@ -27,7 +27,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from annot_linkage import enforce_linkage
-from annot_model import AnnotatedSymbol, CallSite, Violation
+from annot_model import AnnotatedSymbol, CallSite, Violation, WalkState
 from annot_rulekeys import INFORMATIONAL_RULES, parse_annotation
 from annot_scope import is_host_only_path, is_test_path, module_of, repo_root
 from annot_source import definition_text
@@ -143,9 +143,9 @@ def _rule_internal(sym: AnnotatedSymbol, _arg: str, _ctx: RuleCtx) -> list[Viola
 def _rule_priv(sym: AnnotatedSymbol, _arg: str, ctx: RuleCtx) -> list[Violation]:
     """RA8_PRIV: callers must share the callee's libs/<module> or tools/<tool>."""
     callee_mod = module_of(sym.file)
-    if callee_mod is None:
-        return []
     out: list[Violation] = []
+    if callee_mod is None:
+        return out
     for cs in ctx.callers_of(sym):
         # Host unit tests are a sanctioned consumer of a module's promoted
         # internals: CLAUDE.md ("Test access to internal symbols") allows a
@@ -566,14 +566,13 @@ def sweep_dynamic_allocation(
 
 
 def enforce_rules(
-    symbols: dict[str, AnnotatedSymbol],
-    calls: list[CallSite],
-    vector_entries: set[str],
+    state: WalkState,
     *,
     whole_tree: bool = True,
+    naming_contract: bool = False,
 ) -> list[Violation]:
     """Apply every annotation rule and return the findings."""
-    ctx = RuleCtx.build(symbols, calls)
+    ctx = RuleCtx.build(state.symbols, state.calls)
     out: list[Violation] = []
 
     # The linkage rule is defined over the whole tree: a handler tabled in
@@ -581,9 +580,16 @@ def enforce_rules(
     # be judged from a subset. Running it over an explicit file list would
     # invent violations rather than find them.
     if whole_tree:
-        out.extend(enforce_linkage(symbols, vector_entries))
+        out.extend(
+            enforce_linkage(
+                state.symbols,
+                state.vector_entries,
+                state.data_symbols,
+                naming_contract=naming_contract,
+            )
+        )
 
-    for sym in symbols.values():
+    for sym in state.symbols.values():
         for ann in sym.annotations:
             rule, arg = parse_annotation(ann)
             check = RULE_CHECKS.get(rule)
@@ -595,5 +601,5 @@ def enforce_rules(
                     v.warn_only = True
             out.extend(found)
 
-    out.extend(sweep_dynamic_allocation(symbols, calls))
+    out.extend(sweep_dynamic_allocation(state.symbols, state.calls))
     return out

@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_book.h"
 #include "ra8_epub.h"
 #include "ra8_err.h"
@@ -566,7 +567,7 @@ static const char* const k_opf_toc =
 /** @brief Nav mapping two entries onto the spine, led by an unresolvable entry.
  *  @details The leading `<a href="orphan.xhtml">` points at no spine chapter, so
  *           ra8_epub_toc_entry_to_chapter() fails on it -- driving the
- *           first-condition-false leg of s_chapter_title's compound guard. */
+ *           first-condition-false leg of internal_chapter_title's compound guard. */
 static const char* const k_nav_xhtml =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
   "<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\">"
@@ -634,7 +635,7 @@ static inline void build_epub_raster(void)
 /**
  * @brief Build an `.epub` carrying a single tall (1 x 1601) BMP cover image.
  * @details The cover's short edge (width 1) stays below the clamp while its long
- *          edge (height 1601) is reduced to 1600, so s_downscale_if_needed sees
+ *          edge (height 1601) is reduced to 1600, so internal_downscale_if_needed sees
  *          ow == sw (1 == 1) but oh != sh (1600 != 1601) -- the height-varying
  *          MC/DC leg of `if (ow == sw && oh == sh)`.
  * @pre @p s_epub and @p s_bmp are large enough for the fixtures.
@@ -731,7 +732,7 @@ static inline void build_epub_toc(void)
  * @post The byte is discarded.
  * @note Not thread-safe (host single-thread test driver).
  */
-static inline void s_log_sink(void* ctx, uint8_t byte)
+RA8_INTERNAL static inline void internal_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;
   (void)byte;

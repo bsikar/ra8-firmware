@@ -8,10 +8,10 @@
  * @details
  * The lower half of the clean-room RAR 5.0 decompressor (paired with the LZ
  * driver in `ra8_rar5.c`). Three layers, bottom-up:
- * - Bit reader: ::s_fetch_byte / ::s_ensure / ::s_peek / ::s_drop /
- *   ::ra8_rar5_get / ::s_align pull packed bytes through the archive
+ * - Bit reader: ::internal_fetch_byte / ::internal_ensure / ::internal_peek / ::internal_drop /
+ *   ::ra8_rar5_get / ::internal_align pull packed bytes through the archive
  *   ::ra8_rar_read_fn on demand, serving an MSB-first bit stream.
- * - Huffman: ::s_make_tables builds a canonical decode table from a bit-length
+ * - Huffman: ::internal_make_tables builds a canonical decode table from a bit-length
  *   vector; ::ra8_rar5_decode_num reads one symbol.
  * - Container: ::ra8_rar5_read_block_header validates one compressed-block header
  *   and ::ra8_rar5_read_tables parses the four LZ decode tables that drive it.
@@ -48,7 +48,7 @@
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static uint8_t s_fetch_byte(ra8_rar5_state_t* st)
+static uint8_t internal_fetch_byte(ra8_rar5_state_t* st)
 {
   if (st->refill_pos >= st->refill_len) {
     if (st->fetched >= st->packlen) {
@@ -75,7 +75,7 @@ static uint8_t s_fetch_byte(ra8_rar5_state_t* st)
 
 /**
  * @brief Ensure at least @p n bits are buffered in the accumulator.
- * @details Shifts whole bytes in from ::s_fetch_byte until the buffered bit count
+ * @details Shifts whole bytes in from ::internal_fetch_byte until the buffered bit count
  *          reaches @p n; past-end fetches contribute zero bits.
  * @param[in,out] st Decoder state (non-NULL).
  * @param[in]     n  Bits required (1..32).
@@ -88,10 +88,10 @@ static uint8_t s_fetch_byte(ra8_rar5_state_t* st)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static void s_ensure(ra8_rar5_state_t* st, uint32_t n)
+static void internal_ensure(ra8_rar5_state_t* st, uint32_t n)
 {
   while (st->nbits < n) { /* bound: n<=32, +8 bits per pass -> <=4 passes */
-    const uint8_t b = s_fetch_byte(st);
+    const uint8_t b = internal_fetch_byte(st);
     st->acc         = (st->acc << k_r5_byte_bits) | (uint64_t)b;
     st->nbits += (uint32_t)k_r5_byte_bits;
   }
@@ -113,9 +113,9 @@ static void s_ensure(ra8_rar5_state_t* st, uint32_t n)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static uint32_t s_peek(ra8_rar5_state_t* st, uint32_t n)
+static uint32_t internal_peek(ra8_rar5_state_t* st, uint32_t n)
 {
-  s_ensure(st, n);
+  internal_ensure(st, n);
   const uint64_t mask = ((uint64_t)1U << n) - (uint64_t)1U;
   return (uint32_t)((st->acc >> (st->nbits - n)) & mask);
 }
@@ -135,7 +135,7 @@ static uint32_t s_peek(ra8_rar5_state_t* st, uint32_t n)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static void s_drop(ra8_rar5_state_t* st, uint32_t n)
+static void internal_drop(ra8_rar5_state_t* st, uint32_t n)
 {
   st->nbits -= n;
   st->consumed += (uint64_t)n;
@@ -145,11 +145,11 @@ static void s_drop(ra8_rar5_state_t* st, uint32_t n)
   st->acc &= mask;
 }
 
-/** @brief Implementation of `ra8_rar5_get()` -- ::s_peek then ::s_drop of @p n bits. */
+/** @brief Implementation of `ra8_rar5_get()` -- ::internal_peek then ::internal_drop of @p n bits. */
 uint32_t ra8_rar5_get(ra8_rar5_state_t* st, uint32_t n)
 {
-  const uint32_t v = s_peek(st, n);
-  s_drop(st, n);
+  const uint32_t v = internal_peek(st, n);
+  internal_drop(st, n);
   return v;
 }
 
@@ -167,9 +167,9 @@ uint32_t ra8_rar5_get(ra8_rar5_state_t* st, uint32_t n)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static void s_align(ra8_rar5_state_t* st)
+static void internal_align(ra8_rar5_state_t* st)
 {
-  s_drop(st, st->nbits & (uint32_t)k_r5_low3_mask);
+  internal_drop(st, st->nbits & (uint32_t)k_r5_low3_mask);
 }
 
 /* ---- canonical Huffman decode tables ------------------------------------ */
@@ -190,7 +190,7 @@ static void s_align(ra8_rar5_state_t* st)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static void s_tab_limits(ra8_rar5_dtab_t* d, const uint32_t* count)
+static void internal_tab_limits(ra8_rar5_dtab_t* d, const uint32_t* count)
 {
   d->len[0]      = 0U;
   d->pos[0]      = 0U;
@@ -205,7 +205,7 @@ static void s_tab_limits(ra8_rar5_dtab_t* d, const uint32_t* count)
 
 /**
  * @brief Build a canonical Huffman decode table from a bit-length vector.
- * @details Counts codes per length, computes the prefix limits via ::s_tab_limits,
+ * @details Counts codes per length, computes the prefix limits via ::internal_tab_limits,
  *          then assigns each non-zero-length symbol to its canonical code slot in
  *          symbol order. Zero-length symbols are absent from the table.
  * @param[out] d       Table to populate (non-NULL).
@@ -220,14 +220,14 @@ static void s_tab_limits(ra8_rar5_dtab_t* d, const uint32_t* count)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static void s_make_tables(ra8_rar5_dtab_t* d, const uint8_t* lengths, uint16_t size)
+static void internal_make_tables(ra8_rar5_dtab_t* d, const uint8_t* lengths, uint16_t size)
 {
   uint32_t count[k_r5_maxbits + 1U] = {};
   for (uint16_t i = 0U; i < size; ++i) { /* bound: size <= k_ra8_rar5_nc */
     count[lengths[i] & (uint8_t)k_r5_nibble_mask] += 1U;
   }
   count[0] = 0U;
-  s_tab_limits(d, count);
+  internal_tab_limits(d, count);
   (void)memset(d->num, 0, (size_t)size * sizeof(d->num[0]));
   uint32_t copypos[k_r5_maxbits + 1U];
   for (uint32_t i = 0U; i < (uint32_t)(k_r5_maxbits + 1U); ++i) { /* bound: 16 */
@@ -246,7 +246,7 @@ static void s_make_tables(ra8_rar5_dtab_t* d, const uint8_t* lengths, uint16_t s
 /** @brief Implementation of `ra8_rar5_decode_num()` -- limit-compare canonical decode. */
 uint32_t ra8_rar5_decode_num(ra8_rar5_state_t* st, const ra8_rar5_dtab_t* d)
 {
-  const uint32_t bf   = s_peek(st, (uint32_t)k_r5_bf_bits) & (uint32_t)k_r5_bf_mask;
+  const uint32_t bf   = internal_peek(st, (uint32_t)k_r5_bf_bits) & (uint32_t)k_r5_bf_mask;
   uint32_t       bits = (uint32_t)k_r5_maxbits;
   for (uint32_t i = 1U; i < (uint32_t)k_r5_maxbits; ++i) { /* bound: 14 lengths */
     if (bf < d->len[i]) {
@@ -254,7 +254,7 @@ uint32_t ra8_rar5_decode_num(ra8_rar5_state_t* st, const ra8_rar5_dtab_t* d)
       break;
     }
   }
-  s_drop(st, bits);
+  internal_drop(st, bits);
   const uint32_t dist = (bf - d->len[bits - 1U]) >> ((uint32_t)k_r5_bf_bits - bits);
   uint32_t       pos  = d->pos[bits] + dist;
   if (pos >= (uint32_t)d->max) {
@@ -281,7 +281,7 @@ uint32_t ra8_rar5_decode_num(ra8_rar5_state_t* st, const ra8_rar5_dtab_t* d)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static uint8_t s_checksum(uint32_t flags, uint64_t blocksize)
+static uint8_t internal_checksum(uint32_t flags, uint64_t blocksize)
 {
   uint32_t x = (uint32_t)k_r5_hdr_chk_seed ^ flags;
   x ^= (uint32_t)(blocksize & (uint64_t)k_r5_byte_mask);
@@ -293,7 +293,7 @@ static uint8_t s_checksum(uint32_t flags, uint64_t blocksize)
 /** @brief Implementation of `ra8_rar5_read_block_header()` -- align, flags, size, checksum. */
 ra8_err_t ra8_rar5_read_block_header(ra8_rar5_state_t* st, r5_block_t* b)
 {
-  s_align(st);
+  internal_align(st);
   const uint32_t flags = ra8_rar5_get(st, (uint32_t)k_r5_byte_bits);
   const uint32_t bytecount =
     ((flags >> (uint32_t)k_r5_bf_bcount_shift) & (uint32_t)k_r5_bf_bcount_mask) + 1U;
@@ -302,7 +302,7 @@ ra8_err_t ra8_rar5_read_block_header(ra8_rar5_state_t* st, r5_block_t* b)
     bsz |= (uint64_t)ra8_rar5_get(st, (uint32_t)k_r5_byte_bits) << (i * (uint32_t)k_r5_byte_bits);
   }
   const uint32_t saved = ra8_rar5_get(st, (uint32_t)k_r5_byte_bits);
-  if ((uint32_t)s_checksum(flags, bsz) != saved) {
+  if ((uint32_t)internal_checksum(flags, bsz) != saved) {
     return k_ra8_err_validation_failed;
   }
   b->size      = bsz;
@@ -339,7 +339,7 @@ uint32_t ra8_rar5_fill_zeros(uint8_t* out, uint32_t start, uint32_t count, uint3
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_read_bd_lengths(ra8_rar5_state_t* st, uint8_t* out)
+static ra8_err_t internal_read_bd_lengths(ra8_rar5_state_t* st, uint8_t* out)
 {
   uint32_t i = 0U;
   while (i < (uint32_t)k_ra8_rar5_bc) { /* bound: i advances toward k_ra8_rar5_bc */
@@ -394,7 +394,7 @@ ra8_err_t ra8_rar5_apply_run(ra8_rar5_state_t* st, uint8_t* tbl, uint32_t* idx, 
  * @return ra8_err_t status.
  * @retval k_ra8_ok                    The full table was decoded.
  * @retval k_ra8_err_validation_failed A run code without a previous entry.
- * @pre @p st::bd was built by ::s_make_tables.
+ * @pre @p st::bd was built by ::internal_make_tables.
  * @pre @p tbl holds ::k_ra8_rar5_huff_total writable bytes.
  * @post `tbl[0 .. k_ra8_rar5_huff_total)` are populated.
  * @post `st->consumed` advanced past the table.
@@ -402,7 +402,7 @@ ra8_err_t ra8_rar5_apply_run(ra8_rar5_state_t* st, uint8_t* tbl, uint32_t* idx, 
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_read_full_table(ra8_rar5_state_t* st, uint8_t* tbl)
+static ra8_err_t internal_read_full_table(ra8_rar5_state_t* st, uint8_t* tbl)
 {
   uint32_t i = 0U;
   while (i < (uint32_t)k_ra8_rar5_huff_total) { /* bound: i advances each pass */
@@ -424,22 +424,22 @@ static ra8_err_t s_read_full_table(ra8_rar5_state_t* st, uint8_t* tbl)
 ra8_err_t ra8_rar5_read_tables(ra8_rar5_state_t* st)
 {
   uint8_t   bdlen[k_ra8_rar5_bc] = {};
-  ra8_err_t e                    = s_read_bd_lengths(st, bdlen);
+  ra8_err_t e                    = internal_read_bd_lengths(st, bdlen);
   if (e != k_ra8_ok) {
     return e;
   }
-  s_make_tables(&st->bd, bdlen, (uint16_t)k_ra8_rar5_bc);
+  internal_make_tables(&st->bd, bdlen, (uint16_t)k_ra8_rar5_bc);
   uint8_t tbl[k_ra8_rar5_huff_total] = {};
-  e                                  = s_read_full_table(st, tbl);
+  e                                  = internal_read_full_table(st, tbl);
   if (e != k_ra8_ok) {
     return e;
   }
-  s_make_tables(&st->ld, &tbl[0], (uint16_t)k_ra8_rar5_nc);
-  s_make_tables(&st->dd, &tbl[k_ra8_rar5_nc], (uint16_t)k_ra8_rar5_dc);
-  s_make_tables(&st->ldd, &tbl[k_ra8_rar5_nc + k_ra8_rar5_dc], (uint16_t)k_ra8_rar5_ldc);
-  s_make_tables(&st->rd,
-                &tbl[k_ra8_rar5_nc + k_ra8_rar5_dc + k_ra8_rar5_ldc],
-                (uint16_t)k_ra8_rar5_rc);
+  internal_make_tables(&st->ld, &tbl[0], (uint16_t)k_ra8_rar5_nc);
+  internal_make_tables(&st->dd, &tbl[k_ra8_rar5_nc], (uint16_t)k_ra8_rar5_dc);
+  internal_make_tables(&st->ldd, &tbl[k_ra8_rar5_nc + k_ra8_rar5_dc], (uint16_t)k_ra8_rar5_ldc);
+  internal_make_tables(&st->rd,
+                       &tbl[k_ra8_rar5_nc + k_ra8_rar5_dc + k_ra8_rar5_ldc],
+                       (uint16_t)k_ra8_rar5_rc);
   st->tables_ready = true;
   return k_ra8_ok;
 }
