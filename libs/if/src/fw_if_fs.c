@@ -93,7 +93,8 @@ static ra8_err_t internal_transaction(const fw_fs_transaction_t* transaction)
   return k_ra8_ok;
 }
 
-/** @brief Validate one completed path component (`.` and `..` are forbidden). */
+/** @brief Validate one completed path component (`.` and `..` are forbidden).
+ */
 static ra8_err_t internal_component(const char* path, uint16_t start, uint16_t length)
 {
   if (length == 0U) {
@@ -185,17 +186,20 @@ static ra8_err_t internal_interfaces(const fw_fs_namespace_iface_t*   names,
   if (names->mkdir == nullptr || names->unlink == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  if (names->rmdir == nullptr || names->rename == nullptr || names->space == nullptr) {
+  if (names->rmdir == nullptr || names->rename == nullptr) {
     return k_ra8_err_invalid_arg;
   }
   if (streams->open == nullptr || streams->read == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  if (streams->write == nullptr || streams->close == nullptr || streams->sync == nullptr) {
+  if (streams->write == nullptr || streams->close == nullptr) {
     return k_ra8_err_invalid_arg;
   }
   if (streams->seek == nullptr || streams->tell == nullptr || streams->size == nullptr) {
     return k_ra8_err_invalid_arg;
+  }
+  if (transactions == nullptr) {
+    return k_ra8_ok;
   }
   if (transactions->begin == nullptr || transactions->write == nullptr) {
     return k_ra8_err_invalid_arg;
@@ -217,13 +221,32 @@ ra8_err_t fw_fs_bind(fw_fs_t*                         out,
   if (out == nullptr || namespace_iface == nullptr || stream_iface == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  if (transaction_iface == nullptr || ctx == nullptr || caps == nullptr) {
+  if (ctx == nullptr || caps == nullptr) {
     return k_ra8_err_null_ptr;
   }
   const ra8_err_t interfaces =
     internal_interfaces(namespace_iface, stream_iface, transaction_iface);
   if (interfaces != k_ra8_ok) {
     return interfaces;
+  }
+  const uint32_t required = (uint32_t)k_fw_fs_cap_namespace | (uint32_t)k_fw_fs_cap_stream;
+  if ((caps->flags & required) != required) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (((caps->flags & (uint32_t)k_fw_fs_cap_space_query) != 0U) &&
+      (namespace_iface->space == nullptr)) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (((caps->flags & (uint32_t)k_fw_fs_cap_file_sync) != 0U) && (stream_iface->sync == nullptr)) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (((caps->flags & (uint32_t)k_fw_fs_cap_durable_file_sync) != 0U) &&
+      ((caps->flags & (uint32_t)k_fw_fs_cap_file_sync) == 0U)) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (((caps->flags & (uint32_t)k_fw_fs_cap_transactions) != 0U) &&
+      (transaction_iface == nullptr)) {
+    return k_ra8_err_invalid_arg;
   }
   if (!internal_power_of_two(caps->file_workspace_align)) {
     return k_ra8_err_invalid_arg;
@@ -275,7 +298,19 @@ ra8_err_t fw_fs_stat(const fw_fs_namespace_t* names, const char* path, fw_fs_sta
     return path_err;
   }
   (void)memset(out, 0, sizeof(*out));
-  return names->iface->stat(names->ctx, path, out);
+  const ra8_err_t result = names->iface->stat(names->ctx, path, out);
+  if (result == k_ra8_ok) {
+    const bool type_invalid = (uint32_t)out->type > (uint32_t)k_fw_fs_node_other;
+    const bool missing_invalid =
+      !out->exists && ((out->type != k_fw_fs_node_none) || (out->size_bytes != 0U));
+    const bool present_invalid   = out->exists && (out->type == k_fw_fs_node_none);
+    const bool directory_invalid = (out->type == k_fw_fs_node_directory) && (out->size_bytes != 0U);
+    if (type_invalid || missing_invalid || present_invalid || directory_invalid) {
+      (void)memset(out, 0, sizeof(*out));
+      return k_ra8_err_invalid_state;
+    }
+  }
+  return result;
 }
 
 ra8_err_t fw_fs_listdir(const fw_fs_namespace_t* names,
@@ -302,8 +337,15 @@ ra8_err_t fw_fs_listdir(const fw_fs_namespace_t* names,
   }
   *out_count    = 0U;
   *out_complete = false;
-  return names->iface
-    ->listdir(names->ctx, path, max_entries, callback, callback_ctx, out_count, out_complete);
+  const ra8_err_t result =
+    names->iface
+      ->listdir(names->ctx, path, max_entries, callback, callback_ctx, out_count, out_complete);
+  if (*out_count > max_entries) {
+    *out_count    = 0U;
+    *out_complete = false;
+    return k_ra8_err_invalid_state;
+  }
+  return result;
 }
 
 /** @brief Common one-path namespace dispatch. */
@@ -400,7 +442,14 @@ ra8_err_t fw_fs_space(const fw_fs_namespace_t* names, fw_fs_space_t* out)
   if (names->iface->space == nullptr) {
     return k_ra8_err_not_supported;
   }
-  return names->iface->space(names->ctx, out);
+  (void)memset(out, 0, sizeof(*out));
+  const ra8_err_t result = names->iface->space(names->ctx, out);
+  if ((result == k_ra8_ok) &&
+      ((out->free_bytes > out->total_bytes) || (out->used_bytes > out->total_bytes))) {
+    (void)memset(out, 0, sizeof(*out));
+    return k_ra8_err_invalid_state;
+  }
+  return result;
 }
 
 ra8_err_t fw_fs_open(const fw_fs_stream_port_t* streams,
@@ -463,8 +512,13 @@ ra8_err_t fw_fs_read(fw_fs_file_t* file, uint8_t* dst, uint32_t cap, uint32_t* o
   if (dst == nullptr || out_read == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  *out_read = 0U;
-  return file->iface->read(file->ctx, file->state, dst, cap, out_read);
+  *out_read              = 0U;
+  const ra8_err_t result = file->iface->read(file->ctx, file->state, dst, cap, out_read);
+  if (*out_read > cap) {
+    *out_read = 0U;
+    return k_ra8_err_invalid_state;
+  }
+  return result;
 }
 
 ra8_err_t
@@ -477,8 +531,13 @@ fw_fs_write(fw_fs_file_t* file, const uint8_t* source, uint32_t length, uint32_t
   if (source == nullptr || out_written == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  *out_written = 0U;
-  return file->iface->write(file->ctx, file->state, source, length, out_written);
+  *out_written           = 0U;
+  const ra8_err_t result = file->iface->write(file->ctx, file->state, source, length, out_written);
+  if (*out_written > length) {
+    *out_written = 0U;
+    return k_ra8_err_invalid_state;
+  }
+  return result;
 }
 
 ra8_err_t fw_fs_seek(fw_fs_file_t* file, uint64_t offset)
@@ -499,6 +558,7 @@ ra8_err_t fw_fs_tell(fw_fs_file_t* file, uint64_t* out_offset)
   if (out_offset == nullptr) {
     return k_ra8_err_null_ptr;
   }
+  *out_offset = 0U;
   return file->iface->tell(file->ctx, file->state, out_offset);
 }
 
@@ -511,6 +571,7 @@ ra8_err_t fw_fs_file_size(fw_fs_file_t* file, uint64_t* out_size)
   if (out_size == nullptr) {
     return k_ra8_err_null_ptr;
   }
+  *out_size = 0U;
   return file->iface->size(file->ctx, file->state, out_size);
 }
 
@@ -552,7 +613,12 @@ ra8_err_t fw_fs_transaction_begin(const fw_fs_transaction_port_t* port,
     return k_ra8_err_null_ptr;
   }
   if (port->iface == nullptr) {
-    return k_ra8_err_not_initialized;
+    return ((port->caps.flags & (uint32_t)k_fw_fs_cap_transactions) == 0U)
+             ? k_ra8_err_not_supported
+             : k_ra8_err_not_initialized;
+  }
+  if ((port->caps.flags & (uint32_t)k_fw_fs_cap_transactions) == 0U) {
+    return k_ra8_err_not_supported;
   }
   if (transaction->active) {
     return k_ra8_err_busy;
@@ -611,11 +677,13 @@ ra8_err_t fw_fs_transaction_write(fw_fs_transaction_t* transaction,
     return k_ra8_err_invalid_state;
   }
   *out_written = 0U;
-  return transaction->iface->write(transaction->ctx,
-                                   transaction->state,
-                                   source,
-                                   length,
-                                   out_written);
+  const ra8_err_t result =
+    transaction->iface->write(transaction->ctx, transaction->state, source, length, out_written);
+  if (*out_written > length) {
+    *out_written = 0U;
+    return k_ra8_err_invalid_state;
+  }
+  return result;
 }
 
 ra8_err_t fw_fs_transaction_seek(fw_fs_transaction_t* transaction, uint64_t absolute_offset)
@@ -667,6 +735,9 @@ ra8_err_t fw_fs_transaction_commit(fw_fs_transaction_t* transaction, bool* out_p
   *out_published = false;
   const ra8_err_t result =
     transaction->iface->commit(transaction->ctx, transaction->state, out_published);
+  if ((result == k_ra8_ok) && !*out_published) {
+    return k_ra8_err_invalid_state;
+  }
   if (*out_published) {
     transaction->active    = false;
     transaction->validated = false;

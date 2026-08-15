@@ -22,6 +22,7 @@
 #include <unistd.h>
 
 #include "fw_if_fs.h"
+#include "fw_if_fs_backend.h"
 #include "fw_if_fs_posix.h"
 #include "fw_if_fs_ra8_vfs.h"
 #include "ra8_err.h"
@@ -65,6 +66,207 @@ static ra8_io_blockdev_ram_state_t s_ram_state;
 static ra8_io_blockdev_t           s_blockdev;
 static ra8_fs_backend_t            s_backend;
 static ra8_fs_mount_t*             s_mount;
+
+/** @brief Return incoherent success metadata for facade fault injection. */
+static ra8_err_t internal_contract_stat(void* ctx, const char* path, fw_fs_stat_t* out)
+{
+  (void)ctx;
+  (void)path;
+  out->exists     = false;
+  out->type       = k_fw_fs_node_file;
+  out->size_bytes = 1U;
+  return k_ra8_ok;
+}
+
+/** @brief Report more directory entries than the caller permitted. */
+static ra8_err_t internal_contract_list(void*           ctx,
+                                        const char*     path,
+                                        uint32_t        max_entries,
+                                        fw_fs_list_fn_t callback,
+                                        void*           callback_ctx,
+                                        uint32_t*       out_count,
+                                        bool*           out_complete)
+{
+  (void)ctx;
+  (void)path;
+  (void)callback;
+  (void)callback_ctx;
+  *out_count    = max_entries + 1U;
+  *out_complete = true;
+  return k_ra8_ok;
+}
+
+/** @brief Valid callback shape for the bounded-list fault. */
+static ra8_err_t internal_contract_entry(void* ctx, const fw_fs_dirent_t* entry, bool* out_continue)
+{
+  (void)ctx;
+  (void)entry;
+  *out_continue = true;
+  return k_ra8_ok;
+}
+
+/** @brief Return impossible volume accounting for facade fault injection. */
+static ra8_err_t internal_contract_space(void* ctx, fw_fs_space_t* out)
+{
+  (void)ctx;
+  out->total_bytes = 10U;
+  out->free_bytes  = 11U;
+  out->used_bytes  = 0U;
+  return k_ra8_ok;
+}
+
+/** @brief Report one byte beyond the supplied read capacity. */
+static ra8_err_t
+internal_contract_read(void* ctx, void* file_state, uint8_t* dst, uint32_t cap, uint32_t* out_read)
+{
+  (void)ctx;
+  (void)file_state;
+  (void)dst;
+  *out_read = cap + 1U;
+  return k_ra8_ok;
+}
+
+/** @brief Report one byte beyond the supplied write length. */
+static ra8_err_t internal_contract_write(void*          ctx,
+                                         void*          state,
+                                         const uint8_t* source,
+                                         uint32_t       length,
+                                         uint32_t*      out_written)
+{
+  (void)ctx;
+  (void)state;
+  (void)source;
+  *out_written = length + 1U;
+  return k_ra8_ok;
+}
+
+/** @brief Fail without touching a 64-bit output. */
+static ra8_err_t internal_contract_u64_error(void* ctx, void* state, uint64_t* out)
+{
+  (void)ctx;
+  (void)state;
+  (void)out;
+  return k_ra8_fail;
+}
+
+/** @brief Claim commit success without publishing anything. */
+static ra8_err_t internal_contract_commit(void* ctx, void* state, bool* out_published)
+{
+  (void)ctx;
+  (void)state;
+  *out_published = false;
+  return k_ra8_ok;
+}
+
+/** @brief Accept cleanup of the synthetic transaction state. */
+static ra8_err_t internal_contract_abort(void* ctx, void* state)
+{
+  (void)ctx;
+  (void)state;
+  return k_ra8_ok;
+}
+
+/**
+ * @test check_backend_contract_guards
+ * @brief Prove optional binding and reject impossible backend outputs.
+ * @details Mutates copies of a real backend's vtables so every facade guard is
+ *          exercised without changing or invoking the real adapter state.
+ * @param[in] fs Fully bound conformance filesystem used as a truthful baseline.
+ * @pre @p fs and all three baseline vtables are valid.
+ * @post Optional absent operations bind honestly; contradictory capabilities,
+ *       over-bound counts, incoherent metadata/space, untouched scalar errors,
+ *       and success-without-publication are all contained by the facade.
+ * @note Host-only fault injection; no real filesystem operation is attempted.
+ * @since 0.1.0
+ */
+static void check_backend_contract_guards(const fw_fs_t* fs)
+{
+  fw_fs_namespace_iface_t names         = *fs->names.iface;
+  fw_fs_stream_iface_t    streams       = *fs->streams.iface;
+  fw_fs_caps_t            optional_caps = fs->caps;
+  optional_caps.flags &=
+    ~((uint32_t)k_fw_fs_cap_file_sync | (uint32_t)k_fw_fs_cap_durable_file_sync |
+      (uint32_t)k_fw_fs_cap_transactions);
+  streams.sync  = nullptr;
+  fw_fs_t bound = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 fw_fs_bind(&bound, &names, &streams, nullptr, (void*)fs, &optional_caps));
+  fw_fs_file_t file = {.iface = &streams, .ctx = (void*)fs, .state = &bound, .is_open = true};
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, fw_fs_sync(&file));
+  uint8_t             transaction_work = 0U;
+  fw_fs_transaction_t transaction      = {};
+  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+                 fw_fs_transaction_begin(&bound.transactions,
+                                         "/artifact",
+                                         k_fw_fs_txn_create_new,
+                                         &transaction,
+                                         &transaction_work,
+                                         sizeof(transaction_work)));
+
+  fw_fs_caps_t dishonest_caps = optional_caps;
+  dishonest_caps.flags |= (uint32_t)k_fw_fs_cap_file_sync;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 fw_fs_bind(&bound, &names, &streams, nullptr, (void*)fs, &dishonest_caps));
+  dishonest_caps.flags &= ~(uint32_t)k_fw_fs_cap_file_sync;
+  dishonest_caps.flags |= (uint32_t)k_fw_fs_cap_durable_file_sync;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 fw_fs_bind(&bound, &names, &streams, nullptr, (void*)fs, &dishonest_caps));
+
+  names.stat                       = internal_contract_stat;
+  names.listdir                    = internal_contract_list;
+  names.space                      = internal_contract_space;
+  fw_fs_namespace_t namespace_port = {.iface = &names, .ctx = (void*)fs, .caps = fs->caps};
+  fw_fs_stat_t      stat           = {};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_stat(&namespace_port, "/bad", &stat));
+  TEST_ASSERT(!stat.exists && (stat.type == k_fw_fs_node_none) && (stat.size_bytes == 0U));
+  uint32_t count    = UINT32_MAX;
+  bool     complete = true;
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_state,
+    fw_fs_listdir(&namespace_port, "/", 1U, internal_contract_entry, nullptr, &count, &complete));
+  TEST_ASSERT_EQ(0U, count);
+  TEST_ASSERT(!complete);
+  fw_fs_space_t space = {};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_space(&namespace_port, &space));
+  TEST_ASSERT((space.total_bytes == 0U) && (space.free_bytes == 0U) && (space.used_bytes == 0U));
+
+  streams.read         = internal_contract_read;
+  streams.write        = internal_contract_write;
+  streams.tell         = internal_contract_u64_error;
+  streams.size         = internal_contract_u64_error;
+  uint8_t  byte        = 0U;
+  uint32_t transferred = UINT32_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_read(&file, &byte, 1U, &transferred));
+  TEST_ASSERT_EQ(0U, transferred);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_write(&file, &byte, 1U, &transferred));
+  TEST_ASSERT_EQ(0U, transferred);
+  uint64_t scalar = UINT64_MAX;
+  TEST_ASSERT_EQ(k_ra8_fail, fw_fs_tell(&file, &scalar));
+  TEST_ASSERT_EQ(0U, scalar);
+  scalar = UINT64_MAX;
+  TEST_ASSERT_EQ(k_ra8_fail, fw_fs_file_size(&file, &scalar));
+  TEST_ASSERT_EQ(0U, scalar);
+
+  fw_fs_transaction_iface_t transactions = *fs->transactions.iface;
+  transactions.write                     = internal_contract_write;
+  transactions.commit                    = internal_contract_commit;
+  transactions.abort                     = internal_contract_abort;
+  transaction                            = (fw_fs_transaction_t){.iface     = &transactions,
+                                                                 .ctx       = (void*)fs,
+                                                                 .state     = &bound,
+                                                                 .active    = true,
+                                                                 .validated = false};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 fw_fs_transaction_write(&transaction, &byte, 1U, &transferred));
+  TEST_ASSERT_EQ(0U, transferred);
+  transaction.validated = true;
+  bool published        = true;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_transaction_commit(&transaction, &published));
+  TEST_ASSERT(!published);
+  TEST_ASSERT(transaction.active && transaction.validated);
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_transaction_abort(&transaction));
+  TEST_ASSERT(!transaction.active && !transaction.validated);
+}
 
 /** @brief Read and compare the complete contents of one portable file. */
 static void
@@ -188,7 +390,8 @@ static void check_namespace_setup(const fw_fs_t* fs)
   TEST_ASSERT_EQ(k_ra8_err_exists, fw_fs_mkdir(&fs->names, "/books"));
 }
 
-/** @brief Exercise append, offsets, size, sync, readback, stat, and timestamps. */
+/** @brief Exercise append, offsets, size, sync, readback, stat, and timestamps.
+ */
 static void check_stream_roundtrip(const fw_fs_t* fs)
 {
   static const uint8_t first[] = {1U, 2U, 3U, 4U};
@@ -254,7 +457,8 @@ static void check_namespace_cleanup(const fw_fs_t* fs)
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_rmdir(&fs->names, "/books"));
 }
 
-/** @brief Exercise file/dir metadata, one-level mkdir, bounded list, and streams. */
+/** @brief Exercise file/dir metadata, one-level mkdir, bounded list, and
+ * streams. */
 static void check_namespace_and_streams(const fw_fs_t* fs)
 {
   check_namespace_setup(fs);
@@ -289,7 +493,8 @@ static void check_exclusive_create(const fw_fs_t* fs)
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/exclusive.bin"));
 }
 
-/** @brief Prove no-replace requests are rejected before an unqualified backend. */
+/** @brief Prove no-replace requests are rejected before an unqualified backend.
+ */
 static void check_atomic_noreplace_gate(const fw_fs_t* fs)
 {
   fw_fs_namespace_t names = fs->names;
@@ -335,7 +540,8 @@ static void commit_transaction(const fw_fs_t*             fs,
   TEST_ASSERT(published);
 }
 
-/** @brief Prove staged writers can reserve then backfill without sparse seeks. */
+/** @brief Prove staged writers can reserve then backfill without sparse seeks.
+ */
 static void check_transaction_backfill(const fw_fs_t* fs)
 {
   static const uint8_t  reserved[] = {0U, 0U, 0U, 0U};
@@ -374,7 +580,8 @@ static void check_transaction_backfill(const fw_fs_t* fs)
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/backfill.bin"));
 }
 
-/** @brief Simulate a destination appearing after begin; it must win untouched. */
+/** @brief Simulate a destination appearing after begin; it must win untouched.
+ */
 static void check_transaction_destination_race(const fw_fs_t* fs)
 {
   static const uint8_t  staged[]     = {'s', 't', 'a', 'g', 'e'};
@@ -433,7 +640,8 @@ static void check_transaction_abort_cycle(const fw_fs_t* fs)
   TEST_ASSERT(!stat.exists);
 }
 
-/** @brief Exercise replacement capability, validator rejection, and preservation. */
+/** @brief Exercise replacement capability, validator rejection, and
+ * preservation. */
 static void check_transaction_replace(const fw_fs_t* fs)
 {
   static const uint8_t old[]   = {'o', 'l', 'd'};
@@ -542,7 +750,8 @@ static void check_vfs_full_media(const fw_fs_t* fs)
   TEST_END("fw_if_fs VFS full-media transaction");
 }
 
-/** @brief POSIX-specific proof that final/intermediate symlinks are never followed. */
+/** @brief POSIX-specific proof that final/intermediate symlinks are never
+ * followed. */
 static void check_posix_symlinks(const fw_fs_t* fs, const char* root)
 {
   char link_path[256];
@@ -574,6 +783,7 @@ static void test_posix_conformance(void)
   fw_fs_posix_state_t     state = {.root_fd = -1};
   const fw_fs_posix_cfg_t cfg   = {.root_path = root, .removable_media = false};
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_init(&fs, &state, &cfg));
+  check_backend_contract_guards(&fs);
   run_conformance("fw_if_fs POSIX conformance", &fs);
   check_posix_symlinks(&fs, root);
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_deinit(&state));

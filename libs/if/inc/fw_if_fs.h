@@ -1,6 +1,7 @@
 /**
  * @file fw_if_fs.h
- * @brief Architecture-neutral filesystem namespace, stream, and transaction ports.
+ * @brief Architecture-neutral filesystem namespace, stream, and transaction
+ * ports.
  * @ingroup grp_io
  *
  * @par Tag
@@ -44,11 +45,19 @@ extern "C" {
 /** @brief Copy the immutable capability snapshot from a complete binding. */
 [[nodiscard]] ra8_err_t fw_fs_get_caps(const fw_fs_t* fs, fw_fs_caps_t* out);
 
-/** @brief Query a path; a miss is success with `out->exists == false`. */
+/**
+ * @brief Query a path; a miss is success with `out->exists == false`.
+ * @details Backend contract violations are rejected as
+ * ::k_ra8_err_invalid_state and leave @p out zeroed.
+ */
 [[nodiscard]] ra8_err_t
 fw_fs_stat(const fw_fs_namespace_t* names, const char* path, fw_fs_stat_t* out);
 
-/** @brief Enumerate at most `max_entries` callback entries. */
+/**
+ * @brief Enumerate at most `max_entries` callback entries.
+ * @details A backend-reported count above the bound is rejected as
+ *          ::k_ra8_err_invalid_state and resets both outputs.
+ */
 [[nodiscard]] ra8_err_t fw_fs_listdir(const fw_fs_namespace_t* names,
                                       const char*              path,
                                       uint32_t                 max_entries,
@@ -63,16 +72,22 @@ fw_fs_stat(const fw_fs_namespace_t* names, const char* path, fw_fs_stat_t* out);
 /** @brief Remove one regular file; directories require ::fw_fs_rmdir. */
 [[nodiscard]] ra8_err_t fw_fs_unlink(const fw_fs_namespace_t* names, const char* path);
 
-/** @brief Remove one empty directory; recursive deletion is deliberately absent. */
+/** @brief Remove one empty directory; recursive deletion is deliberately
+ * absent. */
 [[nodiscard]] ra8_err_t fw_fs_rmdir(const fw_fs_namespace_t* names, const char* path);
 
-/** @brief Rename inside one bound root/volume with optional atomic replacement. */
+/** @brief Rename inside one bound root/volume with optional atomic replacement.
+ */
 [[nodiscard]] ra8_err_t fw_fs_rename(const fw_fs_namespace_t* names,
                                      const char*              old_path,
                                      const char*              new_path,
                                      bool                     replace);
 
-/** @brief Report total/free/used bytes when space-query capability is present. */
+/**
+ * @brief Report total/free/used bytes when space-query capability is present.
+ * @details Impossible successful values are rejected as
+ *          ::k_ra8_err_invalid_state and leave @p out zeroed.
+ */
 [[nodiscard]] ra8_err_t fw_fs_space(const fw_fs_namespace_t* names, fw_fs_space_t* out);
 
 /** @brief Open a file into a caller-owned handle and backend workspace. */
@@ -83,11 +98,19 @@ fw_fs_stat(const fw_fs_namespace_t* names, const char* path, fw_fs_stat_t* out);
                                    void*                      workspace,
                                    uint32_t                   workspace_size);
 
-/** @brief Read up to `capacity` bytes; zero bytes is EOF. */
+/**
+ * @brief Read up to `capacity` bytes; zero bytes is EOF.
+ * @details A backend count above @p capacity is rejected as
+ *          ::k_ra8_err_invalid_state and reset to zero.
+ */
 [[nodiscard]] ra8_err_t
 fw_fs_read(fw_fs_file_t* file, uint8_t* destination, uint32_t capacity, uint32_t* out_read);
 
-/** @brief Attempt to write all bytes, reporting any accepted prefix. */
+/**
+ * @brief Attempt to write all bytes, reporting any accepted prefix.
+ * @details A backend count above @p length is rejected as
+ *          ::k_ra8_err_invalid_state and reset to zero.
+ */
 [[nodiscard]] ra8_err_t
 fw_fs_write(fw_fs_file_t* file, const uint8_t* source, uint32_t length, uint32_t* out_written);
 
@@ -110,7 +133,11 @@ fw_fs_write(fw_fs_file_t* file, const uint8_t* source, uint32_t length, uint32_t
  */
 [[nodiscard]] ra8_err_t fw_fs_close(fw_fs_file_t* file);
 
-/** @brief Create a hidden sibling staging file for one destination. */
+/**
+ * @brief Create a hidden sibling staging file for one destination.
+ * @details Returns ::k_ra8_err_not_supported when the bound port does not
+ *          advertise ::k_fw_fs_cap_transactions.
+ */
 [[nodiscard]] ra8_err_t fw_fs_transaction_begin(const fw_fs_transaction_port_t* transactions,
                                                 const char*                     destination,
                                                 fw_fs_transaction_policy_t      policy,
@@ -118,14 +145,19 @@ fw_fs_write(fw_fs_file_t* file, const uint8_t* source, uint32_t length, uint32_t
                                                 void*                           workspace,
                                                 uint32_t                        workspace_size);
 
-/** @brief Append bytes to the private staging artifact. */
+/**
+ * @brief Append bytes to the private staging artifact.
+ * @details A backend count above @p length is rejected as
+ *          ::k_ra8_err_invalid_state and reset to zero.
+ */
 [[nodiscard]] ra8_err_t fw_fs_transaction_write(fw_fs_transaction_t* transaction,
                                                 const uint8_t*       source,
                                                 uint32_t             length,
                                                 uint32_t*            out_written);
 
 /**
- * @brief Seek the staging writer to an absolute byte offset for bounded backfill.
+ * @brief Seek the staging writer to an absolute byte offset for bounded
+ * backfill.
  * @details Seeking never extends or publishes the stage. Writes and seeks are
  *          refused after successful validation.
  */
@@ -144,6 +176,9 @@ fw_fs_write(fw_fs_file_t* file, const uint8_t* source, uint32_t length, uint32_t
  * @brief Publish a validated stage.
  * @param[out] out_published True when the destination changed, even if a later
  *                           durability operation failed.
+ * @details A backend returning success without publication violates the
+ *          contract and is reported as ::k_ra8_err_invalid_state; the
+ *          transaction remains active so it can be aborted.
  */
 [[nodiscard]] ra8_err_t fw_fs_transaction_commit(fw_fs_transaction_t* transaction,
                                                  bool*                out_published);

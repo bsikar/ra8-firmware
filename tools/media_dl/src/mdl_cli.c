@@ -86,7 +86,8 @@ void mdl_cli_usage(const char* a0)
                 "    --proxy <URL>          HTTP/HTTPS proxy (requires --allow-private)\n"
                 "    --socks5 <URL>         SOCKS5 proxy (requires --allow-private)\n"
                 "    --cookie-file <FILE>   Cookie file path for libcurl\n"
-                "    --ca-file <FILE>       Custom PEM CA bundle (verification stays on)\n"
+                "    --ca-file <FILE>       Custom PEM CA bundle (verification stays "
+                "on)\n"
                 "    --max-bytes N          Per-response size cap (default 64 MiB)\n"
                 "    --ignore-robots        Do NOT honour robots.txt (logged loudly)\n"
                 "    --allow-private        Permit loopback/private/link-local "
@@ -108,9 +109,42 @@ void mdl_cli_usage(const char* a0)
 }
 
 /**
+ * @brief Decide whether one token is a value for the matched option.
+ * @details Ordinary values cannot begin with `-`; `--from` additionally
+ *          accepts a leading minus followed by a digit or decimal point.
+ * @param[in] flag Matched option spelling.
+ * @param[in] value Candidate following token, or NULL.
+ * @return Whether @p value belongs to @p flag.
+ * @retval true The token is an ordinary or signed chapter value.
+ * @retval false The token is missing or begins another option.
+ * @pre @p flag is non-NULL and NUL-terminated.
+ * @post No state is modified.
+ * @note Reentrant and thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_is_option_value(const char* flag, const char* value)
+{
+  if (value == nullptr) {
+    return false;
+  }
+  if (value[0] != '-') {
+    return true;
+  }
+  if (strcmp(flag, "--from") != 0) {
+    return false;
+  }
+  if ((value[1] >= '0') && (value[1] <= '9')) {
+    return true;
+  }
+  return value[1] == '.';
+}
+
+/**
  * @brief Consume one value-bearing option at the current argument.
- * @details Matches @p flag exactly, records its following non-option value, and
- *          marks duplicate or missing values through @p bad.
+ * @details Matches @p flag exactly, records its following value, and marks
+ *          duplicate or missing values through @p bad. The signed numeric
+ *          grammar documented for `--from` is accepted without treating a
+ *          different option as its value.
  * @param[in]     argv Argument vector.
  * @param[in]     argc Argument count.
  * @param[in,out] i    Current argument index.
@@ -133,7 +167,7 @@ take_opt(char** argv, int argc, int* i, const char* flag, const char** dst, bool
   if ((argv[*i] == nullptr) || (strcmp(argv[*i], flag) != 0)) {
     return false;
   }
-  if (((*i + 1) < argc) && (argv[*i + 1] != nullptr) && (argv[*i + 1][0] != '-')) {
+  if (((*i + 1) < argc) && internal_is_option_value(flag, argv[*i + 1])) {
     *i += 1;
     if (*dst != nullptr) {
       *bad = true;
@@ -196,7 +230,8 @@ RA8_INTERNAL static bool parse_bool_flags(const char* arg, mdl_args_t* a)
 
 void mdl_cli_parse(int argc, char** argv, mdl_args_t* a)
 {
-  /* Table-driven long options: each entry binds a flag to the field it fills. */
+  /* Table-driven long options: each entry binds a flag to the field it fills.
+   */
   const struct {
     const char*  flag; /**< Long-option spelling, including the leading "--". */
     const char** dst;  /**< Field in @p a that receives the option's value.   */
@@ -689,7 +724,8 @@ bool mdl_cli_validate(const mdl_args_t* a, mdl_cli_mode_t* mode)
     return invalid("--pack requires an explicit --format");
   }
   if ((selected == k_mdl_cli_mode_verify) && (a->verify_dir != nullptr) && (a->out != nullptr)) {
-    return invalid("--verify DIR and --out DIR are alternate directory spellings; use one");
+    return invalid("--verify DIR and --out DIR are alternate directory "
+                   "spellings; use one");
   }
   if ((selected == k_mdl_cli_mode_artifact) &&
       (strncmp(a->page_url, "https://", strlen("https://")) != 0)) {
@@ -737,7 +773,8 @@ RA8_INTERNAL static bool parse_ul(const char* s, unsigned long* out)
     return false;
   }
   if (s[0] < '0') {
-    return false; /* rejects "", sign, whitespace, and other leading non-digits */
+    return false; /* rejects "", sign, whitespace, and other leading non-digits
+                   */
   }
   if (s[0] > '9') {
     return false;
@@ -818,7 +855,8 @@ RA8_INTERNAL static bool parse_chapter_value(const char* s, double* out)
   return true;
 }
 
-/** @brief Optional unsigned option: default when absent, usage error on garbage. */
+/** @brief Optional unsigned option: default when absent, usage error on
+ * garbage. */
 RA8_INTERNAL static bool
 opt_ul(const char* name, const char* s, unsigned long dflt, unsigned long* out)
 {
@@ -833,7 +871,8 @@ opt_ul(const char* name, const char* s, unsigned long dflt, unsigned long* out)
   return false;
 }
 
-/** @brief Optional 64-bit unsigned option: default when absent, error on garbage. */
+/** @brief Optional 64-bit unsigned option: default when absent, error on
+ * garbage. */
 RA8_INTERNAL static bool opt_ull(const char* name, const char* s, uint64_t dflt, uint64_t* out)
 {
   if (s == nullptr) {
@@ -866,7 +905,8 @@ bool mdl_cli_parse_nums(const mdl_args_t* a, mdl_nums_t* n)
   }
   uint64_t max_bytes = 0U;
   if (!opt_ull("max-bytes", a->max_bytes, 0U, &max_bytes)) {
-    return false; /* validate presence-garbage; the default is applied in run_opts */
+    return false; /* validate presence-garbage; the default is applied in
+                     run_opts */
   }
   n->from_present = (a->from != nullptr);
   n->from_num     = 0.0;

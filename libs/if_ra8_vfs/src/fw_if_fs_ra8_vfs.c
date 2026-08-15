@@ -137,7 +137,8 @@ static ra8_err_t internal_stat(void* ctx, const char* path, fw_fs_stat_t* out)
   return k_ra8_ok;
 }
 
-/** @brief Deliver one native directory entry through the bounded portable callback. */
+/** @brief Deliver one native directory entry through the bounded portable
+ * callback. */
 static void internal_list_entry(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   vfs_list_state_t* state = (vfs_list_state_t*)ctx;
@@ -357,14 +358,6 @@ static ra8_err_t internal_size(void* ctx, void* file_state, uint64_t* out_size)
   return ra8_fs_size(file->native, out_size);
 }
 
-/** @brief State honestly that VFS has no explicit durable file-sync primitive. */
-static ra8_err_t internal_sync(void* ctx, void* file_state)
-{
-  (void)ctx;
-  (void)file_state;
-  return k_ra8_err_not_supported;
-}
-
 /** @brief Close a native VFS file. */
 static ra8_err_t internal_close(void* ctx, void* file_state)
 {
@@ -534,7 +527,8 @@ static ra8_err_t internal_txn_seek(void* ctx, void* transaction_state, uint64_t 
   return internal_seek(ctx, &txn->file_state, offset);
 }
 
-/** @brief Close and reopen the VFS stage so a validator reads committed bytes. */
+/** @brief Close and reopen the VFS stage so a validator reads committed bytes.
+ */
 static ra8_err_t internal_txn_validate(void*               ctx,
                                        void*               transaction_state,
                                        fw_fs_validate_fn_t validator,
@@ -624,7 +618,7 @@ static const fw_fs_stream_iface_t s_stream_iface = {
   .seek  = internal_seek,
   .tell  = internal_tell,
   .size  = internal_size,
-  .sync  = internal_sync,
+  .sync  = nullptr,
   .close = internal_close,
 };
 

@@ -56,7 +56,8 @@ static void* mdl_decode_alloc(void* data, size_t len)
  * @brief Ignore individual protobuf frees for the linear dispatch arena
  * @details The complete arena is discarded when dispatch returns.
  * @param[in] data Arena context retained for allocator ABI compatibility.
- * @param[in] ptr Previously returned span retained for allocator ABI compatibility.
+ * @param[in] ptr Previously returned span retained for allocator ABI
+ * compatibility.
  * @pre @p data identifies the current dispatch arena.
  * @pre @p ptr is null or belongs to that arena.
  * @post Arena state is unchanged.
@@ -252,7 +253,8 @@ static ra8_err_t mdl_dispatch_start(ra8_mdl_service_t*  service,
  * @return Pull status.
  * @retval k_ra8_ok One ordered data or terminal response was packed.
  * @retval k_ra8_err_protocol_error Decode or backend fields are incoherent.
- * @retval k_ra8_err_invalid_state Job correlation or requested bound is invalid.
+ * @retval k_ra8_err_invalid_state Job correlation or requested bound is
+ * invalid.
  * @retval k_ra8_err_invalid_size Worst-case response does not fit.
  * @pre All pointers are non-null and one job is active.
  * @pre @p alloc owns a fresh bounded arena.
@@ -316,8 +318,12 @@ static ra8_err_t mdl_dispatch_next(ra8_mdl_service_t*  service,
   }
   const bool     offset_overflow = service->next_offset > (UINT64_MAX - got);
   const uint64_t end_offset      = offset_overflow ? 0U : service->next_offset + got;
-  const bool     total_invalid =
-    (total != 0U) && ((end_offset > total) || (complete && (end_offset != total)));
+  bool           total_invalid   = false;
+  if (complete) {
+    total_invalid = end_offset != total;
+  } else if (total != 0U) {
+    total_invalid = end_offset > total;
+  }
   if ((got > req->max_bytes) || ((!complete) && (got == 0U)) || (complete && (got != 0U)) ||
       offset_overflow || total_invalid || (service->next_sequence == UINT32_MAX)) {
     (void)service->backend.cancel(service->backend.ctx);
@@ -354,7 +360,8 @@ static ra8_err_t mdl_dispatch_next(ra8_mdl_service_t*  service,
 
 /**
  * @brief Validate and cancel one correlated active service job
- * @details Packs the acknowledgement before asking the backend to release state.
+ * @details Packs the acknowledgement before asking the backend to release
+ * state.
  * @param[in,out] service Active portable service.
  * @param[in,out] alloc Bounded per-dispatch protobuf allocator.
  * @param[in] request Packed CancelRequest.
