@@ -60,7 +60,7 @@
  * @note Packs directly into the transaction, so nothing is copied twice.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_c6link_rpc_stage(ra8_c6link_t* link, Rpc* req)
+RA8_INTERNAL static ra8_err_t internal_c6link_rpc_stage(ra8_c6link_t* link, Rpc* req)
 {
   link->tx_len = 0U;
 
@@ -71,10 +71,8 @@ RA8_INTERNAL static ra8_err_t ra8_c6link_rpc_stage(ra8_c6link_t* link, Rpc* req)
 
   uint8_t*        payload = &link->tx[k_ra8_c6link_header_bytes];
   uint16_t        body_at = 0U;
-  const ra8_err_t opened  = ra8_c6link_priv_tlv_open(payload,
-                                                     (uint16_t)k_ra8_c6link_max_payload,
-                                                     (uint16_t)packed,
-                                                     &body_at);
+  const ra8_err_t opened =
+    priv_c6link_tlv_open(payload, (uint16_t)k_ra8_c6link_max_payload, (uint16_t)packed, &body_at);
   if (opened != k_ra8_ok) {
     return opened;
   }
@@ -87,7 +85,7 @@ RA8_INTERNAL static ra8_err_t ra8_c6link_rpc_stage(ra8_c6link_t* link, Rpc* req)
   return k_ra8_ok;
 }
 
-RA8_PRIV ra8_err_t ra8_c6link_priv_resp(ra8_c6link_t* link, uint32_t rpc_id, int32_t resp)
+RA8_PRIV ra8_err_t priv_c6link_resp(ra8_c6link_t* link, uint32_t rpc_id, int32_t resp)
 {
   if (link == nullptr) {
     return k_ra8_err_null_ptr;
@@ -102,11 +100,11 @@ RA8_PRIV ra8_err_t ra8_c6link_priv_resp(ra8_c6link_t* link, uint32_t rpc_id, int
   return k_ra8_ok;
 }
 
-RA8_PRIV ra8_err_t ra8_c6link_priv_rpc_call(ra8_c6link_t*        link,
-                                            Rpc*                 req,
-                                            uint32_t             resp_id,
-                                            ra8_c6link_take_fn_t take,
-                                            void*                take_ctx)
+RA8_PRIV ra8_err_t priv_c6link_rpc_call(ra8_c6link_t*        link,
+                                        Rpc*                 req,
+                                        uint32_t             resp_id,
+                                        ra8_c6link_take_fn_t take,
+                                        void*                take_ctx)
 {
   if ((link == nullptr) || (req == nullptr) || (take == nullptr)) {
     return k_ra8_err_null_ptr;
@@ -121,7 +119,7 @@ RA8_PRIV ra8_err_t ra8_c6link_priv_rpc_call(ra8_c6link_t*        link,
   link->next_uid = link->next_uid + 1U;
   req->uid       = link->next_uid;
 
-  const ra8_err_t staged = ra8_c6link_rpc_stage(link, req);
+  const ra8_err_t staged = internal_c6link_rpc_stage(link, req);
   if (staged != k_ra8_ok) {
     return staged;
   }
@@ -136,12 +134,12 @@ RA8_PRIV ra8_err_t ra8_c6link_priv_rpc_call(ra8_c6link_t*        link,
     .satisfied = false,
   };
 
-  ra8_c6link_stats_t stats = {};
-  const ra8_err_t pumped = ra8_c6link_priv_pump(link, (uint16_t)k_ra8_c6link_rpc_transfers, &stats);
-  const bool      got    = link->wait.satisfied;
-  const ra8_err_t result = link->wait.result;
-  link->wait             = (ra8_c6link_wait_t){};
-  link->tx_len           = 0U;
+  ra8_c6link_stats_t stats  = {};
+  const ra8_err_t    pumped = priv_c6link_pump(link, (uint16_t)k_ra8_c6link_rpc_transfers, &stats);
+  const bool         got    = link->wait.satisfied;
+  const ra8_err_t    result = link->wait.result;
+  link->wait                = (ra8_c6link_wait_t){};
+  link->tx_len              = 0U;
 
   if (pumped != k_ra8_ok) {
     return pumped;
@@ -169,15 +167,15 @@ RA8_PRIV ra8_err_t ra8_c6link_priv_rpc_call(ra8_c6link_t*        link,
  * @note Split out so the event switch stays inside NASA Rule 4.
  * @since 0.1.0
  */
-RA8_INTERNAL static void ra8_c6link_rpc_ev_connected(ra8_c6link_event_t*          ev,
-                                                     const WifiEventStaConnected* body)
+RA8_INTERNAL static void internal_c6link_rpc_ev_connected(ra8_c6link_event_t*          ev,
+                                                          const WifiEventStaConnected* body)
 {
   if (body == nullptr) {
     return;
   }
-  ev->ssid_len = ra8_c6link_priv_copy_str(ev->ssid, (uint8_t)sizeof ev->ssid, &body->ssid);
+  ev->ssid_len = priv_c6link_copy_str(ev->ssid, (uint8_t)sizeof ev->ssid, &body->ssid);
   ev->channel  = (uint8_t)body->channel;
-  (void)ra8_c6link_priv_copy_mac(&ev->bssid, &body->bssid);
+  (void)priv_c6link_copy_mac(&ev->bssid, &body->bssid);
 }
 
 /**
@@ -195,16 +193,16 @@ RA8_INTERNAL static void ra8_c6link_rpc_ev_connected(ra8_c6link_event_t*        
  *       "AP went away" from "credentials rejected" by it alone.
  * @since 0.1.0
  */
-RA8_INTERNAL static void ra8_c6link_rpc_ev_disconnected(ra8_c6link_event_t*             ev,
-                                                        const WifiEventStaDisconnected* body)
+RA8_INTERNAL static void internal_c6link_rpc_ev_disconnected(ra8_c6link_event_t*             ev,
+                                                             const WifiEventStaDisconnected* body)
 {
   if (body == nullptr) {
     return;
   }
-  ev->ssid_len = ra8_c6link_priv_copy_str(ev->ssid, (uint8_t)sizeof ev->ssid, &body->ssid);
+  ev->ssid_len = priv_c6link_copy_str(ev->ssid, (uint8_t)sizeof ev->ssid, &body->ssid);
   ev->reason   = (uint16_t)body->reason;
   ev->rssi     = (int8_t)body->rssi;
-  (void)ra8_c6link_priv_copy_mac(&ev->bssid, &body->bssid);
+  (void)priv_c6link_copy_mac(&ev->bssid, &body->bssid);
 }
 
 /**
@@ -223,7 +221,7 @@ RA8_INTERNAL static void ra8_c6link_rpc_ev_disconnected(ra8_c6link_event_t*     
  *       half-decoded into a record no caller can interpret.
  * @since 0.1.0
  */
-RA8_INTERNAL static void ra8_c6link_rpc_event(ra8_c6link_t* link, const Rpc* msg)
+RA8_INTERNAL static void internal_c6link_rpc_event(ra8_c6link_t* link, const Rpc* msg)
 {
   ra8_c6link_event_t ev = {};
 
@@ -237,13 +235,13 @@ RA8_INTERNAL static void ra8_c6link_rpc_event(ra8_c6link_t* link, const Rpc* msg
     case (int32_t)RPC_ID__Event_StaConnected:
       ev.kind = k_ra8_c6link_event_sta_connected;
       if (msg->event_sta_connected != nullptr) {
-        ra8_c6link_rpc_ev_connected(&ev, msg->event_sta_connected->sta_connected);
+        internal_c6link_rpc_ev_connected(&ev, msg->event_sta_connected->sta_connected);
       }
       break;
     case (int32_t)RPC_ID__Event_StaDisconnected:
       ev.kind = k_ra8_c6link_event_sta_disconnected;
       if (msg->event_sta_disconnected != nullptr) {
-        ra8_c6link_rpc_ev_disconnected(&ev, msg->event_sta_disconnected->sta_disconnected);
+        internal_c6link_rpc_ev_disconnected(&ev, msg->event_sta_disconnected->sta_disconnected);
       }
       break;
     case (int32_t)RPC_ID__Event_WifiEventNoArgs:
@@ -255,7 +253,7 @@ RA8_INTERNAL static void ra8_c6link_rpc_event(ra8_c6link_t* link, const Rpc* msg
     default:
       return;
   }
-  ra8_c6link_priv_emit(link, &ev);
+  priv_c6link_emit(link, &ev);
 }
 
 /**
@@ -280,7 +278,7 @@ RA8_INTERNAL static void ra8_c6link_rpc_event(ra8_c6link_t* link, const Rpc* msg
  * `armed && uid == wait.uid && msg_id == wait.resp_id` is a three-condition
  * decision; `tests/test_ra8_c6link.c` drives the N+1 vectors.
  */
-RA8_INTERNAL static bool ra8_c6link_rpc_answer(ra8_c6link_t* link, const Rpc* msg)
+RA8_INTERNAL static bool internal_c6link_rpc_answer(ra8_c6link_t* link, const Rpc* msg)
 {
   if (!link->wait.armed || (msg->uid != link->wait.uid) ||
       ((uint32_t)msg->msg_id != link->wait.resp_id)) {
@@ -291,14 +289,14 @@ RA8_INTERNAL static bool ra8_c6link_rpc_answer(ra8_c6link_t* link, const Rpc* ms
   return true;
 }
 
-RA8_PRIV bool ra8_c6link_priv_rpc_consume(ra8_c6link_t* link, const uint8_t* payload, uint16_t len)
+RA8_PRIV bool priv_c6link_rpc_consume(ra8_c6link_t* link, const uint8_t* payload, uint16_t len)
 {
   if ((link == nullptr) || (payload == nullptr)) {
     return false;
   }
 
   uint16_t       proto_len = 0U;
-  const uint8_t* proto     = ra8_c6link_priv_tlv_body(payload, len, &proto_len);
+  const uint8_t* proto     = priv_c6link_tlv_body(payload, len, &proto_len);
   if (proto == nullptr) {
     if (link->stats != nullptr) {
       link->stats->undecodable++;
@@ -307,15 +305,15 @@ RA8_PRIV bool ra8_c6link_priv_rpc_consume(ra8_c6link_t* link, const uint8_t* pay
   }
 
   ProtobufCAllocator alloc = {};
-  ra8_c6link_priv_arena_bind(&alloc, link);
-  ra8_c6link_priv_arena_reset(link);
+  priv_c6link_arena_bind(&alloc, link);
+  priv_c6link_arena_reset(link);
 
   Rpc* msg = rpc__unpack(&alloc, (size_t)proto_len, proto);
   if (msg == nullptr) {
     if (link->stats != nullptr) {
       link->stats->undecodable++;
     }
-    ra8_c6link_priv_arena_reset(link);
+    priv_c6link_arena_reset(link);
     return false;
   }
   if (link->stats != nullptr) {
@@ -324,9 +322,9 @@ RA8_PRIV bool ra8_c6link_priv_rpc_consume(ra8_c6link_t* link, const uint8_t* pay
 
   bool stop = false;
   if (msg->msg_type == RPC_TYPE__Event) {
-    ra8_c6link_rpc_event(link, msg);
+    internal_c6link_rpc_event(link, msg);
   } else if (msg->msg_type == RPC_TYPE__Resp) {
-    stop = ra8_c6link_rpc_answer(link, msg);
+    stop = internal_c6link_rpc_answer(link, msg);
   } else {
     /* A request arriving at a host is a co-processor defect, not a message
        this side has any handler for. Counted, dropped, never acted on. */
@@ -336,6 +334,6 @@ RA8_PRIV bool ra8_c6link_priv_rpc_consume(ra8_c6link_t* link, const uint8_t* pay
   }
 
   rpc__free_unpacked(msg, &alloc);
-  ra8_c6link_priv_arena_reset(link);
+  priv_c6link_arena_reset(link);
   return stop;
 }

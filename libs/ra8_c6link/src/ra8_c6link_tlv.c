@@ -56,7 +56,7 @@ static_assert(sizeof(RPC_EP_NAME_RSP) == sizeof(RPC_EP_NAME_EVT),
  * @since 0.1.0
  */
 RA8_INTERNAL static uint16_t
-ra8_c6link_tlv_tag(uint8_t* out, uint16_t at, uint8_t type, uint16_t len)
+internal_c6link_tlv_tag(uint8_t* out, uint16_t at, uint8_t type, uint16_t len)
 {
   out[at + (uint16_t)k_ra8_c6link_tlv_type]   = type;
   out[at + (uint16_t)k_ra8_c6link_tlv_len_lo] = (uint8_t)(len & (uint16_t)k_ra8_c6link_tlv_mask);
@@ -81,17 +81,17 @@ ra8_c6link_tlv_tag(uint8_t* out, uint16_t at, uint8_t type, uint16_t len)
  * @note Split out so both tags are read by the same code path.
  * @since 0.1.0
  */
-RA8_INTERNAL static uint16_t ra8_c6link_tlv_len(const uint8_t* buf, uint16_t at)
+RA8_INTERNAL static uint16_t internal_c6link_tlv_len(const uint8_t* buf, uint16_t at)
 {
   const uint16_t lo = (uint16_t)buf[at + (uint16_t)k_ra8_c6link_tlv_len_lo];
   const uint16_t hi = (uint16_t)buf[at + (uint16_t)k_ra8_c6link_tlv_len_hi];
   return (uint16_t)(lo | (uint16_t)(hi << (uint16_t)k_ra8_c6link_tlv_shift));
 }
 
-RA8_PRIV ra8_err_t ra8_c6link_priv_tlv_open(uint8_t*  out,
-                                            uint16_t  cap,
-                                            uint16_t  proto_len,
-                                            uint16_t* body_at)
+RA8_PRIV ra8_err_t priv_c6link_tlv_open(uint8_t*  out,
+                                        uint16_t  cap,
+                                        uint16_t  proto_len,
+                                        uint16_t* body_at)
 {
   if ((out == nullptr) || (body_at == nullptr)) {
     return k_ra8_err_null_ptr;
@@ -101,15 +101,15 @@ RA8_PRIV ra8_err_t ra8_c6link_priv_tlv_open(uint8_t*  out,
     return k_ra8_err_invalid_size;
   }
 
-  uint16_t at = ra8_c6link_tlv_tag(out,
-                                   0U,
-                                   (uint8_t)k_ra8_c6link_tlv_t_epname,
-                                   (uint16_t)k_ra8_c6link_tlv_ep_len);
+  uint16_t at = internal_c6link_tlv_tag(out,
+                                        0U,
+                                        (uint8_t)k_ra8_c6link_tlv_t_epname,
+                                        (uint16_t)k_ra8_c6link_tlv_ep_len);
   for (uint16_t i = 0U; i < (uint16_t)k_ra8_c6link_tlv_ep_len; i++) {
     out[at + i] = (uint8_t)RPC_EP_NAME_RSP[i];
   }
   at       = (uint16_t)(at + (uint16_t)k_ra8_c6link_tlv_ep_len);
-  *body_at = ra8_c6link_tlv_tag(out, at, (uint8_t)k_ra8_c6link_tlv_t_data, proto_len);
+  *body_at = internal_c6link_tlv_tag(out, at, (uint8_t)k_ra8_c6link_tlv_t_data, proto_len);
   return k_ra8_ok;
 }
 
@@ -130,7 +130,7 @@ RA8_PRIV ra8_err_t ra8_c6link_priv_tlv_open(uint8_t*  out,
  * @note The loop is bounded by ::k_ra8_c6link_tlv_ep_len (NASA Rule 2).
  * @since 0.1.0
  */
-RA8_INTERNAL static bool ra8_c6link_tlv_named(const uint8_t* payload)
+RA8_INTERNAL static bool internal_c6link_tlv_named(const uint8_t* payload)
 {
   bool named = true;
   for (uint16_t i = 0U; i < (uint16_t)k_ra8_c6link_tlv_ep_len; i++) {
@@ -143,7 +143,7 @@ RA8_INTERNAL static bool ra8_c6link_tlv_named(const uint8_t* payload)
 }
 
 RA8_PRIV const uint8_t*
-ra8_c6link_priv_tlv_body(const uint8_t* payload, uint16_t len, uint16_t* proto_len)
+priv_c6link_tlv_body(const uint8_t* payload, uint16_t len, uint16_t* proto_len)
 {
   if ((payload == nullptr) || (proto_len == nullptr)) {
     return nullptr;
@@ -157,14 +157,14 @@ ra8_c6link_priv_tlv_body(const uint8_t* payload, uint16_t len, uint16_t* proto_l
       (payload[data_tag] != (uint8_t)k_ra8_c6link_tlv_t_data)) {
     return nullptr;
   }
-  if (ra8_c6link_tlv_len(payload, 0U) != (uint16_t)k_ra8_c6link_tlv_ep_len) {
+  if (internal_c6link_tlv_len(payload, 0U) != (uint16_t)k_ra8_c6link_tlv_ep_len) {
     return nullptr;
   }
-  if (!ra8_c6link_tlv_named(payload)) {
+  if (!internal_c6link_tlv_named(payload)) {
     return nullptr;
   }
 
-  const uint16_t body = ra8_c6link_tlv_len(payload, data_tag);
+  const uint16_t body = internal_c6link_tlv_len(payload, data_tag);
   if ((body == 0U) || (((uint32_t)body + (uint32_t)k_ra8_c6link_tlv_overhead) > (uint32_t)len)) {
     return nullptr;
   }

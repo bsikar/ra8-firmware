@@ -52,7 +52,7 @@ typedef struct {
  * @note Reentrant for independent decoded messages.
  * @since 0.1.0
  */
-static bool mdl_chunk_semantics_valid(const Ra8__Mdl__Chunk* msg)
+RA8_INTERNAL static bool internal_mdl_chunk_semantics_valid(const Ra8__Mdl__Chunk* msg)
 {
   if (msg->data.len > (UINT64_MAX - msg->offset)) {
     return false;
@@ -94,15 +94,17 @@ static bool mdl_chunk_semantics_valid(const Ra8__Mdl__Chunk* msg)
  * @note Not thread-safe for a shared c6link arena.
  * @since 0.1.0
  */
-static ra8_err_t mdl_take_accepted(mdl_take_ctx_t* take, const ProtobufCBinaryData* data)
+RA8_INTERNAL static ra8_err_t internal_mdl_take_accepted(mdl_take_ctx_t*            take,
+                                                         const ProtobufCBinaryData* data)
 {
   ProtobufCAllocator alloc = {};
-  ra8_c6link_priv_arena_bind(&alloc, take->link);
+  priv_c6link_arena_bind(&alloc, take->link);
   Ra8__Mdl__Accepted* msg = ra8__mdl__accepted__unpack(&alloc, data->len, data->data);
   if (msg == nullptr) {
     return k_ra8_err_protocol_error;
   }
-  const bool valid = (msg->protocol_version == k_ra8_mdl_protocol_version) && (msg->job_id != 0U) &&
+  const bool valid = (msg->base.n_unknown_fields == 0U) &&
+                     (msg->protocol_version == k_ra8_mdl_protocol_version) && (msg->job_id != 0U) &&
                      (msg->max_chunk_bytes != 0U) &&
                      (msg->max_chunk_bytes <= k_ra8_mdl_chunk_data_max);
   if (valid) {
@@ -133,20 +135,22 @@ static ra8_err_t mdl_take_accepted(mdl_take_ctx_t* take, const ProtobufCBinaryDa
  * @note Not thread-safe for a shared session or c6link arena.
  * @since 0.1.0
  */
-static ra8_err_t mdl_take_chunk(mdl_take_ctx_t* take, const ProtobufCBinaryData* data)
+RA8_INTERNAL static ra8_err_t internal_mdl_take_chunk(mdl_take_ctx_t*            take,
+                                                      const ProtobufCBinaryData* data)
 {
   ProtobufCAllocator alloc = {};
-  ra8_c6link_priv_arena_bind(&alloc, take->link);
+  priv_c6link_arena_bind(&alloc, take->link);
   Ra8__Mdl__Chunk* msg = ra8__mdl__chunk__unpack(&alloc, data->len, data->data);
   if (msg == nullptr) {
     return k_ra8_err_protocol_error;
   }
   const bool valid =
-    (msg->protocol_version == k_ra8_mdl_protocol_version) &&
+    (msg->base.n_unknown_fields == 0U) && (msg->protocol_version == k_ra8_mdl_protocol_version) &&
     (msg->job_id == take->session->job_id) && (msg->sequence == take->session->next_sequence) &&
     (msg->offset == take->session->next_offset) && (msg->data.len <= take->requested_bytes) &&
     (msg->data.len <= k_ra8_mdl_chunk_data_max) &&
-    ((msg->data.len == 0U) || (msg->data.data != nullptr)) && mdl_chunk_semantics_valid(msg);
+    ((msg->data.len == 0U) || (msg->data.data != nullptr)) &&
+    internal_mdl_chunk_semantics_valid(msg);
   ra8_err_t result = valid ? k_ra8_ok : k_ra8_err_protocol_error;
   if (valid) {
     *take->chunk = (ra8_mdl_chunk_t){
@@ -195,15 +199,17 @@ static ra8_err_t mdl_take_chunk(mdl_take_ctx_t* take, const ProtobufCBinaryData*
  * @note Not thread-safe for a shared session or c6link arena.
  * @since 0.1.0
  */
-static ra8_err_t mdl_take_cancelled(mdl_take_ctx_t* take, const ProtobufCBinaryData* data)
+RA8_INTERNAL static ra8_err_t internal_mdl_take_cancelled(mdl_take_ctx_t*            take,
+                                                          const ProtobufCBinaryData* data)
 {
   ProtobufCAllocator alloc = {};
-  ra8_c6link_priv_arena_bind(&alloc, take->link);
+  priv_c6link_arena_bind(&alloc, take->link);
   Ra8__Mdl__Cancelled* msg = ra8__mdl__cancelled__unpack(&alloc, data->len, data->data);
   if (msg == nullptr) {
     return k_ra8_err_protocol_error;
   }
-  const bool valid = (msg->protocol_version == k_ra8_mdl_protocol_version) &&
+  const bool valid = (msg->base.n_unknown_fields == 0U) &&
+                     (msg->protocol_version == k_ra8_mdl_protocol_version) &&
                      (msg->job_id == take->session->job_id) && (msg->status == 0);
   if (valid) {
     take->session->active = false;
@@ -227,7 +233,7 @@ static ra8_err_t mdl_take_cancelled(mdl_take_ctx_t* take, const ProtobufCBinaryD
  * @note Not thread-safe for a shared c6link/session.
  * @since 0.1.0
  */
-static ra8_err_t mdl_take_response(void* ctx, const void* msg_v)
+RA8_INTERNAL static ra8_err_t internal_mdl_take_response(void* ctx, const void* msg_v)
 {
   mdl_take_ctx_t*         take = (mdl_take_ctx_t*)ctx;
   const Rpc*              msg  = (const Rpc*)msg_v;
@@ -235,7 +241,7 @@ static ra8_err_t mdl_take_response(void* ctx, const void* msg_v)
   if ((body == nullptr) || (body->custom_msg_id != take->operation)) {
     return k_ra8_err_protocol_error;
   }
-  const ra8_err_t remote = ra8_c6link_priv_resp(take->link, take->operation, body->resp);
+  const ra8_err_t remote = priv_c6link_resp(take->link, take->operation, body->resp);
   if (remote != k_ra8_ok) {
     return remote;
   }
@@ -244,11 +250,11 @@ static ra8_err_t mdl_take_response(void* ctx, const void* msg_v)
   }
   switch (take->kind) {
     case k_mdl_take_accepted:
-      return mdl_take_accepted(take, &body->data);
+      return internal_mdl_take_accepted(take, &body->data);
     case k_mdl_take_chunk:
-      return mdl_take_chunk(take, &body->data);
+      return internal_mdl_take_chunk(take, &body->data);
     case k_mdl_take_cancelled:
-      return mdl_take_cancelled(take, &body->data);
+      return internal_mdl_take_cancelled(take, &body->data);
     default:
       return k_ra8_err_protocol_error;
   }
@@ -270,15 +276,15 @@ static ra8_err_t mdl_take_response(void* ctx, const void* msg_v)
  * @pre Every pointer is non-null and @p data_len is within the local buffer.
  * @pre ::ra8_c6link_open succeeded and no concurrent caller uses @p link.
  * @post Inner request storage is no longer referenced when the call returns.
- * @post Response state changes only through ::mdl_take_response.
+ * @post Response state changes only through ::internal_mdl_take_response.
  * @note Synchronous and not thread-safe for a shared link.
  * @since 0.1.0
  */
-static ra8_err_t mdl_call(ra8_c6link_t*   link,
-                          uint32_t        operation,
-                          uint8_t*        data,
-                          size_t          data_len,
-                          mdl_take_ctx_t* take)
+RA8_INTERNAL static ra8_err_t internal_mdl_call(ra8_c6link_t*   link,
+                                                uint32_t        operation,
+                                                uint8_t*        data,
+                                                size_t          data_len,
+                                                mdl_take_ctx_t* take)
 {
   RpcReqCustomRpc body = RPC__REQ__CUSTOM_RPC__INIT;
   body.custom_msg_id   = operation;
@@ -291,11 +297,11 @@ static ra8_err_t mdl_call(ra8_c6link_t*   link,
   req.req_custom_rpc = &body;
   take->link         = link;
   take->operation    = operation;
-  return ra8_c6link_priv_rpc_call(link,
-                                  &req,
-                                  (uint32_t)RPC_ID__Resp_CustomRpc,
-                                  mdl_take_response,
-                                  take);
+  return priv_c6link_rpc_call(link,
+                              &req,
+                              (uint32_t)RPC_ID__Resp_CustomRpc,
+                              internal_mdl_take_response,
+                              take);
 }
 // NOLINTEND(readability-non-const-parameter)
 
@@ -324,7 +330,7 @@ ra8_err_t ra8_c6link_mdl_start(ra8_c6link_t* link, const char* url, ra8_mdl_sess
     return k_ra8_err_invalid_size;
   }
   mdl_take_ctx_t take = {.session = session, .kind = k_mdl_take_accepted};
-  return mdl_call(link, k_ra8_mdl_rpc_start, data, packed, &take);
+  return internal_mdl_call(link, k_ra8_mdl_rpc_start, data, packed, &take);
 }
 
 ra8_err_t ra8_c6link_mdl_next(ra8_c6link_t*      link,
@@ -358,7 +364,7 @@ ra8_err_t ra8_c6link_mdl_next(ra8_c6link_t*      link,
                          .chunk           = chunk,
                          .requested_bytes = max_bytes,
                          .kind            = k_mdl_take_chunk};
-  return mdl_call(link, k_ra8_mdl_rpc_next, data, packed, &take);
+  return internal_mdl_call(link, k_ra8_mdl_rpc_next, data, packed, &take);
 }
 
 ra8_err_t ra8_c6link_mdl_cancel(ra8_c6link_t* link, ra8_mdl_session_t* session)
@@ -379,5 +385,5 @@ ra8_err_t ra8_c6link_mdl_cancel(ra8_c6link_t* link, ra8_mdl_session_t* session)
     return k_ra8_err_invalid_size;
   }
   mdl_take_ctx_t take = {.session = session, .kind = k_mdl_take_cancelled};
-  return mdl_call(link, k_ra8_mdl_rpc_cancel, data, packed, &take);
+  return internal_mdl_call(link, k_ra8_mdl_rpc_cancel, data, packed, &take);
 }

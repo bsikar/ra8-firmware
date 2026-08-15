@@ -87,7 +87,7 @@ typedef enum : int32_t {
  *       not used: its bound is the same but its availability is not.
  * @since 0.1.0
  */
-RA8_INTERNAL static uint8_t ra8_c6link_sta_len(const char* text, uint8_t cap)
+RA8_INTERNAL static uint8_t internal_c6link_sta_len(const char* text, uint8_t cap)
 {
   uint8_t n = 0U;
   while ((n < cap) && (text[n] != '\0')) {
@@ -103,12 +103,12 @@ ra8_err_t ra8_c6link_sta_cfg_set(ra8_c6link_sta_cfg_t* cfg, const char* ssid, co
   }
   *cfg = (ra8_c6link_sta_cfg_t){};
 
-  const uint8_t ssid_len = ra8_c6link_sta_len(ssid, (uint8_t)sizeof cfg->ssid);
+  const uint8_t ssid_len = internal_c6link_sta_len(ssid, (uint8_t)sizeof cfg->ssid);
   if ((ssid_len == 0U) || (ssid_len > (uint8_t)k_ra8_c6link_ssid_max)) {
     return k_ra8_err_invalid_size;
   }
   const uint8_t pass_len =
-    (pass == nullptr) ? 0U : ra8_c6link_sta_len(pass, (uint8_t)sizeof cfg->pass);
+    (pass == nullptr) ? 0U : internal_c6link_sta_len(pass, (uint8_t)sizeof cfg->pass);
   if (pass_len > (uint8_t)k_ra8_c6link_pass_max) {
     return k_ra8_err_invalid_size;
   }
@@ -142,10 +142,10 @@ ra8_err_t ra8_c6link_sta_cfg_set(ra8_c6link_sta_cfg_t* cfg, const char* ssid, co
  * @par Example:
  * @code
  * ra8_c6link_sta_wire_buf_t buf = {};
- * ra8_c6link_sta_stage(&buf, cfg);
+ * internal_c6link_sta_stage(&buf, cfg);
  * @endcode
  *
- * @see ra8_c6link_sta_set_config
+ * @see internal_c6link_sta_set_config
  * @since 0.1.0
  */
 typedef struct ra8_c6link_sta_wire_buf {
@@ -171,8 +171,8 @@ typedef struct ra8_c6link_sta_wire_buf {
  *       turn bounded by the field sizes (NASA Rule 2).
  * @since 0.1.0
  */
-RA8_INTERNAL static void ra8_c6link_sta_stage(ra8_c6link_sta_wire_buf_t*  buf,
-                                              const ra8_c6link_sta_cfg_t* cfg)
+RA8_INTERNAL static void internal_c6link_sta_stage(ra8_c6link_sta_wire_buf_t*  buf,
+                                                   const ra8_c6link_sta_cfg_t* cfg)
 {
   for (uint8_t i = 0U; i < cfg->ssid_len; i++) {
     buf->ssid[i] = (uint8_t)cfg->ssid[i];
@@ -205,8 +205,8 @@ RA8_INTERNAL static void ra8_c6link_sta_stage(ra8_c6link_sta_wire_buf_t*  buf,
  *       containing a zero octet -- which 802.11 permits -- survives.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_c6link_sta_set_config(ra8_c6link_t*               link,
-                                                        const ra8_c6link_sta_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_c6link_sta_set_config(ra8_c6link_t*               link,
+                                                             const ra8_c6link_sta_cfg_t* cfg)
 {
   WifiScanThreshold threshold;
   wifi_scan_threshold__init(&threshold);
@@ -217,7 +217,7 @@ RA8_INTERNAL static ra8_err_t ra8_c6link_sta_set_config(ra8_c6link_t*           
   pmf.capable = true;
 
   ra8_c6link_sta_wire_buf_t buf = {};
-  ra8_c6link_sta_stage(&buf, cfg);
+  internal_c6link_sta_stage(&buf, cfg);
 
   WifiStaConfig sta;
   wifi_sta_config__init(&sta);
@@ -254,11 +254,11 @@ RA8_INTERNAL static ra8_err_t ra8_c6link_sta_set_config(ra8_c6link_t*           
   ra8_c6link_take_ctx_t take = {.link   = link,
                                 .out    = nullptr,
                                 .rpc_id = (uint32_t)RPC_ID__Req_WifiSetConfig};
-  return ra8_c6link_priv_rpc_call(link,
-                                  &req,
-                                  (uint32_t)RPC_ID__Resp_WifiSetConfig,
-                                  ra8_c6link_priv_take_resp,
-                                  &take);
+  return priv_c6link_rpc_call(link,
+                              &req,
+                              (uint32_t)RPC_ID__Resp_WifiSetConfig,
+                              priv_c6link_take_resp,
+                              &take);
 }
 
 ra8_err_t ra8_c6link_wifi_join(ra8_c6link_t* link, const ra8_c6link_sta_cfg_t* cfg)
@@ -274,11 +274,11 @@ ra8_err_t ra8_c6link_wifi_join(ra8_c6link_t* link, const ra8_c6link_sta_cfg_t* c
     return k_ra8_err_invalid_size;
   }
 
-  const ra8_err_t configured = ra8_c6link_sta_set_config(link, cfg);
+  const ra8_err_t configured = internal_c6link_sta_set_config(link, cfg);
   if (configured != k_ra8_ok) {
     return configured;
   }
-  return ra8_c6link_priv_bare_req(link, (uint32_t)RPC_ID__Req_WifiConnect);
+  return priv_c6link_bare_req(link, (uint32_t)RPC_ID__Req_WifiConnect);
 }
 
 /**
@@ -298,7 +298,7 @@ ra8_err_t ra8_c6link_wifi_join(ra8_c6link_t* link, const ra8_c6link_sta_cfg_t* c
  * @note Runs inside the pump, on the polling thread.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_c6link_take_mac(void* ctx, const void* msg_v)
+RA8_INTERNAL static ra8_err_t internal_c6link_take_mac(void* ctx, const void* msg_v)
 {
   ra8_c6link_take_ctx_t* take = (ra8_c6link_take_ctx_t*)ctx;
   const Rpc*             msg  = (const Rpc*)msg_v;
@@ -308,11 +308,11 @@ RA8_INTERNAL static ra8_err_t ra8_c6link_take_mac(void* ctx, const void* msg_v)
   if (body == nullptr) {
     return k_ra8_err_protocol_error;
   }
-  const ra8_err_t reported = ra8_c6link_priv_resp(take->link, take->rpc_id, body->resp);
+  const ra8_err_t reported = priv_c6link_resp(take->link, take->rpc_id, body->resp);
   if (reported != k_ra8_ok) {
     return reported;
   }
-  return ra8_c6link_priv_copy_mac(out, &body->mac) ? k_ra8_ok : k_ra8_err_protocol_error;
+  return priv_c6link_copy_mac(out, &body->mac) ? k_ra8_ok : k_ra8_err_protocol_error;
 }
 
 ra8_err_t ra8_c6link_wifi_mac(ra8_c6link_t* link, ra8_c6link_mac_t* out)
@@ -344,11 +344,11 @@ ra8_err_t ra8_c6link_wifi_mac(ra8_c6link_t* link, ra8_c6link_mac_t* out)
   ra8_c6link_take_ctx_t take = {.link   = link,
                                 .out    = out,
                                 .rpc_id = (uint32_t)RPC_ID__Req_GetMACAddress};
-  return ra8_c6link_priv_rpc_call(link,
-                                  &req,
-                                  (uint32_t)RPC_ID__Resp_GetMACAddress,
-                                  ra8_c6link_take_mac,
-                                  &take);
+  return priv_c6link_rpc_call(link,
+                              &req,
+                              (uint32_t)RPC_ID__Resp_GetMACAddress,
+                              internal_c6link_take_mac,
+                              &take);
 }
 
 /**
@@ -369,7 +369,7 @@ ra8_err_t ra8_c6link_wifi_mac(ra8_c6link_t* link, ra8_c6link_mac_t* out)
  * @note Runs inside the pump, on the polling thread.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_c6link_take_ap(void* ctx, const void* msg_v)
+RA8_INTERNAL static ra8_err_t internal_c6link_take_ap(void* ctx, const void* msg_v)
 {
   ra8_c6link_take_ctx_t* take = (ra8_c6link_take_ctx_t*)ctx;
   const Rpc*             msg  = (const Rpc*)msg_v;
@@ -379,7 +379,7 @@ RA8_INTERNAL static ra8_err_t ra8_c6link_take_ap(void* ctx, const void* msg_v)
   if (body == nullptr) {
     return k_ra8_err_protocol_error;
   }
-  const ra8_err_t reported = ra8_c6link_priv_resp(take->link, take->rpc_id, body->resp);
+  const ra8_err_t reported = priv_c6link_resp(take->link, take->rpc_id, body->resp);
   if (reported != k_ra8_ok) {
     return reported;
   }
@@ -388,11 +388,11 @@ RA8_INTERNAL static ra8_err_t ra8_c6link_take_ap(void* ctx, const void* msg_v)
   }
 
   const WifiApRecord* rec = body->ap_record;
-  out->ssid_len = ra8_c6link_priv_copy_str(out->ssid, (uint8_t)sizeof out->ssid, &rec->ssid);
-  out->channel  = (uint8_t)rec->primary;
-  out->rssi     = (int8_t)rec->rssi;
-  out->authmode = rec->authmode;
-  (void)ra8_c6link_priv_copy_mac(&out->bssid, &rec->bssid);
+  out->ssid_len           = priv_c6link_copy_str(out->ssid, (uint8_t)sizeof out->ssid, &rec->ssid);
+  out->channel            = (uint8_t)rec->primary;
+  out->rssi               = (int8_t)rec->rssi;
+  out->authmode           = rec->authmode;
+  (void)priv_c6link_copy_mac(&out->bssid, &rec->bssid);
   return k_ra8_ok;
 }
 
@@ -419,9 +419,9 @@ ra8_err_t ra8_c6link_wifi_ap_info(ra8_c6link_t* link, ra8_c6link_ap_info_t* out)
   ra8_c6link_take_ctx_t take = {.link   = link,
                                 .out    = out,
                                 .rpc_id = (uint32_t)RPC_ID__Req_WifiStaGetApInfo};
-  return ra8_c6link_priv_rpc_call(link,
-                                  &req,
-                                  (uint32_t)RPC_ID__Resp_WifiStaGetApInfo,
-                                  ra8_c6link_take_ap,
-                                  &take);
+  return priv_c6link_rpc_call(link,
+                              &req,
+                              (uint32_t)RPC_ID__Resp_WifiStaGetApInfo,
+                              internal_c6link_take_ap,
+                              &take);
 }

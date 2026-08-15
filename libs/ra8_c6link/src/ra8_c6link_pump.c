@@ -50,7 +50,7 @@
  * @note The loop is bounded by ::k_ra8_c6link_hs_wait_ms (NASA Rule 2).
  * @since 0.1.0
  */
-RA8_INTERNAL static bool ra8_c6link_pump_handshake(ra8_c6link_t* link)
+RA8_INTERNAL static bool internal_c6link_pump_handshake(ra8_c6link_t* link)
 {
   for (uint16_t waited = 0U; waited < (uint16_t)k_ra8_c6link_hs_wait_ms;
        waited          = (uint16_t)(waited + (uint16_t)k_ra8_c6link_hs_poll_ms)) {
@@ -78,10 +78,10 @@ RA8_INTERNAL static bool ra8_c6link_pump_handshake(ra8_c6link_t* link)
  * @note Ordering matches upstream's `process_spi_rx_buf()`.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool ra8_c6link_pump_receive(ra8_c6link_t* link, ra8_c6link_stats_t* stats)
+RA8_INTERNAL static bool internal_c6link_pump_receive(ra8_c6link_t* link, ra8_c6link_stats_t* stats)
 {
   ra8_c6link_rx_view_t           view = {};
-  const ra8_c6link_frame_class_t cls  = ra8_c6link_priv_frame_classify(link->rx, &view);
+  const ra8_c6link_frame_class_t cls  = priv_c6link_frame_classify(link->rx, &view);
 
   switch (cls) {
     case k_ra8_c6link_frame_idle:
@@ -99,12 +99,12 @@ RA8_INTERNAL static bool ra8_c6link_pump_receive(ra8_c6link_t* link, ra8_c6link_
   }
 
   stats->data++;
-  return ra8_c6link_priv_dispatch(link, &view);
+  return priv_c6link_dispatch(link, &view);
 }
 
-RA8_PRIV ra8_err_t ra8_c6link_priv_pump(ra8_c6link_t*       link,
-                                        uint16_t            max_transactions,
-                                        ra8_c6link_stats_t* stats)
+RA8_PRIV ra8_err_t priv_c6link_pump(ra8_c6link_t*       link,
+                                    uint16_t            max_transactions,
+                                    ra8_c6link_stats_t* stats)
 {
   if ((link == nullptr) || (stats == nullptr)) {
     return k_ra8_err_null_ptr;
@@ -114,7 +114,7 @@ RA8_PRIV ra8_err_t ra8_c6link_priv_pump(ra8_c6link_t*       link,
   ra8_err_t verdict = k_ra8_ok;
 
   for (uint16_t i = 0U; i < max_transactions; i++) {
-    if (!ra8_c6link_pump_handshake(link)) {
+    if (!internal_c6link_pump_handshake(link)) {
       stats->hs_timeouts++;
       misses++;
       if (misses >= (uint16_t)k_ra8_c6link_hs_giveup) {
@@ -125,10 +125,10 @@ RA8_PRIV ra8_err_t ra8_c6link_priv_pump(ra8_c6link_t*       link,
     misses = 0U;
 
     if (link->tx_len != 0U) {
-      ra8_c6link_priv_frame_seal(link->tx, link->tx_if, 0U, link->tx_len);
+      priv_c6link_frame_seal(link->tx, link->tx_if, 0U, link->tx_len);
       link->tx_len = 0U;
     } else {
-      ra8_c6link_priv_frame_filler(link->tx);
+      priv_c6link_frame_filler(link->tx);
     }
 
     const ra8_err_t moved = link->transport.transfer(link->transport.ctx,
@@ -141,7 +141,7 @@ RA8_PRIV ra8_err_t ra8_c6link_priv_pump(ra8_c6link_t*       link,
     }
     stats->transfers++;
 
-    if (ra8_c6link_pump_receive(link, stats)) {
+    if (internal_c6link_pump_receive(link, stats)) {
       break;
     }
     link->transport.delay_ms(link->transport.ctx, (uint16_t)k_ra8_c6link_gap_ms);

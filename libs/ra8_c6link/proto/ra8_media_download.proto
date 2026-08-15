@@ -8,6 +8,8 @@ package ra8.mdl;
 // Payloads carried inside ESP-hosted's generated CustomRpc protobuf envelope.
 // The RA8 owns destination paths, storage, and media transformation. The C6
 // performs one operation only: bounded retrieval of the raw HTTPS body.
+// Both endpoints reject unknown fields. Wire extensions therefore require an
+// explicit protocol-version change instead of silently changing job semantics.
 
 enum State {
   STATE_UNSPECIFIED = 0;
