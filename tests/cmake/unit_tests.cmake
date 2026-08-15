@@ -44,6 +44,7 @@ function(ra8_add_test name)
     ${name}
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
             ${FW_ROOT}/libs/ra8_core/inc
+            ${FW_ROOT}/libs/ra8_xml/inc
             ${FW_ROOT}/libs/ra8_hal/inc
             ${FW_ROOT}/libs/ra8_jpeg/inc
             ${FW_ROOT}/libs/ra8_net_pal/inc
@@ -106,7 +107,6 @@ function(ra8_add_test name)
             ${FW_ROOT}/libs/third_party/esp-hosted/common/mempool/include
             ${FW_ROOT}/libs/third_party/esp-hosted/common/transport
             ${FW_ROOT}/libs/third_party/miniz
-            ${FW_ROOT}/libs/third_party/tinyxml2
             ${FW_ROOT}/libs/third_party/stb
             ${FW_ROOT}/libs/third_party/xz_embedded
             ${FW_ROOT}/src/secure_app
@@ -263,8 +263,10 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_emulator_
 # esp-hosted include path, neither of which ra8_core_hal carries, so both are
 # registered by hand in tests_c6link.cmake rather than through the auto-glob.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link.c)
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_wire.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl.c)
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_rabook.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_mdl_storage_vfs.c)
 
 # test_ra8_wifi_c6link.c drives the ESP32-C6 ra8_wifi backend, which -- like the
@@ -284,13 +286,28 @@ foreach(src ${RA8_TEST_SOURCES})
   ra8_add_test(${name})
 endforeach()
 
+# The resident and streaming RABOOK1 tests share one caller-owned fixture
+# implementation. Compile it into each standalone executable so neither test
+# depends on state or symbols owned by its sibling process.
+foreach(rabook_compile_test IN ITEMS test_ra8_rabook_compile test_ra8_rabook_compile_stream)
+  if(TARGET ${rabook_compile_test})
+    target_sources(
+      ${rabook_compile_test}
+      PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support/rabook_compile_test_fixture.c
+    )
+  endif()
+endforeach()
+
 # The portable-filesystem conformance test runs the same vectors against the
 # firmware VFS adapter (from ra8_core_hal) and this hosted POSIX port. Keep the
 # POSIX source out of the firmware object library by adding it only here.
 if(TARGET test_fw_if_fs)
   target_sources(
     test_fw_if_fs
-    PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
+    PRIVATE ${FW_ROOT}/tests/support/fw_if_fs_contract_test.c
+            ${FW_ROOT}/tests/support/fw_if_fs_cursor_test.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
             ${FW_ROOT}/tools/media_dl/src/mdl_hash.c
             ${FW_ROOT}/tools/media_dl/src/mdl_pathfs.c
@@ -305,6 +322,178 @@ if(TARGET test_fw_if_fs)
             ${FW_ROOT}/port/posix/src
             ${FW_ROOT}/tools/media_dl/inc
   )
+endif()
+
+# The raw POSIX directory test compiles the hosted adapter with a private read
+# injection seam. Production builds do not define RA8_POSIX_TEST and therefore
+# contain neither the mutable seam nor its setter.
+if(TARGET test_fw_if_fs_posix_raw)
+  target_sources(
+    test_fw_if_fs_posix_raw PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
+                                    ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
+                                    ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+  )
+  target_include_directories(
+    test_fw_if_fs_posix_raw PRIVATE ${FW_ROOT}/libs/if/inc ${FW_ROOT}/port/posix/inc
+                                    ${FW_ROOT}/port/posix/src
+  )
+  target_compile_definitions(test_fw_if_fs_posix_raw PRIVATE RA8_POSIX_TEST)
+endif()
+
+# Downloader state persistence runs one journal/recovery/fault vector against
+# both the hosted POSIX adapter and the firmware RAM blockdev -> FAT -> VFS
+# stack. Production state sources are compiled directly into this focused
+# executable so the portable contract is identical to the media tool build.
+if(TARGET test_ra8_mdl_state)
+  target_sources(
+    test_ra8_mdl_state
+    PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_state.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_state_codec.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_state_decimal.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_state_store.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_storage.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_hash.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/support/mdl_state_fs_fault.c
+  )
+  target_include_directories(
+    test_ra8_mdl_state
+    PRIVATE ${FW_ROOT}/libs/if/inc
+            ${FW_ROOT}/libs/if_ra8_vfs/inc
+            ${FW_ROOT}/port/posix/inc
+            ${FW_ROOT}/port/posix/src
+            ${FW_ROOT}/tools/media_dl/inc
+            ${FW_ROOT}/tools/media_dl/src
+            ${CMAKE_CURRENT_SOURCE_DIR}/support
+  )
+  target_compile_definitions(test_ra8_mdl_state PRIVATE _GNU_SOURCE)
+endif()
+
+# Portable downloader library enumeration/removal runs identical authenticated,
+# bounded, and fault-injected vectors over POSIX and RAM blockdev/FAT/VFS.
+if(TARGET test_ra8_mdl_library)
+  target_sources(
+    test_ra8_mdl_library
+    PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_library.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_sanitize.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_state.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_state_codec.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_state_decimal.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_state_store.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_storage.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_hash.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/support/mdl_state_fs_fault.c
+  )
+  target_include_directories(
+    test_ra8_mdl_library
+    PRIVATE ${FW_ROOT}/libs/if/inc
+            ${FW_ROOT}/libs/if_ra8_vfs/inc
+            ${FW_ROOT}/port/posix/inc
+            ${FW_ROOT}/port/posix/src
+            ${FW_ROOT}/tools/media_dl/inc
+            ${FW_ROOT}/tools/media_dl/src
+            ${CMAKE_CURRENT_SOURCE_DIR}/support
+  )
+  target_compile_definitions(test_ra8_mdl_library PRIVATE _GNU_SOURCE)
+endif()
+
+# Downloader config and image readers execute identical bounded/fault vectors
+# over the hosted POSIX port and the firmware RAM blockdev -> FAT -> VFS stack.
+if(TARGET test_ra8_mdl_readers)
+  target_sources(
+    test_ra8_mdl_readers
+    PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_config.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_urlname.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_verify.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_sanitize.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_storage.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_hash.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_politeness.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/support/mdl_state_fs_fault.c
+  )
+  target_include_directories(
+    test_ra8_mdl_readers
+    PRIVATE ${FW_ROOT}/libs/if/inc
+            ${FW_ROOT}/libs/if_ra8_vfs/inc
+            ${FW_ROOT}/port/posix/inc
+            ${FW_ROOT}/port/posix/src
+            ${FW_ROOT}/tools/media_dl/inc
+            ${FW_ROOT}/tools/media_dl/src
+            ${CMAKE_CURRENT_SOURCE_DIR}/support
+  )
+  target_compile_definitions(test_ra8_mdl_readers PRIVATE _GNU_SOURCE)
+endif()
+
+# Portable media application storage uses the same directory, regular-file
+# removal, and validated create-new transaction policies over POSIX and the
+# real RAM blockdev -> FAT -> VFS stack. The fault wrapper injects every
+# publication phase while production code preserves pre-existing destinations.
+if(TARGET test_ra8_mdl_app_storage)
+  target_sources(
+    test_ra8_mdl_app_storage
+    PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_app_storage.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_storage.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_hash.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/support/mdl_state_fs_fault.c
+  )
+  target_include_directories(
+    test_ra8_mdl_app_storage
+    PRIVATE ${FW_ROOT}/libs/if/inc
+            ${FW_ROOT}/libs/if_ra8_vfs/inc
+            ${FW_ROOT}/port/posix/inc
+            ${FW_ROOT}/port/posix/src
+            ${FW_ROOT}/tools/media_dl/inc
+            ${FW_ROOT}/tools/media_dl/src
+            ${CMAKE_CURRENT_SOURCE_DIR}/support
+  )
+  target_compile_definitions(test_ra8_mdl_app_storage PRIVATE _GNU_SOURCE)
+endif()
+
+# Every media exporter runs unchanged over both the hosted POSIX adapter and
+# the real RAM blockdev -> FAT -> VFS firmware stack. Format readers validate
+# each borrowed transaction stage before publication and again after commit.
+if(TARGET test_ra8_mdl_export)
+  target_sources(
+    test_ra8_mdl_export
+    PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_export.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_export_io.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_export_meta.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_export_zip.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_export_tar.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_export_epub.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_export_jof.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_verify.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_urlname.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_url_guard.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_sanitize.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_storage.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_hash.c
+  )
+  target_include_directories(
+    test_ra8_mdl_export
+    PRIVATE ${FW_ROOT}/libs/if/inc
+            ${FW_ROOT}/libs/if_ra8_vfs/inc
+            ${FW_ROOT}/port/posix/inc
+            ${FW_ROOT}/port/posix/src
+            ${FW_ROOT}/tools/media_dl/inc
+            ${FW_ROOT}/tools/media_dl/src
+            ${FW_ROOT}/tools/media_dl/tests
+  )
+  target_compile_definitions(test_ra8_mdl_export PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -352,5 +541,14 @@ endif()
 if(TARGET test_app_blink_m33_hal)
   target_include_directories(
     test_app_blink_m33_hal PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/blink_m33_hal
+  )
+endif()
+
+# The hosted stream adapter is compiled only into its focused target: firmware
+# compositions never acquire POSIX descriptor dependencies transitively.
+if(TARGET test_ra8_io_stream_posix)
+  target_sources(test_ra8_io_stream_posix PRIVATE ${FW_ROOT}/port/posix/src/ra8_io_stream_posix.c)
+  target_include_directories(
+    test_ra8_io_stream_posix PRIVATE ${FW_ROOT}/port/posix/inc ${FW_ROOT}/port/posix/src
   )
 endif()

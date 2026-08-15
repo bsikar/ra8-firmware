@@ -128,6 +128,7 @@ foreach(_t ${RA8_FUZZ_TARGETS})
             ${FW_ROOT}/libs/ra8_modem_at/inc
             ${FW_ROOT}/libs/ra8_net_pal/inc
             ${FW_ROOT}/libs/ra8_epub/inc
+            ${FW_ROOT}/libs/ra8_epub/src
             ${FW_ROOT}/libs/ra8_usb_pal/inc
             ${FW_ROOT}/libs/ra8_tls/inc
             ${FW_ROOT}/libs/ra8_fs/inc
