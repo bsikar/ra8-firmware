@@ -25,6 +25,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+typedef struct cb_trace cb_trace_t;
+
 /** @brief A cache key: one (object, page) the reader's vm_get touches. */
 typedef struct {
   uint32_t object_id; /**< Opaque object handle (book / archive / font).      */
@@ -46,10 +48,20 @@ typedef struct {
  *          to hits / inserts. Frame indices are stable for the run.
  */
 typedef struct {
-  cb_frame_t* frames;      /**< @ref capacity frame slots.                    */
-  uint32_t    capacity;    /**< Number of frame slots (the RAM budget knob).  */
-  void*       policy_data; /**< Policy-private state (rings, stacks, sketch). */
+  cb_frame_t* frames;                 /**< @ref capacity frame slots.                    */
+  uint32_t    capacity;               /**< Number of frame slots (the RAM budget knob).  */
+  void*       policy_data;            /**< Policy-private state (rings, stacks, sketch). */
+  void*       policy_workspace;       /**< Caller-provided policy-state storage.         */
+  size_t      policy_workspace_bytes; /**< Bytes available at the storage.               */
 } cb_cache_t;
+
+/** @brief Caller-owned replay workspace and exact capacity diagnostics. */
+typedef struct {
+  uint8_t* data;       /**< Aligned writable storage.                   */
+  size_t   capacity;   /**< Supplied bytes.                             */
+  size_t   required;   /**< Exact bytes required by the latest request. */
+  size_t   high_water; /**< Largest successfully provisioned request.   */
+} cb_workspace_t;
 
 /**
  * @struct cache_policy_t
@@ -61,8 +73,10 @@ typedef struct {
  *          then calls `on_insert`.
  */
 typedef struct {
-  const char* name;       /**< Policy name for the report table.            */
-  size_t      meta_bytes; /**< Per-frame metadata actually used (RAM cost). */
+  const char* name;              /**< Policy name for the report table.            */
+  size_t      meta_bytes;        /**< Per-frame metadata actually used (RAM cost). */
+  size_t      state_base_bytes;  /**< Fixed policy workspace bytes.                */
+  size_t      state_frame_bytes; /**< Additional bytes per frame.                  */
   /** @brief Allocate + init policy state for a @ref cb_cache_t. Returns 0 ok. */
   int (*init)(cb_cache_t* c);
   /** @brief Release policy state. */
@@ -91,35 +105,53 @@ typedef struct {
 /**
  * @brief Replay an access trace through one policy at a fixed capacity.
  *
- * @details Drives @p keys through an exact resident-set hash while delegating
+ * @details Drives @p trace through an exact resident-set hash while delegating
  *          only eviction ordering to @p pol: hits update recency/frequency via
  *          the policy callbacks, misses evict the policy's victim and load the
  *          new key into that frame. Fills @p out with hit/miss and worst-case
  *          scan accounting for one (policy, trace, capacity) sweep point.
  *
  * @param[in]  pol      Policy to exercise.
- * @param[in]  keys     Access stream (object,page) pairs.
- * @param[in]  n        Number of accesses in @p keys.
+ * @param[in]  trace    Resettable access stream.
  * @param[in]  capacity Frame count (the swept RAM budget).
+ * @param[in,out] workspace Caller-provided exact replay storage.
  * @param[out] out      Receives the metrics for this run.
  *
- * @return int 0 on success, non-zero on allocation or argument failure.
+ * @return int 0 on success, non-zero on capacity, source, or argument failure.
  * @retval 0 The replay completed and @p out holds the metrics.
- * @retval 1 A NULL/zero argument, a policy `init`, or a buffer allocation failed.
+ * @retval 1 A NULL/zero argument, policy bind, source, or workspace check failed.
  *
- * @pre @p pol has `pick_victim` bound and @p keys covers @p n accesses.
+ * @pre @p pol has `pick_victim` bound and @p trace is resettable.
  * @pre @p out is non-NULL and writable.
- * @post On success, `out->accesses == n` and `out->hits <= out->accesses`.
- * @post On any return, every buffer this call allocated has been freed.
+ * @post On success, `out->accesses == trace->n` and hits do not exceed accesses.
+ * @post No storage ownership changes; exact demand is recorded in @p workspace.
  *
- * @note Not thread-safe: allocates and runs a policy. Call single-threaded.
+ * @note Independent calls are safe when their traces and workspaces are distinct.
  * @since 0.1.0
  */
 int cb_replay(const cache_policy_t* pol,
-              const cb_key_t*       keys,
-              uint64_t              n,
+              const cb_trace_t*     trace,
               uint32_t              capacity,
+              cb_workspace_t*       workspace,
               cb_result_t*          out);
+
+/**
+ * @brief Return the exact caller workspace required by one replay.
+ * @details Sums aligned frame, resident-index, link, and policy-state regions
+ *          with overflow guards, without touching caller storage.
+ * @param[in] pol Policy whose private state is included.
+ * @param[in] capacity Frame count.
+ * @return Exact bytes, or zero for invalid/overflowing input.
+ * @retval 0 A policy/capacity check or size calculation failed.
+ * @retval other Exact aligned workspace bytes required by ::cb_replay.
+ * @pre @p pol is NULL or points to readable policy geometry.
+ * @pre @p capacity is an intended fixed cache-frame count.
+ * @post A non-zero result covers every replay workspace region.
+ * @post No policy or caller storage is modified.
+ * @note Thread-safe: this function reads immutable policy geometry only.
+ * @since 0.1.0
+ */
+size_t cb_replay_workspace_required(const cache_policy_t* pol, uint32_t capacity);
 
 /**
  * @var g_cb_policy_slru

@@ -15,14 +15,13 @@
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
-#include <stdlib.h>
-
 #include "cache_bench.h"
+#include "ra8_attributes.h"
 
 /* ------------------------------------------------------------------ FIFO -- */
 
 /**
- * @brief Allocate FIFO state: a single round-robin hand over the frame ring.
+ * @brief Bind FIFO state: a single round-robin hand over the frame ring.
  *
  * @details Allocates one zeroed `uint32_t` insertion hand and stores it in
  *          `c->policy_data`; the hand advances modulo capacity on each victim
@@ -30,43 +29,44 @@
  *
  * @param[in,out] c Cache whose `policy_data` receives the hand pointer.
  *
- * @return int 0 on success, 1 on allocation failure.
+ * @return int 0 on success, 1 when caller storage is absent.
  * @retval 0 `c->policy_data` holds a zeroed hand.
- * @retval 1 Out of memory; `c->policy_data` is NULL.
+ * @retval 1 Caller storage is absent; `c->policy_data` is NULL.
  *
  * @pre @p c is non-NULL and its `policy_data` is unset.
  * @pre Called on the single benchmark thread.
  * @post On success `c->policy_data` points at a zero-initialized hand.
  * @post No frame contents are altered.
  *
- * @note Not thread-safe: allocates and stores policy state.
+ * @note Safe for distinct caller-owned cache bindings.
  * @since 0.1.0
  */
-static int cb_fifo_init(cb_cache_t* c)
+RA8_INTERNAL
+static int internal_fifo_init(cb_cache_t* c)
 {
-  uint32_t* hand = (uint32_t*)calloc(1U, sizeof(uint32_t));
+  uint32_t* hand = (uint32_t*)c->policy_workspace;
   c->policy_data = hand;
   return (hand == nullptr) ? 1 : 0;
 }
 /**
  * @brief Release FIFO state (the insertion hand).
  *
- * @details Frees the `uint32_t` hand ::cb_fifo_init allocated; `free(NULL)` is
- *          safe, so calling after a failed init is harmless.
+ * @details Ends the FIFO binding without releasing caller-owned storage.
  *
- * @param[in,out] c Cache whose `policy_data` hand is freed.
+ * @param[in,out] c Cache whose `policy_data` binding is ended.
  *
  * @pre @p c is non-NULL.
- * @pre `c->policy_data` is a ::cb_fifo_init hand or NULL.
- * @post The hand memory is released.
+ * @pre `c->policy_data` is a ::internal_fifo_init hand or NULL.
+ * @post The hand pointer is cleared; caller storage is untouched.
  * @post `c->policy_data` is left dangling; the caller discards the cache.
  *
- * @note Not thread-safe: frees policy state.
+ * @note Safe for distinct caller-owned cache bindings.
  * @since 0.1.0
  */
-static void cb_fifo_deinit(cb_cache_t* c)
+RA8_INTERNAL
+static void internal_fifo_deinit(cb_cache_t* c)
 {
-  free(c->policy_data);
+  c->policy_data = nullptr;
 }
 /**
  * @brief Choose the FIFO victim: the frame the hand currently points at.
@@ -81,7 +81,7 @@ static void cb_fifo_deinit(cb_cache_t* c)
  * @return uint32_t The victim frame index (< capacity).
  * @retval <capacity The frame the hand pointed at on entry.
  *
- * @pre `c->policy_data` is a valid ::cb_fifo_init hand.
+ * @pre `c->policy_data` is a valid ::internal_fifo_init hand.
  * @pre @p scanned is non-NULL and `c->capacity > 0`.
  * @post `*scanned == 1`.
  * @post The hand has advanced by one (mod capacity).
@@ -89,7 +89,8 @@ static void cb_fifo_deinit(cb_cache_t* c)
  * @note Not thread-safe: advances the shared hand.
  * @since 0.1.0
  */
-static uint32_t cb_fifo_victim(cb_cache_t* c, uint32_t* scanned)
+RA8_INTERNAL
+static uint32_t internal_fifo_victim(cb_cache_t* c, uint32_t* scanned)
 {
   uint32_t*      hand = (uint32_t*)c->policy_data;
   const uint32_t f    = *hand;
@@ -98,13 +99,15 @@ static uint32_t cb_fifo_victim(cb_cache_t* c, uint32_t* scanned)
   return f;
 }
 static const cache_policy_t s_cb_policy_fifo = {
-  .name        = "FIFO",
-  .meta_bytes  = 0U,
-  .init        = cb_fifo_init,
-  .deinit      = cb_fifo_deinit,
-  .on_access   = nullptr,
-  .on_insert   = nullptr,
-  .pick_victim = cb_fifo_victim,
+  .name              = "FIFO",
+  .meta_bytes        = 0U,
+  .state_base_bytes  = sizeof(uint32_t),
+  .state_frame_bytes = 0U,
+  .init              = internal_fifo_init,
+  .deinit            = internal_fifo_deinit,
+  .on_access         = nullptr,
+  .on_insert         = nullptr,
+  .pick_victim       = internal_fifo_victim,
 };
 
 /* ---------------------------------------------------------------- Random -- */
@@ -138,7 +141,7 @@ typedef enum : uint8_t {
 } cb_rand_shift_t;
 
 /**
- * @brief Allocate Random-policy state: a deterministic xorshift64 seed.
+ * @brief Bind Random-policy state: a deterministic xorshift64 seed.
  *
  * @details Allocates one `uint64_t` seeded with the fixed ::k_rand_seed so
  *          eviction choices are pseudo-random yet reproducible across runs and
@@ -146,21 +149,22 @@ typedef enum : uint8_t {
  *
  * @param[in,out] c Cache whose `policy_data` receives the seed pointer.
  *
- * @return int 0 on success, 1 on allocation failure.
+ * @return int 0 on success, 1 when caller storage is absent.
  * @retval 0 `c->policy_data` holds the seeded PRNG state.
- * @retval 1 Out of memory; `c->policy_data` is NULL.
+ * @retval 1 Caller storage is absent; `c->policy_data` is NULL.
  *
  * @pre @p c is non-NULL and its `policy_data` is unset.
  * @pre Called on the single benchmark thread.
  * @post On success `c->policy_data` points at state seeded with ::k_rand_seed.
  * @post No frame contents are altered.
  *
- * @note Not thread-safe: allocates and stores policy state.
+ * @note Safe for distinct caller-owned cache bindings.
  * @since 0.1.0
  */
-static int cb_rand_init(cb_cache_t* c)
+RA8_INTERNAL
+static int internal_rand_init(cb_cache_t* c)
 {
-  uint64_t* s = (uint64_t*)malloc(sizeof(uint64_t));
+  uint64_t* s = (uint64_t*)c->policy_workspace;
   if (s != nullptr) {
     *s = (uint64_t)k_rand_seed;
   }
@@ -170,22 +174,22 @@ static int cb_rand_init(cb_cache_t* c)
 /**
  * @brief Release Random-policy state (the PRNG seed).
  *
- * @details Frees the `uint64_t` seed ::cb_rand_init allocated; `free(NULL)` is
- *          safe after a failed init.
+ * @details Ends the Random binding without releasing caller-owned storage.
  *
- * @param[in,out] c Cache whose `policy_data` seed is freed.
+ * @param[in,out] c Cache whose seed binding is ended.
  *
  * @pre @p c is non-NULL.
- * @pre `c->policy_data` is a ::cb_rand_init seed or NULL.
- * @post The seed memory is released.
+ * @pre `c->policy_data` is a ::internal_rand_init seed or NULL.
+ * @post The seed pointer is cleared; caller storage is untouched.
  * @post `c->policy_data` is left dangling; the caller discards the cache.
  *
- * @note Not thread-safe: frees policy state.
+ * @note Safe for distinct caller-owned cache bindings.
  * @since 0.1.0
  */
-static void cb_rand_deinit(cb_cache_t* c)
+RA8_INTERNAL
+static void internal_rand_deinit(cb_cache_t* c)
 {
-  free(c->policy_data);
+  c->policy_data = nullptr;
 }
 /**
  * @brief Choose a uniformly random victim frame.
@@ -200,7 +204,7 @@ static void cb_rand_deinit(cb_cache_t* c)
  * @return uint32_t The victim frame index (< capacity).
  * @retval <capacity A pseudo-random resident frame.
  *
- * @pre `c->policy_data` is a valid ::cb_rand_init seed.
+ * @pre `c->policy_data` is a valid ::internal_rand_init seed.
  * @pre @p scanned is non-NULL and `c->capacity > 0`.
  * @post `*scanned == 1` and the PRNG state has advanced one step.
  * @post No frame contents are altered.
@@ -208,7 +212,8 @@ static void cb_rand_deinit(cb_cache_t* c)
  * @note Not thread-safe: advances the shared PRNG state.
  * @since 0.1.0
  */
-static uint32_t cb_rand_victim(cb_cache_t* c, uint32_t* scanned)
+RA8_INTERNAL
+static uint32_t internal_rand_victim(cb_cache_t* c, uint32_t* scanned)
 {
   uint64_t* s = (uint64_t*)c->policy_data;
   uint64_t  x = *s;
@@ -220,13 +225,15 @@ static uint32_t cb_rand_victim(cb_cache_t* c, uint32_t* scanned)
   return (uint32_t)(x % (uint64_t)c->capacity);
 }
 static const cache_policy_t s_cb_policy_random = {
-  .name        = "Random",
-  .meta_bytes  = 0U,
-  .init        = cb_rand_init,
-  .deinit      = cb_rand_deinit,
-  .on_access   = nullptr,
-  .on_insert   = nullptr,
-  .pick_victim = cb_rand_victim,
+  .name              = "Random",
+  .meta_bytes        = 0U,
+  .state_base_bytes  = sizeof(uint64_t),
+  .state_frame_bytes = 0U,
+  .init              = internal_rand_init,
+  .deinit            = internal_rand_deinit,
+  .on_access         = nullptr,
+  .on_insert         = nullptr,
+  .pick_victim       = internal_rand_victim,
 };
 
 /* ------------------------------------------------------------------- LRU -- */
@@ -240,48 +247,39 @@ typedef struct {
 } cb_lru_t;
 
 /**
- * @brief Allocate true-LRU state: a doubly-linked recency list over frames.
+ * @brief Bind true-LRU state: a doubly-linked recency list over frames.
  *
  * @details Allocates the ::cb_lru_t control block plus `prev`/`next` index
  *          arrays (one entry per frame) and marks the list empty (head/tail
- *          -1). On a partial allocation it frees what it took and reports
- *          failure, since the harness never deinits a policy whose init failed.
+ *          -1). The control block and arrays occupy one exact caller slab.
  *
  * @param[in,out] c Cache whose `policy_data` receives the list; capacity sizes
  *                  the `prev`/`next` arrays.
  *
- * @return int 0 on success, 1 on allocation failure.
+ * @return int 0 on success, 1 when caller storage is too small.
  * @retval 0 `c->policy_data` holds an empty recency list.
- * @retval 1 Out of memory; any partial allocation was freed.
+ * @retval 1 Caller workspace does not meet the exact requirement.
  *
  * @pre @p c is non-NULL with `capacity > 0`.
  * @pre Called on the single benchmark thread.
  * @post On success `c->policy_data` is a list with head == tail == -1.
  * @post On failure `c->policy_data` is untouched (nothing is leaked).
  *
- * @note Not thread-safe: allocates and stores policy state.
+ * @note Safe for distinct caller-owned cache bindings.
  * @since 0.1.0
  */
-static int cb_lru_init(cb_cache_t* c)
+RA8_INTERNAL
+static int internal_lru_init(cb_cache_t* c)
 {
-  cb_lru_t* l = (cb_lru_t*)calloc(1U, sizeof(cb_lru_t));
-  /* cppcheck-suppress memleak ; false positive: cppcheck 2.13 does not model
-   * the C23 nullptr keyword, so it cannot see l is NULL on this path. */
-  if (l == nullptr) {
+  const size_t required = sizeof(cb_lru_t) + ((size_t)c->capacity * 2U * sizeof(int32_t));
+  if ((c->policy_workspace == nullptr) || (c->policy_workspace_bytes < required)) {
     return 1;
   }
-  l->prev = (int32_t*)malloc((size_t)c->capacity * sizeof(int32_t));
-  l->next = (int32_t*)malloc((size_t)c->capacity * sizeof(int32_t));
-  l->head = -1;
-  l->tail = -1;
-  if ((l->prev == nullptr) || (l->next == nullptr)) {
-    /* The replay harness never deinits a policy whose init failed, so a
-     * partial allocation must be released here, not left on policy_data. */
-    free(l->prev);
-    free(l->next);
-    free(l);
-    return 1;
-  }
+  cb_lru_t* l    = (cb_lru_t*)c->policy_workspace;
+  l->prev        = (int32_t*)&l[1];
+  l->next        = &l->prev[c->capacity];
+  l->head        = -1;
+  l->tail        = -1;
   c->policy_data = l;
   return 0;
 }
@@ -291,24 +289,20 @@ static int cb_lru_init(cb_cache_t* c)
  * @details Frees the `prev`/`next` arrays and the ::cb_lru_t itself when
  *          present; a NULL `policy_data` (a failed init) is tolerated.
  *
- * @param[in,out] c Cache whose LRU `policy_data` is freed.
+ * @param[in,out] c Cache whose LRU binding is ended.
  *
  * @pre @p c is non-NULL.
- * @pre `c->policy_data` is a ::cb_lru_init list or NULL.
- * @post All list buffers are released.
+ * @pre `c->policy_data` is a ::internal_lru_init list or NULL.
+ * @post The binding is cleared; caller storage is untouched.
  * @post `c->policy_data` is left dangling; the caller discards the cache.
  *
- * @note Not thread-safe: frees policy state.
+ * @note Safe for distinct caller-owned cache bindings.
  * @since 0.1.0
  */
-static void cb_lru_deinit(cb_cache_t* c)
+RA8_INTERNAL
+static void internal_lru_deinit(cb_cache_t* c)
 {
-  cb_lru_t* l = (cb_lru_t*)c->policy_data;
-  if (l != nullptr) {
-    free(l->prev);
-    free(l->next);
-    free(l);
-  }
+  c->policy_data = nullptr;
 }
 /**
  * @brief Unlink frame @p f from the recency list.
@@ -328,7 +322,8 @@ static void cb_lru_deinit(cb_cache_t* c)
  * @note Not thread-safe: mutates the shared list.
  * @since 0.1.0
  */
-static void cb_lru_unlink(cb_lru_t* l, int32_t f)
+RA8_INTERNAL
+static void internal_lru_unlink(cb_lru_t* l, int32_t f)
 {
   if (l->prev[f] != -1) {
     l->next[l->prev[f]] = l->next[f];
@@ -346,7 +341,7 @@ static void cb_lru_unlink(cb_lru_t* l, int32_t f)
  *
  * @details Makes @p f the new head, linking the former head behind it and
  *          setting the tail to @p f when the list was empty. @p f must already
- *          be detached (see ::cb_lru_unlink).
+ *          be detached (see ::internal_lru_unlink).
  *
  * @param[in,out] l The recency list to edit.
  * @param[in]     f Frame index to place at the head.
@@ -359,7 +354,8 @@ static void cb_lru_unlink(cb_lru_t* l, int32_t f)
  * @note Not thread-safe: mutates the shared list.
  * @since 0.1.0
  */
-static void cb_lru_to_head(cb_lru_t* l, int32_t f)
+RA8_INTERNAL
+static void internal_lru_to_head(cb_lru_t* l, int32_t f)
 {
   l->prev[f] = -1;
   l->next[f] = l->head;
@@ -381,7 +377,7 @@ static void cb_lru_to_head(cb_lru_t* l, int32_t f)
  * @param[in,out] c     Cache holding the LRU list in `policy_data`.
  * @param[in]     frame Frame that was just hit.
  *
- * @pre `c->policy_data` is a valid ::cb_lru_init list.
+ * @pre `c->policy_data` is a valid ::internal_lru_init list.
  * @pre @p frame is currently resident and linked.
  * @post @p frame is at the MRU head of the list.
  * @post The list length is unchanged.
@@ -389,11 +385,12 @@ static void cb_lru_to_head(cb_lru_t* l, int32_t f)
  * @note Not thread-safe: mutates the shared list.
  * @since 0.1.0
  */
-static void cb_lru_touch(cb_cache_t* c, uint32_t frame)
+RA8_INTERNAL
+static void internal_lru_touch(cb_cache_t* c, uint32_t frame)
 {
   cb_lru_t* l = (cb_lru_t*)c->policy_data;
-  cb_lru_unlink(l, (int32_t)frame);
-  cb_lru_to_head(l, (int32_t)frame);
+  internal_lru_unlink(l, (int32_t)frame);
+  internal_lru_to_head(l, (int32_t)frame);
 }
 /**
  * @brief LRU insert hook: place a freshly-loaded @p frame at the MRU head.
@@ -405,7 +402,7 @@ static void cb_lru_touch(cb_cache_t* c, uint32_t frame)
  * @param[in,out] c     Cache holding the LRU list in `policy_data`.
  * @param[in]     frame Frame that was just (re)populated.
  *
- * @pre `c->policy_data` is a valid ::cb_lru_init list.
+ * @pre `c->policy_data` is a valid ::internal_lru_init list.
  * @pre @p frame is detached (its old key was unlinked on eviction).
  * @post @p frame is at the MRU head of the list.
  * @post The list grows by one member.
@@ -413,10 +410,11 @@ static void cb_lru_touch(cb_cache_t* c, uint32_t frame)
  * @note Not thread-safe: mutates the shared list.
  * @since 0.1.0
  */
-static void cb_lru_insert(cb_cache_t* c, uint32_t frame)
+RA8_INTERNAL
+static void internal_lru_insert(cb_cache_t* c, uint32_t frame)
 {
   cb_lru_t* l = (cb_lru_t*)c->policy_data;
-  cb_lru_to_head(l, (int32_t)frame);
+  internal_lru_to_head(l, (int32_t)frame);
 }
 /**
  * @brief Choose the LRU victim: the frame at the list tail.
@@ -431,7 +429,7 @@ static void cb_lru_insert(cb_cache_t* c, uint32_t frame)
  * @return uint32_t The victim frame index (< capacity).
  * @retval <capacity The least-recently-used resident frame.
  *
- * @pre `c->policy_data` is a valid, non-empty ::cb_lru_init list.
+ * @pre `c->policy_data` is a valid, non-empty ::internal_lru_init list.
  * @pre @p scanned is non-NULL.
  * @post `*scanned == 1` and the victim is unlinked from the list.
  * @post The list shrinks by one member.
@@ -439,28 +437,31 @@ static void cb_lru_insert(cb_cache_t* c, uint32_t frame)
  * @note Not thread-safe: mutates the shared list.
  * @since 0.1.0
  */
-static uint32_t cb_lru_victim(cb_cache_t* c, uint32_t* scanned)
+RA8_INTERNAL
+static uint32_t internal_lru_victim(cb_cache_t* c, uint32_t* scanned)
 {
   cb_lru_t*     l = (cb_lru_t*)c->policy_data;
   const int32_t f = l->tail;
-  cb_lru_unlink(l, f);
+  internal_lru_unlink(l, f);
   *scanned = 1U;
   return (uint32_t)f;
 }
 static const cache_policy_t s_cb_policy_lru = {
-  .name        = "LRU",
-  .meta_bytes  = 8U,
-  .init        = cb_lru_init,
-  .deinit      = cb_lru_deinit,
-  .on_access   = cb_lru_touch,
-  .on_insert   = cb_lru_insert,
-  .pick_victim = cb_lru_victim,
+  .name              = "LRU",
+  .meta_bytes        = 8U,
+  .state_base_bytes  = sizeof(cb_lru_t),
+  .state_frame_bytes = 2U * sizeof(int32_t),
+  .init              = internal_lru_init,
+  .deinit            = internal_lru_deinit,
+  .on_access         = internal_lru_touch,
+  .on_insert         = internal_lru_insert,
+  .pick_victim       = internal_lru_victim,
 };
 
 /* ----------------------------------------------------------------- CLOCK -- */
 
 /**
- * @brief Allocate CLOCK state: one reference bit per frame + a sweep hand.
+ * @brief Bind CLOCK state: one reference bit per frame + a sweep hand.
  *
  * @details Allocates one zeroed `uint32_t` sweep hand in `c->policy_data`; the
  *          reference bit lives in each frame's `meta[0]`, set on access/insert
@@ -468,43 +469,44 @@ static const cache_policy_t s_cb_policy_lru = {
  *
  * @param[in,out] c Cache whose `policy_data` receives the hand pointer.
  *
- * @return int 0 on success, 1 on allocation failure.
+ * @return int 0 on success, 1 when caller storage is absent.
  * @retval 0 `c->policy_data` holds a zeroed hand.
- * @retval 1 Out of memory; `c->policy_data` is NULL.
+ * @retval 1 Caller storage is absent; `c->policy_data` is NULL.
  *
  * @pre @p c is non-NULL and its `policy_data` is unset.
  * @pre Called on the single benchmark thread.
  * @post On success `c->policy_data` points at a zero-initialized hand.
  * @post No frame contents are altered.
  *
- * @note Not thread-safe: allocates and stores policy state.
+ * @note Safe for distinct caller-owned cache bindings.
  * @since 0.1.0
  */
-static int cb_clock_init(cb_cache_t* c)
+RA8_INTERNAL
+static int internal_clock_init(cb_cache_t* c)
 {
-  uint32_t* hand = (uint32_t*)calloc(1U, sizeof(uint32_t));
+  uint32_t* hand = (uint32_t*)c->policy_workspace;
   c->policy_data = hand;
   return (hand == nullptr) ? 1 : 0;
 }
 /**
  * @brief Release CLOCK state (the sweep hand).
  *
- * @details Frees the `uint32_t` hand ::cb_clock_init allocated; `free(NULL)` is
- *          safe after a failed init.
+ * @details Ends the CLOCK binding without releasing caller-owned storage.
  *
- * @param[in,out] c Cache whose `policy_data` hand is freed.
+ * @param[in,out] c Cache whose CLOCK binding is ended.
  *
  * @pre @p c is non-NULL.
- * @pre `c->policy_data` is a ::cb_clock_init hand or NULL.
- * @post The hand memory is released.
+ * @pre `c->policy_data` is a ::internal_clock_init hand or NULL.
+ * @post The hand pointer is cleared; caller storage is untouched.
  * @post `c->policy_data` is left dangling; the caller discards the cache.
  *
- * @note Not thread-safe: frees policy state.
+ * @note Safe for distinct caller-owned cache bindings.
  * @since 0.1.0
  */
-static void cb_clock_deinit(cb_cache_t* c)
+RA8_INTERNAL
+static void internal_clock_deinit(cb_cache_t* c)
 {
-  free(c->policy_data);
+  c->policy_data = nullptr;
 }
 /**
  * @brief CLOCK reference hook: set @p frame's reference bit.
@@ -524,7 +526,8 @@ static void cb_clock_deinit(cb_cache_t* c)
  * @note Not thread-safe: writes shared frame metadata.
  * @since 0.1.0
  */
-static void cb_clock_set(cb_cache_t* c, uint32_t frame)
+RA8_INTERNAL
+static void internal_clock_set(cb_cache_t* c, uint32_t frame)
 {
   c->frames[frame].meta[0] = 1U;
 }
@@ -542,7 +545,7 @@ static void cb_clock_set(cb_cache_t* c, uint32_t frame)
  * @return uint32_t The victim frame index (< capacity).
  * @retval <capacity The first frame reached with a clear reference bit.
  *
- * @pre `c->policy_data` is a valid ::cb_clock_init hand and `capacity > 0`.
+ * @pre `c->policy_data` is a valid ::internal_clock_init hand and `capacity > 0`.
  * @pre @p scanned is non-NULL.
  * @post `*scanned` equals the frames inspected and the hand advanced past them.
  * @post Every spared frame's reference bit was cleared.
@@ -550,7 +553,8 @@ static void cb_clock_set(cb_cache_t* c, uint32_t frame)
  * @note Not thread-safe: advances the hand and clears reference bits.
  * @since 0.1.0
  */
-static uint32_t cb_clock_victim(cb_cache_t* c, uint32_t* scanned)
+RA8_INTERNAL
+static uint32_t internal_clock_victim(cb_cache_t* c, uint32_t* scanned)
 {
   uint32_t* hand = (uint32_t*)c->policy_data;
   uint32_t  seen = 0U;
@@ -567,13 +571,15 @@ static uint32_t cb_clock_victim(cb_cache_t* c, uint32_t* scanned)
   }
 }
 static const cache_policy_t s_cb_policy_clock = {
-  .name        = "CLOCK",
-  .meta_bytes  = 1U,
-  .init        = cb_clock_init,
-  .deinit      = cb_clock_deinit,
-  .on_access   = cb_clock_set,
-  .on_insert   = cb_clock_set,
-  .pick_victim = cb_clock_victim,
+  .name              = "CLOCK",
+  .meta_bytes        = 1U,
+  .state_base_bytes  = sizeof(uint32_t),
+  .state_frame_bytes = 0U,
+  .init              = internal_clock_init,
+  .deinit            = internal_clock_deinit,
+  .on_access         = internal_clock_set,
+  .on_insert         = internal_clock_set,
+  .pick_victim       = internal_clock_victim,
 };
 
 /* -------------------------------------------------------------- registry -- */

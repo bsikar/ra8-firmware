@@ -20,6 +20,7 @@ make -C tools/cache_bench run        # capacity sweep (the #147 decision record)
 make -C tools/cache_bench sweep      # block-size sweep (#208)
 tools/cache_bench/cache_bench <name>=<path>   # replay a captured trace
                                               # (one "<object> <page>" per line)
+tools/cache_bench/cache_bench --output=report.md # atomic sibling publication
 ```
 
 Both modes also run in CI via `make bench-cache`.
@@ -50,18 +51,26 @@ Backends implement the `cbs_backend_t` seam in `sweep_block_internal.h`
 pair that publishes an `ra8_vsource_read_fn`, exactly what
 `ra8_vsource_add_paged` consumes. Two synthetic host backends ship in-tree:
 
-- **`mem`** -- bounds-checked `memcpy` from a resident blob. The harness
-  floor: it shows what the loop + `ra8_vmem` machinery costs with a free
-  backend.
-- **`rbkc-z9`** -- a real "RBKC" chunked `.rabook` container packed in memory
+- **`mem`** -- the checkpointed deterministic payload source directly. The
+  harness floor includes bounded payload generation but no container decode.
+- **`rbkc-z9`** -- a real "RBKC" chunked `.rabook` container streamed to a
+  host-composed scratch transaction
   with one zlib level-9 stream per chunk (the same wrapping
-  `tools/epub_compile` emits, `chunk_bytes` = the swept size), served through
-  the real `ra8_book_chunked_read`. Every miss pays a genuine staged read plus
-  a tinfl inflate of exactly one chunk, so the sweep measures
+  `tools/epub_compile` emits, `chunk_bytes` = the swept size), served by the
+  same bounded header/table/offset rules and low-level tinfl stream used by
+  the firmware reader. Every miss pays genuine scratch reads plus a tinfl
+  inflate of exactly one chunk, so the sweep measures
   **decompress-per-miss cost per chunk size** -- the number that actually
   picks the `.rabook` chunk size -- not just raw byte moves. The `src MiB`
-  column doubles as a compression-ratio readout: small chunks compress
-  markedly worse (each stream restarts its zlib history).
+column doubles as a compression-ratio readout: small chunks compress
+markedly worse (each stream restarts its zlib history).
+
+No trace, payload, container, or chunk table is materialized. The sole large
+composition backing is the benchmark's intentional aligned 1 MiB resident
+cache. During RBKC setup only, caller-owned tdefl state overlays that region;
+compression finishes and the full region is zeroed before `ra8_vmem` binds it
+as measured cache storage. A target may place the same semantic backing in
+external RAM. All metadata exposes exact required/supplied workspace bytes.
 
 **Hardware leg (follow-up):** SD-over-SPI numbers are a bench follow-up --
 the tool deliberately takes its backing through the `cbs_backend_t` seam so a

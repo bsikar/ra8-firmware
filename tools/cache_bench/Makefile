@@ -10,6 +10,7 @@
 
 CC      ?= cc
 CFLAGS  ?= -std=gnu23 -O2 -g -Wall -Wextra -Werror -Wno-unused-parameter
+CPPFLAGS := -DMINIZ_NO_MALLOC -DMINIZ_NO_STDIO
 ROOT    := ../..
 INCS    := -I$(ROOT)/libs/ra8_core/inc \
            -I$(ROOT)/libs/ra8_mem/inc \
@@ -25,10 +26,10 @@ HDR     := $(wildcard *.h)
 MINIZ   := miniz_host.o
 
 cache_bench: $(SRC) $(HDR) $(MINIZ)
-	$(CC) $(CFLAGS) $(INCS) $(SRC) $(MINIZ) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(INCS) $(SRC) $(MINIZ) -o $@
 
 $(MINIZ): $(ROOT)/libs/third_party/miniz/miniz.c
-	$(CC) $(CFLAGS) -w -fno-strict-aliasing -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -w -fno-strict-aliasing -c $< -o $@
 
 .PHONY: run sweep clean
 run: cache_bench

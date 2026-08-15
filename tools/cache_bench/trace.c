@@ -1,11 +1,8 @@
 /**
  * @file trace.c
- * @brief Implementation of the #147 reader access-trace corpus + loader.
- *
- * @details All synthetic workloads are driven by a fixed-seed xorshift PRNG so
- * every policy sees byte-identical input and runs are reproducible (the same
- * determinism ra8_emulator gives the captured traces).
- *
+ * @brief Deterministic synthetic cursors and bounded captured-trace parsing.
+ * @details Implements resettable generators plus injected, fingerprinted
+ *          captured reads without materializing any complete access trace.
  *
  * [Ring 7 / Tooling] {World: NS}
  *
@@ -16,636 +13,474 @@
 #include "trace.h"
 
 #include <errno.h>
-#include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-/**
- * @enum cb_workload_dim_t
- * @brief Workload sizing constants for the synthetic access-trace generators.
- * @details
- * All synthetic-trace parameters live here so every generator function is
- * free of magic literals. The values are chosen to create a realistic spread
- * of access patterns (sequential, random, hot-set locality, scan-flood) at a
- * scale large enough to distinguish policy hit rates while finishing in under
- * one second on a desktop host.
- * @since 0.1.0
- */
+#include "ra8_attributes.h"
+
 typedef enum : uint32_t {
-  k_cb_obj_book    = 1U,      /**< Object id of the paged EPUB.                 */
-  k_cb_obj_comic   = 2U,      /**< Object id of the scrolled CBZ tiles.         */
-  k_cb_footprint   = 8192U,   /**< Pages in the huge file (>> any cache).       */
-  k_cb_accesses    = 120000U, /**< Accesses per synthetic trace.                */
-  k_cb_hot_pages   = 96U,     /**< Re-read working-set size (locality).         */
-  k_cb_reread_pct  = 82U,     /**< % of re-read accesses inside the hotset.     */
-  k_cb_jump_pct    = 4U,      /**< % of TOC-jump accesses that teleport.        */
-  k_cb_tile_span   = 6144U,   /**< Comic tiles (sequential scroll).             */
-  k_cb_sr_hot      = 192U,    /**< Re-referenced hot set (fits mid caches).     */
-  k_cb_sr_hot_pass = 3U,      /**< Hot-set passes between scan floods.          */
-  k_cb_sr_scan     = 1500U,   /**< Unique pages in each one-time scan.          */
-  k_cb_pct_full    = 100U,    /**< Divisor for percentage-range decisions.      */
-  k_cb_mixed_phase = 2048U,   /**< Accesses per phase in the mixed session.     */
-  k_cb_load_init   = 4096U,   /**< Initial key-array capacity in cb_trace_load. */
-  k_cb_line_max    = 128U,    /**< Line-buffer size for the trace-file loader.  */
+  k_cb_obj_book       = 1U,       /**< Synthetic book object key.         */
+  k_cb_obj_comic      = 2U,       /**< Synthetic comic object key.        */
+  k_cb_footprint      = 8192U,    /**< Ordinary working-set pages.        */
+  k_cb_accesses       = 120000U,  /**< Ordinary workload access count.    */
+  k_cb_hot_pages      = 96U,      /**< Ordinary reread hot-set pages.     */
+  k_cb_reread_pct     = 82U,      /**< Reread hot-set percentage.         */
+  k_cb_jump_pct       = 4U,       /**< Random-jump percentage.            */
+  k_cb_tile_span      = 6144U,    /**< Scroll workload page span.         */
+  k_cb_sr_hot         = 192U,     /**< Scan-resistant hot-set pages.      */
+  k_cb_sr_hot_pass    = 3U,       /**< Hot passes per scan-resistant run. */
+  k_cb_sr_scan        = 1500U,    /**< Scan pages per resistant run.      */
+  k_cb_pct_full       = 100U,     /**< Complete percentage denominator.   */
+  k_cb_mixed_phase    = 2048U,    /**< Accesses per mixed phase.          */
+  k_cb_huge_footprint = 1835008U, /**< Huge workload working-set pages.   */
+  k_cb_huge_hot       = 256U,     /**< Huge workload hot-set pages.       */
+  k_cb_huge_hot_pass  = 3U,       /**< Huge workload hot passes.          */
+  k_cb_huge_scan      = 4000U,    /**< Huge workload scan pages.          */
 } cb_workload_dim_t;
 
-/**
- * @enum cb_huge_dim_t
- * @brief GB-class "huge book" workload sizing (the #147 headline case).
- * @details A genuinely massive object -- 1,835,008 pages, i.e. ~7 GiB at a 4 KiB
- *          page -- so the footprint dwarfs even the largest swept cache (2048
- *          frames) by ~900x and is independent of the resident budget entirely.
- *          The pattern is a re-referenced hot front-matter set (TOC / progress
- *          furniture) interleaved with one-shot linear floods: the realistic
- *          huge-EPUB reader workload. SLRU's protected segment must hold the hot
- *          set while the flood -- which can never fit -- churns the probationary
- *          segment, the regime where bounded residency and scan resistance matter
- *          most and where LRU/CLOCK thrash hardest.
- * @since 0.1.0
- */
-typedef enum : uint32_t {
-  k_cb_huge_footprint = 1835008U, /**< Pages in the ~7 GiB object (>> any cache).  */
-  k_cb_huge_hot       = 256U,     /**< Re-referenced hot front-matter working set. */
-  k_cb_huge_hot_pass  = 3U,       /**< Hot-set passes between scan floods.         */
-  k_cb_huge_scan      = 4000U,    /**< Unique pages in each one-shot linear flood. */
-} cb_huge_dim_t;
-
-/**
- * @enum cb_rng_shift_t
- * @brief xorshift64 shift-amount triple for @ref cb_rng.
- * @details The triple (13, 7, 17) is one of the parameter sets in
- *          Marsaglia (2003) for a full-period 64-bit xorshift generator.
- *          Changing any value breaks the period guarantee.
- * @since 0.1.0
- */
 typedef enum : uint8_t {
-  k_rng_shift_a = 13U, /**< MAGIC-OK: xorshift64 left-shift a (Marsaglia 2003 set)  */
-  k_rng_shift_b = 7U,  /**< MAGIC-OK: xorshift64 right-shift b (Marsaglia 2003 set) */
-  k_rng_shift_c = 17U, /**< MAGIC-OK: xorshift64 left-shift c (Marsaglia 2003 set)  */
-} cb_rng_shift_t;
+  k_rng_shift_a       = 13U, /**< First xorshift distance.       */
+  k_rng_shift_b       = 7U,  /**< Middle xorshift distance.      */
+  k_rng_shift_c       = 17U, /**< Final xorshift distance.       */
+  k_cb_base_dec       = 10U, /**< Captured decimal parser radix. */
+  k_cb_key_high_shift = 24U, /**< Object-key high-word shift.    */
+} cb_trace_math_t;
 
-/**
- * @enum cb_rng_seed_t
- * @brief Fixed initial PRNG seeds used by the synthetic trace generators.
- * @details Each generator uses a distinct seed so the traces are
- *          statistically independent. The values are arbitrary non-zero 64-bit
- *          integers chosen for good initial bit distribution (odd values avoid
- *          trivial zero-collapse in xorshift); the MAGIC-OK markers record
- *          that their exact bit patterns are not semantically significant.
- * @since 0.1.0
- */
 typedef enum : uint64_t {
-  k_rng_seed_random =
-    0x9E3779B97F4A7C15ULL, /**< MAGIC-OK: Fibonacci golden-ratio seed (random trace) */
-  k_rng_seed_reread =
-    0xD1B54A32D192ED03ULL, /**< MAGIC-OK: fixed arbitrary seed (reread-locality trace) */
-  /** MAGIC-OK: fixed arbitrary seed (toc-jumps trace) */
-  k_rng_seed_toc = 0x2545F4914F6CDD1DULL,
-  k_rng_seed_mixed_a =
-    0x9E3779B97F4A7C15ULL, /**< MAGIC-OK: Fibonacci golden-ratio seed (mixed trace base) */
-  k_rng_seed_mixed_b =
-    0xABCDEF1234567890ULL, /**< MAGIC-OK: fixed arbitrary seed XOR'd into mixed trace base */
-} cb_rng_seed_t;
+  k_rng_seed_random  = 0x9E3779B97F4A7C15ULL, /**< Random workload seed.  */
+  k_rng_seed_reread  = 0xD1B54A32D192ED03ULL, /**< Reread workload seed.  */
+  k_rng_seed_toc     = 0x2545F4914F6CDD1DULL, /**< Jump workload seed.    */
+  k_rng_seed_mixed_a = 0x9E3779B97F4A7C15ULL, /**< Mixed hot-phase seed.  */
+  k_rng_seed_mixed_b = 0xABCDEF1234567890ULL, /**< Mixed scan-phase seed. */
+  k_cb_hash_offset   = 0xCBF29CE484222325ULL, /**< FNV-1a offset basis.   */
+  k_cb_hash_prime    = 0x100000001B3ULL,      /**< FNV-1a multiplication. */
+} cb_trace_seed_t;
 
 /**
- * @brief Fixed-seed xorshift64; deterministic across runs and platforms.
- *
- * @details Applies the Marsaglia (13, 7, 17) xorshift64 triple to @p s in place
- *          and returns the new state word, so every synthetic generator draws a
- *          reproducible pseudo-random stream.
- *
- * @param[in,out] s PRNG state; advanced one step in place.
- *
- * @return uint64_t The updated 64-bit state (the next pseudo-random word).
- * @retval other The post-step state; never 0 given a non-zero seed.
- *
- * @pre @p s is non-NULL and was seeded non-zero.
- * @pre Called on the single benchmark thread.
- * @post `*s` holds the advanced state.
- * @post The sequence is reproducible for a given initial seed.
- *
- * @note Not thread-safe: mutates the caller's state word.
+ * @brief Advance a deterministic trace pseudo-random generator.
+ * @details Applies the fixed xorshift sequence used by synthetic workloads.
+ * @param[in,out] state Non-zero generator state.
+ * @return Updated 64-bit pseudo-random value.
+ * @retval other Deterministic next value in the sequence.
+ * @pre @p state is non-NULL and writable.
+ * @pre The initial state is non-zero.
+ * @post `*state` equals the returned value.
+ * @post No state outside @p state is modified.
+ * @note This generator provides reproducibility, not cryptographic entropy.
  * @since 0.1.0
  */
-static uint64_t cb_rng(uint64_t* s)
+RA8_INTERNAL
+static uint64_t internal_rng(uint64_t* state)
 {
-  uint64_t x = *s;
-  x ^= x << (uint8_t)k_rng_shift_a;
-  x ^= x >> (uint8_t)k_rng_shift_b;
-  x ^= x << (uint8_t)k_rng_shift_c;
-  *s = x;
-  return x;
+  uint64_t value = *state;
+  value ^= value << (uint8_t)k_rng_shift_a;
+  value ^= value >> (uint8_t)k_rng_shift_b;
+  value ^= value << (uint8_t)k_rng_shift_c;
+  *state = value;
+  return value;
 }
 
 /**
- * @brief Uniform integer in [0, span).
- *
- * @details Advances the PRNG one step and reduces modulo @p span (a slight
- *          low-bias for non-power-of-two spans, acceptable for workload
- *          shaping). A zero @p span returns 0 so callers need no guard.
- *
- * @param[in,out] s    PRNG state; advanced one step in place.
- * @param[in]     span Exclusive upper bound.
- *
- * @return uint32_t A value in [0, @p span), or 0 when @p span is 0.
- * @retval 0     @p span is 0, or the draw landed on 0.
- * @retval other A pseudo-random value below @p span.
- *
- * @pre @p s is non-NULL and seeded non-zero.
- * @pre Called on the single benchmark thread.
- * @post The PRNG state has advanced one step.
- * @post The result is strictly less than @p span when @p span > 0.
- *
- * @note Not thread-safe: mutates the caller's PRNG state.
+ * @brief Select a deterministic pseudo-random value below a bound.
+ * @details Advances @p state and reduces the result modulo @p span, with a
+ *          defined zero result for an empty span.
+ * @param[in,out] state Generator state.
+ * @param[in] span Exclusive upper bound.
+ * @return Value in `[0, span)`, or zero when @p span is zero.
+ * @retval 0 The span is zero or the reduced value is zero.
+ * @retval other Reduced pseudo-random value below @p span.
+ * @pre @p state is non-NULL and initialized.
+ * @pre @p span is an ordinary synthetic-workload bound.
+ * @post For non-zero @p span, the result is strictly less than @p span.
+ * @post @p state advances exactly once.
+ * @note Modulo bias is acceptable for this deterministic benchmark corpus.
  * @since 0.1.0
  */
-static uint32_t cb_rand_below(uint64_t* s, uint32_t span)
+RA8_INTERNAL
+static uint32_t internal_rand_below(uint64_t* state, uint32_t span)
 {
-  return (span == 0U) ? 0U : (uint32_t)(cb_rng(s) % (uint64_t)span);
+  return (span == 0U) ? 0U : (uint32_t)(internal_rng(state) % (uint64_t)span);
 }
 
 /**
- * @brief Allocate a trace's key array; returns false on OOM.
- *
- * @details Sets the trace's name and access count, zeroes the footprint, and
- *          calloc's @p n key slots. The shared prologue for every synthetic
- *          generator, so each one is just a fill loop over `t->keys`.
- *
- * @param[out] t    Trace to initialize (name, n, footprint, keys set).
- * @param[in]  name Static workload name stored in the trace.
- * @param[in]  n    Number of key slots to allocate.
- *
- * @return bool true when the key array was allocated, false on OOM.
- * @retval true  `t->keys` holds @p n zeroed slots.
- * @retval false Allocation failed; `t->keys` is NULL (with `t->n == n`).
- *
- * @pre @p t is non-NULL and @p name has static lifetime.
- * @pre Called on the single benchmark thread.
- * @post `t->name == name` and `t->n == n` regardless of outcome.
- * @post On true, `t->keys` is a zeroed array of @p n keys.
- *
- * @note Not thread-safe: allocates and writes @p t.
+ * @brief Fold one cache key into the captured-trace fingerprint.
+ * @details Serializes both 32-bit fields in fixed little-endian byte order and
+ *          applies the benchmark's FNV-1a accumulator.
+ * @param[in] hash Current fingerprint accumulator.
+ * @param[in] key Cache key to append.
+ * @return Updated 64-bit fingerprint.
+ * @retval other Fingerprint after all eight key bytes are folded.
+ * @pre @p hash is the offset basis or a prior result from this helper.
+ * @pre @p key contains initialized object and page fields.
+ * @post The result is independent of host structure padding and endianness.
+ * @post No storage is modified.
+ * @note This fingerprint detects mutation; it is not a security hash.
  * @since 0.1.0
  */
-static bool cb_alloc(cb_trace_t* t, const char* name, uint64_t n)
+RA8_INTERNAL
+static uint64_t internal_trace_hash(uint64_t hash, cb_key_t key)
 {
-  t->name      = name;
-  t->n         = n;
-  t->footprint = 0U;
-  t->keys      = (cb_key_t*)calloc((size_t)n, sizeof(cb_key_t));
-  return t->keys != nullptr;
-}
-
-/**
- * @brief Sequential page-turn flooding: linear passes through a huge book.
- *
- * @details Emits `k_cb_accesses` book pages as `i % k_cb_footprint`, i.e.
- *          repeated forward linear passes -- the pathological case for LRU,
- *          which evicts a page just before it is needed again next pass.
- *
- * @return cb_trace_t The "seq-pageturn" trace (heap-owned key array).
- * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
- *
- * @pre Called on the single benchmark thread.
- * @pre The process can allocate `k_cb_accesses` keys.
- * @post On success `footprint == k_cb_footprint` and all keys are book pages.
- * @post The caller owns `keys` and frees it via ::cb_trace_free.
- *
- * @note Not thread-safe: allocates a new trace (no shared state).
- * @since 0.1.0
- */
-static cb_trace_t cb_gen_sequential(void)
-{
-  cb_trace_t t = {};
-  if (!cb_alloc(&t, "seq-pageturn", k_cb_accesses)) {
-    return t;
-  }
-  for (uint64_t i = 0U; i < t.n; ++i) {
-    const uint32_t page = (uint32_t)(i % (uint64_t)k_cb_footprint);
-    t.keys[i]           = (cb_key_t){.object_id = k_cb_obj_book, .page = page};
-  }
-  t.footprint = k_cb_footprint;
-  return t;
-}
-
-/**
- * @brief Uniform random access over the whole book (TOC/bookmark chaos).
- *
- * @details Draws each of `k_cb_accesses` pages uniformly across the whole book
- *          footprint with a fixed seed, so there is no locality -- the case
- *          where recency buys almost nothing and hit rate tracks cache size.
- *
- * @return cb_trace_t The "random" trace (heap-owned key array).
- * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
- *
- * @pre Called on the single benchmark thread.
- * @pre The process can allocate `k_cb_accesses` keys.
- * @post On success `footprint == k_cb_footprint` and pages are uniformly spread.
- * @post The caller owns `keys` and frees it via ::cb_trace_free.
- *
- * @note Not thread-safe: allocates a new trace (no shared state).
- * @since 0.1.0
- */
-static cb_trace_t cb_gen_random(void)
-{
-  cb_trace_t t = {};
-  if (!cb_alloc(&t, "random", k_cb_accesses)) {
-    return t;
-  }
-  uint64_t s = (uint64_t)k_rng_seed_random;
-  for (uint64_t i = 0U; i < t.n; ++i) {
-    t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = cb_rand_below(&s, k_cb_footprint)};
-  }
-  t.footprint = k_cb_footprint;
-  return t;
-}
-
-/**
- * @brief Back-and-forth re-reading: a hot working set with occasional spread.
- *
- * @details About `k_cb_reread_pct` percent of accesses fall inside a
- *          `k_cb_hot_pages`-wide window that drifts on the occasional random
- *          jump, modelling a reader lingering over a few pages -- strong
- *          temporal locality that recency policies exploit well.
- *
- * @return cb_trace_t The "reread-locality" trace (heap-owned key array).
- * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
- *
- * @pre Called on the single benchmark thread.
- * @pre The process can allocate `k_cb_accesses` keys.
- * @post On success `footprint == k_cb_footprint` and pages cluster in the window.
- * @post The caller owns `keys` and frees it via ::cb_trace_free.
- *
- * @note Not thread-safe: allocates a new trace (no shared state).
- * @since 0.1.0
- */
-static cb_trace_t cb_gen_reread(void)
-{
-  cb_trace_t t = {};
-  if (!cb_alloc(&t, "reread-locality", k_cb_accesses)) {
-    return t;
-  }
-  uint64_t s    = (uint64_t)k_rng_seed_reread;
-  uint32_t base = 0U;
-  for (uint64_t i = 0U; i < t.n; ++i) {
-    uint32_t page;
-    if (cb_rand_below(&s, (uint32_t)k_cb_pct_full) < (uint32_t)k_cb_reread_pct) {
-      page = base + cb_rand_below(&s, k_cb_hot_pages);
-    } else {
-      page = cb_rand_below(&s, k_cb_footprint);
-      base = (page < k_cb_hot_pages) ? 0U : (page - k_cb_hot_pages); /* drift the hotset */
-    }
-    t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = page % k_cb_footprint};
-  }
-  t.footprint = k_cb_footprint;
-  return t;
-}
-
-/**
- * @brief Mostly-linear reading with occasional TOC/bookmark teleports.
- *
- * @details Advances one page at a time except for a `k_cb_jump_pct` percent
- *          chance of teleporting to a random page (a TOC or bookmark tap),
- *          modelling ordinary reading punctuated by navigation.
- *
- * @return cb_trace_t The "linear+jumps" trace (heap-owned key array).
- * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
- *
- * @pre Called on the single benchmark thread.
- * @pre The process can allocate `k_cb_accesses` keys.
- * @post On success `footprint == k_cb_footprint` and most steps are +1 page.
- * @post The caller owns `keys` and frees it via ::cb_trace_free.
- *
- * @note Not thread-safe: allocates a new trace (no shared state).
- * @since 0.1.0
- */
-static cb_trace_t cb_gen_toc_jumps(void)
-{
-  cb_trace_t t = {};
-  if (!cb_alloc(&t, "linear+jumps", k_cb_accesses)) {
-    return t;
-  }
-  uint64_t s    = (uint64_t)k_rng_seed_toc;
-  uint32_t page = 0U;
-  for (uint64_t i = 0U; i < t.n; ++i) {
-    if (cb_rand_below(&s, (uint32_t)k_cb_pct_full) < (uint32_t)k_cb_jump_pct) {
-      page = cb_rand_below(&s, k_cb_footprint);
-    } else {
-      page = (page + 1U) % k_cb_footprint;
-    }
-    t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = page};
-  }
-  t.footprint = k_cb_footprint;
-  return t;
-}
-
-/**
- * @brief CBZ image-tile scroll: long sequential runs over a second object.
- *
- * @details Emits pages `i % k_cb_tile_span` against the comic object, modelling
- *          a continuous scroll through image tiles -- a second-object streaming
- *          workload with a footprint smaller than the book.
- *
- * @return cb_trace_t The "cbz-scroll" trace (heap-owned key array).
- * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
- *
- * @pre Called on the single benchmark thread.
- * @pre The process can allocate `k_cb_accesses` keys.
- * @post On success `footprint == k_cb_tile_span` over the comic object.
- * @post The caller owns `keys` and frees it via ::cb_trace_free.
- *
- * @note Not thread-safe: allocates a new trace (no shared state).
- * @since 0.1.0
- */
-static cb_trace_t cb_gen_scroll(void)
-{
-  cb_trace_t t = {};
-  if (!cb_alloc(&t, "cbz-scroll", k_cb_accesses)) {
-    return t;
-  }
-  for (uint64_t i = 0U; i < t.n; ++i) {
-    t.keys[i] =
-      (cb_key_t){.object_id = k_cb_obj_comic, .page = (uint32_t)(i % (uint64_t)k_cb_tile_span)};
-  }
-  t.footprint = k_cb_tile_span;
-  return t;
-}
-
-/**
- * @brief A realistic mixed session: read -> jump -> reread -> scroll, repeated.
- *
- * @details Cycles through four phases every `k_cb_mixed_phase` accesses --
- *          linear reading, hot-set re-reading, random jumps, and comic scroll
- *          -- to approximate a real session that exercises every policy trait
- *          in one trace.
- *
- * @return cb_trace_t The "mixed-session" trace (heap-owned key array).
- * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
- *
- * @pre Called on the single benchmark thread.
- * @pre The process can allocate `k_cb_accesses` keys.
- * @post On success `footprint == k_cb_footprint`; both objects appear.
- * @post The caller owns `keys` and frees it via ::cb_trace_free.
- *
- * @note Not thread-safe: allocates a new trace (no shared state).
- * @since 0.1.0
- */
-static cb_trace_t cb_gen_mixed(void)
-{
-  cb_trace_t t = {};
-  if (!cb_alloc(&t, "mixed-session", k_cb_accesses)) {
-    return t;
-  }
-  uint64_t s    = (uint64_t)k_rng_seed_mixed_a ^ (uint64_t)k_rng_seed_mixed_b;
-  uint32_t page = 0U;
-  uint32_t hot  = 0U;
-  for (uint64_t i = 0U; i < t.n; ++i) {
-    const uint32_t phase =
-      (uint32_t)((i / (uint64_t)k_cb_mixed_phase) % 4U); /* alternate behaviours */
-    if (phase == 0U) {
-      page = (page + 1U) % k_cb_footprint; /* linear */
-    } else if (phase == 1U) {
-      page = hot + cb_rand_below(&s, k_cb_hot_pages); /* reread */
-    } else if (phase == 2U) {
-      page = cb_rand_below(&s, k_cb_footprint); /* random jumps */
-      hot  = (page < k_cb_hot_pages) ? 0U : (page - k_cb_hot_pages);
-    } else {
-      t.keys[i] = (cb_key_t){.object_id = k_cb_obj_comic, .page = page % k_cb_tile_span};
-      continue;
-    }
-    t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = page % k_cb_footprint};
-  }
-  t.footprint = k_cb_footprint;
-  return t;
-}
-
-/**
- * @brief The scan-resistance case: a fixed hot set re-read between one-time
- *        linear scans that flood the cache. LRU/CLOCK evict the hot set under
- *        the scan and thrash; SLRU/SRRIP keep the re-referenced hot set.
- *
- * @details Interleaves `k_cb_sr_hot_pass` passes over a `k_cb_sr_hot`-page hot
- *          set with a `k_cb_sr_scan`-page one-time linear flood that advances
- *          each round, so the scan can never fit -- the workload that separates
- *          scan-resistant policies from plain recency.
- *
- * @return cb_trace_t The "hotset+scan" trace (heap-owned key array).
- * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
- *
- * @pre Called on the single benchmark thread.
- * @pre The process can allocate `k_cb_accesses` keys.
- * @post On success `footprint == k_cb_footprint`; hot pages recur, scans do not.
- * @post The caller owns `keys` and frees it via ::cb_trace_free.
- *
- * @note Not thread-safe: allocates a new trace (no shared state).
- * @since 0.1.0
- */
-static cb_trace_t cb_gen_scan_resist(void)
-{
-  cb_trace_t t = {};
-  if (!cb_alloc(&t, "hotset+scan", k_cb_accesses)) {
-    return t;
-  }
-  uint64_t i        = 0U;
-  uint32_t scan_pos = (uint32_t)k_cb_hot_pages; /* scan starts past the hot set */
-  while (i < t.n) {
-    for (uint32_t pass = 0U; (pass < (uint32_t)k_cb_sr_hot_pass) && (i < t.n); ++pass) {
-      for (uint32_t h = 0U; (h < (uint32_t)k_cb_sr_hot) && (i < t.n); ++h, ++i) {
-        t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = h};
-      }
-    }
-    for (uint32_t s = 0U; (s < (uint32_t)k_cb_sr_scan) && (i < t.n); ++s, ++i) {
-      const uint32_t page =
-        (uint32_t)k_cb_sr_hot + ((scan_pos + s) % (k_cb_footprint - (uint32_t)k_cb_sr_hot));
-      t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = page};
-    }
-    scan_pos += (uint32_t)k_cb_sr_scan;
-  }
-  t.footprint = k_cb_footprint;
-  return t;
-}
-
-/**
- * @brief GB-class huge-book: a hot front-matter set re-read between one-shot
- *        linear floods across a ~7 GiB object. Same scan-resistance shape as
- *        ::cb_gen_scan_resist but with a footprint that dwarfs every swept cache
- *        (>> 2048 frames), so the SLRU-vs-LRU gap persists at all budgets and the
- *        resident set stays bounded independent of the (huge) file size.
- *
- * @details Interleaves `k_cb_huge_hot_pass` passes over a `k_cb_huge_hot`-page
- *          front-matter set with `k_cb_huge_scan`-page linear floods across the
- *          `k_cb_huge_footprint`-page (~7 GiB) object, so residency stays
- *          bounded no matter how large the file grows.
- *
- * @return cb_trace_t The "hugebook-7GiB" trace (heap-owned key array).
- * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
- *
- * @pre Called on the single benchmark thread.
- * @pre The process can allocate `k_cb_accesses` keys.
- * @post On success `footprint == k_cb_huge_footprint` (>> any swept cache).
- * @post The caller owns `keys` and frees it via ::cb_trace_free.
- *
- * @note Not thread-safe: allocates a new trace (no shared state).
- * @since 0.1.0
- */
-static cb_trace_t cb_gen_hugebook(void)
-{
-  cb_trace_t t = {};
-  if (!cb_alloc(&t, "hugebook-7GiB", k_cb_accesses)) {
-    return t;
-  }
-  uint64_t i        = 0U;
-  uint32_t scan_pos = (uint32_t)k_cb_huge_hot; /* scan starts past the hot set */
-  while (i < t.n) {
-    for (uint32_t pass = 0U; (pass < (uint32_t)k_cb_huge_hot_pass) && (i < t.n); ++pass) {
-      for (uint32_t h = 0U; (h < (uint32_t)k_cb_huge_hot) && (i < t.n); ++h, ++i) {
-        t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = h};
-      }
-    }
-    for (uint32_t s = 0U; (s < (uint32_t)k_cb_huge_scan) && (i < t.n); ++s, ++i) {
-      const uint32_t page = (uint32_t)k_cb_huge_hot +
-                            ((scan_pos + s) % (k_cb_huge_footprint - (uint32_t)k_cb_huge_hot));
-      t.keys[i]           = (cb_key_t){.object_id = k_cb_obj_book, .page = page};
-    }
-    scan_pos += (uint32_t)k_cb_huge_scan;
-  }
-  t.footprint = (uint32_t)k_cb_huge_footprint;
-  return t;
-}
-
-cb_trace_t* cb_traces_synthetic(uint32_t* out_count)
-{
-  cb_trace_t (*gens[])(void) = {
-    cb_gen_sequential,
-    cb_gen_random,
-    cb_gen_reread,
-    cb_gen_toc_jumps,
-    cb_gen_scroll,
-    cb_gen_scan_resist,
-    cb_gen_hugebook,
-    cb_gen_mixed,
+  const uint8_t bytes[sizeof(key)] = {
+    (uint8_t)key.object_id,
+    (uint8_t)(key.object_id >> 8U),
+    (uint8_t)(key.object_id >> 16U),
+    (uint8_t)(key.object_id >> (uint8_t)k_cb_key_high_shift),
+    (uint8_t)key.page,
+    (uint8_t)(key.page >> 8U),
+    (uint8_t)(key.page >> 16U),
+    (uint8_t)(key.page >> (uint8_t)k_cb_key_high_shift),
   };
-  const uint32_t count = (uint32_t)(sizeof(gens) / sizeof(gens[0]));
-  cb_trace_t*    out   = (cb_trace_t*)calloc((size_t)count, sizeof(cb_trace_t));
-  if (out == nullptr) {
-    *out_count = 0U;
-    /* cppcheck-suppress memleak ; false positive: cppcheck 2.13 does not
-     * model the C23 nullptr keyword, so it cannot see out is NULL here. */
-    return nullptr;
+  for (size_t i = 0U; i < sizeof(bytes); ++i) {
+    hash ^= bytes[i];
+    hash *= (uint64_t)k_cb_hash_prime;
   }
-  for (uint32_t i = 0U; i < count; ++i) {
-    out[i] = gens[i]();
+  return hash;
+}
+
+void cb_traces_synthetic(cb_trace_t out[k_cb_synthetic_trace_count])
+{
+  static const char* const names[k_cb_synthetic_trace_count] = {
+    "seq-pageturn",
+    "random",
+    "reread-locality",
+    "linear+jumps",
+    "cbz-scroll",
+    "hotset+scan",
+    "hugebook-7GiB",
+    "mixed-session",
+  };
+  static const uint32_t footprints[k_cb_synthetic_trace_count] = {
+    k_cb_footprint,
+    k_cb_footprint,
+    k_cb_footprint,
+    k_cb_footprint,
+    k_cb_tile_span,
+    k_cb_footprint,
+    k_cb_huge_footprint,
+    k_cb_footprint,
+  };
+  for (uint8_t i = 0U; i < (uint8_t)k_cb_synthetic_trace_count; ++i) {
+    out[i] = (cb_trace_t){.name      = names[i],
+                          .n         = (uint64_t)k_cb_accesses,
+                          .footprint = footprints[i],
+                          .kind      = (cb_trace_kind_t)i};
   }
-  *out_count = count;
-  return out;
 }
 
 /**
- * @enum cb_radix_t
- * @brief Numeric radix constants for the trace-line parser.
- * @details Trace files store both fields in decimal.
+ * @brief Pull one byte through the captured-source read-ahead buffer.
+ * @details Refills the bounded buffer through the injected source at EOF of the
+ *          current grain and rejects zero-progress or over-count callbacks.
+ * @param[in,out] cursor Open captured trace cursor.
+ * @param[out] out Receives one byte when @p eof is false.
+ * @param[out] eof Receives true at clean source exhaustion.
+ * @return Tool-local I/O status.
+ * @retval k_cb_io_ok One byte or clean EOF was reported.
+ * @retval k_cb_io_fault The source violated its progress/count contract.
+ * @retval k_cb_io_mutated The injected source reported mutation.
+ * @pre All pointers are non-NULL and @p cursor is open on a captured trace.
+ * @pre The cursor read-ahead indices are within their fixed buffer.
+ * @post On a byte, the read cursor advances exactly once.
+ * @post At EOF, @p out is not modified and @p eof is true.
+ * @note Short injected reads are accepted and buffered.
  * @since 0.1.0
  */
-typedef enum : uint8_t {
-  k_cb_base_dec = 10U, /**< Decimal radix passed to strtoul. */
-} cb_radix_t;
+RA8_INTERNAL
+static cb_io_status_t internal_trace_read_byte(cb_trace_cursor_t* cursor, uint8_t* out, bool* eof)
+{
+  if (cursor->read_at == cursor->read_count) {
+    if (cursor->source_offset >= cursor->trace->source.size) {
+      *eof = true;
+      return k_cb_io_ok;
+    }
+    size_t         count     = 0U;
+    const uint64_t remaining = cursor->trace->source.size - cursor->source_offset;
+    const size_t   request =
+      (remaining < sizeof(cursor->read_buffer)) ? (size_t)remaining : sizeof(cursor->read_buffer);
+    const cb_io_status_t status = cursor->trace->source.read(cursor->trace->source.ctx,
+                                                             cursor->source_offset,
+                                                             cursor->read_buffer,
+                                                             request,
+                                                             &count);
+    if ((status != k_cb_io_ok) || (count == 0U) || (count > request)) {
+      return (status == k_cb_io_ok) ? k_cb_io_fault : status;
+    }
+    cursor->source_offset += count;
+    cursor->read_at    = 0U;
+    cursor->read_count = count;
+  }
+  *out = cursor->read_buffer[cursor->read_at];
+  cursor->read_at++;
+  *eof = false;
+  return k_cb_io_ok;
+}
 
 /**
- * @brief Parse one `<object> <page>` trace line with full error detection.
- *
- * @details Converts the two unsigned decimal fields with `strtoul`, checking
- *          the end pointer and `errno` for each (the CERT ERR34-C way of
- *          detecting conversion errors that `fscanf("%u")` cannot report).
- *
- * @param[in]  line NUL-terminated text line.
- * @param[out] obj  Receives the object id field.
- * @param[out] pg   Receives the page index field.
- *
- * @return bool true when both fields parsed cleanly, false otherwise.
- * @retval true  @p obj and @p pg hold the two parsed values.
- * @retval false The line is malformed or a value is out of range.
- *
- * @pre @p line, @p obj, and @p pg are non-NULL.
- * @pre @p line is NUL-terminated (from `fgets`).
- * @post On true, @p obj and @p pg hold the two parsed fields.
- * @post On false, @p obj / @p pg are unspecified (caller stops the load).
- *
- * @note Not thread-safe (reads and writes `errno`).
+ * @brief Parse one captured decimal object/page record.
+ * @details Converts the two unsigned decimal fields and rejects missing,
+ *          overflowing, or conversion-error values.
+ * @param[in] line NUL-terminated record bytes.
+ * @param[out] object_id Receives the object identifier.
+ * @param[out] page Receives the page index.
+ * @return Whether both fields were converted.
+ * @retval true Both outputs contain 32-bit values.
+ * @retval false A field is absent, overflowing, or invalid.
+ * @pre All pointers are non-NULL and outputs are writable.
+ * @pre @p line is NUL-terminated within the fixed line capacity.
+ * @post On success, both outputs are initialized.
+ * @post Input bytes are not modified.
+ * @note Trailing bytes preserve the historical permissive parser behavior.
  * @since 0.1.0
  */
-static bool cb_parse_trace_line(const char* line, uint32_t* obj, uint32_t* pg)
+RA8_INTERNAL
+static bool internal_parse_trace_line(const char* line, uint32_t* object_id, uint32_t* page)
 {
-  char* end             = nullptr;
-  errno                 = 0;
-  const unsigned long o = strtoul(line, &end, (int)k_cb_base_dec);
-  if ((end == line) || (errno != 0) || (o > UINT32_MAX)) {
+  char* end                  = nullptr;
+  errno                      = 0;
+  const unsigned long object = strtoul(line, &end, (int)k_cb_base_dec);
+  if ((end == line) || (errno != 0) || (object > UINT32_MAX)) {
     return false;
   }
-  const char* second    = end;
-  errno                 = 0;
-  const unsigned long p = strtoul(second, &end, (int)k_cb_base_dec);
-  if ((end == second) || (errno != 0) || (p > UINT32_MAX)) {
+  const char* second             = end;
+  errno                          = 0;
+  const unsigned long page_value = strtoul(second, &end, (int)k_cb_base_dec);
+  if ((end == second) || (errno != 0) || (page_value > UINT32_MAX)) {
     return false;
   }
-  *obj = (uint32_t)o;
-  *pg  = (uint32_t)p;
+  *object_id = (uint32_t)object;
+  *page      = (uint32_t)page_value;
   return true;
 }
 
-cb_trace_t cb_trace_load(const char* path, const char* name)
+/**
+ * @brief Emit the next key from a captured decimal trace.
+ * @details Assembles one bounded line through read-ahead, treats clean EOF as
+ *          done, and preserves the historical stop-on-unparseable-line rule.
+ * @param[in,out] cursor Open captured trace cursor.
+ * @param[out] key Receives the next parsed key.
+ * @param[out] done Receives true at EOF or the first unparsable record.
+ * @return Tool-local I/O status.
+ * @retval k_cb_io_ok A key or clean termination was produced.
+ * @retval k_cb_io_fault The injected source contract failed.
+ * @retval k_cb_io_mutated The source reported mutation.
+ * @pre All pointers are non-NULL and @p cursor is captured-kind.
+ * @pre Cursor line and read-ahead buffers are initialized.
+ * @post When @p done is false, @p key contains one parsed record.
+ * @post Cursor source position never moves backward.
+ * @note A line reaching the fixed bound is parsed from its bounded prefix.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static cb_io_status_t
+internal_trace_captured_next(cb_trace_cursor_t* cursor, cb_key_t* key, bool* done)
 {
-  cb_trace_t t = {.name = name};
-  FILE*      f = fopen(path, "r");
-  if (f == nullptr) {
-    /* cppcheck-suppress resourceLeak ; false positive: cppcheck 2.13 does not
-     * model the C23 nullptr keyword, so it cannot see f is NULL here. */
-    return t;
-  }
-  uint64_t cap = (uint64_t)k_cb_load_init;
-  t.keys       = (cb_key_t*)calloc((size_t)cap, sizeof(cb_key_t));
-  if (t.keys == nullptr) {
-    (void)fclose(f);
-    return t;
-  }
-  char line[k_cb_line_max] = {};
-  while (fgets(line, (int)sizeof(line), f) != nullptr) {
-    uint32_t obj = 0U;
-    uint32_t pg  = 0U;
-    if (!cb_parse_trace_line(line, &obj, &pg)) {
-      break; /* stop at the first malformed record, as fscanf did */
+  size_t length = 0U;
+  bool   eof    = false;
+  while ((length + 1U) < sizeof(cursor->line)) {
+    uint8_t              value  = 0U;
+    const cb_io_status_t status = internal_trace_read_byte(cursor, &value, &eof);
+    if (status != k_cb_io_ok) {
+      return status;
     }
-    if (t.n == cap) {
-      cap *= 2U;
-      cb_key_t* grown = (cb_key_t*)realloc(t.keys, (size_t)cap * sizeof(cb_key_t));
-      if (grown == nullptr) {
-        break;
+    if (eof) {
+      break;
+    }
+    cursor->line[length] = (char)value;
+    length++;
+    if (value == (uint8_t)'\n') {
+      break;
+    }
+  }
+  if ((length == 0U) && eof) {
+    *done = true;
+    return k_cb_io_ok;
+  }
+  cursor->line[length] = '\0';
+  if (!internal_parse_trace_line(cursor->line, &key->object_id, &key->page)) {
+    *done = true;
+    return k_cb_io_ok;
+  }
+  *done = false;
+  return k_cb_io_ok;
+}
+
+/**
+ * @brief Generate one scan-resistant hot-set-plus-scan workload key.
+ * @details Alternates repeated hot-set passes with a moving cold scan and
+ *          supports both normal and huge-book geometries.
+ * @param[in] index Zero-based access index.
+ * @param[in] huge Selects the huge-book geometry when true.
+ * @return Deterministic cache key for @p index.
+ * @retval other Book-object key within the selected footprint.
+ * @pre The selected footprint is larger than its hot set.
+ * @pre Fixed hot, pass, and scan constants define a non-zero cycle.
+ * @post The returned page is less than the selected footprint.
+ * @post No generator state is retained or modified.
+ * @note Thread-safe: this is a pure function of @p index and @p huge.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static cb_key_t internal_trace_scan_key(uint64_t index, bool huge)
+{
+  const uint32_t hot       = huge ? (uint32_t)k_cb_huge_hot : (uint32_t)k_cb_sr_hot;
+  const uint32_t passes    = huge ? (uint32_t)k_cb_huge_hot_pass : (uint32_t)k_cb_sr_hot_pass;
+  const uint32_t scan      = huge ? (uint32_t)k_cb_huge_scan : (uint32_t)k_cb_sr_scan;
+  const uint32_t footprint = huge ? (uint32_t)k_cb_huge_footprint : (uint32_t)k_cb_footprint;
+  const uint64_t hot_span  = (uint64_t)hot * (uint64_t)passes;
+  const uint64_t cycle     = hot_span + (uint64_t)scan;
+  const uint64_t round     = index / cycle;
+  const uint64_t pos       = index % cycle;
+  const uint32_t page = (pos < hot_span)
+                          ? (uint32_t)(pos % hot)
+                          : hot + (uint32_t)(((uint64_t)hot + (round * scan) + (pos - hot_span)) %
+                                             (uint64_t)(footprint - hot));
+  return (cb_key_t){.object_id = k_cb_obj_book, .page = page};
+}
+
+/**
+ * @brief Emit one key from the selected synthetic workload generator.
+ * @details Dispatches by trace kind and advances only the cursor state required
+ *          by that workload's locality pattern.
+ * @param[in,out] cursor Open synthetic trace cursor.
+ * @return Next deterministic cache key.
+ * @retval other Key within the selected workload geometry.
+ * @pre @p cursor and `cursor->trace` are non-NULL.
+ * @pre `cursor->trace->kind` is a synthetic kind.
+ * @post Returned object and page fields are initialized.
+ * @post Any stateful generator fields advance consistently with one access.
+ * @note The public cursor function advances the common access index.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static cb_key_t internal_trace_synthetic_next(cb_trace_cursor_t* cursor)
+{
+  const uint64_t index = cursor->index;
+  switch (cursor->trace->kind) {
+    case k_cb_trace_seq:
+      return (cb_key_t){.object_id = k_cb_obj_book,
+                        .page      = (uint32_t)(index % (uint64_t)k_cb_footprint)};
+    case k_cb_trace_random:
+      return (cb_key_t){.object_id = k_cb_obj_book,
+                        .page      = internal_rand_below(&cursor->rng, k_cb_footprint)};
+    case k_cb_trace_reread: {
+      uint32_t page = 0U;
+      if (internal_rand_below(&cursor->rng, k_cb_pct_full) < k_cb_reread_pct) {
+        page = cursor->hot + internal_rand_below(&cursor->rng, k_cb_hot_pages);
+      } else {
+        page        = internal_rand_below(&cursor->rng, k_cb_footprint);
+        cursor->hot = (page < k_cb_hot_pages) ? 0U : (page - k_cb_hot_pages);
       }
-      t.keys = grown;
+      return (cb_key_t){.object_id = k_cb_obj_book, .page = page % k_cb_footprint};
     }
-    t.keys[t.n] = (cb_key_t){.object_id = obj, .page = pg};
-    t.n++;
+    case k_cb_trace_jumps:
+      cursor->page = (internal_rand_below(&cursor->rng, k_cb_pct_full) < k_cb_jump_pct)
+                       ? internal_rand_below(&cursor->rng, k_cb_footprint)
+                       : (cursor->page + 1U) % k_cb_footprint;
+      return (cb_key_t){.object_id = k_cb_obj_book, .page = cursor->page};
+    case k_cb_trace_scroll:
+      return (cb_key_t){.object_id = k_cb_obj_comic,
+                        .page      = (uint32_t)(index % (uint64_t)k_cb_tile_span)};
+    case k_cb_trace_scan:
+      return internal_trace_scan_key(index, false);
+    case k_cb_trace_huge:
+      return internal_trace_scan_key(index, true);
+    case k_cb_trace_mixed: {
+      const uint32_t phase = (uint32_t)((index / k_cb_mixed_phase) % 4U);
+      if (phase == 0U) {
+        cursor->page = (cursor->page + 1U) % k_cb_footprint;
+      } else if (phase == 1U) {
+        cursor->page = cursor->hot + internal_rand_below(&cursor->rng, k_cb_hot_pages);
+      } else if (phase == 2U) {
+        cursor->page = internal_rand_below(&cursor->rng, k_cb_footprint);
+        cursor->hot  = (cursor->page < k_cb_hot_pages) ? 0U : cursor->page - k_cb_hot_pages;
+      } else {
+        return (cb_key_t){.object_id = k_cb_obj_comic, .page = cursor->page % k_cb_tile_span};
+      }
+      return (cb_key_t){.object_id = k_cb_obj_book, .page = cursor->page % k_cb_footprint};
+    }
+    case k_cb_trace_captured:
+      break;
   }
-  (void)fclose(f);
-  return t;
+  return (cb_key_t){};
 }
 
-void cb_trace_free(cb_trace_t* t)
+cb_io_status_t cb_trace_cursor_open(const cb_trace_t* trace, cb_trace_cursor_t* cursor)
 {
-  if (t != nullptr) {
-    free(t->keys);
-    t->keys = nullptr;
-    t->n    = 0U;
+  if ((trace == nullptr) || (cursor == nullptr)) {
+    return k_cb_io_fault;
   }
+  *cursor = (cb_trace_cursor_t){.trace = trace, .fingerprint = (uint64_t)k_cb_hash_offset};
+  if (trace->kind == k_cb_trace_random) {
+    cursor->rng = (uint64_t)k_rng_seed_random;
+  } else if (trace->kind == k_cb_trace_reread) {
+    cursor->rng = (uint64_t)k_rng_seed_reread;
+  } else if (trace->kind == k_cb_trace_jumps) {
+    cursor->rng = (uint64_t)k_rng_seed_toc;
+  } else if (trace->kind == k_cb_trace_mixed) {
+    cursor->rng = (uint64_t)k_rng_seed_mixed_a ^ (uint64_t)k_rng_seed_mixed_b;
+  } else if ((trace->kind == k_cb_trace_captured) && (trace->source.read == nullptr)) {
+    return k_cb_io_fault;
+  }
+  return k_cb_io_ok;
 }
 
-void cb_traces_free(cb_trace_t* traces, uint32_t count)
+cb_io_status_t cb_trace_cursor_next(cb_trace_cursor_t* cursor, cb_key_t* key, bool* done)
 {
-  if (traces == nullptr) {
-    return;
+  if ((cursor == nullptr) || (cursor->trace == nullptr) || (key == nullptr) || (done == nullptr)) {
+    return k_cb_io_fault;
   }
-  for (uint32_t i = 0U; i < count; ++i) {
-    cb_trace_free(&traces[i]);
+  cb_io_status_t status = k_cb_io_ok;
+  if (cursor->trace->kind == k_cb_trace_captured) {
+    status = internal_trace_captured_next(cursor, key, done);
+  } else {
+    *done = cursor->index >= cursor->trace->n;
+    if (!*done) {
+      *key = internal_trace_synthetic_next(cursor);
+    }
   }
-  free(traces);
+  if ((status == k_cb_io_ok) && !*done) {
+    cursor->fingerprint = internal_trace_hash(cursor->fingerprint, *key);
+    cursor->index++;
+  }
+  return status;
+}
+
+cb_io_status_t cb_trace_cursor_finish(const cb_trace_cursor_t* cursor)
+{
+  if ((cursor == nullptr) || (cursor->trace == nullptr)) {
+    return k_cb_io_fault;
+  }
+  if ((cursor->index != cursor->trace->n) ||
+      ((cursor->trace->kind == k_cb_trace_captured) &&
+       (cursor->fingerprint != cursor->trace->fingerprint))) {
+    return k_cb_io_mutated;
+  }
+  return k_cb_io_ok;
+}
+
+cb_io_status_t
+cb_trace_bind(const cb_source_t* source, const char* name, size_t name_length, cb_trace_t* out)
+{
+  if ((source == nullptr) || (source->read == nullptr) || (name == nullptr) || (out == nullptr) ||
+      (name_length == 0U) || (name_length >= (size_t)k_cb_trace_name_capacity)) {
+    return k_cb_io_capacity;
+  }
+  *out = (cb_trace_t){.kind = k_cb_trace_captured, .source = *source};
+  memcpy(out->name_storage, name, name_length);
+  out->name_storage[name_length] = '\0';
+  out->name                      = out->name_storage;
+  cb_trace_cursor_t cursor       = {};
+  cb_io_status_t    status       = cb_trace_cursor_open(out, &cursor);
+  bool              done         = false;
+  while ((status == k_cb_io_ok) && !done) {
+    cb_key_t key = {};
+    status       = cb_trace_cursor_next(&cursor, &key, &done);
+  }
+  if ((status != k_cb_io_ok) || (cursor.index == 0U)) {
+    *out = (cb_trace_t){};
+    return (status == k_cb_io_ok) ? k_cb_io_fault : status;
+  }
+  out->n           = cursor.index;
+  out->fingerprint = cursor.fingerprint;
+  return k_cb_io_ok;
 }

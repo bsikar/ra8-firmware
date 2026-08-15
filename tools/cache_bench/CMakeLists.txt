@@ -60,8 +60,55 @@ target_compile_options(
           -Wno-unused-parameter
 )
 
+target_compile_definitions(cache_bench PRIVATE MINIZ_NO_MALLOC MINIZ_NO_STDIO)
+
 # miniz is SOUP: silence its warnings and defeat the strict-aliasing
 # miscompile, matching the Makefile's dedicated miniz_host.o rule.
 set_source_files_properties(
   ${RA8_ROOT}/libs/third_party/miniz/miniz.c PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing"
 )
+
+include(CTest)
+if(BUILD_TESTING)
+  add_executable(
+    test_cache_bench
+    tests/test_cache_bench.c
+    cache_bench.c
+    cache_bench_host.c
+    cache_bench_io.c
+    policies.c
+    policy_scanresist.c
+    sweep_block.c
+    sweep_block_backends.c
+    sweep_block_payload.c
+    sweep_block_report.c
+    trace.c
+    ${RA8_ROOT}/libs/ra8_mem/src/ra8_vmem.c
+    ${RA8_ROOT}/libs/ra8_mem/src/ra8_keycache.c
+    ${RA8_ROOT}/libs/ra8_mem/src/ra8_vsource.c
+    ${RA8_ROOT}/libs/ra8_book/src/ra8_book.c
+    ${RA8_ROOT}/libs/ra8_book/src/ra8_book_chunked.c
+    ${RA8_ROOT}/libs/third_party/miniz/miniz.c
+  )
+  target_include_directories(
+    test_cache_bench
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+            ${RA8_ROOT}/libs/ra8_core/inc
+            ${RA8_ROOT}/libs/ra8_mem/inc
+            ${RA8_ROOT}/libs/ra8_book/inc
+            ${RA8_ROOT}/libs/third_party/miniz
+  )
+  target_compile_definitions(
+    test_cache_bench PRIVATE CB_CACHE_BENCH_LIBRARY_ONLY MINIZ_NO_MALLOC MINIZ_NO_STDIO
+  )
+  target_compile_options(
+    test_cache_bench
+    PRIVATE -O1
+            -g
+            -Wall
+            -Wextra
+            -Werror
+            -Wno-unused-parameter
+  )
+  add_test(NAME cache_bench_contract COMMAND test_cache_bench)
+endif()
