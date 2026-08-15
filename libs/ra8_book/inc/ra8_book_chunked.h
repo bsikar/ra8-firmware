@@ -53,6 +53,7 @@
 #include <stdint.h>
 
 #include "ra8_book.h"
+#include "ra8_book_stream.h"
 #include "ra8_err.h"
 #include "ra8_vsource.h"
 
@@ -183,6 +184,45 @@ typedef struct {
  */
 [[nodiscard]] ra8_err_t
 ra8_book_chunked_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len);
+
+/**
+ * @brief Strictly validate the complete flat blob behind an open RBKC reader.
+ *
+ * @details Adapts the chunk-aligned @ref ra8_book_chunked_read interface to the
+ *          random-read strict validator. @p chunk receives one complete
+ *          inflated chunk at a time; @p scratch is the independent bounded CRC
+ *          transfer and node-ownership workspace. The full-body pass requests every
+ *          chunk, proving every compressed stream, its exact inflated length,
+ *          and the inner RABOOK1 CRC without retaining the whole book.
+ *
+ * @param[in,out] rd Open chunk reader whose table is already validated.
+ * @param[out] chunk Caller buffer for one inflated chunk.
+ * @param[in] chunk_cap Capacity of @p chunk; must cover @c rd->chunk_bytes.
+ * @param[out] scratch Caller transfer buffer for strict validation.
+ * @param[in] scratch_cap Capacity of @p scratch; must be at least one byte and
+ *                        at least @c ceil(node_count/8) after header decode.
+ * @param[out] out_header Receives the decoded header on success.
+ *
+ * @return Validation status.
+ * @retval k_ra8_ok Every RBKC stream and inner RABOOK1 field is valid.
+ * @retval k_ra8_err_null_ptr A required pointer is NULL.
+ * @retval k_ra8_err_invalid_state @p rd is not open.
+ * @retval k_ra8_err_invalid_size A workspace or wire extent is inconsistent.
+ * @retval k_ra8_err_* A file-reader, inflater, or strict-validator error.
+ *
+ * @pre @p rd and its table remain alive and immutable; its staging is exclusively mutable.
+ * @pre @p chunk and @p scratch do not overlap each other or @p rd storage.
+ * @post On success @p out_header describes the complete validated flat blob.
+ * @post On failure @p out_header is zeroed and must not be consumed.
+ * @note No heap allocation or recursion is used; the reader is not thread-safe.
+ * @since Version 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_book_chunked_validate_strict(ra8_book_chunked_t* rd,
+                                                         uint8_t*            chunk,
+                                                         uint32_t            chunk_cap,
+                                                         uint8_t*            scratch,
+                                                         uint32_t            scratch_cap,
+                                                         ra8_book_header_t*  out_header);
 
 #ifdef __cplusplus
 }
