@@ -33,6 +33,8 @@ typedef enum : uint8_t {
 
 /**
  * @brief Decide whether two non-empty caller-memory spans overlap.
+ * @details Converts bases to integer addresses, proves each exclusive end is
+ *          representable, then applies the standard half-open overlap test.
  * @param[in] a First span base.
  * @param[in] a_len First span length in bytes.
  * @param[in] b Second span base.
@@ -69,6 +71,8 @@ internal_spans_overlap(const void* a, uint64_t a_len, const void* b, uint64_t b_
 
 /**
  * @brief Revalidate the open-reader invariants needed by strict validation.
+ * @details Recomputes chunk geometry, table bounds, monotonic compressed
+ *          extents, and payload addition before any cache read is attempted.
  * @param[in] rd Candidate open reader.
  * @return Reader-state validation status.
  * @retval k_ra8_ok Geometry, callbacks, table, and staging are usable.
@@ -114,6 +118,8 @@ static ra8_err_t internal_validate_reader(const ra8_book_chunked_t* rd)
 
 /**
  * @brief Reject output aliases before the output is zeroed or published.
+ * @details Compares the result object with the reader, inflated chunk, strict
+ *          scratch, compressed staging, and offset-table spans fail-closed.
  * @param[in] rd Candidate reader descriptor.
  * @param[in] chunk Inflated-chunk workspace, possibly NULL.
  * @param[in] chunk_cap Advertised @p chunk capacity.
@@ -121,9 +127,13 @@ static ra8_err_t internal_validate_reader(const ra8_book_chunked_t* rd)
  * @param[in] scratch_cap Advertised @p scratch capacity.
  * @param[out] out_header Candidate result storage.
  * @return Whether @p out_header overlaps a known reader or workspace span.
+ * @retval true An overlap or unrepresentable span was found.
+ * @retval false The result object is disjoint from every sized known span.
  * @pre @p rd and @p out_header are non-NULL and readable as their declared
  * types.
+ * @pre Advertised capacities truthfully describe every non-NULL workspace.
  * @post No caller storage is read through an aliased pointer or modified.
+ * @post A false result permits output clearing without corrupting known input.
  * @note The opaque file callback context cannot be sized here and remains a
  *       documented caller no-alias precondition.
  * @since Version 0.1.0
@@ -157,6 +167,8 @@ static bool internal_output_is_aliased(const ra8_book_chunked_t* rd,
 
 /**
  * @brief Require strict-validation workspaces to be pairwise disjoint.
+ * @details Checks every pair among the reader, inflated chunk, semantic
+ *          scratch, compressed staging, and exact validated table spans.
  * @param[in] rd Validated open reader.
  * @param[out] chunk Inflated-chunk workspace.
  * @param[in] chunk_len Bytes of @p chunk the adapter will access.
@@ -199,11 +211,17 @@ static ra8_err_t internal_validate_workspaces(const ra8_book_chunked_t* rd,
 
 /**
  * @brief Inflate one requested chunk into the caller cache when not resident.
+ * @details Reuses an already resident matching chunk; otherwise derives the
+ *          exact final-chunk length and delegates decompression to the reader.
  * @param[in,out] ctx Adapter state.
  * @param[in] idx Chunk index to make resident.
  * @return Chunk-reader status.
+ * @retval k_ra8_ok The requested chunk is resident in the caller cache.
+ * @retval k_ra8_err_out_of_range The reader rejected the derived chunk range.
  * @pre @p idx is less than the open reader's chunk count.
+ * @pre ctx->chunk has capacity for the configured inflated chunk size.
  * @post Success makes @p idx and its exact span resident in ctx->chunk.
+ * @post Failure does not mark the requested chunk as newly resident.
  * @note Not thread-safe; reuses both reader staging and caller chunk storage.
  * @since Version 0.1.0
  */
@@ -230,13 +248,19 @@ static ra8_err_t internal_load_chunk(chunk_validate_t* ctx, uint32_t idx)
 
 /**
  * @brief Serve an exact arbitrary flat-blob read through the one-chunk cache.
+ * @details Splits a flat range at chunk boundaries, inflates each chunk at
+ *          most once while resident, and copies until the exact request is met.
  * @param[in,out] opaque Adapter context.
  * @param[in] offset Flat-blob byte offset.
  * @param[out] dst Destination for exactly @p len bytes.
  * @param[in] len Exact byte count.
  * @return Adapter, chunk-reader, or range status.
+ * @retval k_ra8_ok Exactly @p len bytes were copied.
+ * @retval k_ra8_err_out_of_range The requested flat range exceeds the source.
  * @pre Public validation established every pointer and workspace capacity.
+ * @pre @p opaque points to an initialized chunk-validation context.
  * @post Success fills all @p len destination bytes.
+ * @post No bytes beyond the requested destination range are modified.
  * @note Reads spanning chunk boundaries are copied iteratively without
  * recursion.
  * @since Version 0.1.0

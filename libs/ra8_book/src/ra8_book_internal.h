@@ -73,10 +73,10 @@ typedef enum : uint8_t {
  * @note Thread-safe: reads only @p hdr, writes only the outputs.
  * @since Version 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_book_container_header_fields(const uint8_t* hdr,
-                                                    uint32_t*      out_chunk_bytes,
-                                                    uint64_t*      out_total,
-                                                    uint32_t*      out_count);
+RA8_PRIV ra8_err_t priv_book_container_header_fields(const uint8_t* hdr,
+                                                     uint32_t*      out_chunk_bytes,
+                                                     uint64_t*      out_total,
+                                                     uint32_t*      out_count);
 
 /**
  * @brief Decode one uint64 LE chunk-table entry from unaligned container bytes.
@@ -100,7 +100,7 @@ RA8_PRIV ra8_err_t ra8_book_container_header_fields(const uint8_t* hdr,
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
-RA8_PRIV uint64_t ra8_book_container_table_entry(const uint8_t* table, uint32_t idx);
+RA8_PRIV uint64_t priv_book_container_table_entry(const uint8_t* table, uint32_t idx);
 
 /**
  * @brief Extend a finalized CRC-32/ISO-HDLC with another byte span.
@@ -116,13 +116,17 @@ RA8_PRIV uint64_t ra8_book_container_table_entry(const uint8_t* table, uint32_t 
  * @param[in] len  Number of bytes in @p data.
  *
  * @return CRC-32/ISO-HDLC over the concatenation of prior and current spans.
+ * @retval UINT32_C(0) The concatenated byte stream's finalized CRC is zero.
+ * @retval UINT32_MAX The concatenated byte stream's finalized CRC has every bit set.
  *
  * @pre @p data addresses at least @p len readable bytes when @p len is non-zero.
+ * @pre @p crc is zero or a finalized value returned by an earlier call.
  * @post No caller memory or global state is modified.
+ * @post Reusing the result with the next span preserves concatenation order.
  * @note Thread-safe: reads only immutable input and a constant lookup table.
  * @since Version 0.1.0
  */
-RA8_PRIV uint32_t ra8_book_crc32_extend(uint32_t crc, const uint8_t* data, size_t len);
+RA8_PRIV uint32_t priv_book_crc32_extend(uint32_t crc, const uint8_t* data, size_t len);
 
 /**
  * @enum ra8_book_xhtml_bound_t
@@ -158,7 +162,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe; callers must provide external synchronisation.
  * @since Version 0.1.0
  */
-RA8_PRIV bool ra8_book_is_block(const char* name);
+RA8_PRIV bool priv_book_is_block(const char* name);
 
 /**
  * @brief Append a whitespace-collapsed text run to the output buffer.
@@ -191,7 +195,7 @@ RA8_PRIV bool ra8_book_is_block(const char* name);
  * @since Version 0.1.0
  */
 RA8_PRIV bool
-ra8_book_emit_text(char* out, size_t cap, size_t* pos, const char* str, bool* at_break);
+priv_book_emit_text(char* out, size_t cap, size_t* pos, const char* str, bool* at_break);
 
 /**
  * @brief Append a paragraph break, collapsing consecutive block-level breaks.
@@ -219,4 +223,4 @@ ra8_book_emit_text(char* out, size_t cap, size_t* pos, const char* str, bool* at
  * @note Not thread-safe; callers must provide external synchronisation.
  * @since Version 0.1.0
  */
-RA8_PRIV bool ra8_book_emit_break(char* out, size_t cap, size_t* pos, bool* at_break);
+RA8_PRIV bool priv_book_emit_break(char* out, size_t cap, size_t* pos, bool* at_break);

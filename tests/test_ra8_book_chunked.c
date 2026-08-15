@@ -454,7 +454,7 @@ bcx_open_guards_readfail(ra8_book_chunked_t* rd, bcx_file_t* file, const bcx_gua
  *
  * @par Targeted code:
  * The five `RA8_CHECK_NULL_PTR` guards, the short-file return, the bad-magic
- * rejection (via `ra8_book_container_header_fields`), `internal_load_table`'s
+ * rejection (via `priv_book_container_header_fields`), `internal_load_table`'s
  * table-capacity return, its header-plus-table file-bound return, its
  * staging-capacity return, and the file-read error passthrough.
  *

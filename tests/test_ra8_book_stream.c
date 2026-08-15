@@ -282,7 +282,22 @@ fixture_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size
   return k_ra8_ok;
 }
 
-/** @test A canonical flat fixture is decoded, validated, and published. */
+/**
+ * @test A canonical flat fixture is decoded, validated, and published.
+ * @par MC/DC:
+ * The public guard `(read == nullptr) || (scratch == nullptr)` executes
+ * V1 read=valid, scratch=valid -> false and
+ * V2 read=null, scratch=valid -> true; V1/V2 vary only `read`.
+ * The size guard
+ * `(source_size < k_ra8_book_sizeof_header) || (scratch_cap == 0U)` executes
+ * V3 canonical source size, scratch_cap=17 -> false and
+ * V4 the same source size, scratch_cap=0 -> true; V3/V4 vary only `scratch_cap`.
+ * The happy vector also proves the decoded header is published and the
+ * renderer consumes the validated DOM; each rejected vector leaves the
+ * pre-seeded output header cleared.
+ * Decisions: libs/ra8_book/src/ra8_book_stream.c@ra8_book_validate_stream_strict
+ * Decisions: libs/ra8_book/src/ra8_book_xhtml.c@ra8_book_chapter_to_xhtml
+ */
 static void test_flat_happy_and_args(void)
 {
   TEST_BEGIN("strict stream flat happy and arguments");
@@ -310,7 +325,24 @@ static void test_flat_happy_and_args(void)
   TEST_END("strict stream flat happy and arguments");
 }
 
-/** @test Header, layout, string, index, and CRC corruption is rejected. */
+/**
+ * @test Header, layout, string, index, and CRC corruption is rejected.
+ * @par MC/DC:
+ * For `(format_version != expected) || (unknown_flags != 0U)`, the canonical
+ * header is V1 F,F -> false and the flags-only corruption is V2 F,T -> true,
+ * independently varying `unknown_flags`. For
+ * `(err == k_ra8_ok) && (preceding != 0U)`, the canonical title reference is
+ * V3 T,F -> false and title_off+1 is V4 T,T -> true, independently varying
+ * the string-boundary byte. For
+ * `(err == k_ra8_ok) && (root >= node_count)`, the canonical chapter is
+ * V5 T,F -> false and root=node_count is V6 T,T -> true, independently
+ * varying the root bound. Separate vectors reject bad magic, a noncanonical
+ * chapter offset, and a body CRC mismatch at their single decisions.
+ * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_validate_header_layout
+ * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_string_ref
+ * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_validate_chapters
+ * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_validate_crc
+ */
 static void test_header_table_string_crc_corruption(void)
 {
   TEST_BEGIN("strict stream header table string and CRC corruption");
@@ -337,7 +369,23 @@ static void test_header_table_string_crc_corruption(void)
   TEST_END("strict stream header table string and CRC corruption");
 }
 
-/** @test Cycles, duplicate ownership, orphan nodes, and empty names fail. */
+/**
+ * @test Cycles, duplicate ownership, orphan nodes, and empty names fail.
+ * @par MC/DC:
+ * The forward-link decision `(link <= current) || (link >= count)` executes
+ * V1 child=1,current=0,count=2 -> F,F/false and
+ * V2 sibling=0,current=1,count=2 -> T,-/true; V1/V2 independently vary the
+ * non-forward lower-bound condition. The nonempty-name decision
+ * `(err == k_ra8_ok) && (first == 0U)` executes V3 T,F/false for each canonical
+ * element/attribute name and V4 T,T/true when its offset is zero, independently
+ * varying the first byte. The other vectors independently reach the duplicate
+ * owner and orphan-node decisions after rebuilding a canonical fixture, so
+ * no earlier corruption masks them.
+ * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_forward_link
+ * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_nonempty_string_ref
+ * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_mark_forward_link
+ * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_validate_nodes
+ */
 static void test_dom_ownership_and_renderer_safety(void)
 {
   TEST_BEGIN("strict stream DOM ownership and renderer safety");
@@ -367,8 +415,25 @@ static void test_dom_ownership_and_renderer_safety(void)
   TEST_END("strict stream DOM ownership and renderer safety");
 }
 
-/** @test Image formats, depths, dimensions, extents, and pool tiling fail
- * closed. */
+/**
+ * @test Image formats, depths, dimensions, extents, and pool tiling fail
+ * closed.
+ * @par MC/DC:
+ * The raster-size decision
+ * `(expect > UINT32_MAX) || (data_size != expect) || (raw_size != expect)`
+ * executes V1 F,F,F/false and V2 F,T,-/true when data_size is incremented;
+ * this independently varies `data_size`. The placement decision
+ * `(err == k_ra8_ok) &&`
+ * `((data_off != pool_cursor) || (data_size > remaining))` executes canonical
+ * V3 T,(F,F)/false and SVG-offset V4 T,(T,-)/true, independently varying
+ * `data_off`. The SVG decision
+ * `(data_size != 0U) && (data_size == raw_size)` executes V5 T,T/true and
+ * zero-size V6 F,-/false, independently varying nonzero size. The unknown
+ * format vector reaches the format selector before any size decision.
+ * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_validate_raster
+ * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_validate_svg
+ * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_validate_images
+ */
 static void test_image_corruption(void)
 {
   TEST_BEGIN("strict stream image corruption");
@@ -402,7 +467,20 @@ static void test_image_corruption(void)
   TEST_END("strict stream image corruption");
 }
 
-/** @test Production writer -> reader validation checks every compressed chunk.
+/**
+ * @test Production writer -> reader validation checks every compressed chunk.
+ * @par MC/DC:
+ * The one-chunk-cache decision
+ * `ctx->loaded && (ctx->loaded_idx == idx)` executes V1 F,-/false on the first
+ * read of chunk zero, V2 T,T/true on a repeated read from that chunk, and
+ * V3 T,F/false when strict validation advances to another chunk. V1/V2 prove
+ * `loaded` independently decides; V2/V3 prove the index match independently
+ * decides. The unmodified packed source is the successful control; flipping
+ * one byte in a middle compressed chunk independently changes the inflate/read
+ * path to failure and leaves the output header cleared.
+ * Decisions: libs/ra8_book/src/ra8_book_chunked_validate.c@internal_load_chunk
+ * Decisions: libs/ra8_book/src/ra8_book_chunked_validate.c@internal_chunk_flat_read
+ * Decisions: libs/ra8_book/src/ra8_book_chunked_validate.c@ra8_book_chunked_validate_strict
  */
 static void test_production_rbkc_round_trip_and_chunk_corruption(void)
 {
@@ -546,8 +624,10 @@ static void internal_check_chunked_alias_guards(stream_guard_fixture_t* fixture)
   TEST_ASSERT_EQ(0, memcmp(&saved, &fixture->reader, sizeof(saved)));
 
   union {
+    /** @brief Reader view used as the source object. */
     ra8_book_chunked_t reader;
-    uint8_t            chunk[k_stream_chunk];
+    /** @brief Aliased transfer destination under test. */
+    uint8_t chunk[k_stream_chunk];
   } reader_chunk_alias = {.reader = fixture->reader};
   hdr.total_size       = UINT32_MAX;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,

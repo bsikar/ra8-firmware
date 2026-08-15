@@ -4,7 +4,7 @@
  *
  * @details
  * Geometry parsing is shared with the resident open through
- * `ra8_book_container_header_fields()` / `ra8_book_container_table_entry()`
+ * `priv_book_container_header_fields()` / `priv_book_container_table_entry()`
  * (ra8_book_internal.h), so the container format has exactly one in-firmware
  * definition. This TU adds the callback-driven half: the header and chunk
  * table are pulled through the caller's file reader at open, and each
@@ -114,11 +114,10 @@ internal_table_check(const ra8_book_chunked_t* rd, const uint64_t* table_buf, ui
  *
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_load_table(ra8_book_chunked_t* rd,
-                                     uint64_t            file_len,
-                                     uint64_t*           table_buf,
-                                     uint32_t            table_cap_entries)
+RA8_INTERNAL static ra8_err_t internal_load_table(ra8_book_chunked_t* rd,
+                                                  uint64_t            file_len,
+                                                  uint64_t*           table_buf,
+                                                  uint32_t            table_cap_entries)
 {
   const uint64_t entries     = (uint64_t)rd->chunk_count + 1U;
   const uint64_t table_bytes = entries * k_ra8_book_container_entry_len;
@@ -179,11 +178,10 @@ static ra8_err_t internal_load_table(ra8_book_chunked_t* rd,
  *
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_chunked_open_body(ra8_book_chunked_t* rd,
-                                            uint64_t            file_len,
-                                            uint64_t*           table_buf,
-                                            uint32_t            table_cap_entries)
+RA8_INTERNAL static ra8_err_t internal_chunked_open_body(ra8_book_chunked_t* rd,
+                                                         uint64_t            file_len,
+                                                         uint64_t*           table_buf,
+                                                         uint32_t            table_cap_entries)
 {
   if (file_len < (uint64_t)k_ra8_book_container_header_len) {
     return k_ra8_err_invalid_size;
@@ -194,7 +192,7 @@ static ra8_err_t internal_chunked_open_body(ra8_book_chunked_t* rd,
     return err;
   }
   err =
-    ra8_book_container_header_fields(hdr, &rd->chunk_bytes, &rd->inflated_total, &rd->chunk_count);
+    priv_book_container_header_fields(hdr, &rd->chunk_bytes, &rd->inflated_total, &rd->chunk_count);
   if (err != k_ra8_ok) {
     return err;
   }
