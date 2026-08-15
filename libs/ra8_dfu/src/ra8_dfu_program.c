@@ -56,9 +56,9 @@ static const ra8_flash_cfg_t s_ra8_dfu_flash_cfg = {
   .ecc_decoder_enable = true,
 };
 
-/** @brief Implementation of `ra8_dfu_internal_write_secure()` -- IRQ-masked,
+/** @brief Implementation of `priv_dfu_write_secure()` -- IRQ-masked,
  *         page-at-a-time erase-then-program through the secure MRAM gate. */
-ra8_err_t ra8_dfu_internal_write_secure(uintptr_t addr, const uint8_t* src, uint32_t len)
+RA8_PRIV ra8_err_t priv_dfu_write_secure(uintptr_t addr, const uint8_t* src, uint32_t len)
 {
   if ((src == nullptr) || (len == 0U)) {
     return k_ra8_err_invalid_arg;
@@ -220,7 +220,7 @@ ra8_err_t ra8_dfu_program_image(ra8_dfu_slot_t inactive,
     return k_ra8_err_invalid_arg;
   }
   const uintptr_t dst = base + (uintptr_t)img_offset;
-  return ra8_dfu_internal_write_secure(dst, data, len);
+  return priv_dfu_write_secure(dst, data, len);
 }
 
 ra8_err_t ra8_dfu_program_commit(ra8_dfu_slot_t inactive, uint32_t img_len, uint32_t seq)
@@ -244,9 +244,9 @@ ra8_err_t ra8_dfu_program_commit(ra8_dfu_slot_t inactive, uint32_t img_len, uint
    * the header erased (invalid), never a valid header over a partial image.
    * internal_write_secure masks IRQs across the page program so no ISR fetches
    * code-MRAM while the header page is being written. */
-  return ra8_dfu_internal_write_secure(base + (uintptr_t)k_ra8_dfu_hdr_offset,
-                                       (const uint8_t*)&hdr,
-                                       (uint32_t)k_ra8_dfu_hdr_size);
+  return priv_dfu_write_secure(base + (uintptr_t)k_ra8_dfu_hdr_offset,
+                               (const uint8_t*)&hdr,
+                               (uint32_t)k_ra8_dfu_hdr_size);
 }
 
 ra8_err_t ra8_dfu_program_verify(ra8_dfu_slot_t slot)
