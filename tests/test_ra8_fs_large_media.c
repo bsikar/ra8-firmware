@@ -28,9 +28,9 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_sparse_backend_test_util.h"
@@ -81,7 +81,7 @@ static sparse_disk_t s_sp;
 static sparse_window_t s_win;
 
 /** @brief Microsoft Basic Data type GUID, on-disk byte order. */
-static const uint8_t k_lm_basic_guid[k_lm_guid_len] = {
+static const uint8_t s_lm_basic_guid[k_lm_guid_len] = {
   0xA2U,
   0xA0U,
   0xD0U,
@@ -100,16 +100,16 @@ static const uint8_t k_lm_basic_guid[k_lm_guid_len] = {
   0xC7U,
 };
 
-/** @brief Store @p v little-endian at @p off of @p sec. */
-static void lm_put64(uint8_t* sec, uint32_t off, uint64_t v)
+/** @brief Store @p v little-endian at @p off of @p sec. @details Implements the bounded lm put64 fixture step using caller-owned state. @param[in,out] sec Value required by this filesystem vector. @param[in] off Value required by this filesystem vector. @param[in] v Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_lm_put64(uint8_t* sec, uint32_t off, uint64_t v)
 {
   for (uint32_t i = 0U; i < (uint32_t)sizeof(uint64_t); i++) {
     sec[off + i] = (uint8_t)(v >> (i * 8U));
   }
 }
 
-/** @brief Lay the protective MBR + GPT naming ::k_lm_volume_lba as entry 0. */
-static void lm_write_gpt(void)
+/** @brief Lay the protective MBR + GPT naming ::k_lm_volume_lba as entry 0. @details Implements the bounded lm write gpt fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_lm_write_gpt(void)
 {
   uint8_t sec[k_sp_sector_max] = {};
 
@@ -118,26 +118,26 @@ static void lm_write_gpt(void)
   sec[k_lm_off_part0_lba]  = 1U;
   sec[k_lm_off_sig_lo]     = (uint8_t)k_lm_sig_lo;
   sec[k_lm_off_sig_hi]     = (uint8_t)k_lm_sig_hi;
-  sp_poke(&s_sp, 0U, sec);
+  internal_sp_poke(&s_sp, 0U, sec);
 
   /* GPT header: "EFI PART", entry array at LBA 2, four 128-byte entries. */
   memset(sec, 0, sizeof(sec));
   static const char k_efi_sig[] = "EFI PART";
   memcpy(sec, k_efi_sig, sizeof(k_efi_sig) - 1U);
-  lm_put64(sec, (uint32_t)k_lm_off_entry_lba, (uint64_t)k_lm_gpt_arr_lba);
+  internal_lm_put64(sec, (uint32_t)k_lm_off_entry_lba, (uint64_t)k_lm_gpt_arr_lba);
   sec[k_lm_off_entry_cnt]  = (uint8_t)k_lm_entry_count;
   sec[k_lm_off_entry_size] = (uint8_t)k_lm_entry_bytes;
-  sp_poke(&s_sp, (uint64_t)k_lm_gpt_hdr_lba, sec);
+  internal_sp_poke(&s_sp, (uint64_t)k_lm_gpt_hdr_lba, sec);
 
   /* Entry 0: Basic Data, FirstLBA past 2 TiB. Entries 1-3 stay null. */
   memset(sec, 0, sizeof(sec));
-  memcpy(sec, k_lm_basic_guid, (size_t)k_lm_guid_len);
-  lm_put64(sec, (uint32_t)k_lm_ent_first_lba, (uint64_t)k_lm_volume_lba);
-  sp_poke(&s_sp, (uint64_t)k_lm_gpt_arr_lba, sec);
+  memcpy(sec, s_lm_basic_guid, (size_t)k_lm_guid_len);
+  internal_lm_put64(sec, (uint32_t)k_lm_ent_first_lba, (uint64_t)k_lm_volume_lba);
+  internal_sp_poke(&s_sp, (uint64_t)k_lm_gpt_arr_lba, sec);
 }
 
-/** @brief Fill @p buf with a position-dependent pattern from @p seed. */
-static void lm_pattern(uint8_t* buf, uint32_t len, uint8_t seed)
+/** @brief Fill @p buf with a position-dependent pattern from @p seed. @details Implements the bounded lm pattern fixture step using caller-owned state. @param[in,out] buf Caller-owned bounded byte storage. @param[in] len Value required by this filesystem vector. @param[in] seed Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_lm_pattern(uint8_t* buf, uint32_t len, uint8_t seed)
 {
   for (uint32_t i = 0U; i < len; i++) {
     buf[i] = (uint8_t)(seed ^ (uint8_t)(i & (uint32_t)k_lm_byte_mask));
@@ -151,28 +151,28 @@ static void lm_pattern(uint8_t* buf, uint32_t len, uint8_t seed)
  * @par MC/DC:
  * (no compound decision unique to this case -- it drives the 64-bit GPT entry
  * read, the 64-bit `partition_base_lba`, and the mount's absolute addressing
- * end to end)
+ * end to end) @details Runs the large media plant and mount vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_large_media_plant_and_mount(void)
+RA8_INTERNAL static void internal_test_large_media_plant_and_mount(void)
 {
   TEST_BEGIN("large media: exFAT volume at 2 TiB mounts through its GPT entry");
-  sp_init(&s_sp, (uint64_t)k_lm_disk_blocks, (uint32_t)k_lm_bps);
+  internal_sp_init(&s_sp, (uint64_t)k_lm_disk_blocks, (uint32_t)k_lm_bps);
   s_win.disk  = &s_sp;
   s_win.base  = (uint64_t)k_lm_window_base;
   s_win.count = (uint64_t)k_lm_window_blocks;
 
   /* Plant the volume: the formatter runs against the WINDOW, so every sector
    * it writes lands past 2 TiB on the underlying device. */
-  const ra8_fs_backend_t wbe  = spw_backend(&s_win);
+  const ra8_fs_backend_t wbe  = internal_spw_backend(&s_win);
   ra8_fs_format_opts_t   opts = {};
   opts.type                   = k_ra8_fs_type_exfat;
   opts.label                  = "TBVOL";
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&wbe, &opts));
   TEST_ASSERT(s_sp.max_written >= (uint64_t)k_lm_window_base);
-  lm_write_gpt();
+  internal_lm_write_gpt();
 
   /* Auto-select: protective MBR -> GPT -> the Basic Data entry past 2 TiB. */
-  const ra8_fs_backend_t be = sp_backend(&s_sp);
+  const ra8_fs_backend_t be = internal_sp_backend(&s_sp);
   ra8_fs_mount_t*        m  = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&be, &m));
   TEST_ASSERT_EQ(k_ra8_fs_type_exfat, m->type);
@@ -194,20 +194,20 @@ static void test_large_media_plant_and_mount(void)
  *
  * @par MC/DC:
  * (no compound decision unique to this case -- content round-trips through
- * 64-bit absolute LBAs, with the store's high-water marks as the proof)
+ * 64-bit absolute LBAs, with the store's high-water marks as the proof) @details Runs the large media file io vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_large_media_file_io(void)
+RA8_INTERNAL static void internal_test_large_media_file_io(void)
 {
   TEST_BEGIN("large media: files round-trip through absolute LBAs past 2^32");
-  const ra8_fs_backend_t be = sp_backend(&s_sp);
+  const ra8_fs_backend_t be = internal_sp_backend(&s_sp);
   ra8_fs_mount_t*        m  = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&be, &m));
 
-  static uint8_t s_out[k_lm_payload];
-  static uint8_t s_in[k_lm_payload];
-  lm_pattern(s_out, (uint32_t)k_lm_payload, (uint8_t)k_lm_seed);
+  static uint8_t out[k_lm_payload];
+  static uint8_t in[k_lm_payload];
+  internal_lm_pattern(out, (uint32_t)k_lm_payload, (uint8_t)k_lm_seed);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(m, "/logs"));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(m, "/logs/run.bin", s_out, (uint32_t)k_lm_payload));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(m, "/logs/run.bin", out, (uint32_t)k_lm_payload));
 
   ra8_fs_stat_t st = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_stat(m, "/logs/run.bin", &st));
@@ -216,9 +216,9 @@ static void test_large_media_file_io(void)
   ra8_fs_file_t* f   = nullptr;
   uint32_t       got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(m, "/logs/run.bin", k_ra8_fs_mode_read, &f));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_in, (uint32_t)k_lm_payload, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, in, (uint32_t)k_lm_payload, &got));
   TEST_ASSERT_EQ(k_lm_payload, got);
-  TEST_ASSERT_EQ(0, memcmp(s_in, s_out, (size_t)k_lm_payload));
+  TEST_ASSERT_EQ(0, memcmp(in, out, (size_t)k_lm_payload));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(m));
 
@@ -233,8 +233,7 @@ static void test_large_media_file_io(void)
 /** @brief Implementation of `main()` -- the beyond-2-TiB campaign, in order. */
 int32_t main(void)
 {
-  test_large_media_plant_and_mount();
-  test_large_media_file_io();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_large_media.c\n");
+  internal_test_large_media_plant_and_mount();
+  internal_test_large_media_file_io();
   return 0;
 }

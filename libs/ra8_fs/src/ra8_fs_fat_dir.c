@@ -16,10 +16,25 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "ra8_attributes.h"
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
+
+/** @brief Private state stored inside one public opaque directory cursor. */
+typedef struct {
+  ra8_fs_mount_t* mount;        /**< Mounted volume retained by open.     */
+  dir_walk_t      fat_walk;     /**< FAT sector and cluster position.     */
+  lfn_state_t     fat_lfn;      /**< FAT long-name state across sectors.  */
+  exfat_cursor_t  exfat_cursor; /**< exFAT entry-set position.            */
+  bool            finished;     /**< Clean end-of-directory was observed. */
+} ra8_fs_dir_private_t;
+
+static_assert(sizeof(ra8_fs_dir_private_t) <= (size_t)k_ra8_fs_dir_state_bytes,
+              "ra8_fs directory cursor state exceeds public storage");
+static_assert(alignof(ra8_fs_dir_private_t) <= alignof(uint64_t),
+              "ra8_fs directory cursor state alignment exceeds public storage");
 
 /* =============================================================================
  * Public API: listdir / unlink
@@ -53,11 +68,11 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_listdir_visit_sector(const ra8_fs_mount_t* m,
-                                         const uint8_t*        buf,
-                                         lfn_state_t*          lfn,
-                                         ra8_fs_listdir_cb_t   cb,
-                                         void*                 ctx)
+static uint8_t internal_listdir_visit_sector(const ra8_fs_mount_t* m,
+                                             const uint8_t*        buf,
+                                             lfn_state_t*          lfn,
+                                             ra8_fs_listdir_cb_t   cb,
+                                             void*                 ctx)
 {
   for (uint32_t e = 0; e < priv_dir_eps(m); e++) {
     const uint8_t* ent = &buf[(size_t)e * (size_t)k_ra8_fs_dir_entry_bytes];
@@ -142,7 +157,7 @@ static uint8_t priv_listdir_visit_sector(const ra8_fs_mount_t* m,
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
 static ra8_err_t
-priv_listdir_locked(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb, void* ctx)
+internal_listdir_locked(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb, void* ctx)
 {
   if (handle == nullptr || cb == nullptr || path == nullptr) {
     return k_ra8_err_null_ptr;
@@ -178,7 +193,7 @@ priv_listdir_locked(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_
     if (err != k_ra8_ok) {
       return err;
     }
-    if (priv_listdir_visit_sector(handle, buf, &lfn, cb, ctx) != 0U) {
+    if (internal_listdir_visit_sector(handle, buf, &lfn, cb, ctx) != 0U) {
       return k_ra8_ok;
     }
     err = priv_dir_walk_next_sector(handle, &w, &eod);
@@ -187,6 +202,128 @@ priv_listdir_locked(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_
     }
   }
   return k_ra8_ok;
+}
+
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+/**
+ * @brief Copy one visible FAT entry from an independent cursor.
+ * @details Walks bounded directory sectors, assembles valid LFN fragments,
+ *          and copies one stable name/attribute/size value per successful step.
+ * @param[in,out] state Open private cursor state.
+ * @param[out] out Stable copied entry value.
+ * @param[out] out_entry True for one copied entry; false at clean end.
+ * @return Media, corruption, conversion, or clean-end status.
+ * @retval k_ra8_ok One entry was copied or clean end was reached.
+ * @retval k_ra8_err_* Sector-walk, media-read, or name-conversion failure.
+ * @pre Required pointers are non-NULL and the filesystem lock is held.
+ * @pre @p state was initialized for a mounted FAT volume.
+ * @post The cursor advances monotonically and @p out never borrows sector scratch.
+ * @post Clean end leaves @p out_entry false without publishing scratch bytes.
+ * @note A sector is re-read on a later call; total work remains linear in entries.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_fat_dir_next(ra8_fs_dir_private_t* state, ra8_fs_dirent_t* out, bool* out_entry)
+{
+  *out_entry = false;
+  while (!state->finished) {
+    if (state->fat_walk.entry_idx >= priv_bps(state->mount)) {
+      uint8_t         end  = 0U;
+      const ra8_err_t step = priv_dir_walk_next_sector(state->mount, &state->fat_walk, &end);
+      if ((step != k_ra8_ok) || (end != 0U)) {
+        state->finished = end != 0U;
+        return step;
+      }
+    }
+    uint8_t* const sector = priv_sec_walk();
+    ra8_err_t      err    = priv_read_sector(state->mount, state->fat_walk.cur_lba, sector);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+    while (state->fat_walk.entry_idx < priv_bps(state->mount)) {
+      const uint8_t* entry = &sector[state->fat_walk.entry_idx];
+      state->fat_walk.entry_idx += (uint32_t)k_ra8_fs_dir_entry_bytes;
+      if (entry[k_dir_off_name] == k_dir_marker_free_perm) {
+        state->finished = true;
+        return k_ra8_ok;
+      }
+      if (entry[k_dir_off_name] == k_dir_marker_free_used) {
+        priv_lfn_reset(&state->fat_lfn);
+        continue;
+      }
+      if (entry[k_dir_off_attr] == k_ra8_fs_attr_lfn) {
+        priv_lfn_add(&state->fat_lfn, entry);
+        continue;
+      }
+      if (entry[k_dir_off_name] == k_dir_marker_dot) {
+        priv_lfn_reset(&state->fat_lfn);
+        continue;
+      }
+      char short_name[(uint32_t)k_ra8_fs_short_name_len + 1U] = {};
+      char long_name[k_lfn_utf8_cap]                          = {};
+      priv_83_to_str(&entry[k_dir_off_name], entry[k_dir_off_ntres], short_name);
+      uint32_t        units = 0U;
+      const uint16_t* name_units =
+        priv_lfn_units_for(&state->fat_lfn, &entry[k_dir_off_name], &units);
+      const char* name = short_name;
+      if ((name_units != nullptr) &&
+          (priv_utf16_to_utf8(name_units, units, long_name, (uint32_t)sizeof(long_name)) ==
+           k_ra8_ok)) {
+        name = long_name;
+      }
+      (void)memcpy(out->name, name, strlen(name) + 1U);
+      out->attr       = entry[k_dir_off_attr];
+      out->size_bytes = (uint64_t)priv_rd32(&entry[k_dir_off_file_size]);
+      priv_lfn_reset(&state->fat_lfn);
+      *out_entry = true;
+      return k_ra8_ok;
+    }
+  }
+  return k_ra8_ok;
+}
+
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+/**
+ * @brief Resolve and initialize one private filesystem cursor.
+ * @details Selects FAT or exFAT path resolution from the mounted format and
+ *          initializes only the matching caller-owned walk state.
+ * @param[in,out] handle Mounted filesystem.
+ * @param[in] path Directory path.
+ * @param[out] state Zeroed private cursor state.
+ * @return Resolution or mount status.
+ * @retval k_ra8_ok One format-specific cursor is ready.
+ * @retval k_ra8_err_invalid_state The mount is not active.
+ * @retval k_ra8_err_* Path resolution or media failure.
+ * @pre Required pointers are non-NULL and the filesystem lock is held.
+ * @pre @p state addresses writable private cursor storage.
+ * @post Success initializes exactly one format-specific cursor.
+ * @post Failure publishes no open public cursor handle.
+ * @note No resource remains locked after the public wrapper returns.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_dir_open_locked(ra8_fs_mount_t* handle, const char* path, ra8_fs_dir_private_t* state)
+{
+  if (handle->in_use == 0U) {
+    return k_ra8_err_invalid_state;
+  }
+  *state        = (ra8_fs_dir_private_t){.mount = handle};
+  ra8_err_t err = k_ra8_ok;
+  if (handle->type == k_ra8_fs_type_exfat) {
+    exfat_dir_t dir = {};
+    err             = priv_exfat_resolve_dir(handle, path, &dir);
+    if (err == k_ra8_ok) {
+      priv_exfat_cursor_init(&dir, &state->exfat_cursor);
+    }
+  } else {
+    dir_loc_t location = {};
+    err                = priv_resolve_dir(handle, path, &location);
+    if (err == k_ra8_ok) {
+      priv_dir_walk_init_loc(handle, &location, &state->fat_walk);
+      priv_lfn_reset(&state->fat_lfn);
+    }
+  }
+  return err;
 }
 
 /**
@@ -220,10 +357,10 @@ priv_listdir_locked(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_unlink_locate(const ra8_fs_mount_t* handle,
-                                    const char*           path,
-                                    dir_target_t*         out,
-                                    uint32_t*             out_cluster)
+static ra8_err_t internal_unlink_locate(const ra8_fs_mount_t* handle,
+                                        const char*           path,
+                                        dir_target_t*         out,
+                                        uint32_t*             out_cluster)
 {
   const char*     leaf = nullptr;
   const ra8_err_t rerr = priv_resolve_parent(handle, path, &out->parent, &leaf);
@@ -284,7 +421,7 @@ static ra8_err_t priv_unlink_locate(const ra8_fs_mount_t* handle,
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_unlink_locked(ra8_fs_mount_t* handle, const char* path)
+static ra8_err_t internal_unlink_locked(ra8_fs_mount_t* handle, const char* path)
 {
   if (handle == nullptr || path == nullptr) {
     return k_ra8_err_null_ptr;
@@ -297,7 +434,7 @@ static ra8_err_t priv_unlink_locked(ra8_fs_mount_t* handle, const char* path)
   }
   dir_target_t    t       = {};
   uint32_t        cluster = 0;
-  const ra8_err_t lerr    = priv_unlink_locate(handle, path, &t, &cluster);
+  const ra8_err_t lerr    = internal_unlink_locate(handle, path, &t, &cluster);
   if (lerr != k_ra8_ok) {
     return lerr;
   }
@@ -344,12 +481,12 @@ static ra8_err_t priv_unlink_locked(ra8_fs_mount_t* handle, const char* path)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_rename_prepare(const ra8_fs_mount_t* handle,
-                                     const char*           old_path,
-                                     const char*           new_path,
-                                     dir_loc_t*            out_parent,
-                                     const char**          out_old,
-                                     const char**          out_new)
+static ra8_err_t internal_rename_prepare(const ra8_fs_mount_t* handle,
+                                         const char*           old_path,
+                                         const char*           new_path,
+                                         dir_loc_t*            out_parent,
+                                         const char**          out_old,
+                                         const char**          out_new)
 {
   dir_loc_t   op = {};
   const char* ol = nullptr;
@@ -418,12 +555,12 @@ static ra8_err_t priv_rename_prepare(const ra8_fs_mount_t* handle,
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_fat_rename(const ra8_fs_mount_t* handle, const char* old_path, const char* new_path)
+internal_fat_rename(const ra8_fs_mount_t* handle, const char* old_path, const char* new_path)
 {
   dir_target_t t    = {};
   const char*  ol   = nullptr;
   const char*  nl   = nullptr;
-  ra8_err_t    perr = priv_rename_prepare(handle, old_path, new_path, &t.parent, &ol, &nl);
+  ra8_err_t    perr = internal_rename_prepare(handle, old_path, new_path, &t.parent, &ol, &nl);
   if (perr != k_ra8_ok) {
     return perr;
   }
@@ -483,7 +620,7 @@ priv_fat_rename(const ra8_fs_mount_t* handle, const char* old_path, const char* 
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
 static ra8_err_t
-priv_rename_locked(ra8_fs_mount_t* handle, const char* old_path, const char* new_path)
+internal_rename_locked(ra8_fs_mount_t* handle, const char* old_path, const char* new_path)
 {
   if (handle == nullptr) {
     return k_ra8_err_null_ptr;
@@ -500,7 +637,7 @@ priv_rename_locked(ra8_fs_mount_t* handle, const char* old_path, const char* new
   if (handle->type == k_ra8_fs_type_exfat) {
     return priv_exfat_rename(handle, old_path, new_path);
   }
-  return priv_fat_rename(handle, old_path, new_path);
+  return internal_fat_rename(handle, old_path, new_path);
 }
 
 /* =============================================================================
@@ -513,16 +650,79 @@ ra8_err_t
 ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb, void* ctx)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_listdir_locked(handle, path, cb, ctx);
+  const ra8_err_t err = internal_listdir_locked(handle, path, cb, ctx);
   priv_lock_release();
   return err;
+}
+
+RA8_OWNS_RESOURCE("ra8_fs_lock")
+ra8_err_t ra8_fs_dir_open(ra8_fs_mount_t* handle, const char* path, ra8_fs_dir_t* directory)
+{
+  if ((handle == nullptr) || (path == nullptr) || (directory == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  if (directory->is_open) {
+    return k_ra8_err_busy;
+  }
+  void*                       state_memory = directory->state;
+  ra8_fs_dir_private_t* const state        = state_memory;
+  priv_lock_acquire();
+  const ra8_err_t err = internal_dir_open_locked(handle, path, state);
+  priv_lock_release();
+  if (err == k_ra8_ok) {
+    directory->is_open = true;
+  } else {
+    (void)memset(directory->state, 0, sizeof(directory->state));
+  }
+  return err;
+}
+
+RA8_OWNS_RESOURCE("ra8_fs_lock")
+ra8_err_t ra8_fs_dir_next(ra8_fs_dir_t* directory, ra8_fs_dirent_t* out, bool* out_entry)
+{
+  if ((directory == nullptr) || (out == nullptr) || (out_entry == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  if (!directory->is_open) {
+    return k_ra8_err_invalid_state;
+  }
+  *out                                     = (ra8_fs_dirent_t){};
+  *out_entry                               = false;
+  void*                       state_memory = directory->state;
+  ra8_fs_dir_private_t* const state        = state_memory;
+  priv_lock_acquire();
+  ra8_err_t err = (state->mount->in_use != 0U) ? k_ra8_ok : k_ra8_err_invalid_state;
+  if ((err == k_ra8_ok) && !state->finished) {
+    if (state->mount->type == k_ra8_fs_type_exfat) {
+      err = priv_exfat_dir_next(state->mount, &state->exfat_cursor, out, out_entry);
+    } else {
+      err = internal_fat_dir_next(state, out, out_entry);
+    }
+  }
+  if ((err == k_ra8_ok) && !*out_entry) {
+    state->finished = true;
+  }
+  priv_lock_release();
+  return err;
+}
+
+ra8_err_t ra8_fs_dir_close(ra8_fs_dir_t* directory)
+{
+  if (directory == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (!directory->is_open) {
+    return k_ra8_err_invalid_state;
+  }
+  *directory = (ra8_fs_dir_t){};
+  return k_ra8_ok;
 }
 
 RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_unlink(ra8_fs_mount_t* handle, const char* path)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_unlink_locked(handle, path);
+  const ra8_err_t err = internal_unlink_locked(handle, path);
   priv_lock_release();
   return err;
 }
@@ -531,7 +731,7 @@ RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_rename_locked(handle, old_path, new_path);
+  const ra8_err_t err = internal_rename_locked(handle, old_path, new_path);
   priv_lock_release();
   return err;
 }

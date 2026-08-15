@@ -22,6 +22,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_fs_meta.h"
 #include "test_ra8_fs_format_fixture.h"
 
@@ -51,14 +52,15 @@ typedef enum : uint32_t {
   k_at_csum_wrap  = 0x8000U, /**< exFAT SetChecksum rotate wrap bit.   */
 } attr_off_t;
 
-static uint16_t img_rd16(uint32_t off)
+/** @brief Perform the img rd16 filesystem operation. @details Implements the bounded img rd16 fixture step using caller-owned state. @param[in] off Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static uint16_t internal_img_rd16(uint32_t off)
 {
   return (uint16_t)((uint16_t)s_disk.bytes[off] |
                     (uint16_t)((uint16_t)s_disk.bytes[off + 1U] << (uint16_t)k_at_shl_b1));
 }
 
-/** @brief Byte offset of the first regular FAT file entry in the fixed root. */
-static uint32_t fat_file_off(const ra8_fs_mount_t* h)
+/** @brief Byte offset of the first regular FAT file entry in the fixed root. @details Implements the bounded fat file off fixture step using caller-owned state. @param[in] h Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint32_t internal_fat_file_off(const ra8_fs_mount_t* h)
 {
   const uint32_t base = (h->partition_base_lba + h->first_root_lba) * (uint32_t)k_fmt_block_size;
   for (uint32_t e = 0U; e < h->root_entries; e++) {
@@ -83,8 +85,8 @@ static uint32_t fat_file_off(const ra8_fs_mount_t* h)
   return 0U;
 }
 
-/** @brief Byte offset of the exFAT File entry (0x85) in the root cluster. */
-static uint32_t exfat_file_off(const ra8_fs_mount_t* h)
+/** @brief Byte offset of the exFAT File entry (0x85) in the root cluster. @details Implements the bounded exfat file off fixture step using caller-owned state. @param[in] h Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint32_t internal_exfat_file_off(const ra8_fs_mount_t* h)
 {
   const uint32_t root =
     (h->partition_base_lba + h->first_data_lba +
@@ -102,8 +104,8 @@ static uint32_t exfat_file_off(const ra8_fs_mount_t* h)
   return 0U;
 }
 
-/** @brief exFAT SetChecksum over @p count entries at @p off (skips File csum). */
-static uint16_t exfat_img_setcsum(uint32_t off, uint32_t count)
+/** @brief exFAT SetChecksum over @p count entries at @p off (skips File csum). @details Implements the bounded exfat img setcsum fixture step using caller-owned state. @param[in] off Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint16_t internal_exfat_img_setcsum(uint32_t off, uint32_t count)
 {
   uint16_t cs = 0U;
   for (uint32_t i = 0U; i < (count * (uint32_t)k_at_entry_size); i++) {
@@ -116,8 +118,8 @@ static uint16_t exfat_img_setcsum(uint32_t off, uint32_t count)
   return cs;
 }
 
-/** @brief The attribute byte ra8_fs_stat reports for @p name. */
-static uint8_t stat_attr(ra8_fs_mount_t* h, const char* name)
+/** @brief The attribute byte ra8_fs_stat reports for @p name. @details Implements the bounded stat attr fixture step using caller-owned state. @param[in,out] h Value required by this filesystem vector. @param[in] name Validated fixture path or name value. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint8_t internal_stat_attr(ra8_fs_mount_t* h, const char* name)
 {
   ra8_fs_stat_t st = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_stat(h, name, &st));
@@ -127,9 +129,10 @@ static uint8_t stat_attr(ra8_fs_mount_t* h, const char* name)
 static const uint8_t s_body[4] = {'d', 'a', 't', 'a'};
 
 /** @brief Format @p type, mount, and create @p name holding "data". */
-static ra8_fs_mount_t* fmt_mount_file(uint32_t blocks, ra8_fs_type_t type, const char* name)
+RA8_INTERNAL static ra8_fs_mount_t*
+internal_fmt_mount_file(uint32_t blocks, ra8_fs_type_t type, const char* name)
 {
-  alloc_garbage_card(blocks);
+  internal_alloc_garbage_card(blocks);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = type;
   opts.label                = "ATTR";
@@ -156,9 +159,10 @@ static ra8_fs_mount_t* fmt_mount_file(uint32_t blocks, ra8_fs_type_t type, const
  * `libs/ra8_fs/src/ra8_fs_fat_exfat_openw.c@priv_exfat_open_found` reaches the
  * same behaviour with a SINGLE-condition read-only check -- `priv_exfat_open`
  * dispatches read opens away before it -- and both truth values of that one
- * condition are driven here (V3 true, Vc false).
+ * condition are driven here (V3 true, Vc false). @details Implements the bounded assert readonly refuses fixture step using caller-owned state. @param[in,out] h Value required by this filesystem vector. @param[in] name Validated fixture path or name value. @param[in] other Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void assert_readonly_refuses(ra8_fs_mount_t* h, const char* name, const char* other)
+RA8_INTERNAL static void
+internal_assert_readonly_refuses(ra8_fs_mount_t* h, const char* name, const char* other)
 {
   ra8_fs_file_t* f = nullptr;
   /* Mutating paths are all refused. */
@@ -184,21 +188,22 @@ static void assert_readonly_refuses(ra8_fs_mount_t* h, const char* name, const c
  * @par MC/DC:
  * See ::assert_readonly_refuses for the open-guard decision. The unlink and
  * rename guards are single-condition (the read-only bit alone), driven true here
- * and false after the bit is cleared.
+ * and false after the bit is cleared. @brief Exercise the attr honor fat filesystem operation. @details Runs the attr honor fat vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_attr_honor_fat(void)
+RA8_INTERNAL static void internal_test_attr_honor_fat(void)
 {
   TEST_BEGIN("ra8_fs set_attr: FAT16 read-only honored on write/unlink/rename, read allowed");
-  ra8_fs_mount_t* h = fmt_mount_file((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16, "RO.BIN");
+  ra8_fs_mount_t* h =
+    internal_fmt_mount_file((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16, "RO.BIN");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_attr(h, "RO.BIN", (uint8_t)k_ra8_fs_attr_read_only, 0U));
-  TEST_ASSERT((stat_attr(h, "RO.BIN") & (uint8_t)k_at_attr_ro) != 0U);
-  assert_readonly_refuses(h, "RO.BIN", "RW.BIN");
+  TEST_ASSERT((internal_stat_attr(h, "RO.BIN") & (uint8_t)k_at_attr_ro) != 0U);
+  internal_assert_readonly_refuses(h, "RO.BIN", "RW.BIN");
 
   /* Clear the bit -> write and unlink succeed again (isolates the mode/bit
    * conditions of the open guard, and drives the unlink/rename guards false). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_attr(h, "RO.BIN", 0U, (uint8_t)k_ra8_fs_attr_read_only));
-  TEST_ASSERT((stat_attr(h, "RO.BIN") & (uint8_t)k_at_attr_ro) == 0U);
+  TEST_ASSERT((internal_stat_attr(h, "RO.BIN") & (uint8_t)k_at_attr_ro) == 0U);
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "RO.BIN", k_ra8_fs_mode_write, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
@@ -206,7 +211,7 @@ static void test_attr_honor_fat(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "RW.BIN"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs set_attr: FAT16 read-only honored on write/unlink/rename, read allowed");
 }
 
@@ -214,25 +219,27 @@ static void test_attr_honor_fat(void)
  * @test test_attr_honor_exfat
  * @par MC/DC:
  * The exFAT open guard mirrors the FAT one (see ::assert_readonly_refuses); the
- * unlink/rename guards are single-condition, exercised true then false.
+ * unlink/rename guards are single-condition, exercised true then false. @brief Exercise the attr honor exfat filesystem operation. @details Runs the attr honor exfat vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_attr_honor_exfat(void)
+RA8_INTERNAL static void internal_test_attr_honor_exfat(void)
 {
   TEST_BEGIN("ra8_fs set_attr: exFAT read-only honored on write/unlink/rename, read allowed");
-  ra8_fs_mount_t* h = fmt_mount_file((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat, "RO.BIN");
+  ra8_fs_mount_t* h =
+    internal_fmt_mount_file((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat, "RO.BIN");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_attr(h, "RO.BIN", (uint8_t)k_ra8_fs_attr_read_only, 0U));
-  TEST_ASSERT((stat_attr(h, "RO.BIN") & (uint8_t)k_at_attr_ro) != 0U);
+  TEST_ASSERT((internal_stat_attr(h, "RO.BIN") & (uint8_t)k_at_attr_ro) != 0U);
 
   /* The set-attr patch left the entry set intact (SetChecksum still matches). */
-  const uint32_t off   = exfat_file_off(h);
+  const uint32_t off   = internal_exfat_file_off(h);
   const uint32_t count = 1U + (uint32_t)s_disk.bytes[off + (uint32_t)k_at_xf_secnt];
-  TEST_ASSERT_EQ(exfat_img_setcsum(off, count), img_rd16(off + (uint32_t)k_at_xf_csum));
+  TEST_ASSERT_EQ(internal_exfat_img_setcsum(off, count),
+                 internal_img_rd16(off + (uint32_t)k_at_xf_csum));
 
-  assert_readonly_refuses(h, "RO.BIN", "RW.BIN");
+  internal_assert_readonly_refuses(h, "RO.BIN", "RW.BIN");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_attr(h, "RO.BIN", 0U, (uint8_t)k_ra8_fs_attr_read_only));
-  TEST_ASSERT((stat_attr(h, "RO.BIN") & (uint8_t)k_at_attr_ro) == 0U);
+  TEST_ASSERT((internal_stat_attr(h, "RO.BIN") & (uint8_t)k_at_attr_ro) == 0U);
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "RO.BIN", k_ra8_fs_mode_write, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
@@ -244,7 +251,7 @@ static void test_attr_honor_exfat(void)
   ra8_fs_mount_t* h2 = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h2));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h2));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs set_attr: exFAT read-only honored on write/unlink/rename, read allowed");
 }
 
@@ -254,9 +261,9 @@ static void test_attr_honor_exfat(void)
  * @par MC/DC:
  * (no compound decision unique to this helper -- each of the four settable bits
  * is set then cleared and the change is read back through `ra8_fs_stat`, which
- * proves the round-trip and that `stat` reporting stays truthful)
+ * proves the round-trip and that `stat` reporting stays truthful) @details Implements the bounded assert each bit round trips fixture step using caller-owned state. @param[in,out] h Value required by this filesystem vector. @param[in] name Validated fixture path or name value. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void assert_each_bit_round_trips(ra8_fs_mount_t* h, const char* name)
+RA8_INTERNAL static void internal_assert_each_bit_round_trips(ra8_fs_mount_t* h, const char* name)
 {
   static const uint8_t bits[4] = {(uint8_t)k_at_attr_ro,
                                   (uint8_t)k_at_attr_hid,
@@ -265,11 +272,11 @@ static void assert_each_bit_round_trips(ra8_fs_mount_t* h, const char* name)
   for (uint32_t i = 0U; i < 4U; i++) {
     const uint8_t b = bits[i];
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_attr(h, name, b, 0U));
-    TEST_ASSERT((stat_attr(h, name) & b) != 0U);
+    TEST_ASSERT((internal_stat_attr(h, name) & b) != 0U);
     /* A file's DIRECTORY bit is never accidentally set by a set-attr. */
-    TEST_ASSERT((stat_attr(h, name) & (uint8_t)k_at_attr_dir) == 0U);
+    TEST_ASSERT((internal_stat_attr(h, name) & (uint8_t)k_at_attr_dir) == 0U);
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_attr(h, name, 0U, b));
-    TEST_ASSERT((stat_attr(h, name) & b) == 0U);
+    TEST_ASSERT((internal_stat_attr(h, name) & b) == 0U);
   }
 }
 
@@ -278,13 +285,14 @@ static void assert_each_bit_round_trips(ra8_fs_mount_t* h, const char* name)
  * @par MC/DC:
  * (no compound decision unique to this case -- each settable bit round-trips
  * via ::assert_each_bit_round_trips, and a two-bit set is confirmed against the
- * raw on-disk FAT DIR_Attr byte)
+ * raw on-disk FAT DIR_Attr byte) @brief Exercise the attr set clear fat filesystem operation. @details Runs the attr set clear fat vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_attr_set_clear_fat(void)
+RA8_INTERNAL static void internal_test_attr_set_clear_fat(void)
 {
   TEST_BEGIN("ra8_fs set_attr: FAT16 set/clear read-only/hidden/system/archive round-trip");
-  ra8_fs_mount_t* h = fmt_mount_file((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16, "A.BIN");
-  assert_each_bit_round_trips(h, "A.BIN");
+  ra8_fs_mount_t* h =
+    internal_fmt_mount_file((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16, "A.BIN");
+  internal_assert_each_bit_round_trips(h, "A.BIN");
 
   /* Set two at once, then confirm the raw on-disk byte carries exactly them (plus
    * the archive the file was created with) -- proof the patch is on the medium. */
@@ -294,13 +302,13 @@ static void test_attr_set_clear_fat(void)
                     "A.BIN",
                     (uint8_t)((uint8_t)k_ra8_fs_attr_hidden | (uint8_t)k_ra8_fs_attr_system),
                     0U));
-  const uint8_t raw = s_disk.bytes[fat_file_off(h) + (uint32_t)k_at_dir_attr];
+  const uint8_t raw = s_disk.bytes[internal_fat_file_off(h) + (uint32_t)k_at_dir_attr];
   TEST_ASSERT((raw & (uint8_t)k_at_attr_hid) != 0U);
   TEST_ASSERT((raw & (uint8_t)k_at_attr_sys) != 0U);
   TEST_ASSERT((raw & (uint8_t)k_at_attr_dir) == 0U);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs set_attr: FAT16 set/clear read-only/hidden/system/archive round-trip");
 }
 
@@ -309,13 +317,14 @@ static void test_attr_set_clear_fat(void)
  * @par MC/DC:
  * (no compound decision unique to this case -- each settable bit round-trips,
  * then a two-bit set is verified against the raw exFAT File entry byte, a fresh
- * SetChecksum, and a re-stat after a mount cycle)
+ * SetChecksum, and a re-stat after a mount cycle) @brief Exercise the attr set clear exfat filesystem operation. @details Runs the attr set clear exfat vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_attr_set_clear_exfat(void)
+RA8_INTERNAL static void internal_test_attr_set_clear_exfat(void)
 {
   TEST_BEGIN("ra8_fs set_attr: exFAT set/clear round-trip + checksum + remount");
-  ra8_fs_mount_t* h = fmt_mount_file((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat, "A.BIN");
-  assert_each_bit_round_trips(h, "A.BIN");
+  ra8_fs_mount_t* h =
+    internal_fmt_mount_file((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat, "A.BIN");
+  internal_assert_each_bit_round_trips(h, "A.BIN");
 
   /* Set hidden|system, verify the on-disk File entry byte and a fresh SetChecksum. */
   TEST_ASSERT_EQ(
@@ -324,23 +333,24 @@ static void test_attr_set_clear_exfat(void)
                     "A.BIN",
                     (uint8_t)((uint8_t)k_ra8_fs_attr_hidden | (uint8_t)k_ra8_fs_attr_system),
                     0U));
-  const uint32_t off   = exfat_file_off(h);
+  const uint32_t off   = internal_exfat_file_off(h);
   const uint32_t count = 1U + (uint32_t)s_disk.bytes[off + (uint32_t)k_at_xf_secnt];
   const uint8_t  raw   = s_disk.bytes[off + (uint32_t)k_at_xf_attr];
   TEST_ASSERT((raw & (uint8_t)k_at_attr_hid) != 0U);
   TEST_ASSERT((raw & (uint8_t)k_at_attr_sys) != 0U);
   TEST_ASSERT((raw & (uint8_t)k_at_attr_dir) == 0U);
-  TEST_ASSERT_EQ(exfat_img_setcsum(off, count), img_rd16(off + (uint32_t)k_at_xf_csum));
+  TEST_ASSERT_EQ(internal_exfat_img_setcsum(off, count),
+                 internal_img_rd16(off + (uint32_t)k_at_xf_csum));
 
   /* Remount and re-stat: the patched attributes survive a mount cycle. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   ra8_fs_mount_t* h2 = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h2));
-  const uint8_t got = stat_attr(h2, "A.BIN");
+  const uint8_t got = internal_stat_attr(h2, "A.BIN");
   TEST_ASSERT((got & (uint8_t)k_at_attr_hid) != 0U);
   TEST_ASSERT((got & (uint8_t)k_at_attr_sys) != 0U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h2));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs set_attr: exFAT set/clear round-trip + checksum + remount");
 }
 
@@ -350,12 +360,13 @@ static void test_attr_set_clear_exfat(void)
  * (no compound decision unique to this case -- it pins the OPEN-TIME semantics
  * of the read-only honor: a handle already opened for writing keeps writing
  * after the file is marked read-only, matching POSIX/DOS; only a fresh open is
- * refused)
+ * refused) @brief Exercise the attr open time only filesystem operation. @details Runs the attr open time only vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_attr_open_time_only(void)
+RA8_INTERNAL static void internal_test_attr_open_time_only(void)
 {
   TEST_BEGIN("ra8_fs set_attr: read-only is honored at open time, not per write");
-  ra8_fs_mount_t* h = fmt_mount_file((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16, "O.BIN");
+  ra8_fs_mount_t* h =
+    internal_fmt_mount_file((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16, "O.BIN");
 
   /* Open for writing FIRST, then mark the file read-only through set_attr. */
   ra8_fs_file_t* f = nullptr;
@@ -368,11 +379,11 @@ static void test_attr_open_time_only(void)
 
   /* The bit still stands (the write's archive-set did not clear it), and a fresh
    * write open is now refused. */
-  TEST_ASSERT((stat_attr(h, "O.BIN") & (uint8_t)k_at_attr_ro) != 0U);
+  TEST_ASSERT((internal_stat_attr(h, "O.BIN") & (uint8_t)k_at_attr_ro) != 0U);
   TEST_ASSERT_EQ(k_ra8_err_access_denied, ra8_fs_open(h, "O.BIN", k_ra8_fs_mode_write, &f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs set_attr: read-only is honored at open time, not per write");
 }
 
@@ -380,24 +391,25 @@ static void test_attr_open_time_only(void)
  * @test test_attr_archive_fat
  * @par MC/DC:
  * (no compound decision unique to this case -- the archive bit is cleared, a
- * write modifies content, and the bit is shown set again off `ra8_fs_stat`)
+ * write modifies content, and the bit is shown set again off `ra8_fs_stat`) @brief Exercise the attr archive fat filesystem operation. @details Runs the attr archive fat vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_attr_archive_fat(void)
+RA8_INTERNAL static void internal_test_attr_archive_fat(void)
 {
   TEST_BEGIN("ra8_fs set_attr: FAT16 archive bit re-set on content modification");
-  ra8_fs_mount_t* h = fmt_mount_file((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16, "M.BIN");
+  ra8_fs_mount_t* h =
+    internal_fmt_mount_file((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16, "M.BIN");
   /* Fresh files carry archive. */
-  TEST_ASSERT((stat_attr(h, "M.BIN") & (uint8_t)k_at_attr_arc) != 0U);
+  TEST_ASSERT((internal_stat_attr(h, "M.BIN") & (uint8_t)k_at_attr_arc) != 0U);
   /* Clear it, then modify the file: the write must put archive back. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_attr(h, "M.BIN", 0U, (uint8_t)k_ra8_fs_attr_archive));
-  TEST_ASSERT((stat_attr(h, "M.BIN") & (uint8_t)k_at_attr_arc) == 0U);
+  TEST_ASSERT((internal_stat_attr(h, "M.BIN") & (uint8_t)k_at_attr_arc) == 0U);
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "M.BIN", k_ra8_fs_mode_write, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_body, (uint32_t)sizeof(s_body)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
-  TEST_ASSERT((stat_attr(h, "M.BIN") & (uint8_t)k_at_attr_arc) != 0U);
+  TEST_ASSERT((internal_stat_attr(h, "M.BIN") & (uint8_t)k_at_attr_arc) != 0U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs set_attr: FAT16 archive bit re-set on content modification");
 }
 
@@ -405,22 +417,23 @@ static void test_attr_archive_fat(void)
  * @test test_attr_archive_exfat
  * @par MC/DC:
  * (no compound decision unique to this case -- exFAT archive is cleared, a
- * streaming write modifies content, and the bit is shown set again)
+ * streaming write modifies content, and the bit is shown set again) @brief Exercise the attr archive exfat filesystem operation. @details Runs the attr archive exfat vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_attr_archive_exfat(void)
+RA8_INTERNAL static void internal_test_attr_archive_exfat(void)
 {
   TEST_BEGIN("ra8_fs set_attr: exFAT archive bit re-set on content modification");
-  ra8_fs_mount_t* h = fmt_mount_file((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat, "M.BIN");
-  TEST_ASSERT((stat_attr(h, "M.BIN") & (uint8_t)k_at_attr_arc) != 0U);
+  ra8_fs_mount_t* h =
+    internal_fmt_mount_file((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat, "M.BIN");
+  TEST_ASSERT((internal_stat_attr(h, "M.BIN") & (uint8_t)k_at_attr_arc) != 0U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_attr(h, "M.BIN", 0U, (uint8_t)k_ra8_fs_attr_archive));
-  TEST_ASSERT((stat_attr(h, "M.BIN") & (uint8_t)k_at_attr_arc) == 0U);
+  TEST_ASSERT((internal_stat_attr(h, "M.BIN") & (uint8_t)k_at_attr_arc) == 0U);
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "M.BIN", k_ra8_fs_mode_write, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_body, (uint32_t)sizeof(s_body)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
-  TEST_ASSERT((stat_attr(h, "M.BIN") & (uint8_t)k_at_attr_arc) != 0U);
+  TEST_ASSERT((internal_stat_attr(h, "M.BIN") & (uint8_t)k_at_attr_arc) != 0U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs set_attr: exFAT archive bit re-set on content modification");
 }
 
@@ -437,12 +450,13 @@ static void test_attr_archive_exfat(void)
  * V1+V2 isolate C1, V1+V3 isolate C2, V1+V4 isolate C3: N+1 = 4 vectors.
  * Also covers NULL handle/path (null_ptr), the root path and a bad name
  * (invalid_arg), a missing name (not_found) and an unmounted handle
- * (invalid_state).
+ * (invalid_state). @brief Exercise the attr errors filesystem operation. @details Runs the attr errors vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_attr_errors(void)
+RA8_INTERNAL static void internal_test_attr_errors(void)
 {
   TEST_BEGIN("ra8_fs set_attr MC/DC: mask validation + null/root/missing/state");
-  ra8_fs_mount_t* h = fmt_mount_file((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16, "E.BIN");
+  ra8_fs_mount_t* h =
+    internal_fmt_mount_file((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16, "E.BIN");
 
   /* Mask-validation compound decision. */
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -472,20 +486,19 @@ static void test_attr_errors(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state,
                  ra8_fs_set_attr(h, "E.BIN", (uint8_t)k_ra8_fs_attr_archive, 0U));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs set_attr MC/DC: mask validation + null/root/missing/state");
 }
 
 int32_t main(void)
 {
-  test_attr_honor_fat();
-  test_attr_honor_exfat();
-  test_attr_set_clear_fat();
-  test_attr_set_clear_exfat();
-  test_attr_open_time_only();
-  test_attr_archive_fat();
-  test_attr_archive_exfat();
-  test_attr_errors();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_attr.c\n");
+  internal_test_attr_honor_fat();
+  internal_test_attr_honor_exfat();
+  internal_test_attr_set_clear_fat();
+  internal_test_attr_set_clear_exfat();
+  internal_test_attr_open_time_only();
+  internal_test_attr_archive_fat();
+  internal_test_attr_archive_exfat();
+  internal_test_attr_errors();
   return 0;
 }

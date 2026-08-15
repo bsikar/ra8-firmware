@@ -15,6 +15,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "ra8_attributes.h"
 #include "ra8_fs.h"
@@ -74,14 +75,14 @@ priv_exfat_bitmap_clear(const ra8_fs_mount_t* m, uint64_t bmp_lba, uint32_t clus
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_take_set(const ra8_fs_mount_t* m,
-                                     exfat_cursor_t*       cur,
-                                     const uint16_t*       name,
-                                     uint32_t              nlen,
-                                     uint32_t              sc,
-                                     exfat_setpos_t*       pos,
-                                     uint8_t*              strm_copy,
-                                     uint8_t*              out_match)
+static ra8_err_t internal_exfat_take_set(const ra8_fs_mount_t* m,
+                                         exfat_cursor_t*       cur,
+                                         const uint16_t*       name,
+                                         uint32_t              nlen,
+                                         uint32_t              sc,
+                                         exfat_setpos_t*       pos,
+                                         uint8_t*              strm_copy,
+                                         uint8_t*              out_match)
 {
   uint8_t matched = 1U;
   for (uint32_t k = 0U; k < sc; k++) {
@@ -158,17 +159,17 @@ static ra8_err_t priv_exfat_take_set(const ra8_fs_mount_t* m,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_try_set(const ra8_fs_mount_t* m,
-                                    exfat_cursor_t*       cur,
-                                    exfat_setpos_t        at,
-                                    const uint8_t*        e,
-                                    const uint16_t*       need,
-                                    uint32_t              nlen,
-                                    exfat_setpos_t*       pos,
-                                    uint32_t              max_pos,
-                                    uint32_t*             out_count,
-                                    uint8_t*              file_copy,
-                                    uint8_t*              strm_copy)
+static ra8_err_t internal_exfat_try_set(const ra8_fs_mount_t* m,
+                                        exfat_cursor_t*       cur,
+                                        exfat_setpos_t        at,
+                                        const uint8_t*        e,
+                                        const uint16_t*       need,
+                                        uint32_t              nlen,
+                                        exfat_setpos_t*       pos,
+                                        uint32_t              max_pos,
+                                        uint32_t*             out_count,
+                                        uint8_t*              file_copy,
+                                        uint8_t*              strm_copy)
 {
   const uint32_t sc    = (uint32_t)e[k_exfat_off_file_secnt];
   const uint32_t total = 1U + sc;
@@ -178,7 +179,7 @@ static ra8_err_t priv_exfat_try_set(const ra8_fs_mount_t* m,
   pos[0] = at;
   priv_byte_copy(file_copy, e, (uint32_t)k_exfat_entry_bytes);
   uint8_t         matched = 0U;
-  const ra8_err_t r       = priv_exfat_take_set(m, cur, need, nlen, sc, pos, strm_copy, &matched);
+  const ra8_err_t r = internal_exfat_take_set(m, cur, need, nlen, sc, pos, strm_copy, &matched);
   if (r != k_ra8_ok) {
     return r; /* GCOVR_EXCL_LINE */
   }
@@ -227,8 +228,17 @@ ra8_err_t priv_exfat_find_set(const ra8_fs_mount_t* m,
     if (e[0] != (uint8_t)k_exfat_entry_file) {
       continue;
     }
-    r =
-      priv_exfat_try_set(m, &cur, at, e, need, nlen, pos, max_pos, out_count, file_copy, strm_copy);
+    r = internal_exfat_try_set(m,
+                               &cur,
+                               at,
+                               e,
+                               need,
+                               nlen,
+                               pos,
+                               max_pos,
+                               out_count,
+                               file_copy,
+                               strm_copy);
     if (r != k_ra8_err_not_found) {
       return r;
     }
@@ -256,7 +266,7 @@ ra8_err_t priv_exfat_find_set(const ra8_fs_mount_t* m,
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_exfat_put_entry(const ra8_fs_mount_t* m, const exfat_setpos_t* where, const uint8_t* entry)
+internal_exfat_put_entry(const ra8_fs_mount_t* m, const exfat_setpos_t* where, const uint8_t* entry)
 {
   return priv_exfat_write_dir_set(m,
                                   where->cluster,
@@ -325,7 +335,7 @@ ra8_err_t priv_exfat_drop_set(const ra8_fs_mount_t* m, const exfat_setpos_t* pos
       return e; /* GCOVR_EXCL_LINE */
     }
     entry[0] = (uint8_t)(entry[0] & (uint8_t)~(uint8_t)k_exfat_inuse_bit);
-    e        = priv_exfat_put_entry(m, &pos[k], entry);
+    e        = internal_exfat_put_entry(m, &pos[k], entry);
     if (e != k_ra8_ok) {
       return e; /* GCOVR_EXCL_LINE */
     }
@@ -415,11 +425,11 @@ ra8_err_t priv_exfat_unlink(const ra8_fs_mount_t* m, const char* path)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_exfat_build_rename_set(uint8_t*        set,
-                                            const uint8_t*  file_e,
-                                            const uint8_t*  strm_e,
-                                            const uint16_t* new_name,
-                                            uint32_t        new_len)
+static uint32_t internal_exfat_build_rename_set(uint8_t*        set,
+                                                const uint8_t*  file_e,
+                                                const uint8_t*  strm_e,
+                                                const uint16_t* new_name,
+                                                uint32_t        new_len)
 {
   const uint32_t name_entries =
     (new_len + (uint32_t)k_exfat_name_per_entry - 1U) / (uint32_t)k_exfat_name_per_entry;
@@ -481,12 +491,12 @@ static uint32_t priv_exfat_build_rename_set(uint8_t*        set,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_rename_prepare(const ra8_fs_mount_t* m,
-                                           const char*           old_path,
-                                           const char*           new_path,
-                                           exfat_dir_t*          out_parent,
-                                           const char**          out_old,
-                                           const char**          out_new)
+static ra8_err_t internal_exfat_rename_prepare(const ra8_fs_mount_t* m,
+                                               const char*           old_path,
+                                               const char*           new_path,
+                                               exfat_dir_t*          out_parent,
+                                               const char**          out_old,
+                                               const char**          out_new)
 {
   exfat_dir_t     op = {};
   const char*     ol = nullptr;
@@ -548,18 +558,18 @@ static ra8_err_t priv_exfat_rename_prepare(const ra8_fs_mount_t* m,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_place_rename(const ra8_fs_mount_t* m,
-                                         const exfat_dir_t*    parent,
-                                         const exfat_setpos_t* pos,
-                                         uint32_t              old_count,
-                                         const uint8_t*        set,
-                                         uint32_t              bytes)
+static ra8_err_t internal_exfat_place_rename(const ra8_fs_mount_t* m,
+                                             const exfat_dir_t*    parent,
+                                             const exfat_setpos_t* pos,
+                                             uint32_t              old_count,
+                                             const uint8_t*        set,
+                                             uint32_t              bytes)
 {
   const uint32_t new_count = bytes / (uint32_t)k_exfat_entry_bytes;
   if (new_count == old_count) {
     for (uint32_t k = 0U; k < new_count; k++) {
       const ra8_err_t e =
-        priv_exfat_put_entry(m, &pos[k], &set[(size_t)k * (size_t)k_exfat_entry_bytes]);
+        internal_exfat_put_entry(m, &pos[k], &set[(size_t)k * (size_t)k_exfat_entry_bytes]);
       if (e != k_ra8_ok) {
         return e; /* GCOVR_EXCL_LINE */
       }
@@ -586,7 +596,7 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
   const char*     old_name = nullptr;
   const char*     new_name = nullptr;
   const ra8_err_t pe =
-    priv_exfat_rename_prepare(m, old_path, new_path, &parent, &old_name, &new_name);
+    internal_exfat_rename_prepare(m, old_path, new_path, &parent, &old_name, &new_name);
   if (pe != k_ra8_ok) {
     return pe;
   }
@@ -630,8 +640,8 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
     return k_ra8_err_access_denied;
   }
   uint8_t        set[k_exfat_max_set_bytes] = {};
-  const uint32_t bytes = priv_exfat_build_rename_set(set, file_e, strm_e, new_units, new_len);
-  return priv_exfat_place_rename(m, &parent, pos, count, set, bytes);
+  const uint32_t bytes = internal_exfat_build_rename_set(set, file_e, strm_e, new_units, new_len);
+  return internal_exfat_place_rename(m, &parent, pos, count, set, bytes);
 }
 
 /**
@@ -672,12 +682,12 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_gather_name(const ra8_fs_mount_t* m,
-                                        exfat_cursor_t*       cur,
-                                        uint32_t              sc,
-                                        uint32_t              nlen,
-                                        char*                 name,
-                                        uint32_t              cap)
+static ra8_err_t internal_exfat_gather_name(const ra8_fs_mount_t* m,
+                                            exfat_cursor_t*       cur,
+                                            uint32_t              sc,
+                                            uint32_t              nlen,
+                                            char*                 name,
+                                            uint32_t              cap)
 {
   uint16_t units[k_exfat_name_cap] = {};
   uint32_t got                     = 0U;
@@ -709,35 +719,35 @@ static ra8_err_t priv_exfat_gather_name(const ra8_fs_mount_t* m,
 }
 
 /**
- * @brief Emit one File entry set to the listdir callback.
+ * @brief Copy one File entry set into a stable directory value.
  *
  * @details The per-set body of ::priv_exfat_listdir, extracted so the walk
  * stays under the statement-count gate. Reads the Stream entry, decides the
  * size a directory reports (0, not its allocation), gathers the name as UTF-8
- * and fires @p cb -- unless the name is one no UTF-8 string encodes, which is
- * reported as nothing rather than as mojibake (#606).
+ * and fills @p out -- unless the name is one no UTF-8 string encodes, which is
+ * reported as absent rather than as mojibake (#606).
  *
  * @param[in]     m    Mounted exFAT volume.
  * @param[in,out] cur  Cursor positioned just after the File entry.
  * @param[in]     e    The 32-byte File entry.
- * @param[in]     cb   Per-entry callback.
- * @param[in]     ctx  Opaque pointer forwarded to @p cb.
+ * @param[out]    out Stable caller-owned entry value.
+ * @param[out]    out_entry True when a valid name was copied.
  * @return Error code.
  * @retval k_ra8_ok    The set was consumed (and emitted, unless nameless).
  * @retval k_ra8_err_* Backend read failure mid-set.
  * @pre All pointers are non-NULL; @p cur follows @p e.
  * @pre @p e[0] is ::k_exfat_entry_file.
  * @post @p cur sits past the set's last secondary.
- * @post @p cb ran at most once for this set.
- * @note Helper of ::priv_exfat_listdir (complexity split).
+ * @post @p out_entry is true exactly when @p out contains a visible entry.
+ * @note Helper of ::priv_exfat_dir_next (complexity split).
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_list_emit(const ra8_fs_mount_t* m,
-                                      exfat_cursor_t*       cur,
-                                      const uint8_t*        e,
-                                      ra8_fs_listdir_cb_t   cb,
-                                      void*                 ctx)
+static ra8_err_t internal_exfat_list_emit(const ra8_fs_mount_t* m,
+                                          exfat_cursor_t*       cur,
+                                          const uint8_t*        e,
+                                          ra8_fs_dirent_t*      out,
+                                          bool*                 out_entry)
 {
   const uint32_t sc                        = (uint32_t)e[k_exfat_off_file_secnt];
   const uint8_t  attr                      = e[k_exfat_off_file_attr];
@@ -759,15 +769,44 @@ static ra8_err_t priv_exfat_list_emit(const ra8_fs_mount_t* m,
   }
   const uint32_t nlen                      = (uint32_t)strm[k_exfat_strm_off_nlen];
   char           name[k_exfat_name_u8_cap] = {};
-  r = priv_exfat_gather_name(m, cur, sc, nlen, name, (uint32_t)k_exfat_name_u8_cap);
+  r = internal_exfat_gather_name(m, cur, sc, nlen, name, (uint32_t)k_exfat_name_u8_cap);
   if (r != k_ra8_ok) {
     return r; /* GCOVR_EXCL_LINE */
   }
   if (name[0] == '\0') {
     return k_ra8_ok; /* units no UTF-8 string encodes: report nothing, not a lie */
   }
-  cb(name, attr, size, ctx);
+  (void)memcpy(out->name, name, strlen(name) + 1U);
+  out->attr       = attr;
+  out->size_bytes = size;
+  *out_entry      = true;
   return k_ra8_ok;
+}
+
+ra8_err_t priv_exfat_dir_next(const ra8_fs_mount_t* m,
+                              exfat_cursor_t*       cur,
+                              ra8_fs_dirent_t*      out,
+                              bool*                 out_entry)
+{
+  *out_entry = false;
+  while (cur->scanned < (uint32_t)k_exfat_scan_limit) {
+    uint8_t   entry[k_exfat_entry_bytes] = {};
+    ra8_err_t err                        = priv_exfat_next_entry(m, cur, entry);
+    if ((err == k_ra8_err_not_found) || (entry[0] == (uint8_t)k_exfat_entry_eod)) {
+      return (err == k_ra8_err_not_found) ? k_ra8_ok : err;
+    }
+    if (err != k_ra8_ok) {
+      return err;
+    }
+    if (entry[0] != (uint8_t)k_exfat_entry_file) {
+      continue;
+    }
+    err = internal_exfat_list_emit(m, cur, entry, out, out_entry);
+    if ((err != k_ra8_ok) || *out_entry) {
+      return err;
+    }
+  }
+  return k_ra8_err_invalid_size;
 }
 
 /* `priv_exfat_listdir()`: see header for the documented contract. */
@@ -778,25 +817,13 @@ ra8_err_t priv_exfat_listdir(const ra8_fs_mount_t* m,
 {
   exfat_cursor_t cur = {};
   priv_exfat_cursor_init(dir, &cur);
-  while (cur.scanned < (uint32_t)k_exfat_scan_limit) {
-    uint8_t   e[k_exfat_entry_bytes] = {};
-    ra8_err_t r                      = priv_exfat_next_entry(m, &cur, e);
-    if (r == k_ra8_err_not_found) {
-      return k_ra8_ok; /* the directory's run ended without a 0x00 marker */
+  for (;;) {
+    ra8_fs_dirent_t entry   = {};
+    bool            present = false;
+    const ra8_err_t err     = priv_exfat_dir_next(m, &cur, &entry, &present);
+    if ((err != k_ra8_ok) || !present) {
+      return err;
     }
-    if (r != k_ra8_ok) {
-      return r; /* GCOVR_EXCL_LINE */
-    }
-    if (e[0] == (uint8_t)k_exfat_entry_eod) {
-      return k_ra8_ok;
-    }
-    if (e[0] != (uint8_t)k_exfat_entry_file) {
-      continue;
-    }
-    r = priv_exfat_list_emit(m, &cur, e, cb, ctx);
-    if (r != k_ra8_ok) {
-      return r; /* GCOVR_EXCL_LINE */
-    }
+    cb(entry.name, entry.attr, entry.size_bytes, ctx);
   }
-  return k_ra8_ok; /* GCOVR_EXCL_LINE */
 }

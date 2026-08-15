@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "unity_minimal.h"
@@ -86,7 +87,9 @@ typedef struct {
 
 static mem_disk_t s_disk = {};
 
-static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief Perform the mem read filesystem operation. @details Implements the bounded mem read fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in,out] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -98,7 +101,9 @@ static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Perform the mem write filesystem operation. @details Implements the bounded mem write fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -110,7 +115,9 @@ static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Perform the mem capacity filesystem operation. @details Implements the bounded mem capacity fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] block_count Caller-supplied bounded extent or quantity. @param[in,out] block_size Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -119,19 +126,21 @@ static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_
 }
 
 static const ra8_fs_backend_t s_backend = {
-  .read_block   = mem_read,
-  .write_block  = mem_write,
-  .get_capacity = mem_capacity,
+  .read_block   = internal_mem_read,
+  .write_block  = internal_mem_write,
+  .get_capacity = internal_mem_capacity,
   .ctx          = &s_disk,
 };
 
-static void put16(uint8_t* p, uint32_t off, uint16_t v)
+/** @brief Perform the put16 filesystem operation. @details Implements the bounded put16 fixture step using caller-owned state. @param[in,out] p Value required by this filesystem vector. @param[in] off Value required by this filesystem vector. @param[in] v Value required by this filesystem vector. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_put16(uint8_t* p, uint32_t off, uint16_t v)
 {
   p[off]     = (uint8_t)(v & k_byte_mask);
   p[off + 1] = (uint8_t)((v >> 8) & k_byte_mask);
 }
 
-static void build_fat16_volume(void)
+/** @brief Perform the build fat16 volume filesystem operation. @details Implements the bounded build fat16 volume fixture step using caller-owned state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_build_fat16_volume(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -144,18 +153,19 @@ static void build_fat16_volume(void)
     TEST_FAIL_FMT("%s", "calloc failed");
   }
   uint8_t* bpb = &s_disk.bytes[0];
-  put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_disk_block_size);
+  internal_put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_disk_block_size);
   bpb[k_bpb_off_sec_per_clus] = 1U;
-  put16(bpb, k_bpb_off_rsvd_sec_cnt, 1U);
+  internal_put16(bpb, k_bpb_off_rsvd_sec_cnt, 1U);
   bpb[16] = 2U;
-  put16(bpb, k_bpb_off_root_ent_cnt, 16U);
-  put16(bpb, k_bpb_off_tot_sec16, (uint16_t)k_disk_blocks_fat16);
-  put16(bpb, k_bpb_off_fat_sz16, 32U);
+  internal_put16(bpb, k_bpb_off_root_ent_cnt, 16U);
+  internal_put16(bpb, k_bpb_off_tot_sec16, (uint16_t)k_disk_blocks_fat16);
+  internal_put16(bpb, k_bpb_off_fat_sz16, 32U);
   bpb[k_bpb_off_sig_lo] = k_bpb_sig_lo;
   bpb[k_bpb_off_sig_hi] = k_bpb_sig_hi;
 }
 
-static void free_volume(void)
+/** @brief Perform the free volume filesystem operation. @details Implements the bounded free volume fixture step using caller-owned state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_free_volume(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -171,7 +181,8 @@ typedef struct {
   uint8_t     found_attr; /**< Attribute byte of the found entry. */
 } scan_ctx_t;
 
-static void scan_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
+/** @brief Perform the scan cb filesystem operation. @details Implements the bounded scan cb fixture step using caller-owned state. @param[in] name Validated fixture path or name value. @param[in] attr Value required by this filesystem vector. @param[in] size Caller-supplied bounded extent or quantity. @param[in,out] ctx Caller-owned fixture or filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_scan_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)size;
   scan_ctx_t* s = (scan_ctx_t*)ctx;
@@ -182,8 +193,8 @@ static void scan_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
   }
 }
 
-/** @brief Fill `buf` with a deterministic pattern. */
-static void fill(uint8_t* buf, uint32_t len, uint8_t seed)
+/** @brief Fill `buf` with a deterministic pattern. @details Implements the bounded fill fixture step using caller-owned state. @param[in,out] buf Caller-owned bounded byte storage. @param[in] len Value required by this filesystem vector. @param[in] seed Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_fill(uint8_t* buf, uint32_t len, uint8_t seed)
 {
   for (uint32_t i = 0; i < len; ++i) {
     buf[i] = (uint8_t)((i * k_mkdir_seed_stride) + seed);
@@ -193,12 +204,12 @@ static void fill(uint8_t* buf, uint32_t len, uint8_t seed)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- mkdir creates a directory, the duplicate
- * attempt is rejected, and the root listing reports it with the directory attr)
+ * attempt is rejected, and the root listing reports it with the directory attr) @brief Exercise the mkdir basic filesystem operation. @details Runs the mkdir basic vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mkdir_basic(void)
+RA8_INTERNAL static void internal_test_mkdir_basic(void)
 {
   TEST_BEGIN("mkdir basic + root listing");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -206,30 +217,30 @@ static void test_mkdir_basic(void)
   TEST_ASSERT_EQ(k_ra8_err_exists, ra8_fs_mkdir(h, "/BOOKS"));
 
   scan_ctx_t sc = {.want = "BOOKS"};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", scan_cb, &sc));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_scan_cb, &sc));
   TEST_ASSERT(sc.found);
   TEST_ASSERT((sc.found_attr & (uint8_t)k_ra8_fs_attr_directory) != 0U);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("mkdir basic + root listing");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions under test -- a file written through a subdirectory
- * path reads back byte-identical and appears in the subdirectory listing)
+ * path reads back byte-identical and appears in the subdirectory listing) @brief Exercise the file in subdir filesystem operation. @details Runs the file in subdir vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_file_in_subdir(void)
+RA8_INTERNAL static void internal_test_file_in_subdir(void)
 {
   TEST_BEGIN("file inside a subdirectory");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/BOOKS"));
 
   uint8_t data[k_mkdir_bytes_small];
-  fill(data, sizeof(data), k_mkdir_seed_small);
+  internal_fill(data, sizeof(data), k_mkdir_seed_small);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "/BOOKS/A.TXT", data, (uint32_t)sizeof(data)));
 
   ra8_fs_file_t* f = nullptr;
@@ -242,30 +253,30 @@ static void test_file_in_subdir(void)
   TEST_ASSERT_EQ(0, memcmp(data, got, sizeof(data)));
 
   scan_ctx_t sc = {.want = "A.TXT"};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/BOOKS", scan_cb, &sc));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/BOOKS", internal_scan_cb, &sc));
   TEST_ASSERT(sc.found);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("file inside a subdirectory");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions under test -- a directory nested two levels deep holds
- * a file that reads back byte-identical)
+ * a file that reads back byte-identical) @brief Exercise the nested dirs filesystem operation. @details Runs the nested dirs vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_nested_dirs(void)
+RA8_INTERNAL static void internal_test_nested_dirs(void)
 {
   TEST_BEGIN("nested directories two levels deep");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/BOOKS"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/BOOKS/SCIFI"));
 
   uint8_t data[k_mkdir_bytes_tiny];
-  fill(data, sizeof(data), k_mkdir_seed_medium);
+  internal_fill(data, sizeof(data), k_mkdir_seed_medium);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_fs_write_file(h, "/BOOKS/SCIFI/X.TXT", data, (uint32_t)sizeof(data)));
 
@@ -279,19 +290,19 @@ static void test_nested_dirs(void)
   TEST_ASSERT_EQ(0, memcmp(data, got, sizeof(data)));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("nested directories two levels deep");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions under test -- each guard is an independent
- * single-condition check: NULL handle/path, missing parent, file-as-directory)
+ * single-condition check: NULL handle/path, missing parent, file-as-directory) @brief Exercise the mkdir errors filesystem operation. @details Runs the mkdir errors vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mkdir_errors(void)
+RA8_INTERNAL static void internal_test_mkdir_errors(void)
 {
   TEST_BEGIN("mkdir error paths");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -305,7 +316,7 @@ static void test_mkdir_errors(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_mkdir(h, "/F.TXT/X"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("mkdir error paths");
 }
 
@@ -313,17 +324,17 @@ static void test_mkdir_errors(void)
  * @par MC/DC:
  * (no compound decisions under test -- rename within a subdirectory succeeds,
  * a cross-directory move is rejected, and unlink inside a subdirectory removes
- * the file)
+ * the file) @brief Exercise the subdir rename unlink filesystem operation. @details Runs the subdir rename unlink vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_subdir_rename_unlink(void)
+RA8_INTERNAL static void internal_test_subdir_rename_unlink(void)
 {
   TEST_BEGIN("rename + unlink inside a subdirectory");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/BOOKS"));
   uint8_t data[16] = {};
-  fill(data, sizeof(data), k_mkdir_seed_large);
+  internal_fill(data, sizeof(data), k_mkdir_seed_large);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "/BOOKS/A.TXT", data, (uint32_t)sizeof(data)));
 
   /* same-directory rename */
@@ -341,17 +352,16 @@ static void test_subdir_rename_unlink(void)
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_open(h, "/BOOKS/B.TXT", k_ra8_fs_mode_read, &f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("rename + unlink inside a subdirectory");
 }
 
 int32_t main(void)
 {
-  test_mkdir_basic();
-  test_file_in_subdir();
-  test_nested_dirs();
-  test_mkdir_errors();
-  test_subdir_rename_unlink();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_mkdir.c\n");
+  internal_test_mkdir_basic();
+  internal_test_file_in_subdir();
+  internal_test_nested_dirs();
+  internal_test_mkdir_errors();
+  internal_test_subdir_rename_unlink();
   return 0;
 }

@@ -231,15 +231,15 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_fs_lfn_scan_t priv_dir_find_long_sector(const ra8_fs_mount_t* m,
-                                                   const uint16_t*       needle,
-                                                   uint32_t              nneedle,
-                                                   const uint8_t*        buf,
-                                                   uint64_t              cur_lba,
-                                                   lfn_state_t*          lfn,
-                                                   uint64_t*             out_lba,
-                                                   uint32_t*             out_entry_off,
-                                                   uint8_t out_entry[k_ra8_fs_dir_entry_bytes])
+static ra8_fs_lfn_scan_t internal_dir_find_long_sector(const ra8_fs_mount_t* m,
+                                                       const uint16_t*       needle,
+                                                       uint32_t              nneedle,
+                                                       const uint8_t*        buf,
+                                                       uint64_t              cur_lba,
+                                                       lfn_state_t*          lfn,
+                                                       uint64_t*             out_lba,
+                                                       uint32_t*             out_entry_off,
+                                                       uint8_t out_entry[k_ra8_fs_dir_entry_bytes])
 {
   for (uint32_t e = 0; e < priv_dir_eps(m); e++) {
     const uint8_t* ent = &buf[(size_t)e * (size_t)k_ra8_fs_dir_entry_bytes];
@@ -304,15 +304,15 @@ ra8_err_t priv_dir_find_long(const ra8_fs_mount_t* m,
     if (err != k_ra8_ok) {
       return err;
     }
-    const ra8_fs_lfn_scan_t scan = priv_dir_find_long_sector(m,
-                                                             needle,
-                                                             nneedle,
-                                                             buf,
-                                                             w.cur_lba,
-                                                             &lfn,
-                                                             out_lba,
-                                                             out_entry_off,
-                                                             out_entry);
+    const ra8_fs_lfn_scan_t scan = internal_dir_find_long_sector(m,
+                                                                 needle,
+                                                                 nneedle,
+                                                                 buf,
+                                                                 w.cur_lba,
+                                                                 &lfn,
+                                                                 out_lba,
+                                                                 out_entry_off,
+                                                                 out_entry);
     if (scan == k_lfn_scan_found) {
       return k_ra8_ok;
     }

@@ -14,7 +14,7 @@
  * These tests pin the behaviour that replaced it: a directory is created,
  * entered, listed and removed; a nested path resolves through several levels; a
  * name collides with a name rather than with a kind; and every scenario ends
- * with a full structural scan of the volume (`exfat_verify()`), which is the
+ * with a full structural scan of the volume (`internal_exfat_verify()`), which is the
  * pair of questions `fsck.exfat` asks -- does every entry set check out, and do
  * the referenced clusters and the allocation bitmap agree exactly.
  *
@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_exfat_dir_test_util.h"
@@ -80,7 +81,7 @@ typedef enum : uint32_t {
  * @note Trivially thread-safe (writes only through @p buf).
  * @since 0.1.0
  */
-static void fill(uint8_t* buf, uint32_t len, uint8_t seed)
+RA8_INTERNAL static void internal_fill(uint8_t* buf, uint32_t len, uint8_t seed)
 {
   for (uint32_t i = 0U; i < len; i++) {
     buf[i] = (uint8_t)((i * (uint32_t)k_dirs_stride) + seed);
@@ -100,7 +101,7 @@ static void fill(uint8_t* buf, uint32_t len, uint8_t seed)
  *
  * @since 0.1.0
  */
-static ra8_fs_mount_t* mount_fixture(void)
+RA8_INTERNAL static ra8_fs_mount_t* internal_mount_fixture(void)
 {
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
@@ -121,16 +122,17 @@ static ra8_fs_mount_t* mount_fixture(void)
  * @post @p path resolves to a file of @p len bytes.
  * @post The write succeeded (asserted).
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded write seeded fixture step using caller-owned state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void write_seeded(ra8_fs_mount_t* h, const char* path, uint32_t len, uint8_t seed)
+RA8_INTERNAL static void
+internal_write_seeded(ra8_fs_mount_t* h, const char* path, uint32_t len, uint8_t seed)
 {
   uint8_t* buf = (uint8_t*)malloc((size_t)len);
   if (buf == nullptr) {
     TEST_FAIL_FMT("%s", "malloc failed for the payload");
     return;
   }
-  fill(buf, len, seed);
+  internal_fill(buf, len, seed);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, path, buf, len));
   free(buf);
 }
@@ -148,9 +150,10 @@ static void write_seeded(ra8_fs_mount_t* h, const char* path, uint32_t len, uint
  * @post The file's bytes equal the seeded pattern (asserted).
  * @post No on-disk state is modified.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded expect seeded fixture step using caller-owned state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void expect_seeded(ra8_fs_mount_t* h, const char* path, uint32_t len, uint8_t seed)
+RA8_INTERNAL static void
+internal_expect_seeded(ra8_fs_mount_t* h, const char* path, uint32_t len, uint8_t seed)
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, path, k_ra8_fs_mode_read, &f));
@@ -166,7 +169,7 @@ static void expect_seeded(ra8_fs_mount_t* h, const char* path, uint32_t len, uin
   uint32_t n = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, got, len, &n));
   TEST_ASSERT_EQ(len, n);
-  fill(want, len, seed);
+  internal_fill(want, len, seed);
   TEST_ASSERT_EQ(0, memcmp(got, want, (size_t)len));
   free(got);
   free(want);
@@ -199,20 +202,20 @@ static void expect_seeded(ra8_fs_mount_t* h, const char* path, uint32_t len, uin
  * @post The root holds exactly one entry, flagged as a directory.
  * @post The volume passes the structural scan.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_mkdir_lists_as_a_directory(void)
+RA8_INTERNAL static void internal_test_mkdir_lists_as_a_directory(void)
 {
   TEST_BEGIN("exfat dirs: mkdir creates a listable directory");
-  build_exfat_volume();
-  ra8_fs_mount_t* h = mount_fixture();
+  internal_build_exfat_volume();
+  ra8_fs_mount_t* h = internal_mount_fixture();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/LOGS"));
 
   name_ctx_t ctx = {};
-  TEST_ASSERT_EQ(k_dirs_one, list_names(h, "/", &ctx));
+  TEST_ASSERT_EQ(k_dirs_one, internal_list_names(h, "/", &ctx));
   TEST_ASSERT_EQ(0, strcmp(ctx.names[0], "LOGS"));
-  TEST_ASSERT_EQ(k_dirs_one, has_dir(&ctx, "LOGS"));
+  TEST_ASSERT_EQ(k_dirs_one, internal_has_dir(&ctx, "LOGS"));
   TEST_ASSERT_EQ(k_dirs_dir_size, ctx.sizes[0]);
 
   ra8_fs_stat_t st = {};
@@ -222,11 +225,11 @@ static void test_mkdir_lists_as_a_directory(void)
   /* A brand new directory is empty, and empty means the listing reports
    * nothing -- exFAT has no "." / ".." entries to filter out. */
   name_ctx_t inner = {};
-  TEST_ASSERT_EQ(k_dirs_none, list_names(h, "/LOGS", &inner));
+  TEST_ASSERT_EQ(k_dirs_none, internal_list_names(h, "/LOGS", &inner));
 
-  exfat_verify(h, "mkdir_lists_as_a_directory");
+  internal_exfat_verify(h, "mkdir_lists_as_a_directory");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat dirs: mkdir creates a listable directory");
 }
 
@@ -252,36 +255,36 @@ static void test_mkdir_lists_as_a_directory(void)
  * @post The file resolves, lists and reads back inside the directory.
  * @post The volume passes the structural scan.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_mkdir_file_inside_round_trip(void)
+RA8_INTERNAL static void internal_test_mkdir_file_inside_round_trip(void)
 {
   TEST_BEGIN("exfat dirs: file created inside a directory round-trips");
-  build_exfat_volume();
-  ra8_fs_mount_t* h = mount_fixture();
+  internal_build_exfat_volume();
+  ra8_fs_mount_t* h = internal_mount_fixture();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/LOGS"));
-  write_seeded(h, "/LOGS/A.TXT", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
+  internal_write_seeded(h, "/LOGS/A.TXT", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
 
   name_ctx_t root = {};
-  TEST_ASSERT_EQ(k_dirs_one, list_names(h, "/", &root));
+  TEST_ASSERT_EQ(k_dirs_one, internal_list_names(h, "/", &root));
   TEST_ASSERT_EQ(0, strcmp(root.names[0], "LOGS"));
 
   name_ctx_t inner = {};
-  TEST_ASSERT_EQ(k_dirs_one, list_names(h, "/LOGS", &inner));
+  TEST_ASSERT_EQ(k_dirs_one, internal_list_names(h, "/LOGS", &inner));
   TEST_ASSERT_EQ(0, strcmp(inner.names[0], "A.TXT"));
   TEST_ASSERT_EQ(k_dirs_payload, inner.sizes[0]);
 
-  expect_seeded(h, "/LOGS/A.TXT", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
+  internal_expect_seeded(h, "/LOGS/A.TXT", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
 
   ra8_fs_stat_t st = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_stat(h, "/LOGS/A.TXT", &st));
   TEST_ASSERT_EQ(false, st.is_directory);
   TEST_ASSERT_EQ(k_dirs_payload, st.size_bytes);
 
-  exfat_verify(h, "mkdir_file_inside_round_trip");
+  internal_exfat_verify(h, "mkdir_file_inside_round_trip");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat dirs: file created inside a directory round-trips");
 }
 
@@ -307,29 +310,29 @@ static void test_mkdir_file_inside_round_trip(void)
  * @post Every level resolves while it exists and stops resolving once removed.
  * @post The volume passes the structural scan at both ends.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_nested_three_levels(void)
+RA8_INTERNAL static void internal_test_nested_three_levels(void)
 {
   TEST_BEGIN("exfat dirs: three-level nesting resolves both ways");
-  build_exfat_volume();
-  ra8_fs_mount_t* h        = mount_fixture();
-  const uint32_t  baseline = alloc_bitmap_used(h);
+  internal_build_exfat_volume();
+  ra8_fs_mount_t* h        = internal_mount_fixture();
+  const uint32_t  baseline = internal_alloc_bitmap_used(h);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/A"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/A/B"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/A/B/C"));
-  write_seeded(h, "/A/B/C/DEEP.TXT", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
+  internal_write_seeded(h, "/A/B/C/DEEP.TXT", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
 
   name_ctx_t lvl = {};
-  TEST_ASSERT_EQ(k_dirs_one, list_names(h, "/A", &lvl));
-  TEST_ASSERT_EQ(k_dirs_one, has_dir(&lvl, "B"));
-  TEST_ASSERT_EQ(k_dirs_one, list_names(h, "/A/B", &lvl));
-  TEST_ASSERT_EQ(k_dirs_one, has_dir(&lvl, "C"));
-  TEST_ASSERT_EQ(k_dirs_one, list_names(h, "/A/B/C", &lvl));
+  TEST_ASSERT_EQ(k_dirs_one, internal_list_names(h, "/A", &lvl));
+  TEST_ASSERT_EQ(k_dirs_one, internal_has_dir(&lvl, "B"));
+  TEST_ASSERT_EQ(k_dirs_one, internal_list_names(h, "/A/B", &lvl));
+  TEST_ASSERT_EQ(k_dirs_one, internal_has_dir(&lvl, "C"));
+  TEST_ASSERT_EQ(k_dirs_one, internal_list_names(h, "/A/B/C", &lvl));
   TEST_ASSERT_EQ(0, strcmp(lvl.names[0], "DEEP.TXT"));
-  expect_seeded(h, "/A/B/C/DEEP.TXT", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
-  exfat_verify(h, "nested_three_levels_built");
+  internal_expect_seeded(h, "/A/B/C/DEEP.TXT", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
+  internal_exfat_verify(h, "nested_three_levels_built");
 
   /* Unwind. Each rmdir refuses until the level below it is gone. */
   TEST_ASSERT_EQ(k_ra8_err_not_empty, ra8_fs_rmdir(h, "/A/B/C"));
@@ -341,14 +344,14 @@ static void test_nested_three_levels(void)
 
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_stat(h, "/A", &(ra8_fs_stat_t){}));
   name_ctx_t root = {};
-  TEST_ASSERT_EQ(k_dirs_none, list_names(h, "/", &root));
+  TEST_ASSERT_EQ(k_dirs_none, internal_list_names(h, "/", &root));
   /* Every cluster the tree used came back: the census equals the fresh-volume
    * one, which is the only authority on exFAT allocation. */
-  TEST_ASSERT_EQ(baseline, alloc_bitmap_used(h));
+  TEST_ASSERT_EQ(baseline, internal_alloc_bitmap_used(h));
 
-  exfat_verify(h, "nested_three_levels_unwound");
+  internal_exfat_verify(h, "nested_three_levels_unwound");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat dirs: three-level nesting resolves both ways");
 }
 
@@ -373,26 +376,26 @@ static void test_nested_three_levels(void)
  * @post The census returns to its pre-mkdir value.
  * @post The volume passes the structural scan.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_rmdir_empty_frees_its_cluster(void)
+RA8_INTERNAL static void internal_test_rmdir_empty_frees_its_cluster(void)
 {
   TEST_BEGIN("exfat dirs: rmdir of an empty directory frees its cluster");
-  build_exfat_volume();
-  ra8_fs_mount_t* h        = mount_fixture();
-  const uint32_t  baseline = alloc_bitmap_used(h);
+  internal_build_exfat_volume();
+  ra8_fs_mount_t* h        = internal_mount_fixture();
+  const uint32_t  baseline = internal_alloc_bitmap_used(h);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/TMP"));
-  TEST_ASSERT_EQ(baseline + (uint32_t)k_dirs_one, alloc_bitmap_used(h));
-  exfat_verify(h, "rmdir_empty_before");
+  TEST_ASSERT_EQ(baseline + (uint32_t)k_dirs_one, internal_alloc_bitmap_used(h));
+  internal_exfat_verify(h, "rmdir_empty_before");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_rmdir(h, "/TMP"));
-  TEST_ASSERT_EQ(baseline, alloc_bitmap_used(h));
+  TEST_ASSERT_EQ(baseline, internal_alloc_bitmap_used(h));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_stat(h, "/TMP", &(ra8_fs_stat_t){}));
 
-  exfat_verify(h, "rmdir_empty_after");
+  internal_exfat_verify(h, "rmdir_empty_after");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat dirs: rmdir of an empty directory frees its cluster");
 }
 
@@ -418,28 +421,28 @@ static void test_rmdir_empty_frees_its_cluster(void)
  * @post `rmdir` reports ::k_ra8_err_not_empty.
  * @post The census and the file's contents are unchanged.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_rmdir_non_empty_changes_nothing(void)
+RA8_INTERNAL static void internal_test_rmdir_non_empty_changes_nothing(void)
 {
   TEST_BEGIN("exfat dirs: rmdir of a populated directory refuses and costs nothing");
-  build_exfat_volume();
-  ra8_fs_mount_t* h = mount_fixture();
+  internal_build_exfat_volume();
+  ra8_fs_mount_t* h = internal_mount_fixture();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/DATA"));
-  write_seeded(h, "/DATA/F.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
-  const uint32_t before = alloc_bitmap_used(h);
+  internal_write_seeded(h, "/DATA/F.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
+  const uint32_t before = internal_alloc_bitmap_used(h);
 
   TEST_ASSERT_EQ(k_ra8_err_not_empty, ra8_fs_rmdir(h, "/DATA"));
 
-  TEST_ASSERT_EQ(before, alloc_bitmap_used(h));
-  expect_seeded(h, "/DATA/F.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
+  TEST_ASSERT_EQ(before, internal_alloc_bitmap_used(h));
+  internal_expect_seeded(h, "/DATA/F.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
   name_ctx_t inner = {};
-  TEST_ASSERT_EQ(k_dirs_one, list_names(h, "/DATA", &inner));
+  TEST_ASSERT_EQ(k_dirs_one, internal_list_names(h, "/DATA", &inner));
 
-  exfat_verify(h, "rmdir_non_empty_refused");
+  internal_exfat_verify(h, "rmdir_non_empty_refused");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat dirs: rmdir of a populated directory refuses and costs nothing");
 }
 
@@ -466,32 +469,32 @@ static void test_rmdir_non_empty_changes_nothing(void)
  * @post The directory holding only retired entries is removed.
  * @post The census returns to its pre-mkdir value.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_rmdir_after_unlink_inside(void)
+RA8_INTERNAL static void internal_test_rmdir_after_unlink_inside(void)
 {
   TEST_BEGIN("exfat dirs: a directory of retired entries is empty");
-  build_exfat_volume();
-  ra8_fs_mount_t* h        = mount_fixture();
-  const uint32_t  baseline = alloc_bitmap_used(h);
+  internal_build_exfat_volume();
+  ra8_fs_mount_t* h        = internal_mount_fixture();
+  const uint32_t  baseline = internal_alloc_bitmap_used(h);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SCRATCH"));
-  write_seeded(h, "/SCRATCH/ONE.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
-  write_seeded(h, "/SCRATCH/TWO.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
+  internal_write_seeded(h, "/SCRATCH/ONE.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
+  internal_write_seeded(h, "/SCRATCH/TWO.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
   name_ctx_t inner = {};
-  TEST_ASSERT_EQ(k_dirs_two, list_names(h, "/SCRATCH", &inner));
+  TEST_ASSERT_EQ(k_dirs_two, internal_list_names(h, "/SCRATCH", &inner));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "/SCRATCH/ONE.BIN"));
   TEST_ASSERT_EQ(k_ra8_err_not_empty, ra8_fs_rmdir(h, "/SCRATCH"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "/SCRATCH/TWO.BIN"));
-  TEST_ASSERT_EQ(k_dirs_none, list_names(h, "/SCRATCH", &inner));
+  TEST_ASSERT_EQ(k_dirs_none, internal_list_names(h, "/SCRATCH", &inner));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_rmdir(h, "/SCRATCH"));
-  TEST_ASSERT_EQ(baseline, alloc_bitmap_used(h));
+  TEST_ASSERT_EQ(baseline, internal_alloc_bitmap_used(h));
 
-  exfat_verify(h, "rmdir_after_unlink_inside");
+  internal_exfat_verify(h, "rmdir_after_unlink_inside");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat dirs: a directory of retired entries is empty");
 }
 
@@ -520,33 +523,33 @@ static void test_rmdir_after_unlink_inside(void)
  * @post Both `mkdir` calls report ::k_ra8_err_exists.
  * @post The census is unchanged by the refusals.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_mkdir_refuses_an_existing_name(void)
+RA8_INTERNAL static void internal_test_mkdir_refuses_an_existing_name(void)
 {
   TEST_BEGIN("exfat dirs: mkdir over an existing name refuses");
-  build_exfat_volume();
-  ra8_fs_mount_t* h = mount_fixture();
+  internal_build_exfat_volume();
+  ra8_fs_mount_t* h = internal_mount_fixture();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/BOOKS"));
-  write_seeded(h, "/NOTES.TXT", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
-  const uint32_t before = alloc_bitmap_used(h);
+  internal_write_seeded(h, "/NOTES.TXT", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
+  const uint32_t before = internal_alloc_bitmap_used(h);
 
   TEST_ASSERT_EQ(k_ra8_err_exists, ra8_fs_mkdir(h, "/BOOKS"));
   TEST_ASSERT_EQ(k_ra8_err_exists, ra8_fs_mkdir(h, "/NOTES.TXT"));
-  TEST_ASSERT_EQ(before, alloc_bitmap_used(h));
+  TEST_ASSERT_EQ(before, internal_alloc_bitmap_used(h));
 
   /* The reverse collision: write_file over a DIRECTORY name is refused rather
    * than replacing it, because unlink refuses a directory (#604). */
   uint8_t payload[k_dirs_payload] = {};
-  fill(payload, (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
+  internal_fill(payload, (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_fs_write_file(h, "/BOOKS", payload, (uint32_t)k_dirs_payload));
-  TEST_ASSERT_EQ(before, alloc_bitmap_used(h));
+  TEST_ASSERT_EQ(before, internal_alloc_bitmap_used(h));
 
-  exfat_verify(h, "mkdir_refuses_existing_name");
+  internal_exfat_verify(h, "mkdir_refuses_existing_name");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat dirs: mkdir over an existing name refuses");
 }
 
@@ -575,31 +578,31 @@ static void test_mkdir_refuses_an_existing_name(void)
  * @post `unlink` on the directory reports ::k_ra8_err_invalid_arg.
  * @post `rmdir` on the file reports ::k_ra8_err_invalid_arg.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_wrong_verb_for_the_kind(void)
+RA8_INTERNAL static void internal_test_wrong_verb_for_the_kind(void)
 {
   TEST_BEGIN("exfat dirs: unlink refuses a directory, rmdir refuses a file");
-  build_exfat_volume();
-  ra8_fs_mount_t* h = mount_fixture();
+  internal_build_exfat_volume();
+  ra8_fs_mount_t* h = internal_mount_fixture();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/KEEP"));
-  write_seeded(h, "/KEEP/CHILD.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
-  write_seeded(h, "/PLAIN.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
-  const uint32_t before = alloc_bitmap_used(h);
+  internal_write_seeded(h, "/KEEP/CHILD.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
+  internal_write_seeded(h, "/PLAIN.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
+  const uint32_t before = internal_alloc_bitmap_used(h);
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_unlink(h, "/KEEP"));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_rmdir(h, "/PLAIN.BIN"));
-  TEST_ASSERT_EQ(before, alloc_bitmap_used(h));
+  TEST_ASSERT_EQ(before, internal_alloc_bitmap_used(h));
 
   /* Opening a directory as a file is refused too, so the child is reachable. */
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_open(h, "/KEEP", k_ra8_fs_mode_read, &f));
-  expect_seeded(h, "/KEEP/CHILD.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
+  internal_expect_seeded(h, "/KEEP/CHILD.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
 
-  exfat_verify(h, "wrong_verb_for_the_kind");
+  internal_exfat_verify(h, "wrong_verb_for_the_kind");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat dirs: unlink refuses a directory, rmdir refuses a file");
 }
 
@@ -624,31 +627,31 @@ static void test_wrong_verb_for_the_kind(void)
  * @post Both files exist and read back their own contents.
  * @post Removing one leaves the other untouched.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_same_name_in_two_directories(void)
+RA8_INTERNAL static void internal_test_same_name_in_two_directories(void)
 {
   TEST_BEGIN("exfat dirs: one name, two directories, two files");
-  build_exfat_volume();
-  ra8_fs_mount_t* h = mount_fixture();
+  internal_build_exfat_volume();
+  ra8_fs_mount_t* h = internal_mount_fixture();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/LEFT"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/RIGHT"));
-  write_seeded(h, "/LEFT/SAME.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
-  write_seeded(h, "/RIGHT/SAME.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
+  internal_write_seeded(h, "/LEFT/SAME.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
+  internal_write_seeded(h, "/RIGHT/SAME.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
 
-  expect_seeded(h, "/LEFT/SAME.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
-  expect_seeded(h, "/RIGHT/SAME.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
+  internal_expect_seeded(h, "/LEFT/SAME.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
+  internal_expect_seeded(h, "/RIGHT/SAME.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
   name_ctx_t root = {};
-  TEST_ASSERT_EQ(k_dirs_two, list_names(h, "/", &root));
+  TEST_ASSERT_EQ(k_dirs_two, internal_list_names(h, "/", &root));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "/LEFT/SAME.BIN"));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_stat(h, "/LEFT/SAME.BIN", &(ra8_fs_stat_t){}));
-  expect_seeded(h, "/RIGHT/SAME.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
+  internal_expect_seeded(h, "/RIGHT/SAME.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
 
-  exfat_verify(h, "same_name_in_two_directories");
+  internal_exfat_verify(h, "same_name_in_two_directories");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat dirs: one name, two directories, two files");
 }
 
@@ -673,13 +676,13 @@ static void test_same_name_in_two_directories(void)
  * @post The long-named directory resolves, lists and is removable.
  * @post The volume passes the structural scan.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_long_directory_name(void)
+RA8_INTERNAL static void internal_test_long_directory_name(void)
 {
   TEST_BEGIN("exfat dirs: a 40-character directory name round-trips");
-  build_exfat_volume();
-  ra8_fs_mount_t* h = mount_fixture();
+  internal_build_exfat_volume();
+  ra8_fs_mount_t* h = internal_mount_fixture();
 
   char name[(uint32_t)k_dirs_long_chars + 1U] = {};
   for (uint32_t i = 0U; i < (uint32_t)k_dirs_long_chars; i++) {
@@ -690,17 +693,17 @@ static void test_long_directory_name(void)
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, path));
   name_ctx_t root = {};
-  TEST_ASSERT_EQ(k_dirs_one, list_names(h, "/", &root));
+  TEST_ASSERT_EQ(k_dirs_one, internal_list_names(h, "/", &root));
   TEST_ASSERT_EQ(0, strcmp(root.names[0], name));
-  TEST_ASSERT_EQ(k_dirs_one, has_dir(&root, name));
-  exfat_verify(h, "long_directory_name");
+  TEST_ASSERT_EQ(k_dirs_one, internal_has_dir(&root, name));
+  internal_exfat_verify(h, "long_directory_name");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_rmdir(h, path));
-  TEST_ASSERT_EQ(k_dirs_none, list_names(h, "/", &root));
+  TEST_ASSERT_EQ(k_dirs_none, internal_list_names(h, "/", &root));
 
-  exfat_verify(h, "long_directory_name_removed");
+  internal_exfat_verify(h, "long_directory_name_removed");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat dirs: a 40-character directory name round-trips");
 }
 
@@ -731,28 +734,28 @@ static void test_long_directory_name(void)
  * @post The directory holds exactly one entry with the newest contents.
  * @post The census after the repeat equals the census after the first write.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_replace_inside_a_subdirectory(void)
+RA8_INTERNAL static void internal_test_replace_inside_a_subdirectory(void)
 {
   TEST_BEGIN("exfat dirs: repeated write_file inside a directory replaces");
-  build_exfat_volume();
-  ra8_fs_mount_t* h = mount_fixture();
+  internal_build_exfat_volume();
+  ra8_fs_mount_t* h = internal_mount_fixture();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/CACHE"));
-  write_seeded(h, "/CACHE/E.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
-  const uint32_t after_first = alloc_bitmap_used(h);
+  internal_write_seeded(h, "/CACHE/E.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
+  const uint32_t after_first = internal_alloc_bitmap_used(h);
 
-  write_seeded(h, "/CACHE/E.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
-  TEST_ASSERT_EQ(after_first, alloc_bitmap_used(h));
+  internal_write_seeded(h, "/CACHE/E.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
+  TEST_ASSERT_EQ(after_first, internal_alloc_bitmap_used(h));
 
   name_ctx_t inner = {};
-  TEST_ASSERT_EQ(k_dirs_one, list_names(h, "/CACHE", &inner));
-  expect_seeded(h, "/CACHE/E.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
+  TEST_ASSERT_EQ(k_dirs_one, internal_list_names(h, "/CACHE", &inner));
+  internal_expect_seeded(h, "/CACHE/E.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
 
-  exfat_verify(h, "replace_inside_a_subdirectory");
+  internal_exfat_verify(h, "replace_inside_a_subdirectory");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat dirs: repeated write_file inside a directory replaces");
 }
 
@@ -777,30 +780,30 @@ static void test_replace_inside_a_subdirectory(void)
  * @post The renamed file resolves under its new name in the same directory.
  * @post The cross-directory attempt changes nothing.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_rename_within_a_subdirectory(void)
+RA8_INTERNAL static void internal_test_rename_within_a_subdirectory(void)
 {
   TEST_BEGIN("exfat dirs: rename inside a directory, never across one");
-  build_exfat_volume();
-  ra8_fs_mount_t* h = mount_fixture();
+  internal_build_exfat_volume();
+  ra8_fs_mount_t* h = internal_mount_fixture();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SRC"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/DST"));
-  write_seeded(h, "/SRC/OLD.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
+  internal_write_seeded(h, "/SRC/OLD.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_rename(h, "/SRC/OLD.BIN", "/SRC/NEW.BIN"));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_stat(h, "/SRC/OLD.BIN", &(ra8_fs_stat_t){}));
-  expect_seeded(h, "/SRC/NEW.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
+  internal_expect_seeded(h, "/SRC/NEW.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
 
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_fs_rename(h, "/SRC/NEW.BIN", "/DST/NEW.BIN"));
-  expect_seeded(h, "/SRC/NEW.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
+  internal_expect_seeded(h, "/SRC/NEW.BIN", (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_a);
   name_ctx_t dst = {};
-  TEST_ASSERT_EQ(k_dirs_none, list_names(h, "/DST", &dst));
+  TEST_ASSERT_EQ(k_dirs_none, internal_list_names(h, "/DST", &dst));
 
-  exfat_verify(h, "rename_within_a_subdirectory");
+  internal_exfat_verify(h, "rename_within_a_subdirectory");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat dirs: rename inside a directory, never across one");
 }
 
@@ -819,18 +822,17 @@ static void test_rename_within_a_subdirectory(void)
  */
 int32_t main(void)
 {
-  test_mkdir_lists_as_a_directory();
-  test_mkdir_file_inside_round_trip();
-  test_nested_three_levels();
-  test_rmdir_empty_frees_its_cluster();
-  test_rmdir_non_empty_changes_nothing();
-  test_rmdir_after_unlink_inside();
-  test_mkdir_refuses_an_existing_name();
-  test_wrong_verb_for_the_kind();
-  test_same_name_in_two_directories();
-  test_long_directory_name();
-  test_replace_inside_a_subdirectory();
-  test_rename_within_a_subdirectory();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_exfat_dirs.c\n");
+  internal_test_mkdir_lists_as_a_directory();
+  internal_test_mkdir_file_inside_round_trip();
+  internal_test_nested_three_levels();
+  internal_test_rmdir_empty_frees_its_cluster();
+  internal_test_rmdir_non_empty_changes_nothing();
+  internal_test_rmdir_after_unlink_inside();
+  internal_test_mkdir_refuses_an_existing_name();
+  internal_test_wrong_verb_for_the_kind();
+  internal_test_same_name_in_two_directories();
+  internal_test_long_directory_name();
+  internal_test_replace_inside_a_subdirectory();
+  internal_test_rename_within_a_subdirectory();
   return 0;
 }

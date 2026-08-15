@@ -194,7 +194,7 @@ void priv_check_zero_bitmap(ra8_fs_check_ctx_t* ctx)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_fat_bad_marker(const ra8_fs_mount_t* m)
+static uint32_t internal_fat_bad_marker(const ra8_fs_mount_t* m)
 {
   if (m->type == k_ra8_fs_type_fat12) {
     return (uint32_t)k_check_bad_fat12;
@@ -231,13 +231,13 @@ static uint32_t priv_fat_bad_marker(const ra8_fs_mount_t* m)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_fat_classify_one(ra8_fs_check_ctx_t* ctx, uint32_t cluster, uint32_t value)
+static void internal_fat_classify_one(ra8_fs_check_ctx_t* ctx, uint32_t cluster, uint32_t value)
 {
   if (value == (uint32_t)k_cluster_free) {
     ctx->rep->clusters_free++;
     return;
   }
-  if (value == priv_fat_bad_marker(ctx->m)) {
+  if (value == internal_fat_bad_marker(ctx->m)) {
     ctx->rep->clusters_bad++;
     return;
   }
@@ -267,7 +267,7 @@ static void priv_fat_classify_one(ra8_fs_check_ctx_t* ctx, uint32_t cluster, uin
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_classify(ra8_fs_check_ctx_t* ctx)
+static ra8_err_t internal_fat_classify(ra8_fs_check_ctx_t* ctx)
 {
   const uint32_t last = (uint32_t)k_cluster_first_data + ctx->rep->clusters_total;
   for (uint32_t c = (uint32_t)k_cluster_first_data; c < last; c++) {
@@ -276,7 +276,7 @@ static ra8_err_t priv_fat_classify(ra8_fs_check_ctx_t* ctx)
     if (err != k_ra8_ok) {
       return err;
     }
-    priv_fat_classify_one(ctx, c, v);
+    internal_fat_classify_one(ctx, c, v);
   }
   return k_ra8_ok;
 }
@@ -361,7 +361,7 @@ static ra8_err_t internal_fat_mark_chain(ra8_fs_check_ctx_t* ctx, uint32_t first
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_fat_push(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack, uint32_t clus)
+static void internal_fat_push(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack, uint32_t clus)
 {
   if (stack->top >= (uint32_t)k_ra8_fs_check_max_dirs) {
     /* GCOVR_EXCL_START -- a directory tree more than k_ra8_fs_check_max_dirs deep */
@@ -406,12 +406,12 @@ static void priv_fat_push(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack, uint3
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_entry(ra8_fs_check_ctx_t* ctx,
-                                fat_dir_stack_t*    stack,
-                                const uint8_t*      ent,
-                                uint64_t            lba,
-                                uint32_t            entry_off,
-                                uint8_t*            out_eod)
+static ra8_err_t internal_fat_entry(ra8_fs_check_ctx_t* ctx,
+                                    fat_dir_stack_t*    stack,
+                                    const uint8_t*      ent,
+                                    uint64_t            lba,
+                                    uint32_t            entry_off,
+                                    uint8_t*            out_eod)
 {
   *out_eod            = 0U;
   const uint8_t name0 = ent[k_dir_off_name];
@@ -441,7 +441,7 @@ static ra8_err_t priv_fat_entry(ra8_fs_check_ctx_t* ctx,
   }
   if (is_dir != 0U) {
     if (first != 0U) {
-      priv_fat_push(ctx, stack, first);
+      internal_fat_push(ctx, stack, first);
     }
     return k_ra8_ok;
   }
@@ -473,16 +473,16 @@ static ra8_err_t priv_fat_entry(ra8_fs_check_ctx_t* ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_visit_sector(ra8_fs_check_ctx_t* ctx,
-                                       fat_dir_stack_t*    stack,
-                                       const uint8_t*      buf,
-                                       uint64_t            lba,
-                                       uint8_t*            out_eod)
+static ra8_err_t internal_fat_visit_sector(ra8_fs_check_ctx_t* ctx,
+                                           fat_dir_stack_t*    stack,
+                                           const uint8_t*      buf,
+                                           uint64_t            lba,
+                                           uint8_t*            out_eod)
 {
   for (uint32_t e = 0U; e < priv_dir_eps(ctx->m); e++) {
     const uint32_t  off = e * (uint32_t)k_ra8_fs_dir_entry_bytes;
     uint8_t         eod = 0U;
-    const ra8_err_t err = priv_fat_entry(ctx, stack, &buf[off], lba, off, &eod);
+    const ra8_err_t err = internal_fat_entry(ctx, stack, &buf[off], lba, off, &eod);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -513,7 +513,7 @@ static ra8_err_t priv_fat_visit_sector(ra8_fs_check_ctx_t* ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_scan_fixed_root(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack)
+static ra8_err_t internal_fat_scan_fixed_root(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack)
 {
   const uint32_t secs = (ctx->m->root_entries + (priv_dir_eps(ctx->m) - 1U)) / priv_dir_eps(ctx->m);
   for (uint32_t s = 0U; s < secs; s++) {
@@ -524,7 +524,7 @@ static ra8_err_t priv_fat_scan_fixed_root(ra8_fs_check_ctx_t* ctx, fat_dir_stack
       return err;
     }
     uint8_t eod = 0U;
-    err         = priv_fat_visit_sector(ctx, stack, buf, lba, &eod);
+    err         = internal_fat_visit_sector(ctx, stack, buf, lba, &eod);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -578,7 +578,7 @@ internal_fat_scan_cluster_dir(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack, u
         return err;
       }
       uint8_t eod = 0U;
-      err         = priv_fat_visit_sector(ctx, stack, buf, base + s, &eod);
+      err         = internal_fat_visit_sector(ctx, stack, buf, base + s, &eod);
       if (err != k_ra8_ok) {
         return err;
       }
@@ -624,7 +624,7 @@ ra8_err_t ra8_fs_check_test_fat_scan_cluster_dir(ra8_fs_check_ctx_t* ctx, uint32
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_tree(ra8_fs_check_ctx_t* ctx)
+static ra8_err_t internal_fat_tree(ra8_fs_check_ctx_t* ctx)
 {
   fat_dir_stack_t stack  = {};
   stack.items[0].is_root = 1U;
@@ -637,7 +637,7 @@ static ra8_err_t priv_fat_tree(ra8_fs_check_ctx_t* ctx)
     ctx->rep->dirs_visited++;
     ra8_err_t err = k_ra8_ok;
     if ((loc.is_root != 0U) && !fat32) {
-      err = priv_fat_scan_fixed_root(ctx, &stack);
+      err = internal_fat_scan_fixed_root(ctx, &stack);
     } else {
       const uint32_t first = (loc.is_root != 0U) ? ctx->m->root_cluster : loc.cluster;
       err                  = internal_fat_scan_cluster_dir(ctx, &stack, first);
@@ -671,9 +671,9 @@ static ra8_err_t priv_fat_tree(ra8_fs_check_ctx_t* ctx)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_diff(ra8_fs_check_ctx_t* ctx)
+static ra8_err_t internal_fat_diff(ra8_fs_check_ctx_t* ctx)
 {
-  const uint32_t marker = priv_fat_bad_marker(ctx->m);
+  const uint32_t marker = internal_fat_bad_marker(ctx->m);
   const uint32_t last   = (uint32_t)k_cluster_first_data + ctx->rep->clusters_total;
   for (uint32_t c = (uint32_t)k_cluster_first_data; c < last; c++) {
     uint32_t        v   = 0U;
@@ -714,7 +714,7 @@ static ra8_err_t priv_fat_diff(ra8_fs_check_ctx_t* ctx)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_fsinfo(ra8_fs_check_ctx_t* ctx)
+static ra8_err_t internal_fat_fsinfo(ra8_fs_check_ctx_t* ctx)
 {
   if (ctx->m->type != k_ra8_fs_type_fat32) {
     return k_ra8_ok;
@@ -752,22 +752,22 @@ static ra8_err_t priv_fat_fsinfo(ra8_fs_check_ctx_t* ctx)
 /* `priv_check_fat()`: see header for the documented contract. */
 ra8_err_t priv_check_fat(ra8_fs_check_ctx_t* ctx)
 {
-  ra8_err_t err = priv_fat_classify(ctx);
+  ra8_err_t err = internal_fat_classify(ctx);
   if (err != k_ra8_ok) {
     return err;
   }
   if (ctx->bitmap != nullptr) {
     priv_check_zero_bitmap(ctx);
-    err = priv_fat_tree(ctx);
+    err = internal_fat_tree(ctx);
     if (err != k_ra8_ok) {
       return err;
     }
-    err = priv_fat_diff(ctx);
+    err = internal_fat_diff(ctx);
     if (err != k_ra8_ok) {
       return err;
     }
   }
-  return priv_fat_fsinfo(ctx);
+  return internal_fat_fsinfo(ctx);
 }
 
 /* =============================================================================

@@ -25,10 +25,10 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_lfn_write_test_util.h"
@@ -93,7 +93,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void build_fat16_big_root(void)
+RA8_INTERNAL static void internal_build_fat16_big_root(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -106,13 +106,13 @@ static void build_fat16_big_root(void)
     TEST_FAIL_FMT("%s", "calloc failed");
   }
   uint8_t* bpb = s_disk.bytes;
-  put16(bpb, (uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_geo_blk_sz);
+  internal_put16(bpb, (uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_geo_blk_sz);
   bpb[k_bpb_off_sec_per_clus] = 1U;
-  put16(bpb, (uint32_t)k_bpb_off_rsvd_sec_cnt, 1U);
+  internal_put16(bpb, (uint32_t)k_bpb_off_rsvd_sec_cnt, 1U);
   bpb[k_bpb_off_num_fats] = 2U;
-  put16(bpb, (uint32_t)k_bpb_off_root_ent_cnt, (uint16_t)k_lwc_root_entries);
-  put16(bpb, (uint32_t)k_bpb_off_tot_sec16, (uint16_t)k_lwc_total_sec);
-  put16(bpb, (uint32_t)k_bpb_off_fat_sz16, (uint16_t)k_lwc_fat_sectors);
+  internal_put16(bpb, (uint32_t)k_bpb_off_root_ent_cnt, (uint16_t)k_lwc_root_entries);
+  internal_put16(bpb, (uint32_t)k_bpb_off_tot_sec16, (uint16_t)k_lwc_total_sec);
+  internal_put16(bpb, (uint32_t)k_bpb_off_fat_sz16, (uint16_t)k_lwc_fat_sectors);
   bpb[k_bpb_off_sig0] = (uint8_t)k_bpb_sig0_val;
   bpb[k_bpb_off_sig1] = (uint8_t)k_bpb_sig1_val;
 }
@@ -132,9 +132,9 @@ static void build_fat16_big_root(void)
  * @post No other byte is touched.
  *
  * @note Trivially thread-safe (writes only through @p p).
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded put32 fixture step using caller-owned state.
  */
-static void put32(uint8_t* p, uint32_t off, uint32_t v)
+RA8_INTERNAL static void internal_put32(uint8_t* p, uint32_t off, uint32_t v)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_lwc_u32_bytes; i++) {
     p[off + i] = (uint8_t)((v >> (i * (uint32_t)k_lwc_bits_byte)) & (uint32_t)k_lwc_byte_mask);
@@ -160,7 +160,7 @@ static void put32(uint8_t* p, uint32_t off, uint32_t v)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void build_fat32_one_sector_root(void)
+RA8_INTERNAL static void internal_build_fat32_one_sector_root(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -173,22 +173,22 @@ static void build_fat32_one_sector_root(void)
     TEST_FAIL_FMT("%s", "calloc failed");
   }
   uint8_t* bpb = s_disk.bytes;
-  put16(bpb, (uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_geo_blk_sz);
+  internal_put16(bpb, (uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_geo_blk_sz);
   bpb[k_bpb_off_sec_per_clus] = 1U;
-  put16(bpb, (uint32_t)k_bpb_off_rsvd_sec_cnt, 1U);
+  internal_put16(bpb, (uint32_t)k_bpb_off_rsvd_sec_cnt, 1U);
   bpb[k_bpb_off_num_fats] = 2U;
-  put16(bpb, (uint32_t)k_bpb_off_root_ent_cnt, 0U); /* 0 root entries => FAT32 */
-  put32(bpb, (uint32_t)k_lwc_off_tot32, (uint32_t)k_lwc_f32_blocks);
-  put32(bpb, (uint32_t)k_lwc_off_fatsz32, (uint32_t)k_lwc_f32_fat_secs);
-  put32(bpb, (uint32_t)k_lwc_off_rootclus, (uint32_t)k_lwc_f32_root_cl);
+  internal_put16(bpb, (uint32_t)k_bpb_off_root_ent_cnt, 0U); /* 0 root entries => FAT32 */
+  internal_put32(bpb, (uint32_t)k_lwc_off_tot32, (uint32_t)k_lwc_f32_blocks);
+  internal_put32(bpb, (uint32_t)k_lwc_off_fatsz32, (uint32_t)k_lwc_f32_fat_secs);
+  internal_put32(bpb, (uint32_t)k_lwc_off_rootclus, (uint32_t)k_lwc_f32_root_cl);
   bpb[k_bpb_off_sig0] = (uint8_t)k_bpb_sig0_val;
   bpb[k_bpb_off_sig1] = (uint8_t)k_bpb_sig1_val;
   /* Mark the root's own cluster end-of-chain in both FAT copies. */
   for (uint32_t copy = 0U; copy < (uint32_t)k_lwc_fat_copies; copy++) {
-    const uint32_t fat_byte =
+    const uint32_t internal_fat_byte =
       ((1U + (copy * (uint32_t)k_lwc_f32_fat_secs)) * (uint32_t)k_geo_blk_sz) +
       ((uint32_t)k_lwc_f32_root_cl * (uint32_t)k_lwc_u32_bytes);
-    put32(s_disk.bytes, fat_byte, (uint32_t)k_lwc_f32_eoc);
+    internal_put32(s_disk.bytes, internal_fat_byte, (uint32_t)k_lwc_f32_eoc);
   }
 }
 
@@ -262,20 +262,20 @@ typedef ra8_fs_mount_t* (*lwc_setup_t)(void);
  * @note Bounded by ::k_lwc_budget_cap (NASA Power of 10 Rule 2).
  * @since 0.1.0
  */
-static uint32_t sweep_io(lwc_setup_t setup, lwc_step_t step, uint8_t writes)
+RA8_INTERNAL static uint32_t internal_sweep_io(lwc_setup_t setup, lwc_step_t step, uint8_t writes)
 {
   for (uint32_t budget = 0U; budget < (uint32_t)k_lwc_budget_cap; budget++) {
     ra8_fs_mount_t*        h     = setup();
     const ra8_fs_backend_t saved = h->backend;
     if (writes != 0U) {
-      swap_to_wcount(h, budget);
+      internal_swap_to_wcount(h, budget);
     } else {
-      swap_to_inject(h, budget, 0U);
+      internal_swap_to_inject(h, budget, 0U);
     }
     const ra8_err_t err = step(h);
     h->backend          = saved;
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-    free_vol();
+    internal_free_vol();
     if (err == k_ra8_ok) {
       return budget;
     }
@@ -299,9 +299,9 @@ static uint32_t sweep_io(lwc_setup_t setup, lwc_step_t step, uint8_t writes)
  * @post On failure no handle is leaked.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded step create long fixture step using caller-owned state.
  */
-static ra8_err_t step_create_long(ra8_fs_mount_t* h)
+RA8_INTERNAL static ra8_err_t internal_step_create_long(ra8_fs_mount_t* h)
 {
   ra8_fs_file_t*  f   = nullptr;
   const ra8_err_t err = ra8_fs_open(h, "/A Long Enough Name.txt", k_ra8_fs_mode_write, &f);
@@ -326,9 +326,9 @@ static ra8_err_t step_create_long(ra8_fs_mount_t* h)
  * @post On failure the report reached the caller.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded step unlink long fixture step using caller-owned state.
  */
-static ra8_err_t step_unlink_long(ra8_fs_mount_t* h)
+RA8_INTERNAL static ra8_err_t internal_step_unlink_long(ra8_fs_mount_t* h)
 {
   return ra8_fs_unlink(h, "/A Long Enough Name.txt");
 }
@@ -348,9 +348,9 @@ static ra8_err_t step_unlink_long(ra8_fs_mount_t* h)
  * @post On failure the report reached the caller.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded step rename long fixture step using caller-owned state.
  */
-static ra8_err_t step_rename_long(ra8_fs_mount_t* h)
+RA8_INTERNAL static ra8_err_t internal_step_rename_long(ra8_fs_mount_t* h)
 {
   return ra8_fs_rename(h, "/A Long Enough Name.txt", "/Another Long Name Here.txt");
 }
@@ -370,9 +370,9 @@ static ra8_err_t step_rename_long(ra8_fs_mount_t* h)
  * @post On failure the report reached the caller.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded step create in full sub fixture step using caller-owned state.
  */
-static ra8_err_t step_create_in_full_sub(ra8_fs_mount_t* h)
+RA8_INTERNAL static ra8_err_t internal_step_create_in_full_sub(ra8_fs_mount_t* h)
 {
   ra8_fs_file_t*  f   = nullptr;
   const ra8_err_t err = ra8_fs_open(h, "/SUB/Spilling Over The Edge.txt", k_ra8_fs_mode_write, &f);
@@ -396,9 +396,9 @@ static ra8_err_t step_create_in_full_sub(ra8_fs_mount_t* h)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_fs_mount_t* setup_empty(void)
+RA8_INTERNAL static ra8_fs_mount_t* internal_setup_empty(void)
 {
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   return h;
@@ -418,10 +418,10 @@ static ra8_fs_mount_t* setup_empty(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_fs_mount_t* setup_with_long_file(void)
+RA8_INTERNAL static ra8_fs_mount_t* internal_setup_with_long_file(void)
 {
-  ra8_fs_mount_t* h = setup_empty();
-  TEST_ASSERT_EQ(k_ra8_ok, step_create_long(h));
+  ra8_fs_mount_t* h = internal_setup_empty();
+  TEST_ASSERT_EQ(k_ra8_ok, internal_step_create_long(h));
   return h;
 }
 
@@ -439,11 +439,11 @@ static ra8_fs_mount_t* setup_with_long_file(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_fs_mount_t* setup_full_sub(void)
+RA8_INTERNAL static ra8_fs_mount_t* internal_setup_full_sub(void)
 {
-  ra8_fs_mount_t* h = setup_empty();
+  ra8_fs_mount_t* h = internal_setup_empty();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
-  create_empty_files(h, "/SUB", (uint32_t)k_lwc_sub_fill);
+  internal_create_empty_files(h, "/SUB", (uint32_t)k_lwc_sub_fill);
   return h;
 }
 
@@ -471,13 +471,13 @@ static ra8_fs_mount_t* setup_full_sub(void)
  * @pre A hand-built FAT16 volume is mounted and empty.
  * @post Both sweeps reached a succeeding budget, and the file exists.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_create_io_sweeps(void)
+RA8_INTERNAL static void internal_test_create_io_sweeps(void)
 {
   TEST_BEGIN("lfn cov: create read/write failure sweeps");
-  TEST_ASSERT(sweep_io(setup_empty, step_create_long, 0U) > 0U);
-  TEST_ASSERT(sweep_io(setup_empty, step_create_long, 1U) > 0U);
+  TEST_ASSERT(internal_sweep_io(internal_setup_empty, internal_step_create_long, 0U) > 0U);
+  TEST_ASSERT(internal_sweep_io(internal_setup_empty, internal_step_create_long, 1U) > 0U);
   TEST_END("lfn cov: create read/write failure sweeps");
 }
 
@@ -498,13 +498,13 @@ static void test_create_io_sweeps(void)
  * @pre A hand-built FAT16 volume is mounted and holds one long-named file.
  * @post The file was deleted and the root holds no orphan.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_unlink_io_sweeps(void)
+RA8_INTERNAL static void internal_test_unlink_io_sweeps(void)
 {
   TEST_BEGIN("lfn cov: unlink read/write failure sweeps");
-  TEST_ASSERT(sweep_io(setup_with_long_file, step_unlink_long, 0U) > 0U);
-  TEST_ASSERT(sweep_io(setup_with_long_file, step_unlink_long, 1U) > 0U);
+  TEST_ASSERT(internal_sweep_io(internal_setup_with_long_file, internal_step_unlink_long, 0U) > 0U);
+  TEST_ASSERT(internal_sweep_io(internal_setup_with_long_file, internal_step_unlink_long, 1U) > 0U);
   TEST_END("lfn cov: unlink read/write failure sweeps");
 }
 
@@ -527,13 +527,13 @@ static void test_unlink_io_sweeps(void)
  * @pre A hand-built FAT16 volume is mounted and holds one long-named file.
  * @post Some name resolves to the file after every sweep step.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_rename_io_sweeps(void)
+RA8_INTERNAL static void internal_test_rename_io_sweeps(void)
 {
   TEST_BEGIN("lfn cov: rename read/write failure sweeps");
-  TEST_ASSERT(sweep_io(setup_with_long_file, step_rename_long, 0U) > 0U);
-  TEST_ASSERT(sweep_io(setup_with_long_file, step_rename_long, 1U) > 0U);
+  TEST_ASSERT(internal_sweep_io(internal_setup_with_long_file, internal_step_rename_long, 0U) > 0U);
+  TEST_ASSERT(internal_sweep_io(internal_setup_with_long_file, internal_step_rename_long, 1U) > 0U);
   TEST_END("lfn cov: rename read/write failure sweeps");
 }
 
@@ -557,23 +557,25 @@ static void test_rename_io_sweeps(void)
  * @pre A hand-built FAT16 volume (SPC=1) is mounted with a full `/SUB`.
  * @post The long name exists in `/SUB` and the volume is consistent.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_directory_growth_failures(void)
+RA8_INTERNAL static void internal_test_directory_growth_failures(void)
 {
   TEST_BEGIN("lfn cov: directory-growth failure sweeps");
-  TEST_ASSERT(sweep_io(setup_full_sub, step_create_in_full_sub, 0U) > 0U);
-  TEST_ASSERT(sweep_io(setup_full_sub, step_create_in_full_sub, 1U) > 0U);
+  TEST_ASSERT(internal_sweep_io(internal_setup_full_sub, internal_step_create_in_full_sub, 0U) >
+              0U);
+  TEST_ASSERT(internal_sweep_io(internal_setup_full_sub, internal_step_create_in_full_sub, 1U) >
+              0U);
 
   /* And once cleanly, to prove the grown directory is usable afterwards. */
-  ra8_fs_mount_t* h = setup_full_sub();
-  TEST_ASSERT_EQ(k_ra8_ok, step_create_in_full_sub(h));
+  ra8_fs_mount_t* h = internal_setup_full_sub();
+  TEST_ASSERT_EQ(k_ra8_ok, internal_step_create_in_full_sub(h));
   name_list_t l = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/SUB", collect_cb, &l));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/SUB", internal_collect_cb, &l));
   TEST_ASSERT_EQ(k_lwc_sub_fill + 1U, l.count);
   TEST_ASSERT_EQ(0, strcmp(l.name[(uint32_t)k_lwc_sub_fill], "Spilling Over The Edge.txt"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("lfn cov: directory-growth failure sweeps");
 }
 
@@ -596,35 +598,35 @@ static void test_directory_growth_failures(void)
  * @pre A 64-entry-root FAT16 volume is mounted.
  * @post The name round-trips, and after deletion the root holds no orphan.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_chain_straddles_a_sector(void)
+RA8_INTERNAL static void internal_test_chain_straddles_a_sector(void)
 {
   TEST_BEGIN("lfn cov: a chain across a sector boundary");
-  build_fat16_big_root();
+  internal_build_fat16_big_root();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_lwc_root_entries, h->root_entries);
 
   /* 15 short entries, so the next free slot is the last one of sector 0. */
-  create_empty_files(h, "/", (uint32_t)k_lwc_root_fill);
-  write_and_verify(h, "/Straddling The Boundary.txt");
-  TEST_ASSERT_EQ(0U, count_orphan_slots(h));
+  internal_create_empty_files(h, "/", (uint32_t)k_lwc_root_fill);
+  internal_write_and_verify(h, "/Straddling The Boundary.txt");
+  TEST_ASSERT_EQ(0U, internal_count_orphan_slots(h));
 
   name_list_t l = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", collect_cb, &l));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_collect_cb, &l));
   TEST_ASSERT_EQ(k_lwc_root_fill + 1U, l.count);
   TEST_ASSERT_EQ(0, strcmp(l.name[(uint32_t)k_lwc_root_fill], "Straddling The Boundary.txt"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "/Straddling The Boundary.txt"));
   scan_result_t r = {};
-  scan_root_of(h, &r);
+  internal_scan_root_of(h, &r);
   TEST_ASSERT_EQ(k_lwc_root_fill, r.live);
   TEST_ASSERT_EQ(0U, r.lfn_slots);
   TEST_ASSERT_EQ(0U, r.orphans);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("lfn cov: a chain across a sector boundary");
 }
 
@@ -646,12 +648,12 @@ static void test_chain_straddles_a_sector(void)
  * @pre A 64-entry-root FAT16 volume is mounted and holds one short-named file.
  * @post The entry is gone and exactly one planted slot is left behind.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_overlong_planted_chain(void)
+RA8_INTERNAL static void internal_test_overlong_planted_chain(void)
 {
   TEST_BEGIN("lfn cov: an over-long planted chain is capped");
-  build_fat16_big_root();
+  internal_build_fat16_big_root();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -663,11 +665,11 @@ static void test_overlong_planted_chain(void)
   /* Move it to slot k_lwc_planted_lfn and plant that many long-name slots in
    * front of it, all carrying its checksum. */
   uint8_t entry[k_lw_entry] = {};
-  memcpy(entry, root_slot(h, 0U), (size_t)k_lw_entry);
-  const uint8_t csum = spec_checksum(&entry[k_lw_off_name]);
-  memcpy(root_slot(h, (uint32_t)k_lwc_planted_lfn), entry, (size_t)k_lw_entry);
+  memcpy(entry, internal_root_slot(h, 0U), (size_t)k_lw_entry);
+  const uint8_t csum = internal_spec_checksum(&entry[k_lw_off_name]);
+  memcpy(internal_root_slot(h, (uint32_t)k_lwc_planted_lfn), entry, (size_t)k_lw_entry);
   for (uint32_t i = 0U; i < (uint32_t)k_lwc_planted_lfn; i++) {
-    uint8_t* slot = root_slot(h, i);
+    uint8_t* slot = internal_root_slot(h, i);
     memset(slot, 0, (size_t)k_lw_entry);
     slot[k_lw_off_name] = (uint8_t)(((uint32_t)k_lwc_planted_lfn - i) & (uint32_t)k_lwc_ord_mask);
     slot[k_lw_off_attr] = (uint8_t)k_lw_attr_lfn;
@@ -675,7 +677,7 @@ static void test_overlong_planted_chain(void)
   }
 
   scan_result_t before = {};
-  scan_root_of(h, &before);
+  internal_scan_root_of(h, &before);
   TEST_ASSERT_EQ(k_lwc_planted_lfn, before.lfn_slots);
   TEST_ASSERT_EQ(k_lwc_planted_lfn, before.chained);
 
@@ -683,12 +685,12 @@ static void test_overlong_planted_chain(void)
 
   /* The cap is 20, so exactly one of the 21 planted slots survives. */
   scan_result_t after = {};
-  scan_root_of(h, &after);
+  internal_scan_root_of(h, &after);
   TEST_ASSERT_EQ(0U, after.live);
   TEST_ASSERT_EQ(k_lwc_planted_lfn - k_lwc_erase_cap, after.lfn_slots);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("lfn cov: an over-long planted chain is capped");
 }
 
@@ -708,31 +710,31 @@ static void test_overlong_planted_chain(void)
  * @pre A hand-built FAT16 volume is mounted and empty.
  * @post The create was refused and the root is untouched.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_alias_probe_reports_backend_errors(void)
+RA8_INTERNAL static void internal_test_alias_probe_reports_backend_errors(void)
 {
   TEST_BEGIN("lfn cov: a backend error during the alias probe");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   /* One read for the 8.3 lookup, one for the long-name lookup, then the alias
    * probe's first read is denied. */
   const ra8_fs_backend_t saved = h->backend;
-  swap_to_inject(h, 2U, 0U);
+  internal_swap_to_inject(h, 2U, 0U);
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
                  ra8_fs_open(h, "/A Long Enough Name.txt", k_ra8_fs_mode_write, &f));
   h->backend = saved;
 
   scan_result_t r = {};
-  scan_root_of(h, &r);
+  internal_scan_root_of(h, &r);
   TEST_ASSERT_EQ(0U, r.live);
   TEST_ASSERT_EQ(0U, r.lfn_slots);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("lfn cov: a backend error during the alias probe");
 }
 
@@ -760,27 +762,27 @@ static void test_alias_probe_reports_backend_errors(void)
  * @pre A hand-built FAT32 volume with a one-sector root is mounted.
  * @post The long name resolves and the root holds no orphan.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_fat32_root_grows(void)
+RA8_INTERNAL static void internal_test_fat32_root_grows(void)
 {
   TEST_BEGIN("lfn cov: a FAT32 root grows to fit a chain");
-  build_fat32_one_sector_root();
+  internal_build_fat32_one_sector_root();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_fs_type_fat32, h->type);
 
-  create_empty_files(h, "/", (uint32_t)k_lwc_f32_fill);
-  write_and_verify(h, "/Grown Into A New Cluster.txt");
+  internal_create_empty_files(h, "/", (uint32_t)k_lwc_f32_fill);
+  internal_write_and_verify(h, "/Grown Into A New Cluster.txt");
 
   name_list_t l = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", collect_cb, &l));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_collect_cb, &l));
   TEST_ASSERT_EQ(k_lwc_f32_fill + 1U, l.count);
   TEST_ASSERT_EQ(0, strcmp(l.name[k_lwc_f32_fill], "Grown Into A New Cluster.txt"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "/Grown Into A New Cluster.txt"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("lfn cov: a FAT32 root grows to fit a chain");
 }
 
@@ -800,14 +802,13 @@ static void test_fat32_root_grows(void)
  */
 int32_t main(void)
 {
-  test_create_io_sweeps();
-  test_unlink_io_sweeps();
-  test_rename_io_sweeps();
-  test_directory_growth_failures();
-  test_chain_straddles_a_sector();
-  test_fat32_root_grows();
-  test_overlong_planted_chain();
-  test_alias_probe_reports_backend_errors();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_lfn_write_cov.c\n");
+  internal_test_create_io_sweeps();
+  internal_test_unlink_io_sweeps();
+  internal_test_rename_io_sweeps();
+  internal_test_directory_growth_failures();
+  internal_test_chain_straddles_a_sector();
+  internal_test_fat32_root_grows();
+  internal_test_overlong_planted_chain();
+  internal_test_alias_probe_reports_backend_errors();
   return 0;
 }

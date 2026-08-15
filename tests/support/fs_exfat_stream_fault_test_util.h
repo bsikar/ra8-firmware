@@ -27,10 +27,10 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "unity_minimal.h"
@@ -150,9 +150,9 @@ static flt_region_t s_flt_write_arm = k_flt_region_none;
  * @post The result depends only on @p lba and the bound geometry.
  *
  * @note Pure with respect to the fixture state.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded flt region of fixture step using caller-owned state.
  */
-static inline flt_region_t flt_region_of(uint32_t lba)
+RA8_INTERNAL static inline flt_region_t internal_flt_region_of(uint32_t lba)
 {
   if ((lba >= s_flt.fat_lba) && (lba < (s_flt.fat_lba + s_flt.fat_secs))) {
     return k_flt_region_fat;
@@ -182,9 +182,9 @@ static inline flt_region_t flt_region_of(uint32_t lba)
  * @post No other operation is affected.
  *
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded flt arm read fixture step using caller-owned state.
  */
-static inline void flt_arm_read(flt_region_t region)
+RA8_INTERNAL static inline void internal_flt_arm_read(flt_region_t region)
 {
   s_flt_read_arm = region;
 }
@@ -202,9 +202,9 @@ static inline void flt_arm_read(flt_region_t region)
  * @post No other operation is affected.
  *
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded flt arm write fixture step using caller-owned state.
  */
-static inline void flt_arm_write(flt_region_t region)
+RA8_INTERNAL static inline void internal_flt_arm_write(flt_region_t region)
 {
   s_flt_write_arm = region;
 }
@@ -227,15 +227,16 @@ static inline void flt_arm_write(flt_region_t region)
  * @post A fired arm is cleared.
  *
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded flt read fixture step using caller-owned state.
  */
-static inline ra8_err_t flt_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+RA8_INTERNAL static inline ra8_err_t
+internal_flt_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   if ((lba + count) > s_flt.block_count) {
     return k_ra8_err_out_of_range;
   }
-  if ((s_flt_read_arm != k_flt_region_none) && (flt_region_of(lba) == s_flt_read_arm)) {
+  if ((s_flt_read_arm != k_flt_region_none) && (internal_flt_region_of(lba) == s_flt_read_arm)) {
     s_flt_read_arm = k_flt_region_none;
     return k_ra8_err_out_of_range;
   }
@@ -263,15 +264,16 @@ static inline ra8_err_t flt_read(void* ctx, uint64_t lba, uint32_t count, uint8_
  * @post A fired arm is cleared and nothing is written.
  *
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded flt write fixture step using caller-owned state.
  */
-static inline ra8_err_t flt_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+RA8_INTERNAL static inline ra8_err_t
+internal_flt_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
   if ((lba + count) > s_flt.block_count) {
     return k_ra8_err_out_of_range;
   }
-  if ((s_flt_write_arm != k_flt_region_none) && (flt_region_of(lba) == s_flt_write_arm)) {
+  if ((s_flt_write_arm != k_flt_region_none) && (internal_flt_region_of(lba) == s_flt_write_arm)) {
     s_flt_write_arm = k_flt_region_none;
     return k_ra8_err_out_of_range;
   }
@@ -297,9 +299,10 @@ static inline ra8_err_t flt_write(void* ctx, uint64_t lba, uint32_t count, const
  * @post No state is modified.
  *
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded flt capacity fixture step using caller-owned state.
  */
-static inline ra8_err_t flt_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+RA8_INTERNAL static inline ra8_err_t
+internal_flt_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   *block_count = s_flt.block_count;
@@ -315,9 +318,9 @@ static inline ra8_err_t flt_capacity(void* ctx, uint64_t* block_count, uint32_t*
  * @since 0.1.0
  */
 static const ra8_fs_backend_t s_flt_backend = {
-  .read_block   = flt_read,
-  .write_block  = flt_write,
-  .get_capacity = flt_capacity,
+  .read_block   = internal_flt_read,
+  .write_block  = internal_flt_write,
+  .get_capacity = internal_flt_capacity,
   .ctx          = &s_flt,
 };
 
@@ -332,9 +335,9 @@ static const ra8_fs_backend_t s_flt_backend = {
  * @post Both arms are disarmed.
  *
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded flt free volume fixture step using caller-owned state.
  */
-static inline void flt_free_volume(void)
+RA8_INTERNAL static inline void internal_flt_free_volume(void)
 {
   s_flt_read_arm  = k_flt_region_none;
   s_flt_write_arm = k_flt_region_none;
@@ -355,11 +358,11 @@ static inline void flt_free_volume(void)
  * @post Both arms are disarmed.
  *
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded flt build volume fixture step using caller-owned state.
  */
-static inline void flt_build_volume(void)
+RA8_INTERNAL static inline void internal_flt_build_volume(void)
 {
-  flt_free_volume();
+  internal_flt_free_volume();
   const size_t total = (size_t)k_flt_blocks * (size_t)k_flt_block_size;
   s_flt.bytes        = (uint8_t*)malloc(total);
   s_flt.block_count  = (uint32_t)k_flt_blocks;
@@ -394,7 +397,7 @@ static inline void flt_build_volume(void)
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static inline void flt_bind_geometry(const ra8_fs_mount_t* h)
+RA8_INTERNAL static inline void internal_flt_bind_geometry(const ra8_fs_mount_t* h)
 {
   const uint32_t heap = h->partition_base_lba + h->first_data_lba;
   const uint32_t root = heap + ((h->root_cluster - 2U) * h->sectors_per_cluster);
@@ -423,12 +426,12 @@ static inline void flt_bind_geometry(const ra8_fs_mount_t* h)
  * @post Both arms are disarmed.
  *
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded flt mount fixture step using caller-owned state.
  */
-static inline void flt_mount(ra8_fs_mount_t** out_h)
+RA8_INTERNAL static inline void internal_flt_mount(ra8_fs_mount_t** out_h)
 {
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_flt_backend, out_h));
-  flt_bind_geometry(*out_h);
+  internal_flt_bind_geometry(*out_h);
 }
 
 /**
@@ -446,13 +449,14 @@ static inline void flt_mount(ra8_fs_mount_t** out_h)
  * @post Both arms are still disarmed.
  *
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded flt make file fixture step using caller-owned state.
  */
-static inline void flt_make_file(ra8_fs_mount_t* h, const char* name, uint32_t len)
+RA8_INTERNAL static inline void
+internal_flt_make_file(ra8_fs_mount_t* h, const char* name, uint32_t len)
 {
-  static uint8_t s_buf[k_flt_payload];
+  static uint8_t buf[k_flt_payload];
   for (uint32_t i = 0U; i < len; i++) {
-    s_buf[i] = (uint8_t)(i & (uint32_t)k_flt_byte_mask);
+    buf[i] = (uint8_t)(i & (uint32_t)k_flt_byte_mask);
   }
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, name, s_buf, len));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, name, buf, len));
 }

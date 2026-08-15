@@ -50,7 +50,7 @@
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_skip_clusters(const ra8_fs_mount_t* m, uint32_t start, uint32_t n, uint32_t* out)
+internal_skip_clusters(const ra8_fs_mount_t* m, uint32_t start, uint32_t n, uint32_t* out)
 {
   uint32_t cur = start;
   for (uint32_t i = 0; i < n; i++) {
@@ -95,7 +95,7 @@ priv_skip_clusters(const ra8_fs_mount_t* m, uint32_t start, uint32_t n, uint32_t
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_read_one_chunk(ra8_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint32_t* out_take)
+internal_read_one_chunk(ra8_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint32_t* out_take)
 {
   const uint32_t cluster_bytes   = priv_cluster_bytes(file->mount);
   const uint32_t cluster_idx_now = (uint32_t)(file->offset / cluster_bytes);
@@ -128,7 +128,7 @@ priv_read_one_chunk(ra8_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint3
       walk_from = file->walk_cache_cluster;
       walk_n    = cluster_idx_now - file->walk_cache_idx;
     }
-    ra8_err_t werr = priv_skip_clusters(file->mount, walk_from, walk_n, &target);
+    ra8_err_t werr = internal_skip_clusters(file->mount, walk_from, walk_n, &target);
     if (werr != k_ra8_ok) {
       return werr;
     }
@@ -192,7 +192,7 @@ priv_read_one_chunk(ra8_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint3
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_read_span(ra8_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint32_t* out_take)
+internal_read_span(ra8_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint32_t* out_take)
 {
   const uint64_t valid =
     (file->mount->type == k_ra8_fs_type_exfat) ? file->valid_bytes : file->size_bytes;
@@ -208,7 +208,7 @@ priv_read_span(ra8_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint32_t* 
   if ((uint64_t)want > cap) {
     want = (uint32_t)cap;
   }
-  return priv_read_one_chunk(file, buf, want, out_take);
+  return internal_read_one_chunk(file, buf, want, out_take);
 }
 
 /**
@@ -242,7 +242,7 @@ priv_read_span(ra8_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint32_t* 
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
 static ra8_err_t
-priv_read_locked(ra8_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* got_len)
+internal_read_locked(ra8_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* got_len)
 {
   if (file == nullptr || buf == nullptr || got_len == nullptr) {
     return k_ra8_err_null_ptr;
@@ -262,7 +262,7 @@ priv_read_locked(ra8_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* 
   uint32_t produced = 0;
   while (remaining > 0U) {
     uint32_t  take = 0;
-    ra8_err_t err  = priv_read_span(file, &buf[produced], remaining, &take);
+    ra8_err_t err  = internal_read_span(file, &buf[produced], remaining, &take);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -310,7 +310,7 @@ ra8_err_t priv_alloc_eoc_cluster(const ra8_fs_mount_t* m, uint32_t* out_c)
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_walk_grow(const ra8_fs_mount_t* m, uint32_t start, uint32_t idx, uint32_t* out_cluster)
+internal_walk_grow(const ra8_fs_mount_t* m, uint32_t start, uint32_t idx, uint32_t* out_cluster)
 {
   uint32_t cur = start;
   for (uint32_t i = 0; i < idx; i++) {
@@ -401,7 +401,7 @@ typedef struct {
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_write_position(ra8_fs_file_t* file, write_walk_t* way, uint32_t idx, uint32_t* out_cluster)
+internal_write_position(ra8_fs_file_t* file, write_walk_t* way, uint32_t idx, uint32_t* out_cluster)
 {
   ra8_fs_mount_t* m = file->mount;
   if (file->first_cluster < k_cluster_first_data) {
@@ -416,7 +416,7 @@ priv_write_position(ra8_fs_file_t* file, write_walk_t* way, uint32_t idx, uint32
     way->index          = idx;
   }
   uint32_t        cur = 0;
-  const ra8_err_t err = priv_walk_grow(m, way->cluster, idx - way->index, &cur);
+  const ra8_err_t err = internal_walk_grow(m, way->cluster, idx - way->index, &cur);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -451,7 +451,7 @@ priv_write_position(ra8_fs_file_t* file, write_walk_t* way, uint32_t idx, uint32
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint32_t len)
+static ra8_err_t internal_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint32_t len)
 {
   ra8_fs_mount_t* m             = file->mount;
   const uint32_t  cluster_bytes = priv_cluster_bytes(m);
@@ -462,7 +462,7 @@ static ra8_err_t priv_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint
   while (consumed < len) {
     const uint32_t cluster_idx_now = (uint32_t)(file->offset / cluster_bytes);
     uint32_t       cur             = 0;
-    ra8_err_t      err             = priv_write_position(file, &way, cluster_idx_now, &cur);
+    ra8_err_t      err             = internal_write_position(file, &way, cluster_idx_now, &cur);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -516,7 +516,7 @@ static ra8_err_t priv_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_write_locked(ra8_fs_file_t* file, const uint8_t* buf, uint32_t len)
+static ra8_err_t internal_write_locked(ra8_fs_file_t* file, const uint8_t* buf, uint32_t len)
 {
   if (file == nullptr || buf == nullptr) {
     return k_ra8_err_null_ptr;
@@ -542,7 +542,7 @@ static ra8_err_t priv_write_locked(ra8_fs_file_t* file, const uint8_t* buf, uint
   if (len > ((uint64_t)k_ra8_fs_fat_max_file_bytes - file->offset)) {
     return k_ra8_err_invalid_size;
   }
-  ra8_err_t err = priv_write_stream(file, buf, len);
+  ra8_err_t err = internal_write_stream(file, buf, len);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -604,8 +604,10 @@ static ra8_err_t priv_write_locked(ra8_fs_file_t* file, const uint8_t* buf, uint
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t
-priv_write_file_locked(ra8_fs_mount_t* handle, const char* path, const uint8_t* data, uint32_t len)
+static ra8_err_t internal_write_file_locked(ra8_fs_mount_t* handle,
+                                            const char*     path,
+                                            const uint8_t*  data,
+                                            uint32_t        len)
 {
   if (handle == nullptr) {
     return k_ra8_err_null_ptr;
@@ -624,7 +626,7 @@ priv_write_file_locked(ra8_fs_mount_t* handle, const char* path, const uint8_t* 
   if (e != k_ra8_ok) {
     return e;
   }
-  e                    = priv_write_locked(f, data, len);
+  e                    = internal_write_locked(f, data, len);
   const ra8_err_t cerr = priv_close_locked(f);
   if (e != k_ra8_ok) {
     return e;
@@ -657,7 +659,7 @@ priv_write_file_locked(ra8_fs_mount_t* handle, const char* path, const uint8_t* 
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_seek_locked(ra8_fs_file_t* file, uint64_t offset_bytes)
+static ra8_err_t internal_seek_locked(ra8_fs_file_t* file, uint64_t offset_bytes)
 {
   if (file == nullptr) {
     return k_ra8_err_null_ptr;
@@ -698,7 +700,7 @@ static ra8_err_t priv_seek_locked(ra8_fs_file_t* file, uint64_t offset_bytes)
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_tell_locked(const ra8_fs_file_t* file, uint64_t* out_offset)
+static ra8_err_t internal_tell_locked(const ra8_fs_file_t* file, uint64_t* out_offset)
 {
   if (file == nullptr || out_offset == nullptr) {
     return k_ra8_err_null_ptr;
@@ -735,7 +737,7 @@ static ra8_err_t priv_tell_locked(const ra8_fs_file_t* file, uint64_t* out_offse
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_size_locked(const ra8_fs_file_t* file, uint64_t* out_bytes)
+static ra8_err_t internal_size_locked(const ra8_fs_file_t* file, uint64_t* out_bytes)
 {
   if (file == nullptr || out_bytes == nullptr) {
     return k_ra8_err_null_ptr;
@@ -756,7 +758,7 @@ RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_read(ra8_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* got_len)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_read_locked(file, buf, max_len, got_len);
+  const ra8_err_t err = internal_read_locked(file, buf, max_len, got_len);
   priv_lock_release();
   return err;
 }
@@ -765,7 +767,7 @@ RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_write(ra8_fs_file_t* file, const uint8_t* buf, uint32_t len)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_write_locked(file, buf, len);
+  const ra8_err_t err = internal_write_locked(file, buf, len);
   priv_lock_release();
   return err;
 }
@@ -775,7 +777,7 @@ ra8_err_t
 ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data, uint32_t len)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_write_file_locked(handle, path, data, len);
+  const ra8_err_t err = internal_write_file_locked(handle, path, data, len);
   priv_lock_release();
   return err;
 }
@@ -784,7 +786,7 @@ RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_seek(ra8_fs_file_t* file, uint64_t offset_bytes)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_seek_locked(file, offset_bytes);
+  const ra8_err_t err = internal_seek_locked(file, offset_bytes);
   priv_lock_release();
   return err;
 }
@@ -793,7 +795,7 @@ RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_tell(const ra8_fs_file_t* file, uint64_t* out_offset)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_tell_locked(file, out_offset);
+  const ra8_err_t err = internal_tell_locked(file, out_offset);
   priv_lock_release();
   return err;
 }
@@ -802,7 +804,7 @@ RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_size(const ra8_fs_file_t* file, uint64_t* out_bytes)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_size_locked(file, out_bytes);
+  const ra8_err_t err = internal_size_locked(file, out_bytes);
   priv_lock_release();
   return err;
 }

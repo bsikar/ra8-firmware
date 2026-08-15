@@ -9,7 +9,7 @@
  * `fsck.exfat`, so the argument does not rest on this codebase alone.
  *
  * @par Out-of-band `fsck.exfat` evidence:
- * `unicode_dump_image()` from the shared fixture writes the PARTITION out under
+ * `internal_unicode_dump_image()` from the shared fixture writes the PARTITION out under
  * `RA8_EXFAT_DUMP_DIR` (not the whole RAM disk -- `ra8_fs_format()` lays exFAT
  * inside an MBR partition, and a checker handed the disk reads the MBR and says
  * so). This file used to carry a private dumper on a private variable; it now
@@ -45,10 +45,10 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
@@ -77,7 +77,7 @@
  * @note Not thread-safe (no shared state, but the harness's counter is).
  * @since 0.1.0
  */
-static uint32_t legacy_name_hash(const char* path)
+RA8_INTERNAL static uint32_t internal_legacy_name_hash(const char* path)
 {
   uint32_t h = 0U;
   for (uint32_t i = 0U; path[i] != '\0'; i++) {
@@ -115,7 +115,7 @@ static uint32_t legacy_name_hash(const char* path)
  * @note Not thread-safe (reads the fixture singleton).
  * @since 0.1.0
  */
-static uint32_t set_checksum_of(uint32_t file_off)
+RA8_INTERNAL static uint32_t internal_set_checksum_of(uint32_t file_off)
 {
   uint32_t cs = 0U;
   for (uint32_t i = 0U; i < ((uint32_t)k_mut_entry_bytes * 3U); i++) {
@@ -152,12 +152,12 @@ static uint32_t set_checksum_of(uint32_t file_off)
  * @pre `RA8_EXFAT_DUMP_DIR` is set for the dumps to appear.
  * @post The clean image is `fsck.exfat`-clean; the control is not.
  *
- * @since 0.1.0
+ * @since 0.1.0 @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_dump_images_for_fsck(void)
+RA8_INTERNAL static void internal_test_exfat_dump_images_for_fsck(void)
 {
   TEST_BEGIN("exfat unicode: images for the out-of-band fsck.exfat run");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -168,7 +168,7 @@ static void test_exfat_dump_images_for_fsck(void)
   }
   const uint32_t base = h->partition_base_lba;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  unicode_dump_image("unicode_files_three", base);
+  internal_unicode_dump_image("unicode_files_three", base);
 
   /* The control, and it is the specific one worth having: put back the hash the
    * PRE-#606 code stored for this name -- an ASCII-only fold over UTF-8 bytes --
@@ -176,22 +176,22 @@ static void test_exfat_dump_images_for_fsck(void)
    * other respect. What a real checker then reports is the defect itself, not
    * an artefact of a clumsy edit. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t file = root_byte(h, (uint32_t)k_mut_root_file0_idx);
-  const uint32_t strm = root_byte(h, (uint32_t)k_mut_root_strm0_idx);
-  const uint32_t old  = legacy_name_hash(s_acc_u8);
+  const uint32_t file = internal_root_byte(h, (uint32_t)k_mut_root_file0_idx);
+  const uint32_t strm = internal_root_byte(h, (uint32_t)k_mut_root_strm0_idx);
+  const uint32_t old  = internal_legacy_name_hash(s_acc_u8);
   /* It has to actually differ, or the control proves nothing. */
-  TEST_ASSERT(old != disk_rd16(strm + (uint32_t)k_ux_strm_off_hsh));
+  TEST_ASSERT(old != internal_disk_rd16(strm + (uint32_t)k_ux_strm_off_hsh));
   s_disk.bytes[strm + (uint32_t)k_ux_strm_off_hsh] = (uint8_t)(old & (uint32_t)k_mut_mask_byte);
   s_disk.bytes[strm + (uint32_t)k_ux_strm_off_hsh + 1U] =
     (uint8_t)((old >> (uint32_t)k_mut_shift_byte8) & (uint32_t)k_mut_mask_byte);
-  const uint32_t cs                                 = set_checksum_of(file);
+  const uint32_t cs                                 = internal_set_checksum_of(file);
   s_disk.bytes[file + (uint32_t)k_ux_file_off_csum] = (uint8_t)(cs & (uint32_t)k_mut_mask_byte);
   s_disk.bytes[file + (uint32_t)k_ux_file_off_csum + 1U] =
     (uint8_t)((cs >> (uint32_t)k_mut_shift_byte8) & (uint32_t)k_mut_mask_byte);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  unicode_dump_image("unicode_files_badhash", base);
+  internal_unicode_dump_image("unicode_files_badhash", base);
 
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat unicode: images for the out-of-band fsck.exfat run");
 }
 
@@ -211,7 +211,6 @@ static void test_exfat_dump_images_for_fsck(void)
  */
 int32_t main(void)
 {
-  test_exfat_dump_images_for_fsck();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_unicode_exfat_cov.c\n");
+  internal_test_exfat_dump_images_for_fsck();
   return 0;
 }

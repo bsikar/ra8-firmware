@@ -76,8 +76,10 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-priv_setattr_fat(const ra8_fs_mount_t* m, const char* path, uint8_t set_mask, uint8_t clear_mask)
+static ra8_err_t internal_setattr_fat(const ra8_fs_mount_t* m,
+                                      const char*           path,
+                                      uint8_t               set_mask,
+                                      uint8_t               clear_mask)
 {
   dir_loc_t       parent = {};
   const char*     leaf   = nullptr;
@@ -141,8 +143,10 @@ priv_setattr_fat(const ra8_fs_mount_t* m, const char* path, uint8_t set_mask, ui
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-priv_setattr_exfat(const ra8_fs_mount_t* m, const char* path, uint8_t set_mask, uint8_t clear_mask)
+static ra8_err_t internal_setattr_exfat(const ra8_fs_mount_t* m,
+                                        const char*           path,
+                                        uint8_t               set_mask,
+                                        uint8_t               clear_mask)
 {
   exfat_dir_t root = {};
   priv_exfat_dir_root(m, &root);
@@ -220,8 +224,10 @@ priv_setattr_exfat(const ra8_fs_mount_t* m, const char* path, uint8_t set_mask, 
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t
-priv_setattr_locked(ra8_fs_mount_t* handle, const char* path, uint8_t set_mask, uint8_t clear_mask)
+static ra8_err_t internal_setattr_locked(ra8_fs_mount_t* handle,
+                                         const char*     path,
+                                         uint8_t         set_mask,
+                                         uint8_t         clear_mask)
 {
   if (handle == nullptr || path == nullptr) {
     return k_ra8_err_null_ptr;
@@ -246,9 +252,9 @@ priv_setattr_locked(ra8_fs_mount_t* handle, const char* path, uint8_t set_mask, 
     return k_ra8_err_invalid_arg; /* the volume root has no entry to patch */
   }
   if (handle->type == k_ra8_fs_type_exfat) {
-    return priv_setattr_exfat(handle, path, set_mask, clear_mask);
+    return internal_setattr_exfat(handle, path, set_mask, clear_mask);
   }
-  return priv_setattr_fat(handle, path, set_mask, clear_mask);
+  return internal_setattr_fat(handle, path, set_mask, clear_mask);
 }
 
 /* =============================================================================
@@ -261,7 +267,7 @@ ra8_err_t
 ra8_fs_set_attr(ra8_fs_mount_t* handle, const char* path, uint8_t set_mask, uint8_t clear_mask)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_setattr_locked(handle, path, set_mask, clear_mask);
+  const ra8_err_t err = internal_setattr_locked(handle, path, set_mask, clear_mask);
   priv_lock_release();
   return err;
 }

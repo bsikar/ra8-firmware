@@ -59,25 +59,44 @@ typedef enum : uint8_t {
 
 /** @brief Capability bits returned in ::fw_fs_caps_t.flags. */
 typedef enum : uint32_t {
-  k_fw_fs_cap_namespace              = 1UL << 0U,
-  k_fw_fs_cap_stream                 = 1UL << 1U,
-  k_fw_fs_cap_space_query            = 1UL << 2U,
-  k_fw_fs_cap_same_volume_rename     = 1UL << 3U,
-  k_fw_fs_cap_atomic_replace         = 1UL << 4U,
-  k_fw_fs_cap_atomic_noreplace       = 1UL << 5U,
-  k_fw_fs_cap_create_exclusive       = 1UL << 6U,
-  k_fw_fs_cap_file_sync              = 1UL << 7U,
-  k_fw_fs_cap_durable_file_sync      = 1UL << 8U,
+  /** @brief Metadata and namespace operations are available. */
+  k_fw_fs_cap_namespace = 1UL << 0U,
+  /** @brief Regular-file stream operations are available. */
+  k_fw_fs_cap_stream = 1UL << 1U,
+  /** @brief Volume capacity and available bytes can be queried. */
+  k_fw_fs_cap_space_query = 1UL << 2U,
+  /** @brief Rename is supported within one backend volume. */
+  k_fw_fs_cap_same_volume_rename = 1UL << 3U,
+  /** @brief Rename can atomically replace an existing destination. */
+  k_fw_fs_cap_atomic_replace = 1UL << 4U,
+  /** @brief Rename can atomically reject an existing destination. */
+  k_fw_fs_cap_atomic_noreplace = 1UL << 5U,
+  /** @brief Open can atomically require that its leaf be absent. */
+  k_fw_fs_cap_create_exclusive = 1UL << 6U,
+  /** @brief An explicit file-sync operation is available. */
+  k_fw_fs_cap_file_sync = 1UL << 7U,
+  /** @brief Successful file sync reaches durable media. */
+  k_fw_fs_cap_durable_file_sync = 1UL << 8U,
+  /** @brief Namespace changes can be made durable. */
   k_fw_fs_cap_durable_directory_sync = 1UL << 9U,
-  k_fw_fs_cap_transactions           = 1UL << 10U,
-  k_fw_fs_cap_symlinks               = 1UL << 11U,
-  k_fw_fs_cap_rejects_symlink_walk   = 1UL << 12U,
-  k_fw_fs_cap_case_sensitive         = 1UL << 13U,
-  k_fw_fs_cap_removable_media        = 1UL << 14U,
-  k_fw_fs_cap_thread_safe            = 1UL << 15U,
-  k_fw_fs_cap_created_time           = 1UL << 16U,
-  k_fw_fs_cap_modified_time          = 1UL << 17U,
-  k_fw_fs_cap_accessed_time          = 1UL << 18U,
+  /** @brief Staged publication operations are available. */
+  k_fw_fs_cap_transactions = 1UL << 10U,
+  /** @brief Symbolic links may be represented by the backend. */
+  k_fw_fs_cap_symlinks = 1UL << 11U,
+  /** @brief Path traversal refuses symbolic-link components. */
+  k_fw_fs_cap_rejects_symlink_walk = 1UL << 12U,
+  /** @brief Path-component comparisons are case-sensitive. */
+  k_fw_fs_cap_case_sensitive = 1UL << 13U,
+  /** @brief The backing volume may disappear at runtime. */
+  k_fw_fs_cap_removable_media = 1UL << 14U,
+  /** @brief Independent calls may execute concurrently. */
+  k_fw_fs_cap_thread_safe = 1UL << 15U,
+  /** @brief Creation timestamps may be reported as valid. */
+  k_fw_fs_cap_created_time = 1UL << 16U,
+  /** @brief Modification timestamps may be reported as valid. */
+  k_fw_fs_cap_modified_time = 1UL << 17U,
+  /** @brief Access timestamps may be reported as valid. */
+  k_fw_fs_cap_accessed_time = 1UL << 18U,
 } fw_fs_capability_t;
 
 /** @brief Static properties and workspace requirements of one bound port. */
@@ -85,11 +104,14 @@ typedef struct {
   uint64_t max_file_bytes;              /**< Largest supported regular file. */
   uint32_t flags;                       /**< OR of ::fw_fs_capability_t.     */
   uint32_t file_workspace_bytes;        /**< State bytes required by open.   */
+  uint32_t directory_workspace_bytes;   /**< State bytes required by dir open. */
   uint32_t transaction_workspace_bytes; /**< State bytes required by begin.  */
   uint16_t path_max_bytes;              /**< Path bytes including NUL.       */
   uint16_t name_max_bytes;              /**< Component bytes excluding NUL.  */
   uint16_t max_open_files;              /**< Concurrent backend file limit.  */
+  uint16_t max_open_directories;        /**< Concurrent directory cursors.    */
   uint8_t  file_workspace_align;        /**< Required file-state alignment.  */
+  uint8_t  directory_workspace_align;   /**< Required directory-state alignment. */
   uint8_t  transaction_workspace_align; /**< Required transaction alignment. */
 } fw_fs_caps_t;
 
@@ -134,6 +156,14 @@ typedef struct {
   uint16_t          name_bytes; /**< Bytes excluding the NUL.           */
   fw_fs_node_type_t type;       /**< Entry kind.                        */
 } fw_fs_dirent_t;
+
+/** @brief Stable caller-owned value returned by ::fw_fs_dir_next. */
+typedef struct {
+  char              name[k_fw_fs_path_cap]; /**< Copied NUL-terminated leaf. */
+  uint64_t          size_bytes;             /**< File length; zero for dirs. */
+  uint16_t          name_bytes;             /**< Bytes excluding the NUL.    */
+  fw_fs_node_type_t type;                   /**< Entry kind.                  */
+} fw_fs_dirent_value_t;
 
 /** @brief Portable volume usage snapshot. */
 typedef struct {
@@ -192,6 +222,16 @@ typedef struct {
   uint32_t                    state_bytes; /**< Workspace extent.       */
   bool                        is_open;     /**< Facade lifecycle guard. */
 } fw_fs_file_t;
+
+/** @brief Caller-owned open directory cursor; fields are private to the facade. */
+typedef struct {
+  const fw_fs_namespace_iface_t* iface;       /**< Bound namespace vtable. */
+  void*                          ctx;         /**< Adapter context.        */
+  void*                          state;       /**< Caller workspace.       */
+  uint32_t                       state_bytes; /**< Workspace extent.       */
+  fw_fs_caps_t                   caps;        /**< Immutable port caps.    */
+  bool                           is_open;     /**< Facade lifecycle guard. */
+} fw_fs_dir_t;
 
 /** @brief Caller-owned transaction; fields are private to the facade. */
 typedef struct {

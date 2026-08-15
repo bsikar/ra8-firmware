@@ -34,10 +34,10 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "unity_minimal.h"
@@ -114,7 +114,9 @@ typedef struct {
 
 static mem_disk_t s_disk = {};
 
-static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief Perform the mem read filesystem operation. @details Implements the bounded mem read fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in,out] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -126,7 +128,9 @@ static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Perform the mem write filesystem operation. @details Implements the bounded mem write fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -138,7 +142,9 @@ static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Perform the mem capacity filesystem operation. @details Implements the bounded mem capacity fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] block_count Caller-supplied bounded extent or quantity. @param[in,out] block_size Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -147,9 +153,9 @@ static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_
 }
 
 static const ra8_fs_backend_t s_backend = {
-  .read_block   = mem_read,
-  .write_block  = mem_write,
-  .get_capacity = mem_capacity,
+  .read_block   = internal_mem_read,
+  .write_block  = internal_mem_write,
+  .get_capacity = internal_mem_capacity,
   .ctx          = &s_disk,
 };
 
@@ -180,7 +186,9 @@ typedef struct {
 
 static inject_disk_t s_inject = {};
 
-static ra8_err_t inj_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief Perform the inj read filesystem operation. @details Implements the bounded inj read fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in,out] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_inj_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   inject_disk_t* d = (inject_disk_t*)ctx;
   if (d->fail_read_lba != (uint32_t)k_fio_lba_none && lba == d->fail_read_lba) {
@@ -201,7 +209,9 @@ static ra8_err_t inj_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t inj_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Perform the inj write filesystem operation. @details Implements the bounded inj write fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_inj_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   inject_disk_t* d = (inject_disk_t*)ctx;
   if (d->writes_fail != 0U) {
@@ -219,7 +229,9 @@ static ra8_err_t inj_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t inj_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Perform the inj capacity filesystem operation. @details Implements the bounded inj capacity fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] block_count Caller-supplied bounded extent or quantity. @param[in,out] block_size Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_inj_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   inject_disk_t* d = (inject_disk_t*)ctx;
   *block_count     = d->block_count;
@@ -232,7 +244,8 @@ static ra8_err_t inj_capacity(void* ctx, uint64_t* block_count, uint32_t* block_
  * ===========================================================================
  */
 
-static void put16(uint8_t* p, uint32_t off, uint16_t v)
+/** @brief Perform the put16 filesystem operation. @details Implements the bounded put16 fixture step using caller-owned state. @param[in,out] p Value required by this filesystem vector. @param[in] off Value required by this filesystem vector. @param[in] v Value required by this filesystem vector. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_put16(uint8_t* p, uint32_t off, uint16_t v)
 {
   p[off]     = (uint8_t)(v & k_byte_mask);
   p[off + 1] = (uint8_t)((v >> 8U) & k_byte_mask);
@@ -250,9 +263,9 @@ static void put16(uint8_t* p, uint32_t off, uint16_t v)
  * @post s_disk holds a calloc-zeroed 4 MiB image with a valid BPB.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void build_fat16_volume(void)
+RA8_INTERNAL static void internal_build_fat16_volume(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -265,13 +278,13 @@ static void build_fat16_volume(void)
     TEST_FAIL_FMT("%s", "calloc failed");
   }
   uint8_t* bpb = s_disk.bytes;
-  put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_fio_block_size);
+  internal_put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_fio_block_size);
   bpb[k_bpb_off_sec_per_clus] = 1U;
-  put16(bpb, k_bpb_off_rsvd_sec_cnt, 1U);
+  internal_put16(bpb, k_bpb_off_rsvd_sec_cnt, 1U);
   bpb[16] = 2U;
-  put16(bpb, k_bpb_off_root_ent_cnt, 16U);
-  put16(bpb, k_bpb_off_tot_sec16, (uint16_t)k_fio_blocks_fat16);
-  put16(bpb, k_bpb_off_fat_sz16, 32U);
+  internal_put16(bpb, k_bpb_off_root_ent_cnt, 16U);
+  internal_put16(bpb, k_bpb_off_tot_sec16, (uint16_t)k_fio_blocks_fat16);
+  internal_put16(bpb, k_bpb_off_fat_sz16, 32U);
   bpb[k_bpb_off_sig_lo] = k_bpb_sig_lo;
   bpb[k_bpb_off_sig_hi] = k_bpb_sig_hi;
 }
@@ -283,9 +296,9 @@ static void build_fat16_volume(void)
  * @post s_disk.bytes is nullptr.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded free volume fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void free_volume(void)
+RA8_INTERNAL static void internal_free_volume(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -312,13 +325,13 @@ static void free_volume(void)
  * @post h->backend routes through the inject functions.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void use_inject(ra8_fs_mount_t* h,
-                       uint32_t        reads_left,
-                       uint32_t        fail_read_lba,
-                       uint32_t        fail_write_lba,
-                       uint8_t         writes_fail)
+RA8_INTERNAL static void internal_use_inject(ra8_fs_mount_t* h,
+                                             uint32_t        reads_left,
+                                             uint32_t        fail_read_lba,
+                                             uint32_t        fail_write_lba,
+                                             uint8_t         writes_fail)
 {
   s_inject.bytes          = s_disk.bytes;
   s_inject.block_count    = s_disk.block_count;
@@ -327,9 +340,9 @@ static void use_inject(ra8_fs_mount_t* h,
   s_inject.fail_read_lba  = fail_read_lba;
   s_inject.fail_write_lba = fail_write_lba;
   s_inject.writes_fail    = writes_fail;
-  h->backend.read_block   = inj_read;
-  h->backend.write_block  = inj_write;
-  h->backend.get_capacity = inj_capacity;
+  h->backend.read_block   = internal_inj_read;
+  h->backend.write_block  = internal_inj_write;
+  h->backend.get_capacity = internal_inj_capacity;
   h->backend.ctx          = &s_inject;
 }
 
@@ -344,17 +357,17 @@ static void use_inject(ra8_fs_mount_t* h,
  * @post The named file exists on the volume with @p len bytes.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded seed file fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void seed_file(ra8_fs_mount_t* h, const char* name, uint32_t len)
+RA8_INTERNAL static void internal_seed_file(ra8_fs_mount_t* h, const char* name, uint32_t len)
 {
-  static uint8_t s_pat[k_fio_pat_max] = {};
+  static uint8_t pat[k_fio_pat_max] = {};
   for (uint32_t i = 0; i < len && i < (uint32_t)k_fio_pat_max; i++) {
-    s_pat[i] = (uint8_t)(i & k_byte_mask);
+    pat[i] = (uint8_t)(i & k_byte_mask);
   }
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, name, k_ra8_fs_mode_write, &f));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_pat, len));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, pat, len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 }
 
@@ -377,12 +390,12 @@ static void seed_file(ra8_fs_mount_t* h, const char* name, uint32_t len)
  * (no compound decision is driven here -- it clears in_use on a handle copy and
  * asserts read/seek/tell/size each reject it through their single-condition
  * `in_use == 0` guard; the null-pointer `||` guards on those entries are passed
- * with fixed non-NULL inputs, not varied)
+ * with fixed non-NULL inputs, not varied) @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_read_seek_tell_size_not_in_use(void)
+RA8_INTERNAL static void internal_test_read_seek_tell_size_not_in_use(void)
 {
   TEST_BEGIN("ra8_fs_fileio: read/seek/tell/size not-in-use");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
@@ -403,7 +416,7 @@ static void test_read_seek_tell_size_not_in_use(void)
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fileio: read/seek/tell/size not-in-use");
 }
 
@@ -420,12 +433,12 @@ static void test_read_seek_tell_size_not_in_use(void)
  * @par MC/DC:
  * (no compound decision is driven here -- it exercises ra8_fs_write's
  * single-condition `len == 0` early return; the null-pointer and
- * in_use/mode `||` guards are passed with fixed control inputs, not varied)
+ * in_use/mode `||` guards are passed with fixed control inputs, not varied) @details Runs the write zero length vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_write_zero_length(void)
+RA8_INTERNAL static void internal_test_write_zero_length(void)
 {
   TEST_BEGIN("ra8_fs_fileio: write zero length");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
@@ -437,7 +450,7 @@ static void test_write_zero_length(void)
   TEST_ASSERT_EQ(0, sz);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fileio: write zero length");
 }
 
@@ -459,12 +472,12 @@ static void test_write_zero_length(void)
  * - data=NULL               -> 445.
  * - mount->in_use == 0      -> 448 (snapshot copy with in_use cleared).
  * - open fails (illegal name) -> 456 (a `*` is illegal in a long name too, so
- *   the create path refuses it rather than generating an alias for it).
+ *   the create path refuses it rather than generating an alias for it). @details Runs the write file guards vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_write_file_guards(void)
+RA8_INTERNAL static void internal_test_write_file_guards(void)
 {
   TEST_BEGIN("ra8_fs_fileio: write_file guards");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   const uint8_t data[k_fio_small_write] = {1U, 2U, 3U, 4U};
@@ -484,7 +497,7 @@ static void test_write_file_guards(void)
                  ra8_fs_write_file(h, "BAD*NAME.TXT", data, sizeof(data))); /* 456 */
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fileio: write_file guards");
 }
 
@@ -503,22 +516,22 @@ static void test_write_file_guards(void)
  * (no compound decision is driven here -- it injects a data-sector write
  * failure and asserts ra8_fs_write_file returns k_ra8_err_hw_error; the
  * write_file argument/state guards are single-condition `if`s passed with
- * fixed valid inputs)
+ * fixed valid inputs) @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_write_file_write_error(void)
+RA8_INTERNAL static void internal_test_write_file_write_error(void)
 {
   TEST_BEGIN("ra8_fs_fileio: write_file write error");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   const ra8_fs_backend_t saved                   = h->backend;
   const uint8_t          data[k_fio_small_write] = {5U, 6U, 7U, 8U};
-  use_inject(h, k_fio_reads_inf, k_fio_lba_none, h->first_data_lba, 0U);
+  internal_use_inject(h, k_fio_reads_inf, k_fio_lba_none, h->first_data_lba, 0U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
                  ra8_fs_write_file(h, "WERR.BIN", data, sizeof(data))); /* 461 */
   h->backend = saved;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fileio: write_file write error");
 }
 
@@ -541,15 +554,15 @@ static void test_write_file_write_error(void)
  * (no compound decision is driven here -- it injects a FAT-sector read failure
  * during the read cluster-walk and asserts k_ra8_err_hw_error propagates out;
  * the read-path cache-resume `&&` in priv_read_one_chunk is passed with a fixed
- * control input, its MC/DC owned by test_read_cache_unset_after_write)
+ * control input, its MC/DC owned by test_read_cache_unset_after_write) @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_read_walk_fat_get_error(void)
+RA8_INTERNAL static void internal_test_read_walk_fat_get_error(void)
 {
   TEST_BEGIN("ra8_fs_fileio: read walk FAT-get error");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  seed_file(h, "RWALK.BIN", k_fio_two_clusters);
+  internal_seed_file(h, "RWALK.BIN", k_fio_two_clusters);
   /* Remount so the FAT sector cache is cold (#607). Seeding the file walked
    * the FAT, and a cached sector is served without touching the backend -- so
    * the injected read failure below would never fire and this test would pass
@@ -561,7 +574,7 @@ static void test_read_walk_fat_get_error(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "RWALK.BIN", k_ra8_fs_mode_read, &f));
 
   const ra8_fs_backend_t saved = h->backend;
-  use_inject(h, k_fio_reads_inf, h->first_fat_lba, k_fio_lba_none, 0U);
+  internal_use_inject(h, k_fio_reads_inf, h->first_fat_lba, k_fio_lba_none, 0U);
   uint8_t  buf[k_fio_two_clusters] = {};
   uint32_t got                     = k_fio_poison_out;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_read(f, buf, sizeof(buf), &got)); /* 59, 131 */
@@ -569,7 +582,7 @@ static void test_read_walk_fat_get_error(void)
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fileio: read walk FAT-get error");
 }
 
@@ -587,15 +600,15 @@ static void test_read_walk_fat_get_error(void)
  * end-of-chain marker and asserts priv_skip_clusters reports
  * k_ra8_err_invalid_state; the read-path cache-resume `&&` in
  * priv_read_one_chunk is passed with a fixed control input, its MC/DC owned by
- * test_read_cache_unset_after_write)
+ * test_read_cache_unset_after_write) @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_read_walk_hits_eoc(void)
+RA8_INTERNAL static void internal_test_read_walk_hits_eoc(void)
 {
   TEST_BEGIN("ra8_fs_fileio: read walk hits EOC");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  seed_file(h, "REOC.BIN", k_fio_two_clusters);
+  internal_seed_file(h, "REOC.BIN", k_fio_two_clusters);
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "REOC.BIN", k_ra8_fs_mode_read, &f));
   const uint32_t first_cluster = f->first_cluster;
@@ -608,10 +621,10 @@ static void test_read_walk_hits_eoc(void)
    * a live mount would be masked by the copy already in memory -- and a card
    * whose FAT went bad between sessions is the case this models anyway. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  h                           = nullptr;
-  const uint32_t fat_byte     = (fat0_lba * (uint32_t)k_fio_block_size) + (first_cluster * 2U);
-  s_disk.bytes[fat_byte]      = k_fio_fat16_eoc_byte;
-  s_disk.bytes[fat_byte + 1U] = k_fio_fat16_eoc_byte;
+  h                                = nullptr;
+  const uint32_t internal_fat_byte = (fat0_lba * (uint32_t)k_fio_block_size) + (first_cluster * 2U);
+  s_disk.bytes[internal_fat_byte]  = k_fio_fat16_eoc_byte;
+  s_disk.bytes[internal_fat_byte + 1U] = k_fio_fat16_eoc_byte;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "REOC.BIN", k_ra8_fs_mode_read, &f));
 
@@ -622,7 +635,7 @@ static void test_read_walk_hits_eoc(void)
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fileio: read walk hits EOC");
 }
 
@@ -644,12 +657,12 @@ static void test_read_walk_hits_eoc(void)
  * (no compound decision is driven here -- it fails the FAT scan behind the
  * first-cluster allocation and asserts k_ra8_err_hw_error propagates out of
  * priv_write_stream; the write path's guards are passed with fixed control
- * inputs)
+ * inputs) @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_write_stream_alloc_error(void)
+RA8_INTERNAL static void internal_test_write_stream_alloc_error(void)
 {
   TEST_BEGIN("ra8_fs_fileio: write stream alloc error");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
@@ -657,13 +670,13 @@ static void test_write_stream_alloc_error(void)
 
   const ra8_fs_backend_t saved                   = h->backend;
   const uint8_t          data[k_fio_small_write] = {9U, 10U, 11U, 12U};
-  use_inject(h, k_fio_reads_inf, h->first_fat_lba, k_fio_lba_none, 0U);
+  internal_use_inject(h, k_fio_reads_inf, h->first_fat_lba, k_fio_lba_none, 0U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_write(f, data, sizeof(data))); /* 352 */
   h->backend = saved;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fileio: write stream alloc error");
 }
 
@@ -679,12 +692,12 @@ static void test_write_stream_alloc_error(void)
  * @par MC/DC:
  * (no compound decision is driven here -- it fails the read-modify-write read
  * in priv_write_into_sector and asserts k_ra8_err_hw_error propagates out; the
- * code under test on this leg is single-condition error checks)
+ * code under test on this leg is single-condition error checks) @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_write_into_sector_read_error(void)
+RA8_INTERNAL static void internal_test_write_into_sector_read_error(void)
 {
   TEST_BEGIN("ra8_fs_fileio: write_into_sector read error");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
@@ -692,13 +705,13 @@ static void test_write_into_sector_read_error(void)
 
   const ra8_fs_backend_t saved                   = h->backend;
   const uint8_t          data[k_fio_small_write] = {13U, 14U, 15U, 16U};
-  use_inject(h, k_fio_reads_inf, h->first_data_lba, k_fio_lba_none, 0U);
+  internal_use_inject(h, k_fio_reads_inf, h->first_data_lba, k_fio_lba_none, 0U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_write(f, data, sizeof(data))); /* 310 */
   h->backend = saved;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fileio: write_into_sector read error");
 }
 
@@ -714,12 +727,12 @@ static void test_write_into_sector_read_error(void)
  * (no compound decision is driven here -- it fails the merged sector write in
  * priv_write_into_sector and asserts k_ra8_err_hw_error propagates out of
  * priv_write_stream; the code under test on this leg is single-condition error
- * checks)
+ * checks) @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_write_into_sector_write_error(void)
+RA8_INTERNAL static void internal_test_write_into_sector_write_error(void)
 {
   TEST_BEGIN("ra8_fs_fileio: write_into_sector write error");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
@@ -727,13 +740,13 @@ static void test_write_into_sector_write_error(void)
 
   const ra8_fs_backend_t saved                   = h->backend;
   const uint8_t          data[k_fio_small_write] = {17U, 18U, 19U, 20U};
-  use_inject(h, k_fio_reads_inf, k_fio_lba_none, h->first_data_lba, 0U);
+  internal_use_inject(h, k_fio_reads_inf, k_fio_lba_none, h->first_data_lba, 0U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_write(f, data, sizeof(data))); /* 374 */
   h->backend = saved;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fileio: write_into_sector write error");
 }
 
@@ -750,12 +763,12 @@ static void test_write_into_sector_write_error(void)
  * (no compound decision is driven here -- it fails the directory-entry read
  * that ra8_fs_write performs after a successful stream write and asserts
  * k_ra8_err_hw_error propagates out; the code under test on this leg is
- * single-condition error checks)
+ * single-condition error checks) @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_write_dir_entry_read_error(void)
+RA8_INTERNAL static void internal_test_write_dir_entry_read_error(void)
 {
   TEST_BEGIN("ra8_fs_fileio: write dir-entry read error");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
@@ -763,13 +776,13 @@ static void test_write_dir_entry_read_error(void)
 
   const ra8_fs_backend_t saved                   = h->backend;
   const uint8_t          data[k_fio_small_write] = {21U, 22U, 23U, 24U};
-  use_inject(h, k_fio_reads_inf, f->dir_entry_lba, k_fio_lba_none, 0U);
+  internal_use_inject(h, k_fio_reads_inf, f->dir_entry_lba, k_fio_lba_none, 0U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_write(f, data, sizeof(data))); /* 429 */
   h->backend = saved;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fileio: write dir-entry read error");
 }
 
@@ -794,30 +807,30 @@ static void test_write_dir_entry_read_error(void)
  * @par MC/DC:
  * (no compound decision is driven here -- it fails the FAT-get inside
  * priv_walk_grow and asserts k_ra8_err_hw_error propagates out; priv_walk_grow
- * has no `&&`/`||` decision, only single-condition error and EOC checks)
+ * has no `&&`/`||` decision, only single-condition error and EOC checks) @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_walk_grow_fat_get_error(void)
+RA8_INTERNAL static void internal_test_walk_grow_fat_get_error(void)
 {
   TEST_BEGIN("ra8_fs_fileio: walk_grow FAT-get error");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  seed_file(h, "WGGET.BIN", k_fio_two_clusters);
+  internal_seed_file(h, "WGGET.BIN", k_fio_two_clusters);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "WGGET.BIN", k_ra8_fs_mode_append, &f));
 
-  static uint8_t         s_data[k_fio_small_write] = {};
-  const ra8_fs_backend_t saved                     = h->backend;
-  use_inject(h, k_fio_reads_walk_get, k_fio_lba_none, k_fio_lba_none, 0U);
-  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_write(f, s_data, sizeof(s_data))); /* 255 */
+  static uint8_t         data[k_fio_small_write] = {};
+  const ra8_fs_backend_t saved                   = h->backend;
+  internal_use_inject(h, k_fio_reads_walk_get, k_fio_lba_none, k_fio_lba_none, 0U);
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_write(f, data, sizeof(data))); /* 255 */
   h->backend = saved;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fileio: walk_grow FAT-get error");
 }
 
@@ -840,26 +853,26 @@ static void test_walk_grow_fat_get_error(void)
  * chain-link FAT-set inside priv_walk_grow after the chain grows and asserts
  * k_ra8_err_hw_error propagates out; priv_walk_grow has no `&&`/`||` decision,
  * only single-condition error and EOC checks, and the read-path cache-resume
- * compound is never reached by a write)
+ * compound is never reached by a write) @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_walk_grow_fat_set_error(void)
+RA8_INTERNAL static void internal_test_walk_grow_fat_set_error(void)
 {
   TEST_BEGIN("ra8_fs_fileio: walk_grow FAT-set error");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "WGSET.BIN", k_ra8_fs_mode_write, &f));
 
-  static uint8_t         s_data[k_fio_two_clusters] = {};
-  const ra8_fs_backend_t saved                      = h->backend;
-  use_inject(h, k_fio_reads_walk_set, k_fio_lba_none, k_fio_lba_none, 0U);
-  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_write(f, s_data, sizeof(s_data))); /* 265 */
+  static uint8_t         data[k_fio_two_clusters] = {};
+  const ra8_fs_backend_t saved                    = h->backend;
+  internal_use_inject(h, k_fio_reads_walk_set, k_fio_lba_none, k_fio_lba_none, 0U);
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_write(f, data, sizeof(data))); /* 265 */
   h->backend = saved;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fileio: walk_grow FAT-set error");
 }
 
@@ -884,53 +897,52 @@ static void test_walk_grow_fat_set_error(void)
  * - V2: cache set, target at/ahead -> both true (resume) -- sibling sequential
  *   read.
  * - V3: cache set, target behind   -> C1 true, C2 false -- sibling backward seek.
- * Pair (V1,V2) proves the cache-set operand independently moves the outcome.
+ * Pair (V1,V2) proves the cache-set operand independently moves the outcome. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_read_cache_unset_after_write(void)
+RA8_INTERNAL static void internal_test_read_cache_unset_after_write(void)
 {
   TEST_BEGIN("ra8_fs_fileio: read after write walks from head (cache unset)");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "RDCACHE.BIN", k_ra8_fs_mode_write, &f));
 
-  static uint8_t s_wr[k_fio_two_clusters] = {};
+  static uint8_t wr[k_fio_two_clusters] = {};
   for (uint32_t i = 0; i < (uint32_t)k_fio_two_clusters; i++) {
-    s_wr[i] = (uint8_t)(i & k_byte_mask);
+    wr[i] = (uint8_t)(i & k_byte_mask);
   }
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_wr, sizeof(s_wr))); /* resets walk cache to 0 */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, wr, sizeof(wr))); /* resets walk cache to 0 */
 
   /* Same handle: seek to the start and read back. The first read chunk sees
    * walk_cache_cluster == 0, so the cache-set condition (C1) is false. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, 0U));
-  static uint8_t s_rd[k_fio_two_clusters] = {};
-  uint32_t       got                      = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_rd, sizeof(s_rd), &got));
+  static uint8_t rd[k_fio_two_clusters] = {};
+  uint32_t       got                    = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, rd, sizeof(rd), &got));
   TEST_ASSERT_EQ(k_fio_two_clusters, got);
-  TEST_ASSERT_EQ(0, memcmp(s_wr, s_rd, sizeof(s_wr)));
+  TEST_ASSERT_EQ(0, memcmp(wr, rd, sizeof(wr)));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fileio: read after write walks from head (cache unset)");
 }
 
 int32_t main(void)
 {
-  test_read_seek_tell_size_not_in_use();
-  test_read_cache_unset_after_write();
-  test_write_zero_length();
-  test_write_file_guards();
-  test_write_file_write_error();
-  test_read_walk_fat_get_error();
-  test_read_walk_hits_eoc();
-  test_write_stream_alloc_error();
-  test_write_into_sector_read_error();
-  test_write_into_sector_write_error();
-  test_write_dir_entry_read_error();
-  test_walk_grow_fat_get_error();
-  test_walk_grow_fat_set_error();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_fat_fileio_cov.c\n");
+  internal_test_read_seek_tell_size_not_in_use();
+  internal_test_read_cache_unset_after_write();
+  internal_test_write_zero_length();
+  internal_test_write_file_guards();
+  internal_test_write_file_write_error();
+  internal_test_read_walk_fat_get_error();
+  internal_test_read_walk_hits_eoc();
+  internal_test_write_stream_alloc_error();
+  internal_test_write_into_sector_read_error();
+  internal_test_write_into_sector_write_error();
+  internal_test_write_dir_entry_read_error();
+  internal_test_walk_grow_fat_get_error();
+  internal_test_walk_grow_fat_set_error();
   return 0;
 }

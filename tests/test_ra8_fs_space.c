@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_fs_meta.h"
 #include "test_ra8_fs_format_fixture.h"
 
@@ -39,8 +40,8 @@ typedef enum : uint32_t {
   k_sp_shl_b3     = 24U,         /**< LE byte-3 shift.                     */
 } space_probe_t;
 
-/** @brief Read a little-endian u32 from the RAM disk image. */
-static uint32_t disk_rd32(uint32_t byte_off)
+/** @brief Read a little-endian u32 from the RAM disk image. @details Implements the bounded disk rd32 fixture step using caller-owned state. @param[in] byte_off Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint32_t internal_disk_rd32(uint32_t byte_off)
 {
   return (uint32_t)s_disk.bytes[byte_off] |
          ((uint32_t)s_disk.bytes[byte_off + 1U] << (uint32_t)k_sp_shl_b1) |
@@ -48,19 +49,20 @@ static uint32_t disk_rd32(uint32_t byte_off)
          ((uint32_t)s_disk.bytes[byte_off + 3U] << (uint32_t)k_sp_shl_b3);
 }
 
-/** @brief Independently count free clusters by scanning the FAT in the image. */
-static uint32_t indep_fat_free(const ra8_fs_mount_t* h)
+/** @brief Independently count free clusters by scanning the FAT in the image. @details Implements the bounded indep fat free fixture step using caller-owned state. @param[in] h Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint32_t internal_indep_fat_free(const ra8_fs_mount_t* h)
 {
-  const uint32_t fat_byte = (h->partition_base_lba + h->first_fat_lba) * (uint32_t)k_fmt_block_size;
+  const uint32_t internal_fat_byte =
+    (h->partition_base_lba + h->first_fat_lba) * (uint32_t)k_fmt_block_size;
   const uint32_t width =
     (h->type == k_ra8_fs_type_fat32) ? (uint32_t)k_sp_fat32_ent : (uint32_t)k_sp_fat16_ent;
   uint32_t free = 0U;
   for (uint32_t c = (uint32_t)k_sp_first_clus; c < (uint32_t)k_sp_first_clus + h->count_of_clusters;
        c++) {
-    const uint32_t off = fat_byte + (c * width);
+    const uint32_t off = internal_fat_byte + (c * width);
     uint32_t       v   = 0U;
     if (h->type == k_ra8_fs_type_fat32) {
-      v = disk_rd32(off) & (uint32_t)k_sp_fat32_mask;
+      v = internal_disk_rd32(off) & (uint32_t)k_sp_fat32_mask;
     } else {
       v = (uint32_t)s_disk.bytes[off] | ((uint32_t)s_disk.bytes[off + 1U] << 8);
     }
@@ -71,28 +73,28 @@ static uint32_t indep_fat_free(const ra8_fs_mount_t* h)
   return free;
 }
 
-/** @brief Absolute image byte offset of a cluster's first sector. */
-static uint32_t clus_byte(const ra8_fs_mount_t* h, uint32_t cluster)
+/** @brief Absolute image byte offset of a cluster's first sector. @details Implements the bounded clus byte fixture step using caller-owned state. @param[in] h Value required by this filesystem vector. @param[in] cluster Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint32_t internal_clus_byte(const ra8_fs_mount_t* h, uint32_t cluster)
 {
   const uint32_t lba = h->partition_base_lba + h->first_data_lba +
                        ((uint64_t)(cluster - (uint32_t)k_sp_first_clus) * h->sectors_per_cluster);
   return lba * (uint32_t)k_fmt_block_size;
 }
 
-/** @brief Independently count free clusters by popcounting the exFAT bitmap. */
-static uint32_t indep_exfat_free(const ra8_fs_mount_t* h)
+/** @brief Independently count free clusters by popcounting the exFAT bitmap. @details Implements the bounded indep exfat free fixture step using caller-owned state. @param[in] h Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint32_t internal_indep_exfat_free(const ra8_fs_mount_t* h)
 {
-  const uint32_t root     = clus_byte(h, h->root_cluster);
+  const uint32_t root     = internal_clus_byte(h, h->root_cluster);
   uint32_t       bmp_clus = 0U;
   for (uint32_t e = 0U; e < (uint32_t)k_sp_entries_ps; e++) {
     const uint32_t eo = root + (e * (uint32_t)k_sp_entry_size);
     if (s_disk.bytes[eo] == (uint8_t)k_sp_bitmap_tag) {
-      bmp_clus = disk_rd32(eo + (uint32_t)k_sp_de_clus);
+      bmp_clus = internal_disk_rd32(eo + (uint32_t)k_sp_de_clus);
       break;
     }
   }
   TEST_ASSERT(bmp_clus >= (uint32_t)k_sp_first_clus);
-  const uint32_t bmp  = clus_byte(h, bmp_clus);
+  const uint32_t bmp  = internal_clus_byte(h, bmp_clus);
   uint32_t       used = 0U;
   for (uint32_t i = 0U; i < h->count_of_clusters; i++) {
     const uint8_t byte = s_disk.bytes[bmp + (i / (uint32_t)k_sp_bits_byte)];
@@ -103,14 +105,16 @@ static uint32_t indep_exfat_free(const ra8_fs_mount_t* h)
   return h->count_of_clusters - used;
 }
 
-/** @brief Independent free count for whichever filesystem @p h is. */
-static uint32_t indep_free(const ra8_fs_mount_t* h)
+/** @brief Independent free count for whichever filesystem @p h is. @details Implements the bounded indep free fixture step using caller-owned state. @param[in] h Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint32_t internal_indep_free(const ra8_fs_mount_t* h)
 {
-  return (h->type == k_ra8_fs_type_exfat) ? indep_exfat_free(h) : indep_fat_free(h);
+  return (h->type == k_ra8_fs_type_exfat) ? internal_indep_exfat_free(h)
+                                          : internal_indep_fat_free(h);
 }
 
-/** @brief Assert the struct's internal invariants hold. */
-static void check_invariants(const ra8_fs_mount_t* h, const ra8_fs_space_t* sp)
+/** @brief Assert the struct's internal invariants hold. @details Implements the bounded check invariants fixture step using caller-owned state. @param[in] h Value required by this filesystem vector. @param[in] sp Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_check_invariants(const ra8_fs_mount_t* h,
+                                                   const ra8_fs_space_t* sp)
 {
   TEST_ASSERT_EQ(h->count_of_clusters, sp->total_clusters);
   TEST_ASSERT_EQ(sp->total_clusters, sp->used_clusters + sp->free_clusters);
@@ -126,11 +130,12 @@ static void check_invariants(const ra8_fs_mount_t* h, const ra8_fs_space_t* sp)
  * @details Proves the reported free count equals an independent on-disk walk on
  *          a fresh volume, then that writing a multi-cluster file drops the free
  *          count and the new count still matches the walk -- exercising both the
- *          fresh-walk path and (on the second query) the cached path.
+ *          fresh-walk path and (on the second query) the cached path. @param[in] blocks Value required by this filesystem vector. @param[in] type Value required by this filesystem vector. @param[in] label Validated fixture path or name value. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void space_cycle(uint32_t blocks, ra8_fs_type_t type, const char* label)
+RA8_INTERNAL static void
+internal_space_cycle(uint32_t blocks, ra8_fs_type_t type, const char* label)
 {
-  alloc_garbage_card(blocks);
+  internal_alloc_garbage_card(blocks);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = type;
   opts.label                = label;
@@ -140,8 +145,8 @@ static void space_cycle(uint32_t blocks, ra8_fs_type_t type, const char* label)
 
   ra8_fs_space_t before = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_free_space(h, &before));
-  check_invariants(h, &before);
-  TEST_ASSERT_EQ(indep_free(h), before.free_clusters);
+  internal_check_invariants(h, &before);
+  TEST_ASSERT_EQ(internal_indep_free(h), before.free_clusters);
   TEST_ASSERT(before.free_clusters > 0U);
 
   /* Second query on the same mount: exercises the cached-count branch. */
@@ -149,20 +154,20 @@ static void space_cycle(uint32_t blocks, ra8_fs_type_t type, const char* label)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_free_space(h, &again));
   TEST_ASSERT_EQ(before.free_clusters, again.free_clusters);
 
-  static uint8_t s_payload[k_sp_payload];
+  static uint8_t payload[k_sp_payload];
   for (uint32_t i = 0U; i < (uint32_t)k_sp_payload; i++) {
-    s_payload[i] = (uint8_t)((i * k_fs_pattern_stride) + k_fs_pattern_bias);
+    payload[i] = (uint8_t)((i * k_fs_pattern_stride) + k_fs_pattern_bias);
   }
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "DATA.BIN", s_payload, (uint32_t)k_sp_payload));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "DATA.BIN", payload, (uint32_t)k_sp_payload));
 
   ra8_fs_space_t after = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_free_space(h, &after));
-  check_invariants(h, &after);
+  internal_check_invariants(h, &after);
   TEST_ASSERT(after.free_clusters < before.free_clusters);
-  TEST_ASSERT_EQ(indep_free(h), after.free_clusters);
+  TEST_ASSERT_EQ(internal_indep_free(h), after.free_clusters);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
 }
 
 /**
@@ -170,12 +175,12 @@ static void space_cycle(uint32_t blocks, ra8_fs_type_t type, const char* label)
  * @par MC/DC:
  * (no compound decision unique to this case -- FAT16 free-space happy path,
  * cross-checked against an independent FAT scan; the free-space null guard's
- * MC/DC is owned by test_space_null_guard)
+ * MC/DC is owned by test_space_null_guard) @brief Exercise the space fat16 filesystem operation. @details Runs the space fat16 vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_space_fat16(void)
+RA8_INTERNAL static void internal_test_space_fat16(void)
 {
   TEST_BEGIN("ra8_fs free_space: FAT16 vs an independent FAT scan");
-  space_cycle((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16, "SPACE16");
+  internal_space_cycle((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16, "SPACE16");
   TEST_END("ra8_fs free_space: FAT16 vs an independent FAT scan");
 }
 
@@ -183,12 +188,12 @@ static void test_space_fat16(void)
  * @test test_space_fat32
  * @par MC/DC:
  * (no compound decision unique to this case -- FAT32 exercises the cached
- * FSInfo free count, cross-checked against an independent FAT scan)
+ * FSInfo free count, cross-checked against an independent FAT scan) @brief Exercise the space fat32 filesystem operation. @details Runs the space fat32 vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_space_fat32(void)
+RA8_INTERNAL static void internal_test_space_fat32(void)
 {
   TEST_BEGIN("ra8_fs free_space: FAT32 (FSInfo cache) vs an independent FAT scan");
-  space_cycle((uint32_t)k_fmt_blocks_fat32, k_ra8_fs_type_fat32, "SPACE32");
+  internal_space_cycle((uint32_t)k_fmt_blocks_fat32, k_ra8_fs_type_fat32, "SPACE32");
   TEST_END("ra8_fs free_space: FAT32 (FSInfo cache) vs an independent FAT scan");
 }
 
@@ -196,12 +201,12 @@ static void test_space_fat32(void)
  * @test test_space_exfat
  * @par MC/DC:
  * (no compound decision unique to this case -- exFAT bitmap population count,
- * cross-checked against an independent bitmap popcount)
+ * cross-checked against an independent bitmap popcount) @brief Exercise the space exfat filesystem operation. @details Runs the space exfat vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_space_exfat(void)
+RA8_INTERNAL static void internal_test_space_exfat(void)
 {
   TEST_BEGIN("ra8_fs free_space: exFAT vs an independent bitmap popcount");
-  space_cycle((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat, "SPACEXF");
+  internal_space_cycle((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat, "SPACEXF");
   TEST_END("ra8_fs free_space: exFAT vs an independent bitmap popcount");
 }
 
@@ -214,12 +219,12 @@ static void test_space_exfat(void)
  * - V2 handle=NULL,  out=valid -> C1=T -> T (varies handle only).
  * - V3 handle=valid, out=NULL  -> C1=F, C2=T -> T (varies out only).
  * V1+V2 prove handle independently flips the outcome; V1+V3 prove out does.
- * Also covers the not-in-use guard (an unmounted handle -> invalid_state).
+ * Also covers the not-in-use guard (an unmounted handle -> invalid_state). @brief Exercise the space null guard filesystem operation. @details Runs the space null guard vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_space_null_guard(void)
+RA8_INTERNAL static void internal_test_space_null_guard(void)
 {
   TEST_BEGIN("ra8_fs free_space MC/DC: (handle||out) NULL pair + invalid_state");
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;
   opts.label                = "GUARD";
@@ -234,16 +239,15 @@ static void test_space_null_guard(void)
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_free_space(h, &sp)); /* unmounted */
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs free_space MC/DC: (handle||out) NULL pair + invalid_state");
 }
 
 int32_t main(void)
 {
-  test_space_fat16();
-  test_space_fat32();
-  test_space_exfat();
-  test_space_null_guard();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_space.c\n");
+  internal_test_space_fat16();
+  internal_test_space_fat32();
+  internal_test_space_exfat();
+  internal_test_space_null_guard();
   return 0;
 }

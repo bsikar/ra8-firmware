@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_fs.h"
 #include "unity_minimal.h"
 /**
@@ -102,7 +103,9 @@ typedef struct {
 
 static mem_disk_t s_disk = {};
 
-static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief Perform the mem read filesystem operation. @details Implements the bounded mem read fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in,out] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -112,7 +115,9 @@ static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Perform the mem write filesystem operation. @details Implements the bounded mem write fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -122,7 +127,9 @@ static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Perform the mem capacity filesystem operation. @details Implements the bounded mem capacity fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] block_count Caller-supplied bounded extent or quantity. @param[in,out] block_size Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -131,9 +138,9 @@ static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_
 }
 
 static const ra8_fs_backend_t s_backend = {
-  .read_block   = mem_read,
-  .write_block  = mem_write,
-  .get_capacity = mem_capacity,
+  .read_block   = internal_mem_read,
+  .write_block  = internal_mem_write,
+  .get_capacity = internal_mem_capacity,
   .ctx          = &s_disk,
 };
 
@@ -143,18 +150,18 @@ static const ra8_fs_backend_t s_backend = {
  */
 
 /**
- * @brief Helper to write LE u16 at a byte offset.
+ * @brief Helper to write LE u16 at a byte offset. @details Implements the bounded put16 fixture step using caller-owned state. @param[in,out] p Value required by this filesystem vector. @param[in] off Value required by this filesystem vector. @param[in] v Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void put16(uint8_t* p, uint32_t off, uint16_t v)
+RA8_INTERNAL static void internal_put16(uint8_t* p, uint32_t off, uint16_t v)
 {
   p[off]     = (uint8_t)(v & k_byte_mask);
   p[off + 1] = (uint8_t)((v >> 8) & k_byte_mask);
 }
 
 /**
- * @brief Helper to write LE u32 at a byte offset.
+ * @brief Helper to write LE u32 at a byte offset. @details Implements the bounded put32 fixture step using caller-owned state. @param[in,out] p Value required by this filesystem vector. @param[in] off Value required by this filesystem vector. @param[in] v Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void put32(uint8_t* p, uint32_t off, uint32_t v)
+RA8_INTERNAL static void internal_put32(uint8_t* p, uint32_t off, uint32_t v)
 {
   p[off]     = (uint8_t)(v & k_byte_mask);
   p[off + 1] = (uint8_t)((v >> 8) & k_byte_mask);
@@ -184,9 +191,9 @@ typedef struct {
  * @pre @p target is one of the supported FAT types.
  * @post Returned geometry is self-consistent for @p target.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded build volume geometry fixture step using caller-owned state. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static fat_geom_t build_volume_geometry(ra8_fs_type_t target)
+RA8_INTERNAL static fat_geom_t internal_build_volume_geometry(ra8_fs_type_t target)
 {
   fat_geom_t g = {.total     = k_disk_blocks_fat16,
                   .spc       = 1,
@@ -225,9 +232,9 @@ static fat_geom_t build_volume_geometry(ra8_fs_type_t target)
  * @post `s_disk.bytes` is a zeroed buffer of `s_disk.byte_count` bytes.
  * @post The test aborts rather than continuing with a NULL image.
  *
- * @note Not thread-safe; the fixture is file-scope state.
+ * @note Not thread-safe; the fixture is file-scope state. @details Implements the bounded alloc disk for fixture step using caller-owned state. @since 0.1.0
  */
-static void alloc_disk_for(ra8_fs_type_t target)
+RA8_INTERNAL static void internal_alloc_disk_for(ra8_fs_type_t target)
 {
   uint32_t need_blocks = k_disk_blocks_fat16;
   if (target == k_ra8_fs_type_fat12) {
@@ -258,25 +265,25 @@ static void alloc_disk_for(ra8_fs_type_t target)
  * @post Block 0 carries a BPB the mounter accepts.
  * @post The 0x55 0xAA boot signature terminates the block.
  *
- * @note Not thread-safe; the fixture is file-scope state.
+ * @note Not thread-safe; the fixture is file-scope state. @since 0.1.0
  */
-static void write_bpb(const fat_geom_t* g, ra8_fs_type_t target)
+RA8_INTERNAL static void internal_write_bpb(const fat_geom_t* g, ra8_fs_type_t target)
 {
   uint8_t* bpb = &s_disk.bytes[0];
-  put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_disk_block_size);
+  internal_put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_disk_block_size);
   bpb[k_bpb_off_sec_per_clus] = (uint8_t)g->spc;
-  put16(bpb, k_bpb_off_rsvd_sec_cnt, (uint16_t)g->rsvd);
+  internal_put16(bpb, k_bpb_off_rsvd_sec_cnt, (uint16_t)g->rsvd);
   bpb[16] = (uint8_t)g->fats;
-  put16(bpb, k_bpb_off_root_ent_cnt, (uint16_t)g->root_ents);
+  internal_put16(bpb, k_bpb_off_root_ent_cnt, (uint16_t)g->root_ents);
   if (target == k_ra8_fs_type_fat32) {
-    put16(bpb, k_bpb_off_tot_sec16, 0);
-    put32(bpb, 32, g->total);
-    put16(bpb, k_bpb_off_fat_sz16, 0);
-    put32(bpb, k_bpb_off_fat_sz32, g->fat_sz);
-    put32(bpb, k_bpb_off_root_clus, g->root_clus);
+    internal_put16(bpb, k_bpb_off_tot_sec16, 0);
+    internal_put32(bpb, 32, g->total);
+    internal_put16(bpb, k_bpb_off_fat_sz16, 0);
+    internal_put32(bpb, k_bpb_off_fat_sz32, g->fat_sz);
+    internal_put32(bpb, k_bpb_off_root_clus, g->root_clus);
   } else {
-    put16(bpb, k_bpb_off_tot_sec16, (uint16_t)g->total);
-    put16(bpb, k_bpb_off_fat_sz16, (uint16_t)g->fat_sz);
+    internal_put16(bpb, k_bpb_off_tot_sec16, (uint16_t)g->total);
+    internal_put16(bpb, k_bpb_off_fat_sz16, (uint16_t)g->fat_sz);
   }
   bpb[k_bpb_off_sig_lo] = k_bpb_sig_lo;
   bpb[k_bpb_off_sig_hi] = k_bpb_sig_hi;
@@ -297,9 +304,9 @@ static void write_bpb(const fat_geom_t* g, ra8_fs_type_t target)
  * @post Clusters 0, 1 and 2 read as end-of-chain in each FAT copy.
  * @post Non-FAT32 images are left untouched.
  *
- * @note Not thread-safe; the fixture is file-scope state.
+ * @note Not thread-safe; the fixture is file-scope state. @since 0.1.0
  */
-static void write_fat32_root_eoc(const fat_geom_t* g, ra8_fs_type_t target)
+RA8_INTERNAL static void internal_write_fat32_root_eoc(const fat_geom_t* g, ra8_fs_type_t target)
 {
   if (target != k_ra8_fs_type_fat32) {
     return;
@@ -308,30 +315,30 @@ static void write_fat32_root_eoc(const fat_geom_t* g, ra8_fs_type_t target)
     uint32_t fat_lba = g->rsvd + (i * g->fat_sz);
     uint8_t* fat     = &s_disk.bytes[(size_t)fat_lba * k_disk_block_size];
     /* Cluster 0 + 1 are reserved; cluster 2 = root = EOC. */
-    put32(fat, 0, k_fat32_eoc);
-    put32(fat, 4, k_fat32_eoc);
-    put32(fat, 8, k_fat32_eoc);
+    internal_put32(fat, 0, k_fat32_eoc);
+    internal_put32(fat, 4, k_fat32_eoc);
+    internal_put32(fat, 8, k_fat32_eoc);
   }
 }
 
 /**
  * @brief Synthesise a FAT volume of the requested type.
  *
- * @param[in] target Which FAT type the BPB cluster-count rule should produce.
+ * @param[in] target Which FAT type the BPB cluster-count rule should produce. @details Implements the bounded build volume fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void build_volume(ra8_fs_type_t target)
+RA8_INTERNAL static void internal_build_volume(ra8_fs_type_t target)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
     s_disk.bytes = nullptr;
   }
-  alloc_disk_for(target);
+  internal_alloc_disk_for(target);
 
-  const fat_geom_t g = build_volume_geometry(target);
+  const fat_geom_t g = internal_build_volume_geometry(target);
   s_disk.block_count = g.total;
 
-  write_bpb(&g, target);
-  write_fat32_root_eoc(&g, target);
+  internal_write_bpb(&g, target);
+  internal_write_fat32_root_eoc(&g, target);
   /* For FAT12/16 reserved entries 0/1 normally hold media descriptors but
      the dispatcher does not require those. */
 }
@@ -344,7 +351,9 @@ static void build_volume(ra8_fs_type_t target)
 static uint32_t s_listdir_count         = 0;
 static char     s_listdir_last_name[16] = {};
 
-static void listdir_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
+/** @brief Perform the listdir cb filesystem operation. @details Implements the bounded listdir cb fixture step using caller-owned state. @param[in] name Validated fixture path or name value. @param[in] attr Value required by this filesystem vector. @param[in] size Caller-supplied bounded extent or quantity. @param[in,out] ctx Caller-owned fixture or filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void
+internal_listdir_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)attr;
   (void)size;
@@ -357,12 +366,12 @@ static void listdir_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * code under test that this case touches) @brief Exercise the mount unmount fat16 filesystem operation. @details Runs the mount unmount fat16 vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mount_unmount_fat16(void)
+RA8_INTERNAL static void internal_test_mount_unmount_fat16(void)
 {
   TEST_BEGIN("mount/unmount FAT16");
-  build_volume(k_ra8_fs_type_fat16);
+  internal_build_volume(k_ra8_fs_type_fat16);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_NOT_NULL(h);
@@ -375,12 +384,12 @@ static void test_mount_unmount_fat16(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * code under test that this case touches) @brief Exercise the fat12 detection filesystem operation. @details Runs the fat12 detection vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_fat12_detection(void)
+RA8_INTERNAL static void internal_test_fat12_detection(void)
 {
   TEST_BEGIN("FAT12 detection");
-  build_volume(k_ra8_fs_type_fat12);
+  internal_build_volume(k_ra8_fs_type_fat12);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_fs_type_fat12, h->type);
@@ -392,12 +401,12 @@ static void test_fat12_detection(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * code under test that this case touches) @brief Exercise the fat32 detection filesystem operation. @details Runs the fat32 detection vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_fat32_detection(void)
+RA8_INTERNAL static void internal_test_fat32_detection(void)
 {
   TEST_BEGIN("FAT32 detection");
-  build_volume(k_ra8_fs_type_fat32);
+  internal_build_volume(k_ra8_fs_type_fat32);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_fs_type_fat32, h->type);
@@ -409,12 +418,12 @@ static void test_fat32_detection(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * code under test that this case touches) @brief Exercise the open close create filesystem operation. @details Runs the open close create vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_open_close_create(void)
+RA8_INTERNAL static void internal_test_open_close_create(void)
 {
   TEST_BEGIN("open/close create");
-  build_volume(k_ra8_fs_type_fat16);
+  internal_build_volume(k_ra8_fs_type_fat16);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
@@ -429,12 +438,12 @@ static void test_open_close_create(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * code under test that this case touches) @brief Exercise the write then read filesystem operation. @details Runs the write then read vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_write_then_read(void)
+RA8_INTERNAL static void internal_test_write_then_read(void)
 {
   TEST_BEGIN("write then read happy path");
-  build_volume(k_ra8_fs_type_fat16);
+  internal_build_volume(k_ra8_fs_type_fat16);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -467,12 +476,12 @@ static void test_write_then_read(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * code under test that this case touches) @brief Exercise the read cross cluster filesystem operation. @details Runs the read cross cluster vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_read_cross_cluster(void)
+RA8_INTERNAL static void internal_test_read_cross_cluster(void)
 {
   TEST_BEGIN("read across cluster boundary");
-  build_volume(k_ra8_fs_type_fat16);
+  internal_build_volume(k_ra8_fs_type_fat16);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -503,12 +512,12 @@ static void test_read_cross_cluster(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * code under test that this case touches) @brief Exercise the seek tell filesystem operation. @details Runs the seek tell vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_seek_tell(void)
+RA8_INTERNAL static void internal_test_seek_tell(void)
 {
   TEST_BEGIN("seek + tell");
-  build_volume(k_ra8_fs_type_fat16);
+  internal_build_volume(k_ra8_fs_type_fat16);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
@@ -535,12 +544,12 @@ static void test_seek_tell(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * code under test that this case touches) @brief Exercise the listdir filesystem operation. @details Runs the listdir vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_listdir(void)
+RA8_INTERNAL static void internal_test_listdir(void)
 {
   TEST_BEGIN("listdir");
-  build_volume(k_ra8_fs_type_fat16);
+  internal_build_volume(k_ra8_fs_type_fat16);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
@@ -549,7 +558,7 @@ static void test_listdir(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "B.TXT", k_ra8_fs_mode_write, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   s_listdir_count = 0;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", listdir_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_listdir_cb, nullptr));
   TEST_ASSERT(s_listdir_count >= 2);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   TEST_END("listdir");
@@ -559,12 +568,12 @@ static void test_listdir(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * code under test that this case touches) @brief Exercise the unlink filesystem operation. @details Runs the unlink vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_unlink(void)
+RA8_INTERNAL static void internal_test_unlink(void)
 {
   TEST_BEGIN("unlink");
-  build_volume(k_ra8_fs_type_fat16);
+  internal_build_volume(k_ra8_fs_type_fat16);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
@@ -582,9 +591,9 @@ static void test_unlink(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * code under test that this case touches) @brief Exercise the null args filesystem operation. @details Runs the null args vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_null_args(void)
+RA8_INTERNAL static void internal_test_null_args(void)
 {
   TEST_BEGIN("null arg checks");
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_mount(nullptr, nullptr));
@@ -605,12 +614,12 @@ static void test_null_args(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * code under test that this case touches) @brief Exercise the no such file filesystem operation. @details Runs the no such file vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_no_such_file(void)
+RA8_INTERNAL static void internal_test_no_such_file(void)
 {
   TEST_BEGIN("no such file");
-  build_volume(k_ra8_fs_type_fat16);
+  internal_build_volume(k_ra8_fs_type_fat16);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
@@ -624,20 +633,20 @@ static void test_no_such_file(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * code under test that this case touches) @brief Exercise the no free space filesystem operation. @details Runs the no free space vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_no_free_space(void)
+RA8_INTERNAL static void internal_test_no_free_space(void)
 {
   TEST_BEGIN("no free space");
-  build_volume(k_ra8_fs_type_fat12);
+  internal_build_volume(k_ra8_fs_type_fat12);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "FILL.BIN", k_ra8_fs_mode_write, &f));
   /* The FAT12 disk has count_of_clusters << 4085, so try to write more
      bytes than the data region holds and expect k_ra8_err_no_mem. */
-  static uint8_t s_pad[k_disk_blocks_fat12 * k_disk_block_size] = {};
-  ra8_err_t      err = ra8_fs_write(f, s_pad, sizeof s_pad);
+  static uint8_t pad[k_disk_blocks_fat12 * k_disk_block_size] = {};
+  ra8_err_t      err                                          = ra8_fs_write(f, pad, sizeof pad);
   TEST_ASSERT(err == k_ra8_err_no_mem || err == k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
@@ -648,9 +657,9 @@ static void test_no_free_space(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * code under test that this case touches) @brief Exercise the bad backend filesystem operation. @details Runs the bad backend vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_bad_backend(void)
+RA8_INTERNAL static void internal_test_bad_backend(void)
 {
   TEST_BEGIN("bad backend rejected");
   ra8_fs_backend_t b = {};
@@ -661,18 +670,18 @@ static void test_bad_backend(void)
 
 int main(void)
 {
-  test_mount_unmount_fat16();
-  test_fat12_detection();
-  test_fat32_detection();
-  test_open_close_create();
-  test_write_then_read();
-  test_read_cross_cluster();
-  test_seek_tell();
-  test_listdir();
-  test_unlink();
-  test_null_args();
-  test_no_such_file();
-  test_no_free_space();
-  test_bad_backend();
+  internal_test_mount_unmount_fat16();
+  internal_test_fat12_detection();
+  internal_test_fat32_detection();
+  internal_test_open_close_create();
+  internal_test_write_then_read();
+  internal_test_read_cross_cluster();
+  internal_test_seek_tell();
+  internal_test_listdir();
+  internal_test_unlink();
+  internal_test_null_args();
+  internal_test_no_such_file();
+  internal_test_no_free_space();
+  internal_test_bad_backend();
   return 0;
 }

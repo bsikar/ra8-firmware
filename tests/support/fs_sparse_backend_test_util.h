@@ -34,6 +34,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 
@@ -88,7 +89,8 @@ typedef struct {
 } sparse_window_t;
 
 /** @brief Locate the slot holding @p lba, or the free slot to claim for it. */
-[[maybe_unused]] static uint32_t sp_slot(const sparse_disk_t* d, uint64_t lba, uint8_t* out_found)
+[[maybe_unused]] RA8_INTERNAL static uint32_t
+internal_sp_slot(const sparse_disk_t* d, uint64_t lba, uint8_t* out_found)
 {
   uint32_t i = (uint32_t)(lba % (uint64_t)k_sp_slots);
   for (uint32_t probe = 0U; probe < (uint32_t)k_sp_probe_max; probe++) {
@@ -107,7 +109,7 @@ typedef struct {
 }
 
 /** @brief True when @p buf is `n` zero bytes (a write the store may drop). */
-[[maybe_unused]] static uint8_t sp_all_zero(const uint8_t* buf, uint32_t n)
+[[maybe_unused]] RA8_INTERNAL static uint8_t internal_sp_all_zero(const uint8_t* buf, uint32_t n)
 {
   for (uint32_t i = 0U; i < n; i++) {
     if (buf[i] != 0U) {
@@ -118,7 +120,8 @@ typedef struct {
 }
 
 /** @brief Reset @p d to an empty device of @p blocks sectors of @p bps bytes. */
-[[maybe_unused]] static void sp_init(sparse_disk_t* d, uint64_t blocks, uint32_t bps)
+[[maybe_unused]] RA8_INTERNAL static void
+internal_sp_init(sparse_disk_t* d, uint64_t blocks, uint32_t bps)
 {
   memset(d, 0, sizeof(*d));
   d->block_count = blocks;
@@ -126,10 +129,11 @@ typedef struct {
 }
 
 /** @brief Read one stored-or-zero sector of @p d into @p out. */
-[[maybe_unused]] static void sp_peek(sparse_disk_t* d, uint64_t lba, uint8_t* out)
+[[maybe_unused]] RA8_INTERNAL static void
+internal_sp_peek(sparse_disk_t* d, uint64_t lba, uint8_t* out)
 {
   uint8_t        found = 0U;
-  const uint32_t i     = sp_slot(d, lba, &found);
+  const uint32_t i     = internal_sp_slot(d, lba, &found);
   if (found != 0U) {
     memcpy(out, d->data[i], d->bps);
   } else {
@@ -138,15 +142,16 @@ typedef struct {
 }
 
 /** @brief Store one sector of @p d from @p src (claims a slot when needed). */
-[[maybe_unused]] static void sp_poke(sparse_disk_t* d, uint64_t lba, const uint8_t* src)
+[[maybe_unused]] RA8_INTERNAL static void
+internal_sp_poke(sparse_disk_t* d, uint64_t lba, const uint8_t* src)
 {
   uint8_t        found = 0U;
-  const uint32_t i     = sp_slot(d, lba, &found);
+  const uint32_t i     = internal_sp_slot(d, lba, &found);
   if (i >= (uint32_t)k_sp_slots) {
     return; /* table full; the bounds assert in the test will catch it */
   }
   if (found == 0U) {
-    if (sp_all_zero(src, d->bps) != 0U) {
+    if (internal_sp_all_zero(src, d->bps) != 0U) {
       return; /* an unstored sector already reads as zeros */
     }
     d->used[i] = 1U;
@@ -157,14 +162,15 @@ typedef struct {
 }
 
 /** @brief `ra8_fs_backend_t.read_block` over a ::sparse_disk_t cookie. */
-[[maybe_unused]] static ra8_err_t sp_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+[[maybe_unused]] RA8_INTERNAL static ra8_err_t
+internal_sp_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   sparse_disk_t* d = (sparse_disk_t*)ctx;
   if ((lba >= d->block_count) || (count > (d->block_count - lba))) {
     return k_ra8_err_out_of_range;
   }
   for (uint32_t k = 0U; k < count; k++) {
-    sp_peek(d, lba + k, &buf[(size_t)k * d->bps]);
+    internal_sp_peek(d, lba + k, &buf[(size_t)k * d->bps]);
   }
   if ((count != 0U) && ((lba + count - 1U) > d->max_read)) {
     d->max_read = lba + count - 1U;
@@ -173,15 +179,15 @@ typedef struct {
 }
 
 /** @brief `ra8_fs_backend_t.write_block` over a ::sparse_disk_t cookie. */
-[[maybe_unused]] static ra8_err_t
-sp_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+[[maybe_unused]] RA8_INTERNAL static ra8_err_t
+internal_sp_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   sparse_disk_t* d = (sparse_disk_t*)ctx;
   if ((lba >= d->block_count) || (count > (d->block_count - lba))) {
     return k_ra8_err_out_of_range;
   }
   for (uint32_t k = 0U; k < count; k++) {
-    sp_poke(d, lba + k, &buf[(size_t)k * d->bps]);
+    internal_sp_poke(d, lba + k, &buf[(size_t)k * d->bps]);
   }
   if ((count != 0U) && ((lba + count - 1U) > d->max_written)) {
     d->max_written = lba + count - 1U;
@@ -190,8 +196,8 @@ sp_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 }
 
 /** @brief `ra8_fs_backend_t.get_capacity` over a ::sparse_disk_t cookie. */
-[[maybe_unused]] static ra8_err_t
-sp_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+[[maybe_unused]] RA8_INTERNAL static ra8_err_t
+internal_sp_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const sparse_disk_t* d = (const sparse_disk_t*)ctx;
   *block_count           = d->block_count;
@@ -200,12 +206,12 @@ sp_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 }
 
 /** @brief Bind @p d as a full `ra8_fs` backend. */
-[[maybe_unused]] static ra8_fs_backend_t sp_backend(sparse_disk_t* d)
+[[maybe_unused]] RA8_INTERNAL static ra8_fs_backend_t internal_sp_backend(sparse_disk_t* d)
 {
   const ra8_fs_backend_t be = {
-    .read_block   = sp_read,
-    .write_block  = sp_write,
-    .get_capacity = sp_capacity,
+    .read_block   = internal_sp_read,
+    .write_block  = internal_sp_write,
+    .get_capacity = internal_sp_capacity,
     .erase_blocks = nullptr,
     .ctx          = d,
   };
@@ -213,29 +219,30 @@ sp_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 }
 
 /** @brief `read_block` over a ::sparse_window_t cookie (base-shifted). */
-[[maybe_unused]] static ra8_err_t spw_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+[[maybe_unused]] RA8_INTERNAL static ra8_err_t
+internal_spw_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   sparse_window_t* w = (sparse_window_t*)ctx;
   if ((lba >= w->count) || (count > (w->count - lba))) {
     return k_ra8_err_out_of_range;
   }
-  return sp_read(w->disk, w->base + lba, count, buf);
+  return internal_sp_read(w->disk, w->base + lba, count, buf);
 }
 
 /** @brief `write_block` over a ::sparse_window_t cookie (base-shifted). */
-[[maybe_unused]] static ra8_err_t
-spw_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+[[maybe_unused]] RA8_INTERNAL static ra8_err_t
+internal_spw_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   sparse_window_t* w = (sparse_window_t*)ctx;
   if ((lba >= w->count) || (count > (w->count - lba))) {
     return k_ra8_err_out_of_range;
   }
-  return sp_write(w->disk, w->base + lba, count, buf);
+  return internal_sp_write(w->disk, w->base + lba, count, buf);
 }
 
 /** @brief `get_capacity` over a ::sparse_window_t cookie. */
-[[maybe_unused]] static ra8_err_t
-spw_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+[[maybe_unused]] RA8_INTERNAL static ra8_err_t
+internal_spw_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const sparse_window_t* w = (const sparse_window_t*)ctx;
   *block_count             = w->count;
@@ -244,12 +251,12 @@ spw_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 }
 
 /** @brief Bind window @p w as a full `ra8_fs` backend. */
-[[maybe_unused]] static ra8_fs_backend_t spw_backend(sparse_window_t* w)
+[[maybe_unused]] RA8_INTERNAL static ra8_fs_backend_t internal_spw_backend(sparse_window_t* w)
 {
   const ra8_fs_backend_t be = {
-    .read_block   = spw_read,
-    .write_block  = spw_write,
-    .get_capacity = spw_capacity,
+    .read_block   = internal_spw_read,
+    .write_block  = internal_spw_write,
+    .get_capacity = internal_spw_capacity,
     .erase_blocks = nullptr,
     .ctx          = w,
   };

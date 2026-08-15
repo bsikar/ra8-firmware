@@ -2,6 +2,10 @@
  * @file test_ra8_fs_fat_variants.c
  * @brief Focused FAT variant and directory edge coverage for ra8_fs_fat.c.
  *
+ * @details
+ * Builds bounded in-memory FAT12, FAT16, and FAT32 images to exercise variant
+ * selection and directory-entry edge cases without relying on host storage.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -11,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "unity_minimal.h"
@@ -117,13 +122,15 @@ typedef struct {
 
 static mem_disk_t s_disk = {};
 
-static void put16(uint8_t* p, uint32_t off, uint16_t v)
+/** @brief Perform the put16 filesystem operation. @details Implements the bounded put16 fixture step using caller-owned state. @param[in,out] p Value required by this filesystem vector. @param[in] off Value required by this filesystem vector. @param[in] v Value required by this filesystem vector. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_put16(uint8_t* p, uint32_t off, uint16_t v)
 {
   p[off]     = (uint8_t)(v & k_byte_mask);
   p[off + 1] = (uint8_t)((v >> 8) & k_byte_mask);
 }
 
-static void put32(uint8_t* p, uint32_t off, uint32_t v)
+/** @brief Perform the put32 filesystem operation. @details Implements the bounded put32 fixture step using caller-owned state. @param[in,out] p Value required by this filesystem vector. @param[in] off Value required by this filesystem vector. @param[in] v Value required by this filesystem vector. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_put32(uint8_t* p, uint32_t off, uint32_t v)
 {
   p[off]     = (uint8_t)(v & k_byte_mask);
   p[off + 1] = (uint8_t)((v >> 8) & k_byte_mask);
@@ -131,13 +138,15 @@ static void put32(uint8_t* p, uint32_t off, uint32_t v)
   p[off + 3] = (uint8_t)((v >> k_shift_byte3) & k_byte_mask);
 }
 
-static uint32_t get32(const uint8_t* p, uint32_t off)
+/** @brief Perform the get32 filesystem operation. @details Implements the bounded get32 fixture step using caller-owned state. @param[in] p Value required by this filesystem vector. @param[in] off Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static uint32_t internal_get32(const uint8_t* p, uint32_t off)
 {
   return (uint32_t)p[off] | ((uint32_t)p[off + 1] << 8U) | ((uint32_t)p[off + 2] << 16U) |
          ((uint32_t)p[off + 3] << k_shift_byte3);
 }
 
-static void free_volume(void)
+/** @brief Perform the free volume filesystem operation. @details Implements the bounded free volume fixture step using caller-owned state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_free_volume(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -145,9 +154,10 @@ static void free_volume(void)
   }
 }
 
-static void alloc_volume(uint32_t blocks)
+/** @brief Perform the alloc volume filesystem operation. @details Implements the bounded alloc volume fixture step using caller-owned state. @param[in] blocks Value required by this filesystem vector. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_alloc_volume(uint32_t blocks)
 {
-  free_volume();
+  internal_free_volume();
   s_disk.byte_count  = blocks * (uint32_t)k_block_size;
   s_disk.bytes       = (uint8_t*)calloc(1, s_disk.byte_count);
   s_disk.block_count = blocks;
@@ -156,7 +166,9 @@ static void alloc_volume(uint32_t blocks)
   }
 }
 
-static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief Perform the mem read filesystem operation. @details Implements the bounded mem read fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in,out] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -168,7 +180,9 @@ static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Perform the mem write filesystem operation. @details Implements the bounded mem write fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -180,7 +194,9 @@ static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Perform the mem capacity filesystem operation. @details Implements the bounded mem capacity fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] block_count Caller-supplied bounded extent or quantity. @param[in,out] block_size Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -189,70 +205,77 @@ static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_
 }
 
 static const ra8_fs_backend_t s_backend = {
-  .read_block   = mem_read,
-  .write_block  = mem_write,
-  .get_capacity = mem_capacity,
+  .read_block   = internal_mem_read,
+  .write_block  = internal_mem_write,
+  .get_capacity = internal_mem_capacity,
   .ctx          = &s_disk,
 };
 
-static void build_common_bpb(uint32_t blocks, uint32_t fat_secs, uint32_t root_entries)
+/** @brief Perform the build common bpb filesystem operation. @details Implements the bounded build common bpb fixture step using caller-owned state. @param[in] blocks Value required by this filesystem vector. @param[in] fat_secs Value required by this filesystem vector. @param[in] root_entries Value required by this filesystem vector. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void
+internal_build_common_bpb(uint32_t blocks, uint32_t fat_secs, uint32_t root_entries)
 {
   uint8_t* bpb = &s_disk.bytes[0];
-  put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_block_size);
+  internal_put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_block_size);
   bpb[k_bpb_off_sec_per_clus] = 1U;
-  put16(bpb, k_bpb_off_rsvd_sec_cnt, 1U);
+  internal_put16(bpb, k_bpb_off_rsvd_sec_cnt, 1U);
   bpb[16] = 2U;
-  put16(bpb, k_bpb_off_root_ent_cnt, (uint16_t)root_entries);
+  internal_put16(bpb, k_bpb_off_root_ent_cnt, (uint16_t)root_entries);
   if (blocks <= k_tot_sec16_max) {
-    put16(bpb, k_bpb_off_tot_sec16, (uint16_t)blocks);
+    internal_put16(bpb, k_bpb_off_tot_sec16, (uint16_t)blocks);
   } else {
-    put32(bpb, 32U, blocks);
+    internal_put32(bpb, 32U, blocks);
   }
   if (fat_secs <= k_tot_sec16_max) {
-    put16(bpb, k_bpb_off_fat_sz16, (uint16_t)fat_secs);
+    internal_put16(bpb, k_bpb_off_fat_sz16, (uint16_t)fat_secs);
   } else {
-    put32(bpb, k_bpb_off_fat_sz32, fat_secs);
+    internal_put32(bpb, k_bpb_off_fat_sz32, fat_secs);
   }
   bpb[k_bpb_off_sig_lo] = k_bpb_sig_lo;
   bpb[k_bpb_off_sig_hi] = k_bpb_sig_hi;
 }
 
-static void write_fat32_entry_raw(uint32_t cluster, uint32_t value)
+/** @brief Perform the write fat32 entry raw filesystem operation. @details Implements the bounded write fat32 entry raw fixture step using caller-owned state. @param[in] cluster Value required by this filesystem vector. @param[in] value Value required by this filesystem vector. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_write_fat32_entry_raw(uint32_t cluster, uint32_t value)
 {
   const uint32_t off = cluster * 4U;
   for (uint32_t i = 0; i < 2U; i++) {
     uint8_t* fat =
       &s_disk.bytes[((1U + (i * (uint32_t)k_fat32_fat_secs)) * (uint32_t)k_block_size) + off];
-    put32(fat, 0U, value);
+    internal_put32(fat, 0U, value);
   }
 }
 
-static void build_fat12_volume(void)
+/** @brief Perform the build fat12 volume filesystem operation. @details Implements the bounded build fat12 volume fixture step using caller-owned state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_build_fat12_volume(void)
 {
-  alloc_volume((uint32_t)k_fat12_blocks);
-  build_common_bpb((uint32_t)k_fat12_blocks,
-                   (uint32_t)k_fat12_fat_secs,
-                   (uint32_t)k_fat_root_entries);
+  internal_alloc_volume((uint32_t)k_fat12_blocks);
+  internal_build_common_bpb((uint32_t)k_fat12_blocks,
+                            (uint32_t)k_fat12_fat_secs,
+                            (uint32_t)k_fat_root_entries);
 }
 
-static void build_fat16_volume(void)
+/** @brief Perform the build fat16 volume filesystem operation. @details Implements the bounded build fat16 volume fixture step using caller-owned state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_build_fat16_volume(void)
 {
-  alloc_volume((uint32_t)k_fat16_blocks);
-  build_common_bpb((uint32_t)k_fat16_blocks,
-                   (uint32_t)k_fat16_fat_secs,
-                   (uint32_t)k_fat_root_entries);
+  internal_alloc_volume((uint32_t)k_fat16_blocks);
+  internal_build_common_bpb((uint32_t)k_fat16_blocks,
+                            (uint32_t)k_fat16_fat_secs,
+                            (uint32_t)k_fat_root_entries);
 }
 
-static void build_fat32_volume(void)
+/** @brief Perform the build fat32 volume filesystem operation. @details Implements the bounded build fat32 volume fixture step using caller-owned state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_build_fat32_volume(void)
 {
-  alloc_volume((uint32_t)k_fat32_blocks);
-  build_common_bpb((uint32_t)k_fat32_blocks, 0U, 0U);
-  put32(s_disk.bytes, k_bpb_off_fat_sz32, (uint32_t)k_fat32_fat_secs);
-  put32(s_disk.bytes, k_bpb_off_root_clus, 2U);
-  write_fat32_entry_raw(2U, k_fat32_eoc);
+  internal_alloc_volume((uint32_t)k_fat32_blocks);
+  internal_build_common_bpb((uint32_t)k_fat32_blocks, 0U, 0U);
+  internal_put32(s_disk.bytes, k_bpb_off_fat_sz32, (uint32_t)k_fat32_fat_secs);
+  internal_put32(s_disk.bytes, k_bpb_off_root_clus, 2U);
+  internal_write_fat32_entry_raw(2U, k_fat32_eoc);
 }
 
-static void list_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
+/** @brief Perform the list cb filesystem operation. @details Implements the bounded list cb fixture step using caller-owned state. @param[in] name Validated fixture path or name value. @param[in] attr Value required by this filesystem vector. @param[in] size Caller-supplied bounded extent or quantity. @param[in,out] ctx Caller-owned fixture or filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_list_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   list_ctx_t* c = (list_ctx_t*)ctx;
   (void)attr;
@@ -264,13 +287,13 @@ static void list_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * code under test that this case touches) @brief Exercise the fat12 large chain hits 12bit dispatch and straddle filesystem operation. @details Runs the fat12 large chain hits 12bit dispatch and straddle vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
 
-static void test_fat12_large_chain_hits_12bit_dispatch_and_straddle(void)
+RA8_INTERNAL static void internal_test_fat12_large_chain_hits_12bit_dispatch_and_straddle(void)
 {
   TEST_BEGIN("ra8_fs FAT12: long chain hits 12-bit get/set and straddle");
-  build_fat12_volume();
+  internal_build_fat12_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_fs_type_fat12, h->type);
@@ -299,21 +322,21 @@ static void test_fat12_large_chain_hits_12bit_dispatch_and_straddle(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free(wr);
   free(rd);
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs FAT12: long chain hits 12-bit get/set and straddle");
 }
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * code under test that this case touches) @brief Exercise the fat32 write preserves reserved nibble and round trips filesystem operation. @details Runs the fat32 write preserves reserved nibble and round trips vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
 
-static void test_fat32_write_preserves_reserved_nibble_and_round_trips(void)
+RA8_INTERNAL static void internal_test_fat32_write_preserves_reserved_nibble_and_round_trips(void)
 {
   TEST_BEGIN("ra8_fs FAT32: write/read preserves high reserved FAT nibble");
-  build_fat32_volume();
-  write_fat32_entry_raw(3U, k_fat32_reserved_bits_set);
+  internal_build_fat32_volume();
+  internal_write_fat32_entry_raw(3U, k_fat32_reserved_bits_set);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_fs_type_fat32, h->type);
@@ -327,7 +350,8 @@ static void test_fat32_write_preserves_reserved_nibble_and_round_trips(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, payload, sizeof(payload)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
-  const uint32_t fat_entry3 = get32(s_disk.bytes, ((1U * (uint32_t)k_block_size) + (3U * 4U)));
+  const uint32_t fat_entry3 =
+    internal_get32(s_disk.bytes, ((1U * (uint32_t)k_block_size) + (3U * 4U)));
   TEST_ASSERT_EQ(0xA0000000U, (fat_entry3 & 0xF0000000U));
   TEST_ASSERT_EQ(4U, (fat_entry3 & 0x0FFFFFFFU));
 
@@ -339,20 +363,20 @@ static void test_fat32_write_preserves_reserved_nibble_and_round_trips(void)
   TEST_ASSERT_EQ(0, memcmp(payload, rd, sizeof(rd)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs FAT32: write/read preserves high reserved FAT nibble");
 }
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * code under test that this case touches) @brief Exercise the short name boundary cases filesystem operation. @details Runs the short name boundary cases vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
 
-static void test_short_name_boundary_cases(void)
+RA8_INTERNAL static void internal_test_short_name_boundary_cases(void)
 {
   TEST_BEGIN("ra8_fs FAT16: short-name packing boundaries");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -369,34 +393,37 @@ static void test_short_name_boundary_cases(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   list_ctx_t ctx = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", list_cb, &ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_list_cb, &ctx));
   TEST_ASSERT_EQ(4, ctx.count);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs FAT16: short-name packing boundaries");
 }
 
-static void
-fill_short_entry(uint8_t* ent, const char raw11[k_sfn_name_bytes], uint8_t attr, uint32_t size)
+/** @brief Perform the fill short entry filesystem operation. @details Implements the bounded fill short entry fixture step using caller-owned state. @param[in,out] ent Value required by this filesystem vector. @param[in] raw11 Value required by this filesystem vector. @param[in] attr Value required by this filesystem vector. @param[in] size Caller-supplied bounded extent or quantity. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_fill_short_entry(uint8_t*   ent,
+                                                   const char raw11[k_sfn_name_bytes],
+                                                   uint8_t    attr,
+                                                   uint32_t   size)
 {
   memset(ent, 0, k_ra8_fs_dir_entry_bytes);
   memcpy(ent, raw11, (size_t)k_sfn_name_bytes);
   ent[k_dir_off_attr] = attr;
-  put32(ent, k_dir_off_file_size, size);
+  internal_put32(ent, k_dir_off_file_size, size);
 }
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * code under test that this case touches) @brief Exercise the fat32 root walker skips and follows chain filesystem operation. @details Runs the fat32 root walker skips and follows chain vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
 
-static void test_fat32_root_walker_skips_and_follows_chain(void)
+RA8_INTERNAL static void internal_test_fat32_root_walker_skips_and_follows_chain(void)
 {
   TEST_BEGIN("ra8_fs FAT32: root walker skips deleted/LFN and follows chain");
-  build_fat32_volume();
-  write_fat32_entry_raw(2U, 4U);
-  write_fat32_entry_raw(4U, k_fat32_eoc);
+  internal_build_fat32_volume();
+  internal_write_fat32_entry_raw(2U, 4U);
+  internal_write_fat32_entry_raw(4U, k_fat32_eoc);
 
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
@@ -413,32 +440,31 @@ static void test_fat32_root_walker_skips_and_follows_chain(void)
                                   'B',
                                   'I',
                                   'N'};
-    fill_short_entry(&root0[(size_t)e * (uint32_t)k_ra8_fs_dir_entry_bytes],
-                     raw,
-                     k_ra8_fs_attr_archive,
-                     e);
+    internal_fill_short_entry(&root0[(size_t)e * (uint32_t)k_ra8_fs_dir_entry_bytes],
+                              raw,
+                              k_ra8_fs_attr_archive,
+                              e);
   }
   root0[0]                    = k_dir_name_deleted;
   root0[32U + k_dir_off_attr] = k_ra8_fs_attr_lfn;
 
   uint8_t* root1 = &s_disk.bytes[(size_t)(h->first_data_lba + 2U) * (uint32_t)k_block_size];
-  fill_short_entry(root1, "TAIL    TXT", k_ra8_fs_attr_archive, k_var_short_entry_size);
+  internal_fill_short_entry(root1, "TAIL    TXT", k_ra8_fs_attr_archive, k_var_short_entry_size);
 
   list_ctx_t ctx = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", list_cb, &ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_list_cb, &ctx));
   TEST_ASSERT_EQ(15, ctx.count);
   TEST_ASSERT_EQ(0, strcmp(ctx.last_name, "TAIL.TXT"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs FAT32: root walker skips deleted/LFN and follows chain");
 }
 
 int32_t main(void)
 {
-  test_fat12_large_chain_hits_12bit_dispatch_and_straddle();
-  test_fat32_write_preserves_reserved_nibble_and_round_trips();
-  test_short_name_boundary_cases();
-  test_fat32_root_walker_skips_and_follows_chain();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_fat_variants.c\n");
+  internal_test_fat12_large_chain_hits_12bit_dispatch_and_straddle();
+  internal_test_fat32_write_preserves_reserved_nibble_and_round_trips();
+  internal_test_short_name_boundary_cases();
+  internal_test_fat32_root_walker_skips_and_follows_chain();
   return 0;
 }

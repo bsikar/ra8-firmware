@@ -37,7 +37,7 @@
  * @pre ``m->partition_base_lba`` is still 0 (reads are absolute).
  * @pre @p out_base is non-NULL.
  * @post On k_ra8_ok @p out_base holds a non-zero LBA.
- * @post ::s_scratch is overwritten (callers must re-read their sector).
+ * @post ::priv_scratch is overwritten (callers must re-read their sector).
  * @note Not thread-safe -- uses module-level scratch.
  * @since 0.1.0
  */
@@ -65,7 +65,7 @@ ra8_err_t priv_gpt_locate_volume(ra8_fs_mount_t* m, uint64_t* out_base);
  * @pre ``m->partition_base_lba`` is still 0 (reads are absolute).
  * @pre @p out_base is non-NULL.
  * @post On k_ra8_ok @p out_base holds a non-zero LBA.
- * @post ::s_scratch is overwritten (callers must re-read their sector).
+ * @post ::priv_scratch is overwritten (callers must re-read their sector).
  * @note Not thread-safe -- uses module-level scratch.
  * @since 0.1.0
  */

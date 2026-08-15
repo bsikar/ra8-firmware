@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_fat_dir_test_util.h"
@@ -104,9 +105,9 @@ typedef enum : uint32_t {
  * @note Partition-adjusted: `priv_read_sector()` adds `partition_base_lba`, so
  *       a test poking `s_disk.bytes` has to add it too or it lands in the
  *       pre-partition gap (#568).
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded root dir byte fixture step using caller-owned state.
  */
-static inline uint32_t root_dir_byte(const ra8_fs_mount_t* h)
+RA8_INTERNAL static inline uint32_t internal_root_dir_byte(const ra8_fs_mount_t* h)
 {
   return (h->partition_base_lba + h->first_root_lba) * (uint32_t)k_geo_blk_sz;
 }
@@ -128,9 +129,9 @@ static inline uint32_t root_dir_byte(const ra8_fs_mount_t* h)
  * @note Not thread-safe (shares the fixture singleton).
  * @since 0.1.0
  */
-static inline uint8_t* root_slot(const ra8_fs_mount_t* h, uint32_t idx)
+RA8_INTERNAL static inline uint8_t* internal_root_slot(const ra8_fs_mount_t* h, uint32_t idx)
 {
-  return &s_disk.bytes[root_dir_byte(h) + (idx * (uint32_t)k_lw_entry)];
+  return &s_disk.bytes[internal_root_dir_byte(h) + (idx * (uint32_t)k_lw_entry)];
 }
 
 /**
@@ -154,7 +155,7 @@ static inline uint8_t* root_slot(const ra8_fs_mount_t* h, uint32_t idx)
  * @note Pure function; trivially thread-safe.
  * @since 0.1.0
  */
-static inline uint8_t spec_checksum(const uint8_t* name83)
+RA8_INTERNAL static inline uint8_t internal_spec_checksum(const uint8_t* name83)
 {
   uint8_t sum = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_lw_name_len; i++) {
@@ -203,7 +204,8 @@ typedef struct {
  * @note Not thread-safe (reads the fixture singleton).
  * @since 0.1.0
  */
-static inline void scan_root(const uint8_t* base, uint32_t slots, scan_result_t* out)
+RA8_INTERNAL static inline void
+internal_scan_root(const uint8_t* base, uint32_t slots, scan_result_t* out)
 {
   scan_result_t  r       = {};
   uint32_t       run     = 0U;
@@ -231,7 +233,7 @@ static inline void scan_root(const uint8_t* base, uint32_t slots, scan_result_t*
     }
     r.live++;
     if (run != 0U) {
-      if (spec_checksum(&ent[k_lw_off_name]) == run_sum) {
+      if (internal_spec_checksum(&ent[k_lw_off_name]) == run_sum) {
         r.chained += run;
       } else {
         r.orphans += run;
@@ -257,11 +259,11 @@ static inline void scan_root(const uint8_t* base, uint32_t slots, scan_result_t*
  * @post No state is modified.
  *
  * @note Not thread-safe (reads the fixture singleton).
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded scan root of fixture step using caller-owned state.
  */
-static inline void scan_root_of(const ra8_fs_mount_t* h, scan_result_t* out)
+RA8_INTERNAL static inline void internal_scan_root_of(const ra8_fs_mount_t* h, scan_result_t* out)
 {
-  scan_root(&s_disk.bytes[root_dir_byte(h)], h->root_entries, out);
+  internal_scan_root(&s_disk.bytes[internal_root_dir_byte(h)], h->root_entries, out);
 }
 
 /**
@@ -279,12 +281,12 @@ static inline void scan_root_of(const ra8_fs_mount_t* h, scan_result_t* out)
  * @post The count is derived only from the on-disk bytes.
  *
  * @note Not thread-safe (reads the fixture singleton).
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded count orphan slots fixture step using caller-owned state.
  */
-static inline uint32_t count_orphan_slots(const ra8_fs_mount_t* h)
+RA8_INTERNAL static inline uint32_t internal_count_orphan_slots(const ra8_fs_mount_t* h)
 {
   scan_result_t r = {};
-  scan_root_of(h, &r);
+  internal_scan_root_of(h, &r);
   return r.orphans;
 }
 
@@ -321,9 +323,10 @@ typedef struct {
  * @post `count` reflects the number stored.
  *
  * @note Not thread-safe against the same @p ctx.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded collect cb fixture step using caller-owned state.
  */
-static inline void collect_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
+RA8_INTERNAL static inline void
+internal_collect_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)attr;
   (void)size;
@@ -351,12 +354,13 @@ static inline void collect_cb(const char* name, uint8_t attr, uint64_t size, voi
  * @post The listing was performed through the public API only.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded listdir is exactly fixture step using caller-owned state.
  */
-static inline uint8_t listdir_is_exactly(ra8_fs_mount_t* h, const char* path, const char* want)
+RA8_INTERNAL static inline uint8_t
+internal_listdir_is_exactly(ra8_fs_mount_t* h, const char* path, const char* want)
 {
   name_list_t l = {};
-  if (ra8_fs_listdir(h, path, collect_cb, &l) != k_ra8_ok) {
+  if (ra8_fs_listdir(h, path, internal_collect_cb, &l) != k_ra8_ok) {
     return 0U;
   }
   if (l.count != 1U) {
@@ -382,9 +386,9 @@ static inline uint8_t listdir_is_exactly(ra8_fs_mount_t* h, const char* path, co
  * @post No other state is modified.
  *
  * @note Trivially thread-safe (writes only through @p buf).
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded fill payload fixture step using caller-owned state.
  */
-static inline void fill_payload(uint8_t* buf, uint32_t len)
+RA8_INTERNAL static inline void internal_fill_payload(uint8_t* buf, uint32_t len)
 {
   for (uint32_t i = 0U; i < len; i++) {
     buf[i] = (uint8_t)((i * (uint32_t)k_lw_stride) + (uint32_t)k_lw_seed);
@@ -411,10 +415,10 @@ static inline void fill_payload(uint8_t* buf, uint32_t len)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static inline void write_and_verify(ra8_fs_mount_t* h, const char* path)
+RA8_INTERNAL static inline void internal_write_and_verify(ra8_fs_mount_t* h, const char* path)
 {
   uint8_t payload[k_lw_payload] = {};
-  fill_payload(payload, (uint32_t)k_lw_payload);
+  internal_fill_payload(payload, (uint32_t)k_lw_payload);
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, path, k_ra8_fs_mode_write, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, payload, (uint32_t)k_lw_payload));

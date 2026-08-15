@@ -26,10 +26,10 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_fat_exfat_mutate_test_util.h"
@@ -57,17 +57,17 @@
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_unlink returns k_ra8_err_not_found.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_unlink_not_found(void)
+RA8_INTERNAL static void internal_test_exfat_unlink_not_found(void)
 {
   TEST_BEGIN("exfat mutate cov: unlink nonexistent file -> not_found (line 206)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_unlink(h, "NOFILE.TXT"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat mutate cov: unlink nonexistent file -> not_found (line 206)");
 }
 
@@ -90,12 +90,12 @@ static void test_exfat_unlink_not_found(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_rename returns k_ra8_err_exists.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_rename_new_exists(void)
+RA8_INTERNAL static void internal_test_exfat_rename_new_exists(void)
 {
   TEST_BEGIN("exfat mutate cov: rename when target exists -> exists (line 429)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -105,7 +105,7 @@ static void test_exfat_rename_new_exists(void)
   TEST_ASSERT_EQ(k_ra8_err_exists, ra8_fs_rename(h, "A.TXT", "B.TXT"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat mutate cov: rename when target exists -> exists (line 429)");
 }
 
@@ -130,17 +130,17 @@ static void test_exfat_rename_new_exists(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_rename returns k_ra8_err_not_found.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_rename_not_found(void)
+RA8_INTERNAL static void internal_test_exfat_rename_not_found(void)
 {
   TEST_BEGIN("exfat mutate cov: rename nonexistent file -> not_found (line 442)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_rename(h, "GHOST.TXT", "OTHER.TXT"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat mutate cov: rename nonexistent file -> not_found (line 442)");
 }
 
@@ -167,12 +167,12 @@ static void test_exfat_rename_not_found(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_unlink returns k_ra8_err_not_found.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_stream_type_mismatch(void)
+RA8_INTERNAL static void internal_test_exfat_stream_type_mismatch(void)
 {
   TEST_BEGIN("exfat mutate cov: stream type mismatch -> matched=0 (lines 131-133)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -180,13 +180,13 @@ static void test_exfat_stream_type_mismatch(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", &dummy, 1U));
 
   /* Corrupt the Stream entry type byte (root index 4, byte 0). */
-  const uint32_t strm_off = root_byte(h, (uint32_t)k_mut_root_strm0_idx);
+  const uint32_t strm_off = internal_root_byte(h, (uint32_t)k_mut_root_strm0_idx);
   s_disk.bytes[strm_off]  = (uint8_t)k_mut_type_bogus;
 
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_unlink(h, "A.TXT"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat mutate cov: stream type mismatch -> matched=0 (lines 131-133)");
 }
 
@@ -211,12 +211,12 @@ static void test_exfat_stream_type_mismatch(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_unlink returns k_ra8_err_not_found.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_name_entry_type_mismatch(void)
+RA8_INTERNAL static void internal_test_exfat_name_entry_type_mismatch(void)
 {
   TEST_BEGIN("exfat mutate cov: name entry type mismatch -> matched=0 (lines 145-147)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -224,13 +224,13 @@ static void test_exfat_name_entry_type_mismatch(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", &dummy, 1U));
 
   /* Corrupt the Name entry type byte (root index 5, byte 0). */
-  const uint32_t name_off = root_byte(h, (uint32_t)k_mut_root_name0_idx);
+  const uint32_t name_off = internal_root_byte(h, (uint32_t)k_mut_root_name0_idx);
   s_disk.bytes[name_off]  = 0x00U;
 
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_unlink(h, "A.TXT"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat mutate cov: name entry type mismatch -> matched=0 (lines 145-147)");
 }
 
@@ -258,12 +258,12 @@ static void test_exfat_name_entry_type_mismatch(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_unlink("B.TXT") returns k_ra8_ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_name_chunk_mismatch(void)
+RA8_INTERNAL static void internal_test_exfat_name_chunk_mismatch(void)
 {
   TEST_BEGIN("exfat mutate cov: name chunk mismatch (lines 150-152)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -275,7 +275,7 @@ static void test_exfat_name_chunk_mismatch(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "B.TXT"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat mutate cov: name chunk mismatch (lines 150-152)");
 }
 
@@ -303,12 +303,12 @@ static void test_exfat_name_chunk_mismatch(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_unlink returns k_ra8_err_no_mem.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_too_many_secondary(void)
+RA8_INTERNAL static void internal_test_exfat_too_many_secondary(void)
 {
   TEST_BEGIN("exfat mutate cov: sec-count 19 -> no_mem (lines 214,332)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -316,13 +316,13 @@ static void test_exfat_too_many_secondary(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", &dummy, 1U));
 
   /* Patch SecondaryCount to 19: total = 20 > k_exfat_set_max_entries. */
-  const uint32_t file_off = root_byte(h, (uint32_t)k_mut_root_file0_idx);
+  const uint32_t file_off = internal_root_byte(h, (uint32_t)k_mut_root_file0_idx);
   s_disk.bytes[file_off + (uint32_t)k_mut_file_secnt_off] = (uint8_t)k_mut_max_secondary;
 
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_fs_unlink(h, "A.TXT"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat mutate cov: sec-count 19 -> no_mem (lines 214,332)");
 }
 
@@ -346,12 +346,12 @@ static void test_exfat_too_many_secondary(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_unlink returns k_ra8_ok (file entry deleted; bitmap unchanged).
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_free_clusters_no_first(void)
+RA8_INTERNAL static void internal_test_exfat_free_clusters_no_first(void)
 {
   TEST_BEGIN("exfat mutate cov: first_cluster=0 -> early return (lines 283-284)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -359,14 +359,14 @@ static void test_exfat_free_clusters_no_first(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", &dummy, 1U));
 
   /* Zero the FirstCluster field in the Stream entry. */
-  const uint32_t strm_off = root_byte(h, (uint32_t)k_mut_root_strm0_idx);
-  disk_set_u32le(strm_off + (uint32_t)k_mut_strm_off_clus, 0U);
+  const uint32_t strm_off = internal_root_byte(h, (uint32_t)k_mut_root_strm0_idx);
+  internal_disk_set_u32le(strm_off + (uint32_t)k_mut_strm_off_clus, 0U);
 
   /* Unlink must not crash and must return ok. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "A.TXT"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat mutate cov: first_cluster=0 -> early return (lines 283-284)");
 }
 
@@ -390,12 +390,12 @@ static void test_exfat_free_clusters_no_first(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_unlink returns k_ra8_ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_free_clusters_zero_size(void)
+RA8_INTERNAL static void internal_test_exfat_free_clusters_zero_size(void)
 {
   TEST_BEGIN("exfat mutate cov: size=0 -> early return (lines 286-287)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -403,13 +403,13 @@ static void test_exfat_free_clusters_zero_size(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", &dummy, 1U));
 
   /* Zero the DataLength field in the Stream entry. */
-  const uint32_t strm_off = root_byte(h, (uint32_t)k_mut_root_strm0_idx);
-  disk_set_u32le(strm_off + (uint32_t)k_mut_strm_off_dlen, 0U);
+  const uint32_t strm_off = internal_root_byte(h, (uint32_t)k_mut_root_strm0_idx);
+  internal_disk_set_u32le(strm_off + (uint32_t)k_mut_strm_off_dlen, 0U);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "A.TXT"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat mutate cov: size=0 -> early return (lines 286-287)");
 }
 
@@ -447,39 +447,38 @@ static void test_exfat_free_clusters_zero_size(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_unlink returns k_ra8_ok; bitmap bits for both clusters cleared.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_fat_chain_free(void)
+RA8_INTERNAL static void internal_test_exfat_fat_chain_free(void)
 {
   TEST_BEGIN("exfat mutate cov: FAT-chain 2-cluster free (lines 303-318)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   /* Write a 5000-byte file -> two 4 KiB clusters allocated. */
-  static uint8_t s_payload[k_mut_payload_two_cls];
+  static uint8_t payload[k_mut_payload_two_cls];
   for (uint32_t i = 0U; i < (uint32_t)k_mut_payload_two_cls; i++) {
-    s_payload[i] = (uint8_t)(i & (uint32_t)k_mut_mask_byte);
+    payload[i] = (uint8_t)(i & (uint32_t)k_mut_mask_byte);
   }
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_fs_write_file(h, "A.TXT", s_payload, (uint32_t)k_mut_payload_two_cls));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", payload, (uint32_t)k_mut_payload_two_cls));
 
   /* Read first_cluster from the Stream entry FirstCluster field. */
-  const uint32_t strm_off    = root_byte(h, (uint32_t)k_mut_root_strm0_idx);
-  const uint32_t first_clus  = disk_get_u32le(strm_off + (uint32_t)k_mut_strm_off_clus);
+  const uint32_t strm_off    = internal_root_byte(h, (uint32_t)k_mut_root_strm0_idx);
+  const uint32_t first_clus  = internal_disk_get_u32le(strm_off + (uint32_t)k_mut_strm_off_clus);
   const uint32_t second_clus = first_clus + 1U;
 
   /* Clear the NoFatChain bit so free_clusters uses the FAT walk. */
   s_disk.bytes[strm_off + (uint32_t)k_mut_strm_off_flags] &= (uint8_t)~(uint8_t)k_mut_no_fat_bit;
 
   /* Build a two-entry FAT chain: first -> second -> EOC. */
-  disk_set_u32le(fat_byte(h, first_clus), second_clus);
-  disk_set_u32le(fat_byte(h, second_clus), (uint32_t)k_mut_fat_eoc);
+  internal_disk_set_u32le(internal_fat_byte(h, first_clus), second_clus);
+  internal_disk_set_u32le(internal_fat_byte(h, second_clus), (uint32_t)k_mut_fat_eoc);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "A.TXT"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat mutate cov: FAT-chain 2-cluster free (lines 303-318)");
 }
 
@@ -506,12 +505,12 @@ static void test_exfat_fat_chain_free(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_listdir returns k_ra8_ok with count == 0.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_listdir_skip_non_stream(void)
+RA8_INTERNAL static void internal_test_exfat_listdir_skip_non_stream(void)
 {
   TEST_BEGIN("exfat mutate cov: bad stream type -> listdir skip (lines 529-530)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -519,15 +518,15 @@ static void test_exfat_listdir_skip_non_stream(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", &dummy, 1U));
 
   /* Corrupt the Stream entry type byte. */
-  const uint32_t strm_off = root_byte(h, (uint32_t)k_mut_root_strm0_idx);
+  const uint32_t strm_off = internal_root_byte(h, (uint32_t)k_mut_root_strm0_idx);
   s_disk.bytes[strm_off]  = (uint8_t)k_mut_type_bogus;
 
   mut_list_ctx_t ctx = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_count_cb, &ctx));
   TEST_ASSERT_EQ(0U, ctx.count);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat mutate cov: bad stream type -> listdir skip (lines 529-530)");
 }
 
@@ -565,12 +564,12 @@ static void test_exfat_listdir_skip_non_stream(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_listdir returns k_ra8_ok and reported nothing.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_gather_name_skip_non_name(void)
+RA8_INTERNAL static void internal_test_exfat_gather_name_skip_non_name(void)
 {
   TEST_BEGIN("exfat mutate cov: non-name secondary skipped in gather_name (lines 488-489)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -578,16 +577,16 @@ static void test_exfat_gather_name_skip_non_name(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", &dummy, 1U));
 
   /* Patch the Name entry type byte; leave Stream entry intact. */
-  const uint32_t name_off = root_byte(h, (uint32_t)k_mut_root_name0_idx);
+  const uint32_t name_off = internal_root_byte(h, (uint32_t)k_mut_root_name0_idx);
   s_disk.bytes[name_off]  = (uint8_t)k_mut_type_bogus;
 
   /* listdir must walk cleanly and report nothing: there is no name here. */
   mut_list_ctx_t ctx = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_count_cb, &ctx));
   TEST_ASSERT_EQ(0U, ctx.count);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat mutate cov: non-name secondary skipped in gather_name (lines 488-489)");
 }
 
@@ -595,18 +594,17 @@ static void test_exfat_gather_name_skip_non_name(void)
 
 int32_t main(void)
 {
-  test_exfat_unlink_not_found();
-  test_exfat_rename_new_exists();
-  test_exfat_rename_not_found();
-  test_exfat_stream_type_mismatch();
-  test_exfat_name_entry_type_mismatch();
-  test_exfat_name_chunk_mismatch();
-  test_exfat_free_clusters_no_first();
-  test_exfat_free_clusters_zero_size();
-  test_exfat_fat_chain_free();
-  test_exfat_too_many_secondary();
-  test_exfat_listdir_skip_non_stream();
-  test_exfat_gather_name_skip_non_name();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_fat_exfat_mutate_cov.c\n");
+  internal_test_exfat_unlink_not_found();
+  internal_test_exfat_rename_new_exists();
+  internal_test_exfat_rename_not_found();
+  internal_test_exfat_stream_type_mismatch();
+  internal_test_exfat_name_entry_type_mismatch();
+  internal_test_exfat_name_chunk_mismatch();
+  internal_test_exfat_free_clusters_no_first();
+  internal_test_exfat_free_clusters_zero_size();
+  internal_test_exfat_fat_chain_free();
+  internal_test_exfat_too_many_secondary();
+  internal_test_exfat_listdir_skip_non_stream();
+  internal_test_exfat_gather_name_skip_non_name();
   return 0;
 }

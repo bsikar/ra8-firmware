@@ -63,7 +63,7 @@ char priv_ascii_upper(char c)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_exfat_is_volume(const uint8_t* buf)
+static uint8_t internal_exfat_is_volume(const uint8_t* buf)
 {
   static const char sig[k_exfat_fsname_len] = {'E', 'X', 'F', 'A', 'T', ' ', ' ', ' '};
   for (uint32_t i = 0U; i < (uint32_t)k_exfat_fsname_len; i++) {
@@ -103,7 +103,7 @@ static uint8_t priv_exfat_is_volume(const uint8_t* buf)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_parse(ra8_fs_mount_t* m, const uint8_t* buf)
+static ra8_err_t internal_exfat_parse(ra8_fs_mount_t* m, const uint8_t* buf)
 {
   const uint8_t shift = buf[k_exfat_off_bps_shift];
   if ((shift < (uint8_t)k_exfat_bps_shift_min) || (shift > (uint8_t)k_exfat_bps_shift_max) ||
@@ -161,8 +161,8 @@ void priv_exfat_upcase_verify(ra8_fs_mount_t* m)
 /* `priv_parse_volume()`: see header for the documented contract. */
 ra8_err_t priv_parse_volume(ra8_fs_mount_t* m)
 {
-  if (priv_exfat_is_volume(s_scratch) != 0U) {
-    return priv_exfat_parse(m, s_scratch);
+  if (internal_exfat_is_volume(priv_scratch) != 0U) {
+    return internal_exfat_parse(m, priv_scratch);
   }
   return priv_parse_bpb_into_mount(m);
 }
@@ -333,11 +333,11 @@ ra8_err_t priv_exfat_needle_units(const ra8_fs_mount_t* m,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_match_set(const ra8_fs_mount_t* m,
-                                      exfat_cursor_t*       cur,
-                                      const uint16_t*       name,
-                                      uint32_t              nlen,
-                                      uint8_t*              out_strm)
+static ra8_err_t internal_exfat_match_set(const ra8_fs_mount_t* m,
+                                          exfat_cursor_t*       cur,
+                                          const uint16_t*       name,
+                                          uint32_t              nlen,
+                                          uint8_t*              out_strm)
 {
   uint8_t   strm[k_exfat_entry_bytes] = {};
   ra8_err_t e                         = priv_exfat_next_entry(m, cur, strm);
@@ -404,7 +404,7 @@ ra8_err_t priv_exfat_find(const ra8_fs_mount_t* m,
     if (entry[0] != (uint8_t)k_exfat_entry_file) {
       continue;
     }
-    e = priv_exfat_match_set(m, &cur, need, nlen, out_strm);
+    e = internal_exfat_match_set(m, &cur, need, nlen, out_strm);
     if (e == k_ra8_ok) {
       /* FileAttributes is 16-bit but every bit we act on (directory, archive)
        * lives in the low byte, so the caller gets that byte. */
@@ -444,7 +444,8 @@ ra8_err_t priv_exfat_find(const ra8_fs_mount_t* m,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_exfat_seed_read(ra8_fs_file_t* file, ra8_fs_mount_t* handle, const uint8_t* strm)
+static void
+internal_exfat_seed_read(ra8_fs_file_t* file, ra8_fs_mount_t* handle, const uint8_t* strm)
 {
   const uint32_t first     = priv_rd32(&strm[k_exfat_strm_off_clus]);
   file->mount              = handle;
@@ -497,7 +498,7 @@ ra8_err_t priv_exfat_open(ra8_fs_mount_t* handle,
   if (f == nullptr) {
     return k_ra8_err_no_mem;
   }
-  priv_exfat_seed_read(f, handle, strm);
+  internal_exfat_seed_read(f, handle, strm);
   *out_file = f;
   return k_ra8_ok;
 }

@@ -57,7 +57,7 @@
  * versa, and the two forms are DIFFERENT names to both sides. That is the same
  * behaviour Windows and Linux have on FAT, and normalising would be worse: it
  * would mean a name this API returned was not the name on the card. The
- * ::test_nfc_and_nfd_are_different_names case pins it so the choice is a
+ * ::internal_test_nfc_and_nfd_are_different_names case pins it so the choice is a
  * recorded one rather than an accident.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -73,6 +73,8 @@
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_lfn_write_test_util.h"
+#include "support/ra8_test_file.h"
+#include "support/ra8_test_output.h"
 #include "unity_minimal.h"
 
 /**
@@ -81,7 +83,7 @@
  *
  * @invariant `k_un_alias_underscores` is a CHARACTER count, which is the whole
  *            point: one underscore per unrepresentable character, not per byte.
- * @see test_alias_is_one_underscore_per_character()
+ * @see internal_test_alias_is_one_underscore_per_character()
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -232,7 +234,7 @@ static const char s_emoji_name[] = {(char)(unsigned char)0xF0U,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void build_formatted_fat16(void)
+RA8_INTERNAL static void internal_build_formatted_fat16(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -255,14 +257,16 @@ static void build_formatted_fat16(void)
  * @return Nothing.
  *
  * @pre No mount is still open on it.
- * @pre `s_disk.bytes` was allocated by ::build_formatted_fat16().
+ * @pre `s_disk.bytes` was allocated by ::internal_build_formatted_fat16().
  * @post `s_disk.bytes` is null.
  * @post No other fixture state is touched.
  *
  * @note Not thread-safe.
  * @since 0.1.0
- */
-static void release_volume(void)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static void internal_release_volume(void)
 {
   free(s_disk.bytes);
   s_disk.bytes = nullptr;
@@ -287,7 +291,7 @@ static void release_volume(void)
  * @note Not thread-safe (reads the fixture singleton).
  * @since 0.1.0
  */
-static void maybe_dump_image(const char* tag)
+RA8_INTERNAL static void internal_maybe_dump_image(const char* tag)
 {
   const char* base = getenv("RA8_FS606_DUMP");
   if (base == nullptr) {
@@ -295,13 +299,18 @@ static void maybe_dump_image(const char* tag)
   }
   char path[k_un_path_cap] = {};
   (void)snprintf(path, sizeof(path), "%s.%s", base, tag);
-  FILE* o = fopen(path, "wb");
-  if (o == nullptr) {
+  const ra8_test_file_result_t result =
+    internal_test_file_replace(path, s_disk.bytes, (size_t)s_disk.byte_count);
+  if (result.status != k_ra8_test_file_ok) {
     return;
   }
-  (void)fwrite(s_disk.bytes, 1U, (size_t)s_disk.byte_count, o);
-  (void)fclose(o);
-  (void)printf("  [dump] %s\n", path);
+  ra8_test_output_t    output = {};
+  ra8_test_output_fd_t state  = {};
+  TEST_ASSERT(internal_test_output_fd_init(&output, &state, STDOUT_FILENO));
+  (void)internal_test_output_text(&output, "  [dump] ");
+  (void)internal_test_output_text(&output, path);
+  (void)internal_test_output_text(&output, "\n");
+  TEST_ASSERT_EQ(k_ra8_test_output_ok, output.status);
 }
 
 /**
@@ -321,11 +330,13 @@ static void maybe_dump_image(const char* tag)
  *
  * @note Not thread-safe.
  * @since 0.1.0
- */
-static uint8_t listing_holds(ra8_fs_mount_t* h, const char* want)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static uint8_t internal_listing_holds(ra8_fs_mount_t* h, const char* want)
 {
   name_list_t l = {};
-  if (ra8_fs_listdir(h, "/", collect_cb, &l) != k_ra8_ok) {
+  if (ra8_fs_listdir(h, "/", internal_collect_cb, &l) != k_ra8_ok) {
     return 0U;
   }
   uint32_t hits = 0U;
@@ -343,7 +354,7 @@ static uint8_t listing_holds(ra8_fs_mount_t* h, const char* want)
  */
 
 /**
- * @test test_non_ascii_names_round_trip
+ * @test internal_test_non_ascii_names_round_trip
  * @brief Create, list, re-open, rename and unlink, for 2-, 3- and 4-byte names.
  *
  * @details The whole verb set against one name at a time, because every verb
@@ -366,11 +377,15 @@ static uint8_t listing_holds(ra8_fs_mount_t* h, const char* want)
  *       renamed to another non-ASCII name and finally unlinked.
  *
  * @since 0.1.0
- */
-static void test_non_ascii_names_round_trip(void)
+
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_non_ascii_names_round_trip(void)
 {
   TEST_BEGIN("fs unicode: 2-, 3- and 4-byte names survive every verb");
-  build_formatted_fat16();
+  internal_build_formatted_fat16();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -381,15 +396,15 @@ static void test_non_ascii_names_round_trip(void)
 
     /* Create + read back through a fresh open: the name has to survive the
      * directory, not merely the open file handle. */
-    write_and_verify(h, path);
-    TEST_ASSERT_EQ(1U, listing_holds(h, names[i]));
+    internal_write_and_verify(h, path);
+    TEST_ASSERT_EQ(1U, internal_listing_holds(h, names[i]));
 
     /* Rename to a name that is also non-ASCII, so both halves of the rename
      * exercise the conversion rather than one of them falling back to 8.3. */
     char renamed[k_un_path_cap] = {};
     (void)snprintf(renamed, sizeof(renamed), "/x%s", names[i]);
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_rename(h, path, renamed));
-    TEST_ASSERT_EQ(0U, listing_holds(h, names[i]));
+    TEST_ASSERT_EQ(0U, internal_listing_holds(h, names[i]));
 
     ra8_fs_file_t* f = nullptr;
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, renamed, k_ra8_fs_mode_read, &f));
@@ -402,17 +417,17 @@ static void test_non_ascii_names_round_trip(void)
   /* Nothing left behind: an unlink that missed the chain would show here as an
    * entry the listing still reports. */
   name_list_t l = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", collect_cb, &l));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_collect_cb, &l));
   TEST_ASSERT_EQ(0U, l.count);
-  TEST_ASSERT_EQ(0U, count_orphan_slots(h));
+  TEST_ASSERT_EQ(0U, internal_count_orphan_slots(h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  release_volume();
+  internal_release_volume();
   TEST_END("fs unicode: 2-, 3- and 4-byte names survive every verb");
 }
 
 /**
- * @test test_mixed_case_lookup_folds_across_the_bmp
+ * @test internal_test_mixed_case_lookup_folds_across_the_bmp
  * @brief An upper-case spelling opens a lower-case name, accents included.
  *
  * @details The fold is the canonical up-case table, so U+00E9 and U+00C9 are
@@ -432,17 +447,21 @@ static void test_non_ascii_names_round_trip(void)
  *       did not -- which is what makes the first assertion mean something.
  *
  * @since 0.1.0
- */
-static void test_mixed_case_lookup_folds_across_the_bmp(void)
+
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_mixed_case_lookup_folds_across_the_bmp(void)
 {
   TEST_BEGIN("fs unicode: an upper-case spelling opens an accented name");
-  build_formatted_fat16();
+  internal_build_formatted_fat16();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   char path[k_un_path_cap] = {};
   (void)snprintf(path, sizeof(path), "/%s", s_resume_nfc);
-  write_and_verify(h, path);
+  internal_write_and_verify(h, path);
 
   char upper[k_un_path_cap] = {};
   (void)snprintf(upper, sizeof(upper), "/%s", s_resume_upper);
@@ -456,15 +475,15 @@ static void test_mixed_case_lookup_folds_across_the_bmp(void)
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_open(h, plain, k_ra8_fs_mode_read, &f)); /* V2 */
 
   /* And the name is still reported as it was written, not as it was matched. */
-  TEST_ASSERT_EQ(1U, listing_holds(h, s_resume_nfc));
+  TEST_ASSERT_EQ(1U, internal_listing_holds(h, s_resume_nfc));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  release_volume();
+  internal_release_volume();
   TEST_END("fs unicode: an upper-case spelling opens an accented name");
 }
 
 /**
- * @test test_accents_do_not_collide
+ * @test internal_test_accents_do_not_collide
  * @brief Two names differing only in their accents are two files.
  *
  * @details The concrete form of the old defect. With `?` substituted for every
@@ -485,11 +504,15 @@ static void test_mixed_case_lookup_folds_across_the_bmp(void)
  * @post Both names exist, are listed distinctly, and open independently.
  *
  * @since 0.1.0
- */
-static void test_accents_do_not_collide(void)
+
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_accents_do_not_collide(void)
 {
   TEST_BEGIN("fs unicode: names differing only in an accent are two files");
-  build_formatted_fat16();
+  internal_build_formatted_fat16();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -497,28 +520,28 @@ static void test_accents_do_not_collide(void)
   char plain[k_un_path_cap]    = {};
   (void)snprintf(accented, sizeof(accented), "/%s", s_resume_nfc);
   (void)snprintf(plain, sizeof(plain), "/%s", s_resume_plain);
-  write_and_verify(h, accented);
-  write_and_verify(h, plain);
+  internal_write_and_verify(h, accented);
+  internal_write_and_verify(h, plain);
 
   name_list_t l = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", collect_cb, &l));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_collect_cb, &l));
   TEST_ASSERT_EQ(2U, l.count);
-  TEST_ASSERT_EQ(1U, listing_holds(h, s_resume_nfc));
-  TEST_ASSERT_EQ(1U, listing_holds(h, s_resume_plain));
+  TEST_ASSERT_EQ(1U, internal_listing_holds(h, s_resume_nfc));
+  TEST_ASSERT_EQ(1U, internal_listing_holds(h, s_resume_plain));
 
   /* Taking one away must not disturb the other -- the failure mode if the two
    * were ever the same entry underneath. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, accented));
-  TEST_ASSERT_EQ(0U, listing_holds(h, s_resume_nfc));
-  TEST_ASSERT_EQ(1U, listing_holds(h, s_resume_plain));
+  TEST_ASSERT_EQ(0U, internal_listing_holds(h, s_resume_nfc));
+  TEST_ASSERT_EQ(1U, internal_listing_holds(h, s_resume_plain));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  release_volume();
+  internal_release_volume();
   TEST_END("fs unicode: names differing only in an accent are two files");
 }
 
 /**
- * @test test_nfc_and_nfd_are_different_names
+ * @test internal_test_nfc_and_nfd_are_different_names
  * @brief Normalisation forms are not folded together, and that is deliberate.
  *
  * @details macOS composes a name it creates into NFD; this library stores and
@@ -537,11 +560,15 @@ static void test_accents_do_not_collide(void)
  * @post The two forms coexist and each opens only under its own spelling.
  *
  * @since 0.1.0
- */
-static void test_nfc_and_nfd_are_different_names(void)
+
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_nfc_and_nfd_are_different_names(void)
 {
   TEST_BEGIN("fs unicode: NFC and NFD are different names, on purpose");
-  build_formatted_fat16();
+  internal_build_formatted_fat16();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -549,22 +576,22 @@ static void test_nfc_and_nfd_are_different_names(void)
   char nfd[k_un_path_cap] = {};
   (void)snprintf(nfc, sizeof(nfc), "/%s", s_resume_nfc);
   (void)snprintf(nfd, sizeof(nfd), "/%s", s_resume_nfd);
-  write_and_verify(h, nfc);
+  internal_write_and_verify(h, nfc);
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_open(h, nfd, k_ra8_fs_mode_read, &f));
 
-  write_and_verify(h, nfd);
-  TEST_ASSERT_EQ(1U, listing_holds(h, s_resume_nfc));
-  TEST_ASSERT_EQ(1U, listing_holds(h, s_resume_nfd));
+  internal_write_and_verify(h, nfd);
+  TEST_ASSERT_EQ(1U, internal_listing_holds(h, s_resume_nfc));
+  TEST_ASSERT_EQ(1U, internal_listing_holds(h, s_resume_nfd));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  release_volume();
+  internal_release_volume();
   TEST_END("fs unicode: NFC and NFD are different names, on purpose");
 }
 
 /**
- * @test test_alias_is_one_underscore_per_character
+ * @test internal_test_alias_is_one_underscore_per_character
  * @brief The 8.3 alias substitutes per CHARACTER, as VFAT does.
  *
  * @details The generated alias is the only place a non-ASCII character is
@@ -584,22 +611,26 @@ static void test_nfc_and_nfd_are_different_names(void)
  * @post The alias holds exactly ::k_un_alias_underscores underscores.
  *
  * @since 0.1.0
- */
-static void test_alias_is_one_underscore_per_character(void)
+
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_alias_is_one_underscore_per_character(void)
 {
   TEST_BEGIN("fs unicode: the 8.3 alias substitutes per character, not per byte");
-  build_formatted_fat16();
+  internal_build_formatted_fat16();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   char path[k_un_path_cap] = {};
   (void)snprintf(path, sizeof(path), "/%s", s_cjk_name);
-  write_and_verify(h, path);
+  internal_write_and_verify(h, path);
 
   /* Find the one 8.3 entry: everything before it is the long-name chain. */
   const uint8_t* found = nullptr;
   for (uint32_t i = 0U; i < (uint32_t)k_un_scan_slots; i++) {
-    const uint8_t* slot = root_slot(h, i);
+    const uint8_t* slot = internal_root_slot(h, i);
     if (slot[k_lw_off_name] == (uint8_t)k_lw_free_perm) {
       break;
     }
@@ -627,12 +658,12 @@ static void test_alias_is_one_underscore_per_character(void)
   TEST_ASSERT_EQ('T', found[10]);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  release_volume();
+  internal_release_volume();
   TEST_END("fs unicode: the 8.3 alias substitutes per character, not per byte");
 }
 
 /**
- * @test test_malformed_utf8_is_refused
+ * @test internal_test_malformed_utf8_is_refused
  * @brief A name that is not UTF-8 fails the create; nothing lands on disk.
  *
  * @details The half that keeps the round trip honest. A driver that stored
@@ -652,27 +683,31 @@ static void test_alias_is_one_underscore_per_character(void)
  * @post Every malformed name was refused and the root directory stayed empty.
  *
  * @since 0.1.0
- */
-static void test_malformed_utf8_is_refused(void)
+
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_malformed_utf8_is_refused(void)
 {
   TEST_BEGIN("fs unicode: a name that is not UTF-8 never reaches the disk");
-  build_formatted_fat16();
+  internal_build_formatted_fat16();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
-  static const char s_truncated[] = {'/', 'a', (char)(unsigned char)0xC3U, '\0'};
-  static const char s_overlong[]  = {'/',
-                                     'a',
-                                     (char)(unsigned char)0xC0U,
-                                     (char)(unsigned char)0x80U,
-                                     '\0'};
-  static const char s_surrogate[] = {'/',
-                                     'a',
-                                     (char)(unsigned char)0xEDU,
-                                     (char)(unsigned char)0xA0U,
-                                     (char)(unsigned char)0x80U,
-                                     '\0'};
-  const char*       bad[]         = {s_truncated, s_overlong, s_surrogate};
+  static const char truncated[] = {'/', 'a', (char)(unsigned char)0xC3U, '\0'};
+  static const char overlong[]  = {'/',
+                                   'a',
+                                   (char)(unsigned char)0xC0U,
+                                   (char)(unsigned char)0x80U,
+                                   '\0'};
+  static const char surrogate[] = {'/',
+                                   'a',
+                                   (char)(unsigned char)0xEDU,
+                                   (char)(unsigned char)0xA0U,
+                                   (char)(unsigned char)0x80U,
+                                   '\0'};
+  const char*       bad[]       = {truncated, overlong, surrogate};
 
   for (uint32_t i = 0U; i < (uint32_t)(sizeof(bad) / sizeof(bad[0])); i++) {
     ra8_fs_file_t* f = nullptr;
@@ -680,24 +715,24 @@ static void test_malformed_utf8_is_refused(void)
   }
 
   name_list_t l = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", collect_cb, &l));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_collect_cb, &l));
   TEST_ASSERT_EQ(0U, l.count);
-  TEST_ASSERT_EQ(0U, count_orphan_slots(h));
+  TEST_ASSERT_EQ(0U, internal_count_orphan_slots(h));
 
   /* The negative control: a well-formed non-ASCII name still gets through, so
    * the assertions above are not passing because creates fail generally. */
   char ok_path[k_un_path_cap] = {};
   (void)snprintf(ok_path, sizeof(ok_path), "/%s", s_resume_nfc);
-  write_and_verify(h, ok_path);
-  TEST_ASSERT_EQ(1U, listing_holds(h, s_resume_nfc));
+  internal_write_and_verify(h, ok_path);
+  TEST_ASSERT_EQ(1U, internal_listing_holds(h, s_resume_nfc));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  release_volume();
+  internal_release_volume();
   TEST_END("fs unicode: a name that is not UTF-8 never reaches the disk");
 }
 
 /**
- * @test test_dump_images_for_fsck
+ * @test internal_test_dump_images_for_fsck
  * @brief Build the images the out-of-band `fsck.fat` evidence is taken from.
  *
  * @details Two states, because one proves nothing on its own: a volume holding
@@ -717,11 +752,14 @@ static void test_malformed_utf8_is_refused(void)
  * @post The clean image holds no orphan; the control image holds one.
  *
  * @since 0.1.0
- */
-static void test_dump_images_for_fsck(void)
+
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_dump_images_for_fsck(void)
 {
   TEST_BEGIN("fs unicode: images for the out-of-band fsck.fat run");
-  build_formatted_fat16();
+  internal_build_formatted_fat16();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -729,18 +767,18 @@ static void test_dump_images_for_fsck(void)
   for (uint32_t i = 0U; i < (uint32_t)(sizeof(names) / sizeof(names[0])); i++) {
     char path[k_un_path_cap] = {};
     (void)snprintf(path, sizeof(path), "/%s", names[i]);
-    write_and_verify(h, path);
+    internal_write_and_verify(h, path);
   }
-  TEST_ASSERT_EQ(0U, count_orphan_slots(h));
+  TEST_ASSERT_EQ(0U, internal_count_orphan_slots(h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  maybe_dump_image("unicode");
+  internal_maybe_dump_image("unicode");
 
   /* The control: break the FIRST 8.3 entry's name so the chain ahead of it
    * carries a checksum that answers to nothing. Same volume, same names, one
    * byte different -- and the same scanner has to report it. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   for (uint32_t i = 0U; i < (uint32_t)k_un_scan_slots; i++) {
-    uint8_t* slot = root_slot(h, i);
+    uint8_t* slot = internal_root_slot(h, i);
     if (slot[k_lw_off_name] == (uint8_t)k_lw_free_perm) {
       break;
     }
@@ -750,11 +788,11 @@ static void test_dump_images_for_fsck(void)
     slot[0] = (uint8_t)'Z';
     break;
   }
-  TEST_ASSERT(count_orphan_slots(h) > 0U);
+  TEST_ASSERT(internal_count_orphan_slots(h) > 0U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  maybe_dump_image("mangle_ctrl");
+  internal_maybe_dump_image("mangle_ctrl");
 
-  release_volume();
+  internal_release_volume();
   TEST_END("fs unicode: images for the out-of-band fsck.fat run");
 }
 
@@ -774,13 +812,15 @@ static void test_dump_images_for_fsck(void)
  */
 int32_t main(void)
 {
-  test_non_ascii_names_round_trip();
-  test_mixed_case_lookup_folds_across_the_bmp();
-  test_accents_do_not_collide();
-  test_nfc_and_nfd_are_different_names();
-  test_alias_is_one_underscore_per_character();
-  test_malformed_utf8_is_refused();
-  test_dump_images_for_fsck();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_unicode_names.c\n");
+  internal_test_non_ascii_names_round_trip();
+  internal_test_mixed_case_lookup_folds_across_the_bmp();
+  internal_test_accents_do_not_collide();
+  internal_test_nfc_and_nfd_are_different_names();
+  internal_test_alias_is_one_underscore_per_character();
+  internal_test_malformed_utf8_is_refused();
+  internal_test_dump_images_for_fsck();
+  TEST_ASSERT_EQ(
+    k_ra8_test_output_ok,
+    internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_ra8_fs_unicode_names.c\n"));
   return 0;
 }

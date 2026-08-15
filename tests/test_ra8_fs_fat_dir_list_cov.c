@@ -20,6 +20,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_fat_dir_test_util.h"
@@ -62,19 +63,19 @@ typedef enum : uint8_t {
  * @post Result is k_ra8_err_invalid_state.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_listdir_not_mounted(void)
+RA8_INTERNAL static void internal_test_listdir_not_mounted(void)
 {
   TEST_BEGIN("listdir: unmounted -> invalid_state (line 123)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   h->in_use = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_listdir(h, "/", count_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_listdir(h, "/", internal_count_cb, nullptr));
   h->in_use = 1U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("listdir: unmounted -> invalid_state (line 123)");
 }
 
@@ -100,17 +101,17 @@ static void test_listdir_not_mounted(void)
  * @post Result is k_ra8_err_not_found, not a blanket refusal.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_listdir_exfat_relative_name(void)
+RA8_INTERNAL static void internal_test_listdir_exfat_relative_name(void)
 {
   TEST_BEGIN("listdir: exFAT relative name -> not_found");
-  build_exfat_vol();
+  internal_build_exfat_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_listdir(h, "noslash", count_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_listdir(h, "noslash", internal_count_cb, nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("listdir: exFAT relative name -> not_found");
 }
 
@@ -132,17 +133,17 @@ static void test_listdir_exfat_relative_name(void)
  * @post Result is k_ra8_err_not_found.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_listdir_exfat_missing_subdir(void)
+RA8_INTERNAL static void internal_test_listdir_exfat_missing_subdir(void)
 {
   TEST_BEGIN("listdir: exFAT missing subdirectory -> not_found");
-  build_exfat_vol();
+  internal_build_exfat_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_listdir(h, "/sub", count_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_listdir(h, "/sub", internal_count_cb, nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("listdir: exFAT missing subdirectory -> not_found");
 }
 
@@ -163,20 +164,20 @@ static void test_listdir_exfat_missing_subdir(void)
  * @post Result is k_ra8_err_hw_error.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_listdir_read_error(void)
+RA8_INTERNAL static void internal_test_listdir_read_error(void)
 {
   TEST_BEGIN("listdir: immediate read error -> err (line 149)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_backend_t saved = h->backend;
-  swap_to_inject(h, 0U, 0U);
-  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_listdir(h, "/", count_cb, nullptr));
+  internal_swap_to_inject(h, 0U, 0U);
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_listdir(h, "/", internal_count_cb, nullptr));
   h->backend = saved;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("listdir: immediate read error -> err (line 149)");
 }
 
@@ -198,16 +199,16 @@ static void test_listdir_read_error(void)
  * @post Result is k_ra8_err_hw_error.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_listdir_walk_fail(void)
+RA8_INTERNAL static void internal_test_listdir_walk_fail(void)
 {
   TEST_BEGIN("listdir: full subdir sector, walk fails -> err (line 156)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
-  create_empty_files(h, "/SUB", (uint32_t)k_fill_subdir_files);
+  internal_create_empty_files(h, "/SUB", (uint32_t)k_fill_subdir_files);
   /* Remount so the FAT sector cache is cold (#607): creating those files
    * walked the FAT, and a cached sector never reaches the backend, so read 3
    * below would be served from memory and the walk would not fail. */
@@ -215,11 +216,11 @@ static void test_listdir_walk_fail(void)
   h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_backend_t saved = h->backend;
-  swap_to_inject(h, 2U, 0U);
-  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_listdir(h, "/SUB", count_cb, nullptr));
+  internal_swap_to_inject(h, 2U, 0U);
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_listdir(h, "/SUB", internal_count_cb, nullptr));
   h->backend = saved;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("listdir: full subdir sector, walk fails -> err (line 156)");
 }
 
@@ -242,20 +243,20 @@ static void test_listdir_walk_fail(void)
  * @post Result is k_ra8_ok; count equals 16.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_listdir_full_no_eod(void)
+RA8_INTERNAL static void internal_test_listdir_full_no_eod(void)
 {
   TEST_BEGIN("listdir: 16-entry root, no EoD -> k_ra8_ok at line 159");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  create_empty_files(h, "/", 16U);
+  internal_create_empty_files(h, "/", 16U);
   uint32_t cnt = 0;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &cnt));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_count_cb, &cnt));
   TEST_ASSERT_EQ(16U, cnt);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("listdir: 16-entry root, no EoD -> k_ra8_ok at line 159");
 }
 
@@ -277,19 +278,19 @@ static void test_listdir_full_no_eod(void)
  * @post Result is k_ra8_err_invalid_state.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the mkdir not mounted vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_mkdir_not_mounted(void)
+RA8_INTERNAL static void internal_test_mkdir_not_mounted(void)
 {
   TEST_BEGIN("mkdir: unmounted -> invalid_state (line 355)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   h->in_use = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_mkdir(h, "/NEWDIR"));
   h->in_use = 1U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("mkdir: unmounted -> invalid_state (line 355)");
 }
 
@@ -313,12 +314,12 @@ static void test_mkdir_not_mounted(void)
  * @post The directory exists and reports itself as one.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_mkdir_exfat_dispatches(void)
+RA8_INTERNAL static void internal_test_mkdir_exfat_dispatches(void)
 {
   TEST_BEGIN("mkdir: exFAT volume -> the exFAT creator");
-  build_exfat_vol();
+  internal_build_exfat_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/DIR"));
@@ -326,7 +327,7 @@ static void test_mkdir_exfat_dispatches(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_stat(h, "/DIR", &st));
   TEST_ASSERT_EQ(true, st.is_directory);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("mkdir: exFAT volume -> the exFAT creator");
 }
 
@@ -356,17 +357,17 @@ static void test_mkdir_exfat_dispatches(void)
  * @post Result is k_ra8_err_invalid_arg.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_mkdir_bad_leaf(void)
+RA8_INTERNAL static void internal_test_mkdir_bad_leaf(void)
 {
   TEST_BEGIN("mkdir: unstorable leaf -> invalid_arg");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_mkdir(h, "/bad?name"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("mkdir: unstorable leaf -> invalid_arg");
 }
 
@@ -387,18 +388,18 @@ static void test_mkdir_bad_leaf(void)
  * @post Result is k_ra8_err_no_mem.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_mkdir_dir_full(void)
+RA8_INTERNAL static void internal_test_mkdir_dir_full(void)
 {
   TEST_BEGIN("mkdir: root dir full -> no_mem from dir_find_free (line 295)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  create_empty_files(h, "/", 16U);
+  internal_create_empty_files(h, "/", 16U);
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_fs_mkdir(h, "/NOROOM"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("mkdir: root dir full -> no_mem from dir_find_free (line 295)");
 }
 
@@ -419,20 +420,20 @@ static void test_mkdir_dir_full(void)
  * @post Result is k_ra8_err_hw_error.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_mkdir_alloc_fail(void)
+RA8_INTERNAL static void internal_test_mkdir_alloc_fail(void)
 {
   TEST_BEGIN("mkdir: alloc_eoc_cluster write fails -> err (line 300)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_backend_t saved = h->backend;
-  swap_to_wcount(h, 0U);
+  internal_swap_to_wcount(h, 0U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_mkdir(h, "/NEWDIR"));
   h->backend = saved;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("mkdir: alloc_eoc_cluster write fails -> err (line 300)");
 }
 
@@ -456,20 +457,20 @@ static void test_mkdir_alloc_fail(void)
  * @post Result is k_ra8_err_hw_error (cluster is freed via line 305).
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_mkdir_cluster_init_fail(void)
+RA8_INTERNAL static void internal_test_mkdir_cluster_init_fail(void)
 {
   TEST_BEGIN("mkdir: cluster_init sector-0 write fails -> free+return (lines 233,305-306)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_backend_t saved = h->backend;
-  swap_to_wcount(h, 2U);
+  internal_swap_to_wcount(h, 2U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_mkdir(h, "/NEWDIR"));
   h->backend = saved;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("mkdir: cluster_init sector-0 write fails -> free+return (lines 233,305-306)");
 }
 
@@ -491,20 +492,20 @@ static void test_mkdir_cluster_init_fail(void)
  * @post Result is k_ra8_err_hw_error (cluster freed via line 315).
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_mkdir_write_entry_fail(void)
+RA8_INTERNAL static void internal_test_mkdir_write_entry_fail(void)
 {
   TEST_BEGIN("mkdir: write_new_dir_entry fails -> free+return (lines 315-316)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_backend_t saved = h->backend;
-  swap_to_wcount(h, 3U);
+  internal_swap_to_wcount(h, 3U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_mkdir(h, "/NEWDIR"));
   h->backend = saved;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("mkdir: write_new_dir_entry fails -> free+return (lines 315-316)");
 }
 
@@ -526,20 +527,20 @@ static void test_mkdir_write_entry_fail(void)
  * @post Result is k_ra8_ok; /SUB2 is visible in root listing.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_mkdir_spc2_ok(void)
+RA8_INTERNAL static void internal_test_mkdir_spc2_ok(void)
 {
   TEST_BEGIN("mkdir SPC=2: extra-sector loop succeeds (lines 237-238, 241)");
-  build_fat16_spc2_vol();
+  internal_build_fat16_spc2_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB2"));
   uint32_t cnt = 0;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &cnt));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_count_cb, &cnt));
   TEST_ASSERT_EQ(1U, cnt);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("mkdir SPC=2: extra-sector loop succeeds (lines 237-238, 241)");
 }
 
@@ -561,20 +562,20 @@ static void test_mkdir_spc2_ok(void)
  * @post Result is k_ra8_err_hw_error.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_mkdir_spc2_second_fail(void)
+RA8_INTERNAL static void internal_test_mkdir_spc2_second_fail(void)
 {
   TEST_BEGIN("mkdir SPC=2: extra-sector write fails -> err (line 239)");
-  build_fat16_spc2_vol();
+  internal_build_fat16_spc2_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_backend_t saved = h->backend;
-  swap_to_wcount(h, 3U);
+  internal_swap_to_wcount(h, 3U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_mkdir(h, "/NEWDIR"));
   h->backend = saved;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("mkdir SPC=2: extra-sector write fails -> err (line 239)");
 }
 /* ===========================================================================
@@ -600,22 +601,22 @@ static void test_mkdir_spc2_second_fail(void)
  */
 int main(void)
 {
-  test_listdir_not_mounted();
-  test_listdir_exfat_relative_name();
-  test_listdir_exfat_missing_subdir();
-  test_listdir_read_error();
-  test_listdir_walk_fail();
-  test_listdir_full_no_eod();
+  internal_test_listdir_not_mounted();
+  internal_test_listdir_exfat_relative_name();
+  internal_test_listdir_exfat_missing_subdir();
+  internal_test_listdir_read_error();
+  internal_test_listdir_walk_fail();
+  internal_test_listdir_full_no_eod();
 
-  test_mkdir_not_mounted();
-  test_mkdir_exfat_dispatches();
-  test_mkdir_bad_leaf();
-  test_mkdir_dir_full();
-  test_mkdir_alloc_fail();
-  test_mkdir_cluster_init_fail();
-  test_mkdir_write_entry_fail();
-  test_mkdir_spc2_ok();
-  test_mkdir_spc2_second_fail();
+  internal_test_mkdir_not_mounted();
+  internal_test_mkdir_exfat_dispatches();
+  internal_test_mkdir_bad_leaf();
+  internal_test_mkdir_dir_full();
+  internal_test_mkdir_alloc_fail();
+  internal_test_mkdir_cluster_init_fail();
+  internal_test_mkdir_write_entry_fail();
+  internal_test_mkdir_spc2_ok();
+  internal_test_mkdir_spc2_second_fail();
 
   return 0;
 }

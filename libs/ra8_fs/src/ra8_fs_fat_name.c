@@ -84,7 +84,7 @@ char priv_to_upper(char c)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_pack_base(const char** path_io, uint8_t* out11)
+static uint8_t internal_pack_base(const char** path_io, uint8_t* out11)
 {
   const char* path     = *path_io;
   uint8_t     base_len = 0;
@@ -126,7 +126,7 @@ static uint8_t priv_pack_base(const char** path_io, uint8_t* out11)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_pack_ext(const char* path, uint8_t* out11)
+static uint8_t internal_pack_ext(const char* path, uint8_t* out11)
 {
   if (*path != '.') {
     return 1U;
@@ -158,10 +158,10 @@ uint8_t priv_path_to_83(const char* path, uint8_t* out11)
   for (uint32_t i = 0; i < (uint32_t)k_max_8_3_name; i++) {
     out11[i] = ' ';
   }
-  if (priv_pack_base(&path, out11) == 0U) {
+  if (internal_pack_base(&path, out11) == 0U) {
     return 0U;
   }
-  if (priv_pack_ext(path, out11) == 0U) {
+  if (internal_pack_ext(path, out11) == 0U) {
     return 0U;
   }
   /* No kanji escape on the way IN. It used to sit here, mapping a packed 0xE5
@@ -197,7 +197,7 @@ uint8_t priv_path_to_83(const char* path, uint8_t* out11)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static char priv_case_apply(char c, uint8_t lower)
+static char internal_case_apply(char c, uint8_t lower)
 {
   if (lower == 0U) {
     return c;
@@ -223,7 +223,7 @@ void priv_83_to_str(const uint8_t* in11, uint8_t ntres, char* out13)
     if (in11[i] == ' ') {
       break;
     }
-    out13[j++] = priv_case_apply((char)in11[i], base_lower);
+    out13[j++] = internal_case_apply((char)in11[i], base_lower);
   }
   /* Restore kanji escape. */
   /* mcdc-deactivated: 3-condition AND on Shift-JIS kanji-escape directory entry; only reachable from a kanji-named FAT image, none of which exist in the test corpus. */
@@ -243,7 +243,7 @@ void priv_83_to_str(const uint8_t* in11, uint8_t ntres, char* out13)
       if (in11[k_filename_base_len + i] == ' ') {
         break;
       }
-      out13[j++] = priv_case_apply((char)in11[k_filename_base_len + i], ext_lower);
+      out13[j++] = internal_case_apply((char)in11[k_filename_base_len + i], ext_lower);
     }
   }
   out13[j] = '\0';
@@ -279,7 +279,7 @@ void priv_83_to_str(const uint8_t* in11, uint8_t ntres, char* out13)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_unit_in_set(uint16_t u, const char* set)
+static uint8_t internal_unit_in_set(uint16_t u, const char* set)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_lfn_write_max; i++) {
     if (set[i] == '\0') {
@@ -320,14 +320,14 @@ static uint8_t priv_unit_in_set(uint16_t u, const char* set)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_unit_is_lfn_legal(uint16_t u)
+static uint8_t internal_unit_is_lfn_legal(uint16_t u)
 {
   /* Microsoft FAT specification section 7 ("Long File Name Implementation"):
    * the long name inherits the short name's illegal set minus the characters
    * VFAT deliberately allows (`+ , ; = [ ]` and space). Control characters are
    * excluded by range below, not by this table. Block scope because exactly
    * one function reads it (MISRA 8.9). */
-  static const char s_lfn_illegal[] = "\"*/:<>?\\|";
+  static const char lfn_illegal[] = "\"*/:<>?\\|";
 
   const uint32_t v = (uint32_t)u;
   if (v < (uint32_t)k_lfn_space) {
@@ -336,7 +336,7 @@ static uint8_t priv_unit_is_lfn_legal(uint16_t u)
   if (v == (uint32_t)k_lfn_del) {
     return 0U; /* DEL is a control code wherever it appears */
   }
-  if (priv_unit_in_set(u, s_lfn_illegal) != 0U) {
+  if (internal_unit_in_set(u, lfn_illegal) != 0U) {
     return 0U;
   }
   return 1U;
@@ -368,13 +368,13 @@ static uint8_t priv_unit_is_lfn_legal(uint16_t u)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_unit_is_83_legal(uint16_t u)
+static uint8_t internal_unit_is_83_legal(uint16_t u)
 {
   /* Microsoft FAT specification section 6.1 ("Name Limitations"). A leaf
    * containing any of these is representable only as a long name, however
    * short it is -- `my file.txt` is eight characters of base and still cannot
    * be an 8.3 name, because of the space. Block scope: one reader (MISRA 8.9). */
-  static const char s_sfn_extra_illegal[] = "+,;=[] ";
+  static const char sfn_extra_illegal[] = "+,;=[] ";
 
   if ((uint32_t)u > (uint32_t)k_lfn_del) {
     return 0U;
@@ -382,7 +382,7 @@ static uint8_t priv_unit_is_83_legal(uint16_t u)
   if (u == (uint16_t)(unsigned char)'.') {
     return 0U;
   }
-  if (priv_unit_in_set(u, s_sfn_extra_illegal) != 0U) {
+  if (internal_unit_in_set(u, sfn_extra_illegal) != 0U) {
     return 0U;
   }
   return 1U;
@@ -413,7 +413,7 @@ static uint8_t priv_unit_is_83_legal(uint16_t u)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_name_dot_index(const uint16_t* leaf, uint32_t n)
+static uint32_t internal_name_dot_index(const uint16_t* leaf, uint32_t n)
 {
   uint32_t dot = n;
   for (uint32_t i = 0U; i < n; i++) {
@@ -452,9 +452,9 @@ static uint32_t priv_name_dot_index(const uint16_t* leaf, uint32_t n)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_name_is_83(const uint16_t* leaf, uint32_t n)
+static uint8_t internal_name_is_83(const uint16_t* leaf, uint32_t n)
 {
-  const uint32_t dot      = priv_name_dot_index(leaf, n);
+  const uint32_t dot      = internal_name_dot_index(leaf, n);
   const uint32_t base_len = dot;
   if ((base_len == 0U) || (base_len > (uint32_t)k_filename_base_len)) {
     return 0U;
@@ -469,7 +469,7 @@ static uint8_t priv_name_is_83(const uint16_t* leaf, uint32_t n)
     if (i == dot) {
       continue;
     }
-    if (priv_unit_is_83_legal(leaf[i]) == 0U) {
+    if (internal_unit_is_83_legal(leaf[i]) == 0U) {
       return 0U;
     }
   }
@@ -502,7 +502,7 @@ static uint8_t priv_name_is_83(const uint16_t* leaf, uint32_t n)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_case_observe(const uint16_t* leaf, uint32_t from, uint32_t to, uint8_t* seen)
+static void internal_case_observe(const uint16_t* leaf, uint32_t from, uint32_t to, uint8_t* seen)
 {
   for (uint32_t i = from; i < to; i++) {
     const uint32_t c = (uint32_t)leaf[i];
@@ -542,14 +542,15 @@ static void priv_case_observe(const uint16_t* leaf, uint32_t from, uint32_t to, 
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_fs_name_kind_t priv_name_case_kind(const uint16_t* leaf, uint32_t n, uint8_t* out_ntres)
+static ra8_fs_name_kind_t
+internal_name_case_kind(const uint16_t* leaf, uint32_t n, uint8_t* out_ntres)
 {
-  const uint32_t dot       = priv_name_dot_index(leaf, n);
+  const uint32_t dot       = internal_name_dot_index(leaf, n);
   uint8_t        base_seen = 0U;
   uint8_t        ext_seen  = 0U;
-  priv_case_observe(leaf, 0U, dot, &base_seen);
+  internal_case_observe(leaf, 0U, dot, &base_seen);
   if (dot < n) {
-    priv_case_observe(leaf, dot + 1U, n, &ext_seen);
+    internal_case_observe(leaf, dot + 1U, n, &ext_seen);
   }
   *out_ntres = 0U;
   if (base_seen == (uint8_t)k_case_seen_mixed) {
@@ -594,11 +595,11 @@ ra8_fs_name_kind_t priv_name_classify(const char* leaf,
     return k_name_kind_invalid;
   }
   for (uint32_t i = 0U; i < n; i++) {
-    if (priv_unit_is_lfn_legal(out_units[i]) == 0U) {
+    if (internal_unit_is_lfn_legal(out_units[i]) == 0U) {
       return k_name_kind_invalid;
     }
   }
-  if (priv_name_is_83(out_units, n) == 0U) {
+  if (internal_name_is_83(out_units, n) == 0U) {
     return k_name_kind_long;
   }
   if (priv_path_to_83(leaf, out83) == 0U) {
@@ -608,7 +609,7 @@ ra8_fs_name_kind_t priv_name_classify(const char* leaf,
      * unpacked name. */
     return k_name_kind_long; /* GCOVR_EXCL_LINE */
   }
-  return priv_name_case_kind(out_units, n, out_ntres);
+  return internal_name_case_kind(out_units, n, out_ntres);
 }
 
 /* =============================================================================
@@ -643,13 +644,13 @@ ra8_fs_name_kind_t priv_name_classify(const char* leaf,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_alias_map_unit(uint16_t u)
+static uint8_t internal_alias_map_unit(uint16_t u)
 {
   if ((uint32_t)u > (uint32_t)k_lfn_del) {
     return (uint8_t)'_';
   }
   const char up = priv_to_upper((char)(unsigned char)u);
-  if (priv_unit_is_83_legal((uint16_t)(unsigned char)up) == 0U) {
+  if (internal_unit_is_83_legal((uint16_t)(unsigned char)up) == 0U) {
     return (uint8_t)'_';
   }
   return (uint8_t)up;
@@ -682,7 +683,7 @@ static uint8_t priv_alias_map_unit(uint16_t u)
  */
 RA8_INTERNAL
 static uint32_t
-priv_alias_collect(const uint16_t* leaf, uint32_t from, uint32_t to, uint32_t cap, uint8_t* out)
+internal_alias_collect(const uint16_t* leaf, uint32_t from, uint32_t to, uint32_t cap, uint8_t* out)
 {
   uint32_t got = 0U;
   for (uint32_t i = from; (i < to) && (got < cap); i++) {
@@ -690,7 +691,7 @@ priv_alias_collect(const uint16_t* leaf, uint32_t from, uint32_t to, uint32_t ca
     if ((u == (uint16_t)(unsigned char)' ') || (u == (uint16_t)(unsigned char)'.')) {
       continue;
     }
-    out[got] = priv_alias_map_unit(u);
+    out[got] = internal_alias_map_unit(u);
     got++;
   }
   return got;
@@ -720,7 +721,7 @@ priv_alias_collect(const uint16_t* leaf, uint32_t from, uint32_t to, uint32_t ca
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_alias_ext_dot(const uint16_t* leaf, uint32_t n)
+static uint32_t internal_alias_ext_dot(const uint16_t* leaf, uint32_t n)
 {
   uint32_t dot = n;
   for (uint32_t i = 1U; (i + 1U) < n; i++) {
@@ -753,7 +754,7 @@ static uint32_t priv_alias_ext_dot(const uint16_t* leaf, uint32_t n)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_alias_digits(uint32_t tail)
+static uint32_t internal_alias_digits(uint32_t tail)
 {
   uint32_t digits = 1U;
   uint32_t scale  = (uint32_t)k_alias_radix;
@@ -771,21 +772,21 @@ void priv_lfn_alias_basis(const uint16_t* leaf, uint32_t n, uint32_t tail, uint8
   for (uint32_t i = 0U; i < (uint32_t)k_max_8_3_name; i++) {
     out11[i] = ' ';
   }
-  const uint32_t dot                       = priv_alias_ext_dot(leaf, n);
+  const uint32_t dot                       = internal_alias_ext_dot(leaf, n);
   uint8_t        base[k_filename_base_len] = {};
-  uint32_t       base_len = priv_alias_collect(leaf, 0U, dot, (uint32_t)k_filename_base_len, base);
+  uint32_t base_len = internal_alias_collect(leaf, 0U, dot, (uint32_t)k_filename_base_len, base);
   if (base_len == 0U) {
     base[0]  = (uint8_t)'_'; /* a name of nothing but dots and spaces */
     base_len = 1U;
   }
   if (dot < n) {
-    (void)priv_alias_collect(leaf,
-                             dot + 1U,
-                             n,
-                             (uint32_t)k_filename_ext_len,
-                             &out11[k_filename_base_len]);
+    (void)internal_alias_collect(leaf,
+                                 dot + 1U,
+                                 n,
+                                 (uint32_t)k_filename_ext_len,
+                                 &out11[k_filename_base_len]);
   }
-  const uint32_t digits = priv_alias_digits(tail);
+  const uint32_t digits = internal_alias_digits(tail);
   uint32_t       keep   = ((uint32_t)k_filename_base_len - digits) - 1U;
   if (base_len < keep) {
     keep = base_len;
@@ -828,7 +829,7 @@ void priv_lfn_alias_basis(const uint16_t* leaf, uint32_t n, uint32_t tail, uint8
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_dir_walk_init_root(const ra8_fs_mount_t* m, dir_walk_t* w)
+static void internal_dir_walk_init_root(const ra8_fs_mount_t* m, dir_walk_t* w)
 {
   if (m->type == k_ra8_fs_type_fat32) {
     w->is_root_fixed     = 0;
@@ -853,7 +854,7 @@ static void priv_dir_walk_init_root(const ra8_fs_mount_t* m, dir_walk_t* w)
 void priv_dir_walk_init_loc(const ra8_fs_mount_t* m, const dir_loc_t* loc, dir_walk_t* w)
 {
   if (loc->is_root != 0U) {
-    priv_dir_walk_init_root(m, w);
+    internal_dir_walk_init_root(m, w);
     return;
   }
   w->is_root_fixed     = 0;

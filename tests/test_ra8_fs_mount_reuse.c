@@ -20,6 +20,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "test_ra8_fs_format_fixture.h"
 
 /**
@@ -36,7 +37,7 @@ typedef enum : uint32_t {
  * @details Reformats the existing card in place (no realloc), so a mount here
  *          claims the slot the previous mount freed.
  */
-static ra8_fs_mount_t* format_and_mount(ra8_fs_type_t type, const char* label)
+RA8_INTERNAL static ra8_fs_mount_t* internal_format_and_mount(ra8_fs_type_t type, const char* label)
 {
   ra8_fs_format_opts_t opts = {};
   opts.type                 = type;
@@ -55,21 +56,21 @@ static ra8_fs_mount_t* format_and_mount(ra8_fs_type_t type, const char* label)
  * (no compound decision unique to this case -- it drives the reused-slot
  * zeroing end to end: a FAT mount that sets `root_entries` / `first_root_lba` /
  * `total_sectors` is unmounted, and a later exFAT mount into the same slot must
- * report those FAT-only fields as 0, not their FAT values)
+ * report those FAT-only fields as 0, not their FAT values) @brief Exercise the reuse fat then exfat filesystem operation. @details Runs the reuse fat then exfat vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_reuse_fat_then_exfat(void)
+RA8_INTERNAL static void internal_test_reuse_fat_then_exfat(void)
 {
   TEST_BEGIN("ra8_fs mount reuse: FAT16 slot reused for exFAT keeps no stale field");
-  alloc_garbage_card((uint32_t)k_reuse_blocks);
+  internal_alloc_garbage_card((uint32_t)k_reuse_blocks);
 
-  ra8_fs_mount_t* fat = format_and_mount(k_ra8_fs_type_fat16, "FIRSTFAT");
+  ra8_fs_mount_t* fat = internal_format_and_mount(k_ra8_fs_type_fat16, "FIRSTFAT");
   /* FAT-only fields the exFAT parse does not use (it zeroes them). */
   TEST_ASSERT(fat->root_entries != 0U);
   TEST_ASSERT(fat->first_root_lba != 0U);
   TEST_ASSERT(fat->total_sectors != 0U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(fat));
 
-  ra8_fs_mount_t* exf = format_and_mount(k_ra8_fs_type_exfat, "SECONDEXF");
+  ra8_fs_mount_t* exf = internal_format_and_mount(k_ra8_fs_type_exfat, "SECONDEXF");
   TEST_ASSERT_EQ(fat, exf); /* the very same slot was handed back */
   /* No FAT geometry survived: the exFAT parse leaves these zero, and the
    * slot-clear guarantees no earlier FAT value can leak through.
@@ -85,7 +86,7 @@ static void test_reuse_fat_then_exfat(void)
   TEST_ASSERT(exf->partition_base_lba != 0U); /* exFAT lives in an MBR partition */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(exf));
 
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs mount reuse: FAT16 slot reused for exFAT keeps no stale field");
 }
 
@@ -95,20 +96,20 @@ static void test_reuse_fat_then_exfat(void)
  * (no compound decision unique to this case -- the reverse switch: an exFAT
  * mount that sets `root_cluster` / a non-zero `partition_base_lba` is unmounted,
  * and a later FAT16 mount into the same slot must report the FAT geometry, with
- * no exFAT partition base surviving)
+ * no exFAT partition base surviving) @brief Exercise the reuse exfat then fat filesystem operation. @details Runs the reuse exfat then fat vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_reuse_exfat_then_fat(void)
+RA8_INTERNAL static void internal_test_reuse_exfat_then_fat(void)
 {
   TEST_BEGIN("ra8_fs mount reuse: exFAT slot reused for FAT16 keeps no stale field");
-  alloc_garbage_card((uint32_t)k_reuse_blocks);
+  internal_alloc_garbage_card((uint32_t)k_reuse_blocks);
 
-  ra8_fs_mount_t* exf      = format_and_mount(k_ra8_fs_type_exfat, "EXFFIRST");
+  ra8_fs_mount_t* exf      = internal_format_and_mount(k_ra8_fs_type_exfat, "EXFFIRST");
   const uint32_t  exf_root = exf->root_cluster;
   TEST_ASSERT(exf_root >= 2U);
   TEST_ASSERT(exf->partition_base_lba != 0U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(exf));
 
-  ra8_fs_mount_t* fat = format_and_mount(k_ra8_fs_type_fat16, "FATSECOND");
+  ra8_fs_mount_t* fat = internal_format_and_mount(k_ra8_fs_type_fat16, "FATSECOND");
   TEST_ASSERT_EQ(exf, fat); /* same slot */
   /* FAT16 is a superfloppy at LBA 0: the exFAT partition base must be gone. */
   TEST_ASSERT_EQ(0U, fat->partition_base_lba);
@@ -118,14 +119,13 @@ static void test_reuse_exfat_then_fat(void)
   TEST_ASSERT(fat->total_sectors != 0U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(fat));
 
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs mount reuse: exFAT slot reused for FAT16 keeps no stale field");
 }
 
 int32_t main(void)
 {
-  test_reuse_fat_then_exfat();
-  test_reuse_exfat_then_fat();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_mount_reuse.c\n");
+  internal_test_reuse_fat_then_exfat();
+  internal_test_reuse_exfat_then_fat();
   return 0;
 }

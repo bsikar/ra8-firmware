@@ -35,10 +35,10 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
@@ -147,9 +147,10 @@ static int32_t s_rd_remaining = (int32_t)k_rc_rd_never;
  * @pre ctx and buf are non-NULL.
  * @post buf holds the requested sectors on k_ra8_ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static ra8_err_t rc_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_rc_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   if (s_rd_remaining == (int32_t)k_rc_rd_at_0) {
     return k_ra8_err_out_of_range;
@@ -182,9 +183,10 @@ static ra8_err_t rc_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
  * @pre ctx and buf are non-NULL.
  * @post Disk bytes match buf on k_ra8_ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded rc write fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static ra8_err_t rc_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_rc_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   rc_disk_t* d = (rc_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -209,9 +211,10 @@ static ra8_err_t rc_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t
  * @pre ctx, block_count, and block_size are non-NULL.
  * @post *block_count and *block_size reflect the disk dimensions.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded rc capacity fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static ra8_err_t rc_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+RA8_INTERNAL static ra8_err_t
+internal_rc_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const rc_disk_t* d = (const rc_disk_t*)ctx;
   *block_count       = d->block_count;
@@ -225,9 +228,9 @@ static ra8_err_t rc_capacity(void* ctx, uint64_t* block_count, uint32_t* block_s
  * @since 0.1.0
  */
 static const ra8_fs_backend_t s_ctrl_backend = {
-  .read_block   = rc_read,
-  .write_block  = rc_write,
-  .get_capacity = rc_capacity,
+  .read_block   = internal_rc_read,
+  .write_block  = internal_rc_write,
+  .get_capacity = internal_rc_capacity,
   .ctx          = &s_disk,
 };
 
@@ -239,9 +242,9 @@ static const ra8_fs_backend_t s_ctrl_backend = {
  * @pre None.
  * @post s_disk.bytes is nullptr.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded free volume fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void free_volume(void)
+RA8_INTERNAL static void internal_free_volume(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -259,11 +262,11 @@ static void free_volume(void)
  * @pre None.
  * @post s_disk holds a valid exFAT image; s_rd_remaining == k_rc_rd_never.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void build_exfat_volume(void)
+RA8_INTERNAL static void internal_build_exfat_volume(void)
 {
-  free_volume();
+  internal_free_volume();
   s_rd_remaining     = (int32_t)k_rc_rd_never;
   const size_t total = (size_t)k_rc_blocks_exfat * (size_t)k_rc_block_size;
   s_disk.bytes       = (uint8_t*)malloc(total);
@@ -294,9 +297,9 @@ static void build_exfat_volume(void)
  * @post No disk state is modified.
  * @post Return value matches the mount's `partition_base_lba`.
  *
- * @since 0.1.0
+ * @since 0.1.0 @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static uint32_t part_base_lba(void)
+RA8_INTERNAL static uint32_t internal_part_base_lba(void)
 {
   const uint8_t* pe = &s_disk.bytes[(uint32_t)k_rc_mbr_part0_off + (uint32_t)k_rc_mbr_pe_lba];
   return (uint32_t)pe[0] | ((uint32_t)pe[1] << (uint32_t)k_rc_shift8) |
@@ -320,9 +323,9 @@ static uint32_t part_base_lba(void)
  * @pre h is non-NULL and mounted.
  * @post Return value is within the root cluster sector range.
  *
- * @since 0.1.0
+ * @since 0.1.0 @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static uint32_t root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
+RA8_INTERNAL static uint32_t internal_root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
 {
   const uint32_t root_lba = h->partition_base_lba + h->first_data_lba +
                             ((uint64_t)(h->root_cluster - 2U) * h->sectors_per_cluster);
@@ -342,9 +345,9 @@ static uint32_t root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
  * @pre h is non-NULL and mounted.
  * @post Return value addresses a valid 4-byte region in s_disk.bytes.
  *
- * @since 0.1.0
+ * @since 0.1.0 @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static uint32_t fat_entry_off(const ra8_fs_mount_t* h, uint32_t clus)
+RA8_INTERNAL static uint32_t internal_fat_entry_off(const ra8_fs_mount_t* h, uint32_t clus)
 {
   return ((h->partition_base_lba + h->first_fat_lba) * (uint32_t)k_rc_block_size) +
          ((uint64_t)clus * 4U);
@@ -359,9 +362,9 @@ static uint32_t fat_entry_off(const ra8_fs_mount_t* h, uint32_t clus)
  * @pre off + 4 is within the disk image.
  * @post Bytes at off encode val in LE order.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded disk set u32le fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void disk_set_u32le(uint32_t off, uint32_t val)
+RA8_INTERNAL static void internal_disk_set_u32le(uint32_t off, uint32_t val)
 {
   uint8_t* p = &s_disk.bytes[off];
   p[0]       = (uint8_t)(val & (uint32_t)k_rc_mask_byte);
@@ -388,9 +391,9 @@ static void disk_set_u32le(uint32_t off, uint32_t val)
  * @pre None.
  * @post priv_ascii_upper('{') equals '{'.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_ascii_upper_above_z(void)
+RA8_INTERNAL static void internal_test_ascii_upper_above_z(void)
 {
   TEST_BEGIN("exfat read cov: ascii_upper '{' -> unchanged (lines 42-43)");
   char result = priv_ascii_upper('{');
@@ -409,9 +412,9 @@ static void test_ascii_upper_above_z(void)
  * @pre None.
  * @post priv_ascii_upper('a') equals 'A'.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the ascii upper a to z vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_ascii_upper_a_to_z(void)
+RA8_INTERNAL static void internal_test_ascii_upper_a_to_z(void)
 {
   TEST_BEGIN("exfat read cov: ascii_upper 'a' -> 'A' (line 45)");
   char result = priv_ascii_upper('a');
@@ -437,19 +440,19 @@ static void test_ascii_upper_a_to_z(void)
  * @pre None.
  * @post ra8_fs_mount returns an error after BPS shift is patched.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_parse_bad_bps_shift(void)
+RA8_INTERNAL static void internal_test_parse_bad_bps_shift(void)
 {
   TEST_BEGIN("exfat read cov: bad BPS shift -> error (line 98)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   const uint32_t vbr_bps =
-    (part_base_lba() * (uint32_t)k_rc_block_size) + (uint32_t)k_rc_vbr_bps_off;
+    (internal_part_base_lba() * (uint32_t)k_rc_block_size) + (uint32_t)k_rc_vbr_bps_off;
   s_disk.bytes[vbr_bps] = (uint8_t)k_rc_bps_shift_bad;
   ra8_fs_mount_t* h     = nullptr;
   ra8_err_t       e     = ra8_fs_mount(&s_ctrl_backend, &h);
   TEST_ASSERT(e != k_ra8_ok);
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat read cov: bad BPS shift -> error (line 98)");
 }
 
@@ -472,12 +475,12 @@ static void test_parse_bad_bps_shift(void)
  * @pre Volume is formatted and mounted.
  * @post priv_exfat_next_entry returns != k_ra8_ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_next_entry_fat_read_fail(void)
+RA8_INTERNAL static void internal_test_next_entry_fat_read_fail(void)
 {
   TEST_BEGIN("exfat read cov: boundary FAT-read fail (lines 131-134)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -491,7 +494,7 @@ static void test_next_entry_fat_read_fail(void)
   TEST_ASSERT(e != k_ra8_ok);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat read cov: boundary FAT-read fail (lines 131-134)");
 }
 
@@ -510,12 +513,12 @@ static void test_next_entry_fat_read_fail(void)
  * @pre Volume is formatted and mounted.
  * @post priv_exfat_next_entry returns k_ra8_err_not_found.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_next_entry_eoc(void)
+RA8_INTERNAL static void internal_test_next_entry_eoc(void)
 {
   TEST_BEGIN("exfat read cov: boundary EOC -> not_found (lines 131-132, 136-137)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -529,7 +532,7 @@ static void test_next_entry_eoc(void)
   TEST_ASSERT_EQ(k_ra8_err_not_found, e);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat read cov: boundary EOC -> not_found (lines 131-132, 136-137)");
 }
 
@@ -548,18 +551,18 @@ static void test_next_entry_eoc(void)
  * @pre Volume is formatted and mounted.
  * @post priv_exfat_next_entry returns k_ra8_ok; cur.cluster == root_cluster+1.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_next_entry_follow_chain(void)
+RA8_INTERNAL static void internal_test_next_entry_follow_chain(void)
 {
   TEST_BEGIN("exfat read cov: boundary chain-follow (lines 131-132, 139-141)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
   /* Redirect FAT[root_cluster] -> root_cluster+1 (free, not EOC). */
   const uint32_t next_clus = h->root_cluster + 1U;
-  disk_set_u32le(fat_entry_off(h, h->root_cluster), next_clus);
+  internal_disk_set_u32le(internal_fat_entry_off(h, h->root_cluster), next_clus);
 
   const uint32_t per_cluster =
     (h->sectors_per_cluster * (uint32_t)k_rc_block_size) / (uint32_t)k_rc_entry_bytes;
@@ -572,7 +575,7 @@ static void test_next_entry_follow_chain(void)
   TEST_ASSERT_EQ(next_clus, cur.cluster);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat read cov: boundary chain-follow (lines 131-132, 139-141)");
 }
 
@@ -591,12 +594,12 @@ static void test_next_entry_follow_chain(void)
  * @pre Volume is formatted and mounted.
  * @post priv_exfat_next_entry returns != k_ra8_ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_next_entry_sector_read_fail(void)
+RA8_INTERNAL static void internal_test_next_entry_sector_read_fail(void)
 {
   TEST_BEGIN("exfat read cov: sector read fail (line 147)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -608,7 +611,7 @@ static void test_next_entry_sector_read_fail(void)
   TEST_ASSERT(e != k_ra8_ok);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat read cov: sector read fail (line 147)");
 }
 
@@ -628,9 +631,9 @@ static void test_next_entry_sector_read_fail(void)
  * @pre None.
  * @post priv_exfat_name_chunk_eq returns 1.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_name_chunk_eq_full_match(void)
+RA8_INTERNAL static void internal_test_name_chunk_eq_full_match(void)
 {
   TEST_BEGIN("exfat read cov: name_chunk_eq full 15-char match (line 171)");
   uint8_t entry[(uint32_t)k_rc_entry_bytes] = {};
@@ -669,12 +672,12 @@ static void test_name_chunk_eq_full_match(void)
  * @pre None.
  * @post ra8_fs_open returns != k_ra8_ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_match_set_stream_io_fail(void)
+RA8_INTERNAL static void internal_test_match_set_stream_io_fail(void)
 {
   TEST_BEGIN("exfat read cov: match_set stream I/O fail (lines 208, 266)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -688,7 +691,7 @@ static void test_match_set_stream_io_fail(void)
   TEST_ASSERT(e != k_ra8_ok);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat read cov: match_set stream I/O fail (lines 208, 266)");
 }
 
@@ -708,19 +711,19 @@ static void test_match_set_stream_io_fail(void)
  * @pre None.
  * @post ra8_fs_open returns k_ra8_err_not_found.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_match_set_wrong_stream_type(void)
+RA8_INTERNAL static void internal_test_match_set_wrong_stream_type(void)
 {
   TEST_BEGIN("exfat read cov: match_set wrong stream type (line 211)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
   const uint8_t data = (uint8_t)'X';
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", &data, 1U));
   /* Corrupt the stream entry type byte. */
-  s_disk.bytes[root_entry_off(h, (uint32_t)k_rc_root_strm_idx)] = (uint8_t)k_rc_type_bogus;
+  s_disk.bytes[internal_root_entry_off(h, (uint32_t)k_rc_root_strm_idx)] = (uint8_t)k_rc_type_bogus;
 
   s_rd_remaining   = (int32_t)k_rc_rd_never;
   ra8_fs_file_t* f = nullptr;
@@ -728,7 +731,7 @@ static void test_match_set_wrong_stream_type(void)
   TEST_ASSERT_EQ(k_ra8_err_not_found, e);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat read cov: match_set wrong stream type (line 211)");
 }
 
@@ -749,12 +752,12 @@ static void test_match_set_wrong_stream_type(void)
  * @pre None.
  * @post ra8_fs_open returns != k_ra8_ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_match_set_name_io_fail(void)
+RA8_INTERNAL static void internal_test_match_set_name_io_fail(void)
 {
   TEST_BEGIN("exfat read cov: match_set name I/O fail (lines 221, 266)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -768,7 +771,7 @@ static void test_match_set_name_io_fail(void)
   TEST_ASSERT(e != k_ra8_ok);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat read cov: match_set name I/O fail (lines 221, 266)");
 }
 
@@ -789,19 +792,19 @@ static void test_match_set_name_io_fail(void)
  * @pre None.
  * @post ra8_fs_open returns k_ra8_err_not_found.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_match_set_wrong_name_type(void)
+RA8_INTERNAL static void internal_test_match_set_wrong_name_type(void)
 {
   TEST_BEGIN("exfat read cov: match_set wrong name type (line 224)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
   const uint8_t data = (uint8_t)'X';
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", &data, 1U));
   /* Corrupt the name entry type byte only; leave stream intact. */
-  s_disk.bytes[root_entry_off(h, (uint32_t)k_rc_root_name_idx)] = (uint8_t)k_rc_type_bogus;
+  s_disk.bytes[internal_root_entry_off(h, (uint32_t)k_rc_root_name_idx)] = (uint8_t)k_rc_type_bogus;
 
   s_rd_remaining   = (int32_t)k_rc_rd_never;
   ra8_fs_file_t* f = nullptr;
@@ -809,7 +812,7 @@ static void test_match_set_wrong_name_type(void)
   TEST_ASSERT_EQ(k_ra8_err_not_found, e);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat read cov: match_set wrong name type (line 224)");
 }
 
@@ -828,12 +831,12 @@ static void test_match_set_wrong_name_type(void)
  * @pre Volume is formatted and mounted.
  * @post ra8_fs_open returns != k_ra8_ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_find_first_read_fail(void)
+RA8_INTERNAL static void internal_test_find_first_read_fail(void)
 {
   TEST_BEGIN("exfat read cov: find first read fail (line 253)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -844,7 +847,7 @@ static void test_find_first_read_fail(void)
   TEST_ASSERT(e != k_ra8_ok);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat read cov: find first read fail (line 253)");
 }
 
@@ -868,12 +871,12 @@ static void test_find_first_read_fail(void)
  * @pre Volume is formatted and mounted.
  * @post `X.TXT` exists as a zero-length file and the handle is closed.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_open_write_mode_dispatches(void)
+RA8_INTERNAL static void internal_test_open_write_mode_dispatches(void)
 {
   TEST_BEGIN("exfat read cov: write mode dispatches to the stream");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -887,7 +890,7 @@ static void test_open_write_mode_dispatches(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat read cov: write mode dispatches to the stream");
 }
 
@@ -906,12 +909,12 @@ static void test_open_write_mode_dispatches(void)
  * @pre Volume is formatted; no other files are open.
  * @post The 5th ra8_fs_open returns k_ra8_err_no_mem.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_open_file_table_full(void)
+RA8_INTERNAL static void internal_test_open_file_table_full(void)
 {
   TEST_BEGIN("exfat read cov: file table full -> no_mem (line 288)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -936,7 +939,7 @@ static void test_open_file_table_full(void)
   }
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat read cov: file table full -> no_mem (line 288)");
 }
 
@@ -956,22 +959,21 @@ static void test_open_file_table_full(void)
  */
 int main(void)
 {
-  test_ascii_upper_above_z();
-  test_ascii_upper_a_to_z();
-  test_parse_bad_bps_shift();
-  test_next_entry_fat_read_fail();
-  test_next_entry_eoc();
-  test_next_entry_follow_chain();
-  test_next_entry_sector_read_fail();
-  test_name_chunk_eq_full_match();
-  test_match_set_stream_io_fail();
-  test_match_set_wrong_stream_type();
-  test_match_set_name_io_fail();
-  test_match_set_wrong_name_type();
-  test_find_first_read_fail();
-  test_open_write_mode_dispatches();
-  test_open_file_table_full();
+  internal_test_ascii_upper_above_z();
+  internal_test_ascii_upper_a_to_z();
+  internal_test_parse_bad_bps_shift();
+  internal_test_next_entry_fat_read_fail();
+  internal_test_next_entry_eoc();
+  internal_test_next_entry_follow_chain();
+  internal_test_next_entry_sector_read_fail();
+  internal_test_name_chunk_eq_full_match();
+  internal_test_match_set_stream_io_fail();
+  internal_test_match_set_wrong_stream_type();
+  internal_test_match_set_name_io_fail();
+  internal_test_match_set_wrong_name_type();
+  internal_test_find_first_read_fail();
+  internal_test_open_write_mode_dispatches();
+  internal_test_open_file_table_full();
 
-  printf("[OK  ] test_ra8_fs_fat_exfat_read_cov.c\n");
   return 0;
 }

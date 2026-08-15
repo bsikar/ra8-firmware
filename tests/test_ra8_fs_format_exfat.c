@@ -19,6 +19,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "test_ra8_fs_format_fixture.h"
 
 /**
@@ -40,12 +41,12 @@
  * mount + empty-root happy path end to end; the format argument/capacity
  * compounds are passed with control inputs and are covered by the dedicated
  * MC/DC cases above, and the exFAT cluster-size cascade is covered by
- * test_exfat_spc_shift_tiers)
+ * test_exfat_spc_shift_tiers) @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_format_exfat_mount_empty(void)
+RA8_INTERNAL static void internal_test_format_exfat_mount_empty(void)
 {
   TEST_BEGIN("ra8_fs format: exFAT format + mount + empty root");
-  alloc_garbage_card((uint32_t)k_fmt_blocks_exfat);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_exfat);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_exfat;
   opts.label                = "RAEXFAT";
@@ -56,11 +57,11 @@ static void test_format_exfat_mount_empty(void)
   TEST_ASSERT_EQ(k_ra8_fs_type_exfat, h->type);
 
   list_ctx_t ctx = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_count_cb, &ctx));
   TEST_ASSERT_EQ(0, ctx.count); /* freshly formatted -> no files */
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format: exFAT format + mount + empty root");
 }
 
@@ -75,9 +76,9 @@ static void test_format_exfat_mount_empty(void)
  * reports a huge capacity without a multi-GB malloc and captures the exFAT VBR
  * sector at LBA 2048), and the VBR's SectorsPerClusterShift byte is asserted:
  * 3 / 6 / 8 / 9. Subtracting the 2048-sector partition offset does not move any
- * capacity out of its cluster-size tier, so the expected shifts are unchanged.
+ * capacity out of its cluster-size tier, so the expected shifts are unchanged. @details Runs the exfat spc shift tiers vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_exfat_spc_shift_tiers(void)
+RA8_INTERNAL static void internal_test_exfat_spc_shift_tiers(void)
 {
   TEST_BEGIN("ra8_fs format: exFAT SectorsPerClusterShift tiers");
   static const uint32_t k_blocks[] = {
@@ -131,8 +132,8 @@ typedef enum : uint8_t {
   k_exfat_le_shift_b3 = 24U, /**< Fourth byte. */
 } exfat_le_shift_t;
 
-/** @brief Read a little-endian u32 from the RAM disk at absolute byte offset. */
-static uint32_t disk_rd32(size_t byte_off)
+/** @brief Read a little-endian u32 from the RAM disk at absolute byte offset. @details Implements the bounded disk rd32 fixture step using caller-owned state. @param[in] byte_off Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint32_t internal_disk_rd32(size_t byte_off)
 {
   const uint8_t* p = &s_disk.bytes[byte_off];
   return (uint32_t)p[0] | ((uint32_t)p[1] << (uint32_t)k_exfat_le_shift_b1) |
@@ -156,12 +157,12 @@ static uint32_t disk_rd32(size_t byte_off)
  * @par MC/DC:
  * (no compound decision unique to this case -- it asserts the on-disk MBR + VBR
  * field layout the formatter now writes; the format-path compounds are covered
- * by the dedicated MC/DC cases above)
+ * by the dedicated MC/DC cases above) @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_format_exfat_partition_table(void)
+RA8_INTERNAL static void internal_test_format_exfat_partition_table(void)
 {
   TEST_BEGIN("ra8_fs format: exFAT MBR partition table + VBR at LBA 2048");
-  alloc_garbage_card((uint32_t)k_exfat_small_blk);
+  internal_alloc_garbage_card((uint32_t)k_exfat_small_blk);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_exfat;
   opts.label                = "PARTVOL";
@@ -169,16 +170,16 @@ static void test_format_exfat_partition_table(void)
 
   /* MBR at LBA 0. */
   TEST_ASSERT_EQ(k_mbr_type_exfat, s_disk.bytes[(size_t)k_mbr_pe_type_off]);
-  TEST_ASSERT_EQ(k_exfat_test_part_lba, disk_rd32((size_t)k_mbr_pe_lba_off));
+  TEST_ASSERT_EQ(k_exfat_test_part_lba, internal_disk_rd32((size_t)k_mbr_pe_lba_off));
   TEST_ASSERT_EQ(k_mbr_sig_lo_val, s_disk.bytes[(size_t)k_mbr_sig_lo_off]);
   TEST_ASSERT_EQ(k_mbr_sig_hi_val, s_disk.bytes[(size_t)k_mbr_sig_hi_off]);
 
   /* VBR inside the partition (LBA 2048). */
   const size_t vbr = (size_t)k_exfat_test_part_lba * (uint32_t)k_fmt_block_size;
   TEST_ASSERT_EQ(0, memcmp(&s_disk.bytes[vbr + (uint32_t)k_vbr_fsname_off], "EXFAT   ", 8));
-  TEST_ASSERT_EQ(k_exfat_test_part_lba, disk_rd32(vbr + (uint32_t)k_vbr_partoff_off));
+  TEST_ASSERT_EQ(k_exfat_test_part_lba, internal_disk_rd32(vbr + (uint32_t)k_vbr_partoff_off));
   TEST_ASSERT_EQ(k_exfat_small_blk - (uint32_t)k_exfat_test_part_lba,
-                 disk_rd32(vbr + (uint32_t)k_vbr_vollen_off));
+                 internal_disk_rd32(vbr + (uint32_t)k_vbr_vollen_off));
 
   /* Mount must follow the MBR to the partition base. */
   ra8_fs_mount_t* h = nullptr;
@@ -186,7 +187,7 @@ static void test_format_exfat_partition_table(void)
   TEST_ASSERT_EQ(k_ra8_fs_type_exfat, h->type);
   TEST_ASSERT_EQ(k_exfat_test_part_lba, h->partition_base_lba);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format: exFAT MBR partition table + VBR at LBA 2048");
 }
 
@@ -203,17 +204,17 @@ static void test_format_exfat_partition_table(void)
  *
  * @par MC/DC:
  * (single-condition guard -- this vector drives the true (reject) leg; the
- * false (accept) leg is driven by every successful exFAT format above)
+ * false (accept) leg is driven by every successful exFAT format above) @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_format_exfat_too_small(void)
+RA8_INTERNAL static void internal_test_format_exfat_too_small(void)
 {
   TEST_BEGIN("ra8_fs format: exFAT rejects a card below part+min sectors");
-  alloc_garbage_card((uint32_t)k_exfat_toosmall_blk);
+  internal_alloc_garbage_card((uint32_t)k_exfat_toosmall_blk);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_exfat;
   opts.label                = "TINY";
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_fs_format(&s_backend, &opts));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format: exFAT rejects a card below part+min sectors");
 }
 
@@ -231,12 +232,12 @@ static void test_format_exfat_too_small(void)
  *
  * @par MC/DC:
  * (no compound decision unique to this case -- it is an end-to-end exFAT
- * create/read/unlink cycle on the partitioned volume)
+ * create/read/unlink cycle on the partitioned volume) @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_format_exfat_partition_roundtrip(void)
+RA8_INTERNAL static void internal_test_format_exfat_partition_roundtrip(void)
 {
   TEST_BEGIN("ra8_fs format: exFAT partitioned create/read/unlink round-trip");
-  alloc_garbage_card((uint32_t)k_exfat_small_blk);
+  internal_alloc_garbage_card((uint32_t)k_exfat_small_blk);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_exfat;
   opts.label                = "RTRIP";
@@ -246,28 +247,28 @@ static void test_format_exfat_partition_roundtrip(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_fs_type_exfat, h->type);
 
-  static uint8_t s_wr[k_fmt_payload_bytes];
-  static uint8_t s_rd[k_fmt_payload_bytes];
+  static uint8_t wr[k_fmt_payload_bytes];
+  static uint8_t rd[k_fmt_payload_bytes];
   for (uint32_t i = 0U; i < (uint32_t)k_fmt_payload_bytes; i++) {
-    s_wr[i] = (uint8_t)((i * k_fs_pattern_stride) + k_fs_pattern_bias);
-    s_rd[i] = 0U;
+    wr[i] = (uint8_t)((i * k_fs_pattern_stride) + k_fs_pattern_bias);
+    rd[i] = 0U;
   }
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "BOOK.BIN", s_wr, (uint32_t)k_fmt_payload_bytes));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "BOOK.BIN", wr, (uint32_t)k_fmt_payload_bytes));
 
   ra8_fs_file_t* f   = nullptr;
   uint32_t       got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "BOOK.BIN", k_ra8_fs_mode_read, &f));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_rd, (uint32_t)k_fmt_payload_bytes, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, rd, (uint32_t)k_fmt_payload_bytes, &got));
   TEST_ASSERT_EQ(k_fmt_payload_bytes, got);
-  TEST_ASSERT_EQ(0, memcmp(s_wr, s_rd, (size_t)k_fmt_payload_bytes));
+  TEST_ASSERT_EQ(0, memcmp(wr, rd, (size_t)k_fmt_payload_bytes));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "BOOK.BIN"));
   list_ctx_t ctx = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_count_cb, &ctx));
   TEST_ASSERT_EQ(0, ctx.count);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format: exFAT partitioned create/read/unlink round-trip");
 }
 
@@ -275,19 +276,21 @@ static void test_format_exfat_partition_roundtrip(void)
  * @details The up-case table sector uniquely begins 0x00 0x00 0x01 0x00 (the
  *          identity mapping of code points 0x0000 and 0x0001), unlike the MBR,
  *          boot, FAT, bitmap, root, or all-zero clear-region writes -- so this
- *          fails ``ra8_fs_write_file``'s format at exactly the up-case write. */
-static ra8_err_t upcase_fail_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+ *          fails ``ra8_fs_write_file``'s format at exactly the up-case write. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_upcase_fail_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   if (count >= 1U && buf[0] == 0x00U && buf[1] == 0x00U && buf[2] == 0x01U && buf[3] == 0x00U) {
     return k_ra8_err_hw_error;
   }
-  return mem_write(ctx, lba, count, buf);
+  return internal_mem_write(ctx, lba, count, buf);
 }
 
 static const ra8_fs_backend_t s_backend_upcase_fail = {
-  .read_block   = mem_read,
-  .write_block  = upcase_fail_write,
-  .get_capacity = mem_capacity,
+  .read_block   = internal_mem_read,
+  .write_block  = internal_upcase_fail_write,
+  .get_capacity = internal_mem_capacity,
   .ctx          = &s_disk,
 };
 
@@ -306,28 +309,27 @@ static const ra8_fs_backend_t s_backend_upcase_fail = {
  *
  * @par MC/DC:
  * (single-condition backend-error branch -- this vector drives its true leg;
- * the false leg is driven by the successful up-case writes elsewhere)
+ * the false leg is driven by the successful up-case writes elsewhere) @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_format_exfat_upcase_write_fail(void)
+RA8_INTERNAL static void internal_test_format_exfat_upcase_write_fail(void)
 {
   TEST_BEGIN("ra8_fs format: exFAT up-case write failure aborts the format");
-  alloc_garbage_card((uint32_t)k_exfat_small_blk);
+  internal_alloc_garbage_card((uint32_t)k_exfat_small_blk);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_exfat;
   opts.label                = "UPFAIL";
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_format(&s_backend_upcase_fail, &opts));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format: exFAT up-case write failure aborts the format");
 }
 
 int32_t main(void)
 {
-  test_format_exfat_mount_empty();
-  test_exfat_spc_shift_tiers();
-  test_format_exfat_partition_table();
-  test_format_exfat_too_small();
-  test_format_exfat_partition_roundtrip();
-  test_format_exfat_upcase_write_fail();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_format_exfat.c\n");
+  internal_test_format_exfat_mount_empty();
+  internal_test_exfat_spc_shift_tiers();
+  internal_test_format_exfat_partition_table();
+  internal_test_format_exfat_too_small();
+  internal_test_format_exfat_partition_roundtrip();
+  internal_test_format_exfat_upcase_write_fail();
   return 0;
 }

@@ -643,7 +643,27 @@ ra8_err_t priv_exfat_listdir(const ra8_fs_mount_t* m,
                              const exfat_dir_t*    dir,
                              ra8_fs_listdir_cb_t   cb,
                              void*                 ctx);
-
+/**
+ * @brief Copy the next visible exFAT directory entry from an existing cursor.
+ * @details Advances the cursor and copies one stable name, attribute mask, and size.
+ * @param[in] m Mounted exFAT volume.
+ * @param[in,out] cur Independent caller-owned directory cursor state.
+ * @param[out] out Stable copied entry value.
+ * @param[out] out_entry True for one copied entry; false at clean end.
+ * @return Media, corruption, bound, or clean-end status.
+ * @retval k_ra8_ok One entry was copied or clean end was reached.
+ * @retval k_ra8_err_* Media, entry-set, name, or cursor-bound failure.
+ * @pre Required pointers are non-NULL and @p cur was initialized for @p m.
+ * @pre The caller holds the filesystem serialization required by @p m.
+ * @post The cursor advances monotonically and no callback is invoked.
+ * @post Clean end leaves @p out_entry false without exposing sector scratch.
+ * @note The caller owns filesystem serialization around this operation.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t priv_exfat_dir_next(const ra8_fs_mount_t* m,
+                                       exfat_cursor_t*       cur,
+                                       ra8_fs_dirent_t*      out,
+                                       bool*                 out_entry);
 /**
  * @brief Compare one file-name entry's 15 UTF-16 units against a needle.
  *

@@ -38,6 +38,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_fs.h"
 #include "support/fs_fat_exfat_mutate_test_util.h"
 
@@ -85,9 +86,9 @@ static uint16_t s_upc_table[k_upc_bmp_units];
  *       an MBR partition, so an un-adjusted offset lands in the gap ahead of it.
  *
  * @note Not thread-safe (reads the fixture singleton).
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded upc clus byte fixture step using caller-owned state.
  */
-static inline uint32_t upc_clus_byte(const ra8_fs_mount_t* h, uint32_t clus)
+RA8_INTERNAL static inline uint32_t internal_upc_clus_byte(const ra8_fs_mount_t* h, uint32_t clus)
 {
   const uint32_t lba = h->partition_base_lba + h->first_data_lba +
                        ((uint64_t)(clus - (uint32_t)k_mut_cluster_first) * h->sectors_per_cluster);
@@ -109,9 +110,9 @@ static inline uint32_t upc_clus_byte(const ra8_fs_mount_t* h, uint32_t clus)
  *       independent of the code whose output it checks.
  *
  * @note Not thread-safe (reads the fixture singleton).
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded upc rd16 fixture step using caller-owned state.
  */
-static inline uint32_t upc_rd16(uint32_t off)
+RA8_INTERNAL static inline uint32_t internal_upc_rd16(uint32_t off)
 {
   return (uint32_t)s_disk.bytes[off] |
          ((uint32_t)s_disk.bytes[off + 1U] << (uint32_t)k_mut_shift_byte8);
@@ -137,23 +138,24 @@ static inline uint32_t upc_rd16(uint32_t off)
  * @note Re-run per scan, so a re-formatted volume is always re-read.
  * @since 0.1.0
  */
-static inline void upc_load(const ra8_fs_mount_t* h)
+RA8_INTERNAL static inline void internal_upc_load(const ra8_fs_mount_t* h)
 {
   for (uint32_t u = 0U; u < (uint32_t)k_upc_bmp_units; u++) {
     s_upc_table[u] = (uint16_t)u;
   }
-  const uint32_t root = upc_clus_byte(h, h->root_cluster);
+  const uint32_t root = internal_upc_clus_byte(h, h->root_cluster);
   for (uint32_t i = 0U; i < (uint32_t)k_upc_root_scan; i++) {
     const uint32_t off = root + (i * (uint32_t)k_upc_entry_size);
     if (s_disk.bytes[off] != (uint8_t)k_upc_type) {
       continue;
     }
-    const uint32_t base  = upc_clus_byte(h, disk_get_u32le(off + (uint32_t)k_mut_strm_off_clus));
-    const uint32_t words = disk_get_u32le(off + (uint32_t)k_mut_strm_off_dlen) / 2U;
+    const uint32_t base =
+      internal_upc_clus_byte(h, internal_disk_get_u32le(off + (uint32_t)k_mut_strm_off_clus));
+    const uint32_t words = internal_disk_get_u32le(off + (uint32_t)k_mut_strm_off_dlen) / 2U;
     uint32_t       idx   = 0U;
     uint32_t       w     = 0U;
     while ((w < words) && (idx < (uint32_t)k_upc_bmp_units)) {
-      const uint32_t v = upc_rd16(base + (w * 2U));
+      const uint32_t v = internal_upc_rd16(base + (w * 2U));
       w++;
       if (v != (uint32_t)k_upc_run_tag) {
         s_upc_table[idx] = (uint16_t)v;
@@ -163,7 +165,7 @@ static inline void upc_load(const ra8_fs_mount_t* h)
       if (w >= words) {
         break; /* the trailing tag: U+FFFF, whose up-case is itself */
       }
-      idx += upc_rd16(base + (w * 2U));
+      idx += internal_upc_rd16(base + (w * 2U));
       w++;
     }
     return;

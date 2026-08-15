@@ -55,6 +55,8 @@
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_fat_exfat_mutate_test_util.h"
+#include "support/ra8_test_file.h"
+#include "support/ra8_test_output.h"
 #include "unity_minimal.h"
 
 /**
@@ -93,8 +95,12 @@ typedef enum : uint32_t {
  * @post Every byte of @p buf[0..len) is set from its index.
  *
  * @since 0.1.0
- */
-static void fill_payload(uint8_t* buf, uint32_t len)
+
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_fill_payload(uint8_t* buf, uint32_t len)
 {
   for (uint32_t i = 0U; i < len; i++) {
     buf[i] = (uint8_t)((i * (uint32_t)k_rn_fill_step) + 1U);
@@ -117,8 +123,13 @@ static void fill_payload(uint8_t* buf, uint32_t len)
  * @post The file has been opened, fully read, compared, and closed.
  *
  * @since 0.1.0
- */
-static void expect_content(ra8_fs_mount_t* h, const char* path, const uint8_t* want, uint32_t len)
+
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void
+internal_expect_content(ra8_fs_mount_t* h, const char* path, const uint8_t* want, uint32_t len)
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, path, k_ra8_fs_mode_read, &f));
@@ -140,8 +151,13 @@ static void expect_content(ra8_fs_mount_t* h, const char* path, const uint8_t* w
  * @post No file slot is consumed (the open failed).
  *
  * @since 0.1.0
- */
-static void expect_absent(ra8_fs_mount_t* h, const char* path)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_expect_absent(ra8_fs_mount_t* h, const char* path)
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_open(h, path, k_ra8_fs_mode_read, &f));
@@ -162,27 +178,31 @@ static void expect_absent(ra8_fs_mount_t* h, const char* path)
  * @post The volume has been built, exercised, unmounted and released.
  *
  * @since 0.1.0
- */
-static void do_rename_roundtrip(const char* from, const char* to)
+
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_do_rename_roundtrip(const char* from, const char* to)
 {
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   uint8_t payload[k_rn_payload_len] = {};
-  fill_payload(payload, (uint32_t)k_rn_payload_len);
+  internal_fill_payload(payload, (uint32_t)k_rn_payload_len);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, from, payload, (uint32_t)k_rn_payload_len));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_rename(h, from, to));
-  expect_absent(h, from);
-  expect_content(h, to, payload, (uint32_t)k_rn_payload_len);
+  internal_expect_absent(h, from);
+  internal_expect_content(h, to, payload, (uint32_t)k_rn_payload_len);
 
   mut_list_ctx_t ctx = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_count_cb, &ctx));
   TEST_ASSERT_EQ(1U, ctx.count);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
 }
 
 /**
@@ -203,8 +223,11 @@ static void do_rename_roundtrip(const char* from, const char* to)
  * @post No state is modified by this function.
  *
  * @since 0.1.0
- */
-static uint32_t set_checksum3_of(uint32_t file_off)
+
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static uint32_t internal_set_checksum3_of(uint32_t file_off)
 {
   uint32_t cs = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_rn_set3_bytes; i++) {
@@ -233,8 +256,11 @@ static uint32_t set_checksum3_of(uint32_t file_off)
  * @post Nothing is written when it is not.
  *
  * @since 0.1.0
- */
-static void maybe_dump_image(const char* tag, uint32_t base_lba)
+
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_maybe_dump_image(const char* tag, uint32_t base_lba)
 {
   const char* base = getenv("RA8_FS603_DUMP");
   if (base == nullptr) {
@@ -242,21 +268,26 @@ static void maybe_dump_image(const char* tag, uint32_t base_lba)
   }
   char path[k_rn_path_cap] = {};
   (void)snprintf(path, sizeof(path), "%s.%s", base, tag);
-  FILE* o = fopen(path, "wb");
-  if (o == nullptr) {
+  const size_t                 off = (size_t)base_lba * (size_t)k_mut_block_size;
+  const size_t                 all = (size_t)s_disk.block_count * (size_t)k_mut_block_size;
+  const ra8_test_file_result_t result =
+    internal_test_file_replace(path, &s_disk.bytes[off], all - off);
+  if (result.status != k_ra8_test_file_ok) {
     return;
   }
-  const size_t off = (size_t)base_lba * (size_t)k_mut_block_size;
-  const size_t all = (size_t)s_disk.block_count * (size_t)k_mut_block_size;
-  (void)fwrite(&s_disk.bytes[off], 1U, all - off, o);
-  (void)fclose(o);
-  (void)printf("  [dump] %s\n", path);
+  ra8_test_output_t    output = {};
+  ra8_test_output_fd_t state  = {};
+  TEST_ASSERT(internal_test_output_fd_init(&output, &state, STDOUT_FILENO));
+  (void)internal_test_output_text(&output, "  [dump] ");
+  (void)internal_test_output_text(&output, path);
+  (void)internal_test_output_text(&output, "\n");
+  TEST_ASSERT_EQ(k_ra8_test_output_ok, output.status);
 }
 
 /* ---- tests -------------------------------------------------------------- */
 
 /**
- * @test test_exfat_rename_short_to_short
+ * @test internal_test_exfat_rename_short_to_short
  * @brief A same-length rename keeps the in-place path and preserves the data.
  *
  * @details Both names need one Name entry, so the entry count is unchanged and
@@ -272,16 +303,20 @@ static void maybe_dump_image(const char* tag, uint32_t base_lba)
  * @post The file reopens by its new name with identical bytes.
  *
  * @since 0.1.0
- */
-static void test_exfat_rename_short_to_short(void)
+
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_exfat_rename_short_to_short(void)
 {
   TEST_BEGIN("exfat rename: short -> short, in place");
-  do_rename_roundtrip("A.TXT", "B.TXT");
+  internal_do_rename_roundtrip("A.TXT", "B.TXT");
   TEST_END("exfat rename: short -> short, in place");
 }
 
 /**
- * @test test_exfat_rename_short_to_long
+ * @test internal_test_exfat_rename_short_to_long
  * @brief A one-entry name grows to a two-entry name, relocating the set.
  *
  * @details The new 24-unit name needs two Name entries (total 4), the old set
@@ -299,16 +334,20 @@ static void test_exfat_rename_short_to_short(void)
  * @post The file reopens by its long name with identical bytes; old name gone.
  *
  * @since 0.1.0
- */
-static void test_exfat_rename_short_to_long(void)
+
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_exfat_rename_short_to_long(void)
 {
   TEST_BEGIN("exfat rename: short -> long, relocate + grow entry count");
-  do_rename_roundtrip("SHORT.TXT", "LONGER_FILENAME_HERE.TXT");
+  internal_do_rename_roundtrip("SHORT.TXT", "LONGER_FILENAME_HERE.TXT");
   TEST_END("exfat rename: short -> long, relocate + grow entry count");
 }
 
 /**
- * @test test_exfat_rename_long_to_short
+ * @test internal_test_exfat_rename_long_to_short
  * @brief A two-entry name shrinks to a one-entry name, relocating the set.
  *
  * @details The mirror of the grow case: old set four entries, new set three, so
@@ -322,16 +361,20 @@ static void test_exfat_rename_short_to_long(void)
  * @post The file reopens by its short name with identical bytes; long name gone.
  *
  * @since 0.1.0
- */
-static void test_exfat_rename_long_to_short(void)
+
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_exfat_rename_long_to_short(void)
 {
   TEST_BEGIN("exfat rename: long -> short, relocate + shrink entry count");
-  do_rename_roundtrip("A_LONG_NAME_FILE.DAT", "TINY.DAT");
+  internal_do_rename_roundtrip("A_LONG_NAME_FILE.DAT", "TINY.DAT");
   TEST_END("exfat rename: long -> short, relocate + shrink entry count");
 }
 
 /**
- * @test test_exfat_rename_long_to_long_same_count
+ * @test internal_test_exfat_rename_long_to_long_same_count
  * @brief Two long names that use the same Name-entry count rename in place.
  *
  * @details 16 units and 29 units both need two Name entries, so the entry count
@@ -346,16 +389,20 @@ static void test_exfat_rename_long_to_short(void)
  * @post The file reopens by its new long name with identical bytes.
  *
  * @since 0.1.0
- */
-static void test_exfat_rename_long_to_long_same_count(void)
+
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_exfat_rename_long_to_long_same_count(void)
 {
   TEST_BEGIN("exfat rename: long -> long, same entry count, in place");
-  do_rename_roundtrip("SIXTEEN_CHARS.AB", "TWENTYNINE_CHARS_NAME_EXAMPLE");
+  internal_do_rename_roundtrip("SIXTEEN_CHARS.AB", "TWENTYNINE_CHARS_NAME_EXAMPLE");
   TEST_END("exfat rename: long -> long, same entry count, in place");
 }
 
 /**
- * @test test_exfat_rename_long_to_long_diff_count
+ * @test internal_test_exfat_rename_long_to_long_diff_count
  * @brief Two long names that differ in Name-entry count relocate the set.
  *
  * @details 16 units (two Name entries) to 32 units (three Name entries): the
@@ -371,16 +418,20 @@ static void test_exfat_rename_long_to_long_same_count(void)
  * @post The file reopens by its 31-unit name with identical bytes.
  *
  * @since 0.1.0
- */
-static void test_exfat_rename_long_to_long_diff_count(void)
+
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_exfat_rename_long_to_long_diff_count(void)
 {
   TEST_BEGIN("exfat rename: long -> long, differing entry count, relocate");
-  do_rename_roundtrip("SIXTEEN_CHARS.AB", "THIRTYONE_CHARACTER_NAME_EXMPL.Z");
+  internal_do_rename_roundtrip("SIXTEEN_CHARS.AB", "THIRTYONE_CHARACTER_NAME_EXMPL.Z");
   TEST_END("exfat rename: long -> long, differing entry count, relocate");
 }
 
 /**
- * @test test_exfat_rename_long_collision_refused
+ * @test internal_test_exfat_rename_long_collision_refused
  * @brief Renaming a long name onto an existing long name is refused.
  *
  * @details The collision probe fires for multi-Name-entry names too: with both
@@ -397,11 +448,15 @@ static void test_exfat_rename_long_to_long_diff_count(void)
  * @post Both files still resolve and rename returned k_ra8_err_exists.
  *
  * @since 0.1.0
- */
-static void test_exfat_rename_long_collision_refused(void)
+
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_exfat_rename_long_collision_refused(void)
 {
   TEST_BEGIN("exfat rename: long onto existing long -> exists");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -416,12 +471,12 @@ static void test_exfat_rename_long_collision_refused(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_stat(h, "LONGER_FILENAME_HERE.TXT", &st));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat rename: long onto existing long -> exists");
 }
 
 /**
- * @test test_exfat_rename_new_over_cap_refused
+ * @test internal_test_exfat_rename_new_over_cap_refused
  * @brief A replacement name past the storage cap is an argument fault.
  *
  * @details `priv_exfat_needle_units` reports the over-cap name, which rename
@@ -437,11 +492,15 @@ static void test_exfat_rename_long_collision_refused(void)
  * @post rename returned k_ra8_err_invalid_arg and the source still resolves.
  *
  * @since 0.1.0
- */
-static void test_exfat_rename_new_over_cap_refused(void)
+
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_exfat_rename_new_over_cap_refused(void)
 {
   TEST_BEGIN("exfat rename: new name over the cap -> invalid_arg");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -455,12 +514,12 @@ static void test_exfat_rename_new_over_cap_refused(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_stat(h, "A.TXT", &st));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat rename: new name over the cap -> invalid_arg");
 }
 
 /**
- * @test test_exfat_rename_relocate_no_room
+ * @test internal_test_exfat_rename_relocate_no_room
  * @brief A relocation with no free slot and no room to grow reports no_mem.
  *
  * @details Forces the failure arm of the relocation branch: after writing one
@@ -480,11 +539,15 @@ static void test_exfat_rename_new_over_cap_refused(void)
  *       is deliberately inconsistent).
  *
  * @since 0.1.0
- */
-static void test_exfat_rename_relocate_no_room(void)
+
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_exfat_rename_relocate_no_room(void)
 {
   TEST_BEGIN("exfat rename: relocate with no slots and no growth -> no_mem");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -497,20 +560,20 @@ static void test_exfat_rename_relocate_no_room(void)
   const uint32_t entries_per_cluster =
     (h->sectors_per_cluster * (uint32_t)k_mut_block_size) / (uint32_t)k_mut_entry_bytes;
   for (uint32_t idx = (uint32_t)k_mut_root_file1_idx; idx < entries_per_cluster; idx++) {
-    s_disk.bytes[root_byte(h, idx)] = (uint8_t)k_mut_mask_byte;
+    s_disk.bytes[internal_root_byte(h, idx)] = (uint8_t)k_mut_mask_byte;
   }
   /* And leave the volume no cluster to grow the directory into. */
-  alloc_bitmap_fill(h);
+  internal_alloc_bitmap_fill(h);
 
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_fs_rename(h, "SHORT.TXT", "LONGER_FILENAME_HERE.TXT"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat rename: relocate with no slots and no growth -> no_mem");
 }
 
 /**
- * @test test_exfat_rename_images_for_fsck
+ * @test internal_test_exfat_rename_images_for_fsck
  * @brief Build the images the out-of-band `fsck.exfat` evidence is taken from.
  *
  * @details Two states, because a clean report on its own only proves the checker
@@ -532,16 +595,19 @@ static void test_exfat_rename_relocate_no_room(void)
  * @post The clean image is `fsck.exfat`-clean; the control is not.
  *
  * @since 0.1.0
- */
-static void test_exfat_rename_images_for_fsck(void)
+
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_exfat_rename_images_for_fsck(void)
 {
   TEST_BEGIN("exfat rename: images for the out-of-band fsck.exfat run");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   uint8_t payload[k_rn_payload_len] = {};
-  fill_payload(payload, (uint32_t)k_rn_payload_len);
+  internal_fill_payload(payload, (uint32_t)k_rn_payload_len);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "SHORT.TXT", payload, (uint32_t)k_rn_payload_len));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_fs_write_file(h, "A_LONG_NAME_FILE.DAT", payload, (uint32_t)k_rn_payload_len));
@@ -554,30 +620,30 @@ static void test_exfat_rename_images_for_fsck(void)
 
   const uint32_t base = h->partition_base_lba;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  maybe_dump_image("renamed", base);
+  internal_maybe_dump_image("renamed", base);
 
   /* The control: one long-name file whose set loses a Name entry. Decrement the
    * File entry's SecondaryCount so the set stops one Name entry short of what its
    * NameLength needs, then repair the SetChecksum over the now-3-entry set so the
    * only fault a checker can find is the one under test. */
-  build_exfat_volume();
+  internal_build_exfat_volume();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_fs_write_file(h, "LONGNAME_ONE_ENTRY_SHY.BIN", payload, (uint32_t)k_rn_payload_len));
-  const uint32_t file = root_byte(h, (uint32_t)k_mut_root_file0_idx);
+  const uint32_t file = internal_root_byte(h, (uint32_t)k_mut_root_file0_idx);
   const uint8_t  sc   = s_disk.bytes[file + (uint32_t)k_mut_file_secnt_off];
   TEST_ASSERT(sc >= 3U); /* Stream + 2 Name entries for a 16..30-unit name. */
   s_disk.bytes[file + (uint32_t)k_mut_file_secnt_off] = (uint8_t)((uint32_t)sc - 1U);
-  const uint32_t cs                                   = set_checksum3_of(file);
+  const uint32_t cs                                   = internal_set_checksum3_of(file);
   s_disk.bytes[file + (uint32_t)k_rn_file_off_csum]   = (uint8_t)(cs & (uint32_t)k_mut_mask_byte);
   s_disk.bytes[file + (uint32_t)k_rn_file_off_csum + 1U] =
     (uint8_t)((cs >> (uint32_t)k_mut_shift_byte8) & (uint32_t)k_mut_mask_byte);
   const uint32_t base2 = h->partition_base_lba;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  maybe_dump_image("badset", base2);
+  internal_maybe_dump_image("badset", base2);
 
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat rename: images for the out-of-band fsck.exfat run");
 }
 
@@ -596,15 +662,17 @@ static void test_exfat_rename_images_for_fsck(void)
  */
 int32_t main(void)
 {
-  test_exfat_rename_short_to_short();
-  test_exfat_rename_short_to_long();
-  test_exfat_rename_long_to_short();
-  test_exfat_rename_long_to_long_same_count();
-  test_exfat_rename_long_to_long_diff_count();
-  test_exfat_rename_long_collision_refused();
-  test_exfat_rename_new_over_cap_refused();
-  test_exfat_rename_relocate_no_room();
-  test_exfat_rename_images_for_fsck();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_exfat_rename_long.c\n");
+  internal_test_exfat_rename_short_to_short();
+  internal_test_exfat_rename_short_to_long();
+  internal_test_exfat_rename_long_to_short();
+  internal_test_exfat_rename_long_to_long_same_count();
+  internal_test_exfat_rename_long_to_long_diff_count();
+  internal_test_exfat_rename_long_collision_refused();
+  internal_test_exfat_rename_new_over_cap_refused();
+  internal_test_exfat_rename_relocate_no_room();
+  internal_test_exfat_rename_images_for_fsck();
+  TEST_ASSERT_EQ(
+    k_ra8_test_output_ok,
+    internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_ra8_fs_exfat_rename_long.c\n"));
   return 0;
 }

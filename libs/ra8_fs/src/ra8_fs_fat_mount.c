@@ -37,7 +37,7 @@ static ra8_fs_file_t s_files[k_ra8_fs_max_files] = {};
  *          `ra8_fs_fat_internal.h` and defined here exactly once. Sized to
  *          ::k_ra8_fs_sector_max so a 4Kn medium fits without allocation.
  */
-uint8_t s_scratch[k_ra8_fs_sector_max] = {};
+RA8_PRIV uint8_t priv_scratch[k_ra8_fs_sector_max] = {};
 
 /**
  * @var s_sec_arena
@@ -104,7 +104,7 @@ uint8_t* priv_sec_io(void)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_fs_mount_t* priv_alloc_mount_slot(void)
+static ra8_fs_mount_t* internal_alloc_mount_slot(void)
 {
   for (uint32_t i = 0; i < k_ra8_fs_max_mounts; i++) {
     if (s_mounts[i].in_use == 0U) {
@@ -158,7 +158,7 @@ ra8_fs_file_t* priv_alloc_file_slot(void)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_bps_valid(uint32_t bs)
+static uint8_t internal_bps_valid(uint32_t bs)
 {
   if ((bs < (uint32_t)k_ra8_fs_sector_min) || (bs > (uint32_t)k_ra8_fs_sector_max) ||
       ((bs & (bs - 1U)) != 0U)) {
@@ -170,15 +170,15 @@ static uint8_t priv_bps_valid(uint32_t bs)
 /* `priv_parse_bpb_into_mount()`: see header for the documented contract. */
 ra8_err_t priv_parse_bpb_into_mount(ra8_fs_mount_t* m)
 {
-  if (s_scratch[k_bpb_off_signature_lo] != k_bpb_sig_lo ||
-      s_scratch[k_bpb_off_signature_hi] != k_bpb_sig_hi) {
+  if (priv_scratch[k_bpb_off_signature_lo] != k_bpb_sig_lo ||
+      priv_scratch[k_bpb_off_signature_hi] != k_bpb_sig_hi) {
     return k_ra8_err_validation_failed;
   }
-  const uint32_t bpb_bps = priv_rd16(&s_scratch[k_bpb_off_bytes_per_sec]);
-  m->sectors_per_cluster = (uint32_t)s_scratch[k_bpb_off_sec_per_clus];
-  m->reserved_sectors    = priv_rd16(&s_scratch[k_bpb_off_rsvd_sec_cnt]);
-  m->num_fats            = (uint32_t)s_scratch[k_bpb_off_num_fats];
-  m->root_entries        = priv_rd16(&s_scratch[k_bpb_off_root_ent_cnt]);
+  const uint32_t bpb_bps = priv_rd16(&priv_scratch[k_bpb_off_bytes_per_sec]);
+  m->sectors_per_cluster = (uint32_t)priv_scratch[k_bpb_off_sec_per_clus];
+  m->reserved_sectors    = priv_rd16(&priv_scratch[k_bpb_off_rsvd_sec_cnt]);
+  m->num_fats            = (uint32_t)priv_scratch[k_bpb_off_num_fats];
+  m->root_entries        = priv_rd16(&priv_scratch[k_bpb_off_root_ent_cnt]);
   /* The BPB must agree with the DEVICE: `m->bytes_per_sector` was seeded from
    * the backend's reported block size before this parse ran, and a volume
    * formatted for a different sector size than the medium presents (a 512e
@@ -191,16 +191,16 @@ ra8_err_t priv_parse_bpb_into_mount(ra8_fs_mount_t* m)
   if (bpb_bps != m->bytes_per_sector || m->sectors_per_cluster == 0U || m->num_fats == 0U) {
     return k_ra8_err_validation_failed;
   }
-  const uint32_t fat_sz_16  = priv_rd16(&s_scratch[k_bpb_off_fat_sz_16]);
-  const uint32_t fat_sz_32  = priv_rd32(&s_scratch[k_bpb_off_fat_sz_32]);
-  const uint32_t tot_sec_16 = priv_rd16(&s_scratch[k_bpb_off_tot_sec_16]);
-  const uint32_t tot_sec_32 = priv_rd32(&s_scratch[k_bpb_off_tot_sec_32]);
+  const uint32_t fat_sz_16  = priv_rd16(&priv_scratch[k_bpb_off_fat_sz_16]);
+  const uint32_t fat_sz_32  = priv_rd32(&priv_scratch[k_bpb_off_fat_sz_32]);
+  const uint32_t tot_sec_16 = priv_rd16(&priv_scratch[k_bpb_off_tot_sec_16]);
+  const uint32_t tot_sec_32 = priv_rd32(&priv_scratch[k_bpb_off_tot_sec_32]);
   m->fat_size_sectors       = (fat_sz_16 != 0U) ? fat_sz_16 : fat_sz_32;
   /* Chosen in 32 bits first: assigning the composite pick straight into the
    * 64-bit field would be a MISRA 10.6 composite-widening. */
   const uint32_t tot_sec = (tot_sec_16 != 0U) ? tot_sec_16 : tot_sec_32;
   m->total_sectors       = tot_sec;
-  m->root_cluster        = priv_rd32(&s_scratch[k_bpb_off_root_clus]);
+  m->root_cluster        = priv_rd32(&priv_scratch[k_bpb_off_root_clus]);
   return k_ra8_ok;
 }
 
@@ -226,7 +226,7 @@ ra8_err_t priv_parse_bpb_into_mount(ra8_fs_mount_t* m)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_compute_geometry(ra8_fs_mount_t* m)
+static ra8_err_t internal_compute_geometry(ra8_fs_mount_t* m)
 {
   m->first_fat_lba = m->reserved_sectors;
   const uint32_t root_dir_sectors =
@@ -268,7 +268,7 @@ static ra8_err_t priv_compute_geometry(ra8_fs_mount_t* m)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_mbr_part0_lba(const uint8_t* buf)
+static uint32_t internal_mbr_part0_lba(const uint8_t* buf)
 {
   if (buf[k_bpb_off_signature_lo] != (uint8_t)k_bpb_sig_lo) {
     return 0U;
@@ -307,7 +307,7 @@ static uint32_t priv_mbr_part0_lba(const uint8_t* buf)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_mbr_select_entry(const uint8_t* buf, uint8_t index, uint64_t* out_base)
+static ra8_err_t internal_mbr_select_entry(const uint8_t* buf, uint8_t index, uint64_t* out_base)
 {
   if ((uint32_t)index >= (uint32_t)k_mbr_part_entry_count) {
     return k_ra8_err_out_of_range;
@@ -337,7 +337,7 @@ static ra8_err_t priv_mbr_select_entry(const uint8_t* buf, uint8_t index, uint64
  * refused. The signature bytes are tested separately (not as one compound
  * decision) to mirror ::priv_mbr_part0_lba.
  *
- * @param[in,out] m        Mount with sector 0 already in ::s_scratch.
+ * @param[in,out] m        Mount with sector 0 already in ::priv_scratch.
  * @param[in]     index    Zero-based partition index.
  * @param[out]    out_base Receives the selected partition's first LBA.
  * @return Error code.
@@ -347,27 +347,27 @@ static ra8_err_t priv_mbr_select_entry(const uint8_t* buf, uint8_t index, uint64
  * @retval k_ra8_err_not_supported     Unaddressable GPT geometry.
  * @retval k_ra8_err_validation_failed Malformed entry or GPT header.
  * @retval k_ra8_err_*                 Backend read failure.
- * @pre ::s_scratch holds the contents of LBA 0.
+ * @pre ::priv_scratch holds the contents of LBA 0.
  * @pre ``m->partition_base_lba`` is still 0 (reads are absolute).
  * @pre @p out_base is non-NULL.
  * @post On k_ra8_ok @p out_base holds a non-zero LBA.
- * @post ::s_scratch may be overwritten (GPT path re-reads the entry array).
+ * @post ::priv_scratch may be overwritten (GPT path re-reads the entry array).
  * @note Not thread-safe -- uses module-level scratch.
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_locate_indexed(ra8_fs_mount_t* m, uint8_t index, uint64_t* out_base)
+static ra8_err_t internal_locate_indexed(ra8_fs_mount_t* m, uint8_t index, uint64_t* out_base)
 {
-  if (s_scratch[k_bpb_off_signature_lo] != (uint8_t)k_bpb_sig_lo) {
+  if (priv_scratch[k_bpb_off_signature_lo] != (uint8_t)k_bpb_sig_lo) {
     return k_ra8_err_not_found;
   }
-  if (s_scratch[k_bpb_off_signature_hi] != (uint8_t)k_bpb_sig_hi) {
+  if (priv_scratch[k_bpb_off_signature_hi] != (uint8_t)k_bpb_sig_hi) {
     return k_ra8_err_not_found;
   }
-  if (s_scratch[k_mbr_off_part0_type] == (uint8_t)k_gpt_part_type_protective) {
+  if (priv_scratch[k_mbr_off_part0_type] == (uint8_t)k_gpt_part_type_protective) {
     return priv_gpt_locate_partition(m, index, out_base);
   }
-  return priv_mbr_select_entry(s_scratch, index, out_base);
+  return internal_mbr_select_entry(priv_scratch, index, out_base);
 }
 
 /**
@@ -398,8 +398,8 @@ static ra8_err_t priv_locate_indexed(ra8_fs_mount_t* m, uint8_t index, uint64_t*
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_format_locked(const ra8_fs_backend_t*     backend,
-                                    const ra8_fs_format_opts_t* opts)
+static ra8_err_t internal_format_locked(const ra8_fs_backend_t*     backend,
+                                        const ra8_fs_format_opts_t* opts)
 {
   if (backend == nullptr || opts == nullptr) {
     return k_ra8_err_null_ptr;
@@ -420,7 +420,7 @@ static ra8_err_t priv_format_locked(const ra8_fs_backend_t*     backend,
   if (err != k_ra8_ok) {
     return err;
   }
-  if ((priv_bps_valid(block_size) == 0U) || (block_count == 0U)) {
+  if ((internal_bps_valid(block_size) == 0U) || (block_count == 0U)) {
     return k_ra8_err_invalid_arg;
   }
   if (opts->type == k_ra8_fs_type_exfat) {
@@ -467,15 +467,15 @@ static ra8_err_t priv_format_locked(const ra8_fs_backend_t*     backend,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_read_boot_sector(ra8_fs_mount_t* m, uint8_t index)
+static ra8_err_t internal_read_boot_sector(ra8_fs_mount_t* m, uint8_t index)
 {
-  ra8_err_t err = priv_read_sector(m, 0, s_scratch);
+  ra8_err_t err = priv_read_sector(m, 0, priv_scratch);
   if (err != k_ra8_ok) {
     return err;
   }
   uint64_t base = 0U;
   if (index != (uint8_t)k_ra8_fs_partition_auto) {
-    const ra8_err_t lerr = priv_locate_indexed(m, index, &base);
+    const ra8_err_t lerr = internal_locate_indexed(m, index, &base);
     if (lerr != k_ra8_ok) {
       return lerr;
     }
@@ -484,11 +484,11 @@ static ra8_err_t priv_read_boot_sector(ra8_fs_mount_t* m, uint8_t index)
     if (err == k_ra8_ok) {
       return k_ra8_ok;
     }
-    base = priv_mbr_part0_lba(s_scratch);
+    base = internal_mbr_part0_lba(priv_scratch);
     if (base == 0U) {
       return err;
     }
-    if (s_scratch[k_mbr_off_part0_type] == (uint8_t)k_gpt_part_type_protective) {
+    if (priv_scratch[k_mbr_off_part0_type] == (uint8_t)k_gpt_part_type_protective) {
       const ra8_err_t gpt_err = priv_gpt_locate_volume(m, &base);
       if (gpt_err != k_ra8_ok) {
         return gpt_err;
@@ -496,7 +496,7 @@ static ra8_err_t priv_read_boot_sector(ra8_fs_mount_t* m, uint8_t index)
     }
   }
   m->partition_base_lba = base;
-  err                   = priv_read_sector(m, 0, s_scratch);
+  err                   = priv_read_sector(m, 0, priv_scratch);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -530,7 +530,7 @@ static ra8_err_t priv_read_boot_sector(ra8_fs_mount_t* m, uint8_t index)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_mount_probe_bps(const ra8_fs_backend_t* backend, ra8_fs_mount_t* m)
+static ra8_err_t internal_mount_probe_bps(const ra8_fs_backend_t* backend, ra8_fs_mount_t* m)
 {
   uint64_t        dev_blocks = 0U;
   uint32_t        dev_bps    = 0U;
@@ -538,7 +538,7 @@ static ra8_err_t priv_mount_probe_bps(const ra8_fs_backend_t* backend, ra8_fs_mo
   if (cerr != k_ra8_ok) {
     return cerr;
   }
-  if (priv_bps_valid(dev_bps) == 0U) {
+  if (internal_bps_valid(dev_bps) == 0U) {
     return k_ra8_err_invalid_arg;
   }
   m->bytes_per_sector = dev_bps;
@@ -557,7 +557,7 @@ static ra8_err_t priv_mount_probe_bps(const ra8_fs_backend_t* backend, ra8_fs_mo
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_probe_locked(const ra8_fs_backend_t* backend, ra8_fs_type_t* out_type)
+static ra8_err_t internal_probe_locked(const ra8_fs_backend_t* backend, ra8_fs_type_t* out_type)
 {
   if (backend == nullptr) {
     return k_ra8_err_null_ptr;
@@ -573,16 +573,16 @@ static ra8_err_t priv_probe_locked(const ra8_fs_backend_t* backend, ra8_fs_type_
   }
   ra8_fs_mount_t probe = {};
   probe.backend        = *backend;
-  ra8_err_t err        = priv_mount_probe_bps(backend, &probe);
+  ra8_err_t err        = internal_mount_probe_bps(backend, &probe);
   if (err != k_ra8_ok) {
     return err;
   }
-  err = priv_read_boot_sector(&probe, (uint8_t)k_ra8_fs_partition_auto);
+  err = internal_read_boot_sector(&probe, (uint8_t)k_ra8_fs_partition_auto);
   if (err != k_ra8_ok) {
     return err;
   }
   if (probe.type != k_ra8_fs_type_exfat) {
-    err = priv_compute_geometry(&probe);
+    err = internal_compute_geometry(&probe);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -626,7 +626,7 @@ static ra8_err_t priv_probe_locked(const ra8_fs_backend_t* backend, ra8_fs_type_
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
 static ra8_err_t
-priv_mount_locked(const ra8_fs_backend_t* backend, uint8_t index, ra8_fs_mount_t** out_handle)
+internal_mount_locked(const ra8_fs_backend_t* backend, uint8_t index, ra8_fs_mount_t** out_handle)
 {
   if (backend == nullptr || out_handle == nullptr) {
     return k_ra8_err_null_ptr;
@@ -635,7 +635,7 @@ priv_mount_locked(const ra8_fs_backend_t* backend, uint8_t index, ra8_fs_mount_t
       backend->get_capacity == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  ra8_fs_mount_t* m = priv_alloc_mount_slot();
+  ra8_fs_mount_t* m = internal_alloc_mount_slot();
   if (m == nullptr) {
     return k_ra8_err_no_mem;
   }
@@ -649,7 +649,7 @@ priv_mount_locked(const ra8_fs_backend_t* backend, uint8_t index, ra8_fs_mount_t
   *m                    = (ra8_fs_mount_t){};
   m->backend            = *backend;
   m->partition_base_lba = 0U;
-  const ra8_err_t cerr  = priv_mount_probe_bps(backend, m);
+  const ra8_err_t cerr  = internal_mount_probe_bps(backend, m);
   if (cerr != k_ra8_ok) {
     return cerr;
   }
@@ -660,14 +660,14 @@ priv_mount_locked(const ra8_fs_backend_t* backend, uint8_t index, ra8_fs_mount_t
    * `exfat_upcase_ok` says "this build's up-case table is the one this VOLUME
    * carries", and a fresh mount vouches for nothing until it has looked (#606). */
   m->exfat_upcase_ok = 0U;
-  ra8_err_t err      = priv_read_boot_sector(m, index);
+  ra8_err_t err      = internal_read_boot_sector(m, index);
   if (err != k_ra8_ok) {
     return err;
   }
   /* exFAT geometry is parsed directly in priv_exfat_parse; the FAT-BPB
    * geometry computation applies only to FAT12/16/32. */
   if (m->type != k_ra8_fs_type_exfat) {
-    err = priv_compute_geometry(m);
+    err = internal_compute_geometry(m);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -715,7 +715,7 @@ priv_mount_locked(const ra8_fs_backend_t* backend, uint8_t index, ra8_fs_mount_t
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_unmount_locked(ra8_fs_mount_t* handle)
+static ra8_err_t internal_unmount_locked(ra8_fs_mount_t* handle)
 {
   if (handle == nullptr) {
     return k_ra8_err_null_ptr;
@@ -744,7 +744,7 @@ RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_format(const ra8_fs_backend_t* backend, const ra8_fs_format_opts_t* opts)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_format_locked(backend, opts);
+  const ra8_err_t err = internal_format_locked(backend, opts);
   priv_lock_release();
   return err;
 }
@@ -753,7 +753,7 @@ RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_probe(const ra8_fs_backend_t* backend, ra8_fs_type_t* out_type)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_probe_locked(backend, out_type);
+  const ra8_err_t err = internal_probe_locked(backend, out_type);
   priv_lock_release();
   return err;
 }
@@ -762,7 +762,8 @@ RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_mount(const ra8_fs_backend_t* backend, ra8_fs_mount_t** out_handle)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_mount_locked(backend, (uint8_t)k_ra8_fs_partition_auto, out_handle);
+  const ra8_err_t err =
+    internal_mount_locked(backend, (uint8_t)k_ra8_fs_partition_auto, out_handle);
   priv_lock_release();
   return err;
 }
@@ -772,7 +773,7 @@ ra8_err_t
 ra8_fs_mount_partition(const ra8_fs_backend_t* backend, uint8_t index, ra8_fs_mount_t** out_handle)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_mount_locked(backend, index, out_handle);
+  const ra8_err_t err = internal_mount_locked(backend, index, out_handle);
   priv_lock_release();
   return err;
 }
@@ -781,7 +782,7 @@ RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_unmount(ra8_fs_mount_t* handle)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_unmount_locked(handle);
+  const ra8_err_t err = internal_unmount_locked(handle);
   priv_lock_release();
   return err;
 }

@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
@@ -118,9 +119,10 @@ static ncov_mem_disk_t s_ncov_disk = {};
  * @post buf contains the requested sectors.
  * @post No disk state modified.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded ncov mem read fixture step using caller-owned state.
  */
-static ra8_err_t ncov_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_ncov_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   ncov_mem_disk_t* d = (ncov_mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -147,9 +149,10 @@ static ra8_err_t ncov_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t*
  * @post Sectors are written into d->bytes.
  * @post No other state modified.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded ncov mem write fixture step using caller-owned state.
  */
-static ra8_err_t ncov_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_ncov_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   ncov_mem_disk_t* d = (ncov_mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -173,9 +176,10 @@ static ra8_err_t ncov_mem_write(void* ctx, uint64_t lba, uint32_t count, const u
  * @post *block_count and *block_size reflect d's geometry.
  * @post No state modified.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded ncov mem capacity fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents.
  */
-static ra8_err_t ncov_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+RA8_INTERNAL static ra8_err_t
+internal_ncov_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   ncov_mem_disk_t* d = (ncov_mem_disk_t*)ctx;
   *block_count       = d->block_count;
@@ -185,9 +189,9 @@ static ra8_err_t ncov_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* b
 
 /** @brief Normal backend pointing at s_ncov_disk. */
 static const ra8_fs_backend_t s_ncov_backend = {
-  .read_block   = ncov_mem_read,
-  .write_block  = ncov_mem_write,
-  .get_capacity = ncov_mem_capacity,
+  .read_block   = internal_ncov_mem_read,
+  .write_block  = internal_ncov_mem_write,
+  .get_capacity = internal_ncov_mem_capacity,
   .ctx          = &s_ncov_disk,
 };
 
@@ -234,9 +238,10 @@ static ncov_inject_disk_t s_ncov_inject = {};
  * @post reads_left decremented (unless at k_ncov_reads_inf or already zero).
  * @post On success, buf contains the requested sectors.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded ncov inj read fixture step using caller-owned state.
  */
-static ra8_err_t ncov_inj_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_ncov_inj_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   ncov_inject_disk_t* d = (ncov_inject_disk_t*)ctx;
   if (d->reads_left == 0U) {
@@ -269,9 +274,10 @@ static ra8_err_t ncov_inj_read(void* ctx, uint64_t lba, uint32_t count, uint8_t*
  * @post Sectors are written into d->bytes.
  * @post No other state modified.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded ncov inj write fixture step using caller-owned state.
  */
-static ra8_err_t ncov_inj_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_ncov_inj_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   ncov_inject_disk_t* d = (ncov_inject_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -295,9 +301,10 @@ static ra8_err_t ncov_inj_write(void* ctx, uint64_t lba, uint32_t count, const u
  * @post *block_count and *block_size reflect d's geometry.
  * @post No state modified.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded ncov inj capacity fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents.
  */
-static ra8_err_t ncov_inj_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+RA8_INTERNAL static ra8_err_t
+internal_ncov_inj_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   ncov_inject_disk_t* d = (ncov_inject_disk_t*)ctx;
   *block_count          = d->block_count;
@@ -320,9 +327,9 @@ static ra8_err_t ncov_inj_capacity(void* ctx, uint64_t* block_count, uint32_t* b
  * @post p[off] and p[off+1] hold the LE encoding of v.
  * @post No state outside p modified.
  * @note Inline helper; not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded ncov put16 fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents.
  */
-static void ncov_put16(uint8_t* p, uint32_t off, uint16_t v)
+RA8_INTERNAL static void internal_ncov_put16(uint8_t* p, uint32_t off, uint16_t v)
 {
   p[off]     = (uint8_t)(v & k_byte_mask);
   p[off + 1] = (uint8_t)((v >> 8U) & k_byte_mask);
@@ -339,9 +346,9 @@ static void ncov_put16(uint8_t* p, uint32_t off, uint16_t v)
  * @post s_ncov_disk holds a calloc-zeroed 4 MiB image with a valid BPB.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void ncov_build_fat16_vol(void)
+RA8_INTERNAL static void internal_ncov_build_fat16_vol(void)
 {
   if (s_ncov_disk.bytes != nullptr) {
     free(s_ncov_disk.bytes);
@@ -354,13 +361,13 @@ static void ncov_build_fat16_vol(void)
     TEST_FAIL_FMT("%s", "calloc failed");
   }
   uint8_t* bpb = s_ncov_disk.bytes;
-  ncov_put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_ncov_blk_sz);
+  internal_ncov_put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_ncov_blk_sz);
   bpb[k_bpb_off_sec_per_clus] = 1U;
-  ncov_put16(bpb, k_bpb_off_rsvd_sec_cnt, 1U);
+  internal_ncov_put16(bpb, k_bpb_off_rsvd_sec_cnt, 1U);
   bpb[16] = 2U;
-  ncov_put16(bpb, k_bpb_off_root_ent_cnt, 16U);
-  ncov_put16(bpb, k_bpb_off_tot_sec_16, (uint16_t)k_ncov_fat16_spc1);
-  ncov_put16(bpb, k_bpb_off_fat_sz_16, 32U);
+  internal_ncov_put16(bpb, k_bpb_off_root_ent_cnt, 16U);
+  internal_ncov_put16(bpb, k_bpb_off_tot_sec_16, (uint16_t)k_ncov_fat16_spc1);
+  internal_ncov_put16(bpb, k_bpb_off_fat_sz_16, 32U);
   bpb[k_bpb_off_signature_lo] = k_bpb_sig_lo;
   bpb[k_bpb_off_signature_hi] = k_bpb_sig_hi;
 }
@@ -372,9 +379,9 @@ static void ncov_build_fat16_vol(void)
  * @post s_ncov_disk.bytes is nullptr.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded ncov free vol fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void ncov_free_vol(void)
+RA8_INTERNAL static void internal_ncov_free_vol(void)
 {
   if (s_ncov_disk.bytes != nullptr) {
     free(s_ncov_disk.bytes);
@@ -395,17 +402,17 @@ static void ncov_free_vol(void)
  * @post h->backend uses ncov_inj_read / ncov_inj_write callbacks.
  *
  * @note Caller must restore h->backend = saved after use.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void ncov_swap_to_inject(ra8_fs_mount_t* h, uint32_t reads_left)
+RA8_INTERNAL static void internal_ncov_swap_to_inject(ra8_fs_mount_t* h, uint32_t reads_left)
 {
   s_ncov_inject.bytes       = s_ncov_disk.bytes;
   s_ncov_inject.block_count = s_ncov_disk.block_count;
   s_ncov_inject.byte_count  = s_ncov_disk.byte_count;
   s_ncov_inject.reads_left  = reads_left;
-  h->backend.read_block     = ncov_inj_read;
-  h->backend.write_block    = ncov_inj_write;
-  h->backend.get_capacity   = ncov_inj_capacity;
+  h->backend.read_block     = internal_ncov_inj_read;
+  h->backend.write_block    = internal_ncov_inj_write;
+  h->backend.get_capacity   = internal_ncov_inj_capacity;
   h->backend.ctx            = &s_ncov_inject;
 }
 
@@ -423,9 +430,9 @@ static void ncov_swap_to_inject(ra8_fs_mount_t* h, uint32_t reads_left)
  * @post count new 8.3 dir entries exist inside /SUB.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @post No access exceeds a caller-advertised capacity.
  */
-static void ncov_create_files_in_sub(ra8_fs_mount_t* h, uint32_t count)
+RA8_INTERNAL static void internal_ncov_create_files_in_sub(ra8_fs_mount_t* h, uint32_t count)
 {
   for (uint32_t i = 0; i < count; i++) {
     char name[32] = {};
@@ -458,9 +465,9 @@ static void ncov_create_files_in_sub(ra8_fs_mount_t* h, uint32_t count)
  * @post Returns 0 for each null argument.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_ncov_path_to_83_null_guards(void)
+RA8_INTERNAL static void internal_test_ncov_path_to_83_null_guards(void)
 {
   TEST_BEGIN("priv_path_to_83: null-pointer guards (line 123)");
   uint8_t buf[k_ncov_sfn_name_len] = {};
@@ -487,9 +494,9 @@ static void test_ncov_path_to_83_null_guards(void)
  * @post Packed result for "/FILE.TXT" equals that for "FILE.TXT".
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_ncov_path_to_83_leading_slash(void)
+RA8_INTERNAL static void internal_test_ncov_path_to_83_leading_slash(void)
 {
   TEST_BEGIN("priv_path_to_83: leading-slash strip (line 126)");
   uint8_t ref11[k_ncov_sfn_name_len] = {};
@@ -531,9 +538,9 @@ static void test_ncov_path_to_83_leading_slash(void)
  * @post A non-ASCII byte in either field is refused; ASCII still packs.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_ncov_path_to_83_rejects_non_ascii(void)
+RA8_INTERNAL static void internal_test_ncov_path_to_83_rejects_non_ascii(void)
 {
   TEST_BEGIN("priv_path_to_83: a byte above DEL is not an 8.3 character");
   uint8_t out11[k_ncov_sfn_name_len] = {};
@@ -568,9 +575,9 @@ static void test_ncov_path_to_83_rejects_non_ascii(void)
  * @post (uint8_t)out12[0] == k_dir_marker_free_used (0xE5).
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_ncov_83_to_str_kanji_restore(void)
+RA8_INTERNAL static void internal_test_ncov_83_to_str_kanji_restore(void)
 {
   TEST_BEGIN("priv_83_to_str: kanji-escape restore (lines 157-158)");
   uint8_t in11[k_ncov_sfn_name_len] = {};
@@ -605,9 +612,9 @@ static void test_ncov_83_to_str_kanji_restore(void)
  * @post strcmp(out12, "AA.TX") == 0.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_ncov_83_to_str_ext_trailing_space(void)
+RA8_INTERNAL static void internal_test_ncov_83_to_str_ext_trailing_space(void)
 {
   TEST_BEGIN("priv_83_to_str: extension trailing-space break (line 170)");
   /* "AA      TX " packed: base='A','A',' '...' '; ext='T','X',' ' */
@@ -642,9 +649,9 @@ static void test_ncov_83_to_str_ext_trailing_space(void)
  * @post eod == 1 and return value is k_ra8_ok.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_ncov_walk_fixed_root_eod(void)
+RA8_INTERNAL static void internal_test_ncov_walk_fixed_root_eod(void)
 {
   TEST_BEGIN("priv_dir_walk_next_sector: fixed-root EOD (lines 244-246)");
   ra8_fs_mount_t m = {};
@@ -676,9 +683,9 @@ static void test_ncov_walk_fixed_root_eod(void)
  * @post eod == 0, fixed_remaining decremented, cur_lba incremented, entry_idx == 0.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_ncov_walk_fixed_root_advance(void)
+RA8_INTERNAL static void internal_test_ncov_walk_fixed_root_advance(void)
 {
   TEST_BEGIN("priv_dir_walk_next_sector: fixed-root advance (lines 248-251)");
   ra8_fs_mount_t m = {};
@@ -719,9 +726,9 @@ static void test_ncov_walk_fixed_root_advance(void)
  * @post eod == 0, sector_in_cluster == 1, cur_lba incremented, entry_idx == 0.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_ncov_walk_within_cluster(void)
+RA8_INTERNAL static void internal_test_ncov_walk_within_cluster(void)
 {
   TEST_BEGIN("priv_dir_walk_next_sector: within-cluster else (line 275)");
   ra8_fs_mount_t m      = {};
@@ -773,22 +780,22 @@ static void test_ncov_walk_within_cluster(void)
  * @post ra8_fs_open returns k_ra8_err_not_found.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_ncov_walk_cluster_chain_eoc(void)
+RA8_INTERNAL static void internal_test_ncov_walk_cluster_chain_eoc(void)
 {
   TEST_BEGIN("priv_dir_find: cluster-chain EOC -> not_found (lines 262-263, 316-317, 321)");
-  ncov_build_fat16_vol();
+  internal_ncov_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ncov_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
   /* 14 files + . + .. = 16 entries, filling the single-sector cluster */
-  ncov_create_files_in_sub(h, k_ncov_files_per_sub);
+  internal_ncov_create_files_in_sub(h, k_ncov_files_per_sub);
   ra8_fs_file_t* f = nullptr;
   /* 8.3 and LFN searches both exhaust SUB, hitting lines 262-263 then 321 */
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_open(h, "/SUB/NOTHERE.TXT", k_ra8_fs_mode_read, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  ncov_free_vol();
+  internal_ncov_free_vol();
   TEST_END("priv_dir_find: cluster-chain EOC -> not_found (lines 262-263, 316-317, 321)");
 }
 
@@ -818,25 +825,25 @@ static void test_ncov_walk_cluster_chain_eoc(void)
  * @post ra8_fs_open returns k_ra8_err_hw_error.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_ncov_walk_fat_read_fail(void)
+RA8_INTERNAL static void internal_test_ncov_walk_fat_read_fail(void)
 {
   TEST_BEGIN("priv_dir_walk_next_sector: FAT read failure (lines 259, 318)");
-  ncov_build_fat16_vol();
+  internal_ncov_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ncov_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
-  ncov_create_files_in_sub(h, k_ncov_files_per_sub);
+  internal_ncov_create_files_in_sub(h, k_ncov_files_per_sub);
   /* reads_left=2: root-dir read and SUB-dir read succeed;
      the FAT read for the cluster chain (read 3) fails. */
   ra8_fs_backend_t saved = h->backend;
-  ncov_swap_to_inject(h, 2U);
+  internal_ncov_swap_to_inject(h, 2U);
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_open(h, "/SUB/NOTHERE.TXT", k_ra8_fs_mode_read, &f));
   h->backend = saved;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  ncov_free_vol();
+  internal_ncov_free_vol();
   TEST_END("priv_dir_walk_next_sector: FAT read failure (lines 259, 318)");
 }
 
@@ -864,12 +871,12 @@ static void test_ncov_walk_fat_read_fail(void)
  * @post priv_dir_walk_next_sector returns k_ra8_err_protocol_error.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_ncov_walk_cycle_guard(void)
+RA8_INTERNAL static void internal_test_ncov_walk_cycle_guard(void)
 {
   TEST_BEGIN("priv_dir_walk_next_sector: cycle guard (line 269)");
-  ncov_build_fat16_vol();
+  internal_ncov_build_fat16_vol();
   /* FAT1 is at LBA 1 = byte offset 512 in s_ncov_disk.bytes.
      FAT16 entry 2 is at byte offset 4 within FAT1 (cluster * 2 = 4). */
   s_ncov_disk.bytes[k_ncov_fat1_byte_off + 4U]                   = 0x03U;
@@ -887,7 +894,7 @@ static void test_ncov_walk_cycle_guard(void)
   TEST_ASSERT_EQ(k_ra8_err_protocol_error, priv_dir_walk_next_sector(h, &w, &eod));
   h->count_of_clusters = saved_coc;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  ncov_free_vol();
+  internal_ncov_free_vol();
   TEST_END("priv_dir_walk_next_sector: cycle guard (line 269)");
 }
 
@@ -909,22 +916,22 @@ static void test_ncov_walk_cycle_guard(void)
  * @post ra8_fs_open returns k_ra8_err_hw_error.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_ncov_dir_find_initial_read_fail(void)
+RA8_INTERNAL static void internal_test_ncov_dir_find_initial_read_fail(void)
 {
   TEST_BEGIN("priv_dir_find: initial read failure (line 296)");
-  ncov_build_fat16_vol();
+  internal_ncov_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ncov_backend, &h));
   ra8_fs_backend_t saved = h->backend;
   /* reads_left=0: the first priv_read_sector call inside priv_dir_find fails */
-  ncov_swap_to_inject(h, 0U);
+  internal_ncov_swap_to_inject(h, 0U);
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_open(h, "/ANYFILE.TXT", k_ra8_fs_mode_read, &f));
   h->backend = saved;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  ncov_free_vol();
+  internal_ncov_free_vol();
   TEST_END("priv_dir_find: initial read failure (line 296)");
 }
 
@@ -950,17 +957,17 @@ static void test_ncov_dir_find_initial_read_fail(void)
  */
 int32_t main(void)
 {
-  test_ncov_path_to_83_null_guards();
-  test_ncov_path_to_83_leading_slash();
-  test_ncov_path_to_83_rejects_non_ascii();
-  test_ncov_83_to_str_kanji_restore();
-  test_ncov_83_to_str_ext_trailing_space();
-  test_ncov_walk_fixed_root_eod();
-  test_ncov_walk_fixed_root_advance();
-  test_ncov_walk_within_cluster();
-  test_ncov_walk_cluster_chain_eoc();
-  test_ncov_walk_fat_read_fail();
-  test_ncov_walk_cycle_guard();
-  test_ncov_dir_find_initial_read_fail();
+  internal_test_ncov_path_to_83_null_guards();
+  internal_test_ncov_path_to_83_leading_slash();
+  internal_test_ncov_path_to_83_rejects_non_ascii();
+  internal_test_ncov_83_to_str_kanji_restore();
+  internal_test_ncov_83_to_str_ext_trailing_space();
+  internal_test_ncov_walk_fixed_root_eod();
+  internal_test_ncov_walk_fixed_root_advance();
+  internal_test_ncov_walk_within_cluster();
+  internal_test_ncov_walk_cluster_chain_eoc();
+  internal_test_ncov_walk_fat_read_fail();
+  internal_test_ncov_walk_cycle_guard();
+  internal_test_ncov_dir_find_initial_read_fail();
   return 0;
 }

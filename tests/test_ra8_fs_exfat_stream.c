@@ -22,7 +22,7 @@
  * the set -- not against what the handle claims, because a handle that has
  * drifted from the volume is exactly the defect these tests exist to catch.
  *
- * Each scenario ends by dumping the volume through `stream_dump_image()`, so
+ * Each scenario ends by dumping the volume through `internal_stream_dump_image()`, so
  * running the suite with `RA8_EXFAT_DUMP_DIR` set produces one image per
  * scenario for `fsck.exfat -n`. See `tests/support/fs_exfat_stream_test_util.h`.
  *
@@ -32,9 +32,9 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_exfat_stream_test_util.h"
@@ -90,45 +90,45 @@ typedef enum : uint32_t {
  * contiguous and writes not one FAT entry. The two false vectors live in
  * `test_ra8_fs_exfat_stream_chain.c`.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_stream_create_multi_cluster(void)
+RA8_INTERNAL static void internal_test_stream_create_multi_cluster(void)
 {
   TEST_BEGIN("exfat stream: chunked create across clusters");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "BIG.BIN", k_ra8_fs_mode_write, &f));
-  stream_write_pattern(f,
-                       (uint32_t)k_xs_multi_cluster,
-                       (uint32_t)k_xs_chunk,
-                       0U,
-                       (uint8_t)k_xs_seed_a);
+  internal_stream_write_pattern(f,
+                                (uint32_t)k_xs_multi_cluster,
+                                (uint32_t)k_xs_chunk,
+                                0U,
+                                (uint8_t)k_xs_seed_a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
-  stream_expect_contents(h, "BIG.BIN", (uint32_t)k_xs_multi_cluster, (uint8_t)k_xs_seed_a);
+  internal_stream_expect_contents(h, "BIG.BIN", (uint32_t)k_xs_multi_cluster, (uint8_t)k_xs_seed_a);
 
-  const uint32_t strm = stream_strm0_off(h);
-  TEST_ASSERT_EQ(k_xs_multi_cluster, disk_get_u32le(strm + (uint32_t)k_xs_off_strm_dlen));
-  TEST_ASSERT_EQ(k_xs_multi_cluster, disk_get_u32le(strm + (uint32_t)k_xs_off_strm_valid));
-  TEST_ASSERT_EQ(0U, disk_get_u32le(strm + (uint32_t)k_xs_off_dlen_hi));
+  const uint32_t strm = internal_stream_strm0_off(h);
+  TEST_ASSERT_EQ(k_xs_multi_cluster, internal_disk_get_u32le(strm + (uint32_t)k_xs_off_strm_dlen));
+  TEST_ASSERT_EQ(k_xs_multi_cluster, internal_disk_get_u32le(strm + (uint32_t)k_xs_off_strm_valid));
+  TEST_ASSERT_EQ(0U, internal_disk_get_u32le(strm + (uint32_t)k_xs_off_dlen_hi));
   TEST_ASSERT_EQ(k_xs_flag_contig, s_disk.bytes[strm + (uint32_t)k_xs_off_strm_flags]);
 
   /* The set the driver left behind must checksum to what it recorded, or a
    * host `fsck` rejects the entry the moment it reads it. */
-  const uint32_t file_off = root_byte(h, (uint32_t)k_mut_root_file0_idx);
+  const uint32_t file_off = internal_root_byte(h, (uint32_t)k_mut_root_file0_idx);
   const uint16_t stored =
     (uint16_t)((uint16_t)s_disk.bytes[file_off + k_xs_off_file_csum] |
                (uint16_t)((uint16_t)s_disk.bytes[file_off + k_xs_off_file_csum + 1U] << 8U));
   TEST_ASSERT_EQ(
-    stream_set_checksum(h, (uint32_t)k_mut_root_file0_idx, (uint32_t)k_xsm_set_entries),
+    internal_stream_set_checksum(h, (uint32_t)k_mut_root_file0_idx, (uint32_t)k_xsm_set_entries),
     stored);
 
-  stream_dump_image("stream_create_multi_cluster", h);
+  internal_stream_dump_image("stream_create_multi_cluster", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat stream: chunked create across clusters");
 }
 
@@ -152,45 +152,45 @@ static void test_stream_create_multi_cluster(void)
  * (1 condition). This case is the FALSE vector -- survey the allocation and
  * park at `DataLength`. `test_stream_truncate_in_place()` is the TRUE vector.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_stream_append_extends(void)
+RA8_INTERNAL static void internal_test_stream_append_extends(void)
 {
   TEST_BEGIN("exfat stream: append resumes at DataLength");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "LOG.TXT", k_ra8_fs_mode_write, &f));
-  stream_write_pattern(f,
-                       (uint32_t)k_xs_sub_sector,
-                       (uint32_t)k_xs_chunk,
-                       0U,
-                       (uint8_t)k_xs_seed_a);
+  internal_stream_write_pattern(f,
+                                (uint32_t)k_xs_sub_sector,
+                                (uint32_t)k_xs_chunk,
+                                0U,
+                                (uint8_t)k_xs_seed_a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "LOG.TXT", k_ra8_fs_mode_append, &f));
   uint64_t at = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_tell(f, &at));
   TEST_ASSERT_EQ(k_xs_sub_sector, at);
-  stream_write_pattern(f,
-                       (uint32_t)k_xs_multi_cluster,
-                       (uint32_t)k_xs_chunk,
-                       (uint32_t)k_xs_sub_sector,
-                       (uint8_t)k_xs_seed_a);
+  internal_stream_write_pattern(f,
+                                (uint32_t)k_xs_multi_cluster,
+                                (uint32_t)k_xs_chunk,
+                                (uint32_t)k_xs_sub_sector,
+                                (uint8_t)k_xs_seed_a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   const uint32_t total = (uint32_t)k_xs_sub_sector + (uint32_t)k_xs_multi_cluster;
-  stream_expect_contents(h, "LOG.TXT", total, (uint8_t)k_xs_seed_a);
+  internal_stream_expect_contents(h, "LOG.TXT", total, (uint8_t)k_xs_seed_a);
 
   mut_list_ctx_t ctx = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_count_cb, &ctx));
   TEST_ASSERT_EQ(k_xsm_one_entry, ctx.count);
 
-  stream_dump_image("stream_append_extends", h);
+  internal_stream_dump_image("stream_append_extends", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat stream: append resumes at DataLength");
 }
 
@@ -213,48 +213,48 @@ static void test_stream_append_extends(void)
  * `libs/ra8_fs/src/ra8_fs_fat_exfat_openw.c@priv_exfat_open_found`
  * (1 condition) -- the TRUE vector, paired with the append case above.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_stream_truncate_in_place(void)
+RA8_INTERNAL static void internal_test_stream_truncate_in_place(void)
 {
   TEST_BEGIN("exfat stream: write mode truncates in place");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t empty_used = alloc_bitmap_used(h);
+  const uint32_t empty_used = internal_alloc_bitmap_used(h);
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "DATA.BIN", k_ra8_fs_mode_write, &f));
-  stream_write_pattern(f,
-                       (uint32_t)k_xs_multi_cluster,
-                       (uint32_t)k_xs_big_chunk,
-                       0U,
-                       (uint8_t)k_xs_seed_a);
+  internal_stream_write_pattern(f,
+                                (uint32_t)k_xs_multi_cluster,
+                                (uint32_t)k_xs_big_chunk,
+                                0U,
+                                (uint8_t)k_xs_seed_a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
-  const uint32_t big_used = alloc_bitmap_used(h);
+  const uint32_t big_used = internal_alloc_bitmap_used(h);
   TEST_ASSERT(big_used > empty_used);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "DATA.BIN", k_ra8_fs_mode_write, &f));
   uint64_t size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
   TEST_ASSERT_EQ(0U, size);
-  stream_write_pattern(f,
-                       (uint32_t)k_xs_sub_sector,
-                       (uint32_t)k_xs_chunk,
-                       0U,
-                       (uint8_t)k_xs_seed_b);
+  internal_stream_write_pattern(f,
+                                (uint32_t)k_xs_sub_sector,
+                                (uint32_t)k_xs_chunk,
+                                0U,
+                                (uint8_t)k_xs_seed_b);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
-  stream_expect_contents(h, "DATA.BIN", (uint32_t)k_xs_sub_sector, (uint8_t)k_xs_seed_b);
-  TEST_ASSERT_EQ(empty_used + 1U, alloc_bitmap_used(h));
+  internal_stream_expect_contents(h, "DATA.BIN", (uint32_t)k_xs_sub_sector, (uint8_t)k_xs_seed_b);
+  TEST_ASSERT_EQ(empty_used + 1U, internal_alloc_bitmap_used(h));
 
   mut_list_ctx_t ctx = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_count_cb, &ctx));
   TEST_ASSERT_EQ(k_xsm_one_entry, ctx.count);
 
-  stream_dump_image("stream_truncate_in_place", h);
+  internal_stream_dump_image("stream_truncate_in_place", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat stream: write mode truncates in place");
 }
 
@@ -280,21 +280,21 @@ static void test_stream_truncate_in_place(void)
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static void expect_patched(ra8_fs_mount_t* h, uint32_t at, uint32_t len)
+RA8_INTERNAL static void internal_expect_patched(ra8_fs_mount_t* h, uint32_t at, uint32_t len)
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "PATCH.BIN", k_ra8_fs_mode_read, &f));
-  static uint8_t s_back[k_xs_multi_cluster];
+  static uint8_t back[k_xs_multi_cluster];
   uint32_t       got = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_back, (uint32_t)k_xs_multi_cluster, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, back, (uint32_t)k_xs_multi_cluster, &got));
   TEST_ASSERT_EQ(k_xs_multi_cluster, got);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
-  stream_expect_span(s_back, at, 0U, (uint8_t)k_xs_seed_a);
-  stream_expect_span(&s_back[at], len, at, (uint8_t)k_xs_seed_b);
-  stream_expect_span(&s_back[at + len],
-                     (uint32_t)k_xs_multi_cluster - (at + len),
-                     at + len,
-                     (uint8_t)k_xs_seed_a);
+  internal_stream_expect_span(back, at, 0U, (uint8_t)k_xs_seed_a);
+  internal_stream_expect_span(&back[at], len, at, (uint8_t)k_xs_seed_b);
+  internal_stream_expect_span(&back[at + len],
+                              (uint32_t)k_xs_multi_cluster - (at + len),
+                              at + len,
+                              (uint8_t)k_xs_seed_a);
 }
 
 /**
@@ -316,41 +316,41 @@ static void expect_patched(ra8_fs_mount_t* h, uint32_t at, uint32_t len)
  * the recorded length and it must stay put -- while every appending case above
  * supplies the TRUE one.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_stream_seek_overwrite(void)
+RA8_INTERNAL static void internal_test_stream_seek_overwrite(void)
 {
   TEST_BEGIN("exfat stream: seek + overwrite keeps DataLength");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "PATCH.BIN", k_ra8_fs_mode_write, &f));
-  stream_write_pattern(f,
-                       (uint32_t)k_xs_multi_cluster,
-                       (uint32_t)k_xs_big_chunk,
-                       0U,
-                       (uint8_t)k_xs_seed_a);
+  internal_stream_write_pattern(f,
+                                (uint32_t)k_xs_multi_cluster,
+                                (uint32_t)k_xs_big_chunk,
+                                0U,
+                                (uint8_t)k_xs_seed_a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   const uint32_t patch_at  = (uint32_t)k_xs_one_cluster + (uint32_t)k_xs_chunk;
   const uint32_t patch_len = (uint32_t)k_xs_chunk;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "PATCH.BIN", k_ra8_fs_mode_append, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, patch_at));
-  static uint8_t s_patch[k_xs_chunk];
-  stream_fill_at(s_patch, patch_len, patch_at, (uint8_t)k_xs_seed_b);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_patch, patch_len));
+  static uint8_t patch[k_xs_chunk];
+  internal_stream_fill_at(patch, patch_len, patch_at, (uint8_t)k_xs_seed_b);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, patch, patch_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
-  const uint32_t strm = stream_strm0_off(h);
-  TEST_ASSERT_EQ(k_xs_multi_cluster, disk_get_u32le(strm + (uint32_t)k_xs_off_strm_dlen));
+  const uint32_t strm = internal_stream_strm0_off(h);
+  TEST_ASSERT_EQ(k_xs_multi_cluster, internal_disk_get_u32le(strm + (uint32_t)k_xs_off_strm_dlen));
 
-  expect_patched(h, patch_at, patch_len);
+  internal_expect_patched(h, patch_at, patch_len);
 
-  stream_dump_image("stream_seek_overwrite", h);
+  internal_stream_dump_image("stream_seek_overwrite", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat stream: seek + overwrite keeps DataLength");
 }
 
@@ -376,12 +376,12 @@ static void test_stream_seek_overwrite(void)
  * separation end to end; the file-table-full guard it also drives is a single
  * condition whose false arm every other case here supplies)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_stream_interleaved_handles(void)
+RA8_INTERNAL static void internal_test_stream_interleaved_handles(void)
 {
   TEST_BEGIN("exfat stream: interleaved handles vs the file table");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -390,17 +390,17 @@ static void test_stream_interleaved_handles(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_write, &fa));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "B.BIN", k_ra8_fs_mode_write, &fb));
 
-  static uint8_t s_buf[k_xs_chunk];
+  static uint8_t buf[k_xs_chunk];
   uint32_t       done = 0U;
   while (done < (uint32_t)k_xs_multi_cluster) {
     uint32_t n = (uint32_t)k_xs_multi_cluster - done;
     if (n > (uint32_t)k_xs_chunk) {
       n = (uint32_t)k_xs_chunk;
     }
-    stream_fill_at(s_buf, n, done, (uint8_t)k_xs_seed_a);
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(fa, s_buf, n));
-    stream_fill_at(s_buf, n, done, (uint8_t)k_xs_seed_b);
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(fb, s_buf, n));
+    internal_stream_fill_at(buf, n, done, (uint8_t)k_xs_seed_a);
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(fa, buf, n));
+    internal_stream_fill_at(buf, n, done, (uint8_t)k_xs_seed_b);
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(fb, buf, n));
     done += n;
   }
 
@@ -415,16 +415,16 @@ static void test_stream_interleaved_handles(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(fa));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(fb));
 
-  stream_expect_contents(h, "A.BIN", (uint32_t)k_xs_multi_cluster, (uint8_t)k_xs_seed_a);
-  stream_expect_contents(h, "B.BIN", (uint32_t)k_xs_multi_cluster, (uint8_t)k_xs_seed_b);
+  internal_stream_expect_contents(h, "A.BIN", (uint32_t)k_xs_multi_cluster, (uint8_t)k_xs_seed_a);
+  internal_stream_expect_contents(h, "B.BIN", (uint32_t)k_xs_multi_cluster, (uint8_t)k_xs_seed_b);
 
   mut_list_ctx_t ctx = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_count_cb, &ctx));
   TEST_ASSERT_EQ(k_xsm_two_entries, ctx.count);
 
-  stream_dump_image("stream_interleaved_handles", h);
+  internal_stream_dump_image("stream_interleaved_handles", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat stream: interleaved handles vs the file table");
 }
 
@@ -452,15 +452,15 @@ static void test_stream_interleaved_handles(void)
  * `test_stream_create_multi_cluster()` supplies the true vector and
  * `test_ra8_fs_exfat_stream_chain.c` the one that varies the second.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_stream_empty_file(void)
+RA8_INTERNAL static void internal_test_stream_empty_file(void)
 {
   TEST_BEGIN("exfat stream: zero-length file is created, not refused");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t empty_used = alloc_bitmap_used(h);
+  const uint32_t empty_used = internal_alloc_bitmap_used(h);
 
   const uint8_t nothing = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "EMPTY.TXT", &nothing, 0U));
@@ -470,12 +470,12 @@ static void test_stream_empty_file(void)
   TEST_ASSERT_EQ(0U, st.size_bytes);
   TEST_ASSERT(!st.is_directory);
 
-  const uint32_t strm = stream_strm0_off(h);
-  TEST_ASSERT_EQ(k_xsm_no_clusters, disk_get_u32le(strm + (uint32_t)k_xs_off_strm_clus));
-  TEST_ASSERT_EQ(0U, disk_get_u32le(strm + (uint32_t)k_xs_off_strm_dlen));
-  TEST_ASSERT_EQ(0U, disk_get_u32le(strm + (uint32_t)k_xs_off_strm_valid));
+  const uint32_t strm = internal_stream_strm0_off(h);
+  TEST_ASSERT_EQ(k_xsm_no_clusters, internal_disk_get_u32le(strm + (uint32_t)k_xs_off_strm_clus));
+  TEST_ASSERT_EQ(0U, internal_disk_get_u32le(strm + (uint32_t)k_xs_off_strm_dlen));
+  TEST_ASSERT_EQ(0U, internal_disk_get_u32le(strm + (uint32_t)k_xs_off_strm_valid));
   TEST_ASSERT_EQ(k_xs_flag_poss, s_disk.bytes[strm + (uint32_t)k_xs_off_strm_flags]);
-  TEST_ASSERT_EQ(empty_used, alloc_bitmap_used(h));
+  TEST_ASSERT_EQ(empty_used, internal_alloc_bitmap_used(h));
 
   /* A read of an empty file is an immediate EOF, not an error. */
   ra8_fs_file_t* f   = nullptr;
@@ -486,9 +486,9 @@ static void test_stream_empty_file(void)
   TEST_ASSERT_EQ(0U, got);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
-  stream_dump_image("stream_empty_file", h);
+  internal_stream_dump_image("stream_empty_file", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat stream: zero-length file is created, not refused");
 }
 
@@ -510,12 +510,12 @@ static void test_stream_empty_file(void)
  * `libs/ra8_fs/src/ra8_fs_fat_exfat_openw.c@priv_exfat_open_write`. This case
  * drives both true; every other case in this file drives both false.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_stream_name_guards(void)
+RA8_INTERNAL static void internal_test_stream_name_guards(void)
 {
   TEST_BEGIN("exfat stream: empty and over-long names refused");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -527,12 +527,12 @@ static void test_stream_name_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_open(h, toolong, k_ra8_fs_mode_append, &f));
 
   mut_list_ctx_t ctx = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_count_cb, &ctx));
   TEST_ASSERT_EQ(0U, ctx.count);
 
-  stream_dump_image("stream_name_guards", h);
+  internal_stream_dump_image("stream_name_guards", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat stream: empty and over-long names refused");
 }
 
@@ -551,13 +551,12 @@ static void test_stream_name_guards(void)
  */
 int32_t main(void)
 {
-  test_stream_create_multi_cluster();
-  test_stream_append_extends();
-  test_stream_truncate_in_place();
-  test_stream_seek_overwrite();
-  test_stream_interleaved_handles();
-  test_stream_empty_file();
-  test_stream_name_guards();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_exfat_stream.c\n");
+  internal_test_stream_create_multi_cluster();
+  internal_test_stream_append_extends();
+  internal_test_stream_truncate_in_place();
+  internal_test_stream_seek_overwrite();
+  internal_test_stream_interleaved_handles();
+  internal_test_stream_empty_file();
+  internal_test_stream_name_guards();
   return 0;
 }

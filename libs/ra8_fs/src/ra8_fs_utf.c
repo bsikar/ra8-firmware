@@ -69,7 +69,7 @@ static_assert((uint32_t)k_exfat_name_u8_cap ==
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_utf8_lead(uint8_t b, uint32_t* out_len, uint32_t* out_cp)
+static uint8_t internal_utf8_lead(uint8_t b, uint32_t* out_len, uint32_t* out_cp)
 {
   const uint32_t u = (uint32_t)b;
   if (u <= (uint32_t)k_utf_ascii_max) {
@@ -122,7 +122,7 @@ static uint8_t priv_utf8_lead(uint8_t b, uint32_t* out_len, uint32_t* out_cp)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_utf8_tail(const char* in, uint32_t lead, uint32_t len, uint32_t* io_cp)
+static uint8_t internal_utf8_tail(const char* in, uint32_t lead, uint32_t len, uint32_t* io_cp)
 {
   for (uint32_t k = 1U; k < len; k++) {
     const uint32_t b = (uint32_t)(unsigned char)in[lead + k];
@@ -160,7 +160,7 @@ static uint8_t priv_utf8_tail(const char* in, uint32_t lead, uint32_t len, uint3
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_utf8_wellformed(uint32_t cp, uint32_t len)
+static uint8_t internal_utf8_wellformed(uint32_t cp, uint32_t len)
 {
   if (len == (uint32_t)k_utf_len_2) {
     return (cp >= (uint32_t)k_utf_min_2byte) ? 1U : 0U;
@@ -211,18 +211,18 @@ static uint8_t priv_utf8_wellformed(uint32_t cp, uint32_t len)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_utf8_next(const char* in, uint32_t* io_pos, uint32_t* out_cp)
+static ra8_err_t internal_utf8_next(const char* in, uint32_t* io_pos, uint32_t* out_cp)
 {
   const uint32_t pos = *io_pos;
   uint32_t       len = 0U;
   uint32_t       cp  = 0U;
-  if (priv_utf8_lead((uint8_t)(unsigned char)in[pos], &len, &cp) == 0U) {
+  if (internal_utf8_lead((uint8_t)(unsigned char)in[pos], &len, &cp) == 0U) {
     return k_ra8_err_invalid_arg;
   }
-  if (priv_utf8_tail(in, pos, len, &cp) == 0U) {
+  if (internal_utf8_tail(in, pos, len, &cp) == 0U) {
     return k_ra8_err_invalid_arg;
   }
-  if (priv_utf8_wellformed(cp, len) == 0U) {
+  if (internal_utf8_wellformed(cp, len) == 0U) {
     return k_ra8_err_invalid_arg;
   }
   *io_pos = pos + len;
@@ -256,7 +256,7 @@ static ra8_err_t priv_utf8_next(const char* in, uint32_t* io_pos, uint32_t* out_
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_utf16_put(uint32_t cp, uint16_t* out, uint32_t cap, uint32_t* io_n)
+static ra8_err_t internal_utf16_put(uint32_t cp, uint16_t* out, uint32_t cap, uint32_t* io_n)
 {
   const uint32_t n = *io_n;
   /* One assignment of a single constant per arm, rather than a ternary whose
@@ -296,11 +296,11 @@ ra8_err_t priv_utf8_to_utf16(const char* in, uint16_t* out, uint32_t cap, uint32
       return k_ra8_ok;
     }
     uint32_t  cp  = 0U;
-    ra8_err_t err = priv_utf8_next(in, &pos, &cp);
+    ra8_err_t err = internal_utf8_next(in, &pos, &cp);
     if (err != k_ra8_ok) {
       return err;
     }
-    err = priv_utf16_put(cp, out, cap, &n);
+    err = internal_utf16_put(cp, out, cap, &n);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -344,7 +344,7 @@ ra8_err_t priv_utf8_to_utf16(const char* in, uint16_t* out, uint32_t cap, uint32
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_utf16_take(const uint16_t* in, uint32_t units, uint32_t* io_i, uint32_t* out_cp)
+internal_utf16_take(const uint16_t* in, uint32_t units, uint32_t* io_i, uint32_t* out_cp)
 {
   const uint32_t i  = *io_i;
   const uint32_t hi = (uint32_t)in[i];
@@ -393,7 +393,7 @@ priv_utf16_take(const uint16_t* in, uint32_t units, uint32_t* io_i, uint32_t* ou
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_utf8_len_of(uint32_t cp)
+static uint32_t internal_utf8_len_of(uint32_t cp)
 {
   if (cp < (uint32_t)k_utf_min_2byte) {
     return (uint32_t)k_utf_len_1;
@@ -432,7 +432,7 @@ static uint32_t priv_utf8_len_of(uint32_t cp)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_utf8_put_tail(char* out, uint32_t from, uint32_t len, uint32_t cp)
+static void internal_utf8_put_tail(char* out, uint32_t from, uint32_t len, uint32_t cp)
 {
   uint32_t rest = cp;
   for (uint32_t k = len - 1U; k >= 1U; k--) {
@@ -468,10 +468,10 @@ static void priv_utf8_put_tail(char* out, uint32_t from, uint32_t len, uint32_t 
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_utf8_put(uint32_t cp, char* out, uint32_t cap, uint32_t* io_n)
+static ra8_err_t internal_utf8_put(uint32_t cp, char* out, uint32_t cap, uint32_t* io_n)
 {
   const uint32_t n   = *io_n;
-  const uint32_t len = priv_utf8_len_of(cp);
+  const uint32_t len = internal_utf8_len_of(cp);
   if ((n + len + 1U) > cap) {
     return k_ra8_err_no_mem;
   }
@@ -490,7 +490,7 @@ static ra8_err_t priv_utf8_put(uint32_t cp, char* out, uint32_t cap, uint32_t* i
   }
   const uint32_t lead_bits = cp >> ((len - 1U) * (uint32_t)k_utf_cont_shift);
   out[n]                   = (char)(unsigned char)(lead_tag | lead_bits);
-  priv_utf8_put_tail(out, n, len, cp);
+  internal_utf8_put_tail(out, n, len, cp);
   *io_n = n + len;
   return k_ra8_ok;
 }
@@ -506,11 +506,11 @@ ra8_err_t priv_utf16_to_utf8(const uint16_t* in, uint32_t units, char* out, uint
   uint32_t n = 0U;
   while (i < units) {
     uint32_t  cp  = 0U;
-    ra8_err_t err = priv_utf16_take(in, units, &i, &cp);
+    ra8_err_t err = internal_utf16_take(in, units, &i, &cp);
     if (err != k_ra8_ok) {
       return err;
     }
-    err = priv_utf8_put(cp, out, cap, &n);
+    err = internal_utf8_put(cp, out, cap, &n);
     if (err != k_ra8_ok) {
       out[0] = '\0';
       return err;

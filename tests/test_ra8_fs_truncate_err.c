@@ -19,10 +19,10 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_fs_meta.h"
@@ -77,9 +77,10 @@ static ter_disk_t s_disk = {};
  * @post The read counter advanced by one.
  * @post On success @p buf mirrors the store.
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded ter read fixture step using caller-owned state.
  */
-static ra8_err_t ter_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_ter_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   ter_disk_t* d = (ter_disk_t*)ctx;
   d->reads++;
@@ -108,9 +109,10 @@ static ra8_err_t ter_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
  * @post The write counter advanced by one.
  * @post On success the store mirrors @p buf.
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded ter write fixture step using caller-owned state.
  */
-static ra8_err_t ter_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_ter_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   ter_disk_t* d = (ter_disk_t*)ctx;
   d->writes++;
@@ -138,9 +140,10 @@ static ra8_err_t ter_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
  * @post The out-params carry the geometry.
  * @post No state changes.
  * @note Trivially thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded ter capacity fixture step using caller-owned state.
  */
-static ra8_err_t ter_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+RA8_INTERNAL static ra8_err_t
+internal_ter_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const ter_disk_t* d = (const ter_disk_t*)ctx;
   *block_count        = d->block_count;
@@ -149,9 +152,9 @@ static ra8_err_t ter_capacity(void* ctx, uint64_t* block_count, uint32_t* block_
 }
 
 static const ra8_fs_backend_t s_backend = {
-  .read_block   = ter_read,
-  .write_block  = ter_write,
-  .get_capacity = ter_capacity,
+  .read_block   = internal_ter_read,
+  .write_block  = internal_ter_write,
+  .get_capacity = internal_ter_capacity,
   .ctx          = &s_disk,
 };
 
@@ -163,9 +166,9 @@ static const ra8_fs_backend_t s_backend = {
  * @post ::s_disk.bytes is NULL.
  * @post No fault ordinals remain armed.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded free volume fixture step using caller-owned state.
  */
-static void free_volume(void)
+RA8_INTERNAL static void internal_free_volume(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -183,11 +186,11 @@ static void free_volume(void)
  * @post ::s_disk holds a mountable volume and both fault ordinals are 0.
  * @post The read/write counters are zero.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded build volume fixture step using caller-owned state.
  */
-static void build_volume(uint32_t blocks, ra8_fs_type_t type)
+RA8_INTERNAL static void internal_build_volume(uint32_t blocks, ra8_fs_type_t type)
 {
-  free_volume();
+  internal_free_volume();
   s_disk.bytes         = (uint8_t*)calloc((size_t)blocks, (size_t)k_ter_block_size);
   s_disk.block_count   = blocks;
   s_disk.read_fail_at  = 0U;
@@ -213,9 +216,9 @@ static void build_volume(uint32_t blocks, ra8_fs_type_t type)
  * @post No state changes.
  * @post Depends only on @p h.
  * @note Pure with respect to the mount.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded cbytes of fixture step using caller-owned state.
  */
-static uint32_t cbytes_of(const ra8_fs_mount_t* h)
+RA8_INTERNAL static uint32_t internal_cbytes_of(const ra8_fs_mount_t* h)
 {
   return h->sectors_per_cluster * (uint32_t)k_ter_block_size;
 }
@@ -231,21 +234,21 @@ static uint32_t cbytes_of(const ra8_fs_mount_t* h)
  * @post @p name holds @p len fill bytes.
  * @post No handle is left open.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded seed file fixture step using caller-owned state.
  */
-static void seed_file(ra8_fs_mount_t* h, const char* name, uint32_t len)
+RA8_INTERNAL static void internal_seed_file(ra8_fs_mount_t* h, const char* name, uint32_t len)
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, name, k_ra8_fs_mode_write, &f));
-  static uint8_t s_buf[k_ter_block_size];
-  memset(s_buf, (int)k_ter_seed, sizeof s_buf);
+  static uint8_t buf[k_ter_block_size];
+  memset(buf, (int)k_ter_seed, sizeof buf);
   uint32_t done = 0U;
   while (done < len) {
     uint32_t n = len - done;
     if (n > (uint32_t)k_ter_block_size) {
       n = (uint32_t)k_ter_block_size;
     }
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_buf, n));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, buf, n));
     done += n;
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
@@ -273,11 +276,11 @@ static void seed_file(ra8_fs_mount_t* h, const char* name, uint32_t len)
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static void arm_and_truncate(ra8_fs_mount_t* h,
-                             const char*     name,
-                             uint32_t        new_size,
-                             uint32_t        read_at,
-                             uint32_t        write_at)
+RA8_INTERNAL static void internal_arm_and_truncate(ra8_fs_mount_t* h,
+                                                   const char*     name,
+                                                   uint32_t        new_size,
+                                                   uint32_t        read_at,
+                                                   uint32_t        write_at)
 {
   ra8_fs_file_t* f = nullptr;
   if (ra8_fs_open(h, name, k_ra8_fs_mode_append, &f) != k_ra8_ok) {
@@ -313,22 +316,23 @@ static void arm_and_truncate(ra8_fs_mount_t* h,
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static void ter_sweep(uint32_t blocks, ra8_fs_type_t type, uint32_t old_mult, uint32_t new_size)
+RA8_INTERNAL static void
+internal_ter_sweep(uint32_t blocks, ra8_fs_type_t type, uint32_t old_mult, uint32_t new_size)
 {
   for (uint32_t n = 1U; n <= (uint32_t)k_ter_sweep_max; n++) {
-    build_volume(blocks, type);
+    internal_build_volume(blocks, type);
     ra8_fs_mount_t* h = nullptr;
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-    seed_file(h, "T.BIN", old_mult * cbytes_of(h));
-    arm_and_truncate(h, "T.BIN", new_size, n, 0U);
+    internal_seed_file(h, "T.BIN", old_mult * internal_cbytes_of(h));
+    internal_arm_and_truncate(h, "T.BIN", new_size, n, 0U);
     (void)ra8_fs_unmount(h);
 
-    build_volume(blocks, type);
+    internal_build_volume(blocks, type);
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-    seed_file(h, "T.BIN", old_mult * cbytes_of(h));
-    arm_and_truncate(h, "T.BIN", new_size, 0U, n);
+    internal_seed_file(h, "T.BIN", old_mult * internal_cbytes_of(h));
+    internal_arm_and_truncate(h, "T.BIN", new_size, 0U, n);
     (void)ra8_fs_unmount(h);
-    free_volume();
+    internal_free_volume();
   }
 }
 
@@ -346,24 +350,27 @@ static void ter_sweep(uint32_t blocks, ra8_fs_type_t type, uint32_t old_mult, ui
  * covered elsewhere; the truncate mode/handle guard's MC/DC is owned by
  * test_fat_truncate_rejects.)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_fat_truncate_backend_faults(void)
+RA8_INTERNAL static void internal_test_fat_truncate_backend_faults(void)
 {
   TEST_BEGIN("fat truncate: backend read/write faults propagate");
-  build_volume((uint32_t)k_ter_blocks_fat32, k_ra8_fs_type_fat32);
+  internal_build_volume((uint32_t)k_ter_blocks_fat32, k_ra8_fs_type_fat32);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t cb = cbytes_of(h);
+  const uint32_t cb = internal_cbytes_of(h);
   (void)ra8_fs_unmount(h);
-  free_volume();
+  internal_free_volume();
   /* Multi-cluster on both sides so the walk index exceeds zero and the chain
    * walk itself runs (not just its idx==0 short-circuit). */
-  ter_sweep((uint32_t)k_ter_blocks_fat32, k_ra8_fs_type_fat32, (uint32_t)k_ter_big_mult, 2U * cb);
-  ter_sweep((uint32_t)k_ter_blocks_fat32,
-            k_ra8_fs_type_fat32,
-            2U,
-            ((uint32_t)k_ter_big_mult + 2U) * cb);
+  internal_ter_sweep((uint32_t)k_ter_blocks_fat32,
+                     k_ra8_fs_type_fat32,
+                     (uint32_t)k_ter_big_mult,
+                     2U * cb);
+  internal_ter_sweep((uint32_t)k_ter_blocks_fat32,
+                     k_ra8_fs_type_fat32,
+                     2U,
+                     ((uint32_t)k_ter_big_mult + 2U) * cb);
   TEST_END("fat truncate: backend read/write faults propagate");
 }
 
@@ -380,22 +387,25 @@ static void test_fat_truncate_backend_faults(void)
  * covered elsewhere; the truncate mode/handle guard's MC/DC is owned by
  * test_fat_truncate_rejects.)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_truncate_backend_faults(void)
+RA8_INTERNAL static void internal_test_exfat_truncate_backend_faults(void)
 {
   TEST_BEGIN("exfat truncate: backend read/write faults propagate");
-  build_volume((uint32_t)k_ter_blocks_exfat, k_ra8_fs_type_exfat);
+  internal_build_volume((uint32_t)k_ter_blocks_exfat, k_ra8_fs_type_exfat);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t cb = cbytes_of(h);
+  const uint32_t cb = internal_cbytes_of(h);
   (void)ra8_fs_unmount(h);
-  free_volume();
-  ter_sweep((uint32_t)k_ter_blocks_exfat, k_ra8_fs_type_exfat, (uint32_t)k_ter_big_mult, 2U * cb);
-  ter_sweep((uint32_t)k_ter_blocks_exfat,
-            k_ra8_fs_type_exfat,
-            2U,
-            ((uint32_t)k_ter_big_mult + 2U) * cb);
+  internal_free_volume();
+  internal_ter_sweep((uint32_t)k_ter_blocks_exfat,
+                     k_ra8_fs_type_exfat,
+                     (uint32_t)k_ter_big_mult,
+                     2U * cb);
+  internal_ter_sweep((uint32_t)k_ter_blocks_exfat,
+                     k_ra8_fs_type_exfat,
+                     2U,
+                     ((uint32_t)k_ter_big_mult + 2U) * cb);
   TEST_END("exfat truncate: backend read/write faults propagate");
 }
 
@@ -411,8 +421,7 @@ static void test_exfat_truncate_backend_faults(void)
  */
 int32_t main(void)
 {
-  test_fat_truncate_backend_faults();
-  test_exfat_truncate_backend_faults();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_truncate_err.c\n");
+  internal_test_fat_truncate_backend_faults();
+  internal_test_exfat_truncate_backend_faults();
   return 0;
 }

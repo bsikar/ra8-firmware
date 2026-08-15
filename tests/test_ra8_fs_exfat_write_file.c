@@ -29,10 +29,10 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_fat_exfat_mutate_test_util.h"
@@ -84,7 +84,7 @@ typedef enum : uint32_t {
  * @note Trivially thread-safe (writes only through @p buf).
  * @since 0.1.0
  */
-static void fill(uint8_t* buf, uint32_t len, uint8_t seed)
+RA8_INTERNAL static void internal_fill(uint8_t* buf, uint32_t len, uint8_t seed)
 {
   for (uint32_t i = 0U; i < len; i++) {
     buf[i] = (uint8_t)((i * (uint32_t)k_ovw_seed_stride) + seed);
@@ -106,9 +106,9 @@ static void fill(uint8_t* buf, uint32_t len, uint8_t seed)
  * @post Result depends only on the inputs.
  *
  * @note Pure function.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded clusters for fixture step using caller-owned state.
  */
-static uint32_t clusters_for(const ra8_fs_mount_t* h, uint32_t len)
+RA8_INTERNAL static uint32_t internal_clusters_for(const ra8_fs_mount_t* h, uint32_t len)
 {
   const uint32_t cbytes = h->sectors_per_cluster * (uint32_t)k_mut_block_size;
   return (len + cbytes - 1U) / cbytes;
@@ -128,12 +128,12 @@ static uint32_t clusters_for(const ra8_fs_mount_t* h, uint32_t len)
  * @post The returned count reflects only in-use File entries.
  *
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded root entry count fixture step using caller-owned state.
  */
-static uint32_t root_entry_count(ra8_fs_mount_t* h)
+RA8_INTERNAL static uint32_t internal_root_entry_count(ra8_fs_mount_t* h)
 {
   mut_list_ctx_t ctx = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_count_cb, &ctx));
   return ctx.count;
 }
 
@@ -151,9 +151,10 @@ static uint32_t root_entry_count(ra8_fs_mount_t* h)
  * @post A mismatch in length or contents fails the test.
  *
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded expect contents fixture step using caller-owned state.
  */
-static void expect_contents(ra8_fs_mount_t* h, const char* path, const uint8_t* want, uint32_t len)
+RA8_INTERNAL static void
+internal_expect_contents(ra8_fs_mount_t* h, const char* path, const uint8_t* want, uint32_t len)
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, path, k_ra8_fs_mode_read, &f));
@@ -196,26 +197,27 @@ static void expect_contents(ra8_fs_mount_t* h, const char* path, const uint8_t* 
  * @pre A freshly formatted exFAT volume is mounted.
  * @post The root lists exactly one entry and the bitmap grew by one cluster.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_create_new(void)
+RA8_INTERNAL static void internal_test_exfat_create_new(void)
 {
   TEST_BEGIN("exfat write_file: first create claims exactly its clusters");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t base = alloc_bitmap_used(h);
+  const uint32_t base = internal_alloc_bitmap_used(h);
 
   uint8_t data[k_ovw_small] = {};
-  fill(data, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_a);
+  internal_fill(data, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", data, (uint32_t)k_ovw_small));
 
-  TEST_ASSERT_EQ(k_ovw_one_entry, root_entry_count(h));
-  expect_contents(h, "A.TXT", data, (uint32_t)k_ovw_small);
-  TEST_ASSERT_EQ(base + clusters_for(h, (uint32_t)k_ovw_small), alloc_bitmap_used(h));
+  TEST_ASSERT_EQ(k_ovw_one_entry, internal_root_entry_count(h));
+  internal_expect_contents(h, "A.TXT", data, (uint32_t)k_ovw_small);
+  TEST_ASSERT_EQ(base + internal_clusters_for(h, (uint32_t)k_ovw_small),
+                 internal_alloc_bitmap_used(h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write_file: first create claims exactly its clusters");
 }
 
@@ -237,30 +239,30 @@ static void test_exfat_create_new(void)
  * @pre A freshly formatted exFAT volume is mounted.
  * @post One entry, the second payload, and no growth in allocated clusters.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_overwrite_same_size(void)
+RA8_INTERNAL static void internal_test_exfat_overwrite_same_size(void)
 {
   TEST_BEGIN("exfat write_file: same-size rewrite replaces, does not duplicate");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   uint8_t first[k_ovw_small] = {};
-  fill(first, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_a);
+  internal_fill(first, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", first, (uint32_t)k_ovw_small));
-  const uint32_t after_first = alloc_bitmap_used(h);
+  const uint32_t after_first = internal_alloc_bitmap_used(h);
 
   uint8_t second[k_ovw_small] = {};
-  fill(second, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_b);
+  internal_fill(second, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_b);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", second, (uint32_t)k_ovw_small));
 
-  TEST_ASSERT_EQ(k_ovw_one_entry, root_entry_count(h));
-  expect_contents(h, "A.TXT", second, (uint32_t)k_ovw_small);
-  TEST_ASSERT_EQ(after_first, alloc_bitmap_used(h));
+  TEST_ASSERT_EQ(k_ovw_one_entry, internal_root_entry_count(h));
+  internal_expect_contents(h, "A.TXT", second, (uint32_t)k_ovw_small);
+  TEST_ASSERT_EQ(after_first, internal_alloc_bitmap_used(h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write_file: same-size rewrite replaces, does not duplicate");
 }
 
@@ -281,30 +283,31 @@ static void test_exfat_overwrite_same_size(void)
  * @pre A freshly formatted exFAT volume is mounted.
  * @post One entry of the larger length, holding the larger payload.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_overwrite_larger(void)
+RA8_INTERNAL static void internal_test_exfat_overwrite_larger(void)
 {
   TEST_BEGIN("exfat write_file: replacement larger than the file it replaces");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t base = alloc_bitmap_used(h);
+  const uint32_t base = internal_alloc_bitmap_used(h);
 
   uint8_t small[k_ovw_small] = {};
-  fill(small, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_a);
+  internal_fill(small, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", small, (uint32_t)k_ovw_small));
 
   uint8_t large[k_ovw_large] = {};
-  fill(large, (uint32_t)k_ovw_large, (uint8_t)k_ovw_seed_b);
+  internal_fill(large, (uint32_t)k_ovw_large, (uint8_t)k_ovw_seed_b);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", large, (uint32_t)k_ovw_large));
 
-  TEST_ASSERT_EQ(k_ovw_one_entry, root_entry_count(h));
-  expect_contents(h, "A.TXT", large, (uint32_t)k_ovw_large);
-  TEST_ASSERT_EQ(base + clusters_for(h, (uint32_t)k_ovw_large), alloc_bitmap_used(h));
+  TEST_ASSERT_EQ(k_ovw_one_entry, internal_root_entry_count(h));
+  internal_expect_contents(h, "A.TXT", large, (uint32_t)k_ovw_large);
+  TEST_ASSERT_EQ(base + internal_clusters_for(h, (uint32_t)k_ovw_large),
+                 internal_alloc_bitmap_used(h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write_file: replacement larger than the file it replaces");
 }
 
@@ -323,30 +326,31 @@ static void test_exfat_overwrite_larger(void)
  * @pre A freshly formatted exFAT volume is mounted.
  * @post Allocated clusters equal what the smaller file alone requires.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_overwrite_smaller(void)
+RA8_INTERNAL static void internal_test_exfat_overwrite_smaller(void)
 {
   TEST_BEGIN("exfat write_file: replacement smaller than the file it replaces");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t base = alloc_bitmap_used(h);
+  const uint32_t base = internal_alloc_bitmap_used(h);
 
   uint8_t large[k_ovw_large] = {};
-  fill(large, (uint32_t)k_ovw_large, (uint8_t)k_ovw_seed_a);
+  internal_fill(large, (uint32_t)k_ovw_large, (uint8_t)k_ovw_seed_a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", large, (uint32_t)k_ovw_large));
 
   uint8_t small[k_ovw_small] = {};
-  fill(small, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_b);
+  internal_fill(small, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_b);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", small, (uint32_t)k_ovw_small));
 
-  TEST_ASSERT_EQ(k_ovw_one_entry, root_entry_count(h));
-  expect_contents(h, "A.TXT", small, (uint32_t)k_ovw_small);
-  TEST_ASSERT_EQ(base + clusters_for(h, (uint32_t)k_ovw_small), alloc_bitmap_used(h));
+  TEST_ASSERT_EQ(k_ovw_one_entry, internal_root_entry_count(h));
+  internal_expect_contents(h, "A.TXT", small, (uint32_t)k_ovw_small);
+  TEST_ASSERT_EQ(base + internal_clusters_for(h, (uint32_t)k_ovw_small),
+                 internal_alloc_bitmap_used(h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write_file: replacement smaller than the file it replaces");
 }
 
@@ -367,31 +371,32 @@ static void test_exfat_overwrite_smaller(void)
  * @pre A freshly formatted exFAT volume is mounted.
  * @post Allocated clusters after unlink equal the post-format baseline.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_repeat_create_no_leak(void)
+RA8_INTERNAL static void internal_test_exfat_repeat_create_no_leak(void)
 {
   TEST_BEGIN("exfat write_file: repeated creates leak neither clusters nor entries");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t base = alloc_bitmap_used(h);
+  const uint32_t base = internal_alloc_bitmap_used(h);
 
   for (uint32_t round = 0U; round < (uint32_t)k_ovw_repeats; round++) {
     uint8_t data[k_ovw_small] = {};
-    fill(data, (uint32_t)k_ovw_small, (uint8_t)((uint32_t)k_ovw_seed_a + round));
+    internal_fill(data, (uint32_t)k_ovw_small, (uint8_t)((uint32_t)k_ovw_seed_a + round));
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", data, (uint32_t)k_ovw_small));
-    TEST_ASSERT_EQ(k_ovw_one_entry, root_entry_count(h));
-    expect_contents(h, "A.TXT", data, (uint32_t)k_ovw_small);
-    TEST_ASSERT_EQ(base + clusters_for(h, (uint32_t)k_ovw_small), alloc_bitmap_used(h));
+    TEST_ASSERT_EQ(k_ovw_one_entry, internal_root_entry_count(h));
+    internal_expect_contents(h, "A.TXT", data, (uint32_t)k_ovw_small);
+    TEST_ASSERT_EQ(base + internal_clusters_for(h, (uint32_t)k_ovw_small),
+                   internal_alloc_bitmap_used(h));
   }
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "A.TXT"));
-  TEST_ASSERT_EQ(k_ovw_no_entries, root_entry_count(h));
-  TEST_ASSERT_EQ(base, alloc_bitmap_used(h));
+  TEST_ASSERT_EQ(k_ovw_no_entries, internal_root_entry_count(h));
+  TEST_ASSERT_EQ(base, internal_alloc_bitmap_used(h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write_file: repeated creates leak neither clusters nor entries");
 }
 
@@ -422,38 +427,38 @@ static void test_exfat_repeat_create_no_leak(void)
  * @pre A freshly formatted exFAT volume is mounted.
  * @post Each vector produced its documented return code.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_mcdc_exfat_create_unlink_verdict(void)
+RA8_INTERNAL static void internal_test_mcdc_exfat_create_unlink_verdict(void)
 {
   TEST_BEGIN("exfat create: MC/DC over the replace-or-propagate verdict");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   /* V2: nothing to unlink -- unlink reports not_found and the create runs. */
   uint8_t first[k_ovw_small] = {};
-  fill(first, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_a);
+  internal_fill(first, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", first, (uint32_t)k_ovw_small));
-  TEST_ASSERT_EQ(k_ovw_one_entry, root_entry_count(h));
+  TEST_ASSERT_EQ(k_ovw_one_entry, internal_root_entry_count(h));
 
   /* V1: the name is now a file -- unlink succeeds and the create replaces it. */
   uint8_t second[k_ovw_small] = {};
-  fill(second, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_b);
+  internal_fill(second, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_b);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", second, (uint32_t)k_ovw_small));
-  TEST_ASSERT_EQ(k_ovw_one_entry, root_entry_count(h));
-  expect_contents(h, "A.TXT", second, (uint32_t)k_ovw_small);
+  TEST_ASSERT_EQ(k_ovw_one_entry, internal_root_entry_count(h));
+  internal_expect_contents(h, "A.TXT", second, (uint32_t)k_ovw_small);
 
   /* V3: the same name now reads as a directory -- unlink refuses, and the
    * create must propagate that refusal rather than swallow it. */
-  mark_first_file_as_directory(h);
-  const uint32_t before = alloc_bitmap_used(h);
+  internal_mark_first_file_as_directory(h);
+  const uint32_t before = internal_alloc_bitmap_used(h);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_fs_write_file(h, "A.TXT", first, (uint32_t)k_ovw_small));
-  TEST_ASSERT_EQ(before, alloc_bitmap_used(h));
+  TEST_ASSERT_EQ(before, internal_alloc_bitmap_used(h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat create: MC/DC over the replace-or-propagate verdict");
 }
 
@@ -477,26 +482,26 @@ static void test_mcdc_exfat_create_unlink_verdict(void)
  * @pre A file exists and its entry has been flagged as a directory.
  * @post The call returns k_ra8_err_invalid_arg and the bitmap is unchanged.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_unlink_directory_refused(void)
+RA8_INTERNAL static void internal_test_exfat_unlink_directory_refused(void)
 {
   TEST_BEGIN("exfat unlink: a directory is refused, not freed");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   uint8_t data[k_ovw_small] = {};
-  fill(data, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_a);
+  internal_fill(data, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "LOGS", data, (uint32_t)k_ovw_small));
-  mark_first_file_as_directory(h);
-  const uint32_t before = alloc_bitmap_used(h);
+  internal_mark_first_file_as_directory(h);
+  const uint32_t before = internal_alloc_bitmap_used(h);
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_unlink(h, "LOGS"));
-  TEST_ASSERT_EQ(before, alloc_bitmap_used(h));
-  TEST_ASSERT_EQ(k_ovw_one_entry, root_entry_count(h));
+  TEST_ASSERT_EQ(before, internal_alloc_bitmap_used(h));
+  TEST_ASSERT_EQ(k_ovw_one_entry, internal_root_entry_count(h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat unlink: a directory is refused, not freed");
 }
 
@@ -517,24 +522,24 @@ static void test_exfat_unlink_directory_refused(void)
  * @pre A file exists and its entry has been flagged as a directory.
  * @post The open returns k_ra8_err_invalid_arg and yields no handle.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_open_directory_refused(void)
+RA8_INTERNAL static void internal_test_exfat_open_directory_refused(void)
 {
   TEST_BEGIN("exfat open: a directory is refused, not opened as an empty file");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   uint8_t data[k_ovw_small] = {};
-  fill(data, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_a);
+  internal_fill(data, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "LOGS", data, (uint32_t)k_ovw_small));
-  mark_first_file_as_directory(h);
+  internal_mark_first_file_as_directory(h);
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_open(h, "LOGS", k_ra8_fs_mode_read, &f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat open: a directory is refused, not opened as an empty file");
 }
 
@@ -556,28 +561,28 @@ static void test_exfat_open_directory_refused(void)
  * @pre A file exists and its entry has been flagged as a directory.
  * @post The call returns k_ra8_err_invalid_arg and the volume is unchanged.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_write_file_over_directory_refused(void)
+RA8_INTERNAL static void internal_test_exfat_write_file_over_directory_refused(void)
 {
   TEST_BEGIN("exfat write_file: writing over a directory name is refused");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   uint8_t data[k_ovw_small] = {};
-  fill(data, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_a);
+  internal_fill(data, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "LOGS", data, (uint32_t)k_ovw_small));
-  mark_first_file_as_directory(h);
-  const uint32_t before = alloc_bitmap_used(h);
+  internal_mark_first_file_as_directory(h);
+  const uint32_t before = internal_alloc_bitmap_used(h);
 
   uint8_t other[k_ovw_small] = {};
-  fill(other, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_b);
+  internal_fill(other, (uint32_t)k_ovw_small, (uint8_t)k_ovw_seed_b);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_write_file(h, "LOGS", other, (uint32_t)k_ovw_small));
-  TEST_ASSERT_EQ(before, alloc_bitmap_used(h));
-  TEST_ASSERT_EQ(k_ovw_one_entry, root_entry_count(h));
+  TEST_ASSERT_EQ(before, internal_alloc_bitmap_used(h));
+  TEST_ASSERT_EQ(k_ovw_one_entry, internal_root_entry_count(h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write_file: writing over a directory name is refused");
 }
 
@@ -601,12 +606,12 @@ static void test_exfat_write_file_over_directory_refused(void)
  * @pre A freshly formatted exFAT volume is mounted.
  * @post A NULL path reports null_ptr; a missing name reports not_found.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_rmdir_dispatches(void)
+RA8_INTERNAL static void internal_test_exfat_rmdir_dispatches(void)
 {
   TEST_BEGIN("exfat rmdir: dispatches to the exFAT remover");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -614,7 +619,7 @@ static void test_exfat_rmdir_dispatches(void)
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_rmdir(h, "/LOGS"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat rmdir: dispatches to the exFAT remover");
 }
 
@@ -633,16 +638,15 @@ static void test_exfat_rmdir_dispatches(void)
  */
 int32_t main(void)
 {
-  test_exfat_create_new();
-  test_exfat_overwrite_same_size();
-  test_exfat_overwrite_larger();
-  test_exfat_overwrite_smaller();
-  test_exfat_repeat_create_no_leak();
-  test_mcdc_exfat_create_unlink_verdict();
-  test_exfat_unlink_directory_refused();
-  test_exfat_open_directory_refused();
-  test_exfat_write_file_over_directory_refused();
-  test_exfat_rmdir_dispatches();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_exfat_write_file.c\n");
+  internal_test_exfat_create_new();
+  internal_test_exfat_overwrite_same_size();
+  internal_test_exfat_overwrite_larger();
+  internal_test_exfat_overwrite_smaller();
+  internal_test_exfat_repeat_create_no_leak();
+  internal_test_mcdc_exfat_create_unlink_verdict();
+  internal_test_exfat_unlink_directory_refused();
+  internal_test_exfat_open_directory_refused();
+  internal_test_exfat_write_file_over_directory_refused();
+  internal_test_exfat_rmdir_dispatches();
   return 0;
 }

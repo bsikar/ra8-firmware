@@ -19,8 +19,8 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_fat_file_test_util.h"
@@ -53,12 +53,12 @@
  * @post The seventeenth ra8_fs_open returns k_ra8_err_no_mem.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_root_dir_full(void)
+RA8_INTERNAL static void internal_test_root_dir_full(void)
 {
   TEST_BEGIN("ra8_fs_fat_file cov: root directory full returns no_mem");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -91,7 +91,7 @@ static void test_root_dir_full(void)
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_fs_open(h, "F16.TXT", k_ra8_fs_mode_write, &tmp));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fat_file cov: root directory full returns no_mem");
 }
 
@@ -118,12 +118,12 @@ static void test_root_dir_full(void)
  * @post The fifth open returns k_ra8_err_no_mem.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_create_no_file_slot(void)
+RA8_INTERNAL static void internal_test_create_no_file_slot(void)
 {
   TEST_BEGIN("ra8_fs_fat_file cov: create new file with full slot table");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -156,7 +156,7 @@ static void test_create_no_file_slot(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(fc));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(fd));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fat_file cov: create new file with full slot table");
 }
 
@@ -185,12 +185,12 @@ static void test_create_no_file_slot(void)
  * @post ra8_fs_open returns k_ra8_err_invalid_state.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_open_not_in_use(void)
+RA8_INTERNAL static void internal_test_open_not_in_use(void)
 {
   TEST_BEGIN("ra8_fs_fat_file cov: ra8_fs_open on unmounted handle");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
@@ -199,7 +199,7 @@ static void test_open_not_in_use(void)
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_open(h, "DEAD.TXT", k_ra8_fs_mode_read, &f));
 
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fat_file cov: ra8_fs_open on unmounted handle");
 }
 
@@ -225,12 +225,12 @@ static void test_open_not_in_use(void)
  * @post ra8_fs_open returns k_ra8_err_not_found.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_open_exfat_dispatch(void)
+RA8_INTERNAL static void internal_test_open_exfat_dispatch(void)
 {
   TEST_BEGIN("ra8_fs_fat_file cov: ra8_fs_open dispatches to exFAT");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -238,7 +238,7 @@ static void test_open_exfat_dispatch(void)
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_open(h, "EFILE.TXT", k_ra8_fs_mode_read, &f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fat_file cov: ra8_fs_open dispatches to exFAT");
 }
 
@@ -274,12 +274,12 @@ static void test_open_exfat_dispatch(void)
  * @post ra8_fs_open returns k_ra8_err_hw_error.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_free_chain_write_error(void)
+RA8_INTERNAL static void internal_test_free_chain_write_error(void)
 {
   TEST_BEGIN("ra8_fs_fat_file cov: free_chain write error propagates through truncate");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -291,7 +291,7 @@ static void test_free_chain_write_error(void)
 
   /* Save backend, install write-failing inject backend. */
   ra8_fs_backend_t saved = h->backend;
-  swap_to_inject(h, (uint32_t)k_cov_reads_inf, 1U);
+  internal_swap_to_inject(h, (uint32_t)k_cov_reads_inf, 1U);
 
   /* Re-open in write mode: free_chain write fails -> lines 72-73 -> 143-145. */
   ra8_fs_file_t* f2 = nullptr;
@@ -299,7 +299,7 @@ static void test_free_chain_write_error(void)
 
   h->backend = saved;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fat_file cov: free_chain write error propagates through truncate");
 }
 
@@ -327,12 +327,12 @@ static void test_free_chain_write_error(void)
  * @post ra8_fs_open returns k_ra8_err_hw_error.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_truncate_dir_read_error(void)
+RA8_INTERNAL static void internal_test_truncate_dir_read_error(void)
 {
   TEST_BEGIN("ra8_fs_fat_file cov: directory read error inside priv_truncate_existing");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -344,7 +344,7 @@ static void test_truncate_dir_read_error(void)
 
   /* Save backend, install 2-reads-then-fail inject backend (writes OK). */
   ra8_fs_backend_t saved = h->backend;
-  swap_to_inject(h, 2U, 0U);
+  internal_swap_to_inject(h, 2U, 0U);
 
   /*
    * Read 1: priv_dir_find reads root dir sector (LBA 65) -> OK.
@@ -356,7 +356,7 @@ static void test_truncate_dir_read_error(void)
 
   h->backend = saved;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fat_file cov: directory read error inside priv_truncate_existing");
 }
 
@@ -389,18 +389,18 @@ static void test_truncate_dir_read_error(void)
  * @post ra8_fs_open returns k_ra8_err_hw_error.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_write_dir_entry_read_error(void)
+RA8_INTERNAL static void internal_test_write_dir_entry_read_error(void)
 {
   TEST_BEGIN("ra8_fs_fat_file cov: read error in priv_write_new_dir_entry");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   /* Swap to 3-reads-then-fail backend on an empty volume. */
   ra8_fs_backend_t saved = h->backend;
-  swap_to_inject(h, 3U, 0U);
+  internal_swap_to_inject(h, 3U, 0U);
 
   /*
    * Read 1: priv_dir_find reads LBA 65         -> not found.
@@ -413,7 +413,7 @@ static void test_write_dir_entry_read_error(void)
 
   h->backend = saved;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fat_file cov: read error in priv_write_new_dir_entry");
 }
 
@@ -438,25 +438,25 @@ static void test_write_dir_entry_read_error(void)
  * @post ra8_fs_open returns k_ra8_err_hw_error.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_dir_find_io_error(void)
+RA8_INTERNAL static void internal_test_dir_find_io_error(void)
 {
   TEST_BEGIN("ra8_fs_fat_file cov: dir_find I/O error propagated at ra8_fs_open line 484");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   /* Swap to a backend that fails the very first read. */
   ra8_fs_backend_t saved = h->backend;
-  swap_to_inject(h, 0U, 0U);
+  internal_swap_to_inject(h, 0U, 0U);
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_open(h, "FIND.TXT", k_ra8_fs_mode_read, &f));
 
   h->backend = saved;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fat_file cov: dir_find I/O error propagated at ra8_fs_open line 484");
 }
 /* ===========================================================================
@@ -481,14 +481,13 @@ static void test_dir_find_io_error(void)
  */
 int32_t main(void)
 {
-  test_root_dir_full();
-  test_create_no_file_slot();
-  test_open_not_in_use();
-  test_open_exfat_dispatch();
-  test_free_chain_write_error();
-  test_truncate_dir_read_error();
-  test_write_dir_entry_read_error();
-  test_dir_find_io_error();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_fat_file_err_cov.c\n");
+  internal_test_root_dir_full();
+  internal_test_create_no_file_slot();
+  internal_test_open_not_in_use();
+  internal_test_open_exfat_dispatch();
+  internal_test_free_chain_write_error();
+  internal_test_truncate_dir_read_error();
+  internal_test_write_dir_entry_read_error();
+  internal_test_dir_find_io_error();
   return 0;
 }

@@ -34,10 +34,10 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
@@ -164,9 +164,10 @@ static int32_t s_wr_remaining = (int32_t)k_wc_wr_never;
  * @pre ctx and buf are non-NULL.
  * @post buf holds the requested sectors when k_ra8_ok is returned.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static inline ra8_err_t wc_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+RA8_INTERNAL static inline ra8_err_t
+internal_wc_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   if (s_rd_remaining == 0) {
     return k_ra8_err_out_of_range;
@@ -199,9 +200,10 @@ static inline ra8_err_t wc_read(void* ctx, uint64_t lba, uint32_t count, uint8_t
  * @pre ctx and buf are non-NULL.
  * @post Disk bytes match @p buf on k_ra8_ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded wc write fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static inline ra8_err_t wc_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+RA8_INTERNAL static inline ra8_err_t
+internal_wc_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   if (s_wr_remaining == 0) {
     return k_ra8_err_out_of_range;
@@ -232,9 +234,10 @@ static inline ra8_err_t wc_write(void* ctx, uint64_t lba, uint32_t count, const 
  * @pre ctx, block_count, block_size are non-NULL.
  * @post *block_count and *block_size reflect disk dimensions.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded wc capacity fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static inline ra8_err_t wc_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+RA8_INTERNAL static inline ra8_err_t
+internal_wc_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const wc_disk_t* d = (const wc_disk_t*)ctx;
   *block_count       = d->block_count;
@@ -248,9 +251,9 @@ static inline ra8_err_t wc_capacity(void* ctx, uint64_t* block_count, uint32_t* 
  * @since 0.1.0
  */
 static const ra8_fs_backend_t s_ctrl_backend = {
-  .read_block   = wc_read,
-  .write_block  = wc_write,
-  .get_capacity = wc_capacity,
+  .read_block   = internal_wc_read,
+  .write_block  = internal_wc_write,
+  .get_capacity = internal_wc_capacity,
   .ctx          = &s_disk,
 };
 
@@ -262,9 +265,9 @@ static const ra8_fs_backend_t s_ctrl_backend = {
  * @pre None.
  * @post `s_disk.bytes` is `nullptr`.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded free volume fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static inline void free_volume(void)
+RA8_INTERNAL static inline void internal_free_volume(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -283,11 +286,11 @@ static inline void free_volume(void)
  * @pre None.
  * @post `s_disk` holds a valid exFAT image; countdown faults are at -1.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static inline void build_exfat_volume(void)
+RA8_INTERNAL static inline void internal_build_exfat_volume(void)
 {
-  free_volume();
+  internal_free_volume();
   s_rd_remaining     = (int32_t)k_wc_rd_never;
   s_wr_remaining     = (int32_t)k_wc_wr_never;
   const size_t total = (size_t)k_wc_blocks_exfat * (size_t)k_wc_block_size;
@@ -320,9 +323,9 @@ static inline void build_exfat_volume(void)
  * @pre h is non-NULL and mounted.
  * @post Return value is within the root cluster's sector range.
  *
- * @since 0.1.0
+ * @since 0.1.0 @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static inline uint32_t root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
+RA8_INTERNAL static inline uint32_t internal_root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
 {
   const uint32_t root_lba = h->partition_base_lba + h->first_data_lba +
                             ((uint64_t)(h->root_cluster - 2U) * h->sectors_per_cluster);
@@ -342,9 +345,9 @@ static inline uint32_t root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
  * @pre h is non-NULL and mounted.
  * @post Return value addresses a valid 4-byte region in `s_disk.bytes`.
  *
- * @since 0.1.0
+ * @since 0.1.0 @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static inline uint32_t fat_entry_off(const ra8_fs_mount_t* h, uint32_t clus)
+RA8_INTERNAL static inline uint32_t internal_fat_entry_off(const ra8_fs_mount_t* h, uint32_t clus)
 {
   return ((h->partition_base_lba + h->first_fat_lba) * (uint32_t)k_wc_block_size) +
          ((uint64_t)clus * 4U);
@@ -359,9 +362,9 @@ static inline uint32_t fat_entry_off(const ra8_fs_mount_t* h, uint32_t clus)
  * @pre off + 4 is within the disk image.
  * @post Bytes at @p off encode @p val in LE order.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded disk set u32le fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static inline void disk_set_u32le(uint32_t off, uint32_t val)
+RA8_INTERNAL static inline void internal_disk_set_u32le(uint32_t off, uint32_t val)
 {
   uint8_t* p = &s_disk.bytes[off];
   p[0]       = (uint8_t)(val & (uint32_t)k_wc_mask_byte);
@@ -387,16 +390,16 @@ static inline void disk_set_u32le(uint32_t off, uint32_t val)
  * @pre h is non-NULL.
  * @post Entries @p start-127 have type byte 0x85.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static inline void patch_root_full(const ra8_fs_mount_t* h, uint32_t start)
+RA8_INTERNAL static inline void internal_patch_root_full(const ra8_fs_mount_t* h, uint32_t start)
 {
   /* A NAME entry (0xC1), not a File entry: bit 7 is set either way, so every
    * slot reads as occupied to `priv_exfat_find_dir_space`, but the name lookup
    * skips it instead of trying to parse 125 orphan File sets whose secondary
    * counts come from whatever the pre-fill left there. */
   for (uint32_t i = start; i < (uint32_t)k_wc_per_cluster; i++) {
-    s_disk.bytes[root_entry_off(h, i)] = (uint8_t)k_wc_entry_inuse;
+    s_disk.bytes[internal_root_entry_off(h, i)] = (uint8_t)k_wc_entry_inuse;
   }
 }
 

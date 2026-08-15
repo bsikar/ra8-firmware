@@ -29,11 +29,14 @@
 #include "mdl_hash.h"
 #include "mdl_pathfs.h"
 #include "mdl_storage.h"
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_io_blockdev.h"
 #include "ra8_io_blockdev_ram.h"
 #include "ra8_io_vfs.h"
+#include "support/fw_if_fs_contract_test.h"
+#include "support/fw_if_fs_cursor_test.h"
 #include "unity_minimal.h"
 
 /** @brief Fixed test bounds and the FAT12 RAM-disk size. */
@@ -71,210 +74,9 @@ static ra8_io_blockdev_t           s_blockdev;
 static ra8_fs_backend_t            s_backend;
 static ra8_fs_mount_t*             s_mount;
 
-/** @brief Return incoherent success metadata for facade fault injection. */
-static ra8_err_t internal_contract_stat(void* ctx, const char* path, fw_fs_stat_t* out)
-{
-  (void)ctx;
-  (void)path;
-  out->exists     = false;
-  out->type       = k_fw_fs_node_file;
-  out->size_bytes = 1U;
-  return k_ra8_ok;
-}
-
-/** @brief Report more directory entries than the caller permitted. */
-static ra8_err_t internal_contract_list(void*           ctx,
-                                        const char*     path,
-                                        uint32_t        max_entries,
-                                        fw_fs_list_fn_t callback,
-                                        void*           callback_ctx,
-                                        uint32_t*       out_count,
-                                        bool*           out_complete)
-{
-  (void)ctx;
-  (void)path;
-  (void)callback;
-  (void)callback_ctx;
-  *out_count    = max_entries + 1U;
-  *out_complete = true;
-  return k_ra8_ok;
-}
-
-/** @brief Valid callback shape for the bounded-list fault. */
-static ra8_err_t internal_contract_entry(void* ctx, const fw_fs_dirent_t* entry, bool* out_continue)
-{
-  (void)ctx;
-  (void)entry;
-  *out_continue = true;
-  return k_ra8_ok;
-}
-
-/** @brief Return impossible volume accounting for facade fault injection. */
-static ra8_err_t internal_contract_space(void* ctx, fw_fs_space_t* out)
-{
-  (void)ctx;
-  out->total_bytes = 10U;
-  out->free_bytes  = 11U;
-  out->used_bytes  = 0U;
-  return k_ra8_ok;
-}
-
-/** @brief Report one byte beyond the supplied read capacity. */
-static ra8_err_t
-internal_contract_read(void* ctx, void* file_state, uint8_t* dst, uint32_t cap, uint32_t* out_read)
-{
-  (void)ctx;
-  (void)file_state;
-  (void)dst;
-  *out_read = cap + 1U;
-  return k_ra8_ok;
-}
-
-/** @brief Report one byte beyond the supplied write length. */
-static ra8_err_t internal_contract_write(void*          ctx,
-                                         void*          state,
-                                         const uint8_t* source,
-                                         uint32_t       length,
-                                         uint32_t*      out_written)
-{
-  (void)ctx;
-  (void)state;
-  (void)source;
-  *out_written = length + 1U;
-  return k_ra8_ok;
-}
-
-/** @brief Fail without touching a 64-bit output. */
-static ra8_err_t internal_contract_u64_error(void* ctx, void* state, uint64_t* out)
-{
-  (void)ctx;
-  (void)state;
-  (void)out;
-  return k_ra8_fail;
-}
-
-/** @brief Claim commit success without publishing anything. */
-static ra8_err_t internal_contract_commit(void* ctx, void* state, bool* out_published)
-{
-  (void)ctx;
-  (void)state;
-  *out_published = false;
-  return k_ra8_ok;
-}
-
-/** @brief Accept cleanup of the synthetic transaction state. */
-static ra8_err_t internal_contract_abort(void* ctx, void* state)
-{
-  (void)ctx;
-  (void)state;
-  return k_ra8_ok;
-}
-
-/**
- * @test check_backend_contract_guards
- * @brief Prove optional binding and reject impossible backend outputs.
- * @details Mutates copies of a real backend's vtables so every facade guard is
- *          exercised without changing or invoking the real adapter state.
- * @param[in] fs Fully bound conformance filesystem used as a truthful baseline.
- * @pre @p fs and all three baseline vtables are valid.
- * @post Optional absent operations bind honestly; contradictory capabilities,
- *       over-bound counts, incoherent metadata/space, untouched scalar errors,
- *       and success-without-publication are all contained by the facade.
- * @note Host-only fault injection; no real filesystem operation is attempted.
- * @since 0.1.0
- */
-static void check_backend_contract_guards(const fw_fs_t* fs)
-{
-  fw_fs_namespace_iface_t names         = *fs->names.iface;
-  fw_fs_stream_iface_t    streams       = *fs->streams.iface;
-  fw_fs_caps_t            optional_caps = fs->caps;
-  optional_caps.flags &=
-    ~((uint32_t)k_fw_fs_cap_file_sync | (uint32_t)k_fw_fs_cap_durable_file_sync |
-      (uint32_t)k_fw_fs_cap_transactions);
-  streams.sync  = nullptr;
-  fw_fs_t bound = {};
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 fw_fs_bind(&bound, &names, &streams, nullptr, (void*)fs, &optional_caps));
-  fw_fs_file_t file = {.iface = &streams, .ctx = (void*)fs, .state = &bound, .is_open = true};
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, fw_fs_sync(&file));
-  uint8_t             transaction_work = 0U;
-  fw_fs_transaction_t transaction      = {};
-  TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 fw_fs_transaction_begin(&bound.transactions,
-                                         "/artifact",
-                                         k_fw_fs_txn_create_new,
-                                         &transaction,
-                                         &transaction_work,
-                                         sizeof(transaction_work)));
-
-  fw_fs_caps_t dishonest_caps = optional_caps;
-  dishonest_caps.flags |= (uint32_t)k_fw_fs_cap_file_sync;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 fw_fs_bind(&bound, &names, &streams, nullptr, (void*)fs, &dishonest_caps));
-  dishonest_caps.flags &= ~(uint32_t)k_fw_fs_cap_file_sync;
-  dishonest_caps.flags |= (uint32_t)k_fw_fs_cap_durable_file_sync;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 fw_fs_bind(&bound, &names, &streams, nullptr, (void*)fs, &dishonest_caps));
-
-  names.stat                       = internal_contract_stat;
-  names.listdir                    = internal_contract_list;
-  names.space                      = internal_contract_space;
-  fw_fs_namespace_t namespace_port = {.iface = &names, .ctx = (void*)fs, .caps = fs->caps};
-  fw_fs_stat_t      stat           = {};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_stat(&namespace_port, "/bad", &stat));
-  TEST_ASSERT(!stat.exists && (stat.type == k_fw_fs_node_none) && (stat.size_bytes == 0U));
-  uint32_t count    = UINT32_MAX;
-  bool     complete = true;
-  TEST_ASSERT_EQ(
-    k_ra8_err_invalid_state,
-    fw_fs_listdir(&namespace_port, "/", 1U, internal_contract_entry, nullptr, &count, &complete));
-  TEST_ASSERT_EQ(0U, count);
-  TEST_ASSERT(!complete);
-  fw_fs_space_t space = {};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_space(&namespace_port, &space));
-  TEST_ASSERT((space.total_bytes == 0U) && (space.free_bytes == 0U) && (space.used_bytes == 0U));
-
-  streams.read         = internal_contract_read;
-  streams.write        = internal_contract_write;
-  streams.tell         = internal_contract_u64_error;
-  streams.size         = internal_contract_u64_error;
-  uint8_t  byte        = 0U;
-  uint32_t transferred = UINT32_MAX;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_read(&file, &byte, 1U, &transferred));
-  TEST_ASSERT_EQ(0U, transferred);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_write(&file, &byte, 1U, &transferred));
-  TEST_ASSERT_EQ(0U, transferred);
-  uint64_t scalar = UINT64_MAX;
-  TEST_ASSERT_EQ(k_ra8_fail, fw_fs_tell(&file, &scalar));
-  TEST_ASSERT_EQ(0U, scalar);
-  scalar = UINT64_MAX;
-  TEST_ASSERT_EQ(k_ra8_fail, fw_fs_file_size(&file, &scalar));
-  TEST_ASSERT_EQ(0U, scalar);
-
-  fw_fs_transaction_iface_t transactions = *fs->transactions.iface;
-  transactions.write                     = internal_contract_write;
-  transactions.commit                    = internal_contract_commit;
-  transactions.abort                     = internal_contract_abort;
-  transaction                            = (fw_fs_transaction_t){.iface     = &transactions,
-                                                                 .ctx       = (void*)fs,
-                                                                 .state     = &bound,
-                                                                 .active    = true,
-                                                                 .validated = false};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
-                 fw_fs_transaction_write(&transaction, &byte, 1U, &transferred));
-  TEST_ASSERT_EQ(0U, transferred);
-  transaction.validated = true;
-  bool published        = true;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_transaction_commit(&transaction, &published));
-  TEST_ASSERT(!published);
-  TEST_ASSERT(transaction.active && transaction.validated);
-  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_transaction_abort(&transaction));
-  TEST_ASSERT(!transaction.active && !transaction.validated);
-}
-
-/** @brief Read and compare the complete contents of one portable file. */
-static void
-expect_file(const fw_fs_t* fs, const char* path, const uint8_t* expected, uint32_t length)
+/** @brief Read and compare the complete contents of one portable file. @details Implements the bounded expect file fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @param[in] path Validated fixture path or name value. @param[in] expected Value required by this filesystem vector. @param[in] length Caller-supplied bounded extent or quantity. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void
+internal_expect_file(const fw_fs_t* fs, const char* path, const uint8_t* expected, uint32_t length)
 {
   test_workspace_t file_work = {};
   fw_fs_file_t     file      = {};
@@ -296,8 +98,8 @@ expect_file(const fw_fs_t* fs, const char* path, const uint8_t* expected, uint32
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_close(&file));
 }
 
-/** @brief Exact transaction validator, optionally forced to reject. */
-static ra8_err_t validate_exact(void* ctx, fw_fs_file_t* staged)
+/** @brief Exact transaction validator, optionally forced to reject. @details Implements the bounded validate exact fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] staged Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_validate_exact(void* ctx, fw_fs_file_t* staged)
 {
   const validator_ctx_t* expected = (const validator_ctx_t*)ctx;
   if (expected->reject) {
@@ -318,8 +120,9 @@ static ra8_err_t validate_exact(void* ctx, fw_fs_file_t* staged)
   return (memcmp(actual, expected->bytes, got) == 0) ? k_ra8_ok : k_ra8_err_protocol_error;
 }
 
-/** @brief Count directory entries and observe at least one directory. */
-static ra8_err_t count_entry(void* ctx, const fw_fs_dirent_t* entry, bool* out_continue)
+/** @brief Count directory entries and observe at least one directory. @details Implements the bounded count entry fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] entry Value required by this filesystem vector. @param[out] out_continue Caller-owned output populated on success. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_count_entry(void* ctx, const fw_fs_dirent_t* entry, bool* out_continue)
 {
   list_ctx_t* list = (list_ctx_t*)ctx;
   ++list->count;
@@ -330,8 +133,9 @@ static ra8_err_t count_entry(void* ctx, const fw_fs_dirent_t* entry, bool* out_c
   return k_ra8_ok;
 }
 
-/** @brief Create/truncate and write one small file. */
-static void write_file(const fw_fs_t* fs, const char* path, const uint8_t* bytes, uint32_t length)
+/** @brief Create/truncate and write one small file. @details Implements the bounded write file fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @param[in] path Validated fixture path or name value. @param[in] bytes Caller-supplied bounded extent or quantity. @param[in] length Caller-supplied bounded extent or quantity. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void
+internal_write_file(const fw_fs_t* fs, const char* path, const uint8_t* bytes, uint32_t length)
 {
   test_workspace_t file_work = {};
   fw_fs_file_t     file      = {};
@@ -348,8 +152,8 @@ static void write_file(const fw_fs_t* fs, const char* path, const uint8_t* bytes
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_close(&file));
 }
 
-/** @brief Exercise path grammar before any backend sees the argument. */
-static void check_path_policy(const fw_fs_t* fs)
+/** @brief Exercise path grammar before any backend sees the argument. @details Implements the bounded check path policy fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_check_path_policy(const fw_fs_t* fs)
 {
   fw_fs_stat_t stat = {};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_stat(&fs->names, "relative", &stat));
@@ -361,8 +165,9 @@ static void check_path_policy(const fw_fs_t* fs)
   TEST_ASSERT_EQ(k_ra8_err_access_denied, fw_fs_stat(&fs->names, "/a\\b", &stat));
 }
 
-/** @brief Check one advertised timestamp field and its civil invariants. */
-static void check_timestamp(uint32_t flags, uint32_t capability, const fw_fs_timestamp_t* stamp)
+/** @brief Check one advertised timestamp field and its civil invariants. @details Implements the bounded check timestamp fixture step using caller-owned state. @param[in] flags Value required by this filesystem vector. @param[in] capability Value required by this filesystem vector. @param[in] stamp Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void
+internal_check_timestamp(uint32_t flags, uint32_t capability, const fw_fs_timestamp_t* stamp)
 {
   if ((flags & capability) == 0U) {
     TEST_ASSERT(!stamp->valid);
@@ -379,8 +184,8 @@ static void check_timestamp(uint32_t flags, uint32_t capability, const fw_fs_tim
   TEST_ASSERT(!stamp->utc_offset_valid || stamp->valid);
 }
 
-/** @brief Exercise missing/root metadata and one-level directory creation. */
-static void check_namespace_setup(const fw_fs_t* fs)
+/** @brief Exercise missing/root metadata and one-level directory creation. @details Implements the bounded check namespace setup fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_check_namespace_setup(const fw_fs_t* fs)
 {
   fw_fs_stat_t stat = {};
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_stat(&fs->names, "/", &stat));
@@ -394,14 +199,14 @@ static void check_namespace_setup(const fw_fs_t* fs)
   TEST_ASSERT_EQ(k_ra8_err_exists, fw_fs_mkdir(&fs->names, "/books"));
 }
 
-/** @brief Exercise append, offsets, size, sync, readback, stat, and timestamps.
+/** @brief Exercise append, offsets, size, sync, readback, stat, and timestamps. @details Implements the bounded check stream roundtrip fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void check_stream_roundtrip(const fw_fs_t* fs)
+RA8_INTERNAL static void internal_check_stream_roundtrip(const fw_fs_t* fs)
 {
   static const uint8_t first[] = {1U, 2U, 3U, 4U};
   static const uint8_t tail[]  = {5U, 6U};
   static const uint8_t whole[] = {1U, 2U, 3U, 4U, 5U, 6U};
-  write_file(fs, "/books/a.bin", first, sizeof(first));
+  internal_write_file(fs, "/books/a.bin", first, sizeof(first));
   test_workspace_t file_work = {};
   fw_fs_file_t     file      = {};
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -426,34 +231,36 @@ static void check_stream_roundtrip(const fw_fs_t* fs)
     TEST_ASSERT_EQ(k_ra8_err_not_supported, sync);
   }
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_close(&file));
-  expect_file(fs, "/books/a.bin", whole, sizeof(whole));
+  internal_expect_file(fs, "/books/a.bin", whole, sizeof(whole));
   fw_fs_stat_t stat = {};
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_stat(&fs->names, "/books/a.bin", &stat));
   TEST_ASSERT(stat.exists && stat.type == k_fw_fs_node_file && stat.size_bytes == sizeof(whole));
-  check_timestamp(fs->caps.flags, (uint32_t)k_fw_fs_cap_created_time, &stat.created);
-  check_timestamp(fs->caps.flags, (uint32_t)k_fw_fs_cap_modified_time, &stat.modified);
-  check_timestamp(fs->caps.flags, (uint32_t)k_fw_fs_cap_accessed_time, &stat.accessed);
+  internal_check_timestamp(fs->caps.flags, (uint32_t)k_fw_fs_cap_created_time, &stat.created);
+  internal_check_timestamp(fs->caps.flags, (uint32_t)k_fw_fs_cap_modified_time, &stat.modified);
+  internal_check_timestamp(fs->caps.flags, (uint32_t)k_fw_fs_cap_accessed_time, &stat.accessed);
 }
 
-/** @brief Exercise bounded listing, rename collision, unlink, and rmdir. */
-static void check_namespace_cleanup(const fw_fs_t* fs)
+/** @brief Exercise bounded listing, rename collision, unlink, and rmdir. @details Implements the bounded check namespace cleanup fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_check_namespace_cleanup(const fw_fs_t* fs)
 {
   static const uint8_t first[]  = {1U, 2U, 3U, 4U};
   list_ctx_t           list     = {};
   uint32_t             count    = 0U;
   bool                 complete = true;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 fw_fs_listdir(&fs->names, "/books", 1U, count_entry, &list, &count, &complete));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    fw_fs_listdir(&fs->names, "/books", 1U, internal_count_entry, &list, &count, &complete));
   TEST_ASSERT_EQ(1U, count);
   TEST_ASSERT(!complete);
   list = (list_ctx_t){};
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 fw_fs_listdir(&fs->names, "/books", 16U, count_entry, &list, &count, &complete));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    fw_fs_listdir(&fs->names, "/books", 16U, internal_count_entry, &list, &count, &complete));
   TEST_ASSERT(complete && count >= 1U && list.saw_directory);
 
   TEST_ASSERT_EQ(k_ra8_err_not_empty, fw_fs_rmdir(&fs->names, "/books"));
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_rename(&fs->names, "/books/a.bin", "/books/b.bin", false));
-  write_file(fs, "/books/a.bin", first, sizeof(first));
+  internal_write_file(fs, "/books/a.bin", first, sizeof(first));
   TEST_ASSERT_EQ(k_ra8_err_exists, fw_fs_rename(&fs->names, "/books/a.bin", "/books/b.bin", false));
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/books/a.bin"));
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/books/b.bin"));
@@ -462,16 +269,17 @@ static void check_namespace_cleanup(const fw_fs_t* fs)
 }
 
 /** @brief Exercise file/dir metadata, one-level mkdir, bounded list, and
- * streams. */
-static void check_namespace_and_streams(const fw_fs_t* fs)
+ * streams. @details Implements the bounded check namespace and streams fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_check_namespace_and_streams(const fw_fs_t* fs)
 {
-  check_namespace_setup(fs);
-  check_stream_roundtrip(fs);
-  check_namespace_cleanup(fs);
+  internal_check_namespace_setup(fs);
+  internal_check_stream_roundtrip(fs);
+  internal_check_namespace_cleanup(fs);
 }
 
-/** @brief Exercise exclusive-create capability without assuming it exists. */
-static void check_exclusive_create(const fw_fs_t* fs)
+/** @brief Exercise exclusive-create capability without assuming it exists. @details Implements the bounded check exclusive create fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_check_exclusive_create(const fw_fs_t* fs)
 {
   test_workspace_t work   = {};
   fw_fs_file_t     file   = {};
@@ -497,9 +305,9 @@ static void check_exclusive_create(const fw_fs_t* fs)
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/exclusive.bin"));
 }
 
-/** @brief Prove no-replace requests are rejected before an unqualified backend.
+/** @brief Prove no-replace requests are rejected before an unqualified backend. @details Implements the bounded check atomic noreplace gate fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void check_atomic_noreplace_gate(const fw_fs_t* fs)
+RA8_INTERNAL static void internal_check_atomic_noreplace_gate(const fw_fs_t* fs)
 {
   fw_fs_namespace_t names = fs->names;
   names.caps.flags &= ~(uint32_t)k_fw_fs_cap_atomic_noreplace;
@@ -519,11 +327,11 @@ static void check_atomic_noreplace_gate(const fw_fs_t* fs)
                                          sizeof(work.bytes)));
 }
 
-/** @brief Run one staged transaction through write/validate/commit. */
-static void commit_transaction(const fw_fs_t*             fs,
-                               const char*                destination,
-                               fw_fs_transaction_policy_t policy,
-                               const validator_ctx_t*     validator)
+/** @brief Run one staged transaction through write/validate/commit. @details Implements the bounded commit transaction fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @param[in] destination Caller-owned bounded byte storage. @param[in] policy Value required by this filesystem vector. @param[in] validator Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_commit_transaction(const fw_fs_t*             fs,
+                                                     const char*                destination,
+                                                     fw_fs_transaction_policy_t policy,
+                                                     const validator_ctx_t*     validator)
 {
   test_workspace_t    work = {};
   fw_fs_transaction_t txn  = {};
@@ -538,15 +346,16 @@ static void commit_transaction(const fw_fs_t*             fs,
   TEST_ASSERT_EQ(k_ra8_ok,
                  fw_fs_transaction_write(&txn, validator->bytes, validator->length, &written));
   TEST_ASSERT_EQ(validator->length, written);
-  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_transaction_validate(&txn, validate_exact, (void*)validator));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 fw_fs_transaction_validate(&txn, internal_validate_exact, (void*)validator));
   bool published = false;
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_transaction_commit(&txn, &published));
   TEST_ASSERT(published);
 }
 
-/** @brief Prove staged writers can reserve then backfill without sparse seeks.
+/** @brief Prove staged writers can reserve then backfill without sparse seeks. @details Implements the bounded check transaction backfill fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void check_transaction_backfill(const fw_fs_t* fs)
+RA8_INTERNAL static void internal_check_transaction_backfill(const fw_fs_t* fs)
 {
   static const uint8_t  reserved[] = {0U, 0U, 0U, 0U};
   static const uint8_t  offset[]   = {4U, 0U, 0U, 0U};
@@ -573,20 +382,21 @@ static void check_transaction_backfill(const fw_fs_t* fs)
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_transaction_seek(&txn, 0U));
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_transaction_write(&txn, offset, sizeof(offset), &written));
   TEST_ASSERT_EQ(sizeof(offset), written);
-  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_transaction_validate(&txn, validate_exact, (void*)&validator));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 fw_fs_transaction_validate(&txn, internal_validate_exact, (void*)&validator));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_transaction_seek(&txn, 0U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state,
                  fw_fs_transaction_write(&txn, payload, sizeof(payload), &written));
   bool published = false;
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_transaction_commit(&txn, &published));
   TEST_ASSERT(published);
-  expect_file(fs, "/backfill.bin", expected, sizeof(expected));
+  internal_expect_file(fs, "/backfill.bin", expected, sizeof(expected));
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/backfill.bin"));
 }
 
-/** @brief Simulate a destination appearing after begin; it must win untouched.
+/** @brief Simulate a destination appearing after begin; it must win untouched. @details Implements the bounded check transaction destination race fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void check_transaction_destination_race(const fw_fs_t* fs)
+RA8_INTERNAL static void internal_check_transaction_destination_race(const fw_fs_t* fs)
 {
   static const uint8_t  staged[]     = {'s', 't', 'a', 'g', 'e'};
   static const uint8_t  competitor[] = {'w', 'i', 'n'};
@@ -602,23 +412,24 @@ static void check_transaction_destination_race(const fw_fs_t* fs)
                                          sizeof(work.bytes)));
   uint32_t written = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_transaction_write(&txn, staged, sizeof(staged), &written));
-  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_transaction_validate(&txn, validate_exact, (void*)&validator));
-  write_file(fs, "/race.bin", competitor, sizeof(competitor));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 fw_fs_transaction_validate(&txn, internal_validate_exact, (void*)&validator));
+  internal_write_file(fs, "/race.bin", competitor, sizeof(competitor));
   bool published = true;
   TEST_ASSERT_EQ(k_ra8_err_exists, fw_fs_transaction_commit(&txn, &published));
   TEST_ASSERT(!published);
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_transaction_abort(&txn));
-  expect_file(fs, "/race.bin", competitor, sizeof(competitor));
+  internal_expect_file(fs, "/race.bin", competitor, sizeof(competitor));
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/race.bin"));
 }
 
-/** @brief Exercise create-new publication, collision, and abort cleanup. */
-static void check_transaction_abort_cycle(const fw_fs_t* fs)
+/** @brief Exercise create-new publication, collision, and abort cleanup. @details Implements the bounded check transaction abort cycle fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_check_transaction_abort_cycle(const fw_fs_t* fs)
 {
   static const uint8_t  good[]         = {'g', 'o', 'o', 'd'};
   const validator_ctx_t good_validator = {.bytes = good, .length = sizeof(good), .reject = false};
-  commit_transaction(fs, "/artifact.bin", k_fw_fs_txn_create_new, &good_validator);
-  expect_file(fs, "/artifact.bin", good, sizeof(good));
+  internal_commit_transaction(fs, "/artifact.bin", k_fw_fs_txn_create_new, &good_validator);
+  internal_expect_file(fs, "/artifact.bin", good, sizeof(good));
 
   test_workspace_t    work = {};
   fw_fs_transaction_t txn  = {};
@@ -645,15 +456,16 @@ static void check_transaction_abort_cycle(const fw_fs_t* fs)
 }
 
 /** @brief Exercise replacement capability, validator rejection, and
- * preservation. */
-static void check_transaction_replace(const fw_fs_t* fs)
+ * preservation. @details Implements the bounded check transaction replace fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_check_transaction_replace(const fw_fs_t* fs)
 {
   static const uint8_t old[]   = {'o', 'l', 'd'};
   static const uint8_t newer[] = {'n', 'e', 'w'};
   test_workspace_t     work    = {};
   fw_fs_transaction_t  txn     = {};
   uint32_t             written = 0U;
-  write_file(fs, "/keep.bin", old, sizeof(old));
+  internal_write_file(fs, "/keep.bin", old, sizeof(old));
   if ((fs->caps.flags & (uint32_t)k_fw_fs_cap_atomic_replace) != 0U) {
     const validator_ctx_t reject = {.bytes = newer, .length = sizeof(newer), .reject = true};
     TEST_ASSERT_EQ(k_ra8_ok,
@@ -665,12 +477,12 @@ static void check_transaction_replace(const fw_fs_t* fs)
                                            sizeof(work.bytes)));
     TEST_ASSERT_EQ(k_ra8_ok, fw_fs_transaction_write(&txn, newer, sizeof(newer), &written));
     TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                   fw_fs_transaction_validate(&txn, validate_exact, (void*)&reject));
+                   fw_fs_transaction_validate(&txn, internal_validate_exact, (void*)&reject));
     TEST_ASSERT_EQ(k_ra8_ok, fw_fs_transaction_abort(&txn));
-    expect_file(fs, "/keep.bin", old, sizeof(old));
+    internal_expect_file(fs, "/keep.bin", old, sizeof(old));
     const validator_ctx_t replacement = {.bytes = newer, .length = sizeof(newer), .reject = false};
-    commit_transaction(fs, "/keep.bin", k_fw_fs_txn_replace_atomic, &replacement);
-    expect_file(fs, "/keep.bin", newer, sizeof(newer));
+    internal_commit_transaction(fs, "/keep.bin", k_fw_fs_txn_replace_atomic, &replacement);
+    internal_expect_file(fs, "/keep.bin", newer, sizeof(newer));
   } else {
     TEST_ASSERT_EQ(k_ra8_err_not_supported,
                    fw_fs_transaction_begin(&fs->transactions,
@@ -679,23 +491,23 @@ static void check_transaction_replace(const fw_fs_t* fs)
                                            &txn,
                                            work.bytes,
                                            sizeof(work.bytes)));
-    expect_file(fs, "/keep.bin", old, sizeof(old));
+    internal_expect_file(fs, "/keep.bin", old, sizeof(old));
   }
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/keep.bin"));
 }
 
-/** @brief Exercise publication, abort, rejection, race, and backfill. */
-static void check_transactions(const fw_fs_t* fs)
+/** @brief Exercise publication, abort, rejection, race, and backfill. @details Implements the bounded check transactions fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_check_transactions(const fw_fs_t* fs)
 {
-  check_transaction_abort_cycle(fs);
-  check_transaction_replace(fs);
+  internal_check_transaction_abort_cycle(fs);
+  internal_check_transaction_replace(fs);
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/artifact.bin"));
-  check_transaction_backfill(fs);
-  check_transaction_destination_race(fs);
+  internal_check_transaction_backfill(fs);
+  internal_check_transaction_destination_race(fs);
 }
 
-/** @brief Shared backend-neutral conformance suite. */
-static void run_conformance(const char* label, const fw_fs_t* fs)
+/** @brief Shared backend-neutral conformance suite. @details Implements the bounded run conformance fixture step using caller-owned state. @param[in] label Validated fixture path or name value. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_run_conformance(const char* label, const fw_fs_t* fs)
 {
   TEST_BEGIN(label);
   fw_fs_caps_t caps = {};
@@ -712,12 +524,62 @@ static void run_conformance(const char* label, const fw_fs_t* fs)
   fw_fs_space_t space = {};
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_space(&fs->names, &space));
   TEST_ASSERT(space.total_bytes > 0U && space.free_bytes <= space.total_bytes);
-  check_path_policy(fs);
-  check_namespace_and_streams(fs);
-  check_exclusive_create(fs);
-  check_atomic_noreplace_gate(fs);
-  check_transactions(fs);
+  internal_check_path_policy(fs);
+  internal_check_namespace_and_streams(fs);
+  fw_if_fs_test_directory_cursors(fs);
+  internal_check_exclusive_create(fs);
+  internal_check_atomic_noreplace_gate(fs);
+  internal_check_transactions(fs);
   TEST_END(label);
+}
+
+/** @brief Complete caller-owned storage fixture used by portability vectors. */
+typedef struct internal_mdl_storage_fixture_t {
+  test_workspace_t file_work;                         /**< Stream backend workspace.      */
+  test_workspace_t transaction_work;                  /**< Transaction backend workspace. */
+  uint8_t          io_buffer[k_mdl_storage_io_bytes]; /**< Copy/hash buffer.              */
+  mdl_storage_t    storage;                           /**< Bound portable storage facade. */
+} internal_mdl_storage_fixture_t;
+
+/** @brief Canonical bytes copied and hashed by the portability vectors. */
+static const uint8_t s_mdl_source[] = {'m', 'e', 'd', 'i', 'a'};
+
+/** @brief Pre-existing destination bytes used to prove preservation. */
+static const uint8_t s_mdl_old[] = {'o', 'l', 'd'};
+
+/** @brief Reject overlapping workspaces, then bind disjoint portable storage. @details Implements the bounded init mdl storage fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @param[in,out] fixture Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL
+static void internal_init_mdl_storage(const fw_fs_t* fs, internal_mdl_storage_fixture_t* fixture)
+{
+  fixture->storage = (mdl_storage_t){.fs                    = (const fw_fs_t*)(uintptr_t)UINT32_MAX,
+                                     .file_workspace        = (void*)(uintptr_t)UINT32_MAX,
+                                     .transaction_workspace = (void*)(uintptr_t)UINT32_MAX,
+                                     .io_buffer             = (uint8_t*)(uintptr_t)UINT32_MAX,
+                                     .file_workspace_bytes  = UINT32_MAX,
+                                     .transaction_workspace_bytes = UINT32_MAX,
+                                     .io_buffer_bytes             = UINT32_MAX};
+  const mdl_storage_t preserved = fixture->storage;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 mdl_storage_init(&fixture->storage,
+                                  fs,
+                                  fixture->file_work.bytes,
+                                  sizeof(fixture->file_work.bytes),
+                                  fixture->file_work.bytes,
+                                  sizeof(fixture->file_work.bytes),
+                                  fixture->io_buffer,
+                                  sizeof(fixture->io_buffer)));
+  TEST_ASSERT(memcmp(&fixture->storage, &preserved, sizeof(fixture->storage)) == 0);
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 mdl_storage_init(&fixture->storage,
+                                  fs,
+                                  fixture->file_work.bytes,
+                                  sizeof(fixture->file_work.bytes),
+                                  fixture->transaction_work.bytes,
+                                  sizeof(fixture->transaction_work.bytes),
+                                  fixture->io_buffer,
+                                  sizeof(fixture->io_buffer)));
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_mkdir(&fs->names, "/media"));
+  internal_write_file(fs, "/media/source.bin", s_mdl_source, sizeof(s_mdl_source));
 }
 
 /**
@@ -734,87 +596,55 @@ static void run_conformance(const char* label, const fw_fs_t* fs)
  * @note Test-local and single-threaded.
  * @since 0.1.0
  */
-static void check_mdl_storage_portability(const char* label, const fw_fs_t* fs)
+RA8_INTERNAL static void internal_check_mdl_storage_portability(const char*    label,
+                                                                const fw_fs_t* fs)
 {
-  static const uint8_t source[]                          = {'m', 'e', 'd', 'i', 'a'};
-  static const uint8_t old[]                             = {'o', 'l', 'd'};
-  test_workspace_t     file_work                         = {};
-  test_workspace_t     transaction_work                  = {};
-  uint8_t              io_buffer[k_mdl_storage_io_bytes] = {};
-  mdl_storage_t        storage   = {.fs                    = (const fw_fs_t*)(uintptr_t)UINT32_MAX,
-                                    .file_workspace        = (void*)(uintptr_t)UINT32_MAX,
-                                    .transaction_workspace = (void*)(uintptr_t)UINT32_MAX,
-                                    .io_buffer             = (uint8_t*)(uintptr_t)UINT32_MAX,
-                                    .file_workspace_bytes  = UINT32_MAX,
-                                    .transaction_workspace_bytes = UINT32_MAX,
-                                    .io_buffer_bytes             = UINT32_MAX};
-  const mdl_storage_t  preserved = storage;
+  internal_mdl_storage_fixture_t fixture = {};
   TEST_BEGIN(label);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 mdl_storage_init(&storage,
-                                  fs,
-                                  file_work.bytes,
-                                  sizeof(file_work.bytes),
-                                  file_work.bytes,
-                                  sizeof(file_work.bytes),
-                                  io_buffer,
-                                  sizeof(io_buffer)));
-  TEST_ASSERT(memcmp(&storage, &preserved, sizeof(storage)) == 0);
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 mdl_storage_init(&storage,
-                                  fs,
-                                  file_work.bytes,
-                                  sizeof(file_work.bytes),
-                                  transaction_work.bytes,
-                                  sizeof(transaction_work.bytes),
-                                  io_buffer,
-                                  sizeof(io_buffer)));
-  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_mkdir(&fs->names, "/media"));
-  write_file(fs, "/media/source.bin", source, sizeof(source));
+  internal_init_mdl_storage(fs, &fixture);
 
   uint64_t hash = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, mdl_hash_file(&storage, "/media/source.bin", &hash));
-  TEST_ASSERT_EQ(mdl_hash_bytes(source, sizeof(source)), hash);
+  TEST_ASSERT_EQ(k_ra8_ok, mdl_hash_file(&fixture.storage, "/media/source.bin", &hash));
+  TEST_ASSERT_EQ(mdl_hash_bytes(s_mdl_source, sizeof(s_mdl_source)), hash);
   hash = UINT64_MAX;
-  TEST_ASSERT_EQ(k_ra8_err_not_found, mdl_hash_file(&storage, "/media/missing.bin", &hash));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, mdl_hash_file(&fixture.storage, "/media/missing.bin", &hash));
   TEST_ASSERT_EQ(UINT64_MAX, hash);
-
   fw_fs_file_t bounded_file = {};
   TEST_ASSERT_EQ(k_ra8_ok,
                  fw_fs_open(&fs->streams,
                             "/media/source.bin",
                             k_fw_fs_open_read,
                             &bounded_file,
-                            file_work.bytes,
-                            sizeof(file_work.bytes)));
+                            fixture.file_work.bytes,
+                            sizeof(fixture.file_work.bytes)));
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  mdl_hash_stream(&bounded_file,
                                  (uint64_t)k_mdl_hash_max_file_bytes + 1U,
-                                 io_buffer,
-                                 sizeof(io_buffer),
+                                 fixture.io_buffer,
+                                 sizeof(fixture.io_buffer),
                                  &hash));
   TEST_ASSERT_EQ(UINT64_MAX, hash);
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_close(&bounded_file));
 
   char directory[k_fw_fs_path_cap] = {};
-  TEST_ASSERT(mdl_join_dir_under(&storage, "/media", "chapter-1", directory, sizeof(directory)));
+  TEST_ASSERT(
+    mdl_join_dir_under(&fixture.storage, "/media", "chapter-1", directory, sizeof(directory)));
   TEST_ASSERT(strcmp(directory, "/media/chapter-1") == 0);
-  TEST_ASSERT(!mdl_join_dir_under(&storage, "/media", "..", directory, sizeof(directory)));
+  TEST_ASSERT(!mdl_join_dir_under(&fixture.storage, "/media", "..", directory, sizeof(directory)));
   TEST_ASSERT_EQ(k_ra8_ok,
-                 mdl_storage_copy_atomic(&storage, "/media/source.bin", "/media/copy.bin"));
-  expect_file(fs, "/media/copy.bin", source, sizeof(source));
+                 mdl_storage_copy_atomic(&fixture.storage, "/media/source.bin", "/media/copy.bin"));
+  internal_expect_file(fs, "/media/copy.bin", s_mdl_source, sizeof(s_mdl_source));
 
-  write_file(fs, "/media/existing.bin", old, sizeof(old));
+  internal_write_file(fs, "/media/existing.bin", s_mdl_old, sizeof(s_mdl_old));
   const ra8_err_t replaced =
-    mdl_storage_copy_atomic(&storage, "/media/source.bin", "/media/existing.bin");
+    mdl_storage_copy_atomic(&fixture.storage, "/media/source.bin", "/media/existing.bin");
   if ((fs->caps.flags & (uint32_t)k_fw_fs_cap_atomic_replace) != 0U) {
     TEST_ASSERT_EQ(k_ra8_ok, replaced);
-    expect_file(fs, "/media/existing.bin", source, sizeof(source));
+    internal_expect_file(fs, "/media/existing.bin", s_mdl_source, sizeof(s_mdl_source));
   } else {
     TEST_ASSERT_EQ(k_ra8_err_not_supported, replaced);
-    expect_file(fs, "/media/existing.bin", old, sizeof(old));
+    internal_expect_file(fs, "/media/existing.bin", s_mdl_old, sizeof(s_mdl_old));
   }
-
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/media/existing.bin"));
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/media/copy.bin"));
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/media/source.bin"));
@@ -823,8 +653,8 @@ static void check_mdl_storage_portability(const char* label, const fw_fs_t* fs)
   TEST_END(label);
 }
 
-/** @brief Fill a staged VFS file and prove failure never publishes it. */
-static void check_vfs_full_media(const fw_fs_t* fs)
+/** @brief Fill a staged VFS file and prove failure never publishes it. @details Implements the bounded check vfs full media fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_check_vfs_full_media(const fw_fs_t* fs)
 {
   static const uint8_t chunk[k_test_fill_chunk] = {0xA5U};
   test_workspace_t     work                     = {};
@@ -858,8 +688,9 @@ static void check_vfs_full_media(const fw_fs_t* fs)
 }
 
 /** @brief POSIX-specific proof that final/intermediate symlinks are never
- * followed. */
-static void check_posix_symlinks(const fw_fs_t* fs, const char* root)
+ * followed. @details Implements the bounded check posix symlinks fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @param[in] root Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_check_posix_symlinks(const fw_fs_t* fs, const char* root)
 {
   char link_path[256];
   char target_path[256];
@@ -881,8 +712,18 @@ static void check_posix_symlinks(const fw_fs_t* fs, const char* root)
   TEST_ASSERT_EQ(0, rmdir(target_path));
 }
 
-/** @brief Run the shared suite against the secure POSIX root adapter. */
-static void test_posix_conformance(void)
+/**
+ * @brief Run the shared suite against the secure POSIX root adapter.
+ *
+ * @par MC/DC:
+ * `fw_fs_bind` evaluates `file_sync_capable && (streams->sync == nullptr)`.
+ * This test supplies the minimal three-vector set: POSIX initialization uses
+ * `(true, false) -> false`, the optional binding uses `(false, true) -> false`,
+ * and the dishonest binding uses `(true, true) -> true`. The latter two prove
+ * the capability condition independently; the first and last prove the sync
+ * pointer condition independently. @details Runs the posix conformance vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_posix_conformance(void)
 {
   char root[] = "/tmp/fw_fs_port_XXXXXX";
   TEST_ASSERT(mkdtemp(root) != nullptr);
@@ -890,16 +731,24 @@ static void test_posix_conformance(void)
   fw_fs_posix_state_t     state = {.root_fd = -1};
   const fw_fs_posix_cfg_t cfg   = {.root_path = root, .removable_media = false};
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_init(&fs, &state, &cfg));
-  check_backend_contract_guards(&fs);
-  run_conformance("fw_if_fs POSIX conformance", &fs);
-  check_mdl_storage_portability("media_dl POSIX storage", &fs);
-  check_posix_symlinks(&fs, root);
+  ra8_test_fw_if_fs_check_contract_guards(&fs);
+  internal_run_conformance("fw_if_fs POSIX conformance", &fs);
+  internal_check_mdl_storage_portability("media_dl POSIX storage", &fs);
+  internal_check_posix_symlinks(&fs, root);
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_deinit(&state));
   TEST_ASSERT_EQ(0, rmdir(root));
 }
 
-/** @brief Set up and run the shared suite over RAM blockdev -> FAT -> VFS. */
-static void test_vfs_conformance(void)
+/**
+ * @brief Set up and run the shared suite over RAM blockdev -> FAT -> VFS.
+ *
+ * @par MC/DC:
+ * The VFS binding contributes `(file_sync_capable=false, streams->sync=null) ->
+ * false` to the `fw_fs_bind` capability/operation decision. Together with the
+ * preceding POSIX test's `(true, nonnull) -> false` and `(true, null) -> true`
+ * vectors, each condition independently changes the decision; N=2, N+1=3. @details Runs the vfs conformance vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_vfs_conformance(void)
 {
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -916,9 +765,9 @@ static void test_vfs_conformance(void)
   fw_fs_ra8_vfs_state_t     state = {};
   const fw_fs_ra8_vfs_cfg_t cfg = {.mount_name = "ram", .mount = s_mount, .removable_media = false};
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_ra8_vfs_init(&fs, &state, &cfg));
-  run_conformance("fw_if_fs RAM/FAT/VFS conformance", &fs);
-  check_mdl_storage_portability("media_dl RAM/FAT/VFS storage", &fs);
-  check_vfs_full_media(&fs);
+  internal_run_conformance("fw_if_fs RAM/FAT/VFS conformance", &fs);
+  internal_check_mdl_storage_portability("media_dl RAM/FAT/VFS storage", &fs);
+  internal_check_vfs_full_media(&fs);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_unmount("ram"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(s_mount));
   s_mount = nullptr;
@@ -926,8 +775,7 @@ static void test_vfs_conformance(void)
 
 int main(void)
 {
-  test_posix_conformance();
-  test_vfs_conformance();
-  (void)fprintf(stderr, "[OK  ] test_fw_if_fs.c\n");
+  internal_test_posix_conformance();
+  internal_test_vfs_conformance();
   return 0;
 }

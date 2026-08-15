@@ -44,9 +44,9 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
@@ -113,9 +113,9 @@ typedef enum : uint32_t {
  * @post No state outside @p out is modified.
  *
  * @note Not thread-safe (uses the harness's failure counter).
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded decode ok fixture step using caller-owned state.
  */
-static void decode_ok(const char* in, uint32_t want_units, uint16_t* out)
+RA8_INTERNAL static void internal_decode_ok(const char* in, uint32_t want_units, uint16_t* out)
 {
   uint32_t n = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, priv_utf8_to_utf16(in, out, (uint32_t)k_ut_units, &n));
@@ -141,7 +141,7 @@ static void decode_ok(const char* in, uint32_t want_units, uint16_t* out)
  * @note Not thread-safe (uses the harness's failure counter).
  * @since 0.1.0
  */
-static void decode_rejects(const char* in)
+RA8_INTERNAL static void internal_decode_rejects(const char* in)
 {
   uint16_t units[k_ut_units] = {};
   uint32_t n                 = (uint32_t)k_ut_poison; /* cleared on failure */
@@ -174,47 +174,47 @@ static void decode_rejects(const char* in)
  * @pre None; the functions under test touch no volume.
  * @post Every vector produced the documented unit count and came back equal.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the decode lengths vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_decode_lengths(void)
+RA8_INTERNAL static void internal_test_decode_lengths(void)
 {
   TEST_BEGIN("ra8_fs utf: one vector per UTF-8 sequence length");
   uint16_t units[k_ut_units] = {};
   char     back[k_ut_bytes]  = {};
 
-  static const char s_one[]   = {'A', '\0'};
-  static const char s_two[]   = {(char)(unsigned char)0xC3U, (char)(unsigned char)0xA9U, '\0'};
-  static const char s_three[] = {(char)(unsigned char)0xE4U,
-                                 (char)(unsigned char)0xBDU,
-                                 (char)(unsigned char)0xA0U,
-                                 '\0'};
-  static const char s_four[]  = {(char)(unsigned char)0xF0U,
-                                 (char)(unsigned char)0x9FU,
-                                 (char)(unsigned char)0x98U,
-                                 (char)(unsigned char)0x80U,
-                                 '\0'};
+  static const char one[]   = {'A', '\0'};
+  static const char two[]   = {(char)(unsigned char)0xC3U, (char)(unsigned char)0xA9U, '\0'};
+  static const char three[] = {(char)(unsigned char)0xE4U,
+                               (char)(unsigned char)0xBDU,
+                               (char)(unsigned char)0xA0U,
+                               '\0'};
+  static const char four[]  = {(char)(unsigned char)0xF0U,
+                               (char)(unsigned char)0x9FU,
+                               (char)(unsigned char)0x98U,
+                               (char)(unsigned char)0x80U,
+                               '\0'};
 
-  decode_ok(s_one, 1U, units); /* V1 */
+  internal_decode_ok(one, 1U, units); /* V1 */
   TEST_ASSERT_EQ(k_ut_cp_1, units[0]);
   TEST_ASSERT_EQ(k_ra8_ok, priv_utf16_to_utf8(units, 1U, back, (uint32_t)k_ut_bytes));
-  TEST_ASSERT_EQ(0, strcmp(back, s_one));
+  TEST_ASSERT_EQ(0, strcmp(back, one));
 
-  decode_ok(s_two, 1U, units); /* V2 */
+  internal_decode_ok(two, 1U, units); /* V2 */
   TEST_ASSERT_EQ(k_ut_cp_2, units[0]);
   TEST_ASSERT_EQ(k_ra8_ok, priv_utf16_to_utf8(units, 1U, back, (uint32_t)k_ut_bytes));
-  TEST_ASSERT_EQ(0, strcmp(back, s_two));
+  TEST_ASSERT_EQ(0, strcmp(back, two));
 
-  decode_ok(s_three, 1U, units); /* V3 */
+  internal_decode_ok(three, 1U, units); /* V3 */
   TEST_ASSERT_EQ(k_ut_cp_3, units[0]);
   TEST_ASSERT_EQ(k_ra8_ok, priv_utf16_to_utf8(units, 1U, back, (uint32_t)k_ut_bytes));
-  TEST_ASSERT_EQ(0, strcmp(back, s_three));
+  TEST_ASSERT_EQ(0, strcmp(back, three));
 
   /* V4: two units, and the pair halves are the ones the standard names. */
-  decode_ok(s_four, 2U, units);
+  internal_decode_ok(four, 2U, units);
   TEST_ASSERT_EQ(k_ut_sur_hi_of_4, units[0]);
   TEST_ASSERT_EQ(k_ut_sur_lo_of_4, units[1]);
   TEST_ASSERT_EQ(k_ra8_ok, priv_utf16_to_utf8(units, 2U, back, (uint32_t)k_ut_bytes));
-  TEST_ASSERT_EQ(0, strcmp(back, s_four));
+  TEST_ASSERT_EQ(0, strcmp(back, four));
 
   /* V5: U+E000, the first code point ABOVE the surrogate block. It is the
    * partner vector the surrogate-range decisions need: on decode it makes
@@ -222,14 +222,14 @@ static void test_decode_lengths(void)
    * (well-formed), and on encode it makes `priv_utf16_take`'s `hi > 0xDFFF` true
    * while `hi < 0xD800` is false (a BMP unit, not a surrogate). Both are the
    * second-condition-varies-alone case the other vectors never reach. */
-  static const char s_e000[] = {(char)(unsigned char)0xEEU,
-                                (char)(unsigned char)0x80U,
-                                (char)(unsigned char)0x80U,
-                                '\0'};
-  decode_ok(s_e000, 1U, units);
+  static const char e000[] = {(char)(unsigned char)0xEEU,
+                              (char)(unsigned char)0x80U,
+                              (char)(unsigned char)0x80U,
+                              '\0'};
+  internal_decode_ok(e000, 1U, units);
   TEST_ASSERT_EQ(k_ut_cp_above_surr, units[0]);
   TEST_ASSERT_EQ(k_ra8_ok, priv_utf16_to_utf8(units, 1U, back, (uint32_t)k_ut_bytes));
-  TEST_ASSERT_EQ(0, strcmp(back, s_e000));
+  TEST_ASSERT_EQ(0, strcmp(back, e000));
 
   TEST_END("ra8_fs utf: one vector per UTF-8 sequence length");
 }
@@ -251,14 +251,14 @@ static void test_decode_lengths(void)
  * @pre None; the functions under test touch no volume.
  * @post The name came back byte-identical, at the documented unit count.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_mixed_name_round_trip(void)
+RA8_INTERNAL static void internal_test_mixed_name_round_trip(void)
 {
   TEST_BEGIN("ra8_fs utf: a mixed-script name survives both directions");
   /* "Caf" U+00E9 " " U+4F60 U+597D " " U+1F600 ".txt" -- 4 + 1 + 1 + 2 + 1 + 2
    * + 4 = one-, two-, three- and four-byte forms in one name. */
-  static const char s_name[]          = {'C',
+  static const char name[]            = {'C',
                                          'a',
                                          'f',
                                          (char)(unsigned char)0xC3U,
@@ -283,10 +283,10 @@ static void test_mixed_name_round_trip(void)
   uint16_t          units[k_ut_units] = {};
   char              back[k_ut_bytes]  = {};
   /* C,a,f,e-acute,space,ni,hao,space,(surrogate pair),.,t,x,t = 14 units. */
-  decode_ok(s_name, (uint32_t)k_ut_mixed_units, units);
+  internal_decode_ok(name, (uint32_t)k_ut_mixed_units, units);
   TEST_ASSERT_EQ(k_ra8_ok,
                  priv_utf16_to_utf8(units, (uint32_t)k_ut_mixed_units, back, (uint32_t)k_ut_bytes));
-  TEST_ASSERT_EQ(0, strcmp(back, s_name));
+  TEST_ASSERT_EQ(0, strcmp(back, name));
   TEST_END("ra8_fs utf: a mixed-script name survives both directions");
 }
 
@@ -323,66 +323,66 @@ static void test_mixed_name_round_trip(void)
  * @pre None; the functions under test touch no volume.
  * @post Every class reported `k_ra8_err_invalid_arg` and produced no units.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the decode rejects malformed vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_decode_rejects_malformed(void)
+RA8_INTERNAL static void internal_test_decode_rejects_malformed(void)
 {
   TEST_BEGIN("ra8_fs utf: every malformed class is refused, not patched");
-  static const char s_cont_only[] = {(char)(unsigned char)0x80U, '\0'}; /* V1 */
-  static const char s_five_byte[] = {(char)(unsigned char)0xF8U,
-                                     (char)(unsigned char)0x88U,
-                                     (char)(unsigned char)0x80U,
-                                     (char)(unsigned char)0x80U,
-                                     (char)(unsigned char)0x80U,
-                                     '\0'};                             /* V2 */
-  static const char s_trunc2[]    = {(char)(unsigned char)0xC3U, '\0'}; /* V3 */
-  static const char s_trunc3[]    = {(char)(unsigned char)0xE4U,
-                                     (char)(unsigned char)0xBDU,
-                                     '\0'};                                  /* V4 */
-  static const char s_bad_cont[]  = {(char)(unsigned char)0xC3U, 'A', '\0'}; /* V5 */
-  static const char s_overlong2[] = {(char)(unsigned char)0xC0U,
-                                     (char)(unsigned char)0x80U,
-                                     '\0'}; /* V6 */
-  static const char s_overlong3[] = {(char)(unsigned char)0xE0U,
-                                     (char)(unsigned char)0x80U,
-                                     (char)(unsigned char)0x80U,
-                                     '\0'}; /* V7 */
-  static const char s_surrogate[] = {(char)(unsigned char)0xEDU,
-                                     (char)(unsigned char)0xA0U,
-                                     (char)(unsigned char)0x80U,
-                                     '\0'}; /* V8 */
-  static const char s_overlong4[] = {(char)(unsigned char)0xF0U,
-                                     (char)(unsigned char)0x80U,
-                                     (char)(unsigned char)0x80U,
-                                     (char)(unsigned char)0x80U,
-                                     '\0'}; /* V9 */
-  static const char s_past_max[]  = {(char)(unsigned char)0xF4U,
-                                     (char)(unsigned char)0x90U,
-                                     (char)(unsigned char)0x80U,
-                                     (char)(unsigned char)0x80U,
-                                     '\0'}; /* V10 */
+  static const char cont_only[] = {(char)(unsigned char)0x80U, '\0'}; /* V1 */
+  static const char five_byte[] = {(char)(unsigned char)0xF8U,
+                                   (char)(unsigned char)0x88U,
+                                   (char)(unsigned char)0x80U,
+                                   (char)(unsigned char)0x80U,
+                                   (char)(unsigned char)0x80U,
+                                   '\0'};                             /* V2 */
+  static const char trunc2[]    = {(char)(unsigned char)0xC3U, '\0'}; /* V3 */
+  static const char trunc3[]    = {(char)(unsigned char)0xE4U,
+                                   (char)(unsigned char)0xBDU,
+                                   '\0'};                                  /* V4 */
+  static const char bad_cont[]  = {(char)(unsigned char)0xC3U, 'A', '\0'}; /* V5 */
+  static const char overlong2[] = {(char)(unsigned char)0xC0U,
+                                   (char)(unsigned char)0x80U,
+                                   '\0'}; /* V6 */
+  static const char overlong3[] = {(char)(unsigned char)0xE0U,
+                                   (char)(unsigned char)0x80U,
+                                   (char)(unsigned char)0x80U,
+                                   '\0'}; /* V7 */
+  static const char surrogate[] = {(char)(unsigned char)0xEDU,
+                                   (char)(unsigned char)0xA0U,
+                                   (char)(unsigned char)0x80U,
+                                   '\0'}; /* V8 */
+  static const char overlong4[] = {(char)(unsigned char)0xF0U,
+                                   (char)(unsigned char)0x80U,
+                                   (char)(unsigned char)0x80U,
+                                   (char)(unsigned char)0x80U,
+                                   '\0'}; /* V9 */
+  static const char past_max[]  = {(char)(unsigned char)0xF4U,
+                                   (char)(unsigned char)0x90U,
+                                   (char)(unsigned char)0x80U,
+                                   (char)(unsigned char)0x80U,
+                                   '\0'}; /* V10 */
 
-  decode_rejects(s_cont_only);
-  decode_rejects(s_five_byte);
-  decode_rejects(s_trunc2);
-  decode_rejects(s_trunc3);
-  decode_rejects(s_bad_cont);
-  decode_rejects(s_overlong2);
-  decode_rejects(s_overlong3);
-  decode_rejects(s_surrogate);
-  decode_rejects(s_overlong4);
-  decode_rejects(s_past_max);
+  internal_decode_rejects(cont_only);
+  internal_decode_rejects(five_byte);
+  internal_decode_rejects(trunc2);
+  internal_decode_rejects(trunc3);
+  internal_decode_rejects(bad_cont);
+  internal_decode_rejects(overlong2);
+  internal_decode_rejects(overlong3);
+  internal_decode_rejects(surrogate);
+  internal_decode_rejects(overlong4);
+  internal_decode_rejects(past_max);
 
   /* The negative control: the LAST legal code point of the four-byte form, one
    * below the first rejected one, is accepted. Without it the ladder above
    * would pass just as well with the bound off by one in the safe direction. */
-  static const char s_max_ok[]        = {(char)(unsigned char)0xF4U,
+  static const char max_ok[]          = {(char)(unsigned char)0xF4U,
                                          (char)(unsigned char)0x8FU,
                                          (char)(unsigned char)0xBFU,
                                          (char)(unsigned char)0xBFU,
                                          '\0'};
   uint16_t          units[k_ut_units] = {};
-  decode_ok(s_max_ok, 2U, units); /* U+10FFFF */
+  internal_decode_ok(max_ok, 2U, units); /* U+10FFFF */
   TEST_END("ra8_fs utf: every malformed class is refused, not patched");
 }
 
@@ -408,9 +408,9 @@ static void test_decode_rejects_malformed(void)
  * @pre None; the function under test touches no volume.
  * @post Each refusal returned `k_ra8_err_invalid_arg` and left an empty string.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_encode_rejects_unpaired_surrogate(void)
+RA8_INTERNAL static void internal_test_encode_rejects_unpaired_surrogate(void)
 {
   TEST_BEGIN("ra8_fs utf: an unpaired surrogate is reported, not replaced");
   char           out[k_ut_bytes] = {};
@@ -460,23 +460,23 @@ static void test_encode_rejects_unpaired_surrogate(void)
  * @pre None; the functions under test touch no volume.
  * @post Each overflow reported `k_ra8_err_no_mem` and produced nothing partial.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_capacity_is_per_character(void)
+RA8_INTERNAL static void internal_test_capacity_is_per_character(void)
 {
   TEST_BEGIN("ra8_fs utf: capacity is tested per whole character");
   uint16_t          one_unit[1] = {};
   uint32_t          n           = 0U;
-  static const char s_bmp[]     = {(char)(unsigned char)0xC3U, (char)(unsigned char)0xA9U, '\0'};
-  static const char s_supp[]    = {(char)(unsigned char)0xF0U,
+  static const char bmp[]       = {(char)(unsigned char)0xC3U, (char)(unsigned char)0xA9U, '\0'};
+  static const char supp[]      = {(char)(unsigned char)0xF0U,
                                    (char)(unsigned char)0x9FU,
                                    (char)(unsigned char)0x98U,
                                    (char)(unsigned char)0x80U,
                                    '\0'};
 
-  TEST_ASSERT_EQ(k_ra8_ok, priv_utf8_to_utf16(s_bmp, one_unit, 1U, &n)); /* V1 */
+  TEST_ASSERT_EQ(k_ra8_ok, priv_utf8_to_utf16(bmp, one_unit, 1U, &n)); /* V1 */
   TEST_ASSERT_EQ(1U, n);
-  TEST_ASSERT_EQ(k_ra8_err_no_mem, priv_utf8_to_utf16(s_supp, one_unit, 1U, &n)); /* V2 */
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, priv_utf8_to_utf16(supp, one_unit, 1U, &n)); /* V2 */
   TEST_ASSERT_EQ(0U, n);
 
   const uint16_t units[1] = {(uint16_t)k_ut_cp_2}; /* two UTF-8 bytes */
@@ -508,9 +508,9 @@ static void test_capacity_is_per_character(void)
  * @pre None; the functions under test touch no volume.
  * @post Each NULL reported `k_ra8_err_null_ptr`.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the null guards vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_null_guards(void)
+RA8_INTERNAL static void internal_test_null_guards(void)
 {
   TEST_BEGIN("ra8_fs utf: NULL argument guards");
   uint16_t units[k_ut_units] = {};
@@ -563,9 +563,9 @@ static void test_null_guards(void)
  * @pre None; the function under test touches no volume.
  * @post Every documented mapping held, in both the mapped and identity cases.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_upcase_against_unicode(void)
+RA8_INTERNAL static void internal_test_upcase_against_unicode(void)
 {
   TEST_BEGIN("ra8_fs utf: up-case matches Unicode's simple mapping");
   /* Mapped: Latin-1, Greek, Cyrillic, fullwidth Latin. */
@@ -607,9 +607,9 @@ static void test_upcase_against_unicode(void)
  * @pre None; the function under test touches no volume.
  * @post All 128 ASCII units folded exactly as the table does.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_upcase_ascii_fast_path_is_the_table(void)
+RA8_INTERNAL static void internal_test_upcase_ascii_fast_path_is_the_table(void)
 {
   TEST_BEGIN("ra8_fs utf: the ASCII fast path agrees with the table");
   for (uint32_t u = 0U; u < (uint32_t)k_ut_ascii_count; u++) {
@@ -642,9 +642,9 @@ static void test_upcase_ascii_fast_path_is_the_table(void)
  * @pre None; the function under test touches no volume.
  * @post Case-different names matched; genuinely different ones did not.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the utf16 ieq vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_utf16_ieq(void)
+RA8_INTERNAL static void internal_test_utf16_ieq(void)
 {
   TEST_BEGIN("ra8_fs utf: case-insensitive comparison across the BMP");
   const uint16_t lower[3] = {(uint16_t)k_ut_up_lower_e, (uint16_t)'b', (uint16_t)k_ut_up_alpha};
@@ -679,9 +679,9 @@ static void test_utf16_ieq(void)
  * @pre None; the function under test touches no volume.
  * @post The predicate agreed with the ASCII range at both its edges.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the utf16 all ascii vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_utf16_all_ascii(void)
+RA8_INTERNAL static void internal_test_utf16_all_ascii(void)
 {
   TEST_BEGIN("ra8_fs utf: the ASCII-only predicate");
   const uint16_t ascii[3]    = {(uint16_t)'A', 0x7FU, (uint16_t)'z'};
@@ -713,9 +713,9 @@ static void test_utf16_all_ascii(void)
  * @pre None; the function under test touches no volume.
  * @post A non-ASCII unit matches its equal and its case-fold, and nothing else.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_name_chunk_eq_folds_a_non_ascii_unit(void)
+RA8_INTERNAL static void internal_test_name_chunk_eq_folds_a_non_ascii_unit(void)
 {
   TEST_BEGIN("ra8_fs utf: an exFAT name slice folds a non-ASCII unit");
   uint8_t entry[k_exfat_entry_bytes] = {};
@@ -748,17 +748,16 @@ static void test_name_chunk_eq_folds_a_non_ascii_unit(void)
  */
 int32_t main(void)
 {
-  test_decode_lengths();
-  test_mixed_name_round_trip();
-  test_decode_rejects_malformed();
-  test_encode_rejects_unpaired_surrogate();
-  test_capacity_is_per_character();
-  test_null_guards();
-  test_upcase_against_unicode();
-  test_upcase_ascii_fast_path_is_the_table();
-  test_utf16_ieq();
-  test_utf16_all_ascii();
-  test_name_chunk_eq_folds_a_non_ascii_unit();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_utf.c\n");
+  internal_test_decode_lengths();
+  internal_test_mixed_name_round_trip();
+  internal_test_decode_rejects_malformed();
+  internal_test_encode_rejects_unpaired_surrogate();
+  internal_test_capacity_is_per_character();
+  internal_test_null_guards();
+  internal_test_upcase_against_unicode();
+  internal_test_upcase_ascii_fast_path_is_the_table();
+  internal_test_utf16_ieq();
+  internal_test_utf16_all_ascii();
+  internal_test_name_chunk_eq_folds_a_non_ascii_unit();
   return 0;
 }
