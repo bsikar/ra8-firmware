@@ -33,6 +33,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -56,31 +57,51 @@ typedef enum : uint8_t {
 } lpm_demo_byte_t;
 
 /** @brief Output line tags. */
-static const uint8_t k_lpm_demo_prefix[] = "lpm: wake_count=";
-static const uint8_t k_lpm_demo_eol[]    = "\r\n";
+static const uint8_t s_lpm_demo_prefix[] = "lpm: wake_count=";
+static const uint8_t s_lpm_demo_eol[]    = "\r\n";
 
 /** @brief Cumulative wake count incremented after every sleep+wake cycle. */
 static uint32_t s_wake_count;
 
-/** @brief Park forever after a fatal init failure. */
-static void lpm_demo_panic_halt(void)
+/**
+ * @brief Park the processor after a fatal setup or sleep-cycle failure.
+ *
+ * @details Executes wait-for-interrupt indefinitely so the demo cannot report
+ * wake counts after a prerequisite or low-power transition has failed.
+ *
+ * @pre The caller has determined that normal execution cannot continue safely.
+ * @pre No foreground recovery operation remains capable of restoring state.
+ * @post This function does not return.
+ * @post The processor remains in a low-activity wait loop.
+ * @note This terminal path keeps the last failure state available for probing.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_lpm_demo_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-/** @brief Convert the low nibble of ``n`` to its ASCII hex char.
+/** @brief Convert the low nibble of a byte to an ASCII hex character.
+ *
+ * @details Masks the input to four bits and maps it to a decimal digit or a
+ * lowercase hexadecimal letter.
  *
  * @param[in] nibble Lower 4 bits used.
  * @return Printable ASCII byte.
+ * @retval 0x30..0x39 Decimal ASCII digit for nibble values zero through nine.
+ * @retval 0x61..0x66 Lowercase ASCII letter for nibble values ten through fifteen.
  *
- * @pre None.
+ * @pre The caller accepts that bits above the low nibble are discarded.
+ * @pre The execution character set uses contiguous ASCII digit and letter codes.
  * @post Return value is always printable ASCII.
+ * @post The input value and all shared state remain unchanged.
+ * @note The conversion deliberately emits lowercase hexadecimal.
  *
  * @since 0.1.0
  */
-static uint8_t lpm_demo_nibble_to_hex(uint8_t nibble)
+RA8_INTERNAL static uint8_t internal_lpm_demo_nibble_to_hex(uint8_t nibble)
 {
   uint8_t n = (uint8_t)(nibble & (uint8_t)k_lpm_demo_nibble_mask);
   if (n < (uint8_t)k_lpm_demo_alpha_thresh) {
@@ -91,43 +112,61 @@ static uint8_t lpm_demo_nibble_to_hex(uint8_t nibble)
 
 /** @brief Render a 32-bit value as 8 ASCII hex chars (big-endian).
  *
+ * @details Extracts nibbles from most significant to least significant and
+ * writes exactly eight lowercase hexadecimal characters without a terminator.
+ *
  * @param[in]  v   Value to render.
  * @param[out] dst 8-byte buffer that receives the hex characters.
  *
  * @pre ``dst`` is non-NULL and has at least 8 bytes capacity.
+ * @pre The destination range does not overlap inaccessible storage.
  * @post ``dst[0..7]`` contains printable hex.
+ * @post Bytes outside the eight-byte destination range remain unchanged.
+ * @note The output is fixed-width and intentionally not NUL-terminated.
  *
  * @since 0.1.0
  */
-static void lpm_demo_word_to_hex(uint32_t v, uint8_t* dst)
+RA8_INTERNAL static void internal_lpm_demo_word_to_hex(uint32_t v, uint8_t* dst)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_lpm_demo_hex_per_word; ++i) {
     const uint8_t shift =
       (uint8_t)(((uint8_t)k_lpm_demo_hex_per_word - 1U - i) * (uint8_t)k_lpm_demo_nibble_shift);
     const uint8_t nibble = (uint8_t)((v >> shift) & (uint32_t)k_lpm_demo_nibble_mask);
-    dst[i]               = lpm_demo_nibble_to_hex(nibble);
+    dst[i]               = internal_lpm_demo_nibble_to_hex(nibble);
   }
 }
 
-/** @brief Bring CGC + SysTick + SCI8 + LED1 + LPM up. */
-static void lpm_demo_setup_or_halt(void)
+/**
+ * @brief Bring CGC, SysTick, SCI8, LED1, and the LPM block up.
+ *
+ * @details Initializes each prerequisite in dependency order and transfers to
+ * ::internal_lpm_demo_panic_halt on the first error.
+ *
+ * @pre The function runs during single-threaded application startup.
+ * @pre EK-RA8D2 board registers are accessible through the platform mapping.
+ * @post On return, timing, console, LED1, and sleep-mode configuration are ready.
+ * @post Any prerequisite failure prevents a return to the caller.
+ * @note The helper applies the demo's fail-closed startup policy consistently.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_lpm_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
   if (ra8_cgc_init() != k_ra8_ok) {
-    lpm_demo_panic_halt();
+    internal_lpm_demo_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    lpm_demo_panic_halt();
+    internal_lpm_demo_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    lpm_demo_panic_halt();
+    internal_lpm_demo_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_lpm_demo_baud) != k_ra8_ok) {
-    lpm_demo_panic_halt();
+    internal_lpm_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    lpm_demo_panic_halt();
+    internal_lpm_demo_panic_halt();
   }
 
   /* LPM block uses the cold-reset defaults: OPE=1, IOKEEP=0, no
@@ -141,12 +180,15 @@ static void lpm_demo_setup_or_halt(void)
     .sscr_low_power   = k_ra8_lpm_ss2lp_default,
   };
   if (ra8_lpm_init(&lpm_cfg) != k_ra8_ok) {
-    lpm_demo_panic_halt();
+    internal_lpm_demo_panic_halt();
   }
 }
 
 /**
  * @brief Sleep + wake + emit one wake-count line.
+ *
+ * @details Enters normal sleep until SysTick wakes the core, accumulates the
+ * configured idle period, increments the counter, and emits fixed-width hex.
  *
  * @par MC/DC:
  * Single decision: ``ra8_lpm_enter_sleep != ok``. One atomic
@@ -155,14 +197,19 @@ static void lpm_demo_setup_or_halt(void)
  * compound (N+1) vectors required.
  *
  * @return Error code from the first failing primitive.
+ * @retval k_ra8_ok The sleep cycle completed and the count line was emitted.
+ * @retval k_ra8_err_hw_error The low-power entry primitive rejected the request.
  *
- * @pre lpm_demo_setup_or_halt() returned ok.
+ * @pre ::internal_lpm_demo_setup_or_halt returned successfully.
+ * @pre Global interrupts are enabled so SysTick can wake the processor.
  * @post On success the wake-count line was transmitted and
  *       ``s_wake_count`` was incremented.
+ * @post On failure, ``s_wake_count`` and the report stream remain unchanged.
+ * @note Console writes remain best-effort after a successful sleep transition.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t lpm_demo_one_wake(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_lpm_demo_one_wake(void)
 {
   /* Sleep mode -- WFI returns on the next SysTick IRQ ~1 ms later. */
   if (ra8_lpm_enter_sleep(k_ra8_sleep_mode_sleep) != k_ra8_ok) {
@@ -173,11 +220,11 @@ static void lpm_demo_setup_or_halt(void)
   s_wake_count++;
 
   uint8_t hex[k_lpm_demo_hex_per_word] = {};
-  lpm_demo_word_to_hex(s_wake_count, hex);
+  internal_lpm_demo_word_to_hex(s_wake_count, hex);
 
-  (void)ra8_board_uart_console_write(k_lpm_demo_prefix, (size_t)(sizeof(k_lpm_demo_prefix) - 1U));
+  (void)ra8_board_uart_console_write(s_lpm_demo_prefix, (size_t)(sizeof(s_lpm_demo_prefix) - 1U));
   (void)ra8_board_uart_console_write(hex, (size_t)k_lpm_demo_hex_per_word);
-  (void)ra8_board_uart_console_write(k_lpm_demo_eol, (size_t)(sizeof(k_lpm_demo_eol) - 1U));
+  (void)ra8_board_uart_console_write(s_lpm_demo_eol, (size_t)(sizeof(s_lpm_demo_eol) - 1U));
   return k_ra8_ok;
 }
 
@@ -185,16 +232,16 @@ static void lpm_demo_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  lpm_demo_setup_or_halt();
+  internal_lpm_demo_setup_or_halt();
   ra8_isr_globals_enable();
 
   while (1) {
-    if (lpm_demo_one_wake() != k_ra8_ok) {
+    if (internal_lpm_demo_one_wake() != k_ra8_ok) {
       break;
     }
     (void)ra8_board_led_toggle(k_ra8_board_led1);
   }
-  lpm_demo_panic_halt();
+  internal_lpm_demo_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

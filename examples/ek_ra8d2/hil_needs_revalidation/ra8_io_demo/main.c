@@ -26,6 +26,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
@@ -47,11 +48,23 @@ typedef enum : uint32_t {
   k_demo_note_len    = 64U,     /**< Bytes round-tripped in the subdir.    */
 } demo_const_t;
 
-/** @brief SCI8 console TXD = PD02. */
-static const ra8_port_pin_t k_demo_txd =
+/**
+ * @var s_demo_txd
+ * @brief SCI8 console transmit pin, PD02.
+ * @details Encodes the board port and pin in the HAL's packed pin identifier.
+ * @note Immutable routing input used once during boot.
+ * @since 0.1.0
+ */
+static const ra8_port_pin_t s_demo_txd =
   (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << (uint16_t)k_demo_pin_shift) | (uint16_t)k_ra8_pin_2);
-/** @brief SCI8 console RXD = PD03. */
-static const ra8_port_pin_t k_demo_rxd =
+/**
+ * @var s_demo_rxd
+ * @brief SCI8 console receive pin, PD03.
+ * @details Encodes the board port and pin in the HAL's packed pin identifier.
+ * @note Immutable routing input used once during boot.
+ * @since 0.1.0
+ */
+static const ra8_port_pin_t s_demo_rxd =
   (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << (uint16_t)k_demo_pin_shift) | (uint16_t)k_ra8_pin_3);
 
 /** @brief 256 KiB RAM-disk backing buffer (in SRAM .bss). */
@@ -100,7 +113,7 @@ static const ra8_io_roundtrip_params_t s_params = {
  * @note Blocking polled TX; not interrupt-safe.
  * @since 0.1.0
  */
-static void demo_print(const char* msg)
+RA8_INTERNAL static void internal_demo_print(const char* msg)
 {
   (void)ra8_io_stream_puts(&s_uart, msg);
 }
@@ -122,7 +135,7 @@ static void demo_print(const char* msg)
  * @note Not thread-safe; boot-context only.
  * @since 0.1.0
  */
-static void demo_setup_or_halt(void)
+RA8_INTERNAL static void internal_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
@@ -130,8 +143,8 @@ static void demo_setup_or_halt(void)
       (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) ||
       (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz) != k_ra8_ok) ||
       (ra8_time_init(cpuclk0_hz) != k_ra8_ok) ||
-      (ra8_pfs_route_peripheral(k_demo_txd, k_ra8_psel_sci_async, "demo.txd") != k_ra8_ok) ||
-      (ra8_pfs_route_peripheral(k_demo_rxd, k_ra8_psel_sci_async, "demo.rxd") != k_ra8_ok)) {
+      (ra8_pfs_route_peripheral(s_demo_txd, k_ra8_psel_sci_async, "demo.txd") != k_ra8_ok) ||
+      (ra8_pfs_route_peripheral(s_demo_rxd, k_ra8_psel_sci_async, "demo.rxd") != k_ra8_ok)) {
     while (true) {
     }
   }
@@ -160,7 +173,7 @@ static void demo_setup_or_halt(void)
  * @retval k_ra8_ok    The RAM volume mounted and the root file round-tripped.
  * @retval k_ra8_err_* The first failing bind / mount / round-trip step's code.
  *
- * @pre ::demo_setup_or_halt has run (clocks + console up).
+ * @pre ::internal_demo_setup_or_halt has run (clocks + console up).
  * @pre @p out_mount is non-NULL.
  * @post On success `ram:/HELLO.TXT` holds the verified payload.
  * @post On any non-ok return `*out_mount` is nullptr.
@@ -168,7 +181,7 @@ static void demo_setup_or_halt(void)
  * @note Not thread-safe; single-caller boot context.
  * @since 0.1.0
  */
-static ra8_err_t demo_run(ra8_fs_mount_t** out_mount)
+RA8_INTERNAL static ra8_err_t internal_demo_run(ra8_fs_mount_t** out_mount)
 {
   RA8_RETURN_ON_ERROR(
     ra8_io_blockdev_ram_init(&s_bd, &s_bstate, s_disk, (uint32_t)k_demo_disk_blocks, false),
@@ -187,22 +200,22 @@ static ra8_err_t demo_run(ra8_fs_mount_t** out_mount)
 int main(void)
 {
   ra8_log_init();
-  demo_setup_or_halt();
+  internal_demo_setup_or_halt();
   (void)ra8_io_stream_uart_init(&s_uart, &s_ust, (uint8_t)k_demo_uart_chan);
   (void)ra8_io_log_attach(&s_uart); /* route ra8_log into the UART stream too */
-  demo_print("ra8_io_demo: boot\r\n");
+  internal_demo_print("ra8_io_demo: boot\r\n");
 
   ra8_fs_mount_t* mnt = nullptr;
-  const ra8_err_t e   = demo_run(&mnt);
+  const ra8_err_t e   = internal_demo_run(&mnt);
   if (e == k_ra8_ok) {
-    demo_print("ra8_io_demo: wrote/read 128 bytes ram:/HELLO.TXT PASS\r\n");
+    internal_demo_print("ra8_io_demo: wrote/read 128 bytes ram:/HELLO.TXT PASS\r\n");
     if (ra8_io_roundtrip_subdir_file(&s_params) == k_ra8_ok) {
-      demo_print("ra8_io_demo: mkdir+nested ram:/SUB/NOTE.TXT PASS\r\n");
+      internal_demo_print("ra8_io_demo: mkdir+nested ram:/SUB/NOTE.TXT PASS\r\n");
     } else {
-      demo_print("ra8_io_demo: mkdir FAIL\r\n");
+      internal_demo_print("ra8_io_demo: mkdir FAIL\r\n");
     }
   } else {
-    demo_print("ra8_io_demo: FAIL\r\n");
+    internal_demo_print("ra8_io_demo: FAIL\r\n");
   }
   (void)ra8_sci_flush((uint8_t)k_demo_uart_chan);
   while (true) {

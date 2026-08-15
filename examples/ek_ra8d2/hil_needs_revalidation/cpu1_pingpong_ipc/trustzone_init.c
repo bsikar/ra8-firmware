@@ -1,5 +1,6 @@
 /**
- * @file examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/trustzone_init.c
+ * @file
+ * examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/trustzone_init.c
  * @brief Per-app secure-boot wiring for cpu1_pingpong_ipc
  *
  * @par Tag
@@ -34,6 +35,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_dual_core.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -60,9 +62,9 @@ extern uint32_t g_ra8_ls_cpu1_stack_top;
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ipcsar_value         = 0x000F0303UL, /**< All IPC subblocks NS.              */
-  k_ipcpar_value         = 0x000F0303UL, /**< All IPC subblocks unprivileged-OK. */
-  k_ns_vector_table_addr = 0x02080000UL, /**< NS image entry vectors.            */
+  k_ipcsar_value         = 0x000F0303UL, /**< IPC security.  */
+  k_ipcpar_value         = 0x000F0303UL, /**< IPC privilege. */
+  k_ns_vector_table_addr = 0x02080000UL, /**< NS vectors.    */
 } cpu1_pingpong_ipc_tz_const_t;
 
 /**
@@ -135,9 +137,10 @@ volatile uint32_t g_cpu1_pingpong_ipc_cpu1_release_err = 0xFFFFFFFFU;
  *       ``g_cpu1_pingpong_ipc_cpu1_release_err``.
  * @post PRCR_S restored to "all locked" (0xA500).
  *
+ * @note This boot-only helper is not reentrant and must run before NS handoff.
  * @since 0.1.0
  */
-static void internal_release_cpu1(void)
+RA8_INTERNAL static void internal_release_cpu1(void)
 {
   g_cpu1_pingpong_ipc_cpu1_release_err = 0xDEADBEEFUL;
   *(volatile uint16_t*)0x4001E3FAUL    = (uint16_t)0xA512U; /* key | PRC1 | PRC4 */

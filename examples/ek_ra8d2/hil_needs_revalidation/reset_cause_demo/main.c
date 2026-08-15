@@ -38,6 +38,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_isr.h"
 #include "ra8_log.h"
@@ -100,7 +101,7 @@ volatile uint32_t g_reset_cause_initial = 0U;
  * @note Not thread-safe (single CPU).
  * @since 0.1.0
  */
-static void reset_cause_panic_halt(void)
+RA8_INTERNAL static void internal_reset_cause_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -112,17 +113,17 @@ static void reset_cause_panic_halt(void)
 int32_t main(void)
 {
   if (ra8_time_init(k_reset_cause_cpu_hz_at_reset) != k_ra8_ok) {
-    reset_cause_panic_halt();
+    internal_reset_cause_panic_halt();
   }
   ra8_isr_globals_enable();
 
   if (ra8_reset_init() != k_ra8_ok) {
-    reset_cause_panic_halt();
+    internal_reset_cause_panic_halt();
   }
 
   ra8_reset_cause_t cause = k_ra8_reset_cause_unknown;
   if (ra8_reset_get_cause(&cause) != k_ra8_ok) {
-    reset_cause_panic_halt();
+    internal_reset_cause_panic_halt();
   }
   g_reset_cause_initial = (uint32_t)cause;
   ra8_log_info_val("reset_cause_demo", "boot cause", (uint32_t)cause);
@@ -132,7 +133,7 @@ int32_t main(void)
      * gate validates. ra8_reset_software_reset does not return on target. */
     ra8_delay_ms(k_reset_cause_settle_ms);
     ra8_reset_software_reset();
-    reset_cause_panic_halt();
+    internal_reset_cause_panic_halt();
   }
 
   /* Post-reset boot: cause == software. Advance the HIL counter so

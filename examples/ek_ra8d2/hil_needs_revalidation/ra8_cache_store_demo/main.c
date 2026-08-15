@@ -47,6 +47,7 @@
 #include "cache_store_demo.h"
 #include "lx_api.h"
 #include "lx_nor_ram.h"
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cache_store.h"
 #include "ra8_cgc.h"
@@ -79,8 +80,20 @@ static uint8_t s_staging[k_rcs_staging_bytes];
 /** @brief Read/write scratch buffer for the demo core (caller-owned). */
 static uint8_t s_scratch[k_rcs_scratch_bytes];
 
-/** @brief Park the CPU forever after draining the console TX FIFO. */
-static void rcs_panic_halt(void)
+/**
+ * @brief Park the CPU forever after draining the console TX FIFO.
+ *
+ * @details Flushes pending diagnostics once, then executes wait-for-interrupt
+ * indefinitely so fatal startup state remains observable.
+ *
+ * @pre A required startup step has failed irrecoverably.
+ * @pre The board console may have pending diagnostic bytes.
+ * @post This function does not return.
+ * @post The processor remains in a low-activity wait loop after the flush.
+ * @note The terminal loop preserves static fixture state for debugger inspection.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_rcs_panic_halt(void)
 {
   (void)ra8_board_uart_console_flush();
   while (1) {
@@ -88,26 +101,40 @@ static void rcs_panic_halt(void)
   }
 }
 
-/** @brief Bring CGC + SysTick + the J-Link OB VCOM console up, or panic-halt. */
-static void rcs_setup_or_halt(void)
+/**
+ * @brief Bring CGC, SysTick, and the J-Link VCOM console up or halt.
+ *
+ * @details Initializes the clock generator, resolves CPUCLK0, starts the time
+ * base, and configures the board console in dependency order.
+ *
+ * @pre Reset startup has initialized data and BSS storage.
+ * @pre Board clock and console register mappings are accessible.
+ * @post On return, delays and console diagnostics are available.
+ * @post Any required setup failure transfers to ::internal_rcs_panic_halt.
+ * @note Call once from the single-threaded application startup path.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_rcs_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    rcs_panic_halt();
+    internal_rcs_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    rcs_panic_halt();
+    internal_rcs_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    rcs_panic_halt();
+    internal_rcs_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_rcs_baud) != k_ra8_ok) {
-    rcs_panic_halt();
+    internal_rcs_panic_halt();
   }
 }
 
 /**
  * @brief Write a NUL-terminated ASCII string to the console (fire-and-forget).
+ * @details Ignores NULL input and delegates non-NULL byte emission to the board
+ * console without allocating or retrying on diagnostic sink errors.
  * @param[in] s NUL-terminated string, or NULL (ignored).
  * @return Nothing.
  * @pre The console is initialised.
@@ -117,7 +144,7 @@ static void rcs_setup_or_halt(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void rcs_print(const char* s)
+RA8_INTERNAL static void internal_rcs_print(const char* s)
 {
   if (s == nullptr) {
     return;
@@ -127,6 +154,8 @@ static void rcs_print(const char* s)
 
 /**
  * @brief Print an unsigned 32-bit value in decimal to the console.
+ * @details Converts the value from least significant digit into a bounded local
+ * buffer, then emits the resulting forward substring through the string helper.
  * @param[in] value Integer to print.
  * @return Nothing.
  * @pre The console is initialised.
@@ -136,7 +165,7 @@ static void rcs_print(const char* s)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void rcs_print_u32(uint32_t value)
+RA8_INTERNAL static void internal_rcs_print_u32(uint32_t value)
 {
   char     buf[k_rcs_u32_buf_size];
   uint32_t i = (uint32_t)sizeof(buf);
@@ -149,11 +178,13 @@ static void rcs_print_u32(uint32_t value)
       value /= (uint32_t)k_rcs_radix_dec;
     }
   }
-  rcs_print(&buf[i]);
+  internal_rcs_print(&buf[i]);
 }
 
 /**
  * @brief Emit the one-line verdict banner for a completed demo run.
+ * @details Selects PASS only when both the public return code and result status
+ * agree, then prints the fixed diagnostic fields using bounded helpers.
  * @param[in] rc  Return code from ::cache_store_demo_run.
  * @param[in] res Populated demo result.
  * @return Nothing.
@@ -164,27 +195,41 @@ static void rcs_print_u32(uint32_t value)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void rcs_report(ra8_err_t rc, const cache_store_demo_result_t* res)
+RA8_INTERNAL static void internal_rcs_report(ra8_err_t rc, const cache_store_demo_result_t* res)
 {
   if ((rc == k_ra8_ok) && (res->status == k_cache_store_demo_ok)) {
-    rcs_print("[rcs] cache_store demo PASS survivors=");
-    rcs_print_u32(res->survivors);
-    rcs_print(" evicted_gone=");
-    rcs_print_u32(res->evicted_stayed_gone ? 1U : 0U);
-    rcs_print(" pin=");
-    rcs_print_u32(res->pin_survived ? 1U : 0U);
-    rcs_print("\r\n");
+    internal_rcs_print("[rcs] cache_store demo PASS survivors=");
+    internal_rcs_print_u32(res->survivors);
+    internal_rcs_print(" evicted_gone=");
+    internal_rcs_print_u32(res->evicted_stayed_gone ? 1U : 0U);
+    internal_rcs_print(" pin=");
+    internal_rcs_print_u32(res->pin_survived ? 1U : 0U);
+    internal_rcs_print("\r\n");
     return;
   }
-  rcs_print("[rcs] cache_store demo FAIL stage=");
-  rcs_print_u32((uint32_t)res->last_stage);
-  rcs_print(" status=");
-  rcs_print_u32((uint32_t)res->status);
-  rcs_print("\r\n");
+  internal_rcs_print("[rcs] cache_store demo FAIL stage=");
+  internal_rcs_print_u32((uint32_t)res->last_stage);
+  internal_rcs_print(" status=");
+  internal_rcs_print_u32((uint32_t)res->status);
+  internal_rcs_print("\r\n");
 }
 
-/** @brief Build the demo config over the app's static fixture buffers. */
-static cache_store_demo_cfg_t rcs_build_cfg(void)
+/**
+ * @brief Build the demo configuration over the app's static fixture buffers.
+ *
+ * @details Binds the LevelX control block, RAM NOR driver, index, staging, and
+ * scratch storage into the value object consumed by the reusable demo core.
+ *
+ * @return Fully populated caller-owned demo configuration.
+ * @retval cache_store_demo_cfg_t Configuration referencing static fixture storage.
+ * @pre All file-scope fixture arrays have their declared compile-time capacities.
+ * @pre ``lx_nor_ram_init`` remains compatible with the LevelX NOR driver seam.
+ * @post The returned object references only storage with firmware lifetime.
+ * @post No fixture byte or LevelX control state is modified.
+ * @note The returned structure is copied by value and owns no memory.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static cache_store_demo_cfg_t internal_rcs_build_cfg(void)
 {
   return (cache_store_demo_cfg_t){
     .nor_flash       = &s_nor_flash,
@@ -212,20 +257,20 @@ static cache_store_demo_cfg_t rcs_build_cfg(void)
  */
 int32_t main(void)
 {
-  rcs_setup_or_halt();
+  internal_rcs_setup_or_halt();
   ra8_isr_globals_enable();
-  rcs_print("[rcs] cache_store demo: mounting RAM-backed LevelX...\r\n");
+  internal_rcs_print("[rcs] cache_store demo: mounting RAM-backed LevelX...\r\n");
 
-  cache_store_demo_cfg_t    cfg = rcs_build_cfg();
+  cache_store_demo_cfg_t    cfg = internal_rcs_build_cfg();
   cache_store_demo_result_t res = {};
   const ra8_err_t           rc  = cache_store_demo_run(&cfg, &res);
-  rcs_report(rc, &res);
+  internal_rcs_report(rc, &res);
 
   /* Idle, re-emitting the verdict so the STOP_ON / scrape always sees the
    * steady-state banner and the run reaches its budget cleanly. */
   while (1) {
     ra8_delay_ms((uint32_t)k_rcs_reemit_ms);
-    rcs_report(rc, &res);
+    internal_rcs_report(rc, &res);
   }
   return 0;
 }

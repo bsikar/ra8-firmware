@@ -29,6 +29,7 @@
 #include <stdint.h>
 
 #include "font_fixture.h"
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -62,8 +63,15 @@ static uint16_t s_framebuffer[(size_t)k_rc_fb_h * (size_t)k_rc_fb_w];
 /** @brief Reflow engine (large -- file-scope, not on the stack). */
 static ra8_reflow_t s_engine;
 
-/** @brief Baked multi-paragraph chapter (paginates to several pages). */
-static const char k_rc_chapter[] =
+/**
+ * @var s_rc_chapter
+ * @brief Fixed multi-paragraph HTML chapter used by both layout passes.
+ * @details Contains enough prose to span several pages and expose changes in
+ *          pagination when the font size is increased.
+ * @note Both render hashes are derived from these exact immutable bytes.
+ * @since 0.1.0
+ */
+static const char s_rc_chapter[] =
   "<html><body><h1>The Machine</h1>"
   "<p>The Time Traveller was expounding a recondite matter to us. His pale grey "
   "eyes shone and twinkled, and his usually pale face was flushed and animated.</p>"
@@ -76,32 +84,116 @@ static const char k_rc_chapter[] =
   "as we sat and lazily admired his earnestness over this new paradox.</p>"
   "</body></html>";
 
-static const uint8_t k_msg_boot[]   = "reflow-content-hil: boot\r\n";
-static const uint8_t k_msg_fail[]   = "reflow-content-hil: FAIL init\r\n";
-static const uint8_t k_msg_lerr[]   = "reflow-content-hil: FAIL layout\r\n";
-static const uint8_t k_msg_pre[]    = "reflow-content-hil: pages=";
-static const uint8_t k_msg_crc[]    = " crc=";
-static const uint8_t k_msg_rpages[] = " rpages=";
-static const uint8_t k_msg_eol[]    = "\r\n";
+/**
+ * @var s_msg_boot
+ * @brief Boot diagnostic emitted after platform initialization.
+ * @details Separates successful console bring-up from later reflow output.
+ * @note The terminating null byte is excluded from writes.
+ * @since 0.1.0
+ */
+static const uint8_t s_msg_boot[] = "reflow-content-hil: boot\r\n";
+/**
+ * @var s_msg_fail
+ * @brief Fatal platform or engine initialization diagnostic.
+ * @details Identifies failures before a valid chapter layout exists.
+ * @note Emission is followed by a debugger break and permanent halt.
+ * @since 0.1.0
+ */
+static const uint8_t s_msg_fail[] = "reflow-content-hil: FAIL init\r\n";
+/**
+ * @var s_msg_lerr
+ * @brief Fatal chapter layout or font-size reflow diagnostic.
+ * @details Distinguishes content-processing failures from platform initialization.
+ * @note Emission is followed by a debugger break and permanent halt.
+ * @since 0.1.0
+ */
+static const uint8_t s_msg_lerr[] = "reflow-content-hil: FAIL layout\r\n";
+/**
+ * @var s_msg_pre
+ * @brief Prefix for the original page-count diagnostic.
+ * @details Begins the single stable result line consumed by the HIL operator.
+ * @note Followed immediately by an unsigned decimal page count.
+ * @since 0.1.0
+ */
+static const uint8_t s_msg_pre[] = "reflow-content-hil: pages=";
+/**
+ * @var s_msg_crc
+ * @brief Separator introducing a rendered-framebuffer hash.
+ * @details Labels both the normal-size and larger-font FNV-1a results.
+ * @note Followed immediately by eight uppercase hexadecimal digits.
+ * @since 0.1.0
+ */
+static const uint8_t s_msg_crc[] = " crc=";
+/**
+ * @var s_msg_rpages
+ * @brief Separator introducing the larger-font page count.
+ * @details Marks the result produced after the cached chapter is reflowed.
+ * @note Followed immediately by an unsigned decimal page count.
+ * @since 0.1.0
+ */
+static const uint8_t s_msg_rpages[] = " rpages=";
+/**
+ * @var s_msg_eol
+ * @brief Console line terminator for the result banner.
+ * @details Uses CRLF to match the board UART console's diagnostic convention.
+ * @note Contains no terminating payload beyond the two control bytes.
+ * @since 0.1.0
+ */
+static const uint8_t s_msg_eol[] = "\r\n";
 
-/** @brief Emit a byte run on the SCI8 console. */
-static void rc_print(const uint8_t* msg, uint32_t len)
+/**
+ * @brief Emit a byte run on the board UART console.
+ * @details Forwards a caller-owned span without allocation and treats console
+ *          output as diagnostic rather than acceptance-critical state.
+ * @param[in] msg First byte of the diagnostic span.
+ * @param[in] len Number of bytes to offer to the console.
+ * @pre ``msg`` references at least ``len`` readable bytes.
+ * @pre The board UART console has been initialized.
+ * @post At most ``len`` bytes have been offered to the console backend.
+ * @post The caller's span remains unchanged.
+ * @note Write errors are deliberately ignored by this HIL-only helper.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_rc_print(const uint8_t* msg, uint32_t len)
 {
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
-static void rc_panic_halt(const uint8_t* msg, uint32_t len)
+/**
+ * @brief Emit a failure banner, break into the debugger, and halt.
+ * @details Writes the supplied diagnostic, executes ``bkpt #0`` for emulator
+ *          visibility, then parks forever using bounded single-instruction waits.
+ * @param[in] msg First byte of the fatal diagnostic.
+ * @param[in] len Number of diagnostic bytes to emit.
+ * @pre ``msg`` references at least ``len`` readable bytes.
+ * @pre The console is initialized or the caller accepts a silent failure banner.
+ * @post The debugger break instruction has executed.
+ * @post Control never returns to the caller.
+ * @note On hardware without a debugger, execution proceeds directly to the wait loop.
+ * @since 0.1.0
+ */
+[[noreturn]] RA8_INTERNAL static void internal_rc_panic_halt(const uint8_t* msg, uint32_t len)
 {
-  rc_print(msg, len);
+  internal_rc_print(msg, len);
   __asm__ volatile("bkpt #0");
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-/** @brief Print a 32-bit value as 8 upper-case hex digits. */
-static void rc_print_hex(uint32_t value)
+/**
+ * @brief Print a 32-bit value as eight uppercase hexadecimal digits.
+ * @details Extracts nibbles from most significant to least significant and
+ *          emits one fixed-width stack buffer through the console helper.
+ * @param[in] value Value to format.
+ * @pre The console helper is ready to accept eight bytes.
+ * @pre ``k_rc_hex_nibbles`` remains eight for the 32-bit input width.
+ * @post Exactly eight hexadecimal characters have been offered to the console.
+ * @post ``value`` and all application diagnostics remain unchanged.
+ * @note Leading zeroes are retained for stable HIL parsing.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_rc_print_hex(uint32_t value)
 {
   uint8_t buf[k_rc_hex_nibbles];
   for (uint32_t i = 0U; i < (uint32_t)k_rc_hex_nibbles; i++) {
@@ -109,11 +201,22 @@ static void rc_print_hex(uint32_t value)
     const uint32_t nib   = (value >> shift) & (uint32_t)k_rc_nibble_mask;
     buf[i] = (uint8_t)((nib < (uint32_t)k_rc_dec_ten) ? ('0' + nib) : ('A' + (nib - k_rc_dec_ten)));
   }
-  rc_print(buf, (uint32_t)k_rc_hex_nibbles);
+  internal_rc_print(buf, (uint32_t)k_rc_hex_nibbles);
 }
 
-/** @brief Print a small unsigned integer in decimal. */
-static void rc_print_uint(uint32_t value)
+/**
+ * @brief Print an unsigned 32-bit integer in decimal.
+ * @details Collects digits in reverse order in a fixed ten-byte stack buffer,
+ *          then emits them from most significant to least significant.
+ * @param[in] value Value to format.
+ * @pre The console helper is initialized.
+ * @pre The fixed buffer can represent every ``uint32_t`` decimal value.
+ * @post At least one and at most ten decimal characters have been emitted.
+ * @post No application state outside the console backend is modified.
+ * @note Zero is handled explicitly so it still emits one character.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_rc_print_uint(uint32_t value)
 {
   uint8_t  buf[k_rc_dec_ten];
   uint32_t n = 0U;
@@ -127,17 +230,26 @@ static void rc_print_uint(uint32_t value)
     value /= (uint32_t)k_rc_dec_ten;
   }
   for (uint32_t i = 0U; i < n; i++) {
-    rc_print(&buf[n - 1U - i], 1U);
+    internal_rc_print(&buf[n - 1U - i], 1U);
   }
 }
 
 /**
  * @brief Render every page of the laid-out chapter; fold an FNV over the output.
- *
+ * @details Clears and renders each page into the static RGB565 framebuffer,
+ *          then folds every output byte into one FNV-1a-32 diagnostic hash.
  * @param[out] out_hash Receives the FNV-1a-32 over every page's framebuffer.
  * @return The page count.
+ * @retval 0 The engine currently contains no pages.
+ * @retval 1..UINT32_MAX Number of pages reported by the engine.
+ * @pre ``out_hash`` points to writable storage.
+ * @pre ``s_engine`` contains a successfully laid-out chapter.
+ * @post ``*out_hash`` contains the ordered hash of all rendered page bytes.
+ * @post ``s_framebuffer`` contains the final rendered page when pages exist.
+ * @note Render return values are intentionally covered by the final deterministic hash.
+ * @since 0.1.0
  */
-static uint32_t rc_render_all(uint32_t* out_hash)
+RA8_INTERNAL static uint32_t internal_rc_render_all(uint32_t* out_hash)
 {
   uint32_t pages = 0U;
   (void)ra8_reflow_get_page_count(&s_engine, &pages);
@@ -155,21 +267,31 @@ static uint32_t rc_render_all(uint32_t* out_hash)
   return pages;
 }
 
-/** @brief Bring up clocks/MSTP/time + the SCI8 console; halt on failure. */
-static void rc_setup_or_halt(void)
+/**
+ * @brief Bring up clocks, module-stop control, timekeeping, and the console.
+ * @details Initializes dependencies in order, derives CPUCLK0 for SysTick, and
+ *          routes any failure through the permanent diagnostic halt path.
+ * @pre Core reset initialization has completed and peripheral registers are accessible.
+ * @pre Configurable interrupts remain globally masked.
+ * @post On success the timebase and board UART console are ready.
+ * @post On failure the initialization banner is emitted and control never returns.
+ * @note The caller enables global interrupts only after this helper succeeds.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_rc_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
-    rc_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+    internal_rc_panic_halt(s_msg_fail, (uint32_t)sizeof(s_msg_fail) - 1U);
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    rc_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+    internal_rc_panic_halt(s_msg_fail, (uint32_t)sizeof(s_msg_fail) - 1U);
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    rc_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+    internal_rc_panic_halt(s_msg_fail, (uint32_t)sizeof(s_msg_fail) - 1U);
   }
   if (ra8_board_uart_console_init((uint32_t)k_rc_uart_baud) != k_ra8_ok) {
-    rc_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+    internal_rc_panic_halt(s_msg_fail, (uint32_t)sizeof(s_msg_fail) - 1U);
   }
 }
 
@@ -187,53 +309,53 @@ static void rc_setup_or_halt(void)
  */
 int32_t main(void)
 {
-  rc_setup_or_halt();
+  internal_rc_setup_or_halt();
   ra8_isr_globals_enable();
-  rc_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
+  internal_rc_print(s_msg_boot, (uint32_t)sizeof(s_msg_boot) - 1U);
 
   if (ra8_gfx_init(s_framebuffer,
                    (uint16_t)k_rc_fb_w,
                    (uint16_t)k_rc_fb_h,
                    k_ra8_gfx_format_rgb565) != k_ra8_ok) {
-    rc_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+    internal_rc_panic_halt(s_msg_fail, (uint32_t)sizeof(s_msg_fail) - 1U);
   }
   if (ra8_reflow_init((uint16_t)k_rc_fb_w,
                       (uint16_t)k_rc_fb_h,
-                      k_ahem_ttf,
-                      (size_t)k_ahem_ttf_len,
+                      s_ahem_ttf,
+                      (size_t)s_ahem_ttf_len,
                       (uint16_t)k_rc_font_px,
                       (uint32_t)k_rc_ink,
                       (uint32_t)k_rc_link_col,
                       &s_engine) != k_ra8_ok) {
-    rc_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+    internal_rc_panic_halt(s_msg_fail, (uint32_t)sizeof(s_msg_fail) - 1U);
   }
   uint32_t pages = 0U;
   if (ra8_reflow_layout_chapter(&s_engine,
-                                (const uint8_t*)k_rc_chapter,
-                                (uint32_t)(sizeof(k_rc_chapter) - 1U),
+                                (const uint8_t*)s_rc_chapter,
+                                (uint32_t)(sizeof(s_rc_chapter) - 1U),
                                 &pages) != k_ra8_ok) {
-    rc_panic_halt(k_msg_lerr, (uint32_t)sizeof(k_msg_lerr) - 1U);
+    internal_rc_panic_halt(s_msg_lerr, (uint32_t)sizeof(s_msg_lerr) - 1U);
   }
 
   uint32_t       crc1   = 0U;
-  const uint32_t pages1 = rc_render_all(&crc1);
+  const uint32_t pages1 = internal_rc_render_all(&crc1);
 
   /* Re-flow at a larger size on the cached chapter; render again. */
   if (ra8_reflow_set_font_size(&s_engine, (uint16_t)k_rc_reflow_px) != k_ra8_ok) {
-    rc_panic_halt(k_msg_lerr, (uint32_t)sizeof(k_msg_lerr) - 1U);
+    internal_rc_panic_halt(s_msg_lerr, (uint32_t)sizeof(s_msg_lerr) - 1U);
   }
   uint32_t       crc2   = 0U;
-  const uint32_t pages2 = rc_render_all(&crc2);
+  const uint32_t pages2 = internal_rc_render_all(&crc2);
 
-  rc_print(k_msg_pre, (uint32_t)sizeof(k_msg_pre) - 1U);
-  rc_print_uint(pages1);
-  rc_print(k_msg_crc, (uint32_t)sizeof(k_msg_crc) - 1U);
-  rc_print_hex(crc1);
-  rc_print(k_msg_rpages, (uint32_t)sizeof(k_msg_rpages) - 1U);
-  rc_print_uint(pages2);
-  rc_print(k_msg_crc, (uint32_t)sizeof(k_msg_crc) - 1U);
-  rc_print_hex(crc2);
-  rc_print(k_msg_eol, (uint32_t)sizeof(k_msg_eol) - 1U);
+  internal_rc_print(s_msg_pre, (uint32_t)sizeof(s_msg_pre) - 1U);
+  internal_rc_print_uint(pages1);
+  internal_rc_print(s_msg_crc, (uint32_t)sizeof(s_msg_crc) - 1U);
+  internal_rc_print_hex(crc1);
+  internal_rc_print(s_msg_rpages, (uint32_t)sizeof(s_msg_rpages) - 1U);
+  internal_rc_print_uint(pages2);
+  internal_rc_print(s_msg_crc, (uint32_t)sizeof(s_msg_crc) - 1U);
+  internal_rc_print_hex(crc2);
+  internal_rc_print(s_msg_eol, (uint32_t)sizeof(s_msg_eol) - 1U);
 
   while (1) {
     __asm__ volatile("wfi");

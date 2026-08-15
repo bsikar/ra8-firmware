@@ -31,6 +31,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -68,32 +69,114 @@ typedef enum : uint32_t {
  */
 static ra8_io_i2c_bus_t s_touch_bus;
 
-static const uint8_t k_msg_boot[] = "touch-demo: boot\r\n";
-static const uint8_t k_msg_fail[] = "touch-demo: FAIL init\r\n";
-static const uint8_t k_msg_open[] = "touch: FAIL open\r\n";
-static const uint8_t k_msg_pre[]  = "touch: open=OK pts=";
-static const uint8_t k_msg_x[]    = " x=";
-static const uint8_t k_msg_y[]    = " y=";
-static const uint8_t k_msg_eol[]  = "\r\n";
+/**
+ * @var s_msg_boot
+ * @brief Startup banner after console initialization.
+ * @details Marks the point before I2C and touch-controller bring-up begins.
+ * @note Immutable bytes written with an explicit compile-time length.
+ * @since 0.1.0
+ */
+static const uint8_t s_msg_boot[] = "touch-demo: boot\r\n";
+/**
+ * @var s_msg_fail
+ * @brief Fatal clock, timebase, module, or console setup banner.
+ * @details Provides the deterministic diagnostic for early boot failure.
+ * @note Consumed only by the terminal panic path.
+ * @since 0.1.0
+ */
+static const uint8_t s_msg_fail[] = "touch-demo: FAIL init\r\n";
+/**
+ * @var s_msg_open
+ * @brief Fatal touch-controller open-failure banner.
+ * @details Distinguishes GT911/bus failure from earlier platform setup failure.
+ * @note Consumed only by the terminal panic path.
+ * @since 0.1.0
+ */
+static const uint8_t s_msg_open[] = "touch: FAIL open\r\n";
+/**
+ * @var s_msg_pre
+ * @brief Prefix for the successful open and bounded-poll report.
+ * @details Followed by the point count and first decoded coordinates.
+ * @note Contains no line terminator because the report is composed in pieces.
+ * @since 0.1.0
+ */
+static const uint8_t s_msg_pre[] = "touch: open=OK pts=";
+/**
+ * @var s_msg_x
+ * @brief Label introducing the first contact X coordinate.
+ * @details Separates the point count from its horizontal position.
+ * @note Followed immediately by an unsigned decimal value.
+ * @since 0.1.0
+ */
+static const uint8_t s_msg_x[] = " x=";
+/**
+ * @var s_msg_y
+ * @brief Label introducing the first contact Y coordinate.
+ * @details Separates the horizontal and vertical positions.
+ * @note Followed immediately by an unsigned decimal value.
+ * @since 0.1.0
+ */
+static const uint8_t s_msg_y[] = " y=";
+/**
+ * @var s_msg_eol
+ * @brief CRLF terminator for the composed poll report.
+ * @details Completes the human-readable result after both coordinates.
+ * @note Shared only within this translation unit.
+ * @since 0.1.0
+ */
+static const uint8_t s_msg_eol[] = "\r\n";
 
-/** @brief Emit a byte run on the SCI8 console. */
-static void td_print(const uint8_t* msg, uint32_t len)
+/**
+ * @brief Emit a byte run on the SCI8 console.
+ * @details Passes caller-owned bytes and their explicit length directly to the board console.
+ * @param[in] msg Start of the byte run to transmit.
+ * @param[in] len Number of bytes to transmit.
+ * @pre @p msg addresses at least @p len readable bytes.
+ * @pre The board console is initialized when @p len is nonzero.
+ * @post The console has been offered the complete byte run.
+ * @post No touch-controller state is modified.
+ * @note Transport status is intentionally ignored by this diagnostic demo.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_td_print(const uint8_t* msg, uint32_t len)
 {
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
-/** @brief Print the fail banner and trap (ra8_emulator halts on the BKPT). */
-static void td_panic_halt(const uint8_t* msg, uint32_t len)
+/**
+ * @brief Print the fail banner and trap (ra8_emulator halts on the BKPT).
+ * @details Emits the diagnostic once, executes a debugger-visible breakpoint,
+ *          then enters a permanent low-power wait loop.
+ * @param[in] msg Start of the failure banner.
+ * @param[in] len Number of banner bytes to transmit.
+ * @pre @p msg addresses at least @p len readable bytes.
+ * @pre Console setup progressed far enough to accept diagnostics.
+ * @post The banner has been offered to the console.
+ * @post Control never returns to the caller.
+ * @note The terminal loop preserves peripheral state for inspection.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_td_panic_halt(const uint8_t* msg, uint32_t len)
 {
-  td_print(msg, len);
+  internal_td_print(msg, len);
   __asm__ volatile("bkpt #0");
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-/** @brief Print a small unsigned integer in decimal. */
-static void td_print_uint(uint32_t value)
+/**
+ * @brief Print a small unsigned integer in decimal.
+ * @details Builds digits in reverse in a fixed local buffer and emits them most-significant first.
+ * @param[in] value Unsigned value to render in base ten.
+ * @pre ::k_td_dec_ten can hold every supported value's digits.
+ * @pre The board console is initialized.
+ * @post The decimal representation has been offered to the console.
+ * @post No global touch state is modified.
+ * @note Output has no prefix, padding, or line ending.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_td_print_uint(uint32_t value)
 {
   uint8_t  buf[k_td_dec_ten];
   uint32_t n = 0U;
@@ -107,7 +190,7 @@ static void td_print_uint(uint32_t value)
     value /= (uint32_t)k_td_dec_ten;
   }
   for (uint32_t i = 0U; i < n; i++) {
-    td_print(&buf[n - 1U - i], 1U);
+    internal_td_print(&buf[n - 1U - i], 1U);
   }
 }
 
@@ -123,8 +206,15 @@ static void td_print_uint(uint32_t value)
  * @param[out] out_x Receives the first contact's X (0 if none).
  * @param[out] out_y Receives the first contact's Y (0 if none).
  * @return Number of points seen in the caught frame (0 or >=1).
+ * @retval 0 No usable touch frame arrived within the bounded poll.
+ * @pre @p out_x and @p out_y are non-NULL writable pointers.
+ * @pre The touch controller has been opened successfully.
+ * @post Both outputs hold zero when no contact is found.
+ * @post On success both outputs hold the first decoded contact.
+ * @note The polling bound prevents an absent operator from hanging the demo.
+ * @since 0.1.0
  */
-static uint8_t td_poll_points(uint16_t* out_x, uint16_t* out_y)
+RA8_INTERNAL static uint8_t internal_td_poll_points(uint16_t* out_x, uint16_t* out_y)
 {
   ra8_touch_point_t pts[k_td_max_points] = {};
   uint8_t           seen                 = 0U;
@@ -141,21 +231,30 @@ static uint8_t td_poll_points(uint16_t* out_x, uint16_t* out_y)
   return seen;
 }
 
-/** @brief Bring up clocks/MSTP/time + the SCI8 console; halt on failure. */
-static void td_setup_or_halt(void)
+/**
+ * @brief Bring up clocks/MSTP/time + the SCI8 console; halt on failure.
+ * @details Initializes each prerequisite in dependency order and treats any failure as terminal.
+ * @pre Reset startup completed data and BSS initialization.
+ * @pre Board clock registers are in their reset-compatible state.
+ * @post On return clocks, module-stop control, time, and SCI8 are initialized.
+ * @post Any failed prerequisite has emitted the setup-failure banner and halted.
+ * @note Single-shot boot helper; it is not reentrant.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_td_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
-    td_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+    internal_td_panic_halt(s_msg_fail, (uint32_t)sizeof(s_msg_fail) - 1U);
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    td_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+    internal_td_panic_halt(s_msg_fail, (uint32_t)sizeof(s_msg_fail) - 1U);
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    td_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+    internal_td_panic_halt(s_msg_fail, (uint32_t)sizeof(s_msg_fail) - 1U);
   }
   if (ra8_board_uart_console_init((uint32_t)k_td_uart_baud) != k_ra8_ok) {
-    td_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+    internal_td_panic_halt(s_msg_fail, (uint32_t)sizeof(s_msg_fail) - 1U);
   }
 }
 
@@ -173,9 +272,9 @@ static void td_setup_or_halt(void)
  */
 int32_t main(void)
 {
-  td_setup_or_halt();
+  internal_td_setup_or_halt();
   ra8_isr_globals_enable();
-  td_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
+  internal_td_print(s_msg_boot, (uint32_t)sizeof(s_msg_boot) - 1U);
 
   /* App-owned bus bring-up: IIC_B in I2C-compat mode, bound through the
    * ra8_io facade into the driver's injected seam. A future board revision
@@ -187,13 +286,13 @@ int32_t main(void)
   };
   ra8_i2c_bus_ops_t bus_ops = {};
   if (ra8_i3c_init((uint8_t)k_td_i2c_chan, &iic_cfg) != k_ra8_ok) {
-    td_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
+    internal_td_panic_halt(s_msg_open, (uint32_t)sizeof(s_msg_open) - 1U);
   }
   if (ra8_io_i2c_bus_bind_i3c_compat(&s_touch_bus, (uint8_t)k_td_i2c_chan) != k_ra8_ok) {
-    td_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
+    internal_td_panic_halt(s_msg_open, (uint32_t)sizeof(s_msg_open) - 1U);
   }
   if (ra8_io_i2c_bus_as_ops(&s_touch_bus, &bus_ops) != k_ra8_ok) {
-    td_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
+    internal_td_panic_halt(s_msg_open, (uint32_t)sizeof(s_msg_open) - 1U);
   }
 
   const ra8_touch_cfg_t cfg = {.bus        = bus_ops,
@@ -201,20 +300,20 @@ int32_t main(void)
                                .irq_pin    = (uint8_t)k_ra8_touch_irq_pin_unset,
                                .max_points = (uint8_t)k_td_max_points};
   if (ra8_touch_open(&cfg) != k_ra8_ok) {
-    td_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
+    internal_td_panic_halt(s_msg_open, (uint32_t)sizeof(s_msg_open) - 1U);
   }
 
   uint16_t      px   = 0U;
   uint16_t      py   = 0U;
-  const uint8_t seen = td_poll_points(&px, &py);
+  const uint8_t seen = internal_td_poll_points(&px, &py);
 
-  td_print(k_msg_pre, (uint32_t)sizeof(k_msg_pre) - 1U);
-  td_print_uint((uint32_t)seen);
-  td_print(k_msg_x, (uint32_t)sizeof(k_msg_x) - 1U);
-  td_print_uint((uint32_t)px);
-  td_print(k_msg_y, (uint32_t)sizeof(k_msg_y) - 1U);
-  td_print_uint((uint32_t)py);
-  td_print(k_msg_eol, (uint32_t)sizeof(k_msg_eol) - 1U);
+  internal_td_print(s_msg_pre, (uint32_t)sizeof(s_msg_pre) - 1U);
+  internal_td_print_uint((uint32_t)seen);
+  internal_td_print(s_msg_x, (uint32_t)sizeof(s_msg_x) - 1U);
+  internal_td_print_uint((uint32_t)px);
+  internal_td_print(s_msg_y, (uint32_t)sizeof(s_msg_y) - 1U);
+  internal_td_print_uint((uint32_t)py);
+  internal_td_print(s_msg_eol, (uint32_t)sizeof(s_msg_eol) - 1U);
 
   while (1) {
     __asm__ volatile("wfi");

@@ -1,6 +1,7 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/ns_main.c
- * @brief Self-contained Non-Secure image at 0x02080000 for the IPC ping-pong demo.
+ * @brief Self-contained Non-Secure image at 0x02080000 for the IPC ping-pong
+ * demo.
  *
  * @par Tag
  * [Ring 1 / app] {World: NS}
@@ -33,6 +34,8 @@
  */
 
 #include <stdint.h>
+
+#include "ra8_attributes.h"
 
 /* =============================================================================
  * NS-side constants -- open-coded from libs/ra8_hal/inc/ra8_ipc_regs.h.
@@ -232,11 +235,13 @@ typedef enum : uint32_t {
  * @param[in] value Value to write.
  * @pre ``addr`` lies in a region the current SAU attribution permits.
  * @pre ``addr`` is 4-byte aligned.
- * @post One bus write of ``value`` issued, ordered after the previous
- *       store via the compiler ``memory`` clobber.
+ * @post One volatile bus write of ``value`` is issued.
+ * @note The volatile access prevents compiler elision; callers provide any
+ *       hardware ordering required around the register transaction.
  * @since 0.1.0
  */
-[[gnu::section(".ns_text")]] static inline void ns_write32(uintptr_t addr, uint32_t value)
+[[gnu::section(".ns_text")]] RA8_INTERNAL static inline void internal_ns_write32(uintptr_t addr,
+                                                                                 uint32_t  value)
 {
   *(volatile uint32_t*)addr = value;
 }
@@ -248,9 +253,10 @@ typedef enum : uint32_t {
  * @pre ``addr`` is 4-byte aligned and reachable from NS.
  * @post Caller can act on the returned value (caller-side handles
  *       the volatile semantics).
+ * @note The helper performs one volatile load and has no retry policy.
  * @since 0.1.0
  */
-[[gnu::section(".ns_text")]] static inline uint32_t ns_read32(uintptr_t addr)
+[[gnu::section(".ns_text")]] RA8_INTERNAL static inline uint32_t internal_ns_read32(uintptr_t addr)
 {
   return *(volatile uint32_t*)addr;
 }
@@ -271,12 +277,13 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
-[[gnu::section(".ns_text")]] static void ns_ipc_channel_reset(uintptr_t ch_base)
+[[gnu::section(".ns_text")]] RA8_INTERNAL static void
+internal_ns_ipc_channel_reset(uintptr_t ch_base)
 {
   /* HUM Ch 3.2.14 "IPC0CLR0" p 216 -- RST resets the FIFO and clears
    * RDY/FULL atomically; RCLR/FCLR clear the sticky FIFO error bits;
    * CLR7..CLR0 drop any latent IRQ event bits. */
-  ns_write32(ch_base + (uintptr_t)k_ns_ipc_off_clr, (uint32_t)k_ns_ipc_clr_all);
+  internal_ns_write32(ch_base + (uintptr_t)k_ns_ipc_off_clr, (uint32_t)k_ns_ipc_clr_all);
 }
 
 /**
@@ -291,14 +298,16 @@ typedef enum : uint32_t {
  * @post One word added to the channel's transmit FIFO; the peer's
  *       STA.RDY rises one cycle later.
  *
+ * @note This depth-one protocol deliberately does not poll FIFO fullness.
  * @since 0.1.0
  */
-[[gnu::section(".ns_text")]] static void ns_ipc_send(uintptr_t ch_base, uint32_t msg)
+[[gnu::section(".ns_text")]] RA8_INTERNAL static void internal_ns_ipc_send(uintptr_t ch_base,
+                                                                           uint32_t  msg)
 {
   /* HUM Ch 3.2.12 "IPC0TXD0" p 215-216 -- writes push the word onto
    * the FIFO; FERR is raised separately and is cleared by
-   * ns_ipc_channel_reset on init. */
-  ns_write32(ch_base + (uintptr_t)k_ns_ipc_off_txd, msg);
+   * internal_ns_ipc_channel_reset on init. */
+  internal_ns_write32(ch_base + (uintptr_t)k_ns_ipc_off_txd, msg);
 }
 
 /**
@@ -315,19 +324,22 @@ typedef enum : uint32_t {
  *       has been cleared by the RXD read.
  * @post On timeout ``*out_word`` is unchanged.
  *
+ * @note A null output pointer is rejected with the same nonzero result as a
+ * timeout.
  * @since 0.1.0
  */
-[[gnu::section(".ns_text")]] static uint32_t ns_ipc_recv(uintptr_t ch_base, uint32_t* out_word)
+[[gnu::section(".ns_text")]] RA8_INTERNAL static uint32_t internal_ns_ipc_recv(uintptr_t ch_base,
+                                                                               uint32_t* out_word)
 {
   if (out_word == ((void*)0)) {
     return 1U;
   }
   for (uint32_t i = 0U; i < (uint32_t)k_ns_recv_poll_max; ++i) {
-    const uint32_t sta = ns_read32(ch_base + (uintptr_t)k_ns_ipc_off_sta);
+    const uint32_t sta = internal_ns_read32(ch_base + (uintptr_t)k_ns_ipc_off_sta);
     if ((sta & (uint32_t)k_ns_ipc_sta_rdy) != 0U) {
       /* HUM Ch 3.2.13 "IPC0RXD0" p 216 -- reading RXD pops one word
        * from the FIFO and re-evaluates RDY for the next iteration. */
-      const uint32_t w = ns_read32(ch_base + (uintptr_t)k_ns_ipc_off_rxd);
+      const uint32_t w = internal_ns_read32(ch_base + (uintptr_t)k_ns_ipc_off_rxd);
       *out_word        = w;
       return 0U;
     }
@@ -390,17 +402,17 @@ extern uint32_t g_ra8_ls_ns_bss_end;
   g_ns_pingpong_step = (uint32_t)k_ns_step_bss_zeroed;
 
   /* Cold-init the CPU0-owned channels. */
-  ns_ipc_channel_reset((uintptr_t)k_ns_ipc_ch0_addr);
-  ns_ipc_channel_reset((uintptr_t)k_ns_ipc_ch2_addr);
+  internal_ns_ipc_channel_reset((uintptr_t)k_ns_ipc_ch0_addr);
+  internal_ns_ipc_channel_reset((uintptr_t)k_ns_ipc_ch2_addr);
   g_ns_pingpong_step = (uint32_t)k_ns_step_channels_up;
 
   for (;;) {
     g_ns_pingpong_step = (uint32_t)k_ns_step_tx_start;
-    ns_ipc_send((uintptr_t)k_ns_ipc_ch2_addr, (uint32_t)k_ns_magic_ping);
+    internal_ns_ipc_send((uintptr_t)k_ns_ipc_ch2_addr, (uint32_t)k_ns_magic_ping);
     g_ns_pingpong_step = (uint32_t)k_ns_step_tx_done;
 
     uint32_t got = 0U;
-    if (ns_ipc_recv((uintptr_t)k_ns_ipc_ch0_addr, &got) != 0U) {
+    if (internal_ns_ipc_recv((uintptr_t)k_ns_ipc_ch0_addr, &got) != 0U) {
       g_ns_pingpong_step = (uint32_t)k_ns_step_rx_timeout;
       g_ns_pingpong_mismatch += 1U;
       continue;

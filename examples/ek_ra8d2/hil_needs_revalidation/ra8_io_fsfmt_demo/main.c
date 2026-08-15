@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
@@ -56,10 +57,10 @@ typedef enum : uint32_t {
 } demo_const_t;
 
 /** @brief SCI8 console TXD = PD02. */
-static const ra8_port_pin_t k_demo_txd =
+static const ra8_port_pin_t s_demo_txd =
   (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << (uint16_t)k_demo_pin_shift) | (uint16_t)k_ra8_pin_2);
 /** @brief SCI8 console RXD = PD03. */
-static const ra8_port_pin_t k_demo_rxd =
+static const ra8_port_pin_t s_demo_rxd =
   (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << (uint16_t)k_demo_pin_shift) | (uint16_t)k_ra8_pin_3);
 
 /** @brief 256 KiB RAM-disk backing buffer for the FAT volume (in SRAM .bss). */
@@ -78,14 +79,43 @@ static ra8_io_stream_uart_state_t s_ust;
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_io_fsfmt_demo";
 
-/** @brief Print a NUL-terminated string on the UART stream. */
-static void demo_print(const char* msg)
+/**
+ * @brief Print a NUL-terminated string on the UART stream.
+ *
+ * @details Delegates string emission to the initialized stream and intentionally
+ * ignores diagnostic-output errors in this terminal demo.
+ *
+ * @param[in] msg NUL-terminated message to emit.
+ * @pre @p msg is non-NULL and readable through its terminator.
+ * @pre ``s_uart`` has been initialized with its caller-owned UART state.
+ * @post The stream has accepted the message or reported an ignored sink error.
+ * @post Filesystem-format registry and block-device state remain unchanged.
+ * @note This single-threaded diagnostic helper performs no retry.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_demo_print(const char* msg)
 {
   (void)ra8_io_stream_puts(&s_uart, msg);
 }
 
-/** @brief Foreign-format probe: block 0 begins with the stub magic byte. */
-static bool stub_probe(const ra8_fs_backend_t* be)
+/**
+ * @brief Test whether block zero carries the foreign-format stub signature.
+ *
+ * @details Validates the backend seam, reads exactly one block into bounded
+ * stack storage, and compares its first byte with the demo magic value.
+ *
+ * @param[in] be Backend whose block zero is probed.
+ * @return Whether the backend contains the stub signature.
+ * @retval true The block read succeeded and the signature byte matched.
+ * @retval false The backend was invalid, the read failed, or the byte differed.
+ * @pre A non-NULL backend provides a context compatible with ``read_block``.
+ * @pre The backend exposes at least one standard-size block when readable.
+ * @post The backend contents and registry remain unchanged.
+ * @post Temporary block storage leaves scope on return.
+ * @note Probe failures collapse to ``false`` so the registry can try another format.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_stub_probe(const ra8_fs_backend_t* be)
 {
   if (be == nullptr) {
     return false;
@@ -100,8 +130,259 @@ static bool stub_probe(const ra8_fs_backend_t* be)
   return blk[0] == (uint8_t)k_demo_stub_magic;
 }
 
+/**
+ * @brief Reject mounting the signature-only foreign demo format.
+ *
+ * @details The demo exercises discovery and capability metadata only; it
+ * supplies this mandatory dispatch seam so the current registry contract is
+ * complete without pretending to provide a mounted filesystem.
+ *
+ * @param[in] backend Backend selected by the registry.
+ * @param[out] out_mount Unmodified mount-context destination.
+ * @return The deliberate unsupported-operation result.
+ * @retval k_ra8_err_not_supported This probe-only format cannot be mounted.
+ * @pre @p backend identifies the backend that matched the signature probe.
+ * @pre @p out_mount, when non-NULL, is owned by the caller.
+ * @post No mount context is created.
+ * @post Backend and output storage remain unchanged.
+ * @note Registration requires this seam even though the demo never calls it.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_stub_mount(const ra8_fs_backend_t* backend, void** out_mount)
+{
+  (void)backend;
+  (void)out_mount;
+  return k_ra8_err_not_supported;
+}
+
+/**
+ * @brief Reject unmounting a probe-only foreign-format context.
+ * @details No context can be created by ::internal_stub_mount, so unmount is a
+ * mandatory registry seam with a deterministic unsupported result.
+ * @param[in] mount_ctx Unused caller-supplied context.
+ * @return The deliberate unsupported-operation result.
+ * @retval k_ra8_err_not_supported No foreign-format mount exists.
+ * @pre @p mount_ctx is not dereferenced.
+ * @pre No format-owned allocation or resource requires release.
+ * @post No memory or backend state is changed.
+ * @post The supplied context value remains untouched.
+ * @note This function exists solely to satisfy the complete ops-table contract.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_stub_unmount(void* mount_ctx)
+{
+  (void)mount_ctx;
+  return k_ra8_err_not_supported;
+}
+
+/**
+ * @brief Reject opening a path on the probe-only foreign format.
+ * @details The descriptor advertises recognition metadata, not file access.
+ * @param[in] mount_ctx Unused mount context.
+ * @param[in] path Unused path request.
+ * @param[in] mode Requested open mode.
+ * @param[out] out_file Unmodified file-context destination.
+ * @return The deliberate unsupported-operation result.
+ * @retval k_ra8_err_not_supported The foreign stub exposes no files.
+ * @pre All pointer values may be inspected only by the caller.
+ * @pre @p mode is a valid filesystem mode value if supplied by VFS.
+ * @post No file context is created.
+ * @post All inputs and destination storage remain unchanged.
+ * @note Registration requires the seam although probing never dispatches it.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_stub_open(void* mount_ctx, const char* path, ra8_fs_mode_t mode, void** out_file)
+{
+  (void)mount_ctx;
+  (void)path;
+  (void)mode;
+  (void)out_file;
+  return k_ra8_err_not_supported;
+}
+
+/**
+ * @brief Reject closing a file context for the probe-only format.
+ * @details Since open always rejects, no valid file context can reach this seam.
+ * @param[in] file_ctx Unused caller-supplied context.
+ * @return The deliberate unsupported-operation result.
+ * @retval k_ra8_err_not_supported No foreign-format file is open.
+ * @pre @p file_ctx is not dereferenced.
+ * @pre No format-owned file resource requires release.
+ * @post No resource or caller storage is changed.
+ * @post The supplied context value remains untouched.
+ * @note This function completes the mandatory registry dispatch surface.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_stub_close(void* file_ctx)
+{
+  (void)file_ctx;
+  return k_ra8_err_not_supported;
+}
+
+/**
+ * @brief Reject reading from the probe-only foreign format.
+ * @details The stub recognizes only a signature byte and exposes no stream data.
+ * @param[in] file_ctx Unused file context.
+ * @param[out] buf Unmodified read destination.
+ * @param[in] bytes Requested byte count.
+ * @param[out] out_read Unmodified transferred-byte destination.
+ * @return The deliberate unsupported-operation result.
+ * @retval k_ra8_err_not_supported Stream reads are not implemented.
+ * @pre Caller retains ownership of every supplied pointer and byte range.
+ * @pre @p bytes may be any value accepted by the VFS interface.
+ * @post No destination byte is written.
+ * @post No file or backend state is changed.
+ * @note The read-only capability does not imply that this probe fixture is mountable.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_stub_read(void* file_ctx, void* buf, uint32_t bytes, uint32_t* out_read)
+{
+  (void)file_ctx;
+  (void)buf;
+  (void)bytes;
+  (void)out_read;
+  return k_ra8_err_not_supported;
+}
+
+/**
+ * @brief Reject seeking within a probe-only foreign-format file.
+ * @details No stream is created, so the requested offset is never consumed.
+ * @param[in] file_ctx Unused file context.
+ * @param[in] offset_bytes Requested absolute stream offset.
+ * @return The deliberate unsupported-operation result.
+ * @retval k_ra8_err_not_supported Seeking is not implemented.
+ * @pre @p file_ctx is not dereferenced.
+ * @pre @p offset_bytes may span the public 64-bit interface range.
+ * @post No stream offset is changed.
+ * @post No caller or backend storage is modified.
+ * @note This function completes the mandatory registry dispatch surface.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_stub_seek(void* file_ctx, uint64_t offset_bytes)
+{
+  (void)file_ctx;
+  (void)offset_bytes;
+  return k_ra8_err_not_supported;
+}
+
+/**
+ * @brief Reject querying a probe-only foreign-format stream offset.
+ * @details No stream is created and the caller's output storage is untouched.
+ * @param[in] file_ctx Unused file context.
+ * @param[out] out_offset Unmodified offset destination.
+ * @return The deliberate unsupported-operation result.
+ * @retval k_ra8_err_not_supported Offset queries are not implemented.
+ * @pre Both pointer values remain owned by the caller.
+ * @pre @p out_offset, when non-NULL, addresses caller storage.
+ * @post No offset value is written.
+ * @post No file or backend state is changed.
+ * @note This function completes the mandatory registry dispatch surface.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_stub_tell(const void* file_ctx, uint64_t* out_offset)
+{
+  (void)file_ctx;
+  (void)out_offset;
+  return k_ra8_err_not_supported;
+}
+
+/**
+ * @brief Reject querying a probe-only foreign-format stream size.
+ * @details No stream is created and the caller's output storage is untouched.
+ * @param[in] file_ctx Unused file context.
+ * @param[out] out_bytes Unmodified size destination.
+ * @return The deliberate unsupported-operation result.
+ * @retval k_ra8_err_not_supported Size queries are not implemented.
+ * @pre Both pointer values remain owned by the caller.
+ * @pre @p out_bytes, when non-NULL, addresses caller storage.
+ * @post No size value is written.
+ * @post No file or backend state is changed.
+ * @note This function completes the mandatory registry dispatch surface.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_stub_size(const void* file_ctx, uint64_t* out_bytes)
+{
+  (void)file_ctx;
+  (void)out_bytes;
+  return k_ra8_err_not_supported;
+}
+
+/**
+ * @brief Reject metadata queries on the probe-only foreign format.
+ * @details The signature fixture exposes discovery metadata only, not paths.
+ * @param[in] mount_ctx Unused mount context.
+ * @param[in] path Unused path request.
+ * @param[out] out Unmodified metadata destination.
+ * @return The deliberate unsupported-operation result.
+ * @retval k_ra8_err_not_supported Path metadata is not implemented.
+ * @pre All supplied pointer values remain owned by the caller.
+ * @pre @p path, when non-NULL, follows the VFS path convention.
+ * @post No metadata field is written.
+ * @post No registry or backend state is changed.
+ * @note This function completes the mandatory registry dispatch surface.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_stub_stat(void* mount_ctx, const char* path, ra8_fs_stat_t* out)
+{
+  (void)mount_ctx;
+  (void)path;
+  (void)out;
+  return k_ra8_err_not_supported;
+}
+
+/**
+ * @brief Reject directory enumeration on the probe-only foreign format.
+ * @details The signature fixture has no mountable namespace or directory entries.
+ * @param[in] mount_ctx Unused mount context.
+ * @param[in] path Unused directory path.
+ * @param[in] cb Unused caller callback.
+ * @param[in] cb_ctx Unused callback context.
+ * @return The deliberate unsupported-operation result.
+ * @retval k_ra8_err_not_supported Enumeration is not implemented.
+ * @pre All callback and pointer values remain owned by the caller.
+ * @pre @p path, when non-NULL, follows the VFS path convention.
+ * @post The callback is never invoked.
+ * @post No registry or backend state is changed.
+ * @note This function completes the mandatory registry dispatch surface.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_stub_listdir(void* mount_ctx, const char* path, ra8_fs_listdir_cb_t cb, void* cb_ctx)
+{
+  (void)mount_ctx;
+  (void)path;
+  (void)cb;
+  (void)cb_ctx;
+  return k_ra8_err_not_supported;
+}
+
+/** @brief Mandatory read-side ops table for the probe-only foreign descriptor. */
+static const ra8_io_fsfmt_ops_t s_demo_stub_ops = {
+  .probe      = internal_stub_probe,
+  .mount      = internal_stub_mount,
+  .unmount    = internal_stub_unmount,
+  .open       = internal_stub_open,
+  .close      = internal_stub_close,
+  .read       = internal_stub_read,
+  .write      = nullptr,
+  .seek       = internal_stub_seek,
+  .tell       = internal_stub_tell,
+  .size       = internal_stub_size,
+  .sync       = nullptr,
+  .stat       = internal_stub_stat,
+  .listdir    = internal_stub_listdir,
+  .unlink     = nullptr,
+  .rename     = nullptr,
+  .mkdir      = nullptr,
+  .rmdir      = nullptr,
+  .free_space = nullptr,
+};
+
 /** @brief Foreign stub format descriptor (read-only, case-sensitive). */
-static const ra8_io_fsfmt_t k_demo_stub = {
+static const ra8_io_fsfmt_t s_demo_stub = {
   .name = "stub",
   .caps =
     {
@@ -111,11 +392,23 @@ static const ra8_io_fsfmt_t k_demo_stub = {
       .supports_streaming_write = false,
       .case_sensitive           = true,
     },
-  .probe = stub_probe,
+  .ops = &s_demo_stub_ops,
 };
 
-/** @brief Bring up CGC + SysTick + the SCI8 console; halt on any failure. */
-static void demo_setup_or_halt(void)
+/**
+ * @brief Bring up CGC, SysTick, and the SCI8 console; halt on failure.
+ *
+ * @details Resolves CPUCLK0 and PCLKA, initializes the time base, routes both
+ * console pins, and configures SCI8 in dependency order.
+ *
+ * @pre Reset startup has initialized data and BSS storage.
+ * @pre Peripheral register mappings for clocks, pins, and SCI8 are accessible.
+ * @post On return, SCI8 is configured for the requested diagnostic baud.
+ * @post Any required setup failure parks the application before returning.
+ * @note This helper is intended for the single-threaded startup path only.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
@@ -123,8 +416,8 @@ static void demo_setup_or_halt(void)
       (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) ||
       (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz) != k_ra8_ok) ||
       (ra8_time_init(cpuclk0_hz) != k_ra8_ok) ||
-      (ra8_pfs_route_peripheral(k_demo_txd, k_ra8_psel_sci_async, "demo.txd") != k_ra8_ok) ||
-      (ra8_pfs_route_peripheral(k_demo_rxd, k_ra8_psel_sci_async, "demo.rxd") != k_ra8_ok)) {
+      (ra8_pfs_route_peripheral(s_demo_txd, k_ra8_psel_sci_async, "demo.txd") != k_ra8_ok) ||
+      (ra8_pfs_route_peripheral(s_demo_rxd, k_ra8_psel_sci_async, "demo.rxd") != k_ra8_ok)) {
     while (true) {
     }
   }
@@ -139,8 +432,26 @@ static void demo_setup_or_halt(void)
   }
 }
 
-/** @brief Format a FAT12 RAM volume and probe it; require the "fat" format. */
-static ra8_err_t demo_probe_fat(const ra8_io_fsfmt_t** out_fmt)
+/**
+ * @brief Format a FAT12 RAM volume and require the ``fat`` format probe result.
+ *
+ * @details Initializes the RAM backend, formats FAT12, initializes the registry,
+ * probes the volume, and validates the reported FAT capabilities.
+ *
+ * @param[out] out_fmt Receives the detected FAT descriptor on success.
+ * @return Error from initialization/probing or an explicit capability mismatch.
+ * @retval k_ra8_ok FAT was detected with the expected writable capabilities.
+ * @retval k_ra8_err_not_found A different format name was reported.
+ * @retval k_ra8_err_not_supported Required write capability was absent.
+ * @retval k_ra8_err_invalid_size The advertised maximum name length differed.
+ * @pre @p out_fmt addresses writable descriptor-pointer storage.
+ * @pre The static RAM disk retains its complete declared capacity.
+ * @post On success, @p out_fmt points at the registered FAT descriptor.
+ * @post The formatted FAT12 volume remains available through ``s_be``.
+ * @note The probe validates registry metadata as well as on-disk recognition.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_demo_probe_fat(const ra8_io_fsfmt_t** out_fmt)
 {
   RA8_CHECK_NULL_PTR(out_fmt, s_tag, "out_fmt");
   RA8_RETURN_ON_ERROR(
@@ -167,10 +478,26 @@ static ra8_err_t demo_probe_fat(const ra8_io_fsfmt_t** out_fmt)
   return k_ra8_ok;
 }
 
-/** @brief Register the foreign stub format, craft its volume, and require it wins. */
-static ra8_err_t demo_probe_foreign(void)
+/**
+ * @brief Register the foreign stub format, craft a volume, and require it wins.
+ *
+ * @details Registers the file-local descriptor, initializes a tiny RAM backend,
+ * writes its signature block, probes it, and verifies advertised capabilities.
+ *
+ * @return Error from registration/storage/probing or a capability mismatch.
+ * @retval k_ra8_ok The stub format was detected with the expected capabilities.
+ * @retval k_ra8_err_not_found The registry selected a different format.
+ * @retval k_ra8_err_not_supported Required stub capabilities were absent.
+ * @pre The format registry has been initialized by the FAT probe stage.
+ * @pre The static stub disk retains at least one writable block.
+ * @post On success, the stub descriptor remains registered for future probes.
+ * @post The first stub-disk byte contains the configured signature value.
+ * @note Caller-owned local backend state is sufficient for the synchronous probe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_demo_probe_foreign(void)
 {
-  RA8_RETURN_ON_ERROR(ra8_io_fsfmt_register(&k_demo_stub), s_tag, "register stub");
+  RA8_RETURN_ON_ERROR(ra8_io_fsfmt_register(&s_demo_stub), s_tag, "register stub");
 
   ra8_io_blockdev_t           bd    = {};
   ra8_io_blockdev_ram_state_t state = {};
@@ -204,20 +531,20 @@ static ra8_err_t demo_probe_foreign(void)
 int main(void)
 {
   ra8_log_init();
-  demo_setup_or_halt();
+  internal_demo_setup_or_halt();
   (void)ra8_io_stream_uart_init(&s_uart, &s_ust, (uint8_t)k_demo_uart_chan);
   (void)ra8_io_log_attach(&s_uart); /* route ra8_log into the UART stream too */
-  demo_print("ra8_io_fsfmt_demo: boot\r\n");
+  internal_demo_print("ra8_io_fsfmt_demo: boot\r\n");
 
   const ra8_io_fsfmt_t* fat = nullptr;
-  if ((demo_probe_fat(&fat) == k_ra8_ok) && (demo_probe_foreign() == k_ra8_ok)) {
-    demo_print("ra8_io_fsfmt_demo: probed ");
-    demo_print(fat->name);
-    demo_print(" maxname=");
+  if ((internal_demo_probe_fat(&fat) == k_ra8_ok) && (internal_demo_probe_foreign() == k_ra8_ok)) {
+    internal_demo_print("ra8_io_fsfmt_demo: probed ");
+    internal_demo_print(fat->name);
+    internal_demo_print(" maxname=");
     (void)ra8_io_stream_put_u32(&s_uart, (uint32_t)fat->caps.max_name_len);
-    demo_print(" + foreign stub seam PASS\r\n");
+    internal_demo_print(" + foreign stub seam PASS\r\n");
   } else {
-    demo_print("ra8_io_fsfmt_demo: FAIL\r\n");
+    internal_demo_print("ra8_io_fsfmt_demo: FAIL\r\n");
   }
   (void)ra8_sci_flush((uint8_t)k_demo_uart_chan);
   while (true) {

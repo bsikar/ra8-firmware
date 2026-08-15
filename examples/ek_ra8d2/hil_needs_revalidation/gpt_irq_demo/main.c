@@ -12,7 +12,7 @@
  * gpt_one_shot_demo), this app does NOT poll a status flag: it registers a
  * handler for the GPT0 counter-overflow event with ``ra8_isr_register`` (which
  * writes IELSR and enables the NVIC line), starts GPT0 in saw-wave PWM mode,
- * and then sleeps. Every overflow fires ``gpt_irq_demo_isr`` in handler mode,
+ * and then sleeps. Every overflow fires ``internal_gpt_irq_demo_isr`` in handler mode,
  * which increments ``g_gpt_irq_count`` and toggles board LED1. The main loop
  * itself never touches the LED, so any LED transition is proof the real ISR ran.
  *
@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_elc.h"
@@ -55,7 +56,7 @@ typedef enum : uint16_t {
  * @brief Count of GPT0 overflow interrupts actually serviced by the ISR.
  *
  * @details
- * Incremented only inside ``gpt_irq_demo_isr``. If the ICU event link, the
+ * Incremented only inside ``internal_gpt_irq_demo_isr``. If the ICU event link, the
  * NVIC enable, or the vector dispatch were broken this would never advance --
  * so a non-zero value is direct evidence the real NVIC interrupt path ran.
  * Read externally by J-Link (HIL) and by tools/ra8_emulator (emulator).
@@ -65,7 +66,18 @@ typedef enum : uint16_t {
  */
 volatile uint32_t g_gpt_irq_count = 0U;
 
-static void gpt_irq_demo_panic_halt(void)
+/**
+ * @brief Park the processor after an unrecoverable demo failure.
+ * @details Enters a permanent wait-for-interrupt loop so the failing state and
+ *          liveness counter remain available to a debugger or HIL probe.
+ * @pre Reset startup initialized the stack and exception environment.
+ * @pre The caller has determined that normal demo execution cannot continue.
+ * @post Control never returns to the caller.
+ * @post No further application-level state transition is attempted.
+ * @note An interrupt can wake one iteration, but the terminal loop resumes.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gpt_irq_demo_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -85,32 +97,45 @@ static void gpt_irq_demo_panic_halt(void)
  * @return Nothing.
  *
  * @pre Registered for the GPT0 overflow event via ra8_isr_register.
+ * @pre @p ctx is the unused registration context supplied by this application.
  * @post g_gpt_irq_count has advanced by one and LED1 has toggled.
+ * @post No GPT configuration or interrupt routing is modified.
  *
  * @note Not re-entrant; a single GPT channel drives it.
  * @since 0.1.0
  */
-static void gpt_irq_demo_isr(void* ctx)
+RA8_INTERNAL static void internal_gpt_irq_demo_isr(void* ctx)
 {
   (void)ctx;
   g_gpt_irq_count += 1U;
   (void)ra8_board_led_toggle(k_ra8_board_led1);
 }
 
-static void gpt_irq_demo_setup_or_halt(void)
+/**
+ * @brief Initialize the clocks, timebase, and observable LED fixture.
+ * @details Brings dependencies up in order and treats any failure as terminal,
+ *          leaving interrupt routing disabled until the separate arm step.
+ * @pre Reset startup completed data and BSS initialization.
+ * @pre Board clock and GPIO registers are in their reset-compatible state.
+ * @post On return the CPU clock rate is known, the timebase runs, and LED1 is initialized.
+ * @post Any failed prerequisite has entered the terminal panic loop.
+ * @note Single-shot boot helper; it is not reentrant.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gpt_irq_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    gpt_irq_demo_panic_halt();
+    internal_gpt_irq_demo_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    gpt_irq_demo_panic_halt();
+    internal_gpt_irq_demo_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    gpt_irq_demo_panic_halt();
+    internal_gpt_irq_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    gpt_irq_demo_panic_halt();
+    internal_gpt_irq_demo_panic_halt();
   }
 }
 
@@ -119,20 +144,20 @@ static void gpt_irq_demo_setup_or_halt(void)
  *
  * @return k_ra8_ok on success, else the first failing step's error.
  *
- * @pre gpt_irq_demo_setup_or_halt has run; interrupts not yet enabled.
+ * @pre internal_gpt_irq_demo_setup_or_halt has run; interrupts not yet enabled.
  * @post On k_ra8_ok GPT0 is counting and its overflow vectors to the ISR.
  *
  * @note Not thread-safe (single-threaded boot context).
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t gpt_irq_demo_arm(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_gpt_irq_demo_arm(void)
 {
   ra8_err_t err = ra8_isr_init();
   if (err != k_ra8_ok) {
     return err;
   }
   err = ra8_isr_register((ra8_elc_event_t)k_gpt_irq_demo_ovf_event,
-                         gpt_irq_demo_isr,
+                         internal_gpt_irq_demo_isr,
                          nullptr,
                          (uint8_t)k_gpt_irq_demo_priority,
                          nullptr);
@@ -158,20 +183,20 @@ static void gpt_irq_demo_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  gpt_irq_demo_setup_or_halt();
+  internal_gpt_irq_demo_setup_or_halt();
 
-  if (gpt_irq_demo_arm() != k_ra8_ok) {
-    gpt_irq_demo_panic_halt();
+  if (internal_gpt_irq_demo_arm() != k_ra8_ok) {
+    internal_gpt_irq_demo_panic_halt();
   }
 
   ra8_isr_globals_enable();
 
   while (1) {
-    /* All observable work happens in gpt_irq_demo_isr; the loop only idles. */
+    /* All observable work happens in internal_gpt_irq_demo_isr; the loop only idles. */
     ra8_delay_ms((uint32_t)k_gpt_irq_demo_loop_ms);
   }
 
-  gpt_irq_demo_panic_halt();
+  internal_gpt_irq_demo_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

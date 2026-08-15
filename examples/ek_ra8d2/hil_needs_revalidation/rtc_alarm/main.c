@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -59,30 +60,65 @@ typedef enum : uint16_t {
   k_rtc_demo_seed_day       = 1U,    /**< Rtc demo seed day.                      */
 } rtc_demo_seed_t;
 
-static const uint8_t k_rtc_demo_log_msg[]  = "rtc: alarm fired\r\n";
-static const uint8_t k_rtc_demo_boot_msg[] = "rtc: boot\r\n";
+static const uint8_t s_rtc_demo_log_msg[]  = "rtc: alarm fired\r\n";
+static const uint8_t s_rtc_demo_boot_msg[] = "rtc: boot\r\n";
 
-static void rtc_demo_panic_halt(void)
+/**
+ * @brief Park the processor after an unrecoverable RTC demo failure.
+ *
+ * @details Enters a permanent wait-for-interrupt loop so the failing state
+ *          remains available to an attached debugger without continuing the
+ *          alarm sequence.
+ *
+ * @return None.
+ *
+ * @pre The caller has completed any diagnostic writes it needs preserved.
+ * @pre Interrupt wakeups are harmless because the enclosing loop is permanent.
+ * @post The function never returns to its caller.
+ * @post No further RTC or console operations are initiated by this context.
+ *
+ * @note Intended only for fatal boot and runtime paths in this single-core demo.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_rtc_demo_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-static void rtc_demo_setup_or_halt(void)
+/**
+ * @brief Initialize clocks, timekeeping, console, and RTC calendar state.
+ *
+ * @details Brings up the CPU time base and SCI8 console, enables interrupts,
+ *          selects the RTC sub-clock, starts calendar mode, and installs the
+ *          fixed 2026-01-01 seed used by the alarm loop. Any failed dependency
+ *          is converted into the demo's permanent panic halt.
+ *
+ * @return None.
+ *
+ * @pre Reset-time platform initialization has configured the core and vector table.
+ * @pre The EK-RA8D2 sub-clock crystal and SCI8 console pins are available.
+ * @post On success the console and millisecond time base are usable.
+ * @post On success the RTC is running from the sub-clock at the fixed seed time.
+ *
+ * @note Boot-context only; it is not reentrant and does not recover partial setup.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_rtc_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    rtc_demo_panic_halt();
+    internal_rtc_demo_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    rtc_demo_panic_halt();
+    internal_rtc_demo_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    rtc_demo_panic_halt();
+    internal_rtc_demo_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_rtc_demo_baud) != k_ra8_ok) {
-    rtc_demo_panic_halt();
+    internal_rtc_demo_panic_halt();
   }
   /* Enable global interrupts before the RTC count-source bring-up: that
    * step blocks on ra8_delay_ms for the sub-clock stabilization time, and
@@ -95,10 +131,10 @@ static void rtc_demo_setup_or_halt(void)
    * the crystal, swap the argument to k_ra8_rtc_clk_loco (internal LOCO,
    * crystal-free) and re-flash. */
   if (ra8_rtc_clock_init(k_ra8_rtc_clk_subclock) != k_ra8_ok) {
-    rtc_demo_panic_halt();
+    internal_rtc_demo_panic_halt();
   }
   if (ra8_rtc_init() != k_ra8_ok) {
-    rtc_demo_panic_halt();
+    internal_rtc_demo_panic_halt();
   }
   const ra8_rtc_datetime_t seed = {
     .year    = (uint16_t)(k_rtc_demo_year_base + k_rtc_demo_seed_year_lo),
@@ -110,12 +146,29 @@ static void rtc_demo_setup_or_halt(void)
     .second  = 0U,
   };
   if (ra8_rtc_set(&seed) != k_ra8_ok) {
-    rtc_demo_panic_halt();
+    internal_rtc_demo_panic_halt();
   }
 }
 
 /**
  * @brief Program a +5 s alarm relative to ``now`` and enable AIE.
+ *
+ * @details Copies the supplied calendar value, carries the alarm offset through
+ *          seconds, minutes, and hours, programs the resulting alarm, and only
+ *          then enables its interrupt source.
+ *
+ * @param[in] now Current RTC calendar value used as the alarm origin.
+ *
+ * @return ra8_err_t Status from alarm programming or IRQ enablement.
+ * @retval k_ra8_ok The alarm and alarm interrupt enable were both accepted.
+ * @retval (other)  The first error returned by the RTC driver.
+ *
+ * @pre @p now points to a valid, initialized calendar value.
+ * @pre The RTC was initialized and its count source is running.
+ * @post On success an alarm five seconds after @p now is programmed with AIE enabled.
+ * @post On failure no later RTC operation in this function is attempted.
+ *
+ * @note The hour carry wraps at 24 hours; this demo seed never requires a date carry.
  *
  * @par MC/DC:
  * Compound decision: ``ra8_rtc_set_alarm != ok ||
@@ -125,7 +178,8 @@ static void rtc_demo_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t rtc_demo_arm_alarm(const ra8_rtc_datetime_t* now)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t
+internal_rtc_demo_arm_alarm(const ra8_rtc_datetime_t* now)
 {
   ra8_rtc_datetime_t a = *now;
   uint16_t           s = (uint16_t)a.second + (uint16_t)k_rtc_demo_alarm_offset_s;
@@ -147,21 +201,21 @@ static void rtc_demo_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  rtc_demo_setup_or_halt();
+  internal_rtc_demo_setup_or_halt();
 
   /* Boot banner -- emit before the RTC poll loop so the HIL host can
    * confirm the firmware booted even when the sub-clock crystal is not
    * running and the alarm-fired path never reaches its own write.
-   * (Global IRQs were already enabled in rtc_demo_setup_or_halt.) */
-  (void)ra8_board_uart_console_write(k_rtc_demo_boot_msg,
-                                     (size_t)(sizeof(k_rtc_demo_boot_msg) - 1U));
+   * (Global IRQs were already enabled in internal_rtc_demo_setup_or_halt.) */
+  (void)ra8_board_uart_console_write(s_rtc_demo_boot_msg,
+                                     (size_t)(sizeof(s_rtc_demo_boot_msg) - 1U));
 
   while (1) {
     ra8_rtc_datetime_t now = {};
     if (ra8_rtc_get(&now) != k_ra8_ok) {
       break;
     }
-    if (rtc_demo_arm_alarm(&now) != k_ra8_ok) {
+    if (internal_rtc_demo_arm_alarm(&now) != k_ra8_ok) {
       break;
     }
 
@@ -171,12 +225,12 @@ int32_t main(void)
     do {
       ra8_delay_ms(k_rtc_demo_poll_ms);
       if (ra8_rtc_get_status(&status) != k_ra8_ok) {
-        rtc_demo_panic_halt();
+        internal_rtc_demo_panic_halt();
       }
     } while ((status & (uint8_t)k_ra8_rtc_irq_alarm) == 0U);
 
-    if (ra8_board_uart_console_write(k_rtc_demo_log_msg,
-                                     (size_t)(sizeof(k_rtc_demo_log_msg) - 1U)) != k_ra8_ok) {
+    if (ra8_board_uart_console_write(s_rtc_demo_log_msg,
+                                     (size_t)(sizeof(s_rtc_demo_log_msg) - 1U)) != k_ra8_ok) {
       break;
     }
     if (ra8_rtc_clear_status((uint8_t)k_ra8_rtc_irq_alarm) != k_ra8_ok) {
@@ -184,7 +238,7 @@ int32_t main(void)
     }
     ra8_delay_ms((uint32_t)k_rtc_demo_advance_secs * (uint32_t)k_rtc_demo_ms_per_sec);
   }
-  rtc_demo_panic_halt();
+  internal_rtc_demo_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

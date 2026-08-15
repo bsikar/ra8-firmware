@@ -40,6 +40,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -66,8 +67,8 @@ typedef enum : uint8_t {
 } pdg_demo_chan_t;
 
 /** @brief Output line tags. */
-static const uint8_t k_pdg_demo_ok_msg[]  = "pdg: dll=on ch0=on delay=0x40 cfg=ok\r\n";
-static const uint8_t k_pdg_demo_bad_msg[] = "pdg: cfg=BAD\r\n";
+static const uint8_t s_pdg_demo_ok_msg[]  = "pdg: dll=on ch0=on delay=0x40 cfg=ok\r\n";
+static const uint8_t s_pdg_demo_bad_msg[] = "pdg: cfg=BAD\r\n";
 
 /**
  * @var g_pdg_cfg_ok
@@ -101,39 +102,63 @@ volatile uint32_t g_pdg_dll = 0U;
  */
 volatile uint32_t g_pdg_heartbeat = 0U;
 
-/** @brief Park forever after a fatal init failure. */
-static void pdg_demo_panic_halt(void)
+/**
+ * @brief Park the processor after a fatal initialization failure.
+ *
+ * @details Executes wait-for-interrupt indefinitely to prevent application
+ * progress with incomplete clock, timing, console, LED, or MSTP setup.
+ *
+ * @pre The caller has determined that safe initialization cannot be completed.
+ * @pre No foreground recovery operation remains to be performed.
+ * @post This function does not return.
+ * @post The processor remains in a low-activity wait loop.
+ * @note This terminal path preserves the first initialization failure state.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_pdg_demo_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-/** @brief Bring CGC + SysTick + SCI8 + LEDs + MSTP up. */
-static void pdg_demo_setup_or_halt(void)
+/**
+ * @brief Bring CGC, SysTick, SCI8, LEDs, and MSTP support up.
+ *
+ * @details Initializes all PDG-demo prerequisites in dependency order and
+ * transfers to ::internal_pdg_demo_panic_halt on the first failure.
+ *
+ * @pre The function runs during single-threaded application startup.
+ * @pre EK-RA8D2 board registers are accessible through the platform mapping.
+ * @post On return, timing, console, both LEDs, and MSTP support are ready.
+ * @post Any required initialization failure prevents a return to the caller.
+ * @note The helper applies the demo's fail-closed startup policy consistently.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_pdg_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
   if (ra8_cgc_init() != k_ra8_ok) {
-    pdg_demo_panic_halt();
+    internal_pdg_demo_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    pdg_demo_panic_halt();
+    internal_pdg_demo_panic_halt();
   }
   if (ra8_mstp_init() != k_ra8_ok) {
-    pdg_demo_panic_halt();
+    internal_pdg_demo_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    pdg_demo_panic_halt();
+    internal_pdg_demo_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_pdg_demo_baud) != k_ra8_ok) {
-    pdg_demo_panic_halt();
+    internal_pdg_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    pdg_demo_panic_halt();
+    internal_pdg_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
-    pdg_demo_panic_halt();
+    internal_pdg_demo_panic_halt();
   }
 }
 
@@ -151,11 +176,15 @@ static void pdg_demo_setup_or_halt(void)
  * Single decision ``err != k_ra8_ok`` per call -- no compound condition.
  *
  * @return ``ra8_err_t`` from ``ra8_pdg_init`` / ``ra8_pdg_set_delay``.
+ * @retval k_ra8_ok The DLL and channel accepted the requested delay setup.
  * @pre CGC + MSTP up; IRQs masked or single-threaded init.
+ * @pre The GPT32 clock falls within the selected PDG frequency range.
  * @post PDG DLL enabled, channel 0 un-bypassed, delay code staged.
+ * @post A failed initialization prevents the delay write from being attempted.
+ * @note The staged delay becomes live only when the associated GPT updates it.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t pdg_demo_configure(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_pdg_demo_configure(void)
 {
   const ra8_pdg_config_t cfg = {
     .frange       = k_ra8_pdg_frange_80_160_mhz,
@@ -176,9 +205,12 @@ static void pdg_demo_setup_or_halt(void)
 /**
  * @brief Read the PDG status and fold the bring-up into the verdict.
  *
+ * @details Reads the staged delay for emulator visibility and the full PDG
+ * status for the silicon-observable DLL, power, and bypass verdict.
+ *
  * @param[out] out_ok 1 when the DLL is enabled and channel 0 is powered and
  *                    un-bypassed (the software-observable bring-up). The delay
- *                    code is staged by ::pdg_demo_configure but is not
+ *                    code is staged by ::internal_pdg_demo_configure but is not
  *                    read-exposed on silicon, so it is not part of the verdict.
  *
  * @par MC/DC:
@@ -186,12 +218,16 @@ static void pdg_demo_setup_or_halt(void)
  * supplies N+1 = 4 vectors, varying each condition independently.
  *
  * @return ``ra8_err_t`` from the status accessors.
+ * @retval k_ra8_ok Both status reads completed and @p out_ok was populated.
  * @retval k_ra8_err_null_ptr ``out_ok`` was NULL.
- * @pre ::pdg_demo_configure succeeded.
+ * @pre ::internal_pdg_demo_configure succeeded.
+ * @pre @p out_ok addresses writable storage for one verdict byte.
  * @post ``g_pdg_delay_readback`` / ``g_pdg_dll`` updated.
+ * @post On success, @p out_ok contains exactly zero or one.
+ * @note Delay-code readback is diagnostic only because silicon does not expose it.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t pdg_demo_sample(uint8_t* out_ok)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_pdg_demo_sample(uint8_t* out_ok)
 {
   RA8_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
 
@@ -226,34 +262,34 @@ static void pdg_demo_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  pdg_demo_setup_or_halt();
+  internal_pdg_demo_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the
    * SysTick path (ra8_emulator does not advance DWT_CYCCNT). No NVIC sources
    * are armed by this demo. */
   ra8_isr_globals_enable();
 
-  if (pdg_demo_configure() != k_ra8_ok) {
-    pdg_demo_panic_halt();
+  if (internal_pdg_demo_configure() != k_ra8_ok) {
+    internal_pdg_demo_panic_halt();
   }
 
   while (1) {
     uint8_t         ok   = 0U;
-    const ra8_err_t err  = pdg_demo_sample(&ok);
+    const ra8_err_t err  = internal_pdg_demo_sample(&ok);
     const uint8_t   good = (err == k_ra8_ok && ok != 0U) ? 1U : 0U;
     g_pdg_cfg_ok         = (uint32_t)good;
     if (good != 0U) {
-      (void)ra8_board_uart_console_write(k_pdg_demo_ok_msg,
-                                         (size_t)(sizeof(k_pdg_demo_ok_msg) - 1U));
+      (void)ra8_board_uart_console_write(s_pdg_demo_ok_msg,
+                                         (size_t)(sizeof(s_pdg_demo_ok_msg) - 1U));
       (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
-      (void)ra8_board_uart_console_write(k_pdg_demo_bad_msg,
-                                         (size_t)(sizeof(k_pdg_demo_bad_msg) - 1U));
+      (void)ra8_board_uart_console_write(s_pdg_demo_bad_msg,
+                                         (size_t)(sizeof(s_pdg_demo_bad_msg) - 1U));
       (void)ra8_board_led_toggle(k_ra8_board_led2);
     }
     ++g_pdg_heartbeat;
     ra8_delay_ms(k_pdg_demo_period_ms);
   }
-  pdg_demo_panic_halt();
+  internal_pdg_demo_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

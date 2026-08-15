@@ -39,6 +39,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -66,9 +67,22 @@ typedef enum : uint16_t {
 } lpm_dpsby1_byte_t;
 
 /** @brief Boot banner -- this is the HIL gate string. */
-static const uint8_t k_lpm_dpsby1_boot_msg[] = "lpm_dpsby1: boot\r\n";
+static const uint8_t s_lpm_dpsby1_boot_msg[] = "lpm_dpsby1: boot\r\n";
 
-static void lpm_dpsby1_panic_halt(void)
+/**
+ * @brief Park the processor after a fatal setup or standby-path failure.
+ *
+ * @details Executes wait-for-interrupt indefinitely so a failed deep-standby
+ * sequence cannot continue into application code with partial state.
+ *
+ * @pre The caller has determined that the demo cannot continue safely.
+ * @pre No foreground recovery operation remains capable of restoring state.
+ * @post This function does not return.
+ * @post The processor remains in a low-activity wait loop.
+ * @note The terminal loop preserves the failure state for a debugger probe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_lpm_dpsby1_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -78,32 +92,36 @@ static void lpm_dpsby1_panic_halt(void)
 /**
  * @brief Bring CGC + SysTick + SCI8 + RTC + LPM block up.
  *
+ * @details Initializes the clock and timing path, console, RTC seed, and LPM
+ * configuration in dependency order, halting at the first required failure.
+ *
  * @pre IRQs disabled.
  * @pre Reset_Handler has copied .data and zeroed .bss.
  *
  * @post On success every sub-system is armed; on failure the function
  *       panic-halts and never returns.
  * @post RTC seeded to 2026-01-01 00:00:00.
+ * @note The helper applies a fail-closed startup policy before IRQs are enabled.
  *
  * @since 0.1.0
  */
-static void lpm_dpsby1_setup_or_halt(void)
+RA8_INTERNAL static void internal_lpm_dpsby1_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    lpm_dpsby1_panic_halt();
+    internal_lpm_dpsby1_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    lpm_dpsby1_panic_halt();
+    internal_lpm_dpsby1_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    lpm_dpsby1_panic_halt();
+    internal_lpm_dpsby1_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_lpm_dpsby1_baud) != k_ra8_ok) {
-    lpm_dpsby1_panic_halt();
+    internal_lpm_dpsby1_panic_halt();
   }
   if (ra8_rtc_init() != k_ra8_ok) {
-    lpm_dpsby1_panic_halt();
+    internal_lpm_dpsby1_panic_halt();
   }
   const ra8_rtc_datetime_t seed = {
     .year    = (uint16_t)(k_lpm_dpsby1_year_base + (uint16_t)k_lpm_dpsby1_seed_year_lo),
@@ -115,7 +133,7 @@ static void lpm_dpsby1_setup_or_halt(void)
     .second  = 0U,
   };
   if (ra8_rtc_set(&seed) != k_ra8_ok) {
-    lpm_dpsby1_panic_halt();
+    internal_lpm_dpsby1_panic_halt();
   }
   const ra8_lpm_config_t lpm_cfg = {
     .io_port_keep     = false,
@@ -125,20 +143,29 @@ static void lpm_dpsby1_setup_or_halt(void)
     .sscr_low_power   = k_ra8_lpm_ss2lp_default,
   };
   if (ra8_lpm_init(&lpm_cfg) != k_ra8_ok) {
-    lpm_dpsby1_panic_halt();
+    internal_lpm_dpsby1_panic_halt();
   }
 }
 
 /**
  * @brief Compute @p now + 5 s wrapping across seconds/minutes/hours.
  *
+ * @details Copies the complete calendar value, then advances only the time-of-day
+ * fields with explicit carry propagation through seconds, minutes, and hours.
+ *
+ * @param[in] now Current valid RTC calendar value.
+ * @param[out] out Receives the copied calendar and advanced time-of-day fields.
+ *
  * @pre ``out`` is non-NULL.
  * @pre ``now->second < 60``, ``now->minute < 60``, ``now->hour < 24``.
  * @post ``out`` reflects ``now`` advanced by 5 seconds.
+ * @post Calendar fields other than hour, minute, and second mirror @p now.
+ * @note Day rollover wraps the hour to zero; date advancement is out of scope.
  *
  * @since 0.1.0
  */
-static void lpm_dpsby1_add_offset(const ra8_rtc_datetime_t* now, ra8_rtc_datetime_t* out)
+RA8_INTERNAL static void internal_lpm_dpsby1_add_offset(const ra8_rtc_datetime_t* now,
+                                                        ra8_rtc_datetime_t*       out)
 {
   *out                = *now;
   const uint16_t s    = (uint16_t)now->second + (uint16_t)k_lpm_dpsby1_alarm_offset_s;
@@ -154,6 +181,11 @@ static void lpm_dpsby1_add_offset(const ra8_rtc_datetime_t* now, ra8_rtc_datetim
 /**
  * @brief Arm the +5 s RTC alarm, DPSIER2.DRTCAIE, and WUPEN0.RTCALM.
  *
+ * @details Builds the future alarm, enables its RTC interrupt, connects it to
+ * the deep-standby cancel matrix, and finally enables the wake source.
+ *
+ * @param[in] now Current RTC calendar value used as the alarm base.
+ *
  * @par MC/DC:
  * Compound decision: ``ra8_rtc_set_alarm != ok ||
  * ra8_rtc_set_irq_enable != ok || ra8_lpm_arm_dpsier != ok ||
@@ -161,6 +193,7 @@ static void lpm_dpsby1_add_offset(const ra8_rtc_datetime_t* now, ra8_rtc_datetim
  * vectors covered in the host unit test.
  *
  * @return Error code from the first failing primitive.
+ * @retval k_ra8_ok The alarm and both wake-routing matrices were armed.
  *
  * @pre RTC initialised and seeded.
  * @pre PRC1 unlocked by ra8_lpm_init.
@@ -168,13 +201,16 @@ static void lpm_dpsby1_add_offset(const ra8_rtc_datetime_t* now, ra8_rtc_datetim
  * @post On success the RTC alarm fires in 5 s and is wired both into
  *       the deep-standby cancel matrix (DPSIER2) and the wake-up
  *       enable matrix (WUPEN0).
+ * @post On failure, later wake-routing operations are not attempted.
+ * @note The alarm target uses the bounded offset helper and does not change @p now.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t lpm_dpsby1_arm_wake(const ra8_rtc_datetime_t* now)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t
+internal_lpm_dpsby1_arm_wake(const ra8_rtc_datetime_t* now)
 {
   ra8_rtc_datetime_t a = {};
-  lpm_dpsby1_add_offset(now, &a);
+  internal_lpm_dpsby1_add_offset(now, &a);
   ra8_err_t err = ra8_rtc_set_alarm(&a);
   if (err != k_ra8_ok) {
     return err;
@@ -194,21 +230,21 @@ static void lpm_dpsby1_add_offset(const ra8_rtc_datetime_t* now, ra8_rtc_datetim
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  lpm_dpsby1_setup_or_halt();
+  internal_lpm_dpsby1_setup_or_halt();
   ra8_isr_globals_enable();
 
   /* Emit boot banner before the deep-standby entry so the HIL gate
    * confirms the build + bring-up path even if the sub-clock crystal
    * is silent (see SOSC caveat in the file header). */
-  (void)ra8_board_uart_console_write(k_lpm_dpsby1_boot_msg,
-                                     (size_t)(sizeof(k_lpm_dpsby1_boot_msg) - 1U));
+  (void)ra8_board_uart_console_write(s_lpm_dpsby1_boot_msg,
+                                     (size_t)(sizeof(s_lpm_dpsby1_boot_msg) - 1U));
 
   while (1) {
     ra8_rtc_datetime_t now = {};
     if (ra8_rtc_get(&now) != k_ra8_ok) {
       break;
     }
-    if (lpm_dpsby1_arm_wake(&now) != k_ra8_ok) {
+    if (internal_lpm_dpsby1_arm_wake(&now) != k_ra8_ok) {
       break;
     }
     /* On hardware this never returns -- Deep Software Standby resets
@@ -219,7 +255,7 @@ int32_t main(void)
       break;
     }
   }
-  lpm_dpsby1_panic_halt();
+  internal_lpm_dpsby1_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

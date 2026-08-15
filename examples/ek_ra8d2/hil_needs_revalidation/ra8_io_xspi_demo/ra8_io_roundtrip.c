@@ -19,6 +19,7 @@
 
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 
 /**
@@ -65,7 +66,7 @@ static uint8_t s_readback[k_ra8_io_roundtrip_max_payload];
  * @note Not thread-safe; mutates the shared payload buffer.
  * @since 0.1.0
  */
-static void ra8_io_roundtrip_fill_linear(uint32_t len)
+RA8_INTERNAL static void internal_ra8_io_roundtrip_fill_linear(uint32_t len)
 {
   for (uint32_t i = 0U; i < len; ++i) {
     s_payload[i] = (uint8_t)((i * (uint32_t)k_ra8_io_roundtrip_seed_mul) +
@@ -93,7 +94,7 @@ static void ra8_io_roundtrip_fill_linear(uint32_t len)
  * @note Not thread-safe; mutates the shared payload buffer.
  * @since 0.1.0
  */
-static void ra8_io_roundtrip_fill_alpha(uint32_t len)
+RA8_INTERNAL static void internal_ra8_io_roundtrip_fill_alpha(uint32_t len)
 {
   for (uint32_t i = 0U; i < len; ++i) {
     s_payload[i] = (uint8_t)((uint32_t)k_ra8_io_roundtrip_note_base +
@@ -127,7 +128,8 @@ static void ra8_io_roundtrip_fill_alpha(uint32_t len)
  * @note Not thread-safe; mutates the shared read-back buffer.
  * @since 0.1.0
  */
-static ra8_err_t ra8_io_roundtrip_read_verify(const char* path, uint32_t len, const char* tag)
+RA8_INTERNAL static ra8_err_t
+internal_ra8_io_roundtrip_read_verify(const char* path, uint32_t len, const char* tag)
 {
   ra8_fs_file_t* rf = nullptr;
   RA8_RETURN_ON_ERROR(ra8_io_vfs_open(path, k_ra8_fs_mode_read, &rf), tag, "open r");
@@ -172,10 +174,11 @@ static ra8_err_t ra8_io_roundtrip_read_verify(const char* path, uint32_t len, co
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t ra8_io_roundtrip_mount_check(ra8_io_blockdev_t*               bd,
-                                              const ra8_io_roundtrip_params_t* p,
-                                              ra8_fs_backend_t*                be,
-                                              ra8_fs_mount_t**                 out_mount)
+RA8_INTERNAL static ra8_err_t
+internal_ra8_io_roundtrip_mount_check(ra8_io_blockdev_t*               bd,
+                                      const ra8_io_roundtrip_params_t* p,
+                                      ra8_fs_backend_t*                be,
+                                      ra8_fs_mount_t**                 out_mount)
 {
   RA8_CHECK_NULL_PTR(bd, "ra8_io_roundtrip", "bd");
   RA8_CHECK_NULL_PTR(p, "ra8_io_roundtrip", "params");
@@ -209,9 +212,10 @@ static ra8_err_t ra8_io_roundtrip_mount_check(ra8_io_blockdev_t*               b
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t ra8_io_roundtrip_format_mount(ra8_fs_backend_t*                be,
-                                               const ra8_io_roundtrip_params_t* p,
-                                               ra8_fs_mount_t**                 out_mount)
+RA8_INTERNAL static ra8_err_t
+internal_ra8_io_roundtrip_format_mount(ra8_fs_backend_t*                be,
+                                       const ra8_io_roundtrip_params_t* p,
+                                       ra8_fs_mount_t**                 out_mount)
 {
   ra8_fs_format_opts_t opts = {};
   opts.type                 = p->fat_type;
@@ -229,13 +233,13 @@ ra8_err_t ra8_io_roundtrip_mount(ra8_io_blockdev_t*               bd,
                                  ra8_fs_backend_t*                be,
                                  ra8_fs_mount_t**                 out_mount)
 {
-  RA8_RETURN_ON_ERROR(ra8_io_roundtrip_mount_check(bd, p, be, out_mount),
+  RA8_RETURN_ON_ERROR(internal_ra8_io_roundtrip_mount_check(bd, p, be, out_mount),
                       "ra8_io_roundtrip",
                       "args");
   *out_mount = nullptr;
 
   RA8_RETURN_ON_ERROR(ra8_io_blockdev_as_fs_backend(bd, be), p->log_tag, "fs bridge");
-  return ra8_io_roundtrip_format_mount(be, p, out_mount);
+  return internal_ra8_io_roundtrip_format_mount(be, p, out_mount);
 }
 
 ra8_err_t ra8_io_roundtrip_root_file(ra8_fs_mount_t* mnt, const ra8_io_roundtrip_params_t* p)
@@ -246,11 +250,11 @@ ra8_err_t ra8_io_roundtrip_root_file(ra8_fs_mount_t* mnt, const ra8_io_roundtrip
     return k_ra8_err_invalid_size;
   }
 
-  ra8_io_roundtrip_fill_linear(p->root_bytes);
+  internal_ra8_io_roundtrip_fill_linear(p->root_bytes);
   RA8_RETURN_ON_ERROR(ra8_fs_write_file(mnt, p->root_file, s_payload, p->root_bytes),
                       p->log_tag,
                       "write");
-  return ra8_io_roundtrip_read_verify(p->root_path, p->root_bytes, p->log_tag);
+  return internal_ra8_io_roundtrip_read_verify(p->root_path, p->root_bytes, p->log_tag);
 }
 
 /**
@@ -276,7 +280,8 @@ ra8_err_t ra8_io_roundtrip_root_file(ra8_fs_mount_t* mnt, const ra8_io_roundtrip
  * @note Not thread-safe; reads the shared payload buffer.
  * @since 0.1.0
  */
-static ra8_err_t ra8_io_roundtrip_write_subdir(const ra8_io_roundtrip_params_t* p)
+RA8_INTERNAL static ra8_err_t
+internal_ra8_io_roundtrip_write_subdir(const ra8_io_roundtrip_params_t* p)
 {
   ra8_fs_file_t* wf = nullptr;
   RA8_RETURN_ON_ERROR(ra8_io_vfs_open(p->subdir_file, k_ra8_fs_mode_write, &wf),
@@ -296,8 +301,8 @@ ra8_err_t ra8_io_roundtrip_subdir_file(const ra8_io_roundtrip_params_t* p)
   }
 
   RA8_RETURN_ON_ERROR(ra8_io_vfs_mkdir(p->subdir_path), p->log_tag, "mkdir");
-  ra8_io_roundtrip_fill_alpha(p->subdir_bytes);
-  RA8_RETURN_ON_ERROR(ra8_io_roundtrip_write_subdir(p), p->log_tag, "subdir write");
+  internal_ra8_io_roundtrip_fill_alpha(p->subdir_bytes);
+  RA8_RETURN_ON_ERROR(internal_ra8_io_roundtrip_write_subdir(p), p->log_tag, "subdir write");
 
-  return ra8_io_roundtrip_read_verify(p->subdir_file, p->subdir_bytes, p->log_tag);
+  return internal_ra8_io_roundtrip_read_verify(p->subdir_file, p->subdir_bytes, p->log_tag);
 }

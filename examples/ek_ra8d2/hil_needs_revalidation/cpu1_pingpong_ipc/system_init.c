@@ -1,5 +1,6 @@
 /**
- * @file examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/system_init.c
+ * @file
+ * examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/system_init.c
  * @brief Cortex-M85 / RA8D2 core bring-up for cpu1_pingpong_ipc
  *
  * @details
@@ -40,6 +41,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_boot_entry.h"
 #include "trustzone_init.h"
 
@@ -51,25 +53,25 @@ extern const uint32_t g_ra8_vector_table_start[];
  */
 
 typedef enum : uintptr_t {
-  k_ra8_scb_vtor_addr  = 0xE000ED08UL, /**< Vector Table Offset Register.              */
-  k_ra8_scb_ccr_addr   = 0xE000ED14UL, /**< Configuration and Control Register.        */
-  k_ra8_scb_shcsr_addr = 0xE000ED24UL, /**< System Handler Control and State.          */
-  k_ra8_scb_cpacr_addr = 0xE000ED88UL, /**< Coprocessor Access Control.                */
-  k_ra8_scb_nsacr_addr = 0xE000ED8CUL, /**< Non-secure Access Control.                 */
-  k_ra8_scb_iciallu    = 0xE000EF50UL, /**< ICIALLU -- invalidate I-cache.             */
-  k_ra8_scb_dciallu    = 0xE000EF58UL, /**< DCIALLU -- invalidate D-cache (sets only). */
-  k_ra8_scb_csselr     = 0xE000ED84UL, /**< Cache Size Selection Register.             */
-  k_ra8_scb_ccsidr     = 0xE000ED80UL, /**< Cache Size ID Register.                    */
-  k_ra8_scb_dcisw      = 0xE000EF60UL, /**< D-cache Invalidate by Set/Way.             */
-  k_ra8_fpu_fpccr_addr = 0xE000EF34UL, /**< FPU Context Control Register.              */
-  k_ra8_nvic_aircr     = 0xE000ED0CUL, /**< Application Interrupt and Reset Ctrl.      */
-  k_ra8_mpu_type_addr  = 0xE000ED90UL, /**< MPU Type Register.                         */
-  k_ra8_mpu_ctrl_addr  = 0xE000ED94UL, /**< MPU Control Register.                      */
-  k_ra8_mpu_rnr_addr   = 0xE000ED98UL, /**< MPU Region Number.                         */
-  k_ra8_mpu_rbar_addr  = 0xE000ED9CUL, /**< MPU Region Base Address.                   */
-  k_ra8_mpu_rlar_addr  = 0xE000EDA0UL, /**< MPU Region Limit Address.                  */
-  k_ra8_mpu_mair0_addr = 0xE000EDC0UL, /**< MPU Attribute Indirection 0.               */
-  k_ra8_mpu_mair1_addr = 0xE000EDC4UL, /**< MPU Attribute Indirection 1.               */
+  k_ra8_scb_vtor_addr  = 0xE000ED08UL, /**< Vector table offset.     */
+  k_ra8_scb_ccr_addr   = 0xE000ED14UL, /**< Configuration control.   */
+  k_ra8_scb_shcsr_addr = 0xE000ED24UL, /**< Handler control/state.   */
+  k_ra8_scb_cpacr_addr = 0xE000ED88UL, /**< Coprocessor access.      */
+  k_ra8_scb_nsacr_addr = 0xE000ED8CUL, /**< Non-secure access.       */
+  k_ra8_scb_iciallu    = 0xE000EF50UL, /**< Invalidate I-cache.      */
+  k_ra8_scb_dciallu    = 0xE000EF58UL, /**< Invalidate D-cache.      */
+  k_ra8_scb_csselr     = 0xE000ED84UL, /**< Cache selector.          */
+  k_ra8_scb_ccsidr     = 0xE000ED80UL, /**< Cache size ID.           */
+  k_ra8_scb_dcisw      = 0xE000EF60UL, /**< D-cache set/way.         */
+  k_ra8_fpu_fpccr_addr = 0xE000EF34UL, /**< FPU context control.     */
+  k_ra8_nvic_aircr     = 0xE000ED0CUL, /**< Interrupt/reset control. */
+  k_ra8_mpu_type_addr  = 0xE000ED90UL, /**< MPU type.                */
+  k_ra8_mpu_ctrl_addr  = 0xE000ED94UL, /**< MPU control.             */
+  k_ra8_mpu_rnr_addr   = 0xE000ED98UL, /**< MPU region number.       */
+  k_ra8_mpu_rbar_addr  = 0xE000ED9CUL, /**< MPU region base.         */
+  k_ra8_mpu_rlar_addr  = 0xE000EDA0UL, /**< MPU region limit.        */
+  k_ra8_mpu_mair0_addr = 0xE000EDC0UL, /**< MPU attributes 0.        */
+  k_ra8_mpu_mair1_addr = 0xE000EDC4UL, /**< MPU attributes 1.        */
 } ra8_core_addr_t;
 
 extern uint32_t g_ra8_ls_stack_top; /* from vector_table.c / linker. */
@@ -79,31 +81,94 @@ extern uint32_t g_ra8_ls_stack_top; /* from vector_table.c / linker. */
  * =============================================================================
  */
 
-static inline uint32_t internal_read32(uintptr_t addr)
+/**
+ * @brief Read one 32-bit core register through a volatile MMIO access.
+ * @details Performs the minimal width-specific access used by the remaining
+ *          early-boot helpers without depending on initialized runtime state.
+ * @param[in] addr Aligned register address in the core peripheral window.
+ * @return Register value observed by the processor.
+ * @retval 0x00000000..0xFFFFFFFF Exact 32-bit value returned by the register.
+ * @pre ``addr`` is readable and aligned to four bytes.
+ * @pre Core-register access is permitted in the current security state.
+ * @post Exactly one volatile 32-bit read has occurred.
+ * @post No software-visible state other than the returned value is changed.
+ * @note Hardware read side effects, if any, are defined by the selected
+ * register.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static inline uint32_t internal_read32(uintptr_t addr)
 {
   return *(volatile uint32_t*)addr;
 }
 
-static inline void internal_write32(uintptr_t addr, uint32_t value)
+/**
+ * @brief Write one 32-bit value to a core register.
+ * @details Performs the minimal width-specific access used by early boot and
+ *          leaves ordering decisions to the helper that owns the register.
+ * @param[in] addr Aligned register address in the core peripheral window.
+ * @param[in] value Value to store.
+ * @pre ``addr`` is writable and aligned to four bytes.
+ * @pre Core-register access is permitted in the current security state.
+ * @post Exactly one volatile 32-bit write has occurred.
+ * @post Register-defined side effects may be visible to the processor.
+ * @note Callers add architectural barriers when a register requires them.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static inline void internal_write32(uintptr_t addr, uint32_t value)
 {
   *(volatile uint32_t*)addr = value;
 }
 
-static inline void internal_dsb(void)
+/**
+ * @brief Complete outstanding explicit memory accesses on the target.
+ * @details Emits a full-system DSB on ARM builds and retains an empty,
+ *          compile-checkable body for off-target builds.
+ * @pre Called from privileged early-boot code.
+ * @pre No C runtime state is required.
+ * @post Target execution passes a full-system data synchronization barrier.
+ * @post Off-target builds perform no instruction.
+ * @note The compiler memory clobber also prevents reordering across the
+ * barrier.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static inline void internal_dsb(void)
 {
 #ifndef RA8_OFF_TARGET
   __asm__ volatile("dsb 0xF" ::: "memory");
 #endif
 }
 
-static inline void internal_isb(void)
+/**
+ * @brief Flush the target instruction pipeline after a control-state change.
+ * @details Emits a full-system ISB on ARM builds and retains an empty,
+ *          compile-checkable body for off-target builds.
+ * @pre Called after a write that requires an instruction synchronization
+ * barrier.
+ * @pre No C runtime state is required.
+ * @post Target execution observes subsequent instructions in the new context.
+ * @post Off-target builds perform no instruction.
+ * @note The compiler memory clobber prevents motion across the barrier.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static inline void internal_isb(void)
 {
 #ifndef RA8_OFF_TARGET
   __asm__ volatile("isb 0xF" ::: "memory");
 #endif
 }
 
-static inline void internal_disable_irq(void)
+/**
+ * @brief Mask configurable interrupts during early core initialization.
+ * @details Emits ``cpsid i`` on the target before any driver state exists;
+ *          off-target builds retain the call structure without target assembly.
+ * @pre Called in privileged mode before application interrupt enablement.
+ * @pre The caller accepts that interrupts remain masked on return.
+ * @post Target PRIMASK prevents configurable interrupt delivery.
+ * @post Off-target builds perform no instruction.
+ * @note The application explicitly enables interrupts after drivers are ready.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static inline void internal_disable_irq(void)
 {
 #ifndef RA8_OFF_TARGET
   __asm__ volatile("cpsid i" ::: "memory");
@@ -117,8 +182,17 @@ static inline void internal_disable_irq(void)
 
 /**
  * @brief Point VTOR at the physical vector table base.
+ * @details Writes the linker-provided vector-table address before any interrupt
+ *          can be accepted by the application.
+ * @pre ``g_ra8_vector_table_start`` is aligned as required by Cortex-M85 VTOR.
+ * @pre Configurable interrupts remain masked.
+ * @post VTOR names the firmware's linked vector table.
+ * @post Later exception entry resolves through that table.
+ * @note This helper touches only core MMIO and is safe before ``.data``
+ * initialization.
+ * @since 0.1.0
  */
-static void internal_set_vtor(void)
+RA8_INTERNAL static void internal_set_vtor(void)
 {
   /* Vector table sits at the start of the .vectors section, which
    * the linker pins to the start of MRAM (`0x02000000`). The SCB
@@ -128,8 +202,16 @@ static void internal_set_vtor(void)
 
 /**
  * @brief Grant full access to CP10 / CP11 (the FPU coprocessors).
+ * @details Sets both CPACR access fields and synchronizes the processor before
+ *          subsequent floating-point instructions can execute.
+ * @pre Called from privileged early-boot context.
+ * @pre CPACR is accessible in the current security state.
+ * @post CP10 and CP11 allow full privileged and unprivileged access.
+ * @post DSB and ISB make the permission change effective before return.
+ * @note Existing unrelated CPACR fields are preserved.
+ * @since 0.1.0
  */
-static void internal_enable_fpu(void)
+RA8_INTERNAL static void internal_enable_fpu(void)
 {
   enum : uint32_t {
     k_ra8_cpacr_cp10_cp11_full_access = 0x00F00000UL, /**< RA8 cpacr cp10 cp11 full access. */
@@ -143,8 +225,16 @@ static void internal_enable_fpu(void)
 
 /**
  * @brief Turn on FPU lazy stacking (FPCCR.LSPEN = 1, ASPEN = 1).
+ * @details Preserves existing FPCCR state while enabling automatic and lazy
+ *          floating-point context preservation for exception entry.
+ * @pre FPU coprocessor access has already been enabled.
+ * @pre FPCCR is accessible in the current security state.
+ * @post FPCCR.ASPEN and FPCCR.LSPEN are set.
+ * @post Unrelated FPCCR bits retain their prior values.
+ * @note No floating-point state is eagerly saved by this helper.
+ * @since 0.1.0
  */
-static void internal_enable_fpu_lazy_stack(void)
+RA8_INTERNAL static void internal_enable_fpu_lazy_stack(void)
 {
   enum : uint32_t {
     k_ra8_fpccr_lspen = 1UL << 30, /**< RA8 fpccr lspen. */
@@ -157,8 +247,16 @@ static void internal_enable_fpu_lazy_stack(void)
 
 /**
  * @brief Invalidate and enable the Cortex-M85 I-cache.
+ * @details Invalidates all instruction-cache entries, sets CCR.IC, and uses
+ *          architectural barriers around the transition.
+ * @pre Called before normal application execution begins.
+ * @pre Core cache-maintenance registers are accessible.
+ * @post The instruction cache is enabled with no stale entries retained.
+ * @post Subsequent instruction fetches observe the enabled cache state.
+ * @note The build currently references this helper without invoking it.
+ * @since 0.1.0
  */
-[[maybe_unused]] static void internal_enable_icache(void)
+[[maybe_unused]] RA8_INTERNAL static void internal_enable_icache(void)
 {
   /* Invalidate, then set CCR.IC. */
   internal_dsb();
@@ -182,8 +280,14 @@ static void internal_enable_fpu_lazy_stack(void)
  * the RA8D2 the boot ROM leaves the D-cache with all lines marked
  * invalid, so a bulk CCR.DC = 1 write is safe. A production build
  * should add a real CCSIDR-driven loop.
+ * @pre Boot ROM has left all data-cache lines invalid.
+ * @pre Core cache control registers are accessible.
+ * @post CCR.DC is set and the transition is synchronized.
+ * @post Existing unrelated CCR bits are preserved.
+ * @note This shortcut is valid only under the documented boot-ROM invariant.
+ * @since 0.1.0
  */
-[[maybe_unused]] static void internal_enable_dcache(void)
+[[maybe_unused]] RA8_INTERNAL static void internal_enable_dcache(void)
 {
   enum : uint32_t { k_ra8_ccr_dc = 1UL << 16 /**< RA8 ccr dc. */ };
   uint32_t ccr = internal_read32(k_ra8_scb_ccr_addr);
@@ -195,8 +299,14 @@ static void internal_enable_fpu_lazy_stack(void)
 
 /**
  * @brief Enable branch-target prediction (CCR.BP on Cortex-M85).
+ * @pre Called during privileged core initialization.
+ * @pre CCR is readable and writable in the current security state.
+ * @post CCR.BP is set and the transition is synchronized.
+ * @post Existing unrelated CCR bits are preserved.
+ * @note The build currently references this helper without invoking it.
+ * @since 0.1.0
  */
-[[maybe_unused]] static void internal_enable_branch_predictor(void)
+[[maybe_unused]] RA8_INTERNAL static void internal_enable_branch_predictor(void)
 {
   enum : uint32_t { k_ra8_ccr_bp = 1UL << 18 /**< RA8 ccr bp. */ };
   uint32_t ccr = internal_read32(k_ra8_scb_ccr_addr);
@@ -208,8 +318,16 @@ static void internal_enable_fpu_lazy_stack(void)
 
 /**
  * @brief Set NVIC priority grouping to 4 preempt bits / 0 sub-priority.
+ * @details Writes AIRCR with its mandatory key and the firmware's selected
+ *          PRIGROUP encoding.
+ * @pre Configurable interrupts are masked.
+ * @pre AIRCR is writable from the current privileged security state.
+ * @post AIRCR.PRIGROUP contains the four-preemption-bit configuration.
+ * @post Interrupt priorities can be assigned under that grouping model.
+ * @note The write intentionally supplies the VECTKEY authorization value.
+ * @since 0.1.0
  */
-static void internal_set_priority_grouping(void)
+RA8_INTERNAL static void internal_set_priority_grouping(void)
 {
   enum : uint32_t {
     k_ra8_aircr_vectkey    = 0x05FA0000UL, /**< Required write key.     */
@@ -226,7 +344,8 @@ static void internal_set_priority_grouping(void)
  * privileged mode still sees the default memory map for anything
  * not explicitly covered:
  *
- * - Region 0: MRAM (0x02000000, 1 MiB) -- read + execute, inner/outer cacheable.
+ * - Region 0: MRAM (0x02000000, 1 MiB) -- read + execute, inner/outer
+ * cacheable.
  * - Region 1: SRAM (0x22000000, 2 MiB) -- read + write, no execute.
  * - Region 2: SDRAM (0x68000000, 64 MiB) -- read + write, no execute.
  * - Region 3: Peripherals (0x40000000, 128 MiB) -- read + write,
@@ -250,7 +369,8 @@ enum : uint32_t {
 };
 
 /* Region base and limit addresses. RLAR limits are <region-end> minus
- * the ARMv8-M 32-byte region quantum, OR-ed with the enable bit at write time. */
+ * the ARMv8-M 32-byte region quantum, OR-ed with the enable bit at write time.
+ */
 enum : uint32_t {
   k_ra8_mpu_mram_base   = 0x02000000UL, /**< 1 MiB MRAM code region.     */
   k_ra8_mpu_mram_limit  = 0x020FFFE0UL, /**< RA8 MPU MRAM limit.         */
@@ -264,8 +384,17 @@ enum : uint32_t {
 
 /**
  * @brief Program a single MPU region via RNR/RBAR/RLAR.
+ * @param[in] region MPU region number to select.
+ * @param[in] base_attr Encoded RBAR base address and access attributes.
+ * @param[in] limit_enable Encoded RLAR limit, MAIR index, and enable bit.
+ * @pre The MPU is disabled or the selected region may be safely updated.
+ * @pre Encoded addresses obey the 32-byte PMSAv8 region alignment.
+ * @post RNR selects ``region`` and its RBAR/RLAR values are installed.
+ * @post Other MPU regions are unchanged.
+ * @note Callers perform any barrier sequence required after the region set.
+ * @since 0.1.0
  */
-[[maybe_unused]] static void
+[[maybe_unused]] RA8_INTERNAL static void
 internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enable)
 {
   internal_write32(k_ra8_mpu_rnr_addr, region);
@@ -275,8 +404,17 @@ internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enab
 
 /**
  * @brief Programme and enable the Cortex-M85 core MPU.
+ * @details Installs the four memory-map regions documented above, programs
+ *          their MAIR attributes, and enables privileged default mapping.
+ * @pre Called in privileged early-boot context with interrupts masked.
+ * @pre No concurrent agent is modifying the core MPU registers.
+ * @post MRAM, SRAM, SDRAM, and peripheral regions have their intended access
+ * policy.
+ * @post MPU_CTRL.ENABLE and MPU_CTRL.PRIVDEFENA are set after synchronization.
+ * @note The build currently references this helper without invoking it.
+ * @since 0.1.0
  */
-[[maybe_unused]] static void internal_mpu_init(void)
+[[maybe_unused]] RA8_INTERNAL static void internal_mpu_init(void)
 {
   enum : uint32_t {
     k_ra8_mpu_ctrl_enable     = 1UL << 0,     /**< RA8 MPU control enable.     */

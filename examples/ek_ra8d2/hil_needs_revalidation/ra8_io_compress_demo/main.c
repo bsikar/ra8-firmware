@@ -38,6 +38,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
@@ -63,10 +64,10 @@ typedef enum : uint32_t {
 } demo_const_t;
 
 /** @brief SCI8 console TXD = PD02. */
-static const ra8_port_pin_t k_demo_txd =
+static const ra8_port_pin_t s_demo_txd =
   (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << (uint16_t)k_demo_pin_shift) | (uint16_t)k_ra8_pin_2);
 /** @brief SCI8 console RXD = PD03. */
-static const ra8_port_pin_t k_demo_rxd =
+static const ra8_port_pin_t s_demo_rxd =
   (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << (uint16_t)k_demo_pin_shift) | (uint16_t)k_ra8_pin_3);
 
 /** @brief 256 KiB RAM-disk backing buffer (in SRAM .bss) for the `"ram"` mount. */
@@ -114,7 +115,7 @@ static const char* const s_tag = "ra8_io_compress_demo";
  * @note Blocking polled TX; not interrupt-safe.
  * @since 0.1.0
  */
-static void demo_print(const char* msg)
+RA8_INTERNAL static void internal_demo_print(const char* msg)
 {
   (void)ra8_io_stream_puts(&s_uart, msg);
 }
@@ -136,7 +137,7 @@ static void demo_print(const char* msg)
  * @note Not thread-safe; boot-context only.
  * @since 0.1.0
  */
-static void demo_setup_or_halt(void)
+RA8_INTERNAL static void internal_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
@@ -144,8 +145,8 @@ static void demo_setup_or_halt(void)
       (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) ||
       (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz) != k_ra8_ok) ||
       (ra8_time_init(cpuclk0_hz) != k_ra8_ok) ||
-      (ra8_pfs_route_peripheral(k_demo_txd, k_ra8_psel_sci_async, "demo.txd") != k_ra8_ok) ||
-      (ra8_pfs_route_peripheral(k_demo_rxd, k_ra8_psel_sci_async, "demo.rxd") != k_ra8_ok)) {
+      (ra8_pfs_route_peripheral(s_demo_txd, k_ra8_psel_sci_async, "demo.txd") != k_ra8_ok) ||
+      (ra8_pfs_route_peripheral(s_demo_rxd, k_ra8_psel_sci_async, "demo.rxd") != k_ra8_ok)) {
     while (true) {
     }
   }
@@ -184,7 +185,8 @@ static void demo_setup_or_halt(void)
  * @note Not thread-safe; single-caller boot context.
  * @since 0.1.0
  */
-static ra8_err_t demo_mount(ra8_io_blockdev_t* bd, ra8_fs_backend_t* be, const char* name)
+RA8_INTERNAL static ra8_err_t
+internal_demo_mount(ra8_io_blockdev_t* bd, ra8_fs_backend_t* be, const char* name)
 {
   RA8_CHECK_NULL_PTR(bd, s_tag, "bd");
   RA8_CHECK_NULL_PTR(be, s_tag, "be");
@@ -229,7 +231,7 @@ static ra8_err_t demo_mount(ra8_io_blockdev_t* bd, ra8_fs_backend_t* be, const c
  * @note Not thread-safe; single-caller boot context.
  * @since 0.1.0
  */
-static ra8_err_t demo_roundtrip(const char* prefix, uint32_t* out_blob_len)
+RA8_INTERNAL static ra8_err_t internal_demo_roundtrip(const char* prefix, uint32_t* out_blob_len)
 {
   RA8_CHECK_NULL_PTR(prefix, s_tag, "prefix");
   RA8_CHECK_NULL_PTR(out_blob_len, s_tag, "out_blob_len");
@@ -274,7 +276,7 @@ static ra8_err_t demo_roundtrip(const char* prefix, uint32_t* out_blob_len)
  *
  * @details Builds the deterministic compressible payload once, then for each
  *          backend (RAM then SDRAM) binds the block device, mounts a FAT12
- *          volume in the VFS, and runs ::demo_roundtrip through the fabric. The
+ *          volume in the VFS, and runs ::internal_demo_roundtrip through the fabric. The
  *          per-backend difference is exactly the bind line plus the VFS prefix.
  *
  * @param[out] out_blob_len Compressed blob length from the RAM round-trip.
@@ -284,7 +286,7 @@ static ra8_err_t demo_roundtrip(const char* prefix, uint32_t* out_blob_len)
  * @retval k_ra8_err_null_ptr @p out_blob_len was NULL.
  * @retval (other)           The first failing backend's failing-step code.
  *
- * @pre ::demo_setup_or_halt has run (clocks + console up).
+ * @pre ::internal_demo_setup_or_halt has run (clocks + console up).
  * @pre The SDRAM pins/clocks allow `ra8_io_blockdev_sdram_init` to succeed.
  * @post On success both `ram:/STORY.RBK` and `dr:/STORY.RBK` hold the blob.
  * @post No file handle is left open on any return path.
@@ -292,7 +294,7 @@ static ra8_err_t demo_roundtrip(const char* prefix, uint32_t* out_blob_len)
  * @note Not thread-safe; single-caller boot context.
  * @since 0.1.0
  */
-static ra8_err_t demo_run(uint32_t* out_blob_len)
+RA8_INTERNAL static ra8_err_t internal_demo_run(uint32_t* out_blob_len)
 {
   RA8_CHECK_NULL_PTR(out_blob_len, s_tag, "out_blob_len");
 
@@ -305,18 +307,18 @@ static ra8_err_t demo_run(uint32_t* out_blob_len)
     ra8_io_blockdev_ram_init(&s_bd_ram, &s_bstate_ram, s_disk, (uint32_t)k_demo_disk_blocks, false),
     s_tag,
     "ram blockdev init");
-  RA8_RETURN_ON_ERROR(demo_mount(&s_bd_ram, &s_be_ram, "ram"), s_tag, "ram mount");
+  RA8_RETURN_ON_ERROR(internal_demo_mount(&s_bd_ram, &s_be_ram, "ram"), s_tag, "ram mount");
   uint32_t ram_blob_len = 0;
-  RA8_RETURN_ON_ERROR(demo_roundtrip("ram:/", &ram_blob_len), s_tag, "ram round-trip");
+  RA8_RETURN_ON_ERROR(internal_demo_roundtrip("ram:/", &ram_blob_len), s_tag, "ram round-trip");
 
   /* Backend 2: external SDRAM as a volatile ramdisk, mounted as "dr". */
   RA8_RETURN_ON_ERROR(
     ra8_io_blockdev_sdram_init(&s_bd_dr, &s_bstate_dr, (uint32_t)k_demo_disk_blocks),
     s_tag,
     "sdram blockdev init");
-  RA8_RETURN_ON_ERROR(demo_mount(&s_bd_dr, &s_be_dr, "dr"), s_tag, "dr mount");
+  RA8_RETURN_ON_ERROR(internal_demo_mount(&s_bd_dr, &s_be_dr, "dr"), s_tag, "dr mount");
   uint32_t dr_blob_len = 0;
-  RA8_RETURN_ON_ERROR(demo_roundtrip("dr:/", &dr_blob_len), s_tag, "dr round-trip");
+  RA8_RETURN_ON_ERROR(internal_demo_roundtrip("dr:/", &dr_blob_len), s_tag, "dr round-trip");
 
   *out_blob_len = ram_blob_len;
   return k_ra8_ok;
@@ -331,19 +333,19 @@ static ra8_err_t demo_run(uint32_t* out_blob_len)
 int main(void)
 {
   ra8_log_init();
-  demo_setup_or_halt();
+  internal_demo_setup_or_halt();
   (void)ra8_io_stream_uart_init(&s_uart, &s_ust, (uint8_t)k_demo_uart_chan);
   (void)ra8_io_log_attach(&s_uart);
-  demo_print("ra8_io_compress_demo: boot\r\n");
+  internal_demo_print("ra8_io_compress_demo: boot\r\n");
 
   uint32_t        blob_len = 0;
-  const ra8_err_t e        = demo_run(&blob_len);
+  const ra8_err_t e        = internal_demo_run(&blob_len);
   if (e == k_ra8_ok) {
-    demo_print("ra8_io_compress_demo: ram+dr 4096 -> ");
+    internal_demo_print("ra8_io_compress_demo: ram+dr 4096 -> ");
     (void)ra8_io_stream_put_u32(&s_uart, blob_len);
-    demo_print(" bytes -> 4096 round-trip PASS\r\n");
+    internal_demo_print(" bytes -> 4096 round-trip PASS\r\n");
   } else {
-    demo_print("ra8_io_compress_demo: FAIL\r\n");
+    internal_demo_print("ra8_io_compress_demo: FAIL\r\n");
   }
   (void)ra8_sci_flush((uint8_t)k_demo_uart_chan);
   while (true) {

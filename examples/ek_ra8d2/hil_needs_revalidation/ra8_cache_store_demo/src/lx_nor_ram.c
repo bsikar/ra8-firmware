@@ -25,6 +25,7 @@
 #include "lx_nor_ram.h"
 
 #include "lx_api.h"
+#include "ra8_attributes.h"
 
 /**
  * @enum lx_nor_ram_const_t
@@ -58,8 +59,13 @@ static ULONG s_ram_backing[k_lx_nor_ram_total_words];
  */
 static ULONG s_ram_sector_buf[LX_NOR_SECTOR_SIZE];
 
+/* Signature is fixed by the LevelX driver-read callback type (non-const). */
+/* cppcheck-suppress constParameterCallback -- bound to the LevelX LX_NOR_FLASH read callback typedef; the ULONG* signature is fixed by the driver seam. */
+/* NOLINTNEXTLINE(readability-non-const-parameter) -- LevelX driver callback signature is fixed by the vendor seam. */
 /**
  * @brief Read @p words ULONGs from the backing pointer into @p destination.
+ * @details Copies the requested contiguous range without allocating storage or
+ *          changing the emulated NOR contents.
  * @param[in]  flash_address Source pointer into the backing (LevelX cookie).
  * @param[out] destination   Destination buffer of @p words ULONGs.
  * @param[in]  words         Word count.
@@ -73,10 +79,7 @@ static ULONG s_ram_sector_buf[LX_NOR_SECTOR_SIZE];
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-/* Signature is fixed by the LevelX driver-read callback type (non-const). */
-/* cppcheck-suppress constParameterCallback -- bound to the LevelX LX_NOR_FLASH read callback typedef; the ULONG* signature is fixed by the driver seam. */
-/* NOLINTNEXTLINE(readability-non-const-parameter) -- LevelX driver callback signature is fixed by the vendor seam. */
-static UINT ram_read(ULONG* flash_address, ULONG* destination, ULONG words)
+RA8_INTERNAL static UINT internal_ram_read(ULONG* flash_address, ULONG* destination, ULONG words)
 {
   if (flash_address == LX_NULL) {
     return (UINT)LX_ERROR;
@@ -90,8 +93,13 @@ static UINT ram_read(ULONG* flash_address, ULONG* destination, ULONG words)
   return (UINT)LX_SUCCESS;
 }
 
+/* Signature is fixed by the LevelX driver-write callback type (non-const). */
+/* cppcheck-suppress constParameterCallback -- bound to the LevelX LX_NOR_FLASH write callback typedef; the ULONG* signature is fixed by the driver seam. */
+/* NOLINTNEXTLINE(readability-non-const-parameter) -- LevelX driver callback signature is fixed by the vendor seam. */
 /**
  * @brief Write @p words ULONGs from @p source to the backing pointer.
+ * @details Programs the requested contiguous range directly in the RAM-backed
+ *          NOR model without allocating storage or touching other words.
  * @param[in] flash_address Destination pointer into the backing (LevelX cookie).
  * @param[in] source        Source buffer of @p words ULONGs.
  * @param[in] words         Word count.
@@ -105,10 +113,7 @@ static UINT ram_read(ULONG* flash_address, ULONG* destination, ULONG words)
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-/* Signature is fixed by the LevelX driver-write callback type (non-const). */
-/* cppcheck-suppress constParameterCallback -- bound to the LevelX LX_NOR_FLASH write callback typedef; the ULONG* signature is fixed by the driver seam. */
-/* NOLINTNEXTLINE(readability-non-const-parameter) -- LevelX driver callback signature is fixed by the vendor seam. */
-static UINT ram_write(ULONG* flash_address, ULONG* source, ULONG words)
+RA8_INTERNAL static UINT internal_ram_write(ULONG* flash_address, ULONG* source, ULONG words)
 {
   if (flash_address == LX_NULL) {
     return (UINT)LX_ERROR;
@@ -124,6 +129,8 @@ static UINT ram_write(ULONG* flash_address, ULONG* source, ULONG words)
 
 /**
  * @brief Erase one block to the LevelX erased pattern.
+ * @details Computes the selected block's base word and overwrites exactly one
+ *          geometry-defined block with the erased value.
  * @param[in] block       Block index.
  * @param[in] erase_count LevelX erase counter (unused).
  * @return `LX_SUCCESS`, or `LX_ERROR` when @p block is out of range.
@@ -136,7 +143,7 @@ static UINT ram_write(ULONG* flash_address, ULONG* source, ULONG words)
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-static UINT ram_block_erase(ULONG block, ULONG erase_count)
+RA8_INTERNAL static UINT internal_ram_block_erase(ULONG block, ULONG erase_count)
 {
   LX_PARAMETER_NOT_USED(erase_count);
   if (block >= (ULONG)k_lx_nor_ram_total_blocks) {
@@ -151,6 +158,8 @@ static UINT ram_block_erase(ULONG block, ULONG erase_count)
 
 /**
  * @brief Verify one block is fully erased.
+ * @details Bounds-checks the block index, then scans every word in the block
+ *          for the LevelX erased pattern without modifying the backing.
  * @param[in] block Block index.
  * @return `LX_SUCCESS` when erased, else `LX_ERROR`.
  * @retval 0 Every word matches the erased pattern.
@@ -162,7 +171,7 @@ static UINT ram_block_erase(ULONG block, ULONG erase_count)
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-static UINT ram_block_erased_verify(ULONG block)
+RA8_INTERNAL static UINT internal_ram_block_erased_verify(ULONG block)
 {
   if (block >= (ULONG)k_lx_nor_ram_total_blocks) {
     return (UINT)LX_ERROR;
@@ -184,10 +193,10 @@ unsigned int lx_nor_ram_init(struct LX_NOR_FLASH_STRUCT* nor_flash)
   nor_flash->lx_nor_flash_base_address               = &s_ram_backing[0];
   nor_flash->lx_nor_flash_total_blocks               = (ULONG)k_lx_nor_ram_total_blocks;
   nor_flash->lx_nor_flash_words_per_block            = (ULONG)k_lx_nor_ram_words_per_block;
-  nor_flash->lx_nor_flash_driver_read                = ram_read;
-  nor_flash->lx_nor_flash_driver_write               = ram_write;
-  nor_flash->lx_nor_flash_driver_block_erase         = ram_block_erase;
-  nor_flash->lx_nor_flash_driver_block_erased_verify = ram_block_erased_verify;
+  nor_flash->lx_nor_flash_driver_read                = internal_ram_read;
+  nor_flash->lx_nor_flash_driver_write               = internal_ram_write;
+  nor_flash->lx_nor_flash_driver_block_erase         = internal_ram_block_erase;
+  nor_flash->lx_nor_flash_driver_block_erased_verify = internal_ram_block_erased_verify;
   nor_flash->lx_nor_flash_sector_buffer              = &s_ram_sector_buf[0];
   return (UINT)LX_SUCCESS;
 }
