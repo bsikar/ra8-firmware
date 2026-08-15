@@ -238,9 +238,7 @@ target_include_directories(
          ${CMAKE_CURRENT_SOURCE_DIR}/mocks
 )
 # Override the remaining C++ sources so CMake does not pass -std=c23 to them.
-set_source_files_properties(
-  ${RA8_REFLOW_CPP_SOURCES} PROPERTIES LANGUAGE CXX
-)
+set_source_files_properties(${RA8_REFLOW_CPP_SOURCES} PROPERTIES LANGUAGE CXX)
 # -w silences the vendored decoders' warnings; -fno-strict-aliasing matches the
 # app build (cmake/ra8_add_app.cmake) -- these decoders type-pun through byte
 # buffers (arm-gcc miscompiles miniz's inflate under strict aliasing at -Og/-O2).

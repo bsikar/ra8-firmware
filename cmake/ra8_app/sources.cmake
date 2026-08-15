@@ -139,11 +139,8 @@ macro(_ra8_app_collect_sources)
     )
   elseif("ra8_rabook_compile" IN_LIST _RA8_APP_LIBS)
     set(_ra8_stb_img_impl ${RA8_REPO_ROOT}/libs/third_party/stb/stb_image_impl.c)
-    list(
-      APPEND
-      _ra8_lib_extra
-      ${_ra8_stb_img_impl}
-      ${RA8_REPO_ROOT}/libs/ra8_reflow/src/ra8_img_arena.c
+    list(APPEND _ra8_lib_extra ${_ra8_stb_img_impl}
+         ${RA8_REPO_ROOT}/libs/ra8_reflow/src/ra8_img_arena.c
     )
     list(
       APPEND
@@ -175,11 +172,8 @@ macro(_ra8_app_collect_sources)
   if("ra8_epub" IN_LIST _RA8_APP_LIBS)
     set(_ra8_epub_vendor ${RA8_REPO_ROOT}/libs/third_party/miniz/miniz.c)
     list(APPEND _ra8_lib_extra ${_ra8_epub_vendor})
-    list(
-      APPEND
-      _ra8_lib_inc
-      ${RA8_REPO_ROOT}/libs/third_party/miniz
-      ${RA8_REPO_ROOT}/libs/ra8_epub/src
+    list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/third_party/miniz
+         ${RA8_REPO_ROOT}/libs/ra8_epub/src
     )
   endif()
 
@@ -195,11 +189,8 @@ macro(_ra8_app_collect_sources)
   # know which wire container the compiler can emit.
   set(_ra8_rabook_vendor "")
   if("ra8_rabook_compile" IN_LIST _RA8_APP_LIBS)
-    list(
-      APPEND
-      _ra8_lib_inc
-      ${RA8_REPO_ROOT}/libs/ra8_io/inc
-      ${RA8_REPO_ROOT}/libs/third_party/miniz
+    list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_io/inc
+         ${RA8_REPO_ROOT}/libs/third_party/miniz
     )
     if(NOT "ra8_io" IN_LIST _RA8_APP_LIBS)
       list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_io/src/ra8_io_compress.c)
@@ -275,7 +266,8 @@ macro(_ra8_app_collect_sources)
   # transitively by ra8_jof (#290), and only once so the two paths never
   # double-add the libwebp sources.
   set(_ra8_webp_vendor "")
-  if(("ra8_webp" IN_LIST _RA8_APP_LIBS) OR ("ra8_jof" IN_LIST _RA8_APP_LIBS)
+  if(("ra8_webp" IN_LIST _RA8_APP_LIBS)
+     OR ("ra8_jof" IN_LIST _RA8_APP_LIBS)
      OR ("ra8_rabook_compile" IN_LIST _RA8_APP_LIBS)
   )
     include(${RA8_REPO_ROOT}/cmake/ra8_webp_vendor.cmake)
@@ -336,9 +328,11 @@ macro(_ra8_app_collect_sources)
   # compressor and no miniz include path. The headers (ra8_io_compress.h and
   # ra8_io_vfs_compress.h) are likewise opt-in, kept out of the ra8_io.h umbrella,
   # so an app that never compresses pays nothing.
-  if(NOT (("miniz" IN_LIST _RA8_APP_LIBS) OR ("ra8_epub" IN_LIST _RA8_APP_LIBS)
-          OR ("ra8_rabook_compile" IN_LIST _RA8_APP_LIBS)
-  ))
+  if(NOT
+     (("miniz" IN_LIST _RA8_APP_LIBS)
+      OR ("ra8_epub" IN_LIST _RA8_APP_LIBS)
+      OR ("ra8_rabook_compile" IN_LIST _RA8_APP_LIBS))
+  )
     list(
       FILTER
       _ra8_lib_extra
@@ -405,13 +399,12 @@ macro(_ra8_app_collect_sources)
   # to trip it. Build just these third_party TUs with -fno-strict-aliasing --
   # the upstream-sanctioned flag for this code -- so the -Og default is
   # correct on every toolchain. First-party sources stay strict-aliasing clean.
-  set(
-    _ra8_soup_tu
-    ${_ra8_epub_vendor}
-    ${_ra8_rabook_vendor}
-    ${_ra8_miniz_vendor}
-    ${_ra8_stb_impl}
-    ${_ra8_stb_img_impl}
+  set(_ra8_soup_tu
+      ${_ra8_epub_vendor}
+      ${_ra8_rabook_vendor}
+      ${_ra8_miniz_vendor}
+      ${_ra8_stb_impl}
+      ${_ra8_stb_img_impl}
   )
   if(_ra8_soup_tu)
     set_source_files_properties(${_ra8_soup_tu} PROPERTIES COMPILE_OPTIONS -fno-strict-aliasing)

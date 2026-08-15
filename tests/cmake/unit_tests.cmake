@@ -329,9 +329,10 @@ endif()
 # contain neither the mutable seam nor its setter.
 if(TARGET test_fw_if_fs_posix_raw)
   target_sources(
-    test_fw_if_fs_posix_raw PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
-                                    ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
-                                    ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+    test_fw_if_fs_posix_raw
+    PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
   )
   target_include_directories(
     test_fw_if_fs_posix_raw PRIVATE ${FW_ROOT}/libs/if/inc ${FW_ROOT}/port/posix/inc
