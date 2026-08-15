@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_wdt.h"
 #ifdef RA8_OFF_TARGET
@@ -94,7 +95,7 @@ static ra8_wdt_sup_state_t s_state;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint32_t internal_default_now(void)
+RA8_INTERNAL static uint32_t internal_default_now(void)
 {
   return (uint32_t)tx_time_get() * (uint32_t)k_ra8_wdt_sup_default_tick_ms;
 }
@@ -114,7 +115,7 @@ static uint32_t internal_default_now(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_default_refresh(void)
+RA8_INTERNAL static void internal_default_refresh(void)
 {
   ra8_wdt_refresh_deferred();
 }
@@ -137,7 +138,7 @@ static void internal_default_refresh(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_validate_cfg(const ra8_wdt_sup_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_validate_cfg(const ra8_wdt_sup_cfg_t* cfg)
 {
   if (cfg == nullptr) {
     return k_ra8_err_null_ptr;
@@ -180,7 +181,7 @@ static ra8_err_t internal_validate_cfg(const ra8_wdt_sup_cfg_t* cfg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static bool internal_is_overdue(uint32_t now, uint32_t last_checkin, uint32_t deadline)
+RA8_INTERNAL static bool internal_is_overdue(uint32_t now, uint32_t last_checkin, uint32_t deadline)
 {
   const uint32_t gap = now - last_checkin;
   return gap > deadline;
@@ -205,7 +206,7 @@ static bool internal_is_overdue(uint32_t now, uint32_t last_checkin, uint32_t de
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_thread_entry(ULONG arg)
+RA8_INTERNAL static void internal_thread_entry(ULONG arg)
 {
   (void)arg;
   /* NASA Rule 2: outer loop is the canonical "main control loop"
@@ -284,7 +285,7 @@ ra8_err_t ra8_wdt_supervisor_deinit(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_fill_slot(uint8_t idx, const char* name, uint32_t deadline_ms)
+RA8_INTERNAL static void internal_fill_slot(uint8_t idx, const char* name, uint32_t deadline_ms)
 {
   s_state.slots[idx].state           = (uint8_t)k_ra8_wdt_sup_slot_used;
   s_state.slots[idx].deadline_ms     = deadline_ms;
