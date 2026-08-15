@@ -20,6 +20,7 @@
 
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -114,7 +115,7 @@ static ra8_power_profile_stats_t s_stats = {};
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
  */
-static ra8_err_t internal_validate_region(ra8_power_profile_region_id_t region_id)
+RA8_INTERNAL static ra8_err_t internal_validate_region(ra8_power_profile_region_id_t region_id)
 {
   if ((uint8_t)region_id >= (uint8_t)k_ra8_power_profile_max_regions) {
     ra8_log_error(RA8_POWER_PROFILE_TAG, "region id out of range");
@@ -144,7 +145,7 @@ static ra8_err_t internal_validate_region(ra8_power_profile_region_id_t region_i
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
  */
-static uint64_t internal_now_us(void)
+RA8_INTERNAL static uint64_t internal_now_us(void)
 {
   if (s_cfg.now_us == nullptr) {
     return 0U;
@@ -171,7 +172,7 @@ static uint64_t internal_now_us(void)
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
  */
-static void internal_fire_pulse(ra8_power_profile_region_id_t region_id, bool entering)
+RA8_INTERNAL static void internal_fire_pulse(ra8_power_profile_region_id_t region_id, bool entering)
 {
   if (s_cfg.pulse == nullptr) {
     return;
