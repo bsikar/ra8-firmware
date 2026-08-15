@@ -39,6 +39,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 
 /** @brief Module log tag. */
@@ -107,7 +108,7 @@ static ULONG s_lx_fsbe_bounce[LX_NOR_SECTOR_SIZE];
  * @note Thread-safe (pure read).
  * @since 0.1.0
  */
-static uint64_t priv_usable_sectors(const LX_NOR_FLASH* nor_flash)
+RA8_INTERNAL static uint64_t internal_usable_sectors(const LX_NOR_FLASH* nor_flash)
 {
   uint64_t phys_per_block = (uint64_t)nor_flash->lx_nor_flash_physical_sectors_per_block;
   if (phys_per_block <= 1U) {
@@ -145,12 +146,13 @@ static uint64_t priv_usable_sectors(const LX_NOR_FLASH* nor_flash)
  * @note Not thread-safe; serialised by ``ra8_fs`` (see the bounce buffer note).
  * @since 0.1.0
  */
-static ra8_err_t priv_read_block(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_read_block(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf");
   LX_NOR_FLASH* nor_flash = ctx;
-  if ((lba + (uint64_t)count) > priv_usable_sectors(nor_flash)) {
+  if ((lba + (uint64_t)count) > internal_usable_sectors(nor_flash)) {
     return k_ra8_err_out_of_range;
   }
   for (uint32_t i = 0U; i < count; i++) {
@@ -194,12 +196,13 @@ static ra8_err_t priv_read_block(void* ctx, uint64_t lba, uint32_t count, uint8_
  * @note Not thread-safe; serialised by ``ra8_fs`` (see the bounce buffer note).
  * @since 0.1.0
  */
-static ra8_err_t priv_write_block(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_write_block(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf");
   LX_NOR_FLASH* nor_flash = ctx;
-  if ((lba + (uint64_t)count) > priv_usable_sectors(nor_flash)) {
+  if ((lba + (uint64_t)count) > internal_usable_sectors(nor_flash)) {
     return k_ra8_err_out_of_range;
   }
   for (uint32_t i = 0U; i < count; i++) {
@@ -217,7 +220,7 @@ static ra8_err_t priv_write_block(void* ctx, uint64_t lba, uint32_t count, const
  * @brief ``get_capacity`` trampoline: report the FAT-usable LevelX window.
  *
  * @details Answers ``ra8_fs``'s size query from the bound control block:
- * ::priv_usable_sectors for the block count (LevelX's usable window minus one
+ * ::internal_usable_sectors for the block count (LevelX's usable window minus one
  * spare sector per block of wear-levelling headroom) and the fixed 512-byte
  * LevelX logical sector for the block size. A zero window means the flash was
  * never opened, which is reported as an error rather than a zero-sector disk.
@@ -239,12 +242,13 @@ static ra8_err_t priv_write_block(void* ctx, uint64_t lba, uint32_t count, const
  * @note Thread-safe (pure read of the control block).
  * @since 0.1.0
  */
-static ra8_err_t priv_get_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+RA8_INTERNAL static ra8_err_t
+internal_get_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
   RA8_CHECK_NULL_PTR(block_count, s_tag, "block_count");
   RA8_CHECK_NULL_PTR(block_size, s_tag, "block_size");
-  uint64_t usable = priv_usable_sectors(ctx);
+  uint64_t usable = internal_usable_sectors(ctx);
   if (usable == 0U) {
     return k_ra8_err_not_initialized;
   }
@@ -258,12 +262,12 @@ ra8_err_t lx_fs_backend_bind(LX_NOR_FLASH* nor_flash, ra8_fs_backend_t* out)
 {
   RA8_CHECK_NULL_PTR(nor_flash, s_tag, "nor_flash");
   RA8_CHECK_NULL_PTR(out, s_tag, "out");
-  if (priv_usable_sectors(nor_flash) == 0U) {
+  if (internal_usable_sectors(nor_flash) == 0U) {
     return k_ra8_err_not_initialized;
   }
-  out->read_block   = priv_read_block;
-  out->write_block  = priv_write_block;
-  out->get_capacity = priv_get_capacity;
+  out->read_block   = internal_read_block;
+  out->write_block  = internal_write_block;
+  out->get_capacity = internal_get_capacity;
   out->erase_blocks = nullptr; /* NOR erases to ones; ra8_fs wants zero-erase. */
   out->ctx          = nor_flash;
   return k_ra8_ok;

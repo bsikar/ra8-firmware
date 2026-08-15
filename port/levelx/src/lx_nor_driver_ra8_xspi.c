@@ -41,6 +41,7 @@
 #include <stdint.h>
 
 #include "lx_api.h"
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -134,7 +135,7 @@ typedef enum : uintptr_t {
 static ULONG s_ra8_lx_nor_sector_buffer[LX_NOR_SECTOR_SIZE];
 
 /* Convert a LevelX ``ULONG*`` flash pointer to a byte offset -- see implementation for details. */
-static uint32_t priv_flash_offset_bytes(ULONG* flash_address)
+RA8_INTERNAL static uint32_t internal_flash_offset_bytes(ULONG* flash_address)
 {
   /* LevelX adds a number-of-ULONGs offset onto base_address and hands
    * the result back to us. Recover the byte offset by subtracting the
@@ -174,12 +175,12 @@ static uint32_t priv_flash_offset_bytes(ULONG* flash_address)
  * @retval 0 Success or default value.
  * @post Side effects bounded to documented state.
  */
-static UINT priv_nor_read(ULONG* flash_address, ULONG* destination, ULONG words)
+RA8_INTERNAL static UINT internal_nor_read(ULONG* flash_address, ULONG* destination, ULONG words)
 {
   if ((flash_address == LX_NULL) || (destination == LX_NULL) || (words == 0U)) {
     return (UINT)LX_ERROR;
   }
-  uint32_t  offset = priv_flash_offset_bytes(flash_address);
+  uint32_t  offset = internal_flash_offset_bytes(flash_address);
   uint32_t  bytes  = (uint32_t)words * k_ra8_lx_nor_word_bytes;
   ra8_err_t err =
     ra8_xspi_flash_read((uint8_t)k_ra8_lx_xspi_instance, offset, (uint8_t*)destination, bytes);
@@ -219,12 +220,12 @@ static UINT priv_nor_read(ULONG* flash_address, ULONG* destination, ULONG words)
  * @retval 0 Success or default value.
  * @post Side effects bounded to documented state.
  */
-static UINT priv_nor_write(ULONG* flash_address, ULONG* source, ULONG words)
+RA8_INTERNAL static UINT internal_nor_write(ULONG* flash_address, ULONG* source, ULONG words)
 {
   if ((flash_address == LX_NULL) || (source == LX_NULL) || (words == 0U)) {
     return (UINT)LX_ERROR;
   }
-  uint32_t  offset = priv_flash_offset_bytes(flash_address);
+  uint32_t  offset = internal_flash_offset_bytes(flash_address);
   uint32_t  bytes  = (uint32_t)words * k_ra8_lx_nor_word_bytes;
   ra8_err_t err =
     ra8_xspi_flash_program((uint8_t)k_ra8_lx_xspi_instance, offset, (const uint8_t*)source, bytes);
@@ -263,7 +264,7 @@ static UINT priv_nor_write(ULONG* flash_address, ULONG* source, ULONG words)
  * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
-static UINT priv_nor_block_erase(ULONG block, ULONG erase_count)
+RA8_INTERNAL static UINT internal_nor_block_erase(ULONG block, ULONG erase_count)
 {
   LX_PARAMETER_NOT_USED(erase_count);
   if (block >= (ULONG)k_ra8_lx_nor_total_blocks) {
@@ -304,7 +305,7 @@ static UINT priv_nor_block_erase(ULONG block, ULONG erase_count)
  * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
-static UINT priv_nor_block_erased_verify(ULONG block)
+RA8_INTERNAL static UINT internal_nor_block_erased_verify(ULONG block)
 {
   if (block >= (ULONG)k_ra8_lx_nor_total_blocks) {
     return (UINT)LX_ERROR;
@@ -352,7 +353,7 @@ static UINT priv_nor_block_erased_verify(ULONG block)
  *                     (``0`` on cold boot before the global has been
  *                     touched, so the operator can tell stale-RAM
  *                     values from a real reading).
- *   - ``call_count`` -- number of times ``priv_bus_init_once`` has
+ *   - ``call_count`` -- number of times ``internal_bus_init_once`` has
  *                       reached the RDID probe step. Bumped before
  *                       the call so even a hang inside the HAL leaves
  *                       a visible breadcrumb.
@@ -422,7 +423,7 @@ typedef enum : uint32_t {
  * Lives in normal ``.bss`` (zero-initialized by the C runtime), so on
  * cold boot the ``magic`` field reads ``0`` and the operator knows
  * the global has not yet been written. Updated unconditionally inside
- * ``priv_bus_init_once`` *before* any error-return path so that even
+ * ``internal_bus_init_once`` *before* any error-return path so that even
  * an immediate ``ra8_log_error`` -> ``demo_panic_halt`` sequence
  * leaves the actual JEDEC triplet visible in SRAM.
  *
@@ -439,7 +440,7 @@ typedef enum : uint32_t {
  * @note Not ``static`` -- exported deliberately so external tools
  *       (``arm-none-eabi-nm``, JLink ELF symbol view) can locate it.
  * @warning Direct modification by other modules is forbidden; only
- *          ``priv_bus_init_once`` writes this global.
+ *          ``internal_bus_init_once`` writes this global.
  *
  * @since 0.1.0
  */
@@ -490,7 +491,7 @@ typedef struct {
  * @brief JLink-readable PSEL readback for the 12 OCTA pin slots.
  *
  * @details
- * Updated unconditionally by ``priv_bus_init_once`` immediately
+ * Updated unconditionally by ``internal_bus_init_once`` immediately
  * after ``ra8_board_xspi_pins_init`` returns. Cold-boot value is
  * all-zero (``.bss``). Look up the address with::
  *
@@ -584,7 +585,7 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
-static void priv_capture_xspi_pin_state(void)
+RA8_INTERNAL static void internal_capture_xspi_pin_state(void)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_xspi_pin_count; i++) {
     const uint8_t port                       = s_ra8_xspi_pin_refs[i].port;
@@ -673,7 +674,7 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
-static void priv_stamp_observed_start(void)
+RA8_INTERNAL static void internal_stamp_observed_start(void)
 {
   g_ra8_xspi_rdid_observed.magic = (uint32_t)k_ra8_xspi_rdid_magic;
   g_ra8_xspi_rdid_observed.call_count += 1U;
@@ -702,7 +703,7 @@ static void priv_stamp_observed_start(void)
  * @retval LX_SUCCESS Controller is in 8D mode; reset opcodes dispatched.
  * @retval LX_ERROR ``ra8_xspi_init`` rejected the 8D protocol switch.
  *
- * @pre ``priv_stamp_observed_start`` has been called for this bring-up.
+ * @pre ``internal_stamp_observed_start`` has been called for this bring-up.
  * @pre XSPI pins are configured (``ra8_board_xspi_pins_init`` succeeded).
  * @post ``g_ra8_xspi_rdid_observed.reset_8d_err`` records the HAL outcome.
  * @post Controller is left in 8D mode regardless of the reset result.
@@ -714,7 +715,7 @@ static void priv_stamp_observed_start(void)
  *
  * @since 0.1.0
  */
-static UINT priv_reset_phase_8d(void)
+RA8_INTERNAL static UINT internal_reset_phase_8d(void)
 {
   g_ra8_xspi_rdid_observed.stage = (uint32_t)k_ra8_xspi_stage_init_8d;
   if (ra8_xspi_init((uint8_t)k_ra8_lx_xspi_instance, k_ra8_xspi_lio_8d8d8d) != k_ra8_ok) {
@@ -746,7 +747,7 @@ static UINT priv_reset_phase_8d(void)
  * @retval LX_SUCCESS Controller is in 1S mode; reset opcodes dispatched.
  * @retval LX_ERROR ``ra8_xspi_init`` rejected the 1S protocol switch.
  *
- * @pre Phase A (``priv_reset_phase_8d``) has been attempted.
+ * @pre Phase A (``internal_reset_phase_8d``) has been attempted.
  * @pre XSPI pins are configured (``ra8_board_xspi_pins_init`` succeeded).
  * @post ``g_ra8_xspi_rdid_observed.reset_1s_err`` records the HAL outcome.
  * @post Controller is left in 1S-1S-1S protocol mode.
@@ -755,7 +756,7 @@ static UINT priv_reset_phase_8d(void)
  *
  * @since 0.1.0
  */
-static UINT priv_reset_phase_1s(void)
+RA8_INTERNAL static UINT internal_reset_phase_1s(void)
 {
   g_ra8_xspi_rdid_observed.stage = (uint32_t)k_ra8_xspi_stage_init_1s;
   if (ra8_xspi_init((uint8_t)k_ra8_lx_xspi_instance, k_ra8_xspi_lio_1s1s1s) != k_ra8_ok) {
@@ -795,7 +796,7 @@ static UINT priv_reset_phase_1s(void)
  *
  * @since 0.1.0
  */
-static UINT priv_probe_rdid(void)
+RA8_INTERNAL static UINT internal_probe_rdid(void)
 {
   g_ra8_xspi_rdid_observed.stage = (uint32_t)k_ra8_xspi_stage_rdid;
   uint32_t        jedec_id       = 0U;
@@ -840,7 +841,7 @@ static UINT priv_probe_rdid(void)
  * @note Not thread-safe; LevelX drives this from a single context.
  * @since 0.1.0
  */
-static UINT priv_bus_init_once(void)
+RA8_INTERNAL static UINT internal_bus_init_once(void)
 {
   if (s_xspi_bus_ready) {
     return (UINT)LX_SUCCESS;
@@ -849,29 +850,29 @@ static UINT priv_bus_init_once(void)
   /* Stamp the magic + bump the counter BEFORE any HAL call so even a
    * hang inside the controller leaves a visible breadcrumb at the
    * known SRAM address. */
-  priv_stamp_observed_start();
+  internal_stamp_observed_start();
 
   if (ra8_board_xspi_pins_init() != k_ra8_ok) {
     /* Capture whatever pin state we have BEFORE bailing so JLink can
      * see how far the BSP got even on partial-failure paths. */
-    priv_capture_xspi_pin_state();
+    internal_capture_xspi_pin_state();
     ra8_log_error(s_lx_xspi_tag, "xspi pin init failed");
     return (UINT)LX_ERROR;
   }
   /* Snapshot post-init PSEL on every OCTA pad. Any row where
    * psel_observed != 0x1C or pmr_observed != 1 means the BSP enum is
    * wrong for that pin -- the chip will not see that signal. */
-  priv_capture_xspi_pin_state();
+  internal_capture_xspi_pin_state();
 
-  const UINT phase_a = priv_reset_phase_8d();
+  const UINT phase_a = internal_reset_phase_8d();
   if (phase_a != (UINT)LX_SUCCESS) {
     return phase_a;
   }
-  const UINT phase_b = priv_reset_phase_1s();
+  const UINT phase_b = internal_reset_phase_1s();
   if (phase_b != (UINT)LX_SUCCESS) {
     return phase_b;
   }
-  const UINT probe = priv_probe_rdid();
+  const UINT probe = internal_probe_rdid();
   if (probe != (UINT)LX_SUCCESS) {
     return probe;
   }
@@ -891,7 +892,7 @@ UINT lx_nor_driver_ra8_xspi_initialize(LX_NOR_FLASH* nor_flash)
   /* Idempotent bus bring-up: pins + xSPI controller. Done here (not
    * in main) so the LevelX driver is self-contained and apps don't
    * have to remember the order of init calls. */
-  const UINT bus = priv_bus_init_once();
+  const UINT bus = internal_bus_init_once();
   if (bus != (UINT)LX_SUCCESS) {
     return bus;
   }
@@ -899,16 +900,16 @@ UINT lx_nor_driver_ra8_xspi_initialize(LX_NOR_FLASH* nor_flash)
   /* Programme the synthetic base + geometry. LevelX uses the base
    * pointer as a cookie when calling back into our read / write
    * callbacks; we recover the byte offset from it inside
-   * priv_flash_offset_bytes(). */
+   * internal_flash_offset_bytes(). */
   nor_flash->lx_nor_flash_base_address    = (ULONG*)(uintptr_t)k_ra8_lx_nor_base_addr;
   nor_flash->lx_nor_flash_total_blocks    = (ULONG)k_ra8_lx_nor_total_blocks;
   nor_flash->lx_nor_flash_words_per_block = (ULONG)k_ra8_lx_nor_words_per_block;
 
   /* Wire up the four LevelX driver callbacks. */
-  nor_flash->lx_nor_flash_driver_read                = priv_nor_read;
-  nor_flash->lx_nor_flash_driver_write               = priv_nor_write;
-  nor_flash->lx_nor_flash_driver_block_erase         = priv_nor_block_erase;
-  nor_flash->lx_nor_flash_driver_block_erased_verify = priv_nor_block_erased_verify;
+  nor_flash->lx_nor_flash_driver_read                = internal_nor_read;
+  nor_flash->lx_nor_flash_driver_write               = internal_nor_write;
+  nor_flash->lx_nor_flash_driver_block_erase         = internal_nor_block_erase;
+  nor_flash->lx_nor_flash_driver_block_erased_verify = internal_nor_block_erased_verify;
 
   /* Hand LevelX a 512-byte ULONG-aligned RAM scratch buffer for its
    * sector-mapping reads. */
