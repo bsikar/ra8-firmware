@@ -34,7 +34,17 @@ internal_deep_document(uint8_t* destination, size_t capacity, uint16_t levels)
   return used;
 }
 
-/** @brief Prove depth cap and cap-minus-one are deterministic. */
+/**
+ * @brief Prove depth cap and cap-minus-one are deterministic.
+ * @par MC/DC:
+ * The valid maximum-depth document is the all-false control; the extra level
+ * independently selects the depth rejection while every close tag exercises
+ * the matching-stack control. Decisions:
+ * - libs/ra8_xml/src/ra8_xml.c@internal_start
+ * - libs/ra8_xml/src/ra8_xml.c@internal_end
+ * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_reader_next
+ * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_validate
+ */
 RA8_INTERNAL static void internal_depth_bound(void)
 {
   static uint8_t      source[4096];
@@ -46,7 +56,15 @@ RA8_INTERNAL static void internal_depth_bound(void)
   assert(ra8_xml_validate(source, length, &workspace) == k_ra8_err_validation_failed);
 }
 
-/** @brief Prove two readers do not share mutable parser state. */
+/**
+ * @brief Prove two readers do not share mutable parser state.
+ * @par MC/DC:
+ * Alternating valid start/self-closing/text events supplies the successful
+ * controls for attribute and span guards before the hostile vectors vary them.
+ * Decisions:
+ * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_span_equal
+ * - libs/ra8_xml/src/ra8_xml.c@internal_attributes
+ */
 RA8_INTERNAL static void internal_independent_readers(void)
 {
   static const uint8_t left[]          = "<a><b x='1'/>left</a>";
@@ -71,7 +89,77 @@ RA8_INTERNAL static void internal_independent_readers(void)
   assert(right_workspace.frames[0].name_offset == 1U);
 }
 
-/** @brief Prove entity decoding, attributes, malformed rejection, and immutability. */
+/**
+ * @brief Exercise every public reader and attribute pointer guard.
+ * @par MC/DC:
+ * Each required pointer is varied alone against the same fully valid control;
+ * zero length varies the independent size guard, and a forged markup span
+ * varies the attribute provenance guard. Decisions:
+ * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_reader_init
+ * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_reader_next
+ * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_attr_begin
+ * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_attr_next
+ * - libs/ra8_xml/src/ra8_xml.c@internal_span_valid
+ */
+RA8_INTERNAL static void internal_public_reader_guards(void)
+{
+  static const uint8_t source[]  = "<a x='1'/>";
+  ra8_xml_workspace_t  workspace = {};
+  ra8_xml_reader_t     reader    = {};
+  ra8_xml_event_t      event     = {};
+  assert(ra8_xml_reader_init(nullptr, source, sizeof(source) - 1U, &workspace) ==
+         k_ra8_err_null_ptr);
+  assert(ra8_xml_reader_init(&reader, nullptr, sizeof(source) - 1U, &workspace) ==
+         k_ra8_err_null_ptr);
+  assert(ra8_xml_reader_init(&reader, source, sizeof(source) - 1U, nullptr) == k_ra8_err_null_ptr);
+  assert(ra8_xml_reader_init(&reader, source, 0U, &workspace) == k_ra8_err_invalid_size);
+  assert(ra8_xml_reader_init(&reader, source, sizeof(source) - 1U, &workspace) == k_ra8_ok);
+  assert(ra8_xml_reader_next(nullptr, &event) == k_ra8_err_null_ptr);
+  assert(ra8_xml_reader_next(&reader, nullptr) == k_ra8_err_null_ptr);
+  assert(ra8_xml_reader_next(&reader, &event) == k_ra8_ok);
+
+  ra8_xml_attr_cursor_t cursor = {.position = 7U, .emitted = 8U};
+  ra8_xml_attr_begin(nullptr, &cursor);
+  assert((cursor.position == 7U) && (cursor.emitted == 8U));
+  ra8_xml_attr_begin(&event, nullptr);
+  ra8_xml_attr_begin(&event, &cursor);
+  ra8_xml_attribute_t attribute = {};
+  bool                present   = false;
+  assert(ra8_xml_attr_next(nullptr, sizeof(source) - 1U, &event, &cursor, &attribute, &present) ==
+         k_ra8_err_null_ptr);
+  assert(ra8_xml_attr_next(source, sizeof(source) - 1U, nullptr, &cursor, &attribute, &present) ==
+         k_ra8_err_null_ptr);
+  assert(ra8_xml_attr_next(source, sizeof(source) - 1U, &event, nullptr, &attribute, &present) ==
+         k_ra8_err_null_ptr);
+  assert(ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &cursor, nullptr, &present) ==
+         k_ra8_err_null_ptr);
+  assert(ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &cursor, &attribute, nullptr) ==
+         k_ra8_err_null_ptr);
+  assert(ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &cursor, &attribute, &present) ==
+           k_ra8_ok &&
+         present);
+  ra8_xml_event_t forged = event;
+  forged.markup.offset   = UINT32_MAX;
+  ra8_xml_attr_begin(&forged, &cursor);
+  assert(ra8_xml_attr_next(source, sizeof(source) - 1U, &forged, &cursor, &attribute, &present) ==
+         k_ra8_err_validation_failed);
+}
+
+/**
+ * @brief Prove entity decoding, attributes, malformed rejection, and immutability.
+ * @par MC/DC:
+ * Named, decimal, and hexadecimal entities provide the success controls;
+ * unknown/control entities, mismatched tags, and duplicate attributes vary
+ * the respective rejection predicates. Decisions:
+ * - libs/ra8_xml/src/ra8_xml.c@internal_digit
+ * - libs/ra8_xml/src/ra8_xml.c@internal_entity
+ * - libs/ra8_xml/src/ra8_xml.c@internal_decode
+ * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_decode
+ * - libs/ra8_xml/src/ra8_xml.c@internal_attr_parse
+ * - libs/ra8_xml/src/ra8_xml.c@internal_attr_duplicate
+ * - libs/ra8_xml/src/ra8_xml.c@internal_attributes
+ * - libs/ra8_xml/src/ra8_xml.c@internal_text
+ */
 RA8_INTERNAL static void internal_entities_and_faults(void)
 {
   static const uint8_t source[]                 = "<r a='A&amp;&#x42;&#67;' b=\"q\"> x &lt; y </r>";
@@ -112,7 +200,13 @@ RA8_INTERNAL static void internal_entities_and_faults(void)
          k_ra8_err_validation_failed);
 }
 
-/** @brief Prove numeric entities compare equal to their UTF-8 bytes. */
+/**
+ * @brief Prove numeric entities compare equal to their UTF-8 bytes.
+ * @par MC/DC:
+ * Equal raw/entity values are the all-false control for size and byte mismatch
+ * predicates; the public span matrix separately varies invalid and unequal
+ * operands. Decisions: libs/ra8_xml/src/ra8_xml.c@ra8_xml_decoded_equal
+ */
 RA8_INTERNAL static void internal_entity_comparison(void)
 {
   static const uint8_t source[]  = "<r a='\xC3\xA9' b='&#xE9;'/>";
@@ -142,7 +236,24 @@ RA8_INTERNAL static void internal_reject(const uint8_t* source, size_t length)
   assert(ra8_xml_validate(source, length, &workspace) == k_ra8_err_validation_failed);
 }
 
-/** @brief Prove strict names, characters, comments, declarations, and placement. */
+/**
+ * @brief Prove strict names, characters, comments, declarations, and placement.
+ * @par MC/DC:
+ * Valid QName/close/comment controls are paired with invalid start, colon,
+ * comment, declaration-placement, character, and UTF-8 vectors. Decisions:
+ * - libs/ra8_xml/src/ra8_xml.c@internal_space
+ * - libs/ra8_xml/src/ra8_xml.c@internal_ascii_letter
+ * - libs/ra8_xml/src/ra8_xml.c@internal_name_start
+ * - libs/ra8_xml/src/ra8_xml.c@internal_name_continue
+ * - libs/ra8_xml/src/ra8_xml.c@priv_ra8_xml_qname
+ * - libs/ra8_xml/src/ra8_xml.c@internal_xml_char
+ * - libs/ra8_xml/src/ra8_xml.c@internal_utf8_next
+ * - libs/ra8_xml/src/ra8_xml.c@internal_end
+ * - libs/ra8_xml/src/ra8_xml.c@internal_comment
+ * - libs/ra8_xml/src/ra8_xml.c@internal_xml_target
+ * - libs/ra8_xml/src/ra8_xml.c@internal_special
+ * - libs/ra8_xml/src/ra8_xml.c@internal_text
+ */
 RA8_INTERNAL static void internal_hostile_syntax(void)
 {
   static const uint8_t close_space[]     = "<a></a >";
@@ -183,7 +294,72 @@ RA8_INTERNAL static void internal_hostile_syntax(void)
   internal_reject(invalid_attr, sizeof(invalid_attr));
 }
 
-/** @brief Prove declaration, external DOCTYPE, PI, and BOM boundaries. */
+/**
+ * @brief Exercise every accepted QName class, whitespace byte, entity, and UTF-8 width.
+ * @par MC/DC:
+ * The valid documents independently select upper/lower/underscore name starts,
+ * all continuation classes, all four XML whitespace bytes, every predefined
+ * entity, and canonical two/three/four-byte UTF-8. The malformed streams vary
+ * the overlong, surrogate, out-of-range, and truncated UTF-8 guards. Decisions:
+ * - libs/ra8_xml/src/ra8_xml.c@internal_space
+ * - libs/ra8_xml/src/ra8_xml.c@internal_ascii_letter
+ * - libs/ra8_xml/src/ra8_xml.c@internal_name_start
+ * - libs/ra8_xml/src/ra8_xml.c@internal_name_continue
+ * - libs/ra8_xml/src/ra8_xml.c@priv_ra8_xml_qname
+ * - libs/ra8_xml/src/ra8_xml.c@internal_xml_char
+ * - libs/ra8_xml/src/ra8_xml.c@internal_utf8_next
+ * - libs/ra8_xml/src/ra8_xml.c@internal_entity
+ */
+RA8_INTERNAL static void internal_character_classes(void)
+{
+  static const uint8_t names[]     = "<_A:b-c.d1\tq='1'\nr='2'\rs='3' />";
+  static const uint8_t entities[]  = "<a>&amp;&lt;&gt;&quot;&apos;&#65;&#x42;</a>";
+  static const uint8_t utf8[]      = "<a>\xC3\xA9\xE2\x82\xAC\xF0\x90\x80\x80</a>";
+  static const uint8_t overlong3[] = {'<', 'a', '>', 0xE0U, 0x80U, 0x80U, '<', '/', 'a', '>'};
+  static const uint8_t overlong4[] =
+    {'<', 'a', '>', 0xF0U, 0x80U, 0x80U, 0x80U, '<', '/', 'a', '>'};
+  static const uint8_t surrogate[] = {'<', 'a', '>', 0xEDU, 0xA0U, 0x80U, '<', '/', 'a', '>'};
+  static const uint8_t too_high[] = {'<', 'a', '>', 0xF4U, 0x90U, 0x80U, 0x80U, '<', '/', 'a', '>'};
+  static const uint8_t truncated[]     = {'<', 'a', '>', 0xE2U, 0x82U};
+  static const uint8_t empty_numeric[] = "<a>&#x;</a>";
+  static const uint8_t bad_numeric[]   = "<a>&#xG;</a>";
+  static const uint8_t high_numeric[]  = "<a>&#x110000;</a>";
+  ra8_xml_workspace_t  workspace       = {};
+  assert(ra8_xml_validate(names, sizeof(names) - 1U, &workspace) == k_ra8_ok);
+  assert(ra8_xml_validate(entities, sizeof(entities) - 1U, &workspace) == k_ra8_ok);
+  assert(ra8_xml_validate(utf8, sizeof(utf8) - 1U, &workspace) == k_ra8_ok);
+  internal_reject(overlong3, sizeof(overlong3));
+  internal_reject(overlong4, sizeof(overlong4));
+  internal_reject(surrogate, sizeof(surrogate));
+  internal_reject(too_high, sizeof(too_high));
+  internal_reject(truncated, sizeof(truncated));
+  internal_reject(empty_numeric, sizeof(empty_numeric) - 1U);
+  internal_reject(bad_numeric, sizeof(bad_numeric) - 1U);
+  internal_reject(high_numeric, sizeof(high_numeric) - 1U);
+}
+
+/**
+ * @brief Prove declaration, external DOCTYPE, PI, and BOM boundaries.
+ * @par MC/DC:
+ * Bare/SYSTEM/PUBLIC declarations, both accepted encodings, standalone, PI,
+ * and leading BOM form success controls; version/encoding/placement/internal
+ * subset/entity/BOM faults vary the fail-closed predicates. Decisions:
+ * - libs/ra8_xml/src/ra8_xml.c@internal_markup_end
+ * - libs/ra8_xml/src/ra8_xml.c@internal_xml_target
+ * - libs/ra8_xml/src/ra8_xml.c@internal_encoding
+ * - libs/ra8_xml/src/ra8_xml.c@internal_declaration_attr
+ * - libs/ra8_xml/src/ra8_xml.c@internal_declaration
+ * - libs/ra8_xml/src/ra8_xml.c@internal_pi
+ * - libs/ra8_xml/src/ra8_xml.c@internal_special
+ * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_reader_init
+ * - libs/ra8_xml/src/ra8_xml_doctype.c@internal_space
+ * - libs/ra8_xml/src/ra8_xml_doctype.c@internal_skip_space
+ * - libs/ra8_xml/src/ra8_xml_doctype.c@internal_pubid_byte
+ * - libs/ra8_xml/src/ra8_xml_doctype.c@internal_literal
+ * - libs/ra8_xml/src/ra8_xml_doctype.c@internal_keyword
+ * - libs/ra8_xml/src/ra8_xml_doctype.c@internal_external_id
+ * - libs/ra8_xml/src/ra8_xml_doctype.c@priv_ra8_xml_doctype
+ */
 RA8_INTERNAL static void internal_declarations(void)
 {
   static const uint8_t declaration[] =
@@ -227,7 +403,44 @@ RA8_INTERNAL static void internal_declarations(void)
   internal_reject(misplaced_bom, sizeof(misplaced_bom) - 1U);
 }
 
-/** @brief Prove public spans are bounded and prefix decode is codepoint-safe. */
+/** @brief Prove malformed declaration and external-identifier forms fail closed. */
+RA8_INTERNAL static void internal_declaration_faults(void)
+{
+  static const uint8_t duplicate_decl[] = "<?xml version='1.0'?><?xml version='1.0'?><a/>";
+  static const uint8_t unknown_attr[]   = "<?xml version='1.0' other='x'?><a/>";
+  static const uint8_t duplicate_encoding[] =
+    "<?xml version='1.0' encoding='UTF-8' encoding='UTF-8'?><a/>";
+  static const uint8_t bad_standalone[] = "<?xml version='1.0' standalone='maybe'?><a/>";
+  static const uint8_t bad_public[]     = "<!DOCTYPE a PUBLIC '[' 'sys'><a/>";
+  static const uint8_t missing_system[] = "<!DOCTYPE a SYSTEM><a/>";
+  static const uint8_t missing_public[] = "<!DOCTYPE a PUBLIC 'id'><a/>";
+  static const uint8_t bad_keyword[]    = "<!DOCTYPE a SYSTEMX 'sys'><a/>";
+  static const uint8_t open_literal[]   = "<!DOCTYPE a SYSTEM 'sys><a/>";
+  internal_reject(duplicate_decl, sizeof(duplicate_decl) - 1U);
+  internal_reject(unknown_attr, sizeof(unknown_attr) - 1U);
+  internal_reject(duplicate_encoding, sizeof(duplicate_encoding) - 1U);
+  internal_reject(bad_standalone, sizeof(bad_standalone) - 1U);
+  internal_reject(bad_public, sizeof(bad_public) - 1U);
+  internal_reject(missing_system, sizeof(missing_system) - 1U);
+  internal_reject(missing_public, sizeof(missing_public) - 1U);
+  internal_reject(bad_keyword, sizeof(bad_keyword) - 1U);
+  internal_reject(open_literal, sizeof(open_literal) - 1U);
+}
+
+/**
+ * @brief Prove public spans are bounded and prefix decode is codepoint-safe.
+ * @par MC/DC:
+ * Valid/raw/entity spans supply all-false controls; forged bounds, exact-fit,
+ * clipped-prefix, unequal-size, unequal-byte, and null operands vary each
+ * public span/decode predicate. Decisions:
+ * - libs/ra8_xml/src/ra8_xml.c@internal_span_valid
+ * - libs/ra8_xml/src/ra8_xml.c@internal_decode
+ * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_decode_prefix
+ * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_decoded_size
+ * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_span_equal
+ * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_span_local_equal
+ * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_decoded_equal
+ */
 RA8_INTERNAL static void internal_span_bounds_and_prefix(void)
 {
   static const uint8_t source[]  = "<r a='123&amp;456'/>";
@@ -258,14 +471,65 @@ RA8_INTERNAL static void internal_span_bounds_and_prefix(void)
          k_ra8_err_validation_failed);
 }
 
+/** @brief Exercise public decode, span, local-name, and comparison guard matrices. */
+RA8_INTERNAL static void internal_public_span_guards(void)
+{
+  static const uint8_t names[]    = "ns:a";
+  static const uint8_t values[]   = "A&amp;A&amp;B";
+  const ra8_xml_span_t name       = {0U, 4U};
+  const ra8_xml_span_t left       = {0U, 6U};
+  const ra8_xml_span_t right      = {6U, 6U};
+  const ra8_xml_span_t different  = {12U, 1U};
+  const ra8_xml_span_t forged     = {UINT32_MAX, 8U};
+  char                 decoded[3] = {};
+  size_t               length     = 0U;
+  assert(ra8_xml_decode(values, sizeof(values) - 1U, left, decoded, sizeof(decoded), &length) ==
+           k_ra8_ok &&
+         (length == 2U) && (strcmp(decoded, "A&") == 0));
+  assert(ra8_xml_decode(values, sizeof(values) - 1U, left, decoded, 2U, &length) ==
+         k_ra8_err_no_mem);
+  assert(ra8_xml_decode(nullptr, sizeof(values) - 1U, left, decoded, sizeof(decoded), &length) ==
+         k_ra8_err_null_ptr);
+  assert(ra8_xml_decode(values, sizeof(values) - 1U, left, nullptr, sizeof(decoded), &length) ==
+         k_ra8_err_null_ptr);
+  assert(ra8_xml_decode(values, sizeof(values) - 1U, left, decoded, sizeof(decoded), nullptr) ==
+         k_ra8_err_null_ptr);
+  assert(
+    ra8_xml_decode_prefix(nullptr, sizeof(values) - 1U, left, decoded, sizeof(decoded), &length) ==
+    k_ra8_err_null_ptr);
+  assert(
+    ra8_xml_decode_prefix(values, sizeof(values) - 1U, left, nullptr, sizeof(decoded), &length) ==
+    k_ra8_err_null_ptr);
+  assert(
+    ra8_xml_decode_prefix(values, sizeof(values) - 1U, left, decoded, sizeof(decoded), nullptr) ==
+    k_ra8_err_null_ptr);
+  assert(ra8_xml_decoded_size(nullptr, sizeof(values) - 1U, left, &length) == k_ra8_err_null_ptr);
+  assert(ra8_xml_decoded_size(values, sizeof(values) - 1U, left, nullptr) == k_ra8_err_null_ptr);
+  assert(ra8_xml_span_equal(names, sizeof(names) - 1U, name, "ns:a"));
+  assert(!ra8_xml_span_equal(nullptr, sizeof(names) - 1U, name, "ns:a"));
+  assert(!ra8_xml_span_equal(names, sizeof(names) - 1U, name, nullptr));
+  assert(!ra8_xml_span_equal(names, sizeof(names) - 1U, forged, "a"));
+  assert(ra8_xml_span_local_equal(names, sizeof(names) - 1U, name, "a"));
+  assert(!ra8_xml_span_local_equal(nullptr, sizeof(names) - 1U, name, "a"));
+  assert(!ra8_xml_span_local_equal(names, sizeof(names) - 1U, forged, "a"));
+  assert(ra8_xml_decoded_equal(values, sizeof(values) - 1U, left, right));
+  assert(!ra8_xml_decoded_equal(values, sizeof(values) - 1U, left, different));
+  assert(!ra8_xml_decoded_equal(values, sizeof(values) - 1U, left, forged));
+  assert(!ra8_xml_decoded_equal(nullptr, sizeof(values) - 1U, left, right));
+}
+
 int main(void)
 {
   internal_depth_bound();
   internal_independent_readers();
+  internal_public_reader_guards();
   internal_entities_and_faults();
   internal_entity_comparison();
   internal_hostile_syntax();
+  internal_character_classes();
   internal_declarations();
+  internal_declaration_faults();
   internal_span_bounds_and_prefix();
+  internal_public_span_guards();
   return 0;
 }
