@@ -20,6 +20,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_ui.h"
@@ -48,7 +49,7 @@ static const char* const s_tag = "ra8_box";
  * @note Pure.
  * @since 0.1.0
  */
-static ra8_ui_rect_t internal_inset(ra8_ui_rect_t outer, int32_t pad)
+RA8_INTERNAL static ra8_ui_rect_t internal_inset(ra8_ui_rect_t outer, int32_t pad)
 {
   ra8_ui_rect_t r;
   r.x = outer.x + pad;
@@ -90,7 +91,7 @@ static ra8_ui_rect_t internal_inset(ra8_ui_rect_t outer, int32_t pad)
  * @note Pure.
  * @since 0.1.0
  */
-static bool internal_iter_live(int32_t link, uint16_t guard, uint16_t count)
+RA8_INTERNAL static bool internal_iter_live(int32_t link, uint16_t guard, uint16_t count)
 {
   /*
    * The (guard < count) clause is a NASA Power-of-10 Rule 2 defensive iteration
@@ -127,11 +128,11 @@ static bool internal_iter_live(int32_t link, uint16_t guard, uint16_t count)
  * @note Pure read.
  * @since 0.1.0
  */
-static void internal_tally(const ra8_box_tree_t* tree,
-                           int16_t               parent,
-                           uint16_t*             out_count,
-                           int32_t*              out_fixed,
-                           uint32_t*             out_flex)
+RA8_INTERNAL static void internal_tally(const ra8_box_tree_t* tree,
+                                        int16_t               parent,
+                                        uint16_t*             out_count,
+                                        int32_t*              out_fixed,
+                                        uint32_t*             out_flex)
 {
   uint16_t n     = 0U;
   int32_t  fixed = 0;
@@ -174,7 +175,8 @@ static void internal_tally(const ra8_box_tree_t* tree,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void internal_layout_stack(ra8_box_tree_t* tree, int16_t parent, bool horizontal)
+RA8_INTERNAL static void
+internal_layout_stack(ra8_box_tree_t* tree, int16_t parent, bool horizontal)
 {
   const ra8_box_t*    p    = &tree->nodes[parent];
   const ra8_ui_rect_t cont = internal_inset(p->rect, (int32_t)p->pad);
@@ -241,7 +243,7 @@ static void internal_layout_stack(ra8_box_tree_t* tree, int16_t parent, bool hor
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void internal_layout_grid(ra8_box_tree_t* tree, int16_t parent)
+RA8_INTERNAL static void internal_layout_grid(ra8_box_tree_t* tree, int16_t parent)
 {
   const ra8_box_t*    p    = &tree->nodes[parent];
   const ra8_ui_rect_t cont = internal_inset(p->rect, (int32_t)p->pad);
