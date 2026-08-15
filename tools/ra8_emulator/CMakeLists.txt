@@ -149,7 +149,8 @@ endif()
 # emu_* module-private cross-TU helpers.
 target_include_directories(
   ra8_emulator
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/src/engine
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/src/engine
           ${CMAKE_CURRENT_SOURCE_DIR}/src/host
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_hal/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
@@ -185,8 +186,9 @@ if(APPLE)
 endif()
 
 if(APPLE)
-  target_link_libraries(ra8_emulator PRIVATE "-framework Cocoa" "-framework QuartzCore"
-                                                 "-framework CoreGraphics")
+  target_link_libraries(
+    ra8_emulator PRIVATE "-framework Cocoa" "-framework QuartzCore" "-framework CoreGraphics"
+  )
 endif()
 
 target_compile_options(ra8_emulator PRIVATE -Wall -Wextra -Werror)
@@ -213,8 +215,10 @@ if(BUILD_TESTING)
   )
   target_include_directories(
     test_emu_presentation
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/src/host
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/display ${CMAKE_CURRENT_SOURCE_DIR}/src/engine
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/host
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/display
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/engine
             ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
   )
   target_compile_options(test_emu_presentation PRIVATE -Wall -Wextra -Werror)
@@ -231,19 +235,18 @@ if(BUILD_TESTING)
   )
   target_include_directories(
     test_emu_elf_source
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/src/engine
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/engine
             ${CMAKE_CURRENT_SOURCE_DIR}/src/host
-            ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc ${UNICORN_INCLUDE_DIR}
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+            ${UNICORN_INCLUDE_DIR}
   )
   target_link_libraries(test_emu_elf_source PRIVATE ${UNICORN_LIBRARY})
   target_compile_options(test_emu_elf_source PRIVATE -Wall -Wextra -Werror)
   add_test(NAME test_emu_elf_source COMMAND test_emu_elf_source)
 
   add_executable(
-    test_emu_memmap
-    tests/test_emu_memmap.c
-    src/host/emu_host_io.c
-    src/engine/emu_memmap.c
+    test_emu_memmap tests/test_emu_memmap.c src/host/emu_host_io.c src/engine/emu_memmap.c
   )
   target_include_directories(
     test_emu_memmap

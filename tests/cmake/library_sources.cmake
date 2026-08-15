@@ -118,8 +118,7 @@ else()
   file(GLOB_RECURSE RA8_REFLOW_CPP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_reflow/src/*.cpp)
 endif()
 set(RA8_EPUB_THIRD_PARTY
-    ${FW_ROOT}/libs/third_party/miniz/miniz.c
-    ${FW_ROOT}/libs/third_party/stb/stb_truetype_impl.c
+    ${FW_ROOT}/libs/third_party/miniz/miniz.c ${FW_ROOT}/libs/third_party/stb/stb_truetype_impl.c
     ${FW_ROOT}/libs/third_party/stb/stb_image_impl.c
 )
 # libwebp decode-only SOUP (#290) + the first-party ra8_webp facade/arena that
