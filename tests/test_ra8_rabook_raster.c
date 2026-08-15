@@ -15,6 +15,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_book.h"
 #include "ra8_err.h"
 #include "ra8_rabook_raster.h"
@@ -33,7 +34,7 @@ typedef enum : uint32_t {
 } test_raster_limits_t;
 
 /** @brief 2x2 24-bit BMP: top row red/green, bottom row blue/white. */
-static const uint8_t k_bmp[] = {
+static const uint8_t s_bmp[] = {
   0x42, 0x4D, 0x46, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x36, 0x00, 0x00, 0x00,
   0x28, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00,
   0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x13, 0x0B, 0x00, 0x00,
@@ -42,7 +43,7 @@ static const uint8_t k_bmp[] = {
 };
 
 /** @brief 8x8 VP8L fixture with deterministic RGB ramps. */
-static const uint8_t k_webp[] = {
+static const uint8_t s_webp[] = {
   0x52, 0x49, 0x46, 0x46, 0x2C, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56,
   0x50, 0x38, 0x4C, 0x1F, 0x00, 0x00, 0x00, 0x2F, 0x07, 0xC0, 0x01, 0x00, 0xCD,
   0x65, 0x44, 0xFF, 0x63, 0x17, 0x85, 0x28, 0x78, 0xFF, 0x03, 0x42, 0x02, 0xC2,
@@ -70,7 +71,8 @@ static uint8_t s_encoded[k_test_encoded_bytes];
  * @note Not thread-safe because the fixture buffers are shared statics.
  * @since 0.1.0
  */
-static ra8_rabook_raster_workspace_t fresh_workspace(ra8_img_arena_t* stb, ra8_webp_arena_t* webp)
+RA8_INTERNAL static ra8_rabook_raster_workspace_t internal_fresh_workspace(ra8_img_arena_t*  stb,
+                                                                           ra8_webp_arena_t* webp)
 {
   *stb =
     (ra8_img_arena_t){.base = s_stb_scratch, .cap = sizeof s_stb_scratch, .offset = 0U, .live = 0U};
@@ -86,119 +88,15 @@ static ra8_rabook_raster_workspace_t fresh_workspace(ra8_img_arena_t* stb, ra8_w
                                          .gray_cap   = sizeof s_gray};
 }
 
-/**
- * @test test_bmp_gray4_and_clamp
- * @brief BMP pixels normalize to stb-compatible gray4 and clamp to gray8.
- * @details Checks the exact luminance/nibble bytes at native geometry, then a
- *          one-pixel gray8 clamp and complete stb arena drain.
- * @pre Shared fixture buffers are not in use by another test.
- * @pre The embedded BMP fixture remains byte-identical to its declaration.
- * @post Both conversions succeed and the image arena is empty.
- * @post The exact gray4 and clamped gray8 bytes match their goldens.
- * @note Not thread-safe because the fixture buffers are shared statics.
- * @since 0.1.0
- */
-static void test_bmp_gray4_and_clamp(void)
+/** @brief Exercise required pointers, empty input, format, and decoder validation. @details Implements the expect raster validation errors fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL
+static void internal_expect_raster_validation_errors(void)
 {
-  TEST_BEGIN("rabook raster: BMP gray4 + clamp");
-  ra8_img_arena_t               stb  = {};
-  ra8_webp_arena_t              webp = {};
-  ra8_rabook_raster_workspace_t ws   = fresh_workspace(&stb, &webp);
-  ra8_rabook_raster_result_t    got  = {};
-
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_rabook_raster_encode(k_bmp,
-                                          sizeof k_bmp,
-                                          0U,
-                                          (uint8_t)k_ra8_book_pixfmt_gray4,
-                                          &ws,
-                                          s_encoded,
-                                          sizeof s_encoded,
-                                          &got));
-  TEST_ASSERT_EQ(k_test_bmp_dim, got.width);
-  TEST_ASSERT_EQ(k_test_bmp_dim, got.height);
-  TEST_ASSERT_EQ(2U, got.encoded_size);
-  TEST_ASSERT_EQ(0x49U, s_encoded[0]);
-  TEST_ASSERT_EQ(0x2FU, s_encoded[1]);
-  TEST_ASSERT_EQ(0U, stb.live);
-  TEST_ASSERT_EQ(0U, stb.offset);
-
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_rabook_raster_encode(k_bmp,
-                                          sizeof k_bmp,
-                                          1U,
-                                          (uint8_t)k_ra8_book_pixfmt_gray8,
-                                          &ws,
-                                          s_encoded,
-                                          sizeof s_encoded,
-                                          &got));
-  TEST_ASSERT_EQ(1U, got.width);
-  TEST_ASSERT_EQ(1U, got.height);
-  TEST_ASSERT_EQ(1U, got.encoded_size);
-  TEST_ASSERT_EQ(76U, s_encoded[0]);
-  TEST_END("rabook raster: BMP gray4 + clamp");
-}
-
-/**
- * @test test_webp_gray8_and_arena_drain
- * @brief WebP normalization uses deterministic luminance and drains its arena.
- * @details Verifies geometry, byte count, the first two expected luminance
- *          samples, and the libwebp arena's live/offset postconditions.
- * @pre Shared fixture buffers are not in use by another test.
- * @pre The embedded WebP fixture remains byte-identical to its declaration.
- * @post The lossless fixture has a complete gray8 frame and drained arena.
- * @post Geometry and the first two luminance bytes match their goldens.
- * @note Not thread-safe because the fixture buffers are shared statics.
- * @since 0.1.0
- */
-static void test_webp_gray8_and_arena_drain(void)
-{
-  TEST_BEGIN("rabook raster: WebP gray8 + arena drain");
-  ra8_img_arena_t               stb  = {};
-  ra8_webp_arena_t              webp = {};
-  ra8_rabook_raster_workspace_t ws   = fresh_workspace(&stb, &webp);
-  ra8_rabook_raster_result_t    got  = {};
-
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_rabook_raster_encode(k_webp,
-                                          sizeof k_webp,
-                                          0U,
-                                          (uint8_t)k_ra8_book_pixfmt_gray8,
-                                          &ws,
-                                          s_encoded,
-                                          sizeof s_encoded,
-                                          &got));
-  TEST_ASSERT_EQ(k_test_webp_dim, got.width);
-  TEST_ASSERT_EQ(k_test_webp_dim, got.height);
-  TEST_ASSERT_EQ(k_test_gray_bytes, got.encoded_size);
-  TEST_ASSERT_EQ(0U, s_encoded[0]);
-  TEST_ASSERT_EQ(11U, s_encoded[1]);
-  TEST_ASSERT_EQ(0U, webp.live);
-  TEST_ASSERT_EQ(0U, webp.offset);
-  TEST_END("rabook raster: WebP gray8 + arena drain");
-}
-
-/**
- * @test test_validation_and_capacity
- * @brief Invalid parameters, malformed data, and undersized storage fail closed.
- * @details Drives null, empty, invalid-format, malformed-codec, short encoded
- *          output, and short WebP RGBA storage independently.
- * @pre Shared fixture buffers are not in use by another test.
- * @pre The success fixtures are valid controls for the capacity vectors.
- * @post Every error is explicit and the result byte count remains zero.
- * @post No undersized buffer is treated as a successful conversion.
- * @note Not thread-safe because the fixture buffers are shared statics.
- * @since 0.1.0
- */
-static void test_validation_and_capacity(void)
-{
-  TEST_BEGIN("rabook raster: validation + capacity");
   ra8_img_arena_t               stb   = {};
   ra8_webp_arena_t              webp  = {};
-  ra8_rabook_raster_workspace_t ws    = fresh_workspace(&stb, &webp);
+  ra8_rabook_raster_workspace_t ws    = internal_fresh_workspace(&stb, &webp);
   ra8_rabook_raster_result_t    got   = {.encoded_size = UINT32_MAX};
   static const uint8_t          bad[] = {0x01U, 0x02U, 0x03U};
-
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_rabook_raster_encode(nullptr,
                                           sizeof bad,
@@ -235,9 +133,19 @@ static void test_validation_and_capacity(void)
                                           s_encoded,
                                           sizeof s_encoded,
                                           &got));
+}
+
+/** @brief Exercise encoded-output and decoded-WebP workspace capacity guards. @details Implements the expect raster capacity errors fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL
+static void internal_expect_raster_capacity_errors(void)
+{
+  ra8_img_arena_t               stb  = {};
+  ra8_webp_arena_t              webp = {};
+  ra8_rabook_raster_workspace_t ws   = internal_fresh_workspace(&stb, &webp);
+  ra8_rabook_raster_result_t    got  = {.encoded_size = UINT32_MAX};
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
-                 ra8_rabook_raster_encode(k_bmp,
-                                          sizeof k_bmp,
+                 ra8_rabook_raster_encode(s_bmp,
+                                          sizeof s_bmp,
                                           0U,
                                           (uint8_t)k_ra8_book_pixfmt_gray4,
                                           &ws,
@@ -248,22 +156,159 @@ static void test_validation_and_capacity(void)
 
   ws.rgba_cap = 1U;
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
-                 ra8_rabook_raster_encode(k_webp,
-                                          sizeof k_webp,
+                 ra8_rabook_raster_encode(s_webp,
+                                          sizeof s_webp,
                                           0U,
                                           (uint8_t)k_ra8_book_pixfmt_gray8,
                                           &ws,
                                           s_encoded,
                                           sizeof s_encoded,
                                           &got));
+}
+
+/**
+ * @test internal_test_bmp_gray4_and_clamp
+ * @brief BMP pixels normalize to stb-compatible gray4 and clamp to gray8.
+ * @details Checks the exact luminance/nibble bytes at native geometry, then a
+ *          one-pixel gray8 clamp and complete stb arena drain.
+ * @pre Shared fixture buffers are not in use by another test.
+ * @pre The embedded BMP fixture remains byte-identical to its declaration.
+ * @post Both conversions succeed and the image arena is empty.
+ * @post The exact gray4 and clamped gray8 bytes match their goldens.
+ * @note Not thread-safe because the fixture buffers are shared statics.
+ * @since 0.1.0
+ * @par MC/DC:
+ * WebP signature decision `(size >= 12) && RIFF && WEBP` receives the BMP
+ * vector `(T,F,-)->F`. Companion tests supply valid WebP `(T,T,T)->T` and a
+ * three-byte malformed input `(F,-,-)->F`; no `(T,T,F)` vector exists here, so
+ * independence of the form-tag comparison is not claimed. Scale decision
+ * `(source_width == out_width) && (source_height == out_height)` sees
+ * `(T,T)->T` without a clamp and `(F,-)->F` for the square 2-to-1 clamp; both
+ * dimensions change, so neither equality has a complete independence pair.
+ */
+RA8_INTERNAL static void internal_test_bmp_gray4_and_clamp(void)
+{
+  TEST_BEGIN("rabook raster: BMP gray4 + clamp");
+  ra8_img_arena_t               stb  = {};
+  ra8_webp_arena_t              webp = {};
+  ra8_rabook_raster_workspace_t ws   = internal_fresh_workspace(&stb, &webp);
+  ra8_rabook_raster_result_t    got  = {};
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_rabook_raster_encode(s_bmp,
+                                          sizeof s_bmp,
+                                          0U,
+                                          (uint8_t)k_ra8_book_pixfmt_gray4,
+                                          &ws,
+                                          s_encoded,
+                                          sizeof s_encoded,
+                                          &got));
+  TEST_ASSERT_EQ(k_test_bmp_dim, got.width);
+  TEST_ASSERT_EQ(k_test_bmp_dim, got.height);
+  TEST_ASSERT_EQ(2U, got.encoded_size);
+  TEST_ASSERT_EQ(0x49U, s_encoded[0]);
+  TEST_ASSERT_EQ(0x2FU, s_encoded[1]);
+  TEST_ASSERT_EQ(0U, stb.live);
+  TEST_ASSERT_EQ(0U, stb.offset);
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_rabook_raster_encode(s_bmp,
+                                          sizeof s_bmp,
+                                          1U,
+                                          (uint8_t)k_ra8_book_pixfmt_gray8,
+                                          &ws,
+                                          s_encoded,
+                                          sizeof s_encoded,
+                                          &got));
+  TEST_ASSERT_EQ(1U, got.width);
+  TEST_ASSERT_EQ(1U, got.height);
+  TEST_ASSERT_EQ(1U, got.encoded_size);
+  TEST_ASSERT_EQ(76U, s_encoded[0]);
+  TEST_END("rabook raster: BMP gray4 + clamp");
+}
+
+/**
+ * @test internal_test_webp_gray8_and_arena_drain
+ * @brief WebP normalization uses deterministic luminance and drains its arena.
+ * @details Verifies geometry, byte count, the first two expected luminance
+ *          samples, and the libwebp arena's live/offset postconditions.
+ * @pre Shared fixture buffers are not in use by another test.
+ * @pre The embedded WebP fixture remains byte-identical to its declaration.
+ * @post The lossless fixture has a complete gray8 frame and drained arena.
+ * @post Geometry and the first two luminance bytes match their goldens.
+ * @note Not thread-safe because the fixture buffers are shared statics.
+ * @since 0.1.0
+ * @par MC/DC:
+ * The WebP signature decision takes `(size adequate=T, RIFF=T, WEBP=T)->T`.
+ * Decode-storage OR `(webp arena null) || (RGBA null) || (frame > capacity)`
+ * takes its valid `(F,F,F)->F` control; the short-RGBA vector in the validation
+ * test supplies `(F,F,T)->T`, independently varying the capacity condition.
+ * Neither pointer condition is varied. With `max_edge == 0`, output dimensions
+ * follow the single no-clamp branch and no scale-equality AND is evaluated.
+ */
+RA8_INTERNAL static void internal_test_webp_gray8_and_arena_drain(void)
+{
+  TEST_BEGIN("rabook raster: WebP gray8 + arena drain");
+  ra8_img_arena_t               stb  = {};
+  ra8_webp_arena_t              webp = {};
+  ra8_rabook_raster_workspace_t ws   = internal_fresh_workspace(&stb, &webp);
+  ra8_rabook_raster_result_t    got  = {};
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_rabook_raster_encode(s_webp,
+                                          sizeof s_webp,
+                                          0U,
+                                          (uint8_t)k_ra8_book_pixfmt_gray8,
+                                          &ws,
+                                          s_encoded,
+                                          sizeof s_encoded,
+                                          &got));
+  TEST_ASSERT_EQ(k_test_webp_dim, got.width);
+  TEST_ASSERT_EQ(k_test_webp_dim, got.height);
+  TEST_ASSERT_EQ(k_test_gray_bytes, got.encoded_size);
+  TEST_ASSERT_EQ(0U, s_encoded[0]);
+  TEST_ASSERT_EQ(11U, s_encoded[1]);
+  TEST_ASSERT_EQ(0U, webp.live);
+  TEST_ASSERT_EQ(0U, webp.offset);
+  TEST_END("rabook raster: WebP gray8 + arena drain");
+}
+
+/**
+ * @test internal_test_validation_and_capacity
+ * @brief Invalid parameters, malformed data, and undersized storage fail closed.
+ * @details Drives null, empty, invalid-format, malformed-codec, short encoded
+ *          output, and short WebP RGBA storage independently.
+ * @pre Shared fixture buffers are not in use by another test.
+ * @pre The success fixtures are valid controls for the capacity vectors.
+ * @post Every error is explicit and the result byte count remains zero.
+ * @post No undersized buffer is treated as a successful conversion.
+ * @note Not thread-safe because the fixture buffers are shared statics.
+ * @since 0.1.0
+ * @par MC/DC:
+ * Required-pointer OR receives source-null `(T,-,-,-)->T` and valid
+ * `(F,F,F,F)->F` controls; the other three pointer conditions are not isolated.
+ * Pixel-format decision `(format != gray4) && (format != gray8)` has the full
+ * N+1 set: gray4 `(F,-)->F`, gray8 `(T,F)->F`, and invalid `(T,T)->T`.
+ * WebP storage OR `(arena null) || (RGBA null) || (frame > capacity)` gets
+ * `(F,F,T)->T` from the one-byte RGBA buffer and `(F,F,F)->F` from the WebP
+ * success test, isolating capacity but not either pointer.
+ * The three-byte malformed input gives signature `(F,-,-)->F`; BMP and WebP
+ * companion vectors are documented in their tests, without claiming a missing
+ * `(T,T,F)` form-tag vector. The undersized encoded buffer flips a separate
+ * single encoder-capacity condition.
+ */
+RA8_INTERNAL static void internal_test_validation_and_capacity(void)
+{
+  TEST_BEGIN("rabook raster: validation + capacity");
+  internal_expect_raster_validation_errors();
+  internal_expect_raster_capacity_errors();
   TEST_END("rabook raster: validation + capacity");
 }
 
 int main(void)
 {
-  test_bmp_gray4_and_clamp();
-  test_webp_gray8_and_arena_drain();
-  test_validation_and_capacity();
-  (void)printf("[OK] test_ra8_rabook_raster.c\n");
+  internal_test_bmp_gray4_and_clamp();
+  internal_test_webp_gray8_and_arena_drain();
+  internal_test_validation_and_capacity();
   return 0;
 }

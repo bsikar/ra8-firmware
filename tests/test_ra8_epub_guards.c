@@ -22,13 +22,14 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_epub.h"
 #include "ra8_err.h"
 #include "ra8_reflow.h"
 #include "unity_minimal.h"
 
 /** @brief Named float constant used by this file. */
-static const float k_epub_guards_ra8_epub_render_glyph_16p0 = 16.0F;
+static const float s_epub_guards_ra8_epub_render_glyph_16p0 = 16.0F;
 
 /* --------------------------------------------------------------------- */
 
@@ -53,9 +54,9 @@ typedef enum : uint16_t {
 /* Synthetic file payloads. */
 /* --------------------------------------------------------------------- */
 
-static const char* const k_synth_mimetype = "application/epub+zip";
+static const char* const s_synth_mimetype = "application/epub+zip";
 
-static const char* const k_synth_container_xml =
+static const char* const s_synth_container_xml =
   "<?xml version=\"1.0\"?>\n"
   "<container version=\"1.0\" xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\">\n"
   "  <rootfiles>\n"
@@ -63,7 +64,7 @@ static const char* const k_synth_container_xml =
   "  </rootfiles>\n"
   "</container>\n";
 
-static const char* const k_synth_content_opf =
+static const char* const s_synth_content_opf =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
   "<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"id\">\n"
   "  <metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n"
@@ -85,16 +86,16 @@ static const char* const k_synth_content_opf =
   "  </spine>\n"
   "</package>\n";
 
-static const char* const k_synth_ch1 =
+static const char* const s_synth_ch1 =
   "<?xml version=\"1.0\"?><html><body><h1>Chapter One</h1><p>Hello.</p></body></html>";
 
-static const char* const k_synth_ch2 =
+static const char* const s_synth_ch2 =
   "<?xml version=\"1.0\"?><html><body><h1>Chapter Two</h1><p>World.</p></body></html>";
 
 /* The first entry carries a "#fragment" (exercises fragment-stripping in
  * ra8_epub_toc_entry_to_chapter) and the last entry targets a document that
  * is NOT in the spine (exercises the not_found resolution path). */
-static const char* const k_synth_nav =
+static const char* const s_synth_nav =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
   "<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\">\n"
   "<head><title>Contents</title></head><body>\n"
@@ -104,10 +105,10 @@ static const char* const k_synth_nav =
   "  <li><a href=\"appendix.xhtml\">Appendix</a></li>\n"
   "</ol></nav></body></html>\n";
 
-static const uint8_t k_synth_cover_bytes[] = {0x89U, 0x50U, 0x4EU, 0x47U};
+static const uint8_t s_synth_cover_bytes[] = {0x89U, 0x50U, 0x4EU, 0x47U};
 
 /** @brief External stylesheet body (#140) -- a distinctive class rule. */
-static const char* const k_synth_css = ".lead { color: #C00000; }\n";
+static const char* const s_synth_css = ".lead { color: #C00000; }\n";
 
 /* --------------------------------------------------------------------- */
 /* Build the synthetic EPUB once into a static buffer. */
@@ -117,7 +118,7 @@ static const char* const k_synth_css = ".lead { color: #C00000; }\n";
  * @var s_epub_buf
  * @brief Backing store for the synthetic in-memory .epub.
  *
- * @note Populated by `build_synth_epub()` before the first test runs.
+ * @note Populated by `internal_build_synth_epub()` before the first test runs.
  */
 static uint8_t s_epub_buf[k_test_epub_buf_bytes];
 
@@ -127,72 +128,73 @@ static uint8_t s_epub_buf[k_test_epub_buf_bytes];
  */
 static size_t s_epub_size;
 
-/** @brief Add the mimetype + XML document entries to the synthetic archive. */
-static void synth_add_docs(mz_zip_archive* zip)
+/** @brief Add the mimetype + XML document entries to the synthetic archive. @details Implements the synth add docs fixture operation used only by this focused test executable. @param[in,out] zip Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_synth_add_docs(mz_zip_archive* zip)
 {
   /* mimetype is by spec the first entry, stored uncompressed. */
   mz_bool ok = mz_zip_writer_add_mem(zip,
                                      "mimetype",
-                                     k_synth_mimetype,
-                                     strlen(k_synth_mimetype),
+                                     s_synth_mimetype,
+                                     strlen(s_synth_mimetype),
                                      MZ_NO_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 
   ok = mz_zip_writer_add_mem(zip,
                              "META-INF/container.xml",
-                             k_synth_container_xml,
-                             strlen(k_synth_container_xml),
+                             s_synth_container_xml,
+                             strlen(s_synth_container_xml),
                              MZ_DEFAULT_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 
   ok = mz_zip_writer_add_mem(zip,
                              "OEBPS/content.opf",
-                             k_synth_content_opf,
-                             strlen(k_synth_content_opf),
+                             s_synth_content_opf,
+                             strlen(s_synth_content_opf),
                              MZ_DEFAULT_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 
   ok = mz_zip_writer_add_mem(zip,
                              "OEBPS/nav.xhtml",
-                             k_synth_nav,
-                             strlen(k_synth_nav),
+                             s_synth_nav,
+                             strlen(s_synth_nav),
                              MZ_DEFAULT_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 }
 
-/** @brief Add the chapter bodies + cover + stylesheet to the synthetic archive. */
-static void synth_add_assets(mz_zip_archive* zip)
+/** @brief Add the chapter bodies + cover + stylesheet to the synthetic archive. @details Implements the synth add assets fixture operation used only by this focused test executable. @param[in,out] zip Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_synth_add_assets(mz_zip_archive* zip)
 {
   mz_bool ok = mz_zip_writer_add_mem(zip,
                                      "OEBPS/ch1.xhtml",
-                                     k_synth_ch1,
-                                     strlen(k_synth_ch1),
+                                     s_synth_ch1,
+                                     strlen(s_synth_ch1),
                                      MZ_DEFAULT_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 
   ok = mz_zip_writer_add_mem(zip,
                              "OEBPS/ch2.xhtml",
-                             k_synth_ch2,
-                             strlen(k_synth_ch2),
+                             s_synth_ch2,
+                             strlen(s_synth_ch2),
                              MZ_DEFAULT_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 
   ok = mz_zip_writer_add_mem(zip,
                              "OEBPS/cover.png",
-                             k_synth_cover_bytes,
-                             sizeof(k_synth_cover_bytes),
+                             s_synth_cover_bytes,
+                             sizeof(s_synth_cover_bytes),
                              MZ_NO_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 
   ok = mz_zip_writer_add_mem(zip,
                              "OEBPS/style.css",
-                             k_synth_css,
-                             strlen(k_synth_css),
+                             s_synth_css,
+                             strlen(s_synth_css),
                              MZ_DEFAULT_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 }
 
-static void build_synth_epub(void)
+/** @brief Prepare the fixture's build synth epub state. @details Implements the build synth epub fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_build_synth_epub(void)
 {
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
@@ -201,8 +203,8 @@ static void build_synth_epub(void)
   mz_bool ok = mz_zip_writer_init_heap(&zip, 0U, k_test_epub_buf_bytes);
   TEST_ASSERT(ok == MZ_TRUE);
 
-  synth_add_docs(&zip);
-  synth_add_assets(&zip);
+  internal_synth_add_docs(&zip);
+  internal_synth_add_assets(&zip);
 
   void*  heap_buf  = nullptr;
   size_t heap_size = 0U;
@@ -215,6 +217,7 @@ static void build_synth_epub(void)
   memcpy(s_epub_buf, heap_buf, heap_size);
   s_epub_size = heap_size;
 
+  mz_free(heap_buf);
   mz_zip_writer_end(&zip);
 }
 /* --------------------------------------------------------------------- */
@@ -232,7 +235,7 @@ typedef enum : uint16_t {
 /* --------------------------------------------------------------------- */
 
 /**
- * @test test_mcdc_chapter_count_null_or
+ * @test internal_test_mcdc_chapter_count_null_or
  *
  * @par MC/DC:
  * Decision: `if (book == NULL || out_count == NULL)`
@@ -240,9 +243,8 @@ typedef enum : uint16_t {
  * - V1 book=ok, out=ok  -> C1=F, C2=F. Decision F (proceeds).
  * - V2 book=NULL        -> C1=T short-circuits. T -> null_ptr.
  * - V3 book=ok, out=NULL -> C1=F, C2=T. T -> null_ptr.
- * V1+V2 vary C1; V1+V3 vary C2. N+1=3.
- */
-static void test_mcdc_chapter_count_null_or(void)
+ * V1+V2 vary C1; V1+V3 vary C2. N+1=3. @brief Verify mcdc chapter count null or behavior. @details Executes the mcdc chapter count null or scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_chapter_count_null_or(void)
 {
   TEST_BEGIN("mcdc chapter_count NULL OR");
   ra8_epub_book_t            book  = {};
@@ -260,7 +262,7 @@ static void test_mcdc_chapter_count_null_or(void)
 }
 
 /**
- * @test test_mcdc_load_chapter_null_or3
+ * @test internal_test_mcdc_load_chapter_null_or3
  *
  * @par MC/DC:
  * Decision: `if (book == NULL || out_xhtml == NULL || got_len == NULL)`
@@ -273,9 +275,8 @@ static void test_mcdc_chapter_count_null_or(void)
  * - V1 all non-NULL                -> all F. F (proceeds).
  * - V2 book=NULL                   -> C1=T. T -> null_ptr.
  * - V3 book=ok, out=NULL           -> C1=F, C2=T. T -> null_ptr.
- * - V4 book=ok, out=ok, got=NULL   -> C1=F, C2=F, C3=T. T -> null_ptr.
- */
-static void test_mcdc_load_chapter_null_or3(void)
+ * - V4 book=ok, out=ok, got=NULL   -> C1=F, C2=F, C3=T. T -> null_ptr. @brief Verify mcdc load chapter null or3 behavior. @details Executes the mcdc load chapter null or3 scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_load_chapter_null_or3(void)
 {
   TEST_BEGIN("mcdc load_chapter NULL OR(3)");
   ra8_epub_book_t            book  = {};
@@ -296,7 +297,7 @@ static void test_mcdc_load_chapter_null_or3(void)
 }
 
 /**
- * @test test_mcdc_load_chapter_state_or
+ * @test internal_test_mcdc_load_chapter_state_or
  *
  * @par MC/DC:
  * Decision: `if (book->in_use == 0U || book->zip_archive_active == 0U)`
@@ -311,9 +312,8 @@ static void test_mcdc_load_chapter_null_or3(void)
  *   proves C1 independence; C2 independence is argued by inspection
  *   (identical short-circuit form, identical effect: not_initialized).
  *   Per DO-178C 6.4.4.3 unreachable-by-design vectors may be omitted
- *   when the mutual-exclusion invariant is documented.
- */
-static void test_mcdc_load_chapter_state_or(void)
+ *   when the mutual-exclusion invariant is documented. @brief Verify mcdc load chapter state or behavior. @details Executes the mcdc load chapter state or scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_load_chapter_state_or(void)
 {
   TEST_BEGIN("mcdc load_chapter state OR (in_use || zip)");
   ra8_epub_book_t            book  = {};
@@ -331,16 +331,15 @@ static void test_mcdc_load_chapter_state_or(void)
 }
 
 /**
- * @test test_mcdc_metadata_null_or
+ * @test internal_test_mcdc_metadata_null_or
  *
  * @par MC/DC:
  * Decision: `if (book == NULL || out_meta == NULL)`
  * (2 conditions, libs/ra8_epub/src/ra8_epub_chapter.c line 232). N+1=3.
  * - V1 both non-NULL -> both F. F (proceeds, ok).
  * - V2 book=NULL     -> C1=T short-circuits. T -> null_ptr.
- * - V3 book=ok, out=NULL -> C1=F, C2=T. T -> null_ptr.
- */
-static void test_mcdc_metadata_null_or(void)
+ * - V3 book=ok, out=NULL -> C1=F, C2=T. T -> null_ptr. @brief Verify mcdc metadata null or behavior. @details Executes the mcdc metadata null or scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_metadata_null_or(void)
 {
   TEST_BEGIN("mcdc metadata NULL OR");
   ra8_epub_book_t            book  = {};
@@ -355,7 +354,7 @@ static void test_mcdc_metadata_null_or(void)
 }
 
 /**
- * @test test_mcdc_toc_kind_null_or
+ * @test internal_test_mcdc_toc_kind_null_or
  *
  * @par MC/DC:
  * Decision: `if (book == NULL || out_kind == NULL)`
@@ -363,9 +362,8 @@ static void test_mcdc_metadata_null_or(void)
  * - V1 book=ok, out=ok   -> C1=F, C2=F. Decision F (proceeds).
  * - V2 book=NULL         -> C1=T short-circuits. T -> null_ptr.
  * - V3 book=ok, out=NULL -> C1=F, C2=T. T -> null_ptr.
- * V1+V2 isolate C1; V1+V3 isolate C2.
- */
-static void test_mcdc_toc_kind_null_or(void)
+ * V1+V2 isolate C1; V1+V3 isolate C2. @brief Verify mcdc toc kind null or behavior. @details Executes the mcdc toc kind null or scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_toc_kind_null_or(void)
 {
   TEST_BEGIN("mcdc toc_kind NULL OR");
   ra8_epub_book_t            book  = {};
@@ -380,7 +378,7 @@ static void test_mcdc_toc_kind_null_or(void)
 }
 
 /**
- * @test test_mcdc_toc_count_null_or
+ * @test internal_test_mcdc_toc_count_null_or
  *
  * @par MC/DC:
  * Decision: `if (book == NULL || out_count == NULL)`
@@ -388,9 +386,8 @@ static void test_mcdc_toc_kind_null_or(void)
  * - V1 book=ok, out=ok   -> C1=F, C2=F. Decision F (proceeds).
  * - V2 book=NULL         -> C1=T short-circuits. T -> null_ptr.
  * - V3 book=ok, out=NULL -> C1=F, C2=T. T -> null_ptr.
- * V1+V2 isolate C1; V1+V3 isolate C2.
- */
-static void test_mcdc_toc_count_null_or(void)
+ * V1+V2 isolate C1; V1+V3 isolate C2. @brief Verify mcdc toc count null or behavior. @details Executes the mcdc toc count null or scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_toc_count_null_or(void)
 {
   TEST_BEGIN("mcdc toc_count NULL OR");
   ra8_epub_book_t            book  = {};
@@ -405,7 +402,7 @@ static void test_mcdc_toc_count_null_or(void)
 }
 
 /**
- * @test test_mcdc_toc_entry_null_or
+ * @test internal_test_mcdc_toc_entry_null_or
  *
  * @par MC/DC:
  * Decision: `if (book == NULL || out_entry == NULL)`
@@ -413,9 +410,8 @@ static void test_mcdc_toc_count_null_or(void)
  * - V1 book=ok, out=ok   -> C1=F, C2=F. Decision F (proceeds).
  * - V2 book=NULL         -> C1=T short-circuits. T -> null_ptr.
  * - V3 book=ok, out=NULL -> C1=F, C2=T. T -> null_ptr.
- * V1+V2 isolate C1; V1+V3 isolate C2.
- */
-static void test_mcdc_toc_entry_null_or(void)
+ * V1+V2 isolate C1; V1+V3 isolate C2. @brief Verify mcdc toc entry null or behavior. @details Executes the mcdc toc entry null or scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_toc_entry_null_or(void)
 {
   TEST_BEGIN("mcdc toc_entry NULL OR");
   ra8_epub_book_t            book  = {};
@@ -430,7 +426,7 @@ static void test_mcdc_toc_entry_null_or(void)
 }
 
 /**
- * @test test_mcdc_toc_to_chapter_null_or
+ * @test internal_test_mcdc_toc_to_chapter_null_or
  *
  * @par MC/DC:
  * Decision: `if (book == NULL || out_chapter_idx == NULL)`
@@ -438,9 +434,8 @@ static void test_mcdc_toc_entry_null_or(void)
  * - V1 book=ok, out=ok   -> C1=F, C2=F. Decision F (proceeds).
  * - V2 book=NULL         -> C1=T short-circuits. T -> null_ptr.
  * - V3 book=ok, out=NULL -> C1=F, C2=T. T -> null_ptr.
- * V1+V2 isolate C1; V1+V3 isolate C2.
- */
-static void test_mcdc_toc_to_chapter_null_or(void)
+ * V1+V2 isolate C1; V1+V3 isolate C2. @brief Verify mcdc toc to chapter null or behavior. @details Executes the mcdc toc to chapter null or scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_toc_to_chapter_null_or(void)
 {
   TEST_BEGIN("mcdc toc_entry_to_chapter NULL OR");
   ra8_epub_book_t            book  = {};
@@ -455,20 +450,19 @@ static void test_mcdc_toc_to_chapter_null_or(void)
 }
 
 /**
- * @test test_mcdc_cover_image_null_or3
+ * @test internal_test_mcdc_cover_image_null_or3
  *
  * @par MC/DC:
  * Decision: `if (book == NULL || out_buf == NULL || got_len == NULL)`
  * (3 conditions, line 247). N+1=4. Same short-circuit-set rationale as
- * test_mcdc_load_chapter_null_or3.
+ * internal_test_mcdc_load_chapter_null_or3.
  *
  * @par DO-178C 6.4.4.3:
  * - V1 all non-NULL                -> all F. F (proceeds, ok).
  * - V2 book=NULL                   -> C1=T. T -> null_ptr.
  * - V3 out=NULL                    -> C2=T. T -> null_ptr.
- * - V4 got=NULL                    -> C3=T. T -> null_ptr.
- */
-static void test_mcdc_cover_image_null_or3(void)
+ * - V4 got=NULL                    -> C3=T. T -> null_ptr. @brief Verify mcdc cover image null or3 behavior. @details Executes the mcdc cover image null or3 scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_cover_image_null_or3(void)
 {
   TEST_BEGIN("mcdc cover_image NULL OR(3)");
   ra8_epub_book_t            book  = {};
@@ -485,13 +479,12 @@ static void test_mcdc_cover_image_null_or3(void)
 }
 
 /**
- * @test test_mcdc_set_font_null_or
+ * @test internal_test_mcdc_set_font_null_or
  *
  * @par MC/DC:
  * Decision: `if (book == NULL || font_data == NULL)`
- * (2 conditions, line 271). N+1=3.
- */
-static void test_mcdc_set_font_null_or(void)
+ * (2 conditions, line 271). N+1=3. @brief Verify mcdc set font null or behavior. @details Executes the mcdc set font null or scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_set_font_null_or(void)
 {
   TEST_BEGIN("mcdc set_font NULL OR");
   ra8_epub_book_t            book  = {};
@@ -510,7 +503,7 @@ static void test_mcdc_set_font_null_or(void)
 }
 
 /**
- * @test test_mcdc_render_glyph_null_or4
+ * @test internal_test_mcdc_render_glyph_null_or4
  *
  * @par MC/DC:
  * Decision: `if (book == NULL || out_bitmap == NULL ||
@@ -525,9 +518,8 @@ static void test_mcdc_set_font_null_or(void)
  * - V2 book=NULL     -> C1=T. T -> null_ptr.
  * - V3 bitmap=NULL   -> C1=F,C2=T. T -> null_ptr.
  * - V4 out_w=NULL    -> C1=F,C2=F,C3=T. T -> null_ptr.
- * - V5 out_h=NULL    -> C1=F,C2=F,C3=F,C4=T. T -> null_ptr.
- */
-static void test_mcdc_render_glyph_null_or4(void)
+ * - V5 out_h=NULL    -> C1=F,C2=F,C3=F,C4=T. T -> null_ptr. @brief Verify mcdc render glyph null or4 behavior. @details Executes the mcdc render glyph null or4 scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_render_glyph_null_or4(void)
 {
   TEST_BEGIN("mcdc render_glyph NULL OR(4)");
   ra8_epub_book_t            book  = {};
@@ -549,7 +541,7 @@ static void test_mcdc_render_glyph_null_or4(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_epub_render_glyph(nullptr,
                                        0,
-                                       k_epub_guards_ra8_epub_render_glyph_16p0,
+                                       s_epub_guards_ra8_epub_render_glyph_16p0,
                                        bm,
                                        sizeof(bm),
                                        &w,
@@ -558,7 +550,7 @@ static void test_mcdc_render_glyph_null_or4(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_epub_render_glyph(&book,
                                        0,
-                                       k_epub_guards_ra8_epub_render_glyph_16p0,
+                                       s_epub_guards_ra8_epub_render_glyph_16p0,
                                        nullptr,
                                        sizeof(bm),
                                        &w,
@@ -567,7 +559,7 @@ static void test_mcdc_render_glyph_null_or4(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_epub_render_glyph(&book,
                                        0,
-                                       k_epub_guards_ra8_epub_render_glyph_16p0,
+                                       s_epub_guards_ra8_epub_render_glyph_16p0,
                                        bm,
                                        sizeof(bm),
                                        nullptr,
@@ -576,7 +568,7 @@ static void test_mcdc_render_glyph_null_or4(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_epub_render_glyph(&book,
                                        0,
-                                       k_epub_guards_ra8_epub_render_glyph_16p0,
+                                       s_epub_guards_ra8_epub_render_glyph_16p0,
                                        bm,
                                        sizeof(bm),
                                        &w,
@@ -586,16 +578,15 @@ static void test_mcdc_render_glyph_null_or4(void)
 }
 
 /**
- * @test test_mcdc_render_glyph_state_or
+ * @test internal_test_mcdc_render_glyph_state_or
  *
  * @par MC/DC:
  * Decision: `if (book->in_use == 0U || book->font_data == NULL)`
  * (2 conditions, line 298). N+1=3.
  * - V1 in_use=1, font_data set -> both F. F (proceeds).
  * - V2 in_use=0 (closed)       -> C1=T short-circuits. T.
- * - V3 in_use=1, font_data=NULL -> C1=F, C2=T. T (no font installed).
- */
-static void test_mcdc_render_glyph_state_or(void)
+ * - V3 in_use=1, font_data=NULL -> C1=F, C2=T. T (no font installed). @brief Verify mcdc render glyph state or behavior. @details Executes the mcdc render glyph state or scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_render_glyph_state_or(void)
 {
   TEST_BEGIN("mcdc render_glyph state OR (in_use || font)");
   ra8_epub_book_t            book  = {};
@@ -610,7 +601,7 @@ static void test_mcdc_render_glyph_state_or(void)
 
                  ra8_epub_render_glyph(&book,
                                        (int32_t)k_test_codepoint_a,
-                                       k_epub_guards_ra8_epub_render_glyph_16p0,
+                                       s_epub_guards_ra8_epub_render_glyph_16p0,
                                        bm,
                                        sizeof(bm),
                                        &w,
@@ -631,7 +622,7 @@ static void test_mcdc_render_glyph_state_or(void)
 
                  ra8_epub_render_glyph(&book,
                                        (int32_t)k_test_codepoint_a,
-                                       k_epub_guards_ra8_epub_render_glyph_16p0,
+                                       s_epub_guards_ra8_epub_render_glyph_16p0,
                                        bm,
                                        sizeof(bm),
                                        &w,
@@ -640,7 +631,7 @@ static void test_mcdc_render_glyph_state_or(void)
 }
 
 /**
- * @test test_mcdc_priv_join_path_dst_or
+ * @test internal_test_mcdc_priv_join_path_dst_or
  *
  * @par MC/DC:
  * Decision: `if (dst == NULL || cap == 0U)`
@@ -657,9 +648,8 @@ static void test_mcdc_render_glyph_state_or(void)
  * (dst!=NULL, cap>0 -> both F, decision F, function does the join)
  * is the only reachable case and the masking pairs V1+V2 / V1+V3 are
  * argued by code inspection (identical AND/OR forms with no side
- * effects beyond the early return).
- */
-static void test_mcdc_priv_join_path_dst_or(void)
+ * effects beyond the early return). @brief Verify mcdc priv join path dst or behavior. @details Executes the mcdc priv join path dst or scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_priv_join_path_dst_or(void)
 {
   TEST_BEGIN("mcdc priv_join_path dst OR (unreachable bad-arg vectors)");
   ra8_epub_book_t            book  = {};
@@ -677,19 +667,19 @@ static void test_mcdc_priv_join_path_dst_or(void)
 
 int main(void)
 {
-  build_synth_epub();
-  test_mcdc_chapter_count_null_or();
-  test_mcdc_load_chapter_null_or3();
-  test_mcdc_load_chapter_state_or();
-  test_mcdc_metadata_null_or();
-  test_mcdc_toc_kind_null_or();
-  test_mcdc_toc_count_null_or();
-  test_mcdc_toc_entry_null_or();
-  test_mcdc_toc_to_chapter_null_or();
-  test_mcdc_cover_image_null_or3();
-  test_mcdc_set_font_null_or();
-  test_mcdc_render_glyph_null_or4();
-  test_mcdc_render_glyph_state_or();
-  test_mcdc_priv_join_path_dst_or();
+  internal_build_synth_epub();
+  internal_test_mcdc_chapter_count_null_or();
+  internal_test_mcdc_load_chapter_null_or3();
+  internal_test_mcdc_load_chapter_state_or();
+  internal_test_mcdc_metadata_null_or();
+  internal_test_mcdc_toc_kind_null_or();
+  internal_test_mcdc_toc_count_null_or();
+  internal_test_mcdc_toc_entry_null_or();
+  internal_test_mcdc_toc_to_chapter_null_or();
+  internal_test_mcdc_cover_image_null_or3();
+  internal_test_mcdc_set_font_null_or();
+  internal_test_mcdc_render_glyph_null_or4();
+  internal_test_mcdc_render_glyph_state_or();
+  internal_test_mcdc_priv_join_path_dst_or();
   return 0;
 }

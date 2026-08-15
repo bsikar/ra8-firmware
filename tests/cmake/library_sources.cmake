@@ -19,6 +19,7 @@ get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 # `ra8_core_hal` static library. clang-tidy then walks the associated
 # compile_commands.json.
 file(GLOB_RECURSE RA8_CORE_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_core/src/*.c)
+file(GLOB_RECURSE RA8_XML_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_xml/src/*.c)
 file(GLOB_RECURSE RA8_HAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_hal/src/*.c)
 file(GLOB_RECURSE RA8_JPEG_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_jpeg/src/*.c)
 file(GLOB_RECURSE RA8_NET_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_net_pal/src/*.c)
@@ -43,9 +44,7 @@ file(GLOB_RECURSE RA8_BOOK_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_book/sr
 file(GLOB_RECURSE RA8_RABOOK_COMPILE_SOURCES CONFIGURE_DEPENDS
      ${FW_ROOT}/libs/ra8_rabook_compile/src/*.c
 )
-file(GLOB_RECURSE RA8_RABOOK_COMPILE_CPP_SOURCES CONFIGURE_DEPENDS
-     ${FW_ROOT}/libs/ra8_rabook_compile/src/*.cpp
-)
+set(RA8_RABOOK_COMPILE_CPP_SOURCES "")
 file(GLOB_RECURSE RA8_RABOOK_IMPORT_SOURCES CONFIGURE_DEPENDS
      ${FW_ROOT}/libs/ra8_rabook_import/src/*.c
 )
@@ -59,7 +58,7 @@ file(GLOB_RECURSE RA8_POWER_PROFILE_SOURCES CONFIGURE_DEPENDS
      ${FW_ROOT}/libs/ra8_power_profile/src/*.c
 )
 file(GLOB_RECURSE RA8_EPUB_C_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_epub/src/*.c)
-file(GLOB_RECURSE RA8_EPUB_CPP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_epub/src/*.cpp)
+set(RA8_EPUB_CPP_SOURCES "")
 file(GLOB_RECURSE RA8_COMIC_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_comic/src/*.c)
 file(GLOB_RECURSE RA8_UNARCH_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_unarch/src/*.c)
 # xz-embedded decode-only SOUP: exactly the TUs the XZ wrapper drives. They
@@ -119,7 +118,7 @@ else()
   file(GLOB_RECURSE RA8_REFLOW_CPP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_reflow/src/*.cpp)
 endif()
 set(RA8_EPUB_THIRD_PARTY
-    ${FW_ROOT}/libs/third_party/miniz/miniz.c ${FW_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp
+    ${FW_ROOT}/libs/third_party/miniz/miniz.c
     ${FW_ROOT}/libs/third_party/stb/stb_truetype_impl.c
     ${FW_ROOT}/libs/third_party/stb/stb_image_impl.c
 )

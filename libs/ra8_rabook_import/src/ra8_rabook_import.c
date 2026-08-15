@@ -1,6 +1,8 @@
 /**
  * @file ra8_rabook_import.c
  * @brief On-import EPUB -> .rabook compile-and-cache manager (#151).
+ * @details Validates import inputs, selects cache paths, and coordinates the
+ * injected compiler and storage seams without retaining source ownership.
  * @since Version 0.1.0
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -71,8 +73,7 @@ static const char* const s_tag = "ra8_rabook_import";
  * @note Thread-safe: pure function over its arguments.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static uint32_t internal_crc32_block(uint32_t crc, const uint8_t* data, uint32_t len)
+RA8_INTERNAL static uint32_t internal_crc32_block(uint32_t crc, const uint8_t* data, uint32_t len)
 {
   if (data == nullptr) {
     return crc;
@@ -169,9 +170,25 @@ RA8_TEST_HELPER ra8_err_t ra8_rabook_import_crc_stream_test(ra8_rabook_import_re
                                            out_crc);
 }
 
-/** @brief Adapt the generic bounded CRC reader to one open filesystem file. */
-RA8_INTERNAL
-static ra8_err_t
+/**
+ * @brief Adapt the generic bounded CRC reader to one open filesystem file.
+ * @details Casts the injected context back to the repository file handle and
+ *          preserves the portable read operation's count and error semantics.
+ * @param[in,out] ctx Open ::ra8_fs_file_t supplied as opaque context.
+ * @param[out] buf Destination for up to @p requested bytes.
+ * @param[in] requested Maximum bytes to read.
+ * @param[out] out_read Receives the accepted byte count.
+ * @return Portable filesystem read status.
+ * @retval k_ra8_ok A bounded prefix, including EOF, was reported.
+ * @retval k_ra8_err_* The filesystem read failed, returned verbatim.
+ * @pre @p ctx points to an open readable repository file handle.
+ * @pre @p buf and @p out_read address their advertised writable storage.
+ * @post Success writes at most @p requested bytes and reports that count.
+ * @post The file offset advances by the reported count.
+ * @note Not thread-safe for concurrent access to the same file handle.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
 internal_import_fs_read(void* ctx, uint8_t* buf, uint32_t requested, uint32_t* out_read)
 {
   return ra8_fs_read((ra8_fs_file_t*)ctx, buf, requested, out_read);
@@ -201,12 +218,11 @@ internal_import_fs_read(void* ctx, uint8_t* buf, uint32_t requested, uint32_t* o
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_crc_stream(ra8_fs_file_t* file,
-                                     uint8_t*       buf,
-                                     uint32_t       cap,
-                                     uint32_t*      out_size,
-                                     uint32_t*      out_crc)
+RA8_INTERNAL static ra8_err_t internal_crc_stream(ra8_fs_file_t* file,
+                                                  uint8_t*       buf,
+                                                  uint32_t       cap,
+                                                  uint32_t*      out_size,
+                                                  uint32_t*      out_crc)
 {
   RA8_CHECK_NULL_PTR(file, s_tag, "file");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf");
@@ -250,13 +266,12 @@ static ra8_err_t internal_crc_stream(ra8_fs_file_t* file,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t s_compute_source_key(ra8_fs_mount_t* mount,
-                                      const char*     epub_path,
-                                      uint8_t*        buf,
-                                      uint32_t        cap,
-                                      uint32_t*       out_size,
-                                      uint32_t*       out_crc)
+RA8_INTERNAL static ra8_err_t internal_compute_source_key(ra8_fs_mount_t* mount,
+                                                          const char*     epub_path,
+                                                          uint8_t*        buf,
+                                                          uint32_t        cap,
+                                                          uint32_t*       out_size,
+                                                          uint32_t*       out_crc)
 {
   RA8_CHECK_NULL_PTR(out_size, s_tag, "out_size");
   RA8_CHECK_NULL_PTR(out_crc, s_tag, "out_crc");
@@ -299,8 +314,7 @@ static ra8_err_t s_compute_source_key(ra8_fs_mount_t* mount,
  * @note Thread-safe: writes only @p out.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t s_derive_stem(const char* epub_path, char* out, uint32_t cap)
+RA8_INTERNAL static ra8_err_t internal_derive_stem(const char* epub_path, char* out, uint32_t cap)
 {
   RA8_CHECK_NULL_PTR(epub_path, s_tag, "epub_path");
   RA8_CHECK_NULL_PTR(out, s_tag, "out");
@@ -350,8 +364,8 @@ static ra8_err_t s_derive_stem(const char* epub_path, char* out, uint32_t cap)
  * @note Thread-safe: writes only @p out.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t s_make_name(const char* stem, const char* suffix, char* out, uint32_t cap)
+RA8_INTERNAL static ra8_err_t
+internal_make_name(const char* stem, const char* suffix, char* out, uint32_t cap)
 {
   RA8_CHECK_NULL_PTR(stem, s_tag, "stem");
   RA8_CHECK_NULL_PTR(suffix, s_tag, "suffix");
@@ -386,8 +400,8 @@ static ra8_err_t s_make_name(const char* stem, const char* suffix, char* out, ui
  * @note Thread-safe: writes only the destinations.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t s_derive_names(const char* stem, char* cache_name, char* tmp_name, char* mark_name)
+RA8_INTERNAL static ra8_err_t
+internal_derive_names(const char* stem, char* cache_name, char* tmp_name, char* mark_name)
 {
   RA8_CHECK_NULL_PTR(cache_name, s_tag, "cache_name");
   RA8_CHECK_NULL_PTR(tmp_name, s_tag, "tmp_name");
@@ -396,15 +410,15 @@ static ra8_err_t s_derive_names(const char* stem, char* cache_name, char* tmp_na
   static const char* const ext_tmp   = ".rabook.tmp"; /* crash-safe temp  */
   static const char* const ext_mark  = ".rabook.mrk"; /* freshness marker */
   const uint32_t           cap       = (uint32_t)k_ra8_rabook_import_name_cap;
-  ra8_err_t                err       = s_make_name(stem, ext_cache, cache_name, cap);
+  ra8_err_t                err       = internal_make_name(stem, ext_cache, cache_name, cap);
   if (err != k_ra8_ok) {
     return err;
   }
-  err = s_make_name(stem, ext_tmp, tmp_name, cap);
+  err = internal_make_name(stem, ext_tmp, tmp_name, cap);
   if (err != k_ra8_ok) {
     return err;
   }
-  return s_make_name(stem, ext_mark, mark_name, cap);
+  return internal_make_name(stem, ext_mark, mark_name, cap);
 }
 
 /**
@@ -424,8 +438,7 @@ static ra8_err_t s_derive_names(const char* stem, char* cache_name, char* tmp_na
  * @note Thread-safe only if the caller serialises filesystem access.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool s_file_exists(ra8_fs_mount_t* mount, const char* path)
+RA8_INTERNAL static bool internal_file_exists(ra8_fs_mount_t* mount, const char* path)
 {
   if (mount == nullptr) {
     return false;
@@ -462,9 +475,8 @@ static bool s_file_exists(ra8_fs_mount_t* mount, const char* path)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t
-s_read_stamp(ra8_fs_mount_t* mount, const char* path, ra8_rabook_import_stamp_t* out)
+RA8_INTERNAL static ra8_err_t
+internal_read_stamp(ra8_fs_mount_t* mount, const char* path, ra8_rabook_import_stamp_t* out)
 {
   RA8_CHECK_NULL_PTR(mount, s_tag, "mount");
   RA8_CHECK_NULL_PTR(path, s_tag, "path");
@@ -506,10 +518,9 @@ s_read_stamp(ra8_fs_mount_t* mount, const char* path, ra8_rabook_import_stamp_t*
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool s_cache_is_fresh(ra8_fs_mount_t*                  mount,
-                             const char*                      mark_path,
-                             const ra8_rabook_import_stamp_t* want)
+RA8_INTERNAL static bool internal_cache_is_fresh(ra8_fs_mount_t*                  mount,
+                                                 const char*                      mark_path,
+                                                 const ra8_rabook_import_stamp_t* want)
 {
   if (mount == nullptr) {
     return false;
@@ -518,7 +529,7 @@ static bool s_cache_is_fresh(ra8_fs_mount_t*                  mount,
     return false;
   }
   ra8_rabook_import_stamp_t got = {};
-  ra8_err_t                 err = s_read_stamp(mount, mark_path, &got);
+  ra8_err_t                 err = internal_read_stamp(mount, mark_path, &got);
   if (err != k_ra8_ok) {
     return false;
   }
@@ -544,9 +555,9 @@ static bool s_cache_is_fresh(ra8_fs_mount_t*                  mount,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t
-s_write_stamp(ra8_fs_mount_t* mount, const char* path, const ra8_rabook_import_stamp_t* stamp)
+RA8_INTERNAL static ra8_err_t internal_write_stamp(ra8_fs_mount_t*                  mount,
+                                                   const char*                      path,
+                                                   const ra8_rabook_import_stamp_t* stamp)
 {
   RA8_CHECK_NULL_PTR(mount, s_tag, "mount");
   RA8_CHECK_NULL_PTR(path, s_tag, "path");
@@ -572,8 +583,8 @@ s_write_stamp(ra8_fs_mount_t* mount, const char* path, const ra8_rabook_import_s
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t s_atomic_replace(ra8_fs_mount_t* mount, const char* tmp_path, const char* dst_path)
+RA8_INTERNAL static ra8_err_t
+internal_atomic_replace(ra8_fs_mount_t* mount, const char* tmp_path, const char* dst_path)
 {
   RA8_CHECK_NULL_PTR(mount, s_tag, "mount");
   RA8_CHECK_NULL_PTR(tmp_path, s_tag, "tmp_path");
@@ -601,8 +612,7 @@ static ra8_err_t s_atomic_replace(ra8_fs_mount_t* mount, const char* tmp_path, c
  * @note Thread-safe: writes only @p dst.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t s_copy_name(char* dst, uint32_t cap, const char* src)
+RA8_INTERNAL static ra8_err_t internal_copy_name(char* dst, uint32_t cap, const char* src)
 {
   RA8_CHECK_NULL_PTR(dst, s_tag, "dst");
   RA8_CHECK_NULL_PTR(src, s_tag, "src");
@@ -619,7 +629,7 @@ static ra8_err_t s_copy_name(char* dst, uint32_t cap, const char* src)
  * @brief Compile-on-miss: temp compile, atomic promote, fresh marker.
  * @details Unlinks any stale temp, runs the injected `cfg->compile` seam to build
  *          @p tmp_name, atomically promotes it to @p cache_name via
- *          @ref s_atomic_replace, then stamps @p mark_name; the first failing step
+ *          @ref internal_atomic_replace, then stamps @p mark_name; the first failing step
  *          short-circuits and the live cache is left untouched.
  * @param[in] cfg        Injected dependencies + versioning.
  * @param[in] epub_path  Source path passed to the compiler.
@@ -637,13 +647,12 @@ static ra8_err_t s_copy_name(char* dst, uint32_t cap, const char* src)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t s_compile_and_cache(const ra8_rabook_import_cfg_t*   cfg,
-                                     const char*                      epub_path,
-                                     const char*                      cache_name,
-                                     const char*                      tmp_name,
-                                     const char*                      mark_name,
-                                     const ra8_rabook_import_stamp_t* want)
+RA8_INTERNAL static ra8_err_t internal_compile_and_cache(const ra8_rabook_import_cfg_t* cfg,
+                                                         const char*                    epub_path,
+                                                         const char*                    cache_name,
+                                                         const char*                    tmp_name,
+                                                         const char*                    mark_name,
+                                                         const ra8_rabook_import_stamp_t* want)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg");
   RA8_CHECK_NULL_PTR(cfg->compile, s_tag, "cfg->compile");
@@ -654,18 +663,18 @@ static ra8_err_t s_compile_and_cache(const ra8_rabook_import_cfg_t*   cfg,
     ra8_log_error(s_tag, "compile seam failed");
     return err;
   }
-  err = s_atomic_replace(cfg->mount, tmp_name, cache_name);
+  err = internal_atomic_replace(cfg->mount, tmp_name, cache_name);
   if (err != k_ra8_ok) {
     return err;
   }
-  return s_write_stamp(cfg->mount, mark_name, want);
+  return internal_write_stamp(cfg->mount, mark_name, want);
 }
 
 /**
  * @brief Validate the public entry's arguments and the mount dependency.
  * @details `cfg->scratch` and `cfg->compile` are not checked here -- they are
  *          guarded at their point of use (@ref internal_crc_stream and
- *          @ref s_compile_and_cache respectively), so a NULL either still yields
+ *          @ref internal_compile_and_cache respectively), so a NULL either still yields
  *          @ref k_ra8_err_null_ptr without inflating this validator.
  * @param[in] cfg            Config (and its `mount`).
  * @param[in] epub_path      Source path.
@@ -684,12 +693,12 @@ static ra8_err_t s_compile_and_cache(const ra8_rabook_import_cfg_t*   cfg,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t s_validate_open_args(const ra8_rabook_import_cfg_t*     cfg,
-                                      const char*                        epub_path,
-                                      const char*                        out_cache_path,
-                                      uint32_t                           cache_path_cap,
-                                      const ra8_rabook_import_outcome_t* out_outcome)
+RA8_INTERNAL static ra8_err_t
+internal_validate_open_args(const ra8_rabook_import_cfg_t*     cfg,
+                            const char*                        epub_path,
+                            const char*                        out_cache_path,
+                            uint32_t                           cache_path_cap,
+                            const ra8_rabook_import_outcome_t* out_outcome)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg");
   RA8_CHECK_NULL_PTR(epub_path, s_tag, "epub_path");
@@ -712,7 +721,8 @@ ra8_err_t ra8_rabook_import_open(const ra8_rabook_import_cfg_t* cfg,
                                  uint32_t                       cache_path_cap,
                                  ra8_rabook_import_outcome_t*   out_outcome)
 {
-  ra8_err_t err = s_validate_open_args(cfg, epub_path, out_cache_path, cache_path_cap, out_outcome);
+  ra8_err_t err =
+    internal_validate_open_args(cfg, epub_path, out_cache_path, cache_path_cap, out_outcome);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -721,14 +731,14 @@ ra8_err_t ra8_rabook_import_open(const ra8_rabook_import_cfg_t* cfg,
    * or a too-small output buffer is refused before the source is streamed or
    * the compiler is invoked (a compile must never run for a doomed request). */
   char stem[k_ra8_rabook_import_name_cap];
-  err = s_derive_stem(epub_path, stem, (uint32_t)k_ra8_rabook_import_name_cap);
+  err = internal_derive_stem(epub_path, stem, (uint32_t)k_ra8_rabook_import_name_cap);
   if (err != k_ra8_ok) {
     return err;
   }
   char cache_name[k_ra8_rabook_import_name_cap];
   char tmp_name[k_ra8_rabook_import_name_cap];
   char mark_name[k_ra8_rabook_import_name_cap];
-  err = s_derive_names(stem, cache_name, tmp_name, mark_name);
+  err = internal_derive_names(stem, cache_name, tmp_name, mark_name);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -738,12 +748,12 @@ ra8_err_t ra8_rabook_import_open(const ra8_rabook_import_cfg_t* cfg,
 
   uint32_t src_size = 0U;
   uint32_t src_crc  = 0U;
-  err               = s_compute_source_key(cfg->mount,
-                                           epub_path,
-                                           cfg->scratch,
-                                           cfg->scratch_cap,
-                                           &src_size,
-                                           &src_crc);
+  err               = internal_compute_source_key(cfg->mount,
+                                                  epub_path,
+                                                  cfg->scratch,
+                                                  cfg->scratch_cap,
+                                                  &src_size,
+                                                  &src_crc);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -756,17 +766,17 @@ ra8_err_t ra8_rabook_import_open(const ra8_rabook_import_cfg_t* cfg,
     .source_crc32     = src_crc,
   };
 
-  if (s_cache_is_fresh(cfg->mount, mark_name, &want)) {
-    if (s_file_exists(cfg->mount, cache_name)) {
+  if (internal_cache_is_fresh(cfg->mount, mark_name, &want)) {
+    if (internal_file_exists(cfg->mount, cache_name)) {
       *out_outcome = k_ra8_rabook_import_hit;
-      return s_copy_name(out_cache_path, cache_path_cap, cache_name);
+      return internal_copy_name(out_cache_path, cache_path_cap, cache_name);
     }
   }
 
-  err = s_compile_and_cache(cfg, epub_path, cache_name, tmp_name, mark_name, &want);
+  err = internal_compile_and_cache(cfg, epub_path, cache_name, tmp_name, mark_name, &want);
   if (err != k_ra8_ok) {
     return err;
   }
   *out_outcome = k_ra8_rabook_import_compiled;
-  return s_copy_name(out_cache_path, cache_path_cap, cache_name);
+  return internal_copy_name(out_cache_path, cache_path_cap, cache_name);
 }

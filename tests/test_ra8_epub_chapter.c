@@ -1,6 +1,8 @@
 /**
  * @file test_ra8_epub_chapter.c
  * @brief MC/DC unit tests for libs/ra8_epub/src/ra8_epub_chapter.c
+ * @details Exercises accessor guards, successful metadata and TOC reads,
+ *          resource lookup, chapter loading, and glyph-render dispatch.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -10,6 +12,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_epub.h"
 #include "ra8_epub_internal.h"
 #include "ra8_err.h"
@@ -48,7 +51,7 @@ static uint8_t s_font_buf[k_epub_scratch_bytes];
 /** @brief Scratch alpha-8 glyph buffer for the render-guard tests. */
 static uint8_t s_glyph_buf[k_epub_scratch_bytes];
 
-/** @brief A non-TTF blob (>= 16 bytes): forces priv_font_init to reject it. */
+/** @brief A non-TTF blob (>= 16 bytes): forces internal_font_init to reject it. */
 static uint8_t s_bogus_font[k_test_epub_font_min_bytes];
 
 /** @brief Valid pixel height handed to render_glyph (font-init reject path). */
@@ -58,14 +61,13 @@ static const float s_test_glyph_px = 16.0F;
 static const float s_test_glyph_px_zero = 0.0F;
 
 /**
- * @test test_mcdc_epub_get_chapter_count_null_pair
+ * @test internal_test_mcdc_epub_get_chapter_count_null_pair
  *
  * @par MC/DC:
  * Decision: ``if (book == NULL || out_count == NULL)``
  * (2 conditions, libs/ra8_epub/src/ra8_epub_chapter.c around line 262)
- * Per DO-178C 6.4.4.3 N+1 = 3 vectors.
- */
-static void test_mcdc_epub_get_chapter_count_null_pair(void)
+ * Per DO-178C 6.4.4.3 N+1 = 3 vectors. @brief Verify mcdc epub get chapter count null pair behavior. @details Executes the mcdc epub get chapter count null pair scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_epub_get_chapter_count_null_pair(void)
 {
   TEST_BEGIN("epub_get_chapter_count MC/DC: (book||out_count) NULL");
   ra8_epub_book_t book = {};
@@ -77,14 +79,13 @@ static void test_mcdc_epub_get_chapter_count_null_pair(void)
 }
 
 /**
- * @test test_mcdc_epub_get_metadata_null_pair
+ * @test internal_test_mcdc_epub_get_metadata_null_pair
  *
  * @par MC/DC:
  * Decision: ``if (book == NULL || out_meta == NULL)``
  * (2 conditions, libs/ra8_epub/src/ra8_epub_chapter.c around line 335)
- * Per DO-178C 6.4.4.3 N+1 = 3 vectors.
- */
-static void test_mcdc_epub_get_metadata_null_pair(void)
+ * Per DO-178C 6.4.4.3 N+1 = 3 vectors. @brief Verify mcdc epub get metadata null pair behavior. @details Executes the mcdc epub get metadata null pair scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_epub_get_metadata_null_pair(void)
 {
   TEST_BEGIN("epub_get_metadata MC/DC: (book||out_meta) NULL");
   ra8_epub_book_t     book = {};
@@ -96,14 +97,13 @@ static void test_mcdc_epub_get_metadata_null_pair(void)
 }
 
 /**
- * @test test_mcdc_epub_set_font_null_pair
+ * @test internal_test_mcdc_epub_set_font_null_pair
  *
  * @par MC/DC:
  * Decision: ``if (book == NULL || font_data == NULL)``
  * (2 conditions, libs/ra8_epub/src/ra8_epub_chapter.c around line 403)
- * Per DO-178C 6.4.4.3 N+1 = 3 vectors.
- */
-static void test_mcdc_epub_set_font_null_pair(void)
+ * Per DO-178C 6.4.4.3 N+1 = 3 vectors. @brief Verify mcdc epub set font null pair behavior. @details Executes the mcdc epub set font null pair scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_epub_set_font_null_pair(void)
 {
   TEST_BEGIN("epub_set_font MC/DC: (book||font_data) NULL");
   ra8_epub_book_t book = {};
@@ -117,7 +117,7 @@ static void test_mcdc_epub_set_font_null_pair(void)
 }
 
 /**
- * @test test_mcdc_epub_get_resource_null_quad
+ * @test internal_test_mcdc_epub_get_resource_null_quad
  *
  * @par MC/DC:
  * Decision: ``if (book == NULL || path == NULL || out_buf == NULL || got_len == NULL)``
@@ -134,9 +134,8 @@ static void test_mcdc_epub_set_font_null_pair(void)
  *
  * @par DO-178C 6.4.4.3 rationale:
  * Each vector executes the production decision in ra8_epub_get_resource() so the
- * source branch counts under -fcoverage-mcdc.
- */
-static void test_mcdc_epub_get_resource_null_quad(void)
+ * source branch counts under -fcoverage-mcdc. @brief Verify mcdc epub get resource null quad behavior. @details Executes the mcdc epub get resource null quad scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_epub_get_resource_null_quad(void)
 {
   TEST_BEGIN("epub_get_resource MC/DC: (book||path||out_buf||got_len) NULL");
   ra8_epub_book_t book = {};
@@ -161,7 +160,7 @@ static void test_mcdc_epub_get_resource_null_quad(void)
 }
 
 /**
- * @test test_mcdc_epub_get_embedded_font_count_null_pair
+ * @test internal_test_mcdc_epub_get_embedded_font_count_null_pair
  *
  * @par MC/DC:
  * Decision: ``if (book == NULL || out_count == NULL)``
@@ -172,9 +171,8 @@ static void test_mcdc_epub_get_resource_null_quad(void)
  *   the zeroed book has in_use==0 -> next check returns not_initialized).
  * - V2: book=NULL                   -> C1=T (short-circuit) -> overall T.
  * - V3: book!=NULL, out_count=NULL  -> C1=F,C2=T -> overall T.
- * Pair (V1,V2) isolates C1; pair (V1,V3) isolates C2.
- */
-static void test_mcdc_epub_get_embedded_font_count_null_pair(void)
+ * Pair (V1,V2) isolates C1; pair (V1,V3) isolates C2. @brief Verify mcdc epub get embedded font count null pair behavior. @details Executes the mcdc epub get embedded font count null pair scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_epub_get_embedded_font_count_null_pair(void)
 {
   TEST_BEGIN("epub_get_embedded_font_count MC/DC: (book||out_count) NULL");
   ra8_epub_book_t book = {};
@@ -186,7 +184,7 @@ static void test_mcdc_epub_get_embedded_font_count_null_pair(void)
 }
 
 /**
- * @test test_mcdc_epub_get_embedded_font_null_triple
+ * @test internal_test_mcdc_epub_get_embedded_font_null_triple
  *
  * @par MC/DC:
  * Decision: ``if (book == NULL || out_buf == NULL || got_len == NULL)``
@@ -197,9 +195,8 @@ static void test_mcdc_epub_get_embedded_font_count_null_pair(void)
  *   the zeroed book is not ready -> next check returns not_initialized).
  * - V2: book=NULL             -> C1=T -> overall T. Pair (V1,V2) isolates C1.
  * - V3: out_buf=NULL          -> C1=F,C2=T -> overall T. Pair (V1,V3) isolates C2.
- * - V4: got_len=NULL          -> C1=F,C2=F,C3=T -> overall T. Pair (V1,V4) isolates C3.
- */
-static void test_mcdc_epub_get_embedded_font_null_triple(void)
+ * - V4: got_len=NULL          -> C1=F,C2=F,C3=T -> overall T. Pair (V1,V4) isolates C3. @brief Verify mcdc epub get embedded font null triple behavior. @details Executes the mcdc epub get embedded font null triple scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_epub_get_embedded_font_null_triple(void)
 {
   TEST_BEGIN("epub_get_embedded_font MC/DC: (book||out_buf||got_len) NULL");
   ra8_epub_book_t book = {};
@@ -216,7 +213,7 @@ static void test_mcdc_epub_get_embedded_font_null_triple(void)
 }
 
 /**
- * @test test_mcdc_epub_internal_join_path_guard
+ * @test internal_test_mcdc_epub_internal_join_path_guard
  *
  * @par MC/DC:
  * Decision at libs/ra8_epub/src/ra8_epub_chapter.c
@@ -231,28 +228,27 @@ static void test_mcdc_epub_get_embedded_font_null_triple(void)
  * N=2 -> N+1=3 vectors. Minimal MC/DC.
  *
  * @par DO-178C 6.4.4.3 rationale:
- * Test executes via ra8_epub_internal_join_path() so the production
- * source decision counts under -fcoverage-mcdc.
- */
-static void test_mcdc_epub_internal_join_path_guard(void)
+ * Test executes via priv_epub_join_path() so the production
+ * source decision counts under -fcoverage-mcdc. @brief Verify mcdc epub internal join path guard behavior. @details Executes the mcdc epub internal join path guard scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_epub_internal_join_path_guard(void)
 {
   TEST_BEGIN("epub MC/DC: join_path (dst||cap=0) guard");
   char buf[16];
   /* V1: both conditions false -> proceeds, writes "abc/x". */
   buf[0] = '!';
-  ra8_epub_internal_join_path("abc", "x", buf, sizeof(buf));
+  priv_epub_join_path("abc", "x", buf, sizeof(buf));
   TEST_ASSERT_EQ(0, strcmp(buf, "abcx"));
   /* V2: dst NULL -> early return (no crash). */
-  ra8_epub_internal_join_path("abc", "x", nullptr, sizeof(buf));
+  priv_epub_join_path("abc", "x", nullptr, sizeof(buf));
   /* V3: cap == 0 -> early return (buf untouched). */
   buf[0] = '!';
-  ra8_epub_internal_join_path("abc", "x", buf, 0U);
+  priv_epub_join_path("abc", "x", buf, 0U);
   TEST_ASSERT_EQ('!', buf[0]);
   TEST_END("epub MC/DC: join_path (dst||cap=0) guard");
 }
 
 /**
- * @test test_mcdc_epub_internal_join_path_dir_loop
+ * @test internal_test_mcdc_epub_internal_join_path_dir_loop
  *
  * @par MC/DC:
  * Decision at libs/ra8_epub/src/ra8_epub_chapter.c
@@ -266,24 +262,23 @@ static void test_mcdc_epub_internal_join_path_guard(void)
  *
  * N=2 -> 2 vectors give MC/DC for the 2 independence pairs (the C2-only
  * flip is V1@off=0->V1@off=2, the C1-only flip is V2@off=1 vs V1@off=1
- * with C2=T held).
- */
-static void test_mcdc_epub_internal_join_path_dir_loop(void)
+ * with C2=T held). @brief Verify mcdc epub internal join path dir loop behavior. @details Executes the mcdc epub internal join path dir loop scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_epub_internal_join_path_dir_loop(void)
 {
   TEST_BEGIN("epub MC/DC: join_path dir-copy loop AND");
   char buf[16];
   /* V1: ample cap -> loop exits via C2 (NUL). */
-  ra8_epub_internal_join_path("ab", nullptr, buf, sizeof(buf));
+  priv_epub_join_path("ab", nullptr, buf, sizeof(buf));
   TEST_ASSERT_EQ(0, strcmp(buf, "ab"));
   /* V2: cap=2 -> only 1 byte fits (off+1<cap stops at off=1). */
-  ra8_epub_internal_join_path("XYZ", nullptr, buf, 2U);
+  priv_epub_join_path("XYZ", nullptr, buf, 2U);
   TEST_ASSERT_EQ(1, strlen(buf));
   TEST_ASSERT_EQ('X', buf[0]);
   TEST_END("epub MC/DC: join_path dir-copy loop AND");
 }
 
 /**
- * @test test_mcdc_epub_internal_join_path_name_loop
+ * @test internal_test_mcdc_epub_internal_join_path_name_loop
  *
  * @par MC/DC:
  * Decision at libs/ra8_epub/src/ra8_epub_chapter.c
@@ -293,17 +288,16 @@ static void test_mcdc_epub_internal_join_path_dir_loop(void)
  * - V2: dir=NULL, name="cdef", cap=3  -> exits via C1 (cap-1 reached).
  *   Pair isolates C1 with C2=T held; (V1@off=2 vs V1@off=0) isolates C2.
  *
- * N=2 -> 2 vectors give MC/DC.
- */
-static void test_mcdc_epub_internal_join_path_name_loop(void)
+ * N=2 -> 2 vectors give MC/DC. @brief Verify mcdc epub internal join path name loop behavior. @details Executes the mcdc epub internal join path name loop scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_epub_internal_join_path_name_loop(void)
 {
   TEST_BEGIN("epub MC/DC: join_path name-copy loop AND");
   char buf[16];
   /* V1: ample cap, name only -> exits via NUL. */
-  ra8_epub_internal_join_path(nullptr, "cd", buf, sizeof(buf));
+  priv_epub_join_path(nullptr, "cd", buf, sizeof(buf));
   TEST_ASSERT_EQ(0, strcmp(buf, "cd"));
   /* V2: cap=3 -> only 2 bytes fit. */
-  ra8_epub_internal_join_path(nullptr, "cdef", buf, 3U);
+  priv_epub_join_path(nullptr, "cdef", buf, 3U);
   TEST_ASSERT_EQ(2, strlen(buf));
   TEST_ASSERT_EQ('c', buf[0]);
   TEST_ASSERT_EQ('d', buf[1]);
@@ -311,7 +305,7 @@ static void test_mcdc_epub_internal_join_path_name_loop(void)
 }
 
 /**
- * @test test_mcdc_epub_internal_glyph_dim_invalid
+ * @test internal_test_mcdc_epub_internal_glyph_dim_invalid
  *
  * @par MC/DC:
  * Decision at libs/ra8_epub/src/ra8_epub_chapter.c (call site) -> helper at
@@ -320,19 +314,18 @@ static void test_mcdc_epub_internal_join_path_name_loop(void)
  * - V1: w=10, h=10 -> false
  * - V2: w=-1, h=10 -> true (varies left)
  * - V3: w=10, h=-1 -> true (varies right)
- * N+1 = 3.
- */
-static void test_mcdc_epub_internal_glyph_dim_invalid(void)
+ * N+1 = 3. @brief Verify mcdc epub internal glyph dim invalid behavior. @details Executes the mcdc epub internal glyph dim invalid scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_epub_internal_glyph_dim_invalid(void)
 {
   TEST_BEGIN("epub MC/DC: glyph_dim_invalid OR");
-  TEST_ASSERT(!ra8_epub_internal_glyph_dim_invalid(10, 10));
-  TEST_ASSERT(ra8_epub_internal_glyph_dim_invalid(-1, 10));
-  TEST_ASSERT(ra8_epub_internal_glyph_dim_invalid(10, -1));
+  TEST_ASSERT(!priv_epub_glyph_dim_invalid(10, 10));
+  TEST_ASSERT(priv_epub_glyph_dim_invalid(-1, 10));
+  TEST_ASSERT(priv_epub_glyph_dim_invalid(10, -1));
   TEST_END("epub MC/DC: glyph_dim_invalid OR");
 }
 
 /**
- * @test test_mcdc_epub_internal_book_not_ready
+ * @test internal_test_mcdc_epub_internal_book_not_ready
  *
  * @par MC/DC:
  * Decision at libs/ra8_epub/src/ra8_epub_chapter.c lines 300, 369 (call sites)
@@ -341,19 +334,18 @@ static void test_mcdc_epub_internal_glyph_dim_invalid(void)
  * - V1: in_use=1, zip=1 -> false
  * - V2: in_use=0, zip=1 -> true (varies left)
  * - V3: in_use=1, zip=0 -> true (varies right)
- * N+1 = 3.
- */
-static void test_mcdc_epub_internal_book_not_ready(void)
+ * N+1 = 3. @brief Verify mcdc epub internal book not ready behavior. @details Executes the mcdc epub internal book not ready scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_epub_internal_book_not_ready(void)
 {
   TEST_BEGIN("epub MC/DC: book_not_ready OR");
-  TEST_ASSERT(!ra8_epub_internal_book_not_ready(1U, 1U));
-  TEST_ASSERT(ra8_epub_internal_book_not_ready(0U, 1U));
-  TEST_ASSERT(ra8_epub_internal_book_not_ready(1U, 0U));
+  TEST_ASSERT(!priv_epub_book_not_ready(1U, 1U));
+  TEST_ASSERT(priv_epub_book_not_ready(0U, 1U));
+  TEST_ASSERT(priv_epub_book_not_ready(1U, 0U));
   TEST_END("epub MC/DC: book_not_ready OR");
 }
 
 /**
- * @test test_epub_get_chapter_count_success
+ * @test internal_test_epub_get_chapter_count_success
  * @brief Exercise the success path of `ra8_epub_get_chapter_count` (in_use==1).
  *
  * @par Coverage:
@@ -366,9 +358,8 @@ static void test_mcdc_epub_internal_book_not_ready(void)
  * in_use==1 success body `*out_count = book->chapter_count; return k_ra8_ok`;
  * the `book == NULL || out_count == NULL` guard is reached only as the
  * both-false control here, and its N+1 = 3 vectors live in
- * test_mcdc_epub_get_chapter_count_null_pair)
- */
-static void test_epub_get_chapter_count_success(void)
+ * internal_test_mcdc_epub_get_chapter_count_null_pair) @details Executes the epub get chapter count success scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_epub_get_chapter_count_success(void)
 {
   TEST_BEGIN("epub_get_chapter_count success path");
   ra8_epub_book_t book = {};
@@ -381,7 +372,7 @@ static void test_epub_get_chapter_count_success(void)
 }
 
 /**
- * @test test_epub_get_metadata_success
+ * @test internal_test_epub_get_metadata_success
  * @brief Exercise the success path of `ra8_epub_get_metadata` (in_use==1).
  *
  * @par Coverage:
@@ -394,9 +385,8 @@ static void test_epub_get_chapter_count_success(void)
  * in_use==1 success body (the four `out_meta->* = book->*` copies + return);
  * the `book == NULL || out_meta == NULL` guard is reached only as the both-false
  * control here, and its N+1 = 3 vectors live in
- * test_mcdc_epub_get_metadata_null_pair)
- */
-static void test_epub_get_metadata_success(void)
+ * internal_test_mcdc_epub_get_metadata_null_pair) @details Executes the epub get metadata success scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_epub_get_metadata_success(void)
 {
   TEST_BEGIN("epub_get_metadata success path");
   ra8_epub_book_t book = {};
@@ -415,7 +405,7 @@ static void test_epub_get_metadata_success(void)
 }
 
 /**
- * @test test_epub_get_embedded_font_count_success
+ * @test internal_test_epub_get_embedded_font_count_success
  * @brief Exercise the success path of `ra8_epub_get_embedded_font_count`.
  *
  * @par Coverage:
@@ -427,9 +417,8 @@ static void test_epub_get_metadata_success(void)
  * in_use==1 success body `*out_count = book->embedded_font_count; return k_ra8_ok`;
  * the `book == NULL || out_count == NULL` guard is reached only as the both-false
  * control here, and its N+1 = 3 vectors live in
- * test_mcdc_epub_get_embedded_font_count_null_pair)
- */
-static void test_epub_get_embedded_font_count_success(void)
+ * internal_test_mcdc_epub_get_embedded_font_count_null_pair) @details Executes the epub get embedded font count success scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_epub_get_embedded_font_count_success(void)
 {
   TEST_BEGIN("epub_get_embedded_font_count success path");
   ra8_epub_book_t book     = {};
@@ -442,7 +431,7 @@ static void test_epub_get_embedded_font_count_success(void)
 }
 
 /**
- * @test test_epub_get_toc_kind
+ * @test internal_test_epub_get_toc_kind
  *
  * @par MC/DC:
  * Decision: ``if (book == NULL || out_kind == NULL)`` (2 conditions, OR;
@@ -452,9 +441,8 @@ static void test_epub_get_embedded_font_count_success(void)
  * - V2: book=NULL                  -> C1=T (short-circuit) -> overall T.
  * - V3: book!=NULL, out_kind=NULL  -> C1=F,C2=T -> overall T.
  * Pair (V1,V2) isolates C1; pair (V1,V3) isolates C2. The in_use==1 call then
- * runs the `*out_kind = book->toc_kind; return k_ra8_ok;` success body.
- */
-static void test_epub_get_toc_kind(void)
+ * runs the `*out_kind = book->toc_kind; return k_ra8_ok;` success body. @brief Verify epub get toc kind behavior. @details Executes the epub get toc kind scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_epub_get_toc_kind(void)
 {
   TEST_BEGIN("epub_get_toc_kind MC/DC + success");
   ra8_epub_book_t book = {};
@@ -470,7 +458,7 @@ static void test_epub_get_toc_kind(void)
 }
 
 /**
- * @test test_epub_get_toc_count
+ * @test internal_test_epub_get_toc_count
  *
  * @par MC/DC:
  * Decision: ``if (book == NULL || out_count == NULL)`` (2 conditions, OR;
@@ -478,9 +466,8 @@ static void test_epub_get_toc_kind(void)
  * - V1: both non-NULL -> overall F (in_use==0 -> not_initialized).
  * - V2: book=NULL     -> C1=T -> overall T.
  * - V3: out_count=NULL-> C1=F,C2=T -> overall T.
- * Then in_use==1 drives the `*out_count = book->toc_count` success body.
- */
-static void test_epub_get_toc_count(void)
+ * Then in_use==1 drives the `*out_count = book->toc_count` success body. @brief Verify epub get toc count behavior. @details Executes the epub get toc count scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_epub_get_toc_count(void)
 {
   TEST_BEGIN("epub_get_toc_count MC/DC + success");
   ra8_epub_book_t book = {};
@@ -496,16 +483,15 @@ static void test_epub_get_toc_count(void)
 }
 
 /**
- * @test test_epub_get_toc_entry
+ * @test internal_test_epub_get_toc_entry
  *
  * @par MC/DC:
  * Decision: ``if (book == NULL || out_entry == NULL)`` (2 conditions, OR;
  * ra8_epub_get_toc_entry). N+1 = 3 vectors (V1 both-false, V2 book=NULL,
  * V3 out_entry=NULL). The remaining calls additionally drive the
  * single-condition `idx >= toc_count` range guard (out-of-range arm) and the
- * `*out_entry = book->toc[idx]` success copy.
- */
-static void test_epub_get_toc_entry(void)
+ * `*out_entry = book->toc[idx]` success copy. @brief Verify epub get toc entry behavior. @details Executes the epub get toc entry scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_epub_get_toc_entry(void)
 {
   TEST_BEGIN("epub_get_toc_entry MC/DC + range + success");
   ra8_epub_book_t      book  = {};
@@ -527,7 +513,7 @@ static void test_epub_get_toc_entry(void)
 }
 
 /**
- * @test test_epub_toc_entry_to_chapter
+ * @test internal_test_epub_toc_entry_to_chapter
  *
  * @par MC/DC:
  * Top guard ``if (book == NULL || out_chapter_idx == NULL)`` (2 conditions, OR):
@@ -542,9 +528,8 @@ static void test_epub_get_toc_entry(void)
  *   equal-length-but-different "a.xhtml");
  * - the match `return k_ra8_ok` (entries 0 and 2);
  * - the loop fall-through `return k_ra8_err_not_found` (entry 1 matches nothing);
- * - the `toc_idx >= toc_count` range guard.
- */
-static void test_epub_toc_entry_to_chapter(void)
+ * - the `toc_idx >= toc_count` range guard. @brief Verify epub toc entry to chapter behavior. @details Executes the epub toc entry to chapter scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_epub_toc_entry_to_chapter(void)
 {
   TEST_BEGIN("epub_toc_entry_to_chapter MC/DC + match loop");
   ra8_epub_book_t book = {};
@@ -580,7 +565,7 @@ static void test_epub_toc_entry_to_chapter(void)
 }
 
 /**
- * @test test_epub_load_chapter_guards
+ * @test internal_test_epub_load_chapter_guards
  *
  * @par MC/DC:
  * Decision: ``if (book == NULL || out_xhtml == NULL || got_len == NULL)``
@@ -594,9 +579,8 @@ static void test_epub_toc_entry_to_chapter(void)
  * Also drives the `book_not_ready` not-initialized arm, the `max_len == 0`
  * invalid-size arm, and the `idx >= chapter_count` out-of-range arm -- all the
  * pre-extract guards (the miniz extract itself needs a real archive and is left
- * to the integration fixtures).
- */
-static void test_epub_load_chapter_guards(void)
+ * to the integration fixtures). @brief Verify epub load chapter guards behavior. @details Executes the epub load chapter guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_epub_load_chapter_guards(void)
 {
   TEST_BEGIN("epub_load_chapter guards (MC/DC null triple + ranges)");
   ra8_epub_book_t book    = {};
@@ -622,7 +606,7 @@ static void test_epub_load_chapter_guards(void)
 }
 
 /**
- * @test test_epub_get_cover_image_guards
+ * @test internal_test_epub_get_cover_image_guards
  *
  * @par MC/DC:
  * Decision: ``if (book == NULL || out_buf == NULL || got_len == NULL)``
@@ -632,9 +616,8 @@ static void test_epub_load_chapter_guards(void)
  *
  * @par Coverage:
  * Also drives the not-ready arm and the empty-`cover_path` not-found arm (the
- * `book->cover_path[0] == '\0'` branch), which precede any archive extract.
- */
-static void test_epub_get_cover_image_guards(void)
+ * `book->cover_path[0] == '\0'` branch), which precede any archive extract. @brief Verify epub get cover image guards behavior. @details Executes the epub get cover image guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_epub_get_cover_image_guards(void)
 {
   TEST_BEGIN("epub_get_cover_image guards (MC/DC null triple + not_found)");
   ra8_epub_book_t book    = {};
@@ -660,7 +643,7 @@ static void test_epub_get_cover_image_guards(void)
 }
 
 /**
- * @test test_epub_get_resource_ready_guards
+ * @test internal_test_epub_get_resource_ready_guards
  * @brief Drive `ra8_epub_get_resource`'s ready-book pre-extract guards.
  *
  * @par Coverage:
@@ -673,11 +656,10 @@ static void test_epub_get_cover_image_guards(void)
  * single-condition `max_len == 0` invalid-size arm on a ready book. The
  * `book == NULL || path == NULL || out_buf == NULL || got_len == NULL` quad is
  * reached only as the both-false control (all non-NULL), with its N+1 = 5
- * vectors in test_mcdc_epub_get_resource_null_quad; the `in_use == 0 ||
+ * vectors in internal_test_mcdc_epub_get_resource_null_quad; the `in_use == 0 ||
  * zip_archive_active == 0` not-ready OR is held both-false, its vectors in
- * test_mcdc_epub_internal_book_not_ready)
- */
-static void test_epub_get_resource_ready_guards(void)
+ * internal_test_mcdc_epub_internal_book_not_ready) @details Executes the epub get resource ready guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_epub_get_resource_ready_guards(void)
 {
   TEST_BEGIN("epub_get_resource ready max_len==0 guard");
   ra8_epub_book_t book    = {};
@@ -690,7 +672,7 @@ static void test_epub_get_resource_ready_guards(void)
 }
 
 /**
- * @test test_epub_get_embedded_font_guards
+ * @test internal_test_epub_get_embedded_font_guards
  * @brief Drive `ra8_epub_get_embedded_font`'s ready-book pre-extract guards.
  *
  * @par Coverage:
@@ -703,10 +685,9 @@ static void test_epub_get_resource_ready_guards(void)
  * `idx >= embedded_font_count` out-of-range arm on a ready book. The
  * `book == NULL || out_buf == NULL || got_len == NULL` triple is reached only as
  * the both-false control (all non-NULL); its N+1 = 4 vectors live in
- * test_mcdc_epub_get_embedded_font_null_triple, and the not-ready OR's vectors
- * in test_mcdc_epub_internal_book_not_ready)
- */
-static void test_epub_get_embedded_font_guards(void)
+ * internal_test_mcdc_epub_get_embedded_font_null_triple, and the not-ready OR's vectors
+ * in internal_test_mcdc_epub_internal_book_not_ready) @details Executes the epub get embedded font guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_epub_get_embedded_font_guards(void)
 {
   TEST_BEGIN("epub_get_embedded_font ready guards (size + range)");
   ra8_epub_book_t book     = {};
@@ -734,9 +715,9 @@ static void test_epub_get_embedded_font_guards(void)
  * @pre None (drives the guard contract).
  * @post No state beyond @p buf / @p w / @p h is modified.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static ra8_err_t erg_render(ra8_epub_book_t* book, float px, uint8_t* buf, uint32_t* w, uint32_t* h)
+ * @since 0.1.0 @details Implements the erg render fixture operation used only by this focused test executable. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static ra8_err_t
+internal_erg_render(ra8_epub_book_t* book, float px, uint8_t* buf, uint32_t* w, uint32_t* h)
 {
   return ra8_epub_render_glyph(book,
                                (int32_t)k_test_epub_codepoint,
@@ -748,7 +729,7 @@ static ra8_err_t erg_render(ra8_epub_book_t* book, float px, uint8_t* buf, uint3
 }
 
 /**
- * @test test_epub_render_glyph_guards
+ * @test internal_test_epub_render_glyph_guards
  *
  * @par MC/DC:
  * Decision A: ``if (book == NULL || out_bitmap == NULL || out_w == NULL ||
@@ -766,10 +747,9 @@ static ra8_err_t erg_render(ra8_epub_book_t* book, float px, uint8_t* buf, uint3
  * - W3: in_use==1, font_data==NULL -> C1=F,C2=T -> not_initialized.
  *
  * @par Coverage:
- * Also drives the `font_size <= 0` invalid-arg arm and the `priv_font_init`
- * validation-failed arm (a non-TTF blob makes stbtt reject the font offset).
- */
-static void test_epub_render_glyph_guards(void)
+ * Also drives the `font_size <= 0` invalid-arg arm and the `internal_font_init`
+ * validation-failed arm (a non-TTF blob makes stbtt reject the font offset). @brief Verify epub render glyph guards behavior. @details Executes the epub render glyph guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_epub_render_glyph_guards(void)
 {
   TEST_BEGIN("epub_render_glyph MC/DC null quad + not-ready + reject");
   ra8_epub_book_t book = {};
@@ -777,33 +757,34 @@ static void test_epub_render_glyph_guards(void)
   uint32_t        h    = 1U;
   /* Decision A, V1 control: unopened book, all pointers valid -> not_init. */
   TEST_ASSERT_EQ(k_ra8_err_not_initialized,
-                 erg_render(&book, s_test_glyph_px, s_glyph_buf, &w, &h));
+                 internal_erg_render(&book, s_test_glyph_px, s_glyph_buf, &w, &h));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 erg_render(nullptr, s_test_glyph_px, s_glyph_buf, &w, &h));               /* V2 */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, erg_render(&book, s_test_glyph_px, nullptr, &w, &h)); /* V3 */
+                 internal_erg_render(nullptr, s_test_glyph_px, s_glyph_buf, &w, &h)); /* V2 */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 erg_render(&book, s_test_glyph_px, s_glyph_buf, nullptr, &h)); /* V4 */
+                 internal_erg_render(&book, s_test_glyph_px, nullptr, &w, &h)); /* V3 */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 erg_render(&book, s_test_glyph_px, s_glyph_buf, &w, nullptr)); /* V5 */
+                 internal_erg_render(&book, s_test_glyph_px, s_glyph_buf, nullptr, &h)); /* V4 */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 internal_erg_render(&book, s_test_glyph_px, s_glyph_buf, &w, nullptr)); /* V5 */
 
   /* Decision B, W3: open but no font installed -> not_initialized. */
   book.in_use = 1U;
   TEST_ASSERT_EQ(k_ra8_err_not_initialized,
-                 erg_render(&book, s_test_glyph_px, s_glyph_buf, &w, &h));
+                 internal_erg_render(&book, s_test_glyph_px, s_glyph_buf, &w, &h));
 
   /* Install a (non-TTF) font blob: W1 holds, then font_size<=0 -> invalid_arg. */
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_epub_set_font(&book, s_bogus_font, (size_t)k_test_epub_font_min_bytes));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 erg_render(&book, s_test_glyph_px_zero, s_glyph_buf, &w, &h));
-  /* W1 + valid size, but the blob is not a TTF -> priv_font_init rejects it. */
+                 internal_erg_render(&book, s_test_glyph_px_zero, s_glyph_buf, &w, &h));
+  /* W1 + valid size, but the blob is not a TTF -> internal_font_init rejects it. */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 erg_render(&book, s_test_glyph_px, s_glyph_buf, &w, &h));
+                 internal_erg_render(&book, s_test_glyph_px, s_glyph_buf, &w, &h));
 
   /* Decision B, W2: in_use==0 short-circuits regardless of font_data. */
   book.in_use = 0U;
   TEST_ASSERT_EQ(k_ra8_err_not_initialized,
-                 erg_render(&book, s_test_glyph_px, s_glyph_buf, &w, &h));
+                 internal_erg_render(&book, s_test_glyph_px, s_glyph_buf, &w, &h));
   TEST_END("epub_render_glyph MC/DC null quad + not-ready + reject");
 }
 
@@ -818,29 +799,29 @@ static void test_epub_render_glyph_guards(void)
  * @note Order is significant: cases run top to bottom, exactly as before.
  */
 static void (*const s_test_roster[])(void) = {
-  test_mcdc_epub_get_chapter_count_null_pair,
-  test_mcdc_epub_get_metadata_null_pair,
-  test_mcdc_epub_set_font_null_pair,
-  test_mcdc_epub_get_resource_null_quad,
-  test_mcdc_epub_get_embedded_font_count_null_pair,
-  test_mcdc_epub_get_embedded_font_null_triple,
-  test_mcdc_epub_internal_join_path_guard,
-  test_mcdc_epub_internal_join_path_dir_loop,
-  test_mcdc_epub_internal_join_path_name_loop,
-  test_mcdc_epub_internal_glyph_dim_invalid,
-  test_mcdc_epub_internal_book_not_ready,
-  test_epub_get_chapter_count_success,
-  test_epub_get_metadata_success,
-  test_epub_get_embedded_font_count_success,
-  test_epub_get_toc_kind,
-  test_epub_get_toc_count,
-  test_epub_get_toc_entry,
-  test_epub_toc_entry_to_chapter,
-  test_epub_load_chapter_guards,
-  test_epub_get_cover_image_guards,
-  test_epub_get_resource_ready_guards,
-  test_epub_get_embedded_font_guards,
-  test_epub_render_glyph_guards,
+  internal_test_mcdc_epub_get_chapter_count_null_pair,
+  internal_test_mcdc_epub_get_metadata_null_pair,
+  internal_test_mcdc_epub_set_font_null_pair,
+  internal_test_mcdc_epub_get_resource_null_quad,
+  internal_test_mcdc_epub_get_embedded_font_count_null_pair,
+  internal_test_mcdc_epub_get_embedded_font_null_triple,
+  internal_test_mcdc_epub_internal_join_path_guard,
+  internal_test_mcdc_epub_internal_join_path_dir_loop,
+  internal_test_mcdc_epub_internal_join_path_name_loop,
+  internal_test_mcdc_epub_internal_glyph_dim_invalid,
+  internal_test_mcdc_epub_internal_book_not_ready,
+  internal_test_epub_get_chapter_count_success,
+  internal_test_epub_get_metadata_success,
+  internal_test_epub_get_embedded_font_count_success,
+  internal_test_epub_get_toc_kind,
+  internal_test_epub_get_toc_count,
+  internal_test_epub_get_toc_entry,
+  internal_test_epub_toc_entry_to_chapter,
+  internal_test_epub_load_chapter_guards,
+  internal_test_epub_get_cover_image_guards,
+  internal_test_epub_get_resource_ready_guards,
+  internal_test_epub_get_embedded_font_guards,
+  internal_test_epub_render_glyph_guards,
 };
 
 int32_t main(void)
@@ -848,6 +829,5 @@ int32_t main(void)
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
     s_test_roster[i]();
   }
-  (void)fprintf(stderr, "[OK ] test_ra8_epub_chapter.c\n");
   return 0;
 }

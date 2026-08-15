@@ -37,6 +37,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_epub.h"
 #include "ra8_err.h"
 #include "ra8_vmem.h"
@@ -103,8 +104,8 @@ static ra8_vmem_key_t s_keys[(size_t)k_frames];
 /** @brief Page-cache hash buckets. */
 static int32_t s_buckets[(size_t)k_buckets];
 
-/** @brief Build the page-cache vmem config over the shared static fixtures. */
-static ra8_vmem_cfg_t esb_vmem_cfg(void* loader_ctx)
+/** @brief Build the page-cache vmem config over the shared static fixtures. @details Implements the esb vmem cfg fixture operation used only by this focused test executable. @param[in,out] loader_ctx Fixture argument governed by the exercised interface contract. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_vmem_cfg_t internal_esb_vmem_cfg(void* loader_ctx)
 {
   return (ra8_vmem_cfg_t){.frame_mem    = s_frames,
                           .frame_bytes  = (uint32_t)k_frame_bytes,
@@ -118,7 +119,7 @@ static ra8_vmem_cfg_t esb_vmem_cfg(void* loader_ctx)
 }
 
 /** @brief Bytes fetched from the backing (page-cache path instrumentation). */
-static uint64_t g_storage_bytes = 0U;
+static uint64_t s_storage_bytes = 0U;
 
 /* ---------------------------------------------------------------------------
  * EPUB fixture text.
@@ -126,7 +127,7 @@ static uint64_t g_storage_bytes = 0U;
  */
 
 /** @brief container.xml pointing at OEBPS/content.opf. */
-static const char* const k_container = "<?xml version=\"1.0\"?>"
+static const char* const s_container = "<?xml version=\"1.0\"?>"
                                        "<container version=\"1.0\""
                                        " xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\">"
                                        "<rootfiles><rootfile full-path=\"OEBPS/content.opf\""
@@ -134,7 +135,7 @@ static const char* const k_container = "<?xml version=\"1.0\"?>"
                                        "</rootfiles></container>";
 
 /** @brief OPF: four chapters + a cover image, EPUB3. */
-static const char* const k_opf =
+static const char* const s_opf =
   "<?xml version=\"1.0\"?><package xmlns=\"http://www.idpf.org/2007/opf\""
   " version=\"3.0\" unique-identifier=\"id\">"
   "<metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
@@ -151,15 +152,15 @@ static const char* const k_opf =
   "<spine><itemref idref=\"ch1\"/><itemref idref=\"ch2\"/>"
   "<itemref idref=\"ch3\"/><itemref idref=\"ch4\"/></spine></package>";
 
-static const char* const k_ch1 =
+static const char* const s_ch1 =
   "<?xml version=\"1.0\"?><html><body><p>ALPHA chapter one.</p></body></html>";
-static const char* const k_ch2 =
+static const char* const s_ch2 =
   "<?xml version=\"1.0\"?><html><body><p>BRAVO chapter two.</p></body></html>";
-static const char* const k_ch3 =
+static const char* const s_ch3 =
   "<?xml version=\"1.0\"?><html><body><p>CHARLIE chapter three.</p></body></html>";
-static const char* const k_ch4 =
+static const char* const s_ch4 =
   "<?xml version=\"1.0\"?><html><body><p>DELTA chapter four.</p></body></html>";
-static const char* const k_cover = "COVER-IMAGE-BYTES";
+static const char* const s_cover = "COVER-IMAGE-BYTES";
 
 /* ---------------------------------------------------------------------------
  * Fixture builder.
@@ -177,7 +178,7 @@ static const char* const k_cover = "COVER-IMAGE-BYTES";
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void build_big_epub(void)
+RA8_INTERNAL static void internal_build_big_epub(void)
 {
   for (size_t i = 0U; i < (size_t)k_filler_bytes; ++i) {
     s_filler[i] = (uint8_t)((i * k_epub_filler_stride) +
@@ -194,30 +195,30 @@ static void build_big_epub(void)
                                     MZ_NO_COMPRESSION) == MZ_TRUE);
   TEST_ASSERT(mz_zip_writer_add_mem(&zip,
                                     "META-INF/container.xml",
-                                    k_container,
-                                    strlen(k_container),
+                                    s_container,
+                                    strlen(s_container),
                                     MZ_DEFAULT_COMPRESSION) == MZ_TRUE);
   TEST_ASSERT(mz_zip_writer_add_mem(&zip,
                                     "OEBPS/content.opf",
-                                    k_opf,
-                                    strlen(k_opf),
+                                    s_opf,
+                                    strlen(s_opf),
                                     MZ_DEFAULT_COMPRESSION) == MZ_TRUE);
   TEST_ASSERT(mz_zip_writer_add_mem(&zip,
                                     "OEBPS/cover.png",
-                                    k_cover,
-                                    strlen(k_cover),
+                                    s_cover,
+                                    strlen(s_cover),
                                     MZ_DEFAULT_COMPRESSION) == MZ_TRUE);
   TEST_ASSERT(
-    mz_zip_writer_add_mem(&zip, "OEBPS/ch1.xhtml", k_ch1, strlen(k_ch1), MZ_DEFAULT_COMPRESSION) ==
+    mz_zip_writer_add_mem(&zip, "OEBPS/ch1.xhtml", s_ch1, strlen(s_ch1), MZ_DEFAULT_COMPRESSION) ==
     MZ_TRUE);
   TEST_ASSERT(
-    mz_zip_writer_add_mem(&zip, "OEBPS/ch2.xhtml", k_ch2, strlen(k_ch2), MZ_DEFAULT_COMPRESSION) ==
+    mz_zip_writer_add_mem(&zip, "OEBPS/ch2.xhtml", s_ch2, strlen(s_ch2), MZ_DEFAULT_COMPRESSION) ==
     MZ_TRUE);
   TEST_ASSERT(
-    mz_zip_writer_add_mem(&zip, "OEBPS/ch3.xhtml", k_ch3, strlen(k_ch3), MZ_DEFAULT_COMPRESSION) ==
+    mz_zip_writer_add_mem(&zip, "OEBPS/ch3.xhtml", s_ch3, strlen(s_ch3), MZ_DEFAULT_COMPRESSION) ==
     MZ_TRUE);
   TEST_ASSERT(
-    mz_zip_writer_add_mem(&zip, "OEBPS/ch4.xhtml", k_ch4, strlen(k_ch4), MZ_DEFAULT_COMPRESSION) ==
+    mz_zip_writer_add_mem(&zip, "OEBPS/ch4.xhtml", s_ch4, strlen(s_ch4), MZ_DEFAULT_COMPRESSION) ==
     MZ_TRUE);
   /* The big unreferenced entry, stored (uncompressed) so it dominates the file. */
   TEST_ASSERT(mz_zip_writer_add_mem(&zip,
@@ -232,11 +233,12 @@ static void build_big_epub(void)
   TEST_ASSERT((heap != nullptr) && (hsz > (size_t)k_filler_bytes) && (hsz <= (size_t)k_arc_cap));
   memcpy(s_arc, heap, hsz);
   s_arc_size = hsz;
+  mz_free(heap);
   mz_zip_writer_end(&zip);
 }
 
-/** @brief Count resident (valid) page-cache frames -- the live residency probe. */
-static uint32_t count_valid_frames(void)
+/** @brief Count resident (valid) page-cache frames -- the live residency probe. @details Implements the count valid frames fixture operation used only by this focused test executable. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static uint32_t internal_count_valid_frames(void)
 {
   uint32_t live = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_frames; ++i) {
@@ -261,15 +263,15 @@ static uint32_t count_valid_frames(void)
  * @return k_ra8_ok always (loader clamps to the object end before calling).
  * @pre `offset + len <= s_arc_size` (guaranteed by ra8_vsource_loader).
  * @pre `buf` is writable for `len` bytes.
- * @post ::g_storage_bytes advanced by `len`.
+ * @post ::s_storage_bytes advanced by `len`.
  * @note Not thread-safe.
- * @since 0.1.0
- */
-static ra8_err_t storage_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
+ * @since 0.1.0 @details Implements the storage read fixture operation used only by this focused test executable. @retval k_ra8_ok The fixture operation completed successfully. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static ra8_err_t
+internal_storage_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
 {
   (void)ctx;
   memcpy(buf, &s_arc[offset], (size_t)len);
-  g_storage_bytes += (uint64_t)len;
+  s_storage_bytes += (uint64_t)len;
   return k_ra8_ok;
 }
 
@@ -283,10 +285,10 @@ typedef struct {
   size_t         size; /**< Archive length.       */
 } buf_src_t;
 
-/** @brief Total bytes served by ::direct_read. */
-static uint64_t g_direct_bytes = 0U;
-/** @brief Largest single read window served by ::direct_read. */
-static size_t g_direct_peak = 0U;
+/** @brief Total bytes served by ::internal_direct_read. */
+static uint64_t s_direct_bytes = 0U;
+/** @brief Largest single read window served by ::internal_direct_read. */
+static size_t s_direct_peak = 0U;
 
 /**
  * @brief Direct ra8_epub stream read over a resident buffer (no cache).
@@ -296,11 +298,10 @@ static size_t g_direct_peak = 0U;
  * @param[in]  len    Bytes requested.
  * @return Bytes copied (0 at/after EOF).
  * @pre `ctx` is a valid ::buf_src_t; `buf` is writable for `len` bytes.
- * @post ::g_direct_bytes and ::g_direct_peak updated.
+ * @post ::s_direct_bytes and ::s_direct_peak updated.
  * @note Not thread-safe.
- * @since 0.1.0
- */
-static size_t direct_read(void* ctx, uint64_t offset, void* buf, size_t len)
+ * @since 0.1.0 @details Implements the direct read fixture operation used only by this focused test executable. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static size_t internal_direct_read(void* ctx, uint64_t offset, void* buf, size_t len)
 {
   const buf_src_t* s = (const buf_src_t*)ctx;
   if (offset >= (uint64_t)s->size) {
@@ -309,15 +310,15 @@ static size_t direct_read(void* ctx, uint64_t offset, void* buf, size_t len)
   const uint64_t avail = (uint64_t)s->size - offset;
   const size_t   n     = (len > (size_t)avail) ? (size_t)avail : len;
   memcpy(buf, &s->data[offset], n);
-  g_direct_bytes += (uint64_t)n;
-  if (n > g_direct_peak) {
-    g_direct_peak = n;
+  s_direct_bytes += (uint64_t)n;
+  if (n > s_direct_peak) {
+    s_direct_peak = n;
   }
   return n;
 }
 
-/** @brief Assert the four chapters carry their distinct markers via @p book. */
-static void assert_chapters(ra8_epub_book_t* book)
+/** @brief Assert the four chapters carry their distinct markers via @p book. @details Implements the assert chapters fixture operation used only by this focused test executable. @param[in,out] book Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_assert_chapters(ra8_epub_book_t* book)
 {
   static const char* const markers[] = {"ALPHA", "BRAVO", "CHARLIE", "DELTA"};
   for (uint16_t i = 0U; i < 4U; ++i) {
@@ -345,10 +346,9 @@ static void assert_chapters(ra8_epub_book_t* book)
  * @post @p count holds the streamed parse's chapter count.
  * @post Both parses reported the same count, and the title matched.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void
-stream_check_same_spine(ra8_epub_book_t* book, ra8_epub_book_t* resident, uint16_t* count)
+ * @since 0.1.0 @details Implements the stream check same spine fixture operation used only by this focused test executable. */
+RA8_INTERNAL static void
+internal_stream_check_same_spine(ra8_epub_book_t* book, ra8_epub_book_t* resident, uint16_t* count)
 {
   uint16_t cs = 0U;
   uint16_t cr = 0U;
@@ -373,10 +373,10 @@ stream_check_same_spine(ra8_epub_book_t* book, ra8_epub_book_t* resident, uint16
  * @post Every chapter loaded with the same length from both parses.
  * @post Every chapter's bytes compared equal.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void
-stream_check_chapters_identical(ra8_epub_book_t* book, ra8_epub_book_t* resident, uint16_t count)
+ * @since 0.1.0 @details Implements the stream check chapters identical fixture operation used only by this focused test executable. */
+RA8_INTERNAL static void internal_stream_check_chapters_identical(ra8_epub_book_t* book,
+                                                                  ra8_epub_book_t* resident,
+                                                                  uint16_t         count)
 {
   for (uint16_t i = 0U; i < count; ++i) {
     uint8_t a[k_chapter_max] = {};
@@ -393,24 +393,23 @@ stream_check_chapters_identical(ra8_epub_book_t* book, ra8_epub_book_t* resident
 /**
  * @brief Assert the direct-callback open never read the whole archive.
  * @pre A streamed open has just run over the direct callback.
- * @pre `g_direct_bytes` / `g_direct_peak` were zeroed before that open.
+ * @pre `s_direct_bytes` / `s_direct_peak` were zeroed before that open.
  * @post The fetch total stayed under the filler entry's size.
  * @post Every individual read window stayed a bounded miniz chunk.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void stream_check_direct_io_bounded(void)
+ * @since 0.1.0 @details Implements the stream check direct io bounded fixture operation used only by this focused test executable. */
+RA8_INTERNAL static void internal_stream_check_direct_io_bounded(void)
 {
   /* Bounded I/O: the whole archive was NEVER read -- the 0.5 MiB filler entry is
    * untouched, so the streamed open fetched far fewer bytes than the file holds. */
-  TEST_ASSERT(g_direct_bytes < (uint64_t)k_filler_bytes);
+  TEST_ASSERT(s_direct_bytes < (uint64_t)k_filler_bytes);
   /* Every single read window is a small, bounded miniz chunk, not the archive. */
-  TEST_ASSERT(g_direct_peak <= (size_t)(k_frame_bytes * 16U));
+  TEST_ASSERT(s_direct_peak <= (size_t)(k_frame_bytes * 16U));
   TEST_ASSERT((size_t)(k_frame_bytes * 16U) < s_arc_size);
 }
 
 /**
- * @test test_stream_direct_parse_equivalence
+ * @test internal_test_stream_direct_parse_equivalence
  * @brief `ra8_epub_open_streamed()` over a seek+read callback parses byte-identically
  *        to `ra8_epub_open()` on the same archive, while fetching far fewer bytes
  *        than the archive size (the filler entry is never read).
@@ -418,14 +417,13 @@ static void stream_check_direct_io_bounded(void)
  * @par MC/DC:
  * (no compound decisions under test here -- independent single-condition equalities
  * over the two parses' outputs and the fetch-total bound; the open-path compound
- * guards are covered by test_stream_open_arg_guards.)
- */
-static void test_stream_direct_parse_equivalence(void)
+ * guards are covered by internal_test_stream_open_arg_guards.) @details Executes the stream direct parse equivalence scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_stream_direct_parse_equivalence(void)
 {
   TEST_BEGIN("epub stream: direct callback == resident parse, no whole-file read");
-  build_big_epub();
-  g_direct_bytes = 0U;
-  g_direct_peak  = 0U;
+  internal_build_big_epub();
+  s_direct_bytes = 0U;
+  s_direct_peak  = 0U;
 
   /* Resident reference parse. */
   ra8_epub_book_t            resident = {};
@@ -434,17 +432,19 @@ static void test_stream_direct_parse_equivalence(void)
 
   /* Streamed parse over the same bytes through a seek+read callback. */
   buf_src_t               src   = {.data = s_arc, .size = s_arc_size};
-  ra8_epub_stream_media_t media = {.read = direct_read, .ctx = &src, .size = (uint64_t)s_arc_size};
+  ra8_epub_stream_media_t media = {.read = internal_direct_read,
+                                   .ctx  = &src,
+                                   .size = (uint64_t)s_arc_size};
   ra8_epub_book_t         book  = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open_streamed(&media, "big.epub", &book));
   TEST_ASSERT_EQ(1, book.in_use);
   TEST_ASSERT(book.zip_bytes == nullptr); /* streamed: no resident blob */
 
   uint16_t cs = 0U;
-  stream_check_same_spine(&book, &resident, &cs);
-  stream_check_chapters_identical(&book, &resident, cs);
-  assert_chapters(&book);
-  stream_check_direct_io_bounded();
+  internal_stream_check_same_spine(&book, &resident, &cs);
+  internal_stream_check_chapters_identical(&book, &resident, cs);
+  internal_assert_chapters(&book);
+  internal_stream_check_direct_io_bounded();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&resident));
@@ -462,17 +462,16 @@ static void test_stream_direct_parse_equivalence(void)
  * @pre The book was opened and parsed through @p vm.
  * @post Resident set, budget ratio, partial-read and hit/miss checks all held.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void stream_check_bounded_invariant(ra8_vmem_t* vm)
+ * @since 0.1.0 @details Implements the stream check bounded invariant fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_stream_check_bounded_invariant(ra8_vmem_t* vm)
 {
   /* 1. Resident set never exceeds the fixed pool -- the RAM budget. */
-  TEST_ASSERT(count_valid_frames() <= (uint32_t)k_frames);
+  TEST_ASSERT(internal_count_valid_frames() <= (uint32_t)k_frames);
   /* 2. The budget is many times smaller than the archive it served. */
   const uint32_t budget = (uint32_t)k_frames * (uint32_t)k_frame_bytes;
   TEST_ASSERT(((size_t)budget * (size_t)k_budget_ratio) <= s_arc_size);
   /* 3. The whole archive was never read: fewer bytes fetched than the filler holds. */
-  TEST_ASSERT(g_storage_bytes < (uint64_t)k_filler_bytes);
+  TEST_ASSERT(s_storage_bytes < (uint64_t)k_filler_bytes);
   /* 4. The cache actually worked: hot pages (re-read headers/dir) were reused. */
   uint32_t hits = 0U;
   uint32_t miss = 0U;
@@ -488,9 +487,8 @@ static void stream_check_bounded_invariant(ra8_vmem_t* vm)
  * @pre @p vm and @p st are initialised over the archive.
  * @post The churn drove eviction while every byte stayed correct.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void stream_check_churn(ra8_vmem_t* vm, ra8_vmem_stream_t* st)
+ * @since 0.1.0 @details Implements the stream check churn fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_stream_check_churn(ra8_vmem_t* vm, ra8_vmem_stream_t* st)
 {
   uint32_t evic_before = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stats(vm, nullptr, nullptr, &evic_before));
@@ -500,7 +498,7 @@ static void stream_check_churn(ra8_vmem_t* vm, ra8_vmem_stream_t* st)
     const size_t   got = ra8_vmem_stream_read(st, off, &one, 1U);
     TEST_ASSERT_EQ(1U, got);
     TEST_ASSERT_EQ(s_arc[off], one); /* byte-correct through the cache */
-    TEST_ASSERT(count_valid_frames() <= (uint32_t)k_frames);
+    TEST_ASSERT(internal_count_valid_frames() <= (uint32_t)k_frames);
   }
   uint32_t evic_after = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stats(vm, nullptr, nullptr, &evic_after));
@@ -514,9 +512,8 @@ static void stream_check_churn(ra8_vmem_t* vm, ra8_vmem_stream_t* st)
  * @pre @p st is initialised over the archive.
  * @post The boundary-spanning read matched the backing bytes.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void stream_check_span(ra8_vmem_stream_t* st)
+ * @since 0.1.0 @details Implements the stream check span fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_stream_check_span(ra8_vmem_stream_t* st)
 {
   const uint64_t span_off           = (uint64_t)k_frame_bytes - 10U;
   uint8_t        span[k_span_probe] = {};
@@ -526,7 +523,7 @@ static void stream_check_span(ra8_vmem_stream_t* st)
 }
 
 /**
- * @test test_stream_via_pagecache_bounded
+ * @test internal_test_stream_via_pagecache_bounded
  * @brief Open + parse the large EPUB through a fixed, tiny `ra8_vmem` frame pool:
  *        residency never exceeds the pool (the RAM budget, many times smaller than
  *        the archive), the filler is never fetched, hot pages are reused, and under
@@ -535,13 +532,12 @@ static void stream_check_span(ra8_vmem_stream_t* st)
  * @par MC/DC:
  * (no compound decisions under test here -- the gate is a set of independent
  * single-condition inequalities over the cache counters + residency probe, plus a
- * byte-compare correctness oracle against the raw archive.)
- */
-static void test_stream_via_pagecache_bounded(void)
+ * byte-compare correctness oracle against the raw archive.) @details Executes the stream via pagecache bounded scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_stream_via_pagecache_bounded(void)
 {
   TEST_BEGIN("epub stream: bounded residency through ra8_vmem page cache");
-  build_big_epub();
-  g_storage_bytes = 0U;
+  internal_build_big_epub();
+  s_storage_bytes = 0U;
   memset(s_meta, 0, sizeof(s_meta));
 
   /* Layer 1 + Layer 2: register the archive as a paged object, front it with the
@@ -550,10 +546,11 @@ static void test_stream_via_pagecache_bounded(void)
   ra8_vsource_obj_t objs[1] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_init(&vs, objs, 1U));
   uint32_t obj = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_vsource_add_paged(&vs, storage_read, nullptr, 0U, (uint64_t)s_arc_size, &obj));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_vsource_add_paged(&vs, internal_storage_read, nullptr, 0U, (uint64_t)s_arc_size, &obj));
   ra8_vmem_t     vm  = {};
-  ra8_vmem_cfg_t cfg = esb_vmem_cfg(&vs);
+  ra8_vmem_cfg_t cfg = internal_esb_vmem_cfg(&vs);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_init(&vm, &cfg));
   ra8_vmem_stream_t st = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stream_init(&st, &vm, obj, (uint64_t)s_arc_size));
@@ -569,24 +566,24 @@ static void test_stream_via_pagecache_bounded(void)
   uint16_t chapters = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_get_chapter_count(&book, &chapters));
   TEST_ASSERT_EQ(4U, chapters);
-  assert_chapters(&book);
+  internal_assert_chapters(&book);
 
   /* An arbitrary manifest resource inflates on demand off the same stream. */
   uint8_t cover[k_cover_max] = {};
   size_t  cover_got          = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_epub_get_resource(&book, "cover.png", cover, sizeof(cover), &cover_got));
-  TEST_ASSERT_EQ(strlen(k_cover), cover_got);
-  TEST_ASSERT_EQ(0, memcmp(cover, k_cover, cover_got));
+  TEST_ASSERT_EQ(strlen(s_cover), cover_got);
+  TEST_ASSERT_EQ(0, memcmp(cover, s_cover, cover_got));
 
   /* ---- The bounded-RAM invariant ------------------------------------------ */
-  stream_check_bounded_invariant(&vm);
+  internal_stream_check_bounded_invariant(&vm);
 
   /* ---- Phase B: scattered churn proves eviction + correct cold re-fetch ---- */
-  stream_check_churn(&vm, &st);
+  internal_stream_check_churn(&vm, &st);
 
   /* A read spanning a frame boundary is reassembled correctly. */
-  stream_check_span(&st);
+  internal_stream_check_span(&st);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
   TEST_END("epub stream: bounded residency through ra8_vmem page cache");
@@ -598,7 +595,7 @@ static void test_stream_via_pagecache_bounded(void)
  */
 
 /**
- * @test test_stream_open_arg_guards
+ * @test internal_test_stream_open_arg_guards
  * @brief `ra8_epub_open_streamed()` rejects NULL/empty media and a non-ZIP stream.
  *
  * @par MC/DC:
@@ -609,15 +606,16 @@ static void test_stream_via_pagecache_bounded(void)
  * Decision: `media->read == NULL || media->size == 0` (2 conditions, OR).
  * - V3 read=NULL, size>0      -> true  (varies left).
  * - V4 read=valid, size=0     -> true  (varies right).
- * - Control (read set, size>0) is the happy path -> false.
- */
-static void test_stream_open_arg_guards(void)
+ * - Control (read set, size>0) is the happy path -> false. @details Executes the stream open arg guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_stream_open_arg_guards(void)
 {
   TEST_BEGIN("epub stream: open argument guards");
-  build_big_epub();
+  internal_build_big_epub();
   ra8_epub_book_t         book = {};
   buf_src_t               src  = {.data = s_arc, .size = s_arc_size};
-  ra8_epub_stream_media_t good = {.read = direct_read, .ctx = &src, .size = (uint64_t)s_arc_size};
+  ra8_epub_stream_media_t good = {.read = internal_direct_read,
+                                  .ctx  = &src,
+                                  .size = (uint64_t)s_arc_size};
 
   /* NULL-OR guard, each operand flipped. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_open_streamed(nullptr, "x", &book));
@@ -625,14 +623,14 @@ static void test_stream_open_arg_guards(void)
 
   /* invalid-arg OR guard, each operand flipped. */
   ra8_epub_stream_media_t no_read = {.read = nullptr, .ctx = &src, .size = (uint64_t)s_arc_size};
-  ra8_epub_stream_media_t no_size = {.read = direct_read, .ctx = &src, .size = 0U};
+  ra8_epub_stream_media_t no_size = {.read = internal_direct_read, .ctx = &src, .size = 0U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epub_open_streamed(&no_read, "x", &book));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epub_open_streamed(&no_size, "x", &book));
 
   /* A non-ZIP stream -> validation_failed (reader init fails). */
   static const uint8_t    k_junk[] = "this is definitely not a zip archive header at all";
   buf_src_t               jsrc     = {.data = k_junk, .size = sizeof(k_junk)};
-  ra8_epub_stream_media_t junk     = {.read = direct_read,
+  ra8_epub_stream_media_t junk     = {.read = internal_direct_read,
                                       .ctx  = &jsrc,
                                       .size = (uint64_t)sizeof(k_junk)};
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_epub_open_streamed(&junk, "x", &book));
@@ -647,16 +645,15 @@ static void test_stream_open_arg_guards(void)
  */
 
 /**
- * @test test_vmem_stream_guards
+ * @test internal_test_vmem_stream_guards
  * @brief `ra8_vmem_stream_init` rejects NULL/zero args; `ra8_vmem_stream_read`
  *        returns 0 for NULL ctx/buf, zero length, past-EOF, and an unbound stream.
  *
  * @par MC/DC:
  * (no compound decisions under test -- each guard is an independent single
  * condition; init's NULL guards are RA8_CHECK_NULL_PTR one-condition checks and
- * read's guards are separate single-condition early returns.)
- */
-static void test_vmem_stream_guards(void)
+ * read's guards are separate single-condition early returns.) @details Executes the vmem stream guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_vmem_stream_guards(void)
 {
   TEST_BEGIN("ra8_vmem_stream: init + read guards");
   /* init guards. */
@@ -703,10 +700,9 @@ static void test_vmem_stream_guards(void)
  */
 int32_t main(void)
 {
-  test_stream_direct_parse_equivalence();
-  test_stream_via_pagecache_bounded();
-  test_stream_open_arg_guards();
-  test_vmem_stream_guards();
-  (void)fprintf(stderr, "[OK  ] test_ra8_epub_streaming.c\n");
+  internal_test_stream_direct_parse_equivalence();
+  internal_test_stream_via_pagecache_bounded();
+  internal_test_stream_open_arg_guards();
+  internal_test_vmem_stream_guards();
   return 0;
 }

@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_epub_img_tiles.h"
 #include "ra8_err.h"
 #include "ra8_jof.h"
@@ -79,15 +80,15 @@ static ra8_keycache_cell_t s_meta[k_tp_cells];
 /** @brief Tile-cache buckets. */
 static int32_t s_buckets[k_tp_buckets];
 
-/** @brief Append a little-endian u16 to the atlas memstore. */
-static void tp_put_u16(uint16_t v)
+/** @brief Append a little-endian u16 to the atlas memstore. @details Implements the tp put u16 fixture operation used only by this focused test executable. @param[in] v Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_tp_put_u16(uint16_t v)
 {
   const uint8_t b[2] = {(uint8_t)(v & 0xFFU), (uint8_t)(v >> 8U)};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_memstore_sink(&s_store, b, sizeof(b)));
 }
 
-/** @brief Append a little-endian u32 to the atlas memstore. */
-static void tp_put_u32(uint32_t v)
+/** @brief Append a little-endian u32 to the atlas memstore. @details Implements the tp put u32 fixture operation used only by this focused test executable. @param[in] v Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_tp_put_u32(uint32_t v)
 {
   const uint8_t b[4] = {(uint8_t)(v & 0xFFU),
                         (uint8_t)((v >> 8U) & 0xFFU),
@@ -96,8 +97,8 @@ static void tp_put_u32(uint32_t v)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_memstore_sink(&s_store, b, sizeof(b)));
 }
 
-/** @brief Append raw bytes to the atlas memstore. */
-static void tp_put_bytes(const uint8_t* p, size_t n)
+/** @brief Append raw bytes to the atlas memstore. @details Implements the tp put bytes fixture operation used only by this focused test executable. @param[in] p Fixture argument governed by the exercised interface contract. @param[in] n Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_tp_put_bytes(const uint8_t* p, size_t n)
 {
   TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_memstore_sink(&s_store, p, n));
 }
@@ -113,20 +114,20 @@ static void tp_put_bytes(const uint8_t* p, size_t n)
  * @note Single-threaded host-test helper.
  * @since 0.1.0
  */
-static void tp_write_header(void)
+RA8_INTERNAL static void internal_tp_write_header(void)
 {
   const uint8_t magic[4] = {'J', 'O', 'F', '1'};
-  tp_put_bytes(magic, sizeof(magic));
-  tp_put_u16((uint16_t)k_tp_w);
-  tp_put_u16((uint16_t)k_tp_h);
-  tp_put_u16((uint16_t)k_tp_tile);
-  tp_put_u16((uint16_t)k_tp_tile);
+  internal_tp_put_bytes(magic, sizeof(magic));
+  internal_tp_put_u16((uint16_t)k_tp_w);
+  internal_tp_put_u16((uint16_t)k_tp_h);
+  internal_tp_put_u16((uint16_t)k_tp_tile);
+  internal_tp_put_u16((uint16_t)k_tp_tile);
   const uint8_t bpp_codec[2] = {(uint8_t)k_tp_bpp_gray8, (uint8_t)k_ra8_jof_codec_raw};
-  tp_put_bytes(bpp_codec, sizeof(bpp_codec));
-  tp_put_u16(0U); /* reserved (must be zero) */
-  tp_put_u32((uint32_t)k_tp_tiles);
+  internal_tp_put_bytes(bpp_codec, sizeof(bpp_codec));
+  internal_tp_put_u16(0U); /* reserved (must be zero) */
+  internal_tp_put_u32((uint32_t)k_tp_tiles);
   const uint8_t pad[k_tp_hdr_pad] = {};
-  tp_put_bytes(pad, sizeof(pad));
+  internal_tp_put_bytes(pad, sizeof(pad));
 }
 
 /**
@@ -141,30 +142,30 @@ static void tp_write_header(void)
  * @note Single-threaded host-test helper.
  * @since 0.1.0
  */
-static void tp_build_atlas(void)
+RA8_INTERNAL static void internal_tp_build_atlas(void)
 {
   s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
-  tp_write_header();
+  internal_tp_write_header();
   const uint32_t tiles_off = (uint32_t)s_store.len; /* == 32 */
   for (uint32_t i = 0U; i < (uint32_t)k_tp_tiles; ++i) {
     uint8_t tile[k_tp_tile_bytes];
     (void)memset(tile, (int)(i + 1U), sizeof(tile));
-    tp_put_bytes(tile, sizeof(tile));
+    internal_tp_put_bytes(tile, sizeof(tile));
   }
   const uint32_t index_off = (uint32_t)s_store.len;
   for (uint32_t i = 0U; i < (uint32_t)k_tp_tiles; ++i) {
-    tp_put_u32(tiles_off + (i * (uint32_t)k_tp_tile_bytes));
-    tp_put_u32((uint32_t)k_tp_tile_bytes);
+    internal_tp_put_u32(tiles_off + (i * (uint32_t)k_tp_tile_bytes));
+    internal_tp_put_u32((uint32_t)k_tp_tile_bytes);
   }
-  tp_put_u32(index_off);
-  tp_put_u32((uint32_t)k_tp_tiles);
-  tp_put_u32((uint32_t)s_store.len + (uint32_t)k_tp_ftr_tail);
+  internal_tp_put_u32(index_off);
+  internal_tp_put_u32((uint32_t)k_tp_tiles);
+  internal_tp_put_u32((uint32_t)s_store.len + (uint32_t)k_tp_ftr_tail);
   const uint8_t fmagic[4] = {'J', 'O', 'F', 'E'};
-  tp_put_bytes(fmagic, sizeof(fmagic));
+  internal_tp_put_bytes(fmagic, sizeof(fmagic));
 }
 
-/** @brief Bind a binder over the fixture storage with the built atlas registered. */
-static void tp_init_binder(ra8_epub_tile_binder_t* binder)
+/** @brief Bind a binder over the fixture storage with the built atlas registered. @details Implements the tp init binder fixture operation used only by this focused test executable. @param[in,out] binder Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_tp_init_binder(ra8_epub_tile_binder_t* binder)
 {
   const ra8_tile_cache_cfg_t storage = {.cell_mem     = s_cell_mem,
                                         .cell_bytes   = (uint32_t)k_tp_tile_bytes,
@@ -184,8 +185,8 @@ static void tp_init_binder(ra8_epub_tile_binder_t* binder)
                                               (uint32_t)k_tp_image_id));
 }
 
-/** @brief Fetch tile (tx,ty) of the fixture image and release it (must succeed). */
-static void tp_fetch_ok(ra8_epub_tile_binder_t* b, uint16_t tx, uint16_t ty)
+/** @brief Fetch tile (tx,ty) of the fixture image and release it (must succeed). @details Implements the tp fetch ok fixture operation used only by this focused test executable. @param[in,out] b Fixture argument governed by the exercised interface contract. @param[in] tx Fixture argument governed by the exercised interface contract. @param[in] ty Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_tp_fetch_ok(ra8_epub_tile_binder_t* b, uint16_t tx, uint16_t ty)
 {
   ra8_tile_t t = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_get(b, (uint32_t)k_tp_image_id, tx, ty, &t));
@@ -193,7 +194,7 @@ static void tp_fetch_ok(ra8_epub_tile_binder_t* b, uint16_t tx, uint16_t ty)
 }
 
 /**
- * @test test_binder_prefetch_pan
+ * @test internal_test_binder_prefetch_pan
  * @brief A pan-right prefetch through the binder warms the lead column of the
  *        3x2 atlas; the warmed tiles are then resident (a fetch hits, no
  *        re-decode) and the not-found / NULL / off-grid guards hold (#341).
@@ -202,14 +203,13 @@ static void tp_fetch_ok(ra8_epub_tile_binder_t* b, uint16_t tx, uint16_t ty)
  * (no compound decisions authored under test: the binder forwards to
  * ::ra8_tile_cache_prefetch_pan after a single-condition source lookup. Warmed-
  * tile residency is proved by an unchanged miss counter across a fetch, and each
- * guard is an independent single-condition check.)
- */
-static void test_binder_prefetch_pan(void)
+ * guard is an independent single-condition check.) @details Executes the binder prefetch pan scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_binder_prefetch_pan(void)
 {
   TEST_BEGIN("epub tile prefetch: pan warms the lead column, resident");
-  tp_build_atlas();
+  internal_tp_build_atlas();
   ra8_epub_tile_binder_t binder = {};
-  tp_init_binder(&binder);
+  internal_tp_init_binder(&binder);
 
   /* Visible col 0 rows 0..1; pan right -> warm col 1 rows 0..1 (2 tiles). */
   const ra8_tile_rect_t view   = {.tx0 = 0U, .ty0 = 0U, .tx1 = 0U, .ty1 = 1U};
@@ -226,8 +226,8 @@ static void test_binder_prefetch_pan(void)
   /* Warmed tiles are resident: fetching them does not raise the miss counter. */
   uint32_t miss_before = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_stats(&binder.cache, nullptr, &miss_before, nullptr));
-  tp_fetch_ok(&binder, 1U, 0U);
-  tp_fetch_ok(&binder, 1U, 1U);
+  internal_tp_fetch_ok(&binder, 1U, 0U);
+  internal_tp_fetch_ok(&binder, 1U, 1U);
   uint32_t miss_after = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_stats(&binder.cache, nullptr, &miss_after, nullptr));
   TEST_ASSERT_EQ(miss_before, miss_after); /* both fetches were cache hits */
@@ -273,7 +273,6 @@ static void test_binder_prefetch_pan(void)
  */
 int32_t main(void)
 {
-  test_binder_prefetch_pan();
-  (void)fprintf(stderr, "[OK  ] test_ra8_epub_tile_prefetch.c\n");
+  internal_test_binder_prefetch_pan();
   return 0;
 }

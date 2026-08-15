@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_epub.h"
 #include "ra8_epub_fs.h"
 #include "ra8_err.h"
@@ -33,15 +34,15 @@
  * @brief Protocol and on-disk field offsets, plus the byte-level helpers.
  */
 typedef enum : uint8_t {
-  k_bpb_sig_lo            = 0x55U, /**< That signature's low byte.                    */
-  k_bpb_sig_hi            = 0xAAU, /**< Its high byte.                                */
-  k_bpb_off_bytes_per_sec = 11U,   /**< BPB_BytsPerSec: bytes per sector.             */
-  k_bpb_off_rsvd_sec_cnt  = 14U,   /**< BPB_RsvdSecCnt: sectors before the first FAT. */
-  k_bpb_off_root_ent_cnt  = 17U,   /**< BPB_RootEntCnt: root-directory entries.       */
-  k_bpb_off_tot_sec16     = 19U,   /**< BPB_TotSec16: total sectors.                  */
-  k_bpb_off_fat_sz16      = 22U,   /**< BPB_FATSz16: sectors per FAT.                 */
-  k_byte_mask             = 0xFFU, /**< Low-byte mask used by the put16 helper.       */
-  k_bpb_off_sec_per_clus  = 13,    /**< BPB_SecPerClus: sectors per cluster.          */
+  k_bpb_sig_lo            = 0x55U, /**< That signature's low byte.                       */
+  k_bpb_sig_hi            = 0xAAU, /**< Its high byte.                                   */
+  k_bpb_off_bytes_per_sec = 11U,   /**< BPB_BytsPerSec: bytes per sector.                */
+  k_bpb_off_rsvd_sec_cnt  = 14U,   /**< BPB_RsvdSecCnt: sectors before the first FAT.    */
+  k_bpb_off_root_ent_cnt  = 17U,   /**< BPB_RootEntCnt: root-directory entries.          */
+  k_bpb_off_tot_sec16     = 19U,   /**< BPB_TotSec16: total sectors.                     */
+  k_bpb_off_fat_sz16      = 22U,   /**< BPB_FATSz16: sectors per FAT.                    */
+  k_byte_mask             = 0xFFU, /**< Low-byte mask used by the internal_put16 helper. */
+  k_bpb_off_sec_per_clus  = 13,    /**< BPB_SecPerClus: sectors per cluster.             */
 } epub_fs_fixture_t;
 
 /**
@@ -72,7 +73,9 @@ typedef struct {
 
 static mem_disk_t s_disk = {};
 
-static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief Provide the file-local mem read test helper. @details Implements the mem read fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] lba Fixture argument governed by the exercised interface contract. @param[in] count Fixture argument governed by the exercised interface contract. @param[out] buf Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -84,7 +87,9 @@ static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Provide the file-local mem write test helper. @details Implements the mem write fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] lba Fixture argument governed by the exercised interface contract. @param[in] count Fixture argument governed by the exercised interface contract. @param[in] buf Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -96,7 +101,9 @@ static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Provide the file-local mem capacity test helper. @details Implements the mem capacity fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[out] block_count Fixture argument governed by the exercised interface contract. @param[out] block_size Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -105,19 +112,21 @@ static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_
 }
 
 static const ra8_fs_backend_t s_backend = {
-  .read_block   = mem_read,
-  .write_block  = mem_write,
-  .get_capacity = mem_capacity,
+  .read_block   = internal_mem_read,
+  .write_block  = internal_mem_write,
+  .get_capacity = internal_mem_capacity,
   .ctx          = &s_disk,
 };
 
-static void put16(uint8_t* p, uint32_t off, uint16_t v)
+/** @brief Provide the file-local put16 test helper. @details Implements the put16 fixture operation used only by this focused test executable. @param[in,out] p Fixture argument governed by the exercised interface contract. @param[in] off Fixture argument governed by the exercised interface contract. @param[in] v Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_put16(uint8_t* p, uint32_t off, uint16_t v)
 {
   p[off]     = (uint8_t)(v & k_byte_mask);
   p[off + 1] = (uint8_t)((v >> 8) & k_byte_mask);
 }
 
-static void build_fat16_volume(void)
+/** @brief Prepare the fixture's build fat16 volume state. @details Implements the build fat16 volume fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_build_fat16_volume(void)
 {
   free(s_disk.bytes);
   s_disk.byte_count  = (uint32_t)k_disk_blocks * (uint32_t)k_disk_block_size;
@@ -125,13 +134,13 @@ static void build_fat16_volume(void)
   s_disk.block_count = (uint32_t)k_disk_blocks;
   TEST_ASSERT(s_disk.bytes != nullptr);
   uint8_t* bpb = &s_disk.bytes[0];
-  put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_disk_block_size); /* bytes/sector     */
-  bpb[k_bpb_off_sec_per_clus] = 1U;                                 /* sectors/cluster  */
-  put16(bpb, k_bpb_off_rsvd_sec_cnt, 1U);                           /* reserved sectors */
-  bpb[16] = 2U;                                                     /* number of FATs   */
-  put16(bpb, k_bpb_off_root_ent_cnt, 16U);                          /* root dir entries */
-  put16(bpb, k_bpb_off_tot_sec16, (uint16_t)k_disk_blocks);         /* total sectors    */
-  put16(bpb, k_bpb_off_fat_sz16, 32U);                              /* sectors/FAT      */
+  internal_put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_disk_block_size); /* bytes/sector     */
+  bpb[k_bpb_off_sec_per_clus] = 1U;                                          /* sectors/cluster  */
+  internal_put16(bpb, k_bpb_off_rsvd_sec_cnt, 1U);                           /* reserved sectors */
+  bpb[16] = 2U;                                                              /* number of FATs   */
+  internal_put16(bpb, k_bpb_off_root_ent_cnt, 16U);                          /* root dir entries */
+  internal_put16(bpb, k_bpb_off_tot_sec16, (uint16_t)k_disk_blocks);         /* total sectors    */
+  internal_put16(bpb, k_bpb_off_fat_sz16, 32U);                              /* sectors/FAT      */
   bpb[k_bpb_off_sig_lo] = k_bpb_sig_lo;
   bpb[k_bpb_off_sig_hi] = k_bpb_sig_hi;
 }
@@ -147,13 +156,13 @@ static uint8_t s_epub[k_epub_cap];
 static size_t  s_epub_len;
 static uint8_t s_read[k_read_cap];
 
-static const char* const k_mimetype = "application/epub+zip";
-static const char* const k_container =
+static const char* const s_mimetype = "application/epub+zip";
+static const char* const s_container =
   "<?xml version=\"1.0\"?><container version=\"1.0\" "
   "xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\"><rootfiles>"
   "<rootfile full-path=\"OEBPS/content.opf\" "
   "media-type=\"application/oebps-package+xml\"/></rootfiles></container>";
-static const char* const k_opf =
+static const char* const s_opf =
   "<?xml version=\"1.0\"?><package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" "
   "unique-identifier=\"id\"><metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
   "<dc:title>Frankenstein</dc:title><dc:creator>Mary Shelley</dc:creator>"
@@ -162,16 +171,17 @@ static const char* const k_opf =
   "<item id=\"c1\" href=\"c1.xhtml\" media-type=\"application/xhtml+xml\"/>"
   "<item id=\"c2\" href=\"c2.xhtml\" media-type=\"application/xhtml+xml\"/></manifest>"
   "<spine><itemref idref=\"c1\"/><itemref idref=\"c2\"/></spine></package>";
-static const char* const k_c1 =
+static const char* const s_c1 =
   "<?xml version=\"1.0\"?><html><body><h1>Letter 1</h1>"
   "<p>You will rejoice to hear that no disaster has accompanied the "
   "commencement of an enterprise which you have regarded with such evil "
   "forebodings.</p></body></html>";
-static const char* const k_c2 = "<?xml version=\"1.0\"?><html><body><h1>Chapter 1</h1>"
+static const char* const s_c2 = "<?xml version=\"1.0\"?><html><body><h1>Chapter 1</h1>"
                                 "<p>I am by birth a Genevese, and my family is one of the most "
                                 "distinguished of that republic.</p></body></html>";
 
-static void build_epub(void)
+/** @brief Prepare the fixture's build epub state. @details Implements the build epub fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_build_epub(void)
 {
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
@@ -181,11 +191,11 @@ static void build_epub(void)
     const char* data;  /**< Data.  */
     mz_uint     flags; /**< Flags. */
   } e[] = {
-    {"mimetype", k_mimetype, MZ_NO_COMPRESSION},
-    {"META-INF/container.xml", k_container, MZ_DEFAULT_COMPRESSION},
-    {"OEBPS/content.opf", k_opf, MZ_DEFAULT_COMPRESSION},
-    {"OEBPS/c1.xhtml", k_c1, MZ_DEFAULT_COMPRESSION},
-    {"OEBPS/c2.xhtml", k_c2, MZ_DEFAULT_COMPRESSION},
+    {"mimetype", s_mimetype, MZ_NO_COMPRESSION},
+    {"META-INF/container.xml", s_container, MZ_DEFAULT_COMPRESSION},
+    {"OEBPS/content.opf", s_opf, MZ_DEFAULT_COMPRESSION},
+    {"OEBPS/c1.xhtml", s_c1, MZ_DEFAULT_COMPRESSION},
+    {"OEBPS/c2.xhtml", s_c2, MZ_DEFAULT_COMPRESSION},
   };
   for (size_t i = 0U; i < (sizeof(e) / sizeof(e[0])); ++i) {
     TEST_ASSERT(mz_zip_writer_add_mem(&zip, e[i].path, e[i].data, strlen(e[i].data), e[i].flags) ==
@@ -197,11 +207,12 @@ static void build_epub(void)
   TEST_ASSERT((heap != nullptr) && (hsz > 0U) && (hsz <= sizeof(s_epub)));
   memcpy(s_epub, heap, hsz);
   s_epub_len = hsz;
+  mz_free(heap);
   mz_zip_writer_end(&zip);
 }
 
-/** @brief Write the built EPUB to @p path on the mounted volume. */
-static void write_epub(ra8_fs_mount_t* mount, const char* path)
+/** @brief Write the built EPUB to @p path on the mounted volume. @details Implements the write epub fixture operation used only by this focused test executable. @param[in,out] mount Fixture argument governed by the exercised interface contract. @param[in] path Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_write_epub(ra8_fs_mount_t* mount, const char* path)
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(mount, path, k_ra8_fs_mode_write, &f));
@@ -214,7 +225,7 @@ static void write_epub(ra8_fs_mount_t* mount, const char* path)
  * @brief Byte offsets into the FAT16 image for cluster-chain corruption.
  *
  * @details
- * Geometry of the volume built by ::build_fat16_volume (512 B/sector,
+ * Geometry of the volume built by ::internal_build_fat16_volume (512 B/sector,
  * 1 sector/cluster, 1 reserved sector, 2 FATs of 32 sectors each, 16 root
  * entries). The single file `BOOK.EPB` occupies the first data cluster
  * (cluster 2), chained 2 -> 3 -> ... -> EOC. FAT16 entry for cluster N lives at
@@ -228,7 +239,7 @@ typedef enum : uint32_t {
 } epub_fs_fat16_off_t;
 
 /**
- * @test test_epub_fs_read_error_corrupt_fat
+ * @test internal_test_epub_fs_read_error_corrupt_fat
  * @brief A corrupt FAT chain makes the on-demand stream reads fault mid-parse;
  *        ra8_epub_open_streamed_fs fails cleanly and closes the file handle.
  *
@@ -236,7 +247,7 @@ typedef enum : uint32_t {
  * Cluster 2's FAT16 entry is rewritten (in both FAT copies) to 0xF000, a
  * normal (non-EOC) pointer whose data LBA is past the 8192-sector disk. The
  * streamed open's first ZIP-tail read walks the chain 2 -> 0xF000, whose LBA
- * (61504) trips the mem_read `lba + count > block_count` guard ->
+ * (61504) trips the internal_mem_read `lba + count > block_count` guard ->
  * k_ra8_err_out_of_range inside the stream callback, which reports 0 bytes;
  * miniz treats the short read as a reader-init failure, so the open returns
  * k_ra8_err_validation_failed, the adapter closes the file (io.file == NULL),
@@ -245,17 +256,16 @@ typedef enum : uint32_t {
  * @par MC/DC:
  * (no compound decisions under test here -- the stream callback's guards are
  * independent single-condition early returns; this drives the seek/read error
- * leg the happy-path roundtrip never reaches.)
- */
-static void test_epub_fs_read_error_corrupt_fat(void)
+ * leg the happy-path roundtrip never reaches.) @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_epub_fs_read_error_corrupt_fat(void)
 {
   TEST_BEGIN("ra8_epub_fs: corrupt FAT chain -> streamed open fails, file closed");
-  build_fat16_volume();
-  build_epub();
+  internal_build_fat16_volume();
+  internal_build_epub();
   TEST_ASSERT(s_epub_len > (size_t)k_disk_block_size); /* multi-cluster chain */
   ra8_fs_mount_t* mount = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &mount));
-  write_epub(mount, "BOOK.EPB");
+  internal_write_epub(mount, "BOOK.EPB");
   /* Unmount before corrupting, and mount again after. Corruption arrives on
    * real media between sessions, not under a live mount, and the driver caches
    * one FAT sector (#607) -- so poking the FAT behind a mounted volume would
@@ -265,12 +275,14 @@ static void test_epub_fs_read_error_corrupt_fat(void)
 
   /* Point cluster 2 at an off-disk cluster in both FAT copies so the chain walk
    * past the first sector faults. FAT-relative byte = cluster*2 = 4. */
-  put16(s_disk.bytes,
-        (k_fat16_fat0_lba * (uint32_t)k_disk_block_size) + (uint32_t)k_fat16_clus2_ent_byte,
-        (uint16_t)k_fat16_offdisk_clus);
-  put16(s_disk.bytes,
-        (k_fat16_fat1_lba * (uint32_t)k_disk_block_size) + (uint32_t)k_fat16_clus2_ent_byte,
-        (uint16_t)k_fat16_offdisk_clus);
+  internal_put16(s_disk.bytes,
+                 (k_fat16_fat0_lba * (uint32_t)k_disk_block_size) +
+                   (uint32_t)k_fat16_clus2_ent_byte,
+                 (uint16_t)k_fat16_offdisk_clus);
+  internal_put16(s_disk.bytes,
+                 (k_fat16_fat1_lba * (uint32_t)k_disk_block_size) +
+                   (uint32_t)k_fat16_clus2_ent_byte,
+                 (uint16_t)k_fat16_offdisk_clus);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &mount));
 
   ra8_epub_stream_fs_ctx_t io   = {};
@@ -301,9 +313,8 @@ static void test_epub_fs_read_error_corrupt_fat(void)
  * @post The file handle is closed again.
  * @post Every assertion has run; a mismatch aborts the process.
  *
- * @note Not thread-safe; the fixtures are file-scope state.
- */
-static void check_fs_byte_roundtrip(ra8_fs_mount_t* mount)
+ * @note Not thread-safe; the fixtures are file-scope state. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_check_fs_byte_roundtrip(ra8_fs_mount_t* mount)
 {
   ra8_fs_file_t* rf = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(mount, "BOOK.EPB", k_ra8_fs_mode_read, &rf));
@@ -318,7 +329,7 @@ static void check_fs_byte_roundtrip(ra8_fs_mount_t* mount)
 }
 
 /**
- * @test test_epub_fs_streamed_roundtrip
+ * @test internal_test_epub_fs_streamed_roundtrip
  * @brief A .epub on ra8_fs opens end to end through ra8_epub_open_streamed_fs with
  *        no whole-file buffer (#151): the spine count and both chapter bodies come
  *        back intact, the source file stays open for on-demand reads, and close
@@ -326,19 +337,18 @@ static void check_fs_byte_roundtrip(ra8_fs_mount_t* mount)
  *
  * @par MC/DC:
  * (no compound decisions under test here -- the happy path; the streamed-open
- * NULL-OR guard is covered by test_epub_fs_streamed_guards.)
- */
-static void test_epub_fs_streamed_roundtrip(void)
+ * NULL-OR guard is covered by internal_test_epub_fs_streamed_guards.) @details Executes the epub fs streamed roundtrip scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_epub_fs_streamed_roundtrip(void)
 {
   TEST_BEGIN("ra8_epub_fs: streamed open roundtrip (no whole-file residency)");
-  build_fat16_volume();
-  build_epub();
+  internal_build_fat16_volume();
+  internal_build_epub();
 
   ra8_fs_mount_t* mount = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &mount));
-  write_epub(mount, "BOOK.EPB");
+  internal_write_epub(mount, "BOOK.EPB");
 
-  check_fs_byte_roundtrip(mount);
+  internal_check_fs_byte_roundtrip(mount);
 
   ra8_epub_stream_fs_ctx_t io   = {};
   ra8_epub_book_t          book = {};
@@ -376,7 +386,7 @@ static void test_epub_fs_streamed_roundtrip(void)
 }
 
 /**
- * @test test_epub_fs_streamed_guards
+ * @test internal_test_epub_fs_streamed_guards
  * @brief ra8_epub_open_streamed_fs rejects NULL args and a missing file, closes the
  *        source file on a parse failure, and ra8_epub_close_streamed_fs is a safe
  *        no-op after a failed open.
@@ -384,16 +394,15 @@ static void test_epub_fs_streamed_roundtrip(void)
  * @par MC/DC:
  * Decision: `mount==NULL || path==NULL || io==NULL || out_book==NULL`
  * (4 conditions, OR). Control (all non-NULL) is exercised by the roundtrip test;
- * here each operand is independently flipped to NULL -> N+1 = 5 vectors.
- */
-static void test_epub_fs_streamed_guards(void)
+ * here each operand is independently flipped to NULL -> N+1 = 5 vectors. @details Executes the epub fs streamed guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_epub_fs_streamed_guards(void)
 {
   TEST_BEGIN("ra8_epub_fs: streamed open guards");
-  build_fat16_volume();
-  build_epub();
+  internal_build_fat16_volume();
+  internal_build_epub();
   ra8_fs_mount_t* mount = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &mount));
-  write_epub(mount, "BOOK.EPB");
+  internal_write_epub(mount, "BOOK.EPB");
 
   /* A small non-ZIP file: it opens + sizes fine but ra8_epub_open_streamed rejects
    * it, driving the adapter's parse-failure (file-close) branch. */
@@ -438,8 +447,8 @@ static void test_epub_fs_streamed_guards(void)
 
 int32_t main(void)
 {
-  test_epub_fs_streamed_roundtrip();
-  test_epub_fs_streamed_guards();
-  test_epub_fs_read_error_corrupt_fat();
+  internal_test_epub_fs_streamed_roundtrip();
+  internal_test_epub_fs_streamed_guards();
+  internal_test_epub_fs_read_error_corrupt_fat();
   return 0;
 }

@@ -47,7 +47,7 @@ typedef struct {
   ra8_epub_miniz_workspace_t workspace; /**< Aligned backing bytes. */
 } priv_fixture_t;
 
-/** @brief Reset @p fixture to one empty, independent arena. */
+/** @brief Reset @p fixture to one empty, independent arena. @details Implements the fixture init fixture operation used only by this focused test executable. @param[in,out] fixture Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL
 static void internal_fixture_init(priv_fixture_t* fixture)
 {
@@ -65,7 +65,7 @@ enum : size_t {
 };
 
 /**
- * @test test_alloc_align_and_distinct
+ * @test internal_test_alloc_align_and_distinct
  * @brief Allocations are aligned and non-overlapping.
  *
  * @par MC/DC:
@@ -75,10 +75,9 @@ enum : size_t {
  * not an independence set -- a null from either arm is the failure the
  * conjunction exists to catch, so no false vector is driven. The production
  * first-fit `(is_free) && (size >= need)` and overflow `(size != 0) && ...`
- * AND-decisions this exercises have their N+1 vectors in test_firstfit_mcdc,
- * test_overflow_mcdc, and test_alloc_real_overflow_and_firstfit_mcdc.
- */
-static void test_alloc_align_and_distinct(void)
+ * AND-decisions this exercises have their N+1 vectors in internal_test_firstfit_mcdc,
+ * internal_test_overflow_mcdc, and internal_test_alloc_real_overflow_and_firstfit_mcdc. @details Executes the alloc align and distinct scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_alloc_align_and_distinct(void)
 {
   TEST_BEGIN("alloc returns aligned, distinct blocks");
   priv_fixture_t fixture;
@@ -100,7 +99,7 @@ static void test_alloc_align_and_distinct(void)
 }
 
 /**
- * @test test_free_coalesce_reclaim
+ * @test internal_test_free_coalesce_reclaim
  * @brief Freeing everything lets a later big alloc reuse the whole pool.
  *
  * @par MC/DC:
@@ -108,10 +107,9 @@ static void test_alloc_align_and_distinct(void)
  * `!= nullptr` checks. It exercises the production coalesce
  * `while ((next < end) && (next->is_free))` and first-fit
  * `(is_free) && (size >= need)` AND-decisions by fragmenting then reclaiming the
- * pool, but their N+1 = 3 vectors are supplied by test_coalesce_mcdc,
- * test_firstfit_mcdc, and test_alloc_real_overflow_and_firstfit_mcdc)
- */
-static void test_free_coalesce_reclaim(void)
+ * pool, but their N+1 = 3 vectors are supplied by internal_test_coalesce_mcdc,
+ * internal_test_firstfit_mcdc, and internal_test_alloc_real_overflow_and_firstfit_mcdc) @details Executes the free coalesce reclaim scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_free_coalesce_reclaim(void)
 {
   TEST_BEGIN("free + coalesce reclaims the pool for a big alloc");
   priv_fixture_t fixture;
@@ -133,7 +131,7 @@ static void test_free_coalesce_reclaim(void)
 }
 
 /**
- * @test test_realloc_grow_preserves
+ * @test internal_test_realloc_grow_preserves
  * @brief realloc grows, moves when needed, and preserves the old bytes.
  *
  * @par MC/DC:
@@ -141,10 +139,9 @@ static void test_free_coalesce_reclaim(void)
  * `!= nullptr` / `TEST_ASSERT_EQ` checks. It drives the realloc grow-and-move
  * path (the single-condition `b->size >= need` false arm -> allocate + memcpy);
  * the production overflow / first-fit AND-decisions it touches have their N+1
- * vectors in test_realloc_real_overflow_mcdc, test_firstfit_mcdc, and
- * test_alloc_real_overflow_and_firstfit_mcdc)
- */
-static void test_realloc_grow_preserves(void)
+ * vectors in internal_test_realloc_real_overflow_mcdc, internal_test_firstfit_mcdc, and
+ * internal_test_alloc_real_overflow_and_firstfit_mcdc) @details Executes the realloc grow preserves scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_realloc_grow_preserves(void)
 {
   TEST_BEGIN("realloc grow preserves payload");
   priv_fixture_t fixture;
@@ -168,7 +165,7 @@ static void test_realloc_grow_preserves(void)
 }
 
 /**
- * @test test_realloc_inplace_and_null_zero
+ * @test internal_test_realloc_inplace_and_null_zero
  * @brief realloc keeps a block that already fits; NULL/0 edge cases.
  *
  * @par MC/DC:
@@ -177,10 +174,9 @@ static void test_realloc_grow_preserves(void)
  * branches: `address == nullptr` (realloc(NULL,n) -> alloc), `b->size >= need`
  * true (shrink fits in place -> same pointer), and `need == 0` (realloc(p,0) ->
  * free -> NULL). The first-fit `(is_free) && (size >= need)` AND it reaches
- * through the alloc path has its N+1 vectors in test_firstfit_mcdc and
- * test_alloc_real_overflow_and_firstfit_mcdc)
- */
-static void test_realloc_inplace_and_null_zero(void)
+ * through the alloc path has its N+1 vectors in internal_test_firstfit_mcdc and
+ * internal_test_alloc_real_overflow_and_firstfit_mcdc) @details Executes the realloc inplace and null zero scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_realloc_inplace_and_null_zero(void)
 {
   TEST_BEGIN("realloc in-place + NULL/zero edges");
   priv_fixture_t fixture;
@@ -200,8 +196,8 @@ static void test_realloc_inplace_and_null_zero(void)
   TEST_END("realloc in-place + NULL/zero edges");
 }
 
-/** @brief Mirror of the first-fit decision: (is_free) && (size >= need). */
-static uint8_t mirror_firstfit(uint8_t is_free, size_t size, size_t need)
+/** @brief Mirror of the first-fit decision: (is_free) && (size >= need). @details Implements the mirror firstfit fixture operation used only by this focused test executable. @param[in] is_free Fixture argument governed by the exercised interface contract. @param[in] size Fixture argument governed by the exercised interface contract. @param[in] need Fixture argument governed by the exercised interface contract. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static uint8_t internal_mirror_firstfit(uint8_t is_free, size_t size, size_t need)
 {
   if ((is_free != 0U) && (size >= need)) {
     return 1U;
@@ -210,26 +206,25 @@ static uint8_t mirror_firstfit(uint8_t is_free, size_t size, size_t need)
 }
 
 /**
- * @test test_firstfit_mcdc
+ * @test internal_test_firstfit_mcdc
  *
  * @par MC/DC:
  * Decision: `if (b->is_free && b->size >= need)` (2 conditions, AND;
  * ra8_epub_miniz_alloc.c first-fit). N+1 = 3 vectors:
  *  - V1: free=1, size=64, need=32 -> T,T -> fit.
  *  - V2: free=0, size=64, need=32 -> F   -> no fit (varies is_free).
- *  - V3: free=1, size=16, need=32 -> T,F -> no fit (varies the size test).
- */
-static void test_firstfit_mcdc(void)
+ *  - V3: free=1, size=16, need=32 -> T,F -> no fit (varies the size test). @brief Verify firstfit mcdc behavior. @details Executes the firstfit mcdc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_firstfit_mcdc(void)
 {
   TEST_BEGIN("first-fit MC/DC: is_free && size>=need");
-  TEST_ASSERT_EQ(1, mirror_firstfit(1U, 64U, 32U));
-  TEST_ASSERT_EQ(0, mirror_firstfit(0U, 64U, 32U));
-  TEST_ASSERT_EQ(0, mirror_firstfit(1U, 16U, 32U));
+  TEST_ASSERT_EQ(1, internal_mirror_firstfit(1U, 64U, 32U));
+  TEST_ASSERT_EQ(0, internal_mirror_firstfit(0U, 64U, 32U));
+  TEST_ASSERT_EQ(0, internal_mirror_firstfit(1U, 16U, 32U));
   TEST_END("first-fit MC/DC: is_free && size>=need");
 }
 
-/** @brief Mirror of the coalesce decision: (in_pool) && (next_free). */
-static uint8_t mirror_coalesce(uint8_t in_pool, uint8_t next_free)
+/** @brief Mirror of the coalesce decision: (in_pool) && (next_free). @details Implements the mirror coalesce fixture operation used only by this focused test executable. @param[in] in_pool Fixture argument governed by the exercised interface contract. @param[in] next_free Fixture argument governed by the exercised interface contract. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static uint8_t internal_mirror_coalesce(uint8_t in_pool, uint8_t next_free)
 {
   if ((in_pool != 0U) && (next_free != 0U)) {
     return 1U;
@@ -238,26 +233,25 @@ static uint8_t mirror_coalesce(uint8_t in_pool, uint8_t next_free)
 }
 
 /**
- * @test test_coalesce_mcdc
+ * @test internal_test_coalesce_mcdc
  *
  * @par MC/DC:
  * Decision: `while (next < end && next->is_free)` (2 conditions, AND;
  * ra8_epub_miniz_alloc.c internal_coalesce). N+1 = 3 vectors:
  *  - V1: in_pool=1, next_free=1 -> swallow.
  *  - V2: in_pool=0, next_free=1 -> stop (varies the bound).
- *  - V3: in_pool=1, next_free=0 -> stop (varies the free test).
- */
-static void test_coalesce_mcdc(void)
+ *  - V3: in_pool=1, next_free=0 -> stop (varies the free test). @brief Verify coalesce mcdc behavior. @details Executes the coalesce mcdc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_coalesce_mcdc(void)
 {
   TEST_BEGIN("coalesce MC/DC: in_pool && next_free");
-  TEST_ASSERT_EQ(1, mirror_coalesce(1U, 1U));
-  TEST_ASSERT_EQ(0, mirror_coalesce(0U, 1U));
-  TEST_ASSERT_EQ(0, mirror_coalesce(1U, 0U));
+  TEST_ASSERT_EQ(1, internal_mirror_coalesce(1U, 1U));
+  TEST_ASSERT_EQ(0, internal_mirror_coalesce(0U, 1U));
+  TEST_ASSERT_EQ(0, internal_mirror_coalesce(1U, 0U));
   TEST_END("coalesce MC/DC: in_pool && next_free");
 }
 
-/** @brief Mirror of the overflow guard: (size != 0) && (items > MAX/size). */
-static uint8_t mirror_overflow(size_t size, uint8_t items_over)
+/** @brief Mirror of the overflow guard: (size != 0) && (items > MAX/size). @details Implements the mirror overflow fixture operation used only by this focused test executable. @param[in] size Fixture argument governed by the exercised interface contract. @param[in] items_over Fixture argument governed by the exercised interface contract. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static uint8_t internal_mirror_overflow(size_t size, uint8_t items_over)
 {
   /* items_over models whether items exceeds SIZE_MAX/size. */
   if ((size != 0U) && (items_over != 0U)) {
@@ -267,36 +261,35 @@ static uint8_t mirror_overflow(size_t size, uint8_t items_over)
 }
 
 /**
- * @test test_overflow_mcdc
+ * @test internal_test_overflow_mcdc
  *
  * @par MC/DC:
  * Decision: `if (size != 0 && items > SIZE_MAX/size)` (2 conditions, AND;
  * ra8_epub_miniz_alloc overflow guard). N+1 = 3 vectors:
  *  - V1: size=4, items_over=1 -> overflow -> NULL.
  *  - V2: size=0, items_over=1 -> no overflow (size==0 short-circuits).
- *  - V3: size=4, items_over=0 -> no overflow (count fits).
- */
-static void test_overflow_mcdc(void)
+ *  - V3: size=4, items_over=0 -> no overflow (count fits). @brief Verify overflow mcdc behavior. @details Executes the overflow mcdc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_overflow_mcdc(void)
 {
   TEST_BEGIN("overflow MC/DC: size!=0 && items>MAX/size");
   priv_fixture_t fixture;
   internal_fixture_init(&fixture);
-  TEST_ASSERT_EQ(1, mirror_overflow(4U, 1U));
-  TEST_ASSERT_EQ(0, mirror_overflow(0U, 1U));
-  TEST_ASSERT_EQ(0, mirror_overflow(4U, 0U));
+  TEST_ASSERT_EQ(1, internal_mirror_overflow(4U, 1U));
+  TEST_ASSERT_EQ(0, internal_mirror_overflow(0U, 1U));
+  TEST_ASSERT_EQ(0, internal_mirror_overflow(4U, 0U));
   /* And the real function rejects an actual overflow. */
   TEST_ASSERT(ra8_epub_miniz_alloc(&fixture.arena, (SIZE_MAX / 2U) + 2U, 2U) == nullptr);
   TEST_END("overflow MC/DC: size!=0 && items>MAX/size");
 }
 
 /**
- * @test test_alloc_real_overflow_and_firstfit_mcdc
+ * @test internal_test_alloc_real_overflow_and_firstfit_mcdc
  *
  * @par MC/DC:
  * Drives the *production* decisions in ra8_epub_miniz_alloc() (not a mirror).
  *
  * Decision A -- overflow guard ``if ((size != 0U) && (items > SIZE_MAX/size))``
- * (2 conditions, AND). The existing test_overflow_mcdc already drives the
+ * (2 conditions, AND). The existing internal_test_overflow_mcdc already drives the
  * real (T,T) overflow arm; here the missing left-operand-false arm:
  *  - size==0 -> C1=F (short-circuit) -> no overflow -> proceeds and returns a
  *    block (need rounds up to one alignment unit). Pair with the (T,T) arm
@@ -308,9 +301,8 @@ static void test_overflow_mcdc(void)
  *  - then a used block:         C1=F        (not free -> skip),
  *  - then the big free tail:     C1=T,C2=T   (fit -> allocate).
  * One allocation request thus exercises all three condition states, giving the
- * two independence pairs for the AND.
- */
-static void test_alloc_real_overflow_and_firstfit_mcdc(void)
+ * two independence pairs for the AND. @brief Verify alloc real overflow and firstfit mcdc behavior. @details Executes the alloc real overflow and firstfit mcdc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_alloc_real_overflow_and_firstfit_mcdc(void)
 {
   TEST_BEGIN("alloc real MC/DC: overflow size==0 + first-fit skip arms");
   priv_fixture_t fixture;
@@ -337,7 +329,7 @@ static void test_alloc_real_overflow_and_firstfit_mcdc(void)
 }
 
 /**
- * @test test_free_in_pool_mcdc
+ * @test internal_test_free_in_pool_mcdc
  *
  * @par MC/DC:
  * Drives the *production* guard in ra8_epub_miniz_free()
@@ -356,9 +348,8 @@ static void test_alloc_real_overflow_and_firstfit_mcdc(void)
  *  - a pointer below the base  -> (q>=base)=F           -> false (left independent).
  *  - a pointer at/after the end-> (q>=base)=T, (q<end)=F -> false (right independent).
  * The below/above pointers are derived from a live pool pointer offset by twice
- * the whole pool size, so they are unconditionally outside the 160 KiB arena.
- */
-static void test_free_in_pool_mcdc(void)
+ * the whole pool size, so they are unconditionally outside the 160 KiB arena. @brief Verify free in pool mcdc behavior. @details Executes the free in pool mcdc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_free_in_pool_mcdc(void)
 {
   TEST_BEGIN("free MC/DC: (NULL || !in_pool) + in_pool bounds");
   priv_fixture_t fixture;
@@ -391,7 +382,7 @@ static void test_free_in_pool_mcdc(void)
 }
 
 /**
- * @test test_realloc_real_overflow_mcdc
+ * @test internal_test_realloc_real_overflow_mcdc
  *
  * @par MC/DC:
  * Drives the *production* overflow guard in ra8_epub_miniz_realloc()
@@ -403,9 +394,8 @@ static void test_free_in_pool_mcdc(void)
  *    rounds to 0 so the block is freed and NULL returned (frees old block).
  *  - V3: size=k_medium, items=1  -> C1=T, C2=F -> no overflow -> normal grow.
  * Pair (V1,V3) isolates the size!=0 short-circuit's effect on the right
- * condition; pair (V1,V2) isolates the left condition.
- */
-static void test_realloc_real_overflow_mcdc(void)
+ * condition; pair (V1,V2) isolates the left condition. @brief Verify realloc real overflow mcdc behavior. @details Executes the realloc real overflow mcdc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_realloc_real_overflow_mcdc(void)
 {
   TEST_BEGIN("realloc real MC/DC: size!=0 && items>MAX/size");
   priv_fixture_t fixture;
@@ -431,7 +421,7 @@ static void test_realloc_real_overflow_mcdc(void)
 }
 
 /**
- * @test test_alloc_oversize_rejected_mcdc
+ * @test internal_test_alloc_oversize_rejected_mcdc
  *
  * @par MC/DC:
  * Decision: `if ((items * size) > k_ra8_epub_miniz_pool_bytes)` (1 condition;
@@ -443,9 +433,8 @@ static void test_realloc_real_overflow_mcdc(void)
  * in this file).
  *  - V1: alloc(1, SIZE_MAX-10)  -> the align-up overflow trigger -> NULL.
  *  - V2: alloc(1, pool_bytes+1) -> an ordinary over-pool size     -> NULL.
- *  - V3: realloc(a, 1, SIZE_MAX-10) -> NULL, and the old block stays valid.
- */
-static void test_alloc_oversize_rejected_mcdc(void)
+ *  - V3: realloc(a, 1, SIZE_MAX-10) -> NULL, and the old block stays valid. @brief Verify alloc oversize rejected mcdc behavior. @details Executes the alloc oversize rejected mcdc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_alloc_oversize_rejected_mcdc(void)
 {
   TEST_BEGIN("alloc oversize MC/DC: reject > pool before align-up overflow");
   priv_fixture_t fixture;
@@ -467,10 +456,17 @@ static void test_alloc_oversize_rejected_mcdc(void)
 }
 
 /**
- * @test test_arena_capacity_and_failure_preservation
+ * @test internal_test_arena_capacity_and_failure_preservation
  * @brief Exact workspace capacity succeeds; one byte short changes nothing.
- */
-static void test_arena_capacity_and_failure_preservation(void)
+ *
+ * @par MC/DC:
+ * The compound init guard `(arena == NULL) || (workspace == NULL)` remains at
+ * its `(F,F)->F` control in both calls. This test independently flips the
+ * following single capacity decision: one byte short gives `T->error` without
+ * mutation, while exact capacity gives `F->success`. After deinit, allocation
+ * fails the single `initialized != 1` readiness check; no compound allocator
+ * selection decision is claimed by the one successful allocation. @details Executes the arena capacity and failure preservation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_arena_capacity_and_failure_preservation(void)
 {
   TEST_BEGIN("arena init: exact capacity + one-byte-short preservation");
   ra8_epub_miniz_workspace_t workspace;
@@ -504,10 +500,16 @@ static void test_arena_capacity_and_failure_preservation(void)
 }
 
 /**
- * @test test_arena_alignment_and_null_guards
+ * @test internal_test_arena_alignment_and_null_guards
  * @brief Invalid descriptors and misaligned storage fail without mutation.
- */
-static void test_arena_alignment_and_null_guards(void)
+ *
+ * @par MC/DC:
+ * Decision `(arena == NULL) || (workspace == NULL)` has the N+1 vectors
+ * `(T,-)->T`, `(F,T)->T`, and the `(F,F)->F` control supplied by the capacity
+ * test's non-NULL init calls. Each condition therefore independently changes
+ * the result. The misaligned non-NULL vector then takes the separate alignment
+ * guard, while NULL alloc/free/deinit calls exercise their own single guards. @details Executes the arena alignment and null guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_arena_alignment_and_null_guards(void)
 {
   TEST_BEGIN("arena init: null/misaligned guards preserve destination");
   alignas(max_align_t) uint8_t raw[k_ra8_epub_miniz_pool_bytes + alignof(max_align_t)];
@@ -526,12 +528,19 @@ static void test_arena_alignment_and_null_guards(void)
 }
 
 /**
- * @test test_independent_arenas_teardown_reuse
+ * @test internal_test_independent_arenas_teardown_reuse
  * @brief Two live arenas isolate writes and one can reset while the other lives.
- */
-static void test_independent_arenas_teardown_reuse(void)
+ *
+ * @par MC/DC:
+ * No compound production decision is independently varied here: both allocate
+ * calls use ready arenas and fitting free blocks, so allocator selection sees
+ * only `(block free=T, size fits=T)->allocate`. The sequence deinitializes and
+ * reinitializes the first arena while checking bytes owned by the still-live
+ * second arena. The test-only `a != NULL && b != NULL` assertion is observed
+ * only as `(T,T)->T` and is not presented as an MC/DC independence set. @details Executes the independent arenas teardown reuse scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_independent_arenas_teardown_reuse(void)
 {
-  TEST_BEGIN("two arenas: isolation + teardown/reuse");
+  TEST_BEGIN("two arenas: isolation + internal_teardown/reuse");
   priv_fixture_t first;
   priv_fixture_t second;
   internal_fixture_init(&first);
@@ -556,7 +565,7 @@ static void test_independent_arenas_teardown_reuse(void)
   TEST_ASSERT_EQ(k_miniz_fill_second, b[k_medium / 2U]);
   ra8_epub_miniz_free(&first.arena, reused);
   ra8_epub_miniz_free(&second.arena, b);
-  TEST_END("two arenas: isolation + teardown/reuse");
+  TEST_END("two arenas: isolation + internal_teardown/reuse");
 }
 
 /**
@@ -565,20 +574,19 @@ static void test_independent_arenas_teardown_reuse(void)
  */
 int32_t main(void)
 {
-  test_alloc_align_and_distinct();
-  test_free_coalesce_reclaim();
-  test_realloc_grow_preserves();
-  test_realloc_inplace_and_null_zero();
-  test_firstfit_mcdc();
-  test_coalesce_mcdc();
-  test_overflow_mcdc();
-  test_alloc_real_overflow_and_firstfit_mcdc();
-  test_free_in_pool_mcdc();
-  test_realloc_real_overflow_mcdc();
-  test_alloc_oversize_rejected_mcdc();
-  test_arena_capacity_and_failure_preservation();
-  test_arena_alignment_and_null_guards();
-  test_independent_arenas_teardown_reuse();
-  (void)fprintf(stderr, "[OK ] test_ra8_epub_miniz_alloc.c\n");
+  internal_test_alloc_align_and_distinct();
+  internal_test_free_coalesce_reclaim();
+  internal_test_realloc_grow_preserves();
+  internal_test_realloc_inplace_and_null_zero();
+  internal_test_firstfit_mcdc();
+  internal_test_coalesce_mcdc();
+  internal_test_overflow_mcdc();
+  internal_test_alloc_real_overflow_and_firstfit_mcdc();
+  internal_test_free_in_pool_mcdc();
+  internal_test_realloc_real_overflow_mcdc();
+  internal_test_alloc_oversize_rejected_mcdc();
+  internal_test_arena_capacity_and_failure_preservation();
+  internal_test_arena_alignment_and_null_guards();
+  internal_test_independent_arenas_teardown_reuse();
   return 0;
 }

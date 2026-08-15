@@ -24,14 +24,12 @@ as Software Of Unknown Provenance (SOUP).
   `LICENSE.txt` are byte-identical to it; `tinyxml2.cpp` differs only by
   the #151 patch recorded below.
 
-## Use case in this firmware
+## Current disposition
 
-- XML parser used by `libs/ra8_epub/` to walk EPUB container metadata
-  (`META-INF/container.xml`, OPF package documents, NCX navigation).
-- Also used by `libs/ra8_rabook_compile/` (the on-device EPUB->.rabook
-  compiler) to parse each spine chapter's XHTML into the chapter DOM.
-- Integrity claim category: data-handling (parsing of trusted local
-  EPUB metadata and chapter content).
+TinyXML-2 is retained only as a pinned historical SOUP snapshot. No current
+first-party production or test target compiles or links it. EPUB metadata and
+RABOOK chapter XHTML now use `libs/ra8_xml`, a caller-owned bounded pure-C pull
+reader with explicit failure propagation.
 
 ## Qualification basis
 
@@ -49,35 +47,15 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Risk mitigation
 
-- Parsed XML originates only from locally staged EPUB files; there is
-  no network-driven XML path.
-- All TinyXML-2 access is wrapped by `libs/ra8_epub/` so the SOUP
-  boundary is a single facade.
+The component is outside the active binary and parser attack surface. Its
+version, license, upstream bytes, and historical local patch remain pinned so
+old release provenance stays reproducible.
 
-## Memory model on the firmware target
+## Retired memory model
 
-TinyXML-2 allocates its node pools (`MemPoolT<>::Alloc`), growable
-arrays (`DynArray::EnsureCapacity`), and string storage
-(`StrPair::SetStr`) through the global `operator new` / `operator new[]`.
-The firmware is zero-heap (NASA Rule 3: `_sbrk` traps), so those operators
-are replaced, firmware-only, by `libs/ra8_epub/src/ra8_epub_cpp_alloc.cpp`,
-which routes them through the same bounded static first-fit arena miniz
-uses (`ra8_epub_miniz_alloc`). No TinyXML-2 allocation reaches `malloc`.
-The host unit-test build keeps the standard `malloc`-backed operators
-(the override is gated `#ifndef RA8_OFF_TARGET`).
-
-**Known limitation -- fault, not error, on pool exhaustion.** The target
-is built `-fno-exceptions`, so the replacement `operator new` returns
-`nullptr` on exhaustion. TinyXML-2 does NOT null-check its `new[]`
-results (e.g. `StrPair::SetStr`, `XMLDocument::Parse`), so an exhausted
-pool faults in the following `memcpy` instead of surfacing
-`XML_ERROR_*`. This is accepted rather than patched (the vendored
-sources stay unmodified) because it cannot be reached by a conformant
-book: the only documents parsed are `META-INF/container.xml` and the
-OPF, and the OPF scratch is capped at `k_ra8_epub_opf_xml_buf`, so the
-node footprint is bounded well under the arena size. A future move to a
-hand-rolled SAX scanner (tracked on the EPUB-reader roadmap) removes the
-dependency entirely.
+The former integration routed global C++ allocation through an EPUB arena, but
+could fault rather than propagate allocation failure. That integration and its
+global operators were deleted when the bounded pull reader replaced TinyXML-2.
 
 ## Deviations / patches
 
@@ -93,11 +71,10 @@ release throughout by preprocessor indentation and macro continuations. Both
 were restored to upstream's bytes and the #151 patch re-applied on top, so the
 recorded deviation is now exactly the deviation that exists.
 
-Two integration seams exist:
+Two historical integration seams existed:
 
-1. **External `operator new` / `delete` replacement** (firmware only),
-   described under "Memory model on the firmware target". It does not
-   touch the SOUP component's own translation unit.
+1. **External `operator new` / `delete` replacement** (firmware only), now
+   deleted with the former consumer.
 
 2. **In-TU patch to `XMLDocument::Identify` (#151).** A single,
    behaviour-preserving generalization of the `PEDANTIC_WHITESPACE`
@@ -127,20 +104,14 @@ Two integration seams exist:
      chapter-DOM round-trip, giving byte-identity (and correct rendering)
      for on-device-compiled books.
 
-   - **Scope / blast radius.** Opt-in only. The patched branch is reached
-     solely when a caller constructs the document with
-     `XMLDocument(true, PEDANTIC_WHITESPACE)`; the only such caller is the
-     chapter-content parse in
-     `libs/ra8_rabook_compile/src/ra8_rabook_xml_shim.cpp`. `libs/ra8_epub/`
-     and all metadata / OPF / container / TOC parsing keep the default
-     `PRESERVE_WHITESPACE` mode, for which `WhitespaceMode() == PEDANTIC_WHITESPACE`
-     is false and the patched guard never fires -- so the default parser
-     behaviour is byte-for-byte unchanged. The change is covered by the
-     real-book byte-identity gate `test_pipeline_parity_realbook_byte_identical`
-     in `tests/test_ra8_rabook_pipeline.c`.
+   - **Scope / blast radius.** No active caller remains. The patch is retained
+     solely to preserve the exact historical vendored bytes recorded by the
+     upstream manifest.
 
 ## Last review date
 
+- Reviewed: 2026-08-15 (production and test consumers removed; retained only
+  as a pinned historical snapshot)
 - Reviewed: 2026-06-28 (in-TU `Identify` PEDANTIC_WHITESPACE
   generalization added for the on-device compiler, #151; SOUP basis
   re-confirmed)
