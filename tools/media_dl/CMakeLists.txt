@@ -44,6 +44,13 @@ set_source_files_properties(${MDL_MINIZ} PROPERTIES COMPILE_OPTIONS "-w;-fno-str
 # SOUP gets. Compiling them quietly here hid host-only findings the ARM build
 # never sees, which is what a 64-bit host build is for (#309).
 set(FW ${CMAKE_CURRENT_SOURCE_DIR}/../../libs)
+set(MDL_FS_SRC
+    ${FW}/if/src/fw_if_fs.c ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/src/fw_if_fs_posix.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/src/fw_if_fs_posix_common.c
+)
+set(MDL_FS_INC ${FW}/if/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/inc
+               ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/src
+)
 set(MDL_JOF_SRC
     ${FW}/ra8_jof/src/ra8_jof.c
     ${FW}/ra8_jof/src/ra8_jof_produce.c
@@ -89,6 +96,7 @@ add_executable(
   src/mdl_politeness.c
   src/mdl_config.c
   src/mdl_hash.c
+  src/mdl_storage.c
   src/mdl_urlname.c
   src/mdl_state.c
   src/mdl_fetch.c
@@ -99,6 +107,7 @@ add_executable(
   src/mdl_verify.c
   src/mdl_export_jof.c
   ${MDL_JOF_SRC}
+  ${MDL_FS_SRC}
   ${MDL_MINIZ}
 )
 
@@ -111,6 +120,7 @@ target_include_directories(
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
           ${MDL_JOF_INC}
+          ${MDL_FS_INC}
 )
 
 target_compile_definitions(media_dl PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
@@ -217,13 +227,15 @@ add_executable(
   tests/test_media_dl_state.c
   src/mdl_state.c
   src/mdl_hash.c
+  src/mdl_storage.c
   src/mdl_urlname.c
   src/mdl_sanitize.c
+  ${MDL_FS_SRC}
 )
 target_include_directories(
   test_media_dl_state
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests ${MDL_FS_INC}
 )
 target_compile_definitions(test_media_dl_state PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_state PRIVATE -Wall -Wextra -Werror)
@@ -243,6 +255,7 @@ add_executable(
   src/mdl_fetch.c
   src/mdl_state.c
   src/mdl_hash.c
+  src/mdl_storage.c
   src/mdl_urlname.c
   src/mdl_sanitize.c
   src/mdl_pathfs.c
@@ -252,12 +265,15 @@ add_executable(
   src/mdl_politeness.c
   src/mdl_url_guard.c
   src/mdl_extract.c
+  ${MDL_FS_SRC}
 )
 target_include_directories(
   test_media_dl_fetch
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/src
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+          ${MDL_FS_INC}
 )
 target_compile_definitions(test_media_dl_fetch PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_fetch PRIVATE -Wall -Wextra -Werror)
@@ -327,7 +343,9 @@ target_include_directories(
 )
 target_compile_definitions(
   test_media_dl_sites
-  PRIVATE _GNU_SOURCE RA8_OFF_TARGET MDL_SITE_CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/sites"
+  PRIVATE _GNU_SOURCE
+          RA8_OFF_TARGET
+          MDL_SITE_CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/sites"
           MDL_SITE_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/sites"
           MDL_SHIPPED_SITE_COUNT=${MDL_SHIPPED_SITE_COUNT}
 )
@@ -340,16 +358,9 @@ find_program(MDL_OPENSSL_EXECUTABLE NAMES openssl REQUIRED)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_test(
   NAME test_media_dl_http_integration
-  COMMAND
-    ${MDL_BASH_EXECUTABLE}
-    ${CMAKE_CURRENT_SOURCE_DIR}/tests/http_integration.sh
-    $<TARGET_FILE:media_dl>
-    ${Python3_EXECUTABLE}
-    ${CMAKE_COMMAND}
-    ${MDL_OPENSSL_EXECUTABLE}
+  COMMAND ${MDL_BASH_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/http_integration.sh
+          $<TARGET_FILE:media_dl> ${Python3_EXECUTABLE} ${CMAKE_COMMAND} ${MDL_OPENSSL_EXECUTABLE}
 )
 set_tests_properties(
-  test_media_dl_http_integration
-  PROPERTIES TIMEOUT 30
-             LABELS "integration;network"
+  test_media_dl_http_integration PROPERTIES TIMEOUT 30 LABELS "integration;network"
 )
