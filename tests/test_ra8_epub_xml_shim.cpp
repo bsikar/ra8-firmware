@@ -6,17 +6,18 @@
  * [Ring 4 / EPUB] {World: NS}
  *
  * @details
- * Drives the two C-linkage public entry points of the XML shim
- * (``priv_ra8_epub_xml_parse_container`` and ``priv_ra8_epub_xml_parse_opf``)
- * directly from C++ host code so MC/DC vectors land on the production
- * decisions at xml_shim.cpp lines 241, 268, 278, 314 -- the four
- * uncovered short-circuit OR guards listed in
- * ``docs/MCDC_GAPS.csv``.
+ * Drives all four private C-linkage EPUB XML consumers directly against
+ * immutable XML and caller-owned parser workspace. The vectors cover the
+ * current pure-C pull-reader implementation: container selection, OPF shape
+ * and metadata, NCX navigation, and EPUB 3 nav documents. The complementary
+ * ``test_ra8_epub_xml_shim_cov2`` executable supplies malformed-input,
+ * missing-element, and capacity-edge controls against the same production
+ * symbols.
  *
- * The TU-local ``static`` helpers (lines 101, 124, 150, 173 -- which
- * are NULL-defensive copies of contracts already enforced by these
- * public APIs) are documented as deactivated under DO-178C 6.4.4.3 in
- * ``docs/MCDC_DEACTIVATIONS.md``; they are not re-tested here.
+ * A validated source is replayed by the private walkers. Consequently, an
+ * internal reader-error arm after successful ``ra8_xml_validate`` is
+ * deactivated by construction; malformed-source vectors prove that the
+ * entry-point validation gate rejects such input before mutation.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -39,16 +40,6 @@ extern "C" {
 namespace {
 
 static ra8_epub_xml_workspace_t s_xml_workspace = {};
-
-/** @brief Provide the file-local parse container test helper. @details Implements the parse container fixture operation used only by this focused test executable. @param[in] bytes Fixture argument governed by the exercised interface contract. @param[in] length Fixture argument governed by the exercised interface contract. @param[out] result Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static ra8_err_t
-internal_parse_container(const uint8_t* bytes, size_t length, ra8_epub_container_result_t* result)
-{
-  return priv_ra8_epub_xml_parse_container(bytes, length, result, &s_xml_workspace);
-}
-
-/** @brief Route container parsing through the test-owned XML workspace wrapper. */
-#define priv_ra8_epub_xml_parse_container internal_parse_container
 
 /* -----------------------------------------------------------------------
  * Static fixtures: minimal but well-formed container.xml / OPF documents.
@@ -73,6 +64,19 @@ constexpr const char* s_valid_opf =
   "media-type=\"application/xhtml+xml\"/></manifest>"
   "<spine><itemref idref=\"c1\"/></spine>"
   "</package>";
+
+/* Canonical identifier follows a fallback and precedes a second fallback.
+ * The matched identifier must replace the first value and resist the last. */
+constexpr const char* s_opf_identifiers =
+  "<package unique-identifier=\"canonical\">"
+  "<metadata><dc:title>Title</dc:title><dc:creator>Author</dc:creator>"
+  "<dc:language>en</dc:language>"
+  "<dc:identifier id=\"fallback-a\">fallback</dc:identifier>"
+  "<dc:identifier id=\"canonical\">chosen</dc:identifier>"
+  "<dc:identifier id=\"fallback-b\">ignored</dc:identifier></metadata>"
+  "<manifest><item id=\"c1\" href=\"c1.xhtml\" "
+  "media-type=\"application/xhtml+xml\"/></manifest>"
+  "<spine><itemref idref=\"c1\"/></spine></package>";
 
 /* OPF with no <manifest> element (but spine present) -- exercises
  * line-314 first OR-condition. */
@@ -108,19 +112,23 @@ constexpr const char* s_container_empty_full_path =
  * @test internal_test_mcdc_parse_container_null_or_zero
  *
  * @par MC/DC:
- * Decision 1: ``if (xml_bytes == nullptr || out == nullptr)``
- * (xml_shim.cpp line 241; 2 conditions).
- *  - V1: xml=valid, out=valid  -> C1=F,C2=F. Decision F (proceed).
- *  - V2: xml=NULL,  out=valid  -> C1=T short.  Decision T (null_ptr).
- *  - V3: xml=valid, out=NULL   -> C1=F,C2=T.  Decision T (null_ptr).
- * V1+V2 isolate C1; V1+V3 isolate C2.
+ * Decisions:
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_attr
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_find
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@priv_ra8_epub_xml_parse_container
  *
- * Decision 2: ``if (full_path == nullptr || full_path[0] == '\0')``
- * (xml_shim.cpp line 268; 2 conditions).
+ * Decision 1: ``xml_bytes == nullptr || out == nullptr || workspace ==
+ * nullptr``. V1 supplies all false; V2, V3, and V4 independently select each
+ * null condition while the other two remain false.
+ *
+ * Decision 2: ``!path.present || path.span.length == 0``.
  *  - V4: full-path="OEBPS/content.opf" -> C1=F,C2=F. Decision F (ok).
  *  - V5: full-path attr missing        -> C1=T short. Decision T (validation).
  *  - V6: full-path=""                  -> C1=F,C2=T. Decision T (validation).
- * V4+V5 isolate C1; V4+V6 isolate C2. @brief Verify mcdc parse container null or zero behavior. @details Executes the mcdc parse container null or zero scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * V1+V5 isolate C1; V1+V6 isolate C2. Container success/fault fixtures in the
+ * companion test independently select parent-scoped lookup, direct fallback,
+ * and the parent-close rejection. The attribute reader error leg cannot occur
+ * while replaying an event emitted from the already validated source. @brief Verify mcdc parse container null or zero behavior. @details Executes the mcdc parse container null or zero scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_mcdc_parse_container_null_or_zero(void)
 {
 
@@ -128,42 +136,57 @@ RA8_INTERNAL static void internal_test_mcdc_parse_container_null_or_zero(void)
 
   /* Decision 1, V1: both non-NULL -> success. */
   const auto* xml_v1 = reinterpret_cast<const uint8_t*>(s_valid_container);
-  assert(priv_ra8_epub_xml_parse_container(xml_v1, std::strlen(s_valid_container), &res) ==
-         k_ra8_ok);
+  assert(priv_ra8_epub_xml_parse_container(xml_v1,
+                                           std::strlen(s_valid_container),
+                                           &res,
+                                           &s_xml_workspace) == k_ra8_ok);
   assert(std::strcmp(res.opf_path, "OEBPS/content.opf") == 0);
 
   /* Decision 1, V2: xml_bytes NULL -> null_ptr. */
-  assert(priv_ra8_epub_xml_parse_container(nullptr, 16U, &res) == k_ra8_err_null_ptr);
+  assert(priv_ra8_epub_xml_parse_container(nullptr, 16U, &res, &s_xml_workspace) ==
+         k_ra8_err_null_ptr);
 
   /* Decision 1, V3: out NULL -> null_ptr. */
-  assert(priv_ra8_epub_xml_parse_container(xml_v1, std::strlen(s_valid_container), nullptr) ==
+  assert(priv_ra8_epub_xml_parse_container(xml_v1,
+                                           std::strlen(s_valid_container),
+                                           nullptr,
+                                           &s_xml_workspace) == k_ra8_err_null_ptr);
+
+  /* Decision 1, V4: workspace NULL -> null_ptr. */
+  assert(priv_ra8_epub_xml_parse_container(xml_v1, std::strlen(s_valid_container), &res, nullptr) ==
          k_ra8_err_null_ptr);
 
   /* Decision 2, V5: full-path attr missing -> validation_failed. */
   const auto* xml_v5 = reinterpret_cast<const uint8_t*>(s_container_no_full_path);
-  assert(priv_ra8_epub_xml_parse_container(xml_v5, std::strlen(s_container_no_full_path), &res) ==
-         k_ra8_err_validation_failed);
+  assert(priv_ra8_epub_xml_parse_container(xml_v5,
+                                           std::strlen(s_container_no_full_path),
+                                           &res,
+                                           &s_xml_workspace) == k_ra8_err_validation_failed);
 
   /* Decision 2, V6: full-path="" -> validation_failed. */
   const auto* xml_v6 = reinterpret_cast<const uint8_t*>(s_container_empty_full_path);
   assert(priv_ra8_epub_xml_parse_container(xml_v6,
                                            std::strlen(s_container_empty_full_path),
-                                           &res) == k_ra8_err_validation_failed);
+                                           &res,
+                                           &s_xml_workspace) == k_ra8_err_validation_failed);
 }
 
 /**
  * @test internal_test_mcdc_parse_opf_null_and_manifest_spine
  *
  * @par MC/DC:
- * Decision 1: ``if (xml_bytes == nullptr || book == nullptr)``
- * (xml_shim.cpp line 278; 2 conditions).
+ * Decisions:
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_opf_status
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_opf_shape
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@priv_ra8_epub_xml_parse_opf
+ *
+ * Decision 1: ``if (xml_bytes == nullptr || book == nullptr)``.
  *  - V1: xml=valid, book=valid -> C1=F,C2=F. Decision F (proceed).
  *  - V2: xml=NULL,  book=valid -> C1=T short. Decision T (null_ptr).
  *  - V3: xml=valid, book=NULL  -> C1=F,C2=T. Decision T (null_ptr).
  * V1+V2 isolate C1; V1+V3 isolate C2.
  *
- * Decision 2: ``if (manifest == nullptr || spine == nullptr)``
- * (xml_shim.cpp line 314; 2 conditions).
+ * Decision 2: ``if (err == k_ra8_ok && (!saw_manifest || !saw_spine))``.
  *  - V4: both present  -> C1=F,C2=F. Decision F (proceed).
  *  - V5: no manifest   -> C1=T short. Decision T (validation_failed).
  *  - V6: no spine      -> C1=F,C2=T. Decision T (validation_failed).
@@ -223,6 +246,11 @@ constexpr const char* s_ncx_doc =
   "<content src=\"c2.xhtml\"/></navPoint>"
   "</navMap></ncx>";
 
+/* A missing content src and repeated label text exercise the NCX emit guards. */
+constexpr const char* s_ncx_missing_src =
+  "<ncx><navMap><navPoint><navLabel><text>First</text><text>Second</text>"
+  "</navLabel><content/></navPoint></navMap></ncx>";
+
 /* The landmarks <nav> deliberately comes first (and also carries an
  * <ol>) so the test proves we pick the epub:type="toc" nav, not the
  * first one. */
@@ -238,6 +266,19 @@ constexpr const char* s_nav_doc = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                                   "<ol><li><a href=\"c1.xhtml#s1\">Section 1.1</a></li></ol></li>"
                                   "<li><a href=\"c2.xhtml\">Chapter Two</a></li>"
                                   "</ol></nav></body></html>";
+
+/* With no epub:type, the first nav is the defined fallback selection. */
+constexpr const char* s_nav_fallback =
+  "<html><body><nav><ol><li><a href=\"fallback.xhtml\">Fallback</a></li>"
+  "</ol></nav></body></html>";
+
+/* Span labels and self-closing anchors select the remaining nav-event arms. */
+constexpr const char* s_nav_span =
+  "<html><body><nav epub:type=\"toc\"><ol><li><span>Span title</span></li>"
+  "</ol></nav></body></html>";
+constexpr const char* s_nav_self_closing =
+  "<html><body><nav epub:type=\"toc\"><ol><li><a href=\"ignored.xhtml\"/>"
+  "</li></ol></nav></body></html>";
 
 /* OPF whose manifest declares an EPUB 3 nav document. */
 constexpr const char* s_opf_with_nav =
@@ -287,7 +328,16 @@ RA8_INTERNAL static void internal_assert_shared_toc(const ra8_epub_book_t& book)
  * @test internal_test_parse_ncx_and_nav
  *
  * Both navigation-document parsers must flatten the same hierarchical
- * TOC depth-first into identical title/href/depth triples. @brief Verify parse ncx and nav behavior. @details Executes the parse ncx and nav scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * TOC depth-first into identical title/href/depth triples.
+ * @par MC/DC:
+ * Nested/flat entries, present/absent hrefs, first/repeated titles, anchor/span
+ * labels, and self-closing anchors independently vary the event-consumer
+ * predicates. Decisions:
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_ncx_event
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@priv_ra8_epub_xml_parse_ncx
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_nav_event
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@priv_ra8_epub_xml_parse_nav
+ * @brief Verify parse ncx and nav behavior. @details Executes the parse ncx and nav scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_parse_ncx_and_nav(void)
 {
 
@@ -300,6 +350,29 @@ RA8_INTERNAL static void internal_test_parse_ncx_and_nav(void)
   const auto* nav = reinterpret_cast<const uint8_t*>(s_nav_doc);
   assert(priv_ra8_epub_xml_parse_nav(nav, std::strlen(s_nav_doc), &book) == k_ra8_ok);
   internal_assert_shared_toc(book);
+
+  std::memset(&book, 0, sizeof(book));
+  const auto* ncx_missing = reinterpret_cast<const uint8_t*>(s_ncx_missing_src);
+  assert(priv_ra8_epub_xml_parse_ncx(ncx_missing, std::strlen(s_ncx_missing_src), &book) ==
+         k_ra8_ok);
+  assert((book.toc_count == 1U) && (std::strcmp(book.toc[0].title, "First") == 0));
+  assert(book.toc[0].href[0] == '\0');
+
+  std::memset(&book, 0, sizeof(book));
+  const auto* fallback = reinterpret_cast<const uint8_t*>(s_nav_fallback);
+  assert(priv_ra8_epub_xml_parse_nav(fallback, std::strlen(s_nav_fallback), &book) == k_ra8_ok);
+  assert(std::strcmp(book.toc[0].title, "Fallback") == 0);
+
+  std::memset(&book, 0, sizeof(book));
+  const auto* span = reinterpret_cast<const uint8_t*>(s_nav_span);
+  assert(priv_ra8_epub_xml_parse_nav(span, std::strlen(s_nav_span), &book) == k_ra8_ok);
+  assert(std::strcmp(book.toc[0].title, "Span title") == 0);
+
+  std::memset(&book, 0, sizeof(book));
+  const auto* self_closing = reinterpret_cast<const uint8_t*>(s_nav_self_closing);
+  assert(priv_ra8_epub_xml_parse_nav(self_closing, std::strlen(s_nav_self_closing), &book) ==
+         k_ra8_ok);
+  assert((book.toc_count == 1U) && (book.toc[0].title[0] == '\0') && (book.toc[0].href[0] == '\0'));
 }
 
 /**
@@ -307,7 +380,16 @@ RA8_INTERNAL static void internal_test_parse_ncx_and_nav(void)
  *
  * `priv_ra8_epub_xml_parse_opf` must record which navigation document to load:
  * `properties="nav"` -> nav kind, spine `toc=` -> NCX kind, neither ->
- * none. @brief Verify parse opf toc source behavior. @details Executes the parse opf toc source scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * none. The identifier fixture independently selects fallback, canonical-match,
+ * and already-populated identifier paths.
+ * @par MC/DC:
+ * Decisions:
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_metadata_text
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_mark_metadata
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_opf_first
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_manifest_item
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_manifest_lookup
+ * @brief Verify parse opf toc source behavior. @details Executes the parse opf toc source scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_parse_opf_toc_source(void)
 {
 
@@ -329,13 +411,29 @@ RA8_INTERNAL static void internal_test_parse_opf_toc_source(void)
   assert(priv_ra8_epub_xml_parse_opf(plain, std::strlen(s_valid_opf), &book) == k_ra8_ok);
   assert(book.toc_kind == static_cast<uint8_t>(k_ra8_epub_toc_none));
   assert(book.toc_path[0] == '\0');
+
+  std::memset(&book, 0, sizeof(book));
+  const auto* identifiers = reinterpret_cast<const uint8_t*>(s_opf_identifiers);
+  assert(priv_ra8_epub_xml_parse_opf(identifiers, std::strlen(s_opf_identifiers), &book) ==
+         k_ra8_ok);
+  assert(std::strcmp(book.title, "Title") == 0);
+  assert(std::strcmp(book.author, "Author") == 0);
+  assert(std::strcmp(book.language, "en") == 0);
+  assert(std::strcmp(book.identifier, "chosen") == 0);
 }
 
 /**
  * @test internal_test_parse_toc_guards
  *
  * NULL / zero-length / malformed inputs are rejected without touching
- * the caller's TOC beyond the documented reset. @brief Verify parse toc guards behavior. @details Executes the parse toc guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * the caller's TOC beyond the documented reset.
+ * @par MC/DC:
+ * Valid/missing selection and present/missing direct list controls exercise:
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_select_nav
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_nav_has_list
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@priv_ra8_epub_xml_parse_ncx
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@priv_ra8_epub_xml_parse_nav
+ * @brief Verify parse toc guards behavior. @details Executes the parse toc guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_parse_toc_guards(void)
 {
 
@@ -370,7 +468,7 @@ RA8_INTERNAL static std::string internal_build_toc_document(bool nav, std::size_
   return xml;
 }
 
-/** @test TOC capacity is exact and exhaustion is failure-atomic. @brief Verify toc capacity atomicity behavior. @details Executes the toc capacity atomicity scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+/** @test TOC capacity is exact and exhaustion is failure-atomic. @par MC/DC: NCX and nav at-cap/over-cap vectors independently vary list-required, enabled, entry, close, and exhaustion predicates in libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_toc_capacity. @brief Verify toc capacity atomicity behavior. @details Executes the toc capacity atomicity scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_toc_capacity_atomicity(void)
 {
   const std::string ncx_at = internal_build_toc_document(false, k_ra8_epub_max_toc);
@@ -411,15 +509,12 @@ RA8_INTERNAL static void internal_test_toc_capacity_atomicity(void)
  */
 
 /**
- * @brief Truncation length copy_bounded() yields for a `k_ra8_epub_meta_len`
- *        destination: `cap - 1` payload bytes plus the NUL terminator.
+ * @brief Truncation length bounded prefix decode yields for metadata storage.
  */
 constexpr std::size_t s_meta_truncated_len = static_cast<std::size_t>(k_ra8_epub_meta_len) - 1U;
 
-/* NCX whose first navPoint <text> is longer than `k_ra8_epub_meta_len`, so
- * copy_bounded() must stop on its cap watchdog (`i + 1U < cap` false) rather
- * than the source NUL -- exercises the xml_shim while-loop first OR. The
- * title string below is 150 'A' characters (> 127). */
+/* NCX whose first navPoint text is longer than `k_ra8_epub_meta_len`, so the
+ * bounded decoded-prefix copy stops at capacity rather than source end. */
 constexpr const char* s_ncx_long_title =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
   "<ncx xmlns=\"http://www.daisy.org/z3986/2005/ncx/\" version=\"2005-1\">"
@@ -442,8 +537,7 @@ constexpr const char* s_opf_manifest_item_no_id =
   "</manifest><spine><itemref idref=\"c1\"/></spine></package>";
 
 /* OPF with no properties="cover-image" item but a legacy
- * <meta name="cover" content="cov"/> resolving to a manifest href -- drives
- * find_cover_by_meta() down its all-true (TTT) arm. */
+ * <meta name="cover" content="cov"/> resolving to a manifest href. */
 constexpr const char* s_opf_meta_cover_ok =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
   "<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"2.0\">"
@@ -456,8 +550,7 @@ constexpr const char* s_opf_meta_cover_ok =
   "<item id=\"c1\" href=\"c1.xhtml\" media-type=\"application/xhtml+xml\"/>"
   "</manifest><spine><itemref idref=\"c1\"/></spine></package>";
 
-/* OPF whose <meta> has no `name` attribute -- find_cover_by_meta() sees
- * `meta_name == nullptr` (line-251 first AND condition, C1=F). */
+/* OPF whose legacy-cover meta has no `name` attribute. */
 constexpr const char* s_opf_meta_no_name =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
   "<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"2.0\">"
@@ -467,9 +560,7 @@ constexpr const char* s_opf_meta_no_name =
   "<item id=\"c1\" href=\"c1.xhtml\" media-type=\"application/xhtml+xml\"/>"
   "</manifest><spine><itemref idref=\"c1\"/></spine></package>";
 
-/* OPF whose <meta name="cover"> has no `content` attribute --
- * find_cover_by_meta() sees `meta_content == nullptr` (line-251 second AND
- * condition, C2=F). */
+/* OPF whose legacy-cover meta has no `content` attribute. */
 constexpr const char* s_opf_meta_no_content =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
   "<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"2.0\">"
@@ -479,9 +570,7 @@ constexpr const char* s_opf_meta_no_content =
   "<item id=\"c1\" href=\"c1.xhtml\" media-type=\"application/xhtml+xml\"/>"
   "</manifest><spine><itemref idref=\"c1\"/></spine></package>";
 
-/* OPF whose <meta> carries name + content but the name is not "cover" --
- * find_cover_by_meta() takes the line-251 third AND condition false (C3=F),
- * so no cover is recorded. */
+/* OPF whose legacy-cover meta name is not "cover". */
 constexpr const char* s_opf_meta_other_name =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
   "<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"2.0\">"
@@ -491,10 +580,7 @@ constexpr const char* s_opf_meta_other_name =
   "<item id=\"c1\" href=\"c1.xhtml\" media-type=\"application/xhtml+xml\"/>"
   "</manifest><spine><itemref idref=\"c1\"/></spine></package>";
 
-/* OPF whose only `properties` attribute holds "cover-image" (not "nav") and
- * has no nav item and no spine toc -- find_nav_manifest_href() sees
- * `props != nullptr` but `strstr(props, "nav") == nullptr`, exercising the
- * line-328 second AND condition (C2=F). */
+/* OPF whose only properties value holds "cover-image" rather than "nav". */
 constexpr const char* s_opf_props_not_nav =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
   "<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\">"
@@ -505,23 +591,20 @@ constexpr const char* s_opf_props_not_nav =
   "<item id=\"c1\" href=\"c1.xhtml\" media-type=\"application/xhtml+xml\"/>"
   "</manifest><spine><itemref idref=\"c1\"/></spine></package>";
 
-/* OPF manifest carrying (a) a font <item> with a recognised font media-type
- * and (b) an <item> with no `href` attribute. collect_font_items() then
- * hits both line-379 arms: C1=F,C2=F for the font (recorded) and C1=T for
- * the href-less item (skipped). */
+/* OPF manifest carrying a recognized font, href-less item, untyped item, and
+ * ordinary XHTML chapter. */
 constexpr const char* s_opf_font_and_no_href =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
   "<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\">"
   "<metadata/>"
   "<manifest>"
   "<item id=\"noh\" media-type=\"application/xhtml+xml\"/>"
+  "<item id=\"notype\" href=\"notype.bin\"/>"
   "<item id=\"f1\" href=\"fonts/serif.ttf\" media-type=\"font/ttf\"/>"
   "<item id=\"c1\" href=\"c1.xhtml\" media-type=\"application/xhtml+xml\"/>"
   "</manifest><spine><itemref idref=\"c1\"/></spine></package>";
 
-/* nav document whose first <nav> has no epub:type attribute, so
- * find_nav_by_type() sees `attr == nullptr` (line-434 first AND condition,
- * C1=F) before it finds the epub:type="toc" nav. */
+/* Nav document whose untyped first nav precedes the typed toc nav. */
 constexpr const char* s_nav_untyped_first = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                                             "<html xmlns=\"http://www.w3.org/1999/xhtml\" "
                                             "xmlns:epub=\"http://www.idpf.org/2007/ops\">"
@@ -535,10 +618,8 @@ constexpr const char* s_nav_untyped_first = "<?xml version=\"1.0\" encoding=\"UT
  * @test internal_test_mcdc_copy_bounded_truncation
  *
  * @par MC/DC:
- * Decision: ``while (i + 1U < cap && src[i] != '\0')`` inside
- * ``copy_bounded`` (xml_shim.cpp line 132; 2 conditions). Driven via the
- * NCX title path (``ncx_walk -> toc_emit -> copy_bounded`` with
- * ``cap == k_ra8_epub_meta_len``).
+ * The NCX title path reaches ``internal_ncx_event`` and the shared bounded
+ * ``ra8_xml_decode_prefix`` copy with ``cap == k_ra8_epub_meta_len``.
  *  - V1: short title (existing fixtures) -> last iteration has C1=T,C2=F.
  *    Loop ends on the NUL. Decision F (terminate). Isolates C2.
  *  - V2: title 150 chars > cap-1         -> at i == cap-1 we have C1=F,
@@ -561,14 +642,12 @@ RA8_INTERNAL static void internal_test_mcdc_copy_bounded_truncation(void)
  * @test internal_test_mcdc_manifest_item_missing_id
  *
  * @par MC/DC:
- * Decision: ``if (item_id != nullptr && std::strcmp(item_id, id) == 0)``
- * inside ``manifest_href_by_id`` (xml_shim.cpp line 203; 2 conditions).
- * Driven through ``priv_ra8_epub_xml_parse_opf`` spine resolution.
- *  - V1 (existing valid OPF): first item has id="c1" matching the spine
- *    idref -> C1=T,C2=T. Decision T (return href). Isolates C2 vs V2.
- *  - V2: first manifest item carries no `id` attribute -> C1=F short.
- *    Decision F (skip item, scan on). Isolates C1 vs V1.
- * The href-less first item is skipped and the spine still resolves to the
+ * The valid spine supplies present/matching idref controls. Missing idref,
+ * missing item id/href, mismatch, match, and cap/over-cap companion vectors
+ * independently vary the collection and lookup predicates. Decisions:
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_collect_spine
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_manifest_lookup
+ * The attribute-less item is skipped and the spine still resolves to the
  * second item, so exactly one chapter is recorded. @brief Verify mcdc manifest item missing id behavior. @details Executes the mcdc manifest item missing id scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_mcdc_manifest_item_missing_id(void)
 {
@@ -585,11 +664,9 @@ RA8_INTERNAL static void internal_test_mcdc_manifest_item_missing_id(void)
  * @test internal_test_mcdc_cover_by_meta
  *
  * @par MC/DC:
- * Decision: ``if (meta_name != nullptr && meta_content != nullptr &&
- * std::strcmp(meta_name, "cover") == 0)`` inside ``find_cover_by_meta``
- * (xml_shim.cpp line 251; 3 conditions). Reached because none of these
- * OPFs declare ``properties="cover-image"``, so ``parse_opf`` falls back
- * to the legacy ``<meta name="cover">`` lookup.
+ * Decision: ``name.present && content.present && name == "cover"`` in
+ * ``internal_opf_first``. None of these OPFs declares
+ * ``properties="cover-image"``, so the parser uses the legacy metadata id.
  *  - V1: name="cover", content="cov"     -> C1=T,C2=T,C3=T. Decision T
  *    (resolve href). cover_path == "cover.png".
  *  - V2: <meta> has no name attribute     -> C1=F short. Decision F.
@@ -635,9 +712,8 @@ RA8_INTERNAL static void internal_test_mcdc_cover_by_meta(void)
  * @test internal_test_mcdc_nav_manifest_props_not_nav
  *
  * @par MC/DC:
- * Decision: ``if (props != nullptr && std::strstr(props, "nav") != nullptr)``
- * inside ``find_nav_manifest_href`` (xml_shim.cpp line 328; 2 conditions).
- * Driven through ``priv_ra8_epub_xml_parse_opf`` TOC-source selection.
+ * Decision: ``href.present && properties contains "nav"`` in
+ * ``internal_manifest_item``, driven through OPF TOC-source selection.
  *  - V1 (s_opf_with_nav): item properties="nav" -> C1=T,C2=T. Decision T
  *    (toc_kind == nav). Already covered by internal_test_parse_opf_toc_source.
  *  - V2 (s_valid_opf): no properties attribute   -> C1=F short. Decision F.
@@ -660,17 +736,12 @@ RA8_INTERNAL static void internal_test_mcdc_nav_manifest_props_not_nav(void)
  * @test internal_test_mcdc_collect_fonts_href_and_type
  *
  * @par MC/DC:
- * Decision: ``if (href == nullptr || !media_type_is_font(item->Attribute(
- * "media-type")))`` inside ``collect_font_items`` (xml_shim.cpp line 379;
- * 2 conditions). Driven through ``priv_ra8_epub_xml_parse_opf``.
- *  - V1: a font <item> (href present, font media-type) -> C1=F,C2=F.
- *    Decision F (record the font). embedded_font_count incremented.
- *  - V2: an <item> with no `href` attribute             -> C1=T short.
- *    Decision T (skip). Isolates C1 (V1 vs V2).
- *  - V3: a non-font <item> (href present, xhtml type)   -> C1=F,C2=T.
- *    Decision T (skip). Isolates C2 (V1 vs V3); the chapter item provides
- *    this vector.
- * Exactly one font href is recorded. @brief Verify mcdc collect fonts href and type behavior. @details Executes the mcdc collect fonts href and type scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * The fixture varies href absent/present, media type absent/non-font/font, and
+ * the generated document varies font count at/above its cap. Decisions:
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_font_type
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_manifest_item
+ * Exactly one font href is recorded from the fixed fixture; the generated
+ * fixture records exactly the bounded maximum. @brief Verify mcdc collect fonts href and type behavior. @details Executes the mcdc collect fonts href and type scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_mcdc_collect_fonts_href_and_type(void)
 {
 
@@ -679,22 +750,29 @@ RA8_INTERNAL static void internal_test_mcdc_collect_fonts_href_and_type(void)
   assert(priv_ra8_epub_xml_parse_opf(xml, std::strlen(s_opf_font_and_no_href), &book) == k_ra8_ok);
   assert(book.embedded_font_count == 1U);
   assert(std::strcmp(book.embedded_font_paths[0], "fonts/serif.ttf") == 0);
+
+  std::string capped = "<package><metadata/><manifest>";
+  for (std::size_t i = 0U; i <= static_cast<std::size_t>(k_ra8_epub_max_fonts); ++i) {
+    capped += "<item id='f" + std::to_string(i) + "' href='f" + std::to_string(i) +
+              ".ttf' media-type='font/ttf'/>";
+  }
+  capped += "<item id='c' href='c.xhtml' media-type='application/xhtml+xml'/>"
+            "</manifest><spine><itemref idref='c'/></spine></package>";
+  std::memset(&book, 0, sizeof(book));
+  assert(priv_ra8_epub_xml_parse_opf(reinterpret_cast<const uint8_t*>(capped.data()),
+                                     capped.size(),
+                                     &book) == k_ra8_ok);
+  assert(book.embedded_font_count == k_ra8_epub_max_fonts);
 }
 
 /**
  * @test internal_test_mcdc_nav_by_type_untyped_first
  *
  * @par MC/DC:
- * Decision: ``if (attr != nullptr && std::strstr(attr, type) != nullptr)``
- * inside ``find_nav_by_type`` (xml_shim.cpp line 434; 2 conditions). Driven
- * through ``priv_ra8_epub_xml_parse_nav``.
- *  - V1 (s_nav_doc landmarks): epub:type="landmarks" -> C1=T,C2=F. Decision
- *    F (keep searching). Covered by internal_test_parse_ncx_and_nav.
- *  - V2 (s_nav_doc toc): epub:type="toc"             -> C1=T,C2=T. Decision
- *    T (return nav). Covered by internal_test_parse_ncx_and_nav.
- *  - V3 (here): first <nav> has no epub:type          -> C1=F short.
- *    Decision F (keep searching). Isolates C1 (V2 vs V3). The
- *    epub:type="toc" nav that follows is still selected. @brief Verify mcdc nav by type untyped first behavior. @details Executes the mcdc nav by type untyped first scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * Landmarks/toc, untyped-then-toc, untyped-only fallback, and no-nav fixtures
+ * vary event kind, depth, local name, type presence/match, and fallback state
+ * in libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_select_nav. The typed toc
+ * following the untyped entry is selected here. @brief Verify mcdc nav by type untyped first behavior. @details Executes the mcdc nav by type untyped first scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_mcdc_nav_by_type_untyped_first(void)
 {
 
@@ -713,7 +791,7 @@ RA8_INTERNAL static void internal_test_mcdc_nav_by_type_untyped_first(void)
  * Completes the entry-guard decisions of the two TOC parsers.
  *
  * Decision A: ``if (xml_bytes == nullptr || book == nullptr)`` in
- * ``priv_ra8_epub_xml_parse_ncx`` (xml_shim.cpp line 610; 2 conditions).
+ * ``priv_ra8_epub_xml_parse_ncx``.
  *  - V1 (valid call): xml=valid, book=valid -> C1=F,C2=F. Covered by
  *    internal_test_parse_ncx_and_nav.
  *  - V2 (existing guard test): xml=NULL      -> C1=T short. Covered by
@@ -722,7 +800,7 @@ RA8_INTERNAL static void internal_test_mcdc_nav_by_type_untyped_first(void)
  *    (null_ptr). Isolates C2 (V1 vs V3).
  *
  * Decision B: ``if (xml_bytes == nullptr || book == nullptr)`` in
- * ``priv_ra8_epub_xml_parse_nav`` (xml_shim.cpp line 638; 2 conditions).
+ * ``priv_ra8_epub_xml_parse_nav``.
  *  - V1 (valid call): xml=valid, book=valid -> C1=F,C2=F. Covered.
  *  - V2 (existing guard test): xml=NULL      -> C1=T short. Covered.
  *  - V3 (here): xml=valid, book=NULL          -> C1=F,C2=T. Decision T

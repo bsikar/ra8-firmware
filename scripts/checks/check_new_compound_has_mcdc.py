@@ -8,7 +8,8 @@ arrive with an accompanying MC/DC test vector set. Per CLAUDE.md
 "IEC 61508 SIL 3 / DO-178C Level B Qualification" and docs/MCDC.md, every
 compound boolean decision in production code under ``libs/``, ``src/``,
 ``port/`` must have a matching MC/DC test vector set in
-``tests/test_<module>.c``. The MC/DC test function (named ``test_mcdc_*``)
+``tests/test_<module>.c`` or ``.cpp``. The MC/DC test function (named
+``test_mcdc_*``)
 declares its vector pattern in a Doxygen ``@par MC/DC:`` block that cites
 the decision as ``path@function`` -- the source path and the *enclosing
 function* of the decision. Citing by function (not line number) means
@@ -19,7 +20,8 @@ by diffing two revisions of each changed production file and flagging
 compound boolean decisions present in the newer revision but NOT in the
 older one on the same normalized line. For each such NEW decision it
 resolves the decision's enclosing function and searches every
-``tests/test_*.c`` for a ``@par MC/DC:`` block citing ``path@that_function``.
+``tests/test_*.{c,cpp}`` for a ``@par MC/DC:`` block citing
+``path@that_function``.
 
 Two selection modes, and NO third silent one:
 
@@ -88,6 +90,9 @@ from lint_targets import is_build_output_path
 
 # Production directories that are subject to the MC/DC gate.
 PROD_PREFIXES: tuple[str, ...] = ("libs/", "src/", "port/")
+
+# Test translation units allowed to carry executable MC/DC vector sets.
+TEST_SOURCE_SUFFIXES: tuple[str, ...] = (".c", ".cpp")
 
 # Display limits.
 MAX_DISPLAYED_FINDINGS = 50  # Max findings to print before summarizing the rest.
@@ -183,6 +188,18 @@ def _path_included(path: str, *, prefixes: tuple[str, ...]) -> bool:
     return not (is_build_output_path(path) or any(sub in path for sub in EXCLUDED_SUBSTRINGS))
 
 
+def _is_test_source_name(name: str) -> bool:
+    """Whether ``name`` is a supported top-level MC/DC test translation unit."""
+    return name.startswith("test_") and name.endswith(TEST_SOURCE_SUFFIXES)
+
+
+def _working_test_sources(tests_dir: Path) -> list[Path]:
+    """Return supported top-level test translation units in stable order."""
+    return sorted(
+        path for path in tests_dir.iterdir() if path.is_file() and _is_test_source_name(path.name)
+    )
+
+
 # ---------------------------------------------------------------------------
 # Staged-mode selection (the local pre-commit hook)
 # ---------------------------------------------------------------------------
@@ -231,7 +248,7 @@ def staged_rename_map() -> dict[str, str]:
 
 
 def collect_working_tree_citations() -> list[tuple[str, str]]:
-    """Every ``path@function`` citation in the working-tree ``tests/test_*.c``.
+    """Every citation in working-tree ``tests/test_*.{c,cpp}`` sources.
 
     Walks the working tree, not the index, so a test staged in this same
     commit counts -- the normal case, since the decision and its vectors land
@@ -241,7 +258,7 @@ def collect_working_tree_citations() -> list[tuple[str, str]]:
     tests_dir = Path("tests")
     if not tests_dir.is_dir():
         return cites
-    for tf in sorted(tests_dir.glob("test_*.c")):
+    for tf in _working_test_sources(tests_dir):
         try:
             text = tf.read_text(encoding="utf-8", errors="ignore")
         except OSError:
@@ -320,7 +337,7 @@ def range_rename_map(repo: str, base: str, head: str) -> dict[str, str]:
 
 
 def collect_range_citations(repo: str, head: str) -> list[tuple[str, str]]:
-    """Every ``path@function`` citation in ``tests/test_*.c`` at ``head``.
+    """Every citation in ``tests/test_*.{c,cpp}`` at ``head``.
 
     Reads the tests as committed at the audited revision (not the working
     tree), so the citation set matches the code under audit even when ``repo``
@@ -335,7 +352,7 @@ def collect_range_citations(repo: str, head: str) -> list[tuple[str, str]]:
         return cites
     for path in listing.splitlines():
         name = path.rsplit("/", 1)[-1]
-        if name.startswith("test_") and name.endswith(".c"):
+        if _is_test_source_name(name):
             cites.extend(_extract_citations(_blob_at(repo, head, path)))
     return cites
 
@@ -570,7 +587,7 @@ def _read_text(path: Path) -> str:
 
 
 def collect_tree_citations(root: Path) -> list[tuple[str, str]]:
-    """Every ``path@function`` citation in ``root``'s ``tests/test_*.c`` files.
+    """Every citation in ``root``'s ``tests/test_*.{c,cpp}`` sources.
 
     Deliberately the same scope the range mode reads, so the whole-tree count
     and the delta modes cannot disagree about which decisions are covered.
@@ -579,7 +596,7 @@ def collect_tree_citations(root: Path) -> list[tuple[str, str]]:
     tests_dir = root / "tests"
     if not tests_dir.is_dir():
         return cites
-    for tf in sorted(tests_dir.glob("test_*.c")):
+    for tf in _working_test_sources(tests_dir):
         cites.extend(_extract_citations(_read_text(tf)))
     return cites
 
@@ -633,11 +650,11 @@ def _report(files: list[str], findings: list[tuple[str, int, str]], scope: str) 
     print()
     print("[FAIL] check_new_compound_has_mcdc.py: new compound boolean")
     print("       decisions landed without an accompanying MC/DC test")
-    print("       vector set in tests/test_*.c.")
+    print("       vector set in tests/test_*.{c,cpp}.")
     print()
     print("       Per docs/MCDC.md, every `&&` / `||` decision under")
     print("       libs/, src/, port/ must have a `test_mcdc_*` function")
-    print("       in the matching tests/test_<module>.c whose")
+    print("       in the matching tests/test_<module>.{c,cpp} whose")
     print("       `@par MC/DC:` block cites the decision as")
     print("       `path@function` (the enclosing function of the")
     print("       decision -- a drift-proof anchor, no line numbers).")
@@ -654,7 +671,7 @@ def _report(files: list[str], findings: list[tuple[str, int, str]], scope: str) 
         print(f"         ... and {len(findings) - MAX_DISPLAYED_FINDINGS} more")
     print()
     print("       Fix: add a `test_mcdc_<decision>` function in the")
-    print("       matching tests/test_<module>.c with N+1 vectors and")
+    print("       matching tests/test_<module>.{c,cpp} with N+1 vectors and")
     print("       a `@par MC/DC:` block citing `path@function`, then")
     print("       re-run. See docs/MCDC.md for the worked example.")
     return 1
@@ -776,7 +793,7 @@ def _st_build_fixture(repo: Path) -> tuple[str, str]:
     _st_write(repo, "libs/pre.c", _ST_PRE_C_HEAD)
     _st_write(repo, "libs/newdec.c", _ST_NEWDEC_C)
     _st_write(repo, "libs/covered.c", _ST_COVERED_C)
-    _st_write(repo, "tests/test_covered.c", _ST_TEST_COVERED_C)
+    _st_write(repo, "tests/test_covered.cpp", _ST_TEST_COVERED_C)
     _st_write(repo, "libs/third_party/soup.c", _ST_SOUP_C)
     _st_git(repo, "add", "-A")
     _st_git(repo, "commit", "--quiet", "--no-verify", "-m", "head")
