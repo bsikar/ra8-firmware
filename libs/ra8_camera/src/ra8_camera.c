@@ -20,6 +20,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_camera_internal.h"
 #include "ra8_err.h"
 
@@ -40,7 +41,8 @@
  * @note This helper does not validate total frame storage.
  * @since 0.1.0
  */
-static ra8_err_t frame_row_bytes(const ra8_camera_frame_t* frame, uint32_t* out_row)
+RA8_INTERNAL static ra8_err_t internal_frame_row_bytes(const ra8_camera_frame_t* frame,
+                                                       uint32_t*                 out_row)
 {
   if (frame->format == k_ra8_camera_format_rgb888) {
     *out_row = (uint32_t)frame->width * 3U;
@@ -80,7 +82,7 @@ ra8_err_t ra8_camera_frame_validate(const ra8_camera_frame_t* frame)
     return k_ra8_ok;
   }
   uint32_t        row_bytes = 0U;
-  const ra8_err_t row       = frame_row_bytes(frame, &row_bytes);
+  const ra8_err_t row       = internal_frame_row_bytes(frame, &row_bytes);
   if (row != k_ra8_ok) {
     return row;
   }
@@ -110,7 +112,7 @@ ra8_err_t ra8_camera_frame_validate(const ra8_camera_frame_t* frame)
  * @note Thread-safe because it reads only handle fields.
  * @since 0.1.0
  */
-static ra8_err_t source_validate(const ra8_camera_source_t* source)
+RA8_INTERNAL static ra8_err_t internal_source_validate(const ra8_camera_source_t* source)
 {
   if (source == nullptr) {
     return k_ra8_err_null_ptr;
@@ -134,7 +136,7 @@ ra8_err_t ra8_camera_source_get_info(ra8_camera_source_t*      source,
     return k_ra8_err_null_ptr;
   }
   *out_info              = (ra8_camera_source_info_t){};
-  const ra8_err_t handle = source_validate(source);
+  const ra8_err_t handle = internal_source_validate(source);
   if (handle != k_ra8_ok) {
     return handle;
   }
@@ -152,7 +154,7 @@ ra8_err_t ra8_camera_source_capture(ra8_camera_source_t*       source,
     return k_ra8_err_null_ptr;
   }
   *out_frame             = (ra8_camera_frame_t){};
-  const ra8_err_t handle = source_validate(source);
+  const ra8_err_t handle = internal_source_validate(source);
   if (handle != k_ra8_ok) {
     return handle;
   }
