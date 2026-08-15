@@ -6,9 +6,7 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
-#ifndef MDL_CACHE_INTERNAL_H
-/** @brief One-definition guard for the private cache seam. */
-#define MDL_CACHE_INTERNAL_H
+#pragma once
 
 #include "mdl_cache.h"
 #include "ra8_attributes.h"
@@ -125,5 +123,3 @@ RA8_PRIV ra8_err_t priv_mdl_cache_publish_body(mdl_storage_t*           storage,
                                                size_t                   length,
                                                char*                    relative_path,
                                                size_t                   relative_capacity);
-
-#endif
