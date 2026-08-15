@@ -32,6 +32,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
@@ -107,7 +108,7 @@ static sdfont_ctx_t s_ctx;
  *       function-pointer type (constParameterCallback suppressed in-tree).
  * @since 0.1.0
  */
-static ra8_err_t sdfont_set_clock(void* ctx, uint32_t hz)
+RA8_INTERNAL static ra8_err_t internal_set_clock(void* ctx, uint32_t hz)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
   const sdfont_ctx_t* c = (const sdfont_ctx_t*)ctx;
@@ -123,14 +124,14 @@ static ra8_err_t sdfont_set_clock(void* ctx, uint32_t hz)
  * @return ra8_err_t passthrough from `ra8_gpio_write`.
  * @retval k_ra8_err_null_ptr @p ctx is NULL.
  * @pre @p ctx points to the live ::s_ctx.
- * @pre The CS pin was claimed as a GPIO output by ::sdfont_bringup_spi.
+ * @pre The CS pin was claimed as a GPIO output by ::internal_bringup_spi.
  * @post The CS pin reflects @p asserted on success.
  * @post No other pin or bus state changes.
  * @note ISR-unsafe. `ctx` is non-const to match the transport function-pointer
  *       type (constParameterCallback suppressed in-tree).
  * @since 0.1.0
  */
-static ra8_err_t sdfont_cs(void* ctx, bool asserted)
+RA8_INTERNAL static ra8_err_t internal_cs(void* ctx, bool asserted)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
   const sdfont_ctx_t* c = (const sdfont_ctx_t*)ctx;
@@ -155,7 +156,7 @@ static ra8_err_t sdfont_cs(void* ctx, bool asserted)
  *       function-pointer type (constParameterCallback suppressed in-tree).
  * @since 0.1.0
  */
-static ra8_err_t sdfont_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
+RA8_INTERNAL static ra8_err_t internal_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
   const sdfont_ctx_t* c = (const sdfont_ctx_t*)ctx;
@@ -184,7 +185,7 @@ static ra8_err_t sdfont_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t
  * @note CS is a plain GPIO output (SD SPI-mode holds CS across a frame).
  * @since 0.1.0
  */
-static ra8_err_t sdfont_bringup_spi(const ra8_sdfont_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_bringup_spi(const ra8_sdfont_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg");
 
@@ -227,21 +228,21 @@ static ra8_err_t sdfont_bringup_spi(const ra8_sdfont_cfg_t* cfg)
  * @retval k_ra8_ok           Card identified and FAT volume mounted.
  * @retval k_ra8_err_null_ptr @p out_mount is NULL.
  * @retval other             Propagated from `ra8_sdmmc_spi_*` / `ra8_fs_mount`.
- * @pre ::sdfont_bringup_spi returned k_ra8_ok and ::s_ctx is populated.
+ * @pre ::internal_bringup_spi returned k_ra8_ok and ::s_ctx is populated.
  * @pre A FAT-formatted card is seated in the Pmod2 slot.
  * @post On success @p *out_mount is a usable FAT mount on the SD card.
  * @post On failure no FAT volume is left mounted.
  * @note Blocking, polled SD bring-up.
  * @since 0.1.0
  */
-static ra8_err_t sdfont_mount(ra8_fs_mount_t** out_mount)
+RA8_INTERNAL static ra8_err_t internal_mount(ra8_fs_mount_t** out_mount)
 {
   RA8_CHECK_NULL_PTR(out_mount, s_tag, "out_mount");
 
   const ra8_sdmmc_spi_transport_t transport = {
-    .set_clock = sdfont_set_clock,
-    .cs        = sdfont_cs,
-    .xfer      = sdfont_xfer,
+    .set_clock = internal_set_clock,
+    .cs        = internal_cs,
+    .xfer      = internal_xfer,
     .ctx       = &s_ctx,
   };
   ra8_err_t err = ra8_sdmmc_spi_init(&transport);
@@ -280,11 +281,11 @@ static ra8_err_t sdfont_mount(ra8_fs_mount_t** out_mount)
  * @note Provisioning writes the blob only on a `k_ra8_err_not_found` open.
  * @since 0.1.0
  */
-static ra8_err_t sdfont_open_or_provision(const ra8_sdfont_cfg_t* cfg,
-                                          ra8_fs_mount_t*         mount,
-                                          const char*             name,
-                                          ra8_fs_file_t**         out_file,
-                                          ra8_sdfont_source_t*    out_source)
+RA8_INTERNAL static ra8_err_t internal_open_or_provision(const ra8_sdfont_cfg_t* cfg,
+                                                         ra8_fs_mount_t*         mount,
+                                                         const char*             name,
+                                                         ra8_fs_file_t**         out_file,
+                                                         ra8_sdfont_source_t*    out_source)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg");
   RA8_CHECK_NULL_PTR(mount, s_tag, "mount");
@@ -334,8 +335,8 @@ static ra8_err_t sdfont_open_or_provision(const ra8_sdfont_cfg_t* cfg,
  * @note Blocking read.
  * @since 0.1.0
  */
-static ra8_err_t
-sdfont_read_font(ra8_fs_file_t* file, uint8_t* buf, uint32_t cap, uint32_t* out_len)
+RA8_INTERNAL static ra8_err_t
+internal_read_font(ra8_fs_file_t* file, uint8_t* buf, uint32_t cap, uint32_t* out_len)
 {
   RA8_CHECK_NULL_PTR(file, s_tag, "file");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf");
@@ -374,10 +375,10 @@ sdfont_read_font(ra8_fs_file_t* file, uint8_t* buf, uint32_t cap, uint32_t* out_
  * @note Reentrant and stateless; safe to call from any context.
  * @since 0.1.0
  */
-static ra8_err_t sdfont_validate(const ra8_sdfont_cfg_t* cfg,
-                                 const uint8_t*          buf,
-                                 const uint32_t*         out_len,
-                                 uint32_t                cap)
+RA8_INTERNAL static ra8_err_t internal_validate(const ra8_sdfont_cfg_t* cfg,
+                                                const uint8_t*          buf,
+                                                const uint32_t*         out_len,
+                                                uint32_t                cap)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf");
@@ -394,17 +395,17 @@ ra8_err_t ra8_sdfont_load(const ra8_sdfont_cfg_t* cfg,
                           uint32_t*               out_len,
                           ra8_sdfont_source_t*    out_source)
 {
-  ra8_err_t err = sdfont_validate(cfg, buf, out_len, cap);
+  ra8_err_t err = internal_validate(cfg, buf, out_len, cap);
   if (err != k_ra8_ok) {
     return err;
   }
 
-  err = sdfont_bringup_spi(cfg);
+  err = internal_bringup_spi(cfg);
   if (err != k_ra8_ok) {
     return err;
   }
   ra8_fs_mount_t* mount = nullptr;
-  err                   = sdfont_mount(&mount);
+  err                   = internal_mount(&mount);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -412,9 +413,9 @@ ra8_err_t ra8_sdfont_load(const ra8_sdfont_cfg_t* cfg,
   const char*         name = (cfg->filename != nullptr) ? cfg->filename : s_default_name;
   ra8_fs_file_t*      file = nullptr;
   ra8_sdfont_source_t src  = k_ra8_sdfont_source_card;
-  err                      = sdfont_open_or_provision(cfg, mount, name, &file, &src);
+  err                      = internal_open_or_provision(cfg, mount, name, &file, &src);
   if (err == k_ra8_ok) {
-    err = sdfont_read_font(file, buf, cap, out_len);
+    err = internal_read_font(file, buf, cap, out_len);
   }
   (void)ra8_fs_unmount(mount);
   if (err != k_ra8_ok) {
