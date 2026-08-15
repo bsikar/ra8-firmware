@@ -89,7 +89,8 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t mram_bounds(const ra8_io_blockdev_mram_state_t* st, uint32_t lba, uint32_t count)
+RA8_INTERNAL static ra8_err_t
+internal_mram_bounds(const ra8_io_blockdev_mram_state_t* st, uint32_t lba, uint32_t count)
 {
   if (count > st->block_count) {
     return k_ra8_err_out_of_range;
@@ -127,7 +128,7 @@ static ra8_err_t mram_bounds(const ra8_io_blockdev_mram_state_t* st, uint32_t lb
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t mram_window_ok(uintptr_t base, uint32_t block_count)
+RA8_INTERNAL static ra8_err_t internal_mram_window_ok(uintptr_t base, uint32_t block_count)
 {
   const uintptr_t extra_start = (uintptr_t)k_ra8_flash_extra_start;
   const uintptr_t extra_end   = extra_start + (uintptr_t)k_ra8_flash_extra_size;
@@ -177,12 +178,13 @@ static ra8_err_t mram_window_ok(uintptr_t base, uint32_t block_count)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t mram_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_mram_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
   const ra8_io_blockdev_mram_state_t* st = (const ra8_io_blockdev_mram_state_t*)ctx;
-  const ra8_err_t                     b  = mram_bounds(st, lba, count);
+  const ra8_err_t                     b  = internal_mram_bounds(st, lba, count);
   if (b != k_ra8_ok) {
     return b;
   }
@@ -223,7 +225,8 @@ static ra8_err_t mram_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t mram_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_mram_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
@@ -231,7 +234,7 @@ static ra8_err_t mram_write(void* ctx, uint32_t lba, uint32_t count, const uint8
   if (st->read_only) {
     return k_ra8_err_not_supported;
   }
-  const ra8_err_t b = mram_bounds(st, lba, count);
+  const ra8_err_t b = internal_mram_bounds(st, lba, count);
   if (b != k_ra8_ok) {
     return b;
   }
@@ -278,14 +281,14 @@ static ra8_err_t mram_write(void* ctx, uint32_t lba, uint32_t count, const uint8
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t mram_erase(void* ctx, uint32_t lba, uint32_t count)
+RA8_INTERNAL static ra8_err_t internal_mram_erase(void* ctx, uint32_t lba, uint32_t count)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   ra8_io_blockdev_mram_state_t* st = (ra8_io_blockdev_mram_state_t*)ctx;
   if (st->read_only) {
     return k_ra8_err_not_supported;
   }
-  const ra8_err_t b = mram_bounds(st, lba, count);
+  const ra8_err_t b = internal_mram_bounds(st, lba, count);
   if (b != k_ra8_ok) {
     return b;
   }
@@ -325,7 +328,7 @@ static ra8_err_t mram_erase(void* ctx, uint32_t lba, uint32_t count)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t mram_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
+RA8_INTERNAL static ra8_err_t internal_mram_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -341,11 +344,11 @@ static ra8_err_t mram_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
 }
 
 /** @brief MRAM backend vtable. `sync` NULL: `ra8_flash_extra_mram_write` commits inline. */
-static const ra8_io_blockdev_iface_t k_mram_iface = {
-  .read     = mram_read,
-  .write    = mram_write,
-  .erase    = mram_erase,
-  .get_caps = mram_get_caps,
+static const ra8_io_blockdev_iface_t s_mram_iface = {
+  .read     = internal_mram_read,
+  .write    = internal_mram_write,
+  .erase    = internal_mram_erase,
+  .get_caps = internal_mram_get_caps,
   .sync     = nullptr,
 };
 
@@ -360,14 +363,14 @@ ra8_err_t ra8_io_blockdev_mram_init(ra8_io_blockdev_t*            bd,
   if (block_count < (uint32_t)k_ra8_io_mram_min_blocks) {
     return k_ra8_err_invalid_arg;
   }
-  const ra8_err_t w = mram_window_ok(base_addr, block_count);
+  const ra8_err_t w = internal_mram_window_ok(base_addr, block_count);
   if (w != k_ra8_ok) {
     return w;
   }
   state->base        = base_addr;
   state->block_count = block_count;
   state->read_only   = read_only;
-  bd->iface          = &k_mram_iface;
+  bd->iface          = &s_mram_iface;
   bd->ctx            = state;
   return k_ra8_ok;
 }

@@ -63,8 +63,8 @@ static const char* const s_tag = "ra8_io_i2c_bus_riic";
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-riic_write(void* ctx, uint8_t addr, const uint8_t* data, uint32_t len, bool send_stop)
+RA8_INTERNAL static ra8_err_t
+internal_riic_write(void* ctx, uint8_t addr, const uint8_t* data, uint32_t len, bool send_stop)
 {
   return ra8_i2c_write((uint8_t)(uintptr_t)ctx, addr, data, len, send_stop);
 }
@@ -97,7 +97,8 @@ riic_write(void* ctx, uint8_t addr, const uint8_t* data, uint32_t len, bool send
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t riic_read(void* ctx, uint8_t addr, uint8_t* data, uint32_t len)
+RA8_INTERNAL static ra8_err_t
+internal_riic_read(void* ctx, uint8_t addr, uint8_t* data, uint32_t len)
 {
   return ra8_i2c_read((uint8_t)(uintptr_t)ctx, addr, data, len);
 }
@@ -132,21 +133,21 @@ static ra8_err_t riic_read(void* ctx, uint8_t addr, uint8_t* data, uint32_t len)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t riic_transfer(void*          ctx,
-                               uint8_t        addr,
-                               const uint8_t* wr,
-                               uint32_t       wr_len,
-                               uint8_t*       rd,
-                               uint32_t       rd_len)
+RA8_INTERNAL static ra8_err_t internal_riic_transfer(void*          ctx,
+                                                     uint8_t        addr,
+                                                     const uint8_t* wr,
+                                                     uint32_t       wr_len,
+                                                     uint8_t*       rd,
+                                                     uint32_t       rd_len)
 {
   return ra8_i2c_transfer((uint8_t)(uintptr_t)ctx, addr, wr, wr_len, rd, rd_len);
 }
 
 /** @brief RIIC backend vtable -- every row forwards to `ra8_i2c_*`. */
-static const ra8_io_i2c_bus_iface_t k_riic_iface = {
-  .write    = riic_write,
-  .read     = riic_read,
-  .transfer = riic_transfer,
+static const ra8_io_i2c_bus_iface_t s_riic_iface = {
+  .write    = internal_riic_write,
+  .read     = internal_riic_read,
+  .transfer = internal_riic_transfer,
 };
 
 ra8_err_t ra8_io_i2c_bus_bind_riic(ra8_io_i2c_bus_t* bus, uint8_t channel)
@@ -155,7 +156,7 @@ ra8_err_t ra8_io_i2c_bus_bind_riic(ra8_io_i2c_bus_t* bus, uint8_t channel)
   if (channel >= (uint8_t)k_ra8_i2c_channel_count) {
     return k_ra8_err_invalid_arg;
   }
-  bus->iface = &k_riic_iface;
+  bus->iface = &s_riic_iface;
   bus->ctx   = (void*)(uintptr_t)channel;
   return k_ra8_ok;
 }

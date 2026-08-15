@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmio.h"
 #include "ra8_fake_xspi_flash.h"
@@ -96,7 +97,7 @@ typedef enum : uint32_t {
  * @note Thread-unsafe -- single-threaded test context.
  * @since 0.1.0
  */
-static void prep(void)
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmio_reset();
   ra8_fake_xspi_flash_install();
@@ -121,7 +122,8 @@ static void prep(void)
  * @note Thread-unsafe -- single-threaded test context.
  * @since 0.1.0
  */
-static void fixture_init_valid(ra8_io_blockdev_t* bd, ra8_io_blockdev_xspi_state_t* state)
+RA8_INTERNAL static void internal_fixture_init_valid(ra8_io_blockdev_t*            bd,
+                                                     ra8_io_blockdev_xspi_state_t* state)
 {
   const ra8_err_t e = ra8_io_blockdev_xspi_init(bd,
                                                 state,
@@ -136,7 +138,7 @@ static void fixture_init_valid(ra8_io_blockdev_t* bd, ra8_io_blockdev_xspi_state
  * @brief Bind a read-only 8-block xSPI device at flash offset 0.
  *
  * @details
- * Same geometry as fixture_init_valid but with read_only=true, so
+ * Same geometry as internal_fixture_init_valid but with read_only=true, so
  * every write and erase call is rejected before touching the HAL.
  *
  * @param[out] bd    Zero-initialised block-device handle to populate.
@@ -147,9 +149,9 @@ static void fixture_init_valid(ra8_io_blockdev_t* bd, ra8_io_blockdev_xspi_state
  * @post state has read_only=true.
  *
  * @note Thread-unsafe -- single-threaded test context.
- * @since 0.1.0
- */
-static void fixture_init_read_only(ra8_io_blockdev_t* bd, ra8_io_blockdev_xspi_state_t* state)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. */
+RA8_INTERNAL static void internal_fixture_init_read_only(ra8_io_blockdev_t*            bd,
+                                                         ra8_io_blockdev_xspi_state_t* state)
 {
   const ra8_err_t e = ra8_io_blockdev_xspi_init(bd,
                                                 state,
@@ -181,15 +183,14 @@ static void fixture_init_read_only(ra8_io_blockdev_t* bd, ra8_io_blockdev_xspi_s
  * Two vectors cover both arms of the single-condition decision (N+1 = 2 for N=1):
  * minimal MC/DC.
  *
- * @since 0.1.0
- */
-static void test_xspi_bounds_count_too_big(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_xspi_bounds_count_too_big(void)
 {
   TEST_BEGIN("xspi_bounds count > block_count");
-  prep();
+  internal_prep();
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
-  fixture_init_valid(&bd, &state);
+  internal_fixture_init_valid(&bd, &state);
   uint8_t         buf[(size_t)k_cov_bd_blocks_per_sector * (size_t)k_ra8_io_block_size_bytes] = {};
   const ra8_err_t e =
     ra8_io_blockdev_read(&bd, (uint32_t)k_cov_bd_lba_zero, (uint32_t)k_cov_bd_count_too_big, buf);
@@ -211,15 +212,14 @@ static void test_xspi_bounds_count_too_big(void)
  * - Vector 2 (existing rmw test): lba=0, count=1 -> 0 > 7 false -> proceeds.
  * Minimal MC/DC: N+1 = 2 vectors for N=1 condition.
  *
- * @since 0.1.0
- */
-static void test_xspi_bounds_lba_overflow(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_xspi_bounds_lba_overflow(void)
 {
   TEST_BEGIN("xspi_bounds lba + count > block_count");
-  prep();
+  internal_prep();
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
-  fixture_init_valid(&bd, &state);
+  internal_fixture_init_valid(&bd, &state);
   uint8_t         buf[(size_t)k_cov_bd_count_two * (size_t)k_ra8_io_block_size_bytes] = {};
   const ra8_err_t e =
     ra8_io_blockdev_read(&bd, (uint32_t)k_cov_bd_lba_near_end, (uint32_t)k_cov_bd_count_two, buf);
@@ -242,16 +242,15 @@ static void test_xspi_bounds_lba_overflow(void)
  * - Vector 2 (existing rmw test): e = k_ra8_ok -> false -> loop continues.
  * Minimal MC/DC: N+1 = 2 vectors for N=1 condition.
  *
- * @since 0.1.0
- */
-static void test_xspi_read_hal_error(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_xspi_read_hal_error(void)
 {
   TEST_BEGIN("xspi_read_chunked HAL error propagation");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_init((uint8_t)k_cov_bd_lba_zero, k_ra8_xspi_lio_1s1s1s));
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
-  fixture_init_valid(&bd, &state);
+  internal_fixture_init_valid(&bd, &state);
   volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_cov_bd_lba_zero);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&reg->INTS));
   uint8_t         buf[(size_t)k_cov_bd_blocks_per_sector * (size_t)k_ra8_io_block_size_bytes] = {};
@@ -276,15 +275,14 @@ static void test_xspi_read_hal_error(void)
  * - Vector 2 (existing rmw test): read_only=false -> proceeds to bounds check.
  * Minimal MC/DC: N+1 = 2 vectors for N=1 condition.
  *
- * @since 0.1.0
- */
-static void test_xspi_write_read_only(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_xspi_write_read_only(void)
 {
   TEST_BEGIN("xspi_write read-only rejection");
-  prep();
+  internal_prep();
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
-  fixture_init_read_only(&bd, &state);
+  internal_fixture_init_read_only(&bd, &state);
   const uint8_t   buf[(size_t)k_ra8_io_block_size_bytes] = {};
   const ra8_err_t e =
     ra8_io_blockdev_write(&bd, (uint32_t)k_cov_bd_lba_zero, (uint32_t)k_cov_bd_count_two, buf);
@@ -306,15 +304,14 @@ static void test_xspi_write_read_only(void)
  * - Vector 2 (existing rmw test): b = k_ra8_ok -> false -> proceeds to RMW loop.
  * Minimal MC/DC: N+1 = 2 vectors for N=1 condition.
  *
- * @since 0.1.0
- */
-static void test_xspi_write_bounds_overflow(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_xspi_write_bounds_overflow(void)
 {
   TEST_BEGIN("xspi_write bounds overflow");
-  prep();
+  internal_prep();
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
-  fixture_init_valid(&bd, &state);
+  internal_fixture_init_valid(&bd, &state);
   const uint8_t   buf[(size_t)k_cov_bd_blocks_per_sector * (size_t)k_ra8_io_block_size_bytes] = {};
   const ra8_err_t e = ra8_io_blockdev_write(&bd,
                                             (uint32_t)k_cov_bd_lba_at_end,
@@ -339,16 +336,15 @@ static void test_xspi_write_bounds_overflow(void)
  * - Vector 2 (existing rmw test): e = k_ra8_ok -> false -> loop continues.
  * Minimal MC/DC: N+1 = 2 vectors for N=1 condition.
  *
- * @since 0.1.0
- */
-static void test_xspi_write_hal_error(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_xspi_write_hal_error(void)
 {
   TEST_BEGIN("xspi_write HAL error propagation via write_one_sector");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_init((uint8_t)k_cov_bd_lba_zero, k_ra8_xspi_lio_1s1s1s));
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
-  fixture_init_valid(&bd, &state);
+  internal_fixture_init_valid(&bd, &state);
   volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_cov_bd_lba_zero);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&reg->INTS));
   const uint8_t   buf[(size_t)k_cov_bd_blocks_per_sector * (size_t)k_ra8_io_block_size_bytes] = {};
@@ -378,16 +374,15 @@ static void test_xspi_write_hal_error(void)
  * - Vector 2 (existing rmw test): e = k_ra8_ok -> false -> proceeds to program.
  * Minimal MC/DC: N+1 = 2 vectors for N=1 condition.
  *
- * @since 0.1.0
- */
-static void test_xspi_write_erase_leg_error(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_xspi_write_erase_leg_error(void)
 {
   TEST_BEGIN("write_one_sector erase-leg error propagation");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_init((uint8_t)k_cov_bd_lba_zero, k_ra8_xspi_lio_1s1s1s));
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
-  fixture_init_valid(&bd, &state);
+  internal_fixture_init_valid(&bd, &state);
   volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_cov_bd_lba_zero);
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -418,16 +413,15 @@ static void test_xspi_write_erase_leg_error(void)
  * - Vector 2 (existing rmw test): e = k_ra8_ok -> false -> loop continues.
  * Minimal MC/DC: N+1 = 2 vectors for N=1 condition.
  *
- * @since 0.1.0
- */
-static void test_xspi_write_program_leg_error(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_xspi_write_program_leg_error(void)
 {
   TEST_BEGIN("xspi_program_chunked program-leg error propagation");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_init((uint8_t)k_cov_bd_lba_zero, k_ra8_xspi_lio_1s1s1s));
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
-  fixture_init_valid(&bd, &state);
+  internal_fixture_init_valid(&bd, &state);
   volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_cov_bd_lba_zero);
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -454,15 +448,14 @@ static void test_xspi_write_program_leg_error(void)
  * - Vector 2 (existing rmw test): read_only=false -> proceeds to alignment check.
  * Minimal MC/DC: N+1 = 2 vectors for N=1 condition.
  *
- * @since 0.1.0
- */
-static void test_xspi_erase_read_only(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_xspi_erase_read_only(void)
 {
   TEST_BEGIN("xspi_erase read-only rejection");
-  prep();
+  internal_prep();
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
-  fixture_init_read_only(&bd, &state);
+  internal_fixture_init_read_only(&bd, &state);
   const ra8_err_t e =
     ra8_io_blockdev_erase(&bd, (uint32_t)k_cov_bd_lba_zero, (uint32_t)k_cov_bd_blocks_per_sector);
   TEST_ASSERT_EQ(k_ra8_err_not_supported, e);
@@ -483,15 +476,14 @@ static void test_xspi_erase_read_only(void)
  * - Vector 2 (existing rmw test): 0 % 8 = 0 -> false -> proceeds to count check.
  * Minimal MC/DC: N+1 = 2 vectors for N=1 condition.
  *
- * @since 0.1.0
- */
-static void test_xspi_erase_lba_misaligned(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_xspi_erase_lba_misaligned(void)
 {
   TEST_BEGIN("xspi_erase lba not sector-aligned");
-  prep();
+  internal_prep();
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
-  fixture_init_valid(&bd, &state);
+  internal_fixture_init_valid(&bd, &state);
   const ra8_err_t e = ra8_io_blockdev_erase(&bd,
                                             (uint32_t)k_cov_bd_lba_unaligned,
                                             (uint32_t)k_cov_bd_blocks_per_sector);
@@ -513,15 +505,14 @@ static void test_xspi_erase_lba_misaligned(void)
  * - Vector 2 (existing rmw test): 8 % 8 = 0 -> false -> proceeds to bounds check.
  * Minimal MC/DC: N+1 = 2 vectors for N=1 condition.
  *
- * @since 0.1.0
- */
-static void test_xspi_erase_count_misaligned(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_xspi_erase_count_misaligned(void)
 {
   TEST_BEGIN("xspi_erase count not sector-aligned");
-  prep();
+  internal_prep();
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
-  fixture_init_valid(&bd, &state);
+  internal_fixture_init_valid(&bd, &state);
   const ra8_err_t e =
     ra8_io_blockdev_erase(&bd, (uint32_t)k_cov_bd_lba_zero, (uint32_t)k_cov_bd_count_unaligned);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, e);
@@ -542,15 +533,14 @@ static void test_xspi_erase_count_misaligned(void)
  * - Vector 2 (existing rmw test): b = k_ra8_ok -> false -> enters erase loop.
  * Minimal MC/DC: N+1 = 2 vectors for N=1 condition.
  *
- * @since 0.1.0
- */
-static void test_xspi_erase_bounds_overflow(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_xspi_erase_bounds_overflow(void)
 {
   TEST_BEGIN("xspi_erase bounds overflow");
-  prep();
+  internal_prep();
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
-  fixture_init_valid(&bd, &state);
+  internal_fixture_init_valid(&bd, &state);
   const ra8_err_t e =
     ra8_io_blockdev_erase(&bd, (uint32_t)k_cov_bd_lba_at_end, (uint32_t)k_cov_bd_blocks_per_sector);
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, e);
@@ -572,16 +562,15 @@ static void test_xspi_erase_bounds_overflow(void)
  * - Vector 2 (existing rmw test): e = k_ra8_ok -> false -> advance blk pointer.
  * Minimal MC/DC: N+1 = 2 vectors for N=1 condition.
  *
- * @since 0.1.0
- */
-static void test_xspi_erase_hal_error(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_xspi_erase_hal_error(void)
 {
   TEST_BEGIN("xspi_erase HAL erase-sector failure propagation");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_init((uint8_t)k_cov_bd_lba_zero, k_ra8_xspi_lio_1s1s1s));
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
-  fixture_init_valid(&bd, &state);
+  internal_fixture_init_valid(&bd, &state);
   volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_cov_bd_lba_zero);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&reg->INTS));
   const ra8_err_t e =
@@ -611,15 +600,14 @@ static void test_xspi_erase_hal_error(void)
  * null-path vectors are required because those are single-condition guards
  * with no &&/|| operator.)
  *
- * @since 0.1.0
- */
-static void test_xspi_get_caps(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_xspi_get_caps(void)
 {
   TEST_BEGIN("xspi_get_caps full body coverage");
-  prep();
+  internal_prep();
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
-  fixture_init_valid(&bd, &state);
+  internal_fixture_init_valid(&bd, &state);
 
   ra8_io_blockdev_caps_t caps = {};
   const ra8_err_t        e    = ra8_io_blockdev_get_caps(&bd, &caps);
@@ -654,20 +642,19 @@ static void test_xspi_get_caps(void)
  */
 int32_t main(void)
 {
-  test_xspi_bounds_count_too_big();
-  test_xspi_bounds_lba_overflow();
-  test_xspi_read_hal_error();
-  test_xspi_write_read_only();
-  test_xspi_write_bounds_overflow();
-  test_xspi_write_hal_error();
-  test_xspi_write_erase_leg_error();
-  test_xspi_write_program_leg_error();
-  test_xspi_erase_read_only();
-  test_xspi_erase_lba_misaligned();
-  test_xspi_erase_count_misaligned();
-  test_xspi_erase_bounds_overflow();
-  test_xspi_erase_hal_error();
-  test_xspi_get_caps();
-  (void)fprintf(stderr, "[OK  ] test_ra8_io_blockdev_xspi_cov.c\n");
+  internal_test_xspi_bounds_count_too_big();
+  internal_test_xspi_bounds_lba_overflow();
+  internal_test_xspi_read_hal_error();
+  internal_test_xspi_write_read_only();
+  internal_test_xspi_write_bounds_overflow();
+  internal_test_xspi_write_hal_error();
+  internal_test_xspi_write_erase_leg_error();
+  internal_test_xspi_write_program_leg_error();
+  internal_test_xspi_erase_read_only();
+  internal_test_xspi_erase_lba_misaligned();
+  internal_test_xspi_erase_count_misaligned();
+  internal_test_xspi_erase_bounds_overflow();
+  internal_test_xspi_erase_hal_error();
+  internal_test_xspi_get_caps();
   return 0;
 }

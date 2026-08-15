@@ -49,7 +49,7 @@ static const char* const s_tag = "ra8_io_log";
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void io_log_byte(void* ctx, uint8_t byte)
+RA8_INTERNAL static void internal_io_log_byte(void* ctx, uint8_t byte)
 {
   if (ctx == nullptr) {
     return; /* GCOVR_EXCL_LINE -- ctx is the stream ra8_io_log_attach validated non-NULL. */
@@ -64,7 +64,7 @@ ra8_err_t ra8_io_log_attach(ra8_io_stream_t* s)
   if (s->iface == nullptr) {
     return k_ra8_err_not_initialized;
   }
-  ra8_log_set_byte_sink(io_log_byte, s);
+  ra8_log_set_byte_sink(internal_io_log_byte, s);
   return k_ra8_ok;
 }
 
