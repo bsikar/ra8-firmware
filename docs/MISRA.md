@@ -7,7 +7,9 @@ identified gaps. The audit is enforced in CI as a **ratchet** (issue
 (`.github/misra-baseline.txt`) fails the `misra` CI job, while the
 existing debt burns down without blocking unrelated work.
 
-For per-violation detail, see [`MISRA_GAPS.csv`](MISRA_GAPS.csv).
+The committed per-file-per-rule inventory is
+`.github/misra-baseline.txt`; [`MISRA_GAPS.csv`](MISRA_GAPS.csv) is a
+capped, hand-trimmed excerpt of the 2026-05-02 audit.
 
 ## Why MISRA-C 2012
 
@@ -41,9 +43,9 @@ cppcheck is the only open-source MISRA-C 2012 checker available; the
 commercial alternatives -- LDRA Testbed, PRQA QA-C / Helix QAC,
 Polyspace Bug Finder, Coverity -- are out of scope for this project.
 
-cppcheck's MISRA addon (`misra.py`, shipped under
-`/opt/homebrew/share/Cppcheck/addons/`) implements a subset of the
-MISRA-C 2012 rules. From the upstream addon's own checker table the
+cppcheck's MISRA addon (`misra.py`, shipped in the install's addons
+directory -- `misra_check_inner.sh` locates it per platform)
+implements a subset of the MISRA-C 2012 rules. From the upstream addon's own checker table the
 coverage is roughly:
 
 * **Mandatory rules** (10 total): ~10 covered (most are syntactic
@@ -91,23 +93,29 @@ make misra
 bash scripts/checks/misra_check_inner.sh
 ```
 
+At that 2026-05-02 audit:
+
 * Source files scanned: 158 `.c` translation units (plus headers).
-* Total unique violations: **1271** (was 1371 in the original
-  2026-05-02 baseline; the 101 misra-c2012-12.1 advisory hits were
-  closed under D-004 by adding per-line suppression entries to
-  `.cppcheck-suppressions` -- see `docs/qualification/MISRA_DEVIATIONS.md`).
-* Output: `build/misra/results.txt` (TSV) and
-  `docs/MISRA_GAPS.csv` (capped at 1000 rows + tail summary).
+* Total unique violations: **1271** (was 1371 at first scan; the 101
+  misra-c2012-12.1 advisory hits were closed under D-004 by per-line
+  suppression entries in `.cppcheck-suppressions`. Those line anchors
+  have since decayed and the instances are ratchet-held again -- see
+  `docs/qualification/MISRA_DEVIATIONS.md` D-004's reconciliation).
+* Output: `build/misra/results.txt` (TSV, regenerated per run);
+  `docs/MISRA_GAPS.csv` froze a capped excerpt (1000 rows + tail
+  summary) of that audit and has only been hand-trimmed since.
 
 The current enforced number lives in `.github/misra-baseline.txt` (see
-its `# total findings:` header line) and is much larger than the 2026-05
-figure: the tree has grown from 158 to ~350 audited translation units,
-and the CI-pinned cppcheck 2.13 (vs the Homebrew 2.20 used for the first
-audit) parses none of the C23 syntax, inflating the tooling-gap rule
-counts (8.4 / 17.3 / 9.2). The two numbers are not comparable; the
-ratchet only ever compares like-for-like on the pinned toolchain.
+its `# total findings:` header line) and is much larger than the
+2026-05 figure: the audited tree has more than tripled in translation
+units (`tools/` joined the scan roots 2026-08-13), and the CI-pinned
+cppcheck 2.13 (vs the 2.20 used for the first audit) parses none of
+the C23 syntax, inflating the tooling-gap rule counts. The two numbers
+are not comparable; the ratchet only compares like-for-like on the
+pinned toolchain, and `scripts/checks/check_misra_deviations.py` keeps
+the deviation register's derived numbers matching the baseline.
 
-### Top 5 violated rules
+### Top 5 violated rules (2026-05-02 audit)
 
 | Rank | Rule              | Count | Category | Topic |
 |-----:|-------------------|------:|----------|-------|
@@ -120,7 +128,10 @@ ratchet only ever compares like-for-like on the pinned toolchain.
 (The rule-category column is from the MISRA-C 2012 published rule
 tables; rule texts are paraphrased to stay within the licence.)
 
-### Reading the top 5
+### Reading the top 5 (2026-05-02 counts)
+
+Current per-rule numbers live in the deviation register's
+machine-checked index.
 
 * **Rule 15.5 (single-exit) -- 751 violations.** Advisory only.
   Triggered by every `if (err != k_ra8_ok) return err;` early-return
@@ -167,7 +178,7 @@ Per MISRA-C:2012 sec. 5.2 each finding has three possible dispositions:
 
 The triage below tracks that decision per top-violated rule.
 
-| Rule              | Count | Disposition       | Rationale |
+| Rule              | Count (2026-05-02) | Disposition       | Rationale |
 |-------------------|------:|-------------------|-----------|
 | misra-c2012-15.5  | 751 | Project deviation (D-001) | Single-exit conflicts with NASA Power-of-10 Rule 7 (check every return value) and with the project's `RA8_RETURN_ON_ERROR` macro. Mitigation: NASA Rule 5 enforces >= 2 pre/post-condition assertions per function plus 100% MC/DC at Phase 1, which provides equivalent assurance against missed cleanup paths. |
 | misra-c2012-8.4   | 196 | Tooling gap (D-005)        | Caused by cppcheck-2.20 syntaxError on the C23 `[[nodiscard]]` attribute on public-header prototypes (and by intentional exclusion of `libs/third_party/` headers for the `port/` files). Authoritative check is arm-none-eabi-gcc `-Wmissing-prototypes -Werror`. Re-audit after cppcheck adds `--std=c23`. |
@@ -210,8 +221,9 @@ The triage below tracks that decision per top-violated rule.
 | `scripts/checks/misra_ratchet.py`     | Ratchet comparator: fails on any (file, rule) count above `.github/misra-baseline.txt`; `--update` regenerates the baseline. Invoked by `make misra-check` / `make misra-baseline` and the `misra` CI job. |
 | `.github/misra-baseline.txt`         | Committed per-file-per-rule finding counts + the generating cppcheck version. |
 | `scripts/checks/misra_check.sh`             | Older baseline-gated MISRA-C 2023 wrapper -- complementary, not redundant. |
-| `.cppcheck-suppressions`             | Project-wide suppressions; new MISRA deviations will be added here with justification comments per the existing convention. |
-| `docs/MISRA_GAPS.csv`                | Capped per-violation list (1000 rows + tail summary). |
+| `scripts/checks/check_misra_deviations.py` | Re-derives every machine-checked claim in `docs/qualification/MISRA_DEVIATIONS.md` from the baseline and the suppression list; runs in the `misra` gate. |
+| `.cppcheck-suppressions`             | Project-wide suppressions with justification comments. Every `misra-c2012-*` rule family here must be owned by the deviation register's "Suppression ownership" list (gated). |
+| `docs/MISRA_GAPS.csv`                | Capped per-violation excerpt of the 2026-05-02 audit (1000 rows + tail summary), hand-trimmed since. |
 | `build/misra/results.txt`            | Full TSV per-violation list (regenerated each audit). |
 | `build/misra/raw.txt`                | Raw cppcheck stderr. |
 | `build/misra/misra-raw.txt`          | Raw misra.py stdout. |
