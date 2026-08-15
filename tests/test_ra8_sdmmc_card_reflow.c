@@ -32,6 +32,8 @@
 #include "ra8_gfx.h"
 #include "ra8_reflow.h"
 #include "ra8_sdmmc_spi.h"
+#include "support/ra8_test_file.h"
+#include "support/ra8_test_output.h"
 #include "unity_minimal.h"
 
 /**
@@ -116,8 +118,12 @@ static sd_card_t s_card;
  * @post @p c holds a 5-byte R3 response.
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
- */
-static void sd_cmd_read_ocr(sd_card_t* c, uint8_t r1)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+*/
+RA8_INTERNAL static void internal_sd_cmd_read_ocr(sd_card_t* c, uint8_t r1)
 {
   c->resp[0]  = r1;
   c->resp[1]  = (uint8_t)k_sd_ocr_pwrccs;
@@ -134,8 +140,12 @@ static void sd_cmd_read_ocr(sd_card_t* c, uint8_t r1)
  * @post @p c holds the CSD response with a valid CRC16.
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
- */
-static void sd_cmd_send_csd(sd_card_t* c)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+*/
+RA8_INTERNAL static void internal_sd_cmd_send_csd(sd_card_t* c)
 {
   const uint8_t  bm = (uint8_t)k_sd_byte_mask;
   const uint32_t bb = (uint32_t)k_sd_byte_bits;
@@ -160,8 +170,12 @@ static void sd_cmd_send_csd(sd_card_t* c)
  * @post @p c holds the block data (zero-filled past the image) with a valid CRC.
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
- */
-static void sd_cmd_read_block(sd_card_t* c, uint32_t arg)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+*/
+RA8_INTERNAL static void internal_sd_cmd_read_block(sd_card_t* c, uint32_t arg)
 {
   const uint8_t  bm  = (uint8_t)k_sd_byte_mask;
   const uint32_t bb  = (uint32_t)k_sd_byte_bits;
@@ -188,8 +202,10 @@ static void sd_cmd_read_block(sd_card_t* c, uint32_t arg)
  * @post The backing image is untouched.
  * @note Not thread-safe; single-threaded host-test model.
  * @since 0.1.0
- */
-static void sd_reply_r1(sd_card_t* c, uint8_t status)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static void internal_sd_reply_r1(sd_card_t* c, uint8_t status)
 {
   c->resp[0]  = status;
   c->resp_len = 1U;
@@ -204,8 +220,10 @@ static void sd_reply_r1(sd_card_t* c, uint8_t status)
  * @post @p c->resp_len is ::k_sd_r7_len.
  * @note Not thread-safe; single-threaded host-test model.
  * @since 0.1.0
- */
-static void sd_cmd_send_if_cond(sd_card_t* c)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static void internal_sd_cmd_send_if_cond(sd_card_t* c)
 {
   c->resp[0]  = (uint8_t)k_sd_r1_idle;
   c->resp[1]  = 0U;
@@ -215,7 +233,18 @@ static void sd_cmd_send_if_cond(sd_card_t* c)
   c->resp_len = (uint8_t)k_sd_r7_len;
 }
 
-static void sd_process_cmd(sd_card_t* c)
+/**
+ * @brief Sd process cmd.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] c Argument for the bounded test operation.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sd_process_cmd(sd_card_t* c)
 {
   const uint8_t  idx     = (uint8_t)(c->cmd[0] & (uint8_t)k_sd_idx_mask);
   const uint32_t arg     = ((uint32_t)c->cmd[1] << (uint32_t)k_sd_arg_sh0) |
@@ -227,45 +256,67 @@ static void sd_process_cmd(sd_card_t* c)
   c->resp_len            = 0U;
   const uint8_t r1       = c->ready ? (uint8_t)k_sd_r1_ready : (uint8_t)k_sd_r1_idle;
 #ifdef SD_DBG
-  (void)fprintf(stderr, "SD cmd=%u arg=%08x app=%d\n", idx, arg, (int)was_app);
+  ra8_test_output_t    output = {};
+  ra8_test_output_fd_t state  = {};
+  TEST_ASSERT(internal_test_output_fd_init(&output, &state, STDERR_FILENO));
+  (void)internal_test_output_text(&output, "SD cmd=");
+  (void)internal_test_output_u64(&output, idx);
+  (void)internal_test_output_text(&output, " arg=");
+  (void)internal_test_output_hex64(&output, arg, 8U, false);
+  (void)internal_test_output_text(&output, " app=");
+  (void)internal_test_output_u64(&output, was_app ? 1U : 0U);
+  (void)internal_test_output_text(&output, "\n");
+  TEST_ASSERT_EQ(k_ra8_test_output_ok, output.status);
 #endif
 
   if ((idx == (uint8_t)k_sd_idx_acmd41) && was_app) { /* ACMD41 -- init done. */
     c->ready = true;
-    sd_reply_r1(c, (uint8_t)k_sd_r1_ready);
+    internal_sd_reply_r1(c, (uint8_t)k_sd_r1_ready);
     return;
   }
   switch (idx) {
     case (uint8_t)k_sd_idx_cmd0: /* GO_IDLE */
-      sd_reply_r1(c, (uint8_t)k_sd_r1_idle);
+      internal_sd_reply_r1(c, (uint8_t)k_sd_r1_idle);
       break;
     case (uint8_t)k_sd_idx_cmd8: /* SEND_IF_COND -> R7 (R1 + 0x000001AA echo) */
-      sd_cmd_send_if_cond(c);
+      internal_sd_cmd_send_if_cond(c);
       break;
     case (uint8_t)k_sd_idx_cmd55: /* APP_CMD */
       c->app_cmd = true;
-      sd_reply_r1(c, (uint8_t)k_sd_r1_idle);
+      internal_sd_reply_r1(c, (uint8_t)k_sd_r1_idle);
       break;
     case (uint8_t)k_sd_idx_cmd58: /* READ_OCR -> R3 (R1 + OCR, CCS=1 => SDHC) */
-      sd_cmd_read_ocr(c, r1);
+      internal_sd_cmd_read_ocr(c, r1);
       break;
     case (uint8_t)k_sd_idx_cmd16: /* SET_BLOCKLEN */
-      sd_reply_r1(c, (uint8_t)k_sd_r1_ready);
+      internal_sd_reply_r1(c, (uint8_t)k_sd_r1_ready);
       break;
     case (uint8_t)k_sd_idx_cmd9: /* SEND_CSD -> R1 + token + 16-byte CSD + CRC */
-      sd_cmd_send_csd(c);
+      internal_sd_cmd_send_csd(c);
       break;
     case (uint8_t)k_sd_idx_cmd17: /* READ_SINGLE_BLOCK (SDHC: arg = block) */
-      sd_cmd_read_block(c, arg);
+      internal_sd_cmd_read_block(c, arg);
       break;
     default:
-      sd_reply_r1(c, r1);
+      internal_sd_reply_r1(c, r1);
       break;
   }
 }
 
-/** @brief Exchange one byte with the card (full-duplex: host-out/card-in). */
-static uint8_t sd_exchange(sd_card_t* c, uint8_t tx)
+/** @brief Exchange one byte with the card (full-duplex: host-out/card-in).
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] c Argument for the bounded test operation.
+ * @param[in] tx Argument for the bounded test operation.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static uint8_t internal_sd_exchange(sd_card_t* c, uint8_t tx)
 {
   if (c->resp_pos < c->resp_len) {
     return c->resp[c->resp_pos++];
@@ -275,7 +326,7 @@ static uint8_t sd_exchange(sd_card_t* c, uint8_t tx)
     c->cmd_idx++;
     if (c->cmd_idx >= (uint32_t)k_sd_cmd_len) {
       c->collecting = false;
-      sd_process_cmd(c);
+      internal_sd_process_cmd(c);
     }
     return (uint8_t)k_sd_idle;
   }
@@ -288,24 +339,69 @@ static uint8_t sd_exchange(sd_card_t* c, uint8_t tx)
 }
 
 /* ---- ra8_sdmmc_spi transport bound to the card model ---------------------- */
-static ra8_err_t t_set_clock(void* ctx, uint32_t hz)
+/**
+ * @brief T set clock.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] ctx Argument for the bounded test operation.
+ * @param[in] hz Argument for the bounded test operation.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_t_set_clock(void* ctx, uint32_t hz)
 {
   (void)ctx;
   (void)hz;
   return k_ra8_ok;
 }
-static ra8_err_t t_cs(void* ctx, bool asserted)
+/**
+ * @brief T cs.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] ctx Argument for the bounded test operation.
+ * @param[in] asserted Argument for the bounded test operation.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_t_cs(void* ctx, bool asserted)
 {
   (void)ctx;
   (void)asserted;
   return k_ra8_ok;
 }
-static ra8_err_t t_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
+/**
+ * @brief T xfer.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] ctx Argument for the bounded test operation.
+ * @param[in] tx Argument for the bounded test operation.
+ * @param[in,out] rx Argument for the bounded test operation.
+ * @param[in] len Argument for the bounded test operation.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_t_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
 {
   sd_card_t* c = (sd_card_t*)ctx;
   for (uint32_t i = 0U; i < len; ++i) {
     const uint8_t out = (tx != nullptr) ? tx[i] : (uint8_t)k_sd_idle;
-    const uint8_t in  = sd_exchange(c, out);
+    const uint8_t in  = internal_sd_exchange(c, out);
     if (rx != nullptr) {
       rx[i] = in;
     }
@@ -335,7 +431,24 @@ typedef struct {
 
 static mem_disk_t s_disk;
 
-static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/**
+ * @brief Mem read.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] ctx Argument for the bounded test operation.
+ * @param[in] lba Argument for the bounded test operation.
+ * @param[in] count Argument for the bounded test operation.
+ * @param[in,out] buf Argument for the bounded test operation.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -346,7 +459,24 @@ static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
          (size_t)count * (uint32_t)k_disk_block_size);
   return k_ra8_ok;
 }
-static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/**
+ * @brief Mem write.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] ctx Argument for the bounded test operation.
+ * @param[in] lba Argument for the bounded test operation.
+ * @param[in] count Argument for the bounded test operation.
+ * @param[in] buf Argument for the bounded test operation.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -357,36 +487,73 @@ static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
          (size_t)count * (uint32_t)k_disk_block_size);
   return k_ra8_ok;
 }
-static ra8_err_t mem_cap(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/**
+ * @brief Mem cap.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] ctx Argument for the bounded test operation.
+ * @param[in,out] block_count Argument for the bounded test operation.
+ * @param[in,out] block_size Argument for the bounded test operation.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_mem_cap(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
   *block_size   = (uint32_t)k_disk_block_size;
   return k_ra8_ok;
 }
-static const ra8_fs_backend_t s_mem_backend = {.read_block   = mem_read,
-                                               .write_block  = mem_write,
-                                               .get_capacity = mem_cap,
+static const ra8_fs_backend_t s_mem_backend = {.read_block   = internal_mem_read,
+                                               .write_block  = internal_mem_write,
+                                               .get_capacity = internal_mem_cap,
                                                .ctx          = &s_disk};
 
-static void put16(uint8_t* p, uint32_t off, uint16_t v)
+/**
+ * @brief Put16.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] p Argument for the bounded test operation.
+ * @param[in] off Argument for the bounded test operation.
+ * @param[in] v Argument for the bounded test operation.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_put16(uint8_t* p, uint32_t off, uint16_t v)
 {
   p[off]     = (uint8_t)(v & k_t_byte_mask);
   p[off + 1] = (uint8_t)((v >> 8) & k_t_byte_mask);
 }
-/** @brief Build the response for a completed 6-byte command frame. */
-static void build_fat16(void)
+/** @brief Build the response for a completed 6-byte command frame.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static void internal_build_fat16(void)
 {
   s_disk.bytes       = (uint8_t*)calloc(1, (size_t)k_disk_blocks_fat16 * k_disk_block_size);
   s_disk.block_count = (uint32_t)k_disk_blocks_fat16;
   uint8_t* b         = s_disk.bytes;
-  put16(b, k_t_bpb_off_bytes_per_sector, (uint16_t)k_disk_block_size);
+  internal_put16(b, k_t_bpb_off_bytes_per_sector, (uint16_t)k_disk_block_size);
   b[k_t_bpb_off_sectors_per_clus] = 1U;
-  put16(b, k_t_bpb_off_reserved_sectors, 1U);
+  internal_put16(b, k_t_bpb_off_reserved_sectors, 1U);
   b[16] = 2U;
-  put16(b, k_t_bpb_off_root_entries, 16U);
-  put16(b, k_t_bpb_off_total_sectors, (uint16_t)k_disk_blocks_fat16);
-  put16(b, (uint32_t)k_bpb_off_secperfat, 32U);
+  internal_put16(b, k_t_bpb_off_root_entries, 16U);
+  internal_put16(b, k_t_bpb_off_total_sectors, (uint16_t)k_disk_blocks_fat16);
+  internal_put16(b, (uint32_t)k_bpb_off_secperfat, 32U);
   b[k_bpb_sig_off_a] = (uint8_t)k_bpb_sig_a;
   b[k_bpb_sig_off_b] = (uint8_t)k_bpb_sig_b;
 }
@@ -404,7 +571,19 @@ static uint8_t*  s_card_font;
 static uint32_t  s_font_len;
 static uint32_t* s_fb;
 
-static bool load_src_font(void)
+/**
+ * @brief Load src font.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_load_src_font(void)
 {
   char path[k_path_cap];
   (void)snprintf(path, sizeof(path), "%s", __FILE__);
@@ -419,16 +598,12 @@ static bool load_src_font(void)
   }
   const size_t base = strlen(path);
   (void)snprintf(&path[base], sizeof(path) - base, "/libs/ra8_fonts/Literata-Regular.ttf");
-  FILE* fp = fopen(path, "rb");
-  if (fp == nullptr) {
+  const ra8_test_file_result_t result =
+    internal_test_file_read(path, s_src_font, k_font_cap, s_card_font, k_font_cap);
+  if ((result.status != k_ra8_test_file_ok) || (result.transferred < 16U)) {
     return false;
   }
-  size_t n = fread(s_src_font, 1U, k_font_cap, fp);
-  (void)fclose(fp);
-  if (n < 16U) {
-    return false;
-  }
-  s_font_len = (uint32_t)n;
+  s_font_len = (uint32_t)result.transferred;
   return true;
 }
 
@@ -438,10 +613,14 @@ static bool load_src_font(void)
  * @post FONT.OTF is present in the card image, ready for SD read-back.
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
- */
-static void sd_reflow_populate_card(void)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+*/
+RA8_INTERNAL static void internal_sd_reflow_populate_card(void)
 {
-  build_fat16();
+  internal_build_fat16();
   ra8_fs_mount_t* setup = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_mem_backend, &setup));
   ra8_fs_file_t* wf = nullptr;
@@ -453,18 +632,22 @@ static void sd_reflow_populate_card(void)
 
 /**
  * @brief Bring up the real SD-SPI driver, mount the card FAT and read the font.
- * @pre The card image holds FONT.OTF (sd_reflow_populate_card ran).
+ * @pre The card image holds FONT.OTF (internal_sd_reflow_populate_card ran).
  * @post s_card_font holds the byte-identical font read back off the SD model.
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
- */
-static void sd_reflow_read_font_back(void)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+*/
+RA8_INTERNAL static void internal_sd_reflow_read_font_back(void)
 {
   s_card.image                          = s_disk.bytes;
   s_card.image_len                      = s_disk.block_count * (uint32_t)k_disk_block_size;
-  const ra8_sdmmc_spi_transport_t trans = {.set_clock = t_set_clock,
-                                           .cs        = t_cs,
-                                           .xfer      = t_xfer,
+  const ra8_sdmmc_spi_transport_t trans = {.set_clock = internal_t_set_clock,
+                                           .cs        = internal_t_cs,
+                                           .xfer      = internal_t_xfer,
                                            .ctx       = &s_card};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_init(&trans));
 
@@ -488,8 +671,12 @@ static void sd_reflow_read_font_back(void)
  * @post At least one non-background pixel was inked into s_fb.
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
- */
-static void sd_reflow_render_and_count(void)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+*/
+RA8_INTERNAL static void internal_sd_reflow_render_and_count(void)
 {
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gfx_init(s_fb, (uint16_t)k_fb_w, (uint16_t)k_fb_h, k_ra8_gfx_format_argb8888));
@@ -518,20 +705,37 @@ static void sd_reflow_render_and_count(void)
       ++ink;
     }
   }
-  (void)fprintf(stderr, "[info] %u-byte font via SD-SPI+FAT; %u inked pixels\n", s_font_len, ink);
+  ra8_test_output_t    output = {};
+  ra8_test_output_fd_t state  = {};
+  TEST_ASSERT(internal_test_output_fd_init(&output, &state, STDERR_FILENO));
+  (void)internal_test_output_text(&output, "[info] ");
+  (void)internal_test_output_u64(&output, s_font_len);
+  (void)internal_test_output_text(&output, "-byte font via SD-SPI+FAT; ");
+  (void)internal_test_output_u64(&output, ink);
+  (void)internal_test_output_text(&output, " inked pixels\n");
+  TEST_ASSERT_EQ(k_ra8_test_output_ok, output.status);
   TEST_ASSERT(ink > 0U);
 }
 
 /**
- * @test test_sd_card_serves_font_to_reflow
+ * @test internal_test_sd_card_serves_font_to_reflow
  *
  * @par MC/DC:
  * Integration test -- no compound decision of its own. It exercises the
  * already-covered ra8_sdmmc_spi / ra8_fs / ra8_reflow APIs end to end through
  * a modelled SD card. The single boolean checks (init ok, bytes match, ink
  * present) each pass on the success path and fail the assert otherwise.
- */
-static void test_sd_card_serves_font_to_reflow(void)
+
+ * @brief Test sd card serves font to reflow.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static void internal_test_sd_card_serves_font_to_reflow(void)
 {
   TEST_BEGIN("SD card (SPI) serves FAT font -> ra8_fs -> ra8_reflow");
 
@@ -542,19 +746,21 @@ static void test_sd_card_serves_font_to_reflow(void)
   TEST_ASSERT_NOT_NULL(s_card_font);
   TEST_ASSERT_NOT_NULL(s_fb);
 
-  if (!load_src_font()) {
-    (void)fprintf(stderr, "[SKIP] Literata font not found; skipping\n");
+  if (!internal_load_src_font()) {
+    TEST_ASSERT_EQ(
+      k_ra8_test_output_ok,
+      internal_test_output_fd_text(STDERR_FILENO, "[SKIP] Literata font not found; skipping\n"));
     TEST_END("SD card (SPI) serves FAT font -> ra8_fs -> ra8_reflow");
     return;
   }
 
   /* Populate the card image: format + write the font via the direct mem
    * backend (the SD model only needs to serve reads). */
-  sd_reflow_populate_card();
+  internal_sd_reflow_populate_card();
   /* Bring up the SD card and read the font back off the FAT it serves. */
-  sd_reflow_read_font_back();
+  internal_sd_reflow_read_font_back();
   /* Render with the font that came off the (modelled) SD card. */
-  sd_reflow_render_and_count();
+  internal_sd_reflow_render_and_count();
 
   (void)ra8_sdmmc_spi_deinit();
   free(s_disk.bytes);
@@ -566,7 +772,9 @@ static void test_sd_card_serves_font_to_reflow(void)
 
 int32_t main(void)
 {
-  test_sd_card_serves_font_to_reflow();
-  (void)fprintf(stderr, "[OK ] test_ra8_sdmmc_card_reflow.c\n");
+  internal_test_sd_card_serves_font_to_reflow();
+  TEST_ASSERT_EQ(
+    k_ra8_test_output_ok,
+    internal_test_output_fd_text(STDERR_FILENO, "[OK ] test_ra8_sdmmc_card_reflow.c\n"));
   return 0;
 }

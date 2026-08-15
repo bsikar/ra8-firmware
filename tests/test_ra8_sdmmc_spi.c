@@ -34,9 +34,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_fs.h"
+#include "ra8_log.h"
 #include "ra8_mstp.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
@@ -73,8 +75,16 @@ typedef enum : uint32_t {
  * @par MC/DC:
  * CRC reduction has only single-condition decisions; this case proves
  * the spec-published vectors round-trip.
+ * @brief Exercise test crc7 published vectors.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_crc7_published_vectors(void)
+RA8_INTERNAL static void internal_test_crc7_published_vectors(void)
 {
   TEST_BEGIN("crc7 published vectors");
   /* CMD0 with arg = 0 -> wire byte 0x95 -> CRC7 = 0x4A. */
@@ -94,8 +104,16 @@ static void test_crc7_published_vectors(void)
  * @par MC/DC:
  * CRC16 inner-loop XOR has only the single ``top-bit-set`` condition.
  * Vectors prove zero-input -> zero and a sample 512-byte block.
+ * @brief Exercise test crc16 published vectors.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_crc16_published_vectors(void)
+RA8_INTERNAL static void internal_test_crc16_published_vectors(void)
 {
   TEST_BEGIN("crc16 known vectors");
   /* Zero-length input -> seed 0x0000. */
@@ -115,7 +133,18 @@ static void test_crc16_published_vectors(void)
  * ===========================================================================
  */
 
-static void test_init_null_transport_rejected(void)
+/**
+ * @brief Reject a null transport at the public initialization boundary.
+ * @details Calls initialization without callbacks and verifies that validation
+ *          fails before the singleton driver state is changed.
+ * @pre The SD driver is reset to its uninitialized state.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Initialization reports ::k_ra8_err_null_ptr.
+ * @post The driver remains available for a subsequent valid initialization.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_init_null_transport_rejected(void)
 {
   TEST_BEGIN("init nullptr transport");
   per_test_setup();
@@ -132,8 +161,16 @@ static void test_init_null_transport_rejected(void)
  *   - cs nullptr, others non-nullptr        -> true  (cs independent)
  *   - xfer nullptr, others non-nullptr      -> true  (xfer independent)
  * 4 vectors = N+1 with N=3, minimal MC/DC.
+ * @brief Exercise test init validates callbacks.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_init_validates_callbacks(void)
+RA8_INTERNAL static void internal_test_init_validates_callbacks(void)
 {
   TEST_BEGIN("init validates callbacks");
   per_test_setup();
@@ -163,7 +200,7 @@ static void test_init_validates_callbacks(void)
  * configuration:
  *
  *   - `validate_transport` OR-chain (vectors documented on
- *     ::test_mcdc_validate_transport_or_chain).
+ *     ::internal_test_mcdc_validate_transport_or_chain).
  *   - `internal_build_frame` AND-decision ``cmd == CMD8 && arg == 0x1AA``
  *     (libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi.c@internal_build_frame).
  *     The init path issues
@@ -177,9 +214,17 @@ static void test_init_validates_callbacks(void)
  *     else -- coupled-operand exception per DO-178C 6.4.4.3
  *     "where coupled, document and justify".
  *   - `fs_get_capacity` NULL-OR (vectors on
- *     ::test_mcdc_fs_get_capacity_null_or).
+ *     ::internal_test_mcdc_fs_get_capacity_null_or).
+ * @brief Exercise test init full sdhc path.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_init_full_sdhc_path(void)
+RA8_INTERNAL static void internal_test_init_full_sdhc_path(void)
 {
   TEST_BEGIN("init full SDHC 32GiB path");
   per_test_setup();
@@ -189,7 +234,8 @@ static void test_init_full_sdhc_path(void)
 
   uint32_t cap = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_get_capacity(&cap));
-  /* 32 GiB SDHC card: ((0xFFFF + 1) * 1024) blocks = 0x4000000 = 64 Mi blocks. */
+  /* 32 GiB SDHC card: ((0xFFFF + 1) * 1024) blocks = 0x4000000 = 64 Mi blocks.
+   */
   TEST_ASSERT_EQ(((0xFFFFUL + 1UL) * 1024UL), cap);
 
   ra8_sdmmc_spi_card_type_t type = k_ra8_sdmmc_spi_type_unknown;
@@ -210,8 +256,16 @@ static void test_init_full_sdhc_path(void)
  *   - illegal cmd set    -> v1 path
  *   - illegal cmd clear, echo matches -> v2 path
  *   - illegal cmd clear, echo mismatch -> protocol error
+ * @brief Exercise test init cmd8 classifies v1 card.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_init_cmd8_classifies_v1_card(void)
+RA8_INTERNAL static void internal_test_init_cmd8_classifies_v1_card(void)
 {
   TEST_BEGIN("CMD8 illegal -> v1 classification");
   per_test_setup();
@@ -229,13 +283,13 @@ static void test_init_cmd8_classifies_v1_card(void)
    * C_SIZE_MULT=7 -> ~1 GiB. */
   uint8_t csd_v1[k_ra8_sdmmc_spi_csd_response_len];
   memset(csd_v1, 0, sizeof(csd_v1));
-  csd_v1[0]                          = 0x00U;                   /* CSD_STRUCTURE = 0             */
-  csd_v1[k_sd_csd_idx_bl_len]        = k_sd_csd_bl_len_512;     /* READ_BL_LEN = 9 (low nibble)  */
-  csd_v1[6]                          = 0x03U;                   /* C_SIZE bits 11:10 = 0b11      */
-  csd_v1[k_sd_csd_idx_csize_mid]     = k_sd_test_ff;            /* C_SIZE bits 9:2 = 0xFF        */
-  csd_v1[8]                          = k_sd_csd_csize_low;      /* C_SIZE bits 1:0 (C_SIZE=1023) */
-  csd_v1[k_sd_csd_idx_csize_mult_hi] = 0x03U;                   /* C_SIZE_MULT bits 2:1 = 0b11   */
-  csd_v1[k_sd_test_ten]              = k_sd_csd_csize_mult_low; /* C_SIZE_MULT bit 0 = 1         */
+  csd_v1[0]                          = 0x00U;                   /* CSD_STRUCTURE = 0  */
+  csd_v1[k_sd_csd_idx_bl_len]        = k_sd_csd_bl_len_512;     /**< READ_BL_LEN.     */
+  csd_v1[6]                          = 0x03U;                   /**< C_SIZE high.     */
+  csd_v1[k_sd_csd_idx_csize_mid]     = k_sd_test_ff;            /**< C_SIZE middle.   */
+  csd_v1[8]                          = k_sd_csd_csize_low;      /**< C_SIZE low.      */
+  csd_v1[k_sd_csd_idx_csize_mult_hi] = 0x03U;                   /**< Multiplier high. */
+  csd_v1[k_sd_test_ten]              = k_sd_csd_csize_mult_low; /**< Multiplier low.  */
   queue_csd_read(csd_v1);
   /* CMD16 -> R1 ready. */
   queue_command_response_r1((uint8_t)k_test_r1_ready);
@@ -251,7 +305,18 @@ static void test_init_cmd8_classifies_v1_card(void)
  * ===========================================================================
  */
 
-static void test_bind_fs_backend_populates_struct(void)
+/**
+ * @brief Bind an initialized SD driver into an ra8_fs backend descriptor.
+ * @details Completes the SDHC initialization script, binds the adapter, and
+ *          verifies that each required block-operation callback is published.
+ * @pre The mock response queue contains a complete successful SDHC handshake.
+ * @pre The output backend descriptor is writable and initially empty.
+ * @post Binding reports ::k_ra8_ok and publishes every required callback.
+ * @post The initialized card remains usable through the bound descriptor.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_bind_fs_backend_populates_struct(void)
 {
   TEST_BEGIN("bind_fs_backend populates struct");
   per_test_setup();
@@ -274,9 +339,18 @@ static void test_bind_fs_backend_populates_struct(void)
 
 /**
  * @par MC/DC:
- * Decision: ``!s_state.initialized`` (1 condition). V1 init succeeded (false) covered by *_populates_struct. V2 not initialized (true) covered here.
+ * Decision: ``!s_state.initialized`` (1 condition). V1 init succeeded (false)
+ * covered by *_populates_struct. V2 not initialized (true) covered here.
+ * @brief Exercise test bind fs backend uninitialized rejected.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_bind_fs_backend_uninitialized_rejected(void)
+RA8_INTERNAL static void internal_test_bind_fs_backend_uninitialized_rejected(void)
 {
   TEST_BEGIN("bind_fs_backend before init");
   per_test_setup();
@@ -291,14 +365,15 @@ static void test_bind_fs_backend_uninitialized_rejected(void)
  */
 
 /**
- * @test test_mcdc_validate_transport_or_chain
+ * @test internal_test_mcdc_validate_transport_or_chain
  *
  * @par MC/DC:
  * Decision: ``if ((transport->set_clock == nullptr) ||
  *                 (transport->cs == nullptr) ||
  *                 (transport->xfer == nullptr))``
- * (3 conditions; libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi.c@internal_validate_transport)
- * inside ``internal_validate_transport``.
+ * (3 conditions;
+ * libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi.c@internal_validate_transport) inside
+ * ``internal_validate_transport``.
  *
  * Per DO-178C 6.4.4.3 representative-subset, N+1 = 4 vectors. Each
  * sub-test holds two conditions fixed and flips the third so the
@@ -311,8 +386,16 @@ static void test_bind_fs_backend_uninitialized_rejected(void)
  *
  * Pairs (V1,V2), (V1,V3), (V1,V4) each prove one operand independently
  * affects the OR outcome.
+ * @brief Exercise test mcdc validate transport or chain.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_mcdc_validate_transport_or_chain(void)
+RA8_INTERNAL static void internal_test_mcdc_validate_transport_or_chain(void)
 {
   TEST_BEGIN("MC/DC: validate_transport OR-chain");
   per_test_setup();
@@ -340,20 +423,21 @@ static void test_mcdc_validate_transport_or_chain(void)
 
 /* test_mcdc_build_frame_cmd8_special_case was removed -- the AND-decision
  * `(cmd == CMD8) && (arg == 0x1AA)` inside `internal_build_frame` is
- * fully exercised by `test_init_full_sdhc_path` below (V1: both
+ * fully exercised by `internal_test_init_full_sdhc_path` below (V1: both
  * operands true; init also issues CMD0 / CMD55 / CMD17 / etc. which
  * vary the first operand false). The removed test re-queued the same
- * full-init mock responses as `test_init_full_sdhc_path` and was
+ * full-init mock responses as `internal_test_init_full_sdhc_path` and was
  * functionally a duplicate; the MC/DC justification it carried has
  * been folded into the `@par MC/DC:` block on the test that remains. */
 
 /**
- * @test test_mcdc_fs_get_capacity_null_or
+ * @test internal_test_mcdc_fs_get_capacity_null_or
  *
  * @par MC/DC:
  * Decision: ``if ((block_count == nullptr) || (block_size == nullptr))``
- * (2 conditions; libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi.c@internal_fs_get_capacity)
- * inside ``internal_fs_get_capacity``.
+ * (2 conditions;
+ * libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi.c@internal_fs_get_capacity) inside
+ * ``internal_fs_get_capacity``.
  *
  * Per DO-178C 6.4.4.3 N+1 = 3 vectors:
  *   - V1: both non-NULL                    -> false (control).
@@ -361,8 +445,16 @@ static void test_mcdc_validate_transport_or_chain(void)
  *   - V3: block_count non, block_size NULL -> true  (block_size).
  *
  * Pairs (V1,V2) and (V1,V3) prove independence.
+ * @brief Exercise test mcdc fs get capacity null or.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_mcdc_fs_get_capacity_null_or(void)
+RA8_INTERNAL static void internal_test_mcdc_fs_get_capacity_null_or(void)
 {
   TEST_BEGIN("MC/DC: fs_get_capacity null OR");
   per_test_setup();
@@ -393,8 +485,14 @@ static void test_mcdc_fs_get_capacity_null_or(void)
  * real GPIO / SCI HAL, all of which operate on the ``ra8_fake_mmap``-backed
  * register window under ``RA8_OFF_TARGET``. Clearing the pin validator
  * lets each case re-claim the same pins without a "pin already owned" error.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void sci_factory_prep(void)
+RA8_INTERNAL static void internal_sci_factory_prep(void)
 {
   ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
@@ -422,11 +520,19 @@ static const ra8_sdmmc_spi_sci_pins_t s_factory_pins = {
  * flags pre-seeded so the TDRE/RDRF poll resolves on its first read (the
  * deterministic pattern from test_ra8_sci_spi.c -- no SIGALRM). The NULL-ctx
  * leg of each shim's ``RA8_CHECK_NULL_PTR`` guard is exercised last.
+ * @brief Exercise test transport sci factory and shims.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_transport_sci_factory_and_shims(void)
+RA8_INTERNAL static void internal_test_transport_sci_factory_and_shims(void)
 {
   TEST_BEGIN("transport_sci factory + shims");
-  sci_factory_prep();
+  internal_sci_factory_prep();
 
   ra8_sdmmc_spi_transport_t tr = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_transport_sci(0U, 60000000U, &s_factory_pins, &tr));
@@ -468,11 +574,19 @@ static void test_transport_sci_factory_and_shims(void)
  *   - V4: bad SCK port (bring-up fails) -> propagated HAL error.
  * V4 makes ``ra8_pfs_route_peripheral`` reject the out-of-range SCK port,
  * exercising the bring-up error-return leg the success case skips.
+ * @brief Exercise test transport sci factory rejects.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_transport_sci_factory_rejects(void)
+RA8_INTERNAL static void internal_test_transport_sci_factory_rejects(void)
 {
   TEST_BEGIN("transport_sci factory rejects");
-  sci_factory_prep();
+  internal_sci_factory_prep();
 
   ra8_sdmmc_spi_transport_t tr = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_sdmmc_spi_transport_sci(0U, 60000000U, nullptr, &tr));
@@ -480,7 +594,8 @@ static void test_transport_sci_factory_rejects(void)
                  ra8_sdmmc_spi_transport_sci(0U, 60000000U, &s_factory_pins, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_sdmmc_spi_transport_sci(0U, 0U, &s_factory_pins, &tr));
 
-  /* Out-of-range SCK port (> k_ra8_port_max) -> ra8_pfs_route_peripheral fails. */
+  /* Out-of-range SCK port (> k_ra8_port_max) -> ra8_pfs_route_peripheral fails.
+   */
   const ra8_sdmmc_spi_sci_pins_t bad = {
     .sck  = RA8_PIN(99U, 0U),
     .cipo = RA8_PIN(1U, 1U),
@@ -501,8 +616,16 @@ static void test_transport_sci_factory_rejects(void)
  * No compound decision -- ``internal_prepare_init`` guards on the single
  * condition ``s_state.initialized``. V1 (false) is the happy init above;
  * V2 (true) is the second init here, which must report invalid_state.
+ * @brief Exercise test init double rejected.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_init_double_rejected(void)
+RA8_INTERNAL static void internal_test_init_double_rejected(void)
 {
   TEST_BEGIN("init twice -> invalid_state");
   init_sdhc_ok();
@@ -516,8 +639,16 @@ static void test_init_double_rejected(void)
  * condition ``err != k_ra8_ok`` from the data-rate set_clock. The counting
  * transport fails that second set_clock, so init must propagate the error
  * and leave the driver un-initialised.
+ * @brief Exercise test init finalize clock failure.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_init_finalize_clock_failure(void)
+RA8_INTERNAL static void internal_test_init_finalize_clock_failure(void)
 {
   TEST_BEGIN("init finalize set_clock failure propagates");
   per_test_setup();
@@ -540,8 +671,16 @@ static void test_init_finalize_clock_failure(void)
  * No compound decision -- both queries reject on the single condition
  * ``!s_state.initialized`` and on their NULL-pointer guards. Exercises the
  * NULL guard and the not-initialised guard of each query.
+ * @brief Exercise test capacity type query guards.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_capacity_type_query_guards(void)
+RA8_INTERNAL static void internal_test_capacity_type_query_guards(void)
 {
   TEST_BEGIN("get_capacity / get_card_type guards");
   per_test_setup();
@@ -577,8 +716,16 @@ static void test_capacity_type_query_guards(void)
  *   - write_block one-block          -> success via write_blocks delegation.
  *   - erase_blocks count == 0        -> invalid_arg passthrough.
  *   - get_capacity after deinit      -> invalid_state.
+ * @brief Exercise test fs backend shims.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_fs_backend_shims(void)
+RA8_INTERNAL static void internal_test_fs_backend_shims(void)
 {
   TEST_BEGIN("ra8_fs backend shims");
   init_sdhc_ok();
@@ -619,31 +766,51 @@ static void test_fs_backend_shims(void)
   TEST_ASSERT_EQ(k_ra8_err_out_of_range,
                  backend.erase_blocks(backend.ctx, 0U, (uint64_t)UINT32_MAX + 1U));
 
-  /* get_capacity shim after deinit -> invalid_state (descriptor outlives init). */
+  /* get_capacity shim after deinit -> invalid_state (descriptor outlives init).
+   */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_deinit());
   uint64_t bc = 0U;
   uint32_t bs = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, backend.get_capacity(backend.ctx, &bc, &bs));
   TEST_END("ra8_fs backend shims");
 }
+/**
+ * @brief Consume host-test log bytes without touching target ITM MMIO.
+ * @details Provides a no-op injected sink for expected-error test vectors.
+ * @param[in] context Unused sink context.
+ * @param[in] byte Unused byte emitted by the production logger.
+ * @pre The test process owns the logger sink for the suite lifetime.
+ * @pre No vector depends on observing diagnostic text.
+ * @post No memory, descriptor, or hardware state is modified.
+ * @post Control returns to the production logger immediately.
+ * @note This keeps sanitizer runs away from the target-only ITM window.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_log_sink(void* context, uint8_t byte)
+{
+  (void)context;
+  (void)byte;
+}
+
 int main(void)
 {
-  test_mcdc_validate_transport_or_chain();
-  test_mcdc_fs_get_capacity_null_or();
-  test_crc7_published_vectors();
-  test_crc16_published_vectors();
-  test_init_null_transport_rejected();
-  test_init_validates_callbacks();
-  test_init_full_sdhc_path();
-  test_init_cmd8_classifies_v1_card();
-  test_bind_fs_backend_populates_struct();
-  test_bind_fs_backend_uninitialized_rejected();
-  test_transport_sci_factory_and_shims();
-  test_transport_sci_factory_rejects();
-  test_init_double_rejected();
-  test_init_finalize_clock_failure();
-  test_capacity_type_query_guards();
-  test_fs_backend_shims();
-  (void)fprintf(stderr, "[OK ] all ra8_sdmmc_spi tests passed\n");
+  ra8_log_set_byte_sink(internal_host_log_sink, nullptr);
+  internal_test_mcdc_validate_transport_or_chain();
+  internal_test_mcdc_fs_get_capacity_null_or();
+  internal_test_crc7_published_vectors();
+  internal_test_crc16_published_vectors();
+  internal_test_init_null_transport_rejected();
+  internal_test_init_validates_callbacks();
+  internal_test_init_full_sdhc_path();
+  internal_test_init_cmd8_classifies_v1_card();
+  internal_test_bind_fs_backend_populates_struct();
+  internal_test_bind_fs_backend_uninitialized_rejected();
+  internal_test_transport_sci_factory_and_shims();
+  internal_test_transport_sci_factory_rejects();
+  internal_test_init_double_rejected();
+  internal_test_init_finalize_clock_failure();
+  internal_test_capacity_type_query_guards();
+  internal_test_fs_backend_shims();
+  ra8_log_set_byte_sink(nullptr, nullptr);
   return 0;
 }
