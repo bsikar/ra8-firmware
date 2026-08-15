@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_usb_cdc.c
  * @brief Unit tests for the native USB CDC ACM class layer
+ * @details Drives native device-side CDC setup requests, line coding, endpoints, callbacks, and rejection paths using fake USB registers.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -372,6 +373,5 @@ int32_t main(void)
   test_handle_setup_rejects_standard();
   test_send_recv_arg_validation();
   test_mcdc_cdc();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_cdc.c\n");
   return 0;
 }
