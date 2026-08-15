@@ -354,31 +354,7 @@ internal_directory_decode(const uint8_t* bytes, uint32_t available, posix_direct
   return k_ra8_ok;
 }
 #else
-/**
- * @brief Refuse unqualified raw directory record layouts.
- * @details The adapter has no safe decoder for an unknown host ABI, so it fails
- *          closed without inspecting any candidate bytes.
- * @param[in] bytes Unused candidate raw bytes.
- * @param[in] available Unused available byte count.
- * @param[out] out Unused record-view destination.
- * @return Unsupported-host status.
- * @retval k_ra8_err_not_supported No validated raw record layout exists.
- * @pre Caller-provided pointers may be valid but are deliberately not dereferenced.
- * @pre The build does not identify Linux or Darwin raw directory ABI.
- * @post No input or output memory is accessed.
- * @post No filesystem or descriptor state changes.
- * @note Pure and thread-safe.
- * @since Version 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t
-internal_directory_decode(const uint8_t* bytes, uint32_t available, posix_directory_record_t* out)
-{
-  (void)bytes;
-  (void)available;
-  (void)out;
-  return k_ra8_err_not_supported;
-}
+#error "fw_if_fs_posix requires Linux getdents64 or Darwin getdirentries64"
 #endif
 
 RA8_PRIV ra8_err_t priv_fs_posix_directory_next(int                       fd,
