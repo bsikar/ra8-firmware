@@ -6,7 +6,7 @@
  * Holds the text sub-responsibility of the software pixel-pusher: the 1-bpp
  * glyph-cell blitters and the public text entry points (ra8_gfx_text_out,
  * ra8_gfx_text_size). These share the single framebuffer binding
- * (s_gfx_text_state) and the low-level packers/plotters with the core
+ * (g_gfx_text_state) and the low-level packers/plotters with the core
  * rasteriser TU (ra8_gfx_text.c) via ra8_gfx_internal.h.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -88,10 +88,10 @@ static void internal_blit_glyph_565(int32_t        x,
   /* Clip the glyph cell against the active clip rectangle (within the
    * framebuffer), so it honours both the panel bounds and any dirty-region clip.
    * Default full clip => byte-identical to the unclipped blit. */
-  const int32_t cl  = s_gfx_text_state.clip_x0;
-  const int32_t ct  = s_gfx_text_state.clip_y0;
-  const int32_t cr  = s_gfx_text_state.clip_x1;
-  const int32_t cb  = s_gfx_text_state.clip_y1;
+  const int32_t cl  = g_gfx_text_state.clip_x0;
+  const int32_t ct  = g_gfx_text_state.clip_y0;
+  const int32_t cr  = g_gfx_text_state.clip_x1;
+  const int32_t cb  = g_gfx_text_state.clip_y1;
   const int32_t cx0 = (x >= cl) ? x : cl;
   const int32_t cy0 = (y >= ct) ? y : ct;
   const int64_t xr  = (int64_t)x + (int64_t)gw; /* 64-bit: no int32 overflow. */
@@ -107,11 +107,11 @@ static void internal_blit_glyph_565(int32_t        x,
   const uint8_t  fhi    = (uint8_t)((vfg >> k_glyph_bits_per_byte) & (uint16_t)k_mask_byte);
   const uint8_t  blo    = (uint8_t)(vbg & (uint16_t)k_mask_byte);
   const uint8_t  bhi    = (uint8_t)((vbg >> k_glyph_bits_per_byte) & (uint16_t)k_mask_byte);
-  const size_t   bpp    = (size_t)s_gfx_text_state.bpp;
-  const size_t   stride = (size_t)s_gfx_text_state.width * bpp;
+  const size_t   bpp    = (size_t)g_gfx_text_state.bpp;
+  const size_t   stride = (size_t)g_gfx_text_state.width * bpp;
   for (int32_t sy = cy0; sy < cy1; sy++) {
     const uint32_t grow = (uint32_t)(sy - y);
-    uint8_t*       p    = s_gfx_text_state.fb + ((size_t)sy * stride) + ((size_t)cx0 * bpp);
+    uint8_t*       p    = g_gfx_text_state.fb + ((size_t)sy * stride) + ((size_t)cx0 * bpp);
     for (int32_t sx = cx0; sx < cx1; sx++) {
       const uint32_t gcol     = (uint32_t)(sx - x);
       const uint32_t byte_idx = (grow * row_bytes) + (gcol / (uint32_t)k_glyph_bits_per_byte);
@@ -158,7 +158,7 @@ static void internal_render_glyph(int32_t               x,
   const uint32_t row_bytes =
     ((uint32_t)font->glyph_width + (k_glyph_bits_per_byte - 1U)) / k_glyph_bits_per_byte;
   const uint8_t* gd = font->glyph_data + ((size_t)idx * (size_t)font->bytes_per_glyph);
-  if (s_gfx_text_state.format == k_ra8_gfx_format_rgb565) {
+  if (g_gfx_text_state.format == k_ra8_gfx_format_rgb565) {
     internal_blit_glyph_565(x,
                             y,
                             (int32_t)font->glyph_width,
@@ -189,7 +189,7 @@ ra8_err_t ra8_gfx_text_out(int32_t               x,
   if ((str == nullptr) || (font == nullptr)) {
     return k_ra8_err_null_ptr;
   }
-  if (!s_gfx_text_state.initialized) {
+  if (!g_gfx_text_state.initialized) {
     return k_ra8_err_not_initialized;
   }
   int32_t       cur_x  = x;

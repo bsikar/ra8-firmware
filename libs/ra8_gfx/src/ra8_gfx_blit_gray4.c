@@ -84,11 +84,11 @@ static uint32_t internal_gray4_color(const uint8_t* src, int32_t src_w, int32_t 
  * @param[in] zoom  Block edge length in pixels; caller-guaranteed >= 1.
  * @param[in] color 0x00RRGGBB colour to write to every pixel of the block.
  * @return Nothing.
- * @pre s_gfx_text_state is initialised (caller checked).
+ * @pre g_gfx_text_state is initialised (caller checked).
  * @pre @p zoom >= 1 so the block is non-empty.
  * @post Every in-clip pixel of the block equals the down-converted @p color.
  * @post Pixels outside the clip rectangle are left unchanged.
- * @note Not thread-safe; shares s_gfx_text_state with all rasteriser functions.
+ * @note Not thread-safe; shares g_gfx_text_state with all rasteriser functions.
  * @since 0.1.0
  */
 RA8_INTERNAL
@@ -112,7 +112,7 @@ ra8_err_t ra8_gfx_blit_gray4_zoom(const uint8_t* src,
                                   int32_t        dst_x,
                                   int32_t        dst_y)
 {
-  if (!s_gfx_text_state.initialized) {
+  if (!g_gfx_text_state.initialized) {
     return k_ra8_err_not_initialized;
   }
   if (src == nullptr) {

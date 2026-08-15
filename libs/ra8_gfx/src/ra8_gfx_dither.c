@@ -194,20 +194,20 @@ ra8_err_t ra8_gfx_dither_gray8_to_gray4(const uint8_t* src,
                                         uint32_t       out_cap,
                                         uint32_t*      out_size)
 {
-  static const char* const s_tag = "ra8_gfx_dither";
-  RA8_CHECK_NULL_PTR(src, s_tag, "src");
-  RA8_CHECK_NULL_PTR(out, s_tag, "out");
-  RA8_CHECK_NULL_PTR(out_size, s_tag, "out_size");
+  static const char* const k_tag = "ra8_gfx_dither";
+  RA8_CHECK_NULL_PTR(src, k_tag, "src");
+  RA8_CHECK_NULL_PTR(out, k_tag, "out");
+  RA8_CHECK_NULL_PTR(out_size, k_tag, "out_size");
 
   if ((w <= 0) || (h <= 0)) {
-    ra8_log_error(s_tag, "w or h is non-positive");
+    ra8_log_error(k_tag, "w or h is non-positive");
     return k_ra8_err_invalid_arg;
   }
 
   const uint32_t n_pixels = (uint32_t)w * (uint32_t)h;
   const uint32_t n_bytes  = (n_pixels + 1U) / (uint32_t)k_ra8_gfx_dither_ppb;
   if (out_cap < n_bytes) {
-    ra8_log_error(s_tag, "output buffer too small");
+    ra8_log_error(k_tag, "output buffer too small");
     return k_ra8_err_no_mem;
   }
 
@@ -219,7 +219,7 @@ ra8_err_t ra8_gfx_dither_gray8_to_gray4(const uint8_t* src,
 ra8_err_t
 ra8_gfx_blit_gray8_dither(const uint8_t* src, int32_t w, int32_t h, int32_t dst_x, int32_t dst_y)
 {
-  if (!s_gfx_text_state.initialized) {
+  if (!g_gfx_text_state.initialized) {
     return k_ra8_err_not_initialized;
   }
   if ((src == nullptr) || (w <= 0) || (h <= 0)) {
