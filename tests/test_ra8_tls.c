@@ -62,18 +62,22 @@ typedef struct {
 /** @brief Per-test loopback context shared between send and recv callbacks. */
 static loop_bio_t s_loop;
 
+#include "support/ra8_tls_test_contracts.h"
+
 /**
  * @brief Reset the loopback ring to an empty state.
+ * @copydoc internal_loop_reset
  */
-static void loop_reset(void)
+RA8_INTERNAL static void internal_loop_reset(void)
 {
   (void)memset(&s_loop, 0, sizeof(s_loop));
 }
 
 /**
  * @brief BIO send callback that buffers ciphertext in ``s_loop``.
+ * @copydoc internal_loop_bio_send
  */
-static int loop_bio_send(void* ctx, const uint8_t* buf, size_t len)
+RA8_INTERNAL static int internal_loop_bio_send(void* ctx, const uint8_t* buf, size_t len)
 {
   (void)ctx;
   loop_bio_t* loop    = &s_loop;
@@ -89,8 +93,9 @@ static int loop_bio_send(void* ctx, const uint8_t* buf, size_t len)
 
 /**
  * @brief BIO recv callback that drains ciphertext from ``s_loop``.
+ * @copydoc internal_loop_bio_recv
  */
-static int loop_bio_recv(void* ctx, uint8_t* buf, size_t len)
+RA8_INTERNAL static int internal_loop_bio_recv(void* ctx, uint8_t* buf, size_t len)
 {
   (void)ctx;
   loop_bio_t* loop = &s_loop;
@@ -111,12 +116,13 @@ static int loop_bio_recv(void* ctx, uint8_t* buf, size_t len)
 
 /**
  * @brief Build a valid session config wired to the loopback BIO pair.
+ * @copydoc internal_make_loopback_cfg
  */
-static ra8_tls_session_cfg_t make_loopback_cfg(void)
+RA8_INTERNAL static ra8_tls_session_cfg_t internal_make_loopback_cfg(void)
 {
   ra8_tls_session_cfg_t cfg = {};
-  cfg.bio_send              = loop_bio_send;
-  cfg.bio_recv              = loop_bio_recv;
+  cfg.bio_send              = internal_loop_bio_send;
+  cfg.bio_recv              = internal_loop_bio_recv;
   cfg.bio_ctx               = &s_loop;
   cfg.server_name           = "test.local";
   return cfg;
@@ -129,10 +135,11 @@ static ra8_tls_session_cfg_t make_loopback_cfg(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
+ * code under test that this case touches)
  */
 
-static void test_global_init_idempotent_failure(void)
+/** @copydoc internal_test_global_init_idempotent_failure */
+RA8_INTERNAL static void internal_test_global_init_idempotent_failure(void)
 {
   TEST_BEGIN("global_init refuses double-init");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_global_init());
@@ -142,12 +149,13 @@ static void test_global_init_idempotent_failure(void)
 }
 
 /**
+ * @copydoc internal_test_global_deinit_without_init
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_global_deinit_without_init(void)
+RA8_INTERNAL static void internal_test_global_deinit_without_init(void)
 {
   TEST_BEGIN("global_deinit without init returns not_initialized");
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_tls_global_deinit());
@@ -155,18 +163,19 @@ static void test_global_deinit_without_init(void)
 }
 
 /**
+ * @copydoc internal_test_session_open_invalid_args
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_session_open_invalid_args(void)
+RA8_INTERNAL static void internal_test_session_open_invalid_args(void)
 {
   TEST_BEGIN("session_open argument validation");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_global_init());
 
   ra8_tls_session_t     s   = (ra8_tls_session_t)0x1U;
-  ra8_tls_session_cfg_t cfg = make_loopback_cfg();
+  ra8_tls_session_cfg_t cfg = internal_make_loopback_cfg();
 
   /* NULL out_session pointer rejected. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tls_session_open(nullptr, &cfg));
@@ -176,13 +185,13 @@ static void test_session_open_invalid_args(void)
   TEST_ASSERT_NULL(s);
 
   /* NULL bio_send rejected. */
-  ra8_tls_session_cfg_t bad = make_loopback_cfg();
+  ra8_tls_session_cfg_t bad = internal_make_loopback_cfg();
   bad.bio_send              = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tls_session_open(&s, &bad));
   TEST_ASSERT_NULL(s);
 
   /* NULL bio_recv rejected. */
-  bad          = make_loopback_cfg();
+  bad          = internal_make_loopback_cfg();
   bad.bio_recv = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tls_session_open(&s, &bad));
   TEST_ASSERT_NULL(s);
@@ -192,33 +201,35 @@ static void test_session_open_invalid_args(void)
 }
 
 /**
+ * @copydoc internal_test_session_open_before_init
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_session_open_before_init(void)
+RA8_INTERNAL static void internal_test_session_open_before_init(void)
 {
   TEST_BEGIN("session_open before global_init returns not_initialized");
   ra8_tls_session_t     s   = nullptr;
-  ra8_tls_session_cfg_t cfg = make_loopback_cfg();
+  ra8_tls_session_cfg_t cfg = internal_make_loopback_cfg();
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_tls_session_open(&s, &cfg));
   TEST_ASSERT_NULL(s);
   TEST_END("session_open before global_init returns not_initialized");
 }
 
 /**
+ * @copydoc internal_test_session_pool_exhaustion
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_session_pool_exhaustion(void)
+RA8_INTERNAL static void internal_test_session_pool_exhaustion(void)
 {
   TEST_BEGIN("session pool exhaustion returns no_mem");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_global_init());
 
-  ra8_tls_session_cfg_t cfg                              = make_loopback_cfg();
+  ra8_tls_session_cfg_t cfg                              = internal_make_loopback_cfg();
   ra8_tls_session_t     sessions[k_ra8_tls_max_sessions] = {};
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_tls_max_sessions; ++i) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_open(&sessions[i], &cfg));
@@ -245,12 +256,13 @@ static void test_session_pool_exhaustion(void)
 }
 
 /**
+ * @copydoc internal_test_session_close_invalid_handle
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_session_close_invalid_handle(void)
+RA8_INTERNAL static void internal_test_session_close_invalid_handle(void)
 {
   TEST_BEGIN("session_close rejects bogus handles");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_global_init());
@@ -268,26 +280,27 @@ static void test_session_close_invalid_handle(void)
 }
 
 /**
+ * @copydoc internal_test_loopback_handshake_and_io
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_loopback_handshake_and_io(void)
+RA8_INTERNAL static void internal_test_loopback_handshake_and_io(void)
 {
   TEST_BEGIN("loopback handshake + send + recv round-trip");
-  loop_reset();
+  internal_loop_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_global_init());
 
   ra8_tls_session_t     s   = nullptr;
-  ra8_tls_session_cfg_t cfg = make_loopback_cfg();
+  ra8_tls_session_cfg_t cfg = internal_make_loopback_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_open(&s, &cfg));
   TEST_ASSERT_NOT_NULL(s);
 
   /* Fake handshake drives one byte through the BIO pair. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_handshake(s));
 
-  /* Send returns the count buffered by loop_bio_send. */
+  /* Send returns the count buffered by internal_loop_bio_send. */
   const uint8_t payload[] = {'h', 'i'};
   size_t        sent      = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_send(s, payload, sizeof(payload), &sent));
@@ -316,18 +329,19 @@ static void test_loopback_handshake_and_io(void)
 }
 
 /**
+ * @copydoc internal_test_io_arg_validation
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_io_arg_validation(void)
+RA8_INTERNAL static void internal_test_io_arg_validation(void)
 {
   TEST_BEGIN("send/recv argument validation");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_global_init());
 
   ra8_tls_session_t     s   = nullptr;
-  ra8_tls_session_cfg_t cfg = make_loopback_cfg();
+  ra8_tls_session_cfg_t cfg = internal_make_loopback_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_open(&s, &cfg));
 
   uint8_t buf[4] = {};
@@ -351,7 +365,8 @@ static void test_io_arg_validation(void)
 }
 
 /**
- * @test test_mcdc_tls
+ * @copydoc internal_test_mcdc_tls
+ * @test internal_test_mcdc_tls
  *
  * @par MC/DC:
  * Two 2-condition decisions in libs/ra8_tls/src/ra8_tls.c:
@@ -370,30 +385,30 @@ static void test_io_arg_validation(void)
  * - V3: buf=NULL, len=4       -> C1=T,C2=T -> dec T -> invalid_arg
  * Pairs (V2,V3) flip C1 with C2=T fixed; (V1,V3) flip C2 with C1=T fixed.
  */
-static void test_mcdc_tls(void)
+RA8_INTERNAL static void internal_test_mcdc_tls(void)
 {
   TEST_BEGIN("tls MC/DC: session_open BIO + send NULL/len decisions");
-  loop_reset();
+  internal_loop_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_global_init());
 
   /* Decision A vectors. */
   ra8_tls_session_t     s  = nullptr;
-  ra8_tls_session_cfg_t v1 = make_loopback_cfg();
+  ra8_tls_session_cfg_t v1 = internal_make_loopback_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_open(&s, &v1));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_close(s));
 
   s                        = nullptr;
-  ra8_tls_session_cfg_t v2 = make_loopback_cfg();
+  ra8_tls_session_cfg_t v2 = internal_make_loopback_cfg();
   v2.bio_send              = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tls_session_open(&s, &v2));
 
   s                        = nullptr;
-  ra8_tls_session_cfg_t v3 = make_loopback_cfg();
+  ra8_tls_session_cfg_t v3 = internal_make_loopback_cfg();
   v3.bio_recv              = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tls_session_open(&s, &v3));
 
   /* Decision B vectors. Need a live session. */
-  ra8_tls_session_cfg_t cfg_io = make_loopback_cfg();
+  ra8_tls_session_cfg_t cfg_io = internal_make_loopback_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_open(&s, &cfg_io));
   uint8_t buf[4] = {0U};
   size_t  sent   = 0U;
@@ -411,7 +426,8 @@ static void test_mcdc_tls(void)
 }
 
 /**
- * @test test_mcdc_tls_recv_buf_len
+ * @copydoc internal_test_mcdc_tls_recv_buf_len
+ * @test internal_test_mcdc_tls_recv_buf_len
  *
  * @par MC/DC:
  * Decision: ``if ((buf == NULL) && (len > 0U))`` in ``ra8_tls_recv``
@@ -421,13 +437,13 @@ static void test_mcdc_tls(void)
  * - V3: buf=NULL,  len>0 -> C1=T, C2=T -> dec T -> invalid_arg
  * (V2,V3) flips C1 with C2=T fixed; (V1,V3) flips C2 with C1=T fixed.
  */
-static void test_mcdc_tls_recv_buf_len(void)
+RA8_INTERNAL static void internal_test_mcdc_tls_recv_buf_len(void)
 {
   TEST_BEGIN("tls MC/DC: recv buf == NULL && len > 0");
-  loop_reset();
+  internal_loop_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_global_init());
   ra8_tls_session_t     s   = nullptr;
-  ra8_tls_session_cfg_t cfg = make_loopback_cfg();
+  ra8_tls_session_cfg_t cfg = internal_make_loopback_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_open(&s, &cfg));
   uint8_t buf[4] = {0U};
   size_t  got    = 0U;
@@ -444,7 +460,8 @@ static void test_mcdc_tls_recv_buf_len(void)
 }
 
 /**
- * @test test_mcdc_tls_handle_valid_bounds
+ * @copydoc internal_test_mcdc_tls_handle_valid_bounds
+ * @test internal_test_mcdc_tls_handle_valid_bounds
  *
  * @par MC/DC:
  * Decision: ``if ((session < base) || (session >= end))`` in
@@ -456,13 +473,13 @@ static void test_mcdc_tls_recv_buf_len(void)
  * - V3: session above end (large ptr)          -> C1=F, C2=T -> invalid_arg
  * (V1,V2) flips C1 with C2 masked; (V1,V3) flips C2 with C1 fixed F.
  */
-static void test_mcdc_tls_handle_valid_bounds(void)
+RA8_INTERNAL static void internal_test_mcdc_tls_handle_valid_bounds(void)
 {
   TEST_BEGIN("tls MC/DC: handle_valid (session<base || session>=end)");
-  loop_reset();
+  internal_loop_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_global_init());
   ra8_tls_session_t     s   = nullptr;
-  ra8_tls_session_cfg_t cfg = make_loopback_cfg();
+  ra8_tls_session_cfg_t cfg = internal_make_loopback_cfg();
   /* V1: open a real session (lives inside the pool). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_open(&s, &cfg));
   /* V2: cast a deliberately-low pointer -- below the pool base. */
@@ -479,16 +496,16 @@ static void test_mcdc_tls_handle_valid_bounds(void)
 
 int main(void)
 {
-  test_global_deinit_without_init();
-  test_global_init_idempotent_failure();
-  test_session_open_before_init();
-  test_session_open_invalid_args();
-  test_session_pool_exhaustion();
-  test_session_close_invalid_handle();
-  test_loopback_handshake_and_io();
-  test_io_arg_validation();
-  test_mcdc_tls();
-  test_mcdc_tls_recv_buf_len();
-  test_mcdc_tls_handle_valid_bounds();
+  internal_test_global_deinit_without_init();
+  internal_test_global_init_idempotent_failure();
+  internal_test_session_open_before_init();
+  internal_test_session_open_invalid_args();
+  internal_test_session_pool_exhaustion();
+  internal_test_session_close_invalid_handle();
+  internal_test_loopback_handshake_and_io();
+  internal_test_io_arg_validation();
+  internal_test_mcdc_tls();
+  internal_test_mcdc_tls_recv_buf_len();
+  internal_test_mcdc_tls_handle_valid_bounds();
   return 0;
 }
