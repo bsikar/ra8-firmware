@@ -2,6 +2,12 @@
  * @file test_ra8_book_stream.c
  * @brief Strict streamed RABOOK1 and production RBKC reader validation tests.
  *
+ * @details
+ * Exercises canonical flat and compressed round trips plus malformed headers,
+ * layouts, DOM ownership, image extents, CRCs, callback failures, aliased
+ * workspaces, and partial reader state. Fixed memory-backed fixtures keep every
+ * validation and decompression boundary deterministic and allocation-free.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

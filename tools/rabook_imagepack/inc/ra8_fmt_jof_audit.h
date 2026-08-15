@@ -75,7 +75,7 @@ typedef struct {
   uint32_t       decoded_tiles;        /**< Tiles decoded and hashed.                  */
   uint32_t       coverage_errors;      /**< Gap/overlap/order/end mismatches.          */
   uint32_t       geometry_errors;      /**< Decoded size disagreed with tile geometry. */
-  uint32_t       duplicate_candidates; /**< Matching non-uniform hash/size evidence. */
+  uint32_t       duplicate_candidates; /**< Matching non-uniform hash/size evidence.   */
 } ra8_fmt_jof_audit_result_t;
 
 /**

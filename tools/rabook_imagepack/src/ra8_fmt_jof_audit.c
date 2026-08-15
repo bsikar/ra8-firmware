@@ -6,6 +6,12 @@
  * @par Tag
  * [Ring 4 / Domain] {World: NS}
  *
+ * @details
+ * Parses JOF geometry through an injected positioned-read backend, derives
+ * exact caller-buffer requirements, and audits every indexed tile for stored
+ * coverage and decoded-size consistency. Reused caller scratch supports raw
+ * and compressed payloads without allocation or a filesystem dependency.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0

@@ -6,6 +6,12 @@
  * @par Tag
  * [Ring 4 / Host Port] {World: Host}
  *
+ * @details
+ * Centralizes the POSIX backend's errno mapping, descriptor invalidation,
+ * civil timestamp conversion, bounded path copying, and sibling stage-name
+ * construction. Keeping these operations shared gives every backend path the
+ * same failure vocabulary and close-once lifecycle behavior.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

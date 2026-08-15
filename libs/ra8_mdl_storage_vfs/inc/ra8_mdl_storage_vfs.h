@@ -50,7 +50,7 @@ extern "C" {
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_ra8_mdl_storage_vfs_path_capacity       = 768, /**< VFS path incl NUL. */
+  k_ra8_mdl_storage_vfs_path_capacity       = 768, /**< VFS path incl NUL.   */
   k_ra8_mdl_storage_vfs_stage_leaf_capacity = 32,  /**< Stage leaf incl NUL. */
 } ra8_mdl_storage_vfs_limits_t;
 
@@ -89,7 +89,7 @@ typedef ra8_err_t (*ra8_mdl_storage_vfs_validate_fn)(void*         ctx,
 typedef struct {
   const char*                     stage_leaf;   /**< Reserved sibling staging leaf. */
   ra8_mdl_storage_vfs_validate_fn validate;     /**< Optional artifact validator.   */
-  void*                           validate_ctx; /**< Validator context.              */
+  void*                           validate_ctx; /**< Validator context.             */
 } ra8_mdl_storage_vfs_config_t;
 
 /**
@@ -124,9 +124,9 @@ typedef struct {
   void*                           validate_ctx;               /**< Delegated check context.   */
   uint64_t                        bytes_written;              /**< Successful appended bytes. */
   ra8_mdl_storage_vfs_state_t     state;                      /**< Transaction lifecycle.     */
-  char stage_leaf[k_ra8_mdl_storage_vfs_stage_leaf_capacity]; /**< Owned leaf. */
-  char destination[k_ra8_mdl_storage_vfs_path_capacity];      /**< Final path. */
-  char staging_path[k_ra8_mdl_storage_vfs_path_capacity];     /**< Private path. */
+  char stage_leaf[k_ra8_mdl_storage_vfs_stage_leaf_capacity]; /**< Owned leaf.                */
+  char destination[k_ra8_mdl_storage_vfs_path_capacity];      /**< Final path.                */
+  char staging_path[k_ra8_mdl_storage_vfs_path_capacity];     /**< Private path.              */
 } ra8_mdl_storage_vfs_t;
 
 /**

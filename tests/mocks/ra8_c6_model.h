@@ -67,8 +67,8 @@ typedef enum : uint32_t {
                                the rest descend from it.                   */
   k_c6m_eth_first             = 0x80U, /**< First octet of the modelled 802.3 frame.      */
   k_c6m_caps_bytes            = 17U,   /**< Octets in the host-capabilities announcement. */
-  k_c6m_mdl_digest_fill       = 0xA5U, /**< Deterministic media digest test octet.      */
-  k_c6m_custom_response_bytes = 1200U, /**< CustomRpc response scratch capacity. */
+  k_c6m_mdl_digest_fill       = 0xA5U, /**< Deterministic media digest test octet.        */
+  k_c6m_custom_response_bytes = 1200U, /**< CustomRpc response scratch capacity.          */
 } ra8_c6_model_const_t;
 
 /**
@@ -97,14 +97,14 @@ typedef enum : int32_t {
 
 /** @brief Test-only corruption applied to the next media Chunk response. */
 typedef enum : uint8_t {
-  k_c6m_mdl_fault_none = 0U,           /**< Leave the next chunk unchanged. */
-  k_c6m_mdl_fault_complete_no_sha,     /**< Omit the terminal digest.       */
-  k_c6m_mdl_fault_complete_bad_total,  /**< Corrupt the terminal total.     */
-  k_c6m_mdl_fault_failed,              /**< Emit a coherent failure.        */
-  k_c6m_mdl_fault_failed_zero_status,  /**< Emit failure with zero status.  */
-  k_c6m_mdl_fault_cancelled,           /**< Emit coherent cancellation.     */
-  k_c6m_mdl_fault_cancelled_with_data, /**< Attach data to cancellation.    */
-  k_c6m_mdl_fault_downloading_error,   /**< Attach error to active data.    */
+  k_c6m_mdl_fault_none = 0U,           /**< Leave the next chunk unchanged.  */
+  k_c6m_mdl_fault_complete_no_sha,     /**< Omit the terminal digest.        */
+  k_c6m_mdl_fault_complete_bad_total,  /**< Corrupt the terminal total.      */
+  k_c6m_mdl_fault_failed,              /**< Emit a coherent failure.         */
+  k_c6m_mdl_fault_failed_zero_status,  /**< Emit failure with zero status.   */
+  k_c6m_mdl_fault_cancelled,           /**< Emit coherent cancellation.      */
+  k_c6m_mdl_fault_cancelled_with_data, /**< Attach data to cancellation.     */
+  k_c6m_mdl_fault_downloading_error,   /**< Attach error to active data.     */
   k_c6m_mdl_fault_out_of_order,        /**< Increment the response sequence. */
 } ra8_c6_model_mdl_fault_t;
 

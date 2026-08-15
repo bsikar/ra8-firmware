@@ -1,6 +1,13 @@
 /**
  * @file ra8_rabook_import_internal.h
  * @brief Module-private bounded source-key streaming contracts.
+ *
+ * @details
+ * Declares the exact sequential-read seam shared by the RABOOK importer and
+ * its focused tests. The contract consumes a stable source-size snapshot,
+ * confirms EOF within a bounded callback budget, and publishes CRC and size
+ * only after the complete stream has been accepted.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since Version 0.1.0

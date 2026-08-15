@@ -49,14 +49,14 @@ typedef struct {
   char contact[k_mdl_contact_max]; /**< Operator contact for the UA.     */
 
   /* Chapter list, found on a series page. */
-  char                chapter_url_contains[k_mdl_match_max];    /**< href must contain this.    */
+  char                chapter_url_contains[k_mdl_match_max];    /**< href must contain this. */
   char                chapter_url_prefix[k_mdl_search_url_max]; /**< Absolute series-chapter
                                                     prefix. */
-  mdl_chapter_order_t chapter_order; /**< Ordering to apply.              */
+  mdl_chapter_order_t chapter_order;                            /**< Ordering to apply. */
 
   /* Page images, found on a chapter page. */
   char page_img_attr[k_mdl_attr_max];          /**< Preferred attr (fallback other). */
-  char page_img_url_contains[k_mdl_match_max]; /**< Keep only URLs with this. */
+  char page_img_url_contains[k_mdl_match_max]; /**< Keep only URLs with this.        */
 
   /* Search / discovery (#304). Empty when the site descriptor supplies none. */
   char search_url[k_mdl_search_url_max];        /**< Query template with a `{q}` slot.
@@ -71,15 +71,15 @@ typedef struct {
                                                     selector. */
   char series_summary_selector[k_mdl_match_max]; /**< Series synopsis selector.
                                                   */
-  char series_author_selector[k_mdl_match_max];  /**< Series writer selector.  */
-  char series_artist_selector[k_mdl_match_max];  /**< Series artist selector.  */
+  char series_author_selector[k_mdl_match_max];  /**< Series writer selector.    */
+  char series_artist_selector[k_mdl_match_max];  /**< Series artist selector.    */
   char series_cover_selector[k_mdl_match_max];   /**< Series cover-URL selector. */
   char chapter_title_selector[k_mdl_match_max];  /**< Per-chapter title selector.
                                                  */
   char chapter_number_selector[k_mdl_match_max]; /**< Per-chapter number
                                                     selector.   */
-  char language[k_mdl_kind_max];                 /**< BCP-47 language tag.           */
-  char reading_direction[k_mdl_kind_max];        /**< `ltr` or `rtl`.                */
+  char language[k_mdl_kind_max];                 /**< BCP-47 language tag. */
+  char reading_direction[k_mdl_kind_max];        /**< `ltr` or `rtl`.      */
 
   /* Politeness jitter (milliseconds); baseline spacing, jittered in [min,max].
    */
@@ -92,7 +92,7 @@ typedef struct {
    * mdl_politeness). */
   uint32_t rate_per_min;    /**< Sustained per-host request ceiling (0 = off). */
   uint32_t burst;           /**< Token-bucket capacity, in requests.           */
-  uint32_t backoff_base_ms; /**< First backoff window on a 429/503. */
+  uint32_t backoff_base_ms; /**< First backoff window on a 429/503.            */
   uint32_t backoff_max_ms;  /**< Backoff-window ceiling.                       */
   uint32_t max_inflight;    /**< Per-host in-flight request cap.               */
 } mdl_site_t;

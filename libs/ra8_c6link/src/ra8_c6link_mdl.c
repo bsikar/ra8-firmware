@@ -23,7 +23,7 @@ typedef enum : uint16_t {
 
 /** @brief Response extractor variants. */
 typedef enum : uint8_t {
-  k_mdl_take_accepted  = 1U, /**< Extract an Accepted response.  */
+  k_mdl_take_accepted  = 1U, /**< Extract an Accepted response. */
   k_mdl_take_chunk     = 2U, /**< Extract a Chunk response.     */
   k_mdl_take_cancelled = 3U, /**< Extract a Cancelled response. */
 } mdl_take_kind_t;

@@ -27,8 +27,8 @@
 
 /** @brief Fixed HTTP policy values for the concrete ESP-IDF adapter. */
 typedef enum : uint16_t {
-  k_mdl_http_timeout_ms         = 15000U, /**< Per-operation HTTP timeout. */
-  k_mdl_http_status_success_min = 200U,   /**< Lowest successful HTTP status. */
+  k_mdl_http_timeout_ms         = 15000U, /**< Per-operation HTTP timeout.        */
+  k_mdl_http_status_success_min = 200U,   /**< Lowest successful HTTP status.     */
   k_mdl_http_status_redirect    = 300U,   /**< First redirect/non-success status. */
 } mdl_http_const_t;
 

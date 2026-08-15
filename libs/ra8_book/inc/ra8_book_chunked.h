@@ -140,10 +140,15 @@ typedef struct {
  * @see ra8_book_chunked_read()
  * @since Version 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_book_chunked_open(
-    ra8_book_chunked_t *rd, ra8_vsource_read_fn file_read, void *file_ctx,
-    uint64_t file_len, ra8_book_inflate_fn inflate, uint64_t *table_buf,
-    uint32_t table_cap_entries, uint8_t *staging, uint32_t staging_cap);
+[[nodiscard]] ra8_err_t ra8_book_chunked_open(ra8_book_chunked_t* rd,
+                                              ra8_vsource_read_fn file_read,
+                                              void*               file_ctx,
+                                              uint64_t            file_len,
+                                              ra8_book_inflate_fn inflate,
+                                              uint64_t*           table_buf,
+                                              uint32_t            table_cap_entries,
+                                              uint8_t*            staging,
+                                              uint32_t            staging_cap);
 
 /**
  * @brief Serve one chunk-aligned read of the inflated flat blob.
@@ -182,8 +187,8 @@ typedef struct {
  * @see ra8_vsource_add_paged()
  * @since Version 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_book_chunked_read(void *ctx, uint64_t offset,
-                                              uint8_t *buf, uint32_t len);
+[[nodiscard]] ra8_err_t
+ra8_book_chunked_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len);
 
 /**
  * @brief Strictly validate the complete flat blob behind an open RBKC reader.
@@ -225,9 +230,12 @@ typedef struct {
  * @note No heap allocation or recursion is used; the reader is not thread-safe.
  * @since Version 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_book_chunked_validate_strict(
-    ra8_book_chunked_t *rd, uint8_t *chunk, uint32_t chunk_cap,
-    uint8_t *scratch, uint32_t scratch_cap, ra8_book_header_t *out_header);
+[[nodiscard]] ra8_err_t ra8_book_chunked_validate_strict(ra8_book_chunked_t* rd,
+                                                         uint8_t*            chunk,
+                                                         uint32_t            chunk_cap,
+                                                         uint8_t*            scratch,
+                                                         uint32_t            scratch_cap,
+                                                         ra8_book_header_t*  out_header);
 
 #ifdef __cplusplus
 }

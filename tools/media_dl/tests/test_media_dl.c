@@ -62,7 +62,7 @@ typedef enum : uint16_t {
   k_buf_4k               = 4096, /**< robots.txt fetch scratch buffer.              */
   k_long_amp_run         = 240,  /**< '&' chars in the long-filename EPUB probe.    */
   k_amp_esc_len          = 5,    /**< strlen("&amp;"), the escape of one '&'.       */
-  k_meta_line_test_slack = 16,   /**< Key/delimiter bytes around a path value. */
+  k_meta_line_test_slack = 16,   /**< Key/delimiter bytes around a path value.      */
 } mdl_hard_const_t;
 
 static mdl_url_list_t s_list;
