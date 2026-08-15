@@ -1,6 +1,8 @@
 /**
  * @file ra8_app.c
  * @brief Implementation of the ra8_app app framework (#146).
+ * @details Manages a caller-owned application registry and dispatches bounded
+ * lifecycle transitions without allocation or hidden global ownership.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -8,6 +10,7 @@
 
 #include "ra8_app.h"
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 
 /** @brief Logging / check tag. */
@@ -312,7 +315,7 @@ ra8_app_state(const ra8_app_registry_t* reg, uint16_t id, ra8_app_state_t* out_s
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void internal_app_remove_at(ra8_app_registry_t* reg, uint16_t idx)
+RA8_INTERNAL static void internal_app_remove_at(ra8_app_registry_t* reg, uint16_t idx)
 {
   for (uint16_t i = idx; (uint16_t)(i + 1U) < reg->count; ++i) {
     reg->apps[i] = reg->apps[i + 1U];
