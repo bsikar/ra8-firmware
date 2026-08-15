@@ -5,11 +5,11 @@
 # run_corpus.sh -- drive the ra8_viewer malformed-input security corpus (#298).
 #
 # Builds the corpus with gen_corpus.py, then runs the viewer headless over every
-# fixture and asserts the outcome, so a regression in an untrusted-allocation
-# guard is caught without a human opening a window:
+# fixture and asserts the outcome, so a regression in workspace bounds or
+# unsupported-format dispatch is caught without a human opening a window:
 #
 #   * malicious fixtures MUST exit with a clean ra8_err_t (exit 1) -- never 0
-#     (an unbounded allocation slipped through), never a crash (killed by a
+#     (an unsafe input slipped through), never a crash (killed by a
 #     signal, exit >= 128), never a hang (timeout, exit 124);
 #   * legitimate fixtures MUST exit 0 and write a P6 PPM (a bound that also
 #     refuses a valid file is not a fix).
@@ -65,7 +65,7 @@ for f in "${malicious[@]}"; do
   if [[ "$rc" -eq 1 ]]; then
     echo "PASS refused: $f (clean exit 1)"
   elif [[ "$rc" -eq 0 ]]; then
-    echo "FAIL: $f was ACCEPTED (exit 0) -- an unbounded allocation slipped through" >&2
+    echo "FAIL: $f was ACCEPTED (exit 0) -- an unsafe input slipped through" >&2
     fail=1
   elif [[ "$rc" -eq 124 ]]; then
     echo "FAIL: $f HUNG (timeout)" >&2
@@ -80,7 +80,7 @@ for f in "${malicious[@]}"; do
 done
 
 # --- legitimate: a valid atlas must still decode ----------------------------
-legit=(legit.jof)
+legit=(legit.jof legit_deflate.jof)
 for f in "${legit[@]}"; do
   run_one "$f"
   if [[ "$rc" -ne 0 ]]; then

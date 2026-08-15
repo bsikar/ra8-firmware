@@ -1,120 +1,102 @@
 /**
  * @file main.c
- * @brief Entry point for the RA8 desktop reader viewer (direct-call, no emulation).
- *
- * @details
- * Opens a comic/e-book file with the host-linked reader core (ra8_viewer_reader)
- * and either shows it in a resizable, fit-to-width, continuously-scrolling Cocoa
- * window (ra8_viewer_view) or, headless, dumps a single page/tile for a rendering
- * proof. This is a viewer, not an emulator: it links the firmware's
- * platform-agnostic reader libraries and calls them directly on the host.
- *
- * Usage:
- * @code
- * ra8_viewer <file.cbz|.cbr|.cbt[.gz|.xz]|.jof>            # scrolling window
- * ra8_viewer <file> --headless --dump-ppm P [--page N | --dump-tile N]
- * @endcode
- *
+ * @brief Bounded host composition root for the streamed JOF viewer.
+ * @details One named ten-MiB backing holds the reader plus the mutually
+ * exclusive headless-tile or Cocoa-view scratch. Exact requirements are checked
+ * before every bind; larger atlases fail visibly instead of reaching an
+ * allocator or acquiring an implicit mapping.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 
+#include <signal.h>
+#include <stdalign.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
+#include "ra8_io_stream.h"
+#include "ra8_io_stream_posix.h"
 #include "ra8_log.h"
+#include "ra8_viewer_output_internal.h"
 #include "ra8_viewer_reader.h"
 #include "ra8_viewer_view.h"
 
-/**
- * @enum viewer_main_cfg_t
- * @brief Fixed run-loop and argument constants (no magic numbers).
- * @since 0.1.0
- */
+/** @brief Composition limits and CLI constants. */
 typedef enum : int32_t {
-  k_viewer_frame_ns  = 16000000, /**< Cooperative pump period, ~60 Hz (ns). */
-  k_viewer_min_args  = 2,        /**< argv count with just the file path.   */
-  k_viewer_radix_dec = 10,       /**< Base for parsing --page (decimal).    */
-} viewer_main_cfg_t;
+  k_viewer_frame_ns  = 16000000, /**< Cooperative pump period.       */
+  k_viewer_min_args  = 2,        /**< argv count with an input path. */
+  k_viewer_radix_dec = 10,       /**< Decimal option radix.          */
+  /** @brief Entire first-party byte budget. */
+  k_viewer_composition_bytes = 10 * 1024 * 1024,
+} viewer_main_config_t;
 
-/**
- * @struct viewer_opts_t
- * @brief Parsed command-line options.
- * @since 0.1.0
- */
+/** @brief Parsed command-line options. */
 typedef struct {
-  const char* path;      /**< Input document path (required).         */
-  const char* dump_ppm;  /**< PPM dump path, or NULL.                 */
-  uint32_t    page;      /**< Page to render for --dump-ppm.          */
-  int64_t     dump_tile; /**< Tile to dump via the scroll API, or -1. */
-  bool        headless;  /**< Skip opening a window when true.        */
-} viewer_opts_t;
+  const char* path;      /**< Input document path.    */
+  const char* dump_ppm;  /**< Output path, or NULL.   */
+  uint32_t    page;      /**< Headless page index.    */
+  int64_t     dump_tile; /**< Tile index, or -1.      */
+  bool        headless;  /**< Do not create a window. */
+} viewer_options_t;
+
+/** @brief Explicit host composition storage; another target may replace it. */
+alignas(max_align_t) static uint8_t s_viewer_composition[k_viewer_composition_bytes];
 
 /**
- * @brief Print the one-line usage banner to stderr.
- * @details Lists the accepted container extensions and the headless dump flags,
- *          and names the scroll bindings the window honours. Printed on a usage
- *          error just before the process exits with code 2.
- * @param[in] argv0 Program name (argv[0]).
- * @pre @p argv0 is a NUL-terminated string.
- * @pre stderr is open.
- * @post The banner has been written to stderr.
- * @post No state other than the stream is mutated.
- * @note Not thread-safe; the tool is single-threaded.
+ * @brief Print usage through the standard-error descriptor.
+ * @details Uses one descriptor-formatted write so no hosted stream is owned.
+ * @param[in,out] output Bound diagnostic byte stream.
+ * @param[in] executable NUL-terminated argv[0] spelling.
+ * @pre @p executable is non-NULL.
+ * @pre Standard error may accept a best-effort diagnostic.
+ * @post One complete usage message was attempted.
+ * @post Composition storage and options remain unchanged.
+ * @note The diagnostic failure is intentionally non-fatal.
  * @since 0.1.0
  */
-static void viewer_usage(const char* argv0)
+RA8_INTERNAL static void internal_usage(ra8_io_stream_t* output, const char* executable)
 {
-  (void)fprintf(stderr,
-                "usage: %s <file.cbz|.cbr|.cbt[.gz|.xz]|.jof> [--headless]\n"
-                "         [--dump-ppm PATH [--page N | --dump-tile N]]\n"
-                "  window: resizable, fit-to-width, continuous scroll "
-                "(wheel/trackpad/PageUp-Dn/Home/End)\n",
-                argv0);
+  (void)priv_viewer_output_usage(output, executable);
 }
 
 /**
- * @brief Parse argv into @p opts.
- * @details Takes argv[1] as the document path, then walks the remaining flags:
- *          `--page N`, `--dump-ppm PATH`, `--dump-tile N` and `--headless`. An
- *          unknown flag, or a value-taking flag with no value, is rejected so
- *          the caller prints usage. @p opts is zeroed first and dump_tile
- *          defaults to -1 (no tile dump).
- * @param[in]  argc Argument count.
- * @param[in]  argv Argument vector.
- * @param[out] opts Receives the parsed options.
- * @return true on a valid command line; false to print usage and exit.
- * @retval true  Every argument was recognised; @p opts is populated.
- * @retval false Too few arguments, or an unrecognised / incomplete flag.
- * @pre @p argv holds @p argc entries and @p opts is writable.
- * @pre @p argc reflects the length of @p argv.
- * @post On success @p opts->path names the document.
- * @post On failure the caller prints usage and exits.
- * @note Not thread-safe (writes @p opts).
+ * @brief Parse the bounded viewer command line.
+ * @details Accepts only the documented value-taking flags and headless switch.
+ * @param[in] argc Argument count.
+ * @param[in] argv Argument vector.
+ * @param[out] options Parsed options.
+ * @return Whether every argument was valid.
+ * @retval true Options were populated.
+ * @retval false Arguments were incomplete or unknown.
+ * @pre @p argv spans @p argc entries.
+ * @pre @p options is writable.
+ * @post Success publishes a document path and defaults tile to -1.
+ * @post Failure causes no external I/O.
+ * @note Pure apart from @p options.
  * @since 0.1.0
  */
-static bool viewer_parse_args(int argc, char** argv, viewer_opts_t* opts)
+RA8_INTERNAL static bool internal_parse_arguments(int argc, char** argv, viewer_options_t* options)
 {
-  if (argc < k_viewer_min_args) {
+  if (argc < (int)k_viewer_min_args) {
     return false;
   }
-  memset(opts, 0, sizeof(*opts));
-  opts->path      = argv[1];
-  opts->dump_tile = -1;
-  for (int i = 2; i < argc; ++i) {
-    if ((strcmp(argv[i], "--page") == 0) && ((i + 1) < argc)) {
-      opts->page = (uint32_t)strtoul(argv[++i], nullptr, (int)k_viewer_radix_dec);
-    } else if ((strcmp(argv[i], "--dump-ppm") == 0) && ((i + 1) < argc)) {
-      opts->dump_ppm = argv[++i];
-    } else if ((strcmp(argv[i], "--dump-tile") == 0) && ((i + 1) < argc)) {
-      opts->dump_tile = (int64_t)strtoll(argv[++i], nullptr, (int)k_viewer_radix_dec);
-    } else if (strcmp(argv[i], "--headless") == 0) {
-      opts->headless = true;
+  *options = (viewer_options_t){.path = argv[1], .dump_tile = -1};
+  for (int index = 2; index < argc; ++index) {
+    if ((strcmp(argv[index], "--page") == 0) && ((index + 1) < argc)) {
+      options->page = (uint32_t)strtoul(argv[++index], nullptr, (int)k_viewer_radix_dec);
+    } else if ((strcmp(argv[index], "--dump-ppm") == 0) && ((index + 1) < argc)) {
+      options->dump_ppm = argv[++index];
+    } else if ((strcmp(argv[index], "--dump-tile") == 0) && ((index + 1) < argc)) {
+      options->dump_tile = strtoll(argv[++index], nullptr, (int)k_viewer_radix_dec);
+    } else if (strcmp(argv[index], "--headless") == 0) {
+      options->headless = true;
     } else {
       return false;
     }
@@ -123,22 +105,21 @@ static bool viewer_parse_args(int argc, char** argv, viewer_opts_t* opts)
 }
 
 /**
- * @brief Clamp @p page into `[0, count)`, guarding an empty document.
- * @details A `--page` value past the end is pinned to the last page rather than
- *          rejected, and a zero-page document yields page 0 so the caller never
- *          indexes an empty range.
- * @param[in] page  Requested page.
- * @param[in] count Page count.
- * @return A valid page index (0 when @p count is 0).
- * @retval 0 @p count is 0, or @p page is already 0.
- * @pre @p count is the document's true page count.
- * @pre @p page came from the parsed command line.
- * @post The result is less than @p count whenever @p count > 0.
+ * @brief Clamp a requested page into the document.
+ * @details Empty documents map to zero; over-range requests map to the last
+ * page.
+ * @param[in] page Requested index.
+ * @param[in] count Document page count.
+ * @return A bounded page index.
+ * @retval 0 The document is empty or page zero was requested.
+ * @pre @p count is the reader-reported count.
+ * @pre @p page is an unsigned command-line value.
+ * @post A non-empty result is below @p count.
  * @post No state is mutated.
- * @note Pure; thread-safe.
+ * @note Pure and thread-safe.
  * @since 0.1.0
  */
-static uint32_t viewer_clamp_page(uint32_t page, uint32_t count)
+RA8_INTERNAL static uint32_t internal_clamp_page(uint32_t page, uint32_t count)
 {
   if (count == 0U) {
     return 0U;
@@ -147,63 +128,189 @@ static uint32_t viewer_clamp_page(uint32_t page, uint32_t count)
 }
 
 /**
- * @brief Render @p page into the framebuffer and write the requested PPM dump.
- * @details Renders the page through the reader's fixed framebuffer path, then --
- *          when `--dump-ppm` was given -- writes that framebuffer out as a PPM.
- *          A render or write failure is reported on stderr and returns false.
- * @param[in]  reader Open reader.
- * @param[in]  opts   Parsed options.
- * @param[in]  page   Page to render.
- * @return true on success.
- * @retval true  The page rendered and any requested dump was written.
- * @retval false Rendering or the PPM write failed (reported on stderr).
- * @pre @p reader is an open document and @p opts is populated.
- * @pre @p page is within the document's page range.
- * @post On success the framebuffer holds @p page and any dump file exists.
- * @post On failure nothing is written to the dump path.
- * @note Not thread-safe (drives the shared framebuffer).
+ * @brief Align a composition offset upward.
+ * @details Rejects non-power-of-two alignment and addition overflow.
+ * @param[in] offset Unaligned byte offset.
+ * @param[in] alignment Required power-of-two alignment.
+ * @param[out] out Aligned offset.
+ * @return Whether alignment succeeded.
+ * @retval true @p out is populated.
+ * @retval false Inputs were invalid or overflowed.
+ * @pre @p out is writable.
+ * @pre @p offset is a composition-relative extent.
+ * @post Success publishes an offset no smaller than @p offset.
+ * @post Failure leaves caller storage untouched.
+ * @note Pure apart from @p out.
  * @since 0.1.0
  */
-static bool
-viewer_render_and_dump(ra8_viewer_reader_t* reader, const viewer_opts_t* opts, uint32_t page)
+RA8_INTERNAL static bool internal_align_offset(size_t offset, size_t alignment, size_t* out)
 {
-  const ra8_err_t rc = ra8_viewer_render_page(reader, page);
-  if (rc != k_ra8_ok) {
-    (void)fprintf(stderr, "render page %u failed: 0x%x\n", page, (unsigned)rc);
+  const size_t mask = alignment - 1U;
+  if ((alignment == 0U) || ((alignment & mask) != 0U) || (offset > (SIZE_MAX - mask))) {
     return false;
   }
-  if (opts->dump_ppm != nullptr) {
-    if (ra8_viewer_dump_ppm(reader, opts->dump_ppm) != k_ra8_ok) {
-      (void)fprintf(stderr, "dump ppm failed\n");
-      return false;
-    }
-    (void)fprintf(stderr, "wrote %s\n", opts->dump_ppm);
+  *out = (offset + mask) & ~mask;
+  return true;
+}
+
+/**
+ * @brief Report exact capacity evidence.
+ * @details Emits the subject plus exact required and supplied byte counts.
+ * @param[in,out] output Bound diagnostic byte stream.
+ * @param[in] subject NUL-terminated workspace name.
+ * @param[in] report Completed capacity report.
+ * @pre @p subject is non-NULL.
+ * @pre @p report is non-NULL.
+ * @post A diagnostic write was attempted.
+ * @post Workspace bytes remain unchanged.
+ * @note Descriptor diagnostics are best-effort.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_report_capacity(ra8_io_stream_t*                     output,
+                                                  const char*                          subject,
+                                                  const ra8_viewer_workspace_report_t* report)
+{
+  (void)
+    priv_viewer_output_capacity(output, subject, report->required_bytes, report->supplied_bytes);
+}
+
+/**
+ * @brief Render and optionally write one fixed-framebuffer page.
+ * @details Drives the fixed target and publishes it only when a path was given.
+ * @param[in,out] reader Open reader.
+ * @param[in] options Parsed options.
+ * @param[in] page Bounded page index.
+ * @param[in,out] diagnostic Bound diagnostic byte stream.
+ * @return Whether render and optional publication succeeded.
+ * @retval true All requested work completed.
+ * @retval false A render or descriptor publication failed.
+ * @pre @p reader is open.
+ * @pre @p options is populated.
+ * @post Success leaves the framebuffer rendered.
+ * @post Failure is reported on standard error.
+ * @note Not thread-safe; it drives shared reader state.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_render_page(ra8_viewer_reader_t*    reader,
+                                              const viewer_options_t* options,
+                                              uint32_t                page,
+                                              ra8_io_stream_t*        diagnostic)
+{
+  const ra8_err_t error = ra8_viewer_render_page(reader, page);
+  if (error != k_ra8_ok) {
+    (void)priv_viewer_output_index_error(diagnostic, "render page ", page, error);
+    return false;
+  }
+  if ((options->dump_ppm != nullptr) &&
+      (ra8_viewer_dump_ppm(reader, options->dump_ppm) != k_ra8_ok)) {
+    (void)priv_viewer_output_text(diagnostic, "dump ppm failed\n");
+    return false;
+  }
+  if (options->dump_ppm != nullptr) {
+    (void)priv_viewer_output_wrote(diagnostic, options->dump_ppm);
   }
   return true;
 }
 
 /**
- * @brief Open the scrolling reader window and pump events until it closes.
- * @details Creates the Cocoa view over @p reader and cooperatively pumps events
- *          at ~60 Hz (::k_viewer_frame_ns), sleeping between frames, until the
- *          user closes the window. A NULL view means no window could be created
- *          (a headless host), reported with the `--headless` hint.
- * @param[in] reader Open reader (the window's tile source).
- * @return 0 on clean exit; 1 if no window could be created (headless host).
- * @retval 0 The window opened and was closed by the user.
- * @retval 1 No window could be created on this host.
- * @pre @p reader is an open document.
- * @pre A window system is available for a non-headless run.
- * @post On success the view has been closed and freed.
- * @post On failure no view is left open.
- * @note Not thread-safe; must run on the main thread (Cocoa requirement).
+ * @brief Render and publish one caller-buffered scroll tile.
+ * @details Renders into the supplied remainder and writes the exact RGB565
+ * tile.
+ * @param[in,out] reader Open reader.
+ * @param[in] tile Tile index.
+ * @param[in] path NUL-terminated output path.
+ * @param[in,out] workspace Caller tile backing.
+ * @param[in] workspace_bytes Accessible tile backing extent.
+ * @param[in,out] diagnostic Bound diagnostic byte stream.
+ * @return Whether render and publication succeeded.
+ * @retval true The PPM was written.
+ * @retval false Capacity, render, or publication failed.
+ * @pre @p reader is open and @p path is non-NULL.
+ * @pre @p workspace spans @p workspace_bytes bytes.
+ * @post Success writes one complete PPM.
+ * @post Failure reports the exact capacity when applicable.
+ * @note Not thread-safe; it drives shared reader state.
  * @since 0.1.0
  */
-static int viewer_run_window(ra8_viewer_reader_t* reader)
+RA8_INTERNAL static bool internal_dump_tile(ra8_viewer_reader_t* reader,
+                                            uint32_t             tile,
+                                            const char*          path,
+                                            void*                workspace,
+                                            size_t               workspace_bytes,
+                                            ra8_io_stream_t*     diagnostic)
 {
-  ra8_viewer_view_t* view = ra8_viewer_view_open(reader, "RA8 Viewer");
-  if (view == nullptr) {
-    (void)fprintf(stderr, "no window (headless host?); use --headless --dump-ppm PATH\n");
+  uint32_t                      width  = 0U;
+  uint32_t                      height = 0U;
+  uint16_t*                     pixels = nullptr;
+  ra8_viewer_workspace_report_t report = {};
+  const ra8_err_t               error  = ra8_viewer_render_tile565(reader,
+                                                                   tile,
+                                                                   workspace,
+                                                                   workspace_bytes,
+                                                                   &width,
+                                                                   &height,
+                                                                   &pixels,
+                                                                   &report);
+  if (error != k_ra8_ok) {
+    if (error == k_ra8_err_invalid_size) {
+      internal_report_capacity(diagnostic, "tile", &report);
+    }
+    (void)priv_viewer_output_index_error(diagnostic, "render tile ", tile, error);
+    return false;
+  }
+  const ra8_err_t write_error = ra8_viewer_write_ppm565(pixels, width, height, path);
+  if (write_error != k_ra8_ok) {
+    (void)priv_viewer_output_error(diagnostic, "write tile ppm", write_error);
+    return false;
+  }
+  (void)priv_viewer_output_tile(diagnostic, tile, width, height, path);
+  return true;
+}
+
+/**
+ * @brief Open and cooperatively pump the caller-workspace Cocoa view.
+ * @details Sizes, binds, pumps, and closes the platform view in the caller
+ * slice.
+ * @param[in,out] reader Open reader borrowed by the view.
+ * @param[in,out] workspace Caller view backing.
+ * @param[in] workspace_bytes Accessible backing extent.
+ * @param[in,out] diagnostic Bound diagnostic byte stream.
+ * @return Process-style status.
+ * @retval 0 The window was opened and closed normally.
+ * @retval 1 The platform or workspace could not provide a view.
+ * @pre @p reader remains open throughout the pump.
+ * @pre @p workspace spans @p workspace_bytes bytes.
+ * @post Any successfully opened view is closed.
+ * @post The reader remains open and caller-owned.
+ * @note Must execute on the Cocoa main thread.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static int internal_run_window(ra8_viewer_reader_t* reader,
+                                            void*                workspace,
+                                            size_t               workspace_bytes,
+                                            ra8_io_stream_t*     diagnostic)
+{
+  ra8_viewer_view_requirements_t requirements = {};
+  if (ra8_viewer_view_requirements(reader, &requirements) != k_ra8_ok) {
+    (void)priv_viewer_output_text(diagnostic,
+                                  "no window (headless host?); use --headless --dump-ppm PATH\n");
+    return 1;
+  }
+  ra8_viewer_view_t*            view   = nullptr;
+  ra8_viewer_workspace_report_t report = {};
+  const ra8_err_t               error  = ra8_viewer_view_open(&view,
+                                                              reader,
+                                                              "RA8 Viewer",
+                                                              workspace,
+                                                              workspace_bytes,
+                                                              &requirements,
+                                                              &report);
+  if (error != k_ra8_ok) {
+    if (error == k_ra8_err_invalid_size) {
+      internal_report_capacity(diagnostic, "view", &report);
+    }
+    (void)priv_viewer_output_text(diagnostic,
+                                  "no window (headless host?); use --headless --dump-ppm PATH\n");
     return 1;
   }
   const struct timespec frame = {.tv_sec = 0, .tv_nsec = k_viewer_frame_ns};
@@ -215,106 +322,139 @@ static int viewer_run_window(ra8_viewer_reader_t* reader)
 }
 
 /**
- * @brief ra8_log byte sink -- routes firmware log bytes to stderr.
- * @details Registering any sink makes the logger's `internal_itm_ready()` skip
- *          the ITM debug-register read, which is an unmapped MMIO address on the
- *          host (a bus fault) -- the host-safe path the tests also use.
- * @param[in] ctx  Unused cookie.
- * @param[in] byte Log byte to emit.
- * @pre ra8_log has been pointed at this sink via ::ra8_log_set_byte_sink.
- * @pre stderr is open.
- * @post @p byte has been written to stderr.
- * @post No other state is mutated.
- * @note Not thread-safe; the tool is single-threaded.
+ * @brief Route firmware log bytes through the standard-error descriptor.
+ * @details Delegates the byte to the bound portable stream and intentionally
+ * ignores its best-effort diagnostic status.
+ * @param[in,out] context Bound ::ra8_io_stream_t logger cookie.
+ * @param[in] byte Log byte.
+ * @pre The logger installed this callback.
+ * @pre Standard error may accept a best-effort byte.
+ * @post One byte write was attempted.
+ * @post Reader and composition state remain unchanged.
+ * @note The single-threaded tool serialises calls.
  * @since 0.1.0
  */
-static void viewer_log_sink(void* ctx, uint8_t byte)
+RA8_INTERNAL static void internal_log_sink(void* context, uint8_t byte)
 {
-  (void)ctx;
-  (void)fputc((int)byte, stderr);
+  (void)ra8_io_stream_putc((ra8_io_stream_t*)context, (char)byte);
 }
 
 /**
- * @brief Render one scroll tile via the tile API and write it as a P6 PPM.
- * @details Headless verification of the continuous-scroll render path (the same
- *          tiles the window composites), independent of the fixed framebuffer.
- * @param[in] reader Open reader.
- * @param[in] tile   Tile index.
- * @param[in] path   Output PPM path.
- * @return true on success.
- * @retval true  The tile rendered and its PPM was written.
- * @retval false Tile render or the PPM write failed (reported on stderr).
- * @pre @p reader is an open document and @p path is writable.
- * @pre @p tile is a valid scroll-tile index.
- * @post On success @p path holds the tile as a P6 PPM and the buffer is freed.
- * @post On failure the render buffer is still freed.
- * @note Not thread-safe (drives the shared reader).
+ * @brief Bind standard error through the raw POSIX stream adapter.
+ * @details Ignores SIGPIPE so a closed diagnostic consumer becomes EPIPE and
+ * can be mapped to a normal stream error rather than terminating the viewer.
+ * @param[out] output Stream handle to bind.
+ * @param[out] state Caller-owned POSIX adapter state.
+ * @return Canonical binding or signal-configuration status.
+ * @retval k_ra8_ok Standard error is bound and ready.
+ * @retval k_ra8_err_comm_error SIGPIPE disposition setup failed.
+ * @pre @p output and @p state are writable.
+ * @pre Standard error remains process-owned for the binding lifetime.
+ * @post Success leaves SIGPIPE ignored for the process lifetime.
+ * @post Failure leaves @p output unbound.
+ * @note This process-wide policy belongs at the composition boundary.
  * @since 0.1.0
  */
-static bool viewer_dump_tile(ra8_viewer_reader_t* reader, uint32_t tile, const char* path)
+RA8_INTERNAL static ra8_err_t internal_bind_diagnostic(ra8_io_stream_t*             output,
+                                                       ra8_io_stream_posix_state_t* state)
 {
-  uint32_t        w   = 0U;
-  uint32_t        h   = 0U;
-  uint16_t*       buf = nullptr;
-  const ra8_err_t rc  = ra8_viewer_render_tile565(reader, tile, &w, &h, &buf);
-  if (rc != k_ra8_ok) {
-    (void)fprintf(stderr, "render tile %u failed: 0x%x\n", tile, (unsigned)rc);
-    return false;
+  struct sigaction action = {.sa_handler = SIG_IGN};
+  if ((sigemptyset(&action.sa_mask) != 0) || (sigaction(SIGPIPE, &action, nullptr) != 0)) {
+    return k_ra8_err_comm_error;
   }
-  const ra8_err_t wrc = ra8_viewer_write_ppm565(buf, w, h, path);
-  free(buf);
-  if (wrc != k_ra8_ok) {
-    (void)fprintf(stderr, "write tile ppm failed: 0x%x\n", (unsigned)wrc);
-    return false;
-  }
-  (void)fprintf(stderr, "wrote tile %u (%ux%u) -> %s\n", tile, w, h, path);
-  return true;
+  return ra8_io_stream_posix_init(output, state, STDERR_FILENO);
 }
 
 /**
- * @brief Program entry point: parse the command line, open, then render.
- * @details Routes to one of three modes -- a headless single-tile dump, a
- *          headless framebuffer page dump, or the interactive scrolling window.
- * @param[in] argc Argument count.
- * @param[in] argv Argument vector.
- * @return 0 on success, 1 on an open/render failure, 2 on a usage error.
+ * @brief Execute the selected viewer mode over the composition remainder.
+ * @details Aligns the scratch slice after the bound reader, then dispatches to
+ * tile, fixed-page, or interactive-window rendering without acquiring storage.
+ * @param[in,out] reader Open reader bound in composition storage.
+ * @param[in] requirements Exact reader workspace requirements.
+ * @param[in] options Parsed viewer options.
+ * @param[in] page Bounded page index.
+ * @param[in,out] diagnostic Bound diagnostic stream.
+ * @return Process-style command status.
+ * @retval 0 The selected mode completed successfully.
+ * @retval 1 Scratch geometry or the selected mode failed.
+ * @pre @p reader is open and @p requirements describes its binding.
+ * @pre @p options and @p diagnostic remain valid throughout the call.
+ * @post The reader remains open and caller-owned.
+ * @post Composition bytes outside the selected scratch slice remain unchanged.
+ * @note Not thread-safe; it drives the caller's reader and shared composition.
  * @since 0.1.0
  */
+RA8_INTERNAL static int internal_execute(ra8_viewer_reader_t*                    reader,
+                                         const ra8_viewer_reader_requirements_t* requirements,
+                                         const viewer_options_t*                 options,
+                                         uint32_t                                page,
+                                         ra8_io_stream_t*                        diagnostic)
+{
+  size_t scratch_offset = 0U;
+  if (!internal_align_offset(requirements->required_bytes, alignof(max_align_t), &scratch_offset) ||
+      (scratch_offset > sizeof(s_viewer_composition))) {
+    return 1;
+  }
+  void*        scratch       = &s_viewer_composition[scratch_offset];
+  const size_t scratch_bytes = sizeof(s_viewer_composition) - scratch_offset;
+  if (options->dump_tile >= 0) {
+    const char* output = (options->dump_ppm != nullptr) ? options->dump_ppm : "/tmp/ra8_tile.ppm";
+    return internal_dump_tile(reader,
+                              (uint32_t)options->dump_tile,
+                              output,
+                              scratch,
+                              scratch_bytes,
+                              diagnostic)
+             ? 0
+             : 1;
+  }
+  if (options->headless || (options->dump_ppm != nullptr)) {
+    return internal_render_page(reader, options, page, diagnostic) ? 0 : 1;
+  }
+  return internal_run_window(reader, scratch, scratch_bytes, diagnostic);
+}
 
+/** @brief Program entry point. */
 int main(int argc, char** argv)
 {
-  ra8_log_set_byte_sink(viewer_log_sink, nullptr);
-
-  viewer_opts_t opts = {};
-  if (!viewer_parse_args(argc, argv, &opts)) {
-    viewer_usage(argv[0]);
+  ra8_io_stream_t             diagnostic       = {};
+  ra8_io_stream_posix_state_t diagnostic_state = {};
+  if (internal_bind_diagnostic(&diagnostic, &diagnostic_state) != k_ra8_ok) {
+    return 1;
+  }
+  ra8_log_set_byte_sink(internal_log_sink, &diagnostic);
+  viewer_options_t options = {};
+  if (!internal_parse_arguments(argc, argv, &options)) {
+    internal_usage(&diagnostic, argv[0]);
     return 2;
   }
-
-  ra8_viewer_reader_t* reader = nullptr;
-  const ra8_err_t      rc     = ra8_viewer_open(&reader, opts.path);
-  if (rc != k_ra8_ok) {
-    (void)fprintf(stderr, "open '%s' failed: 0x%x\n", opts.path, (unsigned)rc);
+  ra8_viewer_reader_requirements_t requirements = {};
+  ra8_err_t error = ra8_viewer_reader_requirements(options.path, &requirements);
+  if (error != k_ra8_ok) {
+    (void)priv_viewer_output_open_error(&diagnostic, options.path, error);
+    return 1;
+  }
+  ra8_viewer_reader_t*          reader = nullptr;
+  ra8_viewer_workspace_report_t report = {};
+  error                                = ra8_viewer_reader_bind(&reader,
+                                                                s_viewer_composition,
+                                                                sizeof(s_viewer_composition),
+                                                                &requirements,
+                                                                &report);
+  if (error != k_ra8_ok) {
+    internal_report_capacity(&diagnostic, "reader", &report);
+    (void)priv_viewer_output_open_error(&diagnostic, options.path, error);
+    return 1;
+  }
+  error = ra8_viewer_open(reader, options.path);
+  if (error != k_ra8_ok) {
+    (void)priv_viewer_output_open_error(&diagnostic, options.path, error);
     return 1;
   }
   const uint32_t count = ra8_viewer_page_count(reader);
-  const uint32_t page  = viewer_clamp_page(opts.page, count);
-  (void)fprintf(stderr, "opened '%s': %u page(s)\n", opts.path, count);
-
-  /* Headless tile dump: verify the scroll render path independent of a window. */
-  if (opts.dump_tile >= 0) {
-    const char* out    = (opts.dump_ppm != nullptr) ? opts.dump_ppm : "/tmp/ra8_tile.ppm";
-    const int   status = viewer_dump_tile(reader, (uint32_t)opts.dump_tile, out) ? 0 : 1;
-    ra8_viewer_close(reader);
-    return status;
-  }
-
-  int status = 0;
-  if (opts.headless || (opts.dump_ppm != nullptr)) {
-    status = viewer_render_and_dump(reader, &opts, page) ? 0 : 1;
-  } else {
-    status = viewer_run_window(reader);
-  }
+  const uint32_t page  = internal_clamp_page(options.page, count);
+  (void)priv_viewer_output_opened(&diagnostic, options.path, count);
+  const int status = internal_execute(reader, &requirements, &options, page, &diagnostic);
   ra8_viewer_close(reader);
   return status;
 }

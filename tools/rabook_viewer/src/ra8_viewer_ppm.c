@@ -18,12 +18,20 @@
  * @since 0.1.0
  */
 
+#include <errno.h>
+#include <fcntl.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
+#include <unistd.h>
 
 #include "ra8_err.h"
 #include "ra8_viewer_reader.h"
 #include "ra8_viewer_reader_internal.h"
+
+#ifndef O_CLOEXEC
+/** @brief No-op close-on-exec fallback for hosts lacking the flag. */
+#define O_CLOEXEC (0)
+#endif
 
 /**
  * @enum ra8_viewer_rgb565_shift_t
@@ -65,6 +73,17 @@ typedef enum : uint8_t {
   k_ppm_idx_b    = 2U, /**< Blue byte index within a P6 pixel.  */
 } ra8_viewer_ppm_t;
 
+/** @brief Bounded buffers used by the descriptor-backed PPM publisher. */
+typedef enum : uint16_t {
+  k_ppm_u32_digits    = 10U,   /**< Decimal digits in UINT32_MAX.         */
+  k_ppm_decimal_radix = 10U,   /**< Decimal numeric base.                 */
+  k_ppm_header_bytes  = 32U,   /**< Complete P6 header capacity.          */
+  k_ppm_chunk_pixels  = 1024U, /**< Pixels converted before each write.   */
+  k_ppm_file_mode     = 0666,  /**< Host output mode before process mask. */
+  /** @brief Conversion buffer capacity in bytes. */
+  k_ppm_chunk_bytes = k_ppm_chunk_pixels * k_ppm_channels,
+} ra8_viewer_ppm_io_t;
+
 uint16_t ra8_viewer_pack565(uint8_t rr, uint8_t gg, uint8_t bb)
 {
   const uint16_t r5 = (uint16_t)(rr >> (uint16_t)k_rgb565_r5_drop);
@@ -90,7 +109,7 @@ uint16_t ra8_viewer_pack565_le_pair(uint8_t lo, uint8_t hi)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-static void viewer_unpack565(uint16_t px, uint8_t rgb[k_ppm_channels])
+RA8_INTERNAL static void internal_unpack565(uint16_t px, uint8_t rgb[k_ppm_channels])
 {
   const uint32_t r5 = ((uint32_t)px >> (uint32_t)k_rgb565_r_shift) & (uint32_t)k_rgb565_r5_mask;
   const uint32_t g6 = ((uint32_t)px >> (uint32_t)k_rgb565_g_shift) & (uint32_t)k_rgb565_g6_mask;
@@ -104,6 +123,107 @@ static void viewer_unpack565(uint16_t px, uint8_t rgb[k_ppm_channels])
     (uint8_t)((b5 << (uint32_t)k_rgb565_r5_drop) | (b5 >> (uint32_t)k_rgb565_r5_fill));
 }
 
+/**
+ * @brief Write exactly @p length bytes to one owned host descriptor.
+ * @details Advances across short writes and retries `EINTR`; every other error
+ *          fails closed so a partial image is never reported as successful.
+ * @param[in] fd     Open write-only host descriptor.
+ * @param[in] bytes  Source bytes (non-NULL when @p length is non-zero).
+ * @param[in] length Number of bytes to publish.
+ * @return true only when all requested bytes were written.
+ * @retval true  All @p length bytes were written.
+ * @retval false A non-retryable error or zero-length write stopped progress.
+ * @pre @p fd is owned by the caller and open for writing.
+ * @pre @p bytes spans at least @p length readable bytes.
+ * @post On true the descriptor advanced by exactly @p length bytes.
+ * @post On false the descriptor may contain a bounded prefix.
+ * @note Not thread-safe when callers share @p fd.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_write_all(int fd, const uint8_t* bytes, size_t length)
+{
+  size_t offset = 0U;
+  while (offset < length) {
+    const ssize_t written = write(fd, &bytes[offset], length - offset);
+    if ((written < 0) && (errno == EINTR)) {
+      continue;
+    }
+    if (written <= 0) {
+      return false;
+    }
+    offset += (size_t)written;
+  }
+  return true;
+}
+
+/**
+ * @brief Append one unsigned decimal value to a fixed PPM header.
+ * @details Builds digits in reverse order and copies them back without locale,
+ *          formatting streams, or dynamic allocation.
+ * @param[out] out    Header storage with ::k_ppm_header_bytes capacity.
+ * @param[in]  offset First unwritten header byte.
+ * @param[in]  value  Value to append.
+ * @return New first-unwritten offset.
+ * @retval 0 Not returned; at least one digit is always appended.
+ * @pre @p out has enough remaining room for ten decimal digits.
+ * @pre @p offset is below ::k_ppm_header_bytes.
+ * @post The decimal spelling of @p value occupies the appended bytes.
+ * @post No terminating NUL is written or required.
+ * @note Pure apart from @p out; thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static size_t
+internal_append_u32(char out[k_ppm_header_bytes], size_t offset, uint32_t value)
+{
+  char   reverse[k_ppm_u32_digits];
+  size_t digits = 0U;
+  do {
+    reverse[digits] = (char)('0' + (value % (uint32_t)k_ppm_decimal_radix));
+    ++digits;
+    value /= (uint32_t)k_ppm_decimal_radix;
+  } while (value != 0U);
+  while (digits > 0U) {
+    --digits;
+    out[offset] = reverse[digits];
+    ++offset;
+  }
+  return offset;
+}
+
+/**
+ * @brief Build the locale-independent binary-PPM header for @p width x @p height.
+ * @details Appends fixed syntax and explicit unsigned decimal dimensions into
+ * the caller-owned bounded header without formatting streams.
+ * @param[out] out    Header storage with ::k_ppm_header_bytes capacity.
+ * @param[in]  width  Non-zero image width.
+ * @param[in]  height Non-zero image height.
+ * @return Number of initialized header bytes.
+ * @retval 0 Not returned for valid dimensions.
+ * @pre @p out has ::k_ppm_header_bytes writable bytes.
+ * @pre @p width and @p height are non-zero.
+ * @post @p out begins with a complete P6 header of the returned length.
+ * @post No terminating NUL is written or required.
+ * @note Pure apart from @p out; thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static size_t
+internal_ppm_header(char out[k_ppm_header_bytes], uint32_t width, uint32_t height)
+{
+  size_t offset = 0U;
+  out[offset++] = 'P';
+  out[offset++] = '6';
+  out[offset++] = '\n';
+  offset        = internal_append_u32(out, offset, width);
+  out[offset++] = ' ';
+  offset        = internal_append_u32(out, offset, height);
+  out[offset++] = '\n';
+  out[offset++] = '2';
+  out[offset++] = '5';
+  out[offset++] = '5';
+  out[offset++] = '\n';
+  return offset;
+}
+
 ra8_err_t ra8_viewer_write_ppm565(const uint16_t* px, uint32_t w, uint32_t h, const char* path)
 {
   if ((px == nullptr) || (path == nullptr)) {
@@ -112,19 +232,32 @@ ra8_err_t ra8_viewer_write_ppm565(const uint16_t* px, uint32_t w, uint32_t h, co
   if ((w == 0U) || (h == 0U)) {
     return k_ra8_err_invalid_size;
   }
-  FILE* fp = fopen(path, "wb");
-  if (fp == nullptr) {
+  if ((size_t)w > (SIZE_MAX / (size_t)h)) {
+    return k_ra8_err_invalid_size;
+  }
+  const int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, k_ppm_file_mode);
+  if (fd < 0) {
     return k_ra8_err_not_found;
   }
-  (void)fprintf(fp, "P6\n%u %u\n255\n", (unsigned)w, (unsigned)h);
-  const size_t pixels = (size_t)w * (size_t)h;
-  for (size_t i = 0U; i < pixels; ++i) {
-    uint8_t rgb[k_ppm_channels];
-    viewer_unpack565(px[i], rgb);
-    (void)fwrite(rgb, 1U, sizeof(rgb), fp);
+  char         header[k_ppm_header_bytes];
+  const size_t header_bytes = internal_ppm_header(header, w, h);
+  bool         ok           = internal_write_all(fd, (const uint8_t*)header, header_bytes);
+  const size_t pixels       = (size_t)w * (size_t)h;
+  uint8_t      chunk[k_ppm_chunk_bytes];
+  size_t       consumed = 0U;
+  while (ok && (consumed < pixels)) {
+    size_t batch = pixels - consumed;
+    if (batch > (size_t)k_ppm_chunk_pixels) {
+      batch = (size_t)k_ppm_chunk_pixels;
+    }
+    for (size_t i = 0U; i < batch; ++i) {
+      internal_unpack565(px[consumed + i], &chunk[i * (size_t)k_ppm_channels]);
+    }
+    ok = internal_write_all(fd, chunk, batch * (size_t)k_ppm_channels);
+    consumed += batch;
   }
-  const int closed = fclose(fp);
-  return (closed == 0) ? k_ra8_ok : k_ra8_err_not_found;
+  const int closed = close(fd);
+  return (ok && (closed == 0)) ? k_ra8_ok : k_ra8_err_not_found;
 }
 
 ra8_err_t ra8_viewer_dump_ppm(const ra8_viewer_reader_t* r, const char* path)

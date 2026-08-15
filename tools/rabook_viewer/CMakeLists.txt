@@ -3,21 +3,20 @@
 #
 # tools/rabook_viewer -- native macOS reader viewer (direct-call, not an emulator).
 #
-# Links the firmware's platform-agnostic reader libraries compiled host-side
-# (RA8_OFF_TARGET, C23) and calls them directly to rasterise e-book / comic
-# pages into an RGB565 framebuffer, which a layer-backed Cocoa NSWindow presents.
+# Links the firmware's platform-agnostic JOF long-strip libraries compiled
+# host-side (RA8_OFF_TARGET, C23) and calls them directly to rasterise tiles into
+# an RGB565 framebuffer, which a layer-backed Cocoa NSWindow presents.
 # Unlike tools/ra8_emulator (which emulates the firmware ELF under Unicorn), this
 # tool runs no ARM code -- it is purely a viewer, so it is far faster.
 #
 #   cmake -B build -S . && cmake --build build -j
-#   ./build/rabook_viewer path/to/book.cbz               # window; arrows turn pages
-#   ./build/rabook_viewer book.cbz --headless --dump-ppm page0.ppm   # no display
+#   ./build/rabook_viewer path/to/book.jof               # window; arrows turn pages
+#   ./build/rabook_viewer book.jof --headless --dump-ppm page0.ppm   # no display
 #
-# Reader engine coverage: CBZ / CBR / CBT comic archives incl. gzip/xz-wrapped
-# (ra8_comic), and the firmware-native JOF long-strip vertical-scroll tile atlas
-# (ra8_longstrip). EPUB / RABOOK reflow (text + image loader over ra8_reflow) are
-# left as TODO seams (see src/ra8_viewer_reader.c). macOS only -- the window
-# backend is Cocoa; other hosts are not a target for this dev tool.
+# Reader engine coverage is intentionally the firmware-native JOF long-strip
+# atlas only. Comic and wrapped-comic extensions are recognised but rejected
+# until their shared codec APIs support streamed sources/sinks or a descriptor
+# spool without resident contiguous decode/unwrap arenas.
 #
 #
 
@@ -106,9 +105,8 @@ endfunction()
 # ra8_reader: static archive of exactly the firmware reader sources the viewer
 # calls. Building an archive (not an object library) means the linker pulls only
 # the members needed to resolve the viewer's references -- transitively -- so the
-# HAL / RTOS / peripheral libraries are never dragged in. Under RA8_OFF_TARGET
-# the CBZ backend uses miniz's default (malloc) allocator, so no ra8_epub source
-# is needed -- only its header (ra8_epub_miniz_alloc.h) sits on the include path.
+# HAL / RTOS / peripheral libraries are never dragged in. Miniz is retained for
+# raw-DEFLATE JOF bands, with its malloc/stdio/time paths disabled here.
 #
 # The source list is DERIVED, never hand-frozen. Libraries whose whole src/ tree
 # is read path are globbed (a split or new read-path file is absorbed
@@ -119,32 +117,29 @@ endfunction()
 
 # Whole-read-path libraries -- every src/ member is part of the reader path, so
 # a glob is the single source of truth (the host-test build and ra8_emulator
-# consume their firmware libraries the same way). ra8_comic pulls in the
-# gzip/xz/tar wrapped-container decoders (ra8_unarch, which sits on the vendored
-# xz-embedded decoder); ra8_longstrip renders the firmware-native `.jof`
-# vertical-scroll tile atlas.
-file(GLOB RA8_COMIC_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_comic/src/*.c)
-file(GLOB RA8_GFX_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/*.c)
-file(GLOB RA8_UNARCH_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_unarch/src/*.c)
+# consume their firmware libraries the same way). ra8_longstrip renders the
+# firmware-native `.jof` vertical-scroll tile atlas.
 file(GLOB RA8_LONGSTRIP_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_longstrip/src/*.c)
 
 # Partial-read-path libraries -- the viewer links only the read members. The JOF
 # strip parses through ra8_jof (DEFLATE tiles inflate via ra8_io_compress over
 # the already-linked miniz) and pages through the ra8_mem tile cache (+ its
-# keycache); ra8_reflow supplies the image blit + SVG rasteriser (no CSS/text
-# layout); ra8_core supplies logging, the error handler and the shared
-# decompression-limits policy. Each DROP is producer / encoder / HAL /
-# text-layout code the viewer must not link; ra8_viewer_read_path() proves the
-# split is still complete.
+# keycache); ra8_core supplies logging, the error handler and the shared
+# decompression-limits policy. Each DROP is producer / encoder / HAL code the
+# viewer must not link; ra8_viewer_read_path() proves the split is complete.
 ra8_viewer_read_path(
   RA8_JOF_SRC ${FW_ROOT}/libs/ra8_jof/src
   KEEP ra8_jof.c
-  DROP ra8_jof_png.c ra8_jof_png_chunk.c ra8_jof_produce.c ra8_jof_produce_webp.c
+  DROP ra8_jof_audit.c
+       ra8_jof_png.c
+       ra8_jof_png_chunk.c
+       ra8_jof_produce.c
+       ra8_jof_produce_webp.c
 )
 
 ra8_viewer_read_path(
   RA8_IO_SRC ${FW_ROOT}/libs/ra8_io/src
-  KEEP ra8_io_compress.c
+  KEEP ra8_io_compress.c ra8_io_stream.c
   DROP ra8_io_blockdev.c
        ra8_io_blockdev_cache.c
        ra8_io_blockdev_mram.c
@@ -162,7 +157,6 @@ ra8_viewer_read_path(
        ra8_io_spi_bus.c
        ra8_io_spi_bus_sci_spi.c
        ra8_io_spi_bus_spi_b.c
-       ra8_io_stream.c
        ra8_io_stream_blockdev.c
        ra8_io_stream_ram.c
        ra8_io_stream_uart.c
@@ -183,33 +177,6 @@ ra8_viewer_read_path(
 )
 
 ra8_viewer_read_path(
-  RA8_REFLOW_SRC ${FW_ROOT}/libs/ra8_reflow/src
-  KEEP ra8_reflow_image.c
-       ra8_img_arena.c
-       ra8_reflow_svg.c
-       ra8_reflow_svg_doc.c
-       ra8_reflow_svg_path.c
-       ra8_reflow_svg_shape.c
-       ra8_reflow_svg_xform.c
-  DROP ra8_reflow_cache.c
-       ra8_reflow_css.c
-       ra8_reflow_css_cascade.c
-       ra8_reflow_css_rules.c
-       ra8_reflow_layout.c
-       ra8_reflow_layout_driver.c
-       ra8_reflow_layout_image.c
-       ra8_reflow_layout_table.c
-       ra8_reflow_link.c
-       ra8_reflow_parse.c
-       ra8_reflow_render.c
-       ra8_reflow_tokenize.c
-       ra8_reflow_tokenize_attr.c
-       ra8_reflow_tokenize_lex.c
-       ra8_stbtt_alloc.c
-       ra8_stbtt_guard.c
-)
-
-ra8_viewer_read_path(
   RA8_CORE_SRC ${FW_ROOT}/libs/ra8_core/src
   KEEP ra8_log.c ra8_error_handler.c ra8_decomp_limits.c
   DROP ra8_crashlog.c
@@ -224,25 +191,22 @@ ra8_viewer_read_path(
        ra8_time.c
 )
 
-file(GLOB RA8_XZ_EMBEDDED_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/third_party/xz_embedded/*.c)
-set(RA8_THIRD_PARTY_SRC ${FW_ROOT}/libs/third_party/miniz/miniz.c
-                        ${FW_ROOT}/libs/third_party/stb/stb_image_impl.c ${RA8_XZ_EMBEDDED_SRC}
-)
+set(RA8_THIRD_PARTY_SRC ${FW_ROOT}/libs/third_party/miniz/miniz.c)
+set(RA8_STREAM_POSIX_SRC ${FW_ROOT}/port/posix/src/ra8_io_stream_posix.c)
+set(RA8_STREAM_RAM_SRC ${FW_ROOT}/libs/ra8_io/src/ra8_io_stream_ram.c)
 
 add_library(
   ra8_reader STATIC
-  ${RA8_COMIC_SRC}
-  ${RA8_GFX_SRC}
-  ${RA8_UNARCH_SRC}
   ${RA8_LONGSTRIP_SRC}
   ${RA8_JOF_SRC}
   ${RA8_IO_SRC}
   ${RA8_MEM_SRC}
-  ${RA8_REFLOW_SRC}
   ${RA8_CORE_SRC}
   ${RA8_THIRD_PARTY_SRC}
 )
-target_compile_definitions(ra8_reader PUBLIC RA8_OFF_TARGET)
+target_compile_definitions(
+  ra8_reader PUBLIC MINIZ_NO_MALLOC MINIZ_NO_STDIO MINIZ_NO_TIME RA8_OFF_TARGET
+)
 # The firmware sources in this archive are first-party and carry the project
 # warning bar (NASA Power of 10 Rule 10) here exactly as they do in the ARM and
 # host-test builds. The vendored decoders below override it with -w, which is
@@ -251,24 +215,16 @@ target_compile_options(ra8_reader PRIVATE -Wall -Wextra -Werror)
 target_include_directories(
   ra8_reader
   PUBLIC ${FW_ROOT}/libs/ra8_core/inc
-         ${FW_ROOT}/libs/ra8_gfx/inc
-         ${FW_ROOT}/libs/ra8_comic/inc
-         ${FW_ROOT}/libs/ra8_reflow/inc
-         ${FW_ROOT}/libs/ra8_epub/inc
-         ${FW_ROOT}/libs/ra8_unarch/inc
          ${FW_ROOT}/libs/ra8_longstrip/inc
          ${FW_ROOT}/libs/ra8_jof/inc
          ${FW_ROOT}/libs/ra8_io/inc
          ${FW_ROOT}/libs/ra8_mem/inc
          ${FW_ROOT}/libs/third_party/miniz
-         ${FW_ROOT}/libs/third_party/stb
-         ${FW_ROOT}/libs/third_party/xz_embedded
 )
-# The vendored decoders (miniz, stb_image) type-pun through byte buffers; silence
-# their warnings and disable strict aliasing exactly as the host-test build does.
+# The vendored miniz decoder type-puns through byte buffers; silence its
+# warnings and disable strict aliasing exactly as the host-test build does.
 set_source_files_properties(
-  ${RA8_THIRD_PARTY_SRC} ${RA8_XZ_EMBEDDED_SRC} PROPERTIES COMPILE_OPTIONS
-                                                           "-w;-fno-strict-aliasing"
+  ${RA8_THIRD_PARTY_SRC} PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing"
 )
 
 # ---------------------------------------------------------------------------
@@ -285,21 +241,48 @@ else()
   set(RA8_VIEWER_VIEW_SRC src/ra8_viewer_view_stub.c)
 endif()
 
-# The reader core is one module split across four TUs (see
-# src/ra8_viewer_reader_internal.h): public API + dispatch, the comic engine, the
-# JOF long-strip engine, and the shared RGB565 / PPM writer.
+# The reader core is one module split across public dispatch, the streamed JOF
+# engine, and the shared RGB565 / descriptor-backed PPM writer.
 add_executable(
   rabook_viewer
   src/main.c
+  src/ra8_viewer_output.c
   src/ra8_viewer_reader.c
-  src/ra8_viewer_comic.c
   src/ra8_viewer_jof.c
   src/ra8_viewer_ppm.c
+  ${RA8_STREAM_POSIX_SRC}
   ${RA8_VIEWER_VIEW_SRC}
 )
-target_include_directories(rabook_viewer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
+target_include_directories(
+  rabook_viewer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${FW_ROOT}/port/posix/inc
+)
 target_link_libraries(rabook_viewer PRIVATE ra8_reader)
 target_compile_options(rabook_viewer PRIVATE -Wall -Wextra -Werror)
+
+include(CTest)
+if(BUILD_TESTING)
+  add_executable(
+    test_viewer_workspace tests/test_viewer_workspace.c src/ra8_viewer_reader.c
+                          src/ra8_viewer_jof.c src/ra8_viewer_ppm.c
+  )
+  target_include_directories(test_viewer_workspace PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
+  target_link_libraries(test_viewer_workspace PRIVATE ra8_reader)
+  target_compile_options(test_viewer_workspace PRIVATE -Wall -Wextra -Werror)
+  add_executable(
+    test_viewer_output tests/test_viewer_output.c src/ra8_viewer_output.c ${RA8_STREAM_RAM_SRC}
+                       ${RA8_STREAM_POSIX_SRC}
+  )
+  target_include_directories(
+    test_viewer_output PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${FW_ROOT}/port/posix/inc
+  )
+  target_link_libraries(test_viewer_output PRIVATE ra8_reader)
+  target_compile_options(test_viewer_output PRIVATE -Wall -Wextra -Werror)
+  add_test(NAME viewer_workspace
+           COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/run_workspace_test.sh
+                   $<TARGET_FILE:test_viewer_workspace> ${CMAKE_CURRENT_BINARY_DIR}/workspace_test
+  )
+  add_test(NAME viewer_output COMMAND test_viewer_output)
+endif()
 
 if(APPLE)
   set_source_files_properties(src/ra8_viewer_view.m PROPERTIES COMPILE_FLAGS "-fobjc-arc")
