@@ -369,17 +369,21 @@ static void test_interrupt_stream(void)
     k_ra8_err_invalid_arg,
     ra8_pdm_stream_enable(k_test_ch, stream_callback, &s_stream_calls, (uint8_t)UINT8_MAX));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_stream_enable(k_test_ch, stream_callback, &s_stream_calls, 5U));
+  /* HUM Ch 49.2.15 "PDICRCHn : Interrupt Control Register" p 3205 */
   TEST_ASSERT_EQ(k_ra8_pdm_pdicr_idre,
                  ra8_pdm_ch(k_test_ch)->PDICR & (uint32_t)k_ra8_pdm_pdicr_idre);
   TEST_ASSERT_EQ(k_ra8_err_exists,
                  ra8_pdm_stream_enable(k_test_ch, stream_callback, &s_stream_calls, 5U));
+  /* HUM Ch 49.2.66 "PDDSRCHn : Data Status Register" p 3228 */
   ra8_pdm_ch(k_test_ch)->PDDSR = 3U;
+  /* HUM Ch 49.2.65 "PDDRRCHn : Data Read Register" p 3227 */
   ra8_pdm_ch(k_test_ch)->PDDRR = (uint32_t)k_t_sample_neg1;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_irq_fire(k_ra8_elc_event_pdm_dat2));
   TEST_ASSERT_EQ(1U, s_stream_calls);
   TEST_ASSERT_EQ(3U, s_stream_samples);
   TEST_ASSERT_EQ(-1, s_stream_first);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_stream_disable(k_test_ch));
+  /* HUM Ch 49.2.15 "PDICRCHn : Interrupt Control Register" p 3205 */
   TEST_ASSERT_EQ(0U, ra8_pdm_ch(k_test_ch)->PDICR & (uint32_t)k_ra8_pdm_pdicr_idre);
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_pdm_stream_disable(k_test_ch));
   TEST_END("pdm interrupt stream");
@@ -394,6 +398,5 @@ int32_t main(void)
   test_read_validation();
   test_interrupt_stream();
   test_stop();
-  (void)fprintf(stderr, "[OK  ] test_ra8_pdm.c\n");
   return 0;
 }

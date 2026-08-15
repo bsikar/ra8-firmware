@@ -169,6 +169,5 @@ int32_t main(void)
   test_set_refresh_interval();
   test_get_status();
   test_power_transition();
-  (void)fprintf(stderr, "[OK ] test_ra8_sdramc.c\n");
   return 0;
 }

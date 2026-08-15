@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_timer.c
  * @brief Unit tests for timer.c (thin ra8_now_ms / ra8_sleep_ms wrappers)
+ * @details Validates the thin timer wrappers' millisecond reads and zero-duration sleep behavior over the shared time service.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -83,6 +84,5 @@ int32_t main(void)
   test_now_ms_matches_time_ms();
   test_now_ms_advances_with_ticks();
   test_sleep_ms_zero_returns_immediately();
-  (void)fprintf(stderr, "[OK  ] test_ra8_timer.c\n");
   return 0;
 }

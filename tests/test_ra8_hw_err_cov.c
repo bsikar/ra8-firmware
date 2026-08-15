@@ -262,6 +262,5 @@ int32_t main(void)
   test_fake_mmio_arm_errors();
   test_fake_mmio_reset_and_update();
   test_fake_mmio_wait_eval_direct();
-  (void)fprintf(stderr, "[OK ] test_ra8_hw_err_cov.c\n");
   return 0;
 }

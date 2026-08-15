@@ -249,6 +249,5 @@ int32_t main(void)
   test_pause_frame_packing();
   test_jumbo_frame_size_limits();
   test_irq_enable_blocks_independent();
-  (void)fprintf(stderr, "[OK  ] test_ra8_etha_rmac_edge_cases.c\n");
   return 0;
 }

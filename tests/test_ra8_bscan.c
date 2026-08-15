@@ -14,7 +14,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "ra8_bscan.h"
 #include "ra8_bscan_regs.h"
@@ -314,6 +313,5 @@ int32_t main(void)
   test_clear_status_not_initialized();
   test_deinit_idempotent();
   test_idcode_constant_matches_header();
-  (void)fprintf(stderr, "[OK  ] test_ra8_bscan.c\n");
   return 0;
 }

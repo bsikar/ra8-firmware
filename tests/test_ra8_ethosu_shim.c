@@ -475,6 +475,5 @@ int32_t main(void)
   test_invoke_reports_wait_fault();
   test_release_tolerates_null();
   test_invoke_rejected_after_deinit();
-  (void)fprintf(stderr, "[OK ] test_ra8_ethosu_shim.c\n");
   return 0;
 }

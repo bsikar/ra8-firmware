@@ -785,6 +785,5 @@ int32_t main(void)
   test_protected_ecdsa_sign_curve_arms();
   test_protected_ecdsa_sign_arg_errors();
   test_protected_null_args();
-  (void)fprintf(stderr, "[OK ] test_ra8_rsip_protected.c\n");
   return 0;
 }

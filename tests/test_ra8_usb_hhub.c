@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_usb_hhub.c
  * @brief Unit tests for the native USB host-side HUB class layer
+ * @details Covers hub enumeration, port status and feature requests, child lifecycle, bounds, and transfer failures.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -404,6 +405,5 @@ int32_t main(void)
   test_set_port_feature_envelope();
   test_clear_port_feature_envelope();
   test_mcdc_hhub();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_hhub.c\n");
   return 0;
 }

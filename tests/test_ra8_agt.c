@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_agt.c
  * @brief Unit tests for ra8_agt.c (Asynchronous General-Purpose Timer)
+ * @details Covers AGT channel validation, timer configuration, counter access, and callback behavior through fake peripheral registers.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -651,6 +652,5 @@ int32_t main(void)
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
     s_test_roster[i]();
   }
-  (void)fprintf(stderr, "[OK ] test_ra8_agt.c\n");
   return 0;
 }

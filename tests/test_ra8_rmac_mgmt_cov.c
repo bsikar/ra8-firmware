@@ -283,6 +283,5 @@ int32_t main(void)
   test_phy_reset_mdio_error_legs();
   test_auto_neg_wait_mdio_error_leg();
   test_link_status_mdio_error_leg();
-  (void)fprintf(stderr, "[OK  ] test_ra8_rmac_mgmt_cov.c\n");
   return 0;
 }

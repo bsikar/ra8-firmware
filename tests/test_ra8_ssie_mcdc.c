@@ -532,6 +532,5 @@ int32_t main(void)
   test_mcdc_attach_dma_tx_buffer();
   test_mcdc_attach_dma_rx_buffer();
   test_mcdc_attach_dma_pair();
-  (void)fprintf(stderr, "[OK  ] test_ra8_ssie_mcdc.c\n");
   return 0;
 }

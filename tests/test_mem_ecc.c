@@ -20,7 +20,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
@@ -134,6 +133,5 @@ int32_t main(void)
 {
   test_mem_ecc_1bit_decodes_correctable();
   test_mem_ecc_2bit_decodes_uncorrectable();
-  (void)fprintf(stderr, "[OK ] test_mem_ecc.c\n");
   return 0;
 }

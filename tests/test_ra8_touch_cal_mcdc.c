@@ -20,6 +20,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_touch_cal.h"
 #include "unity_minimal.h"
@@ -32,7 +33,7 @@
  * call reach its ``k_ra8_ok`` return; the identity affine keeps every mapped
  * coordinate on-panel so no downstream guard masks the result.
  */
-static const ra8_touch_cal_matrix_t k_tcm_identity = {
+static const ra8_touch_cal_matrix_t s_tcm_identity = {
   .a = 1.0F,
   .b = 0.0F,
   .c = 0.0F,
@@ -42,7 +43,15 @@ static const ra8_touch_cal_matrix_t k_tcm_identity = {
 };
 
 /**
+ * @brief Prove both apply pointer predicates are independently decisive.
+ * @details Supplies the all-present control and each single-null operand.
  * @test test_mcdc_apply_null_or
+ * @pre The identity matrix and output point are initialized.
+ * @pre The control panel dimensions are nonzero.
+ * @post The control succeeds and both single-null vectors return null pointer.
+ * @post Rejected vectors do not modify the output point.
+ * @note This is the minimal N+1 set for the two-term pointer OR.
+ * @since 0.1.0
  *
  * @par MC/DC:
  * Decision: `if ((matrix == nullptr) || (out_screen == nullptr))`
@@ -55,24 +64,32 @@ static const ra8_touch_cal_matrix_t k_tcm_identity = {
  * V1+V2 prove matrix independently affects the outcome; V1+V3 prove the same
  * for out_screen. Minimal MC/DC for N=2.
  */
-static void test_mcdc_apply_null_or(void)
+RA8_INTERNAL static void internal_test_mcdc_apply_null_or(void)
 {
   TEST_BEGIN("touch_cal apply MC/DC: matrix||out_screen NULL");
   const ra8_touch_cal_point_t raw = {0, 0};
   ra8_touch_cal_point_t       out = {0, 0};
 
   /* V1: both non-null, valid screen dims -> decision F -> proceeds. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_cal_apply(raw, &k_tcm_identity, 100U, 100U, &out));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_cal_apply(raw, &s_tcm_identity, 100U, 100U, &out));
   /* V2: matrix NULL -> C1=T short-circuits. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_touch_cal_apply(raw, nullptr, 100U, 100U, &out));
   /* V3: out_screen NULL -> C1=F, C2=T. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_touch_cal_apply(raw, &k_tcm_identity, 100U, 100U, nullptr));
+                 ra8_touch_cal_apply(raw, &s_tcm_identity, 100U, 100U, nullptr));
   TEST_END("touch_cal apply MC/DC: matrix||out_screen NULL");
 }
 
 /**
+ * @brief Prove both save pointer predicates are independently decisive.
+ * @details Supplies the all-present control and each single-null operand.
  * @test test_mcdc_save_null_or
+ * @pre The identity matrix and fixed-size blob are initialized.
+ * @pre The blob extent equals the public serialized-size constant.
+ * @post The control serializes successfully and both null arms are rejected.
+ * @post Rejected vectors do not escape the fixed blob bounds.
+ * @note This is the minimal N+1 set for the two-term pointer OR.
+ * @since 0.1.0
  *
  * @par MC/DC:
  * Decision: `if ((matrix == nullptr) || (dst == nullptr))`
@@ -83,22 +100,30 @@ static void test_mcdc_apply_null_or(void)
  * - V3: matrix=ok,   dst=NULL  -> C1=F, C2=T -> dec T -> null_ptr
  * V1+V2 isolate matrix; V1+V3 isolate dst. Minimal MC/DC for N=2.
  */
-static void test_mcdc_save_null_or(void)
+RA8_INTERNAL static void internal_test_mcdc_save_null_or(void)
 {
   TEST_BEGIN("touch_cal save MC/DC: matrix||dst NULL");
   uint8_t blob[k_ra8_touch_cal_blob_size] = {};
 
   /* V1: both non-null, buffer large enough -> decision F -> proceeds. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_cal_save(&k_tcm_identity, blob, sizeof(blob)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_cal_save(&s_tcm_identity, blob, sizeof(blob)));
   /* V2: matrix NULL -> C1=T short-circuits. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_touch_cal_save(nullptr, blob, sizeof(blob)));
   /* V3: dst NULL -> C1=F, C2=T. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_touch_cal_save(&k_tcm_identity, nullptr, sizeof(blob)));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_touch_cal_save(&s_tcm_identity, nullptr, sizeof(blob)));
   TEST_END("touch_cal save MC/DC: matrix||dst NULL");
 }
 
 /**
+ * @brief Prove both load pointer predicates are independently decisive.
+ * @details Produces a canonical blob, then supplies each single-null operand.
  * @test test_mcdc_load_null_or
+ * @pre The identity matrix can be serialized into the fixed-size blob.
+ * @pre The output matrix is writable for the control vector.
+ * @post The control loads successfully and both null arms are rejected.
+ * @post Rejected vectors do not publish a replacement matrix.
+ * @note This is the minimal N+1 set for the two-term pointer OR.
+ * @since 0.1.0
  *
  * @par MC/DC:
  * Decision: `if ((src == nullptr) || (out_matrix == nullptr))`
@@ -111,11 +136,11 @@ static void test_mcdc_save_null_or(void)
  * source blob is produced by ra8_touch_cal_save so the proceed path clears the
  * magic/version/reserved/CRC checks and returns ok.
  */
-static void test_mcdc_load_null_or(void)
+RA8_INTERNAL static void internal_test_mcdc_load_null_or(void)
 {
   TEST_BEGIN("touch_cal load MC/DC: src||out_matrix NULL");
   uint8_t blob[k_ra8_touch_cal_blob_size] = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_cal_save(&k_tcm_identity, blob, sizeof(blob)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_cal_save(&s_tcm_identity, blob, sizeof(blob)));
   ra8_touch_cal_matrix_t out = {};
 
   /* V1: both non-null, valid blob -> decision F -> proceeds. */
@@ -132,8 +157,8 @@ static void test_mcdc_load_null_or(void)
  */
 int main(void)
 {
-  test_mcdc_apply_null_or();
-  test_mcdc_save_null_or();
-  test_mcdc_load_null_or();
+  internal_test_mcdc_apply_null_or();
+  internal_test_mcdc_save_null_or();
+  internal_test_mcdc_load_null_or();
   return 0;
 }

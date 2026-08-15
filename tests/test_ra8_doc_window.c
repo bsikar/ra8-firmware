@@ -316,6 +316,5 @@ int32_t main(void)
   test_set_window_bad_polarity_rejected();
   test_window_compare_null_flag_rejected();
   test_window_compare_not_compare_mode_rejected();
-  (void)fprintf(stderr, "[OK ] test_ra8_doc_window.c\n");
   return 0;
 }

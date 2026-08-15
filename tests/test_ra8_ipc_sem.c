@@ -267,6 +267,5 @@ int32_t main(void)
   test_sem_take_timeout_spins_then_acquires();
   test_sem_take_timeout_fails();
   test_sem_is_locked();
-  (void)fprintf(stderr, "[OK  ] test_ra8_ipc_sem.c\n");
   return 0;
 }

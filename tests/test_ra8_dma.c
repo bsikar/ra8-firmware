@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_dma.c
  * @brief Unit tests for the generic DMA transfer substrate (libs/ra8_hal/src/ra8_dma.c).
+ * @details Validates the generic DMA substrate's channel lifecycle, descriptors, callback dispatch, transfer bounds, and failure rollback.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -397,6 +398,5 @@ int32_t main(void)
   test_dma_request_without_init_fails();
   test_channel_is_busy_bad_inputs();
   test_dispatch_out_of_range();
-  (void)fprintf(stderr, "[OK  ] test_ra8_dma.c\n");
   return 0;
 }

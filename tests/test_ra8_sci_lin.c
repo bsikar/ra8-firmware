@@ -781,6 +781,5 @@ int32_t main(void)
   test_lin_send_response();
   test_lin_read_response();
   test_lin_check_response();
-  (void)fprintf(stderr, "[OK ] test_ra8_sci_lin.c\n");
   return 0;
 }

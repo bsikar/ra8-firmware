@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_eth_gwca.c
  * @brief Unit tests for ra8_eth_gwca.c (GWCA sub-driver)
+ * @details Exercises GWCA descriptor validation, queue configuration, status handling, and error paths using bounded fake registers.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -675,6 +676,5 @@ int32_t main(void)
   test_find_slot();
   test_tx_frame();
   test_rx_frame();
-  (void)fprintf(stderr, "[OK  ] test_ra8_eth_gwca.c\n");
   return 0;
 }

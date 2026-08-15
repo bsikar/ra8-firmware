@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_err_to_str.c
  * @brief Additional coverage for ra8_err_to_str()
+ * @details Exercises category boundaries and unknown-code fallback behavior for the repository error-to-string conversion.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -62,6 +63,5 @@ int32_t main(void)
   test_hardware_category();
   test_comm_category();
   test_validation_category();
-  (void)fprintf(stderr, "[OK  ] test_ra8_err_to_str.c\n");
   return 0;
 }

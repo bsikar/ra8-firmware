@@ -395,6 +395,5 @@ int32_t main(void)
   test_request_dmac_start_fails();
   test_release_dmac_stop_fails();
   test_fake_peek_request_edge_cases();
-  (void)fprintf(stderr, "[OK  ] test_ra8_dma_cov.c\n");
   return 0;
 }

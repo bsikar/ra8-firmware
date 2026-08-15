@@ -168,6 +168,5 @@ int32_t main(void)
   test_wdt_for_oob_falls_back_to_wdt0();
   test_wdt_refresh_instance_wdt1_writes_sequence();
   test_wdt_refresh_instance_oob_writes_to_wdt0();
-  (void)fprintf(stderr, "[OK ] test_ra8_wdt_regs_cov.c\n");
   return 0;
 }

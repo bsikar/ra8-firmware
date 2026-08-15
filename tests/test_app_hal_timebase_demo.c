@@ -189,6 +189,5 @@ int32_t main(void)
   test_demo_arms_systick();
   test_demo_dwt_measure_path();
   test_demo_micros_conversion();
-  (void)fprintf(stderr, "[OK  ] test_app_hal_timebase_demo.c\n");
   return 0;
 }

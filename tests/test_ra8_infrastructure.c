@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_infrastructure.c
  * @brief Unit tests for ra8_infrastructure.c bring-up helpers
+ * @details Exercises infrastructure initialization guards, stack-canary behavior, and failure reporting without target hardware.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -67,6 +68,5 @@ int32_t main(void)
   test_infrastructure_init_runs();
   test_stack_canary_check_host();
   test_double_init_is_safe();
-  (void)fprintf(stderr, "[OK  ] test_ra8_infrastructure.c\n");
   return 0;
 }

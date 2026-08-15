@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_dac_b.c
  * @brief Unit tests for ra8_dac_b.c (12-bit DAC_B driver)
+ * @details Exercises DAC channel validation, conversion data writes, enable sequencing, and module-stop control in fake registers.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -413,6 +414,5 @@ int32_t main(void)
   test_status_read_and_clear();
   test_attach_and_dispatch();
   test_power_transition();
-  (void)fprintf(stderr, "[OK  ] test_ra8_dac_b.c\n");
   return 0;
 }

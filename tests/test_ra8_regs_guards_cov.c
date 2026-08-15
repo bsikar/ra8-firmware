@@ -153,6 +153,5 @@ int32_t main(void)
   test_port_guard();
   test_ssie_guard();
   test_ulpt_guard();
-  (void)fprintf(stderr, "[OK  ] test_ra8_regs_guards_cov.c\n");
   return 0;
 }

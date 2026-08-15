@@ -649,6 +649,5 @@ int32_t main(void)
   test_irq_fault_and_timeout();
   test_exec_runs_addk_job();
   test_exec_rejects_non_fake_stream();
-  (void)fprintf(stderr, "[OK ] test_ra8_npu.c\n");
   return 0;
 }

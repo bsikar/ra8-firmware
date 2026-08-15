@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_fake_world.c
  * @brief Unit tests for tests/mocks/ra8_fake_world
+ * @details Validates reset and lifecycle coordination across the combined fake MMIO, IRQ, DMA, time, and world state.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -129,6 +130,5 @@ int32_t main(void)
   test_unrelated_secure_region_does_not_block();
   test_zero_length_check_is_false();
   test_region_table_full();
-  (void)fprintf(stderr, "[OK ] test_ra8_fake_world.c\n");
   return 0;
 }

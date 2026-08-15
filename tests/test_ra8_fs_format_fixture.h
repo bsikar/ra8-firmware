@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "unity_minimal.h"
@@ -104,7 +105,8 @@ typedef struct {
 
 [[maybe_unused]] static mem_disk_t s_disk = {};
 
-[[maybe_unused]] static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+[[maybe_unused]] RA8_INTERNAL static ra8_err_t
+internal_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -116,8 +118,8 @@ typedef struct {
   return k_ra8_ok;
 }
 
-[[maybe_unused]] static ra8_err_t
-mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+[[maybe_unused]] RA8_INTERNAL static ra8_err_t
+internal_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -129,8 +131,8 @@ mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
   return k_ra8_ok;
 }
 
-[[maybe_unused]] static ra8_err_t
-mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+[[maybe_unused]] RA8_INTERNAL static ra8_err_t
+internal_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -139,9 +141,9 @@ mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 }
 
 [[maybe_unused]] static const ra8_fs_backend_t s_backend = {
-  .read_block   = mem_read,
-  .write_block  = mem_write,
-  .get_capacity = mem_capacity,
+  .read_block   = internal_mem_read,
+  .write_block  = internal_mem_write,
+  .get_capacity = internal_mem_capacity,
   .ctx          = &s_disk,
 };
 
@@ -161,7 +163,8 @@ typedef enum : uint32_t {
 [[maybe_unused]] static uint8_t  s_sink_vbr[k_fmt_block_size]  = {};
 [[maybe_unused]] static uint32_t s_sink_blocks                 = 0U;
 
-[[maybe_unused]] static ra8_err_t sink_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+[[maybe_unused]] RA8_INTERNAL static ra8_err_t
+internal_sink_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   (void)lba;
@@ -169,8 +172,8 @@ typedef enum : uint32_t {
   return k_ra8_ok;
 }
 
-[[maybe_unused]] static ra8_err_t
-sink_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+[[maybe_unused]] RA8_INTERNAL static ra8_err_t
+internal_sink_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
   if (lba == 0U && count >= 1U) {
@@ -182,8 +185,8 @@ sink_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
   return k_ra8_ok; /* every other sector is discarded */
 }
 
-[[maybe_unused]] static ra8_err_t
-sink_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+[[maybe_unused]] RA8_INTERNAL static ra8_err_t
+internal_sink_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   *block_count = s_sink_blocks;
@@ -192,9 +195,9 @@ sink_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 }
 
 [[maybe_unused]] static const ra8_fs_backend_t s_sink_backend = {
-  .read_block   = sink_read,
-  .write_block  = sink_write,
-  .get_capacity = sink_capacity,
+  .read_block   = internal_sink_read,
+  .write_block  = internal_sink_write,
+  .get_capacity = internal_sink_capacity,
   .ctx          = nullptr,
 };
 
@@ -211,7 +214,8 @@ typedef enum : uint8_t {
 [[maybe_unused]] static erase_mode_t s_erase_mode  = k_erase_mode_zero;
 [[maybe_unused]] static uint32_t     s_erase_calls = 0U;
 
-[[maybe_unused]] static ra8_err_t mem_erase(void* ctx, uint64_t lba, uint64_t count)
+[[maybe_unused]] RA8_INTERNAL static ra8_err_t
+internal_mem_erase(void* ctx, uint64_t lba, uint64_t count)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   s_erase_calls++;
@@ -231,10 +235,10 @@ typedef enum : uint8_t {
 }
 
 [[maybe_unused]] static const ra8_fs_backend_t s_backend_erase = {
-  .read_block   = mem_read,
-  .write_block  = mem_write,
-  .get_capacity = mem_capacity,
-  .erase_blocks = mem_erase,
+  .read_block   = internal_mem_read,
+  .write_block  = internal_mem_write,
+  .get_capacity = internal_mem_capacity,
+  .erase_blocks = internal_mem_erase,
   .ctx          = &s_disk,
 };
 
@@ -247,39 +251,40 @@ typedef enum : uint8_t {
 [[maybe_unused]] static uint32_t s_fault_read_seen = 0U;
 [[maybe_unused]] static bool     s_fault_write_all = false;
 
-[[maybe_unused]] static void fault_reset(void)
+[[maybe_unused]] RA8_INTERNAL static void internal_fault_reset(void)
 {
   s_fault_read_at   = 0U;
   s_fault_read_seen = 0U;
   s_fault_write_all = false;
 }
 
-[[maybe_unused]] static ra8_err_t fault_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+[[maybe_unused]] RA8_INTERNAL static ra8_err_t
+internal_fault_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   s_fault_read_seen++;
   if ((s_fault_read_at != 0U) && (s_fault_read_seen >= s_fault_read_at)) {
     return k_ra8_err_hw_error;
   }
-  return mem_read(ctx, lba, count, buf);
+  return internal_mem_read(ctx, lba, count, buf);
 }
 
-[[maybe_unused]] static ra8_err_t
-fault_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+[[maybe_unused]] RA8_INTERNAL static ra8_err_t
+internal_fault_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   if (s_fault_write_all) {
     return k_ra8_err_hw_error;
   }
-  return mem_write(ctx, lba, count, buf);
+  return internal_mem_write(ctx, lba, count, buf);
 }
 
 [[maybe_unused]] static const ra8_fs_backend_t s_fault_backend = {
-  .read_block   = fault_read,
-  .write_block  = fault_write,
-  .get_capacity = mem_capacity,
+  .read_block   = internal_fault_read,
+  .write_block  = internal_fault_write,
+  .get_capacity = internal_mem_capacity,
   .ctx          = &s_disk,
 };
 
-[[maybe_unused]] static void free_volume(void)
+[[maybe_unused]] RA8_INTERNAL static void internal_free_volume(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -294,9 +299,9 @@ fault_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
  *          formatter actually wrote a valid BPB (rather than a zeroed buffer
  *          accidentally satisfying a reader).
  */
-[[maybe_unused]] static void alloc_garbage_card(uint32_t blocks)
+[[maybe_unused]] RA8_INTERNAL static void internal_alloc_garbage_card(uint32_t blocks)
 {
-  free_volume();
+  internal_free_volume();
   s_disk.bytes       = (uint8_t*)malloc((size_t)blocks * (size_t)k_fmt_block_size);
   s_disk.block_count = blocks;
   if (s_disk.bytes == nullptr) {
@@ -305,7 +310,8 @@ fault_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
   memset(s_disk.bytes, k_fmt_fill_unformatted, (size_t)blocks * (size_t)k_fmt_block_size);
 }
 
-[[maybe_unused]] static void count_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
+[[maybe_unused]] RA8_INTERNAL static void
+internal_count_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)attr;
   (void)size;
@@ -322,51 +328,52 @@ fault_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
  *          create + write a multi-cluster payload, read it back and byte-compare,
  *          list (expect the one file), unlink, list again (empty), unmount.
  */
-[[maybe_unused]] static void verify_mount_file_cycle(const ra8_fs_backend_t* be, ra8_fs_type_t type)
+[[maybe_unused]] RA8_INTERNAL static void
+internal_verify_mount_file_cycle(const ra8_fs_backend_t* be, ra8_fs_type_t type)
 {
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(be, &h));
   TEST_ASSERT_EQ(type, h->type);
 
-  static uint8_t s_wr[k_fmt_payload_bytes];
-  static uint8_t s_rd[k_fmt_payload_bytes];
+  static uint8_t wr[k_fmt_payload_bytes];
+  static uint8_t rd[k_fmt_payload_bytes];
   for (uint32_t i = 0U; i < (uint32_t)k_fmt_payload_bytes; i++) {
-    s_wr[i] = (uint8_t)((i * k_fs_pattern_stride) + k_fs_pattern_bias);
-    s_rd[i] = 0U;
+    wr[i] = (uint8_t)((i * k_fs_pattern_stride) + k_fs_pattern_bias);
+    rd[i] = 0U;
   }
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "HELLO.BIN", k_ra8_fs_mode_write, &f));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_wr, (uint32_t)k_fmt_payload_bytes));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, wr, (uint32_t)k_fmt_payload_bytes));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   uint32_t got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "HELLO.BIN", k_ra8_fs_mode_read, &f));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_rd, (uint32_t)k_fmt_payload_bytes, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, rd, (uint32_t)k_fmt_payload_bytes, &got));
   TEST_ASSERT_EQ(k_fmt_payload_bytes, got);
-  TEST_ASSERT_EQ(0, memcmp(s_wr, s_rd, (size_t)k_fmt_payload_bytes));
+  TEST_ASSERT_EQ(0, memcmp(wr, rd, (size_t)k_fmt_payload_bytes));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   list_ctx_t ctx = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_count_cb, &ctx));
   TEST_ASSERT_EQ(1, ctx.count);
   TEST_ASSERT_EQ(0, strcmp(ctx.last, "HELLO.BIN"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "HELLO.BIN"));
   ctx.count = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_count_cb, &ctx));
   TEST_ASSERT_EQ(0, ctx.count);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
 }
 
-[[maybe_unused]] static void
-format_mount_cycle(uint32_t blocks, ra8_fs_type_t type, const char* label)
+[[maybe_unused]] RA8_INTERNAL static void
+internal_format_mount_cycle(uint32_t blocks, ra8_fs_type_t type, const char* label)
 {
-  alloc_garbage_card(blocks);
+  internal_alloc_garbage_card(blocks);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = type;
   opts.label                = label;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
-  verify_mount_file_cycle(&s_backend, type);
-  free_volume();
+  internal_verify_mount_file_cycle(&s_backend, type);
+  internal_free_volume();
 }

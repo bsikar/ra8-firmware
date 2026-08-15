@@ -417,6 +417,5 @@ int32_t main(void)
   test_target_xfer_null_rx();
   test_target_xfer_timeout_sptef();
   test_target_xfer_timeout_sprf();
-  (void)fprintf(stderr, "[OK ] test_ra8_spi_b_target.c\n");
   return 0;
 }

@@ -555,6 +555,5 @@ int32_t main(void)
   test_mcdc_enter_stop_speed();
   test_mcdc_exit_stop_speed();
   test_mcdc_dcp_in_data_len_data();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_mcdc.c\n");
   return 0;
 }

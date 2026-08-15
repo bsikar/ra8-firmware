@@ -442,6 +442,5 @@ int32_t main(void)
   test_switch8_reject_error();
   test_switch8_timeout();
   test_switch8_bad_instance();
-  (void)fprintf(stderr, "[OK  ] test_ra8_sdhi_width.c\n");
   return 0;
 }

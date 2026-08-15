@@ -404,6 +404,5 @@ int32_t main(void)
   test_mcdc_write_dma_arg_guard();
   test_mcdc_read_dma_arg_guard();
   test_mcdc_dispatch_spei_callback_guard();
-  (void)fprintf(stderr, "[OK ] test_ra8_spi_b.c\n");
   return 0;
 }

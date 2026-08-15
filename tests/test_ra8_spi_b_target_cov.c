@@ -287,6 +287,5 @@ int32_t main(void)
   test_target_spcmd_mode2();
   test_target_spcmd_mode3();
   test_target_spcmd_lsb_first();
-  (void)fprintf(stderr, "[OK ] test_ra8_spi_b_target_cov.c\n");
   return 0;
 }

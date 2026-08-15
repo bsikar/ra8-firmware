@@ -183,6 +183,5 @@ int32_t main(void)
   test_xip_enter_bad_instance();
   test_xip_exit_happy();
   test_xip_exit_bad_instance();
-  (void)fprintf(stderr, "[OK ] test_ra8_xspi_cov.c\n");
   return 0;
 }

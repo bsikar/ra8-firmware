@@ -246,6 +246,5 @@ int32_t main(void)
   test_set_baud_validation();
   test_deinit_guarded_teardown_clears_ccr0_and_state();
   test_deinit_validation();
-  (void)fprintf(stderr, "[OK ] test_ra8_sci_race.c\n");
   return 0;
 }

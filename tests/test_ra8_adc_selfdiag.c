@@ -440,6 +440,5 @@ int32_t main(void)
   test_die_temp_closed_loop();
   test_die_temp_guards();
   test_mcdc_adc_selfdiag();
-  (void)fprintf(stderr, "[OK  ] test_ra8_adc_selfdiag.c\n");
   return 0;
 }
