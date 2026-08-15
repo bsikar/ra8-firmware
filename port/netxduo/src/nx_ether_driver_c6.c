@@ -31,6 +31,7 @@
 #include "nx_api.h"
 #include "nx_arp.h"
 #include "nx_ip.h"
+#include "ra8_attributes.h"
 #include "ra8_c6link.h"
 #include "ra8_esp_hosted_port.h"
 #include "tx_api.h"
@@ -201,13 +202,13 @@ void nx_ether_driver_c6_bind(ra8_c6link_t* link)
    * fully-braced, non-const char array -- braced so it is not a bare string
    * literal assigned to CHAR* (MISRA 7.4), and fully initialised so no
    * element is left unset (MISRA 9.2/9.3). */
-  static CHAR s_mtx_name[] = {'c', '6', '_', 'w', 'i', 'r', 'e', '\0'};
+  static CHAR mutex_name[] = {'c', '6', '_', 'w', 'i', 'r', 'e', '\0'};
   if (link == NX_NULL) {
     return;
   }
   s_c6_link = link;
   if (s_c6_mtx_made == 0U) {
-    if (tx_mutex_create(&s_c6_mtx, s_mtx_name, TX_INHERIT) == TX_SUCCESS) {
+    if (tx_mutex_create(&s_c6_mtx, mutex_name, TX_INHERIT) == TX_SUCCESS) {
       s_c6_mtx_made = 1U;
     }
   }
@@ -227,7 +228,7 @@ void nx_ether_driver_c6_bind(ra8_c6link_t* link)
  * @note Not thread-safe; called only during single-threaded bring-up.
  * @since 0.1.0
  */
-static void priv_unpack_mac(const NX_INTERFACE* iface, uint8_t* mac)
+RA8_INTERNAL static void internal_unpack_mac(const NX_INTERFACE* iface, uint8_t* mac)
 {
   ULONG msw           = iface->nx_interface_physical_address_msw;
   ULONG lsw           = iface->nx_interface_physical_address_lsw;
@@ -241,7 +242,7 @@ static void priv_unpack_mac(const NX_INTERFACE* iface, uint8_t* mac)
 
 /**
  * @brief Write a six-octet MAC into a NetX interface's msw/lsw words.
- * @details The inverse of ::priv_unpack_mac, so NetX subsystems that read the
+ * @details The inverse of ::internal_unpack_mac, so NetX subsystems that read the
  * address later (ARP, sender stamping) see the value INITIALIZE adopted.
  * @param[in,out] iface Interface to update; must be non-null.
  * @param[in] mac Six-octet address to install; must be non-null.
@@ -253,7 +254,7 @@ static void priv_unpack_mac(const NX_INTERFACE* iface, uint8_t* mac)
  * @note Not thread-safe; called only from the INITIALIZE handler.
  * @since 0.1.0
  */
-static void priv_stamp_iface_mac(NX_INTERFACE* iface, const uint8_t* mac)
+RA8_INTERNAL static void internal_stamp_iface_mac(NX_INTERFACE* iface, const uint8_t* mac)
 {
   ULONG msw = ((ULONG)mac[k_nx_c6_mac_i0] << (ULONG)k_nx_c6_shift_8) | (ULONG)mac[k_nx_c6_mac_i1];
   ULONG lsw = ((ULONG)mac[k_nx_c6_mac_i2] << (ULONG)k_nx_c6_shift_24) |
@@ -277,7 +278,7 @@ static void priv_stamp_iface_mac(NX_INTERFACE* iface, const uint8_t* mac)
  * @note Not thread-safe; runs with the wire mutex held on the calling thread.
  * @since 0.1.0
  */
-static void priv_dispatch_to_netx(NX_PACKET* pkt)
+RA8_INTERNAL static void internal_dispatch_to_netx(NX_PACKET* pkt)
 {
   if (pkt->nx_packet_length < (ULONG)k_nx_c6_hdr_bytes) {
     (void)nx_packet_release(pkt);
@@ -327,7 +328,7 @@ static void priv_dispatch_to_netx(NX_PACKET* pkt)
  * @note Not thread-safe; called only from the receive callback.
  * @since 0.1.0
  */
-static bool priv_rx_acceptable(const uint8_t* frame, uint16_t len)
+RA8_INTERNAL static bool internal_rx_acceptable(const uint8_t* frame, uint16_t len)
 {
   if (s_rx_ip == NX_NULL) {
     return false;
@@ -353,9 +354,9 @@ void nx_ether_driver_c6_rx(void* ctx, const uint8_t* frame, uint16_t len)
    * block-scope static (MISRA 8.9) whose static storage duration keeps this
    * 1514-octet buffer off the RX worker's bounded stack. */
   /* cppcheck-suppress misra-c2012-18.8 -- a static array is never a VLA; its size is the C23 enum k_nx_c6_max_frame, which cppcheck 2.13 cannot parse and so misreads as a variable length. */
-  static uint8_t s_rx_staging[k_nx_c6_max_frame];
+  static uint8_t rx_staging[k_nx_c6_max_frame];
   (void)ctx;
-  if (!priv_rx_acceptable(frame, len)) {
+  if (!internal_rx_acceptable(frame, len)) {
     s_nx_c6_diag.rx_drop += 1U;
     return;
   }
@@ -375,19 +376,19 @@ void nx_ether_driver_c6_rx(void* ctx, const uint8_t* frame, uint16_t len)
   }
   /* Copy into a non-const staging buffer so the const-correct callback frame is
    * never cast away for NetX's non-const append parameter. */
-  (void)memcpy((void*)s_rx_staging, (const void*)frame, (size_t)len);
+  (void)memcpy((void*)rx_staging, (const void*)frame, (size_t)len);
   /* Slide prepend by two octets so the IP header lands word-aligned once the
    * 14-byte Ethernet header is stripped; NetX drops misaligned frames on
    * Cortex-M parts. */
   pkt->nx_packet_prepend_ptr = pkt->nx_packet_prepend_ptr + (ULONG)k_nx_c6_rx_align;
   pkt->nx_packet_append_ptr  = pkt->nx_packet_prepend_ptr;
-  if (nx_packet_data_append(pkt, s_rx_staging, (ULONG)len, pool, (ULONG)NX_NO_WAIT) != NX_SUCCESS) {
+  if (nx_packet_data_append(pkt, rx_staging, (ULONG)len, pool, (ULONG)NX_NO_WAIT) != NX_SUCCESS) {
     (void)nx_packet_release(pkt);
     s_nx_c6_diag.rx_drop += 1U;
     return;
   }
   pkt->nx_packet_ip_interface = s_rx_iface;
-  priv_dispatch_to_netx(pkt);
+  internal_dispatch_to_netx(pkt);
 }
 
 /**
@@ -406,7 +407,7 @@ void nx_ether_driver_c6_rx(void* ctx, const uint8_t* frame, uint16_t len)
  * @note Runs at ::k_nx_c6_worker_priority alongside the NetX IP thread.
  * @since 0.1.0
  */
-static void priv_rx_worker_entry(ULONG arg)
+RA8_INTERNAL static void internal_rx_worker_entry(ULONG arg)
 {
   (void)arg;
   while (1) {
@@ -453,34 +454,34 @@ static void priv_rx_worker_entry(ULONG arg)
  * @note Not thread-safe; the NetX link dispatch serialises callers.
  * @since 0.1.0
  */
-static void priv_spawn_rx_worker(NX_IP* ip, NX_INTERFACE* iface)
+RA8_INTERNAL static void internal_spawn_rx_worker(NX_IP* ip, NX_INTERFACE* iface)
 {
   /* Worker-private state kept at block scope (MISRA 8.9). Each retains static
    * storage duration because ThreadX keeps a pointer to the control block, the
    * stack and the name for the life of the thread; the spawn guard makes a
    * second call a no-op. The name is a fully-braced, non-const char array
    * (avoids the 7.4 string-literal-to-CHAR* assignment and any partial init). */
-  static TX_THREAD          s_rx_thread;
-  alignas(8) static uint8_t s_rx_thread_stack[k_nx_c6_worker_stack_bytes];
-  static uint8_t            s_rx_thread_made;
-  static CHAR               s_rx_name[] = {'c', '6', '_', 'n', 'x', '_', 'r', 'x', '\0'};
-  if (s_rx_thread_made != 0U) {
+  static TX_THREAD          rx_thread;
+  alignas(8) static uint8_t rx_thread_stack[k_nx_c6_worker_stack_bytes];
+  static uint8_t            rx_thread_made;
+  static CHAR               rx_name[] = {'c', '6', '_', 'n', 'x', '_', 'r', 'x', '\0'};
+  if (rx_thread_made != 0U) {
     return;
   }
   s_rx_ip    = ip;
   s_rx_iface = iface;
-  UINT t     = tx_thread_create(&s_rx_thread,
-                                s_rx_name,
-                                priv_rx_worker_entry,
+  UINT t     = tx_thread_create(&rx_thread,
+                                rx_name,
+                                internal_rx_worker_entry,
                                 0U,
-                                (VOID*)s_rx_thread_stack,
+                                (VOID*)rx_thread_stack,
                                 (ULONG)k_nx_c6_worker_stack_bytes,
                                 (UINT)k_nx_c6_worker_priority,
                                 (UINT)k_nx_c6_worker_priority,
                                 (ULONG)TX_NO_TIME_SLICE,
                                 (UINT)TX_AUTO_START);
   if (t == TX_SUCCESS) {
-    s_rx_thread_made = 1U;
+    rx_thread_made = 1U;
   }
 }
 
@@ -500,7 +501,7 @@ static void priv_spawn_rx_worker(NX_IP* ip, NX_INTERFACE* iface)
  * @note Pure; safe from any thread.
  * @since 0.1.0
  */
-static uint16_t priv_ethertype_for_cmd(UINT cmd)
+RA8_INTERNAL static uint16_t internal_ethertype_for_cmd(UINT cmd)
 {
   /* A switch rather than a compound boolean, so the driver carries no MC/DC-owing
    * decision; the two ARP commands share one arm by fall-through. */
@@ -533,8 +534,8 @@ static uint16_t priv_ethertype_for_cmd(UINT cmd)
  * @note Not thread-safe with respect to @p dst (the shared staging buffer).
  * @since 0.1.0
  */
-static UCHAR
-priv_packet_to_buffer(const NX_PACKET* packet, uint8_t* dst, uint32_t cap, uint32_t* out_len)
+RA8_INTERNAL static UCHAR
+internal_packet_to_buffer(const NX_PACKET* packet, uint8_t* dst, uint32_t cap, uint32_t* out_len)
 {
   uint32_t         total = 0U;
   const NX_PACKET* cur   = packet;
@@ -560,7 +561,7 @@ priv_packet_to_buffer(const NX_PACKET* packet, uint8_t* dst, uint32_t cap, uint3
  * @brief Write the 14-byte Ethernet II header into the staging buffer.
  * @details Destination MAC comes from the NetX request (resolved by ARP, or
  * the broadcast address), the source MAC from ::s_local_mac, and the EtherType
- * from ::priv_ethertype_for_cmd. The body is appended after this by the caller.
+ * from ::internal_ethertype_for_cmd. The body is appended after this by the caller.
  * @param[in] req NetX driver request carrying the destination and command;
  *                must be non-null.
  * @return Nothing.
@@ -571,11 +572,11 @@ priv_packet_to_buffer(const NX_PACKET* packet, uint8_t* dst, uint32_t cap, uint3
  * @note Not thread-safe; ::s_tx_staging is shared and guarded by the send path.
  * @since 0.1.0
  */
-static void priv_write_eth_header(const NX_IP_DRIVER* req)
+RA8_INTERNAL static void internal_write_eth_header(const NX_IP_DRIVER* req)
 {
   const ULONG    msw = req->nx_ip_driver_physical_address_msw;
   const ULONG    lsw = req->nx_ip_driver_physical_address_lsw;
-  const uint16_t et  = priv_ethertype_for_cmd(req->nx_ip_driver_command);
+  const uint16_t et  = internal_ethertype_for_cmd(req->nx_ip_driver_command);
   s_tx_staging[k_nx_c6_mac_i0] =
     (uint8_t)((msw >> (ULONG)k_nx_c6_shift_8) & (ULONG)k_nx_c6_byte_mask);
   s_tx_staging[k_nx_c6_mac_i1] = (uint8_t)(msw & (ULONG)k_nx_c6_byte_mask);
@@ -609,7 +610,7 @@ static void priv_write_eth_header(const NX_IP_DRIVER* req)
  * @note Not thread-safe; NetX issues INITIALIZE once, on the IP thread.
  * @since 0.1.0
  */
-static void priv_handle_init(NX_IP_DRIVER* req)
+RA8_INTERNAL static void internal_handle_init(NX_IP_DRIVER* req)
 {
   NX_INTERFACE* iface = req->nx_ip_driver_interface;
   /* Split guards (no compound boolean) so this driver owes no MC/DC vectors. */
@@ -622,13 +623,13 @@ static void priv_handle_init(NX_IP_DRIVER* req)
     return;
   }
   if (s_mac_user_set == 0U) {
-    priv_unpack_mac(iface, s_local_mac);
+    internal_unpack_mac(iface, s_local_mac);
   }
-  priv_stamp_iface_mac(iface, s_local_mac);
+  internal_stamp_iface_mac(iface, s_local_mac);
   iface->nx_interface_ip_mtu_size            = (ULONG)k_nx_c6_mtu;
   iface->nx_interface_address_mapping_needed = NX_TRUE;
   s_open                                     = 1U;
-  priv_spawn_rx_worker(req->nx_ip_driver_ptr, iface);
+  internal_spawn_rx_worker(req->nx_ip_driver_ptr, iface);
   req->nx_ip_driver_status = NX_SUCCESS;
 }
 
@@ -648,7 +649,7 @@ static void priv_handle_init(NX_IP_DRIVER* req)
  * @note Not thread-safe; called only from the send handler.
  * @since 0.1.0
  */
-static bool priv_send_blocked(const NX_PACKET* pkt)
+RA8_INTERNAL static bool internal_send_blocked(const NX_PACKET* pkt)
 {
   bool blocked = false;
   if (pkt == NX_NULL) {
@@ -680,10 +681,10 @@ static bool priv_send_blocked(const NX_PACKET* pkt)
  * @note Not thread-safe against itself; NetX serialises sends on the IP thread.
  * @since 0.1.0
  */
-static void priv_handle_send(NX_IP_DRIVER* req)
+RA8_INTERNAL static void internal_handle_send(NX_IP_DRIVER* req)
 {
   NX_PACKET* pkt = req->nx_ip_driver_packet;
-  if (priv_send_blocked(pkt)) {
+  if (internal_send_blocked(pkt)) {
     if (pkt != NX_NULL) {
       (void)nx_packet_transmit_release(pkt);
     }
@@ -691,12 +692,12 @@ static void priv_handle_send(NX_IP_DRIVER* req)
     req->nx_ip_driver_status = NX_NOT_SUCCESSFUL;
     return;
   }
-  priv_write_eth_header(req);
+  internal_write_eth_header(req);
   uint32_t body_len = 0U;
-  if (priv_packet_to_buffer(pkt,
-                            s_tx_staging + k_nx_c6_hdr_bytes,
-                            (uint32_t)sizeof(s_tx_staging) - (uint32_t)k_nx_c6_hdr_bytes,
-                            &body_len) == 0U) {
+  if (internal_packet_to_buffer(pkt,
+                                s_tx_staging + k_nx_c6_hdr_bytes,
+                                (uint32_t)sizeof(s_tx_staging) - (uint32_t)k_nx_c6_hdr_bytes,
+                                &body_len) == 0U) {
     (void)nx_packet_transmit_release(pkt);
     s_nx_c6_diag.tx_err += 1U;
     req->nx_ip_driver_status = NX_NOT_SUCCESSFUL;
@@ -733,7 +734,7 @@ static void priv_handle_send(NX_IP_DRIVER* req)
  * @note Not thread-safe; NetX calls it on the IP thread.
  * @since 0.1.0
  */
-static void priv_handle_get_status(NX_IP_DRIVER* req)
+RA8_INTERNAL static void internal_handle_get_status(NX_IP_DRIVER* req)
 {
   if (req->nx_ip_driver_return_ptr == NX_NULL) {
     req->nx_ip_driver_status = NX_NOT_SUCCESSFUL;
@@ -758,7 +759,7 @@ static void priv_handle_get_status(NX_IP_DRIVER* req)
  * @note Not thread-safe; serialised on the NetX IP thread.
  * @since 0.1.0
  */
-static void priv_set_link_state(NX_IP_DRIVER* req, UCHAR link_up)
+RA8_INTERNAL static void internal_set_link_state(NX_IP_DRIVER* req, UCHAR link_up)
 {
   s_link_up                = link_up;
   req->nx_ip_driver_status = NX_SUCCESS;
@@ -774,23 +775,23 @@ void nx_ether_driver_c6(NX_IP_DRIVER* driver_req)
   }
   switch (driver_req->nx_ip_driver_command) {
     case NX_LINK_INITIALIZE:
-      priv_handle_init(driver_req);
+      internal_handle_init(driver_req);
       break;
     case NX_LINK_ENABLE:
-      priv_set_link_state(driver_req, 1U);
+      internal_set_link_state(driver_req, 1U);
       break;
     case NX_LINK_DISABLE:
-      priv_set_link_state(driver_req, 0U);
+      internal_set_link_state(driver_req, 0U);
       break;
     case NX_LINK_PACKET_SEND:
     case NX_LINK_PACKET_BROADCAST:
     case NX_LINK_ARP_SEND:
     case NX_LINK_ARP_RESPONSE_SEND:
     case NX_LINK_RARP_SEND:
-      priv_handle_send(driver_req);
+      internal_handle_send(driver_req);
       break;
     case NX_LINK_GET_STATUS:
-      priv_handle_get_status(driver_req);
+      internal_handle_get_status(driver_req);
       break;
     case NX_LINK_UNINITIALIZE:
       s_open                          = 0U;
