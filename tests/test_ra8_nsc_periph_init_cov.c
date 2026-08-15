@@ -33,6 +33,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
@@ -55,12 +56,15 @@
  * full init path; later calls exercise the idempotent fast path.
  *
  * @pre Binary is running under RA8_OFF_TARGET.
+ * @pre No other test concurrently accesses fake MMIO.
  * @post All MMIO backing regions read zero.
+ * @post The production initialization latch is left unchanged.
  *
  * @note Not thread-safe; tests are single-threaded.
  * @since 0.1.0
  */
-static void prep(void)
+RA8_INTERNAL
+static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
 }
@@ -86,7 +90,7 @@ static void prep(void)
  * @par MC/DC:
  * Decision: ``if (s_initialized)`` -- Vector 1: s_initialized == false
  * (this is the first call in the process, so the condition evaluates false and
- * the full init body runs). Pairs with test_periph_init_idempotent_second_call
+ * the full init body runs). Pairs with internal_test_periph_init_idempotent_second_call
  * for the true branch.
  *
  * @pre ra8_fake_mmap_reset() has been called.
@@ -97,10 +101,11 @@ static void prep(void)
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_periph_init_first_call(void)
+RA8_INTERNAL
+static void internal_test_periph_init_first_call(void)
 {
   TEST_BEGIN("ra8_nsc_periph_init: first call -- full substrate init path");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_periph_init());
   TEST_END("ra8_nsc_periph_init: first call -- full substrate init path");
 }
@@ -119,20 +124,22 @@ static void test_periph_init_first_call(void)
  *
  * @par MC/DC:
  * Decision: ``if (s_initialized)`` -- Vector 2: s_initialized == true
- * (set by test_periph_init_first_call). The condition evaluates true and
- * the function returns early. Pairs with test_periph_init_first_call.
+ * (set by internal_test_periph_init_first_call). The condition evaluates true and
+ * the function returns early. Pairs with internal_test_periph_init_first_call.
  *
- * @pre test_periph_init_first_call() has already run and returned k_ra8_ok.
+ * @pre internal_test_periph_init_first_call() has already run and returned k_ra8_ok.
+ * @pre The production initialization latch is therefore true.
  * @post ra8_nsc_periph_init() returns k_ra8_ok on every call.
  * @post Internal module state is unchanged (no re-initialisation).
  *
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_periph_init_idempotent_second_call(void)
+RA8_INTERNAL
+static void internal_test_periph_init_idempotent_second_call(void)
 {
   TEST_BEGIN("ra8_nsc_periph_init: idempotent -- three fast-path calls");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_periph_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_periph_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_periph_init());
@@ -148,8 +155,10 @@ static void test_periph_init_idempotent_second_call(void)
  * ra8_fake_mmap_reset() zeroes register windows but does NOT reset the static
  * s_initialized flag, so these calls all take the idempotent fast path.
  *
- * @pre test_periph_init_first_call() has already run.
+ * @pre internal_test_periph_init_first_call() has already run.
+ * @pre The test process still owns the fake MMIO mappings.
  * @post All calls return k_ra8_ok.
+ * @post The production initialization latch remains true.
  *
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
@@ -158,16 +167,17 @@ static void test_periph_init_idempotent_second_call(void)
  * (no compound decision is under test in this case -- it re-exercises the
  * idempotent fast path; the sole decision `if (s_initialized)` in
  * ra8_nsc_periph_init() is single-condition, and its two-vector MC/DC is covered
- * by test_periph_init_first_call (false) + test_periph_init_idempotent_second_call
+ * by internal_test_periph_init_first_call (false) + internal_test_periph_init_idempotent_second_call
  * (true). No `&&` or `||` is involved.)
  */
-static void test_periph_init_always_ok_after_first(void)
+RA8_INTERNAL
+static void internal_test_periph_init_always_ok_after_first(void)
 {
   TEST_BEGIN("ra8_nsc_periph_init: always k_ra8_ok after first successful init");
-  prep();
+  internal_prep();
   ra8_err_t err = ra8_nsc_periph_init();
   TEST_ASSERT_EQ(k_ra8_ok, err);
-  prep();
+  internal_prep();
   err = ra8_nsc_periph_init();
   TEST_ASSERT_EQ(k_ra8_ok, err);
   TEST_END("ra8_nsc_periph_init: always k_ra8_ok after first successful init");
@@ -183,7 +193,7 @@ static void test_periph_init_always_ok_after_first(void)
  *
  * @details
  * Runs all test functions in sequence. Tests must be ordered so that
- * test_periph_init_first_call() is the very first ra8_nsc_periph_init()
+ * internal_test_periph_init_first_call() is the very first ra8_nsc_periph_init()
  * call in the process, ensuring the full init path is exercised.
  *
  * @return int32_t Zero on success; the test framework calls exit(1) on the
@@ -200,9 +210,8 @@ static void test_periph_init_always_ok_after_first(void)
  */
 int32_t main(void)
 {
-  test_periph_init_first_call();
-  test_periph_init_idempotent_second_call();
-  test_periph_init_always_ok_after_first();
-  (void)fprintf(stderr, "[OK ] test_ra8_nsc_periph_init_cov.c\n");
+  internal_test_periph_init_first_call();
+  internal_test_periph_init_idempotent_second_call();
+  internal_test_periph_init_always_ok_after_first();
   return 0;
 }
