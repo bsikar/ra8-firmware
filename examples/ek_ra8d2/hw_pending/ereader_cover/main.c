@@ -6,7 +6,7 @@
  * The headline "book cover art" path for the on-device e-reader, end to end:
  *
  *   1. `ra8_epub_open` -- open a baked, cover-bearing `.epub` in memory
- *      (vendored miniz ZIP + tinyxml2, zero-heap via `ra8_epub_miniz_alloc`).
+ *      (vendored miniz ZIP + bounded XML reader, zero-heap via `ra8_epub_miniz_alloc`).
  *   2. `ra8_epub_get_cover_image` -- resolve the `properties="cover-image"`
  *      manifest item and copy the cover's raw PNG bytes into a buffer.
  *   3. `ra8_img_decode_blit` -- decode the PNG (stb_image), scale-to-fit it into

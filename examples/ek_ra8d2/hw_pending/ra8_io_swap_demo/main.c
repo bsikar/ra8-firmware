@@ -12,7 +12,7 @@
  * capstone that shows off every ra8_io abstraction in a single binary:
  *
  *   1. **Drop-in block-device swap.** One backend-agnostic engine
- *      (::swap_run_one) runs the IDENTICAL fabric round-trip -- bridge the block
+ *      (::internal_swap_run_one) runs the IDENTICAL fabric round-trip -- bridge the block
  *      device to `ra8_fs`, format + mount a FAT12 volume, register it in the VFS,
  *      write a file, read it back, byte-compare, then tear the mount down -- over
  *      a table of ::swap_backend_t rows. Row 0 is an in-SRAM RAM block device
@@ -52,6 +52,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
@@ -109,14 +110,14 @@ typedef enum : uint32_t {
  * @brief One row of the drop-in block-device swap table.
  *
  * @details Describes a single pre-bound block device plus the FAT/VFS identity
- *          the engine uses to mount and address it. The engine (::swap_run_one)
+ *          the engine uses to mount and address it. The engine (::internal_swap_run_one)
  *          consumes only these fields, so adding a third medium (SD, SDRAM, MRAM)
  *          is one more row -- the engine body never changes.
  *
  * @invariant `bd` points at a block device already bound by its `_init` helper.
  * @invariant `name` is a non-empty VFS volume name with no ':' or '/'.
  *
- * @see swap_run_one
+ * @see internal_swap_run_one
  * @since 0.1.0
  */
 typedef struct {
@@ -126,11 +127,23 @@ typedef struct {
   const char*        file;  /**< Full "<name>:/DATA.BIN" VFS path.            */
 } swap_backend_t;
 
-/** @brief SCI8 console TXD = PD02. */
-static const ra8_port_pin_t k_swap_txd =
+/**
+ * @var s_swap_txd
+ * @brief SCI8 console transmit pin, PD02.
+ * @details Encodes the board port and pin in the HAL's packed pin identifier.
+ * @note Immutable routing input used once during boot.
+ * @since 0.1.0
+ */
+static const ra8_port_pin_t s_swap_txd =
   (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << (uint16_t)k_swap_pin_shift) | (uint16_t)k_ra8_pin_2);
-/** @brief SCI8 console RXD = PD03. */
-static const ra8_port_pin_t k_swap_rxd =
+/**
+ * @var s_swap_rxd
+ * @brief SCI8 console receive pin, PD03.
+ * @details Encodes the board port and pin in the HAL's packed pin identifier.
+ * @note Immutable routing input used once during boot.
+ * @since 0.1.0
+ */
+static const ra8_port_pin_t s_swap_rxd =
   (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << (uint16_t)k_swap_pin_shift) | (uint16_t)k_ra8_pin_3);
 
 /** @brief 128 KiB RAM-disk backing buffer (in SRAM .bss). */
@@ -178,7 +191,7 @@ static const char* const s_tag = "ra8_io_swap_demo";
  * @note Blocking polled TX; not interrupt-safe.
  * @since 0.1.0
  */
-static void swap_uart_print(const char* msg)
+RA8_INTERNAL static void internal_swap_uart_print(const char* msg)
 {
   (void)ra8_io_stream_puts(&s_uart, msg);
 }
@@ -202,7 +215,7 @@ static void swap_uart_print(const char* msg)
  * @note Not thread-safe; mutates the shared payload buffer.
  * @since 0.1.0
  */
-static void swap_fill(uint32_t len)
+RA8_INTERNAL static void internal_swap_fill(uint32_t len)
 {
   for (uint32_t i = 0U; i < len; ++i) {
     s_payload[i] = (uint8_t)(((i * (uint32_t)k_swap_pat_mul) + (uint32_t)k_swap_pat_add) ^
@@ -233,7 +246,7 @@ static void swap_fill(uint32_t len)
  * @note Not thread-safe; single-caller boot context.
  * @since 0.1.0
  */
-static ra8_err_t swap_vfs_write(const char* path, uint32_t len)
+RA8_INTERNAL static ra8_err_t internal_swap_vfs_write(const char* path, uint32_t len)
 {
   RA8_CHECK_NULL_PTR(path, s_tag, "path");
   RA8_CHECK_RANGE_TAG(len, 0U, (uint32_t)k_swap_payload, k_ra8_err_invalid_size, s_tag);
@@ -270,7 +283,7 @@ static ra8_err_t swap_vfs_write(const char* path, uint32_t len)
  * @note Not thread-safe; mutates the shared read-back buffer.
  * @since 0.1.0
  */
-static ra8_err_t swap_vfs_read_verify(const char* path, uint32_t len)
+RA8_INTERNAL static ra8_err_t internal_swap_vfs_read_verify(const char* path, uint32_t len)
 {
   RA8_CHECK_NULL_PTR(path, s_tag, "path");
   RA8_CHECK_RANGE_TAG(len, 0U, (uint32_t)k_swap_payload, k_ra8_err_invalid_size, s_tag);
@@ -316,7 +329,8 @@ static ra8_err_t swap_vfs_read_verify(const char* path, uint32_t len)
  * @note Not thread-safe; single-caller boot context.
  * @since 0.1.0
  */
-static ra8_err_t swap_run_one(const swap_backend_t* b, uint32_t len, ra8_io_stream_t* log)
+RA8_INTERNAL static ra8_err_t
+internal_swap_run_one(const swap_backend_t* b, uint32_t len, ra8_io_stream_t* log)
 {
   RA8_CHECK_NULL_PTR(b, s_tag, "backend");
   RA8_CHECK_NULL_PTR(log, s_tag, "log");
@@ -334,9 +348,9 @@ static ra8_err_t swap_run_one(const swap_backend_t* b, uint32_t len, ra8_io_stre
   RA8_RETURN_ON_ERROR(ra8_fs_mount(&s_be, &mnt), s_tag, "mount");
   RA8_RETURN_ON_ERROR(ra8_io_vfs_mount(b->name, mnt), s_tag, "vfs mount");
 
-  swap_fill(len);
-  RA8_RETURN_ON_ERROR(swap_vfs_write(b->file, len), s_tag, "write");
-  RA8_RETURN_ON_ERROR(swap_vfs_read_verify(b->file, len), s_tag, "verify");
+  internal_swap_fill(len);
+  RA8_RETURN_ON_ERROR(internal_swap_vfs_write(b->file, len), s_tag, "write");
+  RA8_RETURN_ON_ERROR(internal_swap_vfs_read_verify(b->file, len), s_tag, "verify");
 
   RA8_RETURN_ON_ERROR(ra8_io_vfs_unmount(b->name), s_tag, "vfs unmount");
   RA8_RETURN_ON_ERROR(ra8_fs_unmount(mnt), s_tag, "unmount");
@@ -369,16 +383,16 @@ static ra8_err_t swap_run_one(const swap_backend_t* b, uint32_t len, ra8_io_stre
  * @note Not thread-safe; single-caller boot context.
  * @since 0.1.0
  */
-static ra8_err_t swap_replay_capture(uint32_t* out_used)
+RA8_INTERNAL static ra8_err_t internal_swap_replay_capture(uint32_t* out_used)
 {
   RA8_CHECK_NULL_PTR(out_used, s_tag, "out_used");
   RA8_VALIDATE_INIT(s_ram_log_state.buf != nullptr, s_tag, "ram log");
 
   uint32_t used = 0U;
   RA8_RETURN_ON_ERROR(ra8_io_stream_ram_used(&s_ram_log_state, &used), s_tag, "used");
-  swap_uart_print("ra8_io_swap_demo: --- ram-captured stdio ---\r\n");
+  internal_swap_uart_print("ra8_io_swap_demo: --- ram-captured stdio ---\r\n");
   RA8_RETURN_ON_ERROR(ra8_io_stream_write(&s_uart, s_ram_log_buf, used, nullptr), s_tag, "replay");
-  swap_uart_print("ra8_io_swap_demo: --- end capture ---\r\n");
+  internal_swap_uart_print("ra8_io_swap_demo: --- end capture ---\r\n");
   *out_used = used;
   return k_ra8_ok;
 }
@@ -388,7 +402,7 @@ static ra8_err_t swap_replay_capture(uint32_t* out_used)
  *
  * @details Binds the in-SRAM RAM device and the OSPI NOR device (the only two
  *          per-medium bring-up lines), builds the two-row ::swap_backend_t table,
- *          and runs ::swap_run_one over each row with the in-RAM stdio sink as the
+ *          and runs ::internal_swap_run_one over each row with the in-RAM stdio sink as the
  *          progress log. Stops at the first failing backend and reports which one.
  *
  * @param[out] out_failed Receives the name of the first failing backend, or NULL
@@ -398,7 +412,7 @@ static ra8_err_t swap_replay_capture(uint32_t* out_used)
  * @retval k_ra8_ok    Both backends round-tripped through the identical engine.
  * @retval k_ra8_err_* The first failing bind / round-trip step's code.
  *
- * @pre ::demo_setup_or_halt has run and the stdio sinks are initialised.
+ * @pre ::internal_demo_setup_or_halt has run and the stdio sinks are initialised.
  * @pre @p out_failed is non-NULL.
  * @post On success `*out_failed` is NULL and both volumes round-tripped.
  * @post On failure `*out_failed` names the backend whose round-trip failed.
@@ -406,7 +420,7 @@ static ra8_err_t swap_replay_capture(uint32_t* out_used)
  * @note Not thread-safe; single-caller boot context.
  * @since 0.1.0
  */
-static ra8_err_t swap_run_all(const char** out_failed)
+RA8_INTERNAL static ra8_err_t internal_swap_run_all(const char** out_failed)
 {
   RA8_CHECK_NULL_PTR(out_failed, s_tag, "out_failed");
   *out_failed = nullptr;
@@ -436,7 +450,7 @@ static ra8_err_t swap_run_all(const char** out_failed)
   };
 
   for (uint32_t i = 0U; i < (uint32_t)k_swap_backends; ++i) {
-    const ra8_err_t e = swap_run_one(&table[i], (uint32_t)k_swap_payload, &s_ram_log);
+    const ra8_err_t e = internal_swap_run_one(&table[i], (uint32_t)k_swap_payload, &s_ram_log);
     if (e != k_ra8_ok) {
       *out_failed = table[i].name;
       return e;
@@ -463,7 +477,7 @@ static ra8_err_t swap_run_all(const char** out_failed)
  * @note Not thread-safe; boot-context only.
  * @since 0.1.0
  */
-static void demo_setup_or_halt(void)
+RA8_INTERNAL static void internal_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
@@ -471,8 +485,8 @@ static void demo_setup_or_halt(void)
       (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) ||
       (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz) != k_ra8_ok) ||
       (ra8_time_init(cpuclk0_hz) != k_ra8_ok) ||
-      (ra8_pfs_route_peripheral(k_swap_txd, k_ra8_psel_sci_async, "swap.txd") != k_ra8_ok) ||
-      (ra8_pfs_route_peripheral(k_swap_rxd, k_ra8_psel_sci_async, "swap.rxd") != k_ra8_ok)) {
+      (ra8_pfs_route_peripheral(s_swap_txd, k_ra8_psel_sci_async, "swap.txd") != k_ra8_ok) ||
+      (ra8_pfs_route_peripheral(s_swap_rxd, k_ra8_psel_sci_async, "swap.rxd") != k_ra8_ok)) {
     while (true) {
     }
   }
@@ -509,37 +523,37 @@ static void demo_setup_or_halt(void)
 int main(void)
 {
   ra8_log_init();
-  demo_setup_or_halt();
+  internal_demo_setup_or_halt();
   (void)ra8_io_stream_uart_init(&s_uart, &s_uart_state, (uint8_t)k_swap_uart_chan);
   (void)ra8_io_log_attach(&s_uart); /* route ra8_log errors onto the UART too */
-  swap_uart_print("ra8_io_swap_demo: boot\r\n");
+  internal_swap_uart_print("ra8_io_swap_demo: boot\r\n");
 
   /* Retarget the engine's stdio into the in-RAM capture sink. */
   (void)
     ra8_io_stream_ram_init(&s_ram_log, &s_ram_log_state, s_ram_log_buf, (uint32_t)k_swap_log_cap);
 
   const char*     failed = nullptr;
-  const ra8_err_t swap_e = swap_run_all(&failed);
+  const ra8_err_t swap_e = internal_swap_run_all(&failed);
 
   uint32_t        captured = 0U;
-  const ra8_err_t rep_e    = swap_replay_capture(&captured);
+  const ra8_err_t rep_e    = internal_swap_replay_capture(&captured);
 
   if (swap_e == k_ra8_ok) {
-    swap_uart_print("ra8_io_swap_demo: two-backend swap (ram + xs) PASS\r\n");
+    internal_swap_uart_print("ra8_io_swap_demo: two-backend swap (ram + xs) PASS\r\n");
   } else if (failed != nullptr) {
-    swap_uart_print("ra8_io_swap_demo: backend ");
-    swap_uart_print(failed);
-    swap_uart_print(" FAIL\r\n");
+    internal_swap_uart_print("ra8_io_swap_demo: backend ");
+    internal_swap_uart_print(failed);
+    internal_swap_uart_print(" FAIL\r\n");
   } else {
-    swap_uart_print("ra8_io_swap_demo: swap FAIL\r\n");
+    internal_swap_uart_print("ra8_io_swap_demo: swap FAIL\r\n");
   }
 
   if ((rep_e == k_ra8_ok) && (captured > 0U)) {
-    swap_uart_print("ra8_io_swap_demo: ram-stream capture ");
+    internal_swap_uart_print("ra8_io_swap_demo: ram-stream capture ");
     (void)ra8_io_stream_put_u32(&s_uart, captured);
-    swap_uart_print(" bytes PASS\r\n");
+    internal_swap_uart_print(" bytes PASS\r\n");
   } else {
-    swap_uart_print("ra8_io_swap_demo: ram-stream capture FAIL\r\n");
+    internal_swap_uart_print("ra8_io_swap_demo: ram-stream capture FAIL\r\n");
   }
 
   (void)ra8_sci_flush((uint8_t)k_swap_uart_chan);
