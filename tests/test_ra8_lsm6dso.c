@@ -35,6 +35,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_lsm6dso.h"
 #include "unity_minimal.h"
@@ -101,15 +102,41 @@ typedef struct {
 
 static mock_t s_mock;
 
-/** @brief Reset the mock between tests. */
-static void mock_reset(void)
+/** @brief Reset the mock between tests.
+ *
+ * @details Clears the complete register image and write log, then restores the transport success status for an independent vector.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static void internal_mock_reset(void)
 {
   memset(&s_mock, 0, sizeof(s_mock));
   s_mock.forced_err = k_ra8_ok;
 }
 
-/** @brief Mock ``read_regs`` callback. */
-static ra8_err_t mock_read(void* ctx, uint8_t reg, uint8_t* buf, uint32_t len)
+/** @brief Mock ``read_regs`` callback.
+ *
+ * @details Implements the driver read callback over the bounded 8-bit mock register address space while forwarding injected faults.
+ * @param[in] ctx Opaque callback context; unused because the mock is file-scoped.
+ * @param[in] reg First register address.
+ * @param[out] buf Writable destination for register bytes.
+ * @param[in] len Requested byte count.
+ * @return Mock transport status.
+ * @retval k_ra8_ok All requested bytes were copied.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_mock_read(void* ctx, uint8_t reg, uint8_t* buf, uint32_t len)
 {
   (void)ctx;
   if (s_mock.forced_err != k_ra8_ok) {
@@ -122,8 +149,24 @@ static ra8_err_t mock_read(void* ctx, uint8_t reg, uint8_t* buf, uint32_t len)
   return k_ra8_ok;
 }
 
-/** @brief Mock ``write_regs`` callback. */
-static ra8_err_t mock_write(void* ctx, uint8_t reg, const uint8_t* buf, uint32_t len)
+/** @brief Mock ``write_regs`` callback.
+ *
+ * @details Records one bounded write transaction, mirrors its bytes into the mock register file, and forwards injected faults.
+ * @param[in] ctx Opaque callback context; unused because the mock is file-scoped.
+ * @param[in] reg First register address.
+ * @param[in] buf Bytes to record and mirror.
+ * @param[in] len Requested byte count.
+ * @return Mock transport status.
+ * @retval k_ra8_ok The bounded transaction was recorded and mirrored.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_mock_write(void* ctx, uint8_t reg, const uint8_t* buf, uint32_t len)
 {
   (void)ctx;
   if (s_mock.forced_err != k_ra8_ok) {
@@ -145,12 +188,24 @@ static ra8_err_t mock_write(void* ctx, uint8_t reg, const uint8_t* buf, uint32_t
   return k_ra8_ok;
 }
 
-/** @brief Build a transport interface tied to the file-scope mock. */
-static ra8_lsm6dso_bus_t make_bus(void)
+/** @brief Build a transport interface tied to the file-scope mock.
+ *
+ * @details Constructs a value-owned bus descriptor whose callbacks and context bind the driver to the file-scope mock.
+ * @return Transport descriptor bound to the mock callbacks.
+ * @retval configured Both callbacks are non-NULL and context is NULL by design.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_lsm6dso_bus_t internal_make_bus(void)
 {
   const ra8_lsm6dso_bus_t bus = {
-    .read_regs  = mock_read,
-    .write_regs = mock_write,
+    .read_regs  = internal_mock_read,
+    .write_regs = internal_mock_write,
     .ctx        = nullptr,
   };
   return bus;
@@ -169,13 +224,24 @@ static ra8_lsm6dso_bus_t make_bus(void)
  * Each guard is a single ``(ptr == nullptr)`` condition -- two
  * vectors per guard, eight total. We cover all four with NULL on
  * each pointer plus the all-non-NULL happy path.
+
+ * @brief Drives each initialization pointer guard independently and verifies the fully valid path initializes all cached defaults.
+ *
+ * @details Drives each initialization pointer guard independently and verifies the fully valid path initializes all cached defaults.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
  */
-static void test_init_validates_inputs(void)
+RA8_INTERNAL
+static void internal_test_init_validates_inputs(void)
 {
-  mock_reset();
+  internal_mock_reset();
   TEST_BEGIN("lsm6dso: init validates pointers");
   ra8_lsm6dso_t           dev = {};
-  const ra8_lsm6dso_bus_t bus = make_bus();
+  const ra8_lsm6dso_bus_t bus = internal_make_bus();
 
   /* Vector 1: out_dev == NULL. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_lsm6dso_init(nullptr, &bus));
@@ -208,13 +274,24 @@ static void test_init_validates_inputs(void)
  * -- transport returns ok (this) and transport returns NACK (separate
  * test below). The ``out_id == nullptr`` guard is covered by the
  * null-rejection test.
+
+ * @brief Seeds the documented device identifier and proves the driver returns the exact byte through the transport seam.
+ *
+ * @details Seeds the documented device identifier and proves the driver returns the exact byte through the transport seam.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
  */
-static void test_who_am_i_happy(void)
+RA8_INTERNAL
+static void internal_test_who_am_i_happy(void)
 {
-  mock_reset();
+  internal_mock_reset();
   TEST_BEGIN("lsm6dso: WHO_AM_I returns 0x6C");
   ra8_lsm6dso_t           dev = {};
-  const ra8_lsm6dso_bus_t bus = make_bus();
+  const ra8_lsm6dso_bus_t bus = internal_make_bus();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
   s_mock.regs[(uint8_t)k_lsm6dso_reg_who_am_i] = (uint8_t)k_lsm6dso_who_am_i_value;
   uint8_t id                                   = 0U;
@@ -231,13 +308,24 @@ static void test_who_am_i_happy(void)
  * returns the raw value to the caller (the application layer
  * decides). This test confirms a 0xFF (e.g. open-bus pull-ups) is
  * surfaced verbatim so the app code can detect it.
+
+ * @brief Seeds a nonmatching identifier and proves the primitive reports the raw register byte rather than inventing policy.
+ *
+ * @details Seeds a nonmatching identifier and proves the primitive reports the raw register byte rather than inventing policy.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
  */
-static void test_who_am_i_wrong_id(void)
+RA8_INTERNAL
+static void internal_test_who_am_i_wrong_id(void)
 {
-  mock_reset();
+  internal_mock_reset();
   TEST_BEGIN("lsm6dso: WHO_AM_I 0xFF surfaces to caller");
   ra8_lsm6dso_t           dev = {};
-  const ra8_lsm6dso_bus_t bus = make_bus();
+  const ra8_lsm6dso_bus_t bus = internal_make_bus();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
   s_mock.regs[(uint8_t)k_lsm6dso_reg_who_am_i] = k_lsm6dso_all_ones;
   uint8_t id                                   = 0U;
@@ -252,13 +340,24 @@ static void test_who_am_i_wrong_id(void)
  * @par MC/DC:
  * Three ``RA8_CHECK_NULL_PTR`` guards in ``who_am_i``: dev, out_id,
  * initialized. Two vectors per guard.
+
+ * @brief Checks the output-pointer guard and verifies no transport access occurs when the destination is absent.
+ *
+ * @details Checks the output-pointer guard and verifies no transport access occurs when the destination is absent.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
  */
-static void test_who_am_i_null_rejected(void)
+RA8_INTERNAL
+static void internal_test_who_am_i_null_rejected(void)
 {
-  mock_reset();
+  internal_mock_reset();
   TEST_BEGIN("lsm6dso: WHO_AM_I rejects NULL");
   ra8_lsm6dso_t           dev = {};
-  const ra8_lsm6dso_bus_t bus = make_bus();
+  const ra8_lsm6dso_bus_t bus = internal_make_bus();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
   uint8_t id = 0U;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_lsm6dso_who_am_i(nullptr, &id));
@@ -281,13 +380,24 @@ static void test_who_am_i_null_rejected(void)
  * Confirms the driver does not eat transport errors. The mock's
  * ``forced_err`` knob makes every read / write return ``k_ra8_err_nack``
  * unconditionally.
+
+ * @brief Injects a transport NACK through identification and configuration paths and verifies the exact status is preserved.
+ *
+ * @details Injects a transport NACK through identification and configuration paths and verifies the exact status is preserved.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
  */
-static void test_nack_propagation(void)
+RA8_INTERNAL
+static void internal_test_nack_propagation(void)
 {
-  mock_reset();
+  internal_mock_reset();
   TEST_BEGIN("lsm6dso: I2C NAK propagates verbatim");
   ra8_lsm6dso_t           dev = {};
-  const ra8_lsm6dso_bus_t bus = make_bus();
+  const ra8_lsm6dso_bus_t bus = internal_make_bus();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
   s_mock.forced_err = k_ra8_err_nack;
   uint8_t id        = 0U;
@@ -317,13 +427,24 @@ static void test_nack_propagation(void)
  * ODR nibble. Two vectors: ODR pre-seeded != 0 (this) and ODR pre-set
  * to 0 (folded into the happy path). FS_XL bits [3:2] must reflect
  * the new code.
+
+ * @brief Programs each accelerometer full-scale code and verifies only CTRL1_XL FS bits change while ODR bits remain intact.
+ *
+ * @details Programs each accelerometer full-scale code and verifies only CTRL1_XL FS bits change while ODR bits remain intact.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
  */
-static void test_set_accel_range_writes_fs_xl(void)
+RA8_INTERNAL
+static void internal_test_set_accel_range_writes_fs_xl(void)
 {
-  mock_reset();
+  internal_mock_reset();
   TEST_BEGIN("lsm6dso: set_accel_range writes FS_XL bits");
   ra8_lsm6dso_t           dev = {};
-  const ra8_lsm6dso_bus_t bus = make_bus();
+  const ra8_lsm6dso_bus_t bus = internal_make_bus();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
   /* Pre-seed CTRL1_XL with ODR_XL = 4 (104 Hz, bits [7:4] = 0x40),
    * FS_XL = 0 to mimic a previous _set_odr call. */
@@ -341,13 +462,24 @@ static void test_set_accel_range_writes_fs_xl(void)
  *
  * @par MC/DC:
  * Range check guard: code > k_lsm6dso_xl_fs_cap -> invalid_arg.
+
+ * @brief Supplies an out-of-range accelerometer code and proves validation prevents transport writes and cache mutation.
+ *
+ * @details Supplies an out-of-range accelerometer code and proves validation prevents transport writes and cache mutation.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
  */
-static void test_set_accel_range_invalid(void)
+RA8_INTERNAL
+static void internal_test_set_accel_range_invalid(void)
 {
-  mock_reset();
+  internal_mock_reset();
   TEST_BEGIN("lsm6dso: set_accel_range rejects out-of-range code");
   ra8_lsm6dso_t           dev = {};
-  const ra8_lsm6dso_bus_t bus = make_bus();
+  const ra8_lsm6dso_bus_t bus = internal_make_bus();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_lsm6dso_set_accel_range(&dev, (ra8_lsm6dso_xl_fs_t)0x7FU));
@@ -362,13 +494,24 @@ static void test_set_accel_range_invalid(void)
  *  - FS == 125 dps -> FS_125 (bit 1) set, FS_G[1:0] cleared.
  *  - FS == 1000 dps -> FS_125 cleared, FS_G = 0x02 (= 1000 - 250 = 3,
  *    encoded as ``code - 1 == 2``).
+
+ * @brief Covers the 125 dps selector and wider FS_G encodings while preserving the existing CTRL2_G ODR field.
+ *
+ * @details Covers the 125 dps selector and wider FS_G encodings while preserving the existing CTRL2_G ODR field.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
  */
-static void test_set_gyro_range_writes_fs_g(void)
+RA8_INTERNAL
+static void internal_test_set_gyro_range_writes_fs_g(void)
 {
-  mock_reset();
+  internal_mock_reset();
   TEST_BEGIN("lsm6dso: set_gyro_range writes FS_G + FS_125 bits");
   ra8_lsm6dso_t           dev = {};
-  const ra8_lsm6dso_bus_t bus = make_bus();
+  const ra8_lsm6dso_bus_t bus = internal_make_bus();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
 
   /* Vector 1: 125 dps -> FS_125 set. */
@@ -391,13 +534,24 @@ static void test_set_gyro_range_writes_fs_g(void)
  * Decision: ``set_odr`` writes CTRL1_XL AND CTRL2_G in sequence.
  * Two vectors -- both writes succeed (this) and the first write
  * fails (covered by the NACK propagation test).
+
+ * @brief Programs one valid output data rate and checks matching ODR nibbles in both accelerometer and gyro controls.
+ *
+ * @details Programs one valid output data rate and checks matching ODR nibbles in both accelerometer and gyro controls.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
  */
-static void test_set_odr_writes_both_blocks(void)
+RA8_INTERNAL
+static void internal_test_set_odr_writes_both_blocks(void)
 {
-  mock_reset();
+  internal_mock_reset();
   TEST_BEGIN("lsm6dso: set_odr writes CTRL1_XL + CTRL2_G");
   ra8_lsm6dso_t           dev = {};
-  const ra8_lsm6dso_bus_t bus = make_bus();
+  const ra8_lsm6dso_bus_t bus = internal_make_bus();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
   /* Pre-seed FS_XL = 0x0C, FS_G = 0x02 (FS_125) so we can verify the
    * low nibble is preserved while bits [7:4] flip to the ODR. */
@@ -417,13 +571,24 @@ static void test_set_odr_writes_both_blocks(void)
  *
  * @par MC/DC:
  * Range check: code > k_lsm6dso_odr_cap -> invalid_arg.
+
+ * @brief Supplies an invalid output data rate and proves neither control register nor cached ODR state changes.
+ *
+ * @details Supplies an invalid output data rate and proves neither control register nor cached ODR state changes.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
  */
-static void test_set_odr_invalid(void)
+RA8_INTERNAL
+static void internal_test_set_odr_invalid(void)
 {
-  mock_reset();
+  internal_mock_reset();
   TEST_BEGIN("lsm6dso: set_odr rejects out-of-range code");
   ra8_lsm6dso_t           dev = {};
-  const ra8_lsm6dso_bus_t bus = make_bus();
+  const ra8_lsm6dso_bus_t bus = internal_make_bus();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_lsm6dso_set_odr(&dev, (ra8_lsm6dso_odr_t)0x7FU));
   TEST_END("lsm6dso: set_odr rejects out-of-range code");
@@ -440,13 +605,24 @@ static void test_set_odr_invalid(void)
  * @par MC/DC:
  * The 6-byte burst is parsed as three little-endian int16_t values.
  * Test vector: X = 0x1234, Y = -1 (0xFFFF), Z = INT16_MIN (0x8000).
+
+ * @brief Seeds signed boundary samples and verifies six little-endian accelerometer bytes become exact X/Y/Z values.
+ *
+ * @details Seeds signed boundary samples and verifies six little-endian accelerometer bytes become exact X/Y/Z values.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
  */
-static void test_read_accel_combines_le_bytes(void)
+RA8_INTERNAL
+static void internal_test_read_accel_combines_le_bytes(void)
 {
-  mock_reset();
+  internal_mock_reset();
   TEST_BEGIN("lsm6dso: read_accel combines little-endian bytes");
   ra8_lsm6dso_t           dev = {};
-  const ra8_lsm6dso_bus_t bus = make_bus();
+  const ra8_lsm6dso_bus_t bus = internal_make_bus();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
   /* OUTX_L_A = 0x28; layout XL XH YL YH ZL ZH. */
   const uint8_t base                       = (uint8_t)k_lsm6dso_reg_outx_l_a;
@@ -478,13 +654,24 @@ static void test_read_accel_combines_le_bytes(void)
  * Coverage of the ``k_ra8_ok`` short-circuit branch lives in
  * ``test_read_accel_returns_bus_error`` so MC/DC is satisfied at the
  * file level even though this individual test does not add vectors.
+
+ * @brief Seeds distinct signed gyro samples and verifies byte order plus transport-failure propagation.
+ *
+ * @details Seeds distinct signed gyro samples and verifies byte order plus transport-failure propagation.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
  */
-static void test_read_gyro_combines_le_bytes(void)
+RA8_INTERNAL
+static void internal_test_read_gyro_combines_le_bytes(void)
 {
-  mock_reset();
+  internal_mock_reset();
   TEST_BEGIN("lsm6dso: read_gyro combines little-endian bytes");
   ra8_lsm6dso_t           dev = {};
-  const ra8_lsm6dso_bus_t bus = make_bus();
+  const ra8_lsm6dso_bus_t bus = internal_make_bus();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
   const uint8_t base                       = (uint8_t)k_lsm6dso_reg_outx_l_g;
   s_mock.regs[base + 0]                    = 0x01U;
@@ -510,13 +697,24 @@ static void test_read_gyro_combines_le_bytes(void)
  *   - raw = 0     -> (0 * 100 / 256) + 2500 = 2500 centi-C (= 25.00 C).
  *   - raw = 256   -> (256 * 100 / 256) + 2500 = 2600 centi-C (= 26.00 C).
  * Confirms the integer-scaled (raw / 256 + 25) formula.
+
+ * @brief Checks positive and negative raw temperature samples against the documented centi-degree conversion.
+ *
+ * @details Checks positive and negative raw temperature samples against the documented centi-degree conversion.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
  */
-static void test_read_temp_converts(void)
+RA8_INTERNAL
+static void internal_test_read_temp_converts(void)
 {
-  mock_reset();
+  internal_mock_reset();
   TEST_BEGIN("lsm6dso: read_temp converts raw to centi-degC");
   ra8_lsm6dso_t           dev = {};
-  const ra8_lsm6dso_bus_t bus = make_bus();
+  const ra8_lsm6dso_bus_t bus = internal_make_bus();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
   const uint8_t base = (uint8_t)k_lsm6dso_reg_out_temp_l;
 
@@ -550,13 +748,24 @@ static void test_read_temp_converts(void)
  *  - live <= max_words: the driver reads exactly ``live`` words.
  *  - live == 0:         the driver returns ok and out_words == 0
  *                       without touching the data stream.
+
+ * @brief Seeds FIFO depth and payload windows, then verifies word counts, byte order, capacity clamping, and drain reads.
+ *
+ * @details Seeds FIFO depth and payload windows, then verifies word counts, byte order, capacity clamping, and drain reads.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
  */
-static void test_fifo_drains_words(void)
+RA8_INTERNAL
+static void internal_test_fifo_drains_words(void)
 {
-  mock_reset();
+  internal_mock_reset();
   TEST_BEGIN("lsm6dso: FIFO drain reads `live` words");
   ra8_lsm6dso_t           dev = {};
-  const ra8_lsm6dso_bus_t bus = make_bus();
+  const ra8_lsm6dso_bus_t bus = internal_make_bus();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
   /* DIFF_FIFO low byte = 2 -> 2 FIFO words live. */
   s_mock.regs[(uint8_t)k_lsm6dso_reg_fifo_status1]     = 2U;
@@ -588,13 +797,24 @@ static void test_fifo_drains_words(void)
  * @par MC/DC:
  * Four guard conditions: dev / out_buf / out_words NULL, and
  * max_words == 0.
+
+ * @brief Exercises every FIFO pointer, initialization, and zero-capacity guard without publishing a poisoned word count.
+ *
+ * @details Exercises every FIFO pointer, initialization, and zero-capacity guard without publishing a poisoned word count.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
  */
-static void test_fifo_validates_inputs(void)
+RA8_INTERNAL
+static void internal_test_fifo_validates_inputs(void)
 {
-  mock_reset();
+  internal_mock_reset();
   TEST_BEGIN("lsm6dso: FIFO drain validates inputs");
   ra8_lsm6dso_t           dev = {};
-  const ra8_lsm6dso_bus_t bus = make_bus();
+  const ra8_lsm6dso_bus_t bus = internal_make_bus();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
   uint8_t  buf[4] = {};
   uint32_t words  = 0U;
@@ -612,20 +832,20 @@ static void test_fifo_validates_inputs(void)
 
 int main(void)
 {
-  test_init_validates_inputs();
-  test_who_am_i_happy();
-  test_who_am_i_wrong_id();
-  test_who_am_i_null_rejected();
-  test_nack_propagation();
-  test_set_accel_range_writes_fs_xl();
-  test_set_accel_range_invalid();
-  test_set_gyro_range_writes_fs_g();
-  test_set_odr_writes_both_blocks();
-  test_set_odr_invalid();
-  test_read_accel_combines_le_bytes();
-  test_read_gyro_combines_le_bytes();
-  test_read_temp_converts();
-  test_fifo_drains_words();
-  test_fifo_validates_inputs();
+  internal_test_init_validates_inputs();
+  internal_test_who_am_i_happy();
+  internal_test_who_am_i_wrong_id();
+  internal_test_who_am_i_null_rejected();
+  internal_test_nack_propagation();
+  internal_test_set_accel_range_writes_fs_xl();
+  internal_test_set_accel_range_invalid();
+  internal_test_set_gyro_range_writes_fs_g();
+  internal_test_set_odr_writes_both_blocks();
+  internal_test_set_odr_invalid();
+  internal_test_read_accel_combines_le_bytes();
+  internal_test_read_gyro_combines_le_bytes();
+  internal_test_read_temp_converts();
+  internal_test_fifo_drains_words();
+  internal_test_fifo_validates_inputs();
   return 0;
 }
