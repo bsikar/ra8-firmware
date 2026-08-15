@@ -3,10 +3,10 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """Generate the ra8_viewer malformed-input security corpus.
 
-The viewer opens attacker-supplied archives (a .cbz pulled off a random manga
-host, a .jof produced by the downloader) and sizes scratch buffers from length
-fields inside them. This script emits a small corpus that exercises every
-untrusted-allocation guard the viewer added for issue #298, in BOTH directions:
+The viewer opens attacker-supplied JOF atlases and sizes caller-owned workspace
+regions from their metadata. It also recognises archive extensions that remain
+unsupported until their shared codec APIs can stream. This script emits a small
+corpus that exercises both sides of that policy:
 
   * malicious fixtures that MUST be refused with a clean ra8_err_t (process exit
     1), never an OOM, an abort, or a hang; and
@@ -24,10 +24,11 @@ import io
 import struct
 import sys
 import zipfile
+import zlib
 from pathlib import Path
 from typing import NamedTuple
 
-# --- shared sizing knobs (kept well clear of / above the viewer policy) ------
+# --- shared sizing knobs (kept well clear of / above codec policy) -----------
 # The viewer enforces a 64 MiB per-unit output cap and a 1024:1 ratio bound
 # (ra8_decomp_limits_default). These constants push a crafted fixture safely
 # past one of those bounds so the guard, not luck, decides the outcome.
@@ -35,7 +36,7 @@ MIB = 1024 * 1024
 OVER_CAP_BYTES = 128 * MIB  # > 64 MiB output cap  -> k_ra8_err_decomp_output_cap
 BOMB_UNCOMP_BYTES = 50 * MIB  # < cap but huge ratio -> k_ra8_err_decomp_ratio
 UNWRAP_BOMB_BYTES = 160 * MIB  # > the 128 MiB gzip/xz unwrap arena
-PAGE_NAME = "page01.jpg"  # ra8_comic treats this extension as a page image
+PAGE_NAME = "page01.jpg"  # Archive fixture entry name.
 FILL_BYTE = 0x80  # decoded-pixel fill for generated atlases
 EXPECTED_ARGC = 2  # argv is: script, out_dir
 
@@ -67,7 +68,7 @@ def _ceil_div(a: int, b: int) -> int:
     return (a + b - 1) // b
 
 
-def build_jof(geom: JofGeom) -> bytes:
+def build_jof(geom: JofGeom, codec: int = 0) -> bytes:
     """Build a structurally-valid raw (codec 0) JOF atlas.
 
     The header carries the DECLARED tile_w/tile_h, but each tile stream holds
@@ -79,6 +80,7 @@ def build_jof(geom: JofGeom) -> bytes:
     Args:
         geom: Atlas geometry. tile_w/tile_h may exceed the image size (the header
             does not clamp them); bpp is 1, 3 or 4.
+        codec: Zero for raw tiles or one for raw-DEFLATE tiles.
 
     Returns:
         The complete atlas bytes (header + tiles + index + footer).
@@ -95,9 +97,14 @@ def build_jof(geom: JofGeom) -> bytes:
             clamp_w = min(geom.tile_w, geom.width - tx * geom.tile_w)
             clamp_h = min(geom.tile_h, geom.height - ty * geom.tile_h)
             payload = bytes([FILL_BYTE]) * (clamp_w * clamp_h * geom.bpp)
-            body.write(payload)
-            index.append((offset, len(payload)))
-            offset += len(payload)
+            if codec == 1:
+                compressor = zlib.compressobj(level=9, wbits=-15)
+                stored = compressor.compress(payload) + compressor.flush()
+            else:
+                stored = payload
+            body.write(stored)
+            index.append((offset, len(stored)))
+            offset += len(stored)
 
     index_off = offset
     header = struct.pack(
@@ -108,7 +115,7 @@ def build_jof(geom: JofGeom) -> bytes:
         geom.tile_w,
         geom.tile_h,
         geom.bpp,
-        0,  # codec 0 = raw
+        codec,  # 0 = raw; 1 = raw DEFLATE
         0,  # reserved u16
         tile_count,
     )
@@ -123,7 +130,7 @@ def build_cbz(entry_name: str, data: bytes, forced_uncomp: int | None = None) ->
 
     zipfile writes the true sizes; when forced_uncomp is set, the central
     directory's uncompressed-size field is patched afterwards. miniz's
-    mz_zip_reader_file_stat reads that field, so the viewer's comic backend sees
+    mz_zip_reader_file_stat reads that field, so a future comic backend sees
     the lie at open and ra8_decomp_check_declared refuses it before any inflate.
 
     Args:
@@ -226,6 +233,7 @@ def main() -> int:
 
     # --- legitimate: must still decode ---------------------------------------
     _write(out, "legit.jof", build_jof(JofGeom(32, 32, 32, 32, 1)))
+    _write(out, "legit_deflate.jof", build_jof(JofGeom(32, 32, 32, 32, 1), codec=1))
     return 0
 
 
