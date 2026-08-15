@@ -35,6 +35,7 @@
 #include <stdio.h>
 
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /**
  * @enum sram_geom_t
@@ -66,7 +67,7 @@ typedef enum : uint32_t {
 } sram_model_t;
 
 /** @brief Per-bank data-window offsets, for a plausible EAR fault address. */
-static const uint32_t k_sram_bank_data_off[k_sram_bank_count] = {
+static const uint32_t s_k_sram_bank_data_off[k_sram_bank_count] = {
   0x00000000U, /* SRAM0 @ 0x22000000 */
   0x00080000U, /* SRAM1 @ 0x22080000 */
   0x00100000U, /* SRAM2 @ 0x22100000 */
@@ -83,15 +84,36 @@ typedef struct {
 
 static sram_state_t s_sram;
 
-/** @brief ESR bit for (bank, slot): slot 0 = 1-bit error, slot 1 = 2-bit. */
-static uint16_t sram_esr_bit(uint32_t bank, uint32_t slot)
+/**
+ * @brief ESR bit for (bank, slot): slot 0 = 1-bit error, slot 1 = 2-bit.
+ * @details Esr bit for (bank, slot): slot 0 = 1-bit error, slot 1 = 2-bit; this step is contained within the board periph sram model and uses bounded caller or module-owned storage.
+ * @param[in] bank Memory or peripheral bank selected by the operation.
+ * @param[in] slot Slot input used by the operation.
+ * @return The sram esr bit result produced by the board periph sram model.
+ * @retval value The operation-specific sram esr bit value.
+ * @pre Arguments satisfy the ranges documented for sram esr bit. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph sram model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_sram_esr_bit(uint32_t bank, uint32_t slot)
 {
   const uint32_t pos = (k_sram_slots_bank * bank) + slot;
   return (uint16_t)((uint16_t)1U << (uint16_t)pos);
 }
 
-/** @brief Write @p value (size bytes) into the read-back shadow at @p off. */
-static void sram_shadow_store(uint64_t off, unsigned size, uint64_t value)
+/**
+ * @brief Write @p value (size bytes) into the read-back shadow at @p off.
+ * @details Write @p value (size bytes) into the read-back shadow at @p off; this step is contained within the board periph sram model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for sram shadow store. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph sram model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sram_shadow_store(uint64_t off, unsigned size, uint64_t value)
 {
   for (unsigned i = 0U; i < size; ++i) {
     const uint64_t at = off + (uint64_t)i;
@@ -101,8 +123,19 @@ static void sram_shadow_store(uint64_t off, unsigned size, uint64_t value)
   }
 }
 
-/** @brief Read @p size bytes from the read-back shadow at @p off. */
-static uint64_t sram_shadow_load(uint64_t off, unsigned size)
+/**
+ * @brief Read @p size bytes from the read-back shadow at @p off.
+ * @details Read @p size bytes from the read-back shadow at @p off; this step is contained within the board periph sram model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The sram shadow load result produced by the board periph sram model.
+ * @retval value The operation-specific sram shadow load value.
+ * @pre Arguments satisfy the ranges documented for sram shadow load. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph sram model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_sram_shadow_load(uint64_t off, unsigned size)
 {
   uint64_t v = 0U;
   for (unsigned i = 0U; i < size; ++i) {
@@ -114,64 +147,114 @@ static uint64_t sram_shadow_load(uint64_t off, unsigned size)
   return v;
 }
 
-/** @brief Latch both ESR slots + EAR for @p bank (self-test verify reached). */
-static void sram_latch_bank(uint32_t bank)
+/**
+ * @brief Latch both ESR slots + EAR for @p bank (self-test verify reached).
+ * @details Latch both esr slots + ear for @p bank (self-test verify reached); this step is contained within the board periph sram model and uses bounded caller or module-owned storage.
+ * @param[in] bank Memory or peripheral bank selected by the operation.
+ * @pre Arguments satisfy the ranges documented for sram latch bank. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph sram model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sram_latch_bank(uint32_t bank)
 {
-  s_sram.esr          = (uint16_t)(s_sram.esr | sram_esr_bit(bank, 0U) | sram_esr_bit(bank, 1U));
+  s_sram.esr =
+    (uint16_t)(s_sram.esr | internal_sram_esr_bit(bank, 0U) | internal_sram_esr_bit(bank, 1U));
   const uint64_t ear0 = k_sram_off_ear0 + ((uint64_t)bank * (uint64_t)k_sram_ear_bank_str);
-  sram_shadow_store(ear0, sizeof(uint32_t), (uint64_t)k_sram_bank_data_off[bank]);
-  sram_shadow_store(ear0 + (uint64_t)k_sram_ear_slot_str,
-                    sizeof(uint32_t),
-                    (uint64_t)k_sram_bank_data_off[bank]);
+  internal_sram_shadow_store(ear0, sizeof(uint32_t), (uint64_t)s_k_sram_bank_data_off[bank]);
+  internal_sram_shadow_store(ear0 + (uint64_t)k_sram_ear_slot_str,
+                             sizeof(uint32_t),
+                             (uint64_t)s_k_sram_bank_data_off[bank]);
   s_sram.latch_count++;
 }
 
-/** @brief Detect the self-test bypass->verify CR transition for @p bank. */
-static void sram_cr_write(uint32_t bank, uint8_t cr)
+/**
+ * @brief Detect the self-test bypass->verify CR transition for @p bank.
+ * @details Detect the self-test bypass->verify cr transition for @p bank; this step is contained within the board periph sram model and uses bounded caller or module-owned storage.
+ * @param[in] bank Memory or peripheral bank selected by the operation.
+ * @param[in] cr Cr input used by the operation.
+ * @pre Arguments satisfy the ranges documented for sram cr write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph sram model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sram_cr_write(uint32_t bank, uint8_t cr)
 {
   bool was_bypass = (s_sram.last_cr[bank] == (uint8_t)k_sram_cr_bypass);
   bool is_verify  = (cr == (uint8_t)k_sram_cr_verify);
   if (was_bypass) {
     if (is_verify) {
-      sram_latch_bank(bank);
+      internal_sram_latch_bank(bank);
     }
   }
   s_sram.last_cr[bank] = cr;
 }
 
-/** @brief Clear the ESR / EAR slots named by an SRAMESCLR write mask. */
-static void sram_clear(uint16_t mask)
+/**
+ * @brief Clear the ESR / EAR slots named by an SRAMESCLR write mask.
+ * @details Clear the esr / ear slots named by an sramesclr write mask; this step is contained within the board periph sram model and uses bounded caller or module-owned storage.
+ * @param[in] mask Mask input used by the operation.
+ * @pre Arguments satisfy the ranges documented for sram clear. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph sram model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sram_clear(uint16_t mask)
 {
   s_sram.esr = (uint16_t)(s_sram.esr & (uint16_t)~mask);
   for (uint32_t bank = 0U; bank < k_sram_bank_count; ++bank) {
     for (uint32_t slot = 0U; slot < k_sram_slots_bank; ++slot) {
-      if ((mask & sram_esr_bit(bank, slot)) != 0U) {
+      if ((mask & internal_sram_esr_bit(bank, slot)) != 0U) {
         const uint64_t ear = k_sram_off_ear0 + ((uint64_t)bank * (uint64_t)k_sram_ear_bank_str) +
                              ((uint64_t)slot * (uint64_t)k_sram_ear_slot_str);
-        sram_shadow_store(ear, sizeof(uint32_t), 0U);
+        internal_sram_shadow_store(ear, sizeof(uint32_t), 0U);
       }
     }
   }
 }
 
-/** @brief MMIO read inside the SRAM-control window (width-aware). */
-static uint64_t sram_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the SRAM-control window (width-aware).
+ * @details MMIO read inside the sram-control window (width-aware); this step is contained within the board periph sram model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The sram read result produced by the board periph sram model.
+ * @retval value The operation-specific sram read value.
+ * @pre Arguments satisfy the ranges documented for sram read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph sram model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_sram_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   const uint64_t off = addr - (uint64_t)k_sram_base;
   if (off == (uint64_t)k_sram_off_esr) {
     return (uint64_t)s_sram.esr;
   }
-  return sram_shadow_load(off, size);
+  return internal_sram_shadow_load(off, size);
 }
 
-/** @brief MMIO write inside the SRAM-control window (width-aware). */
-static void sram_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the SRAM-control window (width-aware).
+ * @details MMIO write inside the sram-control window (width-aware); this step is contained within the board periph sram model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for sram write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph sram model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_sram_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   const uint64_t off = addr - (uint64_t)k_sram_base;
   if (off == (uint64_t)k_sram_off_esclr) {
-    sram_clear((uint16_t)value);
+    internal_sram_clear((uint16_t)value);
     return;
   }
   if (off == (uint64_t)k_sram_off_esr) {
@@ -181,28 +264,41 @@ static void sram_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
   if ((off >= (uint64_t)k_sram_off_cr0) && (off <= (uint64_t)k_sram_off_cr3)) {
     const uint64_t rel = off - (uint64_t)k_sram_off_cr0;
     if ((rel % sizeof(uint32_t)) == 0U) {
-      sram_cr_write((uint32_t)(rel / sizeof(uint32_t)),
-                    (uint8_t)(value & (uint64_t)k_sram_cr_mask));
+      internal_sram_cr_write((uint32_t)(rel / sizeof(uint32_t)),
+                             (uint8_t)(value & (uint64_t)k_sram_cr_mask));
     }
   }
-  sram_shadow_store(off, size, value);
+  internal_sram_shadow_store(off, size, value);
 }
 
-/** @brief Clear all SRAM-controller model state on reset / process start. */
-static void sram_reset(void)
+/**
+ * @brief Clear all SRAM-controller model state on reset / process start.
+ * @details Clear all sram-controller model state on reset / process start; this step is contained within the board periph sram model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for sram reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph sram model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sram_reset(void)
 {
   s_sram = (sram_state_t){};
 }
 
-/** @brief End-of-run SRAM-ECC section: self-test latches observed this run. */
-static void sram_report(void)
+/**
+ * @brief End-of-run SRAM-ECC section: self-test latches observed this run.
+ * @details End-of-run sram-ecc section: self-test latches observed this run; this step is contained within the board periph sram model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for sram report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph sram model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_sram_report(void)
 {
   if (s_sram.latch_count == 0U) {
     return; /* No fault-injection ran: stay quiet. */
   }
-  (void)fprintf(stderr,
-                "  SRAM-ECC      : decoder self-test latches=%u (SRAMESR modeled)\n",
-                s_sram.latch_count);
+  (void)priv_emu_io_errf("  SRAM-ECC      : decoder self-test latches=%u (SRAMESR modeled)\n",
+                         s_sram.latch_count);
 }
 
 /** @brief Per-tick order slot for the SRAM-ECC block (relative order). */
@@ -211,20 +307,20 @@ typedef enum : uint32_t {
 } sram_order_t;
 
 /** @brief SRAM-controller block descriptor (self-registered with the core). */
-static const board_periph_block_t k_sram_block = {
+static const board_periph_block_t s_k_sram_block = {
   .base   = (uint64_t)k_sram_base,
   .span   = (uint64_t)k_sram_span,
   .order  = (uint32_t)k_sram_block_order,
-  .read   = sram_read,
-  .write  = sram_write,
+  .read   = internal_sram_read,
+  .write  = internal_sram_write,
   .tick   = nullptr,
-  .reset  = sram_reset,
-  .report = sram_report,
+  .reset  = internal_sram_reset,
+  .report = internal_sram_report,
   .name   = "SRAM-ECC",
 };
 
 /** @brief Register the SRAM-controller block before main (host constructor). */
-[[gnu::constructor]] static void sram_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_sram_block_register(void)
 {
-  board_periph_register_block(&k_sram_block);
+  board_periph_register_block(&s_k_sram_block);
 }

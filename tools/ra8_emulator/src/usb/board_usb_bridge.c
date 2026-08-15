@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "board_usb_internal.h"
+#include "emu_host_io_internal.h"
 #include "ra8_elc_regs.h"
 #include "ra8_usb_regs.h"
 
@@ -55,34 +56,34 @@ void board_usb_roles_swap(uc_engine* uc)
    * FS host driver's first window write is the SYSCFG.DCFM=1 that triggers
    * this swap, and the HS DPRPU=1 trigger fires before any FS host activity). */
   (void)board_usbhs_host_shadow_handoff(s_usb.reg, (uint32_t)k_usb_reg_words);
-  s_roles_swapped = true;
-  s_dev_irq_event = (uint16_t)k_ra8_elc_event_usbhs_int_resume;
-  usb_log_line("role swap: FS window = host model, HS window = device model (Config B)");
+  s_roles_swapped     = true;
+  local_dev_irq_event = (uint16_t)k_ra8_elc_event_usbhs_int_resume;
+  priv_usb_log_line("role swap: FS window = host model, HS window = device model (Config B)");
 }
 
 uint64_t board_usb_dev_reg_read(uc_engine* uc, uint64_t off, unsigned size)
 {
   (void)uc;
-  return (uint64_t)usb_reg_read(off, size);
+  return (uint64_t)priv_usb_reg_read(off, size);
 }
 
 void board_usb_dev_reg_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t value)
 {
   (void)uc;
-  usb_reg_write(off, (uint32_t)value, size);
+  priv_usb_reg_write(off, (uint32_t)value, size);
 }
 
 bool board_usb_dev_attached(void)
 {
-  return host_device_attached();
+  return priv_host_device_attached();
 }
 
 void board_usb_bridge_bus_reset(uc_engine* uc)
 {
   s_usb.dvsq = (uint16_t)k_ra8_dvsq_default;
-  usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
-  usb_log_line("bridge: HS host bus reset -> device Default");
-  usb_raise_irq(uc);
+  priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
+  priv_usb_log_line("bridge: HS host bus reset -> device Default");
+  priv_usb_raise_irq(uc);
 }
 
 void board_usb_bridge_deliver_setup(uc_engine* uc, const uint8_t* setup)
@@ -98,15 +99,15 @@ void board_usb_bridge_deliver_setup(uc_engine* uc, const uint8_t* setup)
     .w_length        = (uint16_t)((uint16_t)setup[6] | (uint16_t)((uint16_t)setup[7] << 8)),
     .name            = "bridge SETUP",
   };
-  host_deliver_setup(uc, &s);
+  priv_host_deliver_setup(uc, &s);
   /* SET_ADDRESS is latched by the SIE on hardware; mirror that so the device
-   * advances to the Address state (host_apply_no_data self-guards on bRequest). */
-  host_apply_no_data(uc, &s);
+   * advances to the Address state (priv_host_apply_no_data self-guards on bRequest). */
+  priv_host_apply_no_data(uc, &s);
 }
 
 bool board_usb_bridge_dcp_in_ready(void)
 {
-  return s_usb.dcp_in.valid && host_dcp_pid_buf();
+  return s_usb.dcp_in.valid && priv_host_dcp_pid_buf();
 }
 
 uint16_t board_usb_bridge_dcp_in_take(uint8_t* buf, uint16_t cap)
@@ -119,8 +120,8 @@ uint16_t board_usb_bridge_dcp_in_take(uint8_t* buf, uint16_t cap)
     n = cap;
   }
   (void)memcpy(buf, s_usb.dcp_in.data, n);
-  usb_detect_class(s_usb.dcp_in.data, s_usb.dcp_in.len);
-  usb_log_count("bridge control-IN: device returned", (unsigned)s_usb.dcp_in.len);
+  priv_usb_detect_class(s_usb.dcp_in.data, s_usb.dcp_in.len);
+  priv_usb_log_count("bridge control-IN: device returned", (unsigned)s_usb.dcp_in.len);
   if (s_trace) {
     /* Payload head, --trace only: enough to identify a descriptor / status. */
     char           line[k_usb_log_width];
@@ -130,7 +131,7 @@ uint16_t board_usb_bridge_dcp_in_take(uint8_t* buf, uint16_t cap)
     for (uint16_t i = 0U; (i < limit) && (w >= 0) && ((size_t)w < sizeof(line)); i++) {
       w += snprintf(&line[w], sizeof(line) - (size_t)w, "%02X ", (unsigned)s_usb.dcp_in.data[i]);
     }
-    (void)fprintf(stderr, "  [usb] bridge control-IN bytes: %s\n", line);
+    (void)priv_emu_io_errf("  [usb] bridge control-IN bytes: %s\n", line);
   }
   s_usb.dcp_in.len   = 0U;
   s_usb.dcp_in.valid = false;
@@ -141,18 +142,18 @@ void board_usb_bridge_ctrl_status(uc_engine* uc)
 {
   s_usb.ctsq        = (uint16_t)k_ra8_ctsq_rdss;
   s_usb.setup_valid = false;
-  usb_intsts0_set((uint8_t)k_ra8_int0_bit_ctrt);
-  usb_raise_irq(uc);
+  priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_ctrt);
+  priv_usb_raise_irq(uc);
 }
 
 bool board_usb_bridge_dev_took_ccpl(void)
 {
-  return host_take_ccpl();
+  return priv_host_take_ccpl();
 }
 
 void board_usb_bridge_mark_configured(uc_engine* uc)
 {
-  host_mark_configured(uc);
+  priv_host_mark_configured(uc);
 }
 
 void board_usb_bridge_bulk_out(uc_engine* uc, uint8_t dev_pipe, const uint8_t* data, uint16_t len)
@@ -169,10 +170,10 @@ void board_usb_bridge_bulk_out(uc_engine* uc, uint8_t dev_pipe, const uint8_t* d
   b->len           = n;
   b->rd            = 0U;
   b->ready         = true;
-  const uint32_t w = usb_word((uint64_t)k_ra8_usb_off_brdysts);
+  const uint32_t w = internal_usb_word((uint64_t)k_ra8_usb_off_brdysts);
   s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << dev_pipe));
-  usb_intsts0_set((uint8_t)k_ra8_int0_bit_brdy);
-  usb_raise_irq(uc);
+  priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_brdy);
+  priv_usb_raise_irq(uc);
 }
 
 bool board_usb_bridge_bulk_out_consumed(uint8_t dev_pipe)
@@ -204,10 +205,10 @@ uint16_t board_usb_bridge_bulk_in_take(uc_engine* uc, uint8_t dev_pipe, uint8_t*
   (void)memcpy(buf, b->data, n);
   b->len           = 0U;
   b->valid         = false;
-  const uint32_t w = usb_word((uint64_t)k_ra8_usb_off_bempsts);
+  const uint32_t w = internal_usb_word((uint64_t)k_ra8_usb_off_bempsts);
   s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << dev_pipe));
-  usb_intsts0_set((uint8_t)k_ra8_int0_bit_bemp);
-  usb_raise_irq(uc);
+  priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_bemp);
+  priv_usb_raise_irq(uc);
   return n;
 }
 
@@ -223,7 +224,7 @@ void board_usb_bridge_dcp_out(uc_engine* uc, const uint8_t* data, uint16_t len)
   }
   /* Hold the bytes as "in flight on the wire": the device has almost certainly
    * not armed its DCP for OUT yet, and its arm-time BCLR would discard them.
-   * bridge_pump_device() lands them once the device is ready. */
+   * priv_bridge_pump_device() lands them once the device is ready. */
   (void)memcpy(s_dcp_hold, data, n);
   s_dcp_hold_len     = n;
   s_dcp_hold_pending = true;
@@ -254,13 +255,13 @@ bool board_usb_bridge_dcp_out_consumed(void)
  *
  * @param[in,out] uc Unicorn engine (to pend the device USB interrupt).
  */
-void bridge_pump_device(uc_engine* uc)
+void priv_bridge_pump_device(uc_engine* uc)
 {
   if (!s_dcp_hold_pending) {
     return;
   }
-  const uint16_t dcpctr  = s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_dcpctr)];
-  const uint16_t brdyenb = s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_brdyenb)];
+  const uint16_t dcpctr  = s_usb.reg[internal_usb_word((uint64_t)k_ra8_usb_off_dcpctr)];
+  const uint16_t brdyenb = s_usb.reg[internal_usb_word((uint64_t)k_ra8_usb_off_brdyenb)];
   const bool     armed   = ((dcpctr & (uint16_t)k_ra8_pid_mask) == (uint16_t)k_ra8_pid_buf) &&
                            ((brdyenb & (uint16_t)k_usb_dcp_pipe_bit) != 0U);
   if (!armed) {
@@ -274,8 +275,8 @@ void bridge_pump_device(uc_engine* uc)
   s_usb.dcp_out.rd    = 0U;
   s_usb.dcp_out.ready = true;
   s_dcp_hold_pending  = false;
-  const uint32_t w    = usb_word((uint64_t)k_ra8_usb_off_brdysts);
+  const uint32_t w    = internal_usb_word((uint64_t)k_ra8_usb_off_brdysts);
   s_usb.reg[w]        = (uint16_t)(s_usb.reg[w] | (uint16_t)k_usb_dcp_pipe_bit);
-  usb_intsts0_set((uint8_t)k_ra8_int0_bit_brdy);
-  usb_raise_irq(uc);
+  priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_brdy);
+  priv_usb_raise_irq(uc);
 }

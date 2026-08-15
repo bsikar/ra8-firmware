@@ -24,6 +24,7 @@
 #include <unicorn/unicorn.h>
 
 #include "board_overlay.h"
+#include "emu_presentation.h"
 #include "ra8_attributes.h"
 
 #ifdef __cplusplus
@@ -96,21 +97,22 @@ typedef struct {
 
 /**
  * @brief Write an RGB565 frame to a binary PPM (P6) for headless inspection.
+ * @details Uses bounded RGB conversion plus a synced sibling transaction so a
+ * failed export cannot replace an existing target with a partial image.
  *
- * @param[in] path      Output file path.
- * @param[in] fb        RGB565 frame of @p width_px x @p height_px pixels.
- * @param[in] width_px  Frame width in pixels.
- * @param[in] height_px Frame height in pixels.
+ * @param[in] path         Output file path.
+ * @param[in] presentation Open fd-backed RGB565 composite to stream.
  * @return 0 on success, -1 when the file cannot be created.
  * @retval 0  The frame was written.
- * @retval -1 fopen failed (path unwritable).
- * @pre @p fb holds the full frame.
+ * @retval -1 Transaction creation, raw write, sync, or publication failed.
+ * @pre @p presentation is open and holds the full composite.
  * @pre @p path names a writable location.
  * @post On success the P6 file exists with 8-bit RGB expansion.
+ * @post On failure the pre-existing final target remains unchanged.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
  */
-RA8_PRIV int write_ppm(const char* path, const uint16_t* fb, uint16_t width_px, uint16_t height_px);
+int write_ppm(const char* path, const emu_presentation_workspace_t* presentation);
 
 /**
  * @brief Map a click in the rotated displayed panel back to native panel coords.
@@ -128,14 +130,16 @@ RA8_PRIV int write_ppm(const char* path, const uint16_t* fb, uint16_t width_px, 
  * @post The native coordinates are written.
  * @note Pure mapping; thread-safe.
  * @since 0.1.0
+  * @details Map a click in the rotated displayed panel back to native panel coords; this step is contained within the emu view model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void unrotate_click(uint16_t  cx,
-                             uint16_t  cy,
-                             uint16_t  panel_w,
-                             uint16_t  panel_h,
-                             uint32_t  deg,
-                             uint16_t* nx,
-                             uint16_t* ny);
+void unrotate_click(uint16_t  cx,
+                    uint16_t  cy,
+                    uint16_t  panel_w,
+                    uint16_t  panel_h,
+                    uint32_t  deg,
+                    uint16_t* nx,
+                    uint16_t* ny);
 
 /**
  * @brief Toggle a user switch's pressed level (active-low) for an on-screen button.
@@ -153,8 +157,9 @@ RA8_PRIV void unrotate_click(uint16_t  cx,
  * @post The switch pin level reflects @p pressed.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void set_switch(board_overlay_btn_t btn, bool pressed);
+void set_switch(board_overlay_btn_t btn, bool pressed);
 
 /**
  * @brief Apply a POWER-section click to the fuel-gauge / core model.
@@ -174,8 +179,9 @@ RA8_PRIV void set_switch(board_overlay_btn_t btn, bool pressed);
  * @post The battery / low-power state reflects the click.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void apply_battery_click(board_overlay_btn_t btn, uint16_t cx, uint16_t disp_w);
+void apply_battery_click(board_overlay_btn_t btn, uint16_t cx, uint16_t disp_w);
 
 /**
  * @brief Route a composite-space click to the right input model.
@@ -200,50 +206,38 @@ RA8_PRIV void apply_battery_click(board_overlay_btn_t btn, uint16_t cx, uint16_t
  * @post Exactly one input model consumed the click.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV board_overlay_btn_t route_click(uint16_t cx,
-                                         uint16_t cy,
-                                         uint16_t panel_w,
-                                         uint16_t panel_h,
-                                         uint16_t disp_w,
-                                         uint32_t rotate_deg);
+board_overlay_btn_t route_click(uint16_t cx,
+                                uint16_t cy,
+                                uint16_t panel_w,
+                                uint16_t panel_h,
+                                uint16_t disp_w,
+                                uint32_t rotate_deg);
 
 /**
- * @brief Build the panel framebuffer, then compose it with the status sidebar.
+ * @brief Stream the panel and status sidebar into a raw-fd surface.
  *
- * @details Renders the GLCDC panel into @p panel_fb (so a display app's
- * region stays pixel-correct), rotates it for display when requested,
- * snapshots the live peripheral state, and writes the full composite (panel
- * region + status sidebar) into @p composite -- the single buffer that backs
- * both the live window and the @c --ppm snapshot.
+ * @details Clears and fills the fd-backed composite, copies the live GLCDC
+ * layer through bounded rotation tiles, then renders the exact legacy sidebar
+ * through its clipped rectangle sink.
  *
  * @param[in,out] uc         Unicorn engine (read for the GLCDC framebuffer).
- * @param[out]    panel_fb   Panel RGB565 buffer (@p panel_w by @p panel_h).
- * @param[out]    rot_fb     Rotated-panel scratch (NULL when rotation is 0).
- * @param[out]    composite  Composite RGB565 buffer (overlay dimensions).
- * @param[in]     panel_w    Panel width in pixels.
- * @param[in]     panel_h    Panel height in pixels.
- * @param[in]     disp_w     Displayed panel width (after rotation).
- * @param[in]     disp_h     Displayed panel height (after rotation).
- * @param[in]     rotate_deg Active display rotation.
+ * @param[in,out] presentation Owned fd and caller-owned tile scratch.
  * @param[in]     app_name   Window / app title for the sidebar caption.
- * @return Nothing.
- * @pre The buffers are allocated to the stated dimensions.
- * @pre The overlay geometry matches @p disp_w / @p disp_h.
- * @post @p composite holds the panel + sidebar frame.
+ * @return Whether every emulated read and raw surface write completed.
+ * @retval true The exact composite is ready.
+ * @retval false An engine read or raw-fd sink operation failed.
+ * @pre @p presentation is active, open, and outlives the operation.
+ * @post Success leaves a complete RGB565 frame in the owned descriptor.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void build_composite(uc_engine*  uc,
-                              uint16_t*   panel_fb,
-                              uint16_t*   rot_fb,
-                              uint16_t*   composite,
-                              uint16_t    panel_w,
-                              uint16_t    panel_h,
-                              uint16_t    disp_w,
-                              uint16_t    disp_h,
-                              uint32_t    rotate_deg,
-                              const char* app_name);
+bool build_composite(uc_engine*                    uc,
+                     emu_presentation_workspace_t* presentation,
+                     const char*                   app_name);
 
 /**
  * @brief Load a panel descriptor (name / width / height) from a TOML-ish file.
@@ -251,8 +245,9 @@ RA8_PRIV void build_composite(uc_engine*  uc,
  * @details A flat ``key = value`` panel descriptor (see
  * ``tools/ra8_emulator/panels/``), so the board emulator becomes whatever
  * display a config describes -- not just the EK-RA8D2 1024x600.
- * Dependency-free bounded parser; blank lines and '#' comments are ignored
- * and quotes are stripped from the name.
+ * The raw descriptor backend rejects files over 4096 bytes, reads into a
+ * fixed stack buffer, and parses bounded lines without allocation. Blank
+ * lines and '#' comments are ignored and quotes are stripped from the name.
  *
  * @param[in]  path Panel config path.
  * @param[out] out  Filled descriptor on success.
@@ -261,10 +256,11 @@ RA8_PRIV void build_composite(uc_engine*  uc,
  * @pre @p out is non-null.
  * @pre @p path is NUL-terminated.
  * @post On true @p out holds the descriptor; on false a diagnostic printed.
+ * @post Every opened raw descriptor is closed before return.
  * @note Not thread-safe; call during single-threaded setup.
  * @since 0.1.0
  */
-RA8_PRIV bool load_panel(const char* path, board_panel_t* out);
+bool load_panel(const char* path, board_panel_t* out);
 
 /**
  * @brief Publish the run-loop telemetry the board view shows.
@@ -277,8 +273,10 @@ RA8_PRIV bool load_panel(const char* path, board_panel_t* out);
  * @post The next present shows the new PC / chunk count.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Publish the run-loop telemetry the board view shows; this step is contained within the emu view model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_view_publish(uint32_t pc, uint32_t chunks);
+void emu_view_publish(uint32_t pc, uint32_t chunks);
 
 /**
  * @brief Mark the run ended: the held frame shows "parked" at @p pc.
@@ -290,8 +288,10 @@ RA8_PRIV void emu_view_publish(uint32_t pc, uint32_t chunks);
  * @post The view telemetry reads not-running at @p pc.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Mark the run ended: the held frame shows "parked" at @p pc; this step is contained within the emu view model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_view_mark_stopped(uint32_t pc);
+void emu_view_mark_stopped(uint32_t pc);
 
 /**
  * @brief Page the console scrollback by mouse-wheel notches.
@@ -308,8 +308,9 @@ RA8_PRIV void emu_view_mark_stopped(uint32_t pc);
  * @post The scrollback offset / autoscroll state reflect the wheel.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_view_wheel(int32_t notches);
+void emu_view_wheel(int32_t notches);
 
 /**
  * @brief Switch the visible console channel to @p tab_idx (tab-bar click).
@@ -325,8 +326,9 @@ RA8_PRIV void emu_view_wheel(int32_t notches);
  * @post The selected tab shows its live tail with autoscroll on.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_view_select_console_tab(uint32_t tab_idx);
+void emu_view_select_console_tab(uint32_t tab_idx);
 
 /**
  * @brief Reset the console-scrollback view (warm-reboot support).
@@ -337,8 +339,10 @@ RA8_PRIV void emu_view_select_console_tab(uint32_t tab_idx);
  * @post The view shows the ALL tab at the live tail with autoscroll on.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Reset the console-scrollback view (warm-reboot support); this step is contained within the emu view model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_view_reset_console(void);
+void emu_view_reset_console(void);
 
 /**
  * @brief The primary core the firmware targets (label + seam gating).
@@ -351,8 +355,10 @@ RA8_PRIV void emu_view_reset_console(void);
  * @post No state is modified.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details The primary core the firmware targets (label + seam gating); this step is contained within the emu view model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV board_primary_core_t emu_primary_core(void);
+board_primary_core_t emu_primary_core(void);
 
 /**
  * @brief Select the primary core (CLI --primary-core).
@@ -364,8 +370,10 @@ RA8_PRIV board_primary_core_t emu_primary_core(void);
  * @post emu_primary_core() reports @p core.
  * @note Not thread-safe; single-threaded setup only.
  * @since 0.1.0
+  * @details Select the primary core (cli --primary-core); this step is contained within the emu view model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_set_primary_core(board_primary_core_t core);
+void emu_set_primary_core(board_primary_core_t core);
 
 /**
  * @brief Whether the M33 4:1-slower low-power clock model is active.
@@ -377,8 +385,10 @@ RA8_PRIV void emu_set_primary_core(board_primary_core_t core);
  * @post No state is modified.
  * @note The GUI low-power button flips this live under --view.
  * @since 0.1.0
+  * @details Whether the m33 4:1-slower low-power clock model is active; this step is contained within the emu view model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV bool emu_low_power(void);
+bool emu_low_power(void);
 
 /**
  * @brief Set the low-power clock model (CLI --low-power / GUI toggle).
@@ -390,8 +400,10 @@ RA8_PRIV bool emu_low_power(void);
  * @post emu_low_power() reports @p on.
  * @note Not thread-safe; the emulator is single-threaded host-side.
  * @since 0.1.0
+  * @details Set the low-power clock model (cli --low-power / gui toggle); this step is contained within the emu view model and uses bounded caller or module-owned storage.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-RA8_PRIV void emu_set_low_power(bool on);
+void emu_set_low_power(bool on);
 
 #ifdef __cplusplus
 }

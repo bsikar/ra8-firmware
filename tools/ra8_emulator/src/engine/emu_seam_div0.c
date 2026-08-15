@@ -21,8 +21,10 @@
 #include <string.h>
 
 #include "emu_elf.h"
+#include "emu_elf_source_internal.h"
 #include "emu_engine.h"
 #include "emu_exc.h"
+#include "emu_host_io_internal.h"
 #include "emu_seams.h"
 
 /** @brief Trapping div-0 latched (the run loop synthesises the UsageFault). */
@@ -45,7 +47,7 @@ static uint64_t s_div0_traps;
  * CCR.DIV_0_TRP (watched via on_scb_ctrl_write) -- overwriting those sites with an
  * undefined instruction (UDF). Each divide then traps through the already-armed
  * ::on_invalid_insn hook into ::emulate_div0_patched, which either takes a decoded
- * UsageFault (divisor zero) or emulates the divide in software (::div0_quotient)
+ * UsageFault (divisor zero) or emulates the divide in software (::internal_div0_quotient)
  * and continues. Patching -- rather than a per-site UC_HOOK_CODE -- is the point:
  * a code hook disables Unicorn's engine-wide block chaining and would roughly
  * quarter throughput for ANY busy firmware that arms the trap, whereas the invalid
@@ -61,7 +63,7 @@ static uint64_t s_div0_traps;
  * byte sequence written over an armed divide so its execution raises the
  * undefined-instruction trap that ::emulate_div0_patched services. Byte 2 is 0.
  */
-static const uint8_t k_div0_udf[k_div0_insn_len] = {
+static const uint8_t s_k_div0_udf[k_div0_insn_len] = {
   (uint8_t)k_div0_udf_b0,
   (uint8_t)k_div0_udf_b1,
   0U,
@@ -127,12 +129,12 @@ static bool        s_div0_armed;                  /**< Armed sites overwritten U
  * @note Thread safety: pure; thread-safe.
  * @since 0.1.0
  */
-static bool udiv_sdiv_decode(uint16_t  hw1,
-                             uint16_t  hw2,
-                             uint32_t* out_rn,
-                             uint32_t* out_rd,
-                             uint32_t* out_rm,
-                             bool*     out_signed)
+RA8_INTERNAL static bool internal_udiv_sdiv_decode(uint16_t  hw1,
+                                                   uint16_t  hw2,
+                                                   uint32_t* out_rn,
+                                                   uint32_t* out_rd,
+                                                   uint32_t* out_rm,
+                                                   bool*     out_signed)
 {
   if ((out_rn == nullptr) || (out_rd == nullptr) || (out_rm == nullptr) ||
       (out_signed == nullptr)) {
@@ -180,8 +182,9 @@ static bool udiv_sdiv_decode(uint16_t  hw1,
  * @post Signed INT32_MIN / -1 saturates to INT32_MIN (Arm SDIV overflow rule).
  * @note Thread safety: pure; thread-safe.
  * @since 0.1.0
+  * @details Compute a udiv/sdiv quotient with the arm div-by-zero + overflow rules; this step is contained within the emu seam div0 model and uses bounded caller or module-owned storage.
  */
-static uint32_t div0_quotient(uint32_t vn, uint32_t vm, bool is_signed)
+RA8_INTERNAL static uint32_t internal_div0_quotient(uint32_t vn, uint32_t vm, bool is_signed)
 {
   if (vm == 0U) {
     return 0U; /* Arm default when DIV_0_TRP is clear. */
@@ -207,7 +210,7 @@ static uint32_t div0_quotient(uint32_t vn, uint32_t vm, bool is_signed)
  * encoding, reads the operands, and either (a) latches ::s_div0_fault when the
  * divisor is zero and DIV_0_TRP is set -- so the run loop synthesises the decoded
  * UsageFault with @p pc stacked -- or (b) computes the quotient in software
- * (::div0_quotient), writes Rd and steps PC past the 4-byte instruction. A trap at
+ * (::internal_div0_quotient), writes Rd and steps PC past the 4-byte instruction. A trap at
  * any other address is not ours.
  *
  * @param[in,out] uc   Unicorn engine.
@@ -243,7 +246,7 @@ bool emulate_div0_patched(uc_engine* uc, uint32_t pc, const uint8_t code[4])
   uint32_t rd   = 0U;
   uint32_t rm   = 0U;
   bool     sign = false;
-  if (!udiv_sdiv_decode(site->hw1, site->hw2, &rn, &rd, &rm, &sign)) {
+  if (!internal_udiv_sdiv_decode(site->hw1, site->hw2, &rn, &rd, &rm, &sign)) {
     return false; /* a tracked non-divide (scan false-positive): not ours to service. */
   }
   uint32_t vn = 0U;
@@ -256,7 +259,7 @@ bool emulate_div0_patched(uc_engine* uc, uint32_t pc, const uint8_t code[4])
     s_div0_fault_pc = pc; /* stacked PC == the divide, as real hardware does.          */
     return true;          /* PC left at the site; the run loop synthesises UsageFault. */
   }
-  const uint32_t q = div0_quotient(vn, vm, sign);
+  const uint32_t q = internal_div0_quotient(vn, vm, sign);
   (void)uc_reg_write(uc, k_arm_reg_id[rd], &q);
   uint32_t next = pc + (uint32_t)k_div0_insn_len;
   (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
@@ -290,7 +293,7 @@ bool emulate_div0_patched(uc_engine* uc, uint32_t pc, const uint8_t code[4])
  *
  * @pre ::s_div0_site[0 .. s_div0_site_n) hold valid divide-site addresses.
  * @pre @p uc permits uc_mem_write to the (host-side) code image.
- * @post ::s_div0_armed is true and each site holds ::k_div0_udf.
+ * @post ::s_div0_armed is true and each site holds ::s_k_div0_udf.
  * @post A no-op when already armed.
  * @note Not thread-safe (single engine).
  * @since 0.1.0
@@ -301,12 +304,11 @@ void div0_patch_sites(uc_engine* uc)
     return;
   }
   for (uint32_t i = 0U; i < s_div0_site_n; i++) {
-    (void)uc_mem_write(uc, (uint64_t)s_div0_site[i].va, k_div0_udf, sizeof(k_div0_udf));
+    (void)emu_mem_write(uc, (uint64_t)s_div0_site[i].va, s_k_div0_udf, sizeof(s_k_div0_udf));
   }
   s_div0_armed = true;
-  (void)fprintf(stderr,
-                "  div-0 seam: CCR.DIV_0_TRP set -- patched %u UDIV/SDIV site(s)\n",
-                (unsigned)s_div0_site_n);
+  (void)priv_emu_io_errf("  div-0 seam: CCR.DIV_0_TRP set -- patched %u UDIV/SDIV site(s)\n",
+                         (unsigned)s_div0_site_n);
 }
 
 /**
@@ -323,35 +325,61 @@ void div0_patch_sites(uc_engine* uc)
  *
  * @return True to continue with the next segment, false once the site cap is
  *         reached (there is no point scanning further).
+ * @retval true Scanning may continue with the next executable segment.
+ * @retval false The fixed site cap or a source read stopped scanning.
  *
  * @pre @p seg is non-NULL.
- * @pre `seg->bytes .. seg->bytes + seg->filesz` lies inside the image.
+ * @pre The segment source remains open and its file range is bounded.
  * @post `s_div0_site_n` is bounded by @ref k_div0_sites_max.
  * @post Each recorded site carries its virtual address and both halfwords.
  *
  * @note Not thread-safe; the emulator is single-threaded host-side.
+ * @since 0.1.0
  */
-static bool div0_scan_segment(const elf_exec_segment_t* seg, void* ctx)
+RA8_INTERNAL static bool internal_div0_scan_segment(const elf_exec_segment_t* seg, void* ctx)
 {
   (void)ctx;
-  for (uint32_t off = 0U; (off + (uint32_t)k_div0_insn_len) <= seg->filesz; off += 2U) {
-    const uint8_t* p    = seg->bytes + off;
-    const uint16_t hw1  = (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-    const uint16_t hw2  = (uint16_t)(p[2] | ((uint16_t)p[3] << 8));
-    uint32_t       rn   = 0U;
-    uint32_t       rd   = 0U;
-    uint32_t       rm   = 0U;
-    bool           sign = false;
-    if (!udiv_sdiv_decode(hw1, hw2, &rn, &rd, &rm, &sign)) {
-      continue;
-    }
-    if (s_div0_site_n >= (uint32_t)k_div0_sites_max) {
-      (void)fprintf(stderr, "  div-0 seam: site cap %u reached\n", (unsigned)k_div0_sites_max);
+  enum : size_t {
+    k_div0_scan_scratch = 4096U, /**< Transient instruction-scan bytes. */
+  };
+  uint8_t  bytes[k_div0_scan_scratch];
+  uint32_t base = 0U;
+  while ((base + (uint32_t)k_div0_insn_len) <= seg->filesz) {
+    const uint32_t left   = seg->filesz - base;
+    const size_t   length = (left < sizeof(bytes)) ? (size_t)left : sizeof(bytes);
+    emu_elf_view_t view   = {};
+    if (priv_emu_elf_read(seg->source,
+                          (uint64_t)seg->offset + base,
+                          length,
+                          bytes,
+                          sizeof(bytes),
+                          &view)
+          .status != k_emu_elf_io_ok) {
       return false;
     }
-    s_div0_site[s_div0_site_n] =
-      (div0_site_t){.va = (uint32_t)seg->vaddr + off, .hw1 = hw1, .hw2 = hw2};
-    s_div0_site_n++;
+    for (size_t local = 0U; (local + k_div0_insn_len) <= length; local += 2U) {
+      const uint8_t* p    = &bytes[local];
+      const uint16_t hw1  = (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
+      const uint16_t hw2  = (uint16_t)(p[2] | ((uint16_t)p[3] << 8));
+      uint32_t       rn   = 0U;
+      uint32_t       rd   = 0U;
+      uint32_t       rm   = 0U;
+      bool           sign = false;
+      if (!internal_udiv_sdiv_decode(hw1, hw2, &rn, &rd, &rm, &sign)) {
+        continue;
+      }
+      if (s_div0_site_n >= (uint32_t)k_div0_sites_max) {
+        (void)priv_emu_io_errf("  div-0 seam: site cap %u reached\n", (unsigned)k_div0_sites_max);
+        return false;
+      }
+      s_div0_site[s_div0_site_n] =
+        (div0_site_t){.va = seg->vaddr + base + (uint32_t)local, .hw1 = hw1, .hw2 = hw2};
+      s_div0_site_n++;
+    }
+    if (length == left) {
+      break;
+    }
+    base += (uint32_t)length - 2U;
   }
   return true;
 }
@@ -361,7 +389,7 @@ static bool div0_scan_segment(const elf_exec_segment_t* seg, void* ctx)
  *
  * @details
  * Walks the ELF32 PT_LOAD executable segments on 2-byte boundaries for the
- * UDIV/SDIV encoding (::udiv_sdiv_decode), recording each site's VMA (p_vaddr
+ * UDIV/SDIV encoding (::internal_udiv_sdiv_decode), recording each site's VMA (p_vaddr
  * based, so a ramfunc is tracked at its execution address) and its original
  * halfwords. Nothing is patched here; the always-on SCB control-write watcher
  * (::on_scb_ctrl_write) overwrites the sites with UDF via ::div0_patch_sites only
@@ -370,27 +398,24 @@ static bool div0_scan_segment(const elf_exec_segment_t* seg, void* ctx)
  * ever patched after opt-in, and ::emulate_div0_patched re-decodes before acting.
  *
  * @param[in] elf In-memory ELF image (still alive at call time).
- * @param[in] len Length of @p elf in bytes.
  * @return Nothing.
  *
  * @pre @p elf is a 32-bit ARM ELF (already validated by load_elf).
- * @pre @p len is the true byte length of @p elf.
  * @post ::s_div0_site holds up to ::k_div0_sites_max tracked divide sites.
  * @post No site is patched yet (armed later by on_scb_ctrl_write).
  * @note Not thread-safe; call once during setup before the run loop.
  * @since 0.1.0
  */
-void div0_seam_install(const uint8_t* elf, long len)
+void div0_seam_install(const emu_elf_source_t* elf)
 {
   s_div0_site_n = 0U;
   s_div0_armed  = false;
-  (void)elf_foreach_exec_segment(elf, len, div0_scan_segment, nullptr);
+  (void)elf_foreach_exec_segment(elf, internal_div0_scan_segment, nullptr);
   /* The CCR write that arms these sites is caught by on_scb_ctrl_write; arming
    * overwrites each with UDF so its execution traps through on_invalid_insn. */
   if (s_div0_site_n > 0U) {
-    (void)fprintf(stderr,
-                  "  div-0 seam: %u UDIV/SDIV site(s) tracked; armed on CCR.DIV_0_TRP\n",
-                  (unsigned)s_div0_site_n);
+    (void)priv_emu_io_errf("  div-0 seam: %u UDIV/SDIV site(s) tracked; armed on CCR.DIV_0_TRP\n",
+                           (unsigned)s_div0_site_n);
   }
 }
 

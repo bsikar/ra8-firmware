@@ -40,6 +40,7 @@
 
 #include "board_console.h"
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief CANFD block geometry (ra8_canfd_regs.h, FSP R_CANFD_Type). */
 typedef enum : uint64_t {
@@ -135,8 +136,18 @@ typedef struct {
 
 static canfd_inst_t s_canfd[k_canfd_count];
 
-/** @brief Resolve an absolute address to its instance index (0/1) or count. */
-static uint32_t canfd_instance(uint64_t addr)
+/**
+ * @brief Resolve an absolute address to its instance index (0/1) or count.
+ * @details Resolve an absolute address to its instance index (0/1) or count; this step is contained within the board periph canfd model and uses bounded caller or module-owned storage.
+ * @param[in] addr Guest address involved in the operation.
+ * @return The canfd instance result produced by the board periph canfd model.
+ * @retval value The operation-specific canfd instance value.
+ * @pre Arguments satisfy the ranges documented for canfd instance. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph canfd model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_canfd_instance(uint64_t addr)
 {
   if ((addr >= (uint64_t)k_canfd0_base) &&
       (addr < (uint64_t)k_canfd0_base + (uint64_t)k_canfd_span)) {
@@ -149,23 +160,53 @@ static uint32_t canfd_instance(uint64_t addr)
   return (uint32_t)k_canfd_count;
 }
 
-/** @brief In-window byte offset of @p addr for instance @p inst. */
-static uint64_t canfd_offset(uint32_t inst, uint64_t addr)
+/**
+ * @brief In-window byte offset of @p addr for instance @p inst.
+ * @details In-window byte offset of @p addr for instance @p inst; this step is contained within the board periph canfd model and uses bounded caller or module-owned storage.
+ * @param[in] inst Inst input used by the operation.
+ * @param[in] addr Guest address involved in the operation.
+ * @return The canfd offset result produced by the board periph canfd model.
+ * @retval value The operation-specific canfd offset value.
+ * @pre Arguments satisfy the ranges documented for canfd offset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph canfd model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_canfd_offset(uint32_t inst, uint64_t addr)
 {
   const uint64_t base = (inst == 0U) ? (uint64_t)k_canfd0_base : (uint64_t)k_canfd1_base;
   return addr - base;
 }
 
-/** @brief Word index into the backing store for an in-window offset. */
-static uint32_t canfd_word(uint64_t off)
+/**
+ * @brief Word index into the backing store for an in-window offset.
+ * @details Word index into the backing store for an in-window offset; this step is contained within the board periph canfd model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The canfd word result produced by the board periph canfd model.
+ * @retval value The operation-specific canfd word value.
+ * @pre Arguments satisfy the ranges documented for canfd word. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph canfd model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_canfd_word(uint64_t off)
 {
   return (uint32_t)(off >> 2U);
 }
 
-/** @brief Apply a mode-control write to its matching status register bits. */
-static void canfd_apply_global_mode(canfd_inst_t* c, uint32_t gctr)
+/**
+ * @brief Apply a mode-control write to its matching status register bits.
+ * @details Apply a mode-control write to its matching status register bits; this step is contained within the board periph canfd model and uses bounded caller or module-owned storage.
+ * @param[in,out] c Active controller, card, or command state processed by the operation.
+ * @param[in] gctr Gctr input used by the operation.
+ * @pre Arguments satisfy the ranges documented for canfd apply global mode. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph canfd model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_canfd_apply_global_mode(canfd_inst_t* c, uint32_t gctr)
 {
-  uint32_t gsts = c->reg[canfd_word((uint64_t)k_canfd_off_gsts)];
+  uint32_t gsts = c->reg[internal_canfd_word((uint64_t)k_canfd_off_gsts)];
   gsts &= ~(uint32_t)(k_gsts_grststs | k_gsts_ghltsts | k_gsts_graminit);
   const uint32_t mode = gctr & (uint32_t)k_mode_mask;
   if (mode == (uint32_t)k_mode_reset) {
@@ -173,13 +214,22 @@ static void canfd_apply_global_mode(canfd_inst_t* c, uint32_t gctr)
   } else if (mode == (uint32_t)k_mode_halt) {
     gsts |= (uint32_t)k_gsts_ghltsts;
   }
-  c->reg[canfd_word((uint64_t)k_canfd_off_gsts)] = gsts;
+  c->reg[internal_canfd_word((uint64_t)k_canfd_off_gsts)] = gsts;
 }
 
-/** @brief Apply a channel mode-control write to its matching status bits. */
-static void canfd_apply_channel_mode(canfd_inst_t* c, uint32_t ctr)
+/**
+ * @brief Apply a channel mode-control write to its matching status bits.
+ * @details Apply a channel mode-control write to its matching status bits; this step is contained within the board periph canfd model and uses bounded caller or module-owned storage.
+ * @param[in,out] c Active controller, card, or command state processed by the operation.
+ * @param[in] ctr Ctr input used by the operation.
+ * @pre Arguments satisfy the ranges documented for canfd apply channel mode. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph canfd model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_canfd_apply_channel_mode(canfd_inst_t* c, uint32_t ctr)
 {
-  uint32_t sts = c->reg[canfd_word((uint64_t)k_canfd_off_cnsts)];
+  uint32_t sts = c->reg[internal_canfd_word((uint64_t)k_canfd_off_cnsts)];
   sts &= ~(uint32_t)(k_cnsts_crstst | k_cnsts_chltst);
   const uint32_t mode = ctr & (uint32_t)k_mode_mask;
   if (mode == (uint32_t)k_mode_reset) {
@@ -187,7 +237,7 @@ static void canfd_apply_channel_mode(canfd_inst_t* c, uint32_t ctr)
   } else if (mode == (uint32_t)k_mode_halt) {
     sts |= (uint32_t)k_cnsts_chltst;
   }
-  c->reg[canfd_word((uint64_t)k_canfd_off_cnsts)] = sts;
+  c->reg[internal_canfd_word((uint64_t)k_canfd_off_cnsts)] = sts;
 }
 
 /**
@@ -205,19 +255,24 @@ static void canfd_apply_channel_mode(canfd_inst_t* c, uint32_t ctr)
  * @param[in] c     Channel instance whose CFDGAFL window to read.
  * @param[in] tx_id Transmitted frame id (29-bit field, IDE/RTR masked off).
  * @return true if the frame is accepted (deliver), false if filtered out.
+  * @retval true The canfd frame accepted condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for canfd frame accepted. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph canfd model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static bool canfd_frame_accepted(const canfd_inst_t* c, uint32_t tx_id)
+RA8_INTERNAL static bool internal_canfd_frame_accepted(const canfd_inst_t* c, uint32_t tx_id)
 {
   bool any_active = false;
   for (uint32_t slot = 0U; slot < (uint32_t)k_canfd_afl_count; slot++) {
     const uint64_t ent =
       (uint64_t)k_canfd_off_afl + ((uint64_t)slot * (uint64_t)k_canfd_afl_stride);
-    const uint32_t mask = c->reg[canfd_word(ent + 4UL)] & (uint32_t)k_canfd_id_ext;
+    const uint32_t mask = c->reg[internal_canfd_word(ent + 4UL)] & (uint32_t)k_canfd_id_ext;
     if (mask == 0U) {
       continue; /* unprogrammed slot */
     }
     any_active               = true;
-    const uint32_t accept_id = c->reg[canfd_word(ent)] & (uint32_t)k_canfd_id_ext;
+    const uint32_t accept_id = c->reg[internal_canfd_word(ent)] & (uint32_t)k_canfd_id_ext;
     if ((tx_id & mask) == (accept_id & mask)) {
       return true;
     }
@@ -233,7 +288,7 @@ static bool canfd_frame_accepted(const canfd_inst_t* c, uint32_t tx_id)
  * -- the originating controller instance, the identifier in hex, the 4-bit DLC
  * code, and the @p outcome note -- into a bounded stack buffer and appends it to
  * ::k_board_console_ch_can via ::board_console_push. This is the console-tab tap
- * only: it performs no register access and writes nothing to stdout/stderr, so
+ * only: it performs no register access and writes nothing to injected output sink/injected error sink, so
  * the smoke/golden output stays byte-identical. It is invoked once per transmit
  * request (one logical CAN frame), never per byte, so the ring does not flood.
  *
@@ -245,11 +300,12 @@ static bool canfd_frame_accepted(const canfd_inst_t* c, uint32_t tx_id)
  * @pre @p outcome is a valid NUL-terminated string.
  * @pre @p inst is a valid CANFD instance index (< k_canfd_count).
  * @post Exactly one line is appended to the CAN console lane.
- * @post No register, stdout, or stderr state is modified.
+ * @post No register, injected output sink, or injected error sink state is modified.
  * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static void canfd_console_frame(uint32_t inst, uint32_t tx_id, uint32_t dlc, const char* outcome)
+RA8_INTERNAL static void
+internal_canfd_console_frame(uint32_t inst, uint32_t tx_id, uint32_t dlc, const char* outcome)
 {
   enum : uint8_t {
     k_canfd_console_line_cap = 64U, /**< Max chars in a "CANFD<n> TX id=.." line. */
@@ -259,150 +315,194 @@ static void canfd_console_frame(uint32_t inst, uint32_t tx_id, uint32_t dlc, con
   board_console_push(k_board_console_ch_can, ln);
 }
 
-/** @brief Copy TX MB 0 into RX FIFO 0 and flag the frame available. */
-static void canfd_loopback_deliver(uc_engine* uc, uint32_t inst)
+/**
+ * @brief Copy TX MB 0 into RX FIFO 0 and flag the frame available.
+ * @details Copy tx mb 0 into rx fifo 0 and flag the frame available; this step is contained within the board periph canfd model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] inst Inst input used by the operation.
+ * @pre Arguments satisfy the ranges documented for canfd loopback deliver. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph canfd model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_canfd_loopback_deliver(uc_engine* uc, uint32_t inst)
 {
   canfd_inst_t*  c     = &s_canfd[inst];
-  const uint32_t tm    = canfd_word((uint64_t)k_canfd_off_tm0);
-  const uint32_t rf    = canfd_word((uint64_t)k_canfd_off_rf0);
+  const uint32_t tm    = internal_canfd_word((uint64_t)k_canfd_off_tm0);
+  const uint32_t rf    = internal_canfd_word((uint64_t)k_canfd_off_rf0);
   const uint32_t tx_id = c->reg[tm] & (uint32_t)k_canfd_id_ext;
   const uint32_t ptr   = c->reg[tm + (uint32_t)k_canfd_ptr_word];
   const uint32_t dlc   = (ptr >> (uint32_t)k_canfd_ptr_dlc_shift) & (uint32_t)k_canfd_ptr_dlc_mask;
   /* The frame is transmitted regardless of the filter; mark TX complete.
    * CFDTMSTS[0] is a byte at a word-aligned offset, so its low byte carries
    * TMTRF = 10b ("transmission complete"). */
-  c->reg[canfd_word((uint64_t)k_canfd_off_tmsts0)] = (uint32_t)k_tmsts_done;
-  if (!canfd_frame_accepted(c, tx_id)) {
+  c->reg[internal_canfd_word((uint64_t)k_canfd_off_tmsts0)] = (uint32_t)k_tmsts_done;
+  if (!internal_canfd_frame_accepted(c, tx_id)) {
     if (board_periph_trace()) {
-      (void)fprintf(stderr,
-                    "  [trace] CANFD%u loopback: TX id=0x%X filtered (no AFL match)\n",
-                    inst,
-                    tx_id);
+      (void)priv_emu_io_errf("  [trace] CANFD%u loopback: TX id=0x%X filtered (no AFL match)\n",
+                             inst,
+                             tx_id);
     }
-    canfd_console_frame(inst, tx_id, dlc, "filtered");
+    internal_canfd_console_frame(inst, tx_id, dlc, "filtered");
     return; /* filtered out: transmitted but not received */
   }
   for (uint32_t w = 0U; w < (uint32_t)k_canfd_frame_words; w++) {
     c->reg[rf + w] = c->reg[tm + w];
   }
   /* RX FIFO 0 now holds one frame: clear empty, raise the RX flag. */
-  uint32_t rfsts = c->reg[canfd_word((uint64_t)k_canfd_off_rfsts0)];
+  uint32_t rfsts = c->reg[internal_canfd_word((uint64_t)k_canfd_off_rfsts0)];
   rfsts &= ~(uint32_t)k_rfsts_empty;
   rfsts |= (uint32_t)k_rfsts_if;
-  c->reg[canfd_word((uint64_t)k_canfd_off_rfsts0)] = rfsts;
+  c->reg[internal_canfd_word((uint64_t)k_canfd_off_rfsts0)] = rfsts;
   c->loopbacks++;
   if (inst == 0U) {
     board_periph_icu_raise_event(uc, (uint16_t)k_event_can0_rxf);
   }
   if (board_periph_trace()) {
-    (void)fprintf(stderr,
-                  "  [trace] CANFD%u loopback: TX MB0 -> RX FIFO0 (id=0x%X)\n",
-                  inst,
-                  c->reg[rf] & (uint32_t)k_canfd_id_ext);
+    (void)priv_emu_io_errf("  [trace] CANFD%u loopback: TX MB0 -> RX FIFO0 (id=0x%X)\n",
+                           inst,
+                           c->reg[rf] & (uint32_t)k_canfd_id_ext);
   }
-  canfd_console_frame(inst, tx_id, dlc, "-> RXF0");
+  internal_canfd_console_frame(inst, tx_id, dlc, "-> RXF0");
 }
 
-/** @brief MMIO read inside a CANFD window: read back the latched register. */
-static uint64_t canfd_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside a CANFD window: read back the latched register.
+ * @details MMIO read inside a canfd window: read back the latched register; this step is contained within the board periph canfd model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The canfd read result produced by the board periph canfd model.
+ * @retval value The operation-specific canfd read value.
+ * @pre Arguments satisfy the ranges documented for canfd read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph canfd model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_canfd_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
-  const uint32_t inst = canfd_instance(addr);
+  const uint32_t inst = internal_canfd_instance(addr);
   if (inst >= (uint32_t)k_canfd_count) {
     return 0U;
   }
-  const uint64_t off = canfd_offset(inst, addr);
+  const uint64_t off = internal_canfd_offset(inst, addr);
   if (off >= (uint64_t)k_canfd_span) {
     return 0U;
   }
-  return s_canfd[inst].reg[canfd_word(off)];
+  return s_canfd[inst].reg[internal_canfd_word(off)];
 }
 
-/** @brief Handle a write to a CANFD register with side effects, else latch it. */
-static void canfd_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief Handle a write to a CANFD register with side effects, else latch it.
+ * @details Handle a write to a canfd register with side effects, else latch it; this step is contained within the board periph canfd model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for canfd write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph canfd model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_canfd_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)size;
-  const uint32_t inst = canfd_instance(addr);
+  const uint32_t inst = internal_canfd_instance(addr);
   if (inst >= (uint32_t)k_canfd_count) {
     return;
   }
-  const uint64_t off = canfd_offset(inst, addr);
+  const uint64_t off = internal_canfd_offset(inst, addr);
   if (off >= (uint64_t)k_canfd_span) {
     return;
   }
   canfd_inst_t* c = &s_canfd[inst];
   /* CFDTMC[0] is a byte register; a TMTR request triggers the loopback. */
   if (off == (uint64_t)k_canfd_off_tmc0) {
-    c->reg[canfd_word(off)] = (uint32_t)value;
+    c->reg[internal_canfd_word(off)] = (uint32_t)value;
     if (((uint8_t)value & (uint8_t)k_tmc_txreq) != 0U) {
-      canfd_loopback_deliver(uc, inst);
+      internal_canfd_loopback_deliver(uc, inst);
     }
     return;
   }
   /* Popping RX FIFO 0 (CFDRFPCTR write) returns it to the empty state. */
   if (off == (uint64_t)k_canfd_off_rfpctr0) {
-    c->reg[canfd_word(off)] = (uint32_t)value;
-    uint32_t rfsts          = c->reg[canfd_word((uint64_t)k_canfd_off_rfsts0)];
+    c->reg[internal_canfd_word(off)] = (uint32_t)value;
+    uint32_t rfsts                   = c->reg[internal_canfd_word((uint64_t)k_canfd_off_rfsts0)];
     rfsts |= (uint32_t)k_rfsts_empty;
     rfsts &= ~(uint32_t)k_rfsts_if;
-    c->reg[canfd_word((uint64_t)k_canfd_off_rfsts0)] = rfsts;
+    c->reg[internal_canfd_word((uint64_t)k_canfd_off_rfsts0)] = rfsts;
     return;
   }
-  c->reg[canfd_word(off)] = (uint32_t)value;
+  c->reg[internal_canfd_word(off)] = (uint32_t)value;
   if (off == (uint64_t)k_canfd_off_gctr) {
-    canfd_apply_global_mode(c, (uint32_t)value);
+    internal_canfd_apply_global_mode(c, (uint32_t)value);
   } else if (off == (uint64_t)k_canfd_off_cnctr) {
-    canfd_apply_channel_mode(c, (uint32_t)value);
+    internal_canfd_apply_channel_mode(c, (uint32_t)value);
   }
 }
 
-/** @brief Reset both CANFD instances to a coherent power-on state. */
-static void canfd_reset(void)
+/**
+ * @brief Reset both CANFD instances to a coherent power-on state.
+ * @details Reset both canfd instances to a coherent power-on state; this step is contained within the board periph canfd model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for canfd reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph canfd model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_canfd_reset(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_canfd_count; i++) {
     (void)memset(&s_canfd[i], 0, sizeof(s_canfd[i]));
     /* RX FIFO 0 powers up empty; GRAMINIT powers up already-clear (0). */
-    s_canfd[i].reg[canfd_word((uint64_t)k_canfd_off_rfsts0)] = (uint32_t)k_rfsts_empty;
+    s_canfd[i].reg[internal_canfd_word((uint64_t)k_canfd_off_rfsts0)] = (uint32_t)k_rfsts_empty;
   }
 }
 
-/** @brief Print one line per CANFD instance that looped a frame back. */
-static void canfd_report(void)
+/**
+ * @brief Print one line per CANFD instance that looped a frame back.
+ * @details Print one line per canfd instance that looped a frame back; this step is contained within the board periph canfd model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for canfd report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph canfd model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_canfd_report(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_canfd_count; i++) {
     if (s_canfd[i].loopbacks == 0U) {
       continue;
     }
-    const uint32_t rf = canfd_word((uint64_t)k_canfd_off_rf0);
-    (void)fprintf(stderr,
-                  "  CANFD%u        : loopback frames=%u last_rx_id=0x%03X\n",
-                  i,
-                  s_canfd[i].loopbacks,
-                  s_canfd[i].reg[rf] & (uint32_t)k_canfd_id_std);
+    const uint32_t rf = internal_canfd_word((uint64_t)k_canfd_off_rf0);
+    (void)priv_emu_io_errf("  CANFD%u        : loopback frames=%u last_rx_id=0x%03X\n",
+                           i,
+                           s_canfd[i].loopbacks,
+                           s_canfd[i].reg[rf] & (uint32_t)k_canfd_id_std);
   }
 }
 
 /** @brief CANFD0 register window + the shared loopback reset / report. */
-static const board_periph_block_t k_canfd0_block = {
+static const board_periph_block_t s_k_canfd0_block = {
   .base   = (uint64_t)k_canfd0_base,
   .span   = (uint64_t)k_canfd_span,
   .order  = (uint32_t)k_block_order_i2c, /* After the timers/UART; no tick. */
-  .read   = canfd_read,
-  .write  = canfd_write,
+  .read   = internal_canfd_read,
+  .write  = internal_canfd_write,
   .tick   = nullptr,
-  .reset  = canfd_reset,
-  .report = canfd_report,
+  .reset  = internal_canfd_reset,
+  .report = internal_canfd_report,
   .name   = "CANFD0",
 };
 
 /** @brief CANFD1 register window (reset / report handled by the CANFD0 block). */
-static const board_periph_block_t k_canfd1_block = {
+static const board_periph_block_t s_k_canfd1_block = {
   .base   = (uint64_t)k_canfd1_base,
   .span   = (uint64_t)k_canfd_span,
   .order  = (uint32_t)k_block_order_i2c,
-  .read   = canfd_read,
-  .write  = canfd_write,
+  .read   = internal_canfd_read,
+  .write  = internal_canfd_write,
   .tick   = nullptr,
   .reset  = nullptr,
   .report = nullptr,
@@ -410,8 +510,8 @@ static const board_periph_block_t k_canfd1_block = {
 };
 
 /** @brief Self-register both CANFD windows before main runs (decentralized). */
-[[gnu::constructor]] static void board_periph_canfd_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_board_periph_canfd_register(void)
 {
-  board_periph_register_block(&k_canfd0_block);
-  board_periph_register_block(&k_canfd1_block);
+  board_periph_register_block(&s_k_canfd0_block);
+  board_periph_register_block(&s_k_canfd1_block);
 }

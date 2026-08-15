@@ -33,6 +33,7 @@
 #include <stdio.h>
 
 #include "board_periph.h"
+#include "emu_host_io_internal.h"
 
 /**
  * @enum eink_preamble_t
@@ -103,8 +104,8 @@ typedef enum : uint16_t {
  * sensibly.
  */
 typedef enum : uint16_t {
-  k_eink_panel_w = 128U, /**< Reported panel width  (px). */
-  k_eink_panel_h = 128U, /**< Reported panel height (px). */
+  k_eink_panel_w = 128U, /**< Reported panel width  (priv_px). */
+  k_eink_panel_h = 128U, /**< Reported panel height (priv_px). */
 } eink_geom_t;
 
 /**
@@ -223,8 +224,13 @@ static eink_model_t s_eink;
  *
  * @param[in] reg Register address the driver selected.
  * @return The 16-bit register value (0 for LUTAFSR / anything else).
+  * @retval value The operation-specific eink reg value value.
+ * @pre Arguments satisfy the ranges documented for eink reg value. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph eink model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static uint16_t eink_reg_value(uint16_t reg)
+RA8_INTERNAL static uint16_t internal_eink_reg_value(uint16_t reg)
 {
   if (reg == (uint16_t)k_eink_reg_lutafsr) {
     return 0U; /* LUT idle -> ra8_epaper_display_area poll exits. */
@@ -232,8 +238,18 @@ static uint16_t eink_reg_value(uint16_t reg)
   return 0U;
 }
 
-/** @brief Word i of the (discarded) GET_DEV_INFO block: W, H, then zeros. */
-static uint16_t eink_dev_info_word(uint16_t idx)
+/**
+ * @brief Word i of the (discarded) GET_DEV_INFO block: W, H, then zeros.
+ * @details Word i of the (discarded) get_dev_info block: w, h, then zeros; this step is contained within the board periph eink model and uses bounded caller or module-owned storage.
+ * @param[in] idx Bounded index of the selected entry.
+ * @return The eink dev info word result produced by the board periph eink model.
+ * @retval value The operation-specific eink dev info word value.
+ * @pre Arguments satisfy the ranges documented for eink dev info word. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph eink model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_eink_dev_info_word(uint16_t idx)
 {
   if (idx == 0U) {
     return (uint16_t)k_eink_panel_w;
@@ -244,8 +260,18 @@ static uint16_t eink_dev_info_word(uint16_t idx)
   return 0U;
 }
 
-/** @brief Pixels a 16-bit data word carries at the given wire pixel format. */
-static uint16_t eink_px_per_word(uint16_t wire_pf)
+/**
+ * @brief Pixels a 16-bit data word carries at the given wire pixel format.
+ * @details Pixels a 16-bit data word carries at the given wire pixel format; this step is contained within the board periph eink model and uses bounded caller or module-owned storage.
+ * @param[in] wire_pf Wire pf input used by the operation.
+ * @return The eink px per word result produced by the board periph eink model.
+ * @retval value The operation-specific eink px per word value.
+ * @pre Arguments satisfy the ranges documented for eink px per word. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph eink model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_eink_px_per_word(uint16_t wire_pf)
 {
   if (wire_pf == (uint16_t)k_eink_wire_pf_2bpp) {
     return (uint16_t)((uint16_t)k_eink_word_bits / 2U);
@@ -259,17 +285,24 @@ static uint16_t eink_px_per_word(uint16_t wire_pf)
   return (uint16_t)((uint16_t)k_eink_word_bits / 8U); /* k_eink_wire_pf_8bpp */
 }
 
-/** @brief Load @c rd_buf with [dummy word, value word] and open the read burst. */
-static void eink_begin_read(void)
+/**
+ * @brief Load @c rd_buf with [dummy word, value word] and open the read burst.
+ * @details Load @c rd_buf with [dummy word, value word] and open the read burst; this step is contained within the board periph eink model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for eink begin read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph eink model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_eink_begin_read(void)
 {
   uint16_t value = 0U;
   if (s_eink.cur_cmd == (uint16_t)k_eink_cmd_reg_rd) {
-    value = eink_reg_value(s_eink.reg_addr);
+    value = internal_eink_reg_value(s_eink.reg_addr);
   } else if (s_eink.cur_cmd == (uint16_t)k_eink_cmd_vcom) {
     /* Only a "get" reads back; the driver never reads after a set. */
     value = s_eink.vcom_mv;
   } else if (s_eink.cur_cmd == (uint16_t)k_eink_cmd_get_dev_info) {
-    value          = eink_dev_info_word(s_eink.dev_idx);
+    value          = internal_eink_dev_info_word(s_eink.dev_idx);
     s_eink.dev_idx = (uint16_t)(s_eink.dev_idx + 1U);
   }
   s_eink.rd_buf[k_eink_rd_dummy_hi] = (uint8_t)k_eink_idle_byte;
@@ -282,8 +315,16 @@ static void eink_begin_read(void)
   s_eink.reading                  = true;
 }
 
-/** @brief Interpret one data word against the command currently in flight. */
-static void eink_consume_data(uint16_t word)
+/**
+ * @brief Interpret one data word against the command currently in flight.
+ * @details Interpret one data word against the command currently in flight; this step is contained within the board periph eink model and uses bounded caller or module-owned storage.
+ * @param[in] word Instruction or register word processed by the operation.
+ * @pre Arguments satisfy the ranges documented for eink consume data. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph eink model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_eink_consume_data(uint16_t word)
 {
   if ((s_eink.cur_cmd == (uint16_t)k_eink_cmd_reg_rd) ||
       (s_eink.cur_cmd == (uint16_t)k_eink_cmd_reg_wr)) {
@@ -303,7 +344,7 @@ static void eink_consume_data(uint16_t word)
     if (s_eink.datawr_idx == (uint16_t)k_eink_idx_ld_arg0) {
       const uint16_t wire_pf =
         (uint16_t)((word >> (uint16_t)k_eink_pf_shift) & (uint16_t)k_eink_pf_mask);
-      s_eink.px_per_word = eink_px_per_word(wire_pf);
+      s_eink.px_per_word = internal_eink_px_per_word(wire_pf);
     } else if (s_eink.datawr_idx >= (uint16_t)k_eink_idx_ld_px_start) {
       s_eink.pixels += (uint64_t)s_eink.px_per_word;
     } else {
@@ -317,8 +358,16 @@ static void eink_consume_data(uint16_t word)
   }
 }
 
-/** @brief Advance the state machine by one fully-assembled 16-bit word. */
-static void eink_consume_word(uint16_t word)
+/**
+ * @brief Advance the state machine by one fully-assembled 16-bit word.
+ * @details Advance the state machine by one fully-assembled 16-bit word; this step is contained within the board periph eink model and uses bounded caller or module-owned storage.
+ * @param[in] word Instruction or register word processed by the operation.
+ * @pre Arguments satisfy the ranges documented for eink consume word. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph eink model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_eink_consume_word(uint16_t word)
 {
   if (s_eink.st == (eink_state_t)k_eink_st_cmd) {
     s_eink.cur_cmd    = word;
@@ -330,7 +379,7 @@ static void eink_consume_word(uint16_t word)
     return;
   }
   if (s_eink.st == (eink_state_t)k_eink_st_datawr) {
-    eink_consume_data(word);
+    internal_eink_consume_data(word);
     s_eink.datawr_idx = (uint16_t)(s_eink.datawr_idx + 1U);
     s_eink.st         = (eink_state_t)k_eink_st_preamble;
     return;
@@ -341,7 +390,7 @@ static void eink_consume_word(uint16_t word)
   } else if (word == (uint16_t)k_eink_pre_wr) {
     s_eink.st = (eink_state_t)k_eink_st_datawr;
   } else if (word == (uint16_t)k_eink_pre_rd) {
-    eink_begin_read(); /* subsequent dummy bytes are answered from rd_buf */
+    internal_eink_begin_read(); /* subsequent dummy bytes are answered from rd_buf */
   }
 }
 
@@ -379,7 +428,7 @@ uint8_t board_eink_exchange(uint8_t tx)
   const uint16_t word =
     (uint16_t)(((uint16_t)s_eink.hi << (uint16_t)k_eink_byte_shift) | (uint16_t)tx);
   s_eink.have_hi = false;
-  eink_consume_word(word);
+  internal_eink_consume_word(word);
   return (uint8_t)k_eink_idle_byte;
 }
 
@@ -397,7 +446,7 @@ void board_eink_reset(void)
   /* VCOM is controller configuration, not bus framing: a mid-run SPI reset
    * must not clear it, but a cold attach starts from the power-on value. */
   s_eink.vcom_mv     = (vcom_mv != 0U) ? vcom_mv : (uint16_t)k_eink_vcom_power_on_mv;
-  s_eink.px_per_word = eink_px_per_word((uint16_t)k_eink_wire_pf_8bpp);
+  s_eink.px_per_word = internal_eink_px_per_word((uint16_t)k_eink_wire_pf_8bpp);
 }
 
 void board_eink_apply_gpio_defaults(void)
@@ -413,11 +462,10 @@ void board_eink_report(void)
   if (!s_eink.attached) {
     return;
   }
-  (void)fprintf(stderr,
-                "  IT8951 e-ink  : %llu pixel(s) loaded, %u refresh(es), last wf=0x%X, "
-                "vcom=%umV\n",
-                (unsigned long long)s_eink.pixels,
-                s_eink.refreshes,
-                (unsigned)s_eink.last_wf,
-                (unsigned)s_eink.vcom_mv);
+  (void)priv_emu_io_errf("  IT8951 e-ink  : %llu pixel(s) loaded, %u refresh(es), last wf=0x%X, "
+                         "vcom=%umV\n",
+                         (unsigned long long)s_eink.pixels,
+                         s_eink.refreshes,
+                         (unsigned)s_eink.last_wf,
+                         (unsigned)s_eink.vcom_mv);
 }

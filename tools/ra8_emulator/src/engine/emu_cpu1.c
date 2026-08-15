@@ -20,6 +20,7 @@
 #include "emu_console.h"
 #include "emu_elf.h"
 #include "emu_engine.h"
+#include "emu_host_io_internal.h"
 #include "emu_memmap.h"
 #include "emu_mmio.h"
 
@@ -62,7 +63,8 @@ static bool       s_cpu1_release_req; /**< CPU1ACTCSR.ACTREQ observed.        */
 static uint32_t   s_cpu1_initvtor;    /**< Captured CPU1INITVTOR value.       */
 static uint32_t   s_cpu1_pc;          /**< cpu1 run PC across interleaves.    */
 
-/** @brief Implementation of `emu_cpu1_notify_mmio_write()` -- release capture. */
+/** @brief Implementation of `emu_cpu1_notify_mmio_write()` -- release capture.
+ */
 void emu_cpu1_notify_mmio_write(uint64_t mmio_abs, uint64_t value)
 {
   if (mmio_abs == (uint64_t)k_cpu1_initvtor_addr) {
@@ -82,95 +84,48 @@ void emu_cpu1_notify_mmio_write(uint64_t mmio_abs, uint64_t value)
 
 /**
  * @brief True if @p elf carries a PT_LOAD segment in the cpu1 MRAM window.
- *
- * Dual-core only: cpu1's image is embedded as raw bytes (.cpu1_image, not a
- * cpu0 symbol), so detect it by a PT_LOAD segment whose physical address lands
- * in the MRAM_CPU1 aperture.
+ * @details Dual-core only: cpu1's image is embedded as raw bytes (.cpu1_image,
+ * not a cpu0 symbol), so detect it by a PT_LOAD segment whose physical address
+ * lands in the MRAM_CPU1 aperture.
+ * @param[in] segment Bounds-checked load-segment descriptor.
+ * @param[in,out] opaque Boolean presence accumulator.
+ * @return Whether the load-segment walk should continue.
+ * @retval true The segment is outside the cpu1 MRAM window.
+ * @retval false A cpu1 segment was found and the walk may stop.
+ * @pre @p segment is non-null.
+ * @pre @p opaque points to a writable bool.
+ * @post The accumulator is true exactly when this segment belongs to cpu1.
+ * @post No source or emulator state changes.
+ * @note Pure apart from the caller-owned accumulator.
+ * @since 0.1.0
  */
-static bool cpu1_image_present(const uint8_t* elf)
+RA8_INTERNAL static bool internal_cpu1_segment(const elf_exec_segment_t* segment, void* opaque)
 {
-  uint32_t phoff = 0U;
-  (void)memcpy(&phoff, elf + (uint32_t)k_elf_e_phoff_off, 4);
-  const uint16_t phentsize = (uint16_t)(elf[42] | (elf[43] << 8));
-  const uint16_t phnum     = (uint16_t)(elf[44] | (elf[45] << 8));
-  for (uint16_t i = 0U; i < phnum; i++) {
-    const uint8_t* ph = elf + phoff + ((size_t)(uint32_t)i * phentsize);
-    uint32_t       p_type;
-    uint32_t       p_paddr;
-    (void)memcpy(&p_type, ph + 0, 4);
-    (void)memcpy(&p_paddr, ph + (uint32_t)k_elf_ph_paddr_off, 4);
-    if ((p_type == 1U) && (p_paddr >= (uint32_t)k_cpu1_mram_base) &&
-        (p_paddr < (uint32_t)k_cpu1_mram_end)) {
-      return true;
-    }
-  }
-  return false;
+  bool* const present = (bool*)opaque;
+  *present =
+    (segment->paddr >= (uint32_t)k_cpu1_mram_base) && (segment->paddr < (uint32_t)k_cpu1_mram_end);
+  return !*present;
 }
 
-/** @brief Mirror cpu0's memory map into @p c1 (SRAM host-backed and shared). */
-static bool cpu1_map_regions(uc_engine* c1)
+/**
+ * @brief Detect a PT_LOAD segment in the cpu1 MRAM window.
+ * @details Walks load headers without reading or retaining segment payloads.
+ * @param[in] elf Open primary ELF source.
+ * @return Whether a cpu1 MRAM load segment exists.
+ * @retval true At least one load segment targets the cpu1 aperture.
+ * @retval false No usable load segment targets the cpu1 aperture.
+ * @pre @p elf is non-null.
+ * @pre @p elf remains open during the walk.
+ * @post The source descriptor and cursor are unchanged.
+ * @post No emulator state changes.
+ * @note Uses one caller-local accumulator.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_cpu1_image_present(const emu_elf_source_t* elf)
 {
-  uint32_t            region_n = 0U;
-  const mem_region_t* regions  = emu_memmap_regions(&region_n);
-  for (size_t i = 0U; i < (size_t)region_n; i++) {
-    uc_err mr = UC_ERR_OK;
-    if (regions[i].base == (uint64_t)k_sram_base) {
-      mr = uc_mem_map_ptr(c1,
-                          regions[i].base,
-                          (size_t)regions[i].size,
-                          UC_PROT_ALL,
-                          emu_memmap_sram_buf());
-    } else if (regions[i].base == (uint64_t)k_ns_sram2_base) {
-      /* SRAM2 Non-secure alias: the SAME physical bytes as 0x22100000, so back
-       * it with the shared SRAM host buffer at that offset (mirroring cpu0's
-       * map). cpu1 stamps its bring-up markers through this alias
-       * (cpu1_pingpong_ipc's cpu1_main writes 0x321002xx); a private mapping
-       * here would hide them from cpu0 and the --dump-sym probe. */
-      uint8_t* const ns_host =
-        emu_memmap_sram_buf() +
-        ((size_t)k_ns_sram2_base - (size_t)k_ns_alias_bit - (size_t)k_sram_base);
-      mr = uc_mem_map_ptr(c1, regions[i].base, (size_t)regions[i].size, UC_PROT_ALL, ns_host);
-    } else {
-      mr = uc_mem_map(c1, regions[i].base, (size_t)regions[i].size, UC_PROT_ALL);
-    }
-    if (mr != UC_ERR_OK) {
-      return false;
-    }
-  }
-  return true;
-}
-
-/** @brief Map the shared peripheral window and its NS bit[28] alias into @p c1. */
-static bool cpu1_map_periph(uc_engine* c1)
-{
-  /* Map the Renesas peripheral space through the SAME board_periph models cpu0
-   * uses -- the peripherals are shared hardware, so the M33's MMIO (GPIO LED
-   * toggles, SCI, timers, ...) reaches the models and the board view instead of
-   * faulting on unmapped space. cpu0 maps this region separately via uc_mmio_map
-   * (it is absent from k_regions); cpu1 needs the identical mapping. */
-  if (uc_mmio_map(c1,
-                  (uint64_t)k_periph_base,
-                  (size_t)k_periph_size,
-                  mmio_read,
-                  nullptr,
-                  mmio_write,
-                  nullptr) != UC_ERR_OK) {
-    return false;
-  }
-  /* The M33 runs as a permanent non-secure bus controller (SECEXT off): the
-   * peripheral channels it owns -- e.g. the IPC unit it pokes to wake the M85 --
-   * are NS-attributed, so its accesses route through the bit[28] non-secure
-   * alias (0x5xxxxxxx) rather than the Secure 0x4xxxxxxx the M85 uses. Map that
-   * alias to the SAME models with the SAME hooks: the hooks rebuild the absolute
-   * address as k_periph_base + window-relative offset, so a 0x50020000 access
-   * (offset 0x20000) dispatches to 0x40020000 identically to a Secure one. */
-  return uc_mmio_map(c1,
-                     (uint64_t)k_periph_base | (uint64_t)k_ns_alias_bit,
-                     (size_t)k_periph_size,
-                     mmio_read,
-                     nullptr,
-                     mmio_write,
-                     nullptr) == UC_ERR_OK;
+  bool present = false;
+  (void)elf_foreach_load_segment(elf, internal_cpu1_segment, &present);
+  return present;
 }
 
 /**
@@ -179,29 +134,30 @@ static bool cpu1_map_periph(uc_engine* c1)
  * @details
  * Only dual-core firmware (one exporting ``cpu1_reset_handler``) gets a cpu1
  * engine, so single-core apps pay nothing. The engine maps the same regions as
- * cpu0 but binds the on-chip SRAM to the shared host buffer (::s_sram_buf) so
+ * cpu0 but binds the on-chip SRAM to the same authoritative descriptor so
  * cross-core IPC over shared SRAM is coherent; the full ELF (which carries
  * cpu1's image at MRAM_CPU1) is loaded so cpu1 can boot from its own vector
  * table when released. The engine is left idle -- the run loop boots it on the
  * CPU1ACTCSR release.
  *
- * @param[in] elf     The firmware image (cpu0 + cpu1).
- * @param[in] elf_len Length of @p elf, bytes.
+ * @param[in] elf The open firmware image (cpu0 + cpu1).
+ * @param[in,out] memory The authoritative backing already attached to CPU0.
  *
  * @return The cpu1 engine, or NULL if this is not a dual-core image (or setup
  *         failed -- cpu0 then runs alone, exactly as before).
  * @retval NULL Not a dual-core image / engine setup failed.
  *
- * @pre ::s_sram_buf is allocated (cpu0 SRAM is host-backed).
- * @pre @p elf is a valid ELF still resident (called before it is freed).
- * @post On success a Cortex-M33 engine mirrors cpu0's map with shared SRAM.
+ * @pre @p memory is open and already attached to CPU0.
+ * @pre @p elf is a valid open source retained through CPU1 loading.
+ * @post On success a Cortex-M33 engine mirrors descriptor-backed shared memory.
  * @post No cpu1 instruction has executed yet (idle until released).
  * @note cpu1's PPB / peripheral writes stay private to its engine.
  * @since 0.1.0
  */
-static uc_engine* cpu1_engine_init(const uint8_t* elf, long elf_len)
+RA8_INTERNAL static uc_engine* internal_cpu1_engine_init(const emu_elf_source_t* elf,
+                                                         emu_memmap_workspace_t* memory)
 {
-  if (!cpu1_image_present(elf)) {
+  if (!internal_cpu1_image_present(elf)) {
     return nullptr; /* single-core firmware -- no second engine. */
   }
   uc_engine* c1 = nullptr;
@@ -209,21 +165,34 @@ static uc_engine* cpu1_engine_init(const uint8_t* elf, long elf_len)
     return nullptr;
   }
   (void)uc_ctl_set_cpu_model(c1, UC_CPU_ARM_CORTEX_M33);
-  if (!cpu1_map_regions(c1) || !cpu1_map_periph(c1) || (load_elf(c1, elf, elf_len) != 0)) {
+  if ((emu_memmap_attach(memory, c1).status != k_emu_memmap_ok) || (load_elf(c1, elf) != 0)) {
+    (void)emu_memmap_detach(memory, c1);
     (void)uc_close(c1);
     return nullptr;
   }
-  (void)fprintf(stderr, "  cpu1 engine   : Cortex-M33, shared SRAM + peripherals (dual-core)\n");
+  (void)priv_emu_io_errf("  cpu1 engine   : Cortex-M33, shared SRAM + peripherals (dual-core)\n");
   return c1;
 }
 
 /** @brief Implementation of `emu_cpu1_init()` -- detect + build the engine. */
-void emu_cpu1_init(const uint8_t* elf, long elf_len)
+void emu_cpu1_init(const emu_elf_source_t* elf, emu_memmap_workspace_t* memory)
 {
-  s_cpu1_uc = cpu1_engine_init(elf, elf_len);
+  s_cpu1_uc = internal_cpu1_engine_init(elf, memory);
 }
 
-/** @brief Implementation of `emu_cpu1_step()` -- release boot + one interleave. */
+void emu_cpu1_close(emu_memmap_workspace_t* memory)
+{
+  if (s_cpu1_uc != nullptr) {
+    (void)emu_memmap_detach(memory, s_cpu1_uc);
+    (void)uc_close(s_cpu1_uc);
+    s_cpu1_uc = nullptr;
+  }
+  s_cpu1_active      = false;
+  s_cpu1_release_req = false;
+}
+
+/** @brief Implementation of `emu_cpu1_step()` -- release boot + one interleave.
+ */
 void emu_cpu1_step(void)
 {
   if (s_cpu1_uc == nullptr) {

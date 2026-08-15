@@ -18,11 +18,11 @@
  * DEMCR.TRCENA + ITM TCR/TENR + a non-zero STIM0 "FIFO ready" read. With no
  * debugger attached those PPB bytes are all zero, so internal_itm_ready()
  * returns false and every byte is dropped -- which is why the e-reader (and
- * any ra8_log user) printed nothing in ra8_emulator. We seed the ready bits into
- * PPB RAM at boot (itm_seed_ready: sets DEMCR.TRCENA + TCR.ITMENA + TENR port
- * 0 + a ready STIM0) and hook stimulus-port writes (on_itm_stim_write) to
- * echo the bytes as `[itm] <line>` on stdout. This surfaces ra8_log for every
- * app, not just the TrustZone e-reader.
+ * any ra8_log user) printed nothing in ra8_emulator. We seed the ready bits
+ * into PPB RAM at boot (internal_itm_seed_ready: sets DEMCR.TRCENA + TCR.ITMENA + TENR
+ * port 0 + a ready STIM0) and hook stimulus-port writes (internal_on_itm_stim_write) to
+ * echo the bytes as `[itm] <line>` on injected output sink. This surfaces
+ * ra8_log for every app, not just the TrustZone e-reader.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -34,6 +34,8 @@
 #include <stdio.h>
 
 #include "board_console.h"
+#include "emu_host_io_internal.h"
+#include "emu_memory_access.h"
 
 /** @brief Accumulated current ITM line (flushed on newline or when full). */
 static char s_itm_line[k_itm_line_max + 1U];
@@ -47,9 +49,9 @@ static uint32_t s_uart_line_len;              /**< Chars buffered in the line. *
 /**
  * @brief UC_HOOK_MEM_WRITE handler for ITM stimulus port 0 -- echo the byte.
  *
- * @details Buffers the low byte of each stimulus write and prints `[itm] <line>`
- *          to stdout on a newline (or when the line buffer fills), so ra8_log
- *          output is visible in the emulator. Carriage returns are dropped so
+ * @details Buffers the low byte of each stimulus write and prints `[itm]
+ * <line>` to injected output sink on a newline (or when the line buffer fills),
+ * so ra8_log output is visible in the emulator. Carriage returns are dropped so
  *          the `\r\n` ra8_log line ending yields one clean line.
  *
  * @param[in] uc    Unicorn engine (unused; the byte rides in @p value).
@@ -67,12 +69,12 @@ static uint32_t s_uart_line_len;              /**< Chars buffered in the line. *
  * @note Not thread-safe; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static void on_itm_stim_write(uc_engine*  uc,
-                              uc_mem_type type,
-                              uint64_t    addr,
-                              int         size,
-                              int64_t     value,
-                              void*       user)
+RA8_INTERNAL static void internal_on_itm_stim_write(uc_engine*  uc,
+                                                    uc_mem_type type,
+                                                    uint64_t    addr,
+                                                    int         size,
+                                                    int64_t     value,
+                                                    void*       user)
 {
   (void)uc;
   (void)type;
@@ -86,12 +88,13 @@ static void on_itm_stim_write(uc_engine*  uc,
   if ((c == '\n') || (s_itm_len >= (uint32_t)k_itm_line_max)) {
     s_itm_line[s_itm_len] = '\0';
     /* Emit one ra8_log line as `[itm] <line>` -- the CoreSight ITM/SWO-trace
-     * analog of the `[uart] SCI8:` console echo (see the ITM model block above). */
-    (void)fprintf(stdout, "[itm] %s\n", s_itm_line);
-    (void)fflush(stdout);
+     * analog of the `[uart] SCI8:` console echo (see the ITM model block
+     * above). */
+    (void)priv_emu_io_outf("[itm] %s\n", s_itm_line);
     /* Also route it to the board_console ITM channel so the tabbed board-view
      * console shows ITM/SWO trace in its own tab (a different endpoint than the
-     * UART line). The stdout echo above is unchanged -- this is purely additive. */
+     * UART line). The injected output sink echo above is unchanged -- this is
+     * purely additive. */
     board_console_push(k_board_console_ch_itm, s_itm_line);
     s_itm_len = 0U;
     if (c == '\n') {
@@ -107,8 +110,8 @@ static void on_itm_stim_write(uc_engine*  uc,
  *
  * @details On hardware a debugger sets DEMCR.TRCENA and enables the ITM; with
  *          none attached those PPB registers read zero and ra8_log drops every
- *          byte. ra8_emulator maps the PPB as plain RAM, so writing the enable bits
- *          here makes internal_itm_ready() see a live ITM. The firmware only ever
+ *          byte. ra8_emulator maps the PPB as plain RAM, so writing the enable
+ * bits here makes internal_itm_ready() see a live ITM. The firmware only ever
  *          reads these registers (it never re-disables the ITM), so the seed
  *          persists for the run.
  *
@@ -122,27 +125,28 @@ static void on_itm_stim_write(uc_engine*  uc,
  * @note Not thread-safe; call during single-threaded setup.
  * @since 0.1.0
  */
-static void itm_seed_ready(uc_engine* uc)
+RA8_INTERNAL static void internal_itm_seed_ready(uc_engine* uc)
 {
   const uint32_t demcr = (uint32_t)k_scb_demcr_trcena;
   const uint32_t tcr   = (uint32_t)k_itm_tcr_itmena;
   const uint32_t tenr  = (uint32_t)k_itm_tenr_port0;
   const uint32_t stim  = (uint32_t)k_itm_stim_ready;
-  (void)uc_mem_write(uc, (uint64_t)k_scb_demcr_addr, &demcr, sizeof(demcr));
-  (void)uc_mem_write(uc, (uint64_t)k_itm_tcr_addr, &tcr, sizeof(tcr));
-  (void)uc_mem_write(uc, (uint64_t)k_itm_tenr_addr, &tenr, sizeof(tenr));
-  (void)uc_mem_write(uc, (uint64_t)k_itm_stim0_addr, &stim, sizeof(stim));
+  (void)emu_mem_write(uc, (uint64_t)k_scb_demcr_addr, &demcr, sizeof(demcr));
+  (void)emu_mem_write(uc, (uint64_t)k_itm_tcr_addr, &tcr, sizeof(tcr));
+  (void)emu_mem_write(uc, (uint64_t)k_itm_tenr_addr, &tenr, sizeof(tenr));
+  (void)emu_mem_write(uc, (uint64_t)k_itm_stim0_addr, &stim, sizeof(stim));
 }
 
-/** @brief Implementation of `emu_console_install()` -- ITM seed + STIM0 echo hook. */
+/** @brief Implementation of `emu_console_install()` -- ITM seed + STIM0 echo
+ * hook. */
 void emu_console_install(uc_engine* uc)
 {
-  itm_seed_ready(uc);
-  static uc_hook s_h_itm;
+  internal_itm_seed_ready(uc);
+  static uc_hook local_h_itm;
   (void)uc_hook_add(uc,
-                    &s_h_itm,
+                    &local_h_itm,
                     UC_HOOK_MEM_WRITE,
-                    (void*)on_itm_stim_write,
+                    (void*)internal_on_itm_stim_write,
                     nullptr,
                     (uint64_t)k_itm_stim0_addr,
                     (uint64_t)k_itm_stim0_addr + 3U);
@@ -154,8 +158,7 @@ void console_flush_line(uint8_t channel)
     return;
   }
   s_uart_line[s_uart_line_len] = '\0';
-  (void)fprintf(stdout, "[uart] SCI%u: %s\n", channel, s_uart_line);
-  (void)fflush(stdout);
+  (void)priv_emu_io_outf("[uart] SCI%u: %s\n", channel, s_uart_line);
   s_uart_line_len = 0U;
 }
 
@@ -203,7 +206,8 @@ uint32_t decode_escapes(const char* in, uint8_t* out, uint32_t cap)
   return n;
 }
 
-/** @brief Implementation of `emu_console_reset()` -- drop the pending ITM line. */
+/** @brief Implementation of `emu_console_reset()` -- drop the pending ITM line.
+ */
 void emu_console_reset(void)
 {
   s_itm_len = 0U;

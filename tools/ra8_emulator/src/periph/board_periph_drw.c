@@ -28,7 +28,7 @@
  * p 3705), stepping @c PITCH pixels per row. Writing @c ORIGIN is also the
  * render TRIGGER. So an axis-aligned solid rectangle needs NO spatial limiter:
  * ORIGIN positions it and SIZE sizes it. Confirmed on the bench -- with all
- * limiters disabled, @c SIZE=16x16 at @c ORIGIN=fb+px(8,8) paints exactly
+ * limiters disabled, @c SIZE=16x16 at @c ORIGIN=fb+priv_px(8,8) paints exactly
  * pixels (8,8)..(23,23), and the same SIZE at @c ORIGIN=fb paints (0,0)..(15,15).
  *
  * @par The colour rule (bench-measured)
@@ -91,6 +91,7 @@
 
 #include "board_periph_block.h"
 #include "board_periph_pdctr_internal.h"
+#include "emu_host_io_internal.h"
 
 /** @brief DRW block geometry (ra8_drw_regs.h, HUM Ch 62). */
 typedef enum : uint64_t {
@@ -236,7 +237,7 @@ typedef enum : uint32_t {
  * @invariant @c pitch and @c size are zero until firmware programs them, and
  * a render with either zero is a no-op.
  *
- * @see drw_render
+ * @see internal_drw_render
  */
 typedef struct {
   uint32_t control;  /**< CONTROL: limiter enables.         */
@@ -256,19 +257,39 @@ typedef struct {
 /**
  * @var s_drw
  * @brief Module-private DRW model state.
- * @note Reset by ::drw_reset on every emulated system reset.
+ * @note Reset by ::internal_drw_reset on every emulated system reset.
  * @warning Not thread-safe; ra8_emulator drives one CPU thread.
  */
 static drw_state_t s_drw;
 
-/** @brief Extract one 8-bit channel of an ARGB8888 word. */
-static uint32_t drw_chan(uint32_t argb, uint32_t shift)
+/**
+ * @brief Extract one 8-bit channel of an ARGB8888 word.
+ * @details Extract one 8-bit channel of an argb8888 word; this step is contained within the board periph drw model and uses bounded caller or module-owned storage.
+ * @param[in] argb Argb input used by the operation.
+ * @param[in] shift Shift input used by the operation.
+ * @return The drw chan result produced by the board periph drw model.
+ * @retval value The operation-specific drw chan value.
+ * @pre Arguments satisfy the ranges documented for drw chan. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph drw model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_drw_chan(uint32_t argb, uint32_t shift)
 {
   return (argb >> shift) & (uint32_t)k_drw_byte_mask;
 }
 
-/** @brief Framebuffer bytes per pixel for the programmed WRITEFORMAT. */
-static uint32_t drw_bpp(void)
+/**
+ * @brief Framebuffer bytes per pixel for the programmed WRITEFORMAT.
+ * @details Framebuffer bytes per pixel for the programmed writeformat; this step is contained within the board periph drw model and uses bounded caller or module-owned storage.
+ * @return The drw bpp result produced by the board periph drw model.
+ * @retval value The operation-specific drw bpp value.
+ * @pre Arguments satisfy the ranges documented for drw bpp. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph drw model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_drw_bpp(void)
 {
   const uint32_t lo =
     (s_drw.control2 >> (uint32_t)k_drw_c2_wfmt_lo_pos) & (uint32_t)k_drw_c2_wfmt_lo_mask;
@@ -305,8 +326,13 @@ static uint32_t drw_bpp(void)
  * four exercised by the bench vectors in the file header: reset factors
  * (both clear -> 1), SRC_ONE (invert alone -> 0), and source-over
  * (is_alpha alone -> alpha; both -> 1 - alpha).
+  * @retval value The operation-specific drw factor value.
+ * @pre Arguments satisfy the ranges documented for drw factor. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph drw model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static uint32_t drw_factor(bool is_alpha, bool invert, uint32_t alpha)
+RA8_INTERNAL static uint32_t internal_drw_factor(bool is_alpha, bool invert, uint32_t alpha)
 {
   if (is_alpha) {
     return invert ? ((uint32_t)k_drw_alpha_full - alpha) : alpha;
@@ -314,33 +340,57 @@ static uint32_t drw_factor(bool is_alpha, bool invert, uint32_t alpha)
   return invert ? 0U : (uint32_t)k_drw_alpha_full;
 }
 
-/** @brief Apply one channel of `src*fS + dst*fD`, rounded and saturated. */
-static uint32_t drw_mix(uint32_t src, uint32_t dst, uint32_t fs, uint32_t fd)
+/**
+ * @brief Apply one channel of `src*fS + dst*fD`, rounded and saturated.
+ * @details Apply one channel of `src; this step is contained within the board periph drw model and uses bounded caller or module-owned storage.
+ * @param[in] src Source storage consumed by the operation.
+ * @param[in] dst Destination storage receiving the result.
+ * @param[in] fs Fs input used by the operation.
+ * @param[in] fd Open raw descriptor used for the transfer.
+ * @return The drw mix result produced by the board periph drw model.
+ * @retval value The operation-specific drw mix value.
+ * @pre Arguments satisfy the ranges documented for drw mix. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph drw model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_drw_mix(uint32_t src, uint32_t dst, uint32_t fs, uint32_t fd)
 {
   const uint32_t num = (src * fs) + (dst * fd) + (uint32_t)k_drw_alpha_round;
   const uint32_t out = num / (uint32_t)k_drw_alpha_full;
   return (out > (uint32_t)k_drw_byte_mask) ? (uint32_t)k_drw_byte_mask : out;
 }
 
-/** @brief Framebuffer alpha byte per the WRITEALPHA mux or the alpha blend. */
-static uint32_t drw_out_alpha(uint32_t src_a, uint32_t dst_a)
+/**
+ * @brief Framebuffer alpha byte per the WRITEALPHA mux or the alpha blend.
+ * @details Framebuffer alpha byte per the writealpha mux or the alpha blend; this step is contained within the board periph drw model and uses bounded caller or module-owned storage.
+ * @param[in] src_a Src a input used by the operation.
+ * @param[in] dst_a Dst a input used by the operation.
+ * @return The drw out alpha result produced by the board periph drw model.
+ * @retval value The operation-specific drw out alpha value.
+ * @pre Arguments satisfy the ranges documented for drw out alpha. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph drw model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_drw_out_alpha(uint32_t src_a, uint32_t dst_a)
 {
   if ((s_drw.control2 & (uint32_t)k_drw_c2_useacb) != 0U) {
     /* HUM Ch 62.6.5.2 "Alpha Channel Blending" p 3734 */
-    const uint32_t fsa = drw_factor((s_drw.control2 & (uint32_t)k_drw_c2_bsfa) != 0U,
-                                    (s_drw.control2 & (uint32_t)k_drw_c2_bsia) != 0U,
-                                    src_a);
-    const uint32_t fda = drw_factor((s_drw.control2 & (uint32_t)k_drw_c2_bdfa) != 0U,
-                                    (s_drw.control2 & (uint32_t)k_drw_c2_bdia) != 0U,
-                                    src_a);
-    return drw_mix(src_a, dst_a, fsa, fda);
+    const uint32_t fsa = internal_drw_factor((s_drw.control2 & (uint32_t)k_drw_c2_bsfa) != 0U,
+                                             (s_drw.control2 & (uint32_t)k_drw_c2_bsia) != 0U,
+                                             src_a);
+    const uint32_t fda = internal_drw_factor((s_drw.control2 & (uint32_t)k_drw_c2_bdfa) != 0U,
+                                             (s_drw.control2 & (uint32_t)k_drw_c2_bdia) != 0U,
+                                             src_a);
+    return internal_drw_mix(src_a, dst_a, fsa, fda);
   }
   /* HUM Ch 62.2.2 "WRITEALPHA[1:0]" p 3694 -- Figure 62.23 p 3734 */
   const uint32_t code =
     (s_drw.control2 >> (uint32_t)k_drw_c2_walpha_pos) & (uint32_t)k_drw_c2_walpha_mask;
   switch (code) {
     case (uint32_t)k_drw_walpha_color2:
-      return drw_chan(s_drw.color2, (uint32_t)k_drw_a_shift);
+      return internal_drw_chan(s_drw.color2, (uint32_t)k_drw_a_shift);
     case (uint32_t)k_drw_walpha_pixel_cov:
       return src_a;
     case (uint32_t)k_drw_walpha_zero:
@@ -350,45 +400,67 @@ static uint32_t drw_out_alpha(uint32_t src_a, uint32_t dst_a)
   }
 }
 
-/** @brief Composite COLOR1 over one destination pixel, in ARGB8888 space. */
-static uint32_t drw_shade(uint32_t dst)
+/**
+ * @brief Composite COLOR1 over one destination pixel, in ARGB8888 space.
+ * @details Composite color1 over one destination pixel, in argb8888 space; this step is contained within the board periph drw model and uses bounded caller or module-owned storage.
+ * @param[in] dst Destination storage receiving the result.
+ * @return The drw shade result produced by the board periph drw model.
+ * @retval value The operation-specific drw shade value.
+ * @pre Arguments satisfy the ranges documented for drw shade. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph drw model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_drw_shade(uint32_t dst)
 {
-  const uint32_t src_a = drw_chan(s_drw.color1, (uint32_t)k_drw_a_shift);
-  const uint32_t fs    = drw_factor((s_drw.control2 & (uint32_t)k_drw_c2_bsf) != 0U,
-                                    (s_drw.control2 & (uint32_t)k_drw_c2_bsi) != 0U,
-                                    src_a);
-  const uint32_t fd    = drw_factor((s_drw.control2 & (uint32_t)k_drw_c2_bdf) != 0U,
-                                    (s_drw.control2 & (uint32_t)k_drw_c2_bdi) != 0U,
-                                    src_a);
+  const uint32_t src_a = internal_drw_chan(s_drw.color1, (uint32_t)k_drw_a_shift);
+  const uint32_t fs    = internal_drw_factor((s_drw.control2 & (uint32_t)k_drw_c2_bsf) != 0U,
+                                             (s_drw.control2 & (uint32_t)k_drw_c2_bsi) != 0U,
+                                             src_a);
+  const uint32_t fd    = internal_drw_factor((s_drw.control2 & (uint32_t)k_drw_c2_bdf) != 0U,
+                                             (s_drw.control2 & (uint32_t)k_drw_c2_bdi) != 0U,
+                                             src_a);
 
-  const uint32_t r = drw_mix(drw_chan(s_drw.color1, (uint32_t)k_drw_r_shift),
-                             drw_chan(dst, (uint32_t)k_drw_r_shift),
-                             fs,
-                             fd);
-  const uint32_t g = drw_mix(drw_chan(s_drw.color1, (uint32_t)k_drw_g_shift),
-                             drw_chan(dst, (uint32_t)k_drw_g_shift),
-                             fs,
-                             fd);
-  const uint32_t b = drw_mix(drw_chan(s_drw.color1, 0U), drw_chan(dst, 0U), fs, fd);
-  const uint32_t a = drw_out_alpha(src_a, drw_chan(dst, (uint32_t)k_drw_a_shift));
+  const uint32_t r = internal_drw_mix(internal_drw_chan(s_drw.color1, (uint32_t)k_drw_r_shift),
+                                      internal_drw_chan(dst, (uint32_t)k_drw_r_shift),
+                                      fs,
+                                      fd);
+  const uint32_t g = internal_drw_mix(internal_drw_chan(s_drw.color1, (uint32_t)k_drw_g_shift),
+                                      internal_drw_chan(dst, (uint32_t)k_drw_g_shift),
+                                      fs,
+                                      fd);
+  const uint32_t b =
+    internal_drw_mix(internal_drw_chan(s_drw.color1, 0U), internal_drw_chan(dst, 0U), fs, fd);
+  const uint32_t a = internal_drw_out_alpha(src_a, internal_drw_chan(dst, (uint32_t)k_drw_a_shift));
 
   return (a << (uint32_t)k_drw_a_shift) | (r << (uint32_t)k_drw_r_shift) |
          (g << (uint32_t)k_drw_g_shift) | b;
 }
 
-/** @brief Narrow an ARGB8888 result to the programmed framebuffer format. */
-static uint32_t drw_pack(uint32_t argb, uint32_t bpp)
+/**
+ * @brief Narrow an ARGB8888 result to the programmed framebuffer format.
+ * @details Narrow an argb8888 result to the programmed framebuffer format; this step is contained within the board periph drw model and uses bounded caller or module-owned storage.
+ * @param[in] argb Argb input used by the operation.
+ * @param[in] bpp Bpp input used by the operation.
+ * @return The drw pack result produced by the board periph drw model.
+ * @retval value The operation-specific drw pack value.
+ * @pre Arguments satisfy the ranges documented for drw pack. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph drw model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_drw_pack(uint32_t argb, uint32_t bpp)
 {
   if (bpp == (uint32_t)k_drw_bpp_32) {
     return argb;
   }
-  const uint32_t a = drw_chan(argb, (uint32_t)k_drw_a_shift);
+  const uint32_t a = internal_drw_chan(argb, (uint32_t)k_drw_a_shift);
   if (bpp == (uint32_t)k_drw_bpp_8) {
     return a;
   }
-  const uint32_t r = drw_chan(argb, (uint32_t)k_drw_r_shift);
-  const uint32_t g = drw_chan(argb, (uint32_t)k_drw_g_shift);
-  const uint32_t b = drw_chan(argb, 0U);
+  const uint32_t r = internal_drw_chan(argb, (uint32_t)k_drw_r_shift);
+  const uint32_t g = internal_drw_chan(argb, (uint32_t)k_drw_g_shift);
+  const uint32_t b = internal_drw_chan(argb, 0U);
   const uint32_t lo =
     (s_drw.control2 >> (uint32_t)k_drw_c2_wfmt_lo_pos) & (uint32_t)k_drw_c2_wfmt_lo_mask;
   if (lo == (uint32_t)k_drw_wfmt_argb4444) {
@@ -415,10 +487,15 @@ static uint32_t drw_pack(uint32_t argb, uint32_t bpp)
  * geometry programmed + no limiter + no FB cache + solid source -> true
  * (control); each reject condition flipped alone -> false, proving each
  * independently determines the outcome.
+  * @details Decide whether this render is one the model reproduces faithfully; this step is contained within the board periph drw model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for drw render modelled. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph drw model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static bool drw_render_modelled(uint32_t w, uint32_t h)
+RA8_INTERNAL static bool internal_drw_render_modelled(uint32_t w, uint32_t h)
 {
-  if (!board_pdctr_graphics_powered()) {
+  if (!priv_board_pdctr_graphics_powered()) {
     return false; /* Dark domain: writes are lost on silicon. */
   }
   if ((w == 0U) || (h == 0U) || (s_drw.pitch == 0U) || (s_drw.origin == 0U)) {
@@ -434,29 +511,37 @@ static bool drw_render_modelled(uint32_t w, uint32_t h)
   return (s_drw.control2 & sources) == 0U;
 }
 
-/** @brief Rasterize the programmed bounding box into emulated memory. */
-static void drw_render(uc_engine* uc)
+/**
+ * @brief Rasterize the programmed bounding box into emulated memory.
+ * @details Rasterize the programmed bounding box into emulated memory; this step is contained within the board periph drw model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for drw render. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph drw model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_drw_render(uc_engine* uc)
 {
   const uint32_t w = s_drw.size & (uint32_t)k_drw_size_w_mask;
   const uint32_t h = (s_drw.size >> (uint32_t)k_drw_size_h_pos) & (uint32_t)k_drw_size_w_mask;
 
-  if (!drw_render_modelled(w, h)) {
+  if (!internal_drw_render_modelled(w, h)) {
     if ((w != 0U) && (h != 0U) && (s_drw.origin != 0U)) {
       s_drw.skipped++;
     }
     return;
   }
 
-  const uint32_t bpp = drw_bpp();
+  const uint32_t bpp = internal_drw_bpp();
   for (uint32_t row = 0U; row < h; ++row) {
     const uint64_t line =
       (uint64_t)s_drw.origin + ((uint64_t)row * (uint64_t)s_drw.pitch * (uint64_t)bpp);
     for (uint32_t col = 0U; col < w; ++col) {
       const uint64_t addr = line + ((uint64_t)col * (uint64_t)bpp);
       uint32_t       dst  = 0U;
-      (void)uc_mem_read(uc, addr, &dst, (size_t)bpp);
-      const uint32_t out = drw_pack(drw_shade(dst), bpp);
-      (void)uc_mem_write(uc, addr, &out, (size_t)bpp);
+      (void)emu_mem_read(uc, addr, &dst, (size_t)bpp);
+      const uint32_t out = internal_drw_pack(internal_drw_shade(dst), bpp);
+      (void)emu_mem_write(uc, addr, &out, (size_t)bpp);
     }
   }
   s_drw.renders++;
@@ -464,8 +549,20 @@ static void drw_render(uc_engine* uc)
   s_drw.last_h = h;
 }
 
-/** @brief MMIO read inside the DRW window. */
-static uint64_t drw_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the DRW window.
+ * @details MMIO read inside the drw window; this step is contained within the board periph drw model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The drw read result produced by the board periph drw model.
+ * @retval value The operation-specific drw read value.
+ * @pre Arguments satisfy the ranges documented for drw read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph drw model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_drw_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -488,7 +585,7 @@ static uint64_t drw_read(uc_engine* uc, uint64_t addr, unsigned size)
        * p 452) and 0x0FBE0107 once it is powered -- both bench-captured, so
        * firmware that skips the power-domain bring-up sees the dead register
        * here exactly as it does on the bench. */
-      if (!board_pdctr_graphics_powered()) {
+      if (!priv_board_pdctr_graphics_powered()) {
         return 0U;
       }
       return (uint64_t)k_drw_hwrevision_value;
@@ -500,8 +597,19 @@ static uint64_t drw_read(uc_engine* uc, uint64_t addr, unsigned size)
   }
 }
 
-/** @brief Latch one shadowed DRW register; returns false for unknown offsets. */
-static bool drw_latch(uint64_t off, uint32_t val)
+/**
+ * @brief Latch one shadowed DRW register; returns false for unknown offsets.
+ * @details Latch one shadowed drw register; returns false for unknown offsets; this step is contained within the board periph drw model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] val Register or payload value processed by the operation.
+ * @return The drw latch result produced by the board periph drw model.
+ * @retval true The drw latch condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for drw latch. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph drw model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_drw_latch(uint64_t off, uint32_t val)
 {
   switch (off) {
     case (uint64_t)k_drw_off_control:
@@ -532,17 +640,27 @@ static bool drw_latch(uint64_t off, uint32_t val)
   }
 }
 
-/** @brief Apply one display-list register write; ORIGIN triggers a render. */
-static void drw_dlr_exec_reg(uc_engine* uc, uint32_t index, uint32_t val)
+/**
+ * @brief Apply one display-list register write; ORIGIN triggers a render.
+ * @details Apply one display-list register write; origin triggers a render; this step is contained within the board periph drw model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] index Index input used by the operation.
+ * @param[in] val Register or payload value processed by the operation.
+ * @pre Arguments satisfy the ranges documented for drw dlr exec reg. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph drw model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_drw_dlr_exec_reg(uc_engine* uc, uint32_t index, uint32_t val)
 {
   const uint64_t off = (uint64_t)index * (uint64_t)k_drw_dlr_bytes_per_word;
   if (off == (uint64_t)k_drw_off_origin) {
     /* Same trigger as a CPU ORIGIN write: anchor the box and rasterize. */
     s_drw.origin = val;
-    drw_render(uc);
+    internal_drw_render(uc);
     return;
   }
-  (void)drw_latch(off, val);
+  (void)internal_drw_latch(off, val);
 }
 
 /**
@@ -559,13 +677,17 @@ static void drw_dlr_exec_reg(uc_engine* uc, uint32_t index, uint32_t val)
  *
  * @param[in] uc        Emulator engine (framebuffer + display-list memory).
  * @param[in] dlist_addr Display-list base address (DLISTSTART value).
+  * @pre Arguments satisfy the ranges documented for drw run dlist. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph drw model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static void drw_run_dlist(uc_engine* uc, uint32_t dlist_addr)
+RA8_INTERNAL static void internal_drw_run_dlist(uc_engine* uc, uint32_t dlist_addr)
 {
   uint32_t addr = dlist_addr;
   for (uint32_t fetched = 0U; fetched < (uint32_t)k_drw_dlr_max_words; ++fetched) {
     uint32_t tag = 0U;
-    (void)uc_mem_read(uc, (uint64_t)addr, &tag, sizeof(tag));
+    (void)emu_mem_read(uc, (uint64_t)addr, &tag, sizeof(tag));
     addr += (uint32_t)k_drw_dlr_bytes_per_word;
 
     if ((tag & (uint32_t)k_drw_dlr_b1_boundary) != 0U) {
@@ -575,9 +697,9 @@ static void drw_run_dlist(uc_engine* uc, uint32_t dlist_addr)
         return; /* display-list jump / stop */
       }
       uint32_t val = 0U;
-      (void)uc_mem_read(uc, (uint64_t)addr, &val, sizeof(val));
+      (void)emu_mem_read(uc, (uint64_t)addr, &val, sizeof(val));
       addr += (uint32_t)k_drw_dlr_bytes_per_word;
-      drw_dlr_exec_reg(uc, index, val);
+      internal_drw_dlr_exec_reg(uc, index, val);
       continue;
     }
     if ((tag & (uint32_t)k_drw_dlr_index_mask) == (uint32_t)k_drw_dlr_eol_low) {
@@ -595,8 +717,20 @@ static void drw_run_dlist(uc_engine* uc, uint32_t dlist_addr)
   }
 }
 
-/** @brief MMIO write inside the DRW window; ORIGIN or DLISTSTART renders. */
-static void drw_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the DRW window; ORIGIN or DLISTSTART renders.
+ * @details MMIO write inside the drw window; origin or dliststart renders; this step is contained within the board periph drw model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for drw write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph drw model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_drw_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)size;
   const uint64_t off = addr - (uint64_t)k_drw_base;
@@ -606,7 +740,7 @@ static void drw_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
    * write is LOST on silicon (HUM Ch 11.2.14 p 452), so the shadow must not
    * latch it either -- otherwise firmware that skips the bring-up would
    * render here and not on the bench. */
-  if (!board_pdctr_graphics_powered()) {
+  if (!priv_board_pdctr_graphics_powered()) {
     return;
   }
 
@@ -614,26 +748,40 @@ static void drw_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
     /* HUM Ch 62.2.31 p 3705: writing ORIGIN both anchors the bounding box and
      * TRIGGERS the render. */
     s_drw.origin = val;
-    drw_render(uc);
+    internal_drw_render(uc);
     return;
   }
   if (off == (uint64_t)k_drw_off_dliststart) {
     /* HUM Ch 62.2.32 p 3705: writing DLISTSTART kicks the display-list reader,
      * which executes the list from RAM (issue #247 loop-stable clear+fill). */
-    drw_run_dlist(uc, val);
+    internal_drw_run_dlist(uc, val);
     return;
   }
-  (void)drw_latch(off, val);
+  (void)internal_drw_latch(off, val);
 }
 
-/** @brief Reset the DRW model to power-on state. */
-static void drw_reset(void)
+/**
+ * @brief Reset the DRW model to power-on state.
+ * @details Reset the drw model to power-on state; this step is contained within the board periph drw model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for drw reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph drw model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_drw_reset(void)
 {
   s_drw = (drw_state_t){};
 }
 
-/** @brief End-of-run summary line. */
-static void drw_report(void)
+/**
+ * @brief End-of-run summary line.
+ * @details End-of-run summary line; this step is contained within the board periph drw model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for drw report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph drw model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_drw_report(void)
 {
   if ((s_drw.renders == 0U) && (s_drw.skipped == 0U)) {
     return;
@@ -641,37 +789,35 @@ static void drw_report(void)
   if (s_drw.skipped != 0U) {
     /* Loud: an app reached a DRW configuration this model declines to
      * reproduce, so the emulated framebuffer is NOT what the bench shows. */
-    (void)fprintf(stderr,
-                  "  DRW           : %u boxes rasterized (last %ux%u), "
-                  "%u DECLINED (limiter / FB-cache / textured path unmodelled)\n",
-                  s_drw.renders,
-                  s_drw.last_w,
-                  s_drw.last_h,
-                  s_drw.skipped);
+    (void)priv_emu_io_errf("  DRW           : %u boxes rasterized (last %ux%u), "
+                           "%u DECLINED (limiter / FB-cache / textured path unmodelled)\n",
+                           s_drw.renders,
+                           s_drw.last_w,
+                           s_drw.last_h,
+                           s_drw.skipped);
     return;
   }
-  (void)fprintf(stderr,
-                "  DRW           : %u boxes rasterized (last %ux%u)\n",
-                s_drw.renders,
-                s_drw.last_w,
-                s_drw.last_h);
+  (void)priv_emu_io_errf("  DRW           : %u boxes rasterized (last %ux%u)\n",
+                         s_drw.renders,
+                         s_drw.last_w,
+                         s_drw.last_h);
 }
 
 /** @brief DRW block descriptor (self-registered with the core). */
-static const board_periph_block_t k_drw_block = {
+static const board_periph_block_t s_k_drw_block = {
   .base   = (uint64_t)k_drw_base,
   .span   = (uint64_t)k_drw_span,
   .order  = (uint32_t)k_drw_block_order,
-  .read   = drw_read,
-  .write  = drw_write,
+  .read   = internal_drw_read,
+  .write  = internal_drw_write,
   .tick   = nullptr,
-  .reset  = drw_reset,
-  .report = drw_report,
+  .reset  = internal_drw_reset,
+  .report = internal_drw_report,
   .name   = "DRW",
 };
 
 /** @brief Register the DRW block before main (host constructor). */
-[[gnu::constructor]] static void drw_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_drw_block_register(void)
 {
-  board_periph_register_block(&k_drw_block);
+  board_periph_register_block(&s_k_drw_block);
 }

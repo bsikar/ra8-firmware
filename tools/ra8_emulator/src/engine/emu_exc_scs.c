@@ -54,13 +54,16 @@ static bool s_reboot_request;
  * @param[in]     user  Unused hook context.
  * @return Nothing.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for on SCB ctrl write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu exc scs model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
-static void on_scb_ctrl_write(uc_engine*  uc,
-                              uc_mem_type type,
-                              uint64_t    addr,
-                              int         size,
-                              int64_t     value,
-                              void*       user)
+RA8_INTERNAL static void internal_on_scb_ctrl_write(uc_engine*  uc,
+                                                    uc_mem_type type,
+                                                    uint64_t    addr,
+                                                    int         size,
+                                                    int64_t     value,
+                                                    void*       user)
 {
   (void)type;
   (void)size;
@@ -105,13 +108,16 @@ static void on_scb_ctrl_write(uc_engine*  uc,
  * @param[in]     user  Hook user pointer; unused.
  * @return Nothing.
  * @since 0.1.0
+  * @pre Arguments satisfy the ranges documented for on NVIC en write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu exc scs model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
-static void on_nvic_en_write(uc_engine*  uc,
-                             uc_mem_type type,
-                             uint64_t    addr,
-                             int         size,
-                             int64_t     value,
-                             void*       user)
+RA8_INTERNAL static void internal_on_nvic_en_write(uc_engine*  uc,
+                                                   uc_mem_type type,
+                                                   uint64_t    addr,
+                                                   int         size,
+                                                   int64_t     value,
+                                                   void*       user)
 {
   (void)uc;
   (void)type;
@@ -198,35 +204,35 @@ void dwt_cyccnt_advance(uc_engine* uc)
 /** @brief Implementation of `emu_exc_install_scb_nvic()` -- SCB ctrl + NVIC hooks. */
 void emu_exc_install_scb_nvic(uc_engine* uc)
 {
-  /* Watch the SCB control words AIRCR..CCR with ONE hook (on_scb_ctrl_write): a
+  /* Watch the SCB control words AIRCR..CCR with ONE hook (internal_on_scb_ctrl_write): a
    * SYSRESETREQ store triggers a warm reboot and a CCR.DIV_0_TRP store arms the
    * div-0 trap (which then patches divides -- no per-access cost). Both are PPB
    * RAM, so a write-hook is the only way to observe them. */
-  static uc_hook s_h_scb;
+  static uc_hook local_h_scb;
   (void)uc_hook_add(uc,
-                    &s_h_scb,
+                    &local_h_scb,
                     UC_HOOK_MEM_WRITE,
-                    (void*)on_scb_ctrl_write,
+                    (void*)internal_on_scb_ctrl_write,
                     nullptr,
                     (uint64_t)k_scb_aircr,
                     (uint64_t)k_scb_ccr + 3U);
   /* NVIC ISER / ICER are set-enable / clear-enable: fold each written bit into
    * board_periph's enable shadow so enabling several lines does not clobber the
-   * earlier ones (see on_nvic_en_write). The PPB is RAM, so this hook is the
+   * earlier ones (see internal_on_nvic_en_write). The PPB is RAM, so this hook is the
    * only place the W1S/W1C semantics can be applied. */
-  static uc_hook s_h_nvic_iser;
-  static uc_hook s_h_nvic_icer;
+  static uc_hook local_h_nvic_iser;
+  static uc_hook local_h_nvic_icer;
   (void)uc_hook_add(uc,
-                    &s_h_nvic_iser,
+                    &local_h_nvic_iser,
                     UC_HOOK_MEM_WRITE,
-                    (void*)on_nvic_en_write,
+                    (void*)internal_on_nvic_en_write,
                     nullptr,
                     (uint64_t)k_nvic_iser_base,
                     (uint64_t)k_nvic_iser_base + (uint64_t)k_nvic_en_span - 1U);
   (void)uc_hook_add(uc,
-                    &s_h_nvic_icer,
+                    &local_h_nvic_icer,
                     UC_HOOK_MEM_WRITE,
-                    (void*)on_nvic_en_write,
+                    (void*)internal_on_nvic_en_write,
                     nullptr,
                     (uint64_t)k_nvic_icer_base,
                     (uint64_t)k_nvic_icer_base + (uint64_t)k_nvic_en_span - 1U);

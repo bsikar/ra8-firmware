@@ -80,6 +80,7 @@ bool board_eink_attach(void);
  * @note Not thread-safe.
  *
  * @since 0.1.0
+  * @details Report whether the it8951 controller is currently attached; this step is contained within the board periph eink model and uses bounded caller or module-owned storage.
  */
 bool board_eink_attached(void);
 
@@ -151,7 +152,7 @@ void board_eink_apply_gpio_defaults(void);
 /**
  * @brief Print the controller's end-of-run summary line (if attached).
  *
- * @details One stderr line reporting the pixels loaded and refreshes issued,
+ * @details One injected error sink line reporting the pixels loaded and refreshes issued,
  * so a run visibly exercised the image-load + display path. A no-op when no
  * controller is attached.
  *
@@ -159,7 +160,7 @@ void board_eink_apply_gpio_defaults(void);
  * @pre None.
  * @pre None.
  * @post No model state is modified.
- * @post At most one line is written to stderr.
+ * @post At most one line is written to injected error sink.
  *
  * @note Not thread-safe.
  *

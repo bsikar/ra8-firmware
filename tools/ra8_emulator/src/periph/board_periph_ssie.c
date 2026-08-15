@@ -36,6 +36,7 @@
 
 #include "board_console.h"
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief Console-tap line buffer capacity for an I2S/SSIE summary. */
 typedef enum : uint32_t {
@@ -81,8 +82,15 @@ typedef struct {
 
 static ssie_state_t s_ssie[k_ssie_count];
 
-/** @brief Reset all SSIE channel shadows to power-on (zeroed) state. */
-static void ssie_reset(void)
+/**
+ * @brief Reset all SSIE channel shadows to power-on (zeroed) state.
+ * @details Reset all ssie channel shadows to power-on (zeroed) state; this step is contained within the board periph SSIE model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for SSIE reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SSIE model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_ssie_reset(void)
 {
   for (uint32_t ch = 0U; ch < (uint32_t)k_ssie_count; ch++) {
     for (uint32_t i = 0U; i < (uint32_t)k_ssie_regs; i++) {
@@ -92,8 +100,20 @@ static void ssie_reset(void)
   }
 }
 
-/** @brief MMIO read inside the SSIE window: route to the addressed channel. */
-static uint64_t ssie_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the SSIE window: route to the addressed channel.
+ * @details MMIO read inside the ssie window: route to the addressed channel; this step is contained within the board periph SSIE model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The SSIE read result produced by the board periph SSIE model.
+ * @retval value The operation-specific SSIE read value.
+ * @pre Arguments satisfy the ranges documented for SSIE read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SSIE model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_ssie_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -122,8 +142,20 @@ static uint64_t ssie_read(uc_engine* uc, uint64_t addr, unsigned size)
   return (idx < (uint32_t)k_ssie_regs) ? (uint64_t)s->reg[idx] : 0U;
 }
 
-/** @brief MMIO write inside the SSIE window: route to the addressed channel. */
-static void ssie_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the SSIE window: route to the addressed channel.
+ * @details MMIO write inside the ssie window: route to the addressed channel; this step is contained within the board periph SSIE model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for SSIE write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SSIE model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_ssie_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
@@ -146,8 +178,15 @@ static void ssie_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
   }
 }
 
-/** @brief End-of-run SSIE section: per-channel enable state + TX tally. */
-static void ssie_report(void)
+/**
+ * @brief End-of-run SSIE section: per-channel enable state + TX tally.
+ * @details End-of-run ssie section: per-channel enable state + tx tally; this step is contained within the board periph SSIE model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for SSIE report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph SSIE model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_ssie_report(void)
 {
   for (uint32_t ch = 0U; ch < (uint32_t)k_ssie_count; ch++) {
     const uint32_t ssicr = s_ssie[ch].reg[k_ssie_off_ssicr / 4U];
@@ -164,30 +203,29 @@ static void ssie_report(void)
                    (unsigned)ch,
                    (unsigned)s_ssie[ch].tx_samples);
     board_console_push(k_board_console_ch_i2s, ln);
-    (void)fprintf(stderr,
-                  "  SSIE%u         : TEN=%u REN=%u tx_samples=%u\n",
-                  ch,
-                  (unsigned)((ssicr >> 1) & 1U),
-                  (unsigned)(ssicr & 1U),
-                  s_ssie[ch].tx_samples);
+    (void)priv_emu_io_errf("  SSIE%u         : TEN=%u REN=%u tx_samples=%u\n",
+                           ch,
+                           (unsigned)((ssicr >> 1) & 1U),
+                           (unsigned)(ssicr & 1U),
+                           s_ssie[ch].tx_samples);
   }
 }
 
 /** @brief SSIE block descriptor (self-registered with the core). */
-static const board_periph_block_t k_ssie_block = {
+static const board_periph_block_t s_k_ssie_block = {
   .base   = (uint32_t)k_ssie_base,
   .span   = (uint32_t)k_ssie_span,
   .order  = (uint32_t)k_ssie_block_order,
-  .read   = ssie_read,
-  .write  = ssie_write,
+  .read   = internal_ssie_read,
+  .write  = internal_ssie_write,
   .tick   = nullptr,
-  .reset  = ssie_reset,
-  .report = ssie_report,
+  .reset  = internal_ssie_reset,
+  .report = internal_ssie_report,
   .name   = "SSIE",
 };
 
 /** @brief Register the SSIE block before main (host constructor). */
-[[gnu::constructor]] static void ssie_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_ssie_block_register(void)
 {
-  board_periph_register_block(&k_ssie_block);
+  board_periph_register_block(&s_k_ssie_block);
 }

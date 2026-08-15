@@ -4,8 +4,8 @@
  *
  * @details
  * A tiny C-ABI over Cocoa so ra8_emulator can SHOW what the emulated GLCDC is
- * driving -- present an RGB565 framebuffer in a desktop window and report when
- * the user closes it. Deliberately standalone (no firmware display-PAL
+ * driving -- present an immutable fd-backed RGB565 surface in a desktop window
+ * and report when the user closes it. Deliberately standalone (no firmware display-PAL
  * dependency) to keep ra8_emulator a self-contained tool. The real Objective-C
  * lives in board_view.m; this header is plain C so main.c needs no AppKit.
  *
@@ -16,7 +16,12 @@
 
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
+#include <sys/types.h>
+
+#include "emu_presentation.h"
+#include "ra8_attributes.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,34 +30,68 @@ extern "C" {
 /** @brief Opaque desktop-window handle (defined in board_view.m). */
 typedef struct board_view board_view_t;
 
+/** @brief Caller-owned pointer-aligned storage for one platform view handle. */
+typedef struct {
+  uintptr_t words[4]; /**< Opaque backend state; 32 bytes on 64-bit hosts. */
+} board_view_storage_t;
+
 /**
  * @brief Open a desktop window of the given pixel size.
  *
+ * @param[in,out] storage Caller-owned zeroed handle storage.
  * @param[in] width_px  Content width in pixels (>= 1).
  * @param[in] height_px Content height in pixels (>= 1).
  * @param[in] title     NUL-terminated window title (ASCII).
  * @return Window handle, or nullptr on failure.
  */
-board_view_t* board_view_open(uint16_t width_px, uint16_t height_px, const char* title);
+board_view_t* board_view_open(board_view_storage_t* storage,
+                              uint16_t              width_px,
+                              uint16_t              height_px,
+                              const char*           title);
 
 /**
- * @brief Upload an RGB565 framebuffer to the window and request a redraw.
+ * @brief Snapshot an RGB565 fd surface and request a redraw.
+ * @details The provider owns a separate immutable descriptor snapshot until
+ * CoreGraphics releases it, so callbacks cannot race the next emulated frame.
  *
  * @param[in] view   Handle from board_view_open (nullptr is a no-op).
- * @param[in] rgb565 Base of the RGB565 pixel buffer (width_px * height_px).
- * @param[in] width_px  Framebuffer width in pixels.
- * @param[in] height_px Framebuffer height in pixels.
+ * @param[in,out] presentation Complete fd surface and snapshot scratch.
+  * @pre Arguments satisfy the ranges documented for board view present. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-void board_view_present(board_view_t*   view,
-                        const uint16_t* rgb565,
-                        uint16_t        width_px,
-                        uint16_t        height_px);
+void board_view_present(board_view_t* view, emu_presentation_workspace_t* presentation);
+
+/**
+ * @brief Expand an arbitrary byte range from a sealed RGB565 descriptor.
+ * @param[in] fd Immutable RGB565 surface descriptor.
+ * @param[in] position Byte position in the virtual 0x00RRGGBB stream.
+ * @param[out] buffer CoreGraphics-supplied destination bytes.
+ * @param[in] count Requested destination byte count.
+ * @return Bytes expanded exactly; zero on validation or raw-read failure.
+ * @pre @p fd remains open and immutable for the call.
+ * @post Success matches the legacy 0x00RRGGBB little-endian upload bytes.
+ * @note Uses fixed stack chunks and performs no acquisition.
+ * @since 0.1.0
+  * @details Expand an arbitrary byte range from a sealed rgb565 descriptor; this step is contained within the board view model and uses bounded caller or module-owned storage.
+ * @retval value The operation-specific board view read rgb888 descriptor value.
+ * @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
+ */
+size_t board_view_read_rgb888_fd(int fd, off_t position, void* buffer, size_t count);
 
 /**
  * @brief Drain pending UI events; report whether the window was closed.
  *
  * @param[in] view Handle from board_view_open (nullptr returns true).
  * @return true once the user has closed the window (stop the run loop).
+  * @details Drain pending ui events; report whether the window was closed; this step is contained within the board view model and uses bounded caller or module-owned storage.
+ * @retval true The board view pump condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for board view pump. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
 bool board_view_pump(board_view_t* view);
 
@@ -73,6 +112,11 @@ bool board_view_pump(board_view_t* view);
  * @param[out] x    Click column in framebuffer pixels (top-left origin).
  * @param[out] y    Click row in framebuffer pixels (top-left origin).
  * @return true if a fresh click was reported (and consumed); false otherwise.
+  * @retval true The board view poll click condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for board view poll click. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
 bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y);
 
@@ -94,6 +138,10 @@ bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y);
  * @param[out] y    Drag row in framebuffer pixels (top-left origin).
  * @return true if a fresh drag position was reported (and consumed); false otherwise.
  * @since 0.1.0
+  * @retval true The board view poll drag condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for board view poll drag. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 bool board_view_poll_drag(board_view_t* view, uint16_t* x, uint16_t* y);
 
@@ -114,6 +162,10 @@ bool board_view_poll_drag(board_view_t* view, uint16_t* x, uint16_t* y);
  * @param[in] view Handle from board_view_open (nullptr reports no release).
  * @return true if a fresh mouse-up was reported (and consumed); false otherwise.
  * @since 0.1.0
+  * @retval true The board view poll release condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for board view poll release. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 bool board_view_poll_release(board_view_t* view);
 
@@ -132,6 +184,10 @@ bool board_view_poll_release(board_view_t* view);
  * @param[in] view Handle from board_view_open (nullptr returns 0).
  * @return Net scroll notches since the last poll (+up / -down), 0 if none.
  * @since 0.1.0
+  * @retval value The operation-specific board view poll scroll value.
+ * @pre Arguments satisfy the ranges documented for board view poll scroll. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
  */
 int32_t board_view_poll_scroll(board_view_t* view);
 
@@ -139,6 +195,11 @@ int32_t board_view_poll_scroll(board_view_t* view);
  * @brief Close the window and release its resources.
  *
  * @param[in] view Handle from board_view_open (nullptr is a no-op).
+  * @details Close the window and release its resources; this step is contained within the board view model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for board view close. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
 void board_view_close(board_view_t* view);
 

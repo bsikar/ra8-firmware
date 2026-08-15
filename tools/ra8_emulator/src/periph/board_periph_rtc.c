@@ -46,6 +46,7 @@
 #include <stdio.h>
 
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief BCD packing + calendar constants for the RTC model. */
 typedef enum : uint32_t {
@@ -161,43 +162,77 @@ static rtc_state_t s_rtc;
  * =============================================================================
  */
 
-/** @brief Binary 0..99 -> packed BCD. */
-static uint8_t rtc_bin_to_bcd(uint8_t bin)
+/**
+ * @brief Binary 0..99 -> packed BCD.
+ * @details Binary 0..99 -> packed bcd; this step is contained within the board periph RTC model and uses bounded caller or module-owned storage.
+ * @param[in] bin Bin input used by the operation.
+ * @return The RTC bin to bcd result produced by the board periph RTC model.
+ * @retval value The operation-specific RTC bin to bcd value.
+ * @pre Arguments satisfy the ranges documented for RTC bin to bcd. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint8_t internal_rtc_bin_to_bcd(uint8_t bin)
 {
   return (uint8_t)(((uint8_t)(bin / (uint8_t)k_bcd_base) << (uint8_t)k_bcd_shift) |
                    (uint8_t)(bin % (uint8_t)k_bcd_base));
 }
 
-/** @brief Packed BCD -> binary 0..99. */
-static uint8_t rtc_bcd_to_bin(uint8_t bcd)
+/**
+ * @brief Packed BCD -> binary 0..99.
+ * @details Packed bcd -> binary 0..99; this step is contained within the board periph RTC model and uses bounded caller or module-owned storage.
+ * @param[in] bcd Bcd input used by the operation.
+ * @return The RTC bcd to bin result produced by the board periph RTC model.
+ * @retval value The operation-specific RTC bcd to bin value.
+ * @pre Arguments satisfy the ranges documented for RTC bcd to bin. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint8_t internal_rtc_bcd_to_bin(uint8_t bcd)
 {
   return (uint8_t)(((uint8_t)((bcd >> (uint8_t)k_bcd_shift) & (uint8_t)k_nibble_mask) *
                     (uint8_t)k_bcd_base) +
                    (uint8_t)(bcd & (uint8_t)k_nibble_mask));
 }
 
-/** @brief Refresh the BCD calendar shadow registers from the binary mirror. */
-static void rtc_publish_calendar(void)
+/**
+ * @brief Refresh the BCD calendar shadow registers from the binary mirror.
+ * @details Refresh the bcd calendar shadow registers from the binary mirror; this step is contained within the board periph RTC model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for RTC publish calendar. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_rtc_publish_calendar(void)
 {
   s_rtc.reg[(uint64_t)k_rtc_off_r64cnt]  = (uint8_t)(s_rtc.r64 & (uint8_t)k_rtc_r64_mask);
-  s_rtc.reg[(uint64_t)k_rtc_off_rseccnt] = rtc_bin_to_bcd(s_rtc.sec);
-  s_rtc.reg[(uint64_t)k_rtc_off_rmincnt] = rtc_bin_to_bcd(s_rtc.min);
-  s_rtc.reg[(uint64_t)k_rtc_off_rhrcnt]  = rtc_bin_to_bcd(s_rtc.hour);
-  s_rtc.reg[(uint64_t)k_rtc_off_rdaycnt] = rtc_bin_to_bcd(s_rtc.day);
-  s_rtc.reg[(uint64_t)k_rtc_off_rmoncnt] = rtc_bin_to_bcd(s_rtc.mon);
+  s_rtc.reg[(uint64_t)k_rtc_off_rseccnt] = internal_rtc_bin_to_bcd(s_rtc.sec);
+  s_rtc.reg[(uint64_t)k_rtc_off_rmincnt] = internal_rtc_bin_to_bcd(s_rtc.min);
+  s_rtc.reg[(uint64_t)k_rtc_off_rhrcnt]  = internal_rtc_bin_to_bcd(s_rtc.hour);
+  s_rtc.reg[(uint64_t)k_rtc_off_rdaycnt] = internal_rtc_bin_to_bcd(s_rtc.day);
+  s_rtc.reg[(uint64_t)k_rtc_off_rmoncnt] = internal_rtc_bin_to_bcd(s_rtc.mon);
   s_rtc.reg[(uint64_t)k_rtc_off_ryrcnt] =
-    rtc_bin_to_bcd((uint8_t)(s_rtc.year % (uint32_t)k_year_mod));
+    internal_rtc_bin_to_bcd((uint8_t)(s_rtc.year % (uint32_t)k_year_mod));
 }
 
-/** @brief Load the binary time mirror from a freshly written BCD calendar. */
-static void rtc_latch_calendar(void)
+/**
+ * @brief Load the binary time mirror from a freshly written BCD calendar.
+ * @details Load the binary time mirror from a freshly written bcd calendar; this step is contained within the board periph RTC model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for RTC latch calendar. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_rtc_latch_calendar(void)
 {
-  s_rtc.sec  = rtc_bcd_to_bin(s_rtc.reg[(uint64_t)k_rtc_off_rseccnt]);
-  s_rtc.min  = rtc_bcd_to_bin(s_rtc.reg[(uint64_t)k_rtc_off_rmincnt]);
-  s_rtc.hour = rtc_bcd_to_bin(s_rtc.reg[(uint64_t)k_rtc_off_rhrcnt]);
-  s_rtc.day  = rtc_bcd_to_bin(s_rtc.reg[(uint64_t)k_rtc_off_rdaycnt]);
-  s_rtc.mon  = rtc_bcd_to_bin(s_rtc.reg[(uint64_t)k_rtc_off_rmoncnt]);
-  s_rtc.year = (uint16_t)rtc_bcd_to_bin(s_rtc.reg[(uint64_t)k_rtc_off_ryrcnt]);
+  s_rtc.sec  = internal_rtc_bcd_to_bin(s_rtc.reg[(uint64_t)k_rtc_off_rseccnt]);
+  s_rtc.min  = internal_rtc_bcd_to_bin(s_rtc.reg[(uint64_t)k_rtc_off_rmincnt]);
+  s_rtc.hour = internal_rtc_bcd_to_bin(s_rtc.reg[(uint64_t)k_rtc_off_rhrcnt]);
+  s_rtc.day  = internal_rtc_bcd_to_bin(s_rtc.reg[(uint64_t)k_rtc_off_rdaycnt]);
+  s_rtc.mon  = internal_rtc_bcd_to_bin(s_rtc.reg[(uint64_t)k_rtc_off_rmoncnt]);
+  s_rtc.year = (uint16_t)internal_rtc_bcd_to_bin(s_rtc.reg[(uint64_t)k_rtc_off_ryrcnt]);
 }
 
 /* =============================================================================
@@ -205,8 +240,20 @@ static void rtc_latch_calendar(void)
  * =============================================================================
  */
 
-/** @brief Read @p size bytes little-endian from the RTC shadow at @p off. */
-static uint64_t rtc_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief Read @p size bytes little-endian from the RTC shadow at @p off.
+ * @details Read @p size bytes little-endian from the rtc shadow at @p off; this step is contained within the board periph RTC model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The RTC read result produced by the board periph RTC model.
+ * @retval value The operation-specific RTC read value.
+ * @pre Arguments satisfy the ranges documented for RTC read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_rtc_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   const uint64_t off = addr - (uint64_t)k_rtc_base;
@@ -220,16 +267,38 @@ static uint64_t rtc_read(uc_engine* uc, uint64_t addr, unsigned size)
   return v;
 }
 
-/** @brief True iff offset @p off is a calendar-count register (BCD value). */
-static bool rtc_is_calendar_off(uint64_t off)
+/**
+ * @brief True iff offset @p off is a calendar-count register (BCD value).
+ * @details True iff offset @p off is a calendar-count register (bcd value); this step is contained within the board periph RTC model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The RTC is calendar off result produced by the board periph RTC model.
+ * @retval true The RTC is calendar off condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for RTC is calendar off. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_rtc_is_calendar_off(uint64_t off)
 {
   return (off == (uint64_t)k_rtc_off_rseccnt) || (off == (uint64_t)k_rtc_off_rmincnt) ||
          (off == (uint64_t)k_rtc_off_rhrcnt) || (off == (uint64_t)k_rtc_off_rdaycnt) ||
          (off == (uint64_t)k_rtc_off_rmoncnt) || (off == (uint64_t)k_rtc_off_ryrcnt);
 }
 
-/** @brief Write @p size bytes little-endian into the RTC shadow at @p off. */
-static void rtc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief Write @p size bytes little-endian into the RTC shadow at @p off.
+ * @details Write @p size bytes little-endian into the rtc shadow at @p off; this step is contained within the board periph RTC model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for RTC write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_rtc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   const uint64_t off         = addr - (uint64_t)k_rtc_base;
@@ -240,14 +309,14 @@ static void rtc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
       continue;
     }
     s_rtc.reg[b] = (uint8_t)(value >> (8U * i));
-    if (rtc_is_calendar_off(b)) {
+    if (internal_rtc_is_calendar_off(b)) {
       touched_cal = true;
     }
   }
   /* A calendar-count write (ra8_rtc_set, performed with START cleared) reseeds
    * the running time mirror so the clock continues from the new value. */
   if (touched_cal) {
-    rtc_latch_calendar();
+    internal_rtc_latch_calendar();
   }
 }
 
@@ -256,8 +325,15 @@ static void rtc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
  * =============================================================================
  */
 
-/** @brief Advance the binary time mirror by one modelled second. */
-static void rtc_advance_one_second(void)
+/**
+ * @brief Advance the binary time mirror by one modelled second.
+ * @details Advance the binary time mirror by one modelled second; this step is contained within the board periph RTC model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for RTC advance one second. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_rtc_advance_one_second(void)
 {
   s_rtc.sec++;
   if (s_rtc.sec < (uint8_t)k_rtc_secs_per_min) {
@@ -287,8 +363,17 @@ static void rtc_advance_one_second(void)
   s_rtc.year++;
 }
 
-/** @brief True iff the running time matches the armed (ENB) alarm fields. */
-static bool rtc_alarm_matches(void)
+/**
+ * @brief True iff the running time matches the armed (ENB) alarm fields.
+ * @details True iff the running time matches the armed (enb) alarm fields; this step is contained within the board periph RTC model and uses bounded caller or module-owned storage.
+ * @return The RTC alarm matches result produced by the board periph RTC model.
+ * @retval true The RTC alarm matches condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for RTC alarm matches. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_rtc_alarm_matches(void)
 {
   const uint8_t sar = s_rtc.reg[(uint64_t)k_rtc_off_rsecar];
   const uint8_t mar = s_rtc.reg[(uint64_t)k_rtc_off_rminar];
@@ -297,30 +382,40 @@ static bool rtc_alarm_matches(void)
   if (((sar | mar | har) & (uint8_t)k_rtc_alarm_enb) == 0U) {
     return false;
   }
-  const bool sec_ok = ((sar & (uint8_t)k_rtc_alarm_enb) == 0U) ||
-                      (rtc_bcd_to_bin((uint8_t)(sar & (uint8_t)k_rtc_alarm_val)) == s_rtc.sec);
-  const bool min_ok = ((mar & (uint8_t)k_rtc_alarm_enb) == 0U) ||
-                      (rtc_bcd_to_bin((uint8_t)(mar & (uint8_t)k_rtc_alarm_val)) == s_rtc.min);
-  const bool hr_ok  = ((har & (uint8_t)k_rtc_alarm_enb) == 0U) ||
-                      (rtc_bcd_to_bin((uint8_t)(har & (uint8_t)k_rtc_alarm_val)) == s_rtc.hour);
+  const bool sec_ok =
+    ((sar & (uint8_t)k_rtc_alarm_enb) == 0U) ||
+    (internal_rtc_bcd_to_bin((uint8_t)(sar & (uint8_t)k_rtc_alarm_val)) == s_rtc.sec);
+  const bool min_ok =
+    ((mar & (uint8_t)k_rtc_alarm_enb) == 0U) ||
+    (internal_rtc_bcd_to_bin((uint8_t)(mar & (uint8_t)k_rtc_alarm_val)) == s_rtc.min);
+  const bool hr_ok =
+    ((har & (uint8_t)k_rtc_alarm_enb) == 0U) ||
+    (internal_rtc_bcd_to_bin((uint8_t)(har & (uint8_t)k_rtc_alarm_val)) == s_rtc.hour);
   return sec_ok && min_ok && hr_ok;
 }
 
-/** @brief Raise alarm / periodic ELC events for one elapsed modelled second. */
-static void rtc_raise_events(uc_engine* uc)
+/**
+ * @brief Raise alarm / periodic ELC events for one elapsed modelled second.
+ * @details Raise alarm / periodic elc events for one elapsed modelled second; this step is contained within the board periph RTC model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for RTC raise events. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_rtc_raise_events(uc_engine* uc)
 {
   const uint8_t rcr1 = s_rtc.reg[(uint64_t)k_rtc_off_rcr1];
-  if (rtc_alarm_matches()) {
+  if (internal_rtc_alarm_matches()) {
     s_rtc.alarms++;
     if ((rcr1 & (uint8_t)k_rtc_rcr1_aie) != 0U) {
       board_periph_icu_raise_event(uc, (uint16_t)k_rtc_event_alarm);
     }
     if (board_periph_trace()) {
-      (void)fprintf(stderr,
-                    "  RTC           : alarm match %02u:%02u:%02u\n",
-                    s_rtc.hour,
-                    s_rtc.min,
-                    s_rtc.sec);
+      (void)priv_emu_io_errf("  RTC           : alarm match %02u:%02u:%02u\n",
+                             s_rtc.hour,
+                             s_rtc.min,
+                             s_rtc.sec);
     }
   }
   if ((rcr1 & (uint8_t)k_rtc_rcr1_pie) != 0U) {
@@ -329,8 +424,16 @@ static void rtc_raise_events(uc_engine* uc)
   }
 }
 
-/** @brief Advance the RTC each chunk while running; raise its events. */
-static void rtc_tick(uc_engine* uc)
+/**
+ * @brief Advance the RTC each chunk while running; raise its events.
+ * @details Advance the rtc each chunk while running; raise its events; this step is contained within the board periph RTC model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for RTC tick. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_rtc_tick(uc_engine* uc)
 {
   if ((s_rtc.reg[(uint64_t)k_rtc_off_rcr2] & (uint8_t)k_rtc_rcr2_start) == 0U) {
     return; /* stopped: time holds */
@@ -338,13 +441,13 @@ static void rtc_tick(uc_engine* uc)
   s_rtc.r64 = (uint8_t)(s_rtc.r64 + 1U);
   s_rtc.tick_frac++;
   if (s_rtc.tick_frac < (uint32_t)k_rtc_ticks_per_sec) {
-    rtc_publish_calendar();
+    internal_rtc_publish_calendar();
     return;
   }
   s_rtc.tick_frac = 0U;
-  rtc_advance_one_second();
-  rtc_publish_calendar();
-  rtc_raise_events(uc);
+  internal_rtc_advance_one_second();
+  internal_rtc_publish_calendar();
+  internal_rtc_raise_events(uc);
 }
 
 /* =============================================================================
@@ -352,45 +455,58 @@ static void rtc_tick(uc_engine* uc)
  * =============================================================================
  */
 
-/** @brief Clear the RTC register shadow and the time mirror. */
-static void rtc_reset(void)
+/**
+ * @brief Clear the RTC register shadow and the time mirror.
+ * @details Clear the rtc register shadow and the time mirror; this step is contained within the board periph RTC model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for RTC reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_rtc_reset(void)
 {
   s_rtc = (rtc_state_t){};
 }
 
-/** @brief Print the RTC's final time and its alarm / periodic event totals. */
-static void rtc_report(void)
+/**
+ * @brief Print the RTC's final time and its alarm / periodic event totals.
+ * @details Print the rtc's final time and its alarm / periodic event totals; this step is contained within the board periph RTC model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for RTC report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph RTC model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_rtc_report(void)
 {
   if ((s_rtc.alarms == 0U) && (s_rtc.periodics == 0U)) {
     return;
   }
-  (void)fprintf(stderr,
-                "  RTC           : %04u-%02u-%02u %02u:%02u:%02u alarms=%u periodics=%u\n",
-                (unsigned)((uint32_t)k_year_base + s_rtc.year),
-                s_rtc.mon,
-                s_rtc.day,
-                s_rtc.hour,
-                s_rtc.min,
-                s_rtc.sec,
-                s_rtc.alarms,
-                s_rtc.periodics);
+  (void)priv_emu_io_errf("  RTC           : %04u-%02u-%02u %02u:%02u:%02u alarms=%u periodics=%u\n",
+                         (unsigned)((uint32_t)k_year_base + s_rtc.year),
+                         s_rtc.mon,
+                         s_rtc.day,
+                         s_rtc.hour,
+                         s_rtc.min,
+                         s_rtc.sec,
+                         s_rtc.alarms,
+                         s_rtc.periodics);
 }
 
 /** @brief RTC register window + the calendar tick / reset / report. */
-static const board_periph_block_t k_rtc_block = {
+static const board_periph_block_t s_k_rtc_block = {
   .base   = (uint64_t)k_rtc_base,
   .span   = (uint64_t)k_rtc_span,
   .order  = (uint32_t)k_rtc_block_order,
-  .read   = rtc_read,
-  .write  = rtc_write,
-  .tick   = rtc_tick,
-  .reset  = rtc_reset,
-  .report = rtc_report,
+  .read   = internal_rtc_read,
+  .write  = internal_rtc_write,
+  .tick   = internal_rtc_tick,
+  .reset  = internal_rtc_reset,
+  .report = internal_rtc_report,
   .name   = "RTC",
 };
 
 /** @brief Self-register the RTC window before main runs (decentralized). */
-[[gnu::constructor]] static void board_periph_rtc_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_board_periph_rtc_register(void)
 {
-  board_periph_register_block(&k_rtc_block);
+  board_periph_register_block(&s_k_rtc_block);
 }

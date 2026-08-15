@@ -41,6 +41,7 @@
 #include <string.h>
 
 #include "board_usb.h"
+#include "emu_host_io_internal.h"
 #include "ra8_usb_regs.h"
 
 /* =============================================================================
@@ -147,7 +148,7 @@ static usbhs_state_t s_hs;
 
 /**
  * @var s_hs_trace
- * @brief When true, each loop-cable transaction is logged to stderr.
+ * @brief When true, each loop-cable transaction is logged to injected error sink.
  * @details Latched from the --trace flag by ::board_usb_host_init.
  * @note Read-only outside init.
  * @warning Set via ::board_usb_host_init only.
@@ -160,52 +161,119 @@ static bool s_hs_trace;
  * =============================================================================
  */
 
-/** @brief Word index into the 16-bit register shadow for a window offset. */
-static uint32_t usbhs_word(uint64_t off)
+/**
+ * @brief Word index into the 16-bit register shadow for a window offset.
+ * @details Word index into the 16-bit register shadow for a window offset; this step is contained within the board USB host model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The usbhs word result produced by the board USB host model.
+ * @retval value The operation-specific usbhs word value.
+ * @pre Arguments satisfy the ranges documented for usbhs word. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_usbhs_word(uint64_t off)
 {
   return (uint32_t)((off & ~(uint64_t)1U) / 2U);
 }
 
-/** @brief Currently-selected CFIFO pipe number (CFIFOSEL.CURPIPE[3:0]). */
-static uint8_t usbhs_cur_pipe(void)
+/**
+ * @brief Currently-selected CFIFO pipe number (CFIFOSEL.CURPIPE[3:0]).
+ * @details Currently-selected cfifo pipe number (cfifosel.curpipe[3:0]); this step is contained within the board USB host model and uses bounded caller or module-owned storage.
+ * @return The usbhs cur pipe result produced by the board USB host model.
+ * @retval value The operation-specific usbhs cur pipe value.
+ * @pre Arguments satisfy the ranges documented for usbhs cur pipe. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint8_t internal_usbhs_cur_pipe(void)
 {
-  const uint16_t sel = s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_cfifosel)];
+  const uint16_t sel = s_hs.reg[internal_usbhs_word((uint64_t)k_ra8_usb_off_cfifosel)];
   return (uint8_t)(sel & (uint16_t)k_ra8_fifosel_curpipe);
 }
 
-/** @brief True when CFIFOSEL selects the write (ISEL) side of the DCP port. */
-static bool usbhs_cfifo_isel(void)
+/**
+ * @brief True when CFIFOSEL selects the write (ISEL) side of the DCP port.
+ * @details True when cfifosel selects the write (isel) side of the dcp port; this step is contained within the board USB host model and uses bounded caller or module-owned storage.
+ * @return The usbhs cfifo isel result produced by the board USB host model.
+ * @retval true The usbhs cfifo isel condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for usbhs cfifo isel. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_usbhs_cfifo_isel(void)
 {
-  const uint16_t sel = s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_cfifosel)];
+  const uint16_t sel = s_hs.reg[internal_usbhs_word((uint64_t)k_ra8_usb_off_cfifosel)];
   return (sel & (uint16_t)k_ra8_fifosel_isel) != 0U;
 }
 
-/** @brief Device endpoint number a host pipe addresses (PIPECFG.EPNUM). */
-static uint8_t usbhs_pipe_ep(uint8_t pipe)
+/**
+ * @brief Device endpoint number a host pipe addresses (PIPECFG.EPNUM).
+ * @details Device endpoint number a host pipe addresses (pipecfg.epnum); this step is contained within the board USB host model and uses bounded caller or module-owned storage.
+ * @param[in] pipe USB pipe index selected by the transfer.
+ * @return The usbhs pipe ep result produced by the board USB host model.
+ * @retval value The operation-specific usbhs pipe ep value.
+ * @pre Arguments satisfy the ranges documented for usbhs pipe ep. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint8_t internal_usbhs_pipe_ep(uint8_t pipe)
 {
   const uint8_t ep =
     (uint8_t)(s_hs.pipecfg[pipe % k_ra8_usb_pipe_count] & (uint16_t)k_ra8_pipecfg_epnum_mask);
   return (ep != 0U) ? ep : pipe; /* unconfigured: fall back to pipe == EP. */
 }
 
-/** @brief True when a host pipe transmits (host-to-device; PIPECFG.DIR set). */
-static bool usbhs_pipe_is_tx(uint8_t pipe)
+/**
+ * @brief True when a host pipe transmits (host-to-device; PIPECFG.DIR set).
+ * @details True when a host pipe transmits (host-to-device; pipecfg.dir set); this step is contained within the board USB host model and uses bounded caller or module-owned storage.
+ * @param[in] pipe USB pipe index selected by the transfer.
+ * @return The usbhs pipe is tx result produced by the board USB host model.
+ * @retval true The usbhs pipe is tx condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for usbhs pipe is tx. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_usbhs_pipe_is_tx(uint8_t pipe)
 {
   return (s_hs.pipecfg[pipe % k_ra8_usb_pipe_count] & (uint16_t)k_ra8_pipecfg_dir_in) != 0U;
 }
 
-/** @brief A pipe's effective max packet size (fallback when unprogrammed). */
-static uint16_t usbhs_pipe_mps(uint8_t pipe)
+/**
+ * @brief A pipe's effective max packet size (fallback when unprogrammed).
+ * @details A pipe's effective max packet size (fallback when unprogrammed); this step is contained within the board USB host model and uses bounded caller or module-owned storage.
+ * @param[in] pipe USB pipe index selected by the transfer.
+ * @return The usbhs pipe mps result produced by the board USB host model.
+ * @retval value The operation-specific usbhs pipe mps value.
+ * @pre Arguments satisfy the ranges documented for usbhs pipe mps. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_usbhs_pipe_mps(uint8_t pipe)
 {
   const uint16_t mps =
     (uint16_t)(s_hs.pipemaxp[pipe % k_ra8_usb_pipe_count] & (uint16_t)k_usbhs_pipemaxp_mxps);
   return (mps != 0U) ? mps : (uint16_t)k_usbhs_mps_fall;
 }
 
-/** @brief The DCP's effective max packet size (fallback when unprogrammed). */
-static uint16_t usbhs_dcp_mps(void)
+/**
+ * @brief The DCP's effective max packet size (fallback when unprogrammed).
+ * @details The dcp's effective max packet size (fallback when unprogrammed); this step is contained within the board USB host model and uses bounded caller or module-owned storage.
+ * @return The usbhs default control pipe mps result produced by the board USB host model.
+ * @retval value The operation-specific usbhs default control pipe mps value.
+ * @pre Arguments satisfy the ranges documented for usbhs default control pipe mps. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_usbhs_dcp_mps(void)
 {
-  const uint16_t mps = (uint16_t)(s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_dcpmaxp)] &
+  const uint16_t mps = (uint16_t)(s_hs.reg[internal_usbhs_word((uint64_t)k_ra8_usb_off_dcpmaxp)] &
                                   (uint16_t)k_usbhs_dcpmaxp_mxps);
   return (mps != 0U) ? mps : (uint16_t)k_usbhs_mps_fall;
 }
@@ -233,32 +301,31 @@ static uint16_t usbhs_dcp_mps(void)
  * @note Called from the MMIO write hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static void usbhs_do_setup(uc_engine* uc)
+RA8_INTERNAL static void internal_usbhs_do_setup(uc_engine* uc)
 {
   s_hs.last_setup_in   = false;
   s_hs.sie_status_done = false;
   s_hs.ccpl_armed      = false;
   s_hs.status_zlp      = false;
-  const uint32_t w1    = usbhs_word((uint64_t)k_ra8_usb_off_intsts1);
+  const uint32_t w1    = internal_usbhs_word((uint64_t)k_ra8_usb_off_intsts1);
   if (!board_usb_loop_attached()) {
     s_hs.reg[w1] = (uint16_t)(s_hs.reg[w1] | (uint16_t)k_usbhs_int1_sign);
     return;
   }
-  const uint16_t req   = s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_usbreq)];
-  const uint16_t val   = s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_usbval)];
-  const uint16_t indx  = s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_usbindx)];
-  const uint16_t leng  = s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_usbleng)];
+  const uint16_t req   = s_hs.reg[internal_usbhs_word((uint64_t)k_ra8_usb_off_usbreq)];
+  const uint16_t val   = s_hs.reg[internal_usbhs_word((uint64_t)k_ra8_usb_off_usbval)];
+  const uint16_t indx  = s_hs.reg[internal_usbhs_word((uint64_t)k_ra8_usb_off_usbindx)];
+  const uint16_t leng  = s_hs.reg[internal_usbhs_word((uint64_t)k_ra8_usb_off_usbleng)];
   s_hs.last_setup_in   = ((req & (uint16_t)k_usbhs_setup_dir_in) != 0U);
   s_hs.sie_status_done = board_usb_loop_setup(uc, req, val, indx, leng);
   s_hs.reg[w1]         = (uint16_t)(s_hs.reg[w1] | (uint16_t)k_usbhs_int1_sack);
   s_hs.setups++;
   if (s_hs_trace) {
-    (void)fprintf(stderr,
-                  "  USBHS host    : SETUP req=0x%04X wVal=0x%04X wLen=%u%s\n",
-                  (unsigned)req,
-                  (unsigned)val,
-                  (unsigned)leng,
-                  s_hs.sie_status_done ? " (SIE status)" : "");
+    (void)priv_emu_io_errf("  USBHS host    : SETUP req=0x%04X wVal=0x%04X wLen=%u%s\n",
+                           (unsigned)req,
+                           (unsigned)val,
+                           (unsigned)leng,
+                           s_hs.sie_status_done ? " (SIE status)" : "");
   }
 }
 
@@ -271,7 +338,7 @@ static void usbhs_do_setup(uc_engine* uc)
  * best-effort wait polls. After a control WRITE / no-data request the host
  * collects the DEVICE's status ZLP: when the SIE already ran it
  * (SET_ADDRESS) the ZLP is ready now, otherwise arm the CCPL watch that
- * ::usbhs_brdysts_value polls.
+ * ::internal_usbhs_brdysts_value polls.
  *
  * @param[in,out] uc Unicorn engine (loop delivery pends the device IRQ).
  * @return Nothing.
@@ -282,9 +349,9 @@ static void usbhs_do_setup(uc_engine* uc)
  * @note Called from the MMIO write hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static void usbhs_do_ccpl(uc_engine* uc)
+RA8_INTERNAL static void internal_usbhs_do_ccpl(uc_engine* uc)
 {
-  const uint32_t wb = usbhs_word((uint64_t)k_ra8_usb_off_bempsts);
+  const uint32_t wb = internal_usbhs_word((uint64_t)k_ra8_usb_off_bempsts);
   if (s_hs.last_setup_in) {
     board_usb_loop_status_out_zlp(uc);
     s_hs.reg[wb] = (uint16_t)(s_hs.reg[wb] | (uint16_t)k_usbhs_dcp_bit);
@@ -317,7 +384,7 @@ static void usbhs_do_ccpl(uc_engine* uc)
  * @note Called from the MMIO read hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static uint16_t usbhs_brdysts_value(uc_engine* uc)
+RA8_INTERNAL static uint16_t internal_usbhs_brdysts_value(uc_engine* uc)
 {
   if (s_hs.ccpl_armed && board_usb_loop_take_ccpl(uc)) {
     s_hs.ccpl_armed = false;
@@ -331,10 +398,10 @@ static uint16_t usbhs_brdysts_value(uc_engine* uc)
     if (s_hs.pipecfg[pipe] == 0U) {
       continue;
     }
-    if (usbhs_pipe_is_tx(pipe)) {
+    if (internal_usbhs_pipe_is_tx(pipe)) {
       continue;
     }
-    if (board_usb_loop_bulk_in_avail(usbhs_pipe_ep(pipe)) > 0U) {
+    if (board_usb_loop_bulk_in_avail(internal_usbhs_pipe_ep(pipe)) > 0U) {
       v = (uint16_t)(v | (uint16_t)(1U << pipe));
     }
   }
@@ -360,19 +427,19 @@ static uint16_t usbhs_brdysts_value(uc_engine* uc)
  * @note Called from the MMIO read hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static uint16_t usbhs_cfifoctr_value(void)
+RA8_INTERNAL static uint16_t internal_usbhs_cfifoctr_value(void)
 {
-  const uint8_t pipe  = usbhs_cur_pipe();
+  const uint8_t pipe  = internal_usbhs_cur_pipe();
   uint16_t      avail = 0U;
   uint16_t      mps   = (uint16_t)k_usbhs_mps_fall;
   if (pipe == 0U) {
-    if (!usbhs_cfifo_isel()) {
+    if (!internal_usbhs_cfifo_isel()) {
       avail = board_usb_loop_ctrl_in_avail();
-      mps   = usbhs_dcp_mps();
+      mps   = internal_usbhs_dcp_mps();
     }
-  } else if (!usbhs_pipe_is_tx(pipe)) {
-    avail = board_usb_loop_bulk_in_avail(usbhs_pipe_ep(pipe));
-    mps   = usbhs_pipe_mps(pipe);
+  } else if (!internal_usbhs_pipe_is_tx(pipe)) {
+    avail = board_usb_loop_bulk_in_avail(internal_usbhs_pipe_ep(pipe));
+    mps   = internal_usbhs_pipe_mps(pipe);
   } else {
     avail = 0U;
   }
@@ -399,16 +466,16 @@ static uint16_t usbhs_cfifoctr_value(void)
  * @note Called from the MMIO read hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static uint64_t usbhs_cfifo_read(uc_engine* uc, unsigned size)
+RA8_INTERNAL static uint64_t internal_usbhs_cfifo_read(uc_engine* uc, unsigned size)
 {
   uint8_t        bytes[sizeof(uint32_t)] = {};
   const uint16_t cap  = (size < sizeof(bytes)) ? (uint16_t)size : (uint16_t)sizeof(bytes);
-  const uint8_t  pipe = usbhs_cur_pipe();
+  const uint8_t  pipe = internal_usbhs_cur_pipe();
   uint16_t       got  = 0U;
   if (pipe == 0U) {
     got = board_usb_loop_ctrl_in_read(bytes, cap);
-  } else if (!usbhs_pipe_is_tx(pipe)) {
-    got = board_usb_loop_bulk_in_read(uc, usbhs_pipe_ep(pipe), bytes, cap);
+  } else if (!internal_usbhs_pipe_is_tx(pipe)) {
+    got = board_usb_loop_bulk_in_read(uc, internal_usbhs_pipe_ep(pipe), bytes, cap);
     if (got > 0U) {
       s_hs.bulk_in++;
     }
@@ -440,7 +507,7 @@ static uint64_t usbhs_cfifo_read(uc_engine* uc, unsigned size)
  * @note Called from the MMIO write hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static void usbhs_cfifo_write(uint64_t value, unsigned size)
+RA8_INTERNAL static void internal_usbhs_cfifo_write(uint64_t value, unsigned size)
 {
   for (uint32_t i = 0U; (i < size) && (s_hs.stage_len < (uint16_t)k_usbhs_stage_cap); i++) {
     s_hs.stage[s_hs.stage_len] =
@@ -471,31 +538,31 @@ static void usbhs_cfifo_write(uint64_t value, unsigned size)
  * @note Called from the MMIO write hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static void usbhs_cfifoctr_write(uc_engine* uc, uint16_t value)
+RA8_INTERNAL static void internal_usbhs_cfifoctr_write(uc_engine* uc, uint16_t value)
 {
-  const uint8_t pipe = usbhs_cur_pipe();
+  const uint8_t pipe = internal_usbhs_cur_pipe();
   if ((value & (uint16_t)k_ra8_fifoctr_bclr) != 0U) {
     if (pipe == 0U) {
-      if (usbhs_cfifo_isel()) {
+      if (internal_usbhs_cfifo_isel()) {
         s_hs.stage_len = 0U;
       } else {
         board_usb_loop_ctrl_in_flush();
         s_hs.status_zlp = false;
       }
-    } else if (usbhs_pipe_is_tx(pipe)) {
+    } else if (internal_usbhs_pipe_is_tx(pipe)) {
       s_hs.stage_len = 0U;
     } else {
-      board_usb_loop_bulk_in_flush(usbhs_pipe_ep(pipe));
+      board_usb_loop_bulk_in_flush(internal_usbhs_pipe_ep(pipe));
     }
   }
   if ((value & (uint16_t)k_ra8_fifoctr_bval) != 0U) {
-    const uint32_t wb = usbhs_word((uint64_t)k_ra8_usb_off_bempsts);
-    if ((pipe == 0U) && usbhs_cfifo_isel() && (s_hs.stage_len > 0U)) {
+    const uint32_t wb = internal_usbhs_word((uint64_t)k_ra8_usb_off_bempsts);
+    if ((pipe == 0U) && internal_usbhs_cfifo_isel() && (s_hs.stage_len > 0U)) {
       board_usb_loop_ctrl_out(uc, s_hs.stage, s_hs.stage_len);
       s_hs.reg[wb]   = (uint16_t)(s_hs.reg[wb] | (uint16_t)k_usbhs_dcp_bit);
       s_hs.stage_len = 0U;
     } else if ((pipe != 0U) && (s_hs.stage_len > 0U)) {
-      board_usb_loop_bulk_out(uc, usbhs_pipe_ep(pipe), s_hs.stage, s_hs.stage_len);
+      board_usb_loop_bulk_out(uc, internal_usbhs_pipe_ep(pipe), s_hs.stage, s_hs.stage_len);
       s_hs.reg[wb]   = (uint16_t)(s_hs.reg[wb] | (uint16_t)(1U << pipe));
       s_hs.stage_len = 0U;
       s_hs.bulk_out++;
@@ -521,9 +588,9 @@ static void usbhs_cfifoctr_write(uc_engine* uc, uint16_t value)
  * @note Called from the MMIO write hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static void usbhs_dvstctr_write(uc_engine* uc, uint16_t value)
+RA8_INTERNAL static void internal_usbhs_dvstctr_write(uc_engine* uc, uint16_t value)
 {
-  const uint32_t w   = usbhs_word((uint64_t)k_ra8_usb_off_dvstctr0);
+  const uint32_t w   = internal_usbhs_word((uint64_t)k_ra8_usb_off_dvstctr0);
   const uint16_t old = s_hs.reg[w];
   s_hs.reg[w]        = (uint16_t)(value & (uint16_t)~(uint16_t)k_usbhs_rhst_mask);
   const bool was_rst = (old & (uint16_t)k_usbhs_dvst_usbrst) != 0U;
@@ -556,17 +623,17 @@ static void usbhs_dvstctr_write(uc_engine* uc, uint16_t value)
  * @note Called from the MMIO write hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static void usbhs_dcpctr_write(uc_engine* uc, uint16_t value)
+RA8_INTERNAL static void internal_usbhs_dcpctr_write(uc_engine* uc, uint16_t value)
 {
-  const uint32_t w   = usbhs_word((uint64_t)k_ra8_usb_off_dcpctr);
+  const uint32_t w   = internal_usbhs_word((uint64_t)k_ra8_usb_off_dcpctr);
   const uint16_t old = s_hs.reg[w];
   if (((value & (uint16_t)k_usbhs_dcpctr_sureq) != 0U) &&
       ((old & (uint16_t)k_usbhs_dcpctr_sureq) == 0U)) {
-    usbhs_do_setup(uc);
+    internal_usbhs_do_setup(uc);
   }
   if (((value & (uint16_t)k_usbhs_dcpctr_ccpl) != 0U) &&
       ((old & (uint16_t)k_usbhs_dcpctr_ccpl) == 0U)) {
-    usbhs_do_ccpl(uc);
+    internal_usbhs_do_ccpl(uc);
   }
   s_hs.reg[w] = (uint16_t)(value & (uint16_t)~(uint16_t)((uint16_t)k_usbhs_ctr_pulse_mask |
                                                          (uint16_t)k_usbhs_dcpctr_sureqclr));
@@ -598,9 +665,9 @@ static void usbhs_dcpctr_write(uc_engine* uc, uint16_t value)
  * @note Called from the MMIO read hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static uint64_t usbhs_reg_read(uc_engine* uc, uint64_t off, unsigned size)
+RA8_INTERNAL static uint64_t internal_usbhs_reg_read(uc_engine* uc, uint64_t off, unsigned size)
 {
-  const uint8_t sel = (uint8_t)(s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_pipesel)] &
+  const uint8_t sel = (uint8_t)(s_hs.reg[internal_usbhs_word((uint64_t)k_ra8_usb_off_pipesel)] &
                                 (uint16_t)k_ra8_fifosel_curpipe);
   switch ((uint16_t)off) {
     case (uint16_t)k_ra8_usb_off_syssts0:
@@ -608,13 +675,13 @@ static uint64_t usbhs_reg_read(uc_engine* uc, uint64_t off, unsigned size)
     case (uint16_t)k_ra8_usbhs_off_pllsta:
       return (uint16_t)k_ra8_pllsta_plllock;
     case (uint16_t)k_ra8_usb_off_dvstctr0:
-      return (uint16_t)(s_hs.reg[usbhs_word(off)] | s_hs.rhst);
+      return (uint16_t)(s_hs.reg[internal_usbhs_word(off)] | s_hs.rhst);
     case (uint16_t)k_ra8_usb_off_cfifo:
-      return usbhs_cfifo_read(uc, size); /* full width: 32-bit MBW drains. */
+      return internal_usbhs_cfifo_read(uc, size); /* full width: 32-bit MBW drains. */
     case (uint16_t)k_ra8_usb_off_cfifoctr:
-      return usbhs_cfifoctr_value();
+      return internal_usbhs_cfifoctr_value();
     case (uint16_t)k_ra8_usb_off_brdysts:
-      return usbhs_brdysts_value(uc);
+      return internal_usbhs_brdysts_value(uc);
     case (uint16_t)k_ra8_usb_off_nrdysts:
       return 0U;
     case (uint16_t)k_ra8_usb_off_pipecfg:
@@ -626,7 +693,7 @@ static uint64_t usbhs_reg_read(uc_engine* uc, uint64_t off, unsigned size)
     case (uint16_t)k_ra8_usb_off_pipeperi:
       return s_hs.pipeperi[sel % k_ra8_usb_pipe_count];
     default:
-      return s_hs.reg[usbhs_word(off)];
+      return s_hs.reg[internal_usbhs_word(off)];
   }
 }
 
@@ -652,32 +719,33 @@ static uint64_t usbhs_reg_read(uc_engine* uc, uint64_t off, unsigned size)
  * @note Called from the MMIO write hook; ra8_emulator is single-threaded.
  * @since 0.1.0
  */
-static void usbhs_reg_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t value64)
+RA8_INTERNAL static void
+internal_usbhs_reg_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t value64)
 {
   const uint16_t value = (uint16_t)value64;
-  const uint8_t  sel   = (uint8_t)(s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_pipesel)] &
+  const uint8_t  sel   = (uint8_t)(s_hs.reg[internal_usbhs_word((uint64_t)k_ra8_usb_off_pipesel)] &
                                    (uint16_t)k_ra8_fifosel_curpipe);
   /* The CFIFO port spans +0x14..+0x17: 32-bit head words at +0x14, the
    * CFIFOH (+0x16) / CFIFOHH (+0x17) residual aliases for the 2- / 1-byte
    * tails. All append to the same OUT staging. */
   if ((off >= (uint64_t)k_ra8_usb_off_cfifo) && (off < (uint64_t)(k_ra8_usb_off_cfifo + 4U))) {
-    usbhs_cfifo_write(value64, size); /* full width: 32-bit MBW fills. */
+    internal_usbhs_cfifo_write(value64, size); /* full width: 32-bit MBW fills. */
     return;
   }
   switch ((uint16_t)off) {
     case (uint16_t)k_ra8_usb_off_cfifoctr:
-      usbhs_cfifoctr_write(uc, value);
+      internal_usbhs_cfifoctr_write(uc, value);
       return;
     case (uint16_t)k_ra8_usb_off_dcpctr:
-      usbhs_dcpctr_write(uc, value);
+      internal_usbhs_dcpctr_write(uc, value);
       return;
     case (uint16_t)k_ra8_usb_off_dvstctr0:
-      usbhs_dvstctr_write(uc, value);
+      internal_usbhs_dvstctr_write(uc, value);
       return;
     case (uint16_t)k_ra8_usb_off_intsts1:
     case (uint16_t)k_ra8_usb_off_bempsts:
       /* W0C: a written 0 clears, a written 1 preserves. */
-      s_hs.reg[usbhs_word(off)] &= value;
+      s_hs.reg[internal_usbhs_word(off)] &= value;
       return;
     case (uint16_t)k_ra8_usb_off_brdysts:
       /* Live bits are composed; only the sticky status-ZLP flag is W0C. */
@@ -706,10 +774,11 @@ static void usbhs_reg_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t
       (off < (uint64_t)(k_ra8_usb_off_pipectr +
                         ((uint64_t)k_ra8_usb_pipectr_count * sizeof(uint16_t))))) {
     /* PIPECTR: PID persists; the SQSET / SQCLR pulses never store. */
-    s_hs.reg[usbhs_word(off)] = (uint16_t)(value & (uint16_t)~(uint16_t)k_usbhs_ctr_pulse_mask);
+    s_hs.reg[internal_usbhs_word(off)] =
+      (uint16_t)(value & (uint16_t)~(uint16_t)k_usbhs_ctr_pulse_mask);
     return;
   }
-  s_hs.reg[usbhs_word(off)] = value;
+  s_hs.reg[internal_usbhs_word(off)] = value;
 }
 
 /* =============================================================================
@@ -736,7 +805,7 @@ uint64_t board_usb_host_read(uc_engine* uc, uint64_t addr, unsigned size, bool* 
     return 0U;
   }
   *handled = true;
-  return usbhs_reg_read(uc, addr - (uint64_t)k_usbhs_base, size);
+  return internal_usbhs_reg_read(uc, addr - (uint64_t)k_usbhs_base, size);
 }
 
 void board_usb_host_write(uc_engine* uc,
@@ -758,17 +827,17 @@ void board_usb_host_write(uc_engine* uc,
     *handled = false;
     if (s_hs.allowed && (off == (uint64_t)k_ra8_usb_off_syscfg) &&
         (((uint16_t)value & (uint16_t)(1U << k_ra8_syscfg_bit_dcfm)) != 0U)) {
-      s_hs.engaged                                         = true;
-      s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_syscfg)] = (uint16_t)value;
+      s_hs.engaged                                                  = true;
+      s_hs.reg[internal_usbhs_word((uint64_t)k_ra8_usb_off_syscfg)] = (uint16_t)value;
       board_usb_loop_latch();
-      (void)fprintf(stderr,
-                    "  USBHS host    : host mode engaged (SYSCFG.DCFM) -- self-loop to USBFS\n");
+      (void)priv_emu_io_errf(
+        "  USBHS host    : host mode engaged (SYSCFG.DCFM) -- self-loop to USBFS\n");
       *handled = true;
     }
     return;
   }
   *handled = true;
-  usbhs_reg_write(uc, off, size, value);
+  internal_usbhs_reg_write(uc, off, size, value);
 }
 
 void board_usb_host_report(void)
@@ -776,9 +845,9 @@ void board_usb_host_report(void)
   if (!s_hs.engaged) {
     return;
   }
-  (void)fprintf(stderr,
-                "  USBHS host    : %u SETUP(s), %u bulk-OUT commit(s), %u bulk-IN drain(s)\n",
-                s_hs.setups,
-                s_hs.bulk_out,
-                s_hs.bulk_in);
+  (void)priv_emu_io_errf(
+    "  USBHS host    : %u SETUP(s), %u bulk-OUT commit(s), %u bulk-IN drain(s)\n",
+    s_hs.setups,
+    s_hs.bulk_out,
+    s_hs.bulk_in);
 }

@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "board_usb_internal.h"
+#include "emu_host_io_internal.h"
 #include "ra8_elc_regs.h"
 #include "ra8_usb_regs.h"
 
@@ -34,7 +35,7 @@ int32_t  s_hid_cy;      /**< Accumulated HID boot-mouse Y.        */
 uint8_t  s_hid_buttons; /**< Last HID button bitmap.              */
 
 /** @brief Human-readable active-class suffix once the device is configured. */
-const char* usb_class_active_str(void)
+const char* priv_usb_class_active_str(void)
 {
   switch ((usb_dev_class_t)s_dev_class) {
     case k_usb_class_hid:
@@ -65,7 +66,7 @@ const char* usb_class_active_str(void)
  * @param[in] d   Descriptor bytes the device returned.
  * @param[in] len Number of valid bytes in @p d.
  */
-void usb_detect_class(const uint8_t* d, uint16_t len)
+void priv_usb_detect_class(const uint8_t* d, uint16_t len)
 {
   if (s_dev_class != (uint8_t)k_usb_class_unknown) {
     return;
@@ -114,8 +115,12 @@ void usb_detect_class(const uint8_t* d, uint16_t len)
  *
  * @param[in] d   Report bytes.
  * @param[in] len Report length (>= 3 for a boot mouse).
+  * @pre Arguments satisfy the ranges documented for USB HID decode report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static void usb_hid_decode_report(const uint8_t* d, uint16_t len)
+RA8_INTERNAL static void internal_usb_hid_decode_report(const uint8_t* d, uint16_t len)
 {
   if (len < 3U) {
     return;
@@ -125,13 +130,12 @@ static void usb_hid_decode_report(const uint8_t* d, uint16_t len)
   s_hid_cy += (int32_t)(int8_t)d[2];
   s_hid_reports++;
   if (s_trace) {
-    (void)fprintf(stderr,
-                  "  [usb] HID mouse report: btn=0x%02X dx=%+d dy=%+d -> cursor (%d,%d)\n",
-                  (unsigned)s_hid_buttons,
-                  (int)(int8_t)d[1],
-                  (int)(int8_t)d[2],
-                  (int)s_hid_cx,
-                  (int)s_hid_cy);
+    (void)priv_emu_io_errf("  [usb] HID mouse report: btn=0x%02X dx=%+d dy=%+d -> cursor (%d,%d)\n",
+                           (unsigned)s_hid_buttons,
+                           (int)(int8_t)d[1],
+                           (int)(int8_t)d[2],
+                           (int)s_hid_cx,
+                           (int)s_hid_cy);
   }
 }
 
@@ -148,7 +152,7 @@ static void usb_hid_decode_report(const uint8_t* d, uint16_t len)
  * full device + configuration + string descriptors, select the configuration
  * (which fires USBX's CDC-ACM activate), then the two CDC line requests.
  */
-static const usb_setup_step_t k_enum_script[] = {
+static const usb_setup_step_t s_k_enum_script[] = {
   {k_usb_dir_device_to_host,
    k_usb_req_get_descriptor,
    (uint16_t)(k_usb_dt_device << 8),
@@ -212,24 +216,42 @@ static const usb_setup_step_t k_enum_script[] = {
 };
 
 /** @brief True when SYSCFG.DPRPU is set: the device has attached its pull-up. */
-bool host_device_attached(void)
+bool priv_host_device_attached(void)
 {
-  const uint16_t syscfg = s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_syscfg)];
+  const uint16_t syscfg = s_usb.reg[internal_usb_word((uint64_t)k_ra8_usb_off_syscfg)];
   return (syscfg & (uint16_t)(1U << k_ra8_syscfg_bit_dprpu)) != 0U;
 }
 
-/** @brief Latch a SETUP packet into USBREQ..USBLENG (host -> device). */
-static void host_latch_setup(const usb_setup_step_t* s)
+/**
+ * @brief Latch a SETUP packet into USBREQ..USBLENG (host -> device).
+ * @details Latch a setup packet into usbreq..usbleng (host -> device); this step is contained within the board USB vhost model and uses bounded caller or module-owned storage.
+ * @param[in] s Module state instance processed by the operation.
+ * @pre Arguments satisfy the ranges documented for host latch setup. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_latch_setup(const usb_setup_step_t* s)
 {
-  s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbreq)] =
+  s_usb.reg[internal_usb_word((uint64_t)k_ra8_usb_off_usbreq)] =
     (uint16_t)(s->bm_request_type | (uint16_t)((uint16_t)s->b_request << k_usb_byte_bits));
-  s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbval)]  = s->w_value;
-  s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbindx)] = s->w_index;
-  s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbleng)] = s->w_length;
+  s_usb.reg[internal_usb_word((uint64_t)k_ra8_usb_off_usbval)]  = s->w_value;
+  s_usb.reg[internal_usb_word((uint64_t)k_ra8_usb_off_usbindx)] = s->w_index;
+  s_usb.reg[internal_usb_word((uint64_t)k_ra8_usb_off_usbleng)] = s->w_length;
 }
 
-/** @brief CTSQ control-stage value the host advertises for a SETUP. */
-static uint16_t host_setup_ctsq(const usb_setup_step_t* s)
+/**
+ * @brief CTSQ control-stage value the host advertises for a SETUP.
+ * @details Ctsq control-stage value the host advertises for a setup; this step is contained within the board USB vhost model and uses bounded caller or module-owned storage.
+ * @param[in] s Module state instance processed by the operation.
+ * @return The host setup ctsq result produced by the board USB vhost model.
+ * @retval value The operation-specific host setup ctsq value.
+ * @pre Arguments satisfy the ranges documented for host setup ctsq. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_host_setup_ctsq(const usb_setup_step_t* s)
 {
   if ((s->bm_request_type & (uint8_t)k_usb_dir_device_to_host) != 0U) {
     return (uint16_t)k_ra8_ctsq_rdds; /* control read data stage. */
@@ -241,7 +263,7 @@ static uint16_t host_setup_ctsq(const usb_setup_step_t* s)
 }
 
 /** @brief Deliver the current script step's SETUP and raise the CTRT IRQ. */
-void host_deliver_setup(uc_engine* uc, const usb_setup_step_t* s)
+void priv_host_deliver_setup(uc_engine* uc, const usb_setup_step_t* s)
 {
   /* Clear any stale DCP state from the previous transfer. */
   s_usb.dcp_in.len    = 0U;
@@ -263,36 +285,43 @@ void host_deliver_setup(uc_engine* uc, const usb_setup_step_t* s)
     s_usb.dcp_out.ready = true;
     (void)memset(s_usb.dcp_out.data, 0, sizeof(s_usb.dcp_out.data));
   }
-  host_latch_setup(s);
+  internal_host_latch_setup(s);
   s_usb.setup_valid = true;
-  s_usb.ctsq        = host_setup_ctsq(s);
-  usb_intsts0_set((uint8_t)k_ra8_int0_bit_ctrt);
+  s_usb.ctsq        = internal_host_setup_ctsq(s);
+  priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_ctrt);
   char line[k_usb_log_width];
   (void)snprintf(line, sizeof(line), "SETUP[%u] %s -> CTRT raised", (unsigned)s_host_step, s->name);
-  usb_log_line(line);
-  usb_raise_irq(uc);
+  priv_usb_log_line(line);
+  priv_usb_raise_irq(uc);
 }
 
-/** @brief Drain the device's queued control-IN data as the host's read. */
-static void host_drain_in(void)
+/**
+ * @brief Drain the device's queued control-IN data as the host's read.
+ * @details Drain the device's queued control-in data as the host's read; this step is contained within the board USB vhost model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for host drain in. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_drain_in(void)
 {
-  usb_log_count("control-IN: device returned", (unsigned)s_usb.dcp_in.len);
-  usb_detect_class(s_usb.dcp_in.data, s_usb.dcp_in.len);
+  priv_usb_log_count("control-IN: device returned", (unsigned)s_usb.dcp_in.len);
+  priv_usb_detect_class(s_usb.dcp_in.data, s_usb.dcp_in.len);
   s_usb.dcp_in.len   = 0U;
   s_usb.dcp_in.valid = false;
 }
 
 /** @brief DCPCTR.PID == BUF: the device has armed an IN response. */
-bool host_dcp_pid_buf(void)
+bool priv_host_dcp_pid_buf(void)
 {
-  const uint16_t dcpctr = s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_dcpctr)];
+  const uint16_t dcpctr = s_usb.reg[internal_usb_word((uint64_t)k_ra8_usb_off_dcpctr)];
   return (dcpctr & (uint16_t)k_ra8_pid_mask) == (uint16_t)k_ra8_pid_buf;
 }
 
 /** @brief Observe (and clear) DCPCTR.CCPL: the device ended a control transfer. */
-bool host_take_ccpl(void)
+bool priv_host_take_ccpl(void)
 {
-  const uint32_t w    = usb_word((uint64_t)k_ra8_usb_off_dcpctr);
+  const uint32_t w    = internal_usb_word((uint64_t)k_ra8_usb_off_dcpctr);
   const uint16_t ccpl = (uint16_t)(1U << k_ra8_dcpctr_bit_ccpl);
   const bool     seen = (s_usb.reg[w] & ccpl) != 0U;
   if (seen) {
@@ -302,70 +331,101 @@ bool host_take_ccpl(void)
 }
 
 /** @brief Apply the SIE-owned side effects of a no-data control request. */
-void host_apply_no_data(uc_engine* uc, const usb_setup_step_t* s)
+void priv_host_apply_no_data(uc_engine* uc, const usb_setup_step_t* s)
 {
   if (s->b_request == (uint8_t)k_usb_req_set_address) {
     /* The SIE latches USBADDR and owns the IN-ZLP status stage itself; mirror
      * that and advance the device state to Address (HUM Ch 36.3). */
-    s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbaddr)] =
+    s_usb.reg[internal_usb_word((uint64_t)k_ra8_usb_off_usbaddr)] =
       (uint16_t)(s->w_value & (uint16_t)k_ra8_usbaddr_addr_mask);
     s_usb.dvsq = (uint16_t)k_ra8_dvsq_address;
-    usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
+    priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
     char line[k_usb_log_width];
     (void)
       snprintf(line, sizeof(line), "SET_ADDRESS: DVSQ -> Address (addr=%u)", (unsigned)s->w_value);
-    usb_log_line(line);
-    usb_raise_irq(uc);
+    priv_usb_log_line(line);
+    priv_usb_raise_irq(uc);
   }
 }
 
-/** @brief Sub-state k_sub_deliver: latch + raise CTRT, then pick the next sub. */
-static void host_step_deliver(uc_engine* uc, const usb_setup_step_t* s)
+/**
+ * @brief Sub-state k_sub_deliver: latch + raise CTRT, then pick the next sub.
+ * @details Sub-state k_sub_deliver: latch + raise ctrt, then pick the next sub; this step is contained within the board USB vhost model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] s Module state instance processed by the operation.
+ * @pre Arguments satisfy the ranges documented for host step deliver. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_step_deliver(uc_engine* uc, const usb_setup_step_t* s)
 {
-  host_deliver_setup(uc, s);
+  priv_host_deliver_setup(uc, s);
   s_host_wait = 0U;
   if ((s->bm_request_type & (uint8_t)k_usb_dir_device_to_host) != 0U) {
     s_host_substate = (uint8_t)k_sub_wait_in; /* control read: wait for data. */
   } else if (s->b_request == (uint8_t)k_usb_req_set_address) {
-    host_apply_no_data(uc, s);
+    priv_host_apply_no_data(uc, s);
     s_host_substate = (uint8_t)k_sub_next; /* SIE-handled; no device CCPL. */
   } else {
     s_host_substate = (uint8_t)k_sub_wait_ack; /* no/OUT-data: wait for CCPL. */
   }
 }
 
-/** @brief Sub-state k_sub_wait_in: await the device's control-IN response. */
-static void host_step_wait_in(void)
+/**
+ * @brief Sub-state k_sub_wait_in: await the device's control-IN response.
+ * @details Sub-state k_sub_wait_in: await the device's control-in response; this step is contained within the board USB vhost model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for host step wait in. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_step_wait_in(void)
 {
-  if (s_usb.dcp_in.valid && host_dcp_pid_buf()) {
-    host_drain_in();
+  if (s_usb.dcp_in.valid && priv_host_dcp_pid_buf()) {
+    internal_host_drain_in();
     s_host_substate = (uint8_t)k_sub_status;
     s_host_wait     = 0U;
     return;
   }
   s_host_wait++;
   if (s_host_wait > (uint32_t)k_usb_step_timeout) {
-    usb_log_count("STALLED waiting for control-IN data at step", (unsigned)s_host_step);
+    priv_usb_log_count("STALLED waiting for control-IN data at step", (unsigned)s_host_step);
     s_host_substate = (uint8_t)k_sub_status; /* push on; report the stall. */
     s_host_wait     = 0U;
   }
 }
 
-/** @brief Sub-state k_sub_status: deliver the control-read status stage. */
-static void host_step_status(uc_engine* uc)
+/**
+ * @brief Sub-state k_sub_status: deliver the control-read status stage.
+ * @details Sub-state k_sub_status: deliver the control-read status stage; this step is contained within the board USB vhost model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for host step status. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_step_status(uc_engine* uc)
 {
   s_usb.ctsq        = (uint16_t)k_ra8_ctsq_rdss; /* read status stage. */
   s_usb.setup_valid = false;
-  usb_intsts0_set((uint8_t)k_ra8_int0_bit_ctrt);
-  usb_raise_irq(uc);
+  priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_ctrt);
+  priv_usb_raise_irq(uc);
   s_host_substate = (uint8_t)k_sub_wait_ack;
   s_host_wait     = 0U;
 }
 
-/** @brief Sub-state k_sub_wait_ack: await the device's CCPL (transfer end). */
-static void host_step_wait_ack(void)
+/**
+ * @brief Sub-state k_sub_wait_ack: await the device's CCPL (transfer end).
+ * @details Sub-state k_sub_wait_ack: await the device's ccpl (transfer end); this step is contained within the board USB vhost model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for host step wait ack. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_step_wait_ack(void)
 {
-  if (host_take_ccpl()) {
+  if (priv_host_take_ccpl()) {
     s_host_substate = (uint8_t)k_sub_next;
     s_host_wait     = 0U;
     return;
@@ -377,89 +437,107 @@ static void host_step_wait_ack(void)
   }
 }
 
-/** @brief Number of steps in the enumeration script. */
-static uint32_t host_script_len(void)
+/**
+ * @brief Number of steps in the enumeration script.
+ * @details Number of steps in the enumeration script; this step is contained within the board USB vhost model and uses bounded caller or module-owned storage.
+ * @return The host script len result produced by the board USB vhost model.
+ * @retval value The operation-specific host script len value.
+ * @pre Arguments satisfy the ranges documented for host script len. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_host_script_len(void)
 {
-  return (uint32_t)(sizeof(k_enum_script) / sizeof(k_enum_script[0]));
+  return (uint32_t)(sizeof(s_k_enum_script) / sizeof(s_k_enum_script[0]));
 }
 
 /** @brief Mark the device CONFIGURED: advance DVSQ and raise DVST. */
-void host_mark_configured(uc_engine* uc)
+void priv_host_mark_configured(uc_engine* uc)
 {
   s_usb.dvsq = (uint16_t)k_ra8_dvsq_configured;
-  usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
-  usb_raise_irq(uc);
+  priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
+  priv_usb_raise_irq(uc);
   if (!s_configured) {
-    usb_log_line("SET_CONFIGURATION done: DVSQ -> Configured");
+    priv_usb_log_line("SET_CONFIGURATION done: DVSQ -> Configured");
   }
 }
 
-/** @brief Sub-state k_sub_next: record any post-step effect, advance the step. */
-static void host_step_next(uc_engine* uc, const usb_setup_step_t* s)
+/**
+ * @brief Sub-state k_sub_next: record any post-step effect, advance the step.
+ * @details Sub-state k_sub_next: record any post-step effect, advance the step; this step is contained within the board USB vhost model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] s Module state instance processed by the operation.
+ * @pre Arguments satisfy the ranges documented for host step next. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_step_next(uc_engine* uc, const usb_setup_step_t* s)
 {
   if (s->b_request == (uint8_t)k_usb_req_set_config) {
-    host_mark_configured(uc);
+    priv_host_mark_configured(uc);
   }
   s_host_step++;
   s_host_substate = (uint8_t)k_sub_deliver;
   s_host_wait     = 0U;
-  if (s_host_step >= host_script_len()) {
+  if (s_host_step >= internal_host_script_len()) {
     s_host_phase = (uint8_t)k_phase_configured;
     s_host_wait  = 0U;
   }
 }
 
 /** @brief Run one micro-step of the active enumeration script entry. */
-void host_run_setup_phase(uc_engine* uc)
+void priv_host_run_setup_phase(uc_engine* uc)
 {
-  if (s_host_step >= host_script_len()) {
+  if (s_host_step >= internal_host_script_len()) {
     s_host_phase = (uint8_t)k_phase_configured;
     return;
   }
-  const usb_setup_step_t* s = &k_enum_script[s_host_step];
+  const usb_setup_step_t* s = &s_k_enum_script[s_host_step];
   switch ((usb_host_sub_t)s_host_substate) {
     case k_sub_deliver:
-      host_step_deliver(uc, s);
+      internal_host_step_deliver(uc, s);
       break;
     case k_sub_wait_in:
-      host_step_wait_in();
+      internal_host_step_wait_in();
       break;
     case k_sub_status:
-      host_step_status(uc);
+      internal_host_step_status(uc);
       break;
     case k_sub_wait_ack:
-      host_step_wait_ack();
+      internal_host_step_wait_ack();
       break;
     case k_sub_next:
     default:
-      host_step_next(uc, s);
+      internal_host_step_next(uc, s);
       break;
   }
 }
 
 /** @brief Phase k_phase_idle: wait for the device pull-up, then bus-reset. */
-void host_run_idle_phase(uc_engine* uc)
+void priv_host_run_idle_phase(uc_engine* uc)
 {
-  if (!host_device_attached()) {
+  if (!priv_host_device_attached()) {
     return;
   }
-  usb_log_line("device pull-up detected (SYSCFG.DPRPU) -> bus reset");
+  priv_usb_log_line("device pull-up detected (SYSCFG.DPRPU) -> bus reset");
   s_usb.dvsq = (uint16_t)k_ra8_dvsq_default;
-  usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
-  usb_raise_irq(uc);
+  priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
+  priv_usb_raise_irq(uc);
   s_host_phase = (uint8_t)k_phase_reset;
   s_host_wait  = 0U;
 }
 
 /** @brief Phase k_phase_reset: hold reset a few ticks so the DCP re-arms. */
-void host_run_reset_phase(uc_engine* uc)
+void priv_host_run_reset_phase(uc_engine* uc)
 {
   /* Keep DVSQ at Default and re-raise DVST so the bridge's busreset_rearm runs
    * (it re-defaults DCPCFG/DCPMAXP/PIPECTR/INTENB0 -- HUM Ch 36.3). */
   s_usb.dvsq = (uint16_t)k_ra8_dvsq_default;
   if (s_host_wait == 0U) {
-    usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
-    usb_raise_irq(uc);
+    priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
+    priv_usb_raise_irq(uc);
   }
   s_host_wait++;
   if (s_host_wait >= (uint32_t)k_usb_reset_settle) {
@@ -470,8 +548,16 @@ void host_run_reset_phase(uc_engine* uc)
   }
 }
 
-/** @brief Deliver one bulk-OUT packet to the CDC data OUT pipe and signal BRDY. */
-static void host_echo_send_out(uc_engine* uc)
+/**
+ * @brief Deliver one bulk-OUT packet to the CDC data OUT pipe and signal BRDY.
+ * @details Deliver one bulk-out packet to the cdc data out pipe and signal brdy; this step is contained within the board USB vhost model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for host echo send out. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_echo_send_out(uc_engine* uc)
 {
   const uint32_t remaining = s_echo_out_len - s_echo_out_sent;
   const uint32_t chunk     = (remaining < (uint32_t)k_usb_pipe_mps) ? remaining : k_usb_pipe_mps;
@@ -481,12 +567,12 @@ static void host_echo_send_out(uc_engine* uc)
   b->rd    = 0U;
   b->ready = true;
   /* BRDYSTS bit for the OUT pipe: an OUT packet has landed (HUM Ch 36.2.12). */
-  const uint32_t w = usb_word((uint64_t)k_ra8_usb_off_brdysts);
+  const uint32_t w = internal_usb_word((uint64_t)k_ra8_usb_off_brdysts);
   s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << k_usb_bulk_out_pipe));
-  usb_intsts0_set((uint8_t)k_ra8_int0_bit_brdy);
+  priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_brdy);
   s_echo_out_sent += chunk;
-  usb_log_count("bulk OUT: delivered to data pipe", (unsigned)chunk);
-  usb_raise_irq(uc);
+  priv_usb_log_count("bulk OUT: delivered to data pipe", (unsigned)chunk);
+  priv_usb_raise_irq(uc);
 }
 
 /**
@@ -500,23 +586,23 @@ static void host_echo_send_out(uc_engine* uc)
  *
  * @param[in,out] uc Unicorn engine (to pend the USB interrupt).
  */
-void host_echo_read_in(uc_engine* uc)
+void priv_host_echo_read_in(uc_engine* uc)
 {
   usb_in_buf_t* b = &s_usb.pipe_in[k_usb_bulk_in_pipe];
   if (b->valid && (b->len > 0U)) {
     if (s_dev_class == (uint8_t)k_usb_class_hid) {
-      usb_hid_decode_report(b->data, b->len); /* interrupt-IN mouse report. */
+      internal_usb_hid_decode_report(b->data, b->len); /* interrupt-IN mouse report. */
     } else {
       s_echo_in_got += b->len;
-      usb_log_count("bulk IN: read echoed bytes from data pipe", (unsigned)b->len);
+      priv_usb_log_count("bulk IN: read echoed bytes from data pipe", (unsigned)b->len);
     }
     b->len   = 0U;
     b->valid = false;
     /* Acknowledge the IN transfer (BEMP) so the device can queue the next. */
-    const uint32_t w = usb_word((uint64_t)k_ra8_usb_off_bempsts);
+    const uint32_t w = internal_usb_word((uint64_t)k_ra8_usb_off_bempsts);
     s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << k_usb_bulk_in_pipe));
-    usb_intsts0_set((uint8_t)k_ra8_int0_bit_bemp);
-    usb_raise_irq(uc);
+    priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_bemp);
+    priv_usb_raise_irq(uc);
   } else if (b->valid) {
     b->valid = false; /* drained ZLP terminator. */
   }
@@ -570,8 +656,14 @@ bool            s_msc_inquiry_ok; /**< INQUIRY data phase completed.          */
  * @param[out] cdb      16-byte command block to fill (pre-zeroed).
  * @param[out] cdb_len  Length of the CDB.
  * @param[out] data_len Expected data-phase byte count.
+  * @details Build the scsi cdb for the scripted command @p cmd; this step is contained within the board USB vhost model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for host mass-storage build cdb. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static void host_msc_build_cdb(uint8_t cmd, uint8_t* cdb, uint8_t* cdb_len, uint32_t* data_len)
+RA8_INTERNAL static void
+internal_host_msc_build_cdb(uint8_t cmd, uint8_t* cdb, uint8_t* cdb_len, uint32_t* data_len)
 {
   for (uint32_t i = 0U; i < 16U; i++) {
     cdb[i] = 0U;
@@ -598,13 +690,21 @@ static void host_msc_build_cdb(uint8_t cmd, uint8_t* cdb, uint8_t* cdb_len, uint
   }
 }
 
-/** @brief Push the current command's CBW onto the bulk-OUT pipe (raise BRDY). */
-static void host_msc_send_cbw(uc_engine* uc)
+/**
+ * @brief Push the current command's CBW onto the bulk-OUT pipe (raise BRDY).
+ * @details Push the current command's cbw onto the bulk-out pipe (raise brdy); this step is contained within the board USB vhost model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for host mass-storage send cbw. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_msc_send_cbw(uc_engine* uc)
 {
   uint8_t  cdb[16];
   uint8_t  cdb_len  = 0U;
   uint32_t data_len = 0U;
-  host_msc_build_cdb(s_msc_cmd, cdb, &cdb_len, &data_len);
+  internal_host_msc_build_cdb(s_msc_cmd, cdb, &cdb_len, &data_len);
   s_msc_data_len = data_len;
   s_msc_data_got = 0U;
   s_msc_tag++;
@@ -635,14 +735,26 @@ static void host_msc_send_cbw(uc_engine* uc)
   b->len           = (uint16_t)k_msc_cbw_len;
   b->rd            = 0U;
   b->ready         = true;
-  const uint32_t w = usb_word((uint64_t)k_ra8_usb_off_brdysts);
+  const uint32_t w = internal_usb_word((uint64_t)k_ra8_usb_off_brdysts);
   s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << k_usb_bulk_out_pipe));
-  usb_intsts0_set((uint8_t)k_ra8_int0_bit_brdy);
-  usb_raise_irq(uc);
+  priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_brdy);
+  priv_usb_raise_irq(uc);
 }
 
-/** @brief Consume one IN buffer (data or CSW) and acknowledge it with BEMP. */
-static uint16_t host_msc_take_in(uc_engine* uc, uint8_t* out, uint16_t cap)
+/**
+ * @brief Consume one IN buffer (data or CSW) and acknowledge it with BEMP.
+ * @details Consume one in buffer (data or csw) and acknowledge it with bemp; this step is contained within the board USB vhost model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[out] out Destination storage receiving the computed result.
+ * @param[in] cap Cap input used by the operation.
+ * @return The host mass-storage take in result produced by the board USB vhost model.
+ * @retval value The operation-specific host mass-storage take in value.
+ * @pre Arguments satisfy the ranges documented for host mass-storage take in. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_host_msc_take_in(uc_engine* uc, uint8_t* out, uint16_t cap)
 {
   usb_in_buf_t* b = &s_usb.pipe_in[k_usb_bulk_in_pipe];
   if (!b->valid) {
@@ -654,15 +766,24 @@ static uint16_t host_msc_take_in(uc_engine* uc, uint8_t* out, uint16_t cap)
   }
   b->len           = 0U;
   b->valid         = false;
-  const uint32_t w = usb_word((uint64_t)k_ra8_usb_off_bempsts);
+  const uint32_t w = internal_usb_word((uint64_t)k_ra8_usb_off_bempsts);
   s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << k_usb_bulk_in_pipe));
-  usb_intsts0_set((uint8_t)k_ra8_int0_bit_bemp);
-  usb_raise_irq(uc);
+  priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_bemp);
+  priv_usb_raise_irq(uc);
   return n;
 }
 
-/** @brief Parse a READ CAPACITY (10) response into block count + size. */
-static void host_msc_parse_capacity(const uint8_t* d, uint16_t n)
+/**
+ * @brief Parse a READ CAPACITY (10) response into block count + size.
+ * @details Parse a read capacity (10) response into block count + size; this step is contained within the board USB vhost model and uses bounded caller or module-owned storage.
+ * @param[in] d D input used by the operation.
+ * @param[in] n Number of elements or bytes participating in the operation.
+ * @pre Arguments satisfy the ranges documented for host mass-storage parse capacity. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_msc_parse_capacity(const uint8_t* d, uint16_t n)
 {
   if (n < 8U) {
     return;
@@ -680,14 +801,22 @@ static void host_msc_parse_capacity(const uint8_t* d, uint16_t n)
   s_msc_blocks    = last_lba + 1U;
 }
 
-/** @brief Phase ::k_msc_send: push the next CBW, or finish the script. */
-static void host_msc_phase_send(uc_engine* uc)
+/**
+ * @brief Phase ::k_msc_send: push the next CBW, or finish the script.
+ * @details Phase ::k_msc_send: push the next cbw, or finish the script; this step is contained within the board USB vhost model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for host mass-storage phase send. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_msc_phase_send(uc_engine* uc)
 {
   if (s_msc_cmd >= (uint8_t)k_msc_cmd_count) {
     s_msc_phase = (uint8_t)k_msc_done;
     return;
   }
-  host_msc_send_cbw(uc);
+  internal_host_msc_send_cbw(uc);
   s_msc_phase = (uint8_t)k_msc_data;
   s_msc_wait  = 0U;
 }
@@ -708,12 +837,13 @@ static void host_msc_phase_send(uc_engine* uc)
  * @post The globals for the in-flight command reflect this burst.
  * @post @p d is unmodified.
  * @note Not thread-safe; mutates file-scope MSC state.
+  * @since 0.1.0
  */
-static void host_msc_record_data(const uint8_t* d, uint16_t n)
+RA8_INTERNAL static void internal_host_msc_record_data(const uint8_t* d, uint16_t n)
 {
   switch ((msc_script_cmd_t)s_msc_cmd) {
     case k_msc_cmd_read_capacity:
-      host_msc_parse_capacity(d, n);
+      internal_host_msc_parse_capacity(d, n);
       break;
     case k_msc_cmd_inquiry:
       s_msc_inquiry_ok = true;
@@ -726,15 +856,23 @@ static void host_msc_record_data(const uint8_t* d, uint16_t n)
   }
 }
 
-/** @brief Phase ::k_msc_data: drain the data phase until it is done or stalls. */
-static void host_msc_phase_data(uc_engine* uc)
+/**
+ * @brief Phase ::k_msc_data: drain the data phase until it is done or stalls.
+ * @details Phase ::k_msc_data: drain the data phase until it is done or stalls; this step is contained within the board USB vhost model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for host mass-storage phase data. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_msc_phase_data(uc_engine* uc)
 {
   uint8_t        buf[k_usb_in_cap];
-  const uint16_t n = host_msc_take_in(uc, buf, (uint16_t)sizeof(buf));
+  const uint16_t n = internal_host_msc_take_in(uc, buf, (uint16_t)sizeof(buf));
   if (n == 0U) {
     s_msc_wait++;
   } else {
-    host_msc_record_data(buf, n);
+    internal_host_msc_record_data(buf, n);
     s_msc_data_got += n;
     s_msc_wait = 0U;
   }
@@ -744,11 +882,19 @@ static void host_msc_phase_data(uc_engine* uc)
   }
 }
 
-/** @brief Phase ::k_msc_csw: take the CSW, then advance to the next command. */
-static void host_msc_phase_csw(uc_engine* uc)
+/**
+ * @brief Phase ::k_msc_csw: take the CSW, then advance to the next command.
+ * @details Phase ::k_msc_csw: take the csw, then advance to the next command; this step is contained within the board USB vhost model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for host mass-storage phase csw. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_msc_phase_csw(uc_engine* uc)
 {
   uint8_t        buf[k_usb_in_cap];
-  const uint16_t n = host_msc_take_in(uc, buf, (uint16_t)sizeof(buf));
+  const uint16_t n = internal_host_msc_take_in(uc, buf, (uint16_t)sizeof(buf));
   if ((n >= (uint16_t)k_msc_csw_len) || (s_msc_wait > (uint32_t)k_usb_step_timeout)) {
     s_msc_cmd++;
     s_msc_phase = (uint8_t)k_msc_send;
@@ -758,18 +904,26 @@ static void host_msc_phase_csw(uc_engine* uc)
   }
 }
 
-/** @brief Drive the MSC BOT state machine one tick while CONFIGURED. */
-static void host_msc_drive(uc_engine* uc)
+/**
+ * @brief Drive the MSC BOT state machine one tick while CONFIGURED.
+ * @details Drive the msc bot state machine one tick while configured; this step is contained within the board USB vhost model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @pre Arguments satisfy the ranges documented for host mass-storage drive. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB vhost model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_msc_drive(uc_engine* uc)
 {
   switch ((msc_phase_t)s_msc_phase) {
     case k_msc_send:
-      host_msc_phase_send(uc);
+      internal_host_msc_phase_send(uc);
       break;
     case k_msc_data:
-      host_msc_phase_data(uc);
+      internal_host_msc_phase_data(uc);
       break;
     case k_msc_csw:
-      host_msc_phase_csw(uc);
+      internal_host_msc_phase_csw(uc);
       break;
     case k_msc_done:
     default:
@@ -778,13 +932,13 @@ static void host_msc_drive(uc_engine* uc)
 }
 
 /** @brief Phase k_phase_configured: optionally drive the CDC bulk echo. */
-void host_run_configured_phase(uc_engine* uc)
+void priv_host_run_configured_phase(uc_engine* uc)
 {
   if (s_dev_class == (uint8_t)k_usb_class_msc) {
-    host_msc_drive(uc); /* run the BOT/SCSI script against the RAM disk. */
+    internal_host_msc_drive(uc); /* run the BOT/SCSI script against the RAM disk. */
     return;
   }
-  host_echo_read_in(uc);
+  priv_host_echo_read_in(uc);
   if (s_dev_class == (uint8_t)k_usb_class_hid) {
     return; /* keep polling the HID interrupt-IN pipe; reports keep flowing. */
   }
@@ -795,7 +949,7 @@ void host_run_configured_phase(uc_engine* uc)
   /* Pace one OUT packet, then let the device echo it back before the next. */
   if (s_echo_out_sent < s_echo_out_len) {
     if (s_host_wait == 0U) {
-      host_echo_send_out(uc);
+      internal_host_echo_send_out(uc);
     }
     s_host_wait++;
     if (s_host_wait >= (uint32_t)k_usb_reset_settle) {

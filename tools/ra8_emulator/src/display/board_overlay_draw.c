@@ -18,7 +18,7 @@
 
 /* 5x7 column-major font, ASCII 0x20..0x7E. Five bytes per glyph; bit b of a
  * column byte lights row b (0 = top). A public-domain 5x7 cell font. */
-static const uint8_t k_font5x7[(k_ovl_glyph_last - k_ovl_glyph_first) + 1U][k_ovl_glyph_w] = {
+static const uint8_t s_k_font5x7[(k_ovl_glyph_last - k_ovl_glyph_first) + 1U][k_ovl_glyph_w] = {
   {0x00, 0x00, 0x00, 0x00, 0x00}, /* (space) */
   {0x00, 0x00, 0x5F, 0x00, 0x00}, /* !       */
   {0x00, 0x07, 0x00, 0x07, 0x00}, /* "       */
@@ -131,113 +131,130 @@ uint16_t board_overlay_total_height(uint16_t panel_h)
   return (panel_h > (uint16_t)k_ovl_min_h) ? panel_h : (uint16_t)k_ovl_min_h;
 }
 
-/** @brief Plot one pixel if it lies inside the @p w by @p h composite. */
-void px(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, uint16_t color)
+/** @brief Plot one pixel if it lies inside the supplied surface. */
+void priv_px(board_overlay_surface_t* surface, int32_t x, int32_t y, uint16_t color)
 {
-  if ((x >= 0) && (y >= 0) && (x < (int32_t)w) && (y < (int32_t)h)) {
-    out[((size_t)y * (size_t)w) + (size_t)x] = color;
-  }
+  priv_fill_rect(surface, x, y, 1, 1, color);
 }
 
 /** @brief Fill the axis-aligned rectangle [x,x+rw) x [y,y+rh) with @p color. */
-void fill_rect(uint16_t* out,
-               uint16_t  w,
-               uint16_t  h,
-               int32_t   x,
-               int32_t   y,
-               int32_t   rw,
-               int32_t   rh,
-               uint16_t  color)
+void priv_fill_rect(board_overlay_surface_t* surface,
+                    int32_t                  x,
+                    int32_t                  y,
+                    int32_t                  rw,
+                    int32_t                  rh,
+                    uint16_t                 color)
 {
-  for (int32_t yy = 0; yy < rh; yy++) {
-    for (int32_t xx = 0; xx < rw; xx++) {
-      px(out, w, h, x + xx, y + yy, color);
-    }
+  if ((surface == nullptr) || !surface->ok || (surface->fill == nullptr) || (rw <= 0) ||
+      (rh <= 0)) {
+    return;
   }
+  const int64_t right64  = (int64_t)x + (int64_t)rw;
+  const int64_t bottom64 = (int64_t)y + (int64_t)rh;
+  const int32_t left     = (x > 0) ? x : 0;
+  const int32_t top      = (y > 0) ? y : 0;
+  const int32_t right =
+    (right64 < (int64_t)surface->width) ? (int32_t)right64 : (int32_t)surface->width;
+  const int32_t bottom =
+    (bottom64 < (int64_t)surface->height) ? (int32_t)bottom64 : (int32_t)surface->height;
+  if ((left >= right) || (top >= bottom)) {
+    return;
+  }
+  surface->ok = surface->fill(surface->context,
+                              (uint16_t)left,
+                              (uint16_t)top,
+                              (uint16_t)(right - left),
+                              (uint16_t)(bottom - top),
+                              color);
 }
 
-/** @brief Draw one ASCII glyph at scale @p sc; non-printable maps to space. */
-static void draw_glyph(uint16_t* out,
-                       uint16_t  w,
-                       uint16_t  h,
-                       int32_t   x,
-                       int32_t   y,
-                       char      ch,
-                       uint16_t  color,
-                       int32_t   sc)
+/**
+ * @brief Draw one ASCII glyph at scale @p sc; non-printable maps to space.
+ * @details Draw one ascii glyph at scale @p sc; non-printable maps to space; this step is contained within the board overlay draw model and uses bounded caller or module-owned storage.
+ * @param[in,out] surface Descriptor-backed presentation surface to access.
+ * @param[in] x Horizontal coordinate in pixels.
+ * @param[in] y Vertical coordinate in pixels.
+ * @param[in] ch Selected channel identifier.
+ * @param[in] color RGB color value used by the drawing operation.
+ * @param[in] sc Sc input used by the operation.
+ * @pre Arguments satisfy the ranges documented for draw glyph. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board overlay draw model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_draw_glyph(board_overlay_surface_t* surface,
+                                             int32_t                  x,
+                                             int32_t                  y,
+                                             char                     ch,
+                                             uint16_t                 color,
+                                             int32_t                  sc)
 {
   uint8_t c = (uint8_t)ch;
   if ((c < (uint8_t)k_ovl_glyph_first) || (c > (uint8_t)k_ovl_glyph_last)) {
     c = (uint8_t)k_ovl_glyph_first;
   }
-  const uint8_t* g = k_font5x7[c - (uint8_t)k_ovl_glyph_first];
+  const uint8_t* g = s_k_font5x7[c - (uint8_t)k_ovl_glyph_first];
   for (uint32_t col = 0U; col < (uint32_t)k_ovl_glyph_w; col++) {
     for (uint32_t row = 0U; row < (uint32_t)k_ovl_glyph_h; row++) {
       if (((g[col] >> row) & 1U) != 0U) {
-        fill_rect(out, w, h, x + ((int32_t)col * sc), y + ((int32_t)row * sc), sc, sc, color);
+        priv_fill_rect(surface, x + ((int32_t)col * sc), y + ((int32_t)row * sc), sc, sc, color);
       }
     }
   }
 }
 
 /** @brief Draw a NUL-terminated string; returns the x just past the last cell. */
-int32_t draw_text(uint16_t*   out,
-                  uint16_t    w,
-                  uint16_t    h,
-                  int32_t     x,
-                  int32_t     y,
-                  const char* s,
-                  uint16_t    color,
-                  int32_t     sc)
+int32_t priv_draw_text(board_overlay_surface_t* surface,
+                       int32_t                  x,
+                       int32_t                  y,
+                       const char*              s,
+                       uint16_t                 color,
+                       int32_t                  sc)
 {
   const int32_t adv = ((int32_t)k_ovl_glyph_w + 1) * sc;
   int32_t       cx  = x;
   for (uint32_t i = 0U; (s != nullptr) && (s[i] != '\0'); i++) {
-    draw_glyph(out, w, h, cx, y, s[i], color, sc);
+    internal_draw_glyph(surface, cx, y, s[i], color, sc);
     cx += adv;
   }
   return cx;
 }
 
 /** @brief Draw a section heading (accent colour) with a thin rule beneath it. */
-int32_t section_head(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, const char* title)
+int32_t priv_section_head(board_overlay_surface_t* surface, int32_t x, int32_t y, const char* title)
 {
-  draw_text(out, w, h, x, y, title, (uint16_t)k_ovl_accent, 1);
-  fill_rect(out,
-            w,
-            h,
-            x,
-            y + (int32_t)k_rule_dy,
-            (int32_t)k_ovl_sidebar_w - (2 * (int32_t)k_pad_x),
-            1,
-            (uint16_t)k_ovl_rule);
+  priv_draw_text(surface, x, y, title, (uint16_t)k_ovl_accent, 1);
+  priv_fill_rect(surface,
+                 x,
+                 y + (int32_t)k_rule_dy,
+                 (int32_t)k_ovl_sidebar_w - (2 * (int32_t)k_pad_x),
+                 1,
+                 (uint16_t)k_ovl_rule);
   return y + (int32_t)k_heading_gap;
 }
 
 /** @brief Draw a "label  value" row: dim label, bright value, returns next y. */
-int32_t kv_row(uint16_t*   out,
-               uint16_t    w,
-               uint16_t    h,
-               int32_t     x,
-               int32_t     y,
-               const char* label,
-               const char* value,
-               uint16_t    val_color)
+int32_t priv_kv_row(board_overlay_surface_t* surface,
+                    int32_t                  x,
+                    int32_t                  y,
+                    const char*              label,
+                    const char*              value,
+                    uint16_t                 val_color)
 {
   const int32_t adv      = ((int32_t)k_ovl_glyph_w + 1);
   const int32_t value_dx = (int32_t)k_kv_label_cols * adv; /* fixed label column so values align */
-  draw_text(out, w, h, x, y, label, (uint16_t)k_ovl_dim, 1);
-  draw_text(out, w, h, x + value_dx, y, value, val_color, 1);
+  priv_draw_text(surface, x, y, label, (uint16_t)k_ovl_dim, 1);
+  priv_draw_text(surface, x + value_dx, y, value, val_color, 1);
   return y + (int32_t)k_row_step;
 }
 
 /** @brief Blit the panel framebuffer into the composite's top-left region. */
-void blit_panel(uint16_t*       out,
-                uint16_t        w,
-                uint16_t        h,
-                const uint16_t* panel,
-                uint16_t        panel_w,
-                uint16_t        panel_h)
+void priv_blit_panel(uint16_t*       out,
+                     uint16_t        w,
+                     uint16_t        h,
+                     const uint16_t* panel,
+                     uint16_t        panel_w,
+                     uint16_t        panel_h)
 {
   for (uint16_t y = 0U; y < h; y++) {
     for (uint16_t x = 0U; x < panel_w; x++) {

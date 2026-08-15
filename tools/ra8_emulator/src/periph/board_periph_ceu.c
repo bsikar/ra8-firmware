@@ -40,6 +40,7 @@
 
 #include "board_console.h"
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief CEU register-window geometry (ra8_ceu_regs.h, Plane A view). */
 typedef enum : uint64_t {
@@ -92,31 +93,61 @@ typedef struct {
 static ceu_state_t s_ceu;
 static uint8_t     s_ceu_line[k_ceu_max_line]; /**< One-line fill scratch. */
 
-/** @brief Word index into the backing store for an in-window byte offset. */
-static uint32_t ceu_word(uint64_t off)
+/**
+ * @brief Word index into the backing store for an in-window byte offset.
+ * @details Word index into the backing store for an in-window byte offset; this step is contained within the board periph ceu model and uses bounded caller or module-owned storage.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The ceu word result produced by the board periph ceu model.
+ * @retval value The operation-specific ceu word value.
+ * @pre Arguments satisfy the ranges documented for ceu word. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ceu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_ceu_word(uint64_t off)
 {
   return (uint32_t)(off >> 2U);
 }
 
-/** @brief Destination line width (bytes): CDWDR stride, else CMCYR.HCYL. */
-static uint32_t ceu_line_bytes(void)
+/**
+ * @brief Destination line width (bytes): CDWDR stride, else CMCYR.HCYL.
+ * @details Destination line width (bytes): cdwdr stride, else cmcyr.hcyl; this step is contained within the board periph ceu model and uses bounded caller or module-owned storage.
+ * @return The ceu line bytes result produced by the board periph ceu model.
+ * @retval value The operation-specific ceu line bytes value.
+ * @pre Arguments satisfy the ranges documented for ceu line bytes. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ceu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_ceu_line_bytes(void)
 {
-  const uint32_t stride = s_ceu.reg[ceu_word(k_ceu_off_cdwdr)] & (uint32_t)k_ceu_capwr_hwdth;
+  const uint32_t stride =
+    s_ceu.reg[internal_ceu_word(k_ceu_off_cdwdr)] & (uint32_t)k_ceu_capwr_hwdth;
   if (stride != 0U) {
     return stride;
   }
-  return s_ceu.reg[ceu_word(k_ceu_off_cmcyr)] & (uint32_t)k_ceu_cmcyr_hcyl;
+  return s_ceu.reg[internal_ceu_word(k_ceu_off_cmcyr)] & (uint32_t)k_ceu_cmcyr_hcyl;
 }
 
-/** @brief Destination line count: CAPWR.VWDTH, else CMCYR.VCYL. */
-static uint32_t ceu_line_count(void)
+/**
+ * @brief Destination line count: CAPWR.VWDTH, else CMCYR.VCYL.
+ * @details Destination line count: capwr.vwdth, else cmcyr.vcyl; this step is contained within the board periph ceu model and uses bounded caller or module-owned storage.
+ * @return The ceu line count result produced by the board periph ceu model.
+ * @retval value The operation-specific ceu line count value.
+ * @pre Arguments satisfy the ranges documented for ceu line count. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ceu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_ceu_line_count(void)
 {
-  const uint32_t vwdth = (s_ceu.reg[ceu_word(k_ceu_off_capwr)] >> (uint32_t)k_ceu_shift_vert) &
-                         (uint32_t)k_ceu_field_12bit;
+  const uint32_t vwdth =
+    (s_ceu.reg[internal_ceu_word(k_ceu_off_capwr)] >> (uint32_t)k_ceu_shift_vert) &
+    (uint32_t)k_ceu_field_12bit;
   if (vwdth != 0U) {
     return vwdth;
   }
-  return (s_ceu.reg[ceu_word(k_ceu_off_cmcyr)] >> (uint32_t)k_ceu_shift_vert) &
+  return (s_ceu.reg[internal_ceu_word(k_ceu_off_cmcyr)] >> (uint32_t)k_ceu_shift_vert) &
          (uint32_t)k_ceu_field_14bit;
 }
 
@@ -139,11 +170,12 @@ static uint32_t ceu_line_count(void)
  * @post On false, no guest memory and no CETCR bit changed.
  * @note Not thread-safe; the run loop is single-threaded host-side.
  * @since 0.1.0
+  * @retval true The ceu do capture condition holds or completed successfully; false otherwise.
  */
-static bool ceu_do_capture(uc_engine* uc)
+RA8_INTERNAL static bool internal_ceu_do_capture(uc_engine* uc)
 {
-  uint32_t line_bytes = ceu_line_bytes();
-  uint32_t lines      = ceu_line_count();
+  uint32_t line_bytes = internal_ceu_line_bytes();
+  uint32_t lines      = internal_ceu_line_count();
   if ((line_bytes == 0U) || (lines == 0U)) {
     return false; /* No geometry programmed -> no capture. */
   }
@@ -153,7 +185,7 @@ static bool ceu_do_capture(uc_engine* uc)
   if (lines > (uint32_t)k_ceu_max_lines) {
     lines = (uint32_t)k_ceu_max_lines;
   }
-  const uint32_t dst = s_ceu.reg[ceu_word(k_ceu_off_cdayr)];
+  const uint32_t dst = s_ceu.reg[internal_ceu_word(k_ceu_off_cdayr)];
   if (dst == 0U) {
     return false; /* No destination buffer -> no capture. */
   }
@@ -161,15 +193,15 @@ static bool ceu_do_capture(uc_engine* uc)
     for (uint32_t x = 0U; x < line_bytes; x++) {
       s_ceu_line[x] = (uint8_t)((x + y) & (uint32_t)k_ceu_pattern_mask);
     }
-    (void)uc_mem_write(uc,
-                       (uint64_t)dst + ((uint64_t)y * (uint64_t)line_bytes),
-                       s_ceu_line,
-                       (size_t)line_bytes);
+    (void)emu_mem_write(uc,
+                        (uint64_t)dst + ((uint64_t)y * (uint64_t)line_bytes),
+                        s_ceu_line,
+                        (size_t)line_bytes);
   }
   const uint32_t total = line_bytes * lines;
-  s_ceu.reg[ceu_word(k_ceu_off_cetcr)] |= (uint32_t)k_ceu_cetcr_cpe;
-  s_ceu.reg[ceu_word(k_ceu_off_cdssr)] = total;
-  s_ceu.reg[ceu_word(k_ceu_off_capsr)] &= ~(uint32_t)k_ceu_capsr_ce;
+  s_ceu.reg[internal_ceu_word(k_ceu_off_cetcr)] |= (uint32_t)k_ceu_cetcr_cpe;
+  s_ceu.reg[internal_ceu_word(k_ceu_off_cdssr)] = total;
+  s_ceu.reg[internal_ceu_word(k_ceu_off_capsr)] &= ~(uint32_t)k_ceu_capsr_ce;
   s_ceu.frames++;
   s_ceu.last_bytes = total;
   s_ceu.last_w     = line_bytes;
@@ -184,13 +216,25 @@ static bool ceu_do_capture(uc_engine* uc)
                  (unsigned)total);
   board_console_push(k_board_console_ch_dma, ln);
   if (board_periph_trace()) {
-    (void)fprintf(stderr, "  [trace] CEU capture %ux%u -> 0x%08X\n", line_bytes, lines, dst);
+    (void)priv_emu_io_errf("  [trace] CEU capture %ux%u -> 0x%08X\n", line_bytes, lines, dst);
   }
   return true;
 }
 
-/** @brief MMIO read inside the CEU window. */
-static uint64_t ceu_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the CEU window.
+ * @details MMIO read inside the ceu window; this step is contained within the board periph ceu model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The ceu read result produced by the board periph ceu model.
+ * @retval value The operation-specific ceu read value.
+ * @pre Arguments satisfy the ranges documented for ceu read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ceu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_ceu_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -203,70 +247,95 @@ static uint64_t ceu_read(uc_engine* uc, uint64_t addr, unsigned size)
   }
   if (off == (uint64_t)k_ceu_off_capsr) {
     /* CPKIL self-clears (reset is instantaneous in the model). */
-    return (uint64_t)(s_ceu.reg[ceu_word(off)] & ~(uint32_t)k_ceu_capsr_cpkil);
+    return (uint64_t)(s_ceu.reg[internal_ceu_word(off)] & ~(uint32_t)k_ceu_capsr_cpkil);
   }
-  return (uint64_t)s_ceu.reg[ceu_word(off)];
+  return (uint64_t)s_ceu.reg[internal_ceu_word(off)];
 }
 
-/** @brief MMIO write inside the CEU window: latch, then act on CAPSR. */
-static void ceu_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the CEU window: latch, then act on CAPSR.
+ * @details MMIO write inside the ceu window: latch, then act on capsr; this step is contained within the board periph ceu model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for ceu write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ceu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_ceu_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)size;
   const uint64_t off = addr - (uint64_t)k_ceu_base;
   if (off >= (uint64_t)k_ceu_span) {
     return;
   }
-  s_ceu.reg[ceu_word(off)] = (uint32_t)value;
+  s_ceu.reg[internal_ceu_word(off)] = (uint32_t)value;
   if (off != (uint64_t)k_ceu_off_capsr) {
     return;
   }
   if (((uint32_t)value & (uint32_t)k_ceu_capsr_cpkil) != 0U) {
     /* Software reset: drop pending events and CE; CPKIL self-clears. */
-    s_ceu.reg[ceu_word(k_ceu_off_cetcr)] = 0U;
-    s_ceu.reg[ceu_word(k_ceu_off_capsr)] =
+    s_ceu.reg[internal_ceu_word(k_ceu_off_cetcr)] = 0U;
+    s_ceu.reg[internal_ceu_word(k_ceu_off_capsr)] =
       (uint32_t)value & ~((uint32_t)k_ceu_capsr_cpkil | (uint32_t)k_ceu_capsr_ce);
     return;
   }
   if (((uint32_t)value & (uint32_t)k_ceu_capsr_ce) != 0U) {
-    (void)ceu_do_capture(uc); /* Arm -> synthesise a frame + latch CETCR.CPE. */
+    (void)internal_ceu_do_capture(uc); /* Arm -> synthesise a frame + latch CETCR.CPE. */
   }
 }
 
-/** @brief Clear the CEU model to power-on state. */
-static void ceu_reset(void)
+/**
+ * @brief Clear the CEU model to power-on state.
+ * @details Clear the ceu model to power-on state; this step is contained within the board periph ceu model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for ceu reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ceu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_ceu_reset(void)
 {
   s_ceu = (ceu_state_t){};
 }
 
-/** @brief Print the CEU capture summary if any frame was synthesised. */
-static void ceu_report(void)
+/**
+ * @brief Print the CEU capture summary if any frame was synthesised.
+ * @details Print the ceu capture summary if any frame was synthesised; this step is contained within the board periph ceu model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for ceu report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph ceu model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_ceu_report(void)
 {
   if (s_ceu.frames == 0U) {
     return;
   }
-  (void)fprintf(stderr,
-                "  CEU           : frames=%u last=%ux%u (%u bytes) synth test-pattern\n",
-                s_ceu.frames,
-                s_ceu.last_w,
-                s_ceu.last_h,
-                s_ceu.last_bytes);
+  (void)priv_emu_io_errf("  CEU           : frames=%u last=%ux%u (%u bytes) synth test-pattern\n",
+                         s_ceu.frames,
+                         s_ceu.last_w,
+                         s_ceu.last_h,
+                         s_ceu.last_bytes);
 }
 
 /** @brief This block's descriptor (static lifetime; the core keeps the pointer). */
-static const board_periph_block_t k_ceu_block = {
+static const board_periph_block_t s_k_ceu_block = {
   .base   = (uint64_t)k_ceu_base,
   .span   = (uint64_t)k_ceu_span,
   .order  = (uint32_t)k_block_order_i2c, /* Synchronous on CAPSR.CE; no tick. */
-  .read   = ceu_read,
-  .write  = ceu_write,
+  .read   = internal_ceu_read,
+  .write  = internal_ceu_write,
   .tick   = nullptr,
-  .reset  = ceu_reset,
-  .report = ceu_report,
+  .reset  = internal_ceu_reset,
+  .report = internal_ceu_report,
   .name   = "CEU",
 };
 
 /** @brief Self-register the CEU block before main runs (decentralized). */
-[[gnu::constructor]] static void board_periph_ceu_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_board_periph_ceu_register(void)
 {
-  board_periph_register_block(&k_ceu_block);
+  board_periph_register_block(&s_k_ceu_block);
 }

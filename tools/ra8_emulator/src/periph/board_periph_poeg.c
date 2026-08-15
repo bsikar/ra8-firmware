@@ -44,6 +44,7 @@
 #include <stdio.h>
 
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief POEG block geometry (ra8_poeg_regs.h, r_poeg_regs_t). */
 typedef enum : uint64_t {
@@ -85,8 +86,15 @@ static poeg_state_t s_poeg;
  * @details ST reflects whether any request flag is set, so the model ORs it in
  * when @c k_poegg_trig is non-zero and clears it otherwise -- the hardware's
  * output-disable STATE latch behaviour with no physical pin to scope.
+  * @param[in] writable Writable input used by the operation.
+ * @return The poeg with st result produced by the board periph poeg model.
+ * @retval value The operation-specific poeg with st value.
+ * @pre Arguments satisfy the ranges documented for poeg with st. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph poeg model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static uint32_t poeg_with_st(uint32_t writable)
+RA8_INTERNAL static uint32_t internal_poeg_with_st(uint32_t writable)
 {
   if ((writable & (uint32_t)k_poegg_trig) != 0U) {
     return writable | (uint32_t)k_poegg_st;
@@ -94,14 +102,33 @@ static uint32_t poeg_with_st(uint32_t writable)
   return writable & ~(uint32_t)k_poegg_st;
 }
 
-/** @brief Reset the POEG model to power-on state. */
-static void poeg_reset(void)
+/**
+ * @brief Reset the POEG model to power-on state.
+ * @details Reset the poeg model to power-on state; this step is contained within the board periph poeg model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for poeg reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph poeg model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_poeg_reset(void)
 {
   s_poeg = (poeg_state_t){};
 }
 
-/** @brief MMIO read inside the POEG window. */
-static uint64_t poeg_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the POEG window.
+ * @details MMIO read inside the poeg window; this step is contained within the board periph poeg model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The poeg read result produced by the board periph poeg model.
+ * @retval value The operation-specific poeg read value.
+ * @pre Arguments satisfy the ranges documented for poeg read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph poeg model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_poeg_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -117,8 +144,20 @@ static uint64_t poeg_read(uc_engine* uc, uint64_t addr, unsigned size)
   return 0U;
 }
 
-/** @brief MMIO write inside the POEG window. */
-static void poeg_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the POEG window.
+ * @details MMIO write inside the poeg window; this step is contained within the board periph poeg model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for poeg write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph poeg model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_poeg_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
@@ -135,7 +174,7 @@ static void poeg_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
    * request flags so a software-stop assert / clear moves ST as hardware would. */
   const uint32_t writable = (uint32_t)value & ~(uint32_t)k_poegg_st;
   const uint32_t prev     = s_poeg.poegg[group];
-  const uint32_t next     = poeg_with_st(writable);
+  const uint32_t next     = internal_poeg_with_st(writable);
   s_poeg.poegg[group]     = next;
   if (((prev & (uint32_t)k_poegg_st) == 0U) && ((next & (uint32_t)k_poegg_st) != 0U)) {
     s_poeg.asserts++;
@@ -145,31 +184,39 @@ static void poeg_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
   }
 }
 
-/** @brief End-of-run POEG section: shutoff assert / re-enable counts. */
-static void poeg_report(void)
+/**
+ * @brief End-of-run POEG section: shutoff assert / re-enable counts.
+ * @details End-of-run poeg section: shutoff assert / re-enable counts; this step is contained within the board periph poeg model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for poeg report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph poeg model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_poeg_report(void)
 {
   if ((s_poeg.asserts == 0U) && (s_poeg.clears == 0U)) {
     return; /* Untouched: stay quiet. */
   }
-  (void)
-    fprintf(stderr, "  POEG          : shutoffs=%u re-enables=%u\n", s_poeg.asserts, s_poeg.clears);
+  (void)priv_emu_io_errf("  POEG          : shutoffs=%u re-enables=%u\n",
+                         s_poeg.asserts,
+                         s_poeg.clears);
 }
 
 /** @brief POEG block descriptor (self-registered with the core). */
-static const board_periph_block_t k_poeg_block = {
+static const board_periph_block_t s_k_poeg_block = {
   .base   = (uint64_t)k_poeg_base,
   .span   = (uint64_t)k_poeg_span,
   .order  = (uint32_t)k_poeg_block_order,
-  .read   = poeg_read,
-  .write  = poeg_write,
+  .read   = internal_poeg_read,
+  .write  = internal_poeg_write,
   .tick   = nullptr,
-  .reset  = poeg_reset,
-  .report = poeg_report,
+  .reset  = internal_poeg_reset,
+  .report = internal_poeg_report,
   .name   = "POEG",
 };
 
 /** @brief Register the POEG block before main (host constructor). */
-[[gnu::constructor]] static void poeg_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_poeg_block_register(void)
 {
-  board_periph_register_block(&k_poeg_block);
+  board_periph_register_block(&s_k_poeg_block);
 }

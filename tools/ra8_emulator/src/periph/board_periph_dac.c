@@ -30,6 +30,7 @@
 
 #include "board_console.h"
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief Console-tap sizing for DAC output summaries. */
 typedef enum : uint32_t {
@@ -66,14 +67,36 @@ typedef struct {
 
 static dac_inst_t s_dac[k_dac_count];
 
-/** @brief Word index into an instance's backing store for an in-instance offset. */
-static uint32_t dac_word(uint64_t inst_off)
+/**
+ * @brief Word index into an instance's backing store for an in-instance offset.
+ * @details Word index into an instance's backing store for an in-instance offset; this step is contained within the board periph dac model and uses bounded caller or module-owned storage.
+ * @param[in] inst_off Inst off input used by the operation.
+ * @return The dac word result produced by the board periph dac model.
+ * @retval value The operation-specific dac word value.
+ * @pre Arguments satisfy the ranges documented for dac word. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph dac model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_dac_word(uint64_t inst_off)
 {
   return (uint32_t)(inst_off >> 2U);
 }
 
-/** @brief MMIO read inside the DAC window: read back the latched register. */
-static uint64_t dac_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the DAC window: read back the latched register.
+ * @details MMIO read inside the dac window: read back the latched register; this step is contained within the board periph dac model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The dac read result produced by the board periph dac model.
+ * @retval value The operation-specific dac read value.
+ * @pre Arguments satisfy the ranges documented for dac read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph dac model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_dac_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
@@ -86,11 +109,23 @@ static uint64_t dac_read(uc_engine* uc, uint64_t addr, unsigned size)
   if (inst_off >= (uint64_t)k_dac_stride) {
     return 0U;
   }
-  return s_dac[inst].reg[dac_word(inst_off)];
+  return s_dac[inst].reg[internal_dac_word(inst_off)];
 }
 
-/** @brief MMIO write inside the DAC window: latch the value; track DADR. */
-static void dac_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the DAC window: latch the value; track DADR.
+ * @details MMIO write inside the dac window: latch the value; track dadr; this step is contained within the board periph dac model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for dac write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph dac model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_dac_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)size;
@@ -103,7 +138,7 @@ static void dac_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
   if (inst_off >= (uint64_t)k_dac_stride) {
     return;
   }
-  s_dac[inst].reg[dac_word(inst_off)] = (uint32_t)value;
+  s_dac[inst].reg[internal_dac_word(inst_off)] = (uint32_t)value;
   if (inst_off == (uint64_t)k_dac_off_dadr) {
     const uint16_t code = (uint16_t)((uint32_t)value & (uint32_t)k_dac_dadr_mask);
     s_dac[inst].last    = code;
@@ -129,53 +164,67 @@ static void dac_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
       board_console_push(k_board_console_ch_dac, ln);
     }
     if (board_periph_trace()) {
-      (void)fprintf(stderr, "  [trace] DAC_B%u <- code=%u\n", inst, code);
+      (void)priv_emu_io_errf("  [trace] DAC_B%u <- code=%u\n", inst, code);
     }
   }
 }
 
-/** @brief Clear both DAC_B instances' registers and observability state. */
-static void dac_reset(void)
+/**
+ * @brief Clear both DAC_B instances' registers and observability state.
+ * @details Clear both dac_b instances' registers and observability state; this step is contained within the board periph dac model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for dac reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph dac model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_dac_reset(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_dac_count; i++) {
     s_dac[i] = (dac_inst_t){};
   }
 }
 
-/** @brief Print one line per DAC_B instance that the firmware drove. */
-static void dac_report(void)
+/**
+ * @brief Print one line per DAC_B instance that the firmware drove.
+ * @details Print one line per dac_b instance that the firmware drove; this step is contained within the board periph dac model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for dac report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph dac model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_dac_report(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_dac_count; i++) {
     if (s_dac[i].writes == 0U) {
       continue;
     }
-    (void)fprintf(stderr,
-                  "  DAC_B%u        : writes=%u last=%u peak=%u enabled=%s\n",
-                  i,
-                  s_dac[i].writes,
-                  s_dac[i].last,
-                  s_dac[i].peak,
-                  (s_dac[i].reg[dac_word((uint64_t)k_dac_off_dacr0)] & (uint32_t)k_dac_dacen_mask)
-                    ? "yes"
-                    : "no");
+    (void)priv_emu_io_errf(
+      "  DAC_B%u        : writes=%u last=%u peak=%u enabled=%s\n",
+      i,
+      s_dac[i].writes,
+      s_dac[i].last,
+      s_dac[i].peak,
+      (s_dac[i].reg[internal_dac_word((uint64_t)k_dac_off_dacr0)] & (uint32_t)k_dac_dacen_mask)
+        ? "yes"
+        : "no");
   }
 }
 
 /** @brief This block's descriptor (static lifetime; the core keeps the pointer). */
-static const board_periph_block_t k_dac_block = {
+static const board_periph_block_t s_k_dac_block = {
   .base   = (uint64_t)k_dac_base,
   .span   = (uint64_t)k_dac_span,
   .order  = (uint32_t)k_block_order_i2c, /* After the timers/UART; no tick. */
-  .read   = dac_read,
-  .write  = dac_write,
+  .read   = internal_dac_read,
+  .write  = internal_dac_write,
   .tick   = nullptr,
-  .reset  = dac_reset,
-  .report = dac_report,
+  .reset  = internal_dac_reset,
+  .report = internal_dac_report,
   .name   = "DAC_B",
 };
 
 /** @brief Self-register the DAC_B block before main runs (decentralized). */
-[[gnu::constructor]] static void board_periph_dac_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_board_periph_dac_register(void)
 {
-  board_periph_register_block(&k_dac_block);
+  board_periph_register_block(&s_k_dac_block);
 }

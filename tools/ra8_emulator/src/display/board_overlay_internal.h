@@ -45,42 +45,42 @@ typedef enum : int32_t {
 
 /** @brief Sidebar geometry and palette (RGB565). */
 typedef enum : uint32_t {
-  k_ovl_sidebar_w     = 520U,    /**< Sidebar width added on the right.         */
-  k_ovl_min_h         = 600U,    /**< Minimum composite height.                 */
-  k_ovl_bg            = 0x10A2U, /**< Dark slate sidebar background.            */
-  k_ovl_bg_alt        = 0x18E3U, /**< Slightly lighter band (section panel).    */
-  k_ovl_panel_bg      = 0x0000U, /**< Fill behind a missing/short panel.        */
-  k_ovl_divider       = 0x4208U, /**< Vertical divider between panel/sidebar.   */
-  k_ovl_rule          = 0x39C7U, /**< Thin horizontal section rule.             */
-  k_ovl_text          = 0xCE59U, /**< Light-grey body text.                     */
-  k_ovl_dim           = 0x8410U, /**< Dim label text (field names).             */
-  k_ovl_heading       = 0xFFFFU, /**< White heading text.                       */
-  k_ovl_accent        = 0x5D1FU, /**< Cyan-blue accent (title / headings).      */
-  k_ovl_ok            = 0x3666U, /**< Green "running / ok" indicator.           */
-  k_ovl_amber         = 0xFD20U, /**< Amber "paused / attention" indicator.     */
-  k_ovl_console_bg    = 0x0841U, /**< Console panel background (near-black).    */
-  k_ovl_console_txt   = 0x07E6U, /**< Console text (terminal green).            */
-  k_ovl_console_new   = 0xFFFFU, /**< Newest console line (white highlight).    */
-  k_ovl_tab_on_bg     = 0x2965U, /**< Active console tab background (blue).     */
-  k_ovl_tab_off_bg    = 0x18E3U, /**< Inactive console tab background (dim).    */
-  k_ovl_tab_on_txt    = 0xFFFFU, /**< Active console tab caption (white).       */
-  k_ovl_tab_off_txt   = 0x8410U, /**< Inactive tab caption, has traffic (grey). */
-  k_ovl_tab_empty_txt = 0x4208U, /**< Inactive tab caption, no traffic (dim).   */
-  k_ovl_led_off       = 0x2104U, /**< Unlit LED dot.                            */
-  k_ovl_led_ring      = 0x6B4DU, /**< LED dot outline.                          */
-  k_ovl_btn_border    = 0x8430U, /**< On-screen button outline.                 */
-  k_ovl_btn_up        = 0x3186U, /**< Button face, released.                    */
-  k_ovl_btn_down      = 0x05E0U, /**< Button face, pressed (green).             */
-  k_ovl_btn_label     = 0xFFFFU, /**< Button caption text.                      */
-  k_ovl_red           = 0xF800U, /**< Red gauge fill (low / critical SOC).      */
-  k_ovl_glyph_w       = 5U,      /**< Font glyph width in pixels.               */
-  k_ovl_glyph_h       = 7U,      /**< Font glyph height in pixels.              */
-  k_ovl_glyph_first   = 0x20U,   /**< First glyph in the font table (space).    */
-  k_ovl_glyph_last    = 0x7EU,   /**< Last glyph in the font table (tilde).     */
+  k_ovl_sidebar_w     = k_board_overlay_sidebar_width_px, /**< Sidebar width.                     */
+  k_ovl_min_h         = k_board_overlay_min_height_px,    /**< Minimum height.                    */
+  k_ovl_bg            = 0x10A2U,                          /**< Dark slate sidebar background.     */
+  k_ovl_bg_alt        = 0x18E3U,                          /**< Lighter section band.              */
+  k_ovl_panel_bg      = 0x0000U,                          /**< Fill behind a missing/short panel. */
+  k_ovl_divider       = 0x4208U,                          /**< Panel/sidebar divider.             */
+  k_ovl_rule          = 0x39C7U,                          /**< Thin horizontal section rule.      */
+  k_ovl_text          = 0xCE59U,                          /**< Light-grey body text.              */
+  k_ovl_dim           = 0x8410U,                          /**< Dim label text (field names).      */
+  k_ovl_heading       = 0xFFFFU,                          /**< White heading text.                */
+  k_ovl_accent        = 0x5D1FU,                          /**< Cyan title accent.                 */
+  k_ovl_ok            = 0x3666U,                          /**< Green "running / ok" indicator.    */
+  k_ovl_amber         = 0xFD20U,                          /**< Amber attention indicator.         */
+  k_ovl_console_bg    = 0x0841U,                          /**< Near-black console background.     */
+  k_ovl_console_txt   = 0x07E6U,                          /**< Console text (terminal green).     */
+  k_ovl_console_new   = 0xFFFFU,                          /**< Newest line (white).               */
+  k_ovl_tab_on_bg     = 0x2965U,                          /**< Active tab background.             */
+  k_ovl_tab_off_bg    = 0x18E3U,                          /**< Inactive tab background.           */
+  k_ovl_tab_on_txt    = 0xFFFFU,                          /**< Active tab caption.                */
+  k_ovl_tab_off_txt   = 0x8410U,                          /**< Inactive tab with traffic.         */
+  k_ovl_tab_empty_txt = 0x4208U,                          /**< Inactive empty tab.                */
+  k_ovl_led_off       = 0x2104U,                          /**< Unlit LED dot.                     */
+  k_ovl_led_ring      = 0x6B4DU,                          /**< LED dot outline.                   */
+  k_ovl_btn_border    = 0x8430U,                          /**< On-screen button outline.          */
+  k_ovl_btn_up        = 0x3186U,                          /**< Button face, released.             */
+  k_ovl_btn_down      = 0x05E0U,                          /**< Button face, pressed (green).      */
+  k_ovl_btn_label     = 0xFFFFU,                          /**< Button caption text.               */
+  k_ovl_red           = 0xF800U,                          /**< Low-SOC red gauge.                 */
+  k_ovl_glyph_w       = 5U,                               /**< Font glyph width in pixels.        */
+  k_ovl_glyph_h       = 7U,                               /**< Font glyph height in pixels.       */
+  k_ovl_glyph_first   = 0x20U,                            /**< First font glyph (space).          */
+  k_ovl_glyph_last    = 0x7EU,                            /**< Last font glyph (tilde).           */
 } board_overlay_cfg_t;
 
 /**
- * @brief Fixed layout of the on-screen SW1 / SW2 buttons (sidebar-relative px).
+ * @brief Fixed layout of the on-screen SW1 / SW2 buttons (sidebar-relative priv_px).
  *
  * @details Both ::draw_buttons and ::board_overlay_hit_button derive the button
  * rectangles from these constants, so the drawn face and the click hit-box stay
@@ -148,50 +148,126 @@ typedef enum : uint64_t {
   k_sd_unit_div = 1024ULL, /**< Bytes per KiB step (KiB->MiB->GiB ladder). */
 } overlay_sd_unit_t;
 
-/** @brief Plot one clipped pixel into the composite (draw primitive). */
-RA8_PRIV void px(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, uint16_t color);
+/**
+ * @brief Plot one clipped pixel into the composite (draw primitive).
+ * @details Plot one clipped pixel into the composite (draw primitive); this step is contained within the board overlay model and uses bounded caller or module-owned storage.
+ * @param[in,out] surface Descriptor-backed presentation surface to access.
+ * @param[in] x Horizontal coordinate in pixels.
+ * @param[in] y Vertical coordinate in pixels.
+ * @param[in] color RGB color value used by the drawing operation.
+ * @pre Arguments satisfy the ranges documented for px. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board overlay model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_px(board_overlay_surface_t* surface, int32_t x, int32_t y, uint16_t color);
 
-/** @brief Fill a clipped rectangle in the composite (draw primitive). */
-RA8_PRIV void fill_rect(uint16_t* out,
-                        uint16_t  w,
-                        uint16_t  h,
-                        int32_t   x,
-                        int32_t   y,
-                        int32_t   rw,
-                        int32_t   rh,
-                        uint16_t  color);
+/**
+ * @brief Fill a clipped rectangle in the composite (draw primitive).
+ * @details Fill a clipped rectangle in the composite (draw primitive); this step is contained within the board overlay model and uses bounded caller or module-owned storage.
+ * @param[in,out] surface Descriptor-backed presentation surface to access.
+ * @param[in] x Horizontal coordinate in pixels.
+ * @param[in] y Vertical coordinate in pixels.
+ * @param[in] rw Rw input used by the operation.
+ * @param[in] rh Rh input used by the operation.
+ * @param[in] color RGB color value used by the drawing operation.
+ * @pre Arguments satisfy the ranges documented for fill rect. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board overlay model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_fill_rect(board_overlay_surface_t* surface,
+                             int32_t                  x,
+                             int32_t                  y,
+                             int32_t                  rw,
+                             int32_t                  rh,
+                             uint16_t                 color);
 
-/** @brief Draw a NUL-terminated string; returns the x after the last glyph. */
-RA8_PRIV int32_t draw_text(uint16_t*   out,
-                           uint16_t    w,
-                           uint16_t    h,
-                           int32_t     x,
-                           int32_t     y,
-                           const char* s,
-                           uint16_t    color,
-                           int32_t     scale);
+/**
+ * @brief Draw a NUL-terminated string; returns the x after the last glyph.
+ * @details Draw a nul-terminated string; returns the x after the last glyph; this step is contained within the board overlay model and uses bounded caller or module-owned storage.
+ * @param[in,out] surface Descriptor-backed presentation surface to access.
+ * @param[in] x Horizontal coordinate in pixels.
+ * @param[in] y Vertical coordinate in pixels.
+ * @param[in] s Module state instance processed by the operation.
+ * @param[in] color RGB color value used by the drawing operation.
+ * @param[in] scale Scale input used by the operation.
+ * @return The draw text result produced by the board overlay model.
+ * @retval value The operation-specific draw text value.
+ * @pre Arguments satisfy the ranges documented for draw text. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board overlay model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV int32_t priv_draw_text(board_overlay_surface_t* surface,
+                                int32_t                  x,
+                                int32_t                  y,
+                                const char*              s,
+                                uint16_t                 color,
+                                int32_t                  scale);
 
-/** @brief Draw a section heading (accent colour) with a thin rule beneath it. */
-RA8_PRIV int32_t
-section_head(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, const char* title);
+/**
+ * @brief Draw a section heading (accent colour) with a thin rule beneath it.
+ * @details Draw a section heading (accent colour) with a thin rule beneath it; this step is contained within the board overlay model and uses bounded caller or module-owned storage.
+ * @param[in,out] surface Descriptor-backed presentation surface to access.
+ * @param[in] x Horizontal coordinate in pixels.
+ * @param[in] y Vertical coordinate in pixels.
+ * @param[in] title Title input used by the operation.
+ * @return The section head result produced by the board overlay model.
+ * @retval value The operation-specific section head value.
+ * @pre Arguments satisfy the ranges documented for section head. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board overlay model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV int32_t priv_section_head(board_overlay_surface_t* surface,
+                                   int32_t                  x,
+                                   int32_t                  y,
+                                   const char*              title);
 
-/** @brief Draw a "label  value" row: dim label, coloured value; returns next y. */
-RA8_PRIV int32_t kv_row(uint16_t*   out,
-                        uint16_t    w,
-                        uint16_t    h,
-                        int32_t     x,
-                        int32_t     y,
-                        const char* label,
-                        const char* value,
-                        uint16_t    val_color);
+/**
+ * @brief Draw a "label  value" row: dim label, coloured value; returns next y.
+ * @details Draw a "label  value" row: dim label, coloured value; returns next y; this step is contained within the board overlay model and uses bounded caller or module-owned storage.
+ * @param[in,out] surface Descriptor-backed presentation surface to access.
+ * @param[in] x Horizontal coordinate in pixels.
+ * @param[in] y Vertical coordinate in pixels.
+ * @param[in] label NUL-terminated label used by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @param[in] val_color Val color input used by the operation.
+ * @return The kv row result produced by the board overlay model.
+ * @retval value The operation-specific kv row value.
+ * @pre Arguments satisfy the ranges documented for kv row. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board overlay model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV int32_t priv_kv_row(board_overlay_surface_t* surface,
+                             int32_t                  x,
+                             int32_t                  y,
+                             const char*              label,
+                             const char*              value,
+                             uint16_t                 val_color);
 
-/** @brief Blit the rendered panel into the composite's panel region. */
-RA8_PRIV void blit_panel(uint16_t*       out,
-                         uint16_t        w,
-                         uint16_t        h,
-                         const uint16_t* panel,
-                         uint16_t        panel_w,
-                         uint16_t        panel_h);
+/**
+ * @brief Blit the rendered panel into the composite's panel region.
+ * @details Blit the rendered panel into the composite's panel region; this step is contained within the board overlay model and uses bounded caller or module-owned storage.
+ * @param[out] out Destination storage receiving the computed result.
+ * @param[in] w W input used by the operation.
+ * @param[in] h H input used by the operation.
+ * @param[in] panel Panel input used by the operation.
+ * @param[in] panel_w Panel w input used by the operation.
+ * @param[in] panel_h Panel h input used by the operation.
+ * @pre Arguments satisfy the ranges documented for blit panel. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board overlay model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_blit_panel(uint16_t*       out,
+                              uint16_t        w,
+                              uint16_t        h,
+                              const uint16_t* panel,
+                              uint16_t        panel_w,
+                              uint16_t        panel_h);
 
 #ifdef __cplusplus
 }

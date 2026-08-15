@@ -23,7 +23,7 @@
  * unlocked) it reads @c 0x0FBE0107 and the engine rasterises.
  *
  * @c PDCTRGD is PRC1-protected (HUM Ch 13.1 Table 13.1 p 521), so writes are
- * routed through ::board_prcr_group_unlocked and silently discarded while that
+ * routed through ::priv_board_prcr_group_unlocked and silently discarded while that
  * group is locked -- the same silence the hardware gives.
  *
  * The model completes gating instantly: @c PDCSF (control-in-progress) always
@@ -41,6 +41,7 @@
 #include "board_periph_block.h"
 #include "board_periph_pdctr_internal.h"
 #include "board_periph_prcr_internal.h"
+#include "emu_host_io_internal.h"
 #include "ra8_attributes.h"
 
 /** @brief PDCTRGD window geometry (HUM Ch 11.2.14 p 452). */
@@ -71,20 +72,39 @@ typedef struct {
 
 static pdctr_state_t s_pdctr;
 
-/** @brief Return PDCTRGD to its documented reset value: domain gated OFF. */
-static void pdctr_reset(void)
+/**
+ * @brief Return PDCTRGD to its documented reset value: domain gated OFF.
+ * @details Return pdctrgd to its documented reset value: domain gated off; this step is contained within the board periph pdctr model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for pdctr reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph pdctr model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_pdctr_reset(void)
 {
   s_pdctr         = (pdctr_state_t){};
   s_pdctr.pdctrgd = (uint8_t)k_pdctr_reset_value;
 }
 
-RA8_PRIV bool board_pdctr_graphics_powered(void)
+RA8_PRIV bool priv_board_pdctr_graphics_powered(void)
 {
   return (uint8_t)(s_pdctr.pdctrgd & (uint8_t)k_pdctr_pdpgsf_mask) == 0U;
 }
 
-/** @brief MMIO read of PDCTRGD: PDDE as written, status flags derived. */
-static uint64_t pdctr_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read of PDCTRGD: PDDE as written, status flags derived.
+ * @details MMIO read of pdctrgd: pdde as written, status flags derived; this step is contained within the board periph pdctr model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The pdctr read result produced by the board periph pdctr model.
+ * @retval value The operation-specific pdctr read value.
+ * @pre Arguments satisfy the ranges documented for pdctr read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph pdctr model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_pdctr_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)addr;
@@ -100,15 +120,24 @@ static uint64_t pdctr_read(uc_engine* uc, uint64_t addr, unsigned size)
  * 1 = power off), PDCSF reports a transition in progress and PDPGSF reports
  * the resulting gate state. Gating is modelled as instantaneous, so PDCSF
  * always settles to 0 and PDPGSF simply follows PDDE.
+  * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for pdctr write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph pdctr model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
  */
-static void pdctr_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+RA8_INTERNAL static void
+internal_pdctr_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
   (void)addr;
   (void)size;
   /* HUM Ch 13.1 Table 13.1 p 521 lists PDCTRGD under PRC1: a write with that
    * group locked is discarded by the hardware with no fault and no flag. */
-  if (!board_prcr_group_unlocked((uint16_t)k_board_prcr_grp1_lpm)) {
+  if (!priv_board_prcr_group_unlocked((uint16_t)k_board_prcr_grp1_lpm)) {
     s_pdctr.blocked++;
     return;
   }
@@ -117,44 +146,51 @@ static void pdctr_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t va
     s_pdctr.pdctrgd = (uint8_t)(k_pdctr_pdde_mask | k_pdctr_pdpgsf_mask);
     return;
   }
-  if (!board_pdctr_graphics_powered()) {
+  if (!priv_board_pdctr_graphics_powered()) {
     s_pdctr.power_on++;
   }
   s_pdctr.pdctrgd = 0U; /* PDDE=0, PDCSF=0 (settled), PDPGSF=0 (powered). */
 }
 
-/** @brief End-of-run graphics power-domain section. */
-static void pdctr_report(void)
+/**
+ * @brief End-of-run graphics power-domain section.
+ * @details End-of-run graphics power-domain section; this step is contained within the board periph pdctr model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for pdctr report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph pdctr model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_pdctr_report(void)
 {
   if (s_pdctr.blocked != 0U) {
     /* Loud: PDCTRGD writes need PRCR.PRC1 unlocked or the domain stays dark. */
-    (void)fprintf(stderr,
-                  "  PWR-GRAPHICS  : PDCTRGD writes DROPPED=%u (PRCR.PRC1 locked: unlock 0xA502)\n",
-                  s_pdctr.blocked);
+    (void)priv_emu_io_errf(
+      "  PWR-GRAPHICS  : PDCTRGD writes DROPPED=%u (PRCR.PRC1 locked: unlock 0xA502)\n",
+      s_pdctr.blocked);
     return;
   }
   if (s_pdctr.power_on == 0U) {
     return; /* Untouched: stay quiet (domain still gated, as at reset). */
   }
-  (void)fprintf(stderr, "  PWR-GRAPHICS  : graphics power domain on (DRW/GLCDC/MIPI/VIN)\n");
+  (void)priv_emu_io_errf("  PWR-GRAPHICS  : graphics power domain on (DRW/GLCDC/MIPI/VIN)\n");
 }
 
 /** @brief Graphics power-domain block descriptor (self-registered). */
-static const board_periph_block_t k_pdctr_block = {
+static const board_periph_block_t s_k_pdctr_block = {
   .base   = (uint64_t)k_pdctr_gd_base,
   .span   = (uint64_t)k_pdctr_gd_span,
   .order  = (uint32_t)k_pdctr_block_order,
-  .read   = pdctr_read,
-  .write  = pdctr_write,
+  .read   = internal_pdctr_read,
+  .write  = internal_pdctr_write,
   .tick   = nullptr,
-  .reset  = pdctr_reset,
-  .report = pdctr_report,
+  .reset  = internal_pdctr_reset,
+  .report = internal_pdctr_report,
   .name   = "PWR-GRAPHICS",
 };
 
 /** @brief Register the power-domain block before main (host constructor). */
-[[gnu::constructor]] static void pdctr_block_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_pdctr_block_register(void)
 {
-  board_periph_register_block(&k_pdctr_block);
-  pdctr_reset();
+  board_periph_register_block(&s_k_pdctr_block);
+  internal_pdctr_reset();
 }

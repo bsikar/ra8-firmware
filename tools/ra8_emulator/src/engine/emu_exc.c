@@ -25,6 +25,7 @@
 #include "board_periph.h"
 #include "emu_console.h"
 #include "emu_engine.h"
+#include "emu_host_io_internal.h"
 #include "emu_memmap.h"
 #include "emu_seams.h"
 
@@ -65,8 +66,14 @@ static bool     s_pendsv_stop;               /**< Chunk ended on a PENDSVSET.   
 static bool     s_bkpt_hit;                  /**< Firmware executed a BKPT.      */
 static uint32_t s_bkpt_pc;                   /**< PC of the BKPT that halted.    */
 
-/** @brief Priority value (lower = higher) of the active handler, or sentinel. */
-static uint32_t exc_active_prio(void)
+/**
+ * @brief Priority value (lower = higher) of the active handler, or sentinel. @details Priority value (lower = higher) of the active handler, or sentinel; this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @return The exc active prio result produced by the emu exc model. @retval value The operation-specific exc active prio value.
+ * @pre Arguments satisfy the ranges documented for exc active prio. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu exc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note Synchronous; transfers no heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_exc_active_prio(void)
 {
   return (s_exc_depth == 0U) ? (uint32_t)k_exc_prio_none : s_exc_stack[s_exc_depth - 1U];
 }
@@ -83,8 +90,7 @@ static uint32_t exc_active_prio(void)
  *
  * @param[in,out] uc      Unicorn engine.
  * @param[in]     exc_num Exception/vector number (11, 14, or 15).
- * @return The 8-bit configured priority (0 = highest, 0xFF = lowest).
- * @retval 0xFF when @p exc_num is not one of the modelled system handlers.
+ * @return The 8-bit configured priority (0 = highest, 0xFF = lowest). @retval 0xFF when @p exc_num is not one of the modelled system handlers.
  *
  * @pre @p uc is an initialised engine with the PPB mapped as RAM.
  * @pre SystemInit / tx_initialize_low_level have programmed SHPR2/SHPR3.
@@ -95,7 +101,7 @@ static uint32_t exc_active_prio(void)
  *       relies on.
  * @since 0.1.0
  */
-static uint32_t exc_priority(uc_engine* uc, uint32_t exc_num)
+RA8_INTERNAL static uint32_t internal_exc_priority(uc_engine* uc, uint32_t exc_num)
 {
   if (exc_num == (uint32_t)k_exc_svcall) {
     return (rd32(uc, (uint64_t)k_scb_shpr2) >> (3U * (uint32_t)k_byte_bits)) &
@@ -112,8 +118,18 @@ static uint32_t exc_priority(uc_engine* uc, uint32_t exc_num)
   return (uint32_t)k_exc_prio_max;
 }
 
-/** @brief Stack the basic {R0-R3,R12,LR,PC,xPSR} frame + optional FP frame at @p sp. */
-static void exc_stack_frame(uc_engine* uc, uint32_t sp, bool fp_active, uint32_t frame_xpsr)
+/**
+ * @brief Stack the basic {R0-R3,R12,LR,PC,xPSR} frame + optional FP frame at @p sp. @details Stack the basic {r0-r3,r12,lr,pc,xpsr} frame + optional fp frame at @p sp; this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] sp Sp input used by the operation.
+ * @param[in] fp_active Fp active input used by the operation.
+ * @param[in] frame_xpsr Frame xpsr input used by the operation.
+ * @pre Arguments satisfy the ranges documented for exc stack frame. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu exc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note Synchronous; transfers no heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_exc_stack_frame(uc_engine* uc, uint32_t sp, bool fp_active, uint32_t frame_xpsr)
 {
   wr32(uc, (uint64_t)sp + 0U, reg_get(uc, UC_ARM_REG_R0));
   wr32(uc, (uint64_t)sp + 4U, reg_get(uc, UC_ARM_REG_R1));
@@ -136,8 +152,17 @@ static void exc_stack_frame(uc_engine* uc, uint32_t sp, bool fp_active, uint32_t
   }
 }
 
-/** @brief Select the EXC_RETURN magic for the outgoing mode/stack/FP state. */
-static uint32_t exc_return_value(bool in_thread, bool use_psp, bool fp_active)
+/**
+ * @brief Select the EXC_RETURN magic for the outgoing mode/stack/FP state. @details Select the exc_return magic for the outgoing mode/stack/fp state; this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @param[in] in_thread In thread input used by the operation.
+ * @param[in] use_psp Use psp input used by the operation.
+ * @param[in] fp_active Fp active input used by the operation.
+ * @return The exc return value result produced by the emu exc model. @retval value The operation-specific exc return value value.
+ * @pre Arguments satisfy the ranges documented for exc return value. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu exc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note Synchronous; transfers no heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_exc_return_value(bool in_thread, bool use_psp, bool fp_active)
 {
   /* EXC_RETURN encodes where to unstack: Thread/PSP, Thread/MSP, or (when an
    * exception pre-empts another) Handler/MSP. */
@@ -207,12 +232,12 @@ void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler)
     sp -= (uint32_t)k_fp_frame_extra;
   }
 
-  exc_stack_frame(uc, sp, fp_active, frame_xpsr);
+  internal_exc_stack_frame(uc, sp, fp_active, frame_xpsr);
 
   /* Commit the new value of whichever stack the frame went onto. */
   reg_set(uc, sp_reg, sp);
 
-  const uint32_t exc_ret = exc_return_value(in_thread, use_psp, fp_active);
+  const uint32_t exc_ret = internal_exc_return_value(in_thread, use_psp, fp_active);
 
   /* Handler mode always runs on MSP with CONTROL.SPSEL clear. */
   reg_set(uc, UC_ARM_REG_CONTROL, control & ~(uint32_t)k_control_spsel);
@@ -226,13 +251,20 @@ void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler)
   reg_set(uc, UC_ARM_REG_PC, handler & ~1U);
 
   if (s_exc_depth < (uint32_t)k_exc_nest_max) {
-    s_exc_stack[s_exc_depth] = exc_priority(uc, exc_num);
+    s_exc_stack[s_exc_depth] = internal_exc_priority(uc, exc_num);
     s_exc_depth++;
   }
 }
 
-/** @brief Restore the Armv8-M FP extended frame (S0-S15 + FPSCR) from @p sp. */
-static void exc_restore_fp_frame(uc_engine* uc, uint32_t sp)
+/**
+ * @brief Restore the Armv8-M FP extended frame (S0-S15 + FPSCR) from @p sp. @details Restore the armv8-m fp extended frame (s0-s15 + fpscr) from @p sp; this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] sp Sp input used by the operation.
+ * @pre Arguments satisfy the ranges documented for exc restore fp frame. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu exc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_exc_restore_fp_frame(uc_engine* uc, uint32_t sp)
 {
   /* Armv8-M FP extended frame (EXC_RETURN bit4 clear): S0-S15 + FPSCR sit above
    * the basic frame. Restore them so the thread's scalar FP state survives.
@@ -246,8 +278,18 @@ static void exc_restore_fp_frame(uc_engine* uc, uint32_t sp)
   reg_set(uc, UC_ARM_REG_FPSCR, rd32(uc, (uint64_t)sp + (uint64_t)k_frame_off_fpscr));
 }
 
-/** @brief Restore CONTROL.SPSEL + xPSR/IPSR for the returned-to context. */
-static void exc_restore_mode(uc_engine* uc, uint32_t xpsr, bool to_thread, bool to_psp)
+/**
+ * @brief Restore CONTROL.SPSEL + xPSR/IPSR for the returned-to context. @details Restore control.spsel + xpsr/ipsr for the returned-to context; this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] xpsr Xpsr input used by the operation.
+ * @param[in] to_thread To thread input used by the operation.
+ * @param[in] to_psp To psp input used by the operation.
+ * @pre Arguments satisfy the ranges documented for exc restore mode. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu exc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_exc_restore_mode(uc_engine* uc, uint32_t xpsr, bool to_thread, bool to_psp)
 {
   /* Restore mode: on return to Thread, CONTROL.SPSEL follows EXC_RETURN bit2;
    * on return to a pre-empted handler the core stays on MSP. */
@@ -308,7 +350,7 @@ void exc_return(uc_engine* uc, uint32_t exc_ret)
   const uint32_t xpsr = rd32(uc, (uint64_t)sp + (uint64_t)k_frame_off_xpsr);
 
   if (fp_frame) {
-    exc_restore_fp_frame(uc, sp);
+    internal_exc_restore_fp_frame(uc, sp);
   }
 
   sp += (uint32_t)k_exc_frame_bytes;
@@ -327,7 +369,7 @@ void exc_return(uc_engine* uc, uint32_t exc_ret)
   reg_set(uc, UC_ARM_REG_R12, r12);
   reg_set(uc, UC_ARM_REG_LR, lr);
 
-  exc_restore_mode(uc, xpsr, to_thread, to_psp);
+  internal_exc_restore_mode(uc, xpsr, to_thread, to_psp);
 
   /* Active SP becomes whichever stack the returned-to context uses. */
   reg_set(uc, UC_ARM_REG_SP, reg_get(uc, to_psp && to_thread ? UC_ARM_REG_PSP : UC_ARM_REG_MSP));
@@ -347,8 +389,13 @@ void exc_return(uc_engine* uc, uint32_t exc_ret)
  * returns ThreadX uses (0xFFFFFFBC basic, 0xFFFFFFAC with an FP frame), where
  * bit6 (S) is clear. Nothing in this firmware's map executes at 0xFFFFFFxx, so
  * a fetch into that range is always an exception return, never a real branch.
+  * @param[in] pc Guest program-counter value associated with the operation.
+ * @return The is exc return result produced by the emu exc model. @retval true The is exc return condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for is exc return. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu exc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
  */
-static bool is_exc_return(uint64_t pc)
+RA8_INTERNAL static bool internal_is_exc_return(uint64_t pc)
 {
   return (pc & (uint64_t)k_exc_ret_v8_mask) == (uint64_t)k_exc_ret_v8_mask;
 }
@@ -359,15 +406,13 @@ static bool is_exc_return(uint64_t pc)
  * @param[in,out] uc        Unicorn engine.
  * @param[in]     vtor_base Fallback vector base used when VTOR reads as 0.
  * @param[in]     exc_num   Exception/vector index to look up.
- * @return Handler entry address with the Thumb bit cleared.
- * @retval 0 when no usable handler is installed at that vector slot.
+ * @return Handler entry address with the Thumb bit cleared. @retval 0 when no usable handler is installed at that vector slot.
  *
  * @pre @p uc has the vector table mapped at VTOR (or @p vtor_base).
  * @pre @p exc_num is a valid vector index (< table length).
  * @post No engine state is modified (read-only).
  * @post The returned address (when non-zero) is halfword-aligned code.
- * @note VTOR lives in PPB RAM here, written by SystemInit at boot.
- * @since 0.1.0
+ * @note VTOR lives in PPB RAM here, written by SystemInit at boot. @since 0.1.0
  */
 uint32_t exc_vector(uc_engine* uc, uint32_t vtor_base, uint32_t exc_num)
 {
@@ -403,10 +448,13 @@ uint32_t exc_vector(uc_engine* uc, uint32_t vtor_base, uint32_t exc_num)
  *
  * @pre @p uc has stopped at an instruction boundary; PRIMASK already checked.
  * @post At most one IRQ is taken; its ISPR pending bit is cleared if so.
- * @note If no handler is installed at the vector, the IRQ is dropped, not spun.
- * @since 0.1.0
+ * @note If no handler is installed at the vector, the IRQ is dropped, not spun. @since 0.1.0
+  * @retval true The exc take periph interrupt condition holds or completed successfully; false otherwise.
+ * @pre The call executes on the emulator's single owning thread.
+ * @post Ownership of caller-supplied storage is unchanged.
  */
-static bool exc_take_periph_irq(uc_engine* uc, uint32_t vtor_base, uint32_t active)
+RA8_INTERNAL static bool
+internal_exc_take_periph_irq(uc_engine* uc, uint32_t vtor_base, uint32_t active)
 {
   uint32_t irq = 0U;
   if (!board_periph_next_irq(&irq)) {
@@ -485,7 +533,7 @@ bool exc_take_pending(uc_engine* uc, uint32_t vtor_base, bool allow_systick)
   if ((primask & 1U) != 0U) {
     return false; /* interrupts masked -- no exception may be taken now */
   }
-  const uint32_t active = exc_active_prio();
+  const uint32_t active = internal_exc_active_prio();
 
   /* SysTick first: highest-priority of the modelled exceptions, so it can
    * pre-empt a lower-priority PendSV that is spinning for a runnable thread.
@@ -496,7 +544,7 @@ bool exc_take_pending(uc_engine* uc, uint32_t vtor_base, bool allow_systick)
       (rd32(uc, (uint64_t)k_syst_csr) & (uint32_t)k_syst_csr_run) == (uint32_t)k_syst_csr_run;
     if (!armed) {
       s_systick_pending = false; /* disabled SysTick: drop the pended tick */
-    } else if (exc_priority(uc, (uint32_t)k_exc_systick) < active) {
+    } else if (internal_exc_priority(uc, (uint32_t)k_exc_systick) < active) {
       const uint32_t handler = exc_vector(uc, vtor_base, (uint32_t)k_exc_systick);
       if (handler != 0U) {
         s_systick_pending = false;
@@ -510,7 +558,7 @@ bool exc_take_pending(uc_engine* uc, uint32_t vtor_base, bool allow_systick)
   /* PendSV: taken when the firmware has requested a context switch. */
   uint32_t icsr = rd32(uc, (uint64_t)k_scb_icsr);
   if ((icsr & (1U << (uint32_t)k_icsr_pendsvset)) != 0U) {
-    if (exc_priority(uc, (uint32_t)k_exc_pendsv) < active) {
+    if (internal_exc_priority(uc, (uint32_t)k_exc_pendsv) < active) {
       const uint32_t handler = exc_vector(uc, vtor_base, (uint32_t)k_exc_pendsv);
       if (handler != 0U) {
         /* Hardware clears PENDSVSET when PendSV is activated. */
@@ -526,7 +574,7 @@ bool exc_take_pending(uc_engine* uc, uint32_t vtor_base, bool allow_systick)
   /* Peripheral NVIC IRQs queued by the ICU model (timer overflow / underflow
    * routed through IELSR). Taken last among the modelled exceptions but via the
    * identical real entry/return path, with NVIC IPR priority honoured. */
-  return exc_take_periph_irq(uc, vtor_base, active);
+  return internal_exc_take_periph_irq(uc, vtor_base, active);
 }
 
 /**
@@ -538,7 +586,7 @@ bool exc_take_pending(uc_engine* uc, uint32_t vtor_base, bool allow_systick)
  * @pre @p type is one of the UC_MEM_*_UNMAPPED values.
  * @post No state is modified.
  */
-static const char* unmapped_access_kind(uc_mem_type type)
+RA8_INTERNAL static const char* internal_unmapped_access_kind(uc_mem_type type)
 {
   if (type == UC_MEM_READ_UNMAPPED) {
     return "read";
@@ -549,9 +597,25 @@ static const char* unmapped_access_kind(uc_mem_type type)
   return "fetch";
 }
 
-/** @brief Hook fired on access to unmapped memory (peripheral surface gap). */
-static bool
-on_unmapped(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t value, void* user)
+/**
+ * @brief Hook fired on access to unmapped memory (peripheral surface gap). @details Hook fired on access to unmapped memory (peripheral surface gap); this step is contained within the emu exc model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] type Type input used by the operation.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @param[in,out] user Hook context supplied when the callback was registered.
+ * @return The on unmapped result produced by the emu exc model. @retval true The on unmapped condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for on unmapped. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu exc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_on_unmapped(uc_engine*  uc,
+                                              uc_mem_type type,
+                                              uint64_t    addr,
+                                              int         size,
+                                              int64_t     value,
+                                              void*       user)
 {
   (void)size;
   (void)value;
@@ -560,16 +624,15 @@ on_unmapped(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t va
    * an exception return (the handler ran "BX lr" with an EXC_RETURN magic in
    * LR). Capture it and stop cleanly so the run loop can unstack the frame and
    * resume; the Unicorn fetch-fault error this produces is expected/handled. */
-  if ((type == UC_MEM_FETCH_UNMAPPED) && is_exc_return(addr)) {
+  if ((type == UC_MEM_FETCH_UNMAPPED) && internal_is_exc_return(addr)) {
     s_exc_return_pc  = addr;
     s_exc_return_hit = true;
     (void)uc_emu_stop(uc);
     return false;
   }
-  (void)fprintf(stderr,
-                "  UNMAPPED %s @ 0x%08llX (extend the memory/peripheral map)\n",
-                unmapped_access_kind(type),
-                (unsigned long long)addr);
+  (void)priv_emu_io_errf("  UNMAPPED %s @ 0x%08llX (extend the memory/peripheral map)\n",
+                         internal_unmapped_access_kind(type),
+                         (unsigned long long)addr);
   return false; /* stop emulation and report */
 }
 
@@ -593,8 +656,12 @@ on_unmapped(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t va
  * @param[in]     pc   PC of the trapping instruction.
  * @param[in]     insn The 32-bit opcode word read at @p pc.
  * @return true if @p insn was an SG / FPCXTNS opcode and was handled.
+  * @retval true The on intr sec insn condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for on intr sec insn. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu exc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
  */
-static bool on_intr_sec_insn(uc_engine* uc, uint32_t pc, uint32_t insn)
+RA8_INTERNAL static bool internal_on_intr_sec_insn(uc_engine* uc, uint32_t pc, uint32_t insn)
 {
   if (insn == (uint32_t)k_armv8m_sg_opcode) {
     const uint32_t next = pc + (uint32_t)k_thumb2_insn_bytes;
@@ -608,7 +675,7 @@ static bool on_intr_sec_insn(uc_engine* uc, uint32_t pc, uint32_t insn)
     if (insn == (uint32_t)k_fpcxtns_push) {
       sp -= (uint32_t)k_word_bytes;
       const uint32_t zero = 0U;
-      (void)uc_mem_write(uc, (uint64_t)sp, &zero, sizeof(zero));
+      (void)emu_mem_write(uc, (uint64_t)sp, &zero, sizeof(zero));
     } else {
       sp += (uint32_t)k_word_bytes;
     }
@@ -636,8 +703,12 @@ static bool on_intr_sec_insn(uc_engine* uc, uint32_t pc, uint32_t insn)
  * @param[in]     pc   PC of the trapping instruction.
  * @param[in]     insn The 32-bit opcode word read at @p pc.
  * @return true if @p insn was a BKPT and the core was halted.
+  * @retval true The on intr bkpt condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for on intr bkpt. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu exc model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership. @since 0.1.0
  */
-static bool on_intr_bkpt(uc_engine* uc, uint32_t pc, uint32_t insn)
+RA8_INTERNAL static bool internal_on_intr_bkpt(uc_engine* uc, uint32_t pc, uint32_t insn)
 {
   if (((uint16_t)(insn & (uint32_t)k_lo16_mask) & (uint16_t)k_bkpt_hw_mask) ==
       (uint16_t)k_bkpt_hw_base) {
@@ -678,7 +749,7 @@ static bool on_intr_bkpt(uc_engine* uc, uint32_t pc, uint32_t insn)
  *       ignored so unrelated traps fall through.
  * @since 0.1.0
  */
-static void on_intr(uc_engine* uc, uint32_t int_no, void* user_data)
+RA8_INTERNAL static void internal_on_intr(uc_engine* uc, uint32_t int_no, void* user_data)
 {
   (void)int_no;
   uint32_t pc = 0U;
@@ -690,7 +761,7 @@ static void on_intr(uc_engine* uc, uint32_t int_no, void* user_data)
    * masked off, but the stack/mode selector bits 2/3 intact). Unstack the basic
    * frame and resume the interrupted context. This is how every handler that
    * ra8_emulator vectors in (SysTick / PendSV / SVCall) returns. */
-  if (is_exc_return((uint64_t)pc)) {
+  if (internal_is_exc_return((uint64_t)pc)) {
     s_exc_return_pc  = (uint64_t)pc;
     s_exc_return_hit = true;
     (void)uc_emu_stop(uc);
@@ -714,14 +785,14 @@ static void on_intr(uc_engine* uc, uint32_t int_no, void* user_data)
    * underflows -- the tz_nsc_cgc_usb fault. The matching `BXNS`/`BLXNS` returns
    * are handled below. */
   uint32_t insn = 0U;
-  (void)uc_mem_read(uc, (uint64_t)pc, &insn, sizeof(insn));
+  (void)emu_mem_read(uc, (uint64_t)pc, &insn, sizeof(insn));
 
   /* Armv8-M Security Extension instructions (SG / FPCXTNS) reduce to their plain
    * effects in this single-domain model; a BKPT is a deliberate firmware halt. */
-  if (on_intr_sec_insn(uc, pc, insn)) {
+  if (internal_on_intr_sec_insn(uc, pc, insn)) {
     return;
   }
-  if (on_intr_bkpt(uc, pc, insn)) {
+  if (internal_on_intr_bkpt(uc, pc, insn)) {
     return;
   }
 
@@ -767,11 +838,14 @@ static void on_intr(uc_engine* uc, uint32_t int_no, void* user_data)
  * @pre The hook is registered for the 4-byte ICSR word only.
  * @post Emulation is stopped iff the write sets PENDSVSET.
  * @post The PENDSVSET bit is left in PPB RAM for exc_take_pending to read.
- * @note PENDSVCLR / status-only writes do not stop the chunk.
- * @since 0.1.0
+ * @note PENDSVCLR / status-only writes do not stop the chunk. @since 0.1.0
  */
-static void
-on_icsr_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t value, void* user)
+RA8_INTERNAL static void internal_on_icsr_write(uc_engine*  uc,
+                                                uc_mem_type type,
+                                                uint64_t    addr,
+                                                int         size,
+                                                int64_t     value,
+                                                void*       user)
 {
   (void)type;
   (void)addr;
@@ -793,7 +867,7 @@ on_icsr_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t 
   if ((primask & 1U) != 0U) {
     return;
   }
-  if (exc_priority(uc, (uint32_t)k_exc_pendsv) >= exc_active_prio()) {
+  if (internal_exc_priority(uc, (uint32_t)k_exc_pendsv) >= internal_exc_active_prio()) {
     return; /* a higher/equal-priority handler is active -- defer */
   }
   /* Advance PC past the storing instruction before stopping so the PendSV we
@@ -805,7 +879,7 @@ on_icsr_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t 
   uint32_t pc = 0U;
   (void)uc_reg_read(uc, UC_ARM_REG_PC, &pc);
   uint16_t hw0 = 0U;
-  (void)uc_mem_read(uc, pc, &hw0, sizeof(hw0));
+  (void)emu_mem_read(uc, pc, &hw0, sizeof(hw0));
   const uint32_t op5  = (uint32_t)(hw0 >> (uint32_t)k_thumb_op5_shift) & (uint32_t)k_thumb_op5_mask;
   const uint32_t step = (op5 >= (uint32_t)k_thumb32_op5_min) ? 4U : 2U;
   uint32_t       next = pc + step;
@@ -823,20 +897,26 @@ on_icsr_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t 
 /** @brief Implementation of `emu_exc_install_core()` -- unmapped/INTR/ICSR hooks. */
 void emu_exc_install_core(uc_engine* uc)
 {
-  static uc_hook s_h_unmapped;
-  static uc_hook s_h_intr;
-  static uc_hook s_h_icsr;
-  (void)uc_hook_add(uc, &s_h_unmapped, UC_HOOK_MEM_UNMAPPED, (void*)on_unmapped, nullptr, 1, 0);
+  static uc_hook local_h_unmapped;
+  static uc_hook local_h_intr;
+  static uc_hook local_h_icsr;
+  (void)uc_hook_add(uc,
+                    &local_h_unmapped,
+                    UC_HOOK_MEM_UNMAPPED,
+                    (void*)internal_on_unmapped,
+                    nullptr,
+                    1,
+                    0);
   /* SVCall / exception-return: Unicorn raises UC_HOOK_INTR on a Thumb `svc` and
-   * on a branch to an EXC_RETURN magic; on_intr vectors / unstacks accordingly. */
-  (void)uc_hook_add(uc, &s_h_intr, UC_HOOK_INTR, (void*)on_intr, nullptr, 1, 0);
+   * on a branch to an EXC_RETURN magic; internal_on_intr vectors / unstacks accordingly. */
+  (void)uc_hook_add(uc, &local_h_intr, UC_HOOK_INTR, (void*)internal_on_intr, nullptr, 1, 0);
   /* Watch the ICSR word so a PENDSVSET store ends the chunk at once, giving
-   * PendSV next-instruction activation (see on_icsr_write). ICSR lives in PPB
+   * PendSV next-instruction activation (see internal_on_icsr_write). ICSR lives in PPB
    * RAM, so this memory-write hook is the only way to observe the request. */
   (void)uc_hook_add(uc,
-                    &s_h_icsr,
+                    &local_h_icsr,
                     UC_HOOK_MEM_WRITE,
-                    (void*)on_icsr_write,
+                    (void*)internal_on_icsr_write,
                     nullptr,
                     (uint64_t)k_scb_icsr,
                     (uint64_t)k_scb_icsr + 3U);

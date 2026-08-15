@@ -87,7 +87,8 @@ The microSD card is set up at launch with no pre-built image required:
   `--sd-new 30g`. The format defaults by size (FAT32 at >= 512 MiB) like a real
   card -- FAT16/FAT12 cannot exceed their cluster ceilings, so big cards are
   FAT32; cluster size grows with capacity (8 KiB at ~2 GiB, 32 KiB at ~8 GiB+).
-  The backing store is a **sparse mmap**, so a 30 GiB card costs ~kilobytes of
+  The backing store is an **anonymous sparse raw descriptor**, so a 30 GiB card
+  costs ~kilobytes of
   host RAM (only the sectors the formatter + firmware actually touch are
   materialised -- a full 30 GiB run measured ~18 MiB RSS). The BPB is complete
   enough for a host `fsck_msdos` and the firmware's `ra8_fs` mount alike, and the
@@ -148,8 +149,23 @@ there is no separate native UI tool.
 - **CPU**: Unicorn (QEMU's core as a library) tops out at Cortex-M33 (Armv8-M),
   but the M85 (Armv8.1-M) firmware executes on it -- the boot path emits no
   v8.1-M-only opcode. An invalid-instruction trap reports any that ever appears.
-- **Memory map**: ITCM / MRAM (code+vectors) / DTCM / SRAM / DATA_FLASH / SDRAM /
-  PPB mapped as RAM; the Renesas peripheral space (`0x40000000`+) is callback MMIO.
+- **Memory map**: ITCM / MRAM (code+vectors) / DTCM / SRAM / SDRAM / OSPI / PPB
+  are Unicorn-owned guest pages; the Renesas peripheral space (`0x40000000`+)
+  is callback MMIO. SRAM, SDRAM, and OSPI bytes are authoritative in three
+  independent unlinked sparse raw descriptors. A 4 KiB caller scratch and a
+  4,155-byte dirty-page index stream committed pages into CPU0/CPU1 Secure and
+  Non-secure aliases. The protected host-association page at `0xFFFFF000` is
+  checked against every RA8/MMIO range at attach and is neither guest-readable
+  nor executable. `DATA_FLASH` intentionally remains unmapped because the
+  RA8D2 silicon does not decode the legacy `0x27000000` declaration.
+
+  First-party emulator code does not acquire these memory pages with a C
+  allocator or `mmap`: the composition root supplies exactly 4,096 static
+  scratch bytes, the workspace owns raw descriptors, and every publication is
+  mirrored or poisons the run before PPM/profile/SD output. Unicorn necessarily
+  owns its internal guest-page and translation structures; that opaque library
+  ownership is an explicit dependency boundary, not a claim that Unicorn itself
+  performs no dynamic allocation.
 - **Peripheral model** (sparse): control writes read back as written, so
   "configure then verify" works; once the firmware spins reading one address (a
   "wait for ready/idle" poll) past a threshold, reads alternate `0` / all-ones so

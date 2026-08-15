@@ -46,6 +46,7 @@
 
 #include "board_console.h"
 #include "board_periph_block.h"
+#include "emu_host_io_internal.h"
 
 /** @brief Console-tap line buffer capacity for a DMAC transfer summary. */
 typedef enum : uint32_t {
@@ -177,8 +178,18 @@ static uint8_t s_dma_shared[k_dma_shared_span];
  * =============================================================================
  */
 
-/** @brief Bytes moved per unit for a DMTMD.SZ code (defaults to byte width). */
-static uint32_t dmac_unit_bytes(uint32_t sz_code)
+/**
+ * @brief Bytes moved per unit for a DMTMD.SZ code (defaults to byte width).
+ * @details Bytes moved per unit for a dmtmd.sz code (defaults to byte width); this step is contained within the board periph DMA controller model and uses bounded caller or module-owned storage.
+ * @param[in] sz_code Sz code input used by the operation.
+ * @return The DMA controller unit bytes result produced by the board periph DMA controller model.
+ * @retval value The operation-specific DMA controller unit bytes value.
+ * @pre Arguments satisfy the ranges documented for DMA controller unit bytes. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DMA controller model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_dmac_unit_bytes(uint32_t sz_code)
 {
   if (sz_code == (uint32_t)k_dmac_sz_word) {
     return (uint32_t)k_dmac_unit_word;
@@ -189,8 +200,18 @@ static uint32_t dmac_unit_bytes(uint32_t sz_code)
   return (uint32_t)k_dmac_unit_byte;
 }
 
-/** @brief Total units one software trigger transfers for channel @p c. */
-static uint32_t dmac_total_units(const dmac_chan_t* c)
+/**
+ * @brief Total units one software trigger transfers for channel @p c.
+ * @details Total units one software trigger transfers for channel @p c; this step is contained within the board periph DMA controller model and uses bounded caller or module-owned storage.
+ * @param[in] c Active controller, card, or command state processed by the operation.
+ * @return The DMA controller total units result produced by the board periph DMA controller model.
+ * @retval value The operation-specific DMA controller total units value.
+ * @pre Arguments satisfy the ranges documented for DMA controller total units. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DMA controller model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_dmac_total_units(const dmac_chan_t* c)
 {
   uint32_t count = c->dmcra & (uint32_t)k_dmac_dmcra_low_mask;
   if (count == 0U) {
@@ -207,8 +228,20 @@ static uint32_t dmac_total_units(const dmac_chan_t* c)
   return (uint32_t)total;
 }
 
-/** @brief Copy @p units of @p unit bytes src->dst in emulated memory. */
-static void dmac_copy_units(uc_engine* uc, dmac_chan_t* c, uint32_t units, uint32_t unit)
+/**
+ * @brief Copy @p units of @p unit bytes src->dst in emulated memory.
+ * @details Copy @p units of @p unit bytes src->dst in emulated memory; this step is contained within the board periph DMA controller model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in,out] c Active controller, card, or command state processed by the operation.
+ * @param[in] units Units input used by the operation.
+ * @param[in] unit Unit input used by the operation.
+ * @pre Arguments satisfy the ranges documented for DMA controller copy units. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DMA controller model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_dmac_copy_units(uc_engine* uc, dmac_chan_t* c, uint32_t units, uint32_t unit)
 {
   uint64_t       src     = (uint64_t)c->dmsar;
   uint64_t       dst     = (uint64_t)c->dmdar;
@@ -218,10 +251,10 @@ static void dmac_copy_units(uc_engine* uc, dmac_chan_t* c, uint32_t units, uint3
   const bool     dst_inc = (dm == (uint32_t)k_dmac_am_incr);
   uint8_t        word[k_dmac_unit_word] = {};
   for (uint32_t i = 0U; i < units; i++) {
-    if (uc_mem_read(uc, src, word, unit) != UC_ERR_OK) {
+    if (emu_mem_read(uc, src, word, unit) != UC_ERR_OK) {
       break;
     }
-    if (uc_mem_write(uc, dst, word, unit) != UC_ERR_OK) {
+    if (emu_mem_write(uc, dst, word, unit) != UC_ERR_OK) {
       break;
     }
     if (src_inc) {
@@ -236,18 +269,27 @@ static void dmac_copy_units(uc_engine* uc, dmac_chan_t* c, uint32_t units, uint3
   c->dmdar = (uint32_t)dst;
 }
 
-/** @brief Run one software-triggered transfer on channel @p ch. */
-static void dmac_run_transfer(uc_engine* uc, uint32_t ch)
+/**
+ * @brief Run one software-triggered transfer on channel @p ch.
+ * @details Run one software-triggered transfer on channel @p ch; this step is contained within the board periph DMA controller model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] ch Selected channel identifier.
+ * @pre Arguments satisfy the ranges documented for DMA controller run transfer. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DMA controller model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_dmac_run_transfer(uc_engine* uc, uint32_t ch)
 {
   dmac_chan_t* c = &s_dmac[ch];
   if ((c->dmcnt & (uint8_t)k_dmac_dte_mask) == 0U) {
     return; /* channel disarmed: SWREQ does nothing */
   }
   const uint32_t sz    = (c->dmtmd >> (uint32_t)k_dmac_sz_pos) & (uint32_t)k_dmac_sz_mask;
-  const uint32_t unit  = dmac_unit_bytes(sz);
-  const uint32_t units = dmac_total_units(c);
+  const uint32_t unit  = internal_dmac_unit_bytes(sz);
+  const uint32_t units = internal_dmac_total_units(c);
   c->units             = 0U;
-  dmac_copy_units(uc, c, units, unit);
+  internal_dmac_copy_units(uc, c, units, unit);
   c->dmcra &= ~(uint32_t)k_dmac_dmcra_low_mask; /* count drained to zero        */
   c->dmsts &= (uint8_t)~k_dmac_act_mask;        /* synchronous: idle after copy */
   c->dmsts |= (uint8_t)k_dmac_dtif_mask;        /* transfer-end status latched  */
@@ -262,7 +304,8 @@ static void dmac_run_transfer(uc_engine* uc, uint32_t ch)
                  (unsigned)unit);
   board_console_push(k_board_console_ch_dma, ln);
   if (board_periph_trace()) {
-    (void)fprintf(stderr, "  DMAC%u         : copied %u units x %uB (SWREQ)\n", ch, c->units, unit);
+    (void)
+      priv_emu_io_errf("  DMAC%u         : copied %u units x %uB (SWREQ)\n", ch, c->units, unit);
   }
   if ((c->dmint & (uint8_t)k_dmac_dtif_mask) != 0U) {
     board_periph_icu_raise_event(uc, (uint16_t)((uint16_t)k_dmac_event_ch0 + (uint16_t)ch));
@@ -274,8 +317,19 @@ static void dmac_run_transfer(uc_engine* uc, uint32_t ch)
  * =============================================================================
  */
 
-/** @brief Dispatch a DMAC channel register read for channel @p ch. */
-static uint64_t dmac_reg_read(uint32_t ch, uint64_t off)
+/**
+ * @brief Dispatch a DMAC channel register read for channel @p ch.
+ * @details Dispatch a dmac channel register read for channel @p ch; this step is contained within the board periph DMA controller model and uses bounded caller or module-owned storage.
+ * @param[in] ch Selected channel identifier.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @return The DMA controller reg read result produced by the board periph DMA controller model.
+ * @retval value The operation-specific DMA controller reg read value.
+ * @pre Arguments satisfy the ranges documented for DMA controller reg read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DMA controller model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_dmac_reg_read(uint32_t ch, uint64_t off)
 {
   const dmac_chan_t* c = &s_dmac[ch];
   switch (off) {
@@ -304,8 +358,18 @@ static uint64_t dmac_reg_read(uint32_t ch, uint64_t off)
   }
 }
 
-/** @brief Apply a DMAC channel register write (non-trigger registers). */
-static void dmac_reg_store(dmac_chan_t* c, uint64_t off, uint32_t value)
+/**
+ * @brief Apply a DMAC channel register write (non-trigger registers).
+ * @details Apply a dmac channel register write (non-trigger registers); this step is contained within the board periph DMA controller model and uses bounded caller or module-owned storage.
+ * @param[in,out] c Active controller, card, or command state processed by the operation.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for DMA controller reg store. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DMA controller model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_dmac_reg_store(dmac_chan_t* c, uint64_t off, uint32_t value)
 {
   switch (off) {
     case (uint64_t)k_dmac_off_dmsar:
@@ -344,33 +408,72 @@ static void dmac_reg_store(dmac_chan_t* c, uint64_t off, uint32_t value)
   }
 }
 
-/** @brief Dispatch a DMAC channel register write; DMREQ.SWREQ triggers a copy. */
-static void dmac_reg_write(uc_engine* uc, uint32_t ch, uint64_t off, uint32_t value)
+/**
+ * @brief Dispatch a DMAC channel register write; DMREQ.SWREQ triggers a copy.
+ * @details Dispatch a dmac channel register write; dmreq.swreq triggers a copy; this step is contained within the board periph DMA controller model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] ch Selected channel identifier.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for DMA controller reg write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DMA controller model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_dmac_reg_write(uc_engine* uc, uint32_t ch, uint64_t off, uint32_t value)
 {
   if (off == (uint64_t)k_dmac_off_dmreq) {
     if ((value & (uint32_t)k_dmac_swreq_mask) != 0U) {
-      dmac_run_transfer(uc, ch); /* SWREQ auto-clears once accepted */
+      internal_dmac_run_transfer(uc, ch); /* SWREQ auto-clears once accepted */
     }
     return;
   }
-  dmac_reg_store(&s_dmac[ch], off, value);
+  internal_dmac_reg_store(&s_dmac[ch], off, value);
 }
 
-/** @brief MMIO read inside the DMAC0 channel window. */
-static uint64_t dmac_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the DMAC0 channel window.
+ * @details MMIO read inside the dmac0 channel window; this step is contained within the board periph DMA controller model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The DMA controller read result produced by the board periph DMA controller model.
+ * @retval value The operation-specific DMA controller read value.
+ * @pre Arguments satisfy the ranges documented for DMA controller read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DMA controller model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_dmac_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
   (void)size;
   const uint32_t ch = (uint32_t)((addr - (uint64_t)k_dmac_base) / (uint64_t)k_dmac_stride);
-  return dmac_reg_read(ch, (addr - (uint64_t)k_dmac_base) % (uint64_t)k_dmac_stride);
+  return internal_dmac_reg_read(ch, (addr - (uint64_t)k_dmac_base) % (uint64_t)k_dmac_stride);
 }
 
-/** @brief MMIO write inside the DMAC0 channel window. */
-static void dmac_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the DMAC0 channel window.
+ * @details MMIO write inside the dmac0 channel window; this step is contained within the board periph DMA controller model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for DMA controller write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DMA controller model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_dmac_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)size;
   const uint32_t ch = (uint32_t)((addr - (uint64_t)k_dmac_base) / (uint64_t)k_dmac_stride);
-  dmac_reg_write(uc, ch, (addr - (uint64_t)k_dmac_base) % (uint64_t)k_dmac_stride, (uint32_t)value);
+  internal_dmac_reg_write(uc,
+                          ch,
+                          (addr - (uint64_t)k_dmac_base) % (uint64_t)k_dmac_stride,
+                          (uint32_t)value);
 }
 
 /* =============================================================================
@@ -378,8 +481,22 @@ static void dmac_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
  * =============================================================================
  */
 
-/** @brief Read @p size bytes little-endian from a byte-array shadow. */
-static uint64_t shadow_read(const uint8_t* shadow, uint64_t span, uint64_t off, unsigned size)
+/**
+ * @brief Read @p size bytes little-endian from a byte-array shadow.
+ * @details Read @p size bytes little-endian from a byte-array shadow; this step is contained within the board periph DMA controller model and uses bounded caller or module-owned storage.
+ * @param[in] shadow Shadow input used by the operation.
+ * @param[in] span Bounded address span covered by the operation.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The shadow read result produced by the board periph DMA controller model.
+ * @retval value The operation-specific shadow read value.
+ * @pre Arguments satisfy the ranges documented for shadow read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DMA controller model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t
+internal_shadow_read(const uint8_t* shadow, uint64_t span, uint64_t off, unsigned size)
 {
   uint64_t v = 0U;
   for (unsigned i = 0U; i < size; i++) {
@@ -391,9 +508,21 @@ static uint64_t shadow_read(const uint8_t* shadow, uint64_t span, uint64_t off, 
   return v;
 }
 
-/** @brief Write @p size bytes little-endian into a byte-array shadow. */
-static void
-shadow_write(uint8_t* shadow, uint64_t span, uint64_t off, unsigned size, uint64_t value)
+/**
+ * @brief Write @p size bytes little-endian into a byte-array shadow.
+ * @details Write @p size bytes little-endian into a byte-array shadow; this step is contained within the board periph DMA controller model and uses bounded caller or module-owned storage.
+ * @param[in,out] shadow Shadow state or storage updated in place by the operation.
+ * @param[in] span Bounded address span covered by the operation.
+ * @param[in] off Register or byte offset addressed by the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for shadow write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DMA controller model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_shadow_write(uint8_t* shadow, uint64_t span, uint64_t off, unsigned size, uint64_t value)
 {
   for (unsigned i = 0U; i < size; i++) {
     const uint64_t b = off + (uint64_t)i;
@@ -403,25 +532,49 @@ shadow_write(uint8_t* shadow, uint64_t span, uint64_t off, unsigned size, uint64
   }
 }
 
-/** @brief MMIO read inside the shared DMA module-control bank. */
-static uint64_t dma_shared_read(uc_engine* uc, uint64_t addr, unsigned size)
+/**
+ * @brief MMIO read inside the shared DMA module-control bank.
+ * @details MMIO read inside the shared dma module-control bank; this step is contained within the board periph DMA controller model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @return The DMA shared read result produced by the board periph DMA controller model.
+ * @retval value The operation-specific DMA shared read value.
+ * @pre Arguments satisfy the ranges documented for DMA shared read. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DMA controller model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint64_t internal_dma_shared_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   (void)uc;
-  return shadow_read(s_dma_shared,
-                     (uint64_t)k_dma_shared_span,
-                     addr - (uint64_t)k_dma_shared_base,
-                     size);
+  return internal_shadow_read(s_dma_shared,
+                              (uint64_t)k_dma_shared_span,
+                              addr - (uint64_t)k_dma_shared_base,
+                              size);
 }
 
-/** @brief MMIO write inside the shared DMA module-control bank. */
-static void dma_shared_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+/**
+ * @brief MMIO write inside the shared DMA module-control bank.
+ * @details MMIO write inside the shared dma module-control bank; this step is contained within the board periph DMA controller model and uses bounded caller or module-owned storage.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] addr Guest address involved in the operation.
+ * @param[in] size Size of the requested region or access in bytes.
+ * @param[in] value Register or payload value involved in the operation.
+ * @pre Arguments satisfy the ranges documented for DMA shared write. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DMA controller model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_dma_shared_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
   (void)uc;
-  shadow_write(s_dma_shared,
-               (uint64_t)k_dma_shared_span,
-               addr - (uint64_t)k_dma_shared_base,
-               size,
-               value);
+  internal_shadow_write(s_dma_shared,
+                        (uint64_t)k_dma_shared_span,
+                        addr - (uint64_t)k_dma_shared_base,
+                        size,
+                        value);
 }
 
 /* =============================================================================
@@ -429,8 +582,15 @@ static void dma_shared_write(uc_engine* uc, uint64_t addr, unsigned size, uint64
  * =============================================================================
  */
 
-/** @brief Clear all DMAC channel state plus the shared module-control shadow. */
-static void dmac_reset(void)
+/**
+ * @brief Clear all DMAC channel state plus the shared module-control shadow.
+ * @details Clear all dmac channel state plus the shared module-control shadow; this step is contained within the board periph DMA controller model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for DMA controller reset. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DMA controller model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_dmac_reset(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_dmac_count; i++) {
     s_dmac[i] = (dmac_chan_t){};
@@ -440,17 +600,23 @@ static void dmac_reset(void)
   }
 }
 
-/** @brief Print one line per DMAC channel that completed any transfer. */
-static void dmac_report(void)
+/**
+ * @brief Print one line per DMAC channel that completed any transfer.
+ * @details Print one line per dmac channel that completed any transfer; this step is contained within the board periph DMA controller model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for DMA controller report. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board periph DMA controller model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_dmac_report(void)
 {
   for (uint32_t ch = 0U; ch < (uint32_t)k_dmac_count; ch++) {
     if (s_dmac[ch].copies > 0U) {
-      (void)fprintf(stderr,
-                    "  DMAC%u         : transfers=%u last_units=%u DMSTS=0x%02X\n",
-                    ch,
-                    s_dmac[ch].copies,
-                    s_dmac[ch].units,
-                    s_dmac[ch].dmsts);
+      (void)priv_emu_io_errf("  DMAC%u         : transfers=%u last_units=%u DMSTS=0x%02X\n",
+                             ch,
+                             s_dmac[ch].copies,
+                             s_dmac[ch].units,
+                             s_dmac[ch].dmsts);
     }
   }
 }
@@ -461,25 +627,25 @@ static void dmac_report(void)
  * range). */
 
 /** @brief DMAC0 channel window + the combined reset / report. */
-static const board_periph_block_t k_dmac_block = {
+static const board_periph_block_t s_k_dmac_block = {
   .base   = (uint64_t)k_dmac_base,
   .span   = (uint64_t)k_dmac_span,
   .order  = (uint32_t)k_dmac_block_order,
-  .read   = dmac_read,
-  .write  = dmac_write,
+  .read   = internal_dmac_read,
+  .write  = internal_dmac_write,
   .tick   = nullptr,
-  .reset  = dmac_reset,
-  .report = dmac_report,
+  .reset  = internal_dmac_reset,
+  .report = internal_dmac_report,
   .name   = "DMAC",
 };
 
 /** @brief Shared DMA module-control bank window (transparent shadow). */
-static const board_periph_block_t k_dma_shared_block = {
+static const board_periph_block_t s_k_dma_shared_block = {
   .base   = (uint64_t)k_dma_shared_base,
   .span   = (uint64_t)k_dma_shared_span,
   .order  = (uint32_t)k_dmac_block_order,
-  .read   = dma_shared_read,
-  .write  = dma_shared_write,
+  .read   = internal_dma_shared_read,
+  .write  = internal_dma_shared_write,
   .tick   = nullptr,
   .reset  = nullptr,
   .report = nullptr,
@@ -487,8 +653,8 @@ static const board_periph_block_t k_dma_shared_block = {
 };
 
 /** @brief Self-register the DMAC0 / shared module-control windows before main. */
-[[gnu::constructor]] static void board_periph_dmac_register(void)
+[[gnu::constructor]] RA8_INTERNAL static void internal_board_periph_dmac_register(void)
 {
-  board_periph_register_block(&k_dmac_block);
-  board_periph_register_block(&k_dma_shared_block);
+  board_periph_register_block(&s_k_dmac_block);
+  board_periph_register_block(&s_k_dma_shared_block);
 }

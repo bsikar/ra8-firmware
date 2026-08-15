@@ -43,8 +43,16 @@ typedef enum : uint16_t {
   k_ra8_usb_dcp_brdy_bit = 0x0001U, /**< BRDYSTS bit 0: the DCP (pipe 0). */
 } loop_req_mask_t;
 
-/** @brief Reset one pipe's IN/OUT staging plus the host-side read cursor. */
-static void loop_reset_pipe(uint8_t pipe)
+/**
+ * @brief Reset one pipe's IN/OUT staging plus the host-side read cursor.
+ * @details Reset one pipe's in/out staging plus the host-side read cursor; this step is contained within the board USB loop model and uses bounded caller or module-owned storage.
+ * @param[in] pipe USB pipe index selected by the transfer.
+ * @pre Arguments satisfy the ranges documented for loop reset pipe. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB loop model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_loop_reset_pipe(uint8_t pipe)
 {
   s_usb.pipe_in[pipe].len    = 0U;
   s_usb.pipe_in[pipe].valid  = false;
@@ -54,8 +62,15 @@ static void loop_reset_pipe(uint8_t pipe)
   s_loop_pipe_rd[pipe]       = 0U;
 }
 
-/** @brief Reset the DCP staging (both directions) plus the host read cursor. */
-static void loop_reset_dcp(void)
+/**
+ * @brief Reset the DCP staging (both directions) plus the host read cursor.
+ * @details Reset the dcp staging (both directions) plus the host read cursor; this step is contained within the board USB loop model and uses bounded caller or module-owned storage.
+ * @pre Arguments satisfy the ranges documented for loop reset default control pipe. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the board USB loop model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_loop_reset_dcp(void)
 {
   s_usb.dcp_in.len    = 0U;
   s_usb.dcp_in.valid  = false;
@@ -71,26 +86,26 @@ void board_usb_loop_latch(void)
     return;
   }
   s_loop_latched = true;
-  usb_log_line("self-loop latched: firmware host owns the bus (virtual host parked)");
+  priv_usb_log_line("self-loop latched: firmware host owns the bus (virtual host parked)");
 }
 
 bool board_usb_loop_attached(void)
 {
-  return host_device_attached();
+  return priv_host_device_attached();
 }
 
 void board_usb_loop_bus_reset(uc_engine* uc)
 {
-  loop_reset_dcp();
+  internal_loop_reset_dcp();
   for (uint32_t p = 0U; p < (uint32_t)k_usb_pipe_count; p++) {
-    loop_reset_pipe((uint8_t)p);
+    internal_loop_reset_pipe((uint8_t)p);
   }
   s_usb.setup_valid = false;
   s_usb.ctsq        = (uint16_t)k_ra8_ctsq_idle;
   s_usb.dvsq        = (uint16_t)k_ra8_dvsq_default;
-  usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
-  usb_log_line("loop: bus reset -> DVSQ Default");
-  usb_raise_irq(uc);
+  priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
+  priv_usb_log_line("loop: bus reset -> DVSQ Default");
+  priv_usb_raise_irq(uc);
 }
 
 bool board_usb_loop_setup(uc_engine* uc, uint16_t req, uint16_t val, uint16_t indx, uint16_t leng)
@@ -100,13 +115,13 @@ bool board_usb_loop_setup(uc_engine* uc, uint16_t req, uint16_t val, uint16_t in
   /* A new SETUP supersedes whatever control transfer preceded it: drop stale
    * DCP staging and consume a stale CCPL (the fw host is strictly serial, so
    * any completion still latched here belongs to the finished transfer). */
-  loop_reset_dcp();
-  (void)host_take_ccpl();
-  s_loop_pending_cfg                                   = false;
-  s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbreq)]  = req;
-  s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbval)]  = val;
-  s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbindx)] = indx;
-  s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbleng)] = leng;
+  internal_loop_reset_dcp();
+  (void)priv_host_take_ccpl();
+  s_loop_pending_cfg                                            = false;
+  s_usb.reg[internal_usb_word((uint64_t)k_ra8_usb_off_usbreq)]  = req;
+  s_usb.reg[internal_usb_word((uint64_t)k_ra8_usb_off_usbval)]  = val;
+  s_usb.reg[internal_usb_word((uint64_t)k_ra8_usb_off_usbindx)] = indx;
+  s_usb.reg[internal_usb_word((uint64_t)k_ra8_usb_off_usbleng)] = leng;
   s_loop_setups++;
   char line[k_usb_log_width];
   (void)snprintf(line,
@@ -116,15 +131,15 @@ bool board_usb_loop_setup(uc_engine* uc, uint16_t req, uint16_t val, uint16_t in
                  (unsigned)breq,
                  (unsigned)val,
                  (unsigned)leng);
-  usb_log_line(line);
+  priv_usb_log_line(line);
   if ((bm == (uint8_t)k_usb_dir_host_to_device) && (breq == (uint8_t)k_usb_req_set_address)) {
     /* The device SIE latches USBADDR and runs the whole status stage itself
-     * (mirrors ::host_apply_no_data): the host needs no device CCPL. */
-    s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbaddr)] =
+     * (mirrors ::priv_host_apply_no_data): the host needs no device CCPL. */
+    s_usb.reg[internal_usb_word((uint64_t)k_ra8_usb_off_usbaddr)] =
       (uint16_t)(val & (uint16_t)k_ra8_usbaddr_addr_mask);
     s_usb.dvsq = (uint16_t)k_ra8_dvsq_address;
-    usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
-    usb_raise_irq(uc);
+    priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
+    priv_usb_raise_irq(uc);
     return true;
   }
   if ((bm == (uint8_t)k_usb_dir_host_to_device) && (breq == (uint8_t)k_usb_req_set_config)) {
@@ -139,19 +154,19 @@ bool board_usb_loop_setup(uc_engine* uc, uint16_t req, uint16_t val, uint16_t in
   } else {
     s_usb.ctsq = (uint16_t)k_ra8_ctsq_wrnd;
   }
-  usb_intsts0_set((uint8_t)k_ra8_int0_bit_ctrt);
-  usb_raise_irq(uc);
+  priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_ctrt);
+  priv_usb_raise_irq(uc);
   return false;
 }
 
 bool board_usb_loop_take_ccpl(uc_engine* uc)
 {
-  if (!host_take_ccpl()) {
+  if (!priv_host_take_ccpl()) {
     return false;
   }
   if (s_loop_pending_cfg) {
     s_loop_pending_cfg = false;
-    host_mark_configured(uc);
+    priv_host_mark_configured(uc);
   }
   return true;
 }
@@ -173,7 +188,7 @@ uint16_t board_usb_loop_ctrl_in_read(uint8_t* dst, uint16_t cap)
   }
   s_loop_dcp_rd = (uint16_t)(s_loop_dcp_rd + n);
   if ((n > 0U) && (s_loop_dcp_rd >= s_usb.dcp_in.len)) {
-    usb_detect_class(s_usb.dcp_in.data, s_usb.dcp_in.len);
+    priv_usb_detect_class(s_usb.dcp_in.data, s_usb.dcp_in.len);
     s_usb.dcp_in.len   = 0U;
     s_usb.dcp_in.valid = false;
     s_loop_dcp_rd      = 0U;
@@ -198,18 +213,18 @@ void board_usb_loop_ctrl_out(uc_engine* uc, const uint8_t* data, uint16_t len)
   s_usb.dcp_out.len   = n;
   s_usb.dcp_out.rd    = 0U;
   s_usb.dcp_out.ready = true;
-  const uint32_t w    = usb_word((uint64_t)k_ra8_usb_off_brdysts);
+  const uint32_t w    = internal_usb_word((uint64_t)k_ra8_usb_off_brdysts);
   s_usb.reg[w]        = (uint16_t)(s_usb.reg[w] | (uint16_t)k_ra8_usb_dcp_brdy_bit);
-  usb_intsts0_set((uint8_t)k_ra8_int0_bit_brdy);
-  usb_raise_irq(uc);
+  priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_brdy);
+  priv_usb_raise_irq(uc);
 }
 
 void board_usb_loop_status_out_zlp(uc_engine* uc)
 {
   s_usb.ctsq        = (uint16_t)k_ra8_ctsq_rdss;
   s_usb.setup_valid = false;
-  usb_intsts0_set((uint8_t)k_ra8_int0_bit_ctrt);
-  usb_raise_irq(uc);
+  priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_ctrt);
+  priv_usb_raise_irq(uc);
 }
 
 void board_usb_loop_bulk_out(uc_engine* uc, uint8_t ep, const uint8_t* data, uint16_t len)
@@ -223,11 +238,11 @@ void board_usb_loop_bulk_out(uc_engine* uc, uint8_t ep, const uint8_t* data, uin
   b->len           = n;
   b->rd            = 0U;
   b->ready         = true;
-  const uint32_t w = usb_word((uint64_t)k_ra8_usb_off_brdysts);
+  const uint32_t w = internal_usb_word((uint64_t)k_ra8_usb_off_brdysts);
   s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << (ep % k_usb_pipe_count)));
-  usb_intsts0_set((uint8_t)k_ra8_int0_bit_brdy);
+  priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_brdy);
   s_loop_bulk_out_pkts++;
-  usb_raise_irq(uc);
+  priv_usb_raise_irq(uc);
 }
 
 uint16_t board_usb_loop_bulk_in_avail(uint8_t ep)
@@ -255,11 +270,11 @@ uint16_t board_usb_loop_bulk_in_read(uc_engine* uc, uint8_t ep, uint8_t* dst, ui
     s_loop_pipe_rd[pipe] = 0U;
     s_loop_bulk_in_pkts++;
     /* Transmit buffer drained: raise the device's BEMP for this pipe so its
-     * firmware can queue the next packet (mirrors ::host_echo_read_in). */
-    const uint32_t w = usb_word((uint64_t)k_ra8_usb_off_bempsts);
+     * firmware can queue the next packet (mirrors ::priv_host_echo_read_in). */
+    const uint32_t w = internal_usb_word((uint64_t)k_ra8_usb_off_bempsts);
     s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << pipe));
-    usb_intsts0_set((uint8_t)k_ra8_int0_bit_bemp);
-    usb_raise_irq(uc);
+    priv_usb_intsts0_set((uint8_t)k_ra8_int0_bit_bemp);
+    priv_usb_raise_irq(uc);
   }
   return n;
 }

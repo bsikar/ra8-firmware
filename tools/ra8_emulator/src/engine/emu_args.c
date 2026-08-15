@@ -22,27 +22,27 @@
 #include "board_periph_eink.h"
 #include "board_periph_modem.h"
 #include "board_periph_sd.h"
+#include "emu_host_io_internal.h"
 #include "emu_seams.h"
 #include "emu_view.h"
 
 /**
- * @brief Print the ra8_emulator CLI usage text to stderr.
+ * @brief Print the ra8_emulator CLI usage text to injected error sink.
  *
  * @details The full option reference, printed when ra8_emulator is invoked
  * without a firmware path. Text is verbatim from the pre-split parser.
  *
  * @return void
- * @pre stderr is writable.
+ * @pre injected error sink is writable.
  * @pre The caller is about to return a parse failure.
- * @post The usage text has been written to stderr.
+ * @post The usage text has been written to injected error sink.
  * @post No parse state is produced.
  * @note Not thread-safe; single-threaded CLI setup.
  * @since 0.1.0
  */
-static void args_print_usage(void)
+RA8_INTERNAL static void internal_args_print_usage(void)
 {
-  (void)fprintf(
-    stderr,
+  (void)priv_emu_io_err_text(
     "usage: ra8_emulator <firmware.elf> [--view] [--ppm <out.ppm>]"
     " [--panel <file.toml>] [--size WxH] [--click X Y] [--touch-seq S] [--input <str>]"
     " [--sd <image>]"
@@ -107,7 +107,7 @@ static void args_print_usage(void)
  * @note Not thread-safe; single-threaded CLI setup.
  * @since 0.1.0
  */
-static void args_defaults(const char* elf_path, emu_args_t* out)
+RA8_INTERNAL static void internal_args_defaults(const char* elf_path, emu_args_t* out)
 {
   *out             = (emu_args_t){};
   out->elf_path    = elf_path;
@@ -136,12 +136,13 @@ static void args_defaults(const char* elf_path, emu_args_t* out)
  * @retval true  The option was recognized and applied.
  * @retval false Not one of this group's options; try the next parser.
  * @pre @p argv, @p i and @p out are non-NULL and @p *i is in [2, argc).
- * @pre @p out has been seeded by ::args_defaults.
+ * @pre @p out has been seeded by ::internal_args_defaults.
  * @post On true, @p out and @p *i reflect the consumed option.
  * @note Not thread-safe; single-threaded CLI setup.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-static bool args_try_mode(int argc, char** argv, int* i, emu_args_t* out)
+RA8_INTERNAL static bool internal_args_try_mode(int argc, char** argv, int* i, emu_args_t* out)
 {
   const int idx = *i;
   if (strncmp(argv[idx], "--view", sizeof("--view")) == 0) {
@@ -192,12 +193,13 @@ static bool args_try_mode(int argc, char** argv, int* i, emu_args_t* out)
  * @retval true  The option was recognized and applied.
  * @retval false Not one of this group's options; try the next parser.
  * @pre @p argv, @p i and @p out are non-NULL and @p *i is in [2, argc).
- * @pre @p out has been seeded by ::args_defaults.
+ * @pre @p out has been seeded by ::internal_args_defaults.
  * @post On true, @p out and @p *i reflect the consumed option.
  * @note Not thread-safe; single-threaded CLI setup.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-static bool args_try_display(int argc, char** argv, int* i, emu_args_t* out)
+RA8_INTERNAL static bool internal_args_try_display(int argc, char** argv, int* i, emu_args_t* out)
 {
   const int idx = *i;
   if ((strncmp(argv[idx], "--ppm", sizeof("--ppm")) == 0) && ((idx + 1) < argc)) {
@@ -251,12 +253,13 @@ static bool args_try_display(int argc, char** argv, int* i, emu_args_t* out)
  * @retval true  The option was recognized and applied.
  * @retval false Not one of this group's options; try the next parser.
  * @pre @p argv, @p i and @p out are non-NULL and @p *i is in [2, argc).
- * @pre @p out has been seeded by ::args_defaults.
+ * @pre @p out has been seeded by ::internal_args_defaults.
  * @post On true, @p out and @p *i reflect the consumed option.
  * @note Not thread-safe; single-threaded CLI setup.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-static bool args_try_input(int argc, char** argv, int* i, emu_args_t* out)
+RA8_INTERNAL static bool internal_args_try_input(int argc, char** argv, int* i, emu_args_t* out)
 {
   const int idx = *i;
   if ((strncmp(argv[idx], "--ns", sizeof("--ns")) == 0) && ((idx + 1) < argc)) {
@@ -304,11 +307,12 @@ static bool args_try_input(int argc, char** argv, int* i, emu_args_t* out)
  * @pre The SD model has no card attached yet.
  * @post A card is attached only when the size is non-zero and within the
  *       32-bit sector count FAT can address.
- * @post An over-large request is diagnosed on stderr and attaches nothing.
+ * @post An over-large request is diagnosed on injected error sink and attaches nothing.
  *
  * @note Not thread-safe; argument parsing runs once at startup.
+  * @since 0.1.0
  */
-static void args_attach_blank_sd(const char* spec)
+RA8_INTERNAL static void internal_args_attach_blank_sd(const char* spec)
 {
   char*      endp = nullptr;
   const long num  = strtol(spec, &endp, (int)k_strtol_base10);
@@ -336,7 +340,7 @@ static void args_attach_blank_sd(const char* spec)
   if ((sectors > 0ULL) && (sectors <= (uint64_t)k_sd_u32_max)) {
     (void)board_sd_attach_blank((uint32_t)sectors, fat, "RA8EMU");
   } else if (sectors > (uint64_t)k_sd_u32_max) {
-    (void)fprintf(stderr, "ra8_emulator: --sd-new: size exceeds the 2 TiB FAT limit\n");
+    (void)priv_emu_io_errf("ra8_emulator: --sd-new: size exceeds the 2 TiB FAT limit\n");
   }
 }
 
@@ -355,12 +359,13 @@ static void args_attach_blank_sd(const char* spec)
  * @retval true  The option was recognized and applied.
  * @retval false Not one of this group's options; try the next parser.
  * @pre @p argv, @p i and @p out are non-NULL and @p *i is in [2, argc).
- * @pre @p out has been seeded by ::args_defaults.
+ * @pre @p out has been seeded by ::internal_args_defaults.
  * @post On true, @p out / @p *i and any SD attach reflect the consumed option.
  * @note Not thread-safe; single-threaded CLI setup.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-static bool args_try_sd(int argc, char** argv, int* i, emu_args_t* out)
+RA8_INTERNAL static bool internal_args_try_sd(int argc, char** argv, int* i, emu_args_t* out)
 {
   const int idx = *i;
   if ((strncmp(argv[idx], "--sd", sizeof("--sd")) == 0) && ((idx + 1) < argc)) {
@@ -371,7 +376,7 @@ static bool args_try_sd(int argc, char** argv, int* i, emu_args_t* out)
      * A bare number is MiB; a k/m/g/t suffix sets the unit (so "30g" = 30 GiB).
      * Format defaults by size (FAT32 >= 512 MiB) like a real SD card; FAT16
      * cannot exceed its cluster ceiling, so multi-GB cards are FAT32. */
-    args_attach_blank_sd(argv[idx + 1]);
+    internal_args_attach_blank_sd(argv[idx + 1]);
     (*i)++;
   } else if ((strncmp(argv[idx], "--save-sd", sizeof("--save-sd")) == 0) && ((idx + 1) < argc)) {
     out->save_sd_path = argv[idx + 1];
@@ -398,12 +403,13 @@ static bool args_try_sd(int argc, char** argv, int* i, emu_args_t* out)
  * @retval true  The option was recognized and applied.
  * @retval false Not one of this group's options; try the next parser.
  * @pre @p argv, @p i and @p out are non-NULL and @p *i is in [2, argc).
- * @pre @p out has been seeded by ::args_defaults.
+ * @pre @p out has been seeded by ::internal_args_defaults.
  * @post On true, @p out and @p *i reflect the consumed option.
  * @note Not thread-safe; single-threaded CLI setup.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-static bool args_try_sym(int argc, char** argv, int* i, emu_args_t* out)
+RA8_INTERNAL static bool internal_args_try_sym(int argc, char** argv, int* i, emu_args_t* out)
 {
   const int idx = *i;
   if ((strncmp(argv[idx], "--dump-sym", sizeof("--dump-sym")) == 0) && ((idx + 1) < argc)) {
@@ -448,12 +454,13 @@ static bool args_try_sym(int argc, char** argv, int* i, emu_args_t* out)
  * @retval true  The option was recognized and applied.
  * @retval false Not one of this group's options; try the next parser.
  * @pre @p argv, @p i and @p out are non-NULL and @p *i is in [2, argc).
- * @pre @p out has been seeded by ::args_defaults.
+ * @pre @p out has been seeded by ::internal_args_defaults.
  * @post On true, @p out and @p *i reflect the consumed option.
  * @note Not thread-safe; single-threaded CLI setup.
  * @since 0.1.0
+  * @post Ownership of caller-supplied storage is unchanged.
  */
-static bool args_try_control(int argc, char** argv, int* i, emu_args_t* out)
+RA8_INTERNAL static bool internal_args_try_control(int argc, char** argv, int* i, emu_args_t* out)
 {
   const int idx = *i;
   if ((strncmp(argv[idx], "--button", sizeof("--button")) == 0) && ((idx + 1) < argc)) {
@@ -478,14 +485,17 @@ static bool args_try_control(int argc, char** argv, int* i, emu_args_t* out)
 bool emu_args_parse(int argc, char** argv, emu_args_t* out)
 {
   if (argc < 2) {
-    args_print_usage();
+    internal_args_print_usage();
     return false;
   }
-  args_defaults(argv[1], out);
+  internal_args_defaults(argv[1], out);
   for (int i = 2; i < argc; i++) {
-    (void)(args_try_mode(argc, argv, &i, out) || args_try_display(argc, argv, &i, out) ||
-           args_try_input(argc, argv, &i, out) || args_try_sd(argc, argv, &i, out) ||
-           args_try_sym(argc, argv, &i, out) || args_try_control(argc, argv, &i, out));
+    (void)(internal_args_try_mode(argc, argv, &i, out) ||
+           internal_args_try_display(argc, argv, &i, out) ||
+           internal_args_try_input(argc, argv, &i, out) ||
+           internal_args_try_sd(argc, argv, &i, out) ||
+           internal_args_try_sym(argc, argv, &i, out) ||
+           internal_args_try_control(argc, argv, &i, out));
   }
   return true;
 }
