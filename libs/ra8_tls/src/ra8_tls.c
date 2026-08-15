@@ -49,7 +49,7 @@ typedef enum : uint8_t {
 
 #ifdef RA8_OFF_TARGET
 /** @brief Deterministic cipher-suite name reported on the off-target path. */
-static const char* const k_ra8_tls_fake_cipher = "off-target-loopback";
+static const char* const s_ra8_tls_fake_cipher = "off-target-loopback";
 #endif
 
 /* =============================================================================
@@ -58,7 +58,7 @@ static const char* const k_ra8_tls_fake_cipher = "off-target-loopback";
  */
 
 /** @brief Logging tag prefix used by every ``ra8_tls`` log line. */
-static const char* const k_ra8_tls_tag = "ra8_tls";
+static const char* const s_ra8_tls_tag = "ra8_tls";
 
 /* =============================================================================
  * Pool slot definition
@@ -222,7 +222,7 @@ static void internal_copy_cstr(char* dst, const char* src, size_t cap)
 ra8_err_t ra8_tls_global_init(void)
 {
   if (s_initialized) {
-    ra8_log_warn(k_ra8_tls_tag, "global_init called twice");
+    ra8_log_warn(s_ra8_tls_tag, "global_init called twice");
     return k_ra8_err_exists;
   }
 
@@ -236,13 +236,13 @@ ra8_err_t ra8_tls_global_init(void)
    * ``mbedtls_psa_external_get_random`` hook (RSIP TRNG on hardware). */
   const psa_status_t psa_rc = psa_crypto_init();
   if (psa_rc != PSA_SUCCESS) {
-    ra8_log_error(k_ra8_tls_tag, "psa_crypto_init failed");
+    ra8_log_error(s_ra8_tls_tag, "psa_crypto_init failed");
     return k_ra8_err_hw_error;
   }
 #endif
 
   s_initialized = true;
-  ra8_log_info(k_ra8_tls_tag, "global_init ok");
+  ra8_log_info(s_ra8_tls_tag, "global_init ok");
   return k_ra8_ok;
 }
 
@@ -438,7 +438,7 @@ ra8_err_t ra8_tls_session_open(ra8_tls_session_t* out_session, const ra8_tls_ses
 
   struct ra8_tls_session_handle* slot = internal_pool_acquire();
   if (slot == nullptr) {
-    ra8_log_warn(k_ra8_tls_tag, "session pool exhausted");
+    ra8_log_warn(s_ra8_tls_tag, "session pool exhausted");
     return k_ra8_err_no_mem;
   }
 
@@ -493,7 +493,7 @@ ra8_err_t ra8_tls_handshake(ra8_tls_session_t session)
   if ((rc == MBEDTLS_ERR_SSL_WANT_READ) || (rc == MBEDTLS_ERR_SSL_WANT_WRITE)) {
     return k_ra8_err_would_block;
   }
-  ra8_log_error(k_ra8_tls_tag, "handshake failed");
+  ra8_log_error(s_ra8_tls_tag, "handshake failed");
   return k_ra8_err_comm_error;
 #else
   /* Off-target path: drive a single round-trip through the BIO callbacks
@@ -623,7 +623,7 @@ ra8_err_t ra8_tls_get_cipher_suite(ra8_tls_session_t session,
   }
   return k_ra8_ok;
 #else
-  internal_copy_cstr(out_name, k_ra8_tls_fake_cipher, name_cap);
+  internal_copy_cstr(out_name, s_ra8_tls_fake_cipher, name_cap);
   return k_ra8_ok;
 #endif
 }
