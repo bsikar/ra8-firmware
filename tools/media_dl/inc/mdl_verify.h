@@ -12,6 +12,7 @@
 #include <stddef.h>
 
 #include "mdl_export.h"
+#include "mdl_storage.h"
 #include "ra8_err.h"
 
 typedef struct {
@@ -61,11 +62,52 @@ ra8_err_t mdl_format_from_path(const char* path, mdl_format_t* out_format);
 bool mdl_format_is_verifiable(mdl_format_t format);
 
 /**
+ * @brief Validate an artifact through a borrowed open filesystem handle
+ *
+ * @details Dispatches to the same ZIP, tar, gzip, or JOF validator used by
+ *          ::mdl_verify_file after seeking @p file to offset zero. This entry
+ *          point lets an exporter validate a staged transaction before commit
+ *          without publishing or reopening the stage by name. The handle is
+ *          borrowed: this function never closes it, and its final offset is
+ *          unspecified. The size is an immutable caller-supplied snapshot.
+ * @param[in,out] storage Injected storage buffers used by streaming readers.
+ * @param[in]     fmt Expected artifact format.
+ * @param[in,out] file Borrowed readable and seekable open handle.
+ * @param[in]     size_bytes Stable artifact extent in bytes.
+ * @param[in,out] ws Caller-owned bounded validation workspace.
+ * @param[out]    report Structural counts populated only on success.
+ * @return Validation, argument, or stream status.
+ * @retval k_ra8_ok The staged artifact is structurally valid for @p fmt.
+ * @retval k_ra8_err_invalid_arg A pointer, workspace, or format is invalid.
+ * @retval k_ra8_err_invalid_size The caller workspace is too small.
+ * @retval k_ra8_err_validation_failed Container structure or metadata is bad.
+ * @retval k_ra8_err_not_supported The reserved format has no validator.
+ * @retval other A seek or read failure was propagated.
+ * @pre @p file remains exclusively borrowed for the complete call.
+ * @pre @p size_bytes is the stable size of the staged artifact.
+ * @post @p file remains open and owned by the caller.
+ * @post On failure @p report retains its entry value.
+ * @post `ws->high_water` describes this validation attempt.
+ * @note Thread-safe across distinct handles, workspaces, buffers, and reports.
+ * @since 0.1.0
+ */
+ra8_err_t mdl_verify_open_file(mdl_storage_t*          storage,
+                               mdl_format_t            fmt,
+                               fw_fs_file_t*           file,
+                               uint64_t                size_bytes,
+                               mdl_export_workspace_t* ws,
+                               mdl_verify_report_t*    report);
+
+/**
  * @brief Validate a completed artifact using caller-owned scratch only
  *
  * @details Dispatches to the format-specific ZIP, tar, gzip, or JOF reader,
  *          rejects unsafe member paths and missing required metadata, and
  *          resets the workspace so `high_water` describes this call alone.
+ *          ZIP and JOF use positioned reads; TAR and gzip are streamed through
+ *          bounded chunks, so no complete compressed or decoded archive is
+ *          retained. Every opened stream is closed before return.
+ * @param[in,out] storage Injected filesystem and exclusive file workspace.
  * @param[in]     fmt    Expected artifact format.
  * @param[in]     path   NUL-terminated path to the completed artifact.
  * @param[in,out] ws     Caller-owned bounded validation workspace.
@@ -76,14 +118,17 @@ bool mdl_format_is_verifiable(mdl_format_t format);
  * @retval k_ra8_err_invalid_size The caller workspace is too small.
  * @retval k_ra8_err_validation_failed Container structure or metadata is bad.
  * @retval k_ra8_err_not_supported The reserved format has no validator.
- * @pre @p path is NUL-terminated and names a stable completed file.
- * @pre @p ws and @p report are exclusive to this call.
+ * @retval other A filesystem open/read/seek/size/close failure was propagated.
+ * @pre @p path is canonical, NUL-terminated, and names a stable completed file.
+ * @pre @p storage, @p ws, and @p report are exclusive to this call.
  * @post `ws->used` and `ws->high_water` describe this validation attempt.
  * @post On success @p report contains format, member, page, and metadata data.
+ * @post On failure @p report retains its entry value.
  * @note Thread-safe across calls that use distinct workspaces and reports.
  * @since 0.1.0
  */
-ra8_err_t mdl_verify_file(mdl_format_t            fmt,
+ra8_err_t mdl_verify_file(mdl_storage_t*          storage,
+                          mdl_format_t            fmt,
                           const char*             path,
                           mdl_export_workspace_t* ws,
                           mdl_verify_report_t*    report);

@@ -16,6 +16,7 @@
 #include <stdint.h>
 
 #include "mdl_net.h"
+#include "ra8_io_stream.h"
 
 /**
  * @struct mdl_run_opts_t
@@ -75,6 +76,7 @@ typedef struct {
   const char* series;           /**< --series URL.                                              */
   const char* page_url;         /**< positional page URL (page mode).                           */
   const char* out;              /**< --out dir.                                                 */
+  const char* cache_dir;        /**< --cache-dir: persistent per-host cache root.                */
   const char* attr;             /**< --attr.                                                    */
   const char* chapters;         /**< --chapters.                                                */
   const char* from;             /**< --from: first chapter NUMBER to fetch (not an index).      */
@@ -90,8 +92,8 @@ typedef struct {
   const char* pick;             /**< --pick N: download the Nth discovery hit (1-based).        */
   const char* proxy;            /**< --proxy URL: HTTP/HTTPS proxy URL.                         */
   const char* socks5;           /**< --socks5 URL: SOCKS5 proxy URL.                            */
-  const char* cookie_file;      /**< --cookie-file FILE: cookie file path for libcurl.          */
-  const char* ca_file;          /**< --ca-file FILE: custom PEM CA bundle for HTTPS.            */
+  const char* cookie_file;      /**< --cookie-file FILE: host composition input path.           */
+  const char* ca_file;          /**< --ca-file FILE: host composition CA input path.            */
   const char* verify_dir;       /**< --verify [DIR]: directory to verify.                       */
   const char* init_site_url;    /**< --init-site URL: generate site descriptor template.        */
   bool        browse;           /**< --browse: list a site's latest-updates page.               */
@@ -113,17 +115,21 @@ typedef struct {
 } mdl_args_t;
 
 /**
- * @brief Print usage to stderr.
+ * @brief Write the complete usage block to an injected byte stream.
+ * @param[in,out] diagnostic Bound stream receiving the help text.
  * @param[in] a0 `argv[0]`, the program name shown in the usage lines.
- * @return Nothing.
- * @pre `a0` is a NUL-terminated string.
- * @pre stderr is open.
- * @post A usage block is written to stderr.
- * @post No state is modified.
- * @note Thread-safe: writes only to stderr.
+ * @return Canonical stream status.
+ * @retval k_ra8_ok The complete usage block was accepted.
+ * @retval k_ra8_err_null_ptr A required pointer was null.
+ * @retval other The injected stream rejected a write.
+ * @pre @p diagnostic is bound and exclusively owned for the call.
+ * @pre @p a0 is a NUL-terminated string.
+ * @post Success writes the exact complete usage block.
+ * @post Failure stops at the first rejected stream operation.
+ * @note Thread-safe across distinct streams.
  * @since 0.1.0
  */
-void mdl_cli_usage(const char* a0);
+[[nodiscard]] ra8_err_t mdl_cli_usage(ra8_io_stream_t* diagnostic, const char* a0);
 
 /**
  * @brief Parse argv into `a`; numeric fields stay as strings for main.
@@ -137,6 +143,9 @@ void mdl_cli_usage(const char* a0);
  * @post `a->bad` reflects whether an argument was unrecognised.
  * @note Not thread-safe: writes caller storage.
  * @since 0.1.0
+
+ * @details Uses caller-owned fixed-capacity argument state without allocation.
+ *          Mode selection and numeric publication remain explicit validation phases.
  */
 void mdl_cli_parse(int argc, char** argv, mdl_args_t* a);
 
@@ -151,6 +160,10 @@ void mdl_cli_parse(int argc, char** argv, mdl_args_t* a);
  *       absent.
  * @note Thread-safe: depends only on its argument.
  * @since 0.1.0
+
+ * @details Uses caller-owned fixed-capacity argument state without allocation.
+ *          Mode selection and numeric publication remain explicit validation phases.
+ * @post Documented outputs and the return value describe the same outcome.
  */
 mdl_run_opts_t mdl_cli_run_opts(const mdl_args_t* a);
 
@@ -180,27 +193,32 @@ typedef struct {
  * Converts the string-form numeric options (`--timeout`, `--chapters`, `--max`,
  * `--seed`, `--from`, and `--max-bytes` for presence-validation) into typed
  * scalars, rejecting any non-numeric or trailing-garbage value with a usage
- * message on stderr rather than silently substituting 0. Decimal chapter
+ * message on the injected diagnostic stream rather than substituting 0. Decimal chapter
  * values such as `108.5` are accepted for `--from`; NaN and infinity are not.
  * `--chapters` of 0 is rejected.
  *
  * @param[in]  a Parsed command-line options (never NULL).
+ * @param[in,out] diagnostic Bound stream receiving any rejection diagnostic.
  * @param[out] n Receives the validated scalars (never NULL).
  *
- * @return Whether every present numeric field parsed cleanly.
- * @retval true  All fields valid; @p n is fully populated.
- * @retval false A field was non-numeric or out of range; a usage error was
- *               printed and @p n is partially written.
+ * @return Canonical validation or stream status.
+ * @retval k_ra8_ok All fields are valid and @p n is fully populated.
+ * @retval k_ra8_err_invalid_arg A field is invalid and its complete diagnostic
+ *                               was written.
+ * @retval k_ra8_err_null_ptr A required pointer was null.
+ * @retval other The injected stream rejected a diagnostic write.
  *
- * @pre @p a and @p n are non-NULL; @p a was populated by ::mdl_cli_parse.
- * @pre The caller aborts with a usage exit code when this returns false.
- * @post On true, `n->chapters >= 1` and every scalar reflects the args.
- * @post On false, a diagnostic naming the bad option was written to stderr.
+ * @pre @p a, @p diagnostic, and @p n are non-NULL; @p a was populated by
+ *      ::mdl_cli_parse.
+ * @pre The caller maps ::k_ra8_err_invalid_arg to the usage exit code.
+ * @post On success, `n->chapters >= 1` and every scalar reflects the args.
+ * @post On failure, @p n is left byte-for-byte unchanged.
  *
- * @note Not thread-safe: writes caller storage and stderr.
+ * @note Thread-safe across distinct output objects and streams.
  * @since 0.1.0
  */
-bool mdl_cli_parse_nums(const mdl_args_t* a, mdl_nums_t* n);
+[[nodiscard]] ra8_err_t
+mdl_cli_parse_nums(const mdl_args_t* a, ra8_io_stream_t* diagnostic, mdl_nums_t* n);
 
 /**
  * @brief Validate mode selection, required arguments, and per-mode options.
@@ -210,22 +228,28 @@ bool mdl_cli_parse_nums(const mdl_args_t* a, mdl_nums_t* n);
  * accepted option always has an effect. Proxy escape hatches and debug image
  * attributes receive their mode-independent consistency checks here.
  *
- * @param[in]  a    Parsed, pre-default argument set.
+ * @param[in] a Parsed, pre-default argument set.
+ * @param[in,out] diagnostic Bound stream receiving any rejection diagnostic.
  * @param[out] mode Receives the one selected command mode on success.
  *
- * @return Whether the invocation is unambiguous and every option is effective.
- * @retval true  Validation succeeded and @p mode names the command to dispatch.
- * @retval false Validation failed; a diagnostic was written when possible.
+ * @return Canonical validation or stream status.
+ * @retval k_ra8_ok Validation succeeded and @p mode names the command.
+ * @retval k_ra8_err_invalid_arg The invocation is invalid and its complete
+ *                               diagnostic was written.
+ * @retval k_ra8_err_null_ptr A required pointer was null.
+ * @retval other The injected stream rejected a diagnostic write.
  *
- * @pre @p a and @p mode are non-NULL and ::mdl_cli_parse has run.
+ * @pre @p a, @p diagnostic, and @p mode are non-NULL and ::mdl_cli_parse has
+ *      run.
  * @pre Defaults that were absent on the command line have not been injected.
- * @post On true, @p mode is not ::k_mdl_cli_mode_invalid.
- * @post On false, @p mode is ::k_mdl_cli_mode_invalid.
+ * @post On success, @p mode is not ::k_mdl_cli_mode_invalid.
+ * @post On failure, @p mode is ::k_mdl_cli_mode_invalid.
  *
- * @note Not thread-safe: writes @p mode and may write stderr.
+ * @note Thread-safe across distinct output objects and streams.
  * @since 0.1.0
  */
-bool mdl_cli_validate(const mdl_args_t* a, mdl_cli_mode_t* mode);
+[[nodiscard]] ra8_err_t
+mdl_cli_validate(const mdl_args_t* a, ra8_io_stream_t* diagnostic, mdl_cli_mode_t* mode);
 
 /**
  * @brief Stable human-readable command mode name.

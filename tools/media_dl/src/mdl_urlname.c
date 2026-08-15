@@ -1,19 +1,18 @@
 /**
  * @file mdl_urlname.c
- * @brief Pure URL-to-name helpers (last segment, chapter number, extension).
+ * @brief Bounded URL naming and portable image-type readers.
  *
  * @details Converts bounded URL path components into safe display and file
  * names, recognises explicit chapter markers, and identifies supported image
  * types from signatures or content type. All outputs use caller-owned fixed
- * buffers and no helper allocates memory.
+ * buffers and no helper allocates memory. File signatures are read only through
+ * the injected downloader storage binding.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 #include "mdl_urlname.h"
 
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "mdl_sanitize.h"
@@ -21,9 +20,11 @@
 
 /** @brief On-stack buffers and parse radix for the URL-name helpers. */
 typedef enum : uint16_t {
-  k_urlname_raw_bytes = 256,  /**< Pre-sanitise last-segment scratch bytes. */
-  k_urlname_case_gap  = 32,   /**< 'a' - 'A': ASCII upper-to-lower offset.  */
-  k_urlname_scan_max  = 2048, /**< Maximum URL bytes inspected.             */
+  k_urlname_raw_bytes   = 256,  /**< Pre-sanitise last-segment scratch bytes. */
+  k_urlname_case_gap    = 32,   /**< 'a' - 'A': ASCII upper-to-lower offset.  */
+  k_urlname_scan_max    = 2048, /**< Maximum URL bytes inspected.             */
+  k_urlname_magic_bytes = 16,   /**< Largest file-signature prefix consumed.  */
+  k_urlname_read_calls  = 17,   /**< One-byte short reads plus clean EOF.     */
 } mdl_urlname_const_t;
 
 /** @brief Numeric bounds keep conversion loops and sortable values finite. */
@@ -34,7 +35,7 @@ typedef enum : uint32_t {
 } mdl_chapter_num_limit_t;
 
 /** @brief Initial decimal place multiplier for a fractional chapter. */
-static const double k_chapter_fraction_step = 0.1;
+static const double s_chapter_fraction_step = 0.1;
 
 /** @brief Signature byte offsets not already exempted by the numeric policy. */
 typedef enum : uint8_t {
@@ -65,7 +66,7 @@ typedef enum : uint8_t {
  * @note Thread-safe: reads only its argument.
  * @since 0.1.0
  */
-RA8_INTERNAL static size_t path_end(const char* url)
+RA8_INTERNAL static size_t internal_urlname_path_end(const char* url)
 {
   const char* q = strpbrk(url, "?#");
   return (q == nullptr) ? strlen(url) : (size_t)(q - url);
@@ -79,7 +80,7 @@ void mdl_urlname_last_segment(const char* url, char* out, size_t cap)
     }
     return;
   }
-  size_t end = path_end(url);
+  size_t end = internal_urlname_path_end(url);
   while ((end > 0U) && (url[end - 1U] == '/')) {
     --end; /* trim trailing slashes */
   }
@@ -116,7 +117,7 @@ void mdl_urlname_last_segment(const char* url, char* out, size_t cap)
  * @note Query and fragment removal is handled by the caller when choosing @p end.
  * @since 0.1.0
  */
-RA8_INTERNAL static size_t path_start(const char* url, size_t end)
+RA8_INTERNAL static size_t internal_urlname_path_start(const char* url, size_t end)
 {
   const char* scheme = strstr(url, "://");
   if ((scheme == nullptr) || ((size_t)(scheme - url) >= end)) {
@@ -129,7 +130,7 @@ RA8_INTERNAL static size_t path_start(const char* url, size_t end)
 
 /** @brief Locate the last chapter marker wholly inside `[begin,end)`. */
 RA8_INTERNAL static const char*
-last_path_marker(const char* url, size_t begin, size_t end, const char* marker)
+internal_urlname_last_path_marker(const char* url, size_t begin, size_t end, const char* marker)
 {
   const size_t marker_len = strlen(marker);
   const char*  found      = nullptr;
@@ -166,8 +167,10 @@ last_path_marker(const char* url, size_t begin, size_t end, const char* marker)
  * @note Bytes following the recognised numeric run are intentionally ignored.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool
-parse_chapter_digits(const char* start, const char* end, double* out, const char** out_next)
+RA8_INTERNAL static bool internal_urlname_parse_chapter_digits(const char*  start,
+                                                               const char*  end,
+                                                               double*      out,
+                                                               const char** out_next)
 {
   if ((start >= end) || (*start < '0') || (*start > '9')) {
     return false;
@@ -185,14 +188,14 @@ parse_chapter_digits(const char* start, const char* end, double* out, const char
   if ((start < end) && ((*start == '-') || (*start == '.')) && ((start + 1) < end) &&
       (start[1] >= '0') && (start[1] <= '9')) {
     ++start;
-    double   scale  = k_chapter_fraction_step;
+    double   scale  = s_chapter_fraction_step;
     uint32_t digits = 0U;
     while ((start < end) && (*start >= '0') && (*start <= '9')) {
       if (digits >= (uint32_t)k_chapter_frac_max) {
         return false;
       }
       value += (double)(*start - '0') * scale;
-      scale *= k_chapter_fraction_step;
+      scale *= s_chapter_fraction_step;
       ++digits;
       ++start;
     }
@@ -216,19 +219,20 @@ bool mdl_urlname_chapter_parse(const char* url, double* out)
   if (bounded == (size_t)k_urlname_scan_max) {
     return false;
   }
-  const size_t             end       = path_end(url);
-  const size_t             begin     = path_start(url, end);
+  const size_t             end       = internal_urlname_path_end(url);
+  const size_t             begin     = internal_urlname_path_start(url, end);
   static const char* const markers[] = {"chapter-", "/ch-", "/ep"};
   const char*              found     = nullptr;
   size_t                   skip      = 0U;
   for (size_t i = 0U; i < (sizeof(markers) / sizeof(markers[0])); ++i) {
-    const char* candidate = last_path_marker(url, begin, end, markers[i]);
+    const char* candidate = internal_urlname_last_path_marker(url, begin, end, markers[i]);
     if ((candidate != nullptr) && ((found == nullptr) || (candidate > found))) {
       found = candidate;
       skip  = strlen(markers[i]);
     }
   }
-  return (found != nullptr) && parse_chapter_digits(found + skip, url + end, out, nullptr);
+  return (found != nullptr) &&
+         internal_urlname_parse_chapter_digits(found + skip, url + end, out, nullptr);
 }
 
 bool mdl_urlname_chapter_text_parse(const char* text, double* out)
@@ -255,7 +259,7 @@ bool mdl_urlname_chapter_text_parse(const char* text, double* out)
   }
   const char* next   = nullptr;
   double      parsed = 0.0;
-  if (!parse_chapter_digits(begin, end, &parsed, &next) || (next != end)) {
+  if (!internal_urlname_parse_chapter_digits(begin, end, &parsed, &next) || (next != end)) {
     return false;
   }
   *out = parsed;
@@ -287,7 +291,7 @@ long mdl_urlname_chapter_number(const char* url)
  * @note Thread-safe: pure arithmetic.
  * @since 0.1.0
  */
-RA8_INTERNAL static char to_lower_ascii(char c)
+RA8_INTERNAL static char internal_urlname_to_lower_ascii(char c)
 {
   const int lowered = ((c >= 'A') && (c <= 'Z')) ? (c + (int)k_urlname_case_gap) : (int)c;
   return (char)lowered;
@@ -307,15 +311,39 @@ RA8_INTERNAL static char to_lower_ascii(char c)
  * @note Thread-safe: reads constant storage.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool is_known_ext(const char* ext)
+RA8_INTERNAL static bool internal_urlname_is_known_ext(const char* ext)
 {
-  static const char* const k_known[] = {"jpg", "jpeg", "png", "gif", "webp", "bmp"};
-  for (size_t i = 0U; i < (sizeof(k_known) / sizeof(k_known[0])); ++i) {
-    if (strcmp(ext, k_known[i]) == 0) {
+  static const char* const known[] = {"jpg", "jpeg", "png", "gif", "webp", "bmp"};
+  for (size_t i = 0U; i < (sizeof(known) / sizeof(known[0])); ++i) {
+    if (strcmp(ext, known[i]) == 0) {
       return true;
     }
   }
   return false;
+}
+
+/**
+ * @brief Copy one NUL-terminated value into bounded caller storage.
+ * @details Copies at most `capacity - 1` bytes and always terminates a writable,
+ *          nonempty destination without consulting host stream state.
+ * @param[out] out Optional output buffer.
+ * @param[in] capacity Writable output bytes.
+ * @param[in] value NUL-terminated source value.
+ * @pre @p value is non-NULL and NUL-terminated.
+ * @pre A non-NULL @p out addresses @p capacity writable bytes.
+ * @post A nonempty output is NUL-terminated, with deterministic truncation.
+ * @post Source bytes are unchanged and no pointer is retained.
+ * @note Thread-safe across disjoint output buffers.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_urlname_copy(char* out, size_t capacity, const char* value)
+{
+  if ((out == nullptr) || (capacity == 0U)) {
+    return;
+  }
+  size_t length = strnlen(value, capacity - 1U);
+  memcpy(out, value, length);
+  out[length] = '\0';
 }
 
 void mdl_urlname_ext(const char* url, char* out, size_t cap)
@@ -323,11 +351,11 @@ void mdl_urlname_ext(const char* url, char* out, size_t cap)
   if ((out == nullptr) || (cap == 0U)) {
     return;
   }
-  (void)snprintf(out, cap, "%s", "jpg");
+  internal_urlname_copy(out, cap, "jpg");
   if (url == nullptr) {
     return;
   }
-  const size_t pend  = path_end(url);
+  const size_t pend  = internal_urlname_path_end(url);
   size_t       start = pend;
   while ((start > 0U) && (url[start - 1U] != '/')) {
     --start; /* isolate the last path segment */
@@ -344,11 +372,151 @@ void mdl_urlname_ext(const char* url, char* out, size_t cap)
   char   ext[8];
   size_t n = 0U;
   for (size_t i = dot + 1U; (i < pend) && (n + 1U < sizeof(ext)); ++i) {
-    ext[n++] = to_lower_ascii(url[i]);
+    ext[n++] = internal_urlname_to_lower_ascii(url[i]);
   }
   ext[n] = '\0';
-  if (is_known_ext(ext)) {
-    (void)snprintf(out, cap, "%s", ext);
+  if (internal_urlname_is_known_ext(ext)) {
+    internal_urlname_copy(out, cap, ext);
+  }
+}
+
+/**
+ * @brief Classify a supported image from its leading magic bytes.
+ * @details Checks bounded JPEG, PNG, GIF, WebP, and AVIF signatures in a fixed
+ *          order and returns immutable canonical extension and MIME strings.
+ * @param[in] buf Readable response prefix.
+ * @param[in] buf_len Number of readable bytes at @p buf.
+ * @param[out] ext Receives a borrowed canonical extension pointer.
+ * @param[out] mime Receives a borrowed canonical MIME pointer.
+ * @return Whether a complete supported signature was recognized.
+ * @retval true @p ext and @p mime were initialized consistently.
+ * @retval false No supported complete signature was present.
+ * @pre @p ext and @p mime are non-NULL.
+ * @pre @p buf is non-NULL when @p buf_len is nonzero.
+ * @post Success initializes both outputs to process-lifetime constants.
+ * @post Input bytes and caller ownership remain unchanged.
+ * @note Partial signatures are rejected rather than guessed.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool
+internal_sniff_magic_image(const void* buf, size_t buf_len, const char** ext, const char** mime)
+{
+  if ((buf == nullptr) || (buf_len < 2U)) {
+    return false;
+  }
+  const uint8_t* b = (const uint8_t*)buf;
+  if ((buf_len >= 3U) && (b[0] == (uint8_t)k_jpeg_marker_byte) &&
+      (b[1] == (uint8_t)k_jpeg_soi_byte) && (b[2] == (uint8_t)k_jpeg_marker_byte)) {
+    *ext  = "jpg";
+    *mime = "image/jpeg";
+    return true;
+  }
+  if ((b[0] == (uint8_t)'B') && (b[1] == (uint8_t)'M')) {
+    *ext  = "bmp";
+    *mime = "image/bmp";
+    return true;
+  }
+  if ((buf_len >= 4U) && (b[0] == (uint8_t)k_png_lead_byte) && (b[1] == (uint8_t)'P') &&
+      (b[2] == (uint8_t)'N') && (b[3] == (uint8_t)'G')) {
+    *ext  = "png";
+    *mime = "image/png";
+    return true;
+  }
+  if ((buf_len >= (size_t)k_webp_sig_bytes) && (b[0] == 'R') && (b[1] == 'I') && (b[2] == 'F') &&
+      (b[3] == 'F') && (b[8] == 'W') && (b[k_webp_e_offset] == 'E') &&
+      (b[k_webp_b_offset] == 'B') && (b[k_webp_p_offset] == 'P')) {
+    *ext  = "webp";
+    *mime = "image/webp";
+    return true;
+  }
+  if ((buf_len >= 6U) && (b[0] == 'G') && (b[1] == 'I') && (b[2] == 'F') && (b[3] == '8') &&
+      ((b[4] == '7') || (b[4] == '9')) && (b[k_gif_a_offset] == 'a')) {
+    *ext  = "gif";
+    *mime = "image/gif";
+    return true;
+  }
+  return false;
+}
+
+/**
+ * @brief Classify a supported image from an HTTP Content-Type value.
+ * @details Compares the media type case-insensitively while accepting bounded
+ *          parameters after `;`, then returns the canonical extension/MIME pair.
+ * @param[in] content_type NUL-terminated response Content-Type value.
+ * @param[out] ext Receives a borrowed canonical extension pointer.
+ * @param[out] mime Receives a borrowed canonical MIME pointer.
+ * @return Whether a supported image media type was recognized.
+ * @retval true @p ext and @p mime were initialized consistently.
+ * @retval false The value was missing, malformed, or unsupported.
+ * @pre @p ext and @p mime are non-NULL.
+ * @pre @p content_type, when non-NULL, is NUL-terminated.
+ * @post Success initializes both outputs to process-lifetime constants.
+ * @post The supplied header text and its ownership remain unchanged.
+ * @note Magic-byte classification takes precedence at the public seam.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool
+internal_sniff_content_type(const char* content_type, const char** ext, const char** mime)
+{
+  if ((content_type == nullptr) || (content_type[0] == '\0')) {
+    return false;
+  }
+  char   ct_lower[128];
+  size_t i = 0U;
+  for (; (content_type[i] != '\0') && (i + 1U < sizeof(ct_lower)); ++i) {
+    ct_lower[i] = internal_urlname_to_lower_ascii(content_type[i]);
+  }
+  ct_lower[i] = '\0';
+  if ((strstr(ct_lower, "image/jpeg") != nullptr) || (strstr(ct_lower, "image/jpg") != nullptr)) {
+    *ext  = "jpg";
+    *mime = "image/jpeg";
+  } else if (strstr(ct_lower, "image/png") != nullptr) {
+    *ext  = "png";
+    *mime = "image/png";
+  } else if (strstr(ct_lower, "image/webp") != nullptr) {
+    *ext  = "webp";
+    *mime = "image/webp";
+  } else if (strstr(ct_lower, "image/gif") != nullptr) {
+    *ext  = "gif";
+    *mime = "image/gif";
+  } else if (strstr(ct_lower, "image/bmp") != nullptr) {
+    *ext  = "bmp";
+    *mime = "image/bmp";
+  } else {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * @brief Copy one canonical image classification to bounded outputs.
+ * @details Copies extension and MIME independently only when the corresponding
+ *          output buffer is present and nonempty, always preserving termination.
+ * @param[in] ext NUL-terminated canonical extension.
+ * @param[in] mime NUL-terminated canonical MIME type.
+ * @param[out] out_ext Optional extension output buffer.
+ * @param[in] ext_cap Capacity of @p out_ext in bytes.
+ * @param[out] out_mime Optional MIME output buffer.
+ * @param[in] mime_cap Capacity of @p out_mime in bytes.
+ * @pre @p ext and @p mime are non-NULL and NUL-terminated.
+ * @pre Each non-NULL output references its declared writable capacity.
+ * @post Every nonempty output is NUL-terminated within its capacity.
+ * @post No input or output pointer is retained or transferred.
+ * @note Truncation is deterministic and confined to the affected output.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_copy_image_type(const char* ext,
+                                                  const char* mime,
+                                                  char*       out_ext,
+                                                  size_t      ext_cap,
+                                                  char*       out_mime,
+                                                  size_t      mime_cap)
+{
+  if ((out_ext != nullptr) && (ext_cap > 0U)) {
+    internal_urlname_copy(out_ext, ext_cap, ext);
+  }
+  if ((out_mime != nullptr) && (mime_cap > 0U)) {
+    internal_urlname_copy(out_mime, mime_cap, mime);
   }
 }
 
@@ -360,144 +528,68 @@ bool mdl_urlname_sniff_image_type(const void* buf,
                                   char*       out_mime,
                                   size_t      mime_cap)
 {
-  const char* ext   = nullptr;
-  const char* mime  = nullptr;
-  bool        found = false;
-
-  /* 1. Inspect Magic Bytes of fetched buffer */
-  if ((buf != nullptr) && (buf_len >= 3U)) {
-    const uint8_t* b = (const uint8_t*)buf;
-    /* JPEG: FF D8 FF */
-    if ((b[0] == (uint8_t)k_jpeg_marker_byte) && (b[1] == (uint8_t)k_jpeg_soi_byte) &&
-        (b[2] == (uint8_t)k_jpeg_marker_byte)) {
-      ext   = "jpg";
-      mime  = "image/jpeg";
-      found = true;
-    }
+  const char* ext  = nullptr;
+  const char* mime = nullptr;
+  if (!internal_sniff_magic_image(buf, buf_len, &ext, &mime) &&
+      !internal_sniff_content_type(content_type, &ext, &mime)) {
+    return false;
   }
-
-  if (!found && (buf != nullptr) && (buf_len >= 2U)) {
-    const uint8_t* b = (const uint8_t*)buf;
-    /* BMP: Windows bitmap signature. */
-    if ((b[0] == (uint8_t)'B') && (b[1] == (uint8_t)'M')) {
-      ext   = "bmp";
-      mime  = "image/bmp";
-      found = true;
-    }
-  }
-
-  if (!found && (buf != nullptr) && (buf_len >= 4U)) {
-    const uint8_t* b = (const uint8_t*)buf;
-    /* PNG: 89 50 4E 47 */
-    if ((b[0] == (uint8_t)k_png_lead_byte) && (b[1] == (uint8_t)'P') && (b[2] == (uint8_t)'N') &&
-        (b[3] == (uint8_t)'G')) {
-      ext   = "png";
-      mime  = "image/png";
-      found = true;
-    }
-  }
-
-  if (!found && (buf != nullptr) && (buf_len >= (size_t)k_webp_sig_bytes)) {
-    const uint8_t* b = (const uint8_t*)buf;
-    /* WebP: RIFF....WEBP */
-    if ((b[0] == 'R') && (b[1] == 'I') && (b[2] == 'F') && (b[3] == 'F') && (b[8] == 'W') &&
-        (b[k_webp_e_offset] == 'E') && (b[k_webp_b_offset] == 'B') && (b[k_webp_p_offset] == 'P')) {
-      ext   = "webp";
-      mime  = "image/webp";
-      found = true;
-    }
-  }
-
-  if (!found && (buf != nullptr) && (buf_len >= 6U)) {
-    const uint8_t* b = (const uint8_t*)buf;
-    /* GIF: GIF87a / GIF89a */
-    if ((b[0] == 'G') && (b[1] == 'I') && (b[2] == 'F') && (b[3] == '8') &&
-        ((b[4] == '7') || (b[4] == '9')) && (b[k_gif_a_offset] == 'a')) {
-      ext   = "gif";
-      mime  = "image/gif";
-      found = true;
-    }
-  }
-
-  /* 2. Fallback to HTTP Content-Type header */
-  if (!found && (content_type != nullptr) && (content_type[0] != '\0')) {
-    char   ct_lower[128];
-    size_t i = 0U;
-    for (; (content_type[i] != '\0') && (i + 1U < sizeof(ct_lower)); ++i) {
-      ct_lower[i] = to_lower_ascii(content_type[i]);
-    }
-    ct_lower[i] = '\0';
-
-    if ((strstr(ct_lower, "image/jpeg") != nullptr) || (strstr(ct_lower, "image/jpg") != nullptr)) {
-      ext   = "jpg";
-      mime  = "image/jpeg";
-      found = true;
-    } else if (strstr(ct_lower, "image/png") != nullptr) {
-      ext   = "png";
-      mime  = "image/png";
-      found = true;
-    } else if (strstr(ct_lower, "image/webp") != nullptr) {
-      ext   = "webp";
-      mime  = "image/webp";
-      found = true;
-    } else if (strstr(ct_lower, "image/gif") != nullptr) {
-      ext   = "gif";
-      mime  = "image/gif";
-      found = true;
-    } else if (strstr(ct_lower, "image/bmp") != nullptr) {
-      ext   = "bmp";
-      mime  = "image/bmp";
-      found = true;
-    }
-  }
-
-  if (found) {
-    if ((out_ext != nullptr) && (ext_cap > 0U)) {
-      (void)snprintf(out_ext, ext_cap, "%s", ext);
-    }
-    if ((out_mime != nullptr) && (mime_cap > 0U)) {
-      (void)snprintf(out_mime, mime_cap, "%s", mime);
-    }
-    return true;
-  }
-
-  return false;
+  internal_copy_image_type(ext, mime, out_ext, ext_cap, out_mime, mime_cap);
+  return true;
 }
-
-bool mdl_urlname_sniff_file(const char* file_path,
-                            const char* content_type,
-                            char*       out_ext,
-                            size_t      ext_cap,
-                            char*       out_mime,
-                            size_t      mime_cap)
+ra8_err_t mdl_urlname_sniff_file(mdl_storage_t* storage,
+                                 const char*    file_path,
+                                 const char*    content_type,
+                                 char*          out_ext,
+                                 size_t         ext_cap,
+                                 char*          out_mime,
+                                 size_t         mime_cap)
 {
-  if (file_path == nullptr) {
-    return mdl_urlname_sniff_image_type(nullptr,
-                                        0U,
-                                        content_type,
-                                        out_ext,
-                                        ext_cap,
-                                        out_mime,
-                                        mime_cap);
+  if ((storage == nullptr) || (storage->fs == nullptr) || (storage->file_workspace == nullptr) ||
+      (file_path == nullptr)) {
+    return k_ra8_err_invalid_arg;
   }
-  FILE* f = fopen(file_path, "rb");
-  if (f == nullptr) {
-    return mdl_urlname_sniff_image_type(nullptr,
-                                        0U,
-                                        content_type,
-                                        out_ext,
-                                        ext_cap,
-                                        out_mime,
-                                        mime_cap);
+  fw_fs_file_t file = {};
+  ra8_err_t    err  = fw_fs_open(&storage->fs->streams,
+                                 file_path,
+                                 k_fw_fs_open_read,
+                                 &file,
+                                 storage->file_workspace,
+                                 storage->file_workspace_bytes);
+  if (err != k_ra8_ok) {
+    return err;
   }
-  uint8_t      header[16];
-  const size_t nread = fread(header, 1U, sizeof(header), f);
-  (void)fclose(f);
+
+  uint8_t  header[k_urlname_magic_bytes] = {};
+  uint32_t length                        = 0U;
+  uint32_t calls                         = 0U;
+  while ((length < sizeof(header)) && (err == k_ra8_ok)) {
+    if (calls >= (uint32_t)k_urlname_read_calls) {
+      err = k_ra8_err_invalid_size;
+      break;
+    }
+    uint32_t count = 0U;
+    err            = fw_fs_read(&file, header + length, (uint32_t)sizeof(header) - length, &count);
+    ++calls;
+    if ((err == k_ra8_ok) && (count == 0U)) {
+      break;
+    }
+    length += count;
+  }
+  const ra8_err_t close_err = fw_fs_close(&file);
+  if (close_err != k_ra8_ok) {
+    return close_err;
+  }
+  if (err != k_ra8_ok) {
+    return err;
+  }
   return mdl_urlname_sniff_image_type(header,
-                                      nread,
+                                      length,
                                       content_type,
                                       out_ext,
                                       ext_cap,
                                       out_mime,
-                                      mime_cap);
+                                      mime_cap)
+           ? k_ra8_ok
+           : k_ra8_err_validation_failed;
 }

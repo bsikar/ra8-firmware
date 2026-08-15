@@ -10,9 +10,9 @@
  * second run fetches only what is new, and an interrupted run resumes to a
  * byte-identical result. Storage namespace, hashing, and dedup publication are
  * injected through ::mdl_fetch_ctx_t and are portable across `fw_if_fs`
- * backends. Network-to-file staging and state checkpoints still use their
- * legacy host-path contracts; those boundaries must be migrated before this
- * complete orchestrator can run unchanged on a device filesystem.
+ * backends. Response bodies publish through the same portable transaction
+ * contract, while persistent state checkpoints remain the residual host-path
+ * boundary before the complete orchestrator can run unchanged on a device.
  *
  * What it does that the old index-based loop did not:
  *   - **Addresses chapters by identity, not position.** Each chapter's stable id
@@ -37,6 +37,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "mdl_cache.h"
 #include "mdl_config.h"
 #include "mdl_extract.h"
 #include "mdl_politeness.h"
@@ -44,6 +45,7 @@
 #include "mdl_state.h"
 #include "mdl_storage.h"
 #include "ra8_err.h"
+#include "ra8_io_stream.h"
 
 /** @brief Output directory layout the orchestrator writes. */
 typedef enum : uint8_t {
@@ -80,7 +82,7 @@ typedef enum : uint16_t {
  * @details Captured by the run so an end-of-run summary can name every lost
  *          page long after its one-line diagnostic has scrolled past. The raw
  *          ::ra8_err_t is kept (not a prose string) so the caller renders a
- *          human-readable reason at print time via ::mdl_fetch_reason.
+ *          human-readable reason at print time via ::priv_mdl_fetch_reason.
  * @invariant `status == 0` when no HTTP status was observed (transport error or
  *            a robots refusal before any request).
  * @since 0.1.0
@@ -145,7 +147,7 @@ typedef struct {
  * @return Nothing.
  * @since 0.1.0
  */
-typedef void (*mdl_progress_fn)(void* ctx, const mdl_fetch_progress_t* ev);
+typedef ra8_err_t (*mdl_progress_fn)(void* ctx, const mdl_fetch_progress_t* ev);
 
 /**
  * @struct mdl_fetch_ctx_t
@@ -163,6 +165,7 @@ typedef struct {
   mdl_session_t*       session;        /**< Identity + robots + net backend.          */
   mdl_storage_t*       storage;        /**< Portable storage binding + workspaces.    */
   mdl_state_t*         state;          /**< Persistent state, read and updated.       */
+  mdl_cache_t*         cache;          /**< Per-host HTML cache binding.               */
   const char*          state_path;     /**< Atomic checkpoint target, or NULL.        */
   const char*          series_abs_dir; /**< Absolute series dir (paths resolve here). */
   const char*          series_url;     /**< Series URL, sent as the chapter Referer.  */
@@ -175,8 +178,10 @@ typedef struct {
   bool                 update_only;    /**< Skip chapters already recorded complete.  */
   bool                 refetch;        /**< Ignore local page reuse and hit network.  */
   mdl_fetch_faillog_t* faillog;        /**< Caller-cleared failure log, or NULL.      */
+  ra8_io_stream_t*     diagnostic;     /**< Borrowed diagnostic sink.                 */
   mdl_progress_fn      progress_fn;    /**< Per-page progress sink, or NULL (silent). */
   void*                progress_ctx;   /**< Context passed to @ref progress_fn.       */
+  ra8_err_t            progress_error; /**< First callback failure from this run.     */
 } mdl_fetch_ctx_t;
 
 /**

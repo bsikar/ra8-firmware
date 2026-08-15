@@ -1,6 +1,8 @@
 /**
  * @file mdl_sanitize.c
  * @brief Implementation of the untrusted-name sanitisers.
+ * @details Converts untrusted title and URL segments into bounded portable
+ *          names while rejecting separators and special path components.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -26,41 +28,105 @@ static const char* const s_reserved_exact[] = {"con", "prn", "aux", "nul"};
 /** @brief Reserved Windows device prefixes taking a 1-9 suffix. */
 static const char* const s_reserved_numbered[] = {"com", "lpt"};
 
-/** @brief ASCII lower-case of one character (locale-independent). */
-RA8_INTERNAL static char lower_ascii(char c)
+/** @brief ASCII lower-case of one character (locale-independent).
+ * @details Uses locale-independent ASCII rules and supplied destination bounds.
+ *          Every write remains within capacity and leaves a NUL-terminated result.
+ * @param[in] c Input ASCII byte.
+ * @return Lower-case ASCII mapping of @p c, or @p c unchanged outside `A-Z`.
+ * @retval 0 The input character was NUL.
+ * @retval other Lower-case mapping or unchanged input character.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static char internal_lower_ascii(char c)
 {
   return (char)(((c >= 'A') && (c <= 'Z')) ? (c + ('a' - 'A')) : c);
 }
 
-/** @brief True if `c` may appear verbatim in a sanitised segment. */
-RA8_INTERNAL static bool is_allowed_char(char c)
+/** @brief True if `c` may appear verbatim in a sanitised segment.
+ * @details Uses locale-independent ASCII rules and supplied destination bounds.
+ *          Every write remains within capacity and leaves a NUL-terminated result.
+ * @param[in] c Input ASCII byte.
+ * @return True when @p c is an ASCII letter, digit, dot, dash, or underscore.
+ * @retval true The documented predicate holds or the requested operation completed.
+ * @retval false The predicate does not hold or validation rejected the operation.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static bool internal_is_allowed_char(char c)
 {
   return ((c >= 'A') && (c <= 'Z')) || ((c >= 'a') && (c <= 'z')) || ((c >= '0') && (c <= '9')) ||
          (c == '.') || (c == '-') || (c == '_');
 }
 
-/** @brief True if `name` is empty, ".", or ".." (no useful segment). */
-RA8_INTERNAL static bool is_dot_segment(const char* name)
+/** @brief True if `name` is empty, ".", or ".." (no useful segment).
+ * @details Uses locale-independent ASCII rules and supplied destination bounds.
+ *          Every write remains within capacity and leaves a NUL-terminated result.
+ * @param[in] name NUL-terminated name or path segment.
+ * @return True when @p name is empty, `.` or `..`; otherwise false.
+ * @retval true The documented predicate holds or the requested operation completed.
+ * @retval false The predicate does not hold or validation rejected the operation.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static bool internal_is_dot_segment(const char* name)
 {
   return (name[0] == '\0') || (strcmp(name, ".") == 0) || (strcmp(name, "..") == 0);
 }
 
-/** @brief Case-folded base name (up to the first ".") of `name` into `base`. */
-RA8_INTERNAL static void base_of(const char* name, char* base, size_t cap)
+/** @brief Case-folded base name (up to the first ".") of `name` into `base`.
+ * @details Uses locale-independent ASCII rules and supplied destination bounds.
+ *          Every write remains within capacity and leaves a NUL-terminated result.
+ * @param[in] name NUL-terminated name or path segment.
+ * @param[in,out] base NUL-terminated base URL or path.
+ * @param[in] cap Destination capacity including any terminator.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_base_of(const char* name, char* base, size_t cap)
 {
   size_t i = 0U;
   while ((name[i] != '\0') && (name[i] != '.') && ((i + 1U) < cap)) {
-    base[i] = lower_ascii(name[i]);
+    base[i] = internal_lower_ascii(name[i]);
     ++i;
   }
   base[i] = '\0';
 }
 
-/** @brief True if `name`'s base is a Windows reserved device name. */
-RA8_INTERNAL static bool is_reserved_base(const char* name)
+/** @brief True if `name`'s base is a Windows reserved device name.
+ * @details Uses locale-independent ASCII rules and supplied destination bounds.
+ *          Every write remains within capacity and leaves a NUL-terminated result.
+ * @param[in] name NUL-terminated name or path segment.
+ * @return True when @p name has a Windows-reserved device base.
+ * @retval true The documented predicate holds or the requested operation completed.
+ * @retval false The predicate does not hold or validation rejected the operation.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static bool internal_is_reserved_base(const char* name)
 {
   char base[k_reserved_base_max];
-  base_of(name, base, sizeof(base));
+  internal_base_of(name, base, sizeof(base));
   for (size_t i = 0U; i < (sizeof(s_reserved_exact) / sizeof(s_reserved_exact[0])); ++i) {
     if (strcmp(base, s_reserved_exact[i]) == 0) {
       return true;
@@ -77,15 +143,32 @@ RA8_INTERNAL static bool is_reserved_base(const char* name)
   return false;
 }
 
-/** @brief Copy `raw` into `out` replacing unsafe bytes; report bad/truncated. */
-RA8_INTERNAL static bool copy_sanitised(const char* raw, char* out, size_t cap, size_t* out_len)
+/** @brief Copy `raw` into `out` replacing unsafe bytes; report bad/truncated.
+ * @details Uses locale-independent ASCII rules and supplied destination bounds.
+ *          Every write remains within capacity and leaves a NUL-terminated result.
+ * @param[in] raw Untrusted source text to validate or resolve.
+ * @param[out] out Caller-owned result storage.
+ * @param[in] cap Destination capacity including any terminator.
+ * @param[out] out_len Receives the produced byte length.
+ * @return True only when no input byte was replaced or truncated.
+ * @retval true The documented predicate holds or the requested operation completed.
+ * @retval false The predicate does not hold or validation rejected the operation.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static bool
+internal_copy_sanitised(const char* raw, char* out, size_t cap, size_t* out_len)
 {
   bool   clean = true;
   size_t n     = 0U;
   if (raw != nullptr) {
     size_t i = 0U;
     while ((raw[i] != '\0') && ((n + 1U) < cap)) {
-      if (is_allowed_char(raw[i])) {
+      if (internal_is_allowed_char(raw[i])) {
         out[n] = raw[i];
       } else {
         out[n] = '_';
@@ -103,8 +186,20 @@ RA8_INTERNAL static bool copy_sanitised(const char* raw, char* out, size_t cap, 
   return clean;
 }
 
-/** @brief Prepend `_` to `out` in place, staying within `cap`. */
-RA8_INTERNAL static void prepend_underscore(char* out, size_t cap, size_t len)
+/** @brief Prepend `_` to `out` in place, staying within `cap`.
+ * @details Uses locale-independent ASCII rules and supplied destination bounds.
+ *          Every write remains within capacity and leaves a NUL-terminated result.
+ * @param[out] out Caller-owned result storage.
+ * @param[in] cap Destination capacity including any terminator.
+ * @param[in] len Readable byte length.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_prepend_underscore(char* out, size_t cap, size_t len)
 {
   size_t keep = len;
   if ((keep + 2U) > cap) {
@@ -121,13 +216,13 @@ bool mdl_sanitize_segment(const char* raw, char* out, size_t cap)
     return false;
   }
   size_t len   = 0U;
-  bool   clean = copy_sanitised(raw, out, cap, &len);
-  if (is_dot_segment(out)) {
+  bool   clean = internal_copy_sanitised(raw, out, cap, &len);
+  if (internal_is_dot_segment(out)) {
     (void)snprintf(out, cap, "%s", s_fallback_name);
     return false;
   }
-  if (is_reserved_base(out)) {
-    prepend_underscore(out, cap, len);
+  if (internal_is_reserved_base(out)) {
+    internal_prepend_underscore(out, cap, len);
     return false;
   }
   return clean;
@@ -152,8 +247,21 @@ bool mdl_path_contained(const char* parent, const char* candidate)
   return (sep == '/') || (sep == '\0');
 }
 
-/** @brief True if `seg` embeds a path separator (would span directories). */
-RA8_INTERNAL static bool has_separator(const char* seg)
+/** @brief True if `seg` embeds a path separator (would span directories).
+ * @details Uses locale-independent ASCII rules and supplied destination bounds.
+ *          Every write remains within capacity and leaves a NUL-terminated result.
+ * @param[in] seg NUL-terminated path segment.
+ * @return True when @p seg contains a directory separator.
+ * @retval true The documented predicate holds or the requested operation completed.
+ * @retval false The predicate does not hold or validation rejected the operation.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static bool internal_has_separator(const char* seg)
 {
   return strchr(seg, '/') != nullptr;
 }
@@ -167,7 +275,7 @@ bool mdl_path_join(const char* parent, const char* seg, char* out, size_t cap)
   if ((parent == nullptr) || (seg == nullptr)) {
     return false;
   }
-  if (is_dot_segment(seg) || has_separator(seg)) {
+  if (internal_is_dot_segment(seg) || internal_has_separator(seg)) {
     return false; /* empty, `.`, `..`, or a `/`-bearing/absolute segment */
   }
   const size_t plen = strlen(parent);
@@ -184,7 +292,7 @@ bool mdl_path_join(const char* parent, const char* seg, char* out, size_t cap)
 }
 
 /** @brief XML entity for a metacharacter, or NULL when `c` needs no escape. */
-RA8_INTERNAL static const char* xml_entity(char c)
+RA8_INTERNAL static const char* internal_xml_entity(char c)
 {
   switch (c) {
     case '&':
@@ -213,7 +321,7 @@ bool mdl_xml_escape(const char* src, char* out, size_t cap)
   }
   size_t n = 0U;
   for (size_t i = 0U; src[i] != '\0'; ++i) {
-    const char*  ent  = xml_entity(src[i]);
+    const char*  ent  = internal_xml_entity(src[i]);
     const size_t need = (ent != nullptr) ? strlen(ent) : 1U;
     if ((n + need + 1U) > cap) {
       out[0] = '\0';

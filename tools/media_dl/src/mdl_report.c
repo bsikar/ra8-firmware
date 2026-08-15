@@ -13,6 +13,7 @@
 
 #include "mdl_fetch.h"
 #include "mdl_fetch_internal.h"
+#include "mdl_stream_internal.h"
 #include "ra8_attributes.h"
 
 /** @brief Human-readable size/rate scaling and buffer sizes. */
@@ -39,7 +40,7 @@ typedef enum : uint32_t {
  * @note Thread-safe across distinct destination buffers.
  * @since 0.1.0
  */
-RA8_INTERNAL static void fmt_size(uint64_t bytes, char* buf, size_t cap)
+RA8_INTERNAL static void internal_fmt_size(uint64_t bytes, char* buf, size_t cap)
 {
   const double b = (double)bytes;
   if (bytes >= (uint64_t)k_bytes_per_mib) {
@@ -68,7 +69,8 @@ RA8_INTERNAL static void fmt_size(uint64_t bytes, char* buf, size_t cap)
  * @note Thread-safe across distinct destination buffers.
  * @since 0.1.0
  */
-RA8_INTERNAL static void fmt_rate(uint64_t bytes, uint32_t elapsed_ms, char* buf, size_t cap)
+RA8_INTERNAL static void
+internal_fmt_rate(uint64_t bytes, uint32_t elapsed_ms, char* buf, size_t cap)
 {
   if (elapsed_ms == 0U) {
     (void)snprintf(buf, cap, "-- KB/s");
@@ -82,101 +84,124 @@ RA8_INTERNAL static void fmt_rate(uint64_t bytes, uint32_t elapsed_ms, char* buf
   (void)snprintf(buf, cap, "%.1f KB/s", bps / (double)k_bytes_per_kib);
 }
 
-void mdl_report_progress(void* ctx, const mdl_fetch_progress_t* ev)
+/** @brief Append the common chapter and page coordinates for one event.
+ * @details Writes coordinates in stable field order through the injected stream.
+ *          The first sink error is returned unchanged and prevents later fields.
+ * @param[in,out] error Error accumulator or error value.
+ * @param[out] output Destination report stream.
+ * @param[in] ev Structured report event.
+ * @return Operation status.
+ * @retval k_ra8_ok The operation completed successfully.
+ * @retval other The originating validation, storage, stream, or network error.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_report_position(ra8_err_t error, ra8_io_stream_t* output, const mdl_fetch_progress_t* ev)
 {
-  (void)ctx;
+  error = priv_mdl_stream_text(error, output, "[ch ");
+  error = priv_mdl_stream_u64(error, output, ev->chapter_index);
+  error = priv_mdl_stream_text(error, output, "/");
+  error = priv_mdl_stream_u64(error, output, ev->chapter_total);
+  error = priv_mdl_stream_text(error, output, " ");
+  error = priv_mdl_stream_text(error, output, ev->chapter_id);
+  error = priv_mdl_stream_text(error, output, "] page ");
+  error = priv_mdl_stream_u64(error, output, ev->page_index);
+  error = priv_mdl_stream_text(error, output, "/");
+  return priv_mdl_stream_u64(error, output, ev->page_total);
+}
+
+ra8_err_t mdl_report_progress(void* ctx, const mdl_fetch_progress_t* ev)
+{
   if (ev == nullptr) {
-    return;
+    return k_ra8_ok;
   }
+  ra8_io_stream_t* output = (ra8_io_stream_t*)ctx;
+  ra8_err_t        error  = priv_mdl_stream_text(k_ra8_ok, output, "  ");
+  error                   = internal_report_position(error, output, ev);
   if (ev->reused) {
-    (void)printf("  [ch %zu/%zu %s] page %zu/%zu  reused\n",
-                 ev->chapter_index,
-                 ev->chapter_total,
-                 ev->chapter_id,
-                 ev->page_index,
-                 ev->page_total);
-    return;
+    return priv_mdl_stream_text(error, output, "  reused\n");
   }
   char size[k_human_bytes];
   char rate[k_human_bytes];
-  fmt_size(ev->page_bytes, size, sizeof(size));
-  fmt_rate(ev->page_bytes, ev->elapsed_ms, rate, sizeof(rate));
-  (void)printf("  [ch %zu/%zu %s] page %zu/%zu  %s @ %s\n",
-               ev->chapter_index,
-               ev->chapter_total,
-               ev->chapter_id,
-               ev->page_index,
-               ev->page_total,
-               size,
-               rate);
+  internal_fmt_size(ev->page_bytes, size, sizeof(size));
+  internal_fmt_rate(ev->page_bytes, ev->elapsed_ms, rate, sizeof(rate));
+  error = priv_mdl_stream_text(error, output, "  ");
+  error = priv_mdl_stream_text(error, output, size);
+  error = priv_mdl_stream_text(error, output, " @ ");
+  error = priv_mdl_stream_text(error, output, rate);
+  return priv_mdl_stream_text(error, output, "\n");
 }
 
-void mdl_report_progress_bar(void* ctx, const mdl_fetch_progress_t* ev)
+ra8_err_t mdl_report_progress_bar(void* ctx, const mdl_fetch_progress_t* ev)
 {
-  (void)ctx;
   if (ev == nullptr) {
-    return;
+    return k_ra8_ok;
   }
-  const size_t bar_width = (size_t)k_progress_bar_width;
-  size_t       filled    = 0U;
+  ra8_io_stream_t* output    = (ra8_io_stream_t*)ctx;
+  const size_t     bar_width = (size_t)k_progress_bar_width;
+  size_t           filled    = 0U;
   if (ev->page_total > 0U) {
     filled = (ev->page_index * bar_width) / ev->page_total;
     if (filled > bar_width) {
       filled = bar_width;
     }
   }
-  char bar[32];
-  for (size_t i = 0U; i < bar_width; ++i) {
-    bar[i] = (i < filled) ? '=' : ' ';
-  }
-  bar[bar_width]     = '\0';
   const uint32_t pct = (ev->page_total > 0U)
                          ? (uint32_t)((ev->page_index * (size_t)k_percent_scale) / ev->page_total)
                          : 0U;
 
+  ra8_err_t error = priv_mdl_stream_text(k_ra8_ok, output, "\r  [");
+  error           = priv_mdl_stream_repeat(error, output, '=', filled);
+  error           = priv_mdl_stream_repeat(error, output, ' ', bar_width - filled);
+  error           = priv_mdl_stream_text(error, output, "] ");
+  error = priv_mdl_stream_repeat(error, output, ' ', (pct < 10U) ? 2U : ((pct < 100U) ? 1U : 0U));
+  error = priv_mdl_stream_u64(error, output, pct);
+  error = priv_mdl_stream_text(error, output, "% ");
+  error = internal_report_position(error, output, ev);
   if (ev->reused) {
-    (void)printf("\r  [%s] %3u%% [ch %zu/%zu %s] page %zu/%zu (reused)",
-                 bar,
-                 (unsigned)pct,
-                 ev->chapter_index,
-                 ev->chapter_total,
-                 ev->chapter_id,
-                 ev->page_index,
-                 ev->page_total);
+    error = priv_mdl_stream_text(error, output, " (reused)");
   } else {
     char size[k_human_bytes];
     char rate[k_human_bytes];
-    fmt_size(ev->page_bytes, size, sizeof(size));
-    fmt_rate(ev->page_bytes, ev->elapsed_ms, rate, sizeof(rate));
-    (void)printf("\r  [%s] %3u%% [ch %zu/%zu %s] page %zu/%zu (%s @ %s)",
-                 bar,
-                 (unsigned)pct,
-                 ev->chapter_index,
-                 ev->chapter_total,
-                 ev->chapter_id,
-                 ev->page_index,
-                 ev->page_total,
-                 size,
-                 rate);
+    internal_fmt_size(ev->page_bytes, size, sizeof(size));
+    internal_fmt_rate(ev->page_bytes, ev->elapsed_ms, rate, sizeof(rate));
+    error = priv_mdl_stream_text(error, output, " (");
+    error = priv_mdl_stream_text(error, output, size);
+    error = priv_mdl_stream_text(error, output, " @ ");
+    error = priv_mdl_stream_text(error, output, rate);
+    error = priv_mdl_stream_text(error, output, ")");
   }
   if (ev->page_index >= ev->page_total) {
-    (void)printf("\n");
+    error = priv_mdl_stream_text(error, output, "\n");
   }
-  (void)fflush(stdout);
+  return priv_mdl_stream_flush(error, output);
 }
 
-void mdl_report_failures(const mdl_fetch_faillog_t* log)
+ra8_err_t mdl_report_failures(ra8_io_stream_t* diagnostic, const mdl_fetch_faillog_t* log)
 {
   if (log->total == 0U) {
-    return;
+    return k_ra8_ok;
   }
-  (void)fprintf(stderr, "%zu failure(s) this run:\n", log->total);
+  ra8_err_t error = priv_mdl_stream_u64(k_ra8_ok, diagnostic, log->total);
+  error           = priv_mdl_stream_text(error, diagnostic, " failure(s) this run:\n");
   for (size_t i = 0U; i < log->count; ++i) {
     char reason[k_mdl_reason_max];
-    mdl_fetch_reason(log->items[i].err, log->items[i].status, reason, sizeof(reason));
-    (void)fprintf(stderr, "  FAILED %s -- %s\n", log->items[i].url, reason);
+    priv_mdl_fetch_reason(log->items[i].err, log->items[i].status, reason, sizeof(reason));
+    error = priv_mdl_stream_text(error, diagnostic, "  FAILED ");
+    error = priv_mdl_stream_text(error, diagnostic, log->items[i].url);
+    error = priv_mdl_stream_text(error, diagnostic, " -- ");
+    error = priv_mdl_stream_text(error, diagnostic, reason);
+    error = priv_mdl_stream_text(error, diagnostic, "\n");
   }
   if (log->total > log->count) {
-    (void)fprintf(stderr, "  ... and %zu more (log truncated)\n", log->total - log->count);
+    error = priv_mdl_stream_text(error, diagnostic, "  ... and ");
+    error = priv_mdl_stream_u64(error, diagnostic, log->total - log->count);
+    error = priv_mdl_stream_text(error, diagnostic, " more (log truncated)\n");
   }
+  return error;
 }

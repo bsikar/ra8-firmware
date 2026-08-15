@@ -1,14 +1,12 @@
 /**
  * @file mdl_urlname.h
- * @brief Pure URL-to-name helpers shared by the CLI and the fetch orchestrator.
+ * @brief Bounded URL naming and portable image-classification helpers.
  *
  * @details
- * Three small, filesystem-free predicates that both `main.c` (series slug,
- * chapter folder name, page extension) and `mdl_fetch.c` (stable chapter
- * identifiers, page numbering) need, hoisted out of `main.c` so there is exactly
- * one implementation rather than a copy in each translation unit. Each derives a
- * name or a number from a scraped URL and is deliberately kept lexical (no
- * network, no filesystem) so it is unit-testable both directions.
+ * Lexical helpers derive names and numbers from scraped URLs without network or
+ * filesystem access. The image-file helper consumes only an injected
+ * ::mdl_storage_t and ::fw_fs_file_t, so its signature logic is identical for a
+ * POSIX sandbox, RAM/FAT/VFS mount, SD card, or future filesystem port.
  *
  * The last-segment helper runs its result through ::mdl_sanitize_segment, so a
  * chapter identifier or slug it returns can never be `..`, absolute, or contain
@@ -19,6 +17,9 @@
 #pragma once
 
 #include <stddef.h>
+
+#include "mdl_storage.h"
+#include "ra8_err.h"
 
 /**
  * @brief Sanitised last non-empty path segment of a URL.
@@ -212,35 +213,41 @@ bool mdl_urlname_sniff_image_type(const void* buf,
                                   size_t      mime_cap);
 
 /**
- * @brief Sniff true image extension and MIME type from a file on disk.
+ * @brief Sniff true image extension and MIME type from portable storage.
  *
  * @details Reads only the bounded signature prefix needed by
  * ::mdl_urlname_sniff_image_type, then applies the same magic-first type
  * selection. The file is closed before this function returns.
  *
- * @param[in]  file_path    Absolute or relative path to the image file on disk.
+ * @param[in,out] storage   Initialized filesystem binding and exclusive file workspace.
+ * @param[in]  file_path    Canonical path beneath the bound filesystem root.
  * @param[in]  content_type HTTP Content-Type header string (may be NULL or empty).
  * @param[out] out_ext      Destination buffer for lower-case extension (e.g. "jpg"). May be NULL.
  * @param[in]  ext_cap      Capacity of @p out_ext in bytes.
  * @param[out] out_mime     Destination buffer for exact MIME type (e.g. "image/jpeg"). May be NULL.
  * @param[in]  mime_cap     Capacity of @p out_mime in bytes.
  *
- * @return Whether a supported image type was recognised.
- * @retval true  File magic or the HTTP content type identifies a supported image.
- * @retval false Neither readable file magic nor @p content_type identifies a supported image.
+ * @return Canonical storage or classification status.
+ * @retval k_ra8_ok File magic or the HTTP content type identifies a supported image.
+ * @retval k_ra8_err_validation_failed Clean EOF yielded no supported classification.
+ * @retval k_ra8_err_invalid_arg The storage binding or path is invalid.
+ * @retval k_ra8_err_invalid_size The backend did not reach the bounded prefix in time.
+ * @retval other An open, read, or close error propagated unchanged.
  *
- * @pre @p file_path, when non-NULL, is a NUL-terminated path.
+ * @pre @p storage was initialized by ::mdl_storage_init and is exclusively owned.
+ * @pre @p file_path is a NUL-terminated canonical portable path.
  * @pre Each non-NULL output points to writable storage of its corresponding capacity.
- * @post On true, each non-empty requested output receives a NUL-terminated canonical value,
+ * @post On success, each non-empty requested output receives a NUL-terminated canonical value,
  *       truncated when its capacity is too small.
- * @post Any opened input file is closed and is never modified.
+ * @post On failure requested outputs are unchanged; any opened file is consumed.
  *
  * @note A recognised content type may supply the result when file magic is inconclusive.
  * @since 0.1.0
  */
-bool mdl_urlname_sniff_file(const char* file_path,
-                            const char* content_type,
-                            char*       out_ext,
-                            size_t      ext_cap,
-                            char*       out_mime,
-                            size_t      mime_cap);
+[[nodiscard]] ra8_err_t mdl_urlname_sniff_file(mdl_storage_t* storage,
+                                               const char*    file_path,
+                                               const char*    content_type,
+                                               char*          out_ext,
+                                               size_t         ext_cap,
+                                               char*          out_mime,
+                                               size_t         mime_cap);

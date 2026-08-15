@@ -30,10 +30,13 @@
  * siblings inside the folder). A path that would escape the series directory,
  * or an export error, is reported and counted as one failure.
  *
+ * @param[in,out] storage Injected portable file reader.
  * @param[in] format     Output container/format (never ::k_mdl_fmt_loose here).
  * @param[in] series_dir Absolute, resolved series directory.
  * @param[in] chap_id    Sanitised chapter identifier (the page folder leaf).
  * @param[in,out] ws     Caller-owned bounded exporter workspace.
+ * @param[in,out] output Borrowed stream receiving successful package paths.
+ * @param[in,out] diagnostic Borrowed stream receiving failure diagnostics.
  *
  * @return The number of export failures (0 on success, 1 on any failure).
  * @retval 0U The chapter was packaged.
@@ -47,21 +50,27 @@
  * @note Not thread-safe (shared cwd during path resolution).
  * @since 0.1.0
  */
-size_t mdl_pack_one(mdl_format_t            format,
+size_t mdl_pack_one(mdl_storage_t*          storage,
+                    mdl_format_t            format,
                     const char*             series_dir,
                     const char*             chap_id,
-                    mdl_export_workspace_t* ws);
+                    mdl_export_workspace_t* ws,
+                    ra8_io_stream_t*        output,
+                    ra8_io_stream_t*        diagnostic);
 
 /**
  * @brief Package one downloaded chapter folder into @p format with rich metadata.
  *
  * @details Uses @p meta instead of auto-loading the chapter metadata files,
  *          while retaining guarded path composition and atomic export behavior.
+ * @param[in,out] storage Injected portable file reader.
  * @param[in] format Output container format.
  * @param[in] series_dir Absolute, resolved series directory.
  * @param[in] chap_id Sanitized chapter directory leaf.
  * @param[in] meta Metadata to embed, or NULL to auto-load it.
  * @param[in,out] ws Caller-owned bounded exporter workspace.
+ * @param[in,out] output Borrowed stream receiving successful package paths.
+ * @param[in,out] diagnostic Borrowed stream receiving failure diagnostics.
  * @return The number of failures from this one packaging operation.
  * @retval 0U Packaging succeeded.
  * @retval 1U Path validation or export failed.
@@ -72,11 +81,14 @@ size_t mdl_pack_one(mdl_format_t            format,
  * @note Not thread-safe when callers share a workspace or output path.
  * @since 0.1.0
  */
-size_t mdl_pack_one_meta(mdl_format_t             format,
+size_t mdl_pack_one_meta(mdl_storage_t*           storage,
+                         mdl_format_t             format,
                          const char*              series_dir,
                          const char*              chap_id,
                          const mdl_export_meta_t* meta,
-                         mdl_export_workspace_t*  ws);
+                         mdl_export_workspace_t*  ws,
+                         ra8_io_stream_t*         output,
+                         ra8_io_stream_t*         diagnostic);
 
 /**
  * @brief Package a combined page directory when completion policy permits
@@ -84,12 +96,15 @@ size_t mdl_pack_one_meta(mdl_format_t             format,
  * @details Delegates to the metadata-aware variant and auto-loads metadata.
  *          Incomplete runs are skipped unless explicitly allowed, in which
  *          case the output filename is marked `INCOMPLETE`.
+ * @param[in,out] storage Injected portable file reader.
  * @param[in] format Output container format.
  * @param[in] allow_incomplete Whether a partial run may be packaged.
  * @param[in] series_dir Absolute, resolved series directory.
  * @param[in] combined_rel Sanitized combined-directory leaf.
  * @param[in] stats Completed run statistics controlling the policy decision.
  * @param[in,out] ws Caller-owned bounded exporter workspace.
+ * @param[in,out] output Borrowed stream receiving successful package paths.
+ * @param[in,out] diagnostic Borrowed stream receiving policy and failure diagnostics.
  * @return The number of packaging failures.
  * @retval 0U Nothing required packaging, policy skipped it, or export succeeded.
  * @retval 1U Path validation or export failed.
@@ -100,18 +115,22 @@ size_t mdl_pack_one_meta(mdl_format_t             format,
  * @note Not thread-safe when callers share a workspace or output path.
  * @since 0.1.0
  */
-size_t mdl_pack_combined(mdl_format_t             format,
+size_t mdl_pack_combined(mdl_storage_t*           storage,
+                         mdl_format_t             format,
                          bool                     allow_incomplete,
                          const char*              series_dir,
                          const char*              combined_rel,
                          const mdl_fetch_stats_t* stats,
-                         mdl_export_workspace_t*  ws);
+                         mdl_export_workspace_t*  ws,
+                         ra8_io_stream_t*         output,
+                         ra8_io_stream_t*         diagnostic);
 
 /**
  * @brief Package a combined page folder into @p format with rich metadata.
  *
  * @details Applies the same incomplete-run policy as ::mdl_pack_combined but
  *          embeds caller-supplied metadata instead of auto-loading it.
+ * @param[in,out] storage Injected portable file reader.
  * @param[in] format Output container format.
  * @param[in] allow_incomplete Whether a partial run may be packaged.
  * @param[in] series_dir Absolute, resolved series directory.
@@ -119,6 +138,8 @@ size_t mdl_pack_combined(mdl_format_t             format,
  * @param[in] stats Completed run statistics controlling the policy decision.
  * @param[in] meta Metadata to embed, or NULL to auto-load it.
  * @param[in,out] ws Caller-owned bounded exporter workspace.
+ * @param[in,out] output Borrowed stream receiving successful package paths.
+ * @param[in,out] diagnostic Borrowed stream receiving policy and failure diagnostics.
  * @return The number of packaging failures.
  * @retval 0U Nothing required packaging, policy skipped it, or export succeeded.
  * @retval 1U Path validation or export failed.
@@ -129,10 +150,13 @@ size_t mdl_pack_combined(mdl_format_t             format,
  * @note Not thread-safe when callers share a workspace or output path.
  * @since 0.1.0
  */
-size_t mdl_pack_combined_meta(mdl_format_t             format,
+size_t mdl_pack_combined_meta(mdl_storage_t*           storage,
+                              mdl_format_t             format,
                               bool                     allow_incomplete,
                               const char*              series_dir,
                               const char*              combined_rel,
                               const mdl_fetch_stats_t* stats,
                               const mdl_export_meta_t* meta,
-                              mdl_export_workspace_t*  ws);
+                              mdl_export_workspace_t*  ws,
+                              ra8_io_stream_t*         output,
+                              ra8_io_stream_t*         diagnostic);

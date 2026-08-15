@@ -16,6 +16,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "mdl_storage.h"
 #include "ra8_err.h"
 
 /** @brief Output container selected by `--format`. */
@@ -162,6 +163,7 @@ ra8_err_t mdl_meta_parse(mdl_export_meta_t* meta, const char* text);
  * @details Initializes @p meta, then merges bounded recognized metadata files
  *          in deterministic candidate order and propagates parse overflow or
  *          semantic errors rather than accepting a truncated value.
+ * @param[in,out] storage Injected portable file reader.
  * @param[out] meta Metadata struct to fill.
  * @param[in]  dir  Directory path to inspect.
  * @return k_ra8_ok on success, error code on invalid arg.
@@ -175,7 +177,7 @@ ra8_err_t mdl_meta_parse(mdl_export_meta_t* meta, const char* text);
  * @note Thread-safe across distinct metadata objects and stable directories.
  * @since 0.1.0
  */
-ra8_err_t mdl_meta_load_dir(mdl_export_meta_t* meta, const char* dir);
+ra8_err_t mdl_meta_load_dir(mdl_storage_t* storage, mdl_export_meta_t* meta, const char* dir);
 
 /**
  * @brief Generate ComicInfo.xml content from metadata.
@@ -271,8 +273,11 @@ void* mdl_export_workspace_take(mdl_export_workspace_t* ws, size_t bytes, size_t
  * @brief Package a chapter with explicit metadata and caller-owned workspace
  *
  * @details Enumerates bounded page names, derives deterministic timestamps,
- *          validates any external cover, and atomically replaces @p out_path
- *          only after the selected writer succeeds.
+ *          validates any external cover, independently verifies a borrowed
+ *          transaction stage, and publishes @p out_path only after the
+ *          selected writer succeeds. JOF publishes one validated sibling per
+ *          page and therefore reports partial progress on a later-page failure.
+ * @param[in,out] storage Injected portable storage used for image classification.
  * @param[in] fmt Target output format.
  * @param[in] chapter_dir Directory containing verified page images.
  * @param[in] out_path Container path, or chapter directory for JOF output.
@@ -286,14 +291,19 @@ void* mdl_export_workspace_take(mdl_export_workspace_t* ws, size_t bytes, size_t
  * @retval k_ra8_err_validation_failed An external cover is not a recognized image.
  * @retval k_ra8_err_not_supported The reserved writer is unavailable.
  * @retval k_ra8_fail File or container writing failed.
+ * @pre @p storage is initialized, exclusive, and all paths are canonical beneath it.
  * @pre String arguments are NUL-terminated and stable for the call.
  * @pre @p ws owns writable storage and is not shared concurrently.
- * @post Success leaves a complete atomic container or complete JOF siblings.
- * @post Failure does not replace an existing good container.
+ * @post Success leaves a complete validated container or all requested JOF siblings.
+ * @post A pre-publication container failure preserves the prior destination.
+ * @post A JOF failure preserves the failed and later siblings while earlier
+ *       successfully published pages remain visible.
+ * @note Power-loss durability depends on the selected storage adapter's capabilities.
  * @note Not thread-safe for the same workspace or output path.
  * @since 0.1.0
  */
-ra8_err_t mdl_export_chapter_meta_ws(mdl_format_t             fmt,
+ra8_err_t mdl_export_chapter_meta_ws(mdl_storage_t*           storage,
+                                     mdl_format_t             fmt,
                                      const char*              chapter_dir,
                                      const char*              out_path,
                                      const mdl_export_meta_t* meta,
@@ -303,7 +313,8 @@ ra8_err_t mdl_export_chapter_meta_ws(mdl_format_t             fmt,
  * @brief Package a chapter after auto-loading bounded local metadata
  *
  * @details Loads the supported metadata files from @p chapter_dir and delegates
- *          to ::mdl_export_chapter_meta_ws with the same atomic guarantees.
+ *          to ::mdl_export_chapter_meta_ws with the same publication guarantees.
+ * @param[in,out] storage Injected portable storage used for image classification.
  * @param[in] fmt Target output format.
  * @param[in] chapter_dir Directory containing pages and optional metadata.
  * @param[in] out_path Container path, or chapter directory for JOF output.
@@ -314,6 +325,7 @@ ra8_err_t mdl_export_chapter_meta_ws(mdl_format_t             fmt,
  * @retval k_ra8_err_invalid_size Metadata or exporter bounds were exceeded.
  * @retval k_ra8_err_empty No qualifying pages exist.
  * @retval k_ra8_fail File or container writing failed.
+ * @pre @p storage is initialized, exclusive, and all paths are canonical beneath it.
  * @pre String arguments are NUL-terminated and stable for the call.
  * @pre @p ws owns writable storage and is not shared concurrently.
  * @post Success leaves complete output for the selected format.
@@ -321,7 +333,8 @@ ra8_err_t mdl_export_chapter_meta_ws(mdl_format_t             fmt,
  * @note Not thread-safe for the same workspace or output path.
  * @since 0.1.0
  */
-ra8_err_t mdl_export_chapter_ws(mdl_format_t            fmt,
+ra8_err_t mdl_export_chapter_ws(mdl_storage_t*          storage,
+                                mdl_format_t            fmt,
                                 const char*             chapter_dir,
                                 const char*             out_path,
                                 mdl_export_workspace_t* ws);

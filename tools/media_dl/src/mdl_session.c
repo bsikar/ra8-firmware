@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "mdl_stream_internal.h"
 #include "mdl_url_guard.h"
 #include "ra8_attributes.h"
 
@@ -60,6 +61,7 @@ bool mdl_session_build_ua(const char* contact, char* out, size_t cap)
 void mdl_session_init(mdl_session_t*   session,
                       mdl_net_iface_t* net,
                       const char*      user_agent,
+                      ra8_io_stream_t* diagnostic,
                       bool             honor_robots)
 {
   if (session == nullptr) {
@@ -67,6 +69,7 @@ void mdl_session_init(mdl_session_t*   session,
   }
   session->net          = net;
   session->user_agent   = user_agent;
+  session->diagnostic   = diagnostic;
   session->honor_robots = honor_robots;
   session->cache        = (mdl_robots_cache_t){};
 }
@@ -90,7 +93,7 @@ void mdl_session_init(mdl_session_t*   session,
  * @note This is deliberately locale-independent and intended for URL schemes.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool url_prefix(const char* url, const char* prefix)
+RA8_INTERNAL static bool internal_url_prefix(const char* url, const char* prefix)
 {
   size_t i = 0U;
   while (prefix[i] != '\0') {
@@ -107,12 +110,12 @@ RA8_INTERNAL static bool url_prefix(const char* url, const char* prefix)
 }
 
 /** @brief Return the validated lower-case HTTP(S) scheme, or NULL. */
-RA8_INTERNAL static const char* url_scheme(const char* url)
+RA8_INTERNAL static const char* internal_url_scheme(const char* url)
 {
-  if (url_prefix(url, "https://")) {
+  if (internal_url_prefix(url, "https://")) {
     return "https";
   }
-  if (url_prefix(url, "http://")) {
+  if (internal_url_prefix(url, "http://")) {
     return "http";
   }
   return nullptr;
@@ -138,7 +141,7 @@ RA8_INTERNAL static const char* url_scheme(const char* url)
  * @note This helper extracts syntax only; scheme and host policy are checked separately.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool robots_target(const char* url, char* out, size_t cap)
+RA8_INTERNAL static bool internal_robots_target(const char* url, char* out, size_t cap)
 {
   if ((url == nullptr) || (out == nullptr) || (cap < 2U)) {
     return false;
@@ -194,7 +197,7 @@ RA8_INTERNAL static bool robots_target(const char* url, char* out, size_t cap)
  * @since 0.1.0
  */
 RA8_INTERNAL static mdl_robots_fetch_result_t
-session_fetch(void* ctx, const char* robots_url, char* buf, size_t cap, size_t* out_len)
+internal_session_fetch(void* ctx, const char* robots_url, char* buf, size_t cap, size_t* out_len)
 {
   mdl_session_t*      s    = (mdl_session_t*)ctx;
   const mdl_net_req_t req  = {.user_agent = s->user_agent,
@@ -215,6 +218,61 @@ session_fetch(void* ctx, const char* robots_url, char* buf, size_t cap, size_t* 
   return k_mdl_robots_fetch_denied;
 }
 
+/** @brief Report a failed robots consultation for one origin and path.
+ * @details Writes a bounded robots-policy diagnostic through the injected stream.
+ *          Any sink error is retained in the session for the caller to observe.
+ * @param[in,out] session Caller-owned session state read and updated.
+ * @param[in] host Validated host name.
+ * @param[in] path Validated URL or filesystem path.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void
+internal_report_robots_unavailable(mdl_session_t* session, const char* host, const char* path)
+{
+  ra8_err_t error = priv_mdl_stream_text(k_ra8_ok,
+                                         session->diagnostic,
+                                         "media_dl: robots.txt unavailable, rate-limited, or "
+                                         "oversized for ");
+  error           = priv_mdl_stream_text(error, session->diagnostic, host);
+  error           = priv_mdl_stream_text(error, session->diagnostic, "; refusing ");
+  error           = priv_mdl_stream_text(error, session->diagnostic, path);
+  (void)priv_mdl_stream_text(error, session->diagnostic, "\n");
+}
+
+/** @brief Report the robots rule that rejected one path.
+ * @details Writes a bounded robots-policy diagnostic through the injected stream.
+ *          Any sink error is retained in the session for the caller to observe.
+ * @param[in,out] session Caller-owned session state read and updated.
+ * @param[in] path Validated URL or filesystem path.
+ * @param[in] host Validated host name.
+ * @param[in] reason Human-readable policy reason.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_report_robots_disallow(mdl_session_t* session,
+                                                         const char*    path,
+                                                         const char*    host,
+                                                         const char*    reason)
+{
+  ra8_err_t error =
+    priv_mdl_stream_text(k_ra8_ok, session->diagnostic, "media_dl: robots.txt disallows ");
+  error = priv_mdl_stream_text(error, session->diagnostic, path);
+  error = priv_mdl_stream_text(error, session->diagnostic, " on ");
+  error = priv_mdl_stream_text(error, session->diagnostic, host);
+  error = priv_mdl_stream_text(error, session->diagnostic, " (rule \"");
+  error = priv_mdl_stream_text(error, session->diagnostic, reason);
+  (void)priv_mdl_stream_text(error, session->diagnostic, "\"); skipping\n");
+}
+
 bool mdl_session_url_allowed(mdl_session_t* session, const char* url, uint32_t* crawl_delay_ms)
 {
   if (crawl_delay_ms != nullptr) {
@@ -226,36 +284,38 @@ bool mdl_session_url_allowed(mdl_session_t* session, const char* url, uint32_t* 
   if (!session->honor_robots) {
     return true;
   }
-  const char* scheme = url_scheme(url);
+  const char* scheme = internal_url_scheme(url);
   if (scheme == nullptr) {
-    (void)fprintf(stderr,
-                  "media_dl: cannot apply robots.txt to malformed/non-HTTP URL; refusing\n");
+    (void)priv_mdl_stream_text(k_ra8_ok,
+                               session->diagnostic,
+                               "media_dl: cannot apply robots.txt to malformed/non-HTTP URL; "
+                               "refusing\n");
     return false;
   }
   char host[k_mdl_robots_host_max];
   if (!mdl_url_host(url, host, sizeof(host))) {
-    (void)fprintf(stderr, "media_dl: cannot identify URL origin for robots.txt; refusing\n");
+    (void)priv_mdl_stream_text(k_ra8_ok,
+                               session->diagnostic,
+                               "media_dl: cannot identify URL origin for robots.txt; refusing\n");
     return false;
   }
   char path[k_mdl_robots_path_max];
-  if (!robots_target(url, path, sizeof(path))) {
-    (void)fprintf(stderr, "media_dl: URL path/query exceeds robots.txt bound; refusing\n");
+  if (!internal_robots_target(url, path, sizeof(path))) {
+    (void)priv_mdl_stream_text(k_ra8_ok,
+                               session->diagnostic,
+                               "media_dl: URL path/query exceeds robots.txt bound; refusing\n");
     return false;
   }
   const mdl_robots_t* rules = mdl_robots_cache_consult(&session->cache,
                                                        scheme,
                                                        host,
                                                        s_ua_token,
-                                                       session_fetch,
+                                                       internal_session_fetch,
                                                        session,
                                                        session->scratch,
                                                        sizeof(session->scratch));
   if (rules == nullptr) {
-    (void)fprintf(stderr,
-                  "media_dl: robots.txt unavailable, rate-limited, or oversized for %s; "
-                  "refusing %s\n",
-                  host,
-                  path);
+    internal_report_robots_unavailable(session, host, path);
     return false;
   }
   if ((crawl_delay_ms != nullptr) && rules->have_crawl_delay) {
@@ -263,11 +323,7 @@ bool mdl_session_url_allowed(mdl_session_t* session, const char* url, uint32_t* 
   }
   const char* reason = mdl_robots_disallow_reason(rules, path);
   if (reason != nullptr) {
-    (void)fprintf(stderr,
-                  "media_dl: robots.txt disallows %s on %s (rule \"%s\"); skipping\n",
-                  path,
-                  host,
-                  reason);
+    internal_report_robots_disallow(session, path, host, reason);
     return false;
   }
   return true;
