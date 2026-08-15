@@ -46,6 +46,11 @@ typedef enum : uint16_t {
   k_file_mode = 0644U, /**< Portable regular-file permission bits. */
 } mdl_tar_mode_t;
 
+/** @brief Largest payload representable by the fixed eleven-digit tar field. */
+typedef enum : uint64_t {
+  k_tar_size_max = 077777777777ULL, /**< Maximum classic octal payload size. */
+} mdl_tar_size_t;
+
 /** @brief Gzip framing and serialization constants. */
 typedef enum : uint16_t {
   k_gzip_header_bytes = 10U,  /**< Fixed RFC 1952 header. */
@@ -110,7 +115,7 @@ RA8_INTERNAL static size_t internal_round_block(size_t bytes)
  */
 RA8_INTERNAL static ra8_err_t internal_tar_header(uint8_t* block, const char* name, size_t size)
 {
-  if ((strlen(name) >= (size_t)k_len_name) || (size > 077777777777ULL)) {
+  if ((strlen(name) >= (size_t)k_len_name) || (size > k_tar_size_max)) {
     return k_ra8_err_invalid_size;
   }
   memset(block, 0, k_tar_block);
@@ -433,8 +438,17 @@ RA8_PRIV ra8_err_t priv_mdl_export_tar_gzip(mdl_storage_t*           storage,
   if (compressor == nullptr) {
     return k_ra8_err_invalid_size;
   }
-  static const uint8_t header[k_gzip_header_bytes] =
-    {0x1FU, 0x8BU, 0x08U, 0U, 0U, 0U, 0U, 0U, 0U, 0xFFU};
+  static const uint8_t header[k_gzip_header_bytes] = {
+    0x1FU,
+    0x8BU,
+    0x08U,
+    0U,
+    0U,
+    0U,
+    0U,
+    0U,
+    0U,
+    0xFFU}; /* MAGIC-OK: fixed RFC 1952 gzip header bytes. */
   ra8_err_t            err  = priv_mdl_export_output_write(output, header, sizeof(header));
   internal_gzip_sink_t gzip = {.output     = output,
                                .compressor = compressor,

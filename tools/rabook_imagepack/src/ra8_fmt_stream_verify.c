@@ -20,11 +20,12 @@
 
 /** @brief Verification geometry, report, and probe constants. */
 typedef enum : uint32_t {
-  k_verify_band_height = 256U, /**< Production band height under test. */
-  k_verify_diffs_max   = 8U,   /**< Maximum detailed byte differences. */
-  k_verify_decimal_max = 20U,  /**< Digits in one uint64_t.            */
-  k_verify_decimal     = 10U,  /**< Decimal report radix.              */
-  k_verify_hex_radix   = 16U,  /**< Hexadecimal report radix.          */
+  k_verify_band_height  = 256U, /**< Production band height under test. */
+  k_verify_diffs_max    = 8U,   /**< Maximum detailed byte differences. */
+  k_verify_decimal_max  = 20U,  /**< Digits in one uint64_t.            */
+  k_verify_decimal      = 10U,  /**< Decimal report radix.              */
+  k_verify_hex_radix    = 16U,  /**< Hexadecimal report radix.          */
+  k_verify_ppm_max_text = 5U,   /**< Bytes in the PPM maximum line.      */
 } verify_const_t;
 
 /** @brief Sequential cursor over one positioned source context. */
@@ -455,7 +456,7 @@ static void internal_dump_header(verify_compare_t* state)
   internal_dump_u64(state, state->need->width);
   internal_dump_bytes(state, (const uint8_t*)" ", 1U);
   internal_dump_u64(state, state->need->height);
-  internal_dump_bytes(state, (const uint8_t*)"\n255\n", 5U);
+  internal_dump_bytes(state, (const uint8_t*)"\n255\n", k_verify_ppm_max_text);
 }
 
 /**
