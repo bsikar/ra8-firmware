@@ -1,207 +1,156 @@
 /**
  * @file epub_probe.c
- * @brief Host EPUB-probe harness -- report what the ra8_epub pipeline extracts.
+ * @brief Host EPUB-probe harness over a bounded raw-descriptor source.
  *
- * @details
- * Opens a real `.epub` through `ra8_epub_open()` on the host and prints the
- * parse result, spine length, TOC kind/length and cover path, then loads the
- * first chapter so the miniz inflate + XHTML path is exercised too. Built and
- * run by `tests/fixtures/epub/run_probe.sh`.
+ * @details Opens a real `.epub` through `ra8_epub_open_streamed()` and reports
+ * the parsed spine, TOC, cover, and first-chapter result through an injected
+ * text sink. The archive is never copied into a whole-file heap buffer.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "ra8_epub.h"
 #include "ra8_err.h"
+#include "ra8_test_output.h"
 
-/**
- * @enum epub_probe_const_t
- * @brief Sizes, indices and exit codes used by the probe.
- *
- * @invariant k_probe_chapter_buf_bytes is large enough for any chapter the
- *            ra8_epub reader hands back on the host.
- *
- * @see probe_slurp()
- */
+/** @brief Sizes, indices, descriptors, and exit codes used by the probe. */
 typedef enum : uint32_t {
   k_probe_exit_ok           = 0U,      /**< Probe completed.                  */
   k_probe_exit_usage        = 2U,      /**< Bad arguments or unreadable file. */
-  k_probe_min_argc          = 2U,      /**< argv[0] plus the .epub path.      */
-  k_probe_arg_path          = 1U,      /**< Index of the .epub path in argv.  */
+  k_probe_min_argc          = 2U,      /**< argv[0] plus the EPUB path.       */
+  k_probe_arg_path          = 1U,      /**< Index of the EPUB path in argv.   */
   k_probe_first_chapter     = 0U,      /**< Spine index of the first chapter. */
-  k_probe_bytes_per_kib     = 1024U,   /**< Divisor for the KiB size report.  */
+  k_probe_bytes_per_kib     = 1024U,   /**< Divisor for the KiB report.       */
   k_probe_chapter_buf_bytes = 262144U, /**< 256 KiB chapter staging buffer.   */
 } epub_probe_const_t;
 
-/**
- * @brief Log sink stub so the probe does not drag in the ra8_log/ra8_core tree.
- *
- * @param[in] tag Log tag (ignored).
- * @param[in] msg Log message (ignored).
- *
- * @pre Linked in place of the real ra8_log backend.
- * @post Nothing is emitted.
- */
-void internal_ra8_log_error(const char* tag, const char* msg)
+/** @brief Borrowed descriptor backing the streamed EPUB callback. */
+typedef struct {
+  int descriptor; /**< Open read-only descriptor. */
+} epub_probe_source_t;
+
+/** @brief Read one absolute archive span, retrying interrupted host calls. @details Implements the probe read fixture operation used only by this focused test executable. @param[in,out] context Fixture argument governed by the exercised interface contract. @param[in] offset Fixture argument governed by the exercised interface contract. @param[out] destination Fixture argument governed by the exercised interface contract. @param[in] length Fixture argument governed by the exercised interface contract. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static size_t
+internal_probe_read(void* context, uint64_t offset, void* destination, size_t length)
 {
-  (void)tag;
-  (void)msg;
+  if ((context == nullptr) || ((destination == nullptr) && (length != 0U)) ||
+      (offset > (uint64_t)INT64_MAX)) {
+    return 0U;
+  }
+  const epub_probe_source_t* source = (const epub_probe_source_t*)context;
+  size_t                     used   = 0U;
+  while (used < length) {
+    if ((offset > (UINT64_MAX - used)) || ((offset + used) > (uint64_t)INT64_MAX)) {
+      break;
+    }
+    ssize_t got = -1;
+    do {
+      got = pread(source->descriptor,
+                  &((uint8_t*)destination)[used],
+                  length - used,
+                  (off_t)(offset + used));
+    } while ((got < 0) && (errno == EINTR));
+    if (got <= 0) {
+      break;
+    }
+    used += (size_t)got;
+  }
+  return used;
 }
 
-/**
- * @brief Log sink stub for info-level messages.
- *
- * @param[in] tag Log tag (ignored).
- * @param[in] msg Log message (ignored).
- *
- * @pre Linked in place of the real ra8_log backend.
- * @post Nothing is emitted.
- */
-void internal_ra8_log_info(const char* tag, const char* msg)
+/** @brief Append one label and unsigned value to the injected report. @details Implements the probe u64 fixture operation used only by this focused test executable. @param[out] output Fixture argument governed by the exercised interface contract. @param[in] label Fixture argument governed by the exercised interface contract. @param[in] value Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void
+internal_probe_u64(ra8_test_output_t* output, const char* label, uint64_t value)
 {
-  (void)tag;
-  (void)msg;
+  (void)internal_test_output_text(output, label);
+  (void)internal_test_output_u64(output, value);
+  (void)internal_test_output_text(output, "\n");
 }
 
-/**
- * @brief Log sink stub for warning-level messages.
- *
- * @param[in] tag Log tag (ignored).
- * @param[in] msg Log message (ignored).
- *
- * @pre Linked in place of the real ra8_log backend.
- * @post Nothing is emitted.
- */
-void internal_ra8_log_warn(const char* tag, const char* msg)
+/** @brief Emit the parser's fixed-field summary without formatted I/O. @details Implements the probe report fixture operation used only by this focused test executable. @param[out] output Fixture argument governed by the exercised interface contract. @param[in] path Fixture argument governed by the exercised interface contract. @param[in] size Fixture argument governed by the exercised interface contract. @param[in] error Fixture argument governed by the exercised interface contract. @param[in] book Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_probe_report(ra8_test_output_t*     output,
+                                               const char*            path,
+                                               uint64_t               size,
+                                               ra8_err_t              error,
+                                               const ra8_epub_book_t* book)
 {
-  (void)tag;
-  (void)msg;
+  (void)internal_test_output_text(output, "file=");
+  (void)internal_test_output_text(output, path);
+  (void)internal_test_output_text(output, "\nparse_error=");
+  (void)internal_test_output_i64(output, (int64_t)error);
+  (void)internal_test_output_text(output, "\n");
+  internal_probe_u64(output, "size_kib=", size / (uint64_t)k_probe_bytes_per_kib);
+  internal_probe_u64(output, "chapter_count=", book->chapter_count);
+  internal_probe_u64(output, "toc_kind=", book->toc_kind);
+  internal_probe_u64(output, "toc_count=", book->toc_count);
+  (void)internal_test_output_text(output, "cover_path=");
+  (void)internal_test_output_text(output, book->cover_path);
+  (void)internal_test_output_text(output, "\nopf_dir=");
+  (void)internal_test_output_text(output, book->opf_dir);
+  (void)internal_test_output_text(output, "\ntoc_path=");
+  (void)internal_test_output_text(output, book->toc_path);
+  (void)internal_test_output_text(output, "\n");
 }
 
-/**
- * @brief Read a whole file into a freshly allocated buffer.
- *
- * @param[in]  path     Path of the file to slurp.
- * @param[out] out_size Receives the byte count on success.
- *
- * @return Malloc'd buffer the caller must free, or nullptr on any failure.
- *
- * @pre @p path is a non-null NUL-terminated string.
- * @pre @p out_size is non-null.
- * @post On success the returned buffer holds exactly `*out_size` bytes.
- * @post On failure the stream and any partial allocation have been released.
- *
- * @note Host-only helper; the firmware itself never allocates (NASA Rule 3).
- */
-static uint8_t* probe_slurp(const char* path, size_t* out_size)
+/** @brief Open the descriptor-backed book and exercise its first chapter. @details Implements the probe book fixture operation used only by this focused test executable. @param[in] path Fixture argument governed by the exercised interface contract. @param[in] descriptor Fixture argument governed by the exercised interface contract. @param[in] size Fixture argument governed by the exercised interface contract. @param[out] output Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_probe_book(const char* path, int descriptor, uint64_t size, ra8_test_output_t* output)
 {
-  FILE* stream = fopen(path, "rb");
-  if (stream == nullptr) {
-    (void)fprintf(stderr, "cannot open %s\n", path);
-    return nullptr;
+  epub_probe_source_t     source = {.descriptor = descriptor};
+  ra8_epub_stream_media_t media  = {
+    .read = internal_probe_read,
+    .ctx  = &source,
+    .size = size,
+  };
+  ra8_epub_book_t book  = {};
+  ra8_err_t       error = ra8_epub_open_streamed(&media, path, &book);
+  internal_probe_report(output, path, size, error, &book);
+  if ((error == k_ra8_ok) && (book.chapter_count > 0U)) {
+    static uint8_t  local_chapter[k_probe_chapter_buf_bytes];
+    size_t          chapter_length = 0U;
+    const ra8_err_t chapter_error  = ra8_epub_load_chapter(&book,
+                                                           (uint16_t)k_probe_first_chapter,
+                                                           local_chapter,
+                                                           sizeof(local_chapter),
+                                                           &chapter_length);
+    (void)internal_test_output_text(output, "chapter_error=");
+    (void)internal_test_output_i64(output, (int64_t)chapter_error);
+    (void)internal_test_output_text(output, "\n");
+    internal_probe_u64(output, "chapter_bytes=", chapter_length);
+    (void)ra8_epub_close(&book);
   }
-  if (fseek(stream, 0, SEEK_END) != 0) {
-    (void)fclose(stream);
-    return nullptr;
-  }
-  const long size = ftell(stream);
-  if (size < 0 || fseek(stream, 0, SEEK_SET) != 0) {
-    (void)fclose(stream);
-    return nullptr;
-  }
-  uint8_t* buf = malloc((size_t)size);
-  if (buf == nullptr) {
-    (void)fclose(stream);
-    return nullptr;
-  }
-  if (fread(buf, 1U, (size_t)size, stream) != (size_t)size) {
-    (void)fprintf(stderr, "short read\n");
-    free(buf);
-    (void)fclose(stream);
-    return nullptr;
-  }
-  (void)fclose(stream);
-  *out_size = (size_t)size;
-  return buf;
+  return error;
 }
 
-/**
- * @brief Print everything ra8_epub_open() extracted from the book.
- *
- * @param[in] path Path the book was read from (echoed in the report).
- * @param[in] size Book size in bytes.
- * @param[in] err  Result of ra8_epub_open().
- * @param[in] book Parsed book descriptor.
- *
- * @pre @p path is a non-null NUL-terminated string.
- * @pre @p book is non-null.
- * @post One report block has been written to stdout.
- * @post @p book is not modified.
- */
-static void probe_report(const char* path, size_t size, ra8_err_t err, const ra8_epub_book_t* book)
-{
-  (void)printf("file=%s  size=%zu KB\n", path, size / (size_t)k_probe_bytes_per_kib);
-  (void)printf("  ra8_epub_open -> err=%d (%s)\n", (int)err, (err == k_ra8_ok) ? "OK" : "non-OK");
-  (void)printf("  chapter_count = %u  (limit %d)\n",
-               (unsigned)book->chapter_count,
-               (int)k_ra8_epub_max_chapters);
-  (void)printf("  toc_kind = %u (0=none 1=ncx 2=nav)  toc_count = %u (limit %d)\n",
-               (unsigned)book->toc_kind,
-               (unsigned)book->toc_count,
-               (int)k_ra8_epub_max_toc);
-  (void)printf("  cover_path = '%s'\n", book->cover_path);
-  (void)printf("  opf_dir = '%s'  toc_path = '%s'  toc_kind=%u\n",
-               book->opf_dir,
-               book->toc_path,
-               (unsigned)book->toc_kind);
-}
-
-/**
- * @brief Probe entry point.
- *
- * @param[in] argc Argument count.
- * @param[in] argv Argument vector; argv[1] is the .epub path.
- *
- * @return k_probe_exit_ok on success, k_probe_exit_usage on bad input.
- *
- * @pre @p argv is non-null.
- * @pre The named file is a readable .epub.
- * @post The report has been written to stdout.
- * @post Every allocation and stream opened here has been released.
- */
+/** @brief Probe one EPUB path supplied on the command line. */
 int main(int argc, char** argv)
 {
-  if (argc < (int)k_probe_min_argc) {
-    (void)fprintf(stderr, "usage: epub_probe <file.epub>\n");
+  ra8_test_output_t    output       = {};
+  ra8_test_output_fd_t output_state = {};
+  (void)internal_test_output_fd_init(&output, &output_state, STDOUT_FILENO);
+  if ((argv == nullptr) || (argc < (int)k_probe_min_argc)) {
+    (void)internal_test_output_fd_text(STDERR_FILENO, "usage: epub_probe <file.epub>\n");
     return (int)k_probe_exit_usage;
   }
-  const char* path = argv[k_probe_arg_path];
-  size_t      size = 0U;
-  uint8_t*    buf  = probe_slurp(path, &size);
-  if (buf == nullptr) {
+  const char* path       = argv[k_probe_arg_path];
+  const int   descriptor = open(path, O_RDONLY);
+  struct stat attributes = {};
+  if ((descriptor < 0) || (fstat(descriptor, &attributes) != 0) || (attributes.st_size <= 0)) {
+    if (descriptor >= 0) {
+      (void)close(descriptor);
+    }
+    (void)internal_test_output_fd_text(STDERR_FILENO, "cannot open EPUB\n");
     return (int)k_probe_exit_usage;
   }
-
-  ra8_epub_mem_media_t media = {.data = buf, .size = size};
-  ra8_epub_book_t      book  = {};
-  const ra8_err_t      err   = ra8_epub_open(&media, nullptr, &book);
-  probe_report(path, size, err, &book);
-
-  /* Load the first chapter so miniz inflate + xhtml are exercised too. */
-  if (err == k_ra8_ok && book.chapter_count > 0U) {
-    static uint8_t  s_chbuf[k_probe_chapter_buf_bytes];
-    size_t          chlen = 0U;
-    const ra8_err_t cerr  = ra8_epub_load_chapter(&book,
-                                                  (uint16_t)k_probe_first_chapter,
-                                                  s_chbuf,
-                                                  sizeof(s_chbuf),
-                                                  &chlen);
-    (void)printf("  load_chapter(0) -> err=%d  bytes=%zu\n", (int)cerr, chlen);
-  }
-  free(buf);
-  return (int)k_probe_exit_ok;
+  (void)internal_probe_book(path, descriptor, (uint64_t)attributes.st_size, &output);
+  (void)close(descriptor);
+  return (output.status == k_ra8_test_output_ok) ? (int)k_probe_exit_ok : (int)k_probe_exit_usage;
 }
