@@ -169,7 +169,7 @@ missingInclude:tools/ra8_emulator/*
 #   15.5  -- guard-clause early returns are the house style (advisory).
 #   17.7  -- some libc / Unicorn return values are intentionally ignored.
 # The rationale for each rule is given above; docs/qualification/MISRA_DEVIATIONS.md
-# holds the project deviation register (D-001..D-008). These
+# holds the project deviation register. These
 # scope to tools/ra8_emulator only; every other MISRA rule is still enforced there,
 # so a genuine defect (e.g. an uninitialised read) is still reported.
 # ---------------------------------------------------------------------------
@@ -235,23 +235,23 @@ unusedStructMember:port/nimble/inc/nimble_npl_threadx.h
 knownConditionTrueFalse:libs/ra8_hal/src/ra8_dual_core.c
 
 # ---------------------------------------------------------------------------
-# misra-c2012-12.1 (Advisory) -- per-line suppressions under D-004 partial
-# deviation. See docs/qualification/MISRA_DEVIATIONS.md D-004 for the full
-# rationale. Each entry below is a cppcheck/misra.py 12.1 hit on a line that
-# falls inside D-004's accepted-as-implicit set: standard C precedence
-# (`* /` over `+ -`, comparison over `&&`/`||`, member access over any),
-# trivial null-check chains `(p != NULL && p->f != 0U)`, ternary mixed with
-# arithmetic for tick-count or pixel-coord clamping, or a Doxygen comment /
-# function signature line that the misra.py addon misattributes from a
-# nearby expression. Adding redundant parentheses on every entry would only
-# add noise -- the precedence is the one taught in K&R 2nd ed. section 2.12
-# (table on p. 53) and is correctly understood by every static-analysis tool
-# the project uses. Per D-004 risk assessment: net residual risk is
-# acceptable for IEC 61508 SIL 3 / DO-178C DAL B given clang-tidy's
-# mandatory-braces rule and the Phase 1 MC/DC coverage target.
+# misra-c2012-12.1 (Advisory) -- the line-level record of the 2026-05-02
+# D-004 review. docs/qualification/MISRA_DEVIATIONS.md D-004 owns the
+# rationale and the accepted-as-implicit classes; where this comment and
+# D-004 disagree, D-004 wins. Each row anchored a reviewed 12.1 hit at its
+# then-current file:line coordinate.
 
-# When the source line numbers shift due to refactor, re-run `make misra`
-# and regenerate this block from the new docs/MISRA_GAPS.csv 12.1 rows.
+# STATUS (2026-08-15): the anchors have decayed. Every anchored file has
+# been refactored or restyled since the review, 17 rows point past their
+# file's current end, and 9 of the 10 files carry 12.1 rows in
+# .github/misra-baseline.txt again -- so this block filters little or
+# nothing from today's scan and the reviewed instances are held by the
+# ratchet baseline instead. The rows are KEPT as review evidence. Do not
+# add new rows: per D-004, a new 12.1 hit is either parenthesized or
+# recorded in the register and ratchet-held. Row/path counts here are
+# pinned by the register's "Suppression ownership" list, so editing this
+# block without updating the register fails the misra gate
+# (check_misra_deviations.py).
 # ---------------------------------------------------------------------------
 misra-c2012-12.1:libs/ra8_core/src/ra8_log.c:251
 misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:64
