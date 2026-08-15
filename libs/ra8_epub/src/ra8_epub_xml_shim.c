@@ -18,7 +18,7 @@
 #include <string.h>
 
 #include "ra8_attributes.h"
-#include "ra8_epub_xml_consumer_private.h"
+#include "ra8_epub_xml_consumer_internal.h"
 #include "ra8_epub_xml_shim_internal.h"
 #include "ra8_xml.h"
 

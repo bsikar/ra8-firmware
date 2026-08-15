@@ -10,8 +10,6 @@
 
 #define _POSIX_C_SOURCE (200809L)
 
-#include "ra8_fmt_host_fd.h"
-
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -23,6 +21,7 @@
 #include <unistd.h>
 
 #include "ra8_attributes.h"
+#include "ra8_fmt_host_fd_internal.h"
 
 /* The platform headers omit renameat() without a hosted-stream include. Keep
  * the narrow system prototype at this raw-descriptor boundary instead. */

@@ -1,5 +1,5 @@
 /**
- * @file ra8_epub_xml_consumer_private.h
+ * @file ra8_epub_xml_consumer_internal.h
  * @brief Private contracts for streamed EPUB XML consumers.
  * @details Declares file-local helpers and their caller-owned workspace rules;
  * definitions defer here so generated documentation has one authoritative block.

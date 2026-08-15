@@ -1,5 +1,5 @@
 /**
- * @file ra8_xml_reader_private.h
+ * @file ra8_xml_reader_internal.h
  * @brief Private contracts for the bounded XML reader implementation.
  * @details Declares file-local lexical, decode, and event helpers so their
  * contracts remain authoritative without inflating the implementation unit.

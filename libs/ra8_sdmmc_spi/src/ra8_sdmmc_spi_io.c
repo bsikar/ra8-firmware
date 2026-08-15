@@ -34,7 +34,7 @@
 #include "ra8_sci_spi.h"
 #include "ra8_sdmmc_spi.h"
 #include "ra8_sdmmc_spi_internal.h"
-#include "ra8_sdmmc_spi_io_contracts.h"
+#include "ra8_sdmmc_spi_io_contracts_internal.h"
 #include "ra8_spi.h"
 
 /* ---------------------------------------------------------------------------

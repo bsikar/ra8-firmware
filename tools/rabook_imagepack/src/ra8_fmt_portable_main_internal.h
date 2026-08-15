@@ -1,5 +1,5 @@
 /**
- * @file ra8_fmt_portable_main.h
+ * @file ra8_fmt_portable_main_internal.h
  * @brief Caller-workspace CLI composition for every supported tool verb.
  * @details Exposes bounded JOF paths and strict streamed RBKC inspection.
  * @copyright Copyright (c) 2026 Brighton Sikarskie

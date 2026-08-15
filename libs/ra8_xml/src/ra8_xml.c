@@ -19,7 +19,7 @@
 
 #include "ra8_attributes.h"
 #include "ra8_xml_internal.h"
-#include "ra8_xml_reader_private.h"
+#include "ra8_xml_reader_internal.h"
 
 /* see header for the documented contract. */
 RA8_INTERNAL static bool internal_space(uint8_t c)

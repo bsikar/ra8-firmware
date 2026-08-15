@@ -1,5 +1,5 @@
 /**
- * @file ra8_sdmmc_spi_io_contracts.h
+ * @file ra8_sdmmc_spi_io_contracts_internal.h
  * @brief Contracts for file-local SD block-I/O helpers.
  * @details Declares only helpers defined by ra8_sdmmc_spi_io.c so contracts
  *          remain authoritative without expanding the implementation TU.

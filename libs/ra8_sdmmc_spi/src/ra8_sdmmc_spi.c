@@ -33,7 +33,7 @@
 #include "ra8_log.h"
 #include "ra8_port_utils.h"
 #include "ra8_sci_spi.h"
-#include "ra8_sdmmc_spi_core_contracts.h"
+#include "ra8_sdmmc_spi_core_contracts_internal.h"
 #include "ra8_sdmmc_spi_internal.h"
 #include "ra8_spi.h"
 
