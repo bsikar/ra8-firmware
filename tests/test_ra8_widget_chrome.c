@@ -152,7 +152,7 @@ static ra8_widget_paint_t make_paint(mock_paint_t* m, bool with_measure)
  * @test ra8_widget_progress_bar render fills the track then a proportional fill.
  *
  * @par MC/DC:
- * `ra8_widget_priv_fill_frac` single-condition guards, both arms of each:
+ * `priv_widget_fill_frac` single-condition guards, both arms of each:
  * - `total == 0`: false (partial / full / saturate vectors) and true (total 0 ->
  *   track only);
  * - `width <= 0`: false (normal rect) and true (zero-width rect -> track only);

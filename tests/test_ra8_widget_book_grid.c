@@ -406,6 +406,5 @@ int32_t main(void)
   test_book_grid_render_edges();
   test_book_grid_input();
   test_book_grid_guards();
-  (void)fprintf(stderr, "[OK  ] test_ra8_widget_book_grid.c\n");
   return 0;
 }

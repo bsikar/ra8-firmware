@@ -68,7 +68,7 @@ static ra8_ui_rect_t internal_nav_cell(const ra8_ui_rect_t* strip, uint16_t idx,
 
 /**
  * @brief Draw one nav item's centred label in its cell.
- * @details Places @p text centred in @p cell via ::ra8_widget_priv_text_pos and
+ * @details Places @p text centred in @p cell via ::priv_widget_text_pos and
  *          draws it in @p fg over @p bg. A NULL @p text is a no-op.
  * @param[in] paint Draw backend (non-NULL; `draw_text` already checked non-NULL).
  * @param[in] cell  The item's cell rectangle (non-NULL).
@@ -95,7 +95,7 @@ static void internal_nav_item(const ra8_widget_paint_t* paint,
   }
   int32_t tx = 0;
   int32_t ty = 0;
-  ra8_widget_priv_text_pos(paint, cell, text, (int16_t)0, k_ra8_widget_align_center, &tx, &ty);
+  priv_widget_text_pos(paint, cell, text, (int16_t)0, k_ra8_widget_align_center, &tx, &ty);
   paint->draw_text(paint->user, tx, ty, text, fg, bg);
 }
 
@@ -126,7 +126,7 @@ static void internal_nav_render(ra8_widget_t* w)
   }
   const ra8_widget_paint_t* p     = nav->paint;
   const ra8_ui_rect_t*      strip = &w->rect;
-  ra8_widget_priv_fill_box(p, strip, nav->bg, nav->bg, (int16_t)0);
+  priv_widget_fill_box(p, strip, nav->bg, nav->bg, (int16_t)0);
   if (nav->count == (uint16_t)k_ra8_widget_nav_empty) {
     return;
   }

@@ -10,7 +10,7 @@
  * row, an author row, and a progress bar, painted through the injected
  * ::ra8_widget_paint_t backend -- so the file carries no `ra8_gfx` dependency and
  * the whole grid is host-testable with a recording mock paint. The card progress
- * bar reuses the shared ::ra8_widget_priv_fill_frac helper.
+ * bar reuses the shared ::priv_widget_fill_frac helper.
  *
  *
  * [Ring 5 / UI]
@@ -112,7 +112,7 @@ static ra8_ui_rect_t internal_bg_cell(const ra8_ui_rect_t* content,
 /**
  * @brief Draw one card label (title / author) left-aligned in its row.
  * @details Places @p text at the left inset of @p row via
- *          ::ra8_widget_priv_text_pos and draws it, skipping a NULL @p text. The
+ *          ::priv_widget_text_pos and draws it, skipping a NULL @p text. The
  *          title and author rows share this one branch-coverable helper.
  * @param[in] paint Draw backend (non-NULL; `draw_text` already checked non-NULL).
  * @param[in] row   The label row rect (non-NULL).
@@ -139,7 +139,7 @@ static void internal_bg_label(const ra8_widget_paint_t* paint,
   }
   int32_t tx = 0;
   int32_t ty = 0;
-  ra8_widget_priv_text_pos(paint, row, text, (int16_t)0, k_ra8_widget_align_left, &tx, &ty);
+  priv_widget_text_pos(paint, row, text, (int16_t)0, k_ra8_widget_align_left, &tx, &ty);
   paint->draw_text(paint->user, tx, ty, text, fg, bg);
 }
 
@@ -173,7 +173,7 @@ static void internal_bg_card(const ra8_widget_book_grid_t* g,
   const int32_t             title_y = auth_y - lbl_h;
   const ra8_ui_rect_t       cover   = {cell->x, cell->y, cell->w, title_y - cell->y};
   if (cover.h > 0) {
-    ra8_widget_priv_fill_box(p, &cover, book->cover, book->cover, (int16_t)0);
+    priv_widget_fill_box(p, &cover, book->cover, book->cover, (int16_t)0);
   }
   if (p->draw_text != nullptr) {
     const ra8_ui_rect_t title = {cell->x, title_y, cell->w, lbl_h};
@@ -182,9 +182,9 @@ static void internal_bg_card(const ra8_widget_book_grid_t* g,
     internal_bg_label(p, &author, book->author, g->author_fg, book->cover);
   }
   const ra8_ui_rect_t bar = {cell->x, bar_y, cell->w, bar_h};
-  ra8_widget_priv_fill_box(p, &bar, g->bar_track, g->bar_track, (int16_t)0);
+  priv_widget_fill_box(p, &bar, g->bar_track, g->bar_track, (int16_t)0);
   const int32_t fw =
-    ra8_widget_priv_fill_frac(book->percent, (uint32_t)k_ra8_widget_book_pct_full, cell->w);
+    priv_widget_fill_frac(book->percent, (uint32_t)k_ra8_widget_book_pct_full, cell->w);
   if ((fw > 0) && (p->fill_rect != nullptr)) {
     p->fill_rect(p->user, cell->x, bar_y, fw, bar_h, g->bar_fill);
   }
@@ -237,7 +237,7 @@ static void internal_bg_render(ra8_widget_t* w)
   if (g->paint == nullptr) {
     return;
   }
-  ra8_widget_priv_fill_box(g->paint, &w->rect, g->bg, g->bg, (int16_t)0);
+  priv_widget_fill_box(g->paint, &w->rect, g->bg, g->bg, (int16_t)0);
   if ((g->count == (uint16_t)k_ra8_widget_book_none) || (g->books == nullptr)) {
     return;
   }

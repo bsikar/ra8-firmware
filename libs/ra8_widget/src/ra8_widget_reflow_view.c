@@ -156,7 +156,7 @@ static void internal_rv_render(ra8_widget_t* w)
     return;
   }
   if (v->paint != nullptr) {
-    ra8_widget_priv_fill_box(v->paint, &w->rect, v->bg, v->bg, (int16_t)0);
+    priv_widget_fill_box(v->paint, &w->rect, v->bg, v->bg, (int16_t)0);
   }
   if ((v->ops == nullptr) || (v->ops->render_page == nullptr)) {
     return;

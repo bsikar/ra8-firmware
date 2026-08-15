@@ -57,7 +57,7 @@ static uint32_t internal_button_face(const ra8_widget_button_t* b)
  * @brief Button vtable render: paint the bordered face, then the label.
  * @details Reads the ::ra8_widget_button_t from `w->ctx`, fills its (optionally
  *          bordered) face for the current pressed state via
- *          ::ra8_widget_priv_fill_box, then -- when there is text and a
+ *          ::priv_widget_fill_box, then -- when there is text and a
  *          `draw_text` backend -- places and draws the label over the face.
  * @param[in] w The button widget (its `ctx` is a ::ra8_widget_button_t).
  * @return Nothing.
@@ -79,7 +79,7 @@ static void internal_button_render(ra8_widget_t* w)
     return;
   }
   const uint32_t face = internal_button_face(b);
-  ra8_widget_priv_fill_box(b->paint, &w->rect, face, b->border, b->border_w);
+  priv_widget_fill_box(b->paint, &w->rect, face, b->border, b->border_w);
   if (b->text == nullptr) {
     return;
   }
@@ -88,7 +88,7 @@ static void internal_button_render(ra8_widget_t* w)
   }
   int32_t tx = 0;
   int32_t ty = 0;
-  ra8_widget_priv_text_pos(b->paint, &w->rect, b->text, b->pad, b->align, &tx, &ty);
+  priv_widget_text_pos(b->paint, &w->rect, b->text, b->pad, b->align, &tx, &ty);
   b->paint->draw_text(b->paint->user, tx, ty, b->text, b->fg, face);
 }
 

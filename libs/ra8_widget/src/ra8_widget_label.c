@@ -30,7 +30,7 @@ static const char* s_tag = "ra8_widget_label";
 
 /**
  * @brief No border on a plain label -- a single background fill.
- * @details Passed as the `border_w` to ::ra8_widget_priv_fill_box so the label
+ * @details Passed as the `border_w` to ::priv_widget_fill_box so the label
  *          paints exactly one fill (no frame), unlike the bordered button.
  */
 typedef enum : int16_t {
@@ -41,7 +41,7 @@ typedef enum : int16_t {
  * @brief Label vtable render: fill the background, then draw the aligned text.
  * @details Reads the ::ra8_widget_label_t from `w->ctx`, fills the rect with
  *          `bg`, then -- when there is text and a `draw_text` backend -- places
- *          it via ::ra8_widget_priv_text_pos and draws it. Each guard is a
+ *          it via ::priv_widget_text_pos and draws it. Each guard is a
  *          single condition so a missing backend / text is a safe no-op.
  * @param[in] w The label widget (its `ctx` is a ::ra8_widget_label_t).
  * @return Nothing.
@@ -62,7 +62,7 @@ static void internal_label_render(ra8_widget_t* w)
   if (l->paint == nullptr) {
     return;
   }
-  ra8_widget_priv_fill_box(l->paint, &w->rect, l->bg, l->bg, (int16_t)k_ra8_widget_label_no_border);
+  priv_widget_fill_box(l->paint, &w->rect, l->bg, l->bg, (int16_t)k_ra8_widget_label_no_border);
   if (l->text == nullptr) {
     return;
   }
@@ -71,7 +71,7 @@ static void internal_label_render(ra8_widget_t* w)
   }
   int32_t tx = 0;
   int32_t ty = 0;
-  ra8_widget_priv_text_pos(l->paint, &w->rect, l->text, l->pad, l->align, &tx, &ty);
+  priv_widget_text_pos(l->paint, &w->rect, l->text, l->pad, l->align, &tx, &ty);
   l->paint->draw_text(l->paint->user, tx, ty, l->text, l->fg, l->bg);
 }
 
