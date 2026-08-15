@@ -289,12 +289,21 @@ endforeach()
 # POSIX source out of the firmware object library by adding it only here.
 if(TARGET test_fw_if_fs)
   target_sources(
-    test_fw_if_fs PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
-                          ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+    test_fw_if_fs
+    PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_hash.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_pathfs.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_sanitize.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_storage.c
   )
   target_include_directories(
-    test_fw_if_fs PRIVATE ${FW_ROOT}/libs/if/inc ${FW_ROOT}/libs/if_ra8_vfs/inc
-                          ${FW_ROOT}/port/posix/inc ${FW_ROOT}/port/posix/src
+    test_fw_if_fs
+    PRIVATE ${FW_ROOT}/libs/if/inc
+            ${FW_ROOT}/libs/if_ra8_vfs/inc
+            ${FW_ROOT}/port/posix/inc
+            ${FW_ROOT}/port/posix/src
+            ${FW_ROOT}/tools/media_dl/inc
   )
 endif()
 

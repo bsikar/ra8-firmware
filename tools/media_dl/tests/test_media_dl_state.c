@@ -24,8 +24,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "fw_if_fs_posix.h"
 #include "mdl_hash.h"
 #include "mdl_state.h"
+#include "mdl_storage.h"
 #include "mdl_urlname.h"
 #include "unity_minimal.h"
 
@@ -40,6 +42,17 @@ typedef enum : uint16_t {
   k_ch_four        = 4,   /**< Chapter number 4 (leaves a gap at 3).  */
   k_pages_three    = 3,   /**< Page count used in the basic test.     */
 } mdl_state_test_const_t;
+
+/** @brief Opaque filesystem backend workspace extent. */
+typedef enum : uint16_t {
+  k_fs_work_bytes = 2048U, /**< Covers the POSIX file and transaction states. */
+} mdl_state_fs_limit_t;
+
+/** @brief Maximally aligned backend workspace. */
+typedef union {
+  max_align_t align;                  /**< Force natural maximum alignment. */
+  uint8_t     bytes[k_fs_work_bytes]; /**< Opaque backend bytes.            */
+} fs_workspace_t;
 
 /** @brief Sparse-file size just beyond mdl_hash_file's production bound. */
 typedef enum : uint64_t {
@@ -59,6 +72,13 @@ typedef enum : uint64_t {
 static mdl_state_t s_a;
 /** @brief The reload target for round-trip comparisons. */
 static mdl_state_t s_b;
+/** @brief POSIX-rooted portable filesystem used by file-hash vectors. */
+static fw_fs_t             s_fs;
+static fw_fs_posix_state_t s_fs_posix = {.root_fd = -1};
+static fs_workspace_t      s_file_work;
+static fs_workspace_t      s_transaction_work;
+static uint8_t             s_io_buffer[k_mdl_storage_io_bytes];
+static mdl_storage_t       s_storage;
 
 /** @brief Create a unique temp file, close it, and return its path in `buf`. */
 static void make_tmp(char* buf, size_t cap)
@@ -141,23 +161,23 @@ static void test_hash_file(void)
 
   uint64_t fh = 0U;
   /* V1 control: the file hash equals the same bytes hashed in memory. */
-  TEST_ASSERT_EQ((int64_t)k_ra8_ok, mdl_hash_file(path, &fh));
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok, mdl_hash_file(&s_storage, path, &fh));
   TEST_ASSERT_EQ(mdl_hash_bytes(payload, strlen(payload)), fh);
   /* V2/V3: NULL path / out are refused. */
-  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_arg, mdl_hash_file(nullptr, &fh));
-  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_arg, mdl_hash_file(path, nullptr));
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_arg, mdl_hash_file(&s_storage, nullptr, &fh));
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_arg, mdl_hash_file(&s_storage, path, nullptr));
   (void)unlink(path);
   /* A now-absent file fails cleanly. */
-  TEST_ASSERT_EQ((int64_t)k_ra8_err_not_found, mdl_hash_file(path, &fh));
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_not_found, mdl_hash_file(&s_storage, path, &fh));
 
   fh = (uint64_t)k_ch_a;
-  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_arg, mdl_hash_file("/dev/null", &fh));
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_arg, mdl_hash_file(&s_storage, "/dev/null", &fh));
   TEST_ASSERT_EQ((uint64_t)k_ch_a, fh);
 
   make_tmp(path, sizeof(path));
   (void)unlink(path);
   TEST_ASSERT_EQ(0, mkfifo(path, 0600));
-  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_arg, mdl_hash_file(path, &fh));
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_arg, mdl_hash_file(&s_storage, path, &fh));
   TEST_ASSERT_EQ((uint64_t)k_ch_a, fh);
   (void)unlink(path);
 
@@ -167,7 +187,7 @@ static void test_hash_file(void)
   make_tmp(path, sizeof(path));
   (void)unlink(path);
   TEST_ASSERT_EQ(0, symlink(target, path));
-  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_arg, mdl_hash_file(path, &fh));
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_arg, mdl_hash_file(&s_storage, path, &fh));
   TEST_ASSERT_EQ((uint64_t)k_ch_a, fh);
   (void)unlink(path);
   (void)unlink(target);
@@ -177,7 +197,7 @@ static void test_hash_file(void)
   TEST_ASSERT_NOT_NULL(fp);
   TEST_ASSERT_EQ(0, ftruncate(fileno(fp), (off_t)k_hash_oversize_bytes));
   TEST_ASSERT_EQ(0, fclose(fp));
-  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_size, mdl_hash_file(path, &fh));
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_size, mdl_hash_file(&s_storage, path, &fh));
   TEST_ASSERT_EQ((uint64_t)k_ch_a, fh);
   (void)unlink(path);
   TEST_END("hash file");
@@ -718,6 +738,17 @@ static void test_state_coverage(void)
  */
 int32_t main(void)
 {
+  const fw_fs_posix_cfg_t cfg = {.root_path = "/", .removable_media = false};
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_init(&s_fs, &s_fs_posix, &cfg));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 mdl_storage_init(&s_storage,
+                                  &s_fs,
+                                  s_file_work.bytes,
+                                  sizeof(s_file_work.bytes),
+                                  s_transaction_work.bytes,
+                                  sizeof(s_transaction_work.bytes),
+                                  s_io_buffer,
+                                  sizeof(s_io_buffer)));
   test_hash_determinism();
   test_hash_file();
   test_urlname();
@@ -729,6 +760,7 @@ int32_t main(void)
   test_state_metadata_setters();
   test_state_save_validates_invariants();
   test_state_coverage();
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_deinit(&s_fs_posix));
   (void)fprintf(stderr, "[OK  ] test_media_dl_state.c\n");
   return 0;
 }

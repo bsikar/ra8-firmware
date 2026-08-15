@@ -29,6 +29,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "fw_if_fs_posix.h"
 #include "mdl_config.h"
 #include "mdl_extract.h"
 #include "mdl_fetch.h"
@@ -37,6 +38,7 @@
 #include "mdl_net.h"
 #include "mdl_session.h"
 #include "mdl_state.h"
+#include "mdl_storage.h"
 #include "mdl_urlname.h"
 #include "ra8_err.h"
 #include "unity_minimal.h"
@@ -58,8 +60,15 @@ typedef enum : uint16_t {
  *        gcc -Wformat-truncation, since the dir source is a PATH_MAX array).
  */
 typedef enum : uint32_t {
-  k_join_bytes = (uint32_t)PATH_MAX + 128U, /**< PATH_MAX + a page-leaf margin. */
+  k_join_bytes    = (uint32_t)PATH_MAX + 128U, /**< PATH_MAX + a page-leaf margin. */
+  k_fs_work_bytes = 2048U,                     /**< Opaque FS handle workspace.    */
 } mdl_fetch_join_t;
+
+/** @brief Maximally aligned backend workspace. */
+typedef union {
+  max_align_t align;                  /**< Force natural maximum alignment. */
+  uint8_t     bytes[k_fs_work_bytes]; /**< Opaque backend bytes.            */
+} fs_workspace_t;
 
 /**
  * @struct page_map_t
@@ -250,6 +259,13 @@ static mdl_governor_t* g_fetch_gov;
 static mdl_fetch_faillog_t g_faillog;
 /** @brief Cache-bypass setting for the current run. */
 static bool g_refetch;
+/** @brief Portable filesystem dependency used by fetch orchestration. */
+static fw_fs_t             g_fs;
+static fw_fs_posix_state_t g_fs_posix = {.root_fd = -1};
+static fs_workspace_t      g_file_work;
+static fs_workspace_t      g_transaction_work;
+static uint8_t             g_io_buffer[k_mdl_storage_io_bytes];
+static mdl_storage_t       g_storage;
 
 /**
  * @struct fetch_clock_t
@@ -328,6 +344,7 @@ static ra8_err_t run_fetch(const char*        abs_dir,
   mdl_net_iface_t iface = {.vtable = &s_mock_vtable, .ctx = &g_mock};
   mdl_session_init(&g_sess, &iface, "media_dl/test", false);
   mdl_fetch_ctx_t ctx = {.session        = &g_sess,
+                         .storage        = &g_storage,
                          .state          = &g_state,
                          .state_path     = state_path,
                          .series_abs_dir = abs_dir,
@@ -351,7 +368,8 @@ static bool files_equal(const char* a, const char* b)
 {
   uint64_t ha = 0U;
   uint64_t hb = 0U;
-  return (mdl_hash_file(a, &ha) == k_ra8_ok) && (mdl_hash_file(b, &hb) == k_ra8_ok) && (ha == hb);
+  return (mdl_hash_file(&g_storage, a, &ha) == k_ra8_ok) &&
+         (mdl_hash_file(&g_storage, b, &hb) == k_ra8_ok) && (ha == hb);
 }
 
 /** @brief True when a file exists at the composed `<abs_dir>/<rel>` path. */
@@ -370,7 +388,7 @@ static uint64_t page_hash(const char* abs_dir, const char* rel)
   char     path[k_join_bytes];
   uint64_t hash = 0U;
   (void)snprintf(path, sizeof(path), "%s/%s", abs_dir, rel);
-  TEST_ASSERT_EQ((int64_t)k_ra8_ok, mdl_hash_file(path, &hash));
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok, mdl_hash_file(&g_storage, path, &hash));
   return hash;
 }
 
@@ -1005,8 +1023,9 @@ static void test_mcdc_run_incomplete(void)
 }
 
 /**
- * @brief Run every fetch-orchestration unit test in sequence.
- * @return 0 when all tests passed; a failing assertion aborts via the harness.
+ * @brief Prove a conditional 304 reuses the verified local entity.
+ * @details Seeds one page with validators, then verifies the next conditional
+ * request preserves its bytes without counting a new transfer.
  * @since 0.1.0
  */
 static void test_conditional_fetch_304_not_modified(void)
@@ -1340,6 +1359,17 @@ static void test_fetch_asset_policy_atomic_and_nonempty(void)
 
 int32_t main(void)
 {
+  const fw_fs_posix_cfg_t cfg = {.root_path = "/", .removable_media = false};
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_init(&g_fs, &g_fs_posix, &cfg));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 mdl_storage_init(&g_storage,
+                                  &g_fs,
+                                  g_file_work.bytes,
+                                  sizeof(g_file_work.bytes),
+                                  g_transaction_work.bytes,
+                                  sizeof(g_transaction_work.bytes),
+                                  g_io_buffer,
+                                  sizeof(g_io_buffer)));
   test_fetch_asset_policy_atomic_and_nonempty();
   test_chapter_number_text_parser();
   test_chapter_number_selector_strict_and_persisted();
@@ -1360,6 +1390,7 @@ int32_t main(void)
   test_checkpoint_failure_fails_run();
   test_mcdc_is_retryable();
   test_mcdc_run_incomplete();
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_deinit(&g_fs_posix));
   (void)fprintf(stderr, "[OK  ] test_media_dl_fetch.c\n");
   return 0;
 }

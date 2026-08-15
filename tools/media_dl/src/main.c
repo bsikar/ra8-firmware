@@ -36,6 +36,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "fw_if_fs_posix.h"
 #include "mdl_atomic.h"
 #include "mdl_cli.h"
 #include "mdl_config.h"
@@ -55,6 +56,7 @@
 #include "mdl_sanitize.h"
 #include "mdl_session.h"
 #include "mdl_state.h"
+#include "mdl_storage.h"
 #include "mdl_url_guard.h"
 #include "mdl_urlname.h"
 #include "mdl_verify.h"
@@ -65,6 +67,7 @@
 typedef enum : uint32_t {
   k_page_buf_bytes     = 8U * 1024U * 1024U,  /**< Max HTML page size.          */
   k_export_arena_bytes = 96U * 1024U * 1024U, /**< Host export scratch ceiling. */
+  k_storage_work_bytes = 2048U,               /**< Per-handle FS backend state. */
 } mdl_cli_limits_t;
 
 /** @brief On-stack string buffer sizes and page-mode delays. */
@@ -130,6 +133,60 @@ static export_arena_storage_t s_export_arena;
 
 /** @brief Arena cursor reset by each exporter call; single-threaded CLI only. */
 static mdl_export_workspace_t s_export_ws;
+
+/** @brief Maximally aligned storage for one filesystem backend handle. */
+typedef union {
+  max_align_t align;                       /**< Force maximum C alignment. */
+  uint8_t     bytes[k_storage_work_bytes]; /**< Opaque backend state.      */
+} storage_workspace_t;
+
+/** @brief Host-selected filesystem facade and adapter state. */
+static fw_fs_t             s_fs;
+static fw_fs_posix_state_t s_fs_posix = {.root_fd = -1};
+/** @brief One file and one transaction workspace for single-threaded storage. */
+static storage_workspace_t s_fs_file_work;
+static storage_workspace_t s_fs_transaction_work;
+/** @brief Caller-owned streaming buffer shared by serial storage operations. */
+static uint8_t s_fs_io_buffer[k_mdl_storage_io_bytes];
+/** @brief Portable storage dependency injected into the fetch core. */
+static mdl_storage_t s_storage;
+
+/**
+ * @brief Bind the host root through the POSIX composition adapter
+ * @details Opens `/` as the confined host adapter root, validates the static
+ * file/transaction/I/O workspaces, and publishes the dependency injected into
+ * downloader operations. If the second stage fails, the POSIX adapter is
+ * deinitialized before the error is returned.
+ * @return Canonical storage-composition status.
+ * @retval k_ra8_ok The POSIX facade and downloader binding are ready.
+ * @retval other POSIX adapter or workspace binding initialization failed.
+ * @pre The process-lifetime storage objects are not currently initialized.
+ * @pre The static workspaces remain exclusively owned by the CLI thread.
+ * @post Success leaves ::s_storage ready until the matching deinit in `main`.
+ * @post Failure leaves no initialized POSIX adapter resource.
+ * @note Host composition only; firmware supplies a VFS facade instead.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_storage_init(void)
+{
+  const fw_fs_posix_cfg_t cfg = {.root_path = "/", .removable_media = false};
+  ra8_err_t               err = fw_fs_posix_init(&s_fs, &s_fs_posix, &cfg);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  err = mdl_storage_init(&s_storage,
+                         &s_fs,
+                         s_fs_file_work.bytes,
+                         sizeof(s_fs_file_work.bytes),
+                         s_fs_transaction_work.bytes,
+                         sizeof(s_fs_transaction_work.bytes),
+                         s_fs_io_buffer,
+                         sizeof(s_fs_io_buffer));
+  if (err != k_ra8_ok) {
+    (void)fw_fs_posix_deinit(&s_fs_posix);
+  }
+  return err;
+}
 
 /**
  * @var s_page
@@ -1009,6 +1066,7 @@ RA8_INTERNAL static mdl_fetch_ctx_t make_ctx(const series_run_t* r,
                                              mdl_governor_t*     gov)
 {
   return (mdl_fetch_ctx_t){.session        = &s_session,
+                           .storage        = &s_storage,
                            .state          = &s_state,
                            .state_path     = state_path,
                            .series_abs_dir = abs_dir,
@@ -2330,7 +2388,7 @@ verify_series_dir(const char* series_dir, const char* state_path, verify_stats_t
         continue;
       }
       uint64_t hash = 0U;
-      if ((mdl_hash_file(resolved, &hash) != k_ra8_ok) || (hash != rec->content_hash)) {
+      if ((mdl_hash_file(&s_storage, resolved, &hash) != k_ra8_ok) || (hash != rec->content_hash)) {
         (void)printf("  [CORRUPT] %s (hash mismatch)\n", rec->rel_path);
         st->pages_corrupt += 1U;
       } else {
@@ -2545,5 +2603,14 @@ int main(int argc, char** argv)
   }
 
   const series_run_t run = build_run(&a, format, &opts, &nums);
-  return dispatch_run(&a, mode, format, &opts, &nums, &run);
+  if (internal_storage_init() != k_ra8_ok) {
+    (void)fprintf(stderr, "media_dl: could not initialize portable filesystem binding\n");
+    return 1;
+  }
+  const int result = dispatch_run(&a, mode, format, &opts, &nums, &run);
+  if (fw_fs_posix_deinit(&s_fs_posix) != k_ra8_ok) {
+    (void)fprintf(stderr, "media_dl: filesystem shutdown failed\n");
+    return 1;
+  }
+  return result;
 }

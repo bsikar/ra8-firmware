@@ -20,6 +20,7 @@
 #include "mdl_hash.h"
 #include "mdl_net.h"
 #include "mdl_pathfs.h"
+#include "mdl_storage.h"
 #include "mdl_url_guard.h"
 #include "mdl_urlname.h"
 #include "ra8_attributes.h"
@@ -27,8 +28,7 @@
 
 /** @brief Local buffer sizes and the file-copy chunk. */
 typedef enum : uint16_t {
-  k_fetch_leaf_bytes = 32,   /**< "page_NNNN.ext" leaf name buffer. */
-  k_fetch_copy_chunk = 8192, /**< Reuse-copy stream chunk bytes.    */
+  k_fetch_leaf_bytes = 32, /**< "page_NNNN.ext" leaf name buffer. */
 } mdl_fetch_size_t;
 
 /** @brief HTTP-status boundaries used when rendering a failure reason. */
@@ -62,10 +62,9 @@ typedef struct {
   bool     reused;     /**< Served from an already-held file.      */
 } mdl_page_outcome_t;
 
-/** @brief Loop bound on the reuse-copy stream (any real page is far under). */
+/** @brief Time conversion used by progress accounting. */
 typedef enum : uint32_t {
-  k_fetch_copy_max_chunks = 1000000U, /**< 8 GiB ceiling.               */
-  k_ns_per_ms             = 1000000U, /**< Nanoseconds per millisecond. */
+  k_ns_per_ms = 1000000U, /**< Nanoseconds per millisecond. */
 } mdl_fetch_bound_t;
 
 /** @brief Bounded attempts per request: the initial try plus backoff retries.
@@ -217,52 +216,27 @@ RA8_INTERNAL static void emit_progress(const mdl_fetch_ctx_t*    ctx,
   ctx->progress_fn(ctx->progress_ctx, &ev);
 }
 
-/** @brief Copy a file byte-for-byte; false on any open/read/write error. */
-RA8_INTERNAL static bool copy_file(const char* src, const char* dst)
+/**
+ * @brief Copy one file through the validated portable storage transaction
+ * @details Adapts the canonical storage status to the fetcher's reuse boolean;
+ * the underlying operation independently hashes the staged bytes before an
+ * atomic create or truthful atomic replacement.
+ * @param[in,out] storage Initialized storage binding and workspaces.
+ * @param[in] src Canonical regular-file source path.
+ * @param[in] dst Canonical distinct destination path.
+ * @return Whether the complete validated copy was published.
+ * @retval true The destination now contains the exact source snapshot.
+ * @retval false Validation, I/O, capability, or publication failed.
+ * @pre Every pointer is non-null and both paths share one bound filesystem.
+ * @pre @p storage is exclusively owned for the duration of the copy.
+ * @post Success publishes no partial destination.
+ * @post Failure leaves any existing destination untouched.
+ * @note Not thread-safe against concurrent mutation of either named object.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool copy_file(mdl_storage_t* storage, const char* src, const char* dst)
 {
-  if ((src == nullptr) || (dst == nullptr)) {
-    return false;
-  }
-  FILE* in = fopen(src, "rb");
-  if (in == nullptr) {
-    return false;
-  }
-  /* Same rule as every other writer here: a partial copy must not be able to
-   * destroy a good `dst` that already exists (see mdl_atomic.h). */
-  char tmp[PATH_MAX];
-  if (!mdl_atomic_tmp_path(dst, tmp, sizeof(tmp))) {
-    (void)fclose(in);
-    return false;
-  }
-  FILE* out = fopen(tmp, "wb");
-  if (out == nullptr) {
-    (void)fclose(in);
-    mdl_atomic_abort(tmp);
-    return false;
-  }
-  bool    ok  = true;
-  bool    eof = false;
-  uint8_t buf[k_fetch_copy_chunk];
-  for (uint32_t chunk = 0U; chunk < (uint32_t)k_fetch_copy_max_chunks; ++chunk) {
-    const size_t n = fread(buf, 1U, sizeof(buf), in);
-    if ((n > 0U) && (fwrite(buf, 1U, n, out) != n)) {
-      ok = false;
-      break;
-    }
-    if (n < sizeof(buf)) {
-      ok  = (ferror(in) == 0);
-      eof = ok;
-      break;
-    }
-  }
-  const bool out_closed = fclose(out) == 0;
-  const bool in_closed  = fclose(in) == 0;
-  ok                    = eof && ok && out_closed && in_closed;
-  if (!ok) {
-    mdl_atomic_abort(tmp);
-    return false;
-  }
-  return mdl_atomic_commit(tmp, dst);
+  return mdl_storage_copy_atomic(storage, src, dst) == k_ra8_ok;
 }
 
 /** @brief Compose the `page_NNNN.ext` leaf for one page; false if it overran.
@@ -295,7 +269,7 @@ try_reuse(mdl_fetch_ctx_t* ctx, uint64_t url_hash, const char* target_abs, const
     return false;
   }
   uint64_t have = 0U;
-  if ((mdl_hash_file(src_abs, &have) != k_ra8_ok) || (have != held->content_hash)) {
+  if ((mdl_hash_file(ctx->storage, src_abs, &have) != k_ra8_ok) || (have != held->content_hash)) {
     return false; /* the held file is gone or torn: refetch */
   }
 
@@ -328,7 +302,7 @@ try_reuse(mdl_fetch_ctx_t* ctx, uint64_t url_hash, const char* target_abs, const
   if (strcmp(held->rel_path, act_rel) == 0) {
     return true; /* already in place (same-chapter resume) */
   }
-  if (!copy_file(src_abs, act_abs)) {
+  if (!copy_file(ctx->storage, src_abs, act_abs)) {
     return false;
   }
   return mdl_state_add_page(ctx->state,
@@ -710,7 +684,7 @@ RA8_INTERNAL static ra8_err_t do_fetch_page(mdl_fetch_ctx_t* ctx,
     return k_ra8_err_invalid_size;
   }
   uint64_t content = 0U;
-  if (mdl_hash_file(staged, &content) != k_ra8_ok) {
+  if (mdl_hash_file(ctx->storage, staged, &content) != k_ra8_ok) {
     mdl_atomic_abort(staged);
     record_fail(ctx, url, resp.status, k_ra8_fail);
     return k_ra8_fail;
@@ -933,7 +907,7 @@ RA8_INTERNAL static bool resolve_dest(mdl_fetch_ctx_t*   ctx,
     *base     = global_no;
     return true;
   }
-  if (!mdl_join_dir_under(ctx->series_abs_dir, id, chap_abs, chap_cap)) {
+  if (!mdl_join_dir_under(ctx->storage, ctx->series_abs_dir, id, chap_abs, chap_cap)) {
     return false;
   }
   *dest_abs = chap_abs;
@@ -1110,13 +1084,31 @@ RA8_INTERNAL static bool tally(mdl_chap_status_t s, mdl_fetch_stats_t* stats)
   return s == k_ch_failed;
 }
 
-/** @brief Validate that every required ::mdl_fetch_ctx_t dependency is present.
+/**
+ * @brief Validate that every required fetch dependency is present
+ * @details Checks the network session, portable storage binding, persistent
+ * state, series/site metadata, and caller-owned extraction buffers before the
+ * orchestrator performs any I/O.
+ * @param[in] ctx Candidate fetch dependency bundle.
+ * @return Dependency validation result.
+ * @retval true Every mandatory pointer is non-null.
+ * @retval false The context or at least one mandatory dependency is absent.
+ * @pre @p ctx is either null or points to a readable context object.
+ * @pre No concurrent thread mutates a non-null context during this check.
+ * @post No context, backend, or caller buffer is modified.
+ * @post Success authorizes only pointer presence; callee operations still
+ *       validate their detailed lifecycle and capacity contracts.
+ * @note Thread-safe for an immutable context.
+ * @since 0.1.0
  */
 RA8_INTERNAL static bool ctx_ready(const mdl_fetch_ctx_t* ctx)
 {
-  return (ctx->session != nullptr) && (ctx->state != nullptr) && (ctx->series_abs_dir != nullptr) &&
-         (ctx->series_url != nullptr) && (ctx->site != nullptr) && (ctx->page_buf != nullptr) &&
-         (ctx->images != nullptr);
+  if (ctx == nullptr) {
+    return false;
+  }
+  return (ctx->session != nullptr) && (ctx->storage != nullptr) && (ctx->state != nullptr) &&
+         (ctx->series_abs_dir != nullptr) && (ctx->series_url != nullptr) &&
+         (ctx->site != nullptr) && (ctx->page_buf != nullptr) && (ctx->images != nullptr);
 }
 
 ra8_err_t mdl_fetch_run(mdl_fetch_ctx_t*      ctx,
@@ -1135,7 +1127,8 @@ ra8_err_t mdl_fetch_run(mdl_fetch_ctx_t*      ctx,
 
   char combined_abs[PATH_MAX];
   if (layout == k_mdl_layout_combined) {
-    if ((combined_dir_rel == nullptr) || !mdl_join_dir_under(ctx->series_abs_dir,
+    if ((combined_dir_rel == nullptr) || !mdl_join_dir_under(ctx->storage,
+                                                             ctx->series_abs_dir,
                                                              combined_dir_rel,
                                                              combined_abs,
                                                              sizeof(combined_abs))) {

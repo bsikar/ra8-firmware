@@ -1,5 +1,3 @@
-#define _GNU_SOURCE
-
 /**
  * @file test_fw_if_fs.c
  * @brief Shared conformance vectors for POSIX and RA8 VFS filesystem ports.
@@ -13,6 +11,9 @@
  * SPDX-License-Identifier: MIT
  */
 
+/** @brief Request hosted POSIX extension declarations used by this test. */
+#define _GNU_SOURCE
+
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -25,6 +26,9 @@
 #include "fw_if_fs_backend.h"
 #include "fw_if_fs_posix.h"
 #include "fw_if_fs_ra8_vfs.h"
+#include "mdl_hash.h"
+#include "mdl_pathfs.h"
+#include "mdl_storage.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_io_blockdev.h"
@@ -34,30 +38,30 @@
 
 /** @brief Fixed test bounds and the FAT12 RAM-disk size. */
 typedef enum : uint32_t {
-  k_test_disk_blocks  = 1024U,
-  k_test_file_work    = 64U,
-  k_test_txn_work     = 2048U,
-  k_test_fill_chunk   = 4096U,
-  k_test_fill_attempt = 256U,
+  k_test_disk_blocks  = 1024U, /**< FAT12 RAM-disk sectors.             */
+  k_test_file_work    = 64U,   /**< Maximum file backend workspace.     */
+  k_test_txn_work     = 2048U, /**< Maximum transaction workspace.      */
+  k_test_fill_chunk   = 4096U, /**< Bytes written per full-media probe. */
+  k_test_fill_attempt = 256U,  /**< Bounded full-media write attempts.  */
 } test_limits_t;
 
 /** @brief Maximally aligned caller-owned backend workspace. */
 typedef union {
-  max_align_t alignment;
-  uint8_t     bytes[k_test_txn_work];
+  max_align_t alignment;              /**< Force maximum C alignment. */
+  uint8_t     bytes[k_test_txn_work]; /**< Opaque backend state.      */
 } test_workspace_t;
 
 /** @brief Validator cookie for exact staged content. */
 typedef struct {
-  const uint8_t* bytes;
-  uint32_t       length;
-  bool           reject;
+  const uint8_t* bytes;  /**< Expected stage bytes.      */
+  uint32_t       length; /**< Expected stage byte count. */
+  bool           reject; /**< Force validator rejection. */
 } validator_ctx_t;
 
 /** @brief List callback tally. */
 typedef struct {
-  uint32_t count;
-  bool     saw_directory;
+  uint32_t count;         /**< Delivered entry count.        */
+  bool     saw_directory; /**< Whether a directory appeared. */
 } list_ctx_t;
 
 /** @brief FAT12 storage and caller-owned adapter objects. */
@@ -716,6 +720,109 @@ static void run_conformance(const char* label, const fw_fs_t* fs)
   TEST_END(label);
 }
 
+/**
+ * @brief Run downloader storage behavior against either filesystem binding
+ * @details Proves transactional copy, exact portable hashing, guarded child
+ * creation, overlap rejection, output preservation, and truthful replacement
+ * capability behavior with one backend-independent vector.
+ * @param[in] label Test runner label.
+ * @param[in] fs Initialized POSIX or RAM/FAT/VFS filesystem facade.
+ * @pre @p label and @p fs are non-null and remain live for the test.
+ * @pre The backend root is empty and supports namespace, stream, transactions.
+ * @post Every created file and directory is removed.
+ * @post Assertions expose any behavioral difference between the two adapters.
+ * @note Test-local and single-threaded.
+ * @since 0.1.0
+ */
+static void check_mdl_storage_portability(const char* label, const fw_fs_t* fs)
+{
+  static const uint8_t source[]                          = {'m', 'e', 'd', 'i', 'a'};
+  static const uint8_t old[]                             = {'o', 'l', 'd'};
+  test_workspace_t     file_work                         = {};
+  test_workspace_t     transaction_work                  = {};
+  uint8_t              io_buffer[k_mdl_storage_io_bytes] = {};
+  mdl_storage_t        storage   = {.fs                    = (const fw_fs_t*)(uintptr_t)UINT32_MAX,
+                                    .file_workspace        = (void*)(uintptr_t)UINT32_MAX,
+                                    .transaction_workspace = (void*)(uintptr_t)UINT32_MAX,
+                                    .io_buffer             = (uint8_t*)(uintptr_t)UINT32_MAX,
+                                    .file_workspace_bytes  = UINT32_MAX,
+                                    .transaction_workspace_bytes = UINT32_MAX,
+                                    .io_buffer_bytes             = UINT32_MAX};
+  const mdl_storage_t  preserved = storage;
+  TEST_BEGIN(label);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 mdl_storage_init(&storage,
+                                  fs,
+                                  file_work.bytes,
+                                  sizeof(file_work.bytes),
+                                  file_work.bytes,
+                                  sizeof(file_work.bytes),
+                                  io_buffer,
+                                  sizeof(io_buffer)));
+  TEST_ASSERT(memcmp(&storage, &preserved, sizeof(storage)) == 0);
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 mdl_storage_init(&storage,
+                                  fs,
+                                  file_work.bytes,
+                                  sizeof(file_work.bytes),
+                                  transaction_work.bytes,
+                                  sizeof(transaction_work.bytes),
+                                  io_buffer,
+                                  sizeof(io_buffer)));
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_mkdir(&fs->names, "/media"));
+  write_file(fs, "/media/source.bin", source, sizeof(source));
+
+  uint64_t hash = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, mdl_hash_file(&storage, "/media/source.bin", &hash));
+  TEST_ASSERT_EQ(mdl_hash_bytes(source, sizeof(source)), hash);
+  hash = UINT64_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_not_found, mdl_hash_file(&storage, "/media/missing.bin", &hash));
+  TEST_ASSERT_EQ(UINT64_MAX, hash);
+
+  fw_fs_file_t bounded_file = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 fw_fs_open(&fs->streams,
+                            "/media/source.bin",
+                            k_fw_fs_open_read,
+                            &bounded_file,
+                            file_work.bytes,
+                            sizeof(file_work.bytes)));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 mdl_hash_stream(&bounded_file,
+                                 (uint64_t)k_mdl_hash_max_file_bytes + 1U,
+                                 io_buffer,
+                                 sizeof(io_buffer),
+                                 &hash));
+  TEST_ASSERT_EQ(UINT64_MAX, hash);
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_close(&bounded_file));
+
+  char directory[k_fw_fs_path_cap] = {};
+  TEST_ASSERT(mdl_join_dir_under(&storage, "/media", "chapter-1", directory, sizeof(directory)));
+  TEST_ASSERT(strcmp(directory, "/media/chapter-1") == 0);
+  TEST_ASSERT(!mdl_join_dir_under(&storage, "/media", "..", directory, sizeof(directory)));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 mdl_storage_copy_atomic(&storage, "/media/source.bin", "/media/copy.bin"));
+  expect_file(fs, "/media/copy.bin", source, sizeof(source));
+
+  write_file(fs, "/media/existing.bin", old, sizeof(old));
+  const ra8_err_t replaced =
+    mdl_storage_copy_atomic(&storage, "/media/source.bin", "/media/existing.bin");
+  if ((fs->caps.flags & (uint32_t)k_fw_fs_cap_atomic_replace) != 0U) {
+    TEST_ASSERT_EQ(k_ra8_ok, replaced);
+    expect_file(fs, "/media/existing.bin", source, sizeof(source));
+  } else {
+    TEST_ASSERT_EQ(k_ra8_err_not_supported, replaced);
+    expect_file(fs, "/media/existing.bin", old, sizeof(old));
+  }
+
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/media/existing.bin"));
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/media/copy.bin"));
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/media/source.bin"));
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_rmdir(&fs->names, "/media/chapter-1"));
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_rmdir(&fs->names, "/media"));
+  TEST_END(label);
+}
+
 /** @brief Fill a staged VFS file and prove failure never publishes it. */
 static void check_vfs_full_media(const fw_fs_t* fs)
 {
@@ -785,6 +892,7 @@ static void test_posix_conformance(void)
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_init(&fs, &state, &cfg));
   check_backend_contract_guards(&fs);
   run_conformance("fw_if_fs POSIX conformance", &fs);
+  check_mdl_storage_portability("media_dl POSIX storage", &fs);
   check_posix_symlinks(&fs, root);
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_deinit(&state));
   TEST_ASSERT_EQ(0, rmdir(root));
@@ -809,6 +917,7 @@ static void test_vfs_conformance(void)
   const fw_fs_ra8_vfs_cfg_t cfg = {.mount_name = "ram", .mount = s_mount, .removable_media = false};
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_ra8_vfs_init(&fs, &state, &cfg));
   run_conformance("fw_if_fs RAM/FAT/VFS conformance", &fs);
+  check_mdl_storage_portability("media_dl RAM/FAT/VFS storage", &fs);
   check_vfs_full_media(&fs);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_unmount("ram"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(s_mount));
