@@ -20,6 +20,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_camera_internal.h"
 #include "ra8_err.h"
 #include "ra8_jpeg_sw.h"
@@ -53,7 +54,7 @@ typedef enum : int32_t {
  * @note Thread-safe and deterministic.
  * @since 0.1.0
  */
-static uint8_t jpeg_sw_clamp(int32_t component)
+RA8_INTERNAL static uint8_t internal_jpeg_sw_clamp(int32_t component)
 {
   if (component < 0) {
     return 0U;
@@ -79,7 +80,8 @@ static uint8_t jpeg_sw_clamp(int32_t component)
  * @note Thread-safe; uses no mutable shared state.
  * @since 0.1.0
  */
-static void jpeg_sw_ycbcr_to_rgb(uint8_t y, uint8_t cb, uint8_t cr, uint8_t* output)
+RA8_INTERNAL static void
+internal_jpeg_sw_ycbcr_to_rgb(uint8_t y, uint8_t cb, uint8_t cr, uint8_t* output)
 {
   int32_t luma = (int32_t)y - (int32_t)k_camera_jpeg_luma_black;
   if (luma < 0) {
@@ -87,18 +89,18 @@ static void jpeg_sw_ycbcr_to_rgb(uint8_t y, uint8_t cb, uint8_t cr, uint8_t* out
   }
   const int32_t blue_delta = (int32_t)cb - (int32_t)k_camera_jpeg_chroma_mid;
   const int32_t red_delta  = (int32_t)cr - (int32_t)k_camera_jpeg_chroma_mid;
-  output[0] =
-    jpeg_sw_clamp(((int32_t)k_camera_jpeg_luma_scale * luma +
-                   (int32_t)k_camera_jpeg_red_cr * red_delta + (int32_t)k_camera_jpeg_rounding) >>
-                  (int32_t)k_camera_jpeg_shift);
-  output[1] = jpeg_sw_clamp(
+  output[0]                = internal_jpeg_sw_clamp(((int32_t)k_camera_jpeg_luma_scale * luma +
+                                                     (int32_t)k_camera_jpeg_red_cr * red_delta +
+                                                     (int32_t)k_camera_jpeg_rounding) >>
+                                                    (int32_t)k_camera_jpeg_shift);
+  output[1]                = internal_jpeg_sw_clamp(
     ((int32_t)k_camera_jpeg_luma_scale * luma - (int32_t)k_camera_jpeg_green_cb * blue_delta -
      (int32_t)k_camera_jpeg_green_cr * red_delta + (int32_t)k_camera_jpeg_rounding) >>
     (int32_t)k_camera_jpeg_shift);
-  output[2] =
-    jpeg_sw_clamp(((int32_t)k_camera_jpeg_luma_scale * luma +
-                   (int32_t)k_camera_jpeg_blue_cb * blue_delta + (int32_t)k_camera_jpeg_rounding) >>
-                  (int32_t)k_camera_jpeg_shift);
+  output[2] = internal_jpeg_sw_clamp(((int32_t)k_camera_jpeg_luma_scale * luma +
+                                      (int32_t)k_camera_jpeg_blue_cb * blue_delta +
+                                      (int32_t)k_camera_jpeg_rounding) >>
+                                     (int32_t)k_camera_jpeg_shift);
 }
 
 /**
@@ -117,8 +119,8 @@ static void jpeg_sw_ycbcr_to_rgb(uint8_t y, uint8_t cb, uint8_t cr, uint8_t* out
  * @note Thread-safe with respect to immutable input storage.
  * @since 0.1.0
  */
-static void
-jpeg_sw_read_rgb(const ra8_camera_frame_t* input, uint32_t x, uint32_t y, uint8_t* output)
+RA8_INTERNAL static void
+internal_jpeg_sw_read_rgb(const ra8_camera_frame_t* input, uint32_t x, uint32_t y, uint8_t* output)
 {
   const uint32_t row = y * input->stride_bytes;
   if (input->format == k_ra8_camera_format_rgb888) {
@@ -130,7 +132,10 @@ jpeg_sw_read_rgb(const ra8_camera_frame_t* input, uint32_t x, uint32_t y, uint8_
   }
   const uint32_t pair = row + ((x & ~1U) * 2U);
   const uint32_t yoff = ((x & 1U) == 0U) ? 1U : 3U;
-  jpeg_sw_ycbcr_to_rgb(input->data[pair + yoff], input->data[pair], input->data[pair + 2U], output);
+  internal_jpeg_sw_ycbcr_to_rgb(input->data[pair + yoff],
+                                input->data[pair],
+                                input->data[pair + 2U],
+                                output);
 }
 
 /**
@@ -147,8 +152,8 @@ jpeg_sw_read_rgb(const ra8_camera_frame_t* input, uint32_t x, uint32_t y, uint8_
  * @note Not thread-safe with respect to the shared workspace.
  * @since 0.1.0
  */
-static void jpeg_sw_prepare_rgb(const ra8_camera_codec_jpeg_sw_state_t* state,
-                                const ra8_camera_frame_t*               input)
+RA8_INTERNAL static void internal_jpeg_sw_prepare_rgb(const ra8_camera_codec_jpeg_sw_state_t* state,
+                                                      const ra8_camera_frame_t*               input)
 {
   const uint32_t out_width  = (uint32_t)state->cfg.output_width;
   const uint32_t out_height = (uint32_t)state->cfg.output_height;
@@ -156,10 +161,10 @@ static void jpeg_sw_prepare_rgb(const ra8_camera_codec_jpeg_sw_state_t* state,
     const uint32_t source_y = (y * (uint32_t)input->height) / out_height;
     for (uint32_t x = 0U; x < out_width; x += 1U) {
       const uint32_t source_x = (x * (uint32_t)input->width) / out_width;
-      jpeg_sw_read_rgb(input,
-                       source_x,
-                       source_y,
-                       &state->cfg.rgb_workspace[(y * out_width + x) * 3U]);
+      internal_jpeg_sw_read_rgb(input,
+                                source_x,
+                                source_y,
+                                &state->cfg.rgb_workspace[(y * out_width + x) * 3U]);
     }
   }
 }
@@ -185,10 +190,10 @@ static void jpeg_sw_prepare_rgb(const ra8_camera_codec_jpeg_sw_state_t* state,
  * @note Not thread-safe with respect to state workspace or output buffer.
  * @since 0.1.0
  */
-static ra8_err_t jpeg_sw_encode(void*                      ctx,
-                                const ra8_camera_frame_t*  input,
-                                const ra8_camera_buffer_t* output_buffer,
-                                ra8_camera_frame_t*        out_frame)
+RA8_INTERNAL static ra8_err_t internal_jpeg_sw_encode(void*                      ctx,
+                                                      const ra8_camera_frame_t*  input,
+                                                      const ra8_camera_buffer_t* output_buffer,
+                                                      ra8_camera_frame_t*        out_frame)
 {
   if (ctx == nullptr) {
     return k_ra8_err_null_ptr;
@@ -214,7 +219,7 @@ static ra8_err_t jpeg_sw_encode(void*                      ctx,
     }
   }
   const ra8_camera_codec_jpeg_sw_state_t* state = (const ra8_camera_codec_jpeg_sw_state_t*)ctx;
-  jpeg_sw_prepare_rgb(state, input);
+  internal_jpeg_sw_prepare_rgb(state, input);
   uint32_t        produced = 0U;
   const ra8_err_t encoded  = ra8_jpeg_sw_encode(state->cfg.rgb_workspace,
                                                 state->cfg.output_width,
@@ -238,8 +243,8 @@ static ra8_err_t jpeg_sw_encode(void*                      ctx,
 }
 
 /** @brief Software JPEG codec vtable. */
-static const ra8_camera_codec_iface_t k_jpeg_sw_codec_iface = {
-  .encode = jpeg_sw_encode,
+static const ra8_camera_codec_iface_t s_jpeg_sw_codec_iface = {
+  .encode = internal_jpeg_sw_encode,
 };
 
 ra8_err_t ra8_camera_codec_jpeg_sw_init(ra8_camera_codec_t*                   codec,
@@ -278,7 +283,7 @@ ra8_err_t ra8_camera_codec_jpeg_sw_init(ra8_camera_codec_t*                   co
     return k_ra8_err_invalid_size;
   }
   state->cfg   = *cfg;
-  codec->iface = &k_jpeg_sw_codec_iface;
+  codec->iface = &s_jpeg_sw_codec_iface;
   codec->ctx   = state;
   return k_ra8_ok;
 }

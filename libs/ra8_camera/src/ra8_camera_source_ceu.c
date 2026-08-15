@@ -17,6 +17,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_cache.h"
 #include "ra8_camera_internal.h"
 #include "ra8_ceu.h"
@@ -48,7 +49,7 @@ typedef enum : uint32_t {
  * @note Thread-safe only while the caller prevents concurrent reinitialization.
  * @since 0.1.0
  */
-static ra8_err_t ceu_get_info(void* ctx, ra8_camera_source_info_t* out_info)
+RA8_INTERNAL static ra8_err_t internal_ceu_get_info(void* ctx, ra8_camera_source_info_t* out_info)
 {
   const ra8_camera_source_ceu_state_t* state = (const ra8_camera_source_ceu_state_t*)ctx;
   if (state == nullptr) {
@@ -82,7 +83,8 @@ static ra8_err_t ceu_get_info(void* ctx, ra8_camera_source_info_t* out_info)
  * @note Blocking and not thread-safe with respect to the CEU.
  * @since 0.1.0
  */
-static ra8_err_t ceu_wait_for_frame(ra8_camera_source_ceu_state_t* state, uint32_t* out_bytes)
+RA8_INTERNAL static ra8_err_t internal_ceu_wait_for_frame(ra8_camera_source_ceu_state_t* state,
+                                                          uint32_t*                      out_bytes)
 {
   for (uint32_t attempt = 0U; attempt < state->poll_attempts; attempt += 1U) {
     ra8_ceu_status_t status = {};
@@ -139,8 +141,8 @@ static ra8_err_t ceu_wait_for_frame(ra8_camera_source_ceu_state_t* state, uint32
  * @note Not thread-safe with respect to the CEU, state, or buffer.
  * @since 0.1.0
  */
-static ra8_err_t
-ceu_capture(void* ctx, const ra8_camera_buffer_t* buffer, ra8_camera_frame_t* out_frame)
+RA8_INTERNAL static ra8_err_t
+internal_ceu_capture(void* ctx, const ra8_camera_buffer_t* buffer, ra8_camera_frame_t* out_frame)
 {
   ra8_camera_source_ceu_state_t* state = (ra8_camera_source_ceu_state_t*)ctx;
   if (state == nullptr) {
@@ -169,7 +171,7 @@ ceu_capture(void* ctx, const ra8_camera_buffer_t* buffer, ra8_camera_frame_t* ou
     return err;
   }
   uint32_t captured_bytes = 0U;
-  err                     = ceu_wait_for_frame(state, &captured_bytes);
+  err                     = internal_ceu_wait_for_frame(state, &captured_bytes);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -212,9 +214,9 @@ ra8_err_t ra8_camera_source_ceu_get_last_events(const ra8_camera_source_ceu_stat
   return k_ra8_ok;
 }
 
-static const ra8_camera_source_iface_t k_ceu_source_iface = {
-  .get_info = ceu_get_info,
-  .capture  = ceu_capture,
+static const ra8_camera_source_iface_t s_ceu_source_iface = {
+  .get_info = internal_ceu_get_info,
+  .capture  = internal_ceu_capture,
 };
 
 /* See the public header for the documented contract. */
@@ -272,7 +274,7 @@ ra8_err_t ra8_camera_source_ceu_init(ra8_camera_source_t*               source,
     .initialized      = true,
   };
   *source = (ra8_camera_source_t){
-    .iface = &k_ceu_source_iface,
+    .iface = &s_ceu_source_iface,
     .ctx   = state,
   };
   return k_ra8_ok;

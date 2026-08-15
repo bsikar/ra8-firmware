@@ -12,7 +12,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "ra8_camera.h"
@@ -315,7 +314,7 @@ static void test_ceu_vbp_overrides_capture_end(void)
     .initialized      = true,
   };
   uint32_t captured_bytes = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_hw_error, ceu_wait_for_frame(&state, &captured_bytes));
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, internal_ceu_wait_for_frame(&state, &captured_bytes));
   TEST_ASSERT_EQ(0U, captured_bytes);
   TEST_ASSERT_EQ(events, state.last_events);
   TEST_END("camera CEU VBP overrides CPE");
@@ -525,16 +524,16 @@ static void test_stream_bridge(void)
  * Decisions: libs/ra8_camera/src/ra8_camera.c@ra8_camera_codec_encode,
  * libs/ra8_camera/src/ra8_camera.c@ra8_camera_frame_validate,
  * libs/ra8_camera/src/ra8_camera.c@ra8_camera_source_capture,
- * libs/ra8_camera/src/ra8_camera.c@source_validate,
- * libs/ra8_camera/src/ra8_camera_codec_jpeg_sw.c@jpeg_sw_encode,
+ * libs/ra8_camera/src/ra8_camera.c@internal_source_validate,
+ * libs/ra8_camera/src/ra8_camera_codec_jpeg_sw.c@internal_jpeg_sw_encode,
  * libs/ra8_camera/src/ra8_camera_codec_jpeg_sw.c@ra8_camera_codec_jpeg_sw_init,
- * libs/ra8_camera/src/ra8_camera_codec_passthrough.c@passthrough_encode,
- * libs/ra8_camera/src/ra8_camera_source_ceu.c@ceu_capture,
- * libs/ra8_camera/src/ra8_camera_source_ceu.c@ceu_get_info,
- * libs/ra8_camera/src/ra8_camera_source_ceu.c@ceu_wait_for_frame,
+ * libs/ra8_camera/src/ra8_camera_codec_passthrough.c@internal_passthrough_encode,
+ * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_capture,
+ * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_get_info,
+ * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_wait_for_frame,
  * libs/ra8_camera/src/ra8_camera_source_ceu.c@ra8_camera_source_ceu_init,
- * libs/ra8_camera/src/ra8_camera_source_memory.c@memory_capture,
- * libs/ra8_camera/src/ra8_camera_source_memory.c@memory_get_info,
+ * libs/ra8_camera/src/ra8_camera_source_memory.c@internal_memory_capture,
+ * libs/ra8_camera/src/ra8_camera_source_memory.c@internal_memory_get_info,
  * libs/ra8_camera/src/ra8_camera_source_memory.c@ra8_camera_source_memory_init.
  * @pre Unity test accounting is initialized.
  * @post Every camera vector group has executed once.
@@ -556,6 +555,5 @@ static void test_mcdc_camera_facade_backends(void)
 int main(void)
 {
   test_mcdc_camera_facade_backends();
-  (void)fprintf(stderr, "[OK ] test_ra8_camera.c\n");
   return 0;
 }

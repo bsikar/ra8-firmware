@@ -19,6 +19,7 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_camera_internal.h"
 #include "ra8_err.h"
 
@@ -38,7 +39,8 @@
  * @note Thread-safe because the state is read-only after initialization.
  * @since 0.1.0
  */
-static ra8_err_t memory_get_info(void* ctx, ra8_camera_source_info_t* out_info)
+RA8_INTERNAL static ra8_err_t internal_memory_get_info(void*                     ctx,
+                                                       ra8_camera_source_info_t* out_info)
 {
   if (ctx == nullptr) {
     return k_ra8_err_null_ptr;
@@ -75,8 +77,8 @@ static ra8_err_t memory_get_info(void* ctx, ra8_camera_source_info_t* out_info)
  * @note Not thread-safe with respect to the capture buffer.
  * @since 0.1.0
  */
-static ra8_err_t
-memory_capture(void* ctx, const ra8_camera_buffer_t* buffer, ra8_camera_frame_t* out_frame)
+RA8_INTERNAL static ra8_err_t
+internal_memory_capture(void* ctx, const ra8_camera_buffer_t* buffer, ra8_camera_frame_t* out_frame)
 {
   if (ctx == nullptr) {
     return k_ra8_err_null_ptr;
@@ -98,9 +100,9 @@ memory_capture(void* ctx, const ra8_camera_buffer_t* buffer, ra8_camera_frame_t*
 }
 
 /** @brief Fixed-frame source vtable. */
-static const ra8_camera_source_iface_t k_memory_source_iface = {
-  .get_info = memory_get_info,
-  .capture  = memory_capture,
+static const ra8_camera_source_iface_t s_memory_source_iface = {
+  .get_info = internal_memory_get_info,
+  .capture  = internal_memory_capture,
 };
 
 ra8_err_t ra8_camera_source_memory_init(ra8_camera_source_t*              source,
@@ -121,7 +123,7 @@ ra8_err_t ra8_camera_source_memory_init(ra8_camera_source_t*              source
     return valid;
   }
   state->frame  = *frame;
-  source->iface = &k_memory_source_iface;
+  source->iface = &s_memory_source_iface;
   source->ctx   = state;
   return k_ra8_ok;
 }
