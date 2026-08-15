@@ -33,6 +33,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_dac_b.h"
@@ -68,7 +69,23 @@ typedef enum : uint16_t {
  */
 volatile uint32_t g_dac_waveform_tick = 0U;
 
-static void dac_demo_panic_halt(void)
+/**
+ * @brief Park the processor after an unrecoverable DAC waveform failure.
+ *
+ * @details Preserves the analog-generator state in a permanent
+ *          wait-for-interrupt loop for debugger inspection.
+ *
+ * @return None.
+ *
+ * @pre The caller has determined that waveform generation cannot continue.
+ * @pre Any desired diagnostic state has already been recorded.
+ * @post The function never returns to its caller.
+ * @post No more DAC samples or liveness increments are produced.
+ *
+ * @note Fatal-path helper for this single-core image only.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_dac_demo_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -78,19 +95,31 @@ static void dac_demo_panic_halt(void)
 /**
  * @brief Bring CGC + SysTick + DAC_B0 up. Halts on any error.
  *
+ * @details Initializes the system clock and millisecond time base, then
+ *          configures DAC_B channel 0 for right-aligned samples on the normal
+ *          reference. A failed dependency enters the permanent panic halt.
+ *
+ * @return None.
+ *
+ * @pre Reset-time initialization configured the core and C runtime.
+ * @pre DAC_B channel 0 is not owned by another context.
+ * @post On success the time base and DAC channel 0 are initialized.
+ * @post On failure the function never returns to its caller.
+ *
+ * @note Single-shot boot helper; it is not reentrant.
  * @since 0.1.0
  */
-static void dac_demo_setup_or_halt(void)
+RA8_INTERNAL static void internal_dac_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    dac_demo_panic_halt();
+    internal_dac_demo_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    dac_demo_panic_halt();
+    internal_dac_demo_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    dac_demo_panic_halt();
+    internal_dac_demo_panic_halt();
   }
   const ra8_dac_b_cfg_t cfg = {
     .vref                    = k_ra8_dac_b_vref_normal,
@@ -100,21 +129,34 @@ static void dac_demo_setup_or_halt(void)
     .enable_channel1         = false,
   };
   if (ra8_dac_b_init_configured(&cfg) != k_ra8_ok) {
-    dac_demo_panic_halt();
+    internal_dac_demo_panic_halt();
   }
 }
 
 /**
  * @brief Emit one full ramp-up + ramp-down cycle.
  *
+ * @details Writes evenly spaced codes from zero toward full scale and back to
+ *          zero, delaying between samples to produce one triangle period.
+ *
  * @par MC/DC:
  * Compound decision: ``write != ok`` checked twice (up + down).
  * Two atomic conditions x N+1 = 3 vectors -- both ok (golden case),
  * up-write fails, down-write fails (covered in test_app_dac_waveform.c).
  *
+ * @return ra8_err_t Result of generating the complete waveform period.
+ * @retval k_ra8_ok Every sample in both ramps was accepted.
+ * @retval k_ra8_err_hw_error A DAC write in either ramp failed.
+ *
+ * @pre ::internal_dac_demo_setup_or_halt initialized DAC_B channel 0.
+ * @pre This context exclusively owns waveform writes for the duration.
+ * @post On success the output completes an up-ramp and down-ramp.
+ * @post On failure no later sample in the period is attempted.
+ *
+ * @note Blocking helper; each sample includes the configured millisecond delay.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t dac_demo_one_triangle_period(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_dac_demo_one_triangle_period(void)
 {
   const uint16_t step = (uint16_t)((uint32_t)k_dac_demo_max_code / (uint32_t)k_dac_demo_steps);
   for (uint16_t i = 0U; i < (uint16_t)k_dac_demo_steps; ++i) {
@@ -138,15 +180,15 @@ static void dac_demo_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  dac_demo_setup_or_halt();
+  internal_dac_demo_setup_or_halt();
   ra8_isr_globals_enable();
   while (1) {
-    if (dac_demo_one_triangle_period() != k_ra8_ok) {
+    if (internal_dac_demo_one_triangle_period() != k_ra8_ok) {
       break;
     }
     g_dac_waveform_tick += 1U;
   }
-  dac_demo_panic_halt();
+  internal_dac_demo_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

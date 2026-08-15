@@ -48,6 +48,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -122,20 +123,28 @@ typedef struct {
 /* Forward declarations -- definitions appear after main() so the
  * audit_init_order linter sees the canonical CGC -> TIME -> peripheral
  * sequence in source order. */
-[[nodiscard]] static ra8_err_t clock_check_pins_init(void);
-[[nodiscard]] static ra8_err_t clock_check_pins_toggle_all(void);
-[[nodiscard]] static bool      clock_check_verify_all(void);
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_clock_check_pins_init(void);
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_clock_check_pins_toggle_all(void);
+[[nodiscard]] RA8_INTERNAL static bool      internal_clock_check_verify_all(void);
 
 /**
  * @brief Halt forever in WFI -- used as a panic stop on init failure.
  *
+ * @details Preserves the failed clock or GPIO state in a low-activity loop for
+ *          an attached debugger.
+ *
+ * @return None.
+ *
  * @pre Called only after a fatal error in boot.
+ * @pre Any desired HIL failure state has already been recorded.
  *
  * @post CPU is parked; only a debugger or external reset wakes it.
+ * @post No further clock validation or LED transition occurs.
  *
+ * @note Interrupt wakeups return immediately to the permanent loop.
  * @since 0.1.0
  */
-static void clock_check_panic_halt(void)
+RA8_INTERNAL static void internal_clock_check_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -160,30 +169,30 @@ static void clock_check_panic_halt(void)
 int32_t main(void)
 {
   if (ra8_cgc_init() != k_ra8_ok) {
-    clock_check_panic_halt();
+    internal_clock_check_panic_halt();
   }
 
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    clock_check_panic_halt();
+    internal_clock_check_panic_halt();
   }
 
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    clock_check_panic_halt();
+    internal_clock_check_panic_halt();
   }
 
-  if (clock_check_pins_init() != k_ra8_ok) {
-    clock_check_panic_halt();
+  if (internal_clock_check_pins_init() != k_ra8_ok) {
+    internal_clock_check_panic_halt();
   }
 
   ra8_isr_globals_enable();
 
   while (1) {
-    if (clock_check_pins_toggle_all() != k_ra8_ok) {
+    if (internal_clock_check_pins_toggle_all() != k_ra8_ok) {
       g_clock_check_mismatch += 1U;
       break;
     }
-    if (clock_check_verify_all()) {
+    if (internal_clock_check_verify_all()) {
       g_clock_check_match += 1U;
     } else {
       g_clock_check_mismatch += 1U;
@@ -191,7 +200,7 @@ int32_t main(void)
     ra8_delay_ms(k_clock_check_half_period_ms);
   }
 
-  clock_check_panic_halt();
+  internal_clock_check_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop
@@ -212,7 +221,7 @@ int32_t main(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t clock_check_pins_init(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_clock_check_pins_init(void)
 {
   ra8_err_t err = ra8_board_led_init(k_ra8_board_led1);
   if (err != k_ra8_ok) {
@@ -233,13 +242,13 @@ int32_t main(void)
  * @retval k_ra8_ok               All three pins toggled.
  * @retval k_ra8_err_invalid_arg  A pin id became invalid (shouldn't happen).
  *
- * @pre `clock_check_pins_init()` has succeeded.
+ * @pre `internal_clock_check_pins_init()` has succeeded.
  *
  * @post Each LED's output latch is inverted from its prior value.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t clock_check_pins_toggle_all(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_clock_check_pins_toggle_all(void)
 {
   ra8_err_t err = ra8_board_led_toggle(k_ra8_board_led1);
   if (err != k_ra8_ok) {
@@ -274,7 +283,7 @@ int32_t main(void)
  * @note Called from the main loop only; not ISR-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static bool clock_check_verify_all(void)
+[[nodiscard]] RA8_INTERNAL static bool internal_clock_check_verify_all(void)
 {
   const clock_check_expected_t kExpected[] = {
     {k_ra8_clock_id_cpuclk0, (uint32_t)k_ra8_cpuclk0_hz},

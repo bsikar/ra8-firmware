@@ -44,6 +44,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -70,8 +71,8 @@ typedef enum : uint8_t {
 } ecc_demo_geom_t;
 
 /** @brief Output line tags. */
-static const uint8_t k_ecc_demo_ok_msg[]  = "ecc: sram2 ecc=on rw=ok ok=Y\r\n";
-static const uint8_t k_ecc_demo_bad_msg[] = "ecc: sram2 rw=BAD ok=N\r\n";
+static const uint8_t s_ecc_demo_ok_msg[]  = "ecc: sram2 ecc=on rw=ok ok=Y\r\n";
+static const uint8_t s_ecc_demo_bad_msg[] = "ecc: sram2 rw=BAD ok=N\r\n";
 
 /**
  * @var g_ecc_ok
@@ -124,45 +125,77 @@ volatile uint32_t g_ecc_heartbeat = 0U;
 /** @brief Base of the ECC-protected bank, resolved at init. */
 static volatile uint32_t* s_ecc_buf = nullptr;
 
-/** @brief Park forever after a fatal init failure. */
-static void ecc_demo_panic_halt(void)
+/**
+ * @brief Park forever after a fatal ECC demo initialization failure.
+ * @details Repeatedly executes WFI while preserving SRAM status for debug.
+ * @pre Called only from boot failure or the terminal foreground path.
+ * @pre The caller does not require recovery without reset.
+ * @post The core stays in WFI until external intervention.
+ * @post No further ECC-protected SRAM access is requested.
+ * @note Not thread-safe; this is a terminal single-threaded path.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-/** @brief Deterministic rw-test pattern for word @p i. */
-static uint32_t ecc_demo_pattern(uint32_t i)
+/**
+ * @brief Calculate the deterministic read/write test pattern for one word.
+ * @details Squares the index with defined unsigned wraparound and XORs the
+ *          fixed salt so neighboring test words differ.
+ * @param[in] i Zero-based word index.
+ * @return Pattern to write at that index.
+ * @retval 0..UINT32_MAX Deterministic wrapped arithmetic result.
+ * @pre ``i`` is a valid test-buffer index.
+ * @pre The compile-time pattern salt is fixed for the test run.
+ * @post No hardware or application state is modified.
+ * @post Repeated calls with the same index return the same value.
+ * @note Pure and reentrant.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_pattern(uint32_t i)
 {
   return (i * i) ^ (uint32_t)k_ecc_demo_pat_xor;
 }
 
-/** @brief Bring CGC + SysTick + SCI8 + LEDs + MSTP up. */
-static void ecc_demo_setup_or_halt(void)
+/**
+ * @brief Bring CGC, SysTick, SCI8, LEDs, and MSTP up.
+ * @details Initializes foreground-loop dependencies in order and parks on the
+ *          first failed HAL operation.
+ * @pre Reset startup initialized static storage and the vector table.
+ * @pre Called once before global interrupt enable.
+ * @post On return, delays, console output, module clocks, and LEDs are ready.
+ * @post The ECC test bank remains unconfigured until ``internal_configure``.
+ * @note Not thread-safe; it owns global peripheral initialization.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
   if (ra8_cgc_init() != k_ra8_ok) {
-    ecc_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    ecc_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_mstp_init() != k_ra8_ok) {
-    ecc_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    ecc_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_ecc_demo_baud) != k_ra8_ok) {
-    ecc_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    ecc_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
-    ecc_demo_panic_halt();
+    internal_panic_halt();
   }
 }
 
@@ -180,11 +213,16 @@ static void ecc_demo_setup_or_halt(void)
  * init rejects (host-tested).
  *
  * @return ``ra8_err_t`` from ``ra8_sram_init`` / ``ra8_sram_get_bank_info``.
+ * @retval k_ra8_ok Bank 2 was initialized and its base was published.
+ * @retval (other) The first SRAM initialization or bank-info error.
  * @pre CGC + MSTP up; IRQs masked or single-threaded init.
+ * @pre No other context is configuring the SRAM controller.
  * @post ``s_ecc_buf`` points at bank 2's ECC-protected base.
+ * @post On failure, the HAL error is returned unchanged.
+ * @note Not thread-safe; it mutates global SRAM controller state.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t ecc_demo_configure(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_configure(void)
 {
   ra8_sram_config_t cfg                        = {};
   cfg.banks[k_ecc_demo_bank].ecc_mode          = k_ra8_sram_ecc_with_chk;
@@ -221,11 +259,14 @@ static void ecc_demo_setup_or_halt(void)
  *
  * @return ``ra8_err_t`` from ``ra8_sram_get_status``.
  * @retval k_ra8_err_null_ptr ``out_ok`` was NULL.
- * @pre ::ecc_demo_configure succeeded (``s_ecc_buf`` valid).
+ * @pre ::internal_configure succeeded (``s_ecc_buf`` valid).
+ * @pre ``out_ok`` points to writable caller-owned storage.
  * @post ``g_ecc_rw_ok`` / ``g_ecc_esr`` updated.
+ * @post On success, all exported ECC status snapshots match the sampled bank.
+ * @note Not thread-safe; it writes the shared ECC buffer and exported state.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t ecc_demo_sample(uint8_t* out_ok)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_sample(uint8_t* out_ok)
 {
   RA8_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
   if (s_ecc_buf == nullptr) {
@@ -233,11 +274,11 @@ static void ecc_demo_setup_or_halt(void)
   }
 
   for (uint32_t i = 0U; i < (uint32_t)k_ecc_demo_test_words; ++i) {
-    s_ecc_buf[i] = ecc_demo_pattern(i);
+    s_ecc_buf[i] = internal_pattern(i);
   }
   uint8_t rw = 1U;
   for (uint32_t i = 0U; i < (uint32_t)k_ecc_demo_test_words; ++i) {
-    if (s_ecc_buf[i] != ecc_demo_pattern(i)) {
+    if (s_ecc_buf[i] != internal_pattern(i)) {
       rw = 0U;
     }
   }
@@ -264,34 +305,34 @@ static void ecc_demo_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  ecc_demo_setup_or_halt();
+  internal_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the
    * SysTick path (ra8_emulator does not advance DWT_CYCCNT). The ECC NMI is
    * non-maskable and unaffected; no maskable NVIC source is armed. */
   ra8_isr_globals_enable();
 
-  if (ecc_demo_configure() != k_ra8_ok) {
-    ecc_demo_panic_halt();
+  if (internal_configure() != k_ra8_ok) {
+    internal_panic_halt();
   }
 
   while (1) {
     uint8_t         ok   = 0U;
-    const ra8_err_t err  = ecc_demo_sample(&ok);
+    const ra8_err_t err  = internal_sample(&ok);
     const uint8_t   good = (err == k_ra8_ok && ok != 0U) ? 1U : 0U;
     g_ecc_ok             = (uint32_t)good;
     if (good != 0U) {
-      (void)ra8_board_uart_console_write(k_ecc_demo_ok_msg,
-                                         (size_t)(sizeof(k_ecc_demo_ok_msg) - 1U));
+      (void)ra8_board_uart_console_write(s_ecc_demo_ok_msg,
+                                         (size_t)(sizeof(s_ecc_demo_ok_msg) - 1U));
       (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
-      (void)ra8_board_uart_console_write(k_ecc_demo_bad_msg,
-                                         (size_t)(sizeof(k_ecc_demo_bad_msg) - 1U));
+      (void)ra8_board_uart_console_write(s_ecc_demo_bad_msg,
+                                         (size_t)(sizeof(s_ecc_demo_bad_msg) - 1U));
       (void)ra8_board_led_toggle(k_ra8_board_led2);
     }
     ++g_ecc_heartbeat;
     ra8_delay_ms(k_ecc_demo_period_ms);
   }
-  ecc_demo_panic_halt();
+  internal_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

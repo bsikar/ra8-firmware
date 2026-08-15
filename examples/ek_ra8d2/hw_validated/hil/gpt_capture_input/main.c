@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -63,8 +64,20 @@ typedef enum : uint8_t {
   k_gpt_capture_channel = 0U, /**< GPT capture channel. */
 } gpt_capture_layout_t;
 
-/** @brief Park the CPU after a fatal init failure. */
-static void gpt_capture_panic_halt(void)
+/**
+ * @brief Park the CPU after a fatal initialization failure.
+ *
+ * @details Repeatedly executes WFI, preserving the failed peripheral state
+ *          for an attached debugger until reset.
+ *
+ * @pre Called only from the boot or terminal foreground path.
+ * @pre The caller does not require this function to return.
+ * @post The core remains in the WFI loop until external intervention.
+ * @post No application data changes after entry.
+ * @note Not thread-safe; this is a terminal single-threaded path.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -73,24 +86,35 @@ static void gpt_capture_panic_halt(void)
 
 /**
  * @brief Bring CGC + SysTick + LEDs + SW1 + GPT0 up.
+ *
+ * @details Initializes the clock tree and delay service, configures LED1 and
+ *          SW1, then starts GPT0 as a PCLKD/64 free-running counter. A failed
+ *          prerequisite transfers control to the panic helper.
+ *
+ * @pre Reset startup initialized static storage and the vector table.
+ * @pre Called once before global interrupt enable.
+ * @post On return, GPT0 is counting and SW1/LED1 are ready for polling.
+ * @post The delay service uses the measured CPU clock.
+ * @note Not thread-safe; it owns the demo's peripheral configuration.
+ * @since 0.1.0
  */
-static void gpt_capture_setup_or_halt(void)
+RA8_INTERNAL static void internal_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    gpt_capture_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    gpt_capture_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    gpt_capture_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    gpt_capture_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_sw_init(k_ra8_board_sw1) != k_ra8_ok) {
-    gpt_capture_panic_halt();
+    internal_panic_halt();
   }
   const ra8_gpt_cfg_t cfg = {
     .mode       = k_ra8_gpt_mode_saw_pwm,
@@ -101,14 +125,28 @@ static void gpt_capture_setup_or_halt(void)
     .auto_start = true,
   };
   if (ra8_gpt_init((uint8_t)k_gpt_capture_channel, &cfg) != k_ra8_ok) {
-    gpt_capture_panic_halt();
+    internal_panic_halt();
   }
 }
 
 /**
  * @brief Read current GPT counter ticks, or return UINT32_MAX on err.
+ *
+ * @details Delegates to the channel-zero HAL accessor and maps any HAL error
+ *          onto a sentinel that the foreground liveness probe can ignore.
+ *
+ * @return Current free-running GPT count or the error sentinel.
+ * @retval UINT32_MAX The counter read failed.
+ * @retval 0..UINT32_MAX-1 A sampled counter value.
+ *
+ * @pre GPT0 was initialized and auto-started by ``internal_setup_or_halt``.
+ * @pre No other context is reconfiguring GPT0 concurrently.
+ * @post GPT0 remains running and unmodified.
+ * @post The returned value is either a direct sample or ``UINT32_MAX``.
+ * @note Not thread-safe with concurrent GPT reconfiguration.
+ * @since 0.1.0
  */
-static uint32_t gpt_capture_read(void)
+RA8_INTERNAL static uint32_t internal_read(void)
 {
   uint32_t val = 0U;
   if (ra8_gpt_read((uint8_t)k_gpt_capture_channel, &val) != k_ra8_ok) {
@@ -120,6 +158,9 @@ static uint32_t gpt_capture_read(void)
 /**
  * @brief Detect a falling edge on SW1.
  *
+ * @details Samples SW1 once, compares released-to-pressed state, and updates
+ *          the caller-owned prior sample only when the board read succeeds.
+ *
  * @par MC/DC:
  * Compound decision: ``prev == released && now == pressed``. Two
  * atomic conditions x N+1 = 3 vectors -- both true (edge), prev
@@ -128,8 +169,17 @@ static uint32_t gpt_capture_read(void)
  *
  * @param[in,out] prev Last sampled state (updated on return).
  * @return true on the falling edge, false otherwise.
+ * @retval true The sample changed from released to pressed.
+ * @retval false No falling edge was observed or the board read failed.
+ *
+ * @pre ``prev`` points to writable caller-owned state.
+ * @pre SW1 was initialized by ``internal_setup_or_halt``.
+ * @post On a successful read, ``*prev`` contains the new switch state.
+ * @post On a failed read, ``*prev`` is unchanged.
+ * @note Not thread-safe when multiple callers share ``prev``.
+ * @since 0.1.0
  */
-static bool gpt_capture_edge(ra8_board_sw_state_t* prev)
+RA8_INTERNAL static bool internal_edge(ra8_board_sw_state_t* prev)
 {
   ra8_board_sw_state_t now = k_ra8_board_sw_released;
   if (ra8_board_sw_read(k_ra8_board_sw1, &now) != k_ra8_ok) {
@@ -142,9 +192,25 @@ static bool gpt_capture_edge(ra8_board_sw_state_t* prev)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
+/**
+ * @brief Run the software input-capture and GPT liveness loop.
+ *
+ * @details Initializes the demo, tracks falling SW1 edges as counter deltas,
+ *          and independently increments the exported liveness counter whenever
+ *          successive GPT samples advance.
+ *
+ * @return Unreachable success value retained for the freestanding ABI.
+ *
+ * @pre Reset startup and SystemInit completed successfully.
+ * @pre The board wiring matches the EK-RA8D2 LED1 and SW1 definitions.
+ * @post During operation, each detected edge toggles LED1.
+ * @post A terminal control-flow escape parks the core in the panic helper.
+ * @note Does not return during normal operation.
+ * @since 0.1.0
+ */
 int32_t main(void)
 {
-  gpt_capture_setup_or_halt();
+  internal_setup_or_halt();
   ra8_isr_globals_enable();
 
   ra8_board_sw_state_t last_state = k_ra8_board_sw_released;
@@ -153,8 +219,8 @@ int32_t main(void)
   bool                 have_prev  = false;
 
   while (1) {
-    if (gpt_capture_edge(&last_state)) {
-      const uint32_t now        = gpt_capture_read();
+    if (internal_edge(&last_state)) {
+      const uint32_t now        = internal_read();
       const uint32_t last_delta = now - last_tick;
       last_tick                 = now;
       (void)last_delta;
@@ -163,7 +229,7 @@ int32_t main(void)
     /* Liveness check independent of SW1 -- proves GTCNT is counting
      * even when the button isn't pressed (which it never is on the
      * unattended HIL bench). */
-    const uint32_t now_count = gpt_capture_read();
+    const uint32_t now_count = internal_read();
     if (now_count != UINT32_MAX) {
       if (have_prev && (now_count != prev_count)) {
         g_gpt_capture_tick += 1U;
@@ -173,7 +239,7 @@ int32_t main(void)
     }
     ra8_delay_ms(k_gpt_capture_poll_period_ms);
   }
-  gpt_capture_panic_halt();
+  internal_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

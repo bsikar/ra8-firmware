@@ -34,6 +34,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_canfd.h"
 #include "ra8_cgc.h"
@@ -138,9 +139,11 @@ volatile uint32_t g_threadx_canfd_mismatch = 0U;
  * Builds an 8-byte frame at ::k_canfd_heartbeat_id and calls
  * ::ra8_canfd_transmit. The chip is in internal-loopback mode (set in
  * ::tx_application_define) so the frame appears on the RX FIFO for
- * ::thread_rx_entry to consume.
+ * ::internal_thread_rx_entry to consume.
  *
  * @param[in] thread_input ThreadX cookie -- unused.
+ *
+ * @return None.
  *
  * @pre ThreadX scheduler is running.
  * @pre LED1 has been configured as an output.
@@ -153,7 +156,7 @@ volatile uint32_t g_threadx_canfd_mismatch = 0U;
  *       this channel.
  * @since 0.1.0
  */
-static void thread_tx_entry(ULONG thread_input)
+RA8_INTERNAL static void internal_thread_tx_entry(ULONG thread_input)
 {
   (void)thread_input;
   uint8_t seq = 0U;
@@ -195,6 +198,8 @@ static void thread_tx_entry(ULONG thread_input)
  *
  * @param[in] thread_input ThreadX cookie -- unused.
  *
+ * @return None.
+ *
  * @pre ThreadX scheduler is running.
  * @pre LED2 has been configured as an output.
  *
@@ -206,7 +211,7 @@ static void thread_tx_entry(ULONG thread_input)
  *       this channel.
  * @since 0.1.0
  */
-static void thread_rx_entry(ULONG thread_input)
+RA8_INTERNAL static void internal_thread_rx_entry(ULONG thread_input)
 {
   (void)thread_input;
   while (1) {
@@ -239,7 +244,7 @@ void tx_application_define(void* first_unused_memory)
 
   UINT err = tx_thread_create(&s_thread_tx,
                               "canfd_tx",
-                              thread_tx_entry,
+                              internal_thread_tx_entry,
                               0U,
                               s_thread_tx_stack,
                               (ULONG)k_canfd_thread_stack_bytes,
@@ -255,7 +260,7 @@ void tx_application_define(void* first_unused_memory)
 
   err = tx_thread_create(&s_thread_rx,
                          "canfd_rx",
-                         thread_rx_entry,
+                         internal_thread_rx_entry,
                          0U,
                          s_thread_rx_stack,
                          (ULONG)k_canfd_thread_stack_bytes,

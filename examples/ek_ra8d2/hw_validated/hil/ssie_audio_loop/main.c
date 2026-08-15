@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -50,13 +51,14 @@ typedef enum : uint8_t {
   k_ssie_loop_sample_count = 16U, /**< Ssie loop sample count. */
 } ssie_loop_chan_t;
 
-static const uint8_t k_ssie_loop_log_msg[] = "ssie: loop ok\r\n";
+/** @brief UART diagnostic emitted after a complete SSIE pattern transfer. */
+static const uint8_t s_ssie_loop_log_msg[] = "ssie: loop ok\r\n";
 
 /**
  * @brief 16-entry quantised sine pattern (Q15, two periods) used as the
  *        TX-side audio test vector.
  */
-static const uint32_t k_ssie_loop_pattern[16] = {
+static const uint32_t s_ssie_loop_pattern[16] = {
   0x00000000U,
   0x30FB0000U,
   0x5A820000U,
@@ -75,35 +77,71 @@ static const uint32_t k_ssie_loop_pattern[16] = {
   0xCF050000U,
 };
 
-static void ssie_loop_panic_halt(void)
+/**
+ * @brief Park the processor after an unrecoverable SSIE demo failure.
+ *
+ * @details Preserves the serial-audio and console state in a permanent
+ *          wait-for-interrupt loop for debugger inspection.
+ *
+ * @return None.
+ *
+ * @pre The caller has determined the audio transfer cannot continue.
+ * @pre Any required UART diagnostic has already completed.
+ * @post The function never returns to its caller.
+ * @post No later SSIE sample transfer is attempted.
+ *
+ * @note Fatal-path helper for this single-core image only.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_ssie_loop_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-static void ssie_loop_setup_or_halt(void)
+/**
+ * @brief Initialize clocks, module-stop control, timing, and console.
+ *
+ * @details Brings up the dependencies required to configure SSIE0 and opens the
+ *          board UART for transfer diagnostics. Any failure enters the
+ *          permanent panic halt.
+ *
+ * @return None.
+ *
+ * @pre Reset-time initialization configured the core and C runtime.
+ * @pre The board console and SSIE0 are available to this image.
+ * @post On success clock, MSTP, timing, and console services are ready.
+ * @post On failure the function never returns to its caller.
+ *
+ * @note Single-shot boot helper; it is not reentrant.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_ssie_loop_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    ssie_loop_panic_halt();
+    internal_ssie_loop_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    ssie_loop_panic_halt();
+    internal_ssie_loop_panic_halt();
   }
   if (ra8_mstp_init() != k_ra8_ok) {
-    ssie_loop_panic_halt();
+    internal_ssie_loop_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    ssie_loop_panic_halt();
+    internal_ssie_loop_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_ssie_loop_baud) != k_ra8_ok) {
-    ssie_loop_panic_halt();
+    internal_ssie_loop_panic_halt();
   }
 }
 
 /**
  * @brief Bring SSIE0 up in controller I2S mode and stream the test pattern.
+ *
+ * @details Configures 16-bit I2S samples in 32-bit system words, starts both
+ *          directions, and writes the complete static sine-pattern vector.
  *
  * @par MC/DC:
  * Compound decision: ``init != ok || start != ok || write_sample != ok``.
@@ -111,9 +149,19 @@ static void ssie_loop_setup_or_halt(void)
  * branches plus the all-ok golden are exercised in
  * test_app_ssie_audio_loop.c.
  *
+ * @return ra8_err_t Status from initialization, start, or sample writes.
+ * @retval k_ra8_ok SSIE0 accepted the complete test vector.
+ * @retval (other)  The first SSIE operation that failed.
+ *
+ * @pre ::internal_ssie_loop_setup_or_halt completed successfully.
+ * @pre SSIE0 is not owned by another audio context.
+ * @post On success all 16 pattern samples were queued in order.
+ * @post On failure no later transfer step is attempted.
+ *
+ * @note The helper starts TX and RX but validates the TX-side write path only.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t ssie_loop_run(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_ssie_loop_run(void)
 {
   const ra8_ssie_cfg_t cfg = {
     .role          = k_ra8_ssie_role_controller,
@@ -142,7 +190,7 @@ static void ssie_loop_setup_or_halt(void)
     return err;
   }
   for (uint8_t i = 0U; i < (uint8_t)k_ssie_loop_sample_count; i++) {
-    err = ra8_ssie_write_sample((uint8_t)k_ssie_loop_channel, k_ssie_loop_pattern[i]);
+    err = ra8_ssie_write_sample((uint8_t)k_ssie_loop_channel, s_ssie_loop_pattern[i]);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -154,15 +202,15 @@ static void ssie_loop_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  ssie_loop_setup_or_halt();
+  internal_ssie_loop_setup_or_halt();
   ra8_isr_globals_enable();
 
-  if (ssie_loop_run() != k_ra8_ok) {
-    ssie_loop_panic_halt();
+  if (internal_ssie_loop_run() != k_ra8_ok) {
+    internal_ssie_loop_panic_halt();
   }
-  if (ra8_board_uart_console_write(k_ssie_loop_log_msg,
-                                   (size_t)(sizeof(k_ssie_loop_log_msg) - 1U)) != k_ra8_ok) {
-    ssie_loop_panic_halt();
+  if (ra8_board_uart_console_write(s_ssie_loop_log_msg,
+                                   (size_t)(sizeof(s_ssie_loop_log_msg) - 1U)) != k_ra8_ok) {
+    internal_ssie_loop_panic_halt();
   }
   (void)ra8_ssie_stop((uint8_t)k_ssie_loop_channel);
   (void)ra8_ssie_deinit((uint8_t)k_ssie_loop_channel);

@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
 #include "ra8_isr.h"
@@ -68,8 +69,8 @@ volatile uint32_t g_blink_hal_tick = 0U;
 /* Forward declarations -- definitions appear after main() so the
  * audit_init_order linter sees the canonical CGC -> TIME -> peripheral
  * sequence in source order. */
-[[nodiscard]] static ra8_err_t blink_pins_init(void);
-[[nodiscard]] static ra8_err_t blink_pins_toggle_all(void);
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_blink_pins_init(void);
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_blink_pins_toggle_all(void);
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
@@ -81,7 +82,7 @@ int32_t main(void)
     }
   }
 
-  if (blink_pins_init() != k_ra8_ok) {
+  if (internal_blink_pins_init() != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
@@ -90,7 +91,7 @@ int32_t main(void)
   ra8_isr_globals_enable();
 
   while (1) {
-    if (blink_pins_toggle_all() != k_ra8_ok) {
+    if (internal_blink_pins_toggle_all() != k_ra8_ok) {
       break;
     }
     g_blink_hal_tick += 1U;
@@ -106,6 +107,9 @@ int32_t main(void)
 /**
  * @brief Configure all three EK-RA8D2 user LEDs as outputs.
  *
+ * @details Walks every board LED identifier in declaration order and stops at
+ *          the first BSP initialization error.
+ *
  * @return First HAL/BSP error encountered, or k_ra8_ok on success.
  *
  * @retval k_ra8_ok                Every LED pin is now a digital output.
@@ -113,9 +117,14 @@ int32_t main(void)
  * @retval k_ra8_err_gpio_conflict A pin was already claimed.
  *
  * @pre HAL pin validator initialized.
+ * @pre The board LED descriptor table is available for all enumerated IDs.
  * @post LED1..LED3 are output-low.
+ * @post On failure no LED after the failing identifier is initialized.
+ *
+ * @note Boot-context helper; concurrent LED initialization is unsupported.
+ * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t blink_pins_init(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_blink_pins_init(void)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_board_led_count; ++i) {
     const ra8_err_t err = ra8_board_led_init((ra8_board_led_id_t)i);
@@ -129,13 +138,22 @@ int32_t main(void)
 /**
  * @brief Toggle every user LED in sequence.
  *
+ * @details Visits each board LED identifier once and returns immediately if a
+ *          BSP toggle fails, preserving the first error for the caller.
+ *
+ * @return First BSP error encountered, or k_ra8_ok after all toggles.
  * @retval k_ra8_ok                All three pins toggled.
  * @retval k_ra8_err_invalid_arg   A LED id became invalid (shouldn't happen).
  *
- * @pre blink_pins_init() succeeded.
+ * @pre ::internal_blink_pins_init succeeded.
+ * @pre The caller owns this demo's LED update sequence.
  * @post Each LED's output latch is inverted from its prior value.
+ * @post On failure LEDs after the failing identifier are left unchanged.
+ *
+ * @note Not atomic across LEDs; an intermediate error can leave a mixed phase.
+ * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t blink_pins_toggle_all(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_blink_pins_toggle_all(void)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_board_led_count; ++i) {
     const ra8_err_t err = ra8_board_led_toggle((ra8_board_led_id_t)i);

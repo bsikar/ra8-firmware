@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_dma.h"
@@ -97,35 +98,57 @@ volatile uint32_t g_gpt_dma_mismatch = 0U;
  */
 static volatile uint8_t s_dma_done;
 
-static void gpt_dma_demo_panic_halt(void)
+/**
+ * @brief Park the core after an unrecoverable GPT DMA demo failure.
+ * @details Repeatedly executes WFI, preserving DMA and timer state for debug.
+ * @pre Called only from a fatal boot or terminal foreground path.
+ * @pre The caller does not require recovery without reset.
+ * @post The core stays in WFI until external intervention.
+ * @post Neither exported HIL counter changes after entry.
+ * @note Not thread-safe; this is a terminal single-threaded path.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-static void gpt_dma_demo_setup_or_halt(void)
+/**
+ * @brief Initialize clocks, SysTick, LED1, and the DMA allocator.
+ * @details Brings dependencies up in order and parks on the first HAL error.
+ * @pre Reset startup initialized static storage and the vector table.
+ * @pre Called once before global interrupt enable.
+ * @post On return, delays, LED1, and DMA channel allocation are ready.
+ * @post GPT0 remains unconfigured until ``internal_arm_channel`` runs.
+ * @note Not thread-safe; it owns the demo's peripheral initialization.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    gpt_dma_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    gpt_dma_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    gpt_dma_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    gpt_dma_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_dma_init() != k_ra8_ok) {
-    gpt_dma_demo_panic_halt();
+    internal_panic_halt();
   }
 }
 
 /**
  * @brief DMA completion callback -- raise the s_dma_done flag.
+ * @details Publishes the volatile completion flag before issuing the optional
+ *          visual LED toggle, keeping interrupt-context work bounded.
  *
  * @param[in] ctx Unused.
  *
@@ -137,7 +160,7 @@ static void gpt_dma_demo_setup_or_halt(void)
  * @note ISR context; keep work tiny.
  * @since 0.1.0
  */
-static void gpt_dma_demo_on_complete(void* ctx)
+RA8_INTERNAL static void internal_on_complete(void* ctx)
 {
   (void)ctx;
   s_dma_done = 1U;
@@ -146,8 +169,12 @@ static void gpt_dma_demo_on_complete(void* ctx)
 
 /**
  * @brief Init GPT0 as a saw-wave PWM with a stable initial period.
+ * @details Programs channel zero for PCLKD/4 saw-wave PWM and starts it so the
+ *          DMA stream has a live GTPR destination.
  *
  * @return ra8_err_t error code.
+ * @retval k_ra8_ok GPT0 accepted and started the configuration.
+ * @retval (other) The HAL rejected or could not apply the configuration.
  *
  * @pre ra8_cgc_init has succeeded.
  * @pre GPT0 not yet initialised.
@@ -156,7 +183,7 @@ static void gpt_dma_demo_on_complete(void* ctx)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t gpt_dma_demo_arm_channel(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_arm_channel(void)
 {
   const ra8_gpt_cfg_t cfg = {
     .mode       = k_ra8_gpt_mode_saw_pwm,
@@ -171,18 +198,23 @@ static void gpt_dma_demo_on_complete(void* ctx)
 
 /**
  * @brief Arm one DMA write of s_period_table into GPT0.GTPR.
+ * @details Resets the completion flag, allocates and starts one bounded period
+ *          transfer, waits briefly for the optional callback, then explicitly
+ *          releases the channel because this app does not wire its DMA IRQ.
  *
- * @return true on success, false if the dma request or the completion
- *         wait timed out.
+ * @return Whether the DMA request itself was accepted.
+ * @retval true The DMA request was accepted and its channel was released.
+ * @retval false The DMA request failed before a channel could be used.
  *
  * @pre Channel armed.
  * @pre IRQs enabled.
  * @post s_dma_done observed as 1, or the callback never fired in budget.
+ * @post An allocated channel is released before return.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static bool gpt_dma_demo_run_one(void)
+RA8_INTERNAL static bool internal_run_one(void)
 {
   s_dma_done       = 0U;
   uint8_t dma_chan = 0U;
@@ -196,7 +228,7 @@ static bool gpt_dma_demo_run_one(void)
   if (ra8_gpt_write_dma((uint8_t)k_gpt_dma_demo_channel,
                         s_period_table,
                         (uint16_t)k_gpt_dma_demo_period_count,
-                        gpt_dma_demo_on_complete,
+                        internal_on_complete,
                         nullptr,
                         &dma_chan) != k_ra8_ok) {
     return false;
@@ -219,24 +251,36 @@ static bool gpt_dma_demo_run_one(void)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
+/**
+ * @brief Repeatedly stream the fixed period table into GPT0 through DMA.
+ * @details Initializes the demo and GPT0, runs one bounded DMA request per
+ *          iteration, updates the exported match/mismatch counter, and delays.
+ * @return Unreachable success value retained for the freestanding ABI.
+ * @pre Reset startup and SystemInit completed successfully.
+ * @pre GPT0 and the DMA allocator are not owned by another context.
+ * @post Every iteration increments exactly one HIL result counter.
+ * @post Allocated DMA channels are released by ``internal_run_one``.
+ * @note Does not return during normal operation.
+ * @since 0.1.0
+ */
 int32_t main(void)
 {
-  gpt_dma_demo_setup_or_halt();
+  internal_setup_or_halt();
   ra8_isr_globals_enable();
 
-  if (gpt_dma_demo_arm_channel() != k_ra8_ok) {
-    gpt_dma_demo_panic_halt();
+  if (internal_arm_channel() != k_ra8_ok) {
+    internal_panic_halt();
   }
 
   while (1) {
-    if (gpt_dma_demo_run_one()) {
+    if (internal_run_one()) {
       g_gpt_dma_match += 1U;
     } else {
       g_gpt_dma_mismatch += 1U;
     }
     ra8_delay_ms((uint32_t)k_gpt_dma_demo_rearm_delay_ms);
   }
-  gpt_dma_demo_panic_halt();
+  internal_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -79,43 +80,82 @@ volatile uint32_t g_gpt_three_phase_match = 0U;
  */
 volatile uint32_t g_gpt_three_phase_mismatch = 0U;
 
-static void gpt_3p_demo_panic_halt(void)
+/**
+ * @brief Park the processor after an unrecoverable three-phase GPT failure.
+ *
+ * @details Retains the synchronized-channel and HIL counter state in a
+ *          permanent wait-for-interrupt loop for debugger inspection.
+ *
+ * @return None.
+ *
+ * @pre The caller has determined the three-phase validation cannot continue.
+ * @pre Any mismatch counter update required by the failure is complete.
+ * @post The function never returns to its caller.
+ * @post No further duty changes or liveness increments occur.
+ *
+ * @note Fatal-path helper for this single-core image only.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gpt_3p_demo_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-static void gpt_3p_demo_setup_or_halt(void)
+/**
+ * @brief Initialize clocks, timing, and the three-phase demo status LED.
+ *
+ * @details Starts CGC and the millisecond time base, then claims LED1 before
+ *          opening the synchronized GPT channels. Any failure enters the
+ *          permanent panic halt.
+ *
+ * @return None.
+ *
+ * @pre Reset-time initialization configured the core and C runtime.
+ * @pre LED1 is available for exclusive use by this image.
+ * @post On success the time base and LED1 are ready for GPT validation.
+ * @post On failure the function never returns to its caller.
+ *
+ * @note Single-shot boot helper; it is not reentrant.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gpt_3p_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    gpt_3p_demo_panic_halt();
+    internal_gpt_3p_demo_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    gpt_3p_demo_panic_halt();
+    internal_gpt_3p_demo_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    gpt_3p_demo_panic_halt();
+    internal_gpt_3p_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    gpt_3p_demo_panic_halt();
+    internal_gpt_3p_demo_panic_halt();
   }
 }
 
 /**
  * @brief Open the three GPT channels as a synchronised triple.
  *
+ * @details Supplies the U, V, and W channel identifiers, common clock and
+ *          period, plus their distinct initial duties to the three-phase HAL.
+ *
  * @return Return code from ra8_gpt_three_phase_open.
+ * @retval k_ra8_ok All three channels were configured and started together.
+ * @retval (other)  The synchronized open operation failed.
  *
  * @pre ra8_cgc_init has succeeded.
  * @pre Channels 0/1/2 are not in use by another driver.
  * @post On k_ra8_ok all three counters are running phase-locked.
+ * @post On failure no successful synchronized triple is published.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t gpt_3p_demo_arm(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_gpt_3p_demo_arm(void)
 {
   const ra8_gpt_three_phase_cfg_t cfg = {
     .channels       = {(uint8_t)k_gpt_3p_demo_ch_u,
@@ -135,11 +175,11 @@ static void gpt_3p_demo_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  gpt_3p_demo_setup_or_halt();
+  internal_gpt_3p_demo_setup_or_halt();
   ra8_isr_globals_enable();
 
-  if (gpt_3p_demo_arm() != k_ra8_ok) {
-    gpt_3p_demo_panic_halt();
+  if (internal_gpt_3p_demo_arm() != k_ra8_ok) {
+    internal_gpt_3p_demo_panic_halt();
   }
 
   /* Cycle the three-phase duties via ra8_gpt_three_phase_set_duty
@@ -163,7 +203,7 @@ int32_t main(void)
     duty_offset = (duty_offset + k_gpt_duty_advance) & period;
     ra8_delay_ms((uint32_t)k_gpt_3p_demo_step_ms);
   }
-  gpt_3p_demo_panic_halt();
+  internal_gpt_3p_demo_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

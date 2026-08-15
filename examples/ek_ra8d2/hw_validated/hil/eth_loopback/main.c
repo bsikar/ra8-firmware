@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -58,38 +59,78 @@ typedef enum : uint16_t {
   k_eth_loopback_buffer_size = 1536U, /**< Ethernet loopback buffer size. */
 } eth_loopback_ring_t;
 
-static const uint8_t k_eth_loopback_log_msg[]  = "etha: loopback ok\r\n";
-static const uint8_t k_eth_loopback_boot_msg[] = "etha: boot\r\n";
+/** @brief Fixed UART diagnostics for boot and successful ETHA loopback. */
+static const uint8_t s_eth_loopback_log_msg[]  = "etha: loopback ok\r\n";
+static const uint8_t s_eth_loopback_boot_msg[] = "etha: boot\r\n";
 
-static void eth_loopback_panic_halt(void)
+/**
+ * @brief Park the processor after an unrecoverable ETHA demo failure.
+ *
+ * @details Enters a permanent wait-for-interrupt loop so descriptor, port, and
+ *          diagnostic state remain accessible to an attached debugger.
+ *
+ * @return None.
+ *
+ * @pre The caller has determined Ethernet validation cannot continue.
+ * @pre Any desired UART diagnostic has already completed.
+ * @post The function never returns to its caller.
+ * @post No more descriptor or statistics operations are initiated.
+ *
+ * @note Fatal-path helper for this single-core image only.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_eth_loopback_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-static void eth_loopback_setup_or_halt(void)
+/**
+ * @brief Initialize clocks, module-stop control, timekeeping, and console.
+ *
+ * @details Brings up the dependencies required by the ETHA loopback sequence
+ *          and opens the board UART for its boot and success diagnostics. Any
+ *          failure enters the permanent panic halt.
+ *
+ * @return None.
+ *
+ * @pre Reset-time initialization configured the core and C runtime.
+ * @pre The SCI8 board console is available to this image.
+ * @post On success clocks, MSTP, timing, and console services are ready.
+ * @post On failure the function never returns to its caller.
+ *
+ * @note Single-shot boot helper; it is not reentrant.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_eth_loopback_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    eth_loopback_panic_halt();
+    internal_eth_loopback_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    eth_loopback_panic_halt();
+    internal_eth_loopback_panic_halt();
   }
   if (ra8_mstp_init() != k_ra8_ok) {
-    eth_loopback_panic_halt();
+    internal_eth_loopback_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    eth_loopback_panic_halt();
+    internal_eth_loopback_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_eth_loopback_baud) != k_ra8_ok) {
-    eth_loopback_panic_halt();
+    internal_eth_loopback_panic_halt();
   }
 }
 
 /**
  * @brief Bring port 0 through the ETHA loopback bring-up sequence.
+ *
+ * @details Initializes ETHA port 0, creates its descriptor rings, enters
+ *          operation mode, accounts a deterministic loopback burst, and
+ *          returns the resulting caller-visible port statistics.
+ *
+ * @param[out] out Receives the final ETHA port statistics on success.
  *
  * @par MC/DC:
  * Compound decision: ``init != ok || ring != ok || set_mode != ok ||
@@ -97,9 +138,20 @@ static void eth_loopback_setup_or_halt(void)
  * vectors -- five "fail one branch" cases plus one all-ok golden,
  * exercised in test_app_eth_loopback.c.
  *
+ * @return ra8_err_t Status from the first failing ETHA operation.
+ * @retval k_ra8_ok The loopback accounting sequence and statistics read succeeded.
+ * @retval (other)  The first initialization, ring, mode, accounting, or read error.
+ *
+ * @pre @p out points to writable caller-owned statistics storage.
+ * @pre Module-stop control and clocks were initialized by the setup helper.
+ * @post On success @p out contains statistics after the deterministic burst.
+ * @post On failure no later ETHA step is attempted.
+ *
+ * @note Single-port demonstration; it does not support concurrent ETHA owners.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t eth_loopback_run_once(ra8_etha_port_stats_t* out)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t
+internal_eth_loopback_run_once(ra8_etha_port_stats_t* out)
 {
   const ra8_etha_config_t cfg = {
     .initial_mode = k_ra8_etha_opc_config,
@@ -135,22 +187,22 @@ static void eth_loopback_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  eth_loopback_setup_or_halt();
+  internal_eth_loopback_setup_or_halt();
   ra8_isr_globals_enable();
 
   /* Boot banner -- emit before the loopback runs so the HIL host can
    * confirm the firmware booted even when the ETHA loopback fails for
    * board-specific reasons (PHY not negotiated, missing pull-ups, etc.). */
-  (void)ra8_board_uart_console_write(k_eth_loopback_boot_msg,
-                                     (size_t)(sizeof(k_eth_loopback_boot_msg) - 1U));
+  (void)ra8_board_uart_console_write(s_eth_loopback_boot_msg,
+                                     (size_t)(sizeof(s_eth_loopback_boot_msg) - 1U));
 
   ra8_etha_port_stats_t stats = {};
-  if (eth_loopback_run_once(&stats) != k_ra8_ok) {
-    eth_loopback_panic_halt();
+  if (internal_eth_loopback_run_once(&stats) != k_ra8_ok) {
+    internal_eth_loopback_panic_halt();
   }
-  if (ra8_board_uart_console_write(k_eth_loopback_log_msg,
-                                   (size_t)(sizeof(k_eth_loopback_log_msg) - 1U)) != k_ra8_ok) {
-    eth_loopback_panic_halt();
+  if (ra8_board_uart_console_write(s_eth_loopback_log_msg,
+                                   (size_t)(sizeof(s_eth_loopback_log_msg) - 1U)) != k_ra8_ok) {
+    internal_eth_loopback_panic_halt();
   }
   (void)ra8_etha_deinit(k_ra8_etha_port_0);
 

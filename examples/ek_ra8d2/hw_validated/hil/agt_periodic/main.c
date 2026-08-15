@@ -32,6 +32,7 @@
 #include <stdint.h>
 
 #include "ra8_agt.h"
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -57,46 +58,93 @@ typedef enum : uint8_t {
   k_agt_periodic_undf_bit = 0x20U, /**< AGT periodic undf bit. */
 } agt_periodic_status_t;
 
-static const uint8_t k_agt_periodic_log_msg[] = "agt: tick OK\r\n";
+/** @brief UART diagnostic emitted for every observed AGT underflow. */
+static const uint8_t s_agt_periodic_log_msg[] = "agt: tick OK\r\n";
 
-static void agt_periodic_panic_halt(void)
+/**
+ * @brief Park the processor after an unrecoverable AGT demo failure.
+ *
+ * @details Enters a permanent wait-for-interrupt loop so the timer status,
+ *          LED state, and last UART event remain observable to a debugger.
+ *
+ * @return None.
+ *
+ * @pre The caller has determined timer polling cannot safely continue.
+ * @pre Any required failure diagnostic has already been completed.
+ * @post The function never returns to its caller.
+ * @post No further timer status reads or underflow messages occur.
+ *
+ * @note Fatal-path helper for this single-core image only.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_agt_periodic_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-static void agt_periodic_setup_or_halt(void)
+/**
+ * @brief Initialize clocks, timing, console, and the AGT status LED.
+ *
+ * @details Starts CGC and the millisecond time base, opens the UART console,
+ *          and claims LED1 before the timer is armed. Any failed dependency
+ *          enters the permanent panic halt.
+ *
+ * @return None.
+ *
+ * @pre Reset-time initialization configured the core and C runtime.
+ * @pre The board console and LED1 are available to this image.
+ * @post On success the time base, console, and LED1 are ready for AGT polling.
+ * @post On failure the function never returns to its caller.
+ *
+ * @note Single-shot boot helper; it is not reentrant.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_agt_periodic_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    agt_periodic_panic_halt();
+    internal_agt_periodic_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    agt_periodic_panic_halt();
+    internal_agt_periodic_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    agt_periodic_panic_halt();
+    internal_agt_periodic_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_agt_periodic_baud) != k_ra8_ok) {
-    agt_periodic_panic_halt();
+    internal_agt_periodic_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    agt_periodic_panic_halt();
+    internal_agt_periodic_panic_halt();
   }
 }
 
 /**
  * @brief Arm AGT0 in free-running mode.
  *
+ * @details Starts the selected AGT channel with the demonstration reload value
+ *          so the poll loop can observe and clear repeated underflow status.
+ *
  * @par MC/DC:
  * Compound decision: ``ra8_agt_start_free_run != ok``. One atomic
  * condition x 2 vectors -- ok (golden) and bad-channel reject
  * (covered in test_app_agt_periodic.c).
  *
+ * @return ra8_err_t Status from starting the AGT free-running counter.
+ * @retval k_ra8_ok AGT0 accepted the reload and started counting.
+ * @retval (other)  The AGT driver rejected or could not start the channel.
+ *
+ * @pre ::internal_agt_periodic_setup_or_halt completed successfully.
+ * @pre AGT channel 0 is not owned by another driver.
+ * @post On success AGT0 counts continuously from the requested reload.
+ * @post On failure no running counter is promised by this helper.
+ *
+ * @note Underflow status handling remains the caller's responsibility.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t agt_periodic_arm(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_agt_periodic_arm(void)
 {
   return ra8_agt_start_free_run((uint8_t)k_agt_periodic_channel, (uint16_t)k_agt_periodic_reload);
 }
@@ -105,11 +153,11 @@ static void agt_periodic_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  agt_periodic_setup_or_halt();
+  internal_agt_periodic_setup_or_halt();
   ra8_isr_globals_enable();
 
-  if (agt_periodic_arm() != k_ra8_ok) {
-    agt_periodic_panic_halt();
+  if (internal_agt_periodic_arm() != k_ra8_ok) {
+    internal_agt_periodic_panic_halt();
   }
 
   while (1) {
@@ -121,21 +169,21 @@ int32_t main(void)
       if (ra8_board_led_toggle(k_ra8_board_led1) != k_ra8_ok) {
         break;
       }
-      if (ra8_board_uart_console_write(k_agt_periodic_log_msg,
-                                       (size_t)(sizeof(k_agt_periodic_log_msg) - 1U)) != k_ra8_ok) {
+      if (ra8_board_uart_console_write(s_agt_periodic_log_msg,
+                                       (size_t)(sizeof(s_agt_periodic_log_msg) - 1U)) != k_ra8_ok) {
         break;
       }
       /* Re-arm: stop + start clears AGTCR.TUNDF on real silicon. */
       if (ra8_agt_stop((uint8_t)k_agt_periodic_channel) != k_ra8_ok) {
         break;
       }
-      if (agt_periodic_arm() != k_ra8_ok) {
+      if (internal_agt_periodic_arm() != k_ra8_ok) {
         break;
       }
     }
     ra8_delay_ms((uint32_t)k_agt_periodic_poll_ms);
   }
-  agt_periodic_panic_halt();
+  internal_agt_periodic_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

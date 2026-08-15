@@ -19,6 +19,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -50,8 +51,23 @@ typedef enum : uint32_t {
  */
 volatile uint32_t g_gpio_input_tick = 0U;
 
-/** @brief Park the CPU after a fatal init failure. */
-static void gpio_demo_panic_halt(void)
+/**
+ * @brief Park the CPU after a fatal GPIO demo failure.
+ *
+ * @details Enters a permanent wait-for-interrupt loop, preserving the most
+ *          recent switch and LED state for an attached debugger.
+ *
+ * @return None.
+ *
+ * @pre The caller has determined the polling loop cannot safely continue.
+ * @pre Any desired diagnostic output has already been requested.
+ * @post The function never returns to its caller.
+ * @post No further switch reads, LED writes, or liveness increments occur.
+ *
+ * @note Interrupt wakeups return immediately to the permanent loop.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gpio_demo_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -61,33 +77,46 @@ static void gpio_demo_panic_halt(void)
 /**
  * @brief Bring CGC + SysTick + LED1 + SW1 up. Halts on any error.
  *
- * @pre Reset_Handler has set up the C runtime.
- * @post LED1 is configured as output (off); SW1 is input + pull-up.
+ * @details Initializes the clock tree and millisecond time base, then claims
+ *          LED1 as the output indicator and SW1 as the pulled-up input. Any
+ *          failing step transfers control to the permanent fatal halt.
  *
+ * @return None.
+ *
+ * @pre Reset_Handler has set up the C runtime.
+ * @pre LED1 and SW1 are available for exclusive use by this image.
+ * @post LED1 is configured as output (off); SW1 is input + pull-up.
+ * @post On any setup error the function does not return.
+ *
+ * @note Single-shot boot helper; it is not reentrant.
  * @since 0.1.0
  */
-static void gpio_demo_setup_or_halt(void)
+RA8_INTERNAL static void internal_gpio_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    gpio_demo_panic_halt();
+    internal_gpio_demo_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    gpio_demo_panic_halt();
+    internal_gpio_demo_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    gpio_demo_panic_halt();
+    internal_gpio_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    gpio_demo_panic_halt();
+    internal_gpio_demo_panic_halt();
   }
   if (ra8_board_sw_init(k_ra8_board_sw1) != k_ra8_ok) {
-    gpio_demo_panic_halt();
+    internal_gpio_demo_panic_halt();
   }
 }
 
 /**
  * @brief One poll iteration: read SW1, drive LED1.
+ *
+ * @details Samples the board switch into caller-owned storage, turns LED1 on
+ *          for the pressed state and off for the released state, and preserves
+ *          the first board-support error.
  *
  * @par MC/DC:
  * Compound decision: ``read != ok``. One atomic condition x 2
@@ -95,14 +124,21 @@ static void gpio_demo_setup_or_halt(void)
  * test_app_gpio_input_demo via mock injection).
  *
  * @param[out] out_state Receives the latest switch state.
+ *
  * @return Error code from ra8_board_sw_read or ra8_board_led_*.
+ * @retval k_ra8_ok The switch was sampled and LED1 was updated.
+ * @retval (other)  The switch read or requested LED operation failed.
  *
- * @pre out_state non-NULL.
+ * @pre @p out_state is non-NULL writable storage.
+ * @pre ::internal_gpio_demo_setup_or_halt completed successfully.
  * @post LED1 reflects *out_state on success.
+ * @post On a switch-read error LED1 is not modified.
  *
+ * @note Polling helper; the caller controls its invocation cadence.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t gpio_demo_one_iter(ra8_board_sw_state_t* out_state)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t
+internal_gpio_demo_one_iter(ra8_board_sw_state_t* out_state)
 {
   ra8_err_t err = ra8_board_sw_read(k_ra8_board_sw1, out_state);
   if (err != k_ra8_ok) {
@@ -118,18 +154,18 @@ static void gpio_demo_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  gpio_demo_setup_or_halt();
+  internal_gpio_demo_setup_or_halt();
   ra8_isr_globals_enable();
 
   while (1) {
     ra8_board_sw_state_t s = k_ra8_board_sw_released;
-    if (gpio_demo_one_iter(&s) != k_ra8_ok) {
+    if (internal_gpio_demo_one_iter(&s) != k_ra8_ok) {
       break;
     }
     g_gpio_input_tick += 1U;
     ra8_delay_ms((uint32_t)k_gpio_demo_poll_ms);
   }
-  gpio_demo_panic_halt();
+  internal_gpio_demo_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

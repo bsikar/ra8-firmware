@@ -34,15 +34,15 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
  * @brief CPU1 application loop.
  * @details See file header.
  * @pre Vector table installed.
- * @pre IPC channels reachable.
+ * @pre The fixed shared-SRAM message block is reachable.
  * @post Loop never exits.
- * @post IPC channels remain initialized.
+ * @post Each new ping sequence is acknowledged through ``pong_seq``.
  * @note Single-threaded entry.
  * @since 0.1.0
  */
-[[noreturn]] static void cpu1_main(void)
+[[noreturn]] RA8_INTERNAL static void internal_cpu1_main(void)
 {
-  volatile cpu1_pingpong_shared_t* shared        = cpu1_pingpong_shared();
+  volatile cpu1_pingpong_shared_t* shared        = internal_shared();
   uint32_t                         last_observed = 0U;
 
   while (1) {
@@ -72,7 +72,7 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
  * @brief CPU1 reset handler.
  *
  * @details Runs the minimal C-runtime init the M33 image needs before
- * branching into ``cpu1_main``:
+ * branching into ``internal_cpu1_main``:
  *   1. Copy ``.data`` from its MRAM_CPU1 load image into SRAM_CPU1.
  *   2. Zero ``.bss`` in SRAM_CPU1.
  *
@@ -81,7 +81,7 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
  * initialised file-scope statics -- ``.data``) hold whatever pattern
  * SRAM_CPU1 contained at boot. That was the reason CPU1 silently
  * stayed wedged after Agent D embedded the CPU1 binary: the M33
- * jumped straight into ``cpu1_main`` with uninitialised globals, so
+ * jumped straight into ``internal_cpu1_main`` with uninitialised globals, so
  * ``ra8_ipc_init`` / ``ra8_ipc_recv_message`` operated on garbage state
  * structures and the channel pair never came alive.
  *
@@ -91,7 +91,7 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
  *      ``ra8_cpu1_release`` on CPU0.
  * @post ``.data`` mirrors the MRAM_CPU1 load image.
  * @post ``.bss`` is zero-filled.
- * @post Never returns; ``cpu1_main`` enters its infinite IPC loop.
+ * @post Never returns; ``internal_cpu1_main`` enters its infinite shared-SRAM loop.
  *
  * @note Called only from the CPU1 vector table; runs in M33 thread mode.
  * @since 0.1.0
@@ -114,7 +114,7 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
     *bss = 0U;
     bss++;
   }
-  cpu1_main();
+  internal_cpu1_main();
 }
 
 /**
@@ -127,7 +127,7 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
  * @note Used as default for all exception slots.
  * @since 0.1.0
  */
-[[noreturn]] static void cpu1_fault_handler(void)
+[[noreturn]] RA8_INTERNAL static void internal_fault_handler(void)
 {
   while (1) {
     __asm volatile("nop");
@@ -149,11 +149,11 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
 [[gnu::used, gnu::section(".cpu1_vectors")]] const uintptr_t g_cpu1_vector_table[] = {
   (uintptr_t)&g_ra8_ls_cpu1_stack_top,
   (uintptr_t)&cpu1_reset_handler,
-  (uintptr_t)&cpu1_fault_handler,
-  (uintptr_t)&cpu1_fault_handler,
-  (uintptr_t)&cpu1_fault_handler,
-  (uintptr_t)&cpu1_fault_handler,
-  (uintptr_t)&cpu1_fault_handler,
-  (uintptr_t)&cpu1_fault_handler,
+  (uintptr_t)&internal_fault_handler,
+  (uintptr_t)&internal_fault_handler,
+  (uintptr_t)&internal_fault_handler,
+  (uintptr_t)&internal_fault_handler,
+  (uintptr_t)&internal_fault_handler,
+  (uintptr_t)&internal_fault_handler,
 };
 #endif

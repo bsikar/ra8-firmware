@@ -24,7 +24,7 @@ ELF="${OUT%.bin}.elf"
 HDR="$HERE/payload_image.h"
 
 "$CC" -mcpu=cortex-m85 -mthumb -mfloat-abi=soft \
-  -std=c23 -Os -ffreestanding -nostdlib -nostartfiles \
+  -std=c2x -Os -ffreestanding -nostdlib -nostartfiles \
   -ffunction-sections -fdata-sections \
   -Wall -Wextra -Werror \
   -T "$HERE/payload.ld" -o "$ELF" "$HERE/payload.c"
@@ -47,7 +47,7 @@ with open(sys.argv[2], "w", encoding="ascii") as h:
     h.write("#pragma once\n\n")
     h.write("#include <stdint.h>\n\n")
     h.write("/** @brief Copy-to-run demo payload image (vector table + reset stub). */\n")
-    h.write(f"alignas(4) static const uint8_t g_payload_image[{len(data)}] = {{\n")
+    h.write(f"alignas(4) static const uint8_t s_payload_image[{len(data)}] = {{\n")
     for i in range(0, len(data), 16):
         row = ", ".join(f"0x{b:02X}" for b in data[i:i + 16])
         h.write(f"  {row},\n")
