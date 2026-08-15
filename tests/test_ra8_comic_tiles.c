@@ -32,6 +32,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_comic.h"
 #include "ra8_comic_tiles.h"
 #include "ra8_err.h"
@@ -171,8 +172,22 @@ static uint8_t s_scratch[k_scratch];
  * ---------------------------------------------------------------------------
  */
 
-/** @brief Deterministic source sample for pixel (x, y), channel @p ch. */
-static uint8_t pix_rgb(uint32_t x, uint32_t y, uint32_t ch)
+/**
+ * @brief Compute one deterministic RGB source sample.
+ * @details Mixes pixel coordinates with channel-specific constants for byte-exact tile checks.
+ * @param[in] x Source pixel column.
+ * @param[in] y Source pixel row.
+ * @param[in] ch Channel selector from comic_tiles_channel_t.
+ * @return Expected channel byte.
+ * @retval 0..255 Deterministic sample for the selected coordinate and channel.
+ * @pre @p ch is one of the three fixture channel values.
+ * @pre Coordinate arithmetic is evaluated with uint32_t wrap semantics.
+ * @post No fixture storage is modified.
+ * @post Repeated calls with equal arguments return equal bytes.
+ * @note This is the oracle for every decoded tile comparison.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static uint8_t internal_pix_rgb(uint32_t x, uint32_t y, uint32_t ch)
 {
   if (ch == (uint32_t)k_chan_r) {
     return (uint8_t)((x * (uint32_t)k_pat_r_x + y * (uint32_t)k_pat_r_y) & (uint32_t)k_byte_mask);
@@ -183,8 +198,20 @@ static uint8_t pix_rgb(uint32_t x, uint32_t y, uint32_t ch)
   return (uint8_t)((x * (uint32_t)k_pat_b_x + y * (uint32_t)k_pat_b_y) & (uint32_t)k_byte_mask);
 }
 
-/** @brief Append a PNG chunk (length/type/data/CRC) into `s_png`. */
-static void png_chunk(const char* type, const uint8_t* data, uint32_t len)
+/**
+ * @brief Append one complete PNG chunk to the fixture buffer.
+ * @details Emits big-endian length, four-byte type, payload, and calculated CRC.
+ * @param[in] type Four-byte PNG chunk type.
+ * @param[in] data Optional payload bytes.
+ * @param[in] len Payload byte count.
+ * @pre s_png has capacity for the current prefix, payload, and chunk overhead.
+ * @pre @p data is non-NULL whenever @p len is nonzero.
+ * @post s_png_len advances by exactly payload plus chunk overhead.
+ * @post The appended CRC covers the emitted type and payload bytes.
+ * @note The caller owns fixture-capacity proofs through fixed test dimensions.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_png_chunk(const char* type, const uint8_t* data, uint32_t len)
 {
   uint8_t* p = &s_png[s_png_len];
   p[0]       = (uint8_t)(len >> (uint32_t)k_shift_b3);
@@ -205,12 +232,23 @@ static void png_chunk(const char* type, const uint8_t* data, uint32_t len)
   s_png_len += (size_t)k_png_overhead + (size_t)len;
 }
 
-/** @brief Build a truecolour (RGB8, filter-0) PNG of the pattern into `s_png`. */
-static void png_build_rgb(uint32_t w, uint32_t h)
+/**
+ * @brief Build a deterministic truecolour PNG fixture.
+ * @details Generates RGB8 filter-zero rows, compresses them, and emits IHDR/IDAT/IEND.
+ * @param[in] w Image width in pixels.
+ * @param[in] h Image height in pixels.
+ * @pre @p w and @p h fit the fixed raw and PNG fixture capacities.
+ * @pre The miniz compressor is available to the host test.
+ * @post s_png contains one complete PNG and s_png_len is its exact size.
+ * @post Every source sample follows internal_pix_rgb.
+ * @note Static staging avoids a giant stack frame in the test executable.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_png_build_rgb(uint32_t w, uint32_t h)
 {
   static const uint8_t sig[8] = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
-  static uint8_t       s_raw[k_raw_cap];
-  static uint8_t       s_zbuf[k_png_cap];
+  static uint8_t       raw[k_raw_cap];
+  static uint8_t       zbuf[k_png_cap];
   s_png_len = 0U;
   (void)memcpy(s_png, sig, sizeof(sig));
   s_png_len                    = sizeof(sig);
@@ -225,33 +263,42 @@ static void png_build_rgb(uint32_t w, uint32_t h)
   ihdr[k_ihdr_h_b3]            = (uint8_t)(h & (uint32_t)k_byte_mask);
   ihdr[8]                      = (uint8_t)k_png_bitdepth8;
   ihdr[k_ihdr_color]           = (uint8_t)k_png_color_rgb;
-  png_chunk("IHDR", ihdr, (uint32_t)k_png_ihdr_len);
+  internal_png_chunk("IHDR", ihdr, (uint32_t)k_png_ihdr_len);
   size_t o = 0U;
   for (uint32_t y = 0U; y < h; y++) {
-    s_raw[o] = 0U; /* filter type 0 (none) */
+    raw[o] = 0U; /* filter type 0 (none) */
     o++;
     for (uint32_t x = 0U; x < w; x++) {
-      s_raw[o]      = pix_rgb(x, y, (uint32_t)k_chan_r);
-      s_raw[o + 1U] = pix_rgb(x, y, (uint32_t)k_chan_g);
-      s_raw[o + 2U] = pix_rgb(x, y, (uint32_t)k_chan_b);
+      raw[o]      = internal_pix_rgb(x, y, (uint32_t)k_chan_r);
+      raw[o + 1U] = internal_pix_rgb(x, y, (uint32_t)k_chan_g);
+      raw[o + 2U] = internal_pix_rgb(x, y, (uint32_t)k_chan_b);
       o += (size_t)k_rgb_bpp;
     }
   }
-  mz_ulong zlen = (mz_ulong)sizeof(s_zbuf);
-  TEST_ASSERT_EQ(MZ_OK, mz_compress(s_zbuf, &zlen, s_raw, (mz_ulong)o));
-  png_chunk("IDAT", s_zbuf, (uint32_t)zlen);
-  png_chunk("IEND", nullptr, 0U);
+  mz_ulong zlen = (mz_ulong)sizeof(zbuf);
+  TEST_ASSERT_EQ(MZ_OK, mz_compress(zbuf, &zlen, raw, (mz_ulong)o));
+  internal_png_chunk("IDAT", zbuf, (uint32_t)zlen);
+  internal_png_chunk("IEND", nullptr, 0U);
 }
 
-/** @brief Build a CBZ holding one big page + one small page into `s_arc`. */
-static void build_cbz(void)
+/**
+ * @brief Build the two-page CBZ used by tile tests.
+ * @details Stores the large PNG and deflates the small PNG before finalizing into s_arc.
+ * @pre PNG and archive fixture capacities cover both generated pages.
+ * @pre The host miniz writer can allocate its temporary archive buffer.
+ * @post s_arc_size names the exact finalized CBZ byte count.
+ * @post The miniz finalization buffer is released before return.
+ * @note This host-only fixture allocation is checked by LeakSanitizer.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_build_cbz(void)
 {
   mz_zip_archive zip = {};
   TEST_ASSERT(mz_zip_writer_init_heap(&zip, 0U, (size_t)k_arc_cap) == MZ_TRUE);
-  png_build_rgb((uint32_t)k_big_w, (uint32_t)k_big_h);
+  internal_png_build_rgb((uint32_t)k_big_w, (uint32_t)k_big_h);
   TEST_ASSERT(mz_zip_writer_add_mem(&zip, "01_big.png", s_png, s_png_len, MZ_NO_COMPRESSION) ==
               MZ_TRUE);
-  png_build_rgb((uint32_t)k_small_w, (uint32_t)k_small_h);
+  internal_png_build_rgb((uint32_t)k_small_w, (uint32_t)k_small_h);
   TEST_ASSERT(
     mz_zip_writer_add_mem(&zip, "02_small.png", s_png, s_png_len, MZ_DEFAULT_COMPRESSION) ==
     MZ_TRUE);
@@ -261,11 +308,28 @@ static void build_cbz(void)
   TEST_ASSERT(hsz <= (size_t)k_arc_cap);
   (void)memcpy(s_arc, heap, hsz);
   s_arc_size = hsz;
+  mz_free(heap);
   mz_zip_writer_end(&zip);
 }
 
-/** @brief ::ra8_comic_read_fn over the built CBZ (bounds-clamped). */
-static size_t arc_read(void* ctx, uint64_t off, void* buf, size_t len)
+/**
+ * @brief Read a bounds-clamped span from the built CBZ.
+ * @details Implements ra8_comic_read_fn directly over immutable s_arc bytes.
+ * @param[in] ctx Unused callback context.
+ * @param[in] off Absolute archive offset.
+ * @param[out] buf Destination for available bytes.
+ * @param[in] len Requested byte count.
+ * @return Bytes copied.
+ * @retval 0 Offset is at or beyond the archive end.
+ * @retval 1..len Available bytes copied without crossing s_arc_size.
+ * @pre @p buf is writable for @p len bytes when bytes are available.
+ * @pre internal_build_cbz initialized s_arc_size.
+ * @post Archive storage remains unchanged.
+ * @post The callback never reads past s_arc_size.
+ * @note The context is intentionally unused because the fixture is file-local.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static size_t internal_arc_read(void* ctx, uint64_t off, void* buf, size_t len)
 {
   (void)ctx;
   if (off >= (uint64_t)s_arc_size) {
@@ -277,8 +341,20 @@ static size_t arc_read(void* ctx, uint64_t off, void* buf, size_t len)
   return k;
 }
 
-/** @brief Default import config for a page of the built pattern (given codec). */
-static ra8_comic_tiles_import_cfg_t import_cfg(uint8_t codec)
+/**
+ * @brief Compose the default tile-import configuration.
+ * @details Binds fixed tile geometry and caller-owned work/atlas storage.
+ * @param[in] codec JOF tile codec selected by the vector.
+ * @return Complete import configuration.
+ * @retval ra8_comic_tiles_import_cfg_t Configuration bound to file-local storage.
+ * @pre @p codec is a codec accepted by the JOF producer.
+ * @pre File-local work and atlas buffers remain live for the import.
+ * @post No reader or fixture byte is modified.
+ * @post The returned maximum dimensions cover the large fixture page.
+ * @note Returning by value keeps each vector's mutations independent.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_comic_tiles_import_cfg_t internal_import_cfg(uint8_t codec)
 {
   return (ra8_comic_tiles_import_cfg_t){
     .tile_w        = (uint16_t)k_tile,
@@ -295,8 +371,19 @@ static ra8_comic_tiles_import_cfg_t import_cfg(uint8_t codec)
   };
 }
 
-/** @brief Tile-cache storage config over the static cache buffers. */
-static ra8_tile_cache_cfg_t cache_cfg(void)
+/**
+ * @brief Compose tile-cache storage over fixed buffers.
+ * @details Binds cells, keys, dimensions, metadata, and hash buckets without a decoder.
+ * @return Complete cache configuration.
+ * @retval ra8_tile_cache_cfg_t Configuration bound to file-local cache storage.
+ * @pre Static cache arrays retain their declared capacities.
+ * @pre The reader will install its decoder before cache use.
+ * @post No cache cell or metadata entry is modified.
+ * @post Returned counts match the compile-time fixture dimensions.
+ * @note Returning by value permits deliberate per-test capacity changes.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_tile_cache_cfg_t internal_cache_cfg(void)
 {
   return (ra8_tile_cache_cfg_t){
     .cell_mem     = s_cell_mem,
@@ -312,11 +399,23 @@ static ra8_tile_cache_cfg_t cache_cfg(void)
   };
 }
 
-/** @brief Read the big page's encoded bytes off the built CBZ into `s_pagebuf`. */
-static size_t open_big_page_bytes(ra8_comic_t* comic)
+/**
+ * @brief Open the CBZ and extract the large encoded page.
+ * @details Binds the comic facade to the fixture reader and reads page zero into s_pagebuf.
+ * @param[out] comic Comic handle retained by the caller for cleanup.
+ * @return Extracted encoded page size.
+ * @retval 1..k_png_cap Exact nonzero byte count placed in s_pagebuf.
+ * @pre internal_build_cbz produced the two-page archive.
+ * @pre @p comic points to writable zero-initialized storage.
+ * @post @p comic remains open on the fixture archive.
+ * @post s_pagebuf holds page zero without truncation.
+ * @note Unity assertions terminate the vector on any setup failure.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static size_t internal_open_big_page_bytes(ra8_comic_t* comic)
 {
   const ra8_err_t oerr = ra8_comic_open(comic,
-                                        arc_read,
+                                        internal_arc_read,
                                         nullptr,
                                         (uint64_t)s_arc_size,
                                         s_pages,
@@ -332,8 +431,20 @@ static size_t open_big_page_bytes(ra8_comic_t* comic)
   return got;
 }
 
-/** @brief Verify one pinned tile against the source pattern, byte for byte. */
-static void verify_tile(const ra8_tile_t* t, uint16_t tx, uint16_t ty)
+/**
+ * @brief Verify one pinned tile byte-for-byte.
+ * @details Computes clamped edge geometry and compares every RGB sample with the source oracle.
+ * @param[in] t Pinned tile returned by the reader.
+ * @param[in] tx Tile column.
+ * @param[in] ty Tile row.
+ * @pre @p t is a valid pinned tile for the large fixture page.
+ * @pre @p tx and @p ty identify an in-range tile coordinate.
+ * @post Every available pixel and both dimensions have been asserted.
+ * @post The tile remains pinned and unmodified for caller release.
+ * @note Edge tiles deliberately exercise width and height clamping.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_verify_tile(const ra8_tile_t* t, uint16_t tx, uint16_t ty)
 {
   const uint32_t base_x = (uint32_t)tx * (uint32_t)k_tile;
   const uint32_t base_y = (uint32_t)ty * (uint32_t)k_tile;
@@ -348,15 +459,26 @@ static void verify_tile(const ra8_tile_t* t, uint16_t tx, uint16_t ty)
   for (uint32_t j = 0U; j < exp_h; j++) {
     for (uint32_t i = 0U; i < exp_w; i++) {
       const size_t o = ((size_t)j * (size_t)exp_w + (size_t)i) * (size_t)k_rgb_bpp;
-      TEST_ASSERT_EQ(pix_rgb(base_x + i, base_y + j, k_chan_r), t->pixels[o]);
-      TEST_ASSERT_EQ(pix_rgb(base_x + i, base_y + j, k_chan_g), t->pixels[o + 1U]);
-      TEST_ASSERT_EQ(pix_rgb(base_x + i, base_y + j, k_chan_b), t->pixels[o + 2U]);
+      TEST_ASSERT_EQ(internal_pix_rgb(base_x + i, base_y + j, k_chan_r), t->pixels[o]);
+      TEST_ASSERT_EQ(internal_pix_rgb(base_x + i, base_y + j, k_chan_g), t->pixels[o + 1U]);
+      TEST_ASSERT_EQ(internal_pix_rgb(base_x + i, base_y + j, k_chan_b), t->pixels[o + 2U]);
     }
   }
 }
 
-/** @brief Assert the whole-decode fast path caps this page (no_mem) in a modest arena. */
-static void assert_whole_decode_caps(const uint8_t* enc, size_t len)
+/**
+ * @brief Prove whole-image decoding exceeds the modest arena.
+ * @details Initializes an off-screen target and requires the encoded large page to return no_mem.
+ * @param[in] enc Encoded image bytes.
+ * @param[in] len Exact encoded byte count.
+ * @pre @p enc addresses a valid large fixture image.
+ * @pre s_decode_arena is smaller than the decoded image requirement.
+ * @post The decoder reports k_ra8_err_no_mem.
+ * @post No memory outside the arena and framebuffer is modified.
+ * @note This establishes why the tile path is required rather than optional.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_assert_whole_decode_caps(const uint8_t* enc, size_t len)
 {
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -374,14 +496,26 @@ static void assert_whole_decode_caps(const uint8_t* enc, size_t len)
                                      nullptr));
 }
 
-/** @brief Fetch + byte-verify every tile of @p info, then assert a re-fetch is a cache hit. */
-static void walk_and_verify_tiles(ra8_comic_tile_reader_t* r, const ra8_jof_info_t* info)
+/**
+ * @brief Verify every tile and one cache-hit refetch.
+ * @details Walks all coordinates, validates bytes, releases pins, then compares refetched storage.
+ * @param[in,out] r Imported tile reader and cache.
+ * @param[in] info Validated page geometry.
+ * @pre @p r has imported the large fixture page.
+ * @pre @p info describes the same reader epoch.
+ * @post Every tile coordinate has passed byte-exact validation.
+ * @post All pins are released and the repeated origin tile is a cache hit.
+ * @note The page contains more tiles than cache cells, exercising eviction too.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_walk_and_verify_tiles(ra8_comic_tile_reader_t* r,
+                                                        const ra8_jof_info_t*    info)
 {
   for (uint16_t ty = 0U; ty < info->tile_rows; ty++) {
     for (uint16_t tx = 0U; tx < info->tile_cols; tx++) {
       ra8_tile_t t = {};
       TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_tile(r, tx, ty, &t));
-      verify_tile(&t, tx, ty);
+      internal_verify_tile(&t, tx, ty);
       TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_release(r, t.pixels));
     }
   }
@@ -394,13 +528,23 @@ static void walk_and_verify_tiles(ra8_comic_tile_reader_t* r, const ra8_jof_info
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_release(r, b.pixels));
 }
 
-/** @brief Assert import rejects a config with a null work arena or a null atlas store. */
-static void assert_import_cfg_guards(ra8_comic_tile_reader_t* r)
+/**
+ * @brief Prove required import workspaces reject null bindings.
+ * @details Independently removes the work arena and atlas pointer from otherwise valid configs.
+ * @param[in,out] r Initialized tile reader.
+ * @pre @p r completed ra8_comic_tiles_init.
+ * @pre s_png contains at least the four bytes passed to each guard call.
+ * @post Both malformed configurations return k_ra8_err_null_ptr.
+ * @post The reader does not become bound to an imported page.
+ * @note Each guard varies one required binding at a time.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_assert_import_cfg_guards(ra8_comic_tile_reader_t* r)
 {
-  ra8_comic_tiles_import_cfg_t no_work = import_cfg((uint8_t)k_ra8_jof_codec_deflate);
+  ra8_comic_tiles_import_cfg_t no_work = internal_import_cfg((uint8_t)k_ra8_jof_codec_deflate);
   no_work.work                         = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_import(r, s_png, 4U, &no_work));
-  ra8_comic_tiles_import_cfg_t no_atlas = import_cfg((uint8_t)k_ra8_jof_codec_deflate);
+  ra8_comic_tiles_import_cfg_t no_atlas = internal_import_cfg((uint8_t)k_ra8_jof_codec_deflate);
   no_atlas.atlas                        = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_import(r, s_png, 4U, &no_atlas));
 }
@@ -412,6 +556,14 @@ static void assert_import_cfg_guards(ra8_comic_tile_reader_t* r)
 
 /**
  * @test comic_tiles_footprint_and_budget
+ * @brief Verify decoded footprint and every budget-threshold decision.
+ * @details Builds both fixture pages, validates dimensions, and drives the N+1 MC/DC set.
+ * @pre Fixed PNG and CBZ buffers satisfy their declared capacities.
+ * @pre The image-header parser accepts the generated RGB PNG.
+ * @post Large and small decoded sizes select tile and flat paths respectively.
+ * @post Null, empty, and unsupported-image guards return their precise errors.
+ * @note This vector owns complete MC/DC coverage of the threshold conjunction.
+ * @since Version 0.1.0
  *
  * @par MC/DC:
  * Decision: `(budget_bytes != 0U) && (decoded_bytes > budget_bytes)` (2 conditions)
@@ -421,13 +573,13 @@ static void assert_import_cfg_guards(ra8_comic_tile_reader_t* r)
  * Vectors 1+2 prove `budget_bytes != 0` independently drives the outcome; 1+3
  * prove the same for `decoded_bytes > budget_bytes`. N+1 = 3 vectors for N=2.
  */
-static void test_footprint_and_budget(void)
+RA8_INTERNAL static void internal_test_footprint_and_budget(void)
 {
   TEST_BEGIN("comic tiles footprint + budget threshold");
-  build_cbz();
+  internal_build_cbz();
 
   /* Big page footprint from the encoded header. */
-  png_build_rgb((uint32_t)k_big_w, (uint32_t)k_big_h);
+  internal_png_build_rgb((uint32_t)k_big_w, (uint32_t)k_big_h);
   uint16_t w  = 0U;
   uint16_t h  = 0U;
   uint64_t db = 0U;
@@ -442,7 +594,7 @@ static void test_footprint_and_budget(void)
   TEST_ASSERT(!ra8_comic_tiles_over_budget((uint64_t)512U * 1024U, (uint64_t)1024U * 1024U));
   /* The big page is over budget; the small page is not. */
   TEST_ASSERT(ra8_comic_tiles_over_budget(db, (uint64_t)k_budget_bytes));
-  png_build_rgb((uint32_t)k_small_w, (uint32_t)k_small_h);
+  internal_png_build_rgb((uint32_t)k_small_w, (uint32_t)k_small_h);
   uint64_t small_db = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_footprint(s_png, s_png_len, &w, &h, &small_db));
   TEST_ASSERT(!ra8_comic_tiles_over_budget(small_db, (uint64_t)k_budget_bytes));
@@ -461,21 +613,28 @@ static void test_footprint_and_budget(void)
 
 /**
  * @test comic_tiles_large_page_opens
+ * @brief Decode a page that exceeds the whole-image arena through bounded tiles.
  * @details The heart of #344: the big page defeats the whole-decode arena
  *          (`k_ra8_err_no_mem`) yet the tile path opens it and every tile is
  *          byte-exact at full resolution, with resident RAM bounded by the cell
  *          budget. A re-fetch is a cache hit, not a re-decode.
+ * @pre internal_build_cbz has produced the deterministic two-page archive.
+ * @pre Cache and codec workspaces retain their fixed capacities.
+ * @post Every large-page tile is decoded at native resolution and verified.
+ * @post The comic handle is closed and no cache pin remains held.
+ * @note Resident decoded storage remains below the whole-image footprint.
+ * @since Version 0.1.0
  *
  * @par MC/DC:
  * The `ra8_comic_tiles_over_budget` `&&` decision is exercised here only as a
  * control (a single true vector); its full N+1 MC/DC vector set lives in
- * ::test_footprint_and_budget.
+ * ::internal_test_footprint_and_budget.
  */
-static void test_large_page_opens(void)
+RA8_INTERNAL static void internal_test_large_page_opens(void)
 {
   TEST_BEGIN("comic tiles: large page opens where whole-decode caps");
   ra8_comic_t  comic = {};
-  const size_t got   = open_big_page_bytes(&comic);
+  const size_t got   = internal_open_big_page_bytes(&comic);
 
   /* Threshold says tile. */
   uint16_t w  = 0U;
@@ -485,15 +644,15 @@ static void test_large_page_opens(void)
   TEST_ASSERT(ra8_comic_tiles_over_budget(db, (uint64_t)k_budget_bytes));
 
   /* The OLD path caps: whole-decode into a modest arena fails no_mem. */
-  assert_whole_decode_caps(s_pagebuf, got);
+  internal_assert_whole_decode_caps(s_pagebuf, got);
 
   /* The NEW path opens it. Resident cache RAM is far below the decoded image. */
   TEST_ASSERT((uint64_t)k_cells * (uint64_t)k_cell_bytes < db);
   ra8_comic_tile_reader_t r       = {};
-  ra8_tile_cache_cfg_t    storage = cache_cfg();
+  ra8_tile_cache_cfg_t    storage = internal_cache_cfg();
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_comic_tiles_init(&r, &storage, s_scratch, (uint32_t)sizeof s_scratch));
-  const ra8_comic_tiles_import_cfg_t cfg = import_cfg((uint8_t)k_ra8_jof_codec_deflate);
+  const ra8_comic_tiles_import_cfg_t cfg = internal_import_cfg((uint8_t)k_ra8_jof_codec_deflate);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_import(&r, s_pagebuf, got, &cfg));
 
   ra8_jof_info_t info = {};
@@ -505,7 +664,7 @@ static void test_large_page_opens(void)
 
   /* Every tile -- interior and clamped edge -- decodes byte-exact, and a
    * re-fetch hits the cache rather than re-decoding. */
-  walk_and_verify_tiles(&r, &info);
+  internal_walk_and_verify_tiles(&r, &info);
 
   (void)ra8_comic_close(&comic);
   TEST_END("comic tiles: large page opens where whole-decode caps");
@@ -513,23 +672,30 @@ static void test_large_page_opens(void)
 
 /**
  * @test comic_tiles_zoom_subrect
+ * @brief Fetch one native-resolution interior tile without neighboring decodes.
  * @details The loupe property: a single interior tile is fetched and verified
  *          full-resolution without decoding the whole page or its neighbours.
+ * @pre The deterministic CBZ is available through internal_arc_read.
+ * @pre Raw-codec import storage covers one full tile.
+ * @post Tile (2,1) matches the native source oracle and is released.
+ * @post The comic handle is closed.
+ * @note No neighboring tile is requested by this vector.
+ * @since Version 0.1.0
  *
  * @par MC/DC:
  * (no compound decisions in this test)
  */
-static void test_zoom_subrect(void)
+RA8_INTERNAL static void internal_test_zoom_subrect(void)
 {
   TEST_BEGIN("comic tiles: sub-rect (loupe) tile is full-resolution");
   ra8_comic_t  comic = {};
-  const size_t got   = open_big_page_bytes(&comic);
+  const size_t got   = internal_open_big_page_bytes(&comic);
 
   ra8_comic_tile_reader_t r       = {};
-  ra8_tile_cache_cfg_t    storage = cache_cfg();
+  ra8_tile_cache_cfg_t    storage = internal_cache_cfg();
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_comic_tiles_init(&r, &storage, s_scratch, (uint32_t)sizeof s_scratch));
-  const ra8_comic_tiles_import_cfg_t cfg = import_cfg((uint8_t)k_ra8_jof_codec_raw);
+  const ra8_comic_tiles_import_cfg_t cfg = internal_import_cfg((uint8_t)k_ra8_jof_codec_raw);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_import(&r, s_pagebuf, got, &cfg));
 
   /* Center-ish interior tile (2,1) fetched on its own -> native pixels. */
@@ -537,7 +703,7 @@ static void test_zoom_subrect(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_tile(&r, 2U, 1U, &t));
   TEST_ASSERT_EQ(k_tile, t.width);
   TEST_ASSERT_EQ(k_tile, t.height);
-  verify_tile(&t, 2U, 1U);
+  internal_verify_tile(&t, 2U, 1U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_release(&r, t.pixels));
 
   (void)ra8_comic_close(&comic);
@@ -546,26 +712,33 @@ static void test_zoom_subrect(void)
 
 /**
  * @test comic_tiles_tile_over_cell_budget
+ * @brief Reject a decoded tile that cannot fit one cache cell.
  * @details A tile whose decoded payload exceeds the cache cell (a deliberately
  *          undersized cache) fails closed as `k_ra8_err_no_mem` rather than
  *          overrunning the cell -- the decode-on-miss maps the atlas reader's
  *          `k_ra8_err_invalid_size` to `k_ra8_err_no_mem`.
+ * @pre The large fixture page imports successfully with raw tile coding.
+ * @pre The cache cell size is deliberately reduced below one decoded tile.
+ * @post The first tile request returns k_ra8_err_no_mem.
+ * @post The comic handle is closed without an acquired tile pin.
+ * @note The vector protects the cache-cell write boundary.
+ * @since Version 0.1.0
  *
  * @par MC/DC:
  * (no compound decisions in this test)
  */
-static void test_tile_over_cell_budget(void)
+RA8_INTERNAL static void internal_test_tile_over_cell_budget(void)
 {
   TEST_BEGIN("comic tiles: a tile larger than the cache cell fails no_mem");
   ra8_comic_t  comic = {};
-  const size_t got   = open_big_page_bytes(&comic);
+  const size_t got   = internal_open_big_page_bytes(&comic);
 
   ra8_comic_tile_reader_t r       = {};
-  ra8_tile_cache_cfg_t    storage = cache_cfg();
+  ra8_tile_cache_cfg_t    storage = internal_cache_cfg();
   storage.cell_bytes              = (uint32_t)k_tiny_cell; /* far below a 128x128x3 tile */
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_comic_tiles_init(&r, &storage, s_scratch, (uint32_t)sizeof s_scratch));
-  const ra8_comic_tiles_import_cfg_t cfg = import_cfg((uint8_t)k_ra8_jof_codec_raw);
+  const ra8_comic_tiles_import_cfg_t cfg = internal_import_cfg((uint8_t)k_ra8_jof_codec_raw);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_import(&r, s_pagebuf, got, &cfg));
 
   ra8_tile_t t = {};
@@ -577,23 +750,30 @@ static void test_tile_over_cell_budget(void)
 
 /**
  * @test comic_tiles_small_page_flat
+ * @brief Preserve the whole-image path for a page below the decode budget.
  * @details A page under the budget stays on the whole-decode fast path: the
  *          same modest arena that capped the big page decodes the small page,
  *          so the existing golden render is preserved.
+ * @pre The two-page CBZ contains the small PNG at page index one.
+ * @pre The modest decode arena covers the small decoded footprint.
+ * @post The budget decision selects the flat path and decode succeeds.
+ * @post Positive output dimensions are reported and the comic is closed.
+ * @note This is the golden counterpart to the large-page no_mem vector.
+ * @since Version 0.1.0
  *
  * @par MC/DC:
  * The `ra8_comic_tiles_over_budget` `&&` decision is exercised here only as a
  * control (a single false vector); its full N+1 MC/DC vector set lives in
- * ::test_footprint_and_budget.
+ * ::internal_test_footprint_and_budget.
  */
-static void test_small_page_flat(void)
+RA8_INTERNAL static void internal_test_small_page_flat(void)
 {
   TEST_BEGIN("comic tiles: small page keeps the whole-decode fast path");
-  build_cbz();
+  internal_build_cbz();
   ra8_comic_t comic = {};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_comic_open(&comic,
-                                arc_read,
+                                internal_arc_read,
                                 nullptr,
                                 (uint64_t)s_arc_size,
                                 s_pages,
@@ -635,24 +815,31 @@ static void test_small_page_flat(void)
 
 /**
  * @test comic_tiles_page_turn_epoch
+ * @brief Prevent stale tile reuse after importing a different page.
  * @details Re-importing (a page turn) bumps the epoch so a same-coordinate tile
  *          fetch returns the NEW page's pixels, never a stale cached tile.
+ * @pre The reader and cache are initialized over fixed storage.
+ * @pre Both generated PNG pages are valid import sources.
+ * @post The second import has a distinct epoch and small-page geometry.
+ * @post The returned tile is released after its new-page dimensions are checked.
+ * @note Equal origin sample bytes do not substitute for the geometry assertion.
+ * @since Version 0.1.0
  *
  * @par MC/DC:
  * (no compound decisions in this test)
  */
-static void test_page_turn_epoch(void)
+RA8_INTERNAL static void internal_test_page_turn_epoch(void)
 {
   TEST_BEGIN("comic tiles: page turn never surfaces a stale tile");
   ra8_comic_tile_reader_t r       = {};
-  ra8_tile_cache_cfg_t    storage = cache_cfg();
+  ra8_tile_cache_cfg_t    storage = internal_cache_cfg();
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_comic_tiles_init(&r, &storage, s_scratch, (uint32_t)sizeof s_scratch));
 
-  const ra8_comic_tiles_import_cfg_t cfg = import_cfg((uint8_t)k_ra8_jof_codec_deflate);
+  const ra8_comic_tiles_import_cfg_t cfg = internal_import_cfg((uint8_t)k_ra8_jof_codec_deflate);
 
   /* Page A: the big pattern. Fetch tile (0,0), leave it cached. */
-  png_build_rgb((uint32_t)k_big_w, (uint32_t)k_big_h);
+  internal_png_build_rgb((uint32_t)k_big_w, (uint32_t)k_big_h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_import(&r, s_png, s_png_len, &cfg));
   const uint32_t epoch_a = r.epoch;
   ra8_tile_t     ta      = {};
@@ -662,7 +849,7 @@ static void test_page_turn_epoch(void)
 
   /* Page B: a DIFFERENT pattern (offset the source so (0,0) differs). Re-import
    * rebinds the store + bumps the epoch, so the old (0,0) tile cannot be hit. */
-  png_build_rgb((uint32_t)k_small_w, (uint32_t)k_small_h);
+  internal_png_build_rgb((uint32_t)k_small_w, (uint32_t)k_small_h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_import(&r, s_png, s_png_len, &cfg));
   TEST_ASSERT(r.epoch != epoch_a);
   ra8_jof_info_t info = {};
@@ -674,25 +861,32 @@ static void test_page_turn_epoch(void)
    * geometry (the clamped tile is the small page's size, not the big page's). */
   TEST_ASSERT_EQ(k_small_w, tb.width);
   TEST_ASSERT_EQ(k_small_h, tb.height);
-  TEST_ASSERT_EQ(a00, tb.pixels[0]); /* pix_rgb(0,0,R) identical for both pages */
+  TEST_ASSERT_EQ(a00, tb.pixels[0]); /* internal_pix_rgb(0,0,R) identical for both pages */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_tiles_release(&r, tb.pixels));
   TEST_END("comic tiles: page turn never surfaces a stale tile");
 }
 
 /**
  * @test comic_tiles_guards
+ * @brief Reject invalid bindings, states, coordinates, formats, and capacities.
  * @details Fail-closed guards on every entry point: null pointers, unbound
  *          reader, out-of-range tiles, an unsupported source, and a too-small
  *          atlas store.
+ * @pre Static cache, scratch, work, and atlas buffers remain available.
+ * @pre The generated small and large PNG fixtures fit their capacities.
+ * @post Every invalid binding, state, coordinate, and capacity is rejected.
+ * @post Failed imports leave the reader unbound to a usable page.
+ * @note Valid import between hostile probes proves failures do not poison reuse.
+ * @since Version 0.1.0
  *
  * @par MC/DC:
  * (no compound decisions in this test)
  */
-static void test_guards(void)
+RA8_INTERNAL static void internal_test_guards(void)
 {
   TEST_BEGIN("comic tiles: fail-closed guards");
   ra8_comic_tile_reader_t r       = {};
-  ra8_tile_cache_cfg_t    storage = cache_cfg();
+  ra8_tile_cache_cfg_t    storage = internal_cache_cfg();
 
   /* init guards. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_init(nullptr, &storage, s_scratch, 4U));
@@ -707,12 +901,12 @@ static void test_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_comic_tiles_info(&r, &info));
 
   /* import guards. */
-  const ra8_comic_tiles_import_cfg_t cfg = import_cfg((uint8_t)k_ra8_jof_codec_deflate);
+  const ra8_comic_tiles_import_cfg_t cfg = internal_import_cfg((uint8_t)k_ra8_jof_codec_deflate);
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_import(nullptr, s_png, 4U, &cfg));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_import(&r, nullptr, 4U, &cfg));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_import(&r, s_png, 4U, nullptr));
-  assert_import_cfg_guards(&r);
-  png_build_rgb((uint32_t)k_small_w, (uint32_t)k_small_h);
+  internal_assert_import_cfg_guards(&r);
+  internal_png_build_rgb((uint32_t)k_small_w, (uint32_t)k_small_h);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_comic_tiles_import(&r, s_png, 0U, &cfg));
 
   /* An unsupported (non-image) source aborts the transcode fail-closed and
@@ -738,9 +932,9 @@ static void test_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_comic_tiles_release(nullptr, s_scratch));
 
   /* A too-small atlas store makes the producer fail; reader stays unbound. */
-  ra8_comic_tiles_import_cfg_t tiny = import_cfg((uint8_t)k_ra8_jof_codec_deflate);
+  ra8_comic_tiles_import_cfg_t tiny = internal_import_cfg((uint8_t)k_ra8_jof_codec_deflate);
   tiny.atlas_cap                    = 16U;
-  png_build_rgb((uint32_t)k_big_w, (uint32_t)k_big_h);
+  internal_png_build_rgb((uint32_t)k_big_w, (uint32_t)k_big_h);
   TEST_ASSERT(ra8_comic_tiles_import(&r, s_png, s_png_len, &tiny) != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_comic_tiles_tile(&r, 0U, 0U, &t));
   TEST_END("comic tiles: fail-closed guards");
@@ -748,13 +942,12 @@ static void test_guards(void)
 
 int32_t main(void)
 {
-  test_footprint_and_budget();
-  test_large_page_opens();
-  test_zoom_subrect();
-  test_tile_over_cell_budget();
-  test_small_page_flat();
-  test_page_turn_epoch();
-  test_guards();
-  (void)fprintf(stderr, "[OK  ] test_ra8_comic_tiles.c\n");
+  internal_test_footprint_and_budget();
+  internal_test_large_page_opens();
+  internal_test_zoom_subrect();
+  internal_test_tile_over_cell_budget();
+  internal_test_small_page_flat();
+  internal_test_page_turn_epoch();
+  internal_test_guards();
   return 0;
 }

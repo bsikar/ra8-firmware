@@ -10,7 +10,7 @@
  * magic, routes a ZIP to the CBZ backend, a RAR to the CBR backend, or a tar
  * (probed by header block -- tar has no leading magic) to the CBT backend, and lets
  * each backend append its image members to the shared page index through
- * ::ra8_comic_page_add; the index is then sorted by entry name so reading order is
+ * ::priv_comic_page_add; the index is then sorted by entry name so reading order is
  * the sorted names. ::ra8_comic_page_read / ::ra8_comic_page_info / ::ra8_comic_close
  * dispatch on the detected kind.
  *
@@ -76,8 +76,7 @@ typedef enum : uint8_t {
  * @note Thread-safe: pure.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static uint8_t internal_lower(uint8_t c)
+RA8_INTERNAL static uint8_t internal_lower(uint8_t c)
 {
   const uint8_t up =
     (uint8_t)(((uint8_t)(c - (uint8_t)k_ascii_upper_a) < (uint8_t)k_ascii_alpha_n) ? 1U : 0U);
@@ -101,8 +100,7 @@ static uint8_t internal_lower(uint8_t c)
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool internal_ends_with_ci(const char* name, uint16_t len, const char* ext)
+RA8_INTERNAL static bool internal_ends_with_ci(const char* name, uint16_t len, const char* ext)
 {
   size_t elen = 0U;
   for (uint8_t i = 0U; i < (uint8_t)k_comic_ext_max; ++i) { /* bound: fixed max ext */
@@ -126,7 +124,7 @@ static bool internal_ends_with_ci(const char* name, uint16_t len, const char* ex
 /**
  * @brief Whether @p name ends in a decodable image extension.
  * @details The pure suffix test over the `stb_image` set; the hidden/base-name
- *          policy is applied separately by ::ra8_comic_is_page_name.
+ *          policy is applied separately by ::priv_comic_is_page_name.
  * @param[in] name Entry name bytes.
  * @param[in] len  Length of @p name.
  * @return Whether @p name has a supported image extension.
@@ -139,8 +137,7 @@ static bool internal_ends_with_ci(const char* name, uint16_t len, const char* ex
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool internal_is_image_ext(const char* name, uint16_t len)
+RA8_INTERNAL static bool internal_is_image_ext(const char* name, uint16_t len)
 {
   static const char* const k_exts[] = {".jpg", ".jpeg", ".png", ".gif", ".bmp"};
   for (uint8_t i = 0U; i < (uint8_t)(sizeof(k_exts) / sizeof(k_exts[0]));
@@ -152,7 +149,7 @@ static bool internal_is_image_ext(const char* name, uint16_t len)
   return false;
 }
 
-bool ra8_comic_is_page_name(const char* name, uint16_t len)
+RA8_PRIV bool priv_comic_is_page_name(const char* name, uint16_t len)
 {
   if (name == nullptr) {
     return false;
@@ -177,15 +174,15 @@ bool ra8_comic_is_page_name(const char* name, uint16_t len)
   return internal_is_image_ext(name, len);
 }
 
-ra8_err_t ra8_comic_page_add(ra8_comic_t* c,
-                             const char*  name,
-                             uint16_t     name_len,
-                             uint64_t     raw_size,
-                             uint8_t      extractable,
-                             uint8_t      method,
-                             uint32_t     zip_index,
-                             uint64_t     data_off,
-                             uint64_t     pack_size)
+RA8_PRIV ra8_err_t priv_comic_page_add(ra8_comic_t* c,
+                                       const char*  name,
+                                       uint16_t     name_len,
+                                       uint64_t     raw_size,
+                                       uint8_t      extractable,
+                                       uint8_t      method,
+                                       uint32_t     zip_index,
+                                       uint64_t     data_off,
+                                       uint64_t     pack_size)
 {
   RA8_CHECK_NULL_PTR(c, s_tag_comic, "add: null c");
   RA8_CHECK_NULL_PTR(name, s_tag_comic, "add: null name");
@@ -230,8 +227,8 @@ ra8_err_t ra8_comic_page_add(ra8_comic_t* c,
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static int32_t internal_name_cmp(const char* a, uint16_t alen, const char* b, uint16_t blen)
+RA8_INTERNAL static int32_t
+internal_name_cmp(const char* a, uint16_t alen, const char* b, uint16_t blen)
 {
   const uint16_t m = (alen < blen) ? alen : blen;
   const int      c = memcmp(a, b, (size_t)m);
@@ -260,8 +257,7 @@ static int32_t internal_name_cmp(const char* a, uint16_t alen, const char* b, ui
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static void internal_sort(ra8_comic_t* c)
+RA8_INTERNAL static void internal_sort(ra8_comic_t* c)
 {
   for (uint32_t i = 1U; i < c->page_count; ++i) { /* bound: page_count <= page_cap */
     const ra8_comic_page_t key = c->pages[i];
@@ -294,8 +290,7 @@ static void internal_sort(ra8_comic_t* c)
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool internal_is_zip(const uint8_t* s)
+RA8_INTERNAL static bool internal_is_zip(const uint8_t* s)
 {
   if (s[0] != (uint8_t)k_zip_b0) {
     return false;
@@ -330,11 +325,10 @@ static bool internal_is_zip(const uint8_t* s)
  * @note Thread-safe: reads only its pointer arguments.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_open_reject_null(const ra8_comic_t*      c,
-                                           ra8_comic_read_fn       read,
-                                           const ra8_comic_page_t* pages,
-                                           const char*             names)
+RA8_INTERNAL static ra8_err_t internal_open_reject_null(const ra8_comic_t*      c,
+                                                        ra8_comic_read_fn       read,
+                                                        const ra8_comic_page_t* pages,
+                                                        const char*             names)
 {
   RA8_CHECK_NULL_PTR(c, s_tag_comic, "open: null c");
   RA8_CHECK_NULL_PTR((const void*)read, s_tag_comic, "open: null read");
@@ -361,8 +355,7 @@ static ra8_err_t internal_open_reject_null(const ra8_comic_t*      c,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_open_detect(ra8_comic_t* c)
+RA8_INTERNAL static ra8_err_t internal_open_detect(ra8_comic_t* c)
 {
   uint8_t      sig[k_ra8_comic_magic_len] = {};
   const size_t got                        = c->read(c->ctx, 0U, sig, sizeof(sig));
@@ -374,19 +367,19 @@ static ra8_err_t internal_open_detect(ra8_comic_t* c)
     c->stream.read = c->read;
     c->stream.ctx  = c->ctx;
     c->stream.size = c->size;
-    return ra8_comic_cbz_open(c);
+    return priv_comic_cbz_open(c);
   }
   const ra8_err_t rerr = ra8_rar_open(&c->rar, c->read, c->ctx, c->size);
   if (rerr == k_ra8_ok) {
     c->kind = k_ra8_comic_kind_cbr;
-    return ra8_comic_cbr_open(c);
+    return priv_comic_cbr_open(c);
   }
   /* tar has no leading magic bytes; the walker's open probes block 0
    * (ustar magic + checksum), so a non-tar file is rejected cheaply. */
   const ra8_err_t terr = ra8_unarch_tar_open(&c->tar, c->read, c->ctx, c->size, nullptr);
   if (terr == k_ra8_ok) {
     c->kind = k_ra8_comic_kind_cbt;
-    return ra8_comic_cbt_open(c);
+    return priv_comic_cbt_open(c);
   }
   return k_ra8_err_not_supported;
 }
@@ -485,19 +478,19 @@ ra8_err_t ra8_comic_page_read(ra8_comic_t* c, uint32_t page, uint8_t* buf, size_
   }
   const ra8_comic_page_t* p = &c->pages[page];
   if (c->kind == k_ra8_comic_kind_cbz) {
-    return ra8_comic_cbz_extract(c, p, buf, cap, got);
+    return priv_comic_cbz_extract(c, p, buf, cap, got);
   }
   if (c->kind == k_ra8_comic_kind_cbt) {
-    return ra8_comic_cbt_extract(c, p, buf, cap, got);
+    return priv_comic_cbt_extract(c, p, buf, cap, got);
   }
-  return ra8_comic_cbr_extract(c, p, buf, cap, got);
+  return priv_comic_cbr_extract(c, p, buf, cap, got);
 }
 
 ra8_err_t ra8_comic_close(ra8_comic_t* c)
 {
   RA8_CHECK_NULL_PTR(c, s_tag_comic, "close: null c");
   if (c->kind == k_ra8_comic_kind_cbz) {
-    (void)ra8_comic_cbz_close(c);
+    (void)priv_comic_cbz_close(c);
   }
   c->kind       = k_ra8_comic_kind_none;
   c->page_count = 0U;
