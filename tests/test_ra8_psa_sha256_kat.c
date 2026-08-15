@@ -23,7 +23,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -146,6 +145,5 @@ int32_t main(void)
 {
   test_sha256_nist_short_vectors();
   test_sha256_nist_million_a();
-  (void)fprintf(stderr, "[OK ] test_ra8_psa_sha256_kat.c\n");
   return 0;
 }
