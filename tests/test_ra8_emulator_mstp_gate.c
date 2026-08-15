@@ -6,7 +6,7 @@
  * Compiles the engine-free half of the ra8_emulator module-stop model
  * (tools/ra8_emulator/src/periph/board_periph_mstp_model.c) directly on the host and
  * drives its public seam (board_periph_mstp_internal.h). The ra8_emulator core
- * consults ::board_mstp_addr_stopped before answering an MMIO access to an
+ * consults ::priv_board_mstp_addr_stopped before answering an MMIO access to an
  * owning peripheral block; these tests prove the gate table is correct so a
  * peripheral the firmware never ungated is inert in the emulator exactly as it
  * is on silicon:
@@ -72,9 +72,9 @@ static void set_module_stop(uint16_t id, bool stop)
   const uint32_t reg = ((uint32_t)id >> (uint32_t)k_t_id_reg_shift) & (uint32_t)k_t_id_byte_mask;
   const uint32_t bit = (uint32_t)id & (uint32_t)k_t_id_byte_mask;
   const uint64_t off = (uint64_t)reg * (uint64_t)k_t_reg_bytes;
-  const uint32_t cur = board_mstp_read_reg(off, (unsigned)k_t_reg_bytes);
+  const uint32_t cur = priv_board_mstp_read_reg(off, (unsigned)k_t_reg_bytes);
   const uint32_t nxt = stop ? (cur | ((uint32_t)1U << bit)) : (cur & ~((uint32_t)1U << bit));
-  board_mstp_apply_write(off, (unsigned)k_t_reg_bytes, nxt);
+  priv_board_mstp_apply_write(off, (unsigned)k_t_reg_bytes, nxt);
 }
 
 /**
@@ -82,20 +82,20 @@ static void set_module_stop(uint16_t id, bool stop)
  *
  * @par MC/DC:
  * No compound decision -- confirms the reset baseline the gate depends on: with
- * no ungate yet, ::board_mstp_addr_stopped is true for a representative address
+ * no ungate yet, ::priv_board_mstp_addr_stopped is true for a representative address
  * in several families.
  */
 static void test_reset_all_stopped(void)
 {
   TEST_BEGIN("mstp_gate: reset stops every gated peripheral");
-  board_mstp_reset();
-  TEST_ASSERT(board_mstp_addr_stopped((uint64_t)k_t_sci0));
-  TEST_ASSERT(board_mstp_addr_stopped((uint64_t)k_t_sci3));
-  TEST_ASSERT(board_mstp_addr_stopped((uint64_t)k_t_spi1));
-  TEST_ASSERT(board_mstp_addr_stopped((uint64_t)k_t_gpt0));
-  TEST_ASSERT(board_mstp_addr_stopped((uint64_t)k_t_cac));
-  TEST_ASSERT(board_mstp_addr_stopped((uint64_t)k_t_drw));
-  TEST_ASSERT(board_mstp_addr_stopped((uint64_t)k_t_adc));
+  priv_board_mstp_reset();
+  TEST_ASSERT(priv_board_mstp_addr_stopped((uint64_t)k_t_sci0));
+  TEST_ASSERT(priv_board_mstp_addr_stopped((uint64_t)k_t_sci3));
+  TEST_ASSERT(priv_board_mstp_addr_stopped((uint64_t)k_t_spi1));
+  TEST_ASSERT(priv_board_mstp_addr_stopped((uint64_t)k_t_gpt0));
+  TEST_ASSERT(priv_board_mstp_addr_stopped((uint64_t)k_t_cac));
+  TEST_ASSERT(priv_board_mstp_addr_stopped((uint64_t)k_t_drw));
+  TEST_ASSERT(priv_board_mstp_addr_stopped((uint64_t)k_t_adc));
   TEST_END("mstp_gate: reset stops every gated peripheral");
 }
 
@@ -110,14 +110,14 @@ static void test_reset_all_stopped(void)
 static void test_ungate_regate_one(void)
 {
   TEST_BEGIN("mstp_gate: ungate/re-gate a single instance");
-  board_mstp_reset();
+  priv_board_mstp_reset();
 
   set_module_stop((uint16_t)k_ra8_mstp_sci3, false); /* ra8_mstp_enable(SCI3) */
-  TEST_ASSERT(!board_mstp_addr_stopped((uint64_t)k_t_sci3));
-  TEST_ASSERT(board_mstp_addr_stopped((uint64_t)k_t_sci0)); /* neighbour untouched */
+  TEST_ASSERT(!priv_board_mstp_addr_stopped((uint64_t)k_t_sci3));
+  TEST_ASSERT(priv_board_mstp_addr_stopped((uint64_t)k_t_sci0)); /* neighbour untouched */
 
   set_module_stop((uint16_t)k_ra8_mstp_sci3, true); /* ra8_mstp_disable(SCI3) */
-  TEST_ASSERT(board_mstp_addr_stopped((uint64_t)k_t_sci3));
+  TEST_ASSERT(priv_board_mstp_addr_stopped((uint64_t)k_t_sci3));
   TEST_END("mstp_gate: ungate/re-gate a single instance");
 }
 
@@ -131,16 +131,16 @@ static void test_ungate_regate_one(void)
 static void test_shared_bit_gpt(void)
 {
   TEST_BEGIN("mstp_gate: shared GPT4..9 bit releases both");
-  board_mstp_reset();
+  priv_board_mstp_reset();
 
   set_module_stop((uint16_t)k_ra8_mstp_gpt4_9, false);
-  TEST_ASSERT(!board_mstp_addr_stopped((uint64_t)k_t_gpt4));
-  TEST_ASSERT(!board_mstp_addr_stopped((uint64_t)k_t_gpt9));
-  TEST_ASSERT(board_mstp_addr_stopped((uint64_t)k_t_gpt0)); /* distinct bit */
+  TEST_ASSERT(!priv_board_mstp_addr_stopped((uint64_t)k_t_gpt4));
+  TEST_ASSERT(!priv_board_mstp_addr_stopped((uint64_t)k_t_gpt9));
+  TEST_ASSERT(priv_board_mstp_addr_stopped((uint64_t)k_t_gpt0)); /* distinct bit */
 
   set_module_stop((uint16_t)k_ra8_mstp_gpt4_9, true);
-  TEST_ASSERT(board_mstp_addr_stopped((uint64_t)k_t_gpt4));
-  TEST_ASSERT(board_mstp_addr_stopped((uint64_t)k_t_gpt9));
+  TEST_ASSERT(priv_board_mstp_addr_stopped((uint64_t)k_t_gpt4));
+  TEST_ASSERT(priv_board_mstp_addr_stopped((uint64_t)k_t_gpt9));
   TEST_END("mstp_gate: shared GPT4..9 bit releases both");
 }
 
@@ -149,15 +149,15 @@ static void test_shared_bit_gpt(void)
  *
  * @par MC/DC:
  * No compound decision -- GPIO and ICU own no gate entry, so
- * ::board_mstp_addr_stopped is false for them even at reset (when every gated
+ * ::priv_board_mstp_addr_stopped is false for them even at reset (when every gated
  * block IS stopped), proving un-gated blocks answer unchanged.
  */
 static void test_ungated_addr_never_stopped(void)
 {
   TEST_BEGIN("mstp_gate: ungated peripherals never gated");
-  board_mstp_reset();
-  TEST_ASSERT(!board_mstp_addr_stopped((uint64_t)k_t_gpio));
-  TEST_ASSERT(!board_mstp_addr_stopped((uint64_t)k_t_icu));
+  priv_board_mstp_reset();
+  TEST_ASSERT(!priv_board_mstp_addr_stopped((uint64_t)k_t_gpio));
+  TEST_ASSERT(!priv_board_mstp_addr_stopped((uint64_t)k_t_icu));
   TEST_END("mstp_gate: ungated peripherals never gated");
 }
 
@@ -177,13 +177,13 @@ static void test_ungated_addr_never_stopped(void)
 static void test_range_decision_mcdc(void)
 {
   TEST_BEGIN("mstp_gate: in-range decision MC/DC");
-  board_mstp_reset(); /* CAC starts stopped, so an in-range hit reports true. */
+  priv_board_mstp_reset(); /* CAC starts stopped, so an in-range hit reports true. */
   /* base */
-  TEST_ASSERT(board_mstp_addr_stopped((uint64_t)k_t_cac));
+  TEST_ASSERT(priv_board_mstp_addr_stopped((uint64_t)k_t_cac));
   /* below base */
-  TEST_ASSERT(!board_mstp_addr_stopped((uint64_t)k_t_cac - 4U));
+  TEST_ASSERT(!priv_board_mstp_addr_stopped((uint64_t)k_t_cac - 4U));
   /* base+span */
-  TEST_ASSERT(!board_mstp_addr_stopped((uint64_t)k_t_cac + 0x10U));
+  TEST_ASSERT(!priv_board_mstp_addr_stopped((uint64_t)k_t_cac + 0x10U));
   TEST_END("mstp_gate: in-range decision MC/DC");
 }
 
@@ -208,21 +208,21 @@ typedef enum : uint32_t {
 static void test_readback_and_subword(void)
 {
   TEST_BEGIN("mstp_gate: shadow read-back + sub-word merge");
-  board_mstp_reset();
+  priv_board_mstp_reset();
 
   /* MSTPCRB: full-word write reads back intact. */
-  board_mstp_apply_write((uint64_t)k_t_mstpcrb_off,
-                         (unsigned)k_t_word_bytes,
-                         (uint32_t)k_t_pat_word);
+  priv_board_mstp_apply_write((uint64_t)k_t_mstpcrb_off,
+                              (unsigned)k_t_word_bytes,
+                              (uint32_t)k_t_pat_word);
   TEST_ASSERT_EQ(k_t_pat_word,
-                 board_mstp_read_reg((uint64_t)k_t_mstpcrb_off, (unsigned)k_t_word_bytes));
+                 priv_board_mstp_read_reg((uint64_t)k_t_mstpcrb_off, (unsigned)k_t_word_bytes));
 
   /* Byte write to the low lane of MSTPCRB merges without touching the rest. */
-  board_mstp_apply_write((uint64_t)k_t_mstpcrb_off,
-                         (unsigned)k_t_byte_bytes,
-                         (uint32_t)k_t_pat_byte);
+  priv_board_mstp_apply_write((uint64_t)k_t_mstpcrb_off,
+                              (unsigned)k_t_byte_bytes,
+                              (uint32_t)k_t_pat_byte);
   TEST_ASSERT_EQ(k_t_pat_merged,
-                 board_mstp_read_reg((uint64_t)k_t_mstpcrb_off, (unsigned)k_t_word_bytes));
+                 priv_board_mstp_read_reg((uint64_t)k_t_mstpcrb_off, (unsigned)k_t_word_bytes));
   TEST_END("mstp_gate: shadow read-back + sub-word merge");
 }
 
@@ -236,15 +236,15 @@ static void test_readback_and_subword(void)
 static void test_gated_access_counters(void)
 {
   TEST_BEGIN("mstp_gate: dropped-access observability");
-  board_mstp_reset();
-  TEST_ASSERT_EQ(0U, board_mstp_gated_read_count());
-  TEST_ASSERT_EQ(0U, board_mstp_gated_write_count());
+  priv_board_mstp_reset();
+  TEST_ASSERT_EQ(0U, priv_board_mstp_gated_read_count());
+  TEST_ASSERT_EQ(0U, priv_board_mstp_gated_write_count());
 
-  board_mstp_note_gated_access((uint64_t)k_t_sci3, false);
-  board_mstp_note_gated_access((uint64_t)k_t_sci3, true);
-  TEST_ASSERT_EQ(1U, board_mstp_gated_read_count());
-  TEST_ASSERT_EQ(1U, board_mstp_gated_write_count());
-  TEST_ASSERT(board_mstp_last_gated_name()[0] != '\0');
+  priv_board_mstp_note_gated_access((uint64_t)k_t_sci3, false);
+  priv_board_mstp_note_gated_access((uint64_t)k_t_sci3, true);
+  TEST_ASSERT_EQ(1U, priv_board_mstp_gated_read_count());
+  TEST_ASSERT_EQ(1U, priv_board_mstp_gated_write_count());
+  TEST_ASSERT(priv_board_mstp_last_gated_name()[0] != '\0');
   TEST_END("mstp_gate: dropped-access observability");
 }
 

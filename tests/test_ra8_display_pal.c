@@ -158,7 +158,7 @@ static display_cfg_t make_lcd_cfg(void)
     .width_px          = (uint16_t)k_test_fb_width,
     .height_px         = (uint16_t)k_test_fb_height,
     .pixfmt            = k_display_pixfmt_rgb565,
-    .panel_timing      = &k_ra8_panel_ek_ra8d2_timing,
+    .panel_timing      = &s_ra8_panel_ek_ra8d2_timing,
   };
   return cfg;
 }
