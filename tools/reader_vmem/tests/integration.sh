@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-if (( $# != 3 )); then
+if (($# != 3)); then
   echo "usage: integration.sh READER_VMEM WORKSPACE_TEST MAX_BUDGET" >&2
   exit 2
 fi

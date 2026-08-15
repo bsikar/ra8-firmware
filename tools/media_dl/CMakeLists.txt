@@ -1,5 +1,6 @@
-# SPDX-License-Identifier: MIT Copyright (c) 2026 Brighton Sikarskie
-#
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+
 # media_dl -- native host CLI for the RA8 e-reader's comic/manga/manhwa/webtoon
 # downloader. Builds for the DEV MACHINE (x86_64 / arm64), NOT the ARM target:
 # it links the firmware's platform-agnostic pieces (currently the ra8_err
