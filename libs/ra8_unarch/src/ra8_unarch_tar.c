@@ -66,10 +66,10 @@ bool ra8_unarch_tar_probe(const uint8_t* block, size_t len)
   if (len < (size_t)k_ra8_unarch_tar_block) {
     return false;
   }
-  if (!ra8_unarch_tar_magic_ok(block)) {
+  if (!priv_unarch_tar_magic_ok(block)) {
     return false;
   }
-  return ra8_unarch_tar_checksum_ok(block);
+  return priv_unarch_tar_checksum_ok(block);
 }
 
 ra8_err_t ra8_unarch_tar_open(ra8_unarch_tar_t*          t,
@@ -223,14 +223,14 @@ static ra8_err_t internal_meta_consume(const ra8_unarch_tar_t* t,
     return k_ra8_err_validation_failed; /* backing truncated */
   }
   if (type == k_ra8_tar_type_pax) {
-    return ra8_unarch_tar_pax_parse(data,
-                                    (size_t)dsize,
-                                    meta->name_buf,
-                                    meta->name_cap,
-                                    &meta->name_len,
-                                    &meta->have_path,
-                                    &meta->size_ovr,
-                                    &meta->have_size);
+    return priv_unarch_tar_pax_parse(data,
+                                     (size_t)dsize,
+                                     meta->name_buf,
+                                     meta->name_cap,
+                                     &meta->name_len,
+                                     &meta->have_path,
+                                     &meta->size_ovr,
+                                     &meta->have_size);
   }
   /* GNU longname: the data is the member name, usually NUL-padded. */
   size_t nlen = (size_t)dsize;
@@ -319,18 +319,18 @@ static ra8_err_t internal_decode_header(const uint8_t*  block,
                                         uint64_t*       dsize,
                                         uint64_t*       next)
 {
-  if (!ra8_unarch_tar_checksum_ok(block)) {
+  if (!priv_unarch_tar_checksum_ok(block)) {
     return k_ra8_err_validation_failed;
   }
-  if (!ra8_unarch_tar_magic_ok(block)) {
+  if (!priv_unarch_tar_magic_ok(block)) {
     return k_ra8_err_validation_failed;
   }
   const ra8_err_t serr =
-    ra8_unarch_tar_num(&block[k_ra8_tar_off_size], (size_t)k_ra8_tar_len_size, dsize);
+    priv_unarch_tar_num(&block[k_ra8_tar_off_size], (size_t)k_ra8_tar_len_size, dsize);
   if (serr != k_ra8_ok) {
     return serr;
   }
-  *type = ra8_unarch_tar_classify(block[k_ra8_tar_off_type]);
+  *type = priv_unarch_tar_classify(block[k_ra8_tar_off_type]);
   return internal_next_off(off, *dsize, next);
 }
 
@@ -433,7 +433,7 @@ ra8_err_t ra8_unarch_tar_next(ra8_unarch_tar_t*       t,
     if (rerr != k_ra8_ok) {
       return rerr;
     }
-    if (ra8_unarch_tar_block_zero(block)) {
+    if (priv_unarch_tar_block_zero(block)) {
       return k_ra8_err_not_found; /* end-of-archive marker */
     }
     ra8_tar_type_t  type  = k_ra8_tar_type_other;
