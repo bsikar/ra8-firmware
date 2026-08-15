@@ -101,7 +101,7 @@ typedef enum : uint8_t {
  * @since Version 0.1.0
  */
 RA8_PRIV [[nodiscard]] ra8_err_t
-ra8_unarch_tar_num(const uint8_t* field, size_t len, uint64_t* out);
+priv_unarch_tar_num(const uint8_t* field, size_t len, uint64_t* out);
 
 /**
  * @brief Whether a header block is all zero bytes (end-of-archive marker).
@@ -127,7 +127,7 @@ ra8_unarch_tar_num(const uint8_t* field, size_t len, uint64_t* out);
  * decisions; the scan is a single-condition loop).
  * @since Version 0.1.0
  */
-RA8_PRIV [[nodiscard]] bool ra8_unarch_tar_block_zero(const uint8_t* block);
+RA8_PRIV [[nodiscard]] bool priv_unarch_tar_block_zero(const uint8_t* block);
 
 /**
  * @brief Verify a header block's checksum (unsigned byte sum).
@@ -154,7 +154,7 @@ RA8_PRIV [[nodiscard]] bool ra8_unarch_tar_block_zero(const uint8_t* block);
  * undecodable-field arms directly.
  * @since Version 0.1.0
  */
-RA8_PRIV [[nodiscard]] bool ra8_unarch_tar_checksum_ok(const uint8_t* block);
+RA8_PRIV [[nodiscard]] bool priv_unarch_tar_checksum_ok(const uint8_t* block);
 
 /**
  * @brief Whether a header block carries the ustar / GNU magic.
@@ -180,7 +180,7 @@ RA8_PRIV [[nodiscard]] bool ra8_unarch_tar_checksum_ok(const uint8_t* block);
  * terminator compound directly.
  * @since Version 0.1.0
  */
-RA8_PRIV [[nodiscard]] bool ra8_unarch_tar_magic_ok(const uint8_t* block);
+RA8_PRIV [[nodiscard]] bool priv_unarch_tar_magic_ok(const uint8_t* block);
 
 /**
  * @brief Classify a header block's typeflag byte.
@@ -206,7 +206,7 @@ RA8_PRIV [[nodiscard]] bool ra8_unarch_tar_magic_ok(const uint8_t* block);
  * comparisons only).
  * @since Version 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_tar_type_t ra8_unarch_tar_classify(uint8_t typeflag);
+RA8_PRIV [[nodiscard]] ra8_tar_type_t priv_unarch_tar_classify(uint8_t typeflag);
 
 /**
  * @brief Parse pax extended-header records, extracting path / size.
@@ -248,14 +248,14 @@ RA8_PRIV [[nodiscard]] ra8_tar_type_t ra8_unarch_tar_classify(uint8_t typeflag);
  * record shape (length, delimiter, terminator, value) directly.
  * @since Version 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_unarch_tar_pax_parse(const uint8_t* data,
-                                                          size_t         len,
-                                                          char*          name_buf,
-                                                          uint16_t       name_cap,
-                                                          uint16_t*      name_len,
-                                                          bool*          have_path,
-                                                          uint64_t*      size_ovr,
-                                                          bool*          have_size);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_unarch_tar_pax_parse(const uint8_t* data,
+                                                           size_t         len,
+                                                           char*          name_buf,
+                                                           uint16_t       name_cap,
+                                                           uint16_t*      name_len,
+                                                           bool*          have_path,
+                                                           uint64_t*      size_ovr,
+                                                           bool*          have_size);
 
 #ifdef __cplusplus
 }

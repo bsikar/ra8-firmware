@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_decomp_limits.h"
 #include "ra8_err.h"
 #include "ra8_unarch_io.h"
@@ -81,7 +82,7 @@ typedef enum : uint32_t {
  *          `sizeof` instead of a runtime `strlen`; the payload is the line's
  *          characters only, so the copies below exclude the trailing NUL.
  */
-static const char k_tx_small_line[] = "hello xz stream, bounded and fail-closed\n";
+static const char s_tx_small_line[] = "hello xz stream, bounded and fail-closed\n";
 
 /** @brief Session scratch for every decode (8-aligned for the pool). */
 alignas(8) static uint8_t s_scratch[k_tx_scratch];
@@ -92,8 +93,20 @@ static uint8_t s_mut[sizeof(k_fx_xz_crc64_4k) + k_tx_trailing];
 /** @brief Expected payload scratch (LCG or repeated text). */
 static uint8_t s_expect[k_tx_payload_4k];
 
-/** @brief Regenerate the 4 KiB LCG payload exactly as the fixture generator. */
-static void tx_lcg_fill(uint8_t* dst, size_t n)
+/** @brief Regenerate the 4 KiB LCG payload exactly as the fixture generator.
+ *
+ * @details Regenerates the fixture generator LCG byte stream for exact decoded-output comparison.
+ * @param[out] dst Writable expected-payload buffer.
+ * @param[in] n Number of bytes to regenerate.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static void internal_tx_lcg_fill(uint8_t* dst, size_t n)
 {
   uint32_t s = (uint32_t)k_tx_lcg_seed;
   for (size_t i = 0U; i < n; ++i) {
@@ -102,21 +115,50 @@ static void tx_lcg_fill(uint8_t* dst, size_t n)
   }
 }
 
-/** @brief Build the repeated-text payload; returns its length. */
-static size_t tx_small_fill(uint8_t* dst)
+/** @brief Build the repeated-text payload; returns its length.
+ *
+ * @details Builds the repeated short-text payload used by both CRC32 and CRC64 fixture goldens.
+ * @param[out] dst Writable repeated-text buffer.
+ * @return Expected payload length.
+ * @retval >0 The repeated fixture text was written.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static size_t internal_tx_small_fill(uint8_t* dst)
 {
-  const size_t line = sizeof(k_tx_small_line) - 1U; /* characters, without NUL */
+  const size_t line = sizeof(s_tx_small_line) - 1U; /* characters, without NUL */
   size_t       off  = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_tx_small_rep; ++i) {
-    memcpy(&dst[off], k_tx_small_line, line);
+    memcpy(&dst[off], s_tx_small_line, line);
     off += line;
   }
   return off;
 }
 
-/** @brief Convenience: unwrap a flat buffer with optional custom limits. */
+/** @brief Convenience: unwrap a flat buffer with optional custom limits.
+ *
+ * @details Invokes the production XZ wrapper with fixed caller-owned scratch and destination arenas.
+ * @param[in] buf Complete XZ stream bytes.
+ * @param[in] len Input length.
+ * @param[in] lim Optional policy override.
+ * @param[out] out_len Receives decoded bytes.
+ * @return Decoder status.
+ * @retval k_ra8_ok The stream decoded and validated.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
 static ra8_err_t
-tx_unwrap(const uint8_t* buf, size_t len, const ra8_decomp_limits_t* lim, size_t* out_len)
+internal_tx_unwrap(const uint8_t* buf, size_t len, const ra8_decomp_limits_t* lim, size_t* out_len)
 {
   ra8_unarch_mem_t mem = {.base = buf, .len = len};
   return ra8_unarch_xz_unwrap(ra8_unarch_mem_read,
@@ -131,14 +173,24 @@ tx_unwrap(const uint8_t* buf, size_t len, const ra8_decomp_limits_t* lim, size_t
 }
 
 /**
- * @test test_xz_pool_edges
+ * @test internal_test_xz_pool_edges
  * @brief The bump arena rejects every invalid install / alloc and stays exact.
  *
  * @par MC/DC:
  * (no compound decisions under test -- every pool guard is an independent
  * single-condition early return.)
+
+ *
+ * @details Exercises arena installation, alignment, exact exhaustion, overflow rejection, and idempotent reset.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
  */
-static void test_xz_pool_edges(void)
+RA8_INTERNAL
+static void internal_test_xz_pool_edges(void)
 {
   TEST_BEGIN("xz pool: install/alloc/reset edges");
   ra8_unarch_xz_pool_reset();
@@ -169,14 +221,24 @@ static void test_xz_pool_edges(void)
 }
 
 /**
- * @test test_xz_mem_read_edges
+ * @test internal_test_xz_mem_read_edges
  * @brief The flat-memory read seam clamps every hostile offset / length.
  *
  * @par MC/DC:
  * (no compound decisions under test -- the view guards are independent
  * single-condition early returns.)
+
+ *
+ * @details Proves the flat-memory reader rejects null views and clamps offsets and lengths at the source boundary.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
  */
-static void test_xz_mem_read_edges(void)
+RA8_INTERNAL
+static void internal_test_xz_mem_read_edges(void)
 {
   TEST_BEGIN("xz io: flat-memory read seam clamps");
   uint8_t          src[4] = {1U, 2U, 3U, 4U};
@@ -197,14 +259,24 @@ static void test_xz_mem_read_edges(void)
 }
 
 /**
- * @test test_xz_magic_probe
+ * @test internal_test_xz_magic_probe
  * @brief The signature probe accepts only the six XZ magic bytes.
  *
  * @par MC/DC:
  * (no compound decisions under test -- NULL and length guards are
  * independent single-condition early returns; the byte compare is memeq.)
+
+ *
+ * @details Checks exact XZ magic acceptance and each short or mismatched prefix rejection.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
  */
-static void test_xz_magic_probe(void)
+RA8_INTERNAL
+static void internal_test_xz_magic_probe(void)
 {
   TEST_BEGIN("xz: magic probe");
   TEST_ASSERT(!ra8_unarch_xz_magic(nullptr, 6U));
@@ -216,14 +288,24 @@ static void test_xz_magic_probe(void)
 }
 
 /**
- * @test test_xz_session_guards
+ * @test internal_test_xz_session_guards
  * @brief begin/run/end argument and liveness guards fail closed.
  *
  * @par MC/DC:
  * (no compound decisions under test -- each guard is an independent
  * single-condition early return.)
+
+ *
+ * @details Exercises session initialization, step, finish, and reset guards around caller-owned scratch.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
  */
-static void test_xz_session_guards(void)
+RA8_INTERNAL
+static void internal_test_xz_session_guards(void)
 {
   TEST_BEGIN("xz: session guards");
   ra8_unarch_xz_stream_t xs = {};
@@ -269,14 +351,24 @@ static void test_xz_session_guards(void)
 }
 
 /**
- * @test test_xz_unwrap_guards
+ * @test internal_test_xz_unwrap_guards
  * @brief unwrap argument validation fails closed before any decode.
  *
  * @par MC/DC:
  * (no compound decisions under test -- each guard is an independent
  * single-condition early return.)
+
+ *
+ * @details Checks every unwrap pointer, size, alignment, and limit guard before decoder state is published.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
  */
-static void test_xz_unwrap_guards(void)
+RA8_INTERNAL
+static void internal_test_xz_unwrap_guards(void)
 {
   TEST_BEGIN("xz: unwrap argument guards");
   size_t           got = 1U;
@@ -301,7 +393,7 @@ static void test_xz_unwrap_guards(void)
                                       nullptr,
                                       nullptr));
 
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, tx_unwrap(k_fx_xz_crc32, 0U, nullptr, &got));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, internal_tx_unwrap(k_fx_xz_crc32, 0U, nullptr, &got));
   TEST_ASSERT_EQ(0U, got);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_unarch_xz_unwrap(ra8_unarch_mem_read,
@@ -317,7 +409,7 @@ static void test_xz_unwrap_guards(void)
   ra8_decomp_limits_t bad = ra8_decomp_limits_default();
   bad.max_ratio           = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 tx_unwrap(k_fx_xz_crc32, sizeof(k_fx_xz_crc32), &bad, &got));
+                 internal_tx_unwrap(k_fx_xz_crc32, sizeof(k_fx_xz_crc32), &bad, &got));
 
   /* Undersized scratch propagates from the session begin. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
@@ -334,33 +426,60 @@ static void test_xz_unwrap_guards(void)
 }
 
 /**
- * @test test_xz_unwrap_honest_streams
+ * @test internal_test_xz_unwrap_honest_streams
  * @brief CRC64 (multi-pass) and CRC32 streams decode byte-exactly.
  *
  * @par MC/DC:
  * (no compound decisions under test -- the unwrap loop conditions are
  * independent single-condition guards, each driven by a hostile variant
  * elsewhere in this suite.)
+
+ *
+ * @details Decodes committed CRC32 and CRC64 fixtures and compares all bytes against regenerated payloads.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
  */
-static void test_xz_unwrap_honest_streams(void)
+RA8_INTERNAL
+static void internal_test_xz_unwrap_honest_streams(void)
 {
   TEST_BEGIN("xz: honest CRC64 + CRC32 streams decode");
   size_t got = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, tx_unwrap(k_fx_xz_crc64_4k, sizeof(k_fx_xz_crc64_4k), nullptr, &got));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 internal_tx_unwrap(k_fx_xz_crc64_4k, sizeof(k_fx_xz_crc64_4k), nullptr, &got));
   TEST_ASSERT_EQ(k_tx_payload_4k, got);
-  tx_lcg_fill(s_expect, (size_t)k_tx_payload_4k);
+  internal_tx_lcg_fill(s_expect, (size_t)k_tx_payload_4k);
   TEST_ASSERT_EQ(0, memcmp(s_arena, s_expect, (size_t)k_tx_payload_4k));
 
   got = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, tx_unwrap(k_fx_xz_crc32, sizeof(k_fx_xz_crc32), nullptr, &got));
-  const size_t small_len = tx_small_fill(s_expect);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_tx_unwrap(k_fx_xz_crc32, sizeof(k_fx_xz_crc32), nullptr, &got));
+  const size_t small_len = internal_tx_small_fill(s_expect);
   TEST_ASSERT_EQ(small_len, got);
   TEST_ASSERT_EQ(0, memcmp(s_arena, s_expect, small_len));
   TEST_END("xz: honest CRC64 + CRC32 streams decode");
 }
 
-/** @brief Hostile read fn: honest bytes but an over-reported byte count. */
-static size_t tx_read_overreport(void* ctx, uint64_t offset, void* buf, size_t len)
+/** @brief Hostile read fn: honest bytes but an over-reported byte count.
+ *
+ * @details Wraps the memory reader but deliberately reports more bytes than requested to model a hostile source.
+ * @param[in] ctx Memory-reader context.
+ * @param[in] offset Requested source offset.
+ * @param[out] buf Caller destination buffer.
+ * @param[in] len Requested byte count.
+ * @return Hostile reported read length.
+ * @retval >0 Returns the underlying count plus the deliberate over-report delta.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static size_t internal_tx_read_overreport(void* ctx, uint64_t offset, void* buf, size_t len)
 {
   const size_t n = ra8_unarch_mem_read(ctx, offset, buf, len);
   if (n == 0U) {
@@ -370,20 +489,30 @@ static size_t tx_read_overreport(void* ctx, uint64_t offset, void* buf, size_t l
 }
 
 /**
- * @test test_xz_unwrap_hostile_reader
+ * @test internal_test_xz_unwrap_hostile_reader
  * @brief A backing that over-reports its read count is clamped, not trusted.
  *
  * @par MC/DC:
  * (no compound decisions under test -- the clamp is a single-condition
  * guard; this vector drives its true arm, every other test its false arm.)
+
+ *
+ * @details Proves a reader that over-reports progress is rejected without exceeding caller-owned buffers.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
  */
-static void test_xz_unwrap_hostile_reader(void)
+RA8_INTERNAL
+static void internal_test_xz_unwrap_hostile_reader(void)
 {
   TEST_BEGIN("xz: over-reporting reader is clamped");
   ra8_unarch_mem_t mem = {.base = k_fx_xz_crc32, .len = sizeof(k_fx_xz_crc32)};
   size_t           got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_unarch_xz_unwrap(tx_read_overreport,
+                 ra8_unarch_xz_unwrap(internal_tx_read_overreport,
                                       &mem,
                                       (uint64_t)sizeof(k_fx_xz_crc32),
                                       s_arena,
@@ -392,40 +521,50 @@ static void test_xz_unwrap_hostile_reader(void)
                                       (uint32_t)sizeof(s_scratch),
                                       nullptr,
                                       &got));
-  const size_t small_len = tx_small_fill(s_expect);
+  const size_t small_len = internal_tx_small_fill(s_expect);
   TEST_ASSERT_EQ(small_len, got);
   TEST_ASSERT_EQ(0, memcmp(s_arena, s_expect, small_len));
   TEST_END("xz: over-reporting reader is clamped");
 }
 
 /**
- * @test test_xz_unwrap_rejects_hostile_streams
+ * @test internal_test_xz_unwrap_rejects_hostile_streams
  * @brief Every malformed / unsupported stream shape is rejected fail-closed.
  *
  * @par MC/DC:
  * (no compound decisions under test -- each rejection exercises one
  * single-condition mapping arm of `internal_xz_map_err` / the unwrap loop.)
+
+ *
+ * @details Covers unsupported checks, oversized dictionaries, corruption, truncation, trailing bytes, and non-XZ input.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
  */
-static void test_xz_unwrap_rejects_hostile_streams(void)
+RA8_INTERNAL
+static void internal_test_xz_unwrap_rejects_hostile_streams(void)
 {
   TEST_BEGIN("xz: hostile stream shapes rejected");
   size_t got = 1U;
 
   /* SHA-256 integrity check: not compiled in, must reject (never mis-decode). */
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 tx_unwrap(k_fx_xz_sha256, sizeof(k_fx_xz_sha256), nullptr, &got));
+                 internal_tx_unwrap(k_fx_xz_sha256, sizeof(k_fx_xz_sha256), nullptr, &got));
   TEST_ASSERT_EQ(0U, got);
 
   /* Declared 8 MiB dictionary exceeds the scratch budget: reject, no growth. */
   got = 1U;
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
-                 tx_unwrap(k_fx_xz_bigdict, sizeof(k_fx_xz_bigdict), nullptr, &got));
+                 internal_tx_unwrap(k_fx_xz_bigdict, sizeof(k_fx_xz_bigdict), nullptr, &got));
   TEST_ASSERT_EQ(0U, got);
 
   /* Not an XZ stream at all. */
   got                    = 1U;
   const uint8_t junk[32] = {0x50U, 0x4BU, 0x03U, 0x04U};
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, tx_unwrap(junk, sizeof(junk), nullptr, &got));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, internal_tx_unwrap(junk, sizeof(junk), nullptr, &got));
   TEST_ASSERT_EQ(0U, got);
 
   /* One corrupted payload byte: integrity check must catch it. */
@@ -433,24 +572,25 @@ static void test_xz_unwrap_rejects_hostile_streams(void)
   memcpy(s_mut, k_fx_xz_crc64_4k, sizeof(k_fx_xz_crc64_4k));
   s_mut[sizeof(k_fx_xz_crc64_4k) / 2U] ^= k_t_corrupt_mask;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 tx_unwrap(s_mut, sizeof(k_fx_xz_crc64_4k), nullptr, &got));
+                 internal_tx_unwrap(s_mut, sizeof(k_fx_xz_crc64_4k), nullptr, &got));
   TEST_ASSERT_EQ(0U, got);
 
   /* Truncated stream: the backing runs dry under the decoder. */
   got = 1U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 tx_unwrap(k_fx_xz_crc64_4k,
-                           sizeof(k_fx_xz_crc64_4k) - (size_t)k_tx_truncate_by,
-                           nullptr,
-                           &got));
+                 internal_tx_unwrap(k_fx_xz_crc64_4k,
+                                    sizeof(k_fx_xz_crc64_4k) - (size_t)k_tx_truncate_by,
+                                    nullptr,
+                                    &got));
   TEST_ASSERT_EQ(0U, got);
 
   /* Trailing garbage after the verified footer: reject (no concatenation). */
   got = 1U;
   memcpy(s_mut, k_fx_xz_crc64_4k, sizeof(k_fx_xz_crc64_4k));
   memset(&s_mut[sizeof(k_fx_xz_crc64_4k)], k_tx_fill_trailing, (size_t)k_tx_trailing);
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 tx_unwrap(s_mut, sizeof(k_fx_xz_crc64_4k) + (size_t)k_tx_trailing, nullptr, &got));
+  TEST_ASSERT_EQ(
+    k_ra8_err_validation_failed,
+    internal_tx_unwrap(s_mut, sizeof(k_fx_xz_crc64_4k) + (size_t)k_tx_trailing, nullptr, &got));
   TEST_ASSERT_EQ(0U, got);
   TEST_END("xz: hostile stream shapes rejected");
 }
@@ -466,9 +606,16 @@ static void test_xz_unwrap_rejects_hostile_streams(void)
  * @post No state beyond the shared arena and @p got is modified.
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
+
+ *
+ * @details Runs one memory-backed decode with a caller-selected output arena and policy object.
+ * @retval k_ra8_ok The stream decoded within the supplied limits.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @post All writes remain within caller-owned fixture storage.
  */
+RA8_INTERNAL
 static ra8_err_t
-tx_unwrap_arena(ra8_unarch_mem_t* mem, size_t inlen, ra8_decomp_limits_t* lim, size_t* got)
+internal_tx_unwrap_arena(ra8_unarch_mem_t* mem, size_t inlen, ra8_decomp_limits_t* lim, size_t* got)
 {
   return ra8_unarch_xz_unwrap(ra8_unarch_mem_read,
                               mem,
@@ -482,7 +629,7 @@ tx_unwrap_arena(ra8_unarch_mem_t* mem, size_t inlen, ra8_decomp_limits_t* lim, s
 }
 
 /**
- * @test test_xz_unwrap_policy_bounds
+ * @test internal_test_xz_unwrap_policy_bounds
  * @brief Each decompression-limits axis fires: ratio (default policy),
  *        output cap, iteration budget, and the undersized-arena shapes.
  *
@@ -490,8 +637,18 @@ tx_unwrap_arena(ra8_unarch_mem_t* mem, size_t inlen, ra8_decomp_limits_t* lim, s
  * (no compound decisions under test -- each breach exercises one
  * single-condition budget charge in `ra8_decomp_limits.c` or one arm of
  * the unwrap loop's arena-full mapping.)
+
+ *
+ * @details Drives output, iteration, and compression-ratio budgets at their acceptance and rejection boundaries.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
  */
-static void test_xz_unwrap_policy_bounds(void)
+RA8_INTERNAL
+static void internal_test_xz_unwrap_policy_bounds(void)
 {
   TEST_BEGIN("xz: policy bounds fire");
   size_t got = 1U;
@@ -500,7 +657,7 @@ static void test_xz_unwrap_policy_bounds(void)
    * bound (1024:1 + 64 KiB grace) about 356 KiB in -- far inside the
    * 512 KiB arena, proving the bomb dies by policy, not by buffer size. */
   TEST_ASSERT_EQ(k_ra8_err_decomp_ratio,
-                 tx_unwrap(k_fx_xz_bomb_1m, sizeof(k_fx_xz_bomb_1m), nullptr, &got));
+                 internal_tx_unwrap(k_fx_xz_bomb_1m, sizeof(k_fx_xz_bomb_1m), nullptr, &got));
   TEST_ASSERT_EQ(0U, got);
 
   /* Tightened output cap fires before the honest stream completes. */
@@ -508,7 +665,7 @@ static void test_xz_unwrap_policy_bounds(void)
   ra8_decomp_limits_t lim = ra8_decomp_limits_default();
   lim.max_output_bytes    = (uint64_t)k_tx_small_out;
   TEST_ASSERT_EQ(k_ra8_err_decomp_output_cap,
-                 tx_unwrap(k_fx_xz_crc64_4k, sizeof(k_fx_xz_crc64_4k), &lim, &got));
+                 internal_tx_unwrap(k_fx_xz_crc64_4k, sizeof(k_fx_xz_crc64_4k), &lim, &got));
   TEST_ASSERT_EQ(0U, got);
 
   /* Tightened iteration budget: the 4156-byte stream needs several 512-byte
@@ -517,14 +674,15 @@ static void test_xz_unwrap_policy_bounds(void)
   lim                = ra8_decomp_limits_default();
   lim.max_iterations = 1U;
   TEST_ASSERT_EQ(k_ra8_err_decomp_iterations,
-                 tx_unwrap(k_fx_xz_crc64_4k, sizeof(k_fx_xz_crc64_4k), &lim, &got));
+                 internal_tx_unwrap(k_fx_xz_crc64_4k, sizeof(k_fx_xz_crc64_4k), &lim, &got));
   TEST_ASSERT_EQ(0U, got);
 
   /* Arena smaller than the payload, input fully consumable: the stream can
    * never end, the backing runs dry, and the full arena maps to no_mem. */
   got                  = 1U;
   ra8_unarch_mem_t mem = {.base = k_fx_xz_crc64_4k, .len = sizeof(k_fx_xz_crc64_4k)};
-  TEST_ASSERT_EQ(k_ra8_err_no_mem, tx_unwrap_arena(&mem, sizeof(k_fx_xz_crc64_4k), nullptr, &got));
+  TEST_ASSERT_EQ(k_ra8_err_no_mem,
+                 internal_tx_unwrap_arena(&mem, sizeof(k_fx_xz_crc64_4k), nullptr, &got));
   TEST_ASSERT_EQ(0U, got);
 
   /* Arena smaller than the payload with input left over: the decoder stalls
@@ -535,7 +693,8 @@ static void test_xz_unwrap_policy_bounds(void)
   ra8_decomp_limits_t loose = ra8_decomp_limits_default();
   loose.max_ratio           = k_t_ratio_loose;
   ra8_unarch_mem_t bomb     = {.base = k_fx_xz_bomb_1m, .len = sizeof(k_fx_xz_bomb_1m)};
-  TEST_ASSERT_EQ(k_ra8_err_no_mem, tx_unwrap_arena(&bomb, sizeof(k_fx_xz_bomb_1m), &loose, &got));
+  TEST_ASSERT_EQ(k_ra8_err_no_mem,
+                 internal_tx_unwrap_arena(&bomb, sizeof(k_fx_xz_bomb_1m), &loose, &got));
   TEST_ASSERT_EQ(0U, got);
   TEST_END("xz: policy bounds fire");
 }
@@ -546,15 +705,14 @@ static void test_xz_unwrap_policy_bounds(void)
  */
 int32_t main(void)
 {
-  test_xz_pool_edges();
-  test_xz_mem_read_edges();
-  test_xz_magic_probe();
-  test_xz_session_guards();
-  test_xz_unwrap_guards();
-  test_xz_unwrap_honest_streams();
-  test_xz_unwrap_hostile_reader();
-  test_xz_unwrap_rejects_hostile_streams();
-  test_xz_unwrap_policy_bounds();
-  (void)fprintf(stderr, "[OK  ] test_ra8_unarch_xz.c\n");
+  internal_test_xz_pool_edges();
+  internal_test_xz_mem_read_edges();
+  internal_test_xz_magic_probe();
+  internal_test_xz_session_guards();
+  internal_test_xz_unwrap_guards();
+  internal_test_xz_unwrap_honest_streams();
+  internal_test_xz_unwrap_hostile_reader();
+  internal_test_xz_unwrap_rejects_hostile_streams();
+  internal_test_xz_unwrap_policy_bounds();
   return 0;
 }

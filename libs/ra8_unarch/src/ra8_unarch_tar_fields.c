@@ -152,7 +152,7 @@ static ra8_err_t internal_base256(const uint8_t* field, size_t len, uint64_t* ou
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_unarch_tar_num(const uint8_t* field, size_t len, uint64_t* out)
+RA8_PRIV ra8_err_t priv_unarch_tar_num(const uint8_t* field, size_t len, uint64_t* out)
 {
   RA8_CHECK_NULL_PTR(field, s_tag_tar_f, "num: null field");
   RA8_CHECK_NULL_PTR(out, s_tag_tar_f, "num: null out");
@@ -166,7 +166,7 @@ ra8_err_t ra8_unarch_tar_num(const uint8_t* field, size_t len, uint64_t* out)
   return internal_octal(field, len, out);
 }
 
-bool ra8_unarch_tar_block_zero(const uint8_t* block)
+RA8_PRIV bool priv_unarch_tar_block_zero(const uint8_t* block)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_unarch_tar_block; ++i) { /* bound: block size */
     if (block[i] != 0U) {
@@ -176,7 +176,7 @@ bool ra8_unarch_tar_block_zero(const uint8_t* block)
   return true;
 }
 
-bool ra8_unarch_tar_checksum_ok(const uint8_t* block)
+RA8_PRIV bool priv_unarch_tar_checksum_ok(const uint8_t* block)
 {
   uint32_t sum = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_unarch_tar_block; ++i) { /* bound: block size */
@@ -192,7 +192,7 @@ bool ra8_unarch_tar_checksum_ok(const uint8_t* block)
   return stored == (uint64_t)sum;
 }
 
-bool ra8_unarch_tar_magic_ok(const uint8_t* block)
+RA8_PRIV bool priv_unarch_tar_magic_ok(const uint8_t* block)
 {
   static const char k_magic[] = "ustar";
   if (memcmp(&block[k_ra8_tar_off_magic], k_magic, (size_t)k_ra8_tar_len_magic) != 0) {
@@ -202,7 +202,7 @@ bool ra8_unarch_tar_magic_ok(const uint8_t* block)
   return (term == 0U) || (term == (uint8_t)' ');
 }
 
-ra8_tar_type_t ra8_unarch_tar_classify(uint8_t typeflag)
+RA8_PRIV ra8_tar_type_t priv_unarch_tar_classify(uint8_t typeflag)
 {
   if (typeflag == (uint8_t)'0') {
     return k_ra8_tar_type_file;
@@ -386,14 +386,14 @@ static ra8_err_t internal_pax_apply(const uint8_t* key,
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_unarch_tar_pax_parse(const uint8_t* data,
-                                   size_t         len,
-                                   char*          name_buf,
-                                   uint16_t       name_cap,
-                                   uint16_t*      name_len,
-                                   bool*          have_path,
-                                   uint64_t*      size_ovr,
-                                   bool*          have_size)
+RA8_PRIV ra8_err_t priv_unarch_tar_pax_parse(const uint8_t* data,
+                                             size_t         len,
+                                             char*          name_buf,
+                                             uint16_t       name_cap,
+                                             uint16_t*      name_len,
+                                             bool*          have_path,
+                                             uint64_t*      size_ovr,
+                                             bool*          have_size)
 {
   RA8_CHECK_NULL_PTR(data, s_tag_tar_f, "pax: null data");
   RA8_CHECK_NULL_PTR(name_len, s_tag_tar_f, "pax: null name_len");

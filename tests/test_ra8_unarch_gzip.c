@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_decomp_limits.h"
 #include "ra8_err.h"
 #include "ra8_unarch_gzip.h"
@@ -97,8 +98,20 @@ static uint8_t s_arena[k_tg_arena];
 /** @brief Source payload scratch. */
 static uint8_t s_payload[k_tg_zeros];
 
-/** @brief Fill @p n pseudo-random (incompressible) payload bytes. */
-static void tg_fill(uint8_t* dst, size_t n)
+/** @brief Fill @p n pseudo-random (incompressible) payload bytes.
+ *
+ * @details Regenerates deterministic payload bytes so gzip fixture comparisons do not depend on host randomness.
+ * @param[out] dst Writable deterministic-payload buffer.
+ * @param[in] n Number of bytes to generate.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static void internal_tg_fill(uint8_t* dst, size_t n)
 {
   uint32_t s = (uint32_t)k_tg_lcg_seed;
   for (size_t i = 0U; i < n; ++i) {
@@ -113,8 +126,20 @@ static void tg_fill(uint8_t* dst, size_t n)
  *          small fixed contents; FHCRC is computed correctly. The body is
  *          miniz raw DEFLATE, the trailer CRC32 + ISIZE of the payload.
  * @return The member length in bytes (0 on build failure).
+
+ * @param[in] payload Member payload bytes.
+ * @param[in] n Payload length.
+ * @param[in] flg Gzip optional-field flags to serialize.
+ * @retval >0 A complete member was serialized.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
  */
-static size_t tg_build(const uint8_t* payload, size_t n, uint8_t flg)
+RA8_INTERNAL
+static size_t internal_tg_build(const uint8_t* payload, size_t n, uint8_t flg)
 {
   size_t off      = 0U;
   s_member[off++] = k_t_magic_b0;
@@ -157,9 +182,25 @@ static size_t tg_build(const uint8_t* payload, size_t n, uint8_t flg)
   return off + 8U;
 }
 
-/** @brief Decode a flat member buffer with optional custom limits. */
+/** @brief Decode a flat member buffer with optional custom limits.
+ *
+ * @details Runs the production streaming decoder over one caller-owned memory view and the shared bounded test arena.
+ * @param[in] buf Complete gzip stream bytes.
+ * @param[in] len Input length.
+ * @param[in] lim Optional policy override; NULL selects defaults.
+ * @param[out] out_len Receives the decoded byte count.
+ * @return Decoder status.
+ * @retval k_ra8_ok The stream decoded and validated.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
 static ra8_err_t
-tg_unwrap(const uint8_t* buf, size_t len, const ra8_decomp_limits_t* lim, size_t* out_len)
+internal_tg_unwrap(const uint8_t* buf, size_t len, const ra8_decomp_limits_t* lim, size_t* out_len)
 {
   ra8_unarch_mem_t mem = {.base = buf, .len = len};
   return ra8_unarch_gzip_unwrap(ra8_unarch_mem_read,
@@ -172,14 +213,24 @@ tg_unwrap(const uint8_t* buf, size_t len, const ra8_decomp_limits_t* lim, size_t
 }
 
 /**
- * @test test_gzip_magic_and_guards
+ * @test internal_test_gzip_magic_and_guards
  * @brief Magic probe + unwrap argument validation.
  *
  * @par MC/DC:
  * (no compound decisions under test -- probe and entry guards are
  * independent single-condition early returns.)
+
+ *
+ * @details Exercises magic probing plus every public null, zero-size, and invalid-limit guard before decoding begins.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
  */
-static void test_gzip_magic_and_guards(void)
+RA8_INTERNAL
+static void internal_test_gzip_magic_and_guards(void)
 {
   TEST_BEGIN("gzip: magic probe + argument guards");
   const uint8_t sig[2] = {0x1FU, 0x8BU};
@@ -208,86 +259,107 @@ static void test_gzip_magic_and_guards(void)
     ra8_unarch_gzip_unwrap(ra8_unarch_mem_read, &mem, 32U, s_arena, 0U, nullptr, &got));
   ra8_decomp_limits_t bad = ra8_decomp_limits_default();
   bad.max_iterations      = 0U;
-  const size_t len        = tg_build(s_payload, 16U, 0U);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, tg_unwrap(s_member, len, &bad, &got));
+  const size_t len        = internal_tg_build(s_payload, 16U, 0U);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_tg_unwrap(s_member, len, &bad, &got));
   TEST_END("gzip: magic probe + argument guards");
 }
 
 /**
- * @test test_gzip_honest_members
+ * @test internal_test_gzip_honest_members
  * @brief Members with every header-field combination decode byte-exactly.
  *
  * @par MC/DC:
  * (no compound decisions under test -- each optional-field flag is an
  * independent single-condition branch, driven set and clear across these
  * vectors.)
+
+ *
+ * @details Decodes single and concatenated honest members and compares their bytes and reported lengths exactly.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
  */
-static void test_gzip_honest_members(void)
+RA8_INTERNAL
+static void internal_test_gzip_honest_members(void)
 {
   TEST_BEGIN("gzip: honest members decode");
-  tg_fill(s_payload, (size_t)k_tg_payload);
+  internal_tg_fill(s_payload, (size_t)k_tg_payload);
   size_t got = 0U;
 
   /* Plain member, multi-pass input (8 KiB incompressible > 512 window). */
-  size_t len = tg_build(s_payload, (size_t)k_tg_payload, 0U);
-  TEST_ASSERT_EQ(k_ra8_ok, tg_unwrap(s_member, len, nullptr, &got));
+  size_t len = internal_tg_build(s_payload, (size_t)k_tg_payload, 0U);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_tg_unwrap(s_member, len, nullptr, &got));
   TEST_ASSERT_EQ(k_tg_payload, got);
   TEST_ASSERT_EQ(0, memcmp(s_arena, s_payload, got));
 
   /* Every optional field at once: FTEXT+FHCRC+FEXTRA+FNAME+FCOMMENT. */
-  len = tg_build(s_payload, (size_t)k_tg_payload, k_t_magic_b0);
-  TEST_ASSERT_EQ(k_ra8_ok, tg_unwrap(s_member, len, nullptr, &got));
+  len = internal_tg_build(s_payload, (size_t)k_tg_payload, k_t_magic_b0);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_tg_unwrap(s_member, len, nullptr, &got));
   TEST_ASSERT_EQ(k_tg_payload, got);
   TEST_ASSERT_EQ(0, memcmp(s_arena, s_payload, got));
 
   /* Empty payload: a valid gzip of a zero-byte file. */
-  len = tg_build(s_payload, 0U, 0U);
-  TEST_ASSERT_EQ(k_ra8_ok, tg_unwrap(s_member, len, nullptr, &got));
+  len = internal_tg_build(s_payload, 0U, 0U);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_tg_unwrap(s_member, len, nullptr, &got));
   TEST_ASSERT_EQ(0U, got);
   TEST_END("gzip: honest members decode");
 }
 
 /**
- * @test test_gzip_hostile_headers
+ * @test internal_test_gzip_hostile_headers
  * @brief Every malformed header shape is rejected with the specific error.
  *
  * @par MC/DC:
  * (no compound decisions under test -- each rejection drives one
  * single-condition guard in the header parser.)
+
+ *
+ * @details Mutates every bounded gzip header form to prove truncation, invalid flags, and unterminated metadata fail closed.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
  */
-static void test_gzip_hostile_headers(void)
+RA8_INTERNAL
+static void internal_test_gzip_hostile_headers(void)
 {
   TEST_BEGIN("gzip: hostile headers rejected");
   size_t got = 1U;
-  size_t len = tg_build(s_payload, k_t_payload_small, 0x02U); /* with FHCRC */
+  size_t len = internal_tg_build(s_payload, k_t_payload_small, 0x02U); /* with FHCRC */
 
   /* Wrong magic / method / reserved bits. */
   uint8_t save = s_member[0];
   s_member[0]  = k_t_magic_wrong;
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, tg_unwrap(s_member, len, nullptr, &got));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, internal_tg_unwrap(s_member, len, nullptr, &got));
   TEST_ASSERT_EQ(0U, got);
   s_member[0] = save;
   save        = s_member[2];
   s_member[2] = k_t_method_wrong; /* not DEFLATE */
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, tg_unwrap(s_member, len, nullptr, &got));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, internal_tg_unwrap(s_member, len, nullptr, &got));
   s_member[2] = save;
   save        = s_member[3];
   s_member[3] |= 0x20U; /* reserved flag bit */
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, tg_unwrap(s_member, len, nullptr, &got));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, internal_tg_unwrap(s_member, len, nullptr, &got));
   s_member[3] = save;
 
   /* Corrupt FHCRC. */
   s_member[k_t_hdr_fixed] ^= k_t_byte_mask; /* first FHCRC byte (no optional fields before it) */
-  TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch, tg_unwrap(s_member, len, nullptr, &got));
+  TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch, internal_tg_unwrap(s_member, len, nullptr, &got));
   s_member[k_t_hdr_fixed] ^= k_t_byte_mask;
 
   /* Header truncated inside the fixed fields. */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(s_member, 6U, nullptr, &got));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_tg_unwrap(s_member, 6U, nullptr, &got));
 
   /* Unterminated FNAME: flag set, no NUL before EOF. */
   uint8_t tiny[16] = {k_t_magic_b0, k_t_magic_b1, 8U, 0x08U};
   memset(&tiny[k_tg_off_extra], (int)'n', (size_t)k_tg_len_unterm);
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(tiny, sizeof(tiny), nullptr, &got));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 internal_tg_unwrap(tiny, sizeof(tiny), nullptr, &got));
 
   /* Over-long FNAME: longer than the fail-closed cap, NUL far away. */
   uint8_t* big = s_member;
@@ -299,97 +371,120 @@ static void test_gzip_hostile_headers(void)
   memset(&big[k_tg_off_extra], (int)'n', (size_t)k_tg_longname);
   big[k_t_hdr_fixed + (size_t)k_tg_longname] = 0U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 tg_unwrap(big, 10U + (size_t)k_tg_longname + 1U, nullptr, &got));
+                 internal_tg_unwrap(big, 10U + (size_t)k_tg_longname + 1U, nullptr, &got));
 
   /* FEXTRA whose declared length runs past the member. */
   uint8_t fx[16]       = {k_t_magic_b0, k_t_magic_b1, 8U, 0x04U};
   fx[k_t_hdr_fixed]    = k_t_byte_mask;
   fx[k_t_hdr_fixed_p1] = 0x00U; /* XLEN=255 with only 4 bytes left */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(fx, sizeof(fx), nullptr, &got));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_tg_unwrap(fx, sizeof(fx), nullptr, &got));
   TEST_END("gzip: hostile headers rejected");
 }
 
 /**
- * @test test_gzip_hostile_body_and_trailer
+ * @test internal_test_gzip_hostile_body_and_trailer
  * @brief Corrupt / truncated bodies and lying trailers are rejected.
  *
  * @par MC/DC:
  * (no compound decisions under test -- each rejection drives one
  * single-condition guard in the inflate loop or trailer verifier.)
+
+ *
+ * @details Corrupts compressed data, CRC, ISIZE, and trailing bytes to prove validation precedes successful publication.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
  */
-static void test_gzip_hostile_body_and_trailer(void)
+RA8_INTERNAL
+static void internal_test_gzip_hostile_body_and_trailer(void)
 {
   TEST_BEGIN("gzip: hostile bodies + trailers rejected");
-  tg_fill(s_payload, k_t_payload_mid);
+  internal_tg_fill(s_payload, k_t_payload_mid);
   size_t got = 1U;
-  size_t len = tg_build(s_payload, k_t_payload_mid, 0U);
+  size_t len = internal_tg_build(s_payload, k_t_payload_mid, 0U);
 
   /* Corrupt DEFLATE: reserved block type at the stream start. */
   const uint8_t save      = s_member[10];
   s_member[k_t_hdr_fixed] = 0x06U; /* BTYPE=11 (reserved) */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(s_member, len, nullptr, &got));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_tg_unwrap(s_member, len, nullptr, &got));
   TEST_ASSERT_EQ(0U, got);
   s_member[k_t_hdr_fixed] = save;
 
   /* Truncated DEFLATE: cut mid-body (before the trailer). */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(s_member, len - 20U, nullptr, &got));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 internal_tg_unwrap(s_member, len - 20U, nullptr, &got));
 
   /* Truncated trailer: member ends inside the 8 trailer bytes. */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(s_member, len - 4U, nullptr, &got));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 internal_tg_unwrap(s_member, len - 4U, nullptr, &got));
 
   /* Lying trailer CRC32. */
   s_member[len - 8U] ^= k_t_byte_mask;
-  TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch, tg_unwrap(s_member, len, nullptr, &got));
+  TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch, internal_tg_unwrap(s_member, len, nullptr, &got));
   s_member[len - 8U] ^= k_t_byte_mask;
 
   /* Lying trailer ISIZE. */
   s_member[len - 1U] ^= k_t_byte_mask;
-  TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch, tg_unwrap(s_member, len, nullptr, &got));
+  TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch, internal_tg_unwrap(s_member, len, nullptr, &got));
   s_member[len - 1U] ^= k_t_byte_mask;
 
   /* Trailing bytes after the member: no concatenation. */
   s_member[len] = k_t_trailing_junk;
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(s_member, len + 1U, nullptr, &got));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 internal_tg_unwrap(s_member, len + 1U, nullptr, &got));
 
   /* Unmodified member still decodes (the mutations were reverted). */
-  TEST_ASSERT_EQ(k_ra8_ok, tg_unwrap(s_member, len, nullptr, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_tg_unwrap(s_member, len, nullptr, &got));
   TEST_ASSERT_EQ(256U, got);
   TEST_END("gzip: hostile bodies + trailers rejected");
 }
 
 /**
- * @test test_gzip_policy_bounds
+ * @test internal_test_gzip_policy_bounds
  * @brief Ratio, output cap, iteration budget, and arena exhaustion fire.
  *
  * @par MC/DC:
  * (no compound decisions under test -- each breach drives one
  * single-condition budget charge or the arena-full guard.)
+
+ *
+ * @details Tightens output, iteration, and ratio budgets independently and checks each policy-specific failure.
+ * @pre All input spans and fixture capacities satisfy the bounds stated by this helper.
+ * @pre The caller has initialized any state that this helper consumes or advances.
+ * @post All writes remain within caller-owned fixture storage.
+ * @post No heap allocation or external I/O is performed.
+ * @note Test-only and not reentrant because fixtures use file-scope scratch storage.
+ * @since Version 0.1.0
  */
-static void test_gzip_policy_bounds(void)
+RA8_INTERNAL
+static void internal_test_gzip_policy_bounds(void)
 {
   TEST_BEGIN("gzip: policy bounds fire");
   size_t got = 1U;
 
   /* Ratio bomb: 64 KiB of zeros in a few hundred bytes, tightened ratio. */
   memset(s_payload, 0, (size_t)k_tg_zeros);
-  size_t              len = tg_build(s_payload, (size_t)k_tg_zeros, 0U);
+  size_t              len = internal_tg_build(s_payload, (size_t)k_tg_zeros, 0U);
   ra8_decomp_limits_t lim = ra8_decomp_limits_default();
   lim.max_ratio           = 2U;
   lim.ratio_grace_bytes   = 16U;
-  TEST_ASSERT_EQ(k_ra8_err_decomp_ratio, tg_unwrap(s_member, len, &lim, &got));
+  TEST_ASSERT_EQ(k_ra8_err_decomp_ratio, internal_tg_unwrap(s_member, len, &lim, &got));
   TEST_ASSERT_EQ(0U, got);
 
   /* Output cap: the same member against a small absolute cap. */
   lim                  = ra8_decomp_limits_default();
   lim.max_output_bytes = k_t_output_cap;
-  TEST_ASSERT_EQ(k_ra8_err_decomp_output_cap, tg_unwrap(s_member, len, &lim, &got));
+  TEST_ASSERT_EQ(k_ra8_err_decomp_output_cap, internal_tg_unwrap(s_member, len, &lim, &got));
 
   /* Iteration budget: an incompressible body needs many input refills. */
-  tg_fill(s_payload, (size_t)k_tg_payload);
-  len                = tg_build(s_payload, (size_t)k_tg_payload, 0U);
+  internal_tg_fill(s_payload, (size_t)k_tg_payload);
+  len                = internal_tg_build(s_payload, (size_t)k_tg_payload, 0U);
   lim                = ra8_decomp_limits_default();
   lim.max_iterations = 2U;
-  TEST_ASSERT_EQ(k_ra8_err_decomp_iterations, tg_unwrap(s_member, len, &lim, &got));
+  TEST_ASSERT_EQ(k_ra8_err_decomp_iterations, internal_tg_unwrap(s_member, len, &lim, &got));
 
   /* Arena smaller than the payload: no_mem, not a crash. */
   ra8_unarch_mem_t mem = {.base = s_member, .len = len};
@@ -411,11 +506,10 @@ static void test_gzip_policy_bounds(void)
  */
 int32_t main(void)
 {
-  test_gzip_magic_and_guards();
-  test_gzip_honest_members();
-  test_gzip_hostile_headers();
-  test_gzip_hostile_body_and_trailer();
-  test_gzip_policy_bounds();
-  (void)fprintf(stderr, "[OK  ] test_ra8_unarch_gzip.c\n");
+  internal_test_gzip_magic_and_guards();
+  internal_test_gzip_honest_members();
+  internal_test_gzip_hostile_headers();
+  internal_test_gzip_hostile_body_and_trailer();
+  internal_test_gzip_policy_bounds();
   return 0;
 }
