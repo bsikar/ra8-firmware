@@ -84,10 +84,11 @@ _tb_media_dl() (
   ctest --test-dir "$root/media_dl" --output-on-failure
 )
 
-# rabook_viewer: build, link, and exercise the headless render. Linking is not
-# evidence the reader still decodes anything, so the committed CBZ fixture is
-# driven through the headless path and the pixels are checked -- a zero exit
-# with no image would be a vacuous pass.
+# rabook_viewer: build, link, and exercise the supported headless JOF path.
+# Linking is not evidence the reader still decodes anything, so the corpus
+# drives both raw and DEFLATE JOF fixtures through the renderer and checks that
+# each produces a P6 image. It also verifies clean rejection of malformed and
+# currently unsupported archive inputs.
 _tb_rabook_viewer() (
   set -e
   local cc="$1" root="$2" jobs="$3"
@@ -98,22 +99,12 @@ _tb_rabook_viewer() (
   cmake --build "$root/rabook_viewer" -j "$jobs"
   test -x "$root/rabook_viewer/rabook_viewer"
 
-  local ppm="$root/viewer_page0.ppm"
-  "$root/rabook_viewer/rabook_viewer" \
-    "$PWD/tools/rabook_viewer/fixtures/sample.cbz" --headless --dump-ppm "$ppm"
-  if [[ "$(head -c 2 "$ppm" 2>/dev/null)" != "P6" ]]; then
-    echo "ERROR: rabook_viewer --headless did not write a P6 PPM." >&2
-    echo "       A zero exit with no image would be a vacuous pass." >&2
-    return 1
-  fi
-  echo "tools-build: headless render wrote $(wc -c <"$ppm") bytes of P6"
-
   # #298: the viewer meets attacker-supplied archives first, so its untrusted-
   # allocation guards (page-buffer cap, JOF atlas/band bounds) are exercised
   # here. The corpus refuses a lying/oversized/overflowing header cleanly and
-  # still decodes a valid atlas -- a regression would otherwise need a human at
-  # a window to notice.
-  echo "tools-build: rabook_viewer malformed-input security corpus"
+  # still decodes raw and DEFLATE atlases -- a regression would otherwise need
+  # a human at a window to notice.
+  echo "tools-build: rabook_viewer valid-JOF and malformed-input corpus"
   bash "$PWD/tools/rabook_viewer/tests/run_corpus.sh" \
     "$root/rabook_viewer/rabook_viewer" "$root/ra8_viewer_corpus"
 )
