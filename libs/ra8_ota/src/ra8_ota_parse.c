@@ -7,15 +7,15 @@
  * state-free parsing and validation surface so the orchestration TU
  * stays under the per-file line budget:
  *
- *   - The two MC/DC predicates (``ra8_ota_internal_char_in_range`` and
- *     ``ra8_ota_internal_download_state_invalid``).
- *   - The JSON / hex scanning helpers (``priv_json_str``,
- *     ``ra8_ota_internal_json_u32``, ``priv_hex_nibble``,
- *     ``priv_hex_decode``).
- *   - The manifest decoders (``priv_manifest_decode_crypto`` and
+ *   - The two MC/DC predicates (``priv_ota_char_in_range`` and
+ *     ``priv_ota_download_state_invalid``).
+ *   - The JSON / hex scanning helpers (``internal_json_str``,
+ *     ``priv_ota_json_u32``, ``internal_hex_nibble``,
+ *     ``internal_hex_decode``).
+ *   - The manifest decoders (``internal_manifest_decode_crypto`` and
  *     ``priv_manifest_decode``).
  *   - The configuration validators rooted at
- *     ``ra8_ota_internal_validate_cfg``.
+ *     ``priv_ota_validate_cfg``.
  *
  * Every function here is pure with respect to module state -- none of
  * them read or write the mutable statics owned by ``ra8_ota.c``. The
@@ -72,7 +72,8 @@ typedef enum : uint32_t {
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool ra8_ota_internal_char_in_range(char c, char lo, char hi)
+RA8_PRIV
+bool priv_ota_char_in_range(char c, char lo, char hi)
 {
   return (c >= lo) && (c <= hi);
 }
@@ -93,9 +94,10 @@ bool ra8_ota_internal_char_in_range(char c, char lo, char hi)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool ra8_ota_internal_download_state_invalid(uint32_t state_idle_val,
-                                             uint32_t state_downloading_val,
-                                             uint32_t state)
+RA8_PRIV
+bool priv_ota_download_state_invalid(uint32_t state_idle_val,
+                                     uint32_t state_downloading_val,
+                                     uint32_t state)
 {
   return (state != state_idle_val) && (state != state_downloading_val);
 }
@@ -113,7 +115,7 @@ bool ra8_ota_internal_download_state_invalid(uint32_t state_idle_val,
  * and image chunks.
  *
  * @param[in] cfg Caller configuration (already verified non-NULL by
- *                ``ra8_ota_internal_validate_cfg``).
+ *                ``priv_ota_validate_cfg``).
  *
  * @return ra8_err_t outcome.
  * @retval k_ra8_ok           All net function pointers set.
@@ -128,7 +130,7 @@ bool ra8_ota_internal_download_state_invalid(uint32_t state_idle_val,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_validate_cfg_net(const ra8_ota_cfg_t* cfg)
+static ra8_err_t internal_validate_cfg_net(const ra8_ota_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg->net.open, s_tag, "net.open");
   RA8_CHECK_NULL_PTR(cfg->net.read, s_tag, "net.read");
@@ -159,7 +161,7 @@ static ra8_err_t priv_validate_cfg_net(const ra8_ota_cfg_t* cfg)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_validate_cfg_crypto(const ra8_ota_cfg_t* cfg)
+static ra8_err_t internal_validate_cfg_crypto(const ra8_ota_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg->crypto.sha256_init, s_tag, "crypto.sha256_init");
   RA8_CHECK_NULL_PTR(cfg->crypto.sha256_update, s_tag, "crypto.sha256_update");
@@ -192,7 +194,7 @@ static ra8_err_t priv_validate_cfg_crypto(const ra8_ota_cfg_t* cfg)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_validate_cfg_flash(const ra8_ota_cfg_t* cfg)
+static ra8_err_t internal_validate_cfg_flash(const ra8_ota_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg->flash.erase, s_tag, "flash.erase");
   RA8_CHECK_NULL_PTR(cfg->flash.program, s_tag, "flash.program");
@@ -207,18 +209,18 @@ static ra8_err_t priv_validate_cfg_flash(const ra8_ota_cfg_t* cfg)
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_ota_internal_validate_cfg(const ra8_ota_cfg_t* cfg)
+RA8_PRIV ra8_err_t priv_ota_validate_cfg(const ra8_ota_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg");
-  ra8_err_t e = priv_validate_cfg_net(cfg);
+  ra8_err_t e = internal_validate_cfg_net(cfg);
   if (e != k_ra8_ok) {
     return e;
   }
-  e = priv_validate_cfg_crypto(cfg);
+  e = internal_validate_cfg_crypto(cfg);
   if (e != k_ra8_ok) {
     return e;
   }
-  e = priv_validate_cfg_flash(cfg);
+  e = internal_validate_cfg_flash(cfg);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -261,7 +263,7 @@ ra8_err_t ra8_ota_internal_validate_cfg(const ra8_ota_cfg_t* cfg)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_json_str(const char* json, const char* key, char* dst, uint32_t cap)
+static ra8_err_t internal_json_str(const char* json, const char* key, char* dst, uint32_t cap)
 {
   const char* p = strstr(json, key);
   if (p == nullptr) {
@@ -310,7 +312,8 @@ static ra8_err_t priv_json_str(const char* json, const char* key, char* dst, uin
  * @note Static helper; pure function.
  * @since 0.1.0
  */
-ra8_err_t ra8_ota_internal_json_u32(const char* json, const char* key, uint32_t* out_v)
+RA8_PRIV
+ra8_err_t priv_ota_json_u32(const char* json, const char* key, uint32_t* out_v)
 {
   const char* p = strstr(json, key);
   if (p == nullptr) {
@@ -363,7 +366,7 @@ ra8_err_t ra8_ota_internal_json_u32(const char* json, const char* key, uint32_t*
  * @post Side effects bounded to documented state.
  */
 RA8_INTERNAL
-static uint8_t priv_hex_nibble(char c)
+static uint8_t internal_hex_nibble(char c)
 {
   if ((c >= '0') && (c <= '9')) {
     return (uint8_t)(c - '0');
@@ -371,7 +374,7 @@ static uint8_t priv_hex_nibble(char c)
   if ((c >= 'a') && (c <= 'f')) {
     return (uint8_t)((uint8_t)k_ra8_ota_hex_alpha_offset + (c - 'a'));
   }
-  if (ra8_ota_internal_char_in_range(c, 'A', 'F')) {
+  if (priv_ota_char_in_range(c, 'A', 'F')) {
     return (uint8_t)((uint8_t)k_ra8_ota_hex_alpha_offset + (c - 'A'));
   }
   return (uint8_t)k_ra8_ota_hex_invalid_nibble;
@@ -382,7 +385,7 @@ static uint8_t priv_hex_nibble(char c)
  *        decoded, or 0 on a malformed input.
  *
  * @details Walks the input two characters at a time, calling
- *   ``priv_hex_nibble`` on each. Rejects odd-length input or any
+ *   ``internal_hex_nibble`` on each. Rejects odd-length input or any
  *   non-hex character by returning 0.
  *
  * @param[in]  in      NUL-terminated hex string.
@@ -401,7 +404,7 @@ static uint8_t priv_hex_nibble(char c)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_hex_decode(const char* in, uint8_t* out, uint32_t out_cap)
+static uint32_t internal_hex_decode(const char* in, uint8_t* out, uint32_t out_cap)
 {
   const uint32_t in_len = (uint32_t)strlen(in);
   if ((in_len % (uint32_t)k_ra8_ota_hex_chars_per_byte) != 0U) {
@@ -413,8 +416,8 @@ static uint32_t priv_hex_decode(const char* in, uint8_t* out, uint32_t out_cap)
   }
   for (uint32_t i = 0U; i < bytes; ++i) {
     const size_t  base_idx = (size_t)i * (size_t)k_ra8_ota_hex_chars_per_byte;
-    const uint8_t hi       = priv_hex_nibble(in[base_idx]);
-    const uint8_t lo       = priv_hex_nibble(in[base_idx + 1U]);
+    const uint8_t hi       = internal_hex_nibble(in[base_idx]);
+    const uint8_t lo       = internal_hex_nibble(in[base_idx + 1U]);
     if ((hi == (uint8_t)k_ra8_ota_hex_invalid_nibble) ||
         (lo == (uint8_t)k_ra8_ota_hex_invalid_nibble)) {
       return 0U;
@@ -432,7 +435,7 @@ static uint32_t priv_hex_decode(const char* in, uint8_t* out, uint32_t out_cap)
  * @brief Pull the sha256 + signature hex blobs out of a JSON manifest.
  *
  * @details Locates the ``"sha256"`` and ``"signature"`` string fields
- *   via ``priv_json_str``, hex-decodes them with ``priv_hex_decode``
+ *   via ``internal_json_str``, hex-decodes them with ``internal_hex_decode``
  *   into the manifest struct, and validates lengths.
  *
  * @param[in]  json NUL-terminated JSON payload.
@@ -451,23 +454,23 @@ static uint32_t priv_hex_decode(const char* in, uint8_t* out, uint32_t out_cap)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_manifest_decode_crypto(const char* json, ra8_ota_manifest_t* out)
+static ra8_err_t internal_manifest_decode_crypto(const char* json, ra8_ota_manifest_t* out)
 {
   char      hex[k_ra8_ota_hex_buf_bytes];
-  ra8_err_t e = priv_json_str(json, "\"sha256\"", hex, sizeof hex);
+  ra8_err_t e = internal_json_str(json, "\"sha256\"", hex, sizeof hex);
   if (e != k_ra8_ok) {
     return e;
   }
-  const uint32_t n_d = priv_hex_decode(hex, out->image_sha256, k_ra8_ota_sha256_bytes);
+  const uint32_t n_d = internal_hex_decode(hex, out->image_sha256, k_ra8_ota_sha256_bytes);
   if (n_d != k_ra8_ota_sha256_bytes) {
     return k_ra8_err_invalid_arg;
   }
 
-  e = priv_json_str(json, "\"signature\"", hex, sizeof hex);
+  e = internal_json_str(json, "\"signature\"", hex, sizeof hex);
   if (e != k_ra8_ok) {
     return e;
   }
-  const uint32_t n_s = priv_hex_decode(hex, out->signature, k_ra8_ota_signature_max_bytes);
+  const uint32_t n_s = internal_hex_decode(hex, out->signature, k_ra8_ota_signature_max_bytes);
   if (n_s == 0U) {
     return k_ra8_err_invalid_arg;
   }
@@ -480,7 +483,7 @@ static ra8_err_t priv_manifest_decode_crypto(const char* json, ra8_ota_manifest_
  *
  * @details
  * Zeroes ``*out`` then pulls ``version``, ``url``, ``size`` and finally
- * the cryptographic fields (via ``priv_manifest_decode_crypto``). The
+ * the cryptographic fields (via ``internal_manifest_decode_crypto``). The
  * size is bounded by ``k_ra8_ota_max_image_bytes``.
  *
  * @param[in]  json NUL-terminated JSON payload.
@@ -499,18 +502,19 @@ static ra8_err_t priv_manifest_decode_crypto(const char* json, ra8_ota_manifest_
  * @note Static helper; pure function.
  * @since 0.1.0
  */
-ra8_err_t ra8_ota_internal_manifest_decode(const char* json, ra8_ota_manifest_t* out)
+RA8_PRIV
+ra8_err_t priv_ota_manifest_decode(const char* json, ra8_ota_manifest_t* out)
 {
   (void)memset(out, 0, sizeof *out);
-  ra8_err_t e = priv_json_str(json, "\"version\"", out->version, k_ra8_ota_version_str_bytes);
+  ra8_err_t e = internal_json_str(json, "\"version\"", out->version, k_ra8_ota_version_str_bytes);
   if (e != k_ra8_ok) {
     return e;
   }
-  e = priv_json_str(json, "\"url\"", out->image_url, k_ra8_ota_url_max_bytes);
+  e = internal_json_str(json, "\"url\"", out->image_url, k_ra8_ota_url_max_bytes);
   if (e != k_ra8_ok) {
     return e;
   }
-  e = ra8_ota_internal_json_u32(json, "\"size\"", &out->image_size_bytes);
+  e = priv_ota_json_u32(json, "\"size\"", &out->image_size_bytes);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -520,5 +524,5 @@ ra8_err_t ra8_ota_internal_manifest_decode(const char* json, ra8_ota_manifest_t*
   if (out->image_size_bytes > k_ra8_ota_max_image_bytes) {
     return k_ra8_err_invalid_size;
   }
-  return priv_manifest_decode_crypto(json, out);
+  return internal_manifest_decode_crypto(json, out);
 }
