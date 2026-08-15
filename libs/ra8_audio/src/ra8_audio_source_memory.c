@@ -35,7 +35,7 @@
  * @note This backend exposes one fixed frame geometry.
  * @since 0.1.0
  */
-static ra8_err_t memory_get_info(void* ctx, ra8_audio_source_info_t* out_info)
+RA8_INTERNAL static ra8_err_t internal_memory_get_info(void* ctx, ra8_audio_source_info_t* out_info)
 {
   if (ctx == nullptr) {
     return k_ra8_err_null_ptr;
@@ -72,8 +72,8 @@ static ra8_err_t memory_get_info(void* ctx, ra8_audio_source_info_t* out_info)
  * @note The facade validates the returned descriptor after this callback.
  * @since 0.1.0
  */
-static ra8_err_t
-memory_capture(void* ctx, const ra8_audio_buffer_t* buffer, ra8_audio_frame_t* out_frame)
+RA8_INTERNAL static ra8_err_t
+internal_memory_capture(void* ctx, const ra8_audio_buffer_t* buffer, ra8_audio_frame_t* out_frame)
 {
   if (ctx == nullptr) {
     return k_ra8_err_null_ptr;
@@ -108,7 +108,7 @@ memory_capture(void* ctx, const ra8_audio_buffer_t* buffer, ra8_audio_frame_t* o
  * @note The facade clears its source handle after a successful stop.
  * @since 0.1.0
  */
-static ra8_err_t memory_stop(void* ctx)
+RA8_INTERNAL static ra8_err_t internal_memory_stop(void* ctx)
 {
   if (ctx == nullptr) {
     return k_ra8_err_null_ptr;
@@ -116,11 +116,11 @@ static ra8_err_t memory_stop(void* ctx)
   return k_ra8_ok;
 }
 
-static const ra8_audio_source_iface_t k_memory_source_iface = {
-  .get_info     = memory_get_info,
-  .capture      = memory_capture,
+static const ra8_audio_source_iface_t s_memory_source_iface = {
+  .get_info     = internal_memory_get_info,
+  .capture      = internal_memory_capture,
   .stream_start = nullptr,
-  .stop         = memory_stop,
+  .stop         = internal_memory_stop,
 };
 
 ra8_err_t ra8_audio_source_memory_init(ra8_audio_source_t*              source,
@@ -141,7 +141,7 @@ ra8_err_t ra8_audio_source_memory_init(ra8_audio_source_t*              source,
     return err;
   }
   state->frame  = *frame;
-  source->iface = &k_memory_source_iface;
+  source->iface = &s_memory_source_iface;
   source->ctx   = state;
   return k_ra8_ok;
 }

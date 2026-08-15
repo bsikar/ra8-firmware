@@ -32,7 +32,7 @@
  * @note This reports storage width, not the number of valid sample bits.
  * @since 0.1.0
  */
-static uint32_t audio_container_bytes(ra8_audio_format_t format)
+RA8_INTERNAL static uint32_t internal_audio_container_bytes(ra8_audio_format_t format)
 {
   switch (format) {
     case k_ra8_audio_format_pcm_s16le:
@@ -52,7 +52,7 @@ ra8_err_t ra8_audio_frame_validate(const ra8_audio_frame_t* frame)
   if (frame->data == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  const uint32_t container_bytes = audio_container_bytes(frame->format);
+  const uint32_t container_bytes = internal_audio_container_bytes(frame->format);
   if (container_bytes == 0U) {
     return k_ra8_err_invalid_arg;
   }
@@ -116,8 +116,8 @@ ra8_err_t ra8_audio_source_get_info(ra8_audio_source_t* source, ra8_audio_source
  * @note The caller clears rejected output descriptors.
  * @since 0.1.0
  */
-static ra8_err_t audio_frame_matches_info(const ra8_audio_frame_t*       frame,
-                                          const ra8_audio_source_info_t* info)
+RA8_INTERNAL static ra8_err_t internal_audio_frame_matches_info(const ra8_audio_frame_t* frame,
+                                                                const ra8_audio_source_info_t* info)
 {
   if (frame->bytes != info->frame_bytes) {
     return k_ra8_err_invalid_state;
@@ -185,7 +185,7 @@ ra8_err_t ra8_audio_source_capture(ra8_audio_source_t*       source,
     *out_frame = (ra8_audio_frame_t){};
     return err;
   }
-  err = audio_frame_matches_info(out_frame, &info);
+  err = internal_audio_frame_matches_info(out_frame, &info);
   if (err != k_ra8_ok) {
     *out_frame = (ra8_audio_frame_t){};
     return err;
