@@ -13,11 +13,11 @@
  *   2. Register the built-in formats (`ra8_io_fsfmt_init`) and probe the FAT
  *      volume: it must resolve to the "fat" format and report FAT capabilities
  *      (writable, streaming-write, 8.3 name length).
- *   3. Demonstrate the foreign-format seam: register a stub format whose probe
- *      claims any volume bearing a magic byte in block 0, write that byte onto a
- *      second tiny RAM device, and probe it -- it must resolve to "stub" with
- *      the stub's (read-only, case-sensitive) capabilities, proving a new format
- *      plugs in with no change to the registry's built-ins.
+ *   3. Demonstrate the foreign-format seam: register a bounded read-only format
+ *      whose probe claims a magic byte in block 0 and whose namespace exposes
+ *      one immutable file. A second tiny RAM device must resolve to "stub" with
+ *      its case-sensitive capabilities, proving a new format plugs in with no
+ *      change to the registry's built-ins.
  *   4. Report progress on the SCI8 console through a ra8_io UART stream sink.
  *
  * The ra8_emulator captures the SCI8 console, so the PASS line is
@@ -79,6 +79,25 @@ static ra8_io_stream_uart_state_t s_ust;
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_io_fsfmt_demo";
 
+/** @brief Immutable contents served by the foreign demo format. */
+static const uint8_t s_demo_stub_payload[] = "registered-format-data";
+
+/** @brief Single caller-independent mount context for the demo format. */
+typedef struct {
+  bool mounted; /**< True between successful mount and unmount operations. */
+} demo_stub_mount_t;
+
+/** @brief Single bounded stream context for the foreign demo file. */
+typedef struct {
+  uint32_t offset; /**< Current read cursor within ::s_demo_stub_payload. */
+  bool     open;   /**< True while the immutable file is open.           */
+} demo_stub_file_t;
+
+/** @brief Caller-independent foreign-format mount state. */
+static demo_stub_mount_t s_demo_stub_mount;
+/** @brief Caller-independent foreign-format stream state. */
+static demo_stub_file_t s_demo_stub_file;
+
 /**
  * @brief Print a NUL-terminated string on the UART stream.
  *
@@ -131,235 +150,310 @@ RA8_INTERNAL static bool internal_stub_probe(const ra8_fs_backend_t* be)
 }
 
 /**
- * @brief Reject mounting the signature-only foreign demo format.
+ * @brief Mount the bounded foreign demo format.
  *
- * @details The demo exercises discovery and capability metadata only; it
- * supplies this mandatory dispatch seam so the current registry contract is
- * complete without pretending to provide a mounted filesystem.
+ * @details Revalidates the volume marker and publishes the one statically
+ * allocated mount context when it is not already active.
  *
  * @param[in] backend Backend selected by the registry.
- * @param[out] out_mount Unmodified mount-context destination.
- * @return The deliberate unsupported-operation result.
- * @retval k_ra8_err_not_supported This probe-only format cannot be mounted.
+ * @param[out] out_mount Receives the mounted foreign context.
+ * @return Mount validation and lifecycle status.
+ * @retval k_ra8_ok The foreign context was mounted and published.
  * @pre @p backend identifies the backend that matched the signature probe.
  * @pre @p out_mount, when non-NULL, is owned by the caller.
- * @post No mount context is created.
- * @post Backend and output storage remain unchanged.
- * @note Registration requires this seam even though the demo never calls it.
+ * @post Success marks the singleton context mounted and publishes its address.
+ * @post Failure leaves the mount state and output destination unchanged.
+ * @note The example has one mount slot and performs no allocation.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_stub_mount(const ra8_fs_backend_t* backend, void** out_mount)
 {
-  (void)backend;
-  (void)out_mount;
-  return k_ra8_err_not_supported;
+  if (out_mount == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (!internal_stub_probe(backend)) {
+    return k_ra8_err_not_found;
+  }
+  if (s_demo_stub_mount.mounted) {
+    return k_ra8_err_busy;
+  }
+  s_demo_stub_mount.mounted = true;
+  *out_mount                = &s_demo_stub_mount;
+  return k_ra8_ok;
 }
 
 /**
- * @brief Reject unmounting a probe-only foreign-format context.
- * @details No context can be created by ::internal_stub_mount, so unmount is a
- * mandatory registry seam with a deterministic unsupported result.
- * @param[in] mount_ctx Unused caller-supplied context.
- * @return The deliberate unsupported-operation result.
- * @retval k_ra8_err_not_supported No foreign-format mount exists.
- * @pre @p mount_ctx is not dereferenced.
- * @pre No format-owned allocation or resource requires release.
- * @post No memory or backend state is changed.
- * @post The supplied context value remains untouched.
- * @note This function exists solely to satisfy the complete ops-table contract.
+ * @brief Release the mounted foreign demo context.
+ * @details Validates the singleton identity before clearing its lifecycle bit.
+ * @param[in,out] mount_ctx Context previously returned by ::internal_stub_mount.
+ * @return Unmount validation status.
+ * @retval k_ra8_ok The live foreign context was released.
+ * @pre @p mount_ctx is the only context this format can publish.
+ * @pre No foreign stream remains open.
+ * @post Success leaves the singleton context available for a later mount.
+ * @post Failure leaves the context state unchanged.
+ * @note No resource release callback or allocator is required.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_stub_unmount(void* mount_ctx)
 {
-  (void)mount_ctx;
-  return k_ra8_err_not_supported;
+  if ((mount_ctx != &s_demo_stub_mount) || !s_demo_stub_mount.mounted || s_demo_stub_file.open) {
+    return k_ra8_err_invalid_state;
+  }
+  s_demo_stub_mount.mounted = false;
+  return k_ra8_ok;
 }
 
 /**
- * @brief Reject opening a path on the probe-only foreign format.
- * @details The descriptor advertises recognition metadata, not file access.
- * @param[in] mount_ctx Unused mount context.
- * @param[in] path Unused path request.
+ * @brief Open the immutable foreign demo file.
+ * @details Accepts only read mode and the exact `/README.TXT` path, then resets
+ * the single bounded cursor.
+ * @param[in] mount_ctx Active foreign mount context.
+ * @param[in] path Normalized volume-relative path.
  * @param[in] mode Requested open mode.
- * @param[out] out_file Unmodified file-context destination.
- * @return The deliberate unsupported-operation result.
- * @retval k_ra8_err_not_supported The foreign stub exposes no files.
- * @pre All pointer values may be inspected only by the caller.
- * @pre @p mode is a valid filesystem mode value if supplied by VFS.
- * @post No file context is created.
- * @post All inputs and destination storage remain unchanged.
- * @note Registration requires the seam although probing never dispatches it.
+ * @param[out] out_file Receives the singleton file context.
+ * @return Path, mode, and lifecycle status.
+ * @retval k_ra8_ok The immutable file was opened at offset zero.
+ * @pre Required pointers follow the registered filesystem callback contract.
+ * @pre @p mount_ctx identifies the active demo mount.
+ * @post Success publishes the open file context at offset zero.
+ * @post Failure does not alter the output destination.
+ * @note The format deliberately supports one concurrent read stream.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t
 internal_stub_open(void* mount_ctx, const char* path, ra8_fs_mode_t mode, void** out_file)
 {
-  (void)mount_ctx;
-  (void)path;
-  (void)mode;
-  (void)out_file;
-  return k_ra8_err_not_supported;
+  if ((path == nullptr) || (out_file == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  if ((mount_ctx != &s_demo_stub_mount) || !s_demo_stub_mount.mounted) {
+    return k_ra8_err_invalid_state;
+  }
+  if (mode != k_ra8_fs_mode_read) {
+    return k_ra8_err_not_supported;
+  }
+  if (strcmp(path, "/README.TXT") != 0) {
+    return k_ra8_err_not_found;
+  }
+  if (s_demo_stub_file.open) {
+    return k_ra8_err_busy;
+  }
+  s_demo_stub_file.offset = 0U;
+  s_demo_stub_file.open   = true;
+  *out_file               = &s_demo_stub_file;
+  return k_ra8_ok;
 }
 
 /**
- * @brief Reject closing a file context for the probe-only format.
- * @details Since open always rejects, no valid file context can reach this seam.
- * @param[in] file_ctx Unused caller-supplied context.
- * @return The deliberate unsupported-operation result.
- * @retval k_ra8_err_not_supported No foreign-format file is open.
- * @pre @p file_ctx is not dereferenced.
- * @pre No format-owned file resource requires release.
- * @post No resource or caller storage is changed.
- * @post The supplied context value remains untouched.
- * @note This function completes the mandatory registry dispatch surface.
+ * @brief Close the immutable foreign demo file.
+ * @details Validates the singleton identity and consumes its open lifecycle.
+ * @param[in,out] file_ctx Context returned by ::internal_stub_open.
+ * @return Close validation status.
+ * @retval k_ra8_ok The live file context was closed.
+ * @pre @p file_ctx is the single format-owned stream context.
+ * @pre The stream is currently open.
+ * @post Success clears the open lifecycle bit.
+ * @post Payload and mount state remain unchanged.
+ * @note No flush is necessary because the payload is immutable.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_stub_close(void* file_ctx)
 {
-  (void)file_ctx;
-  return k_ra8_err_not_supported;
+  if ((file_ctx != &s_demo_stub_file) || !s_demo_stub_file.open) {
+    return k_ra8_err_invalid_state;
+  }
+  s_demo_stub_file.open = false;
+  return k_ra8_ok;
 }
 
 /**
- * @brief Reject reading from the probe-only foreign format.
- * @details The stub recognizes only a signature byte and exposes no stream data.
- * @param[in] file_ctx Unused file context.
- * @param[out] buf Unmodified read destination.
+ * @brief Read a bounded prefix from the immutable foreign payload.
+ * @details Copies at most the remaining payload bytes and advances only by the
+ * count reported through @p out_read.
+ * @param[in,out] file_ctx Active foreign file context.
+ * @param[out] buf Caller-owned read destination.
  * @param[in] bytes Requested byte count.
- * @param[out] out_read Unmodified transferred-byte destination.
- * @return The deliberate unsupported-operation result.
- * @retval k_ra8_err_not_supported Stream reads are not implemented.
- * @pre Caller retains ownership of every supplied pointer and byte range.
- * @pre @p bytes may be any value accepted by the VFS interface.
- * @post No destination byte is written.
- * @post No file or backend state is changed.
- * @note The read-only capability does not imply that this probe fixture is mountable.
+ * @param[out] out_read Receives the copied byte count.
+ * @return Stream validation status.
+ * @retval k_ra8_ok Zero or more bytes were copied without exceeding @p bytes.
+ * @pre @p buf addresses @p bytes writable bytes when @p bytes is nonzero.
+ * @pre @p out_read addresses writable count storage.
+ * @post Success advances the cursor by exactly `*out_read`.
+ * @post Payload and mount state remain unchanged.
+ * @note End of file is reported as success with a zero count.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t
 internal_stub_read(void* file_ctx, void* buf, uint32_t bytes, uint32_t* out_read)
 {
-  (void)file_ctx;
-  (void)buf;
-  (void)bytes;
-  (void)out_read;
-  return k_ra8_err_not_supported;
+  if ((out_read == nullptr) || ((buf == nullptr) && (bytes != 0U))) {
+    return k_ra8_err_null_ptr;
+  }
+  if ((file_ctx != &s_demo_stub_file) || !s_demo_stub_file.open) {
+    return k_ra8_err_invalid_state;
+  }
+  const uint32_t size  = (uint32_t)sizeof(s_demo_stub_payload) - 1U;
+  uint32_t       count = size - s_demo_stub_file.offset;
+  if (bytes < count) {
+    count = bytes;
+  }
+  (void)memcpy(buf, &s_demo_stub_payload[s_demo_stub_file.offset], count);
+  s_demo_stub_file.offset += count;
+  *out_read = count;
+  return k_ra8_ok;
 }
 
 /**
- * @brief Reject seeking within a probe-only foreign-format file.
- * @details No stream is created, so the requested offset is never consumed.
- * @param[in] file_ctx Unused file context.
+ * @brief Seek within the immutable foreign demo file.
+ * @details Clamps the requested absolute offset to the payload extent.
+ * @param[in,out] file_ctx Active foreign file context.
  * @param[in] offset_bytes Requested absolute stream offset.
- * @return The deliberate unsupported-operation result.
- * @retval k_ra8_err_not_supported Seeking is not implemented.
- * @pre @p file_ctx is not dereferenced.
+ * @return Seek validation status.
+ * @retval k_ra8_ok The bounded stream offset was updated.
+ * @pre @p file_ctx identifies the open singleton stream.
  * @pre @p offset_bytes may span the public 64-bit interface range.
- * @post No stream offset is changed.
- * @post No caller or backend storage is modified.
- * @note This function completes the mandatory registry dispatch surface.
+ * @post Success sets the offset to `min(offset_bytes, payload_size)`.
+ * @post Payload and mount state remain unchanged.
+ * @note Seeking beyond EOF selects EOF rather than creating sparse content.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_stub_seek(void* file_ctx, uint64_t offset_bytes)
 {
-  (void)file_ctx;
-  (void)offset_bytes;
-  return k_ra8_err_not_supported;
+  if ((file_ctx != &s_demo_stub_file) || !s_demo_stub_file.open) {
+    return k_ra8_err_invalid_state;
+  }
+  const uint32_t size     = (uint32_t)sizeof(s_demo_stub_payload) - 1U;
+  s_demo_stub_file.offset = (offset_bytes > (uint64_t)size) ? size : (uint32_t)offset_bytes;
+  return k_ra8_ok;
 }
 
 /**
- * @brief Reject querying a probe-only foreign-format stream offset.
- * @details No stream is created and the caller's output storage is untouched.
- * @param[in] file_ctx Unused file context.
- * @param[out] out_offset Unmodified offset destination.
- * @return The deliberate unsupported-operation result.
- * @retval k_ra8_err_not_supported Offset queries are not implemented.
- * @pre Both pointer values remain owned by the caller.
- * @pre @p out_offset, when non-NULL, addresses caller storage.
- * @post No offset value is written.
- * @post No file or backend state is changed.
- * @note This function completes the mandatory registry dispatch surface.
+ * @brief Report the current foreign stream offset.
+ * @details Copies the bounded singleton cursor into caller storage.
+ * @param[in] file_ctx Active foreign file context.
+ * @param[out] out_offset Receives the current byte offset.
+ * @return Query validation status.
+ * @retval k_ra8_ok The current stream offset was published.
+ * @pre @p file_ctx identifies the open singleton stream.
+ * @pre @p out_offset addresses writable storage.
+ * @post Success publishes an offset no greater than the payload size.
+ * @post Stream state and payload remain unchanged.
+ * @note Pure with respect to format-owned state.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_stub_tell(const void* file_ctx, uint64_t* out_offset)
 {
-  (void)file_ctx;
-  (void)out_offset;
-  return k_ra8_err_not_supported;
+  if (out_offset == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if ((file_ctx != &s_demo_stub_file) || !s_demo_stub_file.open) {
+    return k_ra8_err_invalid_state;
+  }
+  *out_offset = s_demo_stub_file.offset;
+  return k_ra8_ok;
 }
 
 /**
- * @brief Reject querying a probe-only foreign-format stream size.
- * @details No stream is created and the caller's output storage is untouched.
- * @param[in] file_ctx Unused file context.
- * @param[out] out_bytes Unmodified size destination.
- * @return The deliberate unsupported-operation result.
- * @retval k_ra8_err_not_supported Size queries are not implemented.
- * @pre Both pointer values remain owned by the caller.
- * @pre @p out_bytes, when non-NULL, addresses caller storage.
- * @post No size value is written.
- * @post No file or backend state is changed.
- * @note This function completes the mandatory registry dispatch surface.
+ * @brief Report the immutable foreign payload size.
+ * @details Publishes the compile-time payload extent without changing the cursor.
+ * @param[in] file_ctx Active foreign file context.
+ * @param[out] out_bytes Receives the payload byte count.
+ * @return Query validation status.
+ * @retval k_ra8_ok The immutable payload size was published.
+ * @pre @p file_ctx identifies the open singleton stream.
+ * @pre @p out_bytes addresses writable storage.
+ * @post Success publishes `sizeof(payload) - 1`.
+ * @post Stream state and payload remain unchanged.
+ * @note The trailing C-string terminator is not part of the file.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_stub_size(const void* file_ctx, uint64_t* out_bytes)
 {
-  (void)file_ctx;
-  (void)out_bytes;
-  return k_ra8_err_not_supported;
+  if (out_bytes == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if ((file_ctx != &s_demo_stub_file) || !s_demo_stub_file.open) {
+    return k_ra8_err_invalid_state;
+  }
+  *out_bytes = (uint64_t)sizeof(s_demo_stub_payload) - 1U;
+  return k_ra8_ok;
 }
 
 /**
- * @brief Reject metadata queries on the probe-only foreign format.
- * @details The signature fixture exposes discovery metadata only, not paths.
- * @param[in] mount_ctx Unused mount context.
- * @param[in] path Unused path request.
- * @param[out] out Unmodified metadata destination.
- * @return The deliberate unsupported-operation result.
- * @retval k_ra8_err_not_supported Path metadata is not implemented.
- * @pre All supplied pointer values remain owned by the caller.
- * @pre @p path, when non-NULL, follows the VFS path convention.
- * @post No metadata field is written.
- * @post No registry or backend state is changed.
- * @note This function completes the mandatory registry dispatch surface.
+ * @brief Report metadata for the foreign root or immutable file.
+ * @details Recognizes only `/` and `/README.TXT` and publishes bounded metadata.
+ * @param[in] mount_ctx Active foreign mount context.
+ * @param[in] path Normalized volume-relative path.
+ * @param[out] out Receives metadata for the recognized path.
+ * @return Path and lifecycle status.
+ * @retval k_ra8_ok Metadata for a recognized path was published.
+ * @pre Required pointers follow the registered filesystem callback contract.
+ * @pre @p mount_ctx identifies the active demo mount.
+ * @post Success fully initializes @p out.
+ * @post Failure leaves the namespace and stream state unchanged.
+ * @note The format publishes no timestamps.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t
 internal_stub_stat(void* mount_ctx, const char* path, ra8_fs_stat_t* out)
 {
-  (void)mount_ctx;
-  (void)path;
-  (void)out;
-  return k_ra8_err_not_supported;
+  if ((path == nullptr) || (out == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  if ((mount_ctx != &s_demo_stub_mount) || !s_demo_stub_mount.mounted) {
+    return k_ra8_err_invalid_state;
+  }
+  *out = (ra8_fs_stat_t){};
+  if (strcmp(path, "/") == 0) {
+    out->attr         = (uint8_t)k_ra8_fs_attr_directory;
+    out->is_directory = true;
+    return k_ra8_ok;
+  }
+  if (strcmp(path, "/README.TXT") == 0) {
+    out->attr       = (uint8_t)k_ra8_fs_attr_read_only;
+    out->size_bytes = (uint64_t)sizeof(s_demo_stub_payload) - 1U;
+    return k_ra8_ok;
+  }
+  return k_ra8_err_not_found;
 }
 
 /**
- * @brief Reject directory enumeration on the probe-only foreign format.
- * @details The signature fixture has no mountable namespace or directory entries.
- * @param[in] mount_ctx Unused mount context.
- * @param[in] path Unused directory path.
- * @param[in] cb Unused caller callback.
- * @param[in] cb_ctx Unused callback context.
- * @return The deliberate unsupported-operation result.
- * @retval k_ra8_err_not_supported Enumeration is not implemented.
- * @pre All callback and pointer values remain owned by the caller.
- * @pre @p path, when non-NULL, follows the VFS path convention.
- * @post The callback is never invoked.
- * @post No registry or backend state is changed.
- * @note This function completes the mandatory registry dispatch surface.
+ * @brief Enumerate the foreign root's immutable file.
+ * @details Accepts only `/` and invokes the supplied callback exactly once.
+ * @param[in] mount_ctx Active foreign mount context.
+ * @param[in] path Normalized directory path.
+ * @param[in] cb Caller callback receiving the one entry.
+ * @param[in,out] cb_ctx Caller context forwarded unchanged.
+ * @return Path and lifecycle status.
+ * @retval k_ra8_ok The root entry was reported once.
+ * @pre Required pointers follow the registered filesystem callback contract.
+ * @pre @p mount_ctx identifies the active demo mount.
+ * @post Success reports `README.TXT` with read-only metadata.
+ * @post Namespace and stream state remain unchanged.
+ * @note Callback execution is synchronous.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t
 internal_stub_listdir(void* mount_ctx, const char* path, ra8_fs_listdir_cb_t cb, void* cb_ctx)
 {
-  (void)mount_ctx;
-  (void)path;
-  (void)cb;
-  (void)cb_ctx;
-  return k_ra8_err_not_supported;
+  if ((path == nullptr) || (cb == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  if ((mount_ctx != &s_demo_stub_mount) || !s_demo_stub_mount.mounted) {
+    return k_ra8_err_invalid_state;
+  }
+  if (strcmp(path, "/") != 0) {
+    return k_ra8_err_not_found;
+  }
+  cb("README.TXT",
+     (uint8_t)k_ra8_fs_attr_read_only,
+     (uint64_t)sizeof(s_demo_stub_payload) - 1U,
+     cb_ctx);
+  return k_ra8_ok;
 }
 
-/** @brief Mandatory read-side ops table for the probe-only foreign descriptor. */
+/** @brief Complete read-side operations for the bounded foreign descriptor. */
 static const ra8_io_fsfmt_ops_t s_demo_stub_ops = {
   .probe      = internal_stub_probe,
   .mount      = internal_stub_mount,
