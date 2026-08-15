@@ -214,7 +214,7 @@ static void test_program_guards_mcdc(void)
 }
 
 /**
- * @brief `ra8_dfu_internal_write_secure` argument-guard, with MC/DC vectors.
+ * @brief `priv_dfu_write_secure` argument-guard, with MC/DC vectors.
  *
  * @par MC/DC:
  * Decision: `(src == nullptr) || (len == 0U)` (2 conditions, OR) -- the secure
@@ -240,9 +240,9 @@ static void test_write_secure_guard_mcdc(void)
 
   /* V2 (C1 true): NULL source -> invalid_arg, no write performed. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_dfu_internal_write_secure(addr, nullptr, (uint32_t)k_ra8_dfu_page_size));
+                 priv_dfu_write_secure(addr, nullptr, (uint32_t)k_ra8_dfu_page_size));
   /* V3 (C2 true): zero length -> invalid_arg. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_dfu_internal_write_secure(addr, buf, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_dfu_write_secure(addr, buf, 0U));
 
   TEST_END("ra8_dfu: internal_write_secure arg guard (MC/DC)");
 }
