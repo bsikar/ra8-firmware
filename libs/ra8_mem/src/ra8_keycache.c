@@ -81,7 +81,7 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t* priv_cell_ptr(const ra8_keycache_t* kc, uint32_t idx)
+RA8_INTERNAL static uint8_t* internal_cell_ptr(const ra8_keycache_t* kc, uint32_t idx)
 {
   return &kc->cfg.cell_mem[(size_t)idx * (size_t)kc->cfg.cell_bytes];
 }
@@ -106,7 +106,7 @@ static uint8_t* priv_cell_ptr(const ra8_keycache_t* kc, uint32_t idx)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t* priv_key_ptr(const ra8_keycache_t* kc, uint32_t idx)
+RA8_INTERNAL static uint8_t* internal_key_ptr(const ra8_keycache_t* kc, uint32_t idx)
 {
   return &kc->cfg.key_mem[(size_t)idx * (size_t)kc->cfg.key_bytes];
 }
@@ -132,7 +132,7 @@ static uint8_t* priv_key_ptr(const ra8_keycache_t* kc, uint32_t idx)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void* priv_user_ptr(const ra8_keycache_t* kc, uint32_t idx)
+RA8_INTERNAL static void* internal_user_ptr(const ra8_keycache_t* kc, uint32_t idx)
 {
   if (kc->cfg.user_bytes == 0U) {
     return nullptr;
@@ -163,7 +163,7 @@ static void* priv_user_ptr(const ra8_keycache_t* kc, uint32_t idx)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_key_eq(const ra8_keycache_t* kc, const void* a, const void* b)
+RA8_INTERNAL static bool internal_key_eq(const ra8_keycache_t* kc, const void* a, const void* b)
 {
   return memcmp(a, b, (size_t)kc->cfg.key_bytes) == 0;
 }
@@ -190,7 +190,7 @@ static bool priv_key_eq(const ra8_keycache_t* kc, const void* a, const void* b)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_fnv1a(const void* key, uint32_t key_bytes)
+RA8_INTERNAL static uint32_t internal_fnv1a(const void* key, uint32_t key_bytes)
 {
   const uint8_t* p = (const uint8_t*)key;
   uint32_t       h = (uint32_t)k_keycache_fnv_offset;
@@ -204,7 +204,7 @@ static uint32_t priv_fnv1a(const void* key, uint32_t key_bytes)
 /**
  * @brief Hash a key blob into a bucket index using the configured policy.
  *
- * @details Runs the injected `cfg.hash` (or the built-in ::priv_fnv1a when it is
+ * @details Runs the injected `cfg.hash` (or the built-in ::internal_fnv1a when it is
  *          NULL) and folds the raw 32-bit result to `[0, bucket_count)`.
  *
  * @param[in] kc  Cache providing the bucket count, key width, and hash policy.
@@ -229,13 +229,13 @@ static uint32_t priv_fnv1a(const void* key, uint32_t key_bytes)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_hash(const ra8_keycache_t* kc, const void* key)
+RA8_INTERNAL static uint32_t internal_hash(const ra8_keycache_t* kc, const void* key)
 {
   uint32_t raw;
   if (kc->cfg.hash != nullptr) {
     raw = kc->cfg.hash(key, kc->cfg.key_bytes, kc->cfg.hash_ctx);
   } else {
-    raw = priv_fnv1a(key, kc->cfg.key_bytes);
+    raw = internal_fnv1a(key, kc->cfg.key_bytes);
   }
   return raw % kc->cfg.bucket_count;
 }
@@ -263,7 +263,8 @@ static uint32_t priv_hash(const ra8_keycache_t* kc, const void* key)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_unlink(ra8_keycache_t* kc, int32_t f, int32_t* head, int32_t* tail)
+RA8_INTERNAL static void
+internal_unlink(ra8_keycache_t* kc, int32_t f, int32_t* head, int32_t* tail)
 {
   ra8_keycache_cell_t* m = kc->cfg.meta;
   if (m[f].prev != -1) {
@@ -304,7 +305,8 @@ static void priv_unlink(ra8_keycache_t* kc, int32_t f, int32_t* head, int32_t* t
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_push_head(ra8_keycache_t* kc, int32_t f, int32_t* head, int32_t* tail)
+RA8_INTERNAL static void
+internal_push_head(ra8_keycache_t* kc, int32_t f, int32_t* head, int32_t* tail)
 {
   ra8_keycache_cell_t* m = kc->cfg.meta;
   m[f].prev              = -1;
@@ -337,9 +339,9 @@ static void priv_push_head(ra8_keycache_t* kc, int32_t f, int32_t* head, int32_t
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_hash_insert(ra8_keycache_t* kc, int32_t f)
+RA8_INTERNAL static void internal_hash_insert(ra8_keycache_t* kc, int32_t f)
 {
-  const uint32_t b          = priv_hash(kc, priv_key_ptr(kc, (uint32_t)f));
+  const uint32_t b          = internal_hash(kc, internal_key_ptr(kc, (uint32_t)f));
   kc->cfg.meta[f].hash_next = kc->cfg.buckets[b];
   kc->cfg.buckets[b]        = f;
 }
@@ -365,9 +367,9 @@ static void priv_hash_insert(ra8_keycache_t* kc, int32_t f)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_hash_remove(ra8_keycache_t* kc, int32_t f)
+RA8_INTERNAL static void internal_hash_remove(ra8_keycache_t* kc, int32_t f)
 {
-  const uint32_t b   = priv_hash(kc, priv_key_ptr(kc, (uint32_t)f));
+  const uint32_t b   = internal_hash(kc, internal_key_ptr(kc, (uint32_t)f));
   int32_t        cur = kc->cfg.buckets[b];
   if (cur == f) {
     kc->cfg.buckets[b] = kc->cfg.meta[f].hash_next;
@@ -408,9 +410,9 @@ static void priv_hash_remove(ra8_keycache_t* kc, int32_t f)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int32_t priv_hash_lookup(const ra8_keycache_t* kc, const void* key)
+RA8_INTERNAL static int32_t internal_hash_lookup(const ra8_keycache_t* kc, const void* key)
 {
-  const uint32_t b   = priv_hash(kc, key);
+  const uint32_t b   = internal_hash(kc, key);
   int32_t        cur = kc->cfg.buckets[b];
   for (uint32_t guard = 0U; guard < kc->cfg.cell_count; ++guard) {
     if (cur == -1) {
@@ -418,7 +420,7 @@ static int32_t priv_hash_lookup(const ra8_keycache_t* kc, const void* key)
     }
     const ra8_keycache_cell_t* m = &kc->cfg.meta[cur];
     if (m->valid != 0U) {
-      if (priv_key_eq(kc, priv_key_ptr(kc, (uint32_t)cur), key)) {
+      if (internal_key_eq(kc, internal_key_ptr(kc, (uint32_t)cur), key)) {
         return cur;
       }
     }
@@ -451,7 +453,7 @@ static int32_t priv_hash_lookup(const ra8_keycache_t* kc, const void* key)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int32_t priv_first_unpinned(const ra8_keycache_t* kc, int32_t tail)
+RA8_INTERNAL static int32_t internal_first_unpinned(const ra8_keycache_t* kc, int32_t tail)
 {
   int32_t cur = tail;
   for (uint32_t guard = 0U; guard < kc->cfg.cell_count; ++guard) {
@@ -488,13 +490,13 @@ static int32_t priv_first_unpinned(const ra8_keycache_t* kc, int32_t tail)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int32_t priv_pick_victim(const ra8_keycache_t* kc)
+RA8_INTERNAL static int32_t internal_pick_victim(const ra8_keycache_t* kc)
 {
-  const int32_t pb = priv_first_unpinned(kc, kc->pb_tail);
+  const int32_t pb = internal_first_unpinned(kc, kc->pb_tail);
   if (pb != -1) {
     return pb;
   }
-  return priv_first_unpinned(kc, kc->pt_tail);
+  return internal_first_unpinned(kc, kc->pt_tail);
 }
 
 /**
@@ -518,32 +520,32 @@ static int32_t priv_pick_victim(const ra8_keycache_t* kc)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_slru_access(ra8_keycache_t* kc, int32_t f)
+RA8_INTERNAL static void internal_slru_access(ra8_keycache_t* kc, int32_t f)
 {
   if (kc->cfg.meta[f].seg == (uint8_t)k_keycache_seg_protected) {
-    priv_unlink(kc, f, &kc->pt_head, &kc->pt_tail);
-    priv_push_head(kc, f, &kc->pt_head, &kc->pt_tail);
+    internal_unlink(kc, f, &kc->pt_head, &kc->pt_tail);
+    internal_push_head(kc, f, &kc->pt_head, &kc->pt_tail);
     return;
   }
-  priv_unlink(kc, f, &kc->pb_head, &kc->pb_tail);
+  internal_unlink(kc, f, &kc->pb_head, &kc->pb_tail);
   if (kc->protected_count >= kc->protected_cap) {
     const int32_t d = kc->pt_tail;
     if (d != -1) {
-      priv_unlink(kc, d, &kc->pt_head, &kc->pt_tail);
+      internal_unlink(kc, d, &kc->pt_head, &kc->pt_tail);
       kc->cfg.meta[d].seg = (uint8_t)k_keycache_seg_probation;
-      priv_push_head(kc, d, &kc->pb_head, &kc->pb_tail);
+      internal_push_head(kc, d, &kc->pb_head, &kc->pb_tail);
       kc->protected_count--;
     }
   }
   kc->cfg.meta[f].seg = (uint8_t)k_keycache_seg_protected;
-  priv_push_head(kc, f, &kc->pt_head, &kc->pt_tail);
+  internal_push_head(kc, f, &kc->pt_head, &kc->pt_tail);
   kc->protected_count++;
 }
 
 /**
  * @brief Re-reference cell @p f on a hit under the configured policy.
  *
- * @details LRU moves @p f to the single list's MRU; SLRU runs ::priv_slru_access
+ * @details LRU moves @p f to the single list's MRU; SLRU runs ::internal_slru_access
  *          to promote it toward the protected segment.
  *
  * @param[in,out] kc Cache providing the policy + segment lists.
@@ -561,19 +563,19 @@ static void priv_slru_access(ra8_keycache_t* kc, int32_t f)
  * @par MC/DC:
  * Decision: `if (kc->cfg.evict == k_ra8_keycache_evict_slru)` (1 condition, no
  * compound `&&`/`||`).
- * - evict == SLRU -> ::priv_slru_access (exercised by the ::ra8_vmem tests).
+ * - evict == SLRU -> ::internal_slru_access (exercised by the ::ra8_vmem tests).
  * - evict == LRU  -> single-list move-to-front (glyph/tile atlases + tests).
  *
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_access(ra8_keycache_t* kc, int32_t f)
+RA8_INTERNAL static void internal_access(ra8_keycache_t* kc, int32_t f)
 {
   if (kc->cfg.evict == k_ra8_keycache_evict_slru) {
-    priv_slru_access(kc, f);
+    internal_slru_access(kc, f);
   } else {
-    priv_unlink(kc, f, &kc->pb_head, &kc->pb_tail);
-    priv_push_head(kc, f, &kc->pb_head, &kc->pb_tail);
+    internal_unlink(kc, f, &kc->pb_head, &kc->pb_tail);
+    internal_push_head(kc, f, &kc->pb_head, &kc->pb_tail);
   }
 }
 
@@ -600,7 +602,7 @@ static void priv_access(ra8_keycache_t* kc, int32_t f)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_validate_cfg_ptrs(const ra8_keycache_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_validate_cfg_ptrs(const ra8_keycache_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg->cell_mem, s_tag, "cell_mem must not be nullptr");
   RA8_CHECK_NULL_PTR(cfg->key_mem, s_tag, "key_mem must not be nullptr");
@@ -629,7 +631,7 @@ static ra8_err_t priv_validate_cfg_ptrs(const ra8_keycache_cfg_t* cfg)
  *                               `key_bytes`, `bucket_count`) was zero.
  *
  * @pre `cfg` is non-NULL (the caller checked it).
- * @pre The config pointers passed ::priv_validate_cfg_ptrs.
+ * @pre The config pointers passed ::internal_validate_cfg_ptrs.
  * @post No state is modified (pure validation).
  * @post A non-ok return means a sizing field was zero.
  *
@@ -637,7 +639,7 @@ static ra8_err_t priv_validate_cfg_ptrs(const ra8_keycache_cfg_t* cfg)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_validate_cfg_sizes(const ra8_keycache_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_validate_cfg_sizes(const ra8_keycache_cfg_t* cfg)
 {
   if (cfg->cell_count == 0U) {
     return k_ra8_err_invalid_size;
@@ -669,7 +671,7 @@ static ra8_err_t priv_validate_cfg_sizes(const ra8_keycache_cfg_t* cfg)
  * @retval k_ra8_err_invalid_arg SLRU with `protected_pct` above 100.
  *
  * @pre `cfg` is non-NULL (the caller checked it).
- * @pre The config passed ::priv_validate_cfg_ptrs / ::priv_validate_cfg_sizes.
+ * @pre The config passed ::internal_validate_cfg_ptrs / ::internal_validate_cfg_sizes.
  * @post No state is modified (pure validation).
  * @post A non-ok return means SLRU was selected with an out-of-range split.
  *
@@ -685,7 +687,7 @@ static ra8_err_t priv_validate_cfg_sizes(const ra8_keycache_cfg_t* cfg)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_validate_cfg_policy(const ra8_keycache_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_validate_cfg_policy(const ra8_keycache_cfg_t* cfg)
 {
   if (cfg->evict == k_ra8_keycache_evict_slru) {
     if ((uint32_t)cfg->protected_pct > (uint32_t)k_keycache_percent_full) {
@@ -708,7 +710,7 @@ static ra8_err_t priv_validate_cfg_policy(const ra8_keycache_cfg_t* cfg)
  * @return Protected-segment capacity in `[0, cell_count]`.
  * @retval 0 The split floored to no protected cells.
  *
- * @pre `cfg` passed ::priv_validate_cfg_policy (so `protected_pct <= 100`).
+ * @pre `cfg` passed ::internal_validate_cfg_policy (so `protected_pct <= 100`).
  * @pre `cfg->cell_count` is non-zero.
  * @post No state is modified.
  * @post The result is <= `cfg->cell_count`.
@@ -723,7 +725,7 @@ static ra8_err_t priv_validate_cfg_policy(const ra8_keycache_cfg_t* cfg)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_protected_cap(const ra8_keycache_cfg_t* cfg)
+RA8_INTERNAL static uint32_t internal_protected_cap(const ra8_keycache_cfg_t* cfg)
 {
   const uint32_t pct = (cfg->protected_pct == 0U) ? (uint32_t)k_keycache_protected_pct_def
                                                   : (uint32_t)cfg->protected_pct;
@@ -736,7 +738,7 @@ static uint32_t priv_protected_cap(const ra8_keycache_cfg_t* cfg)
  * @details Zero-fills @p kc, copies the (already-validated) config in, resets the
  *          segment endpoints, clears every hash bucket head to -1, and threads
  *          each cell -- invalid, unpinned, unchained, probationary -- onto the
- *          probationary list via ::priv_push_head. Both loops are bounded by
+ *          probationary list via ::internal_push_head. Both loops are bounded by
  *          config counts (NASA P10 Rule 2).
  *
  * @param[out] kc  Cache state to populate (caller-owned).
@@ -744,7 +746,7 @@ static uint32_t priv_protected_cap(const ra8_keycache_cfg_t* cfg)
  *
  * @return Nothing.
  *
- * @pre @p cfg passed ::priv_validate_cfg_ptrs / _sizes / _policy.
+ * @pre @p cfg passed ::internal_validate_cfg_ptrs / _sizes / _policy.
  * @pre @p kc is a writable cache-state object.
  * @post Every bucket head is -1 and every cell is a cold probationary member.
  * @post `kc->cfg` is a copy of @p cfg with empty segment endpoints established.
@@ -753,7 +755,7 @@ static uint32_t priv_protected_cap(const ra8_keycache_cfg_t* cfg)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_seed_cells(ra8_keycache_t* kc, const ra8_keycache_cfg_t* cfg)
+RA8_INTERNAL static void internal_seed_cells(ra8_keycache_t* kc, const ra8_keycache_cfg_t* cfg)
 {
   (void)memset(kc, 0, sizeof(*kc));
   kc->cfg     = *cfg;
@@ -769,7 +771,7 @@ static void priv_seed_cells(ra8_keycache_t* kc, const ra8_keycache_cfg_t* cfg)
     kc->cfg.meta[i].pin_count = 0U;
     kc->cfg.meta[i].seg       = (uint8_t)k_keycache_seg_probation;
     kc->cfg.meta[i].hash_next = -1;
-    priv_push_head(kc, (int32_t)i, &kc->pb_head, &kc->pb_tail);
+    internal_push_head(kc, (int32_t)i, &kc->pb_head, &kc->pb_tail);
   }
 }
 
@@ -777,20 +779,20 @@ ra8_err_t ra8_keycache_init(ra8_keycache_t* kc, const ra8_keycache_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(kc, s_tag, "kc must not be nullptr");
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
-  const ra8_err_t perr = priv_validate_cfg_ptrs(cfg);
+  const ra8_err_t perr = internal_validate_cfg_ptrs(cfg);
   if (perr != k_ra8_ok) {
     return perr;
   }
-  const ra8_err_t serr = priv_validate_cfg_sizes(cfg);
+  const ra8_err_t serr = internal_validate_cfg_sizes(cfg);
   if (serr != k_ra8_ok) {
     return serr;
   }
-  const ra8_err_t verr = priv_validate_cfg_policy(cfg);
+  const ra8_err_t verr = internal_validate_cfg_policy(cfg);
   if (verr != k_ra8_ok) {
     return verr;
   }
-  priv_seed_cells(kc, cfg);
-  kc->protected_cap = (cfg->evict == k_ra8_keycache_evict_slru) ? priv_protected_cap(cfg) : 0U;
+  internal_seed_cells(kc, cfg);
+  kc->protected_cap = (cfg->evict == k_ra8_keycache_evict_slru) ? internal_protected_cap(cfg) : 0U;
   return k_ra8_ok;
 }
 
@@ -821,40 +823,41 @@ ra8_err_t ra8_keycache_init(ra8_keycache_t* kc, const ra8_keycache_cfg_t* cfg)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_miss(ra8_keycache_t* kc, const void* key, ra8_keycache_view_t* out_view)
+RA8_INTERNAL static ra8_err_t
+internal_miss(ra8_keycache_t* kc, const void* key, ra8_keycache_view_t* out_view)
 {
-  const int32_t v = priv_pick_victim(kc);
+  const int32_t v = internal_pick_victim(kc);
   if (v < 0) {
     return k_ra8_err_no_mem;
   }
   ra8_keycache_cell_t* m = &kc->cfg.meta[v];
   if (m->valid != 0U) {
-    priv_hash_remove(kc, v);
+    internal_hash_remove(kc, v);
     kc->evictions++;
   }
   const uint8_t seg = m->seg;
-  priv_unlink(kc,
-              v,
-              (seg == (uint8_t)k_keycache_seg_protected) ? &kc->pt_head : &kc->pb_head,
-              (seg == (uint8_t)k_keycache_seg_protected) ? &kc->pt_tail : &kc->pb_tail);
+  internal_unlink(kc,
+                  v,
+                  (seg == (uint8_t)k_keycache_seg_protected) ? &kc->pt_head : &kc->pb_head,
+                  (seg == (uint8_t)k_keycache_seg_protected) ? &kc->pt_tail : &kc->pb_tail);
   if (seg == (uint8_t)k_keycache_seg_protected) {
     kc->protected_count--;
   }
-  uint8_t*        cell = priv_cell_ptr(kc, (uint32_t)v);
-  void*           user = priv_user_ptr(kc, (uint32_t)v);
+  uint8_t*        cell = internal_cell_ptr(kc, (uint32_t)v);
+  void*           user = internal_user_ptr(kc, (uint32_t)v);
   const ra8_err_t rerr = kc->cfg.render(kc->cfg.render_ctx, key, cell, kc->cfg.cell_bytes, user);
   if (rerr != k_ra8_ok) {
     m->valid = 0U;
     m->seg   = (uint8_t)k_keycache_seg_probation;
-    priv_push_head(kc, v, &kc->pb_head, &kc->pb_tail);
+    internal_push_head(kc, v, &kc->pb_head, &kc->pb_tail);
     return rerr;
   }
-  (void)memcpy(priv_key_ptr(kc, (uint32_t)v), key, (size_t)kc->cfg.key_bytes);
+  (void)memcpy(internal_key_ptr(kc, (uint32_t)v), key, (size_t)kc->cfg.key_bytes);
   m->valid     = 1U;
   m->pin_count = 1U;
   m->seg       = (uint8_t)k_keycache_seg_probation;
-  priv_hash_insert(kc, v);
-  priv_push_head(kc, v, &kc->pb_head, &kc->pb_tail);
+  internal_hash_insert(kc, v);
+  internal_push_head(kc, v, &kc->pb_head, &kc->pb_tail);
   *out_view = (ra8_keycache_view_t){.data = cell, .user = user};
   return k_ra8_ok;
 }
@@ -864,17 +867,17 @@ ra8_err_t ra8_keycache_get(ra8_keycache_t* kc, const void* key, ra8_keycache_vie
   RA8_CHECK_NULL_PTR(kc, s_tag, "kc must not be nullptr");
   RA8_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
   RA8_CHECK_NULL_PTR(out_view, s_tag, "out_view must not be nullptr");
-  const int32_t f = priv_hash_lookup(kc, key);
+  const int32_t f = internal_hash_lookup(kc, key);
   if (f >= 0) {
     kc->hits++;
     kc->cfg.meta[f].pin_count++;
-    priv_access(kc, f);
-    *out_view = (ra8_keycache_view_t){.data = priv_cell_ptr(kc, (uint32_t)f),
-                                      .user = priv_user_ptr(kc, (uint32_t)f)};
+    internal_access(kc, f);
+    *out_view = (ra8_keycache_view_t){.data = internal_cell_ptr(kc, (uint32_t)f),
+                                      .user = internal_user_ptr(kc, (uint32_t)f)};
     return k_ra8_ok;
   }
   kc->misses++;
-  return priv_miss(kc, key, out_view);
+  return internal_miss(kc, key, out_view);
 }
 
 ra8_err_t ra8_keycache_prefetch(ra8_keycache_t* kc, const void* key)

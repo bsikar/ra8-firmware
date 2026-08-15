@@ -16,7 +16,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "ra8_img_arena.h"
 #include "unity_minimal.h"
@@ -87,6 +86,5 @@ static void test_arena_free_null_guard_mcdc(void)
 int32_t main(void)
 {
   test_arena_free_null_guard_mcdc();
-  (void)fprintf(stderr, "[OK ] test_ra8_img_arena_mcdc.c\n");
   return 0;
 }

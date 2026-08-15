@@ -10,7 +10,7 @@
  * folded this module's once-duplicate hash/pin/SLRU machinery into that engine).
  * The cache key is an (object_id, frame-aligned offset) pair; the byte page is
  * the cell payload; the ::ra8_vmem_loader_fn adapts to the engine's
- * render-on-miss seam through ::priv_vmem_fill; and ::priv_vmem_hash injects a
+ * render-on-miss seam through ::internal_vmem_fill; and ::internal_vmem_hash injects a
  * page-oriented hash of the key. All eviction mechanics -- the probationary /
  * protected SLRU lists, the pinned-frame skip, hash chaining -- live in
  * ::ra8_keycache. What this file adds is the pointer-handle API, frame-boundary
@@ -81,7 +81,7 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_vmem_hash(const void* key, uint32_t key_bytes, void* ctx)
+RA8_INTERNAL static uint32_t internal_vmem_hash(const void* key, uint32_t key_bytes, void* ctx)
 {
   (void)key_bytes;
   (void)ctx;
@@ -119,8 +119,8 @@ static uint32_t priv_vmem_hash(const void* key, uint32_t key_bytes, void* ctx)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-priv_vmem_fill(void* ctx, const void* key, uint8_t* cell, uint32_t cell_bytes, void* user)
+RA8_INTERNAL static ra8_err_t
+internal_vmem_fill(void* ctx, const void* key, uint8_t* cell, uint32_t cell_bytes, void* user)
 {
   (void)user;
   ra8_vmem_t*           vm = (ra8_vmem_t*)ctx;
@@ -145,11 +145,11 @@ ra8_err_t ra8_vmem_init(ra8_vmem_t* vm, const ra8_vmem_cfg_t* cfg)
   kcfg.meta               = cfg->meta;
   kcfg.buckets            = cfg->buckets;
   kcfg.bucket_count       = cfg->bucket_count;
-  kcfg.render             = priv_vmem_fill;
+  kcfg.render             = internal_vmem_fill;
   kcfg.render_ctx         = vm;
   kcfg.evict              = k_ra8_keycache_evict_slru;
   kcfg.protected_pct      = cfg->protected_pct;
-  kcfg.hash               = priv_vmem_hash;
+  kcfg.hash               = internal_vmem_hash;
   kcfg.hash_ctx           = nullptr;
   const ra8_err_t err     = ra8_keycache_init(&vm->kc, &kcfg);
   if (err != k_ra8_ok) {

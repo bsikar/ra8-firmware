@@ -49,7 +49,7 @@ static const char* const s_tag = "ra8_slab";
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_slab_next(const ra8_slab_t* slab, uint32_t idx)
+RA8_INTERNAL static uint32_t internal_slab_next(const ra8_slab_t* slab, uint32_t idx)
 {
   uint32_t next = 0U;
   (void)memcpy(&next, &slab->base[(size_t)idx * (size_t)slab->cell_bytes], sizeof(next));
@@ -77,7 +77,7 @@ static uint32_t priv_slab_next(const ra8_slab_t* slab, uint32_t idx)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_slab_set_next(ra8_slab_t* slab, uint32_t idx, uint32_t next)
+RA8_INTERNAL static void internal_slab_set_next(ra8_slab_t* slab, uint32_t idx, uint32_t next)
 {
   (void)memcpy(&slab->base[(size_t)idx * (size_t)slab->cell_bytes], &next, sizeof(next));
 }
@@ -101,7 +101,7 @@ ra8_err_t ra8_slab_init(ra8_slab_t* slab, void* buffer, uint32_t buffer_bytes, u
   slab->cell_count = count;
   for (uint32_t i = 0U; i < count; ++i) {
     const uint32_t next = ((i + 1U) < count) ? (i + 1U) : (uint32_t)k_ra8_slab_nil;
-    priv_slab_set_next(slab, i, next);
+    internal_slab_set_next(slab, i, next);
   }
   slab->free_head  = 0U;
   slab->free_count = count;
@@ -116,7 +116,7 @@ ra8_err_t ra8_slab_alloc(ra8_slab_t* slab, void** out_cell)
     return k_ra8_err_no_mem;
   }
   const uint32_t idx = slab->free_head;
-  slab->free_head    = priv_slab_next(slab, idx);
+  slab->free_head    = internal_slab_next(slab, idx);
   slab->free_count--;
   *out_cell = (void*)&slab->base[(size_t)idx * (size_t)slab->cell_bytes];
   return k_ra8_ok;
@@ -140,7 +140,7 @@ ra8_err_t ra8_slab_free(ra8_slab_t* slab, void* cell)
     return k_ra8_err_invalid_arg;
   }
   const uint32_t idx = (uint32_t)(off / (uintptr_t)slab->cell_bytes);
-  priv_slab_set_next(slab, idx, slab->free_head);
+  internal_slab_set_next(slab, idx, slab->free_head);
   slab->free_head = idx;
   slab->free_count++;
   return k_ra8_ok;
