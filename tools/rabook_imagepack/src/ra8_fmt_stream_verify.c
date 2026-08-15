@@ -68,7 +68,26 @@ static ra8_err_t internal_stable(const ra8_fmt_source_t* source)
   return (source->validate == nullptr) ? k_ra8_ok : source->validate(source->ctx, source->size);
 }
 
-/** @copydoc ra8_jof_pull_fn */
+/**
+ * @brief Pull the next bounded source prefix for streamed JOF production.
+ * @details Reads at the cursor's current offset, validates the backend's
+ * reported count, and advances only after a successful bounded read.
+ * @param[in,out] ctx Mutable ::verify_pull_t cursor context.
+ * @param[out] bytes Destination for the next source prefix.
+ * @param[in] cap Writable capacity of @p bytes.
+ * @param[out] got Number of bytes returned by the source.
+ * @return Canonical stream callback status.
+ * @retval k_ra8_ok A valid prefix or clean end-of-source was returned.
+ * @retval k_ra8_err_null_ptr A required callback argument was null.
+ * @retval k_ra8_err_protocol_error The source reported more than @p cap.
+ * @retval other Propagated source read error.
+ * @pre Nonzero @p cap requires writable @p bytes storage.
+ * @pre The cursor source and @p got remain valid for the call.
+ * @post Success advances the cursor by exactly @p *got bytes.
+ * @post Failure never advances past an unvalidated source result.
+ * @note The callback performs no allocation and never retains @p bytes.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
 static ra8_err_t internal_pull(void* ctx, uint8_t* bytes, size_t cap, size_t* got)
 {
@@ -93,7 +112,23 @@ static ra8_err_t internal_pull(void* ctx, uint8_t* bytes, size_t cap, size_t* go
   return rc;
 }
 
-/** @copydoc ra8_jof_sink_fn */
+/**
+ * @brief Append one produced JOF span to the injected verifier spool.
+ * @details Adapts the producer sink signature directly to the caller-owned
+ * spool without retaining the supplied byte span.
+ * @param[in,out] ctx Caller-owned ::ra8_fmt_spool_t descriptor.
+ * @param[in] bytes Produced JOF bytes to append.
+ * @param[in] len Number of bytes in @p bytes.
+ * @return Canonical spool append status.
+ * @retval k_ra8_ok The complete span was accepted.
+ * @retval other Propagated spool append failure.
+ * @pre @p ctx points to a bound spool with a valid append callback.
+ * @pre Nonzero @p len requires a readable @p bytes span.
+ * @post The callback result exactly matches the injected append result.
+ * @post This adapter retains no caller-owned pointer.
+ * @note Capacity and publication policy belong to the injected spool.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
 static ra8_err_t internal_spool_append(void* ctx, const uint8_t* bytes, size_t len)
 {

@@ -273,7 +273,7 @@ RA8_PRIV ra8_err_t priv_sdmmc_spi_cs_release(void)
  * ===========================================================================
  */
 
-/** @copydoc internal_build_frame */
+/* see header for full description */
 RA8_INTERNAL static void internal_build_frame(sd_cmd_t cmd, uint32_t arg, uint8_t* out_frame)
 {
   out_frame[k_sd_frame_idx_cmd] = (uint8_t)cmd;
@@ -294,7 +294,7 @@ RA8_INTERNAL static void internal_build_frame(sd_cmd_t cmd, uint32_t arg, uint8_
   }
 }
 
-/** @copydoc internal_read_r1 */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_read_r1(uint8_t* out_r1)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_sd_max_r1_wait_bytes; i++) {
@@ -373,7 +373,7 @@ RA8_PRIV ra8_err_t priv_sdmmc_spi_send_stop_transmission(uint8_t* out_r1)
  * ===========================================================================
  */
 
-/** @copydoc internal_read_r3_or_r7_tail */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_read_r3_or_r7_tail(uint32_t* out_word)
 {
   uint8_t   bytes[4] = {};
@@ -445,7 +445,7 @@ RA8_PRIV ra8_err_t priv_sdmmc_spi_wait_not_busy(void)
  * ===========================================================================
  */
 
-/** @copydoc internal_csd_to_blocks */
+/* see header for full description */
 RA8_INTERNAL static uint32_t internal_csd_to_blocks(const uint8_t* csd)
 {
   const uint8_t version = (uint8_t)((csd[k_sd_csd_byte_version] >> k_sd_csd_version_shift) & 0x03U);
@@ -564,7 +564,7 @@ RA8_INTERNAL static ra8_err_t internal_wake_card(void)
   return priv_sdmmc_spi_send_idle((uint32_t)k_sd_init_dummy_clocks / (uint32_t)k_sd_bit_byte);
 }
 
-/** @copydoc internal_send_cmd0 */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_send_cmd0(void)
 {
   ra8_err_t err = priv_sdmmc_spi_cs_assert();
@@ -583,7 +583,7 @@ RA8_INTERNAL static ra8_err_t internal_send_cmd0(void)
   return k_ra8_ok;
 }
 
-/** @copydoc internal_send_cmd8 */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_send_cmd8(bool* out_is_v2)
 {
   ra8_err_t err = priv_sdmmc_spi_cs_assert();
@@ -616,7 +616,7 @@ RA8_INTERNAL static ra8_err_t internal_send_cmd8(bool* out_is_v2)
   return k_ra8_ok;
 }
 
-/** @copydoc internal_acmd41_loop */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_acmd41_loop(bool is_v2)
 {
   const uint32_t arg = is_v2 ? (uint32_t)k_sd_acmd41_arg_hcs : 0U;
@@ -638,7 +638,7 @@ RA8_INTERNAL static ra8_err_t internal_acmd41_loop(bool is_v2)
   return k_ra8_err_hw_init_failed;
 }
 
-/** @copydoc internal_read_ocr */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_read_ocr(bool* out_is_hc)
 {
   ra8_err_t err = priv_sdmmc_spi_cs_assert();
@@ -703,7 +703,7 @@ RA8_INTERNAL static ra8_err_t internal_read_csd(uint32_t* out_blocks)
   return k_ra8_ok;
 }
 
-/** @copydoc internal_set_block_len */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_set_block_len(void)
 {
   ra8_err_t err = priv_sdmmc_spi_cs_assert();
@@ -723,7 +723,7 @@ RA8_INTERNAL static ra8_err_t internal_set_block_len(void)
   return k_ra8_ok;
 }
 
-/** @copydoc internal_classify_card */
+/* see header for full description */
 RA8_INTERNAL static ra8_sdmmc_spi_card_type_t internal_classify_card(bool is_v2, bool is_hc)
 {
   if (is_hc) {
@@ -735,7 +735,7 @@ RA8_INTERNAL static ra8_sdmmc_spi_card_type_t internal_classify_card(bool is_v2,
   return k_ra8_sdmmc_spi_type_sdv1;
 }
 
-/** @copydoc internal_probe_card */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_probe_card(bool* out_is_v2, bool* out_is_hc)
 {
   ra8_err_t err = internal_wake_card();
