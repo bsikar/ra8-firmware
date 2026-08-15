@@ -44,9 +44,7 @@
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool ra8_usb_pal_internal_should_dispatch_event(const void* event_fn,
-                                                uint16_t    mask,
-                                                uint16_t    none_value)
+bool priv_usb_pal_should_dispatch_event(const void* event_fn, uint16_t mask, uint16_t none_value)
 {
   return (event_fn != nullptr) && (mask != none_value);
 }
@@ -66,7 +64,7 @@ bool ra8_usb_pal_internal_should_dispatch_event(const void* event_fn,
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool ra8_usb_pal_internal_ep_out_of_range(uint8_t ep_addr, uint8_t ep_max)
+bool priv_usb_pal_ep_out_of_range(uint8_t ep_addr, uint8_t ep_max)
 {
   return (ep_addr == 0U) || (ep_addr > ep_max);
 }
@@ -264,9 +262,9 @@ static void internal_usb_event(void* ctx, ra8_usb_speed_t speed, uint16_t status
     return;
   }
   const uint16_t pal_mask = internal_translate(status_mask);
-  if (ra8_usb_pal_internal_should_dispatch_event((const void*)s_state.event_fn,
-                                                 pal_mask,
-                                                 (uint16_t)k_ra8_usb_pal_event_none)) {
+  if (priv_usb_pal_should_dispatch_event((const void*)s_state.event_fn,
+                                         pal_mask,
+                                         (uint16_t)k_ra8_usb_pal_event_none)) {
     s_state.event_fn(s_state.event_ctx, speed, pal_mask);
   }
 }
@@ -461,7 +459,7 @@ ra8_err_t ra8_usb_pal_ep_open(uint8_t               ep_addr,
   if (!s_state.initialized) {
     return k_ra8_err_invalid_state;
   }
-  if (ra8_usb_pal_internal_ep_out_of_range(ep_addr, (uint8_t)k_ra8_usb_pal_ep_max)) {
+  if (priv_usb_pal_ep_out_of_range(ep_addr, (uint8_t)k_ra8_usb_pal_ep_max)) {
     return k_ra8_err_invalid_arg;
   }
   if ((dir != k_ra8_usb_pal_ep_dir_out) && (dir != k_ra8_usb_pal_ep_dir_in)) {
@@ -520,7 +518,7 @@ ra8_err_t ra8_usb_pal_ep_send(uint8_t ep_addr, const uint8_t* data, uint16_t len
   if (!s_state.initialized) {
     return k_ra8_err_invalid_state;
   }
-  if (ra8_usb_pal_internal_ep_out_of_range(ep_addr, (uint8_t)k_ra8_usb_pal_ep_max)) {
+  if (priv_usb_pal_ep_out_of_range(ep_addr, (uint8_t)k_ra8_usb_pal_ep_max)) {
     return k_ra8_err_invalid_arg;
   }
   if ((len > k_ra8_usb_pal_xfer_max) || ((data == nullptr) && (len != 0U))) {
@@ -587,7 +585,7 @@ ra8_err_t ra8_usb_pal_ep_recv(uint8_t ep_addr, uint8_t* out_buf, uint16_t* inout
   if (!s_state.initialized) {
     return k_ra8_err_invalid_state;
   }
-  if (ra8_usb_pal_internal_ep_out_of_range(ep_addr, (uint8_t)k_ra8_usb_pal_ep_max)) {
+  if (priv_usb_pal_ep_out_of_range(ep_addr, (uint8_t)k_ra8_usb_pal_ep_max)) {
     return k_ra8_err_invalid_arg;
   }
   if (*inout_len == 0U) {

@@ -1,6 +1,7 @@
 /**
  * @file ra8_usb_pal_internal.h
  * @brief Test-access surface for ra8_usb_pal internal helpers (MC/DC).
+ * @details Declares the module-private pure predicates shared by the PAL implementation and its focused hosted qualification test.
  * @ingroup grp_net
  *
  * @par Tag
@@ -51,9 +52,7 @@ extern "C" {
  * @since 0.1.0
  */
 RA8_PRIV
-bool ra8_usb_pal_internal_should_dispatch_event(const void* event_fn,
-                                                uint16_t    mask,
-                                                uint16_t    none_value);
+bool priv_usb_pal_should_dispatch_event(const void* event_fn, uint16_t mask, uint16_t none_value);
 
 /**
  * @brief Pure predicate: endpoint number is zero OR exceeds max.
@@ -85,7 +84,7 @@ bool ra8_usb_pal_internal_should_dispatch_event(const void* event_fn,
  * @since 0.1.0
  */
 RA8_PRIV
-bool ra8_usb_pal_internal_ep_out_of_range(uint8_t ep_addr, uint8_t ep_max);
+bool priv_usb_pal_ep_out_of_range(uint8_t ep_addr, uint8_t ep_max);
 
 #ifdef __cplusplus
 }

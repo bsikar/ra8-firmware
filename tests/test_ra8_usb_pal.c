@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_usb_pal.c
  * @brief Unit tests for libs/ra8_usb_pal
+ * @details Exercises PAL lifecycle, endpoint queues, callback dispatch, argument rejection, and promoted MC/DC predicates against fake USB MMIO.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -10,6 +11,7 @@
 
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
+#include "ra8_log.h"
 #include "ra8_mstp.h"
 #include "ra8_usb.h"
 #include "ra8_usb_pal.h"
@@ -29,11 +31,24 @@ typedef enum : uint16_t {
                                    returns the register verbatim.              */
 } t_pal_t;
 
-static void prep(void)
+/**
+ * @brief Reset the hosted USB PAL fixture.
+ *
+ * @details
+ * Deinitializes any live PAL while its register mapping is valid, then resets fake MMIO and module-stop state.
+ *
+ * @pre The hosted fake-MMIO fixture is available.
+ * @pre No concurrent PAL operation is active in the single-threaded test process.
+ * @post A previously initialized PAL has been deinitialized; an uninitialized PAL remains inert.
+ * @post The fake register mapping and module-stop fixture are reset.
+ * @note Fixture reset helper; not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_prep(void)
 {
+  (void)ra8_usb_pal_deinit();
   ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
-  (void)ra8_usb_pal_deinit();
 }
 
 /**
@@ -41,11 +56,22 @@ static void prep(void)
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
+ * @brief Verify full-speed initialization starts detached.
+ *
+ * @details
+ * Initializes the PAL at full speed and checks that the first observable state is detached.
+ *
+ * @pre The hosted fake-MMIO fixture is available.
+ * @pre No concurrent PAL operation is active in the single-threaded test process.
+ * @post Every expected return code and observable state transition has been asserted.
+ * @post The next vector can reclaim singleton state through ::internal_prep.
+ * @note Assertions terminate the hosted test on the first mismatch.
+ * @since 0.1.0
  */
-static void test_init_fs_starts_detached(void)
+RA8_INTERNAL static void internal_test_init_fs_starts_detached(void)
 {
   TEST_BEGIN("ra8_usb_pal_init: FS init starts detached");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
 
   ra8_usb_pal_state_t state = k_ra8_usb_pal_state_configd;
@@ -59,11 +85,22 @@ static void test_init_fs_starts_detached(void)
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
+ * @brief Verify high-speed initialization starts detached.
+ *
+ * @details
+ * Initializes the PAL at high speed and checks that the first observable state is detached.
+ *
+ * @pre The hosted fake-MMIO fixture is available.
+ * @pre No concurrent PAL operation is active in the single-threaded test process.
+ * @post Every expected return code and observable state transition has been asserted.
+ * @post The next vector can reclaim singleton state through ::internal_prep.
+ * @note Assertions terminate the hosted test on the first mismatch.
+ * @since 0.1.0
  */
-static void test_init_hs_starts_detached(void)
+RA8_INTERNAL static void internal_test_init_hs_starts_detached(void)
 {
   TEST_BEGIN("ra8_usb_pal_init: HS init starts detached");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_hs));
   ra8_usb_pal_state_t state = k_ra8_usb_pal_state_configd;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_get_state(&state));
@@ -76,11 +113,22 @@ static void test_init_hs_starts_detached(void)
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
+ * @brief Reject an unsupported USB speed.
+ *
+ * @details
+ * Passes an out-of-domain speed and verifies initialization fails before the PAL changes state.
+ *
+ * @pre The hosted fake-MMIO fixture is available.
+ * @pre No concurrent PAL operation is active in the single-threaded test process.
+ * @post Every expected return code and observable state transition has been asserted.
+ * @post The next vector can reclaim singleton state through ::internal_prep.
+ * @note Assertions terminate the hosted test on the first mismatch.
+ * @since 0.1.0
  */
-static void test_init_bad_speed(void)
+RA8_INTERNAL static void internal_test_init_bad_speed(void)
 {
   TEST_BEGIN("ra8_usb_pal_init: bad speed rejected");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pal_init((ra8_usb_speed_t)99U));
   TEST_END("ra8_usb_pal_init: bad speed rejected");
 }
@@ -90,11 +138,22 @@ static void test_init_bad_speed(void)
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
+ * @brief Verify attach and detach state transitions.
+ *
+ * @details
+ * Exercises both pull-up transitions and checks the cached PAL state after each successful request.
+ *
+ * @pre The hosted fake-MMIO fixture is available.
+ * @pre No concurrent PAL operation is active in the single-threaded test process.
+ * @post Every expected return code and observable state transition has been asserted.
+ * @post The next vector can reclaim singleton state through ::internal_prep.
+ * @note Assertions terminate the hosted test on the first mismatch.
+ * @since 0.1.0
  */
-static void test_attach_detach_cycles_state(void)
+RA8_INTERNAL static void internal_test_attach_detach_cycles_state(void)
 {
   TEST_BEGIN("ra8_usb_pal_attach: cycles state attached/detached");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_attach(true));
@@ -113,11 +172,22 @@ static void test_attach_detach_cycles_state(void)
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
+ * @brief Verify endpoint-open argument validation.
+ *
+ * @details
+ * Covers reserved and oversized endpoint numbers, invalid direction and type values, packet-size bounds, and one valid open.
+ *
+ * @pre The hosted fake-MMIO fixture is available.
+ * @pre No concurrent PAL operation is active in the single-threaded test process.
+ * @post Every expected return code and observable state transition has been asserted.
+ * @post The next vector can reclaim singleton state through ::internal_prep.
+ * @note Assertions terminate the hosted test on the first mismatch.
+ * @since 0.1.0
  */
-static void test_ep_open_validates_args(void)
+RA8_INTERNAL static void internal_test_ep_open_validates_args(void)
 {
   TEST_BEGIN("ra8_usb_pal_ep_open: arg validation");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
 
   /* Bad EP addr (0 = control reserved). */
@@ -151,11 +221,22 @@ static void test_ep_open_validates_args(void)
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
+ * @brief Round-trip one packet through the endpoint ring.
+ *
+ * @details
+ * Checks the empty-ring result, queues a patterned packet, receives identical bytes, and verifies the ring becomes empty again.
+ *
+ * @pre The hosted fake-MMIO fixture is available.
+ * @pre No concurrent PAL operation is active in the single-threaded test process.
+ * @post Every expected return code and observable state transition has been asserted.
+ * @post The next vector can reclaim singleton state through ::internal_prep.
+ * @note Assertions terminate the hosted test on the first mismatch.
+ * @since 0.1.0
  */
-static void test_ep_send_recv_loopback(void)
+RA8_INTERNAL static void internal_test_ep_send_recv_loopback(void)
 {
   TEST_BEGIN("ra8_usb_pal_ep_{send,recv}: in-memory loopback round-trip");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_usb_pal_ep_open(1U, k_ra8_usb_pal_ep_dir_in, k_ra8_usb_pal_ep_type_bulk, 64U));
@@ -190,11 +271,22 @@ static void test_ep_send_recv_loopback(void)
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
+ * @brief Verify send and receive argument validation.
+ *
+ * @details
+ * Covers endpoint bounds, null buffers, transfer limits, zero receive capacity, and unopened endpoint state without mutating a valid slot.
+ *
+ * @pre The hosted fake-MMIO fixture is available.
+ * @pre No concurrent PAL operation is active in the single-threaded test process.
+ * @post Every expected return code and observable state transition has been asserted.
+ * @post The next vector can reclaim singleton state through ::internal_prep.
+ * @note Assertions terminate the hosted test on the first mismatch.
+ * @since 0.1.0
  */
-static void test_ep_send_recv_arg_validation(void)
+RA8_INTERNAL static void internal_test_ep_send_recv_arg_validation(void)
 {
   TEST_BEGIN("ra8_usb_pal_ep_{send,recv}: arg validation");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_usb_pal_ep_open(1U, k_ra8_usb_pal_ep_dir_in, k_ra8_usb_pal_ep_type_bulk, 64U));
@@ -222,7 +314,23 @@ static void test_ep_send_recv_arg_validation(void)
 
 static int32_t s_usb_event_count = 0;
 
-static void stub_usb_event(void* ctx, ra8_usb_speed_t speed, uint16_t mask)
+/**
+ * @brief Count one translated USB event.
+ *
+ * @details
+ * Records that the PAL invoked its callback while deliberately ignoring the context, speed, and event-mask payloads.
+ *
+ * @param[in] ctx Callback context, unused by this counting fixture.
+ * @param[in] speed Reported USB bus speed, unused by this counting fixture.
+ * @param[in] mask Translated PAL event mask, unused by this counting fixture.
+ * @pre ::s_usb_event_count names writable fixture storage.
+ * @pre The callback arguments may carry any values accepted by the PAL callback contract.
+ * @post ::s_usb_event_count is incremented exactly once.
+ * @post No PAL or fake-MMIO state is modified.
+ * @note Single-threaded counting stub; not reentrant.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_stub_usb_event(void* ctx, ra8_usb_speed_t speed, uint16_t mask)
 {
   (void)ctx;
   (void)speed;
@@ -235,15 +343,26 @@ static void stub_usb_event(void* ctx, ra8_usb_speed_t speed, uint16_t mask)
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
+ * @brief Verify event-handler binding and removal.
+ *
+ * @details
+ * Installs the hosted callback on an initialized PAL and then removes it through the public binding API.
+ *
+ * @pre The hosted fake-MMIO fixture is available.
+ * @pre No concurrent PAL operation is active in the single-threaded test process.
+ * @post Every expected return code and observable state transition has been asserted.
+ * @post The next vector can reclaim singleton state through ::internal_prep.
+ * @note Assertions terminate the hosted test on the first mismatch.
+ * @since 0.1.0
  */
-static void test_event_handler_attach_detach(void)
+RA8_INTERNAL static void internal_test_event_handler_attach_detach(void)
 {
   TEST_BEGIN("ra8_usb_pal_set_event_handler: attach + detach");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
 
   s_usb_event_count = 0;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_set_event_handler(stub_usb_event, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_set_event_handler(internal_stub_usb_event, nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_set_event_handler(nullptr, nullptr));
   TEST_END("ra8_usb_pal_set_event_handler: attach + detach");
 }
@@ -253,15 +372,26 @@ static void test_event_handler_attach_detach(void)
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
+ * @brief Verify interrupt-status dispatch reaches the PAL callback.
+ *
+ * @details
+ * Seeds INTSTS0, dispatches full-speed events, and checks nonzero, zero, and mismatched-speed delivery behavior.
+ *
+ * @pre The hosted fake-MMIO fixture is available.
+ * @pre No concurrent PAL operation is active in the single-threaded test process.
+ * @post Every expected return code and observable state transition has been asserted.
+ * @post The next vector can reclaim singleton state through ::internal_prep.
+ * @note Assertions terminate the hosted test on the first mismatch.
+ * @since 0.1.0
  */
-static void test_dispatch_relays_intsts0(void)
+RA8_INTERNAL static void internal_test_dispatch_relays_intsts0(void)
 {
   TEST_BEGIN("ra8_usb_dispatch -> PAL relay -> stack callback");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
 
   s_usb_event_count = 0;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_set_event_handler(stub_usb_event, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_set_event_handler(internal_stub_usb_event, nullptr));
 
   /* Pre-set INTSTS0 to a non-zero value so dispatch sees a real event. */
   volatile r_usb_regs_t* reg = ra8_usb_fs();
@@ -289,11 +419,22 @@ static void test_dispatch_relays_intsts0(void)
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
+ * @brief Verify every stateful PAL call rejects pre-init use.
+ *
+ * @details
+ * Calls attach, state, endpoint, handler, and deinit APIs before initialization and checks each invalid-state result.
+ *
+ * @pre The hosted fake-MMIO fixture is available.
+ * @pre No concurrent PAL operation is active in the single-threaded test process.
+ * @post Every expected return code and observable state transition has been asserted.
+ * @post The next vector can reclaim singleton state through ::internal_prep.
+ * @note Assertions terminate the hosted test on the first mismatch.
+ * @since 0.1.0
  */
-static void test_calls_before_init_fail(void)
+RA8_INTERNAL static void internal_test_calls_before_init_fail(void)
 {
   TEST_BEGIN("ra8_usb_pal_*: pre-init calls return invalid_state");
-  prep();
+  internal_prep();
 
   ra8_usb_pal_state_t state   = k_ra8_usb_pal_state_configd;
   uint8_t             buf[16] = {0U};
@@ -305,7 +446,8 @@ static void test_calls_before_init_fail(void)
                  ra8_usb_pal_ep_open(1U, k_ra8_usb_pal_ep_dir_in, k_ra8_usb_pal_ep_type_bulk, 64U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_pal_ep_send(1U, buf, 16U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_pal_ep_recv(1U, buf, &len));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_pal_set_event_handler(stub_usb_event, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 ra8_usb_pal_set_event_handler(internal_stub_usb_event, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_pal_deinit());
   TEST_END("ra8_usb_pal_*: pre-init calls return invalid_state");
 }
@@ -315,7 +457,7 @@ static void test_calls_before_init_fail(void)
  * ============================================================================= */
 
 /**
- * @test test_mcdc_init_speed
+ * @test internal_test_mcdc_init_speed
  *
  * @par MC/DC:
  * Decision: `if ((speed != k_ra8_usb_speed_fs) && (speed != k_ra8_usb_speed_hs))`
@@ -324,21 +466,32 @@ static void test_calls_before_init_fail(void)
  * - V2: speed=99 (bad) -> C1=T, C2=T -> true (rejected; varies C1).
  * - V3: speed=hs       -> C1=T, C2=F -> false (proceed; varies C2).
  * V1 vs V2 vary C1. V2 vs V3 vary C2. N+1 = 3 vectors for N=2.
+ * @brief Exercise MC/DC vectors for speed validation.
+ *
+ * @details
+ * Drives full-speed, invalid, and high-speed inputs so each operand in the initialization speed guard independently affects the decision.
+ *
+ * @pre The hosted fake-MMIO fixture is available.
+ * @pre No concurrent PAL operation is active in the single-threaded test process.
+ * @post Every expected return code and observable state transition has been asserted.
+ * @post The next vector can reclaim singleton state through ::internal_prep.
+ * @note Assertions terminate the hosted test on the first mismatch.
+ * @since 0.1.0
  */
-static void test_mcdc_init_speed(void)
+RA8_INTERNAL static void internal_test_mcdc_init_speed(void)
 {
   TEST_BEGIN("mcdc: ra8_usb_pal_init speed (!=fs && !=hs)");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pal_init((ra8_usb_speed_t)99U));
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_hs));
   TEST_END("mcdc: ra8_usb_pal_init speed (!=fs && !=hs)");
 }
 
 /**
- * @test test_mcdc_ep_open_addr
+ * @test internal_test_mcdc_ep_open_addr
  *
  * @par MC/DC:
  * Decision: `if ((ep_addr == 0U) || (ep_addr > k_ra8_usb_pal_ep_max))`
@@ -347,11 +500,22 @@ static void test_mcdc_init_speed(void)
  * - V2: ep_addr=0                     -> C1=T short-circuit -> true (varies C1).
  * - V3: ep_addr=k_ra8_usb_pal_ep_max+1 -> C1=F, C2=T -> true (varies C2).
  * V1 vs V2 vary C1. V1 vs V3 vary C2 with C1 held F. N+1 = 3 vectors.
+ * @brief Exercise MC/DC vectors for endpoint-number bounds.
+ *
+ * @details
+ * Drives an in-range endpoint, endpoint zero, and one endpoint above the maximum through the shared endpoint predicate.
+ *
+ * @pre The hosted fake-MMIO fixture is available.
+ * @pre No concurrent PAL operation is active in the single-threaded test process.
+ * @post Every expected return code and observable state transition has been asserted.
+ * @post The next vector can reclaim singleton state through ::internal_prep.
+ * @note Assertions terminate the hosted test on the first mismatch.
+ * @since 0.1.0
  */
-static void test_mcdc_ep_open_addr(void)
+RA8_INTERNAL static void internal_test_mcdc_ep_open_addr(void)
 {
   TEST_BEGIN("mcdc: ep_open ep_addr (==0 || >ep_max)");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_usb_pal_ep_open(1U, k_ra8_usb_pal_ep_dir_in, k_ra8_usb_pal_ep_type_bulk, 64U));
@@ -366,7 +530,7 @@ static void test_mcdc_ep_open_addr(void)
 }
 
 /**
- * @test test_mcdc_ep_open_dir
+ * @test internal_test_mcdc_ep_open_dir
  *
  * @par MC/DC:
  * Decision: `if ((dir != k_ra8_usb_pal_ep_dir_out) && (dir != k_ra8_usb_pal_ep_dir_in))`
@@ -375,11 +539,22 @@ static void test_mcdc_ep_open_addr(void)
  * - V2: dir=99  -> C1=T, C2=T         -> true (reject; varies C1).
  * - V3: dir=in  -> C1=T, C2=F         -> false (proceed; varies C2).
  * V1 vs V2 vary C1. V2 vs V3 vary C2. N+1 = 3 vectors for N=2.
+ * @brief Exercise MC/DC vectors for endpoint direction.
+ *
+ * @details
+ * Drives OUT, an invalid direction, and IN so both inequalities in the direction guard independently affect the result.
+ *
+ * @pre The hosted fake-MMIO fixture is available.
+ * @pre No concurrent PAL operation is active in the single-threaded test process.
+ * @post Every expected return code and observable state transition has been asserted.
+ * @post The next vector can reclaim singleton state through ::internal_prep.
+ * @note Assertions terminate the hosted test on the first mismatch.
+ * @since 0.1.0
  */
-static void test_mcdc_ep_open_dir(void)
+RA8_INTERNAL static void internal_test_mcdc_ep_open_dir(void)
 {
   TEST_BEGIN("mcdc: ep_open dir (!=out && !=in)");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -393,7 +568,7 @@ static void test_mcdc_ep_open_dir(void)
 }
 
 /**
- * @test test_mcdc_ep_open_type_packet
+ * @test internal_test_mcdc_ep_open_type_packet
  *
  * @par MC/DC:
  * Decision (3 conditions OR): `if ((type > k_ra8_usb_pal_ep_type_intr) ||
@@ -410,11 +585,22 @@ static void test_mcdc_ep_open_dir(void)
  * the others held in their non-masking value (false for OR). DO-178C
  * Level B / IEC 61508 SIL 3 qualified form; full 2^3=8 combinatoric
  * coverage is not required.
+ * @brief Exercise MC/DC vectors for endpoint type and packet bounds.
+ *
+ * @details
+ * Uses one valid vector and one vector per invalid OR operand to cover type, zero packet size, and oversized packet size.
+ *
+ * @pre The hosted fake-MMIO fixture is available.
+ * @pre No concurrent PAL operation is active in the single-threaded test process.
+ * @post Every expected return code and observable state transition has been asserted.
+ * @post The next vector can reclaim singleton state through ::internal_prep.
+ * @note Assertions terminate the hosted test on the first mismatch.
+ * @since 0.1.0
  */
-static void test_mcdc_ep_open_type_packet(void)
+RA8_INTERNAL static void internal_test_mcdc_ep_open_type_packet(void)
 {
   TEST_BEGIN("mcdc: ep_open type/packet (3-cond OR)");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_usb_pal_ep_open(1U, k_ra8_usb_pal_ep_dir_in, k_ra8_usb_pal_ep_type_bulk, 64U));
@@ -431,7 +617,7 @@ static void test_mcdc_ep_open_type_packet(void)
 }
 
 /**
- * @test test_mcdc_ep_send_len_data
+ * @test internal_test_mcdc_ep_send_len_data
  *
  * @par MC/DC:
  * Decision (3 conditions): `if ((len > k_ra8_usb_pal_xfer_max) ||
@@ -448,11 +634,22 @@ static void test_mcdc_ep_open_type_packet(void)
  * The mixed `A || (B && C)` admits the same masking-MC/DC minimal
  * cover as a 3-condition decision: 4 representative vectors per
  * Chilenski. DO-178C Level B / IEC 61508 SIL 3 qualified form.
+ * @brief Exercise MC/DC vectors for send length and data validity.
+ *
+ * @details
+ * Covers the mixed length-or-null-data decision with valid, oversized, null-nonzero, and null-zero transfers.
+ *
+ * @pre The hosted fake-MMIO fixture is available.
+ * @pre No concurrent PAL operation is active in the single-threaded test process.
+ * @post Every expected return code and observable state transition has been asserted.
+ * @post The next vector can reclaim singleton state through ::internal_prep.
+ * @note Assertions terminate the hosted test on the first mismatch.
+ * @since 0.1.0
  */
-static void test_mcdc_ep_send_len_data(void)
+RA8_INTERNAL static void internal_test_mcdc_ep_send_len_data(void)
 {
   TEST_BEGIN("mcdc: ep_send len/data (3-cond mixed)");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_usb_pal_ep_open(1U, k_ra8_usb_pal_ep_dir_in, k_ra8_usb_pal_ep_type_bulk, 64U));
@@ -470,7 +667,7 @@ static void test_mcdc_ep_send_len_data(void)
 }
 
 /**
- * @test test_mcdc_usb_pal_internal_should_dispatch_event
+ * @test internal_test_mcdc_priv_usb_pal_should_dispatch_event
  *
  * @par MC/DC:
  * Decision at libs/ra8_usb_pal/src/ra8_usb_pal.c (call site) -> helper at
@@ -480,19 +677,30 @@ static void test_mcdc_ep_send_len_data(void)
  * - V2: cb!=NULL, mask!=none -> true
  * - V3: cb!=NULL, mask=none  -> false (right varies vs V2)
  * N+1 = 3.
+ * @brief Exercise MC/DC vectors for event dispatch eligibility.
+ *
+ * @details
+ * Varies callback presence and translated mask independently through the promoted private predicate.
+ *
+ * @pre The hosted fake-MMIO fixture is available.
+ * @pre No concurrent PAL operation is active in the single-threaded test process.
+ * @post Every expected return code and observable state transition has been asserted.
+ * @post The next vector can reclaim singleton state through ::internal_prep.
+ * @note Assertions terminate the hosted test on the first mismatch.
+ * @since 0.1.0
  */
-static void test_mcdc_usb_pal_internal_should_dispatch_event(void)
+RA8_INTERNAL static void internal_test_mcdc_priv_usb_pal_should_dispatch_event(void)
 {
   TEST_BEGIN("usb_pal MC/DC: should_dispatch_event AND");
   uint8_t fake_cb = 0U;
-  TEST_ASSERT(!ra8_usb_pal_internal_should_dispatch_event(nullptr, 0x0001U, 0x0000U));
-  TEST_ASSERT(ra8_usb_pal_internal_should_dispatch_event(&fake_cb, 0x0001U, 0x0000U));
-  TEST_ASSERT(!ra8_usb_pal_internal_should_dispatch_event(&fake_cb, 0x0000U, 0x0000U));
+  TEST_ASSERT(!priv_usb_pal_should_dispatch_event(nullptr, 0x0001U, 0x0000U));
+  TEST_ASSERT(priv_usb_pal_should_dispatch_event(&fake_cb, 0x0001U, 0x0000U));
+  TEST_ASSERT(!priv_usb_pal_should_dispatch_event(&fake_cb, 0x0000U, 0x0000U));
   TEST_END("usb_pal MC/DC: should_dispatch_event AND");
 }
 
 /**
- * @test test_mcdc_usb_pal_internal_ep_out_of_range
+ * @test internal_test_mcdc_priv_usb_pal_ep_out_of_range
  *
  * @par MC/DC:
  * Decision at libs/ra8_usb_pal/src/ra8_usb_pal.c (call site) -> helper at
@@ -502,35 +710,69 @@ static void test_mcdc_usb_pal_internal_should_dispatch_event(void)
  * - V2: ep=0,  ep_max=10 -> true (varies left)
  * - V3: ep=11, ep_max=10 -> true (varies right)
  * N+1 = 3.
+ * @brief Exercise MC/DC vectors for the private endpoint predicate.
+ *
+ * @details
+ * Varies endpoint-zero and endpoint-above-maximum independently while retaining one valid endpoint vector.
+ *
+ * @pre The hosted fake-MMIO fixture is available.
+ * @pre No concurrent PAL operation is active in the single-threaded test process.
+ * @post Every expected return code and observable state transition has been asserted.
+ * @post The next vector can reclaim singleton state through ::internal_prep.
+ * @note Assertions terminate the hosted test on the first mismatch.
+ * @since 0.1.0
  */
-static void test_mcdc_usb_pal_internal_ep_out_of_range(void)
+RA8_INTERNAL static void internal_test_mcdc_priv_usb_pal_ep_out_of_range(void)
 {
   TEST_BEGIN("usb_pal MC/DC: ep_out_of_range OR");
-  TEST_ASSERT(!ra8_usb_pal_internal_ep_out_of_range(1U, 10U));
-  TEST_ASSERT(ra8_usb_pal_internal_ep_out_of_range(0U, 10U));
-  TEST_ASSERT(ra8_usb_pal_internal_ep_out_of_range(11U, 10U));
+  TEST_ASSERT(!priv_usb_pal_ep_out_of_range(1U, 10U));
+  TEST_ASSERT(priv_usb_pal_ep_out_of_range(0U, 10U));
+  TEST_ASSERT(priv_usb_pal_ep_out_of_range(11U, 10U));
   TEST_END("usb_pal MC/DC: ep_out_of_range OR");
+}
+
+/**
+ * @brief Discard one hosted diagnostic byte.
+ *
+ * @details
+ * Redirects expected argument-rejection diagnostics away from the target-only
+ * ITM window while the hosted PAL vectors run.
+ *
+ * @param[in] ctx Opaque logger context, unused by this sink.
+ * @param[in] byte Diagnostic byte to discard.
+ * @pre No test vector depends on observing diagnostic text.
+ * @pre The sink is installed only for this single-threaded test process.
+ * @post No memory, fixture, or USB state is modified.
+ * @post Control returns immediately to the production logger.
+ * @note Hosted safety adapter; not a production output path.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_log_sink(void* ctx, uint8_t byte)
+{
+  (void)ctx;
+  (void)byte;
 }
 
 int32_t main(void)
 {
-  test_init_fs_starts_detached();
-  test_init_hs_starts_detached();
-  test_init_bad_speed();
-  test_attach_detach_cycles_state();
-  test_ep_open_validates_args();
-  test_ep_send_recv_loopback();
-  test_ep_send_recv_arg_validation();
-  test_event_handler_attach_detach();
-  test_dispatch_relays_intsts0();
-  test_calls_before_init_fail();
-  test_mcdc_init_speed();
-  test_mcdc_ep_open_addr();
-  test_mcdc_ep_open_dir();
-  test_mcdc_ep_open_type_packet();
-  test_mcdc_ep_send_len_data();
-  test_mcdc_usb_pal_internal_should_dispatch_event();
-  test_mcdc_usb_pal_internal_ep_out_of_range();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_pal.c\n");
+  ra8_log_set_byte_sink(internal_host_log_sink, nullptr);
+  internal_test_init_fs_starts_detached();
+  internal_test_init_hs_starts_detached();
+  internal_test_init_bad_speed();
+  internal_test_attach_detach_cycles_state();
+  internal_test_ep_open_validates_args();
+  internal_test_ep_send_recv_loopback();
+  internal_test_ep_send_recv_arg_validation();
+  internal_test_event_handler_attach_detach();
+  internal_test_dispatch_relays_intsts0();
+  internal_test_calls_before_init_fail();
+  internal_test_mcdc_init_speed();
+  internal_test_mcdc_ep_open_addr();
+  internal_test_mcdc_ep_open_dir();
+  internal_test_mcdc_ep_open_type_packet();
+  internal_test_mcdc_ep_send_len_data();
+  internal_test_mcdc_priv_usb_pal_should_dispatch_event();
+  internal_test_mcdc_priv_usb_pal_ep_out_of_range();
+  ra8_log_set_byte_sink(nullptr, nullptr);
   return 0;
 }
