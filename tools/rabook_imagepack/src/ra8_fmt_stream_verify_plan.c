@@ -18,15 +18,21 @@
 
 /** @brief Bounded encoded-header probe constants. */
 typedef enum : uint32_t {
-  k_verify_png_head    = 26U,         /**< Signature, IHDR, and colour type. */
-  k_verify_png_chunks  = 33U,         /**< First post-IHDR chunk offset.     */
-  k_verify_png_trns    = 0x74524E53U, /**< PNG tRNS chunk code.              */
-  k_verify_png_idat    = 0x49444154U, /**< PNG IDAT chunk code.              */
-  k_verify_jpeg_sof0   = 0xC0U,       /**< First JPEG SOF code.              */
-  k_verify_jpeg_dht    = 0xC4U,       /**< JPEG table code in SOF range.     */
-  k_verify_jpeg_jpg    = 0xC8U,       /**< JPEG reserved SOF-range code.     */
-  k_verify_jpeg_dac    = 0xCCU,       /**< JPEG arithmetic table code.       */
-  k_verify_jpeg_marker = 0xFFU,       /**< JPEG marker introducer.           */
+  k_verify_png_head         = 26U,         /**< Signature, IHDR, and colour type. */
+  k_verify_png_chunks       = 33U,         /**< First post-IHDR chunk offset.     */
+  k_verify_png_trns         = 0x74524E53U, /**< PNG tRNS chunk code.              */
+  k_verify_png_idat         = 0x49444154U, /**< PNG IDAT chunk code.              */
+  k_verify_jpeg_sof0        = 0xC0U,       /**< First JPEG SOF code.              */
+  k_verify_jpeg_dht         = 0xC4U,       /**< JPEG table code in SOF range.     */
+  k_verify_jpeg_jpg         = 0xC8U,       /**< JPEG reserved SOF-range code.     */
+  k_verify_jpeg_dac         = 0xCCU,       /**< JPEG arithmetic table code.       */
+  k_verify_jpeg_marker      = 0xFFU,       /**< JPEG marker introducer.           */
+  k_verify_jpeg_soi         = 0xD8U,       /**< JPEG start-of-image marker.        */
+  k_verify_jpeg_sof_last    = 0xCFU,       /**< Last JPEG SOF-range marker.        */
+  k_verify_u32_high_shift   = 24U,         /**< Big-endian uint32 high shift.      */
+  k_verify_jpeg_components  = 7U,          /**< Component-count offset after len.  */
+  k_verify_png_chunk_record = 12U,         /**< PNG chunk framing bytes.           */
+  k_verify_png_color_type   = 25U,         /**< PNG IHDR colour-type offset.       */
 } verify_plan_const_t;
 
 /**
@@ -105,8 +111,8 @@ static uint16_t internal_be16(const uint8_t bytes[2])
 RA8_INTERNAL
 static uint32_t internal_be32(const uint8_t bytes[4])
 {
-  return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) | ((uint32_t)bytes[2] << 8U) |
-         bytes[3];
+  return ((uint32_t)bytes[0] << k_verify_u32_high_shift) | ((uint32_t)bytes[1] << 16U) |
+         ((uint32_t)bytes[2] << 8U) | bytes[3];
 }
 
 /**
@@ -126,7 +132,8 @@ static uint32_t internal_be32(const uint8_t bytes[4])
 RA8_INTERNAL
 static bool internal_is_sof(uint8_t marker)
 {
-  const bool range = (marker >= (uint8_t)k_verify_jpeg_sof0) && (marker <= 0xCFU);
+  const bool range =
+    (marker >= (uint8_t)k_verify_jpeg_sof0) && (marker <= (uint8_t)k_verify_jpeg_sof_last);
   return range && (marker != (uint8_t)k_verify_jpeg_dht) &&
          (marker != (uint8_t)k_verify_jpeg_jpg) && (marker != (uint8_t)k_verify_jpeg_dac);
 }
@@ -176,7 +183,7 @@ static ra8_err_t internal_jpeg_bpp(const ra8_fmt_source_t* source, uint8_t* bpp)
     }
     if (internal_is_sof(byte)) {
       uint8_t components = 0U;
-      rc                 = internal_exact(source, offset + 7U, &components, 1U);
+      rc = internal_exact(source, offset + k_verify_jpeg_components, &components, 1U);
       if (rc != k_ra8_ok) {
         return rc;
       }
@@ -228,7 +235,7 @@ static ra8_err_t internal_png_bpp(const ra8_fmt_source_t* source, uint8_t color_
   }
   uint64_t offset = k_verify_png_chunks;
   *bpp            = 3U;
-  while ((offset + 12U) <= source->size) {
+  while ((offset + k_verify_png_chunk_record) <= source->size) {
     uint8_t   chunk[8];
     ra8_err_t rc = internal_exact(source, offset, chunk, sizeof(chunk));
     if (rc != k_ra8_ok) {
@@ -236,7 +243,7 @@ static ra8_err_t internal_png_bpp(const ra8_fmt_source_t* source, uint8_t color_
     }
     const uint32_t length = internal_be32(chunk);
     const uint32_t type   = internal_be32(&chunk[4]);
-    if ((uint64_t)length > (source->size - offset - 12U)) {
+    if ((uint64_t)length > (source->size - offset - k_verify_png_chunk_record)) {
       return k_ra8_err_protocol_error;
     }
     if (type == k_verify_png_trns) {
@@ -245,7 +252,7 @@ static ra8_err_t internal_png_bpp(const ra8_fmt_source_t* source, uint8_t color_
     if (type == k_verify_png_idat) {
       return k_ra8_ok;
     }
-    offset += 12U + length;
+    offset += k_verify_png_chunk_record + length;
   }
   return k_ra8_err_protocol_error;
 }
@@ -274,12 +281,12 @@ static ra8_err_t internal_bpp(const ra8_fmt_source_t* source, uint8_t* bpp)
   if (rc != k_ra8_ok) {
     return rc;
   }
-  if ((head[0] == 0xFFU) && (head[1] == 0xD8U)) {
+  if ((head[0] == (uint8_t)k_verify_jpeg_marker) && (head[1] == (uint8_t)k_verify_jpeg_soi)) {
     return internal_jpeg_bpp(source, bpp);
   }
   static const uint8_t png[8] = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU}; /* MAGIC-OK */
   if (memcmp(head, png, sizeof(png)) == 0) {
-    return internal_png_bpp(source, head[25], bpp);
+    return internal_png_bpp(source, head[k_verify_png_color_type], bpp);
   }
   if ((memcmp(head, "RIFF", 4U) == 0) && (memcmp(&head[8], "WEBP", 4U) == 0)) { /* MAGIC-OK */
     *bpp = 4U;

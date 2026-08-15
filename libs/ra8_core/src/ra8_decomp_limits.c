@@ -44,7 +44,8 @@ typedef enum : uint32_t {
 } priv_zip_preflight_t;
 
 /** @brief Classic ZIP end-of-central-directory signature bytes. */
-static const uint8_t s_zip_eocd_signature[k_priv_zip_sig_bytes] = {0x50U, 0x4BU, 0x05U, 0x06U};
+static const uint8_t s_zip_eocd_signature[k_priv_zip_sig_bytes] =
+  {0x50U, 0x4BU, 0x05U, 0x06U}; /* MAGIC-OK: fixed ZIP EOCD signature bytes. */
 
 ra8_decomp_limits_t ra8_decomp_limits_default(void)
 {

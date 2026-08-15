@@ -21,6 +21,14 @@
 #include "mdl_export_internal.h"
 #include "ra8_attributes.h"
 
+/** @brief Mixed-radix civil timestamp geometry used for stable ordering. */
+typedef enum : uint8_t {
+  k_export_month_radix        = 13U, /**< One-based month field radix. */
+  k_export_hours_per_day      = 24U, /**< Civil hours per day.         */
+  k_export_minutes_per_hour   = 60U, /**< Civil minutes per hour.      */
+  k_export_seconds_per_minute = 60U, /**< Civil seconds per minute.    */
+} mdl_export_time_radix_t;
+
 mdl_format_t mdl_format_from_str(const char* s)
 {
   if ((s == nullptr) || (strcmp(s, "loose") == 0)) {
@@ -293,11 +301,11 @@ RA8_INTERNAL static ra8_err_t internal_list_pages(mdl_storage_t*          storag
 RA8_INTERNAL static uint64_t internal_timestamp_key(const fw_fs_datetime_t* value)
 {
   uint64_t key = value->year;
-  key          = (key * 13U) + value->month;
+  key          = (key * k_export_month_radix) + value->month;
   key          = (key * 32U) + value->day;
-  key          = (key * 24U) + value->hour;
-  key          = (key * 60U) + value->minute;
-  return (key * 60U) + value->second;
+  key          = (key * k_export_hours_per_day) + value->hour;
+  key          = (key * k_export_minutes_per_hour) + value->minute;
+  return (key * k_export_seconds_per_minute) + value->second;
 }
 /**
  * @brief Derive a deterministic UTC modified timestamp from source pages
@@ -360,8 +368,8 @@ RA8_INTERNAL static bool internal_metadata_set_page_timestamp(mdl_storage_t*    
                     value->minute,
                     value->second,
                     (offset < 0) ? '-' : '+',
-                    absolute / 60,
-                    absolute % 60) > 0;
+                    absolute / k_export_minutes_per_hour,
+                    absolute % k_export_minutes_per_hour) > 0;
   }
   return snprintf(meta->modified,
                   sizeof(meta->modified),
