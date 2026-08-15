@@ -1,6 +1,8 @@
 /**
  * @file ra8_keyboard.c
  * @brief On-screen keyboard widget -- iOS-style layers + shift.
+ * @details Builds bounded letter, number, and symbol layouts, performs hit
+ * testing, and applies key actions to caller-owned text state without heap use.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -10,6 +12,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_ui.h"
@@ -44,22 +47,22 @@ typedef enum : int32_t {
 } kbd_geom_t;
 
 /* Letters layer rows. */
-static const char k_l_r0_lo[] = "qwertyuiop";
-static const char k_l_r0_hi[] = "QWERTYUIOP";
-static const char k_l_r1_lo[] = "asdfghjkl";
-static const char k_l_r1_hi[] = "ASDFGHJKL";
-static const char k_l_r2_lo[] = "zxcvbnm";
-static const char k_l_r2_hi[] = "ZXCVBNM";
+static const char s_l_r0_lo[] = "qwertyuiop";
+static const char s_l_r0_hi[] = "QWERTYUIOP";
+static const char s_l_r1_lo[] = "asdfghjkl";
+static const char s_l_r1_hi[] = "ASDFGHJKL";
+static const char s_l_r2_lo[] = "zxcvbnm";
+static const char s_l_r2_hi[] = "ZXCVBNM";
 /* Numbers layer rows (no shift effect: upper == lower). */
-static const char k_n_r0[] = "1234567890";
-static const char k_n_r1[] = "-/:;()$&@\"";
+static const char s_n_r0[] = "1234567890";
+static const char s_n_r1[] = "-/:;()$&@\"";
 /* Symbols layer rows. Goal: every printable 7-bit ASCII symbol is reachable.
  * The 32 ASCII symbols are split across the numbers row 1 (10), the shared
  * punctuation row (5), and these two symbols rows (10 + 7) = 32, no repeats. */
-static const char k_s_r0[] = "[]{}#%^*+=";
-static const char k_s_r1[] = "<>\\_`|~";
+static const char s_s_r0[] = "[]{}#%^*+=";
+static const char s_s_r1[] = "<>\\_`|~";
 /* Shared third-row punctuation for the numbers + symbols layers. */
-static const char k_punct[] = ".,?!'";
+static const char s_punct[] = ".,?!'";
 
 /**
  * @brief Append one key descriptor to the layout, bounded by k_ra8_kbd_max_keys.
@@ -94,15 +97,15 @@ static const char k_punct[] = ".,?!'";
  *
  * @since 0.1.0
  */
-static void priv_add(ra8_kbd_layout_t*  kb,
-                     int32_t            x,
-                     int32_t            w,
-                     int32_t            y,
-                     int32_t            h,
-                     char               lo,
-                     char               hi,
-                     ra8_kbd_key_kind_t kind,
-                     uint8_t            aux)
+RA8_INTERNAL static void internal_add(ra8_kbd_layout_t*  kb,
+                                      int32_t            x,
+                                      int32_t            w,
+                                      int32_t            y,
+                                      int32_t            h,
+                                      char               lo,
+                                      char               hi,
+                                      ra8_kbd_key_kind_t kind,
+                                      uint8_t            aux)
 {
   if (kb->count >= (uint8_t)k_ra8_kbd_max_keys) {
     return;
@@ -144,7 +147,7 @@ static void priv_add(ra8_kbd_layout_t*  kb,
  *
  * @since 0.1.0
  */
-static int32_t priv_hx(const ra8_ui_rect_t* f, int32_t hu)
+RA8_INTERNAL static int32_t internal_hx(const ra8_ui_rect_t* f, int32_t hu)
 {
   return f->x + ((f->w * hu) / (int32_t)k_kbd_hu_div);
 }
@@ -154,13 +157,13 @@ static int32_t priv_hx(const ra8_ui_rect_t* f, int32_t hu)
  *        starting from half-unit offset @p hu0.
  *
  * @details
- * Iterates over indices 0..n-1 and calls priv_add() for each character in the
+ * Iterates over indices 0..n-1 and calls internal_add() for each character in the
  * @p lo string.  The left edge of key i is at half-unit (hu0 + i*2) and the
  * right edge at half-unit (hu0 + (i+1)*2), with actual pixel positions
- * resolved via priv_hx().  When @p hi is nullptr the upper-case glyph is set
+ * resolved via internal_hx().  When @p hi is nullptr the upper-case glyph is set
  * equal to the lower-case glyph (used for layers without a shift effect).
  *
- * @param[in,out] kb   Layout being built; keys are appended via priv_add().
+ * @param[in,out] kb   Layout being built; keys are appended via internal_add().
  * @param[in]     lo   Null-terminated string of lower-case glyphs; must have
  *                     at least @p n characters.
  * @param[in]     hi   Null-terminated string of upper-case glyphs with at
@@ -183,27 +186,27 @@ static int32_t priv_hx(const ra8_ui_rect_t* f, int32_t hu)
  *
  * @since 0.1.0
  */
-static void priv_place(ra8_kbd_layout_t*    kb,
-                       const char*          lo,
-                       const char*          hi,
-                       int32_t              n,
-                       int32_t              hu0,
-                       const ra8_ui_rect_t* f,
-                       int32_t              y,
-                       int32_t              rh)
+RA8_INTERNAL static void internal_place(ra8_kbd_layout_t*    kb,
+                                        const char*          lo,
+                                        const char*          hi,
+                                        int32_t              n,
+                                        int32_t              hu0,
+                                        const ra8_ui_rect_t* f,
+                                        int32_t              y,
+                                        int32_t              rh)
 {
   for (int32_t i = 0; i < n; i++) {
-    const int32_t x0 = priv_hx(f, hu0 + (i * (int32_t)k_kbd_key_hu));
-    const int32_t x1 = priv_hx(f, hu0 + ((i + 1) * (int32_t)k_kbd_key_hu));
-    priv_add(kb,
-             x0,
-             x1 - x0,
-             y,
-             rh,
-             (char)lo[i],
-             (char)((hi != nullptr) ? hi[i] : lo[i]),
-             k_ra8_kbd_key_char,
-             0U);
+    const int32_t x0 = internal_hx(f, hu0 + (i * (int32_t)k_kbd_key_hu));
+    const int32_t x1 = internal_hx(f, hu0 + ((i + 1) * (int32_t)k_kbd_key_hu));
+    internal_add(kb,
+                 x0,
+                 x1 - x0,
+                 y,
+                 rh,
+                 (char)lo[i],
+                 (char)((hi != nullptr) ? hi[i] : lo[i]),
+                 k_ra8_kbd_key_char,
+                 0U);
   }
 }
 
@@ -212,11 +215,11 @@ static void priv_place(ra8_kbd_layout_t*    kb,
  *
  * @details
  * Computes the pixel left edge from half-unit @p a and the pixel width as
- * priv_hx(f, b) - priv_hx(f, a), then delegates to priv_add() with zero
+ * internal_hx(f, b) - internal_hx(f, a), then delegates to internal_add() with zero
  * glyph characters.  Used for shift, backspace, space, enter, and layer-
  * toggle keys which span more than the standard 2-half-unit width.
  *
- * @param[in,out] kb   Layout being built; one key is appended via priv_add().
+ * @param[in,out] kb   Layout being built; one key is appended via internal_add().
  * @param[in]     a    First half-unit of the key span (inclusive).
  * @param[in]     b    Last half-unit of the key span (exclusive).
  * @param[in]     f    Bounding rectangle of the keyboard widget.
@@ -238,17 +241,17 @@ static void priv_place(ra8_kbd_layout_t*    kb,
  *
  * @since 0.1.0
  */
-static void priv_span(ra8_kbd_layout_t*    kb,
-                      int32_t              a,
-                      int32_t              b,
-                      const ra8_ui_rect_t* f,
-                      int32_t              y,
-                      int32_t              rh,
-                      ra8_kbd_key_kind_t   kind,
-                      uint8_t              aux)
+RA8_INTERNAL static void internal_span(ra8_kbd_layout_t*    kb,
+                                       int32_t              a,
+                                       int32_t              b,
+                                       const ra8_ui_rect_t* f,
+                                       int32_t              y,
+                                       int32_t              rh,
+                                       ra8_kbd_key_kind_t   kind,
+                                       uint8_t              aux)
 {
-  const int32_t x0 = priv_hx(f, a);
-  priv_add(kb, x0, priv_hx(f, b) - x0, y, rh, 0, 0, kind, aux);
+  const int32_t x0 = internal_hx(f, a);
+  internal_add(kb, x0, internal_hx(f, b) - x0, y, rh, 0, 0, kind, aux);
 }
 
 /**
@@ -258,15 +261,15 @@ static void priv_span(ra8_kbd_layout_t*    kb,
  * Lays out three groups from left to right across the full frame width:
  * 1. A k_ra8_kbd_key_layer special key spanning [0, k_kbd_act_hu) whose aux
  *    field is set to @p tog_aux (the layer to switch to on press).
- * 2. k_kbd_punct_n (5) character keys from k_punct starting at half-unit
+ * 2. k_kbd_punct_n (5) character keys from s_punct starting at half-unit
  *    k_kbd_punct_hu0 (centred in the row).
  * 3. A k_ra8_kbd_key_backspace special key spanning
  *    [k_kbd_hu_div - k_kbd_act_hu, k_kbd_hu_div).
  * This row is shared between the numbers and symbols layers; the only
  * difference is which layer the toggle button targets, expressed by @p tog_aux.
  *
- * @param[in,out] kb      Layout being built; keys are appended via priv_span()
- *                        and priv_place().
+ * @param[in,out] kb      Layout being built; keys are appended via internal_span()
+ *                        and internal_place().
  * @param[in]     f       Bounding rectangle of the keyboard widget.
  * @param[in]     y       Top pixel coordinate of the row.
  * @param[in]     rh      Row height in pixels.
@@ -286,19 +289,22 @@ static void priv_span(ra8_kbd_layout_t*    kb,
  *
  * @since 0.1.0
  */
-static void
-priv_row_punct(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int32_t y, int32_t rh, uint8_t tog_aux)
+RA8_INTERNAL static void internal_row_punct(ra8_kbd_layout_t*    kb,
+                                            const ra8_ui_rect_t* f,
+                                            int32_t              y,
+                                            int32_t              rh,
+                                            uint8_t              tog_aux)
 {
-  priv_span(kb, 0, (int32_t)k_kbd_act_hu, f, y, rh, k_ra8_kbd_key_layer, tog_aux);
-  priv_place(kb, k_punct, nullptr, (int32_t)k_kbd_punct_n, (int32_t)k_kbd_punct_hu0, f, y, rh);
-  priv_span(kb,
-            (int32_t)k_kbd_hu_div - (int32_t)k_kbd_act_hu,
-            (int32_t)k_kbd_hu_div,
-            f,
-            y,
-            rh,
-            k_ra8_kbd_key_backspace,
-            0U);
+  internal_span(kb, 0, (int32_t)k_kbd_act_hu, f, y, rh, k_ra8_kbd_key_layer, tog_aux);
+  internal_place(kb, s_punct, nullptr, (int32_t)k_kbd_punct_n, (int32_t)k_kbd_punct_hu0, f, y, rh);
+  internal_span(kb,
+                (int32_t)k_kbd_hu_div - (int32_t)k_kbd_act_hu,
+                (int32_t)k_kbd_hu_div,
+                f,
+                y,
+                rh,
+                k_ra8_kbd_key_backspace,
+                0U);
 }
 
 /**
@@ -315,7 +321,7 @@ priv_row_punct(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int32_t y, int32_t 
  * This row is identical in structure for all three layers; only the target of
  * the left toggle button differs, which is controlled by @p left_aux.
  *
- * @param[in,out] kb        Layout being built; keys are appended via priv_span().
+ * @param[in,out] kb        Layout being built; keys are appended via internal_span().
  * @param[in]     f         Bounding rectangle of the keyboard widget.
  * @param[in]     y         Top pixel coordinate of the row.
  * @param[in]     rh        Row height in pixels.
@@ -334,29 +340,29 @@ priv_row_punct(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int32_t y, int32_t 
  *
  * @since 0.1.0
  */
-static void priv_row_bottom(ra8_kbd_layout_t*    kb,
-                            const ra8_ui_rect_t* f,
-                            int32_t              y,
-                            int32_t              rh,
-                            uint8_t              left_aux)
+RA8_INTERNAL static void internal_row_bottom(ra8_kbd_layout_t*    kb,
+                                             const ra8_ui_rect_t* f,
+                                             int32_t              y,
+                                             int32_t              rh,
+                                             uint8_t              left_aux)
 {
-  priv_span(kb, 0, (int32_t)k_kbd_act_hu, f, y, rh, k_ra8_kbd_key_layer, left_aux);
-  priv_span(kb,
-            (int32_t)k_kbd_act_hu,
-            (int32_t)k_kbd_act_hu + (int32_t)k_kbd_space_hu,
-            f,
-            y,
-            rh,
-            k_ra8_kbd_key_space,
-            0U);
-  priv_span(kb,
-            (int32_t)k_kbd_hu_div - (int32_t)k_kbd_act_hu,
-            (int32_t)k_kbd_hu_div,
-            f,
-            y,
-            rh,
-            k_ra8_kbd_key_enter,
-            0U);
+  internal_span(kb, 0, (int32_t)k_kbd_act_hu, f, y, rh, k_ra8_kbd_key_layer, left_aux);
+  internal_span(kb,
+                (int32_t)k_kbd_act_hu,
+                (int32_t)k_kbd_act_hu + (int32_t)k_kbd_space_hu,
+                f,
+                y,
+                rh,
+                k_ra8_kbd_key_space,
+                0U);
+  internal_span(kb,
+                (int32_t)k_kbd_hu_div - (int32_t)k_kbd_act_hu,
+                (int32_t)k_kbd_hu_div,
+                f,
+                y,
+                rh,
+                k_ra8_kbd_key_enter,
+                0U);
 }
 
 /**
@@ -364,10 +370,10 @@ static void priv_row_bottom(ra8_kbd_layout_t*    kb,
  *
  * @details
  * Populates four rows into @p kb:
- * - Row 0: 10-key QWERTY top row (k_l_r0_lo / k_l_r0_hi) at f->y.
- * - Row 1: 9-key home row (k_l_r1_lo / k_l_r1_hi) inset by k_kbd_inset_hu.
- * - Row 2: SHIFT (wide), 7 letter keys (k_l_r2_lo / k_l_r2_hi), BACKSPACE (wide).
- * - Row 3: layer-toggle to numbers, SPACE, RETURN via priv_row_bottom().
+ * - Row 0: 10-key QWERTY top row (s_l_r0_lo / s_l_r0_hi) at f->y.
+ * - Row 1: 9-key home row (s_l_r1_lo / s_l_r1_hi) inset by k_kbd_inset_hu.
+ * - Row 2: SHIFT (wide), 7 letter keys (s_l_r2_lo / s_l_r2_hi), BACKSPACE (wide).
+ * - Row 3: layer-toggle to numbers, SPACE, RETURN via internal_row_bottom().
  * The @p rh parameter is used as the uniform row height; f->y is the top of
  * row 0 and subsequent rows are offset by multiples of @p rh.
  *
@@ -387,30 +393,38 @@ static void priv_row_bottom(ra8_kbd_layout_t*    kb,
  *
  * @since 0.1.0
  */
-static void priv_build_letters(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int32_t rh)
+RA8_INTERNAL static void
+internal_build_letters(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int32_t rh)
 {
   const int32_t fy = f->y;
-  priv_place(kb, k_l_r0_lo, k_l_r0_hi, (int32_t)k_kbd_top_keys, 0, f, fy, rh);
-  priv_place(kb,
-             k_l_r1_lo,
-             k_l_r1_hi,
-             (int32_t)k_kbd_mid_keys,
-             (int32_t)k_kbd_inset_hu,
-             f,
-             fy + rh,
-             rh);
+  internal_place(kb, s_l_r0_lo, s_l_r0_hi, (int32_t)k_kbd_top_keys, 0, f, fy, rh);
+  internal_place(kb,
+                 s_l_r1_lo,
+                 s_l_r1_hi,
+                 (int32_t)k_kbd_mid_keys,
+                 (int32_t)k_kbd_inset_hu,
+                 f,
+                 fy + rh,
+                 rh);
   const int32_t y2 = fy + ((int32_t)k_kbd_row2 * rh);
-  priv_span(kb, 0, (int32_t)k_kbd_wide_hu, f, y2, rh, k_ra8_kbd_key_shift, 0U);
-  priv_place(kb, k_l_r2_lo, k_l_r2_hi, (int32_t)k_kbd_r2_lett, (int32_t)k_kbd_wide_hu, f, y2, rh);
-  priv_span(kb,
-            (int32_t)k_kbd_hu_div - (int32_t)k_kbd_wide_hu,
-            (int32_t)k_kbd_hu_div,
-            f,
-            y2,
-            rh,
-            k_ra8_kbd_key_backspace,
-            0U);
-  priv_row_bottom(kb, f, fy + ((int32_t)k_kbd_row3 * rh), rh, (uint8_t)k_ra8_kbd_layer_numbers);
+  internal_span(kb, 0, (int32_t)k_kbd_wide_hu, f, y2, rh, k_ra8_kbd_key_shift, 0U);
+  internal_place(kb,
+                 s_l_r2_lo,
+                 s_l_r2_hi,
+                 (int32_t)k_kbd_r2_lett,
+                 (int32_t)k_kbd_wide_hu,
+                 f,
+                 y2,
+                 rh);
+  internal_span(kb,
+                (int32_t)k_kbd_hu_div - (int32_t)k_kbd_wide_hu,
+                (int32_t)k_kbd_hu_div,
+                f,
+                y2,
+                rh,
+                k_ra8_kbd_key_backspace,
+                0U);
+  internal_row_bottom(kb, f, fy + ((int32_t)k_kbd_row3 * rh), rh, (uint8_t)k_ra8_kbd_layer_numbers);
 }
 
 /**
@@ -418,12 +432,12 @@ static void priv_build_letters(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int
  *
  * @details
  * Populates four rows into @p kb:
- * - Row 0: 10-key digit row (k_n_r0 "1234567890") at f->y.
- * - Row 1: 10-key symbol row (k_n_r1 "-/:;()$&@\"") at f->y + rh; no shift
+ * - Row 0: 10-key digit row (s_n_r0 "1234567890") at f->y.
+ * - Row 1: 10-key symbol row (s_n_r1 "-/:;()$&@\"") at f->y + rh; no shift
  *          effect (hi == nullptr so upper == lower for each key).
- * - Row 2: layer-toggle to symbols, k_punct punctuation, BACKSPACE via
- *          priv_row_punct() with tog_aux = k_ra8_kbd_layer_symbols.
- * - Row 3: layer-toggle to letters, SPACE, RETURN via priv_row_bottom().
+ * - Row 2: layer-toggle to symbols, s_punct punctuation, BACKSPACE via
+ *          internal_row_punct() with tog_aux = k_ra8_kbd_layer_symbols.
+ * - Row 3: layer-toggle to letters, SPACE, RETURN via internal_row_bottom().
  *
  * @param[in,out] kb  Layout being built; all numbers-layer keys are appended.
  * @param[in]     f   Bounding rectangle of the keyboard widget.
@@ -441,13 +455,14 @@ static void priv_build_letters(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int
  *
  * @since 0.1.0
  */
-static void priv_build_numbers(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int32_t rh)
+RA8_INTERNAL static void
+internal_build_numbers(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int32_t rh)
 {
   const int32_t fy = f->y;
-  priv_place(kb, k_n_r0, nullptr, (int32_t)k_kbd_top_keys, 0, f, fy, rh);
-  priv_place(kb, k_n_r1, nullptr, (int32_t)k_kbd_top_keys, 0, f, fy + rh, rh);
-  priv_row_punct(kb, f, fy + ((int32_t)k_kbd_row2 * rh), rh, (uint8_t)k_ra8_kbd_layer_symbols);
-  priv_row_bottom(kb, f, fy + ((int32_t)k_kbd_row3 * rh), rh, (uint8_t)k_ra8_kbd_layer_letters);
+  internal_place(kb, s_n_r0, nullptr, (int32_t)k_kbd_top_keys, 0, f, fy, rh);
+  internal_place(kb, s_n_r1, nullptr, (int32_t)k_kbd_top_keys, 0, f, fy + rh, rh);
+  internal_row_punct(kb, f, fy + ((int32_t)k_kbd_row2 * rh), rh, (uint8_t)k_ra8_kbd_layer_symbols);
+  internal_row_bottom(kb, f, fy + ((int32_t)k_kbd_row3 * rh), rh, (uint8_t)k_ra8_kbd_layer_letters);
 }
 
 /**
@@ -455,13 +470,13 @@ static void priv_build_numbers(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int
  *
  * @details
  * Populates four rows into @p kb:
- * - Row 0: 10-key brackets/math row (k_s_r0 "[]{}#%^*+=") at f->y; no shift
+ * - Row 0: 10-key brackets/math row (s_s_r0 "[]{}#%^*+=") at f->y; no shift
  *          effect (hi == nullptr).
- * - Row 1: k_kbd_sym1_n (7) keys from k_s_r1 ("<>\\_ \`|~") centred at
+ * - Row 1: k_kbd_sym1_n (7) keys from s_s_r1 ("<>\\_ \`|~") centred at
  *          half-unit k_kbd_sym1_hu0 (3); no shift effect.
- * - Row 2: layer-toggle to numbers, k_punct punctuation, BACKSPACE via
- *          priv_row_punct() with tog_aux = k_ra8_kbd_layer_numbers.
- * - Row 3: layer-toggle to letters, SPACE, RETURN via priv_row_bottom().
+ * - Row 2: layer-toggle to numbers, s_punct punctuation, BACKSPACE via
+ *          internal_row_punct() with tog_aux = k_ra8_kbd_layer_numbers.
+ * - Row 3: layer-toggle to letters, SPACE, RETURN via internal_row_bottom().
  *
  * @param[in,out] kb  Layout being built; all symbols-layer keys are appended.
  * @param[in]     f   Bounding rectangle of the keyboard widget.
@@ -479,13 +494,21 @@ static void priv_build_numbers(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int
  *
  * @since 0.1.0
  */
-static void priv_build_symbols(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int32_t rh)
+RA8_INTERNAL static void
+internal_build_symbols(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int32_t rh)
 {
   const int32_t fy = f->y;
-  priv_place(kb, k_s_r0, nullptr, (int32_t)k_kbd_top_keys, 0, f, fy, rh);
-  priv_place(kb, k_s_r1, nullptr, (int32_t)k_kbd_sym1_n, (int32_t)k_kbd_sym1_hu0, f, fy + rh, rh);
-  priv_row_punct(kb, f, fy + ((int32_t)k_kbd_row2 * rh), rh, (uint8_t)k_ra8_kbd_layer_numbers);
-  priv_row_bottom(kb, f, fy + ((int32_t)k_kbd_row3 * rh), rh, (uint8_t)k_ra8_kbd_layer_letters);
+  internal_place(kb, s_s_r0, nullptr, (int32_t)k_kbd_top_keys, 0, f, fy, rh);
+  internal_place(kb,
+                 s_s_r1,
+                 nullptr,
+                 (int32_t)k_kbd_sym1_n,
+                 (int32_t)k_kbd_sym1_hu0,
+                 f,
+                 fy + rh,
+                 rh);
+  internal_row_punct(kb, f, fy + ((int32_t)k_kbd_row2 * rh), rh, (uint8_t)k_ra8_kbd_layer_numbers);
+  internal_row_bottom(kb, f, fy + ((int32_t)k_kbd_row3 * rh), rh, (uint8_t)k_ra8_kbd_layer_letters);
 }
 
 /**
@@ -495,9 +518,9 @@ static void priv_build_symbols(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int
  * Resets kb->count to zero, computes the uniform row height as
  * kb->frame.h / k_ra8_kbd_rows, then dispatches to the appropriate layer
  * builder:
- * - k_ra8_kbd_layer_numbers -> priv_build_numbers()
- * - k_ra8_kbd_layer_symbols -> priv_build_symbols()
- * - any other value (including k_ra8_kbd_layer_letters) -> priv_build_letters()
+ * - k_ra8_kbd_layer_numbers -> internal_build_numbers()
+ * - k_ra8_kbd_layer_symbols -> internal_build_symbols()
+ * - any other value (including k_ra8_kbd_layer_letters) -> internal_build_letters()
  * Called once at init and again every time the active layer changes (via
  * ra8_kbd_apply() handling k_ra8_kbd_key_layer).
  *
@@ -517,16 +540,16 @@ static void priv_build_symbols(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int
  *
  * @since 0.1.0
  */
-static void priv_build_layer(ra8_kbd_layout_t* kb)
+RA8_INTERNAL static void internal_build_layer(ra8_kbd_layout_t* kb)
 {
   kb->count        = 0U;
   const int32_t rh = kb->frame.h / (int32_t)k_ra8_kbd_rows;
   if (kb->layer == (uint8_t)k_ra8_kbd_layer_numbers) {
-    priv_build_numbers(kb, &kb->frame, rh);
+    internal_build_numbers(kb, &kb->frame, rh);
   } else if (kb->layer == (uint8_t)k_ra8_kbd_layer_symbols) {
-    priv_build_symbols(kb, &kb->frame, rh);
+    internal_build_symbols(kb, &kb->frame, rh);
   } else {
-    priv_build_letters(kb, &kb->frame, rh);
+    internal_build_letters(kb, &kb->frame, rh);
   }
 }
 
@@ -541,7 +564,7 @@ static void priv_build_layer(ra8_kbd_layout_t* kb)
   kb->frame = *frame;
   kb->shift = false;
   kb->layer = (uint8_t)k_ra8_kbd_layer_letters;
-  priv_build_layer(kb);
+  internal_build_layer(kb);
   return k_ra8_ok;
 }
 
@@ -606,7 +629,7 @@ static void priv_build_layer(ra8_kbd_layout_t* kb)
  *
  * @since 0.1.0
  */
-static void priv_append(ra8_kbd_text_t* t, char ch)
+RA8_INTERNAL static void internal_append(ra8_kbd_text_t* t, char ch)
 {
   if (t->len < (uint8_t)((uint8_t)k_ra8_kbd_text_max - 1U)) {
     t->buf[t->len] = ch;
@@ -625,11 +648,11 @@ static void priv_append(ra8_kbd_text_t* t, char ch)
   const ra8_kbd_key_t* k = &kb->keys[key_idx];
   switch (k->kind) {
     case k_ra8_kbd_key_char:
-      priv_append(t, (char)(kb->shift ? k->ch_upper : k->ch_lower));
+      internal_append(t, (char)(kb->shift ? k->ch_upper : k->ch_lower));
       kb->shift = false; /* one-shot SHIFT clears after a character */
       break;
     case k_ra8_kbd_key_space:
-      priv_append(t, ' ');
+      internal_append(t, ' ');
       kb->shift = false;
       break;
     case k_ra8_kbd_key_backspace:
@@ -647,7 +670,7 @@ static void priv_append(ra8_kbd_text_t* t, char ch)
     case k_ra8_kbd_key_layer:
       kb->layer = k->aux;
       kb->shift = false;
-      priv_build_layer(kb); /* re-lay the grid for the new layer */
+      internal_build_layer(kb); /* re-lay the grid for the new layer */
       break;
     default:
       break;
