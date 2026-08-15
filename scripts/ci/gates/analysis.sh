@@ -174,6 +174,12 @@ gate_scan_build() (
 # misra_ratchet.py compares per-file-per-rule finding counts against
 # .github/misra-baseline.txt. `make cppcheck` is NOT a substitute: different
 # rule set, no addon, no baseline, so a new MISRA finding sails through it.
+#
+# check_misra_deviations.py holds the deviation register's derived numbers
+# to the committed baseline + suppression list (#632: the register claimed
+# 166 Rule-8.4 findings while the baseline held 1873, and nothing checked
+# it). It reads only committed files, so it runs BEFORE the slow scan to
+# fail fast, selftest first per the house rule.
 gate_misra() (
   set -e
   require_cmd cppcheck
@@ -181,6 +187,8 @@ gate_misra() (
   # a drifted cppcheck ratchets against the wrong findings (#333).
   require_tool_versions cppcheck
   python3 scripts/checks/misra_ratchet.py --selftest
+  python3 scripts/checks/check_misra_deviations.py --selftest
+  python3 scripts/checks/check_misra_deviations.py --check
   bash scripts/checks/misra_check_inner.sh
   python3 scripts/checks/misra_ratchet.py --check
 )
