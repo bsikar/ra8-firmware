@@ -5,7 +5,7 @@
  * @details Exercises stb/BMP and libwebp decode paths, gray4/gray8 output,
  * geometry clamping, caller-capacity failures, malformed input, and arena drain.
  *
- * [Ring 3 / RABOOK Compiler] {World: NS}
+ * [Ring 3 / RABOOK_COMPILER] {World: NS}
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
