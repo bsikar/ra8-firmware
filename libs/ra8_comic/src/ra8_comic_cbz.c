@@ -9,10 +9,10 @@
  * The ZIP half of the comic facade. It drives miniz's user-read reader
  * (`mz_zip_reader_init`) off the comic's seek+read backing -- the same streaming
  * path `ra8_epub_open_streamed` uses -- so only the central directory and one
- * entry at a time are ever fetched. ::ra8_comic_cbz_open walks the central
+ * entry at a time are ever fetched. ::priv_comic_cbz_open walks the central
  * directory, filters entries to decodable page images (skipping directories,
  * hidden files and AppleDouble forks), and appends each to the shared page index.
- * ::ra8_comic_cbz_extract inflates one page's encoded image (STORE or DEFLATE)
+ * ::priv_comic_cbz_extract inflates one page's encoded image (STORE or DEFLATE)
  * on demand.
  *
  * Miniz's central-directory and decompressor allocations always route through
@@ -65,8 +65,7 @@ typedef enum : uint16_t {
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static mz_zip_archive* internal_zip(ra8_comic_t* c)
+RA8_INTERNAL static mz_zip_archive* internal_zip(ra8_comic_t* c)
 {
   /* Reinterpret the aligned byte arena as the archive via a `void*` seam (as
    * `ra8_epub` does): a direct `uint8_t* -> mz_zip_archive*` cast would trip
@@ -94,8 +93,8 @@ static mz_zip_archive* internal_zip(ra8_comic_t* c)
  * @note Not thread-safe; single-threaded reader context.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static size_t internal_stream_read(void* opaque, mz_uint64 file_ofs, void* buf, size_t n)
+RA8_INTERNAL static size_t
+internal_stream_read(void* opaque, mz_uint64 file_ofs, void* buf, size_t n)
 {
   const ra8_comic_stream_t* sm = (const ra8_comic_stream_t*)opaque;
   if (sm == nullptr) {
@@ -128,8 +127,7 @@ static size_t internal_stream_read(void* opaque, mz_uint64 file_ofs, void* buf, 
  * @note Not thread-safe; single-threaded init context.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_set_alloc(ra8_comic_t* c, mz_zip_archive* zip)
+RA8_INTERNAL static ra8_err_t internal_set_alloc(ra8_comic_t* c, mz_zip_archive* zip)
 {
   const ra8_err_t err = ra8_epub_miniz_arena_init(&c->miniz_arena,
                                                   &c->miniz_workspace.bytes[0],
@@ -162,8 +160,7 @@ static ra8_err_t internal_set_alloc(ra8_comic_t* c, mz_zip_archive* zip)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_add_entry(ra8_comic_t* c, mz_zip_archive* zip, mz_uint i)
+RA8_INTERNAL static ra8_err_t internal_add_entry(ra8_comic_t* c, mz_zip_archive* zip, mz_uint i)
 {
   if (mz_zip_reader_is_file_a_directory(zip, i) != MZ_FALSE) {
     return k_ra8_ok;
@@ -173,7 +170,7 @@ static ra8_err_t internal_add_entry(ra8_comic_t* c, mz_zip_archive* zip, mz_uint
   nb[sizeof(nb) - 1U]  = '\0';
   const void* const z  = memchr(nb, '\0', sizeof(nb));
   const size_t      nl = (z != nullptr) ? (size_t)((const char*)z - nb) : sizeof(nb);
-  if (!ra8_comic_is_page_name(nb, (uint16_t)nl)) {
+  if (!priv_comic_is_page_name(nb, (uint16_t)nl)) {
     return k_ra8_ok;
   }
   mz_zip_archive_file_stat st = {};
@@ -189,20 +186,24 @@ static ra8_err_t internal_add_entry(ra8_comic_t* c, mz_zip_archive* zip, mz_uint
   if (derr != k_ra8_ok) {
     return derr;
   }
-  return ra8_comic_page_add(c,
-                            nb,
-                            (uint16_t)nl,
-                            (uint64_t)st.m_uncomp_size,
-                            1U,
-                            (uint8_t)k_ra8_rar_method_store, /* method unused by CBZ */
-                            (uint32_t)i,
-                            0U,
-                            0U);
+  return priv_comic_page_add(c,
+                             nb,
+                             (uint16_t)nl,
+                             (uint64_t)st.m_uncomp_size,
+                             1U,
+                             (uint8_t)k_ra8_rar_method_store, /* method unused by CBZ */
+                             (uint32_t)i,
+                             0U,
+                             0U);
 }
 
-ra8_err_t ra8_comic_cbz_open(ra8_comic_t* c)
+RA8_PRIV ra8_err_t priv_comic_cbz_open(ra8_comic_t* c)
 {
   RA8_CHECK_NULL_PTR(c, s_tag_cbz, "cbz open: null c");
+  const ra8_err_t cap_err = ra8_decomp_zip_entry_preflight(c->stream.read, c->stream.ctx, c->size);
+  if (cap_err != k_ra8_ok) {
+    return cap_err;
+  }
   mz_zip_archive* zip = internal_zip(c);
   (void)memset(zip, 0, sizeof(*zip));
   const ra8_err_t aerr = internal_set_alloc(c, zip);
@@ -221,24 +222,24 @@ ra8_err_t ra8_comic_cbz_open(ra8_comic_t* c)
    * any central-directory entry is touched. */
   const ra8_decomp_limits_t lim = ra8_decomp_limits_default();
   if ((uint64_t)num > (uint64_t)lim.max_entries) {
-    (void)ra8_comic_cbz_close(c);
+    (void)priv_comic_cbz_close(c);
     return k_ra8_err_decomp_entries;
   }
   for (mz_uint i = 0U; i < num; ++i) { /* bound: finite central-directory count */
     const ra8_err_t e = internal_add_entry(c, zip, i);
     if (e != k_ra8_ok) {
-      (void)ra8_comic_cbz_close(c);
+      (void)priv_comic_cbz_close(c);
       return e;
     }
   }
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_comic_cbz_extract(ra8_comic_t*            c,
-                                const ra8_comic_page_t* p,
-                                uint8_t*                buf,
-                                size_t                  cap,
-                                size_t*                 got)
+RA8_PRIV ra8_err_t priv_comic_cbz_extract(ra8_comic_t*            c,
+                                          const ra8_comic_page_t* p,
+                                          uint8_t*                buf,
+                                          size_t                  cap,
+                                          size_t*                 got)
 {
   RA8_CHECK_NULL_PTR(c, s_tag_cbz, "cbz extract: null c");
   RA8_CHECK_NULL_PTR(p, s_tag_cbz, "cbz extract: null p");
@@ -259,7 +260,7 @@ ra8_err_t ra8_comic_cbz_extract(ra8_comic_t*            c,
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_comic_cbz_close(ra8_comic_t* c)
+RA8_PRIV ra8_err_t priv_comic_cbz_close(ra8_comic_t* c)
 {
   RA8_CHECK_NULL_PTR(c, s_tag_cbz, "cbz close: null c");
   if (c->zip_active != 0U) {

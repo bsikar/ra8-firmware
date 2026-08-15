@@ -14,15 +14,15 @@
  *
  * @par Structure
  * - LZ: ::internal_decode_token classifies one main symbol into literal / match /
- *   repeat-match / filter, copying matches with ::ra8_rar5_copy_match;
+ *   repeat-match / filter, copying matches with ::priv_rar5_copy_match;
  *   ::internal_decode_stream drives the block + token loops.
  * - Filters: ::internal_apply_filters replays delta / x86 / ARM transforms post-decode.
  * - Entry: ::ra8_rar5_decompress validates its arguments, resets the state, and
  *   runs the stream to completion.
  *
  * The front-end (`ra8_rar5_tables.c`) supplies the four ::ra8_rar5_internal.h
- * primitives this driver calls -- ::ra8_rar5_get, ::ra8_rar5_decode_num,
- * ::ra8_rar5_read_block_header, ::ra8_rar5_read_tables -- and never calls back.
+ * primitives this driver calls -- ::priv_rar5_get, ::priv_rar5_decode_num,
+ * ::priv_rar5_read_block_header, ::priv_rar5_read_tables -- and never calls back.
  *
  * @par Conformance note (deliberate, verifiable scope)
  * The LZ + Huffman container grammar follows the published RAR 5.0 format so a
@@ -64,8 +64,7 @@ static const char* const s_tag_rar5 = "ra8_rar5";
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static uint32_t internal_rd_le32(const uint8_t* p)
+RA8_INTERNAL static uint32_t internal_rd_le32(const uint8_t* p)
 {
   uint32_t v = 0U;
   (void)memcpy(&v, p, sizeof(v));
@@ -85,8 +84,7 @@ static uint32_t internal_rd_le32(const uint8_t* p)
  * @note Thread-safe: writes only through @p p.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static void internal_wr_le32(uint8_t* p, uint32_t v)
+RA8_INTERNAL static void internal_wr_le32(uint8_t* p, uint32_t v)
 {
   (void)memcpy(p, &v, sizeof(v));
 }
@@ -108,8 +106,7 @@ static void internal_wr_le32(uint8_t* p, uint32_t v)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static uint32_t internal_slot_to_length(ra8_rar5_state_t* st, uint32_t slot)
+RA8_INTERNAL static uint32_t internal_slot_to_length(ra8_rar5_state_t* st, uint32_t slot)
 {
   uint32_t length = 2U;
   if (slot < 8U) {
@@ -117,7 +114,7 @@ static uint32_t internal_slot_to_length(ra8_rar5_state_t* st, uint32_t slot)
   }
   const uint32_t lbits = (slot / 4U) - 1U;
   length += (4U | (slot & 3U)) << lbits;
-  length += ra8_rar5_get(st, lbits);
+  length += priv_rar5_get(st, lbits);
   return length;
 }
 
@@ -136,22 +133,21 @@ static uint32_t internal_slot_to_length(ra8_rar5_state_t* st, uint32_t slot)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static uint64_t internal_decode_distance(ra8_rar5_state_t* st)
+RA8_INTERNAL static uint64_t internal_decode_distance(ra8_rar5_state_t* st)
 {
-  const uint32_t slot = ra8_rar5_decode_num(st, &st->dd);
+  const uint32_t slot = priv_rar5_decode_num(st, &st->dd);
   if (slot < 4U) {
     return (uint64_t)1U + slot;
   }
   const uint32_t dbits = (slot / 2U) - 1U;
   uint64_t       dist  = (uint64_t)1U + ((uint64_t)(2U | (slot & 1U)) << dbits);
   if (dbits < 4U) {
-    return dist + ra8_rar5_get(st, dbits);
+    return dist + priv_rar5_get(st, dbits);
   }
   if (dbits > 4U) {
-    dist += (uint64_t)ra8_rar5_get(st, dbits - 4U) << 4U;
+    dist += (uint64_t)priv_rar5_get(st, dbits - 4U) << 4U;
   }
-  dist += ra8_rar5_decode_num(st, &st->ldd);
+  dist += priv_rar5_decode_num(st, &st->ldd);
   return dist;
 }
 
@@ -169,8 +165,7 @@ static uint64_t internal_decode_distance(ra8_rar5_state_t* st)
  * @note Thread-safe: pure.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static uint32_t internal_adjust_length(uint32_t length, uint64_t dist)
+RA8_INTERNAL static uint32_t internal_adjust_length(uint32_t length, uint64_t dist)
 {
   uint32_t adjusted = length;
   if (dist > (uint64_t)k_r5_dist_th1) {
@@ -199,8 +194,7 @@ static uint32_t internal_adjust_length(uint32_t length, uint64_t dist)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static void internal_push_dist(ra8_rar5_state_t* st, uint64_t dist)
+RA8_INTERNAL static void internal_push_dist(ra8_rar5_state_t* st, uint64_t dist)
 {
   for (uint32_t i = (uint32_t)k_ra8_rar5_old_dist - 1U; i > 0U; --i) { /* bound: ring size */
     st->old_dist[i] = st->old_dist[i - 1U];
@@ -208,8 +202,9 @@ static void internal_push_dist(ra8_rar5_state_t* st, uint64_t dist)
   st->old_dist[0] = dist;
 }
 
-/** @brief Implementation of `ra8_rar5_copy_match()` -- self-overlapping back-copy. */
-bool ra8_rar5_copy_match(uint8_t* out, size_t* out_pos, size_t unp, uint32_t length, uint64_t dist)
+/** @brief Implementation of `priv_rar5_copy_match()` -- self-overlapping back-copy. */
+RA8_PRIV bool
+priv_rar5_copy_match(uint8_t* out, size_t* out_pos, size_t unp, uint32_t length, uint64_t dist)
 {
   size_t pos = *out_pos;
   if ((dist == 0U) || (dist > (uint64_t)pos)) {
@@ -239,13 +234,12 @@ bool ra8_rar5_copy_match(uint8_t* out, size_t* out_pos, size_t unp, uint32_t len
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static uint32_t internal_read_filter_data(ra8_rar5_state_t* st)
+RA8_INTERNAL static uint32_t internal_read_filter_data(ra8_rar5_state_t* st)
 {
-  const uint32_t bc   = ra8_rar5_get(st, 2U) + 1U;
+  const uint32_t bc   = priv_rar5_get(st, 2U) + 1U;
   uint32_t       data = 0U;
   for (uint32_t i = 0U; i < bc; ++i) { /* bound: bc <= 4 */
-    data |= ra8_rar5_get(st, (uint32_t)k_r5_byte_bits) << (i * (uint32_t)k_r5_byte_bits);
+    data |= priv_rar5_get(st, (uint32_t)k_r5_byte_bits) << (i * (uint32_t)k_r5_byte_bits);
   }
   return data;
 }
@@ -266,21 +260,20 @@ static uint32_t internal_read_filter_data(ra8_rar5_state_t* st)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_read_filter(ra8_rar5_state_t* st, size_t out_pos)
+RA8_INTERNAL static ra8_err_t internal_read_filter(ra8_rar5_state_t* st, size_t out_pos)
 {
   if (st->filter_count >= (uint16_t)k_ra8_rar5_max_filters) {
     return k_ra8_err_validation_failed;
   }
   const uint32_t rel  = internal_read_filter_data(st);
   const uint32_t len  = internal_read_filter_data(st);
-  const uint32_t type = ra8_rar5_get(st, (uint32_t)k_r5_ftype_bits);
+  const uint32_t type = priv_rar5_get(st, (uint32_t)k_r5_ftype_bits);
   if (type > (uint32_t)k_ra8_rar5_filter_arm) {
     return k_ra8_err_validation_failed;
   }
   uint32_t channels = 1U;
   if (type == (uint32_t)k_ra8_rar5_filter_delta) {
-    channels = ra8_rar5_get(st, (uint32_t)k_r5_fchan_bits) + 1U;
+    channels = priv_rar5_get(st, (uint32_t)k_r5_fchan_bits) + 1U;
   }
   ra8_rar5_filter_t* f = &st->filters[st->filter_count];
   f->start             = (uint64_t)out_pos + (uint64_t)rel;
@@ -291,8 +284,9 @@ static ra8_err_t internal_read_filter(ra8_rar5_state_t* st, size_t out_pos)
   return k_ra8_ok;
 }
 
-/** @brief Implementation of `ra8_rar5_filter_delta()` -- per-channel running byte-sum. */
-void ra8_rar5_filter_delta(ra8_rar5_state_t* st, uint8_t* d, uint32_t len, uint32_t channels)
+/** @brief Implementation of `priv_rar5_filter_delta()` -- per-channel running byte-sum. */
+RA8_PRIV void
+priv_rar5_filter_delta(ra8_rar5_state_t* st, uint8_t* d, uint32_t len, uint32_t channels)
 {
   if ((len > (uint32_t)k_ra8_rar5_delta_scratch) || (channels == 0U)) {
     return;
@@ -324,8 +318,7 @@ void ra8_rar5_filter_delta(ra8_rar5_state_t* st, uint8_t* d, uint32_t len, uint3
  * @note Thread-safe: pure.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool internal_x86_is_op(uint8_t op, bool e9)
+RA8_INTERNAL static bool internal_x86_is_op(uint8_t op, bool e9)
 {
   if (op == (uint8_t)k_r5_x86_call) {
     return true;
@@ -349,8 +342,7 @@ static bool internal_x86_is_op(uint8_t op, bool e9)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static void internal_filter_x86(uint8_t* d, uint32_t len, uint64_t filepos, bool e9)
+RA8_INTERNAL static void internal_filter_x86(uint8_t* d, uint32_t len, uint64_t filepos, bool e9)
 {
   if (len < (uint32_t)k_r5_x86_ilen) {
     return;
@@ -384,8 +376,7 @@ static void internal_filter_x86(uint8_t* d, uint32_t len, uint64_t filepos, bool
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static void internal_filter_arm(uint8_t* d, uint32_t len, uint64_t filepos)
+RA8_INTERNAL static void internal_filter_arm(uint8_t* d, uint32_t len, uint64_t filepos)
 {
   if (len < 4U) {
     return;
@@ -423,11 +414,10 @@ static void internal_filter_arm(uint8_t* d, uint32_t len, uint64_t filepos)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static void internal_apply_one_filter(ra8_rar5_state_t*        st,
-                                      uint8_t*                 out,
-                                      size_t                   unp,
-                                      const ra8_rar5_filter_t* f)
+RA8_INTERNAL static void internal_apply_one_filter(ra8_rar5_state_t*        st,
+                                                   uint8_t*                 out,
+                                                   size_t                   unp,
+                                                   const ra8_rar5_filter_t* f)
 {
   if (f->start >= (uint64_t)unp) {
     return;
@@ -439,7 +429,7 @@ static void internal_apply_one_filter(ra8_rar5_state_t*        st,
   }
   uint8_t* d = &out[(size_t)f->start];
   if (f->type == (uint8_t)k_ra8_rar5_filter_delta) {
-    ra8_rar5_filter_delta(st, d, len, f->channels);
+    priv_rar5_filter_delta(st, d, len, f->channels);
   } else if (f->type == (uint8_t)k_ra8_rar5_filter_e8) {
     internal_filter_x86(d, len, f->start, false);
   } else if (f->type == (uint8_t)k_ra8_rar5_filter_e8e9) {
@@ -464,8 +454,7 @@ static void internal_apply_one_filter(ra8_rar5_state_t*        st,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static void internal_apply_filters(ra8_rar5_state_t* st, uint8_t* out, size_t unp)
+RA8_INTERNAL static void internal_apply_filters(ra8_rar5_state_t* st, uint8_t* out, size_t unp)
 {
   for (uint16_t f = 0U; f < st->filter_count; ++f) { /* bound: filter_count */
     internal_apply_one_filter(st, out, unp, &st->filters[f]);
@@ -503,7 +492,7 @@ internal_do_match(ra8_rar5_state_t* st, uint32_t slot, uint8_t* out, size_t* out
   length                = internal_adjust_length(length, dist);
   internal_push_dist(st, dist);
   st->last_length = length;
-  if (!ra8_rar5_copy_match(out, out_pos, unp, length, dist)) {
+  if (!priv_rar5_copy_match(out, out_pos, unp, length, dist)) {
     return k_ra8_err_validation_failed;
   }
   return k_ra8_ok;
@@ -538,10 +527,10 @@ internal_do_repdist(ra8_rar5_state_t* st, uint32_t slot, uint8_t* out, size_t* o
     st->old_dist[i] = st->old_dist[i - 1U];
   }
   st->old_dist[0]        = dist;
-  const uint32_t lenslot = ra8_rar5_decode_num(st, &st->rd);
+  const uint32_t lenslot = priv_rar5_decode_num(st, &st->rd);
   const uint32_t length  = internal_slot_to_length(st, lenslot);
   st->last_length        = length;
-  if (!ra8_rar5_copy_match(out, out_pos, unp, length, dist)) {
+  if (!priv_rar5_copy_match(out, out_pos, unp, length, dist)) {
     return k_ra8_err_validation_failed;
   }
   return k_ra8_ok;
@@ -572,7 +561,7 @@ internal_do_replast(ra8_rar5_state_t* st, uint8_t* out, size_t* out_pos, size_t 
   if (st->last_length == 0U) {
     return k_ra8_ok;
   }
-  if (!ra8_rar5_copy_match(out, out_pos, unp, st->last_length, st->old_dist[0])) {
+  if (!priv_rar5_copy_match(out, out_pos, unp, st->last_length, st->old_dist[0])) {
     return k_ra8_err_validation_failed;
   }
   return k_ra8_ok;
@@ -601,7 +590,7 @@ RA8_INTERNAL
 static ra8_err_t
 internal_decode_token(ra8_rar5_state_t* st, uint8_t* out, size_t* out_pos, size_t unp)
 {
-  const uint32_t slot = ra8_rar5_decode_num(st, &st->ld);
+  const uint32_t slot = priv_rar5_decode_num(st, &st->ld);
   if (slot < (uint32_t)k_r5_sym_filter) {
     out[*out_pos] = (uint8_t)slot;
     *out_pos += 1U;
@@ -637,11 +626,11 @@ internal_decode_token(ra8_rar5_state_t* st, uint8_t* out, size_t* out_pos, size_
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_open_block(ra8_rar5_state_t* st, uint64_t* end_bit, bool* last)
+RA8_INTERNAL static ra8_err_t
+internal_open_block(ra8_rar5_state_t* st, uint64_t* end_bit, bool* last)
 {
   r5_block_t      blk = {};
-  const ra8_err_t e   = ra8_rar5_read_block_header(st, &blk);
+  const ra8_err_t e   = priv_rar5_read_block_header(st, &blk);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -652,7 +641,7 @@ static ra8_err_t internal_open_block(ra8_rar5_state_t* st, uint64_t* end_bit, bo
   *end_bit = start + ((blk.size - 1U) * (uint64_t)k_r5_byte_bits) + (uint64_t)blk.last_bits;
   *last    = blk.last;
   if (blk.tables) {
-    return ra8_rar5_read_tables(st);
+    return priv_rar5_read_tables(st);
   }
   if (!st->tables_ready) {
     return k_ra8_err_validation_failed;
@@ -744,13 +733,12 @@ internal_decode_stream(ra8_rar5_state_t* st, uint8_t* out, size_t out_cap, size_
  * @note Not thread-safe (reads @p rar fields).
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_decompress_check(const ra8_rar_t*        rar,
-                                           const uint8_t*          out,
-                                           const ra8_rar5_state_t* st,
-                                           size_t                  out_cap,
-                                           uint64_t                unp_size,
-                                           uint64_t                pack_size)
+RA8_INTERNAL static ra8_err_t internal_decompress_check(const ra8_rar_t*        rar,
+                                                        const uint8_t*          out,
+                                                        const ra8_rar5_state_t* st,
+                                                        size_t                  out_cap,
+                                                        uint64_t                unp_size,
+                                                        uint64_t                pack_size)
 {
   RA8_CHECK_NULL_PTR(rar, s_tag_rar5, "decompress: null rar");
   RA8_CHECK_NULL_PTR(out, s_tag_rar5, "decompress: null out");
