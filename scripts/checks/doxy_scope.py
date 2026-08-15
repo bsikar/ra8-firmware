@@ -25,6 +25,8 @@ import sys
 from collections.abc import Iterator
 from pathlib import Path
 
+from lint_targets import is_build_output_path
+
 #: The real checkout root. Never read directly outside `repo_root()` -- the
 #: selftest override would not be visible through a bare import of it.
 _REAL_REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -107,6 +109,15 @@ def _is_generated_protocol_file(path: Path) -> bool:
     return relative in GENERATED_PROTOCOL_FILES
 
 
+def _is_build_output(path: Path) -> bool:
+    """Return whether ``path`` is inside any recognized generated build tree."""
+    try:
+        relative = path.resolve().relative_to(repo_root().resolve()).as_posix()
+    except ValueError:
+        return False
+    return is_build_output_path(relative)
+
+
 def iter_function_files() -> Iterator[Path]:
     """Yield every first-party .c/.h the FUNCTION gate audits.
 
@@ -121,14 +132,18 @@ def iter_function_files() -> Iterator[Path]:
         if not root.is_dir():
             continue
         for dirpath, dirnames, filenames in os.walk(root):
-            dirnames[:] = [d for d in dirnames if d not in EXCLUDE_PARTS]
+            dirnames[:] = [
+                d
+                for d in dirnames
+                if d not in EXCLUDE_PARTS and not _is_build_output(Path(dirpath) / d)
+            ]
             for fn in filenames:
                 if not fn.endswith((".c", ".h")):
                     continue
                 p = Path(dirpath) / fn
                 if any(part in EXCLUDE_PARTS for part in p.relative_to(repo_root()).parts):
                     continue
-                if _is_generated_protocol_file(p):
+                if _is_build_output(p) or _is_generated_protocol_file(p):
                     continue
                 yield p
 
@@ -144,7 +159,11 @@ def _iter_member_files(explicit: list[str]) -> Iterator[Path]:
             p = Path(raw_path)
             # Accept CWD/absolute paths first, then resolve repo-relative input.
             candidate = p if p.is_file() else repo_root() / raw_path
-            if candidate.is_file() and not _is_generated_protocol_file(candidate):
+            if (
+                candidate.is_file()
+                and not _is_build_output(candidate)
+                and not _is_generated_protocol_file(candidate)
+            ):
                 yield candidate
         return
     for top in MEMBER_SCAN_DIRS:
@@ -152,14 +171,18 @@ def _iter_member_files(explicit: list[str]) -> Iterator[Path]:
         if not root.is_dir():
             continue
         for dirpath, dirnames, filenames in os.walk(root):
-            dirnames[:] = [d for d in dirnames if d not in MEMBER_EXCLUDE_PARTS]
+            dirnames[:] = [
+                d
+                for d in dirnames
+                if d not in MEMBER_EXCLUDE_PARTS and not _is_build_output(Path(dirpath) / d)
+            ]
             for fn in filenames:
                 if not fn.endswith((".c", ".h")):
                     continue
                 p = Path(dirpath) / fn
                 if any(part in MEMBER_EXCLUDE_PARTS for part in p.relative_to(repo_root()).parts):
                     continue
-                if _is_generated_protocol_file(p):
+                if _is_build_output(p) or _is_generated_protocol_file(p):
                     continue
                 yield p
 
