@@ -57,6 +57,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_epub.h"
 #include "ra8_err.h"
 #include "unity_minimal.h"
@@ -113,11 +114,11 @@ static size_t s_zip_size = 0U;
  */
 
 /**
- * @var k_container_good
+ * @var s_container_good
  * @brief Well-formed container.xml pointing to OEBPS/content.opf.
  * @since 0.1.0
  */
-static const char* const k_container_good =
+static const char* const s_container_good =
   "<?xml version=\"1.0\"?>\n"
   "<container version=\"1.0\""
   " xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\">\n"
@@ -128,11 +129,11 @@ static const char* const k_container_good =
   "</container>\n";
 
 /**
- * @var k_container_root_opf
+ * @var s_container_root_opf
  * @brief container.xml pointing to content.opf at archive root (no slash).
  * @since 0.1.0
  */
-static const char* const k_container_root_opf =
+static const char* const s_container_root_opf =
   "<?xml version=\"1.0\"?>\n"
   "<container version=\"1.0\""
   " xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\">\n"
@@ -143,18 +144,18 @@ static const char* const k_container_root_opf =
   "</container>\n";
 
 /**
- * @var k_container_garbage
- * @brief Syntactically invalid container.xml (not parseable by tinyxml2).
+ * @var s_container_garbage
+ * @brief Syntactically invalid container.xml rejected by the bounded XML reader.
  * @since 0.1.0
  */
-static const char* const k_container_garbage = "THIS IS NOT XML AT ALL <<< !! ";
+static const char* const s_container_garbage = "THIS IS NOT XML AT ALL <<< !! ";
 
 /**
- * @var k_opf_good
+ * @var s_opf_good
  * @brief Minimal well-formed OPF with one spine chapter.
  * @since 0.1.0
  */
-static const char* const k_opf_good = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+static const char* const s_opf_good = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
                                       "<package xmlns=\"http://www.idpf.org/2007/opf\""
                                       " version=\"3.0\" unique-identifier=\"id\">\n"
                                       "  <metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n"
@@ -173,15 +174,15 @@ static const char* const k_opf_good = "<?xml version=\"1.0\" encoding=\"UTF-8\"?
                                       "</package>\n";
 
 /**
- * @var k_opf_nav_empty_href
+ * @var s_opf_nav_empty_href
  * @brief OPF where the nav manifest item has an empty href.
  *
- * @details tinyxml2 returns "" (not NULL) for an empty attribute value.
+ * @details The reader exposes an empty span for an empty attribute value.
  *          The parser sees nav_href != NULL but toc_path gets set to "".
  *          priv_load_toc then hits the toc_path[0]=='\0' guard (line 261).
  * @since 0.1.0
  */
-static const char* const k_opf_nav_empty_href =
+static const char* const s_opf_nav_empty_href =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
   "<package xmlns=\"http://www.idpf.org/2007/opf\""
   " version=\"3.0\" unique-identifier=\"id\">\n"
@@ -203,14 +204,14 @@ static const char* const k_opf_nav_empty_href =
   "</package>\n";
 
 /**
- * @var k_opf_nav_missing
+ * @var s_opf_nav_missing
  * @brief OPF where nav href references a file absent from the archive.
  *
  * @details Both full_path and bare toc_path will not be found in the archive,
  *          exercising line 271 (fallback attempt) and line 274 (bail-out).
  * @since 0.1.0
  */
-static const char* const k_opf_nav_missing =
+static const char* const s_opf_nav_missing =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
   "<package xmlns=\"http://www.idpf.org/2007/opf\""
   " version=\"3.0\" unique-identifier=\"id\">\n"
@@ -232,14 +233,14 @@ static const char* const k_opf_nav_missing =
   "</package>\n";
 
 /**
- * @var k_opf_nav_bare
+ * @var s_opf_nav_bare
  * @brief OPF where nav is stored at the bare archive path "nav.xhtml".
  *
  * @details The join path ("OEBPS/nav.xhtml") will not be found; the bare
  *          path ("nav.xhtml") will succeed, exercising lines 271-272.
  * @since 0.1.0
  */
-static const char* const k_opf_nav_bare =
+static const char* const s_opf_nav_bare =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
   "<package xmlns=\"http://www.idpf.org/2007/opf\""
   " version=\"3.0\" unique-identifier=\"id\">\n"
@@ -261,13 +262,13 @@ static const char* const k_opf_nav_bare =
   "</package>\n";
 
 /**
- * @var k_opf_ncx
+ * @var s_opf_ncx
  * @brief EPUB2-style OPF with NCX navigation (no nav properties item).
  *
  * @details Drives line 280 (the ra8_epub_xml_parse_ncx call in priv_load_toc).
  * @since 0.1.0
  */
-static const char* const k_opf_ncx = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+static const char* const s_opf_ncx = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
                                      "<package xmlns=\"http://www.idpf.org/2007/opf\""
                                      " version=\"2.0\" unique-identifier=\"id\">\n"
                                      "  <metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n"
@@ -288,11 +289,11 @@ static const char* const k_opf_ncx = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
                                      "</package>\n";
 
 /**
- * @var k_ncx_doc
+ * @var s_ncx_doc
  * @brief Minimal valid EPUB2 NCX document.
  * @since 0.1.0
  */
-static const char* const k_ncx_doc =
+static const char* const s_ncx_doc =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
   "<ncx xmlns=\"http://www.daisy.org/z3986/2005/ncx/\" version=\"2005-1\">\n"
   "  <head><meta name=\"dtb:uid\" content=\"urn:cov:5\"/></head>\n"
@@ -306,26 +307,26 @@ static const char* const k_ncx_doc =
   "</ncx>\n";
 
 /**
- * @var k_opf_garbage
+ * @var s_opf_garbage
  * @brief Syntactically invalid OPF (triggers OPF parse failure at line 336).
  * @since 0.1.0
  */
-static const char* const k_opf_garbage = "DEFINITELY NOT VALID XML <<<< ";
+static const char* const s_opf_garbage = "DEFINITELY NOT VALID XML <<<< ";
 
 /**
- * @var k_chapter_xhtml
+ * @var s_chapter_xhtml
  * @brief Minimal XHTML chapter body stored in the synthetic archive.
  * @since 0.1.0
  */
-static const char* const k_chapter_xhtml = "<?xml version=\"1.0\"?>"
+static const char* const s_chapter_xhtml = "<?xml version=\"1.0\"?>"
                                            "<html><body><p>Hello.</p></body></html>";
 
 /**
- * @var k_nav_xhtml
+ * @var s_nav_xhtml
  * @brief Minimal EPUB3 navigation document.
  * @since 0.1.0
  */
-static const char* const k_nav_xhtml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+static const char* const s_nav_xhtml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
                                        "<html xmlns=\"http://www.w3.org/1999/xhtml\""
                                        " xmlns:epub=\"http://www.idpf.org/2007/ops\">\n"
                                        "<head><title>Nav</title></head><body>\n"
@@ -355,7 +356,7 @@ static const char* const k_nav_xhtml = "<?xml version=\"1.0\" encoding=\"UTF-8\"
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void priv_finalise(mz_zip_archive* zip)
+RA8_INTERNAL static void internal_finalise(mz_zip_archive* zip)
 {
   void*  heap_buf  = nullptr;
   size_t heap_size = 0U;
@@ -365,6 +366,7 @@ static void priv_finalise(mz_zip_archive* zip)
   TEST_ASSERT(heap_size <= (size_t)k_cov_zip_buf);
   memcpy(s_zip_buf, heap_buf, heap_size);
   s_zip_size = heap_size;
+  mz_free(heap_buf);
   mz_zip_writer_end(zip);
 }
 
@@ -379,9 +381,8 @@ static void priv_finalise(mz_zip_archive* zip)
  * @post Entry is appended to zip on success.
  *
  * @note Not thread-safe.
- * @since 0.1.0
- */
-static void priv_add_str(mz_zip_archive* zip, const char* name, const char* text)
+ * @since 0.1.0 @details Implements the add str fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_add_str(mz_zip_archive* zip, const char* name, const char* text)
 {
   TEST_ASSERT(
     mz_zip_writer_add_mem(zip, name, (const void*)text, strlen(text), MZ_DEFAULT_COMPRESSION) ==
@@ -394,7 +395,7 @@ static void priv_add_str(mz_zip_archive* zip, const char* name, const char* text
  */
 
 /**
- * @test test_open_no_container_xml
+ * @test internal_test_open_no_container_xml
  * @brief ZIP missing META-INF/container.xml -> k_ra8_err_not_found.
  *
  * @details The archive contains only a "mimetype" entry.  priv_extract()
@@ -416,14 +417,14 @@ static void priv_add_str(mz_zip_archive* zip, const char* name, const char* text
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_open_no_container_xml(void)
+RA8_INTERNAL static void internal_test_open_no_container_xml(void)
 {
   TEST_BEGIN("epub_open: no container.xml -> not_found (lines 181,318,390,391)");
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
   TEST_ASSERT(mz_zip_writer_init_heap(&zip, 0U, (size_t)k_cov_zip_buf) == MZ_TRUE);
-  priv_add_str(&zip, "mimetype", "application/epub+zip");
-  priv_finalise(&zip);
+  internal_add_str(&zip, "mimetype", "application/epub+zip");
+  internal_finalise(&zip);
 
   ra8_epub_book_t            book  = {};
   const ra8_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
@@ -438,7 +439,7 @@ static void test_open_no_container_xml(void)
  */
 
 /**
- * @test test_open_container_too_large
+ * @test internal_test_open_container_too_large
  * @brief container.xml uncomp_size > 4096 -> k_ra8_err_no_mem.
  *
  * @details The container.xml entry is padded with an XML comment to push
@@ -460,14 +461,14 @@ static void test_open_no_container_xml(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_open_container_too_large(void)
+RA8_INTERNAL static void internal_test_open_container_too_large(void)
 {
   TEST_BEGIN("epub_open: container.xml > 4096 B -> no_mem (lines 188,318,390,391)");
 
   /* Build a container.xml that is > 4096 bytes uncompressed.
    * Prefix a large XML comment so the document remains parseable in
    * isolation, but the extracted size exceeds the static scratch. */
-  static char s_big_container[k_cov_pad_len + k_epub_container_overflow_pad];
+  static char local_big_container[k_cov_pad_len + k_epub_container_overflow_pad];
   size_t      pos = 0U;
 
   /* Opening comment with lots of padding. */
@@ -476,33 +477,33 @@ static void test_open_container_too_large(void)
   const size_t      co_len            = strlen(k_comment_open);
   const size_t      cc_len            = strlen(k_comment_close);
 
-  memcpy(s_big_container + pos, k_comment_open, co_len);
+  memcpy(local_big_container + pos, k_comment_open, co_len);
   pos += co_len;
 
   /* Fill padding. */
   for (size_t i = 0U; i < (size_t)k_cov_pad_len; ++i) {
-    s_big_container[pos + i] = 'x';
+    local_big_container[pos + i] = 'x';
   }
   pos += (size_t)k_cov_pad_len;
 
-  memcpy(s_big_container + pos, k_comment_close, cc_len);
+  memcpy(local_big_container + pos, k_comment_close, cc_len);
   pos += cc_len;
 
   /* Append the real container body. */
-  const size_t body_len = strlen(k_container_good);
-  memcpy(s_big_container + pos, k_container_good, body_len);
+  const size_t body_len = strlen(s_container_good);
+  memcpy(local_big_container + pos, s_container_good, body_len);
   pos += body_len;
-  s_big_container[pos] = '\0';
+  local_big_container[pos] = '\0';
 
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
   TEST_ASSERT(mz_zip_writer_init_heap(&zip, 0U, (size_t)k_cov_zip_buf) == MZ_TRUE);
   TEST_ASSERT(mz_zip_writer_add_mem(&zip,
                                     "META-INF/container.xml",
-                                    s_big_container,
+                                    local_big_container,
                                     pos,
                                     MZ_DEFAULT_COMPRESSION) == MZ_TRUE);
-  priv_finalise(&zip);
+  internal_finalise(&zip);
 
   ra8_epub_book_t            book  = {};
   const ra8_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
@@ -517,7 +518,7 @@ static void test_open_container_too_large(void)
  */
 
 /**
- * @test test_open_invalid_container_xml
+ * @test internal_test_open_invalid_container_xml
  * @brief container.xml is not valid XML -> k_ra8_err_validation_failed.
  *
  * @details ra8_epub_xml_parse_container() returns validation_failed;
@@ -538,14 +539,14 @@ static void test_open_container_too_large(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_open_invalid_container_xml(void)
+RA8_INTERNAL static void internal_test_open_invalid_container_xml(void)
 {
   TEST_BEGIN("epub_open: invalid container.xml XML -> validation_failed (lines 324,390,391)");
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
   TEST_ASSERT(mz_zip_writer_init_heap(&zip, 0U, (size_t)k_cov_zip_buf) == MZ_TRUE);
-  priv_add_str(&zip, "META-INF/container.xml", k_container_garbage);
-  priv_finalise(&zip);
+  internal_add_str(&zip, "META-INF/container.xml", s_container_garbage);
+  internal_finalise(&zip);
 
   ra8_epub_book_t            book  = {};
   const ra8_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
@@ -560,7 +561,7 @@ static void test_open_invalid_container_xml(void)
  */
 
 /**
- * @test test_open_opf_missing
+ * @test internal_test_open_opf_missing
  * @brief container.xml points to OEBPS/content.opf but that entry is absent.
  *
  * @details priv_extract(OEBPS/content.opf) returns not_found (line 181);
@@ -581,15 +582,15 @@ static void test_open_invalid_container_xml(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_open_opf_missing(void)
+RA8_INTERNAL static void internal_test_open_opf_missing(void)
 {
   TEST_BEGIN("epub_open: OPF missing -> not_found (lines 181,330,390,391)");
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
   TEST_ASSERT(mz_zip_writer_init_heap(&zip, 0U, (size_t)k_cov_zip_buf) == MZ_TRUE);
-  priv_add_str(&zip, "META-INF/container.xml", k_container_good);
+  internal_add_str(&zip, "META-INF/container.xml", s_container_good);
   /* Deliberately do NOT add OEBPS/content.opf. */
-  priv_finalise(&zip);
+  internal_finalise(&zip);
 
   ra8_epub_book_t            book  = {};
   const ra8_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
@@ -604,7 +605,7 @@ static void test_open_opf_missing(void)
  */
 
 /**
- * @test test_open_opf_invalid_xml
+ * @test internal_test_open_opf_invalid_xml
  * @brief OPF entry present but not valid XML -> k_ra8_err_validation_failed.
  *
  * @details ra8_epub_xml_parse_opf() returns validation_failed; priv_parse_archive
@@ -624,15 +625,15 @@ static void test_open_opf_missing(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_open_opf_invalid_xml(void)
+RA8_INTERNAL static void internal_test_open_opf_invalid_xml(void)
 {
   TEST_BEGIN("epub_open: OPF not valid XML -> validation_failed (lines 336,390,391)");
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
   TEST_ASSERT(mz_zip_writer_init_heap(&zip, 0U, (size_t)k_cov_zip_buf) == MZ_TRUE);
-  priv_add_str(&zip, "META-INF/container.xml", k_container_good);
-  priv_add_str(&zip, "OEBPS/content.opf", k_opf_garbage);
-  priv_finalise(&zip);
+  internal_add_str(&zip, "META-INF/container.xml", s_container_good);
+  internal_add_str(&zip, "OEBPS/content.opf", s_opf_garbage);
+  internal_finalise(&zip);
 
   ra8_epub_book_t            book  = {};
   const ra8_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
@@ -647,7 +648,7 @@ static void test_open_opf_invalid_xml(void)
  */
 
 /**
- * @test test_open_opf_at_archive_root
+ * @test internal_test_open_opf_at_archive_root
  * @brief OPF path has no slash -> priv_dirname returns early (line 144).
  *
  * @details container.xml says full-path="content.opf" (archive root, no '/').
@@ -668,16 +669,16 @@ static void test_open_opf_invalid_xml(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_open_opf_at_archive_root(void)
+RA8_INTERNAL static void internal_test_open_opf_at_archive_root(void)
 {
   TEST_BEGIN("epub_open: OPF at archive root (no slash in path) -> line 144");
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
   TEST_ASSERT(mz_zip_writer_init_heap(&zip, 0U, (size_t)k_cov_zip_buf) == MZ_TRUE);
-  priv_add_str(&zip, "META-INF/container.xml", k_container_root_opf);
-  priv_add_str(&zip, "content.opf", k_opf_good);
-  priv_add_str(&zip, "ch1.xhtml", k_chapter_xhtml);
-  priv_finalise(&zip);
+  internal_add_str(&zip, "META-INF/container.xml", s_container_root_opf);
+  internal_add_str(&zip, "content.opf", s_opf_good);
+  internal_add_str(&zip, "ch1.xhtml", s_chapter_xhtml);
+  internal_finalise(&zip);
 
   ra8_epub_book_t            book  = {};
   const ra8_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
@@ -693,10 +694,10 @@ static void test_open_opf_at_archive_root(void)
  */
 
 /**
- * @test test_toc_empty_path
+ * @test internal_test_toc_empty_path
  * @brief Nav manifest item with href="" sets toc_path="" -> line 261.
  *
- * @details tinyxml2 returns "" (not NULL) for an empty attribute value.
+ * @details The reader exposes an empty span for an empty attribute value.
  *          ra8_epub_xml_parse_opf sees nav_href != NULL and calls
  *          copy_bounded(book->toc_path, ..., "") which writes '\0'.
  *          priv_load_toc then hits toc_path[0]=='\0' (line 261) and
@@ -716,16 +717,16 @@ static void test_open_opf_at_archive_root(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_toc_empty_path(void)
+RA8_INTERNAL static void internal_test_toc_empty_path(void)
 {
   TEST_BEGIN("epub_open: nav href=\"\" -> toc_path empty -> line 261");
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
   TEST_ASSERT(mz_zip_writer_init_heap(&zip, 0U, (size_t)k_cov_zip_buf) == MZ_TRUE);
-  priv_add_str(&zip, "META-INF/container.xml", k_container_good);
-  priv_add_str(&zip, "OEBPS/content.opf", k_opf_nav_empty_href);
-  priv_add_str(&zip, "OEBPS/ch1.xhtml", k_chapter_xhtml);
-  priv_finalise(&zip);
+  internal_add_str(&zip, "META-INF/container.xml", s_container_good);
+  internal_add_str(&zip, "OEBPS/content.opf", s_opf_nav_empty_href);
+  internal_add_str(&zip, "OEBPS/ch1.xhtml", s_chapter_xhtml);
+  internal_finalise(&zip);
 
   ra8_epub_book_t            book  = {};
   const ra8_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
@@ -743,7 +744,7 @@ static void test_toc_empty_path(void)
  */
 
 /**
- * @test test_toc_both_paths_fail
+ * @test internal_test_toc_both_paths_fail
  * @brief TOC file absent from archive -> fallback also fails -> line 274.
  *
  * @details nav href="does_not_exist.xhtml" exists in the OPF but not in the
@@ -757,11 +758,11 @@ static void test_toc_empty_path(void)
  * @par MC/DC:
  * Decision: `if (err == k_ra8_err_not_found)` at line 269 (1 condition).
  * - V1 (this test): err=not_found -> true  -> line 271 (fallback).
- * - V2 (test_toc_fallback_bare_path): err=k_ra8_ok (fallback succeeds) -> line 271 not taken on second path.
+ * - V2 (internal_test_toc_fallback_bare_path): err=k_ra8_ok (fallback succeeds) -> line 271 not taken on second path.
  *
  * Decision: `if (err != k_ra8_ok)` at line 273 (1 condition).
  * - V1 (this test): err still not_found after fallback -> true  -> line 274.
- * - V2 (test_toc_fallback_bare_path): fallback succeeds -> err=k_ra8_ok -> false.
+ * - V2 (internal_test_toc_fallback_bare_path): fallback succeeds -> err=k_ra8_ok -> false.
  * Pairs give complete MC/DC for both 1-condition decisions.
  *
  * @pre s_zip_buf writable.
@@ -772,17 +773,17 @@ static void test_toc_empty_path(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_toc_both_paths_fail(void)
+RA8_INTERNAL static void internal_test_toc_both_paths_fail(void)
 {
   TEST_BEGIN("epub_open: TOC absent -> both extractions fail -> lines 271,272,274");
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
   TEST_ASSERT(mz_zip_writer_init_heap(&zip, 0U, (size_t)k_cov_zip_buf) == MZ_TRUE);
-  priv_add_str(&zip, "META-INF/container.xml", k_container_good);
-  priv_add_str(&zip, "OEBPS/content.opf", k_opf_nav_missing);
-  priv_add_str(&zip, "OEBPS/ch1.xhtml", k_chapter_xhtml);
+  internal_add_str(&zip, "META-INF/container.xml", s_container_good);
+  internal_add_str(&zip, "OEBPS/content.opf", s_opf_nav_missing);
+  internal_add_str(&zip, "OEBPS/ch1.xhtml", s_chapter_xhtml);
   /* "OEBPS/does_not_exist.xhtml" and "does_not_exist.xhtml" NOT added. */
-  priv_finalise(&zip);
+  internal_finalise(&zip);
 
   ra8_epub_book_t            book  = {};
   const ra8_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
@@ -800,7 +801,7 @@ static void test_toc_both_paths_fail(void)
  */
 
 /**
- * @test test_toc_fallback_bare_path
+ * @test internal_test_toc_fallback_bare_path
  * @brief nav stored at "nav.xhtml" (bare); join("OEBPS/","nav.xhtml") fails.
  *
  * @details nav href="nav.xhtml"; OPF is at "OEBPS/content.opf" so opf_dir=
@@ -813,7 +814,7 @@ static void test_toc_both_paths_fail(void)
  *
  * @par MC/DC:
  * Decision: `if (err == k_ra8_err_not_found)` at line 269 (1 condition).
- * - V1 (test_toc_both_paths_fail): both fail -- provides the true arm.
+ * - V1 (internal_test_toc_both_paths_fail): both fail -- provides the true arm.
  * - V2 (this test): first extract not_found -> true -> line 271; but
  *   second extract succeeds -> err=k_ra8_ok -> line 274 NOT taken.
  * Lines 271-272 are covered by this test; line 274 is covered by the
@@ -827,19 +828,19 @@ static void test_toc_both_paths_fail(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_toc_fallback_bare_path(void)
+RA8_INTERNAL static void internal_test_toc_fallback_bare_path(void)
 {
   TEST_BEGIN(
     "epub_open: nav at bare path; OEBPS/ join fails -> fallback succeeds -> lines 271,272");
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
   TEST_ASSERT(mz_zip_writer_init_heap(&zip, 0U, (size_t)k_cov_zip_buf) == MZ_TRUE);
-  priv_add_str(&zip, "META-INF/container.xml", k_container_good);
-  priv_add_str(&zip, "OEBPS/content.opf", k_opf_nav_bare);
-  priv_add_str(&zip, "OEBPS/ch1.xhtml", k_chapter_xhtml);
+  internal_add_str(&zip, "META-INF/container.xml", s_container_good);
+  internal_add_str(&zip, "OEBPS/content.opf", s_opf_nav_bare);
+  internal_add_str(&zip, "OEBPS/ch1.xhtml", s_chapter_xhtml);
   /* nav stored at BARE path "nav.xhtml", NOT at "OEBPS/nav.xhtml". */
-  priv_add_str(&zip, "nav.xhtml", k_nav_xhtml);
-  priv_finalise(&zip);
+  internal_add_str(&zip, "nav.xhtml", s_nav_xhtml);
+  internal_finalise(&zip);
 
   ra8_epub_book_t            book  = {};
   const ra8_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
@@ -857,7 +858,7 @@ static void test_toc_fallback_bare_path(void)
  */
 
 /**
- * @test test_toc_ncx_branch
+ * @test internal_test_toc_ncx_branch
  * @brief EPUB2-style NCX TOC -> priv_load_toc takes NCX branch (line 280).
  *
  * @details OPF has no properties="nav" item; the spine's toc="ncx" attribute
@@ -880,17 +881,17 @@ static void test_toc_fallback_bare_path(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_toc_ncx_branch(void)
+RA8_INTERNAL static void internal_test_toc_ncx_branch(void)
 {
   TEST_BEGIN("epub_open: EPUB2 NCX toc_kind -> NCX branch line 280");
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
   TEST_ASSERT(mz_zip_writer_init_heap(&zip, 0U, (size_t)k_cov_zip_buf) == MZ_TRUE);
-  priv_add_str(&zip, "META-INF/container.xml", k_container_good);
-  priv_add_str(&zip, "OEBPS/content.opf", k_opf_ncx);
-  priv_add_str(&zip, "OEBPS/ch1.xhtml", k_chapter_xhtml);
-  priv_add_str(&zip, "OEBPS/toc.ncx", k_ncx_doc);
-  priv_finalise(&zip);
+  internal_add_str(&zip, "META-INF/container.xml", s_container_good);
+  internal_add_str(&zip, "OEBPS/content.opf", s_opf_ncx);
+  internal_add_str(&zip, "OEBPS/ch1.xhtml", s_chapter_xhtml);
+  internal_add_str(&zip, "OEBPS/toc.ncx", s_ncx_doc);
+  internal_finalise(&zip);
 
   ra8_epub_book_t            book  = {};
   const ra8_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
@@ -929,23 +930,22 @@ static void test_toc_ncx_branch(void)
 int32_t main(void)
 {
   /* Group A/C: priv_extract error returns (lines 181, 188, 318, 390, 391). */
-  test_open_no_container_xml();
-  test_open_container_too_large();
+  internal_test_open_no_container_xml();
+  internal_test_open_container_too_large();
 
   /* Group B/C: priv_parse_archive error returns (lines 324, 330, 336, 390, 391). */
-  test_open_invalid_container_xml();
-  test_open_opf_missing();
-  test_open_opf_invalid_xml();
+  internal_test_open_invalid_container_xml();
+  internal_test_open_opf_missing();
+  internal_test_open_opf_invalid_xml();
 
   /* Group D: priv_dirname no-slash arm (line 144). */
-  test_open_opf_at_archive_root();
+  internal_test_open_opf_at_archive_root();
 
   /* Group E: priv_load_toc branches (lines 261, 271, 272, 274, 280). */
-  test_toc_empty_path();
-  test_toc_both_paths_fail();
-  test_toc_fallback_bare_path();
-  test_toc_ncx_branch();
+  internal_test_toc_empty_path();
+  internal_test_toc_both_paths_fail();
+  internal_test_toc_fallback_bare_path();
+  internal_test_toc_ncx_branch();
 
-  (void)fprintf(stderr, "[OK ] test_ra8_epub_open_cov.c\n");
   return 0;
 }

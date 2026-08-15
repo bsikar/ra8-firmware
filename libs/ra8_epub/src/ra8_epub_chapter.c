@@ -74,7 +74,7 @@ typedef enum : uint16_t {
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool ra8_epub_internal_glyph_dim_invalid(int w, int h)
+RA8_PRIV bool priv_epub_glyph_dim_invalid(int w, int h)
 {
   return (w < 0) || (h < 0);
 }
@@ -94,7 +94,7 @@ bool ra8_epub_internal_glyph_dim_invalid(int w, int h)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool ra8_epub_internal_book_not_ready(uint8_t in_use, uint8_t zip_archive_active)
+RA8_PRIV bool priv_epub_book_not_ready(uint8_t in_use, uint8_t zip_archive_active)
 {
   return (in_use == 0U) || (zip_archive_active == 0U);
 }
@@ -115,7 +115,7 @@ bool ra8_epub_internal_book_not_ready(uint8_t in_use, uint8_t zip_archive_active
  * @note Not thread-safe.
  * @since 0.1.0
  */
-void ra8_epub_internal_join_path(const char* dir, const char* name, char* dst, size_t cap)
+RA8_PRIV void priv_epub_join_path(const char* dir, const char* name, char* dst, size_t cap)
 {
   if (dst == nullptr || cap == 0U) {
     return;
@@ -162,12 +162,12 @@ void ra8_epub_internal_join_path(const char* dir, const char* name, char* dst, s
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_locate_extract(mz_zip_archive* zip,
-                                     const char*     prefixed_path,
-                                     const char*     bare_path,
-                                     uint8_t*        out_buf,
-                                     size_t          max_len,
-                                     size_t*         got_len)
+static ra8_err_t internal_locate_extract(mz_zip_archive* zip,
+                                         const char*     prefixed_path,
+                                         const char*     bare_path,
+                                         uint8_t*        out_buf,
+                                         size_t          max_len,
+                                         size_t*         got_len)
 {
   int32_t file_idx = mz_zip_reader_locate_file(zip, prefixed_path, nullptr, 0U);
   if (file_idx < 0) {
@@ -182,7 +182,7 @@ static ra8_err_t priv_locate_extract(mz_zip_archive* zip,
   if (mz_zip_reader_file_stat(zip, (mz_uint)file_idx, &st) == MZ_FALSE) {
     return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE */
   }
-  const ra8_err_t gerr = ra8_epub_zip_guard_entry(&st);
+  const ra8_err_t gerr = priv_epub_zip_guard_entry(&st);
   if (gerr != k_ra8_ok) {
     return gerr; /* lying header / declared bomb: reject before inflation */
   }
@@ -216,7 +216,7 @@ static ra8_err_t priv_locate_extract(mz_zip_archive* zip,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_font_init(const ra8_epub_book_t* book, stbtt_fontinfo* out_font)
+static ra8_err_t internal_font_init(const ra8_epub_book_t* book, stbtt_fontinfo* out_font)
 {
   /* Guard against malformed font blobs: stbtt_GetFontOffsetForIndex
    * returns -1 for non-TTF input, and stbtt_InitFont dereferences past
@@ -262,13 +262,13 @@ static ra8_err_t priv_font_init(const ra8_epub_book_t* book, stbtt_fontinfo* out
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_render_into(const stbtt_fontinfo* font,
-                                  int32_t               codepoint,
-                                  float                 font_size,
-                                  uint8_t*              out_bitmap,
-                                  size_t                max_pixels,
-                                  uint32_t*             out_w,
-                                  uint32_t*             out_h)
+static ra8_err_t internal_render_into(const stbtt_fontinfo* font,
+                                      int32_t               codepoint,
+                                      float                 font_size,
+                                      uint8_t*              out_bitmap,
+                                      size_t                max_pixels,
+                                      uint32_t*             out_w,
+                                      uint32_t*             out_h)
 {
   /* No-allocation glyph rasterisation. stbtt_GetCodepointBitmap()
    * calls STBTT_malloc internally; instead use the two-step "Box"
@@ -284,7 +284,7 @@ static ra8_err_t priv_render_into(const stbtt_fontinfo* font,
   const int h = y1 - y0;
   /* Defensive: stbtt_GetCodepointBitmapBox guarantees x1 >= x0 and y1 >= y0
    * for any glyph in a well-formed font that passed stbtt_InitFont. */
-  if (ra8_epub_internal_glyph_dim_invalid(w, h)) {
+  if (priv_epub_glyph_dim_invalid(w, h)) {
     return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE */
   }
   const size_t total = (size_t)w * (size_t)h;
@@ -328,7 +328,7 @@ ra8_err_t ra8_epub_load_chapter(ra8_epub_book_t* book,
     return k_ra8_err_null_ptr;
   }
   *got_len = 0U;
-  if (ra8_epub_internal_book_not_ready(book->in_use, book->zip_archive_active)) {
+  if (priv_epub_book_not_ready(book->in_use, book->zip_archive_active)) {
     return k_ra8_err_not_initialized;
   }
   if (max_len == 0U) {
@@ -339,14 +339,16 @@ ra8_err_t ra8_epub_load_chapter(ra8_epub_book_t* book,
   }
 
   char full_path[k_ra8_epub_max_path_len];
-  ra8_epub_internal_join_path(book->opf_dir,
-                              book->chapter_paths[idx],
-                              full_path,
-                              sizeof(full_path));
+  priv_epub_join_path(book->opf_dir, book->chapter_paths[idx], full_path, sizeof(full_path));
 
   void* const     zip_storage = &book->zip_archive_storage[0];
   mz_zip_archive* zip         = (mz_zip_archive*)zip_storage;
-  return priv_locate_extract(zip, full_path, book->chapter_paths[idx], out_xhtml, max_len, got_len);
+  return internal_locate_extract(zip,
+                                 full_path,
+                                 book->chapter_paths[idx],
+                                 out_xhtml,
+                                 max_len,
+                                 got_len);
 }
 
 ra8_err_t ra8_epub_get_toc_kind(const ra8_epub_book_t* book, uint8_t* out_kind)
@@ -445,7 +447,7 @@ ra8_epub_get_cover_image(ra8_epub_book_t* book, uint8_t* out_buf, size_t max_len
     return k_ra8_err_null_ptr;
   }
   *got_len = 0U;
-  if (ra8_epub_internal_book_not_ready(book->in_use, book->zip_archive_active)) {
+  if (priv_epub_book_not_ready(book->in_use, book->zip_archive_active)) {
     return k_ra8_err_not_initialized;
   }
   if (max_len == 0U) {
@@ -456,11 +458,11 @@ ra8_epub_get_cover_image(ra8_epub_book_t* book, uint8_t* out_buf, size_t max_len
   }
 
   char full_path[k_ra8_epub_max_path_len];
-  ra8_epub_internal_join_path(book->opf_dir, book->cover_path, full_path, sizeof(full_path));
+  priv_epub_join_path(book->opf_dir, book->cover_path, full_path, sizeof(full_path));
 
   void* const     zip_storage = &book->zip_archive_storage[0];
   mz_zip_archive* zip         = (mz_zip_archive*)zip_storage;
-  return priv_locate_extract(zip, full_path, book->cover_path, out_buf, max_len, got_len);
+  return internal_locate_extract(zip, full_path, book->cover_path, out_buf, max_len, got_len);
 }
 
 ra8_err_t ra8_epub_get_resource(ra8_epub_book_t* book,
@@ -473,7 +475,7 @@ ra8_err_t ra8_epub_get_resource(ra8_epub_book_t* book,
     return k_ra8_err_null_ptr;
   }
   *got_len = 0U;
-  if (ra8_epub_internal_book_not_ready(book->in_use, book->zip_archive_active)) {
+  if (priv_epub_book_not_ready(book->in_use, book->zip_archive_active)) {
     return k_ra8_err_not_initialized;
   }
   if (max_len == 0U) {
@@ -481,11 +483,11 @@ ra8_err_t ra8_epub_get_resource(ra8_epub_book_t* book,
   }
 
   char full_path[k_ra8_epub_max_path_len];
-  ra8_epub_internal_join_path(book->opf_dir, path, full_path, sizeof(full_path));
+  priv_epub_join_path(book->opf_dir, path, full_path, sizeof(full_path));
 
   void* const     zip_storage = &book->zip_archive_storage[0];
   mz_zip_archive* zip         = (mz_zip_archive*)zip_storage;
-  return priv_locate_extract(zip, full_path, path, out_buf, max_len, got_len);
+  return internal_locate_extract(zip, full_path, path, out_buf, max_len, got_len);
 }
 
 ra8_err_t ra8_epub_get_embedded_font_count(const ra8_epub_book_t* book, uint16_t* out_count)
@@ -532,7 +534,7 @@ ra8_err_t ra8_epub_get_embedded_font(ra8_epub_book_t* book,
     return k_ra8_err_null_ptr;
   }
   *got_len = 0U;
-  if (ra8_epub_internal_book_not_ready(book->in_use, book->zip_archive_active)) {
+  if (priv_epub_book_not_ready(book->in_use, book->zip_archive_active)) {
     return k_ra8_err_not_initialized;
   }
   if (max_len == 0U) {
@@ -543,19 +545,16 @@ ra8_err_t ra8_epub_get_embedded_font(ra8_epub_book_t* book,
   }
 
   char full_path[k_ra8_epub_max_path_len];
-  ra8_epub_internal_join_path(book->opf_dir,
-                              book->embedded_font_paths[idx],
-                              full_path,
-                              sizeof(full_path));
+  priv_epub_join_path(book->opf_dir, book->embedded_font_paths[idx], full_path, sizeof(full_path));
 
   void* const     zip_storage = &book->zip_archive_storage[0];
   mz_zip_archive* zip         = (mz_zip_archive*)zip_storage;
-  return priv_locate_extract(zip,
-                             full_path,
-                             book->embedded_font_paths[idx],
-                             out_buf,
-                             max_len,
-                             got_len);
+  return internal_locate_extract(zip,
+                                 full_path,
+                                 book->embedded_font_paths[idx],
+                                 out_buf,
+                                 max_len,
+                                 got_len);
 }
 
 ra8_err_t ra8_epub_set_font(ra8_epub_book_t* book, const uint8_t* font_data, size_t font_size)
@@ -595,9 +594,9 @@ ra8_err_t ra8_epub_render_glyph(const ra8_epub_book_t* book,
   }
 
   stbtt_fontinfo font;
-  ra8_err_t      err = priv_font_init(book, &font);
+  ra8_err_t      err = internal_font_init(book, &font);
   if (err != k_ra8_ok) {
     return err;
   }
-  return priv_render_into(&font, codepoint, font_size, out_bitmap, max_pixels, out_w, out_h);
+  return internal_render_into(&font, codepoint, font_size, out_bitmap, max_pixels, out_w, out_h);
 }

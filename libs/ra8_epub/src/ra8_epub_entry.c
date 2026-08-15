@@ -108,7 +108,7 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static mz_zip_archive* priv_zip(ra8_epub_book_t* book)
+static mz_zip_archive* internal_zip(ra8_epub_book_t* book)
 {
   void* const storage = &book->zip_archive_storage[0];
   return (mz_zip_archive*)storage;
@@ -116,7 +116,7 @@ static mz_zip_archive* priv_zip(ra8_epub_book_t* book)
 
 /**
  * @brief Locate an entry by OPF-prefixed path, falling back to the bare path.
- * @details See implementation. Mirrors `priv_locate_extract()` in the chapter TU.
+ * @details See implementation. Mirrors `internal_locate_extract()` in the chapter TU.
  * @param[in]  zip      Open archive.
  * @param[in]  book     Book supplying `opf_dir` for the prefixed attempt.
  * @param[in]  path     Entry path, OPF-relative or archive-rooted.
@@ -133,10 +133,10 @@ static mz_zip_archive* priv_zip(ra8_epub_book_t* book)
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_locate(mz_zip_archive* zip, ra8_epub_book_t* book, const char* path, int32_t* out_idx)
+internal_locate(mz_zip_archive* zip, ra8_epub_book_t* book, const char* path, int32_t* out_idx)
 {
   char full_path[k_ra8_epub_max_path_len];
-  ra8_epub_internal_join_path(book->opf_dir, path, full_path, sizeof(full_path));
+  priv_epub_join_path(book->opf_dir, path, full_path, sizeof(full_path));
   int32_t idx = mz_zip_reader_locate_file(zip, full_path, nullptr, 0U);
   if (idx < 0) {
     idx = mz_zip_reader_locate_file(zip, path, nullptr, 0U);
@@ -167,7 +167,8 @@ priv_locate(mz_zip_archive* zip, ra8_epub_book_t* book, const char* path, int32_
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_backing_read(ra8_epub_book_t* book, uint64_t archive_ofs, uint8_t* buf, size_t n)
+static bool
+internal_backing_read(ra8_epub_book_t* book, uint64_t archive_ofs, uint8_t* buf, size_t n)
 {
   if (book->zip_bytes != nullptr) {
     if ((archive_ofs + (uint64_t)n) > (uint64_t)book->zip_size) {
@@ -201,7 +202,8 @@ static bool priv_backing_read(ra8_epub_book_t* book, uint64_t archive_ofs, uint8
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_data_offset(const uint8_t* hdr, uint64_t local_header_ofs, uint64_t* out_data_ofs)
+static bool
+internal_data_offset(const uint8_t* hdr, uint64_t local_header_ofs, uint64_t* out_data_ofs)
 {
   const uint8_t sig[4] = {(uint8_t)k_ra8_epub_ldh_sig_0,
                           (uint8_t)k_ra8_epub_ldh_sig_1,
@@ -241,14 +243,14 @@ static bool priv_data_offset(const uint8_t* hdr, uint64_t local_header_ofs, uint
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_open_iter(ra8_epub_book_t*                   book,
-                                const char*                        path,
-                                mz_zip_reader_extract_iter_state** out_iter,
-                                uint64_t*                          out_uncomp)
+static ra8_err_t internal_open_iter(ra8_epub_book_t*                   book,
+                                    const char*                        path,
+                                    mz_zip_reader_extract_iter_state** out_iter,
+                                    uint64_t*                          out_uncomp)
 {
-  mz_zip_archive* zip = priv_zip(book);
+  mz_zip_archive* zip = internal_zip(book);
   int32_t         idx = 0;
-  const ra8_err_t err = priv_locate(zip, book, path, &idx);
+  const ra8_err_t err = internal_locate(zip, book, path, &idx);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -256,7 +258,7 @@ static ra8_err_t priv_open_iter(ra8_epub_book_t*                   book,
   if (mz_zip_reader_file_stat(zip, (mz_uint)idx, &st) == MZ_FALSE) {
     return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE -- stat cannot fail on a located entry */
   }
-  const ra8_err_t gerr = ra8_epub_zip_guard_entry(&st);
+  const ra8_err_t gerr = priv_epub_zip_guard_entry(&st);
   if (gerr != k_ra8_ok) {
     return gerr; /* lying header / declared bomb: reject before inflation */
   }
@@ -290,14 +292,14 @@ static ra8_err_t priv_open_iter(ra8_epub_book_t*                   book,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_stored_data_offset(ra8_epub_book_t* book,
-                                         const char*      path,
-                                         uint64_t*        out_data_ofs,
-                                         uint64_t*        out_uncomp)
+static ra8_err_t internal_stored_data_offset(ra8_epub_book_t* book,
+                                             const char*      path,
+                                             uint64_t*        out_data_ofs,
+                                             uint64_t*        out_uncomp)
 {
-  mz_zip_archive* zip = priv_zip(book);
+  mz_zip_archive* zip = internal_zip(book);
   int32_t         idx = 0;
-  const ra8_err_t err = priv_locate(zip, book, path, &idx);
+  const ra8_err_t err = internal_locate(zip, book, path, &idx);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -305,7 +307,7 @@ static ra8_err_t priv_stored_data_offset(ra8_epub_book_t* book,
   if (mz_zip_reader_file_stat(zip, (mz_uint)idx, &st) == MZ_FALSE) {
     return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE -- stat cannot fail on a located entry */
   }
-  const ra8_err_t gerr = ra8_epub_zip_guard_entry(&st);
+  const ra8_err_t gerr = priv_epub_zip_guard_entry(&st);
   if (gerr != k_ra8_ok) {
     return gerr; /* lying header / declared bomb: reject before the copy */
   }
@@ -313,10 +315,10 @@ static ra8_err_t priv_stored_data_offset(ra8_epub_book_t* book,
     return k_ra8_err_not_supported; /* DEFLATE -> use the forward cursor */
   }
   uint8_t hdr[k_ra8_epub_ldh_size] = {};
-  if (!priv_backing_read(book, (uint64_t)st.m_local_header_ofs, hdr, sizeof(hdr))) {
+  if (!internal_backing_read(book, (uint64_t)st.m_local_header_ofs, hdr, sizeof(hdr))) {
     return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE -- header bytes are within the archive */
   }
-  if (!priv_data_offset(hdr, (uint64_t)st.m_local_header_ofs, out_data_ofs)) {
+  if (!internal_data_offset(hdr, (uint64_t)st.m_local_header_ofs, out_data_ofs)) {
     return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE -- signature valid for a located entry */
   }
   *out_uncomp = (uint64_t)st.m_uncomp_size;
@@ -337,13 +339,13 @@ ra8_err_t ra8_epub_entry_open(ra8_epub_book_t*         book,
   RA8_CHECK_NULL_PTR(path, s_tag, "path must not be nullptr");
   RA8_CHECK_NULL_PTR(out_reader, s_tag, "out_reader must not be nullptr");
   (void)memset(out_reader, 0, sizeof(*out_reader));
-  if (ra8_epub_internal_book_not_ready(book->in_use, book->zip_archive_active)) {
+  if (priv_epub_book_not_ready(book->in_use, book->zip_archive_active)) {
     return k_ra8_err_not_initialized;
   }
 
   mz_zip_reader_extract_iter_state* iter   = nullptr;
   uint64_t                          uncomp = 0U;
-  const ra8_err_t                   err    = priv_open_iter(book, path, &iter, &uncomp);
+  const ra8_err_t                   err    = internal_open_iter(book, path, &iter, &uncomp);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -432,10 +434,10 @@ ra8_err_t ra8_epub_entry_close(ra8_epub_entry_reader_t* reader)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_pread_null_ok(const ra8_epub_book_t* book,
-                                    const char*            path,
-                                    const uint8_t*         buf,
-                                    const size_t*          got)
+static ra8_err_t internal_pread_null_ok(const ra8_epub_book_t* book,
+                                        const char*            path,
+                                        const uint8_t*         buf,
+                                        const size_t*          got)
 {
   RA8_CHECK_NULL_PTR(book, s_tag, "book must not be nullptr");
   RA8_CHECK_NULL_PTR(path, s_tag, "path must not be nullptr");
@@ -451,18 +453,18 @@ ra8_err_t ra8_epub_entry_pread(ra8_epub_book_t* book,
                                size_t           len,
                                size_t*          got)
 {
-  const ra8_err_t nz = priv_pread_null_ok(book, path, buf, got);
+  const ra8_err_t nz = internal_pread_null_ok(book, path, buf, got);
   if (nz != k_ra8_ok) {
     return nz;
   }
   *got = 0U;
-  if (ra8_epub_internal_book_not_ready(book->in_use, book->zip_archive_active)) {
+  if (priv_epub_book_not_ready(book->in_use, book->zip_archive_active)) {
     return k_ra8_err_not_initialized;
   }
 
   uint64_t        data_ofs = 0U;
   uint64_t        uncomp   = 0U;
-  const ra8_err_t err      = priv_stored_data_offset(book, path, &data_ofs, &uncomp);
+  const ra8_err_t err      = internal_stored_data_offset(book, path, &data_ofs, &uncomp);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -471,7 +473,7 @@ ra8_err_t ra8_epub_entry_pread(ra8_epub_book_t* book,
   }
   const uint64_t avail = uncomp - offset;
   const size_t   n     = ((uint64_t)len > avail) ? (size_t)avail : len;
-  if (!priv_backing_read(book, data_ofs + offset, buf, n)) {
+  if (!internal_backing_read(book, data_ofs + offset, buf, n)) {
     return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE -- data window is within the archive */
   }
   *got = n;

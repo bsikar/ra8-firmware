@@ -40,14 +40,18 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <errno.h>
+#include <fcntl.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
+#include "ra8_attributes.h"
 #include "ra8_epub.h"
 #include "ra8_epub_internal.h"
 #include "ra8_err.h"
+#include "support/ra8_test_output.h"
 #include "unity_minimal.h"
 
 /* ---------------------------------------------------------------------------
@@ -149,7 +153,7 @@ static uint8_t s_glyph_buf[k_cov_glyph_pixels];
 /**
  * @var s_font_buf
  * @brief Buffer for the real TTF font loaded from disk.
- * @note Populated by priv_load_ahem() once in main().
+ * @note Populated by internal_load_ahem() once in main().
  * @warning Do not modify directly.
  * @since 0.1.0
  */
@@ -158,14 +162,14 @@ static uint8_t s_font_buf[k_cov_font_load_cap];
 /**
  * @var s_font_len
  * @brief Number of valid bytes in s_font_buf; 0 if not yet loaded.
- * @note Set by priv_load_ahem().
+ * @note Set by internal_load_ahem().
  * @since 0.1.0
  */
 static size_t s_font_len = 0U;
 
 /**
  * @var s_have_font
- * @brief True once priv_load_ahem() has successfully loaded ahem.ttf.
+ * @brief True once internal_load_ahem() has successfully loaded ahem.ttf.
  * @note Read by render tests to decide whether to run or skip.
  * @since 0.1.0
  */
@@ -200,7 +204,7 @@ static const float s_render_px = 16.0F;
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void priv_dirname_inplace(char* path)
+RA8_INTERNAL static void internal_dirname_inplace(char* path)
 {
   size_t len = strlen(path);
   while (len > 0U && path[len - 1U] != '/') {
@@ -216,7 +220,7 @@ static void priv_dirname_inplace(char* path)
  *
  * @details __FILE__ expands to the absolute path of the compiled source
  *          (.../tests/test_ra8_epub_chapter_cov.c).  Two successive calls to
- *          priv_dirname_inplace() strip the filename and then the tests/
+ *          internal_dirname_inplace() strip the filename and then the tests/
  *          directory, landing on the firmware root.
  *
  * @param[out] out  Buffer to receive the NUL-terminated root path.
@@ -230,11 +234,16 @@ static void priv_dirname_inplace(char* path)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void priv_resolve_fw_root(char* out, size_t cap)
+RA8_INTERNAL static void internal_resolve_fw_root(char* out, size_t cap)
 {
-  (void)snprintf(out, cap, "%s", __FILE__);
-  priv_dirname_inplace(out); /* remove test_ra8_epub_chapter_cov.c */
-  priv_dirname_inplace(out); /* remove tests/                      */
+  size_t used = 0U;
+  while (((used + 1U) < cap) && (__FILE__[used] != '\0')) {
+    out[used] = __FILE__[used];
+    ++used;
+  }
+  out[used] = '\0';
+  internal_dirname_inplace(out); /* remove test_ra8_epub_chapter_cov.c */
+  internal_dirname_inplace(out); /* remove tests/                      */
 }
 
 /**
@@ -256,41 +265,50 @@ static void priv_resolve_fw_root(char* out, size_t cap)
  * @post s_have_font is set to the return value.
  *
  * @note Not thread-safe.
- * @since 0.1.0
- */
-static bool priv_load_ahem(void)
+ * @since 0.1.0 @retval true The named fixture condition holds. */
+RA8_INTERNAL static bool internal_load_ahem(void)
 {
-  static char s_root[k_cov_root_path_cap];
-  priv_resolve_fw_root(s_root, sizeof(s_root));
+  static char local_root[k_cov_root_path_cap];
+  internal_resolve_fw_root(local_root, sizeof(local_root));
 
   /* Build the absolute path by manual concatenation to avoid
    * -Wformat-truncation (the compiler cannot prove root fits). */
-  static char       s_path[k_cov_abs_path_cap];
+  static char       local_path[k_cov_abs_path_cap];
   const char* const k_rel = "/libs/third_party/litehtml/containers/test/fonts/ahem.ttf";
   size_t            rlen  = 0U;
-  while (rlen + 1U < sizeof(s_path) && s_root[rlen] != '\0') {
-    s_path[rlen] = s_root[rlen];
+  while (rlen + 1U < sizeof(local_path) && local_root[rlen] != '\0') {
+    local_path[rlen] = local_root[rlen];
     ++rlen;
   }
   size_t elen = 0U;
-  while (rlen + elen + 1U < sizeof(s_path) && k_rel[elen] != '\0') {
-    s_path[rlen + elen] = k_rel[elen];
+  while (rlen + elen + 1U < sizeof(local_path) && k_rel[elen] != '\0') {
+    local_path[rlen + elen] = k_rel[elen];
     ++elen;
   }
-  s_path[rlen + elen] = '\0';
+  local_path[rlen + elen] = '\0';
 
-  FILE* fp = fopen(s_path, "rb");
-  if (fp == nullptr) {
+  const int descriptor = open(local_path, O_RDONLY);
+  if (descriptor < 0) {
     s_have_font = false;
     return false;
   }
-  const size_t n = fread(s_font_buf, 1U, sizeof(s_font_buf), fp);
-  (void)fclose(fp);
-  if (n < (size_t)k_cov_font_min_bytes) {
+  size_t used = 0U;
+  while (used < sizeof(s_font_buf)) {
+    ssize_t got = -1;
+    do {
+      got = read(descriptor, &s_font_buf[used], sizeof(s_font_buf) - used);
+    } while ((got < 0) && (errno == EINTR));
+    if (got <= 0) {
+      break;
+    }
+    used += (size_t)got;
+  }
+  (void)close(descriptor);
+  if (used < (size_t)k_cov_font_min_bytes) {
     s_have_font = false;
     return false;
   }
-  s_font_len  = n;
+  s_font_len  = used;
   s_have_font = true;
   return true;
 }
@@ -301,7 +319,7 @@ static bool priv_load_ahem(void)
  */
 
 /**
- * @test test_manifest_count_null_book
+ * @test internal_test_manifest_count_null_book
  * @brief ra8_epub_manifest_count(nullptr) returns 0 -- line 482.
  *
  * @details The existing suite calls ra8_epub_manifest_count() only on
@@ -321,7 +339,7 @@ static bool priv_load_ahem(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_manifest_count_null_book(void)
+RA8_INTERNAL static void internal_test_manifest_count_null_book(void)
 {
   TEST_BEGIN("epub_manifest_count: null book -> 0");
   TEST_ASSERT_EQ(0, ra8_epub_manifest_count(nullptr));
@@ -334,7 +352,7 @@ static void test_manifest_count_null_book(void)
  */
 
 /**
- * @test test_manifest_item_null_and_not_ready
+ * @test internal_test_manifest_item_null_and_not_ready
  * @brief ra8_epub_manifest_item() null + not-ready guard -- line 493.
  *
  * @details Drives the `if (book == nullptr || book->in_use == 0U)` compound
@@ -354,7 +372,7 @@ static void test_manifest_count_null_book(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_manifest_item_null_and_not_ready(void)
+RA8_INTERNAL static void internal_test_manifest_item_null_and_not_ready(void)
 {
   TEST_BEGIN("epub_manifest_item: null + not-ready -> nullptr");
   ra8_epub_book_t book = {};
@@ -366,7 +384,7 @@ static void test_manifest_item_null_and_not_ready(void)
 }
 
 /**
- * @test test_manifest_item_out_of_range
+ * @test internal_test_manifest_item_out_of_range
  * @brief ra8_epub_manifest_item() out-of-range index returns nullptr -- line 496.
  *
  * @details Opens a book with manifest_count == 0, then requests index 0
@@ -378,7 +396,7 @@ static void test_manifest_item_null_and_not_ready(void)
  * single-condition `index >= book->manifest_count` out-of-range guard on a ready
  * book (manifest_count == 0, index 0). The compound
  * `book == nullptr || book->in_use == 0U` guard is reached only as the both-false
- * control here; its N+1 = 3 vectors live in test_manifest_item_null_and_not_ready)
+ * control here; its N+1 = 3 vectors live in internal_test_manifest_item_null_and_not_ready)
  *
  * @pre None.
  * @pre None.
@@ -387,7 +405,7 @@ static void test_manifest_item_null_and_not_ready(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_manifest_item_out_of_range(void)
+RA8_INTERNAL static void internal_test_manifest_item_out_of_range(void)
 {
   TEST_BEGIN("epub_manifest_item: out-of-range index -> nullptr");
   ra8_epub_book_t book = {};
@@ -403,7 +421,7 @@ static void test_manifest_item_out_of_range(void)
  */
 
 /**
- * @test test_render_glyph_stbtt_init_fail
+ * @test internal_test_render_glyph_stbtt_init_fail
  * @brief Fake TTF signature causes stbtt_InitFont to fail -- lines 216-217.
  *
  * @details s_fake_ttf_sig starts with 0x00 0x01 0x00 0x00 (the OpenType 1.0
@@ -418,7 +436,7 @@ static void test_manifest_item_out_of_range(void)
  * @par MC/DC:
  * Decision: `if (stbtt_InitFont(...) == 0)` at line 216 (1 condition).
  * - V1 (this test): stbtt_InitFont returns 0 -> true  -> line 217.
- * - V2 (test_render_glyph_success): returns != 0 -> false -> line 219.
+ * - V2 (internal_test_render_glyph_success): returns != 0 -> false -> line 219.
  * Pair (V1, V2) gives complete MC/DC for the 1-condition decision.
  *
  * @pre s_fake_ttf_sig must be >= k_cov_font_min_bytes (it is 32 bytes).
@@ -428,7 +446,7 @@ static void test_manifest_item_out_of_range(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_render_glyph_stbtt_init_fail(void)
+RA8_INTERNAL static void internal_test_render_glyph_stbtt_init_fail(void)
 {
   TEST_BEGIN("epub_render_glyph: fake TTF sig -> stbtt_InitFont fails -> validation_failed");
   ra8_epub_book_t book = {};
@@ -455,7 +473,7 @@ static void test_render_glyph_stbtt_init_fail(void)
  */
 
 /**
- * @test test_render_glyph_no_mem
+ * @test internal_test_render_glyph_no_mem
  * @brief priv_render_into: total pixels exceed max_pixels -- line 271.
  *
  * @details Loads ahem.ttf and requests codepoint 'A' (k_cov_cp_letter_a) at
@@ -467,21 +485,21 @@ static void test_render_glyph_stbtt_init_fail(void)
  * @par MC/DC:
  * Decision: `if (total > max_pixels)` at line 270 (1 condition).
  * - V1 (this test): total > 0 -> true  -> line 271 (no_mem).
- * - V2 (test_render_glyph_success): total <= max_pixels -> false -> line 273.
+ * - V2 (internal_test_render_glyph_success): total <= max_pixels -> false -> line 273.
  * Pair (V1, V2) gives complete MC/DC for the 1-condition decision.
  *
- * @pre s_have_font must be true (priv_load_ahem() called in main).
+ * @pre s_have_font must be true (internal_load_ahem() called in main).
  * @pre s_font_buf holds a valid TTF accepted by stbtt_InitFont.
  * @post s_glyph_buf contents are undefined (no write occurs with max_pixels=0).
  * @post No other side effects.
  * @note Not thread-safe; skipped with a log line if s_have_font is false.
  * @since 0.1.0
  */
-static void test_render_glyph_no_mem(void)
+RA8_INTERNAL static void internal_test_render_glyph_no_mem(void)
 {
   TEST_BEGIN("epub_render_glyph: priv_render_into total > max_pixels -> no_mem");
   if (!s_have_font) {
-    (void)fprintf(stderr, "[SKIP] ahem.ttf unavailable\n");
+    (void)internal_test_output_fd_text(STDERR_FILENO, "[SKIP] ahem.ttf unavailable\n");
     TEST_END("epub_render_glyph: priv_render_into total > max_pixels -> no_mem");
     return;
   }
@@ -498,7 +516,7 @@ static void test_render_glyph_no_mem(void)
 }
 
 /**
- * @test test_render_glyph_success
+ * @test internal_test_render_glyph_success
  * @brief priv_render_into full success path -- lines 219, 273-281, 578.
  *
  * @details Loads ahem.ttf and renders codepoint 'A' at s_render_px with a
@@ -516,18 +534,18 @@ static void test_render_glyph_no_mem(void)
  * - V2: total == 0 (zero-size glyph) -> false -> body skipped.
  * This test provides V1; V2 is not required for the line-coverage gate.
  *
- * @pre s_have_font must be true (priv_load_ahem() called in main).
+ * @pre s_have_font must be true (internal_load_ahem() called in main).
  * @pre s_font_buf holds a valid TTF accepted by stbtt_InitFont.
  * @post s_glyph_buf[0..out_w*out_h-1] contains the rasterised alpha mask.
  * @post w and h report the rendered glyph dimensions (both > 0 for 'A').
  * @note Not thread-safe; skipped with a log line if s_have_font is false.
  * @since 0.1.0
  */
-static void test_render_glyph_success(void)
+RA8_INTERNAL static void internal_test_render_glyph_success(void)
 {
   TEST_BEGIN("epub_render_glyph: priv_render_into full success path");
   if (!s_have_font) {
-    (void)fprintf(stderr, "[SKIP] ahem.ttf unavailable\n");
+    (void)internal_test_output_fd_text(STDERR_FILENO, "[SKIP] ahem.ttf unavailable\n");
     TEST_END("epub_render_glyph: priv_render_into full success path");
     return;
   }
@@ -574,20 +592,19 @@ static void test_render_glyph_success(void)
 int32_t main(void)
 {
   /* Load the real font once before the font-dependent groups. */
-  (void)priv_load_ahem();
+  (void)internal_load_ahem();
 
   /* Group 1: ra8_epub_manifest_count / ra8_epub_manifest_item guards. */
-  test_manifest_count_null_book();
-  test_manifest_item_null_and_not_ready();
-  test_manifest_item_out_of_range();
+  internal_test_manifest_count_null_book();
+  internal_test_manifest_item_null_and_not_ready();
+  internal_test_manifest_item_out_of_range();
 
   /* Group 2: priv_font_init stbtt_InitFont failure path. */
-  test_render_glyph_stbtt_init_fail();
+  internal_test_render_glyph_stbtt_init_fail();
 
   /* Group 3: priv_render_into (real font required). */
-  test_render_glyph_no_mem();
-  test_render_glyph_success();
+  internal_test_render_glyph_no_mem();
+  internal_test_render_glyph_success();
 
-  (void)fprintf(stderr, "[OK ] test_ra8_epub_chapter_cov.c\n");
   return 0;
 }

@@ -19,7 +19,8 @@
 #
 # Layout:
 #   inc/ra8_rabook_compile.h   the zero-heap builder API
-#   src/ra8_rabook_compile.c   table/pool layout, header fill, body CRC-32
+#   src/ra8_rabook_compile.c   mutable zero-heap builder operations
+#   src/ra8_rabook_finalize.c  canonical layout, CRC-32, stream publication
 #
 #
 

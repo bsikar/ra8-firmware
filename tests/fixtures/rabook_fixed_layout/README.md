@@ -39,7 +39,7 @@ rasters become the image table). The spike did surface real gaps:
 1. **EPUB3-only cover was dropped (FIXED here).** `epub_compile.py` only detected
    the legacy `<meta name="cover">`; a fixed-layout book that declares its cover
    the modern way (`properties="cover-image"`) compiled with **no cover**, while
-   the on-device compiler (`ra8_epub_xml_shim.cpp`) already resolved it. The
+   the on-device compiler (`ra8_epub_xml_shim.c`) already resolved it. The
    desktop tool now mirrors the on-device precedence (properties first, legacy
    meta fallback), closing a host-vs-device divergence. The `rabook_parity`
    golden is unchanged (its fixture declares both cover forms).

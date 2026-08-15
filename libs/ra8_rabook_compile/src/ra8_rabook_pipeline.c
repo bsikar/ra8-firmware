@@ -1,6 +1,8 @@
 /**
  * @file ra8_rabook_pipeline.c
  * @brief End-to-end EPUB -> RABOOK1 compile pipeline (#149).
+ * @details Coordinates EPUB parsing, chapter compilation, image conversion,
+ * and final RABOOK publication through explicit caller-owned workspaces.
  * @since Version 0.1.0
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -300,6 +302,7 @@ static ra8_err_t internal_check_compile_common(const ra8_epub_book_t*           
   RA8_CHECK_NULL_PTR(epub, s_tag, "epub");
   RA8_CHECK_NULL_PTR(bufs, s_tag, "bufs");
   RA8_CHECK_NULL_PTR(scr, s_tag, "scr");
+  RA8_CHECK_NULL_PTR(scr->xml_workspace, s_tag, "scr->xml_workspace");
   return k_ra8_ok;
 }
 
@@ -526,7 +529,8 @@ static ra8_err_t internal_compile_chapters(ra8_epub_book_t*                     
     const char* ch_title = internal_chapter_title(epub, ci, toc_count, &toc_entry);
     const char* ch_href  = epub->chapter_paths[ci];
 
-    err = ra8_rabook_xml_parse_chapter(scr->xhtml, got_len, ctx, ch_href, ch_title);
+    err =
+      ra8_rabook_xml_parse_chapter(scr->xhtml, got_len, ctx, ch_href, ch_title, scr->xml_workspace);
     if (err != k_ra8_ok) {
       return err;
     }

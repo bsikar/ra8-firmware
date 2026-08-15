@@ -42,6 +42,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_epub.h"
 #include "ra8_err.h"
 #include "ra8_reflow.h"
@@ -81,9 +82,9 @@ typedef enum : uint16_t {
 /* Synthetic file payloads. */
 /* --------------------------------------------------------------------- */
 
-static const char* const k_synth_mimetype = "application/epub+zip";
+static const char* const s_synth_mimetype = "application/epub+zip";
 
-static const char* const k_synth_container_xml =
+static const char* const s_synth_container_xml =
   "<?xml version=\"1.0\"?>\n"
   "<container version=\"1.0\" xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\">\n"
   "  <rootfiles>\n"
@@ -91,7 +92,7 @@ static const char* const k_synth_container_xml =
   "  </rootfiles>\n"
   "</container>\n";
 
-static const char* const k_synth_content_opf =
+static const char* const s_synth_content_opf =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
   "<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"id\">\n"
   "  <metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n"
@@ -113,16 +114,16 @@ static const char* const k_synth_content_opf =
   "  </spine>\n"
   "</package>\n";
 
-static const char* const k_synth_ch1 =
+static const char* const s_synth_ch1 =
   "<?xml version=\"1.0\"?><html><body><h1>Chapter One</h1><p>Hello.</p></body></html>";
 
-static const char* const k_synth_ch2 =
+static const char* const s_synth_ch2 =
   "<?xml version=\"1.0\"?><html><body><h1>Chapter Two</h1><p>World.</p></body></html>";
 
 /* The first entry carries a "#fragment" (exercises fragment-stripping in
  * ra8_epub_toc_entry_to_chapter) and the last entry targets a document that
  * is NOT in the spine (exercises the not_found resolution path). */
-static const char* const k_synth_nav =
+static const char* const s_synth_nav =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
   "<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\">\n"
   "<head><title>Contents</title></head><body>\n"
@@ -132,11 +133,11 @@ static const char* const k_synth_nav =
   "  <li><a href=\"appendix.xhtml\">Appendix</a></li>\n"
   "</ol></nav></body></html>\n";
 
-static const uint8_t k_synth_cover_bytes[] = {0x89U, 0x50U, 0x4EU, 0x47U};
+static const uint8_t s_synth_cover_bytes[] = {0x89U, 0x50U, 0x4EU, 0x47U};
 
 /** @brief External stylesheet body (#140) -- a distinctive class rule. */
-static const char* const k_synth_css = ".lead { color: #C00000; }\n";
-static const uint8_t     k_synth_font_bytes[k_test_synth_font_bytes] = {0xDEU,
+static const char* const s_synth_css = ".lead { color: #C00000; }\n";
+static const uint8_t     s_synth_font_bytes[k_test_synth_font_bytes] = {0xDEU,
                                                                         0xADU,
                                                                         0xBEU,
                                                                         0xEFU,
@@ -161,7 +162,7 @@ static const uint8_t     k_synth_font_bytes[k_test_synth_font_bytes] = {0xDEU,
  * @var s_epub_buf
  * @brief Backing store for the synthetic in-memory .epub.
  *
- * @note Populated by `build_synth_epub()` before the first test runs.
+ * @note Populated by `internal_build_synth_epub()` before the first test runs.
  */
 static uint8_t s_epub_buf[k_test_epub_buf_bytes];
 
@@ -171,72 +172,73 @@ static uint8_t s_epub_buf[k_test_epub_buf_bytes];
  */
 static size_t s_epub_size;
 
-/** @brief Add the mimetype + XML document entries to the synthetic archive. */
-static void synth_add_docs(mz_zip_archive* zip)
+/** @brief Add the mimetype + XML document entries to the synthetic archive. @details Implements the synth add docs fixture operation used only by this focused test executable. @param[in,out] zip Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_synth_add_docs(mz_zip_archive* zip)
 {
   /* mimetype is by spec the first entry, stored uncompressed. */
   mz_bool ok = mz_zip_writer_add_mem(zip,
                                      "mimetype",
-                                     k_synth_mimetype,
-                                     strlen(k_synth_mimetype),
+                                     s_synth_mimetype,
+                                     strlen(s_synth_mimetype),
                                      MZ_NO_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 
   ok = mz_zip_writer_add_mem(zip,
                              "META-INF/container.xml",
-                             k_synth_container_xml,
-                             strlen(k_synth_container_xml),
+                             s_synth_container_xml,
+                             strlen(s_synth_container_xml),
                              MZ_DEFAULT_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 
   ok = mz_zip_writer_add_mem(zip,
                              "OEBPS/content.opf",
-                             k_synth_content_opf,
-                             strlen(k_synth_content_opf),
+                             s_synth_content_opf,
+                             strlen(s_synth_content_opf),
                              MZ_DEFAULT_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 
   ok = mz_zip_writer_add_mem(zip,
                              "OEBPS/nav.xhtml",
-                             k_synth_nav,
-                             strlen(k_synth_nav),
+                             s_synth_nav,
+                             strlen(s_synth_nav),
                              MZ_DEFAULT_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 }
 
-/** @brief Add the chapter bodies + cover + stylesheet to the synthetic archive. */
-static void synth_add_assets(mz_zip_archive* zip)
+/** @brief Add the chapter bodies + cover + stylesheet to the synthetic archive. @details Implements the synth add assets fixture operation used only by this focused test executable. @param[in,out] zip Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_synth_add_assets(mz_zip_archive* zip)
 {
   mz_bool ok = mz_zip_writer_add_mem(zip,
                                      "OEBPS/ch1.xhtml",
-                                     k_synth_ch1,
-                                     strlen(k_synth_ch1),
+                                     s_synth_ch1,
+                                     strlen(s_synth_ch1),
                                      MZ_DEFAULT_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 
   ok = mz_zip_writer_add_mem(zip,
                              "OEBPS/ch2.xhtml",
-                             k_synth_ch2,
-                             strlen(k_synth_ch2),
+                             s_synth_ch2,
+                             strlen(s_synth_ch2),
                              MZ_DEFAULT_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 
   ok = mz_zip_writer_add_mem(zip,
                              "OEBPS/cover.png",
-                             k_synth_cover_bytes,
-                             sizeof(k_synth_cover_bytes),
+                             s_synth_cover_bytes,
+                             sizeof(s_synth_cover_bytes),
                              MZ_NO_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 
   ok = mz_zip_writer_add_mem(zip,
                              "OEBPS/style.css",
-                             k_synth_css,
-                             strlen(k_synth_css),
+                             s_synth_css,
+                             strlen(s_synth_css),
                              MZ_DEFAULT_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 }
 
-static void build_synth_epub(void)
+/** @brief Prepare the fixture's build synth epub state. @details Implements the build synth epub fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_build_synth_epub(void)
 {
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
@@ -245,8 +247,8 @@ static void build_synth_epub(void)
   mz_bool ok = mz_zip_writer_init_heap(&zip, 0U, k_test_epub_buf_bytes);
   TEST_ASSERT(ok == MZ_TRUE);
 
-  synth_add_docs(&zip);
-  synth_add_assets(&zip);
+  internal_synth_add_docs(&zip);
+  internal_synth_add_assets(&zip);
 
   void*  heap_buf  = nullptr;
   size_t heap_size = 0U;
@@ -270,9 +272,8 @@ static void build_synth_epub(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_open_close(void)
+ * code under test that this case touches) @brief Verify open close behavior. @details Executes the open close scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_open_close(void)
 {
   TEST_BEGIN("ra8_epub open + close");
   ra8_epub_book_t            book  = {};
@@ -290,9 +291,8 @@ static void test_open_close(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_chapter_count(void)
+ * code under test that this case touches) @brief Verify chapter count behavior. @details Executes the chapter count scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_chapter_count(void)
 {
   TEST_BEGIN("ra8_epub chapter_count == 2");
   ra8_epub_book_t            book  = {};
@@ -309,9 +309,8 @@ static void test_chapter_count(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_load_chapter(void)
+ * code under test that this case touches) @brief Verify load chapter behavior. @details Executes the load chapter scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_load_chapter(void)
 {
   TEST_BEGIN("ra8_epub load_chapter copies XHTML");
   ra8_epub_book_t            book  = {};
@@ -345,9 +344,8 @@ static void test_load_chapter(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_toc(void)
+ * code under test that this case touches) @brief Verify toc behavior. @details Executes the toc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_toc(void)
 {
   TEST_BEGIN("ra8_epub parses the EPUB3 nav TOC");
   ra8_epub_book_t            book  = {};
@@ -387,9 +385,8 @@ static void test_toc(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_toc_to_chapter(void)
+ * code under test that this case touches) @brief Verify toc to chapter behavior. @details Executes the toc to chapter scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_toc_to_chapter(void)
 {
   TEST_BEGIN("ra8_epub resolves TOC entries to spine chapters");
   ra8_epub_book_t            book  = {};
@@ -417,9 +414,8 @@ static void test_toc_to_chapter(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_get_metadata(void)
+ * code under test that this case touches) @brief Verify get metadata behavior. @details Executes the get metadata scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_get_metadata(void)
 {
   TEST_BEGIN("ra8_epub get_metadata returns Dublin Core");
   ra8_epub_book_t            book  = {};
@@ -443,9 +439,8 @@ static void test_get_metadata(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_get_cover_image(void)
+ * code under test that this case touches) @brief Verify get cover image behavior. @details Executes the get cover image scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_get_cover_image(void)
 {
   TEST_BEGIN("ra8_epub get_cover_image extracts raw bytes");
   ra8_epub_book_t            book  = {};
@@ -467,9 +462,8 @@ static void test_get_cover_image(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_render_glyph_paths(void)
+ * code under test that this case touches) @brief Verify render glyph paths behavior. @details Executes the render glyph paths scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_render_glyph_paths(void)
 {
   TEST_BEGIN("ra8_epub render_glyph -- no font / bad font");
   ra8_epub_book_t            book  = {};
@@ -490,13 +484,13 @@ static void test_render_glyph_paths(void)
                                        &h));
 
   /* Install a fake-but-too-small font -- invalid_size. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_epub_set_font(&book, k_synth_font_bytes, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_epub_set_font(&book, s_synth_font_bytes, 1U));
 
   /* Install the synthetic 16-byte font; stbtt_InitFont will reject it
    * because it's not a real TTF, so render_glyph returns
    * validation_failed -- which is exactly the contract we want. */
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_epub_set_font(&book, k_synth_font_bytes, sizeof(k_synth_font_bytes)));
+                 ra8_epub_set_font(&book, s_synth_font_bytes, sizeof(s_synth_font_bytes)));
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  ra8_epub_render_glyph(&book,
                                        (int32_t)k_test_codepoint_a,
@@ -524,9 +518,8 @@ static void test_render_glyph_paths(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_null_arg_guards(void)
+ * code under test that this case touches) @brief Verify null arg guards behavior. @details Executes the null arg guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_null_arg_guards(void)
 {
   TEST_BEGIN("ra8_epub NULL-arg / pre-init guards");
   ra8_epub_book_t            book  = {};
@@ -544,7 +537,7 @@ static void test_null_arg_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_not_initialized,
                  ra8_epub_get_cover_image(&book, buf, sizeof(buf), &got));
   TEST_ASSERT_EQ(k_ra8_err_not_initialized,
-                 ra8_epub_set_font(&book, k_synth_font_bytes, sizeof(k_synth_font_bytes)));
+                 ra8_epub_set_font(&book, s_synth_font_bytes, sizeof(s_synth_font_bytes)));
 
   /* NULL-arg guards. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_open(nullptr, nullptr, &book));
@@ -559,8 +552,8 @@ static void test_null_arg_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_get_metadata(&book, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_get_cover_image(nullptr, buf, sizeof(buf), &got));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epub_set_font(nullptr, k_synth_font_bytes, sizeof(k_synth_font_bytes)));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_set_font(&book, nullptr, sizeof(k_synth_font_bytes)));
+                 ra8_epub_set_font(nullptr, s_synth_font_bytes, sizeof(s_synth_font_bytes)));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_set_font(&book, nullptr, sizeof(s_synth_font_bytes)));
 
   /* Invalid media payload. */
   const ra8_epub_mem_media_t bad_media = {.data = nullptr, .size = 0U};
@@ -572,9 +565,8 @@ static void test_null_arg_guards(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_open_invalid_zip(void)
+ * code under test that this case touches) @brief Verify open invalid zip behavior. @details Executes the open invalid zip scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_open_invalid_zip(void)
 {
   TEST_BEGIN("ra8_epub open with garbage payload -> validation_failed");
   static const uint8_t k_garbage[] = {0x00U, 0x01U, 0x02U, 0x03U, 0x04U, 0x05U, 0x06U, 0x07U};
@@ -591,10 +583,16 @@ static void test_open_invalid_zip(void)
 }
 
 /**
- * @test test_two_live_books_isolate_miniz_arenas
+ * @test internal_test_two_live_books_isolate_miniz_arenas
  * @brief Simultaneous books keep independent arenas; close/reopen is reusable.
- */
-static void test_two_live_books_isolate_miniz_arenas(void)
+ *
+ * @par MC/DC:
+ * No compound decision is independently varied by this lifecycle test. Both
+ * opens use the same valid archive, then only the first arena is closed and
+ * reopened while metadata remains readable from the second. Required-pointer
+ * and archive-validity guards therefore stay on their valid controls; the
+ * test varies object lifetime and ownership, not boolean guard conditions. @details Executes the two live books isolate miniz arenas scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_two_live_books_isolate_miniz_arenas(void)
 {
   TEST_BEGIN("ra8_epub: two live books isolate arenas + reopen");
   ra8_epub_book_t            first  = {};
@@ -636,7 +634,7 @@ static uint8_t s_css_scratch[k_test_css_buf_bytes];
  *
  * @details Extracts a chapter's `<link href>` stylesheet bytes from the open
  * EPUB via ::ra8_epub_get_resource. An app wires this once with
- * `ra8_reflow_set_css_loader(engine, epub_css_loader, &book)`; the engine then
+ * `ra8_reflow_set_css_loader(engine, internal_epub_css_loader, &book)`; the engine then
  * pulls + parses each external sheet in document order while tokenizing.
  *
  * @param[in]  ctx       The open `ra8_epub_book_t*`.
@@ -644,13 +642,12 @@ static uint8_t s_css_scratch[k_test_css_buf_bytes];
  * @param[in]  href_len  Length of @p href.
  * @param[out] out_bytes Receives the CSS bytes (static scratch; read-only).
  * @param[out] out_len   Receives the CSS length.
- * @return k_ra8_ok on success; any error => the engine skips the sheet.
- */
-static ra8_err_t epub_css_loader(void*           ctx,
-                                 const char*     href,
-                                 uint32_t        href_len,
-                                 const uint8_t** out_bytes,
-                                 size_t*         out_len)
+ * @return k_ra8_ok on success; any error => the engine skips the sheet. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_epub_css_loader(void*           ctx,
+                                                       const char*     href,
+                                                       uint32_t        href_len,
+                                                       const uint8_t** out_bytes,
+                                                       size_t*         out_len)
 {
   ra8_epub_book_t* book = (ra8_epub_book_t*)ctx;
   char             path[k_ra8_epub_max_path_len];
@@ -671,16 +668,15 @@ static ra8_err_t epub_css_loader(void*           ctx,
 }
 
 /**
- * @test test_get_resource
+ * @test internal_test_get_resource
  * @brief `ra8_epub_get_resource` extracts an arbitrary archive entry, and the
  *        #140 css-loader glue returns a chapter's external stylesheet (#140).
  *
  * @par MC/DC:
  * No compound decision in the test itself; the loader's
  * `href_len+1 > sizeof(path)` guard is the only branch and is covered by the
- * normal (short href) path plus `ra8_epub_get_resource`'s own guards.
- */
-static void test_get_resource(void)
+ * normal (short href) path plus `ra8_epub_get_resource`'s own guards. @details Executes the get resource scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_get_resource(void)
 {
   TEST_BEGIN("ra8_epub get_resource + the #140 external-stylesheet css-loader");
   ra8_epub_book_t            book  = {};
@@ -691,12 +687,12 @@ static void test_get_resource(void)
   size_t  got = 0U;
   /* OPF-dir-relative resolution: "style.css" -> "OEBPS/style.css". */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_get_resource(&book, "style.css", buf, sizeof(buf), &got));
-  TEST_ASSERT_EQ(strlen(k_synth_css), got);
-  TEST_ASSERT(memcmp(buf, k_synth_css, got) == 0);
+  TEST_ASSERT_EQ(strlen(s_synth_css), got);
+  TEST_ASSERT(memcmp(buf, s_synth_css, got) == 0);
   /* Archive-rooted fallback resolves too. */
   got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_get_resource(&book, "OEBPS/style.css", buf, sizeof(buf), &got));
-  TEST_ASSERT_EQ(strlen(k_synth_css), got);
+  TEST_ASSERT_EQ(strlen(s_synth_css), got);
   /* Missing entry -> not_found; too-small buffer -> no_mem; nulls rejected. */
   TEST_ASSERT_EQ(k_ra8_err_not_found,
                  ra8_epub_get_resource(&book, "nope.css", buf, sizeof(buf), &got));
@@ -707,9 +703,9 @@ static void test_get_resource(void)
   /* The consumer glue returns the external sheet bytes for a `<link href>`. */
   const uint8_t* css     = nullptr;
   size_t         css_len = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, epub_css_loader(&book, "style.css", 9U, &css, &css_len));
-  TEST_ASSERT_EQ(strlen(k_synth_css), css_len);
-  TEST_ASSERT(memcmp(css, k_synth_css, css_len) == 0);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_epub_css_loader(&book, "style.css", 9U, &css, &css_len));
+  TEST_ASSERT_EQ(strlen(s_synth_css), css_len);
+  TEST_ASSERT(memcmp(css, s_synth_css, css_len) == 0);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
   TEST_END("ra8_epub get_resource + the #140 external-stylesheet css-loader");
@@ -717,18 +713,18 @@ static void test_get_resource(void)
 
 int main(void)
 {
-  build_synth_epub();
-  test_open_close();
-  test_chapter_count();
-  test_load_chapter();
-  test_toc();
-  test_toc_to_chapter();
-  test_get_metadata();
-  test_get_cover_image();
-  test_get_resource();
-  test_render_glyph_paths();
-  test_null_arg_guards();
-  test_open_invalid_zip();
-  test_two_live_books_isolate_miniz_arenas();
+  internal_build_synth_epub();
+  internal_test_open_close();
+  internal_test_chapter_count();
+  internal_test_load_chapter();
+  internal_test_toc();
+  internal_test_toc_to_chapter();
+  internal_test_get_metadata();
+  internal_test_get_cover_image();
+  internal_test_get_resource();
+  internal_test_render_glyph_paths();
+  internal_test_null_arg_guards();
+  internal_test_open_invalid_zip();
+  internal_test_two_live_books_isolate_miniz_arenas();
   return 0;
 }

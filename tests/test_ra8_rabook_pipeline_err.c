@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_book.h"
 #include "ra8_epub.h"
 #include "ra8_err.h"
@@ -40,16 +41,15 @@
  * @pre @p book is non-NULL.
  * @post @p book->in_use == 1 on success.
  * @post @p s_epub is unmodified.
- * @note Not thread-safe.
- */
-static void open_s_epub(ra8_epub_book_t* book)
+ * @note Not thread-safe. @details Implements the open s epub fixture operation used only by this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_open_s_epub(ra8_epub_book_t* book)
 {
   const ra8_epub_mem_media_t media = {.data = s_epub, .size = s_epub_len};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open(&media, "pipe.epub", book));
 }
 
 /**
- * @test test_pipeline_raster_images_transcoded
+ * @test internal_test_pipeline_raster_images_transcoded
  * @brief Two decodable BMPs are decoded, gray4-encoded, and added; the cover
  *        resolves to the small image.
  *
@@ -60,22 +60,21 @@ static void open_s_epub(ra8_epub_book_t* book)
  * - Vector 1: ow==sw, oh==sh (2x2)            -> true  (control: both equal).
  * - Vector 2: ow!=sw, oh==sh (1601x1 -> 1600) -> false (varies width only).
  * - Vector 3: ow==sw, oh!=sh (1x1601 -> 1600) -> false (varies height only,
- *   driven by @ref test_pipeline_gray_scratch_too_small over the tall image).
- * Vectors 1+2 show width independently flips the outcome; 1+3 show height does.
- */
-static void test_pipeline_raster_images_transcoded(void)
+ *   driven by @ref internal_test_pipeline_gray_scratch_too_small over the tall image).
+ * Vectors 1+2 show width independently flips the outcome; 1+3 show height does. @details Executes the pipeline raster images transcoded scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_raster_images_transcoded(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: BMP images transcoded to gray4");
-  build_epub_raster();
-  ra8_fs_mount_t* mount = fresh_volume();
+  internal_build_epub_raster();
+  ra8_fs_mount_t* mount = internal_fresh_volume();
 
   ra8_epub_book_t book = {};
-  open_s_epub(&book);
+  internal_open_s_epub(&book);
 
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
   scr.max_image_edge = k_pl_clamp_edge; /* opt into the downscale clamp */
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
@@ -92,12 +91,12 @@ static void test_pipeline_raster_images_transcoded(void)
   TEST_ASSERT_EQ(2U, hdr->image_count);       /* small + big both added */
   TEST_ASSERT_EQ(0U, hdr->cover_image_index); /* small.bmp is the cover */
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_pipeline: BMP images transcoded to gray4");
 }
 
 /**
- * @test test_pipeline_default_preserves_resolution
+ * @test internal_test_pipeline_default_preserves_resolution
  * @brief With no opt-in clamp (the zero-init default) the oversized image is
  *        stored at its exact source resolution.
  *
@@ -111,22 +110,21 @@ static void test_pipeline_raster_images_transcoded(void)
  * @par MC/DC:
  * (no compound decisions under test -- the opt-in clamp gate
  * `scr->max_image_edge != 0U` is a single condition; its true arm is driven
- * by test_pipeline_raster_images_transcoded and this test drives the false
- * arm)
- */
-static void test_pipeline_default_preserves_resolution(void)
+ * by internal_test_pipeline_raster_images_transcoded and this test drives the false
+ * arm) @details Executes the pipeline default preserves resolution scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_default_preserves_resolution(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: default preserves source resolution");
-  build_epub_raster();
-  ra8_fs_mount_t* mount = fresh_volume();
+  internal_build_epub_raster();
+  ra8_fs_mount_t* mount = internal_fresh_volume();
 
   ra8_epub_book_t book = {};
-  open_s_epub(&book);
+  internal_open_s_epub(&book);
 
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena); /* max_image_edge stays 0: no clamp */
+  internal_make_views(&bufs, &scr, &arena); /* max_image_edge stays 0: no clamp */
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
@@ -151,12 +149,12 @@ static void test_pipeline_default_preserves_resolution(void)
   }
   TEST_ASSERT(saw_big);
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_pipeline: default preserves source resolution");
 }
 
 /**
- * @test test_pipeline_gray_scratch_too_small
+ * @test internal_test_pipeline_gray_scratch_too_small
  * @brief A too-small gray scratch makes the downscaled image skip while the
  *        in-place (no-downscale) image still compiles.
  *
@@ -167,21 +165,20 @@ static void test_pipeline_default_preserves_resolution(void)
  * takes its `gray_src == nullptr` cleanup-and-skip arm. The 2x2 image needs no
  * scratch (copy in place), so it still adds -- one decodable image survives.
  * The false arm of the same guard is driven by
- * @ref test_pipeline_raster_images_transcoded (ample scratch).
- */
-static void test_pipeline_gray_scratch_too_small(void)
+ * @ref internal_test_pipeline_raster_images_transcoded (ample scratch). @details Executes the pipeline gray scratch too small scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_gray_scratch_too_small(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: gray scratch too small skips downscale image");
-  build_epub_raster();
-  ra8_fs_mount_t* mount = fresh_volume();
+  internal_build_epub_raster();
+  ra8_fs_mount_t* mount = internal_fresh_volume();
 
   ra8_epub_book_t book = {};
-  open_s_epub(&book);
+  internal_open_s_epub(&book);
 
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
   scr.max_image_edge = k_pl_clamp_edge; /* opt into the downscale clamp                  */
   scr.gray_cap       = 4U;              /* far below the 1600 pixels the big image needs */
 
@@ -199,12 +196,12 @@ static void test_pipeline_gray_scratch_too_small(void)
   TEST_ASSERT_EQ(1U, hdr->image_count);       /* only the 2x2 in-place image survives */
   TEST_ASSERT_EQ(0U, hdr->cover_image_index); /* and it is the cover                  */
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_pipeline: gray scratch too small skips downscale image");
 }
 
 /**
- * @test test_pipeline_tall_image_height_downscaled
+ * @test internal_test_pipeline_tall_image_height_downscaled
  * @brief A tall cover keeps its width but loses height to the clamp, driving the
  *        height-varying leg of the downscale decision.
  *
@@ -212,23 +209,22 @@ static void test_pipeline_gray_scratch_too_small(void)
  * Completes `if (ow == sw && oh == sh)` in internal_downscale_if_needed (2 conditions):
  * the 1 x 1601 cover clamps to 1 x 1600, so ow == sw (1 == 1 -> C1 true) while
  * oh != sh (1600 != 1601 -> C2 false) -- the (true, false) vector that isolates
- * the height condition. Paired with test_pipeline_raster_images_transcoded's
+ * the height condition. Paired with internal_test_pipeline_raster_images_transcoded's
  * (true, true) 2x2 control and (false, true) wide-image legs, the three vectors
- * are the N+1 = 3 minimal MC/DC set for the decision.
- */
-static void test_pipeline_tall_image_height_downscaled(void)
+ * are the N+1 = 3 minimal MC/DC set for the decision. @details Executes the pipeline tall image height downscaled scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_tall_image_height_downscaled(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: tall cover downscales height only");
-  build_epub_tall();
-  ra8_fs_mount_t* mount = fresh_volume();
+  internal_build_epub_tall();
+  ra8_fs_mount_t* mount = internal_fresh_volume();
 
   ra8_epub_book_t book = {};
-  open_s_epub(&book);
+  internal_open_s_epub(&book);
 
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
   scr.max_image_edge = k_pl_clamp_edge; /* opt into the downscale clamp */
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
@@ -248,12 +244,12 @@ static void test_pipeline_tall_image_height_downscaled(void)
   TEST_ASSERT_EQ(k_pl_narrow_edge, imgs[0].width);
   TEST_ASSERT_EQ(k_pl_clamp_edge, imgs[0].height);
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_pipeline: tall cover downscales height only");
 }
 
 /**
- * @test test_pipeline_gray8_profile
+ * @test internal_test_pipeline_gray8_profile
  * @brief The gray8 device profile stores each raster at 8-bpp (one byte/pixel)
  *        and stamps its descriptor `pixel_format` = gray8 (#343).
  *
@@ -262,22 +258,21 @@ static void test_pipeline_tall_image_height_downscaled(void)
  * internal_encode_gray (single condition): the profile selects the 8-bpp copy, so each
  * raster's `raw_size` equals width*height (not the ceil(w*h/2) of the 4-bpp pack)
  * and its `pixel_format` reads back gray8. The false (gray4) arm is driven by
- * @ref test_pipeline_raster_images_transcoded. `format` stays gray4 (raster) --
- * pixel_format is the orthogonal depth axis.
- */
-static void test_pipeline_gray8_profile(void)
+ * @ref internal_test_pipeline_raster_images_transcoded. `format` stays gray4 (raster) --
+ * pixel_format is the orthogonal depth axis. @details Executes the pipeline gray8 profile scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_gray8_profile(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: gray8 profile stores 8-bpp rasters");
-  build_epub_raster();
-  ra8_fs_mount_t* mount = fresh_volume();
+  internal_build_epub_raster();
+  ra8_fs_mount_t* mount = internal_fresh_volume();
 
   ra8_epub_book_t book = {};
-  open_s_epub(&book);
+  internal_open_s_epub(&book);
 
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
   scr.pixel_format = (uint8_t)k_ra8_book_pixfmt_gray8; /* device profile: keep 8-bpp */
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
@@ -300,12 +295,12 @@ static void test_pipeline_gray8_profile(void)
     TEST_ASSERT_EQ(imgs[i].width * (uint32_t)imgs[i].height, imgs[i].raw_size);
   }
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_pipeline: gray8 profile stores 8-bpp rasters");
 }
 
 /**
- * @test test_pipeline_toc_titles_resolved
+ * @test internal_test_pipeline_toc_titles_resolved
  * @brief Each spine chapter picks up its TOC title via internal_chapter_title.
  *
  * @par MC/DC:
@@ -319,21 +314,20 @@ static void test_pipeline_gray8_profile(void)
  * - V3: entry fails to resolve -> C1 false, short-circuit (the leading orphan
  *   entry, scanned first for every chapter; isolates C1 vs V1).
  * Reading the two titles back proves each chapter resolved its own entry past the
- * orphan.
- */
-static void test_pipeline_toc_titles_resolved(void)
+ * orphan. @details Executes the pipeline toc titles resolved scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_toc_titles_resolved(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: TOC titles attach to chapters");
-  build_epub_toc();
-  ra8_fs_mount_t* mount = fresh_volume();
+  internal_build_epub_toc();
+  ra8_fs_mount_t* mount = internal_fresh_volume();
 
   ra8_epub_book_t book = {};
-  open_s_epub(&book);
+  internal_open_s_epub(&book);
 
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
@@ -351,12 +345,12 @@ static void test_pipeline_toc_titles_resolved(void)
   TEST_ASSERT_EQ(0, strcmp(ra8_book_string(s_readback, chaps[0].title_off), "Chapter One"));
   TEST_ASSERT_EQ(0, strcmp(ra8_book_string(s_readback, chaps[1].title_off), "Chapter Two"));
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_pipeline: TOC titles attach to chapters");
 }
 
 /**
- * @test test_pipeline_css_absent_skipped
+ * @test internal_test_pipeline_css_absent_skipped
  * @brief A `text/css` item declared but missing from the archive is skipped,
  *        like the desktop "only if present" rule.
  *
@@ -365,21 +359,20 @@ static void test_pipeline_toc_titles_resolved(void)
  * (single condition): the manifest declares style.css but the ZIP omits it, so
  * ra8_epub_get_resource returns not_found and the stage `continue`s rather than
  * failing. The false arm (a present stylesheet) is exercised by the parity
- * fixtures, which intern their CSS.
- */
-static void test_pipeline_css_absent_skipped(void)
+ * fixtures, which intern their CSS. @details Executes the pipeline css absent skipped scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_css_absent_skipped(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: absent CSS item skipped");
-  build_epub_css(false);
-  ra8_fs_mount_t* mount = fresh_volume();
+  internal_build_epub_css(false);
+  ra8_fs_mount_t* mount = internal_fresh_volume();
 
   ra8_epub_book_t book = {};
-  open_s_epub(&book);
+  internal_open_s_epub(&book);
 
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
@@ -395,12 +388,12 @@ static void test_pipeline_css_absent_skipped(void)
   TEST_ASSERT_EQ(0U, hdr->stylesheet_count); /* the absent CSS contributed nothing */
   TEST_ASSERT_EQ(1U, hdr->chapter_count);
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_pipeline: absent CSS item skipped");
 }
 
 /**
- * @test test_pipeline_css_load_error_propagates
+ * @test internal_test_pipeline_css_load_error_propagates
  * @brief A non-not_found stylesheet error aborts the compile and propagates out
  *        of every stage wrapper.
  *
@@ -410,33 +403,32 @@ static void test_pipeline_css_absent_skipped(void)
  * three bytes, so ra8_epub_get_resource returns k_ra8_err_no_mem -- neither ok nor
  * not_found -- and internal_compile_stylesheets returns it. That error then propagates
  * the true arm of the stylesheet-stage guard in internal_compile_to_blob and the
- * compile-failure guard in ra8_rabook_compile_from_epub (no file is written).
- */
-static void test_pipeline_css_load_error_propagates(void)
+ * compile-failure guard in ra8_rabook_compile_from_epub (no file is written). @details Executes the pipeline css load error propagates scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_css_load_error_propagates(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: CSS load error propagates");
-  build_epub_css(true);
-  ra8_fs_mount_t* mount = fresh_volume();
+  internal_build_epub_css(true);
+  ra8_fs_mount_t* mount = internal_fresh_volume();
 
   ra8_epub_book_t book = {};
-  open_s_epub(&book);
+  internal_open_s_epub(&book);
 
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
   scr.css_cap = 4U; /* style.css is larger than css_cap - 1 -> no_mem */
 
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
                  ra8_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_pipeline: CSS load error propagates");
 }
 
 /**
- * @test test_pipeline_image_resource_absent_skipped
+ * @test internal_test_pipeline_image_resource_absent_skipped
  * @brief An image item missing from the archive is skipped, not fatal.
  *
  * @par MC/DC:
@@ -444,21 +436,20 @@ static void test_pipeline_css_load_error_propagates(void)
  * internal_add_manifest_image (single condition): the manifest declares missing.png but
  * the archive omits it, so ra8_epub_get_resource fails and the item returns nil
  * (skipped) -- the desktop try/except pass. The false arm is exercised whenever a
- * present image loads (the raster + parity fixtures).
- */
-static void test_pipeline_image_resource_absent_skipped(void)
+ * present image loads (the raster + parity fixtures). @details Executes the pipeline image resource absent skipped scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_image_resource_absent_skipped(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: absent image item skipped");
-  build_epub_image_absent();
-  ra8_fs_mount_t* mount = fresh_volume();
+  internal_build_epub_image_absent();
+  ra8_fs_mount_t* mount = internal_fresh_volume();
 
   ra8_epub_book_t book = {};
-  open_s_epub(&book);
+  internal_open_s_epub(&book);
 
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
@@ -474,12 +465,12 @@ static void test_pipeline_image_resource_absent_skipped(void)
   TEST_ASSERT_EQ(0U, hdr->image_count);
   TEST_ASSERT_EQ(k_ra8_book_nil, hdr->cover_image_index);
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_pipeline: absent image item skipped");
 }
 
 /**
- * @test test_pipeline_chapter_load_too_small
+ * @test internal_test_pipeline_chapter_load_too_small
  * @brief A chapter that overflows the XHTML scratch aborts and propagates.
  *
  * @par MC/DC:
@@ -488,66 +479,65 @@ static void test_pipeline_image_resource_absent_skipped(void)
  * bytes, so ra8_epub_load_chapter returns k_ra8_err_no_mem and the stage returns
  * it, which propagates the chapter-stage guard in internal_compile_to_blob and the
  * compile-failure guard in the filesystem entry point. The false arm is the
- * happy load every passing compile exercises.
- */
-static void test_pipeline_chapter_load_too_small(void)
+ * happy load every passing compile exercises. @details Executes the pipeline chapter load too small scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_chapter_load_too_small(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: chapter overflow propagates");
-  build_epub(false);
-  ra8_fs_mount_t* mount = fresh_volume();
+  internal_build_epub(false);
+  ra8_fs_mount_t* mount = internal_fresh_volume();
 
   ra8_epub_book_t book = {};
-  open_s_epub(&book);
+  internal_open_s_epub(&book);
 
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
   scr.xhtml_cap = 4U; /* the chapter does not fit -> no_mem */
 
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
                  ra8_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_pipeline: chapter overflow propagates");
 }
 
 /**
- * @test test_pipeline_malformed_chapter_propagates
+ * @test internal_test_pipeline_malformed_chapter_propagates
  * @brief A chapter with no XML root element fails the parser and propagates.
  *
  * @par MC/DC:
  * Drives the `if (err != k_ra8_ok)` true arm of the parse guard in
  * internal_compile_chapters (single condition): the chapter body is plain text with no
  * element, so ra8_rabook_xml_parse_chapter finds no `<body>` root and returns
- * k_ra8_err_no_mem, which the stage and internal_compile_to_blob propagate. The false arm
- * is the well-formed chapter every passing compile parses.
- */
-static void test_pipeline_malformed_chapter_propagates(void)
+ * k_ra8_err_validation_failed, which the stage and internal_compile_to_blob
+ * propagate. The false arm
+ * is the well-formed chapter every passing compile parses. @details Executes the pipeline malformed chapter propagates scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_malformed_chapter_propagates(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: malformed chapter propagates");
-  build_epub_chapter(k_chapter_plain);
-  ra8_fs_mount_t* mount = fresh_volume();
+  internal_build_epub_chapter(s_chapter_plain);
+  ra8_fs_mount_t* mount = internal_fresh_volume();
 
   ra8_epub_book_t book = {};
-  open_s_epub(&book);
+  internal_open_s_epub(&book);
 
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
 
-  TEST_ASSERT_EQ(k_ra8_err_no_mem,
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  ra8_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_pipeline: malformed chapter propagates");
 }
 
 /**
- * @test test_pipeline_to_buffer_and_null_guards
+ * @test internal_test_pipeline_to_buffer_and_null_guards
  * @brief The no-filesystem entry point emits a valid blob in place and rejects
  *        each NULL output pointer.
  *
@@ -556,20 +546,19 @@ static void test_pipeline_malformed_chapter_propagates(void)
  * check is exercised by the valid call (false) and a NULL epub (true); the
  * out_blob / out_len guards are each exercised true with a NULL pointer and
  * false on the valid call. Each is a single-condition null guard, so one
- * true/false vector pair per guard is minimal MC/DC.
- */
-static void test_pipeline_to_buffer_and_null_guards(void)
+ * true/false vector pair per guard is minimal MC/DC. @details Executes the pipeline to buffer and null guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_to_buffer_and_null_guards(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: compile-to-buffer + null guards");
-  build_epub(false);
+  internal_build_epub(false);
 
   ra8_epub_book_t book = {};
-  open_s_epub(&book);
+  internal_open_s_epub(&book);
 
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
 
   const void* blob = nullptr;
   uint32_t    len  = 0U;
@@ -590,28 +579,27 @@ static void test_pipeline_to_buffer_and_null_guards(void)
 }
 
 /**
- * @test test_pipeline_fs_null_guards
+ * @test internal_test_pipeline_fs_null_guards
  * @brief The filesystem entry point rejects each NULL pointer.
  *
  * @par MC/DC:
  * Drives the true arm of the shared-arg check (NULL epub) and of the mount /
  * out_path guards (each a single-condition null guard); the false arms are the
  * valid compiles above. One NULL vector per guard plus the valid baseline is
- * minimal MC/DC for these guards.
- */
-static void test_pipeline_fs_null_guards(void)
+ * minimal MC/DC for these guards. @details Executes the pipeline fs null guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_fs_null_guards(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: filesystem entry null guards");
-  build_epub(false);
-  ra8_fs_mount_t* mount = fresh_volume();
+  internal_build_epub(false);
+  ra8_fs_mount_t* mount = internal_fresh_volume();
 
   ra8_epub_book_t book = {};
-  open_s_epub(&book);
+  internal_open_s_epub(&book);
 
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_rabook_compile_from_epub(nullptr, &bufs, &scr, mount, "OUT.RAB"));
@@ -621,12 +609,12 @@ static void test_pipeline_fs_null_guards(void)
                  ra8_rabook_compile_from_epub(&book, &bufs, &scr, mount, nullptr));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_pipeline: filesystem entry null guards");
 }
 
 /**
- * @test test_pipeline_compile_init_rejects_bad_buffers
+ * @test internal_test_pipeline_compile_init_rejects_bad_buffers
  * @brief A NULL builder-arena member fails ra8_rabook_compile_init and propagates
  *        out of internal_compile_to_blob.
  *
@@ -635,20 +623,19 @@ static void test_pipeline_fs_null_guards(void)
  * internal_compile_to_blob (single condition): the top-level pointers are all non-NULL
  * (so the shared-arg check passes) but @p bufs->out is NULL, so
  * ra8_rabook_compile_init rejects the arenas and internal_compile_to_blob returns its
- * error. The false arm is every passing compile.
- */
-static void test_pipeline_compile_init_rejects_bad_buffers(void)
+ * error. The false arm is every passing compile. @details Executes the pipeline compile init rejects bad buffers scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_compile_init_rejects_bad_buffers(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: compile_init rejects bad arenas");
-  build_epub(false);
+  internal_build_epub(false);
 
   ra8_epub_book_t book = {};
-  open_s_epub(&book);
+  internal_open_s_epub(&book);
 
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
   bufs.out = nullptr; /* a NULL arena member fails compile_init */
 
   const void* blob = nullptr;
@@ -661,7 +648,7 @@ static void test_pipeline_compile_init_rejects_bad_buffers(void)
 }
 
 /**
- * @test test_pipeline_closed_book_chapter_count_fails
+ * @test internal_test_pipeline_closed_book_chapter_count_fails
  * @brief A book that is not open makes the chapter stage fail and propagate.
  *
  * @par MC/DC:
@@ -669,9 +656,8 @@ static void test_pipeline_compile_init_rejects_bad_buffers(void)
  * internal_compile_chapters (single condition): the book is zero-initialised
  * (in_use == 0), so the empty manifest yields no stylesheets / images and
  * ra8_epub_get_chapter_count then returns k_ra8_err_not_initialized, which the
- * stage and internal_compile_to_blob propagate. The false arm is the open-book compile.
- */
-static void test_pipeline_closed_book_chapter_count_fails(void)
+ * stage and internal_compile_to_blob propagate. The false arm is the open-book compile. @details Executes the pipeline closed book chapter count fails scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_closed_book_chapter_count_fails(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: closed book fails at chapter count");
 
@@ -680,7 +666,7 @@ static void test_pipeline_closed_book_chapter_count_fails(void)
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
 
   const void* blob = nullptr;
   uint32_t    len  = 0U;
@@ -693,21 +679,20 @@ static void test_pipeline_closed_book_chapter_count_fails(void)
 int32_t main(void)
 {
   ra8_log_set_byte_sink(internal_log_sink, nullptr);
-  test_pipeline_raster_images_transcoded();
-  test_pipeline_default_preserves_resolution();
-  test_pipeline_gray_scratch_too_small();
-  test_pipeline_tall_image_height_downscaled();
-  test_pipeline_gray8_profile();
-  test_pipeline_toc_titles_resolved();
-  test_pipeline_css_absent_skipped();
-  test_pipeline_css_load_error_propagates();
-  test_pipeline_image_resource_absent_skipped();
-  test_pipeline_chapter_load_too_small();
-  test_pipeline_malformed_chapter_propagates();
-  test_pipeline_to_buffer_and_null_guards();
-  test_pipeline_fs_null_guards();
-  test_pipeline_compile_init_rejects_bad_buffers();
-  test_pipeline_closed_book_chapter_count_fails();
-  (void)fprintf(stderr, "[OK ] test_ra8_rabook_pipeline_err.c\n");
+  internal_test_pipeline_raster_images_transcoded();
+  internal_test_pipeline_default_preserves_resolution();
+  internal_test_pipeline_gray_scratch_too_small();
+  internal_test_pipeline_tall_image_height_downscaled();
+  internal_test_pipeline_gray8_profile();
+  internal_test_pipeline_toc_titles_resolved();
+  internal_test_pipeline_css_absent_skipped();
+  internal_test_pipeline_css_load_error_propagates();
+  internal_test_pipeline_image_resource_absent_skipped();
+  internal_test_pipeline_chapter_load_too_small();
+  internal_test_pipeline_malformed_chapter_propagates();
+  internal_test_pipeline_to_buffer_and_null_guards();
+  internal_test_pipeline_fs_null_guards();
+  internal_test_pipeline_compile_init_rejects_bad_buffers();
+  internal_test_pipeline_closed_book_chapter_count_fails();
   return 0;
 }

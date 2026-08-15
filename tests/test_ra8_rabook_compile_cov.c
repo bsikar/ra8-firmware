@@ -36,7 +36,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "ra8_attributes.h"
@@ -92,9 +91,8 @@ static uint8_t               s_out[k_c_out_cap];
  * @pre The returned struct is consumed before the arenas are reused.
  * @post Every member pointer is non-NULL and every cap is the full array size.
  * @post No global state is mutated (pure constructor).
- * @note Not thread-safe (returns a view over shared file-scope arenas).
- */
-static ra8_rabook_buffers_t full_buffers(void)
+ * @note Not thread-safe (returns a view over shared file-scope arenas). @retval value The computed fixture value for the supplied inputs. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_rabook_buffers_t internal_full_buffers(void)
 {
   const ra8_rabook_buffers_t buf = {
     .chapters       = s_chapters,
@@ -118,14 +116,13 @@ static ra8_rabook_buffers_t full_buffers(void)
 }
 
 /**
- * @test test_rabook_cov_null_ctx
+ * @test internal_test_rabook_cov_null_ctx
  * @brief Every builder entry point returns nil for a NULL context.
  *
  * @par MC/DC:
  * Each entry's `if (ctx == nullptr)` is a single condition; every vector here
- * takes its true arm. There is no compound (`&&` / `||`) decision on this leg.
- */
-static void test_rabook_cov_null_ctx(void)
+ * takes its true arm. There is no compound (`&&` / `||`) decision on this leg. @details Executes the rabook cov null ctx scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_rabook_cov_null_ctx(void)
 {
   TEST_BEGIN("ra8_rabook_compile: NULL-ctx guards return nil");
   static const uint8_t data[1] = {0x00U};
@@ -148,19 +145,18 @@ static void test_rabook_cov_null_ctx(void)
 }
 
 /**
- * @test test_rabook_cov_intern_errors
+ * @test internal_test_rabook_cov_intern_errors
  * @brief intern latches on a NULL string, then short-circuits while failed.
  *
  * @par MC/DC:
  * The `if (str == nullptr)` and `if (ctx->failed)` guards are separate single
  * conditions. Vector 1 (str == NULL) latches `failed` and returns nil; vector 2
  * (a valid string on the now-failed ctx) takes the `failed` true arm and
- * returns nil without touching the pool.
- */
-static void test_rabook_cov_intern_errors(void)
+ * returns nil without touching the pool. @details Executes the rabook cov intern errors scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_rabook_cov_intern_errors(void)
 {
   TEST_BEGIN("ra8_rabook_compile: intern NULL-str latch + failed short-circuit");
-  ra8_rabook_buffers_t buf = full_buffers();
+  ra8_rabook_buffers_t buf = internal_full_buffers();
   ra8_rabook_ctx_t     ctx = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_init(&ctx, &buf));
 
@@ -174,19 +170,18 @@ static void test_rabook_cov_intern_errors(void)
 }
 
 /**
- * @test test_rabook_cov_add_element_errors
+ * @test internal_test_rabook_cov_add_element_errors
  * @brief add_element rejects NULL attrs with a count, then short-circuits failed.
  *
  * @par MC/DC:
  * The nested `if (attr_count != 0U) { if (attrs == nullptr) }` is two single
  * conditions, not a compound decision. Vector 1 (count != 0, attrs == NULL)
  * takes both true arms, latches `failed` and returns nil; vector 2 on the
- * failed ctx takes the leading `if (ctx->failed)` true arm and returns nil.
- */
-static void test_rabook_cov_add_element_errors(void)
+ * failed ctx takes the leading `if (ctx->failed)` true arm and returns nil. @details Executes the rabook cov add element errors scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_rabook_cov_add_element_errors(void)
 {
   TEST_BEGIN("ra8_rabook_compile: add_element NULL-attrs latch + failed short-circuit");
-  ra8_rabook_buffers_t buf = full_buffers();
+  ra8_rabook_buffers_t buf = internal_full_buffers();
   ra8_rabook_ctx_t     ctx = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_init(&ctx, &buf));
 
@@ -202,19 +197,18 @@ static void test_rabook_cov_add_element_errors(void)
 }
 
 /**
- * @test test_rabook_cov_add_text_errors
+ * @test internal_test_rabook_cov_add_text_errors
  * @brief add_text latches on a node-arena overflow, then short-circuits failed.
  *
  * @par MC/DC:
  * The overflow guard `ctx->node_count >= ctx->buf.node_cap` is a single
  * relational condition. Vector 1 (0 >= 1 -> false) appends node 0; vector 2
  * (1 >= 1 -> true) latches `failed` and returns nil; vector 3 on the failed
- * ctx takes the `if (ctx->failed)` true arm and returns nil.
- */
-static void test_rabook_cov_add_text_errors(void)
+ * ctx takes the `if (ctx->failed)` true arm and returns nil. @details Executes the rabook cov add text errors scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_rabook_cov_add_text_errors(void)
 {
   TEST_BEGIN("ra8_rabook_compile: add_text overflow latch + failed short-circuit");
-  ra8_rabook_buffers_t buf = full_buffers();
+  ra8_rabook_buffers_t buf = internal_full_buffers();
   buf.node_cap             = 1U;
   ra8_rabook_ctx_t ctx     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_init(&ctx, &buf));
@@ -228,19 +222,18 @@ static void test_rabook_cov_add_text_errors(void)
 }
 
 /**
- * @test test_rabook_cov_link_child_range
+ * @test internal_test_rabook_cov_link_child_range
  * @brief link_child rejects an out-of-range parent, then an out-of-range child.
  *
  * @par MC/DC:
  * The `parent >= ctx->node_count` and `child >= ctx->node_count` guards are two
  * separate single relational conditions. Vector 1 (parent past the table) takes
  * the parent guard; vector 2 (valid parent, child past the table) takes the
- * child guard; both return @ref k_ra8_err_invalid_arg.
- */
-static void test_rabook_cov_link_child_range(void)
+ * child guard; both return @ref k_ra8_err_invalid_arg. @details Executes the rabook cov link child range scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_rabook_cov_link_child_range(void)
 {
   TEST_BEGIN("ra8_rabook_compile: link_child out-of-range parent + child");
-  ra8_rabook_buffers_t buf = full_buffers();
+  ra8_rabook_buffers_t buf = internal_full_buffers();
   ra8_rabook_ctx_t     ctx = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_init(&ctx, &buf));
 
@@ -255,19 +248,18 @@ static void test_rabook_cov_link_child_range(void)
 }
 
 /**
- * @test test_rabook_cov_link_sibling_range
+ * @test internal_test_rabook_cov_link_sibling_range
  * @brief link_sibling rejects an out-of-range node, then an out-of-range sibling.
  *
  * @par MC/DC:
  * The `node >= ctx->node_count` and `sibling >= ctx->node_count` guards are two
  * separate single relational conditions. Vector 1 (node past the table) takes
  * the node guard; vector 2 (valid node, sibling past the table) takes the
- * sibling guard; both return @ref k_ra8_err_invalid_arg.
- */
-static void test_rabook_cov_link_sibling_range(void)
+ * sibling guard; both return @ref k_ra8_err_invalid_arg. @details Executes the rabook cov link sibling range scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_rabook_cov_link_sibling_range(void)
 {
   TEST_BEGIN("ra8_rabook_compile: link_sibling out-of-range node + sibling");
-  ra8_rabook_buffers_t buf = full_buffers();
+  ra8_rabook_buffers_t buf = internal_full_buffers();
   ra8_rabook_ctx_t     ctx = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_init(&ctx, &buf));
 
@@ -282,19 +274,18 @@ static void test_rabook_cov_link_sibling_range(void)
 }
 
 /**
- * @test test_rabook_cov_add_chapter_errors
+ * @test internal_test_rabook_cov_add_chapter_errors
  * @brief add_chapter latches on a chapter-arena overflow, then short-circuits.
  *
  * @par MC/DC:
  * The overflow guard `ctx->chapter_count >= ctx->buf.chapter_cap` is a single
  * relational condition. Vector 1 (0 >= 1 -> false) appends chapter 0; vector 2
  * (1 >= 1 -> true) latches `failed` and returns nil; vector 3 on the failed ctx
- * takes the `if (ctx->failed)` true arm and returns nil.
- */
-static void test_rabook_cov_add_chapter_errors(void)
+ * takes the `if (ctx->failed)` true arm and returns nil. @details Executes the rabook cov add chapter errors scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_rabook_cov_add_chapter_errors(void)
 {
   TEST_BEGIN("ra8_rabook_compile: add_chapter overflow latch + failed short-circuit");
-  ra8_rabook_buffers_t buf = full_buffers();
+  ra8_rabook_buffers_t buf = internal_full_buffers();
   buf.chapter_cap          = 1U;
   ra8_rabook_ctx_t ctx     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_init(&ctx, &buf));
@@ -307,18 +298,17 @@ static void test_rabook_cov_add_chapter_errors(void)
 }
 
 /**
- * @test test_rabook_cov_add_image_null_data
+ * @test internal_test_rabook_cov_add_image_null_data
  * @brief add_image latches when data_size is non-zero but the data pointer is NULL.
  *
  * @par MC/DC:
  * The nested `if (data_size != 0U) { if (data == nullptr) }` is two single
  * conditions. This vector takes both true arms (size 8, NULL data), latching
- * `failed` and returning nil before any pool copy.
- */
-static void test_rabook_cov_add_image_null_data(void)
+ * `failed` and returning nil before any pool copy. @details Executes the rabook cov add image null data scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_rabook_cov_add_image_null_data(void)
 {
   TEST_BEGIN("ra8_rabook_compile: add_image NULL-data latch");
-  ra8_rabook_buffers_t buf = full_buffers();
+  ra8_rabook_buffers_t buf = internal_full_buffers();
   ra8_rabook_ctx_t     ctx = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_init(&ctx, &buf));
 
@@ -336,19 +326,18 @@ static void test_rabook_cov_add_image_null_data(void)
 }
 
 /**
- * @test test_rabook_cov_add_image_pool_overflow
+ * @test internal_test_rabook_cov_add_image_pool_overflow
  * @brief add_image latches on an image-pool overflow, then short-circuits failed.
  *
  * @par MC/DC:
  * The pool guard `data_size > (ctx->buf.image_pool_cap - ctx->image_pool_size)`
  * is a single relational condition. Vector 1 (8 > 4 -> true, with a valid data
  * pointer so the earlier NULL guard is false) latches `failed` and returns nil;
- * vector 2 on the failed ctx takes the `if (ctx->failed)` true arm.
- */
-static void test_rabook_cov_add_image_pool_overflow(void)
+ * vector 2 on the failed ctx takes the `if (ctx->failed)` true arm. @details Executes the rabook cov add image pool overflow scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_rabook_cov_add_image_pool_overflow(void)
 {
   TEST_BEGIN("ra8_rabook_compile: add_image pool overflow latch + failed short-circuit");
-  ra8_rabook_buffers_t buf = full_buffers();
+  ra8_rabook_buffers_t buf = internal_full_buffers();
   buf.image_pool_cap       = (uint32_t)k_c_tiny_pool_cap; /* only 4 pool bytes */
   ra8_rabook_ctx_t ctx     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_init(&ctx, &buf));
@@ -379,19 +368,18 @@ static void test_rabook_cov_add_image_pool_overflow(void)
 }
 
 /**
- * @test test_rabook_cov_add_stylesheet_errors
+ * @test internal_test_rabook_cov_add_stylesheet_errors
  * @brief add_stylesheet latches on a stylesheet-arena overflow, then short-circuits.
  *
  * @par MC/DC:
  * The overflow guard `ctx->stylesheet_count >= ctx->buf.stylesheet_cap` is a
  * single relational condition. Vector 1 (0 >= 1 -> false) appends stylesheet 0;
  * vector 2 (1 >= 1 -> true) latches `failed` and returns nil; vector 3 on the
- * failed ctx takes the `if (ctx->failed)` true arm.
- */
-static void test_rabook_cov_add_stylesheet_errors(void)
+ * failed ctx takes the `if (ctx->failed)` true arm. @details Executes the rabook cov add stylesheet errors scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_rabook_cov_add_stylesheet_errors(void)
 {
   TEST_BEGIN("ra8_rabook_compile: add_stylesheet overflow latch + failed short-circuit");
-  ra8_rabook_buffers_t buf = full_buffers();
+  ra8_rabook_buffers_t buf = internal_full_buffers();
   buf.stylesheet_cap       = 1U;
   ra8_rabook_ctx_t ctx     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_init(&ctx, &buf));
@@ -406,18 +394,17 @@ static void test_rabook_cov_add_stylesheet_errors(void)
 }
 
 /**
- * @test test_rabook_cov_set_metadata_failed
+ * @test internal_test_rabook_cov_set_metadata_failed
  * @brief set_metadata reports no_mem once the sticky fail flag is latched.
  *
  * @par MC/DC:
  * The `if (ctx->failed)` guard is a single condition. Interning a NULL string
  * latches `failed`; set_metadata then takes the true arm and returns
- * @ref k_ra8_err_no_mem without recording any offset.
- */
-static void test_rabook_cov_set_metadata_failed(void)
+ * @ref k_ra8_err_no_mem without recording any offset. @details Executes the rabook cov set metadata failed scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_rabook_cov_set_metadata_failed(void)
 {
   TEST_BEGIN("ra8_rabook_compile: set_metadata after overflow -> no_mem");
-  ra8_rabook_buffers_t buf = full_buffers();
+  ra8_rabook_buffers_t buf = internal_full_buffers();
   ra8_rabook_ctx_t     ctx = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_init(&ctx, &buf));
 
@@ -430,7 +417,7 @@ static void test_rabook_cov_set_metadata_failed(void)
 }
 
 /**
- * @test test_rabook_cov_finalize_layout_overflow
+ * @test internal_test_rabook_cov_finalize_layout_overflow
  * @brief finalize rejects a layout whose 64-bit total overflows 32-bit offsets.
  *
  * @par MC/DC:
@@ -440,13 +427,12 @@ static void test_rabook_cov_set_metadata_failed(void)
  * 0xFFFFFFFF each so the computed total is ~8.6 GiB; the guard takes its true
  * arm, internal_compute_layout returns @ref k_ra8_err_invalid_size, and finalize
  * propagates it. No blob is written (finalize returns before s_write_blob), so
- * the oversized counts never touch the real, small arenas.
- */
-static void test_rabook_cov_finalize_layout_overflow(void)
+ * the oversized counts never touch the real, small arenas. @details Executes the rabook cov finalize layout overflow scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_rabook_cov_finalize_layout_overflow(void)
 {
   TEST_BEGIN("ra8_rabook_compile: finalize layout > 32-bit -> invalid_size");
   ra8_rabook_ctx_t ctx  = {};
-  ctx.buf               = full_buffers();
+  ctx.buf               = internal_full_buffers();
   ctx.cover_image_index = (uint32_t)k_ra8_book_nil;
   ctx.string_size       = (uint32_t)k_c_huge_size;
   ctx.image_pool_size   = (uint32_t)k_c_huge_size;
@@ -459,7 +445,7 @@ static void test_rabook_cov_finalize_layout_overflow(void)
 }
 
 /**
- * @test test_rabook_cov_finalize_out_cap
+ * @test internal_test_rabook_cov_finalize_out_cap
  * @brief finalize rejects a blob that exceeds the output-arena capacity.
  *
  * @par MC/DC:
@@ -468,12 +454,11 @@ static void test_rabook_cov_finalize_layout_overflow(void)
  * post-init blob (101 bytes: header + the reserved "") exceeds it, so the guard
  * takes its true arm and finalize returns @ref k_ra8_err_invalid_size. The
  * layout still computes cleanly (total <= UINT32_MAX), so this is a distinct
- * error arm from the 32-bit overflow above.
- */
-static void test_rabook_cov_finalize_out_cap(void)
+ * error arm from the 32-bit overflow above. @details Executes the rabook cov finalize out cap scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_rabook_cov_finalize_out_cap(void)
 {
   TEST_BEGIN("ra8_rabook_compile: finalize blob > out_cap -> invalid_size");
-  ra8_rabook_buffers_t buf = full_buffers();
+  ra8_rabook_buffers_t buf = internal_full_buffers();
   buf.out_cap              = (uint32_t)k_c_tiny_out_cap; /* below the 100-byte header */
   ra8_rabook_ctx_t ctx     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_init(&ctx, &buf));
@@ -497,8 +482,7 @@ static void test_rabook_cov_finalize_out_cap(void)
  * @pre Never called from interrupt context (host build).
  * @post No global state is mutated.
  * @post The byte is discarded.
- * @note Not thread-safe (host single-thread test driver).
- */
+ * @note Not thread-safe (host single-thread test driver). @since Version 0.1.0 */
 RA8_INTERNAL static void internal_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;
@@ -508,19 +492,18 @@ RA8_INTERNAL static void internal_log_sink(void* ctx, uint8_t byte)
 int32_t main(void)
 {
   ra8_log_set_byte_sink(internal_log_sink, nullptr);
-  test_rabook_cov_null_ctx();
-  test_rabook_cov_intern_errors();
-  test_rabook_cov_add_element_errors();
-  test_rabook_cov_add_text_errors();
-  test_rabook_cov_link_child_range();
-  test_rabook_cov_link_sibling_range();
-  test_rabook_cov_add_chapter_errors();
-  test_rabook_cov_add_image_null_data();
-  test_rabook_cov_add_image_pool_overflow();
-  test_rabook_cov_add_stylesheet_errors();
-  test_rabook_cov_set_metadata_failed();
-  test_rabook_cov_finalize_layout_overflow();
-  test_rabook_cov_finalize_out_cap();
-  (void)fprintf(stderr, "[OK ] test_ra8_rabook_compile_cov.c\n");
+  internal_test_rabook_cov_null_ctx();
+  internal_test_rabook_cov_intern_errors();
+  internal_test_rabook_cov_add_element_errors();
+  internal_test_rabook_cov_add_text_errors();
+  internal_test_rabook_cov_link_child_range();
+  internal_test_rabook_cov_link_sibling_range();
+  internal_test_rabook_cov_add_chapter_errors();
+  internal_test_rabook_cov_add_image_null_data();
+  internal_test_rabook_cov_add_image_pool_overflow();
+  internal_test_rabook_cov_add_stylesheet_errors();
+  internal_test_rabook_cov_set_metadata_failed();
+  internal_test_rabook_cov_finalize_layout_overflow();
+  internal_test_rabook_cov_finalize_out_cap();
   return 0;
 }

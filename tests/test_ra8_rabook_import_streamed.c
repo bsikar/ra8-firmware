@@ -46,7 +46,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -149,8 +148,9 @@ static mem_disk_t s_disk = {};
 /* RAM block backend (4 MiB -> FAT16 via ra8_fs_format) */
 /* -------------------------------------------------------------------------- */
 
-/** @brief ra8_fs_backend_t::read_block over the RAM disk. */
-static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief ra8_fs_backend_t::read_block over the RAM disk. @details Implements the mem read fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] lba Fixture argument governed by the exercised interface contract. @param[in] count Fixture argument governed by the exercised interface contract. @param[out] buf Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   if (lba + count > disk->block_count) {
@@ -162,8 +162,9 @@ static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-/** @brief ra8_fs_backend_t::write_block over the RAM disk. */
-static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief ra8_fs_backend_t::write_block over the RAM disk. @details Implements the mem write fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] lba Fixture argument governed by the exercised interface contract. @param[in] count Fixture argument governed by the exercised interface contract. @param[in] buf Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   if (lba + count > disk->block_count) {
@@ -175,8 +176,9 @@ static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-/** @brief ra8_fs_backend_t::get_capacity over the RAM disk. */
-static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief ra8_fs_backend_t::get_capacity over the RAM disk. @details Implements the mem capacity fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[out] block_count Fixture argument governed by the exercised interface contract. @param[out] block_size Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   *block_count     = disk->block_count;
@@ -186,9 +188,9 @@ static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_
 
 /** @brief The RAM block-device backend bound to ::s_disk. */
 static const ra8_fs_backend_t s_backend = {
-  .read_block   = mem_read,
-  .write_block  = mem_write,
-  .get_capacity = mem_capacity,
+  .read_block   = internal_mem_read,
+  .write_block  = internal_mem_write,
+  .get_capacity = internal_mem_capacity,
   .ctx          = &s_disk,
 };
 
@@ -204,7 +206,8 @@ static const ra8_fs_backend_t s_backend = {
  * @post @p s_disk.bytes owns a fresh zeroed backing store.
  * @note Not thread-safe.
  */
-static ra8_fs_mount_t* fresh_volume_seeded(const char* src_path, const uint8_t* bytes, uint32_t len)
+RA8_INTERNAL static ra8_fs_mount_t*
+internal_fresh_volume_seeded(const char* src_path, const uint8_t* bytes, uint32_t len)
 {
   free(s_disk.bytes);
   s_disk.block_count = (uint32_t)k_st_disk_blocks;
@@ -226,13 +229,12 @@ static ra8_fs_mount_t* fresh_volume_seeded(const char* src_path, const uint8_t* 
 /**
  * @brief Unmount @p mount and release the RAM backing store.
  * @param[in,out] mount Mounted volume to release.
- * @pre @p mount is a live mount from @ref fresh_volume_seeded.
+ * @pre @p mount is a live mount from @ref internal_fresh_volume_seeded.
  * @pre Every open file on @p mount has been closed.
  * @post @p mount is unmounted and @p s_disk.bytes is freed.
  * @post @p s_disk.bytes is reset to NULL.
- * @note Not thread-safe.
- */
-static void teardown(ra8_fs_mount_t* mount)
+ * @note Not thread-safe. @details Implements the teardown fixture operation used only by this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_teardown(ra8_fs_mount_t* mount)
 {
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(mount));
   free(s_disk.bytes);
@@ -244,7 +246,7 @@ static void teardown(ra8_fs_mount_t* mount)
 /* -------------------------------------------------------------------------- */
 
 /** @brief container.xml pointing at OEBPS/content.opf. */
-static const char* const k_container = "<?xml version=\"1.0\"?>"
+static const char* const s_container = "<?xml version=\"1.0\"?>"
                                        "<container version=\"1.0\""
                                        " xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\">"
                                        "<rootfiles><rootfile full-path=\"OEBPS/content.opf\""
@@ -252,7 +254,7 @@ static const char* const k_container = "<?xml version=\"1.0\"?>"
                                        "</rootfiles></container>";
 
 /** @brief OPF: four chapters, EPUB3, no cover (text-only compile). */
-static const char* const k_opf =
+static const char* const s_opf =
   "<?xml version=\"1.0\"?><package xmlns=\"http://www.idpf.org/2007/opf\""
   " version=\"3.0\" unique-identifier=\"id\">"
   "<metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
@@ -268,13 +270,13 @@ static const char* const k_opf =
   "<spine><itemref idref=\"ch1\"/><itemref idref=\"ch2\"/>"
   "<itemref idref=\"ch3\"/><itemref idref=\"ch4\"/></spine></package>";
 
-static const char* const k_ch1 =
+static const char* const s_ch1 =
   "<?xml version=\"1.0\"?><html><body><p>ALPHA chapter one.</p></body></html>";
-static const char* const k_ch2 =
+static const char* const s_ch2 =
   "<?xml version=\"1.0\"?><html><body><p>BRAVO chapter two.</p></body></html>";
-static const char* const k_ch3 =
+static const char* const s_ch3 =
   "<?xml version=\"1.0\"?><html><body><p>CHARLIE chapter three.</p></body></html>";
-static const char* const k_ch4 =
+static const char* const s_ch4 =
   "<?xml version=\"1.0\"?><html><body><p>DELTA chapter four.</p></body></html>";
 
 /**
@@ -286,9 +288,8 @@ static const char* const k_ch4 =
  * @pre ::s_filler has ::k_st_filler_bytes bytes.
  * @post ::s_arc_size holds the finalized archive length (> ::k_st_filler_bytes).
  * @post ::s_arc[0 .. s_arc_size) is a valid ZIP.
- * @note Not thread-safe.
- */
-static void build_big_epub(void)
+ * @note Not thread-safe. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_build_big_epub(void)
 {
   for (size_t i = 0U; i < (size_t)k_st_filler_bytes; ++i) {
     s_filler[i] =
@@ -305,25 +306,25 @@ static void build_big_epub(void)
                                     MZ_NO_COMPRESSION) == MZ_TRUE);
   TEST_ASSERT(mz_zip_writer_add_mem(&zip,
                                     "META-INF/container.xml",
-                                    k_container,
-                                    strlen(k_container),
+                                    s_container,
+                                    strlen(s_container),
                                     MZ_DEFAULT_COMPRESSION) == MZ_TRUE);
   TEST_ASSERT(mz_zip_writer_add_mem(&zip,
                                     "OEBPS/content.opf",
-                                    k_opf,
-                                    strlen(k_opf),
+                                    s_opf,
+                                    strlen(s_opf),
                                     MZ_DEFAULT_COMPRESSION) == MZ_TRUE);
   TEST_ASSERT(
-    mz_zip_writer_add_mem(&zip, "OEBPS/ch1.xhtml", k_ch1, strlen(k_ch1), MZ_DEFAULT_COMPRESSION) ==
+    mz_zip_writer_add_mem(&zip, "OEBPS/ch1.xhtml", s_ch1, strlen(s_ch1), MZ_DEFAULT_COMPRESSION) ==
     MZ_TRUE);
   TEST_ASSERT(
-    mz_zip_writer_add_mem(&zip, "OEBPS/ch2.xhtml", k_ch2, strlen(k_ch2), MZ_DEFAULT_COMPRESSION) ==
+    mz_zip_writer_add_mem(&zip, "OEBPS/ch2.xhtml", s_ch2, strlen(s_ch2), MZ_DEFAULT_COMPRESSION) ==
     MZ_TRUE);
   TEST_ASSERT(
-    mz_zip_writer_add_mem(&zip, "OEBPS/ch3.xhtml", k_ch3, strlen(k_ch3), MZ_DEFAULT_COMPRESSION) ==
+    mz_zip_writer_add_mem(&zip, "OEBPS/ch3.xhtml", s_ch3, strlen(s_ch3), MZ_DEFAULT_COMPRESSION) ==
     MZ_TRUE);
   TEST_ASSERT(
-    mz_zip_writer_add_mem(&zip, "OEBPS/ch4.xhtml", k_ch4, strlen(k_ch4), MZ_DEFAULT_COMPRESSION) ==
+    mz_zip_writer_add_mem(&zip, "OEBPS/ch4.xhtml", s_ch4, strlen(s_ch4), MZ_DEFAULT_COMPRESSION) ==
     MZ_TRUE);
   /* The big unreferenced entry, stored (uncompressed) so it dominates the file. */
   TEST_ASSERT(mz_zip_writer_add_mem(&zip,
@@ -339,6 +340,7 @@ static void build_big_epub(void)
               (hsz <= (size_t)k_st_arc_cap));
   memcpy(s_arc, heap, hsz);
   s_arc_size = hsz;
+  mz_free(heap);
   mz_zip_writer_end(&zip);
 }
 
@@ -346,19 +348,20 @@ static void build_big_epub(void)
 /* Streamed compile cookie over file-scope arenas */
 /* -------------------------------------------------------------------------- */
 
-static ra8_book_chapter_t    s_chapters[k_st_chapter_cap];
-static ra8_book_node_t       s_nodes[k_st_node_cap];
-static ra8_book_attr_t       s_attrs[k_st_attr_cap];
-static ra8_book_stylesheet_t s_styles[k_st_style_cap];
-static ra8_book_image_t      s_images[k_st_image_cap];
-static char                  s_strpool[k_st_string_cap];
-static uint8_t               s_imgpool[k_st_imgpool_cap];
-static uint8_t               s_out[k_st_out_cap];
-static uint8_t               s_xhtml[k_st_xhtml_cap];
-static uint8_t               s_image_raw[k_st_imgraw_cap];
-static uint8_t               s_img_scratch[k_st_arena_cap];
-static uint8_t               s_gray[k_st_gray_cap];
-static char                  s_css[k_st_css_cap];
+static ra8_book_chapter_t         s_chapters[k_st_chapter_cap];
+static ra8_book_node_t            s_nodes[k_st_node_cap];
+static ra8_book_attr_t            s_attrs[k_st_attr_cap];
+static ra8_book_stylesheet_t      s_styles[k_st_style_cap];
+static ra8_book_image_t           s_images[k_st_image_cap];
+static char                       s_strpool[k_st_string_cap];
+static uint8_t                    s_imgpool[k_st_imgpool_cap];
+static uint8_t                    s_out[k_st_out_cap];
+static uint8_t                    s_xhtml[k_st_xhtml_cap];
+static ra8_rabook_xml_workspace_t s_xml_workspace;
+static uint8_t                    s_image_raw[k_st_imgraw_cap];
+static uint8_t                    s_img_scratch[k_st_arena_cap];
+static uint8_t                    s_gray[k_st_gray_cap];
+static char                       s_css[k_st_css_cap];
 
 /** @brief Fixed frame pool the streamed source is paged through (the budget). */
 static uint8_t s_cache_frames[k_st_cache_frames * k_st_cache_frame_bytes];
@@ -384,9 +387,8 @@ static ra8_img_arena_t               s_arena = {};
  * @pre The file-scope buffers are defined (always true at TU scope).
  * @post @p ctx references @p s_book, the page-cache storage, and the arena views.
  * @post @p s_book is re-zeroed so a prior compile cannot leak in.
- * @note Not thread-safe (returns a view over shared file-scope buffers).
- */
-static void make_ctx(ra8_rabook_import_compiler_ctx_t* ctx)
+ * @note Not thread-safe (returns a view over shared file-scope buffers). @details Implements the make ctx fixture operation used only by this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_make_ctx(ra8_rabook_import_compiler_ctx_t* ctx)
 {
   s_bufs = (ra8_rabook_buffers_t){
     .chapters       = s_chapters,
@@ -408,15 +410,16 @@ static void make_ctx(ra8_rabook_import_compiler_ctx_t* ctx)
   };
   s_arena = (ra8_img_arena_t){s_img_scratch, sizeof(s_img_scratch), 0U, 0U};
   s_scr   = (ra8_rabook_pipeline_scratch_t){
-    .xhtml     = s_xhtml,
-    .xhtml_cap = sizeof(s_xhtml),
-    .image_raw = s_image_raw,
-    .image_cap = sizeof(s_image_raw),
-    .img_arena = &s_arena,
-    .gray      = s_gray,
-    .gray_cap  = (uint32_t)k_st_gray_cap,
-    .css       = s_css,
-    .css_cap   = sizeof(s_css),
+    .xhtml         = s_xhtml,
+    .xhtml_cap     = sizeof(s_xhtml),
+    .image_raw     = s_image_raw,
+    .image_cap     = sizeof(s_image_raw),
+    .img_arena     = &s_arena,
+    .gray          = s_gray,
+    .gray_cap      = (uint32_t)k_st_gray_cap,
+    .css           = s_css,
+    .css_cap       = sizeof(s_css),
+    .xml_workspace = &s_xml_workspace,
   };
   s_book = (ra8_epub_book_t){};
   *ctx   = (ra8_rabook_import_compiler_ctx_t){
@@ -443,9 +446,9 @@ static void make_ctx(ra8_rabook_import_compiler_ctx_t* ctx)
  * @pre ::s_readback has room for the blob.
  * @post ::s_readback[0 .. *out_len) holds the blob bytes.
  * @post The read handle is closed.
- * @note Not thread-safe (shared ::s_readback).
- */
-static void read_output(ra8_fs_mount_t* mount, const char* path, uint32_t* out_len)
+ * @note Not thread-safe (shared ::s_readback). @details Implements the read output fixture operation used only by this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void
+internal_read_output(ra8_fs_mount_t* mount, const char* path, uint32_t* out_len)
 {
   ra8_fs_file_t* file = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(mount, path, k_ra8_fs_mode_read, &file));
@@ -455,8 +458,8 @@ static void read_output(ra8_fs_mount_t* mount, const char* path, uint32_t* out_l
   *out_len = got;
 }
 
-/** @brief Count resident (valid) page-cache frames -- the live residency probe. */
-static uint32_t count_valid_frames(void)
+/** @brief Count resident (valid) page-cache frames -- the live residency probe. @details Implements the count valid frames fixture operation used only by this focused test executable. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static uint32_t internal_count_valid_frames(void)
 {
   uint32_t live = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_st_cache_frames; ++i) {
@@ -472,37 +475,36 @@ static uint32_t count_valid_frames(void)
 /* -------------------------------------------------------------------------- */
 
 /**
- * @test test_streamed_compile_matches_desktop_golden
+ * @test internal_test_streamed_compile_matches_desktop_golden
  * @brief The STREAMED adapter compiles the parity fixture to a `.rabook` that
  *        is byte-identical to the desktop `tools/epub_compile.py` golden --
  *        the #230 proof that retiring the whole-file open changed no output bit.
  *
  * @par MC/DC:
  * (no compound decisions under test -- a byte-equality oracle over the output;
- * the adapter's guards are single-condition early returns.)
- */
-static void test_streamed_compile_matches_desktop_golden(void)
+ * the adapter's guards are single-condition early returns.) @details Executes the streamed compile matches desktop golden scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_streamed_compile_matches_desktop_golden(void)
 {
   TEST_BEGIN("rabook_import_streamed: streamed compile == desktop golden");
   ra8_fs_mount_t* mount =
-    fresh_volume_seeded("SRC.EPB", s_parity_epub, (uint32_t)k_parity_epub_len);
+    internal_fresh_volume_seeded("SRC.EPB", s_parity_epub, (uint32_t)k_parity_epub_len);
 
   ra8_rabook_import_compiler_ctx_t ctx = {};
-  make_ctx(&ctx);
+  internal_make_ctx(&ctx);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_import_compile_adapter(&ctx, mount, "SRC.EPB", "OUT.RAB"));
 
   uint32_t got = 0U;
-  read_output(mount, "OUT.RAB", &got);
+  internal_read_output(mount, "OUT.RAB", &got);
   TEST_ASSERT_EQ(k_parity_golden_len, got);
   TEST_ASSERT_EQ(0, memcmp(s_readback, s_parity_golden, (size_t)got));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_book_validate(s_readback, (size_t)got));
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("rabook_import_streamed: streamed compile == desktop golden");
 }
 
 /**
- * @test test_streamed_compile_bounded_high_water
+ * @test internal_test_streamed_compile_bounded_high_water
  * @brief A source ~3x larger than the retired whole-file load buffer compiles
  *        through a 4 KiB frame pool: the mem-subsystem stats prove the
  *        source-side RAM high-water was the fixed pool, not the file size.
@@ -510,12 +512,11 @@ static void test_streamed_compile_matches_desktop_golden(void)
  * @par MC/DC:
  * (no compound decisions under test -- independent single-condition
  * inequalities over the cache counters, the residency probe, and a
- * `ra8_book_validate` oracle over the output.)
- */
-static void test_streamed_compile_bounded_high_water(void)
+ * `ra8_book_validate` oracle over the output.) @details Executes the streamed compile bounded high water scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_streamed_compile_bounded_high_water(void)
 {
   TEST_BEGIN("rabook_import_streamed: bounded RAM high-water on an oversize source");
-  build_big_epub();
+  internal_build_big_epub();
 
   /* The regime under test: the fixture is far larger than BOTH the retired
    * whole-file load buffer and the page-cache pool. */
@@ -523,23 +524,23 @@ static void test_streamed_compile_bounded_high_water(void)
   const uint32_t pool_bytes = (uint32_t)k_st_cache_frames * (uint32_t)k_st_cache_frame_bytes;
   TEST_ASSERT(((size_t)pool_bytes * (size_t)k_st_budget_ratio) <= s_arc_size);
 
-  ra8_fs_mount_t* mount = fresh_volume_seeded("BIG.EPB", s_arc, (uint32_t)s_arc_size);
+  ra8_fs_mount_t* mount = internal_fresh_volume_seeded("BIG.EPB", s_arc, (uint32_t)s_arc_size);
 
   ra8_rabook_import_compiler_ctx_t ctx = {};
-  make_ctx(&ctx);
+  internal_make_ctx(&ctx);
   memset(s_cache_meta, 0, sizeof(s_cache_meta));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_import_compile_adapter(&ctx, mount, "BIG.EPB", "BIG.RAB"));
 
   /* The compile produced a valid book with the fixture's whole spine. */
   uint32_t got = 0U;
-  read_output(mount, "BIG.RAB", &got);
+  internal_read_output(mount, "BIG.RAB", &got);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_book_validate(s_readback, (size_t)got));
   const ra8_book_header_t* hdr = ra8_book_header((const void*)s_readback);
   TEST_ASSERT_EQ(4U, hdr->chapter_count);
 
   /* ---- The bounded high-water assertions (mem-subsystem stats) ------------ */
   /* 1. Residency never exceeds the fixed pool: the pool IS the high-water. */
-  TEST_ASSERT(count_valid_frames() <= (uint32_t)k_st_cache_frames);
+  TEST_ASSERT(internal_count_valid_frames() <= (uint32_t)k_st_cache_frames);
   /* 2. The cache streamed: pages were faulted in (misses) and, because the
    *    source dwarfs the pool, resident pages were evicted and re-fetched. */
   uint32_t hits = 0U;
@@ -555,7 +556,7 @@ static void test_streamed_compile_bounded_high_water(void)
    *    at once (misses count frame loads; each load is one pool frame). */
   TEST_ASSERT(((uint64_t)miss * (uint64_t)k_st_cache_frame_bytes) > (uint64_t)pool_bytes);
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("rabook_import_streamed: bounded RAM high-water on an oversize source");
 }
 
@@ -566,9 +567,9 @@ static void test_streamed_compile_bounded_high_water(void)
  * @pre "SRC.EPB" is present on @p mount.
  * @post Every null argument and null cookie returned k_ra8_err_null_ptr.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void streamed_guards_null(ra8_rabook_import_compiler_ctx_t* ctx, ra8_fs_mount_t* mount)
+ * @since 0.1.0 @details Implements the streamed guards null fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_streamed_guards_null(ra8_rabook_import_compiler_ctx_t* ctx,
+                                                       ra8_fs_mount_t*                   mount)
 {
   /* Argument null guards -- each flipped independently. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
@@ -582,36 +583,35 @@ static void streamed_guards_null(ra8_rabook_import_compiler_ctx_t* ctx, ra8_fs_m
 
   /* Cookie null guards: open-book storage, then the cache. */
   ra8_rabook_import_compiler_ctx_t bad = {};
-  make_ctx(&bad);
+  internal_make_ctx(&bad);
   bad.epub = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_rabook_import_compile_adapter(&bad, mount, "SRC.EPB", "OUT.RAB"));
-  make_ctx(&bad);
+  internal_make_ctx(&bad);
   bad.cache = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_rabook_import_compile_adapter(&bad, mount, "SRC.EPB", "OUT.RAB"));
 }
 
 /**
- * @test test_streamed_adapter_guards
+ * @test internal_test_streamed_adapter_guards
  * @brief NULL arguments, a missing source, and an empty source fail cleanly
  *        with no output written.
  *
  * @par MC/DC:
  * (no compound decisions under test -- each `RA8_CHECK_NULL_PTR` and error
  * propagation is a single-condition guard, driven true here and false by the
- * happy-path cases.)
- */
-static void test_streamed_adapter_guards(void)
+ * happy-path cases.) @details Executes the streamed adapter guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_streamed_adapter_guards(void)
 {
   TEST_BEGIN("rabook_import_streamed: adapter guards");
   ra8_fs_mount_t* mount =
-    fresh_volume_seeded("SRC.EPB", s_parity_epub, (uint32_t)k_parity_epub_len);
+    internal_fresh_volume_seeded("SRC.EPB", s_parity_epub, (uint32_t)k_parity_epub_len);
 
   ra8_rabook_import_compiler_ctx_t ctx = {};
-  make_ctx(&ctx);
+  internal_make_ctx(&ctx);
 
-  streamed_guards_null(&ctx, mount);
+  internal_streamed_guards_null(&ctx, mount);
   ra8_rabook_import_compiler_ctx_t bad = {};
 
   /* Missing source -> the ra8_fs open error propagates, nothing written. */
@@ -628,7 +628,7 @@ static void test_streamed_adapter_guards(void)
                  ra8_rabook_import_compile_adapter(&ctx, mount, "EMPTY.EPB", "OUT.RAB"));
 
   /* A zero-frame cookie -> the cache re-init inside the adapter rejects it. */
-  make_ctx(&bad);
+  internal_make_ctx(&bad);
   bad.cache_frame_count = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_rabook_import_compile_adapter(&bad, mount, "SRC.EPB", "OUT.RAB"));
@@ -638,13 +638,13 @@ static void test_streamed_adapter_guards(void)
   static const uint8_t k_junk[] = "this is not a zip archive at all";
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_fs_write_file(mount, "JUNK.EPB", k_junk, (uint32_t)(sizeof(k_junk) - 1U)));
-  make_ctx(&ctx);
+  internal_make_ctx(&ctx);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  ra8_rabook_import_compile_adapter(&ctx, mount, "JUNK.EPB", "OUT.RAB"));
 
   /* A compile-stage failure (output arena far too small) propagates after the
    * streamed open succeeded; the book and the source file are still released. */
-  make_ctx(&ctx);
+  internal_make_ctx(&ctx);
   s_bufs.out_cap = 4U; /* finalize cannot fit the RABOOK1 header */
   TEST_ASSERT(ra8_rabook_import_compile_adapter(&ctx, mount, "SRC.EPB", "OUT.RAB") != k_ra8_ok);
 
@@ -652,7 +652,7 @@ static void test_streamed_adapter_guards(void)
   ra8_fs_file_t* file = nullptr;
   TEST_ASSERT(ra8_fs_open(mount, "OUT.RAB", k_ra8_fs_mode_read, &file) != k_ra8_ok);
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("rabook_import_streamed: adapter guards");
 }
 
@@ -676,7 +676,7 @@ typedef enum : uint32_t {
 } streamed_fat_t;
 
 /**
- * @test test_streamed_compile_corrupt_fat
+ * @test internal_test_streamed_compile_corrupt_fat
  * @brief A corrupt FAT chain makes the mid-stream page-in fault: the loader's
  *        `ra8_fs_read` error aborts the streamed open cleanly (no output, no
  *        leaked handle) instead of serving truncated source bytes.
@@ -684,13 +684,12 @@ typedef enum : uint32_t {
  * @par MC/DC:
  * (no compound decisions under test -- drives the read-error single-condition
  * return in the importer's `s_source_read` that the healthy-volume cases never
- * reach.)
- */
-static void test_streamed_compile_corrupt_fat(void)
+ * reach.) @details Executes the streamed compile corrupt fat scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_streamed_compile_corrupt_fat(void)
 {
   TEST_BEGIN("rabook_import_streamed: corrupt FAT chain -> open fails, no output");
   ra8_fs_mount_t* mount =
-    fresh_volume_seeded("SRC.EPB", s_parity_epub, (uint32_t)k_parity_epub_len);
+    internal_fresh_volume_seeded("SRC.EPB", s_parity_epub, (uint32_t)k_parity_epub_len);
   /* Unmount before corrupting and mount again after. Corruption arrives on
    * real media between sessions, not under a live mount, and the driver caches
    * one FAT sector (#607) -- poking the FAT behind a mounted volume would be
@@ -699,7 +698,7 @@ static void test_streamed_compile_corrupt_fat(void)
   mount = nullptr;
 
   /* Point cluster 2 (the file's first cluster) at an off-disk cluster in every
-   * FAT copy, so any chain walk past the first sector faults in mem_read. */
+   * FAT copy, so any chain walk past the first sector faults in internal_mem_read. */
   const uint32_t rsvd  = (uint32_t)s_disk.bytes[k_st_bpb_rsvd_off] |
                          ((uint32_t)s_disk.bytes[k_st_bpb_rsvd_off + 1U] << k_st_byte_shift);
   const uint32_t nfats = (uint32_t)s_disk.bytes[k_st_bpb_nfats_off];
@@ -715,13 +714,13 @@ static void test_streamed_compile_corrupt_fat(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &mount));
 
   ra8_rabook_import_compiler_ctx_t ctx = {};
-  make_ctx(&ctx);
+  internal_make_ctx(&ctx);
   TEST_ASSERT(ra8_rabook_import_compile_adapter(&ctx, mount, "SRC.EPB", "OUT.RAB") != k_ra8_ok);
 
   ra8_fs_file_t* file = nullptr;
   TEST_ASSERT(ra8_fs_open(mount, "OUT.RAB", k_ra8_fs_mode_read, &file) != k_ra8_ok);
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("rabook_import_streamed: corrupt FAT chain -> open fails, no output");
 }
 
@@ -737,8 +736,7 @@ static void test_streamed_compile_corrupt_fat(void)
  * @pre Never called from interrupt context (host build).
  * @post No global state is mutated.
  * @post The byte is discarded.
- * @note Not thread-safe (host single-thread test driver).
- */
+ * @note Not thread-safe (host single-thread test driver). @details Implements the log sink fixture operation used only by this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;
@@ -748,10 +746,9 @@ RA8_INTERNAL static void internal_log_sink(void* ctx, uint8_t byte)
 int32_t main(void)
 {
   ra8_log_set_byte_sink(internal_log_sink, nullptr);
-  test_streamed_compile_matches_desktop_golden();
-  test_streamed_compile_bounded_high_water();
-  test_streamed_adapter_guards();
-  test_streamed_compile_corrupt_fat();
-  (void)fprintf(stderr, "[OK ] test_ra8_rabook_import_streamed.c\n");
+  internal_test_streamed_compile_matches_desktop_golden();
+  internal_test_streamed_compile_bounded_high_water();
+  internal_test_streamed_adapter_guards();
+  internal_test_streamed_compile_corrupt_fat();
   return 0;
 }
