@@ -497,7 +497,7 @@ RA8_INTERNAL static void internal_test_4kn_mismatch_refused(void)
  *
  * @par MC/DC:
  * Decision: `(bs < 512) || (bs > 4096) || ((bs & (bs - 1)) != 0)` (3
- * conditions) in `libs/ra8_fs/src/ra8_fs_fat_mount.c@priv_bps_valid`, reached
+ * conditions) in `libs/ra8_fs/src/ra8_fs_fat_mount.c@internal_bps_valid`, reached
  * through the mount's capacity probe.
  * - V1: bs = 512  -> F,F,F -> valid (the FAT16 case above is the mounting
  *   control; re-asserted here as the cheap probe-only leg falling through to

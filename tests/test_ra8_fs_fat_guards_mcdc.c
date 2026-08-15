@@ -212,7 +212,7 @@ RA8_INTERNAL static void internal_count_cb(const char* name, uint8_t attr, uint6
 /**
  * @test test_mcdc_mount_null_and_ops
  * @par MC/DC:
- * Two decisions in `libs/ra8_fs/src/ra8_fs_fat_mount.c@priv_mount_locked`.
+ * Two decisions in `libs/ra8_fs/src/ra8_fs_fat_mount.c@internal_mount_locked`.
  *
  * Guard `if (backend == nullptr || out_handle == nullptr)` (2 conditions):
  * - V1: backend=ok,   out=ok    -> C1=F, C2=F -> dec F (mounts -> ok).
@@ -289,7 +289,7 @@ RA8_INTERNAL static void internal_test_mcdc_open_null_guard(void)
  * @test test_mcdc_listdir_and_unlink_null_guards
  * @par MC/DC:
  * Guard `if (handle == nullptr || cb == nullptr || path == nullptr)` in
- * `libs/ra8_fs/src/ra8_fs_fat_dir.c@priv_listdir_locked` (3 conditions):
+ * `libs/ra8_fs/src/ra8_fs_fat_dir.c@internal_listdir_locked` (3 conditions):
  * - V1: handle,cb,path all ok -> F,F,F -> dec F (lists root -> ok).
  * - V2: handle=NULL           -> C1=T short      -> null_ptr.
  * - V3: cb=NULL  (handle,path ok) -> C1=F,C2=T short -> null_ptr.
@@ -297,7 +297,7 @@ RA8_INTERNAL static void internal_test_mcdc_open_null_guard(void)
  *
  * @par MC/DC:
  * Guard `if (handle == nullptr || path == nullptr)` in
- * `libs/ra8_fs/src/ra8_fs_fat_dir.c@priv_unlink_locked` (2 conditions):
+ * `libs/ra8_fs/src/ra8_fs_fat_dir.c@internal_unlink_locked` (2 conditions):
  * - V5: handle=ok,   path=ok    -> F,F -> dec F (missing file -> not_found).
  * - V6: handle=NULL, path=ok    -> C1=T short -> null_ptr.
  * - V7: handle=ok,   path=NULL  -> C1=F,C2=T  -> null_ptr. @brief Exercise the mcdc listdir and unlink null guards filesystem operation. @details Runs the mcdc listdir and unlink null guards vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
@@ -329,7 +329,7 @@ RA8_INTERNAL static void internal_test_mcdc_listdir_and_unlink_null_guards(void)
  * @test test_mcdc_read_guards
  * @par MC/DC:
  * Guard `if (file == nullptr || buf == nullptr || got_len == nullptr)` in
- * `libs/ra8_fs/src/ra8_fs_fat_fileio.c@priv_read_locked` (3 conditions):
+ * `libs/ra8_fs/src/ra8_fs_fat_fileio.c@internal_read_locked` (3 conditions):
  * - V1: file,buf,got all ok -> F,F,F -> dec F (reads bytes).
  * - V2: file=NULL           -> C1=T short      -> null_ptr.
  * - V3: buf=NULL  (file ok)  -> C1=F,C2=T short -> null_ptr.
@@ -379,7 +379,7 @@ RA8_INTERNAL static void internal_test_mcdc_read_guards(void)
  * @test test_mcdc_write_guards
  * @par MC/DC:
  * Guard `if (file == nullptr || buf == nullptr)` in
- * `libs/ra8_fs/src/ra8_fs_fat_fileio.c@priv_write_locked` (2 conditions):
+ * `libs/ra8_fs/src/ra8_fs_fat_fileio.c@internal_write_locked` (2 conditions):
  * - V1: file=ok,   buf=ok    -> F,F -> dec F (writes bytes).
  * - V2: file=NULL, buf=ok    -> C1=T short -> null_ptr.
  * - V3: file=ok,   buf=NULL  -> C1=F,C2=T  -> null_ptr.
@@ -431,14 +431,14 @@ RA8_INTERNAL static void internal_test_mcdc_write_guards(void)
  * @test test_mcdc_tell_and_size_null_guards
  * @par MC/DC:
  * Guard `if (file == nullptr || out_offset == nullptr)` in
- * `libs/ra8_fs/src/ra8_fs_fat_fileio.c@priv_tell_locked` (2 conditions):
+ * `libs/ra8_fs/src/ra8_fs_fat_fileio.c@internal_tell_locked` (2 conditions):
  * - V1: file=ok,   out=ok    -> F,F -> dec F (returns offset).
  * - V2: file=NULL, out=ok    -> C1=T short -> null_ptr.
  * - V3: file=ok,   out=NULL  -> C1=F,C2=T  -> null_ptr.
  *
  * @par MC/DC:
  * Guard `if (file == nullptr || out_bytes == nullptr)` in
- * `libs/ra8_fs/src/ra8_fs_fat_fileio.c@priv_size_locked` (2 conditions), same shape:
+ * `libs/ra8_fs/src/ra8_fs_fat_fileio.c@internal_size_locked` (2 conditions), same shape:
  * - V4: file=ok, out=ok -> F,F; V5: file=NULL -> C1=T; V6: out=NULL -> C1=F,C2=T. @brief Exercise the mcdc tell and size null guards filesystem operation. @details Runs the mcdc tell and size null guards vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_mcdc_tell_and_size_null_guards(void)
@@ -469,7 +469,7 @@ RA8_INTERNAL static void internal_test_mcdc_tell_and_size_null_guards(void)
  * @test test_mcdc_format_null_and_ops
  * @par MC/DC:
  * Guard `if (backend == nullptr || opts == nullptr)` in
- * `libs/ra8_fs/src/ra8_fs_fat_mount.c@priv_format_locked` (2 conditions):
+ * `libs/ra8_fs/src/ra8_fs_fat_mount.c@internal_format_locked` (2 conditions):
  * - V1: backend=ok,   opts=ok    -> F,F -> dec F (formats -> ok).
  * - V2: backend=NULL, opts=ok    -> C1=T short -> null_ptr.
  * - V3: backend=ok,   opts=NULL  -> C1=F,C2=T  -> null_ptr.

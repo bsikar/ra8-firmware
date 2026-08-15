@@ -316,7 +316,7 @@ RA8_INTERNAL static void internal_test_crashlog_safe_mode_threshold(void)
  *
  * @par MC/DC:
  * Decision: `magic == k_ra8_crashlog_magic_valid && payload_crc == crc`
- * (2 conditions) in `libs/ra8_core/src/ra8_crashlog.c@ra8_crashlog_is_valid`,
+ * (2 conditions) in `libs/ra8_core/src/ra8_crashlog.c@internal_crashlog_is_valid`,
  * reached through ra8_crashlog_peek(). `magic` is not covered by the CRC, so
  * the two conditions vary independently.
  * - Vector 1: magic=valid, crc=correct -> true  (control: both true)

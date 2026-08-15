@@ -503,7 +503,7 @@ typedef enum : uint32_t {
  * @test test_mcdc_read_walk_cache_resume
  * @par MC/DC:
  * Decision: `(walk_cache_cluster >= k_cluster_first_data) && (cluster_idx_now >=
- * walk_cache_idx)` in `libs/ra8_fs/src/ra8_fs_fat_fileio.c@priv_read_one_chunk`
+ * walk_cache_idx)` in `libs/ra8_fs/src/ra8_fs_fat_fileio.c@internal_read_one_chunk`
  * (2 conditions) -- the read accelerator's "resume from waypoint" guard.
  * - forward sequential read: the cache is set (C1=T) and each chunk's cluster
  *   index is at or ahead of the cached index (C2=T) -> resume from the waypoint.
@@ -569,7 +569,7 @@ RA8_INTERNAL static void internal_test_mcdc_read_walk_cache_resume(void)
  * @par MC/DC:
  * Decision: FAT16 band `(count >= k_cluster_count_fat12_max) && (count <
  * k_cluster_count_fat16_max)` in
- * `libs/ra8_fs/src/ra8_fs_fat_fmt.c@priv_fmt_count_in_band`
+ * `libs/ra8_fs/src/ra8_fs_fat_fmt.c@internal_fmt_count_in_band`
  * (2 conditions; the FAT12 boundary is
  * 4085, the FAT16 boundary 65525). The sibling format test covers the lower
  * bound (a too-small card makes `count >= 4085` false); this case drives the
@@ -605,7 +605,7 @@ RA8_INTERNAL static void internal_test_mcdc_format_fat16_band_upper(void)
  * @par MC/DC:
  * Decision: FAT32 band `(count >= k_cluster_count_fat16_max) && (count <=
  * k_fmt_fat32_clus_cap)` in
- * `libs/ra8_fs/src/ra8_fs_fat_fmt.c@priv_fmt_count_in_band`
+ * `libs/ra8_fs/src/ra8_fs_fat_fmt.c@internal_fmt_count_in_band`
  * (2 conditions). The FAT16 boundary is
  * 65525; the FAT32 cluster cap is 0x0FFFFFF0.
  * - 36 MiB card formatted as FAT32: the cluster count is well above 65525 and
@@ -639,7 +639,7 @@ RA8_INTERNAL static void internal_test_mcdc_format_fat32_band_lower(void)
  * @test test_mcdc_format_type_unsupported
  * @par MC/DC:
  * Decision: `if (opts->type != FAT12 && != FAT16 && != FAT32 && != exFAT)` in
- * `libs/ra8_fs/src/ra8_fs_fat_mount.c@priv_format_locked` (4 conditions). The guard
+ * `libs/ra8_fs/src/ra8_fs_fat_mount.c@internal_format_locked` (4 conditions). The guard
  * rejects with not_supported only when the type is NONE of the four writable
  * variants -- i.e. all four inequalities are TRUE.
  * - V1 unknown (0): A=T(!=12), B=T(!=16), C=T(!=32), D=T(!=exFAT) -> rejected.
@@ -679,7 +679,7 @@ internal_cap_bad_block_size(void* ctx, uint64_t* block_count, uint32_t* block_si
  * @test test_mcdc_format_block_size_guard
  * @par MC/DC:
  * Decision: `if ((priv_bps_valid(block_size) == 0U) || (block_count == 0U))` in
- * `libs/ra8_fs/src/ra8_fs_fat_mount.c@priv_format_locked` (2 conditions), after
+ * `libs/ra8_fs/src/ra8_fs_fat_mount.c@internal_format_locked` (2 conditions), after
  * `get_capacity`; sizes 512..4096 are all supported since #683.
  * - control: a valid 512-byte card -> C1=F, C2=F -> the format proceeds (the
  *   FAT16 round-trips in sibling tests). Re-asserted here as the both-false leg.
@@ -719,7 +719,7 @@ typedef enum : uint32_t {
  * @test test_mcdc_exfat_label_pack_terminator_and_cap
  * @par MC/DC:
  * Decision: `for (; (n < k_exfat_fmt_label_max) && (label[n] != '\0'); n++)` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_fmt.c@priv_exfat_label_utf16` (2 conditions),
+ * `libs/ra8_fs/src/ra8_fs_fat_exfat_fmt.c@internal_exfat_label_utf16` (2 conditions),
  * reached when `ra8_fs_format` lays the exFAT root volume-label entry.
  * - short label "RAEXFAT" (7 chars): the loop runs while `n < 11` (C1=T) and
  *   stops when `label[n] == '\0'` (C2=F) -- the terminator arm. C1 stays TRUE

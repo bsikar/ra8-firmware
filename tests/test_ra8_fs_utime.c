@@ -284,7 +284,7 @@ RA8_INTERNAL static void internal_test_utime_clamp(void)
  * @test test_utime_errors
  * @par MC/DC:
  * Decision: `if (handle == nullptr || path == nullptr)` (2 conditions) in
- * `libs/ra8_fs/src/ra8_fs_fat_utime.c@priv_utime_locked`.
+ * `libs/ra8_fs/src/ra8_fs_fat_utime.c@internal_utime_locked`.
  * - V1 handle=valid, path=valid -> F (control; the stamp runs).
  * - V2 handle=NULL,  path=valid -> C1=T -> T (varies handle only).
  * - V3 handle=valid, path=NULL  -> C1=F, C2=T -> T (varies path only).

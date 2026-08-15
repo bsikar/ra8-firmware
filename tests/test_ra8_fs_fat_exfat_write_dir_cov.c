@@ -115,7 +115,7 @@ RA8_INTERNAL static void internal_test_create_path_too_long(void)
  *
  * @par MC/DC:
  * Decision: `if (len == 0U)` in
- * `libs/ra8_fs/src/ra8_fs_fat_fileio.c@priv_write_locked` -- 1 condition.
+ * `libs/ra8_fs/src/ra8_fs_fat_fileio.c@internal_write_locked` -- 1 condition.
  * V1: len=0 -> T -> the write is a no-op and the created file stays empty
  *     (this test).
  * V2: len=1 -> F -> bytes are streamed (all the success-path cases).

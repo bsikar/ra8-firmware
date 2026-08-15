@@ -218,7 +218,7 @@ internal_dispatch_next(uint32_t job, uint64_t offset, uint32_t max_bytes)
  * single-fault vectors below; the three pulls also execute false/false/true
  * outcomes of the simple complete state selector and verify the digest is
  * published only on the terminal response.
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_service.c@mdl_dispatch_next
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_next
  * @brief Verify service multichunk and digest behavior. @details Executes the
  * service multichunk and digest scenario with bounded fixture state and asserts
  * the contract-specific result. @pre Fixed-capacity fixture storage required by
@@ -280,9 +280,9 @@ RA8_INTERNAL static void internal_test_service_multichunk_and_digest(void)
  * CancelRequest supplies the all-false control for
  * `(req == nullptr) || bad_protocol || !active || bad_job` and therefore
  * reaches the backend cancel exactly once. Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@mdl_dispatch_start Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@mdl_dispatch_next Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@mdl_dispatch_cancel @brief
+ * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_start Decisions:
+ * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_next Decisions:
+ * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_cancel @brief
  * Verify service busy stale and cancel behavior. @details Executes the service
  * busy stale and cancel scenario with bounded fixture state and asserts the
  * contract-specific result. @pre Fixed-capacity fixture storage required by
@@ -462,10 +462,10 @@ static void internal_expect_cancel_capacity_transaction(uint32_t job)
  * Cancel. Each too-small vector precedes its adequate-capacity retry, proving
  * the backend begin/read/cancel side effect and service
  * offset/sequence/activity changes occur only on V2. Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@mdl_check_response_size
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_service.c@mdl_dispatch_start
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_service.c@mdl_dispatch_next
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_service.c@mdl_dispatch_cancel
+ * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_check_response_size
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_start
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_next
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_cancel
  * @brief Verify response capacity is transactional behavior. @details Executes
  * the response capacity is transactional scenario with bounded fixture state
  * and asserts the contract-specific result. @pre Fixed-capacity fixture storage
@@ -506,7 +506,7 @@ RA8_INTERNAL static void internal_test_response_capacity_is_transactional(void)
  * backend or activates the service.
  * Decisions:
  * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@ra8_mdl_service_dispatch
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_service.c@mdl_dispatch_start
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_start
  * @brief Verify rejects malformed behavior. @details Executes the rejects
  * malformed scenario with bounded fixture state and asserts the
  * contract-specific result. @pre Fixed-capacity fixture storage required by
@@ -680,7 +680,7 @@ RA8_INTERNAL static void internal_test_rejects_unknown_request_fields(void)
  * all-false control and this single-fault vector prove `total_invalid`
  * independently decides rejection. The failure vector also proves
  * cancel/deactivation occurs before any response is published. Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@mdl_dispatch_next
+ * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_next
  * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation
  * is available. @post Documented outputs contain the exercised result when the
  * operation succeeds. */

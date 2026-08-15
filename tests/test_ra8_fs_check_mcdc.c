@@ -22,7 +22,7 @@
  * @test test_mcdc_fat_entry
  *
  * @par MC/DC:
- * `libs/ra8_fs/src/ra8_fs_fat_check.c@priv_fat_entry` -- two decisions.
+ * `libs/ra8_fs/src/ra8_fs_fat_check.c@internal_fat_entry` -- two decisions.
  * Decision A: `(is_dir == 0) && ((attr & volume_id) != 0)` (skip a label entry).
  * - dir entry        -> C1 false                 (a subdirectory).
  * - ordinary file    -> C1 true,  C2 false       (is_dir 0, volume_id 0).
@@ -68,7 +68,7 @@ RA8_INTERNAL static void internal_test_mcdc_fat_entry(void)
  * @test test_mcdc_fat_tree
  *
  * @par MC/DC:
- * `libs/ra8_fs/src/ra8_fs_fat_check.c@priv_fat_tree` --
+ * `libs/ra8_fs/src/ra8_fs_fat_check.c@internal_fat_tree` --
  * decision `(loc.is_root != 0) && !fat32` (walk a fixed root vs a cluster root).
  * - FAT16 root       -> C1 true,  C2 true        (fixed-root region).
  * - FAT32 root       -> C1 true,  C2 false       (cluster-chained root).
@@ -101,7 +101,7 @@ RA8_INTERNAL static void internal_test_mcdc_fat_tree(void)
  * @test test_mcdc_fat_diff
  *
  * @par MC/DC:
- * `libs/ra8_fs/src/ra8_fs_fat_check.c@priv_fat_diff` --
+ * `libs/ra8_fs/src/ra8_fs_fat_check.c@internal_fat_diff` --
  * decision `(v == free) || (v == marker)` (a cluster that is not lost).
  * - free cluster     -> C1 true                  (skipped, not lost).
  * - defective marker -> C1 false, C2 true        (skipped, not lost).
@@ -127,7 +127,7 @@ RA8_INTERNAL static void internal_test_mcdc_fat_diff(void)
  * @test test_mcdc_fat_fsinfo
  *
  * @par MC/DC:
- * `libs/ra8_fs/src/ra8_fs_fat_check.c@priv_fat_fsinfo` -- two decisions.
+ * `libs/ra8_fs/src/ra8_fs_fat_check.c@internal_fat_fsinfo` -- two decisions.
  * Decision A: `(lba == 0) || (lba >= reserved_sectors)` (an untrustworthy FSInfo).
  * - BPB_FSInfo 0     -> C1 true                  (absent).
  * - valid FSInfo     -> C1 false, C2 false       (compared).
@@ -223,7 +223,7 @@ static void internal_test_mcdc_check_locked(void)
  * @test test_mcdc_exchk_set
  *
  * @par MC/DC:
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_check.c@priv_exchk_set` --
+ * `libs/ra8_fs/src/ra8_fs_fat_exfat_check.c@internal_exchk_set` --
  * decision `(count < 2) || (count > k_exfat_set_max_entries)` (a malformed set).
  * - SecondaryCount 0   -> C1 true              (count 1 < 2).
  * - SecondaryCount 200 -> C1 false, C2 true    (count 201 over the maximum).
@@ -286,7 +286,7 @@ static void internal_test_mcdc_exchk_scan_dir(void)
  * @test test_mcdc_exchk_diff_byte
  *
  * @par MC/DC:
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_check.c@priv_exchk_diff_byte` -- two decisions.
+ * `libs/ra8_fs/src/ra8_fs_fat_exfat_check.c@internal_exchk_diff_byte` -- two decisions.
  * Decision A: `(alloc != 0) && (refd == 0)` (a lost cluster).
  * - spare bit set     -> C1 true,  C2 true       (allocated, unreferenced).
  * - live cluster      -> C1 true,  C2 false       (allocated and referenced).
