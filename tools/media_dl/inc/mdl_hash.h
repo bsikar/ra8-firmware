@@ -110,8 +110,14 @@ uint64_t mdl_hash_str(const char* s);
  * @brief FNV-1a 64 hash of a file's full contents.
  *
  * @details
- * Streams @p path through a bounded stack buffer so an arbitrarily large image
- * is hashed with no dynamic allocation. Used to verify a page already on disk
+ * Opens @p path without following a symlink in its final component and in
+ * non-blocking mode, rejects non-regular objects before reading, then hashes a
+ * regular file up to the implementation's 8.192 GB safety limit through
+ * bounded POSIX reads and a bounded stack buffer. The size is snapshotted
+ * before reading; short input, a trailing byte from a concurrent append, or an
+ * exhausted read-call ceiling fails rather than publishing a partial-prefix
+ * digest.
+ * Used to verify a page already on disk
  * still matches the identity recorded in state (a torn file re-hashes to a
  * different value and is refetched) and to record the identity of a freshly
  * fetched page.
@@ -121,11 +127,16 @@ uint64_t mdl_hash_str(const char* s);
  *
  * @return An ::ra8_err_t result.
  * @retval k_ra8_ok              File read fully and hashed; `*out` is set.
- * @retval k_ra8_err_invalid_arg @p path or @p out was NULL.
- * @retval k_ra8_fail            The file could not be opened or a read errored.
+ * @retval k_ra8_err_invalid_arg @p path or @p out was NULL, or the path was a
+ *                               symlink or non-regular object.
+ * @retval k_ra8_err_invalid_size The regular file exceeded the safety bound.
+ * @retval k_ra8_err_not_found   The path or a path component did not exist.
+ * @retval k_ra8_err_access_denied The process lacked permission to open it.
+ * @retval k_ra8_fail            Other open/stat/read/close failure.
  *
  * @pre @p path and @p out are non-NULL.
- * @pre @p path names a readable regular file for success.
+ * @pre The host provides POSIX `open`, `O_NONBLOCK`, and `O_NOFOLLOW` semantics.
+ * @pre @p path directly names a readable regular file for success.
  * @post `*out` is written only on ::k_ra8_ok.
  * @post The file position/contents are not modified.
  *

@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_book_chunked.h"
 #include "ra8_book_stream.h"
 #include "ra8_io_compress.h"
@@ -23,7 +24,7 @@ typedef enum : uint32_t {
   k_stream_pool          = 6U,    /**< Two gray4 bytes plus four SVG.     */
   k_stream_chunk         = 64U,   /**< Writer/reader inflated chunk size. */
   k_stream_compressed    = 256U,  /**< One compressed-stream budget.      */
-  k_stream_packed        = 2048U, /**< Complete RBKC destination budget. */
+  k_stream_packed        = 2048U, /**< Complete RBKC destination budget.  */
   k_stream_offsets       = 8U,    /**< Chunk-table entry budget.          */
   k_stream_validate_work = 17U,   /**< CRC transfer + node mark budget.   */
 } stream_limit_t;
@@ -50,9 +51,17 @@ typedef struct {
 
 /** @brief Compressor arena with conservative host and target alignment. */
 typedef union {
-  max_align_t align; /**< Forces alignment suitable for tdefl state. */
+  /** @brief Forces alignment suitable for tdefl state. */
+  max_align_t align;
   uint8_t     bytes[k_ra8_io_compress_scratch_bytes]; /**< Compressor bytes. */
 } stream_compressor_t;
+
+/** @brief One live packed-reader fixture for strict guard fault vectors. */
+typedef struct {
+  stream_mem_t       file;                    /**< Packed file callback state. */
+  uint64_t           table[k_stream_offsets]; /**< Retained chunk table.       */
+  ra8_book_chunked_t reader;                  /**< Open reader under test.     */
+} stream_guard_fixture_t;
 
 static stream_book_t       s_book;
 static uint8_t             s_packed[k_stream_packed];
@@ -65,7 +74,8 @@ static uint8_t             s_validate_work[k_stream_validate_work];
 static stream_compressor_t s_compressor;
 static tinfl_decompressor  s_tinfl;
 
-/** @brief Compute the fixture's logical length without trailing struct padding. */
+/** @brief Compute the fixture's logical length without trailing struct padding.
+ */
 static uint32_t flat_len(void)
 {
   return (uint32_t)(offsetof(stream_book_t, pool) + sizeof(s_book.pool));
@@ -103,8 +113,9 @@ static uint32_t fixture_intern(uint32_t* cursor, const char* text)
   return at;
 }
 
-/** @brief Build one canonical flat blob accepted by every strict pass. */
-static void setup_book(void)
+/** @brief Initialize canonical flat-header geometry over the fixture layout. */
+RA8_INTERNAL
+static void internal_setup_book_header(void)
 {
   (void)memset(&s_book, 0, sizeof(s_book));
   (void)memcpy(s_book.hdr.magic, "RABOOK1", sizeof(s_book.hdr.magic));
@@ -124,7 +135,13 @@ static void setup_book(void)
   s_book.hdr.string_size      = sizeof(s_book.strings);
   s_book.hdr.image_pool_off   = offsetof(stream_book_t, pool);
   s_book.hdr.image_pool_size  = sizeof(s_book.pool);
+}
 
+/** @brief Build one canonical flat blob accepted by every strict pass. */
+RA8_INTERNAL
+static void internal_setup_book(void)
+{
+  internal_setup_book_header();
   uint32_t       cursor        = 1U;
   const uint32_t body          = fixture_intern(&cursor, "body");
   const uint32_t klass         = fixture_intern(&cursor, "class");
@@ -263,7 +280,7 @@ fixture_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size
 static void test_flat_happy_and_args(void)
 {
   TEST_BEGIN("strict stream flat happy and arguments");
-  setup_book();
+  internal_setup_book();
   TEST_ASSERT_EQ(k_ra8_ok, validate_flat());
   char   xhtml[64] = {};
   size_t xhtml_len = 0U;
@@ -291,24 +308,24 @@ static void test_flat_happy_and_args(void)
 static void test_header_table_string_crc_corruption(void)
 {
   TEST_BEGIN("strict stream header table string and CRC corruption");
-  setup_book();
+  internal_setup_book();
   s_book.hdr.magic[0] = 'X';
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
-  setup_book();
+  internal_setup_book();
   s_book.hdr.flags = 0x80000000U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
-  setup_book();
+  internal_setup_book();
   s_book.hdr.chapter_off++;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, validate_flat());
-  setup_book();
+  internal_setup_book();
   s_book.hdr.title_off++;
   refresh_crc();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
-  setup_book();
+  internal_setup_book();
   s_book.chapters[0].root_node = s_book.hdr.node_count;
   refresh_crc();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
-  setup_book();
+  internal_setup_book();
   s_book.hdr.crc32 ^= UINT32_MAX;
   TEST_ASSERT_EQ(k_ra8_err_range_check_failed, validate_flat());
   TEST_END("strict stream header table string and CRC corruption");
@@ -318,49 +335,50 @@ static void test_header_table_string_crc_corruption(void)
 static void test_dom_ownership_and_renderer_safety(void)
 {
   TEST_BEGIN("strict stream DOM ownership and renderer safety");
-  setup_book();
+  internal_setup_book();
   s_book.nodes[1].next_sibling = 0U;
   refresh_crc();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
-  setup_book();
+  internal_setup_book();
   s_book.nodes[1].kind         = (uint8_t)k_ra8_book_node_element;
   s_book.nodes[1].name_off     = s_book.nodes[0].name_off;
   s_book.nodes[1].text_off     = 0U;
   s_book.chapters[0].root_node = 1U;
   refresh_crc();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
-  setup_book();
+  internal_setup_book();
   s_book.nodes[0].first_child = (uint32_t)k_ra8_book_nil;
   refresh_crc();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
-  setup_book();
+  internal_setup_book();
   s_book.nodes[0].name_off = 0U;
   refresh_crc();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
-  setup_book();
+  internal_setup_book();
   s_book.attrs[0].name_off = 0U;
   refresh_crc();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
   TEST_END("strict stream DOM ownership and renderer safety");
 }
 
-/** @test Image formats, depths, dimensions, extents, and pool tiling fail closed. */
+/** @test Image formats, depths, dimensions, extents, and pool tiling fail
+ * closed. */
 static void test_image_corruption(void)
 {
   TEST_BEGIN("strict stream image corruption");
-  setup_book();
+  internal_setup_book();
   s_book.images[0].format = UINT8_MAX;
   refresh_crc();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
-  setup_book();
+  internal_setup_book();
   s_book.images[0].data_size++;
   refresh_crc();
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, validate_flat());
-  setup_book();
+  internal_setup_book();
   s_book.images[1].data_off++;
   refresh_crc();
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, validate_flat());
-  setup_book();
+  internal_setup_book();
   s_book.images[1].data_size = 0U;
   s_book.images[1].raw_size  = 0U;
   s_book.hdr.image_pool_size = 2U;
@@ -378,11 +396,12 @@ static void test_image_corruption(void)
   TEST_END("strict stream image corruption");
 }
 
-/** @test Production writer -> reader validation checks every compressed chunk. */
+/** @test Production writer -> reader validation checks every compressed chunk.
+ */
 static void test_production_rbkc_round_trip_and_chunk_corruption(void)
 {
   TEST_BEGIN("strict stream production RBKC round trip and chunk corruption");
-  setup_book();
+  internal_setup_book();
   (void)memset(s_packed, 0, sizeof(s_packed));
   stream_mem_t                     source = {.data = (uint8_t*)&s_book, .len = flat_len()};
   stream_mem_t                     dest   = {.data = s_packed, .len = sizeof(s_packed)};
@@ -439,6 +458,156 @@ static void test_production_rbkc_round_trip_and_chunk_corruption(void)
   TEST_END("strict stream production RBKC round trip and chunk corruption");
 }
 
+/** @brief Build and open one canonical packed fixture for guard tests. */
+RA8_INTERNAL
+static void internal_open_chunk_guard_fixture(stream_guard_fixture_t* fixture)
+{
+  internal_setup_book();
+  (void)memset(s_packed, 0, sizeof(s_packed));
+  stream_mem_t                     source = {.data = (uint8_t*)&s_book, .len = flat_len()};
+  stream_mem_t                     dest   = {.data = s_packed, .len = sizeof(s_packed)};
+  ra8_rabook_container_workspace_t ws = {.input          = s_chunk_in,
+                                         .compressed     = s_compressed,
+                                         .compressor     = s_compressor.bytes,
+                                         .offsets        = s_offsets,
+                                         .input_cap      = sizeof(s_chunk_in),
+                                         .compressed_cap = sizeof(s_compressed),
+                                         .compressor_cap = sizeof(s_compressor.bytes),
+                                         .offset_cap = sizeof(s_offsets) / sizeof(s_offsets[0])};
+  uint64_t                         packed_len = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_rabook_container_write(writer_read,
+                                            &source,
+                                            flat_len(),
+                                            k_stream_chunk,
+                                            writer_write,
+                                            &dest,
+                                            &ws,
+                                            &packed_len));
+  fixture->file = (stream_mem_t){.data = s_packed, .len = packed_len};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_book_chunked_open(&fixture->reader,
+                                       memory_read,
+                                       &fixture->file,
+                                       fixture->file.len,
+                                       fixture_inflate,
+                                       fixture->table,
+                                       sizeof(fixture->table) / sizeof(fixture->table[0]),
+                                       s_reader_staging,
+                                       sizeof(s_reader_staging)));
+}
+
+/** @brief Prove every known reader/workspace/output alias fails before I/O. */
+RA8_INTERNAL
+static void internal_check_chunked_alias_guards(stream_guard_fixture_t* fixture)
+{
+  ra8_book_header_t hdr = {.total_size = UINT32_MAX};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_book_chunked_validate_strict(&fixture->reader,
+                                                  s_reader_chunk,
+                                                  sizeof(s_reader_chunk),
+                                                  s_reader_chunk,
+                                                  sizeof(s_reader_chunk),
+                                                  &hdr));
+  TEST_ASSERT_EQ(0U, hdr.total_size);
+  hdr.total_size = UINT32_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_book_chunked_validate_strict(&fixture->reader,
+                                                  s_reader_staging,
+                                                  sizeof(s_reader_staging),
+                                                  s_validate_work,
+                                                  sizeof(s_validate_work),
+                                                  &hdr));
+  TEST_ASSERT_EQ(0U, hdr.total_size);
+  hdr.total_size = UINT32_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_book_chunked_validate_strict(&fixture->reader,
+                                                  (uint8_t*)fixture->table,
+                                                  sizeof(s_reader_chunk),
+                                                  s_validate_work,
+                                                  sizeof(s_validate_work),
+                                                  &hdr));
+  TEST_ASSERT_EQ(0U, hdr.total_size);
+
+  const ra8_book_chunked_t saved = fixture->reader;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_book_chunked_validate_strict(&fixture->reader,
+                                                  s_reader_chunk,
+                                                  sizeof(s_reader_chunk),
+                                                  s_validate_work,
+                                                  sizeof(s_validate_work),
+                                                  (ra8_book_header_t*)(void*)&fixture->reader));
+  TEST_ASSERT_EQ(0, memcmp(&saved, &fixture->reader, sizeof(saved)));
+
+  union {
+    ra8_book_chunked_t reader;
+    uint8_t            chunk[k_stream_chunk];
+  } reader_chunk_alias = {.reader = fixture->reader};
+  hdr.total_size       = UINT32_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_book_chunked_validate_strict(&reader_chunk_alias.reader,
+                                                  reader_chunk_alias.chunk,
+                                                  sizeof(reader_chunk_alias.chunk),
+                                                  s_validate_work,
+                                                  sizeof(s_validate_work),
+                                                  &hdr));
+  TEST_ASSERT_EQ(0U, hdr.total_size);
+}
+
+/** @brief Prove fabricated/partial reader geometry fails before table access. */
+RA8_INTERNAL
+static void internal_check_chunked_reader_guards(const stream_guard_fixture_t* fixture)
+{
+  ra8_book_header_t  hdr    = {.total_size = UINT32_MAX};
+  ra8_book_chunked_t broken = fixture->reader;
+  broken.chunk_count++;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 ra8_book_chunked_validate_strict(&broken,
+                                                  s_reader_chunk,
+                                                  sizeof(s_reader_chunk),
+                                                  s_validate_work,
+                                                  sizeof(s_validate_work),
+                                                  &hdr));
+  TEST_ASSERT_EQ(0U, hdr.total_size);
+  broken         = fixture->reader;
+  broken.staging = nullptr;
+  hdr.total_size = UINT32_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 ra8_book_chunked_validate_strict(&broken,
+                                                  s_reader_chunk,
+                                                  sizeof(s_reader_chunk),
+                                                  s_validate_work,
+                                                  sizeof(s_validate_work),
+                                                  &hdr));
+  TEST_ASSERT_EQ(0U, hdr.total_size);
+
+  uint64_t short_table[1]  = {};
+  broken                   = fixture->reader;
+  broken.table             = short_table;
+  broken.table_cap_entries = (uint32_t)(sizeof(short_table) / sizeof(short_table[0]));
+  hdr.total_size           = UINT32_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 ra8_book_chunked_validate_strict(&broken,
+                                                  s_reader_chunk,
+                                                  sizeof(s_reader_chunk),
+                                                  s_validate_work,
+                                                  sizeof(s_validate_work),
+                                                  &hdr));
+  TEST_ASSERT_EQ(0U, hdr.total_size);
+}
+
+/** @test Aliased workspaces and partially initialized readers fail before I/O. */
+RA8_INTERNAL
+static void internal_test_chunked_workspace_and_reader_guards(void)
+{
+  TEST_BEGIN("strict chunked workspace and reader guards");
+  stream_guard_fixture_t fixture = {};
+  internal_open_chunk_guard_fixture(&fixture);
+  internal_check_chunked_alias_guards(&fixture);
+  internal_check_chunked_reader_guards(&fixture);
+  TEST_END("strict chunked workspace and reader guards");
+}
+
 int main(void)
 {
   test_flat_happy_and_args();
@@ -446,5 +615,6 @@ int main(void)
   test_dom_ownership_and_renderer_safety();
   test_image_corruption();
   test_production_rbkc_round_trip_and_chunk_corruption();
+  internal_test_chunked_workspace_and_reader_guards();
   return 0;
 }
