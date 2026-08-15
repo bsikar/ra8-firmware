@@ -17,9 +17,9 @@
  *   ::ra8_rar5_decompress.
  *
  * The dependency is one-directional: the driver calls into the front-end for a
- * raw bit read (::ra8_rar5_get), one Huffman symbol (::ra8_rar5_decode_num), a
- * block header (::ra8_rar5_read_block_header), and a table block
- * (::ra8_rar5_read_tables). The front-end never calls back into the driver. This
+ * raw bit read (::priv_rar5_get), one Huffman symbol (::priv_rar5_decode_num), a
+ * block header (::priv_rar5_read_block_header), and a table block
+ * (::priv_rar5_read_tables). The front-end never calls back into the driver. This
  * header is the entire contract between them plus the shared bit-field / symbol /
  * filter enum vocabulary and the decoded block-header struct; it is not part of
  * the public ::ra8_rar5_decompress surface (`ra8_rar5.h`).
@@ -173,7 +173,7 @@ typedef enum : uint16_t {
 /**
  * @struct r5_block_t
  * @brief Decoded fields of one RAR5 compressed-block header.
- * @details Filled by ::ra8_rar5_read_block_header and consumed by the driver's
+ * @details Filled by ::priv_rar5_read_block_header and consumed by the driver's
  *          block loop.
  * @since Version 0.1.0
  */
@@ -198,10 +198,10 @@ typedef struct {
  * @post `st->consumed` increased by @p n.
  * @post `st->nbits` decreased by @p n.
  * @note Not thread-safe.
- * @see ra8_rar5_decode_num()
+ * @see priv_rar5_decode_num()
  * @since Version 0.1.0
  */
-RA8_PRIV uint32_t ra8_rar5_get(ra8_rar5_state_t* st, uint32_t n);
+RA8_PRIV uint32_t priv_rar5_get(ra8_rar5_state_t* st, uint32_t n);
 
 /**
  * @brief Decode one Huffman symbol from @p d, consuming its code bits.
@@ -219,10 +219,10 @@ RA8_PRIV uint32_t ra8_rar5_get(ra8_rar5_state_t* st, uint32_t n);
  * @post `st->consumed` advanced by the code's bit length (>= 1).
  * @post The returned symbol is < `d->max`.
  * @note Not thread-safe.
- * @see ra8_rar5_get()
+ * @see priv_rar5_get()
  * @since Version 0.1.0
  */
-RA8_PRIV uint32_t ra8_rar5_decode_num(ra8_rar5_state_t* st, const ra8_rar5_dtab_t* d);
+RA8_PRIV uint32_t priv_rar5_decode_num(ra8_rar5_state_t* st, const ra8_rar5_dtab_t* d);
 
 /**
  * @brief Read and validate one RAR5 block header at the current bit position.
@@ -239,10 +239,10 @@ RA8_PRIV uint32_t ra8_rar5_decode_num(ra8_rar5_state_t* st, const ra8_rar5_dtab_
  * @post On k_ra8_ok, @p b holds the block size, table flag, and last flag.
  * @post `st->consumed` advanced past the whole header.
  * @note Not thread-safe.
- * @see ra8_rar5_read_tables()
+ * @see priv_rar5_read_tables()
  * @since Version 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_rar5_read_block_header(ra8_rar5_state_t* st, r5_block_t* b);
+RA8_PRIV ra8_err_t priv_rar5_read_block_header(ra8_rar5_state_t* st, r5_block_t* b);
 
 /**
  * @brief Parse a table block: build the BD pre-table then the four LZ tables.
@@ -257,12 +257,12 @@ RA8_PRIV ra8_err_t ra8_rar5_read_block_header(ra8_rar5_state_t* st, r5_block_t* 
  * @pre @p st is a bound decoder state at a table block.
  * @pre @p st scratch tables are writable.
  * @post On k_ra8_ok, `st->tables_ready` is true.
- * @post The four LZ decode tables are usable by ::ra8_rar5_decode_num.
+ * @post The four LZ decode tables are usable by ::priv_rar5_decode_num.
  * @note Not thread-safe.
- * @see ra8_rar5_read_block_header()
+ * @see priv_rar5_read_block_header()
  * @since Version 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_rar5_read_tables(ra8_rar5_state_t* st);
+RA8_PRIV ra8_err_t priv_rar5_read_tables(ra8_rar5_state_t* st);
 
 /**
  * @brief Copy an LZ match of @p length bytes at back-distance @p dist into @p out.
@@ -292,7 +292,7 @@ RA8_PRIV ra8_err_t ra8_rar5_read_tables(ra8_rar5_state_t* st);
  * @since Version 0.1.0
  */
 RA8_PRIV bool
-ra8_rar5_copy_match(uint8_t* out, size_t* out_pos, size_t unp, uint32_t length, uint64_t dist);
+priv_rar5_copy_match(uint8_t* out, size_t* out_pos, size_t unp, uint32_t length, uint64_t dist);
 
 /**
  * @brief Apply the per-channel byte-delta filter over @p d.
@@ -319,7 +319,7 @@ ra8_rar5_copy_match(uint8_t* out, size_t* out_pos, size_t unp, uint32_t length, 
  * @since Version 0.1.0
  */
 RA8_PRIV void
-ra8_rar5_filter_delta(ra8_rar5_state_t* st, uint8_t* d, uint32_t len, uint32_t channels);
+priv_rar5_filter_delta(ra8_rar5_state_t* st, uint8_t* d, uint32_t len, uint32_t channels);
 
 /**
  * @brief Extend @p out with @p count zero bit-lengths, bounded by @p max.
@@ -344,7 +344,7 @@ ra8_rar5_filter_delta(ra8_rar5_state_t* st, uint8_t* d, uint32_t len, uint32_t c
  * ::internal_read_bd_lengths in `ra8_rar5_tables.c`.
  * @since Version 0.1.0
  */
-RA8_PRIV uint32_t ra8_rar5_fill_zeros(uint8_t* out, uint32_t start, uint32_t count, uint32_t max);
+RA8_PRIV uint32_t priv_rar5_fill_zeros(uint8_t* out, uint32_t start, uint32_t count, uint32_t max);
 
 /**
  * @brief Append one run (copy-previous or zero) to the length table.
@@ -367,14 +367,14 @@ RA8_PRIV uint32_t ra8_rar5_fill_zeros(uint8_t* out, uint32_t start, uint32_t cou
  * Promoted from file-static so the host suite can reach the `!is_zero && *idx == 0`
  * copy-with-no-previous leg and the `i < k_ra8_rar5_huff_total` clamp leg of
  * `c < count && i < k_ra8_rar5_huff_total` directly. The two `||` decisions
- * (is_long / is_zero) stay covered by the ::ra8_rar5_read_tables round-trip.
+ * (is_long / is_zero) stay covered by the ::priv_rar5_read_tables round-trip.
  * Production caller remains ::internal_read_full_table in `ra8_rar5_tables.c`.
  * @since Version 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_rar5_apply_run(ra8_rar5_state_t* st,
-                                      uint8_t*          tbl,
-                                      uint32_t*         idx,
-                                      uint32_t          num);
+RA8_PRIV ra8_err_t priv_rar5_apply_run(ra8_rar5_state_t* st,
+                                       uint8_t*          tbl,
+                                       uint32_t*         idx,
+                                       uint32_t          num);
 
 #ifdef __cplusplus
 }

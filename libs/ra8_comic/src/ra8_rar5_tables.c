@@ -9,12 +9,12 @@
  * The lower half of the clean-room RAR 5.0 decompressor (paired with the LZ
  * driver in `ra8_rar5.c`). Three layers, bottom-up:
  * - Bit reader: ::internal_fetch_byte / ::internal_ensure / ::internal_peek / ::internal_drop /
- *   ::ra8_rar5_get / ::internal_align pull packed bytes through the archive
+ *   ::priv_rar5_get / ::internal_align pull packed bytes through the archive
  *   ::ra8_rar_read_fn on demand, serving an MSB-first bit stream.
  * - Huffman: ::internal_make_tables builds a canonical decode table from a bit-length
- *   vector; ::ra8_rar5_decode_num reads one symbol.
- * - Container: ::ra8_rar5_read_block_header validates one compressed-block header
- *   and ::ra8_rar5_read_tables parses the four LZ decode tables that drive it.
+ *   vector; ::priv_rar5_decode_num reads one symbol.
+ * - Container: ::priv_rar5_read_block_header validates one compressed-block header
+ *   and ::priv_rar5_read_tables parses the four LZ decode tables that drive it.
  *
  * The driver in `ra8_rar5.c` calls the four ::ra8_rar5_internal.h cross-TU entry
  * points here; nothing in this unit calls back into the driver.
@@ -47,8 +47,7 @@
  * @note Not thread-safe; drives the archive reader.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static uint8_t internal_fetch_byte(ra8_rar5_state_t* st)
+RA8_INTERNAL static uint8_t internal_fetch_byte(ra8_rar5_state_t* st)
 {
   if (st->refill_pos >= st->refill_len) {
     if (st->fetched >= st->packlen) {
@@ -87,8 +86,7 @@ static uint8_t internal_fetch_byte(ra8_rar5_state_t* st)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static void internal_ensure(ra8_rar5_state_t* st, uint32_t n)
+RA8_INTERNAL static void internal_ensure(ra8_rar5_state_t* st, uint32_t n)
 {
   while (st->nbits < n) { /* bound: n<=32, +8 bits per pass -> <=4 passes */
     const uint8_t b = internal_fetch_byte(st);
@@ -112,8 +110,7 @@ static void internal_ensure(ra8_rar5_state_t* st, uint32_t n)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static uint32_t internal_peek(ra8_rar5_state_t* st, uint32_t n)
+RA8_INTERNAL static uint32_t internal_peek(ra8_rar5_state_t* st, uint32_t n)
 {
   internal_ensure(st, n);
   const uint64_t mask = ((uint64_t)1U << n) - (uint64_t)1U;
@@ -134,8 +131,7 @@ static uint32_t internal_peek(ra8_rar5_state_t* st, uint32_t n)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static void internal_drop(ra8_rar5_state_t* st, uint32_t n)
+RA8_INTERNAL static void internal_drop(ra8_rar5_state_t* st, uint32_t n)
 {
   st->nbits -= n;
   st->consumed += (uint64_t)n;
@@ -145,8 +141,8 @@ static void internal_drop(ra8_rar5_state_t* st, uint32_t n)
   st->acc &= mask;
 }
 
-/** @brief Implementation of `ra8_rar5_get()` -- ::internal_peek then ::internal_drop of @p n bits. */
-uint32_t ra8_rar5_get(ra8_rar5_state_t* st, uint32_t n)
+/** @brief Implementation of `priv_rar5_get()` -- ::internal_peek then ::internal_drop of @p n bits. */
+RA8_PRIV uint32_t priv_rar5_get(ra8_rar5_state_t* st, uint32_t n)
 {
   const uint32_t v = internal_peek(st, n);
   internal_drop(st, n);
@@ -166,8 +162,7 @@ uint32_t ra8_rar5_get(ra8_rar5_state_t* st, uint32_t n)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static void internal_align(ra8_rar5_state_t* st)
+RA8_INTERNAL static void internal_align(ra8_rar5_state_t* st)
 {
   internal_drop(st, st->nbits & (uint32_t)k_r5_low3_mask);
 }
@@ -189,8 +184,7 @@ static void internal_align(ra8_rar5_state_t* st)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static void internal_tab_limits(ra8_rar5_dtab_t* d, const uint32_t* count)
+RA8_INTERNAL static void internal_tab_limits(ra8_rar5_dtab_t* d, const uint32_t* count)
 {
   d->len[0]      = 0U;
   d->pos[0]      = 0U;
@@ -215,12 +209,12 @@ static void internal_tab_limits(ra8_rar5_dtab_t* d, const uint32_t* count)
  * @pre @p lengths holds @p size readable bytes.
  * @pre @p size <= ::k_ra8_rar5_nc.
  * @post `d->max == size` and populated slots hold their symbols.
- * @post Every slot index read by ::ra8_rar5_decode_num is initialised.
+ * @post Every slot index read by ::priv_rar5_decode_num is initialised.
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static void internal_make_tables(ra8_rar5_dtab_t* d, const uint8_t* lengths, uint16_t size)
+RA8_INTERNAL static void
+internal_make_tables(ra8_rar5_dtab_t* d, const uint8_t* lengths, uint16_t size)
 {
   uint32_t count[k_r5_maxbits + 1U] = {};
   for (uint16_t i = 0U; i < size; ++i) { /* bound: size <= k_ra8_rar5_nc */
@@ -243,8 +237,8 @@ static void internal_make_tables(ra8_rar5_dtab_t* d, const uint8_t* lengths, uin
   d->max = size;
 }
 
-/** @brief Implementation of `ra8_rar5_decode_num()` -- limit-compare canonical decode. */
-uint32_t ra8_rar5_decode_num(ra8_rar5_state_t* st, const ra8_rar5_dtab_t* d)
+/** @brief Implementation of `priv_rar5_decode_num()` -- limit-compare canonical decode. */
+RA8_PRIV uint32_t priv_rar5_decode_num(ra8_rar5_state_t* st, const ra8_rar5_dtab_t* d)
 {
   const uint32_t bf   = internal_peek(st, (uint32_t)k_r5_bf_bits) & (uint32_t)k_r5_bf_mask;
   uint32_t       bits = (uint32_t)k_r5_maxbits;
@@ -280,8 +274,7 @@ uint32_t ra8_rar5_decode_num(ra8_rar5_state_t* st, const ra8_rar5_dtab_t* d)
  * @note Thread-safe: pure.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static uint8_t internal_checksum(uint32_t flags, uint64_t blocksize)
+RA8_INTERNAL static uint8_t internal_checksum(uint32_t flags, uint64_t blocksize)
 {
   uint32_t x = (uint32_t)k_r5_hdr_chk_seed ^ flags;
   x ^= (uint32_t)(blocksize & (uint64_t)k_r5_byte_mask);
@@ -290,18 +283,18 @@ static uint8_t internal_checksum(uint32_t flags, uint64_t blocksize)
   return (uint8_t)(x & (uint32_t)k_r5_byte_mask);
 }
 
-/** @brief Implementation of `ra8_rar5_read_block_header()` -- align, flags, size, checksum. */
-ra8_err_t ra8_rar5_read_block_header(ra8_rar5_state_t* st, r5_block_t* b)
+/** @brief Implementation of `priv_rar5_read_block_header()` -- align, flags, size, checksum. */
+RA8_PRIV ra8_err_t priv_rar5_read_block_header(ra8_rar5_state_t* st, r5_block_t* b)
 {
   internal_align(st);
-  const uint32_t flags = ra8_rar5_get(st, (uint32_t)k_r5_byte_bits);
+  const uint32_t flags = priv_rar5_get(st, (uint32_t)k_r5_byte_bits);
   const uint32_t bytecount =
     ((flags >> (uint32_t)k_r5_bf_bcount_shift) & (uint32_t)k_r5_bf_bcount_mask) + 1U;
   uint64_t bsz = 0U;
   for (uint32_t i = 0U; i < bytecount; ++i) { /* bound: bytecount <= 4 */
-    bsz |= (uint64_t)ra8_rar5_get(st, (uint32_t)k_r5_byte_bits) << (i * (uint32_t)k_r5_byte_bits);
+    bsz |= (uint64_t)priv_rar5_get(st, (uint32_t)k_r5_byte_bits) << (i * (uint32_t)k_r5_byte_bits);
   }
-  const uint32_t saved = ra8_rar5_get(st, (uint32_t)k_r5_byte_bits);
+  const uint32_t saved = priv_rar5_get(st, (uint32_t)k_r5_byte_bits);
   if ((uint32_t)internal_checksum(flags, bsz) != saved) {
     return k_ra8_err_validation_failed;
   }
@@ -312,8 +305,8 @@ ra8_err_t ra8_rar5_read_block_header(ra8_rar5_state_t* st, r5_block_t* b)
   return k_ra8_ok;
 }
 
-/** @brief Implementation of `ra8_rar5_fill_zeros()` -- bounded zero-length append. */
-uint32_t ra8_rar5_fill_zeros(uint8_t* out, uint32_t start, uint32_t count, uint32_t max)
+/** @brief Implementation of `priv_rar5_fill_zeros()` -- bounded zero-length append. */
+RA8_PRIV uint32_t priv_rar5_fill_zeros(uint8_t* out, uint32_t start, uint32_t count, uint32_t max)
 {
   uint32_t i = start;
   for (uint32_t c = 0U; (c < count) && (i < max); ++c) { /* bound: count, i<max */
@@ -338,38 +331,40 @@ uint32_t ra8_rar5_fill_zeros(uint8_t* out, uint32_t start, uint32_t count, uint3
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_read_bd_lengths(ra8_rar5_state_t* st, uint8_t* out)
+RA8_INTERNAL static ra8_err_t internal_read_bd_lengths(ra8_rar5_state_t* st, uint8_t* out)
 {
   uint32_t i = 0U;
   while (i < (uint32_t)k_ra8_rar5_bc) { /* bound: i advances toward k_ra8_rar5_bc */
-    const uint32_t len = ra8_rar5_get(st, 4U);
+    const uint32_t len = priv_rar5_get(st, 4U);
     if (len != (uint32_t)k_r5_len_escape) {
       out[i] = (uint8_t)len;
       i += 1U;
       continue;
     }
-    const uint32_t zc = ra8_rar5_get(st, 4U);
+    const uint32_t zc = priv_rar5_get(st, 4U);
     if (zc == 0U) {
       out[i] = (uint8_t)k_r5_len_escape;
       i += 1U;
     } else {
-      i = ra8_rar5_fill_zeros(out, i, zc + (uint32_t)k_r5_zeros_extra, (uint32_t)k_ra8_rar5_bc);
+      i = priv_rar5_fill_zeros(out, i, zc + (uint32_t)k_r5_zeros_extra, (uint32_t)k_ra8_rar5_bc);
     }
   }
   return k_ra8_ok;
 }
 
-/** @brief Implementation of `ra8_rar5_apply_run()` -- copy-previous / zero run append. */
-ra8_err_t ra8_rar5_apply_run(ra8_rar5_state_t* st, uint8_t* tbl, uint32_t* idx, uint32_t num)
+/** @brief Implementation of `priv_rar5_apply_run()` -- copy-previous / zero run append. */
+RA8_PRIV ra8_err_t priv_rar5_apply_run(ra8_rar5_state_t* st,
+                                       uint8_t*          tbl,
+                                       uint32_t*         idx,
+                                       uint32_t          num)
 {
   const bool is_long =
     (num == (uint32_t)k_r5_tbl_copy_long) || (num == (uint32_t)k_r5_tbl_zero_long);
   const bool is_zero =
     (num == (uint32_t)k_r5_tbl_zero_short) || (num == (uint32_t)k_r5_tbl_zero_long);
   const uint32_t count =
-    is_long ? (ra8_rar5_get(st, (uint32_t)k_r5_run_long_bits) + (uint32_t)k_r5_run_long_add)
-            : (ra8_rar5_get(st, 3U) + 3U);
+    is_long ? (priv_rar5_get(st, (uint32_t)k_r5_run_long_bits) + (uint32_t)k_r5_run_long_add)
+            : (priv_rar5_get(st, 3U) + 3U);
   if ((!is_zero) && (*idx == 0U)) {
     return k_ra8_err_validation_failed;
   }
@@ -401,18 +396,17 @@ ra8_err_t ra8_rar5_apply_run(ra8_rar5_state_t* st, uint8_t* tbl, uint32_t* idx, 
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_read_full_table(ra8_rar5_state_t* st, uint8_t* tbl)
+RA8_INTERNAL static ra8_err_t internal_read_full_table(ra8_rar5_state_t* st, uint8_t* tbl)
 {
   uint32_t i = 0U;
   while (i < (uint32_t)k_ra8_rar5_huff_total) { /* bound: i advances each pass */
-    const uint32_t num = ra8_rar5_decode_num(st, &st->bd);
+    const uint32_t num = priv_rar5_decode_num(st, &st->bd);
     if (num < 16U) {
       tbl[i] = (uint8_t)num;
       i += 1U;
       continue;
     }
-    const ra8_err_t e = ra8_rar5_apply_run(st, tbl, &i, num);
+    const ra8_err_t e = priv_rar5_apply_run(st, tbl, &i, num);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -420,8 +414,8 @@ static ra8_err_t internal_read_full_table(ra8_rar5_state_t* st, uint8_t* tbl)
   return k_ra8_ok;
 }
 
-/** @brief Implementation of `ra8_rar5_read_tables()` -- BD pre-table then the four LZ tables. */
-ra8_err_t ra8_rar5_read_tables(ra8_rar5_state_t* st)
+/** @brief Implementation of `priv_rar5_read_tables()` -- BD pre-table then the four LZ tables. */
+RA8_PRIV ra8_err_t priv_rar5_read_tables(ra8_rar5_state_t* st)
 {
   uint8_t   bdlen[k_ra8_rar5_bc] = {};
   ra8_err_t e                    = internal_read_bd_lengths(st, bdlen);

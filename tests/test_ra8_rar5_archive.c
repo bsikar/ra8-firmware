@@ -445,6 +445,5 @@ int32_t main(void)
   test_rar_extract_dispatch();
   test_cbr_compressed_parity();
   test_cbr_rar4_compressed_unsupported();
-  (void)fprintf(stderr, "[OK  ] test_ra8_rar5_archive.c\n");
   return 0;
 }

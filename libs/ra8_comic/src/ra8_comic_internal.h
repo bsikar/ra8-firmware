@@ -10,7 +10,7 @@
  * `ra8_comic.c` owns the public API, the shared page-index storage, the entry-name
  * image filter, and the name-sort. Each container backend -- `ra8_comic_cbz.c`
  * (miniz ZIP) and `ra8_comic_cbr.c` (RAR via `ra8_rar.h`) -- enumerates its image
- * members by calling ::ra8_comic_page_add and extracts one page through its own
+ * members by calling ::priv_comic_page_add and extracts one page through its own
  * `*_extract`. This header is the internal contract between them; it is not part
  * of the public `ra8_comic.h` surface.
  *
@@ -51,7 +51,7 @@ extern "C" {
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
-RA8_PRIV bool ra8_comic_is_page_name(const char* name, uint16_t len);
+RA8_PRIV bool priv_comic_is_page_name(const char* name, uint16_t len);
 
 /**
  * @brief Append one image member to the resident page index.
@@ -77,21 +77,21 @@ RA8_PRIV bool ra8_comic_is_page_name(const char* name, uint16_t len);
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_comic_page_add(ra8_comic_t* c,
-                                      const char*  name,
-                                      uint16_t     name_len,
-                                      uint64_t     raw_size,
-                                      uint8_t      extractable,
-                                      uint8_t      method,
-                                      uint32_t     zip_index,
-                                      uint64_t     data_off,
-                                      uint64_t     pack_size);
+RA8_PRIV ra8_err_t priv_comic_page_add(ra8_comic_t* c,
+                                       const char*  name,
+                                       uint16_t     name_len,
+                                       uint64_t     raw_size,
+                                       uint8_t      extractable,
+                                       uint8_t      method,
+                                       uint32_t     zip_index,
+                                       uint64_t     data_off,
+                                       uint64_t     pack_size);
 
 /**
  * @brief Open the CBZ (ZIP) backend: init the streaming miniz reader + page index.
  * @details Binds miniz's user-read ZIP reader to the comic's seek+read backing,
  *          walks the central directory, and appends each image entry via
- *          ::ra8_comic_page_add. On firmware, miniz allocations route through the
+ *          ::priv_comic_page_add. On firmware, miniz allocations route through the
  *          `ra8_epub_miniz_alloc` static pool (no heap).
  * @param[in,out] c Comic with backing + buffers bound, `kind == cbz`.
  * @return ra8_err_t status.
@@ -105,7 +105,7 @@ RA8_PRIV ra8_err_t ra8_comic_page_add(ra8_comic_t* c,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_comic_cbz_open(ra8_comic_t* c);
+RA8_PRIV ra8_err_t priv_comic_cbz_open(ra8_comic_t* c);
 
 /**
  * @brief Extract one CBZ page's encoded image through the streaming ZIP reader.
@@ -127,11 +127,11 @@ RA8_PRIV ra8_err_t ra8_comic_cbz_open(ra8_comic_t* c);
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_comic_cbz_extract(ra8_comic_t*            c,
-                                         const ra8_comic_page_t* p,
-                                         uint8_t*                buf,
-                                         size_t                  cap,
-                                         size_t*                 got);
+RA8_PRIV ra8_err_t priv_comic_cbz_extract(ra8_comic_t*            c,
+                                          const ra8_comic_page_t* p,
+                                          uint8_t*                buf,
+                                          size_t                  cap,
+                                          size_t*                 got);
 
 /**
  * @brief Tear down the CBZ backend's miniz reader.
@@ -147,12 +147,12 @@ RA8_PRIV ra8_err_t ra8_comic_cbz_extract(ra8_comic_t*            c,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_comic_cbz_close(ra8_comic_t* c);
+RA8_PRIV ra8_err_t priv_comic_cbz_close(ra8_comic_t* c);
 
 /**
  * @brief Open the CBR (RAR) backend: walk the archive + build the page index.
  * @details Iterates the RAR block chain (`ra8_rar_next`) from `c->rar.first_off`,
- *          appending each image file member via ::ra8_comic_page_add. STORE and (on
+ *          appending each image file member via ::priv_comic_page_add. STORE and (on
  *          a RAR5 archive) compressed members are indexed `extractable == 1`; only a
  *          RAR4-compressed member (legacy codec, unsupported) gets `extractable == 0`.
  * @param[in,out] c Comic with `c->rar` bound by `ra8_rar_open`, `kind == cbr`.
@@ -167,7 +167,7 @@ RA8_PRIV ra8_err_t ra8_comic_cbz_close(ra8_comic_t* c);
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_comic_cbr_open(ra8_comic_t* c);
+RA8_PRIV ra8_err_t priv_comic_cbr_open(ra8_comic_t* c);
 
 /**
  * @brief Extract one CBR page's encoded image (STORE copy or RAR5 decode).
@@ -192,16 +192,16 @@ RA8_PRIV ra8_err_t ra8_comic_cbr_open(ra8_comic_t* c);
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_comic_cbr_extract(ra8_comic_t*            c,
-                                         const ra8_comic_page_t* p,
-                                         uint8_t*                buf,
-                                         size_t                  cap,
-                                         size_t*                 got);
+RA8_PRIV ra8_err_t priv_comic_cbr_extract(ra8_comic_t*            c,
+                                          const ra8_comic_page_t* p,
+                                          uint8_t*                buf,
+                                          size_t                  cap,
+                                          size_t*                 got);
 
 /**
  * @brief Open the CBT (tar) backend: walk the archive + build the page index.
  * @details Iterates the tar member chain (`ra8_unarch_tar_next`) from offset 0,
- *          appending each image file member via ::ra8_comic_page_add. tar stores
+ *          appending each image file member via ::priv_comic_page_add. tar stores
  *          members verbatim, so every indexed page is `extractable == 1` with
  *          `pack_size == raw_size`. The walk (and each member's declared size)
  *          is charged against the walker's embedded decompression budget.
@@ -219,7 +219,7 @@ RA8_PRIV ra8_err_t ra8_comic_cbr_extract(ra8_comic_t*            c,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_comic_cbt_open(ra8_comic_t* c);
+RA8_PRIV ra8_err_t priv_comic_cbt_open(ra8_comic_t* c);
 
 /**
  * @brief Extract one CBT page's encoded image (verbatim tar member copy).
@@ -242,11 +242,11 @@ RA8_PRIV ra8_err_t ra8_comic_cbt_open(ra8_comic_t* c);
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_comic_cbt_extract(ra8_comic_t*            c,
-                                         const ra8_comic_page_t* p,
-                                         uint8_t*                buf,
-                                         size_t                  cap,
-                                         size_t*                 got);
+RA8_PRIV ra8_err_t priv_comic_cbt_extract(ra8_comic_t*            c,
+                                          const ra8_comic_page_t* p,
+                                          uint8_t*                buf,
+                                          size_t                  cap,
+                                          size_t*                 got);
 
 #ifdef __cplusplus
 }

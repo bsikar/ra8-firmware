@@ -995,6 +995,5 @@ int32_t main(void)
   test_rar_name_copy_guards();
   test_rar_open_next_extract_edges();
   test_comic_cbr_sort_and_empty();
-  (void)fprintf(stderr, "[OK  ] test_ra8_rar.c\n");
   return 0;
 }

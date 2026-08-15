@@ -6,7 +6,7 @@
  * [Ring 4 / Domain] {World: NS}
  *
  * @details
- * The RAR half of the comic facade. ::ra8_comic_cbr_open walks the RAR block chain
+ * The RAR half of the comic facade. ::priv_comic_cbr_open walks the RAR block chain
  * one header at a time through the clean-room ::ra8_rar_next, appending each image
  * file member to the shared page index. STORE members -- the common case for comics
  * whose pages are already-compressed JPEG/PNG -- extract by streaming the member's
@@ -81,7 +81,7 @@ internal_add_member(ra8_comic_t* c, const ra8_rar_entry_t* ent, const char* name
   if (ent->is_dir != 0U) {
     return k_ra8_ok;
   }
-  if (!ra8_comic_is_page_name(name, nlen)) {
+  if (!priv_comic_is_page_name(name, nlen)) {
     return k_ra8_ok;
   }
   /* Decompression-limits guard: a page whose block header declares an
@@ -97,18 +97,18 @@ internal_add_member(ra8_comic_t* c, const ra8_rar_entry_t* ent, const char* name
   /* STORE always decodes; a compressed member decodes only on RAR5 (the RAR4
    * legacy codec is out of scope), so a RAR4-compressed page stays inert. */
   const uint8_t extractable = (is_store || is_rar5) ? 1U : 0U;
-  return ra8_comic_page_add(c,
-                            name,
-                            nlen,
-                            ent->unp_size,
-                            extractable,
-                            ent->method,
-                            0U,
-                            ent->data_off,
-                            ent->pack_size);
+  return priv_comic_page_add(c,
+                             name,
+                             nlen,
+                             ent->unp_size,
+                             extractable,
+                             ent->method,
+                             0U,
+                             ent->data_off,
+                             ent->pack_size);
 }
 
-ra8_err_t ra8_comic_cbr_open(ra8_comic_t* c)
+RA8_PRIV ra8_err_t priv_comic_cbr_open(ra8_comic_t* c)
 {
   RA8_CHECK_NULL_PTR(c, s_tag_cbr, "cbr open: null c");
   if (c->rar.version == k_ra8_rar_ver_none) {
@@ -144,11 +144,11 @@ ra8_err_t ra8_comic_cbr_open(ra8_comic_t* c)
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_comic_cbr_extract(ra8_comic_t*            c,
-                                const ra8_comic_page_t* p,
-                                uint8_t*                buf,
-                                size_t                  cap,
-                                size_t*                 got)
+RA8_PRIV ra8_err_t priv_comic_cbr_extract(ra8_comic_t*            c,
+                                          const ra8_comic_page_t* p,
+                                          uint8_t*                buf,
+                                          size_t                  cap,
+                                          size_t*                 got)
 {
   RA8_CHECK_NULL_PTR(c, s_tag_cbr, "cbr extract: null c");
   RA8_CHECK_NULL_PTR(p, s_tag_cbr, "cbr extract: null p");

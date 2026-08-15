@@ -6,12 +6,12 @@
  * [Ring 4 / Domain] {World: NS}
  *
  * @details
- * The tar half of the comic facade. ::ra8_comic_cbt_open walks the tar member
+ * The tar half of the comic facade. ::priv_comic_cbt_open walks the tar member
  * chain one header at a time through the clean-room streaming walker
  * (`ra8_unarch_tar_next` -- ustar / pax / GNU dialects, every block charged
  * against the unified decompression-limits policy), appending each image file
  * member to the shared page index. tar stores members verbatim, so
- * ::ra8_comic_cbt_extract is a bounds-revalidated literal copy -- the same
+ * ::priv_comic_cbt_extract is a bounds-revalidated literal copy -- the same
  * demand-paged model as the CBZ / CBR backends, with zero allocation.
  *
  * Unlike the tolerant CBR walk (RAR archives often carry trailing junk), a
@@ -64,30 +64,29 @@ typedef enum : uint32_t {
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_add_member(ra8_comic_t*                  c,
-                                     const ra8_unarch_tar_entry_t* ent,
-                                     const char*                   name,
-                                     uint16_t                      nlen)
+RA8_INTERNAL static ra8_err_t internal_add_member(ra8_comic_t*                  c,
+                                                  const ra8_unarch_tar_entry_t* ent,
+                                                  const char*                   name,
+                                                  uint16_t                      nlen)
 {
   if (ent->is_file == 0U) {
     return k_ra8_ok;
   }
-  if (!ra8_comic_is_page_name(name, nlen)) {
+  if (!priv_comic_is_page_name(name, nlen)) {
     return k_ra8_ok;
   }
-  return ra8_comic_page_add(c,
-                            name,
-                            nlen,
-                            ent->size,
-                            1U,
-                            (uint8_t)k_ra8_rar_method_store, /* stored verbatim */
-                            0U,
-                            ent->data_off,
-                            ent->size);
+  return priv_comic_page_add(c,
+                             name,
+                             nlen,
+                             ent->size,
+                             1U,
+                             (uint8_t)k_ra8_rar_method_store, /* stored verbatim */
+                             0U,
+                             ent->data_off,
+                             ent->size);
 }
 
-ra8_err_t ra8_comic_cbt_open(ra8_comic_t* c)
+RA8_PRIV ra8_err_t priv_comic_cbt_open(ra8_comic_t* c)
 {
   RA8_CHECK_NULL_PTR(c, s_tag_cbt, "cbt open: null c");
   if (!c->tar.live) {
@@ -115,11 +114,11 @@ ra8_err_t ra8_comic_cbt_open(ra8_comic_t* c)
                                        * far below the static member cap */
 }
 
-ra8_err_t ra8_comic_cbt_extract(ra8_comic_t*            c,
-                                const ra8_comic_page_t* p,
-                                uint8_t*                buf,
-                                size_t                  cap,
-                                size_t*                 got)
+RA8_PRIV ra8_err_t priv_comic_cbt_extract(ra8_comic_t*            c,
+                                          const ra8_comic_page_t* p,
+                                          uint8_t*                buf,
+                                          size_t                  cap,
+                                          size_t*                 got)
 {
   RA8_CHECK_NULL_PTR(c, s_tag_cbt, "cbt extract: null c");
   RA8_CHECK_NULL_PTR(p, s_tag_cbt, "cbt extract: null p");

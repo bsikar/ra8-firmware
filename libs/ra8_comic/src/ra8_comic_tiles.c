@@ -80,8 +80,7 @@ typedef struct {
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t priv_mem_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+RA8_INTERNAL static ra8_err_t internal_mem_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   ra8_comic_tiles_pull_t* p      = (ra8_comic_tiles_pull_t*)ctx;
   const size_t            remain = p->n - p->off;
@@ -115,13 +114,12 @@ static ra8_err_t priv_mem_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t priv_tile_decode(void*                 ctx,
-                                  const ra8_tile_key_t* key,
-                                  uint8_t*              cell,
-                                  uint32_t              cell_bytes,
-                                  uint16_t*             out_w,
-                                  uint16_t*             out_h)
+RA8_INTERNAL static ra8_err_t internal_tile_decode(void*                 ctx,
+                                                   const ra8_tile_key_t* key,
+                                                   uint8_t*              cell,
+                                                   uint32_t              cell_bytes,
+                                                   uint16_t*             out_w,
+                                                   uint16_t*             out_h)
 {
   ra8_comic_tile_reader_t* r   = (ra8_comic_tile_reader_t*)ctx;
   const ra8_err_t          err = ra8_jof_read_tile(ra8_jof_memstore_pread,
@@ -182,7 +180,7 @@ ra8_err_t ra8_comic_tiles_init(ra8_comic_tile_reader_t*    r,
   r->scratch               = scratch;
   r->scratch_cap           = (scratch != nullptr) ? scratch_cap : 0U;
   ra8_tile_cache_cfg_t cfg = *storage;
-  cfg.decode               = priv_tile_decode;
+  cfg.decode               = internal_tile_decode;
   cfg.decode_ctx           = r;
   return ra8_tile_cache_init(&r->cache, &cfg);
 }
@@ -205,10 +203,9 @@ ra8_err_t ra8_comic_tiles_init(ra8_comic_tile_reader_t*    r,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t priv_import_args_ok(const ra8_comic_tile_reader_t*      r,
-                                     const uint8_t*                      enc,
-                                     const ra8_comic_tiles_import_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_import_args_ok(const ra8_comic_tile_reader_t*      r,
+                                                      const uint8_t*                      enc,
+                                                      const ra8_comic_tiles_import_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(r, s_tag, "import: null r");
   RA8_CHECK_NULL_PTR(enc, s_tag, "import: null enc");
@@ -237,16 +234,15 @@ static ra8_err_t priv_import_args_ok(const ra8_comic_tile_reader_t*      r,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t priv_transcode(ra8_comic_tile_reader_t*            r,
-                                const uint8_t*                      enc,
-                                size_t                              enc_len,
-                                const ra8_comic_tiles_import_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_transcode(ra8_comic_tile_reader_t*            r,
+                                                 const uint8_t*                      enc,
+                                                 size_t                              enc_len,
+                                                 const ra8_comic_tiles_import_cfg_t* cfg)
 {
   r->store = (ra8_jof_memstore_t){.buf = cfg->atlas, .cap = cfg->atlas_cap, .len = 0U};
   ra8_comic_tiles_pull_t      pull = {.d = enc, .n = enc_len, .off = 0U};
   const ra8_jof_produce_cfg_t pcfg = {
-    .pull          = priv_mem_pull,
+    .pull          = internal_mem_pull,
     .pull_ctx      = &pull,
     .sink          = ra8_jof_memstore_sink,
     .sink_ctx      = &r->store,
@@ -273,7 +269,7 @@ ra8_err_t ra8_comic_tiles_import(ra8_comic_tile_reader_t*            r,
                                  size_t                              enc_len,
                                  const ra8_comic_tiles_import_cfg_t* cfg)
 {
-  const ra8_err_t nz = priv_import_args_ok(r, enc, cfg);
+  const ra8_err_t nz = internal_import_args_ok(r, enc, cfg);
   if (nz != k_ra8_ok) {
     return nz;
   }
@@ -281,7 +277,7 @@ ra8_err_t ra8_comic_tiles_import(ra8_comic_tile_reader_t*            r,
     return k_ra8_err_invalid_size;
   }
   r->bound            = false; /* invalidate first: any error leaves no bound page */
-  const ra8_err_t err = priv_transcode(r, enc, enc_len, cfg);
+  const ra8_err_t err = internal_transcode(r, enc, enc_len, cfg);
   if (err != k_ra8_ok) {
     return err;
   }
