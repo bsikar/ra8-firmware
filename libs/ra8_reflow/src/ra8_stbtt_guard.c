@@ -48,9 +48,9 @@ typedef enum : uint8_t {
  *        reads with an attacker-controlled count or a fixed offset.
  *
  * @details Each value is the four ASCII tag bytes assembled most-significant
- * first, i.e. exactly what ::priv_rd_be_u32 returns for the record's tag field.
+ * first, i.e. exactly what ::internal_rd_be_u32 returns for the record's tag field.
  *
- * @see priv_table_internal_in_bounds
+ * @see internal_table_internal_in_bounds
  */
 typedef enum : uint32_t {
   k_sfnt_tag_cmap = 0x636D6170U, /**< 'cmap' -- character-to-glyph mapping.     */
@@ -108,7 +108,7 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint16_t priv_rd_be_u16(const uint8_t* p)
+static uint16_t internal_rd_be_u16(const uint8_t* p)
 {
   return (uint16_t)(((uint32_t)p[0] << k_sfnt_shift_8) | (uint32_t)p[1]);
 }
@@ -132,7 +132,7 @@ static uint16_t priv_rd_be_u16(const uint8_t* p)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_rd_be_u32(const uint8_t* p)
+static uint32_t internal_rd_be_u32(const uint8_t* p)
 {
   return ((uint32_t)p[0] << k_sfnt_shift_24) | ((uint32_t)p[1] << k_sfnt_shift_16) |
          ((uint32_t)p[2] << k_sfnt_shift_8) | (uint32_t)p[3];
@@ -177,15 +177,17 @@ static uint32_t priv_rd_be_u32(const uint8_t* p)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool
-priv_table_internal_in_bounds(const uint8_t* data, uint64_t buf_len, uint32_t tag, uint64_t t_off)
+static bool internal_table_internal_in_bounds(const uint8_t* data,
+                                              uint64_t       buf_len,
+                                              uint32_t       tag,
+                                              uint64_t       t_off)
 {
   if (tag == (uint32_t)k_sfnt_tag_cmap) {
     if ((t_off + (uint64_t)k_cmap_header_bytes) > buf_len) {
       return false;
     }
     const uint32_t sub_tables =
-      priv_rd_be_u16(data + (size_t)(t_off + (uint64_t)k_cmap_num_tables_off));
+      internal_rd_be_u16(data + (size_t)(t_off + (uint64_t)k_cmap_num_tables_off));
     const uint64_t sub_end = t_off + (uint64_t)k_cmap_header_bytes +
                              ((uint64_t)sub_tables * (uint64_t)k_cmap_record_bytes);
     return sub_end <= buf_len;
@@ -215,7 +217,7 @@ bool ra8_stbtt_sfnt_dir_in_bounds(const uint8_t* data, size_t len, uint32_t font
     return false;
   }
   const uint32_t num_tables =
-    priv_rd_be_u16(data + (size_t)(start + (uint64_t)k_sfnt_num_tables_off));
+    internal_rd_be_u16(data + (size_t)(start + (uint64_t)k_sfnt_num_tables_off));
 
   /* (2) The whole table directory (num_tables records of 16 bytes) must fit.
    * num_tables is a uint16 (<= 65535), so the product is bounded. */
@@ -235,15 +237,15 @@ bool ra8_stbtt_sfnt_dir_in_bounds(const uint8_t* data, size_t len, uint32_t font
   for (uint32_t i = 0U; i < num_tables; ++i) {
     const uint64_t rec = start + (uint64_t)k_sfnt_offset_table_bytes +
                          ((uint64_t)i * (uint64_t)k_sfnt_table_record_bytes);
-    const uint32_t tag = priv_rd_be_u32(data + (size_t)(rec + (uint64_t)k_sfnt_record_tag_off));
+    const uint32_t tag = internal_rd_be_u32(data + (size_t)(rec + (uint64_t)k_sfnt_record_tag_off));
     const uint64_t t_off =
-      (uint64_t)priv_rd_be_u32(data + (size_t)(rec + (uint64_t)k_sfnt_record_offset_off));
+      (uint64_t)internal_rd_be_u32(data + (size_t)(rec + (uint64_t)k_sfnt_record_offset_off));
     const uint64_t t_len =
-      (uint64_t)priv_rd_be_u32(data + (size_t)(rec + (uint64_t)k_sfnt_record_length_off));
+      (uint64_t)internal_rd_be_u32(data + (size_t)(rec + (uint64_t)k_sfnt_record_length_off));
     if ((t_off + t_len) > buf_len) {
       return false;
     }
-    if (!priv_table_internal_in_bounds(data, buf_len, tag, t_off)) {
+    if (!internal_table_internal_in_bounds(data, buf_len, tag, t_off)) {
       return false;
     }
   }

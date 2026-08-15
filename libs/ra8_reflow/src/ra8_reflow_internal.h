@@ -29,7 +29,7 @@ extern "C" {
  *        block-level indent (currently `<li>` and `<blockquote>`).
  *
  * @details Promoted from the inline expressions in
- *          ``priv_open_block`` (line 479) and ``priv_close_block``
+ *          ``internal_open_block`` (line 479) and ``internal_close_block``
  *          (line 513) so tests can drive both arms of the
  *          ``tag == li || tag == blockquote`` decision under
  *          -fcoverage-mcdc on the production source.
@@ -55,7 +55,7 @@ extern "C" {
  *
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_reflow_internal_is_indent_tag(uint8_t tag);
+RA8_PRIV bool priv_ra8_reflow_internal_is_indent_tag(uint8_t tag);
 
 /**
  * @brief Decide whether a glyph emission would overflow the right
@@ -63,7 +63,7 @@ RA8_PRIV bool ra8_reflow_internal_is_indent_tag(uint8_t tag);
  *
  * @details
  * Promoted from the inline compound decisions in
- * @c priv_emit_char (line 404), @c priv_layout_text (line 468) and
+ * @c internal_emit_char (line 404), @c internal_layout_text (line 468) and
  * @c priv_apply_image (line 605) so the
  * ``cur->x + advance > right_limit && line_has_content != 0`` AND
  * decision can be driven directly under @c -fcoverage-mcdc.
@@ -93,10 +93,10 @@ RA8_PRIV bool ra8_reflow_internal_is_indent_tag(uint8_t tag);
  *
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_reflow_internal_right_overflow_break(int32_t cursor_x,
-                                                       int32_t advance,
-                                                       int32_t right_limit,
-                                                       uint8_t line_has_content);
+RA8_PRIV bool priv_ra8_reflow_internal_right_overflow_break(int32_t cursor_x,
+                                                            int32_t advance,
+                                                            int32_t right_limit,
+                                                            uint8_t line_has_content);
 
 /**
  * @brief Decide whether the cached XHTML buffer pointer/length pair
@@ -128,7 +128,7 @@ RA8_PRIV bool ra8_reflow_internal_right_overflow_break(int32_t cursor_x,
  *
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_reflow_internal_xhtml_invalid(const void* xhtml_buf, size_t xhtml_len);
+RA8_PRIV bool priv_ra8_reflow_internal_xhtml_invalid(const void* xhtml_buf, size_t xhtml_len);
 
 /**
  * @brief Decide whether the layout pass produced zero pages but the
@@ -160,7 +160,7 @@ RA8_PRIV bool ra8_reflow_internal_xhtml_invalid(const void* xhtml_buf, size_t xh
  *
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_reflow_internal_final_page_needed(uint32_t page_count, uint32_t token_count);
+RA8_PRIV bool priv_ra8_reflow_internal_final_page_needed(uint32_t page_count, uint32_t token_count);
 
 #ifdef __cplusplus
 }

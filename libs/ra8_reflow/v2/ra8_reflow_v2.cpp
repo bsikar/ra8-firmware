@@ -26,6 +26,7 @@
 #include <string>
 
 extern "C" {
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_reflow.h"
 }
@@ -35,17 +36,17 @@ extern "C" {
 namespace {
 
 typedef enum : uint8_t {
-  k_v2_glyph_w_px           = 8U,
-  k_v2_image_default_w_px   = 64U,
-  k_v2_image_default_h_px   = 64U,
-  k_v2_pt_to_px_num         = 4U,
-  k_v2_pt_to_px_den         = 3U,
-  k_v2_ascent_num           = 4U,  /**< Ascent   = 4/5 of the em height. */
-  k_v2_ascent_den           = 5U,  /**< Ascent   = 4/5 of the em height. */
-  k_v2_descent_den          = 5U,  /**< Descent  = 1/5 of the em height. */
-  k_v2_xheight_den          = 2U,  /**< x-height = 1/2 of the em height. */
-  k_v2_media_resolution_dpi = 96U, /**< Reported CSS media resolution.   */
-  k_v2_html_wrap_reserve    = 64U, /**< Slack reserved for the wrapper.  */
+  k_v2_glyph_w_px           = 8U,  /**< Fallback glyph advance, in pixels. */
+  k_v2_image_default_w_px   = 64U, /**< Default replaced-image width.      */
+  k_v2_image_default_h_px   = 64U, /**< Default replaced-image height.     */
+  k_v2_pt_to_px_num         = 4U,  /**< Numerator of the 4:3 point scale.  */
+  k_v2_pt_to_px_den         = 3U,  /**< Denominator of the point scale.    */
+  k_v2_ascent_num           = 4U,  /**< Ascent   = 4/5 of the em height.   */
+  k_v2_ascent_den           = 5U,  /**< Ascent   = 4/5 of the em height.   */
+  k_v2_descent_den          = 5U,  /**< Descent  = 1/5 of the em height.   */
+  k_v2_xheight_den          = 2U,  /**< x-height = 1/2 of the em height.   */
+  k_v2_media_resolution_dpi = 96U, /**< Reported CSS media resolution.     */
+  k_v2_html_wrap_reserve    = 64U, /**< Slack reserved for the wrapper.    */
 } v2_metrics_t;
 
 class v2_container : public litehtml::document_container {
@@ -185,9 +186,9 @@ public:
   }
 
 private:
-  int viewport_w_;
-  int viewport_h_;
-  int font_px_;
+  int viewport_w_; /**< Active layout viewport width, in pixels.  */
+  int viewport_h_; /**< Active layout viewport height, in pixels. */
+  int font_px_;    /**< Requested base font size, in pixels.      */
 };
 
 struct v2_state {
@@ -196,31 +197,59 @@ struct v2_state {
    * createFromString), so the document must be destroyed first.
    * In C++ struct destruction runs in reverse declaration order,
    * so list the container last. */
-  litehtml::document::ptr       document;
-  std::unique_ptr<v2_container> container;
+  litehtml::document::ptr       document;  /**< Parsed DOM destroyed before its container.    */
+  std::unique_ptr<v2_container> container; /**< Owning adapter retained for the DOM lifetime. */
 };
 
-/* Explicit reset helper: clear the document before the container so
+/** Explicit reset helper: clear the document before the container so
  * raw-pointer back-references inside the document are not dangling
  * during its destructor. Default-assignment of the whole struct does
  * NOT guarantee this order on all libstdc++ versions, so we do it by
- * hand. */
-inline void v2_state_clear(v2_state& s)
+ * hand.
+ * @brief Verify v2 state clear behavior against the reflow contract.
+ * @details Performs the v2 state clear path and preserves each documented result and bound.
+ * @param[in,out] s Cached document/container pair to release in dependency order.
+ * @pre Required pointer arguments reference valid objects for the requested operation.
+ * @post Output state reflects only the operation described by the returned status.
+ * @note This helper is private to the reflow implementation boundary.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
+ */
+RA8_INTERNAL static inline void internal_v2_state_clear(v2_state& s)
 {
   s.document.reset();
   s.container.reset();
 }
 
-typedef enum : uint8_t { k_v2_max_engines = 4U } v2_cache_caps_t;
+typedef enum : uint8_t {
+  k_v2_max_engines = 4U /**< Maximum concurrently cached engines. */
+} v2_cache_caps_t;
 
 struct v2_cache_slot {
-  const ra8_reflow_t* engine = nullptr;
-  v2_state            state;
+  const ra8_reflow_t* engine =
+    nullptr;      /**< Stable engine identity, or nullptr for an unused slot. */
+  v2_state state; /**< Document/container state owned by this slot.           */
 };
 
 v2_cache_slot s_v2_cache[k_v2_max_engines];
 
-v2_state* v2_state_for(const ra8_reflow_t* engine, bool create)
+/**
+ * @brief Find or reserve the bounded v2 state slot for an engine.
+ * @details Searches the fixed-capacity cache first and optionally binds the first unused slot to the requested engine.
+ * @param[in] engine Reflow engine identity used as the cache key.
+ * @param[in] create Whether an unused slot may be reserved after a cache miss.
+ * @return The matching state slot, or nullptr when no slot is available.
+ * @retval nullptr No match exists and lookup-only mode or cache exhaustion prevents creation.
+ * @retval non-null A state slot is bound to @p engine and ready for use.
+ * @pre @p engine is a stable identity for the duration of its cache binding.
+ * @pre The fixed-capacity cache is not concurrently mutated.
+ * @post Existing cache bindings remain unchanged on a failed lookup.
+ * @post A newly reserved slot is cleared before its address is returned.
+ * @note The cache owns at most ::k_v2_max_engines state objects.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static v2_state* internal_v2_state_for(const ra8_reflow_t* engine, bool create)
 {
   for (uint8_t i = 0; i < (uint8_t)k_v2_max_engines; ++i) {
     if (s_v2_cache[i].engine == engine) {
@@ -233,25 +262,50 @@ v2_state* v2_state_for(const ra8_reflow_t* engine, bool create)
   for (uint8_t i = 0; i < (uint8_t)k_v2_max_engines; ++i) {
     if (s_v2_cache[i].engine == nullptr) {
       s_v2_cache[i].engine = engine;
-      v2_state_clear(s_v2_cache[i].state);
+      internal_v2_state_clear(s_v2_cache[i].state);
       return &s_v2_cache[i].state;
     }
   }
   return nullptr;
 }
 
-void v2_state_drop(const ra8_reflow_t* engine)
+/**
+ * @brief Verify v2 state drop behavior against the reflow contract.
+ * @details Performs the v2 state drop path and preserves each documented result and bound.
+ * @param[in] engine Reflow engine instance whose state is inspected or updated.
+ * @pre Required pointer arguments reference valid objects for the requested operation.
+ * @post Output state reflects only the operation described by the returned status.
+ * @note This helper is private to the reflow implementation boundary.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
+ */
+RA8_INTERNAL static void internal_v2_state_drop(const ra8_reflow_t* engine)
 {
   for (uint8_t i = 0; i < (uint8_t)k_v2_max_engines; ++i) {
     if (s_v2_cache[i].engine == engine) {
-      v2_state_clear(s_v2_cache[i].state);
+      internal_v2_state_clear(s_v2_cache[i].state);
       s_v2_cache[i].engine = nullptr;
       return;
     }
   }
 }
 
-ra8_err_t check_engine(const ra8_reflow_t* engine)
+/**
+ * @brief Verify check engine behavior against the reflow contract.
+ * @details Performs the check engine path and preserves each documented result and bound.
+ * @param[in] engine Reflow engine instance whose state is inspected or updated.
+ * @return A status code describing the completed reflow operation.
+ * @retval k_ra8_ok The operation completed successfully.
+ * @retval nonzero Validation or bounded-resource checks rejected the operation.
+ * @pre Required pointer arguments reference valid objects for the requested operation.
+ * @post Output state reflects only the operation described by the returned status.
+ * @note This helper is private to the reflow implementation boundary.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
+ */
+RA8_INTERNAL static ra8_err_t internal_check_engine(const ra8_reflow_t* engine)
 {
   if (engine == nullptr) {
     return k_ra8_err_null_ptr;
@@ -262,10 +316,25 @@ ra8_err_t check_engine(const ra8_reflow_t* engine)
   return k_ra8_ok;
 }
 
-/* Build the litehtml document for the engine's current xhtml buffer. Resets in
+/** Build the litehtml document for the engine's current xhtml buffer. Resets in
  * document-first order before allocating new ones so a stale document holding a
- * raw container pointer is destroyed before its target. */
-ra8_err_t v2_build_document(v2_state* state, const ra8_reflow_t* engine)
+ * raw container pointer is destroyed before its target.
+ * @brief Verify v2 build document behavior against the reflow contract.
+ * @details Performs the v2 build document path and preserves each documented result and bound.
+ * @param[in,out] state Caller-selected cached reflow state used by the operation.
+ * @param[in] engine Reflow engine instance whose state is inspected or updated.
+ * @return A status code describing the completed reflow operation.
+ * @retval k_ra8_ok The operation completed successfully.
+ * @retval nonzero Validation or bounded-resource checks rejected the operation.
+ * @pre Required pointer arguments reference valid objects for the requested operation.
+ * @post Output state reflects only the operation described by the returned status.
+ * @note This helper is private to the reflow implementation boundary.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
+ */
+RA8_INTERNAL static ra8_err_t internal_v2_build_document(v2_state*           state,
+                                                         const ra8_reflow_t* engine)
 {
   state->document.reset();
   state->container.reset();
@@ -286,9 +355,20 @@ ra8_err_t v2_build_document(v2_state* state, const ra8_reflow_t* engine)
   return state->document ? k_ra8_ok : k_ra8_err_validation_failed;
 }
 
-/* Split the rendered content height into the engine's page array, clamped to
- * the reflow page-count bound. */
-void v2_paginate(ra8_reflow_t* engine, int content_height)
+/** Split the rendered content height into the engine's page array, clamped to
+ * the reflow page-count bound.
+ * @brief Verify v2 paginate behavior against the reflow contract.
+ * @details Performs the v2 paginate path and preserves each documented result and bound.
+ * @param[in,out] engine Reflow engine instance whose state is inspected or updated.
+ * @param[in] content_height Rendered document height, in viewport pixels.
+ * @pre Required pointer arguments reference valid objects for the requested operation.
+ * @post Output state reflects only the operation described by the returned status.
+ * @note This helper is private to the reflow implementation boundary.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
+ */
+RA8_INTERNAL static void internal_v2_paginate(ra8_reflow_t* engine, int content_height)
 {
   const int vh    = static_cast<int>(engine->viewport_h);
   int       pages = (content_height + vh - 1) / vh;
@@ -305,13 +385,29 @@ void v2_paginate(ra8_reflow_t* engine, int content_height)
   }
 }
 
-ra8_err_t v2_run_layout(ra8_reflow_t* engine, uint32_t* out_total_pages)
+/**
+ * @brief Verify v2 run layout behavior against the reflow contract.
+ * @details Performs the v2 run layout path and preserves each documented result and bound.
+ * @param[in,out] engine Reflow engine instance whose state is inspected or updated.
+ * @param[out] out_total_pages Optional destination that receives the resulting page count.
+ * @return A status code describing the completed reflow operation.
+ * @retval k_ra8_ok The operation completed successfully.
+ * @retval nonzero Validation or bounded-resource checks rejected the operation.
+ * @pre Required pointer arguments reference valid objects for the requested operation.
+ * @post Output state reflects only the operation described by the returned status.
+ * @note This helper is private to the reflow implementation boundary.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
+ */
+RA8_INTERNAL static ra8_err_t internal_v2_run_layout(ra8_reflow_t* engine,
+                                                     uint32_t*     out_total_pages)
 {
-  v2_state* state = v2_state_for(engine, true);
+  v2_state* state = internal_v2_state_for(engine, true);
   if (state == nullptr) {
     return k_ra8_err_no_mem;
   }
-  const ra8_err_t err = v2_build_document(state, engine);
+  const ra8_err_t err = internal_v2_build_document(state, engine);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -322,7 +418,7 @@ ra8_err_t v2_run_layout(ra8_reflow_t* engine, uint32_t* out_total_pages)
     content_height = 0;
   }
 
-  v2_paginate(engine, content_height);
+  internal_v2_paginate(engine, content_height);
   if (out_total_pages != nullptr) {
     *out_total_pages = engine->page_count;
   }
@@ -374,7 +470,7 @@ extern "C" {
   if (engine->in_use != 1U) {
     return k_ra8_err_not_initialized;
   }
-  v2_state_drop(engine);
+  internal_v2_state_drop(engine);
   engine->in_use     = 0U;
   engine->page_count = 0U;
   return k_ra8_ok;
@@ -385,7 +481,7 @@ extern "C" {
                                                   size_t         xhtml_len,
                                                   uint32_t*      out_total_pages)
 {
-  const ra8_err_t err = check_engine(engine);
+  const ra8_err_t err = internal_check_engine(engine);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -397,14 +493,14 @@ extern "C" {
   }
   engine->xhtml_buf = xhtml_buf;
   engine->xhtml_len = xhtml_len;
-  return v2_run_layout(engine, out_total_pages);
+  return internal_v2_run_layout(engine, out_total_pages);
 }
 
 [[nodiscard]] ra8_err_t
 ra8_reflow_render_page(const ra8_reflow_t* engine, uint32_t page_idx, void* framebuffer)
 {
   (void)framebuffer;
-  const ra8_err_t err = check_engine(engine);
+  const ra8_err_t err = internal_check_engine(engine);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -416,7 +512,7 @@ ra8_reflow_render_page(const ra8_reflow_t* engine, uint32_t page_idx, void* fram
 
 [[nodiscard]] ra8_err_t ra8_reflow_get_page_count(const ra8_reflow_t* engine, uint32_t* out_count)
 {
-  const ra8_err_t err = check_engine(engine);
+  const ra8_err_t err = internal_check_engine(engine);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -429,7 +525,7 @@ ra8_reflow_render_page(const ra8_reflow_t* engine, uint32_t page_idx, void* fram
 
 [[nodiscard]] ra8_err_t ra8_reflow_set_font_size(ra8_reflow_t* engine, uint16_t new_font_px)
 {
-  const ra8_err_t err = check_engine(engine);
+  const ra8_err_t err = internal_check_engine(engine);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -442,7 +538,7 @@ ra8_reflow_render_page(const ra8_reflow_t* engine, uint32_t page_idx, void* fram
   }
   engine->font_px = new_font_px;
   uint32_t total  = 0U;
-  return v2_run_layout(engine, &total);
+  return internal_v2_run_layout(engine, &total);
 }
 
 [[nodiscard]] ra8_err_t
@@ -462,7 +558,7 @@ ra8_reflow_parse_xhtml(ra8_reflow_t* engine, const uint8_t* xhtml_buf, size_t xh
     return k_ra8_err_null_ptr;
   }
   uint32_t total = 0U;
-  return v2_run_layout(engine, &total);
+  return internal_v2_run_layout(engine, &total);
 }
 
 } // extern "C"

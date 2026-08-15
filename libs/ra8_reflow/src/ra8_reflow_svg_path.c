@@ -62,7 +62,7 @@ static const float s_svg_bez2 = 2.0F;
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int32_t priv_cmd_argc(char u)
+static int32_t internal_cmd_argc(char u)
 {
   switch (u) {
     case 'm':
@@ -93,7 +93,7 @@ static int32_t priv_cmd_argc(char u)
  * 'v' (vertical line-to), and all other commands that terminate with an (x,y)
  * endpoint pair as the last two args. For relative commands (@p rel true) the
  * new position is added to the current point; for absolute commands it replaces
- * it. Curve commands should call @c priv_emit_cubic / @c priv_emit_quad instead
+ * it. Curve commands should call @c internal_emit_cubic / @c internal_emit_quad instead
  * as they carry additional control-point state.
  *
  * @param[in]     u    Lower-case command letter determining the update rule.
@@ -116,7 +116,7 @@ static int32_t priv_cmd_argc(char u)
  */
 RA8_INTERNAL
 static void
-priv_path_step(char u, bool rel, const int32_t* args, int32_t na, int32_t* cx, int32_t* cy)
+internal_path_step(char u, bool rel, const int32_t* args, int32_t na, int32_t* cx, int32_t* cy)
 {
   if (u == 'h') {
     *cx = rel ? (*cx + args[0]) : args[0];
@@ -137,7 +137,7 @@ priv_path_step(char u, bool rel, const int32_t* args, int32_t na, int32_t* cx, i
  *
  * @details Computes the standard four-point cubic Bezier formula:
  * (1-tt)^3 * c0 + 3*(1-tt)^2*tt * c1 + 3*(1-tt)*tt^2 * c2 + tt^3 * c3.
- * Used by @c priv_flatten_cubic to sample x and y independently at each
+ * Used by @c internal_flatten_cubic to sample x and y independently at each
  * subdivision parameter value @p tt in (0, 1].
  *
  * @param[in] tt Parameter in [0, 1]; 0 returns @p c0, 1 returns @p c3.
@@ -162,7 +162,7 @@ priv_path_step(char u, bool rel, const int32_t* args, int32_t na, int32_t* cx, i
  * @since 0.1.0
  */
 RA8_INTERNAL
-static float priv_bezier1(float tt, float c0, float c1, float c2, float c3)
+static float internal_bezier1(float tt, float c0, float c1, float c2, float c3)
 {
   const float mt = 1.0F - tt;
   return ((mt * mt * mt) * c0) + (s_svg_bez3 * (mt * mt) * tt * c1) +
@@ -173,8 +173,8 @@ static float priv_bezier1(float tt, float c0, float c1, float c2, float c3)
  * @brief Flatten a cubic Bezier curve (P0..P3, user space) into the vertex array.
  *
  * @details Samples @c k_svg_curve_seg equally-spaced parameter values in (0,1]
- * using @c priv_bezier1 for each axis, maps each sample through the full affine
- * via @c ra8_svgp_map_point, and appends the framebuffer-space point to
+ * using @c internal_bezier1 for each axis, maps each sample through the full affine
+ * via @c priv_ra8_svgp_map_point, and appends the framebuffer-space point to
  * @p xs[@p *n] / @p ys[@p *n], incrementing @p *n. Stops early when @p *n
  * reaches @c k_svg_poly_max to avoid buffer overflow.
  *
@@ -199,21 +199,21 @@ static float priv_bezier1(float tt, float c0, float c1, float c2, float c3)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_flatten_cubic(const svg_xform_t* t,
-                               svg_pt_t           p0,
-                               svg_pt_t           p1,
-                               svg_pt_t           p2,
-                               svg_pt_t           p3,
-                               int32_t*           xs,
-                               int32_t*           ys,
-                               int32_t*           n)
+static void internal_flatten_cubic(const svg_xform_t* t,
+                                   svg_pt_t           p0,
+                                   svg_pt_t           p1,
+                                   svg_pt_t           p2,
+                                   svg_pt_t           p3,
+                                   int32_t*           xs,
+                                   int32_t*           ys,
+                                   int32_t*           n)
 {
   /* Bounded: k_svg_curve_seg samples, capped by k_svg_poly_max. */
   for (int32_t j = 1; (j <= (int32_t)k_svg_curve_seg) && (*n < (int32_t)k_svg_poly_max); ++j) {
     const float tt = (float)j / (float)k_svg_curve_seg;
-    const float bx = priv_bezier1(tt, (float)p0.x, (float)p1.x, (float)p2.x, (float)p3.x);
-    const float by = priv_bezier1(tt, (float)p0.y, (float)p1.y, (float)p2.y, (float)p3.y);
-    ra8_svgp_map_point(t, (int32_t)bx, (int32_t)by, &xs[*n], &ys[*n]);
+    const float bx = internal_bezier1(tt, (float)p0.x, (float)p1.x, (float)p2.x, (float)p3.x);
+    const float by = internal_bezier1(tt, (float)p0.y, (float)p1.y, (float)p2.y, (float)p3.y);
+    priv_ra8_svgp_map_point(t, (int32_t)bx, (int32_t)by, &xs[*n], &ys[*n]);
     ++(*n);
   }
 }
@@ -249,7 +249,7 @@ static void priv_flatten_cubic(const svg_xform_t* t,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static svg_pt_t priv_arg_pt(bool rel, int32_t cx, int32_t cy, int32_t ax, int32_t ay)
+static svg_pt_t internal_arg_pt(bool rel, int32_t cx, int32_t cy, int32_t ax, int32_t ay)
 {
   const svg_pt_t p = {.x = rel ? (cx + ax) : ax, .y = rel ? (cy + ay) : ay};
   return p;
@@ -273,7 +273,7 @@ typedef struct {
  * @brief Evaluate one axis of a quadratic Bernstein-Bezier polynomial at parameter @p tt.
  *
  * @details Computes the three-point quadratic Bezier formula:
- * (1-tt)^2 * c0 + 2*(1-tt)*tt * c1 + tt^2 * c2. Used by @c priv_flatten_quad
+ * (1-tt)^2 * c0 + 2*(1-tt)*tt * c1 + tt^2 * c2. Used by @c internal_flatten_quad
  * to sample x and y independently at each subdivision parameter.
  *
  * @param[in] tt Parameter in [0, 1]; 0 returns @p c0, 1 returns @p c2.
@@ -297,7 +297,7 @@ typedef struct {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static float priv_bezier_q1(float tt, float c0, float c1, float c2)
+static float internal_bezier_q1(float tt, float c0, float c1, float c2)
 {
   const float mt = 1.0F - tt;
   return ((mt * mt) * c0) + (s_svg_bez2 * mt * tt * c1) + ((tt * tt) * c2);
@@ -307,8 +307,8 @@ static float priv_bezier_q1(float tt, float c0, float c1, float c2)
  * @brief Flatten a quadratic Bezier curve (P0..P2, user space) into the vertex array.
  *
  * @details Samples @c k_svg_curve_seg equally-spaced parameter values in (0,1]
- * using @c priv_bezier_q1 for each axis, maps each through the full affine via
- * @c ra8_svgp_map_point, and appends the framebuffer-space point to
+ * using @c internal_bezier_q1 for each axis, maps each through the full affine via
+ * @c priv_ra8_svgp_map_point, and appends the framebuffer-space point to
  * @p xs[@p *n] / @p ys[@p *n], incrementing @p *n. Stops early when @p *n
  * reaches @c k_svg_poly_max to avoid buffer overflow.
  *
@@ -332,20 +332,20 @@ static float priv_bezier_q1(float tt, float c0, float c1, float c2)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_flatten_quad(const svg_xform_t* t,
-                              svg_pt_t           p0,
-                              svg_pt_t           p1,
-                              svg_pt_t           p2,
-                              int32_t*           xs,
-                              int32_t*           ys,
-                              int32_t*           n)
+static void internal_flatten_quad(const svg_xform_t* t,
+                                  svg_pt_t           p0,
+                                  svg_pt_t           p1,
+                                  svg_pt_t           p2,
+                                  int32_t*           xs,
+                                  int32_t*           ys,
+                                  int32_t*           n)
 {
   /* Bounded: k_svg_curve_seg samples, capped by k_svg_poly_max. */
   for (int32_t j = 1; (j <= (int32_t)k_svg_curve_seg) && (*n < (int32_t)k_svg_poly_max); ++j) {
     const float tt = (float)j / (float)k_svg_curve_seg;
-    const float bx = priv_bezier_q1(tt, (float)p0.x, (float)p1.x, (float)p2.x);
-    const float by = priv_bezier_q1(tt, (float)p0.y, (float)p1.y, (float)p2.y);
-    ra8_svgp_map_point(t, (int32_t)bx, (int32_t)by, &xs[*n], &ys[*n]);
+    const float bx = internal_bezier_q1(tt, (float)p0.x, (float)p1.x, (float)p2.x);
+    const float by = internal_bezier_q1(tt, (float)p0.y, (float)p1.y, (float)p2.y);
+    priv_ra8_svgp_map_point(t, (int32_t)bx, (int32_t)by, &xs[*n], &ys[*n]);
     ++(*n);
   }
 }
@@ -376,7 +376,7 @@ static void priv_flatten_quad(const svg_xform_t* t,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static svg_pt_t priv_reflect(svg_pt_t cur, svg_pt_t ctrl)
+static svg_pt_t internal_reflect(svg_pt_t cur, svg_pt_t ctrl)
 {
   const svg_pt_t r = {.x = (2 * cur.x) - ctrl.x, .y = (2 * cur.y) - ctrl.y};
   return r;
@@ -396,7 +396,7 @@ static svg_pt_t priv_reflect(svg_pt_t cur, svg_pt_t ctrl)
  * @param[in] want Expected previous command kind ('c' for S, 'q' for T).
  *
  * @return svg_pt_t The derived first control point.
- * @retval priv_reflect(p0, st->ctrl)  When @c st->kind == @p want.
+ * @retval internal_reflect(p0, st->ctrl)  When @c st->kind == @p want.
  * @retval p0                          Otherwise.
  *
  * @pre  @p st is a valid non-NULL pointer to an initialised @c path_state_t.
@@ -411,15 +411,15 @@ static svg_pt_t priv_reflect(svg_pt_t cur, svg_pt_t ctrl)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static svg_pt_t priv_smooth_ctrl(svg_pt_t p0, const path_state_t* st, char want)
+static svg_pt_t internal_smooth_ctrl(svg_pt_t p0, const path_state_t* st, char want)
 {
-  return (st->kind == want) ? priv_reflect(p0, st->ctrl) : p0;
+  return (st->kind == want) ? internal_reflect(p0, st->ctrl) : p0;
 }
 
 /**
  * @brief Flatten a cubic Bezier (P0..P3) into the vertex list and advance path state.
  *
- * @details Calls @c priv_flatten_cubic to append sampled framebuffer vertices
+ * @details Calls @c internal_flatten_cubic to append sampled framebuffer vertices
  * starting at index @p n, records P2 as the new smooth-curve control point in
  * @p st->ctrl, sets @p st->kind to 'c', and advances @p st->cx / @p st->cy
  * to P3. Returns the new vertex count. Used for 'C'/'c' and 'S'/'s' commands.
@@ -449,18 +449,18 @@ static svg_pt_t priv_smooth_ctrl(svg_pt_t p0, const path_state_t* st, char want)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int32_t priv_emit_cubic(const svg_xform_t* t,
-                               svg_pt_t           p0,
-                               svg_pt_t           p1,
-                               svg_pt_t           p2,
-                               svg_pt_t           p3,
-                               path_state_t*      st,
-                               int32_t*           xs,
-                               int32_t*           ys,
-                               int32_t            n)
+static int32_t internal_emit_cubic(const svg_xform_t* t,
+                                   svg_pt_t           p0,
+                                   svg_pt_t           p1,
+                                   svg_pt_t           p2,
+                                   svg_pt_t           p3,
+                                   path_state_t*      st,
+                                   int32_t*           xs,
+                                   int32_t*           ys,
+                                   int32_t            n)
 {
   int32_t m = n;
-  priv_flatten_cubic(t, p0, p1, p2, p3, xs, ys, &m);
+  internal_flatten_cubic(t, p0, p1, p2, p3, xs, ys, &m);
   st->ctrl = p2;
   st->kind = 'c';
   st->cx   = p3.x;
@@ -471,7 +471,7 @@ static int32_t priv_emit_cubic(const svg_xform_t* t,
 /**
  * @brief Flatten a quadratic Bezier (P0..P2) into the vertex list and advance path state.
  *
- * @details Calls @c priv_flatten_quad to append sampled framebuffer vertices
+ * @details Calls @c internal_flatten_quad to append sampled framebuffer vertices
  * starting at index @p n, records P1 as the new smooth-curve control point in
  * @p st->ctrl, sets @p st->kind to 'q', and advances @p st->cx / @p st->cy
  * to P2. Returns the new vertex count. Used for 'Q'/'q' and 'T'/'t' commands.
@@ -500,17 +500,17 @@ static int32_t priv_emit_cubic(const svg_xform_t* t,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int32_t priv_emit_quad(const svg_xform_t* t,
-                              svg_pt_t           p0,
-                              svg_pt_t           p1,
-                              svg_pt_t           p2,
-                              path_state_t*      st,
-                              int32_t*           xs,
-                              int32_t*           ys,
-                              int32_t            n)
+static int32_t internal_emit_quad(const svg_xform_t* t,
+                                  svg_pt_t           p0,
+                                  svg_pt_t           p1,
+                                  svg_pt_t           p2,
+                                  path_state_t*      st,
+                                  int32_t*           xs,
+                                  int32_t*           ys,
+                                  int32_t            n)
 {
   int32_t m = n;
-  priv_flatten_quad(t, p0, p1, p2, xs, ys, &m);
+  internal_flatten_quad(t, p0, p1, p2, xs, ys, &m);
   st->ctrl = p1;
   st->kind = 'q';
   st->cx   = p2.x;
@@ -523,8 +523,8 @@ static int32_t priv_emit_quad(const svg_xform_t* t,
  *
  * @details Handles 'C'/'c', 'S'/'s' (smooth cubic), 'Q'/'q', 'T'/'t' (smooth
  * quadratic), and the elliptical arc 'A'/'a'; 'S'/'T' reflect the previous
- * matching control point via @c priv_smooth_ctrl, and the arc is centre-
- * parametrised and sampled via @c ra8_svgp_flatten_arc. Returns -1 for any other
+ * matching control point via @c internal_smooth_ctrl, and the arc is centre-
+ * parametrised and sampled via @c priv_ra8_svgp_flatten_arc. Returns -1 for any other
  * command so the caller falls back to the endpoint-chord path (M/L/H/V/Z).
  *
  * @param[in]     t    Active coordinate transform; must not be NULL.
@@ -552,37 +552,38 @@ static int32_t priv_emit_quad(const svg_xform_t* t,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int32_t priv_path_curve(const svg_xform_t* t,
-                               char               u,
-                               bool               rel,
-                               const int32_t*     args,
-                               path_state_t*      st,
-                               int32_t*           xs,
-                               int32_t*           ys,
-                               int32_t            n)
+static int32_t internal_path_curve(const svg_xform_t* t,
+                                   char               u,
+                                   bool               rel,
+                                   const int32_t*     args,
+                                   path_state_t*      st,
+                                   int32_t*           xs,
+                                   int32_t*           ys,
+                                   int32_t            n)
 {
   const svg_pt_t p0 = {.x = st->cx, .y = st->cy};
   if ((u == 'q') || (u == 't')) {
     const bool     sm = (u == 't');
-    const svg_pt_t p1 =
-      sm ? priv_smooth_ctrl(p0, st, 'q') : priv_arg_pt(rel, st->cx, st->cy, args[0], args[1]);
+    const svg_pt_t p1 = sm ? internal_smooth_ctrl(p0, st, 'q')
+                           : internal_arg_pt(rel, st->cx, st->cy, args[0], args[1]);
     const int32_t  e  = sm ? 0 : 2;
-    const svg_pt_t p2 = priv_arg_pt(rel, st->cx, st->cy, args[e], args[e + 1]);
-    return priv_emit_quad(t, p0, p1, p2, st, xs, ys, n);
+    const svg_pt_t p2 = internal_arg_pt(rel, st->cx, st->cy, args[e], args[e + 1]);
+    return internal_emit_quad(t, p0, p1, p2, st, xs, ys, n);
   }
   if ((u == 'c') || (u == 's')) {
     const bool     sm = (u == 's');
-    const svg_pt_t p1 =
-      sm ? priv_smooth_ctrl(p0, st, 'c') : priv_arg_pt(rel, st->cx, st->cy, args[0], args[1]);
+    const svg_pt_t p1 = sm ? internal_smooth_ctrl(p0, st, 'c')
+                           : internal_arg_pt(rel, st->cx, st->cy, args[0], args[1]);
     const int32_t  b  = sm ? 0 : 2;
-    const svg_pt_t p2 = priv_arg_pt(rel, st->cx, st->cy, args[b], args[b + 1]);
-    const svg_pt_t p3 = priv_arg_pt(rel, st->cx, st->cy, args[b + 2], args[b + 3]);
-    return priv_emit_cubic(t, p0, p1, p2, p3, st, xs, ys, n);
+    const svg_pt_t p2 = internal_arg_pt(rel, st->cx, st->cy, args[b], args[b + 1]);
+    const svg_pt_t p3 = internal_arg_pt(rel, st->cx, st->cy, args[b + 2], args[b + 3]);
+    return internal_emit_cubic(t, p0, p1, p2, p3, st, xs, ys, n);
   }
   if (u == 'a') {
-    const svg_pt_t p_end = priv_arg_pt(rel, st->cx, st->cy, args[k_svg_arc_ex], args[k_svg_arc_ey]);
-    int32_t        m     = n;
-    ra8_svgp_flatten_arc(t, p0, args, p_end, xs, ys, &m);
+    const svg_pt_t p_end =
+      internal_arg_pt(rel, st->cx, st->cy, args[k_svg_arc_ex], args[k_svg_arc_ey]);
+    int32_t m = n;
+    priv_ra8_svgp_flatten_arc(t, p0, args, p_end, xs, ys, &m);
     st->kind = 0; /* an arc breaks the smooth-reflection chain */
     st->cx   = p_end.x;
     st->cy   = p_end.y;
@@ -621,9 +622,9 @@ static int32_t priv_path_curve(const svg_xform_t* t,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static char priv_next_cmd(const uint8_t* d, size_t dlen, size_t* i, char* last)
+static char internal_next_cmd(const uint8_t* d, size_t dlen, size_t* i, char* last)
 {
-  while ((*i < dlen) && (ra8_svgp_ws((char)d[*i]) || (d[*i] == ','))) {
+  while ((*i < dlen) && (priv_ra8_svgp_ws((char)d[*i]) || (d[*i] == ','))) {
     ++(*i);
   }
   if (*i >= dlen) {
@@ -671,7 +672,7 @@ static char priv_next_cmd(const uint8_t* d, size_t dlen, size_t* i, char* last)
  */
 RA8_INTERNAL
 static int32_t
-priv_parse_path(const uint8_t* d, size_t dlen, const svg_xform_t* t, int32_t* xs, int32_t* ys)
+internal_parse_path(const uint8_t* d, size_t dlen, const svg_xform_t* t, int32_t* xs, int32_t* ys)
 {
   int32_t      n    = 0;
   path_state_t st   = {.cx = 0, .cy = 0, .ctrl = {.x = 0, .y = 0}, .kind = 0};
@@ -683,10 +684,10 @@ priv_parse_path(const uint8_t* d, size_t dlen, const svg_xform_t* t, int32_t* xs
    * cannot spin on untrusted input (NASA P10 Rule 2). */
   while ((i < dlen) && (n < (int32_t)k_svg_poly_max)) {
     const size_t i_before = i;
-    const char   c        = priv_next_cmd(d, dlen, &i, &last);
-    const char   u        = ra8_svgp_lc(c);
+    const char   c        = internal_next_cmd(d, dlen, &i, &last);
+    const char   u        = priv_ra8_svgp_lc(c);
     /*
-     * priv_next_cmd() only ever yields c in {0} U ['A'..'Z'] U ['a'..'z'] (an
+     * internal_next_cmd() only ever yields c in {0} U ['A'..'Z'] U ['a'..'z'] (an
      * ASCII path-command letter or the 0 end-marker). Whenever c >= 'a' holds,
      * c is a lowercase letter (0x61..0x7A) and therefore always <= 'z'; no
      * yielded value can make (c >= 'a') true while (c <= 'z') is false. The
@@ -694,7 +695,7 @@ priv_parse_path(const uint8_t* d, size_t dlen, const svg_xform_t* t, int32_t* xs
      */
     /* mcdc-deactivated: c is a command letter or 0; (c<='z') is always true once (c>='a') holds. */
     const bool    rel = (c >= 'a') && (c <= 'z');
-    const int32_t na  = (c != 0) ? priv_cmd_argc(u) : -1;
+    const int32_t na  = (c != 0) ? internal_cmd_argc(u) : -1;
     if (na < 0) {
       break; /* unknown / no current command */
     }
@@ -710,14 +711,14 @@ priv_parse_path(const uint8_t* d, size_t dlen, const svg_xform_t* t, int32_t* xs
     }
     int32_t args[k_svg_path_args] = {};
     for (int32_t a = 0; a < na; ++a) {
-      args[a] = ra8_svgp_num(d, dlen, &i);
+      args[a] = priv_ra8_svgp_num(d, dlen, &i);
     }
-    const int32_t cn = priv_path_curve(t, u, rel, args, &st, xs, ys, n);
+    const int32_t cn = internal_path_curve(t, u, rel, args, &st, xs, ys, n);
     if (cn >= 0) {
       n = cn; /* C/S/Q/T flattened into segments */
     } else {
-      priv_path_step(u, rel, args, na, &st.cx, &st.cy);
-      ra8_svgp_map_point(t, st.cx, st.cy, &xs[n], &ys[n]);
+      internal_path_step(u, rel, args, na, &st.cx, &st.cy);
+      priv_ra8_svgp_map_point(t, st.cx, st.cy, &xs[n], &ys[n]);
       ++n;
       st.kind = 0; /* a non-curve breaks the smooth-reflection chain */
     }
@@ -731,10 +732,10 @@ priv_parse_path(const uint8_t* d, size_t dlen, const svg_xform_t* t, int32_t* xs
 /**
  * @brief Draw one SVG 'path' element as a filled polygon.
  *
- * @details Resolves the fill (solid or gradient via @c ra8_svgp_resolve_fill),
+ * @details Resolves the fill (solid or gradient via @c priv_ra8_svgp_resolve_fill),
  * reads the 'd' attribute, parses it into framebuffer-space vertices via
- * @c priv_parse_path, and fills the resulting polygon with @c ra8_svgp_fill_poly
- * or @c ra8_svgp_fill_poly_grad. Returns without drawing when fill is absent/none
+ * @c internal_parse_path, and fills the resulting polygon with @c priv_ra8_svgp_fill_poly
+ * or @c priv_ra8_svgp_fill_poly_grad. Returns without drawing when fill is absent/none
  * or the 'd' attribute is missing.
  *
  * @param[in] s   Byte span of the element tag; must not be NULL.
@@ -752,21 +753,22 @@ priv_parse_path(const uint8_t* d, size_t dlen, const svg_xform_t* t, int32_t* xs
  *
  * @since 0.1.0
  */
-void ra8_svgp_draw_path(const uint8_t* s, size_t len, const svg_xform_t* t)
+void priv_ra8_svgp_draw_path(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
   int32_t        gi   = -1;
-  const uint32_t fill = ra8_svgp_resolve_fill(s, len, t, (uint32_t)k_svg_def_fill, &gi);
+  const uint32_t fill = priv_ra8_svgp_resolve_fill(s, len, t, (uint32_t)k_svg_def_fill, &gi);
   size_t         off  = 0U;
   size_t         vl   = 0U;
-  if (((gi < 0) && (fill == (uint32_t)k_svg_no_paint)) || !ra8_svgp_attr(s, len, "d", &off, &vl)) {
+  if (((gi < 0) && (fill == (uint32_t)k_svg_no_paint)) ||
+      !priv_ra8_svgp_attr(s, len, "d", &off, &vl)) {
     return;
   }
   int32_t       xs[k_svg_poly_max] = {};
   int32_t       ys[k_svg_poly_max] = {};
-  const int32_t n                  = priv_parse_path(&s[off], vl, t, xs, ys);
+  const int32_t n                  = internal_parse_path(&s[off], vl, t, xs, ys);
   if (gi >= 0) {
-    ra8_svgp_fill_poly_grad(xs, ys, n, &t->grads->g[gi]);
+    priv_ra8_svgp_fill_poly_grad(xs, ys, n, &t->grads->g[gi]);
   } else {
-    ra8_svgp_fill_poly(xs, ys, n, fill);
+    priv_ra8_svgp_fill_poly(xs, ys, n, fill);
   }
 }

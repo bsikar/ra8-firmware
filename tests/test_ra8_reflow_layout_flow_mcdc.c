@@ -5,10 +5,10 @@
  * @details
  * Split sibling of test_ra8_reflow_layout_content_mcdc.c covering the text-flow
  * decision families of libs/ra8_reflow/src/ra8_reflow_layout.c: the
- * priv_finish_line slack early-outs (right-align no-slack, center zero-slack),
- * the priv_open_block anchor capture and pool cap, the wrapped-link
+ * internal_finish_line slack early-outs (right-align no-slack, center zero-slack),
+ * the internal_open_block anchor capture and pool cap, the wrapped-link
  * rect-extension decision, the final token flush (image-only trailing page),
- * priv_page_has_content, and the ra8_reflow_register_face blob validation.
+ * internal_page_has_content, and the ra8_reflow_register_face blob validation.
  * All decisions are driven through the public API with crafted markup; the
  * shared engine fixture lives in tests/support/reflow_layout_test_util.h.
  *
@@ -17,9 +17,9 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "support/reflow_layout_test_util.h"
 #include "unity_minimal.h"
@@ -30,11 +30,11 @@ enum : uint32_t {
 };
 
 /**
- * @test test_finish_line_no_slack_mcdc
+ * @test internal_test_finish_line_no_slack_mcdc
  *
  * @par MC/DC:
  * Decision: `if ((hi <= lo) || (slack <= 0))` (2 conditions, OR;
- * libs/ra8_reflow/src/ra8_reflow_layout.c@priv_finish_line). The early-out fires
+ * libs/ra8_reflow/src/ra8_reflow_layout.c@internal_finish_line). The early-out fires
  * when a non-left-aligned line has no movable run (hi<=lo) or no slack
  * (content already reaches/overruns the right margin). The left-aligned arm
  * never reaches this decision (an earlier `align == left` guard returns), so
@@ -50,8 +50,16 @@ enum : uint32_t {
  *        (hi <= lo) -> decision T. Reached by right-aligning a paragraph whose
  *        only run on a wrapped line is the trailing break space.
  * V1 vs V2 isolate the slack condition (hi>lo held); V1 vs V3 isolate hi<=lo.
+ * @brief Verify finish line no slack mcdc behavior against the reflow contract.
+ * @details Exercises the finish line no slack mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_finish_line_no_slack_mcdc(void)
+RA8_INTERNAL static void internal_test_finish_line_no_slack_mcdc(void)
 {
   TEST_BEGIN("priv_finish_line MC/DC: (hi<=lo)||(slack<=0)");
   /* V1 control: short right-aligned line -> slack > 0 -> glyph shifts right. */
@@ -84,11 +92,11 @@ static void test_finish_line_no_slack_mcdc(void)
 }
 
 /**
- * @test test_open_block_anchor_mcdc
+ * @test internal_test_open_block_anchor_mcdc
  *
  * @par MC/DC:
  * Decision: `if ((tok->text_len > 0U) && (engine->anchor_count < max))`
- * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout.c@priv_open_block --
+ * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout.c@internal_open_block --
  * the `id=` anchor-capture gate). A block-start token carries a non-zero
  * text_len slice only when the source element had `id="..."`.
  *
@@ -101,8 +109,16 @@ static void test_finish_line_no_slack_mcdc(void)
  *        C2-false arm by asserting the count never exceeds the cap when many
  *        ided blocks are laid out (the guard holds the count at the cap).
  * V1 vs V2 isolate C1 (text_len); V1 vs V3 isolate C2 (pool-not-full).
+ * @brief Verify open block anchor mcdc behavior against the reflow contract.
+ * @details Exercises the open block anchor mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_open_block_anchor_mcdc(void)
+RA8_INTERNAL static void internal_test_open_block_anchor_mcdc(void)
 {
   TEST_BEGIN("priv_open_block MC/DC: (text_len>0) && (anchor_count<max)");
   /* V1: a block with id -> one anchor recorded and resolvable. */
@@ -130,7 +146,7 @@ static void test_open_block_anchor_mcdc(void)
 }
 
 /**
- * @test test_build_link_rects_wrap_mcdc
+ * @test internal_test_build_link_rects_wrap_mcdc
  *
  * @par MC/DC:
  * Decision: the run-extension while-loop in
@@ -146,8 +162,16 @@ static void test_open_block_anchor_mcdc(void)
  *        condition flips at the link's end (link != id) -> exactly one rect.
  * V1 exercises the y-mismatch arm of the AND; V2 the reserved-mismatch arm; the
  * `e < glyph_count` bound is exercised by the link reaching the page end.
+ * @brief Verify build link rects wrap mcdc behavior against the reflow contract.
+ * @details Exercises the build link rects wrap mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_build_link_rects_wrap_mcdc(void)
+RA8_INTERNAL static void internal_test_build_link_rects_wrap_mcdc(void)
 {
   TEST_BEGIN("priv_build_link_rects MC/DC: wrapped-link run extension");
   /* V1: a long link wraps across two lines -> two rects, same target. */
@@ -165,13 +189,13 @@ static void test_build_link_rects_wrap_mcdc(void)
 }
 
 /**
- * @test test_layout_tokens_final_flush_mcdc
+ * @test internal_test_layout_tokens_final_flush_mcdc
  *
  * @par MC/DC:
  * Decision: the final-page flush in
- * libs/ra8_reflow/src/ra8_reflow_layout.c@priv_layout_tokens:
+ * libs/ra8_reflow/src/ra8_reflow_layout.c@internal_layout_tokens:
  * `if ((glyph_count > page_first_glyph) || (image_box_count > page_first_image))`
- * (2 conditions, OR; mirrors priv_page_has_content). The trailing page is
+ * (2 conditions, OR; mirrors internal_page_has_content). The trailing page is
  * flushed when the in-progress page accumulated glyphs OR images.
  *
  * Vectors (N+1 = 3 for N=2):
@@ -184,11 +208,19 @@ static void test_build_link_rects_wrap_mcdc(void)
  *  - V3: content laid out so a trailing flush is not needed (a paragraph that
  *        ends exactly on a block-close page flush) -> both C1 and C2 F on the
  *        final check -> F. Reached by a short-page paragraph that finishes via
- *        priv_close_block's own page flush; the chapter still reports >= 1 page.
+ *        internal_close_block's own page flush; the chapter still reports >= 1 page.
  * V1 vs V2 isolate the image condition; the F/F arm is the no-trailing-content
  * case.
+ * @brief Verify layout tokens final flush mcdc behavior against the reflow contract.
+ * @details Exercises the layout tokens final flush mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_layout_tokens_final_flush_mcdc(void)
+RA8_INTERNAL static void internal_test_layout_tokens_final_flush_mcdc(void)
 {
   TEST_BEGIN("priv_layout_tokens MC/DC: trailing glyph || image flush");
   ra8_img_arena_t arena = {.base   = s_img_scratch,
@@ -226,7 +258,7 @@ static void test_layout_tokens_final_flush_mcdc(void)
 }
 
 /**
- * @test test_register_face_validate_mcdc
+ * @test internal_test_register_face_validate_mcdc
  *
  * @par MC/DC:
  * Decision: `if (offset < 0 || stbtt_InitFont(&probe, blob, offset) == 0)`
@@ -245,8 +277,16 @@ static void test_layout_tokens_final_flush_mcdc(void)
  * V1 vs V2 isolate InitFont; V1 vs V3 isolate the offset condition. (Exact
  * which junk triggers which arm is implementation-defined in stb; both junk
  * blobs return not_supported, and the valid face is the all-false control.)
+ * @brief Verify register face validate mcdc behavior against the reflow contract.
+ * @details Exercises the register face validate mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_register_face_validate_mcdc(void)
+RA8_INTERNAL static void internal_test_register_face_validate_mcdc(void)
 {
   TEST_BEGIN("ra8_reflow_register_face MC/DC: offset<0 || InitFont==0");
   /* V1: valid Ahem face registers. */
@@ -258,14 +298,14 @@ static void test_register_face_validate_mcdc(void)
 
   /* V2 / V3: junk blobs long enough to clear the length guard but rejected by
    * the offset / InitFont validation -> not_supported, count unchanged. */
-  static const uint8_t s_junk_face_a[16] =
+  static const uint8_t k_junk_face_a[16] =
     {0U, 1U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U};
-  static const uint8_t s_junk_face_b[16] =
+  static const uint8_t k_junk_face_b[16] =
     {0xFFU, 0xFFU, 0xFFU, 0xFFU, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U};
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_reflow_register_face(&s_eng, 1U, s_junk_face_a, sizeof s_junk_face_a));
+                 ra8_reflow_register_face(&s_eng, 1U, k_junk_face_a, sizeof k_junk_face_a));
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_reflow_register_face(&s_eng, 1U, s_junk_face_b, sizeof s_junk_face_b));
+                 ra8_reflow_register_face(&s_eng, 1U, k_junk_face_b, sizeof k_junk_face_b));
   TEST_ASSERT_EQ(1, s_eng.face_count); /* unchanged by the two failures */
   TEST_END("ra8_reflow_register_face MC/DC: offset<0 || InitFont==0");
 }
@@ -276,12 +316,12 @@ static void test_register_face_validate_mcdc(void)
  */
 
 /**
- * @test test_finish_line_center_slack_zero_mcdc
+ * @test internal_test_finish_line_center_slack_zero_mcdc
  *
  * @par MC/DC:
  * Decision at ra8_reflow_layout.c L500:
  * `if ((hi <= lo) || (slack <= 0))`  (2 conditions, OR;
- * libs/ra8_reflow/src/ra8_reflow_layout.c@priv_finish_line).
+ * libs/ra8_reflow/src/ra8_reflow_layout.c@internal_finish_line).
  *
  * The `hi <= lo` arm at L500 requires the last glyph on the line to be a
  * space AND the space trim to collapse hi down to lo.  The tokenizer sets
@@ -303,8 +343,16 @@ static void test_register_face_validate_mcdc(void)
  * NOTE: the `hi <= lo` condition (C1) at L500 is unreachable via the public
  * API because the tokenizer always strips leading whitespace, preventing a
  * space from being the sole glyph on any layout line.
+ * @brief Verify finish line center slack zero mcdc behavior against the reflow contract.
+ * @details Exercises the finish line center slack zero mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_finish_line_center_slack_zero_mcdc(void)
+RA8_INTERNAL static void internal_test_finish_line_center_slack_zero_mcdc(void)
 {
   TEST_BEGIN("priv_finish_line L500 MC/DC: (hi<=lo)||(slack<=0) -- slack arm");
 
@@ -352,8 +400,11 @@ static void test_finish_line_center_slack_zero_mcdc(void)
  * @post The id is zero-padded to three digits.
  *
  * @note Thread-safe: writes only through @p buf.
+  * @retval nonzero Offset immediately following the appended anchor paragraph.
+ * @since 0.1.0
+
  */
-static size_t emit_anchor_paragraph(char* buf, size_t pos, uint32_t k)
+RA8_INTERNAL static size_t internal_emit_anchor_paragraph(char* buf, size_t pos, uint32_t k)
 {
   /* Manually build the decimal digits (no sprintf to keep it C23-clean). */
   uint32_t v    = k;
@@ -370,17 +421,17 @@ static size_t emit_anchor_paragraph(char* buf, size_t pos, uint32_t k)
     ndig++;
   } while ((v > 0U) && (ndig < k_digit_buf_sz));
   /* Emit: <p id="idXXX">x</p> */
-  static const char s_open[] = "<p id=\"id";
-  static const char s_mid[]  = "\">x</p>";
-  for (size_t j = 0U; s_open[j] != '\0'; ++j) {
-    buf[pos++] = s_open[j];
+  static const char k_open[] = "<p id=\"id";
+  static const char k_mid[]  = "\">x</p>";
+  for (size_t j = 0U; k_open[j] != '\0'; ++j) {
+    buf[pos++] = k_open[j];
   }
   /* Leading zeros so all ids are unique and 3 digits wide. */
   for (uint8_t j = k_digit_buf_sz - ndig; j < k_digit_buf_sz; ++j) {
     buf[pos++] = d[j];
   }
-  for (size_t j = 0U; s_mid[j] != '\0'; ++j) {
-    buf[pos++] = s_mid[j];
+  for (size_t j = 0U; k_mid[j] != '\0'; ++j) {
+    buf[pos++] = k_mid[j];
   }
   return pos;
 }
@@ -402,31 +453,34 @@ static size_t emit_anchor_paragraph(char* buf, size_t pos, uint32_t k)
  * @post On failure (overflow), returns 0 and buf is unspecified.
  * @note Not thread-safe.
  * @since 0.1.0
+  * @retval 0 The document would exceed @p buf_cap.
+ * @retval nonzero Length of the completed NUL-terminated document.
+
  */
-static size_t build_anchor_html(char* buf, size_t buf_cap, uint32_t n)
+RA8_INTERNAL static size_t internal_build_anchor_html(char* buf, size_t buf_cap, uint32_t n)
 {
-  static const char s_hdr[] = "<html><body>";
-  static const char s_ftr[] = "</body></html>";
+  static const char k_hdr[] = "<html><body>";
+  static const char k_ftr[] = "</body></html>";
   /* Each entry: "<p id=\"idNNN\">x</p>" -- worst case: NNN=999 => 21 chars */
   enum : uint8_t {
     k_entry_max_len = 21U, /**< Max chars for one `<p id="idNNN">x</p>`. */
   };
-  const size_t needed = sizeof s_hdr - 1U + ((size_t)n * k_entry_max_len) + sizeof s_ftr - 1U + 1U;
+  const size_t needed = sizeof k_hdr - 1U + ((size_t)n * k_entry_max_len) + sizeof k_ftr - 1U + 1U;
   if (needed > buf_cap) {
     return 0U;
   }
   size_t pos = 0U;
   /* Header */
-  for (size_t j = 0U; s_hdr[j] != '\0'; ++j) {
-    buf[pos++] = s_hdr[j];
+  for (size_t j = 0U; k_hdr[j] != '\0'; ++j) {
+    buf[pos++] = k_hdr[j];
   }
   /* Repeated anchor paragraphs */
   for (uint32_t k = 0U; k < n; ++k) {
-    pos = emit_anchor_paragraph(buf, pos, k);
+    pos = internal_emit_anchor_paragraph(buf, pos, k);
   }
   /* Footer */
-  for (size_t j = 0U; s_ftr[j] != '\0'; ++j) {
-    buf[pos++] = s_ftr[j];
+  for (size_t j = 0U; k_ftr[j] != '\0'; ++j) {
+    buf[pos++] = k_ftr[j];
   }
   buf[pos] = '\0';
   return pos;
@@ -446,14 +500,14 @@ enum : uint32_t {
 static char s_anchor_html[k_anchor_buf_cap];
 
 /**
- * @test test_anchor_pool_full_mcdc
+ * @test internal_test_anchor_pool_full_mcdc
  *
  * @par MC/DC:
  * Decision at ra8_reflow_layout.c L708:
  * `if ((tok->text_len > 0U) && (engine->anchor_count < max))`
- * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout.c@priv_open_block).
+ * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout.c@internal_open_block).
  *
- * The existing test_open_block_anchor_mcdc covers V1 (both true) and V2
+ * The existing internal_test_open_block_anchor_mcdc covers V1 (both true) and V2
  * (C1 false, no id).  This test drives the missing C2-false arm: an element
  * with an `id=` attribute when the anchor pool is already full
  * (anchor_count == k_ra8_reflow_max_anchors).
@@ -466,12 +520,21 @@ static char s_anchor_html[k_anchor_buf_cap];
  *        decision F -> the overflow element is silently skipped and
  *        anchor_count stays at exactly k_ra8_reflow_max_anchors.
  * V1 vs V3 isolate C2 (pool capacity).
+ * @brief Verify anchor pool full mcdc behavior against the reflow contract.
+ * @details Exercises the anchor pool full mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_anchor_pool_full_mcdc(void)
+RA8_INTERNAL static void internal_test_anchor_pool_full_mcdc(void)
 {
   TEST_BEGIN("priv_open_block L708 MC/DC: anchor pool full (C2-false arm)");
 
-  const size_t len = build_anchor_html(s_anchor_html, sizeof s_anchor_html, k_anchor_buf_entries);
+  const size_t len =
+    internal_build_anchor_html(s_anchor_html, sizeof s_anchor_html, k_anchor_buf_entries);
   TEST_ASSERT(len > 0U);
 
   init_engine(k_vp_w, k_vp_h);
@@ -487,18 +550,18 @@ static void test_anchor_pool_full_mcdc(void)
 }
 
 /**
- * @test test_page_has_content_mcdc
+ * @test internal_test_page_has_content_mcdc
  *
  * @par MC/DC:
  * Decision at ra8_reflow_layout.c L849:
  * `return (engine->glyph_count > cur->page_first_glyph) ||
  *         (engine->image_box_count > cur->page_first_image)`
- * (2 conditions, OR; libs/ra8_reflow/src/ra8_reflow_layout.c@priv_page_has_content,
- * called from priv_place_image at L1009 and L1016).
+ * (2 conditions, OR; libs/ra8_reflow/src/ra8_reflow_layout.c@internal_page_has_content,
+ * called from internal_place_image at L1009 and L1016).
  *
- * priv_page_has_content() is only invoked from priv_place_image() -- the
- * trailing-flush OR in priv_layout_tokens is a separate inline expression and
- * does not call this function.  To reach L849 we must execute priv_place_image
+ * internal_page_has_content() is only invoked from internal_place_image() -- the
+ * trailing-flush OR in internal_layout_tokens is a separate inline expression and
+ * does not call this function.  To reach L849 we must execute internal_place_image
  * up to the page-overflow check (L1009 / L1016), which requires a bound loader,
  * a resolvable image, and a cursor y that would push past the bottom margin.
  *
@@ -518,8 +581,16 @@ static void test_anchor_pool_full_mcdc(void)
  *        evaluates C2=T while C1=F (no glyphs on the new page) -> decision T.
  *        Isolates C2 independently.
  * V1 vs V3 isolate C2; V1 vs V2 show the all-false / all-true contrast.
+ * @brief Verify page has content mcdc behavior against the reflow contract.
+ * @details Exercises the page has content mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_page_has_content_mcdc(void)
+RA8_INTERNAL static void internal_test_page_has_content_mcdc(void)
 {
   TEST_BEGIN("priv_page_has_content L849 MC/DC: glyph-OR-image conditions");
   ra8_img_arena_t arena = {.base   = s_img_scratch,
@@ -537,7 +608,7 @@ static void test_page_has_content_mcdc(void)
   TEST_ASSERT(pages_v1 >= 2U);
   TEST_ASSERT(s_eng.image_box_count >= 1U);
 
-  /* V2: tall image as the very first element -> when priv_place_image checks
+  /* V2: tall image as the very first element -> when internal_place_image checks
    * page_has_content the page is empty (glyph_count == page_first_glyph AND
    * image_box_count == page_first_image) -> decision F -> no pre-break -> the
    * image lands on page 0 despite overflowing the page height. */
@@ -563,7 +634,7 @@ static void test_page_has_content_mcdc(void)
                                 "</body></html>");
   /* Two consecutive tall images each overflowing the short page -> at least 2
    * images recorded; the post-record overflow check (L1016) fires on the first
-   * image driving the C2-true arm of priv_page_has_content. */
+   * image driving the C2-true arm of internal_page_has_content. */
   TEST_ASSERT(pages_v3 >= 2U);
   TEST_ASSERT(s_eng.image_box_count >= 2U);
 
@@ -583,15 +654,14 @@ static void test_page_has_content_mcdc(void)
  */
 int32_t main(void)
 {
-  test_finish_line_no_slack_mcdc();
-  test_open_block_anchor_mcdc();
-  test_build_link_rects_wrap_mcdc();
-  test_layout_tokens_final_flush_mcdc();
-  test_register_face_validate_mcdc();
-  test_finish_line_center_slack_zero_mcdc();
-  test_anchor_pool_full_mcdc();
-  test_page_has_content_mcdc();
+  internal_test_finish_line_no_slack_mcdc();
+  internal_test_open_block_anchor_mcdc();
+  internal_test_build_link_rects_wrap_mcdc();
+  internal_test_layout_tokens_final_flush_mcdc();
+  internal_test_register_face_validate_mcdc();
+  internal_test_finish_line_center_slack_zero_mcdc();
+  internal_test_anchor_pool_full_mcdc();
+  internal_test_page_has_content_mcdc();
   (void)line_count(); /* silence unused-helper if a future edit drops its use */
-  (void)fprintf(stderr, "[OK ] test_ra8_reflow_layout_flow_mcdc.c\n");
   return 0;
 }

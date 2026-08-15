@@ -42,6 +42,8 @@
 #include "ra8_err.h"
 #include "ra8_reflow.h"
 #include "ra8_reflow_cache.h"
+#include "support/ra8_test_file.h"
+#include "support/ra8_test_output.h"
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
@@ -63,6 +65,7 @@ typedef enum : size_t {
 } c_size_t;
 
 static uint8_t            s_font[k_c_font_cap];
+static uint8_t            s_font_staging[k_c_font_cap];
 static size_t             s_font_len;
 static uint8_t            s_blob[k_c_blob_cap];
 static ra8_reflow_t       s_live;
@@ -94,8 +97,17 @@ static const char* const s_malformed[] = {
 /**
  * @brief Load the bundled Literata subset relative to this source file.
  * @return 1 on success, 0 if the font is absent (caller SKIPs).
- */
-static int load_font(void)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static int internal_load_font(void)
 {
   char         path[k_c_path_cap];
   const char*  here = __FILE__;
@@ -115,17 +127,31 @@ static int load_font(void)
   }
   memcpy(path, here, base);
   (void)snprintf(&path[base], sizeof(path) - base, "libs/ra8_fonts/literata_latin1.ttf");
-  FILE* fp = fopen(path, "rb");
-  if (fp == nullptr) {
+  const ra8_test_file_result_t result =
+    internal_test_file_read(path, s_font, sizeof(s_font), s_font_staging, sizeof(s_font_staging));
+  if (result.status != k_ra8_test_file_ok) {
     return 0;
   }
-  s_font_len = fread(s_font, 1U, (size_t)k_c_font_cap, fp);
-  (void)fclose(fp);
+  s_font_len = result.transferred;
   return (s_font_len > 0U) ? 1 : 0;
 }
 
-/** @brief Lay out @p xhtml live into s_live; return the layout result. */
-static ra8_err_t layout_live(const char* xhtml, uint16_t font_px, uint32_t* pages)
+/** @brief Lay out @p xhtml live into s_live; return the layout result.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in] xhtml Argument for the bounded test operation.
+ * @param[in] font_px Argument for the bounded test operation.
+ * @param[in,out] pages Argument for the bounded test operation.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static ra8_err_t
+internal_layout_live(const char* xhtml, uint16_t font_px, uint32_t* pages)
 {
   ra8_err_t err = ra8_reflow_init((uint16_t)k_c_vp_w,
                                   (uint16_t)k_c_vp_h,
@@ -139,8 +165,17 @@ static ra8_err_t layout_live(const char* xhtml, uint16_t font_px, uint32_t* page
   return ra8_reflow_layout_chapter(&s_live, (const uint8_t*)xhtml, strlen(xhtml), pages);
 }
 
-/** @brief Assert the cache restores s_live's layout glyph/page-identically. */
-static void assert_cache_identical(const char* xhtml)
+/** @brief Assert the cache restores s_live's layout glyph/page-identically.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in] xhtml Argument for the bounded test operation.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static void internal_assert_cache_identical(const char* xhtml)
 {
   const uint32_t gc = s_live.glyph_count;
   const uint32_t pc = s_live.page_count;
@@ -176,7 +211,7 @@ static void assert_cache_identical(const char* xhtml)
 }
 
 /**
- * @test test_corpus_live_cache_identity
+ * @test internal_test_corpus_live_cache_identity
  * @brief Every well-formed chapter lays out, then the cache restores it
  *        glyph-for-glyph and page-for-page into a fresh engine.
  *
@@ -184,27 +219,38 @@ static void assert_cache_identical(const char* xhtml)
  * (no compound decisions in this test -- it exercises the live layout ->
  * cache -> restore acceptance path; cache guards have `test_mcdc_*`
  * vectors in tests/test_ra8_reflow_cache.c.)
- */
-static void test_corpus_live_cache_identity(void)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static void internal_test_corpus_live_cache_identity(void)
 {
   TEST_BEGIN("reflow_corpus: cache == live layout");
-  if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping corpus\n");
+  if (internal_load_font() == 0) {
+    TEST_ASSERT_EQ(
+      k_ra8_test_output_ok,
+      internal_test_output_fd_text(STDERR_FILENO,
+                                   "[SKIP] literata_latin1.ttf not found; skipping corpus\n"));
     TEST_END("reflow_corpus: cache == live layout");
     return;
   }
   for (size_t i = 0U; i < (sizeof(s_corpus) / sizeof(s_corpus[0])); ++i) {
     uint32_t pages = 0U;
-    TEST_ASSERT_EQ(k_ra8_ok, layout_live(s_corpus[i], (uint16_t)k_c_font_px, &pages));
+    TEST_ASSERT_EQ(k_ra8_ok, internal_layout_live(s_corpus[i], (uint16_t)k_c_font_px, &pages));
     TEST_ASSERT(pages >= 1U);
     TEST_ASSERT(s_live.glyph_count > 0U);
-    assert_cache_identical(s_corpus[i]);
+    internal_assert_cache_identical(s_corpus[i]);
   }
   TEST_END("reflow_corpus: cache == live layout");
 }
 
 /**
- * @test test_corpus_font_size_invalidates
+ * @test internal_test_corpus_font_size_invalidates
  * @brief A blob baked at one font size is rejected (stale) by an engine
  *        at a different size -- config change invalidates correctly.
  *
@@ -212,17 +258,28 @@ static void test_corpus_live_cache_identity(void)
  * (no compound decisions in this test -- exercises the invalidation
  * acceptance path; cache guards have `test_mcdc_*` vectors in
  * tests/test_ra8_reflow_cache.c.)
- */
-static void test_corpus_font_size_invalidates(void)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static void internal_test_corpus_font_size_invalidates(void)
 {
   TEST_BEGIN("reflow_corpus: font-size change invalidates");
-  if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping\n");
+  if (internal_load_font() == 0) {
+    TEST_ASSERT_EQ(
+      k_ra8_test_output_ok,
+      internal_test_output_fd_text(STDERR_FILENO,
+                                   "[SKIP] literata_latin1.ttf not found; skipping\n"));
     TEST_END("reflow_corpus: font-size change invalidates");
     return;
   }
   uint32_t pages = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, layout_live(s_corpus[0], (uint16_t)k_c_font_px, &pages));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_layout_live(s_corpus[0], (uint16_t)k_c_font_px, &pages));
   size_t n = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_reflow_cache_serialize(&s_live,
@@ -232,7 +289,7 @@ static void test_corpus_font_size_invalidates(void)
                                             (size_t)k_c_blob_cap,
                                             &n));
   /* Same content + font blob, different font size -> stale. */
-  TEST_ASSERT_EQ(k_ra8_ok, layout_live(s_corpus[0], (uint16_t)k_c_font_px2, &pages));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_layout_live(s_corpus[0], (uint16_t)k_c_font_px2, &pages));
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_state,
     ra8_reflow_cache_load(&s_live, (const uint8_t*)s_corpus[0], strlen(s_corpus[0]), s_blob, n));
@@ -240,7 +297,7 @@ static void test_corpus_font_size_invalidates(void)
 }
 
 /**
- * @test test_corpus_malformed_robust
+ * @test internal_test_corpus_malformed_robust
  * @brief Malformed inputs never crash; whatever the engine lays out (or
  *        rejects) still round-trips through the cache unchanged.
  *
@@ -248,21 +305,32 @@ static void test_corpus_font_size_invalidates(void)
  * (no compound decisions in this test -- exercises robustness over
  * malformed inputs; cache guards have `test_mcdc_*` vectors in
  * tests/test_ra8_reflow_cache.c.)
- */
-static void test_corpus_malformed_robust(void)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static void internal_test_corpus_malformed_robust(void)
 {
   TEST_BEGIN("reflow_corpus: malformed inputs robust");
-  if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping\n");
+  if (internal_load_font() == 0) {
+    TEST_ASSERT_EQ(
+      k_ra8_test_output_ok,
+      internal_test_output_fd_text(STDERR_FILENO,
+                                   "[SKIP] literata_latin1.ttf not found; skipping\n"));
     TEST_END("reflow_corpus: malformed inputs robust");
     return;
   }
   for (size_t i = 0U; i < (sizeof(s_malformed) / sizeof(s_malformed[0])); ++i) {
     uint32_t        pages = 0U;
-    const ra8_err_t err   = layout_live(s_malformed[i], (uint16_t)k_c_font_px, &pages);
+    const ra8_err_t err   = internal_layout_live(s_malformed[i], (uint16_t)k_c_font_px, &pages);
     /* Either a clean layout or a clean rejection -- never a crash. */
     if (err == k_ra8_ok) {
-      assert_cache_identical(s_malformed[i]);
+      internal_assert_cache_identical(s_malformed[i]);
     } else {
       TEST_ASSERT_EQ(k_ra8_err_validation_failed, err);
     }
@@ -285,16 +353,16 @@ static uint8_t s_epub_buf[k_c_epub_cap];
 static size_t  s_epub_size;
 static uint8_t s_chapter[k_c_chapter_cap];
 
-static const char* const k_g_mimetype = "application/epub+zip";
+static const char* const s_g_mimetype = "application/epub+zip";
 
-static const char* const k_g_container =
+static const char* const s_g_container =
   "<?xml version=\"1.0\"?>\n"
   "<container version=\"1.0\" xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\">\n"
   "  <rootfiles><rootfile full-path=\"OEBPS/content.opf\" "
   "media-type=\"application/oebps-package+xml\"/></rootfiles>\n"
   "</container>\n";
 
-static const char* const k_g_opf =
+static const char* const s_g_opf =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
   "<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"id\">\n"
   "  <metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n"
@@ -311,7 +379,7 @@ static const char* const k_g_opf =
   "  <spine><itemref idref=\"c1\"/><itemref idref=\"c2\"/></spine>\n"
   "</package>\n";
 
-static const char* const k_g_nav =
+static const char* const s_g_nav =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
   "<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\">\n"
   "<head><title>Contents</title></head><body>\n"
@@ -322,7 +390,7 @@ static const char* const k_g_nav =
 
 /* Real public-domain prose (Project Gutenberg #35), exercising the v1 tag
  * subset; ASCII transcription (em-dashes as "--", straight quotes). */
-static const char* const k_g_chapter1 =
+static const char* const s_g_chapter1 =
   "<?xml version=\"1.0\"?><html><body>"
   "<h1>I. Introduction</h1>"
   "<p>The Time Traveller (for so it will be convenient to speak of him) was "
@@ -337,7 +405,7 @@ static const char* const k_g_chapter1 =
   "<strong>misconception</strong>.</p>"
   "</body></html>";
 
-static const char* const k_g_chapter2 =
+static const char* const s_g_chapter2 =
   "<?xml version=\"1.0\"?><html><body>"
   "<h2>II. The Machine</h2>"
   "<p>I am afraid I cannot convey the peculiar sensations of time travelling. "
@@ -353,8 +421,17 @@ static const char* const k_g_chapter2 =
 /**
  * @brief Assemble the in-memory EPUB into s_epub_buf (miniz writer).
  * @return 1 on success, 0 on a miniz failure.
- */
-static int build_gutenberg_epub(void)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static int internal_build_gutenberg_epub(void)
 {
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
@@ -367,12 +444,12 @@ static int build_gutenberg_epub(void)
     const char* data;  /**< Data.  */
     mz_uint     flags; /**< Flags. */
   } entries[] = {
-    {"mimetype", k_g_mimetype, MZ_NO_COMPRESSION},
-    {"META-INF/container.xml", k_g_container, MZ_DEFAULT_COMPRESSION},
-    {"OEBPS/content.opf", k_g_opf, MZ_DEFAULT_COMPRESSION},
-    {"OEBPS/nav.xhtml", k_g_nav, MZ_DEFAULT_COMPRESSION},
-    {"OEBPS/c1.xhtml", k_g_chapter1, MZ_DEFAULT_COMPRESSION},
-    {"OEBPS/c2.xhtml", k_g_chapter2, MZ_DEFAULT_COMPRESSION},
+    {"mimetype", s_g_mimetype, MZ_NO_COMPRESSION},
+    {"META-INF/container.xml", s_g_container, MZ_DEFAULT_COMPRESSION},
+    {"OEBPS/content.opf", s_g_opf, MZ_DEFAULT_COMPRESSION},
+    {"OEBPS/nav.xhtml", s_g_nav, MZ_DEFAULT_COMPRESSION},
+    {"OEBPS/c1.xhtml", s_g_chapter1, MZ_DEFAULT_COMPRESSION},
+    {"OEBPS/c2.xhtml", s_g_chapter2, MZ_DEFAULT_COMPRESSION},
   };
   for (size_t i = 0U; i < (sizeof(entries) / sizeof(entries[0])); ++i) {
     if (mz_zip_writer_add_mem(&zip,
@@ -391,17 +468,19 @@ static int build_gutenberg_epub(void)
     return 0;
   }
   if ((heap_buf == nullptr) || (heap_size == 0U) || (heap_size > sizeof(s_epub_buf))) {
+    mz_free(heap_buf);
     mz_zip_writer_end(&zip);
     return 0;
   }
   memcpy(s_epub_buf, heap_buf, heap_size);
   s_epub_size = heap_size;
+  mz_free(heap_buf);
   mz_zip_writer_end(&zip);
   return 1;
 }
 
 /**
- * @test test_corpus_real_epub_pipeline
+ * @test internal_test_corpus_real_epub_pipeline
  * @brief Open a real EPUB container, then for every spine chapter prove the
  *        live layout caches and restores glyph/page-identically -- the full
  *        ra8_epub -> ra8_reflow -> ra8_reflow_cache pipeline for #79's real-book
@@ -411,16 +490,27 @@ static int build_gutenberg_epub(void)
  * (no compound decisions in this test -- it exercises the container ->
  * layout -> cache acceptance path; ra8_epub guards have `test_mcdc_*` vectors
  * in tests/test_ra8_epub_*.c and cache guards in tests/test_ra8_reflow_cache.c.)
- */
-static void test_corpus_real_epub_pipeline(void)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static void internal_test_corpus_real_epub_pipeline(void)
 {
   TEST_BEGIN("reflow_corpus: real EPUB container -> layout -> cache");
-  if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping epub corpus\n");
+  if (internal_load_font() == 0) {
+    TEST_ASSERT_EQ(
+      k_ra8_test_output_ok,
+      internal_test_output_fd_text(STDERR_FILENO,
+                                   "[SKIP] literata_latin1.ttf not found; skipping epub corpus\n"));
     TEST_END("reflow_corpus: real EPUB container -> layout -> cache");
     return;
   }
-  TEST_ASSERT(build_gutenberg_epub() == 1);
+  TEST_ASSERT(internal_build_gutenberg_epub() == 1);
 
   ra8_epub_book_t            book  = {};
   const ra8_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
@@ -438,28 +528,37 @@ static void test_corpus_real_epub_pipeline(void)
     s_chapter[got] = (uint8_t)'\0'; /* NUL-terminate for the strlen-based helpers */
 
     uint32_t pages = 0U;
-    TEST_ASSERT_EQ(k_ra8_ok, layout_live((const char*)s_chapter, (uint16_t)k_c_font_px, &pages));
+    TEST_ASSERT_EQ(k_ra8_ok,
+                   internal_layout_live((const char*)s_chapter, (uint16_t)k_c_font_px, &pages));
     TEST_ASSERT(pages >= 1U);
     TEST_ASSERT(s_live.glyph_count > 0U);
-    assert_cache_identical((const char*)s_chapter);
+    internal_assert_cache_identical((const char*)s_chapter);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
   TEST_END("reflow_corpus: real EPUB container -> layout -> cache");
 }
 
 /**
- * @test test_corpus_truncated_epub_rejected
+ * @test internal_test_corpus_truncated_epub_rejected
  * @brief A truncated/garbage archive is rejected by ra8_epub_open without a
  *        crash (the malformed-file half of #79's corpus).
  *
  * @par MC/DC:
  * (no compound decisions in this test -- robustness of the container open
  * path; ra8_epub_open guards have `test_mcdc_*` vectors in test_ra8_epub_open.c.)
- */
-static void test_corpus_truncated_epub_rejected(void)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static void internal_test_corpus_truncated_epub_rejected(void)
 {
   TEST_BEGIN("reflow_corpus: truncated EPUB rejected");
-  TEST_ASSERT(build_gutenberg_epub() == 1);
+  TEST_ASSERT(internal_build_gutenberg_epub() == 1);
 
   /* Lop off the central directory -> not a valid archive. */
   ra8_epub_book_t            book  = {};
@@ -471,11 +570,12 @@ static void test_corpus_truncated_epub_rejected(void)
 
 int32_t main(void)
 {
-  test_corpus_live_cache_identity();
-  test_corpus_font_size_invalidates();
-  test_corpus_malformed_robust();
-  test_corpus_real_epub_pipeline();
-  test_corpus_truncated_epub_rejected();
-  (void)fprintf(stderr, "[OK ] test_ra8_reflow_corpus.c\n");
+  internal_test_corpus_live_cache_identity();
+  internal_test_corpus_font_size_invalidates();
+  internal_test_corpus_malformed_robust();
+  internal_test_corpus_real_epub_pipeline();
+  internal_test_corpus_truncated_epub_rejected();
+  TEST_ASSERT_EQ(k_ra8_test_output_ok,
+                 internal_test_output_fd_text(STDERR_FILENO, "[OK ] test_ra8_reflow_corpus.c\n"));
   return 0;
 }

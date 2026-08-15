@@ -19,18 +19,18 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "support/reflow_svg_test_util.h"
 #include "unity_minimal.h"
 
 /**
- * @test test_grad_radial_first_and_unmatched_mcdc
+ * @test internal_test_grad_radial_first_and_unmatched_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_scan_grads` ordering `is_rad = (rad < lin)` and the
+ * Decision: `internal_scan_grads` ordering `is_rad = (rad < lin)` and the
  * stop-count skip `if (g->nstops > 0U)`, plus `priv_match_grad`'s id-compare
  * `(strlen(gid)==idlen) && (memcmp(...)==0)`
  * (libs/ra8_reflow/src/ra8_reflow_svg.c).
@@ -44,8 +44,16 @@
  *    `fill="url(#missing)"` does not match (id-compare false) even though the
  *    gradient table is non-empty -- the loop body of priv_match_grad runs both
  *    ways.
+ * @brief Verify grad radial first and unmatched mcdc behavior against the reflow contract.
+ * @details Exercises the grad radial first and unmatched mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_grad_radial_first_and_unmatched_mcdc(void)
+RA8_INTERNAL static void internal_test_grad_radial_first_and_unmatched_mcdc(void)
 {
   TEST_BEGIN("priv_scan_grads/match_grad MC/DC: radial-first, no-stop, matched/unmatched");
   fb_reset();
@@ -75,24 +83,31 @@ static void test_grad_radial_first_and_unmatched_mcdc(void)
 }
 
 /**
- * @test test_grad_stop_percent_and_default_color
+ * @test internal_test_grad_stop_percent_and_default_color
  * @brief A `<stop>` with a `%` offset and a stop with no `stop-color`
- *        exercise priv_stop_offset's `%` arm and priv_stop_color's default arm.
+ *        exercise internal_stop_offset's `%` arm and internal_stop_color's default arm.
  *
  * @par MC/DC:
- * Decision: the '%' scan `if (tag[ooff + z] == '%')` in priv_stop_offset and
- * the absent-attribute arm `if (!ra8_svgp_attr(tag, tlen, "stop-color", ...))`
- * in priv_stop_color (libs/ra8_reflow/src/ra8_reflow_svg_doc.c; 1 condition
+ * Decision: the '%' scan `if (tag[ooff + z] == '%')` in internal_stop_offset and
+ * the absent-attribute arm `if (!priv_ra8_svgp_attr(tag, tlen, "stop-color", ...))`
+ * in internal_stop_color (libs/ra8_reflow/src/ra8_reflow_svg_doc.c; 1 condition
  * each).
  * - V1: offset "0%" / "100%" -> percent TRUE -> value scaled by 1/100.
  * - V2: bare offsets "0" / "1" -> percent FALSE
- *       (test_grad_radial_first_and_unmatched_mcdc).
+ *       (internal_test_grad_radial_first_and_unmatched_mcdc).
  * - V3: the first stop has NO stop-color -> attr-absent TRUE -> default black.
  * - V4: the last stop's explicit stop-color -> attr-absent FALSE.
  * V1/V2 vary the percent condition; V3/V4 vary the stop-color presence; the
  * black-to-white ramp direction pins both outcomes.
+ * @details Exercises the grad stop percent and default color path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_grad_stop_percent_and_default_color(void)
+RA8_INTERNAL static void internal_test_grad_stop_percent_and_default_color(void)
 {
   TEST_BEGIN("svg gradient stop: % offset + default stop-color");
   fb_reset();
@@ -109,11 +124,11 @@ static void test_grad_stop_percent_and_default_color(void)
 }
 
 /**
- * @test test_size_and_viewbox_fallback_mcdc
+ * @test internal_test_size_and_viewbox_fallback_mcdc
  *
  * @par MC/DC:
  * Decision: `ra8_svg_size` -> `if ((w<=0)||(h<=0))` (the width/height vs viewBox
- * fallback) and `priv_read_viewbox`'s width/height else-branch when no viewBox
+ * fallback) and `internal_read_viewbox`'s width/height else-branch when no viewBox
  * is present (libs/ra8_reflow/src/ra8_reflow_svg.c).
  *
  * Vectors:
@@ -121,12 +136,20 @@ static void test_grad_stop_percent_and_default_color(void)
  *        attribute path returns 120x90 (the viewBox fallback is NOT taken).
  *  - V2: `<svg viewBox="0 0 60 40">` (no width/height) -> w<=0 -> the fallback
  *        reads the viewBox -> 60x40.
- *  - V3: a render of a width/height-only `<svg>` exercises priv_read_viewbox's
+ *  - V3: a render of a width/height-only `<svg>` exercises internal_read_viewbox's
  *        else-branch (width/height -> the user-space extent) so a rect at the
  *        far corner still lands inside the box.
  * V1 vs V2 flip the (w<=0||h<=0) condition; V3 covers the render-side fallback.
+ * @brief Verify size and viewbox fallback mcdc behavior against the reflow contract.
+ * @details Exercises the size and viewbox fallback mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_size_and_viewbox_fallback_mcdc(void)
+RA8_INTERNAL static void internal_test_size_and_viewbox_fallback_mcdc(void)
 {
   TEST_BEGIN("ra8_svg_size + priv_read_viewbox MC/DC: width/height vs viewBox");
   int32_t w = 0;
@@ -148,7 +171,7 @@ static void test_size_and_viewbox_fallback_mcdc(void)
   const char* c = "<svg></svg>";
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_svg_size((const uint8_t*)c, strlen(c), &w, &h));
 
-  /* V3: render with width/height but no viewBox -> priv_read_viewbox uses the
+  /* V3: render with width/height but no viewBox -> internal_read_viewbox uses the
    * width/height as the user-space extent (vw=100, vh=100 here -> 2x into the
    * 200-box). A rect filling user 0..100 covers the whole framebuffer. */
   fb_reset();
@@ -161,23 +184,30 @@ static void test_size_and_viewbox_fallback_mcdc(void)
 }
 
 /**
- * @test test_render_no_svg_tag
- * @brief Bytes without a `<svg>` element still render cleanly (priv_read_viewbox
+ * @test internal_test_render_no_svg_tag
+ * @brief Bytes without a `<svg>` element still render cleanly (internal_read_viewbox
  *        early-returns the box default; no shapes draw).
  *
  * @par MC/DC:
- * Decision: `if (!priv_tag_span(s, len, 0U, "<svg", ...))` in
- * priv_read_viewbox (libs/ra8_reflow/src/ra8_reflow_svg_doc.c, 1 condition).
+ * Decision: `if (!internal_tag_span(s, len, 0U, "<svg", ...))` in
+ * internal_read_viewbox (libs/ra8_reflow/src/ra8_reflow_svg_doc.c, 1 condition).
  * - V1: no `<svg` element at all -> TRUE -> the render box becomes the
  *       user space and shapes still draw (this test).
  * - V2: every sibling test with an `<svg>` element -> FALSE.
  * N=1 condition; both outcomes pinned across the suite.
+ * @details Exercises the render no svg tag path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_render_no_svg_tag(void)
+RA8_INTERNAL static void internal_test_render_no_svg_tag(void)
 {
   TEST_BEGIN("svg render: no <svg> element -> box default, no crash");
   fb_reset();
-  /* No `<svg` tag at all: priv_tag_span fails -> viewBox stays the box; the
+  /* No `<svg` tag at all: internal_tag_span fails -> viewBox stays the box; the
    * standalone rect is still walked and drawn at user==framebuffer coords. */
   TEST_ASSERT_EQ(k_ra8_ok,
                  render("<rect x=\"0\" y=\"0\" width=\"200\" height=\"200\" "
@@ -187,7 +217,7 @@ static void test_render_no_svg_tag(void)
 }
 
 /**
- * @test test_is_svg_xml_vs_plain
+ * @test internal_test_is_svg_xml_vs_plain
  * @brief The sniff accepts a leading `<?xml` and rejects a non-markup buffer
  *        (the `<?xml || <svg` OR, the non-SVG arm).
  *
@@ -198,8 +228,15 @@ static void test_render_no_svg_tag(void)
  * - V2: `<svg ...`  -> C1 F, C2 T -> accepted (covered by test_ra8_svg.c too).
  * - V3: `<html>...` -> C1 F, C2 F -> rejected.
  * V1 vs V3 vary C1; V2 vs V3 vary C2.
+ * @details Exercises the is svg xml vs plain path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_is_svg_xml_vs_plain(void)
+RA8_INTERNAL static void internal_test_is_svg_xml_vs_plain(void)
 {
   TEST_BEGIN("ra8_svg_is_svg MC/DC: <?xml / <svg / neither");
   TEST_ASSERT(ra8_svg_is_svg((const uint8_t*)"<?xml version=\"1.0\"?>", 21U));
@@ -210,7 +247,7 @@ static void test_is_svg_xml_vs_plain(void)
 }
 
 /**
- * @test test_match_grad_no_close_paren_mcdc
+ * @test internal_test_match_grad_no_close_paren_mcdc
  *
  * @par MC/DC:
  * Decision: `priv_match_grad` id-scan `(idend<vlen)&&(val[idend]!=')')` (L450;
@@ -222,8 +259,16 @@ static void test_is_svg_xml_vs_plain(void)
  *  - A defined `lg` gradient makes the table non-empty; a rect `fill="url(#zz"`
  *    (no `)`) scans the id to the slice end -> L450 `idend<vlen` F; `zz` matches
  *    no gradient -> -1 -> no_paint -> the rect is skipped over a red backdrop.
+ * @brief Verify match grad no close paren mcdc behavior against the reflow contract.
+ * @details Exercises the match grad no close paren mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_match_grad_no_close_paren_mcdc(void)
+RA8_INTERNAL static void internal_test_match_grad_no_close_paren_mcdc(void)
 {
   TEST_BEGIN("priv_match_grad MC/DC: url(#id with no closing paren");
   fb_reset();
@@ -240,7 +285,7 @@ static void test_match_grad_no_close_paren_mcdc(void)
 }
 
 /**
- * @test test_circle_gradient_fill_mcdc
+ * @test internal_test_circle_gradient_fill_mcdc
  *
  * @par MC/DC:
  * Decision: `priv_draw_circle` skip guard `(gi<0)&&(fill==no_paint)` (L854) and
@@ -254,8 +299,16 @@ static void test_match_grad_no_close_paren_mcdc(void)
  *  - A defined `g` gradient + `<circle ... fill="url(#g)"/>` -> gi>=0 -> L854
  *    `gi<0` F (do not skip) and L860 `gi<0` F (do not take the fast-path) -> the
  *    circle is gradient-filled -> the centre is non-white.
+ * @brief Verify circle gradient fill mcdc behavior against the reflow contract.
+ * @details Exercises the circle gradient fill mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_circle_gradient_fill_mcdc(void)
+RA8_INTERNAL static void internal_test_circle_gradient_fill_mcdc(void)
 {
   TEST_BEGIN("priv_draw_circle MC/DC: gradient fill (gi>=0)");
   fb_reset();
@@ -269,7 +322,7 @@ static void test_circle_gradient_fill_mcdc(void)
 }
 
 /**
- * @test test_polygon_path_gradient_fill_mcdc
+ * @test internal_test_polygon_path_gradient_fill_mcdc
  *
  * @par MC/DC:
  * Decision: `priv_draw_polygon` guard `((gi<0)&&(fill==no_paint))||!priv_attr`
@@ -287,8 +340,16 @@ static void test_circle_gradient_fill_mcdc(void)
  *        skipped; `<path fill="#00ff00"/>` (no `d`) -> L1599 `!priv_attr("d")`
  *        T -> skipped; `<path fill="url(#g)" d="..."/>` -> gi>=0 -> L1599
  *        `gi<0` F -> gradient-filled (centre non-white).
+ * @brief Verify polygon path gradient fill mcdc behavior against the reflow contract.
+ * @details Exercises the polygon path gradient fill mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_polygon_path_gradient_fill_mcdc(void)
+RA8_INTERNAL static void internal_test_polygon_path_gradient_fill_mcdc(void)
 {
   TEST_BEGIN("polygon/path guard MC/DC: matched-gradient (gi<0 false) + path none/no-d");
   /* V1: a polygon whose fill resolves to a gradient. */
@@ -315,11 +376,11 @@ static void test_polygon_path_gradient_fill_mcdc(void)
 }
 
 /**
- * @test test_grad_three_stop_bracket_mcdc
+ * @test internal_test_grad_three_stop_bracket_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_grad_eval` stop-bracket test `(p>=o0)&&(p<=o1)` (L1039;
- * libs/ra8_reflow/src/ra8_reflow_svg.c@priv_grad_eval). With only two stops the
+ * Decision: `internal_grad_eval` stop-bracket test `(p>=o0)&&(p<=o1)` (L1039;
+ * libs/ra8_reflow/src/ra8_reflow_svg.c@internal_grad_eval). With only two stops the
  * interior bracket loop never advances; a three-stop gradient makes a pixel
  * whose parameter lies past the middle stop fail `p<=o1` at the first bracket
  * (so the loop advances) and match at the second (`p<=o1` T), driving both arms.
@@ -328,8 +389,16 @@ static void test_polygon_path_gradient_fill_mcdc(void)
  *  - A 3-stop linear gradient (0 / 0.5 / 1) across a rect -> left pixels bracket
  *    in [0,0.5] and right pixels bracket in [0.5,1] -> L1039 `p<=o1` F (advance)
  *    and T (match) both run -> the ramp is monotone left-to-right.
+ * @brief Verify grad three stop bracket mcdc behavior against the reflow contract.
+ * @details Exercises the grad three stop bracket mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_grad_three_stop_bracket_mcdc(void)
+RA8_INTERNAL static void internal_test_grad_three_stop_bracket_mcdc(void)
 {
   TEST_BEGIN("priv_grad_eval MC/DC: three-stop interior bracket advance");
   fb_reset();
@@ -345,11 +414,11 @@ static void test_grad_three_stop_bracket_mcdc(void)
 }
 
 /**
- * @test test_elem_at_delimiters_mcdc
+ * @test internal_test_elem_at_delimiters_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_elem_at` delimiter `priv_ws(c)||(c=='>')||(c=='/')` (L1628;
- * libs/ra8_reflow/src/ra8_reflow_svg.c@priv_elem_at). The existing tests reach the
+ * Decision: `internal_elem_at` delimiter `priv_ws(c)||(c=='>')||(c=='/')` (L1628;
+ * libs/ra8_reflow/src/ra8_reflow_svg.c@internal_elem_at). The existing tests reach the
  * whitespace arm; this adds a `>`-immediately element, a `/`-immediately
  * self-close, and a longer name (`<rectangle>`) where the element prefix matches
  * but the following char is none of the delimiters (all-false), driving each OR
@@ -361,8 +430,16 @@ static void test_grad_three_stop_bracket_mcdc(void)
  *  - V3: `<rectangle ...>` -> the `<rect` prefix matches but `a` follows ->
  *        `priv_ws` F, `=='>'` F, `=='/'` F -> NOT treated as a `<rect>`.
  * Each renders cleanly (k_ra8_ok).
+ * @brief Verify elem at delimiters mcdc behavior against the reflow contract.
+ * @details Exercises the elem at delimiters mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_elem_at_delimiters_mcdc(void)
+RA8_INTERNAL static void internal_test_elem_at_delimiters_mcdc(void)
 {
   TEST_BEGIN("priv_elem_at MC/DC: '>' / '/' / non-delimiter element boundary");
   fb_reset();
@@ -382,19 +459,27 @@ static void test_elem_at_delimiters_mcdc(void)
 }
 
 /**
- * @test test_tag_span_no_close_mcdc
+ * @test internal_test_tag_span_no_close_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_tag_span` scan-to-`>` `(j<len)&&(s[j]!='>')` (L1644;
- * libs/ra8_reflow/src/ra8_reflow_svg.c@priv_tag_span). The existing tests always
+ * Decision: `internal_tag_span` scan-to-`>` `(j<len)&&(s[j]!='>')` (L1644;
+ * libs/ra8_reflow/src/ra8_reflow_svg.c@internal_tag_span). The existing tests always
  * terminate the `<svg>` tag; this passes an unterminated `<svg ...` (no `>`) to
  * ::ra8_svg_size so the scan runs to the buffer end (`j<len` F).
  *
  * Vector:
  *  - `<svg width="120" height="90"` (no `>`) -> the scan reaches the end ->
  *    L1644 `j<len` F -> the span still covers the width/height -> size 120x90.
+ * @brief Verify tag span no close mcdc behavior against the reflow contract.
+ * @details Exercises the tag span no close mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_tag_span_no_close_mcdc(void)
+RA8_INTERNAL static void internal_test_tag_span_no_close_mcdc(void)
 {
   TEST_BEGIN("priv_tag_span MC/DC: unterminated <svg tag (no '>')");
   int32_t     w = 0;
@@ -407,12 +492,12 @@ static void test_tag_span_no_close_mcdc(void)
 }
 
 /**
- * @test test_read_viewbox_nonpositive_mcdc
+ * @test internal_test_read_viewbox_nonpositive_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_read_viewbox` viewBox-accept `(nums[2]>0)&&(nums[3]>0)` (L1674)
+ * Decision: `internal_read_viewbox` viewBox-accept `(nums[2]>0)&&(nums[3]>0)` (L1674)
  * and the width/height fallback `(wv>0)&&(hv>0)` (L1683;
- * libs/ra8_reflow/src/ra8_reflow_svg.c@priv_read_viewbox). The existing render
+ * libs/ra8_reflow/src/ra8_reflow_svg.c@internal_read_viewbox). The existing render
  * tests use positive viewBox / width / height (both conditions true). This adds
  * non-positive width and non-positive height for each so both conditions flip
  * false independently.
@@ -423,8 +508,16 @@ static void test_tag_span_no_close_mcdc(void)
  *  - V3: `<svg width="0" height="100">` (no viewBox) -> `wv>0` F -> box default.
  *  - V4: `<svg width="100" height="0">` (no viewBox) -> `hv>0` F -> box default.
  * Each renders cleanly (k_ra8_ok).
+ * @brief Verify read viewbox nonpositive mcdc behavior against the reflow contract.
+ * @details Exercises the read viewbox nonpositive mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_read_viewbox_nonpositive_mcdc(void)
+RA8_INTERNAL static void internal_test_read_viewbox_nonpositive_mcdc(void)
 {
   TEST_BEGIN("priv_read_viewbox MC/DC: non-positive viewBox / width / height");
   fb_reset();
@@ -451,12 +544,12 @@ static void test_read_viewbox_nonpositive_mcdc(void)
 }
 
 /**
- * @test test_draw_shapes_unterminated_mcdc
+ * @test internal_test_draw_shapes_unterminated_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_draw_shapes` find-`<` `(i<len)&&(s[i]!='<')` (L1768) and the
+ * Decision: `internal_draw_shapes` find-`<` `(i<len)&&(s[i]!='<')` (L1768) and the
  * element scan-to-`>` `(close<len)&&(s[close]!='>')` (L1775;
- * libs/ra8_reflow/src/ra8_reflow_svg.c@priv_draw_shapes). The existing tests end
+ * libs/ra8_reflow/src/ra8_reflow_svg.c@internal_draw_shapes). The existing tests end
  * exactly on the final `>` so neither inner scan runs to the buffer end; this
  * appends trailing non-`<` text and an unterminated trailing element so each
  * inner `*<len` condition flips false.
@@ -467,8 +560,16 @@ static void test_read_viewbox_nonpositive_mcdc(void)
  *  - V2: `...<rect x="0"` (an unterminated final element, no `>`) -> the
  *        element scan-to-`>` runs to the end -> L1775 `close<len` F.
  * Each renders cleanly (k_ra8_ok).
+ * @brief Verify draw shapes unterminated mcdc behavior against the reflow contract.
+ * @details Exercises the draw shapes unterminated mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_draw_shapes_unterminated_mcdc(void)
+RA8_INTERNAL static void internal_test_draw_shapes_unterminated_mcdc(void)
 {
   TEST_BEGIN("priv_draw_shapes MC/DC: trailing text + unterminated final element");
   /* V1: trailing non-'<' bytes after the last element. */
@@ -488,11 +589,11 @@ static void test_draw_shapes_unterminated_mcdc(void)
 }
 
 /**
- * @test test_grad_scan_unterminated_mcdc
+ * @test internal_test_grad_scan_unterminated_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_parse_stops` `<stop` scan-to-`>` `(close<end)&&(s[close]!='>')`
- * (L1874) and `priv_scan_grads` gradient-tag scan-to-`>`
+ * Decision: `internal_parse_stops` `<stop` scan-to-`>` `(close<end)&&(s[close]!='>')`
+ * (L1874) and `internal_scan_grads` gradient-tag scan-to-`>`
  * `(close<len)&&(s[close]!='>')` (L1901;
  * libs/ra8_reflow/src/ra8_reflow_svg.c). The existing gradient tests terminate
  * every tag; this uses an unterminated `<stop` (no `>` before the gradient end)
@@ -506,8 +607,16 @@ static void test_draw_shapes_unterminated_mcdc(void)
  *  - V2: a document ending in `<linearGradient id="h"` (no `>`) -> the gradient
  *        tag scan runs to the buffer end -> L1901 `close<len` F.
  * Each renders cleanly (k_ra8_ok).
+ * @brief Verify grad scan unterminated mcdc behavior against the reflow contract.
+ * @details Exercises the grad scan unterminated mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_grad_scan_unterminated_mcdc(void)
+RA8_INTERNAL static void internal_test_grad_scan_unterminated_mcdc(void)
 {
   TEST_BEGIN("priv_parse_stops/scan_grads MC/DC: unterminated <stop / gradient tag");
   /* V1: an unterminated <stop (no '>') still parsed up to the gradient end. */
@@ -531,7 +640,7 @@ static void test_grad_scan_unterminated_mcdc(void)
 }
 
 /**
- * @test test_is_svg_bom_and_ws_mcdc
+ * @test internal_test_is_svg_bom_and_ws_mcdc
  *
  * @par MC/DC:
  * Decision: `ra8_svg_is_svg` BOM test
@@ -550,8 +659,16 @@ static void test_grad_scan_unterminated_mcdc(void)
  *  - V4: `"<s"` (len 2) -> `len>=bom_len` F -> not a BOM; not `<svg` -> rejected.
  *  - V5: `"   <svg>"` -> leading whitespace skipped (L1947 `priv_ws` T) ->
  *        accepted; `"   "` -> the skip reaches the end (`i<len` F) -> rejected.
+ * @brief Verify is svg bom and ws mcdc behavior against the reflow contract.
+ * @details Exercises the is svg bom and ws mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_is_svg_bom_and_ws_mcdc(void)
+RA8_INTERNAL static void internal_test_is_svg_bom_and_ws_mcdc(void)
 {
   TEST_BEGIN("ra8_svg_is_svg MC/DC: BOM bytes + leading-whitespace skip");
   const uint8_t v1[] = {0xEFU, 0xBBU, 0xBFU, '<', 's', 'v', 'g', '>'};
@@ -571,7 +688,7 @@ static void test_is_svg_bom_and_ws_mcdc(void)
 }
 
 /**
- * @test test_image_href_arms_mcdc
+ * @test internal_test_image_href_arms_mcdc
  *
  * @par MC/DC:
  * Decision: `ra8_svg_image_href` null guard
@@ -587,8 +704,16 @@ static void test_is_svg_bom_and_ws_mcdc(void)
  *  - L1967: `<image xlink:href="a.jpg"/>` -> first `!priv_attr` F -> returns the
  *    href; `<image href="b.jpg"/>` -> first T, second F -> returns the href;
  *    `<image/>` (neither) -> both T -> k_ra8_err_not_found.
+ * @brief Verify image href arms mcdc behavior against the reflow contract.
+ * @details Exercises the image href arms mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_image_href_arms_mcdc(void)
+RA8_INTERNAL static void internal_test_image_href_arms_mcdc(void)
 {
   TEST_BEGIN("ra8_svg_image_href MC/DC: null guard + xlink:href / href / neither");
   const char* doc = "<svg><image xlink:href=\"a.jpg\"/></svg>";
@@ -619,7 +744,7 @@ static void test_image_href_arms_mcdc(void)
 }
 
 /**
- * @test test_size_null_and_fallback_arms_mcdc
+ * @test internal_test_size_null_and_fallback_arms_mcdc
  *
  * @par MC/DC:
  * Decision: `ra8_svg_size` null guard
@@ -635,8 +760,16 @@ static void test_image_href_arms_mcdc(void)
  *    height) -> fallback -> 60x40.
  *  - L2003 `h<=0` (with `w>0`): `<svg width="50" viewBox="0 0 60 0">` -> after
  *    the fallback w=60, h=0 -> not found.
+ * @brief Verify size null and fallback arms mcdc behavior against the reflow contract.
+ * @details Exercises the size null and fallback arms mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_size_null_and_fallback_arms_mcdc(void)
+RA8_INTERNAL static void internal_test_size_null_and_fallback_arms_mcdc(void)
 {
   TEST_BEGIN("ra8_svg_size MC/DC: null guard + (w<=0)/(h<=0) range arms");
   int32_t     w   = 0;
@@ -673,23 +806,22 @@ static void test_size_null_and_fallback_arms_mcdc(void)
  */
 int32_t main(void)
 {
-  test_grad_radial_first_and_unmatched_mcdc();
-  test_grad_stop_percent_and_default_color();
-  test_size_and_viewbox_fallback_mcdc();
-  test_render_no_svg_tag();
-  test_is_svg_xml_vs_plain();
-  test_match_grad_no_close_paren_mcdc();
-  test_circle_gradient_fill_mcdc();
-  test_polygon_path_gradient_fill_mcdc();
-  test_grad_three_stop_bracket_mcdc();
-  test_elem_at_delimiters_mcdc();
-  test_tag_span_no_close_mcdc();
-  test_read_viewbox_nonpositive_mcdc();
-  test_draw_shapes_unterminated_mcdc();
-  test_grad_scan_unterminated_mcdc();
-  test_is_svg_bom_and_ws_mcdc();
-  test_image_href_arms_mcdc();
-  test_size_null_and_fallback_arms_mcdc();
-  (void)fprintf(stderr, "[OK ] test_ra8_reflow_svg_paint_mcdc.c\n");
+  internal_test_grad_radial_first_and_unmatched_mcdc();
+  internal_test_grad_stop_percent_and_default_color();
+  internal_test_size_and_viewbox_fallback_mcdc();
+  internal_test_render_no_svg_tag();
+  internal_test_is_svg_xml_vs_plain();
+  internal_test_match_grad_no_close_paren_mcdc();
+  internal_test_circle_gradient_fill_mcdc();
+  internal_test_polygon_path_gradient_fill_mcdc();
+  internal_test_grad_three_stop_bracket_mcdc();
+  internal_test_elem_at_delimiters_mcdc();
+  internal_test_tag_span_no_close_mcdc();
+  internal_test_read_viewbox_nonpositive_mcdc();
+  internal_test_draw_shapes_unterminated_mcdc();
+  internal_test_grad_scan_unterminated_mcdc();
+  internal_test_is_svg_bom_and_ws_mcdc();
+  internal_test_image_href_arms_mcdc();
+  internal_test_size_null_and_fallback_arms_mcdc();
   return 0;
 }

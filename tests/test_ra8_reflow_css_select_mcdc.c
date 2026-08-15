@@ -20,28 +20,35 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "support/reflow_css_test_util.h"
 #include "unity_minimal.h"
 
 /**
- * @test test_sel_part_combinator_drop
+ * @test internal_test_sel_part_combinator_drop
  * @brief A child / sibling combinator selector is unsupported -> dropped.
  *
  * @par MC/DC:
- * Decision (priv_parse_selector part loop):
- *   `((s[i] != '.') && (s[i] != '#')) || !priv_parse_sel_part(...)` (2-cond OR):
+ * Decision (internal_parse_selector part loop):
+ *   `((s[i] != '.') && (s[i] != '#')) || !internal_parse_sel_part(...)` (2-cond OR):
  *  - "p.note" -> at the '.' both `s[i]!='.'`/`s[i]!='#'` are false AND the part
  *    parses (intern OK) -> whole disjunction false -> rule kept (control).
  *  - "p>span" -> at '>' both `s[i]!='.'` and `s[i]!='#'` are true -> cond1 true
  *    -> return false -> rule dropped (isolates the combinator condition).
- *  - "p.a.b"  -> the second '.b' is a `.` (cond1 false) but priv_parse_sel_part
+ *  - "p.a.b"  -> the second '.b' is a `.` (cond1 false) but internal_parse_sel_part
  *    fails on the duplicate class -> `!part` true -> rule dropped (isolates the
  *    intern/dup condition).
+ * @details Exercises the sel part combinator drop path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_sel_part_combinator_drop(void)
+RA8_INTERNAL static void internal_test_sel_part_combinator_drop(void)
 {
   TEST_BEGIN("css selector part loop OR (combinator / dup-class drop)");
   load("p.note { color: red; }"   /* kept                      */
@@ -55,11 +62,11 @@ static void test_sel_part_combinator_drop(void)
 }
 
 /**
- * @test test_fontface_quote_strip
+ * @test internal_test_fontface_quote_strip
  * @brief @font-face family quotes (both `'` and `"`) are stripped; bare too.
  *
  * @par MC/DC:
- * Decision (priv_strip_quotes):
+ * Decision (internal_strip_quotes):
  *   `(*len>=2) && ((s[0]=='"') || (s[0]=='\'')) && (s[*len-1]==s[0])` (AND of
  * three, with an inner OR). Vectors:
  *  - "\"Body\"" -> len>=2 AND (double-quote) AND closing matches -> stripped to
@@ -68,8 +75,15 @@ static void test_sel_part_combinator_drop(void)
  *  - Body       -> s[0]=='B' -> the quote OR is false -> not stripped (still a
  *    valid family name, kept verbatim).
  * Matching on the resolved family proves which bytes were interned.
+ * @details Exercises the fontface quote strip path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_fontface_quote_strip(void)
+RA8_INTERNAL static void internal_test_fontface_quote_strip(void)
 {
   TEST_BEGIN("css @font-face quote strip (\" / ' / bare)");
   load("@font-face{font-family:\"Body\";src:url(a.ttf)}"
@@ -85,19 +99,26 @@ static void test_fontface_quote_strip(void)
 }
 
 /**
- * @test test_fontface_weight_style_keywords
+ * @test internal_test_fontface_weight_style_keywords
  * @brief @font-face weight (6-OR) and style (2-OR) descriptor keywords.
  *
  * @par MC/DC:
- * priv_is_bold_kw: `bold||bolder||600||700||800||900` and
- * priv_is_italic_kw: `italic||oblique`, reached via @font-face descriptors:
+ * internal_is_bold_kw: `bold||bolder||600||700||800||900` and
+ * internal_is_italic_kw: `italic||oblique`, reached via @font-face descriptors:
  *  - a face with `font-weight:900`     -> weight_bold=1 (bold OR cond6).
  *  - a face with `font-weight:bolder`  -> weight_bold=1 (bold OR cond2).
  *  - a face with `font-style:oblique`  -> style_italic=1 (italic OR cond2).
  *  - a face with `font-weight:normal`  -> weight_bold=0 (bold OR all-false).
  * ra8_css_match_face then proves each face's recorded emphasis selects it.
+ * @details Exercises the fontface weight style keywords path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_fontface_weight_style_keywords(void)
+RA8_INTERNAL static void internal_test_fontface_weight_style_keywords(void)
 {
   TEST_BEGIN("css @font-face weight/style keyword ORs");
   load("@font-face{font-family:F;font-weight:900;src:url(w9.ttf)}"
@@ -117,18 +138,25 @@ static void test_fontface_weight_style_keywords(void)
 }
 
 /**
- * @test test_fontface_accept_guard
+ * @test internal_test_fontface_accept_guard
  * @brief A @font-face is kept only when BOTH family and src are present.
  *
  * @par MC/DC:
- * Decision (priv_parse_fontface): `(family_len != 0) && (src_len != 0)`
+ * Decision (internal_parse_fontface): `(family_len != 0) && (src_len != 0)`
  * (2-cond AND; N+1 = 3):
  *  - family + src present     -> both true  -> face kept (control).
  *  - family present, no src   -> cond2 false -> face dropped.
  *  - src present, no family    -> cond1 false -> face dropped.
  * Only the complete declaration survives in the face table.
+ * @details Exercises the fontface accept guard path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_fontface_accept_guard(void)
+RA8_INTERNAL static void internal_test_fontface_accept_guard(void)
 {
   TEST_BEGIN("css @font-face accept guard (family && src)");
   load("@font-face{font-family:Keep;src:url(k.ttf)}" /* both -> kept      */
@@ -141,11 +169,11 @@ static void test_fontface_accept_guard(void)
 }
 
 /**
- * @test test_ancestor_constraint_arms
+ * @test internal_test_ancestor_constraint_arms
  * @brief Descendant ancestor parts match by tag, by class, and by id.
  *
  * @par MC/DC:
- * priv_anc_matches has three constraint arms, each a 2-condition decision:
+ * internal_anc_matches has three constraint arms, each a 2-condition decision:
  *   tag  : `(anc->tag != unknown) && (el->tag != anc->tag)`
  *   class: `(anc->class_len != 0) && (class-list lacks the name)`
  *   id   : `(anc->id_len != 0) && (id mismatch)`
@@ -156,8 +184,15 @@ static void test_fontface_accept_guard(void)
  *  - `blockquote p` : blockquote ancestor -> tag arm passes; h1 -> tag fails.
  *  - `.box p`       : ancestor .box -> class arm passes; ancestor .other fails.
  *  - `#main p`      : ancestor #main -> id arm passes; ancestor #side -> fails.
+ * @details Exercises the ancestor constraint arms path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_ancestor_constraint_arms(void)
+RA8_INTERNAL static void internal_test_ancestor_constraint_arms(void)
 {
   TEST_BEGIN("css descendant ancestor tag/class/id arms");
   const ra8_css_style_t   inh  = {};
@@ -194,11 +229,11 @@ static void test_ancestor_constraint_arms(void)
 }
 
 /**
- * @test test_resolve_order_tiebreak
+ * @test internal_test_resolve_order_tiebreak
  * @brief Two equal-specificity rules: the later one wins the order tie-break.
  *
  * @par MC/DC:
- * Decision (priv_resolve winner): `(!have) || (rank > best_rank) ||
+ * Decision (internal_resolve winner): `(!have) || (rank > best_rank) ||
  *   ((rank == best_rank) && (order >= best_order))` -- this targets the third
  * disjunct's inner `(rank == best_rank) && (order >= best_order)`:
  *  - first `p { color: red }` -> !have true (seeds best with red, order 0).
@@ -206,8 +241,15 @@ static void test_ancestor_constraint_arms(void)
  *    order(1) >= best_order(0) -> inner AND true -> blue overrides red.
  * The result is blue: the later same-specificity rule wins, exercising the
  * `rank == best_rank` true arm and the `order >= best_order` true arm together.
+ * @details Exercises the resolve order tiebreak path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_resolve_order_tiebreak(void)
+RA8_INTERNAL static void internal_test_resolve_order_tiebreak(void)
 {
   TEST_BEGIN("css resolve order tie-break (rank==best && order>=best)");
   load("p { color: red; } p { color: blue; }");
@@ -219,7 +261,7 @@ static void test_resolve_order_tiebreak(void)
 }
 
 /**
- * @test test_match_face_regular_fallback
+ * @test internal_test_match_face_regular_fallback
  * @brief A bold-only family with no regular face yields no regular fallback.
  *
  * @par MC/DC:
@@ -234,8 +276,15 @@ static void test_resolve_order_tiebreak(void)
  *      - asking (italic-only) finds no exact match AND the face is bold so
  *        `weight_bold == 0` is false (cond1) -> no fallback recorded -> no-face.
  *      This isolates cond1 against (A)'s all-true control.
+ * @details Exercises the match face regular fallback path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_match_face_regular_fallback(void)
+RA8_INTERNAL static void internal_test_match_face_regular_fallback(void)
 {
   TEST_BEGIN("css match_face regular fallback (3-AND record)");
   load("@font-face{font-family:Reg;src:url(r.ttf)}"
@@ -248,7 +297,7 @@ static void test_match_face_regular_fallback(void)
 }
 
 /**
- * @test test_rule_matches_null_arms
+ * @test internal_test_rule_matches_null_arms
  * @brief ra8_css_rule_matches rejects each NULL pointer arm independently.
  *
  * @par MC/DC:
@@ -258,8 +307,15 @@ static void test_match_face_regular_fallback(void)
  *  - rule == NULL              -> cond1 true  -> false return.
  *  - el == NULL                -> cond2 true  -> false return.
  *  - sheet == NULL             -> cond3 true  -> false return.
+ * @details Exercises the rule matches null arms path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_rule_matches_null_arms(void)
+RA8_INTERNAL static void internal_test_rule_matches_null_arms(void)
 {
   TEST_BEGIN("css rule_matches null guard 3-OR");
   load("p { color: red; }");
@@ -273,20 +329,27 @@ static void test_rule_matches_null_arms(void)
 }
 
 /**
- * @test test_sel_part_empty_name
+ * @test internal_test_sel_part_empty_name
  * @brief A `.`/`#` with no following name (nlen == 0) drops the rule.
  *
  * @par MC/DC:
- * Decision (priv_parse_sel_part): `(nlen == 0U) || !priv_intern_name(...)`
+ * Decision (internal_parse_sel_part): `(nlen == 0U) || !internal_intern_name(...)`
  * (2-cond OR). The existing suite drives the `!intern` arm (over-long / dup);
  * this isolates the `nlen == 0` arm:
  *  - control `p { ... }` -> a bare type, no `.`/`#` part -> kept.
  *  - `em# { ... }` -> after the type `em`, the `#` part has no name byte before
- *    the selector ends -> nlen == 0 (cond1 true) -> priv_parse_sel_part returns
+ *    the selector ends -> nlen == 0 (cond1 true) -> internal_parse_sel_part returns
  *    false -> the rule is dropped.
  * Only the control survives in the rule table.
+ * @details Exercises the sel part empty name path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_sel_part_empty_name(void)
+RA8_INTERNAL static void internal_test_sel_part_empty_name(void)
 {
   TEST_BEGIN("css selector empty .#-part (nlen == 0) drop");
   load("p { color: red; }"      /* control kept             */
@@ -298,11 +361,11 @@ static void test_sel_part_empty_name(void)
 }
 
 /**
- * @test test_match_face_length_mismatch
+ * @test internal_test_match_face_length_mismatch
  * @brief A family query whose length differs from a face is rejected.
  *
  * @par MC/DC:
- * Decision (priv_ci_eq_span via priv_family_eq): `(a == NULL) || (b == NULL) ||
+ * Decision (internal_ci_eq_span via internal_family_eq): `(a == NULL) || (b == NULL) ||
  *   (alen != blen)` (3-cond OR). The pointer arms are unreachable through
  * ra8_css_match_face (it pre-checks family != NULL and the pooled name is never
  * NULL), so this isolates the reachable `alen != blen` condition:
@@ -310,8 +373,15 @@ static void test_sel_part_empty_name(void)
  *    compare runs and the face matches (cond3 false: control).
  *  - querying "Bod" (len 3) against the same face -> alen(4) != blen(3) -> cond3
  *    true -> no family match -> no-face.
+ * @details Exercises the match face length mismatch path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_match_face_length_mismatch(void)
+RA8_INTERNAL static void internal_test_match_face_length_mismatch(void)
 {
   TEST_BEGIN("css match_face family length mismatch (alen != blen)");
   load("@font-face{font-family:Body;src:url(b.ttf)}");
@@ -323,22 +393,29 @@ static void test_match_face_length_mismatch(void)
 }
 
 /**
- * @test test_fontface_bold_kw_full_or
+ * @test internal_test_fontface_bold_kw_full_or
  * @brief Each remaining @font-face bold keyword isolates one OR condition.
  *
  * @par MC/DC:
- * Decision (priv_is_bold_kw): `bold || bolder || 600 || 700 || 800 || 900`
+ * Decision (internal_is_bold_kw): `bold || bolder || 600 || 700 || 800 || 900`
  * (6-cond OR). The existing suite drives cond6 (900), cond2 (bolder) and the
  * all-false arm (normal). This isolates the four still-uncovered conditions, one
  * keyword each (the rest false), and a `font-style:italic` face also isolates
- * priv_is_italic_kw cond1 (italic) against the existing oblique cond2:
+ * internal_is_italic_kw cond1 (italic) against the existing oblique cond2:
  *  - `font-weight:bold`   -> weight_bold = 1 (bold OR cond1).
  *  - `font-weight:600`    -> weight_bold = 1 (bold OR cond3).
  *  - `font-weight:700`    -> weight_bold = 1 (bold OR cond4).
  *  - `font-weight:800`    -> weight_bold = 1 (bold OR cond5).
  *  - `font-style:italic`  -> style_italic = 1 (italic OR cond1).
+ * @details Exercises the fontface bold kw full or path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_fontface_bold_kw_full_or(void)
+RA8_INTERNAL static void internal_test_fontface_bold_kw_full_or(void)
 {
   TEST_BEGIN("css @font-face bold-kw OR conds 1/3/4/5 + italic cond1");
   load("@font-face{font-family:A;font-weight:bold;src:url(a.ttf)}"
@@ -357,21 +434,28 @@ static void test_fontface_bold_kw_full_or(void)
 }
 
 /**
- * @test test_face_apply_reject_arms
+ * @test internal_test_face_apply_reject_arms
  * @brief An empty-quoted family and a url-less src each leave their slot unset.
  *
  * @par MC/DC:
- * Two guards in priv_face_apply:
- *  (A) family: `(n > 0U) && priv_intern_name(...)` -- a `font-family:""` value
+ * Two guards in internal_face_apply:
+ *  (A) family: `(n > 0U) && internal_intern_name(...)` -- a `font-family:""` value
  *      strips to length 0, so `n > 0` is false (cond1 false): no family interned.
- *  (B) src: `priv_extract_url(...) && priv_intern_name(...)` -- a `src:none`
- *      value has no `url(`, so priv_extract_url returns false (cond1 false):
+ *  (B) src: `internal_extract_url(...) && internal_intern_name(...)` -- a `src:none`
+ *      value has no `url(`, so internal_extract_url returns false (cond1 false):
  *      no src interned.
- * With neither family nor src set, priv_parse_fontface's accept guard rejects
+ * With neither family nor src set, internal_parse_fontface's accept guard rejects
  * the block, so the face table stays empty (the surviving control face proves
  * the table itself works).
+ * @details Exercises the face apply reject arms path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_face_apply_reject_arms(void)
+RA8_INTERNAL static void internal_test_face_apply_reject_arms(void)
 {
   TEST_BEGIN("css face_apply empty-family / no-url-src rejects");
   load("@font-face{font-family:Good;src:url(g.ttf)}"  /* control kept         */
@@ -384,16 +468,23 @@ static void test_face_apply_reject_arms(void)
 }
 
 /**
- * @test test_rule_family_empty
+ * @test internal_test_rule_family_empty
  * @brief A rule `font-family:""` interns nothing (the n == 0 guard arm).
  *
  * @par MC/DC:
- * Decision (priv_family_cb): `(n > 0U) && priv_intern_name(...)` (2-cond AND):
+ * Decision (internal_family_cb): `(n > 0U) && internal_intern_name(...)` (2-cond AND):
  *  - `p { font-family: Serif }` -> n>0 AND intern OK -> true (family set bit on).
  *  - `h1 { font-family: "" }`   -> the empty value strips to length 0, so
  *    `n > 0` is false (cond1 false): the family set bit stays clear.
+ * @details Exercises the rule family empty path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_rule_family_empty(void)
+RA8_INTERNAL static void internal_test_rule_family_empty(void)
 {
   TEST_BEGIN("css rule font-family empty (n == 0) guard");
   const uint8_t famset = (uint8_t)k_ra8_css_set_family;
@@ -409,11 +500,11 @@ static void test_rule_family_empty(void)
 }
 
 /**
- * @test test_class_list_multi_token
+ * @test internal_test_class_list_multi_token
  * @brief A space-separated multi-class ancestor list is scanned token by token.
  *
  * @par MC/DC:
- * Loop (priv_class_list_has): the inner whitespace skip
+ * Loop (internal_class_list_has): the inner whitespace skip
  * `while ((i < list_len) && priv_is_ws(list[i]))` plus the token scan, reached
  * via a descendant `.box p` rule whose ancestor carries several classes:
  *  - ancestor class " lead box " -> the leading space exercises the ws-skip
@@ -421,8 +512,15 @@ static void test_rule_family_empty(void)
  *    "box" matches; the trailing space drives the `i < list_len`-false exit.
  *  - the same rule against an ancestor class "lead only" (no "box") -> the scan
  *    walks both tokens and returns no match (the rule does not apply).
+ * @details Exercises the class list multi token path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_class_list_multi_token(void)
+RA8_INTERNAL static void internal_test_class_list_multi_token(void)
 {
   TEST_BEGIN("css class-list multi-token whitespace scan");
   const uint8_t           bset = (uint8_t)k_ra8_css_set_bold;
@@ -440,11 +538,11 @@ static void test_class_list_multi_token(void)
 }
 
 /**
- * @test test_anc_null_class_id_and_idlen
+ * @test internal_test_anc_null_class_id_and_idlen
  * @brief Ancestor class/id constraints reject NULL attrs and id-length mismatch.
  *
  * @par MC/DC:
- * priv_anc_matches has two remaining compound arms:
+ * internal_anc_matches has two remaining compound arms:
  *   class: `(el->class_str == NULL) || !class_list_has(...)`
  *   id   : `(el->id == NULL) || (el->id_len != anc->id_len) || (memcmp != 0)`
  * The existing suite drives the class `!has` and id `memcmp != 0` arms; this
@@ -455,8 +553,15 @@ static void test_class_list_multi_token(void)
  *    -> no match.
  *  - `blockquote#main p` vs an ancestor id "mains" (len 5 != 4) -> id cond2
  *    (`id_len != anc->id_len`) true -> no match.
+ * @details Exercises the anc null class id and idlen path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_anc_null_class_id_and_idlen(void)
+RA8_INTERNAL static void internal_test_anc_null_class_id_and_idlen(void)
 {
   TEST_BEGIN("css anc NULL-class / NULL-id / id-len-mismatch arms");
   const uint8_t           bset = (uint8_t)k_ra8_css_set_bold;
@@ -466,26 +571,26 @@ static void test_anc_null_class_id_and_idlen(void)
   /* Class constraint vs an ancestor with NO class attribute. */
   load(".box p { font-weight: bold; }");
   const ra8_css_element_t a_noc[1] = {elem(k_ra8_reflow_tag_blockquote, nullptr, nullptr)};
-  ra8_css_style_t         s_noc    = ra8_css_cascade_ctx(&s_sheet, &p, inh, no_inline(), a_noc, 1U);
-  TEST_ASSERT((s_noc.set & bset) == 0U); /* class_str == NULL -> no match */
+  ra8_css_style_t         noc      = ra8_css_cascade_ctx(&s_sheet, &p, inh, no_inline(), a_noc, 1U);
+  TEST_ASSERT((noc.set & bset) == 0U); /* class_str == NULL -> no match */
 
   /* Id constraint vs an ancestor with NO id, and vs a wrong-length id. */
   load("blockquote#main p { font-weight: bold; }");
   const ra8_css_element_t a_noid[1] = {elem(k_ra8_reflow_tag_blockquote, nullptr, nullptr)};
   const ra8_css_element_t a_len[1]  = {elem(k_ra8_reflow_tag_blockquote, "mains", nullptr)};
-  ra8_css_style_t         s_noid = ra8_css_cascade_ctx(&s_sheet, &p, inh, no_inline(), a_noid, 1U);
-  ra8_css_style_t         s_len  = ra8_css_cascade_ctx(&s_sheet, &p, inh, no_inline(), a_len, 1U);
-  TEST_ASSERT((s_noid.set & bset) == 0U); /* id == NULL -> no match    */
-  TEST_ASSERT((s_len.set & bset) == 0U);  /* id_len 5 != 4 -> no match */
+  ra8_css_style_t         noid = ra8_css_cascade_ctx(&s_sheet, &p, inh, no_inline(), a_noid, 1U);
+  ra8_css_style_t         len  = ra8_css_cascade_ctx(&s_sheet, &p, inh, no_inline(), a_len, 1U);
+  TEST_ASSERT((noid.set & bset) == 0U); /* id == NULL -> no match    */
+  TEST_ASSERT((len.set & bset) == 0U);  /* id_len 5 != 4 -> no match */
   TEST_END("css anc NULL-class / NULL-id / id-len-mismatch arms");
 }
 
 /**
- * @test test_resolve_specificity_override
+ * @test internal_test_resolve_specificity_override
  * @brief A higher-specificity rule overrides a lower one (rank > best_rank).
  *
  * @par MC/DC:
- * Decision (priv_resolve winner): `(!have) || (rank > best_rank) ||
+ * Decision (internal_resolve winner): `(!have) || (rank > best_rank) ||
  *   ((rank == best_rank) && (order >= best_order))`. The existing suite drives
  * the `!have` seed and the equal-rank order tie. This isolates the
  * `rank > best_rank` disjunct:
@@ -494,8 +599,15 @@ static void test_anc_null_class_id_and_idlen(void)
  *    strictly greater, so `rank > best_rank` true -> blue overrides red even
  *    though it is interned at a higher source order.
  * The result is blue, proving specificity (not source order) chose the winner.
+ * @details Exercises the resolve specificity override path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_resolve_specificity_override(void)
+RA8_INTERNAL static void internal_test_resolve_specificity_override(void)
 {
   TEST_BEGIN("css resolve specificity override (rank > best_rank)");
   load("p { color: red; } p.note { color: blue; }");
@@ -507,7 +619,7 @@ static void test_resolve_specificity_override(void)
 }
 
 /**
- * @test test_match_face_fallback_conditions
+ * @test internal_test_match_face_fallback_conditions
  * @brief Isolate the italic-face (cond2) and second-regular (cond3) arms.
  *
  * @par MC/DC:
@@ -521,8 +633,15 @@ static void test_resolve_specificity_override(void)
  *  (B) `fallback < 0` false -- a family with TWO regular faces: the first sets
  *      the fallback, the second sees `fallback < 0` false (cond3 false) and is
  *      skipped; asking (bold) returns the FIRST regular face.
+ * @details Exercises the match face fallback conditions path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_match_face_fallback_conditions(void)
+RA8_INTERNAL static void internal_test_match_face_fallback_conditions(void)
 {
   TEST_BEGIN("css match_face fallback conds 2 (italic) / 3 (2nd regular)");
   /* (A) italic-only family: cond2 (style_italic == 0) false -> no fallback. */
@@ -537,7 +656,7 @@ static void test_match_face_fallback_conditions(void)
 }
 
 /**
- * @test test_face_src_guard_arms
+ * @test internal_test_face_src_guard_arms
  * @brief ra8_css_face_src validates each guard condition independently.
  *
  * @par MC/DC:
@@ -548,8 +667,15 @@ static void test_match_face_fallback_conditions(void)
  *  - out_src == NULL         -> cond2 true  -> false.
  *  - out_len == NULL         -> cond3 true  -> false.
  *  - idx >= face_count       -> cond4 true  -> false.
+ * @details Exercises the face src guard arms path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_face_src_guard_arms(void)
+RA8_INTERNAL static void internal_test_face_src_guard_arms(void)
 {
   TEST_BEGIN("css face_src guard 4-OR");
   load("@font-face{font-family:Body;src:url(body.ttf)}");
@@ -566,19 +692,27 @@ static void test_face_src_guard_arms(void)
 }
 
 /**
- * @test test_fontface_style_normal_mcdc
+ * @test internal_test_fontface_style_normal_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_is_italic_kw()` =
- *   `ra8_reflow_css_ci_eq(val,vlen,"italic") || ra8_reflow_css_ci_eq(val,vlen,"oblique")`
+ * Decision: `internal_is_italic_kw()` =
+ *   `priv_ra8_reflow_css_ci_eq(val,vlen,"italic") || priv_ra8_reflow_css_ci_eq(val,vlen,"oblique")`
  * (2 conditions, OR; libs/ra8_reflow/src/ra8_reflow_css_rules.c, @font-face
  * font-style). Existing vectors cover the italic (C1 true) and oblique (C1 false,
  * C2 true) arms. N+1 completion:
  *  - "font-style: normal" -> C1 false AND C2 false -> the face is committed with
  *    style_italic == 0. This both-false vector provides the independence pairs for
  *    each condition against the italic / oblique true vectors.
+ * @brief Verify fontface style normal mcdc behavior against the reflow contract.
+ * @details Exercises the fontface style normal mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_fontface_style_normal_mcdc(void)
+RA8_INTERNAL static void internal_test_fontface_style_normal_mcdc(void)
 {
   TEST_BEGIN("css @font-face MC/DC: font-style normal (is_italic_kw both-false)");
   load("@font-face{font-family:Reg;src:url(r.ttf);font-style:normal}");
@@ -589,11 +723,11 @@ static void test_fontface_style_normal_mcdc(void)
 }
 
 /**
- * @test test_class_list_trailing_ws_and_samelen_mcdc
+ * @test internal_test_class_list_trailing_ws_and_samelen_mcdc
  *
  * @par MC/DC:
- * Decisions in priv_class_list_has (libs/ra8_reflow/src/ra8_reflow_css_cascade.c):
- *   - the inner whitespace skip `while ((i<list_len) && ra8_reflow_css_is_ws(list[i]))`.
+ * Decisions in internal_class_list_has (libs/ra8_reflow/src/ra8_reflow_css_cascade.c):
+ *   - the inner whitespace skip `while ((i<list_len) && priv_ra8_reflow_css_is_ws(list[i]))`.
  *   - the token compare `if ((tlen == nlen) && (memcmp(...) == 0))`.
  * A NON-matching class list drives both false arms the matching lists never reach:
  *  - ancestor class "lead only " (trailing space, no "box") -> after the last token
@@ -603,8 +737,16 @@ static void test_fontface_style_normal_mcdc(void)
  *    tlen == nlen true but memcmp != 0 -> the `(memcmp == 0)` false side (C2 pair
  *    for the token compare).
  * Both leave the `.box p` rule unmatched (bold bit clear), the observable proof.
+ * @brief Verify class list trailing ws and samelen mcdc behavior against the reflow contract.
+ * @details Exercises the class list trailing ws and samelen mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_class_list_trailing_ws_and_samelen_mcdc(void)
+RA8_INTERNAL static void internal_test_class_list_trailing_ws_and_samelen_mcdc(void)
 {
   TEST_BEGIN("css class-list MC/DC: trailing-ws end + same-length mismatch");
   const uint8_t           bset = (uint8_t)k_ra8_css_set_bold;
@@ -635,26 +777,26 @@ static void test_class_list_trailing_ws_and_samelen_mcdc(void)
  * @note Order is significant: cases run top to bottom, exactly as before.
  */
 static void (*const s_test_roster[])(void) = {
-  test_sel_part_combinator_drop,
-  test_fontface_quote_strip,
-  test_fontface_weight_style_keywords,
-  test_fontface_accept_guard,
-  test_ancestor_constraint_arms,
-  test_resolve_order_tiebreak,
-  test_match_face_regular_fallback,
-  test_rule_matches_null_arms,
-  test_sel_part_empty_name,
-  test_match_face_length_mismatch,
-  test_fontface_bold_kw_full_or,
-  test_face_apply_reject_arms,
-  test_rule_family_empty,
-  test_class_list_multi_token,
-  test_anc_null_class_id_and_idlen,
-  test_resolve_specificity_override,
-  test_match_face_fallback_conditions,
-  test_face_src_guard_arms,
-  test_fontface_style_normal_mcdc,
-  test_class_list_trailing_ws_and_samelen_mcdc,
+  internal_test_sel_part_combinator_drop,
+  internal_test_fontface_quote_strip,
+  internal_test_fontface_weight_style_keywords,
+  internal_test_fontface_accept_guard,
+  internal_test_ancestor_constraint_arms,
+  internal_test_resolve_order_tiebreak,
+  internal_test_match_face_regular_fallback,
+  internal_test_rule_matches_null_arms,
+  internal_test_sel_part_empty_name,
+  internal_test_match_face_length_mismatch,
+  internal_test_fontface_bold_kw_full_or,
+  internal_test_face_apply_reject_arms,
+  internal_test_rule_family_empty,
+  internal_test_class_list_multi_token,
+  internal_test_anc_null_class_id_and_idlen,
+  internal_test_resolve_specificity_override,
+  internal_test_match_face_fallback_conditions,
+  internal_test_face_src_guard_arms,
+  internal_test_fontface_style_normal_mcdc,
+  internal_test_class_list_trailing_ws_and_samelen_mcdc,
 };
 
 /**
@@ -673,6 +815,5 @@ int32_t main(void)
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
     s_test_roster[i]();
   }
-  (void)fprintf(stderr, "[OK ] test_ra8_reflow_css_select_mcdc.c\n");
   return 0;
 }

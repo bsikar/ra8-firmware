@@ -8,7 +8,7 @@
  * under the project file-size cap:
  *
  *   - `ra8_reflow_layout.c`        -- core line/page break + inline flow.
- *   - `ra8_reflow_layout_table.c`  -- `<table>` equal-column grid layout.
+ *   - `priv_ra8_reflow_layout_table.c`  -- `<table>` equal-column grid layout.
  *   - `ra8_reflow_layout_driver.c` -- the token-stream driver + public API.
  *
  * Any symbol referenced by more than one of those units lives here: the
@@ -101,7 +101,7 @@ typedef struct {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_reflow_layout_byte_zero(uint8_t* dst, size_t n);
+RA8_PRIV void priv_ra8_reflow_layout_byte_zero(uint8_t* dst, size_t n);
 
 /**
  * @brief Initialise an `stbtt_fontinfo` from `engine->font_data`.
@@ -120,8 +120,8 @@ RA8_PRIV void ra8_reflow_layout_byte_zero(uint8_t* dst, size_t n);
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_reflow_layout_init_font(const ra8_reflow_t* engine,
-                                               stbtt_fontinfo*     out_font);
+RA8_PRIV ra8_err_t priv_ra8_reflow_layout_init_font(const ra8_reflow_t* engine,
+                                                    stbtt_fontinfo*     out_font);
 
 /**
  * @brief Compute the line height in pixels for a given font size.
@@ -140,7 +140,7 @@ RA8_PRIV ra8_err_t ra8_reflow_layout_init_font(const ra8_reflow_t* engine,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV uint16_t ra8_reflow_layout_line_height(uint16_t font_px);
+RA8_PRIV uint16_t priv_ra8_reflow_layout_line_height(uint16_t font_px);
 
 /**
  * @brief Measure a single ASCII code point's advance width in pixels.
@@ -161,9 +161,9 @@ RA8_PRIV uint16_t ra8_reflow_layout_line_height(uint16_t font_px);
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV int32_t ra8_reflow_layout_glyph_advance(const stbtt_fontinfo* font,
-                                                 uint16_t              font_px,
-                                                 int32_t               cp);
+RA8_PRIV int32_t priv_ra8_reflow_layout_glyph_advance(const stbtt_fontinfo* font,
+                                                      uint16_t              font_px,
+                                                      int32_t               cp);
 
 /**
  * @brief Push one positioned glyph into the engine glyph pool.
@@ -197,14 +197,14 @@ RA8_PRIV int32_t ra8_reflow_layout_glyph_advance(const stbtt_fontinfo* font,
  * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_reflow_layout_push_glyph(ra8_reflow_t* engine,
-                                           int32_t       x,
-                                           int32_t       y,
-                                           int32_t       cp,
-                                           uint16_t      font_px,
-                                           uint8_t       style,
-                                           uint32_t      color,
-                                           uint8_t       link_id);
+RA8_PRIV bool priv_ra8_reflow_layout_push_glyph(ra8_reflow_t* engine,
+                                                int32_t       x,
+                                                int32_t       y,
+                                                int32_t       cp,
+                                                uint16_t      font_px,
+                                                uint8_t       style,
+                                                uint32_t      color,
+                                                uint8_t       link_id);
 
 /**
  * @brief Finalise the current page and start a new one.
@@ -222,21 +222,21 @@ RA8_PRIV bool ra8_reflow_layout_push_glyph(ra8_reflow_t* engine,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_reflow_layout_finish_page(ra8_reflow_t* engine, priv_cursor_t* cur);
+RA8_PRIV bool priv_ra8_reflow_layout_finish_page(ra8_reflow_t* engine, priv_cursor_t* cur);
 
 /**
  * @brief Wrap to a new line, finishing a page if the bottom margin is hit.
  *
- * @details Calls `priv_finish_line` to apply alignment to the just-completed
+ * @details Calls `internal_finish_line` to apply alignment to the just-completed
  * line, then advances `cur->y` by `cur->line_height_px`, resets `cur->x` to
  * the left margin plus the active indent, clears `cur->line_has_content`, and
  * updates `cur->line_first_glyph`. If the new baseline plus one line height
- * would exceed the bottom margin it calls @ref ra8_reflow_layout_finish_page to
+ * would exceed the bottom margin it calls @ref priv_ra8_reflow_layout_finish_page to
  * flush the current page and reset the cursor to the top of a fresh page.
  *
  * @param[in,out] engine        Engine whose page pool may grow by one entry.
  * @param[in,out] cur           Layout cursor; x, y, line state are updated.
- * @param[in]     allow_justify Passed to `priv_finish_line`; true on a wrapped
+ * @param[in]     allow_justify Passed to `internal_finish_line`; true on a wrapped
  *                              line, false at an explicit paragraph end.
  *
  * @return Boolean success flag.
@@ -252,7 +252,7 @@ RA8_PRIV bool ra8_reflow_layout_finish_page(ra8_reflow_t* engine, priv_cursor_t*
  * @since 0.1.0
  */
 RA8_PRIV bool
-ra8_reflow_layout_newline(ra8_reflow_t* engine, priv_cursor_t* cur, bool allow_justify);
+priv_ra8_reflow_layout_newline(ra8_reflow_t* engine, priv_cursor_t* cur, bool allow_justify);
 
 /**
  * @brief Dispatch one parsed token through the layout cursor.
@@ -275,10 +275,10 @@ ra8_reflow_layout_newline(ra8_reflow_t* engine, priv_cursor_t* cur, bool allow_j
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_reflow_layout_apply_token(ra8_reflow_t*             engine,
-                                                 priv_cursor_t*            cur,
-                                                 const stbtt_fontinfo*     font,
-                                                 const ra8_reflow_token_t* tok);
+RA8_PRIV ra8_err_t priv_ra8_reflow_layout_apply_token(ra8_reflow_t*             engine,
+                                                      priv_cursor_t*            cur,
+                                                      const stbtt_fontinfo*     font,
+                                                      const ra8_reflow_token_t* tok);
 
 /**
  * @brief Post-layout pass: group link-tagged glyphs into tappable rects.
@@ -306,7 +306,8 @@ RA8_PRIV ra8_err_t ra8_reflow_layout_apply_token(ra8_reflow_t*             engin
  * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_reflow_layout_build_link_rects(ra8_reflow_t* engine, const stbtt_fontinfo* font);
+RA8_PRIV void priv_ra8_reflow_layout_build_link_rects(ra8_reflow_t*         engine,
+                                                      const stbtt_fontinfo* font);
 
 /**
  * @brief Apply an `<img>` token: real image when a loader is bound, else a
@@ -331,14 +332,14 @@ RA8_PRIV void ra8_reflow_layout_build_link_rects(ra8_reflow_t* engine, const stb
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_reflow_layout_apply_image(ra8_reflow_t*             engine,
-                                            priv_cursor_t*            cur,
-                                            const ra8_reflow_token_t* tok);
+RA8_PRIV bool priv_ra8_reflow_layout_apply_image(ra8_reflow_t*             engine,
+                                                 priv_cursor_t*            cur,
+                                                 const ra8_reflow_token_t* tok);
 
 /**
  * @brief Lay out a `<table>` token range as an equal-column grid.
  *
- * @details Flushes the pending line (if any) via @ref ra8_reflow_layout_newline,
+ * @details Flushes the pending line (if any) via @ref priv_ra8_reflow_layout_newline,
  * locates the matching table block-end, and counts the maximum column count.
  * If the table has no cells the function advances @p out_next past the
  * block-end and returns immediately. Otherwise the content width is divided
@@ -368,8 +369,8 @@ RA8_PRIV bool ra8_reflow_layout_apply_image(ra8_reflow_t*             engine,
  * @note Not thread-safe; caller must serialize access to @p engine and @p cur.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_reflow_layout_table(ra8_reflow_t*         engine,
-                                           priv_cursor_t*        cur,
-                                           const stbtt_fontinfo* font,
-                                           uint32_t              start,
-                                           uint32_t*             out_next);
+RA8_PRIV ra8_err_t priv_ra8_reflow_layout_table(ra8_reflow_t*         engine,
+                                                priv_cursor_t*        cur,
+                                                const stbtt_fontinfo* font,
+                                                uint32_t              start,
+                                                uint32_t*             out_next);

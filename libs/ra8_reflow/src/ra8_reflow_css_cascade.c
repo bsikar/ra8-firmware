@@ -6,7 +6,7 @@
  * The top-level stylesheet scanner (::ra8_css_parse, comment + block skipping),
  * the selector-matching and specificity cascade, and the `@font-face` lookup
  * API for the v1 CSS subset documented in `ra8_reflow_css.h`. The scanner walks
- * `selector { ... }` blocks and hands each to ::ra8_reflow_css_parse_one_block in
+ * `selector { ... }` blocks and hands each to ::priv_ra8_reflow_css_parse_one_block in
  * a sibling translation unit; the cascade resolves inherited / rule / inline
  * sources into a single ::ra8_css_style_t. No MMIO, no heap; all state lives in
  * the caller-owned ::ra8_css_sheet_t.
@@ -103,7 +103,7 @@ ra8_err_t ra8_css_sheet_reset(ra8_css_sheet_t* sheet)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static size_t priv_skip_comment(const char* css, size_t len, size_t start)
+static size_t internal_skip_comment(const char* css, size_t len, size_t start)
 {
   const char open_a = '/';
   const char open_b = '*';
@@ -142,7 +142,7 @@ static size_t priv_skip_comment(const char* css, size_t len, size_t start)
  */
 RA8_INTERNAL
 static bool
-priv_find_block(const char* css, size_t len, size_t i, size_t* out_open, size_t* out_close)
+internal_find_block(const char* css, size_t len, size_t i, size_t* out_open, size_t* out_close)
 {
   const char open_c  = '{';
   const char close_c = '}';
@@ -175,23 +175,23 @@ ra8_err_t ra8_css_parse(ra8_css_sheet_t* sheet, const char* css, uint32_t len)
   /* Bounded: each iteration advances past a block or breaks at EOF. */
   while (i < (size_t)len) {
     if (((i + 1U) < (size_t)len) && (css[i] == open_a) && (css[i + 1U] == open_b)) {
-      i = priv_skip_comment(css, (size_t)len, i);
+      i = internal_skip_comment(css, (size_t)len, i);
       continue;
     }
-    if (ra8_reflow_css_is_ws(css[i])) {
+    if (priv_ra8_reflow_css_is_ws(css[i])) {
       ++i;
       continue;
     }
     size_t brace = 0U;
     size_t close = 0U;
-    if (!priv_find_block(css, (size_t)len, i, &brace, &close)) {
+    if (!internal_find_block(css, (size_t)len, i, &brace, &close)) {
       break; /* no block -> done */
     }
-    ra8_reflow_css_parse_one_block(sheet,
-                                   &css[i],
-                                   brace - i,
-                                   &css[brace + 1U],
-                                   close - (brace + 1U));
+    priv_ra8_reflow_css_parse_one_block(sheet,
+                                        &css[i],
+                                        brace - i,
+                                        &css[brace + 1U],
+                                        close - (brace + 1U));
     i = (close < (size_t)len) ? (close + 1U) : (size_t)len;
   }
   return k_ra8_ok;
@@ -229,16 +229,17 @@ ra8_err_t ra8_css_parse(ra8_css_sheet_t* sheet, const char* css, uint32_t len)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_class_list_has(const char* list, size_t list_len, const char* name, size_t nlen)
+static bool
+internal_class_list_has(const char* list, size_t list_len, const char* name, size_t nlen)
 {
   size_t i = 0U;
   /* Bounded: each pass skips >=0 ws then a token, advancing i to list_len. */
   while (i < list_len) {
-    while ((i < list_len) && ra8_reflow_css_is_ws(list[i])) {
+    while ((i < list_len) && priv_ra8_reflow_css_is_ws(list[i])) {
       ++i;
     }
     size_t start = i;
-    while ((i < list_len) && !ra8_reflow_css_is_ws(list[i])) {
+    while ((i < list_len) && !priv_ra8_reflow_css_is_ws(list[i])) {
       ++i;
     }
     const size_t tlen = i - start;
@@ -263,7 +264,7 @@ bool ra8_css_rule_matches(const ra8_css_rule_t*    rule,
   if (rule->class_len != 0U) {
     const char* nm = (const char*)&sheet->names[rule->class_off];
     if ((el->class_str == nullptr) ||
-        !priv_class_list_has(el->class_str, el->class_len, nm, rule->class_len)) {
+        !internal_class_list_has(el->class_str, el->class_len, nm, rule->class_len)) {
       return false;
     }
   }
@@ -283,7 +284,7 @@ bool ra8_css_rule_matches(const ra8_css_rule_t*    rule,
  * @details Checks each non-zero constraint field of @p anc against @p el:
  *   - tag:       @p el->tag must equal @p anc->tag when the tag is not unknown.
  *   - class_len: @p el->class_str must contain the interned class name via
- *                priv_class_list_has().
+ *                internal_class_list_has().
  *   - id_len:    @p el->id must equal the interned id via memcmp.
  * Returns true only when all present constraints match. An @p anc with all fields
  * zero (universal) always returns true.
@@ -305,9 +306,9 @@ bool ra8_css_rule_matches(const ra8_css_rule_t*    rule,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_anc_matches(const ra8_css_anc_t*     anc,
-                             const ra8_css_element_t* el,
-                             const ra8_css_sheet_t*   sheet)
+static bool internal_anc_matches(const ra8_css_anc_t*     anc,
+                                 const ra8_css_element_t* el,
+                                 const ra8_css_sheet_t*   sheet)
 {
   if ((anc->tag != (uint8_t)k_ra8_reflow_tag_unknown) && (el->tag != anc->tag)) {
     return false;
@@ -315,7 +316,7 @@ static bool priv_anc_matches(const ra8_css_anc_t*     anc,
   if (anc->class_len != 0U) {
     const char* nm = (const char*)&sheet->names[anc->class_off];
     if ((el->class_str == nullptr) ||
-        !priv_class_list_has(el->class_str, el->class_len, nm, anc->class_len)) {
+        !internal_class_list_has(el->class_str, el->class_len, nm, anc->class_len)) {
       return false;
     }
   }
@@ -336,7 +337,7 @@ static bool priv_anc_matches(const ra8_css_anc_t*     anc,
  * @p rule->anc_count is 0 that check is sufficient. For rules with ancestor
  * constraints, a greedy right-to-left scan walks the ancestor stack from innermost
  * (@p ancestors[n_anc-1]) to outermost (@p ancestors[0]), consuming one rule
- * ancestor part per stack element that matches via priv_anc_matches(). The
+ * ancestor part per stack element that matches via internal_anc_matches(). The
  * descendant combinator allows any depth between parts. Returns true only when
  * all ancestor parts are consumed (ai < 0 at loop exit).
  *
@@ -361,11 +362,11 @@ static bool priv_anc_matches(const ra8_css_anc_t*     anc,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_rule_matches_ctx(const ra8_css_rule_t*    rule,
-                                  const ra8_css_element_t* el,
-                                  const ra8_css_element_t* ancestors,
-                                  uint8_t                  n_anc,
-                                  const ra8_css_sheet_t*   sheet)
+static bool internal_rule_matches_ctx(const ra8_css_rule_t*    rule,
+                                      const ra8_css_element_t* el,
+                                      const ra8_css_element_t* ancestors,
+                                      uint8_t                  n_anc,
+                                      const ra8_css_sheet_t*   sheet)
 {
   if (!ra8_css_rule_matches(rule, el, sheet)) {
     return false;
@@ -379,7 +380,7 @@ static bool priv_rule_matches_ctx(const ra8_css_rule_t*    rule,
   int32_t si = (int32_t)n_anc - 1;
   /* Bounded: si strictly decreases each pass; ends when si < 0 or ai < 0. */
   while ((ai >= 0) && (si >= 0)) {
-    if (priv_anc_matches(&rule->anc[ai], &ancestors[si], sheet)) {
+    if (internal_anc_matches(&rule->anc[ai], &ancestors[si], sheet)) {
       --ai;
     }
     --si;
@@ -396,7 +397,7 @@ static bool priv_rule_matches_ctx(const ra8_css_rule_t*    rule,
  *   - k_priv_spec_class (100) for each non-empty class field.
  *   - k_priv_spec_type (1) for each non-unknown tag.
  * The ancestor loop is bounded by @p rule->anc_count. The result is used by
- * priv_resolve() to determine which rule wins during the cascade.
+ * internal_resolve() to determine which rule wins during the cascade.
  *
  * @param[in] rule Rule whose specificity to compute.
  *
@@ -413,7 +414,7 @@ static bool priv_rule_matches_ctx(const ra8_css_rule_t*    rule,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint16_t priv_rule_rank(const ra8_css_rule_t* rule)
+static uint16_t internal_rule_rank(const ra8_css_rule_t* rule)
 {
   uint16_t spec = 0U;
   if (rule->sel_tag != (uint8_t)k_ra8_reflow_tag_unknown) {
@@ -447,11 +448,11 @@ static uint16_t priv_rule_rank(const ra8_css_rule_t* rule)
  *         NULL if no source declares @p setbit.
  */
 RA8_INTERNAL
-static const ra8_css_style_t* priv_resolve(uint8_t                setbit,
-                                           const ra8_css_style_t* inherited,
-                                           const ra8_css_sheet_t* sheet,
-                                           const bool*            matched,
-                                           const ra8_css_style_t* inl)
+static const ra8_css_style_t* internal_resolve(uint8_t                setbit,
+                                               const ra8_css_style_t* inherited,
+                                               const ra8_css_sheet_t* sheet,
+                                               const bool*            matched,
+                                               const ra8_css_style_t* inl)
 {
   const ra8_css_style_t* win        = nullptr;
   uint16_t               best_rank  = 0U;
@@ -467,8 +468,8 @@ static const ra8_css_style_t* priv_resolve(uint8_t                setbit,
     if (!matched[i] || ((sheet->rules[i].decl.set & setbit) == 0U)) {
       continue;
     }
-    const uint16_t rank = priv_rule_rank(&sheet->rules[i]);
-    /* mcdc-deactivated: rules[].order is assigned monotonically in source order (priv_push_rule increments next_order) and this loop scans rules in that same order, so a later same-rank rule always has order > best_order; (order >= best_order) is invariantly true and its false arm is unreachable. */
+    const uint16_t rank = internal_rule_rank(&sheet->rules[i]);
+    /* mcdc-deactivated: rules[].order is assigned monotonically in source order (internal_push_rule increments next_order) and this loop scans rules in that same order, so a later same-rank rule always has order > best_order; (order >= best_order) is invariantly true and its false arm is unreachable. */
     if ((!have) || (rank > best_rank) ||
         ((rank == best_rank) && (sheet->rules[i].order >= best_order))) {
       win        = &sheet->rules[i].decl;
@@ -487,7 +488,7 @@ static const ra8_css_style_t* priv_resolve(uint8_t                setbit,
  * @brief Resolve the bold / italic / underline emphasis bits into @p out.
  *
  * @details Iterates over a fixed table of three emphasis properties (bold,
- * italic, underline) and calls priv_resolve() for each to find the winning
+ * italic, underline) and calls internal_resolve() for each to find the winning
  * style source. When a winner is found, the corresponding set bit is OR'd into
  * @p out->set and the style bit is conditionally OR'd into @p out->style based
  * on the winner's style field. The table has a statically known size of 3,
@@ -511,11 +512,11 @@ static const ra8_css_style_t* priv_resolve(uint8_t                setbit,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_cascade_emphasis(ra8_css_style_t*       out,
-                                  const ra8_css_sheet_t* sheet,
-                                  const bool*            matched,
-                                  const ra8_css_style_t* inherited,
-                                  const ra8_css_style_t* inl)
+static void internal_cascade_emphasis(ra8_css_style_t*       out,
+                                      const ra8_css_sheet_t* sheet,
+                                      const bool*            matched,
+                                      const ra8_css_style_t* inherited,
+                                      const ra8_css_style_t* inl)
 {
   static const struct {
     uint8_t setbit;   /**< Setbit.   */
@@ -526,7 +527,8 @@ static void priv_cascade_emphasis(ra8_css_style_t*       out,
     {(uint8_t)k_ra8_css_set_underline, (uint8_t)k_ra8_reflow_style_underline},
   };
   for (size_t p = 0U; p < (sizeof(k_props) / sizeof(k_props[0])); ++p) {
-    const ra8_css_style_t* win = priv_resolve(k_props[p].setbit, inherited, sheet, matched, inl);
+    const ra8_css_style_t* win =
+      internal_resolve(k_props[p].setbit, inherited, sheet, matched, inl);
     if (win != nullptr) {
       out->set = (uint8_t)(out->set | k_props[p].setbit);
       if ((win->style & k_props[p].stylebit) != 0U) {
@@ -539,7 +541,7 @@ static void priv_cascade_emphasis(ra8_css_style_t*       out,
 /**
  * @brief Resolve the scalar properties (align / colour / font-size / display).
  *
- * @details Calls priv_resolve() for each of the four scalar CSS properties
+ * @details Calls internal_resolve() for each of the four scalar CSS properties
  * (text-align, color, font-size, display) and, when a winner is found, copies
  * the winning value into @p out and OR's the corresponding set bit. font-size
  * and display are resolved from rules and inline styles only; inheritance for
@@ -564,20 +566,20 @@ static void priv_cascade_emphasis(ra8_css_style_t*       out,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_cascade_scalars(ra8_css_style_t*       out,
-                                 const ra8_css_sheet_t* sheet,
-                                 const bool*            matched,
-                                 const ra8_css_style_t* inherited,
-                                 const ra8_css_style_t* inl)
+static void internal_cascade_scalars(ra8_css_style_t*       out,
+                                     const ra8_css_sheet_t* sheet,
+                                     const bool*            matched,
+                                     const ra8_css_style_t* inherited,
+                                     const ra8_css_style_t* inl)
 {
   const ra8_css_style_t* awin =
-    priv_resolve((uint8_t)k_ra8_css_set_align, inherited, sheet, matched, inl);
+    internal_resolve((uint8_t)k_ra8_css_set_align, inherited, sheet, matched, inl);
   if (awin != nullptr) {
     out->set   = (uint8_t)(out->set | (uint8_t)k_ra8_css_set_align);
     out->align = awin->align;
   }
   const ra8_css_style_t* cwin =
-    priv_resolve((uint8_t)k_ra8_css_set_color, inherited, sheet, matched, inl);
+    internal_resolve((uint8_t)k_ra8_css_set_color, inherited, sheet, matched, inl);
   if (cwin != nullptr) {
     out->set   = (uint8_t)(out->set | (uint8_t)k_ra8_css_set_color);
     out->color = cwin->color;
@@ -586,14 +588,14 @@ static void priv_cascade_scalars(ra8_css_style_t*       out,
    * this pure pass (a `%` is applied by the caller against the parent's resolved
    * px, so seeding `inherited` would double-apply it). */
   const ra8_css_style_t* fwin =
-    priv_resolve((uint8_t)k_ra8_css_set_fontsize, inherited, sheet, matched, inl);
+    internal_resolve((uint8_t)k_ra8_css_set_fontsize, inherited, sheet, matched, inl);
   if (fwin != nullptr) {
     out->set       = (uint8_t)(out->set | (uint8_t)k_ra8_css_set_fontsize);
     out->font_val  = fwin->font_val;
     out->font_unit = fwin->font_unit;
   }
   const ra8_css_style_t* dwin =
-    priv_resolve((uint8_t)k_ra8_css_set_display, inherited, sheet, matched, inl);
+    internal_resolve((uint8_t)k_ra8_css_set_display, inherited, sheet, matched, inl);
   if (dwin != nullptr) {
     out->set     = (uint8_t)(out->set | (uint8_t)k_ra8_css_set_display);
     out->display = dwin->display;
@@ -603,7 +605,7 @@ static void priv_cascade_scalars(ra8_css_style_t*       out,
 /**
  * @brief Resolve the inherited `font-family` slice into @p out.
  *
- * @details Calls priv_resolve() for the k_ra8_css_set_family property and, when
+ * @details Calls internal_resolve() for the k_ra8_css_set_family property and, when
  * a winning style is found, copies (family_off, family_len) from the winner into
  * @p out and OR's k_ra8_css_set_family into @p out->set. The family name itself
  * lives in the sheet's name pool and is referenced by offset and length; no
@@ -628,14 +630,14 @@ static void priv_cascade_scalars(ra8_css_style_t*       out,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_cascade_family(ra8_css_style_t*       out,
-                                const ra8_css_sheet_t* sheet,
-                                const bool*            matched,
-                                const ra8_css_style_t* inherited,
-                                const ra8_css_style_t* inl)
+static void internal_cascade_family(ra8_css_style_t*       out,
+                                    const ra8_css_sheet_t* sheet,
+                                    const bool*            matched,
+                                    const ra8_css_style_t* inherited,
+                                    const ra8_css_style_t* inl)
 {
   const ra8_css_style_t* win =
-    priv_resolve((uint8_t)k_ra8_css_set_family, inherited, sheet, matched, inl);
+    internal_resolve((uint8_t)k_ra8_css_set_family, inherited, sheet, matched, inl);
   if (win != nullptr) {
     out->set        = (uint8_t)(out->set | (uint8_t)k_ra8_css_set_family);
     out->family_off = win->family_off;
@@ -656,12 +658,12 @@ ra8_css_style_t ra8_css_cascade_ctx(const ra8_css_sheet_t*   sheet,
   bool matched[k_ra8_css_max_rules] = {};
   /* Bounded: rule_count <= k_ra8_css_max_rules; i advances by 1 each step. */
   for (uint16_t i = 0U; i < sheet->rule_count; ++i) {
-    matched[i] = priv_rule_matches_ctx(&sheet->rules[i], el, ancestors, n_anc, sheet);
+    matched[i] = internal_rule_matches_ctx(&sheet->rules[i], el, ancestors, n_anc, sheet);
   }
   ra8_css_style_t out = {};
-  priv_cascade_emphasis(&out, sheet, matched, &inherited, &inline_decl);
-  priv_cascade_scalars(&out, sheet, matched, &inherited, &inline_decl);
-  priv_cascade_family(&out, sheet, matched, &inherited, &inline_decl);
+  internal_cascade_emphasis(&out, sheet, matched, &inherited, &inline_decl);
+  internal_cascade_scalars(&out, sheet, matched, &inherited, &inline_decl);
+  internal_cascade_family(&out, sheet, matched, &inherited, &inline_decl);
   return out;
 }
 
@@ -677,7 +679,7 @@ ra8_css_style_t ra8_css_cascade(const ra8_css_sheet_t*   sheet,
  * @brief Case-insensitive equality of two byte spans.
  *
  * @details Compares @p a[0..alen) and @p b[0..blen) byte-by-byte after
- * ASCII case-folding via ra8_reflow_css_lower(). Returns false immediately when either
+ * ASCII case-folding via priv_ra8_reflow_css_lower(). Returns false immediately when either
  * pointer is NULL or the lengths differ. The comparison loop is bounded by
  * @p alen (which equals @p blen when lengths match).
  *
@@ -699,15 +701,15 @@ ra8_css_style_t ra8_css_cascade(const ra8_css_sheet_t*   sheet,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_ci_eq_span(const char* a, size_t alen, const char* b, size_t blen)
+static bool internal_ci_eq_span(const char* a, size_t alen, const char* b, size_t blen)
 {
-  /* mcdc-deactivated: priv_ci_eq_span is reached only via priv_family_eq from ra8_css_match_face, which rejects a NULL sheet and a NULL family at its entry, so both name pointers are non-NULL here; (a == nullptr) and (b == nullptr) are unreachable, only (alen != blen) varies. */
+  /* mcdc-deactivated: internal_ci_eq_span is reached only via internal_family_eq from ra8_css_match_face, which rejects a NULL sheet and a NULL family at its entry, so both name pointers are non-NULL here; (a == nullptr) and (b == nullptr) are unreachable, only (alen != blen) varies. */
   if ((a == nullptr) || (b == nullptr) || (alen != blen)) {
     return false;
   }
   /* Bounded: k < alen (== blen); one byte folded per step. */
   for (size_t k = 0U; k < alen; ++k) {
-    if (ra8_reflow_css_lower(a[k]) != ra8_reflow_css_lower(b[k])) {
+    if (priv_ra8_reflow_css_lower(a[k]) != priv_ra8_reflow_css_lower(b[k])) {
       return false;
     }
   }
@@ -718,7 +720,7 @@ static bool priv_ci_eq_span(const char* a, size_t alen, const char* b, size_t bl
  * @brief True iff face @p f's family equals @p family (case-insensitive).
  *
  * @details Retrieves the interned family name from @p sheet->names using
- * @p f->family_off and @p f->family_len, then delegates to priv_ci_eq_span()
+ * @p f->family_off and @p f->family_len, then delegates to internal_ci_eq_span()
  * for a case-insensitive comparison against @p family[0..family_len).
  *
  * @param[in] sheet      Sheet owning the name pool referenced by @p f.
@@ -739,15 +741,15 @@ static bool priv_ci_eq_span(const char* a, size_t alen, const char* b, size_t bl
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_family_eq(const ra8_css_sheet_t*    sheet,
-                           const ra8_css_fontface_t* f,
-                           const char*               family,
-                           size_t                    family_len)
+static bool internal_family_eq(const ra8_css_sheet_t*    sheet,
+                               const ra8_css_fontface_t* f,
+                               const char*               family,
+                               size_t                    family_len)
 {
-  return priv_ci_eq_span((const char*)&sheet->names[f->family_off],
-                         (size_t)f->family_len,
-                         family,
-                         family_len);
+  return internal_ci_eq_span((const char*)&sheet->names[f->family_off],
+                             (size_t)f->family_len,
+                             family,
+                             family_len);
 }
 
 int16_t ra8_css_match_face(const ra8_css_sheet_t* sheet,
@@ -763,7 +765,7 @@ int16_t ra8_css_match_face(const ra8_css_sheet_t* sheet,
   /* Bounded: face_count <= k_ra8_css_max_faces; i advances by 1 each step. */
   for (uint16_t i = 0U; i < sheet->face_count; ++i) {
     const ra8_css_fontface_t* f = &sheet->faces[i];
-    if (!priv_family_eq(sheet, f, family, (size_t)family_len)) {
+    if (!internal_family_eq(sheet, f, family, (size_t)family_len)) {
       continue;
     }
     if (((f->weight_bold != 0U) == want_bold) && ((f->style_italic != 0U) == want_italic)) {

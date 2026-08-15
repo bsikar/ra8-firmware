@@ -6,7 +6,7 @@
  * Two complementary layers cover the page rasteriser:
  *
  *  - A ``static inline`` mirror with operand-identical short-circuit semantics
- *    documents the canonical N+1 MC/DC vector set for ``priv_blit_glyph``'s
+ *    documents the canonical N+1 MC/DC vector set for ``internal_blit_glyph``'s
  *    ``if (w > 0 && h > 0)`` glyph-size guard (the mirror-helper pattern from
  *    ``tests/test_ux_dcd_ra8_usb.c``).
  *
@@ -15,12 +15,12 @@
  *    bundled Literata face (located relative to ``__FILE__`` exactly as
  *    ``tests/test_ra8_reflow_corpus.c`` does; the test SKIPs if the font is
  *    absent). These exercise production source the mirror cannot reach:
- *      * ``priv_blit_glyph``'s ``if (w > 0 && h > 0)`` both ways -- a printable
+ *      * ``internal_blit_glyph``'s ``if (w > 0 && h > 0)`` both ways -- a printable
  *        glyph (true) and a space (empty bitmap box -> false).
- *      * ``priv_init_faces``'s ``if ((offset < 0) || (InitFont == 0))`` both
+ *      * ``internal_init_faces``'s ``if ((offset < 0) || (InitFont == 0))`` both
  *        ways -- a valid registered ``@font-face`` (false) and a junk blob that
  *        falls back to the default face (true).
- *      * ``priv_render_images``'s ``if (loader == NULL || arena == NULL)`` both
+ *      * ``internal_render_images``'s ``if (loader == NULL || arena == NULL)`` both
  *        ways -- a bound image loader (false -> blits an image box) and the
  *        unbound default (true -> early return).
  *
@@ -37,10 +37,25 @@
 #include "ra8_gfx.h"
 #include "ra8_glyph_atlas.h"
 #include "ra8_reflow.h"
+#include "support/ra8_test_file.h"
+#include "support/ra8_test_output.h"
 #include "unity_minimal.h"
 
-/** Mirror of priv_blit_glyph's ``if (w > 0 && h > 0)`` glyph-size guard. */
-static inline uint8_t mirror_priv_blit_glyph_size(int w, int h)
+/** Mirror of internal_blit_glyph's ``if (w > 0 && h > 0)`` glyph-size guard.
+ * @brief Mirror priv blit glyph size.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in] w Argument for the bounded test operation.
+ * @param[in] h Argument for the bounded test operation.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static inline uint8_t internal_mirror_priv_blit_glyph_size(int w, int h)
 {
   if (w > 0 && h > 0) {
     return 1U;
@@ -49,11 +64,11 @@ static inline uint8_t mirror_priv_blit_glyph_size(int w, int h)
 }
 
 /**
- * @test test_mcdc_priv_blit_glyph_size
+ * @test internal_test_mcdc_priv_blit_glyph_size
  *
  * @par MC/DC:
  * Decision: ``if (w > 0 && h > 0)``
- * (2 conditions, libs/ra8_reflow/src/ra8_reflow_render.c@priv_blit_glyph)
+ * (2 conditions, libs/ra8_reflow/src/ra8_reflow_render.c@internal_blit_glyph)
  *
  * Vectors (Chilenski masking-MC/DC, N+1 = 3 for N=2):
  *  - V1: w=10, h=10  -> C1=T, C2=T. Decision T (blit).
@@ -66,13 +81,22 @@ static inline uint8_t mirror_priv_blit_glyph_size(int w, int h)
  *
  * @par DO-178C 6.4.4.3 rationale:
  * 2-condition decision; N+1 = 3 vectors satisfy MC/DC fully.
- */
-static void test_mcdc_priv_blit_glyph_size(void)
+
+ * @brief Test mcdc priv blit glyph size.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static void internal_test_mcdc_priv_blit_glyph_size(void)
 {
   TEST_BEGIN("ra8_reflow_render priv_blit_glyph size MC/DC: w>0 && h>0");
-  TEST_ASSERT_EQ(1, mirror_priv_blit_glyph_size(10, 10));
-  TEST_ASSERT_EQ(0, mirror_priv_blit_glyph_size(0, 10));
-  TEST_ASSERT_EQ(0, mirror_priv_blit_glyph_size(10, 0));
+  TEST_ASSERT_EQ(1, internal_mirror_priv_blit_glyph_size(10, 10));
+  TEST_ASSERT_EQ(0, internal_mirror_priv_blit_glyph_size(0, 10));
+  TEST_ASSERT_EQ(0, internal_mirror_priv_blit_glyph_size(10, 0));
   TEST_END("ra8_reflow_render priv_blit_glyph size MC/DC: w>0 && h>0");
 }
 
@@ -113,6 +137,7 @@ typedef enum : size_t {
 
 /** @brief Bundled Literata Latin-1 face bytes (loaded once). */
 static uint8_t s_font[k_r_font_cap];
+static uint8_t s_font_staging[k_r_font_cap];
 
 /** @brief Byte length of the loaded Literata face. */
 static size_t s_font_len;
@@ -180,9 +205,21 @@ static const uint8_t s_png_2x2[] = {
  * @param[out] out      Receives the PNG byte pointer.
  * @param[out] out_len  Receives the PNG byte count.
  * @return k_ra8_ok always.
- */
-static ra8_err_t
-png_loader(void* ctx, const char* href, uint32_t href_len, const uint8_t** out, size_t* out_len)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static ra8_err_t internal_png_loader(void*           ctx,
+                                                  const char*     href,
+                                                  uint32_t        href_len,
+                                                  const uint8_t** out,
+                                                  size_t*         out_len)
 {
   (void)ctx;
   (void)href;
@@ -195,8 +232,17 @@ png_loader(void* ctx, const char* href, uint32_t href_len, const uint8_t** out, 
 /**
  * @brief Load the bundled Literata subset relative to this source file.
  * @return 1 on success, 0 if the font is absent (caller SKIPs).
- */
-static int load_font(void)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static int internal_load_font(void)
 {
   char         path[k_r_path_cap];
   const char*  here = __FILE__;
@@ -216,17 +262,27 @@ static int load_font(void)
   }
   memcpy(path, here, base);
   (void)snprintf(&path[base], sizeof(path) - base, "libs/ra8_fonts/literata_latin1.ttf");
-  FILE* fp = fopen(path, "rb");
-  if (fp == nullptr) {
+  const ra8_test_file_result_t result =
+    internal_test_file_read(path, s_font, sizeof(s_font), s_font_staging, sizeof(s_font_staging));
+  if (result.status != k_ra8_test_file_ok) {
     return 0;
   }
-  s_font_len = fread(s_font, 1U, (size_t)k_r_font_cap, fp);
-  (void)fclose(fp);
+  s_font_len = result.transferred;
   return (s_font_len > 0U) ? 1 : 0;
 }
 
-/** @brief Init the engine with the loaded font; returns the init result. */
-static ra8_err_t init_engine(void)
+/** @brief Init the engine with the loaded font; returns the init result.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static ra8_err_t internal_init_engine(void)
 {
   return ra8_reflow_init((uint16_t)k_r_vp_w,
                          (uint16_t)k_r_vp_h,
@@ -238,8 +294,18 @@ static ra8_err_t init_engine(void)
                          &s_engine);
 }
 
-/** @brief True iff any framebuffer pixel differs from the zeroed background. */
-static bool fb_has_drawn_pixel(void)
+/** @brief True iff any framebuffer pixel differs from the zeroed background.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static bool internal_fb_has_drawn_pixel(void)
 {
   for (size_t i = 0U; i < (size_t)k_r_fb_bytes; ++i) {
     if (s_fb[i] != 0U) {
@@ -249,18 +315,28 @@ static bool fb_has_drawn_pixel(void)
   return false;
 }
 
-/** @brief True iff the two framebuffers are byte-for-byte identical. */
-static bool fb_equal_ref(void)
+/** @brief True iff the two framebuffers are byte-for-byte identical.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static bool internal_fb_equal_ref(void)
 {
   return memcmp(s_fb, s_fb_ref, (size_t)k_r_fb_bytes) == 0;
 }
 
 /**
- * @test test_render_glyph_size_both_arms
+ * @test internal_test_render_glyph_size_both_arms
  *
  * @par MC/DC:
  * Decision: `if (w > 0 && h > 0)` (2 conditions, AND;
- * libs/ra8_reflow/src/ra8_reflow_render.c@priv_blit_glyph), driven through the
+ * libs/ra8_reflow/src/ra8_reflow_render.c@internal_blit_glyph), driven through the
  * real ra8_reflow_render_page() API. A single laid-out chapter contains both
  * printable glyphs and spaces, so one render pass exercises:
  *  - true arm: a printable glyph ('H','i',...) -> w>0 && h>0 -> blit (a pixel
@@ -269,16 +345,28 @@ static bool fb_equal_ref(void)
  *    (w == 0 && h == 0) -> the glyph is skipped, not truncated.
  * The framebuffer-differs assertion proves the true arm executed end to end;
  * the false arm is taken for every space without crashing or over-drawing.
- */
-static void test_render_glyph_size_both_arms(void)
+
+ * @brief Test render glyph size both arms.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static void internal_test_render_glyph_size_both_arms(void)
 {
   TEST_BEGIN("ra8_reflow_render: real glyph blit (w>0 && h>0 both arms)");
-  if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping render\n");
+  if (internal_load_font() == 0) {
+    TEST_ASSERT_EQ(
+      k_ra8_test_output_ok,
+      internal_test_output_fd_text(STDERR_FILENO,
+                                   "[SKIP] literata_latin1.ttf not found; skipping render\n"));
     TEST_END("ra8_reflow_render: real glyph blit (w>0 && h>0 both arms)");
     return;
   }
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine());
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine());
   uint32_t pages = 0U;
   /* The leading/internal/trailing spaces drive the false arm (empty box);
      the letters drive the true arm. */
@@ -293,7 +381,7 @@ static void test_render_glyph_size_both_arms(void)
     k_ra8_ok,
     ra8_gfx_init(s_fb, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra8_gfx_format_rgb888));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page(&s_engine, 0U, nullptr));
-  TEST_ASSERT(fb_has_drawn_pixel());
+  TEST_ASSERT(internal_fb_has_drawn_pixel());
 
   /* Out-of-range page is rejected without touching the framebuffer. */
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_reflow_render_page(&s_engine, pages, nullptr));
@@ -308,17 +396,17 @@ static const uint8_t s_junk_face[64] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
  * @details stbtt_GetFontOffsetForIndex() accepts the leading magic and returns
  * offset 0 (>= 0), but stbtt_InitFont() then fails parsing the garbage table
  * directory and returns 0. This isolates the *second* condition of
- * priv_init_faces' `(offset < 0) || (InitFont == 0)` OR (offset >= 0, so the
+ * internal_init_faces' `(offset < 0) || (InitFont == 0)` OR (offset >= 0, so the
  * decision turns on InitFont alone).
  */
 static const uint8_t s_badsfnt_face[64] = {0U, 1U, 0U, 0U};
 
 /**
- * @test test_render_register_face_both_arms
+ * @test internal_test_render_register_face_both_arms
  *
  * @par MC/DC:
  * Decision: `if ((offset < 0) || (stbtt_InitFont(&faces[k+1], blob, offset) == 0))`
- * (2 conditions, OR; libs/ra8_reflow/src/ra8_reflow_render.c@priv_init_faces),
+ * (2 conditions, OR; libs/ra8_reflow/src/ra8_reflow_render.c@internal_init_faces),
  * driven through the real ra8_reflow_render_page() API. N+1 = 3 vectors for the
  * OR, all exercised in one render pass over three registered faces:
  *  - V1 (decision F): a *valid* Literata `@font-face` -> C1 (offset < 0) F AND
@@ -331,24 +419,36 @@ static const uint8_t s_badsfnt_face[64] = {0U, 1U, 0U, 0U};
  * (C1 held F), so each condition independently flips the decision.
  *
  * The public ra8_reflow_register_face() validates and rejects both bad blobs
- * (k_ra8_err_not_supported), so a bad face can never reach priv_init_faces
+ * (k_ra8_err_not_supported), so a bad face can never reach internal_init_faces
  * through the API; the two bad faces are injected directly into the engine face
  * table (the same direct-field-population pattern the hit-test tests use) and
  * face_count bumped. A drawn pixel proves the page still rasterises (no glyph
  * indexes an uninitialised face).
- */
-static void test_render_register_face_both_arms(void)
+
+ * @brief Test render register face both arms.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static void internal_test_render_register_face_both_arms(void)
 {
   TEST_BEGIN("ra8_reflow_render: priv_init_faces bad/good face MC/DC");
-  if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping render\n");
+  if (internal_load_font() == 0) {
+    TEST_ASSERT_EQ(
+      k_ra8_test_output_ok,
+      internal_test_output_fd_text(STDERR_FILENO,
+                                   "[SKIP] literata_latin1.ttf not found; skipping render\n"));
     TEST_END("ra8_reflow_render: priv_init_faces bad/good face MC/DC");
     return;
   }
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine());
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine());
 
   /* Public API: a valid face is accepted (false arm); both bad faces are
-     rejected, proving a bad face cannot enter priv_init_faces via the API. */
+     rejected, proving a bad face cannot enter internal_init_faces via the API. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_register_face(&s_engine, 0U, s_font, s_font_len));
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
                  ra8_reflow_register_face(&s_engine, 1U, s_junk_face, sizeof s_junk_face));
@@ -362,9 +462,9 @@ static void test_render_register_face_both_arms(void)
     ra8_reflow_layout_chapter(&s_engine, (const uint8_t*)xhtml, strlen(xhtml), &pages));
   TEST_ASSERT(pages >= 1U);
 
-  /* Inject both bad faces directly to drive priv_init_faces' defensive true arm
+  /* Inject both bad faces directly to drive internal_init_faces' defensive true arm
      (graceful fallback) twice: V2 via C1 (bad magic), V3 via C2 (good magic,
-     broken directory). Neither reaches priv_init_faces through the public API. */
+     broken directory). Neither reaches internal_init_faces through the public API. */
   s_engine.faces[s_engine.face_count].blob         = s_junk_face;
   s_engine.faces[s_engine.face_count].len          = sizeof s_junk_face;
   s_engine.faces[s_engine.face_count].css_face_idx = 1U;
@@ -379,7 +479,7 @@ static void test_render_register_face_both_arms(void)
     k_ra8_ok,
     ra8_gfx_init(s_fb, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra8_gfx_format_rgb888));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page(&s_engine, 0U, nullptr));
-  TEST_ASSERT(fb_has_drawn_pixel());
+  TEST_ASSERT(internal_fb_has_drawn_pixel());
   TEST_END("ra8_reflow_render: priv_init_faces bad/good face MC/DC");
 }
 
@@ -390,15 +490,19 @@ static void test_render_register_face_both_arms(void)
  * @post The page rendered and drew at least one pixel.
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
- */
-static void reflow_render_drawn(uint32_t page)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+*/
+RA8_INTERNAL static void internal_reflow_render_drawn(uint32_t page)
 {
   memset(s_fb, 0, sizeof s_fb);
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_gfx_init(s_fb, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra8_gfx_format_rgb888));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page(&s_engine, page, nullptr));
-  TEST_ASSERT(fb_has_drawn_pixel());
+  TEST_ASSERT(internal_fb_has_drawn_pixel());
 }
 
 /**
@@ -407,15 +511,19 @@ static void reflow_render_drawn(uint32_t page)
  * @post The page rendered identically to the reference (cache is pure opt).
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
- */
-static void atlas_render_and_check(void)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+*/
+RA8_INTERNAL static void internal_atlas_render_and_check(void)
 {
   memset(s_fb, 0, sizeof s_fb);
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_gfx_init(s_fb, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra8_gfx_format_rgb888));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page(&s_engine, 0U, nullptr));
-  TEST_ASSERT(fb_equal_ref());
+  TEST_ASSERT(internal_fb_equal_ref());
 }
 
 /**
@@ -425,8 +533,12 @@ static void atlas_render_and_check(void)
  * @post The atlas is bound to `s_engine` with the given cell budget.
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
- */
-static void bind_glyph_atlas(uint32_t cell_bytes)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+*/
+RA8_INTERNAL static void internal_bind_glyph_atlas(uint32_t cell_bytes)
 {
   const ra8_reflow_glyph_atlas_storage_t storage = {
     .cell_mem     = s_atlas_cells,
@@ -442,11 +554,11 @@ static void bind_glyph_atlas(uint32_t cell_bytes)
 }
 
 /**
- * @test test_render_images_loader_both_arms
+ * @test internal_test_render_images_loader_both_arms
  *
  * @par MC/DC:
  * Decision: `if ((engine->img_loader == NULL) || (engine->img_arena == NULL))`
- * (2 conditions, OR; libs/ra8_reflow/src/ra8_reflow_render.c@priv_render_images),
+ * (2 conditions, OR; libs/ra8_reflow/src/ra8_reflow_render.c@internal_render_images),
  * driven through the real ra8_reflow_render_page() API. N+1 = 3 vectors:
  *  - V1 (decision F): bind a loader + arena, lay out a chapter with an `<img>`
  *    (so an image box is recorded), then render -> C1 (loader == NULL) F AND
@@ -462,22 +574,35 @@ static void bind_glyph_atlas(uint32_t cell_bytes)
  * A drawn pixel in the image case proves the false arm reached the blit; both
  * early-return cases prove the true arm short-circuits cleanly (text still
  * rasterises).
- */
-static void test_render_images_loader_both_arms(void)
+
+ * @brief Test render images loader both arms.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static void internal_test_render_images_loader_both_arms(void)
 {
   TEST_BEGIN("ra8_reflow_render: priv_render_images loader/arena MC/DC");
-  if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping render\n");
+  if (internal_load_font() == 0) {
+    TEST_ASSERT_EQ(
+      k_ra8_test_output_ok,
+      internal_test_output_fd_text(STDERR_FILENO,
+                                   "[SKIP] literata_latin1.ttf not found; skipping render\n"));
     TEST_END("ra8_reflow_render: priv_render_images loader/arena MC/DC");
     return;
   }
   /* False arm: loader + arena bound, image box laid out, then rendered. */
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine());
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine());
   ra8_img_arena_t arena = {.base   = s_arena_buf,
                            .cap    = sizeof s_arena_buf,
                            .offset = 0U,
                            .live   = 0U};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_set_image_loader(&s_engine, png_loader, nullptr, &arena));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_reflow_set_image_loader(&s_engine, internal_png_loader, nullptr, &arena));
 
   uint32_t    pages = 0U;
   const char* xhtml = "<p>Figure:</p><img src=\"cover.png\"/><p>After.</p>";
@@ -487,34 +612,34 @@ static void test_render_images_loader_both_arms(void)
   TEST_ASSERT(pages >= 1U);
   TEST_ASSERT(s_engine.image_box_count >= 1U);
 
-  reflow_render_drawn(s_engine.image_boxes[0].page_index);
+  internal_reflow_render_drawn(s_engine.image_boxes[0].page_index);
   /* Arena drains after the on-demand decode (zero heap). */
   TEST_ASSERT_EQ(0, arena.offset);
   TEST_ASSERT_EQ(0, arena.live);
 
   /* V2 -- true arm via C1: fresh engine with no image loader bound. */
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine());
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine());
   const char* text = "<p>No images here.</p>";
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_reflow_layout_chapter(&s_engine, (const uint8_t*)text, strlen(text), &pages));
   TEST_ASSERT(pages >= 1U);
-  reflow_render_drawn(0U);
+  internal_reflow_render_drawn(0U);
 
   /* V3 -- true arm via C2: loader bound (C1 false) but arena nulled (C2 true).
      Inject the loader/arena fields directly so C1 cannot short-circuit C2. */
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine());
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine());
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_reflow_layout_chapter(&s_engine, (const uint8_t*)text, strlen(text), &pages));
   TEST_ASSERT(pages >= 1U);
-  s_engine.img_loader     = png_loader;
+  s_engine.img_loader     = internal_png_loader;
   s_engine.img_loader_ctx = nullptr;
   s_engine.img_arena      = nullptr;
-  reflow_render_drawn(0U);
+  internal_reflow_render_drawn(0U);
   TEST_END("ra8_reflow_render: priv_render_images loader/arena MC/DC");
 }
 
 /**
- * @test test_render_glyph_atlas_equivalence
+ * @test internal_test_render_glyph_atlas_equivalence
  *
  * @par Purpose:
  * Validates the #164 glyph-atlas wiring in ra8_reflow_render.c on two axes that
@@ -533,8 +658,8 @@ static void test_render_images_loader_both_arms(void)
  * pangram page, so the second render evicts nothing and is all hits.
  *
  * @par Coverage:
- * Drives priv_blit_glyph's atlas arm (atlas != NULL) and both
- * priv_glyph_render_cached outcomes (miss -> render-into-cell, hit -> reuse),
+ * Drives internal_blit_glyph's atlas arm (atlas != NULL) and both
+ * internal_glyph_render_cached outcomes (miss -> render-into-cell, hit -> reuse),
  * plus ra8_reflow_set_glyph_atlas bind + detach (atlas == NULL) paths -- source
  * the no-cache MC/DC tests above cannot reach.
  *
@@ -547,18 +672,30 @@ static void test_render_images_loader_both_arms(void)
  * drives (`atlas != NULL`, `!drawn`, `ra8_glyph_atlas_get != k_ra8_ok`, and the
  * `w * h > cell_bytes` fit check) are all single-condition. The storage-zero OR's
  * independent-influence vectors are carried by the sibling
- * test_mcdc_set_glyph_atlas_storage_zeros; the glyph-box `(w > 0) && (h > 0)`
+ * internal_test_mcdc_set_glyph_atlas_storage_zeros; the glyph-box `(w > 0) && (h > 0)`
  * guard crossed for the page text is MC/DC-deactivated (co-dependent extents).
- */
-static void test_render_glyph_atlas_equivalence(void)
+
+ * @brief Test render glyph atlas equivalence.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static void internal_test_render_glyph_atlas_equivalence(void)
 {
   TEST_BEGIN("ra8_reflow_render: glyph atlas byte-identity + zero re-raster");
-  if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping atlas render\n");
+  if (internal_load_font() == 0) {
+    TEST_ASSERT_EQ(k_ra8_test_output_ok,
+                   internal_test_output_fd_text(
+                     STDERR_FILENO,
+                     "[SKIP] literata_latin1.ttf not found; skipping atlas render\n"));
     TEST_END("ra8_reflow_render: glyph atlas byte-identity + zero re-raster");
     return;
   }
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine());
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine());
   uint32_t    pages = 0U;
   const char* xhtml = "<p>The quick brown fox jumps over the lazy dog.</p>";
   TEST_ASSERT_EQ(
@@ -574,10 +711,10 @@ static void test_render_glyph_atlas_equivalence(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page(&s_engine, 0U, nullptr));
 
   /* Bind a glyph atlas over caller-owned storage -- exactly as the ereader app. */
-  bind_glyph_atlas((uint32_t)k_ra8_cell_bytes);
+  internal_bind_glyph_atlas((uint32_t)k_ra8_cell_bytes);
 
   /* Cached render #1 (cold cache): must equal the direct render byte-for-byte. */
-  atlas_render_and_check();
+  internal_atlas_render_and_check();
 
   uint32_t hits1 = 0U;
   uint32_t miss1 = 0U;
@@ -586,7 +723,7 @@ static void test_render_glyph_atlas_equivalence(void)
 
   /* Cached render #2 (warm cache): still byte-identical, and crucially renders
      ZERO new glyphs -- the miss count does not move, every glyph is a hit. */
-  atlas_render_and_check();
+  internal_atlas_render_and_check();
 
   uint32_t hits2 = 0U;
   uint32_t miss2 = 0U;
@@ -595,20 +732,20 @@ static void test_render_glyph_atlas_equivalence(void)
   TEST_ASSERT_EQ(miss1, miss2); /* No glyph re-rasterised (#164). */
 
   /* Oversized fallback: a cache whose cells are too small for any body glyph
-     forces every glyph down the direct path (priv_atlas_render_glyph returns
-     k_ra8_err_invalid_size -> priv_glyph_render_cached returns false). Output
+     forces every glyph down the direct path (internal_atlas_render_glyph returns
+     k_ra8_err_invalid_size -> internal_glyph_render_cached returns false). Output
      must stay byte-identical -- the cache is a pure optimisation. */
-  bind_glyph_atlas((uint32_t)k_ra8_tiny_cell_bytes);
-  atlas_render_and_check();
+  internal_bind_glyph_atlas((uint32_t)k_ra8_tiny_cell_bytes);
+  internal_atlas_render_and_check();
 
   /* Detach reverts to the direct path and still renders identically. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_set_glyph_atlas(&s_engine, nullptr, nullptr));
-  atlas_render_and_check();
+  internal_atlas_render_and_check();
   TEST_END("ra8_reflow_render: glyph atlas byte-identity + zero re-raster");
 }
 
 /**
- * @test test_mcdc_set_glyph_atlas_storage_zeros
+ * @test internal_test_mcdc_set_glyph_atlas_storage_zeros
  *
  * @par MC/DC:
  * Decision: `(storage->cell_bytes == 0U) || (storage->cell_count == 0U) ||
@@ -625,16 +762,28 @@ static void test_render_glyph_atlas_equivalence(void)
  *    bucket_count=0 -> C3 T -> k_ra8_err_invalid_size.
  * V1 vs V2 vary C1; V1 vs V3 vary C2 (C1 held F); V1 vs V4 vary C3 (C1+C2 held
  * F), so each condition independently flips the decision. N=3 -> N+1=4 vectors.
- */
-static void test_mcdc_set_glyph_atlas_storage_zeros(void)
+
+ * @brief Test mcdc set glyph atlas storage zeros.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static void internal_test_mcdc_set_glyph_atlas_storage_zeros(void)
 {
   TEST_BEGIN("ra8_reflow_set_glyph_atlas storage-zero MC/DC");
-  if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping atlas storage MC/DC\n");
+  if (internal_load_font() == 0) {
+    TEST_ASSERT_EQ(k_ra8_test_output_ok,
+                   internal_test_output_fd_text(
+                     STDERR_FILENO,
+                     "[SKIP] literata_latin1.ttf not found; skipping atlas storage MC/DC\n"));
     TEST_END("ra8_reflow_set_glyph_atlas storage-zero MC/DC");
     return;
   }
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine());
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine());
 
   ra8_reflow_glyph_atlas_storage_t st = {
     .cell_mem     = s_atlas_cells,
@@ -675,12 +824,13 @@ static void test_mcdc_set_glyph_atlas_storage_zeros(void)
 
 int32_t main(void)
 {
-  test_mcdc_priv_blit_glyph_size();
-  test_render_glyph_size_both_arms();
-  test_render_register_face_both_arms();
-  test_render_images_loader_both_arms();
-  test_render_glyph_atlas_equivalence();
-  test_mcdc_set_glyph_atlas_storage_zeros();
-  (void)fprintf(stderr, "[OK ] test_ra8_reflow_render.c\n");
+  internal_test_mcdc_priv_blit_glyph_size();
+  internal_test_render_glyph_size_both_arms();
+  internal_test_render_register_face_both_arms();
+  internal_test_render_images_loader_both_arms();
+  internal_test_render_glyph_atlas_equivalence();
+  internal_test_mcdc_set_glyph_atlas_storage_zeros();
+  TEST_ASSERT_EQ(k_ra8_test_output_ok,
+                 internal_test_output_fd_text(STDERR_FILENO, "[OK ] test_ra8_reflow_render.c\n"));
   return 0;
 }

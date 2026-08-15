@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "support/reflow_svg_test_util.h"
 #include "unity_minimal.h"
@@ -31,7 +32,7 @@
  * @brief Buffer capacities and generator bounds for the long-path builders.
  *
  * @invariant Both capacities exceed the longest generated path string.
- * @see build_long_path()
+ * @see internal_build_long_path()
  */
 typedef enum : uint16_t {
   k_path_buf_cap    = 1024U, /**< Capacity for the flattener-cap paths.    */
@@ -40,11 +41,11 @@ typedef enum : uint16_t {
 } svg_shape_buf_t;
 
 /**
- * @test test_svg_path_no_progress_guard_mcdc
+ * @test internal_test_svg_path_no_progress_guard_mcdc
  *
  * @par MC/DC:
- * Decision: priv_parse_path implicit-close progress guard `(i == i_before)`
- * (1 condition; libs/ra8_reflow/src/ra8_reflow_svg_path.c@priv_parse_path). A 'z'
+ * Decision: internal_parse_path implicit-close progress guard `(i == i_before)`
+ * (1 condition; libs/ra8_reflow/src/ra8_reflow_svg_path.c@internal_parse_path). A 'z'
  * close takes no args, so an implicit repeat after a non-command byte leaves
  * the cursor unmoved and would spin forever; the guard skips the byte. Driven
  * through ::ra8_svg_render with crafted `<path d>` values.
@@ -56,8 +57,16 @@ typedef enum : uint16_t {
  *  - V2: d="M0 0Z" -> the explicit 'Z' already advanced i past the letter ->
  *        FALSE -> no skip; the close is a no-op and the loop ends normally.
  * Every case must RETURN (terminate) -- the test completing proves the bound.
+ * @brief Verify svg path no progress guard mcdc behavior against the reflow contract.
+ * @details Exercises the svg path no progress guard mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_svg_path_no_progress_guard_mcdc(void)
+RA8_INTERNAL static void internal_test_svg_path_no_progress_guard_mcdc(void)
 {
   TEST_BEGIN("priv_parse_path implicit-close guard: Z2 hang fix");
   fb_reset();
@@ -69,21 +78,28 @@ static void test_svg_path_no_progress_guard_mcdc(void)
 }
 
 /**
- * @test test_xform_separators_unknown
+ * @test internal_test_xform_separators_unknown
  * @brief A chained `transform=` list with comma/space separators between
  *        functions and an unknown function name exercises the separator skip,
- *        the `(` / `)` scans, and the unknown -> skipped arm of priv_parse_xform.
+ *        the `(` / `)` scans, and the unknown -> skipped arm of internal_parse_xform.
  *
  * @par MC/DC:
- * Decision: `priv_parse_xform` -> `kind != k_svg_xf_none` (compose vs skip;
- * libs/ra8_reflow/src/ra8_reflow_svg.c@priv_parse_xform).
+ * Decision: `internal_parse_xform` -> `kind != k_svg_xf_none` (compose vs skip;
+ * libs/ra8_reflow/src/ra8_reflow_svg.c@internal_parse_xform).
  * - V-known: `translate(50,0)` -> kind != none -> composed (the rect moves).
  * - V-unknown: `foo(1) translate(50,0)` -> the leading `foo(...)` has kind none
  *   -> skipped, then translate composes -> the rect still moves by 50.
  * The pair varies the kind classification (compose vs skip) with the same net
  * placement, proving the unknown arm is reached without corrupting the result.
+ * @details Exercises the xform separators unknown path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_xform_separators_unknown(void)
+RA8_INTERNAL static void internal_test_xform_separators_unknown(void)
 {
   TEST_BEGIN("priv_parse_xform: separators + unknown function skip");
   /* Known-only baseline: translate(50,0) moves user 0..10 -> 50..60 -> fb 100..120. */
@@ -107,7 +123,7 @@ static void test_xform_separators_unknown(void)
 }
 
 /**
- * @test test_circle_skip_and_rotated_mcdc
+ * @test internal_test_circle_skip_and_rotated_mcdc
  *
  * @par MC/DC:
  * Decision: `priv_draw_circle` skip guard `(gi<0)&&(fill==no_paint)` and the
@@ -119,8 +135,16 @@ static void test_xform_separators_unknown(void)
  * - V3: solid circle under `rotate(30)` -> priv_has_rot true -> the N-gon
  *       polygon path fills (still covers the centre).
  * V1 vs V2 flip the no-paint condition; V2 vs V3 flip the has-rot condition.
+ * @brief Verify circle skip and rotated mcdc behavior against the reflow contract.
+ * @details Exercises the circle skip and rotated mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_circle_skip_and_rotated_mcdc(void)
+RA8_INTERNAL static void internal_test_circle_skip_and_rotated_mcdc(void)
 {
   TEST_BEGIN("priv_draw_circle MC/DC: none-skip / fast-path / rotated polygon");
   /* V1: fill:none -> skipped. */
@@ -149,7 +173,7 @@ static void test_circle_skip_and_rotated_mcdc(void)
 }
 
 /**
- * @test test_polygon_polyline_guards_mcdc
+ * @test internal_test_polygon_polyline_guards_mcdc
  *
  * @par MC/DC:
  * Decision: `priv_draw_polygon` guard
@@ -166,8 +190,16 @@ static void test_circle_skip_and_rotated_mcdc(void)
  *  - Polyline both F: a stroked polyline WITH points -> strokes a visible pixel.
  * Each pair flips one condition of the respective OR while the other is held
  * false by the control case.
+ * @brief Verify polygon polyline guards mcdc behavior against the reflow contract.
+ * @details Exercises the polygon polyline guards mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_polygon_polyline_guards_mcdc(void)
+RA8_INTERNAL static void internal_test_polygon_polyline_guards_mcdc(void)
 {
   TEST_BEGIN("polygon/polyline guard MC/DC: none / no-points / present");
   /* Polygon both-false control: fills the triangle interior. */
@@ -203,13 +235,13 @@ static void test_polygon_polyline_guards_mcdc(void)
 }
 
 /**
- * @test test_path_relative_hv
+ * @test internal_test_path_relative_hv
  * @brief Relative path commands (`m`/`l`/`h`/`v`) and the implicit line-to after
- *        `m` exercise priv_next_cmd's lowercase branch, priv_path_step's h/v
+ *        `m` exercise internal_next_cmd's lowercase branch, internal_path_step's h/v
  *        arms, and the relative coordinate resolution.
  *
  * @par MC/DC:
- * Decisions: `if (u == 'h')` and `if (u == 'v')` in priv_path_step
+ * Decisions: `if (u == 'h')` and `if (u == 'v')` in internal_path_step
  * (libs/ra8_reflow/src/ra8_reflow_svg_path.c; 1 condition each) plus the
  * lowercase (relative) command classification in the path scanner.
  * - V1: `h80` / `h-80` -> 'h' arm TRUE (x moves, y held).
@@ -217,8 +249,15 @@ static void test_polygon_polyline_guards_mcdc(void)
  * - V3: the implicit line-to after `m10 10` -> both FALSE ((x,y) pair arm).
  * All three vectors run inside this test; the lowercase spellings prove the
  * relative-coordinate resolution against the current point.
+ * @details Exercises the path relative hv path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_path_relative_hv(void)
+RA8_INTERNAL static void internal_test_path_relative_hv(void)
 {
   TEST_BEGIN("svg path relative m/l/h/v + implicit line-to");
   fb_reset();
@@ -233,12 +272,12 @@ static void test_path_relative_hv(void)
 }
 
 /**
- * @test test_arc_sweep_wrap_mcdc
+ * @test internal_test_arc_sweep_wrap_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_arc_solve` sweep normalisation
+ * Decision: `internal_arc_solve` sweep normalisation
  * `(!sweep && dt>0)` else-if `(sweep && dt<0)`
- * (libs/ra8_reflow/src/ra8_reflow_svg.c@priv_arc_solve). The large-arc flag is
+ * (libs/ra8_reflow/src/ra8_reflow_svg.c@internal_arc_solve). The large-arc flag is
  * toggled so each branch's angular condition (dt>0 / dt<0) is the one that
  * fires for the chosen sweep flag.
  * - V1: sweep=0, large=1 over the same chord -> dt computes positive ->
@@ -248,8 +287,16 @@ static void test_path_relative_hv(void)
  * The two large arcs bulge to opposite sides of the chord, so a probe above the
  * chord is filled for exactly one of them -- proving the sweep flag selects the
  * wrap arm.
+ * @brief Verify arc sweep wrap mcdc behavior against the reflow contract.
+ * @details Exercises the arc sweep wrap mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_arc_sweep_wrap_mcdc(void)
+RA8_INTERNAL static void internal_test_arc_sweep_wrap_mcdc(void)
 {
   TEST_BEGIN("priv_arc_solve MC/DC: large-arc sweep wrap arms");
   /* V1: large=1, sweep=0 -> the !sweep && dt>0 wrap arm; the large arc encloses
@@ -277,19 +324,26 @@ static void test_arc_sweep_wrap_mcdc(void)
 }
 
 /**
- * @test test_arc_radius_scale_up
+ * @test internal_test_arc_radius_scale_up
  * @brief An arc whose requested radii are too small for the chord triggers the
- *        out-of-range-radius scale-up (priv_arc_center `lam > 1` arm), which
+ *        out-of-range-radius scale-up (internal_arc_center `lam > 1` arm), which
  *        enlarges rx/ry so the endpoints stay on the ellipse.
  *
  * @par MC/DC:
- * Decision: `priv_arc_center` -> `if (lam > 1.0F)` (1 condition).
+ * Decision: `internal_arc_center` -> `if (lam > 1.0F)` (1 condition).
  * - V1 (here): rx=ry=10 but the chord is 80 wide -> lam>1 -> radii scaled up;
  *   the arc still reaches its endpoint and the closed region fills.
  * - V2: tests/test_ra8_svg.c@test_render_arc uses r=40 == half-chord -> lam<=1
  *   (no scale-up). The pair varies the lam condition.
+ * @details Exercises the arc radius scale up path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_arc_radius_scale_up(void)
+RA8_INTERNAL static void internal_test_arc_radius_scale_up(void)
 {
   TEST_BEGIN("priv_arc_center: out-of-range radius scale-up (lam>1)");
   fb_reset();
@@ -303,14 +357,14 @@ static void test_arc_radius_scale_up(void)
 }
 
 /**
- * @test test_group_selfclose_depth_and_pop
+ * @test internal_test_group_selfclose_depth_and_pop
  * @brief Self-closing `<g/>`, an over-deep `<g>` nest, and a `</g>` at the floor
- *        exercise priv_group_open's self-close + depth-cap arms and the
- *        priv_draw_shapes pop-at-zero arm.
+ *        exercise internal_group_open's self-close + depth-cap arms and the
+ *        internal_draw_shapes pop-at-zero arm.
  *
  * @par MC/DC:
- * Decision: `priv_group_open` -> `self_close || (gsp >= depth_max)` and
- * `priv_draw_shapes` -> `gsp = (gsp > 0) ? (gsp - 1) : 0`
+ * Decision: `internal_group_open` -> `self_close || (gsp >= depth_max)` and
+ * `internal_draw_shapes` -> `gsp = (gsp > 0) ? (gsp - 1) : 0`
  * (libs/ra8_reflow/src/ra8_reflow_svg.c).
  * - V-selfclose: `<g transform=... />` does NOT push; the following rect renders
  *   at the document (untransformed) origin, proving the self-close arm.
@@ -318,8 +372,15 @@ static void test_arc_radius_scale_up(void)
  *   and a following rect still renders -- the pop-at-floor arm.
  * - V-deep: more than k_svg_g_depth_max nested `<g>` groups; the deepest rect
  *   still renders without overrunning the bounded stack (depth-cap arm).
+ * @details Exercises the group selfclose depth and pop path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_group_selfclose_depth_and_pop(void)
+RA8_INTERNAL static void internal_test_group_selfclose_depth_and_pop(void)
 {
   TEST_BEGIN("svg <g> self-close / depth-cap / pop-at-floor");
   /* V-selfclose: the self-closed group must NOT move the sibling rect. */
@@ -365,8 +426,15 @@ static void test_group_selfclose_depth_and_pop(void)
  * @param[in]  cap    Capacity of @p dst, bytes.
  * @param[in]  reps   Number of "L5 5 " line-tos to emit after the initial M.
  * @param[in]  suffix Trailing path data (e.g. a `C`/`Q`/`A` command) + tags.
+ * @pre @p dst references at least @p cap writable bytes.
+ * @pre @p suffix is a valid NUL-terminated path and closing-tag suffix.
+ * @post @p dst contains a terminated SVG document bounded by @p cap.
+ * @post Bytes outside the destination capacity remain unmodified.
+ * @note The helper truncates repeated segments before reserving space for @p suffix.
+ * @since 0.1.0
  */
-static void build_long_path(char* dst, size_t cap, int32_t reps, const char* suffix)
+RA8_INTERNAL static void
+internal_build_long_path(char* dst, size_t cap, int32_t reps, const char* suffix)
 {
   int32_t off = snprintf(dst, cap, "<svg viewBox=\"0 0 100 100\"><path fill=\"#ff0000\" d=\"M0 0 ");
   for (int32_t k = 0; (k < reps) && ((size_t)off < (cap - 8U)); ++k) {
@@ -376,11 +444,11 @@ static void build_long_path(char* dst, size_t cap, int32_t reps, const char* suf
 }
 
 /**
- * @test test_xform_scan_boundary_mcdc
+ * @test internal_test_xform_scan_boundary_mcdc
  *
  * @par MC/DC:
- * Decision: the transform scanners -- `priv_xform_read` arg-separator skip
- * `(*j<vlen)&&(priv_ws||==',')` (L654); `priv_parse_xform` leading-separator
+ * Decision: the transform scanners -- `internal_xform_read` arg-separator skip
+ * `(*j<vlen)&&(priv_ws||==',')` (L654); `internal_parse_xform` leading-separator
  * skip (L764), the scan-to-`(` `(op<vlen)&&(v[op]!='(')` (L769), and the
  * scan-to-`)` `(j<vlen)&&(v[j]!=')')` (L781;
  * libs/ra8_reflow/src/ra8_reflow_svg.c). Each `*<vlen` F arm is driven by a
@@ -396,8 +464,16 @@ static void build_long_path(char* dst, size_t cap, int32_t reps, const char* suf
  *  - V4: `transform="translate(10,0"` (no `)`) -> the scan-to-`)` runs to the
  *        value end -> L781 `j<vlen` F.
  * Each renders cleanly (k_ra8_ok); the boundary scan arms are the point.
+ * @brief Verify xform scan boundary mcdc behavior against the reflow contract.
+ * @details Exercises the xform scan boundary mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_xform_scan_boundary_mcdc(void)
+RA8_INTERNAL static void internal_test_xform_scan_boundary_mcdc(void)
 {
   TEST_BEGIN("priv_parse_xform/xform_read MC/DC: trailing-sep / no-paren scan arms");
   /* V1: a trailing `,` then the value end inside the arg separator skip. */
@@ -430,11 +506,11 @@ static void test_xform_scan_boundary_mcdc(void)
 }
 
 /**
- * @test test_points_trailing_separator_mcdc
+ * @test internal_test_points_trailing_separator_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_parse_points` separator skip `(k<vlen)&&(priv_ws||==',')`
- * (L915; libs/ra8_reflow/src/ra8_reflow_svg.c@priv_parse_points). The existing
+ * Decision: `internal_parse_points` separator skip `(k<vlen)&&(priv_ws||==',')`
+ * (L915; libs/ra8_reflow/src/ra8_reflow_svg.c@internal_parse_points). The existing
  * tests stop the skip at a digit (`priv_ws`/`,` F). This drives `k<vlen` F: a
  * `points` value with a trailing separator, so the skip loop runs to the slice
  * end before the outer `k>=vlen` break.
@@ -443,8 +519,16 @@ static void test_xform_scan_boundary_mcdc(void)
  *  - `<polygon points="10,10 90,10 50,90 " .../>` (trailing space) -> after the
  *    last pair the separator skip consumes the space and reaches the slice end
  *    -> L915 `k<vlen` F -> the triangle still fills.
+ * @brief Verify points trailing separator mcdc behavior against the reflow contract.
+ * @details Exercises the points trailing separator mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_points_trailing_separator_mcdc(void)
+RA8_INTERNAL static void internal_test_points_trailing_separator_mcdc(void)
 {
   TEST_BEGIN("priv_parse_points MC/DC: trailing separator to slice end");
   fb_reset();
@@ -456,10 +540,10 @@ static void test_points_trailing_separator_mcdc(void)
 }
 
 /**
- * @test test_scanline_windings_mcdc
+ * @test internal_test_scanline_windings_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_scanline_x` crossing test
+ * Decision: `internal_scanline_x` crossing test
  * `((y0<=y)&&(y<y1))||((y1<=y)&&(y<y0))` (L954) and the edge loop bound
  * `(i<n)&&(m<k_svg_poly_max)` (L950; libs/ra8_reflow/src/ra8_reflow_svg.c). The
  * existing fills cover the common crossing arms; this adds an opposite-wound
@@ -472,8 +556,16 @@ static void test_points_trailing_separator_mcdc(void)
  *  - V2: a 60+-vertex comb crossing a single scanline many times pushes the
  *        crossing count toward the cap (the `m<k_svg_poly_max` arm).
  * Each renders cleanly (k_ra8_ok).
+ * @brief Verify scanline windings mcdc behavior against the reflow contract.
+ * @details Exercises the scanline windings mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_scanline_windings_mcdc(void)
+RA8_INTERNAL static void internal_test_scanline_windings_mcdc(void)
 {
   TEST_BEGIN("priv_scanline_x MC/DC: opposite windings + dense crossings");
   /* V1: opposite-wound triangles exercise both crossing clauses. */
@@ -501,24 +593,32 @@ static void test_scanline_windings_mcdc(void)
 }
 
 /**
- * @test test_curve_overflow_count_mcdc
+ * @test internal_test_curve_overflow_count_mcdc
  *
  * @par MC/DC:
  * Decision: the curve / arc flatten loop bounds `(j<=seg)&&(*n<k_svg_poly_max)`
- * in `priv_flatten_cubic` (L1186), `priv_flatten_quad` (L1233), and
+ * in `internal_flatten_cubic` (L1186), `internal_flatten_quad` (L1233), and
  * `priv_flatten_arc` (L1463), plus the path outer loop `(i<dlen)&&(n<poly_max)`
  * (L1561; libs/ra8_reflow/src/ra8_reflow_svg.c). The existing curve tests exit on
  * the segment count; this prepends a long run of line-tos so the vertex count
  * reaches the 64-point cap DURING the trailing curve/arc, flipping the
  * `*n<k_svg_poly_max` (and the outer `n<poly_max`) condition false.
  *
- * Vectors (built by ::build_long_path):
+ * Vectors (built by ::internal_build_long_path):
  *  - V1: ~58 line-tos then a cubic `C` -> the cubic flatten stops on the count.
  *  - V2: ~58 line-tos then a quadratic `Q` -> the quad flatten stops on the count.
  *  - V3: ~58 line-tos then an arc `A` -> the arc flatten stops on the count.
  * Each renders cleanly (k_ra8_ok).
+ * @brief Verify curve overflow count mcdc behavior against the reflow contract.
+ * @details Exercises the curve overflow count mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_curve_overflow_count_mcdc(void)
+RA8_INTERNAL static void internal_test_curve_overflow_count_mcdc(void)
 {
   TEST_BEGIN("flatten_cubic/quad/arc MC/DC: vertex-count cap arm");
   char          buf[k_path_buf_cap] = {};
@@ -526,27 +626,27 @@ static void test_curve_overflow_count_mcdc(void)
 
   /* V1: a cubic after a near-full vertex list. */
   fb_reset();
-  build_long_path(buf, sizeof(buf), k_reps, "C 60 0 70 80 90 90 Z\" /></svg>");
+  internal_build_long_path(buf, sizeof(buf), k_reps, "C 60 0 70 80 90 90 Z\" /></svg>");
   TEST_ASSERT_EQ(k_ra8_ok, render(buf));
 
   /* V2: a quadratic after a near-full vertex list. */
   fb_reset();
-  build_long_path(buf, sizeof(buf), k_reps, "Q 60 0 90 90 Z\" /></svg>");
+  internal_build_long_path(buf, sizeof(buf), k_reps, "Q 60 0 90 90 Z\" /></svg>");
   TEST_ASSERT_EQ(k_ra8_ok, render(buf));
 
   /* V3: an arc after a near-full vertex list. */
   fb_reset();
-  build_long_path(buf, sizeof(buf), k_reps, "A 40 40 0 1 1 90 90 Z\" /></svg>");
+  internal_build_long_path(buf, sizeof(buf), k_reps, "A 40 40 0 1 1 90 90 Z\" /></svg>");
   TEST_ASSERT_EQ(k_ra8_ok, render(buf));
   TEST_END("flatten_cubic/quad/arc MC/DC: vertex-count cap arm");
 }
 
 /**
- * @test test_arc_sweep_both_flags_mcdc
+ * @test internal_test_arc_sweep_both_flags_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_arc_solve` sweep wrap `(!sweep && dt>0)` (L1363) and
- * `(sweep && dt<0)` (L1365; libs/ra8_reflow/src/ra8_reflow_svg.c@priv_arc_solve).
+ * Decision: `internal_arc_solve` sweep wrap `(!sweep && dt>0)` (L1363) and
+ * `(sweep && dt<0)` (L1365; libs/ra8_reflow/src/ra8_reflow_svg.c@internal_arc_solve).
  * The existing test toggles only the large-arc flag at fixed sweep; this renders
  * the four (large, sweep) combinations over one chord so each wrap arm's angular
  * condition (`dt>0` for `!sweep`, `dt<0` for `sweep`) fires.
@@ -555,8 +655,16 @@ static void test_curve_overflow_count_mcdc(void)
  *  - small/sweep0 (`0 0`), large/sweep0 (`1 0`), small/sweep1 (`0 1`),
  *    large/sweep1 (`1 1`) -> across the four the `dt` sign spans both arms.
  * Each renders cleanly (k_ra8_ok).
+ * @brief Verify arc sweep both flags mcdc behavior against the reflow contract.
+ * @details Exercises the arc sweep both flags mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_arc_sweep_both_flags_mcdc(void)
+RA8_INTERNAL static void internal_test_arc_sweep_both_flags_mcdc(void)
 {
   TEST_BEGIN("priv_arc_solve MC/DC: all (large,sweep) wrap arms");
   fb_reset();
@@ -579,12 +687,12 @@ static void test_arc_sweep_both_flags_mcdc(void)
 }
 
 /**
- * @test test_arc_degenerate_arms_mcdc
+ * @test internal_test_arc_degenerate_arms_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_arc_center` degeneracy guard
+ * Decision: `internal_arc_center` degeneracy guard
  * `(rx==0)||(ry==0)||((p0.x==p_end.x)&&(p0.y==p_end.y))` (L1404;
- * libs/ra8_reflow/src/ra8_reflow_svg.c@priv_arc_center). The existing arcs are all
+ * libs/ra8_reflow/src/ra8_reflow_svg.c@internal_arc_center). The existing arcs are all
  * non-degenerate (every condition false). This drives each true arm and the
  * coincident-endpoint sub-conditions independently.
  *
@@ -597,8 +705,16 @@ static void test_arc_sweep_both_flags_mcdc(void)
  *        && `p0.y==p_end.y` F -> NOT degenerate (a real arc), proving the y
  *        sub-condition's independence.
  * Each renders cleanly (k_ra8_ok).
+ * @brief Verify arc degenerate arms mcdc behavior against the reflow contract.
+ * @details Exercises the arc degenerate arms mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_arc_degenerate_arms_mcdc(void)
+RA8_INTERNAL static void internal_test_arc_degenerate_arms_mcdc(void)
 {
   TEST_BEGIN("priv_arc_center MC/DC: zero-rx / zero-ry / coincident endpoints");
   /* V1: rx == 0. */
@@ -625,12 +741,12 @@ static void test_arc_degenerate_arms_mcdc(void)
 }
 
 /**
- * @test test_path_cmd_scan_arms_mcdc
+ * @test internal_test_path_cmd_scan_arms_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_next_cmd` separator skip `(*i<dlen)&&(priv_ws||==',')` (L1538)
+ * Decision: `internal_next_cmd` separator skip `(*i<dlen)&&(priv_ws||==',')` (L1538)
  * and the letter test `((c>='A')&&(c<='Z'))||((c>='a')&&(c<='z'))` (L1545;
- * libs/ra8_reflow/src/ra8_reflow_svg.c@priv_next_cmd). The existing path tests use
+ * libs/ra8_reflow/src/ra8_reflow_svg.c@internal_next_cmd). The existing path tests use
  * space separators and A-Z / a-z letters; this adds comma separators, a trailing
  * separator run (`*i<dlen` F), and command-position characters just outside the
  * letter ranges (`` ` `` between `Z` and `a`, `{` just above `z`) so the upper
@@ -644,8 +760,16 @@ static void test_arc_degenerate_arms_mcdc(void)
  *        previous command repeats.
  *  - V3: `d="M10 10 { 90 90"` -> `{` (0x7B, just above `z`) -> L1545 `c<='z'` F.
  * Each renders cleanly (k_ra8_ok).
+ * @brief Verify path cmd scan arms mcdc behavior against the reflow contract.
+ * @details Exercises the path cmd scan arms mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_path_cmd_scan_arms_mcdc(void)
+RA8_INTERNAL static void internal_test_path_cmd_scan_arms_mcdc(void)
 {
   TEST_BEGIN("priv_next_cmd MC/DC: comma/trailing separators + letter-range bounds");
   /* V1: comma separators and a trailing space to the slice end. */
@@ -669,12 +793,12 @@ static void test_path_cmd_scan_arms_mcdc(void)
 }
 
 /**
- * @test test_points_comma_leading_separator_mcdc
+ * @test internal_test_points_comma_leading_separator_mcdc
  *
  * @par MC/DC:
  * Decision: the point-list separator skip
- *   `while ((k < vlen) && (ra8_svgp_ws((char)v[k]) || (v[k] == ',')))`
- * (3 conditions; libs/ra8_reflow/src/ra8_reflow_svg_shape.c). ra8_svgp_num consumes
+ *   `while ((k < vlen) && (priv_ra8_svgp_ws((char)v[k]) || (v[k] == ',')))`
+ * (3 conditions; libs/ra8_reflow/src/ra8_reflow_svg_shape.c). priv_ra8_svgp_num consumes
  * the comma inside a coordinate pair, so a comma only reaches this skip loop when
  * it leads the point list (or immediately follows a pair the number parser left
  * on a comma). N+1 supplement to the existing whitespace-driven vectors:
@@ -683,8 +807,16 @@ static void test_path_cmd_scan_arms_mcdc(void)
  *    C3-true independence pair that the whitespace-only inputs never reach; the
  *    polygon still fills its triangle interior, proving the comma was skipped and
  *    the three vertices parsed.
+ * @brief Verify points comma leading separator mcdc behavior against the reflow contract.
+ * @details Exercises the points comma leading separator mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_points_comma_leading_separator_mcdc(void)
+RA8_INTERNAL static void internal_test_points_comma_leading_separator_mcdc(void)
 {
   TEST_BEGIN("svg points MC/DC: leading-comma separator skip (v[k] == ',')");
   fb_reset();
@@ -698,7 +830,7 @@ static void test_points_comma_leading_separator_mcdc(void)
 }
 
 /**
- * @test test_arc_sweep0_dt_positive_mcdc
+ * @test internal_test_arc_sweep0_dt_positive_mcdc
  *
  * @par MC/DC:
  * Decision: `if (!sweep && (dt > 0.0F))` -- the sweep=0 angle-wrap arm of the
@@ -713,8 +845,16 @@ static void test_points_comma_leading_separator_mcdc(void)
  *    sweep=0 arc (C2 false), this completes both independence pairs.
  * The solved-and-flattened arc fills a region (at least one blue pixel appears),
  * confirming the endpoint-to-centre conversion completed through this wrap arm.
+ * @brief Verify arc sweep0 dt positive mcdc behavior against the reflow contract.
+ * @details Exercises the arc sweep0 dt positive mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_arc_sweep0_dt_positive_mcdc(void)
+RA8_INTERNAL static void internal_test_arc_sweep0_dt_positive_mcdc(void)
 {
   TEST_BEGIN("svg arc MC/DC: sweep=0 positive-dt wrap arm");
   /* Two sweep=0 arcs over radius 50 (chord 80 < diameter 100). The major arc
@@ -755,23 +895,22 @@ static void test_arc_sweep0_dt_positive_mcdc(void)
  */
 int32_t main(void)
 {
-  test_xform_separators_unknown();
-  test_circle_skip_and_rotated_mcdc();
-  test_polygon_polyline_guards_mcdc();
-  test_path_relative_hv();
-  test_arc_sweep_wrap_mcdc();
-  test_arc_radius_scale_up();
-  test_group_selfclose_depth_and_pop();
-  test_xform_scan_boundary_mcdc();
-  test_points_trailing_separator_mcdc();
-  test_scanline_windings_mcdc();
-  test_curve_overflow_count_mcdc();
-  test_arc_sweep_both_flags_mcdc();
-  test_arc_degenerate_arms_mcdc();
-  test_path_cmd_scan_arms_mcdc();
-  test_svg_path_no_progress_guard_mcdc();
-  test_points_comma_leading_separator_mcdc();
-  test_arc_sweep0_dt_positive_mcdc();
-  (void)fprintf(stderr, "[OK ] test_ra8_reflow_svg_shape_mcdc.c\n");
+  internal_test_xform_separators_unknown();
+  internal_test_circle_skip_and_rotated_mcdc();
+  internal_test_polygon_polyline_guards_mcdc();
+  internal_test_path_relative_hv();
+  internal_test_arc_sweep_wrap_mcdc();
+  internal_test_arc_radius_scale_up();
+  internal_test_group_selfclose_depth_and_pop();
+  internal_test_xform_scan_boundary_mcdc();
+  internal_test_points_trailing_separator_mcdc();
+  internal_test_scanline_windings_mcdc();
+  internal_test_curve_overflow_count_mcdc();
+  internal_test_arc_sweep_both_flags_mcdc();
+  internal_test_arc_degenerate_arms_mcdc();
+  internal_test_path_cmd_scan_arms_mcdc();
+  internal_test_svg_path_no_progress_guard_mcdc();
+  internal_test_points_comma_leading_separator_mcdc();
+  internal_test_arc_sweep0_dt_positive_mcdc();
   return 0;
 }

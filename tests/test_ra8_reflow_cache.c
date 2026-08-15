@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_reflow.h"
 #include "ra8_reflow_cache.h"
@@ -67,8 +68,21 @@ static ra8_reflow_page_t  s_page_save[k_t_pages];
 
 static const size_t s_content_len = sizeof(s_content);
 
-/** @brief Initialise the shared engine at a given body font size. */
-static ra8_err_t init_engine(ra8_reflow_t* eng, uint16_t font_px)
+/** @brief Initialise the shared engine at a given body font size.
+ * @details Exercises the init engine path and preserves each documented result and bound.
+ * @param[in,out] eng Caller-supplied eng value used by the scenario.
+ * @param[in] font_px Caller-supplied font px value used by the scenario.
+ * @return A status code describing the completed reflow operation.
+ * @retval k_ra8_ok The operation completed successfully.
+ * @retval nonzero Validation or bounded-resource checks rejected the operation.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_init_engine(ra8_reflow_t* eng, uint16_t font_px)
 {
   return ra8_reflow_init((uint16_t)k_t_vp_w,
                          (uint16_t)k_t_vp_h,
@@ -80,8 +94,17 @@ static ra8_err_t init_engine(ra8_reflow_t* eng, uint16_t font_px)
                          eng);
 }
 
-/** @brief Fill the engine with a deterministic synthetic layout. */
-static void build_layout(ra8_reflow_t* eng)
+/** @brief Fill the engine with a deterministic synthetic layout.
+ * @details Exercises the build layout path and preserves each documented result and bound.
+ * @param[in,out] eng Caller-supplied eng value used by the scenario.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_build_layout(ra8_reflow_t* eng)
 {
   eng->glyph_count = (uint32_t)k_t_glyphs;
   for (uint32_t i = 0U; i < (uint32_t)k_t_glyphs; ++i) {
@@ -100,8 +123,19 @@ static void build_layout(ra8_reflow_t* eng)
   }
 }
 
-/** @brief Serialise the current layout into s_blob; return byte count. */
-static size_t serialize_ok(void)
+/** @brief Serialise the current layout into s_blob; return byte count.
+ * @details Exercises the serialize ok path and preserves each documented result and bound.
+ * @return The scalar result computed for the requested reflow scenario.
+ * @retval 0 The helper produced its zero-valued result.
+ * @retval nonzero The helper produced a nonzero result.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static size_t internal_serialize_ok(void)
 {
   size_t n = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -115,19 +149,26 @@ static size_t serialize_ok(void)
 }
 
 /**
- * @test test_size_matches_serialize
+ * @test internal_test_size_matches_serialize
  * @brief `ra8_reflow_cache_size()` equals the serialised byte count and
  *        the closed-form header + records formula.
  *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the size contract;
  * the `&&` / `||` guards have dedicated `test_mcdc_*` cases.)
+ * @details Exercises the size matches serialize path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_size_matches_serialize(void)
+RA8_INTERNAL static void internal_test_size_matches_serialize(void)
 {
   TEST_BEGIN("reflow_cache: size == serialized length");
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine(&s_engine, (uint16_t)k_t_font_px));
-  build_layout(&s_engine);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine(&s_engine, (uint16_t)k_t_font_px));
+  internal_build_layout(&s_engine);
 
   size_t want = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_cache_size(&s_engine, &want));
@@ -135,27 +176,34 @@ static void test_size_matches_serialize(void)
                          ((size_t)k_t_glyphs * (size_t)k_ra8_reflow_cache_glyph_bytes) +
                          ((size_t)k_t_pages * (size_t)k_ra8_reflow_cache_page_bytes);
   TEST_ASSERT_EQ(formula, want);
-  TEST_ASSERT_EQ(want, serialize_ok());
+  TEST_ASSERT_EQ(want, internal_serialize_ok());
   TEST_END("reflow_cache: size == serialized length");
 }
 
 /**
- * @test test_roundtrip_restores_layout
+ * @test internal_test_roundtrip_restores_layout
  * @brief serialise -> wipe -> load reproduces every glyph and page and
  *        repoints the cached chapter buffer.
  *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the round-trip
  * contract; the `&&` / `||` guards have dedicated `test_mcdc_*` cases.)
+ * @details Exercises the roundtrip restores layout path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_roundtrip_restores_layout(void)
+RA8_INTERNAL static void internal_test_roundtrip_restores_layout(void)
 {
   TEST_BEGIN("reflow_cache: round-trip restores layout");
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine(&s_engine, (uint16_t)k_t_font_px));
-  build_layout(&s_engine);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine(&s_engine, (uint16_t)k_t_font_px));
+  internal_build_layout(&s_engine);
   memcpy(s_glyph_save, s_engine.glyphs, sizeof(s_glyph_save));
   memcpy(s_page_save, s_engine.pages, sizeof(s_page_save));
-  const size_t n = serialize_ok();
+  const size_t n = internal_serialize_ok();
 
   /* Wipe the laid-out state so a successful load must rebuild it. */
   memset(s_engine.glyphs, 0, sizeof(s_glyph_save));
@@ -184,19 +232,26 @@ static void test_roundtrip_restores_layout(void)
 }
 
 /**
- * @test test_empty_layout_roundtrip
+ * @test internal_test_empty_layout_roundtrip
  * @brief A zero-glyph / zero-page layout serialises to just the header
  *        and loads back cleanly.
  *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the empty-layout edge
  * case; the `&&` / `||` guards have dedicated `test_mcdc_*` cases.)
+ * @details Exercises the empty layout roundtrip path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_empty_layout_roundtrip(void)
+RA8_INTERNAL static void internal_test_empty_layout_roundtrip(void)
 {
   TEST_BEGIN("reflow_cache: empty layout round-trip");
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine(&s_engine, (uint16_t)k_t_font_px));
-  const size_t n = serialize_ok();
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine(&s_engine, (uint16_t)k_t_font_px));
+  const size_t n = internal_serialize_ok();
   TEST_ASSERT_EQ(k_ra8_reflow_cache_header_bytes, n);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_cache_load(&s_engine, s_content, s_content_len, s_blob, n));
   TEST_ASSERT_EQ(0U, s_engine.glyph_count);
@@ -205,60 +260,81 @@ static void test_empty_layout_roundtrip(void)
 }
 
 /**
- * @test test_stale_on_font_change
+ * @test internal_test_stale_on_font_change
  * @brief A blob made at one font size is rejected (stale) by an engine
  *        re-initialised at a different size.
  *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the stale-key path;
  * the `&&` / `||` guards have dedicated `test_mcdc_*` cases.)
+ * @details Exercises the stale on font change path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_stale_on_font_change(void)
+RA8_INTERNAL static void internal_test_stale_on_font_change(void)
 {
   TEST_BEGIN("reflow_cache: stale on font_px change");
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine(&s_engine, (uint16_t)k_t_font_px));
-  build_layout(&s_engine);
-  const size_t n = serialize_ok();
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine(&s_engine, (uint16_t)k_t_font_px2));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine(&s_engine, (uint16_t)k_t_font_px));
+  internal_build_layout(&s_engine);
+  const size_t n = internal_serialize_ok();
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine(&s_engine, (uint16_t)k_t_font_px2));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state,
                  ra8_reflow_cache_load(&s_engine, s_content, s_content_len, s_blob, n));
   TEST_END("reflow_cache: stale on font_px change");
 }
 
 /**
- * @test test_stale_on_content_change
+ * @test internal_test_stale_on_content_change
  * @brief Loading with different chapter bytes is reported stale.
  *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the stale-content
  * path; the `&&` / `||` guards have dedicated `test_mcdc_*` cases.)
+ * @details Exercises the stale on content change path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_stale_on_content_change(void)
+RA8_INTERNAL static void internal_test_stale_on_content_change(void)
 {
   TEST_BEGIN("reflow_cache: stale on content change");
   static const uint8_t other[] = "<p>A completely different chapter body here.</p>";
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine(&s_engine, (uint16_t)k_t_font_px));
-  build_layout(&s_engine);
-  const size_t n = serialize_ok();
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine(&s_engine, (uint16_t)k_t_font_px));
+  internal_build_layout(&s_engine);
+  const size_t n = internal_serialize_ok();
   TEST_ASSERT_EQ(k_ra8_err_invalid_state,
                  ra8_reflow_cache_load(&s_engine, other, sizeof(other), s_blob, n));
   TEST_END("reflow_cache: stale on content change");
 }
 
 /**
- * @test test_corrupt_body_checksum
+ * @test internal_test_corrupt_body_checksum
  * @brief Flipping a payload byte fails the body checksum.
  *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the checksum path;
  * the `&&` / `||` guards have dedicated `test_mcdc_*` cases.)
+ * @details Exercises the corrupt body checksum path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_corrupt_body_checksum(void)
+RA8_INTERNAL static void internal_test_corrupt_body_checksum(void)
 {
   TEST_BEGIN("reflow_cache: corrupt body -> checksum mismatch");
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine(&s_engine, (uint16_t)k_t_font_px));
-  build_layout(&s_engine);
-  const size_t n = serialize_ok();
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine(&s_engine, (uint16_t)k_t_font_px));
+  internal_build_layout(&s_engine);
+  const size_t n = internal_serialize_ok();
   s_blob[(size_t)k_ra8_reflow_cache_header_bytes + (size_t)k_t_glyphs] ^= (uint8_t)k_t_flip;
   TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch,
                  ra8_reflow_cache_load(&s_engine, s_content, s_content_len, s_blob, n));
@@ -266,19 +342,26 @@ static void test_corrupt_body_checksum(void)
 }
 
 /**
- * @test test_bad_magic
+ * @test internal_test_bad_magic
  * @brief A blob whose magic does not match is not recognised.
  *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the magic check;
  * the `&&` / `||` guards have dedicated `test_mcdc_*` cases.)
+ * @details Exercises the bad magic path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_bad_magic(void)
+RA8_INTERNAL static void internal_test_bad_magic(void)
 {
   TEST_BEGIN("reflow_cache: bad magic -> not_found");
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine(&s_engine, (uint16_t)k_t_font_px));
-  build_layout(&s_engine);
-  const size_t n = serialize_ok();
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine(&s_engine, (uint16_t)k_t_font_px));
+  internal_build_layout(&s_engine);
+  const size_t n = internal_serialize_ok();
   s_blob[0] ^= (uint8_t)k_t_flip;
   TEST_ASSERT_EQ(k_ra8_err_not_found,
                  ra8_reflow_cache_load(&s_engine, s_content, s_content_len, s_blob, n));
@@ -286,19 +369,26 @@ static void test_bad_magic(void)
 }
 
 /**
- * @test test_truncated_blob
+ * @test internal_test_truncated_blob
  * @brief A short header and a short body are both rejected as invalid size.
  *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the length checks;
  * the `&&` / `||` guards have dedicated `test_mcdc_*` cases.)
+ * @details Exercises the truncated blob path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_truncated_blob(void)
+RA8_INTERNAL static void internal_test_truncated_blob(void)
 {
   TEST_BEGIN("reflow_cache: truncated -> invalid_size");
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine(&s_engine, (uint16_t)k_t_font_px));
-  build_layout(&s_engine);
-  const size_t n = serialize_ok();
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine(&s_engine, (uint16_t)k_t_font_px));
+  internal_build_layout(&s_engine);
+  const size_t n = internal_serialize_ok();
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_reflow_cache_load(&s_engine,
                                        s_content,
@@ -311,18 +401,25 @@ static void test_truncated_blob(void)
 }
 
 /**
- * @test test_cap_too_small
+ * @test internal_test_cap_too_small
  * @brief Serialising into an undersized buffer is rejected.
  *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the capacity check;
  * the `&&` / `||` guards have dedicated `test_mcdc_*` cases.)
+ * @details Exercises the cap too small path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_cap_too_small(void)
+RA8_INTERNAL static void internal_test_cap_too_small(void)
 {
   TEST_BEGIN("reflow_cache: serialize cap too small");
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine(&s_engine, (uint16_t)k_t_font_px));
-  build_layout(&s_engine);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine(&s_engine, (uint16_t)k_t_font_px));
+  internal_build_layout(&s_engine);
   size_t need = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_cache_size(&s_engine, &need));
   size_t n = 0U;
@@ -333,7 +430,7 @@ static void test_cap_too_small(void)
 }
 
 /**
- * @test test_mcdc_cache_size
+ * @test internal_test_mcdc_cache_size
  *
  * @par MC/DC:
  * Decision in libs/ra8_reflow/src/ra8_reflow_cache.c@ra8_reflow_cache_size:
@@ -342,12 +439,20 @@ static void test_cap_too_small(void)
  * - engine ok, out_bytes=NULL -> C1=F, C2=T -> null_ptr (C2 flips).
  * - engine ok, out_bytes ok   -> C1=F, C2=F -> ok (baseline).
  * C1+baseline isolate C1; C2+baseline isolate C2. N+1 = 3.
+ * @brief Verify mcdc cache size behavior against the reflow contract.
+ * @details Exercises the mcdc cache size path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_mcdc_cache_size(void)
+RA8_INTERNAL static void internal_test_mcdc_cache_size(void)
 {
   TEST_BEGIN("reflow_cache: ra8_reflow_cache_size MC/DC");
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine(&s_engine, (uint16_t)k_t_font_px));
-  build_layout(&s_engine);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine(&s_engine, (uint16_t)k_t_font_px));
+  internal_build_layout(&s_engine);
   size_t sz = 0U;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_reflow_cache_size(nullptr, &sz));       /* C1=T      */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_reflow_cache_size(&s_engine, nullptr)); /* C2=T      */
@@ -359,7 +464,7 @@ static void test_mcdc_cache_size(void)
 }
 
 /**
- * @test test_mcdc_cache_serialize
+ * @test internal_test_mcdc_cache_serialize
  *
  * @par MC/DC:
  * Decisions in libs/ra8_reflow/src/ra8_reflow_cache.c@ra8_reflow_cache_serialize:
@@ -372,12 +477,20 @@ static void test_mcdc_cache_size(void)
  * - content=NULL, len!=0 -> A=T,B=T -> invalid_arg.
  * - content ok,   len!=0 -> A=F     -> proceeds (A flips; the D1 baseline).
  * - content=NULL, len==0 -> A=T,B=F -> proceeds (B flips). N+1 = 3.
+ * @brief Verify mcdc cache serialize behavior against the reflow contract.
+ * @details Exercises the mcdc cache serialize path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_mcdc_cache_serialize(void)
+RA8_INTERNAL static void internal_test_mcdc_cache_serialize(void)
 {
   TEST_BEGIN("reflow_cache: ra8_reflow_cache_serialize MC/DC");
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine(&s_engine, (uint16_t)k_t_font_px));
-  build_layout(&s_engine);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine(&s_engine, (uint16_t)k_t_font_px));
+  internal_build_layout(&s_engine);
   const size_t cap = (size_t)k_t_blob_cap;
   size_t       n   = 0U;
   /* D1 */
@@ -398,7 +511,7 @@ static void test_mcdc_cache_serialize(void)
 }
 
 /**
- * @test test_mcdc_cache_load
+ * @test internal_test_mcdc_cache_load
  *
  * @par MC/DC:
  * Decisions in libs/ra8_reflow/src/ra8_reflow_cache.c@ra8_reflow_cache_load:
@@ -410,13 +523,21 @@ static void test_mcdc_cache_serialize(void)
  * - content=NULL, len!=0 -> A=T,B=T -> invalid_arg.
  * - content ok,   len!=0 -> A=F     -> proceeds -> ok (A flips; D1 baseline).
  * - content=NULL, len==0 -> A=T,B=F -> proceeds -> stale key (B flips). N+1 = 3.
+ * @brief Verify mcdc cache load behavior against the reflow contract.
+ * @details Exercises the mcdc cache load path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_mcdc_cache_load(void)
+RA8_INTERNAL static void internal_test_mcdc_cache_load(void)
 {
   TEST_BEGIN("reflow_cache: ra8_reflow_cache_load MC/DC");
-  TEST_ASSERT_EQ(k_ra8_ok, init_engine(&s_engine, (uint16_t)k_t_font_px));
-  build_layout(&s_engine);
-  const size_t n = serialize_ok();
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_engine(&s_engine, (uint16_t)k_t_font_px));
+  internal_build_layout(&s_engine);
+  const size_t n = internal_serialize_ok();
   /* D1 */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_reflow_cache_load(nullptr, s_content, s_content_len, s_blob, n));
@@ -439,18 +560,17 @@ int32_t main(void)
   for (size_t i = 0U; i < (size_t)k_t_font_len; ++i) {
     s_font[i] = (uint8_t)((i * (size_t)k_t_font_seed) + 1U);
   }
-  test_size_matches_serialize();
-  test_roundtrip_restores_layout();
-  test_empty_layout_roundtrip();
-  test_stale_on_font_change();
-  test_stale_on_content_change();
-  test_corrupt_body_checksum();
-  test_bad_magic();
-  test_truncated_blob();
-  test_cap_too_small();
-  test_mcdc_cache_size();
-  test_mcdc_cache_serialize();
-  test_mcdc_cache_load();
-  (void)fprintf(stderr, "[OK ] test_ra8_reflow_cache.c\n");
+  internal_test_size_matches_serialize();
+  internal_test_roundtrip_restores_layout();
+  internal_test_empty_layout_roundtrip();
+  internal_test_stale_on_font_change();
+  internal_test_stale_on_content_change();
+  internal_test_corrupt_body_checksum();
+  internal_test_bad_magic();
+  internal_test_truncated_blob();
+  internal_test_cap_too_small();
+  internal_test_mcdc_cache_size();
+  internal_test_mcdc_cache_serialize();
+  internal_test_mcdc_cache_load();
   return 0;
 }

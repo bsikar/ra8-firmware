@@ -104,7 +104,7 @@ typedef struct {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_put_u32(uint8_t* buf, size_t* off, uint32_t word)
+static void internal_put_u32(uint8_t* buf, size_t* off, uint32_t word)
 {
   buf[(*off)++] = (uint8_t)(word & (uint32_t)k_priv_byte_mask);
   buf[(*off)++] = (uint8_t)((word >> (uint32_t)k_priv_shift_8) & (uint32_t)k_priv_byte_mask);
@@ -130,7 +130,7 @@ static void priv_put_u32(uint8_t* buf, size_t* off, uint32_t word)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_put_u16(uint8_t* buf, size_t* off, uint16_t half)
+static void internal_put_u16(uint8_t* buf, size_t* off, uint16_t half)
 {
   buf[(*off)++] = (uint8_t)(half & (uint16_t)k_priv_byte_mask);
   buf[(*off)++] = (uint8_t)((half >> (uint32_t)k_priv_shift_8) & (uint16_t)k_priv_byte_mask);
@@ -156,7 +156,7 @@ static void priv_put_u16(uint8_t* buf, size_t* off, uint16_t half)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_get_u32(const uint8_t* buf, size_t* off)
+static uint32_t internal_get_u32(const uint8_t* buf, size_t* off)
 {
   uint32_t word = (uint32_t)buf[(*off)++];
   word |= (uint32_t)buf[(*off)++] << (uint32_t)k_priv_shift_8;
@@ -185,7 +185,7 @@ static uint32_t priv_get_u32(const uint8_t* buf, size_t* off)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint16_t priv_get_u16(const uint8_t* buf, size_t* off)
+static uint16_t internal_get_u16(const uint8_t* buf, size_t* off)
 {
   uint16_t half = (uint16_t)buf[(*off)++];
   half          = (uint16_t)(half | ((uint16_t)buf[(*off)++] << (uint32_t)k_priv_shift_8));
@@ -218,7 +218,7 @@ static uint16_t priv_get_u16(const uint8_t* buf, size_t* off)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_fnv1a(const uint8_t* data, size_t len)
+static uint32_t internal_fnv1a(const uint8_t* data, size_t len)
 {
   uint32_t hash = (uint32_t)k_priv_fnv_offset;
   for (size_t i = 0U; i < len; ++i) {
@@ -244,17 +244,17 @@ static uint32_t priv_fnv1a(const uint8_t* data, size_t len)
  * @pre  `*off + 20` does not exceed the buffer capacity.
  * @post `*off` has advanced by 20.
  * @post The glyph's seven fields are encoded little-endian.
- * @note Mirror of priv_get_glyph().
+ * @note Mirror of internal_get_glyph().
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_put_glyph(uint8_t* buf, size_t* off, const ra8_reflow_glyph_t* glyph)
+static void internal_put_glyph(uint8_t* buf, size_t* off, const ra8_reflow_glyph_t* glyph)
 {
-  priv_put_u32(buf, off, (uint32_t)glyph->x);
-  priv_put_u32(buf, off, (uint32_t)glyph->y);
-  priv_put_u32(buf, off, (uint32_t)glyph->cp);
-  priv_put_u32(buf, off, glyph->color);
-  priv_put_u16(buf, off, glyph->font_px);
+  internal_put_u32(buf, off, (uint32_t)glyph->x);
+  internal_put_u32(buf, off, (uint32_t)glyph->y);
+  internal_put_u32(buf, off, (uint32_t)glyph->cp);
+  internal_put_u32(buf, off, glyph->color);
+  internal_put_u16(buf, off, glyph->font_px);
   buf[(*off)++] = glyph->style;
   buf[(*off)++] = glyph->reserved;
 }
@@ -274,17 +274,17 @@ static void priv_put_glyph(uint8_t* buf, size_t* off, const ra8_reflow_glyph_t* 
  * @pre  `*off + 20` does not exceed the buffer length.
  * @post `*off` has advanced by 20.
  * @post `glyph->reserved` equals the serialised link id.
- * @note Mirror of priv_put_glyph().
+ * @note Mirror of internal_put_glyph().
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_get_glyph(const uint8_t* buf, size_t* off, ra8_reflow_glyph_t* glyph)
+static void internal_get_glyph(const uint8_t* buf, size_t* off, ra8_reflow_glyph_t* glyph)
 {
-  glyph->x        = (int32_t)priv_get_u32(buf, off);
-  glyph->y        = (int32_t)priv_get_u32(buf, off);
-  glyph->cp       = (int32_t)priv_get_u32(buf, off);
-  glyph->color    = priv_get_u32(buf, off);
-  glyph->font_px  = priv_get_u16(buf, off);
+  glyph->x        = (int32_t)internal_get_u32(buf, off);
+  glyph->y        = (int32_t)internal_get_u32(buf, off);
+  glyph->cp       = (int32_t)internal_get_u32(buf, off);
+  glyph->color    = internal_get_u32(buf, off);
+  glyph->font_px  = internal_get_u16(buf, off);
   glyph->style    = buf[(*off)++];
   glyph->reserved = buf[(*off)++];
 }
@@ -302,14 +302,14 @@ static void priv_get_glyph(const uint8_t* buf, size_t* off, ra8_reflow_glyph_t* 
  * @pre  `*off + 8` does not exceed the buffer capacity.
  * @post `*off` has advanced by 8.
  * @post Both page-range fields are encoded little-endian.
- * @note Mirror of priv_get_page().
+ * @note Mirror of internal_get_page().
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_put_page(uint8_t* buf, size_t* off, const ra8_reflow_page_t* page)
+static void internal_put_page(uint8_t* buf, size_t* off, const ra8_reflow_page_t* page)
 {
-  priv_put_u32(buf, off, page->glyph_first);
-  priv_put_u32(buf, off, page->glyph_count);
+  internal_put_u32(buf, off, page->glyph_first);
+  internal_put_u32(buf, off, page->glyph_count);
 }
 
 /**
@@ -325,14 +325,14 @@ static void priv_put_page(uint8_t* buf, size_t* off, const ra8_reflow_page_t* pa
  * @pre  `*off + 8` does not exceed the buffer length.
  * @post `*off` has advanced by 8.
  * @post Both page-range fields are populated.
- * @note Mirror of priv_put_page().
+ * @note Mirror of internal_put_page().
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_get_page(const uint8_t* buf, size_t* off, ra8_reflow_page_t* page)
+static void internal_get_page(const uint8_t* buf, size_t* off, ra8_reflow_page_t* page)
 {
-  page->glyph_first = priv_get_u32(buf, off);
-  page->glyph_count = priv_get_u32(buf, off);
+  page->glyph_first = internal_get_u32(buf, off);
+  page->glyph_count = internal_get_u32(buf, off);
 }
 
 /* ===========================================================================
@@ -360,12 +360,12 @@ static void priv_get_page(const uint8_t* buf, size_t* off, ra8_reflow_page_t* pa
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_font_hash(const ra8_reflow_t* engine)
+static uint32_t internal_font_hash(const ra8_reflow_t* engine)
 {
   if (engine->font_data == nullptr) {
     return 0U;
   }
-  return priv_fnv1a(engine->font_data, engine->font_len);
+  return internal_fnv1a(engine->font_data, engine->font_len);
 }
 
 /**
@@ -385,36 +385,38 @@ static uint32_t priv_font_hash(const ra8_reflow_t* engine)
  * @pre  `buf` has at least `k_ra8_reflow_cache_header_bytes` capacity.
  * @post Header bytes `[0, k_ra8_reflow_cache_header_bytes)` are written.
  * @post The body-checksum field holds a zero placeholder.
- * @note Pairs with priv_get_header().
+ * @note Pairs with internal_get_header().
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void
-priv_put_header(uint8_t* buf, const ra8_reflow_t* engine, size_t content_len, uint32_t content_hash)
+static void internal_put_header(uint8_t*            buf,
+                                const ra8_reflow_t* engine,
+                                size_t              content_len,
+                                uint32_t            content_hash)
 {
   size_t off = 0U;
-  priv_put_u32(buf, &off, (uint32_t)k_ra8_reflow_cache_magic);
-  priv_put_u16(buf, &off, (uint16_t)k_ra8_reflow_cache_version);
-  priv_put_u16(buf, &off, 0U); /* reserved */
-  priv_put_u16(buf, &off, engine->viewport_w);
-  priv_put_u16(buf, &off, engine->viewport_h);
-  priv_put_u16(buf, &off, engine->font_px);
-  priv_put_u16(buf, &off, 0U); /* reserved16 */
-  priv_put_u32(buf, &off, engine->body_color);
-  priv_put_u32(buf, &off, engine->link_color);
-  priv_put_u32(buf, &off, (uint32_t)engine->font_len);
-  priv_put_u32(buf, &off, priv_font_hash(engine));
-  priv_put_u32(buf, &off, (uint32_t)content_len);
-  priv_put_u32(buf, &off, content_hash);
-  priv_put_u32(buf, &off, engine->glyph_count);
-  priv_put_u32(buf, &off, engine->page_count);
-  priv_put_u32(buf, &off, 0U); /* body_checksum placeholder */
+  internal_put_u32(buf, &off, (uint32_t)k_ra8_reflow_cache_magic);
+  internal_put_u16(buf, &off, (uint16_t)k_ra8_reflow_cache_version);
+  internal_put_u16(buf, &off, 0U); /* reserved */
+  internal_put_u16(buf, &off, engine->viewport_w);
+  internal_put_u16(buf, &off, engine->viewport_h);
+  internal_put_u16(buf, &off, engine->font_px);
+  internal_put_u16(buf, &off, 0U); /* reserved16 */
+  internal_put_u32(buf, &off, engine->body_color);
+  internal_put_u32(buf, &off, engine->link_color);
+  internal_put_u32(buf, &off, (uint32_t)engine->font_len);
+  internal_put_u32(buf, &off, internal_font_hash(engine));
+  internal_put_u32(buf, &off, (uint32_t)content_len);
+  internal_put_u32(buf, &off, content_hash);
+  internal_put_u32(buf, &off, engine->glyph_count);
+  internal_put_u32(buf, &off, engine->page_count);
+  internal_put_u32(buf, &off, 0U); /* body_checksum placeholder */
 }
 
 /**
  * @brief Parse the fixed-size header into a key struct.
  *
- * @details Decodes every header field in the same order priv_put_header()
+ * @details Decodes every header field in the same order internal_put_header()
  *          wrote them, skipping the two reserved half-words.
  *
  * @param[in]  buf Source buffer (>= header bytes readable).
@@ -424,29 +426,29 @@ priv_put_header(uint8_t* buf, const ra8_reflow_t* engine, size_t content_len, ui
  * @pre  `buf` has at least `k_ra8_reflow_cache_header_bytes` readable.
  * @post `*key` is fully populated from the header.
  * @post `buf` is not modified.
- * @note Pairs with priv_put_header().
+ * @note Pairs with internal_put_header().
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_get_header(const uint8_t* buf, priv_cache_key_t* key)
+static void internal_get_header(const uint8_t* buf, priv_cache_key_t* key)
 {
   size_t off   = 0U;
-  key->magic   = priv_get_u32(buf, &off);
-  key->version = priv_get_u16(buf, &off);
-  (void)priv_get_u16(buf, &off); /* reserved */
-  key->viewport_w = priv_get_u16(buf, &off);
-  key->viewport_h = priv_get_u16(buf, &off);
-  key->font_px    = priv_get_u16(buf, &off);
-  (void)priv_get_u16(buf, &off); /* reserved16 */
-  key->body_color    = priv_get_u32(buf, &off);
-  key->link_color    = priv_get_u32(buf, &off);
-  key->font_len      = priv_get_u32(buf, &off);
-  key->font_hash     = priv_get_u32(buf, &off);
-  key->content_len   = priv_get_u32(buf, &off);
-  key->content_hash  = priv_get_u32(buf, &off);
-  key->glyph_count   = priv_get_u32(buf, &off);
-  key->page_count    = priv_get_u32(buf, &off);
-  key->body_checksum = priv_get_u32(buf, &off);
+  key->magic   = internal_get_u32(buf, &off);
+  key->version = internal_get_u16(buf, &off);
+  (void)internal_get_u16(buf, &off); /* reserved */
+  key->viewport_w = internal_get_u16(buf, &off);
+  key->viewport_h = internal_get_u16(buf, &off);
+  key->font_px    = internal_get_u16(buf, &off);
+  (void)internal_get_u16(buf, &off); /* reserved16 */
+  key->body_color    = internal_get_u32(buf, &off);
+  key->link_color    = internal_get_u32(buf, &off);
+  key->font_len      = internal_get_u32(buf, &off);
+  key->font_hash     = internal_get_u32(buf, &off);
+  key->content_len   = internal_get_u32(buf, &off);
+  key->content_hash  = internal_get_u32(buf, &off);
+  key->glyph_count   = internal_get_u32(buf, &off);
+  key->page_count    = internal_get_u32(buf, &off);
+  key->body_checksum = internal_get_u32(buf, &off);
 }
 
 /**
@@ -470,7 +472,7 @@ static void priv_get_header(const uint8_t* buf, priv_cache_key_t* key)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static size_t priv_blob_size(uint32_t glyph_count, uint32_t page_count)
+static size_t internal_blob_size(uint32_t glyph_count, uint32_t page_count)
 {
   return (size_t)k_ra8_reflow_cache_header_bytes +
          ((size_t)glyph_count * (size_t)k_ra8_reflow_cache_glyph_bytes) +
@@ -501,10 +503,10 @@ static size_t priv_blob_size(uint32_t glyph_count, uint32_t page_count)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_key_matches(const ra8_reflow_t*     engine,
-                             const priv_cache_key_t* key,
-                             const uint8_t*          content,
-                             size_t                  content_len)
+static bool internal_key_matches(const ra8_reflow_t*     engine,
+                                 const priv_cache_key_t* key,
+                                 const uint8_t*          content,
+                                 size_t                  content_len)
 {
   /* One simple decision per attribute (no compound boolean): any single
    * mismatch makes the cached layout stale. */
@@ -526,13 +528,13 @@ static bool priv_key_matches(const ra8_reflow_t*     engine,
   if (key->font_len != (uint32_t)engine->font_len) {
     return false;
   }
-  if (key->font_hash != priv_font_hash(engine)) {
+  if (key->font_hash != internal_font_hash(engine)) {
     return false;
   }
   if (key->content_len != (uint32_t)content_len) {
     return false;
   }
-  if (key->content_hash != priv_fnv1a(content, content_len)) {
+  if (key->content_hash != internal_fnv1a(content, content_len)) {
     return false;
   }
   return true;
@@ -573,12 +575,12 @@ static bool priv_key_matches(const ra8_reflow_t*     engine,
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_parse_header(const uint8_t* buf, size_t len, priv_cache_key_t* key, size_t* need)
+internal_parse_header(const uint8_t* buf, size_t len, priv_cache_key_t* key, size_t* need)
 {
   if (len < (size_t)k_ra8_reflow_cache_header_bytes) {
     return k_ra8_err_invalid_size;
   }
-  priv_get_header(buf, key);
+  internal_get_header(buf, key);
   if (key->magic != (uint32_t)k_ra8_reflow_cache_magic) {
     return k_ra8_err_not_found;
   }
@@ -591,7 +593,7 @@ priv_parse_header(const uint8_t* buf, size_t len, priv_cache_key_t* key, size_t*
   if (key->page_count > (uint32_t)k_ra8_reflow_max_pages) {
     return k_ra8_err_invalid_size;
   }
-  *need = priv_blob_size(key->glyph_count, key->page_count);
+  *need = internal_blob_size(key->glyph_count, key->page_count);
   if (len < *need) {
     return k_ra8_err_invalid_size;
   }
@@ -611,7 +613,7 @@ priv_parse_header(const uint8_t* buf, size_t len, priv_cache_key_t* key, size_t*
   if (engine->in_use == 0U) {
     return k_ra8_err_not_initialized;
   }
-  *out_bytes = priv_blob_size(engine->glyph_count, engine->page_count);
+  *out_bytes = internal_blob_size(engine->glyph_count, engine->page_count);
   return k_ra8_ok;
 }
 
@@ -646,7 +648,7 @@ priv_parse_header(const uint8_t* buf, size_t len, priv_cache_key_t* key, size_t*
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_cache_precheck(const ra8_reflow_t* engine, const uint8_t* content, size_t content_len)
+internal_cache_precheck(const ra8_reflow_t* engine, const uint8_t* content, size_t content_len)
 {
   if (engine->in_use == 0U) {
     return k_ra8_err_not_initialized;
@@ -670,29 +672,29 @@ priv_cache_precheck(const ra8_reflow_t* engine, const uint8_t* content, size_t c
   if ((engine == nullptr) || (out_buf == nullptr) || (out_len == nullptr)) {
     return k_ra8_err_null_ptr;
   }
-  const ra8_err_t verr = priv_cache_precheck(engine, content, content_len);
+  const ra8_err_t verr = internal_cache_precheck(engine, content, content_len);
   if (verr != k_ra8_ok) {
     return verr;
   }
-  const size_t need = priv_blob_size(engine->glyph_count, engine->page_count);
+  const size_t need = internal_blob_size(engine->glyph_count, engine->page_count);
   if (out_cap < need) {
     return k_ra8_err_invalid_size;
   }
 
-  priv_put_header(out_buf, engine, content_len, priv_fnv1a(content, content_len));
+  internal_put_header(out_buf, engine, content_len, internal_fnv1a(content, content_len));
 
   size_t off = (size_t)k_ra8_reflow_cache_header_bytes;
   for (uint32_t i = 0U; i < engine->glyph_count; ++i) {
-    priv_put_glyph(out_buf, &off, &engine->glyphs[i]);
+    internal_put_glyph(out_buf, &off, &engine->glyphs[i]);
   }
   for (uint32_t i = 0U; i < engine->page_count; ++i) {
-    priv_put_page(out_buf, &off, &engine->pages[i]);
+    internal_put_page(out_buf, &off, &engine->pages[i]);
   }
 
-  const uint32_t checksum = priv_fnv1a(&out_buf[(size_t)k_ra8_reflow_cache_header_bytes],
-                                       need - (size_t)k_ra8_reflow_cache_header_bytes);
+  const uint32_t checksum = internal_fnv1a(&out_buf[(size_t)k_ra8_reflow_cache_header_bytes],
+                                           need - (size_t)k_ra8_reflow_cache_header_bytes);
   size_t         ck_off   = (size_t)k_priv_checksum_off;
-  priv_put_u32(out_buf, &ck_off, checksum);
+  internal_put_u32(out_buf, &ck_off, checksum);
   *out_len = need;
   return k_ra8_ok;
 }
@@ -706,33 +708,33 @@ priv_cache_precheck(const ra8_reflow_t* engine, const uint8_t* content, size_t c
   if ((engine == nullptr) || (buf == nullptr)) {
     return k_ra8_err_null_ptr;
   }
-  const ra8_err_t verr = priv_cache_precheck(engine, content, content_len);
+  const ra8_err_t verr = internal_cache_precheck(engine, content, content_len);
   if (verr != k_ra8_ok) {
     return verr;
   }
 
   priv_cache_key_t key  = {};
   size_t           need = 0U;
-  const ra8_err_t  perr = priv_parse_header(buf, len, &key, &need);
+  const ra8_err_t  perr = internal_parse_header(buf, len, &key, &need);
   if (perr != k_ra8_ok) {
     return perr;
   }
-  if (!priv_key_matches(engine, &key, content, content_len)) {
+  if (!internal_key_matches(engine, &key, content, content_len)) {
     return k_ra8_err_invalid_state;
   }
 
-  const uint32_t checksum = priv_fnv1a(&buf[(size_t)k_ra8_reflow_cache_header_bytes],
-                                       need - (size_t)k_ra8_reflow_cache_header_bytes);
+  const uint32_t checksum = internal_fnv1a(&buf[(size_t)k_ra8_reflow_cache_header_bytes],
+                                           need - (size_t)k_ra8_reflow_cache_header_bytes);
   if (checksum != key.body_checksum) {
     return k_ra8_err_checksum_mismatch;
   }
 
   size_t off = (size_t)k_ra8_reflow_cache_header_bytes;
   for (uint32_t i = 0U; i < key.glyph_count; ++i) {
-    priv_get_glyph(buf, &off, &engine->glyphs[i]);
+    internal_get_glyph(buf, &off, &engine->glyphs[i]);
   }
   for (uint32_t i = 0U; i < key.page_count; ++i) {
-    priv_get_page(buf, &off, &engine->pages[i]);
+    internal_get_page(buf, &off, &engine->pages[i]);
   }
   engine->glyph_count = key.glyph_count;
   engine->page_count  = key.page_count;

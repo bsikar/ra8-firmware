@@ -7,7 +7,7 @@
  * `@font-face` descriptor parser for the v1 CSS subset documented in
  * `ra8_reflow_css.h`. Parsed selectors and faces are interned into the
  * caller-owned ::ra8_css_sheet_t name pool and rule / face tables. The top-level
- * block dispatcher ::ra8_reflow_css_parse_one_block lives here because it drives
+ * block dispatcher ::priv_ra8_reflow_css_parse_one_block lives here because it drives
  * the selector and `@font-face` parsers; it is invoked by the stylesheet scanner
  * ::ra8_css_parse in a sibling translation unit. No MMIO, no heap.
  *
@@ -27,7 +27,7 @@
 #include "ra8_reflow.h" /* ra8_reflow_html_tag_t */
 #include "ra8_reflow_css.h"
 #include "ra8_reflow_css_internal.h"
-#include "ra8_reflow_tokenize_internal.h" /* ra8_reflow_tok_classify */
+#include "ra8_reflow_tokenize_internal.h" /* priv_ra8_reflow_tok_classify */
 
 /* ===========================================================================
  * Internal constants (no magic numbers)
@@ -52,8 +52,8 @@ typedef enum : uint8_t {
  *
  * @details Accepts ASCII letters ('a'-'z', 'A'-'Z'), decimal digits ('0'-'9'),
  * the hyphen ('-'), and the underscore ('_'), which are the characters allowed
- * in CSS identifiers per the CSS specification. Used by priv_parse_sel_type()
- * and priv_parse_sel_part() to delimit token boundaries in selector text.
+ * in CSS identifiers per the CSS specification. Used by internal_parse_sel_type()
+ * and internal_parse_sel_part() to delimit token boundaries in selector text.
  *
  * @param[in] c Byte to classify.
  *
@@ -70,7 +70,7 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_is_name_char(char c)
+static bool internal_is_name_char(char c)
 {
   return ((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z')) || ((c >= '0') && (c <= '9')) ||
          (c == '-') || (c == '_');
@@ -104,9 +104,9 @@ static bool priv_is_name_char(char c)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_intern_name(ra8_css_sheet_t* sheet, const char* s, size_t len, uint16_t* off)
+static bool internal_intern_name(ra8_css_sheet_t* sheet, const char* s, size_t len, uint16_t* off)
 {
-  /* mcdc-deactivated: every caller guards the length before interning -- (nlen == 0U) reject at the selector site, (n > 0U) at the @font-face/font-family sites, and priv_extract_url rejects an empty url() -- so (len == 0U) is unreachable; only (len > k_ra8_css_name_max) varies. */
+  /* mcdc-deactivated: every caller guards the length before interning -- (nlen == 0U) reject at the selector site, (n > 0U) at the @font-face/font-family sites, and internal_extract_url rejects an empty url() -- so (len == 0U) is unreachable; only (len > k_ra8_css_name_max) varies. */
   if ((len == 0U) || (len > (size_t)k_ra8_css_name_max)) {
     return false;
   }
@@ -125,8 +125,8 @@ static bool priv_intern_name(ra8_css_sheet_t* sheet, const char* s, size_t len, 
  * @details Reads the element type or universal selector at @p s[*i]:
  *   - If the current byte is '*', advances @p *i by 1 and returns true without
  *     recording a type constraint (universal selector).
- *   - Otherwise, consumes a run of priv_is_name_char() bytes and classifies the
- *     span via ra8_reflow_tok_classify(). On success, stores the tag in
+ *   - Otherwise, consumes a run of internal_is_name_char() bytes and classifies the
+ *     span via priv_ra8_reflow_tok_classify(). On success, stores the tag in
  *     @p rule->sel_tag and returns true. Returns false if the name is not a
  *     recognised HTML tag (caller drops the rule).
  *
@@ -148,7 +148,7 @@ static bool priv_intern_name(ra8_css_sheet_t* sheet, const char* s, size_t len, 
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_parse_sel_type(const char* s, size_t len, size_t* i, ra8_css_rule_t* rule)
+static bool internal_parse_sel_type(const char* s, size_t len, size_t* i, ra8_css_rule_t* rule)
 {
   if (s[*i] == '*') {
     ++(*i); /* universal: no type constraint */
@@ -156,10 +156,10 @@ static bool priv_parse_sel_type(const char* s, size_t len, size_t* i, ra8_css_ru
   }
   size_t start = *i;
   /* Bounded: i advances over name chars, capped by len. */
-  while ((*i < len) && priv_is_name_char(s[*i])) {
+  while ((*i < len) && internal_is_name_char(s[*i])) {
     ++(*i);
   }
-  const ra8_reflow_html_tag_t tag = ra8_reflow_tok_classify(&s[start], *i - start);
+  const ra8_reflow_html_tag_t tag = priv_ra8_reflow_tok_classify(&s[start], *i - start);
   if (tag == k_ra8_reflow_tag_unknown) {
     return false; /* unrecognised tag -> drop the rule */
   }
@@ -171,7 +171,7 @@ static bool priv_parse_sel_type(const char* s, size_t len, size_t* i, ra8_css_ru
  * @brief Parse one `.class` / `#id` part at @p s[*i] into @p rule; advance @p i.
  *
  * @details Reads the '.' or '#' prefix at @p s[*i], then consumes a run of
- * priv_is_name_char() bytes as the name. Interns the name via priv_intern_name()
+ * internal_is_name_char() bytes as the name. Interns the name via internal_intern_name()
  * and stores the resulting (off, len) pair in the appropriate field of @p rule:
  *   - '.' -> @p rule->class_off / @p rule->class_len (only one class supported in v1)
  *   - '#' -> @p rule->id_off / @p rule->id_len (only one id supported in v1)
@@ -198,21 +198,21 @@ static bool priv_parse_sel_type(const char* s, size_t len, size_t* i, ra8_css_ru
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_parse_sel_part(ra8_css_sheet_t* sheet,
-                                const char*      s,
-                                size_t           len,
-                                size_t*          i,
-                                ra8_css_rule_t*  rule)
+static bool internal_parse_sel_part(ra8_css_sheet_t* sheet,
+                                    const char*      s,
+                                    size_t           len,
+                                    size_t*          i,
+                                    ra8_css_rule_t*  rule)
 {
   const char kind = s[*i];
   ++(*i);
   const size_t start = *i;
-  while ((*i < len) && priv_is_name_char(s[*i])) {
+  while ((*i < len) && internal_is_name_char(s[*i])) {
     ++(*i);
   }
   const size_t nlen = *i - start;
   uint16_t     off  = 0U;
-  if ((nlen == 0U) || !priv_intern_name(sheet, &s[start], nlen, &off)) {
+  if ((nlen == 0U) || !internal_intern_name(sheet, &s[start], nlen, &off)) {
     return false;
   }
   if (kind == '.') {
@@ -237,7 +237,7 @@ static bool priv_parse_sel_part(ra8_css_sheet_t* sheet,
  * @details Accepts one type + one class + one id in CSS order, e.g. `*`, `p`,
  * `.note`, `#x`, `p.note`, `p#x`, `.note#x`. Two classes (`.a.b`), descendant
  * combinators (`div p`) and pseudo selectors fail (the caller drops the rule).
- * Delegates to priv_parse_sel_type() and priv_parse_sel_part() for each token.
+ * Delegates to internal_parse_sel_type() and internal_parse_sel_part() for each token.
  *
  * @param[in,out] sheet Sheet whose name pool may receive interned names.
  * @param[in]     s     Trimmed compound selector span (no surrounding whitespace).
@@ -260,22 +260,22 @@ static bool priv_parse_sel_part(ra8_css_sheet_t* sheet,
  */
 RA8_INTERNAL
 static bool
-priv_parse_selector(ra8_css_sheet_t* sheet, const char* s, size_t len, ra8_css_rule_t* rule)
+internal_parse_selector(ra8_css_sheet_t* sheet, const char* s, size_t len, ra8_css_rule_t* rule)
 {
   if (len == 0U) {
     return false;
   }
   size_t i   = 0U;
   bool   any = false;
-  if (priv_is_name_char(s[0]) || (s[0] == '*')) {
-    if (!priv_parse_sel_type(s, len, &i, rule)) {
+  if (internal_is_name_char(s[0]) || (s[0] == '*')) {
+    if (!internal_parse_sel_type(s, len, &i, rule)) {
       return false;
     }
     any = true;
   }
   /* Then a run of `.class` / `#id` parts (at most one of each). */
   while (i < len) {
-    if (((s[i] != '.') && (s[i] != '#')) || !priv_parse_sel_part(sheet, s, len, &i, rule)) {
+    if (((s[i] != '.') && (s[i] != '#')) || !internal_parse_sel_part(sheet, s, len, &i, rule)) {
       return false; /* combinator / pseudo / dup / bad name -> unsupported */
     }
     any = true;
@@ -286,7 +286,7 @@ priv_parse_selector(ra8_css_sheet_t* sheet, const char* s, size_t len, ra8_css_r
 /**
  * @brief Split @p s into whitespace-separated compound spans.
  *
- * @details Iterates over @p s[0..len), skipping runs of ra8_reflow_css_is_ws() characters
+ * @details Iterates over @p s[0..len), skipping runs of priv_ra8_reflow_css_is_ws() characters
  * and recording the start and length of each non-whitespace token in the parallel
  * @p part_p / @p part_n arrays. Returns -1 early when the part count would exceed
  * (k_ra8_css_max_anc + 1), enforcing the maximum ancestor depth. Both output
@@ -313,14 +313,15 @@ priv_parse_selector(ra8_css_sheet_t* sheet, const char* s, size_t len, ra8_css_r
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int32_t priv_split_compounds(const char* s, size_t len, const char** part_p, size_t* part_n)
+static int32_t
+internal_split_compounds(const char* s, size_t len, const char** part_p, size_t* part_n)
 {
   size_t nparts = 0U;
   size_t i      = 0U;
   /* Bounded: i advances to len; each pass consumes >=1 char after the ws skip. */
   while (i < len) {
-    /* mcdc-deactivated: priv_split_compounds is only ever called with a whitespace-trimmed selector (ra8_reflow_css_trim in priv_parse_selector_list and the block dispatcher), so there is no trailing whitespace for this inner skip to consume up to len; the (i < len) false arm is unreachable on any public path. */
-    while ((i < len) && ra8_reflow_css_is_ws(s[i])) {
+    /* mcdc-deactivated: internal_split_compounds is only ever called with a whitespace-trimmed selector (priv_ra8_reflow_css_trim in internal_parse_selector_list and the block dispatcher), so there is no trailing whitespace for this inner skip to consume up to len; the (i < len) false arm is unreachable on any public path. */
+    while ((i < len) && priv_ra8_reflow_css_is_ws(s[i])) {
       ++i;
     }
     if (i >= len) {
@@ -330,7 +331,7 @@ static int32_t priv_split_compounds(const char* s, size_t len, const char** part
       return -1; /* more than one subject + k_ra8_css_max_anc ancestor parts */
     }
     const size_t start = i;
-    while ((i < len) && !ra8_reflow_css_is_ws(s[i])) {
+    while ((i < len) && !priv_ra8_reflow_css_is_ws(s[i])) {
       ++i;
     }
     part_p[nparts] = &s[start];
@@ -343,13 +344,13 @@ static int32_t priv_split_compounds(const char* s, size_t len, const char** part
 /**
  * @brief Parse a (possibly descendant) selector string into @p rule.
  *
- * @details Splits @p s on whitespace via priv_split_compounds() to isolate the
+ * @details Splits @p s on whitespace via internal_split_compounds() to isolate the
  * subject compound (last token) and ancestor compounds (preceding tokens). The
  * subject is parsed into @p rule's sel_tag, class, and id fields via
- * priv_parse_selector(). Each ancestor is parsed into a temporary rule and its
+ * internal_parse_selector(). Each ancestor is parsed into a temporary rule and its
  * constraints are stored in @p rule->anc[] in selector order (outermost first),
  * with @p rule->anc_count set to the number of ancestor parts. Returns false
- * when priv_split_compounds() returns <= 0, or any compound fails to parse.
+ * when internal_split_compounds() returns <= 0, or any compound fails to parse.
  *
  * @param[in,out] sheet Sheet whose name pool receives interned class/id names.
  * @param[in]     s     Selector text (may include whitespace for descendants).
@@ -369,25 +370,27 @@ static int32_t priv_split_compounds(const char* s, size_t len, const char** part
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool
-priv_parse_complex_selector(ra8_css_sheet_t* sheet, const char* s, size_t len, ra8_css_rule_t* rule)
+static bool internal_parse_complex_selector(ra8_css_sheet_t* sheet,
+                                            const char*      s,
+                                            size_t           len,
+                                            ra8_css_rule_t*  rule)
 {
   const char*   part_p[(size_t)k_ra8_css_max_anc + 1U] = {};
   size_t        part_n[(size_t)k_ra8_css_max_anc + 1U] = {};
-  const int32_t nparts = priv_split_compounds(s, len, part_p, part_n);
+  const int32_t nparts = internal_split_compounds(s, len, part_p, part_n);
   if (nparts <= 0) {
     return false;
   }
   const size_t np = (size_t)nparts;
   /* Last part = subject compound. */
-  if (!priv_parse_selector(sheet, part_p[np - 1U], part_n[np - 1U], rule)) {
+  if (!internal_parse_selector(sheet, part_p[np - 1U], part_n[np - 1U], rule)) {
     return false;
   }
   /* Earlier parts = ancestor constraints (outermost first). */
   rule->anc_count = (uint8_t)(np - 1U);
   for (size_t a = 0U; (a + 1U) < np; ++a) {
     ra8_css_rule_t tmp = {};
-    if (!priv_parse_selector(sheet, part_p[a], part_n[a], &tmp)) {
+    if (!internal_parse_selector(sheet, part_p[a], part_n[a], &tmp)) {
       return false;
     }
     rule->anc[a].tag       = tmp.sel_tag;
@@ -423,7 +426,7 @@ priv_parse_complex_selector(ra8_css_sheet_t* sheet, const char* s, size_t len, r
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_push_rule(ra8_css_sheet_t* sheet, const ra8_css_rule_t* rule)
+static void internal_push_rule(ra8_css_sheet_t* sheet, const ra8_css_rule_t* rule)
 {
   if (sheet->rule_count >= (uint16_t)k_ra8_css_max_rules) {
     return;
@@ -439,8 +442,8 @@ static void priv_push_rule(ra8_css_sheet_t* sheet, const ra8_css_rule_t* rule)
  *
  * @details Iterates over comma-delimited selectors in @p sel[0..sel_len), trims
  * each individual selector, constructs a fresh ra8_css_rule_t carrying @p decl,
- * and attempts to parse the selector via priv_parse_complex_selector(). Rules
- * that parse successfully are appended to @p sheet via priv_push_rule(); those
+ * and attempts to parse the selector via internal_parse_complex_selector(). Rules
+ * that parse successfully are appended to @p sheet via internal_push_rule(); those
  * that fail to parse are silently discarded. The loop is bounded by @p sel_len;
  * each iteration advances past the next comma.
  *
@@ -461,10 +464,10 @@ static void priv_push_rule(ra8_css_sheet_t* sheet, const ra8_css_rule_t* rule)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_parse_selector_list(ra8_css_sheet_t* sheet,
-                                     const char*      sel,
-                                     size_t           sel_len,
-                                     ra8_css_style_t  decl)
+static void internal_parse_selector_list(ra8_css_sheet_t* sheet,
+                                         const char*      sel,
+                                         size_t           sel_len,
+                                         ra8_css_style_t  decl)
 {
   size_t i = 0U;
   while (i < sel_len) {
@@ -473,11 +476,11 @@ static void priv_parse_selector_list(ra8_css_sheet_t* sheet,
       ++comma;
     }
     size_t         one_len = comma - i;
-    const char*    one     = ra8_reflow_css_trim(&sel[i], &one_len);
+    const char*    one     = priv_ra8_reflow_css_trim(&sel[i], &one_len);
     ra8_css_rule_t rule    = {};
     rule.decl              = decl;
-    if (priv_parse_complex_selector(sheet, one, one_len, &rule)) {
-      priv_push_rule(sheet, &rule);
+    if (internal_parse_complex_selector(sheet, one, one_len, &rule)) {
+      internal_push_rule(sheet, &rule);
     }
     i = comma + 1U;
   }
@@ -490,7 +493,7 @@ static void priv_parse_selector_list(ra8_css_sheet_t* sheet,
 
 /** @brief Strip one layer of matching `'`/`"` quotes from span @p s[0..*len). */
 RA8_INTERNAL
-static const char* priv_strip_quotes(const char* s, size_t* len)
+static const char* internal_strip_quotes(const char* s, size_t* len)
 {
   if ((*len >= 2U) && ((s[0] == '"') || (s[0] == '\'')) && (s[*len - 1U] == s[0])) {
     *len -= 2U;
@@ -504,7 +507,7 @@ static const char* priv_strip_quotes(const char* s, size_t* len)
  *
  * @details Scans @p val[0..vlen) for the first case-insensitive "url(" prefix,
  * then locates the matching closing ')' and trims whitespace and one layer of
- * matching single or double quotes from the content via priv_strip_quotes().
+ * matching single or double quotes from the content via internal_strip_quotes().
  * On success, @p *url and @p *ulen receive the path span (pointing into @p val)
  * and the function returns true. Returns false when no "url(" is found or the
  * extracted path is empty after trimming.
@@ -527,11 +530,11 @@ static const char* priv_strip_quotes(const char* s, size_t* len)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_extract_url(const char* val, size_t vlen, const char** url, size_t* ulen)
+static bool internal_extract_url(const char* val, size_t vlen, const char** url, size_t* ulen)
 {
   /* Bounded: at most (vlen - 3) windows; i advances by 1 each step. */
   for (size_t i = 0U; (i + (size_t)k_priv_url_len) <= vlen; ++i) {
-    if (!ra8_reflow_css_ci_eq(&val[i], (size_t)k_priv_url_len, "url(")) {
+    if (!priv_ra8_reflow_css_ci_eq(&val[i], (size_t)k_priv_url_len, "url(")) {
       continue;
     }
     size_t a = i + (size_t)k_priv_url_len;
@@ -540,8 +543,8 @@ static bool priv_extract_url(const char* val, size_t vlen, const char** url, siz
       ++b;
     }
     size_t      n = b - a;
-    const char* p = ra8_reflow_css_trim(&val[a], &n);
-    p             = priv_strip_quotes(p, &n);
+    const char* p = priv_ra8_reflow_css_trim(&val[a], &n);
+    p             = internal_strip_quotes(p, &n);
     if (n == 0U) {
       return false;
     }
@@ -557,7 +560,7 @@ static bool priv_extract_url(const char* val, size_t vlen, const char** url, siz
  *
  * @details Returns true when @p val[0..vlen) matches (case-insensitively) any of
  * the CSS bold-weight keywords: "bold", "bolder", "600", "700", "800", or "900".
- * All comparisons are delegated to ra8_reflow_css_ci_eq().
+ * All comparisons are delegated to priv_ra8_reflow_css_ci_eq().
  *
  * @param[in] val  CSS font-weight value span (not NUL-terminated).
  * @param[in] vlen Number of bytes in @p val.
@@ -575,18 +578,20 @@ static bool priv_extract_url(const char* val, size_t vlen, const char** url, siz
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_is_bold_kw(const char* val, size_t vlen)
+static bool internal_is_bold_kw(const char* val, size_t vlen)
 {
-  return ra8_reflow_css_ci_eq(val, vlen, "bold") || ra8_reflow_css_ci_eq(val, vlen, "bolder") ||
-         ra8_reflow_css_ci_eq(val, vlen, "600") || ra8_reflow_css_ci_eq(val, vlen, "700") ||
-         ra8_reflow_css_ci_eq(val, vlen, "800") || ra8_reflow_css_ci_eq(val, vlen, "900");
+  return priv_ra8_reflow_css_ci_eq(val, vlen, "bold") ||
+         priv_ra8_reflow_css_ci_eq(val, vlen, "bolder") ||
+         priv_ra8_reflow_css_ci_eq(val, vlen, "600") ||
+         priv_ra8_reflow_css_ci_eq(val, vlen, "700") ||
+         priv_ra8_reflow_css_ci_eq(val, vlen, "800") || priv_ra8_reflow_css_ci_eq(val, vlen, "900");
 }
 
 /**
  * @brief True for a `font-style` keyword that selects the italic face.
  *
  * @details Returns true when @p val[0..vlen) matches (case-insensitively) either
- * "italic" or "oblique" via ra8_reflow_css_ci_eq(). All other values (e.g., "normal")
+ * "italic" or "oblique" via priv_ra8_reflow_css_ci_eq(). All other values (e.g., "normal")
  * return false.
  *
  * @param[in] val  CSS font-style value span (not NUL-terminated).
@@ -605,9 +610,10 @@ static bool priv_is_bold_kw(const char* val, size_t vlen)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_is_italic_kw(const char* val, size_t vlen)
+static bool internal_is_italic_kw(const char* val, size_t vlen)
 {
-  return ra8_reflow_css_ci_eq(val, vlen, "italic") || ra8_reflow_css_ci_eq(val, vlen, "oblique");
+  return priv_ra8_reflow_css_ci_eq(val, vlen, "italic") ||
+         priv_ra8_reflow_css_ci_eq(val, vlen, "oblique");
 }
 
 /**
@@ -616,9 +622,9 @@ static bool priv_is_italic_kw(const char* val, size_t vlen)
  * @details Handles the four recognised `@font-face` descriptors:
  *   - "font-family": strips quotes and interns the family name into @p sheet;
  *     stores (off, len) in @p face->family_off / family_len.
- *   - "font-weight": sets @p face->weight_bold via priv_is_bold_kw().
- *   - "font-style": sets @p face->style_italic via priv_is_italic_kw().
- *   - "src": extracts the first url() path via priv_extract_url() and interns it;
+ *   - "font-weight": sets @p face->weight_bold via internal_is_bold_kw().
+ *   - "font-style": sets @p face->style_italic via internal_is_italic_kw().
+ *   - "src": extracts the first url() path via internal_extract_url() and interns it;
  *     stores (off, len) in @p face->src_off / src_len.
  * All other descriptors (e.g., unicode-range) are silently ignored.
  *
@@ -640,30 +646,31 @@ static bool priv_is_italic_kw(const char* val, size_t vlen)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_face_apply(ra8_css_sheet_t*    sheet,
-                            const char*         prop,
-                            size_t              plen,
-                            const char*         val,
-                            size_t              vlen,
-                            ra8_css_fontface_t* face)
+static void internal_face_apply(ra8_css_sheet_t*    sheet,
+                                const char*         prop,
+                                size_t              plen,
+                                const char*         val,
+                                size_t              vlen,
+                                ra8_css_fontface_t* face)
 {
-  if (ra8_reflow_css_ci_eq(prop, plen, "font-family")) {
+  if (priv_ra8_reflow_css_ci_eq(prop, plen, "font-family")) {
     size_t      n   = vlen;
-    const char* fam = priv_strip_quotes(val, &n);
+    const char* fam = internal_strip_quotes(val, &n);
     uint16_t    off = 0U;
-    if ((n > 0U) && priv_intern_name(sheet, fam, n, &off)) {
+    if ((n > 0U) && internal_intern_name(sheet, fam, n, &off)) {
       face->family_off = off;
       face->family_len = (uint16_t)n;
     }
-  } else if (ra8_reflow_css_ci_eq(prop, plen, "font-weight")) {
-    face->weight_bold = priv_is_bold_kw(val, vlen) ? 1U : 0U;
-  } else if (ra8_reflow_css_ci_eq(prop, plen, "font-style")) {
-    face->style_italic = priv_is_italic_kw(val, vlen) ? 1U : 0U;
-  } else if (ra8_reflow_css_ci_eq(prop, plen, "src")) {
+  } else if (priv_ra8_reflow_css_ci_eq(prop, plen, "font-weight")) {
+    face->weight_bold = internal_is_bold_kw(val, vlen) ? 1U : 0U;
+  } else if (priv_ra8_reflow_css_ci_eq(prop, plen, "font-style")) {
+    face->style_italic = internal_is_italic_kw(val, vlen) ? 1U : 0U;
+  } else if (priv_ra8_reflow_css_ci_eq(prop, plen, "src")) {
     const char* url  = nullptr;
     size_t      ulen = 0U;
     uint16_t    off  = 0U;
-    if (priv_extract_url(val, vlen, &url, &ulen) && priv_intern_name(sheet, url, ulen, &off)) {
+    if (internal_extract_url(val, vlen, &url, &ulen) &&
+        internal_intern_name(sheet, url, ulen, &off)) {
       face->src_off = off;
       face->src_len = (uint16_t)ulen;
     }
@@ -672,7 +679,7 @@ static void priv_face_apply(ra8_css_sheet_t*    sheet,
   }
 }
 
-/** @brief Callback invoked by ::priv_for_each_decl on each `prop:value` pair. */
+/** @brief Callback invoked by ::internal_for_each_decl on each `prop:value` pair. */
 typedef void (
   *priv_decl_fn)(void* ctx, const char* prop, size_t plen, const char* val, size_t vlen);
 
@@ -701,7 +708,7 @@ typedef void (
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_for_each_decl(const char* s, size_t len, priv_decl_fn cb, void* ctx)
+static void internal_for_each_decl(const char* s, size_t len, priv_decl_fn cb, void* ctx)
 {
   size_t i = 0U;
   /* Bounded: each pass advances past the next ';' (or to len). */
@@ -716,9 +723,9 @@ static void priv_for_each_decl(const char* s, size_t len, priv_decl_fn cb, void*
     }
     if (colon < semi) {
       size_t      plen = colon - i;
-      const char* prop = ra8_reflow_css_trim(&s[i], &plen);
+      const char* prop = priv_ra8_reflow_css_trim(&s[i], &plen);
       size_t      vlen = semi - (colon + 1U);
-      const char* val  = ra8_reflow_css_trim(&s[colon + 1U], &vlen);
+      const char* val  = priv_ra8_reflow_css_trim(&s[colon + 1U], &vlen);
       if ((plen > 0U) && (vlen > 0U)) {
         cb(ctx, prop, plen, val, vlen);
       }
@@ -734,12 +741,12 @@ typedef struct {
 } priv_face_ctx_t;
 
 /**
- * @brief priv_decl_fn adapter that routes one descriptor to priv_face_apply().
+ * @brief priv_decl_fn adapter that routes one descriptor to internal_face_apply().
  *
  * @details Casts @p ctx to a priv_face_ctx_t pointer and forwards the property
- * and value spans to priv_face_apply() with the sheet and face from the context.
+ * and value spans to internal_face_apply() with the sheet and face from the context.
  * This function is designed to be passed as the @p cb argument of
- * priv_for_each_decl() when parsing an `@font-face` block.
+ * internal_for_each_decl() when parsing an `@font-face` block.
  *
  * @param[in] ctx  Pointer to a priv_face_ctx_t (sheet + face); must not be NULL.
  * @param[in] prop Property name span (not NUL-terminated).
@@ -751,24 +758,24 @@ typedef struct {
  *
  * @pre @p ctx is a non-NULL priv_face_ctx_t pointer with valid sheet and face fields.
  * @pre @p prop points to at least @p plen readable bytes.
- * @post priv_face_apply() has been called with the unwrapped context fields.
+ * @post internal_face_apply() has been called with the unwrapped context fields.
  * @post @p prop and @p val are not modified.
  *
- * @note Thread-safety matches that of priv_face_apply().
+ * @note Thread-safety matches that of internal_face_apply().
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_face_cb(void* ctx, const char* prop, size_t plen, const char* val, size_t vlen)
+static void internal_face_cb(void* ctx, const char* prop, size_t plen, const char* val, size_t vlen)
 {
   priv_face_ctx_t* c = (priv_face_ctx_t*)ctx;
-  priv_face_apply(c->sheet, prop, plen, val, vlen, c->face);
+  internal_face_apply(c->sheet, prop, plen, val, vlen, c->face);
 }
 
 /**
  * @brief Parse one `@font-face { ... }` block; append it if family + src set.
  *
- * @details Iterates over the declaration block via priv_for_each_decl() with
- * priv_face_cb() as the callback to accumulate font-family, font-weight,
+ * @details Iterates over the declaration block via internal_for_each_decl() with
+ * internal_face_cb() as the callback to accumulate font-family, font-weight,
  * font-style, and src into a local ra8_css_fontface_t. The face is appended to
  * @p sheet->faces[] only when both family_len and src_len are non-zero. If the
  * sheet is already at k_ra8_css_max_faces capacity, the function returns without
@@ -790,14 +797,14 @@ static void priv_face_cb(void* ctx, const char* prop, size_t plen, const char* v
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_parse_fontface(ra8_css_sheet_t* sheet, const char* block, size_t len)
+static void internal_parse_fontface(ra8_css_sheet_t* sheet, const char* block, size_t len)
 {
   if (sheet->face_count >= (uint16_t)k_ra8_css_max_faces) {
     return;
   }
   ra8_css_fontface_t face = {};
   priv_face_ctx_t    ctx  = {.sheet = sheet, .face = &face};
-  priv_for_each_decl(block, len, priv_face_cb, &ctx);
+  internal_for_each_decl(block, len, internal_face_cb, &ctx);
   if ((face.family_len != 0U) && (face.src_len != 0U)) {
     sheet->faces[sheet->face_count] = face;
     sheet->face_count               = (uint16_t)(sheet->face_count + 1U);
@@ -815,10 +822,10 @@ typedef struct {
  *
  * @details Casts @p ctx to a priv_family_ctx_t pointer. Ignores the callback
  * unless @p prop matches "font-family". When it does, strips quotes from @p val
- * via priv_strip_quotes() and interns the result into the sheet's name pool.
+ * via internal_strip_quotes() and interns the result into the sheet's name pool.
  * On success, sets the k_ra8_css_set_family bit in @p decl->set and stores
  * (off, len) in @p decl->family_off / family_len. This function is designed to
- * be used as the @p cb argument of priv_for_each_decl().
+ * be used as the @p cb argument of internal_for_each_decl().
  *
  * @param[in] ctx  Pointer to a priv_family_ctx_t (sheet + decl); must not be NULL.
  * @param[in] prop Property name span (not NUL-terminated).
@@ -834,20 +841,21 @@ typedef struct {
  *       family fields set and k_ra8_css_set_family OR'd into @p ctx->decl->set.
  * @post @p prop and @p val are not modified.
  *
- * @note Thread-safety matches that of priv_intern_name().
+ * @note Thread-safety matches that of internal_intern_name().
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_family_cb(void* ctx, const char* prop, size_t plen, const char* val, size_t vlen)
+static void
+internal_family_cb(void* ctx, const char* prop, size_t plen, const char* val, size_t vlen)
 {
   priv_family_ctx_t* c = (priv_family_ctx_t*)ctx;
-  if (!ra8_reflow_css_ci_eq(prop, plen, "font-family")) {
+  if (!priv_ra8_reflow_css_ci_eq(prop, plen, "font-family")) {
     return;
   }
   size_t      n   = vlen;
-  const char* fam = priv_strip_quotes(val, &n);
+  const char* fam = internal_strip_quotes(val, &n);
   uint16_t    off = 0U;
-  if ((n > 0U) && priv_intern_name(c->sheet, fam, n, &off)) {
+  if ((n > 0U) && internal_intern_name(c->sheet, fam, n, &off)) {
     c->decl->set        = (uint8_t)(c->decl->set | (uint8_t)k_ra8_css_set_family);
     c->decl->family_off = off;
     c->decl->family_len = (uint16_t)n;
@@ -857,7 +865,7 @@ static void priv_family_cb(void* ctx, const char* prop, size_t plen, const char*
 /**
  * @brief Scan a rule's declaration block for `font-family`, interning it.
  *
- * @details Calls priv_for_each_decl() with priv_family_cb() to find and intern
+ * @details Calls internal_for_each_decl() with internal_family_cb() to find and intern
  * the "font-family" property from @p block into @p sheet->names and record it in
  * @p decl. This is a thin convenience wrapper that sets up a priv_family_ctx_t
  * and delegates all logic to the callback.
@@ -879,11 +887,13 @@ static void priv_family_cb(void* ctx, const char* prop, size_t plen, const char*
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void
-priv_extract_family(ra8_css_sheet_t* sheet, const char* block, size_t len, ra8_css_style_t* decl)
+static void internal_extract_family(ra8_css_sheet_t* sheet,
+                                    const char*      block,
+                                    size_t           len,
+                                    ra8_css_style_t* decl)
 {
   priv_family_ctx_t ctx = {.sheet = sheet, .decl = decl};
-  priv_for_each_decl(block, len, priv_family_cb, &ctx);
+  internal_for_each_decl(block, len, internal_family_cb, &ctx);
 }
 
 /**
@@ -891,7 +901,7 @@ priv_extract_family(ra8_css_sheet_t* sheet, const char* block, size_t len, ra8_c
  *
  * @details Compares the trimmed at-keyword @p sel against "@font-face"
  * (case-insensitive). When it matches, delegates parsing of the block to
- * priv_parse_fontface(). All other at-rules (`@media`, `@import`, `@page`,
+ * internal_parse_fontface(). All other at-rules (`@media`, `@import`, `@page`,
  * etc.) are out of the v1 scope and are silently discarded.
  *
  * @param[in,out] sheet     Sheet that may receive the parsed font face.
@@ -904,21 +914,21 @@ priv_extract_family(ra8_css_sheet_t* sheet, const char* block, size_t len, ra8_c
  *
  * @pre @p sheet is non-NULL.
  * @pre @p sel points to at least @p sel_len readable bytes.
- * @post When @p sel is "@font-face", priv_parse_fontface() has been called.
+ * @post When @p sel is "@font-face", internal_parse_fontface() has been called.
  * @post @p sel and @p block are not modified.
  *
  * @note Thread-safe with respect to distinct @p sheet instances.
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_parse_at_rule(ra8_css_sheet_t* sheet,
-                               const char*      sel,
-                               size_t           sel_len,
-                               const char*      block,
-                               size_t           block_len)
+static void internal_parse_at_rule(ra8_css_sheet_t* sheet,
+                                   const char*      sel,
+                                   size_t           sel_len,
+                                   const char*      block,
+                                   size_t           block_len)
 {
-  if (ra8_reflow_css_ci_eq(sel, sel_len, "@font-face")) {
-    priv_parse_fontface(sheet, block, block_len);
+  if (priv_ra8_reflow_css_ci_eq(sel, sel_len, "@font-face")) {
+    internal_parse_fontface(sheet, block, block_len);
   }
   /* @media / @import / @page / ... are out of v1 scope -> skipped. */
 }
@@ -927,10 +937,10 @@ static void priv_parse_at_rule(ra8_css_sheet_t* sheet,
  * @brief Dispatch one `selector|@rule { block }`: at-rule vs. style rule.
  *
  * @details Trims @p sel to obtain the effective keyword. When the first byte is
- * '@', routes to priv_parse_at_rule(). Otherwise, parses the declaration block
- * via ra8_reflow_css_parse_decls() and priv_extract_family(), then distributes the
+ * '@', routes to internal_parse_at_rule(). Otherwise, parses the declaration block
+ * via priv_ra8_reflow_css_parse_decls() and internal_extract_family(), then distributes the
  * resulting style to every comma-separated selector in @p sel via
- * priv_parse_selector_list().
+ * internal_parse_selector_list().
  *
  * @param[in,out] sheet     Sheet receiving parsed rules or font faces.
  * @param[in]     sel       Selector or at-keyword text.
@@ -948,20 +958,20 @@ static void priv_parse_at_rule(ra8_css_sheet_t* sheet,
  * @note Thread-safe with respect to distinct @p sheet instances.
  * @since 0.1.0
  */
-void ra8_reflow_css_parse_one_block(ra8_css_sheet_t* sheet,
-                                    const char*      sel,
-                                    size_t           sel_len,
-                                    const char*      block,
-                                    size_t           block_len)
+void priv_ra8_reflow_css_parse_one_block(ra8_css_sheet_t* sheet,
+                                         const char*      sel,
+                                         size_t           sel_len,
+                                         const char*      block,
+                                         size_t           block_len)
 {
   size_t      tlen = sel_len;
-  const char* tsel = ra8_reflow_css_trim(sel, &tlen);
+  const char* tsel = priv_ra8_reflow_css_trim(sel, &tlen);
   if ((tlen > 0U) && (tsel[0] == '@')) {
-    priv_parse_at_rule(sheet, tsel, tlen, block, block_len);
+    internal_parse_at_rule(sheet, tsel, tlen, block, block_len);
     return;
   }
   ra8_css_style_t decl = {};
-  ra8_reflow_css_parse_decls(block, block_len, &decl);
-  priv_extract_family(sheet, block, block_len, &decl);
-  priv_parse_selector_list(sheet, sel, sel_len, decl);
+  priv_ra8_reflow_css_parse_decls(block, block_len, &decl);
+  internal_extract_family(sheet, block, block_len, &decl);
+  internal_parse_selector_list(sheet, sel, sel_len, decl);
 }

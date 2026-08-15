@@ -5,8 +5,8 @@
  * @details The viewBox->box coordinate map plus the full 2x3 affine
  * `transform=` machinery (translate / scale / rotate / skewX / skewY / matrix,
  * composed and applied per point). Provides the axis-aligned fast-path mappers
- * (::ra8_svgp_mx / ::ra8_svgp_my / ::ra8_svgp_sx) and the general
- * ::ra8_svgp_map_point used by the shape and path stages. No DOM, no heap. See
+ * (::priv_ra8_svgp_mx / ::priv_ra8_svgp_my / ::priv_ra8_svgp_sx) and the general
+ * ::priv_ra8_svgp_map_point used by the shape and path stages. No DOM, no heap. See
  * ra8_reflow_svg_internal.h for the shared geometry types and helper contracts.
  *
  *
@@ -39,7 +39,7 @@ static const float s_svg_deg_half = 180.0F;
  * @details Computes @c (sx * t->ua) + t->ue as a float, then truncates to
  * @c int32_t. Valid only on the axis-aligned fast path where the shear
  * components @c t->ub and @c t->uc are both zero. When the transform has
- * rotation or shear, use @c ra8_svgp_map_point instead to apply the full affine.
+ * rotation or shear, use @c priv_ra8_svgp_map_point instead to apply the full affine.
  *
  * @param[in] t   Active coordinate transform; must not be NULL.
  * @param[in] sx  User-space X coordinate to transform.
@@ -59,7 +59,7 @@ static const float s_svg_deg_half = 180.0F;
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int32_t priv_ux(const svg_xform_t* t, int32_t sx)
+static int32_t internal_ux(const svg_xform_t* t, int32_t sx)
 {
   return (int32_t)(((float)sx * t->ua) + t->ue);
 }
@@ -70,7 +70,7 @@ static int32_t priv_ux(const svg_xform_t* t, int32_t sx)
  * @details Computes @c (sy * t->ud) + t->uf as a float, then truncates to
  * @c int32_t. Valid only on the axis-aligned fast path where the shear
  * components @c t->ub and @c t->uc are both zero. When the transform has
- * rotation or shear, use @c ra8_svgp_map_point instead to apply the full affine.
+ * rotation or shear, use @c priv_ra8_svgp_map_point instead to apply the full affine.
  *
  * @param[in] t   Active coordinate transform; must not be NULL.
  * @param[in] sy  User-space Y coordinate to transform.
@@ -90,7 +90,7 @@ static int32_t priv_ux(const svg_xform_t* t, int32_t sx)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int32_t priv_uy(const svg_xform_t* t, int32_t sy)
+static int32_t internal_uy(const svg_xform_t* t, int32_t sy)
 {
   return (int32_t)(((float)sy * t->ud) + t->uf);
 }
@@ -101,7 +101,7 @@ static int32_t priv_uy(const svg_xform_t* t, int32_t sy)
  * @details Checks whether @c t->ub or @c t->uc is non-zero. When either is
  * non-zero, the axis-aligned fast-path primitives (ra8_gfx_rect, ra8_gfx_circle)
  * cannot represent the shape correctly and callers must fall back to the polygon
- * path via @c ra8_svgp_map_point applied to each vertex.
+ * path via @c priv_ra8_svgp_map_point applied to each vertex.
  *
  * @param[in] t Active coordinate transform; must not be NULL.
  *
@@ -120,7 +120,7 @@ static int32_t priv_uy(const svg_xform_t* t, int32_t sy)
  *
  * @since 0.1.0
  */
-bool ra8_svgp_has_rot(const svg_xform_t* t)
+bool priv_ra8_svgp_has_rot(const svg_xform_t* t)
 {
   return (t->ub != 0.0F) || (t->uc != 0.0F);
 }
@@ -130,7 +130,7 @@ bool ra8_svgp_has_rot(const svg_xform_t* t)
  *
  * @details Generalized point map for rotated/sheared/gradient shapes. When the
  * affine is axis-aligned (ub==0 && uc==0) the result is byte-identical to
- * @c (ra8_svgp_mx(ux), ra8_svgp_my(uy)), so routing the polygon/path/line emitters
+ * @c (priv_ra8_svgp_mx(ux), priv_ra8_svgp_my(uy)), so routing the polygon/path/line emitters
  * through it does not change the untransformed render.
  *
  * @param[in]  t   Active transform; must not be NULL.
@@ -150,7 +150,7 @@ bool ra8_svgp_has_rot(const svg_xform_t* t)
  *
  * @since 0.1.0
  */
-void ra8_svgp_map_point(const svg_xform_t* t, int32_t ux, int32_t uy, int32_t* fx, int32_t* fy)
+void priv_ra8_svgp_map_point(const svg_xform_t* t, int32_t ux, int32_t uy, int32_t* fx, int32_t* fy)
 {
   const int32_t px = (int32_t)(((float)ux * t->ua) + ((float)uy * t->uc) + t->ue);
   const int32_t py = (int32_t)(((float)ux * t->ub) + ((float)uy * t->ud) + t->uf);
@@ -161,11 +161,11 @@ void ra8_svgp_map_point(const svg_xform_t* t, int32_t ux, int32_t uy, int32_t* f
 /**
  * @brief Map a user-space x coordinate to a framebuffer x coordinate.
  *
- * @details Applies the axis-aligned user transform via @c priv_ux, then maps
+ * @details Applies the axis-aligned user transform via @c internal_ux, then maps
  * the result through the viewBox-to-box scaling: bx + (ux - vx) * bw / vw.
  * Uses 64-bit intermediate arithmetic to avoid overflow on large coordinates.
  * Valid only when @c t->ub == 0.0F and @c t->uc == 0.0F; for the general
- * case use @c ra8_svgp_map_point.
+ * case use @c priv_ra8_svgp_map_point.
  *
  * @param[in] t   Active coordinate transform; must not be NULL.
  * @param[in] sx  User-space X coordinate to map.
@@ -184,20 +184,20 @@ void ra8_svgp_map_point(const svg_xform_t* t, int32_t ux, int32_t uy, int32_t* f
  *
  * @since 0.1.0
  */
-int32_t ra8_svgp_mx(const svg_xform_t* t, int32_t sx)
+int32_t priv_ra8_svgp_mx(const svg_xform_t* t, int32_t sx)
 {
-  const int32_t ux = priv_ux(t, sx);
+  const int32_t ux = internal_ux(t, sx);
   return t->bx + (int32_t)(((int64_t)(ux - t->vx) * (int64_t)t->bw) / (int64_t)t->vw);
 }
 
 /**
  * @brief Map a user-space y coordinate to a framebuffer y coordinate.
  *
- * @details Applies the axis-aligned user transform via @c priv_uy, then maps
+ * @details Applies the axis-aligned user transform via @c internal_uy, then maps
  * the result through the viewBox-to-box scaling: by + (uy - vy) * bh / vh.
  * Uses 64-bit intermediate arithmetic to avoid overflow on large coordinates.
  * Valid only when @c t->ub == 0.0F and @c t->uc == 0.0F; for the general
- * case use @c ra8_svgp_map_point.
+ * case use @c priv_ra8_svgp_map_point.
  *
  * @param[in] t   Active coordinate transform; must not be NULL.
  * @param[in] sy  User-space Y coordinate to map.
@@ -216,9 +216,9 @@ int32_t ra8_svgp_mx(const svg_xform_t* t, int32_t sx)
  *
  * @since 0.1.0
  */
-int32_t ra8_svgp_my(const svg_xform_t* t, int32_t sy)
+int32_t priv_ra8_svgp_my(const svg_xform_t* t, int32_t sy)
 {
-  const int32_t uy = priv_uy(t, sy);
+  const int32_t uy = internal_uy(t, sy);
   return t->by + (int32_t)(((int64_t)(uy - t->vy) * (int64_t)t->bh) / (int64_t)t->vh);
 }
 
@@ -247,7 +247,7 @@ int32_t ra8_svgp_my(const svg_xform_t* t, int32_t sy)
  *
  * @since 0.1.0
  */
-int32_t ra8_svgp_sx(const svg_xform_t* t, int32_t sw)
+int32_t priv_ra8_svgp_sx(const svg_xform_t* t, int32_t sw)
 {
   const int32_t uw = (int32_t)((float)sw * t->ua);
   return (int32_t)(((int64_t)uw * (int64_t)t->bw) / (int64_t)t->vw);
@@ -282,9 +282,9 @@ int32_t ra8_svgp_sx(const svg_xform_t* t, int32_t sw)
  *
  * @since 0.1.0
  */
-float ra8_svgp_numf(const uint8_t* s, size_t len, size_t* i)
+float priv_ra8_svgp_numf(const uint8_t* s, size_t len, size_t* i)
 {
-  while ((*i < len) && (ra8_svgp_ws((char)s[*i]) || (s[*i] == ','))) {
+  while ((*i < len) && (priv_ra8_svgp_ws((char)s[*i]) || (s[*i] == ','))) {
     ++(*i);
   }
   float sgn = 1.0F;
@@ -316,7 +316,7 @@ float ra8_svgp_numf(const uint8_t* s, size_t len, size_t* i)
  * all other fields zero. This is the identity element for affine composition:
  * any affine composed with the identity returns the original affine unchanged.
  * Used to initialise the group transform stack and as the starting accumulator
- * in @c priv_parse_xform.
+ * in @c internal_parse_xform.
  *
  * @return svg_utf_t The 2x3 identity affine (a=d=1, b=c=e=f=0).
  * @retval svg_utf_t{.a=1,.b=0,.c=0,.d=1,.e=0,.f=0}  Always.
@@ -333,7 +333,7 @@ float ra8_svgp_numf(const uint8_t* s, size_t len, size_t* i)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static svg_utf_t priv_utf_identity(void)
+static svg_utf_t internal_utf_identity(void)
 {
   svg_utf_t id = {.a = 1.0F, .b = 0.0F, .c = 0.0F, .d = 1.0F, .e = 0.0F, .f = 0.0F};
   return id;
@@ -347,7 +347,7 @@ static svg_utf_t priv_utf_identity(void)
  * rule. The translation components are handled correctly: @c e and @c f of the
  * result include the full composite translation. Used to accumulate a series of
  * SVG transform functions (translate, scale, rotate, skew, matrix) into one
- * affine that can be applied per-point in @c ra8_svgp_map_point.
+ * affine that can be applied per-point in @c priv_ra8_svgp_map_point.
  *
  * @param[in] a Outer (post) affine; applied second.
  * @param[in] b Inner (pre) affine; applied first.
@@ -367,7 +367,7 @@ static svg_utf_t priv_utf_identity(void)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static svg_utf_t priv_utf_compose(svg_utf_t a, svg_utf_t b)
+static svg_utf_t internal_utf_compose(svg_utf_t a, svg_utf_t b)
 {
   svg_utf_t r = {.a = (a.a * b.a) + (a.c * b.b),
                  .b = (a.b * b.a) + (a.d * b.b),
@@ -384,8 +384,8 @@ static svg_utf_t priv_utf_compose(svg_utf_t a, svg_utf_t b)
  * @details A byte position is considered the start of a number when it is a
  * decimal digit ('0'-'9'), a sign character ('-' or '+'), or a decimal point
  * ('.'). Returns false immediately when @p at >= @p len to guard against
- * out-of-bounds access. Used by @c priv_xform_read to decide whether to call
- * @c ra8_svgp_numf for the next argument in a transform function's argument list.
+ * out-of-bounds access. Used by @c internal_xform_read to decide whether to call
+ * @c priv_ra8_svgp_numf for the next argument in a transform function's argument list.
  *
  * @param[in] s   Byte buffer containing the transform value; must not be NULL.
  * @param[in] len Total valid bytes in @p s.
@@ -407,7 +407,7 @@ static svg_utf_t priv_utf_compose(svg_utf_t a, svg_utf_t b)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_is_num_start(const uint8_t* s, size_t len, size_t at)
+static bool internal_is_num_start(const uint8_t* s, size_t len, size_t at)
 {
   if (at >= len) {
     return false;
@@ -418,7 +418,7 @@ static bool priv_is_num_start(const uint8_t* s, size_t len, size_t at)
 
 /**
  * @enum svg_xf_kind_t
- * @brief `transform=` function kinds recognised by ::priv_parse_xform.
+ * @brief `transform=` function kinds recognised by ::internal_parse_xform.
  */
 typedef enum : uint8_t {
   k_svg_xf_none      = 0U, /**< Unrecognised function -> skipped. */
@@ -468,7 +468,7 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static float priv_deg2rad(float deg)
+static float internal_deg2rad(float deg)
 {
   return deg * (s_svg_pi / s_svg_deg_half);
 }
@@ -477,11 +477,11 @@ static float priv_deg2rad(float deg)
  * @brief Read up to 6 float arguments from a transform function's '(...)' list.
  *
  * @details Advances @p *j past any leading whitespace/commas, then calls
- * @c ra8_svgp_numf for each number that begins at the current cursor. The loop
- * terminates when @c priv_is_num_start returns false or the
+ * @c priv_ra8_svgp_numf for each number that begins at the current cursor. The loop
+ * terminates when @c internal_is_num_start returns false or the
  * @c k_svg_argc_cube limit (6) is reached. On return @p *j points past all
- * consumed arguments. Used by @c priv_parse_xform to populate the argument
- * array passed to @c priv_xform_build.
+ * consumed arguments. Used by @c internal_parse_xform to populate the argument
+ * array passed to @c internal_xform_build.
  *
  * @param[in]     v     Byte buffer containing the transform value text; must not be NULL.
  * @param[in]     vlen  Total valid bytes in @p v.
@@ -503,18 +503,18 @@ static float priv_deg2rad(float deg)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int32_t priv_xform_read(const uint8_t* v, size_t vlen, size_t* j, float* args)
+static int32_t internal_xform_read(const uint8_t* v, size_t vlen, size_t* j, float* args)
 {
   int32_t na = 0;
-  /* Bounded: <= k_svg_argc_cube args; each ra8_svgp_numf advances *j. */
+  /* Bounded: <= k_svg_argc_cube args; each priv_ra8_svgp_numf advances *j. */
   while (na < (int32_t)k_svg_argc_cube) {
-    while ((*j < vlen) && (ra8_svgp_ws((char)v[*j]) || (v[*j] == ','))) {
+    while ((*j < vlen) && (priv_ra8_svgp_ws((char)v[*j]) || (v[*j] == ','))) {
       ++(*j);
     }
-    if (!priv_is_num_start(v, vlen, *j)) {
+    if (!internal_is_num_start(v, vlen, *j)) {
       break;
     }
-    args[na] = ra8_svgp_numf(v, vlen, j);
+    args[na] = priv_ra8_svgp_numf(v, vlen, j);
     ++na;
   }
   return na;
@@ -547,10 +547,10 @@ static int32_t priv_xform_read(const uint8_t* v, size_t vlen, size_t* j, float* 
  * @since 0.1.0
  */
 RA8_INTERNAL
-static svg_utf_t priv_xform_rotate(const float* args, int32_t na)
+static svg_utf_t internal_xform_rotate(const float* args, int32_t na)
 {
-  const float co = cosf(priv_deg2rad(args[0]));
-  const float si = sinf(priv_deg2rad(args[0]));
+  const float co = cosf(internal_deg2rad(args[0]));
+  const float si = sinf(internal_deg2rad(args[0]));
   const float cx = (na >= 3) ? args[1] : 0.0F;
   const float cy = (na >= 3) ? args[2] : 0.0F;
   return (svg_utf_t){.a = co,
@@ -566,7 +566,7 @@ static svg_utf_t priv_xform_rotate(const float* args, int32_t na)
  *
  * @details Switches on @p kind to construct the appropriate @c svg_utf_t:
  * translate fills @c e/@c f; scale fills @c a/@c d (uniform if na==1);
- * rotate delegates to @c priv_xform_rotate; skewX/skewY fill @c c or @c b
+ * rotate delegates to @c internal_xform_rotate; skewX/skewY fill @c c or @c b
  * via @c tanf; matrix copies all six components directly. An unrecognised
  * @p kind (k_svg_xf_none or default) returns the identity.
  *
@@ -589,7 +589,7 @@ static svg_utf_t priv_xform_rotate(const float* args, int32_t na)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static svg_utf_t priv_xform_build(svg_xf_kind_t kind, const float* args, int32_t na)
+static svg_utf_t internal_xform_build(svg_xf_kind_t kind, const float* args, int32_t na)
 {
   switch (kind) {
     case k_svg_xf_translate:
@@ -607,17 +607,17 @@ static svg_utf_t priv_xform_build(svg_xf_kind_t kind, const float* args, int32_t
                          .e = 0.0F,
                          .f = 0.0F};
     case k_svg_xf_rotate:
-      return priv_xform_rotate(args, na);
+      return internal_xform_rotate(args, na);
     case k_svg_xf_skewx:
       return (svg_utf_t){.a = 1.0F,
                          .b = 0.0F,
-                         .c = tanf(priv_deg2rad(args[0])),
+                         .c = tanf(internal_deg2rad(args[0])),
                          .d = 1.0F,
                          .e = 0.0F,
                          .f = 0.0F};
     case k_svg_xf_skewy:
       return (svg_utf_t){.a = 1.0F,
-                         .b = tanf(priv_deg2rad(args[0])),
+                         .b = tanf(internal_deg2rad(args[0])),
                          .c = 0.0F,
                          .d = 1.0F,
                          .e = 0.0F,
@@ -631,7 +631,7 @@ static svg_utf_t priv_xform_build(svg_xf_kind_t kind, const float* args, int32_t
                          .f = args[k_svg_xf_arg_f]};
     case k_svg_xf_none:
     default:
-      return priv_utf_identity();
+      return internal_utf_identity();
   }
 }
 
@@ -640,7 +640,7 @@ static svg_utf_t priv_xform_build(svg_xf_kind_t kind, const float* args, int32_t
  *
  * @details Tests the byte span at offset @p i against each recognised keyword
  * ("translate(", "scale(", "rotate(", "skewx(", "skewy(", "matrix(") using
- * @c ra8_svgp_starts_ci. Returns the first matching @c svg_xf_kind_t value, or
+ * @c priv_ra8_svgp_starts_ci. Returns the first matching @c svg_xf_kind_t value, or
  * @c k_svg_xf_none when no keyword matches. Case-insensitive to match the SVG
  * specification (though SVG uses lower case by convention).
  *
@@ -669,24 +669,24 @@ static svg_utf_t priv_xform_build(svg_xf_kind_t kind, const float* args, int32_t
  * @since 0.1.0
  */
 RA8_INTERNAL
-static svg_xf_kind_t priv_xform_kind(const uint8_t* v, size_t vlen, size_t i)
+static svg_xf_kind_t internal_xform_kind(const uint8_t* v, size_t vlen, size_t i)
 {
-  if (ra8_svgp_starts_ci(v, vlen, i, "translate(")) {
+  if (priv_ra8_svgp_starts_ci(v, vlen, i, "translate(")) {
     return k_svg_xf_translate;
   }
-  if (ra8_svgp_starts_ci(v, vlen, i, "scale(")) {
+  if (priv_ra8_svgp_starts_ci(v, vlen, i, "scale(")) {
     return k_svg_xf_scale;
   }
-  if (ra8_svgp_starts_ci(v, vlen, i, "rotate(")) {
+  if (priv_ra8_svgp_starts_ci(v, vlen, i, "rotate(")) {
     return k_svg_xf_rotate;
   }
-  if (ra8_svgp_starts_ci(v, vlen, i, "skewx(")) {
+  if (priv_ra8_svgp_starts_ci(v, vlen, i, "skewx(")) {
     return k_svg_xf_skewx;
   }
-  if (ra8_svgp_starts_ci(v, vlen, i, "skewy(")) {
+  if (priv_ra8_svgp_starts_ci(v, vlen, i, "skewy(")) {
     return k_svg_xf_skewy;
   }
-  if (ra8_svgp_starts_ci(v, vlen, i, "matrix(")) {
+  if (priv_ra8_svgp_starts_ci(v, vlen, i, "matrix(")) {
     return k_svg_xf_matrix;
   }
   return k_svg_xf_none;
@@ -699,14 +699,14 @@ static svg_xf_kind_t priv_xform_kind(const uint8_t* v, size_t vlen, size_t i)
  * composed left-to-right (the leftmost function becomes the outermost
  * in the affine product, i.e. applied last). Unknown or unrecognised function
  * names are skipped. The accumulator starts at the identity and each parsed
- * function is right-composed via @c priv_utf_compose. Bounded: the scan
+ * function is right-composed via @c internal_utf_compose. Bounded: the scan
  * advances past at least one '(' per iteration or breaks at end-of-buffer.
  *
  * @param[in] v    Byte span holding the attribute value text; must not be NULL.
  * @param[in] vlen Total valid bytes in @p v.
  *
  * @return svg_utf_t The composed 2x3 affine for all recognised functions in @p v.
- * @retval priv_utf_identity()  @p v contains no recognised transform functions.
+ * @retval internal_utf_identity()  @p v contains no recognised transform functions.
  * @retval svg_utf_t            Composition of all recognised functions, left-to-right.
  *
  * @pre  @p v is a valid pointer to at least @p vlen bytes.
@@ -721,16 +721,16 @@ static svg_xf_kind_t priv_xform_kind(const uint8_t* v, size_t vlen, size_t i)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static svg_utf_t priv_parse_xform(const uint8_t* v, size_t vlen)
+static svg_utf_t internal_parse_xform(const uint8_t* v, size_t vlen)
 {
-  svg_utf_t acc = priv_utf_identity();
+  svg_utf_t acc = internal_utf_identity();
   size_t    i   = 0U;
   /* Bounded: each pass consumes one `name(...)` group or breaks; <= vlen steps. */
   while (i < vlen) {
-    while ((i < vlen) && (ra8_svgp_ws((char)v[i]) || (v[i] == ','))) {
+    while ((i < vlen) && (priv_ra8_svgp_ws((char)v[i]) || (v[i] == ','))) {
       ++i;
     }
-    const svg_xf_kind_t kind = priv_xform_kind(v, vlen, i);
+    const svg_xf_kind_t kind = internal_xform_kind(v, vlen, i);
     size_t              op   = i;
     while ((op < vlen) && (v[op] != '(')) {
       ++op;
@@ -741,8 +741,8 @@ static svg_utf_t priv_parse_xform(const uint8_t* v, size_t vlen)
     size_t j = op + 1U;
     if (kind != k_svg_xf_none) {
       float         args[k_svg_path_args] = {};
-      const int32_t na                    = priv_xform_read(v, vlen, &j, args);
-      acc                                 = priv_utf_compose(acc, priv_xform_build(kind, args, na));
+      const int32_t na                    = internal_xform_read(v, vlen, &j, args);
+      acc = internal_utf_compose(acc, internal_xform_build(kind, args, na));
     }
     while ((j < vlen) && (v[j] != ')')) {
       ++j;
@@ -756,9 +756,9 @@ static svg_utf_t priv_parse_xform(const uint8_t* v, size_t vlen)
  * @brief Compose the 'transform=' attribute from @p tag onto @p t's user affine.
  *
  * @details Looks up the "transform" attribute in @p tag[0..tlen) using
- * @c ra8_svgp_attr. If absent, returns without modification. If found, parses
- * the value via @c priv_parse_xform and composes the result over the current
- * user affine in @p t using @c priv_utf_compose, then writes the composed
+ * @c priv_ra8_svgp_attr. If absent, returns without modification. If found, parses
+ * the value via @c internal_parse_xform and composes the result over the current
+ * user affine in @p t using @c internal_utf_compose, then writes the composed
  * components back to @p t->ua .. @p t->uf. The viewBox and box fields of
  * @p t are not touched.
  *
@@ -778,15 +778,15 @@ static svg_utf_t priv_parse_xform(const uint8_t* v, size_t vlen)
  *
  * @since 0.1.0
  */
-void ra8_svgp_apply_xform(svg_xform_t* t, const uint8_t* tag, size_t tlen)
+void priv_ra8_svgp_apply_xform(svg_xform_t* t, const uint8_t* tag, size_t tlen)
 {
   size_t off = 0U;
   size_t vl  = 0U;
-  if (!ra8_svgp_attr(tag, tlen, "transform", &off, &vl)) {
+  if (!priv_ra8_svgp_attr(tag, tlen, "transform", &off, &vl)) {
     return;
   }
   const svg_utf_t cur = {.a = t->ua, .b = t->ub, .c = t->uc, .d = t->ud, .e = t->ue, .f = t->uf};
-  const svg_utf_t out = priv_utf_compose(cur, priv_parse_xform(&tag[off], vl));
+  const svg_utf_t out = internal_utf_compose(cur, internal_parse_xform(&tag[off], vl));
   t->ua               = out.a;
   t->ub               = out.b;
   t->uc               = out.c;

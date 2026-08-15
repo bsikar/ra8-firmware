@@ -5,11 +5,11 @@
  * @details
  * Split sibling of test_ra8_reflow_layout_flow_mcdc.c covering the embedded
  * content decision families of libs/ra8_reflow/src/ra8_reflow_layout.c: the
- * priv_apply_image loader gate, the priv_image_resolve_size probe-failure OR
+ * priv_apply_image loader gate, the internal_image_resolve_size probe-failure OR
  * and degenerate-column / avail-h guards, the image-overflow page break, the
- * priv_place_image post-record overflow, and the table grid path
- * (priv_is_cell_start th arm, priv_is_row_start non-row tokens,
- * priv_cell_text space suppression, and the row page-break arms). All
+ * internal_place_image post-record overflow, and the table grid path
+ * (internal_is_cell_start th arm, internal_is_row_start non-row tokens,
+ * internal_cell_text space suppression, and the row page-break arms). All
  * decisions are driven through the public API with crafted markup and the DI
  * image loader; the shared engine fixture lives in
  * tests/support/reflow_layout_test_util.h.
@@ -19,15 +19,15 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "support/reflow_layout_test_util.h"
 #include "unity_minimal.h"
 
 /**
- * @test test_apply_image_loader_gate_mcdc
+ * @test internal_test_apply_image_loader_gate_mcdc
  *
  * @par MC/DC:
  * Decision: `if ((img_loader != null) && (img_arena != null) && (text_len > 0))`
@@ -43,8 +43,16 @@
  *  - V4: loader + arena bound but `<img>` has an empty src -> C3 F (text_len==0)
  *        -> placeholder path.
  * V1 vs V2/V3/V4 each flip exactly one condition with the others held true.
+ * @brief Verify apply image loader gate mcdc behavior against the reflow contract.
+ * @details Exercises the apply image loader gate mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_apply_image_loader_gate_mcdc(void)
+RA8_INTERNAL static void internal_test_apply_image_loader_gate_mcdc(void)
 {
   TEST_BEGIN("priv_apply_image MC/DC: loader && arena && text_len");
   ra8_img_arena_t arena = {.base   = s_img_scratch,
@@ -82,10 +90,10 @@ static void test_apply_image_loader_gate_mcdc(void)
 }
 
 /**
- * @test test_image_resolve_size_mcdc
+ * @test internal_test_image_resolve_size_mcdc
  *
  * @par MC/DC:
- * Two decisions in libs/ra8_reflow/src/ra8_reflow_layout.c@priv_image_resolve_size:
+ * Two decisions in libs/ra8_reflow/src/ra8_reflow_layout.c@internal_image_resolve_size:
  *  (A) `if ((ra8_img_probe_size(...) != ok) || (iw <= 0) || (ih <= 0))` (probe
  *      failure OR; a junk fixture makes probe fail -> T; a real PNG with
  *      positive dimensions -> all F).
@@ -101,8 +109,16 @@ static void test_apply_image_loader_gate_mcdc(void)
  *        (B) C1 T -> resolve fails -> placeholder fallback (no box). Isolates
  *        the col_w<1 condition of (B).
  * V1 is the all-false control for both (A) and (B).
+ * @brief Verify image resolve size mcdc behavior against the reflow contract.
+ * @details Exercises the image resolve size mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_image_resolve_size_mcdc(void)
+RA8_INTERNAL static void internal_test_image_resolve_size_mcdc(void)
 {
   TEST_BEGIN("priv_image_resolve_size MC/DC: probe-fail OR + degenerate column");
   ra8_img_arena_t arena = {.base   = s_img_scratch,
@@ -134,12 +150,12 @@ static void test_image_resolve_size_mcdc(void)
 }
 
 /**
- * @test test_image_page_break_mcdc
+ * @test internal_test_image_page_break_mcdc
  *
  * @par MC/DC:
- * Decision: `if (((cur->y + bh) > bottom_limit) && priv_page_has_content(...))`
- * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout.c@priv_place_image --
- * the pre-image overflow page break). priv_page_has_content() is the OR
+ * Decision: `if (((cur->y + bh) > bottom_limit) && internal_page_has_content(...))`
+ * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout.c@internal_place_image --
+ * the pre-image overflow page break). internal_page_has_content() is the OR
  * `(glyph_count > page_first_glyph) || (image_box_count > page_first_image)`.
  *
  * Vectors (N+1 = 3 for N=2):
@@ -151,8 +167,16 @@ static void test_image_resolve_size_mcdc(void)
  *  - V3: a small 2x2 image after a paragraph on a tall page -> C1 F (fits) ->
  *        F -> no break. Isolates the overflow condition.
  * V1 vs V3 isolate the overflow condition; V1 vs V2 isolate page-has-content.
+ * @brief Verify image page break mcdc behavior against the reflow contract.
+ * @details Exercises the image page break mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_image_page_break_mcdc(void)
+RA8_INTERNAL static void internal_test_image_page_break_mcdc(void)
 {
   TEST_BEGIN("priv_place_image MC/DC: (y+bh>bottom) && page_has_content");
   ra8_img_arena_t arena = {.base   = s_img_scratch,
@@ -188,15 +212,15 @@ static void test_image_page_break_mcdc(void)
 }
 
 /**
- * @test test_table_layout_cell_row_mcdc
+ * @test internal_test_table_layout_cell_row_mcdc
  *
  * @par MC/DC:
  * Drives the table grid path so the cell / row recognition decisions and the
  * in-cell flow decisions execute on real tokens:
- *  - priv_is_cell_start(): `block_start && (tag==td || tag==th)` (the `<td>` and
+ *  - internal_is_cell_start(): `block_start && (tag==td || tag==th)` (the `<td>` and
  *    `<th>` arms of the OR).
- *  - priv_is_row_start():  `block_start && tag==tr`.
- *  - priv_cell_text():     the in-cell space-emit guard
+ *  - internal_is_row_start():  `block_start && tag==tr`.
+ *  - internal_cell_text():     the in-cell space-emit guard
  *    `(*cx > cell_x) && ((*cx + adv) <= cell_right)` and the in-cell word-wrap
  *    `((*cx + word_w) > cell_right) && (*cx > cell_x)`.
  *
@@ -209,8 +233,16 @@ static void test_image_page_break_mcdc(void)
  *        word-wrap guard's `*cx > cell_x` arm is false on the first word (no
  *        wrap before the line has content), exercising that condition's F side.
  * The table produces glyphs across >= 1 page; assertions confirm content flowed.
+ * @brief Verify table layout cell row mcdc behavior against the reflow contract.
+ * @details Exercises the table layout cell row mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_table_layout_cell_row_mcdc(void)
+RA8_INTERNAL static void internal_test_table_layout_cell_row_mcdc(void)
 {
   TEST_BEGIN("priv_layout_table MC/DC: cell/row start + in-cell wrap");
   /* V1: header (th) + body (td) rows with wrapping multi-word cells. */
@@ -232,11 +264,11 @@ static void test_table_layout_cell_row_mcdc(void)
 }
 
 /**
- * @test test_table_row_page_break_mcdc
+ * @test internal_test_table_row_page_break_mcdc
  *
  * @par MC/DC:
  * Decision: `if (((cur->y + row_h) > bottom_limit) && (cur->y > margin))`
- * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout.c@priv_layout_row --
+ * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout.c@internal_layout_row --
  * the mid-table row page break). A row that overruns the bottom margin while
  * starting mid-page is rolled back and re-laid at the top of the next page.
  *
@@ -251,8 +283,16 @@ static void test_table_layout_cell_row_mcdc(void)
  *        at the top margin that still overflows is left in place (C2 false), so
  *        the very first short-page row exercises the C2-false side implicitly.
  * V1 vs V2 isolate the overflow condition.
+ * @brief Verify table row page break mcdc behavior against the reflow contract.
+ * @details Exercises the table row page break mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_table_row_page_break_mcdc(void)
+RA8_INTERNAL static void internal_test_table_row_page_break_mcdc(void)
 {
   TEST_BEGIN("priv_layout_row MC/DC: (y+row_h>bottom) && (y>margin)");
   /* V1: many rows on a short page -> a later row overflows mid-page -> break. */
@@ -273,14 +313,14 @@ static void test_table_row_page_break_mcdc(void)
 }
 
 /**
- * @test test_image_resolve_avail_h_mcdc
+ * @test internal_test_image_resolve_avail_h_mcdc
  *
  * @par MC/DC:
  * Decision at ra8_reflow_layout.c L926:
  * `if ((col_w < 1) || (avail_h < 1))`
- * (2 conditions, OR; libs/ra8_reflow/src/ra8_reflow_layout.c@priv_image_resolve_size).
+ * (2 conditions, OR; libs/ra8_reflow/src/ra8_reflow_layout.c@internal_image_resolve_size).
  *
- * The existing test_image_resolve_size_mcdc covers V3 (col_w < 1 via a 32px
+ * The existing internal_test_image_resolve_size_mcdc covers V3 (col_w < 1 via a 32px
  * width viewport).  This test adds the missing `avail_h < 1` arm (C2 true)
  * using a 32px-tall viewport where
  * avail_h = viewport_h - 2*margin = 32 - 32 = 0.
@@ -294,8 +334,16 @@ static void test_table_row_page_break_mcdc(void)
  * stb_image: stbi_info_from_memory returns 0 for a bad header (probe-fail,
  * C1=T already covered), and for a valid PNG it always returns positive
  * dimensions; it cannot produce iw==0 or ih==0 for a parseable PNG header.
+ * @brief Verify image resolve avail h mcdc behavior against the reflow contract.
+ * @details Exercises the image resolve avail h mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_image_resolve_avail_h_mcdc(void)
+RA8_INTERNAL static void internal_test_image_resolve_avail_h_mcdc(void)
 {
   TEST_BEGIN("priv_image_resolve_size L926 MC/DC: avail_h<1 arm");
   ra8_img_arena_t arena = {.base   = s_img_scratch,
@@ -316,18 +364,18 @@ static void test_image_resolve_avail_h_mcdc(void)
 }
 
 /**
- * @test test_place_image_post_record_overflow_mcdc
+ * @test internal_test_place_image_post_record_overflow_mcdc
  *
  * @par MC/DC:
  * Decision at ra8_reflow_layout.c L1015:
  * `if (((cur->y + (int32_t)cur->line_height_px) > bottom_limit) &&
- *      priv_page_has_content(engine, cur))`
- * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout.c@priv_place_image).
+ *      internal_page_has_content(engine, cur))`
+ * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout.c@internal_place_image).
  *
- * This is the POST-record overflow check (fired after priv_image_record places
+ * This is the POST-record overflow check (fired after internal_image_record places
  * the image and advances cur->y by bh + paragraph_gap).  It fires when the
  * space left below the image is smaller than one line height, so any glyph
- * run that immediately follows would overflow.  It uses priv_page_has_content
+ * run that immediately follows would overflow.  It uses internal_page_has_content
  * to confirm the page is non-empty (the just-recorded image counts).
  *
  * Vectors (N+1 = 3 for N=2):
@@ -344,8 +392,16 @@ static void test_image_resolve_avail_h_mcdc(void)
  *        could be T (image just recorded) -> if C1 is T and C2 T: fires.
  *        Covered by the V1 path in this test for the case where the first
  *        element overflows post-record.
+ * @brief Verify place image post record overflow mcdc behavior against the reflow contract.
+ * @details Exercises the place image post record overflow mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_place_image_post_record_overflow_mcdc(void)
+RA8_INTERNAL static void internal_test_place_image_post_record_overflow_mcdc(void)
 {
   TEST_BEGIN("priv_place_image L1015 MC/DC: post-record overflow check");
   ra8_img_arena_t arena = {.base   = s_img_scratch,
@@ -380,35 +436,35 @@ static void test_place_image_post_record_overflow_mcdc(void)
 }
 
 /**
- * @test test_is_cell_start_th_arm_mcdc
+ * @test internal_test_is_cell_start_th_arm_mcdc
  *
  * @par MC/DC:
  * Decision at ra8_reflow_layout.c L1229:
  * `(tok->tag == k_ra8_reflow_tag_td) || (tok->tag == k_ra8_reflow_tag_th)`
- * (2 conditions, OR; libs/ra8_reflow/src/ra8_reflow_layout.c@priv_is_cell_start).
+ * (2 conditions, OR; libs/ra8_reflow/src/ra8_reflow_layout.c@internal_is_cell_start).
  * Decision at ra8_reflow_layout.c L1236:
  * `(tok->kind == k_ra8_reflow_tok_block_start) &&
  *  (tok->tag == k_ra8_reflow_tag_tr)`
- * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout.c@priv_is_row_start).
+ * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout.c@internal_is_row_start).
  * Decision at ra8_reflow_layout.c L1325:
  * `if ((*cx > cell_x) && ((*cx + adv) <= cell_right))`
- * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout.c@priv_cell_text --
+ * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout.c@internal_cell_text --
  * the in-cell space-emit guard).
  *
- * Vectors for priv_is_cell_start L1228 OR (N+1 = 3 for N=2):
+ * Vectors for internal_is_cell_start L1228 OR (N+1 = 3 for N=2):
  *  - V_td: a `<td>` token -> C1=T shorts -> T (td arm, existing tests cover).
  *  - V_th: a `<th>` token -> C1=F (not td), C2=T (is th) -> T; isolates th.
- *  - V_other: a `<tr>` token tested via priv_is_cell_start -> C1=F, C2=F ->
+ *  - V_other: a `<tr>` token tested via internal_is_cell_start -> C1=F, C2=F ->
  *             returns false (the outer loop skips it).
  *
- * Vectors for priv_is_row_start L1236 AND (N+1 = 3 for N=2):
+ * Vectors for internal_is_row_start L1236 AND (N+1 = 3 for N=2):
  *  - V_tr: a `<tr>` block-start -> C1=T (block_start), C2=T (tr tag) -> T.
  *  - V_td_row: a `<td>` block-start is NOT a row start -> C1=T but C2=F ->F.
  *  - V_end: a `<tr>` block-END is NOT a row start -> C1=F (block_end) -> F.
  * The row-start function is exercised whenever priv_layout_table scans the
  * token stream; all vectors fire during a normal table layout pass.
  *
- * Vectors for priv_cell_text L1325 space-emit guard (N+1 = 3 for N=2):
+ * Vectors for internal_cell_text L1325 space-emit guard (N+1 = 3 for N=2):
  *  - V_space_emits: multi-word cell text where cx already moved past cell_x
  *                   AND the space fits -> C1=T, C2=T -> space emitted.
  *  - V_first_word:  the very first byte in a cell is a word (not a space) ->
@@ -419,8 +475,16 @@ static void test_place_image_post_record_overflow_mcdc(void)
  * All three decisions are exercised by a table whose rows use both `<th>` and
  * `<td>` cells with multi-word text that wraps.  A narrow viewport forces
  * tight cells so the space-no-room arm fires.
+ * @brief Verify is cell start th arm mcdc behavior against the reflow contract.
+ * @details Exercises the is cell start th arm mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_is_cell_start_th_arm_mcdc(void)
+RA8_INTERNAL static void internal_test_is_cell_start_th_arm_mcdc(void)
 {
   TEST_BEGIN("priv_is_cell_start L1228/priv_is_row_start L1236/"
              "priv_cell_text L1325 MC/DC");
@@ -444,7 +508,7 @@ static void test_is_cell_start_th_arm_mcdc(void)
   TEST_ASSERT(s_eng.glyph_count > 0U);
 
   /* Second vector: th-only row (no td) to isolate the th arm of
-   * priv_is_cell_start (C1=F since tag!=td, C2=T since tag==th). */
+   * internal_is_cell_start (C1=F since tag!=td, C2=T since tag==th). */
   init_engine(k_vp_w, k_vp_h);
   (void)lay("<html><body><table>"
             "<tr><th>Alpha</th><th>Beta</th></tr>"
@@ -456,12 +520,12 @@ static void test_is_cell_start_th_arm_mcdc(void)
 }
 
 /**
- * @test test_cell_text_space_suppress_mcdc
+ * @test internal_test_cell_text_space_suppress_mcdc
  *
  * @par MC/DC:
  * Decision at ra8_reflow_layout.c L1325:
  * `if ((*cx > cell_x) && ((*cx + adv) <= cell_right))`
- * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout.c@priv_cell_text).
+ * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout.c@internal_cell_text).
  *
  * The space-emit guard fires only when the cursor is past the cell origin
  * (C1: *cx > cell_x) AND the space advance still fits within the cell
@@ -485,8 +549,16 @@ static void test_is_cell_start_th_arm_mcdc(void)
  *        -> space suppressed.  Achieved with a long word that fills the cell
  *        to exactly cell_right before encountering a trailing space.
  * V1 vs V2 isolate C1; V1 vs V3 isolate C2.
+ * @brief Verify cell text space suppress mcdc behavior against the reflow contract.
+ * @details Exercises the cell text space suppress mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_cell_text_space_suppress_mcdc(void)
+RA8_INTERNAL static void internal_test_cell_text_space_suppress_mcdc(void)
 {
   TEST_BEGIN("priv_cell_text L1325 MC/DC: (*cx>cell_x) && (cx+adv<=cell_right)");
   /* Named glyph-count thresholds (no magic numbers). */
@@ -507,7 +579,7 @@ static void test_cell_text_space_suppress_mcdc(void)
 
   /* V2: single-word cell -> only one word, no space encountered at all ->
    * the C1-false path (cx==cell_x on the only word) is the dominant path
-   * inside priv_cell_text for this cell.  No space glyph between words. */
+   * inside internal_cell_text for this cell.  No space glyph between words. */
   init_engine(k_vp_w, k_vp_h);
   (void)lay("<html><body><table>"
             "<tr><td>hello</td></tr>"
@@ -535,14 +607,14 @@ static void test_cell_text_space_suppress_mcdc(void)
 }
 
 /**
- * @test test_row_break_c2_false_mcdc
+ * @test internal_test_row_break_c2_false_mcdc
  *
  * @par MC/DC:
  * Decision at ra8_reflow_layout.c L1452:
  * `if (((cur->y + row_h) > bottom_limit) && (cur->y > (int32_t)k_ra8_reflow_margin_px))`
- * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout.c@priv_layout_row).
+ * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout.c@internal_layout_row).
  *
- * The existing test_table_row_page_break_mcdc covers V1 (both T, overflow
+ * The existing internal_test_table_row_page_break_mcdc covers V1 (both T, overflow
  * mid-page) and V2 (C1 F, fits).  This test drives the C2-false arm: a row
  * placed exactly at the top margin (cur->y == k_ra8_reflow_margin_px) that
  * would overflow.  Because C2 is false the engine does NOT roll back and
@@ -556,8 +628,16 @@ static void test_cell_text_space_suppress_mcdc(void)
  *    C2 = (16 > 16) = F.  The AND decision is F -> no rollback/re-lay.
  *    Isolated from V1 (where cur->y > margin after prior rows filled space).
  * V1 (in existing test) vs V_c2_false isolate C2.
+ * @brief Verify row break c2 false mcdc behavior against the reflow contract.
+ * @details Exercises the row break c2 false mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_row_break_c2_false_mcdc(void)
+RA8_INTERNAL static void internal_test_row_break_c2_false_mcdc(void)
 {
   TEST_BEGIN("priv_layout_row L1452 MC/DC: C2-false (row at top margin)");
 
@@ -583,12 +663,12 @@ static void test_row_break_c2_false_mcdc(void)
 }
 
 /**
- * @test test_is_row_start_nonrow_tokens_mcdc
+ * @test internal_test_is_row_start_nonrow_tokens_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_is_row_start()` =
+ * Decision: `internal_is_row_start()` =
  *   `(tok->kind == k_ra8_reflow_tok_block_start) && (tok->tag == k_ra8_reflow_tag_tr)`
- * (2 conditions, AND; libs/ra8_reflow/src/ra8_reflow_layout_table.c). priv_table_columns
+ * (2 conditions, AND; libs/ra8_reflow/src/priv_ra8_reflow_layout_table.c). internal_table_columns
  * scans every table-level token until it reaches a `<tr>`, so stray non-row content
  * placed directly under `<table>` drives the false arms of both conditions. N+1 = 3:
  *  - a stray text node ("skip") at table level -> kind is text, not block_start ->
@@ -598,8 +678,16 @@ static void test_row_break_c2_false_mcdc(void)
  *  - the real `<tr>` -> C1 true, C2 true (decision true) -> the row is counted.
  * C1 pair = (text, tr); C2 pair = (p, tr). The table still lays out its single real
  * row (glyphs > 0), proving the `<tr>` was recognised while the stray tokens were not.
+ * @brief Verify is row start nonrow tokens mcdc behavior against the reflow contract.
+ * @details Exercises the is row start nonrow tokens mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_is_row_start_nonrow_tokens_mcdc(void)
+RA8_INTERNAL static void internal_test_is_row_start_nonrow_tokens_mcdc(void)
 {
   TEST_BEGIN("priv_is_row_start MC/DC: stray text + non-tr block at table level");
   init_engine(k_vp_w, k_vp_h);
@@ -625,18 +713,17 @@ static void test_is_row_start_nonrow_tokens_mcdc(void)
  */
 int32_t main(void)
 {
-  test_apply_image_loader_gate_mcdc();
-  test_image_resolve_size_mcdc();
-  test_image_page_break_mcdc();
-  test_table_layout_cell_row_mcdc();
-  test_table_row_page_break_mcdc();
-  test_image_resolve_avail_h_mcdc();
-  test_place_image_post_record_overflow_mcdc();
-  test_is_cell_start_th_arm_mcdc();
-  test_cell_text_space_suppress_mcdc();
-  test_row_break_c2_false_mcdc();
-  test_is_row_start_nonrow_tokens_mcdc();
+  internal_test_apply_image_loader_gate_mcdc();
+  internal_test_image_resolve_size_mcdc();
+  internal_test_image_page_break_mcdc();
+  internal_test_table_layout_cell_row_mcdc();
+  internal_test_table_row_page_break_mcdc();
+  internal_test_image_resolve_avail_h_mcdc();
+  internal_test_place_image_post_record_overflow_mcdc();
+  internal_test_is_cell_start_th_arm_mcdc();
+  internal_test_cell_text_space_suppress_mcdc();
+  internal_test_row_break_c2_false_mcdc();
+  internal_test_is_row_start_nonrow_tokens_mcdc();
   (void)line_count(); /* silence unused-helper if a future edit drops its use */
-  (void)fprintf(stderr, "[OK ] test_ra8_reflow_layout_content_mcdc.c\n");
   return 0;
 }
