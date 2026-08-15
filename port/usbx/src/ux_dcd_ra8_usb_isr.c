@@ -38,7 +38,7 @@
 #include "ux_utility.h"
 
 /**
- * @var s_isr_invocations
+ * @var priv_isr_invocations
  * @brief Counter of NVIC ISR entries through ::internal_usbfs_isr or
  *        ::internal_usbhs_isr.
  *
@@ -53,10 +53,10 @@
  * @note Written only by the two ISR trampolines.
  * @since 0.1.0
  */
-volatile uint32_t s_isr_invocations = 0U;
+volatile uint32_t priv_isr_invocations = 0U;
 
 /**
- * @var s_isr_intsts0_or
+ * @var priv_isr_intsts0_or
  * @brief Cumulative bitwise-OR of every ``INTSTS0`` value observed at
  *        the entry of ::internal_usbhs_isr.
  *
@@ -72,68 +72,68 @@ volatile uint32_t s_isr_invocations = 0U;
  * @note Written only by ::internal_usbhs_isr.
  * @since 0.1.0
  */
-volatile uint16_t s_isr_intsts0_or = 0U;
+volatile uint16_t priv_isr_intsts0_or = 0U;
 
 /**
- * @var s_isr_dvst_count
+ * @var priv_isr_dvst_count
  * @brief Per-bit ISR counter for ``INTSTS0.DVST`` (bit 12) entries.
  *
  * @details
  * Incremented inside ::internal_usbhs_isr whenever the snapshot has
  * the device-state-transition bit set. Distinguishes "ISR fired with
- * DVST" from the bridge-side ::s_dvst_irq_count which counts events
+ * DVST" from the bridge-side ::priv_dvst_irq_count which counts events
  * after they have already been forwarded to the USBX stack.
  *
  * @note Written only by ::internal_usbhs_isr.
  * @since 0.1.0
  */
-volatile uint32_t s_isr_dvst_count = 0U;
+volatile uint32_t priv_isr_dvst_count = 0U;
 
 /**
- * @var s_isr_ctrt_count
+ * @var priv_isr_ctrt_count
  * @brief Per-bit ISR counter for ``INTSTS0.CTRT`` (bit 11) entries.
  *
- * @details Sibling of ::s_isr_dvst_count for the control-transfer-
+ * @details Sibling of ::priv_isr_dvst_count for the control-transfer-
  * stage-transition bit (HUM Ch 36.2.14 p 1985).
  *
  * @note Written only by ::internal_usbhs_isr.
  * @since 0.1.0
  */
-volatile uint32_t s_isr_ctrt_count = 0U;
+volatile uint32_t priv_isr_ctrt_count = 0U;
 
 /**
- * @var s_isr_valid_count
+ * @var priv_isr_valid_count
  * @brief Per-bit ISR counter for ``INTSTS0.VALID`` (bit 3) entries.
  *
  * @details Counts ISR entries where the SETUP-detect flag was already
  * latched at snapshot time. The actual SETUP drain is performed by
- * ::ux_dcd_ra8_usb_irq via ::ra8_usb_dispatch -> ::internal_event_cb.
+ * ::ux_dcd_ra8_usb_irq via ::ra8_usb_dispatch -> ::priv_event_cb.
  *
  * @note Written only by ::internal_usbhs_isr.
  * @since 0.1.0
  */
-volatile uint32_t s_isr_valid_count = 0U;
+volatile uint32_t priv_isr_valid_count = 0U;
 
 /**
- * @var s_isr_brdy_count
+ * @var priv_isr_brdy_count
  * @brief Per-bit ISR counter for ``INTSTS0.BRDY`` (bit 8) entries.
  *
  * @note Written only by ::internal_usbhs_isr.
  * @since 0.1.0
  */
-volatile uint32_t s_isr_brdy_count = 0U;
+volatile uint32_t priv_isr_brdy_count = 0U;
 
 /**
- * @var s_isr_bemp_count
+ * @var priv_isr_bemp_count
  * @brief Per-bit ISR counter for ``INTSTS0.BEMP`` (bit 10) entries.
  *
  * @note Written only by ::internal_usbhs_isr.
  * @since 0.1.0
  */
-volatile uint32_t s_isr_bemp_count = 0U;
+volatile uint32_t priv_isr_bemp_count = 0U;
 
 /**
- * @var s_isr_nrdy_count
+ * @var priv_isr_nrdy_count
  * @brief Per-bit ISR counter for ``INTSTS0.NRDY`` (bit 9) entries.
  *
  * @details Storm-localisation probe: a value in the millions after a
@@ -142,10 +142,10 @@ volatile uint32_t s_isr_bemp_count = 0U;
  * clears it. Written by ::internal_usbfs_isr and ::internal_usbhs_isr.
  * @since 0.1.0
  */
-volatile uint32_t s_isr_nrdy_count = 0U;
+volatile uint32_t priv_isr_nrdy_count = 0U;
 
 /**
- * @var s_isr_sofr_count
+ * @var priv_isr_sofr_count
  * @brief Per-bit ISR counter for ``INTSTS0.SOFR`` (bit 13) entries.
  *
  * @details Storm-localisation probe. SOFR fires once per USB frame
@@ -154,9 +154,9 @@ volatile uint32_t s_isr_nrdy_count = 0U;
  * to be co-asserted. Written by ::internal_usbfs_isr and ::internal_usbhs_isr.
  * @since 0.1.0
  */
-volatile uint32_t s_isr_sofr_count = 0U;
+volatile uint32_t priv_isr_sofr_count = 0U;
 
-volatile uint32_t s_dcd_irq_spurious_mask_count = 0U;
+volatile uint32_t priv_dcd_irq_spurious_mask_count = 0U;
 
 /* -------------------------------------------------------------------------- */
 /* USBFS interrupt-storm guard */
@@ -170,7 +170,7 @@ volatile uint32_t s_dcd_irq_spurious_mask_count = 0U;
 /*                                                                            */
 /* internal_usbfs_isr counts consecutive event-less entries; once that run */
 /* crosses k_ra8_usb_storm_mask_run a real storm is in progress, and */
-/* internal_usbfs_irq_mask() disables the USB IRQ at the NVIC -- handing the */
+/* priv_usbfs_irq_mask() disables the USB IRQ at the NVIC -- handing the */
 /* CPU to thread mode. Recovery is the per-app 1 ms SysTick handler: it calls */
 /* ux_dcd_ra8_usb_irq_reenable(), which zeroes the run counter and re-enables */
 /* the line. The run counter is thus a per-millisecond rate gauge -- a genuine */
@@ -205,7 +205,7 @@ typedef enum : uint32_t {
  * @brief Bump the per-bit ISR counters for an INTSTS0 snapshot.
  *
  * @details Each ``s_isr_*_count`` counter is a JLink-readable probe so
- * a bench reader can correlate ::s_isr_intsts0_or with which event bits
+ * a bench reader can correlate ::priv_isr_intsts0_or with which event bits
  * fired this tick. Shared by the FS and HS ISRs to keep each outer ISR
  * within the NASA P10 Rule 4 size cap.
  *
@@ -219,28 +219,28 @@ typedef enum : uint32_t {
  * @note ISR-only; must not block.
  * @since 0.1.0
  */
-static void internal_isr_bump_counts(uint16_t intsts0)
+RA8_INTERNAL static void internal_isr_bump_counts(uint16_t intsts0)
 {
   if ((intsts0 & (uint16_t)(1U << k_ra8_int0_bit_dvst)) != 0U) {
-    s_isr_dvst_count++;
+    priv_isr_dvst_count++;
   }
   if ((intsts0 & (uint16_t)(1U << k_ra8_int0_bit_ctrt)) != 0U) {
-    s_isr_ctrt_count++;
+    priv_isr_ctrt_count++;
   }
   if ((intsts0 & (uint16_t)k_ra8_intsts0_mask_valid) != 0U) {
-    s_isr_valid_count++;
+    priv_isr_valid_count++;
   }
   if ((intsts0 & (uint16_t)(1U << k_ra8_int0_bit_brdy)) != 0U) {
-    s_isr_brdy_count++;
+    priv_isr_brdy_count++;
   }
   if ((intsts0 & (uint16_t)(1U << k_ra8_int0_bit_bemp)) != 0U) {
-    s_isr_bemp_count++;
+    priv_isr_bemp_count++;
   }
   if ((intsts0 & (uint16_t)(1U << k_ra8_int0_bit_nrdy)) != 0U) {
-    s_isr_nrdy_count++;
+    priv_isr_nrdy_count++;
   }
   if ((intsts0 & (uint16_t)(1U << k_ra8_int0_bit_sofr)) != 0U) {
-    s_isr_sofr_count++;
+    priv_isr_sofr_count++;
   }
 }
 
@@ -256,11 +256,11 @@ static void internal_isr_bump_counts(uint16_t intsts0)
  *
  * The only added behaviour is the storm guard. An entry with no real
  * event bit (only RSME / SOFR / status bits -- these assert the NVIC
- * line independent of INTENB0) increments ::s_isr_spurious_run; a real
+ * line independent of INTENB0) increments ::priv_isr_spurious_run; a real
  * event resets it. ::ux_dcd_ra8_usb_irq_reenable (called from the per-app
  * 1 ms ``SysTick_Handler``) zeroes the counter, so it gauges the
  * event-less *rate*. Once it crosses ::k_ra8_usb_storm_mask_run within a
- * millisecond a genuine storm is in progress, and ::internal_usbfs_irq_mask
+ * millisecond a genuine storm is in progress, and ::priv_usbfs_irq_mask
  * disables the USB IRQ so RTOS thread mode -- the otherwise-starved USBX
  * class thread (GitHub issue #6) -- gets the CPU back. The SysTick handler
  * re-enables the line within 1 ms. Normal idle SOFR (~1/ms) never trips
@@ -271,22 +271,22 @@ static void internal_isr_bump_counts(uint16_t intsts0)
  * @pre Bridge is in ``k_ux_dcd_ra8_usb_state_ready`` or ``_active``.
  * @pre ``ra8_usb_attach_handler`` has been called (done in the same init).
  *
- * @post ``s_isr_invocations`` is incremented and ``ra8_usb_dispatch`` ran.
+ * @post ``priv_isr_invocations`` is incremented and ``ra8_usb_dispatch`` ran.
  * @post On a sustained event-less run the USB IRQ is masked at the NVIC.
  *
  * @note Runs in NVIC handler mode; must not block.
  *
  * @see ra8_usb_dispatch
- * @see internal_usbfs_irq_mask
+ * @see priv_usbfs_irq_mask
  * @see internal_usbhs_isr
  * @see ux_dcd_ra8_usb_irq
  *
  * @since 0.1.0
  */
-static void internal_usbfs_isr(void* ctx)
+RA8_INTERNAL static void internal_usbfs_isr(void* ctx)
 {
   (void)ctx;
-  s_isr_invocations++;
+  priv_isr_invocations++;
 
   /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1986.
    * event_msk is the real-event set: INTENB0 (BRDY/NRDY/BEMP/CTRT/
@@ -298,16 +298,16 @@ static void internal_usbfs_isr(void* ctx)
                                         (1U << k_ra8_int0_bit_dvst) | (1U << k_ra8_int0_bit_vbse) |
                                         (uint16_t)k_ra8_intsts0_mask_valid);
 
-  s_isr_intsts0_or |= intsts0;
+  priv_isr_intsts0_or |= intsts0;
 
   if ((intsts0 & event_msk) == 0U) {
-    s_isr_spurious_run++;
-    if (s_isr_spurious_run >= (uint32_t)k_ra8_usb_storm_mask_run) {
-      internal_usbfs_irq_mask();
-      s_dcd_irq_spurious_mask_count++;
+    priv_isr_spurious_run++;
+    if (priv_isr_spurious_run >= (uint32_t)k_ra8_usb_storm_mask_run) {
+      priv_usbfs_irq_mask();
+      priv_dcd_irq_spurious_mask_count++;
     }
   } else {
-    s_isr_spurious_run = 0U;
+    priv_isr_spurious_run = 0U;
   }
 
   internal_isr_bump_counts(intsts0);
@@ -333,13 +333,13 @@ static void internal_usbfs_isr(void* ctx)
  *
  * @pre Caller already determined ``(intsts0 & event_msk) == 0``.
  * @pre USB module for ``speed`` is initialized (``ra8_usb_device_init`` ran).
- * @post ``s_dcd_irq_spurious_mask_count`` is incremented.
+ * @post ``priv_dcd_irq_spurious_mask_count`` is incremented.
  * @post RSME/SOFR bits that were set are cleared via ::ra8_usb_clear_status.
  *
  * @note ISR-only; must not block.
  * @since 0.1.0
  */
-static void internal_ack_spurious(ra8_usb_speed_t speed, uint16_t intsts0)
+RA8_INTERNAL static void internal_ack_spurious(ra8_usb_speed_t speed, uint16_t intsts0)
 {
   const uint16_t stuck_mask = (uint16_t)((1U << k_ra8_int0_bit_rsme) | (1U << k_ra8_int0_bit_sofr));
   if ((intsts0 & stuck_mask) != 0U) {
@@ -358,7 +358,7 @@ static void internal_ack_spurious(ra8_usb_speed_t speed, uint16_t intsts0)
       reg->INTSTS1 = (uint16_t)~int1_mask;
     }
   }
-  s_dcd_irq_spurious_mask_count++;
+  priv_dcd_irq_spurious_mask_count++;
 }
 
 /**
@@ -375,19 +375,19 @@ static void internal_ack_spurious(ra8_usb_speed_t speed, uint16_t intsts0)
  * @pre USBHS module is past ``ra8_usb_device_init``.
  * @pre Caller is the NVIC USBHS_INT vector.
  *
- * @post ``s_isr_invocations`` is incremented.
+ * @post ``priv_isr_invocations`` is incremented.
  * @post On a real event ``ra8_usb_dispatch`` ran; on a spurious one
- *       RSME/SOFR were W0C-cleared and ``s_dcd_irq_spurious_mask_count``
+ *       RSME/SOFR were W0C-cleared and ``priv_dcd_irq_spurious_mask_count``
  *       is incremented.
  *
  * @note ISR-only; must not block. Not re-entrant within a single
  *       controller.
  * @since 0.1.0
  */
-static void internal_usbhs_isr(void* ctx)
+RA8_INTERNAL static void internal_usbhs_isr(void* ctx)
 {
   (void)ctx;
-  s_isr_invocations++;
+  priv_isr_invocations++;
 
   /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1986.
    *
@@ -405,7 +405,7 @@ static void internal_usbhs_isr(void* ctx)
                                         (1U << k_ra8_int0_bit_dvst) | (1U << k_ra8_int0_bit_vbse) |
                                         (uint16_t)k_ra8_intsts0_mask_valid);
 
-  s_isr_intsts0_or |= intsts0;
+  priv_isr_intsts0_or |= intsts0;
 
   if ((intsts0 & event_msk) == 0U) {
     internal_ack_spurious(k_ra8_usb_speed_hs, intsts0);
@@ -416,13 +416,13 @@ static void internal_usbhs_isr(void* ctx)
      * resume within one tick. Without this the HS line stormed at
      * ~440k entries/s and starved thread mode completely (the USBX
      * storage thread never got a single timeslice). */
-    s_isr_spurious_run++;
-    if (s_isr_spurious_run >= (uint32_t)k_ra8_usb_storm_mask_run) {
-      internal_usbfs_irq_mask();
+    priv_isr_spurious_run++;
+    if (priv_isr_spurious_run >= (uint32_t)k_ra8_usb_storm_mask_run) {
+      priv_usbfs_irq_mask();
     }
     return;
   }
-  s_isr_spurious_run = 0U;
+  priv_isr_spurious_run = 0U;
 
   internal_isr_bump_counts(intsts0);
 
@@ -454,7 +454,7 @@ static void internal_usbhs_isr(void* ctx)
  * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
-ra8_elc_event_t internal_pick_event(ra8_usb_speed_t speed)
+ra8_elc_event_t priv_pick_event(ra8_usb_speed_t speed)
 {
   return (speed == k_ra8_usb_speed_hs) ? k_ra8_elc_event_usbhs_int_resume
                                        : k_ra8_elc_event_usbfs_int;
@@ -478,7 +478,7 @@ ra8_elc_event_t internal_pick_event(ra8_usb_speed_t speed)
  * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
-ra8_isr_handler_t internal_pick_isr(ra8_usb_speed_t speed)
+ra8_isr_handler_t priv_pick_isr(ra8_usb_speed_t speed)
 {
   return (speed == k_ra8_usb_speed_hs) ? internal_usbhs_isr : internal_usbfs_isr;
 }
@@ -497,7 +497,7 @@ ra8_isr_handler_t internal_pick_isr(ra8_usb_speed_t speed)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-void internal_event_cb(void* ctx, ra8_usb_speed_t speed, uint16_t status_mask)
+void priv_event_cb(void* ctx, ra8_usb_speed_t speed, uint16_t status_mask)
 {
   (void)ctx;
   ux_dcd_ra8_usb_irq(speed, status_mask);

@@ -38,23 +38,23 @@
 #include "ux_utility.h"
 
 /**
- * @var s_setup_dispatch_count
+ * @var priv_setup_dispatch_count
  * @brief Counter of SETUP packets fed into the chapter-9 dispatcher.
  *
  * @details Bisect probe. Non-zero confirms a SETUP-drain entry point
  * (ra8_usb_read_setup_if_valid or _unconditional) emptied
- * USBREQ/USBVAL/USBINDX/USBLENG and ::internal_dispatch_setup fired.
+ * USBREQ/USBVAL/USBINDX/USBLENG and ::priv_dispatch_setup fired.
  * Stays zero if VALID never asserts (no SETUP token reached the IP).
  * HUM Ch 36.2.16..36.2.19 p 1623..1626.
  *
- * @note Written only by ::internal_handle_ctrt and the VALID fallback
+ * @note Written only by ::priv_handle_ctrt and the VALID fallback
  *       in ::ux_dcd_ra8_usb_irq.
  * @since 0.1.0
  */
-volatile uint32_t s_setup_dispatch_count = 0U;
+volatile uint32_t priv_setup_dispatch_count = 0U;
 
 /**
- * @var s_setup_packet_buffer
+ * @var priv_setup_packet_buffer
  * @brief Wire-format bytes of the most recent SETUP packet drained from
  *        the controller, ready for JLink inspection.
  *
@@ -66,102 +66,102 @@ volatile uint32_t s_setup_dispatch_count = 0U;
  * Stays all-zero until the first VALID/CTRT edge drains a SETUP.
  * HUM Ch 36.2.17..36.2.20 (USBREQ/USBVAL/USBINDX/USBLENG).
  *
- * @note Single-writer (::internal_dispatch_setup).
+ * @note Single-writer (::priv_dispatch_setup).
  * @since 0.1.0
  */
-volatile uint8_t s_setup_packet_buffer[8] = {};
+volatile uint8_t priv_setup_packet_buffer[8] = {};
 
 /**
- * @var s_setup_packet_count
- * @brief Total SETUP packets latched into ::s_setup_packet_buffer.
+ * @var priv_setup_packet_count
+ * @brief Total SETUP packets latched into ::priv_setup_packet_buffer.
  *
- * @note Single-writer (::internal_dispatch_setup).
+ * @note Single-writer (::priv_dispatch_setup).
  * @since 0.1.0
  */
-volatile uint32_t s_setup_packet_count = 0U;
+volatile uint32_t priv_setup_packet_count = 0U;
 
 /**
- * @var s_dispatch_skip_reason
+ * @var priv_dispatch_skip_reason
  * @brief Last-iteration bitmask of why the SQMON dispatch path skipped.
  *
  * @details Bits:
  *  - 0x01 prev_sqmon_already_set (legacy probe, no longer gates)
  *  - 0x02 ra8_usb_read_setup_if_valid_returned_no_data (legacy CTRT only)
  *  - 0x04 ra8_usb_read_setup_unconditional_returned_err
- *  - 0x08 internal_dispatch_setup returned non-zero (USBX rejected)
+ *  - 0x08 priv_dispatch_setup returned non-zero (USBX rejected)
  *  - 0x10 _ux_system_slave was UX_NULL when dispatch ran
  *  - 0x20 ux_slave_endpoint_transfer_request unreachable
  *  - 0x40 sqmon was zero on this DVST entry
  *  - 0x80 dispatch path actually ran to completion (success marker)
  *
- * @note Single-writer (::internal_handle_dvst, ::internal_dispatch_setup).
+ * @note Single-writer (::internal_handle_dvst, ::priv_dispatch_setup).
  * @since 0.1.0
  */
-volatile uint32_t s_dispatch_skip_reason = 0U;
+volatile uint32_t priv_dispatch_skip_reason = 0U;
 
 /**
- * @var s_ctrl_out_pending
+ * @var priv_ctrl_out_pending
  * @brief A control-write data stage is armed and awaiting the host's OUT data.
  *
- * @details Set true by ::internal_dispatch_setup when a host->device control
+ * @details Set true by ::priv_dispatch_setup when a host->device control
  * transfer with a non-empty data stage (e.g. DFU_DNLOAD) is decoded: the DCP
  * is armed via ::ra8_usb_dcp_out_arm and the chapter-9 dispatch is DEFERRED.
- * Cleared by ::internal_handle_ctrl_out_data once the OUT data has landed
+ * Cleared by ::priv_handle_ctrl_out_data once the OUT data has landed
  * (DCP BRDY) and been drained, or by a fresh SETUP that abandons the prior
  * transfer. Deferring is mandatory: receiving synchronously in the FS device
  * ISR would spin out the lower-priority HS host worker -- the thread that must
  * SEND the data -- a same-CPU deadlock.
  *
- * @note Single-writer (::internal_dispatch_setup, ::internal_handle_ctrl_out_data).
+ * @note Single-writer (::priv_dispatch_setup, ::priv_handle_ctrl_out_data).
  * @since 0.1.0
  */
-volatile bool s_ctrl_out_pending = false;
+volatile bool priv_ctrl_out_pending = false;
 
 /**
- * @var s_ctrl_out_tr
+ * @var priv_ctrl_out_tr
  * @brief EP0 transfer request whose data buffer the deferred OUT data fills.
  *
  * @details Snapshot of the device control-endpoint transfer request captured
- * when the control-write SETUP was decoded. ::internal_handle_ctrl_out_data
+ * when the control-write SETUP was decoded. ::priv_handle_ctrl_out_data
  * drains the host's OUT data into ``ux_slave_transfer_request_data_pointer``
  * and then runs the chapter-9 dispatcher on it.
  *
- * @note Single-writer (::internal_dispatch_setup, ::internal_handle_ctrl_out_data).
+ * @note Single-writer (::priv_dispatch_setup, ::priv_handle_ctrl_out_data).
  * @since 0.1.0
  */
-UX_SLAVE_TRANSFER* s_ctrl_out_tr = UX_NULL;
+UX_SLAVE_TRANSFER* priv_ctrl_out_tr = UX_NULL;
 
 /**
- * @var s_ctrl_out_wlen
+ * @var priv_ctrl_out_wlen
  * @brief wLength (cap) of the pending control-write data stage, in bytes.
  *
- * @note Single-writer (::internal_dispatch_setup).
+ * @note Single-writer (::priv_dispatch_setup).
  * @since 0.1.0
  */
-volatile uint16_t s_ctrl_out_wlen = 0U;
+volatile uint16_t priv_ctrl_out_wlen = 0U;
 
 /**
- * @var s_ctrl_out_rx
+ * @var priv_ctrl_out_rx
  * @brief Byte count drained by the most recent deferred control-OUT receive.
  *
- * @note Diagnostic; JLink-readable. Single-writer (::internal_handle_ctrl_out_data).
+ * @note Diagnostic; JLink-readable. Single-writer (::priv_handle_ctrl_out_data).
  * @since 0.1.0
  */
-volatile uint32_t s_ctrl_out_rx = 0U;
+volatile uint32_t priv_ctrl_out_rx = 0U;
 
 /**
- * @var s_ctrl_out_done
+ * @var priv_ctrl_out_done
  * @brief Count of completed deferred control-OUT data stages.
  *
- * @note Diagnostic; JLink-readable. Single-writer (::internal_handle_ctrl_out_data).
+ * @note Diagnostic; JLink-readable. Single-writer (::priv_handle_ctrl_out_data).
  * @since 0.1.0
  */
-volatile uint32_t s_ctrl_out_done = 0U;
+volatile uint32_t priv_ctrl_out_done = 0U;
 
 /**
- * @var s_last_dispatched_setup_fp
+ * @var priv_last_dispatched_setup_fp
  * @brief 64-bit fingerprint of the last SETUP packet dispatched from
- *        the ISR-driven SETUP drain in ::internal_handle_ctrt.
+ *        the ISR-driven SETUP drain in ::priv_handle_ctrt.
  *
  * @details Layout (little-endian-style bit packing):
  *  - bits  0..15: USBREQ (bmRequestType + bRequest)
@@ -173,34 +173,34 @@ volatile uint32_t s_ctrl_out_done = 0U;
  * fires multiple ISR snapshots is not re-dispatched. A fresh
  * fingerprint (different from this latch) is treated as a new SETUP.
  *
- * @note Single-writer (::internal_handle_ctrt).
+ * @note Single-writer (::priv_handle_ctrt).
  * @since 0.1.0
  */
-volatile uint64_t s_last_dispatched_setup_fp = 0U;
+volatile uint64_t priv_last_dispatched_setup_fp = 0U;
 
 /**
- * @var s_dispatched_fp_ring
+ * @var priv_dispatched_fp_ring
  * @brief Ring of the last 4 dispatched SETUP fingerprints (oldest at
  *        index 0). Used to disambiguate which 2 SETUPs the chip
  *        processed when xfer_req_total < setup_dispatch_count.
  *
- * @note Written only by ::internal_handle_ctrt.
+ * @note Written only by ::priv_handle_ctrt.
  * @since 0.1.0
  */
-volatile uint64_t s_dispatched_fp_ring[4] = {};
+volatile uint64_t priv_dispatched_fp_ring[4] = {};
 
-volatile uint8_t s_dispatched_fp_ring_idx = 0U;
+volatile uint8_t priv_dispatched_fp_ring_idx = 0U;
 
 /**
- * @var s_state_at_dispatch
+ * @var priv_state_at_dispatch
  * @brief Snapshot of ux_slave_device_state at the moment of the most
  *        recent SETUP dispatch. Used to verify the state-mirror gate
  *        was satisfied (must be in {ATTACHED, ADDRESSED, CONFIGURED}).
  *
- * @note Single-writer (::internal_handle_ctrt).
+ * @note Single-writer (::priv_handle_ctrt).
  * @since 0.1.0
  */
-volatile uint8_t s_state_at_dispatch = 0U;
+volatile uint8_t priv_state_at_dispatch = 0U;
 
 /**
  * @enum ra8_usb_setup_local_t
@@ -224,7 +224,7 @@ typedef enum : uint8_t {
  * @brief BRDYSTS / BRDYENB bit for the Default Control Pipe (pipe 0).
  * @details The DCP is pipe 0, so its buffer-ready status occupies bit 0 of the
  * per-pipe BRDYSTS / BRDYENB registers (HUM Ch 36.2.13 "BRDYSTS" p 1984). Used
- * by ::internal_handle_ctrl_out_data to detect that the host's control-OUT
+ * by ::priv_handle_ctrl_out_data to detect that the host's control-OUT
  * data stage has landed in the DCP bank.
  */
 typedef enum : uint16_t {
@@ -256,7 +256,7 @@ typedef enum : uintptr_t {
 } ra8_dcd_dwt_t;
 
 /** @brief DWT cycle counter address (Armv8-M DWT_CYCCNT). */
-static volatile uint32_t* const k_dcd_dwt_cyccnt = (volatile uint32_t*)k_dcd_dwt_cyccnt_addr;
+static volatile uint32_t* const s_dcd_dwt_cyccnt = (volatile uint32_t*)k_dcd_dwt_cyccnt_addr;
 
 /**
  * @var s_trace_seq
@@ -285,12 +285,12 @@ static volatile uint32_t s_trace_seq = 0U;
  * @note Diagnostic only; never read by production code.
  * @since 0.1.0
  */
-void internal_trace_event(uint8_t kind, uint8_t code, uint16_t length)
+void priv_trace_event(uint8_t kind, uint8_t code, uint16_t length)
 {
   const uint32_t slot = s_trace_seq % (uint32_t)k_dcd_trace_entries;
   s_trace[slot]       = ((uint32_t)kind << (uint32_t)k_dcd_trace_kind_shift) |
                         ((uint32_t)code << (uint32_t)k_dcd_trace_code_shift) | (uint32_t)length;
-  s_trace_ts[slot]    = *k_dcd_dwt_cyccnt;
+  s_trace_ts[slot]    = *s_dcd_dwt_cyccnt;
   s_trace_seq++;
 }
 
@@ -343,7 +343,7 @@ typedef enum : uint8_t {
  * @note Pure data-shuffling; safe in IRQ context.
  * @since 0.1.0
  */
-static void internal_pack_setup_le(uint8_t* buf, const ra8_usb_setup_t* setup)
+RA8_INTERNAL static void internal_pack_setup_le(volatile uint8_t* buf, const ra8_usb_setup_t* setup)
 {
   buf[k_setup_idx_bmrt]   = setup->bm_request_type;
   buf[k_setup_idx_brq]    = setup->b_request;
@@ -364,7 +364,7 @@ static void internal_pack_setup_le(uint8_t* buf, const ra8_usb_setup_t* setup)
  * OUT data has not arrived yet, and receiving it synchronously here would spin
  * the FS device ISR while the lower-priority HS host worker -- the thread that
  * must SEND the data -- is preempted (a same-CPU deadlock). So arm the DCP and
- * record the pending transfer; ::internal_handle_ctrl_out_data drains the data
+ * record the pending transfer; ::priv_handle_ctrl_out_data drains the data
  * on the subsequent DCP BRDY IRQ and only THEN runs the dispatcher. A fresh
  * SETUP always clears any stale pending state first.
  *
@@ -378,23 +378,24 @@ static void internal_pack_setup_le(uint8_t* buf, const ra8_usb_setup_t* setup)
  *
  * @pre The DCP PID write gate is open (INTSTS0.VALID cleared).
  * @pre @p tr is the bound EP0 transfer request.
- * @post On defer: DCP armed, ::s_ctrl_out_pending set, ::s_ctrl_out_tr captured.
- * @post On no-defer: ::s_ctrl_out_pending cleared.
+ * @post On defer: DCP armed, ::priv_ctrl_out_pending set, ::priv_ctrl_out_tr captured.
+ * @post On no-defer: ::priv_ctrl_out_pending cleared.
  *
  * @note ISR-callback context. Nested ifs (not a compound &&) keep this out of
  *       the MC/DC compound-decision inventory.
- * @see internal_handle_ctrl_out_data
+ * @see priv_handle_ctrl_out_data
  * @since 0.1.0
  */
-static bool internal_try_defer_ctrl_out(const ra8_usb_setup_t* setup, UX_SLAVE_TRANSFER* tr)
+RA8_INTERNAL static bool internal_try_defer_ctrl_out(const ra8_usb_setup_t* setup,
+                                                     UX_SLAVE_TRANSFER*     tr)
 {
-  s_ctrl_out_pending = false;
+  priv_ctrl_out_pending = false;
   if ((setup->bm_request_type & (uint8_t)k_ra8_usb_setup_dir_mask) == 0U) {
     if (setup->w_length > 0U) {
-      s_ctrl_out_tr      = tr;
-      s_ctrl_out_wlen    = setup->w_length;
-      s_ctrl_out_pending = true;
-      (void)ra8_usb_dcp_out_arm(s_dcd.speed);
+      priv_ctrl_out_tr      = tr;
+      priv_ctrl_out_wlen    = setup->w_length;
+      priv_ctrl_out_pending = true;
+      (void)ra8_usb_dcp_out_arm(priv_dcd.speed);
       return true;
     }
   }
@@ -405,7 +406,7 @@ static bool internal_try_defer_ctrl_out(const ra8_usb_setup_t* setup, UX_SLAVE_T
  * @brief Push a decoded SETUP packet into the USBX chapter-9 dispatcher.
  *
  * @details Mirrors the SETUP into the JLink-readable probe buffer
- * (``s_setup_packet_buffer``) so the bench can confirm the bridge drained
+ * (``priv_setup_packet_buffer``) so the bench can confirm the bridge drained
  * USBREQ/USBVAL/USBINDX/USBLENG correctly even before USBX is fully
  * bound, then forwards the packet through ``_ux_system_slave``'s EP0
  * transfer-request buffer into ``_ux_device_stack_control_request_process``.
@@ -423,10 +424,10 @@ static bool internal_try_defer_ctrl_out(const ra8_usb_setup_t* setup, UX_SLAVE_T
  * @post Chapter-9 dispatcher has been invoked synchronously.
  *
  * @note Runs in IRQ-callback context (called from ``ra8_usb_dispatch`` via
- *       ``internal_event_cb``); must not block.
+ *       ``priv_event_cb``); must not block.
  * @since 0.1.0
  */
-unsigned int internal_dispatch_setup(const ra8_usb_setup_t* setup)
+unsigned int priv_dispatch_setup(const ra8_usb_setup_t* setup)
 {
   if (setup == nullptr) {
     return UX_ERROR;
@@ -437,23 +438,23 @@ unsigned int internal_dispatch_setup(const ra8_usb_setup_t* setup)
    * device stack init, no class registration), the bench can confirm
    * via JLink that the chip latched a real SETUP and the bridge drained
    * USBREQ/USBVAL/USBINDX/USBLENG correctly. */
-  internal_pack_setup_le(s_setup_packet_buffer, setup);
-  s_setup_packet_count++;
-  internal_trace_event((uint8_t)k_dcd_trace_kind_setup, setup->b_request, setup->w_value);
+  internal_pack_setup_le(priv_setup_packet_buffer, setup);
+  priv_setup_packet_count++;
+  priv_trace_event((uint8_t)k_dcd_trace_kind_setup, setup->b_request, setup->w_value);
 
   /* USBX must already be bound to forward the SETUP into the chapter-9
    * dispatcher. If it is not, that is fine for the bench probe path --
    * we still recorded the packet above. Mark the skip reason so a JLink
    * read disambiguates "USBX not bound" from "drain failed". */
   if (_ux_system_slave == UX_NULL) {
-    s_dispatch_skip_reason |= 0x10U;
+    priv_dispatch_skip_reason |= 0x10U;
     return UX_ERROR;
   }
   UX_SLAVE_DEVICE*   device = &_ux_system_slave->ux_system_slave_device;
   UX_SLAVE_TRANSFER* tr =
     &device->ux_slave_device_control_endpoint.ux_slave_endpoint_transfer_request;
   if (tr == UX_NULL) {
-    s_dispatch_skip_reason |= 0x20U;
+    priv_dispatch_skip_reason |= 0x20U;
     return UX_ERROR;
   }
 
@@ -471,15 +472,15 @@ unsigned int internal_dispatch_setup(const ra8_usb_setup_t* setup)
    * the DCP BRDY ISR (see internal_try_defer_ctrl_out); IN / no-data requests
    * fall through to the immediate chapter-9 dispatch below. */
   if (internal_try_defer_ctrl_out(setup, tr)) {
-    s_dispatch_skip_reason |= (uint32_t)k_ra8_usb_skip_process_ok;
+    priv_dispatch_skip_reason |= (uint32_t)k_ra8_usb_skip_process_ok;
     return UX_SUCCESS;
   }
 
   const unsigned int rc = _ux_device_stack_control_request_process(tr);
   if (rc != UX_SUCCESS) {
-    s_dispatch_skip_reason |= 0x08U;
+    priv_dispatch_skip_reason |= 0x08U;
   } else {
-    s_dispatch_skip_reason |= (uint32_t)k_ra8_usb_skip_process_ok;
+    priv_dispatch_skip_reason |= (uint32_t)k_ra8_usb_skip_process_ok;
   }
   return rc;
 }
@@ -491,7 +492,7 @@ unsigned int internal_dispatch_setup(const ra8_usb_setup_t* setup)
  * non-SET_ADDRESS SETUP. Reads the SETUP via
  * ``ra8_usb_read_setup_unconditional``, records the fingerprint in the
  * diagnostic ring, promotes USBX device state to ATTACHED if it dropped
- * below the chapter-9 gate, dispatches via ``internal_dispatch_setup``,
+ * below the chapter-9 gate, dispatches via ``priv_dispatch_setup``,
  * and on no-data H2D control transfers (e.g. SET_CONFIGURATION,
  * SET_INTERFACE, SET_FEATURE) pulses CCPL via ``ra8_usb_control_response``
  * so the host observes the status-stage IN-ZLP. HUM Ch 37.3 p 2147.
@@ -502,22 +503,23 @@ unsigned int internal_dispatch_setup(const ra8_usb_setup_t* setup)
  *
  * @pre Caller has verified VALID is observed and the fingerprint is new.
  * @pre Controller register block matches ``speed``.
- * @post ``s_last_dispatched_setup_fp`` updated.
+ * @post ``priv_last_dispatched_setup_fp`` updated.
  * @post CCPL pulsed for no-data H2D control transfers.
  *
  * @note ISR-callback context; must not block.
  * @since 0.1.0
  */
-static void internal_ctrt_dispatch_fresh_setup(ra8_usb_speed_t speed, uint64_t fingerprint)
+RA8_INTERNAL static void internal_ctrt_dispatch_fresh_setup(ra8_usb_speed_t speed,
+                                                            uint64_t        fingerprint)
 {
   ra8_usb_setup_t setup = {};
   if (ra8_usb_read_setup_unconditional(speed, &setup) != k_ra8_ok) {
     return;
   }
-  s_setup_dispatch_count++;
-  s_last_dispatched_setup_fp                     = fingerprint;
-  s_dispatched_fp_ring[s_dispatched_fp_ring_idx] = fingerprint;
-  s_dispatched_fp_ring_idx = (uint8_t)((s_dispatched_fp_ring_idx + 1U) & 0x03U);
+  priv_setup_dispatch_count++;
+  priv_last_dispatched_setup_fp                        = fingerprint;
+  priv_dispatched_fp_ring[priv_dispatched_fp_ring_idx] = fingerprint;
+  priv_dispatched_fp_ring_idx = (uint8_t)((priv_dispatched_fp_ring_idx + 1U) & 0x03U);
 
   /* Belt-and-suspenders: ensure device_state is in {ATTACHED,
    * ADDRESSED, CONFIGURED} BEFORE dispatch so the chapter-9 gate
@@ -537,10 +539,11 @@ static void internal_ctrt_dispatch_fresh_setup(ra8_usb_speed_t speed, uint64_t f
         break;
     }
   }
-  s_state_at_dispatch = (uint8_t)(_ux_system_slave != UX_NULL
-                                    ? _ux_system_slave->ux_system_slave_device.ux_slave_device_state
-                                    : (ULONG)k_ra8_usb_state_unknown);
-  const unsigned int rc = internal_dispatch_setup(&setup);
+  priv_state_at_dispatch =
+    (uint8_t)(_ux_system_slave != UX_NULL
+                ? _ux_system_slave->ux_system_slave_device.ux_slave_device_state
+                : (ULONG)k_ra8_usb_state_unknown);
+  const unsigned int rc = priv_dispatch_setup(&setup);
 
   /* Drive CCPL for no-data H2D control transfers (SET_ADDRESS,
    * SET_CONFIGURATION, SET_INTERFACE, SET_FEATURE...) so the host
@@ -550,13 +553,13 @@ static void internal_ctrt_dispatch_fresh_setup(ra8_usb_speed_t speed, uint64_t f
     if (setup.w_length == 0U) {
       (void)ra8_usb_control_response(speed, rc == UX_SUCCESS);
       /* kind 7: H2D status driven -- code = bRequest, len = USBX rc. */
-      internal_trace_event((uint8_t)k_dcd_trace_kind_ccpl, setup.b_request, (uint16_t)rc);
+      priv_trace_event((uint8_t)k_dcd_trace_kind_ccpl, setup.b_request, (uint16_t)rc);
     }
   }
 }
 
 /**
- * @brief VALID-observed branch of ``internal_handle_ctrt``.
+ * @brief VALID-observed branch of ``priv_handle_ctrt``.
  *
  * @details Reads USBREQ/USBVAL/USBINDX/USBLENG (HUM Ch 37.2.21..24
  * p 2087..2090, persistent mirrors), computes a 64-bit fingerprint for
@@ -574,7 +577,7 @@ static void internal_ctrt_dispatch_fresh_setup(ra8_usb_speed_t speed, uint64_t f
  * @note ISR-callback context; must not block.
  * @since 0.1.0
  */
-static void internal_ctrt_handle_valid(ra8_usb_speed_t speed)
+RA8_INTERNAL static void internal_ctrt_handle_valid(ra8_usb_speed_t speed)
 {
   volatile r_usb_regs_t* const reg = (speed == k_ra8_usb_speed_hs) ? ra8_usb_hs() : ra8_usb_fs();
   if (reg == nullptr) {
@@ -596,7 +599,7 @@ static void internal_ctrt_handle_valid(ra8_usb_speed_t speed)
    * ISR spurious-entry gate does not short-circuit it -- it must be
    * cleared here. The early clear is also the dedup: a second
    * ISR entry for the same physical SETUP sees VALID=0 and
-   * internal_handle_ctrt skips this function.
+   * priv_handle_ctrt skips this function.
    * HUM Ch 36.2.14 INTSTS0 p 1985 (W0C). */
   reg->INTSTS0 = (uint16_t)(reg->INTSTS0 & (uint16_t)~(uint16_t)k_ra8_intsts0_mask_valid);
 
@@ -617,7 +620,7 @@ static void internal_ctrt_handle_valid(ra8_usb_speed_t speed)
 
   /* Dispatch every observed SETUP, including a host retransmit of
    * byte-identical bytes after a missed response window. The previous
-   * `fingerprint != s_last_dispatched_setup_fp` skip dropped exactly
+   * `fingerprint != priv_last_dispatched_setup_fp` skip dropped exactly
    * those retransmits and -- with the VALID clear also skipped -- left
    * the controller wedged. The early VALID clear above is the real
    * dedup; the fingerprint is now recorded for diagnostics only. */
@@ -647,7 +650,7 @@ static void internal_ctrt_handle_valid(ra8_usb_speed_t speed)
  * @note ISR-callback context; must not block.
  * @since 0.1.0
  */
-void internal_handle_ctrt(ra8_usb_speed_t speed, uint16_t intsts0)
+void priv_handle_ctrt(ra8_usb_speed_t speed, uint16_t intsts0)
 {
   const uint16_t ctsq       = (uint16_t)(intsts0 & (uint16_t)k_ra8_intsts0_mask_ctsq);
   const bool     have_valid = ((intsts0 & (uint16_t)k_ra8_intsts0_mask_valid) != 0U);
@@ -680,7 +683,7 @@ void internal_handle_ctrt(ra8_usb_speed_t speed, uint16_t intsts0)
  * @brief Drain a deferred control-OUT data stage and run chapter-9.
  *
  * @details Back half of the host->device control-write data path; the front
- * half (::internal_dispatch_setup) armed the DCP and set ::s_ctrl_out_pending
+ * half (::priv_dispatch_setup) armed the DCP and set ::priv_ctrl_out_pending
  * on the SETUP IRQ. Invoked from ::ux_dcd_ra8_usb_irq on every IRQ, AHEAD of the
  * CTRT status handling, this acts only when a control-write data stage is
  * pending and the host's OUT packet has landed in the DCP bank (DCP BRDY
@@ -688,7 +691,7 @@ void internal_handle_ctrt(ra8_usb_speed_t speed, uint16_t intsts0)
  * ::ra8_usb_dcp_out_read and then runs ::_ux_device_stack_control_request_process
  * so the class control_request (e.g. DFU_DNLOAD) sees its payload. The
  * control-write status stage (IN-ZLP) is driven separately by the CTSQ=wrss
- * edge in ::internal_handle_ctrt.
+ * edge in ::priv_handle_ctrt.
  *
  * Deferring to this BRDY IRQ -- rather than receiving synchronously in the
  * SETUP IRQ -- is mandatory on the USB self-loop: the FS device ISR and the
@@ -699,17 +702,17 @@ void internal_handle_ctrt(ra8_usb_speed_t speed, uint16_t intsts0)
  *
  * @pre Bridge is past ::ux_dcd_ra8_usb_initialize.
  * @pre Runs ahead of the CTRT status handling within the same IRQ.
- * @post On a drained packet, ::s_ctrl_out_pending is cleared and chapter-9 ran.
+ * @post On a drained packet, ::priv_ctrl_out_pending is cleared and chapter-9 ran.
  * @post On a not-yet-landed bank, state is unchanged (retried next IRQ).
  *
  * @note ISR-callback context; must not block past the bounded CFIFO wait.
- * @see internal_dispatch_setup
+ * @see priv_dispatch_setup
  * @see ra8_usb_dcp_out_read
  * @since 0.1.0
  */
-void internal_handle_ctrl_out_data(ra8_usb_speed_t speed)
+void priv_handle_ctrl_out_data(ra8_usb_speed_t speed)
 {
-  if (!s_ctrl_out_pending) {
+  if (!priv_ctrl_out_pending) {
     return;
   }
   volatile r_usb_regs_t* const reg = (speed == k_ra8_usb_speed_hs) ? ra8_usb_hs() : ra8_usb_fs();
@@ -723,9 +726,9 @@ void internal_handle_ctrl_out_data(ra8_usb_speed_t speed)
     return;
   }
 
-  UX_SLAVE_TRANSFER* const tr = s_ctrl_out_tr;
-  s_ctrl_out_pending          = false;
-  s_ctrl_out_tr               = UX_NULL;
+  UX_SLAVE_TRANSFER* const tr = priv_ctrl_out_tr;
+  priv_ctrl_out_pending       = false;
+  priv_ctrl_out_tr            = UX_NULL;
   if (tr == UX_NULL) {
     return;
   }
@@ -733,13 +736,13 @@ void internal_handle_ctrl_out_data(ra8_usb_speed_t speed)
   uint16_t rx = 0U;
   if (ra8_usb_dcp_out_read(speed,
                            tr->ux_slave_transfer_request_data_pointer,
-                           s_ctrl_out_wlen,
+                           priv_ctrl_out_wlen,
                            &rx) != k_ra8_ok) {
     return;
   }
   tr->ux_slave_transfer_request_actual_length = rx;
-  s_ctrl_out_rx                               = (uint32_t)rx;
-  s_ctrl_out_done++;
+  priv_ctrl_out_rx                            = (uint32_t)rx;
+  priv_ctrl_out_done++;
   (void)_ux_device_stack_control_request_process(tr);
   /* Complete the control-write with its IN-ZLP status stage: pulse CCPL so the
    * SIE answers the host's status-stage IN token. Without this the host's

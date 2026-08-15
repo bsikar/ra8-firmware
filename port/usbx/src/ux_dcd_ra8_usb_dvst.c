@@ -38,7 +38,7 @@
 #include "ux_utility.h"
 
 /**
- * @var s_dvst_irq_count
+ * @var priv_dvst_irq_count
  * @brief Counter of INTSTS0.DVST (device-state-transition) events.
  *
  * @details Bisect probe. Each bus reset / set-address / set-config
@@ -48,7 +48,7 @@
  * @note Written only by ::ux_dcd_ra8_usb_irq.
  * @since 0.1.0
  */
-volatile uint32_t s_dvst_irq_count = 0U;
+volatile uint32_t priv_dvst_irq_count = 0U;
 
 /**
  * @enum ra8_usb_dcd_sentinel_t
@@ -59,7 +59,7 @@ typedef enum : uint16_t {
 } ra8_usb_dcd_sentinel_t;
 
 /**
- * @var s_dvstctr0_at_first_dvst
+ * @var priv_dvstctr0_at_first_dvst
  * @brief Snapshot of DVSTCTR0 (RHST field) on first DVST event.
  *
  * @details Bisect probe. RHST[2:0] (HUM Ch 36.2.5 p 1971) reports the
@@ -70,18 +70,18 @@ typedef enum : uint16_t {
  * @note Latched once on the first DVST after attach; never overwritten.
  * @since 0.1.0
  */
-volatile uint16_t s_dvstctr0_at_first_dvst = (uint16_t)k_ra8_usb_u16_unset;
+volatile uint16_t priv_dvstctr0_at_first_dvst = (uint16_t)k_ra8_usb_u16_unset;
 
 /**
  * @enum ra8_usb_dcd_rhst_hist_t
  * @brief Sizing for the DVSTCTR0.RHST history ring.
  */
 typedef enum : uint8_t {
-  k_ra8_usb_dcd_rhst_hist_n = 16U, /**< Slots in s_rhst_history. */
+  k_ra8_usb_dcd_rhst_hist_n = 16U, /**< Slots in priv_rhst_history. */
 } ra8_usb_dcd_rhst_hist_t;
 
 /**
- * @var s_rhst_history
+ * @var priv_rhst_history
  * @brief Per-DVST-event capture of DVSTCTR0.RHST[2:0]. JLink-readable.
  *
  * @details RHST encoding (HUM Ch 36.2.5 p 1971 / Ch 37 DVSTCTR0):
@@ -93,20 +93,20 @@ typedef enum : uint8_t {
  * @note Single-writer (::internal_handle_dvst from the polled worker).
  * @since 0.1.0
  */
-volatile uint8_t s_rhst_history[(uint32_t)k_ra8_usb_dcd_rhst_hist_n] = {};
+volatile uint8_t priv_rhst_history[(uint32_t)k_ra8_usb_dcd_rhst_hist_n] = {};
 
 /**
- * @var s_rhst_history_count
+ * @var priv_rhst_history_count
  * @brief Total DVST events seen; modulo k_ra8_usb_dcd_rhst_hist_n is
  *        the next write slot.
  *
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
  */
-volatile uint32_t s_rhst_history_count = 0U;
+volatile uint32_t priv_rhst_history_count = 0U;
 
 /**
- * @var s_dvstctr0_history
+ * @var priv_dvstctr0_history
  * @brief Per-dispatch-tick capture of the full DVSTCTR0 register.
  *
  * @details Bisect probe for the post-chirp HS bring-up stall. After a
@@ -123,30 +123,30 @@ volatile uint32_t s_rhst_history_count = 0U;
  * full DVSTCTR0 word per tick lets the bench confirm the field is
  * stable at 0x???3 (RHST=HS) and not silently flapping.
  *
- * Ring size 16 chosen to match ::s_rhst_history so JLink scripts can
+ * Ring size 16 chosen to match ::priv_rhst_history so JLink scripts can
  * read both arrays in one transaction.
  *
  * @note Single-writer (::internal_dispatch_worker tick).
  * @since 0.1.0
  */
-volatile uint16_t s_dvstctr0_history[(uint32_t)k_ra8_usb_dcd_rhst_hist_n] = {};
+volatile uint16_t priv_dvstctr0_history[(uint32_t)k_ra8_usb_dcd_rhst_hist_n] = {};
 
 /**
- * @var s_dvstctr0_history_count
+ * @var priv_dvstctr0_history_count
  * @brief Total dispatch ticks observed; modulo
  *        ::k_ra8_usb_dcd_rhst_hist_n is the next write slot in
- *        ::s_dvstctr0_history.
+ *        ::priv_dvstctr0_history.
  *
  * @note Single-writer (::internal_dispatch_worker tick).
  * @since 0.1.0
  */
-volatile uint32_t s_dvstctr0_history_count = 0U;
+volatile uint32_t priv_dvstctr0_history_count = 0U;
 
 /**
- * @var s_intsts1_history
+ * @var priv_intsts1_history
  * @brief Per-dispatch-tick capture of the full INTSTS1 register.
  *
- * @details Companion probe to ::s_dvstctr0_history. INTSTS1
+ * @details Companion probe to ::priv_dvstctr0_history. INTSTS1
  * (HUM Ch 36.2.17 p 2001) carries BCHG (bit 14), DTCH (bit 12),
  * ATTCH (bit 11), EOFERR (bit 6), SIGN (bit 5), SACK (bit 4) for
  * host mode and the bus-change shadow for device mode. The 0.2.0
@@ -157,15 +157,15 @@ volatile uint32_t s_dvstctr0_history_count = 0U;
  * @note Single-writer (::internal_dispatch_worker tick).
  * @since 0.1.0
  */
-volatile uint16_t s_intsts1_history[(uint32_t)k_ra8_usb_dcd_rhst_hist_n] = {};
+volatile uint16_t priv_intsts1_history[(uint32_t)k_ra8_usb_dcd_rhst_hist_n] = {};
 
 /**
- * @var s_dvst_state_history
+ * @var priv_dvst_state_history
  * @brief Per-DVST-event capture of the decoded DVSQ[2:0] field.
  *
  * @details JLink-readable trace of every device-state transition
  * (independent of the "interesting tick" filter that gates
- * ::s_dvsq_history). Each DVST IRQ writes the pre-shifted DVSQ value
+ * ::priv_dvsq_history). Each DVST IRQ writes the pre-shifted DVSQ value
  * (0=Powered, 1=Default, 2=Address, 3=Configured, 4..7=Suspend variant
  * per HUM Ch 36.2.16 p 1986). A healthy enumeration shows
  * 1, 1, 2, 2, 3, ...; the "stuck-in-default" symptom shows
@@ -174,18 +174,18 @@ volatile uint16_t s_intsts1_history[(uint32_t)k_ra8_usb_dcd_rhst_hist_n] = {};
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
  */
-volatile uint8_t s_dvst_state_history[(uint32_t)k_ra8_usb_dcd_rhst_hist_n] = {};
+volatile uint8_t priv_dvst_state_history[(uint32_t)k_ra8_usb_dcd_rhst_hist_n] = {};
 
 /**
- * @var s_dvst_state_history_count
- * @brief Total DVST events recorded into ::s_dvst_state_history.
+ * @var priv_dvst_state_history_count
+ * @brief Total DVST events recorded into ::priv_dvst_state_history.
  *
  * @details Modulo ::k_ra8_usb_dcd_rhst_hist_n is the next write slot.
  *
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
  */
-volatile uint32_t s_dvst_state_history_count = 0U;
+volatile uint32_t priv_dvst_state_history_count = 0U;
 
 /**
  * @enum ra8_usb_dcd_rhst_t
@@ -223,7 +223,7 @@ typedef enum : uint8_t {
  * @note Pure; safe in IRQ context.
  * @since 0.1.0
  */
-static unsigned long internal_dvst_map_dvsq_to_ux_state(uint16_t dvsq)
+RA8_INTERNAL static unsigned long internal_dvst_map_dvsq_to_ux_state(uint16_t dvsq)
 {
   if ((dvsq & (uint16_t)k_ra8_dvsq_suspend) != 0U) {
     return (unsigned long)UX_DEVICE_SUSPENDED;
@@ -252,28 +252,28 @@ static unsigned long internal_dvst_map_dvsq_to_ux_state(uint16_t dvsq)
  * @param[in] dvsq Masked INTSTS0.DVSQ field for this event.
  *
  * @pre Called from the DVST IRQ path only (single writer).
- * @pre ::s_dvst_state_history_count monotonicity is maintained.
+ * @pre ::priv_dvst_state_history_count monotonicity is maintained.
  * @post One ring slot holds the packed event; count incremented.
  * @post No other state changes.
  *
  * @note Diagnostic only; never read by production code.
  * @since 0.1.0
  */
-static void internal_dvst_record_history(uint16_t dvsq)
+RA8_INTERNAL static void internal_dvst_record_history(uint16_t dvsq)
 {
   const uint8_t dvst_slot =
-    (uint8_t)(s_dvst_state_history_count % (uint32_t)k_ra8_usb_dcd_rhst_hist_n);
+    (uint8_t)(priv_dvst_state_history_count % (uint32_t)k_ra8_usb_dcd_rhst_hist_n);
   uint8_t entry_state = (uint8_t)k_dcd_trace_nibble;
   if (_ux_system_slave != UX_NULL) {
     entry_state = (uint8_t)(_ux_system_slave->ux_system_slave_device.ux_slave_device_state &
                             (unsigned long)k_dcd_trace_nibble);
   }
-  const uint8_t packed            = (uint8_t)((uint8_t)((dvsq >> (uint8_t)k_ra8_int0_dvsq_shift)
-                                                        << (uint8_t)k_dcd_trace_nib_shift) |
-                                              entry_state);
-  s_dvst_state_history[dvst_slot] = packed;
-  s_dvst_state_history_count++;
-  internal_trace_event((uint8_t)k_dcd_trace_kind_dvst, packed, 0U);
+  const uint8_t packed               = (uint8_t)((uint8_t)((dvsq >> (uint8_t)k_ra8_int0_dvsq_shift)
+                                                           << (uint8_t)k_dcd_trace_nib_shift) |
+                                                 entry_state);
+  priv_dvst_state_history[dvst_slot] = packed;
+  priv_dvst_state_history_count++;
+  priv_trace_event((uint8_t)k_dcd_trace_kind_dvst, packed, 0U);
 }
 
 /**
@@ -319,7 +319,7 @@ static void internal_dvst_record_history(uint16_t dvsq)
  * @note ISR-callback context; must not block.
  * @since 0.1.0
  */
-static bool
+RA8_INTERNAL static bool
 internal_dvst_policy_apply(UX_SLAVE_DEVICE* device, uint16_t dvsq, unsigned long new_state)
 {
   bool apply = false;
@@ -351,13 +351,13 @@ internal_dvst_policy_apply(UX_SLAVE_DEVICE* device, uint16_t dvsq, unsigned long
  *
  * @pre Caller has masked ``intsts0`` against the event mask.
  * @pre Bridge is past ``ux_dcd_ra8_usb_initialize``.
- * @post ``s_dvst_state_history`` ring buffer captures the new DVSQ.
+ * @post ``priv_dvst_state_history`` ring buffer captures the new DVSQ.
  * @post USBX device state mirrored to match the controller's DVSQ.
  *
  * @note ISR-callback context; must not block.
  * @since 0.1.0
  */
-static void internal_handle_dvst(ra8_usb_speed_t speed, uint16_t intsts0)
+RA8_INTERNAL static void internal_handle_dvst(ra8_usb_speed_t speed, uint16_t intsts0)
 {
   /* DVSQ field bits 6:4 on BOTH controllers (suspend = bit 6). USBHS
    * additionally reports VBUS status in bit 7, which must be stripped
@@ -371,7 +371,7 @@ static void internal_handle_dvst(ra8_usb_speed_t speed, uint16_t intsts0)
    * usb_pstd_busreset reference flow. Without rearm the IP silently
    * drops the host's first SETUP token after bus reset. */
   if (dvsq == (uint16_t)k_ra8_dvsq_default) {
-    internal_dvst_default_state(speed);
+    priv_dvst_default_state(speed);
   }
   /* Suspended sub-states must not be treated as bus transitions. */
 
@@ -383,7 +383,7 @@ static void internal_handle_dvst(ra8_usb_speed_t speed, uint16_t intsts0)
   if ((dvsq & (uint16_t)k_ra8_dvsq_suspend) == 0U) {
     /* Any non-suspend bus-state transition invalidates the SETUP
      * de-dup fingerprint. */
-    s_last_dispatched_setup_fp = 0U;
+    priv_last_dispatched_setup_fp = 0U;
   }
   /* Upgrade-only mirror; disconnect + apply on true bus reset only --
    * rationale in internal_dvst_policy_apply's header. */
@@ -427,7 +427,7 @@ static void internal_handle_dvst(ra8_usb_speed_t speed, uint16_t intsts0)
  * @note ISR-callback context; a few field writes, never blocks.
  * @since 0.1.0
  */
-static void internal_dvst_track_speed(uint8_t rhst)
+RA8_INTERNAL static void internal_dvst_track_speed(uint8_t rhst)
 {
   if (_ux_system_slave == UX_NULL) {
     return;
@@ -454,7 +454,7 @@ static void internal_dvst_track_speed(uint8_t rhst)
  *
  * @details Pulled out of ``ux_dcd_ra8_usb_irq`` so the outer ISR fits in
  * one page. Reads DVSTCTR0 (HUM Ch 36.2.5 p 1971) for RHST history,
- * latches the first-observed value into ``s_dvstctr0_at_first_dvst``,
+ * latches the first-observed value into ``priv_dvstctr0_at_first_dvst``,
  * mirrors the settled link speed via ``internal_dvst_track_speed``,
  * then calls ``internal_handle_dvst`` for the state-machine update.
  *
@@ -463,26 +463,27 @@ static void internal_dvst_track_speed(uint8_t rhst)
  *
  * @pre Caller has already verified the DVST bit is set in ``intsts0``.
  * @pre Bridge is past ``ux_dcd_ra8_usb_initialize``.
- * @post ``s_dvst_irq_count`` and ``s_rhst_history_count`` incremented.
+ * @post ``priv_dvst_irq_count`` and ``priv_rhst_history_count`` incremented.
  * @post Speed mirror updated and ``internal_handle_dvst`` has run.
  *
  * @note ISR-only; must not block.
  * @since 0.1.0
  */
-void internal_irq_dvst_prelude(ra8_usb_speed_t speed, uint16_t intsts0)
+void priv_irq_dvst_prelude(ra8_usb_speed_t speed, uint16_t intsts0)
 {
-  s_dvst_irq_count++;
+  priv_dvst_irq_count++;
   volatile r_usb_regs_t* reg      = (speed == k_ra8_usb_speed_hs) ? ra8_usb_hs() : ra8_usb_fs();
   const uint16_t         dvstctr0 = reg->DVSTCTR0;
-  if (s_dvstctr0_at_first_dvst == (uint16_t)k_ra8_usb_u16_unset) {
-    s_dvstctr0_at_first_dvst = dvstctr0;
+  if (priv_dvstctr0_at_first_dvst == (uint16_t)k_ra8_usb_u16_unset) {
+    priv_dvstctr0_at_first_dvst = dvstctr0;
   }
   /* RHST occupies DVSTCTR0[2:0]. HUM Ch 36.2.5 p 1971. */
-  const uint8_t rhst_mask   = (uint8_t)k_ra8_usb_dvsq_field_mask;
-  const uint8_t rhst        = (uint8_t)(dvstctr0 & rhst_mask);
-  const uint8_t hist_slot   = (uint8_t)(s_rhst_history_count % (uint32_t)k_ra8_usb_dcd_rhst_hist_n);
-  s_rhst_history[hist_slot] = rhst;
-  s_rhst_history_count++;
+  const uint8_t rhst_mask = (uint8_t)k_ra8_usb_dvsq_field_mask;
+  const uint8_t rhst      = (uint8_t)(dvstctr0 & rhst_mask);
+  const uint8_t hist_slot =
+    (uint8_t)(priv_rhst_history_count % (uint32_t)k_ra8_usb_dcd_rhst_hist_n);
+  priv_rhst_history[hist_slot] = rhst;
+  priv_rhst_history_count++;
   internal_dvst_track_speed(rhst);
   internal_handle_dvst(speed, intsts0);
 }
