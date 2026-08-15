@@ -2,20 +2,27 @@
  * @file test_ra8_nsc_ota.c
  * @brief Unit tests + MC/DC vectors for libs/ra8_nsc/src/ra8_nsc_ota.c
  *
+ * @details Verifies target-bank validation and the branch-free flash-bank
+ *          configuration forwarder against the host OTA commit seam.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "ota_commit.h"
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_nsc.h"
 #include "unity_minimal.h"
 
 /**
- * @test test_mcdc_nsc_ota_commit_target_bank
+ * @test internal_test_mcdc_nsc_ota_commit_target_bank
+ * @brief Verify MC/DC coverage of OTA target-bank validation.
+ *
+ * @details Resets the commit shadow before each target-bank vector and checks
+ *          forwarding for both valid banks plus rejection of an invalid bank.
  *
  * @par MC/DC:
  * Decision:
@@ -35,8 +42,17 @@
  *
  * @par DO-178C 6.4.4.3 rationale:
  * 2-condition decision; N+1 = 3 vectors satisfy MC/DC fully.
+ *
+ * @pre The host OTA commit shadow can be reset.
+ * @pre Both declared OTA bank identifiers are valid production values.
+ * @post Bank A and bank B requests return k_ra8_ok.
+ * @post The invalid bank request returns k_ra8_err_invalid_arg.
+ *
+ * @note Each vector starts with an independent commit shadow.
+ * @since 0.1.0
  */
-static void test_mcdc_nsc_ota_commit_target_bank(void)
+RA8_INTERNAL
+static void internal_test_mcdc_nsc_ota_commit_target_bank(void)
 {
   TEST_BEGIN("ra8_nsc_ota_commit MC/DC: target_bank != A && target_bank != B");
 
@@ -57,7 +73,11 @@ static void test_mcdc_nsc_ota_commit_target_bank(void)
 }
 
 /**
- * @test test_nsc_flash_bank_config_forward
+ * @test internal_test_nsc_flash_bank_config_forward
+ * @brief Verify the branch-free flash bank configuration forwarder.
+ *
+ * @details Calls the NSC bank-configuration veneer with a valid scalar and
+ *          checks the result from the secure-side implementation.
  *
  * @par MC/DC:
  * ``ra8_nsc_flash_bank_config`` is a non-branching forwarder
@@ -65,8 +85,17 @@ static void test_mcdc_nsc_ota_commit_target_bank(void)
  * decisions, so MC/DC is trivially satisfied by any single call. This
  * presence sentinel documents that fact and exercises the call so the
  * decision-free statement coverage row is non-zero.
+ *
+ * @pre The host flash bank configuration seam is available.
+ * @pre The supplied zero configuration is accepted by the host seam.
+ * @post The forwarding call returns k_ra8_ok.
+ * @post No caller-owned memory is modified.
+ *
+ * @note This sentinel covers a function with no decisions.
+ * @since 0.1.0
  */
-static void test_nsc_flash_bank_config_forward(void)
+RA8_INTERNAL
+static void internal_test_nsc_flash_bank_config_forward(void)
 {
   TEST_BEGIN("ra8_nsc_flash_bank_config forwards (no compound decisions)");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_flash_bank_config(0x0U));
@@ -75,8 +104,7 @@ static void test_nsc_flash_bank_config_forward(void)
 
 int32_t main(void)
 {
-  test_mcdc_nsc_ota_commit_target_bank();
-  test_nsc_flash_bank_config_forward();
-  (void)fprintf(stderr, "[OK ] test_ra8_nsc_ota.c\n");
+  internal_test_mcdc_nsc_ota_commit_target_bank();
+  internal_test_nsc_flash_bank_config_forward();
   return 0;
 }

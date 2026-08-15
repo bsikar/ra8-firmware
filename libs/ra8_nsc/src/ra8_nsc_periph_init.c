@@ -19,6 +19,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_dma.h"
 #include "ra8_err.h"
 #include "ra8_isr.h"
@@ -70,6 +71,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe; the console writer is single-producer.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_uart_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;

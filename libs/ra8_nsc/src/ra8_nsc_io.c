@@ -2,6 +2,9 @@
  * @file ra8_nsc_io.c
  * @brief NSC veneers for the -6 I/O drivers
  *
+ * @details Validates non-secure pointers and forwards timer, analog, CRC,
+ *          display, audio, and Ethernet requests to secure-side drivers.
+ *
  * @par Tag
  * [Ring 4 / NSC] {World: NSC}
  *
