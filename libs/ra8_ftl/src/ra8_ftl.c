@@ -80,7 +80,7 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ftl_reclaim_stale(ra8_ftl_t* ftl)
+static ra8_err_t internal_reclaim_stale(ra8_ftl_t* ftl)
 {
   RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
   RA8_CHECK_NULL_PTR(ftl->raw, s_tag, "raw must not be nullptr");
@@ -125,7 +125,7 @@ static ra8_err_t ftl_reclaim_stale(ra8_ftl_t* ftl)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ftl_pick_free(const ra8_ftl_t* ftl, uint32_t* out)
+static ra8_err_t internal_pick_free(const ra8_ftl_t* ftl, uint32_t* out)
 {
   RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -156,7 +156,7 @@ static ra8_err_t ftl_pick_free(const ra8_ftl_t* ftl, uint32_t* out)
  * @brief Allocate a blank physical block, reclaiming stale blocks if needed.
  *
  * @details
- * Tries ::ftl_pick_free; if no free block exists it runs ::ftl_reclaim_stale
+ * Tries ::internal_pick_free; if no free block exists it runs ::internal_reclaim_stale
  * and retries exactly once. Two attempts suffice because the FTL guarantees at
  * least one spare block, so after reclamation a free block always exists. The
  * chosen block is erased (advancing its erase count) so it is blank before the
@@ -181,23 +181,23 @@ static ra8_err_t ftl_pick_free(const ra8_ftl_t* ftl, uint32_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ftl_alloc_blank(ra8_ftl_t* ftl, uint32_t* out)
+static ra8_err_t internal_alloc_blank(ra8_ftl_t* ftl, uint32_t* out)
 {
   RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   uint32_t  phys = 0;
-  ra8_err_t pick = ftl_pick_free(ftl, &phys);
+  ra8_err_t pick = internal_pick_free(ftl, &phys);
   if (pick == k_ra8_err_no_data) {
-    const ra8_err_t rec = ftl_reclaim_stale(ftl);
+    const ra8_err_t rec = internal_reclaim_stale(ftl);
     if (rec != k_ra8_ok) {
       return rec;
     }
-    pick = ftl_pick_free(ftl, &phys);
+    pick = internal_pick_free(ftl, &phys);
   }
   if (pick == k_ra8_err_no_data) {
     return k_ra8_err_no_mem;
   }
-  /* ftl_pick_free with non-null args returns only k_ra8_ok or
+  /* internal_pick_free with non-null args returns only k_ra8_ok or
    * k_ra8_err_no_data. */
   if (pick != k_ra8_ok) {
     return pick; /* GCOVR_EXCL_LINE */
@@ -244,7 +244,7 @@ static ra8_err_t ftl_alloc_blank(ra8_ftl_t* ftl, uint32_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ftl_read_one(const ra8_ftl_t* ftl, uint32_t lbn, uint8_t* dst)
+static ra8_err_t internal_read_one(const ra8_ftl_t* ftl, uint32_t lbn, uint8_t* dst)
 {
   RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
   RA8_CHECK_NULL_PTR(dst, s_tag, "dst must not be nullptr");
@@ -286,12 +286,12 @@ static ra8_err_t ftl_read_one(const ra8_ftl_t* ftl, uint32_t lbn, uint8_t* dst)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ftl_write_one(ra8_ftl_t* ftl, uint32_t lbn, const uint8_t* src)
+static ra8_err_t internal_write_one(ra8_ftl_t* ftl, uint32_t lbn, const uint8_t* src)
 {
   RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   uint32_t        phys  = 0;
-  const ra8_err_t alloc = ftl_alloc_blank(ftl, &phys);
+  const ra8_err_t alloc = internal_alloc_blank(ftl, &phys);
   if (alloc != k_ra8_ok) {
     return alloc;
   }
@@ -338,7 +338,7 @@ static ra8_err_t ftl_write_one(ra8_ftl_t* ftl, uint32_t lbn, const uint8_t* src)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ftl_bounds(const ra8_ftl_t* ftl, uint32_t lba, uint32_t count)
+static ra8_err_t internal_bounds(const ra8_ftl_t* ftl, uint32_t lba, uint32_t count)
 {
   if (count > ftl->logical_blocks) {
     return k_ra8_err_out_of_range;
@@ -354,7 +354,7 @@ static ra8_err_t ftl_bounds(const ra8_ftl_t* ftl, uint32_t lba, uint32_t count)
  *
  * @details
  * Bounds-checks then resolves each logical block one at a time through
- * ::ftl_read_one. The per-block loop is statically bounded by `count`.
+ * ::internal_read_one. The per-block loop is statically bounded by `count`.
  *
  * @param[in]  ctx   FTL handle (as a void cookie).
  * @param[in]  lba   First logical block address.
@@ -377,18 +377,18 @@ static ra8_err_t ftl_bounds(const ra8_ftl_t* ftl, uint32_t lba, uint32_t count)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ftl_dev_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t internal_dev_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
   const ra8_ftl_t* ftl = (const ra8_ftl_t*)ctx;
-  const ra8_err_t  b   = ftl_bounds(ftl, lba, count);
+  const ra8_err_t  b   = internal_bounds(ftl, lba, count);
   if (b != k_ra8_ok) {
     return b;
   }
   for (uint32_t i = 0; i < count; ++i) {
     const size_t    off = (size_t)i * (size_t)k_ra8_io_block_size_bytes;
-    const ra8_err_t e   = ftl_read_one(ftl, lba + i, &buf[off]);
+    const ra8_err_t e   = internal_read_one(ftl, lba + i, &buf[off]);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -401,7 +401,7 @@ static ra8_err_t ftl_dev_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* 
  *
  * @details
  * Bounds-checks then relocates each logical block one at a time through
- * ::ftl_write_one (copy-on-write). The per-block loop is statically bounded by
+ * ::internal_write_one (copy-on-write). The per-block loop is statically bounded by
  * `count`.
  *
  * @param[in] ctx   FTL handle (as a void cookie).
@@ -425,18 +425,18 @@ static ra8_err_t ftl_dev_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* 
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ftl_dev_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t internal_dev_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
   ra8_ftl_t*      ftl = (ra8_ftl_t*)ctx;
-  const ra8_err_t b   = ftl_bounds(ftl, lba, count);
+  const ra8_err_t b   = internal_bounds(ftl, lba, count);
   if (b != k_ra8_ok) {
     return b;
   }
   for (uint32_t i = 0; i < count; ++i) {
     const size_t    off = (size_t)i * (size_t)k_ra8_io_block_size_bytes;
-    const ra8_err_t e   = ftl_write_one(ftl, lba + i, &buf[off]);
+    const ra8_err_t e   = internal_write_one(ftl, lba + i, &buf[off]);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -472,11 +472,11 @@ static ra8_err_t ftl_dev_write(void* ctx, uint32_t lba, uint32_t count, const ui
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ftl_dev_erase(void* ctx, uint32_t lba, uint32_t count)
+static ra8_err_t internal_dev_erase(void* ctx, uint32_t lba, uint32_t count)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   ra8_ftl_t*      ftl = (ra8_ftl_t*)ctx;
-  const ra8_err_t b   = ftl_bounds(ftl, lba, count);
+  const ra8_err_t b   = internal_bounds(ftl, lba, count);
   if (b != k_ra8_ok) {
     return b;
   }
@@ -515,7 +515,7 @@ static ra8_err_t ftl_dev_erase(void* ctx, uint32_t lba, uint32_t count)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ftl_dev_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
+static ra8_err_t internal_dev_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -554,7 +554,7 @@ static ra8_err_t ftl_dev_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ftl_dev_sync(void* ctx)
+static ra8_err_t internal_dev_sync(void* ctx)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   const ra8_ftl_t* ftl = (const ra8_ftl_t*)ctx;
@@ -563,12 +563,12 @@ static ra8_err_t ftl_dev_sync(void* ctx)
 }
 
 /** @brief Presented FTL vtable -- a clean free-overwrite block device. */
-static const ra8_io_blockdev_iface_t k_ftl_iface = {
-  .read     = ftl_dev_read,
-  .write    = ftl_dev_write,
-  .erase    = ftl_dev_erase,
-  .get_caps = ftl_dev_get_caps,
-  .sync     = ftl_dev_sync,
+static const ra8_io_blockdev_iface_t s_ftl_iface = {
+  .read     = internal_dev_read,
+  .write    = internal_dev_write,
+  .erase    = internal_dev_erase,
+  .get_caps = internal_dev_get_caps,
+  .sync     = internal_dev_sync,
 };
 
 /* =============================================================================
@@ -606,10 +606,10 @@ static const ra8_io_blockdev_iface_t k_ftl_iface = {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ftl_check_caps(const ra8_io_blockdev_caps_t* caps,
-                                uint32_t                      logical_blocks,
-                                uint32_t                      physical_blocks,
-                                uint8_t*                      erase_out)
+static ra8_err_t internal_check_caps(const ra8_io_blockdev_caps_t* caps,
+                                     uint32_t                      logical_blocks,
+                                     uint32_t                      physical_blocks,
+                                     uint8_t*                      erase_out)
 {
   RA8_CHECK_NULL_PTR(caps, s_tag, "caps must not be nullptr");
   RA8_CHECK_NULL_PTR(erase_out, s_tag, "erase_out must not be nullptr");
@@ -653,7 +653,7 @@ static ra8_err_t ftl_check_caps(const ra8_io_blockdev_caps_t* caps,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ftl_reset_tables(ra8_ftl_t* ftl)
+static ra8_err_t internal_reset_tables(ra8_ftl_t* ftl)
 {
   RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
   RA8_CHECK_NULL_PTR(ftl->map, s_tag, "map must not be nullptr");
@@ -699,13 +699,13 @@ static ra8_err_t ftl_reset_tables(ra8_ftl_t* ftl)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ftl_validate_init_args(const ra8_ftl_t*         bd,
-                                        const ra8_io_blockdev_t* raw,
-                                        const uint16_t*          map,
-                                        const ra8_ftl_pblock_t*  pblocks,
-                                        const uint8_t*           scratch,
-                                        uint32_t                 logical_blocks,
-                                        uint32_t                 physical_blocks)
+static ra8_err_t internal_validate_init_args(const ra8_ftl_t*         bd,
+                                             const ra8_io_blockdev_t* raw,
+                                             const uint16_t*          map,
+                                             const ra8_ftl_pblock_t*  pblocks,
+                                             const uint8_t*           scratch,
+                                             uint32_t                 logical_blocks,
+                                             uint32_t                 physical_blocks)
 {
   RA8_CHECK_NULL_PTR(bd, s_tag, "bd must not be nullptr");
   RA8_CHECK_NULL_PTR(raw, s_tag, "raw must not be nullptr");
@@ -730,7 +730,7 @@ ra8_err_t ra8_ftl_init(ra8_ftl_t*               bd,
                        uint8_t*                 scratch)
 {
   const ra8_err_t va =
-    ftl_validate_init_args(bd, raw, map, pblocks, scratch, logical_blocks, physical_blocks);
+    internal_validate_init_args(bd, raw, map, pblocks, scratch, logical_blocks, physical_blocks);
   if (va != k_ra8_ok) {
     return va;
   }
@@ -740,7 +740,7 @@ ra8_err_t ra8_ftl_init(ra8_ftl_t*               bd,
     return cq;
   }
   uint8_t         erase_value = 0;
-  const ra8_err_t ck = ftl_check_caps(&caps, logical_blocks, physical_blocks, &erase_value);
+  const ra8_err_t ck = internal_check_caps(&caps, logical_blocks, physical_blocks, &erase_value);
   if (ck != k_ra8_ok) {
     return ck;
   }
@@ -751,7 +751,7 @@ ra8_err_t ra8_ftl_init(ra8_ftl_t*               bd,
   bd->logical_blocks  = logical_blocks;
   bd->physical_blocks = physical_blocks;
   bd->erase_value     = erase_value;
-  return ftl_reset_tables(bd);
+  return internal_reset_tables(bd);
 }
 
 ra8_err_t ra8_ftl_as_blockdev(ra8_ftl_t* ftl, ra8_io_blockdev_t* out)
@@ -761,7 +761,7 @@ ra8_err_t ra8_ftl_as_blockdev(ra8_ftl_t* ftl, ra8_io_blockdev_t* out)
   if (ftl->raw == nullptr) {
     return k_ra8_err_not_initialized;
   }
-  out->iface = &k_ftl_iface;
+  out->iface = &s_ftl_iface;
   out->ctx   = ftl;
   return k_ra8_ok;
 }
