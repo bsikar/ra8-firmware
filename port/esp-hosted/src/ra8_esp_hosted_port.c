@@ -67,7 +67,7 @@ DEFINE_LOG_TAG(port);
  * if (cfg->sci_channel >= (uint8_t)k_ra8_esp_hosted_port_sci_channels) { reject(); }
  * @endcode
  *
- * @see ra8_esp_hosted_port_cfg_check
+ * @see priv_ra8_esp_hosted_port_cfg_check
  * @since 0.1.0
  */
 typedef enum : uint8_t {
@@ -88,13 +88,13 @@ typedef enum : uint8_t {
  */
 static bool s_ra8_esp_hosted_port_ready;
 
-/** @brief Implementation of `ra8_esp_hosted_port_cfg_check()` -- a pure
+/** @brief Implementation of `priv_ra8_esp_hosted_port_cfg_check()` -- a pure
  *  predicate, so bring-up can reject a configuration before claiming
  *  anything. */
 RA8_PRIV
-ra8_err_t ra8_esp_hosted_port_cfg_check(const ra8_esp_hosted_port_cfg_t* cfg)
+ra8_err_t priv_ra8_esp_hosted_port_cfg_check(const ra8_esp_hosted_port_cfg_t* cfg)
 {
-  RA8_CHECK_NULL_PTR(cfg, TAG, "cfg");
+  RA8_CHECK_NULL_PTR(cfg, s_esp_hosted_tag, "cfg");
 
   if (cfg->pclk_hz == 0U) {
     return k_ra8_err_invalid_arg;
@@ -141,12 +141,13 @@ static bool internal_pin_in_range(uint16_t pin)
          ((uint16_t)RA8_PIN_PIN(pin) <= (uint16_t)k_ra8_pin_max);
 }
 
-/** @brief Implementation of `ra8_esp_hosted_port_pins_check_values()` --
+/** @brief Implementation of `priv_ra8_esp_hosted_port_pins_check_values()` --
  *  distinctness first, then range, so a duplicated assignment is reported
  *  as such rather than as an out-of-range pin. */
 RA8_PRIV
-ra8_err_t
-ra8_esp_hosted_port_pins_check_values(uint16_t chip_select, uint16_t handshake, uint16_t data_ready)
+ra8_err_t priv_ra8_esp_hosted_port_pins_check_values(uint16_t chip_select,
+                                                     uint16_t handshake,
+                                                     uint16_t data_ready)
 {
   if ((chip_select == handshake) || (chip_select == data_ready) || (handshake == data_ready)) {
     return k_ra8_err_invalid_arg;
@@ -163,14 +164,14 @@ ra8_esp_hosted_port_pins_check_values(uint16_t chip_select, uint16_t handshake, 
   return k_ra8_ok;
 }
 
-/** @brief Implementation of `ra8_esp_hosted_port_pins_check()` -- applies
+/** @brief Implementation of `priv_ra8_esp_hosted_port_pins_check()` -- applies
  *  the value check to the compiled-in map. */
 RA8_PRIV
-ra8_err_t ra8_esp_hosted_port_pins_check(void)
+ra8_err_t priv_ra8_esp_hosted_port_pins_check(void)
 {
-  return ra8_esp_hosted_port_pins_check_values((uint16_t)k_ra8_esp_hosted_pin_chip_select,
-                                               (uint16_t)k_ra8_esp_hosted_pin_handshake,
-                                               (uint16_t)k_ra8_esp_hosted_pin_data_ready);
+  return priv_ra8_esp_hosted_port_pins_check_values((uint16_t)k_ra8_esp_hosted_pin_chip_select,
+                                                    (uint16_t)k_ra8_esp_hosted_pin_handshake,
+                                                    (uint16_t)k_ra8_esp_hosted_pin_data_ready);
 }
 
 /**
@@ -201,13 +202,13 @@ static ra8_err_t internal_configure_sideband(void)
   if (g_h.funcs->_h_config_gpio(H_GPIO_HANDSHAKE_Port,
                                 (uint32_t)H_GPIO_HANDSHAKE_Pin,
                                 H_GPIO_MODE_DEF_INPUT) != RET_OK) {
-    ESP_LOGE(TAG, "handshake pin would not configure as an input");
+    ESP_LOGE(s_esp_hosted_tag, "handshake pin would not configure as an input");
     return k_ra8_err_gpio_conflict;
   }
   if (g_h.funcs->_h_config_gpio(H_GPIO_DATA_READY_Port,
                                 (uint32_t)H_GPIO_DATA_READY_Pin,
                                 H_GPIO_MODE_DEF_INPUT) != RET_OK) {
-    ESP_LOGE(TAG, "data-ready pin would not configure as an input");
+    ESP_LOGE(s_esp_hosted_tag, "data-ready pin would not configure as an input");
     return k_ra8_err_gpio_conflict;
   }
   return k_ra8_ok;
@@ -239,22 +240,22 @@ static ra8_err_t internal_unwind(void)
 {
   /* Both release steps run before either result is folded, so neither can be
      skipped by an earlier failure. The fold itself lives in
-     `ra8_esp_hosted_port_first_error()` because it is the only decision here
+     `priv_ra8_esp_hosted_port_first_error()` because it is the only decision here
      and reaching this function needs a brought-up port. */
-  const ra8_err_t spi_err  = ra8_esp_hosted_spi_close();
-  ra8_err_t       first    = ra8_esp_hosted_port_first_error(k_ra8_ok, spi_err);
-  const ra8_err_t rtos_err = ra8_esp_hosted_rtos_deinit();
-  first                    = ra8_esp_hosted_port_first_error(first, rtos_err);
+  const ra8_err_t spi_err  = priv_ra8_esp_hosted_spi_close();
+  ra8_err_t       first    = priv_ra8_esp_hosted_port_first_error(k_ra8_ok, spi_err);
+  const ra8_err_t rtos_err = priv_ra8_esp_hosted_rtos_deinit();
+  first                    = priv_ra8_esp_hosted_port_first_error(first, rtos_err);
 
   g_hosted_osi_funcs          = (hosted_osi_funcs_t){};
   s_ra8_esp_hosted_port_ready = false;
   return first;
 }
 
-/** @brief Implementation of `ra8_esp_hosted_port_first_error()` -- a pure
+/** @brief Implementation of `priv_ra8_esp_hosted_port_first_error()` -- a pure
  *  fold, so the unwind path carries no decision of its own. */
 RA8_PRIV
-ra8_err_t ra8_esp_hosted_port_first_error(ra8_err_t first, ra8_err_t next)
+ra8_err_t priv_ra8_esp_hosted_port_first_error(ra8_err_t first, ra8_err_t next)
 {
   if ((first == k_ra8_ok) && (next != k_ra8_ok)) {
     return next;
@@ -282,7 +283,7 @@ ra8_err_t ra8_esp_hosted_port_first_error(ra8_err_t first, ra8_err_t next)
  * caller can reach.
  *
  * @param[in] cfg Validated configuration; must be non-null and already
- *                accepted by ``ra8_esp_hosted_port_cfg_check``.
+ *                accepted by ``priv_ra8_esp_hosted_port_cfg_check``.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok Every slice came up.
@@ -291,7 +292,7 @@ ra8_err_t ra8_esp_hosted_port_first_error(ra8_err_t first, ra8_err_t next)
  * @retval k_ra8_err_spi_error The SCI channel would not open.
  * @retval k_ra8_err_gpio_conflict A side-band pin would not configure.
  *
- * @pre @p cfg has already passed ``ra8_esp_hosted_port_cfg_check``.
+ * @pre @p cfg has already passed ``priv_ra8_esp_hosted_port_cfg_check``.
  * @pre The port is not already up, which the caller has established.
  * @post On success every slice is up and the vtable is fully bound.
  * @post On failure nothing this call claimed is left claimed; the caller
@@ -304,19 +305,19 @@ ra8_err_t ra8_esp_hosted_port_first_error(ra8_err_t first, ra8_err_t next)
 RA8_INTERNAL
 static ra8_err_t internal_bring_up(const ra8_esp_hosted_port_cfg_t* cfg)
 {
-  RA8_CHECK_NULL_PTR(cfg, TAG, "cfg");
+  RA8_CHECK_NULL_PTR(cfg, s_esp_hosted_tag, "cfg");
 
-  ra8_err_t err = ra8_esp_hosted_rtos_init();
+  ra8_err_t err = priv_ra8_esp_hosted_rtos_init();
   if (err != k_ra8_ok) {
     return err;
   }
 
-  err = ra8_esp_hosted_osi_bind_all(&g_hosted_osi_funcs);
+  err = priv_ra8_esp_hosted_osi_bind_all(&g_hosted_osi_funcs);
   if (err == k_ra8_ok) {
-    err = ra8_esp_hosted_gpio_set_edge_poll_ms(cfg->edge_poll_ms);
+    err = priv_ra8_esp_hosted_gpio_set_edge_poll_ms(cfg->edge_poll_ms);
   }
   if (err == k_ra8_ok) {
-    err = ra8_esp_hosted_spi_open(cfg->sci_channel, cfg->pclk_hz, cfg->sck_hz);
+    err = priv_ra8_esp_hosted_spi_open(cfg->sci_channel, cfg->pclk_hz, cfg->sck_hz);
   }
   if (err == k_ra8_ok) {
     err = internal_configure_sideband();
@@ -329,7 +330,7 @@ static ra8_err_t internal_bring_up(const ra8_esp_hosted_port_cfg_t* cfg)
  *  failure. */
 ra8_err_t ra8_esp_hosted_port_init(const ra8_esp_hosted_port_cfg_t* cfg)
 {
-  const ra8_err_t cfg_err = ra8_esp_hosted_port_cfg_check(cfg);
+  const ra8_err_t cfg_err = priv_ra8_esp_hosted_port_cfg_check(cfg);
   if (cfg_err != k_ra8_ok) {
     return cfg_err;
   }
@@ -337,9 +338,9 @@ ra8_err_t ra8_esp_hosted_port_init(const ra8_esp_hosted_port_cfg_t* cfg)
     return k_ra8_err_invalid_state;
   }
 
-  const ra8_err_t pin_err = ra8_esp_hosted_port_pins_check();
+  const ra8_err_t pin_err = priv_ra8_esp_hosted_port_pins_check();
   if (pin_err != k_ra8_ok) {
-    ESP_LOGE(TAG, "pin map is not self-consistent");
+    ESP_LOGE(s_esp_hosted_tag, "pin map is not self-consistent");
     return pin_err;
   }
 
@@ -350,7 +351,7 @@ ra8_err_t ra8_esp_hosted_port_init(const ra8_esp_hosted_port_cfg_t* cfg)
   }
 
   s_ra8_esp_hosted_port_ready = true;
-  ESP_LOGI(TAG,
+  ESP_LOGI(s_esp_hosted_tag,
            "esp-hosted port up on SCI%u at %u Hz",
            (unsigned int)cfg->sci_channel,
            (unsigned int)cfg->sck_hz);

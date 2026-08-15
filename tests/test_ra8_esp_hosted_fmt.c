@@ -7,8 +7,8 @@
  *
  * @details
  * Drives all three promoted entry points of
- * ``port/esp-hosted/src/ra8_esp_hosted_fmt.c`` -- ``ra8_esp_hosted_fmt_parse``,
- * ``ra8_esp_hosted_fmt_utoa`` and ``ra8_esp_hosted_fmt_vformat`` -- plus every
+ * ``port/esp-hosted/src/ra8_esp_hosted_fmt.c`` -- ``priv_ra8_esp_hosted_fmt_parse``,
+ * ``priv_ra8_esp_hosted_fmt_utoa`` and ``priv_ra8_esp_hosted_fmt_vformat`` -- plus every
  * static helper they reach: the write cursor, the pad emitter, the flag,
  * width and length-modifier scanners, the supported-conversion set, the two
  * variable-argument readers, the token emitter and the bounded string
@@ -22,7 +22,7 @@
  * @par What is deliberately not asserted
  * ``%p`` renders a host pointer, whose value is not knowable at authoring
  * time. Rather than assert a fixed string, the pointer test renders the same
- * value through ``ra8_esp_hosted_fmt_utoa`` and compares -- which is the
+ * value through ``priv_ra8_esp_hosted_fmt_utoa`` and compares -- which is the
  * property that actually matters (the two agree) without pinning an address.
  *
  * No hardware registers are touched; no ``ra8_fake_mmap`` window is required.
@@ -35,9 +35,9 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_esp_hosted_fmt_internal.h"
 #include "unity_minimal.h"
 
@@ -58,13 +58,14 @@
  * char digits[k_t_fmt_digits_cap] = {};
  * @endcode
  *
- * @see ra8_esp_hosted_fmt_utoa
+ * @see priv_ra8_esp_hosted_fmt_utoa
  */
 typedef enum : uint32_t {
-  k_t_fmt_digits_cap    = 32U,  /**< Digit-scratch buffer size.              */
-  k_t_fmt_line_cap      = 256U, /**< Formatted-line buffer size.             */
-  k_t_fmt_long_str      = 100U, /**< Length of the over-long `%s` fixture.   */
-  k_t_fmt_u64_dec_width = 20U,  /**< Decimal digits `UINT64_MAX` renders to. */
+  k_t_fmt_digits_cap    = 32U,  /**< Digit-scratch buffer size.            */
+  k_t_fmt_line_cap      = 256U, /**< Formatted-line buffer size.           */
+  k_t_fmt_long_str      = 100U, /**< Length of the over-long `%s` fixture. */
+  k_t_fmt_u64_dec_width = 20U,  /**< Decimal digits `UINT64_MAX` renders to.
+ */
 } t_fmt_const_t;
 
 /**
@@ -82,7 +83,7 @@ typedef enum : uint32_t {
  *
  * @par Example:
  * @code
- * t_format(line, cap, "%x", k_t_fmt_hex_sample);
+ * internal_t_format(line, cap, "%x", k_t_fmt_hex_sample);
  * @endcode
  *
  * @see t_fmt_i32_sample_t
@@ -111,7 +112,7 @@ typedef enum : uint32_t {
  *
  * @par Example:
  * @code
- * t_format(line, cap, "%5d", k_t_fmt_int_sample);
+ * internal_t_format(line, cap, "%5d", k_t_fmt_int_sample);
  * @endcode
  *
  * @see t_fmt_u32_sample_t
@@ -139,7 +140,7 @@ typedef enum : int32_t {
  *
  * @par Example:
  * @code
- * t_format(line, cap, "%lld", k_t_fmt_i64_below_neg_u32);
+ * internal_t_format(line, cap, "%lld", k_t_fmt_i64_below_neg_u32);
  * @endcode
  *
  * @see t_fmt_u32_sample_t
@@ -154,7 +155,7 @@ typedef enum : int64_t {
  * @brief Format through the variable-argument entry point under test.
  *
  * @details
- * ``ra8_esp_hosted_fmt_vformat`` takes an already-started ``va_list``, so a
+ * ``priv_ra8_esp_hosted_fmt_vformat`` takes an already-started ``va_list``, so a
  * test needs one varargs bridge to reach it. Deliberately carries NO
  * ``[[gnu::format]]`` attribute: several tests pass a conversion the compiler
  * would reject under ``-Wformat`` (``%f`` with no argument is exactly the
@@ -174,12 +175,14 @@ typedef enum : int64_t {
  * @post No test state is modified.
  *
  * @note Not thread-safe; single-threaded host test driver.
+ * @retval 0 The formatter rejected the request or emitted an empty result.
+ * @since 0.1.0
  */
-static uint32_t t_format(char* out, uint32_t cap, const char* fmt, ...)
+RA8_INTERNAL static uint32_t internal_t_format(char* out, uint32_t cap, const char* fmt, ...)
 {
   va_list ap;
   va_start(ap, fmt);
-  const uint32_t written = ra8_esp_hosted_fmt_vformat(out, cap, fmt, ap);
+  const uint32_t written = priv_ra8_esp_hosted_fmt_vformat(out, cap, fmt, ap);
   va_end(ap);
   return written;
 }
@@ -202,17 +205,18 @@ static uint32_t t_format(char* out, uint32_t cap, const char* fmt, ...)
  * @post The process has exited with status 1 on mismatch.
  *
  * @note Not thread-safe; writes to the shared stderr stream on failure.
+ * @since 0.1.0
  */
-static void t_assert_text(const char* want, const char* got, uint32_t written)
+RA8_INTERNAL static void internal_t_assert_text(const char* want, const char* got, uint32_t written)
 {
   TEST_ASSERT(strcmp(want, got) == 0);
   TEST_ASSERT_EQ(strlen(want), written);
 }
 
 /**
- * @test test_utoa_guards
+ * @test internal_test_utoa_guards
  *
- * @brief `ra8_esp_hosted_fmt_utoa` rejects a null buffer and an unusable base.
+ * @brief `priv_ra8_esp_hosted_fmt_utoa` rejects a null buffer and an unusable base.
  *
  * @details
  * The two guards are separate decisions and are driven separately. The base
@@ -220,7 +224,7 @@ static void t_assert_text(const char* want, const char* got, uint32_t written)
  *
  * @par MC/DC:
  * Both decisions below are the entry guards of
- * `port/esp-hosted/src/ra8_esp_hosted_fmt.c@ra8_esp_hosted_fmt_utoa`, taken
+ * `port/esp-hosted/src/ra8_esp_hosted_fmt.c@priv_ra8_esp_hosted_fmt_utoa`, taken
  * in the order the function evaluates them.
  * Decision A: `if (buf == nullptr)` (1 condition, 2 vectors)
  * - Vector A1: buf=null            -> true  (returns 0)
@@ -238,33 +242,35 @@ static void t_assert_text(const char* want, const char* got, uint32_t written)
  * @post No process state is mutated beyond the local scratch buffer.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_utoa_guards(void)
+RA8_INTERNAL static void internal_test_utoa_guards(void)
 {
   TEST_BEGIN("fmt utoa guards");
   char digits[k_t_fmt_digits_cap] = {};
 
-  TEST_ASSERT_EQ(0, ra8_esp_hosted_fmt_utoa(nullptr, 42U, 10U, false));
+  TEST_ASSERT_EQ(0, priv_ra8_esp_hosted_fmt_utoa(nullptr, 42U, 10U, false));
 
-  TEST_ASSERT_EQ(0, ra8_esp_hosted_fmt_utoa(digits, 42U, 1U, false));
-  TEST_ASSERT_EQ(0, ra8_esp_hosted_fmt_utoa(digits, 42U, 17U, false));
+  TEST_ASSERT_EQ(0, priv_ra8_esp_hosted_fmt_utoa(digits, 42U, 1U, false));
+  TEST_ASSERT_EQ(0, priv_ra8_esp_hosted_fmt_utoa(digits, 42U, 17U, false));
 
-  TEST_ASSERT_EQ(2, ra8_esp_hosted_fmt_utoa(digits, 42U, 10U, false));
-  t_assert_text("42", digits, 2U);
+  TEST_ASSERT_EQ(2, priv_ra8_esp_hosted_fmt_utoa(digits, 42U, 10U, false));
+  internal_t_assert_text("42", digits, 2U);
 
   /* The two admissible bounds themselves are accepted, not merely values
      inside them. */
-  TEST_ASSERT_EQ(6, ra8_esp_hosted_fmt_utoa(digits, 42U, 2U, false));
-  t_assert_text("101010", digits, 6U);
-  TEST_ASSERT_EQ(2, ra8_esp_hosted_fmt_utoa(digits, 42U, 16U, false));
-  t_assert_text("2a", digits, 2U);
+  TEST_ASSERT_EQ(6, priv_ra8_esp_hosted_fmt_utoa(digits, 42U, 2U, false));
+  internal_t_assert_text("101010", digits, 6U);
+  TEST_ASSERT_EQ(2, priv_ra8_esp_hosted_fmt_utoa(digits, 42U, 16U, false));
+  internal_t_assert_text("2a", digits, 2U);
   TEST_END("fmt utoa guards");
 }
 
 /**
- * @test test_utoa_renders
+ * @test internal_test_utoa_renders
  *
- * @brief `ra8_esp_hosted_fmt_utoa` renders every supported shape correctly.
+ * @brief `priv_ra8_esp_hosted_fmt_utoa` renders every supported shape correctly.
  *
  * @details
  * Covers zero (the single-digit early break), the multi-digit reversal path,
@@ -287,36 +293,39 @@ static void test_utoa_guards(void)
  * @post No process state is mutated beyond the local scratch buffer.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_utoa_renders(void)
+RA8_INTERNAL static void internal_test_utoa_renders(void)
 {
   TEST_BEGIN("fmt utoa rendering");
   char digits[k_t_fmt_digits_cap] = {};
 
-  TEST_ASSERT_EQ(1, ra8_esp_hosted_fmt_utoa(digits, 0U, 10U, false));
-  t_assert_text("0", digits, 1U);
+  TEST_ASSERT_EQ(1, priv_ra8_esp_hosted_fmt_utoa(digits, 0U, 10U, false));
+  internal_t_assert_text("0", digits, 1U);
 
-  TEST_ASSERT_EQ(4, ra8_esp_hosted_fmt_utoa(digits, 1234U, 10U, false));
-  t_assert_text("1234", digits, 4U);
+  TEST_ASSERT_EQ(4, priv_ra8_esp_hosted_fmt_utoa(digits, 1234U, 10U, false));
+  internal_t_assert_text("1234", digits, 4U);
 
-  TEST_ASSERT_EQ(2, ra8_esp_hosted_fmt_utoa(digits, 255U, 16U, false));
-  t_assert_text("ff", digits, 2U);
-  TEST_ASSERT_EQ(2, ra8_esp_hosted_fmt_utoa(digits, 255U, 16U, true));
-  t_assert_text("FF", digits, 2U);
+  TEST_ASSERT_EQ(2, priv_ra8_esp_hosted_fmt_utoa(digits, 255U, 16U, false));
+  internal_t_assert_text("ff", digits, 2U);
+  TEST_ASSERT_EQ(2, priv_ra8_esp_hosted_fmt_utoa(digits, 255U, 16U, true));
+  internal_t_assert_text("FF", digits, 2U);
 
   /* The widest decimal run the digit bound was sized for: UINT64_MAX is
      exactly k_ra8_esp_hosted_fmt_digits_max digits. */
-  TEST_ASSERT_EQ(k_t_fmt_u64_dec_width, ra8_esp_hosted_fmt_utoa(digits, UINT64_MAX, 10U, false));
-  t_assert_text("18446744073709551615", digits, k_t_fmt_u64_dec_width);
-  TEST_ASSERT_EQ(16, ra8_esp_hosted_fmt_utoa(digits, UINT64_MAX, 16U, true));
-  t_assert_text("FFFFFFFFFFFFFFFF", digits, 16U);
+  TEST_ASSERT_EQ(k_t_fmt_u64_dec_width,
+                 priv_ra8_esp_hosted_fmt_utoa(digits, UINT64_MAX, 10U, false));
+  internal_t_assert_text("18446744073709551615", digits, k_t_fmt_u64_dec_width);
+  TEST_ASSERT_EQ(16, priv_ra8_esp_hosted_fmt_utoa(digits, UINT64_MAX, 16U, true));
+  internal_t_assert_text("FFFFFFFFFFFFFFFF", digits, 16U);
   TEST_END("fmt utoa rendering");
 }
 
 /**
- * @test test_parse_guards_and_flags
+ * @test internal_test_parse_guards_and_flags
  *
- * @brief `ra8_esp_hosted_fmt_parse` guards its pointers and reads both flags.
+ * @brief `priv_ra8_esp_hosted_fmt_parse` guards its pointers and reads both flags.
  *
  * @details
  * The flag scanner accepts any interleaving of the two flag characters and
@@ -325,7 +334,7 @@ static void test_utoa_renders(void)
  *
  * @par MC/DC:
  * Decision A: `if ((after_percent == nullptr) || (out == nullptr))` in
- * `port/esp-hosted/src/ra8_esp_hosted_fmt.c@ra8_esp_hosted_fmt_parse`
+ * `port/esp-hosted/src/ra8_esp_hosted_fmt.c@priv_ra8_esp_hosted_fmt_parse`
  * (2 conditions, 3 vectors)
  * - Vector A1: after_percent=valid, out=valid -> false (control)
  * - Vector A2: after_percent=null,  out=valid -> true  (varies the text only)
@@ -345,33 +354,35 @@ static void test_utoa_renders(void)
  * @post No process state is mutated.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_parse_guards_and_flags(void)
+RA8_INTERNAL static void internal_test_parse_guards_and_flags(void)
 {
   TEST_BEGIN("fmt parse guards and flags");
   ra8_esp_hosted_fmt_spec_t spec = {};
 
-  TEST_ASSERT(!ra8_esp_hosted_fmt_parse(nullptr, &spec));
-  TEST_ASSERT(!ra8_esp_hosted_fmt_parse("d", nullptr));
-  TEST_ASSERT(!ra8_esp_hosted_fmt_parse(nullptr, nullptr));
+  TEST_ASSERT(!priv_ra8_esp_hosted_fmt_parse(nullptr, &spec));
+  TEST_ASSERT(!priv_ra8_esp_hosted_fmt_parse("d", nullptr));
+  TEST_ASSERT(!priv_ra8_esp_hosted_fmt_parse(nullptr, nullptr));
 
-  TEST_ASSERT(ra8_esp_hosted_fmt_parse("d", &spec));
+  TEST_ASSERT(priv_ra8_esp_hosted_fmt_parse("d", &spec));
   TEST_ASSERT(!spec.zero_pad);
   TEST_ASSERT(!spec.left_justify);
   TEST_ASSERT_EQ('d', spec.conv);
   TEST_ASSERT_EQ(1, spec.consumed);
 
-  TEST_ASSERT(ra8_esp_hosted_fmt_parse("0d", &spec));
+  TEST_ASSERT(priv_ra8_esp_hosted_fmt_parse("0d", &spec));
   TEST_ASSERT(spec.zero_pad);
   TEST_ASSERT(!spec.left_justify);
   TEST_ASSERT_EQ(2, spec.consumed);
 
-  TEST_ASSERT(ra8_esp_hosted_fmt_parse("-d", &spec));
+  TEST_ASSERT(priv_ra8_esp_hosted_fmt_parse("-d", &spec));
   TEST_ASSERT(!spec.zero_pad);
   TEST_ASSERT(spec.left_justify);
   TEST_ASSERT_EQ(2, spec.consumed);
 
-  TEST_ASSERT(ra8_esp_hosted_fmt_parse("0-d", &spec));
+  TEST_ASSERT(priv_ra8_esp_hosted_fmt_parse("0-d", &spec));
   TEST_ASSERT(spec.zero_pad);
   TEST_ASSERT(spec.left_justify);
   TEST_ASSERT_EQ(3, spec.consumed);
@@ -379,7 +390,7 @@ static void test_parse_guards_and_flags(void)
 }
 
 /**
- * @test test_parse_width_and_length
+ * @test internal_test_parse_width_and_length
  *
  * @brief The width scanner clamps, and every length modifier is recognised.
  *
@@ -416,44 +427,46 @@ static void test_parse_guards_and_flags(void)
  * @post No process state is mutated.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_parse_width_and_length(void)
+RA8_INTERNAL static void internal_test_parse_width_and_length(void)
 {
   TEST_BEGIN("fmt parse width and length");
   ra8_esp_hosted_fmt_spec_t spec = {};
 
-  TEST_ASSERT(ra8_esp_hosted_fmt_parse("d", &spec));
+  TEST_ASSERT(priv_ra8_esp_hosted_fmt_parse("d", &spec));
   TEST_ASSERT_EQ(0, spec.width);
   TEST_ASSERT_EQ(k_ra8_esp_hosted_fmt_len_int, spec.len);
 
-  TEST_ASSERT(ra8_esp_hosted_fmt_parse("8d", &spec));
+  TEST_ASSERT(priv_ra8_esp_hosted_fmt_parse("8d", &spec));
   TEST_ASSERT_EQ(8, spec.width);
   TEST_ASSERT_EQ(2, spec.consumed);
 
-  TEST_ASSERT(ra8_esp_hosted_fmt_parse("999d", &spec));
+  TEST_ASSERT(priv_ra8_esp_hosted_fmt_parse("999d", &spec));
   TEST_ASSERT_EQ(k_ra8_esp_hosted_fmt_width_max, spec.width);
   TEST_ASSERT_EQ(4, spec.consumed);
 
   /* A character below '0' ends the width scan just as a character above '9'
      does; here it also makes the conversion unsupported, which is the
      documented answer for a specification this formatter does not emit. */
-  TEST_ASSERT(!ra8_esp_hosted_fmt_parse(".5d", &spec));
+  TEST_ASSERT(!priv_ra8_esp_hosted_fmt_parse(".5d", &spec));
 
-  TEST_ASSERT(ra8_esp_hosted_fmt_parse("ld", &spec));
+  TEST_ASSERT(priv_ra8_esp_hosted_fmt_parse("ld", &spec));
   TEST_ASSERT_EQ(k_ra8_esp_hosted_fmt_len_long, spec.len);
   TEST_ASSERT_EQ(2, spec.consumed);
 
-  TEST_ASSERT(ra8_esp_hosted_fmt_parse("lld", &spec));
+  TEST_ASSERT(priv_ra8_esp_hosted_fmt_parse("lld", &spec));
   TEST_ASSERT_EQ(k_ra8_esp_hosted_fmt_len_llong, spec.len);
   TEST_ASSERT_EQ(3, spec.consumed);
 
-  TEST_ASSERT(ra8_esp_hosted_fmt_parse("zu", &spec));
+  TEST_ASSERT(priv_ra8_esp_hosted_fmt_parse("zu", &spec));
   TEST_ASSERT_EQ(k_ra8_esp_hosted_fmt_len_size, spec.len);
   TEST_ASSERT_EQ(2, spec.consumed);
 
   /* Thirteen flag characters: the scanner's bound stops it at twelve, and the
      thirteenth is then read by the width scanner as the digit zero. */
-  TEST_ASSERT(ra8_esp_hosted_fmt_parse("0000000000000d", &spec));
+  TEST_ASSERT(priv_ra8_esp_hosted_fmt_parse("0000000000000d", &spec));
   TEST_ASSERT(spec.zero_pad);
   TEST_ASSERT_EQ(0, spec.width);
   TEST_ASSERT_EQ(14, spec.consumed);
@@ -461,7 +474,7 @@ static void test_parse_width_and_length(void)
 }
 
 /**
- * @test test_parse_conversion_set
+ * @test internal_test_parse_conversion_set
  *
  * @brief Exactly the documented conversion set is accepted; nothing else is.
  *
@@ -495,8 +508,10 @@ static void test_parse_width_and_length(void)
  * @post No process state is mutated.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_parse_conversion_set(void)
+RA8_INTERNAL static void internal_test_parse_conversion_set(void)
 {
   TEST_BEGIN("fmt parse conversion set");
   ra8_esp_hosted_fmt_spec_t spec        = {};
@@ -504,29 +519,29 @@ static void test_parse_conversion_set(void)
   const size_t              count       = sizeof(supported) / sizeof(supported[0]);
 
   for (size_t i = 0U; i < count; i++) {
-    TEST_ASSERT(ra8_esp_hosted_fmt_parse(supported[i], &spec));
+    TEST_ASSERT(priv_ra8_esp_hosted_fmt_parse(supported[i], &spec));
     TEST_ASSERT_EQ(supported[i][0], spec.conv);
     TEST_ASSERT_EQ(1, spec.consumed);
   }
 
   /* Two conversions real printf implements and this one deliberately does
      not: floating point, and the write-back conversion. */
-  TEST_ASSERT(!ra8_esp_hosted_fmt_parse("f", &spec));
+  TEST_ASSERT(!priv_ra8_esp_hosted_fmt_parse("f", &spec));
   TEST_ASSERT_EQ(0, spec.conv);
   TEST_ASSERT_EQ(0, spec.consumed);
-  TEST_ASSERT(!ra8_esp_hosted_fmt_parse("n", &spec));
+  TEST_ASSERT(!priv_ra8_esp_hosted_fmt_parse("n", &spec));
 
   /* A specification that runs off the end of the string is not a
      specification: the terminator is not a supported conversion. */
-  TEST_ASSERT(!ra8_esp_hosted_fmt_parse("", &spec));
-  TEST_ASSERT(!ra8_esp_hosted_fmt_parse("08", &spec));
+  TEST_ASSERT(!priv_ra8_esp_hosted_fmt_parse("", &spec));
+  TEST_ASSERT(!priv_ra8_esp_hosted_fmt_parse("08", &spec));
   TEST_END("fmt parse conversion set");
 }
 
 /**
- * @test test_vformat_guards
+ * @test internal_test_vformat_guards
  *
- * @brief `ra8_esp_hosted_fmt_vformat` guards all three of its inputs.
+ * @brief `priv_ra8_esp_hosted_fmt_vformat` guards all three of its inputs.
  *
  * @details
  * The outer guard decides whether anything is formatted at all; the inner one
@@ -535,7 +550,7 @@ static void test_parse_conversion_set(void)
  *
  * @par MC/DC:
  * Decision A: `if ((out == nullptr) || (cap == 0U) || (fmt == nullptr))` in
- * `port/esp-hosted/src/ra8_esp_hosted_fmt.c@ra8_esp_hosted_fmt_vformat`
+ * `port/esp-hosted/src/ra8_esp_hosted_fmt.c@priv_ra8_esp_hosted_fmt_vformat`
  * (3 conditions, 4 vectors)
  * - Vector A1: out=valid, cap=32, fmt="x"    -> false (control: all false)
  * - Vector A2: out=null,  cap=32, fmt="x"    -> true  (varies the buffer only)
@@ -558,33 +573,35 @@ static void test_parse_conversion_set(void)
  * @post No process state is mutated beyond the local buffers.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_vformat_guards(void)
+RA8_INTERNAL static void internal_test_vformat_guards(void)
 {
   TEST_BEGIN("fmt vformat guards");
   char line[k_t_fmt_line_cap] = {};
 
-  TEST_ASSERT_EQ(1, t_format(line, (uint32_t)sizeof(line), "x"));
-  t_assert_text("x", line, 1U);
+  TEST_ASSERT_EQ(1, internal_t_format(line, (uint32_t)sizeof(line), "x"));
+  internal_t_assert_text("x", line, 1U);
 
-  TEST_ASSERT_EQ(0, t_format(nullptr, (uint32_t)sizeof(line), "x"));
+  TEST_ASSERT_EQ(0, internal_t_format(nullptr, (uint32_t)sizeof(line), "x"));
 
   /* A zero capacity must leave the buffer entirely alone -- there is not even
      room for a terminator, so writing one would overrun. */
   line[0] = 'Z';
-  TEST_ASSERT_EQ(0, t_format(line, 0U, "x"));
+  TEST_ASSERT_EQ(0, internal_t_format(line, 0U, "x"));
   TEST_ASSERT_EQ('Z', line[0]);
 
   /* A null format still terminates the buffer, so the caller never reads
      whatever was there before. */
   line[0] = 'Z';
-  TEST_ASSERT_EQ(0, t_format(line, (uint32_t)sizeof(line), nullptr));
+  TEST_ASSERT_EQ(0, internal_t_format(line, (uint32_t)sizeof(line), nullptr));
   TEST_ASSERT_EQ(0, line[0]);
   TEST_END("fmt vformat guards");
 }
 
 /**
- * @test test_vformat_conversions
+ * @test internal_test_vformat_conversions
  *
  * @brief Every supported conversion round-trips to the expected text.
  *
@@ -623,53 +640,70 @@ static void test_vformat_guards(void)
  * @post No process state is mutated beyond the local buffers.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_vformat_conversions(void)
+RA8_INTERNAL static void internal_test_vformat_conversions(void)
 {
   TEST_BEGIN("fmt vformat conversions");
   char line[k_t_fmt_line_cap]     = {};
   char digits[k_t_fmt_digits_cap] = {};
 
-  t_assert_text("hello", line, t_format(line, (uint32_t)sizeof(line), "hello"));
+  internal_t_assert_text("hello", line, internal_t_format(line, (uint32_t)sizeof(line), "hello"));
 
-  t_assert_text("42", line, t_format(line, (uint32_t)sizeof(line), "%d", k_t_fmt_int_sample));
-  t_assert_text("-7",
-                line,
-                t_format(line, (uint32_t)sizeof(line), "%i", -k_t_fmt_small_int_sample));
-  t_assert_text("4294967295", line, t_format(line, (uint32_t)sizeof(line), "%u", k_t_fmt_u32_max));
-  t_assert_text("deadbeef", line, t_format(line, (uint32_t)sizeof(line), "%x", k_t_fmt_hex_sample));
-  t_assert_text("DEADBEEF", line, t_format(line, (uint32_t)sizeof(line), "%X", k_t_fmt_hex_sample));
-  t_assert_text("Z", line, t_format(line, (uint32_t)sizeof(line), "%c", 'Z'));
-  t_assert_text("abc", line, t_format(line, (uint32_t)sizeof(line), "%s", "abc"));
-  t_assert_text("(null)", line, t_format(line, (uint32_t)sizeof(line), "%s", (const char*)nullptr));
-  t_assert_text("%", line, t_format(line, (uint32_t)sizeof(line), "%%"));
+  internal_t_assert_text("42",
+                         line,
+                         internal_t_format(line, (uint32_t)sizeof(line), "%d", k_t_fmt_int_sample));
+  internal_t_assert_text(
+    "-7",
+    line,
+    internal_t_format(line, (uint32_t)sizeof(line), "%i", -k_t_fmt_small_int_sample));
+  internal_t_assert_text("4294967295",
+                         line,
+                         internal_t_format(line, (uint32_t)sizeof(line), "%u", k_t_fmt_u32_max));
+  internal_t_assert_text("deadbeef",
+                         line,
+                         internal_t_format(line, (uint32_t)sizeof(line), "%x", k_t_fmt_hex_sample));
+  internal_t_assert_text("DEADBEEF",
+                         line,
+                         internal_t_format(line, (uint32_t)sizeof(line), "%X", k_t_fmt_hex_sample));
+  internal_t_assert_text("Z", line, internal_t_format(line, (uint32_t)sizeof(line), "%c", 'Z'));
+  internal_t_assert_text("abc", line, internal_t_format(line, (uint32_t)sizeof(line), "%s", "abc"));
+  internal_t_assert_text(
+    "(null)",
+    line,
+    internal_t_format(line, (uint32_t)sizeof(line), "%s", (const char*)nullptr));
+  internal_t_assert_text("%", line, internal_t_format(line, (uint32_t)sizeof(line), "%%"));
 
   /* Length modifiers, each with a value that a narrower read would truncate
      or a wider read would misalign. */
-  t_assert_text(
+  internal_t_assert_text(
     "4294967296",
     line,
-    t_format(line, (uint32_t)sizeof(line), "%lu", (unsigned long)k_t_fmt_i64_above_u32));
-  t_assert_text(
+    internal_t_format(line, (uint32_t)sizeof(line), "%lu", (unsigned long)k_t_fmt_i64_above_u32));
+  internal_t_assert_text(
     "-4294967296",
     line,
-    t_format(line, (uint32_t)sizeof(line), "%lld", (long long)k_t_fmt_i64_below_neg_u32));
-  t_assert_text("99",
-                line,
-                t_format(line, (uint32_t)sizeof(line), "%zu", (size_t)k_t_fmt_size_sample));
+    internal_t_format(line, (uint32_t)sizeof(line), "%lld", (long long)k_t_fmt_i64_below_neg_u32));
+  internal_t_assert_text(
+    "99",
+    line,
+    internal_t_format(line, (uint32_t)sizeof(line), "%zu", (size_t)k_t_fmt_size_sample));
 
   /* The pointer conversion renders an address, so assert the property that
      matters -- that it agrees with the digit renderer on the same value --
      rather than pinning a host address. */
   const uint64_t address = (uint64_t)(uintptr_t)line;
-  const uint8_t  n       = ra8_esp_hosted_fmt_utoa(digits, address, 16U, false);
+  const uint8_t  n       = priv_ra8_esp_hosted_fmt_utoa(digits, address, 16U, false);
   TEST_ASSERT(n > 0U);
-  t_assert_text(digits, line, t_format(line, (uint32_t)sizeof(line), "%p", (void*)line));
+  internal_t_assert_text(digits,
+                         line,
+                         internal_t_format(line, (uint32_t)sizeof(line), "%p", (void*)line));
   TEST_END("fmt vformat conversions");
 }
 
 /**
- * @test test_vformat_negative_extremes
+ * @test internal_test_vformat_negative_extremes
  *
  * @brief The signed path renders `INT_MIN` without overflowing the negation.
  *
@@ -692,21 +726,27 @@ static void test_vformat_conversions(void)
  * @post No process state is mutated beyond the local buffer.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_vformat_negative_extremes(void)
+RA8_INTERNAL static void internal_test_vformat_negative_extremes(void)
 {
   TEST_BEGIN("fmt vformat negative extremes");
   char line[k_t_fmt_line_cap] = {};
 
-  t_assert_text("-2147483648", line, t_format(line, (uint32_t)sizeof(line), "%d", INT_MIN));
-  t_assert_text("2147483647", line, t_format(line, (uint32_t)sizeof(line), "%d", INT_MAX));
-  t_assert_text("-1", line, t_format(line, (uint32_t)sizeof(line), "%d", -1));
-  t_assert_text("0", line, t_format(line, (uint32_t)sizeof(line), "%d", 0));
+  internal_t_assert_text("-2147483648",
+                         line,
+                         internal_t_format(line, (uint32_t)sizeof(line), "%d", INT_MIN));
+  internal_t_assert_text("2147483647",
+                         line,
+                         internal_t_format(line, (uint32_t)sizeof(line), "%d", INT_MAX));
+  internal_t_assert_text("-1", line, internal_t_format(line, (uint32_t)sizeof(line), "%d", -1));
+  internal_t_assert_text("0", line, internal_t_format(line, (uint32_t)sizeof(line), "%d", 0));
   TEST_END("fmt vformat negative extremes");
 }
 
 /**
- * @test test_vformat_padding
+ * @test internal_test_vformat_padding
  *
  * @brief Width, zero padding and left justification combine as C's rules say.
  *
@@ -743,29 +783,50 @@ static void test_vformat_negative_extremes(void)
  * @post No process state is mutated beyond the local buffer.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_vformat_padding(void)
+RA8_INTERNAL static void internal_test_vformat_padding(void)
 {
   TEST_BEGIN("fmt vformat padding");
   char line[k_t_fmt_line_cap] = {};
 
-  t_assert_text("   42", line, t_format(line, (uint32_t)sizeof(line), "%5d", k_t_fmt_int_sample));
-  t_assert_text("00042", line, t_format(line, (uint32_t)sizeof(line), "%05d", k_t_fmt_int_sample));
-  t_assert_text("42   ", line, t_format(line, (uint32_t)sizeof(line), "%-5d", k_t_fmt_int_sample));
-  t_assert_text("42   ", line, t_format(line, (uint32_t)sizeof(line), "%-05d", k_t_fmt_int_sample));
+  internal_t_assert_text(
+    "   42",
+    line,
+    internal_t_format(line, (uint32_t)sizeof(line), "%5d", k_t_fmt_int_sample));
+  internal_t_assert_text(
+    "00042",
+    line,
+    internal_t_format(line, (uint32_t)sizeof(line), "%05d", k_t_fmt_int_sample));
+  internal_t_assert_text(
+    "42   ",
+    line,
+    internal_t_format(line, (uint32_t)sizeof(line), "%-5d", k_t_fmt_int_sample));
+  internal_t_assert_text(
+    "42   ",
+    line,
+    internal_t_format(line, (uint32_t)sizeof(line), "%-05d", k_t_fmt_int_sample));
 
   /* A width narrower than the token neither truncates nor pads. */
-  t_assert_text("1234", line, t_format(line, (uint32_t)sizeof(line), "%1d", k_t_fmt_wide_sample));
+  internal_t_assert_text(
+    "1234",
+    line,
+    internal_t_format(line, (uint32_t)sizeof(line), "%1d", k_t_fmt_wide_sample));
 
   /* Padding is applied to strings and characters, not only to numbers. */
-  t_assert_text("      ab", line, t_format(line, (uint32_t)sizeof(line), "%8s", "ab"));
-  t_assert_text("ab      ", line, t_format(line, (uint32_t)sizeof(line), "%-8s", "ab"));
-  t_assert_text("   Z", line, t_format(line, (uint32_t)sizeof(line), "%4c", 'Z'));
+  internal_t_assert_text("      ab",
+                         line,
+                         internal_t_format(line, (uint32_t)sizeof(line), "%8s", "ab"));
+  internal_t_assert_text("ab      ",
+                         line,
+                         internal_t_format(line, (uint32_t)sizeof(line), "%-8s", "ab"));
+  internal_t_assert_text("   Z", line, internal_t_format(line, (uint32_t)sizeof(line), "%4c", 'Z'));
   TEST_END("fmt vformat padding");
 }
 
 /**
- * @test test_vformat_truncation
+ * @test internal_test_vformat_truncation
  *
  * @brief A buffer too small for the output truncates and stays terminated.
  *
@@ -797,32 +858,34 @@ static void test_vformat_padding(void)
  * @post No process state is mutated beyond the local buffer.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_vformat_truncation(void)
+RA8_INTERNAL static void internal_test_vformat_truncation(void)
 {
   TEST_BEGIN("fmt vformat truncation");
   char           small[k_t_fmt_digits_cap] = {};
   const uint32_t cap                       = 4U;
 
-  const uint32_t written = t_format(small, cap, "abcdef");
+  const uint32_t written = internal_t_format(small, cap, "abcdef");
   TEST_ASSERT_EQ((cap - 1U), written);
   TEST_ASSERT_EQ(0, small[cap - 1U]);
-  t_assert_text("abc", small, written);
+  internal_t_assert_text("abc", small, written);
 
   /* Truncation mid-conversion terminates just the same. */
-  const uint32_t n = t_format(small, cap, "%d", 123456);
+  const uint32_t n = internal_t_format(small, cap, "%d", 123456);
   TEST_ASSERT_EQ((cap - 1U), n);
-  t_assert_text("123", small, n);
+  internal_t_assert_text("123", small, n);
 
   /* A single-byte buffer holds nothing but the terminator. */
   small[0] = 'Z';
-  TEST_ASSERT_EQ(0, t_format(small, 1U, "abc"));
+  TEST_ASSERT_EQ(0, internal_t_format(small, 1U, "abc"));
   TEST_ASSERT_EQ(0, small[0]);
   TEST_END("fmt vformat truncation");
 }
 
 /**
- * @test test_vformat_unsupported_keeps_arguments_aligned
+ * @test internal_test_vformat_unsupported_keeps_arguments_aligned
  *
  * @brief An unsupported conversion is copied through and consumes no argument.
  *
@@ -834,7 +897,7 @@ static void test_vformat_truncation(void)
  * rather than inferred from the unsupported field alone.
  *
  * @par MC/DC:
- * Decision: `if (!ra8_esp_hosted_fmt_parse(&fmt[pos], &spec))` in the driver
+ * Decision: `if (!priv_ra8_esp_hosted_fmt_parse(&fmt[pos], &spec))` in the driver
  * (1 condition, 2 vectors)
  * - Vector 1: "%d"  -> parse succeeds; the conversion is expanded and one
  *   argument is consumed
@@ -847,26 +910,32 @@ static void test_vformat_truncation(void)
  * @post No process state is mutated beyond the local buffer.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_vformat_unsupported_keeps_arguments_aligned(void)
+RA8_INTERNAL static void internal_test_vformat_unsupported_keeps_arguments_aligned(void)
 {
   TEST_BEGIN("fmt vformat unsupported conversion");
   char line[k_t_fmt_line_cap] = {};
 
   /* The k_t_fmt_int_sample argument belongs to the %d. If the %f had consumed
      it, the %d would print whatever followed on the argument list instead. */
-  t_assert_text("%f|42", line, t_format(line, (uint32_t)sizeof(line), "%f|%d", k_t_fmt_int_sample));
-  t_assert_text("%n|7",
-                line,
-                t_format(line, (uint32_t)sizeof(line), "%n|%d", k_t_fmt_small_int_sample));
+  internal_t_assert_text(
+    "%f|42",
+    line,
+    internal_t_format(line, (uint32_t)sizeof(line), "%f|%d", k_t_fmt_int_sample));
+  internal_t_assert_text(
+    "%n|7",
+    line,
+    internal_t_format(line, (uint32_t)sizeof(line), "%n|%d", k_t_fmt_small_int_sample));
 
   /* A trailing per-cent with nothing after it is not a specification either. */
-  t_assert_text("end%", line, t_format(line, (uint32_t)sizeof(line), "end%"));
+  internal_t_assert_text("end%", line, internal_t_format(line, (uint32_t)sizeof(line), "end%"));
   TEST_END("fmt vformat unsupported conversion");
 }
 
 /**
- * @test test_vformat_bounded_string
+ * @test internal_test_vformat_bounded_string
  *
  * @brief A string longer than the measurement bound is truncated, not chased.
  *
@@ -889,8 +958,10 @@ static void test_vformat_unsupported_keeps_arguments_aligned(void)
  * @post No process state is mutated beyond the local buffers.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_vformat_bounded_string(void)
+RA8_INTERNAL static void internal_test_vformat_bounded_string(void)
 {
   TEST_BEGIN("fmt vformat bounded string");
   char line[k_t_fmt_line_cap]           = {};
@@ -900,7 +971,7 @@ static void test_vformat_bounded_string(void)
     long_text[i] = 'a';
   }
 
-  const uint32_t written = t_format(line, (uint32_t)sizeof(line), "%s", long_text);
+  const uint32_t written = internal_t_format(line, (uint32_t)sizeof(line), "%s", long_text);
   TEST_ASSERT_EQ(k_ra8_esp_hosted_fmt_width_max, written);
   TEST_ASSERT_EQ(k_ra8_esp_hosted_fmt_width_max, strlen(line));
   TEST_ASSERT_EQ('a', line[0]);
@@ -909,18 +980,17 @@ static void test_vformat_bounded_string(void)
 
 int32_t main(void)
 {
-  test_utoa_guards();
-  test_utoa_renders();
-  test_parse_guards_and_flags();
-  test_parse_width_and_length();
-  test_parse_conversion_set();
-  test_vformat_guards();
-  test_vformat_conversions();
-  test_vformat_negative_extremes();
-  test_vformat_padding();
-  test_vformat_truncation();
-  test_vformat_unsupported_keeps_arguments_aligned();
-  test_vformat_bounded_string();
-  (void)fprintf(stderr, "[OK  ] test_ra8_esp_hosted_fmt.c\n");
+  internal_test_utoa_guards();
+  internal_test_utoa_renders();
+  internal_test_parse_guards_and_flags();
+  internal_test_parse_width_and_length();
+  internal_test_parse_conversion_set();
+  internal_test_vformat_guards();
+  internal_test_vformat_conversions();
+  internal_test_vformat_negative_extremes();
+  internal_test_vformat_padding();
+  internal_test_vformat_truncation();
+  internal_test_vformat_unsupported_keeps_arguments_aligned();
+  internal_test_vformat_bounded_string();
   return 0;
 }

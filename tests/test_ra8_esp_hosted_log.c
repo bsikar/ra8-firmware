@@ -25,8 +25,8 @@
  * debug line reaches the sink at all depends on ``RA8_LOG_LEVEL`` in the
  * build under test (the host build leaves it at its default). Asserting one
  * answer unconditionally would make this file pass or fail for a reason that
- * has nothing to do with the bridge. Instead ::t_assert_info_line and
- * ::t_assert_debug_line assert the line when the level is compiled in and
+ * has nothing to do with the bridge. Instead ::internal_t_assert_info_line and
+ * ::internal_t_assert_debug_line assert the line when the level is compiled in and
  * assert silence when it is not -- both are real assertions, and one of them
  * is always the correct one.
  *
@@ -43,6 +43,7 @@
 #include <string.h>
 
 #include "esp_log.h"
+#include "ra8_attributes.h"
 #include "ra8_esp_hosted_log_internal.h"
 #include "ra8_esp_hosted_port.h"
 #include "ra8_log.h"
@@ -132,8 +133,8 @@ typedef enum : uint32_t {
 /**
  * @var s_sink_buf
  * @brief Bytes the project logger emitted since the last reset.
- * @details Accumulated by ::t_sink and asserted against by the tests.
- * @note Reset by ::t_sink_reset before every observation.
+ * @details Accumulated by ::internal_t_sink and asserted against by the tests.
+ * @note Reset by ::internal_t_sink_reset before every observation.
  * @warning Not thread-safe; the host test driver is single-threaded.
  */
 static char s_sink_buf[(size_t)k_t_log_sink_cap];
@@ -142,7 +143,7 @@ static char s_sink_buf[(size_t)k_t_log_sink_cap];
  * @var s_sink_len
  * @brief Number of bytes currently held in ::s_sink_buf.
  * @details Doubles as the "nothing was emitted" observation when zero.
- * @note Reset by ::t_sink_reset before every observation.
+ * @note Reset by ::internal_t_sink_reset before every observation.
  * @warning Not thread-safe; the host test driver is single-threaded.
  */
 static uint32_t s_sink_len;
@@ -159,14 +160,15 @@ static uint32_t s_sink_len;
  * @param[in] ctx Unused cookie; the buffer is file-scope.
  * @param[in] byte Byte the logger emitted.
  *
- * @pre ::t_sink_reset has run since the last observation.
+ * @pre ::internal_t_sink_reset has run since the last observation.
  * @pre The capture buffer has room, or the byte is dropped.
  * @post At most one byte is appended.
  * @post The buffer stays NUL-terminated.
  *
  * @note Not thread-safe; single-threaded host test driver.
+ * @since 0.1.0
  */
-static void t_sink(void* ctx, uint8_t byte)
+RA8_INTERNAL static void internal_t_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;
   if (s_sink_len < ((uint32_t)k_t_log_sink_cap - 1U)) {
@@ -189,8 +191,9 @@ static void t_sink(void* ctx, uint8_t byte)
  * @post The captured length is zero.
  *
  * @note Not thread-safe; single-threaded host test driver.
+ * @since 0.1.0
  */
-static void t_sink_reset(void)
+RA8_INTERNAL static void internal_t_sink_reset(void)
 {
   s_sink_len    = 0U;
   s_sink_buf[0] = '\0';
@@ -215,8 +218,9 @@ static void t_sink_reset(void)
  * @post The process has exited with status 1 on mismatch.
  *
  * @note Not thread-safe; single-threaded host test driver.
+ * @since 0.1.0
  */
-static void t_assert_line(const char* tag, const char* level, const char* msg)
+RA8_INTERNAL static void internal_t_assert_line(const char* tag, const char* level, const char* msg)
 {
   char want[(size_t)k_t_log_sink_cap];
   (void)snprintf(want, sizeof want, "[%s] %s: %s\r\n", tag, level, msg);
@@ -236,8 +240,9 @@ static void t_assert_line(const char* tag, const char* level, const char* msg)
  * @post The process has exited with status 1 otherwise.
  *
  * @note Not thread-safe; single-threaded host test driver.
+ * @since 0.1.0
  */
-static void t_assert_silent(void)
+RA8_INTERNAL static void internal_t_assert_silent(void)
 {
   TEST_ASSERT_EQ(0, s_sink_len);
 }
@@ -261,15 +266,16 @@ static void t_assert_silent(void)
  * @post The process has exited with status 1 otherwise.
  *
  * @note Not thread-safe; single-threaded host test driver.
+ * @since 0.1.0
  */
-static void t_assert_info_line(const char* tag, const char* msg)
+RA8_INTERNAL static void internal_t_assert_info_line(const char* tag, const char* msg)
 {
 #if RA8_LOG_LEVEL >= RA8_LOG_LEVEL_INFO
-  t_assert_line(tag, "INFO", msg);
+  internal_t_assert_line(tag, "INFO", msg);
 #else
   (void)tag;
   (void)msg;
-  t_assert_silent();
+  internal_t_assert_silent();
 #endif
 }
 
@@ -277,7 +283,7 @@ static void t_assert_info_line(const char* tag, const char* msg)
  * @brief Assert what a debug-level line does in this build.
  *
  * @details
- * The debug counterpart of ::t_assert_info_line, and the sink both the
+ * The debug counterpart of ::internal_t_assert_info_line, and the sink both the
  * ESP-IDF debug and verbose levels map onto -- the bridge has four project
  * levels to serve five ESP-IDF ones, and verbose folding into debug is the
  * single lossy step.
@@ -291,20 +297,21 @@ static void t_assert_info_line(const char* tag, const char* msg)
  * @post The process has exited with status 1 otherwise.
  *
  * @note Not thread-safe; single-threaded host test driver.
+ * @since 0.1.0
  */
-static void t_assert_debug_line(const char* tag, const char* msg)
+RA8_INTERNAL static void internal_t_assert_debug_line(const char* tag, const char* msg)
 {
 #if RA8_LOG_LEVEL >= RA8_LOG_LEVEL_DEBUG
-  t_assert_line(tag, "DEBUG", msg);
+  internal_t_assert_line(tag, "DEBUG", msg);
 #else
   (void)tag;
   (void)msg;
-  t_assert_silent();
+  internal_t_assert_silent();
 #endif
 }
 
 /**
- * @brief Reach `ra8_esp_hosted_log_vwrite` through a variable-argument bridge.
+ * @brief Reach `priv_ra8_esp_hosted_log_vwrite` through a variable-argument bridge.
  *
  * @details
  * The internal entry point takes an already-started ``va_list``, which is how
@@ -323,17 +330,18 @@ static void t_assert_debug_line(const char* tag, const char* msg)
  * @post At most one line reaches the sink.
  *
  * @note Not thread-safe; single-threaded host test driver.
+ * @since 0.1.0
  */
-static void t_vwrite(int level, const char* tag, const char* fmt, ...)
+RA8_INTERNAL static void internal_t_vwrite(int level, const char* tag, const char* fmt, ...)
 {
   va_list ap;
   va_start(ap, fmt);
-  ra8_esp_hosted_log_vwrite(level, tag, fmt, ap);
+  priv_ra8_esp_hosted_log_vwrite(level, tag, fmt, ap);
   va_end(ap);
 }
 
 /**
- * @test test_log_level_default_and_clamp
+ * @test internal_test_log_level_default_and_clamp
  *
  * @brief The threshold starts at info and is clamped at both ends when set.
  *
@@ -363,34 +371,36 @@ static void t_vwrite(int level, const char* tag, const char* fmt, ...)
  * @post The threshold is left at verbose for the tests that follow.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_log_level_default_and_clamp(void)
+RA8_INTERNAL static void internal_test_log_level_default_and_clamp(void)
 {
   TEST_BEGIN("log level default and clamping");
 
-  TEST_ASSERT_EQ(ESP_LOG_INFO, ra8_esp_hosted_log_level_get());
+  TEST_ASSERT_EQ(ESP_LOG_INFO, priv_ra8_esp_hosted_log_level_get());
 
   ra8_esp_hosted_log_level_set("rpc_core", (int)ESP_LOG_WARN);
-  TEST_ASSERT_EQ(ESP_LOG_WARN, ra8_esp_hosted_log_level_get());
+  TEST_ASSERT_EQ(ESP_LOG_WARN, priv_ra8_esp_hosted_log_level_get());
 
   ra8_esp_hosted_log_level_set(nullptr, k_t_log_level_below_min);
-  TEST_ASSERT_EQ(ESP_LOG_NONE, ra8_esp_hosted_log_level_get());
+  TEST_ASSERT_EQ(ESP_LOG_NONE, priv_ra8_esp_hosted_log_level_get());
 
   ra8_esp_hosted_log_level_set(nullptr, k_t_log_level_above_max);
-  TEST_ASSERT_EQ(ESP_LOG_VERBOSE, ra8_esp_hosted_log_level_get());
+  TEST_ASSERT_EQ(ESP_LOG_VERBOSE, priv_ra8_esp_hosted_log_level_get());
 
   /* Both bounds are inclusive: setting exactly the extremes is not clamping. */
   ra8_esp_hosted_log_level_set(nullptr, (int)ESP_LOG_NONE);
-  TEST_ASSERT_EQ(ESP_LOG_NONE, ra8_esp_hosted_log_level_get());
+  TEST_ASSERT_EQ(ESP_LOG_NONE, priv_ra8_esp_hosted_log_level_get());
   ra8_esp_hosted_log_level_set(nullptr, (int)ESP_LOG_VERBOSE);
-  TEST_ASSERT_EQ(ESP_LOG_VERBOSE, ra8_esp_hosted_log_level_get());
+  TEST_ASSERT_EQ(ESP_LOG_VERBOSE, priv_ra8_esp_hosted_log_level_get());
   TEST_END("log level default and clamping");
 }
 
 /**
- * @test test_log_accepts_mcdc
+ * @test internal_test_log_accepts_mcdc
  *
- * @brief `ra8_esp_hosted_log_accepts` applies both halves of its threshold.
+ * @brief `priv_ra8_esp_hosted_log_accepts` applies both halves of its threshold.
  *
  * @details
  * The gate has to reject two quite different things: the suppress-everything
@@ -400,7 +410,7 @@ static void test_log_level_default_and_clamp(void)
  *
  * @par MC/DC:
  * Decision: `(level > ESP_LOG_NONE) && (level <= threshold)` in
- * `port/esp-hosted/src/ra8_esp_hosted_log.c@ra8_esp_hosted_log_accepts`, with
+ * `port/esp-hosted/src/ra8_esp_hosted_log.c@priv_ra8_esp_hosted_log_accepts`, with
  * the threshold held at info (2 conditions, 3 vectors)
  * - Vector 1: level=ESP_LOG_INFO(3)  -> true,  true  -> true  (control)
  * - Vector 2: level=ESP_LOG_NONE(0)  -> false        -> false (varies the
@@ -415,40 +425,42 @@ static void test_log_level_default_and_clamp(void)
  * @post The threshold is left at verbose for the tests that follow.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_log_accepts_mcdc(void)
+RA8_INTERNAL static void internal_test_log_accepts_mcdc(void)
 {
   TEST_BEGIN("log accepts threshold");
 
   ra8_esp_hosted_log_level_set(nullptr, (int)ESP_LOG_INFO);
-  TEST_ASSERT(ra8_esp_hosted_log_accepts((int)ESP_LOG_INFO));
-  TEST_ASSERT(!ra8_esp_hosted_log_accepts((int)ESP_LOG_NONE));
-  TEST_ASSERT(!ra8_esp_hosted_log_accepts((int)ESP_LOG_DEBUG));
+  TEST_ASSERT(priv_ra8_esp_hosted_log_accepts((int)ESP_LOG_INFO));
+  TEST_ASSERT(!priv_ra8_esp_hosted_log_accepts((int)ESP_LOG_NONE));
+  TEST_ASSERT(!priv_ra8_esp_hosted_log_accepts((int)ESP_LOG_DEBUG));
 
   /* A level below the enumeration entirely is rejected by the lower half,
      which is why that half exists at all. */
-  TEST_ASSERT(!ra8_esp_hosted_log_accepts(-1));
+  TEST_ASSERT(!priv_ra8_esp_hosted_log_accepts(-1));
 
   /* Everything at or below the threshold passes. */
-  TEST_ASSERT(ra8_esp_hosted_log_accepts((int)ESP_LOG_ERROR));
-  TEST_ASSERT(ra8_esp_hosted_log_accepts((int)ESP_LOG_WARN));
+  TEST_ASSERT(priv_ra8_esp_hosted_log_accepts((int)ESP_LOG_ERROR));
+  TEST_ASSERT(priv_ra8_esp_hosted_log_accepts((int)ESP_LOG_WARN));
 
   /* Raising the threshold admits what it previously rejected -- proving the
      comparison reads the live threshold rather than a compile-time one. */
   ra8_esp_hosted_log_level_set(nullptr, (int)ESP_LOG_VERBOSE);
-  TEST_ASSERT(ra8_esp_hosted_log_accepts((int)ESP_LOG_DEBUG));
-  TEST_ASSERT(ra8_esp_hosted_log_accepts((int)ESP_LOG_VERBOSE));
+  TEST_ASSERT(priv_ra8_esp_hosted_log_accepts((int)ESP_LOG_DEBUG));
+  TEST_ASSERT(priv_ra8_esp_hosted_log_accepts((int)ESP_LOG_VERBOSE));
 
   /* Suppressing everything rejects even an error. */
   ra8_esp_hosted_log_level_set(nullptr, (int)ESP_LOG_NONE);
-  TEST_ASSERT(!ra8_esp_hosted_log_accepts((int)ESP_LOG_ERROR));
+  TEST_ASSERT(!priv_ra8_esp_hosted_log_accepts((int)ESP_LOG_ERROR));
 
   ra8_esp_hosted_log_level_set(nullptr, (int)ESP_LOG_VERBOSE);
   TEST_END("log accepts threshold");
 }
 
 /**
- * @test test_log_write_level_mapping
+ * @test internal_test_log_write_level_mapping
  *
  * @brief Each ESP-IDF level lands on the matching project-logger sink.
  *
@@ -476,36 +488,38 @@ static void test_log_accepts_mcdc(void)
  * @post The threshold is left at verbose.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_log_write_level_mapping(void)
+RA8_INTERNAL static void internal_test_log_write_level_mapping(void)
 {
   TEST_BEGIN("log level mapping");
   ra8_esp_hosted_log_level_set(nullptr, (int)ESP_LOG_VERBOSE);
 
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_log_write((int)ESP_LOG_ERROR, "H_t", "code %d", -3);
-  t_assert_line("H_t", "ERROR", "code -3");
+  internal_t_assert_line("H_t", "ERROR", "code -3");
 
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_log_write((int)ESP_LOG_WARN, "H_t", "retry %u", k_t_log_retry_arg);
-  t_assert_line("H_t", "WARN", "retry 7");
+  internal_t_assert_line("H_t", "WARN", "retry 7");
 
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_log_write((int)ESP_LOG_INFO, "H_t", "link %s", "up");
-  t_assert_info_line("H_t", "link up");
+  internal_t_assert_info_line("H_t", "link up");
 
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_log_write((int)ESP_LOG_DEBUG, "H_t", "edge %x", k_t_log_edge_arg);
-  t_assert_debug_line("H_t", "edge ab");
+  internal_t_assert_debug_line("H_t", "edge ab");
 
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_log_write((int)ESP_LOG_VERBOSE, "H_t", "frame %u", 1U);
-  t_assert_debug_line("H_t", "frame 1");
+  internal_t_assert_debug_line("H_t", "frame 1");
   TEST_END("log level mapping");
 }
 
 /**
- * @test test_log_write_guards
+ * @test internal_test_log_write_guards
  *
  * @brief The writer drops a filtered level and a null format, and names a
  *        null tag.
@@ -517,8 +531,8 @@ static void test_log_write_level_mapping(void)
  * format and emitting an empty line would be noise.
  *
  * @par MC/DC:
- * Decision A: `if (!ra8_esp_hosted_log_accepts(level) || (fmt == nullptr))` in
- * `port/esp-hosted/src/ra8_esp_hosted_log.c@ra8_esp_hosted_log_vwrite`
+ * Decision A: `if (!priv_ra8_esp_hosted_log_accepts(level) || (fmt == nullptr))` in
+ * `port/esp-hosted/src/ra8_esp_hosted_log.c@priv_ra8_esp_hosted_log_vwrite`
  * (2 conditions, 3 vectors)
  * - Vector A1: level admitted, fmt="x"  -> false, false -> false (control:
  *   the line is emitted)
@@ -538,37 +552,39 @@ static void test_log_write_level_mapping(void)
  * @post The threshold is left at verbose.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_log_write_guards(void)
+RA8_INTERNAL static void internal_test_log_write_guards(void)
 {
   TEST_BEGIN("log write guards");
   ra8_esp_hosted_log_level_set(nullptr, (int)ESP_LOG_ERROR);
 
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_log_write((int)ESP_LOG_ERROR, "H_t", "kept");
-  t_assert_line("H_t", "ERROR", "kept");
+  internal_t_assert_line("H_t", "ERROR", "kept");
 
   /* Above the threshold: dropped before any formatting happens. */
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_log_write((int)ESP_LOG_WARN, "H_t", "dropped");
-  t_assert_silent();
+  internal_t_assert_silent();
 
   /* Admitted level, but nothing to format. */
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_log_write((int)ESP_LOG_ERROR, "H_t", nullptr);
-  t_assert_silent();
+  internal_t_assert_silent();
 
   /* A null tag is replaced with the bridge's own rather than dereferenced. */
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_log_write((int)ESP_LOG_ERROR, nullptr, "anon");
-  t_assert_line("C6LINK", "ERROR", "anon");
+  internal_t_assert_line("C6LINK", "ERROR", "anon");
 
   ra8_esp_hosted_log_level_set(nullptr, (int)ESP_LOG_VERBOSE);
   TEST_END("log write guards");
 }
 
 /**
- * @test test_log_vwrite_direct
+ * @test internal_test_log_vwrite_direct
  *
  * @brief The list-taking entry point behaves identically to the varargs face.
  *
@@ -580,7 +596,7 @@ static void test_log_write_guards(void)
  * from one emitted directly, which is precisely the bug this asserts against.
  *
  * @par MC/DC:
- * Shares its only decision with ::test_log_write_guards -- the combined level
+ * Shares its only decision with ::internal_test_log_write_guards -- the combined level
  * and null-format gate -- and drives the same three vectors through the
  * list-taking entry point:
  * - Vector 1: level admitted, fmt non-null -> the line is emitted
@@ -591,30 +607,32 @@ static void test_log_write_guards(void)
  * @post The threshold is left at verbose.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_log_vwrite_direct(void)
+RA8_INTERNAL static void internal_test_log_vwrite_direct(void)
 {
   TEST_BEGIN("log vwrite direct");
   ra8_esp_hosted_log_level_set(nullptr, (int)ESP_LOG_WARN);
 
-  t_sink_reset();
-  t_vwrite((int)ESP_LOG_WARN, "H_v", "n=%d s=%s", k_t_log_vwrite_int, "ok");
-  t_assert_line("H_v", "WARN", "n=5 s=ok");
+  internal_t_sink_reset();
+  internal_t_vwrite((int)ESP_LOG_WARN, "H_v", "n=%d s=%s", k_t_log_vwrite_int, "ok");
+  internal_t_assert_line("H_v", "WARN", "n=5 s=ok");
 
-  t_sink_reset();
-  t_vwrite((int)ESP_LOG_INFO, "H_v", "filtered");
-  t_assert_silent();
+  internal_t_sink_reset();
+  internal_t_vwrite((int)ESP_LOG_INFO, "H_v", "filtered");
+  internal_t_assert_silent();
 
-  t_sink_reset();
-  t_vwrite((int)ESP_LOG_WARN, "H_v", nullptr);
-  t_assert_silent();
+  internal_t_sink_reset();
+  internal_t_vwrite((int)ESP_LOG_WARN, "H_v", nullptr);
+  internal_t_assert_silent();
 
   ra8_esp_hosted_log_level_set(nullptr, (int)ESP_LOG_VERBOSE);
   TEST_END("log vwrite direct");
 }
 
 /**
- * @test test_log_hexdump
+ * @test internal_test_log_hexdump
  *
  * @brief The hexdump renders two nibbles per byte and stops at its width.
  *
@@ -626,7 +644,7 @@ static void test_log_vwrite_direct(void)
  * first thirty-two bytes, not a stack overflow.
  *
  * @par MC/DC:
- * Decision A: `if (!ra8_esp_hosted_log_accepts(level) || (buf == nullptr) ||
+ * Decision A: `if (!priv_ra8_esp_hosted_log_accepts(level) || (buf == nullptr) ||
  * (len == 0U))` in
  * `port/esp-hosted/src/ra8_esp_hosted_log.c@ra8_esp_hosted_log_hexdump`
  * (3 conditions, 4 vectors)
@@ -655,8 +673,10 @@ static void test_log_vwrite_direct(void)
  * @post The threshold is left at verbose.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_log_hexdump(void)
+RA8_INTERNAL static void internal_test_log_hexdump(void)
 {
   TEST_BEGIN("log hexdump");
   const uint8_t bytes[]                         = {0x00U, 0x0FU, 0xA5U};
@@ -664,30 +684,30 @@ static void test_log_hexdump(void)
 
   ra8_esp_hosted_log_level_set(nullptr, (int)ESP_LOG_VERBOSE);
 
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_log_hexdump((int)ESP_LOG_ERROR, "H_d", bytes, (uint32_t)sizeof(bytes));
-  t_assert_line("H_d", "ERROR", "00 0f a5 ");
+  internal_t_assert_line("H_d", "ERROR", "00 0f a5 ");
 
   /* Filtered level: nothing is rendered, not even an empty line. */
   ra8_esp_hosted_log_level_set(nullptr, (int)ESP_LOG_ERROR);
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_log_hexdump((int)ESP_LOG_WARN, "H_d", bytes, (uint32_t)sizeof(bytes));
-  t_assert_silent();
+  internal_t_assert_silent();
   ra8_esp_hosted_log_level_set(nullptr, (int)ESP_LOG_VERBOSE);
 
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_log_hexdump((int)ESP_LOG_ERROR, "H_d", nullptr, (uint32_t)sizeof(bytes));
-  t_assert_silent();
+  internal_t_assert_silent();
 
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_log_hexdump((int)ESP_LOG_ERROR, "H_d", bytes, 0U);
-  t_assert_silent();
+  internal_t_assert_silent();
 
   /* More bytes than one line renders: the excess is dropped, not wrapped. */
   for (uint32_t i = 0U; i < (uint32_t)k_t_log_dump_over; i++) {
     wide[i] = (uint8_t)i;
   }
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_log_hexdump((int)ESP_LOG_ERROR, "H_d", wide, (uint32_t)k_t_log_dump_over);
   {
     const size_t framing = strlen("[H_d] ERROR: ") + strlen("\r\n");
@@ -696,14 +716,14 @@ static void test_log_hexdump(void)
   }
 
   /* A null tag is replaced here too, on the same rule as the writer. */
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_log_hexdump((int)ESP_LOG_ERROR, nullptr, bytes, (uint32_t)sizeof(bytes));
-  t_assert_line("C6LINK", "ERROR", "00 0f a5 ");
+  internal_t_assert_line("C6LINK", "ERROR", "00 0f a5 ");
   TEST_END("log hexdump");
 }
 
 /**
- * @test test_log_mem_dump
+ * @test internal_test_log_mem_dump
  *
  * @brief The pool-state report names its caller and reads live statistics.
  *
@@ -724,35 +744,37 @@ static void test_log_hexdump(void)
  * @post The threshold is left at verbose.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_log_mem_dump(void)
+RA8_INTERNAL static void internal_test_log_mem_dump(void)
 {
   TEST_BEGIN("log mem dump");
   ra8_esp_hosted_log_level_set(nullptr, (int)ESP_LOG_VERBOSE);
 
 #if RA8_LOG_LEVEL >= RA8_LOG_LEVEL_INFO
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_mem_dump("probe");
   TEST_ASSERT(strstr(s_sink_buf, "[C6LINK] INFO: probe: pool free ") != nullptr);
   TEST_ASSERT(strstr(s_sink_buf, " fragments\r\n") != nullptr);
 
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_mem_dump(nullptr);
   TEST_ASSERT(strstr(s_sink_buf, "(unnamed): pool free ") != nullptr);
 #else
   /* Informational lines are folded out of this build, so the observable
      contract is that the call is harmless and emits nothing. */
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_mem_dump("probe");
-  t_assert_silent();
+  internal_t_assert_silent();
   ra8_esp_hosted_mem_dump(nullptr);
-  t_assert_silent();
+  internal_t_assert_silent();
 #endif
   TEST_END("log mem dump");
 }
 
 /**
- * @test test_log_alloc_failed
+ * @test internal_test_log_alloc_failed
  *
  * @brief An exhausted pool reports both the requester and the size refused.
  *
@@ -771,37 +793,38 @@ static void test_log_mem_dump(void)
  * @post The threshold is left at verbose.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_log_alloc_failed(void)
+RA8_INTERNAL static void internal_test_log_alloc_failed(void)
 {
   TEST_BEGIN("log alloc failed");
   ra8_esp_hosted_log_level_set(nullptr, (int)ESP_LOG_VERBOSE);
 
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_alloc_failed("internal_h_malloc", (size_t)k_t_log_alloc_size);
-  t_assert_line("C6LINK", "ERROR", "internal_h_malloc: pool cannot serve 1600 bytes");
+  internal_t_assert_line("C6LINK", "ERROR", "internal_h_malloc: pool cannot serve 1600 bytes");
 
-  t_sink_reset();
+  internal_t_sink_reset();
   ra8_esp_hosted_alloc_failed(nullptr, (size_t)0U);
-  t_assert_line("C6LINK", "ERROR", "(unnamed): pool cannot serve 0 bytes");
+  internal_t_assert_line("C6LINK", "ERROR", "(unnamed): pool cannot serve 0 bytes");
   TEST_END("log alloc failed");
 }
 
 int32_t main(void)
 {
   ra8_log_init();
-  ra8_log_set_byte_sink(t_sink, nullptr);
+  ra8_log_set_byte_sink(internal_t_sink, nullptr);
 
-  test_log_level_default_and_clamp();
-  test_log_accepts_mcdc();
-  test_log_write_level_mapping();
-  test_log_write_guards();
-  test_log_vwrite_direct();
-  test_log_hexdump();
-  test_log_mem_dump();
-  test_log_alloc_failed();
+  internal_test_log_level_default_and_clamp();
+  internal_test_log_accepts_mcdc();
+  internal_test_log_write_level_mapping();
+  internal_test_log_write_guards();
+  internal_test_log_vwrite_direct();
+  internal_test_log_hexdump();
+  internal_test_log_mem_dump();
+  internal_test_log_alloc_failed();
 
   ra8_log_set_byte_sink(nullptr, nullptr);
-  (void)fprintf(stderr, "[OK  ] test_ra8_esp_hosted_log.c\n");
   return 0;
 }

@@ -37,6 +37,7 @@
 #include "esp_hosted_os_abstraction.h"
 #include "port_esp_hosted_host_os.h"
 #include "port_esp_hosted_host_spi.h"
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2_connectors.h"
 #include "ra8_err.h"
 #include "ra8_esp_hosted_pins.h"
@@ -97,8 +98,15 @@ static uint8_t s_tx_frame[k_spi_test_frame_bytes];
 /** @brief Receive frame the recording backend fills. */
 static uint8_t s_rx_frame[k_spi_test_frame_bytes];
 
-/** @brief Append one event to the shared ordered log. */
-static void log_event(spi_test_event_t event)
+/** @brief Append one event to the shared ordered log.
+ * @details Implements the fixture-only log event operation with bounded static state.
+ * @param[in] event Ordered fixture event to append to the capture log.
+ * @pre Host mock storage is initialized. @pre Pointer arguments follow their directions.
+ * @post The mock transition is observable. @post No physical hardware is accessed.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_log_event(spi_test_event_t event)
 {
   if (s_event_count < (uint32_t)k_spi_test_events_max) {
     s_events[s_event_count] = (uint8_t)event;
@@ -106,27 +114,63 @@ static void log_event(spi_test_event_t event)
   }
 }
 
-/** @brief Recording ``output_init`` row of the mock chip-select driver. */
-static ra8_err_t mock_output_init(void* ctx, ra8_port_pin_t pin, ra8_level_t init_level)
+/** @brief Recording ``output_init`` row of the mock chip-select driver.
+ * @details Implements the fixture-only mock output init operation with bounded static state.
+ * @param[in,out] ctx Backend context supplied by the adapter under test.
+ * @param[in] pin Logical port/pin identifier presented to the mock.
+ * @param[in] init_level Initial logical output level requested by the adapter.
+ * @return Mock status returned to the adapter under test.
+ * @retval k_ra8_ok The deterministic mock operation completed.
+ * @pre Host mock storage is initialized. @pre Pointer arguments follow their directions.
+ * @post The mock transition is observable. @post No physical hardware is accessed.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_mock_output_init(void* ctx, ra8_port_pin_t pin, ra8_level_t init_level)
 {
   (void)ctx;
   (void)pin;
   (void)init_level;
-  log_event(k_spi_test_event_cs_init);
+  internal_log_event(k_spi_test_event_cs_init);
   return k_ra8_ok;
 }
 
-/** @brief Recording ``write`` row of the mock chip-select driver. */
-static ra8_err_t mock_write(void* ctx, ra8_port_pin_t pin, ra8_level_t level)
+/** @brief Recording ``write`` row of the mock chip-select driver.
+ * @details Implements the fixture-only mock write operation with bounded static state.
+ * @param[in,out] ctx Backend context supplied by the adapter under test.
+ * @param[in] pin Logical port/pin identifier presented to the mock.
+ * @param[in] level Logical level to record for the selected pin.
+ * @return Mock status returned to the adapter under test.
+ * @retval k_ra8_ok The deterministic mock operation completed.
+ * @pre Host mock storage is initialized. @pre Pointer arguments follow their directions.
+ * @post The mock transition is observable. @post No physical hardware is accessed.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_mock_write(void* ctx, ra8_port_pin_t pin, ra8_level_t level)
 {
   (void)ctx;
   (void)pin;
-  log_event((level == k_ra8_level_low) ? k_spi_test_event_cs_low : k_spi_test_event_cs_high);
+  internal_log_event((level == k_ra8_level_low) ? k_spi_test_event_cs_low
+                                                : k_spi_test_event_cs_high);
   return k_ra8_ok;
 }
 
-/** @brief Unused ``read`` row; the transport never reads the chip select. */
-static ra8_err_t mock_read(void* ctx, ra8_port_pin_t pin, ra8_level_t* out_level)
+/** @brief Unused ``read`` row; the transport never reads the chip select.
+ * @details Implements the fixture-only mock read operation with bounded static state.
+ * @param[in,out] ctx Backend context supplied by the adapter under test.
+ * @param[in] pin Logical port/pin identifier presented to the mock.
+ * @param[out] out_level Destination that receives the recorded logical level.
+ * @return Mock status returned to the adapter under test.
+ * @retval k_ra8_ok The deterministic mock operation completed.
+ * @pre Host mock storage is initialized. @pre Pointer arguments follow their directions.
+ * @post The mock transition is observable. @post No physical hardware is accessed.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_mock_read(void* ctx, ra8_port_pin_t pin, ra8_level_t* out_level)
 {
   (void)ctx;
   (void)pin;
@@ -136,8 +180,18 @@ static ra8_err_t mock_read(void* ctx, ra8_port_pin_t pin, ra8_level_t* out_level
   return k_ra8_ok;
 }
 
-/** @brief Unused ``toggle`` row; the transport never toggles the chip select. */
-static ra8_err_t mock_toggle(void* ctx, ra8_port_pin_t pin)
+/** @brief Unused ``toggle`` row; the transport never toggles the chip select.
+ * @details Implements the fixture-only mock toggle operation with bounded static state.
+ * @param[in,out] ctx Backend context supplied by the adapter under test.
+ * @param[in] pin Logical port/pin identifier presented to the mock.
+ * @return Mock status returned to the adapter under test.
+ * @retval k_ra8_ok The deterministic mock operation completed.
+ * @pre Host mock storage is initialized. @pre Pointer arguments follow their directions.
+ * @post The mock transition is observable. @post No physical hardware is accessed.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_mock_toggle(void* ctx, ra8_port_pin_t pin)
 {
   (void)ctx;
   (void)pin;
@@ -146,15 +200,26 @@ static ra8_err_t mock_toggle(void* ctx, ra8_port_pin_t pin)
 
 /** @brief The recording chip-select driver injected in place of the HAL's. */
 static const ra8_pin_interface_t s_mock_pin_if = {
-  .output_init = mock_output_init,
-  .write       = mock_write,
-  .read        = mock_read,
-  .toggle      = mock_toggle,
+  .output_init = internal_mock_output_init,
+  .write       = internal_mock_write,
+  .read        = internal_mock_read,
+  .toggle      = internal_mock_toggle,
   .ctx         = nullptr,
 };
 
-/** @brief Recording ``xfer8`` row; the transport only uses bulk transfers. */
-static ra8_err_t mock_xfer8(void* ctx, uint8_t tx, uint8_t* rx)
+/** @brief Recording ``xfer8`` row; the transport only uses bulk transfers.
+ * @details Implements the fixture-only mock xfer8 operation with bounded static state.
+ * @param[in,out] ctx Backend context supplied by the adapter under test.
+ * @param[in] tx Transmit byte or frame supplied by the adapter.
+ * @param[out] rx Destination for the deterministic mock receive value.
+ * @return Mock status returned to the adapter under test.
+ * @retval k_ra8_ok The deterministic mock operation completed.
+ * @pre Host mock storage is initialized. @pre Pointer arguments follow their directions.
+ * @post The mock transition is observable. @post No physical hardware is accessed.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_mock_xfer8(void* ctx, uint8_t tx, uint8_t* rx)
 {
   (void)ctx;
   (void)tx;
@@ -164,12 +229,28 @@ static ra8_err_t mock_xfer8(void* ctx, uint8_t tx, uint8_t* rx)
   return k_ra8_err_not_supported;
 }
 
-/** @brief Recording ``write_read`` row: the whole point of the mock backend. */
-static ra8_err_t
-mock_write_read(void* ctx, const void* tx, void* rx, uint32_t len, ra8_spi_bit_width_t width)
+/** @brief Recording ``write_read`` row: the whole point of the mock backend.
+ * @details Implements the fixture-only mock write read operation with bounded static state.
+ * @param[in,out] ctx Backend context supplied by the adapter under test.
+ * @param[in] tx Transmit byte or frame supplied by the adapter.
+ * @param[out] rx Destination for the deterministic mock receive value.
+ * @param[in] len Number of frame bytes exposed through the transfer context.
+ * @param[in] width SPI frame width requested by the transport.
+ * @return Mock status returned to the adapter under test.
+ * @retval k_ra8_ok The deterministic mock operation completed.
+ * @pre Host mock storage is initialized. @pre Pointer arguments follow their directions.
+ * @post The mock transition is observable. @post No physical hardware is accessed.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_mock_write_read(void*               ctx,
+                                                       const void*         tx,
+                                                       void*               rx,
+                                                       uint32_t            len,
+                                                       ra8_spi_bit_width_t width)
 {
   (void)ctx;
-  log_event(k_spi_test_event_xfer);
+  internal_log_event(k_spi_test_event_xfer);
   s_seen_len   = len;
   s_seen_width = (uint8_t)width;
   s_seen_tx    = tx;
@@ -182,8 +263,19 @@ mock_write_read(void* ctx, const void* tx, void* rx, uint32_t len, ra8_spi_bit_w
   return s_bus_result;
 }
 
-/** @brief Recording ``set_clock`` row; unused by the transfer path. */
-static ra8_err_t mock_set_clock(void* ctx, uint32_t baud_hz, uint32_t pclk_hz)
+/** @brief Recording ``set_clock`` row; unused by the transfer path.
+ * @details Implements the fixture-only mock set clock operation with bounded static state.
+ * @param[in,out] ctx Backend context supplied by the adapter under test.
+ * @param[in] baud_hz Requested SPI clock rate in hertz.
+ * @param[in] pclk_hz Peripheral source-clock rate in hertz.
+ * @return Mock status returned to the adapter under test.
+ * @retval k_ra8_ok The deterministic mock operation completed.
+ * @pre Host mock storage is initialized. @pre Pointer arguments follow their directions.
+ * @post The mock transition is observable. @post No physical hardware is accessed.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_mock_set_clock(void* ctx, uint32_t baud_hz, uint32_t pclk_hz)
 {
   (void)ctx;
   (void)baud_hz;
@@ -193,9 +285,9 @@ static ra8_err_t mock_set_clock(void* ctx, uint32_t baud_hz, uint32_t pclk_hz)
 
 /** @brief The recording backend vtable standing in for SCI Simple-SPI. */
 static const ra8_io_spi_bus_iface_t s_mock_iface = {
-  .xfer8      = mock_xfer8,
-  .write_read = mock_write_read,
-  .set_clock  = mock_set_clock,
+  .xfer8      = internal_mock_xfer8,
+  .write_read = internal_mock_write_read,
+  .set_clock  = internal_mock_set_clock,
 };
 
 /** @brief The bus handle the tests inject through the transport's seam. */
@@ -204,16 +296,33 @@ static const ra8_io_spi_bus_t s_mock_bus = {
   .ctx   = nullptr,
 };
 
-/** @brief Return the vtable with the three transport rows bound. */
-static hosted_osi_funcs_t bound_vtable(void)
+/** @brief Return the vtable with the three transport rows bound.
+ * @details Implements the fixture-only bound vtable operation with bounded static state.
+ * @return Fully bound host vtable used by the focused test.
+ * @retval initialized All adapter rows were bound successfully.
+ * @pre Host mock storage is initialized. @pre Pointer arguments follow their directions.
+ * @post The mock transition is observable. @post No physical hardware is accessed.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static hosted_osi_funcs_t internal_bound_vtable(void)
 {
   hosted_osi_funcs_t funcs = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_spi_bind(&funcs));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_spi_bind(&funcs));
   return funcs;
 }
 
-/** @brief Build a transfer context over the module's frame buffers. */
-static struct hosted_transport_context_t make_ctx(uint32_t len)
+/** @brief Build a transfer context over the module's frame buffers.
+ * @details Implements the fixture-only make ctx operation with bounded static state.
+ * @param[in] len Number of frame bytes exposed through the transfer context.
+ * @return Transfer context over the fixture-owned frame buffers.
+ * @retval initialized Context borrows the fixture frame buffers for @p len bytes.
+ * @pre Host mock storage is initialized. @pre Pointer arguments follow their directions.
+ * @post The mock transition is observable. @post No physical hardware is accessed.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static struct hosted_transport_context_t internal_make_ctx(uint32_t len)
 {
   struct hosted_transport_context_t ctx = {};
   ctx.tx_buf                            = s_tx_frame;
@@ -222,11 +331,17 @@ static struct hosted_transport_context_t make_ctx(uint32_t len)
   return ctx;
 }
 
-/** @brief Restore every module and fake fixture to a known state. */
-static void reset_state(void)
+/** @brief Restore every module and fake fixture to a known state.
+ * @details Implements the fixture-only reset state operation with bounded static state.
+ * @pre Host mock storage is initialized. @pre Pointer arguments follow their directions.
+ * @post The mock transition is observable. @post No physical hardware is accessed.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_reset_state(void)
 {
-  if (ra8_esp_hosted_spi_is_open()) {
-    (void)ra8_esp_hosted_spi_close();
+  if (priv_ra8_esp_hosted_spi_is_open()) {
+    (void)priv_ra8_esp_hosted_spi_close();
   }
   ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
@@ -242,8 +357,8 @@ static void reset_state(void)
     s_tx_frame[i] = (uint8_t)k_spi_test_tx_stamp;
     s_rx_frame[i] = 0U;
   }
-  ra8_esp_hosted_spi_set_pin_interface(&s_mock_pin_if);
-  ra8_esp_hosted_spi_set_bus(&s_mock_bus);
+  priv_ra8_esp_hosted_spi_set_pin_interface(&s_mock_pin_if);
+  priv_ra8_esp_hosted_spi_set_bus(&s_mock_bus);
 }
 
 /**
@@ -251,15 +366,21 @@ static void reset_state(void)
  * (no compound decision in the code under test -- this case asserts that the
  * binder populates exactly the three transport rows and rejects a null
  * vtable)
+ * @brief Verify bind.
+ * @details Drives the host model through bind and asserts each observable result.
+ * @pre Unity is initialized. @pre Static fixture storage is available.
+ * @post Expected outcomes are asserted. @post No host resource escapes this test.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
  */
-static void test_bind(void)
+RA8_INTERNAL static void internal_test_bind(void)
 {
   TEST_BEGIN("esp_hosted spi: bind populates the three transport rows");
-  reset_state();
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_esp_hosted_spi_bind(nullptr));
+  internal_reset_state();
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, priv_ra8_esp_hosted_spi_bind(nullptr));
 
   hosted_osi_funcs_t funcs = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_spi_bind(&funcs));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_spi_bind(&funcs));
   TEST_ASSERT(funcs._h_bus_init != nullptr);
   TEST_ASSERT(funcs._h_bus_deinit != nullptr);
   TEST_ASSERT(funcs._h_do_bus_transfer != nullptr);
@@ -288,27 +409,33 @@ static void test_bind(void)
  *
  * The null-context guard is a separate single-condition decision, covered by
  * the null call below plus every other vector in this case.
+ * @brief Verify transfer rejections.
+ * @details Drives the host model through transfer rejections and asserts each observable result.
+ * @pre Unity is initialized. @pre Static fixture storage is available.
+ * @post Expected outcomes are asserted. @post No host resource escapes this test.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
  */
-static void test_transfer_rejections(void)
+RA8_INTERNAL static void internal_test_transfer_rejections(void)
 {
   TEST_BEGIN("esp_hosted spi: the transfer slot rejects every malformed frame");
-  reset_state();
-  const hosted_osi_funcs_t f = bound_vtable();
+  internal_reset_state();
+  const hosted_osi_funcs_t f = internal_bound_vtable();
 
   TEST_ASSERT_EQ(RET_INVALID, f._h_do_bus_transfer(nullptr));
 
-  struct hosted_transport_context_t ctx = make_ctx((uint32_t)k_spi_test_frame_bytes);
+  struct hosted_transport_context_t ctx = internal_make_ctx((uint32_t)k_spi_test_frame_bytes);
   ctx.tx_buf                            = nullptr; /* Vector A2 */
   TEST_ASSERT_EQ(RET_INVALID, f._h_do_bus_transfer(&ctx));
 
-  ctx        = make_ctx((uint32_t)k_spi_test_frame_bytes);
+  ctx        = internal_make_ctx((uint32_t)k_spi_test_frame_bytes);
   ctx.rx_buf = nullptr; /* Vector A3 */
   TEST_ASSERT_EQ(RET_INVALID, f._h_do_bus_transfer(&ctx));
 
-  ctx = make_ctx(0U); /* Vector B2 */
+  ctx = internal_make_ctx(0U); /* Vector B2 */
   TEST_ASSERT_EQ(RET_INVALID, f._h_do_bus_transfer(&ctx));
 
-  ctx = make_ctx((uint32_t)k_spi_test_oversize); /* Vector B3 */
+  ctx = internal_make_ctx((uint32_t)k_spi_test_oversize); /* Vector B3 */
   TEST_ASSERT_EQ(RET_INVALID, f._h_do_bus_transfer(&ctx));
 
   /* Not one rejection may reach the wire or move the chip select. */
@@ -319,17 +446,23 @@ static void test_transfer_rejections(void)
 /**
  * @par MC/DC:
  * Vectors A1 and B1 of the two decisions documented on
- * ``test_transfer_rejections``: both buffers set and a legal frame length,
+ * ``internal_test_transfer_rejections``: both buffers set and a legal frame length,
  * which is the only combination that reaches the wire. This case also takes
  * the accepting arm of the single-condition "a bus is bound" test and of the
  * chip-select write test.
+ * @brief Verify transfer success and ordering.
+ * @details Drives the host model through transfer success and ordering and asserts each observable result.
+ * @pre Unity is initialized. @pre Static fixture storage is available.
+ * @post Expected outcomes are asserted. @post No host resource escapes this test.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
  */
-static void test_transfer_success_and_ordering(void)
+RA8_INTERNAL static void internal_test_transfer_success_and_ordering(void)
 {
   TEST_BEGIN("esp_hosted spi: a good frame is clocked between chip-select edges");
-  reset_state();
-  const hosted_osi_funcs_t          f   = bound_vtable();
-  struct hosted_transport_context_t ctx = make_ctx((uint32_t)k_spi_test_frame_bytes);
+  internal_reset_state();
+  const hosted_osi_funcs_t          f   = internal_bound_vtable();
+  struct hosted_transport_context_t ctx = internal_make_ctx((uint32_t)k_spi_test_frame_bytes);
 
   TEST_ASSERT_EQ(RET_OK, f._h_do_bus_transfer(&ctx));
 
@@ -347,8 +480,8 @@ static void test_transfer_success_and_ordering(void)
   TEST_ASSERT_EQ(k_spi_test_rx_stamp, s_rx_frame[k_spi_test_frame_bytes - 1U]);
 
   /* A shorter transmit size is honoured rather than rounded up to a frame. */
-  reset_state();
-  ctx = make_ctx((uint32_t)k_spi_test_short_len);
+  internal_reset_state();
+  ctx = internal_make_ctx((uint32_t)k_spi_test_short_len);
   TEST_ASSERT_EQ(RET_OK, f._h_do_bus_transfer(&ctx));
   TEST_ASSERT_EQ(k_spi_test_short_len, s_seen_len);
   TEST_END("esp_hosted spi: a good frame is clocked between chip-select edges");
@@ -357,16 +490,22 @@ static void test_transfer_success_and_ordering(void)
 /**
  * @par MC/DC:
  * Decision: `if (err != k_ra8_ok)` after the transfer (1 condition, 2
- * vectors). The success vector is in ``test_transfer_success_and_ordering``;
+ * vectors). The success vector is in ``internal_test_transfer_success_and_ordering``;
  * this case supplies the failure vector by arming the recording backend to
  * report an error, and asserts the chip select was released anyway.
+ * @brief Verify transfer backend error.
+ * @details Drives the host model through transfer backend error and asserts each observable result.
+ * @pre Unity is initialized. @pre Static fixture storage is available.
+ * @post Expected outcomes are asserted. @post No host resource escapes this test.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
  */
-static void test_transfer_backend_error(void)
+RA8_INTERNAL static void internal_test_transfer_backend_error(void)
 {
   TEST_BEGIN("esp_hosted spi: a backend error still releases the chip select");
-  reset_state();
-  const hosted_osi_funcs_t          f   = bound_vtable();
-  struct hosted_transport_context_t ctx = make_ctx((uint32_t)k_spi_test_frame_bytes);
+  internal_reset_state();
+  const hosted_osi_funcs_t          f   = internal_bound_vtable();
+  struct hosted_transport_context_t ctx = internal_make_ctx((uint32_t)k_spi_test_frame_bytes);
 
   s_bus_result = k_ra8_err_hw_timeout;
   TEST_ASSERT_EQ(RET_FAIL, f._h_do_bus_transfer(&ctx));
@@ -385,22 +524,28 @@ static void test_transfer_backend_error(void)
  * bus selector (single-condition decisions, 2 vectors each). The bound
  * vectors are in the cases above; this case supplies the unbound ones by
  * clearing the injection while no open has run.
+ * @brief Verify transfer without a bus.
+ * @details Drives the host model through transfer without a bus and asserts each observable result.
+ * @pre Unity is initialized. @pre Static fixture storage is available.
+ * @post Expected outcomes are asserted. @post No host resource escapes this test.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
  */
-static void test_transfer_without_a_bus(void)
+RA8_INTERNAL static void internal_test_transfer_without_a_bus(void)
 {
   TEST_BEGIN("esp_hosted spi: no bound bus means refuse, not clock a dead channel");
-  reset_state();
-  const hosted_osi_funcs_t          f   = bound_vtable();
-  struct hosted_transport_context_t ctx = make_ctx((uint32_t)k_spi_test_frame_bytes);
+  internal_reset_state();
+  const hosted_osi_funcs_t          f   = internal_bound_vtable();
+  struct hosted_transport_context_t ctx = internal_make_ctx((uint32_t)k_spi_test_frame_bytes);
 
-  ra8_esp_hosted_spi_set_bus(nullptr);
+  priv_ra8_esp_hosted_spi_set_bus(nullptr);
   TEST_ASSERT_EQ(RET_FAIL, f._h_do_bus_transfer(&ctx));
   TEST_ASSERT_EQ(0U, s_event_count);
 
   /* And the handle handed to the vendored driver is null for the same reason. */
   TEST_ASSERT(f._h_bus_init() == nullptr);
 
-  ra8_esp_hosted_spi_set_bus(&s_mock_bus);
+  priv_ra8_esp_hosted_spi_set_bus(&s_mock_bus);
   TEST_ASSERT(f._h_bus_init() != nullptr);
   TEST_END("esp_hosted spi: no bound bus means refuse, not clock a dead channel");
 }
@@ -411,12 +556,18 @@ static void test_transfer_without_a_bus(void)
  * (two single-condition decisions, 2 vectors each). This case takes the null
  * handle, a foreign handle, and the genuine handle -- which, with no open
  * behind it, reaches the "was not open" arm of the close.
+ * @brief Verify bus deinit handle checks.
+ * @details Drives the host model through bus deinit handle checks and asserts each observable result.
+ * @pre Unity is initialized. @pre Static fixture storage is available.
+ * @post Expected outcomes are asserted. @post No host resource escapes this test.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
  */
-static void test_bus_deinit_handle_checks(void)
+RA8_INTERNAL static void internal_test_bus_deinit_handle_checks(void)
 {
   TEST_BEGIN("esp_hosted spi: bus deinit only accepts the handle it issued");
-  reset_state();
-  const hosted_osi_funcs_t f = bound_vtable();
+  internal_reset_state();
+  const hosted_osi_funcs_t f = internal_bound_vtable();
 
   TEST_ASSERT_EQ(RET_INVALID, f._h_bus_deinit(nullptr));
   TEST_ASSERT_EQ(RET_INVALID, f._h_bus_deinit((void*)(uintptr_t)k_spi_test_alien));
@@ -432,68 +583,82 @@ static void test_bus_deinit_handle_checks(void)
  * @par MC/DC:
  * Decision: `if ((pclk_hz == 0U) || (sck_hz == 0U) || (sci_channel !=
  * pmod1_channel))` in
- * `port/esp-hosted/src/ra8_esp_hosted_spi.c@ra8_esp_hosted_spi_open`
+ * `port/esp-hosted/src/ra8_esp_hosted_spi.c@priv_ra8_esp_hosted_spi_open`
  * (3 conditions).
  * - Vector 1: (F,F,F) live clocks, Pmod1 channel -> accepted elsewhere in
- *   this file (the control vector, in ``test_open_close_cycle``)
+ *   this file (the control vector, in ``internal_test_open_close_cycle``)
  * - Vector 2: (T,F,F) pclk_hz zero               -> rejected
  * - Vector 3: (F,T,F) sck_hz zero                -> rejected
  * - Vector 4: (F,F,T) a different SCI channel    -> rejected
  * Pairing vector 1 with each of 2, 3 and 4 proves that condition's
  * independent influence: N+1 = 4 vectors for N=3 conditions.
+ * @brief Verify open rejections.
+ * @details Drives the host model through open rejections and asserts each observable result.
+ * @pre Unity is initialized. @pre Static fixture storage is available.
+ * @post Expected outcomes are asserted. @post No host resource escapes this test.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
  */
-static void test_open_rejections(void)
+RA8_INTERNAL static void internal_test_open_rejections(void)
 {
   TEST_BEGIN("esp_hosted spi: open rejects dead clocks and the wrong connector");
-  reset_state();
+  internal_reset_state();
   const uint8_t channel = (uint8_t)k_ra8_board_pmod1_sci_channel;
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_esp_hosted_spi_open(channel, 0U, (uint32_t)k_spi_test_sck_hz));
+                 priv_ra8_esp_hosted_spi_open(channel, 0U, (uint32_t)k_spi_test_sck_hz));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_esp_hosted_spi_open(channel, (uint32_t)k_spi_test_pclk_hz, 0U));
+                 priv_ra8_esp_hosted_spi_open(channel, (uint32_t)k_spi_test_pclk_hz, 0U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_esp_hosted_spi_open((uint8_t)k_spi_test_bad_channel,
-                                         (uint32_t)k_spi_test_pclk_hz,
-                                         (uint32_t)k_spi_test_sck_hz));
-  TEST_ASSERT(!ra8_esp_hosted_spi_is_open());
+                 priv_ra8_esp_hosted_spi_open((uint8_t)k_spi_test_bad_channel,
+                                              (uint32_t)k_spi_test_pclk_hz,
+                                              (uint32_t)k_spi_test_sck_hz));
+  TEST_ASSERT(!priv_ra8_esp_hosted_spi_is_open());
   /* A rejected open must not have taken the chip select. */
   TEST_ASSERT_EQ(0U, s_event_count);
-  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_esp_hosted_spi_close());
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, priv_ra8_esp_hosted_spi_close());
   TEST_END("esp_hosted spi: open rejects dead clocks and the wrong connector");
 }
 
 /**
  * @par MC/DC:
- * Vector 1 of the decision documented on ``test_open_rejections``: live
+ * Vector 1 of the decision documented on ``internal_test_open_rejections``: live
  * clocks on the Pmod1 channel, the only combination that opens. This case
  * also takes both arms of the single-condition `if (s_open)` guard at the top
  * of the open and of the matching `if (!s_open)` guard in the close.
+ * @brief Verify open close cycle.
+ * @details Drives the host model through open close cycle and asserts each observable result.
+ * @pre Unity is initialized. @pre Static fixture storage is available.
+ * @post Expected outcomes are asserted. @post No host resource escapes this test.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
  */
-static void test_open_close_cycle(void)
+RA8_INTERNAL static void internal_test_open_close_cycle(void)
 {
   TEST_BEGIN("esp_hosted spi: open, refuse to re-open, close, refuse to re-close");
-  reset_state();
+  internal_reset_state();
   const uint8_t channel = (uint8_t)k_ra8_board_pmod1_sci_channel;
 
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_esp_hosted_spi_open(channel, (uint32_t)k_spi_test_pclk_hz, (uint32_t)k_spi_test_sck_hz));
-  TEST_ASSERT(ra8_esp_hosted_spi_is_open());
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 priv_ra8_esp_hosted_spi_open(channel,
+                                              (uint32_t)k_spi_test_pclk_hz,
+                                              (uint32_t)k_spi_test_sck_hz));
+  TEST_ASSERT(priv_ra8_esp_hosted_spi_is_open());
   /* The chip select was taken as an output before any frame could move. */
   TEST_ASSERT_EQ(1U, s_event_count);
   TEST_ASSERT_EQ(k_spi_test_event_cs_init, s_events[0]);
   TEST_ASSERT(ra8_pin_validator_is_claimed((ra8_port_pin_t)k_ra8_board_pmod1_spi_sck));
 
-  TEST_ASSERT_EQ(
-    k_ra8_err_invalid_state,
-    ra8_esp_hosted_spi_open(channel, (uint32_t)k_spi_test_pclk_hz, (uint32_t)k_spi_test_sck_hz));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 priv_ra8_esp_hosted_spi_open(channel,
+                                              (uint32_t)k_spi_test_pclk_hz,
+                                              (uint32_t)k_spi_test_sck_hz));
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_spi_close());
-  TEST_ASSERT(!ra8_esp_hosted_spi_is_open());
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_spi_close());
+  TEST_ASSERT(!priv_ra8_esp_hosted_spi_is_open());
   TEST_ASSERT(!ra8_pin_validator_is_claimed((ra8_port_pin_t)k_ra8_board_pmod1_spi_sck));
   TEST_ASSERT(!ra8_pin_validator_is_claimed((ra8_port_pin_t)k_ra8_esp_hosted_pin_chip_select));
-  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_esp_hosted_spi_close());
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, priv_ra8_esp_hosted_spi_close());
   TEST_END("esp_hosted spi: open, refuse to re-open, close, refuse to re-close");
 }
 
@@ -501,36 +666,42 @@ static void test_open_close_cycle(void)
  * @par MC/DC:
  * (no compound decision -- this case takes both arms of the chip-select
  * seam's "something injected / nothing injected" test)
+ * @brief Verify pin interface seam.
+ * @details Drives the host model through pin interface seam and asserts each observable result.
+ * @pre Unity is initialized. @pre Static fixture storage is available.
+ * @post Expected outcomes are asserted. @post No host resource escapes this test.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
  */
-static void test_pin_interface_seam(void)
+RA8_INTERNAL static void internal_test_pin_interface_seam(void)
 {
   TEST_BEGIN("esp_hosted spi: the chip-select seam falls back on the HAL");
-  reset_state();
-  const hosted_osi_funcs_t          f   = bound_vtable();
-  struct hosted_transport_context_t ctx = make_ctx((uint32_t)k_spi_test_short_len);
+  internal_reset_state();
+  const hosted_osi_funcs_t          f   = internal_bound_vtable();
+  struct hosted_transport_context_t ctx = internal_make_ctx((uint32_t)k_spi_test_short_len);
 
   /* With the production driver restored the mock records nothing, and the
    * transfer still completes because the chip-select pin is claimable. */
-  ra8_esp_hosted_spi_set_pin_interface(nullptr);
+  priv_ra8_esp_hosted_spi_set_pin_interface(nullptr);
   TEST_ASSERT_EQ(RET_OK, f._h_do_bus_transfer(&ctx));
   TEST_ASSERT_EQ(1U, s_event_count);
   TEST_ASSERT_EQ(k_spi_test_event_xfer, s_events[0]);
 
-  ra8_esp_hosted_spi_set_pin_interface(&s_mock_pin_if);
+  priv_ra8_esp_hosted_spi_set_pin_interface(&s_mock_pin_if);
   TEST_END("esp_hosted spi: the chip-select seam falls back on the HAL");
 }
 
 /** @brief Every case in this translation unit, in execution order. */
 static void (*const s_test_roster[])(void) = {
-  test_bind,
-  test_transfer_rejections,
-  test_transfer_success_and_ordering,
-  test_transfer_backend_error,
-  test_transfer_without_a_bus,
-  test_bus_deinit_handle_checks,
-  test_open_rejections,
-  test_open_close_cycle,
-  test_pin_interface_seam,
+  internal_test_bind,
+  internal_test_transfer_rejections,
+  internal_test_transfer_success_and_ordering,
+  internal_test_transfer_backend_error,
+  internal_test_transfer_without_a_bus,
+  internal_test_bus_deinit_handle_checks,
+  internal_test_open_rejections,
+  internal_test_open_close_cycle,
+  internal_test_pin_interface_seam,
 };
 
 int32_t main(void)
@@ -538,6 +709,5 @@ int32_t main(void)
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
     s_test_roster[i]();
   }
-  (void)fprintf(stderr, "[OK ] test_ra8_esp_hosted_spi.c\n");
   return 0;
 }

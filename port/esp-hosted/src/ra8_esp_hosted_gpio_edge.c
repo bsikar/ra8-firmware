@@ -78,7 +78,7 @@ static const char* const s_tag = "eh_edge";
  * row->last_level = (uint8_t)k_ra8_esp_hosted_gpio_edge_low;
  * @endcode
  *
- * @see ra8_esp_hosted_gpio_edge_seen
+ * @see priv_ra8_esp_hosted_gpio_edge_seen
  * @since 0.1.0
  */
 typedef enum : uint8_t {
@@ -106,7 +106,7 @@ typedef enum : uint8_t {
  * ra8_esp_hosted_gpio_edge_row_t row = {};
  * @endcode
  *
- * @see ra8_esp_hosted_gpio_edge_register
+ * @see priv_ra8_esp_hosted_gpio_edge_register
  * @since 0.1.0
  */
 typedef struct ra8_esp_hosted_gpio_edge_row {
@@ -136,7 +136,7 @@ static ra8_esp_hosted_gpio_edge_row_t s_rows[k_ra8_esp_hosted_gpio_row_max];
  * sampling pass is a handful of register reads, so a second timer would cost
  * more than it saves.
  * @note Created on the first registration, deleted with the last.
- * @warning Firing it re-enters ::ra8_esp_hosted_gpio_edge_poll_once; row
+ * @warning Firing it re-enters ::priv_ra8_esp_hosted_gpio_edge_poll_once; row
  *          handlers must therefore not block.
  * @since 0.1.0
  */
@@ -159,7 +159,7 @@ static bool s_timer_live;
  * @brief Sampling period in milliseconds, shared by every polled row.
  * @details The ThreadX tick on this board is 1 kHz, so the millisecond-to-
  * tick conversion is the identity and this value is also the tick count.
- * @note Written only by ::ra8_esp_hosted_gpio_set_edge_poll_ms.
+ * @note Written only by ::priv_ra8_esp_hosted_gpio_set_edge_poll_ms.
  * @warning Zero is rejected at the setter; ThreadX refuses a zero-tick timer.
  * @since 0.1.0
  */
@@ -178,7 +178,8 @@ static uint16_t s_poll_ms = (uint16_t)k_ra8_esp_hosted_gpio_poll_ms_default;
  */
 static char s_tx_name_eh_edge[] = "eh_edge";
 
-RA8_PRIV bool ra8_esp_hosted_gpio_edge_seen(uint8_t prev_level, uint8_t now_level, uint8_t sense)
+RA8_PRIV bool
+priv_ra8_esp_hosted_gpio_edge_seen(uint8_t prev_level, uint8_t now_level, uint8_t sense)
 {
   if (sense > (uint8_t)k_ra8_icu_irqmd_low) {
     return false;
@@ -260,7 +261,7 @@ static uint8_t internal_find(ra8_port_pin_t pin)
 RA8_INTERNAL
 static bool internal_sample(ra8_port_pin_t pin, uint8_t* out_level)
 {
-  const ra8_pin_interface_t* pin_if = ra8_esp_hosted_gpio_pin_interface();
+  const ra8_pin_interface_t* pin_if = priv_ra8_esp_hosted_gpio_pin_interface();
   ra8_level_t                level  = k_ra8_level_low;
   if (pin_if->read(pin_if->ctx, pin, &level) != k_ra8_ok) {
     return false;
@@ -294,7 +295,7 @@ RA8_INTERNAL
 static void internal_timer_expiry(ULONG arg)
 {
   (void)arg;
-  ra8_esp_hosted_gpio_edge_poll_once();
+  priv_ra8_esp_hosted_gpio_edge_poll_once();
 }
 
 /**
@@ -377,7 +378,7 @@ static ra8_err_t internal_timer_disarm(void)
   return k_ra8_ok;
 }
 
-RA8_PRIV uint8_t ra8_esp_hosted_gpio_edge_count(void)
+RA8_PRIV uint8_t priv_ra8_esp_hosted_gpio_edge_count(void)
 {
   uint8_t count = 0U;
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_esp_hosted_gpio_row_max; i++) {
@@ -388,7 +389,7 @@ RA8_PRIV uint8_t ra8_esp_hosted_gpio_edge_count(void)
   return count;
 }
 
-RA8_PRIV ra8_err_t ra8_esp_hosted_gpio_set_edge_poll_ms(uint16_t period_ms)
+RA8_PRIV ra8_err_t priv_ra8_esp_hosted_gpio_set_edge_poll_ms(uint16_t period_ms)
 {
   if (period_ms == 0U) {
     return k_ra8_err_invalid_arg;
@@ -401,10 +402,10 @@ RA8_PRIV ra8_err_t ra8_esp_hosted_gpio_set_edge_poll_ms(uint16_t period_ms)
   return (err == k_ra8_ok) ? internal_timer_arm() : err;
 }
 
-RA8_PRIV ra8_err_t ra8_esp_hosted_gpio_edge_register(ra8_port_pin_t pin,
-                                                     uint8_t        sense,
-                                                     void (*handler)(void*),
-                                                     void* arg)
+RA8_PRIV ra8_err_t priv_ra8_esp_hosted_gpio_edge_register(ra8_port_pin_t pin,
+                                                          uint8_t        sense,
+                                                          void (*handler)(void*),
+                                                          void* arg)
 {
   if (handler == nullptr) {
     return k_ra8_err_null_ptr;
@@ -449,7 +450,7 @@ RA8_PRIV ra8_err_t ra8_esp_hosted_gpio_edge_register(ra8_port_pin_t pin,
   return timer_err;
 }
 
-RA8_PRIV ra8_err_t ra8_esp_hosted_gpio_edge_unregister(ra8_port_pin_t pin)
+RA8_PRIV ra8_err_t priv_ra8_esp_hosted_gpio_edge_unregister(ra8_port_pin_t pin)
 {
   const uint8_t slot = internal_find(pin);
   if (slot >= (uint8_t)k_ra8_esp_hosted_gpio_row_max) {
@@ -457,13 +458,13 @@ RA8_PRIV ra8_err_t ra8_esp_hosted_gpio_edge_unregister(ra8_port_pin_t pin)
   }
   s_rows[slot] = (ra8_esp_hosted_gpio_edge_row_t){};
   (void)ra8_gpio_release(pin);
-  if (ra8_esp_hosted_gpio_edge_count() != 0U) {
+  if (priv_ra8_esp_hosted_gpio_edge_count() != 0U) {
     return k_ra8_ok;
   }
   return internal_timer_disarm();
 }
 
-RA8_PRIV void ra8_esp_hosted_gpio_edge_poll_once(void)
+RA8_PRIV void priv_ra8_esp_hosted_gpio_edge_poll_once(void)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_esp_hosted_gpio_row_max; i++) {
     ra8_esp_hosted_gpio_edge_row_t* row = &s_rows[i];
@@ -471,7 +472,7 @@ RA8_PRIV void ra8_esp_hosted_gpio_edge_poll_once(void)
     if (row->used && internal_sample(row->pin, &now)) {
       const uint8_t prev = row->last_level;
       row->last_level    = now;
-      if (ra8_esp_hosted_gpio_edge_seen(prev, now, row->sense)) {
+      if (priv_ra8_esp_hosted_gpio_edge_seen(prev, now, row->sense)) {
         row->handler(row->arg);
       }
     }

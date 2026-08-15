@@ -40,7 +40,7 @@
  * context wants a mutable one; copying rather than casting keeps the port
  * inside MISRA Rule 11.4 with no deviation to record, and guarantees the bus
  * always sees an aligned buffer.
- * @note Written only inside ::ra8_esp_hosted_c6link_transfer, on the pumping
+ * @note Written only inside ::internal_ra8_esp_hosted_c6link_transfer, on the pumping
  *       thread, which is also the only thread allowed to drive the bus.
  * @warning Not re-entrant: two threads pumping one link would interleave here,
  *          which is the same rule the facade already states about its handle.
@@ -69,7 +69,7 @@ alignas(k_ra8_c6link_dma_align) static uint8_t s_ra8_esp_hosted_c6link_tx[k_ra8_
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t
-ra8_esp_hosted_c6link_transfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint16_t len)
+internal_ra8_esp_hosted_c6link_transfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint16_t len)
 {
   (void)ctx;
   if (!ra8_esp_hosted_port_is_ready()) {
@@ -113,7 +113,7 @@ ra8_esp_hosted_c6link_transfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint16
  *       exactly what the vendored driver would see.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool ra8_esp_hosted_c6link_handshake(void* ctx)
+RA8_INTERNAL static bool internal_ra8_esp_hosted_c6link_handshake(void* ctx)
 {
   (void)ctx;
   if (!ra8_esp_hosted_port_is_ready()) {
@@ -139,7 +139,7 @@ RA8_INTERNAL static bool ra8_esp_hosted_c6link_handshake(void* ctx)
  *       binds a delay that costs no wall time.
  * @since 0.1.0
  */
-RA8_INTERNAL static void ra8_esp_hosted_c6link_delay(void* ctx, uint16_t ms)
+RA8_INTERNAL static void internal_ra8_esp_hosted_c6link_delay(void* ctx, uint16_t ms)
 {
   (void)ctx;
   if (!ra8_esp_hosted_port_is_ready()) {
@@ -158,9 +158,9 @@ ra8_err_t ra8_esp_hosted_c6link_bind(ra8_c6link_transport_t* out)
     return k_ra8_err_not_initialized;
   }
 
-  out->transfer         = ra8_esp_hosted_c6link_transfer;
-  out->handshake_active = ra8_esp_hosted_c6link_handshake;
-  out->delay_ms         = ra8_esp_hosted_c6link_delay;
+  out->transfer         = internal_ra8_esp_hosted_c6link_transfer;
+  out->handshake_active = internal_ra8_esp_hosted_c6link_handshake;
+  out->delay_ms         = internal_ra8_esp_hosted_c6link_delay;
   out->ctx              = nullptr;
   return k_ra8_ok;
 }

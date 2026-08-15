@@ -67,7 +67,7 @@ static const char* const s_tag = "eh_gpio";
  * @code
  * if (gpio_num == (uint32_t)k_ra8_esp_hosted_gpio_pin_unwired) { reject(); }
  * @endcode
- * @see ra8_esp_hosted_gpio_decode_pin
+ * @see priv_ra8_esp_hosted_gpio_decode_pin
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -86,7 +86,7 @@ typedef enum : uint32_t {
  * @code
  * if (mode == (uint32_t)k_ra8_esp_hosted_gpio_mode_output) { drive(); }
  * @endcode
- * @see ra8_esp_hosted_gpio_bind
+ * @see priv_ra8_esp_hosted_gpio_bind
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -106,7 +106,7 @@ typedef enum : uint32_t {
  * @code
  * if (pull_value == (uint32_t)k_ra8_esp_hosted_gpio_pull_down) { refuse(); }
  * @endcode
- * @see ra8_esp_hosted_gpio_bind
+ * @see priv_ra8_esp_hosted_gpio_bind
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -126,7 +126,7 @@ typedef enum : uint32_t {
  * @code
  * gpio_pin_state_t hs = g_h.funcs->_h_read_gpio(port, pin);
  * @endcode
- * @see ra8_esp_hosted_gpio_bind
+ * @see priv_ra8_esp_hosted_gpio_bind
  * @since 0.1.0
  */
 typedef enum : uint8_t {
@@ -165,7 +165,7 @@ static_assert((uint8_t)H_DR_INTR_EDGE <= (uint8_t)k_ra8_icu_irqmd_low,
  * ra8_esp_hosted_gpio_irq_row_t row = {};
  * @endcode
  *
- * @see ra8_esp_hosted_gpio_bind
+ * @see priv_ra8_esp_hosted_gpio_bind
  * @since 0.1.0
  */
 typedef struct ra8_esp_hosted_gpio_irq_row {
@@ -194,7 +194,7 @@ static ra8_esp_hosted_gpio_irq_row_t s_irq_rows[k_ra8_esp_hosted_gpio_row_max];
  * @brief The pin driver every level read and write goes through.
  * @details Null means "use the production instance", which keeps the seam
  * usable before any initialisation has run.
- * @note Swapped only by ::ra8_esp_hosted_gpio_set_pin_interface.
+ * @note Swapped only by ::priv_ra8_esp_hosted_gpio_set_pin_interface.
  * @warning Pointing this at a short-lived object leaves the slice reading a
  *          dangling vtable.
  * @since 0.1.0
@@ -209,8 +209,9 @@ static const ra8_pin_interface_t* s_pin_if;
  */
 extern const ra8_pin_interface_t g_ra8_gpio_pin_interface;
 
-RA8_PRIV bool
-ra8_esp_hosted_gpio_decode_pin(const void* gpio_port, uint32_t gpio_num, ra8_port_pin_t* out_pin)
+RA8_PRIV bool priv_ra8_esp_hosted_gpio_decode_pin(const void*     gpio_port,
+                                                  uint32_t        gpio_num,
+                                                  ra8_port_pin_t* out_pin)
 {
   if (out_pin == nullptr) {
     return false;
@@ -224,12 +225,12 @@ ra8_esp_hosted_gpio_decode_pin(const void* gpio_port, uint32_t gpio_num, ra8_por
   return true;
 }
 
-RA8_PRIV void ra8_esp_hosted_gpio_set_pin_interface(const ra8_pin_interface_t* iface)
+RA8_PRIV void priv_ra8_esp_hosted_gpio_set_pin_interface(const ra8_pin_interface_t* iface)
 {
   s_pin_if = iface;
 }
 
-RA8_PRIV const ra8_pin_interface_t* ra8_esp_hosted_gpio_pin_interface(void)
+RA8_PRIV const ra8_pin_interface_t* priv_ra8_esp_hosted_gpio_pin_interface(void)
 {
   return (s_pin_if != nullptr) ? s_pin_if : &g_ra8_gpio_pin_interface;
 }
@@ -431,12 +432,12 @@ RA8_INTERNAL
 static int internal_config_gpio(void* gpio_port, uint32_t gpio_num, uint32_t mode)
 {
   ra8_port_pin_t pin = k_ra8_pin_none;
-  if (!ra8_esp_hosted_gpio_decode_pin(gpio_port, gpio_num, &pin)) {
+  if (!priv_ra8_esp_hosted_gpio_decode_pin(gpio_port, gpio_num, &pin)) {
     return RET_INVALID;
   }
   ra8_err_t err = k_ra8_err_invalid_arg;
   if (mode == (uint32_t)k_ra8_esp_hosted_gpio_mode_output) {
-    const ra8_pin_interface_t* pin_if = ra8_esp_hosted_gpio_pin_interface();
+    const ra8_pin_interface_t* pin_if = priv_ra8_esp_hosted_gpio_pin_interface();
     err = pin_if->output_init(pin_if->ctx, pin, (ra8_level_t)H_RESET_VAL_INACTIVE);
   } else if (mode == (uint32_t)k_ra8_esp_hosted_gpio_mode_input) {
     err = ra8_gpio_input_init(pin, k_ra8_pull_none);
@@ -485,7 +486,7 @@ static int internal_config_gpio_as_interrupt(void*    gpio_port,
                                              void* arg)
 {
   ra8_port_pin_t pin = k_ra8_pin_none;
-  if (!ra8_esp_hosted_gpio_decode_pin(gpio_port, gpio_num, &pin)) {
+  if (!priv_ra8_esp_hosted_gpio_decode_pin(gpio_port, gpio_num, &pin)) {
     return RET_INVALID;
   }
   if (gpio_isr_handler == nullptr) {
@@ -500,9 +501,10 @@ static int internal_config_gpio_as_interrupt(void*    gpio_port,
 
   const uint8_t   irq_num = ra8_esp_hosted_pin_irq_num(pin);
   const uint8_t   sense   = (uint8_t)intr_type;
-  const ra8_err_t err = (irq_num == (uint8_t)k_ra8_esp_hosted_irq_none)
-                          ? ra8_esp_hosted_gpio_edge_register(pin, sense, gpio_isr_handler, arg)
-                          : internal_attach_hardware(pin, irq_num, sense, gpio_isr_handler, arg);
+  const ra8_err_t err =
+    (irq_num == (uint8_t)k_ra8_esp_hosted_irq_none)
+      ? priv_ra8_esp_hosted_gpio_edge_register(pin, sense, gpio_isr_handler, arg)
+      : internal_attach_hardware(pin, irq_num, sense, gpio_isr_handler, arg);
   return (err == k_ra8_ok) ? RET_OK : RET_FAIL;
 }
 
@@ -537,12 +539,12 @@ RA8_INTERNAL
 static int internal_teardown_gpio_interrupt(void* gpio_port, uint32_t gpio_num)
 {
   ra8_port_pin_t pin = k_ra8_pin_none;
-  if (!ra8_esp_hosted_gpio_decode_pin(gpio_port, gpio_num, &pin)) {
+  if (!priv_ra8_esp_hosted_gpio_decode_pin(gpio_port, gpio_num, &pin)) {
     return RET_INVALID;
   }
   const uint8_t slot = internal_irq_find(pin);
   if (slot >= (uint8_t)k_ra8_esp_hosted_gpio_row_max) {
-    return (ra8_esp_hosted_gpio_edge_unregister(pin) == k_ra8_ok) ? RET_OK : RET_FAIL;
+    return (priv_ra8_esp_hosted_gpio_edge_unregister(pin) == k_ra8_ok) ? RET_OK : RET_FAIL;
   }
   const ra8_err_t err = ra8_gpio_detach_irq(pin, s_irq_rows[slot].irq_num);
   s_irq_rows[slot]    = (ra8_esp_hosted_gpio_irq_row_t){};
@@ -580,10 +582,10 @@ RA8_INTERNAL
 static int internal_read_gpio(void* gpio_port, uint32_t gpio_num)
 {
   ra8_port_pin_t pin = k_ra8_pin_none;
-  if (!ra8_esp_hosted_gpio_decode_pin(gpio_port, gpio_num, &pin)) {
+  if (!priv_ra8_esp_hosted_gpio_decode_pin(gpio_port, gpio_num, &pin)) {
     return RET_INVALID;
   }
-  const ra8_pin_interface_t* pin_if = ra8_esp_hosted_gpio_pin_interface();
+  const ra8_pin_interface_t* pin_if = priv_ra8_esp_hosted_gpio_pin_interface();
   ra8_level_t                level  = k_ra8_level_low;
   if (pin_if->read(pin_if->ctx, pin, &level) != k_ra8_ok) {
     return RET_FAIL;
@@ -621,10 +623,10 @@ RA8_INTERNAL
 static int internal_write_gpio(void* gpio_port, uint32_t gpio_num, uint32_t value)
 {
   ra8_port_pin_t pin = k_ra8_pin_none;
-  if (!ra8_esp_hosted_gpio_decode_pin(gpio_port, gpio_num, &pin)) {
+  if (!priv_ra8_esp_hosted_gpio_decode_pin(gpio_port, gpio_num, &pin)) {
     return RET_INVALID;
   }
-  const ra8_pin_interface_t* pin_if = ra8_esp_hosted_gpio_pin_interface();
+  const ra8_pin_interface_t* pin_if = priv_ra8_esp_hosted_gpio_pin_interface();
   const ra8_level_t          level  = (value != 0U) ? k_ra8_level_high : k_ra8_level_low;
   return (pin_if->write(pin_if->ctx, pin, level) == k_ra8_ok) ? RET_OK : RET_FAIL;
 }
@@ -667,7 +669,7 @@ static int
 internal_pull_gpio(void* gpio_port, uint32_t gpio_num, uint32_t pull_value, uint32_t enable)
 {
   ra8_port_pin_t pin = k_ra8_pin_none;
-  if (!ra8_esp_hosted_gpio_decode_pin(gpio_port, gpio_num, &pin)) {
+  if (!priv_ra8_esp_hosted_gpio_decode_pin(gpio_port, gpio_num, &pin)) {
     return RET_INVALID;
   }
   if (pull_value == (uint32_t)k_ra8_esp_hosted_gpio_pull_down) {
@@ -724,7 +726,7 @@ RA8_INTERNAL
 static int internal_hold_gpio(void* gpio_port, uint32_t gpio_num, uint32_t hold_value)
 {
   ra8_port_pin_t pin = k_ra8_pin_none;
-  if (!ra8_esp_hosted_gpio_decode_pin(gpio_port, gpio_num, &pin)) {
+  if (!priv_ra8_esp_hosted_gpio_decode_pin(gpio_port, gpio_num, &pin)) {
     return RET_INVALID;
   }
   ra8_log_warn(s_tag, "pin hold unavailable: no per-pin retention control in ra8_hal");
@@ -771,7 +773,7 @@ static int internal_wakeup_reason(void)
   return (int)HOSTED_WAKEUP_NORMAL_REBOOT;
 }
 
-RA8_PRIV ra8_err_t ra8_esp_hosted_gpio_bind(hosted_osi_funcs_t* out)
+RA8_PRIV ra8_err_t priv_ra8_esp_hosted_gpio_bind(hosted_osi_funcs_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "vtable must not be nullptr");
   out->_h_config_gpio                      = internal_config_gpio;

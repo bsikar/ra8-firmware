@@ -36,7 +36,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "ra8_board_ek_ra8d2_connectors.h"
 #include "ra8_esp_hosted_pins.h"
@@ -320,6 +319,5 @@ int32_t main(void)
   test_irq_num_unrouted_pins();
   test_irq_num_unknown_pins();
   test_pin_map_invariants();
-  (void)fprintf(stderr, "[OK  ] test_ra8_esp_hosted_pins.c\n");
   return 0;
 }

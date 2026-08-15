@@ -64,14 +64,14 @@
  * @par Example:
  * @code
  * ra8_esp_hosted_port_cfg_t cfg = { .pclk_hz = 0U };
- * TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_esp_hosted_port_cfg_check(&cfg));
+ * TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_ra8_esp_hosted_port_cfg_check(&cfg));
  * @endcode
  *
  * @see ra8_esp_hosted_port_init
  * @since 0.1.0
  */
 RA8_PRIV
-[[nodiscard]] ra8_err_t ra8_esp_hosted_port_cfg_check(const ra8_esp_hosted_port_cfg_t* cfg);
+[[nodiscard]] ra8_err_t priv_ra8_esp_hosted_port_cfg_check(const ra8_esp_hosted_port_cfg_t* cfg);
 
 /**
  * @brief Check the compiled-in pin map for self-consistency.
@@ -104,24 +104,24 @@ RA8_PRIV
  * Promoted from `static` so a test can assert the property holds for the
  * shipped map. The decision's conditions are compile-time constants, so
  * the shipped configuration exercises one vector; the remaining vectors
- * are driven through ``ra8_esp_hosted_port_pins_check_values``.
+ * are driven through ``priv_ra8_esp_hosted_port_pins_check_values``.
  *
  * @par Example:
  * @code
- * TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_port_pins_check());
+ * TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_port_pins_check());
  * @endcode
  *
- * @see ra8_esp_hosted_port_pins_check_values
+ * @see priv_ra8_esp_hosted_port_pins_check_values
  * @since 0.1.0
  */
 RA8_PRIV
-[[nodiscard]] ra8_err_t ra8_esp_hosted_port_pins_check(void);
+[[nodiscard]] ra8_err_t priv_ra8_esp_hosted_port_pins_check(void);
 
 /**
  * @brief Check three candidate pin assignments for self-consistency.
  *
  * @details
- * The body of ::ra8_esp_hosted_port_pins_check, taking its inputs as
+ * The body of ::priv_ra8_esp_hosted_port_pins_check, taking its inputs as
  * parameters so every rejection path can be reached. The shipped map is
  * a set of compile-time constants and therefore exercises exactly one
  * path; without this seam the other paths would be unreachable from a
@@ -153,16 +153,16 @@ RA8_PRIV
  * @par Example:
  * @code
  * TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
- *                ra8_esp_hosted_port_pins_check_values(0x0804U, 0x0804U, 0x0006U));
+ *                priv_ra8_esp_hosted_port_pins_check_values(0x0804U, 0x0804U, 0x0006U));
  * @endcode
  *
- * @see ra8_esp_hosted_port_pins_check
+ * @see priv_ra8_esp_hosted_port_pins_check
  * @since 0.1.0
  */
 RA8_PRIV
-[[nodiscard]] ra8_err_t ra8_esp_hosted_port_pins_check_values(uint16_t chip_select,
-                                                              uint16_t handshake,
-                                                              uint16_t data_ready);
+[[nodiscard]] ra8_err_t priv_ra8_esp_hosted_port_pins_check_values(uint16_t chip_select,
+                                                                   uint16_t handshake,
+                                                                   uint16_t data_ready);
 
 /**
  * @brief Keep the first error of a teardown sequence, discarding later ones.
@@ -199,12 +199,12 @@ RA8_PRIV
  *
  * @par Example:
  * @code
- * ra8_err_t first = ra8_esp_hosted_port_first_error(k_ra8_ok, close_err);
- * first           = ra8_esp_hosted_port_first_error(first, deinit_err);
+ * ra8_err_t first = priv_ra8_esp_hosted_port_first_error(k_ra8_ok, close_err);
+ * first           = priv_ra8_esp_hosted_port_first_error(first, deinit_err);
  * @endcode
  *
  * @see ra8_esp_hosted_port_deinit
  * @since 0.1.0
  */
 RA8_PRIV
-[[nodiscard]] ra8_err_t ra8_esp_hosted_port_first_error(ra8_err_t first, ra8_err_t next);
+[[nodiscard]] ra8_err_t priv_ra8_esp_hosted_port_first_error(ra8_err_t first, ra8_err_t next);

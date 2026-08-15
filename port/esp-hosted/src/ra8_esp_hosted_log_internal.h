@@ -55,20 +55,20 @@
  *
  * @par MC/DC:
  * Shares the level and null-format decision with
- * ``ra8_esp_hosted_log_accepts``, which the tests drive directly.
+ * ``priv_ra8_esp_hosted_log_accepts``, which the tests drive directly.
  *
  * @par Example:
  * @code
  * va_start(ap, format);
- * ra8_esp_hosted_log_vwrite(level, tag, format, ap);
+ * priv_ra8_esp_hosted_log_vwrite(level, tag, format, ap);
  * va_end(ap);
  * @endcode
  *
- * @see ra8_esp_hosted_log_accepts
+ * @see priv_ra8_esp_hosted_log_accepts
  * @since 0.1.0
  */
 RA8_PRIV
-void ra8_esp_hosted_log_vwrite(int level, const char* tag, const char* fmt, va_list ap);
+void priv_ra8_esp_hosted_log_vwrite(int level, const char* tag, const char* fmt, va_list ap);
 
 /**
  * @enum ra8_esp_hosted_log_dump_t
@@ -127,14 +127,14 @@ typedef enum : uint8_t {
  *
  * @par Example:
  * @code
- * if (ra8_esp_hosted_log_accepts((int)ESP_LOG_WARN)) { emit(); }
+ * if (priv_ra8_esp_hosted_log_accepts((int)ESP_LOG_WARN)) { emit(); }
  * @endcode
  *
- * @see ra8_esp_hosted_log_level_get
+ * @see priv_ra8_esp_hosted_log_level_get
  * @since 0.1.0
  */
 RA8_PRIV
-[[nodiscard]] bool ra8_esp_hosted_log_accepts(int level);
+[[nodiscard]] bool priv_ra8_esp_hosted_log_accepts(int level);
 
 /**
  * @brief Report the current runtime verbosity threshold.
@@ -159,11 +159,11 @@ RA8_PRIV
  * @par Example:
  * @code
  * esp_log_level_set(nullptr, ESP_LOG_DEBUG);
- * TEST_ASSERT_EQ((int)ESP_LOG_DEBUG, ra8_esp_hosted_log_level_get());
+ * TEST_ASSERT_EQ((int)ESP_LOG_DEBUG, priv_ra8_esp_hosted_log_level_get());
  * @endcode
  *
- * @see ra8_esp_hosted_log_accepts
+ * @see priv_ra8_esp_hosted_log_accepts
  * @since 0.1.0
  */
 RA8_PRIV
-[[nodiscard]] int ra8_esp_hosted_log_level_get(void);
+[[nodiscard]] int priv_ra8_esp_hosted_log_level_get(void);

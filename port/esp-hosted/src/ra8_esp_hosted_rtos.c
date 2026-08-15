@@ -61,7 +61,7 @@ static const char* s_tag = "ESPH_RTOS";
  * @code
  * static_assert(k_ra8_esp_hosted_ms_per_tick == 1U, "1 kHz kernel tick");
  * @endcode
- * @see ra8_esp_hosted_rtos_ms_to_ticks
+ * @see priv_ra8_esp_hosted_rtos_ms_to_ticks
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -124,7 +124,7 @@ typedef void (*ra8_esp_hosted_timer_cb_t)(void* arg);
  * @code
  * thread_handle_t t = g_h.funcs->_h_thread_create("spi_trans", 12U, 4096U, fn, nullptr);
  * @endcode
- * @see ra8_esp_hosted_rtos_bind
+ * @see priv_ra8_esp_hosted_rtos_bind
  * @since 0.1.0
  */
 typedef struct {
@@ -146,7 +146,7 @@ typedef struct {
  * @code
  * void* h = g_h.funcs->_h_timer_start("hb", 1000, H_TIMER_TYPE_PERIODIC, cb, nullptr);
  * @endcode
- * @see ra8_esp_hosted_rtos_bind
+ * @see priv_ra8_esp_hosted_rtos_bind
  * @since 0.1.0
  */
 typedef struct {
@@ -166,9 +166,9 @@ typedef struct {
  * @invariant ``tick_epoch`` only ever increases.
  * @par Example:
  * @code
- * TEST_ASSERT_EQ(false, ra8_esp_hosted_rtos_is_ready());
+ * TEST_ASSERT_EQ(false, priv_ra8_esp_hosted_rtos_is_ready());
  * @endcode
- * @see ra8_esp_hosted_rtos_init
+ * @see priv_ra8_esp_hosted_rtos_init
  * @since 0.1.0
  */
 typedef struct {
@@ -190,7 +190,7 @@ typedef struct {
  * @var s_rtos
  * @brief Singleton state of the thread, timer and clock half.
  * @details Zero-initialised at link time; brought up by
- * ::ra8_esp_hosted_rtos_init.
+ * ::priv_ra8_esp_hosted_rtos_init.
  * @note Static; do not access outside this TU.
  * @warning Direct modification bypasses every ThreadX consistency check.
  * @since 0.1.0
@@ -213,7 +213,7 @@ static uint8_t s_thread_stacks[k_ra8_esp_hosted_max_threads][k_ra8_esp_hosted_th
 /* Table helpers */
 /* ----------------------------------------------------------------------- */
 
-uint32_t ra8_esp_hosted_rtos_slot_take(bool* used, uint32_t count)
+uint32_t priv_ra8_esp_hosted_rtos_slot_take(bool* used, uint32_t count)
 {
   if (used == nullptr) {
     return count;
@@ -227,11 +227,11 @@ uint32_t ra8_esp_hosted_rtos_slot_take(bool* used, uint32_t count)
   return count;
 }
 
-uint32_t ra8_esp_hosted_rtos_slot_index(const void* handle,
-                                        const void* base,
-                                        size_t      stride,
-                                        uint32_t    count,
-                                        const bool* used)
+uint32_t priv_ra8_esp_hosted_rtos_slot_index(const void* handle,
+                                             const void* base,
+                                             size_t      stride,
+                                             uint32_t    count,
+                                             const bool* used)
 {
   if ((handle == nullptr) || (base == nullptr) || (used == nullptr)) {
     return count;
@@ -336,7 +336,7 @@ RA8_INTERNAL static void internal_timer_expiry(ULONG index)
 /**
  * @brief Burn a bounded number of core cycles standing in for a short delay.
  * @details The loop counter is volatile so the compiler cannot delete it, and
- * the iteration count comes from ::ra8_esp_hosted_rtos_us_spin_iters, which
+ * the iteration count comes from ::priv_ra8_esp_hosted_rtos_us_spin_iters, which
  * clamps it -- that clamp is what makes the loop statically bounded.
  * @param[in] usec Microseconds to approximate.
  * @pre The cached core rate is set, or the call becomes a no-op.
@@ -350,7 +350,7 @@ RA8_INTERNAL
 RA8_BOUNDED_LOOP(k_ra8_esp_hosted_spin_iters_max)
 static void internal_spin_us(uint32_t usec)
 {
-  const uint32_t    iters = ra8_esp_hosted_rtos_us_spin_iters(s_rtos.cpu_hz, usec);
+  const uint32_t    iters = priv_ra8_esp_hosted_rtos_us_spin_iters(s_rtos.cpu_hz, usec);
   volatile uint32_t sink  = 0U;
   /* The bound is written into the condition rather than left implicit in
      `iters`, so the loop's upper limit is provable from the loop itself --
@@ -365,7 +365,7 @@ static void internal_spin_us(uint32_t usec)
 /* Testable arithmetic */
 /* ----------------------------------------------------------------------- */
 
-uint32_t ra8_esp_hosted_rtos_ms_to_ticks(int timeout_ms)
+uint32_t priv_ra8_esp_hosted_rtos_ms_to_ticks(int timeout_ms)
 {
   if (timeout_ms < 0) {
     return (uint32_t)TX_WAIT_FOREVER;
@@ -376,7 +376,7 @@ uint32_t ra8_esp_hosted_rtos_ms_to_ticks(int timeout_ms)
   return (uint32_t)timeout_ms / (uint32_t)k_ra8_esp_hosted_ms_per_tick;
 }
 
-uint32_t ra8_esp_hosted_rtos_us_spin_iters(uint32_t cpu_hz, uint32_t usec)
+uint32_t priv_ra8_esp_hosted_rtos_us_spin_iters(uint32_t cpu_hz, uint32_t usec)
 {
   if ((cpu_hz == 0U) || (usec == 0U)) {
     return 0U;
@@ -431,7 +431,7 @@ RA8_INTERNAL static void* internal_h_thread_create(const char*                  
     return nullptr;
   }
   const uint32_t idx =
-    ra8_esp_hosted_rtos_slot_take(s_rtos.thread_used, k_ra8_esp_hosted_max_threads);
+    priv_ra8_esp_hosted_rtos_slot_take(s_rtos.thread_used, k_ra8_esp_hosted_max_threads);
   if (idx == (uint32_t)k_ra8_esp_hosted_max_threads) {
     ra8_log_error(s_tag, "thread table exhausted");
     return nullptr;
@@ -476,11 +476,11 @@ RA8_INTERNAL static void* internal_h_thread_create(const char*                  
  */
 RA8_INTERNAL static int internal_h_thread_cancel(void* thread_handle)
 {
-  const uint32_t idx = ra8_esp_hosted_rtos_slot_index(thread_handle,
-                                                      s_rtos.threads,
-                                                      sizeof(s_rtos.threads[0]),
-                                                      k_ra8_esp_hosted_max_threads,
-                                                      s_rtos.thread_used);
+  const uint32_t idx = priv_ra8_esp_hosted_rtos_slot_index(thread_handle,
+                                                           s_rtos.threads,
+                                                           sizeof(s_rtos.threads[0]),
+                                                           k_ra8_esp_hosted_max_threads,
+                                                           s_rtos.thread_used);
   if (idx == (uint32_t)k_ra8_esp_hosted_max_threads) {
     return RET_INVALID;
   }
@@ -662,7 +662,7 @@ RA8_INTERNAL static void* internal_h_timer_start(const char*               name,
     return nullptr;
   }
   const uint32_t idx =
-    ra8_esp_hosted_rtos_slot_take(s_rtos.timer_used, k_ra8_esp_hosted_max_timers);
+    priv_ra8_esp_hosted_rtos_slot_take(s_rtos.timer_used, k_ra8_esp_hosted_max_timers);
   if (idx == (uint32_t)k_ra8_esp_hosted_max_timers) {
     ra8_log_error(s_tag, "timer table exhausted");
     return nullptr;
@@ -671,7 +671,7 @@ RA8_INTERNAL static void* internal_h_timer_start(const char*               name,
   slot->cb_fn                             = timeout_handler;
   slot->arg                               = arg;
   internal_copy_name(slot->name, sizeof(slot->name), name);
-  const ULONG ticks  = (ULONG)ra8_esp_hosted_rtos_ms_to_ticks(duration_ms);
+  const ULONG ticks  = (ULONG)priv_ra8_esp_hosted_rtos_ms_to_ticks(duration_ms);
   const ULONG repeat = (type == H_TIMER_TYPE_PERIODIC) ? ticks : 0U;
   if (tx_timer_create(&slot->cb,
                       slot->name,
@@ -705,11 +705,11 @@ RA8_INTERNAL static void* internal_h_timer_start(const char*               name,
  */
 RA8_INTERNAL static int internal_h_timer_stop(void* timer_handle)
 {
-  const uint32_t idx = ra8_esp_hosted_rtos_slot_index(timer_handle,
-                                                      s_rtos.timers,
-                                                      sizeof(s_rtos.timers[0]),
-                                                      k_ra8_esp_hosted_max_timers,
-                                                      s_rtos.timer_used);
+  const uint32_t idx = priv_ra8_esp_hosted_rtos_slot_index(timer_handle,
+                                                           s_rtos.timers,
+                                                           sizeof(s_rtos.timers[0]),
+                                                           k_ra8_esp_hosted_max_timers,
+                                                           s_rtos.timer_used);
   if (idx == (uint32_t)k_ra8_esp_hosted_max_timers) {
     return RET_INVALID;
   }
@@ -763,20 +763,20 @@ RA8_INTERNAL static uint64_t internal_h_get_time_ms(void)
 /* Lifecycle and binding */
 /* ----------------------------------------------------------------------- */
 
-bool ra8_esp_hosted_rtos_is_ready(void)
+bool priv_ra8_esp_hosted_rtos_is_ready(void)
 {
   return s_rtos.ready;
 }
 
-ra8_err_t ra8_esp_hosted_rtos_init(void)
+ra8_err_t priv_ra8_esp_hosted_rtos_init(void)
 {
   if (s_rtos.ready) {
     ra8_log_error(s_tag, "RTOS substrate already initialised");
     return k_ra8_err_invalid_state;
   }
   (void)memset(&s_rtos, 0, sizeof(s_rtos));
-  RA8_RETURN_ON_ERROR(ra8_esp_hosted_rtos_pool_init(), s_tag, "byte pools refused");
-  RA8_RETURN_ON_ERROR(ra8_esp_hosted_rtos_sync_init(), s_tag, "sync tables refused");
+  RA8_RETURN_ON_ERROR(priv_ra8_esp_hosted_rtos_pool_init(), s_tag, "byte pools refused");
+  RA8_RETURN_ON_ERROR(priv_ra8_esp_hosted_rtos_sync_init(), s_tag, "sync tables refused");
   uint32_t cpu_hz = 0U;
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpu_hz) != k_ra8_ok) {
     cpu_hz = (uint32_t)k_ra8_esp_hosted_default_cpu_hz;
@@ -788,7 +788,7 @@ ra8_err_t ra8_esp_hosted_rtos_init(void)
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_esp_hosted_rtos_deinit(void)
+ra8_err_t priv_ra8_esp_hosted_rtos_deinit(void)
 {
   if (!s_rtos.ready) {
     ra8_log_error(s_tag, "RTOS substrate not initialised");
@@ -805,17 +805,17 @@ ra8_err_t ra8_esp_hosted_rtos_deinit(void)
       worst = k_ra8_err_rtos_error;
     }
   }
-  if (ra8_esp_hosted_rtos_sync_deinit() != k_ra8_ok) {
+  if (priv_ra8_esp_hosted_rtos_sync_deinit() != k_ra8_ok) {
     worst = k_ra8_err_rtos_error;
   }
-  if (ra8_esp_hosted_rtos_pool_deinit() != k_ra8_ok) {
+  if (priv_ra8_esp_hosted_rtos_pool_deinit() != k_ra8_ok) {
     worst = k_ra8_err_rtos_error;
   }
   (void)memset(&s_rtos, 0, sizeof(s_rtos));
   return worst;
 }
 
-ra8_err_t ra8_esp_hosted_rtos_bind(hosted_osi_funcs_t* out)
+ra8_err_t priv_ra8_esp_hosted_rtos_bind(hosted_osi_funcs_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "vtable is NULL");
   out->_h_thread_create  = internal_h_thread_create;

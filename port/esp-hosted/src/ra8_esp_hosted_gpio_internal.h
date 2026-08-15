@@ -49,7 +49,7 @@
  * cannot be recorded must fail loudly rather than be silently dropped.
  *
  * @invariant ::k_ra8_esp_hosted_gpio_row_max is the exact row count of the
- *            edge table; ``ra8_esp_hosted_gpio_edge_count`` never exceeds it.
+ *            edge table; ``priv_ra8_esp_hosted_gpio_edge_count`` never exceeds it.
  * @invariant ::k_ra8_esp_hosted_gpio_poll_ms_default is non-zero, so the
  *            detector can always arm a legal ThreadX timer.
  *
@@ -58,13 +58,13 @@
  * static_assert(k_ra8_esp_hosted_gpio_row_max >= 2U, "handshake + data ready");
  * @endcode
  *
- * @see ra8_esp_hosted_gpio_edge_register
+ * @see priv_ra8_esp_hosted_gpio_edge_register
  * @since 0.1.0
  */
 typedef enum : uint8_t {
   /** Rows in the polled edge table; also the registration ceiling. */
   k_ra8_esp_hosted_gpio_row_max = 4U,
-  /** Sampling period used until ::ra8_esp_hosted_gpio_set_edge_poll_ms runs. */
+  /** Sampling period used until ::priv_ra8_esp_hosted_gpio_set_edge_poll_ms runs. */
   k_ra8_esp_hosted_gpio_poll_ms_default = 2U,
   /** NVIC priority given to a hardware side-band edge. */
   k_ra8_esp_hosted_gpio_irq_priority = 6U,
@@ -99,13 +99,13 @@ typedef enum : uint8_t {
  *
  * @par Example:
  * @code
- * (void)ra8_esp_hosted_gpio_bind(&g_hosted_osi_funcs);
+ * (void)priv_ra8_esp_hosted_gpio_bind(&g_hosted_osi_funcs);
  * @endcode
  *
- * @see ra8_esp_hosted_spi_bind
+ * @see priv_ra8_esp_hosted_spi_bind
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_gpio_bind(hosted_osi_funcs_t* out);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_ra8_esp_hosted_gpio_bind(hosted_osi_funcs_t* out);
 
 /**
  * @brief Decode the vendored ``(void* port, uint32_t pin)`` pair into a pin.
@@ -147,17 +147,18 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_gpio_bind(hosted_osi_funcs_t* ou
  * @par Example:
  * @code
  * ra8_port_pin_t pin = k_ra8_pin_none;
- * if (ra8_esp_hosted_gpio_decode_pin(H_GPIO_DATA_READY_Port,
+ * if (priv_ra8_esp_hosted_gpio_decode_pin(H_GPIO_DATA_READY_Port,
  *                                    (uint32_t)H_GPIO_DATA_READY_Pin, &pin)) {
  *   (void)ra8_gpio_read(pin, &level);
  * }
  * @endcode
  *
- * @see ra8_esp_hosted_gpio_bind
+ * @see priv_ra8_esp_hosted_gpio_bind
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] bool
-ra8_esp_hosted_gpio_decode_pin(const void* gpio_port, uint32_t gpio_num, ra8_port_pin_t* out_pin);
+RA8_PRIV [[nodiscard]] bool priv_ra8_esp_hosted_gpio_decode_pin(const void*     gpio_port,
+                                                                uint32_t        gpio_num,
+                                                                ra8_port_pin_t* out_pin);
 
 /**
  * @brief Replace the pin driver the slice reads and writes levels through.
@@ -185,13 +186,13 @@ ra8_esp_hosted_gpio_decode_pin(const void* gpio_port, uint32_t gpio_num, ra8_por
  *
  * @par Example:
  * @code
- * ra8_esp_hosted_gpio_set_pin_interface(&mock_pin_iface);
+ * priv_ra8_esp_hosted_gpio_set_pin_interface(&mock_pin_iface);
  * @endcode
  *
- * @see ra8_esp_hosted_gpio_pin_interface
+ * @see priv_ra8_esp_hosted_gpio_pin_interface
  * @since 0.1.0
  */
-RA8_PRIV RA8_DI_SLOT("pin_driver") void ra8_esp_hosted_gpio_set_pin_interface(
+RA8_PRIV RA8_DI_SLOT("pin_driver") void priv_ra8_esp_hosted_gpio_set_pin_interface(
   const ra8_pin_interface_t* iface);
 
 /**
@@ -214,13 +215,13 @@ RA8_PRIV RA8_DI_SLOT("pin_driver") void ra8_esp_hosted_gpio_set_pin_interface(
  *
  * @par Example:
  * @code
- * const ra8_pin_interface_t* pin_if = ra8_esp_hosted_gpio_pin_interface();
+ * const ra8_pin_interface_t* pin_if = priv_ra8_esp_hosted_gpio_pin_interface();
  * @endcode
  *
- * @see ra8_esp_hosted_gpio_set_pin_interface
+ * @see priv_ra8_esp_hosted_gpio_set_pin_interface
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] const ra8_pin_interface_t* ra8_esp_hosted_gpio_pin_interface(void);
+RA8_PRIV [[nodiscard]] const ra8_pin_interface_t* priv_ra8_esp_hosted_gpio_pin_interface(void);
 
 /**
  * @brief Set the sampling period the software edge detector runs at.
@@ -250,13 +251,13 @@ RA8_PRIV [[nodiscard]] const ra8_pin_interface_t* ra8_esp_hosted_gpio_pin_interf
  *
  * @par Example:
  * @code
- * (void)ra8_esp_hosted_gpio_set_edge_poll_ms(cfg->edge_poll_ms);
+ * (void)priv_ra8_esp_hosted_gpio_set_edge_poll_ms(cfg->edge_poll_ms);
  * @endcode
  *
- * @see ra8_esp_hosted_gpio_edge_poll_once
+ * @see priv_ra8_esp_hosted_gpio_edge_poll_once
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_gpio_set_edge_poll_ms(uint16_t period_ms);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_ra8_esp_hosted_gpio_set_edge_poll_ms(uint16_t period_ms);
 
 /**
  * @brief Take a pin under software edge detection.
@@ -286,7 +287,7 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_gpio_set_edge_poll_ms(uint16_t p
  *
  * @pre The ThreadX kernel is running.
  * @pre @p handler tolerates being called from timer context.
- * @post On success ``ra8_esp_hosted_gpio_edge_count`` has grown by one.
+ * @post On success ``priv_ra8_esp_hosted_gpio_edge_count`` has grown by one.
  * @post On any failure no row is added and no pin is left claimed by this
  *       call.
  *
@@ -296,16 +297,16 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_gpio_set_edge_poll_ms(uint16_t p
  *
  * @par Example:
  * @code
- * (void)ra8_esp_hosted_gpio_edge_register(pin, 1U, gpio_hs_isr_handler, nullptr);
+ * (void)priv_ra8_esp_hosted_gpio_edge_register(pin, 1U, gpio_hs_isr_handler, nullptr);
  * @endcode
  *
- * @see ra8_esp_hosted_gpio_edge_unregister
+ * @see priv_ra8_esp_hosted_gpio_edge_unregister
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_gpio_edge_register(ra8_port_pin_t pin,
-                                                                   uint8_t        sense,
-                                                                   void (*handler)(void*),
-                                                                   void* arg);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_ra8_esp_hosted_gpio_edge_register(ra8_port_pin_t pin,
+                                                                        uint8_t        sense,
+                                                                        void (*handler)(void*),
+                                                                        void* arg);
 
 /**
  * @brief Drop a pin from software edge detection.
@@ -316,7 +317,7 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_gpio_edge_register(ra8_port_pin_
  * running.
  *
  * @param[in] pin Packed pin previously passed to
- *                ::ra8_esp_hosted_gpio_edge_register.
+ *                ::priv_ra8_esp_hosted_gpio_edge_register.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok The row was freed.
@@ -325,20 +326,20 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_gpio_edge_register(ra8_port_pin_
  *
  * @pre The timer callback is not executing.
  * @pre The pin was registered by this module.
- * @post ``ra8_esp_hosted_gpio_edge_count`` has fallen by one.
+ * @post ``priv_ra8_esp_hosted_gpio_edge_count`` has fallen by one.
  * @post The pin is no longer claimed by this module.
  *
  * @note Not thread-safe with respect to the timer callback.
  *
  * @par Example:
  * @code
- * (void)ra8_esp_hosted_gpio_edge_unregister(pin);
+ * (void)priv_ra8_esp_hosted_gpio_edge_unregister(pin);
  * @endcode
  *
- * @see ra8_esp_hosted_gpio_edge_register
+ * @see priv_ra8_esp_hosted_gpio_edge_register
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_gpio_edge_unregister(ra8_port_pin_t pin);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_ra8_esp_hosted_gpio_edge_unregister(ra8_port_pin_t pin);
 
 /**
  * @brief Report how many pins are under software edge detection.
@@ -360,13 +361,13 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_gpio_edge_unregister(ra8_port_pi
  *
  * @par Example:
  * @code
- * TEST_ASSERT_EQ(0U, ra8_esp_hosted_gpio_edge_count());
+ * TEST_ASSERT_EQ(0U, priv_ra8_esp_hosted_gpio_edge_count());
  * @endcode
  *
- * @see ra8_esp_hosted_gpio_edge_register
+ * @see priv_ra8_esp_hosted_gpio_edge_register
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] uint8_t ra8_esp_hosted_gpio_edge_count(void);
+RA8_PRIV [[nodiscard]] uint8_t priv_ra8_esp_hosted_gpio_edge_count(void);
 
 /**
  * @brief Sample every polled row once and dispatch the edges seen.
@@ -374,7 +375,7 @@ RA8_PRIV [[nodiscard]] uint8_t ra8_esp_hosted_gpio_edge_count(void);
  * @details
  * The body of the periodic timer, exposed so tests drive it directly rather
  * than waiting on a kernel tick. For each occupied row it reads the pin
- * through the injected pin interface, asks ::ra8_esp_hosted_gpio_edge_seen
+ * through the injected pin interface, asks ::priv_ra8_esp_hosted_gpio_edge_seen
  * whether the configured edge occurred, stores the new level and, when it
  * did, calls the row's handler. A read that fails leaves the stored level
  * untouched so a transient failure cannot manufacture an edge on the next
@@ -396,13 +397,13 @@ RA8_PRIV [[nodiscard]] uint8_t ra8_esp_hosted_gpio_edge_count(void);
  *
  * @par Example:
  * @code
- * ra8_esp_hosted_gpio_edge_poll_once();
+ * priv_ra8_esp_hosted_gpio_edge_poll_once();
  * @endcode
  *
- * @see ra8_esp_hosted_gpio_edge_seen
+ * @see priv_ra8_esp_hosted_gpio_edge_seen
  * @since 0.1.0
  */
-RA8_PRIV void ra8_esp_hosted_gpio_edge_poll_once(void);
+RA8_PRIV void priv_ra8_esp_hosted_gpio_edge_poll_once(void);
 
 /**
  * @brief Decide whether two consecutive samples show the configured edge.
@@ -440,11 +441,11 @@ RA8_PRIV void ra8_esp_hosted_gpio_edge_poll_once(void);
  *
  * @par Example:
  * @code
- * if (ra8_esp_hosted_gpio_edge_seen(0U, 1U, 1U)) { handler(arg); }
+ * if (priv_ra8_esp_hosted_gpio_edge_seen(0U, 1U, 1U)) { handler(arg); }
  * @endcode
  *
- * @see ra8_esp_hosted_gpio_edge_poll_once
+ * @see priv_ra8_esp_hosted_gpio_edge_poll_once
  * @since 0.1.0
  */
 RA8_PRIV [[nodiscard]] bool
-ra8_esp_hosted_gpio_edge_seen(uint8_t prev_level, uint8_t now_level, uint8_t sense);
+priv_ra8_esp_hosted_gpio_edge_seen(uint8_t prev_level, uint8_t now_level, uint8_t sense);

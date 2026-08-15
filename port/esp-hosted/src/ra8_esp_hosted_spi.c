@@ -118,8 +118,8 @@ static_assert(k_ra8_esp_hosted_spi_frame_bytes == MAX_SPI_BUFFER_SIZE,
  * @details Caller-allocated by contract of ``ra8_io_spi_bus_t``, so the
  * storage lives here for the lifetime of the image; ``iface`` is null until
  * an open binds a backend into it.
- * @note Written only by ::ra8_esp_hosted_spi_open and
- *       ::ra8_esp_hosted_spi_close.
+ * @note Written only by ::priv_ra8_esp_hosted_spi_open and
+ *       ::priv_ra8_esp_hosted_spi_close.
  * @warning Also handed to the vendored driver as its opaque bus handle; do
  *          not move it.
  * @since 0.1.0
@@ -131,7 +131,7 @@ static ra8_io_spi_bus_t s_bus;
  * @brief Test-injected replacement for ::s_bus, or null in production.
  * @details Kept separate from ::s_bus so an injection survives an open and an
  * open does not clobber an injection.
- * @note Written only by ::ra8_esp_hosted_spi_set_bus.
+ * @note Written only by ::priv_ra8_esp_hosted_spi_set_bus.
  * @warning Pointing this at a short-lived object leaves the transfer slot
  *          clocking through a dangling vtable.
  * @since 0.1.0
@@ -143,7 +143,7 @@ static const ra8_io_spi_bus_t* s_injected_bus;
  * @brief Pin driver the chip select is configured and driven through.
  * @details Null means "use the production instance", which keeps the seam
  * usable before any initialisation has run.
- * @note Written only by ::ra8_esp_hosted_spi_set_pin_interface.
+ * @note Written only by ::priv_ra8_esp_hosted_spi_set_pin_interface.
  * @warning Swapping it mid-transfer would split one frame's chip-select
  *          edges across two drivers.
  * @since 0.1.0
@@ -155,7 +155,7 @@ static const ra8_pin_interface_t* s_pin_if;
  * @brief SCI channel the open brought up, meaningful only while ::s_open.
  * @details Remembered so the close can disable exactly the channel that was
  * enabled, without the caller having to repeat it.
- * @note Written only by ::ra8_esp_hosted_spi_open.
+ * @note Written only by ::priv_ra8_esp_hosted_spi_open.
  * @warning Reading it while ::s_open is false yields a stale channel index.
  * @since 0.1.0
  */
@@ -167,8 +167,8 @@ static uint8_t s_channel;
  * @details The single piece of state the open/close pair maintains; the
  * transfer slot deliberately does not consult it, because an injected bus
  * makes a transfer meaningful with no channel open at all.
- * @note Written only by ::ra8_esp_hosted_spi_open and
- *       ::ra8_esp_hosted_spi_close.
+ * @note Written only by ::priv_ra8_esp_hosted_spi_open and
+ *       ::priv_ra8_esp_hosted_spi_close.
  * @warning Never set it without the channel actually being enabled.
  * @since 0.1.0
  */
@@ -308,7 +308,9 @@ static void internal_release_pins(void)
   (void)ra8_gpio_release((ra8_port_pin_t)k_ra8_esp_hosted_pin_chip_select);
 }
 
-RA8_PRIV ra8_err_t ra8_esp_hosted_spi_open(uint8_t sci_channel, uint32_t pclk_hz, uint32_t sck_hz)
+RA8_PRIV ra8_err_t priv_ra8_esp_hosted_spi_open(uint8_t  sci_channel,
+                                                uint32_t pclk_hz,
+                                                uint32_t sck_hz)
 {
   if (s_open) {
     return k_ra8_err_invalid_state;
@@ -355,7 +357,7 @@ RA8_PRIV ra8_err_t ra8_esp_hosted_spi_open(uint8_t sci_channel, uint32_t pclk_hz
   return k_ra8_ok;
 }
 
-RA8_PRIV ra8_err_t ra8_esp_hosted_spi_close(void)
+RA8_PRIV ra8_err_t priv_ra8_esp_hosted_spi_close(void)
 {
   if (!s_open) {
     return k_ra8_err_not_initialized;
@@ -367,17 +369,17 @@ RA8_PRIV ra8_err_t ra8_esp_hosted_spi_close(void)
   return (err == k_ra8_ok) ? k_ra8_ok : k_ra8_err_spi_error;
 }
 
-RA8_PRIV bool ra8_esp_hosted_spi_is_open(void)
+RA8_PRIV bool priv_ra8_esp_hosted_spi_is_open(void)
 {
   return s_open;
 }
 
-RA8_PRIV void ra8_esp_hosted_spi_set_bus(const ra8_io_spi_bus_t* bus)
+RA8_PRIV void priv_ra8_esp_hosted_spi_set_bus(const ra8_io_spi_bus_t* bus)
 {
   s_injected_bus = bus;
 }
 
-RA8_PRIV void ra8_esp_hosted_spi_set_pin_interface(const ra8_pin_interface_t* iface)
+RA8_PRIV void priv_ra8_esp_hosted_spi_set_pin_interface(const ra8_pin_interface_t* iface)
 {
   s_pin_if = iface;
 }
@@ -396,7 +398,7 @@ RA8_PRIV void ra8_esp_hosted_spi_set_pin_interface(const ra8_pin_interface_t* if
  * @retval non-null A bus is bound and transfers can proceed.
  * @retval nullptr No open has run and nothing was injected.
  *
- * @pre ::ra8_esp_hosted_spi_open has run, or a bus was injected.
+ * @pre ::priv_ra8_esp_hosted_spi_open has run, or a bus was injected.
  * @pre The returned handle is only ever passed back to ``_h_bus_deinit``.
  * @post No module state is modified.
  * @post The result is null exactly when a transfer would fail.
@@ -449,7 +451,7 @@ static int internal_bus_deinit(void* bus_handle)
   if (bus_handle != (void*)&s_bus) {
     return RET_INVALID;
   }
-  return (ra8_esp_hosted_spi_close() == k_ra8_ok) ? RET_OK : RET_FAIL;
+  return (priv_ra8_esp_hosted_spi_close() == k_ra8_ok) ? RET_OK : RET_FAIL;
 }
 
 /**
@@ -519,7 +521,7 @@ static int internal_do_bus_transfer(void* transfer_context)
   return (cs_err == k_ra8_ok) ? RET_OK : RET_FAIL;
 }
 
-RA8_PRIV ra8_err_t ra8_esp_hosted_spi_bind(hosted_osi_funcs_t* out)
+RA8_PRIV ra8_err_t priv_ra8_esp_hosted_spi_bind(hosted_osi_funcs_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "vtable must not be nullptr");
   out->_h_bus_init        = internal_bus_init;

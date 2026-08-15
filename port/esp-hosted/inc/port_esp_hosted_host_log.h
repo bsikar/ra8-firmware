@@ -15,13 +15,13 @@
  * It does two things and nothing else: it pulls in the ESP-IDF-compatible
  * logging surface (``port/esp-hosted/inc/idf_compat/esp_log.h``, also
  * first-party), and it supplies ::DEFINE_LOG_TAG, the one-liner every
- * vendored source uses to declare the file-scope ``TAG`` symbol that the
+ * vendored source uses to declare the file-scope ``s_esp_hosted_tag`` symbol that the
  * ``ESP_LOGx`` macros then take as their first argument.
  *
- * @par Why TAG has to be that exact name
+ * @par Why s_esp_hosted_tag has to be that exact name
  * The vendored ``common/log/esp_hosted_log.h`` builds its hex-dump helpers
- * on a bare ``TAG`` -- ``ESP_HEXLOGI(...)`` expands to a call that names
- * ``TAG`` without ever receiving it as an argument. So the symbol is part of
+ * on a bare ``s_esp_hosted_tag`` -- ``ESP_HEXLOGI(...)`` expands to a call that names
+ * ``s_esp_hosted_tag`` without ever receiving it as an argument. So the symbol is part of
  * the contract, not an implementation detail, and it must be a file-scope
  * ``const char*`` in every translation unit that logs.
  *
@@ -36,7 +36,7 @@
 
 /**
  * @def DEFINE_LOG_TAG
- * @brief Declare the file-scope ``TAG`` string the ``ESP_LOGx`` macros use.
+ * @brief Declare the file-scope ``s_esp_hosted_tag`` string the ``ESP_LOGx`` macros use.
  * @details Expands to a ``static const char*`` initialised to the stringised
  * argument with the upstream ``H_`` prefix, so ``DEFINE_LOG_TAG(spi)``
  * yields ``"H_spi"``. That prefix is what distinguishes an esp-hosted line
@@ -63,8 +63,21 @@
  * @par Example:
  * @code
  * DEFINE_LOG_TAG(rpc_evt);
- * ESP_LOGI(TAG, "event %u", evt_id);
+ * ESP_LOGI(s_esp_hosted_tag, "event %u", evt_id);
  * @endcode
  * @since 0.1.0
  */
-#define DEFINE_LOG_TAG(tag) [[maybe_unused]] static const char* TAG = "H_" #tag
+#define DEFINE_LOG_TAG(tag) [[maybe_unused]] static const char* s_esp_hosted_tag = "H_" #tag
+
+/**
+ * @def TAG
+ * @brief Preserve the tag identifier required by vendored esp-hosted macros.
+ * @details Expands only to the first-party ::s_esp_hosted_tag storage name;
+ * no second object or external symbol is introduced. Vendored hex-dump and
+ * error-check macros name ``TAG`` implicitly, so this compatibility spelling
+ * is part of the port boundary while the owned storage still follows RA8
+ * file-scope naming.
+ * @note Macro alias only; read-only after ::DEFINE_LOG_TAG initializes storage.
+ * @since 0.1.0
+ */
+#define TAG s_esp_hosted_tag

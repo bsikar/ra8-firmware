@@ -26,8 +26,8 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_esp_hosted_pins.h"
 #include "ra8_esp_hosted_port.h"
@@ -40,7 +40,7 @@
  * @brief The two SCI channel numbers that straddle the validator's bound.
  *
  * @details
- * ``ra8_esp_hosted_port_cfg_check`` rejects any channel at or above the RA8D2
+ * ``priv_ra8_esp_hosted_port_cfg_check`` rejects any channel at or above the RA8D2
  * SCI channel count, so the boundary is only proven by a pair of vectors one
  * step apart: the last accepted channel and the first rejected one. Naming
  * both makes the adjacency visible, which a bare ``9U`` / ``10U`` pair beside
@@ -55,7 +55,7 @@
  * cfg.sci_channel = (uint8_t)k_t_port_channel_first_bad;
  * @endcode
  *
- * @see ra8_esp_hosted_port_cfg_check
+ * @see priv_ra8_esp_hosted_port_cfg_check
  * @since 0.1.0
  */
 typedef enum : uint8_t {
@@ -64,7 +64,7 @@ typedef enum : uint8_t {
 } t_port_channel_t;
 
 /**
- * @var k_t_good_cfg
+ * @var s_t_good_cfg
  * @brief A configuration every field of which is inside its contract.
  * @details The baseline the rejection vectors vary one field away from,
  * so each vector differs from the control in exactly one condition.
@@ -72,7 +72,7 @@ typedef enum : uint8_t {
  * @warning Keep every field legal; the vectors assume it is the control.
  * @since 0.1.0
  */
-static const ra8_esp_hosted_port_cfg_t k_t_good_cfg = {
+static const ra8_esp_hosted_port_cfg_t s_t_good_cfg = {
   .pclk_hz      = 100000000U,
   .sck_hz       = 5000000U,
   .edge_poll_ms = 2U,
@@ -100,33 +100,37 @@ static const ra8_esp_hosted_port_cfg_t k_t_good_cfg = {
  * @post No module state is modified by any vector.
  * @note Single-threaded.
  * @since 0.1.0
+ * @brief Verify cfg check rejects each field.
+ * @details Drives the host model through cfg check rejects each field and asserts each observable result.
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_cfg_check_rejects_each_field(void)
+RA8_INTERNAL static void internal_test_cfg_check_rejects_each_field(void)
 {
   TEST_BEGIN("esp-hosted port cfg validation");
 
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_esp_hosted_port_cfg_check(nullptr));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_port_cfg_check(&k_t_good_cfg));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, priv_ra8_esp_hosted_port_cfg_check(nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_port_cfg_check(&s_t_good_cfg));
 
-  ra8_esp_hosted_port_cfg_t cfg = k_t_good_cfg;
+  ra8_esp_hosted_port_cfg_t cfg = s_t_good_cfg;
   cfg.pclk_hz                   = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_esp_hosted_port_cfg_check(&cfg));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_ra8_esp_hosted_port_cfg_check(&cfg));
 
-  cfg        = k_t_good_cfg;
+  cfg        = s_t_good_cfg;
   cfg.sck_hz = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_esp_hosted_port_cfg_check(&cfg));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_ra8_esp_hosted_port_cfg_check(&cfg));
 
-  cfg              = k_t_good_cfg;
+  cfg              = s_t_good_cfg;
   cfg.edge_poll_ms = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_esp_hosted_port_cfg_check(&cfg));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_ra8_esp_hosted_port_cfg_check(&cfg));
 
-  cfg             = k_t_good_cfg;
+  cfg             = s_t_good_cfg;
   cfg.sci_channel = (uint8_t)k_t_port_channel_first_bad;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_esp_hosted_port_cfg_check(&cfg));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_ra8_esp_hosted_port_cfg_check(&cfg));
 
-  cfg             = k_t_good_cfg;
+  cfg             = s_t_good_cfg;
   cfg.sci_channel = (uint8_t)k_t_port_channel_last_ok;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_port_cfg_check(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_port_cfg_check(&cfg));
 
   TEST_END("esp-hosted port cfg validation");
 }
@@ -137,7 +141,7 @@ static void test_cfg_check_rejects_each_field(void)
  * @par MC/DC:
  * Decision: the three-condition distinctness test
  * `(cs == hs) || (cs == dr) || (hs == dr)` in
- * `port/esp-hosted/src/ra8_esp_hosted_port.c@ra8_esp_hosted_port_pins_check_values`.
+ * `port/esp-hosted/src/ra8_esp_hosted_port.c@priv_ra8_esp_hosted_port_pins_check_values`.
  * - Vector 1: cs=0x0804 hs=0x040C dr=0x0006, all distinct -> accept (control)
  * - Vector 2: cs=0x0804 hs=0x0804 dr=0x0006              -> reject (varies cs==hs)
  * - Vector 3: cs=0x0804 hs=0x040C dr=0x0804              -> reject (varies cs==dr)
@@ -149,8 +153,12 @@ static void test_cfg_check_rejects_each_field(void)
  * @post No module state is modified by any vector.
  * @note Single-threaded.
  * @since 0.1.0
+ * @brief Verify pins check rejects duplicates.
+ * @details Drives the host model through pins check rejects duplicates and asserts each observable result.
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_pins_check_rejects_duplicates(void)
+RA8_INTERNAL static void internal_test_pins_check_rejects_duplicates(void)
 {
   TEST_BEGIN("esp-hosted pin-map distinctness");
 
@@ -158,10 +166,10 @@ static void test_pins_check_rejects_duplicates(void)
   const uint16_t hs = (uint16_t)RA8_PIN(k_ra8_port_4, k_ra8_pin_12);
   const uint16_t dr = (uint16_t)RA8_PIN(k_ra8_port_0, k_ra8_pin_6);
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_port_pins_check_values(cs, hs, dr));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_esp_hosted_port_pins_check_values(cs, cs, dr));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_esp_hosted_port_pins_check_values(cs, hs, cs));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_esp_hosted_port_pins_check_values(cs, hs, hs));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_port_pins_check_values(cs, hs, dr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_ra8_esp_hosted_port_pins_check_values(cs, cs, dr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_ra8_esp_hosted_port_pins_check_values(cs, hs, cs));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_ra8_esp_hosted_port_pins_check_values(cs, hs, hs));
 
   TEST_END("esp-hosted pin-map distinctness");
 }
@@ -188,8 +196,12 @@ static void test_pins_check_rejects_duplicates(void)
  * @post No module state is modified by any vector.
  * @note Single-threaded.
  * @since 0.1.0
+ * @brief Verify pins check rejects out of range.
+ * @details Drives the host model through pins check rejects out of range and asserts each observable result.
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_pins_check_rejects_out_of_range(void)
+RA8_INTERNAL static void internal_test_pins_check_rejects_out_of_range(void)
 {
   TEST_BEGIN("esp-hosted pin-map range");
 
@@ -201,13 +213,19 @@ static void test_pins_check_rejects_out_of_range(void)
   const uint16_t bad_pin  = (uint16_t)((8U << 8U) | 16U);
   const uint16_t none     = (uint16_t)k_ra8_pin_none;
 
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_esp_hosted_port_pins_check_values(bad_port, hs, dr));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_esp_hosted_port_pins_check_values(bad_pin, hs, dr));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_esp_hosted_port_pins_check_values(cs, bad_port, dr));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_esp_hosted_port_pins_check_values(cs, bad_pin, dr));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_esp_hosted_port_pins_check_values(cs, hs, bad_port));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_esp_hosted_port_pins_check_values(cs, hs, bad_pin));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_esp_hosted_port_pins_check_values(none, hs, dr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 priv_ra8_esp_hosted_port_pins_check_values(bad_port, hs, dr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 priv_ra8_esp_hosted_port_pins_check_values(bad_pin, hs, dr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 priv_ra8_esp_hosted_port_pins_check_values(cs, bad_port, dr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 priv_ra8_esp_hosted_port_pins_check_values(cs, bad_pin, dr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 priv_ra8_esp_hosted_port_pins_check_values(cs, hs, bad_port));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 priv_ra8_esp_hosted_port_pins_check_values(cs, hs, bad_pin));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_ra8_esp_hosted_port_pins_check_values(none, hs, dr));
 
   TEST_END("esp-hosted pin-map range");
 }
@@ -225,12 +243,16 @@ static void test_pins_check_rejects_out_of_range(void)
  * @post No module state is modified.
  * @note Single-threaded.
  * @since 0.1.0
+ * @brief Verify shipped pin map is consistent.
+ * @details Drives the host model through shipped pin map is consistent and asserts each observable result.
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_shipped_pin_map_is_consistent(void)
+RA8_INTERNAL static void internal_test_shipped_pin_map_is_consistent(void)
 {
   TEST_BEGIN("esp-hosted shipped pin map");
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_port_pins_check());
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_port_pins_check());
   TEST_ASSERT(!ra8_esp_hosted_port_is_ready());
   TEST_ASSERT(!ra8_esp_hosted_port_rx_pending());
 
@@ -255,8 +277,12 @@ static void test_shipped_pin_map_is_consistent(void)
  * @post The port still reports not ready.
  * @note Single-threaded.
  * @since 0.1.0
+ * @brief Verify deinit refuses when never up.
+ * @details Drives the host model through deinit refuses when never up and asserts each observable result.
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_deinit_refuses_when_never_up(void)
+RA8_INTERNAL static void internal_test_deinit_refuses_when_never_up(void)
 {
   TEST_BEGIN("esp-hosted teardown guard");
 
@@ -271,7 +297,7 @@ static void test_deinit_refuses_when_never_up(void)
  *
  * @par MC/DC:
  * Decision: `(first == k_ra8_ok) && (next != k_ra8_ok)` in
- * `port/esp-hosted/src/ra8_esp_hosted_port.c@ra8_esp_hosted_port_first_error`
+ * `port/esp-hosted/src/ra8_esp_hosted_port.c@priv_ra8_esp_hosted_port_first_error`
  * (2 conditions).
  * - Vector 1: first=ok,        next=ok        -> true, false -> false; the
  *   sequence stays clean (control)
@@ -294,18 +320,22 @@ static void test_deinit_refuses_when_never_up(void)
  * @post No module state is modified by any vector.
  * @note Single-threaded.
  * @since 0.1.0
+ * @brief Verify first error keeps the earliest failure.
+ * @details Drives the host model through first error keeps the earliest failure and asserts each observable result.
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_first_error_keeps_the_earliest_failure(void)
+RA8_INTERNAL static void internal_test_first_error_keeps_the_earliest_failure(void)
 {
   TEST_BEGIN("esp-hosted teardown error precedence");
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_port_first_error(k_ra8_ok, k_ra8_ok));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_port_first_error(k_ra8_ok, k_ra8_ok));
   TEST_ASSERT_EQ(k_ra8_err_spi_error,
-                 ra8_esp_hosted_port_first_error(k_ra8_err_spi_error, k_ra8_ok));
+                 priv_ra8_esp_hosted_port_first_error(k_ra8_err_spi_error, k_ra8_ok));
   TEST_ASSERT_EQ(k_ra8_err_rtos_error,
-                 ra8_esp_hosted_port_first_error(k_ra8_ok, k_ra8_err_rtos_error));
+                 priv_ra8_esp_hosted_port_first_error(k_ra8_ok, k_ra8_err_rtos_error));
   TEST_ASSERT_EQ(k_ra8_err_spi_error,
-                 ra8_esp_hosted_port_first_error(k_ra8_err_spi_error, k_ra8_err_rtos_error));
+                 priv_ra8_esp_hosted_port_first_error(k_ra8_err_spi_error, k_ra8_err_rtos_error));
 
   TEST_END("esp-hosted teardown error precedence");
 }
@@ -326,12 +356,11 @@ static void test_first_error_keeps_the_earliest_failure(void)
  */
 int32_t main(void)
 {
-  test_cfg_check_rejects_each_field();
-  test_pins_check_rejects_duplicates();
-  test_pins_check_rejects_out_of_range();
-  test_shipped_pin_map_is_consistent();
-  test_deinit_refuses_when_never_up();
-  test_first_error_keeps_the_earliest_failure();
-  (void)fprintf(stderr, "[OK  ] test_ra8_esp_hosted_port.c\n");
+  internal_test_cfg_check_rejects_each_field();
+  internal_test_pins_check_rejects_duplicates();
+  internal_test_pins_check_rejects_out_of_range();
+  internal_test_shipped_pin_map_is_consistent();
+  internal_test_deinit_refuses_when_never_up();
+  internal_test_first_error_keeps_the_earliest_failure();
   return 0;
 }

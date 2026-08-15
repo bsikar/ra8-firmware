@@ -46,7 +46,7 @@
  * if (ch == (char)k_ra8_esp_hosted_fmt_ch_percent) { parse_spec(); }
  * @endcode
  *
- * @see ra8_esp_hosted_fmt_parse
+ * @see priv_ra8_esp_hosted_fmt_parse
  * @since 0.1.0
  */
 typedef enum : char {
@@ -66,7 +66,7 @@ typedef enum : char {
  *
  * @details
  * Only the two the vendored core's format strings ask for. Any other base
- * is rejected by ::ra8_esp_hosted_fmt_utoa rather than silently rendered,
+ * is rejected by ::priv_ra8_esp_hosted_fmt_utoa rather than silently rendered,
  * because a base the caller did not intend would produce a plausible but
  * wrong number.
  *
@@ -75,10 +75,10 @@ typedef enum : char {
  *
  * @par Example:
  * @code
- * (void)ra8_esp_hosted_fmt_utoa(buf, v, (uint8_t)k_ra8_esp_hosted_fmt_radix_hex, false);
+ * (void)priv_ra8_esp_hosted_fmt_utoa(buf, v, (uint8_t)k_ra8_esp_hosted_fmt_radix_hex, false);
  * @endcode
  *
- * @see ra8_esp_hosted_fmt_utoa
+ * @see priv_ra8_esp_hosted_fmt_utoa
  * @since 0.1.0
  */
 typedef enum : uint8_t {
@@ -106,7 +106,7 @@ typedef enum : uint8_t {
  * va_copy(args.ap, ap);
  * @endcode
  *
- * @see ra8_esp_hosted_fmt_vformat
+ * @see priv_ra8_esp_hosted_fmt_vformat
  * @since 0.1.0
  */
 typedef struct ra8_esp_hosted_fmt_args {
@@ -131,7 +131,7 @@ typedef struct ra8_esp_hosted_fmt_args {
  * ra8_esp_hosted_fmt_cursor_t cur = { .out = buf, .cap = sizeof(buf), .len = 0U };
  * @endcode
  *
- * @see ra8_esp_hosted_fmt_vformat
+ * @see priv_ra8_esp_hosted_fmt_vformat
  * @since 0.1.0
  */
 typedef struct ra8_esp_hosted_fmt_cursor {
@@ -141,7 +141,7 @@ typedef struct ra8_esp_hosted_fmt_cursor {
 } ra8_esp_hosted_fmt_cursor_t;
 
 /**
- * @var k_ra8_esp_hosted_fmt_digits_lower
+ * @var s_ra8_esp_hosted_fmt_digits_lower
  * @brief Digit glyphs for lower-case hexadecimal and every smaller base.
  * @details Indexed by the remainder, so the table doubles as the decimal
  * digit set.
@@ -149,17 +149,17 @@ typedef struct ra8_esp_hosted_fmt_cursor {
  * @warning Must stay sixteen entries; the radix bound assumes it.
  * @since 0.1.0
  */
-static const char k_ra8_esp_hosted_fmt_digits_lower[] = "0123456789abcdef";
+static const char s_ra8_esp_hosted_fmt_digits_lower[] = "0123456789abcdef";
 
 /**
- * @var k_ra8_esp_hosted_fmt_digits_upper
+ * @var s_ra8_esp_hosted_fmt_digits_upper
  * @brief Digit glyphs for upper-case hexadecimal.
  * @details Selected by the ``X`` conversion only.
  * @note Read-only.
  * @warning Must stay sixteen entries; the radix bound assumes it.
  * @since 0.1.0
  */
-static const char k_ra8_esp_hosted_fmt_digits_upper[] = "0123456789ABCDEF";
+static const char s_ra8_esp_hosted_fmt_digits_upper[] = "0123456789ABCDEF";
 
 /**
  * @brief Append one character if the buffer still has room for it.
@@ -227,10 +227,10 @@ static void internal_pad(ra8_esp_hosted_fmt_cursor_t* cur, char pad, uint16_t co
   }
 }
 
-/** @brief Implementation of `ra8_esp_hosted_fmt_utoa()` -- divides down and
+/** @brief Implementation of `priv_ra8_esp_hosted_fmt_utoa()` -- divides down and
  *  reverses in place, so no scratch beyond the caller's buffer. */
 RA8_PRIV
-uint8_t ra8_esp_hosted_fmt_utoa(char* buf, uint64_t value, uint8_t base, bool upper)
+uint8_t priv_ra8_esp_hosted_fmt_utoa(char* buf, uint64_t value, uint8_t base, bool upper)
 {
   if (buf == nullptr) {
     return 0U;
@@ -241,7 +241,7 @@ uint8_t ra8_esp_hosted_fmt_utoa(char* buf, uint64_t value, uint8_t base, bool up
   }
 
   const char* glyphs =
-    upper ? k_ra8_esp_hosted_fmt_digits_upper : k_ra8_esp_hosted_fmt_digits_lower;
+    upper ? s_ra8_esp_hosted_fmt_digits_upper : s_ra8_esp_hosted_fmt_digits_lower;
   uint64_t remaining = value;
   uint8_t  count     = 0U;
 
@@ -413,11 +413,11 @@ static bool internal_is_supported(char conv)
          (conv == (char)k_ra8_esp_hosted_fmt_ch_percent);
 }
 
-/** @brief Implementation of `ra8_esp_hosted_fmt_parse()` -- flags, width,
+/** @brief Implementation of `priv_ra8_esp_hosted_fmt_parse()` -- flags, width,
  *  length modifier and conversion, each bounded by the specification
  *  length cap. */
 RA8_PRIV
-bool ra8_esp_hosted_fmt_parse(const char* after_percent, ra8_esp_hosted_fmt_spec_t* out)
+bool priv_ra8_esp_hosted_fmt_parse(const char* after_percent, ra8_esp_hosted_fmt_spec_t* out)
 {
   if ((after_percent == nullptr) || (out == nullptr)) {
     return false;
@@ -669,10 +669,10 @@ static void internal_emit_conv(ra8_esp_hosted_fmt_cursor_t*     cur,
       digits[0] = (char)k_ra8_esp_hosted_fmt_ch_minus;
       used      = 1U;
     }
-    const uint8_t n = ra8_esp_hosted_fmt_utoa(&digits[used],
-                                              magnitude,
-                                              (uint8_t)k_ra8_esp_hosted_fmt_radix_dec,
-                                              false);
+    const uint8_t n = priv_ra8_esp_hosted_fmt_utoa(&digits[used],
+                                                   magnitude,
+                                                   (uint8_t)k_ra8_esp_hosted_fmt_radix_dec,
+                                                   false);
     internal_emit_token(cur, spec, digits, (uint16_t)(used + n));
     return;
   }
@@ -684,14 +684,14 @@ static void internal_emit_conv(ra8_esp_hosted_fmt_cursor_t*     cur,
   /* NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized) -- analyser cannot follow the va_copy. */
   const uint64_t value = is_pointer ? (uint64_t)(uintptr_t)va_arg(args->ap, void*)
                                     : internal_next_unsigned(args, spec->len);
-  const uint8_t  n     = ra8_esp_hosted_fmt_utoa(digits, value, base, upper);
+  const uint8_t  n     = priv_ra8_esp_hosted_fmt_utoa(digits, value, base, upper);
   internal_emit_token(cur, spec, digits, (uint16_t)n);
 }
 
-/** @brief Implementation of `ra8_esp_hosted_fmt_vformat()` -- single pass,
+/** @brief Implementation of `priv_ra8_esp_hosted_fmt_vformat()` -- single pass,
  *  every loop bounded, no allocation. */
 RA8_PRIV
-uint32_t ra8_esp_hosted_fmt_vformat(char* out, uint32_t cap, const char* fmt, va_list ap)
+uint32_t priv_ra8_esp_hosted_fmt_vformat(char* out, uint32_t cap, const char* fmt, va_list ap)
 {
   if ((out == nullptr) || (cap == 0U) || (fmt == nullptr)) {
     if ((out != nullptr) && (cap != 0U)) {
@@ -718,7 +718,7 @@ uint32_t ra8_esp_hosted_fmt_vformat(char* out, uint32_t cap, const char* fmt, va
     }
 
     ra8_esp_hosted_fmt_spec_t spec = {};
-    if (!ra8_esp_hosted_fmt_parse(&fmt[pos], &spec)) {
+    if (!priv_ra8_esp_hosted_fmt_parse(&fmt[pos], &spec)) {
       internal_put(&cur, (char)k_ra8_esp_hosted_fmt_ch_percent);
       continue;
     }

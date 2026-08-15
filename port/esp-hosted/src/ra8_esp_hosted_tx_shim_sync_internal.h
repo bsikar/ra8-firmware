@@ -27,7 +27,7 @@
 #include "ra8_esp_hosted_tx_shim_internal.h"
 
 /**
- * @brief Host model of ``tx_semaphore_create``.
+ * @brief Host model of ``internal_tx_semaphore_create``.
  * @details Stores the initial instance count verbatim; ThreadX imposes no
  * ceiling, so neither does the model.
  * @param[out] semaphore_ptr Semaphore control block to initialise.
@@ -43,13 +43,13 @@
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT
+RA8_INTERNAL static inline UINT
 /* NOLINTNEXTLINE(readability-non-const-parameter) -- ThreadX API pins it non-const. */
-tx_semaphore_create(TX_SEMAPHORE* semaphore_ptr, CHAR* name_ptr, ULONG initial_count)
+internal_tx_semaphore_create(TX_SEMAPHORE* semaphore_ptr, CHAR* name_ptr, ULONG initial_count)
 {
   UINT injected = TX_SUCCESS;
   (void)name_ptr;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_semaphore, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_semaphore, &injected)) {
     return injected;
   }
   if (semaphore_ptr == nullptr) {
@@ -62,23 +62,23 @@ tx_semaphore_create(TX_SEMAPHORE* semaphore_ptr, CHAR* name_ptr, ULONG initial_c
 }
 
 /**
- * @brief Host model of ``tx_semaphore_delete``.
+ * @brief Host model of ``internal_tx_semaphore_delete``.
  * @details Clears the sentinel so later takes and posts are rejected.
  * @param[in,out] semaphore_ptr Semaphore to delete.
  * @return ThreadX status code.
  * @retval TX_SUCCESS The semaphore was deleted.
  * @retval TX_SEMAPHORE_ERROR ``semaphore_ptr`` was null or never created.
- * @pre ``semaphore_ptr`` came from ``tx_semaphore_create``.
+ * @pre ``semaphore_ptr`` came from ``internal_tx_semaphore_create``.
  * @pre Nothing is waiting on the semaphore.
  * @post The semaphore no longer satisfies takes.
  * @post The semaphore family call counter has advanced.
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_semaphore_delete(TX_SEMAPHORE* semaphore_ptr)
+RA8_INTERNAL static inline UINT internal_tx_semaphore_delete(TX_SEMAPHORE* semaphore_ptr)
 {
   UINT injected = TX_SUCCESS;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_semaphore, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_semaphore, &injected)) {
     return injected;
   }
   if ((semaphore_ptr == nullptr) ||
@@ -90,7 +90,7 @@ static inline UINT tx_semaphore_delete(TX_SEMAPHORE* semaphore_ptr)
 }
 
 /**
- * @brief Host model of ``tx_semaphore_get``.
+ * @brief Host model of ``internal_tx_semaphore_get``.
  * @details Decrements a non-zero count. A zero count reports
  * ``TX_NO_INSTANCE`` whatever the wait, so both the port's try-take and its
  * blocking-take mappings can be driven.
@@ -107,10 +107,11 @@ static inline UINT tx_semaphore_delete(TX_SEMAPHORE* semaphore_ptr)
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_semaphore_get(TX_SEMAPHORE* semaphore_ptr, ULONG wait_option)
+RA8_INTERNAL static inline UINT internal_tx_semaphore_get(TX_SEMAPHORE* semaphore_ptr,
+                                                          ULONG         wait_option)
 {
   UINT injected = TX_SUCCESS;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_semaphore, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_semaphore, &injected)) {
     return injected;
   }
   if ((semaphore_ptr == nullptr) ||
@@ -126,7 +127,7 @@ static inline UINT tx_semaphore_get(TX_SEMAPHORE* semaphore_ptr, ULONG wait_opti
 }
 
 /**
- * @brief Host model of ``tx_semaphore_put``.
+ * @brief Host model of ``internal_tx_semaphore_put``.
  * @details Increments the instance count; ThreadX has no ceiling, so the
  * count may exceed whatever the creator asked for.
  * @param[in,out] semaphore_ptr Semaphore to post.
@@ -140,10 +141,10 @@ static inline UINT tx_semaphore_get(TX_SEMAPHORE* semaphore_ptr, ULONG wait_opti
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_semaphore_put(TX_SEMAPHORE* semaphore_ptr)
+RA8_INTERNAL static inline UINT internal_tx_semaphore_put(TX_SEMAPHORE* semaphore_ptr)
 {
   UINT injected = TX_SUCCESS;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_semaphore, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_semaphore, &injected)) {
     return injected;
   }
   if ((semaphore_ptr == nullptr) ||
@@ -155,7 +156,7 @@ static inline UINT tx_semaphore_put(TX_SEMAPHORE* semaphore_ptr)
 }
 
 /**
- * @brief Host model of ``tx_mutex_create``.
+ * @brief Host model of ``internal_tx_mutex_create``.
  * @details Records the priority-inheritance selector so the port's choice can
  * be asserted, and starts the mutex unowned.
  * @param[out] mutex_ptr Mutex control block to initialise.
@@ -171,13 +172,13 @@ static inline UINT tx_semaphore_put(TX_SEMAPHORE* semaphore_ptr)
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT
+RA8_INTERNAL static inline UINT
 /* NOLINTNEXTLINE(readability-non-const-parameter) -- ThreadX API pins it non-const. */
-tx_mutex_create(TX_MUTEX* mutex_ptr, CHAR* name_ptr, UINT inherit)
+internal_tx_mutex_create(TX_MUTEX* mutex_ptr, CHAR* name_ptr, UINT inherit)
 {
   UINT injected = TX_SUCCESS;
   (void)name_ptr;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_mutex, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_mutex, &injected)) {
     return injected;
   }
   if (mutex_ptr == nullptr) {
@@ -190,23 +191,23 @@ tx_mutex_create(TX_MUTEX* mutex_ptr, CHAR* name_ptr, UINT inherit)
 }
 
 /**
- * @brief Host model of ``tx_mutex_delete``.
+ * @brief Host model of ``internal_tx_mutex_delete``.
  * @details Clears the sentinel so later locks are rejected.
  * @param[in,out] mutex_ptr Mutex to delete.
  * @return ThreadX status code.
  * @retval TX_SUCCESS The mutex was deleted.
  * @retval TX_MUTEX_ERROR ``mutex_ptr`` was null or never created.
- * @pre ``mutex_ptr`` came from ``tx_mutex_create``.
+ * @pre ``mutex_ptr`` came from ``internal_tx_mutex_create``.
  * @pre Nothing owns the mutex.
  * @post The mutex no longer accepts locks.
  * @post The mutex family call counter has advanced.
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_mutex_delete(TX_MUTEX* mutex_ptr)
+RA8_INTERNAL static inline UINT internal_tx_mutex_delete(TX_MUTEX* mutex_ptr)
 {
   UINT injected = TX_SUCCESS;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_mutex, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_mutex, &injected)) {
     return injected;
   }
   if ((mutex_ptr == nullptr) || (mutex_ptr->magic != (uint32_t)k_ra8_esp_hosted_tx_shim_magic)) {
@@ -217,7 +218,7 @@ static inline UINT tx_mutex_delete(TX_MUTEX* mutex_ptr)
 }
 
 /**
- * @brief Host model of ``tx_mutex_get``.
+ * @brief Host model of ``internal_tx_mutex_get``.
  * @details Single-threaded host code cannot contend, so the lock always
  * succeeds and only deepens the ownership count.
  * @param[in,out] mutex_ptr Mutex to lock.
@@ -232,11 +233,11 @@ static inline UINT tx_mutex_delete(TX_MUTEX* mutex_ptr)
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_mutex_get(TX_MUTEX* mutex_ptr, ULONG wait_option)
+RA8_INTERNAL static inline UINT internal_tx_mutex_get(TX_MUTEX* mutex_ptr, ULONG wait_option)
 {
   UINT injected = TX_SUCCESS;
   (void)wait_option;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_mutex, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_mutex, &injected)) {
     return injected;
   }
   if ((mutex_ptr == nullptr) || (mutex_ptr->magic != (uint32_t)k_ra8_esp_hosted_tx_shim_magic)) {
@@ -247,7 +248,7 @@ static inline UINT tx_mutex_get(TX_MUTEX* mutex_ptr, ULONG wait_option)
 }
 
 /**
- * @brief Host model of ``tx_mutex_put``.
+ * @brief Host model of ``internal_tx_mutex_put``.
  * @details Reports ``TX_NOT_OWNED`` for an unbalanced release, the one mutex
  * failure the port can provoke on a single-threaded host.
  * @param[in,out] mutex_ptr Mutex to release.
@@ -262,10 +263,10 @@ static inline UINT tx_mutex_get(TX_MUTEX* mutex_ptr, ULONG wait_option)
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_mutex_put(TX_MUTEX* mutex_ptr)
+RA8_INTERNAL static inline UINT internal_tx_mutex_put(TX_MUTEX* mutex_ptr)
 {
   UINT injected = TX_SUCCESS;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_mutex, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_mutex, &injected)) {
     return injected;
   }
   if ((mutex_ptr == nullptr) || (mutex_ptr->magic != (uint32_t)k_ra8_esp_hosted_tx_shim_magic)) {
@@ -279,7 +280,7 @@ static inline UINT tx_mutex_put(TX_MUTEX* mutex_ptr)
 }
 
 /**
- * @brief Host model of ``tx_thread_create``.
+ * @brief Host model of ``internal_tx_thread_create``.
  * @details Records entry point, argument, priority and stack size; the body is
  * never scheduled, so a test calls it directly when it wants it to run.
  * @param[out] thread_ptr Thread control block to initialise.
@@ -302,7 +303,7 @@ static inline UINT tx_mutex_put(TX_MUTEX* mutex_ptr)
  * @note Single-threaded host use only; nothing is scheduled.
  * @since 0.1.0
  */
-static inline UINT tx_thread_create(
+RA8_INTERNAL static inline UINT internal_tx_thread_create(
   TX_THREAD* thread_ptr,
   /* NOLINTNEXTLINE(readability-non-const-parameter) -- ThreadX API pins it non-const. */
   CHAR* name_ptr,
@@ -320,7 +321,7 @@ static inline UINT tx_thread_create(
   (void)preempt_threshold;
   (void)time_slice;
   (void)auto_start;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_thread, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_thread, &injected)) {
     return injected;
   }
   if ((thread_ptr == nullptr) || (entry_function == nullptr) || (stack_start == nullptr)) {
@@ -336,23 +337,23 @@ static inline UINT tx_thread_create(
 }
 
 /**
- * @brief Host model of ``tx_thread_terminate``.
+ * @brief Host model of ``internal_tx_thread_terminate``.
  * @details Marks the recorded thread terminated without running anything.
  * @param[in,out] thread_ptr Thread to terminate.
  * @return ThreadX status code.
  * @retval TX_SUCCESS The thread is marked terminated.
  * @retval TX_THREAD_ERROR ``thread_ptr`` was null or never created.
- * @pre ``thread_ptr`` came from ``tx_thread_create``.
+ * @pre ``thread_ptr`` came from ``internal_tx_thread_create``.
  * @pre The caller will delete the thread afterwards.
  * @post The thread reads as terminated.
  * @post The thread family call counter has advanced.
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_thread_terminate(TX_THREAD* thread_ptr)
+RA8_INTERNAL static inline UINT internal_tx_thread_terminate(TX_THREAD* thread_ptr)
 {
   UINT injected = TX_SUCCESS;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_thread, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_thread, &injected)) {
     return injected;
   }
   if ((thread_ptr == nullptr) || (thread_ptr->magic != (uint32_t)k_ra8_esp_hosted_tx_shim_magic)) {
@@ -363,7 +364,7 @@ static inline UINT tx_thread_terminate(TX_THREAD* thread_ptr)
 }
 
 /**
- * @brief Host model of ``tx_thread_delete``.
+ * @brief Host model of ``internal_tx_thread_delete``.
  * @details Clears the control block so a later terminate is rejected.
  * @param[in,out] thread_ptr Thread to delete.
  * @return ThreadX status code.
@@ -376,10 +377,10 @@ static inline UINT tx_thread_terminate(TX_THREAD* thread_ptr)
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_thread_delete(TX_THREAD* thread_ptr)
+RA8_INTERNAL static inline UINT internal_tx_thread_delete(TX_THREAD* thread_ptr)
 {
   UINT injected = TX_SUCCESS;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_thread, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_thread, &injected)) {
     return injected;
   }
   if ((thread_ptr == nullptr) || (thread_ptr->magic != (uint32_t)k_ra8_esp_hosted_tx_shim_magic)) {
@@ -390,7 +391,7 @@ static inline UINT tx_thread_delete(TX_THREAD* thread_ptr)
 }
 
 /**
- * @brief Host model of ``tx_thread_sleep``.
+ * @brief Host model of ``internal_tx_thread_sleep``.
  * @details Does not block; it advances the fake tick counter instead,
  * which is what makes an elapsed-time assertion possible without a clock.
  * @param[in] timer_ticks Ticks to sleep.
@@ -403,10 +404,10 @@ static inline UINT tx_thread_delete(TX_THREAD* thread_ptr)
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_thread_sleep(ULONG timer_ticks)
+RA8_INTERNAL static inline UINT internal_tx_thread_sleep(ULONG timer_ticks)
 {
   UINT injected = TX_SUCCESS;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_thread, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_thread, &injected)) {
     return injected;
   }
   g_ra8_esp_hosted_tx_shim.sleeps++;
@@ -416,7 +417,7 @@ static inline UINT tx_thread_sleep(ULONG timer_ticks)
 }
 
 /**
- * @brief Host model of ``tx_thread_relinquish``.
+ * @brief Host model of ``internal_tx_thread_relinquish``.
  * @details Counts the yield; there is nothing to yield to on the host.
  * @pre The shim has been reset at least once.
  * @pre The caller is not modelling interrupt context.
@@ -425,13 +426,13 @@ static inline UINT tx_thread_sleep(ULONG timer_ticks)
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline void tx_thread_relinquish(void)
+RA8_INTERNAL static inline void internal_tx_thread_relinquish(void)
 {
   g_ra8_esp_hosted_tx_shim.relinquishes++;
 }
 
 /**
- * @brief Host model of ``tx_timer_create``.
+ * @brief Host model of ``internal_tx_timer_create``.
  * @details Records both tick counts so one-shot and periodic timers stay
  * distinguishable, and honours the auto-activate selector.
  * @param[out] timer_ptr Timer control block to initialise.
@@ -452,7 +453,7 @@ static inline void tx_thread_relinquish(void)
  * @note Single-threaded host use only; nothing fires by itself.
  * @since 0.1.0
  */
-static inline UINT tx_timer_create(
+RA8_INTERNAL static inline UINT internal_tx_timer_create(
   TX_TIMER* timer_ptr,
   /* NOLINTNEXTLINE(readability-non-const-parameter) -- ThreadX API pins it non-const. */
   CHAR* name_ptr,
@@ -464,7 +465,7 @@ static inline UINT tx_timer_create(
 {
   UINT injected = TX_SUCCESS;
   (void)name_ptr;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_timer, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_timer, &injected)) {
     return injected;
   }
   if ((timer_ptr == nullptr) || (expiration_function == nullptr)) {
@@ -483,23 +484,23 @@ static inline UINT tx_timer_create(
 }
 
 /**
- * @brief Host model of ``tx_timer_deactivate``.
+ * @brief Host model of ``internal_tx_timer_deactivate``.
  * @details Marks the timer stopped; a later fire request is refused.
  * @param[in,out] timer_ptr Timer to stop.
  * @return ThreadX status code.
  * @retval TX_SUCCESS The timer is stopped.
  * @retval TX_TIMER_ERROR ``timer_ptr`` was null or never created.
- * @pre ``timer_ptr`` came from ``tx_timer_create``.
+ * @pre ``timer_ptr`` came from ``internal_tx_timer_create``.
  * @pre The caller will delete or restart the timer.
  * @post The timer reads as inactive.
  * @post The timer family call counter has advanced.
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_timer_deactivate(TX_TIMER* timer_ptr)
+RA8_INTERNAL static inline UINT internal_tx_timer_deactivate(TX_TIMER* timer_ptr)
 {
   UINT injected = TX_SUCCESS;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_timer, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_timer, &injected)) {
     return injected;
   }
   if ((timer_ptr == nullptr) || (timer_ptr->magic != (uint32_t)k_ra8_esp_hosted_tx_shim_magic)) {
@@ -510,7 +511,7 @@ static inline UINT tx_timer_deactivate(TX_TIMER* timer_ptr)
 }
 
 /**
- * @brief Host model of ``tx_timer_delete``.
+ * @brief Host model of ``internal_tx_timer_delete``.
  * @details Clears the control block so a later fire request is rejected.
  * @param[in,out] timer_ptr Timer to delete.
  * @return ThreadX status code.
@@ -523,10 +524,10 @@ static inline UINT tx_timer_deactivate(TX_TIMER* timer_ptr)
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_timer_delete(TX_TIMER* timer_ptr)
+RA8_INTERNAL static inline UINT internal_tx_timer_delete(TX_TIMER* timer_ptr)
 {
   UINT injected = TX_SUCCESS;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_timer, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_timer, &injected)) {
     return injected;
   }
   if ((timer_ptr == nullptr) || (timer_ptr->magic != (uint32_t)k_ra8_esp_hosted_tx_shim_magic)) {
@@ -537,9 +538,9 @@ static inline UINT tx_timer_delete(TX_TIMER* timer_ptr)
 }
 
 /**
- * @brief Host model of ``tx_time_get``.
+ * @brief Host model of ``internal_tx_time_get``.
  * @details Returns the fake 32-bit tick counter, which a test moves with
- * ::ra8_esp_hosted_tx_shim_set_ticks or by sleeping.
+ * ::internal_ra8_esp_hosted_tx_shim_set_ticks or by sleeping.
  * @return Current fake tick count.
  * @retval 0 The shim was just reset.
  * @pre The shim has been reset at least once.
@@ -549,9 +550,53 @@ static inline UINT tx_timer_delete(TX_TIMER* timer_ptr)
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline ULONG tx_time_get(void)
+RA8_INTERNAL static inline ULONG internal_tx_time_get(void)
 {
   UINT injected = TX_SUCCESS;
-  (void)ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_time, &injected);
+  (void)internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_time, &injected);
   return g_ra8_esp_hosted_tx_shim.ticks;
 }
+
+/**
+ * @name Off-target ThreadX spelling compatibility
+ * @brief Map vendor ThreadX call spellings onto the bounded host model.
+ * @details These aliases exist only in the RA8_OFF_TARGET shim. Target builds
+ * include the vendor ``tx_api.h`` instead, so vendor declarations and SOUP
+ * call sites retain their required ABI spellings.
+ * @{
+ */
+/** @def tx_mutex_create @brief Route `tx_mutex_create` to ::internal_tx_mutex_create in host tests. */
+#define tx_mutex_create internal_tx_mutex_create
+/** @def tx_mutex_delete @brief Route `tx_mutex_delete` to ::internal_tx_mutex_delete in host tests. */
+#define tx_mutex_delete internal_tx_mutex_delete
+/** @def tx_mutex_get @brief Route `tx_mutex_get` to ::internal_tx_mutex_get in host tests. */
+#define tx_mutex_get internal_tx_mutex_get
+/** @def tx_mutex_put @brief Route `tx_mutex_put` to ::internal_tx_mutex_put in host tests. */
+#define tx_mutex_put internal_tx_mutex_put
+/** @def tx_semaphore_create @brief Route `tx_semaphore_create` to ::internal_tx_semaphore_create in host tests. */
+#define tx_semaphore_create internal_tx_semaphore_create
+/** @def tx_semaphore_delete @brief Route `tx_semaphore_delete` to ::internal_tx_semaphore_delete in host tests. */
+#define tx_semaphore_delete internal_tx_semaphore_delete
+/** @def tx_semaphore_get @brief Route `tx_semaphore_get` to ::internal_tx_semaphore_get in host tests. */
+#define tx_semaphore_get internal_tx_semaphore_get
+/** @def tx_semaphore_put @brief Route `tx_semaphore_put` to ::internal_tx_semaphore_put in host tests. */
+#define tx_semaphore_put internal_tx_semaphore_put
+/** @def tx_thread_create @brief Route `tx_thread_create` to ::internal_tx_thread_create in host tests. */
+#define tx_thread_create internal_tx_thread_create
+/** @def tx_thread_delete @brief Route `tx_thread_delete` to ::internal_tx_thread_delete in host tests. */
+#define tx_thread_delete internal_tx_thread_delete
+/** @def tx_thread_relinquish @brief Route `tx_thread_relinquish` to ::internal_tx_thread_relinquish in host tests. */
+#define tx_thread_relinquish internal_tx_thread_relinquish
+/** @def tx_thread_sleep @brief Route `tx_thread_sleep` to ::internal_tx_thread_sleep in host tests. */
+#define tx_thread_sleep internal_tx_thread_sleep
+/** @def tx_thread_terminate @brief Route `tx_thread_terminate` to ::internal_tx_thread_terminate in host tests. */
+#define tx_thread_terminate internal_tx_thread_terminate
+/** @def tx_time_get @brief Route `tx_time_get` to ::internal_tx_time_get in host tests. */
+#define tx_time_get internal_tx_time_get
+/** @def tx_timer_create @brief Route `tx_timer_create` to ::internal_tx_timer_create in host tests. */
+#define tx_timer_create internal_tx_timer_create
+/** @def tx_timer_deactivate @brief Route `tx_timer_deactivate` to ::internal_tx_timer_deactivate in host tests. */
+#define tx_timer_deactivate internal_tx_timer_deactivate
+/** @def tx_timer_delete @brief Route `tx_timer_delete` to ::internal_tx_timer_delete in host tests. */
+#define tx_timer_delete internal_tx_timer_delete
+/** @} */

@@ -77,9 +77,9 @@ static const char* s_tag = "ESPH_MEM";
  * @invariant ::k_ra8_esp_hosted_align_max is a power of two.
  * @par Example:
  * @code
- * void* p = ra8_esp_hosted_rtos_alloc(64U, k_ra8_esp_hosted_align_none);
+ * void* p = priv_ra8_esp_hosted_rtos_alloc(64U, k_ra8_esp_hosted_align_none);
  * @endcode
- * @see ra8_esp_hosted_rtos_alloc
+ * @see priv_ra8_esp_hosted_rtos_alloc
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -106,7 +106,7 @@ typedef enum : uint32_t {
  * ra8_esp_hosted_alloc_hdr_t hdr = {};
  * (void)memcpy(&hdr, (const uint8_t*)p - k_ra8_esp_hosted_hdr_bytes, sizeof(hdr));
  * @endcode
- * @see ra8_esp_hosted_rtos_alloc
+ * @see priv_ra8_esp_hosted_rtos_alloc
  * @since 0.1.0
  */
 typedef struct {
@@ -130,7 +130,7 @@ static_assert(sizeof(ra8_esp_hosted_alloc_hdr_t) <= (size_t)k_ra8_esp_hosted_hdr
  * @code
  * queue_handle_t q = g_h.funcs->_h_create_queue(20U, 28U);
  * @endcode
- * @see ra8_esp_hosted_rtos_bind_pool
+ * @see priv_ra8_esp_hosted_rtos_bind_pool
  * @since 0.1.0
  */
 typedef struct {
@@ -149,9 +149,9 @@ typedef struct {
  * @invariant Every ``queues[i].used`` row has a live ThreadX queue.
  * @par Example:
  * @code
- * TEST_ASSERT_EQ(true, ra8_esp_hosted_rtos_is_ready());
+ * TEST_ASSERT_EQ(true, priv_ra8_esp_hosted_rtos_is_ready());
  * @endcode
- * @see ra8_esp_hosted_rtos_pool_init
+ * @see priv_ra8_esp_hosted_rtos_pool_init
  * @since 0.1.0
  */
 typedef struct {
@@ -166,7 +166,7 @@ typedef struct {
  * @var s_pool
  * @brief Singleton state of the memory and queue half.
  * @details Zero-initialised at link time; brought up by
- * ::ra8_esp_hosted_rtos_pool_init.
+ * ::priv_ra8_esp_hosted_rtos_pool_init.
  * @note Static; do not access outside this TU.
  * @warning Direct modification bypasses every ThreadX consistency check.
  * @since 0.1.0
@@ -225,7 +225,7 @@ static char s_tx_name_esph_q[] = "esph_q";
 /* Fixed-storage allocator */
 /* ----------------------------------------------------------------------- */
 
-ra8_err_t ra8_esp_hosted_rtos_pool_init(void)
+ra8_err_t priv_ra8_esp_hosted_rtos_pool_init(void)
 {
   if (s_pool.ready) {
     ra8_log_error(s_tag, "pool already initialised");
@@ -252,7 +252,7 @@ ra8_err_t ra8_esp_hosted_rtos_pool_init(void)
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_esp_hosted_rtos_pool_deinit(void)
+ra8_err_t priv_ra8_esp_hosted_rtos_pool_deinit(void)
 {
   if (!s_pool.ready) {
     ra8_log_error(s_tag, "pool not initialised");
@@ -281,7 +281,7 @@ ra8_err_t ra8_esp_hosted_rtos_pool_deinit(void)
   return worst;
 }
 
-void ra8_esp_hosted_rtos_pool_stats(uint32_t* out_available, uint32_t* out_fragments)
+void priv_ra8_esp_hosted_rtos_pool_stats(uint32_t* out_available, uint32_t* out_fragments)
 {
   ULONG available = 0U;
   ULONG fragments = 0U;
@@ -302,7 +302,7 @@ void ra8_esp_hosted_rtos_pool_stats(uint32_t* out_available, uint32_t* out_fragm
   }
 }
 
-void* ra8_esp_hosted_rtos_alloc(size_t size, size_t align)
+void* priv_ra8_esp_hosted_rtos_alloc(size_t size, size_t align)
 {
   if (!s_pool.ready) {
     return nullptr;
@@ -340,7 +340,7 @@ void* ra8_esp_hosted_rtos_alloc(size_t size, size_t align)
   return (void*)aligned;
 }
 
-ra8_err_t ra8_esp_hosted_rtos_release(void* ptr)
+ra8_err_t priv_ra8_esp_hosted_rtos_release(void* ptr)
 {
   RA8_CHECK_NULL_PTR(ptr, s_tag, "release of a null pointer");
   ra8_esp_hosted_alloc_hdr_t hdr = {};
@@ -357,7 +357,7 @@ ra8_err_t ra8_esp_hosted_rtos_release(void* ptr)
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_esp_hosted_rtos_block_size(const void* ptr, size_t* out_size)
+ra8_err_t priv_ra8_esp_hosted_rtos_block_size(const void* ptr, size_t* out_size)
 {
   RA8_CHECK_NULL_PTR(ptr, s_tag, "block_size of a null pointer");
   RA8_CHECK_NULL_PTR(out_size, s_tag, "out_size is NULL");
@@ -372,7 +372,7 @@ ra8_err_t ra8_esp_hosted_rtos_block_size(const void* ptr, size_t* out_size)
   return k_ra8_ok;
 }
 
-uint32_t ra8_esp_hosted_rtos_queue_words(uint32_t item_bytes)
+uint32_t priv_ra8_esp_hosted_rtos_queue_words(uint32_t item_bytes)
 {
   const uint32_t word  = (uint32_t)k_ra8_esp_hosted_queue_word_bytes;
   const uint32_t words = (item_bytes + (word - 1U)) / word;
@@ -440,7 +440,7 @@ RA8_INTERNAL static void* internal_h_memset(void* buf, int val, size_t len)
 
 /**
  * @brief Serve an unaligned allocation from the transport byte pool.
- * @details Forwards to ::ra8_esp_hosted_rtos_alloc with no alignment demand,
+ * @details Forwards to ::priv_ra8_esp_hosted_rtos_alloc with no alignment demand,
  * so the block costs the sixteen-byte header and nothing more.
  * @param[in] size Payload bytes required.
  * @return Pointer to the payload, or null on failure.
@@ -456,7 +456,7 @@ RA8_INTERNAL static void* internal_h_memset(void* buf, int val, size_t len)
  */
 RA8_INTERNAL static void* internal_h_malloc(size_t size)
 {
-  return ra8_esp_hosted_rtos_alloc(size, (size_t)k_ra8_esp_hosted_align_none);
+  return priv_ra8_esp_hosted_rtos_alloc(size, (size_t)k_ra8_esp_hosted_align_none);
 }
 
 /**
@@ -484,7 +484,8 @@ RA8_INTERNAL static void* internal_h_calloc(size_t blk_no, size_t size)
   if (blk_no > ((size_t)k_ra8_esp_hosted_alloc_max / size)) {
     return nullptr;
   }
-  void* const p = ra8_esp_hosted_rtos_alloc(blk_no * size, (size_t)k_ra8_esp_hosted_align_none);
+  void* const p =
+    priv_ra8_esp_hosted_rtos_alloc(blk_no * size, (size_t)k_ra8_esp_hosted_align_none);
   if (p != nullptr) {
     (void)memset(p, 0, blk_no * size);
   }
@@ -493,7 +494,7 @@ RA8_INTERNAL static void* internal_h_calloc(size_t blk_no, size_t size)
 
 /**
  * @brief Return a block to the transport byte pool.
- * @details Forwards to ::ra8_esp_hosted_rtos_release. Because every block
+ * @details Forwards to ::priv_ra8_esp_hosted_rtos_release. Because every block
  * carries the same header, this also correctly frees an aligned block.
  * @param[in] ptr Payload pointer previously handed out by this port.
  * @pre ``ptr`` came from this port's allocator, or is null.
@@ -506,7 +507,7 @@ RA8_INTERNAL static void* internal_h_calloc(size_t blk_no, size_t size)
  */
 RA8_INTERNAL static void internal_h_free(void* ptr)
 {
-  (void)ra8_esp_hosted_rtos_release(ptr);
+  (void)priv_ra8_esp_hosted_rtos_release(ptr);
 }
 
 /**
@@ -532,28 +533,28 @@ RA8_INTERNAL static void internal_h_free(void* ptr)
 RA8_INTERNAL static void* internal_h_realloc(void* mem, size_t newsize)
 {
   if (mem == nullptr) {
-    return ra8_esp_hosted_rtos_alloc(newsize, (size_t)k_ra8_esp_hosted_align_none);
+    return priv_ra8_esp_hosted_rtos_alloc(newsize, (size_t)k_ra8_esp_hosted_align_none);
   }
   if (newsize == 0U) {
-    (void)ra8_esp_hosted_rtos_release(mem);
+    (void)priv_ra8_esp_hosted_rtos_release(mem);
     return nullptr;
   }
   size_t oldsize = 0U;
-  if (ra8_esp_hosted_rtos_block_size(mem, &oldsize) != k_ra8_ok) {
+  if (priv_ra8_esp_hosted_rtos_block_size(mem, &oldsize) != k_ra8_ok) {
     return nullptr;
   }
-  void* const fresh = ra8_esp_hosted_rtos_alloc(newsize, (size_t)k_ra8_esp_hosted_align_none);
+  void* const fresh = priv_ra8_esp_hosted_rtos_alloc(newsize, (size_t)k_ra8_esp_hosted_align_none);
   if (fresh == nullptr) {
     return nullptr;
   }
   (void)memcpy(fresh, mem, (oldsize < newsize) ? oldsize : newsize);
-  (void)ra8_esp_hosted_rtos_release(mem);
+  (void)priv_ra8_esp_hosted_rtos_release(mem);
   return fresh;
 }
 
 /**
  * @brief Serve an aligned allocation from the transport byte pool.
- * @details Forwards to ::ra8_esp_hosted_rtos_alloc, which over-allocates and
+ * @details Forwards to ::priv_ra8_esp_hosted_rtos_alloc, which over-allocates and
  * stashes the base pointer immediately below the aligned payload. The
  * vendored transport asks for ``HOSTED_MEM_ALIGNMENT_64``, which is also the
  * Cortex-M85 cache-line size, so a DMA buffer can be cleaned and invalidated
@@ -572,7 +573,7 @@ RA8_INTERNAL static void* internal_h_realloc(void* mem, size_t newsize)
  */
 RA8_INTERNAL static void* internal_h_malloc_align(size_t size, size_t align)
 {
-  return ra8_esp_hosted_rtos_alloc(size, align);
+  return priv_ra8_esp_hosted_rtos_alloc(size, align);
 }
 
 /**
@@ -590,7 +591,7 @@ RA8_INTERNAL static void* internal_h_malloc_align(size_t size, size_t align)
  */
 RA8_INTERNAL static void internal_h_free_align(void* ptr)
 {
-  (void)ra8_esp_hosted_rtos_release(ptr);
+  (void)priv_ra8_esp_hosted_rtos_release(ptr);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -646,7 +647,7 @@ RA8_INTERNAL static ra8_esp_hosted_queue_slot_t* internal_queue_slot(const void*
  */
 RA8_INTERNAL static void* internal_h_create_queue(uint32_t qnum_elem, uint32_t qitem_size)
 {
-  const uint32_t words = ra8_esp_hosted_rtos_queue_words(qitem_size);
+  const uint32_t words = priv_ra8_esp_hosted_rtos_queue_words(qitem_size);
   if (!s_pool.ready || (words == 0U)) {
     return nullptr;
   }
@@ -703,7 +704,8 @@ RA8_INTERNAL static int internal_h_queue_item(void* queue_handle, void* item, in
   if ((slot == nullptr) || (item == nullptr)) {
     return RET_INVALID;
   }
-  const UINT rc = tx_queue_send(&slot->cb, item, (ULONG)ra8_esp_hosted_rtos_ms_to_ticks(timeout));
+  const UINT rc =
+    tx_queue_send(&slot->cb, item, (ULONG)priv_ra8_esp_hosted_rtos_ms_to_ticks(timeout));
   if (rc == TX_SUCCESS) {
     slot->enqueued++;
     return RET_OK;
@@ -739,7 +741,7 @@ RA8_INTERNAL static int internal_h_dequeue_item(void* queue_handle, void* item, 
     return RET_INVALID;
   }
   const UINT rc =
-    tx_queue_receive(&slot->cb, item, (ULONG)ra8_esp_hosted_rtos_ms_to_ticks(timeout));
+    tx_queue_receive(&slot->cb, item, (ULONG)priv_ra8_esp_hosted_rtos_ms_to_ticks(timeout));
   if (rc == TX_SUCCESS) {
     if (slot->enqueued > 0U) {
       slot->enqueued--;
@@ -840,7 +842,7 @@ RA8_INTERNAL static int internal_h_destroy_queue(void* queue_handle)
   return rc;
 }
 
-ra8_err_t ra8_esp_hosted_rtos_bind_pool(hosted_osi_funcs_t* out)
+ra8_err_t priv_ra8_esp_hosted_rtos_bind_pool(hosted_osi_funcs_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "vtable is NULL");
   out->_h_memcpy            = internal_h_memcpy;

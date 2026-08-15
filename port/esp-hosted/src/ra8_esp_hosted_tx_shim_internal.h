@@ -173,9 +173,9 @@ typedef enum : uint32_t {
  * @invariant The enumerators are contiguous from zero.
  * @par Example:
  * @code
- * ra8_esp_hosted_tx_shim_arm(k_ra8_esp_hosted_tx_shim_family_pool, TX_NO_MEMORY);
+ * internal_ra8_esp_hosted_tx_shim_arm(k_ra8_esp_hosted_tx_shim_family_pool, TX_NO_MEMORY);
  * @endcode
- * @see ra8_esp_hosted_tx_shim_arm
+ * @see internal_ra8_esp_hosted_tx_shim_arm
  * @since 0.1.0
  */
 typedef enum : uint8_t {
@@ -199,9 +199,9 @@ typedef enum : uint8_t {
  * @par Example:
  * @code
  * TX_BYTE_POOL pool = {};
- * (void)tx_byte_pool_create(&pool, "p", backing, sizeof(backing));
+ * (void)internal_tx_byte_pool_create(&pool, "p", backing, sizeof(backing));
  * @endcode
- * @see tx_byte_allocate
+ * @see internal_tx_byte_allocate
  * @since 0.1.0
  */
 typedef struct {
@@ -222,9 +222,9 @@ typedef struct {
  * @par Example:
  * @code
  * TX_QUEUE q = {};
- * (void)tx_queue_create(&q, "q", 2U, storage, sizeof(storage));
+ * (void)internal_tx_queue_create(&q, "q", 2U, storage, sizeof(storage));
  * @endcode
- * @see tx_queue_send
+ * @see internal_tx_queue_send
  * @since 0.1.0
  */
 typedef struct {
@@ -319,7 +319,7 @@ typedef struct {
  * TX_TIMER t = {};
  * TEST_ASSERT_EQ(false, t.active);
  * @endcode
- * @see ra8_esp_hosted_tx_shim_fire_timer
+ * @see internal_ra8_esp_hosted_tx_shim_fire_timer
  * @since 0.1.0
  */
 typedef struct {
@@ -342,10 +342,10 @@ typedef struct {
  *            calls that returned an injected failure.
  * @par Example:
  * @code
- * ra8_esp_hosted_tx_shim_reset();
+ * internal_ra8_esp_hosted_tx_shim_reset();
  * TEST_ASSERT_EQ(0U, g_ra8_esp_hosted_tx_shim.sleeps);
  * @endcode
- * @see ra8_esp_hosted_tx_shim_reset
+ * @see internal_ra8_esp_hosted_tx_shim_reset
  * @since 0.1.0
  */
 typedef struct {
@@ -384,7 +384,7 @@ RA8_ESP_HOSTED_TX_SHIM_STORAGE ra8_esp_hosted_tx_shim_t g_ra8_esp_hosted_tx_shim
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline void ra8_esp_hosted_tx_shim_reset(void)
+RA8_INTERNAL static inline void internal_ra8_esp_hosted_tx_shim_reset(void)
 {
   (void)memset(&g_ra8_esp_hosted_tx_shim, 0, sizeof(g_ra8_esp_hosted_tx_shim));
 }
@@ -402,7 +402,8 @@ static inline void ra8_esp_hosted_tx_shim_reset(void)
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline void ra8_esp_hosted_tx_shim_arm(ra8_esp_hosted_tx_shim_family_t family, UINT status)
+RA8_INTERNAL static inline void
+internal_ra8_esp_hosted_tx_shim_arm(ra8_esp_hosted_tx_shim_family_t family, UINT status)
 {
   if ((uint32_t)family < (uint32_t)k_ra8_esp_hosted_tx_shim_family_count) {
     g_ra8_esp_hosted_tx_shim.status[(uint32_t)family] = status;
@@ -422,7 +423,7 @@ static inline void ra8_esp_hosted_tx_shim_arm(ra8_esp_hosted_tx_shim_family_t fa
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline void ra8_esp_hosted_tx_shim_set_ticks(ULONG ticks)
+RA8_INTERNAL static inline void internal_ra8_esp_hosted_tx_shim_set_ticks(ULONG ticks)
 {
   g_ra8_esp_hosted_tx_shim.ticks = ticks;
 }
@@ -443,8 +444,8 @@ static inline void ra8_esp_hosted_tx_shim_set_ticks(ULONG ticks)
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline bool ra8_esp_hosted_tx_shim_enter(ra8_esp_hosted_tx_shim_family_t family,
-                                                UINT*                           status)
+RA8_INTERNAL static inline bool
+internal_ra8_esp_hosted_tx_shim_enter(ra8_esp_hosted_tx_shim_family_t family, UINT* status)
 {
   const uint32_t idx = (uint32_t)family;
   if ((status == nullptr) || (idx >= (uint32_t)k_ra8_esp_hosted_tx_shim_family_count)) {
@@ -474,7 +475,7 @@ static inline bool ra8_esp_hosted_tx_shim_enter(ra8_esp_hosted_tx_shim_family_t 
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline bool ra8_esp_hosted_tx_shim_fire_timer(TX_TIMER* timer_ptr)
+RA8_INTERNAL static inline bool internal_ra8_esp_hosted_tx_shim_fire_timer(TX_TIMER* timer_ptr)
 {
   if ((timer_ptr == nullptr) || (timer_ptr->magic != (uint32_t)k_ra8_esp_hosted_tx_shim_magic)) {
     return false;
@@ -490,7 +491,7 @@ static inline bool ra8_esp_hosted_tx_shim_fire_timer(TX_TIMER* timer_ptr)
 }
 
 /**
- * @brief Host model of ``tx_byte_pool_create``.
+ * @brief Host model of ``internal_tx_byte_pool_create``.
  * @details Records the backing store and resets the bump cursor.
  * @param[out] pool_ptr Pool control block to initialise.
  * @param[in] name_ptr Diagnostic name; accepted for signature shape.
@@ -506,13 +507,16 @@ static inline bool ra8_esp_hosted_tx_shim_fire_timer(TX_TIMER* timer_ptr)
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT
+RA8_INTERNAL static inline UINT
 /* NOLINTNEXTLINE(readability-non-const-parameter) -- ThreadX API pins it non-const. */
-tx_byte_pool_create(TX_BYTE_POOL* pool_ptr, CHAR* name_ptr, void* pool_start, ULONG pool_size)
+internal_tx_byte_pool_create(TX_BYTE_POOL* pool_ptr,
+                             CHAR*         name_ptr,
+                             void*         pool_start,
+                             ULONG         pool_size)
 {
   UINT injected = TX_SUCCESS;
   (void)name_ptr;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_pool, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_pool, &injected)) {
     return injected;
   }
   if ((pool_ptr == nullptr) || (pool_start == nullptr)) {
@@ -527,24 +531,24 @@ tx_byte_pool_create(TX_BYTE_POOL* pool_ptr, CHAR* name_ptr, void* pool_start, UL
 }
 
 /**
- * @brief Host model of ``tx_byte_pool_delete``.
+ * @brief Host model of ``internal_tx_byte_pool_delete``.
  * @details Clears the sentinel so a later allocation is rejected, which is how
  * the port's use-after-teardown path is reached.
  * @param[in,out] pool_ptr Pool to delete.
  * @return ThreadX status code.
  * @retval TX_SUCCESS The pool was deleted.
  * @retval TX_POOL_ERROR ``pool_ptr`` was null or never created.
- * @pre ``pool_ptr`` came from ``tx_byte_pool_create``.
+ * @pre ``pool_ptr`` came from ``internal_tx_byte_pool_create``.
  * @pre No block from the pool is still in use.
  * @post The pool no longer satisfies allocations.
  * @post The pool family call counter has advanced.
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_byte_pool_delete(TX_BYTE_POOL* pool_ptr)
+RA8_INTERNAL static inline UINT internal_tx_byte_pool_delete(TX_BYTE_POOL* pool_ptr)
 {
   UINT injected = TX_SUCCESS;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_pool, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_pool, &injected)) {
     return injected;
   }
   if ((pool_ptr == nullptr) || (pool_ptr->magic != (uint32_t)k_ra8_esp_hosted_tx_shim_magic)) {
@@ -555,7 +559,7 @@ static inline UINT tx_byte_pool_delete(TX_BYTE_POOL* pool_ptr)
 }
 
 /**
- * @brief Host model of ``tx_byte_allocate``.
+ * @brief Host model of ``internal_tx_byte_allocate``.
  * @details Bumps a cursor and returns ``TX_NO_MEMORY`` once the request no
  * longer fits -- exactly the pool-exhaustion branch the port must handle.
  * @param[in,out] pool_ptr Pool to allocate from.
@@ -574,12 +578,14 @@ static inline UINT tx_byte_pool_delete(TX_BYTE_POOL* pool_ptr)
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT
-tx_byte_allocate(TX_BYTE_POOL* pool_ptr, void** memory_ptr, ULONG memory_size, ULONG wait_option)
+RA8_INTERNAL static inline UINT internal_tx_byte_allocate(TX_BYTE_POOL* pool_ptr,
+                                                          void**        memory_ptr,
+                                                          ULONG         memory_size,
+                                                          ULONG         wait_option)
 {
   UINT injected = TX_SUCCESS;
   (void)wait_option;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_pool, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_pool, &injected)) {
     /* Honour the documented postcondition on the injection path too: a test
        that arms this family gets no block, whatever status it armed. Leaving
        *memory_ptr untouched let an armed TX_SUCCESS report a successful
@@ -610,10 +616,10 @@ tx_byte_allocate(TX_BYTE_POOL* pool_ptr, void** memory_ptr, ULONG memory_size, U
 }
 
 /**
- * @brief Host model of ``tx_byte_release``.
+ * @brief Host model of ``internal_tx_byte_release``.
  * @details The model does not merge blocks back, so release only validates
  * the pointer and lets the injection seam report a failing release.
- * @param[in] memory_ptr Block previously returned by ``tx_byte_allocate``.
+ * @param[in] memory_ptr Block previously returned by ``internal_tx_byte_allocate``.
  * @return ThreadX status code.
  * @retval TX_SUCCESS The block was released.
  * @retval TX_PTR_ERROR ``memory_ptr`` was null.
@@ -624,10 +630,10 @@ tx_byte_allocate(TX_BYTE_POOL* pool_ptr, void** memory_ptr, ULONG memory_size, U
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_byte_release(void* memory_ptr)
+RA8_INTERNAL static inline UINT internal_tx_byte_release(void* memory_ptr)
 {
   UINT injected = TX_SUCCESS;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_pool, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_pool, &injected)) {
     return injected;
   }
   if (memory_ptr == nullptr) {
@@ -637,7 +643,7 @@ static inline UINT tx_byte_release(void* memory_ptr)
 }
 
 /**
- * @brief Host model of ``tx_byte_pool_info_get``.
+ * @brief Host model of ``internal_tx_byte_pool_info_get``.
  * @details Reports bytes still reachable from the cursor, and the live block
  * count plus one as the fragment count.
  * @param[in] pool_ptr Pool to inspect.
@@ -657,7 +663,7 @@ static inline UINT tx_byte_release(void* memory_ptr)
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_byte_pool_info_get(
+RA8_INTERNAL static inline UINT internal_tx_byte_pool_info_get(
   TX_BYTE_POOL* pool_ptr,
   CHAR**        name,
   ULONG*        available_bytes,
@@ -672,7 +678,7 @@ static inline UINT tx_byte_pool_info_get(
   (void)first_suspended;
   (void)suspended_count;
   (void)next_pool;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_pool, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_pool, &injected)) {
     return injected;
   }
   if ((pool_ptr == nullptr) || (pool_ptr->magic != (uint32_t)k_ra8_esp_hosted_tx_shim_magic)) {
@@ -688,7 +694,7 @@ static inline UINT tx_byte_pool_info_get(
 }
 
 /**
- * @brief Host model of ``tx_queue_create``.
+ * @brief Host model of ``internal_tx_queue_create``.
  * @details Derives the ring depth from the storage length and message size,
  * as ThreadX does, so the port's word rounding meets a real capacity.
  * @param[out] queue_ptr Queue control block to initialise.
@@ -707,7 +713,7 @@ static inline UINT tx_byte_pool_info_get(
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_queue_create(
+RA8_INTERNAL static inline UINT internal_tx_queue_create(
   TX_QUEUE* queue_ptr,
   /* NOLINTNEXTLINE(readability-non-const-parameter) -- ThreadX API pins it non-const. */
   CHAR* name_ptr,
@@ -717,7 +723,7 @@ static inline UINT tx_queue_create(
 {
   UINT injected = TX_SUCCESS;
   (void)name_ptr;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_queue, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_queue, &injected)) {
     return injected;
   }
   if ((queue_ptr == nullptr) || (queue_start == nullptr)) {
@@ -739,23 +745,23 @@ static inline UINT tx_queue_create(
 }
 
 /**
- * @brief Host model of ``tx_queue_delete``.
+ * @brief Host model of ``internal_tx_queue_delete``.
  * @details Clears the sentinel so later sends and receives are rejected.
  * @param[in,out] queue_ptr Queue to delete.
  * @return ThreadX status code.
  * @retval TX_SUCCESS The queue was deleted.
  * @retval TX_QUEUE_ERROR ``queue_ptr`` was null or never created.
- * @pre ``queue_ptr`` came from ``tx_queue_create``.
+ * @pre ``queue_ptr`` came from ``internal_tx_queue_create``.
  * @pre Nothing is waiting on the queue.
  * @post The queue no longer accepts messages.
  * @post The queue family call counter has advanced.
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_queue_delete(TX_QUEUE* queue_ptr)
+RA8_INTERNAL static inline UINT internal_tx_queue_delete(TX_QUEUE* queue_ptr)
 {
   UINT injected = TX_SUCCESS;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_queue, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_queue, &injected)) {
     return injected;
   }
   if ((queue_ptr == nullptr) || (queue_ptr->magic != (uint32_t)k_ra8_esp_hosted_tx_shim_magic)) {
@@ -766,23 +772,23 @@ static inline UINT tx_queue_delete(TX_QUEUE* queue_ptr)
 }
 
 /**
- * @brief Host model of ``tx_queue_flush``.
+ * @brief Host model of ``internal_tx_queue_flush``.
  * @details Discards every enqueued message without touching capacity.
  * @param[in,out] queue_ptr Queue to flush.
  * @return ThreadX status code.
  * @retval TX_SUCCESS The queue is empty.
  * @retval TX_QUEUE_ERROR ``queue_ptr`` was null or never created.
- * @pre ``queue_ptr`` came from ``tx_queue_create``.
+ * @pre ``queue_ptr`` came from ``internal_tx_queue_create``.
  * @pre The caller accepts that queued messages are lost.
  * @post The enqueued count is zero.
  * @post The queue family call counter has advanced.
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_queue_flush(TX_QUEUE* queue_ptr)
+RA8_INTERNAL static inline UINT internal_tx_queue_flush(TX_QUEUE* queue_ptr)
 {
   UINT injected = TX_SUCCESS;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_queue, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_queue, &injected)) {
     return injected;
   }
   if ((queue_ptr == nullptr) || (queue_ptr->magic != (uint32_t)k_ra8_esp_hosted_tx_shim_magic)) {
@@ -794,7 +800,7 @@ static inline UINT tx_queue_flush(TX_QUEUE* queue_ptr)
 }
 
 /**
- * @brief Host model of ``tx_queue_send``.
+ * @brief Host model of ``internal_tx_queue_send``.
  * @details Copies one message into the ring. The model cannot suspend, so a
  * full queue reports ``TX_QUEUE_FULL`` whatever the wait option; the wait the
  * port asked for is recorded so a test can still prove it requested a block.
@@ -813,10 +819,11 @@ static inline UINT tx_queue_flush(TX_QUEUE* queue_ptr)
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_queue_send(TX_QUEUE* queue_ptr, void* source_ptr, ULONG wait_option)
+RA8_INTERNAL static inline UINT
+internal_tx_queue_send(TX_QUEUE* queue_ptr, void* source_ptr, ULONG wait_option)
 {
   UINT injected = TX_SUCCESS;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_queue, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_queue, &injected)) {
     return injected;
   }
   if ((queue_ptr == nullptr) || (queue_ptr->magic != (uint32_t)k_ra8_esp_hosted_tx_shim_magic)) {
@@ -838,7 +845,7 @@ static inline UINT tx_queue_send(TX_QUEUE* queue_ptr, void* source_ptr, ULONG wa
 }
 
 /**
- * @brief Host model of ``tx_queue_receive``.
+ * @brief Host model of ``internal_tx_queue_receive``.
  * @details Copies the oldest message out. An empty queue reports
  * ``TX_QUEUE_EMPTY`` whatever the wait option, since there is no scheduler to
  * suspend on; the requested wait is recorded regardless.
@@ -857,10 +864,11 @@ static inline UINT tx_queue_send(TX_QUEUE* queue_ptr, void* source_ptr, ULONG wa
  * @note Single-threaded host use only.
  * @since 0.1.0
  */
-static inline UINT tx_queue_receive(TX_QUEUE* queue_ptr, void* destination_ptr, ULONG wait_option)
+RA8_INTERNAL static inline UINT
+internal_tx_queue_receive(TX_QUEUE* queue_ptr, void* destination_ptr, ULONG wait_option)
 {
   UINT injected = TX_SUCCESS;
-  if (ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_queue, &injected)) {
+  if (internal_ra8_esp_hosted_tx_shim_enter(k_ra8_esp_hosted_tx_shim_family_queue, &injected)) {
     return injected;
   }
   if ((queue_ptr == nullptr) || (queue_ptr->magic != (uint32_t)k_ra8_esp_hosted_tx_shim_magic)) {
@@ -880,3 +888,33 @@ static inline UINT tx_queue_receive(TX_QUEUE* queue_ptr, void* destination_ptr, 
   queue_ptr->count--;
   return TX_SUCCESS;
 }
+
+/**
+ * @name Off-target ThreadX spelling compatibility
+ * @brief Map vendor ThreadX call spellings onto the bounded host model.
+ * @details These aliases exist only in the RA8_OFF_TARGET shim. Target builds
+ * include the vendor ``tx_api.h`` instead, so vendor declarations and SOUP
+ * call sites retain their required ABI spellings.
+ * @{
+ */
+/** @def tx_byte_allocate @brief Route `tx_byte_allocate` to ::internal_tx_byte_allocate in host tests. */
+#define tx_byte_allocate internal_tx_byte_allocate
+/** @def tx_byte_pool_create @brief Route `tx_byte_pool_create` to ::internal_tx_byte_pool_create in host tests. */
+#define tx_byte_pool_create internal_tx_byte_pool_create
+/** @def tx_byte_pool_delete @brief Route `tx_byte_pool_delete` to ::internal_tx_byte_pool_delete in host tests. */
+#define tx_byte_pool_delete internal_tx_byte_pool_delete
+/** @def tx_byte_pool_info_get @brief Route `tx_byte_pool_info_get` to ::internal_tx_byte_pool_info_get in host tests. */
+#define tx_byte_pool_info_get internal_tx_byte_pool_info_get
+/** @def tx_byte_release @brief Route `tx_byte_release` to ::internal_tx_byte_release in host tests. */
+#define tx_byte_release internal_tx_byte_release
+/** @def tx_queue_create @brief Route `tx_queue_create` to ::internal_tx_queue_create in host tests. */
+#define tx_queue_create internal_tx_queue_create
+/** @def tx_queue_delete @brief Route `tx_queue_delete` to ::internal_tx_queue_delete in host tests. */
+#define tx_queue_delete internal_tx_queue_delete
+/** @def tx_queue_flush @brief Route `tx_queue_flush` to ::internal_tx_queue_flush in host tests. */
+#define tx_queue_flush internal_tx_queue_flush
+/** @def tx_queue_receive @brief Route `tx_queue_receive` to ::internal_tx_queue_receive in host tests. */
+#define tx_queue_receive internal_tx_queue_receive
+/** @def tx_queue_send @brief Route `tx_queue_send` to ::internal_tx_queue_send in host tests. */
+#define tx_queue_send internal_tx_queue_send
+/** @} */
