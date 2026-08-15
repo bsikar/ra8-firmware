@@ -32,3 +32,11 @@ target_include_directories(mkbookimg PRIVATE ${_repo}/libs/ra8_fs/inc ${_repo}/l
 # Rule 10) here exactly as they do in the ARM and host-test builds; only
 # vendored SOUP is compiled quietly.
 target_compile_options(mkbookimg PRIVATE -Wall -Wextra -Werror)
+
+include(CTest)
+if(BUILD_TESTING)
+  add_test(NAME mkbookimg_integration COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/integration.sh
+                                              $<TARGET_FILE:mkbookimg> ${CMAKE_COMMAND}
+  )
+  set_tests_properties(mkbookimg_integration PROPERTIES TIMEOUT 45)
+endif()
