@@ -6,9 +6,7 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
-#ifndef TEST_MEDIA_DL_CLI_INTERNAL_H
-/** @brief Include guard for the split CLI matrix test seam. */
-#define TEST_MEDIA_DL_CLI_INTERNAL_H
+#pragma once
 
 #include "ra8_attributes.h"
 
@@ -24,5 +22,3 @@
  * @since 0.1.0
  */
 RA8_PRIV void priv_test_mdl_cli_matrix_run(void);
-
-#endif /* TEST_MEDIA_DL_CLI_INTERNAL_H */

@@ -8,9 +8,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifndef RA8_CACHE_STORE_FIXTURE_H
-/** @brief Include guard for the cache-store host fixture. */
-#define RA8_CACHE_STORE_FIXTURE_H
+#pragma once
 
 /** @brief Deterministic payload seeds used to distinguish stored entries. */
 typedef enum : uint8_t {
@@ -98,5 +96,3 @@ static ra8_cache_store_entry_t s_index[k_t_index_cap];
 static LX_NOR_FLASH s_flash_pool[k_t_flash_pool];
 /** @brief Index of the next unused LevelX control block. */
 static uint32_t s_flash_next;
-
-#endif /* RA8_CACHE_STORE_FIXTURE_H */

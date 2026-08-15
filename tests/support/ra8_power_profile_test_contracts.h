@@ -7,9 +7,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifndef TESTS_SUPPORT_RA8_POWER_PROFILE_TEST_CONTRACTS_H
-/** @brief Include guard for the private power-profile test contracts. */
-#define TESTS_SUPPORT_RA8_POWER_PROFILE_TEST_CONTRACTS_H
+#pragma once
 
 /**
  * @brief Record one profiler GPIO edge in the bounded mock log.
@@ -188,5 +186,3 @@ RA8_INTERNAL static void internal_test_null_hooks_safe(void);
  * @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_multiple_regions_independent(void);
-
-#endif /* TESTS_SUPPORT_RA8_POWER_PROFILE_TEST_CONTRACTS_H */

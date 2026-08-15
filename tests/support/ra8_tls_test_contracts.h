@@ -8,9 +8,7 @@
  * @since 0.1.0
  */
 
-#ifndef RA8_TLS_TEST_CONTRACTS_H
-/** @brief Include guard for TLS facade test contracts. */
-#define RA8_TLS_TEST_CONTRACTS_H
+#pragma once
 
 #include <stddef.h>
 #include <stdint.h>
@@ -209,5 +207,3 @@ RA8_INTERNAL static void internal_test_mcdc_tls_recv_buf_len(void);
  * @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_mcdc_tls_handle_valid_bounds(void);
-
-#endif /* RA8_TLS_TEST_CONTRACTS_H */

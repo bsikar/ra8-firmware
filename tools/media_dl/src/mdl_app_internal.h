@@ -6,9 +6,7 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
-#ifndef MDL_APP_INTERNAL_H
-/** @brief Include guard for module-private CLI composition declarations. */
-#define MDL_APP_INTERNAL_H
+#pragma once
 
 #include <dirent.h>
 #include <errno.h>
@@ -455,5 +453,3 @@ RA8_PRIV int priv_mdl_app_run_init_site(const char* url, const char* descriptor_
  * @since 0.1.0
  */
 RA8_PRIV int priv_mdl_app_run_verify(const char* target_dir);
-
-#endif /* MDL_APP_INTERNAL_H */

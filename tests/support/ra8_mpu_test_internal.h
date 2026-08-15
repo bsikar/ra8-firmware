@@ -9,9 +9,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifndef TESTS_SUPPORT_RA8_MPU_TEST_INTERNAL_H
-/** @def TESTS_SUPPORT_RA8_MPU_TEST_INTERNAL_H @brief MPU test-contract include guard. */
-#define TESTS_SUPPORT_RA8_MPU_TEST_INTERNAL_H
+#pragma once
 
 /**
  * @brief Publish a hosted MPU region-count value.
@@ -319,5 +317,3 @@ RA8_INTERNAL static void internal_test_apply_boot_map_insufficient_regions(void)
  * @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_is_enabled_tracks_ctrl(void);
-
-#endif /* TESTS_SUPPORT_RA8_MPU_TEST_INTERNAL_H */

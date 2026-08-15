@@ -7,9 +7,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifndef RA8_SDMMC_SPI_CORE_CONTRACTS_H
-/** @brief Include guard for the SD protocol-helper contracts. */
-#define RA8_SDMMC_SPI_CORE_CONTRACTS_H
+#pragma once
 
 #include "ra8_sdmmc_spi_internal.h"
 
@@ -193,5 +191,3 @@ RA8_INTERNAL static ra8_sdmmc_spi_card_type_t internal_classify_card(bool is_v2,
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_probe_card(bool* out_is_v2, bool* out_is_hc);
-
-#endif

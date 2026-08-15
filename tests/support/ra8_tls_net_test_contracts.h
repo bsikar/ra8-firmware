@@ -8,9 +8,7 @@
  * @since 0.1.0
  */
 
-#ifndef RA8_TLS_NET_TEST_CONTRACTS_H
-/** @brief Include guard for TLS network test contracts. */
-#define RA8_TLS_NET_TEST_CONTRACTS_H
+#pragma once
 
 #include <stddef.h>
 #include <stdint.h>
@@ -149,5 +147,3 @@ RA8_INTERNAL static void internal_test_accessor_state_guards(void);
  * @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_end_to_end_over_net_pal(void);
-
-#endif /* RA8_TLS_NET_TEST_CONTRACTS_H */

@@ -7,9 +7,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifndef TESTS_SUPPORT_RA8_KEYBOARD_TEST_CONTRACTS_H
-/** @brief Include guard for the private keyboard test contracts. */
-#define TESTS_SUPPORT_RA8_KEYBOARD_TEST_CONTRACTS_H
+#pragma once
 
 /**
  * @brief Find a character key in the active layout.
@@ -183,5 +181,3 @@ RA8_INTERNAL static void internal_test_key_glyph_guard_mcdc(void);
  * @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_null_guards(void);
-
-#endif /* TESTS_SUPPORT_RA8_KEYBOARD_TEST_CONTRACTS_H */
