@@ -98,7 +98,7 @@ RA8_INTERNAL static void internal_test_check_fat16_crosslink(void)
     (uint32_t)internal_disk_rd16(eo + (uint32_t)k_chk_off_fst_lo) |
     ((uint32_t)internal_disk_rd16(eo + (uint32_t)k_chk_off_fst_hi) << (uint32_t)k_chk_shl_b2);
   const uint16_t c1 = internal_disk_rd16(internal_fat16_off(h, c0));
-  TEST_ASSERT((uint32_t)c1 >= (uint32_t)k_chk_first_clus); /* A.BIN spans >= 2 clusters      */
+  TEST_ASSERT((uint32_t)c1 >= (uint32_t)k_chk_first_clus); /* A.BIN spans >= 2 clusters */
   internal_disk_wr16(internal_fat16_off(h, (uint32_t)c1),
                      (uint16_t)c0); /* loop the tail back to the head */
   ra8_fs_check_report_t r = {};

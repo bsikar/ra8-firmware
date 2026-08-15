@@ -18,9 +18,9 @@
 
 /** @brief Deterministic metadata values for the mutation fixture. */
 typedef enum : uint16_t {
-  k_stat_second     = 10U, /**< Shared whole-second timestamp. */
+  k_stat_second     = 10U, /**< Shared whole-second timestamp.   */
   k_stat_mtime_nsec = 20U, /**< Initial modification nanosecond. */
-  k_stat_ctime_nsec = 30U, /**< Initial change nanosecond. */
+  k_stat_ctime_nsec = 30U, /**< Initial change nanosecond.       */
 } credential_stat_fixture_t;
 
 /**

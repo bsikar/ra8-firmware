@@ -76,7 +76,7 @@ typedef struct {
   const char* series;           /**< --series URL.                                              */
   const char* page_url;         /**< positional page URL (page mode).                           */
   const char* out;              /**< --out dir.                                                 */
-  const char* cache_dir;        /**< --cache-dir: persistent per-host cache root.                */
+  const char* cache_dir;        /**< --cache-dir: persistent per-host cache root.               */
   const char* attr;             /**< --attr.                                                    */
   const char* chapters;         /**< --chapters.                                                */
   const char* from;             /**< --from: first chapter NUMBER to fetch (not an index).      */

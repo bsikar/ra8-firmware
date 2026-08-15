@@ -106,7 +106,7 @@ typedef struct {
   ra8_xml_workspace_t reader; /**< 4096-byte open-element stack. */
   /** Spine idref spans retained between OPF passes. */
   ra8_xml_span_t references[k_ra8_epub_max_chapters];
-  ra8_xml_span_t legacy_cover_id; /**< EPUB 2 cover manifest id. */
+  ra8_xml_span_t legacy_cover_id; /**< EPUB 2 cover manifest id.       */
   uint16_t       reference_count; /**< Valid entries in @p references. */
 } ra8_epub_xml_workspace_t;
 

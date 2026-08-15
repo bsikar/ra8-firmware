@@ -87,7 +87,7 @@ typedef struct {
 /** @brief POSIX state placed in caller directory workspace. */
 typedef struct {
   posix_directory_reader_t reader; /**< Bounded raw-record buffer and cursor. */
-  int                      fd;     /**< Owned directory descriptor.          */
+  int                      fd;     /**< Owned directory descriptor.           */
 } posix_directory_state_t;
 
 /** @brief POSIX state placed in caller file workspace. */

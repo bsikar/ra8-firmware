@@ -204,13 +204,13 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef enum : uintptr_t {
-  k_ra8_mem_mram_base     = 0x02000000U, /**< Code MRAM (non-volatile), 1 MB. */
-  k_ra8_mem_itcm_base     = 0x00000000U, /**< M85 instruction TCM window. */
-  k_ra8_mem_dtcm_base     = 0x20000000U, /**< M85 data TCM window. */
-  k_ra8_mem_sram_base     = 0x22000000U, /**< On-chip system SRAM (ECC), 1664 KB. */
+  k_ra8_mem_mram_base     = 0x02000000U, /**< Code MRAM (non-volatile), 1 MB.         */
+  k_ra8_mem_itcm_base     = 0x00000000U, /**< M85 instruction TCM window.             */
+  k_ra8_mem_dtcm_base     = 0x20000000U, /**< M85 data TCM window.                    */
+  k_ra8_mem_sram_base     = 0x22000000U, /**< On-chip system SRAM (ECC), 1664 KB.     */
   k_ra8_mem_sdram_base    = 0x68000000U, /**< External SDRAM data window (EK: 64 MB). */
-  k_ra8_mem_ospi_cs0_base = 0x80000000U, /**< OSPI/xSPI CS0 XIP window. */
-  k_ra8_mem_ospi_cs1_base = 0x90000000U, /**< OSPI/xSPI CS1 XIP window. */
+  k_ra8_mem_ospi_cs0_base = 0x80000000U, /**< OSPI/xSPI CS0 XIP window.               */
+  k_ra8_mem_ospi_cs1_base = 0x90000000U, /**< OSPI/xSPI CS1 XIP window.               */
 } ra8_device_mem_base_t;
 
 /**
@@ -230,8 +230,8 @@ typedef enum : uintptr_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra8_mem_mram_size = 0x00100000U, /**< 1 MB code MRAM (both parts). */
-  k_ra8_mem_sram_size = 0x001A0000U, /**< 1664 KB system SRAM (both parts). */
+  k_ra8_mem_mram_size = 0x00100000U, /**< 1 MB code MRAM (both parts).             */
+  k_ra8_mem_sram_size = 0x001A0000U, /**< 1664 KB system SRAM (both parts).        */
   k_ra8_mem_itcm_size = 0x00010000U, /**< 64 KB ITCM (linker floor; see @details). */
   k_ra8_mem_dtcm_size = 0x00010000U, /**< 64 KB DTCM (linker floor; see @details). */
 } ra8_device_mem_size_t;

@@ -49,8 +49,8 @@ typedef struct {
 
 /** @brief One open-element identity retained for close-tag validation. */
 typedef struct {
-  uint32_t name_offset; /**< Element-name offset in the source. */
-  uint16_t name_length; /**< Element-name byte count.           */
+  uint32_t name_offset; /**< Element-name offset in the source.       */
+  uint16_t name_length; /**< Element-name byte count.                 */
   uint16_t consumer;    /**< Consumer-owned while this frame is live. */
 } ra8_xml_frame_t;
 
@@ -73,35 +73,35 @@ typedef struct {
   ra8_xml_span_t markup;          /**< Complete markup span, or text payload. */
   ra8_xml_span_t name;            /**< Element name for start/end.            */
   uint16_t       depth;           /**< Root is depth zero.                    */
-  uint16_t       attribute_count; /**< Source-order attributes on start.   */
+  uint16_t       attribute_count; /**< Source-order attributes on start.      */
   uint8_t        kind;            /**< ::ra8_xml_event_kind_t.                */
   uint8_t        self_closing;    /**< One for an empty-element start.        */
 } ra8_xml_event_t;
 
 /** @brief Source-order attribute view. */
 typedef struct {
-  ra8_xml_span_t name;  /**< Attribute name.                   */
+  ra8_xml_span_t name;  /**< Attribute name.                    */
   ra8_xml_span_t value; /**< Quoted value excluding delimiters. */
 } ra8_xml_attribute_t;
 
 /** @brief Mutable cursor for one start event's attributes. */
 typedef struct {
-  uint32_t position; /**< Next scan position. */
+  uint32_t position; /**< Next scan position.          */
   uint16_t emitted;  /**< Attributes already returned. */
 } ra8_xml_attr_cursor_t;
 
 /** @brief Pull-reader state; initialise before each pass. */
 typedef struct {
-  const uint8_t*       source;           /**< Immutable source bytes. */
-  size_t               source_len;       /**< Source byte count.      */
-  size_t               position;         /**< Next scan position.     */
-  ra8_xml_workspace_t* workspace;        /**< Caller-owned stack.     */
-  uint16_t             stack_size;       /**< Open element count.     */
-  uint8_t              root_count;       /**< Completed/started roots. */
-  uint8_t              root_closed;      /**< One after root close.    */
-  uint8_t              declaration_seen; /**< One after XML declaration. */
+  const uint8_t*       source;           /**< Immutable source bytes.        */
+  size_t               source_len;       /**< Source byte count.             */
+  size_t               position;         /**< Next scan position.            */
+  ra8_xml_workspace_t* workspace;        /**< Caller-owned stack.            */
+  uint16_t             stack_size;       /**< Open element count.            */
+  uint8_t              root_count;       /**< Completed/started roots.       */
+  uint8_t              root_closed;      /**< One after root close.          */
+  uint8_t              declaration_seen; /**< One after XML declaration.     */
   uint8_t              doctype_seen;     /**< One after a supported DOCTYPE. */
-  uint8_t              finished;         /**< End validation complete. */
+  uint8_t              finished;         /**< End validation complete.       */
 } ra8_xml_reader_t;
 
 /**

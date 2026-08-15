@@ -21,12 +21,13 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
+#include "mdl_net_curl.h"
+
 #include <curl/curl.h>
 #include <limits.h>
 #include <string.h>
 
 #include "mdl_net.h"
-#include "mdl_net_curl.h"
 #include "mdl_net_curl_internal.h"
 #include "mdl_url_guard.h"
 #include "ra8_attributes.h"

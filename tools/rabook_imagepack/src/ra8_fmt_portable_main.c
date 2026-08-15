@@ -21,18 +21,18 @@
 
 /** @brief Exit values and explicit composition workspace budgets. */
 typedef enum : uint32_t {
-  k_cli_exit_ok = 0U,           /**< Successful command.              */
-  k_cli_exit_fail = 1U,         /**< Command ran and failed.          */
-  k_cli_exit_usage = 2U,        /**< Invalid command line.            */
-  k_cli_input_cap = 268435456U, /**< Maximum accepted input (256 MiB). */
-  k_cli_decimal_radix = 10U,    /**< Status-code formatting radix.    */
-  k_cli_decimal_chars = 20U,    /**< Maximum unsigned decimal digits. */
+  k_cli_exit_ok       = 0U,         /**< Successful command.               */
+  k_cli_exit_fail     = 1U,         /**< Command ran and failed.           */
+  k_cli_exit_usage    = 2U,         /**< Invalid command line.             */
+  k_cli_input_cap     = 268435456U, /**< Maximum accepted input (256 MiB). */
+  k_cli_decimal_radix = 10U,        /**< Status-code formatting radix.     */
+  k_cli_decimal_chars = 20U,        /**< Maximum unsigned decimal digits.  */
 } cli_const_t;
 
 /** @brief Supported inspect-container classifications. */
 typedef enum : uint8_t {
-  k_cli_format_none = 0U,   /**< Unknown or unsupported container. */
-  k_cli_format_jof = 1U,    /**< JOF1 band-tile atlas.             */
+  k_cli_format_none   = 0U, /**< Unknown or unsupported container. */
+  k_cli_format_jof    = 1U, /**< JOF1 band-tile atlas.             */
   k_cli_format_rabook = 2U, /**< RBKC chunked RABOOK1 container.   */
 } cli_format_t;
 
@@ -52,8 +52,9 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_text(const ra8_fmt_sink_t *sink, const char *text) {
-  return sink->write(sink->ctx, (const uint8_t *)text, strlen(text));
+static ra8_err_t internal_text(const ra8_fmt_sink_t* sink, const char* text)
+{
+  return sink->write(sink->ctx, (const uint8_t*)text, strlen(text));
 }
 
 /**
@@ -72,8 +73,9 @@ static ra8_err_t internal_text(const ra8_fmt_sink_t *sink, const char *text) {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_u64(const ra8_fmt_sink_t *sink, uint64_t value) {
-  char reverse[k_cli_decimal_chars];
+static ra8_err_t internal_u64(const ra8_fmt_sink_t* sink, uint64_t value)
+{
+  char   reverse[k_cli_decimal_chars];
   size_t count = 0U;
   do {
     reverse[count++] = (char)('0' + (char)(value % k_cli_decimal_radix));
@@ -83,7 +85,7 @@ static ra8_err_t internal_u64(const ra8_fmt_sink_t *sink, uint64_t value) {
   for (size_t i = 0U; i < count; ++i) {
     text[i] = reverse[count - i - 1U];
   }
-  return sink->write(sink->ctx, (const uint8_t *)text, count);
+  return sink->write(sink->ctx, (const uint8_t*)text, count);
 }
 
 /**
@@ -101,8 +103,8 @@ static ra8_err_t internal_u64(const ra8_fmt_sink_t *sink, uint64_t value) {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void internal_error_status(const ra8_fmt_sink_t *sink,
-                                  const char *prefix, ra8_err_t status) {
+static void internal_error_status(const ra8_fmt_sink_t* sink, const char* prefix, ra8_err_t status)
+{
   ra8_err_t rc = internal_text(sink, prefix);
   if (rc == k_ra8_ok) {
     rc = internal_u64(sink, (uint64_t)status);
@@ -133,8 +135,9 @@ static void internal_error_status(const ra8_fmt_sink_t *sink,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool internal_parse(int argc, char **argv, const char **input,
-                           const char **format, bool *verbose) {
+static bool
+internal_parse(int argc, char** argv, const char** input, const char** format, bool* verbose)
+{
   for (int i = 2; i < argc; ++i) {
     if ((strcmp(argv[i], "--verbose") == 0) || (strcmp(argv[i], "-v") == 0)) {
       *verbose = true;
@@ -170,9 +173,9 @@ static bool internal_parse(int argc, char **argv, const char **input,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_format(const ra8_fmt_source_t *source,
-                                 const char *explicit_name,
-                                 cli_format_t *format) {
+static ra8_err_t
+internal_format(const ra8_fmt_source_t* source, const char* explicit_name, cli_format_t* format)
+{
   *format = k_cli_format_none;
   if (explicit_name != nullptr) {
     if (strcmp(explicit_name, "jof") == 0) {
@@ -182,18 +185,15 @@ static ra8_err_t internal_format(const ra8_fmt_source_t *source,
     }
     return k_ra8_ok;
   }
-  uint8_t magic[4U];
-  size_t got = 0U;
-  const ra8_err_t rc =
-      source->read_at(source->ctx, 0U, magic, sizeof(magic), &got);
+  uint8_t         magic[4U];
+  size_t          got = 0U;
+  const ra8_err_t rc  = source->read_at(source->ctx, 0U, magic, sizeof(magic), &got);
   if (rc != k_ra8_ok) {
     return rc;
   }
-  if ((got == sizeof(magic)) &&
-      (memcmp(magic, "JOF1", sizeof(magic)) == 0)) { /* MAGIC-OK */
+  if ((got == sizeof(magic)) && (memcmp(magic, "JOF1", sizeof(magic)) == 0)) { /* MAGIC-OK */
     *format = k_cli_format_jof;
-  } else if ((got == sizeof(magic)) &&
-             (memcmp(magic, "RBKC", sizeof(magic)) == 0)) { /* MAGIC-OK */
+  } else if ((got == sizeof(magic)) && (memcmp(magic, "RBKC", sizeof(magic)) == 0)) { /* MAGIC-OK */
     *format = k_cli_format_rabook;
   }
   return k_ra8_ok;
@@ -213,10 +213,10 @@ static ra8_err_t internal_format(const ra8_fmt_source_t *source,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void internal_workspace_error(const ra8_fmt_sink_t *sink,
-                                     const ra8_jof_audit_requirements_t *need) {
-  ra8_err_t rc =
-      internal_text(sink, "ra8_fmt: JOF inspect workspace too small: records ");
+static void internal_workspace_error(const ra8_fmt_sink_t*               sink,
+                                     const ra8_jof_audit_requirements_t* need)
+{
+  ra8_err_t rc = internal_text(sink, "ra8_fmt: JOF inspect workspace too small: records ");
   if (rc == k_ra8_ok) {
     rc = internal_u64(sink, need->record_count);
   }
@@ -257,13 +257,14 @@ static void internal_workspace_error(const ra8_fmt_sink_t *sink,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int internal_run_jof(const ra8_fmt_source_t *source, bool verbose,
-                            ra8_fmt_cli_workspace_t *workspace,
-                            const ra8_fmt_sink_t *output,
-                            const ra8_fmt_sink_t *errors) {
+static int internal_run_jof(const ra8_fmt_source_t*  source,
+                            bool                     verbose,
+                            ra8_fmt_cli_workspace_t* workspace,
+                            const ra8_fmt_sink_t*    output,
+                            const ra8_fmt_sink_t*    errors)
+{
   ra8_jof_audit_requirements_t need = {};
-  ra8_err_t rc = ra8_jof_audit_requirements(source->read_at, source->ctx,
-                                            source->size, &need);
+  ra8_err_t rc = ra8_jof_audit_requirements(source->read_at, source->ctx, source->size, &need);
   if (rc != k_ra8_ok) {
     internal_error_status(errors, "JOF parse FAILED (rc=", rc);
     return (int)k_cli_exit_fail;
@@ -274,15 +275,14 @@ static int internal_run_jof(const ra8_fmt_source_t *source, bool verbose,
     internal_workspace_error(errors, &need);
     return (int)k_cli_exit_fail;
   }
-  const size_t records_bytes =
-      sizeof(ra8_jof_audit_record_t) * (size_t)k_ra8_fmt_cli_record_cap;
+  const size_t records_bytes = sizeof(ra8_jof_audit_record_t) * (size_t)k_ra8_fmt_cli_record_cap;
   ra8_fmt_jof_inspect_workspace_t inspect_workspace = {
-      .records = (ra8_jof_audit_record_t *)workspace->bytes,
-      .record_cap = k_ra8_fmt_cli_record_cap,
-      .tile = &workspace->bytes[records_bytes],
-      .tile_cap = k_ra8_fmt_cli_tile_cap,
-      .scratch = &workspace->bytes[records_bytes + k_ra8_fmt_cli_tile_cap],
-      .scratch_cap = k_ra8_fmt_cli_scratch_cap,
+    .records     = (ra8_jof_audit_record_t*)workspace->bytes,
+    .record_cap  = k_ra8_fmt_cli_record_cap,
+    .tile        = &workspace->bytes[records_bytes],
+    .tile_cap    = k_ra8_fmt_cli_tile_cap,
+    .scratch     = &workspace->bytes[records_bytes + k_ra8_fmt_cli_tile_cap],
+    .scratch_cap = k_ra8_fmt_cli_scratch_cap,
   };
   rc = ra8_fmt_jof_inspect_stream(source, verbose, &inspect_workspace, output);
   return (rc == k_ra8_ok) ? (int)k_cli_exit_ok : (int)k_cli_exit_fail;
@@ -307,26 +307,25 @@ static int internal_run_jof(const ra8_fmt_source_t *source, bool verbose,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int internal_run_rabook(const ra8_fmt_source_t *source, bool verbose,
-                               ra8_fmt_cli_workspace_t *workspace,
-                               const ra8_fmt_sink_t *output) {
-  const size_t table_bytes =
-      (size_t)k_ra8_fmt_cli_rbkc_table_cap * sizeof(uint64_t);
+static int internal_run_rabook(const ra8_fmt_source_t*  source,
+                               bool                     verbose,
+                               ra8_fmt_cli_workspace_t* workspace,
+                               const ra8_fmt_sink_t*    output)
+{
+  const size_t table_bytes = (size_t)k_ra8_fmt_cli_rbkc_table_cap * sizeof(uint64_t);
   ra8_fmt_rabook_inspect_workspace_t inspect_workspace = {
-      .table = (uint64_t *)workspace->bytes,
-      .table_cap = k_ra8_fmt_cli_rbkc_table_cap,
-      .compressed = &workspace->bytes[table_bytes],
-      .compressed_cap = k_ra8_fmt_cli_rbkc_compressed_cap,
-      .chunk =
-          &workspace->bytes[table_bytes + k_ra8_fmt_cli_rbkc_compressed_cap],
-      .chunk_cap = k_ra8_fmt_cli_rbkc_chunk_cap,
-      .scratch =
-          &workspace->bytes[table_bytes + k_ra8_fmt_cli_rbkc_compressed_cap +
-                            k_ra8_fmt_cli_rbkc_chunk_cap],
-      .scratch_cap = k_ra8_fmt_cli_rbkc_scratch_cap,
+    .table          = (uint64_t*)workspace->bytes,
+    .table_cap      = k_ra8_fmt_cli_rbkc_table_cap,
+    .compressed     = &workspace->bytes[table_bytes],
+    .compressed_cap = k_ra8_fmt_cli_rbkc_compressed_cap,
+    .chunk          = &workspace->bytes[table_bytes + k_ra8_fmt_cli_rbkc_compressed_cap],
+    .chunk_cap      = k_ra8_fmt_cli_rbkc_chunk_cap,
+    .scratch =
+      &workspace
+         ->bytes[table_bytes + k_ra8_fmt_cli_rbkc_compressed_cap + k_ra8_fmt_cli_rbkc_chunk_cap],
+    .scratch_cap = k_ra8_fmt_cli_rbkc_scratch_cap,
   };
-  const ra8_err_t rc = ra8_fmt_rabook_inspect_stream(
-      source, verbose, &inspect_workspace, output);
+  const ra8_err_t rc = ra8_fmt_rabook_inspect_stream(source, verbose, &inspect_workspace, output);
   return (rc == k_ra8_ok) ? (int)k_cli_exit_ok : (int)k_cli_exit_fail;
 }
 
@@ -353,18 +352,21 @@ static int internal_run_rabook(const ra8_fmt_source_t *source, bool verbose,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int internal_open(const char *input, const char *explicit_name,
-                         bool verbose, ra8_fmt_cli_workspace_t *workspace,
-                         bool *handled, const ra8_fmt_sink_t *errors) {
+static int internal_open(const char*              input,
+                         const char*              explicit_name,
+                         bool                     verbose,
+                         ra8_fmt_cli_workspace_t* workspace,
+                         bool*                    handled,
+                         const ra8_fmt_sink_t*    errors)
+{
   ra8_fmt_host_source_t host_source = {.fd = -1};
-  ra8_err_t rc = ra8_fmt_host_source_open(input, k_cli_input_cap, &host_source);
-  cli_format_t format = k_cli_format_none;
+  ra8_err_t             rc     = ra8_fmt_host_source_open(input, k_cli_input_cap, &host_source);
+  cli_format_t          format = k_cli_format_none;
   if (rc == k_ra8_ok) {
     rc = internal_format(&host_source.source, explicit_name, &format);
   }
   if (rc != k_ra8_ok) {
-    internal_error_status(errors,
-                          "ra8_fmt: cannot open inspect input (rc=", rc);
+    internal_error_status(errors, "ra8_fmt: cannot open inspect input (rc=", rc);
     return (int)k_cli_exit_fail;
   }
   if (format == k_cli_format_none) {
@@ -373,19 +375,19 @@ static int internal_open(const char *input, const char *explicit_name,
     return (int)k_cli_exit_ok;
   }
   ra8_fmt_host_fd_sink_t output_state = {.fd = STDOUT_FILENO};
-  const ra8_fmt_sink_t output = ra8_fmt_host_fd_sink(&output_state);
+  const ra8_fmt_sink_t   output       = ra8_fmt_host_fd_sink(&output_state);
   const int status = (format == k_cli_format_jof)
-                         ? internal_run_jof(&host_source.source, verbose,
-                                            workspace, &output, errors)
-                         : internal_run_rabook(&host_source.source, verbose,
-                                               workspace, &output);
+                       ? internal_run_jof(&host_source.source, verbose, workspace, &output, errors)
+                       : internal_run_rabook(&host_source.source, verbose, workspace, &output);
   ra8_fmt_host_source_close(&host_source);
   return status;
 }
 
-int ra8_fmt_try_portable_inspect(int argc, char **argv,
-                                 ra8_fmt_cli_workspace_t *workspace,
-                                 bool *handled) {
+int ra8_fmt_try_portable_inspect(int                      argc,
+                                 char**                   argv,
+                                 ra8_fmt_cli_workspace_t* workspace,
+                                 bool*                    handled)
+{
   if ((handled == nullptr) || (workspace == nullptr)) {
     return (int)k_cli_exit_fail;
   }
@@ -393,11 +395,11 @@ int ra8_fmt_try_portable_inspect(int argc, char **argv,
   if ((argc < 2) || (strcmp(argv[1], "inspect") != 0)) {
     return (int)k_cli_exit_ok;
   }
-  const char *input = nullptr;
-  const char *format = nullptr;
-  bool verbose = false;
+  const char*            input       = nullptr;
+  const char*            format      = nullptr;
+  bool                   verbose     = false;
   ra8_fmt_host_fd_sink_t error_state = {.fd = STDERR_FILENO};
-  const ra8_fmt_sink_t errors = ra8_fmt_host_fd_sink(&error_state);
+  const ra8_fmt_sink_t   errors      = ra8_fmt_host_fd_sink(&error_state);
   if (!internal_parse(argc, argv, &input, &format, &verbose)) {
     *handled = true;
     (void)internal_text(&errors, "ra8_fmt: invalid inspect arguments\n");

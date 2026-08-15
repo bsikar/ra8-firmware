@@ -40,8 +40,8 @@ typedef struct mdl_fetch_cache_request mdl_fetch_cache_request_t;
 struct mdl_fetch_cache_request {
   mdl_fetch_ctx_t* ctx;                      /**< Active fetch dependencies. */
   char             host[k_mdl_gov_host_max]; /**< Governor host key.         */
-  uint32_t         jmin;                     /**< Minimum request delay.      */
-  uint32_t         jmax;                     /**< Maximum request delay.      */
+  uint32_t         jmin;                     /**< Minimum request delay.     */
+  uint32_t         jmax;                     /**< Maximum request delay.     */
 };
 
 /**

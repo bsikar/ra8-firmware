@@ -17,12 +17,12 @@
 
 /** @brief Canonical binary layout and bounded I/O constants. */
 typedef enum : uint32_t {
-  k_cache_header_bytes  = 32U,      /**< Fixed index header width.     */
-  k_cache_record_bytes  = 36U,      /**< Fixed record header width.    */
-  k_cache_trailer_bytes = 8U,       /**< Payload-hash trailer width.   */
-  k_cache_io_call_max   = 2000000U, /**< Short-I/O progress ceiling.   */
-  k_cache_status_min    = 100U,     /**< Smallest retained HTTP code.  */
-  k_cache_status_max    = 599U,     /**< Largest retained HTTP code.   */
+  k_cache_header_bytes  = 32U,      /**< Fixed index header width.    */
+  k_cache_record_bytes  = 36U,      /**< Fixed record header width.   */
+  k_cache_trailer_bytes = 8U,       /**< Payload-hash trailer width.  */
+  k_cache_io_call_max   = 2000000U, /**< Short-I/O progress ceiling.  */
+  k_cache_status_min    = 100U,     /**< Smallest retained HTTP code. */
+  k_cache_status_max    = 599U,     /**< Largest retained HTTP code.  */
 } mdl_cache_binary_limit_t;
 
 /** @brief Canonical cache index magic. */
