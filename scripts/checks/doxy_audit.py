@@ -170,9 +170,9 @@ def update_function_baseline() -> int:
         "# Consumed by scripts/checks/doxy_audit.py --check.",
         "# New rows fail; stale rows fail until this file is shrunk.",
         f"# Rows: {len(current)}",
-        "",
     ]
-    FUNCTION_BASELINE_FILE.write_text("\n".join([*header, *sorted(current), ""]), encoding="ascii")
+    lines = [*header, "", *sorted(current)] if current else header
+    FUNCTION_BASELINE_FILE.write_text("\n".join(lines) + "\n", encoding="ascii")
     print(f"updated {FUNCTION_BASELINE_FILE}: {len(current)} row(s)")
     return 0
 
