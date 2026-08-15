@@ -70,9 +70,8 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_modem_line_kind_t ra8_modem_at_internal_classify(const char* line,
-                                                     const char* cmd_echo,
-                                                     const char* expected_response);
+ra8_modem_line_kind_t
+priv_modem_classify(const char* line, const char* cmd_echo, const char* expected_response);
 
 /**
  * @brief NUL-terminated string length, capped at UINT16_MAX.
@@ -98,7 +97,7 @@ ra8_modem_line_kind_t ra8_modem_at_internal_classify(const char* line,
  * @since 0.1.0
  */
 RA8_PRIV
-uint16_t ra8_modem_at_internal_str_len(const char* s);
+uint16_t priv_modem_str_len(const char* s);
 
 /**
  * @brief Return 1 iff ``hay`` begins with ``needle``.
@@ -122,7 +121,7 @@ uint16_t ra8_modem_at_internal_str_len(const char* s);
  * @since 0.1.0
  */
 RA8_PRIV
-uint8_t ra8_modem_at_internal_starts_with(const char* hay, const char* needle);
+uint8_t priv_modem_starts_with(const char* hay, const char* needle);
 
 /**
  * @brief Return 1 iff ``a`` and ``b`` are byte-for-byte equal.
@@ -151,7 +150,7 @@ uint8_t ra8_modem_at_internal_starts_with(const char* hay, const char* needle);
  * @since 0.1.0
  */
 RA8_PRIV
-uint8_t ra8_modem_at_internal_str_eq(const char* a, const char* b);
+uint8_t priv_modem_str_eq(const char* a, const char* b);
 
 #include <stddef.h>
 
@@ -180,10 +179,7 @@ uint8_t ra8_modem_at_internal_str_eq(const char* a, const char* b);
  * @since 0.1.0
  */
 RA8_PRIV
-void ra8_modem_at_internal_capture_line(const char* line,
-                                        char*       capture,
-                                        size_t      capture_len,
-                                        size_t*     used);
+void priv_modem_capture_line(const char* line, char* capture, size_t capture_len, size_t* used);
 
 /**
  * @brief Pure (state-free) reimplementation of @c internal_reset_line's
@@ -219,7 +215,7 @@ void ra8_modem_at_internal_capture_line(const char* line,
  * @since 0.1.0
  */
 RA8_PRIV
-uint8_t ra8_modem_at_internal_reset_line_should_clear(const void* line_buf, uint16_t line_buf_len);
+uint8_t priv_modem_reset_line_should_clear(const void* line_buf, uint16_t line_buf_len);
 
 /**
  * @brief Pure sibling of the line-573 payload-prefix AND-decision.
@@ -229,7 +225,7 @@ uint8_t ra8_modem_at_internal_reset_line_should_clear(const void* line_buf, uint
  *          three-condition short-circuit AND in @c internal_handle_line at
  *          line 573 of @c ra8_modem_at.c
  *          (``(expected_response != nullptr) && (expected_response[0] != '\0')
- *          && (ra8_modem_at_internal_starts_with(line, expected_response) !=
+ *          && (priv_modem_starts_with(line, expected_response) !=
  *          0U)``). The production helper consults @c s_mod state to mutate
  *          ``seen_exp``; this pure sibling exposes the boolean predicate
  *          alone so all four short-circuit MC/DC vectors are reachable from
@@ -255,8 +251,7 @@ uint8_t ra8_modem_at_internal_reset_line_should_clear(const void* line_buf, uint
  * @since 0.1.0
  */
 RA8_PRIV
-uint8_t ra8_modem_at_internal_handle_line_payload_prefix_match(const char* line,
-                                                               const char* expected_response);
+uint8_t priv_modem_payload_prefix_matches(const char* line, const char* expected_response);
 
 /**
  * @brief Pure sibling of the line-664 capture-buffer-init AND-decision.
@@ -291,8 +286,7 @@ uint8_t ra8_modem_at_internal_handle_line_payload_prefix_match(const char* line,
  * @since 0.1.0
  */
 RA8_PRIV
-uint8_t ra8_modem_at_internal_wait_response_should_clear_capture(const void* capture,
-                                                                 size_t      capture_len);
+uint8_t priv_modem_capture_should_clear(const void* capture, size_t capture_len);
 
 #ifdef __cplusplus
 }
