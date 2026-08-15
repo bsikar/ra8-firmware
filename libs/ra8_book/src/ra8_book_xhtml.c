@@ -71,8 +71,8 @@ typedef struct {
  *
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool ra8_book_emit(char* out, size_t cap, size_t* pos, const char* src, size_t len)
+RA8_INTERNAL static bool
+internal_emit(char* out, size_t cap, size_t* pos, const char* src, size_t len)
 {
   if (*pos + len > cap) {
     return false;
@@ -87,7 +87,7 @@ static bool ra8_book_emit(char* out, size_t cap, size_t* pos, const char* src, s
  *
  * @details
  * Determines the length of @p str with @c strlen and delegates to
- * @c ra8_book_emit.  Provides a convenient wrapper so callers do not need to
+ * @c internal_emit.  Provides a convenient wrapper so callers do not need to
  * compute string lengths manually when emitting tag names, attribute names, or
  * literal XML punctuation.
  *
@@ -110,10 +110,9 @@ static bool ra8_book_emit(char* out, size_t cap, size_t* pos, const char* src, s
  *
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool ra8_book_emit_cstr(char* out, size_t cap, size_t* pos, const char* str)
+RA8_INTERNAL static bool internal_emit_cstr(char* out, size_t cap, size_t* pos, const char* str)
 {
-  return ra8_book_emit(out, cap, pos, str, strlen(str));
+  return internal_emit(out, cap, pos, str, strlen(str));
 }
 
 /**
@@ -122,7 +121,7 @@ static bool ra8_book_emit_cstr(char* out, size_t cap, size_t* pos, const char* s
  * @details
  * Iterates over every character in @p str and replaces XML-special characters
  * with their entity references before writing them to the output buffer via
- * @c ra8_book_emit or @c ra8_book_emit_cstr.  The substitution table is:
+ * @c internal_emit or @c internal_emit_cstr.  The substitution table is:
  *   - @c & becomes @c &amp;
  *   - @c < becomes @c &lt;
  *   - @c > becomes @c &gt;
@@ -155,27 +154,27 @@ static bool ra8_book_emit_cstr(char* out, size_t cap, size_t* pos, const char* s
  *
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool ra8_book_emit_escaped(char* out, size_t cap, size_t* pos, const char* str, bool in_attr)
+RA8_INTERNAL static bool
+internal_emit_escaped(char* out, size_t cap, size_t* pos, const char* str, bool in_attr)
 {
   for (const char* p = str; *p != '\0'; ++p) {
     bool ok = true;
     switch (*p) {
       case '&':
-        ok = ra8_book_emit_cstr(out, cap, pos, "&amp;");
+        ok = internal_emit_cstr(out, cap, pos, "&amp;");
         break;
       case '<':
-        ok = ra8_book_emit_cstr(out, cap, pos, "&lt;");
+        ok = internal_emit_cstr(out, cap, pos, "&lt;");
         break;
       case '>':
-        ok = ra8_book_emit_cstr(out, cap, pos, "&gt;");
+        ok = internal_emit_cstr(out, cap, pos, "&gt;");
         break;
       case '"':
-        ok = in_attr ? ra8_book_emit_cstr(out, cap, pos, "&quot;")
-                     : ra8_book_emit(out, cap, pos, p, 1U);
+        ok = in_attr ? internal_emit_cstr(out, cap, pos, "&quot;")
+                     : internal_emit(out, cap, pos, p, 1U);
         break;
       default:
-        ok = ra8_book_emit(out, cap, pos, p, 1U);
+        ok = internal_emit(out, cap, pos, p, 1U);
         break;
     }
     if (!ok) {
@@ -212,8 +211,7 @@ static bool ra8_book_emit_escaped(char* out, size_t cap, size_t* pos, const char
  *
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool ra8_book_is_void(const char* name)
+RA8_INTERNAL static bool internal_is_void(const char* name)
 {
   static const char* const k_void[] = {
     "br",
@@ -246,7 +244,7 @@ static bool ra8_book_is_void(const char* name)
  * Iterates over the @c attr_count attribute slots starting at @p node->first_attr
  * in the flat attribute array returned by @c ra8_book_attrs.  For each attribute
  * it emits a single space, the attribute name, @c ="  (with entity-escaped value),
- * and a closing @c " using @c ra8_book_emit and @c ra8_book_emit_escaped.  The
+ * and a closing @c " using @c internal_emit and @c internal_emit_escaped.  The
  * function is called while the opening tag is still open (before the @c > or
  * @c />) so the caller must emit the tag terminator after this returns.
  *
@@ -272,21 +270,20 @@ static bool ra8_book_is_void(const char* name)
  *
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool ra8_book_emit_attrs(const void*            base,
-                                const ra8_book_node_t* node,
-                                char*                  out,
-                                size_t                 cap,
-                                size_t*                pos)
+RA8_INTERNAL static bool internal_emit_attrs(const void*            base,
+                                             const ra8_book_node_t* node,
+                                             char*                  out,
+                                             size_t                 cap,
+                                             size_t*                pos)
 {
   const ra8_book_attr_t* attrs = ra8_book_attrs(base);
   for (uint16_t i = 0U; i < node->attr_count; ++i) {
     const ra8_book_attr_t* a = &attrs[node->first_attr + i];
-    bool ok = ra8_book_emit(out, cap, pos, " ", 1U) &&
-              ra8_book_emit_cstr(out, cap, pos, ra8_book_string(base, a->name_off)) &&
-              ra8_book_emit(out, cap, pos, "=\"", 2U) &&
-              ra8_book_emit_escaped(out, cap, pos, ra8_book_string(base, a->value_off), true) &&
-              ra8_book_emit(out, cap, pos, "\"", 1U);
+    bool ok = internal_emit(out, cap, pos, " ", 1U) &&
+              internal_emit_cstr(out, cap, pos, ra8_book_string(base, a->name_off)) &&
+              internal_emit(out, cap, pos, "=\"", 2U) &&
+              internal_emit_escaped(out, cap, pos, ra8_book_string(base, a->value_off), true) &&
+              internal_emit(out, cap, pos, "\"", 1U);
     if (!ok) {
       return false;
     }
@@ -300,12 +297,12 @@ static bool ra8_book_emit_attrs(const void*            base,
  *
  * @details
  * Serialises the opening half of a DOM element node into @p out: emits @c <,
- * the tag name, all attributes via @c ra8_book_emit_attrs, then either @c />
- * for void elements (using @c ra8_book_is_void) or @c > for non-void elements.
+ * the tag name, all attributes via @c internal_emit_attrs, then either @c />
+ * for void elements (using @c internal_is_void) or @c > for non-void elements.
  * For non-void elements two entries are pushed onto the caller-supplied
  * @p stack before returning: first a close entry (so the closing tag is
  * emitted after all descendants), then a child-list entry (so the first child
- * is processed next by the outer loop in @c ra8_book_walk_to_xhtml).  Stack
+ * is processed next by the outer loop in @c internal_walk_to_xhtml).  Stack
  * indices grow upward; the current depth is held in @p *sp.
  *
  * @param[in]     base   Pointer to the compiled book blob; used to resolve
@@ -334,24 +331,23 @@ static bool ra8_book_emit_attrs(const void*            base,
  *
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool ra8_book_open_element(const void*            base,
-                                  const ra8_book_node_t* node,
-                                  char*                  out,
-                                  size_t                 cap,
-                                  size_t*                pos,
-                                  ra8_book_walk_entry_t* stack,
-                                  uint32_t*              sp)
+RA8_INTERNAL static bool internal_open_element(const void*            base,
+                                               const ra8_book_node_t* node,
+                                               char*                  out,
+                                               size_t                 cap,
+                                               size_t*                pos,
+                                               ra8_book_walk_entry_t* stack,
+                                               uint32_t*              sp)
 {
   const char* name = ra8_book_string(base, node->name_off);
-  if (!ra8_book_emit(out, cap, pos, "<", 1U) || !ra8_book_emit_cstr(out, cap, pos, name) ||
-      !ra8_book_emit_attrs(base, node, out, cap, pos)) {
+  if (!internal_emit(out, cap, pos, "<", 1U) || !internal_emit_cstr(out, cap, pos, name) ||
+      !internal_emit_attrs(base, node, out, cap, pos)) {
     return false;
   }
-  if (ra8_book_is_void(name)) {
-    return ra8_book_emit(out, cap, pos, "/>", 2U);
+  if (internal_is_void(name)) {
+    return internal_emit(out, cap, pos, "/>", 2U);
   }
-  if (!ra8_book_emit(out, cap, pos, ">", 1U) || (*sp + 2U > k_ra8_book_xhtml_stack)) {
+  if (!internal_emit(out, cap, pos, ">", 1U) || (*sp + 2U > k_ra8_book_xhtml_stack)) {
     return false;
   }
   stack[(*sp)++] = (ra8_book_walk_entry_t){true, node->name_off};     /* close after children */
@@ -371,7 +367,7 @@ static bool ra8_book_open_element(const void*            base,
  * @c node_count * @c k_ra8_book_xhtml_iter_x + @c k_ra8_book_xhtml_stack
  * prevents any unbounded execution even if the DOM contains cycles.
  * Element nodes delegate opening (and child/close scheduling) to
- * @c ra8_book_open_element; text nodes are emitted via @c ra8_book_emit_escaped.
+ * @c internal_open_element; text nodes are emitted via @c internal_emit_escaped.
  *
  * @param[in]     base        Pointer to the compiled book blob.
  * @param[in]     root        Node index of the subtree root to serialise.
@@ -395,20 +391,19 @@ static bool ra8_book_open_element(const void*            base,
  *
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool ra8_book_walk_to_xhtml(const void* base,
-                                   uint32_t    root,
-                                   uint32_t    node_count,
-                                   char*       out,
-                                   size_t      cap,
-                                   size_t*     pos)
+RA8_INTERNAL static bool internal_walk_to_xhtml(const void* base,
+                                                uint32_t    root,
+                                                uint32_t    node_count,
+                                                char*       out,
+                                                size_t      cap,
+                                                size_t*     pos)
 {
   const ra8_book_node_t* nodes = ra8_book_nodes(base);
   /* Explicit DFS stack (~4 KiB) kept in module-static storage so this frame
    * stays within the stack-usage budget; the walk is iterative (no recursion)
    * and single-threaded, so the shared buffer never overlaps. */
-  static ra8_book_walk_entry_t s_xhtml_stack[k_ra8_book_xhtml_stack];
-  ra8_book_walk_entry_t*       stack = s_xhtml_stack;
+  static ra8_book_walk_entry_t k_xhtml_stack[k_ra8_book_xhtml_stack];
+  ra8_book_walk_entry_t*       stack = k_xhtml_stack;
   uint32_t                     sp    = 0U;
   bool                         ok    = true;
   stack[sp++]                        = (ra8_book_walk_entry_t){false, root};
@@ -419,9 +414,9 @@ static bool ra8_book_walk_to_xhtml(const void* base,
     ++guard;
     ra8_book_walk_entry_t e = stack[--sp];
     if (e.is_close) {
-      ok = ra8_book_emit(out, cap, pos, "</", 2U) &&
-           ra8_book_emit_cstr(out, cap, pos, ra8_book_string(base, e.value)) &&
-           ra8_book_emit(out, cap, pos, ">", 1U);
+      ok = internal_emit(out, cap, pos, "</", 2U) &&
+           internal_emit_cstr(out, cap, pos, ra8_book_string(base, e.value)) &&
+           internal_emit(out, cap, pos, ">", 1U);
       continue;
     }
     if (e.value == k_ra8_book_nil) {
@@ -434,9 +429,9 @@ static bool ra8_book_walk_to_xhtml(const void* base,
     /* Continue this level's sibling chain after the whole subtree + close. */
     stack[sp++] = (ra8_book_walk_entry_t){false, node->next_sibling};
     if (node->kind == (uint8_t)k_ra8_book_node_text) {
-      ok = ra8_book_emit_escaped(out, cap, pos, ra8_book_string(base, node->text_off), false);
+      ok = internal_emit_escaped(out, cap, pos, ra8_book_string(base, node->text_off), false);
     } else {
-      ok = ra8_book_open_element(base, node, out, cap, pos, stack, &sp);
+      ok = internal_open_element(base, node, out, cap, pos, stack, &sp);
     }
   }
   return ok && (guard < max_iter);
@@ -470,7 +465,7 @@ static bool ra8_book_walk_to_xhtml(const void* base,
  *
  * @since Version 0.1.0
  */
-bool ra8_book_is_block(const char* name)
+RA8_PRIV bool priv_book_is_block(const char* name)
 {
   static const char* const k_block[] = {
     "p",      "h1",         "h2",      "h3",    "h4",     "h5",      "h6",         "li",
@@ -493,7 +488,7 @@ bool ra8_book_is_block(const char* name)
  * whitespace-collapsing rule: any run of space (`' '`), tab (`'\t'`),
  * carriage return (`'\r'`), or newline (`'\n'`) characters is folded into at
  * most a single ASCII space.  Non-whitespace characters are passed through
- * unchanged via @c ra8_book_emit.  The @p at_break flag carries inter-call
+ * unchanged via @c internal_emit.  The @p at_break flag carries inter-call
  * state: when @c true any leading whitespace in the current fragment is
  * silently dropped, preventing pretty-print indentation between inline elements
  * from leaking into the rendered prose.  @p at_break is set to @c true after
@@ -525,13 +520,14 @@ bool ra8_book_is_block(const char* name)
  *
  * @since Version 0.1.0
  */
-bool ra8_book_emit_text(char* out, size_t cap, size_t* pos, const char* str, bool* at_break)
+RA8_PRIV bool
+priv_book_emit_text(char* out, size_t cap, size_t* pos, const char* str, bool* at_break)
 {
   for (const char* p = str; *p != '\0'; ++p) {
     const char c  = *p;
     const bool ws = (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r');
     if (!ws) {
-      if (!ra8_book_emit(out, cap, pos, &c, 1U)) {
+      if (!internal_emit(out, cap, pos, &c, 1U)) {
         return false;
       }
       *at_break = false;
@@ -540,7 +536,7 @@ bool ra8_book_emit_text(char* out, size_t cap, size_t* pos, const char* str, boo
     if (*at_break) {
       continue;
     }
-    if (!ra8_book_emit(out, cap, pos, " ", 1U)) {
+    if (!internal_emit(out, cap, pos, " ", 1U)) {
       return false;
     }
     *at_break = true;
@@ -558,7 +554,7 @@ bool ra8_book_emit_text(char* out, size_t cap, size_t* pos, const char* str, boo
  * last byte already in @p out is `'\n'` no additional newline is written,
  * which collapses runs of breaks produced by consecutive or nested block-level
  * elements (e.g. a @c p inside a @c div) into a single blank line.  Otherwise
- * a single `'\n'` is appended via @c ra8_book_emit.
+ * a single `'\n'` is appended via @c internal_emit.
  *
  * @param[out]    out       Destination character buffer.
  * @param[in]     cap       Total capacity of @p out in bytes.
@@ -582,7 +578,7 @@ bool ra8_book_emit_text(char* out, size_t cap, size_t* pos, const char* str, boo
  *
  * @since Version 0.1.0
  */
-bool ra8_book_emit_break(char* out, size_t cap, size_t* pos, bool* at_break)
+RA8_PRIV bool priv_book_emit_break(char* out, size_t cap, size_t* pos, bool* at_break)
 {
   while ((*pos > 0U) && (out[*pos - 1U] == ' ')) {
     (*pos)--;
@@ -591,7 +587,7 @@ bool ra8_book_emit_break(char* out, size_t cap, size_t* pos, bool* at_break)
   if ((*pos > 0U) && (out[*pos - 1U] == '\n')) {
     return true;
   }
-  return ra8_book_emit(out, cap, pos, "\n", 1U);
+  return internal_emit(out, cap, pos, "\n", 1U);
 }
 
 /**
@@ -602,9 +598,9 @@ bool ra8_book_emit_break(char* out, size_t cap, size_t* pos, bool* at_break)
  * stack (maximum depth @c k_ra8_book_xhtml_stack) without recursion.  An
  * iteration guard capped at @c node_count * @c k_ra8_book_xhtml_iter_x +
  * @c k_ra8_book_xhtml_stack prevents unbounded execution.  For each node:
- *   - Text nodes are handed to @c ra8_book_emit_text for whitespace collapsing.
- *   - Element nodes that are block-level (tested via @c ra8_book_is_block)
- *     trigger @c ra8_book_emit_break to insert a paragraph separator before
+ *   - Text nodes are handed to @c priv_book_emit_text for whitespace collapsing.
+ *   - Element nodes that are block-level (tested via @c priv_book_is_block)
+ *     trigger @c priv_book_emit_break to insert a paragraph separator before
  *     descending into the element's children.
  *   - All other element nodes descend immediately with no separator.
  * The @c at_break flag threads through all text and break calls so that
@@ -632,20 +628,19 @@ bool ra8_book_emit_break(char* out, size_t cap, size_t* pos, bool* at_break)
  *
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool ra8_book_walk_text(const void* base,
-                               uint32_t    root,
-                               uint32_t    node_count,
-                               char*       out,
-                               size_t      cap,
-                               size_t*     pos)
+RA8_INTERNAL static bool internal_walk_text(const void* base,
+                                            uint32_t    root,
+                                            uint32_t    node_count,
+                                            char*       out,
+                                            size_t      cap,
+                                            size_t*     pos)
 {
   const ra8_book_node_t* nodes = ra8_book_nodes(base);
   /* Explicit DFS stack (2 KiB) kept in module-static storage so this frame
    * stays within the stack-usage budget; iterative (no recursion) and
    * single-threaded, so the shared buffer never overlaps. */
-  static uint32_t s_text_stack[k_ra8_book_xhtml_stack];
-  uint32_t*       stack    = s_text_stack;
+  static uint32_t k_text_stack[k_ra8_book_xhtml_stack];
+  uint32_t*       stack    = k_text_stack;
   uint32_t        sp       = 0U;
   bool            ok       = true;
   bool            at_break = true;
@@ -665,11 +660,11 @@ static bool ra8_book_walk_text(const void* base,
     }
     stack[sp++] = node->next_sibling; /* sibling chain after this subtree */
     if (node->kind == (uint8_t)k_ra8_book_node_text) {
-      ok = ra8_book_emit_text(out, cap, pos, ra8_book_string(base, node->text_off), &at_break);
+      ok = priv_book_emit_text(out, cap, pos, ra8_book_string(base, node->text_off), &at_break);
       continue;
     }
-    if (ra8_book_is_block(ra8_book_string(base, node->name_off))) {
-      ok = ra8_book_emit_break(out, cap, pos, &at_break);
+    if (priv_book_is_block(ra8_book_string(base, node->name_off))) {
+      ok = priv_book_emit_break(out, cap, pos, &at_break);
     }
     if (ok && (sp < k_ra8_book_xhtml_stack)) {
       stack[sp++] = node->first_child; /* descend, pre-order */
@@ -694,7 +689,7 @@ ra8_err_t ra8_book_chapter_text(const void* base,
   }
   const uint32_t root = ra8_book_chapters(base)[chapter_idx].root_node;
   size_t         pos  = 0U;
-  if (!ra8_book_walk_text(base, root, hdr->node_count, out, cap, &pos)) {
+  if (!internal_walk_text(base, root, hdr->node_count, out, cap, &pos)) {
     return k_ra8_err_invalid_size;
   }
   *out_len = pos;
@@ -718,7 +713,7 @@ ra8_err_t ra8_book_chapter_to_xhtml(const void* base,
 
   const uint32_t root = ra8_book_chapters(base)[chapter_idx].root_node;
   size_t         pos  = 0U;
-  if (!ra8_book_walk_to_xhtml(base, root, hdr->node_count, out, cap, &pos)) {
+  if (!internal_walk_to_xhtml(base, root, hdr->node_count, out, cap, &pos)) {
     return k_ra8_err_invalid_size;
   }
   *out_len = pos;

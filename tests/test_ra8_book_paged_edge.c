@@ -19,7 +19,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "miniz.h"
@@ -572,10 +571,10 @@ static void pbook_edge_header(ra8_book_header_t* h,
  *
  * @par MC/DC:
  * One cyclic input drives three otherwise-unreachable compound legs:
- * - `if (ok && (*sp < k_ra8_book_xhtml_stack))` in priv_paged_visit_node: the
+ * - `if (ok && (*sp < k_ra8_book_xhtml_stack))` in internal_paged_visit_node: the
  *   nil-sibling accumulation lifts *sp to k_ra8_book_xhtml_stack, so the second
  *   condition is false (C1 true, C2 false) -- the stack-full leg.
- * - `while ((sp > 0U) && ok && (guard < max_iter))` in ra8_book_walk_text_paged:
+ * - `while ((sp > 0U) && ok && (guard < max_iter))` in internal_walk_text_paged:
  *   the loop is still non-empty and ok when guard reaches max_iter, so the third
  *   condition is false (C1 true, C2 true, C3 false) -- the guard-exhaustion leg.
  * - `return ok && (guard < max_iter)`: ok is true but guard == max_iter, so the
@@ -637,11 +636,11 @@ typedef struct {
  * @par Coverage:
  * An inline `<span>` (no leading break) holds a two-byte text run then a block
  * `<p>`. With a two-byte output buffer the text exactly fills it, so the `<p>`
- * block break has no room for its newline and ra8_book_emit_break returns false.
+ * block break has no room for its newline and priv_book_emit_break returns false.
  *
  * @par MC/DC:
  * Drives the first-condition-false leg of `if (ok && (*sp < k_ra8_book_xhtml_stack))`
- * in priv_paged_visit_node: emit_break fails on the block `<p>`, so ok is false
+ * in internal_paged_visit_node: emit_break fails on the block `<p>`, so ok is false
  * and the child is not pushed (C1 false, short-circuit). The (true, true) control
  * is supplied by the span visit here and every acyclic walk; the (true, false)
  * stack-full leg by test_ra8_book_paged_cyclic_walk_guard. N+1 vectors complete.
@@ -720,13 +719,13 @@ typedef struct {
  *
  * @par Coverage:
  * The element's tag name is 70 bytes with no embedded NUL, so
- * ra8_book_paged_str_short reads its full 63-byte chunk without hitting a
+ * internal_paged_str_short reads its full 63-byte chunk without hitting a
  * terminator and truncates -- treating the tag as inline (no break), which is the
  * documented degradation.
  *
  * @par MC/DC:
  * Drives the first-condition-false leg of `while ((nlen < chunk) && (buf[nlen] !=
- * '\0'))` in ra8_book_paged_str_short: nlen reaches `chunk` (63) before any NUL,
+ * '\0'))` in internal_paged_str_short: nlen reaches `chunk` (63) before any NUL,
  * so the first condition is false and the scan stops (C1 false, short-circuit).
  * The (true, true) scanning control and the (true, false) NUL-found leg are
  * supplied by the short tags (div/p/section/h1) of
@@ -985,6 +984,5 @@ int32_t main(void)
   test_ra8_book_paged_long_tag_name();
   test_ra8_book_paged_prefetch_record_fault();
   test_ra8_book_paged_prefetch_warms();
-  (void)fprintf(stderr, "[OK ] test_ra8_book_paged_edge.c\n");
   return 0;
 }

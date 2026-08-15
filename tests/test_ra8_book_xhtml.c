@@ -255,8 +255,8 @@ static void bx_build_cyclic(bx_book_t* b)
  * @brief Serialize the rich DOM and confirm entity escaping + void elements.
  *
  * @par MC/DC:
- * Decision: the `ra8_book_emit_escaped` switch over `& < > "` and the
- * void-element branch `if (ra8_book_is_void(name))` in `ra8_book_open_element`.
+ * Decision: the `internal_emit_escaped` switch over `& < > "` and the
+ * void-element branch `if (internal_is_void(name))` in `internal_open_element`.
  * - Vector 1: text "A & B < C > D" -> `&amp; &lt; &gt;` (each escape arm true).
  * - Vector 2: attr value `a"b` -> `&quot;` (in_attr quote arm true).
  * - Vector 3: <img>/<br> self-close `/>` (is_void true); <div>/<p>/<span>
@@ -287,7 +287,7 @@ static void test_ra8_book_xhtml_serializes_and_escapes(void)
  * @par MC/DC:
  * Decision: the `||` open-tag chain `!emit("<") || !emit_cstr(name) ||
  * !emit_attrs(...)` and the `&&` close-tag chain. Capping the output at graded
- * lengths makes the failing `ra8_book_emit()` occur at increasing depth, so each
+ * lengths makes the failing `internal_emit()` occur at increasing depth, so each
  * condition is in turn the deciding (short-circuiting) one.
  * - Vector 1: cap 0 -> first emit fails (chain condition 1 true).
  * - Vector 2: cap 1 -> name emit fails (condition 2 true).
@@ -345,7 +345,7 @@ static void test_ra8_book_xhtml_invalid_chapter_and_null_guards(void)
  *
  * @par MC/DC:
  * Decision: `ws = (c==' ') || (c=='\t') || (c=='\n') || (c=='\r')` and the
- * `if (*at_break)` collapse guard in `ra8_book_emit_text`.
+ * `if (*at_break)` collapse guard in `priv_book_emit_text`.
  * - Vector 1: "  hi\tthere\nyou\rzz  " exercises each whitespace class true and
  *             a non-ws char (false).
  * - Vector 2: leading/trailing/duplicate ws collapse and drop at a break,
@@ -371,7 +371,7 @@ static void test_ra8_book_xhtml_text_collapses_whitespace(void)
  * @brief Block elements insert paragraph breaks; runs of breaks collapse.
  *
  * @par MC/DC:
- * Decision: `if (ra8_book_is_block(name))` in the text walk and the break
+ * Decision: `if (priv_book_is_block(name))` in the text walk and the break
  * collapser `if ((*pos > 0) && (out[*pos-1] == '\n'))`.
  * - Vector 1: <div>/<p>/<br> are block -> a newline is emitted (is_block true).
  * - Vector 2: <span> is inline -> no extra break (is_block false).
@@ -396,7 +396,7 @@ static void test_ra8_book_xhtml_text_block_breaks(void)
  * @brief Truncated buffers fail the text walk at graded depths.
  *
  * @par MC/DC:
- * Decision: the `ra8_book_emit*` capacity checks reached from the text walk and
+ * Decision: the `internal_emit*` capacity checks reached from the text walk and
  * the `if (ok && (sp < stack))` descend guard (ok false arm).
  * - Vectors: graded caps 0..8 make an emit fail at increasing depth so the walk
  *   returns ::k_ra8_err_invalid_size with `ok` false on the descend guard.
@@ -421,8 +421,8 @@ static void test_ra8_book_xhtml_text_overflow_graded(void)
  *
  * @par MC/DC:
  * Decision: the walk-loop guard `while (sp > 0 && ok && guard < max_iter)` and
- * the final `return ok && (guard < max_iter)` in both `ra8_book_walk_to_xhtml`
- * and `ra8_book_walk_text`.
+ * the final `return ok && (guard < max_iter)` in both `internal_walk_to_xhtml`
+ * and `internal_walk_text`.
  * - Vector 1: self-cyclic node with a large output buffer keeps `sp > 0` and
  *             `ok` true, so `guard < max_iter` is the deciding condition and
  *             goes false at exhaustion -> ::k_ra8_err_invalid_size.
@@ -525,7 +525,7 @@ static void bx_build_trail(bx_book_t* b)
  *
  * @par MC/DC:
  * Decision: the close-tag `&&` chain `emit("</") && emit_cstr(name) &&
- * emit(">")` in `ra8_book_walk_to_xhtml`. With the tiny `<p>x</p>` output the
+ * emit(">")` in `internal_walk_to_xhtml`. With the tiny `<p>x</p>` output the
  * close tag begins at byte 4, so caps 4/5/6/7 make each emit in the close
  * chain the deciding failure, while the full cap exercises the all-true path.
  */
@@ -552,7 +552,7 @@ static void test_ra8_book_xhtml_close_chain_overflow(void)
  * @brief A trailing space ahead of a block break drives the trim loop.
  *
  * @par MC/DC:
- * Decision: `while ((*pos > 0) && (out[*pos-1] == ' '))` in `ra8_book_emit_break`.
+ * Decision: `while ((*pos > 0) && (out[*pos-1] == ' '))` in `priv_book_emit_break`.
  * - Both-true: "word " leaves a trailing space, then the `<p>` block break
  *   trims it (the loop body runs).
  * - `out[*pos-1] == ' '` false: a later break sees a non-space tail and stops.
@@ -631,8 +631,8 @@ static void bx_build_deep(bx_deep_t* b)
  *
  * @par MC/DC:
  * Decision: the open-tag stack guard `!emit(">") || (*sp + 2 > k_stack)` in
- * `ra8_book_open_element`, and the descend guard `if (ok && (sp < k_stack))` in
- * `ra8_book_walk_text`. A chain of @ref k_bx_deep_n nested elements (output
+ * `internal_open_element`, and the descend guard `if (ok && (sp < k_stack))` in
+ * `internal_walk_text`. A chain of @ref k_bx_deep_n nested elements (output
  * buffer sized so no emit fails first) drives:
  * - to_xhtml: `*sp + 2 > k_stack` becomes true near depth 256, so the open-tag
  *   guard's stack-capacity arm aborts the walk -> ::k_ra8_err_invalid_size.

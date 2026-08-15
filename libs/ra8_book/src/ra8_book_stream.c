@@ -18,86 +18,44 @@
 
 #include "ra8_attributes.h"
 #include "ra8_book_internal.h"
+#include "ra8_book_stream_internal.h"
 
-/** @brief Wire offsets inside the fixed 100-byte RABOOK1 header. */
-typedef enum : uint8_t {
-  k_stream_hdr_version       = 8U,
-  k_stream_hdr_total         = 12U,
-  k_stream_hdr_flags         = 16U,
-  k_stream_hdr_title         = 20U,
-  k_stream_hdr_author        = 24U,
-  k_stream_hdr_language      = 28U,
-  k_stream_hdr_identifier    = 32U,
-  k_stream_hdr_cover         = 36U,
-  k_stream_hdr_chapter_count = 40U,
-  k_stream_hdr_chapter_off   = 44U,
-  k_stream_hdr_node_count    = 48U,
-  k_stream_hdr_node_off      = 52U,
-  k_stream_hdr_attr_count    = 56U,
-  k_stream_hdr_attr_off      = 60U,
-  k_stream_hdr_style_count   = 64U,
-  k_stream_hdr_style_off     = 68U,
-  k_stream_hdr_image_count   = 72U,
-  k_stream_hdr_image_off     = 76U,
-  k_stream_hdr_string_off    = 80U,
-  k_stream_hdr_string_size   = 84U,
-  k_stream_hdr_pool_off      = 88U,
-  k_stream_hdr_pool_size     = 92U,
-  k_stream_hdr_crc           = 96U,
-} stream_header_off_t;
-
-/** @brief Wire offsets inside a 24-byte DOM node record. */
-typedef enum : uint8_t {
-  k_stream_node_kind         = 0U,
-  k_stream_node_reserved     = 1U,
-  k_stream_node_attr_count   = 2U,
-  k_stream_node_name         = 4U,
-  k_stream_node_text         = 8U,
-  k_stream_node_first_attr   = 12U,
-  k_stream_node_first_child  = 16U,
-  k_stream_node_next_sibling = 20U,
-} stream_node_off_t;
-
-/** @brief Wire offsets inside a 24-byte image descriptor. */
-typedef enum : uint8_t {
-  k_stream_image_id        = 0U,
-  k_stream_image_width     = 4U,
-  k_stream_image_height    = 6U,
-  k_stream_image_format    = 8U,
-  k_stream_image_pixfmt    = 9U,
-  k_stream_image_reserved  = 10U,
-  k_stream_image_data_off  = 12U,
-  k_stream_image_data_size = 16U,
-  k_stream_image_raw_size  = 20U,
-} stream_image_off_t;
-
-/** @brief Bit geometry shared by wire decoding and the node ownership map. */
-typedef enum : uint8_t {
-  k_stream_bits_per_byte = 8U,  /**< Bits represented by one byte.             */
-  k_stream_mark_round    = 7U,  /**< Numerator bias for ceiling division by 8. */
-  k_stream_le_shift_3    = 24U, /**< Bit shift of byte three in a uint32.      */
-} stream_bit_t;
-
-/** @brief Immutable validation state shared by the bounded table passes. */
-typedef struct {
-  ra8_book_stream_read_fn read;        /**< Exact source callback.       */
-  void*                   read_ctx;    /**< Callback context.            */
-  uint64_t                source_size; /**< Exact flat-source byte size. */
-  uint8_t*                scratch;     /**< Caller transfer buffer.      */
-  uint32_t                scratch_cap; /**< Transfer-buffer capacity.    */
-  ra8_book_header_t       hdr;         /**< Decoded host-order header.   */
-} stream_validate_t;
-
-/** @brief Decode one little-endian 16-bit field from unaligned bytes. */
-RA8_INTERNAL
-static uint16_t internal_le16(const uint8_t* p)
+/**
+ * @brief Decode one little-endian 16-bit field from unaligned bytes.
+ * @details Combines two octets explicitly so behavior is independent of host
+ *          byte order and does not require an aligned integer load.
+ * @param[in] p Readable two-byte wire field.
+ * @return Host-order unsigned field value.
+ * @retval UINT16_C(0) Both wire bytes are zero.
+ * @retval UINT16_MAX Both wire bytes are 0xff.
+ * @pre @p p addresses at least two readable bytes.
+ * @pre The source bytes remain stable for the duration of the two reads.
+ * @post No memory or external state is modified.
+ * @post The result is exactly `p[0] | (p[1] << 8)`.
+ * @note Pure and thread-safe for immutable input.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_le16(const uint8_t* p)
 {
   return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << k_stream_bits_per_byte));
 }
 
-/** @brief Decode one little-endian 32-bit field from unaligned bytes. */
-RA8_INTERNAL
-static uint32_t internal_le32(const uint8_t* p)
+/**
+ * @brief Decode one little-endian 32-bit field from unaligned bytes.
+ * @details Combines four octets explicitly so behavior is independent of host
+ *          byte order and does not require an aligned integer load.
+ * @param[in] p Readable four-byte wire field.
+ * @return Host-order unsigned field value.
+ * @retval UINT32_C(0) All four wire bytes are zero.
+ * @retval UINT32_MAX All four wire bytes are 0xff.
+ * @pre @p p addresses at least four readable bytes.
+ * @pre The source bytes remain stable for the duration of the four reads.
+ * @post No memory or external state is modified.
+ * @post The result is the exact canonical little-endian decoding.
+ * @note Pure and thread-safe for immutable input.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_le32(const uint8_t* p)
 {
   return (uint32_t)p[0] | ((uint32_t)p[1] << k_stream_bits_per_byte) |
          ((uint32_t)p[2] << (2U * k_stream_bits_per_byte)) |
@@ -106,13 +64,19 @@ static uint32_t internal_le32(const uint8_t* p)
 
 /**
  * @brief Read an exact, already-sized source span.
+ * @details Performs an overflow-safe bounds proof before invoking the injected
+ *          exact-read callback, so malformed wire extents never reach storage.
  * @param[in] ctx Validation source.
  * @param[in] off Source byte offset.
  * @param[out] dst Destination buffer.
  * @param[in] len Exact byte count.
  * @return Callback status, or invalid-size when the request exceeds the source.
+ * @retval k_ra8_ok The callback supplied exactly the requested bytes.
+ * @retval k_ra8_err_invalid_size The half-open request exceeds the source.
  * @pre All pointers are non-NULL.
+ * @pre @p dst addresses at least @p len writable bytes.
  * @post Success fills all @p len destination bytes.
+ * @post An out-of-range request does not invoke the callback.
  * @note Not thread-safe with respect to @p ctx.
  * @since Version 0.1.0
  */
@@ -128,15 +92,18 @@ internal_read(const stream_validate_t* ctx, uint64_t off, uint8_t* dst, uint32_t
 
 /**
  * @brief Decode the fixed header from canonical little-endian wire bytes.
+ * @details Copies the byte magic and decodes every scalar field explicitly;
+ *          no packed-structure alias or host-endian assumption is used.
  * @param[in] raw Header wire bytes.
  * @param[out] hdr Decoded host-order header.
  * @pre @p raw holds exactly @ref k_ra8_book_sizeof_header bytes.
+ * @pre @p hdr addresses one writable header object disjoint from @p raw.
  * @post Every header field is populated.
+ * @post Bytes outside @p hdr are not modified.
  * @note Pure and thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static void internal_decode_header(const uint8_t* raw, ra8_book_header_t* hdr)
+RA8_INTERNAL static void internal_decode_header(const uint8_t* raw, ra8_book_header_t* hdr)
 {
   (void)memcpy(hdr->magic, raw, sizeof(hdr->magic));
   hdr->format_version    = internal_le32(&raw[k_stream_hdr_version]);
@@ -166,13 +133,21 @@ static void internal_decode_header(const uint8_t* raw, ra8_book_header_t* hdr)
 
 /**
  * @brief Require one segment to begin at the canonical cursor and advance it.
+ * @details Enforces gap-free table layout and performs the count-by-element
+ *          product in 64 bits before accepting a 32-bit wire offset.
  * @param[in] off Stored segment offset.
  * @param[in] count Number of records or bytes.
  * @param[in] elem Wire bytes per record.
  * @param[in,out] cursor Expected start and resulting end.
  * @return k_ra8_ok, or invalid-size for a gap, overlap, or 32-bit overflow.
+ * @retval k_ra8_ok The segment begins at the cursor and its end is
+ * representable.
+ * @retval k_ra8_err_invalid_size The offset differs or the end exceeds
+ * UINT32_MAX.
  * @pre @p cursor is non-NULL.
+ * @pre @p cursor contains the validated end of the preceding segment.
  * @post Success advances @p cursor by count times elem.
+ * @post Failure leaves @p cursor unchanged unless the start already matched.
  * @note Pure except for @p cursor.
  * @since Version 0.1.0
  */
@@ -193,15 +168,22 @@ internal_layout_segment(uint32_t off, uint32_t count, uint32_t elem, uint64_t* c
 
 /**
  * @brief Validate version, flags, exact source length, and canonical layout.
+ * @details Checks magic and supported features, verifies scratch ownership-map
+ *          capacity, then walks every table and pool in canonical wire order.
  * @param[in] ctx State containing a decoded header.
  * @return Strict header/layout validation status.
+ * @retval k_ra8_ok The header and all segment extents are canonical.
+ * @retval k_ra8_err_invalid_arg Magic, version, or feature bits are invalid.
+ * @retval k_ra8_err_invalid_size Source, scratch, or segment geometry is
+ * invalid.
  * @pre @p ctx is non-NULL and its header is decoded.
+ * @pre ctx->source_size and scratch capacity describe accessible storage.
  * @post No state is modified.
+ * @post Success proves every later table and pool read is within the source.
  * @note Pure and thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_validate_header_layout(const stream_validate_t* ctx)
+RA8_INTERNAL static ra8_err_t internal_validate_header_layout(const stream_validate_t* ctx)
 {
   static const char magic[8] = {'R', 'A', 'B', 'O', 'O', 'K', '1', '\0'};
   if (memcmp(ctx->hdr.magic, magic, sizeof(magic)) != 0) {
@@ -263,16 +245,21 @@ static ra8_err_t internal_validate_header_layout(const stream_validate_t* ctx)
 
 /**
  * @brief Require a referenced string offset to name a string boundary.
+ * @details Accepts the empty-string sentinel at zero; other offsets must be
+ *          in range and immediately preceded by a NUL terminator.
  * @param[in] ctx Validated layout state.
  * @param[in] off Offset relative to the string pool.
  * @return k_ra8_ok when @p off is in-range and begins an interned string.
+ * @retval k_ra8_ok @p off names the sentinel or a validated string boundary.
+ * @retval k_ra8_err_invalid_arg The offset is outside the pool or mid-string.
  * @pre String-pool envelope bytes were validated.
+ * @pre @p ctx contains a callback and canonical string-pool extent.
  * @post No state is modified.
+ * @post Success permits subsequent reads beginning at the referenced offset.
  * @note May perform one single-byte callback read.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_string_ref(const stream_validate_t* ctx, uint32_t off)
+RA8_INTERNAL static ra8_err_t internal_string_ref(const stream_validate_t* ctx, uint32_t off)
 {
   if (off >= ctx->hdr.string_size) {
     return k_ra8_err_invalid_arg;
@@ -291,16 +278,23 @@ static ra8_err_t internal_string_ref(const stream_validate_t* ctx, uint32_t off)
 
 /**
  * @brief Require a string reference to name a non-empty interned string.
+ * @details First proves the offset is a string boundary, then rejects a NUL as
+ *          the referenced string's first byte.
  * @param[in] ctx Validated layout state.
  * @param[in] off Offset relative to the string pool.
  * @return k_ra8_ok when the boundary starts with a non-NUL byte.
+ * @retval k_ra8_ok The reference names a non-empty interned string.
+ * @retval k_ra8_err_invalid_arg The reference is invalid or names an empty
+ * string.
  * @pre String-pool envelope bytes were validated.
+ * @pre @p ctx contains a callback and canonical string-pool extent.
  * @post No state is modified.
+ * @post Success proves at least one non-NUL byte follows the boundary.
  * @note Performs at most two one-byte callback reads.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_nonempty_string_ref(const stream_validate_t* ctx, uint32_t off)
+RA8_INTERNAL static ra8_err_t internal_nonempty_string_ref(const stream_validate_t* ctx,
+                                                           uint32_t                 off)
 {
   ra8_err_t err   = internal_string_ref(ctx, off);
   uint8_t   first = 0U;
@@ -315,15 +309,21 @@ static ra8_err_t internal_nonempty_string_ref(const stream_validate_t* ctx, uint
 
 /**
  * @brief Validate the empty-string sentinel and terminal pool NUL.
+ * @details Requires a non-empty string pool whose first and last bytes are NUL,
+ *          establishing bounded sentinels for all later reference checks.
  * @param[in] ctx Validated layout state.
  * @return k_ra8_ok when the pool is non-empty and bounded by NUL bytes.
+ * @retval k_ra8_ok Both required sentinel bytes are present.
+ * @retval k_ra8_err_invalid_size The string pool is empty.
+ * @retval k_ra8_err_invalid_arg Either boundary byte is non-NUL.
  * @pre String layout lies within the source.
+ * @pre @p ctx contains a usable exact-read callback.
  * @post No state is modified.
+ * @post Success establishes the pool's leading and trailing sentinels.
  * @note Performs at most two one-byte reads.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_validate_string_envelope(const stream_validate_t* ctx)
+RA8_INTERNAL static ra8_err_t internal_validate_string_envelope(const stream_validate_t* ctx)
 {
   if (ctx->hdr.string_size == 0U) {
     return k_ra8_err_invalid_size;
@@ -345,15 +345,20 @@ static ra8_err_t internal_validate_string_envelope(const stream_validate_t* ctx)
 
 /**
  * @brief Validate the four metadata strings and optional cover index.
+ * @details Validates every metadata string boundary and requires any non-nil
+ *          cover reference to select an existing image descriptor.
  * @param[in] ctx Validation state.
  * @return Metadata validation status.
+ * @retval k_ra8_ok All metadata references are valid.
+ * @retval k_ra8_err_invalid_arg A string or cover-image reference is invalid.
  * @pre Header and string envelope are valid.
+ * @pre Image count and metadata offsets are decoded from the validated header.
  * @post No state is modified.
+ * @post Success makes all metadata references safe for later lookup.
  * @note Not thread-safe with respect to the source callback.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_validate_metadata(const stream_validate_t* ctx)
+RA8_INTERNAL static ra8_err_t internal_validate_metadata(const stream_validate_t* ctx)
 {
   const uint32_t refs[4] = {
     ctx->hdr.title_off,
@@ -376,15 +381,21 @@ static ra8_err_t internal_validate_metadata(const stream_validate_t* ctx)
 
 /**
  * @brief Validate every chapter string and root-node index.
+ * @details Requires canonical title/id strings, an element root with no
+ * sibling, and unique ownership of every chapter root in the scratch bitset.
  * @param[in] ctx Validation state.
  * @return Chapter-table validation status.
+ * @retval k_ra8_ok Every chapter record and root is valid and unique.
+ * @retval k_ra8_err_invalid_arg A reference, root kind, or ownership rule
+ * fails.
  * @pre Header layout and string envelope are valid.
- * @post No state is modified.
+ * @pre The node ownership scratch bitset is zeroed and sufficiently large.
+ * @post No source bytes or decoded header state are modified.
+ * @post Success marks each chapter root exactly once in caller scratch.
  * @note Iteration is bounded by chapter_count.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_validate_chapters(const stream_validate_t* ctx)
+RA8_INTERNAL static ra8_err_t internal_validate_chapters(const stream_validate_t* ctx)
 {
   uint8_t rec[k_ra8_book_sizeof_chapter] = {};
   for (uint32_t i = 0U; i < ctx->hdr.chapter_count; ++i) {
@@ -433,17 +444,22 @@ static ra8_err_t internal_validate_chapters(const stream_validate_t* ctx)
 
 /**
  * @brief Validate one optional forward node link.
+ * @details Treats nil as absent and otherwise requires the target to be both
+ *          in range and greater than the owner, which excludes cycles.
  * @param[in] link Candidate node index or nil.
  * @param[in] current Index of the owning node.
  * @param[in] count Total node count.
  * @return k_ra8_ok for nil or a strictly forward in-range link.
+ * @retval k_ra8_ok The link is nil or a valid forward target.
+ * @retval k_ra8_err_invalid_arg The target is backward, self, or out of range.
  * @pre @p current is less than @p count.
+ * @pre @p count is the validated node-table record count.
  * @post No state is modified.
+ * @post Success proves a non-nil link cannot introduce a backward cycle.
  * @note Pure and thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_forward_link(uint32_t link, uint32_t current, uint32_t count)
+RA8_INTERNAL static ra8_err_t internal_forward_link(uint32_t link, uint32_t current, uint32_t count)
 {
   if (link == (uint32_t)k_ra8_book_nil) {
     return k_ra8_ok;
@@ -456,12 +472,18 @@ static ra8_err_t internal_forward_link(uint32_t link, uint32_t current, uint32_t
 
 /**
  * @brief Record one unique incoming node reference in the caller bitset.
+ * @details Validates forward-link geometry before testing and setting the
+ *          corresponding ownership bit; duplicate parents fail closed.
  * @param[in] ctx Validation state whose scratch holds ownership bits.
  * @param[in] link Candidate node index or nil.
  * @param[in] current Index of the linking node.
  * @return k_ra8_ok for nil or one unique strictly-forward reference.
+ * @retval k_ra8_ok The link is nil or was newly marked.
+ * @retval k_ra8_err_invalid_arg The link is invalid or already owned.
  * @pre Ownership scratch was cleared and sized for node_count bits.
+ * @pre @p current names an existing node in ctx->hdr.
  * @post Success on a non-nil link marks exactly one target bit.
+ * @post Nil success leaves the ownership map unchanged.
  * @note Not thread-safe; mutates caller scratch only.
  * @since Version 0.1.0
  */
@@ -484,12 +506,18 @@ internal_mark_forward_link(const stream_validate_t* ctx, uint32_t link, uint32_t
 
 /**
  * @brief Validate one element node and advance canonical attribute ownership.
+ * @details Requires element-only fields, a non-empty name, and either no
+ *          attributes or the exact next contiguous attribute-table span.
  * @param[in] ctx Validation state.
  * @param[in] rec Decoded-wire node bytes.
  * @param[in,out] attr_cursor Next unowned attribute index.
  * @return Element validation status.
+ * @retval k_ra8_ok The element fields and attribute span are canonical.
+ * @retval k_ra8_err_invalid_arg An element invariant or reference is invalid.
  * @pre Node kind is element and @p attr_cursor is in range.
+ * @pre @p rec addresses one complete node wire record.
  * @post Success consumes exactly the node's contiguous attribute span.
+ * @post Failure never advances beyond the advertised attribute count.
  * @note Not thread-safe with respect to the source callback.
  * @since Version 0.1.0
  */
@@ -518,16 +546,23 @@ internal_validate_element(const stream_validate_t* ctx, const uint8_t* rec, uint
 
 /**
  * @brief Validate one text-node invariant set.
+ * @details Rejects element-only fields on text records, then validates the
+ *          text string boundary through the shared string-pool contract.
  * @param[in] ctx Validation state.
  * @param[in] rec Decoded-wire node bytes.
  * @return Text-node validation status.
+ * @retval k_ra8_ok The text node fields and string reference are valid.
+ * @retval k_ra8_err_invalid_arg An element-only field or string reference is
+ * invalid.
  * @pre Node kind is text.
+ * @pre @p rec addresses one complete node wire record.
  * @post No state is modified.
+ * @post Success proves the node owns no children or attributes.
  * @note Not thread-safe with respect to the source callback.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_validate_text(const stream_validate_t* ctx, const uint8_t* rec)
+RA8_INTERNAL static ra8_err_t internal_validate_text(const stream_validate_t* ctx,
+                                                     const uint8_t*           rec)
 {
   if ((internal_le16(&rec[k_stream_node_attr_count]) != 0U) ||
       (internal_le32(&rec[k_stream_node_name]) != 0U) ||
@@ -540,15 +575,21 @@ static ra8_err_t internal_validate_text(const stream_validate_t* ctx, const uint
 
 /**
  * @brief Validate every DOM node and exact attribute ownership.
+ * @details Walks nodes once, validates kind-specific fields, marks unique
+ *          forward edges, and finally requires every node and attribute owned.
  * @param[in] ctx Validation state.
  * @return Node-table validation status.
+ * @retval k_ra8_ok All nodes, links, and attribute spans are canonical.
+ * @retval k_ra8_err_invalid_arg A node, link, ownership, or span rule fails.
  * @pre Header layout and string envelope are valid.
- * @post No state is modified.
- * @note Forward links make cycles impossible without recursion or a visited set.
+ * @pre Chapter validation has already marked each root in scratch.
+ * @post No source bytes or decoded header state are modified.
+ * @post Success leaves every node ownership bit set exactly once.
+ * @note Forward links make cycles impossible without recursion or a visited
+ * set.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_validate_nodes(const stream_validate_t* ctx)
+RA8_INTERNAL static ra8_err_t internal_validate_nodes(const stream_validate_t* ctx)
 {
   uint8_t  rec[k_ra8_book_sizeof_node] = {};
   uint32_t attr_cursor                 = 0U;
@@ -593,15 +634,21 @@ static ra8_err_t internal_validate_nodes(const stream_validate_t* ctx)
 
 /**
  * @brief Validate every attribute name/value string reference.
+ * @details Reads each fixed-size attribute record, requires a non-empty name,
+ *          and accepts an empty or non-empty value at a valid boundary.
  * @param[in] ctx Validation state.
  * @return Attribute-table validation status.
+ * @retval k_ra8_ok Every attribute string reference is valid.
+ * @retval k_ra8_err_invalid_arg A name or value offset is not a string
+ * boundary.
  * @pre Node validation proved exact attribute ownership.
+ * @pre Header layout bounds every attribute record in the source.
  * @post No state is modified.
+ * @post Success makes every attribute record safe for string lookup.
  * @note Iteration is bounded by attr_count.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_validate_attrs(const stream_validate_t* ctx)
+RA8_INTERNAL static ra8_err_t internal_validate_attrs(const stream_validate_t* ctx)
 {
   uint8_t rec[k_ra8_book_sizeof_attr] = {};
   for (uint32_t i = 0U; i < ctx->hdr.attr_count; ++i) {
@@ -625,15 +672,20 @@ static ra8_err_t internal_validate_attrs(const stream_validate_t* ctx)
 
 /**
  * @brief Validate every stylesheet source and scope.
+ * @details Validates each stylesheet source string and permits only nil or an
+ *          existing chapter index as its optional scope.
  * @param[in] ctx Validation state.
  * @return Stylesheet-table validation status.
+ * @retval k_ra8_ok Every stylesheet source and scope is valid.
+ * @retval k_ra8_err_invalid_arg A source boundary or scope index is invalid.
  * @pre Header layout and string envelope are valid.
+ * @pre Chapter count is the validated table-record count.
  * @post No state is modified.
+ * @post Success makes each stylesheet reference safe for later lookup.
  * @note Iteration is bounded by stylesheet_count.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_validate_styles(const stream_validate_t* ctx)
+RA8_INTERNAL static ra8_err_t internal_validate_styles(const stream_validate_t* ctx)
 {
   uint8_t rec[k_ra8_book_sizeof_stylesheet] = {};
   for (uint32_t i = 0U; i < ctx->hdr.stylesheet_count; ++i) {
@@ -659,15 +711,21 @@ static ra8_err_t internal_validate_styles(const stream_validate_t* ctx)
 
 /**
  * @brief Validate one raster image's dimensions, depth, and exact byte count.
+ * @details Requires non-zero dimensions, a supported gray depth, and exact
+ *          packed-pixel data and raw lengths computed with 64-bit arithmetic.
  * @param[in] rec Image descriptor wire bytes.
  * @return Raster semantic validation status.
+ * @retval k_ra8_ok Raster geometry and byte lengths are exact.
+ * @retval k_ra8_err_invalid_arg Dimensions or pixel format are unsupported.
+ * @retval k_ra8_err_invalid_size A computed or stored pixel extent is invalid.
  * @pre @p rec names the raster format.
+ * @pre @p rec addresses one complete image wire record.
  * @post No state is modified.
+ * @post Success proves the raster payload size from its dimensions and depth.
  * @note Pure and thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_validate_raster(const uint8_t* rec)
+RA8_INTERNAL static ra8_err_t internal_validate_raster(const uint8_t* rec)
 {
   const uint32_t width  = internal_le16(&rec[k_stream_image_width]);
   const uint32_t height = internal_le16(&rec[k_stream_image_height]);
@@ -690,15 +748,20 @@ static ra8_err_t internal_validate_raster(const uint8_t* rec)
 
 /**
  * @brief Validate one SVG image's zero extent/depth and raw-storage length.
+ * @details Enforces the SVG sentinel geometry and requires a non-empty stored
+ *          source whose encoded and raw byte lengths are identical.
  * @param[in] rec Image descriptor wire bytes.
  * @return SVG semantic validation status.
+ * @retval k_ra8_ok SVG sentinel fields and storage length are canonical.
+ * @retval k_ra8_err_invalid_arg A sentinel field or byte length is invalid.
  * @pre @p rec names the SVG format.
+ * @pre @p rec addresses one complete image wire record.
  * @post No state is modified.
+ * @post Success proves the SVG source occupies a non-empty exact payload span.
  * @note Pure and thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_validate_svg(const uint8_t* rec)
+RA8_INTERNAL static ra8_err_t internal_validate_svg(const uint8_t* rec)
 {
   if ((internal_le16(&rec[k_stream_image_width]) != 0U) ||
       (internal_le16(&rec[k_stream_image_height]) != 0U) ||
@@ -713,15 +776,21 @@ static ra8_err_t internal_validate_svg(const uint8_t* rec)
 
 /**
  * @brief Validate every image descriptor and exact gap-free pool tiling.
+ * @details Validates IDs and format semantics, then advances a pool cursor that
+ *          rejects gaps, overlap, and trailing unowned image bytes.
  * @param[in] ctx Validation state.
  * @return Image-table validation status.
+ * @retval k_ra8_ok Every image is valid and exactly tiles the pool.
+ * @retval k_ra8_err_invalid_arg An ID, reserved field, or format rule fails.
+ * @retval k_ra8_err_invalid_size Image byte geometry or pool tiling is invalid.
  * @pre Header layout and string envelope are valid.
+ * @pre Every image record and the image pool lie within the validated source.
  * @post No state is modified.
+ * @post Success proves each pool byte belongs to exactly one image in order.
  * @note Iteration is bounded by image_count.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_validate_images(const stream_validate_t* ctx)
+RA8_INTERNAL static ra8_err_t internal_validate_images(const stream_validate_t* ctx)
 {
   uint8_t  rec[k_ra8_book_sizeof_image] = {};
   uint32_t pool_cursor                  = 0U;
@@ -762,15 +831,20 @@ static ra8_err_t internal_validate_images(const stream_validate_t* ctx)
 
 /**
  * @brief Hash every body byte through the caller transfer buffer.
+ * @details Reads the body in scratch-sized exact spans and extends the shared
+ *          CRC convention without retaining the complete source.
  * @param[in] ctx Validation state.
  * @return Full-body CRC validation status.
+ * @retval k_ra8_ok The computed body CRC equals the header value.
+ * @retval k_ra8_err_range_check_failed The computed CRC differs.
  * @pre Header layout is valid and scratch capacity is non-zero.
- * @post No source or validation state is modified.
+ * @pre @p ctx contains a usable exact-read callback and writable scratch.
+ * @post No source bytes or decoded header state are modified.
+ * @post Success proves every body byte contributed exactly once in wire order.
  * @note Iteration is bounded by total_size and scratch_cap.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_validate_crc(const stream_validate_t* ctx)
+RA8_INTERNAL static ra8_err_t internal_validate_crc(const stream_validate_t* ctx)
 {
   uint64_t at  = (uint64_t)k_ra8_book_sizeof_header;
   uint32_t crc = 0U;
@@ -784,7 +858,7 @@ static ra8_err_t internal_validate_crc(const stream_validate_t* ctx)
     if (err != k_ra8_ok) {
       return err;
     }
-    crc = ra8_book_crc32_extend(crc, ctx->scratch, span);
+    crc = priv_book_crc32_extend(crc, ctx->scratch, span);
     at += span;
   }
   return (crc == ctx->hdr.crc32) ? k_ra8_ok : k_ra8_err_range_check_failed;
@@ -792,15 +866,22 @@ static ra8_err_t internal_validate_crc(const stream_validate_t* ctx)
 
 /**
  * @brief Run the strict passes after public argument validation.
+ * @details Decodes the header, validates canonical layout and each semantic
+ *          table in dependency order, then verifies the body CRC last.
  * @param[in,out] ctx Initialized validation state.
  * @return First strict validation error, or k_ra8_ok.
+ * @retval k_ra8_ok Every structural, semantic, and integrity pass succeeded.
+ * @retval k_ra8_err_invalid_arg A decoded semantic invariant failed.
+ * @retval k_ra8_err_invalid_size A source, table, pool, or scratch extent
+ * failed.
  * @pre All pointers and scratch capacity are valid.
+ * @pre ctx->source_size is at least the fixed wire-header length.
  * @post Success leaves ctx->hdr fully decoded and validated.
+ * @post Failure is returned immediately without publishing an output header.
  * @note Not thread-safe with respect to the callback source.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_validate_body(stream_validate_t* ctx)
+RA8_INTERNAL static ra8_err_t internal_validate_body(stream_validate_t* ctx)
 {
   uint8_t   raw[k_ra8_book_sizeof_header] = {};
   ra8_err_t err                           = internal_read(ctx, 0U, raw, (uint32_t)sizeof(raw));

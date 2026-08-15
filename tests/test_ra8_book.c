@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_book.c
  * @brief Unit tests for the flat, XIP e-book container format (libs/ra8_book).
+ * @details Constructs bounded flat-book fixtures to verify header parsing, table validation, range checks, and image/text lookup behavior.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
