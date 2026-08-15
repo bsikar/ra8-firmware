@@ -192,7 +192,7 @@ static size_t farc_read(void* ctx, uint64_t off, void* dst, size_t len)
  *        exact bytes of the equivalent STORE page (the #235 CBZ-parity acceptance).
  *
  * @par MC/DC:
- * Decision libs/ra8_comic/src/ra8_comic_cbr.c@s_add_member:
+ * Decision libs/ra8_comic/src/ra8_comic_cbr.c@internal_add_member:
  * `is_store || is_rar5` (2 conditions)
  * - STORE page on RAR5:      is_store=1              -> extractable (control)
  * - compressed page on RAR5: is_store=0, is_rar5=1   -> extractable (varies is_rar5)
@@ -308,7 +308,7 @@ static size_t a4_main(uint8_t* out)
  *        it unsupported (the RAR4 codec is out of scope).
  *
  * @par MC/DC:
- * Completes the libs/ra8_comic/src/ra8_comic_cbr.c@s_add_member `is_store || is_rar5`
+ * Completes the libs/ra8_comic/src/ra8_comic_cbr.c@internal_add_member `is_store || is_rar5`
  * vector set from test_cbr_compressed_parity:
  * - RAR4 compressed page: is_store=0, is_rar5=0 -> not extractable (both false).
  */

@@ -184,8 +184,8 @@ static inline uint8_t internal_color_a(uint32_t color)
   return (uint8_t)((color >> k_shift_alpha) & k_mask_byte);
 }
 
-/** @brief Implementation of `s_gfx_text_pack_565()` -- promoted for cross-TU use. */
-uint16_t s_gfx_text_pack_565(uint32_t color)
+/** @brief Implementation of `priv_gfx_text_pack_565()` -- promoted for cross-TU use. */
+uint16_t priv_gfx_text_pack_565(uint32_t color)
 {
   const uint16_t r = (uint16_t)(internal_color_r(color) >> k_565_r_shift_in);
   const uint16_t g = (uint16_t)(internal_color_g(color) >> k_565_g_shift_in);
@@ -263,7 +263,7 @@ static void internal_put_pixel(uint8_t*         dst,
   uint8_t* p = dst + (y * stride) + (x * (size_t)internal_bpp(format));
   switch (format) {
     case k_ra8_gfx_format_rgb565: {
-      const uint16_t v = s_gfx_text_pack_565(color);
+      const uint16_t v = priv_gfx_text_pack_565(color);
       p[k_idx_r]       = (uint8_t)(v & k_mask_byte);
       p[k_idx_g]       = (uint8_t)((v >> k_glyph_bits_per_byte) & k_mask_byte);
       break;
@@ -332,8 +332,8 @@ internal_get_pixel(const uint8_t* src, size_t stride, ra8_gfx_format_t format, s
   return 0U;
 }
 
-/** @brief Implementation of `s_gfx_text_plot()` -- promoted for cross-TU use. */
-void s_gfx_text_plot(int32_t x, int32_t y, uint32_t color)
+/** @brief Implementation of `priv_gfx_text_plot()` -- promoted for cross-TU use. */
+void priv_gfx_text_plot(int32_t x, int32_t y, uint32_t color)
 {
   /* The clip rectangle is always within the framebuffer, so this single test
    * enforces both the clip and the framebuffer bounds. With the default clip
@@ -357,7 +357,7 @@ void s_gfx_text_plot(int32_t x, int32_t y, uint32_t color)
  *
  * @details
  * One tight inner loop that stores the two pre-packed bytes per pixel, so a span
- * fill pays the colour packing (s_gfx_text_pack_565 + the per-channel extraction)
+ * fill pays the colour packing (priv_gfx_text_pack_565 + the per-channel extraction)
  * once for the whole run instead of once per pixel. The byte order (low byte
  * first) is exactly what internal_put_pixel writes for k_ra8_gfx_format_rgb565, so
  * the result is byte-identical to plotting each pixel individually.
@@ -395,7 +395,7 @@ static inline void internal_fill_565(uint8_t* p, size_t count, uint8_t lo, uint8
  *
  * @details
  * Clips [x,x+w) x [y,y+h) to the framebuffer once, then fills each visible row
- * with internal_fill_565. This writes exactly the pixels s_gfx_text_plot would
+ * with internal_fill_565. This writes exactly the pixels priv_gfx_text_plot would
  * (the same in-bounds set) with the same packed bytes, so it is byte-identical to
  * the per-pixel fill while replacing roughly six function calls per pixel
  * (plot -> put_pixel -> pack_565 -> color_r/g/b -> bpp) with one packed store.
@@ -434,7 +434,7 @@ static void internal_fill_rect_565(int32_t x, int32_t y, int32_t w, int32_t h, u
   if ((x1 <= x0) || (y1 <= y0)) {
     return; /* fully clipped -- nothing to fill. */
   }
-  const uint16_t v      = s_gfx_text_pack_565(color);
+  const uint16_t v      = priv_gfx_text_pack_565(color);
   const uint8_t  lo     = (uint8_t)(v & (uint16_t)k_mask_byte);
   const uint8_t  hi     = (uint8_t)((v >> k_glyph_bits_per_byte) & (uint16_t)k_mask_byte);
   const size_t   bpp    = (size_t)s_gfx_text_state.bpp;
@@ -453,7 +453,7 @@ static void internal_fill_rect_565(int32_t x, int32_t y, int32_t w, int32_t h, u
  *
  * @details
  * RGB565 -- the panel format -- takes the clipped span fill; other formats fall
- * back to the per-pixel s_gfx_text_plot loop. Both write the same in-bounds pixels.
+ * back to the per-pixel priv_gfx_text_plot loop. Both write the same in-bounds pixels.
  *
  * @param[in] x     Top-left corner x.
  * @param[in] y     Top-left corner y.
@@ -476,7 +476,7 @@ static void internal_fill_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint3
   }
   for (int32_t row = 0; row < h; row++) {
     for (int32_t col = 0; col < w; col++) {
-      s_gfx_text_plot(x + col, y + row, color);
+      priv_gfx_text_plot(x + col, y + row, color);
     }
   }
 }
@@ -487,7 +487,7 @@ static void internal_fill_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint3
  * @details
  * Plots the top row (y), bottom row (y+h-1), left column (x), and right column
  * (x+w-1) by iterating over all column and row positions in two separate loops.
- * interior pixels are never touched. Each pixel is routed through s_gfx_text_plot,
+ * interior pixels are never touched. Each pixel is routed through priv_gfx_text_plot,
  * which applies the active clip rectangle before writing to the framebuffer, so
  * partial off-screen outlines are rendered correctly without additional guards here.
  *
@@ -499,7 +499,7 @@ static void internal_fill_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint3
  * @pre The module is initialised (checked by ra8_gfx_rect).
  * @pre w > 0 and h > 0 (checked by ra8_gfx_rect).
  * @post The four edge runs hold the colour; the interior is untouched.
- * @post s_gfx_text_plot clips every pixel to the framebuffer.
+ * @post priv_gfx_text_plot clips every pixel to the framebuffer.
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
@@ -507,12 +507,12 @@ RA8_INTERNAL
 static void internal_rect_outline(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color)
 {
   for (int32_t col = 0; col < w; col++) {
-    s_gfx_text_plot(x + col, y, color);
-    s_gfx_text_plot(x + col, y + h - 1, color);
+    priv_gfx_text_plot(x + col, y, color);
+    priv_gfx_text_plot(x + col, y + h - 1, color);
   }
   for (int32_t row = 0; row < h; row++) {
-    s_gfx_text_plot(x, y + row, color);
-    s_gfx_text_plot(x + w - 1, y + row, color);
+    priv_gfx_text_plot(x, y + row, color);
+    priv_gfx_text_plot(x + w - 1, y + row, color);
   }
 }
 
@@ -635,12 +635,12 @@ ra8_err_t ra8_gfx_pixel(int32_t x, int32_t y, uint32_t color)
       (y >= (int32_t)s_gfx_text_state.height)) {
     return k_ra8_err_range_check_failed;
   }
-  s_gfx_text_plot(x, y, color);
+  priv_gfx_text_plot(x, y, color);
   return k_ra8_ok;
 }
 
 /**
- * @brief Expand an 8-bit gray sample to the 0x00RRGGBB colour word s_gfx_text_pack_565 expects.
+ * @brief Expand an 8-bit gray sample to the 0x00RRGGBB colour word priv_gfx_text_pack_565 expects.
  *
  * @details
  * Replicates the single gray value g into the R, G, and B channels of a packed
@@ -648,7 +648,7 @@ ra8_err_t ra8_gfx_pixel(int32_t x, int32_t y, uint32_t color)
  * k_shift_green, and k_shift_blue, then ORing the three contributions together.
  * The alpha channel is left as zero (fully opaque is implied by convention
  * throughout the software rasteriser). The result can be fed directly to
- * s_gfx_text_pack_565 to produce the equivalent RGB565 pixel.
+ * priv_gfx_text_pack_565 to produce the equivalent RGB565 pixel.
  *
  * @param[in] g 8-bit gray intensity in the range [0, 255].
  * @return uint32_t Packed 0x00RRGGBB colour with R==G==B==g.
@@ -676,7 +676,7 @@ static inline uint32_t internal_gray_to_color(uint32_t g)
  * directly into the RGB565 framebuffer. For each visible pixel the gray sample
  * is located via the src pointer, w (source row stride), dst_x, and dst_y
  * offset arithmetic, then expanded to 0x00RRGGBB by internal_gray_to_color()
- * before being packed to two RGB565 bytes by s_gfx_text_pack_565(). The two bytes
+ * before being packed to two RGB565 bytes by priv_gfx_text_pack_565(). The two bytes
  * are written in the same low-byte-first order that internal_put_pixel() uses for
  * k_ra8_gfx_format_rgb565, making the result byte-identical to the per-pixel path
  * while avoiding the per-pixel clip overhead.
@@ -711,7 +711,7 @@ static void internal_blit_gray8_565(const uint8_t* src,
     uint8_t* p = s_gfx_text_state.fb + ((size_t)y * stride) + ((size_t)x0 * (size_t)k_rgb565_bpp);
     const uint8_t* s = src + ((size_t)(y - dst_y) * (size_t)w) + (size_t)(x0 - dst_x);
     for (int32_t x = x0; x < x1; ++x) {
-      const uint16_t v = s_gfx_text_pack_565(internal_gray_to_color((uint32_t)*s));
+      const uint16_t v = priv_gfx_text_pack_565(internal_gray_to_color((uint32_t)*s));
       p[k_idx_r]       = (uint8_t)(v & k_mask_byte);
       p[k_idx_g]       = (uint8_t)((v >> k_glyph_bits_per_byte) & k_mask_byte);
       p += k_rgb565_bpp;
@@ -721,13 +721,13 @@ static void internal_blit_gray8_565(const uint8_t* src,
 }
 
 /**
- * @brief Per-pixel fallback for non-RGB565 formats, matching s_gfx_text_plot() exactly.
+ * @brief Per-pixel fallback for non-RGB565 formats, matching priv_gfx_text_plot() exactly.
  *
  * @details
  * Iterates over every pixel in the w x h source gray8 image, expands each
- * sample to 0x00RRGGBB via internal_gray_to_color(), and calls s_gfx_text_plot()
+ * sample to 0x00RRGGBB via internal_gray_to_color(), and calls priv_gfx_text_plot()
  * to write the result at framebuffer coordinates (dx+col, dy+row). Because
- * s_gfx_text_plot() performs per-pixel clipping against the active clip rectangle,
+ * priv_gfx_text_plot() performs per-pixel clipping against the active clip rectangle,
  * no additional bounds checking is needed here. This path is taken for all formats
  * other than k_ra8_gfx_format_rgb565; the RGB565 fast path is internal_blit_gray8_565().
  *
@@ -739,7 +739,7 @@ static void internal_blit_gray8_565(const uint8_t* src,
  * @pre src is non-null and addresses at least w*h readable bytes.
  * @pre w > 0 and h > 0 (guaranteed by ra8_gfx_blit_gray8() before dispatch).
  * @post Every on-screen pixel in the destination rectangle holds the colour of its gray sample.
- * @post Off-screen pixels are silently dropped by s_gfx_text_plot() clip checks.
+ * @post Off-screen pixels are silently dropped by priv_gfx_text_plot() clip checks.
  * @note Not thread-safe; shares s_gfx_text_state with all other rasteriser functions.
  * @since 0.1.0
  */
@@ -749,9 +749,9 @@ internal_blit_gray8_slow(const uint8_t* src, int32_t w, int32_t h, int32_t dx, i
 {
   for (int32_t y = 0; y < h; ++y) {
     for (int32_t x = 0; x < w; ++x) {
-      s_gfx_text_plot(dx + x,
-                      dy + y,
-                      internal_gray_to_color(src[((size_t)y * (size_t)w) + (size_t)x]));
+      priv_gfx_text_plot(dx + x,
+                         dy + y,
+                         internal_gray_to_color(src[((size_t)y * (size_t)w) + (size_t)x]));
     }
   }
 }
@@ -799,7 +799,7 @@ ra8_err_t ra8_gfx_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint32_t 
   /* Bound the iteration count statically (NASA Rule 2). */
   const int32_t max_iters = (int32_t)(k_ra8_gfx_max_dim * 2);
   for (int32_t i = 0; i < max_iters; i++) {
-    s_gfx_text_plot(x, y, color);
+    priv_gfx_text_plot(x, y, color);
     if ((x == x1) && (y == y1)) {
       break;
     }
@@ -852,14 +852,14 @@ RA8_INTERNAL
 static void
 internal_circle_outline_step(int32_t cx, int32_t cy, int32_t x, int32_t y, uint32_t color)
 {
-  s_gfx_text_plot(cx + x, cy + y, color);
-  s_gfx_text_plot(cx - x, cy + y, color);
-  s_gfx_text_plot(cx + x, cy - y, color);
-  s_gfx_text_plot(cx - x, cy - y, color);
-  s_gfx_text_plot(cx + y, cy + x, color);
-  s_gfx_text_plot(cx - y, cy + x, color);
-  s_gfx_text_plot(cx + y, cy - x, color);
-  s_gfx_text_plot(cx - y, cy - x, color);
+  priv_gfx_text_plot(cx + x, cy + y, color);
+  priv_gfx_text_plot(cx - x, cy + y, color);
+  priv_gfx_text_plot(cx + x, cy - y, color);
+  priv_gfx_text_plot(cx - x, cy - y, color);
+  priv_gfx_text_plot(cx + y, cy + x, color);
+  priv_gfx_text_plot(cx - y, cy + x, color);
+  priv_gfx_text_plot(cx + y, cy - x, color);
+  priv_gfx_text_plot(cx - y, cy - x, color);
 }
 
 /**
@@ -883,12 +883,12 @@ static void
 internal_circle_filled_step(int32_t cx, int32_t cy, int32_t x, int32_t y, uint32_t color)
 {
   for (int32_t col = -x; col <= x; col++) {
-    s_gfx_text_plot(cx + col, cy + y, color);
-    s_gfx_text_plot(cx + col, cy - y, color);
+    priv_gfx_text_plot(cx + col, cy + y, color);
+    priv_gfx_text_plot(cx + col, cy - y, color);
   }
   for (int32_t col = -y; col <= y; col++) {
-    s_gfx_text_plot(cx + col, cy + x, color);
-    s_gfx_text_plot(cx + col, cy - x, color);
+    priv_gfx_text_plot(cx + col, cy + x, color);
+    priv_gfx_text_plot(cx + col, cy - x, color);
   }
 }
 
@@ -947,7 +947,7 @@ ra8_err_t ra8_gfx_blit(const void*      src_buf,
   for (uint32_t row = 0; row < src_h; row++) {
     for (uint32_t col = 0; col < src_w; col++) {
       const uint32_t color = internal_get_pixel(src, src_stride, src_format, col, row);
-      s_gfx_text_plot(dst_x + (int32_t)col, dst_y + (int32_t)row, color);
+      priv_gfx_text_plot(dst_x + (int32_t)col, dst_y + (int32_t)row, color);
     }
   }
   return k_ra8_ok;

@@ -109,7 +109,7 @@ static tinfl_decompressor s_gz_inflator;
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_src_take(gz_src_t* s, uint8_t* dst, size_t n)
+static ra8_err_t internal_src_take(gz_src_t* s, uint8_t* dst, size_t n)
 {
   if ((uint64_t)n > (s->size - s->pos)) {
     return k_ra8_err_validation_failed; /* runs past the member end */
@@ -142,11 +142,11 @@ static ra8_err_t s_src_take(gz_src_t* s, uint8_t* dst, size_t n)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_skip_string(gz_src_t* s)
+static ra8_err_t internal_skip_string(gz_src_t* s)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_unarch_gzip_str_max; ++i) { /* bound: string cap */
     uint8_t         b    = 0U;
-    const ra8_err_t terr = s_src_take(s, &b, 1U);
+    const ra8_err_t terr = internal_src_take(s, &b, 1U);
     if (terr != k_ra8_ok) {
       return terr;
     }
@@ -174,10 +174,10 @@ static ra8_err_t s_skip_string(gz_src_t* s)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_skip_fextra(gz_src_t* s)
+static ra8_err_t internal_skip_fextra(gz_src_t* s)
 {
   uint8_t         xl[k_gz_xlen_bytes] = {};
-  const ra8_err_t xerr                = s_src_take(s, xl, sizeof(xl));
+  const ra8_err_t xerr                = internal_src_take(s, xl, sizeof(xl));
   if (xerr != k_ra8_ok) {
     return xerr;
   }
@@ -185,7 +185,7 @@ static ra8_err_t s_skip_fextra(gz_src_t* s)
   uint8_t  skip[k_gz_in_chunk];
   while (xlen > 0U) { /* bound: xlen <= 65535, consumed in chunks */
     const size_t    n    = (xlen > (uint32_t)sizeof(skip)) ? sizeof(skip) : (size_t)xlen;
-    const ra8_err_t serr = s_src_take(s, skip, n);
+    const ra8_err_t serr = internal_src_take(s, skip, n);
     if (serr != k_ra8_ok) {
       return serr;
     }
@@ -215,10 +215,10 @@ static ra8_err_t s_skip_fextra(gz_src_t* s)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_parse_header(gz_src_t* s)
+static ra8_err_t internal_parse_header(gz_src_t* s)
 {
   uint8_t         fixed[k_gz_hdr_fixed] = {};
-  const ra8_err_t ferr                  = s_src_take(s, fixed, sizeof(fixed));
+  const ra8_err_t ferr                  = internal_src_take(s, fixed, sizeof(fixed));
   if (ferr != k_ra8_ok) {
     return ferr;
   }
@@ -236,19 +236,19 @@ static ra8_err_t s_parse_header(gz_src_t* s)
     return k_ra8_err_not_supported; /* reserved bits: unknown format */
   }
   if ((flg & (uint8_t)k_gz_flg_fextra) != 0U) {
-    const ra8_err_t xerr = s_skip_fextra(s);
+    const ra8_err_t xerr = internal_skip_fextra(s);
     if (xerr != k_ra8_ok) {
       return xerr;
     }
   }
   if ((flg & (uint8_t)k_gz_flg_fname) != 0U) {
-    const ra8_err_t nerr = s_skip_string(s);
+    const ra8_err_t nerr = internal_skip_string(s);
     if (nerr != k_ra8_ok) {
       return nerr;
     }
   }
   if ((flg & (uint8_t)k_gz_flg_fcomment) != 0U) {
-    const ra8_err_t cerr = s_skip_string(s);
+    const ra8_err_t cerr = internal_skip_string(s);
     if (cerr != k_ra8_ok) {
       return cerr;
     }
@@ -256,7 +256,7 @@ static ra8_err_t s_parse_header(gz_src_t* s)
   if ((flg & (uint8_t)k_gz_flg_fhcrc) != 0U) {
     const uint32_t  want                 = s->crc & (uint32_t)k_gz_crc16_mask;
     uint8_t         hc[k_gz_fhcrc_bytes] = {};
-    const ra8_err_t herr                 = s_src_take(s, hc, sizeof(hc));
+    const ra8_err_t herr                 = internal_src_take(s, hc, sizeof(hc));
     if (herr != k_ra8_ok) {
       return herr;
     }
@@ -313,7 +313,7 @@ typedef struct {
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_inflate_pass(gz_inflate_t* st)
+static ra8_err_t internal_inflate_pass(gz_inflate_t* st)
 {
   const ra8_err_t ierr = ra8_decomp_budget_charge_iter(&st->budget);
   if (ierr != k_ra8_ok) {
@@ -325,7 +325,7 @@ static ra8_err_t s_inflate_pass(gz_inflate_t* st)
     if (want == 0U) {
       return k_ra8_err_validation_failed; /* input exhausted mid-stream */
     }
-    const ra8_err_t rerr = s_src_take(st->src, st->win, want);
+    const ra8_err_t rerr = internal_src_take(st->src, st->win, want);
     if (rerr != k_ra8_ok) {
       return rerr;
     }
@@ -390,7 +390,7 @@ static ra8_err_t s_inflate_pass(gz_inflate_t* st)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_verify_trailer(const gz_inflate_t* st)
+static ra8_err_t internal_verify_trailer(const gz_inflate_t* st)
 {
   const uint64_t leftover    = (uint64_t)(st->win_len - st->win_ofs);
   const uint64_t trailer_pos = st->src->pos - leftover;
@@ -461,7 +461,7 @@ ra8_err_t ra8_unarch_gzip_unwrap(ra8_unarch_read_fn         read,
     .crc       = (uint32_t)MZ_CRC32_INIT,
     .track_crc = true,
   };
-  const ra8_err_t herr = s_parse_header(&src);
+  const ra8_err_t herr = internal_parse_header(&src);
   if (herr != k_ra8_ok) {
     return herr;
   }
@@ -476,12 +476,12 @@ ra8_err_t ra8_unarch_gzip_unwrap(ra8_unarch_read_fn         read,
   }
   tinfl_init(&s_gz_inflator);
   while (!st.done) { /* bound: every pass charges the policy iteration budget */
-    const ra8_err_t perr = s_inflate_pass(&st);
+    const ra8_err_t perr = internal_inflate_pass(&st);
     if (perr != k_ra8_ok) {
       return perr;
     }
   }
-  const ra8_err_t terr = s_verify_trailer(&st);
+  const ra8_err_t terr = internal_verify_trailer(&st);
   if (terr != k_ra8_ok) {
     return terr;
   }

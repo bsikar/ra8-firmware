@@ -53,11 +53,11 @@ typedef enum : uint8_t {
  * @details
  * The foreground and background colours are packed to RGB565 once, then each
  * visible cell pixel stores the two pre-packed bytes directly -- so the per-glyph
- * colour packing (s_gfx_text_pack_565 + per-channel extraction) and the per-pixel
+ * colour packing (priv_gfx_text_pack_565 + per-channel extraction) and the per-pixel
  * clip happen once each instead of once per pixel. The cell is clipped to the
- * framebuffer up front (the same in-bounds set s_gfx_text_plot would have written),
+ * framebuffer up front (the same in-bounds set priv_gfx_text_plot would have written),
  * and every on/off bit maps to the same colour, so the result is byte-identical to
- * the per-pixel s_gfx_text_plot path. The full cell is painted (foreground for set
+ * the per-pixel priv_gfx_text_plot path. The full cell is painted (foreground for set
  * bits, background for clear bits), matching the per-pixel path's opaque cell.
  *
  * @param[in]  x         Glyph top-left x in framebuffer pixels.
@@ -101,8 +101,8 @@ static void internal_blit_glyph_565(int32_t        x,
   if ((cx1 <= cx0) || (cy1 <= cy0)) {
     return; /* glyph fully outside the clip. */
   }
-  const uint16_t vfg    = s_gfx_text_pack_565(fg);
-  const uint16_t vbg    = s_gfx_text_pack_565(bg);
+  const uint16_t vfg    = priv_gfx_text_pack_565(fg);
+  const uint16_t vbg    = priv_gfx_text_pack_565(bg);
   const uint8_t  flo    = (uint8_t)(vfg & (uint16_t)k_mask_byte);
   const uint8_t  fhi    = (uint8_t)((vfg >> k_glyph_bits_per_byte) & (uint16_t)k_mask_byte);
   const uint8_t  blo    = (uint8_t)(vbg & (uint16_t)k_mask_byte);
@@ -174,7 +174,7 @@ static void internal_render_glyph(int32_t               x,
       const uint32_t byte_idx = (row * row_bytes) + (col / k_glyph_bits_per_byte);
       const uint8_t  bit      = (uint8_t)(k_glyph_msb_index - (col % k_glyph_bits_per_byte));
       const bool     on       = ((gd[byte_idx] >> bit) & 0x01U) != 0U;
-      s_gfx_text_plot(x + (int32_t)col, y + (int32_t)row, on ? fg : bg);
+      priv_gfx_text_plot(x + (int32_t)col, y + (int32_t)row, on ? fg : bg);
     }
   }
 }

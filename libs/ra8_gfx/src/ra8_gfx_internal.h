@@ -75,7 +75,7 @@ extern ra8_gfx_state_t s_gfx_text_state;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV uint16_t s_gfx_text_pack_565(uint32_t color);
+RA8_PRIV uint16_t priv_gfx_text_pack_565(uint32_t color);
 
 /**
  * @brief Plot a single pixel with bounds checking against the active clip.
@@ -95,4 +95,4 @@ RA8_PRIV uint16_t s_gfx_text_pack_565(uint32_t color);
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV void s_gfx_text_plot(int32_t x, int32_t y, uint32_t color);
+RA8_PRIV void priv_gfx_text_plot(int32_t x, int32_t y, uint32_t color);

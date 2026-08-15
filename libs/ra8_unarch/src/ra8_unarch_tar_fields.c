@@ -70,7 +70,7 @@ typedef enum : uint32_t {
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_octal(const uint8_t* field, size_t len, uint64_t* out)
+static ra8_err_t internal_octal(const uint8_t* field, size_t len, uint64_t* out)
 {
   size_t i = 0U;
   while (i < len) { /* bound: len */
@@ -129,7 +129,7 @@ static ra8_err_t s_octal(const uint8_t* field, size_t len, uint64_t* out)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_base256(const uint8_t* field, size_t len, uint64_t* out)
+static ra8_err_t internal_base256(const uint8_t* field, size_t len, uint64_t* out)
 {
   if ((field[0] & (uint8_t)k_tar_b256_negative) != 0U) {
     return k_ra8_err_validation_failed; /* negative size: hostile */
@@ -161,9 +161,9 @@ ra8_err_t ra8_unarch_tar_num(const uint8_t* field, size_t len, uint64_t* out)
     return k_ra8_err_validation_failed;
   }
   if ((field[0] & (uint8_t)k_tar_b256_flag) != 0U) {
-    return s_base256(field, len, out);
+    return internal_base256(field, len, out);
   }
-  return s_octal(field, len, out);
+  return internal_octal(field, len, out);
 }
 
 bool ra8_unarch_tar_block_zero(const uint8_t* block)
@@ -185,7 +185,8 @@ bool ra8_unarch_tar_checksum_ok(const uint8_t* block)
     sum += in_chksum ? (uint32_t)k_tar_chksum_space : (uint32_t)block[i];
   }
   uint64_t stored = 0U;
-  if (s_octal(&block[k_ra8_tar_off_chksum], (size_t)k_ra8_tar_len_chksum, &stored) != k_ra8_ok) {
+  if (internal_octal(&block[k_ra8_tar_off_chksum], (size_t)k_ra8_tar_len_chksum, &stored) !=
+      k_ra8_ok) {
     return false;
   }
   return stored == (uint64_t)sum;
@@ -247,7 +248,7 @@ ra8_tar_type_t ra8_unarch_tar_classify(uint8_t typeflag)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_pax_reclen(const uint8_t* data, size_t len, size_t* reclen, size_t* body)
+static ra8_err_t internal_pax_reclen(const uint8_t* data, size_t len, size_t* reclen, size_t* body)
 {
   uint64_t v      = 0U;
   size_t   digits = 0U;
@@ -300,7 +301,7 @@ static ra8_err_t s_pax_reclen(const uint8_t* data, size_t len, size_t* reclen, s
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_pax_size_value(const uint8_t* val, size_t len, uint64_t* out)
+static ra8_err_t internal_pax_size_value(const uint8_t* val, size_t len, uint64_t* out)
 {
   if (len == 0U) {
     return k_ra8_err_validation_failed;
@@ -349,16 +350,16 @@ static ra8_err_t s_pax_size_value(const uint8_t* val, size_t len, uint64_t* out)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_pax_apply(const uint8_t* key,
-                             size_t         key_len,
-                             const uint8_t* val,
-                             size_t         val_len,
-                             char*          name_buf,
-                             uint16_t       name_cap,
-                             uint16_t*      name_len,
-                             bool*          have_path,
-                             uint64_t*      size_ovr,
-                             bool*          have_size)
+static ra8_err_t internal_pax_apply(const uint8_t* key,
+                                    size_t         key_len,
+                                    const uint8_t* val,
+                                    size_t         val_len,
+                                    char*          name_buf,
+                                    uint16_t       name_cap,
+                                    uint16_t*      name_len,
+                                    bool*          have_path,
+                                    uint64_t*      size_ovr,
+                                    bool*          have_size)
 {
   static const char k_key_path[] = "path";
   static const char k_key_size[] = "size";
@@ -376,7 +377,7 @@ static ra8_err_t s_pax_apply(const uint8_t* key,
   const bool is_size =
     (key_len == (sizeof(k_key_size) - 1U)) && (memcmp(key, k_key_size, key_len) == 0);
   if (is_size) {
-    const ra8_err_t verr = s_pax_size_value(val, val_len, size_ovr);
+    const ra8_err_t verr = internal_pax_size_value(val, val_len, size_ovr);
     if (verr != k_ra8_ok) {
       return verr;
     }
@@ -406,7 +407,7 @@ ra8_err_t ra8_unarch_tar_pax_parse(const uint8_t* data,
   while (off < len) { /* bound: every record advances by reclen >= body + 1 */
     size_t          reclen = 0U;
     size_t          body   = 0U;
-    const ra8_err_t lerr   = s_pax_reclen(&data[off], len - off, &reclen, &body);
+    const ra8_err_t lerr   = internal_pax_reclen(&data[off], len - off, &reclen, &body);
     if (lerr != k_ra8_ok) {
       return lerr;
     }
@@ -426,16 +427,16 @@ ra8_err_t ra8_unarch_tar_pax_parse(const uint8_t* data,
       return k_ra8_err_validation_failed; /* no key/value delimiter */
     }
     const size_t    key_len = (size_t)((const uint8_t*)eq - kv);
-    const ra8_err_t aerr    = s_pax_apply(kv,
-                                          key_len,
-                                          &kv[key_len + 1U],
-                                          kv_len - key_len - 1U,
-                                          name_buf,
-                                          name_cap,
-                                          name_len,
-                                          have_path,
-                                          size_ovr,
-                                          have_size);
+    const ra8_err_t aerr    = internal_pax_apply(kv,
+                                                 key_len,
+                                                 &kv[key_len + 1U],
+                                                 kv_len - key_len - 1U,
+                                                 name_buf,
+                                                 name_cap,
+                                                 name_len,
+                                                 have_path,
+                                                 size_ovr,
+                                                 have_size);
     if (aerr != k_ra8_ok) {
       return aerr;
     }
