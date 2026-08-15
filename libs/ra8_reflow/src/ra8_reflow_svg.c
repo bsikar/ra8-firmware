@@ -55,7 +55,7 @@
  *
  * @since 0.1.0
  */
-bool ra8_svgp_ws(char c)
+bool priv_ra8_svgp_ws(char c)
 {
   return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f');
 }
@@ -85,7 +85,7 @@ bool ra8_svgp_ws(char c)
  *
  * @since 0.1.0
  */
-char ra8_svgp_lc(char c)
+char priv_ra8_svgp_lc(char c)
 {
   return (char)(((c >= 'A') && (c <= 'Z')) ? (c + ('a' - 'A')) : c);
 }
@@ -96,7 +96,7 @@ char ra8_svgp_lc(char c)
  *
  * @details Computes the length of @p lit via @c strlen, then verifies that
  * @p s[@p at .. @p at+n) matches @p lit character-for-character after folding
- * both sides through @c ra8_svgp_lc. Returns false immediately when the remaining
+ * both sides through @c priv_ra8_svgp_lc. Returns false immediately when the remaining
  * span @p s[@p at .. @p len) is shorter than @p lit, avoiding any out-of-bounds
  * access. Matching is done byte-by-byte with no locale dependence.
  *
@@ -120,14 +120,14 @@ char ra8_svgp_lc(char c)
  *
  * @since 0.1.0
  */
-bool ra8_svgp_starts_ci(const uint8_t* s, size_t len, size_t at, const char* lit)
+bool priv_ra8_svgp_starts_ci(const uint8_t* s, size_t len, size_t at, const char* lit)
 {
   const size_t n = strlen(lit);
   if ((at + n) > len) {
     return false;
   }
   for (size_t k = 0U; k < n; ++k) {
-    if (ra8_svgp_lc((char)s[at + k]) != ra8_svgp_lc(lit[k])) {
+    if (priv_ra8_svgp_lc((char)s[at + k]) != priv_ra8_svgp_lc(lit[k])) {
       return false;
     }
   }
@@ -138,7 +138,7 @@ bool ra8_svgp_starts_ci(const uint8_t* s, size_t len, size_t at, const char* lit
  * @brief Find the first case-insensitive occurrence of a literal in a byte span.
  *
  * @details Scans @p s[@p from .. @p len) for the first position where
- * @c ra8_svgp_starts_ci returns true for @p lit. If @p lit is empty (zero-length),
+ * @c priv_ra8_svgp_starts_ci returns true for @p lit. If @p lit is empty (zero-length),
  * returns @p len immediately as a defined sentinel rather than matching at every
  * position. The inner loop advances the position by one byte per iteration;
  * the loop bound is @p len - strlen(@p lit) + 1, so the scan is O(len * len(lit)).
@@ -163,7 +163,7 @@ bool ra8_svgp_starts_ci(const uint8_t* s, size_t len, size_t at, const char* lit
  *
  * @since 0.1.0
  */
-size_t ra8_svgp_find_ci(const uint8_t* s, size_t len, size_t from, const char* lit)
+size_t priv_ra8_svgp_find_ci(const uint8_t* s, size_t len, size_t from, const char* lit)
 {
   const size_t n = strlen(lit);
   if (n == 0U) {
@@ -172,7 +172,7 @@ size_t ra8_svgp_find_ci(const uint8_t* s, size_t len, size_t from, const char* l
   size_t i = from;
   /* Bounded: i advances by 1 each step, capped by len - n + 1. */
   while ((i + n) <= len) {
-    if (ra8_svgp_starts_ci(s, len, i, lit)) {
+    if (priv_ra8_svgp_starts_ci(s, len, i, lit)) {
       return i;
     }
     ++i;
@@ -184,7 +184,7 @@ size_t ra8_svgp_find_ci(const uint8_t* s, size_t len, size_t from, const char* l
  * @brief Convert a single hexadecimal digit character to its numeric value.
  *
  * @details Accepts '0'-'9', 'a'-'f', and 'A'-'F'. The alphabetic check is
- * performed after ASCII-folding via @c ra8_svgp_lc so both cases are handled
+ * performed after ASCII-folding via @c priv_ra8_svgp_lc so both cases are handled
  * uniformly. Returns the sentinel ::k_svg_hex_base (16) for any character
  * that is not a valid hexadecimal digit, allowing callers to detect and
  * propagate parse failures without a separate validity flag.
@@ -208,12 +208,12 @@ size_t ra8_svgp_find_ci(const uint8_t* s, size_t len, size_t from, const char* l
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_hex(char c)
+static uint8_t internal_hex(char c)
 {
   if ((c >= '0') && (c <= '9')) {
     return (uint8_t)(c - '0');
   }
-  const char l = ra8_svgp_lc(c);
+  const char l = priv_ra8_svgp_lc(c);
   if ((l >= 'a') && (l <= 'f')) {
     return (uint8_t)((l - 'a') + (int)k_svg_hex_a10);
   }
@@ -250,9 +250,9 @@ static uint8_t priv_hex(char c)
  *
  * @since 0.1.0
  */
-int32_t ra8_svgp_num(const uint8_t* s, size_t len, size_t* i)
+int32_t priv_ra8_svgp_num(const uint8_t* s, size_t len, size_t* i)
 {
-  while ((*i < len) && (ra8_svgp_ws((char)s[*i]) || (s[*i] == ','))) {
+  while ((*i < len) && (priv_ra8_svgp_ws((char)s[*i]) || (s[*i] == ','))) {
     ++(*i);
   }
   int32_t sign = 1;
@@ -283,7 +283,7 @@ int32_t ra8_svgp_num(const uint8_t* s, size_t len, size_t* i)
 /**
  * @brief Test whether an attribute keyword begins at @p s[@p at] on a word boundary.
  *
- * @details Uses @c ra8_svgp_starts_ci to confirm the case-insensitive match of @p name
+ * @details Uses @c priv_ra8_svgp_starts_ci to confirm the case-insensitive match of @p name
  * at position @p at, then validates two boundary conditions: the character
  * immediately before @p at (when @p at > 0) must be XML whitespace so that
  * a substring of a longer name is not accepted, and the character immediately
@@ -311,27 +311,27 @@ int32_t ra8_svgp_num(const uint8_t* s, size_t len, size_t* i)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_attr_at(const uint8_t* s, size_t len, size_t at, const char* name)
+static bool internal_attr_at(const uint8_t* s, size_t len, size_t at, const char* name)
 {
   const size_t n = strlen(name);
-  if (!ra8_svgp_starts_ci(s, len, at, name)) {
+  if (!priv_ra8_svgp_starts_ci(s, len, at, name)) {
     return false;
   }
-  if ((at > 0U) && !ra8_svgp_ws((char)s[at - 1U])) {
+  if ((at > 0U) && !priv_ra8_svgp_ws((char)s[at - 1U])) {
     return false; /* must be preceded by whitespace */
   }
   const size_t after = at + n;
   if (after >= len) {
     return false;
   }
-  return (s[after] == '=') || ra8_svgp_ws((char)s[after]);
+  return (s[after] == '=') || priv_ra8_svgp_ws((char)s[after]);
 }
 
 /**
  * @brief Find attribute @p name in tag span @p s[0..len); return its value slice.
  *
  * @details Scans the tag byte span for the first occurrence of @p name that
- * passes the word-boundary check via @c priv_attr_at. Once located, the
+ * passes the word-boundary check via @c internal_attr_at. Once located, the
  * scanner advances past the '=' separator and any surrounding whitespace to
  * find the opening quote character ('"' or "'"). The matching closing quote is
  * then located and the slice [@p *voff, @p *voff + @p *vlen) is set to the
@@ -359,11 +359,11 @@ static bool priv_attr_at(const uint8_t* s, size_t len, size_t at, const char* na
  *
  * @since 0.1.0
  */
-bool ra8_svgp_attr(const uint8_t* s, size_t len, const char* name, size_t* voff, size_t* vlen)
+bool priv_ra8_svgp_attr(const uint8_t* s, size_t len, const char* name, size_t* voff, size_t* vlen)
 {
   /* Bounded: i advances by 1 each step, capped by len. */
   for (size_t i = 0U; i < len; ++i) {
-    if (!priv_attr_at(s, len, i, name)) {
+    if (!internal_attr_at(s, len, i, name)) {
       continue;
     }
     size_t j = i + strlen(name);
@@ -371,7 +371,7 @@ bool ra8_svgp_attr(const uint8_t* s, size_t len, const char* name, size_t* voff,
       ++j;
     }
     ++j; /* past '=' */
-    while ((j < len) && ra8_svgp_ws((char)s[j])) {
+    while ((j < len) && priv_ra8_svgp_ws((char)s[j])) {
       ++j;
     }
     if ((j >= len) || ((s[j] != '"') && (s[j] != '\''))) {
@@ -393,10 +393,10 @@ bool ra8_svgp_attr(const uint8_t* s, size_t len, const char* name, size_t* voff,
 /**
  * @brief Read an SVG attribute as a signed integer, returning a default when absent.
  *
- * @details Calls @c ra8_svgp_attr to locate the attribute value slice, then forwards
- * that slice to @c ra8_svgp_num starting at offset zero. If the attribute is absent,
+ * @details Calls @c priv_ra8_svgp_attr to locate the attribute value slice, then forwards
+ * that slice to @c priv_ra8_svgp_num starting at offset zero. If the attribute is absent,
  * returns @p def without modifying any output. Fractional parts of the attribute
- * value are truncated by @c ra8_svgp_num. Useful for reading integer-valued SVG
+ * value are truncated by @c priv_ra8_svgp_num. Useful for reading integer-valued SVG
  * geometry attributes such as @c x, @c y, @c width, and @c height.
  *
  * @param[in] s    Byte buffer containing the SVG tag text; must not be NULL.
@@ -412,29 +412,29 @@ bool ra8_svgp_attr(const uint8_t* s, size_t len, const char* name, size_t* voff,
  * @pre  @p name is a valid NUL-terminated ASCII string.
  *
  * @post @p s and @p name are not modified.
- * @post The return value equals @p def when @c ra8_svgp_attr returns false.
+ * @post The return value equals @p def when @c priv_ra8_svgp_attr returns false.
  *
  * @note Not thread-safe in isolation; callers in this module are
  *       single-threaded during SVG render.
  *
  * @since 0.1.0
  */
-int32_t ra8_svgp_attr_num(const uint8_t* s, size_t len, const char* name, int32_t def)
+int32_t priv_ra8_svgp_attr_num(const uint8_t* s, size_t len, const char* name, int32_t def)
 {
   size_t off = 0U;
   size_t vl  = 0U;
-  if (!ra8_svgp_attr(s, len, name, &off, &vl)) {
+  if (!priv_ra8_svgp_attr(s, len, name, &off, &vl)) {
     return def;
   }
   size_t k = 0U;
-  return ra8_svgp_num(&s[off], vl, &k);
+  return priv_ra8_svgp_num(&s[off], vl, &k);
 }
 
 /**
  * @brief Case-insensitive equality test between a byte span and a NUL-terminated literal.
  *
  * @details Advances a shared index through both @p s and @p lit simultaneously,
- * comparing each pair of characters after folding through @c ra8_svgp_lc. The loop
+ * comparing each pair of characters after folding through @c priv_ra8_svgp_lc. The loop
  * terminates as soon as a mismatch is found or the NUL terminator in @p lit is
  * reached. Returns true only when the index equals @p len at the same point that
  * @p lit[k] is '\0', ensuring both length equality and content equality.
@@ -459,11 +459,11 @@ int32_t ra8_svgp_attr_num(const uint8_t* s, size_t len, const char* name, int32_
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_ci_eq(const uint8_t* s, size_t len, const char* lit)
+static bool internal_ci_eq(const uint8_t* s, size_t len, const char* lit)
 {
   size_t k = 0U;
   for (; (k < len) && (lit[k] != '\0'); ++k) {
-    if (ra8_svgp_lc((char)s[k]) != ra8_svgp_lc(lit[k])) {
+    if (priv_ra8_svgp_lc((char)s[k]) != priv_ra8_svgp_lc(lit[k])) {
       return false;
     }
   }
@@ -475,7 +475,7 @@ static bool priv_ci_eq(const uint8_t* s, size_t len, const char* lit)
  *
  * @details Accepts exactly @c k_svg_hex3 (3) or @c k_svg_hex6 (6) digit bytes.
  * For a 6-digit input the bytes are read as pairs RR GG BB; each nibble is
- * decoded via @c priv_hex and shifted into the 24-bit result. For a 3-digit
+ * decoded via @c internal_hex and shifted into the 24-bit result. For a 3-digit
  * input each nibble @c N is expanded to @c NN (i.e. the nibble value is placed
  * in both the high and low nibble of the channel byte) to conform to the CSS
  * shorthand rule. Any non-hex digit encountered causes an early return of
@@ -500,12 +500,12 @@ static bool priv_ci_eq(const uint8_t* s, size_t len, const char* lit)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_hex_color(const uint8_t* s, size_t len)
+static uint32_t internal_hex_color(const uint8_t* s, size_t len)
 {
   uint32_t rgb = 0U;
   if (len == (size_t)k_svg_hex6) {
     for (size_t i = 0U; i < len; ++i) {
-      const uint8_t v = priv_hex((char)s[i]);
+      const uint8_t v = internal_hex((char)s[i]);
       if (v >= (uint8_t)k_svg_hex_base) {
         return (uint32_t)k_svg_no_paint;
       }
@@ -515,7 +515,7 @@ static uint32_t priv_hex_color(const uint8_t* s, size_t len)
   }
   if (len == (size_t)k_svg_hex3) {
     for (size_t i = 0U; i < len; ++i) {
-      const uint8_t v = priv_hex((char)s[i]);
+      const uint8_t v = internal_hex((char)s[i]);
       if (v >= (uint8_t)k_svg_hex_base) {
         return (uint32_t)k_svg_no_paint;
       }
@@ -532,7 +532,7 @@ static uint32_t priv_hex_color(const uint8_t* s, size_t len)
  *
  * @details Linearly searches a compile-time table of the twelve most common
  * SVG/CSS colour keywords (black, white, red, green, blue, gray, grey, silver,
- * maroon, navy, yellow, orange). Comparison is performed via @c priv_ci_eq so
+ * maroon, navy, yellow, orange). Comparison is performed via @c internal_ci_eq so
  * the keyword is accepted in any mix of upper and lower case. Returns
  * ::k_svg_no_paint for the keyword "none" and for any name not present in the
  * table; callers treat this sentinel as "no paint / transparent".
@@ -556,7 +556,7 @@ static uint32_t priv_hex_color(const uint8_t* s, size_t len)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_named_color(const uint8_t* s, size_t len)
+static uint32_t internal_named_color(const uint8_t* s, size_t len)
 {
   static const struct {
     const char* name; /**< Name. */
@@ -576,7 +576,7 @@ static uint32_t priv_named_color(const uint8_t* s, size_t len)
     {"orange", 0xFFA500U},
   };
   for (size_t k = 0U; k < (sizeof(k_names) / sizeof(k_names[0])); ++k) {
-    if (priv_ci_eq(s, len, k_names[k].name)) {
+    if (internal_ci_eq(s, len, k_names[k].name)) {
       return k_names[k].rgb;
     }
   }
@@ -586,10 +586,10 @@ static uint32_t priv_named_color(const uint8_t* s, size_t len)
 /**
  * @brief Parse an SVG paint value ('#rgb'/'#rrggbb'/name/'none') to 0x00RRGGBB.
  *
- * @details Routes the span to either @c priv_hex_color (when the first byte is
- * '#', strip it first) or @c priv_named_color for keyword colours. An empty
+ * @details Routes the span to either @c internal_hex_color (when the first byte is
+ * '#', strip it first) or @c internal_named_color for keyword colours. An empty
  * span immediately returns ::k_svg_no_paint. The keyword "none" is handled by
- * @c priv_named_color returning ::k_svg_no_paint so callers skip the paint.
+ * @c internal_named_color returning ::k_svg_no_paint so callers skip the paint.
  *
  * @param[in] s   Byte span containing the paint value; must not be NULL.
  * @param[in] len Number of valid bytes in @p s.
@@ -609,22 +609,22 @@ static uint32_t priv_named_color(const uint8_t* s, size_t len)
  *
  * @since 0.1.0
  */
-uint32_t ra8_svgp_paint(const uint8_t* s, size_t len)
+uint32_t priv_ra8_svgp_paint(const uint8_t* s, size_t len)
 {
   if (len == 0U) {
     return (uint32_t)k_svg_no_paint;
   }
   if (s[0] == '#') {
-    return priv_hex_color(&s[1], len - 1U);
+    return internal_hex_color(&s[1], len - 1U);
   }
-  return priv_named_color(s, len);
+  return internal_named_color(s, len);
 }
 
 /**
  * @brief Read an SVG attribute as a paint colour, returning a default when absent.
  *
- * @details Calls @c ra8_svgp_attr to locate the attribute value slice, then
- * forwards that slice to @c ra8_svgp_paint. If the attribute is absent, returns
+ * @details Calls @c priv_ra8_svgp_attr to locate the attribute value slice, then
+ * forwards that slice to @c priv_ra8_svgp_paint. If the attribute is absent, returns
  * @p def unchanged. Useful for reading 'fill' and 'stroke' attributes where
  * a sentinel of ::k_svg_no_paint means the shape uses no paint for that role.
  *
@@ -649,20 +649,20 @@ uint32_t ra8_svgp_paint(const uint8_t* s, size_t len)
  *
  * @since 0.1.0
  */
-uint32_t ra8_svgp_attr_paint(const uint8_t* s, size_t len, const char* name, uint32_t def)
+uint32_t priv_ra8_svgp_attr_paint(const uint8_t* s, size_t len, const char* name, uint32_t def)
 {
   size_t off = 0U;
   size_t vl  = 0U;
-  if (!ra8_svgp_attr(s, len, name, &off, &vl)) {
+  if (!priv_ra8_svgp_attr(s, len, name, &off, &vl)) {
     return def;
   }
-  return ra8_svgp_paint(&s[off], vl);
+  return priv_ra8_svgp_paint(&s[off], vl);
 }
 
 /** @brief Implementation of `priv_match_grad()` -- linear id search over the document gradient set. */
 int32_t priv_match_grad(const svg_grads_t* grads, const uint8_t* val, size_t vlen)
 {
-  if ((grads == nullptr) || !ra8_svgp_starts_ci(val, vlen, 0U, "url(#")) {
+  if ((grads == nullptr) || !priv_ra8_svgp_starts_ci(val, vlen, 0U, "url(#")) {
     return -1;
   }
   const size_t idoff = strlen("url(#");
@@ -712,18 +712,21 @@ int32_t priv_match_grad(const svg_grads_t* grads, const uint8_t* val, size_t vle
  *
  * @since 0.1.0
  */
-uint32_t
-ra8_svgp_resolve_fill(const uint8_t* s, size_t len, const svg_xform_t* t, uint32_t def, int32_t* gi)
+uint32_t priv_ra8_svgp_resolve_fill(const uint8_t*     s,
+                                    size_t             len,
+                                    const svg_xform_t* t,
+                                    uint32_t           def,
+                                    int32_t*           gi)
 {
   *gi        = -1;
   size_t off = 0U;
   size_t vl  = 0U;
-  if (!ra8_svgp_attr(s, len, "fill", &off, &vl)) {
+  if (!priv_ra8_svgp_attr(s, len, "fill", &off, &vl)) {
     return def;
   }
-  if (ra8_svgp_starts_ci(&s[off], vl, 0U, "url(#")) {
+  if (priv_ra8_svgp_starts_ci(&s[off], vl, 0U, "url(#")) {
     *gi = priv_match_grad(t->grads, &s[off], vl);
     return (uint32_t)k_svg_no_paint;
   }
-  return ra8_svgp_paint(&s[off], vl);
+  return priv_ra8_svgp_paint(&s[off], vl);
 }

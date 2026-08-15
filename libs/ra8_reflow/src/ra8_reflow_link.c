@@ -134,7 +134,7 @@ ra8_err_t ra8_reflow_find_anchor(const ra8_reflow_t* engine,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_has_scheme(const char* href, uint32_t end)
+static bool internal_has_scheme(const char* href, uint32_t end)
 {
   for (uint32_t i = 0U; i < end; ++i) {
     if (href[i] == '/') {
@@ -155,7 +155,7 @@ static bool priv_has_scheme(const char* href, uint32_t end)
  * public wrapper holds only the pointer validation (keeps each within the
  * cognitive-complexity budget). The algorithm first scans for the first '#'
  * character to separate the path part from the optional fragment. It then
- * delegates scheme detection to priv_has_scheme() on the path sub-range. Based
+ * delegates scheme detection to internal_has_scheme() on the path sub-range. Based
  * on whether a scheme, a fragment, and a non-empty path are present, one of the
  * five ::ra8_reflow_href_kind_t values is written to @p out_kind. Fragment
  * offset and length are written only when a '#' was found; otherwise the
@@ -180,12 +180,12 @@ static bool priv_has_scheme(const char* href, uint32_t end)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_href_classify(const char*             href,
-                               uint32_t                len,
-                               ra8_reflow_href_kind_t* out_kind,
-                               uint32_t*               out_path_len,
-                               uint32_t*               out_frag_off,
-                               uint32_t*               out_frag_len)
+static void internal_href_classify(const char*             href,
+                                   uint32_t                len,
+                                   ra8_reflow_href_kind_t* out_kind,
+                                   uint32_t*               out_path_len,
+                                   uint32_t*               out_frag_off,
+                                   uint32_t*               out_frag_len)
 {
   uint32_t hash = len;
   for (uint32_t i = 0U; i < len; ++i) {
@@ -194,7 +194,7 @@ static void priv_href_classify(const char*             href,
       break;
     }
   }
-  if (priv_has_scheme(href, hash)) {
+  if (internal_has_scheme(href, hash)) {
     *out_kind     = k_ra8_reflow_href_external;
     *out_path_len = len;
     return;
@@ -232,6 +232,6 @@ ra8_err_t ra8_reflow_href_split(const char*             href,
     *out_kind = k_ra8_reflow_href_empty;
     return k_ra8_ok;
   }
-  priv_href_classify(href, len, out_kind, out_path_len, out_frag_off, out_frag_len);
+  internal_href_classify(href, len, out_kind, out_path_len, out_frag_off, out_frag_len);
   return k_ra8_ok;
 }

@@ -77,7 +77,7 @@ static uint8_t s_glyph_mask[(size_t)k_priv_glyph_dim_max * (size_t)k_priv_glyph_
  *
  * @details The ::ra8_glyph_atlas render seam is fixed at bind time, but the font,
  *          scale, and bitmap extent for the glyph currently being drawn vary per
- *          call. The blit path computes the box once (::priv_blit_glyph) and
+ *          call. The blit path computes the box once (::internal_blit_glyph) and
  *          stashes them here immediately before ::ra8_glyph_atlas_get, so a cache
  *          miss rasterises the right glyph at the known size without recomputing
  *          the box. Single instance (render is single-threaded, like
@@ -110,15 +110,15 @@ static priv_glyph_render_ctx_t s_glyph_render_ctx;
  *          a cache miss the atlas calls this (only ever through ::ra8_glyph_atlas_get,
  *          which validates ctx/key/cell and supplies its own cell + out_w/out_h
  *          storage, so no argument null-check is needed here -- the same
- *          caller-guarantee convention as ::priv_blit_alpha_mask). The font,
+ *          caller-guarantee convention as ::internal_blit_alpha_mask). The font,
  *          scale, and extent come from @ref s_glyph_render_ctx (already computed
- *          and validated by ::priv_blit_glyph before the get); the code point
+ *          and validated by ::internal_blit_glyph before the get); the code point
  *          rides in `key->glyph_id`. `stbtt_MakeCodepointBitmap` runs with
  *          stride == w exactly as the direct path, so a cached bitmap is
  *          byte-identical to a freshly rasterised one. A glyph whose bitmap
  *          exceeds the cell is rejected so the caller falls back to direct
  *          rasterisation.
- * @param[in]  ctx        The ::priv_glyph_render_ctx_t set by ::priv_blit_glyph.
+ * @param[in]  ctx        The ::priv_glyph_render_ctx_t set by ::internal_blit_glyph.
  * @param[in]  key        Glyph to render (`glyph_id` is the code point).
  * @param[out] cell       Destination cell buffer (`cell_bytes` writable).
  * @param[in]  cell_bytes Cell capacity in bytes.
@@ -135,15 +135,15 @@ static priv_glyph_render_ctx_t s_glyph_render_ctx;
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_atlas_render_glyph(void*                  ctx,
-                                         const ra8_glyph_key_t* key,
-                                         uint8_t*               cell,
-                                         uint32_t               cell_bytes,
-                                         uint16_t*              out_w,
-                                         uint16_t*              out_h)
+static ra8_err_t internal_atlas_render_glyph(void*                  ctx,
+                                             const ra8_glyph_key_t* key,
+                                             uint8_t*               cell,
+                                             uint32_t               cell_bytes,
+                                             uint16_t*              out_w,
+                                             uint16_t*              out_h)
 {
   const priv_glyph_render_ctx_t* rc = (const priv_glyph_render_ctx_t*)ctx;
-  /* w/h were computed and validated (> 0) by priv_blit_glyph before the get. */
+  /* w/h were computed and validated (> 0) by internal_blit_glyph before the get. */
   if (((size_t)rc->w * (size_t)rc->h) > (size_t)cell_bytes) {
     return k_ra8_err_invalid_size; /* Too big to cache -> caller blits directly. */
   }
@@ -176,7 +176,7 @@ static ra8_err_t priv_atlas_render_glyph(void*                  ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_init_font(const ra8_reflow_t* engine, stbtt_fontinfo* out_font)
+static ra8_err_t internal_init_font(const ra8_reflow_t* engine, stbtt_fontinfo* out_font)
 {
   const int32_t offset = stbtt_GetFontOffsetForIndex(engine->font_data, 0);
   if (offset < 0) {
@@ -209,14 +209,14 @@ static ra8_err_t priv_init_font(const ra8_reflow_t* engine, stbtt_fontinfo* out_
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_blit_alpha_mask(const ra8_reflow_glyph_t* g,
-                                 const unsigned char*      bitmap,
-                                 int                       w,
-                                 int                       h,
-                                 int                       xoff,
-                                 int                       yoff,
-                                 int32_t                   ox,
-                                 int32_t                   oy)
+static void internal_blit_alpha_mask(const ra8_reflow_glyph_t* g,
+                                     const unsigned char*      bitmap,
+                                     int                       w,
+                                     int                       h,
+                                     int                       xoff,
+                                     int                       yoff,
+                                     int32_t                   ox,
+                                     int32_t                   oy)
 {
   for (int row = 0; row < h; ++row) {
     for (int col = 0; col < w; ++col) {
@@ -248,11 +248,11 @@ static void priv_blit_alpha_mask(const ra8_reflow_glyph_t* g,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_draw_underline(const stbtt_fontinfo*     font,
-                                const ra8_reflow_glyph_t* g,
-                                float                     scale,
-                                int32_t                   ox,
-                                int32_t                   oy)
+static void internal_draw_underline(const stbtt_fontinfo*     font,
+                                    const ra8_reflow_glyph_t* g,
+                                    float                     scale,
+                                    int32_t                   ox,
+                                    int32_t                   oy)
 {
   int advance_units = 0;
   int lsb           = 0;
@@ -270,7 +270,7 @@ static void priv_draw_underline(const stbtt_fontinfo*     font,
  * @details The heap-free fallback path used when no glyph cache is bound or a
  *          glyph is too large to cache. "Make" rasterises into the fixed
  *          tightly-packed @ref s_glyph_mask (stride == w, matching
- *          ::priv_blit_alpha_mask) -- the bitmap never hits the heap; stb's
+ *          ::internal_blit_alpha_mask) -- the bitmap never hits the heap; stb's
  *          vertex/edge scratch is served by the static arena in
  *          ra8_stbtt_alloc.c. Glyphs larger than the mask are skipped (not
  *          truncated), exactly as before the cache existed.
@@ -291,21 +291,21 @@ static void priv_draw_underline(const stbtt_fontinfo*     font,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_glyph_render_direct(const stbtt_fontinfo*     font,
-                                     float                     scale,
-                                     const ra8_reflow_glyph_t* g,
-                                     int                       w,
-                                     int                       h,
-                                     int                       x0,
-                                     int                       y0,
-                                     int32_t                   ox,
-                                     int32_t                   oy)
+static void internal_glyph_render_direct(const stbtt_fontinfo*     font,
+                                         float                     scale,
+                                         const ra8_reflow_glyph_t* g,
+                                         int                       w,
+                                         int                       h,
+                                         int                       x0,
+                                         int                       y0,
+                                         int32_t                   ox,
+                                         int32_t                   oy)
 {
   /* Skip (do not truncate) any glyph larger than the fixed mask. */
   const size_t total = (size_t)w * (size_t)h;
   if (total <= sizeof s_glyph_mask) {
     stbtt_MakeCodepointBitmap(font, s_glyph_mask, w, h, w, scale, scale, g->cp);
-    priv_blit_alpha_mask(g, s_glyph_mask, w, h, x0, y0, ox, oy);
+    internal_blit_alpha_mask(g, s_glyph_mask, w, h, x0, y0, ox, oy);
   }
 }
 
@@ -314,11 +314,11 @@ static void priv_glyph_render_direct(const stbtt_fontinfo*     font,
  *
  * @details Keys the glyph by (face, size, code point, mode), fetches a pinned
  *          bitmap from @p atlas (rendering once on a miss via
- *          ::priv_atlas_render_glyph), blits it, then unpins. Because the cache
+ *          ::internal_atlas_render_glyph), blits it, then unpins. Because the cache
  *          is filled by the very same stb rasteriser as the direct path, the
  *          blitted pixels are byte-identical either way. Any atlas error
  *          (oversized glyph, or every cell pinned) returns @c false so the
- *          caller can fall back to ::priv_glyph_render_direct -- the cache is a
+ *          caller can fall back to ::internal_glyph_render_direct -- the cache is a
  *          pure optimisation and never changes output.
  * @param[in] atlas   Bound glyph cache (non-NULL).
  * @param[in] face_id Face index resolved for this glyph.
@@ -348,17 +348,17 @@ static void priv_glyph_render_direct(const stbtt_fontinfo*     font,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_glyph_render_cached(ra8_glyph_atlas_t*        atlas,
-                                     uint8_t                   face_id,
-                                     const stbtt_fontinfo*     font,
-                                     float                     scale,
-                                     const ra8_reflow_glyph_t* g,
-                                     int                       w,
-                                     int                       h,
-                                     int                       x0,
-                                     int                       y0,
-                                     int32_t                   ox,
-                                     int32_t                   oy)
+static bool internal_glyph_render_cached(ra8_glyph_atlas_t*        atlas,
+                                         uint8_t                   face_id,
+                                         const stbtt_fontinfo*     font,
+                                         float                     scale,
+                                         const ra8_reflow_glyph_t* g,
+                                         int                       w,
+                                         int                       h,
+                                         int                       x0,
+                                         int                       y0,
+                                         int32_t                   ox,
+                                         int32_t                   oy)
 {
   /* Hand the render-on-miss callback the font/scale/extent for this glyph. */
   s_glyph_render_ctx.font  = font;
@@ -376,7 +376,7 @@ static bool priv_glyph_render_cached(ra8_glyph_atlas_t*        atlas,
   if (ra8_glyph_atlas_get(atlas, &key, &glyph) != k_ra8_ok) {
     return false; /* Uncacheable (oversized / full) -> caller blits directly. */
   }
-  priv_blit_alpha_mask(g, glyph.bitmap, (int)glyph.width, (int)glyph.height, x0, y0, ox, oy);
+  internal_blit_alpha_mask(g, glyph.bitmap, (int)glyph.width, (int)glyph.height, x0, y0, ox, oy);
   (void)ra8_glyph_atlas_put(atlas, glyph.bitmap);
   return true;
 }
@@ -406,12 +406,12 @@ static bool priv_glyph_render_cached(ra8_glyph_atlas_t*        atlas,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_blit_glyph(ra8_glyph_atlas_t*        atlas,
-                            uint8_t                   face_id,
-                            const stbtt_fontinfo*     font,
-                            const ra8_reflow_glyph_t* g,
-                            int32_t                   ox,
-                            int32_t                   oy)
+static void internal_blit_glyph(ra8_glyph_atlas_t*        atlas,
+                                uint8_t                   face_id,
+                                const stbtt_fontinfo*     font,
+                                const ra8_reflow_glyph_t* g,
+                                int32_t                   ox,
+                                int32_t                   oy)
 {
   const float scale = stbtt_ScaleForPixelHeight(font, (float)g->font_px);
   int         x0    = 0;
@@ -433,15 +433,15 @@ static void priv_blit_glyph(ra8_glyph_atlas_t*        atlas,
   if ((w > 0) && (h > 0)) {
     bool drawn = false;
     if (atlas != nullptr) {
-      drawn = priv_glyph_render_cached(atlas, face_id, font, scale, g, w, h, x0, y0, ox, oy);
+      drawn = internal_glyph_render_cached(atlas, face_id, font, scale, g, w, h, x0, y0, ox, oy);
     }
     if (!drawn) {
-      priv_glyph_render_direct(font, scale, g, w, h, x0, y0, ox, oy);
+      internal_glyph_render_direct(font, scale, g, w, h, x0, y0, ox, oy);
     }
   }
 
   if ((g->style & k_ra8_reflow_style_underline) != 0U) {
-    priv_draw_underline(font, g, scale, ox, oy);
+    internal_draw_underline(font, g, scale, ox, oy);
   }
 }
 
@@ -480,13 +480,13 @@ static void priv_blit_glyph(ra8_glyph_atlas_t*        atlas,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_render_svg(const ra8_reflow_t* engine,
-                            const uint8_t*      svg,
-                            size_t              len,
-                            int32_t             x,
-                            int32_t             y,
-                            int32_t             w,
-                            int32_t             h)
+static void internal_render_svg(const ra8_reflow_t* engine,
+                                const uint8_t*      svg,
+                                size_t              len,
+                                int32_t             x,
+                                int32_t             y,
+                                int32_t             w,
+                                int32_t             h)
 {
   size_t hoff = 0U;
   size_t hlen = 0U;
@@ -514,7 +514,7 @@ static void priv_render_svg(const ra8_reflow_t* engine,
  * Resolves the source href stored at `engine->text_pool[box->src_off]`
  * (length `box->src_len`) through `engine->img_loader`. On a successful
  * load, the bytes are inspected by `ra8_svg_is_svg()`: SVG content is
- * forwarded to `priv_render_svg()` (which handles both cover-wrapper and
+ * forwarded to `internal_render_svg()` (which handles both cover-wrapper and
  * shape SVGs); all other formats are decoded directly by
  * `ra8_img_decode_blit()`. In both cases the bounding rectangle is
  * `(box->x + ox, box->y + oy, box->w, box->h)`. A loader failure causes
@@ -537,10 +537,10 @@ static void priv_render_svg(const ra8_reflow_t* engine,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_render_one_image(const ra8_reflow_t*           engine,
-                                  const ra8_reflow_image_box_t* box,
-                                  int32_t                       ox,
-                                  int32_t                       oy)
+static void internal_render_one_image(const ra8_reflow_t*           engine,
+                                      const ra8_reflow_image_box_t* box,
+                                      int32_t                       ox,
+                                      int32_t                       oy)
 {
   const char*    href  = (const char*)&engine->text_pool[box->src_off];
   const uint8_t* bytes = nullptr;
@@ -551,7 +551,7 @@ static void priv_render_one_image(const ra8_reflow_t*           engine,
   const int32_t bx = box->x + ox;
   const int32_t by = box->y + oy;
   if (ra8_svg_is_svg(bytes, blen)) {
-    priv_render_svg(engine, bytes, blen, bx, by, box->w, box->h);
+    internal_render_svg(engine, bytes, blen, bx, by, box->w, box->h);
     return;
   }
   (void)
@@ -563,7 +563,7 @@ static void priv_render_one_image(const ra8_reflow_t*           engine,
  *
  * @details
  * Walks `engine->image_boxes[0..image_box_count-1]` and calls
- * `priv_render_one_image()` for each box whose `page_index` matches
+ * `internal_render_one_image()` for each box whose `page_index` matches
  * @p page_idx. The decode is on-demand: decoded pixels are never stored
  * persistently and the arena drains after each box. Boxes whose loader
  * or decode fails are skipped, leaving a blank gap rather than aborting
@@ -587,7 +587,7 @@ static void priv_render_one_image(const ra8_reflow_t*           engine,
  */
 RA8_INTERNAL
 static void
-priv_render_images(const ra8_reflow_t* engine, uint32_t page_idx, int32_t ox, int32_t oy)
+internal_render_images(const ra8_reflow_t* engine, uint32_t page_idx, int32_t ox, int32_t oy)
 {
   if ((engine->img_loader == nullptr) || (engine->img_arena == nullptr)) {
     return;
@@ -595,7 +595,7 @@ priv_render_images(const ra8_reflow_t* engine, uint32_t page_idx, int32_t ox, in
   for (uint32_t i = 0U; i < engine->image_box_count; ++i) {
     const ra8_reflow_image_box_t* box = &engine->image_boxes[i];
     if (box->page_index == page_idx) {
-      priv_render_one_image(engine, box, ox, oy);
+      internal_render_one_image(engine, box, ox, oy);
     }
   }
 }
@@ -610,7 +610,7 @@ priv_render_images(const ra8_reflow_t* engine, uint32_t page_idx, int32_t ox, in
  *
  * @details
  * Slot 0 is always the engine's bound default face, initialised through
- * `priv_init_font()`. Slots `1..face_count` are the registered embedded
+ * `internal_init_font()`. Slots `1..face_count` are the registered embedded
  * `@font-face` blobs from `engine->faces[]`. A registered blob that
  * fails `stbtt_InitFont` (already validated at register time, so this
  * path is unexpected) is replaced by a copy of the default face so that
@@ -623,7 +623,7 @@ priv_render_images(const ra8_reflow_t* engine, uint32_t page_idx, int32_t ox, in
  * @param[out] out_n   Receives the count of valid entries written
  *                     (`1 + engine->face_count`).
  * @return `k_ra8_ok` on success, or the error returned by
- *         `priv_init_font()` if the default face cannot be initialised.
+ *         `internal_init_font()` if the default face cannot be initialised.
  * @retval k_ra8_ok           All face slots initialised successfully.
  * @retval k_ra8_err_validation_failed  Default face font data is invalid.
  * @pre @p engine is non-null and `engine->font_data` points to a valid
@@ -639,9 +639,10 @@ priv_render_images(const ra8_reflow_t* engine, uint32_t page_idx, int32_t ox, in
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_init_faces(const ra8_reflow_t* engine, stbtt_fontinfo* faces, uint8_t* out_n)
+static ra8_err_t
+internal_init_faces(const ra8_reflow_t* engine, stbtt_fontinfo* faces, uint8_t* out_n)
 {
-  const ra8_err_t err = priv_init_font(engine, &faces[0]);
+  const ra8_err_t err = internal_init_font(engine, &faces[0]);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -662,11 +663,11 @@ static ra8_err_t priv_init_faces(const ra8_reflow_t* engine, stbtt_fontinfo* fac
  *
  * @details
  * Validates @p engine and @p page_idx, then builds the per-render
- * `stbtt_fontinfo` array via `priv_init_faces()`. Iterates over every
+ * `stbtt_fontinfo` array via `internal_init_faces()`. Iterates over every
  * glyph in `engine->pages[page_idx]`, extracts the face index from the
  * high bits of `g->style`, clamps any out-of-range index to 0 (the
- * default face), and calls `priv_blit_glyph()` with the resolved font.
- * After all glyphs are rendered, `priv_render_images()` blits any image
+ * default face), and calls `internal_blit_glyph()` with the resolved font.
+ * After all glyphs are rendered, `internal_render_images()` blits any image
  * boxes that belong to the page. Both glyph and image positions are
  * shifted by the origin (@p ox, @p oy), allowing callers to composite
  * the page into an arbitrary framebuffer region. This function is the
@@ -699,7 +700,7 @@ static ra8_err_t priv_init_faces(const ra8_reflow_t* engine, stbtt_fontinfo* fac
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_render_page(const ra8_reflow_t* engine, uint32_t page_idx, int32_t ox, int32_t oy)
+internal_render_page(const ra8_reflow_t* engine, uint32_t page_idx, int32_t ox, int32_t oy)
 {
   if (engine == nullptr) {
     return k_ra8_err_null_ptr;
@@ -713,9 +714,9 @@ priv_render_page(const ra8_reflow_t* engine, uint32_t page_idx, int32_t ox, int3
 
   /* One fontinfo per face (static -- render is single-threaded, like s_glyph_mask
    * below; keeps the ~1.4 KB off the stack). Default at 0, embedded at 1..N. */
-  static stbtt_fontinfo s_faces[1U + (uint32_t)k_ra8_reflow_max_faces];
+  static stbtt_fontinfo faces[1U + (uint32_t)k_ra8_reflow_max_faces];
   uint8_t               nfaces = 0U;
-  ra8_err_t             err    = priv_init_faces(engine, s_faces, &nfaces);
+  ra8_err_t             err    = internal_init_faces(engine, faces, &nfaces);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -728,16 +729,16 @@ priv_render_page(const ra8_reflow_t* engine, uint32_t page_idx, int32_t ox, int3
     if (fi >= nfaces) {
       fi = 0U; /* defensive: out-of-range face index -> default */
     }
-    priv_blit_glyph(engine->glyph_atlas, fi, &s_faces[fi], g, ox, oy);
+    internal_blit_glyph(engine->glyph_atlas, fi, &faces[fi], g, ox, oy);
   }
-  priv_render_images(engine, page_idx, ox, oy);
+  internal_render_images(engine, page_idx, ox, oy);
   return k_ra8_ok;
 }
 
 ra8_err_t ra8_reflow_render_page(const ra8_reflow_t* engine, uint32_t page_idx, void* framebuffer)
 {
   (void)framebuffer; /* Reserved hook -- ra8_gfx is bound externally. */
-  return priv_render_page(engine, page_idx, 0, 0);
+  return internal_render_page(engine, page_idx, 0, 0);
 }
 
 ra8_err_t ra8_reflow_render_page_at(const ra8_reflow_t* engine,
@@ -745,7 +746,7 @@ ra8_err_t ra8_reflow_render_page_at(const ra8_reflow_t* engine,
                                     int32_t             origin_x,
                                     int32_t             origin_y)
 {
-  return priv_render_page(engine, page_idx, origin_x, origin_y);
+  return internal_render_page(engine, page_idx, origin_x, origin_y);
 }
 
 ra8_err_t ra8_reflow_set_glyph_atlas(ra8_reflow_t*                           engine,
@@ -778,7 +779,7 @@ ra8_err_t ra8_reflow_set_glyph_atlas(ra8_reflow_t*                           eng
     .dims         = storage->dims,
     .buckets      = storage->buckets,
     .bucket_count = storage->bucket_count,
-    .render       = priv_atlas_render_glyph,
+    .render       = internal_atlas_render_glyph,
     .render_ctx   = &s_glyph_render_ctx,
   };
   const ra8_err_t err = ra8_glyph_atlas_init(atlas, &cfg);

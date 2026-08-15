@@ -103,7 +103,7 @@ typedef enum : uint32_t {
  * @note Thread-safe; pure function with no shared state.
  * @since 0.1.0
  */
-bool ra8_reflow_css_is_ws(char c)
+bool priv_ra8_reflow_css_is_ws(char c)
 {
   return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f');
 }
@@ -130,7 +130,7 @@ bool ra8_reflow_css_is_ws(char c)
  * @note Thread-safe; pure function with no shared state.
  * @since 0.1.0
  */
-char ra8_reflow_css_lower(char c)
+char priv_ra8_reflow_css_lower(char c)
 {
   return (char)(((c >= 'A') && (c <= 'Z')) ? (c + ('a' - 'A')) : c);
 }
@@ -139,7 +139,7 @@ char ra8_reflow_css_lower(char c)
  * @brief Case-insensitive compare of span @p s[0..len) against NUL literal @p lit.
  *
  * @details Compares exactly @p len bytes of @p s against the NUL-terminated
- * string @p lit using ASCII case folding via ra8_reflow_css_lower(). Returns true only
+ * string @p lit using ASCII case folding via priv_ra8_reflow_css_lower(). Returns true only
  * when the span and the literal have equal length and all bytes fold equal.
  * Either null pointer causes an immediate false return without dereferencing.
  *
@@ -159,14 +159,14 @@ char ra8_reflow_css_lower(char c)
  * @note Thread-safe; no shared mutable state.
  * @since 0.1.0
  */
-bool ra8_reflow_css_ci_eq(const char* s, size_t len, const char* lit)
+bool priv_ra8_reflow_css_ci_eq(const char* s, size_t len, const char* lit)
 {
   if ((s == nullptr) || (lit == nullptr)) {
     return false;
   }
   size_t k = 0U;
   for (; (k < len) && (lit[k] != '\0'); ++k) {
-    if (ra8_reflow_css_lower(s[k]) != ra8_reflow_css_lower(lit[k])) {
+    if (priv_ra8_reflow_css_lower(s[k]) != priv_ra8_reflow_css_lower(lit[k])) {
       return false;
     }
   }
@@ -177,7 +177,7 @@ bool ra8_reflow_css_ci_eq(const char* s, size_t len, const char* lit)
  * @brief Case-insensitive "span contains substring @p sub" (bounded scan).
  *
  * @details Slides a window of strlen(@p sub) bytes across @p s[0..len) and
- * checks for a case-insensitive match at each position via ra8_reflow_css_lower(). The
+ * checks for a case-insensitive match at each position via priv_ra8_reflow_css_lower(). The
  * outer loop is bounded by (len - sl + 1) windows; the inner loop is bounded
  * by sl, the NUL-terminated substring length. Returns false immediately if
  * @p s is NULL, @p sub is empty, or @p sub is longer than @p len.
@@ -200,10 +200,10 @@ bool ra8_reflow_css_ci_eq(const char* s, size_t len, const char* lit)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_ci_contains(const char* s, size_t len, const char* sub)
+static bool internal_ci_contains(const char* s, size_t len, const char* sub)
 {
   const size_t sl = strlen(sub);
-  /* mcdc-deactivated: the sole caller passes priv_ci_contains(val, vlen, "underline") -- val is non-NULL (from ra8_reflow_css_trim) and sub is a compile-time literal so sl == 9 (never 0); (s == nullptr) and (sl == 0U) are unreachable, only (sl > len) varies. */
+  /* mcdc-deactivated: the sole caller passes internal_ci_contains(val, vlen, "underline") -- val is non-NULL (from priv_ra8_reflow_css_trim) and sub is a compile-time literal so sl == 9 (never 0); (s == nullptr) and (sl == 0U) are unreachable, only (sl > len) varies. */
   if ((s == nullptr) || (sl == 0U) || (sl > len)) {
     return false;
   }
@@ -212,7 +212,7 @@ static bool priv_ci_contains(const char* s, size_t len, const char* sub)
     bool hit = true;
     /* Bounded: j < sl, the NUL-terminated literal's strlen. */
     for (size_t j = 0U; j < sl; ++j) {
-      if (ra8_reflow_css_lower(s[i + j]) != ra8_reflow_css_lower(sub[j])) {
+      if (priv_ra8_reflow_css_lower(s[i + j]) != priv_ra8_reflow_css_lower(sub[j])) {
         hit = false;
         break;
       }
@@ -225,14 +225,14 @@ static bool priv_ci_contains(const char* s, size_t len, const char* sub)
 }
 
 /** @brief Trim leading + trailing whitespace from @p s[0..*len); returns start. */
-const char* ra8_reflow_css_trim(const char* s, size_t* len)
+const char* priv_ra8_reflow_css_trim(const char* s, size_t* len)
 {
   size_t a = 0U;
   size_t b = *len;
-  while ((a < b) && ra8_reflow_css_is_ws(s[a])) {
+  while ((a < b) && priv_ra8_reflow_css_is_ws(s[a])) {
     ++a;
   }
-  while ((b > a) && ra8_reflow_css_is_ws(s[b - 1U])) {
+  while ((b > a) && priv_ra8_reflow_css_is_ws(s[b - 1U])) {
     --b;
   }
   *len = b - a;
@@ -248,7 +248,7 @@ const char* ra8_reflow_css_trim(const char* s, size_t* len)
  * @brief Hex value of one ASCII digit, or k_priv_hex_base if not a hex digit.
  *
  * @details Maps an ASCII hexadecimal character ('0'-'9', 'a'-'f', 'A'-'F') to
- * its numeric value (0-15). The digit is first lower-cased via ra8_reflow_css_lower() so
+ * its numeric value (0-15). The digit is first lower-cased via priv_ra8_reflow_css_lower() so
  * 'A'-'F' and 'a'-'f' are treated identically. Any byte outside those ranges
  * returns k_priv_hex_base (16) as a sentinel indicating "not a hex digit".
  *
@@ -268,12 +268,12 @@ const char* ra8_reflow_css_trim(const char* s, size_t* len)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_hex_val(char c)
+static uint8_t internal_hex_val(char c)
 {
   if ((c >= '0') && (c <= '9')) {
     return (uint8_t)(c - '0');
   }
-  const char l = ra8_reflow_css_lower(c);
+  const char l = priv_ra8_reflow_css_lower(c);
   if ((l >= 'a') && (l <= 'f')) {
     return (uint8_t)((l - 'a') + (int)k_priv_hex_a10);
   }
@@ -305,13 +305,13 @@ static uint8_t priv_hex_val(char c)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_parse_hex_color(const char* s, size_t len)
+static uint32_t internal_parse_hex_color(const char* s, size_t len)
 {
   uint32_t rgb = 0U;
   if (len == (size_t)k_priv_hex6_len) {
     /* Bounded: exactly k_priv_hex6_len digits. */
     for (size_t i = 0U; i < len; ++i) {
-      const uint8_t v = priv_hex_val(s[i]);
+      const uint8_t v = internal_hex_val(s[i]);
       if (v >= (uint8_t)k_priv_hex_base) {
         return (uint32_t)k_priv_col_invalid;
       }
@@ -322,7 +322,7 @@ static uint32_t priv_parse_hex_color(const char* s, size_t len)
   if (len == (size_t)k_priv_hex3_len) {
     /* Bounded: exactly k_priv_hex3_len digits; each expands d -> dd. */
     for (size_t i = 0U; i < len; ++i) {
-      const uint8_t v = priv_hex_val(s[i]);
+      const uint8_t v = internal_hex_val(s[i]);
       if (v >= (uint8_t)k_priv_hex_base) {
         return (uint32_t)k_priv_col_invalid;
       }
@@ -338,7 +338,7 @@ static uint32_t priv_parse_hex_color(const char* s, size_t len)
  * @brief Parse a CSS colour value (`#rgb` / `#rrggbb` / a named keyword).
  *
  * @details Accepts the following forms in @p s[0..len):
- *   - `#rgb` and `#rrggbb` hex notations, delegated to priv_parse_hex_color().
+ *   - `#rgb` and `#rrggbb` hex notations, delegated to internal_parse_hex_color().
  *   - CSS Level 1/2 named colours: black, white, red, green, blue, gray/grey,
  *     silver, maroon, navy (case-insensitive).
  * Returns k_priv_col_invalid when @p s is NULL, @p len is zero, the leading
@@ -360,40 +360,40 @@ static uint32_t priv_parse_hex_color(const char* s, size_t len)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_parse_color(const char* s, size_t len)
+static uint32_t internal_parse_color(const char* s, size_t len)
 {
-  /* mcdc-deactivated: the sole caller priv_apply_decl passes val (non-NULL, from ra8_reflow_css_trim) and vlen > 0 (gated by (plen > 0U) && (vlen > 0U) in ra8_reflow_css_parse_decls); (s == nullptr) and (len == 0U) are unreachable on any public path. */
+  /* mcdc-deactivated: the sole caller internal_apply_decl passes val (non-NULL, from priv_ra8_reflow_css_trim) and vlen > 0 (gated by (plen > 0U) && (vlen > 0U) in priv_ra8_reflow_css_parse_decls); (s == nullptr) and (len == 0U) are unreachable on any public path. */
   if ((s == nullptr) || (len == 0U)) {
     return (uint32_t)k_priv_col_invalid;
   }
   if (s[0] == '#') {
-    return priv_parse_hex_color(&s[1], len - 1U);
+    return internal_parse_hex_color(&s[1], len - 1U);
   }
-  if (ra8_reflow_css_ci_eq(s, len, "black")) {
+  if (priv_ra8_reflow_css_ci_eq(s, len, "black")) {
     return (uint32_t)k_priv_col_black;
   }
-  if (ra8_reflow_css_ci_eq(s, len, "white")) {
+  if (priv_ra8_reflow_css_ci_eq(s, len, "white")) {
     return (uint32_t)k_priv_col_white;
   }
-  if (ra8_reflow_css_ci_eq(s, len, "red")) {
+  if (priv_ra8_reflow_css_ci_eq(s, len, "red")) {
     return (uint32_t)k_priv_col_red;
   }
-  if (ra8_reflow_css_ci_eq(s, len, "green")) {
+  if (priv_ra8_reflow_css_ci_eq(s, len, "green")) {
     return (uint32_t)k_priv_col_green;
   }
-  if (ra8_reflow_css_ci_eq(s, len, "blue")) {
+  if (priv_ra8_reflow_css_ci_eq(s, len, "blue")) {
     return (uint32_t)k_priv_col_blue;
   }
-  if (ra8_reflow_css_ci_eq(s, len, "gray") || ra8_reflow_css_ci_eq(s, len, "grey")) {
+  if (priv_ra8_reflow_css_ci_eq(s, len, "gray") || priv_ra8_reflow_css_ci_eq(s, len, "grey")) {
     return (uint32_t)k_priv_col_gray;
   }
-  if (ra8_reflow_css_ci_eq(s, len, "silver")) {
+  if (priv_ra8_reflow_css_ci_eq(s, len, "silver")) {
     return (uint32_t)k_priv_col_silver;
   }
-  if (ra8_reflow_css_ci_eq(s, len, "maroon")) {
+  if (priv_ra8_reflow_css_ci_eq(s, len, "maroon")) {
     return (uint32_t)k_priv_col_maroon;
   }
-  if (ra8_reflow_css_ci_eq(s, len, "navy")) {
+  if (priv_ra8_reflow_css_ci_eq(s, len, "navy")) {
     return (uint32_t)k_priv_col_navy;
   }
   return (uint32_t)k_priv_col_invalid;
@@ -427,7 +427,7 @@ static uint32_t priv_parse_color(const char* s, size_t len)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_scan_hundredths(const char* s, size_t len, size_t* i, bool* any)
+static uint32_t internal_scan_hundredths(const char* s, size_t len, size_t* i, bool* any)
 {
   uint32_t hund = 0U;
   /* Bounded: integer digits, i advances by 1 each step, capped by len. */
@@ -470,7 +470,7 @@ static uint32_t priv_scan_hundredths(const char* s, size_t len, size_t* i, bool*
  * @retval 0..k_priv_fs_max The integer quotient of (@p hund / k_priv_fs_pct1),
  *                           clamped to k_priv_fs_max.
  *
- * @pre @p hund is a value previously produced by priv_scan_hundredths().
+ * @pre @p hund is a value previously produced by internal_scan_hundredths().
  * @pre Caller intends to store the result in a uint16_t font-size field.
  * @post Return value is in [0, k_priv_fs_max]; no state is mutated.
  * @post The function is pure; @p hund is not modified.
@@ -479,7 +479,7 @@ static uint32_t priv_scan_hundredths(const char* s, size_t len, size_t* i, bool*
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint16_t priv_fs_whole(uint32_t hund)
+static uint16_t internal_fs_whole(uint32_t hund)
 {
   const uint32_t whole = hund / (uint32_t)k_priv_fs_pct1;
   return (uint16_t)((whole > (uint32_t)k_priv_fs_max) ? (uint32_t)k_priv_fs_max : whole);
@@ -488,7 +488,7 @@ static uint16_t priv_fs_whole(uint32_t hund)
 /**
  * @brief Parse `Npx` / `N%` / `Nem` (N may be fractional) into value + unit.
  *
- * @details Delegates numeric scanning to priv_scan_hundredths(), then classifies
+ * @details Delegates numeric scanning to internal_scan_hundredths(), then classifies
  * the trailing unit suffix:
  *   - "px": writes the clamped whole value to @p *out_val and k_ra8_css_font_px
  *     to @p *out_unit.
@@ -517,26 +517,26 @@ static uint16_t priv_fs_whole(uint32_t hund)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_parse_fontsize(const char* s, size_t len, uint16_t* out_val, uint8_t* out_unit)
+static bool internal_parse_fontsize(const char* s, size_t len, uint16_t* out_val, uint8_t* out_unit)
 {
   size_t   i    = 0U;
   bool     any  = false;
-  uint32_t hund = priv_scan_hundredths(s, len, &i, &any);
+  uint32_t hund = internal_scan_hundredths(s, len, &i, &any);
   if (!any) {
     return false;
   }
   const size_t rem = len - i;
-  if ((rem == (size_t)k_priv_fs_ulen) && ra8_reflow_css_ci_eq(&s[i], rem, "px")) {
-    *out_val  = priv_fs_whole(hund);
+  if ((rem == (size_t)k_priv_fs_ulen) && priv_ra8_reflow_css_ci_eq(&s[i], rem, "px")) {
+    *out_val  = internal_fs_whole(hund);
     *out_unit = (uint8_t)k_ra8_css_font_px;
     return true;
   }
   if ((rem == 1U) && (s[i] == '%')) {
-    *out_val  = priv_fs_whole(hund);
+    *out_val  = internal_fs_whole(hund);
     *out_unit = (uint8_t)k_ra8_css_font_pct;
     return true;
   }
-  if ((rem == (size_t)k_priv_fs_ulen) && ra8_reflow_css_ci_eq(&s[i], rem, "em")) {
+  if ((rem == (size_t)k_priv_fs_ulen) && priv_ra8_reflow_css_ci_eq(&s[i], rem, "em")) {
     /* 1em = 100%; `hund` is value*100, which is already the percent. */
     *out_val  = (uint16_t)((hund > (uint32_t)k_priv_fs_max) ? (uint32_t)k_priv_fs_max : hund);
     *out_unit = (uint8_t)k_ra8_css_font_pct;
@@ -571,7 +571,7 @@ static bool priv_parse_fontsize(const char* s, size_t len, uint16_t* out_val, ui
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_set_emphasis(ra8_css_style_t* out, uint8_t setbit, uint8_t stylebit, bool on)
+static void internal_set_emphasis(ra8_css_style_t* out, uint8_t setbit, uint8_t stylebit, bool on)
 {
   out->set   = (uint8_t)(out->set | setbit);
   out->style = (uint8_t)(on ? (out->style | stylebit) : (out->style & (uint8_t)~stylebit));
@@ -585,7 +585,7 @@ static void priv_set_emphasis(ra8_css_style_t* out, uint8_t setbit, uint8_t styl
  *   - "font-style": italic when value is italic or oblique.
  *   - "text-decoration" / "text-decoration-line": underline when value contains
  *     the substring "underline".
- * Delegates mutation to priv_set_emphasis(). Returns false for any other
+ * Delegates mutation to internal_set_emphasis(). Returns false for any other
  * property so the caller can try the next handler.
  *
  * @param[in]     prop Style property name span (not NUL-terminated).
@@ -608,33 +608,37 @@ static void priv_set_emphasis(ra8_css_style_t* out, uint8_t setbit, uint8_t styl
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_apply_emphasis(const char*      prop,
-                                size_t           plen,
-                                const char*      val,
-                                size_t           vlen,
-                                ra8_css_style_t* out)
+static bool internal_apply_emphasis(const char*      prop,
+                                    size_t           plen,
+                                    const char*      val,
+                                    size_t           vlen,
+                                    ra8_css_style_t* out)
 {
-  if (ra8_reflow_css_ci_eq(prop, plen, "font-weight")) {
+  if (priv_ra8_reflow_css_ci_eq(prop, plen, "font-weight")) {
     const bool on =
-      ra8_reflow_css_ci_eq(val, vlen, "bold") || ra8_reflow_css_ci_eq(val, vlen, "bolder") ||
-      ra8_reflow_css_ci_eq(val, vlen, "600") || ra8_reflow_css_ci_eq(val, vlen, "700") ||
-      ra8_reflow_css_ci_eq(val, vlen, "800") || ra8_reflow_css_ci_eq(val, vlen, "900");
-    priv_set_emphasis(out, (uint8_t)k_ra8_css_set_bold, (uint8_t)k_ra8_reflow_style_bold, on);
+      priv_ra8_reflow_css_ci_eq(val, vlen, "bold") ||
+      priv_ra8_reflow_css_ci_eq(val, vlen, "bolder") ||
+      priv_ra8_reflow_css_ci_eq(val, vlen, "600") || priv_ra8_reflow_css_ci_eq(val, vlen, "700") ||
+      priv_ra8_reflow_css_ci_eq(val, vlen, "800") || priv_ra8_reflow_css_ci_eq(val, vlen, "900");
+    internal_set_emphasis(out, (uint8_t)k_ra8_css_set_bold, (uint8_t)k_ra8_reflow_style_bold, on);
     return true;
   }
-  if (ra8_reflow_css_ci_eq(prop, plen, "font-style")) {
-    const bool on =
-      ra8_reflow_css_ci_eq(val, vlen, "italic") || ra8_reflow_css_ci_eq(val, vlen, "oblique");
-    priv_set_emphasis(out, (uint8_t)k_ra8_css_set_italic, (uint8_t)k_ra8_reflow_style_italic, on);
+  if (priv_ra8_reflow_css_ci_eq(prop, plen, "font-style")) {
+    const bool on = priv_ra8_reflow_css_ci_eq(val, vlen, "italic") ||
+                    priv_ra8_reflow_css_ci_eq(val, vlen, "oblique");
+    internal_set_emphasis(out,
+                          (uint8_t)k_ra8_css_set_italic,
+                          (uint8_t)k_ra8_reflow_style_italic,
+                          on);
     return true;
   }
-  if (ra8_reflow_css_ci_eq(prop, plen, "text-decoration") ||
-      ra8_reflow_css_ci_eq(prop, plen, "text-decoration-line")) {
-    const bool on = priv_ci_contains(val, vlen, "underline");
-    priv_set_emphasis(out,
-                      (uint8_t)k_ra8_css_set_underline,
-                      (uint8_t)k_ra8_reflow_style_underline,
-                      on);
+  if (priv_ra8_reflow_css_ci_eq(prop, plen, "text-decoration") ||
+      priv_ra8_reflow_css_ci_eq(prop, plen, "text-decoration-line")) {
+    const bool on = internal_ci_contains(val, vlen, "underline");
+    internal_set_emphasis(out,
+                          (uint8_t)k_ra8_css_set_underline,
+                          (uint8_t)k_ra8_reflow_style_underline,
+                          on);
     return true;
   }
   return false;
@@ -649,7 +653,7 @@ static bool priv_apply_emphasis(const char*      prop,
  *   - "center"  -> k_ra8_reflow_align_center
  *   - "justify" -> k_ra8_reflow_align_justify
  *   - any other -> k_ra8_reflow_align_left (CSS default)
- * Comparison is case-insensitive via ra8_reflow_css_ci_eq().
+ * Comparison is case-insensitive via priv_ra8_reflow_css_ci_eq().
  *
  * @param[in]     val  Value span for the text-align property.
  * @param[in]     vlen Length of @p val in bytes.
@@ -666,14 +670,14 @@ static bool priv_apply_emphasis(const char*      prop,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_apply_align(const char* val, size_t vlen, ra8_css_style_t* out)
+static void internal_apply_align(const char* val, size_t vlen, ra8_css_style_t* out)
 {
   out->set = (uint8_t)(out->set | (uint8_t)k_ra8_css_set_align);
-  if (ra8_reflow_css_ci_eq(val, vlen, "right")) {
+  if (priv_ra8_reflow_css_ci_eq(val, vlen, "right")) {
     out->align = (uint8_t)k_ra8_reflow_align_right;
-  } else if (ra8_reflow_css_ci_eq(val, vlen, "center")) {
+  } else if (priv_ra8_reflow_css_ci_eq(val, vlen, "center")) {
     out->align = (uint8_t)k_ra8_reflow_align_center;
-  } else if (ra8_reflow_css_ci_eq(val, vlen, "justify")) {
+  } else if (priv_ra8_reflow_css_ci_eq(val, vlen, "justify")) {
     out->align = (uint8_t)k_ra8_reflow_align_justify;
   } else {
     out->align = (uint8_t)k_ra8_reflow_align_left;
@@ -685,10 +689,10 @@ static void priv_apply_align(const char* val, size_t vlen, ra8_css_style_t* out)
  *
  * @details Routes a single CSS declaration to the appropriate handler:
  *   - Emphasis properties (font-weight, font-style, text-decoration) via
- *     priv_apply_emphasis().
- *   - "text-align" via priv_apply_align().
- *   - "color": parsed via priv_parse_color(); applied only on a valid result.
- *   - "font-size": parsed via priv_parse_fontsize(); applied only on success.
+ *     internal_apply_emphasis().
+ *   - "text-align" via internal_apply_align().
+ *   - "color": parsed via internal_parse_color(); applied only on a valid result.
+ *   - "font-size": parsed via internal_parse_fontsize(); applied only on success.
  *   - "display": stored as 1 for "none", 0 for any other value.
  *   - Unrecognised properties are silently ignored; no set bit is touched.
  *
@@ -711,31 +715,34 @@ static void priv_apply_align(const char* val, size_t vlen, ra8_css_style_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void
-priv_apply_decl(const char* prop, size_t plen, const char* val, size_t vlen, ra8_css_style_t* out)
+static void internal_apply_decl(const char*      prop,
+                                size_t           plen,
+                                const char*      val,
+                                size_t           vlen,
+                                ra8_css_style_t* out)
 {
-  if (priv_apply_emphasis(prop, plen, val, vlen, out)) {
+  if (internal_apply_emphasis(prop, plen, val, vlen, out)) {
     return;
   }
-  if (ra8_reflow_css_ci_eq(prop, plen, "text-align")) {
-    priv_apply_align(val, vlen, out);
-  } else if (ra8_reflow_css_ci_eq(prop, plen, "color")) {
-    const uint32_t rgb = priv_parse_color(val, vlen);
+  if (priv_ra8_reflow_css_ci_eq(prop, plen, "text-align")) {
+    internal_apply_align(val, vlen, out);
+  } else if (priv_ra8_reflow_css_ci_eq(prop, plen, "color")) {
+    const uint32_t rgb = internal_parse_color(val, vlen);
     if (rgb != (uint32_t)k_priv_col_invalid) {
       out->set   = (uint8_t)(out->set | (uint8_t)k_ra8_css_set_color);
       out->color = rgb;
     }
-  } else if (ra8_reflow_css_ci_eq(prop, plen, "font-size")) {
+  } else if (priv_ra8_reflow_css_ci_eq(prop, plen, "font-size")) {
     uint16_t fv = 0U;
     uint8_t  fu = 0U;
-    if (priv_parse_fontsize(val, vlen, &fv, &fu)) {
+    if (internal_parse_fontsize(val, vlen, &fv, &fu)) {
       out->set       = (uint8_t)(out->set | (uint8_t)k_ra8_css_set_fontsize);
       out->font_val  = fv;
       out->font_unit = fu;
     }
-  } else if (ra8_reflow_css_ci_eq(prop, plen, "display")) {
+  } else if (priv_ra8_reflow_css_ci_eq(prop, plen, "display")) {
     out->set     = (uint8_t)(out->set | (uint8_t)k_ra8_css_set_display);
-    out->display = ra8_reflow_css_ci_eq(val, vlen, "none") ? 1U : 0U;
+    out->display = priv_ra8_reflow_css_ci_eq(val, vlen, "none") ? 1U : 0U;
   } else {
     /* Unknown property -> ignore (no set bit). */
   }
@@ -746,7 +753,7 @@ priv_apply_decl(const char* prop, size_t plen, const char* val, size_t vlen, ra8
  *
  * @details Iterates over semicolon-delimited declarations in @p s[0..len).
  * For each declaration, it locates the colon separator, trims whitespace from
- * both property name and value, and delegates to priv_apply_decl(). Declarations
+ * both property name and value, and delegates to internal_apply_decl(). Declarations
  * with an empty property or value after trimming are skipped silently. The loop
  * is bounded by @p len; each iteration advances past the next semicolon.
  *
@@ -764,7 +771,7 @@ priv_apply_decl(const char* prop, size_t plen, const char* val, size_t vlen, ra8
  * @note Thread-safe with respect to distinct @p out instances.
  * @since 0.1.0
  */
-void ra8_reflow_css_parse_decls(const char* s, size_t len, ra8_css_style_t* out)
+void priv_ra8_reflow_css_parse_decls(const char* s, size_t len, ra8_css_style_t* out)
 {
   size_t i = 0U;
   /* Bounded: each iteration consumes at least one byte via the ';' advance. */
@@ -779,11 +786,11 @@ void ra8_reflow_css_parse_decls(const char* s, size_t len, ra8_css_style_t* out)
     }
     if (colon < semi) {
       size_t      plen = colon - i;
-      const char* prop = ra8_reflow_css_trim(&s[i], &plen);
+      const char* prop = priv_ra8_reflow_css_trim(&s[i], &plen);
       size_t      vlen = semi - (colon + 1U);
-      const char* val  = ra8_reflow_css_trim(&s[colon + 1U], &vlen);
+      const char* val  = priv_ra8_reflow_css_trim(&s[colon + 1U], &vlen);
       if ((plen > 0U) && (vlen > 0U)) {
-        priv_apply_decl(prop, plen, val, vlen, out);
+        internal_apply_decl(prop, plen, val, vlen, out);
       }
     }
     i = semi + 1U;
@@ -801,6 +808,6 @@ ra8_err_t ra8_css_parse_inline(const char* decls, uint32_t len, ra8_css_style_t*
     return k_ra8_err_null_ptr;
   }
   *out = (ra8_css_style_t){};
-  ra8_reflow_css_parse_decls(decls, (size_t)len, out);
+  priv_ra8_reflow_css_parse_decls(decls, (size_t)len, out);
   return k_ra8_ok;
 }

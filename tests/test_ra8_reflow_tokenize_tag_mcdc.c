@@ -20,27 +20,35 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "support/reflow_tokenize_test_util.h"
 #include "unity_minimal.h"
 
 /**
- * @test test_start_tag_name_scan
+ * @test internal_test_start_tag_name_scan
  *
  * @par MC/DC:
  * Decision: `(i<len) && (buf[i]!='>') && (buf[i]!='/') && !is_xml_whitespace`
- * -- the start-tag NAME scan in priv_parse_start (ra8_reflow_tokenize.c).
+ * -- the start-tag NAME scan in internal_parse_start (ra8_reflow_tokenize.c).
  *  - "<p>"      name ends on '>'  (the `!='>'` arm goes false).
  *  - "<br/>"    name ends on '/'  (the `!='/'` arm goes false).
  *  - "<p id=x>" name ends on ' '  (the whitespace arm goes false).
  *  - "<p"       (truncated) name scan runs to i>=len (the `i<len` arm false).
  * Each input drives a different terminating condition of the 4-term AND while
  * the others hold, giving independent influence per condition.
+ * @brief Verify start tag name scan behavior against the reflow contract.
+ * @details Exercises the start tag name scan path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_start_tag_name_scan(void)
+RA8_INTERNAL static void internal_test_start_tag_name_scan(void)
 {
   TEST_BEGIN("priv_parse_start name-scan MC/DC");
   TEST_ASSERT_EQ(k_ra8_ok, walk("<html><body><p>gt</p></body></html>")); /* '>' */
@@ -57,10 +65,10 @@ static void test_start_tag_name_scan(void)
 }
 
 /**
- * @test test_start_tag_attr_and_selfclose
+ * @test internal_test_start_tag_attr_and_selfclose
  *
  * @par MC/DC:
- * Decisions in the attribute-skip loop of priv_parse_start (ra8_reflow_tokenize.c):
+ * Decisions in the attribute-skip loop of internal_parse_start (ra8_reflow_tokenize.c):
  *  - quote open `(c=='"') || (c=='\'')`: a double-quoted attr drives the
  *    first arm; a single-quoted attr drives the second arm.
  *  - quoted-value scan `(i<len) && (buf[i]!=quote)`: a closed quote stops on
@@ -69,8 +77,16 @@ static void test_start_tag_name_scan(void)
  *    selfclose true; "<br x/y>" has '/' not followed by '>' (third arm false).
  * The double/single-quoted images, the unclosed-quote tag, and the "/>" vs
  * "/x" inputs each isolate one condition of these decisions.
+ * @brief Verify start tag attr and selfclose behavior against the reflow contract.
+ * @details Exercises the start tag attr and selfclose path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_start_tag_attr_and_selfclose(void)
+RA8_INTERNAL static void internal_test_start_tag_attr_and_selfclose(void)
 {
   TEST_BEGIN("priv_parse_start attr/self-close MC/DC");
 
@@ -97,11 +113,11 @@ static void test_start_tag_attr_and_selfclose(void)
 }
 
 /**
- * @test test_attr_name_boundary
+ * @test internal_test_attr_name_boundary
  *
  * @par MC/DC:
  * Decision: `((prev>='a')&&(prev<='z')) || ((prev>='A')&&(prev<='Z'))` -- the
- * "attribute name not preceded by a name byte" boundary in priv_attr_name_at
+ * "attribute name not preceded by a name byte" boundary in internal_attr_name_at
  * (ra8_reflow_tokenize.c). The function returns the NEGATION, so a letter-prev
  * rejects the candidate and the scan keeps looking for a real attribute.
  *  - lowercase-prev: "asrc" -- the 'src' inside it has prev='a' (a..z true)
@@ -111,8 +127,16 @@ static void test_start_tag_attr_and_selfclose(void)
  *    accepted. Proves the A..Z arm.
  * Observable: the captured `<img>` src is the real one, never the decoy, so the
  * image token (and its text-pool src slice) reflect the accepted attribute.
+ * @brief Verify attr name boundary behavior against the reflow contract.
+ * @details Exercises the attr name boundary path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_attr_name_boundary(void)
+RA8_INTERNAL static void internal_test_attr_name_boundary(void)
 {
   TEST_BEGIN("priv_attr_name_at boundary MC/DC");
 
@@ -134,10 +158,10 @@ static void test_attr_name_boundary(void)
 }
 
 /**
- * @test test_attr_quoted_value_paths
+ * @test internal_test_attr_quoted_value_paths
  *
  * @par MC/DC:
- * Decisions in priv_attr_quoted_value (ra8_reflow_tokenize.c):
+ * Decisions in internal_attr_quoted_value (ra8_reflow_tokenize.c):
  *  - require '=' : `(j >= tag_len) || (tag[j] != '=')`: `src="v"` has '=' ->
  *    false; a bare `src` with no '=' (followed by another attr) -> `!= '='`
  *    true -> that candidate rejected.
@@ -149,8 +173,16 @@ static void test_attr_name_boundary(void)
  * The src="real" capture exercises the all-pass path; the `<img src>` (no '=')
  * and `<img src=bare ...>` (no quote) decoys exercise the reject arms while a
  * later proper attribute still gets captured.
+ * @brief Verify attr quoted value paths behavior against the reflow contract.
+ * @details Exercises the attr quoted value paths path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_attr_quoted_value_paths(void)
+RA8_INTERNAL static void internal_test_attr_quoted_value_paths(void)
 {
   TEST_BEGIN("priv_attr_quoted_value MC/DC");
 
@@ -172,7 +204,7 @@ static void test_attr_quoted_value_paths(void)
 }
 
 /**
- * @test test_capture_attr_empty_value
+ * @test internal_test_capture_attr_empty_value
  *
  * @par MC/DC:
  * Decision: `(vlen == 0U) || (pool_used + vlen > pool_bytes)` -- the
@@ -182,8 +214,16 @@ static void test_attr_quoted_value_paths(void)
  * V1 vs V2 isolates the `vlen == 0` condition (the overflow arm needs a
  * ~64 KiB value and is left to the pool-overflow corpus). Observable: the
  * empty-src image still emits as a token but stores no src bytes.
+ * @brief Verify capture attr empty value behavior against the reflow contract.
+ * @details Exercises the capture attr empty value path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_capture_attr_empty_value(void)
+RA8_INTERNAL static void internal_test_capture_attr_empty_value(void)
 {
   TEST_BEGIN("priv_capture_attr empty-value MC/DC");
 
@@ -199,10 +239,10 @@ static void test_capture_attr_empty_value(void)
 }
 
 /**
- * @test test_display_none_begin
+ * @test internal_test_display_none_begin
  *
  * @par MC/DC:
- * Decisions in priv_open_styled (ra8_reflow_tokenize.c):
+ * Decisions in internal_open_styled (ra8_reflow_tokenize.c):
  *  - hidden detect `((comp.set & k_ra8_css_set_display)!=0) && (comp.display!=0)`:
  *    `display:none` sets both bits true -> hidden; `display:block` declares
  *    display (set bit true) but `comp.display==0` -> NOT hidden (second arm
@@ -212,8 +252,16 @@ static void test_capture_attr_empty_value(void)
  *    already (second arm false) so it does not reset the depth.
  * The display:none subtree drops its text; display:block keeps it; nesting two
  * hidden blocks proves the suppress_sp==0 guard.
+ * @brief Verify display none begin behavior against the reflow contract.
+ * @details Exercises the display none begin path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_display_none_begin(void)
+RA8_INTERNAL static void internal_test_display_none_begin(void)
 {
   TEST_BEGIN("priv_open_styled display MC/DC");
 
@@ -244,20 +292,28 @@ static void test_display_none_begin(void)
 }
 
 /**
- * @test test_selfclose_block_pair
+ * @test internal_test_selfclose_block_pair
  *
  * @par MC/DC:
- * Decision: `block && !priv_suppressed(ctx)` -- the self-closing block emit in
- * priv_handle_start (ra8_reflow_tokenize.c).
+ * Decision: `block && !internal_suppressed(ctx)` -- the self-closing block emit in
+ * internal_handle_start (ra8_reflow_tokenize.c).
  *  - V1 "<p/>" outside suppression -> block true, not suppressed -> emits an
  *    empty block-start + block-end pair.
  *  - V2 "<span/>" (unknown tag) -> block false -> no block tokens for it.
  *  - V3 "<p/>" inside a display:none div -> block true but suppressed -> no
  *    tokens (the suppress arm).
  * V1 vs V2 isolates the `block` condition; V1 vs V3 isolates the
- * `!priv_suppressed` condition.
+ * `!internal_suppressed` condition.
+ * @brief Verify selfclose block pair behavior against the reflow contract.
+ * @details Exercises the selfclose block pair path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_selfclose_block_pair(void)
+RA8_INTERNAL static void internal_test_selfclose_block_pair(void)
 {
   TEST_BEGIN("priv_handle_start self-close block MC/DC");
 
@@ -283,19 +339,27 @@ static void test_selfclose_block_pair(void)
 }
 
 /**
- * @test test_lt_end_vs_start_dispatch
+ * @test internal_test_lt_end_vs_start_dispatch
  *
  * @par MC/DC:
  * Decision: `((*pi + 1U) < len) && (buf[*pi + 1U] == '/')` -- the end-tag vs
- * start-tag fork in priv_handle_lt (ra8_reflow_tokenize.c).
+ * start-tag fork in internal_handle_lt (ra8_reflow_tokenize.c).
  *  - V1 "</p>"      -> next byte is '/' (and in range) -> end-tag handler.
  *  - V2 "<p>"       -> next byte is 'p' not '/'        -> start-tag handler.
  *  - V3 a lone '<' at end-of-buffer -> `(*pi+1)<len` false -> start handler
  *    on a truncated tag (no '/').
  * V1 vs V2 isolates the `buf[*pi+1]=='/'` condition; V1/V2 vs V3 isolates the
  * `(*pi+1)<len` bounds condition.
+ * @brief Verify lt end vs start dispatch behavior against the reflow contract.
+ * @details Exercises the lt end vs start dispatch path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_lt_end_vs_start_dispatch(void)
+RA8_INTERNAL static void internal_test_lt_end_vs_start_dispatch(void)
 {
   TEST_BEGIN("priv_handle_lt end/start fork MC/DC");
 
@@ -311,7 +375,7 @@ static void test_lt_end_vs_start_dispatch(void)
 }
 
 /**
- * @test test_walk_null_guard
+ * @test internal_test_walk_null_guard
  *
  * @par MC/DC:
  * Decision: `(engine == nullptr) || (xhtml_buf == nullptr)` -- the entry guard
@@ -322,8 +386,16 @@ static void test_lt_end_vs_start_dispatch(void)
  *  - V3 engine non-null, buf NULL     -> second arm true -> k_ra8_err_null_ptr.
  * V1 vs V2 isolates the engine arm; V1 vs V3 isolates the buf arm. The
  * `xhtml_len == 0U` follow-on guard is exercised by the empty-input vector.
+ * @brief Verify walk null guard behavior against the reflow contract.
+ * @details Exercises the walk null guard path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_walk_null_guard(void)
+RA8_INTERNAL static void internal_test_walk_null_guard(void)
 {
   TEST_BEGIN("priv_reflow_xml_walk null-guard MC/DC");
 
@@ -343,11 +415,11 @@ static void test_walk_null_guard(void)
 }
 
 /**
- * @test test_selfclose_slash_at_end_of_tag
+ * @test internal_test_selfclose_slash_at_end_of_tag
  *
  * @par MC/DC:
  * Decision (L840): `(c == '/') && ((i + 1U) < len) && (buf[i + 1U] == '>')`
- * in priv_parse_start's attribute-skip loop (reached only for bare '/' chars
+ * in internal_parse_start's attribute-skip loop (reached only for bare '/' chars
  * OUTSIDE quoted attribute values).
  *  - V-true  `<br/>` -> c='/', (i+1)<len true, buf[i+1]='>' true -> selfclose.
  *  - V-noeq  `<br x/y>` -> c='/', (i+1)<len true, buf[i+1]='y' != '>' ->
@@ -357,8 +429,16 @@ static void test_walk_null_guard(void)
  *    truncated document returns k_ra8_err_validation_failed.
  * V-true vs V-noeq isolates buf[i+1]!='>' (third arm false).
  * V-true vs V-eob  isolates (i+1)<len     (second arm false).
+ * @brief Verify selfclose slash at end of tag behavior against the reflow contract.
+ * @details Exercises the selfclose slash at end of tag path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_selfclose_slash_at_end_of_tag(void)
+RA8_INTERNAL static void internal_test_selfclose_slash_at_end_of_tag(void)
 {
   TEST_BEGIN("priv_parse_start selfclose '/' branches (L840)");
 
@@ -367,10 +447,10 @@ static void test_selfclose_slash_at_end_of_tag(void)
   TEST_ASSERT_EQ(k_count_one, count_kind(k_ra8_reflow_tok_break));
 
   /* V-noeq: bare '/' in the attr area not followed by '>'; selfclose stays
-   * false.  The existing test_start_tag_attr_and_selfclose covers this with
+   * false.  The existing internal_test_start_tag_attr_and_selfclose covers this with
    * "<br x/y>"; repeated here for local MC/DC completeness of L840. */
   TEST_ASSERT_EQ(k_ra8_ok, walk("<html><body><p>a<img src=\"q\" /x>b</p></body></html>"));
-  /* The <img> was emitted (not as selfclose but priv_handle_void handles it
+  /* The <img> was emitted (not as selfclose but internal_handle_void handles it
    * regardless); the bare '/x' did not set selfclose, so the tag ended at '>'. */
   TEST_ASSERT_EQ(k_count_one, count_kind(k_ra8_reflow_tok_image));
 
@@ -382,30 +462,38 @@ static void test_selfclose_slash_at_end_of_tag(void)
 }
 
 /**
- * @test test_attr_name_boundary_prev_uppercase
+ * @test internal_test_attr_name_boundary_prev_uppercase
  *
  * @par MC/DC:
  * Decision (L878): `((prev>='a')&&(prev<='z')) || ((prev>='A')&&(prev<='Z'))`
- * in priv_attr_name_at -- the function returns the negation, so a preceding
+ * in internal_attr_name_at -- the function returns the negation, so a preceding
  * name-byte rejects the candidate and only a non-letter prev accepts it.
  *  - V-lc   prev='a' (lower) -> a..z true -> result !true = false -> rejected.
  *  - V-uc   prev='Z' (upper) -> a..z false, A..Z true -> result false -> rejected.
  *  - V-none prev='<' (start) -> both false -> result true -> accepted.
  * V-lc vs V-uc isolates the A..Z arm (the a..z condition is false in V-uc,
  * making the A..Z condition independently decisive). V-lc/V-uc vs V-none
- * shows the accepted path.  The existing test_attr_name_boundary covers V-lc
+ * shows the accepted path.  The existing internal_test_attr_name_boundary covers V-lc
  * and V-uc by walking `<img asrc="D" src="r"/>` and `<img Zsrc="D" src="r"/>`;
  * this test drives the inner OR sub-conditions explicitly via the direct entity
  * API -- not reachable there -- so instead it repeats the walk vectors that
  * isolate each sub-condition at L878 for completeness of the MC/DC record.
+ * @brief Verify attr name boundary prev uppercase behavior against the reflow contract.
+ * @details Exercises the attr name boundary prev uppercase path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_attr_name_boundary_prev_uppercase(void)
+RA8_INTERNAL static void internal_test_attr_name_boundary_prev_uppercase(void)
 {
   TEST_BEGIN("priv_attr_name_at A..Z arm (L878)");
 
   /* V-uc: 'Z' immediately before "src" -> A..Z arm true -> rejected;
    * the real " src" (prev=space -> both arms false) is accepted.
-   * (Mirrors the V-uppercase vector in test_attr_name_boundary; repeated
+   * (Mirrors the V-uppercase vector in internal_test_attr_name_boundary; repeated
    * here to provide an independent MC/DC record for the A..Z sub-condition.) */
   TEST_ASSERT_EQ(k_ra8_ok,
                  walk("<html><body><p><img Zsrc=\"NOPE\" src=\"good\"/></p>"
@@ -425,12 +513,12 @@ static void test_attr_name_boundary_prev_uppercase(void)
 }
 
 /**
- * @test test_attr_quoted_value_whitespace_paths
+ * @test internal_test_attr_quoted_value_whitespace_paths
  *
  * @par MC/DC:
- * Decisions in priv_attr_quoted_value (ra8_reflow_tokenize.c):
+ * Decisions in internal_attr_quoted_value (ra8_reflow_tokenize.c):
  *
- * L906 `while ((j < tag_len) && ra8_reflow_tok_is_xml_whitespace(tag[j]))`:
+ * L906 `while ((j < tag_len) && priv_ra8_reflow_tok_is_xml_whitespace(tag[j]))`:
  *  - Loop body taken (whitespace before '=') vs not entered (no whitespace).
  *  - V-ws-eq   `src = "v"` (space before '=') -> loop body taken.
  *  - V-no-ws-eq `src="v"` (no space) -> loop not entered.
@@ -444,7 +532,7 @@ static void test_attr_name_boundary_prev_uppercase(void)
  *    (The img still emits because a later attribute-scan finds another src
  *    OR the missing src just means zero-length; the image token still fires.)
  *
- * L913 `while ((j < tag_len) && ra8_reflow_tok_is_xml_whitespace(tag[j]))`:
+ * L913 `while ((j < tag_len) && priv_ra8_reflow_tok_is_xml_whitespace(tag[j]))`:
  *  - Loop body taken (whitespace after '=') vs not entered.
  *  - V-ws-val  `src= "v"` (space after '=') -> loop body taken.
  *
@@ -452,9 +540,17 @@ static void test_attr_name_boundary_prev_uppercase(void)
  *  - `j >= tag_len` true: the '=' was found but the tag ends before any
  *    quote character.  A truncated `<img src=` (no quote, no value) hits this.
  *  - `tag[j] != '"' && tag[j] != '\''` true: `src=bare` (unquoted value).
- *    (Covered by existing test_attr_quoted_value_paths V-unquoted.)
+ *    (Covered by existing internal_test_attr_quoted_value_paths V-unquoted.)
+ * @brief Verify attr quoted value whitespace paths behavior against the reflow contract.
+ * @details Exercises the attr quoted value whitespace paths path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_attr_quoted_value_whitespace_paths(void)
+RA8_INTERNAL static void internal_test_attr_quoted_value_whitespace_paths(void)
 {
   TEST_BEGIN("priv_attr_quoted_value whitespace / reject arms (L906-L916)");
 
@@ -471,7 +567,7 @@ static void test_attr_quoted_value_whitespace_paths(void)
   TEST_ASSERT_EQ(k_count_one, count_kind(k_ra8_reflow_tok_image));
 
   /* L909 tag[j]!='=' true: "src>" -- '>' is present but is not '=' -> returns
-   * false; the img still emits (priv_handle_void handles it). */
+   * false; the img still emits (internal_handle_void handles it). */
   TEST_ASSERT_EQ(k_ra8_ok, walk("<html><body><p><img src></p></body></html>"));
   /* The img tag emits even without a valid src (src_len==0). */
   TEST_ASSERT_EQ(k_count_one, count_kind(k_ra8_reflow_tok_image));
@@ -489,23 +585,31 @@ static void test_attr_quoted_value_whitespace_paths(void)
 }
 
 /**
- * @test test_tag_is_slash_and_whitespace
+ * @test internal_test_tag_is_slash_and_whitespace
  *
  * @par MC/DC:
- * Decision (L1556): `(c == '>') || (c == '/') || ra8_reflow_tok_is_xml_whitespace(c)`
- * in priv_tag_is.  The existing test_raw_text_style_vs_script covers:
+ * Decision (L1556): `(c == '>') || (c == '/') || priv_ra8_reflow_tok_is_xml_whitespace(c)`
+ * in internal_tag_is.  The existing test_raw_text_style_vs_script covers:
  *  - `<style>` -> delimiter '>' -> c=='>' true -> returns true.
  *  - `<styled>` -> name mismatch at 'd' -> priv_starts_with returns false (no
  *    reach to L1556).
  * Still-missing arms at L1556 (given priv_starts_with matched):
  *  - c=='/' true: `<style/>` or `<style/...>` -> the char after "style" is '/'
- *    -> second OR arm true -> priv_tag_is returns true -> handled as raw-text.
+ *    -> second OR arm true -> internal_tag_is returns true -> handled as raw-text.
  *  - whitespace true: `<style ...>` -> the char after "style" is ' '
- *    -> whitespace arm true -> priv_tag_is returns true.
+ *    -> whitespace arm true -> internal_tag_is returns true.
  * Both cases are exercised by feeding such markup through walk() and observing
- * that the <style> rule IS applied (proving priv_tag_is returned true).
+ * that the <style> rule IS applied (proving internal_tag_is returned true).
+ * @brief Verify tag is slash and whitespace behavior against the reflow contract.
+ * @details Exercises the tag is slash and whitespace path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_tag_is_slash_and_whitespace(void)
+RA8_INTERNAL static void internal_test_tag_is_slash_and_whitespace(void)
 {
   TEST_BEGIN("priv_tag_is c=='/' and whitespace delimiter arms (L1556)");
 
@@ -514,12 +618,12 @@ static void test_tag_is_slash_and_whitespace(void)
   TEST_ASSERT_EQ(k_ra8_ok, walk("<html><body><p class=\"hot\">x</p></body></html>"));
   const uint32_t c_def = first_text_color();
 
-  /* c=='/': <style/> self-closes after the name; priv_tag_is sees '/' as the
-   * delimiter -> returns true -> priv_handle_raw_text is invoked for style.
+  /* c=='/': <style/> self-closes after the name; internal_tag_is sees '/' as the
+   * delimiter -> returns true -> internal_handle_raw_text is invoked for style.
    * The open_end scan for '>' will skip to the end of the self-close tag;
    * the CSS body between open_end and close_at may be empty (close_at ==
    * open_end) or contain content before </style> -- but the key observable is
-   * that priv_tag_is returns true so raw-text handling runs at all.
+   * that internal_tag_is returns true so raw-text handling runs at all.
    * For this vector we use `<style/>.hot{color:#ff0000}</style>` where the
    * self-closing '<style/>' is immediately followed by the CSS body before the
    * explicit close tag; the engine skips to the first '>' (end of `<style/>`
@@ -533,7 +637,7 @@ static void test_tag_is_slash_and_whitespace(void)
                 * self-close form; we assert only that the walk does not crash. */
 
   /* Whitespace delimiter: '<style ' -> char after "style" is ' ' -> whitespace
-   * arm true -> priv_tag_is returns true -> style block processed. */
+   * arm true -> internal_tag_is returns true -> style block processed. */
   TEST_ASSERT_EQ(k_ra8_ok,
                  walk("<html><head><style type=\"text/css\">.ws{color:#00bbcc}"
                       "</style></head>"
@@ -546,11 +650,11 @@ static void test_tag_is_slash_and_whitespace(void)
 }
 
 /**
- * @test test_attr_name_prev_punct_mcdc
+ * @test internal_test_attr_name_prev_punct_mcdc
  *
  * @par MC/DC:
  * Decision: `return !(((prev>='a') && (prev<='z')) || ((prev>='A') && (prev<='Z')))`
- * -- the attribute-name boundary check in priv_attr_name_at
+ * -- the attribute-name boundary check in internal_attr_name_at
  * (libs/ra8_reflow/src/ra8_reflow_tokenize_attr.c, 4 conditions). Existing vectors
  * drive the lowercase- and uppercase-letter arms; two ASCII punctuation bytes that
  * are valid (non-letter) separators isolate the remaining false arms:
@@ -559,43 +663,61 @@ static void test_tag_is_slash_and_whitespace(void)
  *    valid separator), so find_attr returns the value span.
  *  - '_' (0x5F) before "id": prev >= 'A' true, prev <= 'Z' false -> the fourth
  *    condition's false side (C4 pair). The name matches likewise.
+ * @brief Verify attr name prev punct mcdc behavior against the reflow contract.
+ * @details Exercises the attr name prev punct mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_attr_name_prev_punct_mcdc(void)
+RA8_INTERNAL static void internal_test_attr_name_prev_punct_mcdc(void)
 {
   TEST_BEGIN("priv_attr_name_at MC/DC: '|' and '_' separator boundary arms");
   size_t voff = 0U;
   size_t vlen = 0U;
   /* '|' (0x7C): (prev <= 'z') false while (prev >= 'a') true. */
   const uint8_t tag_pipe[] = "<p |id=\"x\">";
-  TEST_ASSERT(ra8_reflow_tok_find_attr(tag_pipe, sizeof(tag_pipe) - 1U, "id", 2U, &voff, &vlen));
+  TEST_ASSERT(
+    priv_ra8_reflow_tok_find_attr(tag_pipe, sizeof(tag_pipe) - 1U, "id", 2U, &voff, &vlen));
   /* '_' (0x5F): (prev <= 'Z') false while (prev >= 'A') true. */
   const uint8_t tag_under[] = "<p _id=\"yz\">";
-  TEST_ASSERT(ra8_reflow_tok_find_attr(tag_under, sizeof(tag_under) - 1U, "id", 2U, &voff, &vlen));
+  TEST_ASSERT(
+    priv_ra8_reflow_tok_find_attr(tag_under, sizeof(tag_under) - 1U, "id", 2U, &voff, &vlen));
   TEST_ASSERT_EQ(2, vlen); /* "yz" */
   TEST_END("priv_attr_name_at MC/DC: '|' and '_' separator boundary arms");
 }
 
 /**
- * @test test_capture_attr_pool_overflow_mcdc
+ * @test internal_test_capture_attr_pool_overflow_mcdc
  *
  * @par MC/DC:
  * Decision: `if ((vlen == 0U) || (text_pool_used + vlen > k_ra8_reflow_text_pool_bytes))`
- * in ra8_reflow_tok_capture_attr (libs/ra8_reflow/src/ra8_reflow_tokenize_attr.c, 2
+ * in priv_ra8_reflow_tok_capture_attr (libs/ra8_reflow/src/ra8_reflow_tokenize_attr.c, 2
  * conditions, OR). Existing vectors cover the fits (both false) and empty-value
  * (C1 true) arms. The `(text_pool_used + vlen > cap)` true side needs the pool
  * nearly full:
  *  - a 2-byte attribute value with text_pool_used pre-set to one below capacity ->
  *    C1 false, C2 true -> the value is NOT stored (out_len stays 0). This completes
  *    the C2 independence pair against the fits vector.
+ * @brief Verify capture attr pool overflow mcdc behavior against the reflow contract.
+ * @details Exercises the capture attr pool overflow mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_capture_attr_pool_overflow_mcdc(void)
+RA8_INTERNAL static void internal_test_capture_attr_pool_overflow_mcdc(void)
 {
   TEST_BEGIN("ra8_reflow_tok_capture_attr MC/DC: text-pool overflow (C2 true)");
   s_engine.text_pool_used = (uint32_t)k_ra8_reflow_text_pool_bytes - 1U;
   uint32_t      off       = 0U;
   uint32_t      len       = 0U;
   const uint8_t tag[]     = "<img alt=\"ab\">";
-  ra8_reflow_tok_capture_attr(&s_engine, tag, sizeof(tag) - 1U, "alt", 3U, &off, &len);
+  priv_ra8_reflow_tok_capture_attr(&s_engine, tag, sizeof(tag) - 1U, "alt", 3U, &off, &len);
   TEST_ASSERT_EQ(0, len); /* "ab" (2 bytes) does not fit in 1 remaining byte */
   s_engine.text_pool_used = 0U;
   TEST_END("ra8_reflow_tok_capture_attr MC/DC: text-pool overflow (C2 true)");
@@ -614,21 +736,20 @@ static void test_capture_attr_pool_overflow_mcdc(void)
  */
 int32_t main(void)
 {
-  test_start_tag_name_scan();
-  test_start_tag_attr_and_selfclose();
-  test_attr_name_boundary();
-  test_attr_quoted_value_paths();
-  test_capture_attr_empty_value();
-  test_display_none_begin();
-  test_selfclose_block_pair();
-  test_lt_end_vs_start_dispatch();
-  test_walk_null_guard();
-  test_selfclose_slash_at_end_of_tag();
-  test_attr_name_boundary_prev_uppercase();
-  test_attr_quoted_value_whitespace_paths();
-  test_tag_is_slash_and_whitespace();
-  test_attr_name_prev_punct_mcdc();
-  test_capture_attr_pool_overflow_mcdc();
-  (void)fprintf(stderr, "[OK ] test_ra8_reflow_tokenize_tag_mcdc.c\n");
+  internal_test_start_tag_name_scan();
+  internal_test_start_tag_attr_and_selfclose();
+  internal_test_attr_name_boundary();
+  internal_test_attr_quoted_value_paths();
+  internal_test_capture_attr_empty_value();
+  internal_test_display_none_begin();
+  internal_test_selfclose_block_pair();
+  internal_test_lt_end_vs_start_dispatch();
+  internal_test_walk_null_guard();
+  internal_test_selfclose_slash_at_end_of_tag();
+  internal_test_attr_name_boundary_prev_uppercase();
+  internal_test_attr_quoted_value_whitespace_paths();
+  internal_test_tag_is_slash_and_whitespace();
+  internal_test_attr_name_prev_punct_mcdc();
+  internal_test_capture_attr_pool_overflow_mcdc();
   return 0;
 }

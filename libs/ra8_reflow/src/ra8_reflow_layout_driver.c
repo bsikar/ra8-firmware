@@ -5,9 +5,9 @@
  * @details
  * Splits the outer layout driver and the public entry points out of
  * `ra8_reflow_layout.c` so each translation unit stays under the project
- * file-size cap. The driver (`priv_layout_tokens`) walks the parsed token
- * stream once, dispatching `<table>` ranges to @ref ra8_reflow_layout_table
- * and every other token to @ref ra8_reflow_layout_apply_token, then flushes a
+ * file-size cap. The driver (`internal_layout_tokens`) walks the parsed token
+ * stream once, dispatching `<table>` ranges to @ref priv_ra8_reflow_layout_table
+ * and every other token to @ref priv_ra8_reflow_layout_apply_token, then flushes a
  * final page and builds the tappable link rectangles.
  *
  * The public API covers engine lifecycle (`ra8_reflow_init`,
@@ -51,13 +51,13 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_layout_tokens(ra8_reflow_t* engine, const stbtt_fontinfo* font)
+static ra8_err_t internal_layout_tokens(ra8_reflow_t* engine, const stbtt_fontinfo* font)
 {
   priv_cursor_t cur = {
     .x                = (int32_t)k_ra8_reflow_margin_px,
     .y                = (int32_t)k_ra8_reflow_margin_px,
     .line_top         = (int32_t)k_ra8_reflow_margin_px,
-    .line_height_px   = ra8_reflow_layout_line_height(engine->font_px),
+    .line_height_px   = priv_ra8_reflow_layout_line_height(engine->font_px),
     .active_font_px   = engine->font_px,
     .active_style     = k_ra8_reflow_style_normal,
     .indent_px        = 0U,
@@ -74,12 +74,12 @@ static ra8_err_t priv_layout_tokens(ra8_reflow_t* engine, const stbtt_fontinfo* 
     const ra8_reflow_token_t* tok = &engine->tokens[i];
     if ((tok->kind == (uint8_t)k_ra8_reflow_tok_block_start) &&
         (tok->tag == (uint8_t)k_ra8_reflow_tag_table)) {
-      ra8_err_t err = ra8_reflow_layout_table(engine, &cur, font, i, &i);
+      ra8_err_t err = priv_ra8_reflow_layout_table(engine, &cur, font, i, &i);
       if (err != k_ra8_ok) {
         return err;
       }
     } else {
-      ra8_err_t err = ra8_reflow_layout_apply_token(engine, &cur, font, tok);
+      ra8_err_t err = priv_ra8_reflow_layout_apply_token(engine, &cur, font, tok);
       if (err != k_ra8_ok) {
         return err;
       }
@@ -90,7 +90,7 @@ static ra8_err_t priv_layout_tokens(ra8_reflow_t* engine, const stbtt_fontinfo* 
   /* Flush the final page if it has glyph or image content. */
   if ((engine->glyph_count > cur.page_first_glyph) ||
       (engine->image_box_count > cur.page_first_image)) {
-    if (!ra8_reflow_layout_finish_page(engine, &cur)) {
+    if (!priv_ra8_reflow_layout_finish_page(engine, &cur)) {
       return k_ra8_err_no_mem;
     }
   }
@@ -119,16 +119,16 @@ ra8_err_t ra8_reflow_run_layout(ra8_reflow_t* engine)
   engine->anchor_count    = 0U;
 
   stbtt_fontinfo font;
-  ra8_err_t      err = ra8_reflow_layout_init_font(engine, &font);
+  ra8_err_t      err = priv_ra8_reflow_layout_init_font(engine, &font);
   if (err != k_ra8_ok) {
     return err;
   }
-  err = priv_layout_tokens(engine, &font);
+  err = internal_layout_tokens(engine, &font);
   if (err != k_ra8_ok) {
     return err;
   }
   /* Guarantee at least one page on non-empty input. */
-  if (ra8_reflow_internal_final_page_needed(engine->page_count, engine->token_count)) {
+  if (priv_ra8_reflow_internal_final_page_needed(engine->page_count, engine->token_count)) {
     if (engine->page_count >= k_ra8_reflow_max_pages) {
       return k_ra8_err_no_mem;
     }
@@ -137,7 +137,7 @@ ra8_err_t ra8_reflow_run_layout(ra8_reflow_t* engine)
     engine->page_count           = (uint32_t)k_priv_min_chapter_pages;
   }
   /* Build tappable link rectangles from the link-tagged glyphs (#110). */
-  ra8_reflow_layout_build_link_rects(engine, &font);
+  priv_ra8_reflow_layout_build_link_rects(engine, &font);
   return k_ra8_ok;
 }
 
@@ -168,7 +168,7 @@ ra8_err_t ra8_reflow_init(uint16_t       viewport_w,
     return k_ra8_err_invalid_size;
   }
 
-  ra8_reflow_layout_byte_zero((uint8_t*)out_engine, sizeof(*out_engine));
+  priv_ra8_reflow_layout_byte_zero((uint8_t*)out_engine, sizeof(*out_engine));
 
   out_engine->viewport_w = viewport_w;
   out_engine->viewport_h = viewport_h;
@@ -288,7 +288,7 @@ ra8_err_t ra8_reflow_set_font_size(ra8_reflow_t* engine, uint16_t new_font_px)
   if (new_font_px < k_ra8_reflow_min_font_px || new_font_px > k_ra8_reflow_max_font_px) {
     return k_ra8_err_invalid_arg;
   }
-  if (ra8_reflow_internal_xhtml_invalid(engine->xhtml_buf, engine->xhtml_len)) {
+  if (priv_ra8_reflow_internal_xhtml_invalid(engine->xhtml_buf, engine->xhtml_len)) {
     return k_ra8_err_invalid_state;
   }
   engine->font_px = new_font_px;
@@ -335,7 +335,7 @@ ra8_err_t ra8_reflow_bind_font(ra8_reflow_t* engine, const uint8_t* font_data, s
   /* If a chapter is already laid out, re-flow it against the new face so the
    * change is immediate (mirrors ra8_reflow_set_font_size); otherwise the next
    * layout picks it up. */
-  if (!ra8_reflow_internal_xhtml_invalid(engine->xhtml_buf, engine->xhtml_len)) {
+  if (!priv_ra8_reflow_internal_xhtml_invalid(engine->xhtml_buf, engine->xhtml_len)) {
     uint32_t pages = 0U;
     return ra8_reflow_layout_chapter(engine, engine->xhtml_buf, engine->xhtml_len, &pages);
   }

@@ -12,7 +12,7 @@
  * If no loader is bound -- or any sizing step fails -- the historic fixed-size
  * placeholder advance is used so image-free content remains byte-identical.
  *
- * The driver reaches this module via @ref ra8_reflow_layout_apply_image; the
+ * The driver reaches this module via @ref priv_ra8_reflow_layout_apply_image; the
  * core inline-flow helpers it reuses (line wrap, page flush) are shared through
  * `ra8_reflow_layout_internal.h`.
  *
@@ -52,15 +52,15 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_apply_image_placeholder(ra8_reflow_t* engine, priv_cursor_t* cur)
+static bool internal_apply_image_placeholder(ra8_reflow_t* engine, priv_cursor_t* cur)
 {
   const int32_t advance     = (int32_t)k_priv_image_placeholder_px;
   const int32_t right_limit = (int32_t)engine->viewport_w - (int32_t)k_ra8_reflow_margin_px;
-  if (ra8_reflow_internal_right_overflow_break(cur->x,
-                                               advance,
-                                               right_limit,
-                                               cur->line_has_content)) {
-    if (!ra8_reflow_layout_newline(engine, cur, false)) {
+  if (priv_ra8_reflow_internal_right_overflow_break(cur->x,
+                                                    advance,
+                                                    right_limit,
+                                                    cur->line_has_content)) {
+    if (!priv_ra8_reflow_layout_newline(engine, cur, false)) {
       return false;
     }
   }
@@ -85,7 +85,7 @@ static bool priv_apply_image_placeholder(ra8_reflow_t* engine, priv_cursor_t* cu
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_page_has_content(const ra8_reflow_t* engine, const priv_cursor_t* cur)
+static bool internal_page_has_content(const ra8_reflow_t* engine, const priv_cursor_t* cur)
 {
   return (engine->glyph_count > cur->page_first_glyph) ||
          (engine->image_box_count > cur->page_first_image);
@@ -111,12 +111,12 @@ static bool priv_page_has_content(const ra8_reflow_t* engine, const priv_cursor_
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_image_fit(int32_t  iw,
-                           int32_t  ih,
-                           int32_t  col_w,
-                           int32_t  avail_h,
-                           int32_t* out_w,
-                           int32_t* out_h)
+static void internal_image_fit(int32_t  iw,
+                               int32_t  ih,
+                               int32_t  col_w,
+                               int32_t  avail_h,
+                               int32_t* out_w,
+                               int32_t* out_h)
 {
   int32_t bw = (iw < col_w) ? iw : col_w;
   int32_t bh = (int32_t)(((int64_t)ih * (int64_t)bw) / (int64_t)iw);
@@ -148,10 +148,10 @@ static void priv_image_fit(int32_t  iw,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_image_resolve_size(ra8_reflow_t*             engine,
-                                    const ra8_reflow_token_t* tok,
-                                    int32_t*                  out_w,
-                                    int32_t*                  out_h)
+static bool internal_image_resolve_size(ra8_reflow_t*             engine,
+                                        const ra8_reflow_token_t* tok,
+                                        int32_t*                  out_w,
+                                        int32_t*                  out_h)
 {
   const char*    href  = (const char*)&engine->text_pool[tok->text_off];
   const uint8_t* bytes = nullptr;
@@ -170,7 +170,7 @@ static bool priv_image_resolve_size(ra8_reflow_t*             engine,
   if ((col_w < 1) || (avail_h < 1)) {
     return false;
   }
-  priv_image_fit(iw, ih, col_w, avail_h, out_w, out_h);
+  internal_image_fit(iw, ih, col_w, avail_h, out_w, out_h);
   return true;
 }
 
@@ -193,11 +193,11 @@ static bool priv_image_resolve_size(ra8_reflow_t*             engine,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_image_record(ra8_reflow_t*             engine,
-                              priv_cursor_t*            cur,
-                              const ra8_reflow_token_t* tok,
-                              int32_t                   bw,
-                              int32_t                   bh)
+static void internal_image_record(ra8_reflow_t*             engine,
+                                  priv_cursor_t*            cur,
+                                  const ra8_reflow_token_t* tok,
+                                  int32_t                   bw,
+                                  int32_t                   bh)
 {
   ra8_reflow_image_box_t* box = &engine->image_boxes[engine->image_box_count];
   box->x                      = (int32_t)k_ra8_reflow_margin_px;
@@ -236,48 +236,48 @@ static void priv_image_record(ra8_reflow_t*             engine,
  */
 RA8_INTERNAL
 static bool
-priv_place_image(ra8_reflow_t* engine, priv_cursor_t* cur, const ra8_reflow_token_t* tok)
+internal_place_image(ra8_reflow_t* engine, priv_cursor_t* cur, const ra8_reflow_token_t* tok)
 {
   if (engine->image_box_count >= (uint32_t)k_ra8_reflow_max_images) {
     return false;
   }
   int32_t bw = 0;
   int32_t bh = 0;
-  if (!priv_image_resolve_size(engine, tok, &bw, &bh)) {
+  if (!internal_image_resolve_size(engine, tok, &bw, &bh)) {
     return false;
   }
   /* Block-level: drop below the current line, then page-break if needed. */
   if (cur->line_has_content != 0U) {
-    if (!ra8_reflow_layout_newline(engine, cur, false)) {
+    if (!priv_ra8_reflow_layout_newline(engine, cur, false)) {
       return false;
     }
   }
   const int32_t bottom_limit = (int32_t)engine->viewport_h - (int32_t)k_ra8_reflow_margin_px;
-  if (((cur->y + bh) > bottom_limit) && priv_page_has_content(engine, cur)) {
-    if (!ra8_reflow_layout_finish_page(engine, cur)) {
+  if (((cur->y + bh) > bottom_limit) && internal_page_has_content(engine, cur)) {
+    if (!priv_ra8_reflow_layout_finish_page(engine, cur)) {
       return false;
     }
   }
-  priv_image_record(engine, cur, tok, bw, bh);
-  /* mcdc-deactivated: priv_image_record incremented image_box_count immediately above, so priv_page_has_content is invariantly true here; its false arm is unreachable once an image box has been recorded on the current page. */
+  internal_image_record(engine, cur, tok, bw, bh);
+  /* mcdc-deactivated: internal_image_record incremented image_box_count immediately above, so internal_page_has_content is invariantly true here; its false arm is unreachable once an image box has been recorded on the current page. */
   if (((cur->y + (int32_t)cur->line_height_px) > bottom_limit) &&
-      priv_page_has_content(engine, cur)) {
-    if (!ra8_reflow_layout_finish_page(engine, cur)) {
+      internal_page_has_content(engine, cur)) {
+    if (!priv_ra8_reflow_layout_finish_page(engine, cur)) {
       return false;
     }
   }
   return true;
 }
 
-bool ra8_reflow_layout_apply_image(ra8_reflow_t*             engine,
-                                   priv_cursor_t*            cur,
-                                   const ra8_reflow_token_t* tok)
+bool priv_ra8_reflow_layout_apply_image(ra8_reflow_t*             engine,
+                                        priv_cursor_t*            cur,
+                                        const ra8_reflow_token_t* tok)
 {
   if ((engine->img_loader != nullptr) && (engine->img_arena != nullptr) && (tok->text_len > 0U)) {
-    if (priv_place_image(engine, cur, tok)) {
+    if (internal_place_image(engine, cur, tok)) {
       return true;
     }
     /* Resolution / pool overflow: fall back to the placeholder advance. */
   }
-  return priv_apply_image_placeholder(engine, cur);
+  return internal_apply_image_placeholder(engine, cur);
 }

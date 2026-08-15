@@ -38,12 +38,12 @@
  * ===========================================================================
  */
 
-bool ra8_reflow_tok_is_xml_whitespace(char c)
+bool priv_ra8_reflow_tok_is_xml_whitespace(char c)
 {
   return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v');
 }
 
-size_t ra8_reflow_tok_utf8_encode(uint32_t cp, uint8_t* dst)
+size_t priv_ra8_reflow_tok_utf8_encode(uint32_t cp, uint8_t* dst)
 {
   if (cp > (uint32_t)k_priv_uc_max) {
     cp = (uint32_t)k_priv_uc_max;
@@ -93,7 +93,7 @@ size_t ra8_reflow_tok_utf8_encode(uint32_t cp, uint8_t* dst)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static size_t priv_local_lower(const char* name, size_t len, char* dst)
+static size_t internal_local_lower(const char* name, size_t len, char* dst)
 {
   size_t start = 0U;
   for (size_t k = 0U; k < len; ++k) {
@@ -114,13 +114,13 @@ static size_t priv_local_lower(const char* name, size_t len, char* dst)
   return n;
 }
 
-ra8_reflow_html_tag_t ra8_reflow_tok_classify(const char* name, size_t len)
+ra8_reflow_html_tag_t priv_ra8_reflow_tok_classify(const char* name, size_t len)
 {
   if (name == nullptr) {
     return k_ra8_reflow_tag_unknown;
   }
   char lower[k_priv_tag_name_cap];
-  (void)priv_local_lower(name, len, lower);
+  (void)internal_local_lower(name, len, lower);
 
   static const struct {
     const char*           word; /**< Word. */
@@ -179,11 +179,12 @@ ra8_reflow_html_tag_t ra8_reflow_tok_classify(const char* name, size_t len)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_decode_numeric(const char* src, size_t avail, uint32_t* out_cp, size_t* out_used)
+static bool
+internal_decode_numeric(const char* src, size_t avail, uint32_t* out_cp, size_t* out_used)
 {
   size_t   i    = 2U; /* past "&#" */
   uint32_t base = (uint32_t)k_priv_base_dec;
-  /* mcdc-deactivated: the sole caller ra8_reflow_tok_decode_entity guarantees window >= k_priv_entity_min (4) before delegating, so i == 2 < avail always holds; the (i < avail) bound cannot be flipped false on any public path. */
+  /* mcdc-deactivated: the sole caller priv_ra8_reflow_tok_decode_entity guarantees window >= k_priv_entity_min (4) before delegating, so i == 2 < avail always holds; the (i < avail) bound cannot be flipped false on any public path. */
   if ((i < avail) && ((src[i] == 'x') || (src[i] == 'X'))) {
     base = (uint32_t)k_priv_base_hex;
     ++i;
@@ -215,7 +216,10 @@ static bool priv_decode_numeric(const char* src, size_t avail, uint32_t* out_cp,
   return true;
 }
 
-bool ra8_reflow_tok_decode_entity(const char* src, size_t avail, uint32_t* out_cp, size_t* out_used)
+bool priv_ra8_reflow_tok_decode_entity(const char* src,
+                                       size_t      avail,
+                                       uint32_t*   out_cp,
+                                       size_t*     out_used)
 {
   const size_t window =
     (avail < (size_t)k_priv_entity_window) ? avail : (size_t)k_priv_entity_window;
@@ -223,7 +227,7 @@ bool ra8_reflow_tok_decode_entity(const char* src, size_t avail, uint32_t* out_c
     return false;
   }
   if (src[1] == '#') {
-    return priv_decode_numeric(src, window, out_cp, out_used);
+    return internal_decode_numeric(src, window, out_cp, out_used);
   }
   static const struct {
     const char* word; /**< Word. */
@@ -268,7 +272,7 @@ bool ra8_reflow_tok_decode_entity(const char* src, size_t avail, uint32_t* out_c
  * @note Pure function.
  * @since 0.1.0
  */
-bool ra8_reflow_tok_is_block(ra8_reflow_html_tag_t tag)
+bool priv_ra8_reflow_tok_is_block(ra8_reflow_html_tag_t tag)
 {
   switch (tag) {
     case k_ra8_reflow_tag_p:
@@ -308,7 +312,7 @@ bool ra8_reflow_tok_is_block(ra8_reflow_html_tag_t tag)
  * @note Pure function.
  * @since 0.1.0
  */
-uint8_t ra8_reflow_tok_style_for(ra8_reflow_html_tag_t tag)
+uint8_t priv_ra8_reflow_tok_style_for(ra8_reflow_html_tag_t tag)
 {
   switch (tag) {
     case k_ra8_reflow_tag_b:
@@ -350,12 +354,12 @@ uint8_t ra8_reflow_tok_style_for(ra8_reflow_html_tag_t tag)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-bool ra8_reflow_tok_emit(ra8_reflow_t*           engine,
-                         ra8_reflow_token_kind_t kind,
-                         ra8_reflow_html_tag_t   tag,
-                         uint8_t                 style,
-                         uint32_t                off,
-                         uint32_t                len)
+bool priv_ra8_reflow_tok_emit(ra8_reflow_t*           engine,
+                              ra8_reflow_token_kind_t kind,
+                              ra8_reflow_html_tag_t   tag,
+                              uint8_t                 style,
+                              uint32_t                off,
+                              uint32_t                len)
 {
   if (engine->token_count >= (uint32_t)k_ra8_reflow_max_tokens) {
     return false;
@@ -392,9 +396,9 @@ bool ra8_reflow_tok_emit(ra8_reflow_t*           engine,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-bool ra8_reflow_tok_feed(ra8_reflow_t* engine, char ch, bool* last_ws)
+bool priv_ra8_reflow_tok_feed(ra8_reflow_t* engine, char ch, bool* last_ws)
 {
-  if (ra8_reflow_tok_is_xml_whitespace(ch)) {
+  if (priv_ra8_reflow_tok_is_xml_whitespace(ch)) {
     if (*last_ws) {
       return true;
     }
@@ -414,7 +418,7 @@ bool ra8_reflow_tok_feed(ra8_reflow_t* engine, char ch, bool* last_ws)
 /**
  * @brief Feed a code point's UTF-8 bytes through the whitespace-collapse.
  *
- * @details Encodes `cp` to 1-4 bytes and feeds each via ra8_reflow_tok_feed().
+ * @details Encodes `cp` to 1-4 bytes and feeds each via priv_ra8_reflow_tok_feed().
  *
  * @param[in,out] engine  Engine whose text pool is appended to.
  * @param[in]     cp      Code point to encode.
@@ -429,12 +433,12 @@ bool ra8_reflow_tok_feed(ra8_reflow_t* engine, char ch, bool* last_ws)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_feed_utf8(ra8_reflow_t* engine, uint32_t cp, bool* last_ws)
+static bool internal_feed_utf8(ra8_reflow_t* engine, uint32_t cp, bool* last_ws)
 {
   uint8_t      enc[4];
-  const size_t n = ra8_reflow_tok_utf8_encode(cp, enc);
+  const size_t n = priv_ra8_reflow_tok_utf8_encode(cp, enc);
   for (size_t b = 0U; b < n; ++b) {
-    if (!ra8_reflow_tok_feed(engine, (char)enc[b], last_ws)) {
+    if (!priv_ra8_reflow_tok_feed(engine, (char)enc[b], last_ws)) {
       return false;
     }
   }
@@ -464,29 +468,29 @@ static bool priv_feed_utf8(ra8_reflow_t* engine, uint32_t cp, bool* last_ws)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_stash_one(ra8_reflow_t*  engine,
-                           const uint8_t* buf,
-                           size_t         i,
-                           size_t         end,
-                           bool*          last_ws,
-                           size_t*        consumed)
+static bool internal_stash_one(ra8_reflow_t*  engine,
+                               const uint8_t* buf,
+                               size_t         i,
+                               size_t         end,
+                               bool*          last_ws,
+                               size_t*        consumed)
 {
   if (buf[i] == '&') {
     uint32_t cp   = 0U;
     size_t   used = 0U;
-    if (ra8_reflow_tok_decode_entity((const char*)&buf[i], end - i, &cp, &used)) {
+    if (priv_ra8_reflow_tok_decode_entity((const char*)&buf[i], end - i, &cp, &used)) {
       *consumed = used;
-      return priv_feed_utf8(engine, cp, last_ws);
+      return internal_feed_utf8(engine, cp, last_ws);
     }
   }
   *consumed = 1U;
-  return ra8_reflow_tok_feed(engine, (char)buf[i], last_ws);
+  return priv_ra8_reflow_tok_feed(engine, (char)buf[i], last_ws);
 }
 
 /**
  * @brief Entity-decode and whitespace-collapse a text run into the pool.
  *
- * @details Walks the run one source position at a time via priv_stash_one(),
+ * @details Walks the run one source position at a time via internal_stash_one(),
  * which decodes a recognised entity to UTF-8 (else passes '&' through) and
  * collapses whitespace.
  *
@@ -505,19 +509,19 @@ static bool priv_stash_one(ra8_reflow_t*  engine,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-bool ra8_reflow_tok_stash_run(ra8_reflow_t*  engine,
-                              const uint8_t* buf,
-                              size_t         start,
-                              size_t         end,
-                              uint32_t*      out_off,
-                              uint32_t*      out_len)
+bool priv_ra8_reflow_tok_stash_run(ra8_reflow_t*  engine,
+                                   const uint8_t* buf,
+                                   size_t         start,
+                                   size_t         end,
+                                   uint32_t*      out_off,
+                                   uint32_t*      out_len)
 {
   *out_off       = engine->text_pool_used;
   bool   last_ws = true; /* drop leading whitespace */
   size_t i       = start;
   while (i < end) {
     size_t consumed = 0U;
-    if (!priv_stash_one(engine, buf, i, end, &last_ws, &consumed)) {
+    if (!internal_stash_one(engine, buf, i, end, &last_ws, &consumed)) {
       return false;
     }
     i += consumed;
@@ -544,7 +548,7 @@ bool ra8_reflow_tok_stash_run(ra8_reflow_t*  engine,
  * @note Pure function.
  * @since 0.1.0
  */
-bool ra8_reflow_tok_starts_with(const uint8_t* buf, size_t i, size_t len, const char* lit)
+bool priv_ra8_reflow_tok_starts_with(const uint8_t* buf, size_t i, size_t len, const char* lit)
 {
   const size_t n = strlen(lit);
   if ((i + n) > len) {
@@ -571,7 +575,7 @@ bool ra8_reflow_tok_starts_with(const uint8_t* buf, size_t i, size_t len, const 
  * @note Pure function.
  * @since 0.1.0
  */
-size_t ra8_reflow_tok_skip_past(const uint8_t* buf, size_t i, size_t len, const char* lit)
+size_t priv_ra8_reflow_tok_skip_past(const uint8_t* buf, size_t i, size_t len, const char* lit)
 {
   const size_t n = strlen(lit);
   while ((i + n) <= len) {
@@ -586,7 +590,7 @@ size_t ra8_reflow_tok_skip_past(const uint8_t* buf, size_t i, size_t len, const 
 /**
  * @brief Return the index of the first occurrence of `lit` (its start), or len.
  *
- * @details Like ::ra8_reflow_tok_skip_past but returns the literal's START offset, so the
+ * @details Like ::priv_ra8_reflow_tok_skip_past but returns the literal's START offset, so the
  * caller can both bound the preceding content and resume past the literal.
  *
  * @param[in] buf Source buffer.
@@ -602,7 +606,7 @@ size_t ra8_reflow_tok_skip_past(const uint8_t* buf, size_t i, size_t len, const 
  * @note Pure function.
  * @since 0.1.0
  */
-size_t ra8_reflow_tok_find_lit(const uint8_t* buf, size_t i, size_t len, const char* lit)
+size_t priv_ra8_reflow_tok_find_lit(const uint8_t* buf, size_t i, size_t len, const char* lit)
 {
   const size_t n = strlen(lit);
   while ((i + n) <= len) {

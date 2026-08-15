@@ -1,14 +1,15 @@
 /**
  * @file test_ra8_reflow_parse.c
  * @brief MC/DC vectors for libs/ra8_reflow/src/ra8_reflow_parse.c
+ * @details Provides MC/DC vectors for XHTML tokenization, entity handling, malformed input, and parser capacity boundaries.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_reflow.h"
 #include "unity_minimal.h"
@@ -18,7 +19,7 @@
 static ra8_reflow_t s_engine;
 
 /**
- * @test test_mcdc_reflow_parse_xhtml_null_guard
+ * @test internal_test_mcdc_reflow_parse_xhtml_null_guard
  *
  * @par MC/DC:
  * Decision: ``if (engine == NULL || xhtml_buf == NULL)``
@@ -43,8 +44,16 @@ static ra8_reflow_t s_engine;
  *
  * @par DO-178C 6.4.4.3 rationale:
  * 2-condition decision; N+1 = 3 vectors satisfy MC/DC fully.
+ * @brief Verify mcdc reflow parse xhtml null guard behavior against the reflow contract.
+ * @details Exercises the mcdc reflow parse xhtml null guard path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_mcdc_reflow_parse_xhtml_null_guard(void)
+RA8_INTERNAL static void internal_test_mcdc_reflow_parse_xhtml_null_guard(void)
 {
   TEST_BEGIN("ra8_reflow_parse_xhtml MC/DC: engine NULL || xhtml_buf NULL");
   const uint8_t buf[1] = {0x20U};
@@ -65,7 +74,6 @@ static void test_mcdc_reflow_parse_xhtml_null_guard(void)
 
 int32_t main(void)
 {
-  test_mcdc_reflow_parse_xhtml_null_guard();
-  (void)fprintf(stderr, "[OK ] test_ra8_reflow_parse.c\n");
+  internal_test_mcdc_reflow_parse_xhtml_null_guard();
   return 0;
 }
