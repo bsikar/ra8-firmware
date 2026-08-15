@@ -121,7 +121,7 @@ static ra8_modem_at_module_t s_mod;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-uint16_t ra8_modem_at_internal_str_len(const char* s)
+uint16_t priv_modem_str_len(const char* s)
 {
   uint16_t i = 0U;
   while ((i < UINT16_MAX) && (s[i] != '\0')) {
@@ -146,7 +146,7 @@ uint16_t ra8_modem_at_internal_str_len(const char* s)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-uint8_t ra8_modem_at_internal_starts_with(const char* hay, const char* needle)
+uint8_t priv_modem_starts_with(const char* hay, const char* needle)
 {
   uint16_t i = 0U;
   while (needle[i] != '\0') {
@@ -174,7 +174,7 @@ uint8_t ra8_modem_at_internal_starts_with(const char* hay, const char* needle)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-uint8_t ra8_modem_at_internal_str_eq(const char* a, const char* b)
+uint8_t priv_modem_str_eq(const char* a, const char* b)
 {
   uint16_t i = 0U;
   while ((a[i] != '\0') && (b[i] != '\0')) {
@@ -235,7 +235,7 @@ static void internal_append_ch(char* out, size_t out_len, size_t* used, char ch)
  * @note Pure function; thread-safe.
  * @since 0.1.0
  */
-uint8_t ra8_modem_at_internal_reset_line_should_clear(const void* line_buf, uint16_t line_buf_len)
+uint8_t priv_modem_reset_line_should_clear(const void* line_buf, uint16_t line_buf_len)
 {
   if ((line_buf != nullptr) && (line_buf_len > 0U)) {
     return 1U;
@@ -268,11 +268,10 @@ uint8_t ra8_modem_at_internal_reset_line_should_clear(const void* line_buf, uint
  * @note Pure function; thread-safe.
  * @since 0.1.0
  */
-uint8_t ra8_modem_at_internal_handle_line_payload_prefix_match(const char* line,
-                                                               const char* expected_response)
+uint8_t priv_modem_payload_prefix_matches(const char* line, const char* expected_response)
 {
   if ((expected_response != nullptr) && (expected_response[0] != '\0') &&
-      (ra8_modem_at_internal_starts_with(line, expected_response) != 0U)) {
+      (priv_modem_starts_with(line, expected_response) != 0U)) {
     return 1U;
   }
   return 0U;
@@ -302,8 +301,7 @@ uint8_t ra8_modem_at_internal_handle_line_payload_prefix_match(const char* line,
  * @note Pure function; thread-safe.
  * @since 0.1.0
  */
-uint8_t ra8_modem_at_internal_wait_response_should_clear_capture(const void* capture,
-                                                                 size_t      capture_len)
+uint8_t priv_modem_capture_should_clear(const void* capture, size_t capture_len)
 {
   if ((capture != nullptr) && (capture_len > 0U)) {
     return 1U;
@@ -315,7 +313,7 @@ uint8_t ra8_modem_at_internal_wait_response_should_clear_capture(const void* cap
  * @brief Reset the line accumulator for a fresh command cycle.
  *
  * @details Forwards the buffer-installed predicate to
- *          @ref ra8_modem_at_internal_reset_line_should_clear so the
+ *          @ref priv_modem_reset_line_should_clear so the
  *          line-249 AND-decision is exercised in a pure free function
  *          where tests can vary both inputs.
  *
@@ -330,8 +328,7 @@ RA8_INTERNAL
 static void internal_reset_line(void)
 {
   s_mod.line_len = 0U;
-  if (ra8_modem_at_internal_reset_line_should_clear(s_mod.cfg.line_buf, s_mod.cfg.line_buf_len) !=
-      0U) {
+  if (priv_modem_reset_line_should_clear(s_mod.cfg.line_buf, s_mod.cfg.line_buf_len) != 0U) {
     s_mod.cfg.line_buf[0] = (uint8_t)'\0';
   }
 }
@@ -356,26 +353,26 @@ RA8_INTERNAL
 static uint8_t internal_classify_final(const char* line, uint8_t* is_error)
 {
   *is_error = 0U;
-  if (ra8_modem_at_internal_str_eq(line, "OK") != 0U) {
+  if (priv_modem_str_eq(line, "OK") != 0U) {
     return 1U;
   }
-  if (ra8_modem_at_internal_str_eq(line, "ERROR") != 0U) {
+  if (priv_modem_str_eq(line, "ERROR") != 0U) {
     *is_error = 1U;
     return 1U;
   }
-  if (ra8_modem_at_internal_starts_with(line, "+CME ERROR") != 0U) {
+  if (priv_modem_starts_with(line, "+CME ERROR") != 0U) {
     *is_error = 1U;
     return 1U;
   }
-  if (ra8_modem_at_internal_starts_with(line, "+CMS ERROR") != 0U) {
+  if (priv_modem_starts_with(line, "+CMS ERROR") != 0U) {
     *is_error = 1U;
     return 1U;
   }
-  if (ra8_modem_at_internal_str_eq(line, "BUSY") != 0U) {
+  if (priv_modem_str_eq(line, "BUSY") != 0U) {
     *is_error = 1U;
     return 1U;
   }
-  if (ra8_modem_at_internal_str_eq(line, "NO CARRIER") != 0U) {
+  if (priv_modem_str_eq(line, "NO CARRIER") != 0U) {
     *is_error = 1U;
     return 1U;
   }
@@ -404,7 +401,7 @@ static uint8_t internal_dispatch_urc(const char* line)
     if (s_mod.urcs[i].used == 0U) {
       continue;
     }
-    if (ra8_modem_at_internal_starts_with(line, (const char*)s_mod.urcs[i].prefix) != 0U) {
+    if (priv_modem_starts_with(line, (const char*)s_mod.urcs[i].prefix) != 0U) {
       s_mod.urcs[i].fn(line, s_mod.urcs[i].ctx);
       return 1U;
     }
@@ -413,7 +410,7 @@ static uint8_t internal_dispatch_urc(const char* line)
 }
 
 /* ra8_modem_line_kind_t is defined in ra8_modem_at_internal.h so tests
- * can read the return value of ra8_modem_at_internal_classify(). */
+ * can read the return value of priv_modem_classify(). */
 
 /**
  * @brief Classify a complete (NUL-terminated) line for the FSM.
@@ -437,14 +434,13 @@ static uint8_t internal_dispatch_urc(const char* line)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-ra8_modem_line_kind_t ra8_modem_at_internal_classify(const char* line,
-                                                     const char* cmd_echo,
-                                                     const char* expected_response)
+ra8_modem_line_kind_t
+priv_modem_classify(const char* line, const char* cmd_echo, const char* expected_response)
 {
   if (line[0] == '\0') {
     return k_ra8_modem_line_kind_empty;
   }
-  if ((cmd_echo != nullptr) && (ra8_modem_at_internal_str_eq(line, cmd_echo) != 0U)) {
+  if ((cmd_echo != nullptr) && (priv_modem_str_eq(line, cmd_echo) != 0U)) {
     return k_ra8_modem_line_kind_echo;
   }
   uint8_t is_err = 0U;
@@ -453,7 +449,7 @@ ra8_modem_line_kind_t ra8_modem_at_internal_classify(const char* line,
   }
   /* If the caller didn't ask for a specific prefix, allow URC dispatch. */
   if ((expected_response == nullptr) || (expected_response[0] == '\0') ||
-      (ra8_modem_at_internal_starts_with(line, expected_response) == 0U)) {
+      (priv_modem_starts_with(line, expected_response) == 0U)) {
     if (internal_dispatch_urc(line) != 0U) {
       return k_ra8_modem_line_kind_urc;
     }
@@ -555,7 +551,8 @@ static uint16_t internal_effective_timeout(uint16_t timeout_ms)
 }
 
 /**
- * @brief Outcome of handling one classified line in @ref internal_wait_response.
+ * @brief Outcome of handling one classified line in @ref
+ * internal_wait_response.
  */
 typedef enum : uint8_t {
   k_ra8_modem_line_action_continue = 0U, /**< Keep waiting.         */
@@ -578,10 +575,7 @@ typedef enum : uint8_t {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-void ra8_modem_at_internal_capture_line(const char* line,
-                                        char*       capture,
-                                        size_t      capture_len,
-                                        size_t*     used)
+void priv_modem_capture_line(const char* line, char* capture, size_t capture_len, size_t* used)
 {
   if ((capture == nullptr) || (capture_len == 0U)) {
     return;
@@ -645,10 +639,10 @@ static ra8_modem_line_action_t internal_handle_line(const char*           line,
       return k_ra8_modem_line_action_done_err;
     case k_ra8_modem_line_kind_payload:
     default:
-      if (ra8_modem_at_internal_handle_line_payload_prefix_match(line, expected_response) != 0U) {
+      if (priv_modem_payload_prefix_matches(line, expected_response) != 0U) {
         *seen_exp = 1U;
       }
-      ra8_modem_at_internal_capture_line(line, capture, capture_len, used);
+      priv_modem_capture_line(line, capture, capture_len, used);
       if (s_mod.state == k_ra8_modem_at_state_await_echo) {
         s_mod.state = k_ra8_modem_at_state_await_resp;
       }
@@ -696,8 +690,7 @@ static ra8_modem_line_action_t internal_pump_one(const ra8_modem_wait_ctx_t* wc)
   if (line == nullptr) {
     return k_ra8_modem_line_action_continue;
   }
-  const ra8_modem_line_kind_t kind =
-    ra8_modem_at_internal_classify(line, wc->cmd, wc->expected_response);
+  const ra8_modem_line_kind_t kind = priv_modem_classify(line, wc->cmd, wc->expected_response);
   return internal_handle_line(line,
                               kind,
                               wc->expected_response,
@@ -737,7 +730,7 @@ static ra8_err_t internal_wait_response(const char* cmd,
   size_t         used  = 0U;
   uint8_t seen_exp = (uint8_t)((expected_response == nullptr) || (expected_response[0] == '\0'));
 
-  if (ra8_modem_at_internal_wait_response_should_clear_capture(capture, capture_len) != 0U) {
+  if (priv_modem_capture_should_clear(capture, capture_len) != 0U) {
     capture[0] = '\0';
   }
 
@@ -907,7 +900,7 @@ static uint8_t internal_urc_replace(const char* prefix, ra8_modem_at_urc_fn_t fn
     if (s_mod.urcs[i].used == 0U) {
       continue;
     }
-    if (ra8_modem_at_internal_str_eq((const char*)s_mod.urcs[i].prefix, prefix) != 0U) {
+    if (priv_modem_str_eq((const char*)s_mod.urcs[i].prefix, prefix) != 0U) {
       s_mod.urcs[i].fn  = fn;
       s_mod.urcs[i].ctx = ctx;
       return 1U;
@@ -964,7 +957,7 @@ ra8_modem_at_register_unsolicited_handler(const char* prefix, ra8_modem_at_urc_f
   RA8_CHECK_NULL_PTR(prefix, RA8_MODEM_AT_TAG, "prefix");
   RA8_CHECK_NULL_PTR((void*)fn, RA8_MODEM_AT_TAG, "fn");
 
-  const uint16_t plen = ra8_modem_at_internal_str_len(prefix);
+  const uint16_t plen = priv_modem_str_len(prefix);
   if ((plen == 0U) || (plen >= (uint16_t)k_ra8_modem_at_max_prefix_len)) {
     return k_ra8_err_invalid_size;
   }
@@ -992,7 +985,7 @@ ra8_err_t ra8_modem_at_poll(void)
     const char* line = nullptr;
     internal_accumulate(byte, &line);
     if (line != nullptr) {
-      const ra8_modem_line_kind_t kind = ra8_modem_at_internal_classify(line, nullptr, nullptr);
+      const ra8_modem_line_kind_t kind = priv_modem_classify(line, nullptr, nullptr);
       (void)kind;
     }
   }
