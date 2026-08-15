@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
 #include "ra8_isr.h"
@@ -66,8 +67,21 @@ volatile uint32_t g_blink_tick = 0U;
 
 /**
  * @brief Park the CPU forever in WFI -- used as a panic stop.
+ *
+ * @details Repeatedly executes wait-for-interrupt so a failed board or timing
+ *          initialization remains observable without performing more I/O.
+ *
+ * @return None.
+ *
+ * @pre The caller has no remaining recovery action to perform.
+ * @pre Any enabled interrupt is safe to service before returning to the loop.
+ * @post The function never returns to its caller.
+ * @post The HIL liveness counter no longer advances.
+ *
+ * @note Fatal-path helper for the single-core blink demo only.
+ * @since 0.1.0
  */
-static void blink_panic_halt(void)
+RA8_INTERNAL static void internal_blink_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -79,10 +93,10 @@ static void blink_panic_halt(void)
 int32_t main(void)
 {
   if (ra8_time_init(k_blink_cpu_hz_at_reset) != k_ra8_ok) {
-    blink_panic_halt();
+    internal_blink_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    blink_panic_halt();
+    internal_blink_panic_halt();
   }
 
   ra8_isr_globals_enable();
@@ -95,7 +109,7 @@ int32_t main(void)
     ra8_delay_ms(k_blink_half_period_ms);
   }
 
-  blink_panic_halt();
+  internal_blink_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

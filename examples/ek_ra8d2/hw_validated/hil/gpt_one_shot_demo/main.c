@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -71,34 +72,66 @@ volatile uint32_t g_gpt_one_shot_match = 0U;
  */
 volatile uint32_t g_gpt_one_shot_mismatch = 0U;
 
-static void gpt_os_demo_panic_halt(void)
+/**
+ * @brief Park the core after an unrecoverable demo failure.
+ *
+ * @details Repeatedly executes WFI so a debugger can inspect the failed GPT
+ *          or clock state without further peripheral accesses.
+ *
+ * @pre Called only from boot failure or an unreachable terminal path.
+ * @pre The caller does not require recovery without an external reset.
+ * @post The core remains in the WFI loop until reset or debug intervention.
+ * @post No demo counters are modified after entry.
+ * @note Not thread-safe; this is a terminal single-threaded path.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-static void gpt_os_demo_setup_or_halt(void)
+/**
+ * @brief Initialize clocks, the delay service, and LED1.
+ *
+ * @details Brings dependencies up in order and parks immediately if any HAL
+ *          operation fails, leaving GPT configuration to ``internal_arm``.
+ *
+ * @pre Reset startup initialized static storage and the vector table.
+ * @pre Called once before global interrupt enable.
+ * @post On return, the delay service and LED1 are ready for the one-shot loop.
+ * @post GPT0 remains unconfigured until ``internal_arm`` runs.
+ * @note Not thread-safe; it mutates global board and clock state.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    gpt_os_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    gpt_os_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    gpt_os_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    gpt_os_demo_panic_halt();
+    internal_panic_halt();
   }
 }
 
 /**
  * @brief Init GPT0 in one-shot mode.
  *
+ * @details Programs channel zero for a PCLKD/4 saw-wave one-shot with manual
+ *          start and the fixed demo period; no callback is required because
+ *          completion is polled through the status register.
+ *
  * @return ra8_err_t from ra8_gpt_init.
+ * @retval k_ra8_ok GPT0 accepted the one-shot configuration.
+ * @retval (other) The HAL rejected or could not apply the configuration.
  *
  * @pre ra8_isr_globals_enable has been called.
  * @pre GPT0 not yet initialised.
@@ -107,7 +140,7 @@ static void gpt_os_demo_setup_or_halt(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t gpt_os_demo_arm(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_arm(void)
 {
   const ra8_gpt_cfg_t cfg = {
     .mode       = k_ra8_gpt_mode_saw_one_shot,
@@ -123,6 +156,10 @@ static void gpt_os_demo_setup_or_halt(void)
 /**
  * @brief Poll GTST.TCFPO for one overflow + clear, bounded.
  *
+ * @details Samples channel-zero status up to the fixed poll budget, clears the
+ *          overflow flag on first observation, and treats a HAL read failure
+ *          the same as exhaustion so the caller records a mismatch.
+ *
  * @return true if the overflow flag was observed.
  * @retval true  TCFPO set + cleared within budget.
  * @retval false poll budget elapsed.
@@ -135,7 +172,7 @@ static void gpt_os_demo_setup_or_halt(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static bool gpt_os_demo_wait_ovf(void)
+RA8_INTERNAL static bool internal_wait_ovf(void)
 {
   enum : uint32_t { k_poll_budget = 200000U /**< Poll budget. */ };
   for (uint32_t i = 0U; i < k_poll_budget; ++i) {
@@ -154,13 +191,29 @@ static bool gpt_os_demo_wait_ovf(void)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
+/**
+ * @brief Repeatedly start and verify GPT0 one-shot intervals.
+ *
+ * @details Initializes and arms GPT0 once, then starts, polls, records the
+ *          exported pass/failure counters, toggles LED1 on completion, and
+ *          delays before the next one-shot.
+ *
+ * @return Unreachable success value retained for the freestanding ABI.
+ *
+ * @pre Reset startup and SystemInit completed successfully.
+ * @pre GPT0 and LED1 are not owned by another execution context.
+ * @post Each completed one-shot increments ``g_gpt_one_shot_match``.
+ * @post Each start or bounded-poll failure increments the mismatch counter.
+ * @note Does not return during normal operation.
+ * @since 0.1.0
+ */
 int32_t main(void)
 {
-  gpt_os_demo_setup_or_halt();
+  internal_setup_or_halt();
   ra8_isr_globals_enable();
 
-  if (gpt_os_demo_arm() != k_ra8_ok) {
-    gpt_os_demo_panic_halt();
+  if (internal_arm() != k_ra8_ok) {
+    internal_panic_halt();
   }
 
   while (1) {
@@ -170,7 +223,7 @@ int32_t main(void)
       ra8_delay_ms((uint32_t)k_gpt_os_demo_rearm_delay_ms);
       continue;
     }
-    if (gpt_os_demo_wait_ovf()) {
+    if (internal_wait_ovf()) {
       g_gpt_one_shot_match += 1U;
       (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
@@ -178,7 +231,7 @@ int32_t main(void)
     }
     ra8_delay_ms((uint32_t)k_gpt_os_demo_rearm_delay_ms);
   }
-  gpt_os_demo_panic_halt();
+  internal_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

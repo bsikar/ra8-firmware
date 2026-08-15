@@ -45,9 +45,9 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
  * @note Single-threaded entry.
  * @since 0.1.0
  */
-[[noreturn]] static void cpu1_main(void)
+[[noreturn]] RA8_INTERNAL static void internal_cpu1_main(void)
 {
-  volatile cache_coherency_shared_t* shared        = cache_coherency_shared();
+  volatile cache_coherency_shared_t* shared        = internal_shared();
   uint32_t                           last_observed = 0U;
 
   while (1) {
@@ -103,7 +103,7 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
     *bss = 0U;
     bss++;
   }
-  cpu1_main();
+  internal_cpu1_main();
 }
 
 /**
@@ -116,7 +116,7 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
  * @note Used as default for all exception slots.
  * @since 0.1.0
  */
-[[noreturn]] static void cpu1_fault_handler(void)
+[[noreturn]] RA8_INTERNAL static void internal_fault_handler(void)
 {
   while (1) {
     __asm volatile("nop");
@@ -138,11 +138,11 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
 [[gnu::used, gnu::section(".cpu1_vectors")]] const uintptr_t g_cpu1_vector_table[] = {
   (uintptr_t)&g_ra8_ls_cpu1_stack_top,
   (uintptr_t)&cpu1_reset_handler,
-  (uintptr_t)&cpu1_fault_handler,
-  (uintptr_t)&cpu1_fault_handler,
-  (uintptr_t)&cpu1_fault_handler,
-  (uintptr_t)&cpu1_fault_handler,
-  (uintptr_t)&cpu1_fault_handler,
-  (uintptr_t)&cpu1_fault_handler,
+  (uintptr_t)&internal_fault_handler,
+  (uintptr_t)&internal_fault_handler,
+  (uintptr_t)&internal_fault_handler,
+  (uintptr_t)&internal_fault_handler,
+  (uintptr_t)&internal_fault_handler,
+  (uintptr_t)&internal_fault_handler,
 };
 #endif

@@ -30,6 +30,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_canfd.h"
 #include "ra8_canfd_regs.h"
@@ -107,8 +108,23 @@ volatile uint32_t g_canfd_init_step = 0U;
 /** @brief NCFG readback latched at end of set_bitrate (proves NCFG write). */
 volatile uint32_t g_canfd_ncfg_after_setbitrate = 0U;
 
-/** @brief Park the CPU forever after fatal init failure. */
-static void canfd_demo_panic_halt(void)
+/**
+ * @brief Park the processor after a fatal CAN-FD loopback failure.
+ *
+ * @details Retains the controller registers, init-step marker, and HIL counters
+ *          in a permanent wait-for-interrupt loop for debugger inspection.
+ *
+ * @return None.
+ *
+ * @pre The caller has determined that loopback validation cannot continue.
+ * @pre Any init-step or mismatch state required by the failure is recorded.
+ * @post The function never returns to its caller.
+ * @post No later CAN-FD transmit or receive is attempted.
+ *
+ * @note Fatal-path helper for this single-core image only.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_canfd_demo_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -124,6 +140,9 @@ static void canfd_demo_panic_halt(void)
  * HUM Ch 41 "CFDCnCTR" p 2710 -- CTME / CTMS are only writable in
  * CH_HALT mode.
  *
+ * @param[in] channel CAN-FD controller channel to place in internal loopback.
+ *
+ * @return ra8_err_t Status from applying the controller test mode.
  * @retval k_ra8_ok                Bits stamped, channel back in operation.
  * @retval k_ra8_err_invalid_arg   Channel index rejected by the HAL.
  *
@@ -132,9 +151,11 @@ static void canfd_demo_panic_halt(void)
  * @post ``CFDC[channel].CTR`` has CTME=1, CTMS=11b.
  * @post Channel is back in CH_OPERATION ready to TX.
  *
+ * @note The caller must ensure no frame is active during the mode transition.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t canfd_demo_enable_internal_loopback(uint8_t channel)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t
+internal_canfd_demo_enable_internal_loopback(uint8_t channel)
 {
   return ra8_canfd_set_test_mode(channel, k_ra8_ctms_self_test_1);
 }
@@ -142,42 +163,51 @@ static void canfd_demo_panic_halt(void)
 /**
  * @brief Bring CGC + SysTick + LEDs + CANFD0 up. Halts on any error.
  *
- * @pre Reset_Handler has set up the C runtime.
- * @post CANFD0 is in operation mode with internal loopback enabled.
+ * @details Initializes the time base and status LEDs, opens CANFD0, applies the
+ *          nominal and data bit rates, records the NCFG readback, and enables
+ *          internal loopback. Any failed step enters the permanent panic halt.
  *
+ * @return None.
+ *
+ * @pre Reset_Handler has set up the C runtime.
+ * @pre CANFD0 and LED1/LED2 are available to this image.
+ * @post CANFD0 is in operation mode with internal loopback enabled.
+ * @post On success the init-step marker reaches the loopback-complete value.
+ *
+ * @note Single-shot boot helper; it is not reentrant.
  * @since 0.1.0
  */
-static void canfd_demo_setup_or_halt(void)
+RA8_INTERNAL static void internal_canfd_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    canfd_demo_panic_halt();
+    internal_canfd_demo_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    canfd_demo_panic_halt();
+    internal_canfd_demo_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    canfd_demo_panic_halt();
+    internal_canfd_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    canfd_demo_panic_halt();
+    internal_canfd_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
-    canfd_demo_panic_halt();
+    internal_canfd_demo_panic_halt();
   }
   if (ra8_canfd_init((uint8_t)k_canfd_demo_channel) != k_ra8_ok) {
-    canfd_demo_panic_halt();
+    internal_canfd_demo_panic_halt();
   }
   g_canfd_init_step = 1U;
   if (ra8_canfd_set_bitrate((uint8_t)k_canfd_demo_channel,
                             (uint32_t)k_canfd_demo_bitrate,
                             (uint32_t)k_canfd_demo_bitrate) != k_ra8_ok) {
-    canfd_demo_panic_halt();
+    internal_canfd_demo_panic_halt();
   }
   g_canfd_init_step             = 2U;
   g_canfd_ncfg_after_setbitrate = ra8_canfd((uint8_t)k_canfd_demo_channel)->CFDC[0].NCFG;
-  if (canfd_demo_enable_internal_loopback((uint8_t)k_canfd_demo_channel) != k_ra8_ok) {
-    canfd_demo_panic_halt();
+  if (internal_canfd_demo_enable_internal_loopback((uint8_t)k_canfd_demo_channel) != k_ra8_ok) {
+    internal_canfd_demo_panic_halt();
   }
   g_canfd_init_step = 3U;
 }
@@ -192,7 +222,7 @@ static void canfd_demo_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t canfd_demo_one_round_trip(uint8_t seq)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_canfd_demo_one_round_trip(uint8_t seq)
 {
   ra8_canfd_frame_t tx = {
     .id          = (uint32_t)k_canfd_demo_id,
@@ -227,12 +257,12 @@ static void canfd_demo_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  canfd_demo_setup_or_halt();
+  internal_canfd_demo_setup_or_halt();
   ra8_isr_globals_enable();
 
   uint8_t seq = 0U;
   while (1) {
-    if (canfd_demo_one_round_trip(seq) == k_ra8_ok) {
+    if (internal_canfd_demo_one_round_trip(seq) == k_ra8_ok) {
       (void)ra8_board_led_toggle(k_ra8_board_led1);
       g_canfd_match += 1U;
     } else {
@@ -242,7 +272,7 @@ int32_t main(void)
     seq++;
     ra8_delay_ms(k_canfd_demo_period_ms);
   }
-  canfd_demo_panic_halt();
+  internal_canfd_demo_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

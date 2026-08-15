@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -49,59 +50,113 @@ typedef enum : uint8_t {
   k_ulpt_demo_undf_bit = 0x20U, /**< ULPTCR.TUNDF -- mirrors AGTCR layout. */
 } ulpt_demo_chan_t;
 
-static const uint8_t k_ulpt_demo_log_msg[] = "ulpt: wake ok\r\n";
+static const uint8_t s_ulpt_demo_log_msg[] = "ulpt: wake ok\r\n";
 
-static void ulpt_demo_panic_halt(void)
+/**
+ * @brief Park the core after an unrecoverable ULPT demo failure.
+ *
+ * @details Repeatedly executes WFI so an attached debugger can inspect the
+ *          timer and clock state without additional foreground traffic.
+ *
+ * @pre Called only from the boot or terminal foreground path.
+ * @pre The caller does not require this function to return.
+ * @post The core remains in the WFI loop until reset or debug intervention.
+ * @post No further timer or console operation is requested.
+ * @note Not thread-safe; this is the terminal single-threaded path.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-static void ulpt_demo_setup_or_halt(void)
+/**
+ * @brief Initialize clocks, SysTick, SCI8, and the ULPT block.
+ *
+ * @details Brings all foreground-loop dependencies up in order and transfers
+ *          control to the terminal panic helper on the first HAL error.
+ *
+ * @pre Reset startup initialized static storage and the vector table.
+ * @pre Called once before global interrupt enable.
+ * @post On return, the delay service, console, and ULPT driver are ready.
+ * @post ULPT0 remains stopped until ``internal_arm`` runs.
+ * @note Not thread-safe; it mutates global peripheral configuration.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    ulpt_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    ulpt_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    ulpt_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_ulpt_demo_baud) != k_ra8_ok) {
-    ulpt_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_ulpt_init() != k_ra8_ok) {
-    ulpt_demo_panic_halt();
+    internal_panic_halt();
   }
 }
 
 /**
  * @brief Arm ULPT0 with the demo period.
  *
+ * @details Delegates the fixed channel and approximately one-second reload to
+ *          the ULPT HAL without changing any other timer channel.
+ *
  * @par MC/DC:
  * Compound decision: ``ra8_ulpt_start != ok``. One atomic condition x
  * 2 vectors -- ok (golden) and bad-channel reject (covered in
  * test_app_ulpt_demo.c).
  *
+ * @return ULPT start status from the HAL.
+ * @retval k_ra8_ok ULPT0 accepted the channel and reload configuration.
+ * @retval (other) The HAL rejected or could not start the timer.
+ *
+ * @pre ``internal_setup_or_halt`` initialized the ULPT driver.
+ * @pre ULPT0 is stopped or ready to be re-armed after an underflow.
+ * @post On success, ULPT0 counts toward the fixed reload underflow.
+ * @post On failure, the caller receives the HAL error unchanged.
+ * @note Not thread-safe with concurrent ULPT0 control.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t ulpt_demo_arm(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_arm(void)
 {
   return ra8_ulpt_start((uint8_t)k_ulpt_demo_channel, (uint32_t)k_ulpt_demo_period_ticks);
 }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
+/**
+ * @brief Report and re-arm each observed ULPT0 underflow.
+ *
+ * @details Initializes and arms ULPT0, then polls its underflow bit. Each event
+ *          emits the fixed wake banner, stops the channel to clear status, and
+ *          starts the next interval with the same reload.
+ *
+ * @return Unreachable success value retained for the freestanding ABI.
+ *
+ * @pre Reset startup and SystemInit completed successfully.
+ * @pre The EK-RA8D2 console wiring matches the board definition.
+ * @post Every reported wake corresponds to an observed underflow status bit.
+ * @post Any HAL or output error leads to the terminal panic helper.
+ * @note Does not return during normal operation.
+ * @since 0.1.0
+ */
 int32_t main(void)
 {
-  ulpt_demo_setup_or_halt();
+  internal_setup_or_halt();
   ra8_isr_globals_enable();
 
-  if (ulpt_demo_arm() != k_ra8_ok) {
-    ulpt_demo_panic_halt();
+  if (internal_arm() != k_ra8_ok) {
+    internal_panic_halt();
   }
 
   while (1) {
@@ -110,20 +165,20 @@ int32_t main(void)
       break;
     }
     if ((status & (uint8_t)k_ulpt_demo_undf_bit) != 0U) {
-      if (ra8_board_uart_console_write(k_ulpt_demo_log_msg,
-                                       (size_t)(sizeof(k_ulpt_demo_log_msg) - 1U)) != k_ra8_ok) {
+      if (ra8_board_uart_console_write(s_ulpt_demo_log_msg,
+                                       (size_t)(sizeof(s_ulpt_demo_log_msg) - 1U)) != k_ra8_ok) {
         break;
       }
       if (ra8_ulpt_stop((uint8_t)k_ulpt_demo_channel) != k_ra8_ok) {
         break;
       }
-      if (ulpt_demo_arm() != k_ra8_ok) {
+      if (internal_arm() != k_ra8_ok) {
         break;
       }
     }
     ra8_delay_ms((uint32_t)k_ulpt_demo_poll_ms);
   }
-  ulpt_demo_panic_halt();
+  internal_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

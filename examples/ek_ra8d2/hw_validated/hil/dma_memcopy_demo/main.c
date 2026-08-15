@@ -30,6 +30,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_dmac.h"
@@ -55,62 +56,86 @@ typedef enum : uint8_t {
 } dma_demo_byte_t;
 
 /** @brief Output line tags. */
-static const uint8_t k_dma_demo_ok_msg[]  = "dma: copied 1024B match=Y\r\n";
-static const uint8_t k_dma_demo_bad_msg[] = "dma: copied 1024B match=N\r\n";
+static const uint8_t s_dma_demo_ok_msg[]  = "dma: copied 1024B match=Y\r\n";
+static const uint8_t s_dma_demo_bad_msg[] = "dma: copied 1024B match=N\r\n";
 
 /** @brief Source / destination buffers (32-bit aligned by element type). */
 static uint32_t s_src[k_dma_demo_buf_words];
 static uint32_t s_dst[k_dma_demo_buf_words];
 
-/** @brief Park forever after a fatal init failure. */
-static void dma_demo_panic_halt(void)
+/**
+ * @brief Park forever after a fatal DMA demo initialization failure.
+ * @details Repeatedly executes WFI while preserving DMAC state for debug.
+ * @pre Called only from boot failure or the terminal foreground path.
+ * @pre The caller does not require recovery without reset.
+ * @post The core stays in WFI until external intervention.
+ * @post No further DMAC request is issued.
+ * @note Not thread-safe; this is a terminal single-threaded path.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-/** @brief Bring CGC + SysTick + SCI8 + LEDs + MSTP up. */
-static void dma_demo_setup_or_halt(void)
+/**
+ * @brief Bring CGC, SysTick, SCI8, LEDs, and MSTP up.
+ * @details Initializes foreground-loop dependencies in order and parks on the
+ *          first failed HAL operation.
+ * @pre Reset startup initialized static storage and the vector table.
+ * @pre Called once before global interrupt enable.
+ * @post On return, delays, console output, module clocks, and LEDs are ready.
+ * @post DMAC channel zero remains stopped.
+ * @note Not thread-safe; it owns global peripheral initialization.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
   if (ra8_cgc_init() != k_ra8_ok) {
-    dma_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    dma_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_mstp_init() != k_ra8_ok) {
-    dma_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    dma_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_dma_demo_baud) != k_ra8_ok) {
-    dma_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    dma_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
-    dma_demo_panic_halt();
+    internal_panic_halt();
   }
 }
 
 /**
  * @brief Fill ``s_src`` with a deterministic pattern and clear ``s_dst``.
+ * @details Writes the indexed XOR pattern into every source word and a zero
+ *          sentinel into the corresponding destination word.
  *
  * @par MC/DC:
  * Trivial loop with no compound decision -- only the implicit loop
  * exit condition. No N+1 vectors required.
  *
  * @pre Buffers are statically allocated.
+ * @pre No DMAC transfer is active on the buffers.
  * @post Every word in ``s_src`` is set; ``s_dst`` is all-zero.
+ * @post Both buffers remain valid DMAC word-transfer ranges.
+ * @note Not thread-safe with concurrent buffer or DMAC access.
  *
  * @since 0.1.0
  */
-static void dma_demo_fill_buffers(void)
+RA8_INTERNAL static void internal_fill_buffers(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_dma_demo_buf_words; ++i) {
     s_src[i] = i ^ (i >> (uint32_t)k_dma_demo_byte_sh);
@@ -120,6 +145,8 @@ static void dma_demo_fill_buffers(void)
 
 /**
  * @brief Verify that ``s_dst`` matches ``s_src`` element-by-element.
+ * @details Compares each corresponding word and returns immediately on the
+ *          first mismatch without modifying either buffer.
  *
  * @par MC/DC:
  * Compound decision in the loop: ``s_dst[i] != s_src[i]``. One
@@ -127,13 +154,18 @@ static void dma_demo_fill_buffers(void)
  * mismatch (covered by the host integration test).
  *
  * @return 1 if all elements equal, 0 otherwise.
+ * @retval 1 All source and destination words match.
+ * @retval 0 At least one word differs.
  *
  * @pre Buffers are filled.
+ * @pre Any DMAC write to ``s_dst`` completed before this call.
  * @post Return value is 0 or 1.
+ * @post Neither buffer is modified.
+ * @note Not thread-safe with concurrent buffer writers.
  *
  * @since 0.1.0
  */
-static uint8_t dma_demo_verify(void)
+RA8_INTERNAL static uint8_t internal_verify(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_dma_demo_buf_words; ++i) {
     if (s_dst[i] != s_src[i]) {
@@ -165,11 +197,14 @@ static uint8_t dma_demo_verify(void)
  *         channel never drained, or the start error code.
  *
  * @pre ``s_src`` / ``s_dst`` populated.
+ * @pre DMAC channel zero is available for this transfer.
  * @post On success ``s_dst`` mirrors ``s_src``.
+ * @post The channel is stopped on success and timeout paths.
+ * @note Not thread-safe with concurrent channel-zero control.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t dma_demo_run_copy(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_run_copy(void)
 {
   const ra8_dmac_config_t cfg = {
     .src         = (uint32_t)(uintptr_t)s_src,
@@ -211,25 +246,25 @@ static uint8_t dma_demo_verify(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  dma_demo_setup_or_halt();
+  internal_setup_or_halt();
   ra8_isr_globals_enable();
 
   while (1) {
-    dma_demo_fill_buffers();
-    const ra8_err_t err = dma_demo_run_copy();
-    const uint8_t   ok  = (err == k_ra8_ok && dma_demo_verify() != 0U) ? 1U : 0U;
+    internal_fill_buffers();
+    const ra8_err_t err = internal_run_copy();
+    const uint8_t   ok  = (err == k_ra8_ok && internal_verify() != 0U) ? 1U : 0U;
     if (ok != 0U) {
-      (void)ra8_board_uart_console_write(k_dma_demo_ok_msg,
-                                         (size_t)(sizeof(k_dma_demo_ok_msg) - 1U));
+      (void)ra8_board_uart_console_write(s_dma_demo_ok_msg,
+                                         (size_t)(sizeof(s_dma_demo_ok_msg) - 1U));
       (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
-      (void)ra8_board_uart_console_write(k_dma_demo_bad_msg,
-                                         (size_t)(sizeof(k_dma_demo_bad_msg) - 1U));
+      (void)ra8_board_uart_console_write(s_dma_demo_bad_msg,
+                                         (size_t)(sizeof(s_dma_demo_bad_msg) - 1U));
       (void)ra8_board_led_toggle(k_ra8_board_led2);
     }
     ra8_delay_ms(k_dma_demo_period_ms);
   }
-  dma_demo_panic_halt();
+  internal_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

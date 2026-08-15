@@ -52,6 +52,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -82,8 +83,8 @@ typedef enum : uint32_t {
 } dotf_demo_sentinel_t;
 
 /** @brief Output line tags. */
-static const uint8_t k_dotf_demo_ok_msg[]  = "dotf: ch0/1 init=ok selftest=run ok=Y\r\n";
-static const uint8_t k_dotf_demo_bad_msg[] = "dotf: selftest=FAIL ok=N\r\n";
+static const uint8_t s_dotf_demo_ok_msg[]  = "dotf: ch0/1 init=ok selftest=run ok=Y\r\n";
+static const uint8_t s_dotf_demo_bad_msg[] = "dotf: selftest=FAIL ok=N\r\n";
 
 /**
  * @var g_dotf_ok
@@ -133,39 +134,70 @@ volatile uint32_t g_dotf_st1_snap = 0U;
  */
 volatile uint32_t g_dotf_heartbeat = 0U;
 
-/** @brief Park forever after a fatal init failure. */
-static void dotf_demo_panic_halt(void)
+/**
+ * @brief Park the processor after an unrecoverable DOTF demo failure.
+ *
+ * @details Retains channel status snapshots, LEDs, and console diagnostics in a
+ *          permanent wait-for-interrupt loop for debugger inspection.
+ *
+ * @return None.
+ *
+ * @pre The caller has determined DOTF self-test cannot continue.
+ * @pre Any relevant status snapshot or failure banner has been recorded.
+ * @post The function never returns to its caller.
+ * @post No later DOTF sample or heartbeat update occurs.
+ *
+ * @note Fatal-path helper for this single-core image only.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_dotf_demo_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-/** @brief Bring CGC + SysTick + SCI8 + LEDs + MSTP up. */
-static void dotf_demo_setup_or_halt(void)
+/**
+ * @brief Bring CGC, SysTick, SCI8, LEDs, and MSTP up.
+ *
+ * @details Initializes clock and module-stop services, starts the millisecond
+ *          time base, opens the UART console, and claims both status LEDs. Any
+ *          failed dependency enters the permanent panic halt.
+ *
+ * @return None.
+ *
+ * @pre Reset-time initialization configured the core and C runtime.
+ * @pre The board console and LED1/LED2 are available to this image.
+ * @post On success timing, module-stop, console, and LED services are ready.
+ * @post On failure the function never returns to its caller.
+ *
+ * @note Single-shot boot helper; it is not reentrant.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_dotf_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
   if (ra8_cgc_init() != k_ra8_ok) {
-    dotf_demo_panic_halt();
+    internal_dotf_demo_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    dotf_demo_panic_halt();
+    internal_dotf_demo_panic_halt();
   }
   if (ra8_mstp_init() != k_ra8_ok) {
-    dotf_demo_panic_halt();
+    internal_dotf_demo_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    dotf_demo_panic_halt();
+    internal_dotf_demo_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_dotf_demo_baud) != k_ra8_ok) {
-    dotf_demo_panic_halt();
+    internal_dotf_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    dotf_demo_panic_halt();
+    internal_dotf_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
-    dotf_demo_panic_halt();
+    internal_dotf_demo_panic_halt();
   }
 }
 
@@ -187,8 +219,8 @@ static void dotf_demo_setup_or_halt(void)
  * @post Returns a 0/1 verdict (no side effects).
  * @since 0.1.0
  */
-[[nodiscard]] static uint8_t
-dotf_demo_verdict(ra8_err_t st0_err, ra8_err_t st1_err, ra8_err_t status_err)
+[[nodiscard]] RA8_INTERNAL static uint8_t
+internal_dotf_demo_verdict(ra8_err_t st0_err, ra8_err_t st1_err, ra8_err_t status_err)
 {
   const bool ok = (st0_err == k_ra8_ok) && (st1_err == k_ra8_ok) && (status_err == k_ra8_ok);
   return ok ? 1U : 0U;
@@ -206,14 +238,14 @@ dotf_demo_verdict(ra8_err_t st0_err, ra8_err_t st1_err, ra8_err_t status_err)
  * @retval k_ra8_err_null_ptr ``out_ok`` was NULL.
  *
  * @par MC/DC:
- * The compound verdict is delegated to ::dotf_demo_verdict (host-tested,
+ * The compound verdict is delegated to ::internal_dotf_demo_verdict (host-tested,
  * 4 vectors). This wrapper is a sequence of guarded calls.
  *
  * @pre ::ra8_dotf_init succeeded.
  * @post ``g_dotf_st0_snap`` / ``g_dotf_st1_snap`` / ``g_dotf_reg00`` updated.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t dotf_demo_sample(uint8_t* out_ok)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_dotf_demo_sample(uint8_t* out_ok)
 {
   RA8_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
 
@@ -229,7 +261,7 @@ dotf_demo_verdict(ra8_err_t st0_err, ra8_err_t st1_err, ra8_err_t status_err)
   const ra8_err_t stat_err = ra8_dotf_get_status((uint8_t)k_dotf_demo_ch0, &reg00);
   g_dotf_reg00             = reg00;
 
-  *out_ok = dotf_demo_verdict(st0_err, st1_err, stat_err);
+  *out_ok = internal_dotf_demo_verdict(st0_err, st1_err, stat_err);
   if (st0_err != k_ra8_ok) {
     return st0_err;
   }
@@ -243,7 +275,7 @@ dotf_demo_verdict(ra8_err_t st0_err, ra8_err_t st1_err, ra8_err_t status_err)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  dotf_demo_setup_or_halt();
+  internal_dotf_demo_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the
    * SysTick path (ra8_emulator does not advance DWT_CYCCNT). No maskable NVIC
    * source is armed; DOTF raises no IRQ of its own. */
@@ -252,27 +284,27 @@ int32_t main(void)
   const ra8_err_t init_err = ra8_dotf_init();
   g_dotf_init_err          = (uint32_t)init_err;
   if (init_err != k_ra8_ok) {
-    dotf_demo_panic_halt();
+    internal_dotf_demo_panic_halt();
   }
 
   while (1) {
     uint8_t         ok   = 0U;
-    const ra8_err_t err  = dotf_demo_sample(&ok);
+    const ra8_err_t err  = internal_dotf_demo_sample(&ok);
     const uint8_t   good = (err == k_ra8_ok && ok != 0U) ? 1U : 0U;
     g_dotf_ok            = (uint32_t)good;
     if (good != 0U) {
-      (void)ra8_board_uart_console_write(k_dotf_demo_ok_msg,
-                                         (size_t)(sizeof(k_dotf_demo_ok_msg) - 1U));
+      (void)ra8_board_uart_console_write(s_dotf_demo_ok_msg,
+                                         (size_t)(sizeof(s_dotf_demo_ok_msg) - 1U));
       (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
-      (void)ra8_board_uart_console_write(k_dotf_demo_bad_msg,
-                                         (size_t)(sizeof(k_dotf_demo_bad_msg) - 1U));
+      (void)ra8_board_uart_console_write(s_dotf_demo_bad_msg,
+                                         (size_t)(sizeof(s_dotf_demo_bad_msg) - 1U));
       (void)ra8_board_led_toggle(k_ra8_board_led2);
     }
     ++g_dotf_heartbeat;
     ra8_delay_ms(k_dotf_demo_period_ms);
   }
-  dotf_demo_panic_halt();
+  internal_dotf_demo_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

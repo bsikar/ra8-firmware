@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_agt.h"
 #include "ra8_agt_regs.h"
 #include "ra8_board_ek_ra8d2.h"
@@ -59,11 +60,11 @@ typedef enum : uint8_t {
 } agt_cas_chan_t;
 
 /** @brief Hex print map for the tick counter. */
-static const char k_agt_cas_hex_chars[] = "0123456789ABCDEF";
+static const char s_agt_cas_hex_chars[] = "0123456789ABCDEF";
 
 /** @brief Tick-line prefix and CR/LF tail. */
-static const uint8_t k_agt_cas_msg_head[] = "agt_cas: tick=";
-static const uint8_t k_agt_cas_msg_tail[] = "\r\n";
+static const uint8_t s_agt_cas_msg_head[] = "agt_cas: tick=";
+static const uint8_t s_agt_cas_msg_tail[] = "\r\n";
 
 /**
  * @brief Spin-halt the core if any init step fails.
@@ -81,7 +82,7 @@ static const uint8_t k_agt_cas_msg_tail[] = "\r\n";
  * @note Not thread-safe (boot path).
  * @since 0.1.0
  */
-static void agt_cas_panic_halt(void)
+RA8_INTERNAL static void internal_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -105,23 +106,23 @@ static void agt_cas_panic_halt(void)
  * @note Not thread-safe (boot path).
  * @since 0.1.0
  */
-static void agt_cas_setup_or_halt(void)
+RA8_INTERNAL static void internal_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    agt_cas_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    agt_cas_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    agt_cas_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_agt_cas_baud) != k_ra8_ok) {
-    agt_cas_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    agt_cas_panic_halt();
+    internal_panic_halt();
   }
 }
 
@@ -145,7 +146,7 @@ static void agt_cas_setup_or_halt(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t agt_cas_arm(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_arm(void)
 {
   const ra8_agt_cascade_cfg_t cfg = {
     .reload32     = (uint32_t)k_agt_cas_reload32,
@@ -175,13 +176,13 @@ static void agt_cas_setup_or_halt(void)
  * @note Not thread-safe (caller owns the buffer).
  * @since 0.1.0
  */
-static void agt_cas_format_tick(uint32_t tick, uint8_t* digits)
+RA8_INTERNAL static void internal_format_tick(uint32_t tick, uint8_t* digits)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_agt_cas_hex_digits; ++i) {
     const uint32_t shift =
       ((uint32_t)k_agt_cas_hex_digits - 1U - i) * (uint32_t)k_agt_cas_hex_shift;
     const uint32_t nib = (tick >> shift) & (uint32_t)k_agt_cas_hex_mask;
-    digits[i]          = (uint8_t)k_agt_cas_hex_chars[nib];
+    digits[i]          = (uint8_t)s_agt_cas_hex_chars[nib];
   }
 }
 
@@ -205,12 +206,12 @@ static void agt_cas_format_tick(uint32_t tick, uint8_t* digits)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t agt_cas_emit_tick(uint32_t tick)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_emit_tick(uint32_t tick)
 {
   uint8_t digits[k_agt_cas_hex_digits] = {};
-  agt_cas_format_tick(tick, digits);
+  internal_format_tick(tick, digits);
   ra8_err_t err =
-    ra8_board_uart_console_write(k_agt_cas_msg_head, (size_t)(sizeof(k_agt_cas_msg_head) - 1U));
+    ra8_board_uart_console_write(s_agt_cas_msg_head, (size_t)(sizeof(s_agt_cas_msg_head) - 1U));
   if (err != k_ra8_ok) {
     return err;
   }
@@ -218,19 +219,19 @@ static void agt_cas_format_tick(uint32_t tick, uint8_t* digits)
   if (err != k_ra8_ok) {
     return err;
   }
-  return ra8_board_uart_console_write(k_agt_cas_msg_tail,
-                                      (size_t)(sizeof(k_agt_cas_msg_tail) - 1U));
+  return ra8_board_uart_console_write(s_agt_cas_msg_tail,
+                                      (size_t)(sizeof(s_agt_cas_msg_tail) - 1U));
 }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  agt_cas_setup_or_halt();
+  internal_setup_or_halt();
   ra8_isr_globals_enable();
 
-  if (agt_cas_arm() != k_ra8_ok) {
-    agt_cas_panic_halt();
+  if (internal_arm() != k_ra8_ok) {
+    internal_panic_halt();
   }
 
   uint32_t tick = 0U;
@@ -244,7 +245,7 @@ int32_t main(void)
         break;
       }
       ++tick;
-      if (agt_cas_emit_tick(tick) != k_ra8_ok) {
+      if (internal_emit_tick(tick) != k_ra8_ok) {
         break;
       }
       /* Stop both halves + re-arm to clear AGT1.AGTCR.TUNDF. */
@@ -254,13 +255,13 @@ int32_t main(void)
       if (ra8_agt_stop((uint8_t)k_agt_cas_hi_channel) != k_ra8_ok) {
         break;
       }
-      if (agt_cas_arm() != k_ra8_ok) {
+      if (internal_arm() != k_ra8_ok) {
         break;
       }
     }
     ra8_delay_ms((uint32_t)k_agt_cas_poll_ms);
   }
-  agt_cas_panic_halt();
+  internal_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

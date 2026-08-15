@@ -44,6 +44,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -157,7 +158,12 @@ volatile uint32_t g_threadx_blink_tick = 0U;
 /**
  * @brief Thread A entry point: toggle LED1 every `k_blink_a_ticks` ms.
  *
+ * @details Drives the first board LED, advances the HIL liveness counter, and
+ *          sleeps for the configured ThreadX interval on every iteration.
+ *
  * @param[in] thread_input Unused (ThreadX cookie).
+ *
+ * @return None.
  *
  * @pre `ra8_gpio_output_init` has succeeded for `k_ra8_pin_led1`.
  * @pre ThreadX scheduler is running (`tx_kernel_enter` has dispatched
@@ -165,8 +171,11 @@ volatile uint32_t g_threadx_blink_tick = 0U;
  *
  * @post LED1 toggles on each loop iteration.
  * @post The thread blocks at `tx_thread_sleep`, yielding the CPU.
+ *
+ * @note Permanent single-instance worker; it never returns to ThreadX.
+ * @since 0.1.0
  */
-static void thread_a_entry(ULONG thread_input)
+RA8_INTERNAL static void internal_thread_a_entry(ULONG thread_input)
 {
   (void)thread_input;
   while (1) {
@@ -179,15 +188,23 @@ static void thread_a_entry(ULONG thread_input)
 /**
  * @brief Thread B entry point: toggle LED2 every `k_blink_b_ticks` ms.
  *
+ * @details Independently drives the second board LED at its slower cadence and
+ *          yields after every toggle so the scheduler can dispatch thread A.
+ *
  * @param[in] thread_input Unused (ThreadX cookie).
+ *
+ * @return None.
  *
  * @pre `ra8_gpio_output_init` has succeeded for `k_ra8_pin_led2`.
  * @pre ThreadX scheduler is running.
  *
  * @post LED2 toggles on each loop iteration.
  * @post Thread sleeps via tx_thread_sleep so the scheduler can pick A.
+ *
+ * @note Permanent single-instance worker; it never returns to ThreadX.
+ * @since 0.1.0
  */
-static void thread_b_entry(ULONG thread_input)
+RA8_INTERNAL static void internal_thread_b_entry(ULONG thread_input)
 {
   (void)thread_input;
   while (1) {
@@ -230,7 +247,7 @@ void tx_application_define(void* first_unused_memory)
 
   UINT err = tx_thread_create(&s_thread_a,
                               "blink_a",
-                              thread_a_entry,
+                              internal_thread_a_entry,
                               0U,
                               s_thread_a_stack,
                               (ULONG)k_blink_thread_stack_bytes,
@@ -246,7 +263,7 @@ void tx_application_define(void* first_unused_memory)
 
   err = tx_thread_create(&s_thread_b,
                          "blink_b",
-                         thread_b_entry,
+                         internal_thread_b_entry,
                          0U,
                          s_thread_b_stack,
                          (ULONG)k_blink_thread_stack_bytes,

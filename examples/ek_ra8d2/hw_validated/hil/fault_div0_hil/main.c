@@ -44,6 +44,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -68,12 +69,12 @@ typedef enum : uint32_t {
   k_fd_ccr_div_0_trp = 1UL << 4, /**< ARMv8-M CCR.DIV_0_TRP -- divide-by-zero traps. */
 } fd_ccr_bits_t;
 
-static const uint8_t k_msg_boot[]     = "fault-div0: boot\r\n";
-static const uint8_t k_msg_fail[]     = "fault-div0: FAIL init\r\n";
-static const uint8_t k_msg_armed[]    = "fault-div0: trap armed\r\n";
-static const uint8_t k_msg_unarmed[]  = "fault-div0: FAIL trap not armed\r\n";
-static const uint8_t k_msg_survived[] = "fault-div0: survived divide quotient=";
-static const uint8_t k_msg_emu_tail[] = " (trap not modelled -- ra8_emulator)\r\n";
+static const uint8_t s_msg_boot[]     = "fault-div0: boot\r\n";
+static const uint8_t s_msg_fail[]     = "fault-div0: FAIL init\r\n";
+static const uint8_t s_msg_armed[]    = "fault-div0: trap armed\r\n";
+static const uint8_t s_msg_unarmed[]  = "fault-div0: FAIL trap not armed\r\n";
+static const uint8_t s_msg_survived[] = "fault-div0: survived divide quotient=";
+static const uint8_t s_msg_emu_tail[] = " (trap not modelled -- ra8_emulator)\r\n";
 
 /**
  * @var s_fd_dividend
@@ -129,7 +130,7 @@ volatile uint32_t g_fd_heartbeat = 0U;
  * @note Not thread-safe (single-threaded app).
  * @since 0.1.0
  */
-static void fd_print(const uint8_t* msg, uint32_t len)
+RA8_INTERNAL static void internal_print(const uint8_t* msg, uint32_t len)
 {
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
@@ -155,7 +156,7 @@ static void fd_print(const uint8_t* msg, uint32_t len)
  * @note Callable from fault context (polled console write).
  * @since 0.1.0
  */
-static void fd_log_sink(void* ctx, uint8_t byte)
+RA8_INTERNAL static void internal_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;
   (void)ra8_board_uart_console_write(&byte, 1U);
@@ -175,9 +176,9 @@ static void fd_log_sink(void* ctx, uint8_t byte)
  * @note Not thread-safe (terminal path).
  * @since 0.1.0
  */
-[[noreturn]] static void fd_panic_halt(const uint8_t* msg, uint32_t len)
+[[noreturn]] RA8_INTERNAL static void internal_panic_halt(const uint8_t* msg, uint32_t len)
 {
-  fd_print(msg, len);
+  internal_print(msg, len);
   __asm__ volatile("bkpt #0");
   while (1) {
     __asm__ volatile("wfi");
@@ -197,7 +198,7 @@ static void fd_log_sink(void* ctx, uint8_t byte)
  * @note Not thread-safe (single-threaded app).
  * @since 0.1.0
  */
-static void fd_print_uint(uint32_t value)
+RA8_INTERNAL static void internal_print_uint(uint32_t value)
 {
   enum : uint32_t {
     k_fd_dec_base   = 10U, /**< Decimal base.                */
@@ -215,7 +216,7 @@ static void fd_print_uint(uint32_t value)
     value /= (uint32_t)k_fd_dec_base;
   }
   for (uint32_t i = 0U; i < n; i++) {
-    fd_print(&buf[n - 1U - i], 1U);
+    internal_print(&buf[n - 1U - i], 1U);
   }
 }
 
@@ -227,20 +228,20 @@ static void fd_print_uint(uint32_t value)
  * @pre Running after Reset_Handler with .data/.bss initialised.
  * @pre The J-Link OB VCOM bridge is on SCI8 PD02/PD03 (stock EK-RA8D2).
  * @post The console accepts writes at ::k_fd_uart_baud.
- * @post On any init failure the CPU is parked via ::fd_panic_halt.
+ * @post On any init failure the CPU is parked via ::internal_panic_halt.
  * @note Not thread-safe; boot context only.
  * @since 0.1.0
  */
-static void fd_setup_or_halt(void)
+RA8_INTERNAL static void internal_setup_or_halt(void)
 {
   if (ra8_cgc_init() != k_ra8_ok) {
-    fd_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+    internal_panic_halt(s_msg_fail, (uint32_t)sizeof(s_msg_fail) - 1U);
   }
   if (ra8_mstp_init() != k_ra8_ok) {
-    fd_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+    internal_panic_halt(s_msg_fail, (uint32_t)sizeof(s_msg_fail) - 1U);
   }
   if (ra8_board_uart_console_init((uint32_t)k_fd_uart_baud) != k_ra8_ok) {
-    fd_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
+    internal_panic_halt(s_msg_fail, (uint32_t)sizeof(s_msg_fail) - 1U);
   }
 }
 
@@ -248,11 +249,11 @@ static void fd_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  fd_setup_or_halt();
+  internal_setup_or_halt();
   ra8_isr_globals_enable();
   /* Route the fault handler's ra8_log dump onto the bench console. */
-  ra8_log_set_byte_sink(fd_log_sink, nullptr);
-  fd_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
+  ra8_log_set_byte_sink(internal_log_sink, nullptr);
+  internal_print(s_msg_boot, (uint32_t)sizeof(s_msg_boot) - 1U);
 
   /* Prove the boot-path write landed before relying on it: CCR must
    * read back with DIV_0_TRP set (works on silicon AND ra8_emulator --
@@ -260,9 +261,9 @@ int32_t main(void)
    * ignores it). ARMv8-M SCB->CCR, read-only probe. */
   const uint32_t ccr = *(volatile uint32_t*)k_fd_scb_ccr_addr;
   if ((ccr & (uint32_t)k_fd_ccr_div_0_trp) == 0U) {
-    fd_panic_halt(k_msg_unarmed, (uint32_t)sizeof(k_msg_unarmed) - 1U);
+    internal_panic_halt(s_msg_unarmed, (uint32_t)sizeof(s_msg_unarmed) - 1U);
   }
-  fd_print(k_msg_armed, (uint32_t)sizeof(k_msg_armed) - 1U);
+  internal_print(s_msg_armed, (uint32_t)sizeof(s_msg_armed) - 1U);
 
   /* The guarded zero-divide. Volatile operands force a run-time UDIV.
    * Silicon: UsageFault here -> decoded dump prints -> halt (the app
@@ -270,9 +271,9 @@ int32_t main(void)
   const uint32_t quotient = s_fd_dividend / s_fd_divisor;
 
   g_fd_quotient = quotient;
-  fd_print(k_msg_survived, (uint32_t)sizeof(k_msg_survived) - 1U);
-  fd_print_uint(quotient);
-  fd_print(k_msg_emu_tail, (uint32_t)sizeof(k_msg_emu_tail) - 1U);
+  internal_print(s_msg_survived, (uint32_t)sizeof(s_msg_survived) - 1U);
+  internal_print_uint(quotient);
+  internal_print(s_msg_emu_tail, (uint32_t)sizeof(s_msg_emu_tail) - 1U);
 
   while (1) {
     g_fd_heartbeat++;

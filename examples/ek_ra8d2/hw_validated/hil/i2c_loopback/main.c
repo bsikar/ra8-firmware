@@ -35,6 +35,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -67,17 +68,23 @@ typedef enum : uint8_t {
  * ra8_board_io_expander_apply_project_sw4_defaults(), the same validated
  * bring-up the board library uses for U15. */
 
-static const uint8_t k_i2c_demo_msg_ack[]  = "i2c: scan 0x43 ack=1\r\n";
-static const uint8_t k_i2c_demo_msg_nack[] = "i2c: scan 0x43 ack=0\r\n";
-static const uint8_t k_i2c_demo_msg_err[]  = "i2c: scan ERROR\r\n";
+static const uint8_t s_i2c_demo_msg_ack[]  = "i2c: scan 0x43 ack=1\r\n";
+static const uint8_t s_i2c_demo_msg_nack[] = "i2c: scan 0x43 ack=0\r\n";
+static const uint8_t s_i2c_demo_msg_err[]  = "i2c: scan ERROR\r\n";
 
-/** @brief Park forever after a fatal init failure.
+/**
+ * @brief Park forever after a fatal initialization failure.
+ * @details Repeatedly executes WFI so a debugger can inspect the failed bus or
+ *          clock state without additional I2C traffic.
  *
  * @pre Called only after a fatal error in boot.
+ * @pre The caller does not require recovery without reset.
  * @post CPU is parked; only a debugger or external reset wakes it.
+ * @post No further I2C or console operation is requested.
+ * @note Not thread-safe; this is the terminal single-threaded path.
  * @since 0.1.0
  */
-static void i2c_demo_panic_halt(void)
+RA8_INTERNAL static void internal_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -86,26 +93,31 @@ static void i2c_demo_panic_halt(void)
 
 /**
  * @brief Bring CGC + SysTick + MSTP up.
+ * @details Initializes the canonical clock tree, samples CPUCLK0, ungates
+ *          required peripheral modules, and starts the millisecond timebase.
  *
  * @pre IRQs masked or single-threaded init context.
+ * @pre Reset startup initialized static storage and the vector table.
  * @post On success CGC is live and SysTick is ticking.
+ * @post Any failed dependency transfers to ``internal_panic_halt``.
+ * @note Not thread-safe; it mutates global clock and module-stop state.
  *
  * @since 0.1.0
  */
-static void i2c_demo_clocks_or_halt(void)
+RA8_INTERNAL static void internal_clocks_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    i2c_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    i2c_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_mstp_init() != k_ra8_ok) {
-    i2c_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    i2c_demo_panic_halt();
+    internal_panic_halt();
   }
 }
 
@@ -117,27 +129,32 @@ static void i2c_demo_clocks_or_halt(void)
  * PD03 RXD pin routing + baud), so the app no longer hand-rolls the SCI
  * bring-up.
  *
+ * @pre ``internal_clocks_or_halt`` may safely own global clock setup.
+ * @pre U15 is populated at its fixed EK-RA8D2 address.
+ * @post On return, SCI8, RIIC1/U15, and both status LEDs are ready.
+ * @post Any initialization failure has parked the core.
+ * @note Not thread-safe; it owns the demo's peripheral setup.
  * @since 0.1.0
  */
-static void i2c_demo_setup_or_halt(void)
+RA8_INTERNAL static void internal_setup_or_halt(void)
 {
-  i2c_demo_clocks_or_halt();
+  internal_clocks_or_halt();
 
   if (ra8_board_uart_console_init((uint32_t)k_i2c_demo_baud) != k_ra8_ok) {
-    i2c_demo_panic_halt();
+    internal_panic_halt();
   }
   /* Bring up RIIC ch1 + confirm U15 via the board's validated path
    * (bus-recover + P109/P311 pull-ups + P512/P511 route + ra8_i2c_init +
    * a U15 write). k_ra8_ok means U15 ACKed the project SW4 byte; the bus
    * is then live for the ra8_i2c_scan loop below. */
   if (ra8_board_io_expander_apply_project_sw4_defaults() != k_ra8_ok) {
-    i2c_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    i2c_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
-    i2c_demo_panic_halt();
+    internal_panic_halt();
   }
 }
 
@@ -158,22 +175,22 @@ static void i2c_demo_setup_or_halt(void)
  */
 int32_t main(void)
 {
-  i2c_demo_setup_or_halt();
+  internal_setup_or_halt();
   ra8_isr_globals_enable();
 
   while (1) {
     bool            acked = false;
     const ra8_err_t err =
       ra8_i2c_scan((uint8_t)k_i2c_demo_iic_channel, (uint8_t)k_i2c_demo_probe_addr, &acked);
-    const uint8_t* msg     = k_i2c_demo_msg_err;
-    uint32_t       msg_len = (uint32_t)(sizeof(k_i2c_demo_msg_err) - 1U);
+    const uint8_t* msg     = s_i2c_demo_msg_err;
+    uint32_t       msg_len = (uint32_t)(sizeof(s_i2c_demo_msg_err) - 1U);
     if (err == k_ra8_ok) {
       if (acked) {
-        msg     = k_i2c_demo_msg_ack;
-        msg_len = (uint32_t)(sizeof(k_i2c_demo_msg_ack) - 1U);
+        msg     = s_i2c_demo_msg_ack;
+        msg_len = (uint32_t)(sizeof(s_i2c_demo_msg_ack) - 1U);
       } else {
-        msg     = k_i2c_demo_msg_nack;
-        msg_len = (uint32_t)(sizeof(k_i2c_demo_msg_nack) - 1U);
+        msg     = s_i2c_demo_msg_nack;
+        msg_len = (uint32_t)(sizeof(s_i2c_demo_msg_nack) - 1U);
       }
     } else {
       (void)ra8_board_led_on(k_ra8_board_led2);
@@ -187,7 +204,7 @@ int32_t main(void)
     ra8_delay_ms(k_i2c_demo_period_ms);
   }
 
-  i2c_demo_panic_halt();
+  internal_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

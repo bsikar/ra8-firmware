@@ -39,6 +39,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -73,7 +74,7 @@ typedef enum : uint32_t {
 } aes_demo_usage_t;
 
 /** @brief Fixed 128-bit AES key. */
-static const uint8_t k_aes_demo_key[k_aes_demo_key_bytes] = {
+static const uint8_t s_aes_demo_key[k_aes_demo_key_bytes] = {
   0x00U,
   0x11U,
   0x22U,
@@ -93,7 +94,7 @@ static const uint8_t k_aes_demo_key[k_aes_demo_key_bytes] = {
 };
 
 /** @brief Fixed 12-byte nonce (deterministic for the demo). */
-static const uint8_t k_aes_demo_nonce[k_ra8_psa_gcm_nonce_len] = {
+static const uint8_t s_aes_demo_nonce[k_ra8_psa_gcm_nonce_len] = {
   0xA0U,
   0xA1U,
   0xA2U,
@@ -109,7 +110,7 @@ static const uint8_t k_aes_demo_nonce[k_ra8_psa_gcm_nonce_len] = {
 };
 
 /** @brief Plaintext "RA8D2_OK" -- 8 ASCII bytes. */
-static const uint8_t k_aes_demo_plain[k_aes_demo_plain_bytes] = {
+static const uint8_t s_aes_demo_plain[k_aes_demo_plain_bytes] = {
   'R',
   'A',
   '8',
@@ -121,46 +122,70 @@ static const uint8_t k_aes_demo_plain[k_aes_demo_plain_bytes] = {
 };
 
 /** @brief AAD (additional authenticated data). */
-static const uint8_t k_aes_demo_aad[k_aes_demo_aad_bytes] = {'A', 'E', 'A', 'D'};
+static const uint8_t s_aes_demo_aad[k_aes_demo_aad_bytes] = {'A', 'E', 'A', 'D'};
 
-static const uint8_t k_aes_demo_msg_ok[]   = "aes: round-trip OK\r\n";
-static const uint8_t k_aes_demo_msg_fail[] = "aes: round-trip FAIL\r\n";
+static const uint8_t s_aes_demo_msg_ok[]   = "aes: round-trip OK\r\n";
+static const uint8_t s_aes_demo_msg_fail[] = "aes: round-trip FAIL\r\n";
 
-static void aes_demo_panic_halt(void)
+/**
+ * @brief Park the core after an unrecoverable AES demo failure.
+ * @details Repeatedly executes WFI while preserving crypto state for debug.
+ * @pre Called only from a fatal boot or terminal foreground path.
+ * @pre The caller does not require recovery without reset.
+ * @post The core stays in WFI until external intervention.
+ * @post No further key or AEAD operation is requested.
+ * @note Not thread-safe; this is the terminal single-threaded path.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-static void aes_demo_setup_or_halt(void)
+/**
+ * @brief Initialize clocks, SysTick, SCI8, LEDs, and the PSA backend.
+ * @details Brings dependencies up in order and parks on the first HAL or crypto
+ *          initialization error.
+ * @pre Reset startup initialized static storage and the vector table.
+ * @pre Called once before global interrupt enable.
+ * @post On return, console, LEDs, delays, and PSA services are ready.
+ * @post No transient AES key remains allocated by setup.
+ * @note Not thread-safe; it owns global subsystem initialization.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    aes_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    aes_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    aes_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_aes_demo_baud) != k_ra8_ok) {
-    aes_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    aes_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
-    aes_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_psa_crypto_init() != k_ra8_ok) {
-    aes_demo_panic_halt();
+    internal_panic_halt();
   }
 }
 
 /**
  * @brief Single AES-128-GCM encrypt -> decrypt -> compare round-trip.
+ * @details Imports the fixed key with AEAD usage, encrypts the immutable test
+ *          vector and AAD, decrypts it, destroys the key on every post-import
+ *          path, and verifies both recovered length and bytes.
  *
  * @par MC/DC:
  * Compound decision: ``import != ok || encrypt != ok || decrypt != ok
@@ -169,10 +194,19 @@ static void aes_demo_setup_or_halt(void)
  * test_app_crypto_aes_demo.c cover the four fail vectors.
  *
  * @return ``k_ra8_ok`` on success, error otherwise.
+ * @retval k_ra8_ok Authenticated decryption exactly recovered the plaintext.
+ * @retval k_ra8_err_invalid_size The recovered length differed.
+ * @retval k_ra8_err_crc_mismatch The recovered bytes differed.
+ * @retval (other) A propagated PSA import, encrypt, or decrypt error.
+ * @pre ``internal_setup_or_halt`` initialized the PSA backend.
+ * @pre The fixed key, nonce, AAD, and plaintext arrays are intact.
+ * @post Any imported key handle is destroyed before return.
+ * @post File-scope test vectors are unchanged.
+ * @note Not thread-safe with teardown of the shared PSA backend.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t aes_demo_one_round_trip(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_one_round_trip(void)
 {
   /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- OR-combined PSA usage bits form a valid policy mask outside the enumerator list. */
   /* The PSA usage enum is intentionally a bitfield -- combining
@@ -185,7 +219,7 @@ static void aes_demo_setup_or_halt(void)
   };
   /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
   ra8_psa_key_t key = nullptr;
-  ra8_err_t     err = ra8_psa_key_import(&key, &attr, k_aes_demo_key, (size_t)k_aes_demo_key_bytes);
+  ra8_err_t     err = ra8_psa_key_import(&key, &attr, s_aes_demo_key, (size_t)k_aes_demo_key_bytes);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -194,11 +228,11 @@ static void aes_demo_setup_or_halt(void)
   size_t  ct_len                                             = 0U;
   err = ra8_psa_aead_encrypt(key,
                              k_ra8_psa_alg_aes_gcm,
-                             k_aes_demo_nonce,
+                             s_aes_demo_nonce,
                              (size_t)k_ra8_psa_gcm_nonce_len,
-                             k_aes_demo_aad,
+                             s_aes_demo_aad,
                              (size_t)k_aes_demo_aad_bytes,
-                             k_aes_demo_plain,
+                             s_aes_demo_plain,
                              (size_t)k_aes_demo_plain_bytes,
                              ct,
                              sizeof(ct),
@@ -212,9 +246,9 @@ static void aes_demo_setup_or_halt(void)
   size_t  rec_len                           = 0U;
   err                                       = ra8_psa_aead_decrypt(key,
                                                                    k_ra8_psa_alg_aes_gcm,
-                                                                   k_aes_demo_nonce,
+                                                                   s_aes_demo_nonce,
                                                                    (size_t)k_ra8_psa_gcm_nonce_len,
-                                                                   k_aes_demo_aad,
+                                                                   s_aes_demo_aad,
                                                                    (size_t)k_aes_demo_aad_bytes,
                                                                    ct,
                                                                    ct_len,
@@ -228,7 +262,7 @@ static void aes_demo_setup_or_halt(void)
   if (rec_len != (size_t)k_aes_demo_plain_bytes) {
     return k_ra8_err_invalid_size;
   }
-  if (memcmp(recovered, k_aes_demo_plain, (size_t)k_aes_demo_plain_bytes) != 0) {
+  if (memcmp(recovered, s_aes_demo_plain, (size_t)k_aes_demo_plain_bytes) != 0) {
     return k_ra8_err_crc_mismatch;
   }
   return k_ra8_ok;
@@ -238,22 +272,22 @@ static void aes_demo_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  aes_demo_setup_or_halt();
+  internal_setup_or_halt();
   ra8_isr_globals_enable();
 
   while (1) {
-    if (aes_demo_one_round_trip() == k_ra8_ok) {
-      (void)ra8_board_uart_console_write(k_aes_demo_msg_ok,
-                                         (size_t)(sizeof(k_aes_demo_msg_ok) - 1U));
+    if (internal_one_round_trip() == k_ra8_ok) {
+      (void)ra8_board_uart_console_write(s_aes_demo_msg_ok,
+                                         (size_t)(sizeof(s_aes_demo_msg_ok) - 1U));
       (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
-      (void)ra8_board_uart_console_write(k_aes_demo_msg_fail,
-                                         (size_t)(sizeof(k_aes_demo_msg_fail) - 1U));
+      (void)ra8_board_uart_console_write(s_aes_demo_msg_fail,
+                                         (size_t)(sizeof(s_aes_demo_msg_fail) - 1U));
       (void)ra8_board_led_toggle(k_ra8_board_led2);
     }
     ra8_delay_ms(k_aes_demo_period_ms);
   }
-  aes_demo_panic_halt();
+  internal_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

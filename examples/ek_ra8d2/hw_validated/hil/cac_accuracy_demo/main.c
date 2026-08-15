@@ -48,6 +48,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cac.h"
 #include "ra8_cac_regs.h"
@@ -99,8 +100,8 @@ typedef enum : uint8_t {
 } cac_demo_cacr_t;
 
 /** @brief Output line tags. */
-static const uint8_t k_cac_demo_ok_msg[]  = "cac: meas=ok ferr=0 ovf=0 ok=Y\r\n";
-static const uint8_t k_cac_demo_bad_msg[] = "cac: meas=TIMEOUT-or-err ok=N\r\n";
+static const uint8_t s_cac_demo_ok_msg[]  = "cac: meas=ok ferr=0 ovf=0 ok=Y\r\n";
+static const uint8_t s_cac_demo_bad_msg[] = "cac: meas=TIMEOUT-or-err ok=N\r\n";
 
 /**
  * @var g_cac_count
@@ -134,46 +135,77 @@ volatile uint32_t g_cac_status = 0U;
  */
 volatile uint32_t g_cac_heartbeat = 0U;
 
-/** @brief Park forever after a fatal init failure. */
-static void cac_demo_panic_halt(void)
+/**
+ * @brief Park forever after a fatal CAC initialization failure.
+ * @details Repeatedly executes WFI, preserving measurement state for debug.
+ * @pre Called only from boot failure or the terminal foreground path.
+ * @pre The caller does not require recovery without reset.
+ * @post The core stays in WFI until external intervention.
+ * @post No further CAC measurement is started.
+ * @note Not thread-safe; this is a terminal single-threaded path.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-/** @brief Expected edge count for the MAIN-vs-LOCO/32 window. */
-static uint32_t cac_demo_expected(void)
+/**
+ * @brief Calculate the expected MAIN-vs-LOCO/32 edge count.
+ * @details Applies the fixed target frequency and reference-divider ratio with
+ *          unsigned integer arithmetic.
+ * @return Nominal edge count at the configured frequencies.
+ * @retval 0..UINT32_MAX Deterministic quotient from the compile-time constants.
+ * @pre All frequency and divider constants are non-zero and in range.
+ * @pre The multiplication fits in 32 bits for this board configuration.
+ * @post No hardware or application state is modified.
+ * @post Repeated calls return the same value.
+ * @note Pure and reentrant.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_expected(void)
 {
   return ((uint32_t)k_cac_demo_main_hz * (uint32_t)k_cac_demo_ref_div) /
          (uint32_t)k_cac_demo_loco_hz;
 }
 
-/** @brief Bring CGC + SysTick + SCI8 + LEDs + MSTP up. */
-static void cac_demo_setup_or_halt(void)
+/**
+ * @brief Bring CGC, SysTick, SCI8, LEDs, and MSTP up.
+ * @details Initializes foreground-loop dependencies in order and parks on the
+ *          first failed HAL operation.
+ * @pre Reset startup initialized static storage and the vector table.
+ * @pre Called once before global interrupt enable.
+ * @post On return, delays, console output, module clocks, and LEDs are ready.
+ * @post CAC remains unconfigured until ``internal_configure`` runs.
+ * @note Not thread-safe; it owns global peripheral initialization.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
   if (ra8_cgc_init() != k_ra8_ok) {
-    cac_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    cac_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_mstp_init() != k_ra8_ok) {
-    cac_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    cac_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_cac_demo_baud) != k_ra8_ok) {
-    cac_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    cac_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
-    cac_demo_panic_halt();
+    internal_panic_halt();
   }
 }
 
@@ -190,13 +222,18 @@ static void cac_demo_setup_or_halt(void)
  * Single decision ``err != k_ra8_ok`` -- 2 vectors. No compound condition.
  *
  * @return ``ra8_err_t`` from ``ra8_cac_init``.
+ * @retval k_ra8_ok CAC accepted the limits and clock pair was selected.
+ * @retval (other) CAC initialization failed before direct clock selection.
  * @pre CGC is up; IRQs masked or single-threaded init.
+ * @pre The fixed clock constants describe the active board clock tree.
  * @post On success CACR1/CACR2 select MAIN target + LOCO/32 reference.
+ * @post On failure the initialization error is returned unchanged.
+ * @note Not thread-safe with concurrent CAC configuration.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t cac_demo_configure(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_configure(void)
 {
-  const uint32_t expected = cac_demo_expected();
+  const uint32_t expected = internal_expected();
   const uint32_t tol      = expected >> (uint32_t)k_cac_demo_tol_shift;
   const uint16_t upper    = (uint16_t)(expected + tol);
   const uint16_t lower    = (uint16_t)(expected - tol);
@@ -231,11 +268,14 @@ static void cac_demo_setup_or_halt(void)
  * @return ``ra8_err_t`` -- ``k_ra8_ok`` once the (bounded) attempt finishes,
  *         or the status-read error.
  * @retval k_ra8_err_null_ptr ``out_ok`` was NULL.
- * @pre ::cac_demo_configure succeeded.
+ * @pre ::internal_configure succeeded.
+ * @pre ``out_ok`` points to writable caller-owned storage.
  * @post ``g_cac_count`` / ``g_cac_status`` updated; ``*out_ok`` is 0 or 1.
+ * @post On a status-read error, the error is returned without a verdict write.
+ * @note Not thread-safe; it updates exported measurement state.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t cac_demo_sample(uint8_t* out_ok)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_sample(uint8_t* out_ok)
 {
   RA8_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
 
@@ -262,34 +302,34 @@ static void cac_demo_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  cac_demo_setup_or_halt();
+  internal_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the
    * SysTick path (ra8_emulator does not advance DWT_CYCCNT). No NVIC sources
    * are armed by this demo. */
   ra8_isr_globals_enable();
 
-  if (cac_demo_configure() != k_ra8_ok) {
-    cac_demo_panic_halt();
+  if (internal_configure() != k_ra8_ok) {
+    internal_panic_halt();
   }
 
   while (1) {
     uint8_t         ok   = 0U;
-    const ra8_err_t err  = cac_demo_sample(&ok);
+    const ra8_err_t err  = internal_sample(&ok);
     const uint8_t   good = (err == k_ra8_ok && ok != 0U) ? 1U : 0U;
     g_cac_ok             = (uint32_t)good;
     if (good != 0U) {
-      (void)ra8_board_uart_console_write(k_cac_demo_ok_msg,
-                                         (size_t)(sizeof(k_cac_demo_ok_msg) - 1U));
+      (void)ra8_board_uart_console_write(s_cac_demo_ok_msg,
+                                         (size_t)(sizeof(s_cac_demo_ok_msg) - 1U));
       (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
-      (void)ra8_board_uart_console_write(k_cac_demo_bad_msg,
-                                         (size_t)(sizeof(k_cac_demo_bad_msg) - 1U));
+      (void)ra8_board_uart_console_write(s_cac_demo_bad_msg,
+                                         (size_t)(sizeof(s_cac_demo_bad_msg) - 1U));
       (void)ra8_board_led_toggle(k_ra8_board_led2);
     }
     ++g_cac_heartbeat;
     ra8_delay_ms(k_cac_demo_period_ms);
   }
-  cac_demo_panic_halt();
+  internal_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

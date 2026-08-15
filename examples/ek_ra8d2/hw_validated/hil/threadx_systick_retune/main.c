@@ -48,6 +48,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -155,6 +156,9 @@ static TX_THREAD s_retune_thread;
 /**
  * @brief Read back the SysTick reload register (SYST_RVR).
  *
+ * @details Performs one volatile read from the architected Cortex-M System
+ *          Control Space address used to verify the ThreadX clock retune.
+ *
  * @return Current SYST_RVR value (the reload the kernel tick uses).
  * @retval 0..k_ra8_systick_reload_max Whatever was last programmed.
  *
@@ -164,8 +168,9 @@ static TX_THREAD s_retune_thread;
  * @post Returned value reflects the live SYST_RVR.
  *
  * @note Not called on the host build; SCS is unmapped there.
+ * @since 0.1.0
  */
-static uint32_t retune_read_syst_rvr(void)
+RA8_INTERNAL static uint32_t internal_retune_read_syst_rvr(void)
 {
   volatile const uint32_t* rvr = (volatile const uint32_t*)k_retune_syst_rvr_addr;
   return *rvr;
@@ -178,14 +183,22 @@ static uint32_t retune_read_syst_rvr(void)
 /**
  * @brief Worker entry: toggle LED1 and advance the liveness counter.
  *
+ * @details Repeats the visible LED toggle and externally observed counter
+ *          increment at the configured ThreadX sleep cadence.
+ *
  * @param[in] thread_input Unused (ThreadX cookie).
+ *
+ * @return None.
  *
  * @pre The ThreadX scheduler is running.
  * @pre LED1 has been configured by `main()`.
  * @post LED1 toggles once per loop; ::g_threadx_retune_tick advances.
  * @post The thread yields the CPU via `tx_thread_sleep`.
+ *
+ * @note Permanent worker used only by this retune validation image.
+ * @since 0.1.0
  */
-static void retune_thread_entry(ULONG thread_input)
+RA8_INTERNAL static void internal_retune_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
   while (1) {
@@ -226,7 +239,7 @@ void tx_application_define(void* first_unused_memory)
   const ra8_err_t clk_err   = ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk_hz);
   const ra8_err_t rel_err =
     ra8_threadx_systick_reload_for(cpuclk_hz, (uint32_t)k_ra8_threadx_tick_hz, &expected);
-  const uint32_t live_rvr = retune_read_syst_rvr();
+  const uint32_t live_rvr = internal_retune_read_syst_rvr();
 
   g_threadx_retune_reload = expected;
   if ((retune_err != k_ra8_ok) || (clk_err != k_ra8_ok) || (rel_err != k_ra8_ok) ||
@@ -236,7 +249,7 @@ void tx_application_define(void* first_unused_memory)
 
   const UINT err = tx_thread_create(&s_retune_thread,
                                     "retune",
-                                    retune_thread_entry,
+                                    internal_retune_thread_entry,
                                     0U,
                                     s_retune_stack,
                                     (ULONG)k_retune_thread_stack_bytes,
