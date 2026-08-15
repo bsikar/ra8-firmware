@@ -9,7 +9,6 @@
 
 #include "fw_if_fs_cursor_test.h"
 
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>

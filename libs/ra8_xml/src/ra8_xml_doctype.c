@@ -12,7 +12,6 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>

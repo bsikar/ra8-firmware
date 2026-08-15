@@ -14,7 +14,6 @@
  */
 #include "ra8_rabook_xml_shim.h"
 
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
