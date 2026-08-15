@@ -54,12 +54,9 @@ set(RA8_FMT_JPEG_SRC
 )
 
 set(RA8_FMT_THIRD_PARTY_SRC ${FW_ROOT}/libs/third_party/miniz/miniz.c)
-set(RA8_FMT_MINIZ_DEFINITIONS
-    MINIZ_NO_ARCHIVE_APIS MINIZ_NO_MALLOC MINIZ_NO_STDIO MINIZ_NO_TIME
-)
+set(RA8_FMT_MINIZ_DEFINITIONS MINIZ_NO_ARCHIVE_APIS MINIZ_NO_MALLOC MINIZ_NO_STDIO MINIZ_NO_TIME)
 set(RA8_FMT_BOOK_SRC
-    ${FW_ROOT}/libs/ra8_book/src/ra8_book.c
-    ${FW_ROOT}/libs/ra8_book/src/ra8_book_chunked.c
+    ${FW_ROOT}/libs/ra8_book/src/ra8_book.c ${FW_ROOT}/libs/ra8_book/src/ra8_book_chunked.c
     ${FW_ROOT}/libs/ra8_book/src/ra8_book_chunked_validate.c
     ${FW_ROOT}/libs/ra8_book/src/ra8_book_stream.c
 )
@@ -90,9 +87,7 @@ add_executable(
 # recipe and the host test build.
 include(${FW_ROOT}/cmake/ra8_webp_vendor.cmake)
 ra8_webp_attach(rabook_imagepack ${FW_ROOT})
-target_compile_definitions(
-  rabook_imagepack PRIVATE RA8_OFF_TARGET ${RA8_FMT_MINIZ_DEFINITIONS}
-)
+target_compile_definitions(rabook_imagepack PRIVATE RA8_OFF_TARGET ${RA8_FMT_MINIZ_DEFINITIONS})
 target_include_directories(
   rabook_imagepack
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
@@ -125,9 +120,7 @@ if(BUILD_TESTING)
     ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
     ${RA8_FMT_THIRD_PARTY_SRC}
   )
-  target_compile_definitions(
-    test_ra8_jof_audit PRIVATE RA8_OFF_TARGET ${RA8_FMT_MINIZ_DEFINITIONS}
-  )
+  target_compile_definitions(test_ra8_jof_audit PRIVATE RA8_OFF_TARGET ${RA8_FMT_MINIZ_DEFINITIONS})
   target_compile_options(test_ra8_jof_audit PRIVATE -Wall -Wextra -Werror)
   target_include_directories(
     test_ra8_jof_audit
@@ -268,10 +261,9 @@ if(BUILD_TESTING)
             ${FW_ROOT}/libs/third_party/miniz
   )
   add_test(NAME ra8_fmt_stream_rabook COMMAND test_ra8_fmt_stream_rabook)
-  add_test(
-    NAME ra8_fmt_rabook_inspect_integration
-    COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/tests/rabook_inspect_integration.sh
-            $<TARGET_FILE:rabook_imagepack> $<TARGET_FILE:test_ra8_fmt_stream_rabook>
+  add_test(NAME ra8_fmt_rabook_inspect_integration
+           COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/tests/rabook_inspect_integration.sh
+                   $<TARGET_FILE:rabook_imagepack> $<TARGET_FILE:test_ra8_fmt_stream_rabook>
   )
 
   add_test(NAME ra8_fmt_convert_integration
@@ -282,10 +274,9 @@ if(BUILD_TESTING)
            COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/tests/verify_integration.sh
                    $<TARGET_FILE:rabook_imagepack> ${FW_ROOT}
   )
-  add_test(
-    NAME ra8_fmt_production_surface
-    COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/tests/check_production_surface.sh
-            ${CMAKE_CURRENT_SOURCE_DIR} $<TARGET_FILE:rabook_imagepack>
+  add_test(NAME ra8_fmt_production_surface
+           COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/tests/check_production_surface.sh
+                   ${CMAKE_CURRENT_SOURCE_DIR} $<TARGET_FILE:rabook_imagepack>
   )
 endif()
 

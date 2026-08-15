@@ -157,9 +157,13 @@ set_target_properties(test_ra8_c6link_rabook PROPERTIES LINKER_LANGUAGE CXX)
 target_compile_options(test_ra8_c6link_rabook PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
 target_include_directories(
   test_ra8_c6link_rabook
-  PRIVATE ${RA8_C6LINK_INCLUDE_DIRS} ${FW_ROOT}/libs/ra8_mdl_storage_vfs/inc
-          ${FW_ROOT}/libs/ra8_book/inc ${FW_ROOT}/libs/ra8_rabook_compile/inc
-          ${FW_ROOT}/libs/ra8_fs/inc ${FW_ROOT}/libs/ra8_hal/inc ${FW_ROOT}/libs/ra8_io/inc
+  PRIVATE ${RA8_C6LINK_INCLUDE_DIRS}
+          ${FW_ROOT}/libs/ra8_mdl_storage_vfs/inc
+          ${FW_ROOT}/libs/ra8_book/inc
+          ${FW_ROOT}/libs/ra8_rabook_compile/inc
+          ${FW_ROOT}/libs/ra8_fs/inc
+          ${FW_ROOT}/libs/ra8_hal/inc
+          ${FW_ROOT}/libs/ra8_io/inc
           ${FW_ROOT}/libs/ra8_mem/inc
           ${FW_ROOT}/libs/third_party/miniz
 )
