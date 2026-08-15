@@ -190,6 +190,5 @@ int32_t main(void)
   test_handle_setup_set_line_coding();
   test_handle_setup_unknown_class_request();
   test_recv_forwards_to_queue_out();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_cdc_cov.c\n");
   return 0;
 }
