@@ -98,7 +98,7 @@ typedef struct {
   const char*       token[2];                     /**< One flag/value pair or positional token. */
   size_t            count;                        /**< Number of populated tokens.              */
   cli_matrix_mode_t repeat_at;                    /**< Valid mode used by repetition coverage.  */
-  bool              allowed[k_matrix_mode_count]; /**< Independent truth row.                   */
+  bool              allowed[k_matrix_mode_count]; /**< Independent truth row. */
 } cli_option_case_t;
 
 /** @brief Minimal valid invocation for each matrix column. */
@@ -139,7 +139,8 @@ static const cli_mode_case_t s_matrix_modes[k_matrix_mode_count] = {
   [k_matrix_version]    = {"version", k_mdl_cli_mode_version, {"media_dl", "--version"}, 2U},
 };
 
-/** @brief Independent option-by-mode truth table (never references production masks). */
+/** @brief Independent option-by-mode truth table (never references production
+ * masks). */
 static const cli_option_case_t s_matrix_options[k_matrix_option_count] = {
   [k_opt_config] = {"--config",
                     {"--config", "other.conf"},
@@ -545,7 +546,8 @@ static void test_allowlists(void)
  * @test test_usage_errors
  * @brief Reject ambiguous, duplicated, missing, and inconsistent forms.
  * @details Exercises absent and conflicting modes, missing values, incomplete
- *          pack requests, proxy conjunctions, help conflicts, and insecure artifacts.
+ *          pack requests, proxy conjunctions, help conflicts, and insecure
+ * artifacts.
  * @pre The public parser and mode validator are linked into the host test.
  * @pre Standard error is available for expected validation diagnostics.
  * @post Every malformed fixture is rejected.
@@ -564,6 +566,9 @@ static void test_usage_errors(void)
   expect_invalid(3, duplicate);
   char* missing_value[] = {"media_dl", "--config", "--series", "https://x/s"};
   expect_invalid(4, missing_value);
+  char* from_missing_before_flag[] =
+    {"media_dl", "--config", "s", "--series", "https://x/s", "--from", "--separate"};
+  expect_invalid(7, from_missing_before_flag);
   char* pack_no_format[] = {"media_dl", "--pack", "pages"};
   expect_invalid(3, pack_no_format);
   char* proxy_no_escape[] = {"media_dl", "https://x/p", "--proxy", "http://p"};
@@ -586,7 +591,8 @@ static void test_usage_errors(void)
  * @test test_numeric_contracts
  * @brief Verify strict numeric zero, range, and grammar contracts.
  * @details Rejects zero-only positive fields and non-finite or tailed chapter
- *          numbers while accepting and checking a complete valid tuple.
+ *          numbers while accepting and checking a complete valid tuple and a
+ *          signed `--from` value through the actual argv parser.
  * @pre The public numeric parser is linked into the host test.
  * @pre Numeric fixtures are immutable NUL-terminated strings.
  * @post Invalid zero and floating-point forms are rejected.
@@ -617,6 +623,15 @@ static void test_numeric_contracts(void)
   TEST_ASSERT_EQ((size_t)1, nums.pick);
   TEST_ASSERT(nums.from_present);
   TEST_ASSERT(nums.from_num == 108.5);
+  char* signed_argv[] = {"media_dl", "--config", "s", "--series", "https://x/s", "--from", "-1.5"};
+  mdl_args_t signed_args = {};
+  mdl_cli_parse((int)(sizeof(signed_argv) / sizeof(signed_argv[0])), signed_argv, &signed_args);
+  mdl_cli_mode_t signed_mode = k_mdl_cli_mode_invalid;
+  TEST_ASSERT(mdl_cli_validate(&signed_args, &signed_mode));
+  TEST_ASSERT_EQ((uint8_t)k_mdl_cli_mode_series, (uint8_t)signed_mode);
+  TEST_ASSERT(mdl_cli_parse_nums(&signed_args, &nums));
+  TEST_ASSERT(nums.from_present);
+  TEST_ASSERT(nums.from_num == -1.5);
   mdl_args_t nan_from = {.from = "nan"};
   TEST_ASSERT(!mdl_cli_parse_nums(&nan_from, &nums));
   mdl_args_t tailed_from = {.from = "108.5x"};
@@ -942,7 +957,8 @@ static void test_exhaustive_mode_option_matrix(void)
  *          conjunction tokens, and supplies a second complete occurrence.
  * @pre Every option row names one mode where it is independently allowed.
  * @pre Matrix argv capacity accommodates the largest repeated vector.
- * @post Every repeated flag, value option, positional URL, and verify-dir form fails.
+ * @post Every repeated flag, value option, positional URL, and verify-dir form
+ * fails.
  * @post Every failed vector leaves its mode invalid.
  * @note Host-only parser test with expected diagnostics on stderr.
  * @since 0.1.0

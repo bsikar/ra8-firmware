@@ -25,7 +25,12 @@ extern "C" {
 
 #include "fw_if_fs.h"
 
-/** @brief Namespace backend operations. */
+/**
+ * @brief Namespace backend operations.
+ * @details `space` may be NULL only when ::k_fw_fs_cap_space_query is absent.
+ *          A successful `stat` must report a coherent node kind/existence pair,
+ *          and a successful `listdir` must not report more than its bound.
+ */
 struct fw_fs_namespace_iface {
   ra8_err_t (*stat)(void* ctx, const char* path, fw_fs_stat_t* out);
   ra8_err_t (*listdir)(void*           ctx,
@@ -42,7 +47,12 @@ struct fw_fs_namespace_iface {
   ra8_err_t (*space)(void* ctx, fw_fs_space_t* out);
 };
 
-/** @brief Open-file backend operations over caller-supplied state. */
+/**
+ * @brief Open-file backend operations over caller-supplied state.
+ * @details `sync` may be NULL only when ::k_fw_fs_cap_file_sync is absent.
+ *          Reads and writes must never report a count larger than the caller's
+ *          supplied bound, including when returning an error.
+ */
 struct fw_fs_stream_iface {
   ra8_err_t (*open)(void*             ctx,
                     const char*       path,
@@ -59,7 +69,13 @@ struct fw_fs_stream_iface {
   ra8_err_t (*close)(void* ctx, void* file_state);
 };
 
-/** @brief Staged-publication backend operations over caller-supplied state. */
+/**
+ * @brief Staged-publication backend operations over caller-supplied state.
+ * @details The entire interface may be NULL when
+ *          ::k_fw_fs_cap_transactions is absent. A successful commit must set
+ *          `out_published` true; an error may still set it true when
+ * publication happened before a later durability operation failed.
+ */
 struct fw_fs_transaction_iface {
   ra8_err_t (*begin)(void*                      ctx,
                      void*                      transaction_state,
@@ -80,7 +96,11 @@ struct fw_fs_transaction_iface {
   ra8_err_t (*abort)(void* ctx, void* transaction_state);
 };
 
-/** @brief Bind segregated vtables and one context into a complete facade. */
+/**
+ * @brief Bind segregated vtables and one context into a complete facade.
+ * @details Namespace and stream capabilities/interfaces are mandatory. Optional
+ *          operation pointers must agree with their advertised capability bits.
+ */
 [[nodiscard]] ra8_err_t fw_fs_bind(fw_fs_t*                         out,
                                    const fw_fs_namespace_iface_t*   namespace_iface,
                                    const fw_fs_stream_iface_t*      stream_iface,
