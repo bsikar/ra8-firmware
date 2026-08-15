@@ -341,16 +341,20 @@ RA8_INTERNAL static uint32_t internal_drw_factor(bool is_alpha, bool invert, uin
 }
 
 /**
- * @brief Apply one channel of `src*fS + dst*fD`, rounded and saturated.
- * @details Apply one channel of `src; this step is contained within the board periph drw model and uses bounded caller or module-owned storage.
+ * @brief Apply one channel of ``src * fs + dst * fd``, rounded and saturated.
+ * @details Multiplies the source and destination channels by their respective
+ * blend factors, rounds the combined numerator, and clamps the result to one
+ * byte.
  * @param[in] src Source storage consumed by the operation.
  * @param[in] dst Destination storage receiving the result.
  * @param[in] fs Fs input used by the operation.
  * @param[in] fd Open raw descriptor used for the transfer.
  * @return The drw mix result produced by the board periph drw model.
  * @retval value The operation-specific drw mix value.
- * @pre Arguments satisfy the ranges documented for drw mix. @pre The call executes on the emulator's single owning thread.
- * @post State changes remain confined to the board periph drw model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @pre Each channel and factor is within its documented unsigned range.
+ * @pre The call executes on the emulator's single owning thread.
+ * @post The returned value is no greater than ::k_drw_byte_mask.
+ * @post Caller-supplied storage and model state remain unchanged.
  * @note The operation is synchronous and does not transfer heap ownership.
  * @since 0.1.0
  */

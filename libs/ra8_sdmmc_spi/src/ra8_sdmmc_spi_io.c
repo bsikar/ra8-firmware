@@ -240,7 +240,7 @@ ra8_err_t ra8_sdmmc_spi_transport_sci(uint8_t                         sci_channe
  * ===========================================================================
  */
 
-/** @copydoc internal_prepare_init */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_prepare_init(const ra8_sdmmc_spi_transport_t* transport)
 {
   if (g_sdmmc_spi_state.initialized) {
@@ -254,7 +254,7 @@ RA8_INTERNAL static ra8_err_t internal_prepare_init(const ra8_sdmmc_spi_transpor
                                                (uint32_t)k_ra8_sdmmc_spi_clock_init_hz);
 }
 
-/** @copydoc internal_finalize_init */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_finalize_init(void)
 {
   ra8_err_t err = g_sdmmc_spi_state.transport.set_clock(g_sdmmc_spi_state.transport.ctx,
@@ -287,7 +287,7 @@ ra8_err_t ra8_sdmmc_spi_deinit(void)
   return k_ra8_ok;
 }
 
-/** @copydoc internal_lba_to_arg */
+/* see header for full description */
 RA8_INTERNAL static uint32_t internal_lba_to_arg(uint32_t lba)
 {
   if (g_sdmmc_spi_state.card_type == k_ra8_sdmmc_spi_type_sdhc) {
@@ -296,7 +296,7 @@ RA8_INTERNAL static uint32_t internal_lba_to_arg(uint32_t lba)
   return lba * (uint32_t)k_ra8_sdmmc_spi_block_size;
 }
 
-/** @copydoc internal_cmd_require_ready */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_cmd_require_ready(sd_cmd_t cmd, uint32_t arg)
 {
   ra8_err_t err = priv_sdmmc_spi_cs_assert();
@@ -315,7 +315,7 @@ RA8_INTERNAL static ra8_err_t internal_cmd_require_ready(sd_cmd_t cmd, uint32_t 
   return k_ra8_ok;
 }
 
-/** @copydoc internal_erase_range */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_erase_range(uint32_t lba, uint32_t count)
 {
   ra8_err_t err = internal_cmd_require_ready(k_sd_cmd_erase_wr_blk_start, internal_lba_to_arg(lba));
@@ -348,7 +348,7 @@ RA8_INTERNAL static ra8_err_t internal_erase_range(uint32_t lba, uint32_t count)
   return err;
 }
 
-/** @copydoc internal_read_block_payload */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_read_block_payload(uint8_t* buf)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_sdmmc_spi_block_size; i++) {
@@ -360,7 +360,7 @@ RA8_INTERNAL static ra8_err_t internal_read_block_payload(uint8_t* buf)
   return k_ra8_ok;
 }
 
-/** @copydoc internal_read_block_crc_check */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_read_block_crc_check(const uint8_t* buf)
 {
   uint8_t crc_hi = 0U;
@@ -375,7 +375,7 @@ RA8_INTERNAL static ra8_err_t internal_read_block_crc_check(const uint8_t* buf)
   return k_ra8_ok;
 }
 
-/** @copydoc internal_read_data_phase */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_read_data_phase(uint32_t lba, uint8_t* buf)
 {
   uint8_t   r1 = 0U;
@@ -436,7 +436,7 @@ RA8_INTERNAL static ra8_err_t internal_read_multi_stream(uint8_t* buf, uint32_t 
   return k_ra8_ok;
 }
 
-/** @copydoc internal_read_multi_stop */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_read_multi_stop(void)
 {
   uint8_t   r1  = 0U;
@@ -488,7 +488,7 @@ ra8_err_t ra8_sdmmc_spi_read_blocks(uint32_t lba, uint8_t* buf, uint32_t count)
   return stop_err;
 }
 
-/** @copydoc internal_write_data_block */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_write_data_block(const uint8_t* buf, uint8_t start_token)
 {
   ra8_err_t err = priv_sdmmc_spi_send_idle(1U); /* N_WR pad (spec >= 1 byte). */
@@ -556,7 +556,7 @@ ra8_err_t ra8_sdmmc_spi_write_block(uint32_t lba, const uint8_t* buf)
   return err;
 }
 
-/** @copydoc internal_write_multi_stream */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_write_multi_stream(const uint8_t* buf, uint32_t count)
 {
   for (uint32_t i = 0U; i < count; i++) {
@@ -704,7 +704,7 @@ ra8_err_t ra8_sdmmc_spi_get_card_type(ra8_sdmmc_spi_card_type_t* out_type)
  * ===========================================================================
  */
 
-/** @copydoc internal_fs_read_block */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t
 internal_fs_read_block(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
@@ -723,7 +723,7 @@ internal_fs_read_block(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
   return ra8_sdmmc_spi_read_blocks((uint32_t)lba, buf, count);
 }
 
-/** @copydoc internal_fs_write_block */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t
 internal_fs_write_block(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
@@ -740,7 +740,7 @@ internal_fs_write_block(void* ctx, uint64_t lba, uint32_t count, const uint8_t* 
   return ra8_sdmmc_spi_write_blocks((uint32_t)lba, buf, count);
 }
 
-/** @copydoc internal_fs_erase_block */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_fs_erase_block(void* ctx, uint64_t lba, uint64_t count)
 {
   (void)ctx;
@@ -751,7 +751,7 @@ RA8_INTERNAL static ra8_err_t internal_fs_erase_block(void* ctx, uint64_t lba, u
   return ra8_sdmmc_spi_erase_blocks((uint32_t)lba, (uint32_t)count);
 }
 
-/** @copydoc internal_fs_get_capacity */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t
 internal_fs_get_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {

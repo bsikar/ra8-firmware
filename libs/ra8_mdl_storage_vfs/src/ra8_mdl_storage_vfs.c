@@ -28,12 +28,12 @@ typedef struct {
 } path_facts_t;
 
 /**
- * @brief Return whether one component is exactly `.` or `..`.
+ * @brief Return whether one component is exactly @c "." or @c "..".
  * @details Compares the caller-bounded component without requiring a terminator.
  * @param[in] text First component byte.
  * @param[in] len Number of bytes in the component.
  * @return Whether the component is a traversal marker.
- * @retval true The component is exactly `.` or `..`.
+ * @retval true The component is exactly @c "." or @c "..".
  * @retval false The component is any other byte sequence.
  * @pre @p text spans at least @p len readable bytes.
  * @pre @p len came from the bounded path parser.

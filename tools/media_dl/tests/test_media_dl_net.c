@@ -90,7 +90,21 @@ typedef struct {
   bool      short_write;      /**< Report one byte short.   */
 } net_test_body_t;
 
-/** @copydoc mdl_net_body_reset_fn */
+/**
+ * @brief Reset the bounded network-test body sink.
+ * @details Validates the callback context, clears its accepted length, and
+ * records the reset invocation for later assertions.
+ * @param[in,out] context Test-owned ::net_test_body_t callback context.
+ * @return Canonical callback status.
+ * @retval k_ra8_ok The sink was reset and the reset count advanced.
+ * @retval k_ra8_err_invalid_arg @p context was null.
+ * @pre A non-null context points to writable test-owned state.
+ * @pre No other test thread is mutating the sink.
+ * @post Success leaves the accepted length at zero.
+ * @post Failure does not dereference the null context.
+ * @note Host-test callback; it performs no allocation or I/O.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static ra8_err_t internal_net_test_body_reset(void* context)
 {
   net_test_body_t* body = (net_test_body_t*)context;
@@ -102,7 +116,25 @@ RA8_INTERNAL static ra8_err_t internal_net_test_body_reset(void* context)
   return k_ra8_ok;
 }
 
-/** @copydoc mdl_net_body_write_fn */
+/**
+ * @brief Append response bytes to the bounded network-test body sink.
+ * @details Applies injected failure and short-write behavior before copying
+ * only the bytes that fit the fixed test buffer.
+ * @param[in,out] context Test-owned ::net_test_body_t callback context.
+ * @param[in] bytes Response bytes supplied by the network seam.
+ * @param[in] length Number of response bytes offered.
+ * @param[out] out_written Number of bytes accepted by this invocation.
+ * @return Canonical callback status.
+ * @retval k_ra8_ok The requested or injected short prefix was accepted.
+ * @retval k_ra8_err_invalid_arg An argument or bounded capacity was invalid.
+ * @retval other The test's injected write failure.
+ * @pre Nonzero @p length requires a readable @p bytes span.
+ * @pre @p out_written and a non-null @p context are writable.
+ * @post Success reports exactly the number of bytes appended.
+ * @post Failure reports zero accepted bytes.
+ * @note Host-test callback; no storage outside the sink is modified.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static ra8_err_t internal_net_test_body_write(void*          context,
                                                            const uint8_t* bytes,
                                                            uint32_t       length,

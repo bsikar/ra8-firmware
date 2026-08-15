@@ -393,7 +393,8 @@ RA8_INTERNAL static bool internal_eth_is_rmac_reg(uint64_t addr, uint64_t off)
 
 /**
  * @brief True if @p addr is one of GWCA GWDCC[0..31]; sets @p *queue.
- * @details True if @p addr is one of gwca gwdcc[0..31]; sets @p; this step is contained within the board periph Ethernet model and uses bounded caller or module-owned storage.
+ * @details Tests the bounded GWCA GWDCC register window and publishes the
+ * matching queue index through @p queue when the address belongs to it.
  * @param[in] addr Guest address involved in the operation.
  * @param[in,out] queue Queue state or storage updated in place by the operation.
  * @return The Ethernet is gwdcc result produced by the board periph Ethernet model.

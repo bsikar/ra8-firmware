@@ -385,7 +385,7 @@ RA8_INTERNAL static int internal_exit_from_error(ra8_err_t err, bool usage_error
   return (usage_error && (err == k_ra8_err_invalid_arg)) ? 2 : 1;
 }
 
-/** @copydoc priv_mdl_app_context */
+/* see header for full description */
 RA8_PRIV mdl_app_context_t* priv_mdl_app_context(void)
 {
   return &s_app;

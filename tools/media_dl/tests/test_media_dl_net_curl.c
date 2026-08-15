@@ -54,7 +54,21 @@ typedef struct {
   uint32_t length; /**< Bytes observed before transfer failure. */
 } atom_body_t;
 
-/** @copydoc mdl_net_body_reset_fn */
+/**
+ * @brief Reset the atomic-publication test body sink.
+ * @details Validates the callback context and clears the observed byte count
+ * before the transfer-under-test begins.
+ * @param[in,out] context Test-owned ::atom_body_t callback context.
+ * @return Canonical callback status.
+ * @retval k_ra8_ok The observed length was reset.
+ * @retval k_ra8_err_invalid_arg @p context was null.
+ * @pre A non-null context points to writable test state.
+ * @pre The test owns the sink exclusively.
+ * @post Success leaves the observed length at zero.
+ * @post Failure does not access storage through the null context.
+ * @note Host-test callback with no filesystem side effects.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static ra8_err_t internal_atom_body_reset(void* context)
 {
   atom_body_t* body = (atom_body_t*)context;
@@ -65,7 +79,24 @@ RA8_INTERNAL static ra8_err_t internal_atom_body_reset(void* context)
   return k_ra8_ok;
 }
 
-/** @copydoc mdl_net_body_write_fn */
+/**
+ * @brief Count bytes accepted by the atomic-publication test sink.
+ * @details Validates the callback tuple, advances the bounded observation
+ * count, and truthfully reports the entire offered span as consumed.
+ * @param[in,out] context Test-owned ::atom_body_t callback context.
+ * @param[in] bytes Response bytes supplied by the network seam.
+ * @param[in] length Number of offered bytes.
+ * @param[out] out_written Number of bytes accepted by this invocation.
+ * @return Canonical callback status.
+ * @retval k_ra8_ok The complete offered span was counted.
+ * @retval k_ra8_err_invalid_arg A callback argument was invalid.
+ * @pre Nonzero @p length requires a readable @p bytes span.
+ * @pre @p context and @p out_written point to writable test storage.
+ * @post Success reports @p length through @p out_written.
+ * @post Failure does not advance the observation count.
+ * @note Payload contents are intentionally irrelevant to this test seam.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static ra8_err_t internal_atom_body_write(void*          context,
                                                        const uint8_t* bytes,
                                                        uint32_t       length,
