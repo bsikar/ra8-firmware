@@ -1,6 +1,6 @@
-#!/bin/sh
-# Copyright (c) 2026 Brighton Sikarskie
+#!/usr/bin/env sh
 # SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # Golden and failure-semantics coverage for the portable JOF verify CLI.
 
 set -eu
@@ -15,8 +15,7 @@ repo=$2
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/ra8-fmt-verify.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 
-digest()
-{
+digest() {
   if command -v sha256sum >/dev/null 2>&1; then
     sha256sum "$1" | awk '{print $1}'
   else
@@ -24,8 +23,7 @@ digest()
   fi
 }
 
-verify_golden()
-{
+verify_golden() {
   input=$1
   output=$2
   expected_digest=$3
