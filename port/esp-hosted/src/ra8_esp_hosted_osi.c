@@ -75,7 +75,7 @@ DEFINE_LOG_TAG(osi);
  * return (int)k_ra8_esp_hosted_osi_wakeup_reboot;
  * @endcode
  *
- * @see ra8_esp_hosted_osi_bind_all
+ * @see priv_ra8_esp_hosted_osi_bind_all
  * @since 0.1.0
  */
 typedef enum : uint8_t {
@@ -92,7 +92,7 @@ typedef enum : uint8_t {
 /**
  * @var s_tag
  * @brief Tag the project logger attributes this module's lines to.
- * @details Distinct from the vendored ``TAG`` so a line from the port
+ * @details Distinct from the vendored ``s_esp_hosted_tag`` so a line from the port
  * itself is separable from a line the vendored core emitted.
  * @note Read-only.
  * @warning Keep it short; the sink does not wrap.
@@ -135,7 +135,7 @@ static void* s_ra8_esp_hosted_event_ctx;
 /**
  * @var g_hosted_osi_funcs
  * @brief The OS-abstraction vtable the vendored core calls through.
- * @details Zero at reset and populated by ::ra8_esp_hosted_osi_bind_all,
+ * @details Zero at reset and populated by ::priv_ra8_esp_hosted_osi_bind_all,
  * which ``ra8_esp_hosted_port_init`` runs before anything can reach it.
  * @note The name and type are fixed by the vendored
  * ``esp_hosted_os_abstraction.h``.
@@ -170,13 +170,13 @@ ra8_err_t ra8_esp_hosted_port_set_event_cb(ra8_esp_hosted_event_cb_t cb, void* c
   return k_ra8_ok;
 }
 
-/** @brief Implementation of `ra8_esp_hosted_osi_dispatch_event()` -- the one
+/** @brief Implementation of `priv_ra8_esp_hosted_osi_dispatch_event()` -- the one
  *  decision behind both event rows, promoted so it is testable. */
 RA8_PRIV
-int ra8_esp_hosted_osi_dispatch_event(const char* base,
-                                      int32_t     event_id,
-                                      const void* data,
-                                      size_t      data_len)
+int priv_ra8_esp_hosted_osi_dispatch_event(const char* base,
+                                           int32_t     event_id,
+                                           const void* data,
+                                           size_t      data_len)
 {
   if (s_ra8_esp_hosted_event_cb == nullptr) {
     return RET_FAIL;
@@ -228,7 +228,7 @@ static int internal_event_post(esp_event_base_t event_base,
                                uint32_t         ticks_to_wait)
 {
   (void)ticks_to_wait;
-  return ra8_esp_hosted_osi_dispatch_event(event_base, event_id, event_data, event_data_size);
+  return priv_ra8_esp_hosted_osi_dispatch_event(event_base, event_id, event_data, event_data_size);
 }
 
 /**
@@ -263,10 +263,10 @@ static int internal_event_wifi_post(int32_t  event_id,
                                     uint32_t ticks_to_wait)
 {
   (void)ticks_to_wait;
-  return ra8_esp_hosted_osi_dispatch_event(s_event_base_wifi,
-                                           event_id,
-                                           event_data,
-                                           event_data_size);
+  return priv_ra8_esp_hosted_osi_dispatch_event(s_event_base_wifi,
+                                                event_id,
+                                                event_data,
+                                                event_data_size);
 }
 
 /**
@@ -297,7 +297,7 @@ internal_printf(int level, const char* tag, const char* format, ...)
 {
   va_list ap;
   va_start(ap, format);
-  ra8_esp_hosted_log_vwrite(level, tag, format, ap);
+  priv_ra8_esp_hosted_log_vwrite(level, tag, format, ap);
   va_end(ap);
 }
 
@@ -325,7 +325,7 @@ RA8_INTERNAL
 static void internal_init_hook(void)
 {
   if (!ra8_esp_hosted_port_is_ready()) {
-    ESP_LOGE(TAG, "core started before ra8_esp_hosted_port_init");
+    ESP_LOGE(s_esp_hosted_tag, "core started before ra8_esp_hosted_port_init");
     return;
   }
   ra8_esp_hosted_mem_dump("hosted_init_hook");
@@ -356,7 +356,7 @@ static void internal_init_hook(void)
 RA8_INTERNAL
 static int internal_restart_host(void)
 {
-  ESP_LOGE(TAG, "core asked for a host restart; declined by policy");
+  ESP_LOGE(s_esp_hosted_tag, "core asked for a host restart; declined by policy");
   return RET_FAIL;
 }
 
@@ -392,7 +392,7 @@ static int internal_config_host_power_save(uint32_t power_save_type,
                                            int      level)
 {
   (void)gpio_port;
-  ESP_LOGW(TAG,
+  ESP_LOGW(s_esp_hosted_tag,
            "host power save %u not enabled (pin %u level %d)",
            (unsigned int)power_save_type,
            (unsigned int)gpio_num,
@@ -423,7 +423,7 @@ static int internal_config_host_power_save(uint32_t power_save_type,
 RA8_INTERNAL
 static int internal_start_host_power_save(uint32_t power_save_type)
 {
-  ESP_LOGW(TAG, "host power save %u not enabled", (unsigned int)power_save_type);
+  ESP_LOGW(s_esp_hosted_tag, "host power save %u not enabled", (unsigned int)power_save_type);
   return RET_FAIL;
 }
 
@@ -446,7 +446,7 @@ static int internal_start_host_power_save(uint32_t power_save_type)
  * ra8_esp_hosted_osi_view_t view = { .table = *table };
  * @endcode
  *
- * @see ra8_esp_hosted_osi_is_complete
+ * @see priv_ra8_esp_hosted_osi_is_complete
  * @since 0.1.0
  */
 typedef union ra8_esp_hosted_osi_view {
@@ -458,11 +458,11 @@ typedef union ra8_esp_hosted_osi_view {
 static_assert(sizeof(hosted_osi_funcs_t) % sizeof(void (*)(void)) == 0U,
               "the esp-hosted vtable must be a whole number of function pointers");
 
-/** @brief Implementation of `ra8_esp_hosted_osi_is_complete()` -- scans the
+/** @brief Implementation of `priv_ra8_esp_hosted_osi_is_complete()` -- scans the
  *  table row-wise through a union, so a row added upstream is covered
  *  without editing a field list. */
 RA8_PRIV
-bool ra8_esp_hosted_osi_is_complete(const hosted_osi_funcs_t* table)
+bool priv_ra8_esp_hosted_osi_is_complete(const hosted_osi_funcs_t* table)
 {
   if (table == nullptr) {
     return false;
@@ -479,32 +479,32 @@ bool ra8_esp_hosted_osi_is_complete(const hosted_osi_funcs_t* table)
   return true;
 }
 
-/** @brief Implementation of `ra8_esp_hosted_osi_bind_all()` -- fills every
+/** @brief Implementation of `priv_ra8_esp_hosted_osi_bind_all()` -- fills every
  *  row, then proves none was missed. */
 RA8_PRIV
-ra8_err_t ra8_esp_hosted_osi_bind_all(hosted_osi_funcs_t* out)
+ra8_err_t priv_ra8_esp_hosted_osi_bind_all(hosted_osi_funcs_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "vtable");
 
   *out = (hosted_osi_funcs_t){};
 
-  ra8_err_t err = ra8_esp_hosted_rtos_bind(out);
+  ra8_err_t err = priv_ra8_esp_hosted_rtos_bind(out);
   if (err == k_ra8_ok) {
-    err = ra8_esp_hosted_rtos_bind_pool(out);
+    err = priv_ra8_esp_hosted_rtos_bind_pool(out);
   }
   if (err == k_ra8_ok) {
-    err = ra8_esp_hosted_rtos_bind_sync(out);
+    err = priv_ra8_esp_hosted_rtos_bind_sync(out);
   }
   if (err == k_ra8_ok) {
-    err = ra8_esp_hosted_gpio_bind(out);
+    err = priv_ra8_esp_hosted_gpio_bind(out);
   }
   if (err == k_ra8_ok) {
-    err = ra8_esp_hosted_spi_bind(out);
+    err = priv_ra8_esp_hosted_spi_bind(out);
   }
   if (err != k_ra8_ok) {
     return err;
   }
-  ra8_esp_hosted_osi_bind_absent(out);
+  priv_ra8_esp_hosted_osi_bind_absent(out);
 
   out->_h_event_post                      = internal_event_post;
   out->_h_event_wifi_post                 = internal_event_wifi_post;
@@ -514,7 +514,7 @@ ra8_err_t ra8_esp_hosted_osi_bind_all(hosted_osi_funcs_t* out)
   out->_h_config_host_power_save_hal_impl = internal_config_host_power_save;
   out->_h_start_host_power_save_hal_impl  = internal_start_host_power_save;
 
-  if (!ra8_esp_hosted_osi_is_complete(out)) {
+  if (!priv_ra8_esp_hosted_osi_is_complete(out)) {
     return k_ra8_err_invalid_state;
   }
   return k_ra8_ok;

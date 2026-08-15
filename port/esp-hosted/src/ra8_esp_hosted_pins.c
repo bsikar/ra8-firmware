@@ -94,7 +94,7 @@ typedef struct ra8_esp_hosted_irq_route {
 } ra8_esp_hosted_irq_route_row_t;
 
 /**
- * @var k_ra8_esp_hosted_irq_map
+ * @var s_ra8_esp_hosted_irq_map
  * @brief Pin-to-ICU-channel routing for every Pmod1 net the link may use.
  * @details Rows carrying ::k_ra8_esp_hosted_irq_none are deliberate: they
  * record that the package routes no external-interrupt channel to that
@@ -105,7 +105,7 @@ typedef struct ra8_esp_hosted_irq_route {
  *          harness changes; the two describe the same wiring.
  * @since 0.1.0
  */
-static const ra8_esp_hosted_irq_route_row_t k_ra8_esp_hosted_irq_map[] = {
+static const ra8_esp_hosted_irq_route_row_t s_ra8_esp_hosted_irq_map[] = {
   {.pin = (uint16_t)k_ra8_board_pmod1_irq, .irq = (uint8_t)k_ra8_esp_hosted_irq_pmod1_sideband},
   {.pin = (uint16_t)k_ra8_board_pmod1_spi_cs, .irq = (uint8_t)k_ra8_esp_hosted_irq_pmod1_cs},
   {.pin = (uint16_t)k_ra8_board_pmod1_reset, .irq = (uint8_t)k_ra8_esp_hosted_irq_none},
@@ -114,16 +114,16 @@ static const ra8_esp_hosted_irq_route_row_t k_ra8_esp_hosted_irq_map[] = {
 };
 
 /**
- * @var k_ra8_esp_hosted_irq_map_rows
- * @brief Row count of ::k_ra8_esp_hosted_irq_map.
+ * @var s_ra8_esp_hosted_irq_map_rows
+ * @brief Row count of ::s_ra8_esp_hosted_irq_map.
  * @details Derived from the array so the loop bound cannot drift from the
  * data it bounds.
  * @note Read-only; compile-time constant.
  * @warning Never write a literal row count in its place.
  * @since 0.1.0
  */
-static const uint32_t k_ra8_esp_hosted_irq_map_rows =
-  (uint32_t)(sizeof(k_ra8_esp_hosted_irq_map) / sizeof(k_ra8_esp_hosted_irq_map[0]));
+static const uint32_t s_ra8_esp_hosted_irq_map_rows =
+  (uint32_t)(sizeof(s_ra8_esp_hosted_irq_map) / sizeof(s_ra8_esp_hosted_irq_map[0]));
 
 /** @brief Implementation of `ra8_esp_hosted_pin_irq_num()` -- linear scan
  *  over a compile-time-sized routing table, so no caller-supplied value
@@ -132,9 +132,9 @@ uint8_t ra8_esp_hosted_pin_irq_num(ra8_port_pin_t pin)
 {
   const uint16_t wanted = (uint16_t)pin;
 
-  for (uint32_t row = 0U; row < k_ra8_esp_hosted_irq_map_rows; row++) {
-    if (k_ra8_esp_hosted_irq_map[row].pin == wanted) {
-      return k_ra8_esp_hosted_irq_map[row].irq;
+  for (uint32_t row = 0U; row < s_ra8_esp_hosted_irq_map_rows; row++) {
+    if (s_ra8_esp_hosted_irq_map[row].pin == wanted) {
+      return s_ra8_esp_hosted_irq_map[row].irq;
     }
   }
 

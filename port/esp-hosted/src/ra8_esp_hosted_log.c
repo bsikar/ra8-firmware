@@ -13,7 +13,7 @@
  * The vendored core logs with printf-style calls; this project's logger
  * takes a plain message and, optionally, one integer. The bridge closes
  * that gap by formatting into a stack line through
- * ``ra8_esp_hosted_fmt_vformat`` -- a bounded, allocation-free formatter --
+ * ``priv_ra8_esp_hosted_fmt_vformat`` -- a bounded, allocation-free formatter --
  * and handing the finished string to the matching ``ra8_log_*`` macro.
  * Nothing here allocates, and the only module state is the runtime level
  * threshold, which is read but never written on a logging path.
@@ -91,7 +91,7 @@ typedef enum : uint16_t {
 static int s_ra8_esp_hosted_log_level = (int)ESP_LOG_INFO;
 
 /**
- * @var k_ra8_esp_hosted_log_tag
+ * @var s_ra8_esp_hosted_log_tag
  * @brief Fallback tag used when a caller passes none.
  * @details Keeps a null tag from reaching ``ra8_log_*``, which would
  * dereference it.
@@ -99,7 +99,7 @@ static int s_ra8_esp_hosted_log_level = (int)ESP_LOG_INFO;
  * @warning Never freed; it is a string literal.
  * @since 0.1.0
  */
-static const char* const k_ra8_esp_hosted_log_tag = "C6LINK";
+static const char* const s_ra8_esp_hosted_log_tag = "C6LINK";
 
 /**
  * @brief Hand a finished line to the project logger at the mapped level.
@@ -138,35 +138,35 @@ static void internal_emit(int level, const char* tag, const char* line)
   }
 }
 
-/** @brief Implementation of `ra8_esp_hosted_log_accepts()` -- the single
+/** @brief Implementation of `priv_ra8_esp_hosted_log_accepts()` -- the single
  *  runtime level decision, promoted so its two conditions are testable. */
 RA8_PRIV
-bool ra8_esp_hosted_log_accepts(int level)
+bool priv_ra8_esp_hosted_log_accepts(int level)
 {
   return (level > (int)ESP_LOG_NONE) && (level <= s_ra8_esp_hosted_log_level);
 }
 
-/** @brief Implementation of `ra8_esp_hosted_log_vwrite()` -- formats onto a
+/** @brief Implementation of `priv_ra8_esp_hosted_log_vwrite()` -- formats onto a
  *  bounded stack line, so it allocates nothing and is reentrant. */
 RA8_PRIV
-void ra8_esp_hosted_log_vwrite(int level, const char* tag, const char* fmt, va_list ap)
+void priv_ra8_esp_hosted_log_vwrite(int level, const char* tag, const char* fmt, va_list ap)
 {
-  if (!ra8_esp_hosted_log_accepts(level) || (fmt == nullptr)) {
+  if (!priv_ra8_esp_hosted_log_accepts(level) || (fmt == nullptr)) {
     return;
   }
 
   char line[(uint32_t)k_ra8_esp_hosted_log_line_max] = {};
-  (void)ra8_esp_hosted_fmt_vformat(line, (uint32_t)sizeof(line), fmt, ap);
-  internal_emit(level, (tag == nullptr) ? k_ra8_esp_hosted_log_tag : tag, line);
+  (void)priv_ra8_esp_hosted_fmt_vformat(line, (uint32_t)sizeof(line), fmt, ap);
+  internal_emit(level, (tag == nullptr) ? s_ra8_esp_hosted_log_tag : tag, line);
 }
 
 /** @brief Implementation of `ra8_esp_hosted_log_write()` -- the varargs face
- *  of `ra8_esp_hosted_log_vwrite()`. */
+ *  of `priv_ra8_esp_hosted_log_vwrite()`. */
 void ra8_esp_hosted_log_write(int level, const char* tag, const char* fmt, ...)
 {
   va_list ap;
   va_start(ap, fmt);
-  ra8_esp_hosted_log_vwrite(level, tag, fmt, ap);
+  priv_ra8_esp_hosted_log_vwrite(level, tag, fmt, ap);
   va_end(ap);
 }
 
@@ -174,7 +174,7 @@ void ra8_esp_hosted_log_write(int level, const char* tag, const char* fmt, ...)
  *  most ::k_ra8_esp_hosted_log_dump_bytes bytes onto one bounded line. */
 void ra8_esp_hosted_log_hexdump(int level, const char* tag, const void* buf, uint32_t len)
 {
-  if (!ra8_esp_hosted_log_accepts(level) || (buf == nullptr) || (len == 0U)) {
+  if (!priv_ra8_esp_hosted_log_accepts(level) || (buf == nullptr) || (len == 0U)) {
     return;
   }
 
@@ -188,10 +188,10 @@ void ra8_esp_hosted_log_hexdump(int level, const char* tag, const void* buf, uin
   uint32_t pos                                           = 0U;
   for (uint32_t i = 0U; i < shown; i++) {
     char          nibbles[(uint32_t)k_ra8_esp_hosted_fmt_digits_max + 2U] = {};
-    const uint8_t digits = ra8_esp_hosted_fmt_utoa(nibbles,
-                                                   (uint64_t)bytes[i],
-                                                   (uint8_t)k_ra8_esp_hosted_log_dump_radix,
-                                                   false);
+    const uint8_t digits = priv_ra8_esp_hosted_fmt_utoa(nibbles,
+                                                        (uint64_t)bytes[i],
+                                                        (uint8_t)k_ra8_esp_hosted_log_dump_radix,
+                                                        false);
     if ((pos + (uint32_t)k_ra8_esp_hosted_log_dump_cost) >= sizeof(line)) {
       break;
     }
@@ -208,7 +208,7 @@ void ra8_esp_hosted_log_hexdump(int level, const char* tag, const void* buf, uin
   }
   line[pos] = '\0';
 
-  internal_emit(level, (tag == nullptr) ? k_ra8_esp_hosted_log_tag : tag, line);
+  internal_emit(level, (tag == nullptr) ? s_ra8_esp_hosted_log_tag : tag, line);
 }
 
 /** @brief Implementation of `ra8_esp_hosted_log_level_set()` -- one global
@@ -227,10 +227,10 @@ void ra8_esp_hosted_log_level_set(const char* tag, int level)
   s_ra8_esp_hosted_log_level = clamped;
 }
 
-/** @brief Implementation of `ra8_esp_hosted_log_level_get()` -- reads the
+/** @brief Implementation of `priv_ra8_esp_hosted_log_level_get()` -- reads the
  *  threshold the setter last clamped. */
 RA8_PRIV
-int ra8_esp_hosted_log_level_get(void)
+int priv_ra8_esp_hosted_log_level_get(void)
 {
   return s_ra8_esp_hosted_log_level;
 }
@@ -239,7 +239,7 @@ int ra8_esp_hosted_log_level_get(void)
  *  parks; the caller's check already proved the state is unrecoverable. */
 void ra8_esp_hosted_log_fatal(const char* tag, const char* expr, int code)
 {
-  const char* safe_tag = (tag == nullptr) ? k_ra8_esp_hosted_log_tag : tag;
+  const char* safe_tag = (tag == nullptr) ? s_ra8_esp_hosted_log_tag : tag;
   ra8_esp_hosted_log_write((int)ESP_LOG_ERROR,
                            safe_tag,
                            "fatal: %s -> %d",
@@ -261,9 +261,9 @@ void ra8_esp_hosted_mem_dump(const char* label)
 {
   uint32_t available = 0U;
   uint32_t fragments = 0U;
-  ra8_esp_hosted_rtos_pool_stats(&available, &fragments);
+  priv_ra8_esp_hosted_rtos_pool_stats(&available, &fragments);
   ra8_esp_hosted_log_write((int)ESP_LOG_INFO,
-                           k_ra8_esp_hosted_log_tag,
+                           s_ra8_esp_hosted_log_tag,
                            "%s: pool free %u bytes in %u fragments",
                            (label == nullptr) ? "(unnamed)" : label,
                            (unsigned int)available,
@@ -275,7 +275,7 @@ void ra8_esp_hosted_mem_dump(const char* label)
 void ra8_esp_hosted_alloc_failed(const char* func, size_t bytes)
 {
   ra8_esp_hosted_log_write((int)ESP_LOG_ERROR,
-                           k_ra8_esp_hosted_log_tag,
+                           s_ra8_esp_hosted_log_tag,
                            "%s: pool cannot serve %zu bytes",
                            (func == nullptr) ? "(unnamed)" : func,
                            bytes);

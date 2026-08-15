@@ -75,7 +75,7 @@ DEFINE_LOG_TAG(absent);
 RA8_INTERNAL
 static int internal_absent(const char* slot)
 {
-  ESP_LOGE(TAG, "%s: transport not present on this board", slot);
+  ESP_LOGE(s_esp_hosted_tag, "%s: transport not present on this board", slot);
   return RET_FAIL;
 }
 
@@ -604,10 +604,10 @@ static int internal_uart_flush_input(void* ctx)
   return internal_absent("_h_uart_flush_input");
 }
 
-/** @brief Implementation of `ra8_esp_hosted_osi_bind_absent()` -- fills all
+/** @brief Implementation of `priv_ra8_esp_hosted_osi_bind_absent()` -- fills all
  *  sixteen rows so none is ever left null. */
 RA8_PRIV
-void ra8_esp_hosted_osi_bind_absent(hosted_osi_funcs_t* out)
+void priv_ra8_esp_hosted_osi_bind_absent(hosted_osi_funcs_t* out)
 {
   if (out == nullptr) {
     return;

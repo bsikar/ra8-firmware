@@ -66,7 +66,7 @@
  * char digits[k_ra8_esp_hosted_fmt_digits_max + 1U] = {};
  * @endcode
  *
- * @see ra8_esp_hosted_fmt_utoa
+ * @see priv_ra8_esp_hosted_fmt_utoa
  * @since 0.1.0
  */
 typedef enum : uint16_t {
@@ -96,7 +96,7 @@ typedef enum : uint16_t {
  * @par Example:
  * @code
  * ra8_esp_hosted_fmt_spec_t spec = {};
- * (void)ra8_esp_hosted_fmt_parse("%llu", &spec);
+ * (void)priv_ra8_esp_hosted_fmt_parse("%llu", &spec);
  * @endcode
  *
  * @see ra8_esp_hosted_fmt_spec_t
@@ -114,7 +114,7 @@ typedef enum : uint8_t {
  * @brief One parsed conversion specification.
  *
  * @details
- * Produced by ::ra8_esp_hosted_fmt_parse from the characters following a
+ * Produced by ::priv_ra8_esp_hosted_fmt_parse from the characters following a
  * per-cent sign, and consumed by the formatter driver. Splitting parsing
  * from emission is what keeps both functions inside the project's function
  * length limit and lets the parser be tested on its own.
@@ -127,10 +127,10 @@ typedef enum : uint8_t {
  * @par Example:
  * @code
  * ra8_esp_hosted_fmt_spec_t spec = {};
- * if (ra8_esp_hosted_fmt_parse("08x rest", &spec)) { emit(&spec); }
+ * if (priv_ra8_esp_hosted_fmt_parse("08x rest", &spec)) { emit(&spec); }
  * @endcode
  *
- * @see ra8_esp_hosted_fmt_parse
+ * @see priv_ra8_esp_hosted_fmt_parse
  * @since 0.1.0
  */
 typedef struct ra8_esp_hosted_fmt_spec {
@@ -177,20 +177,20 @@ typedef struct ra8_esp_hosted_fmt_spec {
  * @par MC/DC:
  * Promoted from `static` so the flag, width, length-modifier and
  * conversion decisions can be driven directly. The production caller is
- * ::ra8_esp_hosted_fmt_vformat; nothing outside `tests/` may call it.
+ * ::priv_ra8_esp_hosted_fmt_vformat; nothing outside `tests/` may call it.
  *
  * @par Example:
  * @code
  * ra8_esp_hosted_fmt_spec_t spec = {};
- * (void)ra8_esp_hosted_fmt_parse("-8s: ", &spec);
+ * (void)priv_ra8_esp_hosted_fmt_parse("-8s: ", &spec);
  * @endcode
  *
- * @see ra8_esp_hosted_fmt_vformat
+ * @see priv_ra8_esp_hosted_fmt_vformat
  * @since 0.1.0
  */
 RA8_PRIV
-[[nodiscard]] bool ra8_esp_hosted_fmt_parse(const char*                after_percent,
-                                            ra8_esp_hosted_fmt_spec_t* out);
+[[nodiscard]] bool priv_ra8_esp_hosted_fmt_parse(const char*                after_percent,
+                                                 ra8_esp_hosted_fmt_spec_t* out);
 
 /**
  * @brief Render an unsigned value into a digit buffer, least digit last.
@@ -226,14 +226,15 @@ RA8_PRIV
  * @par Example:
  * @code
  * char digits[k_ra8_esp_hosted_fmt_digits_max + 1U] = {};
- * const uint8_t n = ra8_esp_hosted_fmt_utoa(digits, 255U, 16U, false);
+ * const uint8_t n = priv_ra8_esp_hosted_fmt_utoa(digits, 255U, 16U, false);
  * @endcode
  *
- * @see ra8_esp_hosted_fmt_vformat
+ * @see priv_ra8_esp_hosted_fmt_vformat
  * @since 0.1.0
  */
 RA8_PRIV
-[[nodiscard]] uint8_t ra8_esp_hosted_fmt_utoa(char* buf, uint64_t value, uint8_t base, bool upper);
+[[nodiscard]] uint8_t
+priv_ra8_esp_hosted_fmt_utoa(char* buf, uint64_t value, uint8_t base, bool upper);
 
 /**
  * @brief Format into a bounded buffer from a variable-argument list.
@@ -279,12 +280,12 @@ RA8_PRIV
  * char line[64] = {};
  * va_list ap;
  * va_start(ap, fmt);
- * (void)ra8_esp_hosted_fmt_vformat(line, sizeof(line), fmt, ap);
+ * (void)priv_ra8_esp_hosted_fmt_vformat(line, sizeof(line), fmt, ap);
  * va_end(ap);
  * @endcode
  *
- * @see ra8_esp_hosted_fmt_parse
+ * @see priv_ra8_esp_hosted_fmt_parse
  * @since 0.1.0
  */
 RA8_PRIV
-uint32_t ra8_esp_hosted_fmt_vformat(char* out, uint32_t cap, const char* fmt, va_list ap);
+uint32_t priv_ra8_esp_hosted_fmt_vformat(char* out, uint32_t cap, const char* fmt, va_list ap);
