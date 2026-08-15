@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "c6_camera_server.h"
+#include "ra8_attributes.h"
 #include "ra8_audio.h"
 #include "ra8_audio_source_pdm.h"
 #include "ra8_board_ek_ra8d2.h"
@@ -88,7 +89,7 @@ static c6_cam_audio_bank_t s_audio_banks[k_c6_cam_audio_bank_count];
  * @note The helper performs no alignment-dependent stores.
  * @since 0.1.0
  */
-static void c6_cam_audio_put_u16(uint8_t* out, uint16_t value)
+RA8_INTERNAL static void internal_c6_cam_audio_put_u16(uint8_t* out, uint16_t value)
 {
   out[0] = (uint8_t)(value & (uint16_t)k_c6_cam_byte_mask);
   out[1] = (uint8_t)(value >> 8U);
@@ -106,7 +107,7 @@ static void c6_cam_audio_put_u16(uint8_t* out, uint16_t value)
  * @note The helper performs no alignment-dependent stores.
  * @since 0.1.0
  */
-static void c6_cam_audio_put_u32(uint8_t* out, uint32_t value)
+RA8_INTERNAL static void internal_c6_cam_audio_put_u32(uint8_t* out, uint32_t value)
 {
   out[0] = (uint8_t)(value & (uint32_t)k_c6_cam_byte_mask);
   out[1] = (uint8_t)((value >> 8U) & (uint32_t)k_c6_cam_byte_mask);
@@ -129,7 +130,7 @@ static void c6_cam_audio_put_u32(uint8_t* out, uint32_t value)
  * @note Integer division intentionally discards four low bits.
  * @since 0.1.0
  */
-static int16_t c6_cam_audio_s16(int32_t sample)
+RA8_INTERNAL static int16_t internal_c6_cam_audio_s16(int32_t sample)
 {
   const int64_t amplified = (int64_t)sample * (int64_t)k_c6_cam_audio_gain;
   int32_t       scaled    = (int32_t)(amplified / 16);
@@ -153,7 +154,7 @@ static int16_t c6_cam_audio_s16(int32_t sample)
  * @note This callback runs in the PDM interrupt path.
  * @since 0.1.0
  */
-static void c6_cam_audio_on_frame(void* ctx, const ra8_audio_frame_t* frame)
+RA8_INTERNAL static void internal_c6_cam_audio_on_frame(void* ctx, const ra8_audio_frame_t* frame)
 {
   (void)ctx;
   if ((frame == nullptr) || (frame->data == nullptr) ||
@@ -193,22 +194,23 @@ static void c6_cam_audio_on_frame(void* ctx, const ra8_audio_frame_t* frame)
  * @note The sample rate is fixed at 16 kHz mono.
  * @since 0.1.0
  */
-static void c6_cam_audio_write_header(uint32_t samples)
+RA8_INTERNAL static void internal_c6_cam_audio_write_header(uint32_t samples)
 {
   const uint32_t data_bytes = samples * (uint32_t)k_c6_cam_wav_sample_bytes;
   (void)memcpy(&s_audio_wav[0], "RIFF", 4U);
-  c6_cam_audio_put_u32(&s_audio_wav[4], (uint32_t)k_c6_cam_wav_riff_overhead + data_bytes);
+  internal_c6_cam_audio_put_u32(&s_audio_wav[4], (uint32_t)k_c6_cam_wav_riff_overhead + data_bytes);
   (void)memcpy(&s_audio_wav[8], "WAVEfmt ", 8U);
-  c6_cam_audio_put_u32(&s_audio_wav[16], 16U);
-  c6_cam_audio_put_u16(&s_audio_wav[k_c6_cam_wav_audio_format_off], 1U);
-  c6_cam_audio_put_u16(&s_audio_wav[k_c6_cam_wav_channels_off], 1U);
-  c6_cam_audio_put_u32(&s_audio_wav[24], (uint32_t)k_c6_cam_audio_rate_hz);
-  c6_cam_audio_put_u32(&s_audio_wav[k_c6_cam_wav_byte_rate_off],
-                       (uint32_t)k_c6_cam_audio_rate_hz * (uint32_t)k_c6_cam_wav_sample_bytes);
-  c6_cam_audio_put_u16(&s_audio_wav[32], (uint16_t)k_c6_cam_wav_sample_bytes);
-  c6_cam_audio_put_u16(&s_audio_wav[k_c6_cam_wav_bits_off], 16U);
+  internal_c6_cam_audio_put_u32(&s_audio_wav[16], 16U);
+  internal_c6_cam_audio_put_u16(&s_audio_wav[k_c6_cam_wav_audio_format_off], 1U);
+  internal_c6_cam_audio_put_u16(&s_audio_wav[k_c6_cam_wav_channels_off], 1U);
+  internal_c6_cam_audio_put_u32(&s_audio_wav[24], (uint32_t)k_c6_cam_audio_rate_hz);
+  internal_c6_cam_audio_put_u32(&s_audio_wav[k_c6_cam_wav_byte_rate_off],
+                                (uint32_t)k_c6_cam_audio_rate_hz *
+                                  (uint32_t)k_c6_cam_wav_sample_bytes);
+  internal_c6_cam_audio_put_u16(&s_audio_wav[32], (uint16_t)k_c6_cam_wav_sample_bytes);
+  internal_c6_cam_audio_put_u16(&s_audio_wav[k_c6_cam_wav_bits_off], 16U);
   (void)memcpy(&s_audio_wav[36], "data", 4U);
-  c6_cam_audio_put_u32(&s_audio_wav[k_c6_cam_wav_data_size_off], data_bytes);
+  internal_c6_cam_audio_put_u32(&s_audio_wav[k_c6_cam_wav_data_size_off], data_bytes);
 }
 
 ra8_err_t c6_cam_audio_start(void)
@@ -244,7 +246,10 @@ ra8_err_t c6_cam_audio_start(void)
     .data     = s_audio_frame,
     .capacity = (uint32_t)sizeof(s_audio_frame),
   };
-  err = ra8_audio_source_stream_start(&s_audio_source, &buffer, c6_cam_audio_on_frame, nullptr);
+  err = ra8_audio_source_stream_start(&s_audio_source,
+                                      &buffer,
+                                      internal_c6_cam_audio_on_frame,
+                                      nullptr);
   if (err != k_ra8_ok) {
     (void)ra8_audio_source_stop(&s_audio_source);
   }
@@ -276,14 +281,15 @@ c6_cam_audio_snapshot_wav(const uint8_t** out_wav, uint32_t* out_bytes, uint32_t
   ra8_register_guard_exit(&guard);
 
   const uint32_t oldest = (samples == (uint32_t)k_c6_cam_audio_ring_samples) ? write : 0U;
-  c6_cam_audio_write_header(samples);
+  internal_c6_cam_audio_write_header(samples);
   for (uint32_t i = 0U; i < samples; ++i) {
     uint32_t ring_index = oldest + i;
     if (ring_index >= (uint32_t)k_c6_cam_audio_ring_samples) {
       ring_index -= (uint32_t)k_c6_cam_audio_ring_samples;
     }
-    const uint16_t pcm = (uint16_t)c6_cam_audio_s16(s_audio_ring[snapshot_bank][ring_index]);
-    c6_cam_audio_put_u16(
+    const uint16_t pcm =
+      (uint16_t)internal_c6_cam_audio_s16(s_audio_ring[snapshot_bank][ring_index]);
+    internal_c6_cam_audio_put_u16(
       &s_audio_wav[k_c6_cam_wav_header_bytes + (i * (uint32_t)k_c6_cam_wav_sample_bytes)],
       pcm);
   }

@@ -20,6 +20,7 @@
 #include "c6_camera_server.h"
 #include "c6_camera_server_credentials.h"
 #include "nx_ether_driver_c6.h"
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_c6link.h"
 #include "ra8_c6link_wifi.h"
@@ -55,7 +56,7 @@ static volatile uint16_t s_disconnect_reason;
  * @note Only reset or debugger intervention terminates the loop.
  * @since 0.1.0
  */
-static void c6_cam_halt(void)
+RA8_INTERNAL static void internal_c6_cam_halt(void)
 {
   while (true) {
     __asm volatile("wfi");
@@ -68,29 +69,29 @@ static void c6_cam_halt(void)
  * @pre Startup initialized data, BSS, vector state, and the CPU clock source.
  * @pre Called from the single-threaded application entry path.
  * @post On success, clock globals and the diagnostic console are ready.
- * @post Any initialization failure transfers permanently to `c6_cam_halt`.
+ * @post Any initialization failure transfers permanently to `internal_c6_cam_halt`.
  * @note ThreadX has not started when this function runs.
  * @since 0.1.0
  */
-static void c6_cam_setup_or_halt(void)
+RA8_INTERNAL static void internal_c6_cam_setup_or_halt(void)
 {
   ra8_board_clock_rates_t clock_rates = {};
   if (ra8_board_clocks_init(&clock_rates) != k_ra8_ok) {
-    c6_cam_halt();
+    internal_c6_cam_halt();
   }
   s_cpuclk_hz = clock_rates.cpuclk0_hz;
   s_pclka_hz  = clock_rates.pclka_hz;
   if (ra8_mstp_init() != k_ra8_ok) {
-    c6_cam_halt();
+    internal_c6_cam_halt();
   }
   if (ra8_isr_init() != k_ra8_ok) {
-    c6_cam_halt();
+    internal_c6_cam_halt();
   }
   if (ra8_time_init(s_cpuclk_hz) != k_ra8_ok) {
-    c6_cam_halt();
+    internal_c6_cam_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_c6_cam_uart_baud) != k_ra8_ok) {
-    c6_cam_halt();
+    internal_c6_cam_halt();
   }
   c6_cam_puts("c6_cam: entering C6 handshake\r\n");
 }
@@ -107,7 +108,7 @@ static void c6_cam_setup_or_halt(void)
  * @note Boot and unrelated Wi-Fi events are counted without extra state.
  * @since 0.1.0
  */
-static void c6_cam_on_event(void* ctx, const ra8_c6link_event_t* event)
+RA8_INTERNAL static void internal_c6_cam_on_event(void* ctx, const ra8_c6link_event_t* event)
 {
   (void)ctx;
   if (event == nullptr) {
@@ -136,7 +137,7 @@ static void c6_cam_on_event(void* ctx, const ra8_c6link_event_t* event)
  * @note This helper does not halt the caller.
  * @since 0.1.0
  */
-static void c6_cam_report_fault(const char* stage, ra8_err_t err)
+RA8_INTERNAL static void internal_c6_cam_report_fault(const char* stage, ra8_err_t err)
 {
   c6_cam_puts("c6_cam: FAIL ");
   c6_cam_puts(stage);
@@ -158,7 +159,7 @@ static void c6_cam_report_fault(const char* stage, ra8_err_t err)
  * @note Transport or link-open errors are propagated unchanged.
  * @since 0.1.0
  */
-static ra8_err_t c6_cam_open_link(void)
+RA8_INTERNAL static ra8_err_t internal_c6_cam_open_link(void)
 {
   ra8_c6link_cfg_t cfg = {};
   ra8_err_t        err = ra8_esp_hosted_c6link_bind(&cfg.transport);
@@ -167,7 +168,7 @@ static ra8_err_t c6_cam_open_link(void)
   }
   cfg.arena       = s_arena;
   cfg.arena_bytes = (uint32_t)sizeof(s_arena);
-  cfg.event_cb    = c6_cam_on_event;
+  cfg.event_cb    = internal_c6_cam_on_event;
   cfg.rx_cb       = nx_ether_driver_c6_rx;
   cfg.cb_ctx      = nullptr;
   return ra8_c6link_open(&s_link, &cfg);
@@ -186,7 +187,7 @@ static ra8_err_t c6_cam_open_link(void)
  * @note Poll transport errors are ignored while event latches determine the result.
  * @since 0.1.0
  */
-static bool c6_cam_wait_connected(void)
+RA8_INTERNAL static bool internal_c6_cam_wait_connected(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_c6_cam_assoc_polls; i++) {
     (void)ra8_c6link_poll(&s_link, (uint16_t)k_ra8_c6link_announce_transfers, nullptr);
@@ -214,9 +215,9 @@ static bool c6_cam_wait_connected(void)
  * @note The caller decides whether failure is terminal.
  * @since 0.1.0
  */
-static bool c6_cam_prepare_link(void)
+RA8_INTERNAL static bool internal_c6_cam_prepare_link(void)
 {
-  ra8_err_t err = c6_cam_open_link();
+  ra8_err_t err = internal_c6_cam_open_link();
   c6_cam_puts("c6_cam: link_open=");
   c6_cam_puts(ra8_err_to_str(err));
   c6_cam_puts("\r\n");
@@ -226,7 +227,7 @@ static bool c6_cam_prepare_link(void)
   ra8_c6link_fw_version_t version = {};
   err = ra8_c6link_await_ready(&s_link, (uint16_t)k_ra8_c6link_announce_transfers, &version);
   if (err != k_ra8_ok) {
-    c6_cam_report_fault("await_ready", err);
+    internal_c6_cam_report_fault("await_ready", err);
     return false;
   }
   c6_cam_puts("c6_cam: coprocessor fw=");
@@ -253,7 +254,7 @@ static bool c6_cam_prepare_link(void)
  * @note Credentials are compiled into a generated translation unit.
  * @since 0.1.0
  */
-static bool c6_cam_join(c6_cam_lease_t* lease)
+RA8_INTERNAL static bool internal_c6_cam_join(c6_cam_lease_t* lease)
 {
   if (g_c6_cam_wifi_ssid[0] == '\0') {
     c6_cam_puts("c6_cam: FAIL no Wi-Fi credentials compiled in\r\n");
@@ -262,19 +263,19 @@ static bool c6_cam_join(c6_cam_lease_t* lease)
 
   ra8_err_t err = ra8_c6link_wifi_start(&s_link);
   if (err != k_ra8_ok) {
-    c6_cam_report_fault("wifi_start", err);
+    internal_c6_cam_report_fault("wifi_start", err);
     return false;
   }
   ra8_c6link_mac_t mac = {};
   err                  = ra8_c6link_wifi_mac(&s_link, &mac);
   if (err != k_ra8_ok) {
-    c6_cam_report_fault("wifi_mac", err);
+    internal_c6_cam_report_fault("wifi_mac", err);
     return false;
   }
   ra8_c6link_sta_cfg_t station = {};
   err = ra8_c6link_sta_cfg_set(&station, g_c6_cam_wifi_ssid, g_c6_cam_wifi_psk);
   if (err != k_ra8_ok) {
-    c6_cam_report_fault("sta_cfg_set", err);
+    internal_c6_cam_report_fault("sta_cfg_set", err);
     return false;
   }
   s_connected         = 0U;
@@ -282,10 +283,10 @@ static bool c6_cam_join(c6_cam_lease_t* lease)
   s_disconnect_reason = 0U;
   err                 = ra8_c6link_wifi_join(&s_link, &station);
   if (err != k_ra8_ok) {
-    c6_cam_report_fault("wifi_join", err);
+    internal_c6_cam_report_fault("wifi_join", err);
     return false;
   }
-  if (!c6_cam_wait_connected()) {
+  if (!internal_c6_cam_wait_connected()) {
     c6_cam_puts("c6_cam: FAIL association reason=");
     c6_cam_put_u32((uint32_t)s_disconnect_reason);
     c6_cam_puts(" events=");
@@ -321,7 +322,7 @@ static bool c6_cam_join(c6_cam_lease_t* lease)
  * @note The startup JPEG remains owned by the selected camera backend.
  * @since 0.1.0
  */
-static bool c6_cam_prepare_media(void)
+RA8_INTERNAL static bool internal_c6_cam_prepare_media(void)
 {
   if (ra8_sdramc_init() != k_ra8_ok) {
     c6_cam_puts("c6_cam: FAIL SDRAM init\r\n");
@@ -378,25 +379,25 @@ static bool c6_cam_prepare_media(void)
  * @note All persistent buffers are static or caller-owned.
  * @since 0.1.0
  */
-static void c6_cam_worker_entry(ULONG input)
+RA8_INTERNAL static void internal_c6_cam_worker_entry(ULONG input)
 {
   (void)input;
   if (s_port_err != k_ra8_ok) {
     c6_cam_puts("c6_cam: FAIL esp-hosted port init err=");
     c6_cam_puts(ra8_err_to_str(s_port_err));
     c6_cam_puts("\r\n");
-    c6_cam_halt();
+    internal_c6_cam_halt();
   }
   ra8_delay_ms((uint32_t)k_c6_cam_boot_wait_ms);
-  if (!c6_cam_prepare_media()) {
-    c6_cam_halt();
+  if (!internal_c6_cam_prepare_media()) {
+    internal_c6_cam_halt();
   }
-  if (!c6_cam_prepare_link()) {
-    c6_cam_halt();
+  if (!internal_c6_cam_prepare_link()) {
+    internal_c6_cam_halt();
   }
   c6_cam_lease_t lease = {};
-  if (!c6_cam_join(&lease)) {
-    c6_cam_halt();
+  if (!internal_c6_cam_join(&lease)) {
+    internal_c6_cam_halt();
   }
   c6_cam_puts("c6_cam: PASS Wi-Fi and DHCP ip=");
   c6_cam_put_ip(lease.ip);
@@ -419,7 +420,7 @@ void tx_application_define(void* first_unused_memory)
   s_port_err = ra8_esp_hosted_port_init(&cfg);
   if (tx_thread_create(&s_worker,
                        s_worker_name,
-                       c6_cam_worker_entry,
+                       internal_c6_cam_worker_entry,
                        0U,
                        s_worker_stack,
                        (ULONG)sizeof(s_worker_stack),
@@ -433,10 +434,10 @@ void tx_application_define(void* first_unused_memory)
 
 int32_t c6_cam_app_run(void)
 {
-  c6_cam_setup_or_halt();
+  internal_c6_cam_setup_or_halt();
   ra8_isr_globals_enable();
   c6_cam_puts("c6_cam: entering ThreadX\r\n");
   tx_kernel_enter();
-  c6_cam_halt();
+  internal_c6_cam_halt();
   return 0;
 }
