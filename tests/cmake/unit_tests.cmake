@@ -45,6 +45,7 @@ function(ra8_add_test name)
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
             ${FW_ROOT}/libs/ra8_core/inc
             ${FW_ROOT}/libs/ra8_hal/inc
+            ${FW_ROOT}/libs/ra8_jpeg/inc
             ${FW_ROOT}/libs/ra8_net_pal/inc
             ${FW_ROOT}/libs/ra8_modem_at/inc
             ${FW_ROOT}/libs/ra8_usb_pal/inc
@@ -113,6 +114,7 @@ function(ra8_add_test name)
             # Per-module src/ for MC/DC test access (see CLAUDE.md).
             ${FW_ROOT}/libs/ra8_core/src
             ${FW_ROOT}/libs/ra8_hal/src
+            ${FW_ROOT}/libs/ra8_jpeg/src
             ${FW_ROOT}/libs/ra8_net_pal/src
             ${FW_ROOT}/libs/ra8_modem_at/src
             ${FW_ROOT}/libs/ra8_tls/src

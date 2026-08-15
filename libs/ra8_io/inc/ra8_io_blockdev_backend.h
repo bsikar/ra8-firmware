@@ -1,19 +1,23 @@
 /**
- * @file ra8_io_blockdev_internal.h
- * @brief Internal vtable type for the ra8_io block-device fabric.
+ * @file ra8_io_blockdev_backend.h
+ * @brief Backend implementation contract for the ra8_io block-device fabric.
  * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}
  *
  * @details
- * Not part of the public API. Only the block-device dispatcher and the backend
- * translation units include this file. Tests under `tests/` MAY include it to
- * drive MC/DC vectors against internal helpers; application code never should.
+ * This implementer-facing header is the Dependency Inversion seam for storage
+ * backends. A library that presents an ::ra8_io_blockdev_t includes this header,
+ * defines one const ::ra8_io_blockdev_iface_t, and binds it into the public
+ * handle. Application consumers use only `ra8_io_blockdev.h` and never need the
+ * concrete callback table.
  *
- * Defines ::ra8_io_blockdev_iface -- the function-pointer table each backend
- * fills in and binds into a caller-owned ::ra8_io_blockdev_t. It is forward
- * declared opaque in `ra8_io_blockdev.h`.
+ * Keeping this contract under `inc/` is intentional: adapters such as `ra8_ftl`
+ * are separate libraries and must be able to implement the abstraction without
+ * reaching into `libs/ra8_io/src/`. The callback contract remains free of
+ * platform and device types, so host, RAM, flash, SD, and future architectures
+ * substitute behind the same handle.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

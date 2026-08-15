@@ -3,7 +3,7 @@
  * @brief Streaming baseline JPEG decoder: bounded-RAM MCU-row stripes (#231).
  *
  * @par Tag
- * [Ring 3 / HAL] {World: NS}
+ * [Ring 4 / Domain] {World: NS}
  *
  * @details
  * Implements `ra8_jpeg_sw_decode_stripes()`: the same baseline (8-bit,
