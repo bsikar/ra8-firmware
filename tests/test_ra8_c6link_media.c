@@ -40,9 +40,9 @@ typedef enum : uint8_t {
  * its all-true control (zero data, 32-byte non-null digest, status zero, and
  * total equal to end); the explicit cancel then exercises the separately
  * correlated cancellation-acknowledgement path.
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@mdl_chunk_semantics_valid
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@mdl_take_chunk
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@mdl_take_cancelled @details
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_chunk_semantics_valid
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_chunk
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_cancelled @details
  * Executes the media download roundtrip scenario with bounded fixture state and
  * asserts the contract-specific result. @pre Fixed-capacity fixture storage
  * required by this operation is available. @pre Arguments follow the interface
@@ -126,8 +126,8 @@ static void internal_mdl_before_terminal(ra8_mdl_session_t* session)
  * this test first consumes; V5 CANCELLED with data changes `data.len==0` from
  * true to false (control in `internal_test_media_download_terminal_status`).
  * Every rejected vector preserves the active session and its offset/sequence.
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@mdl_chunk_semantics_valid
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@mdl_take_chunk @details
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_chunk_semantics_valid
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_chunk @details
  * Executes the media download rejects bad terminal frames scenario with bounded
  * fixture state and asserts the contract-specific result. @pre Fixed-capacity
  * fixture storage required by this operation is available. @pre Arguments
@@ -202,8 +202,8 @@ static void internal_test_media_download_rejects_bad_terminal_frames(void)
  * state-specific semantic conjunctions execute their all-true controls:
  * FAILED has a positive bounded status with no data/digest, while CANCELLED
  * has zero status with no data/digest.
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@mdl_chunk_semantics_valid
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@mdl_take_chunk @details
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_chunk_semantics_valid
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_chunk @details
  * Executes the media download terminal status scenario with bounded fixture
  * state and asserts the contract-specific result. @pre Fixed-capacity fixture
  * storage required by this operation is available. @pre Arguments follow the
@@ -666,8 +666,8 @@ static void internal_test_media_transfer_aborts_storage_failures(void)
  * transfer, `(!chunk->has_sha256) || (chunk->total_bytes != bytes_stored)`
  * executes F,F/false before the digest-only mismatch and validation-only
  * failure select their respective single decisions.
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@mdl_take_chunk
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c@mdl_transfer_commit
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_chunk
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c@internal_mdl_transfer_commit
  * Decisions:
  * libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c@ra8_c6link_mdl_transfer
  * @details Executes the media transfer aborts integrity failures scenario with

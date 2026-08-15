@@ -233,7 +233,7 @@ RA8_INTERNAL static void internal_test_label_exfat_roundtrip(void)
  * @test test_label_get_null_guard
  * @par MC/DC:
  * Decision: `if (handle == nullptr || out == nullptr)` (2 conditions) in
- * `libs/ra8_fs/src/ra8_fs_fat_label.c@priv_get_label_locked`.
+ * `libs/ra8_fs/src/ra8_fs_fat_label.c@internal_get_label_locked`.
  * - V1 handle=valid, out=valid -> F (control: both false).
  * - V2 handle=NULL,  out=valid -> C1=T -> T (varies handle only).
  * - V3 handle=valid, out=NULL  -> C1=F, C2=T -> T (varies out only).
@@ -260,7 +260,7 @@ RA8_INTERNAL static void internal_test_label_get_null_guard(void)
  * @test test_label_set_guard
  * @par MC/DC:
  * Decision: `if (label != nullptr && priv_strlen(label) > k_fmt_label_len)`
- * (2 conditions) in `libs/ra8_fs/src/ra8_fs_fat_label.c@priv_set_label_locked`.
+ * (2 conditions) in `libs/ra8_fs/src/ra8_fs_fat_label.c@internal_set_label_locked`.
  * - V1 label=NULL           -> C1=F -> short-circuit F (clear; accepted).
  * - V2 label="DATA" (len 4) -> C1=T, C2=F -> F (accepted).
  * - V3 label=12-char string -> C1=T, C2=T -> T (rejected, invalid_arg).
@@ -285,7 +285,7 @@ RA8_INTERNAL static void internal_test_label_set_guard(void)
  * @test test_mcdc_find_free_root
  * @par MC/DC:
  * Decision: `if (name0 == free_perm || name0 == free_used)` (2 conditions) in
- * `libs/ra8_fs/src/ra8_fs_fat_label.c@priv_fat_find_free_root`, the free-slot
+ * `libs/ra8_fs/src/ra8_fs_fat_label.c@internal_fat_find_free_root`, the free-slot
  * test, reached when set_label creates a new volume-label entry.
  * - V1 first slot is end-of-directory (0x00) -> C1=T -> found (fresh volume).
  * - V2 first slot is deleted (0xE5)           -> C1=F, C2=T -> found (an
@@ -329,7 +329,7 @@ RA8_INTERNAL static void internal_test_mcdc_find_free_root(void)
 /**
  * @test test_mcdc_set_label_fat
  * @par MC/DC:
- * Two decisions in `libs/ra8_fs/src/ra8_fs_fat_label.c@priv_set_label_fat`.
+ * Two decisions in `libs/ra8_fs/src/ra8_fs_fat_label.c@internal_set_label_fat`.
  *
  * Decision A -- `clearing = (label == nullptr) || (label[0] == '\0')`:
  * - V1 label=NULL -> C1=T (clear).

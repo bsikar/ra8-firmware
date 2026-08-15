@@ -442,7 +442,7 @@ RA8_INTERNAL static void internal_test_attr_archive_exfat(void)
  * @par MC/DC:
  * Decision: `if (((set & ~settable) != 0) || ((clear & ~settable) != 0) ||
  * ((set & clear) != 0))` (3 conditions) in
- * `libs/ra8_fs/src/ra8_fs_fat_attr.c@priv_setattr_locked`.
+ * `libs/ra8_fs/src/ra8_fs_fat_attr.c@internal_setattr_locked`.
  * - V1 set=archive, clear=0            -> C1=F,C2=F,C3=F -> F (control; patched).
  * - V2 set=directory(non-settable)     -> C1=T -> T (varies C1).
  * - V3 set=0, clear=directory          -> C1=F,C2=T -> T (varies C2).

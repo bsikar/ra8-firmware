@@ -755,7 +755,7 @@ RA8_INTERNAL static void internal_test_fat_truncate_offset_follows(void)
  *
  * @par MC/DC:
  * Decision: `file->in_use == 0 || file->mode == k_ra8_fs_mode_read` in
- * `libs/ra8_fs/src/ra8_fs_fat_truncate.c@priv_truncate_locked` (2 conditions).
+ * `libs/ra8_fs/src/ra8_fs_fat_truncate.c@internal_truncate_locked` (2 conditions).
  * - Vector 1: in_use=1, mode=write -> false (control: the earlier tests all
  *   truncate a writable open handle).
  * - Vector 2: in_use=0, mode=write -> true (the closed handle here).
