@@ -26,7 +26,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "miniz.h"
@@ -681,6 +680,5 @@ int32_t main(void)
   test_ra8_book_paged_guards();
   test_ra8_book_paged_long_run();
   test_ra8_book_paged_read_faults();
-  (void)fprintf(stderr, "[OK ] test_ra8_book_paged.c\n");
   return 0;
 }

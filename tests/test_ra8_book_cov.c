@@ -10,7 +10,7 @@
  * per-chunk inflate stage, and entry-point null guards all execute. The focus
  * is plain line coverage (gcovr), not MC/DC: each malformed or edge container
  * is shaped to run one previously-unexecuted branch of the loader
- * (`ra8_book_container_header_fields`, `internal_container_view`, `internal_inflate_chunks`)
+ * (`priv_book_container_header_fields`, `internal_container_view`, `internal_inflate_chunks`)
  * and the returned ::ra8_err_t is asserted.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -250,14 +250,14 @@ typedef enum : uint32_t {
  *        whose (offset + count * elem) reaches past the blob.
  *
  * @par Targeted code:
- * `ra8_book_table_fits`'s `return (off <= total) && (end <= total)` -- the
+ * `internal_table_fits`'s `return (off <= total) && (end <= total)` -- the
  * right-operand-false leg. The node table keeps a valid offset (off <= total ->
  * C1 true) but an oversized count pushes the computed end past total (C2 false),
  * so the conjunction is false and ra8_book_validate returns invalid_size.
  *
  * @par MC/DC:
  * Decision: `(off <= total) && (end <= (uint64_t)total)` (2 conditions) in
- * libs/ra8_book/src/ra8_book.c@ra8_book_table_fits:
+ * libs/ra8_book/src/ra8_book.c@internal_table_fits:
  * - Vector 1: off <= total, end <= total -> true  (every valid blob validated in
  *   this file supplies the all-true control leg).
  * - Vector 2: off  > total               -> C1 false (chapter_off past the buffer,
@@ -357,7 +357,7 @@ static void bc_expect_open(ra8_err_t             want,
  *
  * @par Targeted code:
  * `internal_container_view`'s short-file return, then every
- * `ra8_book_container_header_fields` rejection reached through `ra8_book_open`:
+ * `priv_book_container_header_fields` rejection reached through `ra8_book_open`:
  * the magic mismatch, the zero `chunk_bytes`, the zero `inflated_total`, the
  * non-zero `reserved` word, and a `chunk_count` disagreeing with
  * `ceil(total / chunk_bytes)`. Each error also drives the early error return
@@ -365,7 +365,7 @@ static void bc_expect_open(ra8_err_t             want,
  *
  * @par MC/DC:
  * Decision: `if ((chunk_bytes == 0U) || (total == 0U) || (reserved != 0U))`
- * (3 conditions) in libs/ra8_book/src/ra8_book.c@ra8_book_container_header_fields:
+ * (3 conditions) in libs/ra8_book/src/ra8_book.c@priv_book_container_header_fields:
  * - Vector 1: chunk_bytes=blob, total=blob, reserved=0 -> false (the
  *   well-formed fixture; all conditions false -- exercised by every passing
  *   open in this file).

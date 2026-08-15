@@ -30,7 +30,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "ra8_book.h"
@@ -743,6 +742,5 @@ int32_t main(void)
   test_mcdc_ra8_book_src_image_rect_guards();
   test_ra8_book_src_image_rect_gray8();
   test_ra8_book_src_image_rect_faults();
-  (void)fprintf(stderr, "[OK ] test_ra8_book_image_rect.c\n");
   return 0;
 }

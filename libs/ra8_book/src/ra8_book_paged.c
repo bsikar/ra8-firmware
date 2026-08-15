@@ -111,7 +111,7 @@ ra8_err_t ra8_book_src_paged(ra8_book_src_t* out,
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_book_src_read_paged(const ra8_book_src_t* src, uint32_t off, void* dst, uint32_t len)
+internal_book_src_read_paged(const ra8_book_src_t* src, uint32_t off, void* dst, uint32_t len)
 {
   uint8_t*       d         = (uint8_t*)dst;
   uint32_t       cur       = off;
@@ -155,7 +155,7 @@ ra8_err_t ra8_book_src_read(const ra8_book_src_t* src, uint32_t off, void* dst, 
   if (src->vm == nullptr) {
     return k_ra8_err_invalid_state;
   }
-  return priv_book_src_read_paged(src, off, dst, len);
+  return internal_book_src_read_paged(src, off, dst, len);
 }
 
 /* ===========================================================================
@@ -218,13 +218,12 @@ typedef enum : uint32_t {
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t priv_book_image_row(const ra8_book_src_t*   src,
-                                     const ra8_book_image_t* img,
-                                     uint32_t                x,
-                                     uint32_t                ry,
-                                     uint32_t                w,
-                                     uint8_t*                out)
+RA8_INTERNAL static ra8_err_t internal_book_image_row(const ra8_book_src_t*   src,
+                                                      const ra8_book_image_t* img,
+                                                      uint32_t                x,
+                                                      uint32_t                ry,
+                                                      uint32_t                w,
+                                                      uint8_t*                out)
 {
   const uint32_t row_flat = (ry * (uint32_t)img->width) + x;
   uint8_t        packed[(k_ra8_book_rect_chunk_px / k_ra8_book_gray4_ppb) + 1U];
@@ -296,13 +295,12 @@ static ra8_err_t priv_book_image_row(const ra8_book_src_t*   src,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t priv_book_image_row_gray8(const ra8_book_src_t*   src,
-                                           const ra8_book_image_t* img,
-                                           uint32_t                x,
-                                           uint32_t                ry,
-                                           uint32_t                w,
-                                           uint8_t*                out)
+RA8_INTERNAL static ra8_err_t internal_book_image_row_gray8(const ra8_book_src_t*   src,
+                                                            const ra8_book_image_t* img,
+                                                            uint32_t                x,
+                                                            uint32_t                ry,
+                                                            uint32_t                w,
+                                                            uint8_t*                out)
 {
   const uint32_t row_flat = (ry * (uint32_t)img->width) + x;
   const uint64_t off =
@@ -358,8 +356,8 @@ ra8_err_t ra8_book_src_image_rect(const ra8_book_src_t*   src,
   const bool is_gray8 = (pf == k_ra8_book_pixfmt_gray8);
   for (uint32_t row = 0U; row < h; ++row) {
     uint8_t* const  dst = &out[(size_t)row * (size_t)out_stride];
-    const ra8_err_t re  = is_gray8 ? priv_book_image_row_gray8(src, img, x, y + row, w, dst)
-                                   : priv_book_image_row(src, img, x, y + row, w, dst);
+    const ra8_err_t re  = is_gray8 ? internal_book_image_row_gray8(src, img, x, y + row, w, dst)
+                                   : internal_book_image_row(src, img, x, y + row, w, dst);
     if (re != k_ra8_ok) {
       return re;
     }
@@ -412,8 +410,8 @@ typedef enum : uint32_t {
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t ra8_book_paged_node(const ra8_book_src_t* src, uint32_t idx, ra8_book_node_t* out)
+RA8_INTERNAL static ra8_err_t
+internal_paged_node(const ra8_book_src_t* src, uint32_t idx, ra8_book_node_t* out)
 {
   const uint32_t off = src->hdr.node_off + (idx * (uint32_t)sizeof(ra8_book_node_t));
   return ra8_book_src_read(src, off, out, (uint32_t)sizeof(ra8_book_node_t));
@@ -425,7 +423,7 @@ static ra8_err_t ra8_book_paged_node(const ra8_book_src_t* src, uint32_t idx, ra
  * @details Reads up to `cap - 1` bytes at @p abs_off and NUL-terminates at the
  *          first embedded NUL or at the buffer end. Used for element tag names,
  *          which are short; a name longer than the buffer is truncated, which at
- *          worst makes ::ra8_book_is_block treat it as inline (no break) -- never
+ *          worst makes ::priv_book_is_block treat it as inline (no break) -- never
  *          a correctness issue for real markup.
  *
  * @param[in]  src     Bound book source.
@@ -448,7 +446,7 @@ static ra8_err_t ra8_book_paged_node(const ra8_book_src_t* src, uint32_t idx, ra
  */
 RA8_INTERNAL
 static ra8_err_t
-ra8_book_paged_str_short(const ra8_book_src_t* src, uint32_t abs_off, char* buf, uint32_t cap)
+internal_paged_str_short(const ra8_book_src_t* src, uint32_t abs_off, char* buf, uint32_t cap)
 {
   if (abs_off >= src->size) {
     return k_ra8_err_out_of_range;
@@ -473,7 +471,7 @@ ra8_book_paged_str_short(const ra8_book_src_t* src, uint32_t abs_off, char* buf,
  *
  * @details Streams the NUL-terminated run at @p abs_off through a staging buffer
  *          in `k_ra8_book_paged_strbuf`-sized chunks, calling the shared
- *          ::ra8_book_emit_text on each chunk. Chunking keeps the resident
+ *          ::priv_book_emit_text on each chunk. Chunking keeps the resident
  *          footprint bounded for arbitrarily long runs; the `at_break` flag
  *          threads across chunks so whitespace collapsing is identical to the
  *          resident single-pass walk.
@@ -499,14 +497,13 @@ ra8_book_paged_str_short(const ra8_book_src_t* src, uint32_t abs_off, char* buf,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool ra8_book_paged_emit_run(const ra8_book_src_t* src,
-                                    uint32_t              abs_off,
-                                    char*                 out,
-                                    size_t                cap,
-                                    size_t*               pos,
-                                    bool*                 at_break,
-                                    ra8_err_t*            io_err)
+RA8_INTERNAL static bool internal_paged_emit_run(const ra8_book_src_t* src,
+                                                 uint32_t              abs_off,
+                                                 char*                 out,
+                                                 size_t                cap,
+                                                 size_t*               pos,
+                                                 bool*                 at_break,
+                                                 ra8_err_t*            io_err)
 {
   char           buf[k_ra8_book_paged_strbuf];
   uint32_t       off = abs_off;
@@ -529,7 +526,7 @@ static bool ra8_book_paged_emit_run(const ra8_book_src_t* src,
       ++nlen;
     }
     buf[nlen] = '\0';
-    if (!ra8_book_emit_text(out, cap, pos, buf, at_break)) {
+    if (!priv_book_emit_text(out, cap, pos, buf, at_break)) {
       return false; /* Output overflow. */
     }
     if (nlen < chunk) {
@@ -543,10 +540,10 @@ static bool ra8_book_paged_emit_run(const ra8_book_src_t* src,
 /**
  * @brief Process one popped node in the paged text walk.
  *
- * @details The per-node body of ::ra8_book_walk_text_paged, split out to keep both
+ * @details The per-node body of ::internal_walk_text_paged, split out to keep both
  *          functions within the size/complexity budget. Reads the node, pushes
- *          its sibling, then either emits a text run (::ra8_book_paged_emit_run)
- *          or, for an element, inserts a block break (::ra8_book_is_block over a
+ *          its sibling, then either emits a text run (::internal_paged_emit_run)
+ *          or, for an element, inserts a block break (::priv_book_is_block over a
  *          staged tag name) and pushes its first child. Mutates the caller's
  *          stack/sp and whitespace-collapse @p at_break in place.
  *
@@ -572,19 +569,18 @@ static bool ra8_book_paged_emit_run(const ra8_book_src_t* src,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool priv_paged_visit_node(const ra8_book_src_t* src,
-                                  uint32_t              n,
-                                  char*                 out,
-                                  size_t                cap,
-                                  size_t*               pos,
-                                  bool*                 at_break,
-                                  uint32_t*             stack,
-                                  uint32_t*             sp,
-                                  ra8_err_t*            io_err)
+RA8_INTERNAL static bool internal_paged_visit_node(const ra8_book_src_t* src,
+                                                   uint32_t              n,
+                                                   char*                 out,
+                                                   size_t                cap,
+                                                   size_t*               pos,
+                                                   bool*                 at_break,
+                                                   uint32_t*             stack,
+                                                   uint32_t*             sp,
+                                                   ra8_err_t*            io_err)
 {
   ra8_book_node_t node = {};
-  const ra8_err_t ne   = ra8_book_paged_node(src, n, &node);
+  const ra8_err_t ne   = internal_paged_node(src, n, &node);
   if (ne != k_ra8_ok) {
     *io_err = ne;
     return false;
@@ -594,7 +590,7 @@ static bool priv_paged_visit_node(const ra8_book_src_t* src,
   }
   stack[(*sp)++] = node.next_sibling; /* sibling chain after this subtree */
   if (node.kind == (uint8_t)k_ra8_book_node_text) {
-    return ra8_book_paged_emit_run(src,
+    return internal_paged_emit_run(src,
                                    src->hdr.string_off + node.text_off,
                                    out,
                                    cap,
@@ -603,7 +599,7 @@ static bool priv_paged_visit_node(const ra8_book_src_t* src,
                                    io_err);
   }
   char            tag[k_ra8_book_paged_tagbuf] = {};
-  const ra8_err_t te = ra8_book_paged_str_short(src,
+  const ra8_err_t te = internal_paged_str_short(src,
                                                 src->hdr.string_off + node.name_off,
                                                 tag,
                                                 (uint32_t)k_ra8_book_paged_tagbuf);
@@ -612,8 +608,8 @@ static bool priv_paged_visit_node(const ra8_book_src_t* src,
     return false;
   }
   bool ok = true;
-  if (ra8_book_is_block(tag)) {
-    ok = ra8_book_emit_break(out, cap, pos, at_break);
+  if (priv_book_is_block(tag)) {
+    ok = priv_book_emit_break(out, cap, pos, at_break);
   }
   if (ok && (*sp < k_ra8_book_xhtml_stack)) {
     stack[(*sp)++] = node.first_child; /* descend, pre-order */
@@ -624,9 +620,9 @@ static bool priv_paged_visit_node(const ra8_book_src_t* src,
 /**
  * @brief Bounded pre-order text walk over a paged book source.
  *
- * @details The paged counterpart of ra8_book_walk_text(): identical iterative,
+ * @details The paged counterpart of internal_walk_text(): identical iterative,
  *          recursion-free pre-order traversal and identical output, dispatching
- *          each popped node to ::priv_paged_visit_node. At most one cache frame
+ *          each popped node to ::internal_paged_visit_node. At most one cache frame
  *          is pinned at a time, so the resident working set stays bounded.
  *
  * @param[in]     src        Bound (paged) book source.
@@ -649,20 +645,19 @@ static bool priv_paged_visit_node(const ra8_book_src_t* src,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool ra8_book_walk_text_paged(const ra8_book_src_t* src,
-                                     uint32_t              root,
-                                     uint32_t              node_count,
-                                     char*                 out,
-                                     size_t                cap,
-                                     size_t*               pos,
-                                     ra8_err_t*            io_err)
+RA8_INTERNAL static bool internal_walk_text_paged(const ra8_book_src_t* src,
+                                                  uint32_t              root,
+                                                  uint32_t              node_count,
+                                                  char*                 out,
+                                                  size_t                cap,
+                                                  size_t*               pos,
+                                                  ra8_err_t*            io_err)
 {
   /* Explicit DFS stack (2 KiB) kept in module-static storage so this frame
    * stays within the stack-usage budget; iterative (no recursion) and
    * single-threaded, so the shared buffer never overlaps. */
-  static uint32_t s_paged_stack[k_ra8_book_xhtml_stack];
-  uint32_t*       stack    = s_paged_stack;
+  static uint32_t k_paged_stack[k_ra8_book_xhtml_stack];
+  uint32_t*       stack    = k_paged_stack;
   uint32_t        sp       = 0U;
   bool            ok       = true;
   bool            at_break = true;
@@ -676,7 +671,7 @@ static bool ra8_book_walk_text_paged(const ra8_book_src_t* src,
     if (n == k_ra8_book_nil) {
       continue;
     }
-    ok = priv_paged_visit_node(src, n, out, cap, pos, &at_break, stack, &sp, io_err);
+    ok = internal_paged_visit_node(src, n, out, cap, pos, &at_break, stack, &sp, io_err);
   }
   return ok && (guard < max_iter);
 }
@@ -708,7 +703,7 @@ ra8_err_t ra8_book_chapter_text_src(const ra8_book_src_t* src,
   }
   size_t    pos    = 0U;
   ra8_err_t io_err = k_ra8_ok;
-  if (!ra8_book_walk_text_paged(src,
+  if (!internal_walk_text_paged(src,
                                 chap.root_node,
                                 src->hdr.node_count,
                                 out,

@@ -18,7 +18,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -145,11 +144,12 @@ static char                  s_strpool[k_string_cap];
 static uint8_t               s_imgpool[k_imgpool_cap];
 static uint8_t               s_out[k_out_cap];
 
-static uint8_t s_xhtml[k_xhtml_cap];
-static uint8_t s_image_raw[k_imgraw_cap];
-static uint8_t s_img_scratch[k_arena_cap];
-static uint8_t s_gray[k_graypix_cap];
-static char    s_css[k_css_cap];
+static uint8_t                    s_xhtml[k_xhtml_cap];
+static ra8_rabook_xml_workspace_t s_xml_workspace;
+static uint8_t                    s_image_raw[k_imgraw_cap];
+static uint8_t                    s_img_scratch[k_arena_cap];
+static uint8_t                    s_gray[k_graypix_cap];
+static char                       s_css[k_css_cap];
 
 static uint8_t s_epub[k_epub_cap];
 static size_t  s_epub_len;
@@ -166,7 +166,9 @@ static mem_disk_t s_disk = {};
 /* RAM block backend (4 MiB -> FAT16 via ra8_fs_format) */
 /* -------------------------------------------------------------------------- */
 
-static inline ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief Provide the file-local mem read test helper. @details Implements the mem read fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] lba Fixture argument governed by the exercised interface contract. @param[in] count Fixture argument governed by the exercised interface contract. @param[out] buf Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static inline ra8_err_t
+internal_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   if (lba + count > disk->block_count) {
@@ -178,7 +180,9 @@ static inline ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_
   return k_ra8_ok;
 }
 
-static inline ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Provide the file-local mem write test helper. @details Implements the mem write fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] lba Fixture argument governed by the exercised interface contract. @param[in] count Fixture argument governed by the exercised interface contract. @param[in] buf Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static inline ra8_err_t
+internal_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   if (lba + count > disk->block_count) {
@@ -190,7 +194,9 @@ static inline ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const
   return k_ra8_ok;
 }
 
-static inline ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Provide the file-local mem capacity test helper. @details Implements the mem capacity fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[out] block_count Fixture argument governed by the exercised interface contract. @param[out] block_size Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static inline ra8_err_t
+internal_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   *block_count     = disk->block_count;
@@ -199,9 +205,9 @@ static inline ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t*
 }
 
 static const ra8_fs_backend_t s_backend = {
-  .read_block   = mem_read,
-  .write_block  = mem_write,
-  .get_capacity = mem_capacity,
+  .read_block   = internal_mem_read,
+  .write_block  = internal_mem_write,
+  .get_capacity = internal_mem_capacity,
   .ctx          = &s_disk,
 };
 
@@ -209,14 +215,14 @@ static const ra8_fs_backend_t s_backend = {
 /* EPUB fixture (text-only, optional undecodable cover) */
 /* -------------------------------------------------------------------------- */
 
-static const char* const k_mimetype = "application/epub+zip";
-static const char* const k_container =
+static const char* const s_mimetype = "application/epub+zip";
+static const char* const s_container =
   "<?xml version=\"1.0\"?><container version=\"1.0\" "
   "xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\"><rootfiles>"
   "<rootfile full-path=\"OEBPS/content.opf\" "
   "media-type=\"application/oebps-package+xml\"/></rootfiles></container>";
 
-static const char* const k_opf_no_cover =
+static const char* const s_opf_no_cover =
   "<?xml version=\"1.0\"?><package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" "
   "unique-identifier=\"id\"><metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
   "<dc:title>Pipeline Title</dc:title><dc:creator>Pipeline Author</dc:creator>"
@@ -224,7 +230,7 @@ static const char* const k_opf_no_cover =
   "<manifest><item id=\"c1\" href=\"c1.xhtml\" media-type=\"application/xhtml+xml\"/></manifest>"
   "<spine><itemref idref=\"c1\"/></spine></package>";
 
-static const char* const k_opf_with_cover =
+static const char* const s_opf_with_cover =
   "<?xml version=\"1.0\"?><package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" "
   "unique-identifier=\"id\"><metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
   "<dc:title>Pipeline Title</dc:title><dc:creator>Pipeline Author</dc:creator>"
@@ -233,10 +239,10 @@ static const char* const k_opf_with_cover =
   "<item id=\"cov\" href=\"cover.bin\" media-type=\"image/png\" properties=\"cover-image\"/>"
   "</manifest><spine><itemref idref=\"c1\"/></spine></package>";
 
-static const char* const k_chapter_xhtml = "<html><body><p>Hello pipeline.</p></body></html>";
+static const char* const s_chapter_xhtml = "<html><body><p>Hello pipeline.</p></body></html>";
 
 /* Not a valid image: stb_image rejects it, so a present cover fails to decode. */
-static const uint8_t k_garbage_cover[16] = {
+static const uint8_t s_garbage_cover[16] = {
   0xDEU,
   0xADU,
   0xBEU,
@@ -265,36 +271,35 @@ static const uint8_t k_garbage_cover[16] = {
  * @pre @p s_epub is large enough for the finalized archive.
  * @post @p s_epub holds the finalized ZIP and @p s_epub_len its length.
  * @post No filesystem state is touched.
- * @note Not thread-safe (writes file-scope fixture buffers).
- */
-static inline void build_epub(bool with_cover)
+ * @note Not thread-safe (writes file-scope fixture buffers). @since Version 0.1.0 */
+RA8_INTERNAL static inline void internal_build_epub(bool with_cover)
 {
-  const char* opf = with_cover ? k_opf_with_cover : k_opf_no_cover;
+  const char* opf = with_cover ? s_opf_with_cover : s_opf_no_cover;
 
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
   TEST_ASSERT(mz_zip_writer_init_heap(&zip, 0U, (size_t)k_epub_cap) == MZ_TRUE);
   TEST_ASSERT(
-    mz_zip_writer_add_mem(&zip, "mimetype", k_mimetype, strlen(k_mimetype), MZ_NO_COMPRESSION) ==
+    mz_zip_writer_add_mem(&zip, "mimetype", s_mimetype, strlen(s_mimetype), MZ_NO_COMPRESSION) ==
     MZ_TRUE);
   TEST_ASSERT(mz_zip_writer_add_mem(&zip,
                                     "META-INF/container.xml",
-                                    k_container,
-                                    strlen(k_container),
+                                    s_container,
+                                    strlen(s_container),
                                     MZ_DEFAULT_COMPRESSION) == MZ_TRUE);
   TEST_ASSERT(
     mz_zip_writer_add_mem(&zip, "OEBPS/content.opf", opf, strlen(opf), MZ_DEFAULT_COMPRESSION) ==
     MZ_TRUE);
   TEST_ASSERT(mz_zip_writer_add_mem(&zip,
                                     "OEBPS/c1.xhtml",
-                                    k_chapter_xhtml,
-                                    strlen(k_chapter_xhtml),
+                                    s_chapter_xhtml,
+                                    strlen(s_chapter_xhtml),
                                     MZ_DEFAULT_COMPRESSION) == MZ_TRUE);
   if (with_cover) {
     TEST_ASSERT(mz_zip_writer_add_mem(&zip,
                                       "OEBPS/cover.bin",
-                                      k_garbage_cover,
-                                      sizeof(k_garbage_cover),
+                                      s_garbage_cover,
+                                      sizeof(s_garbage_cover),
                                       MZ_NO_COMPRESSION) == MZ_TRUE);
   }
 
@@ -304,6 +309,7 @@ static inline void build_epub(bool with_cover)
   TEST_ASSERT((heap != nullptr) && (hsz > 0U) && (hsz <= sizeof(s_epub)));
   memcpy(s_epub, heap, hsz);
   s_epub_len = hsz;
+  mz_free(heap);
   mz_zip_writer_end(&zip);
 }
 
@@ -316,7 +322,7 @@ static inline void build_epub(bool with_cover)
  * @post @p s_disk.bytes owns a fresh zeroed backing store.
  * @note Not thread-safe.
  */
-static inline ra8_fs_mount_t* fresh_volume(void)
+RA8_INTERNAL static inline ra8_fs_mount_t* internal_fresh_volume(void)
 {
   free(s_disk.bytes);
   s_disk.block_count = (uint32_t)k_disk_blocks;
@@ -336,13 +342,12 @@ static inline ra8_fs_mount_t* fresh_volume(void)
 /**
  * @brief Unmount @p mount and release the RAM backing store.
  * @param[in,out] mount Mounted volume to release.
- * @pre @p mount is a live mount returned by @ref fresh_volume.
+ * @pre @p mount is a live mount returned by @ref internal_fresh_volume.
  * @pre Every open file on @p mount has been closed.
  * @post @p mount is unmounted and @p s_disk.bytes is freed.
  * @post @p s_disk.bytes is reset to NULL.
- * @note Not thread-safe.
- */
-static inline void teardown(ra8_fs_mount_t* mount)
+ * @note Not thread-safe. @details Implements the teardown fixture operation used only by this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static inline void internal_teardown(ra8_fs_mount_t* mount)
 {
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(mount));
   free(s_disk.bytes);
@@ -358,10 +363,10 @@ static inline void teardown(ra8_fs_mount_t* mount)
  * @pre The file-scope arenas are defined (always true at TU scope).
  * @post @p bufs, @p scr and @p arena reference the static storage.
  * @post No global state beyond the outputs is mutated.
- * @note Not thread-safe (returns views over shared file-scope arenas).
- */
-static inline void
-make_views(ra8_rabook_buffers_t* bufs, ra8_rabook_pipeline_scratch_t* scr, ra8_img_arena_t* arena)
+ * @note Not thread-safe (returns views over shared file-scope arenas). @details Implements the make views fixture operation used only by this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static inline void internal_make_views(ra8_rabook_buffers_t*          bufs,
+                                                    ra8_rabook_pipeline_scratch_t* scr,
+                                                    ra8_img_arena_t*               arena)
 {
   *bufs = (ra8_rabook_buffers_t){
     .chapters       = s_chapters,
@@ -383,15 +388,16 @@ make_views(ra8_rabook_buffers_t* bufs, ra8_rabook_pipeline_scratch_t* scr, ra8_i
   };
   *arena = (ra8_img_arena_t){s_img_scratch, sizeof(s_img_scratch), 0U, 0U};
   *scr   = (ra8_rabook_pipeline_scratch_t){
-    .xhtml     = s_xhtml,
-    .xhtml_cap = sizeof(s_xhtml),
-    .image_raw = s_image_raw,
-    .image_cap = sizeof(s_image_raw),
-    .img_arena = arena,
-    .gray      = s_gray,
-    .gray_cap  = (uint32_t)k_graypix_cap,
-    .css       = s_css,
-    .css_cap   = sizeof(s_css),
+    .xhtml         = s_xhtml,
+    .xhtml_cap     = sizeof(s_xhtml),
+    .image_raw     = s_image_raw,
+    .image_cap     = sizeof(s_image_raw),
+    .img_arena     = arena,
+    .gray          = s_gray,
+    .gray_cap      = (uint32_t)k_graypix_cap,
+    .css           = s_css,
+    .css_cap       = sizeof(s_css),
+    .xml_workspace = &s_xml_workspace,
   };
 }
 
@@ -401,7 +407,7 @@ make_views(ra8_rabook_buffers_t* bufs, ra8_rabook_pipeline_scratch_t* scr, ra8_i
 
 /**
  * @struct pipe_zip_entry_t
- * @brief One archive member fed to @ref build_zip.
+ * @brief One archive member fed to @ref internal_build_zip.
  * @details Mirrors the arguments of @c mz_zip_writer_add_mem so a fixture can
  *          be declared as a flat array of members instead of a hand-unrolled
  *          sequence of writer calls.
@@ -421,9 +427,8 @@ typedef struct {
  * @pre The caller owns @p p for the duration of the call.
  * @post @p p[0..3] hold @p v least-significant byte first.
  * @post No other memory is touched.
- * @note Not thread-safe (writes through the caller's pointer).
- */
-static inline void put_u32_le(uint8_t* p, uint32_t v)
+ * @note Not thread-safe (writes through the caller's pointer). @details Implements the put u32 le fixture operation used only by this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static inline void internal_put_u32_le(uint8_t* p, uint32_t v)
 {
   p[0] = (uint8_t)(v & k_rabook_pipeline_fixture_v_ff);
   p[1] = (uint8_t)((v >> 8U) & k_rabook_pipeline_fixture_v_ff);
@@ -446,9 +451,9 @@ static inline void put_u32_le(uint8_t* p, uint32_t v)
  * @pre @p w and @p h are non-zero.
  * @post @p out holds a decodable 24-bpp BMP of @p w x @p h.
  * @post Every pixel channel equals @p gray.
- * @note Not thread-safe.
- */
-static inline size_t make_bmp(uint8_t* out, uint16_t w, uint16_t h, uint8_t gray)
+ * @note Not thread-safe. @retval value The computed fixture value for the supplied inputs. @since Version 0.1.0 */
+RA8_INTERNAL static inline size_t
+internal_make_bmp(uint8_t* out, uint16_t w, uint16_t h, uint8_t gray)
 {
   const uint32_t hdr   = 54U;
   const uint32_t row   = ((((uint32_t)w * 3U) + 3U) & ~3U);
@@ -457,15 +462,15 @@ static inline size_t make_bmp(uint8_t* out, uint16_t w, uint16_t h, uint8_t gray
   memset(out, 0, (size_t)total);
   out[0] = (uint8_t)'B';
   out[1] = (uint8_t)'M';
-  put_u32_le(out + 2, total);                                     /* file size         */
-  put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_10, hdr); /* pixel data offset */
-  put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_14,
-             k_rabook_pipeline_fixture_put_u32_le_40);          /* DIB header size    */
-  put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_18, w); /* width              */
-  put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_22, h); /* height (bottom-up) */
+  internal_put_u32_le(out + 2, total);                                     /* file size         */
+  internal_put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_10, hdr); /* pixel data offset */
+  internal_put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_14,
+                      k_rabook_pipeline_fixture_put_u32_le_40);          /* DIB header size    */
+  internal_put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_18, w); /* width              */
+  internal_put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_22, h); /* height (bottom-up) */
   out[k_rabook_pipeline_fixture_bmp_off_planes] = 1U;
   out[k_rabook_pipeline_fixture_bmp_off_bpp]    = k_rabook_pipeline_fixture_bmp_bpp;
-  put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_34, data); /* raw image size */
+  internal_put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_34, data); /* raw image size */
   for (uint32_t y = 0U; y < (uint32_t)h; y++) {
     uint8_t* px = out + hdr + ((size_t)y * row);
     for (uint32_t x = 0U; x < (uint32_t)w; x++) {
@@ -479,7 +484,7 @@ static inline size_t make_bmp(uint8_t* out, uint16_t w, uint16_t h, uint8_t gray
 
 /**
  * @brief Assemble an in-memory `.epub` ZIP from @p entries into @p s_epub.
- * @details The generic version of @ref build_epub: each fixture builder below
+ * @details The generic version of @ref internal_build_epub: each fixture builder below
  *          declares its members as a @ref pipe_zip_entry_t array and hands it
  *          here. Entry 0 is by spec the stored `mimetype`.
  * @param[in] entries Member list (non-NULL).
@@ -488,9 +493,8 @@ static inline size_t make_bmp(uint8_t* out, uint16_t w, uint16_t h, uint8_t gray
  * @pre The finalized archive fits in @p s_epub.
  * @post @p s_epub holds the ZIP and @p s_epub_len its length.
  * @post No filesystem state is touched.
- * @note Not thread-safe (writes the file-scope fixture buffers).
- */
-static inline void build_zip(const pipe_zip_entry_t* entries, size_t n)
+ * @note Not thread-safe (writes the file-scope fixture buffers). @since Version 0.1.0 */
+RA8_INTERNAL static inline void internal_build_zip(const pipe_zip_entry_t* entries, size_t n)
 {
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
@@ -508,11 +512,12 @@ static inline void build_zip(const pipe_zip_entry_t* entries, size_t n)
   TEST_ASSERT((heap != nullptr) && (hsz > 0U) && (hsz <= sizeof(s_epub)));
   memcpy(s_epub, heap, hsz);
   s_epub_len = hsz;
+  mz_free(heap);
   mz_zip_writer_end(&zip);
 }
 
 /** @brief OPF declaring one chapter plus a small + a large BMP image. */
-static const char* const k_opf_raster =
+static const char* const s_opf_raster =
   "<?xml version=\"1.0\"?><package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" "
   "unique-identifier=\"id\"><metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
   "<dc:title>Pipeline Title</dc:title><dc:creator>Pipeline Author</dc:creator>"
@@ -523,7 +528,7 @@ static const char* const k_opf_raster =
   "</manifest><spine><itemref idref=\"c1\"/></spine></package>";
 
 /** @brief OPF declaring one chapter plus a single tall (portrait) BMP cover. */
-static const char* const k_opf_tall =
+static const char* const s_opf_tall =
   "<?xml version=\"1.0\"?><package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" "
   "unique-identifier=\"id\"><metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
   "<dc:title>Pipeline Title</dc:title><dc:creator>Pipeline Author</dc:creator>"
@@ -533,7 +538,7 @@ static const char* const k_opf_tall =
   "</manifest><spine><itemref idref=\"c1\"/></spine></package>";
 
 /** @brief OPF declaring one chapter plus a single `text/css` stylesheet item. */
-static const char* const k_opf_css =
+static const char* const s_opf_css =
   "<?xml version=\"1.0\"?><package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" "
   "unique-identifier=\"id\"><metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
   "<dc:title>Pipeline Title</dc:title><dc:creator>Pipeline Author</dc:creator>"
@@ -543,7 +548,7 @@ static const char* const k_opf_css =
   "</manifest><spine><itemref idref=\"c1\"/></spine></package>";
 
 /** @brief OPF declaring one chapter plus an image item with no archive bytes. */
-static const char* const k_opf_img_absent =
+static const char* const s_opf_img_absent =
   "<?xml version=\"1.0\"?><package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" "
   "unique-identifier=\"id\"><metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
   "<dc:title>Pipeline Title</dc:title><dc:creator>Pipeline Author</dc:creator>"
@@ -553,7 +558,7 @@ static const char* const k_opf_img_absent =
   "</manifest><spine><itemref idref=\"c1\"/></spine></package>";
 
 /** @brief OPF + nav declaring two chapters with a mapped table of contents. */
-static const char* const k_opf_toc =
+static const char* const s_opf_toc =
   "<?xml version=\"1.0\"?><package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" "
   "unique-identifier=\"id\"><metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
   "<dc:title>Pipeline Title</dc:title><dc:creator>Pipeline Author</dc:creator>"
@@ -568,7 +573,7 @@ static const char* const k_opf_toc =
  *  @details The leading `<a href="orphan.xhtml">` points at no spine chapter, so
  *           ra8_epub_toc_entry_to_chapter() fails on it -- driving the
  *           first-condition-false leg of internal_chapter_title's compound guard. */
-static const char* const k_nav_xhtml =
+static const char* const s_nav_xhtml =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
   "<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\">"
   "<head><title>Contents</title></head><body>"
@@ -578,11 +583,11 @@ static const char* const k_nav_xhtml =
   "<li><a href=\"c2.xhtml\">Chapter Two</a></li>"
   "</ol></nav></body></html>";
 
-static const char* const k_chapter2_xhtml = "<html><body><p>Second chapter.</p></body></html>";
+static const char* const s_chapter2_xhtml = "<html><body><p>Second chapter.</p></body></html>";
 /** @brief Stylesheet body interned by the CSS-present fixture. */
-static const char* const k_style_css = ".lead { color: #C00000; } p { margin: 0; }";
+static const char* const s_style_css = ".lead { color: #C00000; } p { margin: 0; }";
 /** @brief Chapter body with no XML root element (forces a parse miss). */
-static const char* const k_chapter_plain = "just plain text with no markup elements at all";
+static const char* const s_chapter_plain = "just plain text with no markup elements at all";
 
 /** @brief Backing store for synthesised BMP fixtures (large image fits). */
 static uint8_t s_bmp[8U * k_rabook_pipeline_fixture_u_1024];
@@ -594,17 +599,16 @@ static uint8_t s_bmp[8U * k_rabook_pipeline_fixture_u_1024];
  * @pre @p s_epub is large enough for the finalized archive.
  * @post @p s_epub holds the ZIP and @p s_epub_len its length.
  * @post No filesystem state is touched.
- * @note Not thread-safe.
- */
-static inline void build_epub_chapter(const char* chapter)
+ * @note Not thread-safe. @details Implements the build epub chapter fixture operation used only by this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static inline void internal_build_epub_chapter(const char* chapter)
 {
   const pipe_zip_entry_t entries[] = {
-    {"mimetype", k_mimetype, strlen(k_mimetype), true},
-    {"META-INF/container.xml", k_container, strlen(k_container), false},
-    {"OEBPS/content.opf", k_opf_no_cover, strlen(k_opf_no_cover), false},
+    {"mimetype", s_mimetype, strlen(s_mimetype), true},
+    {"META-INF/container.xml", s_container, strlen(s_container), false},
+    {"OEBPS/content.opf", s_opf_no_cover, strlen(s_opf_no_cover), false},
     {"OEBPS/c1.xhtml", chapter, strlen(chapter), false},
   };
-  build_zip(entries, sizeof(entries) / sizeof(entries[0]));
+  internal_build_zip(entries, sizeof(entries) / sizeof(entries[0]));
 }
 
 /**
@@ -613,23 +617,22 @@ static inline void build_epub_chapter(const char* chapter)
  * @pre miniz is available (host build).
  * @post @p s_epub holds the ZIP; the small image is the declared cover.
  * @post No filesystem state is touched.
- * @note Not thread-safe.
- */
-static inline void build_epub_raster(void)
+ * @note Not thread-safe. @details Implements the build epub raster fixture operation used only by this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static inline void internal_build_epub_raster(void)
 {
-  static uint8_t s_small_bmp[k_rabook_pipeline_fixture_small_bmp_cap];
-  const size_t   small_len = make_bmp(s_small_bmp, 2U, 2U, 0x80U);
-  const size_t   big_len   = make_bmp(s_bmp, (uint16_t)k_pl_big_edge, 1U, 0x80U);
+  static uint8_t local_small_bmp[k_rabook_pipeline_fixture_small_bmp_cap];
+  const size_t   small_len = internal_make_bmp(local_small_bmp, 2U, 2U, 0x80U);
+  const size_t   big_len   = internal_make_bmp(s_bmp, (uint16_t)k_pl_big_edge, 1U, 0x80U);
 
   const pipe_zip_entry_t entries[] = {
-    {"mimetype", k_mimetype, strlen(k_mimetype), true},
-    {"META-INF/container.xml", k_container, strlen(k_container), false},
-    {"OEBPS/content.opf", k_opf_raster, strlen(k_opf_raster), false},
-    {"OEBPS/c1.xhtml", k_chapter_xhtml, strlen(k_chapter_xhtml), false},
-    {"OEBPS/small.bmp", s_small_bmp, small_len, false},
+    {"mimetype", s_mimetype, strlen(s_mimetype), true},
+    {"META-INF/container.xml", s_container, strlen(s_container), false},
+    {"OEBPS/content.opf", s_opf_raster, strlen(s_opf_raster), false},
+    {"OEBPS/c1.xhtml", s_chapter_xhtml, strlen(s_chapter_xhtml), false},
+    {"OEBPS/small.bmp", local_small_bmp, small_len, false},
     {"OEBPS/big.bmp", s_bmp, big_len, false},
   };
-  build_zip(entries, sizeof(entries) / sizeof(entries[0]));
+  internal_build_zip(entries, sizeof(entries) / sizeof(entries[0]));
 }
 
 /**
@@ -641,21 +644,20 @@ static inline void build_epub_raster(void)
  * @pre @p s_epub and @p s_bmp are large enough for the fixtures.
  * @post @p s_epub holds the ZIP; the tall image is the declared cover.
  * @post No filesystem state is touched.
- * @note Not thread-safe.
- */
-static inline void build_epub_tall(void)
+ * @note Not thread-safe. @pre Fixed-capacity fixture storage required by this operation is available. @since Version 0.1.0 */
+RA8_INTERNAL static inline void internal_build_epub_tall(void)
 {
   const size_t tall_len =
-    make_bmp(s_bmp, (uint16_t)k_pl_narrow_edge, (uint16_t)k_pl_big_edge, 0x80U);
+    internal_make_bmp(s_bmp, (uint16_t)k_pl_narrow_edge, (uint16_t)k_pl_big_edge, 0x80U);
 
   const pipe_zip_entry_t entries[] = {
-    {"mimetype", k_mimetype, strlen(k_mimetype), true},
-    {"META-INF/container.xml", k_container, strlen(k_container), false},
-    {"OEBPS/content.opf", k_opf_tall, strlen(k_opf_tall), false},
-    {"OEBPS/c1.xhtml", k_chapter_xhtml, strlen(k_chapter_xhtml), false},
+    {"mimetype", s_mimetype, strlen(s_mimetype), true},
+    {"META-INF/container.xml", s_container, strlen(s_container), false},
+    {"OEBPS/content.opf", s_opf_tall, strlen(s_opf_tall), false},
+    {"OEBPS/c1.xhtml", s_chapter_xhtml, strlen(s_chapter_xhtml), false},
     {"OEBPS/tall.bmp", s_bmp, tall_len, false},
   };
-  build_zip(entries, sizeof(entries) / sizeof(entries[0]));
+  internal_build_zip(entries, sizeof(entries) / sizeof(entries[0]));
 }
 
 /**
@@ -665,19 +667,18 @@ static inline void build_epub_tall(void)
  * @pre @p s_epub is large enough for the finalized archive.
  * @post @p s_epub holds the ZIP and @p s_epub_len its length.
  * @post No filesystem state is touched.
- * @note Not thread-safe.
- */
-static inline void build_epub_css(bool present)
+ * @note Not thread-safe. @details Implements the build epub css fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @since Version 0.1.0 */
+RA8_INTERNAL static inline void internal_build_epub_css(bool present)
 {
   pipe_zip_entry_t entries[] = {
-    {"mimetype", k_mimetype, strlen(k_mimetype), true},
-    {"META-INF/container.xml", k_container, strlen(k_container), false},
-    {"OEBPS/content.opf", k_opf_css, strlen(k_opf_css), false},
-    {"OEBPS/c1.xhtml", k_chapter_xhtml, strlen(k_chapter_xhtml), false},
-    {"OEBPS/style.css", k_style_css, strlen(k_style_css), false},
+    {"mimetype", s_mimetype, strlen(s_mimetype), true},
+    {"META-INF/container.xml", s_container, strlen(s_container), false},
+    {"OEBPS/content.opf", s_opf_css, strlen(s_opf_css), false},
+    {"OEBPS/c1.xhtml", s_chapter_xhtml, strlen(s_chapter_xhtml), false},
+    {"OEBPS/style.css", s_style_css, strlen(s_style_css), false},
   };
   const size_t base = 4U; /* without the trailing style.css member */
-  build_zip(entries, present ? (sizeof(entries) / sizeof(entries[0])) : base);
+  internal_build_zip(entries, present ? (sizeof(entries) / sizeof(entries[0])) : base);
 }
 
 /**
@@ -685,17 +686,16 @@ static inline void build_epub_css(bool present)
  * @pre @p s_epub is large enough for the finalized archive.
  * @post @p s_epub holds the ZIP and @p s_epub_len its length.
  * @post No filesystem state is touched.
- * @note Not thread-safe.
- */
-static inline void build_epub_image_absent(void)
+ * @note Not thread-safe. @details Implements the build epub image absent fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @since Version 0.1.0 */
+RA8_INTERNAL static inline void internal_build_epub_image_absent(void)
 {
   const pipe_zip_entry_t entries[] = {
-    {"mimetype", k_mimetype, strlen(k_mimetype), true},
-    {"META-INF/container.xml", k_container, strlen(k_container), false},
-    {"OEBPS/content.opf", k_opf_img_absent, strlen(k_opf_img_absent), false},
-    {"OEBPS/c1.xhtml", k_chapter_xhtml, strlen(k_chapter_xhtml), false},
+    {"mimetype", s_mimetype, strlen(s_mimetype), true},
+    {"META-INF/container.xml", s_container, strlen(s_container), false},
+    {"OEBPS/content.opf", s_opf_img_absent, strlen(s_opf_img_absent), false},
+    {"OEBPS/c1.xhtml", s_chapter_xhtml, strlen(s_chapter_xhtml), false},
   };
-  build_zip(entries, sizeof(entries) / sizeof(entries[0]));
+  internal_build_zip(entries, sizeof(entries) / sizeof(entries[0]));
 }
 
 /**
@@ -703,19 +703,18 @@ static inline void build_epub_image_absent(void)
  * @pre @p s_epub is large enough for the finalized archive.
  * @post @p s_epub holds the ZIP; both spine chapters carry a TOC title.
  * @post No filesystem state is touched.
- * @note Not thread-safe.
- */
-static inline void build_epub_toc(void)
+ * @note Not thread-safe. @details Implements the build epub toc fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @since Version 0.1.0 */
+RA8_INTERNAL static inline void internal_build_epub_toc(void)
 {
   const pipe_zip_entry_t entries[] = {
-    {"mimetype", k_mimetype, strlen(k_mimetype), true},
-    {"META-INF/container.xml", k_container, strlen(k_container), false},
-    {"OEBPS/content.opf", k_opf_toc, strlen(k_opf_toc), false},
-    {"OEBPS/nav.xhtml", k_nav_xhtml, strlen(k_nav_xhtml), false},
-    {"OEBPS/c1.xhtml", k_chapter_xhtml, strlen(k_chapter_xhtml), false},
-    {"OEBPS/c2.xhtml", k_chapter2_xhtml, strlen(k_chapter2_xhtml), false},
+    {"mimetype", s_mimetype, strlen(s_mimetype), true},
+    {"META-INF/container.xml", s_container, strlen(s_container), false},
+    {"OEBPS/content.opf", s_opf_toc, strlen(s_opf_toc), false},
+    {"OEBPS/nav.xhtml", s_nav_xhtml, strlen(s_nav_xhtml), false},
+    {"OEBPS/c1.xhtml", s_chapter_xhtml, strlen(s_chapter_xhtml), false},
+    {"OEBPS/c2.xhtml", s_chapter2_xhtml, strlen(s_chapter2_xhtml), false},
   };
-  build_zip(entries, sizeof(entries) / sizeof(entries[0]));
+  internal_build_zip(entries, sizeof(entries) / sizeof(entries[0]));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -730,8 +729,7 @@ static inline void build_epub_toc(void)
  * @pre Never called from interrupt context (host build).
  * @post No global state is mutated.
  * @post The byte is discarded.
- * @note Not thread-safe (host single-thread test driver).
- */
+ * @note Not thread-safe (host single-thread test driver). @details Implements the log sink fixture operation used only by this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static inline void internal_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;

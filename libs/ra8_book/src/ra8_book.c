@@ -134,7 +134,7 @@ static const uint32_t s_ra8_book_crc_table[k_ra8_book_crc_table_len] = {
  *
  * @since Version 0.1.0
  */
-uint32_t ra8_book_crc32_extend(uint32_t crc, const uint8_t* data, size_t len)
+RA8_PRIV uint32_t priv_book_crc32_extend(uint32_t crc, const uint8_t* data, size_t len)
 {
   crc ^= k_ra8_book_crc_init;
   for (size_t i = 0U; i < len; ++i) {
@@ -146,23 +146,29 @@ uint32_t ra8_book_crc32_extend(uint32_t crc, const uint8_t* data, size_t len)
 
 /**
  * @brief Compute CRC-32/ISO-HDLC over one resident byte span.
+ * @details Seeds the incremental implementation with zero so the result uses
+ *          the same finalized wire convention as the streaming validator.
  * @param[in] data Readable bytes.
  * @param[in] len Number of bytes in @p data.
  * @return Finalized CRC for the span.
+ * @retval UINT32_C(0) The span's CRC happens to be zero.
+ * @retval UINT32_MAX The span's CRC happens to have every bit set.
  * @pre @p data addresses @p len bytes when @p len is non-zero.
+ * @pre The immutable CRC lookup table is fully initialized at compile time.
  * @post No state is modified.
+ * @post The result is identical to ::priv_book_crc32_extend called with a zero seed.
  * @note Thread-safe.
  * @since Version 0.1.0
  */
 RA8_INTERNAL
 RA8_NO_RECURSION
-static uint32_t ra8_book_crc32(const uint8_t* data, size_t len)
+RA8_INTERNAL static uint32_t internal_crc32(const uint8_t* data, size_t len)
 {
-  return ra8_book_crc32_extend(0U, data, len);
+  return priv_book_crc32_extend(0U, data, len);
 }
 
 /**
- * @brief Implementation of `ra8_book_table_fits()` -- overflow-safe extent check.
+ * @brief Implementation of `internal_table_fits()` -- overflow-safe extent check.
  *
  * @details
  * Returns true when the half-open byte range [@p off, @p off + @p count *
@@ -189,8 +195,8 @@ static uint32_t ra8_book_crc32(const uint8_t* data, size_t len)
  *
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool ra8_book_table_fits(uint32_t off, uint32_t count, uint32_t elem, uint32_t total)
+RA8_INTERNAL static bool
+internal_table_fits(uint32_t off, uint32_t count, uint32_t elem, uint32_t total)
 {
   uint64_t end = (uint64_t)off + ((uint64_t)count * (uint64_t)elem);
   return (off <= total) && (end <= (uint64_t)total);
@@ -223,8 +229,8 @@ static bool ra8_book_table_fits(uint32_t off, uint32_t count, uint32_t elem, uin
  * @note Thread-safe: read-only over immutable data.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool ra8_book_image_pixfmts_known(const void* base, const ra8_book_header_t* hdr)
+RA8_INTERNAL static bool internal_image_pixfmts_known(const void*              base,
+                                                      const ra8_book_header_t* hdr)
 {
   const ra8_book_image_t* imgs  = ra8_book_images(base);
   bool                    known = true;
@@ -259,8 +265,7 @@ static bool ra8_book_image_pixfmts_known(const void* base, const ra8_book_header
  * @note Thread-safe: read-only over immutable data.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static bool ra8_book_magic_ok(const ra8_book_header_t* hdr)
+RA8_INTERNAL static bool internal_magic_ok(const ra8_book_header_t* hdr)
 {
   const char expect[8] = {'R', 'A', 'B', 'O', 'O', 'K', '1', '\0'};
   bool       ok        = true;
@@ -282,7 +287,7 @@ ra8_err_t ra8_book_validate(const void* base, size_t size)
 
   const ra8_book_header_t* hdr = (const ra8_book_header_t*)base;
 
-  if (!ra8_book_magic_ok(hdr)) {
+  if (!internal_magic_ok(hdr)) {
     return k_ra8_err_invalid_arg;
   }
   if (hdr->format_version != k_ra8_book_format_version) {
@@ -301,40 +306,40 @@ ra8_err_t ra8_book_validate(const void* base, size_t size)
   }
 
   const bool tables_ok =
-    ra8_book_table_fits(hdr->chapter_off, hdr->chapter_count, sizeof(ra8_book_chapter_t), total) &&
-    ra8_book_table_fits(hdr->node_off, hdr->node_count, sizeof(ra8_book_node_t), total) &&
-    ra8_book_table_fits(hdr->attr_off, hdr->attr_count, sizeof(ra8_book_attr_t), total) &&
-    ra8_book_table_fits(hdr->stylesheet_off,
+    internal_table_fits(hdr->chapter_off, hdr->chapter_count, sizeof(ra8_book_chapter_t), total) &&
+    internal_table_fits(hdr->node_off, hdr->node_count, sizeof(ra8_book_node_t), total) &&
+    internal_table_fits(hdr->attr_off, hdr->attr_count, sizeof(ra8_book_attr_t), total) &&
+    internal_table_fits(hdr->stylesheet_off,
                         hdr->stylesheet_count,
                         sizeof(ra8_book_stylesheet_t),
                         total) &&
-    ra8_book_table_fits(hdr->image_off, hdr->image_count, sizeof(ra8_book_image_t), total) &&
-    ra8_book_table_fits(hdr->string_off, hdr->string_size, 1U, total) &&
-    ra8_book_table_fits(hdr->image_pool_off, hdr->image_pool_size, 1U, total);
+    internal_table_fits(hdr->image_off, hdr->image_count, sizeof(ra8_book_image_t), total) &&
+    internal_table_fits(hdr->string_off, hdr->string_size, 1U, total) &&
+    internal_table_fits(hdr->image_pool_off, hdr->image_pool_size, 1U, total);
   if (!tables_ok) {
     return k_ra8_err_invalid_size;
   }
 
   /* Every image descriptor must name a pixel depth this build can unpack; an
    * unknown depth is refused (fail-closed) rather than fed to the wrong blit. */
-  if (!ra8_book_image_pixfmts_known(base, hdr)) {
+  if (!internal_image_pixfmts_known(base, hdr)) {
     return k_ra8_err_invalid_arg;
   }
 
   const uint8_t* body     = (const uint8_t*)base + sizeof(ra8_book_header_t);
   uint32_t       body_len = total - (uint32_t)sizeof(ra8_book_header_t);
-  if (ra8_book_crc32(body, body_len) != hdr->crc32) {
+  if (internal_crc32(body, body_len) != hdr->crc32) {
     return k_ra8_err_range_check_failed;
   }
 
   return k_ra8_ok;
 }
 
-/** @brief Implementation of `ra8_book_container_header_fields()` -- memcpy field decode. */
-ra8_err_t ra8_book_container_header_fields(const uint8_t* hdr,
-                                           uint32_t*      out_chunk_bytes,
-                                           uint64_t*      out_total,
-                                           uint32_t*      out_count)
+/** @brief Implementation of `priv_book_container_header_fields()` -- memcpy field decode. */
+RA8_PRIV ra8_err_t priv_book_container_header_fields(const uint8_t* hdr,
+                                                     uint32_t*      out_chunk_bytes,
+                                                     uint64_t*      out_total,
+                                                     uint32_t*      out_count)
 {
   RA8_CHECK_NULL_PTR(hdr, s_tag_book, "hdr fields: null hdr");
   RA8_CHECK_NULL_PTR(out_chunk_bytes, s_tag_book, "hdr fields: null out");
@@ -365,8 +370,8 @@ ra8_err_t ra8_book_container_header_fields(const uint8_t* hdr,
   return k_ra8_ok;
 }
 
-/** @brief Implementation of `ra8_book_container_table_entry()` -- unaligned-safe memcpy load. */
-uint64_t ra8_book_container_table_entry(const uint8_t* table, uint32_t idx)
+/** @brief Implementation of `priv_book_container_table_entry()` -- unaligned-safe memcpy load. */
+RA8_PRIV uint64_t priv_book_container_table_entry(const uint8_t* table, uint32_t idx)
 {
   uint64_t entry = 0U;
   memcpy(&entry, &table[(size_t)idx * k_ra8_book_container_entry_len], sizeof(entry));
@@ -396,7 +401,7 @@ typedef struct {
  * @brief Parse + bounds-check a resident "RBKC" container against its file.
  *
  * @details
- * Decodes the fixed header via `ra8_book_container_header_fields()`, verifies
+ * Decodes the fixed header via `priv_book_container_header_fields()`, verifies
  * the header plus chunk table fit inside @p file_len, verifies the inflated
  * total fits @p scratch_cap, then walks the chunk table once to require
  * `offset[0] == 0`, strict monotonic growth, and
@@ -424,19 +429,18 @@ typedef struct {
  *
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_container_view(const uint8_t*             bytes,
-                                         size_t                     file_len,
-                                         size_t                     scratch_cap,
-                                         ra8_book_container_view_t* out_view)
+RA8_INTERNAL static ra8_err_t internal_container_view(const uint8_t*             bytes,
+                                                      size_t                     file_len,
+                                                      size_t                     scratch_cap,
+                                                      ra8_book_container_view_t* out_view)
 {
   if (file_len < k_ra8_book_container_header_len) {
     return k_ra8_err_invalid_size;
   }
-  ra8_err_t err = ra8_book_container_header_fields(bytes,
-                                                   &out_view->chunk_bytes,
-                                                   &out_view->total,
-                                                   &out_view->chunk_count);
+  ra8_err_t err = priv_book_container_header_fields(bytes,
+                                                    &out_view->chunk_bytes,
+                                                    &out_view->total,
+                                                    &out_view->chunk_count);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -451,12 +455,12 @@ static ra8_err_t internal_container_view(const uint8_t*             bytes,
   out_view->table       = &bytes[k_ra8_book_container_header_len];
   out_view->payload     = &out_view->table[table_bytes];
   out_view->payload_len = (uint64_t)file_len - k_ra8_book_container_header_len - table_bytes;
-  uint64_t prev         = ra8_book_container_table_entry(out_view->table, 0U);
+  uint64_t prev         = priv_book_container_table_entry(out_view->table, 0U);
   if (prev != 0U) {
     return k_ra8_err_invalid_arg;
   }
   for (uint32_t i = 1U; i <= out_view->chunk_count; ++i) { /* bound: validated chunk_count */
-    const uint64_t cur = ra8_book_container_table_entry(out_view->table, i);
+    const uint64_t cur = priv_book_container_table_entry(out_view->table, i);
     if (cur <= prev) {
       return k_ra8_err_invalid_arg;
     }
@@ -497,14 +501,13 @@ static ra8_err_t internal_container_view(const uint8_t*             bytes,
  *
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_inflate_chunks(const ra8_book_container_view_t* view,
-                                         ra8_book_inflate_fn              inflate,
-                                         uint8_t*                         scratch)
+RA8_INTERNAL static ra8_err_t internal_inflate_chunks(const ra8_book_container_view_t* view,
+                                                      ra8_book_inflate_fn              inflate,
+                                                      uint8_t*                         scratch)
 {
   for (uint32_t i = 0U; i < view->chunk_count; ++i) { /* bound: validated chunk_count */
-    const uint64_t off      = ra8_book_container_table_entry(view->table, i);
-    const uint64_t next     = ra8_book_container_table_entry(view->table, i + 1U);
+    const uint64_t off      = priv_book_container_table_entry(view->table, i);
+    const uint64_t next     = priv_book_container_table_entry(view->table, i + 1U);
     const uint64_t dst_off  = (uint64_t)i * view->chunk_bytes;
     uint64_t       expected = view->total - dst_off;
     if (expected > (uint64_t)view->chunk_bytes) {
@@ -560,14 +563,13 @@ static ra8_err_t internal_inflate_chunks(const ra8_book_container_view_t* view,
  *
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_open_body(const uint8_t*      bytes,
-                                    size_t              file_len,
-                                    ra8_book_inflate_fn inflate,
-                                    void*               scratch,
-                                    size_t              scratch_cap,
-                                    const void**        out_base,
-                                    size_t*             out_size)
+RA8_INTERNAL static ra8_err_t internal_open_body(const uint8_t*      bytes,
+                                                 size_t              file_len,
+                                                 ra8_book_inflate_fn inflate,
+                                                 void*               scratch,
+                                                 size_t              scratch_cap,
+                                                 const void**        out_base,
+                                                 size_t*             out_size)
 {
   ra8_book_container_view_t view = {};
   ra8_err_t                 err  = internal_container_view(bytes, file_len, scratch_cap, &view);
