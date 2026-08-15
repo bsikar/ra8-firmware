@@ -73,7 +73,7 @@ extern "C" {
  *
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_dfu_internal_write_secure(uintptr_t addr, const uint8_t* src, uint32_t len);
+RA8_PRIV ra8_err_t priv_dfu_write_secure(uintptr_t addr, const uint8_t* src, uint32_t len);
 
 #ifdef __cplusplus
 }

@@ -286,6 +286,5 @@ int main(void)
   test_launch_cov_rot_verify_deny();
   test_launch_cov_rot_antirollback_deny();
   test_launch_cov_rot_accept();
-  (void)fprintf(stderr, "[OK ] test_ra8_dfu_launch_cov.c\n");
   return 0;
 }

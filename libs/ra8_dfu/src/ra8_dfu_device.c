@@ -105,7 +105,7 @@ void ra8_dfu_device_set_target(ra8_dfu_slot_t target_slot)
  * @note Called from the USBX device stack thread context; not ISR-safe.
  * @since 0.1.0
  */
-static VOID internal_dfu_activate(VOID* dfu)
+RA8_INTERNAL static VOID internal_dfu_activate(VOID* dfu)
 {
   (void)dfu;
 }
@@ -132,7 +132,7 @@ static VOID internal_dfu_activate(VOID* dfu)
  * @note Called from the USBX device stack thread context; not ISR-safe.
  * @since 0.1.0
  */
-static VOID internal_dfu_deactivate(VOID* dfu)
+RA8_INTERNAL static VOID internal_dfu_deactivate(VOID* dfu)
 {
   (void)dfu;
 }
@@ -174,7 +174,7 @@ static VOID internal_dfu_deactivate(VOID* dfu)
  *       concurrent calls to itself, but the USBX stack serializes them.
  * @since 0.1.0
  */
-static UINT
+RA8_INTERNAL static UINT
 internal_dfu_write(VOID* dfu, ULONG block_number, UCHAR* data, ULONG length, ULONG* media_status)
 {
   (void)dfu;
@@ -238,7 +238,7 @@ internal_dfu_write(VOID* dfu, ULONG block_number, UCHAR* data, ULONG length, ULO
  * @note Invoked from the USBX control-request context; not ISR-safe.
  * @since 0.1.0
  */
-static UINT
+RA8_INTERNAL static UINT
 internal_dfu_read(VOID* dfu, ULONG block_number, UCHAR* data, ULONG length, ULONG* actual_length)
 {
   (void)dfu;
@@ -283,7 +283,7 @@ internal_dfu_read(VOID* dfu, ULONG block_number, UCHAR* data, ULONG length, ULON
  * @note Invoked from the USBX control-request context; not ISR-safe.
  * @since 0.1.0
  */
-static UINT internal_dfu_get_status(VOID* dfu, ULONG* media_status)
+RA8_INTERNAL static UINT internal_dfu_get_status(VOID* dfu, ULONG* media_status)
 {
   (void)dfu;
   *media_status = (s_dev.prog_err == k_ra8_ok) ? (ULONG)UX_SLAVE_CLASS_DFU_MEDIA_STATUS_OK
@@ -316,7 +316,7 @@ static UINT internal_dfu_get_status(VOID* dfu, ULONG* media_status)
  * @note Invoked from the USBX device stack thread context; not ISR-safe.
  * @since 0.1.0
  */
-static UINT internal_dfu_notify(VOID* dfu, ULONG notification)
+RA8_INTERNAL static UINT internal_dfu_notify(VOID* dfu, ULONG notification)
 {
   (void)dfu;
   if (notification == (ULONG)UX_SLAVE_CLASS_DFU_NOTIFICATION_END_DOWNLOAD) {
