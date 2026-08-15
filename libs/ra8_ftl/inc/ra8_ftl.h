@@ -1,6 +1,7 @@
 /**
  * @file ra8_ftl.h
- * @brief Flash Translation Layer -- free overwrite over erase-before-write media.
+ * @brief Flash Translation Layer -- free overwrite over erase-before-write
+ * media.
  * @ingroup grp_storage
  *
  * @par Tag
@@ -15,11 +16,11 @@
  * data. See issue #165.
  *
  * This module is a Flash Translation Layer (FTL). It **wraps** an
- * erase-before-write ::ra8_io_blockdev_t (the underlying device) and **presents**
- * a clean free-overwrite ::ra8_io_blockdev_t to the FAT/VFS layer above. The FAT
- * layer sees a device it can overwrite at will; the FTL handles erase ordering,
- * copy-on-write relocation, stale-block reclamation, and wear-levelling
- * underneath.
+ * erase-before-write ::ra8_io_blockdev_t (the underlying device) and
+ * **presents** a clean free-overwrite ::ra8_io_blockdev_t to the FAT/VFS layer
+ * above. The FAT layer sees a device it can overwrite at will; the FTL handles
+ * erase ordering, copy-on-write relocation, stale-block reclamation, and
+ * wear-levelling underneath.
  *
  * ## Model
  *
@@ -67,15 +68,18 @@
  * (`physical_blocks` entries of ::ra8_ftl_pblock_t), and one 512-byte scratch
  * buffer for copy operations. Nothing is allocated.
  *
- * @code
- * extern ra8_io_blockdev_t raw;          // bound MRAM (erase-before-write) device
- * static uint16_t        s_map[24];     // logical_blocks entries
- * static ra8_ftl_pblock_t s_pb[24];      // physical_blocks entries
- * static uint8_t         s_scratch[512];
- * ra8_ftl_t        ftl = {};
- * ra8_io_blockdev_t bd = {};             // clean free-overwrite device for FAT
- * (void)ra8_ftl_init(&ftl, &raw, s_map, 16U, s_pb, 24U, s_scratch);
- * (void)ra8_ftl_as_blockdev(&ftl, &bd);  // FAT now mounts on bd
+ * @code{.c}
+ * extern ra8_io_blockdev_t raw;
+ * uint16_t map[24] = {};
+ * ra8_ftl_pblock_t pblocks[24] = {};
+ * uint8_t scratch[512];
+ * ra8_ftl_t ftl = {};
+ * ra8_io_blockdev_t bd = {};
+ *
+ * ra8_err_t err = ra8_ftl_init(&ftl, &raw, map, 16U, pblocks, 24U, scratch);
+ * if (err == k_ra8_ok) {
+ *   err = ra8_ftl_as_blockdev(&ftl, &bd);
+ * }
  * @endcode
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -105,8 +109,9 @@ extern "C" {
  *
  * @details
  * The mapping table stores physical block indices as `uint16_t`, so the FTL
- * addresses at most ::k_ra8_ftl_max_pblocks physical blocks. ::k_ra8_ftl_unmapped
- * is the reserved sentinel meaning "this logical block has never been written".
+ * addresses at most ::k_ra8_ftl_max_pblocks physical blocks.
+ * ::k_ra8_ftl_unmapped is the reserved sentinel meaning "this logical block has
+ * never been written".
  *
  * @since 0.1.0
  */
@@ -209,12 +214,13 @@ typedef struct {
  * erase or program is issued here; physical blocks are erased lazily on first
  * write. No allocation occurs.
  *
- * @param[out] bd              FTL handle to initialise (zero-initialised first).
+ * @param[out] bd              FTL handle to initialise; caller zero-initialises
+ *                             it before use.
  * @param[in]  raw             Bound underlying erase-before-write device.
  * @param[out] map             Caller array of `logical_blocks` `uint16_t`.
  * @param[in]  logical_blocks  Blocks to present to FAT (>= 1).
- * @param[out] pblocks         Caller array of `physical_blocks` metadata entries
- *                             (zero-initialised by the caller).
+ * @param[out] pblocks         Caller array of `physical_blocks` metadata
+ *                             entries; caller zero-initialises it.
  * @param[in]  physical_blocks Physical blocks in `raw`
  *                             (>= `logical_blocks + k_ra8_ftl_min_spare`).
  * @param[out] scratch         Caller 512-byte copy scratch buffer.
@@ -222,16 +228,18 @@ typedef struct {
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok                  FTL initialised and ready.
  * @retval k_ra8_err_null_ptr        Any pointer argument was NULL.
- * @retval k_ra8_err_invalid_size    `logical_blocks` was zero or `physical_blocks`
- *                                  exceeds ::k_ra8_ftl_max_pblocks.
+ * @retval k_ra8_err_invalid_size    `logical_blocks` was zero or
+ *                                   `physical_blocks` exceeds
+ *                                   ::k_ra8_ftl_max_pblocks.
  * @retval k_ra8_err_invalid_arg     Underlying caps query failed, the device is
- *                                  read-only, `erase_unit_blocks != 1`, or there
- *                                  is no spare block.
+ *                                   read-only, `erase_unit_blocks != 1`, or
+ *                                   there is no spare block.
  * @retval k_ra8_err_not_initialized No backend is bound to `raw`.
  *
  * @pre All pointer arguments out-live every call through the FTL.
  * @pre `pblocks[0 .. physical_blocks)` were zero-initialised by the caller.
- * @post On success every logical block is unmapped and every physical block FREE.
+ * @post On success every logical block is unmapped and every physical block
+ * FREE.
  * @post On any non-ok return `bd` is left unbound.
  *
  * @note Not thread-safe with respect to the same FTL.
@@ -350,9 +358,10 @@ ra8_ftl_wear_stats(const ra8_ftl_t* ftl, uint32_t* max_out, uint32_t* min_out);
  * A checkpoint captures the FTL's volatile mapping state (the `map` and
  * `pblocks` tables) so it can be persisted to non-volatile media and reloaded
  * after a reset. This returns the exact byte count ::ra8_ftl_checkpoint_save
- * needs for the current geometry: a fixed header plus `logical_blocks` map
- * entries plus `physical_blocks` metadata entries. The value is stable for a
- * given initialised handle.
+ * needs for the current geometry: a fixed canonical header, two bytes per map
+ * entry, five bytes per physical-block entry, and a CRC-32 trailer. The value
+ * is independent of compiler padding, native integer layout, and host byte
+ * order, and is stable for a given initialised handle.
  *
  * @param[in]  ftl      Initialised FTL handle.
  * @param[out] size_out Receives the required checkpoint size in bytes.
@@ -380,17 +389,19 @@ ra8_ftl_wear_stats(const ra8_ftl_t* ftl, uint32_t* max_out, uint32_t* min_out);
  *
  * @details
  * Writes a self-describing checkpoint of the volatile mapping tables (`map` and
- * `pblocks`) into `buf`: a header (magic + geometry) followed by the map and
- * per-physical-block metadata. Persisting this blob to a non-volatile region of
+ * `pblocks`) into `buf`: a versioned little-endian header (magic, exact length,
+ * and geometry), individually encoded map and physical-block records, and a
+ * CRC-32/ISO-HDLC trailer. Persisting this blob to a non-volatile region of
  * the underlying device and reloading it after a reset (see
  * ::ra8_ftl_checkpoint_load) is what lets logical data survive a power cycle --
  * the FTL keeps no on-media metadata of its own, so without a checkpoint a cold
  * re-init cannot resolve which physical block holds which logical block.
  *
- * The blob is **architecture-local**: it uses native integer and struct layout
- * for speed and simplicity, so it must be restored on the same architecture
- * that produced it. This is always the case in practice -- firmware writes and
- * reads the checkpoint on the same device, and host tests on the same host.
+ * Version 1 is canonical across architectures: no native object representation
+ * or struct padding is copied. The pre-versioned native-layout format is
+ * deliberately not migrated because its producer ABI cannot be proven from the
+ * bytes; load identifies either legacy byte order and fails closed with
+ * ::k_ra8_err_not_supported.
  *
  * @param[in]  ftl     Initialised FTL handle.
  * @param[out] buf     Destination buffer (>= ::ra8_ftl_checkpoint_size bytes).
@@ -401,9 +412,12 @@ ra8_ftl_wear_stats(const ra8_ftl_t* ftl, uint32_t* max_out, uint32_t* min_out);
  * @retval k_ra8_err_null_ptr        `ftl` or `buf` was NULL.
  * @retval k_ra8_err_not_initialized `ftl` was not initialised.
  * @retval k_ra8_err_invalid_size    `buf_len` is smaller than the checkpoint.
+ * @retval k_ra8_err_invalid_arg     Output aliases FTL tables or scratch.
+ * @retval k_ra8_err_invalid_state   Live mapping invariants are corrupt.
  *
  * @pre `ftl` was initialised by ::ra8_ftl_init.
- * @pre `buf` is writable for at least `buf_len` bytes.
+ * @pre `buf` is writable for at least `buf_len` bytes and does not overlap the
+ *      FTL map, physical-block table, or scratch block.
  * @post On success `buf[0 .. checkpoint_size)` holds a loadable checkpoint.
  * @post On any non-ok return `buf` is left unchanged.
  *
@@ -420,17 +434,20 @@ ra8_ftl_checkpoint_save(const ra8_ftl_t* ftl, uint8_t* buf, uint32_t buf_len);
  * @brief Restore FTL mapping state from a checkpoint produced by save.
  *
  * @details
- * Validates `buf` as a checkpoint whose geometry matches `ftl` and copies the
- * saved `map` and `pblocks` tables back into the handle's caller storage, so a
+ * Validates `buf` as an exact-length checkpoint whose version and geometry
+ * match `ftl`, verifies its CRC, and rejects out-of-range or duplicate map
+ * entries, invalid states, unreferenced LIVE blocks, and references to non-LIVE
+ * blocks. Validation uses fixed windows in the FTL's caller-owned scratch block
+ * before the saved `map` and `pblocks` values are committed, so a
  * freshly ::ra8_ftl_init handle resumes the exact mapping it had when the
  * checkpoint was taken. Call ::ra8_ftl_init first (to re-bind the underlying
  * device and re-establish geometry), then this to overwrite the cold-start
  * tables with the persisted state; the underlying data blocks are untouched, so
  * a subsequent read of any logical block returns its pre-reset contents.
  *
- * The checkpoint's magic and geometry (logical/physical block counts) are
- * checked before any table is written, so a blank, foreign, or mismatched
- * buffer is rejected rather than restoring corrupt state.
+ * Legacy native-layout checkpoints are recognized in either byte order but
+ * rejected as unsupported: their producer ABI and padding cannot be recovered
+ * safely from the blob.
  *
  * @param[in,out] ftl     Handle freshly initialised by ::ra8_ftl_init.
  * @param[in]     buf     Checkpoint buffer from ::ra8_ftl_checkpoint_save.
@@ -440,14 +457,17 @@ ra8_ftl_checkpoint_save(const ra8_ftl_t* ftl, uint8_t* buf, uint32_t buf_len);
  * @retval k_ra8_ok                  Mapping state restored.
  * @retval k_ra8_err_null_ptr        `ftl` or `buf` was NULL.
  * @retval k_ra8_err_not_initialized `ftl` was not initialised.
- * @retval k_ra8_err_invalid_size    `buf_len` is smaller than the checkpoint.
+ * @retval k_ra8_err_invalid_size    `buf_len` is not the exact encoded length.
  * @retval k_ra8_err_invalid_state   The buffer is not an FTL checkpoint (bad
- *                                  magic).
+ *                                   magic or mapping invariant).
  * @retval k_ra8_err_invalid_arg     The checkpoint geometry does not match
- *                                  `ftl` (different logical/physical counts).
+ *                                   `ftl`, or input aliases live/scratch state.
+ * @retval k_ra8_err_not_supported   Unknown version or recognized legacy ABI.
+ * @retval k_ra8_err_crc_mismatch    Checkpoint bytes fail their CRC-32 trailer.
  *
  * @pre `ftl` was re-initialised by ::ra8_ftl_init over the retained device.
- * @pre `buf` holds a checkpoint saved by a handle of identical geometry.
+ * @pre `buf` holds exactly one checkpoint and does not overlap the FTL map,
+ *      physical-block table, or scratch block.
  * @post On success `map`/`pblocks` mirror the checkpointed state.
  * @post On any non-ok return the cold-start tables are left as ::ra8_ftl_init
  *       set them.
