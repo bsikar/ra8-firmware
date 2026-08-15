@@ -50,23 +50,23 @@ extern "C" {
  * "Command Format" (bit 7 = 0, bit 6 = 1, bits 5..0 = command index).
  */
 typedef enum : uint8_t {
-  k_sd_cmd_go_idle_state           = 0x40U,       /**< CMD0  GO_IDLE_STATE (0x40 | 0). */
-  k_sd_cmd_send_if_cond            = 0x40U | 8U,  /**< CMD8  SEND_IF_COND              */
-  k_sd_cmd_send_csd                = 0x40U | 9U,  /**< CMD9  SEND_CSD                  */
-  k_sd_cmd_send_cid                = 0x40U | 10U, /**< CMD10 SEND_CID                  */
-  k_sd_cmd_stop_transmission       = 0x40U | 12U, /**< CMD12 STOP_TRANSMISSION         */
-  k_sd_cmd_set_blocklen            = 0x40U | 16U, /**< CMD16 SET_BLOCKLEN              */
-  k_sd_cmd_read_single_block       = 0x40U | 17U, /**< CMD17 READ_SINGLE_BLOCK         */
-  k_sd_cmd_read_multi_block        = 0x40U | 18U, /**< CMD18 READ_MULTIPLE_BLOCK       */
-  k_sd_cmd_write_single_block      = 0x40U | 24U, /**< CMD24 WRITE_BLOCK               */
-  k_sd_cmd_write_multi_block       = 0x40U | 25U, /**< CMD25 WRITE_MULTIPLE_BLOCK      */
-  k_sd_cmd_erase_wr_blk_start      = 0x40U | 32U, /**< CMD32 ERASE_WR_BLK_START        */
-  k_sd_cmd_erase_wr_blk_end        = 0x40U | 33U, /**< CMD33 ERASE_WR_BLK_END          */
-  k_sd_cmd_erase                   = 0x40U | 38U, /**< CMD38 ERASE                     */
-  k_sd_cmd_app_cmd                 = 0x40U | 55U, /**< CMD55 APP_CMD                   */
-  k_sd_cmd_read_ocr                = 0x40U | 58U, /**< CMD58 READ_OCR                  */
-  k_sd_acmd_sd_send_op_cond        = 0x40U | 41U, /**< ACMD41 SD_SEND_OP_COND          */
-  k_sd_acmd_set_wr_blk_erase_count = 0x40U | 23U, /**< ACMD23 pre-erase count          */
+  k_sd_cmd_go_idle_state           = 0x40U,       /**< CMD0.   */
+  k_sd_cmd_send_if_cond            = 0x40U | 8U,  /**< CMD8.   */
+  k_sd_cmd_send_csd                = 0x40U | 9U,  /**< CMD9.   */
+  k_sd_cmd_send_cid                = 0x40U | 10U, /**< CMD10.  */
+  k_sd_cmd_stop_transmission       = 0x40U | 12U, /**< CMD12.  */
+  k_sd_cmd_set_blocklen            = 0x40U | 16U, /**< CMD16.  */
+  k_sd_cmd_read_single_block       = 0x40U | 17U, /**< CMD17.  */
+  k_sd_cmd_read_multi_block        = 0x40U | 18U, /**< CMD18.  */
+  k_sd_cmd_write_single_block      = 0x40U | 24U, /**< CMD24.  */
+  k_sd_cmd_write_multi_block       = 0x40U | 25U, /**< CMD25.  */
+  k_sd_cmd_erase_wr_blk_start      = 0x40U | 32U, /**< CMD32.  */
+  k_sd_cmd_erase_wr_blk_end        = 0x40U | 33U, /**< CMD33.  */
+  k_sd_cmd_erase                   = 0x40U | 38U, /**< CMD38.  */
+  k_sd_cmd_app_cmd                 = 0x40U | 55U, /**< CMD55.  */
+  k_sd_cmd_read_ocr                = 0x40U | 58U, /**< CMD58.  */
+  k_sd_acmd_sd_send_op_cond        = 0x40U | 41U, /**< ACMD41. */
+  k_sd_acmd_set_wr_blk_erase_count = 0x40U | 23U, /**< ACMD23. */
 } sd_cmd_t;
 
 /**
@@ -74,10 +74,10 @@ typedef enum : uint8_t {
  * @brief Data tokens used for block I/O (SD spec PHY v9 section 7.3.3).
  */
 typedef enum : uint8_t {
-  k_sd_token_data_start_single = 0xFEU, /**< Single-block read / single-block write start. */
-  k_sd_token_data_start_multi  = 0xFCU, /**< Multi-block write start.                      */
-  k_sd_token_stop_multi        = 0xFDU, /**< Multi-block write stop.                       */
-  k_sd_token_idle              = 0xFFU, /**< Bus idle / CIPO high.                         */
+  k_sd_token_data_start_single = 0xFEU, /**< Single-block start. */
+  k_sd_token_data_start_multi  = 0xFCU, /**< Multi-block start.  */
+  k_sd_token_stop_multi        = 0xFDU, /**< Multi-block stop.   */
+  k_sd_token_idle              = 0xFFU, /**< Idle bus.           */
 } sd_data_token_t;
 
 /**
@@ -166,14 +166,14 @@ typedef enum : uint32_t {
  * @invariant ``initialized == true`` iff CMD0 ... CMD16 init succeeded.
  */
 typedef struct {
-  ra8_sdmmc_spi_transport_t transport;       /**< Bound transport callbacks.          */
-  ra8_sdmmc_spi_card_type_t card_type;       /**< Detected card class.                */
-  uint32_t                  capacity_blocks; /**< 512-byte block count.               */
-  bool                      initialized;     /**< True once the SD init sequence ran. */
+  ra8_sdmmc_spi_transport_t transport;       /**< Transport callbacks.  */
+  ra8_sdmmc_spi_card_type_t card_type;       /**< Card class.           */
+  uint32_t                  capacity_blocks; /**< Block count.          */
+  bool                      initialized;     /**< Initialization state. */
 } sd_state_t;
 
 /**
- * @var s_sdmmc_spi_state
+ * @var g_sdmmc_spi_state
  * @brief Single driver instance, defined in ``ra8_sdmmc_spi.c``.
  * @details Mutable protocol state shared between the core/init TU and the
  *          block-I/O TU. Renamed with the module infix so it is link-unique.
@@ -182,7 +182,7 @@ typedef struct {
  *          ``ra8_sdmmc_spi.c``.
  * @since 0.1.0
  */
-extern sd_state_t s_sdmmc_spi_state;
+RA8_PRIV extern sd_state_t g_sdmmc_spi_state;
 
 /* ---------------------------------------------------------------------------
  * Low-level helpers shared with the block-I/O TU
@@ -192,7 +192,7 @@ extern sd_state_t s_sdmmc_spi_state;
 /**
  * @brief Shift out one byte and capture the response over the transport.
  * @details Wraps a single-byte full-duplex transfer through the bound
- *          ``s_sdmmc_spi_state.transport`` so callers need not stage 1-byte
+ *          ``g_sdmmc_spi_state.transport`` so callers need not stage 1-byte
  *          buffers themselves.
  * @param[in]  tx Byte to clock out.
  * @param[out] rx Received byte, or NULL to discard.
@@ -206,7 +206,7 @@ extern sd_state_t s_sdmmc_spi_state;
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_sdmmc_spi_xfer_one(uint8_t tx, uint8_t* rx);
+RA8_PRIV ra8_err_t priv_sdmmc_spi_xfer_one(uint8_t tx, uint8_t* rx);
 
 /**
  * @brief Shift @p n idle bytes (0xFF) and discard the response.
@@ -222,7 +222,7 @@ RA8_PRIV ra8_err_t ra8_sdmmc_spi_xfer_one(uint8_t tx, uint8_t* rx);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_sdmmc_spi_send_idle(uint32_t n);
+RA8_PRIV ra8_err_t priv_sdmmc_spi_send_idle(uint32_t n);
 
 /**
  * @brief Drive CS low and clock a single idle byte so CIPO is sampled.
@@ -237,7 +237,7 @@ RA8_PRIV ra8_err_t ra8_sdmmc_spi_send_idle(uint32_t n);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_sdmmc_spi_cs_assert(void);
+RA8_PRIV ra8_err_t priv_sdmmc_spi_cs_assert(void);
 
 /**
  * @brief Drive CS high after clocking one idle byte (SD spec section 7.2.4).
@@ -253,7 +253,7 @@ RA8_PRIV ra8_err_t ra8_sdmmc_spi_cs_assert(void);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_sdmmc_spi_cs_release(void);
+RA8_PRIV ra8_err_t priv_sdmmc_spi_cs_release(void);
 
 /**
  * @brief Send a command frame and capture the R1 response byte.
@@ -273,7 +273,7 @@ RA8_PRIV ra8_err_t ra8_sdmmc_spi_cs_release(void);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_sdmmc_spi_send_command(sd_cmd_t cmd, uint32_t arg, uint8_t* out_r1);
+RA8_PRIV ra8_err_t priv_sdmmc_spi_send_command(sd_cmd_t cmd, uint32_t arg, uint8_t* out_r1);
 
 /**
  * @brief Send an ACMD by prefixing it with CMD55 (APP_CMD).
@@ -292,7 +292,7 @@ RA8_PRIV ra8_err_t ra8_sdmmc_spi_send_command(sd_cmd_t cmd, uint32_t arg, uint8_
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_sdmmc_spi_send_acmd(sd_cmd_t acmd, uint32_t arg, uint8_t* out_r1);
+RA8_PRIV ra8_err_t priv_sdmmc_spi_send_acmd(sd_cmd_t acmd, uint32_t arg, uint8_t* out_r1);
 
 /**
  * @brief Send CMD12 (STOP_TRANSMISSION) and capture its R1 response byte.
@@ -300,7 +300,7 @@ RA8_PRIV ra8_err_t ra8_sdmmc_spi_send_acmd(sd_cmd_t acmd, uint32_t arg, uint8_t*
  *          byte that follows it (the tail of the interrupted read stream --
  *          its value is undefined, and a bit7-clear garbage byte would be
  *          misread as R1), then polls for the R1 token. Terminates a CMD18
- *          READ_MULTIPLE_BLOCK stream; the plain ::ra8_sdmmc_spi_send_command
+ *          READ_MULTIPLE_BLOCK stream; the plain ::priv_sdmmc_spi_send_command
  *          cannot be used because it polls for R1 straight after the frame.
  * @param[out] out_r1 Captured R1 response byte.
  * @return ra8_err_t Error code.
@@ -314,7 +314,7 @@ RA8_PRIV ra8_err_t ra8_sdmmc_spi_send_acmd(sd_cmd_t acmd, uint32_t arg, uint8_t*
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_sdmmc_spi_send_stop_transmission(uint8_t* out_r1);
+RA8_PRIV ra8_err_t priv_sdmmc_spi_send_stop_transmission(uint8_t* out_r1);
 
 /**
  * @brief Poll for the data-start token (0xFE), bounded by a retry budget.
@@ -331,10 +331,11 @@ RA8_PRIV ra8_err_t ra8_sdmmc_spi_send_stop_transmission(uint8_t* out_r1);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_sdmmc_spi_wait_data_token(void);
+RA8_PRIV ra8_err_t priv_sdmmc_spi_wait_data_token(void);
 
 /**
- * @brief Wait for the card to release busy (CIPO -> 0xFF), bounded by @p max_polls.
+ * @brief Wait for the card to release busy (CIPO -> 0xFF), bounded by @p
+ * max_polls.
  * @details Clocks idle bytes until the card stops holding CIPO low or the
  *          poll budget is exhausted.
  * @param[in] max_polls Maximum idle bytes to clock before timing out.
@@ -349,11 +350,11 @@ RA8_PRIV ra8_err_t ra8_sdmmc_spi_wait_data_token(void);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_sdmmc_spi_wait_not_busy_bounded(uint32_t max_polls);
+RA8_PRIV ra8_err_t priv_sdmmc_spi_wait_not_busy_bounded(uint32_t max_polls);
 
 /**
  * @brief Wait for the card to release the busy token (CIPO returns to 0xFF).
- * @details Convenience wrapper over ::ra8_sdmmc_spi_wait_not_busy_bounded with
+ * @details Convenience wrapper over ::priv_sdmmc_spi_wait_not_busy_bounded with
  *          the default worst-case write timeout.
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok            Card released busy.
@@ -366,7 +367,7 @@ RA8_PRIV ra8_err_t ra8_sdmmc_spi_wait_not_busy_bounded(uint32_t max_polls);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_sdmmc_spi_wait_not_busy(void);
+RA8_PRIV ra8_err_t priv_sdmmc_spi_wait_not_busy(void);
 
 /**
  * @brief Validate the transport descriptor: every callback non-NULL.
@@ -383,24 +384,24 @@ RA8_PRIV ra8_err_t ra8_sdmmc_spi_wait_not_busy(void);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_sdmmc_spi_validate_transport(const ra8_sdmmc_spi_transport_t* transport);
+RA8_PRIV ra8_err_t priv_sdmmc_spi_validate_transport(const ra8_sdmmc_spi_transport_t* transport);
 
 /**
  * @brief Walk the full SD identification sequence and learn capacity / type.
  * @details Runs the CMD0/CMD8/ACMD41/CMD58/CMD9/CMD16 probe and records the
- *          card type and capacity into ::s_sdmmc_spi_state.
+ *          card type and capacity into ::g_sdmmc_spi_state.
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok               Card identified; type and capacity cached.
  * @retval k_ra8_err_protocol_error A response was malformed.
  * @retval other                 Propagated from the probe steps.
  * @pre The transport is bound and the init clock is set.
  * @pre CS is released on entry.
- * @post On success ::s_sdmmc_spi_state.card_type and .capacity_blocks are set.
+ * @post On success ::g_sdmmc_spi_state.card_type and .capacity_blocks are set.
  * @post CS is released.
  * @note Not thread-safe; single-threaded init.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_sdmmc_spi_run_init_sequence(void);
+RA8_PRIV ra8_err_t priv_sdmmc_spi_run_init_sequence(void);
 
 #ifdef __cplusplus
 }

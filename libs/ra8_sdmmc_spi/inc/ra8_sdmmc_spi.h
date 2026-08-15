@@ -163,10 +163,10 @@ typedef ra8_err_t (*ra8_sdmmc_spi_xfer_fn_t)(void*          ctx,
  * @invariant Every function pointer is non-NULL for a usable transport.
  */
 typedef struct {
-  ra8_sdmmc_spi_set_clock_fn_t set_clock; /**< Set SPI clock frequency.               */
-  ra8_sdmmc_spi_cs_fn_t        cs;        /**< Drive chip-select asserted / released. */
-  ra8_sdmmc_spi_xfer_fn_t      xfer;      /**< Full-duplex byte exchange.             */
-  void*                        ctx;       /**< Caller-owned context cookie.           */
+  ra8_sdmmc_spi_set_clock_fn_t set_clock; /**< Set the bus clock. */
+  ra8_sdmmc_spi_cs_fn_t        cs;        /**< Drive chip select. */
+  ra8_sdmmc_spi_xfer_fn_t      xfer;      /**< Exchange bytes.    */
+  void*                        ctx;       /**< Caller context.    */
 } ra8_sdmmc_spi_transport_t;
 
 /* =============================================================================
@@ -212,7 +212,8 @@ typedef struct {
  *      ``ra8_pfs_route_peripheral`` (PSEL = SCI async) and claims @p pins->cs
  *      as a GPIO output held high (card deselected).
  *   2. Brings the SCI channel up in Simple-SPI controller mode at the SD
- *      power-on clock (``k_ra8_sdmmc_spi_clock_init_hz``) via ``ra8_sci_spi_init``.
+ *      power-on clock (``k_ra8_sdmmc_spi_clock_init_hz``) via
+ * ``ra8_sci_spi_init``.
  *   3. Caches the bus parameters into module-private storage and wires the
  *      three transport callbacks to the existing ``ra8_sci_spi`` / GPIO HAL.
  *
@@ -236,7 +237,8 @@ typedef struct {
  * and populates the descriptor itself.
  *
  * @param[in]  sci_channel SCI channel index (0..9) wired to Simple-SPI mode.
- * @param[in]  pclk_hz     PCLKA rate (Hz) feeding the SCI baud divider; non-zero.
+ * @param[in]  pclk_hz     PCLKA rate (Hz) feeding the SCI baud divider;
+ * non-zero.
  * @param[in]  pins        Non-NULL SCK / CIPO / COPI / CS pin descriptor.
  * @param[out] out         Non-NULL transport descriptor populated on success.
  *
@@ -244,8 +246,10 @@ typedef struct {
  * @retval k_ra8_ok                 Pins routed, SCI up, @p out populated.
  * @retval k_ra8_err_null_ptr       @p pins or @p out is NULL.
  * @retval k_ra8_err_invalid_arg    @p pclk_hz is 0.
- * @retval other                   Propagated from ``ra8_pfs_route_peripheral`` /
- *                                 ``ra8_gpio_output_init`` / ``ra8_sci_spi_init``.
+ * @retval other                   Propagated from ``ra8_pfs_route_peripheral``
+ * /
+ *                                 ``ra8_gpio_output_init`` /
+ * ``ra8_sci_spi_init``.
  *
  * @pre ``ra8_cgc_init`` has run and @p pclk_hz is the live PCLKA rate.
  * @pre @p pins references four pins free for the SCI Simple-SPI mux.
@@ -442,8 +446,8 @@ typedef struct {
  * @details The fast bulk-write path: ACMD23 pre-erase hint (best-effort) plus a
  * single WRITE_MULTIPLE_BLOCK streaming every block, terminated by the stop
  * token. One command for the whole run instead of @p count CMD24 single-block
- * writes -- far faster for clearing a large region such as a multi-MB FAT during
- * format. Falls back to ::ra8_sdmmc_spi_write_block when @p count == 1.
+ * writes -- far faster for clearing a large region such as a multi-MB FAT
+ * during format. Falls back to ::ra8_sdmmc_spi_write_block when @p count == 1.
  *
  * @param[in] lba   First LBA in 512-byte units. ``lba + count <= capacity``.
  * @param[in] buf   Source buffer of exactly ``count * 512`` bytes.
@@ -454,11 +458,13 @@ typedef struct {
  * @retval k_ra8_err_null_ptr       ``buf`` is NULL.
  * @retval k_ra8_err_invalid_state  Driver not initialized.
  * @retval k_ra8_err_out_of_range   ``lba + count`` exceeds capacity.
- * @retval k_ra8_err_protocol_error A command R1 or data-response token rejected.
+ * @retval k_ra8_err_protocol_error A command R1 or data-response token
+ * rejected.
  *
  * @pre  ::ra8_sdmmc_spi_init has returned k_ra8_ok.
  * @pre  ``buf`` holds at least ``count * 512`` bytes.
- * @post On success, the card's storage at ``lba .. lba+count-1`` matches ``buf``.
+ * @post On success, the card's storage at ``lba .. lba+count-1`` matches
+ * ``buf``.
  * @post Card remains in ``tran`` state.
  *
  * @since 0.1.0
@@ -485,11 +491,13 @@ ra8_sdmmc_spi_write_blocks(uint32_t lba, const uint8_t* buf, uint32_t count);
  * @param[in] count Number of contiguous blocks to erase (>= 1).
  *
  * @return ra8_err_t
- * @retval k_ra8_ok                 Range erased AND verified to read back as zero.
+ * @retval k_ra8_ok                 Range erased AND verified to read back as
+ * zero.
  * @retval k_ra8_err_invalid_state  Driver not initialized.
  * @retval k_ra8_err_invalid_arg    ``count`` is 0.
  * @retval k_ra8_err_out_of_range   ``lba + count`` exceeds capacity.
- * @retval k_ra8_err_not_supported  Card erases to a non-zero value (read-back != 0).
+ * @retval k_ra8_err_not_supported  Card erases to a non-zero value (read-back
+ * != 0).
  * @retval k_ra8_err_protocol_error A command R1 was rejected.
  * @retval k_ra8_err_hw_timeout     The post-erase busy wait timed out.
  *

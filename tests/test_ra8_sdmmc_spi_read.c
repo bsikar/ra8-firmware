@@ -16,9 +16,11 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_fs.h"
+#include "ra8_log.h"
 #include "ra8_mstp.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
@@ -60,8 +62,16 @@ typedef enum : uint32_t {
  * @par MC/DC:
  * Decision: ``lba >= capacity`` is single-condition; null-pointer guard
  * is also single-condition. Two vectors prove each.
+ * @brief Exercise test read block rejects null.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_read_block_rejects_null(void)
+RA8_INTERNAL static void internal_test_read_block_rejects_null(void)
 {
   TEST_BEGIN("read_block nullptr buf");
   per_test_setup();
@@ -73,9 +83,19 @@ static void test_read_block_rejects_null(void)
 
 /**
  * @par MC/DC:
- * Decision: ``lba >= capacity`` (1 condition). V1: lba=0 -> false (covered by happy-path test). V2: lba=capacity -> true. Minimal 2-vector pair flips outcome.
+ * Decision: ``lba >= capacity`` (1 condition). V1: lba=0 -> false (covered by
+ * happy-path test). V2: lba=capacity -> true. Minimal 2-vector pair flips
+ * outcome.
+ * @brief Exercise test read block rejects oor.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_read_block_rejects_oor(void)
+RA8_INTERNAL static void internal_test_read_block_rejects_oor(void)
 {
   TEST_BEGIN("read_block out-of-range LBA");
   per_test_setup();
@@ -90,9 +110,18 @@ static void test_read_block_rejects_oor(void)
 
 /**
  * @par MC/DC:
- * Happy path with all decisions in their FALSE-control configuration; companion to *_detects_crc_mismatch which flips the CRC-compare decision.
+ * Happy path with all decisions in their FALSE-control configuration; companion
+ * to *_detects_crc_mismatch which flips the CRC-compare decision.
+ * @brief Exercise test read block happy path.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_read_block_happy_path(void)
+RA8_INTERNAL static void internal_test_read_block_happy_path(void)
 {
   TEST_BEGIN("read_block happy path with CRC16");
   per_test_setup();
@@ -123,9 +152,18 @@ static void test_read_block_happy_path(void)
 
 /**
  * @par MC/DC:
- * Decision: ``expected != actual`` (1 condition). V1 happy path (false) handled in *_happy_path. V2 (true) handled here -- mock returns wrong CRC trailer.
+ * Decision: ``expected != actual`` (1 condition). V1 happy path (false) handled
+ * in *_happy_path. V2 (true) handled here -- mock returns wrong CRC trailer.
+ * @brief Exercise test read block detects crc mismatch.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_read_block_detects_crc_mismatch(void)
+RA8_INTERNAL static void internal_test_read_block_detects_crc_mismatch(void)
 {
   TEST_BEGIN("read_block detects bad CRC16");
   per_test_setup();
@@ -157,8 +195,16 @@ static void test_read_block_detects_crc_mismatch(void)
  * No compound decision -- ``ra8_sdmmc_spi_read_block`` rejects before init on
  * the single condition ``!s_state.initialized``. The buffer is non-NULL so
  * the preceding NULL guard passes and this guard is the one under test.
+ * @brief Exercise test read block rejects uninit.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_read_block_rejects_uninit(void)
+RA8_INTERNAL static void internal_test_read_block_rejects_uninit(void)
 {
   TEST_BEGIN("read_block before init -> invalid_state");
   per_test_setup();
@@ -172,23 +218,37 @@ static void test_read_block_rejects_uninit(void)
  *
  * @details READ_BL_LEN=9 (512 B), C_SIZE=1023, C_SIZE_MULT=7. Mirrors the
  * vector used by the v1 classification init test.
+ * @param[out] out Writable 16-byte CSD response buffer to populate.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void build_csd_v1_1gib(uint8_t* out)
+RA8_INTERNAL static void internal_build_csd_v1_1gib(uint8_t* out)
 {
   memset(out, 0, (size_t)k_ra8_sdmmc_spi_csd_response_len);
-  out[0]                       = 0x00U;                    /* CSD_STRUCTURE = 0 */
-  out[k_sdmmc_spi_read_lit_5]  = k_sdmmc_spi_read_lit_x9;  /* READ_BL_LEN = 9   */
-  out[6]                       = 0x03U;                    /* C_SIZE[11:10]     */
-  out[k_sdmmc_spi_read_lit_7]  = k_sdmmc_spi_read_lit_xff; /* C_SIZE[9:2]       */
-  out[8]                       = k_sdmmc_spi_read_lit_xc0; /* C_SIZE[1:0]       */
-  out[k_sdmmc_spi_read_lit_9]  = 0x03U;                    /* C_SIZE_MULT[2:1]  */
-  out[k_sdmmc_spi_read_lit_10] = k_sdmmc_spi_read_lit_x80; /* C_SIZE_MULT[0]    */
+  out[0]                       = 0x00U;
+  out[k_sdmmc_spi_read_lit_5]  = k_sdmmc_spi_read_lit_x9;
+  out[6]                       = 0x03U;
+  out[k_sdmmc_spi_read_lit_7]  = k_sdmmc_spi_read_lit_xff;
+  out[8]                       = k_sdmmc_spi_read_lit_xc0;
+  out[k_sdmmc_spi_read_lit_9]  = 0x03U;
+  out[k_sdmmc_spi_read_lit_10] = k_sdmmc_spi_read_lit_x80;
 }
 
 /**
  * @brief Queue a successful CMD0..CMD16 init for a v1.x (byte-addressed) card.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void queue_full_init_sdv1_1gib(void)
+RA8_INTERNAL static void internal_queue_full_init_sdv1_1gib(void)
 {
   mock_queue_idle(k_sdmmc_spi_read_lit_10);
   queue_command_response_r1((uint8_t)k_test_r1_idle);        /* CMD0         */
@@ -196,7 +256,7 @@ static void queue_full_init_sdv1_1gib(void)
   queue_command_response_r1((uint8_t)k_test_r1_idle);        /* CMD55        */
   queue_command_response_r1((uint8_t)k_test_r1_ready);       /* ACMD41 ready */
   uint8_t csd[k_ra8_sdmmc_spi_csd_response_len];
-  build_csd_v1_1gib(csd);
+  internal_build_csd_v1_1gib(csd);
   queue_csd_read(csd);
   queue_command_response_r1((uint8_t)k_test_r1_ready); /* CMD16 */
 }
@@ -207,12 +267,20 @@ static void queue_full_init_sdv1_1gib(void)
  * the byte-address branch (``lba * block_size``) runs instead of the SDHC
  * pass-through. A successful read-back confirms the converted argument framed
  * a valid CMD17.
+ * @brief Exercise test read block byte addressed v1.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_read_block_byte_addressed_v1(void)
+RA8_INTERNAL static void internal_test_read_block_byte_addressed_v1(void)
 {
   TEST_BEGIN("read_block byte-addressed (v1) LBA conversion");
   per_test_setup();
-  queue_full_init_sdv1_1gib();
+  internal_queue_full_init_sdv1_1gib();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_init(&s_mock_transport));
 
   ra8_sdmmc_spi_card_type_t type = k_ra8_sdmmc_spi_type_unknown;
@@ -240,8 +308,16 @@ static void test_read_block_byte_addressed_v1(void)
  *   - frame xfer faulted (call 2)  -> propagated bus error (send-command leg).
  *   - payload xfer faulted (call 5)-> propagated bus error (payload drain leg).
  * The last two use the deterministic fault injector, not a timer.
+ * @brief Exercise test read block error legs.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_read_block_error_legs(void)
+RA8_INTERNAL static void internal_test_read_block_error_legs(void)
 {
   TEST_BEGIN("read_block protocol / timeout / xfer-fault legs");
   uint8_t buf[k_ra8_sdmmc_spi_block_size];
@@ -298,8 +374,17 @@ typedef enum : uint8_t {
  * @param[in] byte Byte value to look for.
  * @param[in] from First TX-log index to inspect.
  * @return Index of the first match, or UINT32_MAX when absent.
+ * @retval UINT32_MAX No matching byte occurs at or after @p from.
+ * @retval other Index of the first matching byte in the TX log.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static uint32_t tx_log_find(uint8_t byte, uint32_t from)
+RA8_INTERNAL static uint32_t internal_tx_log_find(uint8_t byte, uint32_t from)
 {
   for (uint32_t i = from; i < s_mock.tx_len; i++) {
     if (s_mock.tx_log[i] == byte) {
@@ -316,8 +401,14 @@ static uint32_t tx_log_find(uint8_t byte, uint32_t from)
  * @details CS is held across the whole transaction, so (like
  * queue_multi_write_lead and unlike queue_command_response_r1) no
  * per-command cs-release idle is inserted.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void queue_multi_read_lead(uint8_t cmd18_r1)
+RA8_INTERNAL static void internal_queue_multi_read_lead(uint8_t cmd18_r1)
 {
   mock_queue_idle(1U);                               /* cs_assert post-byte. */
   mock_queue_idle((uint32_t)k_test_cmd_frame_bytes); /* CMD18 frame.         */
@@ -327,8 +418,15 @@ static void queue_multi_read_lead(uint8_t cmd18_r1)
 /**
  * @brief Queue one streamed CMD18 block: data token + payload + valid CRC16.
  * @param[in] block 512-byte payload; its CRC16 trailer is computed here.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void queue_multi_read_block(const uint8_t* block)
+RA8_INTERNAL static void internal_queue_multi_read_block(const uint8_t* block)
 {
   mock_queue_byte((uint8_t)k_test_data_token_start);
   mock_queue_bytes(block, (uint32_t)k_ra8_sdmmc_spi_block_size);
@@ -340,8 +438,15 @@ static void queue_multi_read_block(const uint8_t* block)
 /**
  * @brief Queue one streamed CMD18 block whose CRC16 trailer is corrupted.
  * @param[in] block 512-byte payload streamed before the bad trailer.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void queue_multi_read_block_bad_crc(const uint8_t* block)
+RA8_INTERNAL static void internal_queue_multi_read_block_bad_crc(const uint8_t* block)
 {
   mock_queue_byte((uint8_t)k_test_data_token_start);
   mock_queue_bytes(block, (uint32_t)k_ra8_sdmmc_spi_block_size);
@@ -356,15 +461,21 @@ static void queue_multi_read_block_bad_crc(const uint8_t* block)
  *
  * @details The driver clocks the 6-byte CMD12 frame, discards one stuff byte
  * (the undefined tail of the cut-off stream), polls R1, then waits not-busy.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void queue_multi_read_stop(uint8_t cmd12_r1)
+RA8_INTERNAL static void internal_queue_multi_read_stop(uint8_t cmd12_r1)
 {
-  mock_queue_idle((uint32_t)k_test_cmd_frame_bytes); /* CMD12 frame TX slots.  */
-  mock_queue_idle(1U);                               /* stuff byte, discarded. */
-  mock_queue_byte(cmd12_r1);                         /* CMD12 R1.              */
-  mock_queue_byte(0x00U);                            /* busy while stopping.   */
-  mock_queue_byte((uint8_t)k_test_busy_done);        /* busy released 0xFF.    */
-  mock_queue_idle(1U);                               /* cs_release post-byte.  */
+  mock_queue_idle((uint32_t)k_test_cmd_frame_bytes); /**< CMD12 frame.   */
+  mock_queue_idle(1U);                               /**< Stuff byte.    */
+  mock_queue_byte(cmd12_r1);                         /**< CMD12 R1.      */
+  mock_queue_byte(0x00U);                            /**< Busy byte.     */
+  mock_queue_byte((uint8_t)k_test_busy_done);        /**< Busy released. */
+  mock_queue_idle(1U);                               /**< Release CS.    */
 }
 
 /**
@@ -379,8 +490,16 @@ static void queue_multi_read_stop(uint8_t cmd12_r1)
  * outcome. The case also covers the NULL-buf guard, the not-initialised
  * guard, the count == 0 no-op, and the count == 1 single-block (CMD17)
  * delegation legs that precede the range check / stream.
+ * @brief Exercise test read blocks arg guards.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_read_blocks_arg_guards(void)
+RA8_INTERNAL static void internal_test_read_blocks_arg_guards(void)
 {
   TEST_BEGIN("read_blocks count/range guards");
   uint8_t buf[k_ra8_sdmmc_spi_block_size * 2U] = {};
@@ -417,13 +536,21 @@ static void test_read_blocks_arg_guards(void)
  * @par MC/DC:
  * No new compound decision -- V1 (false control) of the read_blocks range
  * check above and of the CMD18-reject decision documented on
- * ::test_read_blocks_cmd18_rejected. Drives the full CMD18 stream: one
+ * ::internal_test_read_blocks_cmd18_rejected. Drives the full CMD18 stream: one
  * READ_MULTIPLE_BLOCK command, two streamed blocks (data token + payload +
  * verified CRC16 each), then CMD12 STOP_TRANSMISSION with its stuff byte,
  * R1, and busy wait. The TX log is spot-checked to prove a single CMD18
  * frame went out (not per-block CMD17s) and that CMD12 followed the stream.
+ * @brief Exercise test read blocks multi happy.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_read_blocks_multi_happy(void)
+RA8_INTERNAL static void internal_test_read_blocks_multi_happy(void)
 {
   TEST_BEGIN("read_blocks multi-block CMD18 stream");
   init_sdhc_ok();
@@ -434,10 +561,10 @@ static void test_read_blocks_multi_happy(void)
     block0[i] = (uint8_t)((i * 3U) & k_sdmmc_spi_read_lit_xff);
     block1[i] = (uint8_t)((i * k_sdmmc_spi_read_lit_5) + 1U);
   }
-  queue_multi_read_lead((uint8_t)k_test_r1_ready);
-  queue_multi_read_block(block0);
-  queue_multi_read_block(block1);
-  queue_multi_read_stop((uint8_t)k_test_r1_ready);
+  internal_queue_multi_read_lead((uint8_t)k_test_r1_ready);
+  internal_queue_multi_read_block(block0);
+  internal_queue_multi_read_block(block1);
+  internal_queue_multi_read_stop((uint8_t)k_test_r1_ready);
 
   uint8_t buf[k_ra8_sdmmc_spi_block_size * 2U];
   memset(buf, k_sdspi_rd_fill_poison, sizeof(buf));
@@ -452,7 +579,7 @@ static void test_read_blocks_multi_happy(void)
    * idle, the next the CMD18 lead byte; a CMD12 lead byte follows the
    * streamed payload. */
   TEST_ASSERT_EQ(k_test_wire_cmd18, s_mock.tx_log[tx_start + 1U]);
-  TEST_ASSERT(tx_log_find((uint8_t)k_test_wire_cmd12, tx_start + 2U) != UINT32_MAX);
+  TEST_ASSERT(internal_tx_log_find((uint8_t)k_test_wire_cmd12, tx_start + 2U) != UINT32_MAX);
   TEST_END("read_blocks multi-block CMD18 stream");
 }
 
@@ -466,18 +593,26 @@ static void test_read_blocks_multi_happy(void)
  * Pairs (V1,V2) and (V1,V3) prove each operand independently moves the
  * outcome. Both reject legs release CS without issuing CMD12 (the stream
  * never opened). The cs-assert RA8_RETURN_ON_ERROR leg is exercised last.
+ * @brief Exercise test read blocks cmd18 rejected.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_read_blocks_cmd18_rejected(void)
+RA8_INTERNAL static void internal_test_read_blocks_cmd18_rejected(void)
 {
   TEST_BEGIN("read_blocks CMD18 reject legs");
   uint8_t buf[k_ra8_sdmmc_spi_block_size * 2U] = {};
 
   /* V3: CMD18 R1 reports illegal command -> protocol error, no CMD12. */
   init_sdhc_ok();
-  queue_multi_read_lead((uint8_t)k_test_r1_illegal_cmd);
+  internal_queue_multi_read_lead((uint8_t)k_test_r1_illegal_cmd);
   const uint32_t tx_start = s_mock.tx_len; /* skip the recorded init TX. */
   TEST_ASSERT_EQ(k_ra8_err_protocol_error, ra8_sdmmc_spi_read_blocks(0U, buf, 2U));
-  TEST_ASSERT_EQ(UINT32_MAX, tx_log_find((uint8_t)k_test_wire_cmd12, tx_start));
+  TEST_ASSERT_EQ(UINT32_MAX, internal_tx_log_find((uint8_t)k_test_wire_cmd12, tx_start));
 
   /* V2: the CMD18 frame xfer faults (call 2: after the cs-assert idle). */
   init_sdhc_ok();
@@ -502,8 +637,16 @@ static void test_read_blocks_cmd18_rejected(void)
  *     then times out too and the stream timeout is what propagates;
  *   - a clean stream whose CMD12 R1 is non-zero -> protocol_error from the
  *     stop leg alone (``r1 != 0U`` inside internal_read_multi_stop).
+ * @brief Exercise test read blocks stream error still stops.
+ * @details Uses the bounded mock transport to exercise this SD path.
+ * @pre The mock transport storage and SD driver test seam are available.
+ * @pre This case has exclusive ownership of the process-local SD fixture.
+ * @post Assertions establish the named protocol or fault-handling behavior.
+ * @post The fixture remains resettable for the next independent case.
+ * @note This deterministic host test performs no physical media access.
+ * @since 0.1.0
  */
-static void test_read_blocks_stream_error_still_stops(void)
+RA8_INTERNAL static void internal_test_read_blocks_stream_error_still_stops(void)
 {
   TEST_BEGIN("read_blocks stream abort still sends CMD12");
   uint8_t buf[k_ra8_sdmmc_spi_block_size * 2U] = {};
@@ -513,44 +656,63 @@ static void test_read_blocks_stream_error_still_stops(void)
   /* Block 1 streams clean; block 2 delivers a corrupt CRC16 trailer. The
    * driver must abort with crc_mismatch AND still issue CMD12. */
   init_sdhc_ok();
-  queue_multi_read_lead((uint8_t)k_test_r1_ready);
-  queue_multi_read_block(block);
-  queue_multi_read_block_bad_crc(block);
-  queue_multi_read_stop((uint8_t)k_test_r1_ready);
+  internal_queue_multi_read_lead((uint8_t)k_test_r1_ready);
+  internal_queue_multi_read_block(block);
+  internal_queue_multi_read_block_bad_crc(block);
+  internal_queue_multi_read_stop((uint8_t)k_test_r1_ready);
   const uint32_t tx_start = s_mock.tx_len; /* skip the recorded init TX. */
   TEST_ASSERT_EQ(k_ra8_err_crc_mismatch, ra8_sdmmc_spi_read_blocks(0U, buf, 2U));
-  TEST_ASSERT(tx_log_find((uint8_t)k_test_wire_cmd12, tx_start) != UINT32_MAX);
+  TEST_ASSERT(internal_tx_log_find((uint8_t)k_test_wire_cmd12, tx_start) != UINT32_MAX);
 
   /* The second data token never arrives: the stream times out; the CMD12
    * R1 poll then times out as well; the stream timeout propagates. */
   init_sdhc_ok();
-  queue_multi_read_lead((uint8_t)k_test_r1_ready);
-  queue_multi_read_block(block);
+  internal_queue_multi_read_lead((uint8_t)k_test_r1_ready);
+  internal_queue_multi_read_block(block);
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_sdmmc_spi_read_blocks(0U, buf, 2U));
 
   /* Clean 2-block stream but CMD12 answers a non-zero R1 -> protocol_error
    * from the stop leg (the stream itself succeeded). */
   init_sdhc_ok();
-  queue_multi_read_lead((uint8_t)k_test_r1_ready);
-  queue_multi_read_block(block);
-  queue_multi_read_block(block);
-  queue_multi_read_stop((uint8_t)k_test_r1_illegal_cmd);
+  internal_queue_multi_read_lead((uint8_t)k_test_r1_ready);
+  internal_queue_multi_read_block(block);
+  internal_queue_multi_read_block(block);
+  internal_queue_multi_read_stop((uint8_t)k_test_r1_illegal_cmd);
   TEST_ASSERT_EQ(k_ra8_err_protocol_error, ra8_sdmmc_spi_read_blocks(0U, buf, 2U));
   TEST_END("read_blocks stream abort still sends CMD12");
 }
+/**
+ * @brief Consume host-test log bytes without touching target ITM MMIO.
+ * @details Provides a no-op injected sink for expected-error test vectors.
+ * @param[in] context Unused sink context.
+ * @param[in] byte Unused byte emitted by the production logger.
+ * @pre The test process owns the logger sink for the suite lifetime.
+ * @pre No vector depends on observing diagnostic text.
+ * @post No memory, descriptor, or hardware state is modified.
+ * @post Control returns to the production logger immediately.
+ * @note This keeps sanitizer runs away from the target-only ITM window.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_log_sink(void* context, uint8_t byte)
+{
+  (void)context;
+  (void)byte;
+}
+
 int main(void)
 {
-  test_read_block_rejects_null();
-  test_read_block_rejects_oor();
-  test_read_block_happy_path();
-  test_read_block_detects_crc_mismatch();
-  test_read_block_rejects_uninit();
-  test_read_block_byte_addressed_v1();
-  test_read_block_error_legs();
-  test_read_blocks_arg_guards();
-  test_read_blocks_multi_happy();
-  test_read_blocks_cmd18_rejected();
-  test_read_blocks_stream_error_still_stops();
-  (void)fprintf(stderr, "[OK ] all ra8_sdmmc_spi read tests passed\n");
+  ra8_log_set_byte_sink(internal_host_log_sink, nullptr);
+  internal_test_read_block_rejects_null();
+  internal_test_read_block_rejects_oor();
+  internal_test_read_block_happy_path();
+  internal_test_read_block_detects_crc_mismatch();
+  internal_test_read_block_rejects_uninit();
+  internal_test_read_block_byte_addressed_v1();
+  internal_test_read_block_error_legs();
+  internal_test_read_blocks_arg_guards();
+  internal_test_read_blocks_multi_happy();
+  internal_test_read_blocks_cmd18_rejected();
+  internal_test_read_blocks_stream_error_still_stops();
+  ra8_log_set_byte_sink(nullptr, nullptr);
   return 0;
 }
