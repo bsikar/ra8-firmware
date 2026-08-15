@@ -15,7 +15,7 @@
  *
  * Inbound HCI events / ACL frames originate from the radio block.
  * ``ra8_ble_dispatch`` (called from the kernel main loop or BLE IRQ)
- * fires our ``priv_event_cb`` / ``priv_acl_cb`` callbacks. We copy
+ * fires our ``internal_event_cb`` / ``internal_acl_cb`` callbacks. We copy
  * the bytes into NimBLE-allocated buffers and hand them off to
  * ``ble_transport_to_hs_evt`` / ``ble_transport_to_hs_acl`` so they
  * land in NimBLE's host-side input queue.
@@ -40,6 +40,7 @@
 #include <string.h>
 
 #include "nimble_transport_stubs.h"
+#include "ra8_attributes.h"
 #include "ra8_ble.h"
 #include "ra8_err.h"
 
@@ -141,7 +142,8 @@ static ble_hci_ra8_ble_state_t s_state = k_ble_hci_ra8_ble_state_idle;
  *
  * @post Side effects bounded to documented state.
  */
-static void priv_event_cb(void* ctx, uint8_t evt_code, const uint8_t* params, uint8_t params_len)
+RA8_INTERNAL static void
+internal_event_cb(void* ctx, uint8_t evt_code, const uint8_t* params, uint8_t params_len)
 {
   (void)ctx;
   if (s_state != k_ble_hci_ra8_ble_state_running) {
@@ -189,7 +191,8 @@ static void priv_event_cb(void* ctx, uint8_t evt_code, const uint8_t* params, ui
  * @post Side effects bounded to documented state.
  * @note Not thread-safe unless documented otherwise.
  */
-static void priv_acl_cb(void* ctx, uint16_t handle, const uint8_t* payload, uint16_t len)
+RA8_INTERNAL static void
+internal_acl_cb(void* ctx, uint16_t handle, const uint8_t* payload, uint16_t len)
 {
   (void)ctx;
   if (s_state != k_ble_hci_ra8_ble_state_running) {
@@ -231,10 +234,10 @@ static void priv_acl_cb(void* ctx, uint16_t handle, const uint8_t* payload, uint
 /* Ble hci ra ble init -- see implementation for details. */
 ra8_err_t ble_hci_ra8_ble_init(void)
 {
-  if (ra8_ble_attach_event_handler(priv_event_cb, nullptr) != k_ra8_ok) {
+  if (ra8_ble_attach_event_handler(internal_event_cb, nullptr) != k_ra8_ok) {
     return k_ra8_err_not_initialized;
   }
-  if (ra8_ble_attach_acl_handler(priv_acl_cb, nullptr) != k_ra8_ok) {
+  if (ra8_ble_attach_acl_handler(internal_acl_cb, nullptr) != k_ra8_ok) {
     return k_ra8_err_not_initialized;
   }
   s_state = k_ble_hci_ra8_ble_state_running;
