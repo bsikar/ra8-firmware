@@ -1,16 +1,18 @@
 /**
  * @file ra8_ftl.c
- * @brief Flash Translation Layer implementation -- copy-on-write + wear-levelling.
+ * @brief Flash Translation Layer implementation -- copy-on-write +
+ * wear-levelling.
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}
  *
  * @details
- * Implements ::ra8_ftl_init, ::ra8_ftl_as_blockdev, and the ::ra8_io_blockdev_iface
- * vtable the FTL presents upward. Reads resolve the logical->physical map and
- * forward to the underlying device (or synthesise the erase value for unmapped
- * blocks). Writes allocate the least-erased free physical block, erase it,
- * program the data, and re-point the map -- never touching a non-blank block.
+ * Implements ::ra8_ftl_init, ::ra8_ftl_as_blockdev, and the
+ * ::ra8_io_blockdev_iface vtable the FTL presents upward. Reads resolve the
+ * logical->physical map and forward to the underlying device (or synthesise the
+ * erase value for unmapped blocks). Writes allocate the least-erased free
+ * physical block, erase it, program the data, and re-point the map -- never
+ * touching a non-blank block.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -63,7 +65,8 @@ typedef enum : uint32_t {
  * @param[in,out] ftl Initialised FTL handle.
  *
  * @return ra8_err_t Error code.
- * @retval k_ra8_ok        Reclamation pass completed (some blocks may stay live).
+ * @retval k_ra8_ok        Reclamation pass completed (some blocks may stay
+ * live).
  * @retval k_ra8_err_null_ptr `ftl` was NULL.
  * @retval other          Propagated underlying-device erase error.
  *
@@ -101,8 +104,8 @@ static ra8_err_t ftl_reclaim_stale(ra8_ftl_t* ftl)
  * @details
  * Linear scan bounded by `physical_blocks` tracking the FREE block with the
  * lowest erase count. Spreading allocation toward the least-worn free block is
- * the wear-levelling policy. Returns ::k_ra8_err_no_data if no FREE block exists
- * so the caller can trigger reclamation and retry.
+ * the wear-levelling policy. Returns ::k_ra8_err_no_data if no FREE block
+ * exists so the caller can trigger reclamation and retry.
  *
  * @param[in]  ftl Initialised FTL handle.
  * @param[out] out Receives the chosen physical block index.
@@ -153,11 +156,11 @@ static ra8_err_t ftl_pick_free(const ra8_ftl_t* ftl, uint32_t* out)
  * @brief Allocate a blank physical block, reclaiming stale blocks if needed.
  *
  * @details
- * Tries ::ftl_pick_free; if no free block exists it runs ::ftl_reclaim_stale and
- * retries exactly once. Two attempts suffice because the FTL guarantees at least
- * one spare block, so after reclamation a free block always exists. The chosen
- * block is erased (advancing its erase count) so it is blank before the caller
- * programs it.
+ * Tries ::ftl_pick_free; if no free block exists it runs ::ftl_reclaim_stale
+ * and retries exactly once. Two attempts suffice because the FTL guarantees at
+ * least one spare block, so after reclamation a free block always exists. The
+ * chosen block is erased (advancing its erase count) so it is blank before the
+ * caller programs it.
  *
  * @param[in,out] ftl Initialised FTL handle.
  * @param[out]    out Receives the allocated, erased physical block index.
@@ -194,7 +197,8 @@ static ra8_err_t ftl_alloc_blank(ra8_ftl_t* ftl, uint32_t* out)
   if (pick == k_ra8_err_no_data) {
     return k_ra8_err_no_mem;
   }
-  /* ftl_pick_free with non-null args returns only k_ra8_ok or k_ra8_err_no_data. */
+  /* ftl_pick_free with non-null args returns only k_ra8_ok or
+   * k_ra8_err_no_data. */
   if (pick != k_ra8_ok) {
     return pick; /* GCOVR_EXCL_LINE */
   }
@@ -213,7 +217,8 @@ static ra8_err_t ftl_alloc_blank(ra8_ftl_t* ftl, uint32_t* out)
  */
 
 /**
- * @brief Read one logical block, resolving the map (or erase value if unmapped).
+ * @brief Read one logical block, resolving the map (or erase value if
+ * unmapped).
  *
  * @details
  * If the logical block is unmapped the destination is filled with the medium
@@ -258,8 +263,8 @@ static ra8_err_t ftl_read_one(const ra8_ftl_t* ftl, uint32_t lbn, uint8_t* dst)
  * Allocates a blank physical block, programs `src` into it, then re-points the
  * map and marks the previous physical block (if any) STALE for later
  * reclamation. The old block is never overwritten, so the erase-before-write
- * contract holds. On a program failure the freshly erased block is left FREE and
- * the map is unchanged, so the prior data remains intact.
+ * contract holds. On a program failure the freshly erased block is left FREE
+ * and the map is unchanged, so the prior data remains intact.
  *
  * @param[in,out] ftl Initialised FTL handle.
  * @param[in]     lbn Logical block number (< logical_blocks).
@@ -671,7 +676,8 @@ static ra8_err_t ftl_reset_tables(ra8_ftl_t* ftl)
  *          the static ::k_ra8_ftl_max_pblocks ceiling.
  *
  * @param[in] bd              FTL state to populate (non-NULL).
- * @param[in] raw             Backing erase-before-write block device (non-NULL).
+ * @param[in] raw             Backing erase-before-write block device
+ * (non-NULL).
  * @param[in] map             Logical->physical map storage (non-NULL).
  * @param[in] pblocks         Per-physical-block metadata storage (non-NULL).
  * @param[in] scratch         Copy-on-write scratch buffer (non-NULL).
@@ -795,119 +801,5 @@ ra8_err_t ra8_ftl_phys_of(const ra8_ftl_t* ftl, uint32_t lbn, uint16_t* phys_out
     return k_ra8_err_out_of_range;
   }
   *phys_out = ftl->map[lbn];
-  return k_ra8_ok;
-}
-
-/* =============================================================================
- * Mapping-state checkpoint (minimal persistent metadata)
- * =============================================================================
- */
-
-/**
- * @enum ra8_ftl_ck_const_t
- * @brief Checkpoint format constants.
- *
- * @details
- * ::k_ra8_ftl_ck_magic tags a serialised checkpoint so a blank or foreign
- * buffer is rejected by ::ra8_ftl_checkpoint_load before any table is restored.
- * The 32-bit value spells "FTL1" in ASCII when read most-significant byte first.
- *
- * @since 0.1.0
- */
-typedef enum : uint32_t {
-  k_ra8_ftl_ck_magic = 0x46544C31U, /**< 'F','T','L','1' checkpoint tag. */
-} ra8_ftl_ck_const_t;
-
-/**
- * @struct ra8_ftl_ck_hdr_t
- * @brief Fixed header prefixing a serialised checkpoint.
- *
- * @details
- * Recorded ahead of the `map` and `pblocks` payloads so a checkpoint is
- * self-describing: ::ra8_ftl_checkpoint_load rejects a buffer whose `magic`
- * differs or whose geometry does not match the target handle. The struct is
- * copied verbatim (native layout); a checkpoint is architecture-local.
- *
- * @invariant `magic == k_ra8_ftl_ck_magic` in any valid checkpoint.
- * @invariant `logical_blocks`/`physical_blocks` equal the saving handle's sizes.
- *
- * @since 0.1.0
- */
-typedef struct {
-  uint32_t magic;           /**< ::k_ra8_ftl_ck_magic checkpoint tag.       */
-  uint32_t logical_blocks;  /**< Logical block count of the saving handle.  */
-  uint32_t physical_blocks; /**< Physical block count of the saving handle. */
-} ra8_ftl_ck_hdr_t;
-
-ra8_err_t ra8_ftl_checkpoint_size(const ra8_ftl_t* ftl, uint32_t* size_out)
-{
-  RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
-  RA8_CHECK_NULL_PTR(size_out, s_tag, "size_out must not be nullptr");
-  if (ftl->pblocks == nullptr) {
-    return k_ra8_err_not_initialized;
-  }
-  const size_t total = sizeof(ra8_ftl_ck_hdr_t) + ((size_t)ftl->logical_blocks * sizeof(uint16_t)) +
-                       ((size_t)ftl->physical_blocks * sizeof(ra8_ftl_pblock_t));
-  *size_out          = (uint32_t)total;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_ftl_checkpoint_save(const ra8_ftl_t* ftl, uint8_t* buf, uint32_t buf_len)
-{
-  RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
-  RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
-  uint32_t        need = 0;
-  const ra8_err_t sz   = ra8_ftl_checkpoint_size(ftl, &need);
-  if (sz != k_ra8_ok) {
-    return sz;
-  }
-  if (buf_len < need) {
-    return k_ra8_err_invalid_size;
-  }
-  const ra8_ftl_ck_hdr_t hdr = {
-    .magic           = (uint32_t)k_ra8_ftl_ck_magic,
-    .logical_blocks  = ftl->logical_blocks,
-    .physical_blocks = ftl->physical_blocks,
-  };
-  size_t off = 0;
-  (void)memcpy(&buf[off], &hdr, sizeof hdr);
-  off += sizeof hdr;
-  const size_t map_bytes = (size_t)ftl->logical_blocks * sizeof(uint16_t);
-  (void)memcpy(&buf[off], ftl->map, map_bytes);
-  off += map_bytes;
-  const size_t pb_bytes = (size_t)ftl->physical_blocks * sizeof(ra8_ftl_pblock_t);
-  (void)memcpy(&buf[off], ftl->pblocks, pb_bytes);
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_ftl_checkpoint_load(ra8_ftl_t* ftl, const uint8_t* buf, uint32_t buf_len)
-{
-  RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
-  RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
-  uint32_t        need = 0;
-  const ra8_err_t sz   = ra8_ftl_checkpoint_size(ftl, &need);
-  if (sz != k_ra8_ok) {
-    return sz;
-  }
-  if (buf_len < need) {
-    return k_ra8_err_invalid_size;
-  }
-  ra8_ftl_ck_hdr_t hdr = {};
-  (void)memcpy(&hdr, buf, sizeof hdr);
-  if (hdr.magic != (uint32_t)k_ra8_ftl_ck_magic) {
-    return k_ra8_err_invalid_state;
-  }
-  if (hdr.logical_blocks != ftl->logical_blocks) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (hdr.physical_blocks != ftl->physical_blocks) {
-    return k_ra8_err_invalid_arg;
-  }
-  size_t       off       = sizeof hdr;
-  const size_t map_bytes = (size_t)ftl->logical_blocks * sizeof(uint16_t);
-  (void)memcpy(ftl->map, &buf[off], map_bytes);
-  off += map_bytes;
-  const size_t pb_bytes = (size_t)ftl->physical_blocks * sizeof(ra8_ftl_pblock_t);
-  (void)memcpy(ftl->pblocks, &buf[off], pb_bytes);
   return k_ra8_ok;
 }
