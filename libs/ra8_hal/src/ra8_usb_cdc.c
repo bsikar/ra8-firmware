@@ -331,6 +331,8 @@ ra8_err_t ra8_usb_cdc_recv(uint8_t* out_buf, uint16_t* inout_len)
  * =============================================================================
  */
 
+RA8_INTERNAL
+RA8_BOUNDED_LOOP(k_ra8_cdc_data_stage_polls)
 /**
  * @brief Pull the SET_LINE_CODING data stage off EP0 (DCP) once it lands.
  *
@@ -370,8 +372,6 @@ ra8_err_t ra8_usb_cdc_recv(uint8_t* out_buf, uint16_t* inout_len)
  * @see ra8_usb_dcp_out_read()
  * @since 0.1.0
  */
-RA8_INTERNAL
-RA8_BOUNDED_LOOP(k_ra8_cdc_data_stage_polls)
 static ra8_err_t internal_pull_data_stage(uint8_t* buf, uint16_t cap, uint16_t* out_len)
 {
   RA8_CHECK_NULL_PTR(buf, s_tag, "pull_data_stage: buf");
