@@ -133,7 +133,25 @@ static size_t internal_load(const char* path, uint8_t bytes[k_test_image_cap])
   return len;
 }
 
-/** @copydoc ra8_jof_pread_fn */
+/**
+ * @brief Read a bounded span from the verifier test source.
+ * @details Applies the configured extent and short-read behavior while
+ * publishing only a count that fits the caller's destination.
+ * @param[in,out] ctx Test-owned ::test_source_t callback context.
+ * @param[in] offset Absolute source byte offset.
+ * @param[out] bytes Destination for returned source bytes.
+ * @param[in] len Writable capacity of @p bytes.
+ * @param[out] got Number of bytes returned.
+ * @return Canonical callback status.
+ * @retval k_ra8_ok A bounded span or clean end-of-source was returned.
+ * @retval other Configured test-source failure.
+ * @pre @p ctx and @p got point to valid test storage.
+ * @pre Nonzero @p len requires writable @p bytes storage.
+ * @post Success reports no more than @p len bytes.
+ * @post Reads never extend beyond the configured source extent.
+ * @note Host-only deterministic fault-injection seam.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
 static ra8_err_t
 internal_source_read(void* ctx, uint64_t offset, uint8_t* bytes, size_t len, size_t* got)
@@ -226,7 +244,25 @@ static ra8_err_t internal_spool_seal(void* ctx, uint64_t expected_size)
   return k_ra8_ok;
 }
 
-/** @copydoc ra8_jof_pread_fn */
+/**
+ * @brief Read a bounded span from the sealed verifier test spool.
+ * @details Rejects unsealed or fault-injected reads, then copies only the
+ * available suffix within the caller's requested capacity.
+ * @param[in,out] ctx Test-owned ::test_spool_t callback context.
+ * @param[in] offset Absolute spool byte offset.
+ * @param[out] bytes Destination for returned spool bytes.
+ * @param[in] len Writable capacity of @p bytes.
+ * @param[out] got Number of bytes returned.
+ * @return Canonical callback status.
+ * @retval k_ra8_ok A bounded span or clean end-of-spool was returned.
+ * @retval k_ra8_fail The spool is unsealed or the read fault fired.
+ * @pre @p ctx and @p got point to valid test storage.
+ * @pre Nonzero @p len requires writable @p bytes storage.
+ * @post Success reports no more than @p len bytes.
+ * @post Failure reports zero accepted bytes.
+ * @note Every invocation increments the deterministic read-call counter.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
 static ra8_err_t
 internal_spool_read(void* ctx, uint64_t offset, uint8_t* bytes, size_t len, size_t* got)

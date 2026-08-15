@@ -795,7 +795,7 @@ RA8_INTERNAL static void internal_test_help_long_options_have_matrix_rows(void)
   TEST_END("CLI help options covered by matrix");
 }
 
-/** @copydoc priv_test_mdl_cli_matrix_run */
+/* see header for full description */
 RA8_PRIV void priv_test_mdl_cli_matrix_run(void)
 {
   internal_test_exhaustive_mode_option_matrix();

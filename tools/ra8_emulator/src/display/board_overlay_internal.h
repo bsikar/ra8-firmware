@@ -191,7 +191,7 @@ RA8_PRIV void priv_fill_rect(board_overlay_surface_t* surface,
  * @param[in] y Vertical coordinate in pixels.
  * @param[in] s Module state instance processed by the operation.
  * @param[in] color RGB color value used by the drawing operation.
- * @param[in] scale Scale input used by the operation.
+ * @param[in] sc Integer glyph scale used by the operation.
  * @return The draw text result produced by the board overlay model.
  * @retval value The operation-specific draw text value.
  * @pre Arguments satisfy the ranges documented for draw text. @pre The call executes on the emulator's single owning thread.
@@ -204,7 +204,7 @@ RA8_PRIV int32_t priv_draw_text(board_overlay_surface_t* surface,
                                 int32_t                  y,
                                 const char*              s,
                                 uint16_t                 color,
-                                int32_t                  scale);
+                                int32_t                  sc);
 
 /**
  * @brief Draw a section heading (accent colour) with a thin rule beneath it.
