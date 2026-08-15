@@ -56,11 +56,8 @@ typedef enum : uint8_t {
   k_zoom_scale_dbl   = 2U, /**< Ladder multiplier (doubling, not increment).  */
 } zoom_step_t;
 
-void ra8_zoom_priv_axis(int32_t          anchor,
-                        int32_t          extent,
-                        int32_t          scale,
-                        int32_t          src_dim,
-                        ra8_zoom_axis_t* out)
+RA8_PRIV void
+priv_zoom_axis(int32_t anchor, int32_t extent, int32_t scale, int32_t src_dim, ra8_zoom_axis_t* out)
 {
   const int32_t plane = src_dim * scale;
   int32_t       d0    = -anchor;
@@ -111,7 +108,7 @@ void ra8_zoom_priv_axis(int32_t          anchor,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool zoom_dim_ok(uint32_t dim)
+static bool internal_dim_ok(uint32_t dim)
 {
   return (dim != 0U) && (dim <= (uint32_t)k_ra8_zoom_dim_max);
 }
@@ -134,7 +131,7 @@ static bool zoom_dim_ok(uint32_t dim)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int32_t zoom_sat_add(int32_t a, int32_t b)
+static int32_t internal_sat_add(int32_t a, int32_t b)
 {
   const int64_t sum = (int64_t)a + (int64_t)b;
   if (sum > (int64_t)INT32_MAX) {
@@ -167,7 +164,7 @@ static int32_t zoom_sat_add(int32_t a, int32_t b)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int32_t zoom_clamp_anchor(int32_t anchor, int32_t plane, int32_t extent)
+static int32_t internal_clamp_anchor(int32_t anchor, int32_t plane, int32_t extent)
 {
   if (plane <= extent) {
     /* Image smaller than the viewport at this zoom: centre it, letting the
@@ -199,11 +196,11 @@ static int32_t zoom_clamp_anchor(int32_t anchor, int32_t plane, int32_t extent)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void zoom_reclamp(ra8_zoom_view_t* v)
+static void internal_reclamp(ra8_zoom_view_t* v)
 {
   const int32_t scale = (int32_t)v->scale;
-  v->anchor_x         = zoom_clamp_anchor(v->anchor_x, (int32_t)v->src.width * scale, v->dst.w);
-  v->anchor_y         = zoom_clamp_anchor(v->anchor_y, (int32_t)v->src.height * scale, v->dst.h);
+  v->anchor_x         = internal_clamp_anchor(v->anchor_x, (int32_t)v->src.width * scale, v->dst.w);
+  v->anchor_y = internal_clamp_anchor(v->anchor_y, (int32_t)v->src.height * scale, v->dst.h);
 }
 
 /**
@@ -224,7 +221,7 @@ static void zoom_reclamp(ra8_zoom_view_t* v)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void zoom_touch(ra8_zoom_view_t* v, uint32_t now_ms)
+static void internal_touch(ra8_zoom_view_t* v, uint32_t now_ms)
 {
   const bool responsive = (v->policy == k_ra8_zoom_policy_responsive);
   v->last_input_ms      = now_ms;
@@ -250,7 +247,7 @@ static void zoom_touch(ra8_zoom_view_t* v, uint32_t now_ms)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t zoom_cfg_ptrs_ok(const ra8_zoom_view_cfg_t* cfg)
+static ra8_err_t internal_cfg_ptrs_ok(const ra8_zoom_view_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg->src.read, s_tag, "source read seam must not be nullptr");
   RA8_CHECK_NULL_PTR(cfg->scratch.row, s_tag, "scratch.row must not be nullptr");
@@ -270,20 +267,20 @@ static ra8_err_t zoom_cfg_ptrs_ok(const ra8_zoom_view_cfg_t* cfg)
  * @retval k_ra8_ok              Both extents are usable.
  * @retval k_ra8_err_invalid_arg An extent is empty, or the source is too large.
  * @pre  @p cfg is non-NULL.
- * @pre  ::zoom_cfg_ptrs_ok has already passed for @p cfg.
+ * @pre  ::internal_cfg_ptrs_ok has already passed for @p cfg.
  * @post No state is modified.
  * @post On k_ra8_ok the magnified plane cannot overflow int32.
  * @note Not thread-safe (logs).
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t zoom_cfg_extent_ok(const ra8_zoom_view_cfg_t* cfg)
+static ra8_err_t internal_cfg_extent_ok(const ra8_zoom_view_cfg_t* cfg)
 {
   if ((cfg->dst.w <= 0) || (cfg->dst.h <= 0)) {
     ra8_log_error(s_tag, "viewport must have positive width and height");
     return k_ra8_err_invalid_arg;
   }
-  if (!zoom_dim_ok(cfg->src.width) || !zoom_dim_ok(cfg->src.height)) {
+  if (!internal_dim_ok(cfg->src.width) || !internal_dim_ok(cfg->src.height)) {
     ra8_log_error(s_tag, "source extent is zero or exceeds k_ra8_zoom_dim_max");
     return k_ra8_err_invalid_arg;
   }
@@ -301,7 +298,7 @@ static ra8_err_t zoom_cfg_extent_ok(const ra8_zoom_view_cfg_t* cfg)
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok         @p out_strip_rows holds a workable strip height.
  * @retval k_ra8_err_no_mem A buffer is too small for this viewport width.
- * @pre  @p cfg passed ::zoom_cfg_extent_ok, so `dst.w > 0`.
+ * @pre  @p cfg passed ::internal_cfg_extent_ok, so `dst.w > 0`.
  * @pre  @p out_strip_rows addresses writable storage.
  * @post On k_ra8_ok `*out_strip_rows` is in `[1, k_ra8_zoom_strip_rows_max]`.
  * @post On k_ra8_ok the packed buffer can hold one strip of that height.
@@ -309,7 +306,7 @@ static ra8_err_t zoom_cfg_extent_ok(const ra8_zoom_view_cfg_t* cfg)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t zoom_cfg_scratch_ok(const ra8_zoom_view_cfg_t* cfg, uint16_t* out_strip_rows)
+static ra8_err_t internal_cfg_scratch_ok(const ra8_zoom_view_cfg_t* cfg, uint16_t* out_strip_rows)
 {
   const uint32_t width = (uint32_t)cfg->dst.w;
   if ((cfg->scratch.row_cap < width) || (cfg->scratch.strip_cap < width)) {
@@ -352,7 +349,7 @@ static ra8_err_t zoom_cfg_scratch_ok(const ra8_zoom_view_cfg_t* cfg, uint16_t* o
  */
 RA8_INTERNAL
 static ra8_err_t
-zoom_cfg_ladder_ok(const ra8_zoom_view_cfg_t* cfg, uint8_t* out_scale, uint8_t* out_ceiling)
+internal_cfg_ladder_ok(const ra8_zoom_view_cfg_t* cfg, uint8_t* out_scale, uint8_t* out_ceiling)
 {
   /* The "0 means default" rewrite happens first and lifts both values to at
    * least k_ra8_zoom_scale_min, so a `< min` half in either check below could
@@ -382,7 +379,7 @@ ra8_err_t ra8_zoom_source_init(ra8_zoom_source_t* out,
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "source out must not be nullptr");
   RA8_CHECK_NULL_PTR(read, s_tag, "source read seam must not be nullptr");
-  if (!zoom_dim_ok(width) || !zoom_dim_ok(height)) {
+  if (!internal_dim_ok(width) || !internal_dim_ok(height)) {
     ra8_log_error(s_tag, "source extent is zero or exceeds k_ra8_zoom_dim_max");
     return k_ra8_err_invalid_arg;
   }
@@ -421,15 +418,15 @@ ra8_err_t ra8_zoom_source_init(ra8_zoom_source_t* out,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t zoom_cfg_ok(const ra8_zoom_view_cfg_t* cfg,
-                             uint16_t*                  out_strip_rows,
-                             uint8_t*                   out_scale,
-                             uint8_t*                   out_ceiling)
+static ra8_err_t internal_cfg_ok(const ra8_zoom_view_cfg_t* cfg,
+                                 uint16_t*                  out_strip_rows,
+                                 uint8_t*                   out_scale,
+                                 uint8_t*                   out_ceiling)
 {
-  RA8_RETURN_ON_ERROR(zoom_cfg_ptrs_ok(cfg), s_tag, "cfg pointer check");
-  RA8_RETURN_ON_ERROR(zoom_cfg_extent_ok(cfg), s_tag, "cfg extent check");
-  RA8_RETURN_ON_ERROR(zoom_cfg_scratch_ok(cfg, out_strip_rows), s_tag, "cfg scratch check");
-  return zoom_cfg_ladder_ok(cfg, out_scale, out_ceiling);
+  RA8_RETURN_ON_ERROR(internal_cfg_ptrs_ok(cfg), s_tag, "cfg pointer check");
+  RA8_RETURN_ON_ERROR(internal_cfg_extent_ok(cfg), s_tag, "cfg extent check");
+  RA8_RETURN_ON_ERROR(internal_cfg_scratch_ok(cfg, out_strip_rows), s_tag, "cfg scratch check");
+  return internal_cfg_ladder_ok(cfg, out_scale, out_ceiling);
 }
 
 /**
@@ -461,11 +458,11 @@ static ra8_err_t zoom_cfg_ok(const ra8_zoom_view_cfg_t* cfg,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void zoom_view_adopt(ra8_zoom_view_t*           v,
-                            const ra8_zoom_view_cfg_t* cfg,
-                            uint8_t                    opening,
-                            uint8_t                    ceiling,
-                            uint16_t                   strip_rows)
+static void internal_view_adopt(ra8_zoom_view_t*           v,
+                                const ra8_zoom_view_cfg_t* cfg,
+                                uint8_t                    opening,
+                                uint8_t                    ceiling,
+                                uint16_t                   strip_rows)
 {
   v->src        = cfg->src;
   v->scratch    = cfg->scratch;
@@ -482,7 +479,7 @@ static void zoom_view_adopt(ra8_zoom_view_t*           v,
   v->pending       = true;
   v->pending_kind  = k_ra8_zoom_refresh_quality;
   v->active        = true;
-  zoom_reclamp(v);
+  internal_reclamp(v);
 }
 
 ra8_err_t ra8_zoom_view_open(ra8_zoom_view_t* v, const ra8_zoom_view_cfg_t* cfg)
@@ -493,8 +490,8 @@ ra8_err_t ra8_zoom_view_open(ra8_zoom_view_t* v, const ra8_zoom_view_cfg_t* cfg)
   uint16_t strip_rows = 0U;
   uint8_t  opening    = 0U;
   uint8_t  ceiling    = 0U;
-  RA8_RETURN_ON_ERROR(zoom_cfg_ok(cfg, &strip_rows, &opening, &ceiling), s_tag, "cfg check");
-  zoom_view_adopt(v, cfg, opening, ceiling, strip_rows);
+  RA8_RETURN_ON_ERROR(internal_cfg_ok(cfg, &strip_rows, &opening, &ceiling), s_tag, "cfg check");
+  internal_view_adopt(v, cfg, opening, ceiling, strip_rows);
   return k_ra8_ok;
 }
 
@@ -507,13 +504,13 @@ ra8_err_t ra8_zoom_view_rebind(ra8_zoom_view_t* v, const ra8_zoom_source_t* src,
     ra8_log_error(s_tag, "rebind on a closed view");
     return k_ra8_err_invalid_state;
   }
-  if (!zoom_dim_ok(src->width) || !zoom_dim_ok(src->height)) {
+  if (!internal_dim_ok(src->width) || !internal_dim_ok(src->height)) {
     ra8_log_error(s_tag, "source extent is zero or exceeds k_ra8_zoom_dim_max");
     return k_ra8_err_invalid_arg;
   }
   v->src = *src;
-  zoom_reclamp(v);
-  zoom_touch(v, now_ms);
+  internal_reclamp(v);
+  internal_touch(v, now_ms);
   return k_ra8_ok;
 }
 
@@ -524,7 +521,7 @@ ra8_err_t ra8_zoom_view_invalidate(ra8_zoom_view_t* v, uint32_t now_ms)
     ra8_log_error(s_tag, "invalidate on a closed view");
     return k_ra8_err_invalid_state;
   }
-  zoom_touch(v, now_ms);
+  internal_touch(v, now_ms);
   return k_ra8_ok;
 }
 
@@ -593,8 +590,8 @@ ra8_err_t ra8_zoom_view_set_scale(ra8_zoom_view_t* v,
   v->anchor_x            = (int32_t)scaled_x - off_x;
   v->anchor_y            = (int32_t)scaled_y - off_y;
   v->scale               = scale;
-  zoom_reclamp(v);
-  zoom_touch(v, now_ms);
+  internal_reclamp(v);
+  internal_touch(v, now_ms);
   return k_ra8_ok;
 }
 
@@ -607,12 +604,12 @@ ra8_err_t ra8_zoom_view_pan(ra8_zoom_view_t* v, int32_t dx, int32_t dy, uint32_t
   }
   const int32_t was_x = v->anchor_x;
   const int32_t was_y = v->anchor_y;
-  v->anchor_x         = zoom_sat_add(v->anchor_x, dx);
-  v->anchor_y         = zoom_sat_add(v->anchor_y, dy);
-  zoom_reclamp(v);
+  v->anchor_x         = internal_sat_add(v->anchor_x, dx);
+  v->anchor_y         = internal_sat_add(v->anchor_y, dy);
+  internal_reclamp(v);
   /* Decision: a pan that clamped to no movement owes the panel nothing. */
   if ((v->anchor_x != was_x) || (v->anchor_y != was_y)) {
-    zoom_touch(v, now_ms);
+    internal_touch(v, now_ms);
   }
   return k_ra8_ok;
 }
@@ -658,8 +655,8 @@ ra8_err_t ra8_zoom_view_window(const ra8_zoom_view_t* v, ra8_ui_rect_t* out)
   }
   ra8_zoom_axis_t ax = {};
   ra8_zoom_axis_t ay = {};
-  ra8_zoom_priv_axis(v->anchor_x, v->dst.w, (int32_t)v->scale, (int32_t)v->src.width, &ax);
-  ra8_zoom_priv_axis(v->anchor_y, v->dst.h, (int32_t)v->scale, (int32_t)v->src.height, &ay);
+  priv_zoom_axis(v->anchor_x, v->dst.w, (int32_t)v->scale, (int32_t)v->src.width, &ax);
+  priv_zoom_axis(v->anchor_y, v->dst.h, (int32_t)v->scale, (int32_t)v->src.height, &ay);
   out->x = (int32_t)ax.s0;
   out->w = (int32_t)ax.count;
   out->y = (int32_t)ay.s0;

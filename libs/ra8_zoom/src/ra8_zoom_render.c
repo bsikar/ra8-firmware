@@ -102,11 +102,11 @@ typedef enum : uint8_t {
  * @post No offset outside that half-open span is written.
  *
  * @note Not thread-safe (writes @p drow); pure with respect to @p v.
- * @see ra8_zoom_priv_axis
+ * @see priv_zoom_axis
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void zoom_expand_row(const ra8_zoom_view_t* v, const ra8_zoom_axis_t* ax, uint8_t* drow)
+static void internal_expand_row(const ra8_zoom_view_t* v, const ra8_zoom_axis_t* ax, uint8_t* drow)
 {
   const int32_t scale = (int32_t)v->scale;
   /* The whole index calculation stays signed and the only conversion is of the
@@ -147,22 +147,22 @@ static void zoom_expand_row(const ra8_zoom_view_t* v, const ra8_zoom_axis_t* ax,
  * @post On failure `*cached_sy` is -1, so a retry cannot reuse a partial row.
  *
  * @note Not thread-safe.
- * @see zoom_expand_row
+ * @see internal_expand_row
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t zoom_fill_row(ra8_zoom_view_t*       v,
-                               const ra8_zoom_axis_t* ax,
-                               int32_t                plane_y,
-                               uint8_t*               drow,
-                               int32_t*               cached_sy)
+static ra8_err_t internal_fill_row(ra8_zoom_view_t*       v,
+                                   const ra8_zoom_axis_t* ax,
+                                   int32_t                plane_y,
+                                   uint8_t*               drow,
+                                   int32_t*               cached_sy)
 {
   const int32_t scale  = (int32_t)v->scale;
   const int32_t height = (int32_t)v->src.height;
   const int32_t sy     = (plane_y >= 0) ? (plane_y / scale) : -1;
   /* Decision: this destination row shows image only if the plane row lies
    * inside the image. The horizontal span is NOT re-tested here -- it is
-   * constant across the frame and ::zoom_fill_strip settles it once, which
+   * constant across the frame and ::internal_fill_strip settles it once, which
    * keeps this decision to two conditions that are each independently
    * reachable rather than three where one never varies. */
   const bool covered = (sy >= 0) && (sy < height);
@@ -181,7 +181,7 @@ static ra8_err_t zoom_fill_row(ra8_zoom_view_t*       v,
     }
     *cached_sy = sy;
   }
-  zoom_expand_row(v, ax, drow);
+  internal_expand_row(v, ax, drow);
   return k_ra8_ok;
 }
 
@@ -194,7 +194,7 @@ static ra8_err_t zoom_fill_row(ra8_zoom_view_t*       v,
  *          settled here, once per strip, rather than per row: it is constant
  *          across the frame, and a zero-width row would violate the source
  *          seam's `w > 0` contract if it ever reached ::ra8_zoom_read_fn.
- *          Everything else is ::zoom_fill_row's decision.
+ *          Everything else is ::internal_fill_row's decision.
  *
  * @param[in,out] v         Open view (its row/strip scratch is written).
  * @param[in]     ax        Resolved horizontal axis for this frame.
@@ -212,15 +212,15 @@ static ra8_err_t zoom_fill_row(ra8_zoom_view_t*       v,
  * @post On failure the strip is partially written and must not be blitted.
  *
  * @note Not thread-safe.
- * @see zoom_fill_row
+ * @see internal_fill_row
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t zoom_fill_strip(ra8_zoom_view_t*       v,
-                                 const ra8_zoom_axis_t* ax,
-                                 int32_t                top,
-                                 int32_t                rows,
-                                 int32_t*               cached_sy)
+static ra8_err_t internal_fill_strip(ra8_zoom_view_t*       v,
+                                     const ra8_zoom_axis_t* ax,
+                                     int32_t                top,
+                                     int32_t                rows,
+                                     int32_t*               cached_sy)
 {
   const size_t stride = (size_t)v->dst.w;
   (void)memset(v->scratch.strip, (int)k_ra8_zoom_bg_gray, (size_t)rows * stride);
@@ -231,7 +231,7 @@ static ra8_err_t zoom_fill_strip(ra8_zoom_view_t*       v,
   }
   for (int32_t r = 0; r < rows; ++r) {
     uint8_t* drow = &v->scratch.strip[(size_t)r * stride];
-    RA8_RETURN_ON_ERROR(zoom_fill_row(v, ax, v->anchor_y + top + r, drow, cached_sy),
+    RA8_RETURN_ON_ERROR(internal_fill_row(v, ax, v->anchor_y + top + r, drow, cached_sy),
                         s_tag,
                         "strip row");
   }
@@ -262,17 +262,17 @@ static ra8_err_t zoom_fill_strip(ra8_zoom_view_t*       v,
  * @post On failure nothing past the failing step was written.
  *
  * @note Not thread-safe; writes the single ra8_gfx framebuffer binding.
- * @see zoom_fill_strip
+ * @see internal_fill_strip
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t zoom_emit_strip(ra8_zoom_view_t*       v,
-                                 const ra8_zoom_axis_t* ax,
-                                 int32_t                top,
-                                 int32_t                rows,
-                                 int32_t*               cached_sy)
+static ra8_err_t internal_emit_strip(ra8_zoom_view_t*       v,
+                                     const ra8_zoom_axis_t* ax,
+                                     int32_t                top,
+                                     int32_t                rows,
+                                     int32_t*               cached_sy)
 {
-  RA8_RETURN_ON_ERROR(zoom_fill_strip(v, ax, top, rows, cached_sy), s_tag, "strip fill");
+  RA8_RETURN_ON_ERROR(internal_fill_strip(v, ax, top, rows, cached_sy), s_tag, "strip fill");
   uint32_t packed_len = 0U;
   RA8_RETURN_ON_ERROR(ra8_gfx_dither_gray8_to_gray4(v->scratch.strip,
                                                     v->dst.w,
@@ -321,7 +321,7 @@ static ra8_err_t zoom_emit_strip(ra8_zoom_view_t*       v,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t zoom_render_ready(const ra8_zoom_view_t* v)
+static ra8_err_t internal_render_ready(const ra8_zoom_view_t* v)
 {
   RA8_CHECK_NULL_PTR(v, s_tag, "view must not be nullptr");
   RA8_CHECK_NULL_PTR(v->src.read, s_tag, "view source seam must not be nullptr");
@@ -338,10 +338,10 @@ static ra8_err_t zoom_render_ready(const ra8_zoom_view_t* v)
 
 ra8_err_t ra8_zoom_view_render(ra8_zoom_view_t* v)
 {
-  RA8_RETURN_ON_ERROR(zoom_render_ready(v), s_tag, "render preconditions");
+  RA8_RETURN_ON_ERROR(internal_render_ready(v), s_tag, "render preconditions");
 
   ra8_zoom_axis_t ax = {};
-  ra8_zoom_priv_axis(v->anchor_x, v->dst.w, (int32_t)v->scale, (int32_t)v->src.width, &ax);
+  priv_zoom_axis(v->anchor_x, v->dst.w, (int32_t)v->scale, (int32_t)v->src.width, &ax);
 
   const int32_t rows_max  = (int32_t)v->strip_rows;
   int32_t       cached_sy = -1;
@@ -350,7 +350,7 @@ ra8_err_t ra8_zoom_view_render(ra8_zoom_view_t* v)
     if (rows > rows_max) {
       rows = rows_max;
     }
-    RA8_RETURN_ON_ERROR(zoom_emit_strip(v, &ax, top, rows, &cached_sy), s_tag, "strip emit");
+    RA8_RETURN_ON_ERROR(internal_emit_strip(v, &ax, top, rows, &cached_sy), s_tag, "strip emit");
   }
   return k_ra8_ok;
 }

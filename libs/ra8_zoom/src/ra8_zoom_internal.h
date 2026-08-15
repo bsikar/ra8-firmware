@@ -8,7 +8,7 @@
  * "given this anchor, viewport extent and magnification, which destination
  * columns are covered and which source columns feed them?" -- and answering it
  * twice is how a render and a residency report drift apart. It is answered once,
- * here, by ::ra8_zoom_priv_axis.
+ * here, by ::priv_zoom_axis.
  *
  * Nothing in this header is public API. It is not installed, it is not reachable
  * from `inc/`, and production code outside `libs/ra8_zoom` must never call it.
@@ -42,10 +42,10 @@
  * @par Example:
  * @code
  * ra8_zoom_axis_t ax = {};
- * ra8_zoom_priv_axis(v->anchor_x, v->dst.w, (int32_t)v->scale, (int32_t)v->src.width, &ax);
+ * priv_zoom_axis(v->anchor_x, v->dst.w, (int32_t)v->scale, (int32_t)v->src.width, &ax);
  * @endcode
  *
- * @see ra8_zoom_priv_axis
+ * @see priv_zoom_axis
  * @since 0.1.0
  */
 typedef struct {
@@ -87,8 +87,8 @@ typedef struct {
  * @since 0.1.0
  */
 RA8_PRIV
-void ra8_zoom_priv_axis(int32_t          anchor,
-                        int32_t          extent,
-                        int32_t          scale,
-                        int32_t          src_dim,
-                        ra8_zoom_axis_t* out);
+void priv_zoom_axis(int32_t          anchor,
+                    int32_t          extent,
+                    int32_t          scale,
+                    int32_t          src_dim,
+                    ra8_zoom_axis_t* out);
