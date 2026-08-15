@@ -203,8 +203,10 @@ typedef struct {
  * a clean volume and a volume with a thousand lost clusters both return
  * ::k_ra8_ok, and only `report->faults_total` tells them apart. A non-::k_ra8_ok
  * return means the scan could not run to completion -- a null argument, an
- * unmounted handle, or a backend read failure -- and @p report is then only
- * partially filled.
+ * unmounted handle, or a backend read failure -- and @p report retains its
+ * entry value. Findings are assembled in a private candidate and published
+ * only after the full scan succeeds, so callers cannot mistake partial counts
+ * for a completed check.
  *
  * Pass @p bitmap of at least `(report->clusters_total + 7) / 8` bytes to enable
  * the reference / lost-cluster / cross-link analysis; pass `bitmap == NULL` (or
@@ -227,6 +229,7 @@ typedef struct {
  * @pre Mount is in use; no file open on it is mid-write.
  * @post On ::k_ra8_ok `report->faults_total == 0` iff the volume is consistent
  *       within the scope this checker covers.
+ * @post On error @p report retains its entry value.
  * @post No volume state is modified, on any return path.
  *
  * @note Not thread-safe unless a lock is installed (see ::ra8_fs_set_lock()).
