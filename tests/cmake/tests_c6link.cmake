@@ -33,6 +33,7 @@ set(RA8_C6LINK_INCLUDE_DIRS
     # transport rows, so it needs the harness the tests use.
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
+    ${CMAKE_CURRENT_SOURCE_DIR}/support
     ${RA8_C6LINK_VENDOR_DIR}/common
     ${RA8_C6LINK_VENDOR_DIR}/common/transport
     ${RA8_C6LINK_VENDOR_DIR}/common/proto
@@ -40,6 +41,11 @@ set(RA8_C6LINK_INCLUDE_DIRS
 )
 
 file(GLOB RA8_C6LINK_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_c6link/src/*.c)
+
+# The generic facade and media-transfer suites share one bounded model fixture.
+# It owns the decode arena and observation log inside each executable, while its
+# internal header exposes only deliberate test operations and observations.
+set(RA8_C6LINK_TEST_SUPPORT ${CMAKE_CURRENT_SOURCE_DIR}/support/ra8_c6link_model_test.c)
 
 # esp-hosted SOUP: silence upstream's warnings, exactly as cmake/esp_hosted.cmake
 # does for the cross build. It is already outside the coverage filter
@@ -65,6 +71,7 @@ add_test(NAME test_ra8_c6link_wire COMMAND test_ra8_c6link_wire)
 add_executable(
   test_ra8_c6link
   ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link.c
+  ${RA8_C6LINK_TEST_SUPPORT}
   ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_c6_model.c
   ${RA8_C6LINK_SOURCES}
   ${RA8_C6LINK_SOUP}
@@ -74,6 +81,24 @@ set_target_properties(test_ra8_c6link PROPERTIES LINKER_LANGUAGE CXX)
 target_compile_options(test_ra8_c6link PRIVATE -Wall -Wextra -Wno-unused-parameter)
 target_include_directories(test_ra8_c6link PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
 add_test(NAME test_ra8_c6link COMMAND test_ra8_c6link)
+
+# test_ra8_c6link_media: downloader RPC semantics and the transactional
+# transfer coordinator, kept independent from the generic Wi-Fi/Ethernet
+# facade vectors so each hand-authored translation unit stays below the
+# repository's 1000-line cap.
+add_executable(
+  test_ra8_c6link_media
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media.c
+  ${RA8_C6LINK_TEST_SUPPORT}
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_c6_model.c
+  ${RA8_C6LINK_SOURCES}
+  ${RA8_C6LINK_SOUP}
+  $<TARGET_OBJECTS:ra8_core_hal>
+)
+set_target_properties(test_ra8_c6link_media PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_options(test_ra8_c6link_media PRIVATE -Wall -Wextra -Wno-unused-parameter)
+target_include_directories(test_ra8_c6link_media PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
+add_test(NAME test_ra8_c6link_media COMMAND test_ra8_c6link_media)
 
 # test_ra8_c6link_mdl: generated inner-protobuf round trips and the portable
 # service state machine. It deliberately stays independent of the large host
@@ -109,3 +134,33 @@ target_include_directories(
           ${FW_ROOT}/libs/ra8_io/inc ${FW_ROOT}/libs/ra8_fs/inc
 )
 add_test(NAME test_ra8_mdl_storage_vfs COMMAND test_ra8_mdl_storage_vfs)
+
+# test_ra8_c6link_rabook: the full mixed-image acceptance path. A generated
+# RBKC artifact crosses the portable C6 service and RA client, is written to a
+# real FAT/VFS transaction, strictly validated before publication, then reopened
+# through the same bounded reader workspace for consumption. The C6 model
+# decodes and answers the generated inner/outer protobuf messages; it is not a
+# replay or a direct call around the transport.
+add_executable(
+  test_ra8_c6link_rabook
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_rabook.c
+  ${RA8_C6LINK_TEST_SUPPORT}
+  ${CMAKE_CURRENT_SOURCE_DIR}/support/rabook_compile_test_fixture.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_c6_model.c
+  ${FW_ROOT}/libs/ra8_mdl_storage_vfs/src/ra8_mdl_storage_vfs.c
+  ${FW_ROOT}/libs/ra8_mdl_storage_vfs/src/ra8_mdl_rabook_vfs.c
+  ${RA8_C6LINK_SOURCES}
+  ${RA8_C6LINK_SOUP}
+  $<TARGET_OBJECTS:ra8_core_hal>
+)
+set_target_properties(test_ra8_c6link_rabook PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_options(test_ra8_c6link_rabook PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
+target_include_directories(
+  test_ra8_c6link_rabook
+  PRIVATE ${RA8_C6LINK_INCLUDE_DIRS} ${FW_ROOT}/libs/ra8_mdl_storage_vfs/inc
+          ${FW_ROOT}/libs/ra8_book/inc ${FW_ROOT}/libs/ra8_rabook_compile/inc
+          ${FW_ROOT}/libs/ra8_fs/inc ${FW_ROOT}/libs/ra8_hal/inc ${FW_ROOT}/libs/ra8_io/inc
+          ${FW_ROOT}/libs/ra8_mem/inc
+          ${FW_ROOT}/libs/third_party/miniz
+)
+add_test(NAME test_ra8_c6link_rabook COMMAND test_ra8_c6link_rabook)
