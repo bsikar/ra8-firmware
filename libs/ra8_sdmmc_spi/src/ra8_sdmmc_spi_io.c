@@ -34,6 +34,7 @@
 #include "ra8_sci_spi.h"
 #include "ra8_sdmmc_spi.h"
 #include "ra8_sdmmc_spi_internal.h"
+#include "ra8_sdmmc_spi_io_contracts.h"
 #include "ra8_spi.h"
 
 /* ---------------------------------------------------------------------------
@@ -57,8 +58,8 @@ static const char* s_tag = "SDSPI";
 /**
  * @struct sci_bus_ctx_t
  * @brief Bus context handed to the factory's transport callbacks.
- * @details Populated once by ::ra8_sdmmc_spi_transport_sci and pointed at by the
- *          returned transport's ``ctx`` cookie; recovers the SCI channel, PCLKA
+ * @details Populated once by ::ra8_sdmmc_spi_transport_sci and pointed at by
+ * the returned transport's ``ctx`` cookie; recovers the SCI channel, PCLKA
  *          rate, and chip-select pin inside each shim. Not reentrant.
  * @since 0.1.0
  */
@@ -71,13 +72,15 @@ typedef struct {
 /**
  * @var s_sci_ctx
  * @brief Single-shot bus context backing the factory's transport callbacks.
- * @warning Mutated by ::ra8_sdmmc_spi_transport_sci; not thread-safe and only one
- *          SD bus may be brought up through the factory at a time.
+ * @warning Mutated by ::ra8_sdmmc_spi_transport_sci; not thread-safe and only
+ * one SD bus may be brought up through the factory at a time.
  * @since 0.1.0
  */
 static sci_bus_ctx_t s_sci_ctx;
 
-/* cppcheck-suppress constParameterCallback -- bound to ra8_sdmmc_spi_transport_t::set_clock, `ra8_err_t (*)(void*, uint32_t)`; constifying ctx would break the binding. */
+/* cppcheck-suppress constParameterCallback -- bound to
+ * ra8_sdmmc_spi_transport_t::set_clock, `ra8_err_t (*)(void*, uint32_t)`;
+ * constifying ctx would break the binding. */
 /**
  * @brief Factory transport set-clock shim: retune the SCI baud divider.
  * @details Recovers the SCI channel + PCLKA from the bus context and forwards
@@ -95,7 +98,7 @@ static sci_bus_ctx_t s_sci_ctx;
  *       function-pointer type (constParameterCallback suppressed in-tree).
  * @since 0.1.0
  */
-static ra8_err_t sci_transport_set_clock(void* ctx, uint32_t hz)
+RA8_INTERNAL static ra8_err_t internal_sci_transport_set_clock(void* ctx, uint32_t hz)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
   const sci_bus_ctx_t* c = (const sci_bus_ctx_t*)ctx;
@@ -104,22 +107,23 @@ static ra8_err_t sci_transport_set_clock(void* ctx, uint32_t hz)
 
 /**
  * @brief Factory transport chip-select shim: drive CS low (asserted) or high.
- * @details Drives the chip-select GPIO from the bus context (active-low select);
- *          carries no register access of its own.
+ * @details Drives the chip-select GPIO from the bus context (active-low
+ * select); carries no register access of its own.
  * @param[in] ctx      Bus context (::sci_bus_ctx_t*); must be non-NULL.
  * @param[in] asserted true to select (CS low), false to release (CS high).
  * @return ra8_err_t passthrough from ``ra8_gpio_write``.
  * @retval k_ra8_ok           CS driven to the requested level.
  * @retval k_ra8_err_null_ptr @p ctx is NULL.
  * @pre @p ctx points to the live ::s_sci_ctx.
- * @pre The CS pin was claimed as a GPIO output by ::ra8_sdmmc_spi_transport_sci.
+ * @pre The CS pin was claimed as a GPIO output by
+ * ::ra8_sdmmc_spi_transport_sci.
  * @post On success the CS pin reflects @p asserted.
  * @post No other pin or bus state changes.
  * @note ISR-unsafe. `ctx` is non-const to match the transport function-pointer
  *       type (constParameterCallback suppressed in-tree).
  * @since 0.1.0
  */
-static ra8_err_t sci_transport_cs(void* ctx, bool asserted)
+RA8_INTERNAL static ra8_err_t internal_sci_transport_cs(void* ctx, bool asserted)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
   const sci_bus_ctx_t* c = (const sci_bus_ctx_t*)ctx;
@@ -145,7 +149,8 @@ static ra8_err_t sci_transport_cs(void* ctx, bool asserted)
  *       function-pointer type (constParameterCallback suppressed in-tree).
  * @since 0.1.0
  */
-static ra8_err_t sci_transport_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
+RA8_INTERNAL static ra8_err_t
+internal_sci_transport_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
   const sci_bus_ctx_t* c = (const sci_bus_ctx_t*)ctx;
@@ -155,8 +160,8 @@ static ra8_err_t sci_transport_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, u
 /**
  * @brief Route the four Pmod SPI pins and bring up the SCI Simple-SPI channel.
  * @details Muxes SCK/CIPO/COPI to the SCI async function, claims CS as a GPIO
- *          output held high, then initialises the SCI channel at the SD power-on
- *          clock. All HAL calls are reused (no register access here).
+ *          output held high, then initialises the SCI channel at the SD
+ * power-on clock. All HAL calls are reused (no register access here).
  * @param[in] channel  SCI channel index (0..9).
  * @param[in] pclk_hz  PCLKA rate (Hz) feeding the baud divider; non-zero.
  * @param[in] pins     Non-NULL SCK / CIPO / COPI / CS descriptor.
@@ -172,8 +177,9 @@ static ra8_err_t sci_transport_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, u
  * @note CS is a plain GPIO output (SD SPI-mode holds CS across a frame).
  * @since 0.1.0
  */
-static ra8_err_t
-sci_transport_bringup(uint8_t channel, uint32_t pclk_hz, const ra8_sdmmc_spi_sci_pins_t* pins)
+RA8_INTERNAL static ra8_err_t internal_sci_transport_bringup(uint8_t  channel,
+                                                             uint32_t pclk_hz,
+                                                             const ra8_sdmmc_spi_sci_pins_t* pins)
 {
   RA8_CHECK_NULL_PTR(pins, s_tag, "pins");
 
@@ -213,7 +219,7 @@ ra8_err_t ra8_sdmmc_spi_transport_sci(uint8_t                         sci_channe
     return k_ra8_err_invalid_arg;
   }
 
-  ra8_err_t err = sci_transport_bringup(sci_channel, pclk_hz, pins);
+  ra8_err_t err = internal_sci_transport_bringup(sci_channel, pclk_hz, pins);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -222,9 +228,9 @@ ra8_err_t ra8_sdmmc_spi_transport_sci(uint8_t                         sci_channe
   s_sci_ctx.pclka_hz = pclk_hz;
   s_sci_ctx.cs       = pins->cs;
 
-  out->set_clock = sci_transport_set_clock;
-  out->cs        = sci_transport_cs;
-  out->xfer      = sci_transport_xfer;
+  out->set_clock = internal_sci_transport_set_clock;
+  out->cs        = internal_sci_transport_cs;
+  out->xfer      = internal_sci_transport_xfer;
   out->ctx       = &s_sci_ctx;
   return k_ra8_ok;
 }
@@ -234,39 +240,39 @@ ra8_err_t ra8_sdmmc_spi_transport_sci(uint8_t                         sci_channe
  * ===========================================================================
  */
 
-/* Bind the transport, validate non-reinit, then bring up the init clock -- see implementation for details. */
-static ra8_err_t internal_prepare_init(const ra8_sdmmc_spi_transport_t* transport)
+/** @copydoc internal_prepare_init */
+RA8_INTERNAL static ra8_err_t internal_prepare_init(const ra8_sdmmc_spi_transport_t* transport)
 {
-  if (s_sdmmc_spi_state.initialized) {
+  if (g_sdmmc_spi_state.initialized) {
     ra8_log_error(s_tag, "already initialized");
     return k_ra8_err_invalid_state;
   }
-  s_sdmmc_spi_state.transport       = *transport;
-  s_sdmmc_spi_state.card_type       = k_ra8_sdmmc_spi_type_unknown;
-  s_sdmmc_spi_state.capacity_blocks = 0U;
-  return s_sdmmc_spi_state.transport.set_clock(s_sdmmc_spi_state.transport.ctx,
+  g_sdmmc_spi_state.transport       = *transport;
+  g_sdmmc_spi_state.card_type       = k_ra8_sdmmc_spi_type_unknown;
+  g_sdmmc_spi_state.capacity_blocks = 0U;
+  return g_sdmmc_spi_state.transport.set_clock(g_sdmmc_spi_state.transport.ctx,
                                                (uint32_t)k_ra8_sdmmc_spi_clock_init_hz);
 }
 
-/* Drop the bus to data-rate clock and mark the driver initialized -- see implementation for details. */
-static ra8_err_t internal_finalize_init(void)
+/** @copydoc internal_finalize_init */
+RA8_INTERNAL static ra8_err_t internal_finalize_init(void)
 {
-  ra8_err_t err = s_sdmmc_spi_state.transport.set_clock(s_sdmmc_spi_state.transport.ctx,
+  ra8_err_t err = g_sdmmc_spi_state.transport.set_clock(g_sdmmc_spi_state.transport.ctx,
                                                         (uint32_t)k_ra8_sdmmc_spi_clock_data_hz);
   if (err != k_ra8_ok) {
     return err;
   }
-  s_sdmmc_spi_state.initialized = true;
+  g_sdmmc_spi_state.initialized = true;
   return k_ra8_ok;
 }
 
 ra8_err_t ra8_sdmmc_spi_init(const ra8_sdmmc_spi_transport_t* transport)
 {
-  ra8_err_t err = ra8_sdmmc_spi_validate_transport(transport);
+  ra8_err_t err = priv_sdmmc_spi_validate_transport(transport);
   RA8_RETURN_ON_ERROR(err, s_tag, "transport invalid");
   err = internal_prepare_init(transport);
   RA8_RETURN_ON_ERROR(err, s_tag, "prepare init");
-  err = ra8_sdmmc_spi_run_init_sequence();
+  err = priv_sdmmc_spi_run_init_sequence();
   RA8_RETURN_ON_ERROR(err, s_tag, "SD init sequence");
   err = internal_finalize_init();
   RA8_RETURN_ON_ERROR(err, s_tag, "finalize init");
@@ -275,31 +281,31 @@ ra8_err_t ra8_sdmmc_spi_init(const ra8_sdmmc_spi_transport_t* transport)
 
 ra8_err_t ra8_sdmmc_spi_deinit(void)
 {
-  s_sdmmc_spi_state.initialized     = false;
-  s_sdmmc_spi_state.card_type       = k_ra8_sdmmc_spi_type_unknown;
-  s_sdmmc_spi_state.capacity_blocks = 0U;
+  g_sdmmc_spi_state.initialized     = false;
+  g_sdmmc_spi_state.card_type       = k_ra8_sdmmc_spi_type_unknown;
+  g_sdmmc_spi_state.capacity_blocks = 0U;
   return k_ra8_ok;
 }
 
-/* Convert the caller's LBA into the on-wire command argument -- see implementation for details. */
-static uint32_t internal_lba_to_arg(uint32_t lba)
+/** @copydoc internal_lba_to_arg */
+RA8_INTERNAL static uint32_t internal_lba_to_arg(uint32_t lba)
 {
-  if (s_sdmmc_spi_state.card_type == k_ra8_sdmmc_spi_type_sdhc) {
+  if (g_sdmmc_spi_state.card_type == k_ra8_sdmmc_spi_type_sdhc) {
     return lba;
   }
   return lba * (uint32_t)k_ra8_sdmmc_spi_block_size;
 }
 
-/* Send a one-shot command and require R1 == 0 (CS asserted around it) -- see implementation for details. */
-static ra8_err_t internal_cmd_require_ready(sd_cmd_t cmd, uint32_t arg)
+/** @copydoc internal_cmd_require_ready */
+RA8_INTERNAL static ra8_err_t internal_cmd_require_ready(sd_cmd_t cmd, uint32_t arg)
 {
-  ra8_err_t err = ra8_sdmmc_spi_cs_assert();
+  ra8_err_t err = priv_sdmmc_spi_cs_assert();
   if (err != k_ra8_ok) {
     return err;
   }
   uint8_t r1 = 0U;
-  err        = ra8_sdmmc_spi_send_command(cmd, arg, &r1);
-  (void)ra8_sdmmc_spi_cs_release();
+  err        = priv_sdmmc_spi_send_command(cmd, arg, &r1);
+  (void)priv_sdmmc_spi_cs_release();
   if (err != k_ra8_ok) {
     return err;
   }
@@ -309,8 +315,8 @@ static ra8_err_t internal_cmd_require_ready(sd_cmd_t cmd, uint32_t arg)
   return k_ra8_ok;
 }
 
-/* Drive the CMD32/CMD33/CMD38 erase sequence over [lba, lba+count) -- see implementation for details. */
-static ra8_err_t internal_erase_range(uint32_t lba, uint32_t count)
+/** @copydoc internal_erase_range */
+RA8_INTERNAL static ra8_err_t internal_erase_range(uint32_t lba, uint32_t count)
 {
   ra8_err_t err = internal_cmd_require_ready(k_sd_cmd_erase_wr_blk_start, internal_lba_to_arg(lba));
   if (err != k_ra8_ok) {
@@ -323,30 +329,30 @@ static ra8_err_t internal_erase_range(uint32_t lba, uint32_t count)
   }
   /* CMD38 then a long busy wait -- a bulk erase can hold the card busy for
    * seconds, far longer than a single-block write. */
-  err = ra8_sdmmc_spi_cs_assert();
+  err = priv_sdmmc_spi_cs_assert();
   if (err != k_ra8_ok) {
     return err;
   }
   uint8_t r1 = 0U;
-  err        = ra8_sdmmc_spi_send_command(k_sd_cmd_erase, 0U, &r1);
+  err        = priv_sdmmc_spi_send_command(k_sd_cmd_erase, 0U, &r1);
   if (err != k_ra8_ok) {
-    (void)ra8_sdmmc_spi_cs_release();
+    (void)priv_sdmmc_spi_cs_release();
     return err;
   }
   if (r1 != 0U) {
-    (void)ra8_sdmmc_spi_cs_release();
+    (void)priv_sdmmc_spi_cs_release();
     return k_ra8_err_protocol_error;
   }
-  err = ra8_sdmmc_spi_wait_not_busy_bounded((uint32_t)k_sd_max_erase_poll_bytes);
-  (void)ra8_sdmmc_spi_cs_release();
+  err = priv_sdmmc_spi_wait_not_busy_bounded((uint32_t)k_sd_max_erase_poll_bytes);
+  (void)priv_sdmmc_spi_cs_release();
   return err;
 }
 
-/* Drain 512 payload bytes from the card into ``buf`` -- see implementation for details. */
-static ra8_err_t internal_read_block_payload(uint8_t* buf)
+/** @copydoc internal_read_block_payload */
+RA8_INTERNAL static ra8_err_t internal_read_block_payload(uint8_t* buf)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_sdmmc_spi_block_size; i++) {
-    ra8_err_t err = ra8_sdmmc_spi_xfer_one((uint8_t)k_sd_token_idle, &buf[i]);
+    ra8_err_t err = priv_sdmmc_spi_xfer_one((uint8_t)k_sd_token_idle, &buf[i]);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -354,13 +360,13 @@ static ra8_err_t internal_read_block_payload(uint8_t* buf)
   return k_ra8_ok;
 }
 
-/* Drain the 2-byte CRC16 trailer from the card and verify it -- see implementation for details. */
-static ra8_err_t internal_read_block_crc_check(const uint8_t* buf)
+/** @copydoc internal_read_block_crc_check */
+RA8_INTERNAL static ra8_err_t internal_read_block_crc_check(const uint8_t* buf)
 {
   uint8_t crc_hi = 0U;
   uint8_t crc_lo = 0U;
-  (void)ra8_sdmmc_spi_xfer_one((uint8_t)k_sd_token_idle, &crc_hi);
-  (void)ra8_sdmmc_spi_xfer_one((uint8_t)k_sd_token_idle, &crc_lo);
+  (void)priv_sdmmc_spi_xfer_one((uint8_t)k_sd_token_idle, &crc_hi);
+  (void)priv_sdmmc_spi_xfer_one((uint8_t)k_sd_token_idle, &crc_lo);
   const uint16_t expected = ra8_sdmmc_spi_crc16(buf, (uint32_t)k_ra8_sdmmc_spi_block_size);
   const uint16_t actual   = (uint16_t)(((uint16_t)crc_hi << k_sd_bit_byte) | (uint16_t)crc_lo);
   if (expected != actual) {
@@ -369,19 +375,19 @@ static ra8_err_t internal_read_block_crc_check(const uint8_t* buf)
   return k_ra8_ok;
 }
 
-/* Run the CMD17 + data-token + payload-drain phase under CS asserted -- see implementation for details. */
-static ra8_err_t internal_read_data_phase(uint32_t lba, uint8_t* buf)
+/** @copydoc internal_read_data_phase */
+RA8_INTERNAL static ra8_err_t internal_read_data_phase(uint32_t lba, uint8_t* buf)
 {
   uint8_t   r1 = 0U;
   ra8_err_t err =
-    ra8_sdmmc_spi_send_command(k_sd_cmd_read_single_block, internal_lba_to_arg(lba), &r1);
+    priv_sdmmc_spi_send_command(k_sd_cmd_read_single_block, internal_lba_to_arg(lba), &r1);
   if (err != k_ra8_ok) {
     return err;
   }
   if (r1 != 0U) {
     return k_ra8_err_protocol_error;
   }
-  err = ra8_sdmmc_spi_wait_data_token();
+  err = priv_sdmmc_spi_wait_data_token();
   if (err != k_ra8_ok) {
     return err;
   }
@@ -395,25 +401,26 @@ static ra8_err_t internal_read_data_phase(uint32_t lba, uint8_t* buf)
 ra8_err_t ra8_sdmmc_spi_read_block(uint32_t lba, uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf is null");
-  if (!s_sdmmc_spi_state.initialized) {
+  if (!g_sdmmc_spi_state.initialized) {
     return k_ra8_err_invalid_state;
   }
-  if (lba >= s_sdmmc_spi_state.capacity_blocks) {
+  if (lba >= g_sdmmc_spi_state.capacity_blocks) {
     return k_ra8_err_out_of_range;
   }
-  ra8_err_t err = ra8_sdmmc_spi_cs_assert();
+  ra8_err_t err = priv_sdmmc_spi_cs_assert();
   RA8_RETURN_ON_ERROR(err, s_tag, "cs assert");
   err = internal_read_data_phase(lba, buf);
-  (void)ra8_sdmmc_spi_cs_release();
+  (void)priv_sdmmc_spi_cs_release();
   return err;
 }
 
-/* Drain @p count streamed blocks (token + payload + CRC) of an open CMD18 -- see implementation for details. */
-static ra8_err_t internal_read_multi_stream(uint8_t* buf, uint32_t count)
+/* Drain @p count streamed blocks (token + payload + CRC) of an open CMD18 --
+ * see implementation for details. */
+RA8_INTERNAL static ra8_err_t internal_read_multi_stream(uint8_t* buf, uint32_t count)
 {
   for (uint32_t i = 0U; i < count; i++) {
     uint8_t*  block = &buf[(size_t)i * (size_t)k_ra8_sdmmc_spi_block_size];
-    ra8_err_t err   = ra8_sdmmc_spi_wait_data_token();
+    ra8_err_t err   = priv_sdmmc_spi_wait_data_token();
     if (err != k_ra8_ok) {
       return err;
     }
@@ -429,43 +436,43 @@ static ra8_err_t internal_read_multi_stream(uint8_t* buf, uint32_t count)
   return k_ra8_ok;
 }
 
-/* Terminate an open CMD18 stream: CMD12 + busy wait, R1 == 0 required -- see implementation for details. */
-static ra8_err_t internal_read_multi_stop(void)
+/** @copydoc internal_read_multi_stop */
+RA8_INTERNAL static ra8_err_t internal_read_multi_stop(void)
 {
   uint8_t   r1  = 0U;
-  ra8_err_t err = ra8_sdmmc_spi_send_stop_transmission(&r1);
+  ra8_err_t err = priv_sdmmc_spi_send_stop_transmission(&r1);
   if (err != k_ra8_ok) {
     return err;
   }
   if (r1 != 0U) {
-    (void)ra8_sdmmc_spi_wait_not_busy();
+    (void)priv_sdmmc_spi_wait_not_busy();
     return k_ra8_err_protocol_error;
   }
-  return ra8_sdmmc_spi_wait_not_busy();
+  return priv_sdmmc_spi_wait_not_busy();
 }
 
 ra8_err_t ra8_sdmmc_spi_read_blocks(uint32_t lba, uint8_t* buf, uint32_t count)
 {
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf is null");
-  if (!s_sdmmc_spi_state.initialized) {
+  if (!g_sdmmc_spi_state.initialized) {
     return k_ra8_err_invalid_state;
   }
   if (count == 0U) {
     return k_ra8_ok;
   }
-  if ((lba >= s_sdmmc_spi_state.capacity_blocks) ||
-      (count > (s_sdmmc_spi_state.capacity_blocks - lba))) {
+  if ((lba >= g_sdmmc_spi_state.capacity_blocks) ||
+      (count > (g_sdmmc_spi_state.capacity_blocks - lba))) {
     return k_ra8_err_out_of_range;
   }
   if (count == 1U) {
     return ra8_sdmmc_spi_read_block(lba, buf);
   }
-  ra8_err_t err = ra8_sdmmc_spi_cs_assert();
+  ra8_err_t err = priv_sdmmc_spi_cs_assert();
   RA8_RETURN_ON_ERROR(err, s_tag, "cs assert");
   uint8_t r1 = 0U;
-  err        = ra8_sdmmc_spi_send_command(k_sd_cmd_read_multi_block, internal_lba_to_arg(lba), &r1);
+  err = priv_sdmmc_spi_send_command(k_sd_cmd_read_multi_block, internal_lba_to_arg(lba), &r1);
   if ((err != k_ra8_ok) || (r1 != 0U)) {
-    (void)ra8_sdmmc_spi_cs_release();
+    (void)priv_sdmmc_spi_cs_release();
     return (err != k_ra8_ok) ? err : k_ra8_err_protocol_error;
   }
   err = internal_read_multi_stream(buf, count);
@@ -474,25 +481,25 @@ ra8_err_t ra8_sdmmc_spi_read_blocks(uint32_t lba, uint8_t* buf, uint32_t count)
    * state before CS is released or the next command collides with the
    * still-open stream. A stream error takes precedence over a stop error. */
   const ra8_err_t stop_err = internal_read_multi_stop();
-  (void)ra8_sdmmc_spi_cs_release();
+  (void)priv_sdmmc_spi_cs_release();
   if (err != k_ra8_ok) {
     return err;
   }
   return stop_err;
 }
 
-/* Stream one data block out (token + payload + CRC16) and check -- see implementation for details. */
-static ra8_err_t internal_write_data_block(const uint8_t* buf, uint8_t start_token)
+/** @copydoc internal_write_data_block */
+RA8_INTERNAL static ra8_err_t internal_write_data_block(const uint8_t* buf, uint8_t start_token)
 {
-  ra8_err_t err = ra8_sdmmc_spi_send_idle(1U); /* N_WR pad (spec >= 1 byte). */
+  ra8_err_t err = priv_sdmmc_spi_send_idle(1U); /* N_WR pad (spec >= 1 byte). */
   if (err != k_ra8_ok) {
     return err;
   }
-  err = ra8_sdmmc_spi_xfer_one(start_token, nullptr);
+  err = priv_sdmmc_spi_xfer_one(start_token, nullptr);
   if (err != k_ra8_ok) {
     return err;
   }
-  err = s_sdmmc_spi_state.transport.xfer(s_sdmmc_spi_state.transport.ctx,
+  err = g_sdmmc_spi_state.transport.xfer(g_sdmmc_spi_state.transport.ctx,
                                          buf,
                                          nullptr,
                                          (uint32_t)k_ra8_sdmmc_spi_block_size);
@@ -500,57 +507,57 @@ static ra8_err_t internal_write_data_block(const uint8_t* buf, uint8_t start_tok
     /* Some transports require non-NULL rx -- fall back to per-byte. */
     for (uint32_t i = 0U; i < (uint32_t)k_ra8_sdmmc_spi_block_size; i++) {
       uint8_t dummy = 0U;
-      err           = ra8_sdmmc_spi_xfer_one(buf[i], &dummy);
+      err           = priv_sdmmc_spi_xfer_one(buf[i], &dummy);
       if (err != k_ra8_ok) {
         return err;
       }
     }
   }
   const uint16_t crc = ra8_sdmmc_spi_crc16(buf, (uint32_t)k_ra8_sdmmc_spi_block_size);
-  (void)ra8_sdmmc_spi_xfer_one(
+  (void)priv_sdmmc_spi_xfer_one(
     (uint8_t)((uint32_t)(crc >> k_sd_bit_byte) & (uint32_t)k_sd_mask_byte),
     nullptr);
-  (void)ra8_sdmmc_spi_xfer_one((uint8_t)((uint32_t)crc & (uint32_t)k_sd_mask_byte), nullptr);
+  (void)priv_sdmmc_spi_xfer_one((uint8_t)((uint32_t)crc & (uint32_t)k_sd_mask_byte), nullptr);
   uint8_t response = 0U;
-  err              = ra8_sdmmc_spi_xfer_one((uint8_t)k_sd_token_idle, &response);
+  err              = priv_sdmmc_spi_xfer_one((uint8_t)k_sd_token_idle, &response);
   if (err != k_ra8_ok) {
     return err;
   }
   if ((response & (uint8_t)k_sd_data_response_mask) != (uint8_t)k_sd_data_response_accepted) {
-    (void)ra8_sdmmc_spi_wait_not_busy();
+    (void)priv_sdmmc_spi_wait_not_busy();
     return k_ra8_err_protocol_error;
   }
-  return ra8_sdmmc_spi_wait_not_busy();
+  return priv_sdmmc_spi_wait_not_busy();
 }
 
 ra8_err_t ra8_sdmmc_spi_write_block(uint32_t lba, const uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf is null");
-  if (!s_sdmmc_spi_state.initialized) {
+  if (!g_sdmmc_spi_state.initialized) {
     return k_ra8_err_invalid_state;
   }
-  if (lba >= s_sdmmc_spi_state.capacity_blocks) {
+  if (lba >= g_sdmmc_spi_state.capacity_blocks) {
     return k_ra8_err_out_of_range;
   }
-  ra8_err_t err = ra8_sdmmc_spi_cs_assert();
+  ra8_err_t err = priv_sdmmc_spi_cs_assert();
   RA8_RETURN_ON_ERROR(err, s_tag, "cs assert");
   uint8_t r1 = 0U;
-  err = ra8_sdmmc_spi_send_command(k_sd_cmd_write_single_block, internal_lba_to_arg(lba), &r1);
+  err = priv_sdmmc_spi_send_command(k_sd_cmd_write_single_block, internal_lba_to_arg(lba), &r1);
   if (err != k_ra8_ok) {
-    (void)ra8_sdmmc_spi_cs_release();
+    (void)priv_sdmmc_spi_cs_release();
     return err;
   }
   if (r1 != 0U) {
-    (void)ra8_sdmmc_spi_cs_release();
+    (void)priv_sdmmc_spi_cs_release();
     return k_ra8_err_protocol_error;
   }
   err = internal_write_data_block(buf, (uint8_t)k_sd_token_data_start_single);
-  (void)ra8_sdmmc_spi_cs_release();
+  (void)priv_sdmmc_spi_cs_release();
   return err;
 }
 
-/* Stream @p count blocks then the stop token inside an open CMD25 -- see implementation for details. */
-static ra8_err_t internal_write_multi_stream(const uint8_t* buf, uint32_t count)
+/** @copydoc internal_write_multi_stream */
+RA8_INTERNAL static ra8_err_t internal_write_multi_stream(const uint8_t* buf, uint32_t count)
 {
   for (uint32_t i = 0U; i < count; i++) {
     const ra8_err_t err =
@@ -560,20 +567,21 @@ static ra8_err_t internal_write_multi_stream(const uint8_t* buf, uint32_t count)
       return err;
     }
   }
-  (void)ra8_sdmmc_spi_send_idle(1U);
-  (void)ra8_sdmmc_spi_xfer_one((uint8_t)k_sd_token_stop_multi, nullptr);
-  (void)ra8_sdmmc_spi_send_idle(1U);
-  return ra8_sdmmc_spi_wait_not_busy();
+  (void)priv_sdmmc_spi_send_idle(1U);
+  (void)priv_sdmmc_spi_xfer_one((uint8_t)k_sd_token_stop_multi, nullptr);
+  (void)priv_sdmmc_spi_send_idle(1U);
+  return priv_sdmmc_spi_wait_not_busy();
 }
 
 /**
  * @brief Write @p count contiguous 512-byte blocks with one CMD25 transaction.
  *
  * @details The fast bulk-write path: an optional ACMD23 pre-erase hint, then a
- * single WRITE_MULTIPLE_BLOCK (CMD25) streaming every block with the multi-block
- * data-start token (0xFC), terminated by the stop-tran token (0xFD). One command
- * for the whole run instead of @p count single-block CMD24 writes -- the SD spec
- * fast path for clearing a large region (e.g. a multi-MB FAT during format).
+ * single WRITE_MULTIPLE_BLOCK (CMD25) streaming every block with the
+ * multi-block data-start token (0xFC), terminated by the stop-tran token
+ * (0xFD). One command for the whole run instead of @p count single-block CMD24
+ * writes -- the SD spec fast path for clearing a large region (e.g. a multi-MB
+ * FAT during format).
  *
  * @param[in] lba   First logical block address.
  * @param[in] buf   Source buffer of @p count * 512 bytes.
@@ -584,7 +592,8 @@ static ra8_err_t internal_write_multi_stream(const uint8_t* buf, uint32_t count)
  * @retval k_ra8_err_null_ptr      @p buf is NULL.
  * @retval k_ra8_err_invalid_state The driver is not initialised.
  * @retval k_ra8_err_out_of_range  @p lba + @p count exceeds the card capacity.
- * @retval k_ra8_err_protocol_error A command R1 or data-response token rejected.
+ * @retval k_ra8_err_protocol_error A command R1 or data-response token
+ * rejected.
  *
  * @pre The driver is initialised and a card is present.
  * @pre @p buf holds at least @p count * 512 bytes.
@@ -598,46 +607,46 @@ static ra8_err_t internal_write_multi_stream(const uint8_t* buf, uint32_t count)
 ra8_err_t ra8_sdmmc_spi_write_blocks(uint32_t lba, const uint8_t* buf, uint32_t count)
 {
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf is null");
-  if (!s_sdmmc_spi_state.initialized) {
+  if (!g_sdmmc_spi_state.initialized) {
     return k_ra8_err_invalid_state;
   }
   if (count == 0U) {
     return k_ra8_ok;
   }
-  if ((lba >= s_sdmmc_spi_state.capacity_blocks) ||
-      (count > (s_sdmmc_spi_state.capacity_blocks - lba))) {
+  if ((lba >= g_sdmmc_spi_state.capacity_blocks) ||
+      (count > (g_sdmmc_spi_state.capacity_blocks - lba))) {
     return k_ra8_err_out_of_range;
   }
   if (count == 1U) {
     return ra8_sdmmc_spi_write_block(lba, buf);
   }
-  ra8_err_t err = ra8_sdmmc_spi_cs_assert();
+  ra8_err_t err = priv_sdmmc_spi_cs_assert();
   RA8_RETURN_ON_ERROR(err, s_tag, "cs assert");
   /* Pre-erase hint (ACMD23): best-effort -- ignore the response so a card that
    * does not implement it still streams correctly below. */
   uint8_t acmd_r1 = 0U;
-  (void)ra8_sdmmc_spi_send_acmd(k_sd_acmd_set_wr_blk_erase_count, count, &acmd_r1);
+  (void)priv_sdmmc_spi_send_acmd(k_sd_acmd_set_wr_blk_erase_count, count, &acmd_r1);
   uint8_t r1 = 0U;
-  err = ra8_sdmmc_spi_send_command(k_sd_cmd_write_multi_block, internal_lba_to_arg(lba), &r1);
+  err = priv_sdmmc_spi_send_command(k_sd_cmd_write_multi_block, internal_lba_to_arg(lba), &r1);
   if ((err != k_ra8_ok) || (r1 != 0U)) {
-    (void)ra8_sdmmc_spi_cs_release();
+    (void)priv_sdmmc_spi_cs_release();
     return (err != k_ra8_ok) ? err : k_ra8_err_protocol_error;
   }
   err = internal_write_multi_stream(buf, count);
-  (void)ra8_sdmmc_spi_cs_release();
+  (void)priv_sdmmc_spi_cs_release();
   return err;
 }
 
 ra8_err_t ra8_sdmmc_spi_erase_blocks(uint32_t lba, uint32_t count)
 {
-  if (!s_sdmmc_spi_state.initialized) {
+  if (!g_sdmmc_spi_state.initialized) {
     return k_ra8_err_invalid_state;
   }
   if (count == 0U) {
     return k_ra8_err_invalid_arg;
   }
-  if ((lba >= s_sdmmc_spi_state.capacity_blocks) ||
-      (count > (s_sdmmc_spi_state.capacity_blocks - lba))) {
+  if ((lba >= g_sdmmc_spi_state.capacity_blocks) ||
+      (count > (g_sdmmc_spi_state.capacity_blocks - lba))) {
     return k_ra8_err_out_of_range;
   }
   /* Probe: erase only the FIRST block and read it back. The SD post-erase value
@@ -673,20 +682,20 @@ ra8_err_t ra8_sdmmc_spi_erase_blocks(uint32_t lba, uint32_t count)
 ra8_err_t ra8_sdmmc_spi_get_capacity(uint32_t* out_blocks)
 {
   RA8_CHECK_NULL_PTR(out_blocks, s_tag, "out_blocks is null");
-  if (!s_sdmmc_spi_state.initialized) {
+  if (!g_sdmmc_spi_state.initialized) {
     return k_ra8_err_invalid_state;
   }
-  *out_blocks = s_sdmmc_spi_state.capacity_blocks;
+  *out_blocks = g_sdmmc_spi_state.capacity_blocks;
   return k_ra8_ok;
 }
 
 ra8_err_t ra8_sdmmc_spi_get_card_type(ra8_sdmmc_spi_card_type_t* out_type)
 {
   RA8_CHECK_NULL_PTR(out_type, s_tag, "out_type is null");
-  if (!s_sdmmc_spi_state.initialized) {
+  if (!g_sdmmc_spi_state.initialized) {
     return k_ra8_err_invalid_state;
   }
-  *out_type = s_sdmmc_spi_state.card_type;
+  *out_type = g_sdmmc_spi_state.card_type;
   return k_ra8_ok;
 }
 
@@ -695,8 +704,9 @@ ra8_err_t ra8_sdmmc_spi_get_card_type(ra8_sdmmc_spi_card_type_t* out_type)
  * ===========================================================================
  */
 
-/* ``read_block`` shim glue used by the ra8_fs backend descriptor -- see implementation for details. */
-static ra8_err_t internal_fs_read_block(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @copydoc internal_fs_read_block */
+RA8_INTERNAL static ra8_err_t
+internal_fs_read_block(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   if (buf == nullptr) {
@@ -708,13 +718,13 @@ static ra8_err_t internal_fs_read_block(void* ctx, uint64_t lba, uint32_t count,
   if (lba > (uint64_t)UINT32_MAX) {
     return k_ra8_err_out_of_range;
   }
-  /* One CMD18 multi-block transaction for the whole run (fast); the single-block
-   * path is used only for a lone block. */
+  /* One CMD18 multi-block transaction for the whole run (fast); the
+   * single-block path is used only for a lone block. */
   return ra8_sdmmc_spi_read_blocks((uint32_t)lba, buf, count);
 }
 
-/* ``write_block`` shim glue used by the ra8_fs backend descriptor -- see implementation for details. */
-static ra8_err_t
+/** @copydoc internal_fs_write_block */
+RA8_INTERNAL static ra8_err_t
 internal_fs_write_block(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
@@ -722,34 +732,37 @@ internal_fs_write_block(void* ctx, uint64_t lba, uint32_t count, const uint8_t* 
     return k_ra8_err_null_ptr;
   }
   if (lba > (uint64_t)UINT32_MAX) {
-    return k_ra8_err_out_of_range; /* SD block numbers are 32-bit; see the read shim */
+    return k_ra8_err_out_of_range; /* SD block numbers are 32-bit; see the read
+                                      shim */
   }
-  /* One CMD25 multi-block transaction for the whole run (fast); the single-block
-   * path is used only for a lone block. */
+  /* One CMD25 multi-block transaction for the whole run (fast); the
+   * single-block path is used only for a lone block. */
   return ra8_sdmmc_spi_write_blocks((uint32_t)lba, buf, count);
 }
 
-/* ``erase_blocks`` shim glue used by the ra8_fs backend descriptor -- see implementation for details. */
-static ra8_err_t internal_fs_erase_block(void* ctx, uint64_t lba, uint64_t count)
+/** @copydoc internal_fs_erase_block */
+RA8_INTERNAL static ra8_err_t internal_fs_erase_block(void* ctx, uint64_t lba, uint64_t count)
 {
   (void)ctx;
   if ((lba > (uint64_t)UINT32_MAX) || (count > (uint64_t)UINT32_MAX)) {
-    return k_ra8_err_out_of_range; /* SD block numbers are 32-bit; see the read shim */
+    return k_ra8_err_out_of_range; /* SD block numbers are 32-bit; see the read
+                                      shim */
   }
   return ra8_sdmmc_spi_erase_blocks((uint32_t)lba, (uint32_t)count);
 }
 
-/* ``get_capacity`` shim glue used by the ra8_fs backend descriptor -- see implementation for details. */
-static ra8_err_t internal_fs_get_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @copydoc internal_fs_get_capacity */
+RA8_INTERNAL static ra8_err_t
+internal_fs_get_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   if ((block_count == nullptr) || (block_size == nullptr)) {
     return k_ra8_err_null_ptr;
   }
-  if (!s_sdmmc_spi_state.initialized) {
+  if (!g_sdmmc_spi_state.initialized) {
     return k_ra8_err_invalid_state;
   }
-  *block_count = s_sdmmc_spi_state.capacity_blocks;
+  *block_count = g_sdmmc_spi_state.capacity_blocks;
   *block_size  = (uint32_t)k_ra8_sdmmc_spi_block_size;
   return k_ra8_ok;
 }
@@ -757,7 +770,7 @@ static ra8_err_t internal_fs_get_capacity(void* ctx, uint64_t* block_count, uint
 ra8_err_t ra8_sdmmc_spi_bind_fs_backend(ra8_fs_backend_t* out_backend)
 {
   RA8_CHECK_NULL_PTR(out_backend, s_tag, "out_backend is null");
-  if (!s_sdmmc_spi_state.initialized) {
+  if (!g_sdmmc_spi_state.initialized) {
     return k_ra8_err_invalid_state;
   }
   out_backend->read_block   = internal_fs_read_block;
