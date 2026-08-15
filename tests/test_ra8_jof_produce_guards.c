@@ -9,7 +9,7 @@
  * `test_ra8_jof_png_hostile.c` (hostile PNG streams): this suite
  * drives the producer's own guard decisions to both outcomes -- the 64-bit
  * overflow checks in `ra8_jof_work_bytes()` and the band carve, the
- * `ra8_jof_priv_bump_take()` argument/exhaustion guards through the module
+ * `priv_jof_bump_take()` argument/exhaustion guards through the module
  * seam (the CLAUDE.md "test access to internal symbols" allowance), the
  * tile-geometry and cap-clamp arms of the configuration path, the
  * geometry-hook rejections only a hostile JPEG SOF can reach, and an
@@ -26,6 +26,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_jof.h"
 #include "ra8_jof_internal.h"
@@ -97,8 +98,8 @@ typedef struct {
   size_t pos; /**< Read cursor. */
 } g_pull_t;
 
-/** @brief ::ra8_jof_pull_fn over `s_src`. */
-static ra8_err_t g_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+/** @brief ::ra8_jof_pull_fn over `s_src`. @details Exercises the g pull path with bounded caller-owned fixture state and verifies its documented result. @param[in,out] ctx Injected callback context whose ownership remains with the test. @param[out] buf Byte buffer read or written by the exercised callback. @param[in] cap Capacity of the associated byte buffer in bytes. @param[out] got Receives the number of bytes transferred. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_g_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   g_pull_t*    p    = (g_pull_t*)ctx;
   const size_t left = s_src_len - p->pos;
@@ -109,41 +110,41 @@ static ra8_err_t g_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
   return k_ra8_ok;
 }
 
-/** @brief Append raw bytes to the crafted source. */
-static void put(const uint8_t* d, size_t n)
+/** @brief Append raw bytes to the crafted source. @details Exercises the put path with bounded caller-owned fixture state and verifies its documented result. @param[in] d Readable fixture byte sequence. @param[in] n Number of bytes or elements supplied. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_put(const uint8_t* d, size_t n)
 {
   memcpy(&s_src[s_src_len], d, n);
   s_src_len += n;
 }
 
-/** @brief Append one big-endian u32 to the crafted source. */
-static void put_be32(uint32_t v)
+/** @brief Append one big-endian u32 to the crafted source. @details Exercises the put be32 path with bounded caller-owned fixture state and verifies its documented result. @param[in] v Integer value serialized into the fixture stream. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_put_be32(uint32_t v)
 {
   const uint8_t b[4] = {(uint8_t)(v >> 24U),
                         (uint8_t)((v >> 16U) & 0xFFU),
                         (uint8_t)((v >> 8U) & 0xFFU),
                         (uint8_t)(v & 0xFFU)};
-  put(b, sizeof(b));
+  internal_put(b, sizeof(b));
 }
 
-/** @brief Append one PNG chunk (unverified CRC; the decoder skips it). */
-static void put_chunk(const char* type, const uint8_t* data, uint32_t len)
+/** @brief Append one PNG chunk (unverified CRC; the decoder skips it). @details Exercises the put chunk path with bounded caller-owned fixture state and verifies its documented result. @param[in] type Four-byte PNG chunk type. @param[in] data Readable fixture payload bytes. @param[in] len Length of the associated byte sequence. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_put_chunk(const char* type, const uint8_t* data, uint32_t len)
 {
-  put_be32(len);
-  put((const uint8_t*)type, 4U);
+  internal_put_be32(len);
+  internal_put((const uint8_t*)type, 4U);
   if (len > 0U) {
-    put(data, len);
+    internal_put(data, len);
   }
   const uint8_t crc[4] = {};
-  put(crc, sizeof(crc));
+  internal_put(crc, sizeof(crc));
 }
 
-/** @brief Start a crafted PNG: signature + an IHDR of (w, h, color). */
-static void begin_png(uint32_t w, uint32_t h, uint8_t color)
+/** @brief Start a crafted PNG: signature + an IHDR of (w, h, color). @details Exercises the begin png path with bounded caller-owned fixture state and verifies its documented result. @param[in] w Image width value or receiver exercised by this helper. @param[in] h Image height value or receiver exercised by this helper. @param[in] color PNG color-type selector. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_begin_png(uint32_t w, uint32_t h, uint8_t color)
 {
   static const uint8_t sig[8] = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
   s_src_len                   = 0U;
-  put(sig, sizeof(sig));
+  internal_put(sig, sizeof(sig));
   uint8_t ihdr[k_t_png_ihdr_len] = {};
   ihdr[0]                        = (uint8_t)(w >> k_t_be32_hi_shift);
   ihdr[1]                        = (uint8_t)((w >> 16U) & k_t_byte_mask);
@@ -155,13 +156,13 @@ static void begin_png(uint32_t w, uint32_t h, uint8_t color)
   ihdr[k_t_ihdr_off_h_b3]        = (uint8_t)(h & k_t_byte_mask);
   ihdr[8]                        = 8U;
   ihdr[k_t_ihdr_off_ct]          = color;
-  put_chunk("IHDR", ihdr, sizeof(ihdr));
+  internal_put_chunk("IHDR", ihdr, sizeof(ihdr));
 }
 
-/** @brief Build a complete gray8 PNG of (w, h) with a deterministic pattern. */
-static void build_gray_png(uint32_t w, uint32_t h)
+/** @brief Build a complete gray8 PNG of (w, h) with a deterministic pattern. @details Exercises the build gray png path with bounded caller-owned fixture state and verifies its documented result. @param[in] w Image width value or receiver exercised by this helper. @param[in] h Image height value or receiver exercised by this helper. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_build_gray_png(uint32_t w, uint32_t h)
 {
-  begin_png(w, h, 0U);
+  internal_begin_png(w, h, 0U);
   size_t o = 0U;
   for (uint32_t y = 0U; y < h; y++) {
     s_raw[o] = 0U;
@@ -173,12 +174,12 @@ static void build_gray_png(uint32_t w, uint32_t h)
   }
   mz_ulong zlen = (mz_ulong)sizeof(s_zbuf);
   TEST_ASSERT_EQ(MZ_OK, mz_compress(s_zbuf, &zlen, s_raw, (mz_ulong)o));
-  put_chunk("IDAT", s_zbuf, (uint32_t)zlen);
-  put_chunk("IEND", nullptr, 0U);
+  internal_put_chunk("IDAT", s_zbuf, (uint32_t)zlen);
+  internal_put_chunk("IEND", nullptr, 0U);
 }
 
-/** @brief Craft a JPEG head: SOI + a single-component SOF0 of (w, h). */
-static void build_jpeg_sof(uint32_t w, uint32_t h)
+/** @brief Craft a JPEG head: SOI + a single-component SOF0 of (w, h). @details Exercises the build jpeg sof path with bounded caller-owned fixture state and verifies its documented result. @param[in] w Image width value or receiver exercised by this helper. @param[in] h Image height value or receiver exercised by this helper. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_build_jpeg_sof(uint32_t w, uint32_t h)
 {
   s_src_len              = 0U;
   const uint8_t head[15] = {0xFFU,
@@ -196,26 +197,26 @@ static void build_jpeg_sof(uint32_t w, uint32_t h)
                             0x01U, /* component id */
                             0x11U, /* 1x1 sampling */
                             0x00U /* quant table 0 */};
-  put(head, sizeof(head));
+  internal_put(head, sizeof(head));
 }
 
-/** @brief Run the producer over the crafted source with explicit knobs. */
-static ra8_err_t produce_with(uint16_t        tile_w,
-                              uint16_t        tile_h,
-                              uint16_t        max_w,
-                              uint16_t        max_h,
-                              size_t          work_cap,
-                              ra8_jof_info_t* out_info)
+/** @brief Run the producer over the crafted source with explicit knobs. @details Exercises the produce with path with bounded caller-owned fixture state and verifies its documented result. @param[in] tile_w Tile width in pixels. @param[in] tile_h Tile height in pixels. @param[in] max_w Maximum accepted image width in pixels. @param[in] max_h Maximum accepted image height in pixels. @param[in] work_cap Capacity of the caller-owned work arena in bytes. @param[out] out_info Receives parsed image metadata. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_produce_with(uint16_t        tile_w,
+                                                    uint16_t        tile_h,
+                                                    uint16_t        max_w,
+                                                    uint16_t        max_h,
+                                                    size_t          work_cap,
+                                                    ra8_jof_info_t* out_info)
 {
-  static g_pull_t           s_pull;
-  static ra8_jof_memstore_t s_store;
-  s_pull  = (g_pull_t){.pos = 0U};
-  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  static g_pull_t           local_pull;
+  static ra8_jof_memstore_t local_store;
+  local_pull  = (g_pull_t){.pos = 0U};
+  local_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   const ra8_jof_produce_cfg_t cfg = {
-    .pull       = g_pull,
-    .pull_ctx   = &s_pull,
+    .pull       = internal_g_pull,
+    .pull_ctx   = &local_pull,
     .sink       = ra8_jof_memstore_sink,
-    .sink_ctx   = &s_store,
+    .sink_ctx   = &local_store,
     .tile_w     = tile_w,
     .tile_h     = tile_h,
     .codec      = (uint8_t)k_ra8_jof_codec_raw,
@@ -228,7 +229,7 @@ static ra8_err_t produce_with(uint16_t        tile_w,
 }
 
 /**
- * @test test_guards_work_bytes_overflow
+ * @test internal_test_guards_work_bytes_overflow
  * @brief The calculator's 64-bit overflow arms reject independently.
  *
  * @par MC/DC:
@@ -236,9 +237,8 @@ static ra8_err_t produce_with(uint16_t        tile_w,
  * - Vector 1: sane geometry          -> false (every sized arena in-tree)
  * - Vector 2: 32768^2 tile (4 GiB stage) -> true via stage
  * - Vector 3: 16384x32768 tile (1 GiB stage, > 4 GiB total) -> true via
- *   total while the stage term stays under the cap
- */
-static void test_guards_work_bytes_overflow(void)
+ *   total while the stage term stays under the cap @details Executes the guards work bytes overflow scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_guards_work_bytes_overflow(void)
 {
   TEST_BEGIN("produce guards: work-arena calculator overflow arms");
   TEST_ASSERT(ra8_jof_work_bytes(1024U, 1024U, 128U, 128U) > 0U);
@@ -256,7 +256,7 @@ static void test_guards_work_bytes_overflow(void)
 }
 
 /**
- * @test test_guards_bump_take
+ * @test internal_test_guards_bump_take
  * @brief The carve seam's argument and exhaustion guards, both arms each.
  *
  * @par MC/DC:
@@ -267,29 +267,28 @@ static void test_guards_work_bytes_overflow(void)
  * Decision (exhaustion): `aligned > cap || len > cap - aligned` (2)
  * - Vector 1: fitting take   -> false
  * - Vector 2: alignment past the cap (off 5, cap 7)   -> true via aligned
- * - Vector 3: length past the remainder (len > cap)   -> true via len
- */
-static void test_guards_bump_take(void)
+ * - Vector 3: length past the remainder (len > cap)   -> true via len @details Executes the guards bump take scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_guards_bump_take(void)
 {
   TEST_BEGIN("produce guards: bump-carve argument + exhaustion arms");
-  static uint8_t s_backing[k_t_arena_cap];
-  ra8_jof_bump_t bump = {.base = s_backing, .cap = sizeof(s_backing), .off = 0U};
+  static uint8_t local_backing[k_t_arena_cap];
+  ra8_jof_bump_t bump = {.base = local_backing, .cap = sizeof(local_backing), .off = 0U};
 
-  TEST_ASSERT(ra8_jof_priv_bump_take(&bump, 8U) != nullptr);
-  TEST_ASSERT_NULL(ra8_jof_priv_bump_take(nullptr, 8U));
-  TEST_ASSERT_NULL(ra8_jof_priv_bump_take(&bump, 0U));
+  TEST_ASSERT(priv_jof_bump_take(&bump, 8U) != nullptr);
+  TEST_ASSERT_NULL(priv_jof_bump_take(nullptr, 8U));
+  TEST_ASSERT_NULL(priv_jof_bump_take(&bump, 0U));
 
   /* Length overruns the remainder (aligned stays inside). */
-  TEST_ASSERT_NULL(ra8_jof_priv_bump_take(&bump, sizeof(s_backing)));
+  TEST_ASSERT_NULL(priv_jof_bump_take(&bump, sizeof(local_backing)));
 
   /* Alignment alone overruns a nearly-full arena. */
-  ra8_jof_bump_t tight = {.base = s_backing, .cap = k_t_arena_cap_low, .off = k_t_arena_off};
-  TEST_ASSERT_NULL(ra8_jof_priv_bump_take(&tight, 1U));
+  ra8_jof_bump_t tight = {.base = local_backing, .cap = k_t_arena_cap_low, .off = k_t_arena_off};
+  TEST_ASSERT_NULL(priv_jof_bump_take(&tight, 1U));
   TEST_END("produce guards: bump-carve argument + exhaustion arms");
 }
 
 /**
- * @test test_guards_cfg_and_caps
+ * @test internal_test_guards_cfg_and_caps
  * @brief Tile-geometry rejection arms and the format-cap clamp arms.
  *
  * @par MC/DC:
@@ -301,27 +300,31 @@ static void test_guards_bump_take(void)
  * - Vector 1: max 0       -> false via the first condition (produce suite)
  * - Vector 2: max 512     -> true (both true; every capped transcode)
  * - Vector 3: max 40000   -> true/false: the second condition alone flips,
- *   clamping to the format cap while the transcode still succeeds
- */
-static void test_guards_cfg_and_caps(void)
+ *   clamping to the format cap while the transcode still succeeds @details Executes the guards cfg and caps scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_guards_cfg_and_caps(void)
 {
   TEST_BEGIN("produce guards: tile-geometry + format-cap clamp arms");
   ra8_jof_info_t info = {};
-  build_gray_png(16U, 16U);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, produce_with(8U, 0U, 512U, 512U, sizeof(s_work), &info));
+  internal_build_gray_png(16U, 16U);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 internal_produce_with(8U, 0U, 512U, 512U, sizeof(s_work), &info));
 
   /* Cap requests past the format cap clamp to it and still transcode. */
-  build_gray_png(16U, 16U);
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    produce_with(8U, 8U, (uint16_t)k_g_over_dim, (uint16_t)k_g_over_dim, sizeof(s_work), &info));
+  internal_build_gray_png(16U, 16U);
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 internal_produce_with(8U,
+                                       8U,
+                                       (uint16_t)k_g_over_dim,
+                                       (uint16_t)k_g_over_dim,
+                                       sizeof(s_work),
+                                       &info));
   TEST_ASSERT_EQ(16U, info.width);
   TEST_ASSERT_EQ(16U, info.height);
   TEST_END("produce guards: tile-geometry + format-cap clamp arms");
 }
 
 /**
- * @test test_guards_jpeg_geometry
+ * @test internal_test_guards_jpeg_geometry
  * @brief Geometry-hook arms only a hostile JPEG SOF can reach: the shared
  *        JPEG parser forwards SOF dimensions unchecked, so the producer's
  *        hook is the validating layer for all four arms.
@@ -332,29 +335,32 @@ static void test_guards_cfg_and_caps(void)
  * - Vector 2: width 0      -> true via w == 0
  * - Vector 3: width 64, cap 16  -> true via the width cap
  * - Vector 4: height 0     -> true via h == 0
- * - Vector 5: height 64, cap 16 -> true via the height cap
- */
-static void test_guards_jpeg_geometry(void)
+ * - Vector 5: height 64, cap 16 -> true via the height cap @details Executes the guards jpeg geometry scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_guards_jpeg_geometry(void)
 {
   TEST_BEGIN("produce guards: hostile JPEG SOF geometry arms");
   ra8_jof_info_t info = {};
 
-  build_jpeg_sof(0U, 16U);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, produce_with(8U, 8U, 512U, 512U, sizeof(s_work), &info));
+  internal_build_jpeg_sof(0U, 16U);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 internal_produce_with(8U, 8U, 512U, 512U, sizeof(s_work), &info));
 
-  build_jpeg_sof(k_t_jpeg_big_edge, 16U);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, produce_with(8U, 8U, 16U, 512U, sizeof(s_work), &info));
+  internal_build_jpeg_sof(k_t_jpeg_big_edge, 16U);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 internal_produce_with(8U, 8U, 16U, 512U, sizeof(s_work), &info));
 
-  build_jpeg_sof(16U, 0U);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, produce_with(8U, 8U, 512U, 512U, sizeof(s_work), &info));
+  internal_build_jpeg_sof(16U, 0U);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 internal_produce_with(8U, 8U, 512U, 512U, sizeof(s_work), &info));
 
-  build_jpeg_sof(16U, k_t_jpeg_big_edge);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, produce_with(8U, 8U, 512U, 16U, sizeof(s_work), &info));
+  internal_build_jpeg_sof(16U, k_t_jpeg_big_edge);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 internal_produce_with(8U, 8U, 512U, 16U, sizeof(s_work), &info));
   TEST_END("produce guards: hostile JPEG SOF geometry arms");
 }
 
 /**
- * @test test_guards_band_overflow
+ * @test internal_test_guards_band_overflow
  * @brief The 64-bit band-size overflow arm: a full-cap-wide RGBA source
  *        with a 65535-tall tile pushes the band past 4 GiB before any
  *        carve happens.
@@ -362,24 +368,27 @@ static void test_guards_jpeg_geometry(void)
  * @par MC/DC:
  * (drives the band arm of the carve overflow decision true; the stage arm
  * is deactivated in-source -- stage_bytes <= band_bytes by construction,
- * so it cannot flip independently.)
- */
-static void test_guards_band_overflow(void)
+ * so it cannot flip independently.) @details Executes the guards band overflow scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_guards_band_overflow(void)
 {
   TEST_BEGIN("produce guards: 64-bit band-size overflow arm");
-  begin_png(k_g_max_dim, 1U, 6U); /* RGBA, full-cap width */
+  internal_begin_png(k_g_max_dim, 1U, 6U); /* RGBA, full-cap width */
   const uint8_t one = 0U;
-  put_chunk("IDAT", &one, 1U);
-  put_chunk("IEND", nullptr, 0U);
+  internal_put_chunk("IDAT", &one, 1U);
+  internal_put_chunk("IEND", nullptr, 0U);
   ra8_jof_info_t info = {};
-  TEST_ASSERT_EQ(
-    k_ra8_err_invalid_size,
-    produce_with((uint16_t)k_g_max_dim, (uint16_t)k_g_band_tile, 0U, 0U, sizeof(s_work), &info));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 internal_produce_with((uint16_t)k_g_max_dim,
+                                       (uint16_t)k_g_band_tile,
+                                       0U,
+                                       0U,
+                                       sizeof(s_work),
+                                       &info));
   TEST_END("produce guards: 64-bit band-size overflow arm");
 }
 
 /**
- * @test test_guards_carve_sweep
+ * @test internal_test_guards_carve_sweep
  * @brief An ascending work-cap sweep lands in every carve-failure window:
  *        each PNG bind buffer (inflate state, ring, input window, row,
  *        previous row, translate) and each producer buffer (band, stage,
@@ -391,12 +400,11 @@ static void test_guards_band_overflow(void)
  * the first failing buffer short-circuits the rest).
  * Decision (pixel path): `band || stage || idx` -- same construction.
  * Every window is >= 512 bytes wide and the step is 256, so no window is
- * skipped; the final full-arena run supplies the all-false vector.
- */
-static void test_guards_carve_sweep(void)
+ * skipped; the final full-arena run supplies the all-false vector. @details Executes the guards carve sweep scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_guards_carve_sweep(void)
 {
   TEST_BEGIN("produce guards: carve-boundary sweep (bind + pixel path)");
-  build_gray_png(k_g_dim, k_g_dim);
+  internal_build_gray_png(k_g_dim, k_g_dim);
   const uint32_t need = ra8_jof_work_bytes((uint16_t)k_g_dim,
                                            (uint16_t)k_g_dim,
                                            (uint16_t)k_g_tile,
@@ -407,12 +415,12 @@ static void test_guards_carve_sweep(void)
   ra8_jof_info_t info    = {};
   bool           seen_ok = false;
   for (uint32_t cap = (uint32_t)k_g_step; cap <= need; cap += (uint32_t)k_g_step) {
-    const ra8_err_t err = produce_with((uint16_t)k_g_tile,
-                                       (uint16_t)k_g_tile,
-                                       (uint16_t)k_g_dim,
-                                       (uint16_t)k_g_dim,
-                                       (size_t)cap,
-                                       &info);
+    const ra8_err_t err = internal_produce_with((uint16_t)k_g_tile,
+                                                (uint16_t)k_g_tile,
+                                                (uint16_t)k_g_dim,
+                                                (uint16_t)k_g_dim,
+                                                (size_t)cap,
+                                                &info);
     if (err == k_ra8_ok) {
       seen_ok = true; /* threshold reached: every larger cap also fits */
       break;
@@ -423,12 +431,12 @@ static void test_guards_carve_sweep(void)
 
   /* The calculator-sized arena always succeeds (the documented contract). */
   TEST_ASSERT_EQ(k_ra8_ok,
-                 produce_with((uint16_t)k_g_tile,
-                              (uint16_t)k_g_tile,
-                              (uint16_t)k_g_dim,
-                              (uint16_t)k_g_dim,
-                              (size_t)need,
-                              &info));
+                 internal_produce_with((uint16_t)k_g_tile,
+                                       (uint16_t)k_g_tile,
+                                       (uint16_t)k_g_dim,
+                                       (uint16_t)k_g_dim,
+                                       (size_t)need,
+                                       &info));
   TEST_ASSERT_EQ(k_g_dim, info.width);
   TEST_ASSERT_EQ(k_g_dim, info.height);
   TEST_END("produce guards: carve-boundary sweep (bind + pixel path)");
@@ -446,12 +454,11 @@ static void test_guards_carve_sweep(void)
  */
 int32_t main(void)
 {
-  test_guards_work_bytes_overflow();
-  test_guards_bump_take();
-  test_guards_cfg_and_caps();
-  test_guards_jpeg_geometry();
-  test_guards_band_overflow();
-  test_guards_carve_sweep();
-  (void)fprintf(stderr, "[OK  ] test_ra8_jof_produce_guards.c\n");
+  internal_test_guards_work_bytes_overflow();
+  internal_test_guards_bump_take();
+  internal_test_guards_cfg_and_caps();
+  internal_test_guards_jpeg_geometry();
+  internal_test_guards_band_overflow();
+  internal_test_guards_carve_sweep();
   return 0;
 }

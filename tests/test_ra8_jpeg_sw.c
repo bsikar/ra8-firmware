@@ -6,7 +6,7 @@
  * The decoder and encoder are exercised together: most of the
  * tests round-trip an RGB block through the encoder and back into
  * RGB to verify both halves are bit-bug-free. A separate fixture,
- * `k_test_jpeg`, is a hand-crafted 16x16 grayscale JPEG used to
+ * `s_test_jpeg`, is a hand-crafted 16x16 grayscale JPEG used to
  * pin down the SOF0 dimension parser.
  *
  * This sibling owns the core encode / decode / get_dimensions contract
@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_jpeg_sw.h"
@@ -69,7 +70,7 @@ typedef enum : uint16_t {
  * The actual image content is irrelevant for the dimension test;
  * we only care that the SOF0 marker reports 16 x 16.
  */
-static const uint8_t k_test_jpeg[] = {
+static const uint8_t s_test_jpeg[] = {
   /* SOI. */
   0xFF,
   0xD8,
@@ -92,8 +93,8 @@ static const uint8_t k_test_jpeg[] = {
   0xD9,
 };
 
-/** @brief Fill an RGB buffer with a smooth gradient. */
-static void fill_gradient(uint8_t* rgb, uint16_t w, uint16_t h)
+/** @brief Fill an RGB buffer with a smooth gradient. @details Exercises the fill gradient path with bounded caller-owned fixture state and verifies its documented result. @param[in,out] rgb Interleaved RGB fixture pixels. @param[in] w Image width value or receiver exercised by this helper. @param[in] h Image height value or receiver exercised by this helper. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_fill_gradient(uint8_t* rgb, uint16_t w, uint16_t h)
 {
   for (uint16_t y = 0U; y < h; y++) {
     for (uint16_t x = 0U; x < w; x++) {
@@ -110,9 +111,8 @@ static void fill_gradient(uint8_t* rgb, uint16_t w, uint16_t h)
  *
  * @details
  * MSE > 65 corresponds to PSNR < 30 dB. Returning the integer
- * MSE avoids pulling in `libm`'s `log10()` from the link line.
- */
-static uint32_t rgb_mse(const uint8_t* a, const uint8_t* b, uint32_t n)
+ * MSE avoids pulling in `libm`'s `log10()` from the link line. @param[in] a Scalar fixture input. @param[in] b Scalar fixture input. @param[in] n Number of bytes or elements supplied. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static uint32_t internal_rgb_mse(const uint8_t* a, const uint8_t* b, uint32_t n)
 {
   uint64_t sse = 0U;
   for (uint32_t i = 0U; i < n; i++) {
@@ -126,14 +126,13 @@ static uint32_t rgb_mse(const uint8_t* a, const uint8_t* b, uint32_t n)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_get_dimensions_parses_sof0(void)
+ * code under test that this case touches) @brief Verify get dimensions parses sof0 behavior. @details Executes the get dimensions parses sof0 scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_get_dimensions_parses_sof0(void)
 {
   TEST_BEGIN("jpeg_sw get_dimensions parses SOF0");
   uint16_t  w = 0U;
   uint16_t  h = 0U;
-  ra8_err_t e = ra8_jpeg_sw_get_dimensions(k_test_jpeg, (uint32_t)sizeof k_test_jpeg, &w, &h);
+  ra8_err_t e = ra8_jpeg_sw_get_dimensions(s_test_jpeg, (uint32_t)sizeof s_test_jpeg, &w, &h);
   TEST_ASSERT_EQ(k_ra8_ok, e);
   TEST_ASSERT_EQ(k_jt_w, w);
   TEST_ASSERT_EQ(k_jt_h, h);
@@ -144,16 +143,15 @@ static void test_get_dimensions_parses_sof0(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_get_dimensions_null_args(void)
+ * code under test that this case touches) @brief Verify get dimensions null args behavior. @details Executes the get dimensions null args scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_get_dimensions_null_args(void)
 {
   TEST_BEGIN("jpeg_sw get_dimensions NULL args");
   uint16_t w = 0U;
   uint16_t h = 0U;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jpeg_sw_get_dimensions(nullptr, 4U, &w, &h));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jpeg_sw_get_dimensions(k_test_jpeg, 4U, nullptr, &h));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jpeg_sw_get_dimensions(k_test_jpeg, 4U, &w, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jpeg_sw_get_dimensions(s_test_jpeg, 4U, nullptr, &h));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jpeg_sw_get_dimensions(s_test_jpeg, 4U, &w, nullptr));
   TEST_END("jpeg_sw get_dimensions NULL args");
 }
 
@@ -161,9 +159,8 @@ static void test_get_dimensions_null_args(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_get_dimensions_invalid(void)
+ * code under test that this case touches) @brief Verify get dimensions invalid behavior. @details Executes the get dimensions invalid scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_get_dimensions_invalid(void)
 {
   TEST_BEGIN("jpeg_sw get_dimensions rejects garbage");
   static const uint8_t garbage[] = {0x00, 0x01, 0x02, 0x03, 0x04};
@@ -178,40 +175,39 @@ static void test_get_dimensions_invalid(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_encode_decode_roundtrip(void)
+ * code under test that this case touches) @brief Verify encode decode roundtrip behavior. @details Executes the encode decode roundtrip scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_encode_decode_roundtrip(void)
 {
   TEST_BEGIN("jpeg_sw encode + decode roundtrip");
-  static uint8_t s_rgb_in[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t s_rgb_out[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t s_jpeg[(uint32_t)k_jt_jpeg_cap];
-  fill_gradient(s_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  static uint8_t local_rgb_in[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t local_rgb_out[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t local_jpeg[(uint32_t)k_jt_jpeg_cap];
+  internal_fill_gradient(local_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
 
   uint32_t  produced = 0U;
-  ra8_err_t e        = ra8_jpeg_sw_encode(s_rgb_in,
+  ra8_err_t e        = ra8_jpeg_sw_encode(local_rgb_in,
                                           (uint16_t)k_jt_w,
                                           (uint16_t)k_jt_h,
                                           (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                          s_jpeg,
+                                          local_jpeg,
                                           (uint32_t)k_jt_jpeg_cap,
                                           &produced);
   TEST_ASSERT_EQ(k_ra8_ok, e);
   TEST_ASSERT(produced > 4U);
-  TEST_ASSERT_EQ(0xFFU, s_jpeg[0]);
-  TEST_ASSERT_EQ(0xD8U, s_jpeg[1]);
-  TEST_ASSERT_EQ(0xFFU, s_jpeg[produced - 2U]);
-  TEST_ASSERT_EQ(0xD9U, s_jpeg[produced - 1U]);
+  TEST_ASSERT_EQ(0xFFU, local_jpeg[0]);
+  TEST_ASSERT_EQ(0xD8U, local_jpeg[1]);
+  TEST_ASSERT_EQ(0xFFU, local_jpeg[produced - 2U]);
+  TEST_ASSERT_EQ(0xD9U, local_jpeg[produced - 1U]);
 
   uint16_t dw = 0U;
   uint16_t dh = 0U;
-  e           = ra8_jpeg_sw_decode(s_jpeg, produced, s_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh);
+  e = ra8_jpeg_sw_decode(local_jpeg, produced, local_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh);
   TEST_ASSERT_EQ(k_ra8_ok, e);
   TEST_ASSERT_EQ(k_jt_w, dw);
   TEST_ASSERT_EQ(k_jt_h, dh);
 
   /* PSNR > 30 dB <=> MSE < ~65 (255^2 / 10^3). */
-  uint32_t mse = rgb_mse(s_rgb_in, s_rgb_out, (uint32_t)k_jt_rgb_bytes);
+  uint32_t mse = internal_rgb_mse(local_rgb_in, local_rgb_out, (uint32_t)k_jt_rgb_bytes);
   TEST_ASSERT(mse < (uint32_t)k_jt_mse_psnr30_max);
   TEST_END("jpeg_sw encode + decode roundtrip");
 }
@@ -220,9 +216,8 @@ static void test_encode_decode_roundtrip(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_decode_invalid_rejected(void)
+ * code under test that this case touches) @brief Verify decode invalid rejected behavior. @details Executes the decode invalid rejected scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_decode_invalid_rejected(void)
 {
   TEST_BEGIN("jpeg_sw decode rejects invalid stream");
   static const uint8_t bogus[] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x00};
@@ -239,9 +234,8 @@ static void test_decode_invalid_rejected(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_encode_null_args(void)
+ * code under test that this case touches) @brief Verify encode null args behavior. @details Executes the encode null args scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_encode_null_args(void)
 {
   TEST_BEGIN("jpeg_sw encode NULL args");
   uint8_t  rgb[3U] = {0U, 0U, 0U};
@@ -259,16 +253,15 @@ static void test_encode_null_args(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_encode_out_of_buffer(void)
+ * code under test that this case touches) @brief Verify encode out of buffer behavior. @details Executes the encode out of buffer scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_encode_out_of_buffer(void)
 {
   TEST_BEGIN("jpeg_sw encode rejects undersized out_buf");
-  static uint8_t s_rgb_in[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t local_rgb_in[(uint32_t)k_jt_rgb_bytes];
   uint8_t        tiny[8U];
   uint32_t       produced = k_jpeg_poison_out;
-  fill_gradient(s_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
-  ra8_err_t e = ra8_jpeg_sw_encode(s_rgb_in,
+  internal_fill_gradient(local_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  ra8_err_t e = ra8_jpeg_sw_encode(local_rgb_in,
                                    (uint16_t)k_jt_w,
                                    (uint16_t)k_jt_h,
                                    (uint8_t)k_ra8_jpeg_sw_quality_high,
@@ -289,82 +282,80 @@ typedef enum : uint8_t {
 } mcdc_jpeg_const_t;
 
 /**
- * @test test_mcdc_encode_dim_zero
+ * @test internal_test_mcdc_encode_dim_zero
  * @par MC/DC:
  * Decision (libs/ra8_jpeg/src/ra8_jpeg_sw.c line 1818, 2 conditions):
  * `width == 0 || height == 0`. V1 16x16 (F ok), V2 0x16 (C1=T invalid_arg),
- * V3 16x0 (C1=F C2=T invalid_arg). N+1=3.
- */
-static void test_mcdc_encode_dim_zero(void)
+ * V3 16x0 (C1=F C2=T invalid_arg). N+1=3. @brief Verify mcdc encode dim zero behavior. @details Executes the mcdc encode dim zero scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_encode_dim_zero(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC encode: w==0 || h==0");
-  static uint8_t s_rgb[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t s_out[(uint32_t)k_jt_jpeg_cap];
+  static uint8_t local_rgb[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t local_out[(uint32_t)k_jt_jpeg_cap];
   uint32_t       n = 0U;
-  fill_gradient(s_rgb, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  internal_fill_gradient(local_rgb, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_jpeg_sw_encode(s_rgb,
+                 ra8_jpeg_sw_encode(local_rgb,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                    s_out,
+                                    local_out,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &n));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_jpeg_sw_encode(s_rgb,
+                 ra8_jpeg_sw_encode(local_rgb,
                                     0U,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                    s_out,
+                                    local_out,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &n));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_jpeg_sw_encode(s_rgb,
+                 ra8_jpeg_sw_encode(local_rgb,
                                     (uint16_t)k_jt_w,
                                     0U,
                                     (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                    s_out,
+                                    local_out,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &n));
   TEST_END("jpeg_sw MC/DC encode: w==0 || h==0");
 }
 
 /**
- * @test test_mcdc_encode_quality_range
+ * @test internal_test_mcdc_encode_quality_range
  * @par MC/DC:
  * Decision (libs/ra8_jpeg/src/ra8_jpeg_sw.c line 1821, 2 conditions):
  * `quality < min || quality > max`. V1 q=high (F ok), V2 q=0 (C1=T),
- * V3 q=101 (C1=F C2=T). N+1=3.
- */
-static void test_mcdc_encode_quality_range(void)
+ * V3 q=101 (C1=F C2=T). N+1=3. @brief Verify mcdc encode quality range behavior. @details Executes the mcdc encode quality range scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_encode_quality_range(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC encode: quality<min || quality>max");
-  static uint8_t s_rgb[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t s_out[(uint32_t)k_jt_jpeg_cap];
+  static uint8_t local_rgb[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t local_out[(uint32_t)k_jt_jpeg_cap];
   uint32_t       n = 0U;
-  fill_gradient(s_rgb, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  internal_fill_gradient(local_rgb, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_jpeg_sw_encode(s_rgb,
+                 ra8_jpeg_sw_encode(local_rgb,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                    s_out,
+                                    local_out,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &n));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_jpeg_sw_encode(s_rgb,
+                 ra8_jpeg_sw_encode(local_rgb,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_mcdc_jpeg_q_below,
-                                    s_out,
+                                    local_out,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &n));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_jpeg_sw_encode(s_rgb,
+                 ra8_jpeg_sw_encode(local_rgb,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_mcdc_jpeg_q_above,
-                                    s_out,
+                                    local_out,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &n));
   TEST_END("jpeg_sw MC/DC encode: quality<min || quality>max");
@@ -373,15 +364,14 @@ static void test_mcdc_encode_quality_range(void)
 int32_t main(void)
 {
   ra8_fake_mmap_reset();
-  test_get_dimensions_parses_sof0();
-  test_get_dimensions_null_args();
-  test_get_dimensions_invalid();
-  test_encode_decode_roundtrip();
-  test_decode_invalid_rejected();
-  test_encode_null_args();
-  test_encode_out_of_buffer();
-  test_mcdc_encode_dim_zero();
-  test_mcdc_encode_quality_range();
-  (void)fprintf(stderr, "[OK ] test_ra8_jpeg_sw.c\n");
+  internal_test_get_dimensions_parses_sof0();
+  internal_test_get_dimensions_null_args();
+  internal_test_get_dimensions_invalid();
+  internal_test_encode_decode_roundtrip();
+  internal_test_decode_invalid_rejected();
+  internal_test_encode_null_args();
+  internal_test_encode_out_of_buffer();
+  internal_test_mcdc_encode_dim_zero();
+  internal_test_mcdc_encode_quality_range();
   return 0;
 }

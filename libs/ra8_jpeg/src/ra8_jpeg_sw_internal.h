@@ -291,7 +291,7 @@ static const int32_t s_dct_w_q14[8] = {
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
-static inline uint8_t clamp_u8(int32_t v)
+RA8_INTERNAL static inline uint8_t internal_clamp_u8(int32_t v)
 {
   if (v < 0) {
     return 0U;
@@ -322,7 +322,7 @@ static inline uint8_t clamp_u8(int32_t v)
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
-static inline uint16_t read_be16(const uint8_t* p)
+RA8_INTERNAL static inline uint16_t internal_read_be16(const uint8_t* p)
 {
   return (uint16_t)(((uint16_t)p[0] << k_ra8_jpeg_byte_shift) | (uint16_t)p[1]);
 }
@@ -345,7 +345,7 @@ static inline uint16_t read_be16(const uint8_t* p)
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
-static inline void write_be16(uint8_t* p, uint16_t v)
+RA8_INTERNAL static inline void internal_write_be16(uint8_t* p, uint16_t v)
 {
   p[0] = (uint8_t)(v >> k_ra8_jpeg_byte_shift);
   p[1] = (uint8_t)(v & k_jpeg_byte_mask);
@@ -421,7 +421,7 @@ typedef struct {
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV int32_t ra8_jpeg_sw_br_get_bits(ra8_jpeg_bitreader_t* br, uint8_t n);
+RA8_PRIV int32_t priv_jpeg_sw_br_get_bits(ra8_jpeg_bitreader_t* br, uint8_t n);
 
 /**
  * @brief Build canonical code/size and mincode/maxcode tables.
@@ -443,7 +443,7 @@ RA8_PRIV int32_t ra8_jpeg_sw_br_get_bits(ra8_jpeg_bitreader_t* br, uint8_t n);
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_jpeg_sw_htab_build(ra8_jpeg_htab_t* h);
+RA8_PRIV void priv_jpeg_sw_htab_build(ra8_jpeg_htab_t* h);
 
 /**
  * @brief Decode one Huffman symbol from `br` using table `h`.
@@ -461,14 +461,14 @@ RA8_PRIV void ra8_jpeg_sw_htab_build(ra8_jpeg_htab_t* h);
  * @retval -1  Stream underflow or table miss.
  *
  * @pre ``br`` and ``h`` non-NULL.
- * @pre ``h`` was previously populated by ``ra8_jpeg_sw_htab_build``.
+ * @pre ``h`` was previously populated by ``priv_jpeg_sw_htab_build``.
  * @post ``br`` advances by the consumed code length on success.
  * @post No table state is mutated.
  *
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV int32_t ra8_jpeg_sw_htab_decode(ra8_jpeg_bitreader_t* br, const ra8_jpeg_htab_t* h);
+RA8_PRIV int32_t priv_jpeg_sw_htab_decode(ra8_jpeg_bitreader_t* br, const ra8_jpeg_htab_t* h);
 
 /**
  * @brief Decode a signed `n`-bit DCT coefficient (T.81 F.1.2.1.3).
@@ -495,7 +495,7 @@ RA8_PRIV int32_t ra8_jpeg_sw_htab_decode(ra8_jpeg_bitreader_t* br, const ra8_jpe
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
-RA8_PRIV int32_t ra8_jpeg_sw_huff_extend(int32_t v, uint8_t n);
+RA8_PRIV int32_t priv_jpeg_sw_huff_extend(int32_t v, uint8_t n);
 
 /**
  * @brief Full 8x8 inverse DCT, in place.
@@ -515,7 +515,7 @@ RA8_PRIV int32_t ra8_jpeg_sw_huff_extend(int32_t v, uint8_t n);
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_jpeg_sw_idct8x8(int32_t* block);
+RA8_PRIV void priv_jpeg_sw_idct8x8(int32_t* block);
 
 /**
  * @brief Convert a YCbCr triple to RGB (BT.601, fixed-point).
@@ -541,12 +541,12 @@ RA8_PRIV void ra8_jpeg_sw_idct8x8(int32_t* block);
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_jpeg_sw_ycc_to_rgb(int32_t  y,
-                                     int32_t  cb,
-                                     int32_t  cr,
-                                     uint8_t* out_r,
-                                     uint8_t* out_g,
-                                     uint8_t* out_b);
+RA8_PRIV void priv_jpeg_sw_ycc_to_rgb(int32_t  y,
+                                      int32_t  cb,
+                                      int32_t  cr,
+                                      uint8_t* out_r,
+                                      uint8_t* out_g,
+                                      uint8_t* out_b);
 
 /* ------------------------------------------------------------------ */
 /* Decoder context + marker/scan primitives (defined in */
@@ -595,7 +595,7 @@ typedef struct {
 
 /**
  * @enum ra8_jpeg_dec_marker_action_t
- * @brief Result of ra8_jpeg_sw_priv_dispatch(): what the driver does next.
+ * @brief Result of priv_jpeg_sw_dispatch(): what the driver does next.
  */
 typedef enum : uint8_t {
   k_ra8_jpeg_dec_continue = 0U, /**< Keep scanning markers.                             */
@@ -622,7 +622,7 @@ typedef enum : uint8_t {
  * @note Not thread-safe; caller serializes via decoder context.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_skip_segment(ra8_jpeg_dec_ctx_t* d);
+RA8_PRIV ra8_err_t priv_jpeg_sw_skip_segment(ra8_jpeg_dec_ctx_t* d);
 
 /**
  * @brief Parse a DQT segment (T.81 sec B.2.4.1) into `d->qtab`.
@@ -642,7 +642,7 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_skip_segment(ra8_jpeg_dec_ctx_t* d);
  * @note Not thread-safe; caller serializes via decoder context.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_dqt(ra8_jpeg_dec_ctx_t* d);
+RA8_PRIV ra8_err_t priv_jpeg_sw_parse_dqt(ra8_jpeg_dec_ctx_t* d);
 
 /**
  * @brief Parse a DHT segment (T.81 sec B.2.4.2) and build its tables.
@@ -662,7 +662,7 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_dqt(ra8_jpeg_dec_ctx_t* d);
  * @note Not thread-safe; caller serializes via decoder context.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_dht(ra8_jpeg_dec_ctx_t* d);
+RA8_PRIV ra8_err_t priv_jpeg_sw_parse_dht(ra8_jpeg_dec_ctx_t* d);
 
 /**
  * @brief Parse the SOF0 frame header (T.81 sec B.2.2).
@@ -684,7 +684,7 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_dht(ra8_jpeg_dec_ctx_t* d);
  * @note Not thread-safe; caller serializes via decoder context.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_sof0(ra8_jpeg_dec_ctx_t* d);
+RA8_PRIV ra8_err_t priv_jpeg_sw_parse_sof0(ra8_jpeg_dec_ctx_t* d);
 
 /**
  * @brief Parse the SOS scan header (T.81 sec B.2.3) selectors.
@@ -705,7 +705,7 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_sof0(ra8_jpeg_dec_ctx_t* d);
  * @note Not thread-safe; caller serializes via decoder context.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_sos(ra8_jpeg_dec_ctx_t* d);
+RA8_PRIV ra8_err_t priv_jpeg_sw_parse_sos(ra8_jpeg_dec_ctx_t* d);
 
 /**
  * @brief Entropy-decode one 8x8 block of dequantized coefficients.
@@ -730,10 +730,10 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_sos(ra8_jpeg_dec_ctx_t* d);
  * @note Not thread-safe; caller serializes via decoder context.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_block(ra8_jpeg_dec_ctx_t*   d,
-                                          ra8_jpeg_bitreader_t* br,
-                                          uint8_t               ci,
-                                          int32_t*              outblk);
+RA8_PRIV ra8_err_t priv_jpeg_sw_block(ra8_jpeg_dec_ctx_t*   d,
+                                      ra8_jpeg_bitreader_t* br,
+                                      uint8_t               ci,
+                                      int32_t*              outblk);
 
 /**
  * @brief IDCT a coefficient block and emit level-shifted 8-bit samples.
@@ -749,7 +749,7 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_block(ra8_jpeg_dec_ctx_t*   d,
  * @note Not thread-safe; caller serializes via decoder context.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_jpeg_sw_priv_idct_into(int32_t* coeffs, uint8_t* tile);
+RA8_PRIV void priv_jpeg_sw_idct_into(int32_t* coeffs, uint8_t* tile);
 
 /**
  * @brief Decode the hmax*vmax luma blocks of one MCU into the Y tile.
@@ -771,10 +771,10 @@ RA8_PRIV void ra8_jpeg_sw_priv_idct_into(int32_t* coeffs, uint8_t* tile);
  * @note Not thread-safe; caller serializes via decoder context.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_mcu_y(ra8_jpeg_dec_ctx_t*   d,
-                                          ra8_jpeg_bitreader_t* br,
-                                          uint8_t*              y_tile,
-                                          uint16_t              mcu_w_px);
+RA8_PRIV ra8_err_t priv_jpeg_sw_mcu_y(ra8_jpeg_dec_ctx_t*   d,
+                                      ra8_jpeg_bitreader_t* br,
+                                      uint8_t*              y_tile,
+                                      uint16_t              mcu_w_px);
 
 /**
  * @brief Decode the Cb and Cr 8x8 blocks of one MCU.
@@ -796,10 +796,10 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_mcu_y(ra8_jpeg_dec_ctx_t*   d,
  * @note Not thread-safe; caller serializes via decoder context.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_mcu_chroma(ra8_jpeg_dec_ctx_t*   d,
-                                               ra8_jpeg_bitreader_t* br,
-                                               uint8_t*              cb_tile,
-                                               uint8_t*              cr_tile);
+RA8_PRIV ra8_err_t priv_jpeg_sw_mcu_chroma(ra8_jpeg_dec_ctx_t*   d,
+                                           ra8_jpeg_bitreader_t* br,
+                                           uint8_t*              cb_tile,
+                                           uint8_t*              cr_tile);
 
 /**
  * @brief Dispatch one JPEG marker segment in a decode driver loop.
@@ -825,6 +825,6 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_mcu_chroma(ra8_jpeg_dec_ctx_t*   d,
  * @note Not thread-safe; caller serializes via decoder context.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_dispatch(ra8_jpeg_dec_ctx_t*           d,
-                                             bool*                         got_sof,
-                                             ra8_jpeg_dec_marker_action_t* action);
+RA8_PRIV ra8_err_t priv_jpeg_sw_dispatch(ra8_jpeg_dec_ctx_t*           d,
+                                         bool*                         got_sof,
+                                         ra8_jpeg_dec_marker_action_t* action);

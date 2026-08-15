@@ -11,7 +11,7 @@
  * the caller's separate `webp_work` arena: the compressed source, the decoded
  * RGBA frame and libwebp's scratch are all resident at once, fail-closed on
  * any shortfall, no downscaling. Once decoded the frame is banded out through
- * the shared band accumulator (`ra8_jof_priv_on_rows()`), so the emitted atlas
+ * the shared band accumulator (`priv_jof_on_rows()`), so the emitted atlas
  * bytes are identical to the streaming arms for the same pixels. This arm is
  * dispatched from `ra8_jof_produce.c` and shares the producer state and
  * geometry / rows / prefix-pull seams through `ra8_jof_internal.h`; it
@@ -91,13 +91,13 @@ uint32_t ra8_jof_webp_work_bytes(uint16_t max_width, uint16_t max_height, uint32
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-priv_webp_pull_all(ra8_jof_prefix_pull_t* pfx, uint8_t* dst, size_t cap, size_t* out_len)
+RA8_INTERNAL static ra8_err_t
+internal_webp_pull_all(ra8_jof_prefix_pull_t* pfx, uint8_t* dst, size_t cap, size_t* out_len)
 {
   size_t len = 0U;
   while (len < cap) {
     size_t          got = 0U;
-    const ra8_err_t err = ra8_jof_priv_prefix_pull(pfx, &dst[len], cap - len, &got);
+    const ra8_err_t err = priv_jof_prefix_pull(pfx, &dst[len], cap - len, &got);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -114,7 +114,7 @@ priv_webp_pull_all(ra8_jof_prefix_pull_t* pfx, uint8_t* dst, size_t cap, size_t*
 
 /**
  * @brief Band a decoded RGBA frame through the shared tile path.
- * @details Feeds the whole-frame RGBA buffer to ::ra8_jof_priv_on_rows in
+ * @details Feeds the whole-frame RGBA buffer to ::priv_jof_on_rows in
  *          `tile_h` slices, so the WebP path reuses the identical
  *          band/cut/encode/sink machinery as the streaming decoders
  *          (byte-identical output).
@@ -124,8 +124,8 @@ priv_webp_pull_all(ra8_jof_prefix_pull_t* pfx, uint8_t* dst, size_t cap, size_t*
  * @param[in]     h     Frame height, pixels.
  * @return Result code.
  * @retval k_ra8_ok Every row was fed; bands flushed as they filled.
- * @retval other    Propagated from ::ra8_jof_priv_on_rows.
- * @pre `ra8_jof_priv_on_geom()` has fired (`geom_done == 1`) with these w/h/4bpp.
+ * @retval other    Propagated from ::priv_jof_on_rows.
+ * @pre `priv_jof_on_geom()` has fired (`geom_done == 1`) with these w/h/4bpp.
  * @pre @p frame holds `h * w * 4` readable bytes.
  * @post On success `rows_seen == h`; the last partial band is left for the
  *       epilogue to flush.
@@ -134,20 +134,20 @@ priv_webp_pull_all(ra8_jof_prefix_pull_t* pfx, uint8_t* dst, size_t cap, size_t*
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-priv_webp_feed(ra8_jof_prod_state_t* st, const uint8_t* frame, uint16_t w, uint16_t h)
+RA8_INTERNAL static ra8_err_t
+internal_webp_feed(ra8_jof_prod_state_t* st, const uint8_t* frame, uint16_t w, uint16_t h)
 {
   const uint32_t stride = (uint32_t)w * (uint32_t)k_ra8_jof_webp_bpp;
   const uint32_t th     = (uint32_t)st->cfg->tile_h;
   uint32_t       y      = 0U;
   while (y < (uint32_t)h) {
     const uint32_t  nrows = (((uint32_t)h - y) < th) ? ((uint32_t)h - y) : th;
-    const ra8_err_t err   = ra8_jof_priv_on_rows(st,
-                                                 &frame[(size_t)y * (size_t)stride],
-                                                 w,
-                                                 (uint16_t)y,
-                                                 (uint16_t)nrows,
-                                                 (uint8_t)k_ra8_jof_webp_bpp);
+    const ra8_err_t err   = priv_jof_on_rows(st,
+                                             &frame[(size_t)y * (size_t)stride],
+                                             w,
+                                             (uint16_t)y,
+                                             (uint16_t)nrows,
+                                             (uint8_t)k_ra8_jof_webp_bpp);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -156,7 +156,7 @@ priv_webp_feed(ra8_jof_prod_state_t* st, const uint8_t* frame, uint16_t w, uint1
   return k_ra8_ok;
 }
 
-RA8_PRIV ra8_err_t ra8_jof_priv_webp_transcode(ra8_jof_prod_state_t* st, ra8_jof_prefix_pull_t* pfx)
+RA8_PRIV ra8_err_t priv_jof_webp_transcode(ra8_jof_prod_state_t* st, ra8_jof_prefix_pull_t* pfx)
 {
   uint8_t* const arena = st->cfg->webp_work;
   if (arena == nullptr) {
@@ -164,7 +164,7 @@ RA8_PRIV ra8_err_t ra8_jof_priv_webp_transcode(ra8_jof_prod_state_t* st, ra8_jof
   }
   const size_t acap    = st->cfg->webp_work_cap;
   size_t       src_len = 0U;
-  ra8_err_t    err     = priv_webp_pull_all(pfx, arena, acap, &src_len);
+  ra8_err_t    err     = internal_webp_pull_all(pfx, arena, acap, &src_len);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -174,7 +174,7 @@ RA8_PRIV ra8_err_t ra8_jof_priv_webp_transcode(ra8_jof_prod_state_t* st, ra8_jof
   if (err != k_ra8_ok) {
     return err;
   }
-  err = ra8_jof_priv_on_geom(st, (uint16_t)w, (uint16_t)h, (uint8_t)k_ra8_jof_webp_bpp);
+  err = priv_jof_on_geom(st, (uint16_t)w, (uint16_t)h, (uint8_t)k_ra8_jof_webp_bpp);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -199,5 +199,5 @@ RA8_PRIV ra8_err_t ra8_jof_priv_webp_transcode(ra8_jof_prod_state_t* st, ra8_jof
   if (err != k_ra8_ok) {
     return err;
   }
-  return priv_webp_feed(st, frame, (uint16_t)w, (uint16_t)h);
+  return internal_webp_feed(st, frame, (uint16_t)w, (uint16_t)h);
 }

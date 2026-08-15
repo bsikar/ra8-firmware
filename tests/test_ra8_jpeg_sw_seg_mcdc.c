@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_jpeg_sw.h"
@@ -53,8 +54,8 @@ typedef enum : uint16_t {
   k_jt_mse_psnr30_max = 65U,                        /**< MSE for PSNR ~= 30 dB. */
 } ra8_jpeg_test_const_t;
 
-/** @brief Fill an RGB888 buffer with a deterministic gradient. */
-static void fill_gradient(uint8_t* rgb, uint16_t w, uint16_t h)
+/** @brief Fill an RGB888 buffer with a deterministic gradient. @details Exercises the fill gradient path with bounded caller-owned fixture state and verifies its documented result. @param[in,out] rgb Interleaved RGB fixture pixels. @param[in] w Image width value or receiver exercised by this helper. @param[in] h Image height value or receiver exercised by this helper. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_fill_gradient(uint8_t* rgb, uint16_t w, uint16_t h)
 {
   for (uint16_t y = 0U; y < h; y++) {
     for (uint16_t x = 0U; x < w; x++) {
@@ -169,7 +170,7 @@ static const uint8_t s_dht_then_sof0[] = {
 };
 
 /**
- * @test test_mcdc_get_dimensions_pad_and_marker
+ * @test internal_test_mcdc_get_dimensions_pad_and_marker
  * @par MC/DC:
  * Five decisions in ra8_jpeg_sw_get_dimensions (libs/ra8_jpeg/src/ra8_jpeg_sw.c
  * lines 1071, 1080, 1087, 1100, 1105). Vectors via crafted bytestreams:
@@ -179,9 +180,8 @@ static const uint8_t s_dht_then_sof0[] = {
  *   D_w0h0  1100: w=0 (C1=T) and h=0 (C1=F C2=T).
  *   D_sof   1105: 4-condition AND. Representative subset: SOF2 (all T
  *           not_supported), DHT (C3=F skipped), SOS (C2=F skipped).
- *           Dead rows documented per DO-178C 6.4.4.3 deactivated code.
- */
-static void test_mcdc_get_dimensions_pad_and_marker(void)
+ *           Dead rows documented per DO-178C 6.4.4.3 deactivated code. @brief Verify mcdc get dimensions pad and marker behavior. @details Executes the mcdc get dimensions pad and marker scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_get_dimensions_pad_and_marker(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC get_dimensions: pad+marker+seg+wh decisions");
   uint16_t w = 0U;
@@ -214,7 +214,7 @@ static void test_mcdc_get_dimensions_pad_and_marker(void)
 }
 
 /**
- * @test test_mcdc_decode_pad_and_rst_marker
+ * @test internal_test_mcdc_decode_pad_and_rst_marker
  * @par MC/DC:
  * Decisions in ra8_jpeg_sw_decode and dec_decode_scan:
  *   - libs/ra8_jpeg/src/ra8_jpeg_sw.c@br_fill  D_res bit-reader refill
@@ -233,29 +233,28 @@ static void test_mcdc_get_dimensions_pad_and_marker(void)
  * vectors flip via the bytestreams. D_res (bit-reader reservoir refill)
  * is driven by the full decode: the refill loop runs while nbits is low
  * and stops on either the byte budget (first operand F) or end-of-image
- * (had_eoi T).
- */
-static void test_mcdc_decode_pad_and_rst_marker(void)
+ * (had_eoi T). @brief Verify mcdc decode pad and rst marker behavior. @details Executes the mcdc decode pad and rst marker scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_decode_pad_and_rst_marker(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC decode: pad-skip + sof unsupported + RST marker");
-  static uint8_t s_rgb_in[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t s_rgb_out[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t s_jpeg[(uint32_t)k_jt_jpeg_cap];
-  fill_gradient(s_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  static uint8_t local_rgb_in[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t local_rgb_out[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t local_jpeg[(uint32_t)k_jt_jpeg_cap];
+  internal_fill_gradient(local_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
   uint32_t produced = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_jpeg_sw_encode(s_rgb_in,
+                 ra8_jpeg_sw_encode(local_rgb_in,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                    s_jpeg,
+                                    local_jpeg,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &produced));
   uint16_t dw = 0U;
   uint16_t dh = 0U;
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_jpeg_sw_decode(s_jpeg, produced, s_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
+    ra8_jpeg_sw_decode(local_jpeg, produced, local_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
   static const uint8_t prog_jpeg[] = {
     0xFFU,
     0xD8U,
@@ -319,7 +318,7 @@ static const uint8_t s_dht_bad_th[] = {
 };
 
 /**
- * @test test_mcdc_decode_dqt_dht_validation
+ * @test internal_test_mcdc_decode_dqt_dht_validation
  * @par MC/DC:
  * Three internal decoder decisions reachable via crafted bytestreams
  * (libs/ra8_jpeg/src/ra8_jpeg_sw.c lines 751, 761, 782, 792):
@@ -327,9 +326,8 @@ static const uint8_t s_dht_bad_th[] = {
  * Vectors: V_dqt_short (seglen=1), V_dqt_bad_pq (pq=1), V_dqt_bad_tq
  * (tq>=quant_tabs), V_dht_bad_tc (tc>=classes), V_dht_bad_th
  * (th>=ids). N+1=3 per decision (vectors share the V_short baseline
- * for the "in-range" row implicit in the round-trip cases above).
- */
-static void test_mcdc_decode_dqt_dht_validation(void)
+ * for the "in-range" row implicit in the round-trip cases above). @brief Verify mcdc decode dqt dht validation behavior. @details Executes the mcdc decode dqt dht validation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_decode_dqt_dht_validation(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC dec_parse_dqt + dec_parse_dht guards");
   uint8_t  out[k_jpeg_out_large] = {};
@@ -369,7 +367,7 @@ static void test_mcdc_decode_dqt_dht_validation(void)
 }
 
 /**
- * @test test_mcdc_decode_sof0_chroma_subsampling
+ * @test internal_test_mcdc_decode_sof0_chroma_subsampling
  * @par MC/DC:
  * Three SOF0 decisions in libs/ra8_jpeg/src/ra8_jpeg_sw.c (lines 842, 869,
  * 870, 872):
@@ -381,41 +379,40 @@ static void test_mcdc_decode_dqt_dht_validation(void)
  * quality 4:2:0). The 6-cond D_is420 omits dead truth-table rows that
  * no real-world JPEG produces; documented per DO-178C 6.4.4.3
  * deactivated code. D_unsup tested with crafted SOF0 hmax=2,vmax=1
- * (neither 4:4:4 nor 4:2:0 -> not_supported).
- */
-static void test_mcdc_decode_sof0_chroma_subsampling(void)
+ * (neither 4:4:4 nor 4:2:0 -> not_supported). @brief Verify mcdc decode sof0 chroma subsampling behavior. @details Executes the mcdc decode sof0 chroma subsampling scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_decode_sof0_chroma_subsampling(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC dec_parse_sof0: ncomp + 4:4:4/4:2:0 disambig");
-  static uint8_t s_rgb_in[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t s_rgb_out[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t s_jpeg[(uint32_t)k_jt_jpeg_cap];
-  fill_gradient(s_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  static uint8_t local_rgb_in[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t local_rgb_out[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t local_jpeg[(uint32_t)k_jt_jpeg_cap];
+  internal_fill_gradient(local_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
   uint32_t produced = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_jpeg_sw_encode(s_rgb_in,
+                 ra8_jpeg_sw_encode(local_rgb_in,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                    s_jpeg,
+                                    local_jpeg,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &produced));
   uint16_t dw = 0U;
   uint16_t dh = 0U;
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_jpeg_sw_decode(s_jpeg, produced, s_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
+    ra8_jpeg_sw_decode(local_jpeg, produced, local_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
   produced = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_jpeg_sw_encode(s_rgb_in,
+                 ra8_jpeg_sw_encode(local_rgb_in,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_ra8_jpeg_sw_quality_min,
-                                    s_jpeg,
+                                    local_jpeg,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &produced));
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_jpeg_sw_decode(s_jpeg, produced, s_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
+    ra8_jpeg_sw_decode(local_jpeg, produced, local_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
   static const uint8_t sof0_ncomp2[] = {
     0xFFU, 0xD8U, 0xFFU, 0xC0U, 0x00U, 0x0EU, 0x08U, 0x00U, 0x10U, 0x00U,
     0x10U, 0x02U, 0x01U, 0x11U, 0x00U, 0x02U, 0x11U, 0x00U, 0xFFU, 0xD9U,
@@ -499,7 +496,7 @@ static const uint8_t s_dac_then_short[] = {
 };
 
 /**
- * @test test_mcdc_decode_skip_unrecognized_segment
+ * @test internal_test_mcdc_decode_skip_unrecognized_segment
  * @par MC/DC:
  * Decision dec_skip_segment line 960:
  *   `len < 2U || (uint32_t)len > d->src_len - d->cursor` (2 conds).
@@ -516,9 +513,8 @@ static const uint8_t s_dac_then_short[] = {
  * Also exercises dec_decode_scan/decode marker switch line 1685
  * fall-through (else arm into dec_skip_segment) and the SOF-range
  * "is supported / DHT / DAC" 4-condition decision at line 1655 by
- * sending 0xFFC1 (SOF1, unsupported) versus 0xFFC8 (DAC, skipped).
- */
-static void test_mcdc_decode_skip_unrecognized_segment(void)
+ * sending 0xFFC1 (SOF1, unsupported) versus 0xFFC8 (DAC, skipped). @brief Verify mcdc decode skip unrecognized segment behavior. @details Executes the mcdc decode skip unrecognized segment scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_decode_skip_unrecognized_segment(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC dec_skip_segment + decode SOF-range");
   uint8_t  out[k_jpeg_out_large] = {};
@@ -603,7 +599,7 @@ static const uint8_t s_eoi_only[] = {
 };
 
 /**
- * @test test_mcdc_decode_rst_in_marker_chain
+ * @test internal_test_mcdc_decode_rst_in_marker_chain
  * @par MC/DC:
  * Decision ra8_jpeg_sw_decode line 1681:
  *   `mk >= rst0 && mk <= rst7` (2 conds).
@@ -616,9 +612,8 @@ static const uint8_t s_eoi_only[] = {
  * V_rst0 vs V_below proves C1 flips outcome (continue vs skip).
  * V_rst0 vs V_above proves C2 flips outcome (continue vs break).
  * All four arrive at protocol_error because no SOS follows; we only
- * care that the marker walk traversed each branch.
- */
-static void test_mcdc_decode_rst_in_marker_chain(void)
+ * care that the marker walk traversed each branch. @brief Verify mcdc decode rst in marker chain behavior. @details Executes the mcdc decode rst in marker chain scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_decode_rst_in_marker_chain(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC decode: RST in marker chain");
   uint8_t  out[k_jpeg_out_large] = {};
@@ -660,12 +655,11 @@ static void test_mcdc_decode_rst_in_marker_chain(void)
 int32_t main(void)
 {
   ra8_fake_mmap_reset();
-  test_mcdc_get_dimensions_pad_and_marker();
-  test_mcdc_decode_pad_and_rst_marker();
-  test_mcdc_decode_dqt_dht_validation();
-  test_mcdc_decode_sof0_chroma_subsampling();
-  test_mcdc_decode_skip_unrecognized_segment();
-  test_mcdc_decode_rst_in_marker_chain();
-  (void)fprintf(stderr, "[OK ] test_ra8_jpeg_sw_seg_mcdc.c\n");
+  internal_test_mcdc_get_dimensions_pad_and_marker();
+  internal_test_mcdc_decode_pad_and_rst_marker();
+  internal_test_mcdc_decode_dqt_dht_validation();
+  internal_test_mcdc_decode_sof0_chroma_subsampling();
+  internal_test_mcdc_decode_skip_unrecognized_segment();
+  internal_test_mcdc_decode_rst_in_marker_chain();
   return 0;
 }

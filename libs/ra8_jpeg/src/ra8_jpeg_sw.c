@@ -47,6 +47,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_jpeg_sw_internal.h"
@@ -82,7 +83,7 @@ static const char* s_tag = "JPEG_SW";
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void br_fill(ra8_jpeg_bitreader_t* br)
+RA8_INTERNAL static void internal_br_fill(ra8_jpeg_bitreader_t* br)
 {
   while (br->nbits <= k_jpeg_reservoir_lo && !br->had_eoi) {
     if (br->pos >= br->len) {
@@ -115,7 +116,7 @@ static void br_fill(ra8_jpeg_bitreader_t* br)
  * @brief Pop `n` bits MSB-first; returns -1 on underflow.
  *
  * @details
- * Calls ``br_fill`` to top off the accumulator, then drains ``n``
+ * Calls ``internal_br_fill`` to top off the accumulator, then drains ``n``
  * MSBs as a non-negative integer.
  *
  * @param[in,out] br Bit reader (state mutated in place).
@@ -133,13 +134,13 @@ static void br_fill(ra8_jpeg_bitreader_t* br)
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-int32_t ra8_jpeg_sw_br_get_bits(ra8_jpeg_bitreader_t* br, uint8_t n)
+RA8_PRIV int32_t priv_jpeg_sw_br_get_bits(ra8_jpeg_bitreader_t* br, uint8_t n)
 {
   if (n == 0U) {
     return 0;
   }
   if (br->nbits < n) {
-    br_fill(br);
+    internal_br_fill(br);
     if (br->nbits < n) {
       return -1;
     }
@@ -158,7 +159,7 @@ int32_t ra8_jpeg_sw_br_get_bits(ra8_jpeg_bitreader_t* br, uint8_t n)
  * @brief Build the F.2.2.3 mincode/maxcode/valptr decode tables.
  *
  * @details
- * Second phase of `ra8_jpeg_sw_htab_build()`: walks the BITS list and
+ * Second phase of `priv_jpeg_sw_htab_build()`: walks the BITS list and
  * the canonical `huffcode` array produced by the Annex C phase and
  * derives, per code length, the smallest code (`mincode`), the largest
  * code (`maxcode`, -1 for unused lengths) and the index of the first
@@ -175,7 +176,7 @@ int32_t ra8_jpeg_sw_br_get_bits(ra8_jpeg_bitreader_t* br, uint8_t n)
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void htab_build_lookup(ra8_jpeg_htab_t* h)
+RA8_INTERNAL static void internal_htab_build_lookup(ra8_jpeg_htab_t* h)
 {
   uint16_t j = 0U;
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_huff_lengths; i++) {
@@ -191,7 +192,7 @@ static void htab_build_lookup(ra8_jpeg_htab_t* h)
   }
 }
 
-void ra8_jpeg_sw_htab_build(ra8_jpeg_htab_t* h)
+RA8_PRIV void priv_jpeg_sw_htab_build(ra8_jpeg_htab_t* h)
 {
   /* T.81 Annex C, "Generation of size table" + "Generation of code
    * table". */
@@ -224,7 +225,7 @@ void ra8_jpeg_sw_htab_build(ra8_jpeg_htab_t* h)
   }
 
   /* T.81 Annex F.2.2.3 mincode/maxcode/valptr build. */
-  htab_build_lookup(h);
+  internal_htab_build_lookup(h);
 }
 
 /**
@@ -242,24 +243,24 @@ void ra8_jpeg_sw_htab_build(ra8_jpeg_htab_t* h)
  * @retval -1  Stream underflow or table miss.
  *
  * @pre ``br`` and ``h`` non-NULL.
- * @pre ``h`` was previously populated by ``ra8_jpeg_sw_htab_build``.
+ * @pre ``h`` was previously populated by ``priv_jpeg_sw_htab_build``.
  * @post ``br`` advances by the consumed code length on success.
  * @post No table state is mutated.
  *
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-int32_t ra8_jpeg_sw_htab_decode(ra8_jpeg_bitreader_t* br, const ra8_jpeg_htab_t* h)
+RA8_PRIV int32_t priv_jpeg_sw_htab_decode(ra8_jpeg_bitreader_t* br, const ra8_jpeg_htab_t* h)
 {
-  br_fill(br);
+  internal_br_fill(br);
   if (br->nbits == 0U) {
     return -1;
   }
   /* Single-bit greedy lookup per F.2.2.3 "Decoder code-length
    * algorithm". */
-  int32_t code = ra8_jpeg_sw_br_get_bits(br, 1U);
+  int32_t code = priv_jpeg_sw_br_get_bits(br, 1U);
   /* After br->nbits == 0 guard above, br->nbits >= 1; br_get_bits(br, 1)
-   * with nbits >= 1 always returns 0 or 1 without invoking br_fill, so
+   * with nbits >= 1 always returns 0 or 1 without invoking internal_br_fill, so
    * code < 0 is unreachable on any host input. */
   if (code < 0) {
     return -1; /* GCOVR_EXCL_LINE */
@@ -272,7 +273,7 @@ int32_t ra8_jpeg_sw_htab_decode(ra8_jpeg_bitreader_t* br, const ra8_jpeg_htab_t*
       }
       return (int32_t)h->vals[j];
     }
-    int32_t bit = ra8_jpeg_sw_br_get_bits(br, 1U);
+    int32_t bit = priv_jpeg_sw_br_get_bits(br, 1U);
     if (bit < 0) {
       return -1;
     }
@@ -304,7 +305,7 @@ int32_t ra8_jpeg_sw_htab_decode(ra8_jpeg_bitreader_t* br, const ra8_jpeg_htab_t*
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
-int32_t ra8_jpeg_sw_huff_extend(int32_t v, uint8_t n)
+RA8_PRIV int32_t priv_jpeg_sw_huff_extend(int32_t v, uint8_t n)
 {
   if (n == 0U) {
     return 0;
@@ -337,7 +338,7 @@ int32_t ra8_jpeg_sw_huff_extend(int32_t v, uint8_t n)
  * @note Not thread-safe; the caller must serialise concurrent access.
  * @since 0.1.0
  */
-static void inv_dct_1d_norm(const int32_t* in, int32_t* out)
+RA8_INTERNAL static void internal_inv_dct_1d_norm(const int32_t* in, int32_t* out)
 {
   for (uint8_t n = 0U; n < (uint8_t)k_ra8_jpeg_block_dim; n++) {
     int64_t s = 0;
@@ -351,7 +352,7 @@ static void inv_dct_1d_norm(const int32_t* in, int32_t* out)
 }
 
 /* Full 8x8 inverse DCT, in place -- see surrounding code and HUM citations. */
-void ra8_jpeg_sw_idct8x8(int32_t* block)
+RA8_PRIV void priv_jpeg_sw_idct8x8(int32_t* block)
 {
   int32_t tmp[(uint32_t)k_ra8_jpeg_block_size];
   int32_t row[(uint32_t)k_ra8_jpeg_block_dim];
@@ -361,7 +362,7 @@ void ra8_jpeg_sw_idct8x8(int32_t* block)
     for (uint8_t c = 0U; c < (uint8_t)k_ra8_jpeg_block_dim; c++) {
       row[c] = block[(r * (uint8_t)k_ra8_jpeg_block_dim) + c];
     }
-    inv_dct_1d_norm(row, out);
+    internal_inv_dct_1d_norm(row, out);
     for (uint8_t c = 0U; c < (uint8_t)k_ra8_jpeg_block_dim; c++) {
       tmp[(r * (uint8_t)k_ra8_jpeg_block_dim) + c] = out[c];
     }
@@ -370,7 +371,7 @@ void ra8_jpeg_sw_idct8x8(int32_t* block)
     for (uint8_t r = 0U; r < (uint8_t)k_ra8_jpeg_block_dim; r++) {
       col[r] = tmp[(r * (uint8_t)k_ra8_jpeg_block_dim) + c];
     }
-    inv_dct_1d_norm(col, out);
+    internal_inv_dct_1d_norm(col, out);
     for (uint8_t r = 0U; r < (uint8_t)k_ra8_jpeg_block_dim; r++) {
       block[(r * (uint8_t)k_ra8_jpeg_block_dim) + c] = out[r];
     }
@@ -401,12 +402,12 @@ void ra8_jpeg_sw_idct8x8(int32_t* block)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-void ra8_jpeg_sw_ycc_to_rgb(int32_t  y,
-                            int32_t  cb,
-                            int32_t  cr,
-                            uint8_t* out_r,
-                            uint8_t* out_g,
-                            uint8_t* out_b)
+RA8_PRIV void priv_jpeg_sw_ycc_to_rgb(int32_t  y,
+                                      int32_t  cb,
+                                      int32_t  cr,
+                                      uint8_t* out_r,
+                                      uint8_t* out_g,
+                                      uint8_t* out_b)
 {
   cb -= (int32_t)k_ra8_jpeg_level_offset;
   cr -= (int32_t)k_ra8_jpeg_level_offset;
@@ -414,9 +415,9 @@ void ra8_jpeg_sw_ycc_to_rgb(int32_t  y,
   int32_t g = y + ((((int32_t)k_ra8_jpeg_cb_g * cb) + ((int32_t)k_ra8_jpeg_cr_g * cr)) >>
                    k_ra8_jpeg_yuv_shift);
   int32_t b = y + (((int32_t)k_ra8_jpeg_cb_b * cb) >> k_ra8_jpeg_yuv_shift);
-  *out_r    = clamp_u8(r);
-  *out_g    = clamp_u8(g);
-  *out_b    = clamp_u8(b);
+  *out_r    = internal_clamp_u8(r);
+  *out_g    = internal_clamp_u8(g);
+  *out_b    = internal_clamp_u8(b);
 }
 
 #ifdef __ARM_FEATURE_MVE
@@ -454,20 +455,20 @@ ycc_to_rgb_row_mve(const int16_t* y, const int16_t* cb, const int16_t* cr, uint8
     vst1q_s16(gb, vg);
     vst1q_s16(bb_, vb);
     for (uint8_t k = 0U; k < 8U; k++) {
-      dst[0] = clamp_u8((int32_t)rb[k]);
-      dst[1] = clamp_u8((int32_t)gb[k]);
-      dst[2] = clamp_u8((int32_t)bb_[k]);
+      dst[0] = internal_clamp_u8((int32_t)rb[k]);
+      dst[1] = internal_clamp_u8((int32_t)gb[k]);
+      dst[2] = internal_clamp_u8((int32_t)bb_[k]);
       dst += (uint8_t)k_ra8_jpeg_rgb_components;
     }
     i = (uint16_t)(i + 8U);
   }
   for (; i < n; i++) {
-    ra8_jpeg_sw_ycc_to_rgb((int32_t)y[i],
-                           (int32_t)cb[i],
-                           (int32_t)cr[i],
-                           &dst[0],
-                           &dst[1],
-                           &dst[2]);
+    priv_jpeg_sw_ycc_to_rgb((int32_t)y[i],
+                            (int32_t)cb[i],
+                            (int32_t)cr[i],
+                            &dst[0],
+                            &dst[1],
+                            &dst[2]);
     dst += (uint8_t)k_ra8_jpeg_rgb_components;
   }
 }
@@ -505,14 +506,14 @@ ycc_to_rgb_row_mve(const int16_t* y, const int16_t* cb, const int16_t* cr, uint8
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t
-dims_next_marker(const uint8_t* jpeg_buf, uint32_t jpeg_len, uint32_t* i, uint16_t* out_mk)
+RA8_INTERNAL static ra8_err_t
+internal_dims_next_marker(const uint8_t* jpeg_buf, uint32_t jpeg_len, uint32_t* i, uint16_t* out_mk)
 {
   if (jpeg_buf[*i] != (uint8_t)k_ra8_jpeg_marker_byte) {
     return k_ra8_err_protocol_error;
   }
   /* Skip pad bytes. */
-  // mcdc-deactivated: dims_next_marker JPEG marker-pad skip; the jpeg_len bound is checked by the caller's enclosing while and the marker-byte equality follows the JFIF spec (0xFF padding bytes always within the segment); both conditions are co-dependent in any well-formed stream.
+  // mcdc-deactivated: internal_dims_next_marker JPEG marker-pad skip; the jpeg_len bound is checked by the caller's enclosing while and the marker-byte equality follows the JFIF spec (0xFF padding bytes always within the segment); both conditions are co-dependent in any well-formed stream.
   while (*i < jpeg_len && jpeg_buf[*i] == (uint8_t)k_ra8_jpeg_marker_byte) {
     (*i)++;
   }
@@ -553,11 +554,11 @@ dims_next_marker(const uint8_t* jpeg_buf, uint32_t jpeg_len, uint32_t* i, uint16
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t dims_parse_sof0(const uint8_t* jpeg_buf,
-                                 uint32_t       i,
-                                 uint16_t       seglen,
-                                 uint16_t*      out_w,
-                                 uint16_t*      out_h)
+RA8_INTERNAL static ra8_err_t internal_dims_parse_sof0(const uint8_t* jpeg_buf,
+                                                       uint32_t       i,
+                                                       uint16_t       seglen,
+                                                       uint16_t*      out_w,
+                                                       uint16_t*      out_h)
 {
   if (seglen < 8U) {
     return k_ra8_err_protocol_error;
@@ -566,8 +567,8 @@ static ra8_err_t dims_parse_sof0(const uint8_t* jpeg_buf,
   if (precision != 8U) {
     return k_ra8_err_not_supported;
   }
-  *out_h = read_be16(&jpeg_buf[i + 3U]);
-  *out_w = read_be16(&jpeg_buf[i + k_jpeg_sof_dims_off]);
+  *out_h = internal_read_be16(&jpeg_buf[i + 3U]);
+  *out_w = internal_read_be16(&jpeg_buf[i + k_jpeg_sof_dims_off]);
   if (*out_w == 0U || *out_h == 0U) {
     return k_ra8_err_protocol_error;
   }
@@ -579,7 +580,7 @@ static ra8_err_t dims_parse_sof0(const uint8_t* jpeg_buf,
  *
  * @details
  * Loop body of `ra8_jpeg_sw_get_dimensions()`: reads the next marker
- * via `dims_next_marker()`, skips standalone SOI/EOI codes, validates
+ * via `internal_dims_next_marker()`, skips standalone SOI/EOI codes, validates
  * the segment length, extracts the dimensions on SOF0 (setting
  * `*done`), rejects unsupported SOFn frames, and otherwise advances
  * the cursor past the segment.
@@ -604,15 +605,15 @@ static ra8_err_t dims_parse_sof0(const uint8_t* jpeg_buf,
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t dims_step(const uint8_t* jpeg_buf,
-                           uint32_t       jpeg_len,
-                           uint32_t*      i,
-                           bool*          done,
-                           uint16_t*      out_w,
-                           uint16_t*      out_h)
+RA8_INTERNAL static ra8_err_t internal_dims_step(const uint8_t* jpeg_buf,
+                                                 uint32_t       jpeg_len,
+                                                 uint32_t*      i,
+                                                 bool*          done,
+                                                 uint16_t*      out_w,
+                                                 uint16_t*      out_h)
 {
   uint16_t  mk = 0U;
-  ra8_err_t e  = dims_next_marker(jpeg_buf, jpeg_len, i, &mk);
+  ra8_err_t e  = internal_dims_next_marker(jpeg_buf, jpeg_len, i, &mk);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -622,18 +623,18 @@ static ra8_err_t dims_step(const uint8_t* jpeg_buf,
   if (*i + 2U > jpeg_len) {
     return k_ra8_err_protocol_error;
   }
-  uint16_t seglen = read_be16(&jpeg_buf[*i]);
+  uint16_t seglen = internal_read_be16(&jpeg_buf[*i]);
   if (seglen < 2U || (uint32_t)seglen > jpeg_len - *i) {
     return k_ra8_err_protocol_error;
   }
   if (mk == (uint16_t)k_ra8_jpeg_marker_sof0) {
-    e = dims_parse_sof0(jpeg_buf, *i, seglen, out_w, out_h);
+    e = internal_dims_parse_sof0(jpeg_buf, *i, seglen, out_w, out_h);
     if (e == k_ra8_ok) {
       *done = true;
     }
     return e;
   }
-  // mcdc-deactivated: dims_step unsupported-SOFn detector; the 4-condition AND identifies SOF1..SOF15 except DHT/SOF8, but markers >= 0xFFC0 are by definition <= 0xFFCF in the JPEG marker space (range is 16 values), and SOF0 is handled above -- the upper-bound condition cannot independently flip on any reachable SOFn marker.
+  // mcdc-deactivated: internal_dims_step unsupported-SOFn detector; the 4-condition AND identifies SOF1..SOF15 except DHT/SOF8, but markers >= 0xFFC0 are by definition <= 0xFFCF in the JPEG marker space (range is 16 values), and SOF0 is handled above -- the upper-bound condition cannot independently flip on any reachable SOFn marker.
   if (mk >= k_jpeg_marker_sof_lo && mk <= k_jpeg_marker_sof_hi &&
       mk != (uint16_t)k_ra8_jpeg_marker_dht && mk != k_jpeg_marker_jpg) {
     return k_ra8_err_not_supported;
@@ -653,13 +654,13 @@ ra8_err_t ra8_jpeg_sw_get_dimensions(const uint8_t* jpeg_buf,
   if (jpeg_len < 4U) {
     return k_ra8_err_invalid_size;
   }
-  if (read_be16(jpeg_buf) != (uint16_t)k_ra8_jpeg_marker_soi) {
+  if (internal_read_be16(jpeg_buf) != (uint16_t)k_ra8_jpeg_marker_soi) {
     return k_ra8_err_protocol_error;
   }
   uint32_t i = 2U;
   while (i + 4U <= jpeg_len) {
     bool      done = false;
-    ra8_err_t e    = dims_step(jpeg_buf, jpeg_len, &i, &done, out_w, out_h);
+    ra8_err_t e    = internal_dims_step(jpeg_buf, jpeg_len, &i, &done, out_w, out_h);
     if (e != k_ra8_ok) {
       return e;
     }
