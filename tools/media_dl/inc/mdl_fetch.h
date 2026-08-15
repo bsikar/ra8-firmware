@@ -8,9 +8,11 @@
  * driven end to end through the `mdl_net` vtable mock with no network: the host
  * tests script a fake backend and assert that a first run fetches N pages, a
  * second run fetches only what is new, and an interrupted run resumes to a
- * byte-identical result. Everything the loop needs is injected through
- * ::mdl_fetch_ctx_t -- the network seam (via the session), the persistent state
- * store, the politeness governor -- so nothing here is host-only.
+ * byte-identical result. Storage namespace, hashing, and dedup publication are
+ * injected through ::mdl_fetch_ctx_t and are portable across `fw_if_fs`
+ * backends. Network-to-file staging and state checkpoints still use their
+ * legacy host-path contracts; those boundaries must be migrated before this
+ * complete orchestrator can run unchanged on a device filesystem.
  *
  * What it does that the old index-based loop did not:
  *   - **Addresses chapters by identity, not position.** Each chapter's stable id
@@ -40,6 +42,7 @@
 #include "mdl_politeness.h"
 #include "mdl_session.h"
 #include "mdl_state.h"
+#include "mdl_storage.h"
 #include "ra8_err.h"
 
 /** @brief Output directory layout the orchestrator writes. */
@@ -158,6 +161,7 @@ typedef void (*mdl_progress_fn)(void* ctx, const mdl_fetch_progress_t* ev);
  */
 typedef struct {
   mdl_session_t*       session;        /**< Identity + robots + net backend.          */
+  mdl_storage_t*       storage;        /**< Portable storage binding + workspaces.    */
   mdl_state_t*         state;          /**< Persistent state, read and updated.       */
   const char*          state_path;     /**< Atomic checkpoint target, or NULL.        */
   const char*          series_abs_dir; /**< Absolute series dir (paths resolve here). */

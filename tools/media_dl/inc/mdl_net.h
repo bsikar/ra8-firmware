@@ -4,12 +4,13 @@
  *        host manga downloader (v0).
  *
  * @details
- * Dependency-inversion seam mirroring the on-device streaming-GET vtable
- * (`ra8_ota_net_iface_t`): every layer above this interface -- URL extraction,
- * politeness, the download loop, robots gating -- is identical host and
- * on-silicon. Only the injected backend differs. On the host it is libcurl
- * (`mdl_net_curl.c`, created through `mdl_net_curl.h`); on the RA8 it will be
- * NetX Duo + Mbed TLS reached over the ESP32-C6 radio.
+ * Dependency-inversion seam for buffered metadata requests and the current
+ * host-path file sink. URL extraction, politeness, and robots gating are
+ * backend-neutral. The `get_file` operation is not yet device-portable because
+ * it accepts a host filesystem path; it must become a caller-provided body sink
+ * before an on-device network backend can share the complete download loop.
+ * The host backend is libcurl (`mdl_net_curl.c`, created through
+ * `mdl_net_curl.h`).
  *
  * The interface is a genuine vtable, not a link-time name: ::mdl_net_iface_t is
  * a `{ vtable, ctx }` pair, and callers reach a backend only through the
@@ -19,9 +20,8 @@
  * NetX/Mbed backend, or a scripted mock in the host unit tests, is a
  * vtable substitution, not an edit at every call site or a relink.
  *
- * The library reuses the firmware error contract (`ra8_err_t`) so signatures
- * are already device-shaped: porting a caller up to the chip is a backend swap,
- * not a rewrite.
+ * The library reuses the firmware error contract (`ra8_err_t`), but that common
+ * status type alone does not make the path-based file sink portable.
  *
  * @see mdl_net_curl.h  The concrete libcurl backend factory (composition root).
  * @copyright Copyright (c) 2026 Brighton Sikarskie

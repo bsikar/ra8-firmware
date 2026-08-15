@@ -26,12 +26,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "fw_if_fs.h"
+#include "mdl_storage.h"
 #include "ra8_err.h"
 
 /** @brief FNV-1a 64-bit constants (the canonical parameters). */
 typedef enum : uint64_t {
-  k_mdl_fnv_offset = 0xCBF29CE484222325ULL, /**< FNV-1a 64 offset basis. */
-  k_mdl_fnv_prime  = 0x00000100000001B3ULL, /**< FNV-1a 64 prime.        */
+  k_mdl_fnv_offset          = 0xCBF29CE484222325ULL, /**< FNV-1a 64 offset basis. */
+  k_mdl_fnv_prime           = 0x00000100000001B3ULL, /**< FNV-1a 64 prime.        */
+  k_mdl_hash_max_file_bytes = 8192000000ULL,         /**< Exact file hash bound.  */
 } mdl_fnv_const_t;
 
 /**
@@ -110,19 +113,18 @@ uint64_t mdl_hash_str(const char* s);
  * @brief FNV-1a 64 hash of a file's full contents.
  *
  * @details
- * Opens @p path without following a symlink in its final component and in
- * non-blocking mode, rejects non-regular objects before reading, then hashes a
- * regular file up to the implementation's 8.192 GB safety limit through
- * bounded POSIX reads and a bounded stack buffer. The size is snapshotted
- * before reading; short input, a trailing byte from a concurrent append, or an
- * exhausted read-call ceiling fails rather than publishing a partial-prefix
- * digest.
- * Used to verify a page already on disk
+ * Queries @p path through the injected portable filesystem, rejects non-regular
+ * objects before reading, then hashes a regular file up to the implementation's
+ * 8.192 GB safety limit through bounded reads and caller-owned scratch. The
+ * size is snapshotted before reading; short input, a trailing byte from a
+ * concurrent append, or an exhausted read-call ceiling fails rather than
+ * publishing a partial-prefix digest. Used to verify a page already on disk
  * still matches the identity recorded in state (a torn file re-hashes to a
  * different value and is refetched) and to record the identity of a freshly
  * fetched page.
  *
- * @param[in]  path File to read and hash (never NULL).
+ * @param[in,out] storage Initialized filesystem binding and file workspace.
+ * @param[in]  path Canonical portable file path (never NULL).
  * @param[out] out  Receives the 64-bit digest on success (never NULL).
  *
  * @return An ::ra8_err_t result.
@@ -134,8 +136,8 @@ uint64_t mdl_hash_str(const char* s);
  * @retval k_ra8_err_access_denied The process lacked permission to open it.
  * @retval k_ra8_fail            Other open/stat/read/close failure.
  *
- * @pre @p path and @p out are non-NULL.
- * @pre The host provides POSIX `open`, `O_NONBLOCK`, and `O_NOFOLLOW` semantics.
+ * @pre @p storage, @p path, and @p out are non-NULL.
+ * @pre The bound adapter refuses symbolic-link traversal.
  * @pre @p path directly names a readable regular file for success.
  * @post `*out` is written only on ::k_ra8_ok.
  * @post The file position/contents are not modified.
@@ -144,4 +146,35 @@ uint64_t mdl_hash_str(const char* s);
  * @see mdl_hash_bytes
  * @since 0.1.0
  */
-ra8_err_t mdl_hash_file(const char* path, uint64_t* out);
+ra8_err_t mdl_hash_file(mdl_storage_t* storage, const char* path, uint64_t* out);
+
+/**
+ * @brief Hash exactly one snapshotted extent from an already-open stream.
+ * @details Reads the declared extent through bounded caller scratch, folds
+ * every byte into FNV-1a, then requires an immediate EOF read before publishing
+ * the digest. Short input, trailing growth, zero progress, and call-bound
+ * exhaustion all fail closed.
+ * @param[in,out] file Readable generic file positioned at byte zero.
+ * @param[in] expected_size Exact byte extent that must be followed by EOF.
+ * @param[out] buffer Caller-owned read scratch.
+ * @param[in] buffer_bytes Nonzero extent of @p buffer.
+ * @param[out] out Digest written only after the exact extent and EOF are read.
+ * @return Canonical read/contract status.
+ * @retval k_ra8_ok The exact extent and EOF were observed and hashed.
+ * @retval k_ra8_err_invalid_arg A pointer or scratch extent is invalid.
+ * @retval k_ra8_err_invalid_size The file/call bound is exceeded.
+ * @retval k_ra8_fail The stream shrank, grew, or stopped making progress.
+ * @retval other A generic stream read error propagated.
+ * @pre @p file is open for reading and positioned at byte zero.
+ * @pre @p buffer covers @p buffer_bytes writable bytes and @p out is writable.
+ * @post Success leaves @p file positioned at EOF and writes @p out.
+ * @post Failure leaves @p out untouched.
+ * @note Exposed for transaction validators; ordinary callers use
+ *       ::mdl_hash_file.
+ * @since 0.1.0
+ */
+ra8_err_t mdl_hash_stream(fw_fs_file_t* file,
+                          uint64_t      expected_size,
+                          uint8_t*      buffer,
+                          uint32_t      buffer_bytes,
+                          uint64_t*     out);
