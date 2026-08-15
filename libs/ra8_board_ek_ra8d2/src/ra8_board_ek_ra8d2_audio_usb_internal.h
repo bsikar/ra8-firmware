@@ -22,7 +22,7 @@ extern "C" {
 #endif
 
 /**
- * @var s_usbhs_probe
+ * @var g_usbhs_probe
  * @brief USB-HS bring-up step visible to host tests and J-Link.
  *
  * @details
@@ -34,7 +34,7 @@ extern "C" {
  * @note The board worker is the only writer; tests and J-Link only read it.
  * @since 0.1.0
  */
-extern volatile uint32_t s_usbhs_probe;
+extern volatile uint32_t g_usbhs_probe;
 
 #ifdef __cplusplus
 }

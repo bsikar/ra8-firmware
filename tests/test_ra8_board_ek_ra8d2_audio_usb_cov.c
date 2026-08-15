@@ -106,7 +106,7 @@ typedef enum : uint32_t {
   k_test_audio_rate_hz             = 48000U, /**< Nominal 48 kHz sample rate.          */
   k_test_pcm_word_cnt              = 4U,     /**< 32-bit PCM words in the play buffer. */
   k_test_pcm_len                   = 8U,     /**< int16 samples (2 per 32-bit word).   */
-  k_test_usbhs_probe_post_dev_init = 5U,     /**< s_usbhs_probe post device-init.      */
+  k_test_usbhs_probe_post_dev_init = 5U,     /**< g_usbhs_probe post device-init.      */
 } test_audio_usb_sentinel_t;
 
 /**
@@ -119,13 +119,15 @@ typedef enum : uint32_t {
  * false conflict.  Note: it does NOT reset the module's static
  * s_audio_initialized flag, which persists across tests in one binary.
  *
+ * @pre The host fake-MMIO and pin-validation backends are available.
  * @pre None.
+ * @post The expected status and hardware-visible effects are asserted.
  * @post Register windows cleared; pin-validator bitmap zeroed.
  *
  * @note Not thread-safe; single-threaded test context only.
  * @since 0.1.0
  */
-static void reset_state(void)
+RA8_INTERNAL static void internal_reset_state(void)
 {
   ra8_fake_mmap_reset();
   ra8_pin_validator_reset();
@@ -158,21 +160,23 @@ static void reset_state(void)
  * in test_ra8_board_ek_ra8d2.c and the source carries an mcdc-deactivated
  * annotation for that guard; no new vector is introduced here.
  *
+ * @pre The host fake-MMIO and pin-validation backends are available.
  * @pre Clean fake state before each sub-call.
+ * @post The expected status and hardware-visible effects are asserted.
  * @post s_audio_initialized is true; SSIE0 config registers written.
  *
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_audio_init_all_bit_depths(void)
+RA8_INTERNAL static void internal_test_audio_init_all_bit_depths(void)
 {
   TEST_BEGIN("audio_init succeeds for every supported bit depth");
-  static const uint8_t s_depths[] = {8U, 16U, 18U, 20U, 22U, 24U, 32U};
-  for (uint32_t i = 0U; i < sizeof(s_depths) / sizeof(s_depths[0]); ++i) {
-    reset_state();
+  static const uint8_t k_depths[] = {8U, 16U, 18U, 20U, 22U, 24U, 32U};
+  for (uint32_t i = 0U; i < sizeof(k_depths) / sizeof(k_depths[0]); ++i) {
+    internal_reset_state();
     /* Alternate mono/stereo so both arms of the channel ternary run. */
     const uint8_t   channels = ((i % 2U) == 0U) ? 2U : 1U;
-    const ra8_err_t err      = ra8_board_audio_init(k_test_audio_rate_hz, s_depths[i], channels);
+    const ra8_err_t err      = ra8_board_audio_init(k_test_audio_rate_hz, k_depths[i], channels);
     TEST_ASSERT_EQ(k_ra8_ok, err);
   }
   TEST_END("audio_init succeeds for every supported bit depth");
@@ -196,18 +200,20 @@ static void test_audio_init_all_bit_depths(void)
  * @par MC/DC:
  * The route loop's decision ``if (err != k_ra8_ok)`` is a single condition.
  * This test supplies the taken vector (err != ok); the not-taken vector is
- * supplied by test_audio_init_all_bit_depths above.  N+1 = 2 vectors.
+ * supplied by internal_test_audio_init_all_bit_depths above.  N+1 = 2 vectors.
  *
+ * @pre The host fake-MMIO and pin-validation backends are available.
  * @pre Clean pin-validator state, then BCLK pre-claimed.
+ * @post The expected status and hardware-visible effects are asserted.
  * @post BCLK remains claimed by the test owner; init returned early.
  *
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_audio_route_pin_conflict(void)
+RA8_INTERNAL static void internal_test_audio_route_pin_conflict(void)
 {
   TEST_BEGIN("audio_init propagates a route pin conflict");
-  reset_state();
+  internal_reset_state();
   const ra8_port_pin_t bclk = (ra8_port_pin_t)k_ra8_board_audio_pin_bclk;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pin_validator_claim(bclk, "test.audio.bclk"));
   const ra8_err_t err = ra8_board_audio_init(k_test_audio_rate_hz, 16U, 2U);
@@ -239,20 +245,22 @@ static void test_audio_route_pin_conflict(void)
  * short-write decision ``if (written != words)`` is single-condition and its
  * not-taken vector is supplied here (taken vector: test 4 below).
  *
+ * @pre The host fake-MMIO and pin-validation backends are available.
  * @pre A successful audio init has set s_audio_initialized.
+ * @post The expected status and hardware-visible effects are asserted.
  * @post SSIE0 transmit FIFO fed with k_test_pcm_word_cnt words.
  *
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_audio_play_full_write(void)
+RA8_INTERNAL static void internal_test_audio_play_full_write(void)
 {
   TEST_BEGIN("audio_play_sample_block writes a full block and returns ok");
-  reset_state();
+  internal_reset_state();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_board_audio_init(k_test_audio_rate_hz, 16U, 2U));
 
-  static uint32_t s_pcm_words[k_test_pcm_word_cnt] = {};
-  const int16_t*  buf                              = (const int16_t*)s_pcm_words;
+  static uint32_t k_pcm_words[k_test_pcm_word_cnt] = {};
+  const int16_t*  buf                              = (const int16_t*)k_pcm_words;
   const ra8_err_t err = ra8_board_audio_play_sample_block(buf, (uint32_t)k_test_pcm_len);
   TEST_ASSERT_EQ(k_ra8_ok, err);
   TEST_END("audio_play_sample_block writes a full block and returns ok");
@@ -277,24 +285,26 @@ static void test_audio_play_full_write(void)
  * See test 3 for the ``if (written != words)`` table; this test supplies the
  * taken vector (written != words).
  *
+ * @pre The host fake-MMIO and pin-validation backends are available.
  * @pre A successful audio init has set s_audio_initialized.
+ * @post The expected status and hardware-visible effects are asserted.
  * @post SSIFSR.TDC pre-seeded full for SSIE channel 0.
  *
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_audio_play_short_write(void)
+RA8_INTERNAL static void internal_test_audio_play_short_write(void)
 {
   TEST_BEGIN("audio_play_sample_block short write returns hw_timeout");
-  reset_state();
+  internal_reset_state();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_board_audio_init(k_test_audio_rate_hz, 16U, 2U));
 
   /* Fill the transmit-FIFO count so ra8_ssie_write_buffer writes zero words. */
   volatile r_ssie_regs_t* ssie = ra8_ssie((uint8_t)k_ra8_board_audio_ssie_channel);
   ssie->SSIFSR = (uint32_t)((uint32_t)k_ra8_ssie_fifo_depth << (uint32_t)k_ra8_ssie_shift_tdc);
 
-  static uint32_t s_pcm_words[k_test_pcm_word_cnt] = {};
-  const int16_t*  buf                              = (const int16_t*)s_pcm_words;
+  static uint32_t k_pcm_words[k_test_pcm_word_cnt] = {};
+  const int16_t*  buf                              = (const int16_t*)k_pcm_words;
   const ra8_err_t err = ra8_board_audio_play_sample_block(buf, (uint32_t)k_test_pcm_len);
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, err);
   TEST_END("audio_play_sample_block short write returns hw_timeout");
@@ -320,16 +330,18 @@ static void test_audio_play_short_write(void)
  * the taken vector.  The not-taken vectors are supplied by the successful
  * apply tests below and the primary board test.
  *
+ * @pre The host fake-MMIO and pin-validation backends are available.
  * @pre Clean pin-validator state, then SCL1 pre-claimed.
+ * @post The expected status and hardware-visible effects are asserted.
  * @post SCL1 remains claimed by the test owner.
  *
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_io_expander_bus_recover_scl_conflict(void)
+RA8_INTERNAL static void internal_test_io_expander_bus_recover_scl_conflict(void)
 {
   TEST_BEGIN("io_expander apply propagates bus-recover SCL conflict");
-  reset_state();
+  internal_reset_state();
   const ra8_port_pin_t scl = RA8_PIN(k_ra8_port_5, k_ra8_pin_12);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pin_validator_claim(scl, "test.ioexp.scl"));
   const ra8_err_t err = ra8_board_io_expander_set_usbhs_device_mode();
@@ -355,16 +367,18 @@ static void test_io_expander_bus_recover_scl_conflict(void)
  * The two ``if (err != k_ra8_ok)`` decisions crossed here are single-condition;
  * this test supplies the taken vector for the sda-input-init leg.
  *
+ * @pre The host fake-MMIO and pin-validation backends are available.
  * @pre Clean pin-validator state, then SDA1 pre-claimed.
+ * @post The expected status and hardware-visible effects are asserted.
  * @post SDA1 remains claimed by the test owner; SCL1 released by recover.
  *
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_io_expander_bus_recover_sda_conflict(void)
+RA8_INTERNAL static void internal_test_io_expander_bus_recover_sda_conflict(void)
 {
   TEST_BEGIN("io_expander bus-recover releases SCL on SDA conflict");
-  reset_state();
+  internal_reset_state();
   const ra8_port_pin_t sda = RA8_PIN(k_ra8_port_5, k_ra8_pin_11);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pin_validator_claim(sda, "test.ioexp.sda"));
   const ra8_err_t err = ra8_board_io_expander_set_usbhs_device_mode();
@@ -394,16 +408,18 @@ static void test_io_expander_bus_recover_sda_conflict(void)
  * (read ok, sda high) that reaches the break.  The both-continue vector
  * (sda low) is supplied by the primary board test.
  *
+ * @pre The host fake-MMIO and pin-validation backends are available.
  * @pre Clean fake state, then P511 input latch high.
+ * @post The expected status and hardware-visible effects are asserted.
  * @post Bus recovered via the early break; U15 write NACKs.
  *
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_io_expander_bus_recover_sda_high(void)
+RA8_INTERNAL static void internal_test_io_expander_bus_recover_sda_high(void)
 {
   TEST_BEGIN("io_expander bus-recover breaks on SDA already high");
-  reset_state();
+  internal_reset_state();
   /* PCNTR2 low half is PIDR; bit 11 == P511 input level. */
   volatile r_port_regs_t* p5 = ra8_port(k_ra8_port_5);
   p5->PCNTR2                 = (uint32_t)(1UL << (uint32_t)k_ra8_pin_11);
@@ -430,16 +446,18 @@ static void test_io_expander_bus_recover_sda_high(void)
  * single-condition; this test supplies the taken vector for the first
  * pull-up drive.
  *
+ * @pre The host fake-MMIO and pin-validation backends are available.
  * @pre Clean pin-validator state, then P109 pre-claimed.
+ * @post The expected status and hardware-visible effects are asserted.
  * @post P109 remains claimed by the test owner.
  *
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_io_expander_pullup_conflict(void)
+RA8_INTERNAL static void internal_test_io_expander_pullup_conflict(void)
 {
   TEST_BEGIN("io_expander apply propagates pull-up-enable conflict");
-  reset_state();
+  internal_reset_state();
   const ra8_port_pin_t pullup_a = RA8_PIN(k_ra8_port_1, k_ra8_pin_9);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pin_validator_claim(pullup_a, "test.ioexp.pullup"));
   const ra8_err_t err = ra8_board_io_expander_set_usbhs_device_mode();
@@ -470,16 +488,18 @@ static void test_io_expander_pullup_conflict(void)
  * (success) vectors.  The taken vectors are supplied by the conflict / NACK
  * tests above and the primary board test.
  *
+ * @pre The host fake-MMIO and pin-validation backends are available.
  * @pre Clean fake state, then RIIC1 ICSR2 = TDRE | TEND.
+ * @post The expected status and hardware-visible effects are asserted.
  * @post U15 output/hiz/iodir writes ACK; apply returns success.
  *
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_io_expander_apply_success(void)
+RA8_INTERNAL static void internal_test_io_expander_apply_success(void)
 {
   TEST_BEGIN("io_expander apply succeeds when RIIC ACKs every write");
-  reset_state();
+  internal_reset_state();
   /* TDRE + TEND pre-armed so every U15 write completes without a timeout. */
   volatile r_i2c_regs_t* riic1 = ra8_i2c_regs((uint8_t)1U);
   riic1->ICSR2 = (uint8_t)((uint8_t)k_ra8_i2c_msk_icsr2_tdre | (uint8_t)k_ra8_i2c_msk_icsr2_tend);
@@ -510,20 +530,22 @@ static void test_io_expander_apply_success(void)
  * (no compound decisions in the delegation lines themselves; the apply
  * decisions are covered by tests 5-9)
  *
+ * @pre The host fake-MMIO and pin-validation backends are available.
  * @pre Clean fake state before each entry point.
+ * @post The expected status and hardware-visible effects are asserted.
  * @post Each entry point exercised for its delegation line.
  *
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_io_expander_entry_points(void)
+RA8_INTERNAL static void internal_test_io_expander_entry_points(void)
 {
   TEST_BEGIN("io_expander host/project/octospi entry points delegate");
-  reset_state();
+  internal_reset_state();
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_board_io_expander_set_usbhs_host_mode());
-  reset_state();
+  internal_reset_state();
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_board_io_expander_apply_project_sw4_defaults());
-  reset_state();
+  internal_reset_state();
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_board_io_expander_set_octospi_active());
   TEST_END("io_expander host/project/octospi entry points delegate");
 }
@@ -547,16 +569,18 @@ static void test_io_expander_entry_points(void)
  * this test supplies the taken vector.  The not-taken vector is supplied by
  * the device-init success test below.
  *
+ * @pre The host fake-MMIO and pin-validation backends are available.
  * @pre Clean pin-validator state, then PD07 pre-claimed.
+ * @post The expected status and hardware-visible effects are asserted.
  * @post PD07 remains claimed by the test owner.
  *
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_usbhs_device_role_pin_conflict(void)
+RA8_INTERNAL static void internal_test_usbhs_device_role_pin_conflict(void)
 {
   TEST_BEGIN("usbhs_device_init returns on PD07 role-pin conflict");
-  reset_state();
+  internal_reset_state();
   const ra8_port_pin_t pd07 = RA8_PIN(k_ra8_port_13, k_ra8_pin_7);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pin_validator_claim(pd07, "test.usbhs.pd07"));
   const ra8_err_t err = ra8_board_usbhs_device_init();
@@ -577,7 +601,7 @@ static void test_usbhs_device_role_pin_conflict(void)
  * ra8_cgc_usbhs_pll_enable's main-oscillator, PLL2 and HOCO waits resolve, so
  * internal_usbhs_clock_and_mstp advances past ra8_cgc_usbhs_pll_enable to its
  * ra8_mstp_enable tail and ra8_board_usbhs_device_init reaches
- * ra8_usb_device_init.  The assertion checks the module's s_usbhs_probe reached
+ * ra8_usb_device_init.  The assertion checks the module's g_usbhs_probe reached
  * its post-device-init value, which proves the pre / post probe writes around
  * ra8_usb_device_init executed regardless of that call's final code (so the
  * check does not depend on host-vs-silicon USB behaviour).
@@ -588,20 +612,22 @@ static void test_usbhs_device_role_pin_conflict(void)
  * (success) vectors.  The taken vectors are supplied by the primary board
  * test (which runs with OSCSF clear so pll-enable times out).
  *
+ * @pre The host fake-MMIO and pin-validation backends are available.
  * @pre Clean fake state, then OSCSF pre-seeded.
- * @post s_usbhs_probe == post-device-init step value.
+ * @post The expected status and hardware-visible effects are asserted.
+ * @post g_usbhs_probe == post-device-init step value.
  *
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_usbhs_device_init_full_bringup(void)
+RA8_INTERNAL static void internal_test_usbhs_device_init_full_bringup(void)
 {
   TEST_BEGIN("usbhs_device_init reaches ra8_usb_device_init after clocking");
-  reset_state();
+  internal_reset_state();
   *ra8_sys_oscsf()    = (uint8_t)k_sys_oscsf_all_ready;
   const ra8_err_t err = ra8_board_usbhs_device_init();
   (void)err;
-  TEST_ASSERT_EQ(k_test_usbhs_probe_post_dev_init, s_usbhs_probe);
+  TEST_ASSERT_EQ(k_test_usbhs_probe_post_dev_init, g_usbhs_probe);
   TEST_END("usbhs_device_init reaches ra8_usb_device_init after clocking");
 }
 
@@ -623,16 +649,18 @@ static void test_usbhs_device_init_full_bringup(void)
  * The bring-up guard ``if (err != k_ra8_ok)`` after clock-and-mstp is
  * single-condition; this test supplies the not-taken (success) vector.
  *
+ * @pre The host fake-MMIO and pin-validation backends are available.
  * @pre Clean fake state, then OSCSF pre-seeded.
+ * @post The expected status and hardware-visible effects are asserted.
  * @post ra8_usb_host_init reached; board host-init returned k_ra8_ok.
  *
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_usbhs_host_init_full_bringup(void)
+RA8_INTERNAL static void internal_test_usbhs_host_init_full_bringup(void)
 {
   TEST_BEGIN("usbhs_host_init reaches ra8_usb_host_init after clocking");
-  reset_state();
+  internal_reset_state();
   *ra8_sys_oscsf()    = (uint8_t)k_sys_oscsf_all_ready;
   const ra8_err_t err = ra8_board_usbhs_host_init();
   TEST_ASSERT_EQ(k_ra8_ok, err);
@@ -656,7 +684,9 @@ static void test_usbhs_host_init_full_bringup(void)
  *
  * @return 0 on success.
  *
+ * @pre The host fake-MMIO and pin-validation backends are available.
  * @pre ra8_fake_mmap register window allocated by the test framework.
+ * @post The expected status and hardware-visible effects are asserted.
  * @post Targeted source lines are instrumented with gcov data.
  *
  * @note Not thread-safe; single-threaded test runner.
@@ -664,19 +694,18 @@ static void test_usbhs_host_init_full_bringup(void)
  */
 int32_t main(void)
 {
-  test_audio_init_all_bit_depths();
-  test_audio_route_pin_conflict();
-  test_audio_play_full_write();
-  test_audio_play_short_write();
-  test_io_expander_bus_recover_scl_conflict();
-  test_io_expander_bus_recover_sda_conflict();
-  test_io_expander_bus_recover_sda_high();
-  test_io_expander_pullup_conflict();
-  test_io_expander_apply_success();
-  test_io_expander_entry_points();
-  test_usbhs_device_role_pin_conflict();
-  test_usbhs_device_init_full_bringup();
-  test_usbhs_host_init_full_bringup();
-  (void)fprintf(stderr, "[OK ] test_ra8_board_ek_ra8d2_audio_usb_cov.c\n");
+  internal_test_audio_init_all_bit_depths();
+  internal_test_audio_route_pin_conflict();
+  internal_test_audio_play_full_write();
+  internal_test_audio_play_short_write();
+  internal_test_io_expander_bus_recover_scl_conflict();
+  internal_test_io_expander_bus_recover_sda_conflict();
+  internal_test_io_expander_bus_recover_sda_high();
+  internal_test_io_expander_pullup_conflict();
+  internal_test_io_expander_apply_success();
+  internal_test_io_expander_entry_points();
+  internal_test_usbhs_device_role_pin_conflict();
+  internal_test_usbhs_device_init_full_bringup();
+  internal_test_usbhs_host_init_full_bringup();
   return 0;
 }

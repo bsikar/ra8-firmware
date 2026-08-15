@@ -28,11 +28,11 @@ typedef enum : uint8_t {
   k_board_pdm_valid_bits = 20U, /**< PDM-IF signed PCM payload width. */
 } ra8_board_pdm_width_t;
 
-static const ra8_port_pin_t k_board_pdm_pin_clk = RA8_PIN(k_ra8_port_8, k_ra8_pin_12);
-static const ra8_port_pin_t k_board_pdm_pin_dat = RA8_PIN(k_ra8_port_5, k_ra8_pin_2);
+static const ra8_port_pin_t s_board_pdm_pin_clk = RA8_PIN(k_ra8_port_8, k_ra8_pin_12);
+static const ra8_port_pin_t s_board_pdm_pin_dat = RA8_PIN(k_ra8_port_5, k_ra8_pin_2);
 
 /* NOLINTBEGIN(readability-magic-numbers) -- HUM Table 49.7 row and reset filter coefficients. */
-static const ra8_pdm_channel_cfg_t k_board_pdm_sph0690 = {
+static const ra8_pdm_channel_cfg_t s_board_pdm_sph0690 = {
   .sinc_order   = 4U,
   .clock_div    = 0U,
   .sinc_dec     = 0x7CU,
@@ -66,11 +66,11 @@ static const ra8_pdm_channel_cfg_t k_board_pdm_sph0690 = {
 
 ra8_err_t ra8_board_pdm_mic_route(void)
 {
-  ra8_err_t err = ra8_pfs_route_peripheral(k_board_pdm_pin_clk, k_ra8_psel_pdm, "board.pdm.clk");
+  ra8_err_t err = ra8_pfs_route_peripheral(s_board_pdm_pin_clk, k_ra8_psel_pdm, "board.pdm.clk");
   if (err != k_ra8_ok) {
     return err;
   }
-  err = ra8_pfs_route_peripheral(k_board_pdm_pin_dat, k_ra8_psel_pdm, "board.pdm.dat");
+  err = ra8_pfs_route_peripheral(s_board_pdm_pin_dat, k_ra8_psel_pdm, "board.pdm.dat");
   return err;
 }
 
@@ -84,7 +84,7 @@ ra8_err_t ra8_board_pdm_mic_get_config(ra8_board_pdm_mic_t         microphone,
     return k_ra8_err_invalid_arg;
   }
   *out_config = (ra8_board_pdm_mic_config_t){
-    .pdm            = k_board_pdm_sph0690,
+    .pdm            = s_board_pdm_sph0690,
     .sample_rate_hz = (uint32_t)k_board_pdm_sample_rate_hz,
     .channel        = (uint8_t)k_ra8_pdm_ch2,
     .valid_bits     = (uint8_t)k_board_pdm_valid_bits,
