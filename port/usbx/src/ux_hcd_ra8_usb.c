@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_log.h"
 #include "ux_api.h"
@@ -106,7 +107,7 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
-static uint8_t internal_ep_to_pipe(uint8_t ep_addr)
+RA8_INTERNAL static uint8_t internal_ep_to_pipe(uint8_t ep_addr)
 {
   const uint8_t ep = ep_addr & (uint8_t)k_ra8_usb_hcd_ep_addr_num_mask;
   if (ep == 0U) {
@@ -137,7 +138,7 @@ static uint8_t internal_ep_to_pipe(uint8_t ep_addr)
  *
  * @since 0.1.0
  */
-static unsigned int internal_endpoint_create(struct UX_ENDPOINT_STRUCT* ep)
+RA8_INTERNAL static unsigned int internal_endpoint_create(struct UX_ENDPOINT_STRUCT* ep)
 {
   if (ep == nullptr) {
     return UX_ERROR;
@@ -208,7 +209,7 @@ static unsigned int internal_endpoint_create(struct UX_ENDPOINT_STRUCT* ep)
  * @note Runs on the USBX host task context.
  * @since 0.1.0
  */
-static unsigned int internal_control_xfer(struct UX_TRANSFER_STRUCT* tr)
+RA8_INTERNAL static unsigned int internal_control_xfer(struct UX_TRANSFER_STRUCT* tr)
 {
   ra8_usb_setup_t setup = {
     .bm_request_type = (uint8_t)tr->ux_transfer_request_function,
@@ -264,7 +265,8 @@ static unsigned int internal_control_xfer(struct UX_TRANSFER_STRUCT* tr)
  * @note Runs on the USBX host task context.
  * @since 0.1.0
  */
-static unsigned int internal_bulk_xfer(struct UX_TRANSFER_STRUCT* tr, uint8_t ep_addr, uint8_t pipe)
+RA8_INTERNAL static unsigned int
+internal_bulk_xfer(struct UX_TRANSFER_STRUCT* tr, uint8_t ep_addr, uint8_t pipe)
 {
   if ((ep_addr & (uint8_t)k_ra8_usb_hcd_ep_addr_dir_in_bit) != 0U) {
     uint16_t len = (uint16_t)tr->ux_transfer_request_requested_length;
@@ -303,7 +305,7 @@ static unsigned int internal_bulk_xfer(struct UX_TRANSFER_STRUCT* tr, uint8_t ep
  *
  * @since 0.1.0
  */
-static unsigned int internal_transfer_request(struct UX_TRANSFER_STRUCT* tr)
+RA8_INTERNAL static unsigned int internal_transfer_request(struct UX_TRANSFER_STRUCT* tr)
 {
   if (tr == nullptr || tr->ux_transfer_request_endpoint == nullptr) {
     return UX_TRANSFER_ERROR;
@@ -346,7 +348,7 @@ static unsigned int internal_transfer_request(struct UX_TRANSFER_STRUCT* tr)
  * @note Runs on the USBX host task context.
  * @since 0.1.0
  */
-static unsigned int internal_port_reset(void)
+RA8_INTERNAL static unsigned int internal_port_reset(void)
 {
   if (ra8_usb_host_bus_reset(s_hcd.speed, true) != k_ra8_ok) {
     return UX_ERROR;
@@ -379,7 +381,7 @@ static unsigned int internal_port_reset(void)
  * @note Runs on the USBX host task context.
  * @since 0.1.0
  */
-static unsigned int internal_port_set_enabled(bool enable)
+RA8_INTERNAL static unsigned int internal_port_set_enabled(bool enable)
 {
   if (ra8_usb_host_set_uact(s_hcd.speed, enable) != k_ra8_ok) {
     return UX_ERROR;

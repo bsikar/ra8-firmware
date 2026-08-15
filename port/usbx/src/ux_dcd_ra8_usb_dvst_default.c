@@ -38,24 +38,24 @@
 #include "ux_utility.h"
 
 /**
- * @var s_busreset_rearm_count
+ * @var priv_busreset_rearm_count
  * @brief Number of times ::ra8_usb_device_busreset_rearm was invoked
  *        from the DVST handler in response to a Default-state entry.
  *
  * @details Bisect probe. After plug-in macOS issues a bus reset every
  * ~10 ms until SETUP succeeds. If this counter grows but
- * ::s_setup_packet_count stays at 0, the re-arm is firing but the IP
+ * ::priv_setup_packet_count stays at 0, the re-arm is firing but the IP
  * is still failing to latch SETUP -- look at PIPECFG / DCPMAXP via
  * JLink. If the counter never grows, the DVST -> Default branch
- * isn't being taken (check ::s_dvst_state_history).
+ * isn't being taken (check ::priv_dvst_state_history).
  *
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
  */
-volatile uint32_t s_busreset_rearm_count = 0U;
+volatile uint32_t priv_busreset_rearm_count = 0U;
 
 /**
- * @var s_dcpctr_after_rearm
+ * @var priv_dcpctr_after_rearm
  * @brief Snapshot of ``DCPCTR`` taken at the end of every busreset_rearm.
  *
  * @details Bisect probe for the "VALID never asserts after bus reset"
@@ -72,10 +72,10 @@ volatile uint32_t s_busreset_rearm_count = 0U;
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
  */
-volatile uint16_t s_dcpctr_after_rearm = 0U;
+volatile uint16_t priv_dcpctr_after_rearm = 0U;
 
 /**
- * @var s_intenb0_after_rearm
+ * @var priv_intenb0_after_rearm
  * @brief Snapshot of ``INTENB0`` taken at the end of every busreset_rearm.
  *
  * @details Bisect probe; expected value matches the device-mode mask in
@@ -89,10 +89,10 @@ volatile uint16_t s_dcpctr_after_rearm = 0U;
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
  */
-volatile uint16_t s_intenb0_after_rearm = 0U;
+volatile uint16_t priv_intenb0_after_rearm = 0U;
 
 /**
- * @var s_cfifosel_after_rearm
+ * @var priv_cfifosel_after_rearm
  * @brief Snapshot of ``CFIFOSEL`` taken at the end of every busreset_rearm.
  *
  * @details Bisect probe. The rearm no longer writes CFIFOSEL (probe
@@ -106,15 +106,15 @@ volatile uint16_t s_intenb0_after_rearm = 0U;
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
  */
-volatile uint16_t s_cfifosel_after_rearm = 0U;
+volatile uint16_t priv_cfifosel_after_rearm = 0U;
 
 /**
- * @var s_dcpctr_pre_rearm
+ * @var priv_dcpctr_pre_rearm
  * @brief Snapshot of ``DCPCTR`` taken at the START of every busreset_rearm.
  *
  * @details Captured BEFORE any rearm-side writes so it reflects the
  * state the host's bus reset left the DCP in. Compared against
- * ::s_dcpctr_after_rearm to confirm that the rearm did (or did not)
+ * ::priv_dcpctr_after_rearm to confirm that the rearm did (or did not)
  * mutate DCP fields.
  *
  * Bit positions of interest (HUM Ch 36.2.21 / 37.2.31 DCPCTR p 1991 /
@@ -133,10 +133,10 @@ volatile uint16_t s_cfifosel_after_rearm = 0U;
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
  */
-volatile uint16_t s_dcpctr_pre_rearm = 0U;
+volatile uint16_t priv_dcpctr_pre_rearm = 0U;
 
 /**
- * @var s_setup_token_observed
+ * @var priv_setup_token_observed
  * @brief Counter incremented every time the IRQ snapshot proves the
  *        device-side controller latched a SETUP token from the host.
  *
@@ -147,7 +147,7 @@ volatile uint16_t s_dcpctr_pre_rearm = 0U;
  *  2. ``DCPCTR.SQMON`` (bit 6, HUM Ch 37.2.31 p 2095) was set after
  *     a Default-state DVST. Per the HUM, SQMON transitions 0->1 only
  *     "on successful reception of the setup packet" in device mode,
- *     so a non-zero SQMON observed in ::s_dcpctr_pre_rearm is hard
+ *     so a non-zero SQMON observed in ::priv_dcpctr_pre_rearm is hard
  *     proof that a SETUP was latched even if the IRQ never saw the
  *     VALID edge (race between the polled-dispatch tick and the
  *     SIE's SETUP-latch state machine).
@@ -159,7 +159,7 @@ volatile uint16_t s_dcpctr_pre_rearm = 0U;
  * @note Single-writer (::ux_dcd_ra8_usb_irq + ::internal_handle_dvst).
  * @since 0.1.0
  */
-volatile uint32_t s_setup_token_observed = 0U;
+volatile uint32_t priv_setup_token_observed = 0U;
 
 /**
  * @var s_prev_dcpctr_sqmon
@@ -181,20 +181,20 @@ volatile uint32_t s_setup_token_observed = 0U;
 static volatile uint16_t s_prev_dcpctr_sqmon = 0U;
 
 /**
- * @var s_dispatch_attempts
+ * @var priv_dispatch_attempts
  * @brief Count of SQMON-driven dispatch attempts (regardless of outcome).
  *
  * @details Incremented on every Default-state DVST tick, before the
- * SQMON-driven SETUP drain. Pair with ::s_setup_dispatch_count to see
+ * SQMON-driven SETUP drain. Pair with ::priv_setup_dispatch_count to see
  * how many attempts produced a successful drain.
  *
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
  */
-volatile uint32_t s_dispatch_attempts = 0U;
+volatile uint32_t priv_dispatch_attempts = 0U;
 
 /**
- * @var s_intsts0_at_sqmon_edge
+ * @var priv_intsts0_at_sqmon_edge
  * @brief Snapshot of INTSTS0 captured immediately before the SQMON-driven
  *        ``ra8_usb_read_setup_unconditional`` call.
  *
@@ -209,15 +209,15 @@ volatile uint32_t s_dispatch_attempts = 0U;
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
  */
-volatile uint16_t s_intsts0_at_sqmon_edge = 0U;
+volatile uint16_t priv_intsts0_at_sqmon_edge = 0U;
 
 /**
- * @var s_intsts0_observed_or_recent
+ * @var priv_intsts0_observed_or_recent
  * @brief Most-recent INTSTS0 value sampled at the start of the
  *        Default-state tight-poll for VALID (HUM Ch 37.2.18 p 2081,
  *        VALID = bit 3, mask 0x0008).
  *
- * @details Distinct from ::s_intsts0_observed_or (which OR-accumulates
+ * @details Distinct from ::priv_intsts0_observed_or (which OR-accumulates
  * forever and saturates after the first VBSE storm). This probe is
  * over-written every Default-state DVST tick with the live INTSTS0
  * read just before the tight-poll loop, so a JLink reader can answer
@@ -227,10 +227,10 @@ volatile uint16_t s_intsts0_at_sqmon_edge = 0U;
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
  */
-volatile uint16_t s_intsts0_observed_or_recent = 0U;
+volatile uint16_t priv_intsts0_observed_or_recent = 0U;
 
 /**
- * @var s_dcpctr_bit_map_observed
+ * @var priv_dcpctr_bit_map_observed
  * @brief Cumulative bitwise-OR of every ``DCPCTR`` value sampled at the
  *        Default-state DVST entry.
  *
@@ -244,10 +244,10 @@ volatile uint16_t s_intsts0_observed_or_recent = 0U;
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
  */
-volatile uint16_t s_dcpctr_bit_map_observed = 0U;
+volatile uint16_t priv_dcpctr_bit_map_observed = 0U;
 
 /**
- * @var s_usbreq_first_nonzero
+ * @var priv_usbreq_first_nonzero
  * @brief First non-zero ``USBREQ`` value captured by the tight-poll
  *        Default-state loop (HUM Ch 37.2.26 p 2090).
  *
@@ -262,10 +262,10 @@ volatile uint16_t s_dcpctr_bit_map_observed = 0U;
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
  */
-volatile uint16_t s_usbreq_first_nonzero = 0U;
+volatile uint16_t priv_usbreq_first_nonzero = 0U;
 
 /**
- * @var s_unconditional_dispatch_count
+ * @var priv_unconditional_dispatch_count
  * @brief Count of unconditional ``_ux_device_stack_control_request_process``
  *        invocations made by the Default-state polled worker.
  *
@@ -273,16 +273,16 @@ volatile uint16_t s_usbreq_first_nonzero = 0U;
  * gating on ``INTSTS0.VALID`` (HUM Ch 37.2.18 p 2081) or
  * ``DCPCTR.SQMON`` (HUM Ch 37.2.32 p 2093). The dispatch fires whenever
  * the latched ``USBREQ`` (HUM Ch 37.2.26 p 2090) differs from
- * ::s_last_dispatched_usbreq, which prevents infinite re-dispatch of the
+ * ::priv_last_dispatched_usbreq, which prevents infinite re-dispatch of the
  * same SETUP transaction.
  *
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
  */
-volatile uint32_t s_unconditional_dispatch_count = 0U;
+volatile uint32_t priv_unconditional_dispatch_count = 0U;
 
 /**
- * @var s_last_dispatched_usbreq
+ * @var priv_last_dispatched_usbreq
  * @brief Last ``USBREQ`` (HUM Ch 37.2.26 p 2090) value forwarded to the
  *        chapter-9 dispatcher by the unconditional Default-state worker.
  *
@@ -294,7 +294,7 @@ volatile uint32_t s_unconditional_dispatch_count = 0U;
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
  */
-volatile uint16_t s_last_dispatched_usbreq = 0U;
+volatile uint16_t priv_last_dispatched_usbreq = 0U;
 
 /**
  * @enum ra8_usb_dcd_default_poll_t
@@ -335,7 +335,7 @@ typedef enum : uint16_t {
  * every SETUP. The four mirrors USBREQ/USBVAL/USBINDX/USBLENG
  * (HUM Ch 37.2.26..29 p 2090..2092) latch the wire-format SETUP and
  * PERSIST across the SIE's auto-clears. If any mirror is non-zero, copy
- * them into ``s_setup_packet_buffer`` in USB 2.0 Ch 9.3 wire byte order.
+ * them into ``priv_setup_packet_buffer`` in USB 2.0 Ch 9.3 wire byte order.
  *
  * @param[in] usbreq_live USBREQ snapshot.
  * @param[in] usbval_live USBVAL snapshot.
@@ -344,36 +344,36 @@ typedef enum : uint16_t {
  *
  * @pre Caller is on the ISR callback path in DVSQ=Default.
  * @pre All four arguments hold the live mirror values.
- * @post ``s_setup_packet_buffer`` populated if any mirror is non-zero.
- * @post ``s_setup_packet_count`` incremented in that case.
+ * @post ``priv_setup_packet_buffer`` populated if any mirror is non-zero.
+ * @post ``priv_setup_packet_count`` incremented in that case.
  *
  * @note ISR-callback context; must not block.
  * @since 0.1.0
  */
-static void internal_dvst_capture_setup_mirror(uint16_t usbreq_live,
-                                               uint16_t usbval_live,
-                                               uint16_t usbindx_live,
-                                               uint16_t usbleng_live)
+RA8_INTERNAL static void internal_dvst_capture_setup_mirror(uint16_t usbreq_live,
+                                                            uint16_t usbval_live,
+                                                            uint16_t usbindx_live,
+                                                            uint16_t usbleng_live)
 {
   const bool any_nonzero = ((usbreq_live | usbval_live | usbindx_live | usbleng_live) != 0U);
   if (!any_nonzero) {
     return;
   }
-  s_setup_packet_buffer[k_setup_idx_bmrt] = (uint8_t)(usbreq_live & k_setup_byte_mask);
-  s_setup_packet_buffer[k_setup_idx_brq] =
+  priv_setup_packet_buffer[k_setup_idx_bmrt] = (uint8_t)(usbreq_live & k_setup_byte_mask);
+  priv_setup_packet_buffer[k_setup_idx_brq] =
     (uint8_t)((usbreq_live >> k_setup_byte_shift) & k_setup_byte_mask);
-  s_setup_packet_buffer[k_setup_idx_val_lo] = (uint8_t)(usbval_live & k_setup_byte_mask);
-  s_setup_packet_buffer[k_setup_idx_val_hi] =
+  priv_setup_packet_buffer[k_setup_idx_val_lo] = (uint8_t)(usbval_live & k_setup_byte_mask);
+  priv_setup_packet_buffer[k_setup_idx_val_hi] =
     (uint8_t)((usbval_live >> k_setup_byte_shift) & k_setup_byte_mask);
-  s_setup_packet_buffer[k_setup_idx_idx_lo] = (uint8_t)(usbindx_live & k_setup_byte_mask);
-  s_setup_packet_buffer[k_setup_idx_idx_hi] =
+  priv_setup_packet_buffer[k_setup_idx_idx_lo] = (uint8_t)(usbindx_live & k_setup_byte_mask);
+  priv_setup_packet_buffer[k_setup_idx_idx_hi] =
     (uint8_t)((usbindx_live >> k_setup_byte_shift) & k_setup_byte_mask);
-  s_setup_packet_buffer[k_setup_idx_len_lo] = (uint8_t)(usbleng_live & k_setup_byte_mask);
-  s_setup_packet_buffer[k_setup_idx_len_hi] =
+  priv_setup_packet_buffer[k_setup_idx_len_lo] = (uint8_t)(usbleng_live & k_setup_byte_mask);
+  priv_setup_packet_buffer[k_setup_idx_len_hi] =
     (uint8_t)((usbleng_live >> k_setup_byte_shift) & k_setup_byte_mask);
-  s_setup_packet_count++;
-  if (s_usbreq_first_nonzero == 0U) {
-    s_usbreq_first_nonzero = usbreq_live;
+  priv_setup_packet_count++;
+  if (priv_usbreq_first_nonzero == 0U) {
+    priv_usbreq_first_nonzero = usbreq_live;
   }
 }
 
@@ -382,7 +382,7 @@ static void internal_dvst_capture_setup_mirror(uint16_t usbreq_live,
  *
  * @details Gate ONLY on USBREQ-change so the same SETUP cannot re-fire
  * across DVST entries within one Default dwell. A fresh USBREQ wire
- * value (different from ``s_last_dispatched_usbreq``) is treated as a
+ * value (different from ``priv_last_dispatched_usbreq``) is treated as a
  * new SETUP and pushed into chapter-9, even when both VALID and SQMON
  * have already been auto-cleared by the SIE. After dispatch we W0C-ack
  * INTSTS0.VALID and pulse a benign DCPCTR write.
@@ -395,21 +395,21 @@ static void internal_dvst_capture_setup_mirror(uint16_t usbreq_live,
  *
  * @pre Caller is in DVSQ=Default.
  * @pre ``reg`` is non-null.
- * @post ``s_last_dispatched_usbreq`` updated when dispatched.
+ * @post ``priv_last_dispatched_usbreq`` updated when dispatched.
  * @post INTSTS0.VALID W0C-cleared after dispatch.
  *
  * @note ISR-callback context; must not block.
  * @since 0.1.0
  */
-static void internal_dvst_dispatch_if_new(volatile r_usb_regs_t* reg,
-                                          uint16_t               usbreq_live,
-                                          uint16_t               usbval_live,
-                                          uint16_t               usbindx_live,
-                                          uint16_t               usbleng_live)
+RA8_INTERNAL static void internal_dvst_dispatch_if_new(volatile r_usb_regs_t* reg,
+                                                       uint16_t               usbreq_live,
+                                                       uint16_t               usbval_live,
+                                                       uint16_t               usbindx_live,
+                                                       uint16_t               usbleng_live)
 {
-  if (usbreq_live == s_last_dispatched_usbreq) {
+  if (usbreq_live == priv_last_dispatched_usbreq) {
     /* USBREQ unchanged since last dispatch: do not re-fire. */
-    s_dispatch_skip_reason |= (uint32_t)k_ra8_usb_skip_usbreq_unchanged;
+    priv_dispatch_skip_reason |= (uint32_t)k_ra8_usb_skip_usbreq_unchanged;
     return;
   }
   ra8_usb_setup_t setup = {};
@@ -419,11 +419,11 @@ static void internal_dvst_dispatch_if_new(volatile r_usb_regs_t* reg,
   setup.w_index         = usbindx_live;
   setup.w_length        = usbleng_live;
 
-  s_setup_token_observed++;
-  s_setup_dispatch_count++;
-  s_unconditional_dispatch_count++;
-  (void)internal_dispatch_setup(&setup);
-  s_last_dispatched_usbreq = usbreq_live;
+  priv_setup_token_observed++;
+  priv_setup_dispatch_count++;
+  priv_unconditional_dispatch_count++;
+  (void)priv_dispatch_setup(&setup);
+  priv_last_dispatched_usbreq = usbreq_live;
 
   /* Post-dispatch W0C-ack of INTSTS0.VALID (HUM Ch 37.2.18 p 2081). */
   reg->INTSTS0 = (uint16_t)(reg->INTSTS0 & (uint16_t)~(uint16_t)k_ra8_intsts0_mask_valid);
@@ -445,29 +445,29 @@ static void internal_dvst_dispatch_if_new(volatile r_usb_regs_t* reg,
  * @pre Caller confirmed ``dvsq == k_ra8_dvsq_default``.
  * @pre Bridge is past ``ux_dcd_ra8_usb_initialize``.
  * @post DCP re-armed via ``ra8_usb_device_busreset_rearm``.
- * @post ``s_busreset_rearm_count`` incremented.
+ * @post ``priv_busreset_rearm_count`` incremented.
  *
  * @note ISR-callback context; must not block.
  * @since 0.1.0
  */
-void internal_dvst_default_state(ra8_usb_speed_t speed)
+void priv_dvst_default_state(ra8_usb_speed_t speed)
 {
   /* HUM Ch 37.2.32 DCPCTR p 2093: capture DCPCTR BEFORE the rearm.
    * DCPCTR.SQMON resets to 1 = DATA1-expected, so "SQMON==1" is NOT
    * a SETUP-arrival signal -- VALID is the race-immune signal. */
   volatile r_usb_regs_t* const reg = (speed == k_ra8_usb_speed_hs) ? ra8_usb_hs() : ra8_usb_fs();
   if (reg != nullptr) {
-    const uint16_t dcpctr_pre = reg->DCPCTR;
-    s_dcpctr_pre_rearm        = dcpctr_pre;
-    s_dcpctr_bit_map_observed = (uint16_t)(s_dcpctr_bit_map_observed | dcpctr_pre);
+    const uint16_t dcpctr_pre    = reg->DCPCTR;
+    priv_dcpctr_pre_rearm        = dcpctr_pre;
+    priv_dcpctr_bit_map_observed = (uint16_t)(priv_dcpctr_bit_map_observed | dcpctr_pre);
 
     /* SQMON probe retained for older bisect notes. */
     const uint16_t now_sqmon = (uint16_t)(dcpctr_pre & (uint16_t)k_ra8_dcpctr_mask_sqmon);
 
-    s_dispatch_attempts++;
-    const uint16_t intsts0_pre   = reg->INTSTS0;
-    s_intsts0_at_sqmon_edge      = intsts0_pre;
-    s_intsts0_observed_or_recent = intsts0_pre;
+    priv_dispatch_attempts++;
+    const uint16_t intsts0_pre      = reg->INTSTS0;
+    priv_intsts0_at_sqmon_edge      = intsts0_pre;
+    priv_intsts0_observed_or_recent = intsts0_pre;
 
     /* Drain persistent SETUP mirrors every Default-state tick. */
     const uint16_t usbreq_live  = reg->USBREQ;
@@ -480,10 +480,10 @@ void internal_dvst_default_state(ra8_usb_speed_t speed)
     s_prev_dcpctr_sqmon = now_sqmon;
   }
   (void)ra8_usb_device_busreset_rearm(speed);
-  s_busreset_rearm_count++;
+  priv_busreset_rearm_count++;
   if (reg != nullptr) {
-    s_dcpctr_after_rearm   = reg->DCPCTR;
-    s_intenb0_after_rearm  = reg->INTENB0;
-    s_cfifosel_after_rearm = reg->CFIFOSEL;
+    priv_dcpctr_after_rearm   = reg->DCPCTR;
+    priv_intenb0_after_rearm  = reg->INTENB0;
+    priv_cfifosel_after_rearm = reg->CFIFOSEL;
   }
 }

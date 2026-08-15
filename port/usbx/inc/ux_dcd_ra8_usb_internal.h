@@ -83,7 +83,7 @@ typedef struct {
  * storms at the full bus rate: BRDY is a real event so the event-less
  * storm guard never masks it and RTOS thread mode starves (GitHub
  * issue #6). internal_irq_drain_orphan_out pulls that packet into
- * s_orphan_buf -- which W0C-clears BRDYSTS and parks the pipe -- and
+ * priv_orphan_buf -- which W0C-clears BRDYSTS and parks the pipe -- and
  * internal_submit_pipe hands it to the next bulk-OUT transfer. The
  * bulk-OUT wire is strictly serial, so a held packet always belongs to
  * the next OUT transfer USBX submits. */
@@ -96,23 +96,23 @@ typedef enum : uint16_t {
  * @brief Externally-readable diagnostic counters for OUT-pipe stall debug.
  * @details Read these via JLink to localise where bulk-OUT data flow stops.
  *          Layout in declaration order, 4 bytes each. Address resolved
- *          via `arm-none-eabi-nm | grep s_diag`. Increment-only; never
+ *          via `arm-none-eabi-nm | grep priv_diag`. Increment-only; never
  *          cleared at runtime so a JLink dump after a single host write
  *          tells the full story.
  */
 typedef struct {
-  volatile uint32_t xfer_req_total;          /**< +0x00 internal_transfer_request entered. */
-  volatile uint32_t xfer_req_null_arg;       /**< +0x04 tr or ep was NULL.                 */
-  volatile uint32_t xfer_req_bad_pipe;       /**< +0x08 pipe index >= max.                 */
-  volatile uint32_t xfer_req_pipe2_in;       /**< +0x0C pipe == 2.                         */
-  volatile uint32_t xfer_req_pipe2_out_dir;  /**< +0x10 pipe == 2 + OUT direction.         */
-  volatile uint32_t xfer_req_pipe2_stashed;  /**< +0x14 pipe2 OUT slot populated.          */
-  volatile uint32_t xfer_req_pipe2_block;    /**< +0x18 about to tx_semaphore_get.         */
-  volatile uint32_t xfer_req_pipe2_woken;    /**< +0x1C tx_semaphore_get returned.         */
-  volatile uint32_t irq_walk_total;          /**< +0x20 IRQ pipe-walk loop iterations.     */
-  volatile uint32_t irq_walk_pipe2_seen;     /**< +0x24 pipe2 walked with non-NULL xfer.   */
-  volatile uint32_t irq_walk_pipe2_complete; /**< +0x28 queue_out drained pipe2.           */
-  volatile uint32_t irq_walk_pipe2_no_data;  /**< +0x2C queue_out returned no_data.        */
+  volatile uint32_t xfer_req_total;          /**< +0x00 priv_transfer_request entered.   */
+  volatile uint32_t xfer_req_null_arg;       /**< +0x04 tr or ep was NULL.               */
+  volatile uint32_t xfer_req_bad_pipe;       /**< +0x08 pipe index >= max.               */
+  volatile uint32_t xfer_req_pipe2_in;       /**< +0x0C pipe == 2.                       */
+  volatile uint32_t xfer_req_pipe2_out_dir;  /**< +0x10 pipe == 2 + OUT direction.       */
+  volatile uint32_t xfer_req_pipe2_stashed;  /**< +0x14 pipe2 OUT slot populated.        */
+  volatile uint32_t xfer_req_pipe2_block;    /**< +0x18 about to tx_semaphore_get.       */
+  volatile uint32_t xfer_req_pipe2_woken;    /**< +0x1C tx_semaphore_get returned.       */
+  volatile uint32_t irq_walk_total;          /**< +0x20 IRQ pipe-walk loop iterations.   */
+  volatile uint32_t irq_walk_pipe2_seen;     /**< +0x24 pipe2 walked with non-NULL xfer. */
+  volatile uint32_t irq_walk_pipe2_complete; /**< +0x28 queue_out drained pipe2.         */
+  volatile uint32_t irq_walk_pipe2_no_data;  /**< +0x2C queue_out returned no_data.      */
   volatile uint32_t in_rearm_nak;            /**< +0x30 stashed IN at PID=NAK with a loaded
                                               *   bank; PID forced back to BUF.            */
   volatile uint32_t in_restage_nak;          /**< +0x34 stashed IN at PID=NAK, empty bank,
@@ -215,7 +215,7 @@ typedef enum : uint16_t {
 
 /**
  * @enum ra8_usb_dispatch_skip_bit_t
- * @brief Bits ORed into ``s_dispatch_skip_reason`` to record why a
+ * @brief Bits ORed into ``priv_dispatch_skip_reason`` to record why a
  *        SETUP dispatch was skipped or how it completed.
  */
 typedef enum : uint8_t {
@@ -228,7 +228,7 @@ typedef enum : uint8_t {
 /* -------------------------------------------------------------------------- */
 
 /**
- * @var s_dcd
+ * @var priv_dcd
  * @brief The single bridge instance, defined in ux_dcd_ra8_usb.c.
  * @details RA8 has two USB controllers but the device stack only ever
  * drives one at a time, so a single instance is sufficient. Updated from
@@ -237,119 +237,119 @@ typedef enum : uint8_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-extern ra8_usb_dcd_t s_dcd;
+extern ra8_usb_dcd_t priv_dcd;
 
 /**
- * @var s_diag
+ * @var priv_diag
  * @brief Bridge diagnostic counter block, defined in ux_dcd_ra8_usb.c.
  * @note Single-writer per counter; JLink-readable.
  * @since 0.1.0
  */
-extern ra8_usb_dcd_diag_t s_diag;
+extern ra8_usb_dcd_diag_t priv_diag;
 
 /**
- * @var s_dcd_auto_echo_enable
+ * @var priv_dcd_auto_echo_enable
  * @brief Non-zero once ISR-side auto-echo is armed. Defined in
  *        ux_dcd_ra8_usb.c.
  * @since 0.1.0
  */
-extern volatile uint32_t s_dcd_auto_echo_enable;
+extern volatile uint32_t priv_dcd_auto_echo_enable;
 
 /**
- * @var s_dcd_auto_echo_out_pipe
+ * @var priv_dcd_auto_echo_out_pipe
  * @brief Pipe drained by the in-ISR auto-echo path. Defined in
  *        ux_dcd_ra8_usb.c.
  * @since 0.1.0
  */
-extern uint8_t s_dcd_auto_echo_out_pipe;
+extern uint8_t priv_dcd_auto_echo_out_pipe;
 
 /**
- * @var s_dcd_auto_echo_in_pipe
+ * @var priv_dcd_auto_echo_in_pipe
  * @brief Pipe the auto-echo path re-queues onto. Defined in
  *        ux_dcd_ra8_usb.c.
  * @since 0.1.0
  */
-extern uint8_t s_dcd_auto_echo_in_pipe;
+extern uint8_t priv_dcd_auto_echo_in_pipe;
 
 /**
- * @var s_isr_spurious_run
+ * @var priv_isr_spurious_run
  * @brief Consecutive event-less ISR entries since the last SysTick
  *        re-enable. Defined in ux_dcd_ra8_usb.c.
  * @since 0.1.0
  */
-extern volatile uint32_t s_isr_spurious_run;
+extern volatile uint32_t priv_isr_spurious_run;
 
 /**
- * @var s_orphan_buf
+ * @var priv_orphan_buf
  * @brief One held no-receiver bulk-OUT packet. Defined in
  *        ux_dcd_ra8_usb_xfer.c.
  * @since 0.1.0
  */
-extern uint8_t s_orphan_buf[k_ra8_usb_orphan_bytes];
+extern uint8_t priv_orphan_buf[k_ra8_usb_orphan_bytes];
 
 /**
- * @var s_orphan_len
+ * @var priv_orphan_len
  * @brief Held orphan byte count; 0 = empty. Defined in
  *        ux_dcd_ra8_usb_xfer.c.
  * @since 0.1.0
  */
-extern uint16_t s_orphan_len;
+extern uint16_t priv_orphan_len;
 
 /**
- * @var s_orphan_pipe
+ * @var priv_orphan_pipe
  * @brief Pipe the held orphan packet is on. Defined in
  *        ux_dcd_ra8_usb_xfer.c.
  * @since 0.1.0
  */
-extern uint8_t s_orphan_pipe;
+extern uint8_t priv_orphan_pipe;
 
 /**
- * @var s_setup_dispatch_count
+ * @var priv_setup_dispatch_count
  * @brief Count of SETUP packets fed into the chapter-9 dispatcher.
  *        Defined in ux_dcd_ra8_usb_setup.c.
  * @since 0.1.0
  */
-extern volatile uint32_t s_setup_dispatch_count;
+extern volatile uint32_t priv_setup_dispatch_count;
 
 /**
- * @var s_setup_packet_buffer
+ * @var priv_setup_packet_buffer
  * @brief Wire-format bytes of the most recent SETUP packet. Defined in
  *        ux_dcd_ra8_usb_setup.c.
  * @since 0.1.0
  */
-extern volatile uint8_t s_setup_packet_buffer[8];
+extern volatile uint8_t priv_setup_packet_buffer[8];
 
 /**
- * @var s_setup_packet_count
- * @brief Total SETUP packets latched into ::s_setup_packet_buffer.
+ * @var priv_setup_packet_count
+ * @brief Total SETUP packets latched into ::priv_setup_packet_buffer.
  *        Defined in ux_dcd_ra8_usb_setup.c.
  * @since 0.1.0
  */
-extern volatile uint32_t s_setup_packet_count;
+extern volatile uint32_t priv_setup_packet_count;
 
 /**
- * @var s_dispatch_skip_reason
+ * @var priv_dispatch_skip_reason
  * @brief Last-iteration bitmask of why a SETUP dispatch was skipped or
  *        completed. Defined in ux_dcd_ra8_usb_setup.c.
  * @since 0.1.0
  */
-extern volatile uint32_t s_dispatch_skip_reason;
+extern volatile uint32_t priv_dispatch_skip_reason;
 
 /**
- * @var s_last_dispatched_setup_fp
+ * @var priv_last_dispatched_setup_fp
  * @brief 64-bit fingerprint of the last dispatched SETUP packet. Defined
  *        in ux_dcd_ra8_usb_setup.c.
  * @since 0.1.0
  */
-extern volatile uint64_t s_last_dispatched_setup_fp;
+extern volatile uint64_t priv_last_dispatched_setup_fp;
 
 /**
- * @var s_setup_token_observed
+ * @var priv_setup_token_observed
  * @brief Counter of proven device-side SETUP-token latches. Defined in
  *        ux_dcd_ra8_usb_dvst_default.c.
  * @since 0.1.0
  */
-extern volatile uint32_t s_setup_token_observed;
+extern volatile uint32_t priv_setup_token_observed;
 
 /* -------------------------------------------------------------------------- */
 /* Shared helpers (formerly static; called across translation units) */
@@ -364,14 +364,14 @@ extern volatile uint32_t s_setup_token_observed;
  * @retval 1..9 The masked endpoint number, used directly as the pipe index.
  * @retval ::k_ux_dcd_ra8_usb_max_pipes The masked endpoint number is >= the
  *         pipe count (out-of-range overflow sentinel).
- * @pre ::s_dcd is past ``ux_dcd_ra8_usb_initialize``.
+ * @pre ::priv_dcd is past ``ux_dcd_ra8_usb_initialize``.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
  * @post State reflects operation result.
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV uint8_t internal_ep_to_pipe(uint8_t ep_addr);
+RA8_PRIV uint8_t priv_ep_to_pipe(uint8_t ep_addr);
 
 /**
  * @brief USBX ``UX_DCD_TRANSFER_REQUEST`` dispatcher entry point.
@@ -382,14 +382,14 @@ RA8_PRIV uint8_t internal_ep_to_pipe(uint8_t ep_addr);
  * @return USBX result code.
  * @retval UX_SUCCESS Transfer submitted (and completed by the IRQ path).
  * @retval UX_TRANSFER_ERROR Validation or bridge-layer rejection.
- * @pre ::s_dcd is past ``ux_dcd_ra8_usb_initialize``.
+ * @pre ::priv_dcd is past ``ux_dcd_ra8_usb_initialize``.
  * @pre Caller is the USBX device-stack dispatcher (task context).
- * @post For non-EP0 IN transfers, ``s_dcd.pipes[pipe]`` holds the stash.
- * @post ``s_diag`` counters reflect the dispatch.
+ * @post For non-EP0 IN transfers, ``priv_dcd.pipes[pipe]`` holds the stash.
+ * @post ``priv_diag`` counters reflect the dispatch.
  * @note Not ISR-safe; runs on the USBX device task context.
  * @since 0.1.0
  */
-RA8_PRIV unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* tr);
+RA8_PRIV unsigned int priv_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* tr);
 
 /**
  * @brief Mask the USB IRQ at the NVIC to break an interrupt storm.
@@ -402,7 +402,7 @@ RA8_PRIV unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT*
  * @note ISR-safe.
  * @since 0.1.0
  */
-RA8_PRIV void internal_usbfs_irq_mask(void);
+RA8_PRIV void priv_usbfs_irq_mask(void);
 
 /**
  * @brief Append one packed event to the JLink-readable trace ring.
@@ -412,13 +412,13 @@ RA8_PRIV void internal_usbfs_irq_mask(void);
  * @param[in] code   Per-kind code byte (opcode / bRequest / none).
  * @param[in] length Per-kind 16-bit payload (length or wValue).
  * @pre Any context; single concurrent writer (IRQ-callback path).
- * @pre ::s_dcd is past ux_dcd_ra8_usb_initialize.
+ * @pre ::priv_dcd is past ux_dcd_ra8_usb_initialize.
  * @post One ring slot holds the packed event; sequence incremented.
  * @post No other state changes.
  * @note Diagnostic only; never read by production code.
  * @since 0.1.0
  */
-RA8_PRIV void internal_trace_event(uint8_t kind, uint8_t code, uint16_t length);
+RA8_PRIV void priv_trace_event(uint8_t kind, uint8_t code, uint16_t length);
 
 /**
  * @brief Pick the ELC event number for a controller.
@@ -428,13 +428,13 @@ RA8_PRIV void internal_trace_event(uint8_t kind, uint8_t code, uint16_t length);
  * @retval k_ra8_elc_event_usbhs_int_resume speed is k_ra8_usb_speed_hs.
  * @retval k_ra8_elc_event_usbfs_int speed is k_ra8_usb_speed_fs (any non-HS value).
  * @pre speed is k_ra8_usb_speed_fs or k_ra8_usb_speed_hs.
- * @pre ::s_dcd is past ux_dcd_ra8_usb_initialize.
+ * @pre ::priv_dcd is past ux_dcd_ra8_usb_initialize.
  * @post No state mutated.
  * @post Pure function.
  * @note Pure function.
  * @since 0.1.0
  */
-RA8_PRIV ra8_elc_event_t internal_pick_event(ra8_usb_speed_t speed);
+RA8_PRIV ra8_elc_event_t priv_pick_event(ra8_usb_speed_t speed);
 
 /**
  * @brief Pick the ISR trampoline for a controller.
@@ -444,13 +444,13 @@ RA8_PRIV ra8_elc_event_t internal_pick_event(ra8_usb_speed_t speed);
  * @retval internal_usbhs_isr speed is k_ra8_usb_speed_hs.
  * @retval internal_usbfs_isr speed is k_ra8_usb_speed_fs (any non-HS value).
  * @pre speed is k_ra8_usb_speed_fs or k_ra8_usb_speed_hs.
- * @pre ::s_dcd is past ux_dcd_ra8_usb_initialize.
+ * @pre ::priv_dcd is past ux_dcd_ra8_usb_initialize.
  * @post No state mutated.
  * @post Pure function.
  * @note Pure function.
  * @since 0.1.0
  */
-RA8_PRIV ra8_isr_handler_t internal_pick_isr(ra8_usb_speed_t speed);
+RA8_PRIV ra8_isr_handler_t priv_pick_isr(ra8_usb_speed_t speed);
 
 /**
  * @brief ra8_usb_attach_handler trampoline into ::ux_dcd_ra8_usb_irq.
@@ -458,14 +458,14 @@ RA8_PRIV ra8_isr_handler_t internal_pick_isr(ra8_usb_speed_t speed);
  * @param[in,out] ctx Unused ra8_usb callback context.
  * @param[in] speed Which controller fired.
  * @param[in] status_mask INTSTS0 snapshot forwarded from ra8_usb_dispatch.
- * @pre ::s_dcd is past ux_dcd_ra8_usb_initialize.
+ * @pre ::priv_dcd is past ux_dcd_ra8_usb_initialize.
  * @pre Caller is ra8_usb_dispatch.
  * @post ::ux_dcd_ra8_usb_irq has run for the snapshot.
  * @post No other state changes here.
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV void internal_event_cb(void* ctx, ra8_usb_speed_t speed, uint16_t status_mask);
+RA8_PRIV void priv_event_cb(void* ctx, ra8_usb_speed_t speed, uint16_t status_mask);
 
 /**
  * @brief Push a decoded SETUP packet into the USBX chapter-9 dispatcher.
@@ -481,7 +481,7 @@ RA8_PRIV void internal_event_cb(void* ctx, ra8_usb_speed_t speed, uint16_t statu
  * @note Runs in IRQ-callback context; must not block.
  * @since 0.1.0
  */
-RA8_PRIV unsigned int internal_dispatch_setup(const ra8_usb_setup_t* setup);
+RA8_PRIV unsigned int priv_dispatch_setup(const ra8_usb_setup_t* setup);
 
 /**
  * @brief Handle the CTRT (control-transfer-stage) interrupt branch.
@@ -489,26 +489,26 @@ RA8_PRIV unsigned int internal_dispatch_setup(const ra8_usb_setup_t* setup);
  * @param[in] speed Which controller fired.
  * @param[in] intsts0 INTSTS0 snapshot captured at the top of the ISR.
  * @pre Caller has masked intsts0 against the event mask.
- * @pre ::s_dcd is past ux_dcd_ra8_usb_initialize.
+ * @pre ::priv_dcd is past ux_dcd_ra8_usb_initialize.
  * @post For SET_ADDRESS, INTSTS0.VALID is W0C-cleared.
  * @post For other fresh SETUPs the chapter-9 dispatcher has run.
  * @note ISR-callback context; must not block.
  * @since 0.1.0
  */
-RA8_PRIV void internal_handle_ctrt(ra8_usb_speed_t speed, uint16_t intsts0);
+RA8_PRIV void priv_handle_ctrt(ra8_usb_speed_t speed, uint16_t intsts0);
 
 /**
  * @brief Drain a deferred control-OUT data stage and run chapter-9.
  * @details Defined in ux_dcd_ra8_usb_setup.c.
  * @param[in] speed Which controller fired (FS or HS).
- * @pre ::s_dcd is past ux_dcd_ra8_usb_initialize.
+ * @pre ::priv_dcd is past ux_dcd_ra8_usb_initialize.
  * @pre Runs ahead of the CTRT status handling within the same IRQ.
  * @post On a drained packet, the pending flag is cleared and chapter-9 ran.
  * @post On a not-yet-landed bank, state is unchanged (retried next IRQ).
  * @note ISR-callback context; must not block past the bounded CFIFO wait.
  * @since 0.1.0
  */
-RA8_PRIV void internal_handle_ctrl_out_data(ra8_usb_speed_t speed);
+RA8_PRIV void priv_handle_ctrl_out_data(ra8_usb_speed_t speed);
 
 /**
  * @brief Process the DVSQ=Default branch of the DVST handler.
@@ -517,13 +517,13 @@ RA8_PRIV void internal_handle_ctrl_out_data(ra8_usb_speed_t speed);
  * then re-arms the DCP via ra8_usb_device_busreset_rearm.
  * @param[in] speed Which controller fired.
  * @pre Caller confirmed dvsq == k_ra8_dvsq_default.
- * @pre ::s_dcd is past ux_dcd_ra8_usb_initialize.
+ * @pre ::priv_dcd is past ux_dcd_ra8_usb_initialize.
  * @post DCP re-armed via ra8_usb_device_busreset_rearm.
- * @post ::s_busreset_rearm_count incremented.
+ * @post ::priv_busreset_rearm_count incremented.
  * @note ISR-callback context; must not block.
  * @since 0.1.0
  */
-RA8_PRIV void internal_dvst_default_state(ra8_usb_speed_t speed);
+RA8_PRIV void priv_dvst_default_state(ra8_usb_speed_t speed);
 
 /**
  * @brief Capture DVSTCTR0 / RHST history, mirror speed, dispatch DVST.
@@ -531,13 +531,13 @@ RA8_PRIV void internal_dvst_default_state(ra8_usb_speed_t speed);
  * @param[in] speed Which controller fired (FS or HS).
  * @param[in] intsts0 INTSTS0 snapshot (forwarded to internal_handle_dvst).
  * @pre Caller has already verified the DVST bit is set in intsts0.
- * @pre ::s_dcd is past ux_dcd_ra8_usb_initialize.
- * @post ::s_dvst_irq_count and the RHST history are updated.
+ * @pre ::priv_dcd is past ux_dcd_ra8_usb_initialize.
+ * @post ::priv_dvst_irq_count and the RHST history are updated.
  * @post Speed mirror updated and the DVST state-machine update has run.
  * @note ISR-only; must not block.
  * @since 0.1.0
  */
-RA8_PRIV void internal_irq_dvst_prelude(ra8_usb_speed_t speed, uint16_t intsts0);
+RA8_PRIV void priv_irq_dvst_prelude(ra8_usb_speed_t speed, uint16_t intsts0);
 
 #ifdef __cplusplus
 }

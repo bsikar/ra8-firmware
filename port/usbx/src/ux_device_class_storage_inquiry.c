@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ux_api.h"
 #include "ux_device_class_storage.h"
 #include "ux_device_stack.h"
@@ -94,7 +95,8 @@ typedef enum : uint8_t {
  * @note Pure data marshalling; no transport side effects.
  * @since 0.1.0
  */
-static void internal_inquiry_fill_standard(UX_SLAVE_CLASS_STORAGE* storage, ULONG lun, UCHAR* buf)
+RA8_INTERNAL static void
+internal_inquiry_fill_standard(UX_SLAVE_CLASS_STORAGE* storage, ULONG lun, UCHAR* buf)
 {
   buf[UX_SLAVE_CLASS_STORAGE_INQUIRY_RESPONSE_PERIPHERAL_TYPE] =
     (UCHAR)storage->ux_slave_class_storage_lun[lun].ux_slave_class_storage_media_type;
@@ -137,7 +139,7 @@ static void internal_inquiry_fill_standard(UX_SLAVE_CLASS_STORAGE* storage, ULON
  * @note Pure data marshalling; no transport side effects.
  * @since 0.1.0
  */
-static ULONG internal_inquiry_fill_vpd_pages(UCHAR* buf)
+RA8_INTERNAL static ULONG internal_inquiry_fill_vpd_pages(UCHAR* buf)
 {
   buf[k_inq_off_page_code]   = UX_SLAVE_CLASS_STORAGE_INQUIRY_PAGE_CODE_STANDARD;
   buf[k_inq_vpd0_count_off]  = (UCHAR)k_inq_vpd0_pages;
@@ -164,7 +166,7 @@ static ULONG internal_inquiry_fill_vpd_pages(UCHAR* buf)
  * @note Pure data marshalling; no transport side effects.
  * @since 0.1.0
  */
-static ULONG internal_inquiry_fill_serial(UX_SLAVE_CLASS_STORAGE* storage, UCHAR* buf)
+RA8_INTERNAL static ULONG internal_inquiry_fill_serial(UX_SLAVE_CLASS_STORAGE* storage, UCHAR* buf)
 {
   _ux_utility_short_put_big_endian(buf, UX_SLAVE_CLASS_STORAGE_INQUIRY_PAGE_CODE_SERIAL);
   _ux_utility_short_put_big_endian(buf + k_inq_off_version, (USHORT)k_inq_serial_len);
@@ -194,7 +196,7 @@ static ULONG internal_inquiry_fill_serial(UX_SLAVE_CLASS_STORAGE* storage, UCHAR
  * @note Mirrors the vendored default-branch behaviour exactly.
  * @since 0.1.0
  */
-static UINT
+RA8_INTERNAL static UINT
 internal_inquiry_reject(UX_SLAVE_CLASS_STORAGE* storage, ULONG lun, UX_SLAVE_ENDPOINT* endpoint_in)
 {
 #if !defined(UX_DEVICE_STANDALONE)
@@ -232,10 +234,10 @@ internal_inquiry_reject(UX_SLAVE_CLASS_STORAGE* storage, ULONG lun, UX_SLAVE_END
  * @note Mirrors the vendored transport tail exactly.
  * @since 0.1.0
  */
-static void internal_inquiry_send(UX_SLAVE_CLASS_STORAGE* storage,
-                                  UX_SLAVE_ENDPOINT*      endpoint_in,
-                                  UX_SLAVE_TRANSFER*      transfer_request,
-                                  ULONG                   inquiry_length)
+RA8_INTERNAL static void internal_inquiry_send(UX_SLAVE_CLASS_STORAGE* storage,
+                                               UX_SLAVE_ENDPOINT*      endpoint_in,
+                                               UX_SLAVE_TRANSFER*      transfer_request,
+                                               ULONG                   inquiry_length)
 {
 #if defined(UX_DEVICE_STANDALONE)
   UX_PARAMETER_NOT_USED(endpoint_in);
