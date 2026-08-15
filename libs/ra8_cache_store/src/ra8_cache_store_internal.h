@@ -163,7 +163,7 @@ static_assert(sizeof(ra8_cs_super_t) <= (uint32_t)k_ra8_cache_store_sector_bytes
  * @note Thread-safe: pure over its arguments.
  * @since 0.1.0
  */
-RA8_PRIV uint32_t ra8_cs_crc32(const uint8_t* data, uint32_t len);
+RA8_PRIV uint32_t priv_cache_store_crc32(const uint8_t* data, uint32_t len);
 
 /**
  * @brief Read one LevelX logical sector into the store staging buffer region.
@@ -184,9 +184,9 @@ RA8_PRIV uint32_t ra8_cs_crc32(const uint8_t* data, uint32_t len);
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_cs_sector_read(const ra8_cache_store_t* store,
-                                      uint32_t                 sector,
-                                      uint8_t*                 out512);
+RA8_PRIV ra8_err_t priv_cache_store_sector_read(const ra8_cache_store_t* store,
+                                                uint32_t                 sector,
+                                                uint8_t*                 out512);
 
 /**
  * @brief Write one LevelX logical sector from a one-sector source buffer.
@@ -201,14 +201,14 @@ RA8_PRIV ra8_err_t ra8_cs_sector_read(const ra8_cache_store_t* store,
  *
  * @pre `store->flash` is an open LevelX NOR partition.
  * @pre @p in512 covers one sector.
- * @post On `k_ra8_ok`, a later ::ra8_cs_sector_read returns @p in512.
+ * @post On `k_ra8_ok`, a later ::priv_cache_store_sector_read returns @p in512.
  * @post On any error the sector mapping is unchanged.
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_cs_sector_write(ra8_cache_store_t* store,
-                                       uint32_t           sector,
-                                       const uint8_t*     in512);
+RA8_PRIV ra8_err_t priv_cache_store_sector_write(ra8_cache_store_t* store,
+                                                 uint32_t           sector,
+                                                 const uint8_t*     in512);
 
 /**
  * @brief Release a LevelX logical sector back to the free pool.
@@ -227,7 +227,7 @@ RA8_PRIV ra8_err_t ra8_cs_sector_write(ra8_cache_store_t* store,
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_cs_sector_release(ra8_cache_store_t* store, uint32_t sector);
+RA8_PRIV ra8_err_t priv_cache_store_sector_release(ra8_cache_store_t* store, uint32_t sector);
 
 /**
  * @brief Find the index slot holding @p key.
@@ -245,7 +245,7 @@ RA8_PRIV ra8_err_t ra8_cs_sector_release(ra8_cache_store_t* store, uint32_t sect
  * @note Thread-safe with respect to a quiescent store (pure read).
  * @since 0.1.0
  */
-RA8_PRIV int32_t ra8_cs_index_find(const ra8_cache_store_t* store, uint32_t key);
+RA8_PRIV int32_t priv_cache_store_index_find(const ra8_cache_store_t* store, uint32_t key);
 
 /**
  * @brief Claim a free index slot and populate it for @p key.
@@ -267,12 +267,12 @@ RA8_PRIV int32_t ra8_cs_index_find(const ra8_cache_store_t* store, uint32_t key)
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-RA8_PRIV int32_t ra8_cs_index_add(ra8_cache_store_t* store,
-                                  uint32_t           key,
-                                  uint32_t           start_sector,
-                                  uint16_t           sector_count,
-                                  uint32_t           byte_len,
-                                  bool               pinned);
+RA8_PRIV int32_t priv_cache_store_index_add(ra8_cache_store_t* store,
+                                            uint32_t           key,
+                                            uint32_t           start_sector,
+                                            uint16_t           sector_count,
+                                            uint32_t           byte_len,
+                                            bool               pinned);
 
 /**
  * @brief Write the superblock (sector 0) with the given clean marker.
@@ -294,7 +294,7 @@ RA8_PRIV int32_t ra8_cs_index_add(ra8_cache_store_t* store,
  * @note Not thread-safe; shares the store staging buffer.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_cs_super_write(ra8_cache_store_t* store, uint32_t clean);
+RA8_PRIV ra8_err_t priv_cache_store_super_write(ra8_cache_store_t* store, uint32_t clean);
 
 /**
  * @brief Serialize the live index into the on-flash checkpoint directory.
@@ -316,7 +316,7 @@ RA8_PRIV ra8_err_t ra8_cs_super_write(ra8_cache_store_t* store, uint32_t clean);
  * @note Not thread-safe; shares the store staging buffer.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_cs_dir_save(ra8_cache_store_t* store, uint32_t* out_entry_count);
+RA8_PRIV ra8_err_t priv_cache_store_dir_save(ra8_cache_store_t* store, uint32_t* out_entry_count);
 
 #ifdef __cplusplus
 }

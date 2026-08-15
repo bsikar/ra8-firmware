@@ -52,7 +52,7 @@ typedef enum : uint32_t {
 /* Shared low-level helpers (declared in ra8_cache_store_internal.h) */
 /* ------------------------------------------------------------------------- */
 
-uint32_t ra8_cs_crc32(const uint8_t* data, uint32_t len)
+RA8_PRIV uint32_t priv_cache_store_crc32(const uint8_t* data, uint32_t len)
 {
   if (data == nullptr) {
     return 0U;
@@ -74,7 +74,9 @@ uint32_t ra8_cs_crc32(const uint8_t* data, uint32_t len)
   return crc ^ (uint32_t)k_ra8_cs_crc32_seed;
 }
 
-ra8_err_t ra8_cs_sector_read(const ra8_cache_store_t* store, uint32_t sector, uint8_t* out512)
+RA8_PRIV ra8_err_t priv_cache_store_sector_read(const ra8_cache_store_t* store,
+                                                uint32_t                 sector,
+                                                uint8_t*                 out512)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(out512, s_tag, "out512");
@@ -88,7 +90,9 @@ ra8_err_t ra8_cs_sector_read(const ra8_cache_store_t* store, uint32_t sector, ui
   return k_ra8_err_hw_init_failed;
 }
 
-ra8_err_t ra8_cs_sector_write(ra8_cache_store_t* store, uint32_t sector, const uint8_t* in512)
+RA8_PRIV ra8_err_t priv_cache_store_sector_write(ra8_cache_store_t* store,
+                                                 uint32_t           sector,
+                                                 const uint8_t*     in512)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(in512, s_tag, "in512");
@@ -100,7 +104,7 @@ ra8_err_t ra8_cs_sector_write(ra8_cache_store_t* store, uint32_t sector, const u
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_cs_sector_release(ra8_cache_store_t* store, uint32_t sector)
+RA8_PRIV ra8_err_t priv_cache_store_sector_release(ra8_cache_store_t* store, uint32_t sector)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(store->flash, s_tag, "flash");
@@ -111,7 +115,7 @@ ra8_err_t ra8_cs_sector_release(ra8_cache_store_t* store, uint32_t sector)
   return k_ra8_ok;
 }
 
-int32_t ra8_cs_index_find(const ra8_cache_store_t* store, uint32_t key)
+RA8_PRIV int32_t priv_cache_store_index_find(const ra8_cache_store_t* store, uint32_t key)
 {
   if (store == nullptr) {
     return -1;
@@ -131,12 +135,12 @@ int32_t ra8_cs_index_find(const ra8_cache_store_t* store, uint32_t key)
   return -1;
 }
 
-int32_t ra8_cs_index_add(ra8_cache_store_t* store,
-                         uint32_t           key,
-                         uint32_t           start_sector,
-                         uint16_t           sector_count,
-                         uint32_t           byte_len,
-                         bool               pinned)
+RA8_PRIV int32_t priv_cache_store_index_add(ra8_cache_store_t* store,
+                                            uint32_t           key,
+                                            uint32_t           start_sector,
+                                            uint16_t           sector_count,
+                                            uint32_t           byte_len,
+                                            bool               pinned)
 {
   if (store == nullptr) {
     return -1;
@@ -168,7 +172,7 @@ int32_t ra8_cs_index_add(ra8_cache_store_t* store,
 /* Superblock */
 /* ------------------------------------------------------------------------- */
 
-ra8_err_t ra8_cs_super_write(ra8_cache_store_t* store, uint32_t clean)
+RA8_PRIV ra8_err_t priv_cache_store_super_write(ra8_cache_store_t* store, uint32_t clean)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(store->staging, s_tag, "staging");
@@ -188,10 +192,10 @@ ra8_err_t ra8_cs_super_write(ra8_cache_store_t* store, uint32_t clean)
       sb.entry_count++;
     }
   }
-  sb.crc = ra8_cs_crc32((const uint8_t*)&sb, (uint32_t)(sizeof(sb) - sizeof(sb.crc)));
+  sb.crc = priv_cache_store_crc32((const uint8_t*)&sb, (uint32_t)(sizeof(sb) - sizeof(sb.crc)));
   (void)memset(store->staging, 0, (size_t)k_ra8_cache_store_sector_bytes);
   (void)memcpy(store->staging, &sb, sizeof(sb));
-  return ra8_cs_sector_write(store, 0U, store->staging);
+  return priv_cache_store_sector_write(store, 0U, store->staging);
 }
 
 /**
@@ -212,11 +216,11 @@ ra8_err_t ra8_cs_super_write(ra8_cache_store_t* store, uint32_t clean)
  * @note Not thread-safe; shares the store staging buffer.
  * @since 0.1.0
  */
-static ra8_err_t cs_super_read(ra8_cache_store_t* store, ra8_cs_super_t* out_sb)
+RA8_INTERNAL static ra8_err_t internal_super_read(ra8_cache_store_t* store, ra8_cs_super_t* out_sb)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(out_sb, s_tag, "out_sb");
-  if (ra8_cs_sector_read(store, 0U, store->staging) != k_ra8_ok) {
+  if (priv_cache_store_sector_read(store, 0U, store->staging) != k_ra8_ok) {
     (void)memset(out_sb, 0, sizeof(*out_sb));
     return k_ra8_ok;
   }
@@ -239,7 +243,7 @@ static ra8_err_t cs_super_read(ra8_cache_store_t* store, ra8_cs_super_t* out_sb)
  * @note Thread-safe: pure over its argument (no I/O).
  * @since 0.1.0
  */
-static bool cs_super_is_clean(const ra8_cs_super_t* sb)
+RA8_INTERNAL static bool internal_super_is_clean(const ra8_cs_super_t* sb)
 {
   if (sb == nullptr) {
     return false;
@@ -247,7 +251,8 @@ static bool cs_super_is_clean(const ra8_cs_super_t* sb)
   if (sb->magic != (uint32_t)k_ra8_cs_super_magic) {
     return false;
   }
-  uint32_t want = ra8_cs_crc32((const uint8_t*)sb, (uint32_t)(sizeof(*sb) - sizeof(sb->crc)));
+  uint32_t want =
+    priv_cache_store_crc32((const uint8_t*)sb, (uint32_t)(sizeof(*sb) - sizeof(sb->crc)));
   if (sb->crc != want) {
     return false;
   }
@@ -278,7 +283,8 @@ static bool cs_super_is_clean(const ra8_cs_super_t* sb)
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-static uint32_t cs_dir_pack_sector(ra8_cache_store_t* store, uint16_t* slot, uint8_t* out512)
+RA8_INTERNAL static uint32_t
+internal_dir_pack_sector(ra8_cache_store_t* store, uint16_t* slot, uint8_t* out512)
 {
   if (store == nullptr) {
     return 0U;
@@ -311,15 +317,17 @@ static uint32_t cs_dir_pack_sector(ra8_cache_store_t* store, uint16_t* slot, uin
   return packed;
 }
 
-ra8_err_t ra8_cs_dir_save(ra8_cache_store_t* store, uint32_t* out_entry_count)
+RA8_PRIV ra8_err_t priv_cache_store_dir_save(ra8_cache_store_t* store, uint32_t* out_entry_count)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(out_entry_count, s_tag, "out_entry_count");
   uint32_t count = 0U;
   uint16_t slot  = 0U;
   for (uint16_t d = 0U; d < store->checkpoint_dirs; d++) {
-    count += cs_dir_pack_sector(store, &slot, store->staging);
-    RA8_RETURN_ON_ERROR(ra8_cs_sector_write(store, 1U + (uint32_t)d, store->staging), s_tag, "dir");
+    count += internal_dir_pack_sector(store, &slot, store->staging);
+    RA8_RETURN_ON_ERROR(priv_cache_store_sector_write(store, 1U + (uint32_t)d, store->staging),
+                        s_tag,
+                        "dir");
   }
   *out_entry_count = count;
   return k_ra8_ok;
@@ -342,10 +350,10 @@ ra8_err_t ra8_cs_dir_save(ra8_cache_store_t* store, uint32_t* out_entry_count)
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-static void cs_dir_unpack_sector(ra8_cache_store_t* store,
-                                 const uint8_t*     in512,
-                                 uint32_t*          loaded,
-                                 uint32_t           entry_count)
+RA8_INTERNAL static void internal_dir_unpack_sector(ra8_cache_store_t* store,
+                                                    const uint8_t*     in512,
+                                                    uint32_t*          loaded,
+                                                    uint32_t           entry_count)
 {
   if (store == nullptr) {
     return;
@@ -360,8 +368,12 @@ static void cs_dir_unpack_sector(ra8_cache_store_t* store,
     ra8_cs_dir_ent_t ent = {};
     (void)memcpy(&ent, &in512[(size_t)e * (uint32_t)k_ra8_cs_dir_ent_bytes], sizeof(ent));
     bool pinned = (ent.flags & (uint16_t)k_ra8_cache_store_flag_pinned) != 0U;
-    (void)
-      ra8_cs_index_add(store, ent.key, ent.start_sector, ent.sector_count, ent.byte_len, pinned);
+    (void)priv_cache_store_index_add(store,
+                                     ent.key,
+                                     ent.start_sector,
+                                     ent.sector_count,
+                                     ent.byte_len,
+                                     pinned);
     store->live_sectors += ent.sector_count;
     (*loaded)++;
   }
@@ -370,7 +382,7 @@ static void cs_dir_unpack_sector(ra8_cache_store_t* store,
 /**
  * @brief Load @p entry_count directory entries from the checkpoint into the index.
  * @details Reads each checkpoint directory sector and hands it to
- *          ::cs_dir_unpack_sector until the recorded entry count is loaded.
+ *          ::internal_dir_unpack_sector until the recorded entry count is loaded.
  * @param[in,out] store       Store whose index is rebuilt.
  * @param[in]     entry_count Entries the superblock recorded.
  * @return Error code.
@@ -384,7 +396,7 @@ static void cs_dir_unpack_sector(ra8_cache_store_t* store,
  * @note Not thread-safe; shares the store staging buffer.
  * @since 0.1.0
  */
-static ra8_err_t cs_dir_load(ra8_cache_store_t* store, uint32_t entry_count)
+RA8_INTERNAL static ra8_err_t internal_dir_load(ra8_cache_store_t* store, uint32_t entry_count)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(store->staging, s_tag, "staging");
@@ -397,8 +409,10 @@ static ra8_err_t cs_dir_load(ra8_cache_store_t* store, uint32_t entry_count)
     if (loaded >= entry_count) {
       break;
     }
-    RA8_RETURN_ON_ERROR(ra8_cs_sector_read(store, 1U + (uint32_t)d, store->staging), s_tag, "dir");
-    cs_dir_unpack_sector(store, store->staging, &loaded, entry_count);
+    RA8_RETURN_ON_ERROR(priv_cache_store_sector_read(store, 1U + (uint32_t)d, store->staging),
+                        s_tag,
+                        "dir");
+    internal_dir_unpack_sector(store, store->staging, &loaded, entry_count);
   }
   return k_ra8_ok;
 }
@@ -425,9 +439,10 @@ static ra8_err_t cs_dir_load(ra8_cache_store_t* store, uint32_t entry_count)
  * @note Not thread-safe; shares the store staging buffer.
  * @since 0.1.0
  */
-static bool cs_hdr_read(ra8_cache_store_t* store, uint32_t s, ra8_cs_entry_hdr_t* out_hdr)
+RA8_INTERNAL static bool
+internal_hdr_read(ra8_cache_store_t* store, uint32_t s, ra8_cs_entry_hdr_t* out_hdr)
 {
-  if (ra8_cs_sector_read(store, s, store->staging) != k_ra8_ok) {
+  if (priv_cache_store_sector_read(store, s, store->staging) != k_ra8_ok) {
     return false;
   }
   ra8_cs_entry_hdr_t h = {};
@@ -444,7 +459,8 @@ static bool cs_hdr_read(ra8_cache_store_t* store, uint32_t s, ra8_cs_entry_hdr_t
   if (((uint64_t)s + (uint64_t)h.sector_count) > (uint64_t)store->logical_sectors) {
     return false;
   }
-  uint32_t want = ra8_cs_crc32((const uint8_t*)&h, (uint32_t)(sizeof(h) - sizeof(h.hdr_crc)));
+  uint32_t want =
+    priv_cache_store_crc32((const uint8_t*)&h, (uint32_t)(sizeof(h) - sizeof(h.hdr_crc)));
   if (h.hdr_crc != want) {
     return false;
   }
@@ -459,20 +475,26 @@ static bool cs_hdr_read(ra8_cache_store_t* store, uint32_t s, ra8_cs_entry_hdr_t
  * @param[in]     h        Validated entry header.
  * @param[in,out] max_seq  Running maximum append sequence number.
  * @return Nothing.
- * @pre @p h passed ::cs_hdr_read.
+ * @pre @p h passed ::internal_hdr_read.
  * @pre @p max_seq is writable.
  * @post The run is indexed and `store->live_sectors` grows by its length.
  * @post `*max_seq >= h.seq`.
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-static void cs_scan_accept(ra8_cache_store_t* store, const ra8_cs_entry_hdr_t* h, uint32_t* max_seq)
+RA8_INTERNAL static void
+internal_scan_accept(ra8_cache_store_t* store, const ra8_cs_entry_hdr_t* h, uint32_t* max_seq)
 {
   bool pinned = (h->flags & (uint16_t)k_ra8_cache_store_flag_pinned) != 0U;
-  if (ra8_cs_index_find(store, h->key) >= 0) {
+  if (priv_cache_store_index_find(store, h->key) >= 0) {
     return; /* write-once: a duplicate key on flash is ignored (keep the first). */
   }
-  if (ra8_cs_index_add(store, h->key, h->start_sector, h->sector_count, h->byte_len, pinned) < 0) {
+  if (priv_cache_store_index_add(store,
+                                 h->key,
+                                 h->start_sector,
+                                 h->sector_count,
+                                 h->byte_len,
+                                 pinned) < 0) {
     return; /* index full: stop indexing further entries. */
   }
   store->live_sectors += h->sector_count;
@@ -497,7 +519,7 @@ static void cs_scan_accept(ra8_cache_store_t* store, const ra8_cs_entry_hdr_t* h
  * @note Not thread-safe; shares the store staging buffer.
  * @since 0.1.0
  */
-static ra8_err_t cs_scan_log(ra8_cache_store_t* store)
+RA8_INTERNAL static ra8_err_t internal_scan_log(ra8_cache_store_t* store)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(store->staging, s_tag, "staging");
@@ -509,11 +531,11 @@ static ra8_err_t cs_scan_log(ra8_cache_store_t* store)
       break;
     }
     ra8_cs_entry_hdr_t h = {};
-    if (!cs_hdr_read(store, s, &h)) {
+    if (!internal_hdr_read(store, s, &h)) {
       s += 1U;
       continue;
     }
-    cs_scan_accept(store, &h, &max_seq);
+    internal_scan_accept(store, &h, &max_seq);
     s += h.sector_count;
   }
   store->next_seq = max_seq + 1U;
@@ -540,7 +562,7 @@ static ra8_err_t cs_scan_log(ra8_cache_store_t* store)
  * @note Thread-safe: pure validation (no I/O).
  * @since 0.1.0
  */
-static ra8_err_t cs_validate_cfg(const ra8_cache_store_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_validate_cfg(const ra8_cache_store_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg");
   RA8_CHECK_NULL_PTR(cfg->nor_flash, s_tag, "nor_flash");
@@ -571,13 +593,14 @@ static ra8_err_t cs_validate_cfg(const ra8_cache_store_cfg_t* cfg)
  * @retval k_ra8_ok               Geometry derived and stored.
  * @retval k_ra8_err_invalid_size `logical_sectors` too small for the layout.
  * @pre @p store and @p cfg are non-NULL.
- * @pre @p cfg passed ::cs_validate_cfg.
+ * @pre @p cfg passed ::internal_validate_cfg.
  * @post On `k_ra8_ok`, `log_start < logical_sectors` and `data_capacity > 0`.
  * @post On error @p store geometry is left partially set (init aborts).
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-static ra8_err_t cs_geometry(ra8_cache_store_t* store, const ra8_cache_store_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_geometry(ra8_cache_store_t*           store,
+                                                const ra8_cache_store_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg");
@@ -615,7 +638,8 @@ static ra8_err_t cs_geometry(ra8_cache_store_t* store, const ra8_cache_store_cfg
  * @note Not thread-safe; single-threaded bring-up.
  * @since 0.1.0
  */
-static ra8_err_t cs_open_levelx(ra8_cache_store_t* store, const ra8_cache_store_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_open_levelx(ra8_cache_store_t*           store,
+                                                   const ra8_cache_store_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg");
@@ -637,7 +661,9 @@ static ra8_err_t cs_open_levelx(ra8_cache_store_t* store, const ra8_cache_store_
    * (empty) checkpoint instead of scanning the whole -- as-yet unmapped -- log
    * region, which on LevelX would allocate a physical sector per read. */
   if (cfg->format) {
-    RA8_RETURN_ON_ERROR(ra8_cs_super_write(store, (uint32_t)k_ra8_cs_clean), s_tag, "format super");
+    RA8_RETURN_ON_ERROR(priv_cache_store_super_write(store, (uint32_t)k_ra8_cs_clean),
+                        s_tag,
+                        "format super");
   }
   return k_ra8_ok;
 }
@@ -652,29 +678,29 @@ static ra8_err_t cs_open_levelx(ra8_cache_store_t* store, const ra8_cache_store_
  * @retval k_ra8_ok                Index rebuilt.
  * @retval k_ra8_err_invalid_state Checkpoint directory inconsistent.
  * @retval k_ra8_err_hw_init_failed LevelX I/O error.
- * @pre @p sb was populated by ::cs_super_read.
+ * @pre @p sb was populated by ::internal_super_read.
  * @pre The LevelX partition is open.
  * @post On `k_ra8_ok` the index reflects flash and `flash_state` is set.
  * @post No flash sector is written.
  * @note Not thread-safe; shares the store staging buffer.
  * @since 0.1.0
  */
-static ra8_err_t cs_recover(ra8_cache_store_t* store, const ra8_cs_super_t* sb)
+RA8_INTERNAL static ra8_err_t internal_recover(ra8_cache_store_t* store, const ra8_cs_super_t* sb)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(sb, s_tag, "sb");
-  if (cs_super_is_clean(sb)) {
+  if (internal_super_is_clean(sb)) {
     store->next_seq    = sb->next_seq;
     store->flash_state = (uint8_t)k_ra8_cs_clean;
-    return cs_dir_load(store, sb->entry_count);
+    return internal_dir_load(store, sb->entry_count);
   }
   store->flash_state = (uint8_t)k_ra8_cs_dirty;
-  return cs_scan_log(store);
+  return internal_scan_log(store);
 }
 
 /**
  * @brief Mount an open partition: read sector 0, then recover the index.
- * @details Reads the superblock (read-only) and hands it to ::cs_recover. Because
+ * @details Reads the superblock (read-only) and hands it to ::internal_recover. Because
  *          `init` stamps a clean superblock at format time, a fresh or cleanly
  *          closed store loads its checkpoint; only a genuine unclean shutdown
  *          replays the log.
@@ -690,31 +716,32 @@ static ra8_err_t cs_recover(ra8_cache_store_t* store, const ra8_cs_super_t* sb)
  * @note Not thread-safe; shares the store staging buffer.
  * @since 0.1.0
  */
-static ra8_err_t cs_mount(ra8_cache_store_t* store)
+RA8_INTERNAL static ra8_err_t internal_mount(ra8_cache_store_t* store)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(store->staging, s_tag, "staging");
   ra8_cs_super_t sb = {};
-  RA8_RETURN_ON_ERROR(cs_super_read(store, &sb), s_tag, "super");
-  return cs_recover(store, &sb);
+  RA8_RETURN_ON_ERROR(internal_super_read(store, &sb), s_tag, "super");
+  return internal_recover(store, &sb);
 }
 
 /**
  * @brief Bind the caller-owned buffers into the store and reset its counters.
  * @details Zeroes the handle, records the LevelX control block, index, and
  *          staging, clears every index slot, and seeds the sequence + live
- *          counters. Sets no geometry (::cs_geometry does that next).
+ *          counters. Sets no geometry (::internal_geometry does that next).
  * @param[out] store Store handle to populate.
  * @param[in]  cfg   Validated config.
  * @return Nothing.
- * @pre @p cfg passed ::cs_validate_cfg (buffers non-NULL, `index_cap > 0`).
+ * @pre @p cfg passed ::internal_validate_cfg (buffers non-NULL, `index_cap > 0`).
  * @pre @p store is the caller-owned handle.
  * @post `store->index` is fully cleared and the counters are seeded.
  * @post `store->inited` is false (init sets it last).
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-static void cs_init_fields(ra8_cache_store_t* store, const ra8_cache_store_cfg_t* cfg)
+RA8_INTERNAL static void internal_init_fields(ra8_cache_store_t*           store,
+                                              const ra8_cache_store_cfg_t* cfg)
 {
   if (store == nullptr) {
     return;
@@ -746,29 +773,30 @@ static void cs_init_fields(ra8_cache_store_t* store, const ra8_cache_store_cfg_t
  * @retval k_ra8_err_invalid_size   `logical_sectors` too small for the layout.
  * @retval k_ra8_err_hw_init_failed LevelX open/format/I-O error.
  * @retval k_ra8_err_invalid_state  Checkpoint directory inconsistent.
- * @pre `store` buffers are bound (::cs_init_fields ran).
- * @pre @p cfg passed ::cs_validate_cfg.
+ * @pre `store` buffers are bound (::internal_init_fields ran).
+ * @pre @p cfg passed ::internal_validate_cfg.
  * @post On `k_ra8_ok` the store is ready except for `inited`.
  * @post On error the store is not usable.
  * @note Not thread-safe; single-threaded bring-up.
  * @since 0.1.0
  */
-static ra8_err_t cs_bringup(ra8_cache_store_t* store, const ra8_cache_store_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_bringup(ra8_cache_store_t*           store,
+                                               const ra8_cache_store_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg");
-  RA8_RETURN_ON_ERROR(cs_geometry(store, cfg), s_tag, "geometry");
-  RA8_RETURN_ON_ERROR(cs_open_levelx(store, cfg), s_tag, "levelx open");
-  RA8_RETURN_ON_ERROR(cs_mount(store), s_tag, "mount");
+  RA8_RETURN_ON_ERROR(internal_geometry(store, cfg), s_tag, "geometry");
+  RA8_RETURN_ON_ERROR(internal_open_levelx(store, cfg), s_tag, "levelx open");
+  RA8_RETURN_ON_ERROR(internal_mount(store), s_tag, "mount");
   return k_ra8_ok;
 }
 
 ra8_err_t ra8_cache_store_init(ra8_cache_store_t* store, const ra8_cache_store_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
-  RA8_RETURN_ON_ERROR(cs_validate_cfg(cfg), s_tag, "cfg");
-  cs_init_fields(store, cfg);
-  RA8_RETURN_ON_ERROR(cs_bringup(store, cfg), s_tag, "bringup");
+  RA8_RETURN_ON_ERROR(internal_validate_cfg(cfg), s_tag, "cfg");
+  internal_init_fields(store, cfg);
+  RA8_RETURN_ON_ERROR(internal_bringup(store, cfg), s_tag, "bringup");
   store->inited = true;
   return k_ra8_ok;
 }
