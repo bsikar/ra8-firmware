@@ -119,8 +119,9 @@ static uint32_t priv_exchk_popcount8(uint8_t b)
  *
  * @details Used for a NoFatChain file and for the bitmap / up-case system runs.
  *          A cluster already visited is a cross-link; a cluster out of range is a
- *          bad entry. The run length is capped at `clusters_total` so a corrupt
- *          DataLength cannot spin the loop.
+ *          bad entry. A run longer than the in-volume suffix starting at
+ *          @p first is faulted before the bounded in-range prefix is marked, so
+ *          clamping a corrupt DataLength can never turn it into a clean run.
  *
  * @param[in,out] ctx   The scan context.
  * @param[in]     first First cluster of the run.
@@ -138,11 +139,18 @@ static uint32_t priv_exchk_popcount8(uint8_t b)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_exchk_mark_run(ra8_fs_check_ctx_t* ctx, uint32_t first, uint32_t nclus)
+static void internal_exchk_mark_run(ra8_fs_check_ctx_t* ctx, uint32_t first, uint64_t nclus)
 {
-  uint32_t n = nclus;
-  if (n > ctx->rep->clusters_total) {
-    n = ctx->rep->clusters_total;
+  if (!priv_check_in_range(ctx, first)) {
+    (void)priv_check_visit(ctx, first, k_ra8_fs_check_fault_bad_dir_entry);
+    return;
+  }
+  uint32_t       n         = (uint32_t)nclus;
+  const uint32_t available = ctx->rep->clusters_total - (first - (uint32_t)k_cluster_first_data);
+  if (nclus > (uint64_t)available) {
+    n = available;
+    ctx->rep->entries_bad++;
+    priv_check_fault(ctx, k_ra8_fs_check_fault_bad_dir_entry, first + n, 0U, 0U);
   }
   for (uint32_t i = 0U; i < n; i++) {
     const uint32_t c = first + i;
@@ -152,12 +160,20 @@ static void priv_exchk_mark_run(ra8_fs_check_ctx_t* ctx, uint32_t first, uint32_
   }
 }
 
+RA8_TEST_HELPER
+void ra8_fs_check_test_exfat_mark_run(ra8_fs_check_ctx_t* ctx, uint32_t first, uint64_t nclus)
+{
+  internal_exchk_mark_run(ctx, first, nclus);
+}
+
 /**
  * @brief Mark a FAT-chained file's whole chain visited, detecting cross-links.
  *
  * @details A file whose run fragmented carries a real FAT chain instead of
  *          NoFatChain; this follows it, marking each cluster and flagging a
- *          revisit (cross-link) or a next-cluster out of range (bad chain).
+ *          revisit (cross-link) or a next-cluster out of range (bad chain). A
+ *          non-terminal successor after exactly `clusters_total` visits is
+ *          checked once more, which necessarily exposes a revisit or bad tail.
  *
  * @param[in,out] ctx   The scan context.
  * @param[in]     first The file's first cluster (in range).
@@ -176,7 +192,7 @@ static void priv_exchk_mark_run(ra8_fs_check_ctx_t* ctx, uint32_t first, uint32_
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exchk_mark_fatchain(ra8_fs_check_ctx_t* ctx, uint32_t first)
+static ra8_err_t internal_exchk_mark_fatchain(ra8_fs_check_ctx_t* ctx, uint32_t first)
 {
   uint32_t c = first;
   for (uint32_t hop = 0U; hop < ctx->rep->clusters_total; hop++) {
@@ -199,7 +215,14 @@ static ra8_err_t priv_exchk_mark_fatchain(ra8_fs_check_ctx_t* ctx, uint32_t firs
     }
     c = v;
   }
-  return k_ra8_ok; /* GCOVR_EXCL_LINE -- hop bound exceeds count_of_clusters */
+  (void)priv_check_visit(ctx, c, k_ra8_fs_check_fault_bad_chain);
+  return k_ra8_ok;
+}
+
+RA8_TEST_HELPER
+ra8_err_t ra8_fs_check_test_exfat_mark_fatchain(ra8_fs_check_ctx_t* ctx, uint32_t first)
+{
+  return internal_exchk_mark_fatchain(ctx, first);
 }
 
 /**
@@ -209,7 +232,8 @@ static ra8_err_t priv_exchk_mark_fatchain(ra8_fs_check_ctx_t* ctx, uint32_t firs
  *          `dir->contig_end`) with ::priv_exfat_step_cluster, marking each cluster
  *          -- so a directory whose contents stop at an early end-of-directory
  *          marker still has its trailing allocated clusters counted as referenced,
- *          which the entry walk alone would miss.
+ *          which the entry walk alone would miss. A successor remaining after
+ *          the last permitted hop is validated as a cross-link or bad entry.
  *
  * @param[in,out] ctx The scan context.
  * @param[in]     dir The directory whose allocation is marked.
@@ -228,7 +252,7 @@ static ra8_err_t priv_exchk_mark_fatchain(ra8_fs_check_ctx_t* ctx, uint32_t firs
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exchk_mark_dir_alloc(ra8_fs_check_ctx_t* ctx, const exfat_dir_t* dir)
+static ra8_err_t internal_exchk_mark_dir_alloc(ra8_fs_check_ctx_t* ctx, const exfat_dir_t* dir)
 {
   uint32_t c = dir->cluster;
   for (uint32_t hop = 0U; hop < ctx->rep->clusters_total; hop++) {
@@ -245,7 +269,15 @@ static ra8_err_t priv_exchk_mark_dir_alloc(ra8_fs_check_ctx_t* ctx, const exfat_
     }
     c = next; /* GCOVR_EXCL_LINE -- a directory whose allocation spans >1 cluster */
   }
-  return k_ra8_ok; /* GCOVR_EXCL_LINE -- hop bound exceeds count_of_clusters */
+  (void)priv_check_visit(ctx, c, k_ra8_fs_check_fault_bad_dir_entry);
+  return k_ra8_ok;
+}
+
+RA8_TEST_HELPER
+ra8_err_t ra8_fs_check_test_exfat_mark_dir_alloc(ra8_fs_check_ctx_t* ctx, uint32_t first)
+{
+  const exfat_dir_t dir = {.cluster = first};
+  return internal_exchk_mark_dir_alloc(ctx, &dir);
 }
 
 /**
@@ -275,11 +307,11 @@ static void priv_exchk_system_run(ra8_fs_check_ctx_t* ctx, const uint8_t* e)
   const uint32_t first  = priv_rd32(&e[k_exfat_strm_off_clus]);
   const uint64_t bytes  = priv_rd64(&e[k_exfat_strm_off_dlen]);
   const uint32_t cbytes = priv_cluster_bytes(ctx->m);
-  const uint32_t nclus  = (uint32_t)((bytes + cbytes - 1U) / cbytes);
+  const uint64_t nclus  = (bytes / cbytes) + ((bytes % cbytes) != 0U ? 1U : 0U);
   if (first == 0U) {
     return; /* GCOVR_EXCL_LINE -- a system entry that names no cluster */
   }
-  priv_exchk_mark_run(ctx, first, nclus);
+  internal_exchk_mark_run(ctx, first, nclus);
 }
 
 /* =============================================================================
@@ -472,12 +504,12 @@ static ra8_err_t priv_exchk_set_clusters(ra8_fs_check_ctx_t* ctx,
   }
   ctx->rep->files_visited++;
   const uint32_t cbytes = priv_cluster_bytes(ctx->m);
-  const uint32_t nclus  = (dlen == 0U) ? 1U : (uint32_t)((dlen + cbytes - 1U) / cbytes);
+  const uint64_t nclus  = (dlen == 0U) ? 1U : ((dlen / cbytes) + ((dlen % cbytes) != 0U ? 1U : 0U));
   if ((strm[k_exfat_strm_off_flags] & (uint8_t)k_exfat_secflag_no_fat) != 0U) {
-    priv_exchk_mark_run(ctx, first, nclus);
+    internal_exchk_mark_run(ctx, first, nclus);
     return k_ra8_ok;
   }
-  return priv_exchk_mark_fatchain(ctx, first);
+  return internal_exchk_mark_fatchain(ctx, first);
 }
 
 /**
@@ -545,7 +577,10 @@ static ra8_err_t priv_exchk_set(ra8_fs_check_ctx_t* ctx,
 /**
  * @brief Walk one exFAT directory, verifying and marking every live entry.
  *
- * @details Iterates a directory entry stream, dispatching system, file and directory sets.
+ * @details Iterates a directory entry stream, dispatching system, file and
+ *          directory sets. At the entry ceiling it performs one terminal probe:
+ *          an exhausted allocation or immediate end marker is a valid exact-bound
+ *          directory, while another live or deleted entry records scan truncation.
  *
  * @param[in,out] ctx   The scan context.
  * @param[in]     dir   The directory to walk.
@@ -562,7 +597,7 @@ static ra8_err_t priv_exchk_set(ra8_fs_check_ctx_t* ctx,
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_exchk_scan_dir(ra8_fs_check_ctx_t* ctx, const exfat_dir_t* dir, exfat_dir_stack_t* stack)
+internal_exchk_scan_dir(ra8_fs_check_ctx_t* ctx, const exfat_dir_t* dir, exfat_dir_stack_t* stack)
 {
   exfat_cursor_t cur = {};
   priv_exfat_cursor_init(dir, &cur);
@@ -588,13 +623,35 @@ priv_exchk_scan_dir(ra8_fs_check_ctx_t* ctx, const exfat_dir_t* dir, exfat_dir_s
       continue;
     }
     if (e[0] == (uint8_t)k_exfat_entry_file) {
+      const uint32_t count     = 1U + (uint32_t)e[k_exfat_off_file_secnt];
+      const uint32_t remaining = (uint32_t)k_exfat_scan_limit - cur.scanned;
+      if (count <= (uint32_t)k_exfat_set_max_entries) {
+        if (count > 1U) {
+          if ((count - 1U) > remaining) {
+            priv_check_fault(ctx, k_ra8_fs_check_fault_scan_truncated, dir->cluster, 0U, 0U);
+            return k_ra8_ok;
+          }
+        }
+      }
       const ra8_err_t se = priv_exchk_set(ctx, &cur, e, stack);
       if (se != k_ra8_ok) {
         return se;
       }
     }
   }
-  return k_ra8_ok; /* GCOVR_EXCL_LINE -- k_exfat_scan_limit (65536) entries required */
+  uint8_t         terminal[k_exfat_entry_bytes] = {};
+  const ra8_err_t probe                         = priv_exfat_next_entry(ctx->m, &cur, terminal);
+  if (probe == k_ra8_err_not_found) {
+    return k_ra8_ok;
+  }
+  if (probe != k_ra8_ok) {
+    return probe;
+  }
+  if (terminal[0] == (uint8_t)k_exfat_entry_eod) {
+    return k_ra8_ok;
+  }
+  priv_check_fault(ctx, k_ra8_fs_check_fault_scan_truncated, dir->cluster, 0U, 0U);
+  return k_ra8_ok;
 }
 
 /**
@@ -628,11 +685,11 @@ static ra8_err_t priv_exchk_tree(ra8_fs_check_ctx_t* ctx)
     s_worklist.top--;
     const exfat_dir_t dir = s_worklist.items[s_worklist.top];
     ctx->rep->dirs_visited++;
-    ra8_err_t err = priv_exchk_mark_dir_alloc(ctx, &dir);
+    ra8_err_t err = internal_exchk_mark_dir_alloc(ctx, &dir);
     if (err != k_ra8_ok) {
       return err;
     }
-    err = priv_exchk_scan_dir(ctx, &dir, &s_worklist);
+    err = internal_exchk_scan_dir(ctx, &dir, &s_worklist);
     if (err != k_ra8_ok) {
       return err;
     }

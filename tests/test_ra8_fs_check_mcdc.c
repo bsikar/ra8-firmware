@@ -179,10 +179,10 @@ static void test_mcdc_fat_fsinfo(void)
 }
 
 /**
- * @test test_mcdc_check_locked
+ * @test internal_test_mcdc_check_locked
  *
  * @par MC/DC:
- * `libs/ra8_fs/src/ra8_fs_fat_check.c@priv_check_locked` --
+ * `libs/ra8_fs/src/ra8_fs_fat_check.c@internal_check_locked` --
  * decision `(handle == nullptr) || (report == nullptr)` (2 conditions).
  * - V1 handle valid, report valid -> false (control: the scan runs).
  * - V2 handle NULL,  report valid -> C1 true  (varies handle only).
@@ -190,9 +190,10 @@ static void test_mcdc_fat_fsinfo(void)
  * V1+V2 prove handle independently flips the outcome; V1+V3 prove report does.
  * Also covers the not-in-use guard (an unmounted handle -> invalid_state).
  */
-static void test_mcdc_check_locked(void)
+RA8_INTERNAL
+static void internal_test_mcdc_check_locked(void)
 {
-  TEST_BEGIN("MC/DC priv_check_locked: (handle||report) NULL pair + invalid_state");
+  TEST_BEGIN("MC/DC internal_check_locked: (handle||report) NULL pair + invalid_state");
   ra8_fs_mount_t* h = chk_setup((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16, nullptr, 0U);
   ra8_fs_check_report_t r = {};
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -205,7 +206,7 @@ static void test_mcdc_check_locked(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_state,
                  ra8_fs_check(h, s_chk_bitmap, (uint32_t)sizeof(s_chk_bitmap), &r)); /* unmounted */
   free_volume();
-  TEST_END("MC/DC priv_check_locked: (handle||report) NULL pair + invalid_state");
+  TEST_END("MC/DC internal_check_locked: (handle||report) NULL pair + invalid_state");
 }
 
 /**
@@ -246,18 +247,19 @@ static void test_mcdc_exchk_set(void)
 }
 
 /**
- * @test test_mcdc_exchk_scan_dir
+ * @test internal_test_mcdc_exchk_scan_dir
  *
  * @par MC/DC:
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_check.c@priv_exchk_scan_dir` --
+ * `libs/ra8_fs/src/ra8_fs_fat_exfat_check.c@internal_exchk_scan_dir` --
  * decision `(e[0] == bitmap) || (e[0] == upcase)` (a system run entry).
  * A clean exFAT root carries all three arms: the allocation-bitmap entry (0x81)
  * -> C1 true, the up-case entry (0x82) -> C1 false C2 true, and File entries
  * (0x85) -> C1 false C2 false. One clean walk exercises every vector.
  */
-static void test_mcdc_exchk_scan_dir(void)
+RA8_INTERNAL
+static void internal_test_mcdc_exchk_scan_dir(void)
 {
-  TEST_BEGIN("MC/DC priv_exchk_scan_dir: bitmap/up-case system entries");
+  TEST_BEGIN("MC/DC internal_exchk_scan_dir: bitmap/up-case system entries");
   ra8_fs_mount_t*       h = chk_setup((uint32_t)k_fmt_blocks_exfat,
                                       k_ra8_fs_type_exfat,
                                       "T.BIN",
@@ -266,7 +268,7 @@ static void test_mcdc_exchk_scan_dir(void)
   TEST_ASSERT_EQ(k_ra8_ok, chk_run(h, &r));
   TEST_ASSERT_EQ(0U, r.faults_total);
   chk_teardown(h);
-  TEST_END("MC/DC priv_exchk_scan_dir: bitmap/up-case system entries");
+  TEST_END("MC/DC internal_exchk_scan_dir: bitmap/up-case system entries");
 }
 
 /**
@@ -315,9 +317,9 @@ int32_t main(void)
   test_mcdc_fat_tree();
   test_mcdc_fat_diff();
   test_mcdc_fat_fsinfo();
-  test_mcdc_check_locked();
+  internal_test_mcdc_check_locked();
   test_mcdc_exchk_set();
-  test_mcdc_exchk_scan_dir();
+  internal_test_mcdc_exchk_scan_dir();
   test_mcdc_exchk_diff_byte();
   (void)fprintf(stderr, "[OK  ] test_ra8_fs_check_mcdc.c\n");
   return 0;

@@ -292,8 +292,10 @@ static ra8_err_t priv_fat_classify(ra8_fs_check_ctx_t* ctx)
  * @details Follows the FAT from @p first, marking each cluster. A cluster already
  *          marked is a cross-link (or a loop) and stops the walk; a next-cluster
  *          that is free or out of range is a broken chain and stops it too. The
- *          hop count is bounded by `clusters_total`, but the visited bitmap ends
- *          any real loop first.
+ *          hop count is bounded by `clusters_total`. After the last permitted
+ *          hop, a non-terminal successor is checked once more without reading
+ *          another FAT entry: it must revisit one of the volume's clusters or
+ *          name a cluster outside the volume, so the bound cannot look clean.
  *
  * @param[in,out] ctx   The scan context.
  * @param[in]     first The file's first cluster (>= 2).
@@ -312,7 +314,7 @@ static ra8_err_t priv_fat_classify(ra8_fs_check_ctx_t* ctx)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_mark_chain(ra8_fs_check_ctx_t* ctx, uint32_t first)
+static ra8_err_t internal_fat_mark_chain(ra8_fs_check_ctx_t* ctx, uint32_t first)
 {
   uint32_t c = first;
   for (uint32_t hop = 0U; hop < ctx->rep->clusters_total; hop++) {
@@ -333,7 +335,8 @@ static ra8_err_t priv_fat_mark_chain(ra8_fs_check_ctx_t* ctx, uint32_t first)
     }
     c = v;
   }
-  return k_ra8_ok; /* GCOVR_EXCL_LINE -- hop bound exceeds count_of_clusters */
+  (void)priv_check_visit(ctx, c, k_ra8_fs_check_fault_bad_chain);
+  return k_ra8_ok;
 }
 
 /**
@@ -444,7 +447,7 @@ static ra8_err_t priv_fat_entry(ra8_fs_check_ctx_t* ctx,
   }
   ctx->rep->files_visited++;
   if (first != 0U) {
-    return priv_fat_mark_chain(ctx, first);
+    return internal_fat_mark_chain(ctx, first);
   }
   return k_ra8_ok;
 }
@@ -537,8 +540,9 @@ static ra8_err_t priv_fat_scan_fixed_root(ra8_fs_check_ctx_t* ctx, fat_dir_stack
  *
  * @details Follows the directory's own cluster chain, marking each cluster (a
  *          revisit is a cross-link), and processes every sector of each cluster.
- *          The end-of-directory marker, a broken chain, or the hop bound each ends
- *          the walk.
+ *          The end-of-directory marker or a terminal FAT entry ends the walk.
+ *          Reaching the hop bound validates the pending successor once more so a
+ *          full-volume cycle or off-volume tail is reported, never accepted.
  *
  * @param[in,out] ctx   The scan context.
  * @param[in,out] stack The directory worklist.
@@ -559,7 +563,7 @@ static ra8_err_t priv_fat_scan_fixed_root(ra8_fs_check_ctx_t* ctx, fat_dir_stack
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_fat_scan_cluster_dir(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack, uint32_t first)
+internal_fat_scan_cluster_dir(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack, uint32_t first)
 {
   uint32_t c = first;
   for (uint32_t hop = 0U; hop < ctx->rep->clusters_total; hop++) {
@@ -592,7 +596,15 @@ priv_fat_scan_cluster_dir(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack, uint3
     }
     c = v;
   }
-  return k_ra8_ok; /* GCOVR_EXCL_LINE -- hop bound exceeds count_of_clusters */
+  (void)priv_check_visit(ctx, c, k_ra8_fs_check_fault_bad_dir_entry);
+  return k_ra8_ok;
+}
+
+RA8_TEST_HELPER
+ra8_err_t ra8_fs_check_test_fat_scan_cluster_dir(ra8_fs_check_ctx_t* ctx, uint32_t first)
+{
+  fat_dir_stack_t stack = {};
+  return internal_fat_scan_cluster_dir(ctx, &stack, first);
 }
 
 /**
@@ -628,7 +640,7 @@ static ra8_err_t priv_fat_tree(ra8_fs_check_ctx_t* ctx)
       err = priv_fat_scan_fixed_root(ctx, &stack);
     } else {
       const uint32_t first = (loc.is_root != 0U) ? ctx->m->root_cluster : loc.cluster;
-      err                  = priv_fat_scan_cluster_dir(ctx, &stack, first);
+      err                  = internal_fat_scan_cluster_dir(ctx, &stack, first);
     }
     if (err != k_ra8_ok) {
       return err;
@@ -789,7 +801,7 @@ ra8_err_t priv_check_fat(ra8_fs_check_ctx_t* ctx)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_check_bitmap_ok(uint32_t total, const uint8_t* bitmap, uint32_t bitmap_bytes)
+static bool internal_check_bitmap_ok(uint32_t total, const uint8_t* bitmap, uint32_t bitmap_bytes)
 {
   if (bitmap == nullptr) {
     return false;
@@ -802,8 +814,10 @@ static bool priv_check_bitmap_ok(uint32_t total, const uint8_t* bitmap, uint32_t
  *
  * @details Validates the arguments, seeds the report, decides whether the
  *          caller's bitmap enables the reference passes, and dispatches on the
- *          volume type. The public ::ra8_fs_check brackets this with the library
- *          lock; the full contract is documented there.
+ *          volume type into a local candidate report. The candidate is published
+ *          only after the entire scan succeeds, so backend failures cannot expose
+ *          a plausible-looking partial result. The public ::ra8_fs_check brackets
+ *          this with the library lock; the full contract is documented there.
  *
  * @param[in]  handle       Mount handle.
  * @param[in]  bitmap       Scratch visited-cluster bitmap, or NULL.
@@ -819,6 +833,7 @@ static bool priv_check_bitmap_ok(uint32_t total, const uint8_t* bitmap, uint32_t
  * @pre The library lock is held (or none is installed).
  * @pre @p handle and @p report are non-NULL.
  * @post On ::k_ra8_ok the report describes the volume.
+ * @post On error @p report retains its entry value.
  * @post No volume state is modified.
  *
  * @note Never call this from outside `ra8_fs`; it is the unlocked half.
@@ -827,10 +842,10 @@ static bool priv_check_bitmap_ok(uint32_t total, const uint8_t* bitmap, uint32_t
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_check_locked(ra8_fs_mount_t*        handle,
-                                   uint8_t*               bitmap,
-                                   uint32_t               bitmap_bytes,
-                                   ra8_fs_check_report_t* report)
+static ra8_err_t internal_check_locked(ra8_fs_mount_t*        handle,
+                                       uint8_t*               bitmap,
+                                       uint32_t               bitmap_bytes,
+                                       ra8_fs_check_report_t* report)
 {
   if ((handle == nullptr) || (report == nullptr)) {
     return k_ra8_err_null_ptr;
@@ -838,20 +853,28 @@ static ra8_err_t priv_check_locked(ra8_fs_mount_t*        handle,
   if (handle->in_use == 0U) {
     return k_ra8_err_invalid_state;
   }
-  *report                 = (ra8_fs_check_report_t){};
-  report->type            = handle->type;
-  report->clusters_total  = handle->count_of_clusters;
-  const bool have_bitmap  = priv_check_bitmap_ok(handle->count_of_clusters, bitmap, bitmap_bytes);
-  report->referenced_scan = have_bitmap;
-  report->clusters_lost   = have_bitmap ? 0U : (uint32_t)k_ra8_fs_check_unknown;
-  ra8_fs_check_ctx_t ctx  = {.m           = handle,
-                             .rep         = report,
-                             .bitmap      = have_bitmap ? bitmap : nullptr,
-                             .bitmap_bits = handle->count_of_clusters};
+  ra8_fs_check_report_t candidate = {};
+  candidate.type                  = handle->type;
+  candidate.clusters_total        = handle->count_of_clusters;
+  const bool have_bitmap =
+    internal_check_bitmap_ok(handle->count_of_clusters, bitmap, bitmap_bytes);
+  candidate.referenced_scan = have_bitmap;
+  candidate.clusters_lost   = have_bitmap ? 0U : (uint32_t)k_ra8_fs_check_unknown;
+  ra8_fs_check_ctx_t ctx    = {.m           = handle,
+                               .rep         = &candidate,
+                               .bitmap      = have_bitmap ? bitmap : nullptr,
+                               .bitmap_bits = handle->count_of_clusters};
+  ra8_err_t          err    = k_ra8_ok;
   if (handle->type == k_ra8_fs_type_exfat) {
-    return priv_check_exfat(&ctx);
+    err = priv_check_exfat(&ctx);
+  } else {
+    err = priv_check_fat(&ctx);
   }
-  return priv_check_fat(&ctx);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  *report = candidate;
+  return k_ra8_ok;
 }
 
 RA8_OWNS_RESOURCE("ra8_fs_lock")
@@ -861,7 +884,7 @@ ra8_err_t ra8_fs_check(ra8_fs_mount_t*        handle,
                        ra8_fs_check_report_t* report)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_check_locked(handle, bitmap, bitmap_bytes, report);
+  const ra8_err_t err = internal_check_locked(handle, bitmap, bitmap_bytes, report);
   priv_lock_release();
   return err;
 }
