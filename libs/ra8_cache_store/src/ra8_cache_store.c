@@ -58,7 +58,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-static uint16_t cs_index_used(const ra8_cache_store_t* store)
+RA8_INTERNAL static uint16_t internal_index_used(const ra8_cache_store_t* store)
 {
   if (store == nullptr) {
     return 0U;
@@ -91,7 +91,8 @@ static uint16_t cs_index_used(const ra8_cache_store_t* store)
  * @note Thread-safe with respect to a quiescent store (pure read).
  * @since 0.1.0
  */
-static bool cs_run_free(const ra8_cache_store_t* store, uint32_t start, uint32_t count)
+RA8_INTERNAL static bool
+internal_run_free(const ra8_cache_store_t* store, uint32_t start, uint32_t count)
 {
   if (store == nullptr) {
     return false;
@@ -134,7 +135,8 @@ static bool cs_run_free(const ra8_cache_store_t* store, uint32_t start, uint32_t
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-static ra8_err_t cs_alloc_run(const ra8_cache_store_t* store, uint32_t count, uint32_t* out_start)
+RA8_INTERNAL static ra8_err_t
+internal_alloc_run(const ra8_cache_store_t* store, uint32_t count, uint32_t* out_start)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(out_start, s_tag, "out_start");
@@ -142,7 +144,7 @@ static ra8_err_t cs_alloc_run(const ra8_cache_store_t* store, uint32_t count, ui
     return k_ra8_err_invalid_size;
   }
   for (uint32_t start = store->log_start; (start + count) <= store->logical_sectors; start++) {
-    if (cs_run_free(store, start, count)) {
+    if (internal_run_free(store, start, count)) {
       *out_start = start;
       return k_ra8_ok;
     }
@@ -171,13 +173,13 @@ static ra8_err_t cs_alloc_run(const ra8_cache_store_t* store, uint32_t count, ui
  * @note Not thread-safe; shares the store staging buffer.
  * @since 0.1.0
  */
-static ra8_err_t cs_write_entry(ra8_cache_store_t* store,
-                                uint32_t           start,
-                                uint32_t           seq,
-                                uint32_t           key,
-                                const uint8_t*     data,
-                                uint32_t           len,
-                                uint16_t           count)
+RA8_INTERNAL static ra8_err_t internal_write_entry(ra8_cache_store_t* store,
+                                                   uint32_t           start,
+                                                   uint32_t           seq,
+                                                   uint32_t           key,
+                                                   const uint8_t*     data,
+                                                   uint32_t           len,
+                                                   uint16_t           count)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(data, s_tag, "data");
@@ -189,9 +191,10 @@ static ra8_err_t cs_write_entry(ra8_cache_store_t* store,
     uint32_t chunk  = (remain < sec_sz) ? remain : sec_sz;
     (void)memset(store->staging, 0, (size_t)sec_sz);
     (void)memcpy(store->staging, &data[off], (size_t)chunk);
-    RA8_RETURN_ON_ERROR(ra8_cs_sector_write(store, start + 1U + (uint32_t)i, store->staging),
-                        s_tag,
-                        "payload");
+    RA8_RETURN_ON_ERROR(
+      priv_cache_store_sector_write(store, start + 1U + (uint32_t)i, store->staging),
+      s_tag,
+      "payload");
     off += chunk;
   }
   ra8_cs_entry_hdr_t h = {.magic        = (uint32_t)k_ra8_cs_entry_magic,
@@ -202,10 +205,10 @@ static ra8_err_t cs_write_entry(ra8_cache_store_t* store,
                           .sector_count = count,
                           .flags        = 0U,
                           .hdr_crc      = 0U};
-  h.hdr_crc = ra8_cs_crc32((const uint8_t*)&h, (uint32_t)(sizeof(h) - sizeof(h.hdr_crc)));
+  h.hdr_crc = priv_cache_store_crc32((const uint8_t*)&h, (uint32_t)(sizeof(h) - sizeof(h.hdr_crc)));
   (void)memset(store->staging, 0, (size_t)sec_sz);
   (void)memcpy(store->staging, &h, sizeof(h));
-  return ra8_cs_sector_write(store, start, store->staging);
+  return priv_cache_store_sector_write(store, start, store->staging);
 }
 
 /**
@@ -225,14 +228,16 @@ static ra8_err_t cs_write_entry(ra8_cache_store_t* store,
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-static ra8_err_t cs_mark_dirty(ra8_cache_store_t* store)
+RA8_INTERNAL static ra8_err_t internal_mark_dirty(ra8_cache_store_t* store)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_VALIDATE_INIT(store->inited, s_tag, "store");
   if (store->flash_state == (uint8_t)k_ra8_cs_dirty) {
     return k_ra8_ok;
   }
-  RA8_RETURN_ON_ERROR(ra8_cs_super_write(store, (uint32_t)k_ra8_cs_dirty), s_tag, "mark dirty");
+  RA8_RETURN_ON_ERROR(priv_cache_store_super_write(store, (uint32_t)k_ra8_cs_dirty),
+                      s_tag,
+                      "mark dirty");
   store->flash_state = (uint8_t)k_ra8_cs_dirty;
   return k_ra8_ok;
 }
@@ -253,14 +258,16 @@ static ra8_err_t cs_mark_dirty(ra8_cache_store_t* store)
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-static ra8_err_t cs_checkpoint(ra8_cache_store_t* store)
+RA8_INTERNAL static ra8_err_t internal_checkpoint(ra8_cache_store_t* store)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_VALIDATE_INIT(store->inited, s_tag, "store");
-  RA8_RETURN_ON_ERROR(cs_mark_dirty(store), s_tag, "pre-dirty");
+  RA8_RETURN_ON_ERROR(internal_mark_dirty(store), s_tag, "pre-dirty");
   uint32_t count = 0U;
-  RA8_RETURN_ON_ERROR(ra8_cs_dir_save(store, &count), s_tag, "dir save");
-  RA8_RETURN_ON_ERROR(ra8_cs_super_write(store, (uint32_t)k_ra8_cs_clean), s_tag, "clean super");
+  RA8_RETURN_ON_ERROR(priv_cache_store_dir_save(store, &count), s_tag, "dir save");
+  RA8_RETURN_ON_ERROR(priv_cache_store_super_write(store, (uint32_t)k_ra8_cs_clean),
+                      s_tag,
+                      "clean super");
   store->flash_state = (uint8_t)k_ra8_cs_clean;
   return k_ra8_ok;
 }
@@ -289,11 +296,11 @@ static ra8_err_t cs_checkpoint(ra8_cache_store_t* store)
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-static ra8_err_t cs_put_check(ra8_cache_store_t* store,
-                              uint32_t           key,
-                              const uint8_t*     data,
-                              uint32_t           len,
-                              uint32_t*          out_count)
+RA8_INTERNAL static ra8_err_t internal_put_check(ra8_cache_store_t* store,
+                                                 uint32_t           key,
+                                                 const uint8_t*     data,
+                                                 uint32_t           len,
+                                                 uint32_t*          out_count)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(data, s_tag, "data");
@@ -301,10 +308,10 @@ static ra8_err_t cs_put_check(ra8_cache_store_t* store,
   if (len == 0U) {
     return k_ra8_err_invalid_size;
   }
-  if (ra8_cs_index_find(store, key) >= 0) {
+  if (priv_cache_store_index_find(store, key) >= 0) {
     return k_ra8_err_exists;
   }
-  if (cs_index_used(store) >= store->index_cap) {
+  if (internal_index_used(store) >= store->index_cap) {
     return k_ra8_err_no_mem;
   }
   const uint32_t sec_sz = (uint32_t)k_ra8_cache_store_sector_bytes;
@@ -340,12 +347,12 @@ static ra8_err_t cs_put_check(ra8_cache_store_t* store,
  * @note Not thread-safe; shares the store staging buffer.
  * @since 0.1.0
  */
-static ra8_err_t cs_read_at(const ra8_cache_store_t* store,
-                            uint32_t                 data_start,
-                            uint64_t                 byte_pos,
-                            uint8_t*                 dst,
-                            uint32_t                 max,
-                            uint32_t*                out_copied)
+RA8_INTERNAL static ra8_err_t internal_read_at(const ra8_cache_store_t* store,
+                                               uint32_t                 data_start,
+                                               uint64_t                 byte_pos,
+                                               uint8_t*                 dst,
+                                               uint32_t                 max,
+                                               uint32_t*                out_copied)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(dst, s_tag, "dst");
@@ -354,7 +361,7 @@ static ra8_err_t cs_read_at(const ra8_cache_store_t* store,
   uint32_t       soff   = (uint32_t)(byte_pos % sec_sz);
   uint32_t       space  = sec_sz - soff;
   uint32_t       chunk  = (max < space) ? max : space;
-  RA8_RETURN_ON_ERROR(ra8_cs_sector_read(store, sector, store->staging), s_tag, "read");
+  RA8_RETURN_ON_ERROR(priv_cache_store_sector_read(store, sector, store->staging), s_tag, "read");
   (void)memcpy(dst, &store->staging[soff], (size_t)chunk);
   *out_copied = chunk;
   return k_ra8_ok;
@@ -362,7 +369,7 @@ static ra8_err_t cs_read_at(const ra8_cache_store_t* store,
 
 /**
  * @brief Release every logical sector of a run back to the free pool.
- * @details Loops `[start, start+count)` through ::ra8_cs_sector_release so eviction
+ * @details Loops `[start, start+count)` through ::priv_cache_store_sector_release so eviction
  *          reclaims the whole entry with no write-back.
  * @param[in,out] store Store whose flash is released.
  * @param[in]     start First sector of the run.
@@ -379,12 +386,15 @@ static ra8_err_t cs_read_at(const ra8_cache_store_t* store,
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-static ra8_err_t cs_release_run(ra8_cache_store_t* store, uint32_t start, uint16_t count)
+RA8_INTERNAL static ra8_err_t
+internal_release_run(ra8_cache_store_t* store, uint32_t start, uint16_t count)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_VALIDATE_INIT(store->inited, s_tag, "store");
   for (uint16_t i = 0U; i < count; i++) {
-    RA8_RETURN_ON_ERROR(ra8_cs_sector_release(store, start + (uint32_t)i), s_tag, "release");
+    RA8_RETURN_ON_ERROR(priv_cache_store_sector_release(store, start + (uint32_t)i),
+                        s_tag,
+                        "release");
   }
   return k_ra8_ok;
 }
@@ -397,15 +407,15 @@ ra8_err_t
 ra8_cache_store_put(ra8_cache_store_t* store, uint32_t key, const uint8_t* data, uint32_t len)
 {
   uint32_t count = 0U;
-  RA8_RETURN_ON_ERROR(cs_put_check(store, key, data, len, &count), s_tag, "check");
-  RA8_RETURN_ON_ERROR(cs_mark_dirty(store), s_tag, "dirty");
+  RA8_RETURN_ON_ERROR(internal_put_check(store, key, data, len, &count), s_tag, "check");
+  RA8_RETURN_ON_ERROR(internal_mark_dirty(store), s_tag, "dirty");
   uint32_t start = 0U;
-  RA8_RETURN_ON_ERROR(cs_alloc_run(store, count, &start), s_tag, "alloc");
+  RA8_RETURN_ON_ERROR(internal_alloc_run(store, count, &start), s_tag, "alloc");
   RA8_RETURN_ON_ERROR(
-    cs_write_entry(store, start, store->next_seq, key, data, len, (uint16_t)count),
+    internal_write_entry(store, start, store->next_seq, key, data, len, (uint16_t)count),
     s_tag,
     "write");
-  (void)ra8_cs_index_add(store, key, start, (uint16_t)count, len, false);
+  (void)priv_cache_store_index_add(store, key, start, (uint16_t)count, len, false);
   store->live_sectors += count;
   store->next_seq += 1U;
   return k_ra8_ok;
@@ -418,7 +428,7 @@ ra8_err_t ra8_cache_store_get(const ra8_cache_store_t*  store,
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(out_reader, s_tag, "out_reader");
   RA8_VALIDATE_INIT(store->inited, s_tag, "store");
-  int32_t slot = ra8_cs_index_find(store, key);
+  int32_t slot = priv_cache_store_index_find(store, key);
   if (slot < 0) {
     return k_ra8_err_not_found;
   }
@@ -432,7 +442,7 @@ ra8_err_t ra8_cache_store_get(const ra8_cache_store_t*  store,
 
 /**
  * @brief Stream @p len payload bytes at @p offset, sector by sector, into @p buf.
- * @details Loops ::cs_read_at until @p len bytes are copied; the iteration count
+ * @details Loops ::internal_read_at until @p len bytes are copied; the iteration count
  *          is bounded by the entry's payload-sector span plus one.
  * @param[in]  store        Store whose flash is read.
  * @param[in]  data_start   First payload logical sector of the entry.
@@ -451,12 +461,12 @@ ra8_err_t ra8_cache_store_get(const ra8_cache_store_t*  store,
  * @note Not thread-safe; shares the store staging buffer.
  * @since 0.1.0
  */
-static ra8_err_t cs_read_stream(const ra8_cache_store_t* store,
-                                uint32_t                 data_start,
-                                uint32_t                 data_sectors,
-                                uint64_t                 offset,
-                                uint8_t*                 buf,
-                                uint32_t                 len)
+RA8_INTERNAL static ra8_err_t internal_read_stream(const ra8_cache_store_t* store,
+                                                   uint32_t                 data_start,
+                                                   uint32_t                 data_sectors,
+                                                   uint64_t                 offset,
+                                                   uint8_t*                 buf,
+                                                   uint32_t                 len)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf");
@@ -468,7 +478,7 @@ static ra8_err_t cs_read_stream(const ra8_cache_store_t* store,
     }
     uint32_t copied = 0U;
     RA8_RETURN_ON_ERROR(
-      cs_read_at(store, data_start, offset + (uint64_t)done, &buf[done], len - done, &copied),
+      internal_read_at(store, data_start, offset + (uint64_t)done, &buf[done], len - done, &copied),
       s_tag,
       "at");
     done += copied;
@@ -486,14 +496,14 @@ ra8_err_t ra8_cache_store_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_
   if ((offset + (uint64_t)len) > (uint64_t)r->byte_len) {
     return k_ra8_err_out_of_range;
   }
-  return cs_read_stream(store, r->data_start, r->data_sectors, offset, buf, len);
+  return internal_read_stream(store, r->data_start, r->data_sectors, offset, buf, len);
 }
 
 ra8_err_t ra8_cache_store_evict(ra8_cache_store_t* store, uint32_t key)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_VALIDATE_INIT(store->inited, s_tag, "store");
-  int32_t slot = ra8_cs_index_find(store, key);
+  int32_t slot = priv_cache_store_index_find(store, key);
   if (slot < 0) {
     return k_ra8_err_not_found;
   }
@@ -501,8 +511,10 @@ ra8_err_t ra8_cache_store_evict(ra8_cache_store_t* store, uint32_t key)
   if ((e->flags & (uint8_t)k_ra8_cache_store_flag_pinned) != 0U) {
     return k_ra8_err_busy;
   }
-  RA8_RETURN_ON_ERROR(cs_mark_dirty(store), s_tag, "dirty");
-  RA8_RETURN_ON_ERROR(cs_release_run(store, e->start_sector, e->sector_count), s_tag, "release");
+  RA8_RETURN_ON_ERROR(internal_mark_dirty(store), s_tag, "dirty");
+  RA8_RETURN_ON_ERROR(internal_release_run(store, e->start_sector, e->sector_count),
+                      s_tag,
+                      "release");
   store->live_sectors -= e->sector_count;
   *e = (ra8_cache_store_entry_t){};
   return k_ra8_ok;
@@ -512,11 +524,11 @@ ra8_err_t ra8_cache_store_pin(ra8_cache_store_t* store, uint32_t key, bool pin)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_VALIDATE_INIT(store->inited, s_tag, "store");
-  int32_t slot = ra8_cs_index_find(store, key);
+  int32_t slot = priv_cache_store_index_find(store, key);
   if (slot < 0) {
     return k_ra8_err_not_found;
   }
-  RA8_RETURN_ON_ERROR(cs_mark_dirty(store), s_tag, "dirty");
+  RA8_RETURN_ON_ERROR(internal_mark_dirty(store), s_tag, "dirty");
   ra8_cache_store_entry_t* e = &store->index[slot];
   if (pin) {
     e->flags |= (uint8_t)k_ra8_cache_store_flag_pinned;
@@ -530,14 +542,14 @@ ra8_err_t ra8_cache_store_sync(ra8_cache_store_t* store)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_VALIDATE_INIT(store->inited, s_tag, "store");
-  return cs_checkpoint(store);
+  return internal_checkpoint(store);
 }
 
 ra8_err_t ra8_cache_store_close(ra8_cache_store_t* store)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_VALIDATE_INIT(store->inited, s_tag, "store");
-  RA8_RETURN_ON_ERROR(cs_checkpoint(store), s_tag, "checkpoint");
+  RA8_RETURN_ON_ERROR(internal_checkpoint(store), s_tag, "checkpoint");
   (void)lx_nor_flash_close(store->flash);
   store->inited = false;
   return k_ra8_ok;
