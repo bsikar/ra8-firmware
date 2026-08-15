@@ -560,6 +560,5 @@ int32_t main(void)
   test_get_counters();
   test_reset_counters();
   test_bbr_mirror();
-  (void)fprintf(stderr, "[OK  ] test_ra8_cnecc.c\n");
   return 0;
 }

@@ -516,6 +516,5 @@ int32_t main(void)
   test_verdict();
   test_capture_ok();
   test_swap_integration();
-  (void)fprintf(stderr, "[OK  ] test_app_ra8_io_swap_demo.c\n");
   return 0;
 }

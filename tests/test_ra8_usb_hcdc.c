@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_usb_hcdc.c
  * @brief Unit tests for the native USB host-side CDC ACM class layer
+ * @details Covers host CDC enumeration, line coding, control/data transfers, attach callbacks, and validation failures.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -431,6 +432,5 @@ int32_t main(void)
   test_host_set_uact_and_bus_reset();
   test_host_setup_request_validates();
   test_mcdc_hcdc();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_hcdc.c\n");
   return 0;
 }

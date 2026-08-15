@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_ulpt.c
  * @brief Unit tests for ra8_ulpt.c (Ultra-Low-Power Timer driver)
+ * @details Exercises ULPT channel setup, compare values, start/stop state, validation, and register effects through fake MMIO.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -302,6 +303,5 @@ int32_t main(void)
   test_set_period_and_status();
   test_attach_and_dispatch();
   test_power_transition();
-  (void)fprintf(stderr, "[OK ] test_ra8_ulpt.c\n");
   return 0;
 }

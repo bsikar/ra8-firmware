@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_eth_coma.c
  * @brief Unit tests for ra8_eth_coma.c (COMA sub-driver)
+ * @details Covers COMA status, control, timeout, and validation paths against deterministic hosted register values.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -191,6 +192,5 @@ int32_t main(void)
   test_power_transition();
   test_bringup_happy();
   test_bringup_bpr_timeout();
-  (void)fprintf(stderr, "[OK  ] test_ra8_eth_coma.c\n");
   return 0;
 }

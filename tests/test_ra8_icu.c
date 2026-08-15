@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_icu.c
  * @brief Unit tests for ra8_icu.c (Interrupt Control Unit)
+ * @details Covers ICU event routing, interrupt status, NMI cause handling, bounds, and register preservation using hosted MMIO.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -203,6 +204,5 @@ int32_t main(void)
   test_configure_irq_pin_irqcrb();
   test_nmi_enable_disable_clear();
   test_ielsr_mask_is_10_bits();
-  (void)fprintf(stderr, "[OK  ] test_ra8_icu.c\n");
   return 0;
 }

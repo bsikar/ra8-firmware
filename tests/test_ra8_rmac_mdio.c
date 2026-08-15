@@ -476,6 +476,5 @@ int32_t main(void)
   test_phy_link_status();
   test_mcdc_ra8_rmac();
   test_mcdc_ra8_rmac_psmcs_clamp();
-  (void)fprintf(stderr, "[OK  ] test_ra8_rmac_mdio.c\n");
   return 0;
 }

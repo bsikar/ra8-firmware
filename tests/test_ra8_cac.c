@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_cac.c
  * @brief Unit tests for ra8_cac.c (Clock Accuracy Check)
+ * @details Exercises CAC threshold programming, status sampling, channel bounds, and module-stop behavior using hosted register fixtures.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -234,6 +235,5 @@ int32_t main(void)
   test_status_read_and_clear();
   test_attach_and_dispatch();
   test_power_transition();
-  (void)fprintf(stderr, "[OK ] test_ra8_cac.c\n");
   return 0;
 }

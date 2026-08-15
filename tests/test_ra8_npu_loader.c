@@ -516,6 +516,5 @@ int32_t main(void)
   test_load_rejects_checksum();
   test_load_rejects_baked_oob();
   test_load_runtime_arena_limits();
-  (void)fprintf(stderr, "[OK ] test_ra8_npu_loader.c\n");
   return 0;
 }

@@ -627,6 +627,5 @@ int32_t main(void)
   test_cov_program_addresses_bundle2();
   test_cov_plane_b_all_overrides();
   test_cov_byte_swap_16_bit();
-  (void)fprintf(stderr, "[OK  ] test_ra8_ceu_cov.c\n");
   return 0;
 }

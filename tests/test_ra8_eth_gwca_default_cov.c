@@ -515,6 +515,5 @@ int32_t main(void)
   test_default_open_bad_rx_queue();
   test_default_open_happy();
   test_default_open_init_saturation();
-  (void)fprintf(stderr, "[OK  ] test_ra8_eth_gwca_default_cov.c\n");
   return 0;
 }

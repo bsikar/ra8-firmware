@@ -118,6 +118,5 @@ int32_t main(void)
 {
   test_ra8_fpu_dp_madd_values();
   test_ra8_fpu_dp_madd_wide_magnitude();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fpu_probe.c\n");
   return 0;
 }

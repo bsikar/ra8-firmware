@@ -607,6 +607,5 @@ int32_t main(void)
   test_read_packet();
   test_ulps_enter_exit();
   test_ulps_clock_lane_continuous_rejected();
-  (void)fprintf(stderr, "[OK ] test_ra8_mipi_dsi_cmd.c\n");
   return 0;
 }

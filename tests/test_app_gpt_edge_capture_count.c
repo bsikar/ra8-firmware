@@ -170,6 +170,5 @@ int main(void)
   test_mcdc_period_valid_window();
   test_capture_sequence();
   test_count_sequence();
-  (void)fprintf(stderr, "[OK ] test_app_gpt_edge_capture_count.c\n");
   return 0;
 }

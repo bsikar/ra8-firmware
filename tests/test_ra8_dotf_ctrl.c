@@ -663,6 +663,5 @@ int32_t main(void)
   test_mcdc_dotf();
   test_mcdc_dotf_rotate_key_size_and_chain();
   test_mcdc_dotf_install_key_size_3cond();
-  (void)fprintf(stderr, "[OK  ] test_ra8_dotf_ctrl.c\n");
   return 0;
 }

@@ -332,6 +332,5 @@ int32_t main(void)
   test_verify_match_then_mismatch();
   test_exit_standby_zeroes_attached_mirror();
   test_attach_isr_rolls_back_on_second_failure();
-  (void)fprintf(stderr, "[OK  ] test_ra8_cnecc_cov.c\n");
   return 0;
 }

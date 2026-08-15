@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_isr.c
  * @brief Unit tests for the NVIC + ICU IELSR allocator (libs/ra8_hal/src/ra8_isr.c).
+ * @details Validates IRQ allocation, event binding, dispatch, release, exhaustion, and malformed-input handling through fake NVIC and ICU state.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -431,6 +432,5 @@ int32_t main(void)
   test_set_dtc_arm_disarm_roundtrip();
   test_set_dtc_preserves_ir();
   test_set_dtc_rejects_bad_inputs();
-  (void)fprintf(stderr, "[OK  ] test_ra8_isr.c\n");
   return 0;
 }

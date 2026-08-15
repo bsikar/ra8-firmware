@@ -308,6 +308,5 @@ int32_t main(void)
   test_set_accept_filter_standard_overflow();
   test_set_accept_filter_extended_overflow();
   test_set_accept_filter_bad_target_rx();
-  (void)fprintf(stderr, "[OK ] test_ra8_canfd_afl.c\n");
   return 0;
 }

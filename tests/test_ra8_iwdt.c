@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_iwdt.c
  * @brief Unit tests for the IWDT driver (ra8_iwdt.c)
+ * @details Checks independent-watchdog configuration, refresh sequencing, status, and invalid input against deterministic registers.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -241,6 +242,5 @@ int32_t main(void)
   test_get_counter();
   test_clear_status();
   test_attach_and_dispatch();
-  (void)fprintf(stderr, "[OK ] test_ra8_iwdt.c\n");
   return 0;
 }

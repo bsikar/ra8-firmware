@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_touch_cal.h"
 #include "unity_minimal.h"
@@ -93,7 +94,7 @@ typedef enum : uint8_t {
 } t_tc_blob_t;
 
 /** @brief Rounding bias added before truncating a float coordinate to int. */
-static const float k_t_round_half = 0.5F;
+static const float s_t_round_half = 0.5F;
 
 /**
  * @brief Tolerance for the affine translation terms (c, f), in pixels.
@@ -101,10 +102,10 @@ static const float k_t_round_half = 0.5F;
  * Looser than the scale tolerance because c and f accumulate the rounding of
  * every sampled point rather than a ratio between them.
  */
-static const float k_t_tol_translate = 1.0e-1F;
+static const float s_t_tol_translate = 1.0e-1F;
 
 /** @brief Tolerance for the affine scale/shear terms (a, e), dimensionless. */
-static const float k_t_tol_scale = 1.0e-3F;
+static const float s_t_tol_scale = 1.0e-3F;
 
 /**
  * @enum tc_test_const_t
@@ -145,10 +146,10 @@ typedef struct {
   ra8_err_t                    forced_err;                       /**< Forced error. */
 } stub_state_t;
 
-/**
- * @brief Stub LCD shim -- records cross-hair coordinates.
- */
-static ra8_err_t stub_draw(void* ctx, ra8_touch_cal_point_t target)
+#include "support/ra8_touch_cal_test_contracts.h"
+
+/** @copydoc internal_stub_draw */
+RA8_INTERNAL static ra8_err_t internal_stub_draw(void* ctx, ra8_touch_cal_point_t target)
 {
   stub_state_t* s = (stub_state_t*)ctx;
   if (s->forced_err != k_ra8_ok) {
@@ -161,10 +162,8 @@ static ra8_err_t stub_draw(void* ctx, ra8_touch_cal_point_t target)
   return k_ra8_ok;
 }
 
-/**
- * @brief Stub touch shim -- replays a fixed array of raw samples.
- */
-static ra8_err_t stub_read(void* ctx, ra8_touch_cal_point_t* out_raw)
+/** @copydoc internal_stub_read */
+RA8_INTERNAL static ra8_err_t internal_stub_read(void* ctx, ra8_touch_cal_point_t* out_raw)
 {
   stub_state_t* s = (stub_state_t*)ctx;
   if (s->reads_idx >= s->n_reads) {
@@ -175,23 +174,23 @@ static ra8_err_t stub_read(void* ctx, ra8_touch_cal_point_t* out_raw)
   return k_ra8_ok;
 }
 
-/**
- * @brief Map a raw point through a known ground-truth affine.
- */
-static ra8_touch_cal_point_t apply_truth(ra8_touch_cal_point_t raw, const ra8_touch_cal_matrix_t* m)
+/** @copydoc internal_apply_truth */
+RA8_INTERNAL static ra8_touch_cal_point_t internal_apply_truth(ra8_touch_cal_point_t         raw,
+                                                               const ra8_touch_cal_matrix_t* m)
 {
   const float           xf  = (float)raw.x;
   const float           yf  = (float)raw.y;
   const float           u   = (m->a * xf) + (m->b * yf) + m->c;
   const float           v   = (m->d * xf) + (m->e * yf) + m->f;
   ra8_touch_cal_point_t out = {
-    .x = (int32_t)(u + k_t_round_half),
-    .y = (int32_t)(v + k_t_round_half),
+    .x = (int32_t)(u + s_t_round_half),
+    .y = (int32_t)(v + s_t_round_half),
   };
   return out;
 }
 
 /**
+ * @copydoc internal_test_compute_three_point
  * @brief Test 1 -- 3-point exact fit recovers the ground-truth matrix.
   *
   * @par MC/DC:
@@ -199,7 +198,7 @@ static ra8_touch_cal_point_t apply_truth(ra8_touch_cal_point_t raw, const ra8_to
   * happy path / error-rejection contract; no `&&` or `||` in the
   * code under test that this case touches)
  */
-static void test_compute_three_point(void)
+RA8_INTERNAL static void internal_test_compute_three_point(void)
 {
   const ra8_touch_cal_matrix_t truth = {
     .a = 0.25F,
@@ -216,20 +215,21 @@ static void test_compute_three_point(void)
   };
   ra8_touch_cal_point_t scr[3] = {{0, 0}, {0, 0}, {0, 0}};
   for (uint8_t i = 0U; i < 3U; i++) {
-    scr[i] = apply_truth(raw[i], &truth);
+    scr[i] = internal_apply_truth(raw[i], &truth);
   }
 
   ra8_touch_cal_matrix_t got = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_cal_compute(raw, scr, 3U, &got));
 
   /* Recovered coefficients should match within 1e-3. */
-  TEST_ASSERT(((got.a - truth.a) < k_t_tol_scale) && ((truth.a - got.a) < k_t_tol_scale));
-  TEST_ASSERT(((got.e - truth.e) < k_t_tol_scale) && ((truth.e - got.e) < k_t_tol_scale));
-  TEST_ASSERT(((got.c - truth.c) < k_t_tol_translate) && ((truth.c - got.c) < k_t_tol_translate));
-  TEST_ASSERT(((got.f - truth.f) < k_t_tol_translate) && ((truth.f - got.f) < k_t_tol_translate));
+  TEST_ASSERT(((got.a - truth.a) < s_t_tol_scale) && ((truth.a - got.a) < s_t_tol_scale));
+  TEST_ASSERT(((got.e - truth.e) < s_t_tol_scale) && ((truth.e - got.e) < s_t_tol_scale));
+  TEST_ASSERT(((got.c - truth.c) < s_t_tol_translate) && ((truth.c - got.c) < s_t_tol_translate));
+  TEST_ASSERT(((got.f - truth.f) < s_t_tol_translate) && ((truth.f - got.f) < s_t_tol_translate));
 }
 
 /**
+ * @copydoc internal_test_compute_five_point
  * @brief Test 2 -- 5-point least-squares fit recovers truth (no noise).
   *
   * @par MC/DC:
@@ -237,7 +237,7 @@ static void test_compute_three_point(void)
   * happy path / error-rejection contract; no `&&` or `||` in the
   * code under test that this case touches)
  */
-static void test_compute_five_point(void)
+RA8_INTERNAL static void internal_test_compute_five_point(void)
 {
   /* All five (raw -> screen) samples must remain inside the panel,
    * otherwise ra8_touch_cal_apply's clip would silently reshape the
@@ -260,7 +260,7 @@ static void test_compute_five_point(void)
   };
   ra8_touch_cal_point_t scr[k_t_cal_points] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
   for (uint8_t i = 0U; i < k_t_cal_points; i++) {
-    scr[i] = apply_truth(raw[i], &truth);
+    scr[i] = internal_apply_truth(raw[i], &truth);
   }
 
   ra8_touch_cal_matrix_t got = {};
@@ -283,6 +283,7 @@ static void test_compute_five_point(void)
 }
 
 /**
+ * @copydoc internal_test_compute_bad_inputs
  * @brief Test 3 -- ``ra8_touch_cal_compute`` rejects bad inputs.
   *
   * @par MC/DC:
@@ -290,7 +291,7 @@ static void test_compute_five_point(void)
   * happy path / error-rejection contract; no `&&` or `||` in the
   * code under test that this case touches)
  */
-static void test_compute_bad_inputs(void)
+RA8_INTERNAL static void internal_test_compute_bad_inputs(void)
 {
   ra8_touch_cal_point_t  pts[k_t_cal_points] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
   ra8_touch_cal_matrix_t m                   = {};
@@ -310,6 +311,7 @@ static void test_compute_bad_inputs(void)
 }
 
 /**
+ * @copydoc internal_test_apply_clip_and_null
  * @brief Test 4 -- ``ra8_touch_cal_apply`` clips to panel and rejects NULL.
   *
   * @par MC/DC:
@@ -317,7 +319,7 @@ static void test_compute_bad_inputs(void)
   * happy path / error-rejection contract; no `&&` or `||` in the
   * code under test that this case touches)
  */
-static void test_apply_clip_and_null(void)
+RA8_INTERNAL static void internal_test_apply_clip_and_null(void)
 {
   ra8_touch_cal_matrix_t m = {
     .a = 1.0F,
@@ -346,19 +348,11 @@ static void test_apply_clip_and_null(void)
   TEST_ASSERT_EQ(99, out.y);
 }
 
-/**
- * @brief Assert the recovered matrix maps every raw sample back to its target.
- * @param[in] raws    The five synthesised raw samples.
- * @param[in] targets The five on-screen calibration targets.
- * @param[in] got     The matrix recovered by ra8_touch_cal_run.
- * @pre @p got is a valid calibration matrix for @p raws / @p targets.
- * @post Every sample round-tripped within a 5-pixel tolerance.
- * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void tc_verify_roundtrip(const ra8_touch_cal_point_t   raws[k_t_cal_points],
-                                const ra8_touch_cal_point_t   targets[k_t_cal_points],
-                                const ra8_touch_cal_matrix_t* got)
+/** @copydoc internal_verify_roundtrip */
+RA8_INTERNAL static void
+internal_verify_roundtrip(const ra8_touch_cal_point_t   raws[k_t_cal_points],
+                          const ra8_touch_cal_point_t   targets[k_t_cal_points],
+                          const ra8_touch_cal_matrix_t* got)
 {
   for (uint8_t k = 0U; k < k_t_cal_points; k++) {
     ra8_touch_cal_point_t mapped = {0, 0};
@@ -372,19 +366,10 @@ static void tc_verify_roundtrip(const ra8_touch_cal_point_t   raws[k_t_cal_point
   }
 }
 
-/**
- * @brief Synthesise the raw samples by inverting the ground-truth matrix.
- * @param[in]  targets The five on-screen calibration targets.
- * @param[in]  truth   The ground-truth calibration matrix.
- * @param[out] raws    Receives the five inverted raw samples.
- * @pre @p truth has non-zero a/e scale terms.
- * @post @p raws holds raw = screen / scale for each target.
- * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void tc_synth_raws(const ra8_touch_cal_point_t   targets[k_t_cal_points],
-                          const ra8_touch_cal_matrix_t* truth,
-                          ra8_touch_cal_point_t         raws[k_t_cal_points])
+/** @copydoc internal_synth_raws */
+RA8_INTERNAL static void internal_synth_raws(const ra8_touch_cal_point_t   targets[k_t_cal_points],
+                                             const ra8_touch_cal_matrix_t* truth,
+                                             ra8_touch_cal_point_t         raws[k_t_cal_points])
 {
   for (uint8_t k = 0U; k < k_t_cal_points; k++) {
     raws[k].x = (int32_t)((float)targets[k].x / truth->a);
@@ -392,17 +377,10 @@ static void tc_synth_raws(const ra8_touch_cal_point_t   targets[k_t_cal_points],
   }
 }
 
-/**
- * @brief Assert the utility painted the targets in the expected visit order.
- * @param[in] targets The five expected targets in visit order.
- * @param[in] state   The stub state recording draw calls.
- * @pre @p state recorded five draws.
- * @post Every drawn point matched the expected target.
- * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void tc_verify_draw_order(const ra8_touch_cal_point_t targets[k_t_cal_points],
-                                 const stub_state_t*         state)
+/** @copydoc internal_verify_draw_order */
+RA8_INTERNAL static void
+internal_verify_draw_order(const ra8_touch_cal_point_t targets[k_t_cal_points],
+                           const stub_state_t*         state)
 {
   for (uint8_t k = 0U; k < k_t_cal_points; k++) {
     TEST_ASSERT_EQ(targets[k].x, state->draws[k].x);
@@ -411,6 +389,7 @@ static void tc_verify_draw_order(const ra8_touch_cal_point_t targets[k_t_cal_poi
 }
 
 /**
+ * @copydoc internal_test_run_full_sequence
  * @brief Test 5 -- ``ra8_touch_cal_run`` paints 5 targets and recovers a
  *        matrix that round-trips the synthetic raw samples.
   *
@@ -419,7 +398,7 @@ static void tc_verify_draw_order(const ra8_touch_cal_point_t targets[k_t_cal_poi
   * happy path / error-rejection contract; no `&&` or `||` in the
   * code under test that this case touches)
  */
-static void test_run_full_sequence(void)
+RA8_INTERNAL static void internal_test_run_full_sequence(void)
 {
   const ra8_touch_cal_matrix_t truth = {
     .a = 0.25F,
@@ -445,7 +424,7 @@ static void test_run_full_sequence(void)
   /* Synthesise the raw samples the user "would have produced" by
      inverting truth: raw = (screen - t) / scale. */
   ra8_touch_cal_point_t raws[k_t_cal_points] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
-  tc_synth_raws(targets, &truth, raws);
+  internal_synth_raws(targets, &truth, raws);
 
   stub_state_t state = {
     .draws      = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
@@ -459,9 +438,9 @@ static void test_run_full_sequence(void)
     .screen_width  = (uint16_t)k_tc_screen_w,
     .screen_height = (uint16_t)k_tc_screen_h,
     .inset_px      = (uint16_t)k_tc_inset,
-    .draw_target   = stub_draw,
+    .draw_target   = internal_stub_draw,
     .draw_ctx      = &state,
-    .read_raw      = stub_read,
+    .read_raw      = internal_stub_read,
     .read_ctx      = &state,
   };
   ra8_touch_cal_matrix_t got = {};
@@ -470,15 +449,16 @@ static void test_run_full_sequence(void)
   TEST_ASSERT_EQ(5, state.reads_idx);
 
   /* Verify the order of targets the utility visited. */
-  tc_verify_draw_order(targets, &state);
+  internal_verify_draw_order(targets, &state);
 
   /* Recovered matrix must round-trip every raw sample to its target
      within a small pixel tolerance (see test_compute_five_point for
      the rationale -- least-squares + integer rounding). */
-  tc_verify_roundtrip(raws, targets, &got);
+  internal_verify_roundtrip(raws, targets, &got);
 }
 
 /**
+ * @copydoc internal_test_run_shim_error
  * @brief Test 6 -- ``ra8_touch_cal_run`` propagates shim errors.
   *
   * @par MC/DC:
@@ -486,7 +466,7 @@ static void test_run_full_sequence(void)
   * happy path / error-rejection contract; no `&&` or `||` in the
   * code under test that this case touches)
  */
-static void test_run_shim_error(void)
+RA8_INTERNAL static void internal_test_run_shim_error(void)
 {
   ra8_touch_cal_point_t dummy[k_t_cal_points] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
   stub_state_t          state                 = {
@@ -501,9 +481,9 @@ static void test_run_shim_error(void)
     .screen_width  = (uint16_t)k_tc_screen_w,
     .screen_height = (uint16_t)k_tc_screen_h,
     .inset_px      = (uint16_t)k_tc_inset,
-    .draw_target   = stub_draw,
+    .draw_target   = internal_stub_draw,
     .draw_ctx      = &state,
-    .read_raw      = stub_read,
+    .read_raw      = internal_stub_read,
     .read_ctx      = &state,
   };
   ra8_touch_cal_matrix_t got = {};
@@ -519,24 +499,16 @@ static void test_run_shim_error(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_touch_cal_run(&bad, &got));
 }
 
-/**
- * @brief Exact-equality comparison of two calibration matrices.
- *
- * @param[in] lhs First matrix.
- * @param[in] rhs Second matrix.
- * @return true when all six coefficients compare equal.
- *
- * @pre @p lhs is non-null.
- * @pre @p rhs is non-null.
- * @post Neither operand is modified.
- */
-static bool cal_matrix_equal(const ra8_touch_cal_matrix_t* lhs, const ra8_touch_cal_matrix_t* rhs)
+/** @copydoc internal_cal_matrix_equal */
+RA8_INTERNAL static bool internal_cal_matrix_equal(const ra8_touch_cal_matrix_t* lhs,
+                                                   const ra8_touch_cal_matrix_t* rhs)
 {
   return (lhs->a == rhs->a) && (lhs->b == rhs->b) && (lhs->c == rhs->c) && (lhs->d == rhs->d) &&
          (lhs->e == rhs->e) && (lhs->f == rhs->f);
 }
 
 /**
+ * @copydoc internal_test_save_load_roundtrip
  * @brief Test 7 -- save/load round-trip is bit-identical and CRC-checked.
   *
   * @par MC/DC:
@@ -544,7 +516,7 @@ static bool cal_matrix_equal(const ra8_touch_cal_matrix_t* lhs, const ra8_touch_
   * happy path / error-rejection contract; no `&&` or `||` in the
   * code under test that this case touches)
  */
-static void test_save_load_roundtrip(void)
+RA8_INTERNAL static void internal_test_save_load_roundtrip(void)
 {
   const ra8_touch_cal_matrix_t in = {
     .a = 0.25F,
@@ -574,7 +546,7 @@ static void test_save_load_roundtrip(void)
  * fixed by the typedef it is assigned to -- adding const changes the
  * function type and the assignment stops compiling. */
   // NOLINTBEGIN(readability-non-const-parameter)
-  TEST_ASSERT(cal_matrix_equal(&in, &out));
+  TEST_ASSERT(internal_cal_matrix_equal(&in, &out));
 
   /* Buffer too small. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_touch_cal_save(&in, blob, (size_t)k_tc_blob - 1U));
@@ -588,6 +560,7 @@ static void test_save_load_roundtrip(void)
 }
 
 /**
+ * @copydoc internal_test_load_corruption
  * @brief Test 8 -- corrupted blob bytes are rejected.
   *
   * @par MC/DC:
@@ -595,7 +568,7 @@ static void test_save_load_roundtrip(void)
   * happy path / error-rejection contract; no `&&` or `||` in the
   * code under test that this case touches)
  */
-static void test_load_corruption(void)
+RA8_INTERNAL static void internal_test_load_corruption(void)
 // NOLINTEND(readability-non-const-parameter)
 {
   const ra8_touch_cal_matrix_t in = {
@@ -636,6 +609,7 @@ static void test_load_corruption(void)
 }
 
 /**
+ * @copydoc internal_test_mcdc_load_magic_and_reserved_byte_pairs
  * @test test_mcdc_load_magic_and_reserved_byte_pairs
  *
  * @par MC/DC:
@@ -658,7 +632,7 @@ static void test_load_corruption(void)
  * from test_save_load_roundtrip, every C-pair is closed (N+1 minimal
  * MC/DC for each OR).
  */
-static void test_mcdc_load_magic_and_reserved_byte_pairs(void)
+RA8_INTERNAL static void internal_test_mcdc_load_magic_and_reserved_byte_pairs(void)
 {
   TEST_BEGIN("touch_cal load MC/DC: magic + reserved per-byte independence");
   const ra8_touch_cal_matrix_t in = {
@@ -690,6 +664,7 @@ static void test_mcdc_load_magic_and_reserved_byte_pairs(void)
 }
 
 /**
+ * @copydoc internal_test_compute_n_range_mcdc
  * @test test_compute_n_range_mcdc
  *
  * @par MC/DC:
@@ -705,7 +680,7 @@ static void test_mcdc_load_magic_and_reserved_byte_pairs(void)
  * held F (decision flips). N+1 = 3 vectors for N=2 conditions: minimal
  * MC/DC.
  */
-static void test_compute_n_range_mcdc(void)
+RA8_INTERNAL static void internal_test_compute_n_range_mcdc(void)
 {
   TEST_BEGIN("touch_cal compute MC/DC: n < min || n > max");
   ra8_touch_cal_point_t  pts[6] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
@@ -727,6 +702,7 @@ static void test_compute_n_range_mcdc(void)
 }
 
 /**
+ * @copydoc internal_test_run_margin_mcdc
  * @test test_run_margin_mcdc
  *
  * @par MC/DC:
@@ -744,7 +720,7 @@ static void test_compute_n_range_mcdc(void)
  *             margin=120 >= 100 (C2=T) -> Decision T (invalid_arg)
  * Vectors 1+2 vary C1; vectors 2+3 vary C2 with C1 held F.
  */
-static void test_run_margin_mcdc(void)
+RA8_INTERNAL static void internal_test_run_margin_mcdc(void)
 {
   TEST_BEGIN("touch_cal run MC/DC: margin >= w || margin >= h");
   /* Stub state with empty read buffer so the post-decision code path
@@ -762,9 +738,9 @@ static void test_run_margin_mcdc(void)
   ra8_touch_cal_run_cfg_t cfg1 = {.screen_width  = k_t_screen_small,
                                   .screen_height = k_t_screen_small,
                                   .inset_px      = k_t_inset_wide,
-                                  .draw_target   = stub_draw,
+                                  .draw_target   = internal_stub_draw,
                                   .draw_ctx      = &state,
-                                  .read_raw      = stub_read,
+                                  .read_raw      = internal_stub_read,
                                   .read_ctx      = &state};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_touch_cal_run(&cfg1, &got));
 
@@ -785,6 +761,7 @@ static void test_run_margin_mcdc(void)
 }
 
 /**
+ * @copydoc internal_test_mcdc_compute_null_or3
  * @test test_mcdc_compute_null_or3
  *
  * @par MC/DC:
@@ -811,7 +788,7 @@ static void test_run_margin_mcdc(void)
  * drives ok_u=ok_v=F (decision T -> invalid_arg) and every well-conditioned
  * dataset drives ok_u=ok_v=T (decision F -> proceeds).
  */
-static void test_mcdc_compute_null_or3(void)
+RA8_INTERNAL static void internal_test_mcdc_compute_null_or3(void)
 {
   TEST_BEGIN("touch_cal compute MC/DC: raw||screen||out NULL");
   const ra8_touch_cal_point_t raw[3] = {
@@ -833,6 +810,7 @@ static void test_mcdc_compute_null_or3(void)
 }
 
 /**
+ * @copydoc internal_test_mcdc_run_cb_null_or
  * @test test_mcdc_run_cb_null_or
  *
  * @par MC/DC:
@@ -843,7 +821,7 @@ static void test_mcdc_compute_null_or3(void)
  * - V2: draw=NULL          -> C1=T short -> dec T -> null_ptr
  * - V3: draw=ok, read=NULL -> C1=F, C2=T -> dec T -> null_ptr
  */
-static void test_mcdc_run_cb_null_or(void)
+RA8_INTERNAL static void internal_test_mcdc_run_cb_null_or(void)
 {
   TEST_BEGIN("touch_cal run MC/DC: draw||read NULL");
   ra8_touch_cal_matrix_t        m  = {};
@@ -851,8 +829,8 @@ static void test_mcdc_run_cb_null_or(void)
     .screen_width  = (uint16_t)k_tc_screen_w,
     .screen_height = (uint16_t)k_tc_screen_h,
     .inset_px      = (uint16_t)k_tc_inset,
-    .draw_target   = stub_draw,
-    .read_raw      = stub_read,
+    .draw_target   = internal_stub_draw,
+    .read_raw      = internal_stub_read,
   };
   /* V2: draw=NULL */
   ra8_touch_cal_run_cfg_t v2 = v1;
@@ -875,6 +853,7 @@ static void test_mcdc_run_cb_null_or(void)
 }
 
 /**
+ * @copydoc internal_test_mcdc_run_cfg_out_null_or
  * @test test_mcdc_run_cfg_out_null_or
  *
  * @par MC/DC:
@@ -885,7 +864,7 @@ static void test_mcdc_run_cb_null_or(void)
  * - V2: cfg=NULL       -> C1=T short -> dec T -> null_ptr
  * - V3: cfg=ok, out=NULL -> C1=F, C2=T -> dec T -> null_ptr
  */
-static void test_mcdc_run_cfg_out_null_or(void)
+RA8_INTERNAL static void internal_test_mcdc_run_cfg_out_null_or(void)
 {
   TEST_BEGIN("touch_cal run MC/DC: cfg||out NULL");
   ra8_touch_cal_matrix_t        m   = {};
@@ -893,8 +872,8 @@ static void test_mcdc_run_cfg_out_null_or(void)
     .screen_width  = (uint16_t)k_tc_screen_w,
     .screen_height = (uint16_t)k_tc_screen_h,
     .inset_px      = (uint16_t)k_tc_inset,
-    .draw_target   = stub_draw,
-    .read_raw      = stub_read,
+    .draw_target   = internal_stub_draw,
+    .read_raw      = internal_stub_read,
   };
   /* V2 */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_touch_cal_run(nullptr, &m));
@@ -905,6 +884,7 @@ static void test_mcdc_run_cfg_out_null_or(void)
 }
 
 /**
+ * @copydoc internal_test_mcdc_apply_run_screen_dim_pair
  * @test test_mcdc_apply_run_screen_dim_pair
  *
  * @par MC/DC:
@@ -923,7 +903,7 @@ static void test_mcdc_run_cfg_out_null_or(void)
  * - V3 (new):      w=100,h=0   -> C1=F,C2=T -> dec T -> invalid_arg.
  * V1+V2 isolate C1; V1+V3 isolate C2.
  */
-static void test_mcdc_apply_run_screen_dim_pair(void)
+RA8_INTERNAL static void internal_test_mcdc_apply_run_screen_dim_pair(void)
 {
   TEST_BEGIN("touch_cal MC/DC: apply+run screen_height==0 (C2 of OR)");
   const ra8_touch_cal_matrix_t m = {
@@ -960,20 +940,20 @@ static void test_mcdc_apply_run_screen_dim_pair(void)
  */
 int main(void)
 {
-  test_compute_three_point();
-  test_compute_five_point();
-  test_compute_bad_inputs();
-  test_apply_clip_and_null();
-  test_run_full_sequence();
-  test_run_shim_error();
-  test_save_load_roundtrip();
-  test_load_corruption();
-  test_mcdc_load_magic_and_reserved_byte_pairs();
-  test_compute_n_range_mcdc();
-  test_run_margin_mcdc();
-  test_mcdc_compute_null_or3();
-  test_mcdc_run_cb_null_or();
-  test_mcdc_run_cfg_out_null_or();
-  test_mcdc_apply_run_screen_dim_pair();
+  internal_test_compute_three_point();
+  internal_test_compute_five_point();
+  internal_test_compute_bad_inputs();
+  internal_test_apply_clip_and_null();
+  internal_test_run_full_sequence();
+  internal_test_run_shim_error();
+  internal_test_save_load_roundtrip();
+  internal_test_load_corruption();
+  internal_test_mcdc_load_magic_and_reserved_byte_pairs();
+  internal_test_compute_n_range_mcdc();
+  internal_test_run_margin_mcdc();
+  internal_test_mcdc_compute_null_or3();
+  internal_test_mcdc_run_cb_null_or();
+  internal_test_mcdc_run_cfg_out_null_or();
+  internal_test_mcdc_apply_run_screen_dim_pair();
   return 0;
 }

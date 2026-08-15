@@ -792,6 +792,5 @@ int32_t main(void)
   test_mcdc_abort_direction();
   test_mcdc_write_dma_reg_len();
   test_mcdc_read_dma_reg_len();
-  (void)fprintf(stderr, "[OK  ] test_ra8_sci_dma_async.c\n");
   return 0;
 }

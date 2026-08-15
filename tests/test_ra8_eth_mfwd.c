@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_eth_mfwd.c
  * @brief Unit tests for ra8_eth_mfwd.c (MFWD sub-driver)
+ * @details Validates MFWD control and status operations, argument guards, and module state through hosted peripheral storage.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -171,6 +172,5 @@ int32_t main(void)
   test_attach_and_dispatch();
   test_power_transition();
   test_mcdc_route_queue_bounds();
-  (void)fprintf(stderr, "[OK  ] test_ra8_eth_mfwd.c\n");
   return 0;
 }

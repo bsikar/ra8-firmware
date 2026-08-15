@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_elc.c
  * @brief Unit tests for ra8_elc.c (Event Link Controller helper)
+ * @details Verifies ELC slot programming, event validation, enable state, and register preservation with hosted peripheral memory.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -252,6 +253,5 @@ int32_t main(void)
   test_unlink_clears_slot();
   test_software_trigger();
   test_is_enabled_null_out();
-  (void)fprintf(stderr, "[OK  ] test_ra8_elc.c\n");
   return 0;
 }

@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_wdt.c
  * @brief Unit tests for ra8_wdt.c (software WDT driver)
+ * @details Checks watchdog configuration, refresh key sequencing, status reads, and invalid configuration using hosted registers.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -164,6 +165,5 @@ int32_t main(void)
   test_wdt_get_status();
   test_wdt_clear_status();
   test_wdt_attach_and_dispatch();
-  (void)fprintf(stderr, "[OK ] test_ra8_wdt.c\n");
   return 0;
 }

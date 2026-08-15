@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_bit_constants.c
  * @brief Unit tests for ra8_bit_constants.h named bit positions
+ * @details Verifies the public named-bit constants retain their exact monotonic positions and packed-mask semantics.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -63,6 +64,5 @@ int32_t main(void)
   test_bit_positions_monotonic();
   test_byte_masks();
   test_bits_per_type();
-  (void)fprintf(stderr, "[OK  ] test_ra8_bit_constants.c\n");
   return 0;
 }

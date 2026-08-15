@@ -651,6 +651,5 @@ int32_t main(void)
   test_gpt_three_phase_arg_validation();
   test_mcdc_write_dma_arg_guard();
   test_mcdc_dead_time_set_tde_predicate();
-  (void)fprintf(stderr, "[OK ] test_ra8_gpt_pwm_dma.c\n");
   return 0;
 }

@@ -8,7 +8,7 @@
  *
  * @details
  * `ra8_sbrk_trap.c` provides a strong `_sbrk` that never returns: any accidental
- * newlib heap dependency traps into `internal_ra8_fatal_error` and the firmware
+ * newlib heap dependency traps into `ra8_fatal_error` and the firmware
  * halts, enforcing NASA Power of 10 Rule 3 (zero dynamic allocation). On the
  * host the production `_sbrk` is linked from `ra8_core_hal` but is never called
  * (glibc's `malloc` resolves its own program break), so the trap body shows 0%
@@ -18,7 +18,7 @@
  * (declared `extern` and linked from `ra8_core_hal`), so the coverage lands in
  * the one object gcovr reports for `ra8_sbrk_trap.c`; a renamed white-box copy
  * (`#define _sbrk _sbrk_cov` + include) would not merge into the aggregate. Its
- * one dependency -- the weak `internal_ra8_fatal_error` sink in
+ * one dependency -- the weak `ra8_fatal_error` sink in
  * `ra8_error_handler.c` -- is redirected with a strong definition here (the same
  * technique as `test_ra8_exception.c`). The mocked sink either `longjmp()`s
  * straight back so the in-process leg records the three lines and inspects the
@@ -38,6 +38,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "ra8_attributes.h"
 #include "ra8_error_handler.h"
 #include "ra8_sbrk_trap.h"
 #include "unity_minimal.h"
@@ -88,14 +89,14 @@ static uint32_t s_sink_err = (uint32_t)k_sink_err_unset;
 static volatile sig_atomic_t s_watchdog_fired = 0;
 
 /**
- * @brief Strong override of the weak `internal_ra8_fatal_error` sink.
+ * @brief Strong override of the weak `ra8_fatal_error` sink.
  *
  * @details The trap under test tail-calls this function; controlling it here
  * lets the coverage leg survive (via longjmp) while the death-test leg halts
  * (via abort) exactly where the firmware would spin. Matches the header's
  * `[[noreturn]]` contract on both paths.
  */
-void internal_ra8_fatal_error(const char* tag, const char* message, uint32_t err)
+void ra8_fatal_error(const char* tag, const char* message, uint32_t err)
 {
   s_sink_tag = tag;
   s_sink_msg = message;
@@ -108,8 +109,18 @@ void internal_ra8_fatal_error(const char* tag, const char* message, uint32_t err
   abort();
 }
 
-/** @brief SIGALRM handler: flags a hung child so the parent fails loudly. */
-static void death_watchdog(int sig)
+/**
+ * @brief Flag expiry of the forked-child death-test watchdog.
+ * @details Records signal delivery without performing non-signal-safe cleanup.
+ * @param[in] sig Delivered signal number; accepted for the handler ABI only.
+ * @pre The parent installed this handler only for SIGALRM.
+ * @pre ::s_watchdog_fired is writable signal-safe scalar storage.
+ * @post ::s_watchdog_fired is set to one.
+ * @post The handler returns without changing child process state.
+ * @note Parent-side code performs kill and wait cleanup after observing the flag.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_death_watchdog(int sig)
 {
   (void)sig;
   s_watchdog_fired = 1;
@@ -126,16 +137,25 @@ static void death_watchdog(int sig)
 /**
  * @test test_sbrk_trap_reaches_fatal_sink
  *
+ * @brief Verify the production `_sbrk` trap reaches the fatal policy sink.
+ * @details Uses longjmp mode to observe the exact tag, message, and error code
+ * without allowing the production non-returning path to halt the test process.
+ * @pre The strong test sink overrides the weak production fatal backend.
+ * @pre ::s_sink_jmp is established before `_sbrk` is invoked.
+ * @post The sink is entered exactly once with the SBRK heap-free policy.
+ * @post `_sbrk` does not return through its ordinary call site.
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in the code under test -- `_sbrk` is straight-line: an
  * ignored-parameter cast followed by an unconditional `[[noreturn]]` call to
- * `internal_ra8_fatal_error`; no `&&` or `||`.)
+ * `ra8_fatal_error`; no `&&` or `||`.)
  *
  * @note In-process coverage leg. The mocked sink longjmp()s straight back, so
  * the three trap lines execute and are recorded without halting the process.
  * The captured arguments prove the exact heap-free policy call fired.
  */
-static void test_sbrk_trap_reaches_fatal_sink(void)
+RA8_INTERNAL static void internal_test_sbrk_trap_reaches_fatal_sink(void)
 {
   TEST_BEGIN("sbrk trap: enters the fatal sink with the heap-free policy tag");
 
@@ -165,6 +185,15 @@ static void test_sbrk_trap_reaches_fatal_sink(void)
 /**
  * @test test_sbrk_trap_never_returns
  *
+ * @brief Verify the production `_sbrk` trap terminates a forked child.
+ * @details Runs the fatal sink in abort mode under a bounded parent watchdog
+ * and distinguishes signal termination from an erroneous normal return.
+ * @pre fork, waitpid, signal, and alarm are available on the host.
+ * @pre The child disables core dumps before invoking `_sbrk`.
+ * @post The child terminates by signal rather than the return sentinel.
+ * @post The parent cancels the watchdog and reaps the child.
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in the code under test -- `_sbrk` is straight-line;
  * this leg only proves the `[[noreturn]]` contract, it has no branch to cover.)
@@ -177,7 +206,7 @@ static void test_sbrk_trap_reaches_fatal_sink(void)
  * one permitted death-test watchdog and cannot spuriously fire because the child
  * aborts immediately.
  */
-static void test_sbrk_trap_never_returns(void)
+RA8_INTERNAL static void internal_test_sbrk_trap_never_returns(void)
 {
   TEST_BEGIN("sbrk trap: forked child halts and never returns from _sbrk");
 
@@ -195,7 +224,7 @@ static void test_sbrk_trap_never_returns(void)
 
   /* Parent: watchdog the wait so a hung child can never wedge the suite. */
   struct sigaction sa = {};
-  sa.sa_handler       = death_watchdog;
+  sa.sa_handler       = internal_death_watchdog;
   (void)sigaction(SIGALRM, &sa, nullptr);
   (void)alarm((unsigned int)k_death_watchdog_s);
 
@@ -218,8 +247,7 @@ static void test_sbrk_trap_never_returns(void)
 
 int32_t main(void)
 {
-  test_sbrk_trap_reaches_fatal_sink();
-  test_sbrk_trap_never_returns();
-  (void)fprintf(stderr, "[OK ] test_ra8_sbrk_trap_cov.c\n");
+  internal_test_sbrk_trap_reaches_fatal_sink();
+  internal_test_sbrk_trap_never_returns();
   return 0;
 }

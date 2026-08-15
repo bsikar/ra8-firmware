@@ -553,6 +553,5 @@ int main(void)
   test_oversampling_rejects();
   test_mcdc_adc();
   test_accessor_edge_pointers();
-  (void)fprintf(stderr, "[OK ] test_ra8_adc_scan.c\n");
   return 0;
 }

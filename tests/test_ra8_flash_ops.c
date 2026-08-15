@@ -13,7 +13,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
@@ -708,6 +707,5 @@ int32_t main(void)
   test_mcdc_blank_check_region_or3();
   test_mcdc_flash_status_or_pairs();
 
-  (void)fprintf(stderr, "[OK  ] test_ra8_flash_ops.c\n");
   return 0;
 }

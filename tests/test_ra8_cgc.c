@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_cgc.c
  * @brief Unit tests for ra8_cgc.c (Clock Generation Circuit)
+ * @details Validates clock-source transitions, oscillator waits, protection sequencing, and error propagation against deterministic fake MMIO.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -477,6 +478,5 @@ int32_t main(void)
   test_switch_pll1_target_updates_cpuclk0();
   test_stop_detection_arm_and_fire();
   test_mcdc_eswclk_pdctreswm();
-  (void)fprintf(stderr, "[OK  ] test_ra8_cgc.c\n");
   return 0;
 }

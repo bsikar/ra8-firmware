@@ -105,24 +105,24 @@ static uint8_t s_chk_payload[k_chk_payload_ex];
  * Independent RAM-image readers/writers (byte-addressed, absolute LBA*512).
  * -------------------------------------------------------------------------- */
 
-/** @brief Read a little-endian u16 from the RAM disk image. */
-static uint16_t disk_rd16(uint32_t off)
+/** @brief Read a little-endian u16 from the RAM disk image. @details Implements the bounded disk rd16 fixture step using caller-owned state. @param[in] off Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint16_t internal_disk_rd16(uint32_t off)
 {
   TEST_ASSERT_NOT_NULL(s_disk.bytes);
   return (uint16_t)((uint16_t)s_disk.bytes[off] |
                     (uint16_t)((uint16_t)s_disk.bytes[off + 1U] << (uint16_t)k_chk_shl_b1));
 }
 
-/** @brief Write a little-endian u16 into the RAM disk image. */
-static void disk_wr16(uint32_t off, uint16_t v)
+/** @brief Write a little-endian u16 into the RAM disk image. @details Implements the bounded disk wr16 fixture step using caller-owned state. @param[in] off Value required by this filesystem vector. @param[in] v Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_disk_wr16(uint32_t off, uint16_t v)
 {
   TEST_ASSERT_NOT_NULL(s_disk.bytes);
   s_disk.bytes[off]      = (uint8_t)(v & (uint16_t)k_chk_byte_full);
   s_disk.bytes[off + 1U] = (uint8_t)((v >> (uint16_t)k_chk_shl_b1) & (uint16_t)k_chk_byte_full);
 }
 
-/** @brief Read a little-endian u32 from the RAM disk image. */
-static uint32_t disk_rd32(uint32_t off)
+/** @brief Read a little-endian u32 from the RAM disk image. @details Implements the bounded disk rd32 fixture step using caller-owned state. @param[in] off Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint32_t internal_disk_rd32(uint32_t off)
 {
   TEST_ASSERT_NOT_NULL(s_disk.bytes);
   return (uint32_t)s_disk.bytes[off] |
@@ -131,8 +131,8 @@ static uint32_t disk_rd32(uint32_t off)
          ((uint32_t)s_disk.bytes[off + 3U] << (uint32_t)k_chk_shl_b3);
 }
 
-/** @brief Write a little-endian u32 into the RAM disk image. */
-static void disk_wr32(uint32_t off, uint32_t v)
+/** @brief Write a little-endian u32 into the RAM disk image. @details Implements the bounded disk wr32 fixture step using caller-owned state. @param[in] off Value required by this filesystem vector. @param[in] v Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_disk_wr32(uint32_t off, uint32_t v)
 {
   TEST_ASSERT_NOT_NULL(s_disk.bytes);
   s_disk.bytes[off]      = (uint8_t)(v & (uint32_t)k_chk_byte_full);
@@ -141,15 +141,15 @@ static void disk_wr32(uint32_t off, uint32_t v)
   s_disk.bytes[off + 3U] = (uint8_t)((v >> (uint32_t)k_chk_shl_b3) & (uint32_t)k_chk_byte_full);
 }
 
-/** @brief Absolute byte offset of a FAT16 entry in the (first) FAT. */
-static uint32_t fat16_off(const ra8_fs_mount_t* h, uint32_t clus)
+/** @brief Absolute byte offset of a FAT16 entry in the (first) FAT. @details Implements the bounded fat16 off fixture step using caller-owned state. @param[in] h Value required by this filesystem vector. @param[in] clus Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint32_t internal_fat16_off(const ra8_fs_mount_t* h, uint32_t clus)
 {
   return ((h->partition_base_lba + h->first_fat_lba) * (uint32_t)k_fmt_block_size) +
          ((uint64_t)clus * (uint32_t)k_chk_fat16_ent);
 }
 
-/** @brief Absolute byte offset of the root-dir entry named @p n11, or 0. */
-static uint32_t fat_root_entry(const ra8_fs_mount_t* h, const char* n11)
+/** @brief Absolute byte offset of the root-dir entry named @p n11, or 0. @details Implements the bounded fat root entry fixture step using caller-owned state. @param[in] h Value required by this filesystem vector. @param[in] n11 Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint32_t internal_fat_root_entry(const ra8_fs_mount_t* h, const char* n11)
 {
   TEST_ASSERT_NOT_NULL(s_disk.bytes);
   const uint32_t base = (h->partition_base_lba + h->first_root_lba) * (uint32_t)k_fmt_block_size;
@@ -167,19 +167,19 @@ static uint32_t fat_root_entry(const ra8_fs_mount_t* h, const char* n11)
   return 0U;
 }
 
-/** @brief Absolute byte offset of an exFAT cluster's first sector. */
-static uint32_t exfat_clus_off(const ra8_fs_mount_t* h, uint32_t clus)
+/** @brief Absolute byte offset of an exFAT cluster's first sector. @details Implements the bounded exfat clus off fixture step using caller-owned state. @param[in] h Value required by this filesystem vector. @param[in] clus Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint32_t internal_exfat_clus_off(const ra8_fs_mount_t* h, uint32_t clus)
 {
   const uint32_t vlba =
     h->first_data_lba + ((uint64_t)(clus - (uint32_t)k_chk_first_clus) * h->sectors_per_cluster);
   return (h->partition_base_lba + vlba) * (uint32_t)k_fmt_block_size;
 }
 
-/** @brief Absolute byte offset of the first File(0x85) entry in the exFAT root, or 0. */
-static uint32_t exfat_first_file(const ra8_fs_mount_t* h)
+/** @brief Absolute byte offset of the first File(0x85) entry in the exFAT root, or 0. @details Implements the bounded exfat first file fixture step using caller-owned state. @param[in] h Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint32_t internal_exfat_first_file(const ra8_fs_mount_t* h)
 {
   TEST_ASSERT_NOT_NULL(s_disk.bytes);
-  const uint32_t base = exfat_clus_off(h, h->root_cluster);
+  const uint32_t base = internal_exfat_clus_off(h, h->root_cluster);
   const uint32_t nb   = h->sectors_per_cluster * (uint32_t)k_fmt_block_size;
   for (uint32_t o = 0U; o < nb; o += (uint32_t)k_chk_dir_ent) {
     const uint8_t t = s_disk.bytes[base + o];
@@ -193,22 +193,22 @@ static uint32_t exfat_first_file(const ra8_fs_mount_t* h)
   return 0U;
 }
 
-/** @brief First cluster of the exFAT allocation bitmap (the 0x81 root entry). */
-static uint32_t exfat_bitmap_clus(const ra8_fs_mount_t* h)
+/** @brief First cluster of the exFAT allocation bitmap (the 0x81 root entry). @details Implements the bounded exfat bitmap clus fixture step using caller-owned state. @param[in] h Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint32_t internal_exfat_bitmap_clus(const ra8_fs_mount_t* h)
 {
   TEST_ASSERT_NOT_NULL(s_disk.bytes);
-  const uint32_t base = exfat_clus_off(h, h->root_cluster);
+  const uint32_t base = internal_exfat_clus_off(h, h->root_cluster);
   const uint32_t nb   = h->sectors_per_cluster * (uint32_t)k_fmt_block_size;
   for (uint32_t o = 0U; o < nb; o += (uint32_t)k_chk_dir_ent) {
     if (s_disk.bytes[base + o] == (uint8_t)k_chk_exfat_bitmap) {
-      return disk_rd32(base + o + (uint32_t)k_chk_strm_off_clus);
+      return internal_disk_rd32(base + o + (uint32_t)k_chk_strm_off_clus);
     }
   }
   return 0U;
 }
 
-/** @brief exFAT SetChecksum, re-implemented independently of the driver. */
-static uint16_t chk_set_checksum(const uint8_t* set, uint32_t bytes)
+/** @brief exFAT SetChecksum, re-implemented independently of the driver. @details Implements the bounded chk set checksum fixture step using caller-owned state. @param[in] set Value required by this filesystem vector. @param[in] bytes Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint16_t internal_chk_set_checksum(const uint8_t* set, uint32_t bytes)
 {
   uint16_t cs = 0U;
   for (uint32_t i = 0U; i < bytes; i++) {
@@ -221,22 +221,22 @@ static uint16_t chk_set_checksum(const uint8_t* set, uint32_t bytes)
   return cs;
 }
 
-/** @brief Re-seal an exFAT entry set's SetChecksum after an independent field edit. */
-static void exfat_reseal(uint32_t fe)
+/** @brief Re-seal an exFAT entry set's SetChecksum after an independent field edit. @details Implements the bounded exfat reseal fixture step using caller-owned state. @param[in] fe Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_exfat_reseal(uint32_t fe)
 {
   TEST_ASSERT_NOT_NULL(s_disk.bytes);
   const uint32_t count = 1U + (uint32_t)s_disk.bytes[fe + (uint32_t)k_chk_off_file_secnt];
   uint8_t        set[k_chk_set_max_bytes] = {};
   const uint32_t bytes                    = count * (uint32_t)k_chk_dir_ent;
   memcpy(set, &s_disk.bytes[fe], (size_t)bytes);
-  disk_wr16(fe + (uint32_t)k_chk_off_set_csum, chk_set_checksum(set, bytes));
+  internal_disk_wr16(fe + (uint32_t)k_chk_off_set_csum, internal_chk_set_checksum(set, bytes));
 }
 
-/** @brief Set the first clear bit in the exFAT allocation bitmap (fabricates a lost cluster). */
-static void exfat_set_spare_bit(const ra8_fs_mount_t* h)
+/** @brief Set the first clear bit in the exFAT allocation bitmap (fabricates a lost cluster). @details Implements the bounded exfat set spare bit fixture step using caller-owned state. @param[in] h Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_exfat_set_spare_bit(const ra8_fs_mount_t* h)
 {
   TEST_ASSERT_NOT_NULL(s_disk.bytes);
-  const uint32_t bmp = exfat_clus_off(h, exfat_bitmap_clus(h));
+  const uint32_t bmp = internal_exfat_clus_off(h, internal_exfat_bitmap_clus(h));
   const uint32_t nb  = h->sectors_per_cluster * (uint32_t)k_fmt_block_size;
   for (uint32_t by = 0U; by < nb; by++) {
     const uint8_t b = s_disk.bytes[bmp + by];
@@ -252,11 +252,11 @@ static void exfat_set_spare_bit(const ra8_fs_mount_t* h)
   }
 }
 
-/** @brief Clear the exFAT allocation-bitmap bit for @p cluster (fabricates a bitmap mismatch). */
-static void exfat_clear_ref_bit(const ra8_fs_mount_t* h, uint32_t cluster)
+/** @brief Clear the exFAT allocation-bitmap bit for @p cluster (fabricates a bitmap mismatch). @details Implements the bounded exfat clear ref bit fixture step using caller-owned state. @param[in] h Value required by this filesystem vector. @param[in] cluster Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_exfat_clear_ref_bit(const ra8_fs_mount_t* h, uint32_t cluster)
 {
   TEST_ASSERT_NOT_NULL(s_disk.bytes);
-  const uint32_t bmp = exfat_clus_off(h, exfat_bitmap_clus(h));
+  const uint32_t bmp = internal_exfat_clus_off(h, internal_exfat_bitmap_clus(h));
   const uint32_t idx = cluster - (uint32_t)k_chk_first_clus;
   s_disk.bytes[bmp + (idx >> (uint32_t)k_chk_byte_shift)] &=
     (uint8_t)~(uint8_t)(1U << (idx & (uint32_t)k_chk_bit_mask));
@@ -272,7 +272,7 @@ static void exfat_clear_ref_bit(const ra8_fs_mount_t* h, uint32_t cluster)
  * @pre @p cluster is within the mounted volume.
  * @post No state is modified.
  * @post The result addresses FAT copy zero.
- * @note Pure; trivially thread-safe within one test executable.
+ * @note Pure; trivially thread-safe within one test executable. @details Implements the bounded exfat fat off fixture step using caller-owned state. @since 0.1.0
  */
 RA8_INTERNAL
 static uint32_t internal_exfat_fat_off(const ra8_fs_mount_t* h, uint32_t cluster)
@@ -292,12 +292,12 @@ static uint32_t internal_exfat_fat_off(const ra8_fs_mount_t* h, uint32_t cluster
  * @pre @p cluster is in the data-cluster range.
  * @post No state is modified.
  * @post The result reflects ::s_disk.
- * @note Pure relative to the RAM image; not thread-safe with concurrent writes.
+ * @note Pure relative to the RAM image; not thread-safe with concurrent writes. @details Implements the bounded exfat cluster allocated fixture step using caller-owned state. @since 0.1.0
  */
 RA8_INTERNAL
 static bool internal_exfat_cluster_allocated(const ra8_fs_mount_t* h, uint32_t cluster)
 {
-  const uint32_t bmp = exfat_clus_off(h, exfat_bitmap_clus(h));
+  const uint32_t bmp = internal_exfat_clus_off(h, internal_exfat_bitmap_clus(h));
   const uint32_t idx = cluster - (uint32_t)k_chk_first_clus;
   return (s_disk.bytes[bmp + (idx >> (uint32_t)k_chk_byte_shift)] &
           (uint8_t)(1U << (idx & (uint32_t)k_chk_bit_mask))) != 0U;
@@ -312,12 +312,12 @@ static bool internal_exfat_cluster_allocated(const ra8_fs_mount_t* h, uint32_t c
  * @pre @p cluster is in the data-cluster range.
  * @post The cluster's allocation bit is set.
  * @post No other allocation bit changes.
- * @note Not thread-safe; tests own ::s_disk exclusively.
+ * @note Not thread-safe; tests own ::s_disk exclusively. @details Implements the bounded exfat set allocated fixture step using caller-owned state. @since 0.1.0
  */
 RA8_INTERNAL
 static void internal_exfat_set_allocated(const ra8_fs_mount_t* h, uint32_t cluster)
 {
-  const uint32_t bmp = exfat_clus_off(h, exfat_bitmap_clus(h));
+  const uint32_t bmp = internal_exfat_clus_off(h, internal_exfat_bitmap_clus(h));
   const uint32_t idx = cluster - (uint32_t)k_chk_first_clus;
   s_disk.bytes[bmp + (idx >> (uint32_t)k_chk_byte_shift)] |=
     (uint8_t)(1U << (idx & (uint32_t)k_chk_bit_mask));
@@ -333,7 +333,7 @@ static void internal_exfat_set_allocated(const ra8_fs_mount_t* h, uint32_t clust
  * @pre The 64 MiB fixture has at least @p need free clusters.
  * @post No state is modified.
  * @post Every cluster in the returned run is clear.
- * @note Bounded by `h->count_of_clusters`; not thread-safe with disk mutation.
+ * @note Bounded by `h->count_of_clusters`; not thread-safe with disk mutation. @details Implements the bounded exfat find free run fixture step using caller-owned state. @since 0.1.0
  */
 RA8_INTERNAL
 static uint32_t internal_exfat_find_free_run(const ra8_fs_mount_t* h, uint32_t need)
@@ -367,13 +367,13 @@ static uint32_t internal_exfat_find_free_run(const ra8_fs_mount_t* h, uint32_t n
  * @pre The volume has `clusters - 1` consecutive free clusters.
  * @post The root FAT chain contains exactly @p clusters clusters and then EOC.
  * @post Every directory slot in that chain is non-EOD.
- * @note Not thread-safe; unmount before asking production code to observe edits.
+ * @note Not thread-safe; unmount before asking production code to observe edits. @details Implements the bounded exfat build bound directory fixture step using caller-owned state. @since 0.1.0
  */
 RA8_INTERNAL
 static void internal_exfat_build_bound_directory(const ra8_fs_mount_t* h, uint32_t clusters)
 {
   const uint32_t cbytes = h->sectors_per_cluster * (uint32_t)k_fmt_block_size;
-  const uint32_t root   = exfat_clus_off(h, h->root_cluster);
+  const uint32_t root   = internal_exfat_clus_off(h, h->root_cluster);
   uint32_t       eod    = cbytes;
   for (uint32_t off = 0U; off < cbytes; off += (uint32_t)k_chk_dir_ent) {
     if (s_disk.bytes[root + off] == (uint8_t)k_chk_exfat_eod) {
@@ -389,17 +389,17 @@ static void internal_exfat_build_bound_directory(const ra8_fs_mount_t* h, uint32
 
   const uint32_t extras = clusters - 1U;
   if (extras == 0U) {
-    disk_wr32(internal_exfat_fat_off(h, h->root_cluster), (uint32_t)k_chk_exfat_fat_eoc);
+    internal_disk_wr32(internal_exfat_fat_off(h, h->root_cluster), (uint32_t)k_chk_exfat_fat_eoc);
     return;
   }
   const uint32_t first = internal_exfat_find_free_run(h, extras);
-  disk_wr32(internal_exfat_fat_off(h, h->root_cluster), first);
+  internal_disk_wr32(internal_exfat_fat_off(h, h->root_cluster), first);
   for (uint32_t i = 0U; i < extras; i++) {
     const uint32_t cluster = first + i;
     const uint32_t next    = (i + 1U < extras) ? (cluster + 1U) : (uint32_t)k_chk_exfat_fat_eoc;
-    disk_wr32(internal_exfat_fat_off(h, cluster), next);
+    internal_disk_wr32(internal_exfat_fat_off(h, cluster), next);
     internal_exfat_set_allocated(h, cluster);
-    const uint32_t base = exfat_clus_off(h, cluster);
+    const uint32_t base = internal_exfat_clus_off(h, cluster);
     for (uint32_t off = 0U; off < cbytes; off += (uint32_t)k_chk_dir_ent) {
       memset(&s_disk.bytes[base + off], 0, (size_t)k_chk_dir_ent);
       s_disk.bytes[base + off] = (uint8_t)k_chk_exfat_deleted;
@@ -412,9 +412,10 @@ static void internal_exfat_build_bound_directory(const ra8_fs_mount_t* h, uint32
  * -------------------------------------------------------------------------- */
 
 /** @brief Format + mount a fresh card, writing a multi-cluster file when named. */
-static ra8_fs_mount_t* chk_setup(uint32_t blocks, ra8_fs_type_t t, const char* name, uint32_t len)
+RA8_INTERNAL static ra8_fs_mount_t*
+internal_chk_setup(uint32_t blocks, ra8_fs_type_t t, const char* name, uint32_t len)
 {
-  alloc_garbage_card(blocks);
+  internal_alloc_garbage_card(blocks);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = t;
   opts.label                = "CHK";
@@ -431,22 +432,22 @@ static ra8_fs_mount_t* chk_setup(uint32_t blocks, ra8_fs_type_t t, const char* n
   return h;
 }
 
-/** @brief Run the check with the scratch bitmap into @p r. */
-static ra8_err_t chk_run(ra8_fs_mount_t* h, ra8_fs_check_report_t* r)
+/** @brief Run the check with the scratch bitmap into @p r. @details Implements the bounded chk run fixture step using caller-owned state. @param[in,out] h Value required by this filesystem vector. @param[in,out] r Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_chk_run(ra8_fs_mount_t* h, ra8_fs_check_report_t* r)
 {
   *r = (ra8_fs_check_report_t){};
   return ra8_fs_check(h, s_chk_bitmap, (uint32_t)sizeof(s_chk_bitmap), r);
 }
 
-/** @brief Unmount and release the RAM card. */
-static void chk_teardown(ra8_fs_mount_t* h)
+/** @brief Unmount and release the RAM card. @details Implements the bounded chk teardown fixture step using caller-owned state. @param[in,out] h Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_chk_teardown(ra8_fs_mount_t* h)
 {
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
 }
 
-/** @brief Populate a mounted exFAT volume with a subdir and a fragmented file. */
-static void exfat_build_rich(ra8_fs_mount_t* h)
+/** @brief Populate a mounted exFAT volume with a subdir and a fragmented file. @details Implements the bounded exfat build rich fixture step using caller-owned state. @param[in,out] h Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_exfat_build_rich(ra8_fs_mount_t* h)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_chk_cluster_ex; i++) {
     s_chk_payload[i] = (uint8_t)i;

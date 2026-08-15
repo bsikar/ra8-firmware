@@ -246,6 +246,5 @@ int32_t main(void)
 {
   test_etha_open_covers_phy_seq();
   test_etha_open_phy_step_error_legs();
-  (void)fprintf(stderr, "[OK  ] test_ra8_etha_stats_cov.c\n");
   return 0;
 }

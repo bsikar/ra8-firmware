@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_dtc.c
  * @brief Unit tests for ra8_dtc.c (Data Transfer Controller)
+ * @details Covers DTC descriptor setup, vector-table activation, transfer validation, and lifecycle state using bounded fixture storage.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -232,6 +233,5 @@ int32_t main(void)
   test_status_read_and_clear();
   test_attach_and_dispatch();
   test_power_transition();
-  (void)fprintf(stderr, "[OK  ] test_ra8_dtc.c\n");
   return 0;
 }

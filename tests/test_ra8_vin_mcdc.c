@@ -510,6 +510,5 @@ int32_t main(void)
   test_mcdc_set_data_mode_pair();
   test_mcdc_set_csi_input_pair();
   test_mcdc_set_window_pair();
-  (void)fprintf(stderr, "[OK ] test_ra8_vin_mcdc.c\n");
   return 0;
 }

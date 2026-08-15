@@ -543,6 +543,5 @@ int32_t main(void)
   test_attach_handlers_idempotent();
   test_mcdc_ble();
   test_mcdc_ble_acl_inject_args();
-  (void)fprintf(stderr, "[OK ] test_ra8_ble.c\n");
   return 0;
 }

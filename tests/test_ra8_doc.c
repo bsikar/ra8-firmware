@@ -160,6 +160,5 @@ int32_t main(void)
   test_add16_null_out();
   test_sub16_programs_trace();
   test_sub16_null_out();
-  (void)fprintf(stderr, "[OK  ] test_ra8_doc.c\n");
   return 0;
 }

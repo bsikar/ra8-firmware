@@ -403,6 +403,5 @@ int32_t main(void)
   test_get_and_clear_status();
   test_power_transition();
   test_mcdc_ra8_tsn();
-  (void)fprintf(stderr, "[OK  ] test_ra8_tsn.c\n");
   return 0;
 }
