@@ -751,7 +751,7 @@ RA8_INTERNAL static void internal_test_alias_probe_reports_backend_errors(void)
  *
  * @par MC/DC:
  * Decision: `if ((loc->is_root != 0U) && (m->type != k_ra8_fs_type_fat32))` in
- * `libs/ra8_fs/src/ra8_fs_fat_lfn_write.c@priv_dir_grow` (2 conditions).
+ * `libs/ra8_fs/src/ra8_fs_fat_lfn_write.c@internal_dir_grow` (2 conditions).
  * - V1: a FAT16 root       -> C1=T, C2=T -> k_ra8_err_no_mem
  *   (test_ra8_fs_lfn_write.c@test_fixed_root_cannot_grow).
  * - V2: a FAT16 subdirectory -> C1=F     -> the chain is extended

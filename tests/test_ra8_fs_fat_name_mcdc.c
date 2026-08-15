@@ -74,7 +74,7 @@ RA8_INTERNAL static void internal_test_mcdc_to_upper_ascii_range(void)
  * @test test_mcdc_pack_base_scan_loop
  * @par MC/DC:
  * Decision: `while (*path != '\0' && *path != '.')` in
- * `libs/ra8_fs/src/ra8_fs_fat_name.c@priv_pack_base` (2 conditions), the 8.3
+ * `libs/ra8_fs/src/ra8_fs_fat_name.c@internal_pack_base` (2 conditions), the 8.3
  * base-name scan loop head. `priv_pack_base` is TU-static, so it is driven
  * through the public `priv_path_to_83`, which pre-pads the buffer and hands the
  * cursor in.

@@ -372,7 +372,7 @@ RA8_INTERNAL static void internal_test_exfat_grow_sparse(void)
  *
  * @par MC/DC:
  * Decision: `(file->no_fat_chain != 0) && (next == file->tail_cluster + 1)` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@priv_exfat_link_cluster`. The
+ * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@internal_exfat_link_cluster`. The
  * convert-to-chain vector (nofat=1, next!=tail+1) is driven here; the
  * stay-contiguous vector is driven by ::test_exfat_grow_sparse and the
  * already-a-chain vector by the streaming suite. This case reaches the decision

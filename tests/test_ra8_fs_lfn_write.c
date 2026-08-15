@@ -302,7 +302,7 @@ RA8_INTERNAL static void internal_test_case_flags_replace_a_chain(void)
  * - V2: `NOTICE.txt` -> true  -> only the extension flag.
  * .
  * Decision: `if ((c >= 'A') && (c <= 'Z'))` in
- * `libs/ra8_fs/src/ra8_fs_fat_name.c@priv_case_observe` (2 conditions).
+ * `libs/ra8_fs/src/ra8_fs_fat_name.c@internal_case_observe` (2 conditions).
  * - V3: `'N'` in `NOTICE`   -> C1=T, C2=T -> counted as upper.
  * - V4: `'0'` in `0123`     -> C1=F       -> neither class.
  * - V5: `'{'` in `a1b2{x`   -> C1=T, C2=F -> neither class, and it is the only
@@ -310,14 +310,14 @@ RA8_INTERNAL static void internal_test_case_flags_replace_a_chain(void)
  * V3+V4 isolate C1; V3+V5 isolate C2.
  * .
  * Decision: `if ((c >= 'a') && (c <= 'z'))` in
- * `libs/ra8_fs/src/ra8_fs_fat_name.c@priv_case_observe` (2 conditions).
+ * `libs/ra8_fs/src/ra8_fs_fat_name.c@internal_case_observe` (2 conditions).
  * - V6: `'a'` in `a1b2{x`   -> C1=T, C2=T -> counted as lower.
  * - V7: `'0'` in `0123`     -> C1=F       -> neither class.
  * - V8: `'{'` in `a1b2{x`   -> C1=T, C2=F -> neither class.
  * V6+V7 isolate C1; V6+V8 isolate C2.
  * .
  * Decision: `if ((c >= 'A') && (c <= 'Z'))` in
- * `libs/ra8_fs/src/ra8_fs_fat_name.c@priv_case_apply` (2 conditions), reached
+ * `libs/ra8_fs/src/ra8_fs_fat_name.c@internal_case_apply` (2 conditions), reached
  * while rendering a flagged name back out through `listdir`.
  * - V9:  `'A'` of `A1B2{X`  -> C1=T, C2=T -> lower-cased.
  * - V10: `'1'` of `A1B2{X`  -> C1=F       -> passed through.
@@ -429,7 +429,7 @@ RA8_INTERNAL static void internal_test_chain_grows_the_directory(void)
  *
  * @par MC/DC:
  * Decision: `if ((loc->is_root != 0U) && (m->type != k_ra8_fs_type_fat32))` in
- * `libs/ra8_fs/src/ra8_fs_fat_lfn_write.c@priv_dir_grow` (2 conditions).
+ * `libs/ra8_fs/src/ra8_fs_fat_lfn_write.c@internal_dir_grow` (2 conditions).
  * - V1: the FAT16 root       -> C1=T, C2=T -> k_ra8_err_no_mem (this case).
  * - V2: a FAT16 subdirectory -> C1=F       -> the chain is extended
  *   (test_chain_grows_the_directory).

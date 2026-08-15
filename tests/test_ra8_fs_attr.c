@@ -148,7 +148,7 @@ internal_fmt_mount_file(uint32_t blocks, ra8_fs_type_t type, const char* name)
  *
  * @par MC/DC:
  * Decision: `if ((mode != read) && (attr & read_only))` (2 conditions) in
- * `libs/ra8_fs/src/ra8_fs_fat_file.c@priv_open_existing`.
+ * `libs/ra8_fs/src/ra8_fs_fat_file.c@internal_open_existing`.
  * - V1 mode=read,  read-only set   -> C1=F,(C2 not eval) -> F (read open OK).
  * - V3 mode=write, read-only set   -> C1=T,C2=T           -> T (denied).
  * - Vc mode=write, read-only CLEAR -> C1=T,C2=F           -> F (write open OK;

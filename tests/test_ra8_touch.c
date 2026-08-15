@@ -318,7 +318,7 @@ static void test_open_invalid_address(void)
  * @test test_mcdc_open_bus_seam
  *
  * @par MC/DC:
- * Decision libs/ra8_hal/src/ra8_touch.c@priv_validate_cfg:
+ * Decision libs/ra8_hal/src/ra8_touch.c@internal_validate_cfg:
  * ``if ((cfg->bus.write == nullptr) || (cfg->bus.transfer == nullptr))``
  * (2 conditions, ``||``). N+1 = 3:
  * - V1: write=valid, transfer=valid -> F||F -> F (open proceeds; the

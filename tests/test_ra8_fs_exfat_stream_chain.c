@@ -201,7 +201,7 @@ internal_expect_chain_over(const ra8_fs_mount_t* h, uint32_t first, uint32_t tot
  *
  * @par MC/DC:
  * Decision: `(no_fat_chain != 0) && (next == tail_cluster + 1)` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@priv_exfat_link_cluster`
+ * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@internal_exfat_link_cluster`
  * (2 conditions). This case supplies BOTH false vectors:
  * - the append's first growth has `no_fat_chain = 1` and a non-successor
  *   cluster, varying the SECOND condition -> the transition;

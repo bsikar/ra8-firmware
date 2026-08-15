@@ -36,8 +36,8 @@
  *    and the in-core path is NOT taken.
  *
  * @par MC/DC:
- * Cited decision: libs/ra8_rabook_import/src/ra8_rabook_import_compiler.c@s_is_dispatch_failure
- * The fallback gate `s_is_dispatch_failure(err)` has one compound decision,
+ * Cited decision: libs/ra8_rabook_import/src/ra8_rabook_import_compiler.c@internal_is_dispatch_failure
+ * The fallback gate `internal_is_dispatch_failure(err)` has one compound decision,
  * `(err == k_ra8_err_hw_error) || (err == k_ra8_err_no_mem)` (2 conditions). The
  * fallback tests supply its N+1 = 3 vectors:
  * - hw_error (condition 1 true)  -> falls back  (`...falls_back_on_timeout`)
@@ -884,7 +884,7 @@ RA8_INTERNAL static void internal_test_m33_adapter_falls_back_on_oversize_source
  * (proven by the absence of any output file).
  *
  * @par MC/DC:
- * Cited decision: libs/ra8_rabook_import/src/ra8_rabook_import_compiler.c@s_is_dispatch_failure
+ * Cited decision: libs/ra8_rabook_import/src/ra8_rabook_import_compiler.c@internal_is_dispatch_failure
  * Supplies the both-conditions-false vector for
  * `(err == k_ra8_err_hw_error) || (err == k_ra8_err_no_mem)`: err=invalid_arg makes
  * both conditions false so the gate returns false and the error propagates. Paired

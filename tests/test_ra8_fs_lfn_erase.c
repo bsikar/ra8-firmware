@@ -78,7 +78,7 @@
  *
  * @par MC/DC:
  * Decision: `if ((ent[attr] == lfn) && (ent[name] != 0xE5) && (ent[csum] ==
- * csum))` in `libs/ra8_fs/src/ra8_fs_fat_lfn_write.c@priv_dir_collect_chain`
+ * csum))` in `libs/ra8_fs/src/ra8_fs_fat_lfn_write.c@internal_dir_collect_chain`
  * (3 conditions).
  * - V1: a live long-name slot carrying this entry's checksum -> T,T,T ->
  *   collected (the chain in front of the file deleted here).

@@ -408,7 +408,7 @@ static void test_start_pulse_output_bad_channel(void)
  * Decision: ``(cfg->compare != k_ra8_agt_pulse_compare_none) &&
  *             (cfg->compare != k_ra8_agt_pulse_compare_a) &&
  *             (cfg->compare != k_ra8_agt_pulse_compare_b)``
- * (3 conditions, libs/ra8_hal/src/ra8_agt.c@agt_pulse_validate_cfg)
+ * (3 conditions, libs/ra8_hal/src/ra8_agt.c@internal_agt_pulse_validate_cfg)
  * Per DO-178C 6.4.4.3 the representative-subset is N+1 = 4 vectors:
  * three pulse-mode happy-path tests (compare_a, compare_b,
  * compare_none) cover each operand evaluating false in turn, and the
@@ -437,7 +437,7 @@ static void test_start_pulse_output_bad_compare(void)
  * @par MC/DC:
  * Decision: ``(cfg->polarity != k_ra8_agt_output_polarity_active_high) &&
  *             (cfg->polarity != k_ra8_agt_output_polarity_active_low)``
- * (2 conditions, libs/ra8_hal/src/ra8_agt.c@agt_pulse_validate_cfg)
+ * (2 conditions, libs/ra8_hal/src/ra8_agt.c@internal_agt_pulse_validate_cfg)
  * Per DO-178C 6.4.4.3 the representative-subset is N+1 = 3 vectors:
  * active_high happy-path covers operand 1 = false, active_low happy-
  * path covers operand 2 = false (both upstream pulse-mode tests),
