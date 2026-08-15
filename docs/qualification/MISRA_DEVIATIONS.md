@@ -1,31 +1,32 @@
 # MISRA-C 2012 Deviation Register
 
-**Last refreshed**: 2026-07-22 (D-001..D-007 active; D-007 records the
-Rule 14.2 C23-attribute parse phantom on `RA8_PROTECTED_WRITE` inside
-`[[nodiscard]]` functions -- same tooling gap as D-002 / D-005).
+**Last refreshed**: 2026-08-15 (D-001..D-010 active). The index's
+`Findings` / `Files` columns and the "Derived population" section are
+machine-checked against the committed baseline by
+`scripts/checks/check_misra_deviations.py` in the `misra` gate (#632).
 
 This document records every formal deviation taken against MISRA-C 2012
 in the ra8-firmware codebase, following the deviation procedure in
 **MISRA-C:2012 section 5.2** (rationale, scope, alternative
 mitigation, reviewer sign-off).
 
-The audit baseline lives in [`docs/MISRA.md`](../MISRA.md). The full
-per-violation list lives in [`docs/MISRA_GAPS.csv`](../MISRA_GAPS.csv).
+The audit policy and history live in [`docs/MISRA.md`](../MISRA.md);
+the committed per-file-per-rule authority is
+`.github/misra-baseline.txt` (per-line detail regenerates into
+`build/misra/results.txt` per run), and
+[`docs/MISRA_GAPS.csv`](../MISRA_GAPS.csv) is a capped, hand-trimmed
+excerpt of the 2026-05-02 audit, not a live inventory.
 
 ## Cross-references
 
-- Project coding standard: [`docs/STYLE_GUIDE.md`](../STYLE_GUIDE.md).
-- Architectural ring + TrustZone-world tagging:
-  [`docs/RING_AND_WORLD.md`](../RING_AND_WORLD.md).
-- Audit driver script:
-  [`scripts/checks/misra_check_inner.sh`](../../scripts/checks/misra_check_inner.sh).
-- Per-tool qualification dossier:
+- Project coding standard: [`docs/STYLE_GUIDE.md`](../STYLE_GUIDE.md);
+  ring + world tagging: [`docs/RING_AND_WORLD.md`](../RING_AND_WORLD.md).
+- Audit driver:
+  [`scripts/checks/misra_check_inner.sh`](../../scripts/checks/misra_check_inner.sh);
+  per-tool dossier:
   [`docs/qualification/TOOL_QUALIFICATION.md`](TOOL_QUALIFICATION.md).
-- IEC 61508-3:2010 section 7.4.4 ("Use of language subset") -- the
-  governing safety-functional-safety clause that motivates the MISRA
-  obligation here.
-- DO-178C section 11.8 ("Software Coding Standards").
-- ISO 26262-6:2018 table 1 (language-subset requirement at ASIL C/D).
+- Governing clauses: IEC 61508-3:2010 section 7.4.4 ("Use of language
+  subset"), DO-178C section 11.8, ISO 26262-6:2018 table 1.
 
 ## Tooling policy
 
@@ -68,13 +69,10 @@ checker -- see `docs/CERTIFICATION_SCOPE.md`.
 
 ### Cross-references
 
-- `docs/CERTIFICATION_SCOPE.md` -- the "no independent assessor"
-  decision that makes the FOSS-only tooling stance internally
-  consistent.
-- `docs/QUALIFICATION_ROADMAP.md` Section 6 -- the procurement
-  question, marked CLOSED with reference to this section.
-- `docs/qualification/TOOL_QUALIFICATION.md` -- per-tool TQL
-  classification including `cppcheck`.
+`docs/CERTIFICATION_SCOPE.md` (the "no independent assessor" decision
+that makes the FOSS-only stance consistent),
+`docs/QUALIFICATION_ROADMAP.md` Section 6 (procurement, CLOSED), and
+`docs/qualification/TOOL_QUALIFICATION.md` (per-tool TQL).
 
 ## Disposition classes
 
@@ -94,23 +92,70 @@ gap-closure plan in `docs/MISRA.md`:
 3. **Code change** -- the violation is real and will be fixed in
    source; no deviation record is needed once the fix lands.
 
+One entry (D-004) is a **partial deviation**: formal for the idiom
+classes enumerated inside it, Code change for every hit outside them.
+
 ## Deviation index
 
-| ID    | Rule            | Category | Class             | Status   | MAR        |
-|-------|-----------------|----------|-------------------|----------|------------|
-| D-001 | misra-c2012-15.5 | Advisory  | Project deviation | Active   | 2027-05-02 |
-| D-002 | misra-c2012-17.3 | Mandatory | Tooling gap       | Active   | 2026-11-02 |
-| D-003 | misra-c2012-9.2  | Required  | Tooling gap       | Active   | 2026-11-02 |
-| D-004 | misra-c2012-12.1 | Advisory  | Partial deviation | Active   | 2027-05-02 |
-| D-005 | misra-c2012-8.4  | Required  | Tooling gap       | Active   | 2026-11-02 |
-| D-006 | misra-c2012-20.5 | Advisory  | Project deviation | Active   | 2027-05-02 |
-| D-007 | misra-c2012-14.2 | Required  | Tooling gap       | Active   | 2026-11-02 |
-| D-008 | misra-c2012-17.1 | Required  | Project deviation | Active   | 2027-07-27 |
-| D-009 | misra-c2012-9.5  | Required  | Tooling gap       | Active   | 2026-11-02 |
-| D-010 | misra-c2012-11.5 | Advisory  | Project deviation | Active   | 2027-08-03 |
+| ID    | Rule            | Category | Class             | Status   | MAR        | Findings | Files |
+|-------|-----------------|----------|-------------------|----------|------------|---------:|------:|
+| D-001 | misra-c2012-15.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 10494 | 493 |
+| D-002 | misra-c2012-17.3 | Mandatory | Tooling gap       | Active   | 2026-11-02 | 262 | 110 |
+| D-003 | misra-c2012-9.2  | Required  | Tooling gap       | Active   | 2026-11-02 | 559 | 200 |
+| D-004 | misra-c2012-12.1 | Advisory  | Partial deviation | Active   | 2027-05-02 | 220 | 74 |
+| D-005 | misra-c2012-8.4  | Required  | Tooling gap       | Active   | 2026-11-02 | 1873 | 313 |
+| D-006 | misra-c2012-20.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 7 | 4 |
+| D-007 | misra-c2012-14.2 | Required  | Tooling gap       | Active   | 2026-11-02 | 87 | 36 |
+| D-008 | misra-c2012-17.1 | Required  | Project deviation | Active   | 2027-07-27 | 24 | 5 |
+| D-009 | misra-c2012-9.5  | Required  | Tooling gap       | Active   | 2026-11-02 | 6 | 4 |
+| D-010 | misra-c2012-11.5 | Advisory  | Project deviation | Active   | 2027-08-03 | 265 | 105 |
 
 `MAR` = mandatory annual review date (or earlier review trigger when
-the underlying tooling assumption changes).
+the underlying tooling assumption changes). `Findings` / `Files` are
+the rule's current measured population (next section).
+
+## Derived population (machine-checked)
+
+Every number here (and the index's `Findings` / `Files` columns) is
+re-derived by `scripts/checks/check_misra_deviations.py` on every
+`misra` gate run -- a stale number is a CI failure, never prose.
+`misra_check_inner.sh` scans `libs/ src/ port/ tools/` (`examples/`
+and `tests/` are out of audit scope) with `.cppcheck-suppressions`
+applied: cppcheck embeds the suppressions in the dumps it hands to
+`misra.py`, so a finding matching one by rule + file (or rule + file +
+exact line) never reaches the results -- verified by experiment on the
+pinned binary, 2026-08-15. `misra_ratchet.py` freezes that
+post-suppression population in `.github/misra-baseline.txt`, which
+everything below derives from. A count is a measurement; each
+deviation's own section says what its disposition actually accepts.
+
+Baseline: 16165 findings across 2229 file/rule rows (Cppcheck 2.13.0).
+Residual (no deviation record): 53 rules, 2368 findings, 885 rows.
+The residual population is implementation debt dispositioned **Code
+change** in aggregate: ratchet-held, burned down per `docs/MISRA.md`,
+never accepted.
+
+### Suppression ownership
+
+Every `misra-c2012-*` row in `.cppcheck-suppressions` narrows the
+audit, so every rule family there is accounted for below (unlisted
+family or ghost bullet = gate failure); justifications live with the rows.
+
+- `misra-c2012-7.4` (2 rows, 2 paths): esp-hosted tooling gap.
+- `misra-c2012-8.9` (1 row, 1 path): `ra8_wdt.c` parse artefact.
+- `misra-c2012-11.1` (1 row, 1 path): `tools/ra8_emulator` block.
+- `misra-c2012-11.2` (1 row, 1 path): `tools/ra8_emulator` block.
+- `misra-c2012-11.3` (1 row, 1 path): `tools/ra8_emulator` block.
+- `misra-c2012-11.5` (1 row, 1 path): `tools/ra8_emulator` block; distinct from D-010.
+- `misra-c2012-11.6` (1 row, 1 path): `tools/ra8_emulator` block.
+- `misra-c2012-11.8` (1 row, 1 path): `tools/ra8_emulator` block.
+- `misra-c2012-12.1` (70 rows, 10 paths): D-004 review anchors (line-decayed; see D-004).
+- `misra-c2012-15.5` (2 rows, 2 paths): emulator block + `nx_ether_driver_c6.c` (D-001 idiom).
+- `misra-c2012-17.3` (1 row, 1 path): `nx_ether_driver_c6.c`, D-002-class parse artefact.
+- `misra-c2012-17.7` (1 row, 1 path): `tools/ra8_emulator` block.
+- `misra-c2012-18.4` (1 row, 1 path): `nx_ether_driver_c6.c` header assembly (Advisory).
+- `misra-c2012-21.3` (1 row, 1 path): `tools/ra8_emulator` block.
+- `misra-c2012-21.6` (1 row, 1 path): `tools/ra8_emulator` block.
 
 ---
 
@@ -121,12 +166,12 @@ the underlying tooling assumption changes).
   have a single point of exit at the end.
 - **Category**: Advisory.
 - **Disposition**: Project deviation (formal).
-- **Scope**: project-wide. Applies to every translation unit under
-  `libs/`, `src/`, `port/`, and `examples/`.
+- **Scope**: project-wide; the early-return idiom is house style in
+  every first-party translation unit. The audited population covers
+  the scan roots `libs/`, `src/`, `port/`, `tools/`.
 - **Files affected**: 751 violations in the 2026-05-02 baseline,
-  spread across substantially every `.c` file in the firmware tree.
-  See `build/misra/results.txt` and `docs/MISRA_GAPS.csv` for the
-  per-line list.
+  spread across substantially every `.c` file in the firmware tree;
+  current population in the index above.
 
 ### Rationale
 
@@ -213,10 +258,11 @@ controls:
   not be declared implicitly.
 - **Category**: Mandatory.
 - **Disposition**: Tooling gap (false positive).
-- **Scope**: cppcheck 2.20 audit baseline only. Source code does
-  not contain any implicit function declarations.
+- **Scope**: the cppcheck audit baseline only (2.20 then; now the
+  pinned version in the baseline header). Source code does not
+  contain any implicit function declarations.
 - **Files affected**: 170 spurious violations in the 2026-05-02
-  baseline. See `docs/MISRA_GAPS.csv` for the per-line list.
+  baseline; current population in the index above.
 
 ### Root cause
 
@@ -280,9 +326,10 @@ audit tool is supplementary.
   for an aggregate or union shall be enclosed in braces.
 - **Category**: Required.
 - **Disposition**: Tooling gap (false positive).
-- **Scope**: cppcheck 2.20 audit baseline only.
+- **Scope**: the cppcheck audit baseline only (2.20 then; now the
+  pinned version in the baseline header).
 - **Files affected**: 35 spurious violations in the 2026-05-02
-  baseline.
+  baseline; current population in the index above.
 
 ### Root cause
 
@@ -348,52 +395,34 @@ All other Rule 12.1 hits -- mixing `&` with `==`, `<<` with `+`,
 in source by adding redundant parentheses. clang-format is
 configured to leave redundant parentheses untouched.
 
-### Files affected
+### Population, review record, and reconciliation
 
-91 violations in the current tree (the 2026-05-02 baseline recorded
-101; the retired BLE host facade accounted for 10). Each is recorded in
-`.cppcheck-suppressions` under the `misra-c2012-12.1:` block as a
-per-file:line entry. The full inventory is:
+Current population: 220 findings across 74 files (machine-checked
+index above; per-file inventory in the committed baseline). It
+partitions into three parts; only the first is formally accepted:
 
-| File                                              | Lines |
-|---------------------------------------------------|-------|
-| `libs/ra8_core/src/ra8_log.c`                       | 251 |
-| `libs/ra8_epub/src/ra8_epub_chapter.c`              | 64, 70, 77, 168, 192, 208, 212, 232, 247, 251, 271, 293, 298 |
-| `libs/ra8_epub/src/ra8_epub_open.c`                 | 96, 213, 217 |
-| `libs/ra8_fs/src/ra8_fs_fat.c`                      | 275, 319, 414, 417, 419, 478, 491, 526, 564, 734, 756, 816, 825, 867, 870, 1042, 1140, 1147, 1278, 1281, 1319, 1331, 1374, 1380, 1405 |
-| `libs/ra8_mpu/src/ra8_mpu.c`                        | 62, 65, 68, 71, 98, 195 |
-| `libs/ra8_net/src/ra8_net_tcp.c`                    | 84, 90 |
-| `libs/ra8_ota/src/ra8_ota.c`                        | 190, 235, 255 |
-| `libs/ra8_reflow/src/ra8_reflow_layout.c`           | 266, 311, 316, 345, 366, 403, 510, 535, 538, 541, 584, 615, 633, 636 |
-| `libs/ra8_reflow/src/ra8_reflow_parse.c`            | 62 |
-| `libs/ra8_reflow/src/ra8_reflow_render.c`           | 122 |
-| `port/lwip/arch/sys_arch.c`                       | 158, 166, 181, 224, 230, 246, 253, 280, 286, 292, 299, 316, 333, 341, 355, 380, 398, 405, 452 |
-| `port/nimble/src/nimble_npl_threadx.c`                | 354, 398, 417 |
+1. **The 2026-05-02 review** (commit `ee5083f9e`) triaged the original
+   audit's 101 hits; 91 were accepted under the classes above (10 sat
+   in the since-retired BLE host facade) and mirrored into
+   `.cppcheck-suppressions` as per-file:line rows. Two reviewed files
+   have since been deleted outright (the lwIP port and the hand-rolled
+   TCP stack), leaving the 70 rows across 10 paths pinned above.
+2. **Anchor decay.** A line-anchored suppression filters a finding
+   only at its exact file:line coordinate, and every surviving file
+   has been refactored or restyled since (the `ra8_fs_fat.c` split
+   alone strands 16 anchors past the file's current end). 9 of the 10
+   anchored files carry Rule 12.1 rows in the committed baseline
+   again: the reviewed *instances* are back in the measured population,
+   ratchet-frozen. The block is review evidence, not an active filter.
+3. **Unreviewed debt.** The remainder -- 65 of the 74 files, including
+   everything under `libs/ra8_hal/` and the `tools/` population that
+   entered audit scope on 2026-08-13 -- has never been triaged against
+   the accepted-as-implicit classes. It is implementation debt, never
+   accepted: ratchet-held and burned down per `docs/MISRA.md`.
 
-Per-line review notes:
-
-* Every flagged line falls into one of the accepted-as-implicit
-  categories above. The 2026-05-02 spot check confirmed:
-  - The `libs/ra8_epub/chapter`, `libs/ra8_fs/`,
-    `libs/ra8_mpu/` (62-71), `libs/ra8_net/`, `libs/ra8_ota/`, and
-    `libs/ra8_reflow/` hits are predominantly inside Doxygen `/** ... */`
-    blocks or on function-signature lines that the `misra.py` addon
-    has misattributed from a nearby expression in the dump.
-  - The `port/lwip/arch/sys_arch.c` and
-    `port/nimble/src/nimble_npl_threadx.c` hits are trivial null-check
-    chains of the form `(p != NULL && p->field != 0U)` plus the
-    `ticks * 1000U / hz` and `ms * hz + 999U` tick-conversion
-    statements -- both squarely covered by case 1 (`* /` over `+ -`)
-    and standard comparison-over-`&&` precedence.
-  - The `libs/ra8_mpu/src/ra8_mpu.c` (98, 195) hits are MPU
-    region-validation chains of the same null-check shape.
-
-After the partial deviation above is applied during the next audit
-pass, the residual code-change burn-down backlog is zero. Any future
-12.1 hit raised against new source must be re-triaged: add
-parentheses for genuine ambiguity, or extend the
-`.cppcheck-suppressions` block above with a one-line justification
-referencing the accepted-as-implicit category.
+Any future 12.1 hit must be re-triaged: add parentheses for genuine
+ambiguity, or record the acceptance here (this register owns the
+accepted classes) and let the ratchet baseline hold the count.
 
 ### Standards basis
 
@@ -431,40 +460,33 @@ referencing the accepted-as-implicit category.
   external linkage is defined.
 - **Category**: Required.
 - **Disposition**: Tooling gap (false positive).
-- **Scope**: cppcheck 2.20 audit baseline only.
-- **Files affected**: 166 spurious violations in the current tree (the
-  2026-05-02 baseline recorded 196; the retired BLE host facade
-  accounted for 30), distributed across:
+- **Scope**: the cppcheck audit baseline only (2.20 then; now the
+  pinned version in the baseline header).
+- **Files affected**: 1873 findings across 313 files (machine-checked
+  index above). The 2026-05-02 audit recorded 196; the population has
+  since scaled with the tree -- the HAL build-out applies
+  `[[nodiscard]]` to every fallible public prototype, `tools/` entered
+  audit scope on 2026-08-13, the pin moved to 2.13.0 on 2026-07-18 --
+  so the per-file authority is the baseline itself, not a table here.
 
-  | File                                        | Hits |
-  |---------------------------------------------|-----:|
-  | `port/nimble/src/nimble_npl_threadx.c`          |  40  |
-  | `port/lwip/arch/sys_arch.c`                 |  31  |
-  | `libs/ra8_net/src/ra8_net_ipv4.c`             |  11  |
-  | `libs/ra8_fs/src/ra8_fs_fat.c`                |  11  |
-  | `libs/ra8_ota/src/ra8_ota.c`                  |  10  |
-  | `libs/ra8_psa_crypto/src/ra8_psa_crypto.c`    |   9  |
-  | `libs/ra8_gfx/src/ra8_gfx_text.c`             |   9  |
-  | `libs/ra8_tls/src/ra8_tls.c`                  |   7  |
-  | `libs/ra8_reflow/src/ra8_reflow_layout.c`     |   6  |
-  | `libs/ra8_epub/src/ra8_epub_chapter.c`        |   6  |
-  | `libs/ra8_touch_cal/src/ra8_touch_cal.c`      |   5  |
-  | `libs/ra8_power_profile/src/ra8_power_profile.c` | 5 |
-  | `libs/ra8_modem_at/src/ra8_modem_at.c`        |   5  |
-  | `libs/ra8_mpu/src/ra8_mpu.c`                  |   4  |
-  | `libs/ra8_epub/src/ra8_epub_open.c`           |   2  |
-  | `libs/ra8_core/src/ra8_rand_stub.c`           |   2  |
-  | `libs/ra8_reflow/src/ra8_reflow_render.c`     |   1  |
-  | `libs/ra8_reflow/src/ra8_reflow_parse.c`      |   1  |
-  | `libs/ra8_gfx/src/ra8_gfx_font_8x16.c`        |   1  |
+Highest-count files for misra-c2012-8.4 (top 5, derived):
+
+| File | Findings |
+|------|---------:|
+| `libs/ra8_hal/src/ra8_mipi_csi.c` | 33 |
+| `libs/ra8_hal/src/ra8_i3c.c` | 32 |
+| `port/nimble/src/nimble_npl_threadx.c` | 29 |
+| `libs/ra8_hal/src/ra8_ceu.c` | 26 |
+| `libs/ra8_hal/src/ra8_etha.c` | 26 |
 
 ### Root cause
 
-cppcheck 2.20 cannot parse C23 attribute syntax (`[[nodiscard]]`,
-`[[maybe_unused]]`). The project applies `[[nodiscard]]` to every
-fallible public API in `libs/<module>/inc/<module>.h` to enforce
-NASA Power-of-10 Rule 7 (check the return value of every call).
-When cppcheck encounters
+The pinned cppcheck (2.13.0; the 2026-05-02 audit's 2.20 shares the
+limitation) cannot parse C23 attributes (`[[nodiscard]]`,
+`[[maybe_unused]]`) under the audit's `--std=c11` mode, and the
+project applies `[[nodiscard]]` to every fallible public API in
+`libs/<module>/inc/<module>.h` (NASA Power-of-10 Rule 7). When
+cppcheck encounters
 
 ```c
 [[nodiscard]] ra8_err_t ra8_mpu_configure(const ra8_mpu_cfg_t* cfg);
@@ -474,18 +496,15 @@ it emits `syntaxError` and discards the prototype from its symbol
 table. The matching definition in `ra8_mpu.c` is therefore reported
 as having no prior declaration -- a Rule 8.4 false positive.
 
-A second class of 8.4 false positive arises for the `port/`
-directory: the prototypes for `ble_npl_*` (NimBLE) and `sys_*`
-(lwIP) live in third-party headers under `libs/third_party/`, which
-are intentionally excluded from the audit (per
-`scripts/checks/misra_check_inner.sh` `--suppress=*:libs/third_party/*`).
-The `port/` translation units therefore appear to define functions
-with no prior declaration, but the declaration genuinely exists --
-the auditor was instructed not to look at it.
-
-The reproducer is documented in this register on purpose: a future
-maintainer who sees the 196-hit baseline drop after the cppcheck
-upgrade can confirm both root causes are gone.
+A second class arises for `port/`: the prototypes for `ble_npl_*`
+(NimBLE) and the USBX / esp-hosted seams live in third-party headers
+under `libs/third_party/`, whose include roots `misra_check_inner.sh`
+deliberately skips when deriving the audit's `-I` set (SOUP is not
+audited). Those definitions have real prior declarations -- the
+auditor never resolves the header carrying them. The reproducer is
+recorded on purpose: a future maintainer who sees the 8.4 population
+collapse after a cppcheck upgrade that parses C23 attributes can
+confirm both root causes are gone.
 
 ### Why this is not a real defect
 
@@ -496,13 +515,14 @@ upgrade can confirm both root causes are gone.
   matching prototype) would fail the cross build and would block
   every commit at the pre-commit clang-tidy + CI build gate.
 - Every public function in the affected files is declared in the
-  matching `*/inc/*.h` header; the headers are included before the
-  definitions in the same translation unit. This was spot-checked on
-  the four representative files
-  (`libs/ra8_mpu/src/ra8_mpu.c`,
-  `libs/ra8_tls/src/ra8_tls.c`,
-  `port/nimble/src/nimble_npl_threadx.c`,
-  `port/lwip/arch/sys_arch.c`) before this register was authored.
+  matching `*/inc/*.h` header, included before the definitions.
+  Re-verified 2026-08-15 instance-precisely against the baseline:
+  `libs/ra8_mpu/src/ra8_mpu.c` defines exactly 6 external functions,
+  all `[[nodiscard]]`-declared, and carries exactly 6 findings;
+  `tools/rabook_imagepack/src/ra8_fmt_util.c` defines 7, and exactly
+  the 5 with `[[nodiscard]]` prototypes are flagged (the differential
+  isolates the attribute); `port/nimble/src/nimble_npl_threadx.c`
+  defines exactly 29 `ble_npl_*` functions matching its 29 findings.
 - Module-internal functions are marked `static` and are caught
   separately by clang-tidy's `misc-unused-using-decls` and gcc's
   `-Wmissing-declarations`.
@@ -513,9 +533,8 @@ upgrade can confirm both root causes are gone.
   is the authoritative Required-rule check for 8.4.
 - Host unit-test build (`make test`) provides a second independent
   compiler pass.
-- The Phase 4 commercial-tool re-audit (LDRA / Polyspace / QAC --
-  see `docs/MISRA.md` section "Workflow", item 4) will provide
-  authoritative MISRA evidence at certification time.
+- No commercial-tool re-audit will occur (see "Tooling policy" above);
+  the compiler passes are the permanent alternative evidence.
 
 ### Standards basis
 
@@ -537,9 +556,12 @@ rules; the unqualified open-source audit tool is supplementary.
 - **Approved**: 2026-05-02.
 - **Mandatory annual review**: 2026-11-02 (tied to cppcheck release
   cadence -- shared review window with D-002 and D-003).
-- **Trigger for early review**: cppcheck 2.21 (or any release that
-  ships `--std=c23`) becoming available; or any change that removes
-  `[[nodiscard]]` from public-header prototypes.
+- **Trigger for early review**: a cppcheck release that parses C23
+  attributes; or removing `[[nodiscard]]` from public-header
+  prototypes. Checked 2026-08-15: cppcheck 2.21.0 does not clear the
+  root cause -- it still `syntaxError`s on C23 attributes under
+  `--std=c11` and now abandons the whole configuration, losing those
+  translation units' MISRA output entirely; the audit stays pinned.
 
 ---
 
@@ -550,12 +572,11 @@ rules; the unqualified open-source audit tool is supplementary.
   be used.
 - **Category**: Advisory.
 - **Disposition**: Project deviation (deliberate, safety-motivated).
-- **Scope**: exactly one site, `libs/ra8_nsc/inc/ra8_nsc_veneer.h`.
-- **Files affected**:
-
-  | File                                | Hits |
-  |-------------------------------------|-----:|
-  | `libs/ra8_nsc/inc/ra8_nsc_veneer.h` |   1  |
+- **Scope**: exactly one site is covered by this deviation,
+  `libs/ra8_nsc/inc/ra8_nsc_veneer.h` (1 finding). The rule's other
+  6 findings are the three boot `vector_table.c` files' IRQ-stub
+  X-macro cleanup `#undef`s: undispositioned ratchet-held debt, NOT
+  accepted here.
 
 ### Root cause
 
@@ -620,8 +641,9 @@ every use site -- is met more strongly here than by the rule itself:
   and asserts the SG veneer slot offsets still match the `k_sg_off_*`
   enum the Non-Secure image reaches them by. A dropped veneer fails
   this gate at the object level, not merely at the source level.
-- Both headers carry a `@warning` block naming the other and stating
-  which one is authoritative.
+- `ra8_attributes.h` carries a Doxygen `@warning` naming the veneer
+  header as authoritative; `ra8_nsc_veneer.h` documents the same
+  relationship in its file-header comment.
 
 ### Standards basis
 
@@ -661,22 +683,16 @@ object-level).
   expands to a run-once `for` loop whose counter is initialised,
   tested and modified only in the three loop-header clauses and never
   in the body -- a well-formed loop.
-- **Files affected**: the phantom fires only where the macro sits
-  inside a `[[nodiscard]]` function. Beyond the `libs/ra8_hal/src/ra8_cgc*.c`
-  hits already frozen in the baseline before this register was
-  extended, the sites are:
-
-  | File                                     | Hits |
-  |------------------------------------------|-----:|
-  | `libs/ra8_hal/src/ra8_bkup.c`            |  12  |
-  | `libs/ra8_hal/src/ra8_bkup_tamper.c`     |   2  |
-  | `libs/ra8_hal/src/ra8_bkup_security.c`   |   1  |
-
-  The `ra8_bkup*` hits appeared when the VBATT / tamper bring-up moved
-  its register writes inside `RA8_PROTECTED_WRITE` windows (issue #131)
-  and the baseline was not extended at the time; the `ra8_cgc*` hits
-  have carried the identical phantom in the baseline since those
-  drivers were first audited.
+- **Files affected**: current population in the index above. The
+  individually diagnosed phantom sites are the `ra8_bkup*` family
+  (12 + 2 + 1 findings, still matching the baseline exactly), which
+  appeared when the VBATT / tamper bring-up moved its register writes
+  inside `RA8_PROTECTED_WRITE` windows (issue #131); the `ra8_cgc*`
+  hits this record originally named have since been burned out of the
+  baseline. The rest is not attributed site-by-site: the reproducer
+  below isolates the mechanism wherever `RA8_PROTECTED_WRITE` sits in
+  a `[[nodiscard]]` function; a 14.2 finding outside that shape must
+  be triaged on its own.
 
 ### Root cause
 
@@ -706,8 +722,8 @@ the attribute, not the loop.
 - arm-none-eabi-gcc cross build with the warning flags above.
 - Host unit-test build (`make test`), a second independent compiler
   pass over the same sources.
-- The Phase 4 commercial-tool re-audit (LDRA / Polyspace / QAC) will
-  provide authoritative MISRA evidence at certification time.
+- No commercial-tool re-audit will occur (see "Tooling policy" above);
+  the compiler passes are the permanent alternative evidence.
 
 ### Standards basis
 
@@ -726,21 +742,12 @@ audit tool is supplementary.
 ### Review
 
 - **Author**: Brighton Sikarskie.
+- **Approved**: 2026-07-22.
 - **Mandatory annual review**: 2026-11-02 (shared cppcheck-cadence
   window with D-002, D-003 and D-005).
 - **Trigger for early review**: cppcheck shipping `--std=c23`; or any
   change that removes `[[nodiscard]]` from the affected functions or
   reworks `RA8_PROTECTED_WRITE` away from a `for`-loop guard.
-
----
-
-## Change log
-
-| Date       | Author              | Change                              |
-|------------|---------------------|-------------------------------------|
-| 2026-05-02 | Brighton Sikarskie  | Initial population (D-001..D-005).  |
-| 2026-07-18 | Brighton Sikarskie  | Add D-006 (Rule 20.5, NSC veneer).  |
-| 2026-07-22 | Brighton Sikarskie  | Add D-007 (Rule 14.2, C23 attribute phantom). |
 
 ---
 
@@ -802,11 +809,15 @@ hardware, the diagnostics are the bring-up instrument.
   family, whose formatting paths this project cannot admit (NASA Power
   of 10 Rule 3; this board has no heap and `_sbrk` fatal-errors).
 
-### Review trigger
+### Review
 
-If the vendored driver is ever re-vendored with a non-variadic logging
-seam, or if the port stops carrying the driver's diagnostics, this
-deviation is withdrawn rather than renewed.
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-07-27.
+- **Mandatory annual review**: 2027-07-27.
+- **Trigger for early review**: the vendored driver is re-vendored
+  with a non-variadic logging seam, or the port stops carrying the
+  driver's diagnostics -- either way this deviation is withdrawn, not
+  renewed.
 
 ---
 
@@ -819,7 +830,8 @@ deviation is withdrawn rather than renewed.
 - **Category**: Required.
 - **Disposition**: Tooling gap (false positive).
 - **Scope**: cppcheck 2.13.0 audit baseline only.
-- **Files affected**: 4 spurious violations, in
+- **Files affected**: 6 spurious findings across 4 files (index
+  above), in
   `libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2.c` (3),
   `libs/ra8_hal/src/ra8_lvd.c` (1), `libs/ra8_hal/src/ra8_ssie.c` (1)
   and `libs/ra8_mpu/src/ra8_mpu.c` (1).
@@ -903,7 +915,8 @@ the unqualified open-source audit tool is supplementary.
 - **Category**: Advisory.
 - **Disposition**: Project deviation.
 - **Scope**: first-party code implementing a dependency-injection
-  seam; 74 files carry findings of this shape.
+  seam; current population in the index above (105 files at this
+  refresh; 83 file rows when approved on 2026-08-03).
 
 ### Root cause
 
@@ -972,3 +985,16 @@ annotation gate are those measures.
 - **Mandatory annual review**: 2027-08-03.
 - **Trigger for early review**: the project abandons function-pointer
   interfaces, or NASA Rule 9 stops being deviated.
+
+---
+
+## Change log
+
+| Date       | Author              | Change                              |
+|------------|---------------------|-------------------------------------|
+| 2026-05-02 | Brighton Sikarskie  | Initial population (D-001..D-005).  |
+| 2026-07-18 | Brighton Sikarskie  | Add D-006 (Rule 20.5, NSC veneer).  |
+| 2026-07-22 | Brighton Sikarskie  | Add D-007 (Rule 14.2, C23 attribute phantom). |
+| 2026-07-27 | Brighton Sikarskie  | Add D-008 (Rule 17.1, esp-hosted log bridge). |
+| 2026-08-03 | Brighton Sikarskie  | Add D-009 (Rule 9.5) and D-010 (Rule 11.5). |
+| 2026-08-15 | Brighton Sikarskie  | Re-derive every inventory from the committed baseline; add the machine-checked "Derived population" section and gate it (issue #632). Move this log to the end. |
