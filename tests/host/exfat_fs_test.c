@@ -52,6 +52,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../support/ra8_test_file.h"
+#include "../support/ra8_test_output.h"
 #include "ra8_fs.h"
 
 /** @brief Logical block size of the backing disk image. */
@@ -100,8 +102,8 @@ typedef enum : uint16_t {
  * @see main()
  */
 typedef enum : uint8_t {
-  k_exfat_fs_test_exit_pass    = 0, /**< Every check passed.                */
-  k_exfat_fs_test_exit_failed  = 1, /**< At least one check failed.         */
+  k_exfat_fs_test_exit_pass    = 0, /**< Every internal_check passed.                */
+  k_exfat_fs_test_exit_failed  = 1, /**< At least one internal_check failed.         */
   k_exfat_fs_test_exit_fixture = 2, /**< Fixture image could not be loaded. */
 } exfat_fs_test_exit_t;
 
@@ -110,73 +112,200 @@ typedef enum : uint8_t {
 #define RA8_EXFAT_FIXTURE "exfat_small.img"
 #endif
 
-static const char k_expect[] = "Hello exFAT from the ra_fs standalone test 1234567890\n";
+static const char s_expect[] = "Hello exFAT from the ra_fs standalone test 1234567890\n";
 
 /* #104: a payload that spans several 4 KiB exFAT clusters (with an odd tail) so
  * the write/read/free paths exercise their multi-cluster branches. */
 enum : uint32_t { k_mc_payload_bytes = 12425U /**< Mc payload bytes. */ };
 
-static uint8_t* g_img;
-static uint32_t g_blocks;
-static int      g_found_hello;
-static int      g_fail;
+static uint8_t* s_img;
+static uint32_t s_blocks;
+static int      s_found_hello;
+static int      s_fail;
 
-static ra8_err_t be_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/**
+ * @brief Be read.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] ctx Argument for the bounded test operation.
+ * @param[in] lba Argument for the bounded test operation.
+ * @param[in] count Argument for the bounded test operation.
+ * @param[in,out] buf Argument for the bounded test operation.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_be_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   memcpy(buf,
-         g_img + ((size_t)lba * (size_t)k_exfat_test_block_bytes),
+         s_img + ((size_t)lba * (size_t)k_exfat_test_block_bytes),
          (size_t)count * (size_t)k_exfat_test_block_bytes);
   return k_ra8_ok;
 }
-static ra8_err_t be_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/**
+ * @brief Be write.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] ctx Argument for the bounded test operation.
+ * @param[in] lba Argument for the bounded test operation.
+ * @param[in] count Argument for the bounded test operation.
+ * @param[in] buf Argument for the bounded test operation.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_be_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
-  memcpy(g_img + ((size_t)lba * (size_t)k_exfat_test_block_bytes),
+  memcpy(s_img + ((size_t)lba * (size_t)k_exfat_test_block_bytes),
          buf,
          (size_t)count * (size_t)k_exfat_test_block_bytes);
   return k_ra8_ok;
 }
-static ra8_err_t be_cap(void* ctx, uint64_t* bc, uint32_t* bs)
+/**
+ * @brief Be cap.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] ctx Argument for the bounded test operation.
+ * @param[in,out] bc Argument for the bounded test operation.
+ * @param[in,out] bs Argument for the bounded test operation.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_be_cap(void* ctx, uint64_t* bc, uint32_t* bs)
 {
   (void)ctx;
-  *bc = g_blocks;
+  *bc = s_blocks;
   *bs = k_exfat_test_block_bytes;
   return k_ra8_ok;
 }
 
-static char g_names[k_exfat_names_cap];
-static void on_entry(const char* name, uint8_t attr, uint64_t size, void* ctx)
+static char s_names[k_exfat_names_cap];
+/**
+ * @brief On entry.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in] name Argument for the bounded test operation.
+ * @param[in] attr Argument for the bounded test operation.
+ * @param[in] size Argument for the bounded test operation.
+ * @param[in,out] ctx Argument for the bounded test operation.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_on_entry(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)attr;
   (void)size;
   (void)ctx;
   if (strcmp(name, "HELLO.TXT") == 0) {
-    g_found_hello = 1;
+    s_found_hello = 1;
   }
   /* Append "<name>|" to the running roster. snprintf into the tail bounds the
    * write by construction: the unbounded strcat pair it replaces was correct
    * only because of the length test above, which is easy to break silently. */
-  const size_t used = strlen(g_names);
-  const size_t room = sizeof(g_names) - used;
-  (void)snprintf(&g_names[used], room, "%s|", name);
+  const size_t used = strlen(s_names);
+  const size_t room = sizeof(s_names) - used;
+  (void)snprintf(&s_names[used], room, "%s|", name);
 }
 
 /* Re-list the root and report whether `name` is currently an entry. */
-static int name_present(ra8_fs_mount_t* mnt, const char* name)
+/**
+ * @brief Name present.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] mnt Argument for the bounded test operation.
+ * @param[in] name Argument for the bounded test operation.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static int internal_name_present(ra8_fs_mount_t* mnt, const char* name)
 {
   char needle[k_exfat_name_cap];
-  g_names[0] = '\0';
-  (void)ra8_fs_listdir(mnt, "/", on_entry, nullptr);
+  s_names[0] = '\0';
+  (void)ra8_fs_listdir(mnt, "/", internal_on_entry, nullptr);
   (void)snprintf(needle, sizeof(needle), "%s|", name);
-  return strstr(g_names, needle) != nullptr;
+  return strstr(s_names, needle) != nullptr;
 }
 
-static void check(int cond, const char* what)
+/** @brief Write one prefix/path/suffix diagnostic to the host result descriptor.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in] prefix Argument for the bounded test operation.
+ * @param[in] path Argument for the bounded test operation.
+ * @param[in] suffix Argument for the bounded test operation.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static bool
+internal_output_path(const char* prefix, const char* path, const char* suffix)
 {
-  printf("  [%s] %s\n", cond ? "PASS" : "FAIL", what);
-  if (cond == 0) {
-    g_fail = 1;
+  ra8_test_output_t    output = {};
+  ra8_test_output_fd_t state  = {};
+  if (!internal_test_output_fd_init(&output, &state, STDOUT_FILENO)) {
+    return false;
+  }
+  (void)internal_test_output_text(&output, prefix);
+  (void)internal_test_output_text(&output, path);
+  (void)internal_test_output_text(&output, suffix);
+  return output.status == k_ra8_test_output_ok;
+}
+
+/**
+ * @brief Check.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in] cond Argument for the bounded test operation.
+ * @param[in] what Argument for the bounded test operation.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_check(int cond, const char* what)
+{
+  ra8_test_output_t    output = {};
+  ra8_test_output_fd_t state  = {};
+  bool                 wrote  = internal_test_output_fd_init(&output, &state, STDOUT_FILENO);
+  if (wrote) {
+    (void)internal_test_output_text(&output, "  [");
+    (void)internal_test_output_text(&output, (cond != 0) ? "PASS" : "FAIL");
+    (void)internal_test_output_text(&output, "] ");
+    (void)internal_test_output_text(&output, what);
+    (void)internal_test_output_text(&output, "\n");
+    wrote = output.status == k_ra8_test_output_ok;
+  }
+  if ((cond == 0) || !wrote) {
+    s_fail = 1;
   }
 }
 
@@ -193,7 +322,18 @@ static void check(int cond, const char* what)
  * #104 confirmed both the BIG.BIN-present and post-unlink images fsck-clean
  * ("The volume RAFS appears to be OK").
  */
-static void maybe_dump_image(const char* tag)
+/**
+ * @brief Maybe dump image.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in] tag Argument for the bounded test operation.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_maybe_dump_image(const char* tag)
 {
   const char* base = getenv("RA8_EXFAT_DUMP");
   if (base == nullptr) {
@@ -201,47 +341,87 @@ static void maybe_dump_image(const char* tag)
   }
   char path[k_exfat_path_cap];
   (void)snprintf(path, sizeof(path), "%s.%s", base, tag);
-  FILE* o = fopen(path, "wb");
-  if (o == nullptr) {
+  const ra8_test_file_result_t result =
+    internal_test_file_replace(path, s_img, (size_t)s_blocks * (size_t)k_exfat_test_block_bytes);
+  if (result.status != k_ra8_test_file_ok) {
     return;
   }
-  (void)fwrite(g_img, 1U, (size_t)g_blocks * k_exfat_test_block_bytes, o);
-  (void)fclose(o);
-  printf("  [dump] %s\n", path);
+  if (!internal_output_path("  [dump] ", path, "\n")) {
+    s_fail = 1;
+  }
 }
 
 /* Open the path, read it, and confirm it is HELLO.TXT's content. */
-static void check_open_reads_hello(ra8_fs_mount_t* mnt, const char* path)
+/**
+ * @brief Check open reads hello.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] mnt Argument for the bounded test operation.
+ * @param[in] path Argument for the bounded test operation.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_check_open_reads_hello(ra8_fs_mount_t* mnt, const char* path)
 {
   ra8_fs_file_t* fp = nullptr;
   ra8_err_t      e  = ra8_fs_open(mnt, path, k_ra8_fs_mode_read, &fp);
   if (e != k_ra8_ok) {
-    printf("  [FAIL] open(\"%s\") -> %d\n", path, (int)e);
-    g_fail = 1;
+    ra8_test_output_t    output = {};
+    ra8_test_output_fd_t state  = {};
+    (void)internal_test_output_fd_init(&output, &state, STDOUT_FILENO);
+    (void)internal_test_output_text(&output, "  [FAIL] open(\"");
+    (void)internal_test_output_text(&output, path);
+    (void)internal_test_output_text(&output, "\") -> ");
+    (void)internal_test_output_i64(&output, e);
+    (void)internal_test_output_text(&output, "\n");
+    s_fail = 1;
     return;
   }
   uint8_t  buf[k_exfat_read_chunk] = {};
   uint32_t got                     = 0U;
   e                                = ra8_fs_read(fp, buf, sizeof(buf) - 1U, &got);
   (void)ra8_fs_close(fp);
-  const int ok = (e == k_ra8_ok) && (got == (uint32_t)strlen(k_expect)) &&
-                 (memcmp(buf, k_expect, strlen(k_expect)) == 0);
-  printf("  [%s] open(\"%s\") read %u bytes back\n", ok ? "PASS" : "FAIL", path, got);
-  if (ok == 0) {
-    g_fail = 1;
+  const int            ok     = (e == k_ra8_ok) && (got == (uint32_t)strlen(s_expect)) &&
+                                (memcmp(buf, s_expect, strlen(s_expect)) == 0);
+  ra8_test_output_t    output = {};
+  ra8_test_output_fd_t state  = {};
+  (void)internal_test_output_fd_init(&output, &state, STDOUT_FILENO);
+  (void)internal_test_output_text(&output, "  [");
+  (void)internal_test_output_text(&output, (ok != 0) ? "PASS" : "FAIL");
+  (void)internal_test_output_text(&output, "] open(\"");
+  (void)internal_test_output_text(&output, path);
+  (void)internal_test_output_text(&output, "\") read ");
+  (void)internal_test_output_u64(&output, got);
+  (void)internal_test_output_text(&output, " bytes back\n");
+  if ((ok == 0) || (output.status != k_ra8_test_output_ok)) {
+    s_fail = 1;
   }
 }
 
 /* exFAT write/create/rename/unlink round-trip, all with leading slashes
  * (#93 covered read; create + rename also have to strip the slash). */
-static void check_write_path(ra8_fs_mount_t* mnt)
+/**
+ * @brief Check write path.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] mnt Argument for the bounded test operation.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_check_write_path(ra8_fs_mount_t* mnt)
 {
   const char*    data = "exFAT write-path payload 0123456789ABCDEF";
   const uint32_t len  = (uint32_t)strlen(data);
 
-  check(ra8_fs_write_file(mnt, "/W83.TXT", (const uint8_t*)data, len) == k_ra8_ok,
-        "write_file(\"/W83.TXT\") with leading slash");
-  check(name_present(mnt, "W83.TXT"), "created file stored without the slash");
+  internal_check(ra8_fs_write_file(mnt, "/W83.TXT", (const uint8_t*)data, len) == k_ra8_ok,
+                 "write_file(\"/W83.TXT\") with leading slash");
+  internal_check(internal_name_present(mnt, "W83.TXT"), "created file stored without the slash");
 
   ra8_fs_file_t* fp = nullptr;
   if (ra8_fs_open(mnt, "/W83.TXT", k_ra8_fs_mode_read, &fp) == k_ra8_ok) {
@@ -249,33 +429,46 @@ static void check_write_path(ra8_fs_mount_t* mnt)
     uint32_t  got                   = 0U;
     ra8_err_t e                     = ra8_fs_read(fp, buf, sizeof(buf) - 1U, &got);
     (void)ra8_fs_close(fp);
-    check((e == k_ra8_ok) && (got == len) && (memcmp(buf, data, len) == 0),
-          "written file reads back byte-identical");
+    internal_check((e == k_ra8_ok) && (got == len) && (memcmp(buf, data, len) == 0),
+                   "written file reads back byte-identical");
   } else {
-    check(0, "reopen written file");
+    internal_check(0, "reopen written file");
   }
 
-  check(ra8_fs_rename(mnt, "/W83.TXT", "/W83R.TXT") == k_ra8_ok, "rename with leading slashes");
-  check(name_present(mnt, "W83R.TXT") && !name_present(mnt, "W83.TXT"), "rename moved the entry");
-  check(ra8_fs_unlink(mnt, "/W83R.TXT") == k_ra8_ok, "unlink with leading slash");
-  check(!name_present(mnt, "W83R.TXT"), "unlink removed the entry");
+  internal_check(ra8_fs_rename(mnt, "/W83.TXT", "/W83R.TXT") == k_ra8_ok,
+                 "rename with leading slashes");
+  internal_check(internal_name_present(mnt, "W83R.TXT") && !internal_name_present(mnt, "W83.TXT"),
+                 "rename moved the entry");
+  internal_check(ra8_fs_unlink(mnt, "/W83R.TXT") == k_ra8_ok, "unlink with leading slash");
+  internal_check(!internal_name_present(mnt, "W83R.TXT"), "unlink removed the entry");
 }
 
 /* #104: multi-cluster exFAT write. A payload larger than one 4 KiB cluster must
  * allocate a contiguous run in the bitmap, read back byte-identical across the
  * cluster boundaries, and free every cluster on unlink -- branches the
  * single-cluster W83.TXT case never reaches. */
-static void check_multicluster_path(ra8_fs_mount_t* mnt)
+/**
+ * @brief Check multicluster path.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] mnt Argument for the bounded test operation.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_check_multicluster_path(ra8_fs_mount_t* mnt)
 {
-  static uint8_t s_big[k_mc_payload_bytes];
-  static uint8_t s_back[k_mc_payload_bytes];
+  static uint8_t big[k_mc_payload_bytes];
+  static uint8_t back[k_mc_payload_bytes];
   for (uint32_t i = 0U; i < k_mc_payload_bytes; i++) {
-    s_big[i] = (uint8_t)(((i * k_exfat_pattern_stride) + k_exfat_pattern_bias) & k_byte_mask);
+    big[i] = (uint8_t)(((i * k_exfat_pattern_stride) + k_exfat_pattern_bias) & k_byte_mask);
   }
 
-  check(ra8_fs_write_file(mnt, "/BIG.BIN", s_big, k_mc_payload_bytes) == k_ra8_ok,
-        "write_file multi-cluster (> 3 clusters)");
-  check(name_present(mnt, "BIG.BIN"), "multi-cluster file listed");
+  internal_check(ra8_fs_write_file(mnt, "/BIG.BIN", big, k_mc_payload_bytes) == k_ra8_ok,
+                 "write_file multi-cluster (> 3 clusters)");
+  internal_check(internal_name_present(mnt, "BIG.BIN"), "multi-cluster file listed");
 
   ra8_fs_file_t* fp = nullptr;
   if (ra8_fs_open(mnt, "/BIG.BIN", k_ra8_fs_mode_read, &fp) == k_ra8_ok) {
@@ -283,29 +476,30 @@ static void check_multicluster_path(ra8_fs_mount_t* mnt)
     ra8_err_t e     = k_ra8_ok;
     while (total < k_mc_payload_bytes) {
       uint32_t got = 0U;
-      e            = ra8_fs_read(fp, s_back + total, k_mc_payload_bytes - total, &got);
+      e            = ra8_fs_read(fp, back + total, k_mc_payload_bytes - total, &got);
       if ((e != k_ra8_ok) || (got == 0U)) {
         break;
       }
       total += got;
     }
     (void)ra8_fs_close(fp);
-    check((e == k_ra8_ok) && (total == k_mc_payload_bytes) &&
-            (memcmp(s_back, s_big, k_mc_payload_bytes) == 0),
-          "multi-cluster file reads back byte-identical");
+    internal_check((e == k_ra8_ok) && (total == k_mc_payload_bytes) &&
+                     (memcmp(back, big, k_mc_payload_bytes) == 0),
+                   "multi-cluster file reads back byte-identical");
   } else {
-    check(0, "reopen multi-cluster file");
+    internal_check(0, "reopen multi-cluster file");
   }
 
   /* Image now holds a live multi-cluster file -- snapshot it for the
-   * out-of-band fsck_exfat check (acceptance: stays fsck-clean after writes). */
-  maybe_dump_image("bigfile");
+   * out-of-band fsck_exfat internal_check (acceptance: stays fsck-clean after writes). */
+  internal_maybe_dump_image("bigfile");
 
-  check(ra8_fs_rename(mnt, "/BIG.BIN", "/BIG2.BIN") == k_ra8_ok, "multi-cluster rename");
-  check(name_present(mnt, "BIG2.BIN") && !name_present(mnt, "BIG.BIN"),
-        "multi-cluster rename moved the entry");
-  check(ra8_fs_unlink(mnt, "/BIG2.BIN") == k_ra8_ok, "multi-cluster unlink frees the chain");
-  check(!name_present(mnt, "BIG2.BIN"), "multi-cluster file gone after unlink");
+  internal_check(ra8_fs_rename(mnt, "/BIG.BIN", "/BIG2.BIN") == k_ra8_ok, "multi-cluster rename");
+  internal_check(internal_name_present(mnt, "BIG2.BIN") && !internal_name_present(mnt, "BIG.BIN"),
+                 "multi-cluster rename moved the entry");
+  internal_check(ra8_fs_unlink(mnt, "/BIG2.BIN") == k_ra8_ok,
+                 "multi-cluster unlink frees the chain");
+  internal_check(!internal_name_present(mnt, "BIG2.BIN"), "multi-cluster file gone after unlink");
 }
 
 /* #104: drive the name-matcher's mismatch branches in priv_exfat_take_set --
@@ -325,48 +519,61 @@ static void check_multicluster_path(ra8_fs_mount_t* mnt)
  *
  * @param[in] mnt The mounted fixture volume.
  *
- * @return Nothing; failures are recorded through ::check.
+ * @return Nothing; failures are recorded through ::internal_check.
  *
  * @pre @p mnt is a mounted exFAT volume.
  * @pre The fixture still carries `.fseventsd` and HELLO.TXT.
  * @post No volume state is modified.
- * @post Every assertion has been recorded in ``g_fail``.
+ * @post Every assertion has been recorded in ``s_fail``.
  *
  * @note Reads only; the write-path checks run after this one.
  *
  * @since 0.1.0
  */
-static void check_stat_paths(ra8_fs_mount_t* mnt)
+RA8_INTERNAL static void internal_check_stat_paths(ra8_fs_mount_t* mnt)
 {
   ra8_fs_stat_t dir = {};
-  check(ra8_fs_stat(mnt, "/.fseventsd", &dir) == k_ra8_ok, "stat finds the fixture's directory");
-  check(dir.is_directory, "a real exFAT directory reports is_directory");
-  check(dir.size_bytes == 0U, "a directory reports length 0");
-  check((dir.attr & (uint8_t)k_ra8_fs_attr_directory) != 0U, "its attr carries the directory bit");
-  check((dir.attr & (uint8_t)k_ra8_fs_attr_hidden) != 0U,
-        "and its hidden bit survives -- the attr is the entry's, not a constant");
+  internal_check(ra8_fs_stat(mnt, "/.fseventsd", &dir) == k_ra8_ok,
+                 "stat finds the fixture's directory");
+  internal_check(dir.is_directory, "a real exFAT directory reports is_directory");
+  internal_check(dir.size_bytes == 0U, "a directory reports length 0");
+  internal_check((dir.attr & (uint8_t)k_ra8_fs_attr_directory) != 0U,
+                 "its attr carries the directory bit");
+  internal_check((dir.attr & (uint8_t)k_ra8_fs_attr_hidden) != 0U,
+                 "and its hidden bit survives -- the attr is the entry's, not a constant");
 
   ra8_fs_stat_t file = {};
-  check(ra8_fs_stat(mnt, "/HELLO.TXT", &file) == k_ra8_ok, "stat finds an ordinary file");
-  check(!file.is_directory, "a file does not report is_directory");
-  check(file.size_bytes == (uint32_t)strlen(k_expect), "a file reports its real length");
+  internal_check(ra8_fs_stat(mnt, "/HELLO.TXT", &file) == k_ra8_ok, "stat finds an ordinary file");
+  internal_check(!file.is_directory, "a file does not report is_directory");
+  internal_check(file.size_bytes == (uint32_t)strlen(s_expect), "a file reports its real length");
 
   ra8_fs_stat_t gone = {};
-  check(ra8_fs_stat(mnt, "/NOPE.TXT", &gone) == k_ra8_err_not_found,
-        "a missing name is not-found, not an empty file");
+  internal_check(ra8_fs_stat(mnt, "/NOPE.TXT", &gone) == k_ra8_err_not_found,
+                 "a missing name is not-found, not an empty file");
 
   ra8_fs_stat_t root = {};
-  check(ra8_fs_stat(mnt, "/", &root) == k_ra8_ok, "stat resolves the volume root");
-  check(root.is_directory, "the root reports as a directory");
+  internal_check(ra8_fs_stat(mnt, "/", &root) == k_ra8_ok, "stat resolves the volume root");
+  internal_check(root.is_directory, "the root reports as a directory");
 }
 
-static void check_lookup_mismatch_branches(ra8_fs_mount_t* mnt)
+/**
+ * @brief Check lookup mismatch branches.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] mnt Argument for the bounded test operation.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_check_lookup_mismatch_branches(ra8_fs_mount_t* mnt)
 {
   ra8_fs_file_t* nf = nullptr;
-  check(ra8_fs_open(mnt, "/WORLD.TXT", k_ra8_fs_mode_read, &nf) == k_ra8_err_not_found,
-        "same-length wrong name -> not_found (byte-compare branch)");
-  check(ra8_fs_open(mnt, "/AB.TX", k_ra8_fs_mode_read, &nf) == k_ra8_err_not_found,
-        "wrong-length name -> not_found (length-prefilter branch)");
+  internal_check(ra8_fs_open(mnt, "/WORLD.TXT", k_ra8_fs_mode_read, &nf) == k_ra8_err_not_found,
+                 "same-length wrong name -> not_found (byte-compare branch)");
+  internal_check(ra8_fs_open(mnt, "/AB.TX", k_ra8_fs_mode_read, &nf) == k_ra8_err_not_found,
+                 "wrong-length name -> not_found (length-prefilter branch)");
 }
 
 /**
@@ -375,7 +582,7 @@ static void check_lookup_mismatch_branches(ra8_fs_mount_t* mnt)
  * @details
  * Sizes the file by seeking to its end, allocates the whole image, and reads it
  * in one go, then derives the block count the backend reports. Every failure
- * path names what went wrong on stdout and closes the handle, so the caller
+ * path names what went wrong on the result descriptor and releases it, so the caller
  * only has to distinguish loaded from not-loaded. The image is deliberately
  * read whole rather than paged: the tests seek all over it, and a fixture small
  * enough to commit is small enough to hold.
@@ -383,90 +590,98 @@ static void check_lookup_mismatch_branches(ra8_fs_mount_t* mnt)
  * @param[in] path Filesystem path to the fixture image; must be non-NULL.
  *
  * @return Whether the image is now resident and addressable.
- * @retval true  `g_img` holds the image and `g_blocks` its 512-byte block count.
+ * @retval true  `s_img` holds the image and `s_blocks` its 512-byte block count.
  * @retval false The image could not be read; the reason was printed.
  *
  * @pre @p path names a readable regular file.
- * @pre `g_img` is unset -- this runs once, before any mount.
- * @post On success `g_img` and `g_blocks` describe the whole image.
+ * @pre `s_img` is unset -- this runs once, before any mount.
+ * @post On success `s_img` and `s_blocks` describe the whole image.
  * @post On failure no file handle leaks, whichever step failed.
  *
  * @note Not thread-safe; publishes to file-scope state.
  *
- * @see be_read()  The backend that serves blocks out of `g_img`.
- */
-static bool load_fixture_image(const char* path)
+ * @see internal_be_read()  The backend that serves blocks out of `s_img`.
+
+ * @since 0.1.0
+*/
+RA8_INTERNAL static bool internal_load_fixture_image(const char* path)
 {
-  FILE* f = fopen(path, "rb");
-  if (f == nullptr) {
-    printf("FAIL: cannot open fixture %s\n", path);
+  ra8_test_file_result_t probe = internal_test_file_read(path, nullptr, 0U, nullptr, 0U);
+  if (probe.status != k_ra8_test_file_capacity) {
+    (void)internal_output_path("FAIL: cannot open fixture ", path, "\n");
     return false;
   }
-  if (fseek(f, 0, SEEK_END) != 0) {
-    printf("FAIL: cannot seek fixture %s\n", path);
-    (void)fclose(f);
+  const size_t max_image = (size_t)UINT32_MAX * (size_t)k_exfat_test_block_bytes;
+  if ((probe.required == 0U) || (probe.required > max_image)) {
+    (void)internal_output_path("FAIL: cannot size fixture ", path, "\n");
     return false;
   }
-  const long sz = ftell(f);
-  if (sz < 0 || fseek(f, 0, SEEK_SET) != 0) {
-    printf("FAIL: cannot size fixture %s\n", path);
-    (void)fclose(f);
+  s_img            = malloc(probe.required);
+  uint8_t* staging = malloc(probe.required);
+  if ((s_img == nullptr) || (staging == nullptr)) {
+    free(s_img);
+    free(staging);
+    s_img = nullptr;
+    (void)internal_test_output_fd_text(STDOUT_FILENO, "FAIL: out of memory for fixture\n");
     return false;
   }
-  g_img = malloc((size_t)sz);
-  if (g_img == nullptr) {
-    printf("FAIL: out of memory for fixture\n");
-    (void)fclose(f);
+  const ra8_test_file_result_t result =
+    internal_test_file_read(path, s_img, probe.required, staging, probe.required);
+  free(staging);
+  if (result.status != k_ra8_test_file_ok) {
+    free(s_img);
+    s_img = nullptr;
+    (void)internal_test_output_fd_text(STDOUT_FILENO, "FAIL: short read of fixture\n");
     return false;
   }
-  const size_t rd = fread(g_img, 1U, (size_t)sz, f);
-  (void)fclose(f);
-  if (rd != (size_t)sz) {
-    printf("FAIL: short read of fixture\n");
-    return false;
-  }
-  g_blocks = (uint32_t)((size_t)sz / k_exfat_test_block_bytes);
+  s_blocks = (uint32_t)(result.transferred / (size_t)k_exfat_test_block_bytes);
   return true;
 }
 
 int main(int argc, char** argv)
 {
   const char* path = (argc > 1) ? argv[1] : RA8_EXFAT_FIXTURE;
-  if (!load_fixture_image(path)) {
+  if (!internal_load_fixture_image(path)) {
     return (int)k_exfat_fs_test_exit_fixture;
   }
 
-  ra8_fs_backend_t be  = {.read_block   = be_read,
-                          .write_block  = be_write,
-                          .get_capacity = be_cap,
+  ra8_fs_backend_t be  = {.read_block   = internal_be_read,
+                          .write_block  = internal_be_write,
+                          .get_capacity = internal_be_cap,
                           .erase_blocks = nullptr,
                           .ctx          = nullptr};
   ra8_fs_mount_t*  mnt = nullptr;
   ra8_err_t        e   = ra8_fs_mount(&be, &mnt);
-  check(e == k_ra8_ok, "mount succeeds");
-  check((mnt != nullptr) && (mnt->type == k_ra8_fs_type_exfat), "volume detected as exFAT");
+  internal_check(e == k_ra8_ok, "mount succeeds");
+  internal_check((mnt != nullptr) && (mnt->type == k_ra8_fs_type_exfat),
+                 "volume detected as exFAT");
   if ((e != k_ra8_ok) || (mnt == nullptr)) {
     return (int)k_exfat_fs_test_exit_failed;
   }
 
-  check(ra8_fs_listdir(mnt, "/", on_entry, nullptr) == k_ra8_ok, "listdir root succeeds");
-  check(g_found_hello == 1, "listdir finds HELLO.TXT");
+  internal_check(ra8_fs_listdir(mnt, "/", internal_on_entry, nullptr) == k_ra8_ok,
+                 "listdir root succeeds");
+  internal_check(s_found_hello == 1, "listdir finds HELLO.TXT");
 
   /* #93: a leading slash must resolve on exFAT just like it does on FAT. */
-  check_open_reads_hello(mnt, "/HELLO.TXT");
-  check_open_reads_hello(mnt, "HELLO.TXT");
+  internal_check_open_reads_hello(mnt, "/HELLO.TXT");
+  internal_check_open_reads_hello(mnt, "HELLO.TXT");
 
   /* Negative: a missing file still reports not-found. */
   ra8_fs_file_t* nf = nullptr;
-  check(ra8_fs_open(mnt, "/NOPE.TXT", k_ra8_fs_mode_read, &nf) == k_ra8_err_not_found,
-        "missing file -> not_found");
+  internal_check(ra8_fs_open(mnt, "/NOPE.TXT", k_ra8_fs_mode_read, &nf) == k_ra8_err_not_found,
+                 "missing file -> not_found");
 
-  check_stat_paths(mnt);
-  check_write_path(mnt);
-  check_multicluster_path(mnt);
-  check_lookup_mismatch_branches(mnt);
-  maybe_dump_image("empty"); /* all files unlinked -> back to a clean root. */
+  internal_check_stat_paths(mnt);
+  internal_check_write_path(mnt);
+  internal_check_multicluster_path(mnt);
+  internal_check_lookup_mismatch_branches(mnt);
+  internal_maybe_dump_image("empty"); /* all files unlinked -> back to a clean root. */
 
-  printf("\n%s\n", g_fail ? "RESULT: FAIL" : "RESULT: PASS");
-  return g_fail;
+  if (internal_test_output_fd_text(STDOUT_FILENO,
+                                   (s_fail != 0) ? "\nRESULT: FAIL\n" : "\nRESULT: PASS\n") !=
+      k_ra8_test_output_ok) {
+    s_fail = 1;
+  }
+  return s_fail;
 }
