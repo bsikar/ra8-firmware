@@ -471,6 +471,5 @@ int32_t main(void)
   t_selftest_matches_the_golden();
   t_prefetch_is_bounded();
   t_fnv1a_matches_the_reference();
-  (void)fprintf(stderr, "[PASS] test_app_ereader_zoom: all cases passed\n");
   return 0;
 }

@@ -157,12 +157,12 @@ typedef struct {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void zoom_tile_copy(const ra8_tile_t*       tile,
-                           uint32_t                org_x,
-                           uint32_t                org_y,
-                           const zoom_tile_span_t* span,
-                           uint8_t*                out,
-                           uint32_t                stride)
+static void internal_tile_copy(const ra8_tile_t*       tile,
+                               uint32_t                org_x,
+                               uint32_t                org_y,
+                               const zoom_tile_span_t* span,
+                               uint8_t*                out,
+                               uint32_t                stride)
 {
   const uint32_t x0     = (span->x > org_x) ? span->x : org_x;
   const uint32_t y0     = (span->y > org_y) ? span->y : org_y;
@@ -204,16 +204,16 @@ static void zoom_tile_copy(const ra8_tile_t*       tile,
  * @post On k_ra8_ok the overlap is present in @p out.
  *
  * @note Not thread-safe.
- * @see zoom_tile_copy
+ * @see internal_tile_copy
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t zoom_tile_fetch(ra8_zoom_tile_src_t*    ts,
-                                 uint16_t                tx,
-                                 uint16_t                ty,
-                                 const zoom_tile_span_t* span,
-                                 uint8_t*                out,
-                                 uint32_t                stride)
+static ra8_err_t internal_tile_fetch(ra8_zoom_tile_src_t*    ts,
+                                     uint16_t                tx,
+                                     uint16_t                ty,
+                                     const zoom_tile_span_t* span,
+                                     uint8_t*                out,
+                                     uint32_t                stride)
 {
   const ra8_tile_key_t key = {
     .image_id = ts->image_id,
@@ -238,7 +238,7 @@ static ra8_err_t zoom_tile_fetch(ra8_zoom_tile_src_t*    ts,
     ra8_log_error(s_tag, "tile decoded to an unexpected extent (wrong bpp or geometry)");
     return k_ra8_err_invalid_size;
   }
-  zoom_tile_copy(&tile, org_x, org_y, span, out, stride);
+  internal_tile_copy(&tile, org_x, org_y, span, out, stride);
   return ra8_tile_cache_put(ts->cache, tile.pixels);
 }
 
@@ -286,7 +286,7 @@ ra8_err_t ra8_zoom_tile_src_bind(ra8_zoom_tile_src_t* ts, ra8_zoom_source_t* out
 /**
  * @brief Fetch, copy and release one inclusive run of tiles along a tile row.
  *
- * @details Split out of ::zoom_walk_tiles purely so the tile walk stays inside
+ * @details Split out of ::internal_walk_tiles purely so the tile walk stays inside
  *          the project's nesting bar: two nested loops plus the error-check
  *          macro's own `do`/`if` is five levels deep, and the ceiling is four.
  *          Behaviourally it is the inner loop, unchanged.
@@ -309,20 +309,20 @@ ra8_err_t ra8_zoom_tile_src_bind(ra8_zoom_tile_src_t* ts, ra8_zoom_source_t* out
  * @post On failure the output holds a partial assembly.
  *
  * @note Not thread-safe.
- * @see zoom_tile_fetch
+ * @see internal_tile_fetch
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t zoom_walk_tile_row(ra8_zoom_tile_src_t*    ts,
-                                    uint16_t                ty,
-                                    uint16_t                tx0,
-                                    uint16_t                tx1,
-                                    const zoom_tile_span_t* span,
-                                    uint8_t*                out,
-                                    uint32_t                stride)
+static ra8_err_t internal_walk_tile_row(ra8_zoom_tile_src_t*    ts,
+                                        uint16_t                ty,
+                                        uint16_t                tx0,
+                                        uint16_t                tx1,
+                                        const zoom_tile_span_t* span,
+                                        uint8_t*                out,
+                                        uint32_t                stride)
 {
   for (uint16_t tx = tx0; tx <= tx1; ++tx) {
-    RA8_RETURN_ON_ERROR(zoom_tile_fetch(ts, tx, ty, span, out, stride), s_tag, "tile copy");
+    RA8_RETURN_ON_ERROR(internal_tile_fetch(ts, tx, ty, span, out, stride), s_tag, "tile copy");
   }
   return k_ra8_ok;
 }
@@ -351,18 +351,18 @@ static ra8_err_t zoom_walk_tile_row(ra8_zoom_tile_src_t*    ts,
  * @post On failure the output holds a partial assembly and must not be shown.
  *
  * @note Not thread-safe.
- * @see zoom_tile_fetch
+ * @see internal_tile_fetch
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t zoom_walk_tiles(ra8_zoom_tile_src_t*    ts,
-                                 const ra8_tile_rect_t*  tiles,
-                                 const zoom_tile_span_t* span,
-                                 uint8_t*                out,
-                                 uint32_t                stride)
+static ra8_err_t internal_walk_tiles(ra8_zoom_tile_src_t*    ts,
+                                     const ra8_tile_rect_t*  tiles,
+                                     const zoom_tile_span_t* span,
+                                     uint8_t*                out,
+                                     uint32_t                stride)
 {
   for (uint16_t ty = tiles->ty0; ty <= tiles->ty1; ++ty) {
-    RA8_RETURN_ON_ERROR(zoom_walk_tile_row(ts, ty, tiles->tx0, tiles->tx1, span, out, stride),
+    RA8_RETURN_ON_ERROR(internal_walk_tile_row(ts, ty, tiles->tx0, tiles->tx1, span, out, stride),
                         s_tag,
                         "tile row");
   }
@@ -400,12 +400,12 @@ static ra8_err_t zoom_walk_tiles(ra8_zoom_tile_src_t*    ts,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t zoom_read_rect_ok(const ra8_zoom_tile_src_t* ts,
-                                   uint32_t                   x,
-                                   uint32_t                   y,
-                                   uint32_t                   w,
-                                   uint32_t                   h,
-                                   uint32_t                   out_stride)
+static ra8_err_t internal_read_rect_ok(const ra8_zoom_tile_src_t* ts,
+                                       uint32_t                   x,
+                                       uint32_t                   y,
+                                       uint32_t                   w,
+                                       uint32_t                   h,
+                                       uint32_t                   out_stride)
 {
   /* Decision: an empty rectangle, or one narrower than its own stride, is a
    * caller defect rather than something to clamp (3 conditions). */
@@ -433,7 +433,7 @@ ra8_err_t ra8_zoom_tile_read(void*    ctx,
   RA8_CHECK_NULL_PTR(out, s_tag, "read destination must not be nullptr");
   ra8_zoom_tile_src_t* ts = (ra8_zoom_tile_src_t*)ctx;
   RA8_CHECK_NULL_PTR(ts->cache, s_tag, "binding was never initialised");
-  RA8_RETURN_ON_ERROR(zoom_read_rect_ok(ts, x, y, w, h, out_stride), s_tag, "read rect check");
+  RA8_RETURN_ON_ERROR(internal_read_rect_ok(ts, x, y, w, h, out_stride), s_tag, "read rect check");
 
   ra8_tile_rect_t tiles = {};
   RA8_RETURN_ON_ERROR(ra8_tile_rect_of_pixels(x,
@@ -449,7 +449,7 @@ ra8_err_t ra8_zoom_tile_read(void*    ctx,
                       "pixel rect to tile rect");
 
   const zoom_tile_span_t span = {.x = x, .y = y, .w = w, .h = h};
-  return zoom_walk_tiles(ts, &tiles, &span, out, out_stride);
+  return internal_walk_tiles(ts, &tiles, &span, out, out_stride);
 }
 
 ra8_err_t ra8_zoom_tiles_prefetch(ra8_zoom_tile_src_t*   ts,

@@ -182,14 +182,14 @@ static void t_bind_fb(void)
  *
  * @par MC/DC:
  * Decision libs/ra8_zoom/src/ra8_zoom.c@ra8_zoom_source_init
- * `if (!zoom_dim_ok(width) || !zoom_dim_ok(height))` (2 conditions):
+ * `if (!internal_dim_ok(width) || !internal_dim_ok(height))` (2 conditions):
  * - V1: width=64,  height=48       -> false (both ok: the source binds)
  * - V2: width=0,   height=48       -> true  (varies width only)
  * - V3: width=64,  height=1000000  -> true  (varies height only)
  * V1+V2 prove width's independent influence; V1+V3 prove height's. N+1 = 3.
  *
  * @par MC/DC:
- * Decision libs/ra8_zoom/src/ra8_zoom.c@zoom_dim_ok
+ * Decision libs/ra8_zoom/src/ra8_zoom.c@internal_dim_ok
  * `return (dim != 0U) && (dim <= k_ra8_zoom_dim_max)` (2 conditions):
  * - V1: dim=64        -> true  (both conditions true: accepted)
  * - V2: dim=0         -> false (varies the non-zero condition only)
@@ -261,13 +261,13 @@ static void t_view_open_scratch_and_ladder(const ra8_zoom_source_t* src)
  * @test view_open_validates
  *
  * @par MC/DC:
- * Decision libs/ra8_zoom/src/ra8_zoom.c@zoom_cfg_extent_ok
+ * Decision libs/ra8_zoom/src/ra8_zoom.c@internal_cfg_extent_ok
  * `if ((cfg->dst.w <= 0) || (cfg->dst.h <= 0))` (2 conditions):
  * - V1: w=32, h=16 -> false (control: a real viewport)
  * - V2: w=0,  h=16 -> true  (varies w only)
  * - V3: w=32, h=0  -> true  (varies h only)
  * Second decision in the same function,
- * `if (!zoom_dim_ok(cfg->src.width) || !zoom_dim_ok(cfg->src.height))`:
+ * `if (!internal_dim_ok(cfg->src.width) || !internal_dim_ok(cfg->src.height))`:
  * - V4: src 64x48       -> false (control)
  * - V5: src 0x48        -> true  (varies width only)
  * - V6: src 64x1000000  -> true  (varies height only)
@@ -275,14 +275,14 @@ static void t_view_open_scratch_and_ladder(const ra8_zoom_source_t* src)
  * influence. N+1 = 3 vectors per decision.
  *
  * @par MC/DC:
- * Decision libs/ra8_zoom/src/ra8_zoom.c@zoom_cfg_scratch_ok
+ * Decision libs/ra8_zoom/src/ra8_zoom.c@internal_cfg_scratch_ok
  * `if ((cfg->scratch.row_cap < width) || (cfg->scratch.strip_cap < width))`:
  * - V7: row_cap=32, strip_cap=128 -> false (control: both fit a 32-px viewport)
  * - V8: row_cap=4,  strip_cap=128 -> true  (varies row_cap only)
  * - V9: row_cap=32, strip_cap=4   -> true  (varies strip_cap only)
  * V7+V8 prove row_cap's influence; V7+V9 prove strip_cap's. N+1 = 3.
  *
- * ::zoom_cfg_ladder_ok carries no compound decision: a `< min` half would be
+ * ::internal_cfg_ladder_ok carries no compound decision: a `< min` half would be
  * structurally unable to vary (the "0 means default" rewrite lifts both values
  * to the minimum on the line above), so each check is the single bound that can
  * actually fail. Both are exercised both ways here:
@@ -394,7 +394,7 @@ static void t_view_active_and_close(void)
  *
  * @par MC/DC:
  * Decision libs/ra8_zoom/src/ra8_zoom.c@ra8_zoom_view_rebind
- * `if (!zoom_dim_ok(src->width) || !zoom_dim_ok(src->height))` (2 conditions):
+ * `if (!internal_dim_ok(src->width) || !internal_dim_ok(src->height))` (2 conditions):
  * - V1: 64x48      -> false (control: the rebind takes)
  * - V2: 0x48       -> true  (varies width only)
  * - V3: 64x1000000 -> true  (varies height only)
@@ -725,7 +725,7 @@ static void t_window_reports_visible_source(void)
 /**
  * @test axis_resolves_geometry
  *
- * @details Exercises ::ra8_zoom_priv_axis directly, including the empty-coverage
+ * @details Exercises ::priv_zoom_axis directly, including the empty-coverage
  *          arm that a clamped view cannot reach through the public API but that
  *          the render's `count > 0` guard depends on.
  */
@@ -735,19 +735,19 @@ static void t_axis_resolves_geometry(void)
   ra8_zoom_axis_t ax = {};
 
   /* Viewport inside a larger image at 1:1: fully covered, one source per dest. */
-  ra8_zoom_priv_axis(k_t_axis_a, (int32_t)k_t_view_w, 1, (int32_t)k_t_src_w, &ax);
+  priv_zoom_axis(k_t_axis_a, (int32_t)k_t_view_w, 1, (int32_t)k_t_src_w, &ax);
   TEST_ASSERT_EQ(0, ax.d0);
   TEST_ASSERT_EQ(k_t_view_w, ax.d1);
   TEST_ASSERT_EQ(k_t_axis_a, ax.s0);
   TEST_ASSERT_EQ(k_t_view_w, ax.count);
 
   /* Magnified: the same viewport now needs a quarter of the source columns. */
-  ra8_zoom_priv_axis(k_t_axis_b, (int32_t)k_t_view_w, 4, (int32_t)k_t_src_w, &ax);
+  priv_zoom_axis(k_t_axis_b, (int32_t)k_t_view_w, 4, (int32_t)k_t_src_w, &ax);
   TEST_ASSERT_EQ(k_t_axis_a, ax.s0);
   TEST_ASSERT_EQ(k_t_view_w / 4U, ax.count);
 
   /* Image narrower than the viewport: centred, with letterbox on both sides. */
-  ra8_zoom_priv_axis(-(int32_t)k_t_narrow_d0, (int32_t)k_t_view_w, 1, (int32_t)k_t_narrow_w, &ax);
+  priv_zoom_axis(-(int32_t)k_t_narrow_d0, (int32_t)k_t_view_w, 1, (int32_t)k_t_narrow_w, &ax);
   TEST_ASSERT_EQ(k_t_narrow_d0, ax.d0);
   TEST_ASSERT_EQ(k_t_narrow_d1, ax.d1);
   TEST_ASSERT_EQ(0U, ax.s0);
@@ -755,7 +755,7 @@ static void t_axis_resolves_geometry(void)
 
   /* Anchor beyond the image entirely: no coverage, and count is zero rather
    * than a wrapped span -- the arm the strip fill's guard relies on. */
-  ra8_zoom_priv_axis(k_t_axis_off, (int32_t)k_t_view_w, 1, (int32_t)k_t_src_w, &ax);
+  priv_zoom_axis(k_t_axis_off, (int32_t)k_t_view_w, 1, (int32_t)k_t_src_w, &ax);
   TEST_ASSERT_EQ(0, ax.d0);
   TEST_ASSERT_EQ(0, ax.d1);
   TEST_ASSERT_EQ(0U, ax.count);
@@ -820,7 +820,7 @@ static void t_render_magnified_and_letterboxed(ra8_zoom_view_t* v)
   broken.strip_rows      = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_zoom_view_render(&broken));
 
-  /* zoom_fill_strip's horizontal-coverage guard. No public call can produce it
+  /* internal_fill_strip's horizontal-coverage guard. No public call can produce it
    * -- every mutator clamps the anchor so the image always intersects the
    * viewport -- so it is reached by mutating the anchor directly, which is the
    * only honest way to exercise a defensive guard that is kept because the
@@ -838,7 +838,7 @@ static void t_render_magnified_and_letterboxed(ra8_zoom_view_t* v)
  * @test render_magnifies_and_dithers
  *
  * @par MC/DC:
- * Decision libs/ra8_zoom/src/ra8_zoom_render.c@zoom_fill_row
+ * Decision libs/ra8_zoom/src/ra8_zoom_render.c@internal_fill_row
  * `const bool covered = (sy >= 0) && (sy < height)` (2 conditions):
  * - V1: sy in [0, height) -> true  (control: the row shows image)
  * - V2: sy = -1, i.e. a plane row ABOVE the image -> false (varies `sy >= 0`;
@@ -850,7 +850,7 @@ static void t_render_magnified_and_letterboxed(ra8_zoom_view_t* v)
  * N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
  *
  * The horizontal-coverage test is deliberately NOT part of this decision: it is
- * constant across a frame, so ::zoom_fill_strip settles it once as a
+ * constant across a frame, so ::internal_fill_strip settles it once as a
  * single-condition guard (exercised below by a hand-built off-image view)
  * rather than as a third condition here that could never vary row to row.
  *
@@ -973,6 +973,5 @@ int32_t main(void)
   t_render_magnifies_and_dithers();
   t_render_propagates_source_failure();
   t_dither_phase_is_pan_stable();
-  (void)fprintf(stderr, "[PASS] test_ra8_zoom: all cases passed\n");
   return 0;
 }

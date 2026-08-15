@@ -845,6 +845,5 @@ int32_t main(void)
   t_tile_read_assembles_and_bounds_residency();
   t_tiles_prefetch_warms_lead_edge();
   t_book_src_binds_both_depths();
-  (void)fprintf(stderr, "[PASS] test_ra8_zoom_sources: all cases passed\n");
   return 0;
 }
