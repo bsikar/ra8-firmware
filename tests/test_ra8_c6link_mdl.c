@@ -26,11 +26,12 @@ typedef enum : uint16_t {
 
 /** @brief State for the deterministic media backend. */
 typedef struct {
-  const uint8_t* bytes;   /**< Modelled response body.         */
-  size_t         len;     /**< Total response body length.     */
-  size_t         at;      /**< Offset of the next body byte.   */
-  uint32_t       begins;  /**< Successful begin call count.    */
-  uint32_t       cancels; /**< Successful cancel call count.   */
+  const uint8_t* bytes;               /**< Modelled response body.         */
+  size_t         len;                 /**< Total response body length.     */
+  size_t         at;                  /**< Offset of the next body byte.   */
+  uint32_t       begins;              /**< Successful begin call count.    */
+  uint32_t       cancels;             /**< Successful cancel call count.   */
+  bool           terminal_total_zero; /**< Corrupt terminal-total fault. */
 } fake_backend_t;
 
 static fake_backend_t    s_backend;
@@ -68,6 +69,9 @@ static ra8_err_t fake_read(void*     ctx,
   *total_bytes = fake->len;
   *complete    = (take == 0U);
   if (*complete) {
+    if (fake->terminal_total_zero) {
+      *total_bytes = 0U;
+    }
     memset(sha256, k_t_mdl_digest_fill, k_ra8_mdl_sha256_bytes);
   }
   return k_ra8_ok;
@@ -233,8 +237,8 @@ static void test_service_busy_stale_and_cancel(void)
   TEST_END("mdl service busy stale cancel");
 }
 
-// One linear scenario proves that each rejected response leaves later state usable.
-// NOLINTNEXTLINE(readability-function-size)
+// One linear scenario proves that each rejected response leaves later state
+// usable. NOLINTNEXTLINE(readability-function-size)
 static void test_response_capacity_is_transactional(void)
 {
   TEST_BEGIN("mdl response capacity is transactional");
@@ -358,12 +362,59 @@ static void test_rejects_malformed(void)
   TEST_END("mdl rejects malformed");
 }
 
+/**
+ * @test test_rejects_incoherent_terminal_total
+ * @brief Reject a backend that erases a known total at terminal completion.
+ * @details Consumes the complete body before injecting `complete=true` with a
+ *          zero total, which would otherwise produce a response the peer must
+ *          reject after already transferring all bytes.
+ * @pre The deterministic backend has a non-empty six-byte artifact.
+ * @post Dispatch reports a protocol error, emits no response, cancels once,
+ *       and deactivates the corrupt job.
+ * @note Host-only fault-injection test with no network or filesystem activity.
+ * @since 0.1.0
+ */
+static void test_rejects_incoherent_terminal_total(void)
+{
+  TEST_BEGIN("mdl rejects incoherent terminal total");
+  reset_service();
+  const uint32_t   job   = dispatch_start();
+  Ra8__Mdl__Chunk* first = dispatch_next(job, 0U, 4U);
+  TEST_ASSERT(first != nullptr);
+  ra8__mdl__chunk__free_unpacked(first, nullptr);
+  Ra8__Mdl__Chunk* second = dispatch_next(job, 4U, 4U);
+  TEST_ASSERT(second != nullptr);
+  ra8__mdl__chunk__free_unpacked(second, nullptr);
+
+  s_backend.terminal_total_zero  = true;
+  Ra8__Mdl__NextRequest terminal = RA8__MDL__NEXT_REQUEST__INIT;
+  terminal.protocol_version      = k_ra8_mdl_protocol_version;
+  terminal.job_id                = job;
+  terminal.acknowledged_offset   = 6U;
+  terminal.max_bytes             = 4U;
+  const size_t request_len       = ra8__mdl__next_request__pack(&terminal, s_request);
+  size_t       response_len      = k_t_mdl_len_sentinel;
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error,
+                 ra8_mdl_service_dispatch(&s_service,
+                                          k_ra8_mdl_rpc_next,
+                                          s_request,
+                                          request_len,
+                                          s_response,
+                                          sizeof(s_response),
+                                          &response_len));
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)response_len);
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_backend.cancels);
+  TEST_ASSERT(!s_service.active);
+  TEST_END("mdl rejects incoherent terminal total");
+}
+
 int32_t main(void)
 {
   test_service_multichunk_and_digest();
   test_service_busy_stale_and_cancel();
   test_response_capacity_is_transactional();
   test_rejects_malformed();
+  test_rejects_incoherent_terminal_total();
   (void)fprintf(stderr, "[OK  ] test_ra8_c6link_mdl.c\n");
   return 0;
 }

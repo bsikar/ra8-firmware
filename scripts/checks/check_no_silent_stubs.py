@@ -40,11 +40,12 @@ the two much narrower questions that separate the webp stubs from all 24:
 
 Rule SHADOW
     A no-op body that provides a *second* definition of a symbol which is also
-    defined for real elsewhere in first-party code.  This is always a defect:
-    whichever definition the linker picks, one of them is a lie, and the build
-    silently disables working code that exists in the tree.  This is exactly
-    the webp case, and it has no legitimate form -- a platform alternative
-    supplies the *only* definition in its build, never a competing one.
+    defined for real elsewhere in first-party code.  Both definitions must
+    have external linkage: translation-unit-local `static` helpers can reuse a
+    descriptive name without presenting competing symbols to the linker. An
+    external duplicate is always a defect: whichever definition the linker
+    picks, one of them is a lie, and the build silently disables working code
+    that exists in the tree. This is exactly the webp case.
 
 Rule CANNED
     A function that returns an explicit "unsupported / unimplemented" error
@@ -296,14 +297,15 @@ def scan_text(raw: str, path: str) -> list[dict]:
                 "name": name,
                 "returns": returned,
                 "waiver": waiver_in(region),
+                "internal": re.search(r"\bstatic\b", code[m.start() : m.start(1)]) is not None,
             }
         )
     return found
 
 
-def real_definitions(files: list[Path]) -> dict[str, list[str]]:
-    """Map symbol -> files defining it with a body that does real work."""
-    defs: dict[str, list[str]] = {}
+def real_definitions(files: list[Path]) -> dict[str, list[dict[str, str | bool]]]:
+    """Map symbol -> real definitions and whether each has internal linkage."""
+    defs: dict[str, list[dict[str, str | bool]]] = {}
     for path in files:
         raw = path.read_text(errors="replace")
         code = blank_noncode(raw)
@@ -315,7 +317,13 @@ def real_definitions(files: list[Path]) -> dict[str, list[str]]:
             if span is None:
                 continue
             if classify_body(code[span[0] : span[1]], m.group(2)) is None:
-                defs.setdefault(name, []).append(str(path))
+                defs.setdefault(name, []).append(
+                    {
+                        "path": str(path),
+                        "internal": re.search(r"\bstatic\b", code[m.start() : m.start(1)])
+                        is not None,
+                    }
+                )
     return defs
 
 
@@ -361,7 +369,11 @@ def analyse(files: list[Path]) -> list[tuple[str, dict]]:
     for path in files:
         for f in scan_text(path.read_text(errors="replace"), str(path)):
             # Rule SHADOW: a real definition of the same symbol exists elsewhere.
-            shadowed = [d for d in defs.get(f["name"], []) if d != f["path"]]
+            shadowed = [
+                str(d["path"])
+                for d in defs.get(f["name"], [])
+                if d["path"] != f["path"] and not d["internal"] and not f["internal"]
+            ]
             if shadowed:
                 f["shadows"] = shadowed
                 violations.append(("SHADOW", f))
@@ -409,6 +421,30 @@ SELFTEST_CASES: list[tuple[str, str, bool, str]] = [
         """,
         True,
         "canned.c",
+    ),
+    (
+        "same-named static helpers have no cross-TU linker collision",
+        """
+        static bool internal_ready(state_t* st)
+        {
+          st->checks += 1U;
+          return st->ready;
+        }
+        """,
+        False,
+        "static_real.c",
+    ),
+    (
+        "same-named static helpers have no cross-TU linker collision",
+        """
+        static bool internal_ready(state_t* st)
+        {
+          (void)st;
+          return false;
+        }
+        """,
+        False,
+        "static_canned.c",
     ),
     (
         "hardware-blocked, waived by a named TODO",
