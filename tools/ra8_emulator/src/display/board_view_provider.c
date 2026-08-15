@@ -74,18 +74,18 @@ CGDataProviderRef priv_board_view_provider_create(int snapshot_fd, size_t provid
     if (snapshot_fd >= 0) {
       (void)close(snapshot_fd);
     }
-    return NULL;
+    return nullptr;
   }
   const CGDataProviderDirectCallbacks callbacks = {
     .version            = 0U,
-    .getBytePointer     = NULL,
-    .releaseBytePointer = NULL,
+    .getBytePointer     = nullptr,
+    .releaseBytePointer = nullptr,
     .getBytesAtPosition = internal_provider_read,
     .releaseInfo        = internal_provider_release,
   };
   CGDataProviderRef provider =
     CGDataProviderCreateDirect((void*)(intptr_t)(snapshot_fd + 1), provider_bytes, &callbacks);
-  if (provider == NULL) {
+  if (provider == nullptr) {
     (void)close(snapshot_fd);
   }
   return provider;
