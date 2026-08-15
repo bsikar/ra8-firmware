@@ -61,7 +61,7 @@ static_assert((uint32_t)k_ra8_wifi_ssid_max == (uint32_t)k_ra8_c6link_ssid_max,
  * @note Runs inside ::ra8_c6link_poll on the polling thread.
  * @since 0.1.0
  */
-RA8_INTERNAL static void ra8_wifi_c6link_on_event(void* ctx, const ra8_c6link_event_t* ev)
+RA8_INTERNAL static void internal_c6link_on_event(void* ctx, const ra8_c6link_event_t* ev)
 {
   ra8_wifi_c6link_t* self = (ra8_wifi_c6link_t*)ctx;
   if (ev->kind == k_ra8_c6link_event_sta_connected) {
@@ -93,7 +93,7 @@ RA8_INTERNAL static void ra8_wifi_c6link_on_event(void* ctx, const ra8_c6link_ev
  * @note Not thread-safe; dispatched once per handle.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_open(void* ctx)
+RA8_INTERNAL static ra8_err_t internal_c6link_op_open(void* ctx)
 {
   ra8_wifi_c6link_t* self = (ra8_wifi_c6link_t*)ctx;
   RA8_CHECK_NULL_PTR(self, RA8_WIFI_C6_TAG, "ctx");
@@ -103,7 +103,7 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_open(void* ctx)
   cfg.transport        = self->transport;
   cfg.arena            = self->arena;
   cfg.arena_bytes      = self->arena_bytes;
-  cfg.event_cb         = ra8_wifi_c6link_on_event;
+  cfg.event_cb         = internal_c6link_on_event;
   cfg.rx_cb            = self->rx_cb;
   cfg.cb_ctx           = self;
 
@@ -126,14 +126,14 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_open(void* ctx)
  * @retval k_ra8_ok The link is closed.
  * @retval k_ra8_err_null_ptr @p ctx or its link was null.
  * @retval k_ra8_err_not_initialized The link was not open.
- * @pre @p ctx was opened by ::ra8_wifi_c6link_op_open.
+ * @pre @p ctx was opened by ::internal_c6link_op_open.
  * @pre No pump is running against the link.
  * @post The link reports closed.
  * @post No further event reaches this backend's latch.
  * @note Not thread-safe; dispatched once per handle.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_close(void* ctx)
+RA8_INTERNAL static ra8_err_t internal_c6link_op_close(void* ctx)
 {
   ra8_wifi_c6link_t* self = (ra8_wifi_c6link_t*)ctx;
   RA8_CHECK_NULL_PTR(self, RA8_WIFI_C6_TAG, "ctx");
@@ -158,7 +158,7 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_close(void* ctx)
  * @note Not thread-safe; it pumps the link.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_radio_up(void* ctx)
+RA8_INTERNAL static ra8_err_t internal_c6link_op_radio_up(void* ctx)
 {
   ra8_wifi_c6link_t* self = (ra8_wifi_c6link_t*)ctx;
   RA8_CHECK_NULL_PTR(self, RA8_WIFI_C6_TAG, "ctx");
@@ -182,7 +182,7 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_radio_up(void* ctx)
  * @note Not thread-safe; it pumps the link.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_radio_down(void* ctx)
+RA8_INTERNAL static ra8_err_t internal_c6link_op_radio_down(void* ctx)
 {
   ra8_wifi_c6link_t* self = (ra8_wifi_c6link_t*)ctx;
   RA8_CHECK_NULL_PTR(self, RA8_WIFI_C6_TAG, "ctx");
@@ -212,7 +212,7 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_radio_down(void* ctx)
  * @note Not thread-safe; it pumps the link.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_join(void* ctx, const char* ssid, const char* psk)
+RA8_INTERNAL static ra8_err_t internal_c6link_op_join(void* ctx, const char* ssid, const char* psk)
 {
   ra8_wifi_c6link_t* self = (ra8_wifi_c6link_t*)ctx;
   RA8_CHECK_NULL_PTR(self, RA8_WIFI_C6_TAG, "ctx");
@@ -247,7 +247,7 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_join(void* ctx, const char* ssi
  * @note Not thread-safe; it pumps the link.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_leave(void* ctx)
+RA8_INTERNAL static ra8_err_t internal_c6link_op_leave(void* ctx)
 {
   ra8_wifi_c6link_t* self = (ra8_wifi_c6link_t*)ctx;
   RA8_CHECK_NULL_PTR(self, RA8_WIFI_C6_TAG, "ctx");
@@ -275,7 +275,7 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_leave(void* ctx)
  * @note Not thread-safe; it pumps the link.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_service(void* ctx, ra8_wifi_link_t* out_link)
+RA8_INTERNAL static ra8_err_t internal_c6link_op_service(void* ctx, ra8_wifi_link_t* out_link)
 {
   ra8_wifi_c6link_t* self = (ra8_wifi_c6link_t*)ctx;
   RA8_CHECK_NULL_PTR(self, RA8_WIFI_C6_TAG, "ctx");
@@ -320,7 +320,7 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_service(void* ctx, ra8_wifi_lin
  * @note Not thread-safe; it pumps the link.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_get_mac(void* ctx, ra8_wifi_mac_t* out)
+RA8_INTERNAL static ra8_err_t internal_c6link_op_get_mac(void* ctx, ra8_wifi_mac_t* out)
 {
   ra8_wifi_c6link_t* self = (ra8_wifi_c6link_t*)ctx;
   RA8_CHECK_NULL_PTR(self, RA8_WIFI_C6_TAG, "ctx");
@@ -353,7 +353,7 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_get_mac(void* ctx, ra8_wifi_mac
  * @note Not thread-safe; it pumps the link.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_get_ap(void* ctx, ra8_wifi_ap_t* out)
+RA8_INTERNAL static ra8_err_t internal_c6link_op_get_ap(void* ctx, ra8_wifi_ap_t* out)
 {
   ra8_wifi_c6link_t* self = (ra8_wifi_c6link_t*)ctx;
   RA8_CHECK_NULL_PTR(self, RA8_WIFI_C6_TAG, "ctx");
@@ -391,7 +391,7 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_get_ap(void* ctx, ra8_wifi_ap_t
  * @note Blocks the calling context; it is a delay, not a yield.
  * @since 0.1.0
  */
-RA8_INTERNAL static void ra8_wifi_c6link_op_idle(void* ctx, uint16_t ms)
+RA8_INTERNAL static void internal_c6link_op_idle(void* ctx, uint16_t ms)
 {
   ra8_wifi_c6link_t* self = (ra8_wifi_c6link_t*)ctx;
   if (self == nullptr) {
@@ -411,16 +411,16 @@ RA8_INTERNAL static void ra8_wifi_c6link_op_idle(void* ctx, uint16_t ms)
  * @since 0.1.0
  */
 const ra8_wifi_backend_t k_ra8_wifi_backend_c6link = {
-  .open       = ra8_wifi_c6link_op_open,
-  .close      = ra8_wifi_c6link_op_close,
-  .radio_up   = ra8_wifi_c6link_op_radio_up,
-  .radio_down = ra8_wifi_c6link_op_radio_down,
-  .join       = ra8_wifi_c6link_op_join,
-  .leave      = ra8_wifi_c6link_op_leave,
-  .service    = ra8_wifi_c6link_op_service,
-  .get_mac    = ra8_wifi_c6link_op_get_mac,
-  .get_ap     = ra8_wifi_c6link_op_get_ap,
-  .idle       = ra8_wifi_c6link_op_idle,
+  .open       = internal_c6link_op_open,
+  .close      = internal_c6link_op_close,
+  .radio_up   = internal_c6link_op_radio_up,
+  .radio_down = internal_c6link_op_radio_down,
+  .join       = internal_c6link_op_join,
+  .leave      = internal_c6link_op_leave,
+  .service    = internal_c6link_op_service,
+  .get_mac    = internal_c6link_op_get_mac,
+  .get_ap     = internal_c6link_op_get_ap,
+  .idle       = internal_c6link_op_idle,
 };
 
 ra8_err_t ra8_wifi_c6link_setup(ra8_wifi_c6link_t*           self,
