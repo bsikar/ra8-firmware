@@ -98,7 +98,7 @@ typedef struct {
   const char*       token[2];                     /**< One flag/value pair or positional token. */
   size_t            count;                        /**< Number of populated tokens.              */
   cli_matrix_mode_t repeat_at;                    /**< Valid mode used by repetition coverage.  */
-  bool              allowed[k_matrix_mode_count]; /**< Independent truth row. */
+  bool              allowed[k_matrix_mode_count]; /**< Independent truth row.                   */
 } cli_option_case_t;
 
 /** @brief Minimal valid invocation for each matrix column. */

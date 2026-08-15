@@ -169,7 +169,7 @@ typedef struct {
   size_t   chapters;     /**< --chapters window (clamped to >= 1).        */
   uint32_t max_imgs;     /**< --max page images (0 = all).                */
   bool     from_present; /**< Whether --from was supplied.                */
-  double   from_num;     /**< --from chapter number, including decimals. */
+  double   from_num;     /**< --from chapter number, including decimals.  */
   size_t   pick;         /**< --pick discovery hit (1-based; 0 = list).   */
 } mdl_nums_t;
 

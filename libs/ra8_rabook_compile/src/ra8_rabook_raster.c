@@ -1,6 +1,13 @@
 /**
  * @file ra8_rabook_raster.c
  * @brief Caller-arena raster normalizer for RABOOK image records.
+ *
+ * @details
+ * Decodes JPEG, PNG, GIF, BMP, or WebP bytes through caller-supplied codec
+ * arenas, optionally bounds the longer edge, and emits deterministic gray4 or
+ * gray8 payloads. Codec bindings are released on every path, and no filesystem
+ * service or heap allocation is required by the normalization pipeline.
+ *
  * @since 0.1.0
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -21,13 +28,13 @@
 
 /** @brief Raster signature and color-conversion constants. */
 typedef enum : uint16_t {
-  k_raster_webp_signature_size = 12U,  /**< RIFF size plus WEBP form tag. */
-  k_raster_webp_form_offset    = 8U,   /**< WEBP form tag byte offset.    */
-  k_raster_webp_bytes_per_px   = 4U,   /**< Decoded RGBA bytes per pixel. */
-  k_raster_luma_r              = 77U,  /**< stb-compatible red weight.    */
-  k_raster_luma_g              = 150U, /**< stb-compatible green weight.  */
-  k_raster_luma_b              = 29U,  /**< stb-compatible blue weight.   */
-  k_raster_luma_shift          = 8U,   /**< Luminance normalization shift.*/
+  k_raster_webp_signature_size = 12U,  /**< RIFF size plus WEBP form tag.  */
+  k_raster_webp_form_offset    = 8U,   /**< WEBP form tag byte offset.     */
+  k_raster_webp_bytes_per_px   = 4U,   /**< Decoded RGBA bytes per pixel.  */
+  k_raster_luma_r              = 77U,  /**< stb-compatible red weight.     */
+  k_raster_luma_g              = 150U, /**< stb-compatible green weight.   */
+  k_raster_luma_b              = 29U,  /**< stb-compatible blue weight.    */
+  k_raster_luma_shift          = 8U,   /**< Luminance normalization shift. */
 } ra8_rabook_raster_consts_t;
 
 /**

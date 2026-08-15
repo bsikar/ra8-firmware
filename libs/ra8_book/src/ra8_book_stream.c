@@ -2,6 +2,12 @@
  * @file ra8_book_stream.c
  * @brief Strict callback-driven validation of a RABOOK1 flat blob.
  *
+ * @details
+ * Decodes the canonical little-endian header and validates every table,
+ * string, DOM edge, image extent, and body byte through an exact random-read
+ * callback. Bounded caller scratch supplies both transfer storage and the DOM
+ * ownership map, so validation neither maps the source nor allocates memory.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since Version 0.1.0
@@ -69,7 +75,7 @@ typedef enum : uint8_t {
 typedef enum : uint8_t {
   k_stream_bits_per_byte = 8U,  /**< Bits represented by one byte.             */
   k_stream_mark_round    = 7U,  /**< Numerator bias for ceiling division by 8. */
-  k_stream_le_shift_3    = 24U, /**< Bit shift of byte three in a uint32.       */
+  k_stream_le_shift_3    = 24U, /**< Bit shift of byte three in a uint32.      */
 } stream_bit_t;
 
 /** @brief Immutable validation state shared by the bounded table passes. */

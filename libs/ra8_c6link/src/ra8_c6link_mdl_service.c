@@ -16,9 +16,9 @@
 
 /** @brief Decode arena sized for the bounded start request and URL. */
 typedef enum : uint16_t {
-  k_mdl_decode_arena_bytes = k_ra8_mdl_url_max + 384U, /**< Per-dispatch arena size. */
+  k_mdl_decode_arena_bytes = k_ra8_mdl_url_max + 384U, /**< Per-dispatch arena size.    */
   k_mdl_decode_align       = 8U,                       /**< Arena allocation alignment. */
-  k_mdl_decode_align_mask  = k_mdl_decode_align - 1U,  /**< Mask used to round sizes. */
+  k_mdl_decode_align_mask  = k_mdl_decode_align - 1U,  /**< Mask used to round sizes.   */
 } mdl_svc_const_t;
 
 /** @brief Linear allocator used by protobuf-c; reset after every dispatch. */

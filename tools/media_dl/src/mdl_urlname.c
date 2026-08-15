@@ -30,7 +30,7 @@ typedef enum : uint16_t {
 typedef enum : uint32_t {
   k_chapter_whole_max = 999999999U, /**< Largest accepted integral chapter. */
   k_chapter_frac_max  = 6U,         /**< Fractional digits retained.        */
-  k_chapter_radix     = 10U,        /**< Decimal chapter-number radix.       */
+  k_chapter_radix     = 10U,        /**< Decimal chapter-number radix.      */
 } mdl_chapter_num_limit_t;
 
 /** @brief Initial decimal place multiplier for a fractional chapter. */
@@ -39,15 +39,15 @@ static const double k_chapter_fraction_step = 0.1;
 /** @brief Signature byte offsets not already exempted by the numeric policy. */
 typedef enum : uint8_t {
   k_webp_sig_bytes = 12U, /**< RIFF header plus WEBP form type. */
-  k_webp_e_offset  = 9U,  /**< 'E' in the WEBP form type.      */
-  k_webp_b_offset  = 10U, /**< 'B' in the WEBP form type.      */
-  k_webp_p_offset  = 11U, /**< 'P' in the WEBP form type.      */
-  k_gif_a_offset   = 5U,  /**< 'a' trailer in GIF87a/GIF89a.  */
+  k_webp_e_offset  = 9U,  /**< 'E' in the WEBP form type.       */
+  k_webp_b_offset  = 10U, /**< 'B' in the WEBP form type.       */
+  k_webp_p_offset  = 11U, /**< 'P' in the WEBP form type.       */
+  k_gif_a_offset   = 5U,  /**< 'a' trailer in GIF87a/GIF89a.    */
 } mdl_image_signature_offset_t;
 
 /** @brief Non-ASCII fixed bytes used by the JPEG and PNG signatures. */
 typedef enum : uint8_t {
-  k_jpeg_marker_byte = 0xFFU, /**< JPEG marker prefix.          */
+  k_jpeg_marker_byte = 0xFFU, /**< JPEG marker prefix.         */
   k_jpeg_soi_byte    = 0xD8U, /**< JPEG Start Of Image marker. */
   k_png_lead_byte    = 0x89U, /**< PNG signature lead byte.    */
 } mdl_image_signature_byte_t;
