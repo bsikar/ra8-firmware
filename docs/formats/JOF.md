@@ -472,6 +472,33 @@ incompressible input -- because DEFLATE on random data is slightly *larger*
 than the input, and a scratch buffer sized at exactly `raw` would fail on a
 noise tile.
 
+### 4.4 Auditing a complete atlas (`ra8_jof_audit()`)
+
+Normal reading validates only the tile being consumed. A qualification tool,
+import pipeline, or storage transaction may instead need proof that the whole
+atlas is coherent before publication. `ra8_jof_audit()` performs that bounded
+full-object pass through the same injected `ra8_jof_pread_fn` abstraction:
+
+1. `ra8_jof_audit_requirements()` parses the atlas and reports exact counts for
+   the caller-owned record array, decoded-tile buffer, and DEFLATE scratch.
+2. The audit rejects undersized, wrapping, or overlapping caller spans before
+   changing workspace or result storage.
+3. Every index entry is decoded in row-major order. Stored windows must cover
+   the tile-stream region contiguously from byte 32 to `index_off`, with no
+   gaps, overlap, reordering, or trailing unindexed data.
+4. Every tile is decoded through `ra8_jof_read_tile()` and its dimensions are
+   compared with the edge-clamped geometry from `ra8_jof_tile_dims()`.
+5. A bounded content fingerprint records possible non-uniform duplicate tiles
+   for diagnostics. A hash match is evidence only and never rejects valid
+   repeated artwork.
+
+The audit owns no file handle, mount, allocator, or device branch. A host file,
+microSD entry, RAM image, flash object, or RPC-backed store supplies the same
+positioned-read callback. All memory remains caller-owned and the implementation
+retains no pointer after returning. Backend/decode failures preserve the public
+result; a completed pass publishes its diagnostic counts even when structural
+coverage or geometry fails.
+
 ---
 
 ## 5. Memory behaviour
@@ -1126,6 +1153,8 @@ no dual-version reader and there should never be one.
 ## See also
 
 - `ra8_jof.h` -- reader API, offset enums, limits
+- `ra8_jof_audit.h` -- complete, no-heap audit over an injected positioned
+  reader and caller-owned workspace
 - `ra8_jof_produce.h` -- import-time transcode producer, and the
   **normative** contract for the writer memory model described in section 5.1
   (`ra8_jof_work_bytes()`, `ra8_jof_webp_work_bytes()`)

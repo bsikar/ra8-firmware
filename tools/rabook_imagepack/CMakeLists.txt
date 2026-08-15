@@ -63,7 +63,7 @@ add_executable(
   src/ra8_fmt_jof.c
   src/ra8_fmt_jof_inspect.c
   src/ra8_fmt_jof_verify.c
-  src/ra8_fmt_jof_audit.c
+  ${FW_ROOT}/libs/ra8_jof/src/ra8_jof_audit.c
   src/ra8_fmt_book.c
   ${RA8_FMT_FW_SRC}
   ${RA8_FMT_JPEG_SRC}
@@ -99,9 +99,9 @@ target_compile_options(rabook_imagepack PRIVATE -Wall -Wextra -Werror)
 include(CTest)
 if(BUILD_TESTING)
   add_executable(
-    test_ra8_fmt_jof_audit
-    tests/test_ra8_fmt_jof_audit.c
-    src/ra8_fmt_jof_audit.c
+    test_ra8_jof_audit
+    ${FW_ROOT}/tests/test_ra8_jof_audit.c
+    ${FW_ROOT}/libs/ra8_jof/src/ra8_jof_audit.c
     ${FW_ROOT}/libs/ra8_jof/src/ra8_jof.c
     ${FW_ROOT}/libs/ra8_io/src/ra8_io_compress.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_log.c
@@ -109,17 +109,17 @@ if(BUILD_TESTING)
     ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
     ${RA8_FMT_THIRD_PARTY_SRC}
   )
-  target_compile_definitions(test_ra8_fmt_jof_audit PRIVATE RA8_OFF_TARGET)
-  target_compile_options(test_ra8_fmt_jof_audit PRIVATE -Wall -Wextra -Werror)
+  target_compile_definitions(test_ra8_jof_audit PRIVATE RA8_OFF_TARGET)
+  target_compile_options(test_ra8_jof_audit PRIVATE -Wall -Wextra -Werror)
   target_include_directories(
-    test_ra8_fmt_jof_audit
+    test_ra8_jof_audit
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
             ${FW_ROOT}/libs/ra8_core/inc
             ${FW_ROOT}/libs/ra8_jof/inc
             ${FW_ROOT}/libs/ra8_io/inc
             ${FW_ROOT}/libs/third_party/miniz
   )
-  add_test(NAME rabook_imagepack_portable_jof_audit COMMAND test_ra8_fmt_jof_audit)
+  add_test(NAME ra8_jof_portable_audit COMMAND test_ra8_jof_audit)
 endif()
 
 # miniz type-puns through byte buffers; match the host-test build's handling.
