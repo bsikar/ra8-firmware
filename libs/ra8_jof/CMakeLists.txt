@@ -7,8 +7,10 @@
 #
 # Layout:
 #   inc/ra8_jof.h          format spec (authoritative), reader, memstore
+#   inc/ra8_jof_audit.h    no-heap backing-agnostic structural audit
 #   inc/ra8_jof_produce.h  transcode producer (JPEG/PNG -> atlas)
 #   src/ra8_jof.c              parse/validate + bounded per-tile decode
+#   src/ra8_jof_audit.c        coverage/geometry audit over injected reads
 #   src/ra8_jof_produce.c      sniff/dispatch, band accumulator, tile encode
 #   src/ra8_jof_png.c          streaming PNG pixel layer (tinfl inflate,
 #                              unfilter, translate)
