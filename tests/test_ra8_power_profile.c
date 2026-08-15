@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_power_profile.h"
 #include "unity_minimal.h"
@@ -66,7 +67,11 @@ typedef struct {
   uint64_t now_us; /**< Now us. */
 } mock_rtc_t;
 
-static void mock_gpio_pulse(void* ctx, ra8_power_profile_region_id_t region_id, bool entering)
+#include "support/ra8_power_profile_test_contracts.h"
+
+/** @copydoc internal_mock_gpio_pulse */
+RA8_INTERNAL static void
+internal_mock_gpio_pulse(void* ctx, ra8_power_profile_region_id_t region_id, bool entering)
 {
   mock_gpio_t* m = (mock_gpio_t*)ctx;
   if (m->count < k_mock_pulse_log_capacity) {
@@ -76,7 +81,8 @@ static void mock_gpio_pulse(void* ctx, ra8_power_profile_region_id_t region_id, 
   }
 }
 
-static uint64_t mock_rtc_now_us(void* ctx)
+/** @copydoc internal_mock_rtc_now_us */
+RA8_INTERNAL static uint64_t internal_mock_rtc_now_us(void* ctx)
 {
   const mock_rtc_t* m = (const mock_rtc_t*)ctx;
   return m->now_us;
@@ -89,18 +95,20 @@ static uint64_t mock_rtc_now_us(void* ctx)
 static mock_gpio_t s_gpio = {};
 static mock_rtc_t  s_rtc  = {};
 
-static void reset_mocks(void)
+/** @copydoc internal_reset_mocks */
+RA8_INTERNAL static void internal_reset_mocks(void)
 {
   s_gpio = (mock_gpio_t){};
   s_rtc  = (mock_rtc_t){};
 }
 
-static ra8_err_t init_with_mocks(void)
+/** @copydoc internal_init_with_mocks */
+RA8_INTERNAL static ra8_err_t internal_init_with_mocks(void)
 {
-  reset_mocks();
+  internal_reset_mocks();
   ra8_power_profile_config_t cfg = {
-    .pulse         = mock_gpio_pulse,
-    .now_us        = mock_rtc_now_us,
+    .pulse         = internal_mock_gpio_pulse,
+    .now_us        = internal_mock_rtc_now_us,
     .user_ctx_gpio = &s_gpio,
     .user_ctx_time = &s_rtc,
   };
@@ -116,7 +124,8 @@ static ra8_err_t init_with_mocks(void)
   * code under test that this case touches)
  * ------------------------------------------------------------------------- */
 
-static void test_init_rejects_null_cfg(void)
+/** @copydoc internal_test_init_rejects_null_cfg */
+RA8_INTERNAL static void internal_test_init_rejects_null_cfg(void)
 {
   TEST_BEGIN("init rejects null cfg");
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_power_profile_init(nullptr));
@@ -124,15 +133,16 @@ static void test_init_rejects_null_cfg(void)
 }
 
 /**
+ * @copydoc internal_test_init_zeroes_stats
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_init_zeroes_stats(void)
+RA8_INTERNAL static void internal_test_init_zeroes_stats(void)
 {
   TEST_BEGIN("init zeroes stats");
-  TEST_ASSERT_EQ(k_ra8_ok, init_with_mocks());
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_with_mocks());
 
   ra8_power_profile_stats_t stats = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_power_profile_get_stats(&stats));
@@ -146,15 +156,16 @@ static void test_init_zeroes_stats(void)
 }
 
 /**
+ * @copydoc internal_test_enter_exit_pulses_gpio
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_enter_exit_pulses_gpio(void)
+RA8_INTERNAL static void internal_test_enter_exit_pulses_gpio(void)
 {
   TEST_BEGIN("enter/exit pulses gpio");
-  TEST_ASSERT_EQ(k_ra8_ok, init_with_mocks());
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_with_mocks());
 
   s_rtc.now_us = k_t_us_span_a_in;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_power_profile_mark_enter(k_ra8_power_profile_region_active));
@@ -170,15 +181,16 @@ static void test_enter_exit_pulses_gpio(void)
 }
 
 /**
+ * @copydoc internal_test_time_accumulation
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_time_accumulation(void)
+RA8_INTERNAL static void internal_test_time_accumulation(void)
 {
   TEST_BEGIN("time accumulation");
-  TEST_ASSERT_EQ(k_ra8_ok, init_with_mocks());
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_with_mocks());
 
   /* First pair: 100us. */
   s_rtc.now_us = k_t_us_span_a_in;
@@ -205,15 +217,16 @@ static void test_time_accumulation(void)
 }
 
 /**
+ * @copydoc internal_test_exit_without_enter_reports_invalid_state
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_exit_without_enter_reports_invalid_state(void)
+RA8_INTERNAL static void internal_test_exit_without_enter_reports_invalid_state(void)
 {
   TEST_BEGIN("exit without enter -> invalid state");
-  TEST_ASSERT_EQ(k_ra8_ok, init_with_mocks());
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_with_mocks());
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_state,
                  ra8_power_profile_mark_exit(k_ra8_power_profile_region_snooze));
@@ -226,15 +239,16 @@ static void test_exit_without_enter_reports_invalid_state(void)
 }
 
 /**
+ * @copydoc internal_test_region_id_range_check
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_region_id_range_check(void)
+RA8_INTERNAL static void internal_test_region_id_range_check(void)
 {
   TEST_BEGIN("region id range check");
-  TEST_ASSERT_EQ(k_ra8_ok, init_with_mocks());
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_with_mocks());
 
   TEST_ASSERT_EQ(
     k_ra8_err_range_check_failed,
@@ -246,29 +260,31 @@ static void test_region_id_range_check(void)
 }
 
 /**
+ * @copydoc internal_test_get_stats_null
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_get_stats_null(void)
+RA8_INTERNAL static void internal_test_get_stats_null(void)
 {
   TEST_BEGIN("get_stats null");
-  TEST_ASSERT_EQ(k_ra8_ok, init_with_mocks());
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_with_mocks());
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_power_profile_get_stats(nullptr));
   TEST_END("get_stats null");
 }
 
 /**
+ * @copydoc internal_test_reset_stats_clears_accumulators
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_reset_stats_clears_accumulators(void)
+RA8_INTERNAL static void internal_test_reset_stats_clears_accumulators(void)
 {
   TEST_BEGIN("reset_stats clears accumulators");
-  TEST_ASSERT_EQ(k_ra8_ok, init_with_mocks());
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_with_mocks());
 
   s_rtc.now_us = 0U;
   (void)ra8_power_profile_mark_enter(k_ra8_power_profile_region_active);
@@ -288,12 +304,13 @@ static void test_reset_stats_clears_accumulators(void)
 }
 
 /**
+ * @copydoc internal_test_null_hooks_safe
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_null_hooks_safe(void)
+RA8_INTERNAL static void internal_test_null_hooks_safe(void)
 {
   TEST_BEGIN("null hooks are safe");
   ra8_power_profile_config_t cfg = {};
@@ -310,15 +327,16 @@ static void test_null_hooks_safe(void)
 }
 
 /**
+ * @copydoc internal_test_multiple_regions_independent
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_multiple_regions_independent(void)
+RA8_INTERNAL static void internal_test_multiple_regions_independent(void)
 {
   TEST_BEGIN("multiple regions independent");
-  TEST_ASSERT_EQ(k_ra8_ok, init_with_mocks());
+  TEST_ASSERT_EQ(k_ra8_ok, internal_init_with_mocks());
 
   s_rtc.now_us = k_t_us_nest_sleep_in;
   (void)ra8_power_profile_mark_enter(k_ra8_power_profile_region_sleep);
@@ -339,16 +357,15 @@ static void test_multiple_regions_independent(void)
 
 int32_t main(void)
 {
-  test_init_rejects_null_cfg();
-  test_init_zeroes_stats();
-  test_enter_exit_pulses_gpio();
-  test_time_accumulation();
-  test_exit_without_enter_reports_invalid_state();
-  test_region_id_range_check();
-  test_get_stats_null();
-  test_reset_stats_clears_accumulators();
-  test_null_hooks_safe();
-  test_multiple_regions_independent();
-  (void)fprintf(stderr, "[OK  ] test_ra8_power_profile.c\n");
+  internal_test_init_rejects_null_cfg();
+  internal_test_init_zeroes_stats();
+  internal_test_enter_exit_pulses_gpio();
+  internal_test_time_accumulation();
+  internal_test_exit_without_enter_reports_invalid_state();
+  internal_test_region_id_range_check();
+  internal_test_get_stats_null();
+  internal_test_reset_stats_clears_accumulators();
+  internal_test_null_hooks_safe();
+  internal_test_multiple_regions_independent();
   return 0;
 }
