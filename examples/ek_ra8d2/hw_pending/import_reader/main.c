@@ -171,6 +171,8 @@ static ra8_vmem_t s_imp_cache;
 
 /** @brief Pipeline scratch (XHTML load + stylesheet load + image decode + gray downscale). */
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_xhtml[k_imp_xhtml_cap];
+[[gnu::section(".sdram_data"),
+  gnu::aligned(8)]] static ra8_rabook_xml_workspace_t           s_imp_xml_workspace;
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_image_raw[k_imp_imgraw_cap];
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_img_scratch[k_imp_arena_cap];
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_gray[k_imp_gray_cap];
@@ -434,15 +436,16 @@ static void imp_build_cookie(void)
   };
   s_imp_arena = (ra8_img_arena_t){s_imp_img_scratch, sizeof(s_imp_img_scratch), 0U, 0U};
   s_imp_scr   = (ra8_rabook_pipeline_scratch_t){
-    .xhtml     = s_imp_xhtml,
-    .xhtml_cap = sizeof(s_imp_xhtml),
-    .image_raw = s_imp_image_raw,
-    .image_cap = sizeof(s_imp_image_raw),
-    .img_arena = &s_imp_arena,
-    .gray      = s_imp_gray,
-    .gray_cap  = (uint32_t)k_imp_gray_cap,
-    .css       = s_imp_css,
-    .css_cap   = sizeof(s_imp_css),
+    .xhtml         = s_imp_xhtml,
+    .xhtml_cap     = sizeof(s_imp_xhtml),
+    .image_raw     = s_imp_image_raw,
+    .image_cap     = sizeof(s_imp_image_raw),
+    .img_arena     = &s_imp_arena,
+    .gray          = s_imp_gray,
+    .gray_cap      = (uint32_t)k_imp_gray_cap,
+    .css           = s_imp_css,
+    .css_cap       = sizeof(s_imp_css),
+    .xml_workspace = &s_imp_xml_workspace,
   };
   s_imp_cookie = (ra8_rabook_import_compiler_ctx_t){
     .epub               = &s_imp_epub,

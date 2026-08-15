@@ -14,16 +14,16 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include <stdio.h>
-
 #include "ra8_c6link_mdl_transfer.h"
+#include "ra8_log.h"
 
 /**
  * @brief Report the deliberately hardware-pending integration state
  * @return Process status.
  * @retval 0 No unsupported RPC operation was attempted.
- * @pre The standard output backend is available for this build fixture.
+ * @pre The board-selected ::ra8_log backend is available for this fixture.
  * @pre Hardware support is not inferred from compiling this application.
+ * @post The pending-integration state is emitted through ::ra8_log.
  * @post No c6link request has been sent.
  * @post No temporary or committed storage object has been created.
  * @note Single-threaded compile fixture.
@@ -32,6 +32,7 @@
 int main(void)
 {
   static_assert(sizeof(ra8_mdl_transfer_result_t) > k_ra8_mdl_sha256_bytes);
-  (void)printf("media_download: board transport/storage/hash integration pending\n");
+  ra8_log_init();
+  ra8_log_warn("media_download", "board transport/storage/hash integration pending");
   return 0;
 }

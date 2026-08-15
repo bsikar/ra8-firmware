@@ -20,7 +20,7 @@ from a bench capture showing the PASS banner and its CRC.
 ## What it does
 
 1. `ra8_epub_open` -- opens a baked, cover-bearing EPUB3 (`epub_cover_fixture.h`)
-   **in memory** (vendored miniz ZIP + tinyxml2, zero-heap via the
+   **in memory** (vendored miniz ZIP + bounded XML reader, zero-heap via the
    `ra8_epub_miniz_alloc` static arena).
 2. `ra8_epub_get_cover_image` -- resolves the `properties="cover-image"` manifest
    item and copies the cover's raw PNG bytes into an SRAM buffer.

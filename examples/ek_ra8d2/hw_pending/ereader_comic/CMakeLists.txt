@@ -17,8 +17,8 @@ cmake_minimum_required(VERSION 3.20)
 # PARENT_DIRECTORY to avoid a redundant nested sub-project. ra8_add_app()
 # below re-runs project() in the standalone case. ra8_comic's CBZ backend needs
 # miniz built WITH its ZIP reader + the ra8_epub_miniz_alloc static pool, both of
-# which the `ra8_epub` LIBS path supplies -- and ra8_epub pulls in C++ (tinyxml2 +
-# the XML shim), so the languages must include CXX.
+# which the `ra8_epub` LIBS path supplies -- and CXX remains enabled for linked C++ components;
+# the project therefore keeps CXX enabled.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
   project(ereader_comic LANGUAGES C CXX ASM)

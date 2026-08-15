@@ -16,11 +16,9 @@ cmake_minimum_required(VERSION 3.20)
 # (project() is already called at the root), so guard on PARENT_DIRECTORY to
 # avoid a redundant nested sub-project. ra8_add_app() below re-runs project() in
 # the standalone case to apply the shared VERSION and the app description.
-# ra8_epub + the ra8_rabook_compile XML shim are C++ (tinyxml2 + the shim), so the
-# languages must include CXX.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-  project(import_reader LANGUAGES C CXX ASM)
+  project(import_reader LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
@@ -38,10 +36,6 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # ra8_img_arena bump arena, both wired in by ra8_reflow (ra8_gfx is ra8_reflow's
 # rasteriser dependency); ra8_fs over ra8_sdmmc_spi is the SD-card storage.
 #
-# The LIBS loop in ra8_add_app() globs only `*.c`, so ra8_rabook_compile's lone
-# C++ TU (the lenient XHTML -> DOM shim, ra8_rabook_xml_shim.cpp) is wired
-# explicitly here -- mirroring the way ra8_add_app() special-cases ra8_epub's
-# C++ shim.
 ra8_add_app(
   NAME import_reader
   STACK_BYTES 16384
@@ -55,5 +49,4 @@ ra8_add_app(
        ra8_fs
        ra8_sdmmc_spi
        ra8_board_ek_ra8d2
-  EXTRA_SRCS ${_d}/libs/ra8_rabook_compile/src/ra8_rabook_xml_shim.cpp
 )
