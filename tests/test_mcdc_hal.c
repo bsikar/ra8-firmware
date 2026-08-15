@@ -15,7 +15,7 @@
  *  - ra8_gfx_blit_gray8: `(src == nullptr) || (w <= 0) || (h <= 0)` and the
  *    RGB565 fast-path clip guard `(x0 < x1) && (y0 < y1)`.
  *  - internal_i2c_finish_tx: `(err != k_ra8_ok) || send_stop`.
- *  - ra8_i2c_internal_target_drain_rx: the final-byte drain guard
+ *  - priv_ra8_i2c_internal_target_drain_rx: the final-byte drain guard
  *    `((icsr2 & rdrf) != 0) && (count < capacity)`.
  *  - dec_dispatch_marker: the unsupported-SOFn classifier
  *    `mk >= sof1 && mk <= sof_hi && mk != dht && mk != jpg`.
@@ -25,9 +25,9 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_gfx.h"
@@ -69,7 +69,7 @@ static uint8_t s_gfx_fb[(size_t)k_gfx_dim * (size_t)k_gfx_dim * 2U];
 static uint8_t s_gfx_gray[(size_t)k_gfx_src_dim * (size_t)k_gfx_src_dim];
 
 /**
- * @test test_gfx_blit_gray8_arg_guard_mcdc
+ * @test internal_test_gfx_blit_gray8_arg_guard_mcdc
  *
  * @par MC/DC:
  * Decision: `if ((src == nullptr) || (w <= 0) || (h <= 0))` (3 conditions, OR;
@@ -84,9 +84,8 @@ static uint8_t s_gfx_gray[(size_t)k_gfx_src_dim * (size_t)k_gfx_src_dim];
  *
  * @pre The gfx module is initialised as RGB565.
  * @post No pixel outside the on-screen block is altered by V1.
- * @since 0.1.0
- */
-static void test_gfx_blit_gray8_arg_guard_mcdc(void)
+ * @since 0.1.0 @brief Verify gfx blit gray8 arg guard mcdc behavior. @details Executes the gfx blit gray8 arg guard mcdc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_gfx_blit_gray8_arg_guard_mcdc(void)
 {
   TEST_BEGIN("ra8_gfx_blit_gray8 MC/DC: (src==null)||(w<=0)||(h<=0)");
   TEST_ASSERT_EQ(
@@ -112,7 +111,7 @@ static void test_gfx_blit_gray8_arg_guard_mcdc(void)
 }
 
 /**
- * @test test_gfx_blit_gray8_clip_mcdc
+ * @test internal_test_gfx_blit_gray8_clip_mcdc
  *
  * @par MC/DC:
  * Decision: `if ((x0 < x1) && (y0 < y1))` (2 conditions, AND; the RGB565
@@ -126,9 +125,8 @@ static void test_gfx_blit_gray8_arg_guard_mcdc(void)
  *
  * @pre The gfx module is initialised as RGB565 with a full-screen clip.
  * @post V2/V3 leave the framebuffer byte-for-byte unchanged.
- * @since 0.1.0
- */
-static void test_gfx_blit_gray8_clip_mcdc(void)
+ * @since 0.1.0 @brief Verify gfx blit gray8 clip mcdc behavior. @details Executes the gfx blit gray8 clip mcdc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_gfx_blit_gray8_clip_mcdc(void)
 {
   TEST_BEGIN("ra8_gfx_blit_gray8 MC/DC: (x0<x1) && (y0<y1)");
   TEST_ASSERT_EQ(
@@ -183,7 +181,7 @@ typedef enum : uint32_t {
 } i2c_clk_t;
 
 /** @brief Standard-mode controller configuration. */
-static const ra8_i2c_cfg_t k_i2c_cfg = {
+static const ra8_i2c_cfg_t s_i2c_cfg = {
   .bus_hz   = (uint32_t)k_ra8_i2c_speed_standard,
   .pclkb_hz = (uint32_t)k_i2c_pclkb_hz,
 };
@@ -191,8 +189,8 @@ static const ra8_i2c_cfg_t k_i2c_cfg = {
 /** @brief One-byte transmit payload. */
 static const uint8_t s_i2c_payload[1] = {0xA5U};
 
-/** @brief Pre-arm ICSR2.{TDRE,TEND,RDRF} so the wait loops fall through. */
-static void i2c_prime_all(uint8_t channel)
+/** @brief Pre-arm ICSR2.{TDRE,TEND,RDRF} so the wait loops fall through. @details Implements the i2c prime all fixture operation used only by this focused test executable. @param[in] channel Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_i2c_prime_all(uint8_t channel)
 {
   volatile r_i2c_regs_t* reg = ra8_i2c_regs(channel);
   reg->ICSR2 = (uint8_t)((uint8_t)k_ra8_i2c_msk_icsr2_tdre | (uint8_t)k_ra8_i2c_msk_icsr2_tend |
@@ -200,7 +198,7 @@ static void i2c_prime_all(uint8_t channel)
 }
 
 /**
- * @test test_i2c_finish_tx_mcdc
+ * @test internal_test_i2c_finish_tx_mcdc
  *
  * @par MC/DC:
  * Decision: `if ((err != k_ra8_ok) || send_stop)` (2 conditions, OR;
@@ -217,17 +215,16 @@ static void i2c_prime_all(uint8_t channel)
  *
  * @pre The RIIC channel is initialised on the ra8_fake MMIO window.
  * @post V1 records bus_held; V2/V3 issue STOP (ICCR2.SP set).
- * @since 0.1.0
- */
-static void test_i2c_finish_tx_mcdc(void)
+ * @since 0.1.0 @brief Verify i2c finish tx mcdc behavior. @details Executes the i2c finish tx mcdc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_i2c_finish_tx_mcdc(void)
 {
   TEST_BEGIN("i2c MC/DC: internal_i2c_finish_tx (err!=ok) || send_stop");
 
   /* V1: everything primed, send_stop=false -> both conditions false. */
   ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_init((uint8_t)k_i2c_ch, &k_i2c_cfg));
-  i2c_prime_all((uint8_t)k_i2c_ch);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_init((uint8_t)k_i2c_ch, &s_i2c_cfg));
+  internal_i2c_prime_all((uint8_t)k_i2c_ch);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_i2c_write((uint8_t)k_i2c_ch,
                                (uint8_t)k_i2c_periph,
@@ -238,8 +235,8 @@ static void test_i2c_finish_tx_mcdc(void)
   /* V2: everything primed, send_stop=true -> C2 true -> STOP. */
   ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_init((uint8_t)k_i2c_ch, &k_i2c_cfg));
-  i2c_prime_all((uint8_t)k_i2c_ch);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_init((uint8_t)k_i2c_ch, &s_i2c_cfg));
+  internal_i2c_prime_all((uint8_t)k_i2c_ch);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_i2c_write((uint8_t)k_i2c_ch,
                                (uint8_t)k_i2c_periph,
@@ -253,7 +250,7 @@ static void test_i2c_finish_tx_mcdc(void)
    * wait in finish_tx times out -> err != k_ra8_ok at the decision. */
   ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_init((uint8_t)k_i2c_ch, &k_i2c_cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_init((uint8_t)k_i2c_ch, &s_i2c_cfg));
   volatile r_i2c_regs_t* reg3 = ra8_i2c_regs((uint8_t)k_i2c_ch);
   reg3->ICSR2                 = (uint8_t)k_ra8_i2c_msk_icsr2_tdre;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
@@ -267,7 +264,7 @@ static void test_i2c_finish_tx_mcdc(void)
 }
 
 /* ===========================================================================
- * Group 3 -- ra8_i2c_internal_target_drain_rx (libs/ra8_hal/src/ra8_i2c_peripheral.c)
+ * Group 3 -- priv_ra8_i2c_internal_target_drain_rx (libs/ra8_hal/src/ra8_i2c_peripheral.c)
  * ===========================================================================
  */
 
@@ -285,8 +282,8 @@ typedef enum : uint32_t {
   k_tgt_buf     = 8U, /**< Stack buffer length.                      */
 } tgt_size_t;
 
-/** @brief Build a slot-0 own-address peripheral configuration. */
-static ra8_i2c_peripheral_cfg_t tgt_make_cfg(void)
+/** @brief Build a slot-0 own-address peripheral configuration. @details Implements the tgt make cfg fixture operation used only by this focused test executable. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_i2c_peripheral_cfg_t internal_tgt_make_cfg(void)
 {
   const ra8_i2c_peripheral_cfg_t cfg = {
     .own_addr_7b   = (uint8_t)k_tgt_addr,
@@ -298,20 +295,20 @@ static ra8_i2c_peripheral_cfg_t tgt_make_cfg(void)
   return cfg;
 }
 
-/** @brief Reset the fake and disarm the target on the test channel. */
-static void tgt_prep(void)
+/** @brief Reset the fake and disarm the target on the test channel. @details Implements the tgt prep fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_tgt_prep(void)
 {
   ra8_fake_mmap_reset();
   (void)ra8_i2c_peripheral_deinit((uint8_t)k_tgt_ch);
 }
 
 /**
- * @test test_i2c_target_drain_final_byte_mcdc
+ * @test internal_test_i2c_target_drain_final_byte_mcdc
  *
  * @par MC/DC:
  * Decision: `if (((icsr2 & rdrf) != 0) && (count < capacity))` (2 conditions,
  * AND; the final-pending-byte drain guard,
- * libs/ra8_hal/src/ra8_i2c_peripheral.c@ra8_i2c_internal_target_drain_rx). The
+ * libs/ra8_hal/src/ra8_i2c_peripheral.c@priv_ra8_i2c_internal_target_drain_rx). The
  * guard is exercised by calling the promoted drain helper DIRECTLY: the ra8_fake
  * MMIO window is side-effect-free, so the public ra8_i2c_peripheral_receive path
  * cannot present RDRF set at its address-phase wait and clear at this guard,
@@ -324,45 +321,45 @@ static void tgt_prep(void)
  *
  * @pre The target register block is bound on the ra8_fake MMIO window.
  * @post *out_count matches the drained byte count for each vector.
- * @since 0.1.0
- */
-static void test_i2c_target_drain_final_byte_mcdc(void)
+ * @since 0.1.0 @brief Verify i2c target drain final byte mcdc behavior. @details Executes the i2c target drain final byte mcdc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_i2c_target_drain_final_byte_mcdc(void)
 {
   TEST_BEGIN("i2c-target MC/DC: drain (rdrf) && (count<capacity)");
   uint8_t                        buf[k_tgt_buf] = {};
   uint32_t                       got            = 0U;
-  const ra8_i2c_peripheral_cfg_t cfg            = tgt_make_cfg();
+  const ra8_i2c_peripheral_cfg_t cfg            = internal_tgt_make_cfg();
 
   /* V1: RDRF|STOP with room -> drains one final pending byte (C1 T, C2 T). */
-  tgt_prep();
+  internal_tgt_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_peripheral_init((uint8_t)k_tgt_ch, &cfg));
   volatile r_i2c_regs_t* reg1 = ra8_i2c_regs((uint8_t)k_tgt_ch);
   reg1->ICSR2 = (uint8_t)((uint8_t)k_ra8_i2c_msk_icsr2_rdrf | (uint8_t)k_ra8_i2c_msk_icsr2_stop);
   reg1->ICDRR = (uint8_t)k_tgt_byte;
   got         = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_i2c_internal_target_drain_rx(reg1, buf, (uint32_t)k_tgt_cap_big, &got));
+                 priv_ra8_i2c_internal_target_drain_rx(reg1, buf, (uint32_t)k_tgt_cap_big, &got));
   TEST_ASSERT_EQ(1, got);
   TEST_ASSERT_EQ(k_tgt_byte, buf[0]);
 
   /* V2: STOP with RDRF clear -> the drain guard's C1 is false -> no byte. */
-  tgt_prep();
+  internal_tgt_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_peripheral_init((uint8_t)k_tgt_ch, &cfg));
   volatile r_i2c_regs_t* reg2 = ra8_i2c_regs((uint8_t)k_tgt_ch);
   reg2->ICSR2                 = (uint8_t)k_ra8_i2c_msk_icsr2_stop;
   got                         = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_i2c_internal_target_drain_rx(reg2, buf, (uint32_t)k_tgt_cap_big, &got));
+                 priv_ra8_i2c_internal_target_drain_rx(reg2, buf, (uint32_t)k_tgt_cap_big, &got));
   TEST_ASSERT_EQ(0, got);
 
   /* V3: RDRF without STOP fills to capacity -> C2 false at the exit check. */
-  tgt_prep();
+  internal_tgt_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_peripheral_init((uint8_t)k_tgt_ch, &cfg));
   volatile r_i2c_regs_t* reg3 = ra8_i2c_regs((uint8_t)k_tgt_ch);
   reg3->ICSR2                 = (uint8_t)k_ra8_i2c_msk_icsr2_rdrf;
   reg3->ICDRR                 = (uint8_t)k_tgt_byte;
   got                         = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_internal_target_drain_rx(reg3, buf, (uint32_t)k_tgt_cap, &got));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 priv_ra8_i2c_internal_target_drain_rx(reg3, buf, (uint32_t)k_tgt_cap, &got));
   TEST_ASSERT_EQ(k_tgt_cap, got);
   TEST_END("i2c-target MC/DC: drain (rdrf) && (count<capacity)");
 }
@@ -389,8 +386,8 @@ typedef enum : uint8_t {
 /** @brief Output buffer for the decode calls. */
 static uint8_t s_jpeg_out[k_jpeg_out_len];
 
-/** @brief Run ra8_jpeg_sw_decode on `FF D8 FF <m> 00 00 00 00`, returning err. */
-static ra8_err_t jpeg_decode_marker(uint8_t marker_lo)
+/** @brief Run ra8_jpeg_sw_decode on `FF D8 FF <m> 00 00 00 00`, returning err. @details Implements the jpeg decode marker fixture operation used only by this focused test executable. @param[in] marker_lo Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_jpeg_decode_marker(uint8_t marker_lo)
 {
   const uint8_t stream[8] = {0xFFU, 0xD8U, 0xFFU, marker_lo, 0x00U, 0x00U, 0x00U, 0x00U};
   uint16_t      w         = 0U;
@@ -404,7 +401,7 @@ static ra8_err_t jpeg_decode_marker(uint8_t marker_lo)
 }
 
 /**
- * @test test_jpeg_unsupported_sofn_mcdc
+ * @test internal_test_jpeg_unsupported_sofn_mcdc
  *
  * @par MC/DC:
  * Decision: `if (mk >= sof1 && mk <= sof_hi && mk != dht && mk != jpg)`
@@ -424,22 +421,21 @@ static ra8_err_t jpeg_decode_marker(uint8_t marker_lo)
  *
  * @pre The stream begins with a valid SOI so the marker loop is entered.
  * @post V1 returns k_ra8_err_not_supported; V2..V5 return non-ok, non-not_supported.
- * @since 0.1.0
- */
-static void test_jpeg_unsupported_sofn_mcdc(void)
+ * @since 0.1.0 @brief Verify jpeg unsupported sofn mcdc behavior. @details Executes the jpeg unsupported sofn mcdc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_jpeg_unsupported_sofn_mcdc(void)
 {
   TEST_BEGIN("jpeg MC/DC: unsupported-SOFn 4-condition classifier");
   /* V1: the all-true arm returns k_ra8_err_not_supported. */
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, jpeg_decode_marker((uint8_t)k_jm_sof2));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, internal_jpeg_decode_marker((uint8_t)k_jm_sof2));
   /* V2..V5: each flips one condition false; the decision is evaluated but the
    * stream is invalid, so decode fails with a status other than
    * not_supported. */
-  TEST_ASSERT(jpeg_decode_marker((uint8_t)k_jm_lo) != k_ra8_ok);
-  TEST_ASSERT(jpeg_decode_marker((uint8_t)k_jm_lo) != k_ra8_err_not_supported);
-  TEST_ASSERT(jpeg_decode_marker((uint8_t)k_jm_hi) != k_ra8_ok);
-  TEST_ASSERT(jpeg_decode_marker((uint8_t)k_jm_hi) != k_ra8_err_not_supported);
-  TEST_ASSERT(jpeg_decode_marker((uint8_t)k_jm_dht) != k_ra8_err_not_supported);
-  TEST_ASSERT(jpeg_decode_marker((uint8_t)k_jm_jpg) != k_ra8_err_not_supported);
+  TEST_ASSERT(internal_jpeg_decode_marker((uint8_t)k_jm_lo) != k_ra8_ok);
+  TEST_ASSERT(internal_jpeg_decode_marker((uint8_t)k_jm_lo) != k_ra8_err_not_supported);
+  TEST_ASSERT(internal_jpeg_decode_marker((uint8_t)k_jm_hi) != k_ra8_ok);
+  TEST_ASSERT(internal_jpeg_decode_marker((uint8_t)k_jm_hi) != k_ra8_err_not_supported);
+  TEST_ASSERT(internal_jpeg_decode_marker((uint8_t)k_jm_dht) != k_ra8_err_not_supported);
+  TEST_ASSERT(internal_jpeg_decode_marker((uint8_t)k_jm_jpg) != k_ra8_err_not_supported);
   TEST_END("jpeg MC/DC: unsupported-SOFn 4-condition classifier");
 }
 
@@ -450,11 +446,10 @@ static void test_jpeg_unsupported_sofn_mcdc(void)
  */
 int32_t main(void)
 {
-  test_gfx_blit_gray8_arg_guard_mcdc();
-  test_gfx_blit_gray8_clip_mcdc();
-  test_i2c_finish_tx_mcdc();
-  test_i2c_target_drain_final_byte_mcdc();
-  test_jpeg_unsupported_sofn_mcdc();
-  (void)fprintf(stderr, "[OK ] test_mcdc_hal.c\n");
+  internal_test_gfx_blit_gray8_arg_guard_mcdc();
+  internal_test_gfx_blit_gray8_clip_mcdc();
+  internal_test_i2c_finish_tx_mcdc();
+  internal_test_i2c_target_drain_final_byte_mcdc();
+  internal_test_jpeg_unsupported_sofn_mcdc();
   return 0;
 }

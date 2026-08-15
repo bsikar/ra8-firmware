@@ -66,6 +66,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_bkup_internal.h"
 #include "ra8_bkup_regs.h"
 #include "ra8_check.h"
@@ -74,7 +75,7 @@
 #include "ra8_register_protection.h"
 
 /**
- * @var s_bkup_tag
+ * @var g_bkup_tag
  * @brief Log tag used for this driver's diagnostics.
  *
  * @details
@@ -84,7 +85,7 @@
  * @note Read-only after definition.
  * @since 0.1.0
  */
-const char* s_bkup_tag = "BKUP";
+const char* g_bkup_tag = "BKUP";
 
 /**
  * @var s_bkup_fn
@@ -160,7 +161,7 @@ typedef enum : uint16_t {
  *
  * @post Side effects bounded to documented state.
  */
-static ra8_err_t internal_validate_cfg(const ra8_bkup_config_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_validate_cfg(const ra8_bkup_config_t* cfg)
 {
   if ((uint16_t)cfg->vdet_level > k_ra8_bkup_max_vdet_level) {
     return k_ra8_err_invalid_arg;
@@ -168,7 +169,10 @@ static ra8_err_t internal_validate_cfg(const ra8_bkup_config_t* cfg)
   return k_ra8_ok;
 }
 
-void ra8_bkup_internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enable, uint16_t unlock_val)
+void priv_ra8_bkup_internal_rmw8(volatile uint8_t* reg,
+                                 uint8_t           mask,
+                                 bool              enable,
+                                 uint16_t          unlock_val)
 {
   const uint8_t live = *reg;
   const uint8_t next = enable ? (uint8_t)(live | mask) : (uint8_t)(live & (uint8_t)~mask);
@@ -203,7 +207,7 @@ void ra8_bkup_internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enable, ui
  * @note Not thread-safe; calibrated for the 1 GHz Cortex-M85 core clock.
  * @since 0.1.0
  */
-static void internal_vbae_access_settle(void)
+RA8_INTERNAL static void internal_vbae_access_settle(void)
 {
   for (volatile uint32_t i = 0U; i < (uint32_t)k_ra8_bkup_vbae_settle_iters;
        ++i) { /* GCOVR_EXCL_BR_LINE */
@@ -218,9 +222,9 @@ static void internal_vbae_access_settle(void)
 
 [[nodiscard]] ra8_err_t ra8_bkup_init(const ra8_bkup_config_t* cfg)
 {
-  RA8_CHECK_NULL_PTR(cfg, s_bkup_tag, "cfg must not be nullptr");
+  RA8_CHECK_NULL_PTR(cfg, g_bkup_tag, "cfg must not be nullptr");
   const ra8_err_t v_err = internal_validate_cfg(cfg);
-  RA8_RETURN_ON_ERROR(v_err, s_bkup_tag, "bkup_init: cfg out of range"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, g_bkup_tag, "bkup_init: cfg out of range"); /* GCOVR_EXCL_BR_LINE */
 
   /* All of VBTBPCR1 / VBTBPCR2 / VBTBER / VBTBPSR / VBTADSR sit behind PRC1
    * (HUM Ch 13.1 Table 13.1 p 521); one window covers the whole bring-up. */
@@ -263,7 +267,7 @@ static void internal_vbae_access_settle(void)
   }
 
   s_bkup_initialized = true;
-  ra8_log_info(s_bkup_tag, "bkup_init");
+  ra8_log_info(g_bkup_tag, "bkup_init");
   return k_ra8_ok;
 }
 
@@ -281,7 +285,7 @@ static void internal_vbae_access_settle(void)
   }
 
   s_bkup_initialized = false;
-  ra8_log_info(s_bkup_tag, "bkup_deinit");
+  ra8_log_info(g_bkup_tag, "bkup_deinit");
   return k_ra8_ok;
 }
 
@@ -331,13 +335,13 @@ static void internal_vbae_access_settle(void)
   }
 
   s_bkup_initialized = true;
-  ra8_log_info(s_bkup_tag, "bkup_cold_start_init");
+  ra8_log_info(g_bkup_tag, "bkup_cold_start_init");
   return k_ra8_ok;
 }
 
 [[nodiscard]] ra8_err_t ra8_bkup_warm_start_check(bool* needs_reinit, uint32_t timeout_iters)
 {
-  RA8_CHECK_NULL_PTR(needs_reinit, s_bkup_tag, "needs_reinit must not be nullptr");
+  RA8_CHECK_NULL_PTR(needs_reinit, g_bkup_tag, "needs_reinit must not be nullptr");
   if (timeout_iters == 0U) {
     return k_ra8_err_invalid_arg;
   }
@@ -412,7 +416,7 @@ static void internal_vbae_access_settle(void)
   }
 
   s_bkup_initialized = true;
-  ra8_log_info(s_bkup_tag, "bkup_no_switch_init");
+  ra8_log_info(g_bkup_tag, "bkup_no_switch_init");
   return k_ra8_ok;
 }
 
@@ -423,7 +427,7 @@ static void internal_vbae_access_settle(void)
 
 [[nodiscard]] ra8_err_t ra8_bkup_get_status(ra8_bkup_status_t* out)
 {
-  RA8_CHECK_NULL_PTR(out, s_bkup_tag, "out must not be nullptr");
+  RA8_CHECK_NULL_PTR(out, g_bkup_tag, "out must not be nullptr");
 
   /* HUM Ch 12.2.13 "VBTBPSR : VBATT Battery Power Supply Status Register", p 509 */
   const uint8_t bpsr = *ra8_bkup_vbtbpsr();
@@ -447,15 +451,18 @@ static void internal_vbae_access_settle(void)
   if ((mask & k_ra8_bkup_vbtbpsr_mask_vbporf) != 0U) {
     /* HUM Ch 12.2.13 "VBTBPSR : VBATT Battery Power Supply Status Register", p 509 */
     /* W0C: write 0 to bits we want cleared, 1 to bits to leave alone. */
-    ra8_bkup_internal_rmw8(ra8_bkup_vbtbpsr(),
-                           (uint8_t)k_ra8_bkup_vbtbpsr_mask_vbporf,
-                           false,
-                           (uint16_t)k_ra8_prcr_unlock_lpm);
+    priv_ra8_bkup_internal_rmw8(ra8_bkup_vbtbpsr(),
+                                (uint8_t)k_ra8_bkup_vbtbpsr_mask_vbporf,
+                                false,
+                                (uint16_t)k_ra8_prcr_unlock_lpm);
   }
   const uint8_t adf_bits = (uint8_t)(mask & k_ra8_bkup_vbtadsr_mask_all);
   if (adf_bits != 0U) {
     /* HUM Ch 12.2.14 "VBTADSR : VBATT Tamper Detection Status Register", p 509 */
-    ra8_bkup_internal_rmw8(ra8_bkup_vbtadsr(), adf_bits, false, (uint16_t)k_ra8_prcr_unlock_lpm);
+    priv_ra8_bkup_internal_rmw8(ra8_bkup_vbtadsr(),
+                                adf_bits,
+                                false,
+                                (uint16_t)k_ra8_prcr_unlock_lpm);
   }
   return k_ra8_ok;
 }
@@ -467,13 +474,13 @@ static void internal_vbae_access_settle(void)
 
 [[nodiscard]] ra8_err_t ra8_bkup_read_word(uint8_t word_index, uint32_t* out)
 {
-  RA8_CHECK_NULL_PTR(out, s_bkup_tag, "out must not be nullptr");
+  RA8_CHECK_NULL_PTR(out, g_bkup_tag, "out must not be nullptr");
   if ((uint16_t)word_index >= k_ra8_bkup_word_count) {
     return k_ra8_err_invalid_arg;
   }
   /* HUM Ch 12.2.7 "VBTBKRn : VBATT Backup Register", p 505 */
   volatile uint32_t* slot = ra8_bkup_vbtbkr_word(word_index);
-  RA8_CHECK_NULL_PTR(slot, s_bkup_tag, "vbtbkr word slot mapping failed");
+  RA8_CHECK_NULL_PTR(slot, g_bkup_tag, "vbtbkr word slot mapping failed");
   *out = *slot;
   return k_ra8_ok;
 }
@@ -485,7 +492,7 @@ static void internal_vbae_access_settle(void)
   }
   /* HUM Ch 12.2.7 "VBTBKRn : VBATT Backup Register", p 505 */
   volatile uint32_t* slot = ra8_bkup_vbtbkr_word(word_index);
-  RA8_CHECK_NULL_PTR(slot, s_bkup_tag, "vbtbkr word slot mapping failed");
+  RA8_CHECK_NULL_PTR(slot, g_bkup_tag, "vbtbkr word slot mapping failed");
   /* VBTBKRn is PRC1-protected: unprotected stores are silently dropped
    * (HUM Ch 13.1 Table 13.1 p 521). */
   RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_lpm)
@@ -497,13 +504,13 @@ static void internal_vbae_access_settle(void)
 
 [[nodiscard]] ra8_err_t ra8_bkup_read_byte(uint16_t index, uint8_t* out)
 {
-  RA8_CHECK_NULL_PTR(out, s_bkup_tag, "out must not be nullptr");
+  RA8_CHECK_NULL_PTR(out, g_bkup_tag, "out must not be nullptr");
   if (index >= k_ra8_bkup_reg_count) {
     return k_ra8_err_invalid_arg;
   }
   /* HUM Ch 12.2.7 "VBTBKRn : VBATT Backup Register", p 505 */
   volatile uint8_t* slot = ra8_bkup_vbtbkr(index);
-  RA8_CHECK_NULL_PTR(slot, s_bkup_tag, "vbtbkr byte slot mapping failed");
+  RA8_CHECK_NULL_PTR(slot, g_bkup_tag, "vbtbkr byte slot mapping failed");
   *out = *slot;
   return k_ra8_ok;
 }
@@ -515,7 +522,7 @@ static void internal_vbae_access_settle(void)
   }
   /* HUM Ch 12.2.7 "VBTBKRn : VBATT Backup Register", p 505 */
   volatile uint8_t* slot = ra8_bkup_vbtbkr(index);
-  RA8_CHECK_NULL_PTR(slot, s_bkup_tag, "vbtbkr byte slot mapping failed");
+  RA8_CHECK_NULL_PTR(slot, g_bkup_tag, "vbtbkr byte slot mapping failed");
   /* VBTBKRn is PRC1-protected (HUM Ch 13.1 Table 13.1 p 521). */
   RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_lpm)
   {
@@ -551,16 +558,16 @@ static void internal_vbae_access_settle(void)
   /* HUM Ch 12.2.5 "VBATTMNSELR : Battery Backup Voltage Monitor Function Select Register", p 503 */
   /* VBATTMNSELR is grouped with the PVD registers under PRC3, NOT PRC1
    * (HUM Ch 13.1 Table 13.1 p 521). */
-  ra8_bkup_internal_rmw8(ra8_bkup_vbattmnselr(),
-                         (uint8_t)k_ra8_bkup_vbattmnselr_mask_vbtmnsel,
-                         enable,
-                         (uint16_t)k_ra8_prcr_unlock_pvd);
+  priv_ra8_bkup_internal_rmw8(ra8_bkup_vbattmnselr(),
+                              (uint8_t)k_ra8_bkup_vbattmnselr_mask_vbtmnsel,
+                              enable,
+                              (uint16_t)k_ra8_prcr_unlock_pvd);
   return k_ra8_ok;
 }
 
 [[nodiscard]] ra8_err_t ra8_bkup_get_voltage_monitor_enabled(bool* enabled_out)
 {
-  RA8_CHECK_NULL_PTR(enabled_out, s_bkup_tag, "enabled_out must not be nullptr");
+  RA8_CHECK_NULL_PTR(enabled_out, g_bkup_tag, "enabled_out must not be nullptr");
   /* HUM Ch 12.2.5 "VBATTMNSELR : Battery Backup Voltage Monitor Function Select Register", p 503 */
   *enabled_out = ((*ra8_bkup_vbattmnselr() & k_ra8_bkup_vbattmnselr_mask_vbtmnsel) != 0U);
   return k_ra8_ok;
@@ -598,7 +605,7 @@ static void internal_vbae_access_settle(void)
     /* W0C: write 0 to the bits we are dispatching, leave others alone.
      * VBTADSR is PRC1-protected (HUM Ch 13.1 Table 13.1 p 521); without the
      * unlock the flag would never clear and the ISR would re-fire forever. */
-    ra8_bkup_internal_rmw8(ra8_bkup_vbtadsr(), fired, false, (uint16_t)k_ra8_prcr_unlock_lpm);
+    priv_ra8_bkup_internal_rmw8(ra8_bkup_vbtadsr(), fired, false, (uint16_t)k_ra8_prcr_unlock_lpm);
     ra8_bkup_dispatch(fired);
   }
   return k_ra8_ok;

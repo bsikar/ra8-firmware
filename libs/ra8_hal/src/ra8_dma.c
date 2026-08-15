@@ -110,7 +110,7 @@ static bool s_initialized = false;
  * @note Not thread-safe; pair with IRQ masking.
  * @since 0.1.0
  */
-static uint8_t internal_find_free(void)
+RA8_INTERNAL static uint8_t internal_find_free(void)
 {
   for (uint8_t ch = 0U; ch < k_ra8_dma_channel_count; ++ch) {
     if (!s_channels[ch].in_use) {
@@ -141,7 +141,8 @@ static uint8_t internal_find_free(void)
  * @note Not thread-safe; caller must own ``out_cfg``.
  * @since 0.1.0
  */
-static void internal_pack_dmac_cfg(const ra8_dma_request_t* req, ra8_dmac_config_t* out_cfg)
+RA8_INTERNAL static void internal_pack_dmac_cfg(const ra8_dma_request_t* req,
+                                                ra8_dmac_config_t*       out_cfg)
 {
   out_cfg->src     = (uint32_t)req->src_addr;
   out_cfg->dst     = (uint32_t)req->dst_addr;
@@ -174,7 +175,7 @@ static void internal_pack_dmac_cfg(const ra8_dma_request_t* req, ra8_dmac_config
  * @note Pure function over the input pointer; thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_validate_request(const ra8_dma_request_t* req)
+RA8_INTERNAL static ra8_err_t internal_validate_request(const ra8_dma_request_t* req)
 {
   if (req->count == 0U) {
     return k_ra8_err_invalid_arg;

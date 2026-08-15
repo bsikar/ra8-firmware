@@ -2,12 +2,15 @@
  * @file test_ra8_usb_pvnd.c
  * @brief Unit tests for the native USB device-side Vendor class layer
  *
+ * @details Exercises vendor request dispatch, handler registration, endpoint I/O, invalid inputs, and stall behavior with bounded fixtures.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
@@ -59,7 +62,8 @@ static int32_t   s_setup_cb_calls       = 0;
 static uint8_t   s_setup_cb_last_breq   = 0U;
 static ra8_err_t s_setup_cb_return_code = k_ra8_ok;
 
-static ra8_err_t test_setup_cb(void* ctx, const ra8_usb_setup_t* setup)
+/** @brief Verify setup cb behavior. @details Executes the setup cb scenario with bounded fixture state and asserts the contract-specific result. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] setup Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_test_setup_cb(void* ctx, const ra8_usb_setup_t* setup)
 {
   (void)ctx;
   s_setup_cb_calls++;
@@ -67,7 +71,8 @@ static ra8_err_t test_setup_cb(void* ctx, const ra8_usb_setup_t* setup)
   return s_setup_cb_return_code;
 }
 
-static void prep(void)
+/** @brief Provide the file-local prep test helper. @details Implements the prep fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
@@ -81,12 +86,11 @@ static void prep(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_init_fs(void)
+ * code under test that this case touches) @brief Verify init fs behavior. @details Executes the init fs scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_fs(void)
 {
   TEST_BEGIN("ra8_usb_pvnd_init succeeds on FS");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_init(k_ra8_usb_speed_fs));
   TEST_END("ra8_usb_pvnd_init succeeds on FS");
 }
@@ -95,12 +99,11 @@ static void test_init_fs(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_init_bad_speed(void)
+ * code under test that this case touches) @brief Verify init bad speed behavior. @details Executes the init bad speed scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_bad_speed(void)
 {
   TEST_BEGIN("ra8_usb_pvnd_init rejects bogus speed");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pvnd_init((ra8_usb_speed_t)9U));
   TEST_END("ra8_usb_pvnd_init rejects bogus speed");
 }
@@ -109,9 +112,8 @@ static void test_init_bad_speed(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_class_code(void)
+ * code under test that this case touches) @brief Verify class code behavior. @details Executes the class code scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_class_code(void)
 {
   TEST_BEGIN("Vendor class code matches USB-IF registry (0xFF)");
   TEST_ASSERT_EQ(0xFF, k_ra8_pvnd_class_vendor);
@@ -124,12 +126,11 @@ static void test_class_code(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_pre_init_calls(void)
+ * code under test that this case touches) @brief Verify pre init calls behavior. @details Executes the pre init calls scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pre_init_calls(void)
 {
   TEST_BEGIN("PVND API rejects calls before init");
-  prep();
+  internal_prep();
 
   uint8_t         buf[8] = {};
   uint16_t        got    = 0U;
@@ -141,7 +142,7 @@ static void test_pre_init_calls(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_pvnd_send(buf, 4U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_pvnd_recv(buf, 8U, &got));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state,
-                 ra8_usb_pvnd_attach_setup_handler(test_setup_cb, nullptr));
+                 ra8_usb_pvnd_attach_setup_handler(internal_test_setup_cb, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_pvnd_handle_setup(&setup));
   TEST_END("PVND API rejects calls before init");
 }
@@ -150,12 +151,11 @@ static void test_pre_init_calls(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_send_recv_validation(void)
+ * code under test that this case touches) @brief Verify send recv validation behavior. @details Executes the send recv validation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_send_recv_validation(void)
 {
   TEST_BEGIN("ra8_usb_pvnd_send / recv validate args");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_init(k_ra8_usb_speed_fs));
 
   uint8_t  buf[16] = {};
@@ -176,14 +176,13 @@ static void test_send_recv_validation(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_handle_setup_dispatch(void)
+ * code under test that this case touches) @brief Verify handle setup dispatch behavior. @details Executes the handle setup dispatch scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_handle_setup_dispatch(void)
 {
   TEST_BEGIN("ra8_usb_pvnd_handle_setup forwards every vendor envelope to callback");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_init(k_ra8_usb_speed_fs));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_attach_setup_handler(test_setup_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_attach_setup_handler(internal_test_setup_cb, nullptr));
 
   /* Vendor | Device | In. */
   ra8_usb_setup_t setup = {
@@ -214,12 +213,11 @@ static void test_handle_setup_dispatch(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_handle_setup_rejects(void)
+ * code under test that this case touches) @brief Verify handle setup rejects behavior. @details Executes the handle setup rejects scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_handle_setup_rejects(void)
 {
   TEST_BEGIN("ra8_usb_pvnd_handle_setup rejects standard / class / NULL");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_init(k_ra8_usb_speed_fs));
 
   /* Standard envelope (type=0). */
@@ -244,12 +242,11 @@ static void test_handle_setup_rejects(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_handle_setup_no_handler_stalls(void)
+ * code under test that this case touches) @brief Verify handle setup no handler stalls behavior. @details Executes the handle setup no handler stalls scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_handle_setup_no_handler_stalls(void)
 {
   TEST_BEGIN("ra8_usb_pvnd_handle_setup stalls vendor SETUP when no callback registered");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_init(k_ra8_usb_speed_fs));
 
   /* No setup callback installed. */
@@ -267,7 +264,7 @@ static void test_handle_setup_no_handler_stalls(void)
 }
 
 /**
- * @test test_mcdc_pvnd
+ * @test internal_test_mcdc_pvnd
  *
  * @par MC/DC:
  * Covers compound decisions flagged in docs/MCDC_GAPS.csv for
@@ -287,19 +284,18 @@ static void test_handle_setup_no_handler_stalls(void)
  * representative-subset criterion for a side-effect-free OR: 6
  * lone-true vectors + 1 all-false vector (7 total) prove every
  * condition independently flips the outcome. Exercised through
- * `ra8_usb_pvnd_handle_setup`.
- */
-static void test_mcdc_pvnd(void)
+ * `ra8_usb_pvnd_handle_setup`. @brief Verify mcdc pvnd behavior. @details Executes the mcdc pvnd scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_pvnd(void)
 {
   TEST_BEGIN("pvnd MC/DC: init / send envelope / vendor OR chain");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_init(k_ra8_usb_speed_fs));
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_init(k_ra8_usb_speed_hs));
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pvnd_init((ra8_usb_speed_t)9U));
 
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_init(k_ra8_usb_speed_fs));
 
   /* Decision B + C: send. */
@@ -310,7 +306,7 @@ static void test_mcdc_pvnd(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_pvnd_send(nullptr, 4U));
   /* B-V2 + C-V2: buf,4 -> forwarded into ra8_usb_queue_in. The FRDY
    * wait converges via the unarmed ra8_fake_mmio seam (see
-   * internal_wait_frdy), so a well-formed call returns k_ra8_ok. The
+   * priv_wait_frdy), so a well-formed call returns k_ra8_ok. The
    * MC/DC obligation is met because every pre-check inside
    * ra8_usb_pvnd_send was exercised end-to-end. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_send(buf, 4U));
@@ -318,7 +314,7 @@ static void test_mcdc_pvnd(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pvnd_send(buf, 1024U));
 
   /* Decision D: vendor envelope OR chain. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_attach_setup_handler(test_setup_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_attach_setup_handler(internal_test_setup_cb, nullptr));
   ra8_usb_setup_t setup = {
     .bm_request_type = (uint8_t)k_ra8_pvnd_bm_vendor_dev_in,
     .b_request       = 0x10U,
@@ -345,7 +341,7 @@ static void test_mcdc_pvnd(void)
 }
 
 /**
- * @test test_mcdc_pvnd_vendor_envelope_or_chain
+ * @test internal_test_mcdc_pvnd_vendor_envelope_or_chain
  *
  * @par MC/DC:
  * Decision (libs/ra8_hal/src/ra8_usb_pvnd.c lines 153-155,
@@ -365,9 +361,8 @@ static void test_mcdc_pvnd(void)
  *   V1 0xC0 -> C1=T -> dec T.    V2 0x40 -> C2=T -> dec T.
  *   V3 0xC1 -> C3=T -> dec T.    V4 0x41 -> C4=T -> dec T.
  *   V5 0xC2 -> C5=T -> dec T.    V6 0x42 -> C6=T -> dec T.
- *   V7 0x80 -> all F             -> dec F.
- */
-static bool mirror_is_vendor_envelope(uint8_t bm)
+ *   V7 0x80 -> all F             -> dec F. @brief Provide the file-local mirror is vendor envelope test helper. @details Implements the mirror is vendor envelope fixture operation used only by this focused test executable. @param[in] bm Fixture argument governed by the exercised interface contract. @return Whether the named fixture condition holds. @retval true The named fixture condition holds. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static bool internal_mirror_is_vendor_envelope(uint8_t bm)
 {
   return (bm == (uint8_t)k_ra8_pvnd_bm_vendor_dev_in) ||
          (bm == (uint8_t)k_ra8_pvnd_bm_vendor_dev_out) ||
@@ -381,33 +376,31 @@ static bool mirror_is_vendor_envelope(uint8_t bm)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_mcdc_pvnd_vendor_envelope_or_chain(void)
+ * code under test that this case touches) @brief Verify mcdc pvnd vendor envelope or chain behavior. @details Executes the mcdc pvnd vendor envelope or chain scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_pvnd_vendor_envelope_or_chain(void)
 {
   TEST_BEGIN("pvnd MC/DC: 6-cond vendor envelope OR (lines 153-155)");
-  TEST_ASSERT_EQ(1, mirror_is_vendor_envelope((uint8_t)k_ra8_pvnd_bm_vendor_dev_in));
-  TEST_ASSERT_EQ(1, mirror_is_vendor_envelope((uint8_t)k_ra8_pvnd_bm_vendor_dev_out));
-  TEST_ASSERT_EQ(1, mirror_is_vendor_envelope((uint8_t)k_ra8_pvnd_bm_vendor_iface_in));
-  TEST_ASSERT_EQ(1, mirror_is_vendor_envelope((uint8_t)k_ra8_pvnd_bm_vendor_iface_out));
-  TEST_ASSERT_EQ(1, mirror_is_vendor_envelope((uint8_t)k_ra8_pvnd_bm_vendor_ep_in));
-  TEST_ASSERT_EQ(1, mirror_is_vendor_envelope((uint8_t)k_ra8_pvnd_bm_vendor_ep_out));
-  TEST_ASSERT_EQ(0, mirror_is_vendor_envelope(0x80U));
+  TEST_ASSERT_EQ(1, internal_mirror_is_vendor_envelope((uint8_t)k_ra8_pvnd_bm_vendor_dev_in));
+  TEST_ASSERT_EQ(1, internal_mirror_is_vendor_envelope((uint8_t)k_ra8_pvnd_bm_vendor_dev_out));
+  TEST_ASSERT_EQ(1, internal_mirror_is_vendor_envelope((uint8_t)k_ra8_pvnd_bm_vendor_iface_in));
+  TEST_ASSERT_EQ(1, internal_mirror_is_vendor_envelope((uint8_t)k_ra8_pvnd_bm_vendor_iface_out));
+  TEST_ASSERT_EQ(1, internal_mirror_is_vendor_envelope((uint8_t)k_ra8_pvnd_bm_vendor_ep_in));
+  TEST_ASSERT_EQ(1, internal_mirror_is_vendor_envelope((uint8_t)k_ra8_pvnd_bm_vendor_ep_out));
+  TEST_ASSERT_EQ(0, internal_mirror_is_vendor_envelope(0x80U));
   TEST_END("pvnd MC/DC: 6-cond vendor envelope OR (lines 153-155)");
 }
 
 int32_t main(void)
 {
-  test_init_fs();
-  test_init_bad_speed();
-  test_class_code();
-  test_pre_init_calls();
-  test_send_recv_validation();
-  test_handle_setup_dispatch();
-  test_handle_setup_rejects();
-  test_handle_setup_no_handler_stalls();
-  test_mcdc_pvnd();
-  test_mcdc_pvnd_vendor_envelope_or_chain();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_pvnd.c\n");
+  internal_test_init_fs();
+  internal_test_init_bad_speed();
+  internal_test_class_code();
+  internal_test_pre_init_calls();
+  internal_test_send_recv_validation();
+  internal_test_handle_setup_dispatch();
+  internal_test_handle_setup_rejects();
+  internal_test_handle_setup_no_handler_stalls();
+  internal_test_mcdc_pvnd();
+  internal_test_mcdc_pvnd_vendor_envelope_or_chain();
   return 0;
 }

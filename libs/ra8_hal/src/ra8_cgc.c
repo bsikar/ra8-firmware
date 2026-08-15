@@ -53,6 +53,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_cgc_internal.h"
 #include "ra8_cgc_regs.h"
 #include "ra8_check.h"
@@ -114,7 +115,7 @@ static uint32_t s_clock_hz[k_ra8_cgc_clock_count] = {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_publish_clocks(void)
+RA8_INTERNAL static void internal_publish_clocks(void)
 {
   s_clock_hz[k_ra8_clock_id_cpuclk0] = k_ra8_cpuclk0_hz;
   s_clock_hz[k_ra8_clock_id_cpuclk1] = k_ra8_cpuclk1_hz;
@@ -229,7 +230,7 @@ typedef enum : uint8_t {
   k_ra8_scickdivcr_div4 = 0x03U, /**< SCICLK divider code for /4. */
 } ra8_cgc_scickdivcr_t;
 
-ra8_err_t ra8_cgc_wait_oscsf_set(uint8_t bit)
+ra8_err_t priv_ra8_cgc_wait_oscsf_set(uint8_t bit)
 {
   /* HUM Ch 9.2.21 "OSCSF : Oscillation Stabilization Flag Register" p 344 */
   volatile uint8_t* const oscsf = ra8_sys_oscsf();
@@ -239,7 +240,7 @@ ra8_err_t ra8_cgc_wait_oscsf_set(uint8_t bit)
   return ra8_hw_wait_flag_set8(oscsf, (uint8_t)(1U << bit), (uint32_t)k_ra8_cgc_osc_spin_limit);
 }
 
-ra8_err_t ra8_cgc_wait_oscsf_clear(uint8_t bit)
+ra8_err_t priv_ra8_cgc_wait_oscsf_clear(uint8_t bit)
 {
   /* HUM Ch 9.2.21 "OSCSF : Oscillation Stabilization Flag Register" p 344 */
   volatile uint8_t* const oscsf = ra8_sys_oscsf();
@@ -265,7 +266,7 @@ ra8_err_t ra8_cgc_wait_oscsf_clear(uint8_t bit)
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
  */
-static void internal_clear_pfb(void)
+RA8_INTERNAL static void internal_clear_pfb(void)
 {
   /* HUM Ch 59.4.3 "Frequency Change Procedure" p 3548 */
   /* Cross-reference: FSP bsp_clocks.c. */
@@ -299,7 +300,7 @@ static void internal_clear_pfb(void)
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
  */
-static ra8_err_t internal_set_vscr_not_high_v(void)
+RA8_INTERNAL static ra8_err_t internal_set_vscr_not_high_v(void)
 {
   /* HUM Ch 11.2.43 "VSCR : Voltage Scaling Control Register" p 477 */
   /* Cross-reference: FSP bsp_clocks.c. */
@@ -333,14 +334,14 @@ static ra8_err_t internal_set_vscr_not_high_v(void)
  *
  * @post Caller-visible state matches the documented contract.
  */
-static ra8_err_t internal_stop_pll1(void)
+RA8_INTERNAL static ra8_err_t internal_stop_pll1(void)
 {
   /* HUM Ch 9.2.8 "PLLCR : PLL Control Register" p 333 */
   /* Cross-reference: FSP bsp_clocks.c. */
   *ra8_sys_pllcr() = k_ra8_pllcr_stop;
   /* HUM Ch 9.2.21 "OSCSF : Oscillation Stabilization Flag Register" p 344 */
   /* Cross-reference: FSP bsp_clocks.c. */
-  return ra8_cgc_wait_oscsf_clear(k_ra8_oscsf_bit_pll1sf);
+  return priv_ra8_cgc_wait_oscsf_clear(k_ra8_oscsf_bit_pll1sf);
 }
 
 /**
@@ -370,7 +371,7 @@ static ra8_err_t internal_stop_pll1(void)
  *
  * @since 0.1.0
  */
-static ra8_err_t internal_program_and_start_pll1(void)
+RA8_INTERNAL static ra8_err_t internal_program_and_start_pll1(void)
 {
   /* PLLMUL is encoded as (integer*4 + quarters) shifted by 6, which
    * simultaneously fills PLLMULNF[7:6] and PLLMUL[16:8]. */
@@ -399,7 +400,7 @@ static ra8_err_t internal_program_and_start_pll1(void)
   *ra8_sys_pllcr() = k_ra8_pllcr_run;
   /* HUM Ch 9.2.21 "OSCSF : Oscillation Stabilization Flag Register" p 344 */
   /* Cross-reference: FSP bsp_clocks.c. */
-  return ra8_cgc_wait_oscsf_set(k_ra8_oscsf_bit_pll1sf);
+  return priv_ra8_cgc_wait_oscsf_set(k_ra8_oscsf_bit_pll1sf);
 }
 
 /**
@@ -432,7 +433,8 @@ static ra8_err_t internal_program_and_start_pll1(void)
  *
  * @post Caller-visible state matches the documented contract.
  */
-static ra8_err_t internal_wait_mrm_freq(volatile uint32_t* reg, uint32_t key, uint32_t freq_mhz)
+RA8_INTERNAL static ra8_err_t
+internal_wait_mrm_freq(volatile uint32_t* reg, uint32_t key, uint32_t freq_mhz)
 {
   for (uint32_t i = 0U; i < k_ra8_cgc_mrm_spin_limit; i++) {
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
@@ -479,7 +481,7 @@ static ra8_err_t internal_wait_mrm_freq(volatile uint32_t* reg, uint32_t key, ui
  *
  * @since 0.1.0
  */
-static ra8_err_t internal_set_mrm_wait_states(uint32_t mriclk_hz, uint32_t mrpclk_hz)
+RA8_INTERNAL static ra8_err_t internal_set_mrm_wait_states(uint32_t mriclk_hz, uint32_t mrpclk_hz)
 {
   const uint32_t mri_mhz = (mriclk_hz <= k_ra8_cgc_mr_min_hz)
                              ? 0U
@@ -522,7 +524,7 @@ static ra8_err_t internal_set_mrm_wait_states(uint32_t mriclk_hz, uint32_t mrpcl
  *
  * @post Caller-visible state matches the documented contract.
  */
-static void internal_program_dividers(void)
+RA8_INTERNAL static void internal_program_dividers(void)
 {
   /* HUM Ch 9.2.6 "SCKDIVCR : System Clock Division Control Register"
    * / FSP bsp_clocks.c */
@@ -565,7 +567,7 @@ static void internal_program_dividers(void)
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
  */
-static void internal_set_pfb(void)
+RA8_INTERNAL static void internal_set_pfb(void)
 {
   const uint32_t mri_mhz = *ra8_mrms_mrcfreq();
   if (mri_mhz >= k_ra8_mrcpfb_threshold_mhz) {
@@ -601,7 +603,7 @@ static void internal_set_pfb(void)
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
  */
-static ra8_err_t internal_route_sciclk(void)
+RA8_INTERNAL static ra8_err_t internal_route_sciclk(void)
 {
   volatile uint8_t* const ckcr  = ra8_sys_scickcr();
   volatile uint8_t* const divcr = ra8_sys_scickdivcr();
@@ -647,7 +649,7 @@ static ra8_err_t internal_route_sciclk(void)
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
  */
-static ra8_err_t internal_start_main_osc(void)
+RA8_INTERNAL static ra8_err_t internal_start_main_osc(void)
 {
   /* HUM Ch 9.2.27 "MOSCWTCR : Main Clock Oscillator Wait Control Register" p 349 */
   *ra8_sys_moscwtcr() = k_ra8_moscwtcr_2_to_16_cycles;
@@ -657,7 +659,7 @@ static ra8_err_t internal_start_main_osc(void)
     (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_moscr);
   *moscr = (uint8_t)(*moscr & (uint8_t)~k_ra8_moscr_mostp_mask);
 
-  return ra8_cgc_wait_oscsf_set(k_ra8_oscsf_bit_moscsf);
+  return priv_ra8_cgc_wait_oscsf_set(k_ra8_oscsf_bit_moscsf);
 }
 
 /**
@@ -683,7 +685,7 @@ static ra8_err_t internal_start_main_osc(void)
  * @retval k_ra8_ok Operation succeeded.
  * @post Caller-visible state matches the documented contract.
  */
-static ra8_err_t internal_cgc_init_protected(void)
+RA8_INTERNAL static ra8_err_t internal_cgc_init_protected(void)
 {
   ra8_err_t err = internal_start_main_osc();
   if (err == k_ra8_ok) {
@@ -763,7 +765,7 @@ ra8_err_t ra8_cgc_use_hoco(void)
   volatile uint8_t* const hococr = ra8_sys_hococr();
   *hococr = (uint8_t)((uint8_t)*hococr & (uint8_t)~(1U << k_ra8_hococr_hcstp));
 
-  const ra8_err_t err = ra8_cgc_wait_oscsf_set(k_ra8_oscsf_bit_hocosf);
+  const ra8_err_t err = priv_ra8_cgc_wait_oscsf_set(k_ra8_oscsf_bit_hocosf);
   if (err != k_ra8_ok) {
     return err;
   }

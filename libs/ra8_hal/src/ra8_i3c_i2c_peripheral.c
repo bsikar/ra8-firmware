@@ -9,7 +9,7 @@
  * Polling-mode peripheral companion to ``ra8_i3c_i2c``. Mirrors FSP
  * ``r_iic_b_peripheral.c``:
  *
- *  - ``internal_i3c_i2c_peripheral_open`` clears the channel (RSTCTL.RI3CRST),
+ *  - ``ra8_i3c_i2c_peripheral_open`` clears the channel (RSTCTL.RI3CRST),
  *    programmes MSDVAD with the 7-bit own address, switches the bus
  *    interface enable bit BCTL.BUSE on, and (optionally) enables the
  *    general-call response via SVCTL.GCAE.
@@ -31,6 +31,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_i3c_i2c_regs.h"
@@ -79,7 +80,7 @@ typedef enum : uint32_t {
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static ra8_err_t internal_wait_ntst(volatile r_i3c_i2c_regs_t* reg, uint32_t mask)
+RA8_INTERNAL static ra8_err_t internal_wait_ntst(volatile r_i3c_i2c_regs_t* reg, uint32_t mask)
 {
   for (uint32_t i = 0U; i < k_ra8_i3c_i2c_peripheral_spin_budget; ++i) { /* GCOVR_EXCL_BR_LINE */
     if ((reg->NTST & mask) == mask) {                                    /* GCOVR_EXCL_BR_LINE */
@@ -89,12 +90,12 @@ static ra8_err_t internal_wait_ntst(volatile r_i3c_i2c_regs_t* reg, uint32_t mas
   return k_ra8_err_hw_timeout;
 }
 
-ra8_err_t internal_i3c_i2c_peripheral_open(uint8_t channel, const ra8_i3c_i2c_peripheral_cfg_t* cfg)
+ra8_err_t ra8_i3c_i2c_peripheral_open(uint8_t channel, const ra8_i3c_i2c_peripheral_cfg_t* cfg)
 {
-  RA8_CHECK_NULL_PTR(cfg, s_tag, "internal_i3c_i2c_peripheral_open: cfg null");
+  RA8_CHECK_NULL_PTR(cfg, s_tag, "ra8_i3c_i2c_peripheral_open: cfg null");
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   if (reg == nullptr) {
-    ra8_log_error(s_tag, "internal_i3c_i2c_peripheral_open: channel out of range");
+    ra8_log_error(s_tag, "ra8_i3c_i2c_peripheral_open: channel out of range");
     return k_ra8_err_invalid_arg;
   }
   if (cfg->peripheral_addr_7b > (uint8_t)k_ra8_i3c_i2c_peripheral_max_addr_7b) {
@@ -114,12 +115,12 @@ ra8_err_t internal_i3c_i2c_peripheral_open(uint8_t channel, const ra8_i3c_i2c_pe
     reg->MSDVAD = (uint32_t)cfg->peripheral_addr_7b << k_ra8_i3c_i2c_peripheral_msdvad_shift_dvad;
     reg->SVCTL  = (cfg->general_call != 0U) ? k_ra8_i3c_i2c_peripheral_msk_svctl_gcae : 0U;
     reg->BCTL   = k_ra8_i3c_i2c_msk_bctl_buse;
-    ra8_log_info_val(s_tag, "internal_i3c_i2c_peripheral_open ch", (uint32_t)channel);
+    ra8_log_info_val(s_tag, "ra8_i3c_i2c_peripheral_open ch", (uint32_t)channel);
   }
   return mst_err;
 }
 
-ra8_err_t internal_i3c_i2c_peripheral_close(uint8_t channel)
+ra8_err_t ra8_i3c_i2c_peripheral_close(uint8_t channel)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   if (reg == nullptr) {
@@ -133,49 +134,49 @@ ra8_err_t internal_i3c_i2c_peripheral_close(uint8_t channel)
   return ra8_mstp_disable(k_ra8_mstp_i3c);
 }
 
-ra8_err_t internal_i3c_i2c_peripheral_send(uint8_t channel, const uint8_t* data, uint32_t len)
+ra8_err_t ra8_i3c_i2c_peripheral_send(uint8_t channel, const uint8_t* data, uint32_t len)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
   if ((len > 0U) && (data == nullptr)) {
-    ra8_log_error(s_tag, "internal_i3c_i2c_peripheral_send: data null");
+    ra8_log_error(s_tag, "ra8_i3c_i2c_peripheral_send: data null");
     return k_ra8_err_null_ptr;
   }
   for (uint32_t i = 0U; i < len; ++i) {
     RA8_RETURN_ON_ERROR(
       internal_wait_ntst(reg, k_ra8_i3c_i2c_peripheral_msk_ntst_tdbef0), /* GCOVR_EXCL_BR_LINE */
       s_tag,
-      "internal_i3c_i2c_peripheral_send: TDBEF0 wait");
+      "ra8_i3c_i2c_peripheral_send: TDBEF0 wait");
     reg->NTDTBP0 = (uint32_t)data[i];
   }
   return k_ra8_ok;
 }
 
-ra8_err_t internal_i3c_i2c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t len)
+ra8_err_t ra8_i3c_i2c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t len)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
   if ((len > 0U) && (buf == nullptr)) {
-    ra8_log_error(s_tag, "internal_i3c_i2c_peripheral_receive: buf null");
+    ra8_log_error(s_tag, "ra8_i3c_i2c_peripheral_receive: buf null");
     return k_ra8_err_null_ptr;
   }
   for (uint32_t i = 0U; i < len; ++i) {
     RA8_RETURN_ON_ERROR(
       internal_wait_ntst(reg, k_ra8_i3c_i2c_peripheral_msk_ntst_rdbff0), /* GCOVR_EXCL_BR_LINE */
       s_tag,
-      "internal_i3c_i2c_peripheral_receive: RDBFF0 wait");
+      "ra8_i3c_i2c_peripheral_receive: RDBFF0 wait");
     buf[i] = (uint8_t)(reg->NTDTBP0 & k_ra8_i3c_i2c_peripheral_byte_mask);
   }
   return k_ra8_ok;
 }
 
-ra8_err_t internal_i3c_i2c_peripheral_status(uint8_t channel, uint8_t* out_mask)
+ra8_err_t ra8_i3c_i2c_peripheral_status(uint8_t channel, uint8_t* out_mask)
 {
-  RA8_CHECK_NULL_PTR(out_mask, s_tag, "internal_i3c_i2c_peripheral_status: out_mask null");
+  RA8_CHECK_NULL_PTR(out_mask, s_tag, "ra8_i3c_i2c_peripheral_status: out_mask null");
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;

@@ -272,12 +272,12 @@ typedef enum : uint32_t {
 RA8_HW_REGISTER_ACCESS
 static inline volatile ra8_glcdc_gam_t* ra8_glcdc_gam_regs(uint8_t channel_idx)
 {
-  static const uint16_t s_gam_base[3] = {
+  static const uint16_t local_gam_base[3] = {
     (uint16_t)k_ra8_glcdc_off_gam0,
     (uint16_t)k_ra8_glcdc_off_gam1,
     (uint16_t)k_ra8_glcdc_off_gam2,
   };
-  return (volatile ra8_glcdc_gam_t*)(k_ra8_glcdc_base_addr + s_gam_base[channel_idx]);
+  return (volatile ra8_glcdc_gam_t*)(k_ra8_glcdc_base_addr + local_gam_base[channel_idx]);
 }
 
 /* =============================================================================

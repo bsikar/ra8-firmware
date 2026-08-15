@@ -344,9 +344,9 @@ RA8_INTERNAL static uint32_t internal_ra8_mipi_dsi_make_dsisetr(const ra8_mipi_d
   return v;
 }
 
-/** @brief Implementation of `ra8_mipi_dsi_internal_wait_eq()` -- bounded busy-poll. */
+/** @brief Implementation of `priv_ra8_mipi_dsi_internal_wait_eq()` -- bounded busy-poll. */
 ra8_err_t
-ra8_mipi_dsi_internal_wait_eq(volatile const uint32_t* reg, uint32_t mask, uint32_t expect)
+priv_ra8_mipi_dsi_internal_wait_eq(volatile const uint32_t* reg, uint32_t mask, uint32_t expect)
 {
   for (uint32_t i = 0U; i < k_ra8_mipi_dsi_busy_loop_max; ++i) { /* GCOVR_EXCL_BR_LINE */
     if ((*reg & mask) == expect) {                               /* GCOVR_EXCL_BR_LINE */
@@ -546,9 +546,9 @@ RA8_INTERNAL static void internal_program_timeouts(const ra8_mipi_dsi_config_t* 
   /* HUM Ch 65.2 "HSCLKSETR : HS Clock Setting Register", p 3843 */
   reg->HSCLKSETR = hsclk;
   /* HUM Ch 65.2 "PLSR : PHY Lane Status Register", p 3884 */
-  return ra8_mipi_dsi_internal_wait_eq(&reg->PLSR,
-                                       k_ra8_mipi_dsi_plsr_cllp2hs,
-                                       k_ra8_mipi_dsi_plsr_cllp2hs);
+  return priv_ra8_mipi_dsi_internal_wait_eq(&reg->PLSR,
+                                            k_ra8_mipi_dsi_plsr_cllp2hs,
+                                            k_ra8_mipi_dsi_plsr_cllp2hs);
 }
 
 [[nodiscard]] ra8_err_t ra8_mipi_dsi_hs_clock_stop(void)
@@ -557,9 +557,9 @@ RA8_INTERNAL static void internal_program_timeouts(const ra8_mipi_dsi_config_t* 
   /* HUM Ch 65.2 "HSCLKSETR : HS Clock Setting Register", p 3843 */
   reg->HSCLKSETR = 0U;
   /* HUM Ch 65.2 "PLSR : PHY Lane Status Register", p 3884 */
-  return ra8_mipi_dsi_internal_wait_eq(&reg->PLSR,
-                                       k_ra8_mipi_dsi_plsr_clhs2lp,
-                                       k_ra8_mipi_dsi_plsr_clhs2lp);
+  return priv_ra8_mipi_dsi_internal_wait_eq(&reg->PLSR,
+                                            k_ra8_mipi_dsi_plsr_clhs2lp,
+                                            k_ra8_mipi_dsi_plsr_clhs2lp);
 }
 
 /* =============================================================================

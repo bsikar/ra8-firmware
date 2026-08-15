@@ -95,7 +95,7 @@ static bool s_agt_mstp_held[k_ra8_agt_mstp_id_count];
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t agt_mstp_acquire(uint8_t channel)
+RA8_INTERNAL static ra8_err_t internal_agt_mstp_acquire(uint8_t channel)
 {
   if (channel >= k_ra8_agt_mstp_id_count) {
     return k_ra8_ok;
@@ -116,7 +116,7 @@ static ra8_err_t agt_mstp_acquire(uint8_t channel)
  * @brief Release the per-channel AGT MSTP reference if held (issue #68).
  *
  * @details
- * Mirror of ::agt_mstp_acquire: drops the AGT0/AGT1 module-stop reference only
+ * Mirror of ::internal_agt_mstp_acquire: drops the AGT0/AGT1 module-stop reference only
  * when the channel currently holds it, so a stop after a never-acquired start
  * (or a double release) cannot underflow the ra8_mstp refcount. Channels 2..9
  * are a no-op. Early returns keep every decision single-condition.
@@ -135,7 +135,7 @@ static ra8_err_t agt_mstp_acquire(uint8_t channel)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t agt_mstp_release(uint8_t channel)
+RA8_INTERNAL static ra8_err_t internal_agt_mstp_release(uint8_t channel)
 {
   if (channel >= k_ra8_agt_mstp_id_count) {
     return k_ra8_ok;
@@ -154,7 +154,7 @@ static ra8_err_t agt_mstp_release(uint8_t channel)
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
   /* Acquire the per-channel MSTP reference once (issue #68). */
-  const ra8_err_t mst_err = agt_mstp_acquire(channel);
+  const ra8_err_t mst_err = internal_agt_mstp_acquire(channel);
   RA8_RETURN_ON_ERROR(mst_err, s_tag, "agt_start: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
@@ -224,7 +224,7 @@ ra8_err_t ra8_agt_deinit(uint8_t channel)
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
   /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
   reg->AGTCR = 0U;
-  return agt_mstp_release(channel);
+  return internal_agt_mstp_release(channel);
 }
 
 /**
@@ -392,7 +392,7 @@ ra8_err_t ra8_agt_enter_stop(uint8_t channel)
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
   /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
   reg->AGTCR = 0U;
-  return agt_mstp_release(channel);
+  return internal_agt_mstp_release(channel);
 }
 
 /**
@@ -425,7 +425,7 @@ ra8_err_t ra8_agt_exit_stop(uint8_t channel)
   if (ra8_agt(channel) == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  return agt_mstp_acquire(channel);
+  return internal_agt_mstp_acquire(channel);
 }
 
 /* =============================================================================
@@ -458,7 +458,7 @@ ra8_err_t ra8_agt_exit_stop(uint8_t channel)
  * @note Not thread-safe; pure ALU helper.
  * @since 0.1.0
  */
-static uint8_t agt_pulse_agtioc_value(ra8_agt_output_polarity_t polarity)
+RA8_INTERNAL static uint8_t internal_agt_pulse_agtioc_value(ra8_agt_output_polarity_t polarity)
 {
   uint8_t v = (uint8_t)k_ra8_agt_agtioc_toe_msk;
   if (polarity == k_ra8_agt_output_polarity_active_high) {
@@ -494,7 +494,7 @@ static uint8_t agt_pulse_agtioc_value(ra8_agt_output_polarity_t polarity)
  * @note Not thread-safe; pure ALU helper.
  * @since 0.1.0
  */
-static uint8_t agt_pulse_agtcmsr_value(ra8_agt_pulse_compare_t compare)
+RA8_INTERNAL static uint8_t internal_agt_pulse_agtcmsr_value(ra8_agt_pulse_compare_t compare)
 {
   if (compare == k_ra8_agt_pulse_compare_a) {
     return (uint8_t)(k_ra8_agt_agtcmsr_tcmea_msk | k_ra8_agt_agtcmsr_toea_msk);
@@ -528,9 +528,9 @@ static uint8_t agt_pulse_agtcmsr_value(ra8_agt_pulse_compare_t compare)
  * @note Not thread-safe; ISR-unsafe (touches MMIO).
  * @since 0.1.0
  */
-static void agt_pulse_program_compare(volatile r_agt_regs_t*  reg,
-                                      ra8_agt_pulse_compare_t compare,
-                                      uint16_t                duty)
+RA8_INTERNAL static void internal_agt_pulse_program_compare(volatile r_agt_regs_t*  reg,
+                                                            ra8_agt_pulse_compare_t compare,
+                                                            uint16_t                duty)
 {
   const uint16_t parked = (uint16_t)k_ra8_agt_compare_parked_value;
   /* HUM Ch 24.2.2 "AGTCMA : AGT Compare Match A Register" p 1166 */
@@ -563,7 +563,7 @@ static void agt_pulse_program_compare(volatile r_agt_regs_t*  reg,
  * @note Not thread-safe; pure validator.
  * @since 0.1.0
  */
-static ra8_err_t agt_pulse_validate_cfg(const ra8_agt_pulse_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_agt_pulse_validate_cfg(const ra8_agt_pulse_cfg_t* cfg)
 {
   if ((cfg->compare != k_ra8_agt_pulse_compare_none) &&
       (cfg->compare != k_ra8_agt_pulse_compare_a) && (cfg->compare != k_ra8_agt_pulse_compare_b)) {
@@ -588,7 +588,7 @@ static ra8_err_t agt_pulse_validate_cfg(const ra8_agt_pulse_cfg_t* cfg)
  * @param[in]     cfg Validated pulse-output configuration.
  *
  * @pre ``reg`` points at a valid AGT channel window.
- * @pre ``cfg`` has already been validated by `agt_pulse_validate_cfg`.
+ * @pre ``cfg`` has already been validated by `internal_agt_pulse_validate_cfg`.
  *
  * @post AGT is loaded with the period, compare-match regs hold duty
  *       or 0xFFFF.
@@ -597,7 +597,8 @@ static ra8_err_t agt_pulse_validate_cfg(const ra8_agt_pulse_cfg_t* cfg)
  * @note Not thread-safe; ISR-unsafe (touches MMIO).
  * @since 0.1.0
  */
-static void agt_pulse_program_registers(volatile r_agt_regs_t* reg, const ra8_agt_pulse_cfg_t* cfg)
+RA8_INTERNAL static void internal_agt_pulse_program_registers(volatile r_agt_regs_t*     reg,
+                                                              const ra8_agt_pulse_cfg_t* cfg)
 {
   /* Stop first. */
   /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
@@ -609,10 +610,10 @@ static void agt_pulse_program_registers(volatile r_agt_regs_t* reg, const ra8_ag
   reg->AGTMR2 = 0U;
   /* TOE = 1, polarity from the config. */
   /* HUM Ch 24.2.7 "AGTIOC : AGT I/O Control Register" p 1170 */
-  reg->AGTIOC = agt_pulse_agtioc_value(cfg->polarity);
+  reg->AGTIOC = internal_agt_pulse_agtioc_value(cfg->polarity);
   /* HUM Ch 24.2.9 "AGTCMSR : AGT Compare Match Function Select" p 1172 */
-  reg->AGTCMSR = agt_pulse_agtcmsr_value(cfg->compare);
-  agt_pulse_program_compare(reg, cfg->compare, cfg->duty);
+  reg->AGTCMSR = internal_agt_pulse_agtcmsr_value(cfg->compare);
+  internal_agt_pulse_program_compare(reg, cfg->compare, cfg->duty);
   /* HUM Ch 24.2.1 "AGT : AGT Counter" p 1165 */
   reg->AGT = cfg->period;
 }
@@ -651,14 +652,14 @@ ra8_err_t ra8_agt_start_pulse_output(uint8_t channel, const ra8_agt_pulse_cfg_t*
   volatile r_agt_regs_t* reg = ra8_agt(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
-  const ra8_err_t verr = agt_pulse_validate_cfg(cfg);
+  const ra8_err_t verr = internal_agt_pulse_validate_cfg(cfg);
   RA8_RETURN_ON_ERROR(verr, s_tag, "agt_pulse: cfg validation");
 
   /* Acquire the per-channel MSTP reference once (issue #68). */
-  const ra8_err_t mst_err = agt_mstp_acquire(channel);
+  const ra8_err_t mst_err = internal_agt_mstp_acquire(channel);
   RA8_RETURN_ON_ERROR(mst_err, s_tag, "agt_pulse: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
-  agt_pulse_program_registers(reg, cfg);
+  internal_agt_pulse_program_registers(reg, cfg);
 
   /* TSTART = 1. */
   /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
@@ -704,7 +705,8 @@ ra8_err_t ra8_agt_start_pulse_output(uint8_t channel, const ra8_agt_pulse_cfg_t*
  * @note Not thread-safe; pure mapping helper.
  * @since 0.1.0
  */
-static ra8_err_t agt_cascade_clock_to_tck(ra8_agt_cascade_clk_t clock, uint8_t* out_tck)
+RA8_INTERNAL static ra8_err_t internal_agt_cascade_clock_to_tck(ra8_agt_cascade_clk_t clock,
+                                                                uint8_t*              out_tck)
 {
   switch (clock) {
     case k_ra8_agt_cascade_clk_pclkb:
@@ -742,7 +744,8 @@ static ra8_err_t agt_cascade_clock_to_tck(ra8_agt_cascade_clk_t clock, uint8_t* 
  * @note Not thread-safe; ISR-unsafe (touches MMIO).
  * @since 0.1.0
  */
-static void agt_cascade_arm_half(volatile r_agt_regs_t* reg, uint8_t tmr1, uint16_t reload)
+RA8_INTERNAL static void
+internal_agt_cascade_arm_half(volatile r_agt_regs_t* reg, uint8_t tmr1, uint16_t reload)
 {
   /* Stop the channel before touching the mode-control regs. */
   /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
@@ -789,13 +792,13 @@ typedef enum : uint32_t {
  *       drivers.
  * @since 0.1.0
  */
-static ra8_err_t agt_cascade_mstp_enable_both(void)
+RA8_INTERNAL static ra8_err_t internal_agt_cascade_mstp_enable_both(void)
 {
   /* One MSTP reference per channel (issue #68): re-arming the cascade every
    * AGT1 underflow must not leak a fresh AGT0/AGT1 reference per period. */
-  const ra8_err_t m0 = agt_mstp_acquire((uint8_t)k_ra8_agt_cascade_lo_channel);
+  const ra8_err_t m0 = internal_agt_mstp_acquire((uint8_t)k_ra8_agt_cascade_lo_channel);
   RA8_RETURN_ON_ERROR(m0, s_tag, "cascade: mstp AGT0"); /* GCOVR_EXCL_BR_LINE */
-  const ra8_err_t m1 = agt_mstp_acquire((uint8_t)k_ra8_agt_cascade_hi_channel);
+  const ra8_err_t m1 = internal_agt_mstp_acquire((uint8_t)k_ra8_agt_cascade_hi_channel);
   RA8_RETURN_ON_ERROR(m1, s_tag, "cascade: mstp AGT1"); /* GCOVR_EXCL_BR_LINE */
   return k_ra8_ok;
 }
@@ -823,10 +826,10 @@ static ra8_err_t agt_cascade_mstp_enable_both(void)
  * @note Not thread-safe; ISR-unsafe (touches MMIO).
  * @since 0.1.0
  */
-static void agt_cascade_program_and_start(volatile r_agt_regs_t* lo,
-                                          volatile r_agt_regs_t* hi,
-                                          uint32_t               reload32,
-                                          uint8_t                tck_lo)
+RA8_INTERNAL static void internal_agt_cascade_program_and_start(volatile r_agt_regs_t* lo,
+                                                                volatile r_agt_regs_t* hi,
+                                                                uint32_t               reload32,
+                                                                uint8_t                tck_lo)
 {
   const uint16_t reload_lo = (uint16_t)(reload32 & (uint32_t)k_ra8_agt_cascade_lo_mask);
   const uint16_t reload_hi = (uint16_t)((reload32 >> (uint32_t)k_ra8_agt_cascade_hi_shift) &
@@ -838,8 +841,8 @@ static void agt_cascade_program_and_start(volatile r_agt_regs_t* lo,
   const uint8_t tmr1_hi =
     (uint8_t)((uint8_t)k_ra8_agt_agtmr1_tmod_timer | (uint8_t)k_ra8_agt_agtmr1_tck_agt0_underflow);
 
-  agt_cascade_arm_half(lo, tmr1_lo, reload_lo);
-  agt_cascade_arm_half(hi, tmr1_hi, reload_hi);
+  internal_agt_cascade_arm_half(lo, tmr1_lo, reload_lo);
+  internal_agt_cascade_arm_half(hi, tmr1_hi, reload_hi);
 
   /* Start AGT1 first so it samples the AGT0 underflow on the very */
   /* first cycle. */
@@ -870,7 +873,7 @@ static void agt_cascade_program_and_start(volatile r_agt_regs_t* lo,
  * @note Not thread-safe; shared module-static slot.
  * @since 0.1.0
  */
-static void agt_cascade_install_callback(const ra8_agt_cascade_cfg_t* cfg)
+RA8_INTERNAL static void internal_agt_cascade_install_callback(const ra8_agt_cascade_cfg_t* cfg)
 {
   if (cfg->on_underflow != nullptr) {
     s_agt_fn  = cfg->on_underflow;
@@ -902,8 +905,8 @@ static void agt_cascade_install_callback(const ra8_agt_cascade_cfg_t* cfg)
  * @note Not thread-safe; pure resolver.
  * @since 0.1.0
  */
-static ra8_err_t agt_cascade_resolve_halves(volatile r_agt_regs_t** out_lo,
-                                            volatile r_agt_regs_t** out_hi)
+RA8_INTERNAL static ra8_err_t internal_agt_cascade_resolve_halves(volatile r_agt_regs_t** out_lo,
+                                                                  volatile r_agt_regs_t** out_hi)
 {
   *out_lo = ra8_agt((uint8_t)k_ra8_agt_cascade_lo_channel);
   *out_hi = ra8_agt((uint8_t)k_ra8_agt_cascade_hi_channel);
@@ -945,19 +948,19 @@ ra8_err_t ra8_agt_start_cascade(const ra8_agt_cascade_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   uint8_t         tck_lo = 0U;
-  const ra8_err_t cerr   = agt_cascade_clock_to_tck(cfg->clock, &tck_lo);
+  const ra8_err_t cerr   = internal_agt_cascade_clock_to_tck(cfg->clock, &tck_lo);
   RA8_RETURN_ON_ERROR(cerr, s_tag, "cascade: bad clock enum");
 
   volatile r_agt_regs_t* lo   = nullptr;
   volatile r_agt_regs_t* hi   = nullptr;
-  const ra8_err_t        herr = agt_cascade_resolve_halves(&lo, &hi);
+  const ra8_err_t        herr = internal_agt_cascade_resolve_halves(&lo, &hi);
   RA8_RETURN_ON_ERROR(herr, s_tag, "cascade: half resolve");
 
-  const ra8_err_t merr = agt_cascade_mstp_enable_both();
+  const ra8_err_t merr = internal_agt_cascade_mstp_enable_both();
   RA8_RETURN_ON_ERROR(merr, s_tag, "cascade: mstp enable");
 
-  agt_cascade_program_and_start(lo, hi, cfg->reload32, tck_lo);
-  agt_cascade_install_callback(cfg);
+  internal_agt_cascade_program_and_start(lo, hi, cfg->reload32, tck_lo);
+  internal_agt_cascade_install_callback(cfg);
   ra8_log_info_val(s_tag, "cascade start", cfg->reload32);
   return k_ra8_ok;
 }

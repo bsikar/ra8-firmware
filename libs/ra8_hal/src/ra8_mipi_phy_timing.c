@@ -17,12 +17,12 @@
  *    requested ``(mode, pclka, rate)`` tuple.
  *  - ``ra8_mipi_phy_select_timing``, the public table-driven entry point
  *    that selects a row and programs DPHYTIM1..6.
- *  - ``internal_mipi_phy_compute_freq``, the HUM 64.2.2 PLL-frequency
+ *  - ``priv_mipi_phy_compute_freq``, the HUM 64.2.2 PLL-frequency
  *    arithmetic helper consumed by ``ra8_mipi_phy_validate_pll_band`` in
  *    ``ra8_mipi_phy.c``.
  *
  * The register-write path used by ``ra8_mipi_phy_select_timing`` lives in
- * ``ra8_mipi_phy.c`` (``internal_mipi_phy_write_timing``) and is reached
+ * ``ra8_mipi_phy.c`` (``priv_mipi_phy_write_timing``) and is reached
  * through ``ra8_mipi_phy_internal.h``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -879,19 +879,19 @@ static const ra8_mipi_phy_timing_t* internal_mipi_phy_lookup_timing(const mipi_p
   return nullptr;
 }
 
-uint32_t internal_mipi_phy_compute_freq(const ra8_mipi_phy_pll_t* pll, uint8_t mosc_mhz)
+uint32_t priv_mipi_phy_compute_freq(const ra8_mipi_phy_pll_t* pll, uint8_t mosc_mhz)
 {
   /* HUM Ch 64.2.2 p 3823 -- f = fMAIN * I * (NF + N) * P. */
-  static const uint8_t  s_idiv_div[]   = {1U, 2U, 3U, 4U};
-  static const uint8_t  s_pmul_div[]   = {1U, 2U, 4U, 8U};
-  static const uint16_t s_nfmul_x100[] = {0U,
-                                          k_mipi_nf_x100_33,
-                                          k_mipi_nf_x100_66,
-                                          k_mipi_nf_x100_50}; /* hundredths */
+  static const uint8_t  local_idiv_div[]   = {1U, 2U, 3U, 4U};
+  static const uint8_t  local_pmul_div[]   = {1U, 2U, 4U, 8U};
+  static const uint16_t local_nfmul_x100[] = {0U,
+                                              k_mipi_nf_x100_33,
+                                              k_mipi_nf_x100_66,
+                                              k_mipi_nf_x100_50}; /* hundredths */
 
-  const uint32_t idiv    = (uint32_t)s_idiv_div[(uint8_t)pll->idiv & 0x3U];
-  const uint32_t pmul    = (uint32_t)s_pmul_div[(uint8_t)pll->pmul & 0x3U];
-  const uint32_t nf_x100 = (uint32_t)s_nfmul_x100[(uint8_t)pll->nfmul & 0x3U];
+  const uint32_t idiv    = (uint32_t)local_idiv_div[(uint8_t)pll->idiv & 0x3U];
+  const uint32_t pmul    = (uint32_t)local_pmul_div[(uint8_t)pll->pmul & 0x3U];
+  const uint32_t nf_x100 = (uint32_t)local_nfmul_x100[(uint8_t)pll->nfmul & 0x3U];
   const uint32_t n_x100  = ((uint32_t)pll->nmul_int * k_mipi_pll_percent_scale) + nf_x100;
   /* f_mhz = mosc_mhz * (n_x100/100) / idiv / pmul */
   const uint32_t numerator = (uint32_t)mosc_mhz * n_x100;
@@ -932,7 +932,7 @@ ra8_err_t ra8_mipi_phy_select_timing(ra8_mipi_phy_mode_t          mode,
   if (row == nullptr) {
     return k_ra8_err_not_supported;
   }
-  internal_mipi_phy_write_timing(row);
+  priv_mipi_phy_write_timing(row);
   if (out_timing != nullptr) {
     *out_timing = *row;
   }

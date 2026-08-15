@@ -79,7 +79,7 @@ static ra8_poeg_state_t s_poeg_state[k_ra8_poeg_group_count];
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static uint32_t internal_cfg_to_poegg(const ra8_poeg_cfg_t* cfg)
+RA8_INTERNAL static uint32_t internal_cfg_to_poegg(const ra8_poeg_cfg_t* cfg)
 {
   uint32_t v = 0U;
   if (cfg->enable_pin) {

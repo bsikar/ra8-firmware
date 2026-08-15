@@ -5,9 +5,9 @@
  * @details
  * Targets the residual uncovered lines in ``libs/ra8_hal/src/ra8_usb_device.c``
  * that the primary suite (``test_ra8_usb.c``) does not reach:
- *   - ``ra8_usb_device_attach`` bogus-speed rejection (the ``internal_pick``
+ *   - ``ra8_usb_device_attach`` bogus-speed rejection (the ``priv_pick``
  *     NULL leg -- ``test_ra8_usb.c`` only drives the valid FS/HS attach
- *     paths, never a speed ``internal_pick`` cannot map).
+ *     paths, never a speed ``priv_pick`` cannot map).
  *   - ``ra8_usb_device_busreset_rearm`` in full: the bogus-speed NULL leg,
  *     the ``PIPECTR[*]`` clear loop, the ``BRDYSTS`` / ``NRDYSTS`` /
  *     ``BEMPSTS`` W0C drops, the ``internal_dcp_reset_defaults`` helper
@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
@@ -44,7 +45,7 @@
  *          values keeps the intent of each seed/expectation explicit.
  */
 typedef enum : uint16_t {
-  k_test_usb_speed_bogus  = 9U,      /**< Neither FS nor HS -> internal_pick NULL.      */
+  k_test_usb_speed_bogus  = 9U,      /**< Neither FS nor HS -> priv_pick NULL.          */
   k_test_usb_seed_word    = 0xFFFFU, /**< All-ones seed to prove a store cleared it.    */
   k_test_usb_dcp_maxp     = 64U,     /**< DCPMAXP default after rearm (EP0 max packet). */
   k_test_usb_intenb0_seed = 0x0001U, /**< Bogus INTENB0 seed overwritten by the re-arm. */
@@ -53,41 +54,41 @@ typedef enum : uint16_t {
   k_test_usb_intenb0_mask = 0x9F00U /**< Test USB intenb0 mask. */
 } test_usb_dev_const_t;
 
-static void prep(void)
+/** @brief Provide the file-local prep test helper. @details Implements the prep fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 
 /**
- * @test test_device_attach_bogus_speed
+ * @test internal_test_device_attach_bogus_speed
  *
  * @par MC/DC:
  * (no compound decision on this leg -- ``if (reg == nullptr)`` is a
- * single condition reached by a speed that ``internal_pick`` cannot map
+ * single condition reached by a speed that ``priv_pick`` cannot map
  * to a controller block)
  *
  * @details Drives the ``ra8_usb_device_attach`` speed-rejection leg
  * (source line 267). ``test_ra8_usb.c`` only exercises valid FS/HS
  * attach, so the NULL return is otherwise uncovered. Both attached=true
  * and attached=false are passed to prove the rejection precedes the
- * attach/detach branch.
- */
-static void test_device_attach_bogus_speed(void)
+ * attach/detach branch. @brief Verify device attach bogus speed behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_device_attach_bogus_speed(void)
 {
-  TEST_BEGIN("ra8_usb_device_attach rejects a speed internal_pick cannot map");
-  prep();
+  TEST_BEGIN("ra8_usb_device_attach rejects a speed priv_pick cannot map");
+  internal_prep();
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_usb_device_attach((ra8_usb_speed_t)k_test_usb_speed_bogus, true));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_usb_device_attach((ra8_usb_speed_t)k_test_usb_speed_bogus, false));
 
-  TEST_END("ra8_usb_device_attach rejects a speed internal_pick cannot map");
+  TEST_END("ra8_usb_device_attach rejects a speed priv_pick cannot map");
 }
 
 /**
- * @test test_busreset_rearm_bogus_speed
+ * @test internal_test_busreset_rearm_bogus_speed
  *
  * @par MC/DC:
  * (no compound decision on this leg -- ``if (reg == nullptr)`` is a
@@ -95,12 +96,11 @@ static void test_device_attach_bogus_speed(void)
  *
  * @details Drives the ``ra8_usb_device_busreset_rearm`` speed-rejection
  * leg (source lines 496-497) so the function returns before touching any
- * register.
- */
-static void test_busreset_rearm_bogus_speed(void)
+ * register. @brief Verify busreset rearm bogus speed behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_busreset_rearm_bogus_speed(void)
 {
   TEST_BEGIN("ra8_usb_device_busreset_rearm rejects bogus speed");
-  prep();
+  internal_prep();
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_usb_device_busreset_rearm((ra8_usb_speed_t)k_test_usb_speed_bogus));
@@ -109,12 +109,12 @@ static void test_busreset_rearm_bogus_speed(void)
 }
 
 /**
- * @test test_busreset_rearm_fs_full_path
+ * @test internal_test_busreset_rearm_fs_full_path
  *
  * @par MC/DC:
  * (the only decision in ``ra8_usb_device_busreset_rearm`` is the
  * single-condition ``if (reg == nullptr)`` NULL guard, covered false
- * here and true in ::test_busreset_rearm_bogus_speed; the PIPECTR clear
+ * here and true in ::internal_test_busreset_rearm_bogus_speed; the PIPECTR clear
  * loop bound is a counted loop, not a compound decision)
  *
  * @details Pre-seeds every register the rearm is documented to clear or
@@ -128,12 +128,11 @@ static void test_busreset_rearm_bogus_speed(void)
  *     ``internal_dcp_reset_defaults`` (source lines 468-474, called at
  *     521).
  *   - ``INTENB0`` seeded to a bogus value, expected the re-armed mask
- *     (source lines 536-538) and a ``k_ra8_ok`` return (line 540).
- */
-static void test_busreset_rearm_fs_full_path(void)
+ *     (source lines 536-538) and a ``k_ra8_ok`` return (line 540). @brief Verify busreset rearm fs full path behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_busreset_rearm_fs_full_path(void)
 {
   TEST_BEGIN("ra8_usb_device_busreset_rearm FS clears state and re-arms INTENB0");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
   volatile r_usb_regs_t* reg = ra8_usb_fs();
@@ -176,22 +175,21 @@ static void test_busreset_rearm_fs_full_path(void)
 }
 
 /**
- * @test test_busreset_rearm_hs_full_path
+ * @test internal_test_busreset_rearm_hs_full_path
  *
  * @par MC/DC:
  * (same single-condition NULL guard as the FS case; this vector proves
- * ``internal_pick`` routes the HS speed to the HS controller block so the
+ * ``priv_pick`` routes the HS speed to the HS controller block so the
  * same register-clearing body runs against a different window)
  *
  * @details Repeats the rearm against the HS controller instance to
- * confirm the ``internal_pick(k_ra8_usb_speed_hs)`` selection reaches the
+ * confirm the ``priv_pick(k_ra8_usb_speed_hs)`` selection reaches the
  * same clear/re-arm body. Uses a compact subset of the FS assertions
- * (INTENB0 mask + DCPMAXP default) since the body is speed-independent.
- */
-static void test_busreset_rearm_hs_full_path(void)
+ * (INTENB0 mask + DCPMAXP default) since the body is speed-independent. @brief Verify busreset rearm hs full path behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_busreset_rearm_hs_full_path(void)
 {
   TEST_BEGIN("ra8_usb_device_busreset_rearm HS re-arms the HS controller");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_hs));
 
   volatile r_usb_regs_t* reg = ra8_usb_hs();
@@ -209,10 +207,9 @@ static void test_busreset_rearm_hs_full_path(void)
 
 int32_t main(void)
 {
-  test_device_attach_bogus_speed();
-  test_busreset_rearm_bogus_speed();
-  test_busreset_rearm_fs_full_path();
-  test_busreset_rearm_hs_full_path();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_device_cov.c\n");
+  internal_test_device_attach_bogus_speed();
+  internal_test_busreset_rearm_bogus_speed();
+  internal_test_busreset_rearm_fs_full_path();
+  internal_test_busreset_rearm_hs_full_path();
   return 0;
 }

@@ -91,7 +91,7 @@ static const ra8_mstp_t s_dotf_mstp_table[k_ra8_dotf_channel_count] = {
 RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_open_validate_init(const ra8_dotf_open_cfg_t* cfg)
 {
-  if (!ra8_dotf_internal_channel_in_range(cfg->channel)) {
+  if (!internal_ra8_dotf_internal_channel_in_range(cfg->channel)) {
     return k_ra8_err_invalid_arg;
   }
   /* Step 1: Power on the DOTF block (idempotent). HUM Ch 45.6.1 p 3050. */
@@ -220,7 +220,7 @@ RA8_INTERNAL
 
 [[nodiscard]] ra8_err_t ra8_dotf_set_region_window(uint8_t channel, uint32_t start, uint32_t len)
 {
-  if (!ra8_dotf_internal_channel_in_range(channel)) {
+  if (!internal_ra8_dotf_internal_channel_in_range(channel)) {
     return k_ra8_err_invalid_arg;
   }
   if (len == 0U) {

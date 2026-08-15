@@ -1,6 +1,8 @@
 /**
  * @file ra8_agt.h
  * @brief Asynchronous General-Purpose Timer (AGT) driver header
+ *
+ * @details Declares bounded start, stop, counter, and reload operations for the RA8 asynchronous general-purpose timer channels.
  * @ingroup grp_hal_timers
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

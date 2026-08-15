@@ -60,7 +60,7 @@ static const ra8_mstp_t s_ssie_mstp_table[k_ra8_ssie_channel_count] = {
 };
 
 /**
- * @var s_ssie_runtime
+ * @var g_ssie_runtime
  * @brief Per-channel runtime state. Initialized to zero / unused.
  *
  * @details
@@ -69,7 +69,7 @@ static const ra8_mstp_t s_ssie_mstp_table[k_ra8_ssie_channel_count] = {
  * linkage (no ``static``) is required so both translation units bind the same
  * storage. The ``s_ssie_`` prefix keeps it clang-tidy-clean and link-unique.
  */
-ra8_ssie_runtime_t s_ssie_runtime[k_ra8_ssie_channel_count] = {
+ra8_ssie_runtime_t g_ssie_runtime[k_ra8_ssie_channel_count] = {
   {.tx_dma_channel = k_ra8_ssie_dma_ch_unused,
    .rx_dma_channel = k_ra8_ssie_dma_ch_unused,
    .initialized    = false,
@@ -96,8 +96,8 @@ static ra8_ssie_event_fn_t s_ssie_fn;
  */
 static void* s_ssie_ctx;
 
-/** @brief Implementation of `ra8_ssie_internal_regs()` -- bounds-check + accessor. */
-volatile r_ssie_regs_t* ra8_ssie_internal_regs(uint8_t channel)
+/** @brief Implementation of `priv_ra8_ssie_internal_regs()` -- bounds-check + accessor. */
+volatile r_ssie_regs_t* priv_ra8_ssie_internal_regs(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra8_ssie_channel_count) {
     return nullptr;
@@ -615,7 +615,7 @@ static void internal_apply_init_regs(volatile r_ssie_regs_t* reg,
 ra8_err_t ra8_ssie_init(uint8_t channel, const ra8_ssie_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
-  volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);
+  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -634,15 +634,15 @@ ra8_err_t ra8_ssie_init(uint8_t channel, const ra8_ssie_cfg_t* cfg)
 
   internal_apply_init_regs(reg, cfg, frm, pdta, sdta, omod);
 
-  s_ssie_runtime[channel].initialized  = true;
-  s_ssie_runtime[channel].dma_attached = false;
+  g_ssie_runtime[channel].initialized  = true;
+  g_ssie_runtime[channel].dma_attached = false;
   ra8_log_info_val(s_tag, "ssie_init channel", (uint32_t)channel);
   return k_ra8_ok;
 }
 
 ra8_err_t ra8_ssie_deinit(uint8_t channel)
 {
-  volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);
+  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -651,10 +651,10 @@ ra8_err_t ra8_ssie_deinit(uint8_t channel)
   /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
   reg->SSIFCR = reg->SSIFCR & ~k_ra8_ssie_mask_aucke;
 
-  if (s_ssie_runtime[channel].dma_attached) {
+  if (g_ssie_runtime[channel].dma_attached) {
     (void)ra8_ssie_detach_dma(channel);
   }
-  s_ssie_runtime[channel].initialized = false;
+  g_ssie_runtime[channel].initialized = false;
   return ra8_mstp_disable(s_ssie_mstp_table[channel]);
 }
 
@@ -663,7 +663,7 @@ ra8_err_t ra8_ssie_start(uint8_t channel, ra8_ssie_dir_t dir)
   if (dir != k_ra8_ssie_dir_rx && dir != k_ra8_ssie_dir_tx && dir != k_ra8_ssie_dir_tx_rx) {
     return k_ra8_err_invalid_arg;
   }
-  volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);
+  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -701,7 +701,7 @@ ra8_err_t ra8_ssie_start(uint8_t channel, ra8_ssie_dir_t dir)
 
 ra8_err_t ra8_ssie_stop(uint8_t channel)
 {
-  volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);
+  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -723,7 +723,7 @@ ra8_err_t ra8_ssie_stop(uint8_t channel)
 
 ra8_err_t ra8_ssie_start_recovery(uint8_t channel)
 {
-  volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);
+  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -744,7 +744,7 @@ ra8_err_t ra8_ssie_start_recovery(uint8_t channel)
 
 ra8_err_t ra8_ssie_mute(uint8_t channel, bool enable)
 {
-  volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);
+  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -761,7 +761,7 @@ ra8_err_t ra8_ssie_mute(uint8_t channel, bool enable)
 
 ra8_err_t ra8_ssie_set_thresholds(uint8_t channel, uint8_t tx_threshold, uint8_t rx_threshold)
 {
-  volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);
+  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -775,7 +775,7 @@ ra8_err_t ra8_ssie_set_thresholds(uint8_t channel, uint8_t tx_threshold, uint8_t
 
 ra8_err_t ra8_ssie_write_sample(uint8_t channel, uint32_t sample)
 {
-  volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);
+  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -787,7 +787,7 @@ ra8_err_t ra8_ssie_write_sample(uint8_t channel, uint32_t sample)
 ra8_err_t ra8_ssie_read_sample(uint8_t channel, uint32_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);
+  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -803,7 +803,7 @@ ra8_err_t ra8_ssie_write_buffer(uint8_t         channel,
 {
   RA8_CHECK_NULL_PTR(buffer, s_tag, "buffer must not be nullptr");
   RA8_CHECK_NULL_PTR(out_written, s_tag, "out_written must not be nullptr");
-  volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);
+  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -835,7 +835,7 @@ ra8_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16
 {
   RA8_CHECK_NULL_PTR(buffer, s_tag, "buffer must not be nullptr");
   RA8_CHECK_NULL_PTR(out_read, s_tag, "out_read must not be nullptr");
-  volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);
+  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -865,7 +865,7 @@ ra8_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16
 ra8_err_t ra8_ssie_get_status(uint8_t channel, ra8_ssie_status_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);
+  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -888,7 +888,7 @@ ra8_err_t ra8_ssie_get_status(uint8_t channel, ra8_ssie_status_t* out)
 
 ra8_err_t ra8_ssie_clear_status(uint8_t channel, uint32_t mask)
 {
-  volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);
+  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -901,7 +901,7 @@ ra8_err_t ra8_ssie_clear_status(uint8_t channel, uint32_t mask)
 
 ra8_err_t ra8_ssie_set_irq_enable(uint8_t channel, uint32_t mask, bool enable)
 {
-  volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);
+  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -927,7 +927,7 @@ ra8_err_t ra8_ssie_attach_handler(ra8_ssie_event_fn_t fn, void* ctx)
 RA8_ISR_SAFE
 void ra8_ssie_dispatch(uint8_t channel)
 {
-  volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);
+  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return;
   }

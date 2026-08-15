@@ -16,8 +16,8 @@
  *
  * Every register access carries a HUM Ch 46 citation against
  * ``r01uh1065ej0130-ra8d2.pdf``. The per-channel runtime bookkeeping array
- * (``s_ssie_runtime``) and the channel-validating register accessor
- * (``ra8_ssie_internal_regs``) are shared with ``ra8_ssie.c`` through
+ * (``g_ssie_runtime``) and the channel-validating register accessor
+ * (``priv_ra8_ssie_internal_regs``) are shared with ``ra8_ssie.c`` through
  * ``ra8_hal_internal.h``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -113,7 +113,7 @@ internal_start_tx_dma(volatile r_ssie_regs_t* reg, uint8_t channel, const ra8_ss
   };
   const ra8_err_t tx_err = ra8_dmac_start(dma->tx_dma_channel, &tx_cfg);
   if (tx_err == k_ra8_ok) {
-    s_ssie_runtime[channel].tx_dma_channel = dma->tx_dma_channel;
+    g_ssie_runtime[channel].tx_dma_channel = dma->tx_dma_channel;
   }
   return tx_err;
 }
@@ -149,7 +149,7 @@ internal_start_rx_dma(volatile r_ssie_regs_t* reg, uint8_t channel, const ra8_ss
   };
   const ra8_err_t rx_err = ra8_dmac_start(dma->rx_dma_channel, &rx_cfg);
   if (rx_err == k_ra8_ok) {
-    s_ssie_runtime[channel].rx_dma_channel = dma->rx_dma_channel;
+    g_ssie_runtime[channel].rx_dma_channel = dma->rx_dma_channel;
   }
   return rx_err;
 }
@@ -171,7 +171,7 @@ RA8_INTERNAL
 static void internal_unwind_tx_dma(uint8_t channel, uint8_t tx_dma_channel)
 {
   (void)ra8_dmac_stop(tx_dma_channel);
-  s_ssie_runtime[channel].tx_dma_channel = k_ra8_ssie_dma_ch_unused;
+  g_ssie_runtime[channel].tx_dma_channel = k_ra8_ssie_dma_ch_unused;
 }
 
 /**
@@ -222,7 +222,7 @@ static ra8_err_t internal_attach_dma_dirs(volatile r_ssie_regs_t*   reg,
 ra8_err_t ra8_ssie_attach_dma(uint8_t channel, const ra8_ssie_dma_cfg_t* dma)
 {
   RA8_CHECK_NULL_PTR(dma, s_tag, "dma must not be nullptr");
-  volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);
+  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -235,7 +235,7 @@ ra8_err_t ra8_ssie_attach_dma(uint8_t channel, const ra8_ssie_dma_cfg_t* dma)
   const ra8_err_t d_err = internal_attach_dma_dirs(reg, channel, dma, want_tx, want_rx);
   RA8_RETURN_ON_ERROR(d_err, s_tag, "ssie_attach_dma: dir start"); /* GCOVR_EXCL_BR_LINE */
 
-  s_ssie_runtime[channel].dma_attached = true;
+  g_ssie_runtime[channel].dma_attached = true;
   return k_ra8_ok;
 }
 
@@ -244,7 +244,7 @@ ra8_err_t ra8_ssie_detach_dma(uint8_t channel)
   if ((uint16_t)channel >= k_ra8_ssie_channel_count) {
     return k_ra8_err_invalid_arg;
   }
-  ra8_ssie_runtime_t* rt = &s_ssie_runtime[channel];
+  ra8_ssie_runtime_t* rt = &g_ssie_runtime[channel];
   if (rt->tx_dma_channel < k_ra8_ssie_dma_max_ch) {
     (void)ra8_dmac_stop(rt->tx_dma_channel);
     rt->tx_dma_channel = k_ra8_ssie_dma_ch_unused;
@@ -266,7 +266,7 @@ ra8_err_t ra8_ssie_attach_dma_pair(uint8_t channel, uint8_t tx_dma_channel, uint
       rx_dma_channel >= (uint8_t)k_ra8_ssie_dma_max_ch) {
     return k_ra8_err_invalid_arg;
   }
-  ra8_ssie_runtime_t* rt = &s_ssie_runtime[channel];
+  ra8_ssie_runtime_t* rt = &g_ssie_runtime[channel];
   /* HUM Ch 46.4.1 "Operation in DMAC Transfer" p 3104:
    * the SSIE issues TX-empty / RX-full requests to the DMAC; the
    * driver only records which DMAC channels to free at detach. */
@@ -281,7 +281,7 @@ ra8_err_t ra8_ssie_attach_dma_pair(uint8_t channel, uint8_t tx_dma_channel, uint
 ra8_err_t ra8_ssie_send_iso(uint8_t channel, const uint32_t* buffer, uint16_t samples)
 {
   RA8_CHECK_NULL_PTR(buffer, s_tag, "buffer must not be nullptr");
-  volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);
+  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -310,7 +310,7 @@ ra8_ssie_recv_iso(uint8_t channel, uint32_t* buffer, uint16_t max_samples, uint1
 {
   RA8_CHECK_NULL_PTR(buffer, s_tag, "buffer must not be nullptr");
   RA8_CHECK_NULL_PTR(out_got, s_tag, "out_got must not be nullptr");
-  volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);
+  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }

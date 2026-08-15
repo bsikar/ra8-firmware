@@ -33,6 +33,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_cache.h"
 #include "ra8_check.h"
 #include "ra8_dma.h"
@@ -109,7 +110,7 @@ static ra8_spi_dma_rx_ctx_t s_spi_dma_rx_ctx[k_ra8_spi_b_channel_count];
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-static uint32_t internal_round_up_to_cache_line(uint32_t bytes)
+RA8_INTERNAL static uint32_t internal_round_up_to_cache_line(uint32_t bytes)
 {
   if (bytes == 0U) {
     return 0U;
@@ -145,7 +146,7 @@ static uint32_t internal_round_up_to_cache_line(uint32_t bytes)
  * @see ra8_spi_read_dma
  * @since 0.1.0
  */
-static void internal_spi_dma_rx_complete(void* ctx)
+RA8_INTERNAL static void internal_spi_dma_rx_complete(void* ctx)
 {
   ra8_spi_dma_rx_ctx_t* rxc = (ra8_spi_dma_rx_ctx_t*)ctx;
   if (rxc == nullptr) { /* GCOVR_EXCL_BR_LINE */

@@ -119,7 +119,7 @@ static const ra8_mstp_t s_mstp_table[k_ra8_sci_channel_count_val] = {
  * @brief Validate ``channel`` and return the register pointer.
  */
 RA8_HW_REGISTER_ACCESS
-static inline volatile r_sci_regs_t* internal_reg(uint8_t channel)
+RA8_INTERNAL static inline volatile r_sci_regs_t* internal_reg(uint8_t channel)
 {
   if (channel > k_ra8_sci_channel_max_index) {
     return nullptr;
@@ -152,7 +152,7 @@ static inline volatile r_sci_regs_t* internal_reg(uint8_t channel)
  * @note Not thread-safe; the caller must serialise concurrent access.
  * @since 0.1.0
  */
-static uint8_t internal_brr(uint32_t pclk_hz, uint32_t baud)
+RA8_INTERNAL static uint8_t internal_brr(uint32_t pclk_hz, uint32_t baud)
 {
   if ((baud == 0U) || (pclk_hz == 0U)) {
     return 0U;
@@ -186,7 +186,7 @@ static uint8_t internal_brr(uint32_t pclk_hz, uint32_t baud)
  * @note Not thread-safe; the caller must serialise concurrent access.
  * @since 0.1.0
  */
-static uint32_t internal_ccr1(const ra8_sci_cfg_t* cfg)
+RA8_INTERNAL static uint32_t internal_ccr1(const ra8_sci_cfg_t* cfg)
 {
   uint32_t ccr1 = (1U << k_ra8_sci_ccr1_bit_spb2dt) | (1U << k_ra8_sci_ccr1_bit_spb2io);
   if (cfg->parity != k_ra8_sci_parity_none) {
@@ -216,7 +216,7 @@ static uint32_t internal_ccr1(const ra8_sci_cfg_t* cfg)
  * @note Not thread-safe; the caller must serialise concurrent access.
  * @since 0.1.0
  */
-static uint32_t internal_ccr3(const ra8_sci_cfg_t* cfg)
+RA8_INTERNAL static uint32_t internal_ccr3(const ra8_sci_cfg_t* cfg)
 {
   /* LSBF = 1 (LSB-first) is the UART standard wire order. SCI_B's
    * reset state is MSB-first; without this bit the host receives
@@ -271,7 +271,7 @@ static uint32_t internal_ccr3(const ra8_sci_cfg_t* cfg)
  * @note Not thread-safe; the caller must serialise concurrent access.
  * @since 0.1.0
  */
-static void internal_clear_csr_flags(volatile r_sci_regs_t* reg)
+RA8_INTERNAL static void internal_clear_csr_flags(volatile r_sci_regs_t* reg)
 {
   /* HUM Ch 38.2.24 "CFCLR : Common Flag Clear Register", p 2238 --
    * one write clears ERS / DCMF / DPER / DFER / ORER / MFF / PER /
@@ -309,7 +309,7 @@ static void internal_clear_csr_flags(volatile r_sci_regs_t* reg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_wait_tx_end(volatile r_sci_regs_t* reg)
+RA8_INTERNAL static ra8_err_t internal_wait_tx_end(volatile r_sci_regs_t* reg)
 {
   /* HUM Ch 38.2.17 "CSR : Common Status Register", p 2225 -- TEND (bit 30) goes
    * high when both the data register and the shift register are empty. The
@@ -337,7 +337,7 @@ static ra8_err_t internal_wait_tx_end(volatile r_sci_regs_t* reg)
  * @note Not thread-safe; the caller must serialise concurrent access.
  * @since 0.1.0
  */
-static uint32_t internal_ccr2(const ra8_sci_cfg_t* cfg)
+RA8_INTERNAL static uint32_t internal_ccr2(const ra8_sci_cfg_t* cfg)
 {
   const uint8_t brr  = internal_brr(cfg->pclk_hz, cfg->baud);
   uint32_t      ccr2 = 0U;
@@ -373,7 +373,8 @@ static uint32_t internal_ccr2(const ra8_sci_cfg_t* cfg)
  * @note Not thread-safe; called once during init under IRQ-masked context.
  * @since 0.1.0
  */
-static void internal_program_ccr_bank(volatile r_sci_regs_t* reg, const ra8_sci_cfg_t* cfg)
+RA8_INTERNAL static void internal_program_ccr_bank(volatile r_sci_regs_t* reg,
+                                                   const ra8_sci_cfg_t*   cfg)
 {
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- disable
    * TX/RX/IE bits before reconfiguring CCR1..CCR4 and FCR. */

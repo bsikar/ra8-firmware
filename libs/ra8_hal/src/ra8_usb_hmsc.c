@@ -223,7 +223,7 @@ typedef enum : uint8_t {
 /* Singleton shadow state. Shared with ra8_usb_hmsc_enum.c (the polled
  * enumeration ladder) through ra8_hal_internal.h: the type and the extern
  * declaration live there, the single definition lives here. */
-ra8_usb_hmsc_state_t s_usb_hmsc_state = {};
+ra8_usb_hmsc_state_t g_usb_hmsc_state = {};
 
 /* =============================================================================
  * Internal helpers
@@ -284,8 +284,8 @@ static uint16_t internal_bulk_max_packet(ra8_usb_speed_t speed)
 RA8_INTERNAL
 static uint32_t internal_next_tag(void)
 {
-  const uint32_t tag = s_usb_hmsc_state.next_cbw_tag;
-  ++s_usb_hmsc_state.next_cbw_tag;
+  const uint32_t tag = g_usb_hmsc_state.next_cbw_tag;
+  ++g_usb_hmsc_state.next_cbw_tag;
   return tag;
 }
 
@@ -474,13 +474,13 @@ ra8_err_t ra8_usb_hmsc_init(ra8_usb_speed_t speed)
     /* GCOVR_EXCL_STOP */
   }
 
-  s_usb_hmsc_state.speed        = speed;
-  s_usb_hmsc_state.attached     = false;
-  s_usb_hmsc_state.attach_cb    = nullptr;
-  s_usb_hmsc_state.attach_ctx   = nullptr;
-  s_usb_hmsc_state.device       = (ra8_usb_hmsc_device_t){};
-  s_usb_hmsc_state.next_cbw_tag = k_ra8_hmsc_initial_tag;
-  s_usb_hmsc_state.initialized  = true;
+  g_usb_hmsc_state.speed        = speed;
+  g_usb_hmsc_state.attached     = false;
+  g_usb_hmsc_state.attach_cb    = nullptr;
+  g_usb_hmsc_state.attach_ctx   = nullptr;
+  g_usb_hmsc_state.device       = (ra8_usb_hmsc_device_t){};
+  g_usb_hmsc_state.next_cbw_tag = k_ra8_hmsc_initial_tag;
+  g_usb_hmsc_state.initialized  = true;
 
   ra8_log_info_val(s_tag, "host-MSC ready", (uint32_t)speed);
   return k_ra8_ok;
@@ -488,16 +488,16 @@ ra8_err_t ra8_usb_hmsc_init(ra8_usb_speed_t speed)
 
 ra8_err_t ra8_usb_hmsc_close(void)
 {
-  if (!s_usb_hmsc_state.initialized) {
+  if (!g_usb_hmsc_state.initialized) {
     return k_ra8_err_invalid_state;
   }
   /* Bus power down: drop UACT before tearing the controller. */
-  (void)ra8_usb_host_set_uact(s_usb_hmsc_state.speed, false);
-  const ra8_err_t err          = ra8_usb_host_deinit(s_usb_hmsc_state.speed);
-  s_usb_hmsc_state.initialized = false;
-  s_usb_hmsc_state.attached    = false;
-  s_usb_hmsc_state.attach_cb   = nullptr;
-  s_usb_hmsc_state.attach_ctx  = nullptr;
+  (void)ra8_usb_host_set_uact(g_usb_hmsc_state.speed, false);
+  const ra8_err_t err          = ra8_usb_host_deinit(g_usb_hmsc_state.speed);
+  g_usb_hmsc_state.initialized = false;
+  g_usb_hmsc_state.attached    = false;
+  g_usb_hmsc_state.attach_cb   = nullptr;
+  g_usb_hmsc_state.attach_ctx  = nullptr;
   return err;
 }
 
@@ -508,11 +508,11 @@ ra8_err_t ra8_usb_hmsc_close(void)
 
 ra8_err_t ra8_usb_hmsc_attach_callback(ra8_usb_hmsc_attach_fn_t on_attach, void* ctx)
 {
-  if (!s_usb_hmsc_state.initialized) {
+  if (!g_usb_hmsc_state.initialized) {
     return k_ra8_err_invalid_state;
   }
-  s_usb_hmsc_state.attach_cb  = on_attach;
-  s_usb_hmsc_state.attach_ctx = ctx;
+  g_usb_hmsc_state.attach_cb  = on_attach;
+  g_usb_hmsc_state.attach_ctx = ctx;
   return k_ra8_ok;
 }
 
@@ -525,10 +525,10 @@ ra8_err_t ra8_usb_hmsc_attach_callback(ra8_usb_hmsc_attach_fn_t on_attach, void*
 RA8_INTERNAL
 static ra8_err_t internal_check_ready(uint8_t target_lun)
 {
-  if (!s_usb_hmsc_state.initialized) {
+  if (!g_usb_hmsc_state.initialized) {
     return k_ra8_err_invalid_state;
   }
-  if (!s_usb_hmsc_state.attached) {
+  if (!g_usb_hmsc_state.attached) {
     return k_ra8_err_invalid_state;
   }
   if (target_lun > k_ra8_hmsc_max_lun) {
@@ -557,7 +557,7 @@ static ra8_err_t internal_check_ready(uint8_t target_lun)
 RA8_INTERNAL
 static ra8_err_t internal_send_cbw(const uint8_t* cbw)
 {
-  return ra8_usb_host_bulk_out(s_usb_hmsc_state.speed,
+  return ra8_usb_host_bulk_out(g_usb_hmsc_state.speed,
                                k_ra8_hmsc_pipe_bulk_out,
                                cbw,
                                k_ra8_hmsc_cbw_len);
@@ -584,7 +584,7 @@ RA8_INTERNAL
 static ra8_err_t internal_recv_bytes(uint8_t* dst, uint16_t* inout_len)
 {
   const uint16_t cap = *inout_len;
-  return ra8_usb_host_bulk_in(s_usb_hmsc_state.speed, k_ra8_hmsc_pipe_bulk_in, dst, cap, inout_len);
+  return ra8_usb_host_bulk_in(g_usb_hmsc_state.speed, k_ra8_hmsc_pipe_bulk_in, dst, cap, inout_len);
 }
 /* GCOVR_EXCL_STOP */
 
@@ -744,9 +744,9 @@ static ra8_err_t internal_run_data_out(uint8_t        target_lun,
    * and the trailing CSW read run only after the CBW push
    * (internal_issue_cbw above) succeeds; under the fake that push
    * always times out, so this run always returns on the cbw_err leg above. */
-  uint16_t mps = s_usb_hmsc_state.device.bulk_out_max_packet;
+  uint16_t mps = g_usb_hmsc_state.device.bulk_out_max_packet;
   if (mps == 0U) {
-    mps = internal_bulk_max_packet(s_usb_hmsc_state.speed);
+    mps = internal_bulk_max_packet(g_usb_hmsc_state.speed);
   }
   uint16_t offset = 0U;
   while (offset < push_len) {
@@ -754,7 +754,7 @@ static ra8_err_t internal_run_data_out(uint8_t        target_lun,
     if (chunk > mps) {
       chunk = mps;
     }
-    const ra8_err_t werr = ra8_usb_host_bulk_out(s_usb_hmsc_state.speed,
+    const ra8_err_t werr = ra8_usb_host_bulk_out(g_usb_hmsc_state.speed,
                                                  k_ra8_hmsc_pipe_bulk_out,
                                                  &in_buf[offset],
                                                  chunk);

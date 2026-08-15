@@ -10,7 +10,7 @@
  * registers (PPB window 0xE000Exxx). The by-address operations walk the cache
  * lines spanning a byte range, writing each line's address to the relevant
  * maintenance register (DCCMVAC / DCIMVAC / DCCIMVAC) with the line size read at
- * run time from CTR. ::ra8_cache_setway_all walks the geometry from CCSIDR and
+ * run time from CTR. ::internal_ra8_cache_setway_all walks the geometry from CCSIDR and
  * applies a set/way op to every {set,way} -- DCISW for the cold invalidate
  * (::ra8_cache_dcache_invalidate_all / _enable) and DCCISW for the clean+invalidate
  * used by ::ra8_cache_dcache_disable -- mirroring the CMSIS `SCB_*DCache` idioms.
@@ -32,6 +32,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_intrinsics.h"
@@ -88,7 +89,7 @@ typedef enum : uint32_t {
  * @note Arm v8-M ARM B11 "System Control Block".
  * @since 0.1.0
  */
-static inline volatile uint32_t* ra8_cache_reg(ra8_cache_reg_addr_t addr)
+RA8_INTERNAL static inline volatile uint32_t* internal_ra8_cache_reg(ra8_cache_reg_addr_t addr)
 {
   return (volatile uint32_t*)addr;
 }
@@ -96,7 +97,7 @@ static inline volatile uint32_t* ra8_cache_reg(ra8_cache_reg_addr_t addr)
 uint32_t ra8_cache_dcache_line_bytes(void)
 {
   /* Arm v8-M ARM: CTR.DminLine = log2 of the smallest D-cache line in words. */
-  const uint32_t ctr = *ra8_cache_reg(k_ra8_cache_ctr);
+  const uint32_t ctr = *internal_ra8_cache_reg(k_ra8_cache_ctr);
   const uint32_t dmin =
     (ctr >> (uint32_t)k_ra8_cache_ctr_dmin_shift) & (uint32_t)k_ra8_cache_ctr_dmin_mask;
   return (uint32_t)k_ra8_cache_word_bytes << dmin;
@@ -125,8 +126,8 @@ uint32_t ra8_cache_dcache_line_bytes(void)
  * @note Pure function; trivially thread-safe.
  * @since 0.1.0
  */
-static uint32_t
-ra8_cache_span_lines(uintptr_t addr, uint32_t size, uint32_t line, uintptr_t* out_start)
+RA8_INTERNAL static uint32_t
+internal_ra8_cache_span_lines(uintptr_t addr, uint32_t size, uint32_t line, uintptr_t* out_start)
 {
   const uintptr_t mask  = (uintptr_t)line - 1U;
   const uintptr_t start = addr & ~mask;
@@ -157,7 +158,8 @@ ra8_cache_span_lines(uintptr_t addr, uint32_t size, uint32_t line, uintptr_t* ou
  * @note Not interrupt-safe against concurrent maintenance on the same range.
  * @since 0.1.0
  */
-static ra8_err_t ra8_cache_maintain_range(const void* addr, uint32_t size, ra8_cache_reg_addr_t reg)
+RA8_INTERNAL static ra8_err_t
+internal_ra8_cache_maintain_range(const void* addr, uint32_t size, ra8_cache_reg_addr_t reg)
 {
   RA8_CHECK_NULL_PTR(addr, s_tag, "maintain: addr");
   if (size == 0U) {
@@ -165,10 +167,10 @@ static ra8_err_t ra8_cache_maintain_range(const void* addr, uint32_t size, ra8_c
   }
   const uint32_t line  = ra8_cache_dcache_line_bytes();
   uintptr_t      start = 0U;
-  const uint32_t lines = ra8_cache_span_lines((uintptr_t)addr, size, line, &start);
+  const uint32_t lines = internal_ra8_cache_span_lines((uintptr_t)addr, size, line, &start);
   ra8_hw_dsb();
   for (uint32_t i = 0U; i < lines; ++i) {
-    *ra8_cache_reg(reg) = (uint32_t)(start + ((uintptr_t)i * (uintptr_t)line));
+    *internal_ra8_cache_reg(reg) = (uint32_t)(start + ((uintptr_t)i * (uintptr_t)line));
   }
   ra8_hw_dsb();
   ra8_hw_isb();
@@ -177,17 +179,17 @@ static ra8_err_t ra8_cache_maintain_range(const void* addr, uint32_t size, ra8_c
 
 ra8_err_t ra8_cache_dcache_clean_by_addr(const void* addr, uint32_t size)
 {
-  return ra8_cache_maintain_range(addr, size, k_ra8_cache_dccmvac);
+  return internal_ra8_cache_maintain_range(addr, size, k_ra8_cache_dccmvac);
 }
 
 ra8_err_t ra8_cache_dcache_invalidate_by_addr(void* addr, uint32_t size)
 {
-  return ra8_cache_maintain_range(addr, size, k_ra8_cache_dcimvac);
+  return internal_ra8_cache_maintain_range(addr, size, k_ra8_cache_dcimvac);
 }
 
 ra8_err_t ra8_cache_dcache_clean_invalidate_by_addr(const void* addr, uint32_t size)
 {
-  return ra8_cache_maintain_range(addr, size, k_ra8_cache_dccimvac);
+  return internal_ra8_cache_maintain_range(addr, size, k_ra8_cache_dccimvac);
 }
 
 /**
@@ -214,13 +216,13 @@ ra8_err_t ra8_cache_dcache_clean_invalidate_by_addr(const void* addr, uint32_t s
  * @note Not thread-safe; boot / single-threaded use only.
  * @since 0.1.0
  */
-static void ra8_cache_setway_all(ra8_cache_reg_addr_t op_reg)
+RA8_INTERNAL static void internal_ra8_cache_setway_all(ra8_cache_reg_addr_t op_reg)
 {
   /* Arm v8-M ARM: select L1 data cache, read its geometry, then apply the
    * set/way op to every set/way. CSSELR=0 selects level 0, data. */
-  *ra8_cache_reg(k_ra8_cache_csselr) = 0U;
+  *internal_ra8_cache_reg(k_ra8_cache_csselr) = 0U;
   ra8_hw_dsb();
-  const uint32_t ccsidr = *ra8_cache_reg(k_ra8_cache_ccsidr);
+  const uint32_t ccsidr = *internal_ra8_cache_reg(k_ra8_cache_ccsidr);
   if ((ccsidr == 0U) || (ccsidr == UINT32_MAX)) {
     return; /* geometry unavailable -- nothing safe to touch */
   }
@@ -230,8 +232,8 @@ static void ra8_cache_setway_all(ra8_cache_reg_addr_t op_reg)
     uint32_t ways =
       (ccsidr >> (uint32_t)k_ra8_cache_ccsidr_assoc_sh) & (uint32_t)k_ra8_cache_ccsidr_assoc_mk;
     do {
-      *ra8_cache_reg(op_reg) = (sets << (uint32_t)k_ra8_cache_dcisw_set_shift) |
-                               (ways << (uint32_t)k_ra8_cache_dcisw_way_shift);
+      *internal_ra8_cache_reg(op_reg) = (sets << (uint32_t)k_ra8_cache_dcisw_set_shift) |
+                                        (ways << (uint32_t)k_ra8_cache_dcisw_way_shift);
     } while (ways-- != 0U);
   } while (sets-- != 0U);
   ra8_hw_dsb();
@@ -240,7 +242,7 @@ static void ra8_cache_setway_all(ra8_cache_reg_addr_t op_reg)
 
 void ra8_cache_dcache_invalidate_all(void)
 {
-  ra8_cache_setway_all(k_ra8_cache_dcisw);
+  internal_ra8_cache_setway_all(k_ra8_cache_dcisw);
 }
 
 void ra8_cache_icache_invalidate_all(void)
@@ -250,7 +252,7 @@ void ra8_cache_icache_invalidate_all(void)
    * pipeline refetches before execution continues. */
   ra8_hw_dsb();
   ra8_hw_isb();
-  *ra8_cache_reg(k_ra8_cache_iciallu) = 0U;
+  *internal_ra8_cache_reg(k_ra8_cache_iciallu) = 0U;
   ra8_hw_dsb();
   ra8_hw_isb();
 }
@@ -260,9 +262,9 @@ void ra8_cache_icache_enable(void)
   ra8_cache_icache_invalidate_all();
   /* Arm v8-M ARM: set SCB.CCR.IC (bit 17) to enable the L1 instruction cache.
    * Read-modify-write preserves the other CCR controls (DIV_0_TRP, BP, ...). */
-  uint32_t ccr = *ra8_cache_reg(k_ra8_cache_ccr);
+  uint32_t ccr = *internal_ra8_cache_reg(k_ra8_cache_ccr);
   ccr |= (uint32_t)k_ra8_cache_ccr_ic_bit;
-  *ra8_cache_reg(k_ra8_cache_ccr) = ccr;
+  *internal_ra8_cache_reg(k_ra8_cache_ccr) = ccr;
   ra8_hw_dsb();
   ra8_hw_isb();
 }
@@ -273,10 +275,10 @@ void ra8_cache_icache_disable(void)
    * survives a later re-enable. The I-cache holds no dirty state. */
   ra8_hw_dsb();
   ra8_hw_isb();
-  uint32_t ccr = *ra8_cache_reg(k_ra8_cache_ccr);
+  uint32_t ccr = *internal_ra8_cache_reg(k_ra8_cache_ccr);
   ccr &= ~(uint32_t)k_ra8_cache_ccr_ic_bit;
-  *ra8_cache_reg(k_ra8_cache_ccr)     = ccr;
-  *ra8_cache_reg(k_ra8_cache_iciallu) = 0U;
+  *internal_ra8_cache_reg(k_ra8_cache_ccr)     = ccr;
+  *internal_ra8_cache_reg(k_ra8_cache_iciallu) = 0U;
   ra8_hw_dsb();
   ra8_hw_isb();
 }
@@ -287,9 +289,9 @@ void ra8_cache_dcache_enable(void)
    * line is treated as valid once the cache is on, THEN set CCR.DC. */
   ra8_cache_dcache_invalidate_all();
   /* Arm v8-M ARM: set SCB.CCR.DC (bit 16) to enable the L1 data cache. */
-  uint32_t ccr = *ra8_cache_reg(k_ra8_cache_ccr);
+  uint32_t ccr = *internal_ra8_cache_reg(k_ra8_cache_ccr);
   ccr |= (uint32_t)k_ra8_cache_ccr_dc_bit;
-  *ra8_cache_reg(k_ra8_cache_ccr) = ccr;
+  *internal_ra8_cache_reg(k_ra8_cache_ccr) = ccr;
   ra8_hw_dsb();
   ra8_hw_isb();
 }
@@ -299,10 +301,10 @@ void ra8_cache_dcache_disable(void)
   /* Arm v8-M ARM: clear SCB.CCR.DC (bit 16) to stop new allocations, then clean
    * AND invalidate every set/way via DCCISW so any dirty line is written back to
    * memory as the cache goes cold -- disable must not discard dirty data. */
-  uint32_t ccr = *ra8_cache_reg(k_ra8_cache_ccr);
+  uint32_t ccr = *internal_ra8_cache_reg(k_ra8_cache_ccr);
   ccr &= ~(uint32_t)k_ra8_cache_ccr_dc_bit;
-  *ra8_cache_reg(k_ra8_cache_ccr) = ccr;
-  ra8_cache_setway_all(k_ra8_cache_dccisw);
+  *internal_ra8_cache_reg(k_ra8_cache_ccr) = ccr;
+  internal_ra8_cache_setway_all(k_ra8_cache_dccisw);
 }
 
 void ra8_cache_enable(void)

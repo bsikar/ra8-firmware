@@ -24,7 +24,7 @@
  * The manual-command engine and the JEDEC NOR-flash read / program /
  * erase / status / id operations live in the sibling translation unit
  * ``ra8_xspi_flash.c``; the two manual-command primitives it exports
- * (``ra8_xspi_kick_command`` / ``ra8_xspi_issue_simple_opcode``) are
+ * (``priv_ra8_xspi_kick_command`` / ``priv_ra8_xspi_issue_simple_opcode``) are
  * declared in ``ra8_xspi_internal.h`` and reused here by the
  * suspend / resume / software-reset paths.
  *
@@ -224,8 +224,8 @@ static ra8_err_t internal_wait_octacksrdy(uint8_t expected)
 RA8_INTERNAL
 static ra8_err_t internal_xspi_clock_block_init(void)
 {
-  static bool s_xspi_clock_inited = false;
-  if (s_xspi_clock_inited) {
+  static bool local_xspi_clock_inited = false;
+  if (local_xspi_clock_inited) {
     return k_ra8_ok;
   }
   ra8_err_t err = k_ra8_ok;
@@ -258,7 +258,7 @@ static ra8_err_t internal_xspi_clock_block_init(void)
     }
   }
   if (err == k_ra8_ok) {
-    s_xspi_clock_inited = true;
+    local_xspi_clock_inited = true;
     ra8_log_info(s_tag, "octa block clock stable");
   }
   return err;
@@ -682,14 +682,14 @@ ra8_err_t ra8_xspi_suspend(uint8_t instance)
 {
   volatile r_xspi_regs_t* reg = ra8_xspi(instance);
   RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-  return ra8_xspi_issue_simple_opcode(reg, k_ra8_spi_flash_op_suspend);
+  return priv_ra8_xspi_issue_simple_opcode(reg, k_ra8_spi_flash_op_suspend);
 }
 
 ra8_err_t ra8_xspi_resume(uint8_t instance)
 {
   volatile r_xspi_regs_t* reg = ra8_xspi(instance);
   RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-  return ra8_xspi_issue_simple_opcode(reg, k_ra8_spi_flash_op_resume);
+  return priv_ra8_xspi_issue_simple_opcode(reg, k_ra8_spi_flash_op_resume);
 }
 
 /**
@@ -748,7 +748,7 @@ internal_issue_reset_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode, uint8_t
   reg->CDBUF[k_ra8_xspi_cdbuf_idx_addr]  = 0U;
   reg->CDBUF[k_ra8_xspi_cdbuf_idx_data0] = 0U;
   reg->CDBUF[k_ra8_xspi_cdbuf_idx_data1] = 0U;
-  return ra8_xspi_kick_command(reg);
+  return priv_ra8_xspi_kick_command(reg);
 }
 
 ra8_err_t ra8_xspi_software_reset(uint8_t instance, uint8_t cmd_bytes)

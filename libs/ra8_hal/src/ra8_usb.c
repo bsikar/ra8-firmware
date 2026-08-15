@@ -10,7 +10,7 @@
  * (USBFS @ 0x40250000 -- HUM Ch 36, USBHS @ 0x40351000 -- HUM Ch 37).
  * The two instances share the FSP "USB2_B" register layout so this
  * file multiplexes them via a `ra8_usb_speed_t` argument and an
- * `internal_pick(speed)` helper. No FSP, CherryUSB, or TinyUSB
+ * `priv_pick(speed)` helper. No FSP, CherryUSB, or TinyUSB
  * source ships in this tree -- this file is the native peripheral
  * driver, modelled on FSP's `r_usb_pdriver.c` /
  * `r_usb_preg_access.c` / `r_usb_preg_abs.c` (device) and
@@ -107,7 +107,7 @@ typedef enum : uint32_t {
 /**
  * @brief Resolve the per-speed register pointer.
  */
-volatile r_usb_regs_t* internal_pick(ra8_usb_speed_t speed)
+volatile r_usb_regs_t* priv_pick(ra8_usb_speed_t speed)
 {
   if (speed == k_ra8_usb_speed_fs) {
     return ra8_usb_fs();
@@ -132,7 +132,7 @@ volatile r_usb_regs_t* internal_pick(ra8_usb_speed_t speed)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-ra8_mstp_t internal_mstp(ra8_usb_speed_t speed)
+ra8_mstp_t priv_mstp(ra8_usb_speed_t speed)
 {
   return (speed == k_ra8_usb_speed_hs) ? k_ra8_mstp_usbhs : k_ra8_mstp_usbfs;
 }
@@ -151,7 +151,7 @@ ra8_mstp_t internal_mstp(ra8_usb_speed_t speed)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-void internal_rmw16(volatile uint16_t* reg, uint16_t set_mask, uint16_t clr_mask)
+void priv_rmw16(volatile uint16_t* reg, uint16_t set_mask, uint16_t clr_mask)
 {
   const uint16_t old     = *reg;
   uint16_t       new_val = (uint16_t)(old & (uint16_t)~clr_mask);
@@ -176,7 +176,7 @@ void internal_rmw16(volatile uint16_t* reg, uint16_t set_mask, uint16_t clr_mask
  * @note Pure function.
  * @since 0.1.0
  */
-bool internal_is_hs(volatile r_usb_regs_t* reg)
+bool priv_is_hs(volatile r_usb_regs_t* reg)
 {
   return reg == ra8_usb_hs();
 }
@@ -196,7 +196,7 @@ bool internal_is_hs(volatile r_usb_regs_t* reg)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-void internal_select_cfifo(volatile r_usb_regs_t* reg, uint16_t pipe_num, bool is_in_dir)
+void priv_select_cfifo(volatile r_usb_regs_t* reg, uint16_t pipe_num, bool is_in_dir)
 {
   /* HUM Ch 36.2.7 / 37.2.8 CFIFOSEL p 1976 / 2071. The USBHS module
    * (IP1) requires MBW=32 -- FSP wires `USB1_CFIFO_MBW = USB_MBW_32`
@@ -206,7 +206,7 @@ void internal_select_cfifo(volatile r_usb_regs_t* reg, uint16_t pipe_num, bool i
    * unending NAKs / "device descriptor read/N, error -110". The
    * USBFS module (IP0) keeps MBW=16. */
   uint16_t sel = (uint16_t)(pipe_num & k_ra8_fifosel_curpipe);
-  if (internal_is_hs(reg)) {
+  if (priv_is_hs(reg)) {
     sel = (uint16_t)(sel | k_ra8_fifosel_mbw_32);
   } else {
     sel = (uint16_t)(sel | k_ra8_fifosel_mbw_16);
@@ -248,7 +248,7 @@ void internal_select_cfifo(volatile r_usb_regs_t* reg, uint16_t pipe_num, bool i
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-ra8_err_t internal_wait_frdy(volatile r_usb_regs_t* reg)
+ra8_err_t priv_wait_frdy(volatile r_usb_regs_t* reg)
 {
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979.
    * Loop bound is large (~10 ms ceiling at 1 GHz) because the DCP
@@ -285,10 +285,10 @@ ra8_err_t internal_wait_frdy(volatile r_usb_regs_t* reg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-void internal_dcp_pid(volatile r_usb_regs_t* reg, ra8_usb_pid_t pid)
+void priv_dcp_pid(volatile r_usb_regs_t* reg, ra8_usb_pid_t pid)
 {
   /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1999 */
-  internal_rmw16(&reg->DCPCTR, pid, k_ra8_pid_mask);
+  priv_rmw16(&reg->DCPCTR, pid, k_ra8_pid_mask);
 }
 
 /**
@@ -305,11 +305,11 @@ void internal_dcp_pid(volatile r_usb_regs_t* reg, ra8_usb_pid_t pid)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-void internal_pipe_pid(volatile r_usb_regs_t* reg, uint8_t pipe_num, ra8_usb_pid_t pid)
+void priv_pipe_pid(volatile r_usb_regs_t* reg, uint8_t pipe_num, ra8_usb_pid_t pid)
 {
   /* HUM Ch 36.2.27 "PIPEnCTR : PIPE n Control Register", p 2005 */
   const uint8_t idx = (uint8_t)(pipe_num - 1U);
-  internal_rmw16(&reg->PIPECTR[idx], pid, k_ra8_pid_mask);
+  priv_rmw16(&reg->PIPECTR[idx], pid, k_ra8_pid_mask);
 }
 
 /* =============================================================================
@@ -350,7 +350,7 @@ void internal_pipe_pid(volatile r_usb_regs_t* reg, uint8_t pipe_num, ra8_usb_pid
  * @note Pure / thread-safe.
  * @since 0.1.0
  */
-uint16_t internal_pipebuf_word(uint8_t pipe_num, uint16_t max_packet)
+uint16_t priv_pipebuf_word(uint8_t pipe_num, uint16_t max_packet)
 {
   const uint16_t mps_blocks = (uint16_t)(((uint32_t)max_packet + (k_ra8_pipebuf_block_bytes - 1U)) /
                                          k_ra8_pipebuf_block_bytes);
@@ -398,7 +398,7 @@ uint16_t internal_pipebuf_word(uint8_t pipe_num, uint16_t max_packet)
  * @since 0.1.0
  */
 uint16_t
-internal_pipecfg_word(uint8_t ep_addr, ra8_usb_ep_dir_t dir, ra8_usb_ep_type_t type, bool dblb_in)
+priv_pipecfg_word(uint8_t ep_addr, ra8_usb_ep_dir_t dir, ra8_usb_ep_type_t type, bool dblb_in)
 {
   uint16_t cfg = (uint16_t)((uint16_t)ep_addr & k_ra8_pipecfg_epnum_mask);
   if (dir == k_ra8_usb_ep_dir_in) {
@@ -444,13 +444,13 @@ internal_pipecfg_word(uint8_t ep_addr, ra8_usb_ep_dir_t dir, ra8_usb_ep_type_t t
  * @note Not thread-safe.
  * @since 0.1.0
  */
-void internal_pipe_quiesce(volatile r_usb_regs_t* reg, uint8_t pipe_num)
+void priv_pipe_quiesce(volatile r_usb_regs_t* reg, uint8_t pipe_num)
 {
   const uint16_t pipe_bit = (uint16_t)(1U << pipe_num);
   reg->BRDYENB            = (uint16_t)(reg->BRDYENB & (uint16_t)~pipe_bit);
   reg->NRDYENB            = (uint16_t)(reg->NRDYENB & (uint16_t)~pipe_bit);
   reg->BEMPENB            = (uint16_t)(reg->BEMPENB & (uint16_t)~pipe_bit);
-  internal_pipe_pid(reg, pipe_num, k_ra8_pid_nak);
+  priv_pipe_pid(reg, pipe_num, k_ra8_pid_nak);
 }
 
 /* =============================================================================
@@ -580,7 +580,7 @@ internal_fifo_write_hs_head(volatile r_usb_regs_t* reg, const uint8_t* data, uin
  * @param[in] reg USB instance register block.
  * @param[in] data Source byte pointer (may be NULL when len == 0).
  * @param[in] len Number of bytes to push.
- * @pre Caller selected DCP / pipe with internal_select_cfifo and
+ * @pre Caller selected DCP / pipe with priv_select_cfifo and
  *      observed FRDY=1.
  * @pre data != NULL when len > 0.
  * @post DTLN advanced by len bytes.
@@ -588,11 +588,11 @@ internal_fifo_write_hs_head(volatile r_usb_regs_t* reg, const uint8_t* data, uin
  * @note Not thread-safe.
  * @since 0.1.0
  */
-void internal_fifo_write(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_t len)
+void priv_fifo_write(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_t len)
 {
   /* HUM Ch 36.2.5 / 37.2.7 CFIFO p 1973 / 2070. CFIFO access width
    * must match CFIFOSEL.MBW. USBHS = 32-bit, USBFS = 16-bit. */
-  if (internal_is_hs(reg)) {
+  if (priv_is_hs(reg)) {
     internal_fifo_write_hs_head(reg, data, len);
     internal_fifo_write_hs_tail(reg, data, len);
     return;
@@ -700,17 +700,17 @@ static void internal_fifo_read_hs_tail(volatile r_usb_regs_t* reg, uint8_t* data
  * @param[in]  reg  USB instance register block.
  * @param[out] data Destination byte pointer (may be NULL when len == 0).
  * @param[in]  len  Number of bytes to drain.
- * @pre Caller selected DCP / pipe with internal_select_cfifo and FRDY=1.
+ * @pre Caller selected DCP / pipe with priv_select_cfifo and FRDY=1.
  * @pre data != NULL when len > 0.
  * @post DTLN advanced by len bytes.
  * @post data[0..len-1] holds the received payload bytes.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-void internal_fifo_read(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len)
+void priv_fifo_read(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len)
 {
   /* HUM Ch 37.2.7 "CFIFO : CFIFO Port Register" p 2070 */
-  if (internal_is_hs(reg)) {
+  if (priv_is_hs(reg)) {
     internal_fifo_read_hs_head(reg, data, len);
     internal_fifo_read_hs_tail(reg, data, len);
     return;
@@ -756,7 +756,7 @@ void internal_fifo_read(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len)
  * @retval k_ra8_ok            Chunk queued; BVAL pulsed.
  * @retval k_ra8_err_timeout   FRDY never asserted within the bound.
  *
- * @pre ``reg`` was returned by ``internal_pick()`` and is non-NULL.
+ * @pre ``reg`` was returned by ``priv_pick()`` and is non-NULL.
  * @pre CFIFO is already selected on DCP (CURPIPE=0) in IN direction.
  * @post On success, the controller buffer holds the new chunk and BVAL
  *       has been pulsed.
@@ -765,11 +765,11 @@ void internal_fifo_read(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len)
  * @note Not thread-safe; the parent function holds the DCP lock.
  * @since 0.1.0
  */
-ra8_err_t internal_dcp_push_chunk(volatile r_usb_regs_t* reg, const uint8_t* p, uint16_t n)
+ra8_err_t priv_dcp_push_chunk(volatile r_usb_regs_t* reg, const uint8_t* p, uint16_t n)
 {
-  const ra8_err_t ready = internal_wait_frdy(reg);
+  const ra8_err_t ready = priv_wait_frdy(reg);
   RA8_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (chunk)");
-  internal_fifo_write(reg, p, n);
+  priv_fifo_write(reg, p, n);
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979.
    *
    * 2026-05-20 attempt: FSP r_usb_plibusbip.c only sets BVAL on the

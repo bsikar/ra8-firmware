@@ -30,6 +30,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_fake_mmio.h"
@@ -77,7 +78,7 @@ typedef enum : uint32_t {
  * @var s_test_isr_count
  * @brief Number of times the test stub callback has fired.
  *
- * @warning Reset by ``prep`` before every test that uses it.
+ * @warning Reset by ``internal_prep`` before every test that uses it.
  * @since 0.1.0
  */
 static uint32_t s_test_isr_count;
@@ -95,9 +96,8 @@ static uint32_t s_test_isr_last;
  *
  * @param[in] ctx Caller context (unused).
  * @param[in] isr Snapshot from ``ra8_rsip_dispatch``.
- * @since 0.1.0
- */
-static void stub_rsip_cb(void* ctx, uint32_t isr)
+ * @since 0.1.0 @details Implements the stub rsip cb fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_stub_rsip_cb(void* ctx, uint32_t isr)
 {
   (void)ctx;
   ++s_test_isr_count;
@@ -106,9 +106,8 @@ static void stub_rsip_cb(void* ctx, uint32_t isr)
 
 /**
  * @brief Reset the world before each test.
- * @since 0.1.0
- */
-static void prep(void)
+ * @since 0.1.0 @details Implements the prep fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   ra8_fake_mmio_reset();
@@ -123,12 +122,11 @@ static void prep(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_init_happy(void)
+  * code under test that this case touches) @details Executes the init happy scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_happy(void)
 {
   TEST_BEGIN("rsip init happy");
-  prep();
+  internal_prep();
 
   const ra8_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
@@ -151,13 +149,12 @@ static void test_init_happy(void)
   *
   * @par MC/DC:
   * (no compound decisions in this test -- arms the ra8_fake_mmio wait
-  * seam so `internal_wait_bit` runs to its budget and `internal_run_bist`
-  * takes its single-condition failure branch; no `&&` or `||` involved)
- */
-static void test_init_bist_timeout(void)
+  * seam so `priv_wait_bit` runs to its budget and `internal_run_bist`
+  * takes its single-condition failure branch; no `&&` or `||` involved) @details Executes the init bist timeout scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_bist_timeout(void)
 {
   TEST_BEGIN("rsip init bist timeout");
-  prep();
+  internal_prep();
 
   /* Arm the exact register internal_run_bist polls: the wait now runs
    * its full budget and times out, so init reports the BIST failure
@@ -178,13 +175,12 @@ static void test_init_bist_timeout(void)
   *
   * @par MC/DC:
   * (no compound decisions in this test -- ra8_fake_mmio_satisfy_after
-  * steps `internal_wait_bit` through its continuation iterations before
-  * the wait is satisfied, exercising the loop-iteration branch)
- */
-static void test_init_bist_late_pass(void)
+  * steps `priv_wait_bit` through its continuation iterations before
+  * the wait is satisfied, exercising the loop-iteration branch) @details Executes the init bist late pass scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_bist_late_pass(void)
 {
   TEST_BEGIN("rsip init bist late pass");
-  prep();
+  internal_prep();
 
   /* The "engine" asserts BIST_OK on the 3rd poll: the bounded wait
    * must iterate and still converge to success. */
@@ -204,12 +200,11 @@ static void test_init_bist_late_pass(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_init_skip_bist(void)
+  * code under test that this case touches) @details Executes the init skip bist scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_skip_bist(void)
 {
   TEST_BEGIN("rsip init skip bist");
-  prep();
+  internal_prep();
 
   const ra8_rsip_config_t cfg = {.run_bist = false};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
@@ -228,12 +223,11 @@ static void test_init_skip_bist(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_init_null_cfg(void)
+  * code under test that this case touches) @details Executes the init null cfg scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_null_cfg(void)
 {
   TEST_BEGIN("rsip init null cfg");
-  prep();
+  internal_prep();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_rsip_init(nullptr));
 
@@ -246,12 +240,11 @@ static void test_init_null_cfg(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_deinit(void)
+  * code under test that this case touches) @details Executes the deinit scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_deinit(void)
 {
   TEST_BEGIN("rsip deinit");
-  prep();
+  internal_prep();
 
   const ra8_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
@@ -267,12 +260,11 @@ static void test_deinit(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_trng_read(void)
+  * code under test that this case touches) @details Executes the trng read scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_trng_read(void)
 {
   TEST_BEGIN("rsip trng read fail-closed");
-  prep();
+  internal_prep();
 
   /* The RSIP-E50D TRNG has no working register interface on silicon (the map is
    * invented), so ra8_rsip_trng_read fails closed with k_ra8_err_not_supported
@@ -293,12 +285,11 @@ static void test_trng_read(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_trng_arg_check(void)
+  * code under test that this case touches) @details Executes the trng arg check scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_trng_arg_check(void)
 {
   TEST_BEGIN("rsip trng arg check");
-  prep();
+  internal_prep();
 
   uint8_t buf[8] = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
@@ -316,12 +307,11 @@ static void test_trng_arg_check(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_sha256_happy(void)
+  * code under test that this case touches) @details Executes the sha256 happy scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_sha256_happy(void)
 {
   TEST_BEGIN("rsip sha256 happy");
-  prep();
+  internal_prep();
 
   const ra8_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
@@ -347,12 +337,11 @@ static void test_sha256_happy(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_sha256_partial_tail(void)
+  * code under test that this case touches) @details Executes the sha256 partial tail scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_sha256_partial_tail(void)
 {
   TEST_BEGIN("rsip sha256 partial tail");
-  prep();
+  internal_prep();
 
   const ra8_rsip_config_t cfg = {.run_bist = false};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
@@ -378,12 +367,11 @@ static void test_sha256_partial_tail(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_sha256_null(void)
+  * code under test that this case touches) @details Executes the sha256 null scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_sha256_null(void)
 {
   TEST_BEGIN("rsip sha256 null");
-  prep();
+  internal_prep();
 
   uint8_t out[32] = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_rsip_sha256(nullptr, 4U, out));
@@ -399,12 +387,11 @@ static void test_sha256_null(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_status_clear(void)
+  * code under test that this case touches) @details Executes the status clear scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_status_clear(void)
 {
   TEST_BEGIN("rsip status clear");
-  prep();
+  internal_prep();
 
   /* Pre-populate ISR with one valid and one ignored bit. */
   *ra8_rsip_reg32(k_ra8_rsip_off_isr) = (uint32_t)k_ra8_rsip_mask_isr_done;
@@ -428,14 +415,14 @@ static void test_status_clear(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_attach_dispatch(void)
+  * code under test that this case touches) @details Executes the attach dispatch scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_attach_dispatch(void)
 {
   TEST_BEGIN("rsip attach dispatch");
-  prep();
+  internal_prep();
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_attach_handler(stub_rsip_cb, (void*)(uintptr_t)0xDEADU));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_rsip_attach_handler(internal_stub_rsip_cb, (void*)(uintptr_t)0xDEADU));
 
   /* Pre-arm an ISR bit, then dispatch and confirm the cb fired. */
   *ra8_rsip_reg32(k_ra8_rsip_off_isr) = (uint32_t)k_ra8_rsip_mask_isr_rnd;
@@ -468,12 +455,11 @@ static void test_attach_dispatch(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_power_transition(void)
+  * code under test that this case touches) @details Executes the power transition scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_power_transition(void)
 {
   TEST_BEGIN("rsip power transition");
-  prep();
+  internal_prep();
 
   const ra8_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
@@ -491,12 +477,11 @@ static void test_power_transition(void)
   * @par MC/DC:
   * (no compound decisions in this test -- arms the ra8_fake_mmio wait
   * seam so the post-wake BIST times out and ra8_rsip_exit_stop takes
-  * its single-condition failure branch)
- */
-static void test_exit_stop_bist_timeout(void)
+  * its single-condition failure branch) @details Executes the exit stop bist timeout scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_exit_stop_bist_timeout(void)
 {
   TEST_BEGIN("rsip exit stop bist timeout");
-  prep();
+  internal_prep();
 
   const ra8_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
@@ -512,11 +497,10 @@ static void test_exit_stop_bist_timeout(void)
 
 /**
  * @brief Initialise the engine for a sub-test that needs ENABLE asserted.
- * @since 0.1.0
- */
-static void prep_running(void)
+ * @since 0.1.0 @details Implements the prep running fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_prep_running(void)
 {
-  prep();
+  internal_prep();
   const ra8_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
 }
@@ -532,12 +516,11 @@ static void prep_running(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_sha256_inc_empty(void)
+  * code under test that this case touches) @details Executes the sha256 inc empty scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_sha256_inc_empty(void)
 {
   TEST_BEGIN("rsip sha256 incremental empty");
-  prep_running();
+  internal_prep_running();
 
   ra8_rsip_sha256_ctx_t ctx        = {};
   uint8_t               digest[32] = {};
@@ -563,12 +546,11 @@ static void test_sha256_inc_empty(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_sha256_inc_abc_split(void)
+  * code under test that this case touches) @details Executes the sha256 inc abc split scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_sha256_inc_abc_split(void)
 {
   TEST_BEGIN("rsip sha256 incremental abc split");
-  prep_running();
+  internal_prep_running();
 
   ra8_rsip_sha256_ctx_t ctx        = {};
   uint8_t               digest[32] = {};
@@ -593,12 +575,11 @@ static void test_sha256_inc_abc_split(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_sha256_inc_block_boundary(void)
+  * code under test that this case touches) @details Executes the sha256 inc block boundary scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_sha256_inc_block_boundary(void)
 {
   TEST_BEGIN("rsip sha256 incremental block boundary");
-  prep_running();
+  internal_prep_running();
 
   uint8_t input[k_t_hmac_block_len];
   for (uint32_t i = 0U; i < k_t_hmac_block_len; ++i) {
@@ -634,12 +615,11 @@ static void test_sha256_inc_block_boundary(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_sha256_inc_arg_check(void)
+  * code under test that this case touches) @details Executes the sha256 inc arg check scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_sha256_inc_arg_check(void)
 {
   TEST_BEGIN("rsip sha256 incremental arg check");
-  prep_running();
+  internal_prep_running();
 
   ra8_rsip_sha256_ctx_t ctx        = {};
   uint8_t               digest[32] = {};
@@ -666,12 +646,11 @@ static void test_sha256_inc_arg_check(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_hmac_sha256_inc_rfc4231_1(void)
+  * code under test that this case touches) @details Executes the hmac sha256 inc rfc4231 1 scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_hmac_sha256_inc_rfc4231_1(void)
 {
   TEST_BEGIN("rsip hmac sha256 incremental rfc4231 case 1");
-  prep_running();
+  internal_prep_running();
 
   uint8_t key[k_t_key_short_len];
   for (uint32_t i = 0U; i < k_t_key_short_len; ++i) {
@@ -721,7 +700,8 @@ static void test_hmac_sha256_inc_rfc4231_1(void)
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
  */
-static void hmac_ref_prepare_key(const uint8_t* key, uint32_t key_len, uint8_t* prepared)
+RA8_INTERNAL static void
+internal_hmac_ref_prepare_key(const uint8_t* key, uint32_t key_len, uint8_t* prepared)
 {
   ra8_rsip_sha256_ctx_t prep_ctx   = {};
   uint8_t               prep_h[32] = {};
@@ -752,8 +732,10 @@ static void hmac_ref_prepare_key(const uint8_t* key, uint32_t key_len, uint8_t* 
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
  */
-static void
-hmac_ref_compute(const uint8_t* prepared, const uint8_t* data, uint32_t data_len, uint8_t* expect)
+RA8_INTERNAL static void internal_hmac_ref_compute(const uint8_t* prepared,
+                                                   const uint8_t* data,
+                                                   uint32_t       data_len,
+                                                   uint8_t*       expect)
 {
   uint8_t ipad[k_t_hmac_block_len];
   uint8_t opad[k_t_hmac_block_len];
@@ -776,7 +758,7 @@ hmac_ref_compute(const uint8_t* prepared, const uint8_t* data, uint32_t data_len
 }
 
 /**
- * @test test_hmac_sha256_inc_oversized_key
+ * @test internal_test_hmac_sha256_inc_oversized_key
  * @brief HMAC-SHA-256 with a key longer than the SHA-256 block.
  *
  * @par MC/DC:
@@ -785,12 +767,11 @@ hmac_ref_compute(const uint8_t* prepared, const uint8_t* data, uint32_t data_len
  * collapses to its own digest, and compares the MAC against an independent
  * reference. The only compound decision on the init path,
  * `(key == nullptr) && (key_len != 0U)`, is held at its key-non-null
- * short-circuit leg here; its MC/DC vectors live in test_mcdc_hmac_init_key_len.)
- */
-static void test_hmac_sha256_inc_oversized_key(void)
+ * short-circuit leg here; its MC/DC vectors live in internal_test_mcdc_hmac_init_key_len.) @details Executes the hmac sha256 inc oversized key scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_hmac_sha256_inc_oversized_key(void)
 {
   TEST_BEGIN("rsip hmac sha256 incremental oversized key");
-  prep_running();
+  internal_prep_running();
 
   uint8_t key[k_t_key_long_len];
   for (uint32_t i = 0U; i < sizeof(key); ++i) {
@@ -800,9 +781,9 @@ static void test_hmac_sha256_inc_oversized_key(void)
 
   /* Reference: build expected MAC by hand using the same primitive. */
   uint8_t prepared[k_t_hmac_block_len] = {0U};
-  hmac_ref_prepare_key(key, (uint32_t)sizeof(key), prepared);
+  internal_hmac_ref_prepare_key(key, (uint32_t)sizeof(key), prepared);
   uint8_t expect[32] = {};
-  hmac_ref_compute(prepared, data, (uint32_t)sizeof(data), expect);
+  internal_hmac_ref_compute(prepared, data, (uint32_t)sizeof(data), expect);
 
   /* Run through the public HMAC API and compare. */
   ra8_rsip_hmac_sha256_ctx_t ctx     = {};
@@ -823,12 +804,11 @@ static void test_hmac_sha256_inc_oversized_key(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_hmac_sha256_inc_arg_check(void)
+  * code under test that this case touches) @details Executes the hmac sha256 inc arg check scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_hmac_sha256_inc_arg_check(void)
 {
   TEST_BEGIN("rsip hmac sha256 incremental arg check");
-  prep_running();
+  internal_prep_running();
 
   ra8_rsip_hmac_sha256_ctx_t ctx     = {};
   uint8_t                    key[16] = {0U};
@@ -857,12 +837,11 @@ static void test_hmac_sha256_inc_arg_check(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_sha256_command_sequence(void)
+  * code under test that this case touches) @details Executes the sha256 command sequence scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_sha256_command_sequence(void)
 {
   TEST_BEGIN("rsip sha256 abc known-answer");
-  prep_running();
+  internal_prep_running();
 
   const uint8_t msg[3] = {'a', 'b', 'c'};
   uint8_t       d[32]  = {};
@@ -884,7 +863,7 @@ static void test_sha256_command_sequence(void)
  * ------------------------------------------------------------------------ */
 
 /**
- * @test test_sha256_update_mcdc_data_len
+ * @test internal_test_sha256_update_mcdc_data_len
  *
  * @par MC/DC:
  * Decision: `if ((data == nullptr) && (len != 0U))`
@@ -898,12 +877,11 @@ static void test_sha256_command_sequence(void)
  * Same compound shape repeats in `ra8_rsip_hmac_sha256_init`,
  * `ra8_rsip_poly1305`, `internal_hash_validate` and `ra8_rsip_hmac`;
  * per DO-178C 6.4.4.3 source-text equivalence a single MC/DC vector
- * set discharges the obligation for all of them.
- */
-static void test_sha256_update_mcdc_data_len(void)
+ * set discharges the obligation for all of them. @brief Verify sha256 update mcdc data len behavior. @details Executes the sha256 update mcdc data len scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_sha256_update_mcdc_data_len(void)
 {
   TEST_BEGIN("rsip sha256_update MC/DC: data==null && len!=0");
-  prep_running();
+  internal_prep_running();
 
   ra8_rsip_sha256_ctx_t ctx = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_init(&ctx));
@@ -922,19 +900,18 @@ static void test_sha256_update_mcdc_data_len(void)
 }
 
 /**
- * @test test_mcdc_hmac_init_key_len
+ * @test internal_test_mcdc_hmac_init_key_len
  *
  * @par MC/DC:
  * Decision: ``if ((key == nullptr) && (key_len != 0U))`` (2 conditions,
  * libs/ra8_hal/src/ra8_rsip.c ra8_rsip_hmac_sha256_init). N+1 = 3.
  * - V1: key=valid, key_len=4 -> C1=F short-circuits -> dec F (proceeds)
  * - V2: key=NULL,  key_len=0 -> C1=T, C2=F          -> dec F (zero-key path)
- * - V3: key=NULL,  key_len=4 -> C1=T, C2=T          -> dec T -> null_ptr
- */
-static void test_mcdc_hmac_init_key_len(void)
+ * - V3: key=NULL,  key_len=4 -> C1=T, C2=T          -> dec T -> null_ptr @brief Verify mcdc hmac init key len behavior. @details Executes the mcdc hmac init key len scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_hmac_init_key_len(void)
 {
   TEST_BEGIN("rsip hmac_sha256_init MC/DC: key==null && key_len!=0");
-  prep_running();
+  internal_prep_running();
   ra8_rsip_hmac_sha256_ctx_t ctx    = {};
   const uint8_t              key[4] = {0x11U, 0x22U, 0x33U, 0x44U};
   /* V1: valid key. */
@@ -959,32 +936,32 @@ static void test_mcdc_hmac_init_key_len(void)
  * @note Order is significant: cases run top to bottom, exactly as before.
  */
 static void (*const s_test_roster[])(void) = {
-  test_init_happy,
-  test_init_bist_timeout,
-  test_init_bist_late_pass,
-  test_init_skip_bist,
-  test_init_null_cfg,
-  test_deinit,
-  test_trng_read,
-  test_trng_arg_check,
-  test_sha256_happy,
-  test_sha256_partial_tail,
-  test_sha256_null,
-  test_sha256_command_sequence,
-  test_status_clear,
-  test_attach_dispatch,
-  test_power_transition,
-  test_exit_stop_bist_timeout,
+  internal_test_init_happy,
+  internal_test_init_bist_timeout,
+  internal_test_init_bist_late_pass,
+  internal_test_init_skip_bist,
+  internal_test_init_null_cfg,
+  internal_test_deinit,
+  internal_test_trng_read,
+  internal_test_trng_arg_check,
+  internal_test_sha256_happy,
+  internal_test_sha256_partial_tail,
+  internal_test_sha256_null,
+  internal_test_sha256_command_sequence,
+  internal_test_status_clear,
+  internal_test_attach_dispatch,
+  internal_test_power_transition,
+  internal_test_exit_stop_bist_timeout,
   /* Sweep 15 / Phase 1.1: incremental hash + HMAC for TLS handshakes. */
-  test_sha256_inc_empty,
-  test_sha256_inc_abc_split,
-  test_sha256_inc_block_boundary,
-  test_sha256_inc_arg_check,
-  test_hmac_sha256_inc_rfc4231_1,
-  test_hmac_sha256_inc_oversized_key,
-  test_hmac_sha256_inc_arg_check,
-  test_sha256_update_mcdc_data_len,
-  test_mcdc_hmac_init_key_len,
+  internal_test_sha256_inc_empty,
+  internal_test_sha256_inc_abc_split,
+  internal_test_sha256_inc_block_boundary,
+  internal_test_sha256_inc_arg_check,
+  internal_test_hmac_sha256_inc_rfc4231_1,
+  internal_test_hmac_sha256_inc_oversized_key,
+  internal_test_hmac_sha256_inc_arg_check,
+  internal_test_sha256_update_mcdc_data_len,
+  internal_test_mcdc_hmac_init_key_len,
 };
 
 int32_t main(void)
@@ -992,6 +969,5 @@ int32_t main(void)
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
     s_test_roster[i]();
   }
-  (void)fprintf(stderr, "[OK ] test_ra8_rsip_core.c\n");
   return 0;
 }

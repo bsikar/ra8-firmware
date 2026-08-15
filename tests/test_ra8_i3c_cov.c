@@ -15,6 +15,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_i3c.h"
@@ -64,8 +65,8 @@ static uint32_t s_cb_count;
 /** @brief Last mask received by the callback. */
 static uint32_t s_cb_mask;
 
-/** @brief Stub callback that records invocations. */
-static void stub_cb(void* ctx, uint32_t mask)
+/** @brief Stub callback that records invocations. @details Implements the stub cb fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] mask Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_stub_cb(void* ctx, uint32_t mask)
 {
   (void)ctx;
   ++s_cb_count;
@@ -73,14 +74,14 @@ static void stub_cb(void* ctx, uint32_t mask)
 }
 
 /** @brief Native-mode bring-up configuration. */
-static const ra8_i3c_cfg_t k_native_cfg = {
+static const ra8_i3c_cfg_t s_native_cfg = {
   .mode     = k_ra8_i3c_mode_native,
   .bus_hz   = 0U,
   .pclka_hz = 0U,
 };
 
 /** @brief I2C-compat bring-up configuration (valid clocks). */
-static const ra8_i3c_cfg_t k_i2c_cfg = {
+static const ra8_i3c_cfg_t s_i2c_cfg = {
   .mode     = k_ra8_i3c_mode_i2c,
   .bus_hz   = 100000U,
   .pclka_hz = 8000000U,
@@ -89,11 +90,10 @@ static const ra8_i3c_cfg_t k_i2c_cfg = {
 /**
  * @brief Reset the fake MMIO and re-initialise the MSTP mock.
  *
- * @details Mirrors the prep() helper in test_ra8_i3c.c.  Does NOT reset
+ * @details Mirrors the internal_prep() helper in test_ra8_i3c.c.  Does NOT reset
  * the module-level s_i3c_chan[] state; callers must call ra8_i3c_deinit()
- * or ra8_i3c_init() themselves to reach the desired channel state.
- */
-static void prep(void)
+ * or ra8_i3c_init() themselves to reach the desired channel state. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
@@ -102,38 +102,35 @@ static void prep(void)
 }
 
 /**
- * @brief prep() + native-mode init on channel 0.
+ * @brief internal_prep() + native-mode init on channel 0.
  *
  * @details Guarantees channel 0 is initialised in native mode.
- * Used by tests that need the native code path.
- */
-static void prep_native(void)
+ * Used by tests that need the native code path. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep_native(void)
 {
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
 }
 
 /**
- * @brief prep() + i2c-mode init on channel 0.
+ * @brief internal_prep() + i2c-mode init on channel 0.
  *
  * @details Guarantees channel 0 is initialised in I2C-compat mode.
- * Used by tests that exercise I2C-only APIs (set_clock, get_errors, ...).
- */
-static void prep_i2c(void)
+ * Used by tests that exercise I2C-only APIs (set_clock, get_errors, ...). @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep_i2c(void)
 {
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_i2c_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_i2c_cfg));
 }
 
 /**
- * @brief prep() then deinit channel 0 to leave it uninitialized.
+ * @brief internal_prep() then deinit channel 0 to leave it uninitialized.
  *
  * @details Ensures s_i3c_chan[0].initialized == false regardless of the
- * state left by the previous test.
- */
-static void prep_uninit(void)
+ * state left by the previous test. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep_uninit(void)
 {
-  prep();
+  internal_prep();
   (void)ra8_i3c_deinit(0U); /* clears .initialized */
 }
 
@@ -152,10 +149,11 @@ static void prep_uninit(void)
  * taken once, covering lines 250-258.
  * ---------------------------------------------------------------------------
  */
-static void test_send_ccc_large_payload_and_fifo_partial(void)
+/** @brief Verify send ccc large payload and fifo partial behavior. @details Executes the send ccc large payload and fifo partial scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_send_ccc_large_payload_and_fifo_partial(void)
 {
   TEST_BEGIN("i3c send_ccc large payload covers regular path + fifo partial");
-  prep_native();
+  internal_prep_native();
   const uint8_t payload[5] = {0x11U, 0x22U, 0x33U, 0x44U, 0x55U};
   /* len=5 > k_ra8_i3c_immediate_max_bytes=4: takes the regular-transfer
    * branch (lines 575-577).  The FIFO write of 5 bytes yields one full
@@ -174,11 +172,12 @@ static void test_send_ccc_large_payload_and_fifo_partial(void)
  * (no new compound decisions; single conditional guard on return value)
  * ---------------------------------------------------------------------------
  */
-static void test_init_i2c_mode_error(void)
+/** @brief Verify init i2c mode error behavior. @details Executes the init i2c mode error scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_i2c_mode_error(void)
 {
   TEST_BEGIN("i3c init i2c mode propagates internal error (line 319)");
-  prep();
-  /* bus_hz=0 causes internal_i3c_i2c_init to return k_ra8_err_invalid_arg;
+  internal_prep();
+  /* bus_hz=0 causes ra8_i3c_i2c_init to return k_ra8_err_invalid_arg;
    * ra8_i3c_init's guard at line 318 is true and returns on line 319. */
   const ra8_i3c_cfg_t i2c_fail_cfg = {
     .mode     = k_ra8_i3c_mode_i2c,
@@ -196,10 +195,11 @@ static void test_init_i2c_mode_error(void)
  * (no new compound decisions; single channel-range guard)
  * ---------------------------------------------------------------------------
  */
-static void test_deinit_oob(void)
+/** @brief Verify deinit oob behavior. @details Executes the deinit oob scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_deinit_oob(void)
 {
   TEST_BEGIN("i3c deinit rejects out-of-range channel (line 345)");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_deinit(255U));
   TEST_END("i3c deinit rejects out-of-range channel (line 345)");
 }
@@ -211,10 +211,11 @@ static void test_deinit_oob(void)
  * (no new compound decisions; single channel-range guard)
  * ---------------------------------------------------------------------------
  */
-static void test_attach_handler_oob(void)
+/** @brief Verify attach handler oob behavior. @details Executes the attach handler oob scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_attach_handler_oob(void)
 {
   TEST_BEGIN("i3c attach_handler rejects out-of-range channel (line 412)");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_attach_handler(255U, nullptr, nullptr));
   TEST_END("i3c attach_handler rejects out-of-range channel (line 412)");
 }
@@ -226,20 +227,21 @@ static void test_attach_handler_oob(void)
  * @par MC/DC:
  * Decision A (ra8_i3c_dispatch line 431): ``fn != nullptr``
  * - V1: fn=nullptr -> false -> skip callback  (lines 428-431 + 434)
- * - V2: fn=stub_cb -> true  -> invoke fn      (lines 428-434)
+ * - V2: fn=internal_stub_cb -> true  -> invoke fn      (lines 428-434)
  * V1+V2 prove the single condition independently affects the branch.
  * ---------------------------------------------------------------------------
  */
-static void test_dispatch_oob_and_i2c_mode(void)
+/** @brief Verify dispatch oob and i2c mode behavior. @details Executes the dispatch oob and i2c mode scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_dispatch_oob_and_i2c_mode(void)
 {
   TEST_BEGIN("i3c dispatch: out-of-range channel + i2c-mode path");
   /* Part 1: channel 255 hits the early return at line 422. */
-  prep();
+  internal_prep();
   ra8_i3c_dispatch(k_i3c_irq_out_of_range);
   /* Part 2: channel 0 in i2c mode, callback attached -- covers 428-434.
    * MC/DC V2 (fn!=nullptr): fn is invoked. */
-  prep_i2c();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_attach_handler(0U, stub_cb, nullptr));
+  internal_prep_i2c();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_attach_handler(0U, internal_stub_cb, nullptr));
   ra8_i3c_dispatch(0U);
   TEST_ASSERT_EQ(1U, s_cb_count);
   /* Part 3: MC/DC V1 -- same channel but callback detached (fn=nullptr):
@@ -256,15 +258,16 @@ static void test_dispatch_oob_and_i2c_mode(void)
  *
  * @par MC/DC:
  * Decision at ra8_i3c_recv_ccc line 592 (call to
- * ra8_i3c_internal_recv_ccc_invalid): see test_ra8_i3c.c for the full
+ * priv_ra8_i3c_internal_recv_ccc_invalid): see test_ra8_i3c.c for the full
  * 3-vector MC/DC coverage of the inner OR.  Here we exercise the site
  * where the guard returns true and produces the line-593 return.
  * ---------------------------------------------------------------------------
  */
-static void test_recv_ccc_internal_invalid(void)
+/** @brief Verify recv ccc internal invalid behavior. @details Executes the recv ccc internal invalid scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_recv_ccc_internal_invalid(void)
 {
   TEST_BEGIN("i3c recv_ccc: internal predicate triggers invalid_arg (line 593)");
-  prep_native();
+  internal_prep_native();
   uint8_t buf[4]  = {};
   uint8_t got_len = 0U;
   /* direct CCC (bit 7 set), target_addr=0xFF > 0x7F: the helper returns
@@ -285,21 +288,22 @@ static void test_recv_ccc_internal_invalid(void)
  * are single-condition checks, not compound decisions.
  * ---------------------------------------------------------------------------
  */
-static void test_write_error_paths(void)
+/** @brief Verify write error paths behavior. @details Executes the write error paths scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_write_error_paths(void)
 {
   TEST_BEGIN("i3c write: oob channel / uninit / len overflow errors");
   uint8_t dummy = k_i3c_payload_byte;
 
   /* Line 615: channel out of range. */
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_write(255U, 0x10U, &dummy, 1U, false));
 
   /* Line 618: channel 0 not yet initialized. */
-  prep_uninit();
+  internal_prep_uninit();
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_i3c_write(0U, 0x10U, &dummy, 1U, false));
 
   /* Line 632: len > k_ra8_i3c_cmd_xfer_length_max (0xFFFF). */
-  prep_native();
+  internal_prep_native();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_write(0U, 0x10U, &dummy, 0x10000U, false));
   TEST_END("i3c write: oob channel / uninit / len overflow errors");
 }
@@ -311,17 +315,18 @@ static void test_write_error_paths(void)
  * (no new compound decisions; single guards)
  * ---------------------------------------------------------------------------
  */
-static void test_read_error_paths(void)
+/** @brief Verify read error paths behavior. @details Executes the read error paths scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_read_error_paths(void)
 {
   TEST_BEGIN("i3c read: oob channel / uninit errors");
   uint8_t buf[4] = {};
 
   /* Line 660: channel out of range. */
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_read(255U, 0x10U, buf, 4U, false));
 
   /* Line 663: channel 0 not initialized. */
-  prep_uninit();
+  internal_prep_uninit();
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_i3c_read(0U, 0x10U, buf, 4U, false));
   TEST_END("i3c read: oob channel / uninit errors");
 }
@@ -333,17 +338,18 @@ static void test_read_error_paths(void)
  * (no new compound decisions; single guards)
  * ---------------------------------------------------------------------------
  */
-static void test_transfer_error_paths(void)
+/** @brief Verify transfer error paths behavior. @details Executes the transfer error paths scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_transfer_error_paths(void)
 {
   TEST_BEGIN("i3c transfer: oob channel / native-mode error paths");
   uint8_t buf[2] = {};
 
   /* Line 701: channel out of range. */
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_transfer(255U, 0x10U, nullptr, 0U, buf, 2U));
 
   /* Line 704: channel 0 in native mode is not I2C. */
-  prep_native();
+  internal_prep_native();
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_i3c_transfer(0U, 0x10U, nullptr, 0U, buf, 2U));
   TEST_END("i3c transfer: oob channel / native-mode error paths");
 }
@@ -355,20 +361,21 @@ static void test_transfer_error_paths(void)
  * (no new compound decisions; single guards on each return path)
  * ---------------------------------------------------------------------------
  */
-static void test_set_clock_coverage(void)
+/** @brief Verify set clock coverage behavior. @details Executes the set clock coverage scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_clock_coverage(void)
 {
   TEST_BEGIN("i3c set_clock: full function coverage (lines 709-718)");
 
   /* Lines 709, 711, 712: entry + oob channel guard. */
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_set_clock(255U, 100000U, 8000000U));
 
   /* Lines 714, 715: channel 0 in native mode is not I2C. */
-  prep_native();
+  internal_prep_native();
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_i3c_set_clock(0U, 100000U, 8000000U));
 
   /* Lines 717, 718: channel 0 in I2C mode -- happy path. */
-  prep_i2c();
+  internal_prep_i2c();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_set_clock(0U, 100000U, 8000000U));
   TEST_END("i3c set_clock: full function coverage (lines 709-718)");
 }
@@ -381,17 +388,18 @@ static void test_set_clock_coverage(void)
  * (no new compound decisions; single guards)
  * ---------------------------------------------------------------------------
  */
-static void test_scan_error_paths(void)
+/** @brief Verify scan error paths behavior. @details Executes the scan error paths scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_scan_error_paths(void)
 {
   TEST_BEGIN("i3c scan: oob channel / native-mode error returns");
   bool acked = false;
 
   /* Line 723: channel out of range. */
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_scan(255U, 0x10U, &acked));
 
   /* Line 726: channel 0 in native mode is not I2C. */
-  prep_native();
+  internal_prep_native();
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_i3c_scan(0U, 0x10U, &acked));
   TEST_END("i3c scan: oob channel / native-mode error returns");
 }
@@ -403,21 +411,22 @@ static void test_scan_error_paths(void)
  * (no new compound decisions; single guards on each return path)
  * ---------------------------------------------------------------------------
  */
-static void test_get_errors_coverage(void)
+/** @brief Verify get errors coverage behavior. @details Executes the get errors coverage scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_get_errors_coverage(void)
 {
   TEST_BEGIN("i3c get_errors: full function coverage (lines 731-740)");
   uint8_t mask = 0U;
 
   /* Lines 731, 733, 734: entry + oob channel guard. */
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_get_errors(255U, &mask));
 
   /* Lines 736, 737: channel 0 in native mode. */
-  prep_native();
+  internal_prep_native();
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_i3c_get_errors(0U, &mask));
 
   /* Lines 739, 740: channel 0 in I2C mode -- happy path. */
-  prep_i2c();
+  internal_prep_i2c();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_get_errors(0U, &mask));
   TEST_END("i3c get_errors: full function coverage (lines 731-740)");
 }
@@ -429,20 +438,21 @@ static void test_get_errors_coverage(void)
  * (no new compound decisions; single guards on each return path)
  * ---------------------------------------------------------------------------
  */
-static void test_clear_errors_coverage(void)
+/** @brief Verify clear errors coverage behavior. @details Executes the clear errors coverage scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_clear_errors_coverage(void)
 {
   TEST_BEGIN("i3c clear_errors: full function coverage (lines 742-751)");
 
   /* Lines 742, 744, 745: oob channel. */
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_clear_errors(255U));
 
   /* Lines 747, 748: native mode channel. */
-  prep_native();
+  internal_prep_native();
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_i3c_clear_errors(0U));
 
   /* Lines 750, 751: I2C mode -- happy path. */
-  prep_i2c();
+  internal_prep_i2c();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_clear_errors(0U));
   TEST_END("i3c clear_errors: full function coverage (lines 742-751)");
 }
@@ -454,21 +464,22 @@ static void test_clear_errors_coverage(void)
  * (no new compound decisions; single guards on each return path)
  * ---------------------------------------------------------------------------
  */
-static void test_abort_coverage(void)
+/** @brief Verify abort coverage behavior. @details Executes the abort coverage scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_abort_coverage(void)
 {
   TEST_BEGIN("i3c abort: full function coverage (lines 753-762)");
 
   /* Lines 753, 755, 756: oob channel. */
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_abort(255U));
 
   /* Lines 758, 759: native mode channel. */
-  prep_native();
+  internal_prep_native();
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_i3c_abort(0U));
 
-  /* Lines 761, 762: I2C mode -- happy path.  internal_i3c_i2c_abort
+  /* Lines 761, 762: I2C mode -- happy path.  ra8_i3c_i2c_abort
    * performs only register writes (no polling), safe in the fake. */
-  prep_i2c();
+  internal_prep_i2c();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_abort(0U));
   TEST_END("i3c abort: full function coverage (lines 753-762)");
 }
@@ -480,21 +491,22 @@ static void test_abort_coverage(void)
  * (no new compound decisions; single guards on each return path)
  * ---------------------------------------------------------------------------
  */
-static void test_peripheral_close_coverage(void)
+/** @brief Verify peripheral close coverage behavior. @details Executes the peripheral close coverage scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_peripheral_close_coverage(void)
 {
   TEST_BEGIN("i3c peripheral_close: full function coverage (lines 787-796)");
 
   /* Lines 787, 789, 790: oob channel. */
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_peripheral_close(255U));
 
   /* Lines 792, 793: native mode channel. */
-  prep_native();
+  internal_prep_native();
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_i3c_peripheral_close(0U));
 
   /* Lines 795, 796: I2C mode channel -- happy path.
-   * internal_i3c_i2c_peripheral_close performs register writes only. */
-  prep_i2c();
+   * ra8_i3c_i2c_peripheral_close performs register writes only. */
+  internal_prep_i2c();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_peripheral_close(0U));
   TEST_END("i3c peripheral_close: full function coverage (lines 787-796)");
 }
@@ -506,22 +518,23 @@ static void test_peripheral_close_coverage(void)
  * (no new compound decisions; single guards on each return path)
  * ---------------------------------------------------------------------------
  */
-static void test_peripheral_send_coverage(void)
+/** @brief Verify peripheral send coverage behavior. @details Executes the peripheral send coverage scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_peripheral_send_coverage(void)
 {
   TEST_BEGIN("i3c peripheral_send: full function coverage (lines 798-807)");
   const uint8_t data[1] = {0xA5U};
 
   /* Lines 798, 800, 801: oob channel. */
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_peripheral_send(255U, data, 1U));
 
   /* Lines 803, 804: native mode channel. */
-  prep_native();
+  internal_prep_native();
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_i3c_peripheral_send(0U, data, 1U));
 
   /* Lines 806, 807: I2C mode -- len=0 so the for-loop body is never
    * entered, avoiding any TDBEF0 spin.  Returns k_ra8_ok. */
-  prep_i2c();
+  internal_prep_i2c();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_peripheral_send(0U, nullptr, 0U));
   TEST_END("i3c peripheral_send: full function coverage (lines 798-807)");
 }
@@ -533,22 +546,23 @@ static void test_peripheral_send_coverage(void)
  * (no new compound decisions; single guards on each return path)
  * ---------------------------------------------------------------------------
  */
-static void test_peripheral_receive_coverage(void)
+/** @brief Verify peripheral receive coverage behavior. @details Executes the peripheral receive coverage scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_peripheral_receive_coverage(void)
 {
   TEST_BEGIN("i3c peripheral_receive: full function coverage (lines 809-818)");
   uint8_t buf[1] = {0U};
 
   /* Lines 809, 811, 812: oob channel. */
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_peripheral_receive(255U, buf, 1U));
 
   /* Lines 814, 815: native mode channel. */
-  prep_native();
+  internal_prep_native();
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_i3c_peripheral_receive(0U, buf, 1U));
 
   /* Lines 817, 818: I2C mode -- len=0 so the for-loop body is skipped,
    * no RDBFF0 spin.  Returns k_ra8_ok. */
-  prep_i2c();
+  internal_prep_i2c();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_peripheral_receive(0U, nullptr, 0U));
   TEST_END("i3c peripheral_receive: full function coverage (lines 809-818)");
 }
@@ -561,17 +575,18 @@ static void test_peripheral_receive_coverage(void)
  * (no new compound decisions; single guards)
  * ---------------------------------------------------------------------------
  */
-static void test_peripheral_status_error_paths(void)
+/** @brief Verify peripheral status error paths behavior. @details Executes the peripheral status error paths scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_peripheral_status_error_paths(void)
 {
   TEST_BEGIN("i3c peripheral_status: oob / native-mode error returns");
   uint8_t mask = 0U;
 
   /* Line 823: channel out of range. */
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_peripheral_status(255U, &mask));
 
   /* Line 826: channel 0 in native mode. */
-  prep_native();
+  internal_prep_native();
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_i3c_peripheral_status(0U, &mask));
   TEST_END("i3c peripheral_status: oob / native-mode error returns");
 }
@@ -590,10 +605,11 @@ static void test_peripheral_status_error_paths(void)
  * Pairs (V2,V3) isolate the ibi_id condition inside the else block.
  * ---------------------------------------------------------------------------
  */
-static void test_ibi_hot_join(void)
+/** @brief Verify ibi hot join behavior. @details Executes the ibi hot join scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_ibi_hot_join(void)
 {
   TEST_BEGIN("i3c ibi_read: hot-join type (line 939)");
-  prep_native();
+  internal_prep_native();
   /* Mark the IBI queue non-empty. */
   ra8_i3c()->NTST = (uint32_t)k_ra8_i3c_ntst_ibiqeff_mask;
   /* IBI_ST=1 (bit 31), ibi_id=0x02 (hot-join), len=0. */
@@ -610,13 +626,14 @@ static void test_ibi_hot_join(void)
  * Test: ra8_i3c_ibi_read -- IBI type main-request branch (line 941).
  *
  * @par MC/DC:
- * See test_ibi_hot_join for the vector table.  This test provides V3.
+ * See internal_test_ibi_hot_join for the vector table.  This test provides V3.
  * ---------------------------------------------------------------------------
  */
-static void test_ibi_main_request(void)
+/** @brief Verify ibi main request behavior. @details Executes the ibi main request scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_ibi_main_request(void)
 {
   TEST_BEGIN("i3c ibi_read: main-request type (line 941)");
-  prep_native();
+  internal_prep_native();
   ra8_i3c()->NTST = (uint32_t)k_ra8_i3c_ntst_ibiqeff_mask;
   /* IBI_ST=1 (bit 31), ibi_id=0x04 (mainship-request, not 0x02), len=0. */
   ra8_i3c()->NIBIQP = k_i3c_ibi_status_error_b;
@@ -639,10 +656,11 @@ static void test_ibi_main_request(void)
  * V1+V2 isolate the single condition.
  * ---------------------------------------------------------------------------
  */
-static void test_ibi_payload_clamping(void)
+/** @brief Verify ibi payload clamping behavior. @details Executes the ibi payload clamping scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_ibi_payload_clamping(void)
 {
   TEST_BEGIN("i3c ibi_read: payload length clamped to 8 (lines 947-948)");
-  prep_native();
+  internal_prep_native();
   ra8_i3c()->NTST = (uint32_t)k_ra8_i3c_ntst_ibiqeff_mask;
   /* IBI_ST=0 (interrupt type), ibi_id=0x84, len=9 (bits[7:0]=9).
    * 9 > sizeof(out_ibi->payload)=8 triggers the clamp on line 947. */
@@ -673,27 +691,27 @@ static void test_ibi_payload_clamping(void)
  * @note Order is significant: cases run top to bottom, exactly as before.
  */
 static void (*const s_test_roster[])(void) = {
-  test_send_ccc_large_payload_and_fifo_partial,
-  test_init_i2c_mode_error,
-  test_deinit_oob,
-  test_attach_handler_oob,
-  test_dispatch_oob_and_i2c_mode,
-  test_recv_ccc_internal_invalid,
-  test_write_error_paths,
-  test_read_error_paths,
-  test_transfer_error_paths,
-  test_set_clock_coverage,
-  test_scan_error_paths,
-  test_get_errors_coverage,
-  test_clear_errors_coverage,
-  test_abort_coverage,
-  test_peripheral_close_coverage,
-  test_peripheral_send_coverage,
-  test_peripheral_receive_coverage,
-  test_peripheral_status_error_paths,
-  test_ibi_hot_join,
-  test_ibi_main_request,
-  test_ibi_payload_clamping,
+  internal_test_send_ccc_large_payload_and_fifo_partial,
+  internal_test_init_i2c_mode_error,
+  internal_test_deinit_oob,
+  internal_test_attach_handler_oob,
+  internal_test_dispatch_oob_and_i2c_mode,
+  internal_test_recv_ccc_internal_invalid,
+  internal_test_write_error_paths,
+  internal_test_read_error_paths,
+  internal_test_transfer_error_paths,
+  internal_test_set_clock_coverage,
+  internal_test_scan_error_paths,
+  internal_test_get_errors_coverage,
+  internal_test_clear_errors_coverage,
+  internal_test_abort_coverage,
+  internal_test_peripheral_close_coverage,
+  internal_test_peripheral_send_coverage,
+  internal_test_peripheral_receive_coverage,
+  internal_test_peripheral_status_error_paths,
+  internal_test_ibi_hot_join,
+  internal_test_ibi_main_request,
+  internal_test_ibi_payload_clamping,
 };
 
 int32_t main(void)
@@ -701,6 +719,5 @@ int32_t main(void)
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
     s_test_roster[i]();
   }
-  (void)fprintf(stderr, "[OK  ] test_ra8_i3c_cov.c\n");
   return 0;
 }

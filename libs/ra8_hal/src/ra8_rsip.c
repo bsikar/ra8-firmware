@@ -116,8 +116,8 @@ static ra8_rsip_event_fn_t s_rsip_fn;
  */
 static void* s_rsip_ctx;
 
-/** @brief Implementation of `internal_wait_bit()` -- bounded MMIO mask spin. */
-ra8_err_t internal_wait_bit(ra8_rsip_off_t offset, uint32_t mask)
+/** @brief Implementation of `priv_wait_bit()` -- bounded MMIO mask spin. */
+ra8_err_t priv_wait_bit(ra8_rsip_off_t offset, uint32_t mask)
 {
   volatile uint32_t* reg = ra8_rsip_reg32(offset);
   for (uint32_t i = 0U; i < k_ra8_rsip_poll_budget; ++i) {
@@ -171,7 +171,7 @@ static ra8_err_t internal_run_bist(void)
   /* Engine self-test gate. */
   *ctrl |= k_ra8_rsip_mask_ctrl_bist;
 
-  const ra8_err_t err = internal_wait_bit(k_ra8_rsip_off_status, k_ra8_rsip_mask_status_bistok);
+  const ra8_err_t err = priv_wait_bit(k_ra8_rsip_off_status, k_ra8_rsip_mask_status_bistok);
   if (err != k_ra8_ok) {
     return k_ra8_err_hw_init_failed;
   }
@@ -195,18 +195,18 @@ static void internal_sha256_push_msg(const uint8_t* msg, uint32_t msg_len)
   /* Stream message into HASH input port one 32-bit word at a time.
    * The HAL handles partial trailing bytes by zero-extending into
    * a single word. */
-  internal_push_bytes_to_port(k_ra8_rsip_off_hash_data_in, msg, msg_len);
+  priv_push_bytes_to_port(k_ra8_rsip_off_hash_data_in, msg, msg_len);
 }
 
 #endif /* RA8_RSIP_HASH_HARDWARE */
 
-/* internal_hash_wait_done stays compiled: it is shared with ra8_rsip_asym.c. */
-ra8_err_t internal_hash_wait_done(void)
+/* priv_hash_wait_done stays compiled: it is shared with ra8_rsip_asym.c. */
+ra8_err_t priv_hash_wait_done(void)
 {
   /* On hardware the engine raises HASH_STATUS.DONE once it absorbs the
    * trailing block + length; the bounded wait routes through the host
-   * ra8_fake_mmio seam inside internal_wait_bit. */
-  return internal_wait_bit(k_ra8_rsip_off_hash_status, k_ra8_rsip_mask_isr_done);
+   * ra8_fake_mmio seam inside priv_wait_bit. */
+  return priv_wait_bit(k_ra8_rsip_off_hash_status, k_ra8_rsip_mask_isr_done);
 }
 
 #ifdef RA8_RSIP_HASH_HARDWARE
@@ -224,7 +224,7 @@ static void internal_sha256_pull_digest(uint8_t* digest)
       (ra8_rsip_off_t)( // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange) -- computed register offset is a HUM-defined location, not an enumerator.
         k_ra8_rsip_off_hash_digest + (uint16_t)(w << k_ra8_rsip_word_shift));
     const uint32_t word = *ra8_rsip_reg32(off);
-    internal_unpack_le(word, &digest[w << k_ra8_rsip_word_shift]);
+    priv_unpack_le(word, &digest[w << k_ra8_rsip_word_shift]);
   }
   /* Ack the DONE bit so the next call starts clean. */
   *ra8_rsip_reg32(k_ra8_rsip_off_hash_status) &= ~k_ra8_rsip_mask_isr_done;
@@ -361,7 +361,7 @@ ra8_err_t ra8_rsip_trng_read(uint8_t* buf, uint32_t len)
     *status |= k_ra8_rsip_mask_status_ready;
 
     const ra8_err_t wait_err =
-      internal_wait_bit(k_ra8_rsip_off_rnd_status, k_ra8_rsip_mask_status_ready);
+      priv_wait_bit(k_ra8_rsip_off_rnd_status, k_ra8_rsip_mask_status_ready);
     if (wait_err != k_ra8_ok) {
       return wait_err;
     }
@@ -409,7 +409,7 @@ ra8_err_t ra8_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
    *   5. drain 8 digest words from HASH_DIGEST. */
   *ra8_rsip_reg32(k_ra8_rsip_off_hash_status) |= k_ra8_rsip_mask_status_ready;
   const ra8_err_t ready_err =
-    internal_wait_bit(k_ra8_rsip_off_hash_status, k_ra8_rsip_mask_status_ready);
+    priv_wait_bit(k_ra8_rsip_off_hash_status, k_ra8_rsip_mask_status_ready);
   RA8_RETURN_ON_ERROR(ready_err, s_tag, "rsip_sha256: hash ready");
 
   /* HASH algorithm select. */
@@ -417,7 +417,7 @@ ra8_err_t ra8_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
 
   internal_sha256_push_msg(msg, msg_len);
 
-  const ra8_err_t wait_err = internal_hash_wait_done();
+  const ra8_err_t wait_err = priv_hash_wait_done();
   RA8_RETURN_ON_ERROR(wait_err, s_tag, "rsip_sha256: hash done");
 
   internal_sha256_pull_digest(digest);

@@ -72,10 +72,11 @@ typedef enum : uint32_t {
  * @brief Round-3 file-private constants.
  */
 typedef enum : uint32_t {
-  k_ra8_rsip_kv_slot_max = 16UL, /**< Number of vault slots.        */
-  k_ra8_rsip_kv_slot_w   = 16UL, /**< 64-byte slot = 16 * uint32_t. */
-  k_ra8_rsip_iv_words    = 4UL,  /**< IV / nonce = 4 lanes.         */
-  k_ra8_rsip_aes_block_w = 4UL,  /**< 16-byte block = 4 * uint32_t. */
+  k_ra8_rsip_kv_slot_max   = 16UL, /**< Number of vault slots.        */
+  k_ra8_rsip_kv_slot_w     = 16UL, /**< 64-byte slot = 16 * uint32_t. */
+  k_ra8_rsip_iv_words      = 4UL,  /**< IV / nonce register lanes.    */
+  k_ra8_rsip_aead_iv_bytes = 12UL, /**< Fixed GCM / CCM nonce length. */
+  k_ra8_rsip_aes_block_w   = 4UL,  /**< 16-byte block = 4 * uint32_t. */
 } ra8_rsip_intern2_t;
 
 /**
@@ -106,7 +107,7 @@ typedef enum : uint32_t {
  * @retval k_ra8_ok Operation completed successfully.
  * @retval other Non-zero error code from the underlying operation.
  */
-RA8_PRIV ra8_err_t internal_wait_bit(ra8_rsip_off_t offset, uint32_t mask);
+RA8_PRIV ra8_err_t priv_wait_bit(ra8_rsip_off_t offset, uint32_t mask);
 
 /**
  * @brief Wait for the HASH engine to raise DONE after the trailing block.
@@ -114,7 +115,7 @@ RA8_PRIV ra8_err_t internal_wait_bit(ra8_rsip_off_t offset, uint32_t mask);
  * @details
  * On hardware the engine raises ``HASH_STATUS.DONE`` once it absorbs the
  * trailing block + length. The bounded wait routes through the host
- * ``ra8_fake_mmio`` seam inside ``internal_wait_bit`` (never forged by the
+ * ``ra8_fake_mmio`` seam inside ``priv_wait_bit`` (never forged by the
  * driver). Defined in ``ra8_rsip.c``; shared with the generic hash /
  * HMAC path in ``ra8_rsip_cipher.c``.
  *
@@ -131,7 +132,7 @@ RA8_PRIV ra8_err_t internal_wait_bit(ra8_rsip_off_t offset, uint32_t mask);
  * @retval k_ra8_ok Operation completed successfully.
  * @retval other Non-zero error code from the underlying operation.
  */
-RA8_PRIV ra8_err_t internal_hash_wait_done(void);
+RA8_PRIV ra8_err_t priv_hash_wait_done(void);
 
 /**
  * @brief Pack 4 little-endian bytes into a uint32_t.
@@ -151,13 +152,13 @@ RA8_PRIV ra8_err_t internal_hash_wait_done(void);
  * @note Internal helper.
  * @since 0.1.0
  */
-RA8_PRIV uint32_t internal_pack_le(const uint8_t* p);
+RA8_PRIV uint32_t priv_pack_le(const uint8_t* p);
 
 /**
  * @brief Unpack a uint32_t into 4 little-endian bytes.
  *
  * @details
- * Inverse of ``internal_pack_le``. Used by the RSIP digest / key-output
+ * Inverse of ``priv_pack_le``. Used by the RSIP digest / key-output
  * port readers to materialise byte buffers from the engine's
  * word-addressed result registers. Defined in ``ra8_rsip_cipher.c``;
  * shared with ``ra8_rsip.c`` and ``ra8_rsip_asym.c``.
@@ -171,7 +172,7 @@ RA8_PRIV uint32_t internal_pack_le(const uint8_t* p);
  * @note Internal helper.
  * @since 0.1.0
  */
-RA8_PRIV void internal_unpack_le(uint32_t word, uint8_t* p);
+RA8_PRIV void priv_unpack_le(uint32_t word, uint8_t* p);
 
 /**
  * @brief Stream a variable-length byte buffer into a single fixed MMIO port.
@@ -180,7 +181,7 @@ RA8_PRIV void internal_unpack_le(uint32_t word, uint8_t* p);
  * Many RSIP sub-engines (HASH, KDF label / salt, AEAD AAD) accept their
  * input through a single 32-bit register that latches one little-endian
  * word per write. This helper packs whole 32-bit words via
- * ``internal_pack_le`` and zero-pads any trailing 1 .. 3 bytes into a
+ * ``priv_pack_le`` and zero-pads any trailing 1 .. 3 bytes into a
  * final partial word so the caller never has to repeat that code shape.
  * Defined in ``ra8_rsip_cipher.c``; shared with ``ra8_rsip.c`` and
  * ``ra8_rsip_asym.c``.
@@ -198,7 +199,7 @@ RA8_PRIV void internal_unpack_le(uint32_t word, uint8_t* p);
  * @note Internal helper.
  * @since 0.1.0
  */
-RA8_PRIV void internal_push_bytes_to_port(ra8_rsip_off_t off, const uint8_t* in, uint32_t len);
+RA8_PRIV void priv_push_bytes_to_port(ra8_rsip_off_t off, const uint8_t* in, uint32_t len);
 
 /**
  * @brief Drive a single mailbox completion (DONE poll + ack).
@@ -225,7 +226,7 @@ RA8_PRIV void internal_push_bytes_to_port(ra8_rsip_off_t off, const uint8_t* in,
  * @note Internal helper.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t internal_complete(uint32_t done_mask);
+RA8_PRIV ra8_err_t priv_complete(uint32_t done_mask);
 
 /**
  * @brief Map an OEM opcode to the wrapped-key body word count.
@@ -248,7 +249,7 @@ RA8_PRIV ra8_err_t internal_complete(uint32_t done_mask);
  * @note Internal helper.
  * @since 0.1.0
  */
-RA8_PRIV uint32_t internal_handle_words_for(ra8_rsip_oem_cmd_t cmd);
+RA8_PRIV uint32_t priv_handle_words_for(ra8_rsip_oem_cmd_t cmd);
 
 /**
  * @brief Pick the AES algorithm byte that matches the wrapped key.
@@ -271,31 +272,33 @@ RA8_PRIV uint32_t internal_handle_words_for(ra8_rsip_oem_cmd_t cmd);
  * @note Internal helper.
  * @since 0.1.0
  */
-RA8_PRIV uint8_t internal_aes_alg_byte(uint32_t alg);
+RA8_PRIV uint8_t priv_aes_alg_byte(uint32_t alg);
 
 /**
- * @brief Push a 16-byte IV / nonce into 4 consecutive 32-bit lanes.
+ * @brief Push a bounded IV / nonce into 4 consecutive 32-bit lanes.
  *
  * @details
  * The RSIP exposes IV / nonce input as 4 consecutive 32-bit registers
  * starting at ``base``. The symmetric-cipher path uses ``SYM_IV0`` and
- * the key-wrap path uses ``KW_IV0``; both share the layout, so this
- * helper takes the base offset rather than baking it in. Defined in
- * ``ra8_rsip_cipher.c``; shared with the wrap engine in ``ra8_rsip_asym.c``.
+ * the key-wrap path uses ``KW_IV0``; both share the layout. Bytes after
+ * ``iv_len`` are written as zero, so a 12-byte AEAD nonce never reads a
+ * nonexistent fourth source word. Defined in ``ra8_rsip_cipher.c`` and
+ * shared with the wrap engine in ``ra8_rsip_asym.c``.
  *
- * @param[in] base First lane offset (``SYM_IV0`` or ``KW_IV0``).
- * @param[in] iv   16 source bytes; never NULL here.
+ * @param[in] base   First lane offset (``SYM_IV0`` or ``KW_IV0``).
+ * @param[in] iv     Source bytes; never NULL here.
+ * @param[in] iv_len Source length in bytes, at most 16.
  *
- * @pre ``iv`` is non-NULL.
+ * @pre ``iv`` is non-NULL and addresses ``iv_len`` readable bytes.
  * @pre ``base`` is the lane-0 offset of a 4-lane IV window.
  *
- * @post Lanes 0..3 reflect the supplied IV in little-endian order.
+ * @post Lanes 0..3 reflect the supplied IV in little-endian order with a zero-padded tail.
  * @post No command-word side effect.
  *
  * @note Internal helper.
  * @since 0.1.0
  */
-RA8_PRIV void internal_push_iv_lanes(ra8_rsip_off_t base, const uint8_t* iv);
+RA8_PRIV void priv_push_iv_lanes(ra8_rsip_off_t base, const uint8_t* iv, uint32_t iv_len);
 
 /**
  * @brief Stream a wrapped key body into the staging port.
@@ -318,14 +321,14 @@ RA8_PRIV void internal_push_iv_lanes(ra8_rsip_off_t base, const uint8_t* iv);
  * @note Internal helper.
  * @since 0.1.0
  */
-RA8_PRIV void internal_push_handle_body(const ra8_rsip_key_handle_t* handle);
+RA8_PRIV void priv_push_handle_body(const ra8_rsip_key_handle_t* handle);
 
 /**
  * @brief Stream a wrapped-key body into the engine input FIFO.
  *
  * @details
  * Publishes ``handle->alg`` to ``SYM_KEYH`` then streams the wrapped
- * body via ``internal_push_handle_body``. A NULL handle is a no-op.
+ * body via ``priv_push_handle_body``. A NULL handle is a no-op.
  * Defined in ``ra8_rsip_cipher.c``; shared with every key-touching
  * asymmetric entry point in ``ra8_rsip_asym.c``.
  *
@@ -340,7 +343,7 @@ RA8_PRIV void internal_push_handle_body(const ra8_rsip_key_handle_t* handle);
  * @note Internal helper.
  * @since 0.1.0
  */
-RA8_PRIV void internal_load_handle(const ra8_rsip_key_handle_t* handle);
+RA8_PRIV void priv_load_handle(const ra8_rsip_key_handle_t* handle);
 
 #ifdef __cplusplus
 }

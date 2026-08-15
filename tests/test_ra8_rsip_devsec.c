@@ -27,6 +27,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_fake_mmio.h"
@@ -74,9 +75,8 @@ typedef enum : uint32_t {
 
 /**
  * @brief Reset the world before each test.
- * @since 0.1.0
- */
-static void prep(void)
+ * @since 0.1.0 @details Implements the prep fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   ra8_fake_mmio_reset();
@@ -85,11 +85,10 @@ static void prep(void)
 
 /**
  * @brief Initialise the engine for a sub-test that needs ENABLE asserted.
- * @since 0.1.0
- */
-static void prep_running(void)
+ * @since 0.1.0 @details Implements the prep running fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_prep_running(void)
 {
-  prep();
+  internal_prep();
   const ra8_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
 }
@@ -100,10 +99,9 @@ static void prep_running(void)
  * @details Exists so each MC/DC vector reads as one source line under
  * the NASA Rule 4 function-size cap; only the operation selector and
  * the IKM handle vary across the vectors.
- * @since 0.1.0
- */
-static ra8_err_t
-kdf_vec(ra8_rsip_kdf_op_t op, const ra8_rsip_key_handle_t* ikm, ra8_rsip_key_handle_t* out)
+ * @since 0.1.0 @param[in] op Fixture argument governed by the exercised interface contract. @param[in] ikm Fixture argument governed by the exercised interface contract. @param[out] out Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static ra8_err_t
+internal_kdf_vec(ra8_rsip_kdf_op_t op, const ra8_rsip_key_handle_t* ikm, ra8_rsip_key_handle_t* out)
 {
   const uint8_t label[8] = {'l', 'a', 'b', 'e', 'l', 0U, 0U, 0U};
   return ra8_rsip_kdf(op, ikm, label, sizeof(label), nullptr, 0U, 32U, out);
@@ -120,12 +118,11 @@ kdf_vec(ra8_rsip_kdf_op_t op, const ra8_rsip_key_handle_t* ikm, ra8_rsip_key_han
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_rsa_sign_verify(void)
+  * code under test that this case touches) @details Executes the rsa sign verify scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_rsa_sign_verify(void)
 {
   TEST_BEGIN("rsip rsa sign+verify");
-  prep_running();
+  internal_prep_running();
 
   ra8_rsip_key_handle_t key        = {.alg        = (uint32_t)k_ra8_rsip_oem_cmd_rsa2048_priv,
                                       .body_words = (uint32_t)k_ra8_rsip_handle_words_rsa2048_priv};
@@ -148,21 +145,20 @@ static void test_rsa_sign_verify(void)
  * @brief RSA sign / encrypt / decrypt forward an engine-side completion error.
   *
   * @par MC/DC:
-  * (no compound decisions in this test -- forces ``internal_complete`` to read
+  * (no compound decisions in this test -- forces ``priv_complete`` to read
   * a non-zero MBOX_RET so each RSA entry point takes its single-condition
-  * ``err != k_ra8_ok`` forward-the-error branch)
- */
-static void test_rsa_engine_error_paths(void)
+  * ``err != k_ra8_ok`` forward-the-error branch) @details Executes the rsa engine error paths scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_rsa_engine_error_paths(void)
 {
   TEST_BEGIN("rsip rsa sign/encrypt/decrypt forward engine error");
-  prep_running();
+  internal_prep_running();
 
   ra8_rsip_key_handle_t key        = {.alg        = (uint32_t)k_ra8_rsip_oem_cmd_rsa2048_priv,
                                       .body_words = (uint32_t)k_ra8_rsip_handle_words_rsa2048_priv};
   const uint8_t         digest[32] = {};
   uint8_t               sig[k_t_sig_cap] = {};
 
-  /* A non-zero MBOX_RET makes internal_complete report k_ra8_err_hw_error;
+  /* A non-zero MBOX_RET makes priv_complete report k_ra8_err_hw_error;
    * each RSA entry must propagate it unchanged. */
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_ret) = 1U;
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
@@ -196,12 +192,11 @@ static void test_rsa_engine_error_paths(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_ecc(void)
+  * code under test that this case touches) @details Executes the ecc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_ecc(void)
 {
   TEST_BEGIN("rsip ecdsa + ecdh");
-  prep_running();
+  internal_prep_running();
 
   ra8_rsip_key_handle_t key        = {.alg        = (uint32_t)k_ra8_rsip_oem_cmd_ecc_secp256r1_priv,
                                       .body_words = (uint32_t)k_ra8_rsip_handle_words_ecc256_priv};
@@ -235,12 +230,11 @@ static void test_ecc(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_oem_bl_version(void)
+  * code under test that this case touches) @details Executes the oem bl version scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_oem_bl_version(void)
 {
   TEST_BEGIN("rsip oem bl version");
-  prep_running();
+  internal_prep_running();
 
   uint32_t v0 = k_t_poison_word;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_oem_bl_version_get(&v0));
@@ -267,12 +261,11 @@ static void test_oem_bl_version(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_kv(void)
+  * code under test that this case touches) @details Executes the kv scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_kv(void)
 {
   TEST_BEGIN("rsip kv read/write/erase/count");
-  prep_running();
+  internal_prep_running();
 
   uint8_t blob[k_t_blob_cap];
   for (uint32_t i = 0U; i < sizeof(blob); ++i) {
@@ -320,14 +313,13 @@ static void test_kv(void)
   *
   * @par MC/DC:
   * (no compound decisions in this test -- a non-zero MBOX_RET makes
-  * ``internal_complete`` report ``k_ra8_err_hw_error`` and
+  * ``priv_complete`` report ``k_ra8_err_hw_error`` and
   * ``ra8_rsip_kv_read`` takes its single-condition forward-the-error
-  * branch before touching the data port)
- */
-static void test_kv_engine_error(void)
+  * branch before touching the data port) @details Executes the kv engine error scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_kv_engine_error(void)
 {
   TEST_BEGIN("rsip kv engine error");
-  prep_running();
+  internal_prep_running();
 
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_ret) = 1U;
   uint8_t back[k_t_blob_cap]               = {};
@@ -345,12 +337,11 @@ static void test_kv_engine_error(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_key_wrap_unwrap(void)
+  * code under test that this case touches) @details Executes the key wrap unwrap scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_key_wrap_unwrap(void)
 {
   TEST_BEGIN("rsip key wrap/unwrap");
-  prep_running();
+  internal_prep_running();
 
   const uint8_t         kek_bytes[16] = {};
   ra8_rsip_key_handle_t kek           = {};
@@ -386,12 +377,11 @@ static void test_key_wrap_unwrap(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_kdf(void)
+  * code under test that this case touches) @details Executes the kdf scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_kdf(void)
 {
   TEST_BEGIN("rsip kdf");
-  prep_running();
+  internal_prep_running();
 
   const uint8_t         key[32] = {};
   ra8_rsip_key_handle_t ikm     = {};
@@ -456,12 +446,11 @@ static void test_kdf(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_life(void)
+  * code under test that this case touches) @details Executes the life scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_life(void)
 {
   TEST_BEGIN("rsip life");
-  prep_running();
+  internal_prep_running();
 
   ra8_rsip_life_state_t st = k_ra8_rsip_life_cm;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_life_get(&st));
@@ -486,12 +475,11 @@ static void test_life(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_debug_level(void)
+  * code under test that this case touches) @details Executes the debug level scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_debug_level(void)
 {
   TEST_BEGIN("rsip debug level");
-  prep_running();
+  internal_prep_running();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_debug_level_set(k_ra8_rsip_debug_al1));
   ra8_rsip_debug_level_t out = k_ra8_rsip_debug_al0;
@@ -510,12 +498,11 @@ static void test_debug_level(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_tamper(void)
+  * code under test that this case touches) @details Executes the tamper scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_tamper(void)
 {
   TEST_BEGIN("rsip tamper + dpa");
-  prep_running();
+  internal_prep_running();
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_rsip_tamper_enable((uint32_t)k_ra8_rsip_tamper_src_ext0 |
@@ -545,12 +532,11 @@ static void test_tamper(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_dotf_route(void)
+  * code under test that this case touches) @details Executes the dotf route scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_dotf_route(void)
 {
   TEST_BEGIN("rsip dotf route");
-  prep_running();
+  internal_prep_running();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_dotf_route(0U, 5U, true));
   TEST_ASSERT(((*ra8_rsip_reg32(k_ra8_rsip_off_dotf0_ctrl)) & (uint32_t)k_ra8_rsip_dotf_on) != 0U);
@@ -568,7 +554,7 @@ static void test_dotf_route(void)
  * ------------------------------------------------------------------------ */
 
 /**
- * @test test_mcdc_rsa_sign_size_quad
+ * @test internal_test_mcdc_rsa_sign_size_quad
  *
  * @par MC/DC:
  * Decision (libs/ra8_hal/src/ra8_rsip.c ra8_rsip_rsa_sign):
@@ -581,12 +567,11 @@ static void test_dotf_route(void)
  * - V2: size=2048  -> C1=T, C2=F -> dec F
  * - V3: size=3072  -> C1=T, C2=T, C3=F -> dec F
  * - V4: size=4096  -> C1=T, C2=T, C3=T, C4=F -> dec F
- * - V5: size=999   -> all T -> dec T -> invalid_arg (independence anchor for all)
- */
-static void test_mcdc_rsa_sign_size_quad(void)
+ * - V5: size=999   -> all T -> dec T -> invalid_arg (independence anchor for all) @brief Verify mcdc rsa sign size quad behavior. @details Executes the mcdc rsa sign size quad scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_rsa_sign_size_quad(void)
 {
   TEST_BEGIN("rsip rsa_sign MC/DC: 4-cond size selector");
-  prep_running();
+  internal_prep_running();
   ra8_rsip_key_handle_t key               = {};
   key.alg                                 = (uint32_t)k_ra8_rsip_sym_alg_aes128;
   const uint8_t digest[64]                = {};
@@ -604,16 +589,15 @@ static void test_mcdc_rsa_sign_size_quad(void)
 }
 
 /**
- * @test test_mcdc_rsa_verify_size_quad
+ * @test internal_test_mcdc_rsa_verify_size_quad
  *
  * @par MC/DC:
- * Same shape as test_mcdc_rsa_sign_size_quad, applied to
- * ra8_rsip_rsa_verify (libs/ra8_hal/src/ra8_rsip.c). N+1 = 5.
- */
-static void test_mcdc_rsa_verify_size_quad(void)
+ * Same shape as internal_test_mcdc_rsa_sign_size_quad, applied to
+ * ra8_rsip_rsa_verify (libs/ra8_hal/src/ra8_rsip.c). N+1 = 5. @brief Verify mcdc rsa verify size quad behavior. @details Executes the mcdc rsa verify size quad scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_rsa_verify_size_quad(void)
 {
   TEST_BEGIN("rsip rsa_verify MC/DC: 4-cond size selector");
-  prep_running();
+  internal_prep_running();
   ra8_rsip_key_handle_t key               = {};
   key.alg                                 = (uint32_t)k_ra8_rsip_sym_alg_aes128;
   const uint8_t digest[64]                = {};
@@ -628,7 +612,7 @@ static void test_mcdc_rsa_verify_size_quad(void)
 }
 
 /**
- * @test test_mcdc_kdf_hkdf_ikm_required_quad
+ * @test internal_test_mcdc_kdf_hkdf_ikm_required_quad
  *
  * @par MC/DC:
  * Decision: ``if (((op == HKDF_SHA256) || (op == HKDF_SHA384) ||
@@ -643,12 +627,11 @@ static void test_mcdc_rsa_verify_size_quad(void)
  *  - V5: op=HKDF256, ikm!=NULL -> C1=T,C4=F -> dec F.                  [C4 indep]
  *
  * V1 vs V4 isolate C1 + outer-OR; V2 vs V4 isolate C2; V3 vs V4 isolate C3;
- * V1 vs V5 isolate C4 (ikm pointer).
- */
-static void test_mcdc_kdf_hkdf_ikm_required_quad(void)
+ * V1 vs V5 isolate C4 (ikm pointer). @brief Verify mcdc kdf hkdf ikm required quad behavior. @details Executes the mcdc kdf hkdf ikm required quad scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_kdf_hkdf_ikm_required_quad(void)
 {
   TEST_BEGIN("rsip kdf MC/DC: (HKDF256||HKDF384||HKDF512) && ikm==NULL");
-  prep_running();
+  internal_prep_running();
 
   const uint8_t         hmac_key[32] = {};
   ra8_rsip_key_handle_t ikm          = {};
@@ -659,42 +642,44 @@ static void test_mcdc_kdf_hkdf_ikm_required_quad(void)
   ra8_rsip_key_handle_t out = {};
 
   /* V1: HKDF-SHA256 + ikm==NULL -> null_ptr. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, kdf_vec(k_ra8_rsip_kdf_op_hkdf_sha256, nullptr, &out));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 internal_kdf_vec(k_ra8_rsip_kdf_op_hkdf_sha256, nullptr, &out));
 
   /* V2: HKDF-SHA384 + ikm==NULL -> null_ptr. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, kdf_vec(k_ra8_rsip_kdf_op_hkdf_sha384, nullptr, &out));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 internal_kdf_vec(k_ra8_rsip_kdf_op_hkdf_sha384, nullptr, &out));
 
   /* V3: HKDF-SHA512 + ikm==NULL -> null_ptr. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, kdf_vec(k_ra8_rsip_kdf_op_hkdf_sha512, nullptr, &out));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 internal_kdf_vec(k_ra8_rsip_kdf_op_hkdf_sha512, nullptr, &out));
 
   /* V4: HUK_LABEL + ikm==NULL -> outer-OR all-false -> proceed (OK). */
   *ra8_rsip_reg32(k_ra8_rsip_off_kdf_out) = (uint32_t)k_ra8_rsip_oem_cmd_hmac_sha256;
-  TEST_ASSERT_EQ(k_ra8_ok, kdf_vec(k_ra8_rsip_kdf_op_huk_label, nullptr, &out));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_kdf_vec(k_ra8_rsip_kdf_op_huk_label, nullptr, &out));
 
   /* V5: HKDF-SHA256 + valid ikm -> C4=F -> proceed (OK). */
   *ra8_rsip_reg32(k_ra8_rsip_off_kdf_out) = (uint32_t)k_ra8_rsip_oem_cmd_hmac_sha256;
-  TEST_ASSERT_EQ(k_ra8_ok, kdf_vec(k_ra8_rsip_kdf_op_hkdf_sha256, &ikm, &out));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_kdf_vec(k_ra8_rsip_kdf_op_hkdf_sha256, &ikm, &out));
 
   TEST_END("rsip kdf MC/DC: (HKDF256||HKDF384||HKDF512) && ikm==NULL");
 }
 
 int32_t main(void)
 {
-  test_rsa_sign_verify();
-  test_rsa_engine_error_paths();
-  test_ecc();
-  test_oem_bl_version();
-  test_kv();
-  test_kv_engine_error();
-  test_key_wrap_unwrap();
-  test_kdf();
-  test_life();
-  test_debug_level();
-  test_tamper();
-  test_dotf_route();
-  test_mcdc_rsa_sign_size_quad();
-  test_mcdc_rsa_verify_size_quad();
-  test_mcdc_kdf_hkdf_ikm_required_quad();
-  (void)fprintf(stderr, "[OK ] test_ra8_rsip_devsec.c\n");
+  internal_test_rsa_sign_verify();
+  internal_test_rsa_engine_error_paths();
+  internal_test_ecc();
+  internal_test_oem_bl_version();
+  internal_test_kv();
+  internal_test_kv_engine_error();
+  internal_test_key_wrap_unwrap();
+  internal_test_kdf();
+  internal_test_life();
+  internal_test_debug_level();
+  internal_test_tamper();
+  internal_test_dotf_route();
+  internal_test_mcdc_rsa_sign_size_quad();
+  internal_test_mcdc_rsa_verify_size_quad();
+  internal_test_mcdc_kdf_hkdf_ikm_required_quad();
   return 0;
 }

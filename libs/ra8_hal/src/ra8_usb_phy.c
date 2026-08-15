@@ -11,8 +11,8 @@
  * programming and the USBFS (IP0) module bring-up. Split out of
  * ``ra8_usb.c`` so every translation unit stays under the 1000-line cap;
  * the three externally-called entry points
- * (``internal_usbhs_phy_bringup`` / ``internal_usb_init_common`` /
- * ``internal_usbfs_module_bringup``) are declared in
+ * (``priv_usbhs_phy_bringup`` / ``priv_usb_init_common`` /
+ * ``priv_usbfs_module_bringup``) are declared in
  * ``ra8_usb_internal.h``. Modelled on FSP ``r_usb_preg_access.c``; no
  * FSP source ships in this tree.
  *
@@ -104,7 +104,7 @@ typedef enum : uint8_t {
  * @brief Sentinel values for the per-step USBHS PHY bring-up probe.
  *
  * @details Each value marks a completed sub-step of
- * ::internal_usbhs_phy_bringup. A JLink read of ``s_phy_step_probe``
+ * ::priv_usbhs_phy_bringup. A JLink read of ``s_phy_step_probe``
  * pinpoints the furthest-reached step on a stalled boot.
  */
 typedef enum : uint8_t {
@@ -121,7 +121,7 @@ typedef enum : uint8_t {
  * @var s_phy_step_probe
  * @brief Diagnostic step counter for the USBHS PHY bring-up sequence.
  *
- * @details Each step in ::internal_usbhs_phy_bringup writes a fixed
+ * @details Each step in ::priv_usbhs_phy_bringup writes a fixed
  * sentinel here so a JLink read pinpoints the last completed step:
  * - 1 = SYSCFG.HSE asserted (pre-PHY).
  * - 2 = PHYSET DIRPD|CLKSEL set, CLKSEL field forced to 12 MHz.
@@ -174,7 +174,7 @@ static volatile uint16_t s_usbhs_pllsta_probe = 0U;
  * per HUM Ch 37.2.17 PHYSET p 2080 Table). Sentinel 0xFF means the
  * full 4-codepoint sweep completed without observing PLLSTA.PLLLOCK.
  *
- * @note Read-only from outside; written only by ::internal_usbhs_phy_bringup.
+ * @note Read-only from outside; written only by ::priv_usbhs_phy_bringup.
  * @warning Direct modification breaks the diagnostic invariant.
  * @since 0.1.0
  */
@@ -223,7 +223,7 @@ static void internal_usb_delay_1us(void)
  * @brief Drive USBHS SYSCFG DRPD=0, USBE=1 after PLLRESET is released.
  *
  * @details Splits the SYSCFG mutation off from
- * ::internal_usbhs_phy_bringup so each helper stays under the NASA
+ * ::priv_usbhs_phy_bringup so each helper stays under the NASA
  * Rule 4 / clang-tidy size budget. HSE is set separately at the start
  * of the bring-up (mirrors FSP `hw_usb_set_hse` which is called BEFORE
  * `hw_usb_pmodule_init` -- r_usb_basic.c). Captures the
@@ -425,7 +425,7 @@ static ra8_err_t internal_usbhs_try_clksel(volatile uint16_t* physet,
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
-ra8_err_t internal_usbhs_phy_bringup(volatile r_usb_regs_t* reg)
+ra8_err_t priv_usbhs_phy_bringup(volatile r_usb_regs_t* reg)
 {
   volatile uint16_t* const physet = ra8_usbhs_physet();
   volatile uint16_t* const lpsts  = ra8_usbhs_lpsts();
@@ -492,7 +492,7 @@ ra8_err_t internal_usbhs_phy_bringup(volatile r_usb_regs_t* reg)
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
-void internal_usb_init_common(volatile r_usb_regs_t* reg)
+void priv_usb_init_common(volatile r_usb_regs_t* reg)
 {
   /* HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
   /* HUM Ch 37.2.8 "CFIFOSEL : CFIFO Port Select Register", p 2071 */
@@ -563,7 +563,7 @@ void internal_usb_init_common(volatile r_usb_regs_t* reg)
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
-ra8_err_t internal_usbfs_module_bringup(volatile r_usb_regs_t* reg)
+ra8_err_t priv_usbfs_module_bringup(volatile r_usb_regs_t* reg)
 {
   /* HUM Ch 36.2.1 "SYSCFG : System Configuration Control Register", p 1967 */
   reg->SYSCFG = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra8_syscfg_bit_scke));

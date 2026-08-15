@@ -35,6 +35,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
@@ -118,10 +119,10 @@ typedef enum : uint16_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void internal_lin_program_mode(volatile r_sci_regs_t* reg,
-                                      ra8_sci_lin_role_t     role,
-                                      uint32_t               tcss,
-                                      uint16_t               break_len)
+RA8_INTERNAL static void internal_lin_program_mode(volatile r_sci_regs_t* reg,
+                                                   ra8_sci_lin_role_t     role,
+                                                   uint32_t               tcss,
+                                                   uint16_t               break_len)
 {
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0" p 2182 -- drop TE/RE
    * before changing the operating mode. */
@@ -183,7 +184,7 @@ static void internal_lin_program_mode(volatile r_sci_regs_t* reg,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_lin_wait_break_done(volatile const r_sci_regs_t* reg)
+RA8_INTERNAL static ra8_err_t internal_lin_wait_break_done(volatile const r_sci_regs_t* reg)
 {
   /* HUM Ch 38.2.15 "XCR1 : Simple LIN Control Register 1" p 2223 -- TCST holds 1
    * during break output and clears on completion. The ra8_fake_mmio host seam
@@ -215,7 +216,7 @@ static ra8_err_t internal_lin_wait_break_done(volatile const r_sci_regs_t* reg)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-static uint8_t internal_lin_fold_complement(uint16_t sum)
+RA8_INTERNAL static uint8_t internal_lin_fold_complement(uint16_t sum)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_sci_lin_fold_passes; ++i) {
     const uint16_t low  = (uint16_t)(sum & (uint16_t)k_ra8_sci_lin_byte_mask);
@@ -251,7 +252,7 @@ static uint8_t internal_lin_fold_complement(uint16_t sum)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_lin_tx_buf(uint8_t channel, const uint8_t* data, uint8_t len)
+RA8_INTERNAL static ra8_err_t internal_lin_tx_buf(uint8_t channel, const uint8_t* data, uint8_t len)
 {
   RA8_CHECK_NULL_PTR(data, s_tag, "lin_tx_buf: data");
   for (uint8_t i = 0U; i < len; ++i) {
@@ -287,7 +288,7 @@ static ra8_err_t internal_lin_tx_buf(uint8_t channel, const uint8_t* data, uint8
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_lin_rx_buf(uint8_t channel, uint8_t* buf, uint8_t len)
+RA8_INTERNAL static ra8_err_t internal_lin_rx_buf(uint8_t channel, uint8_t* buf, uint8_t len)
 {
   RA8_CHECK_NULL_PTR(buf, s_tag, "lin_rx_buf: buf");
   for (uint8_t i = 0U; i < len; ++i) {

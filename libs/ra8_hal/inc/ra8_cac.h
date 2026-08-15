@@ -1,6 +1,8 @@
 /**
  * @file ra8_cac.h
  * @brief Clock Accuracy Check driver
+ *
+ * @details Declares configuration and status access for hardware clock-accuracy measurement against caller-supplied cycle limits.
  * @ingroup grp_hal_system
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

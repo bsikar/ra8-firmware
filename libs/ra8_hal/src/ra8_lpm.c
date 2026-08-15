@@ -109,7 +109,7 @@ typedef enum : uint8_t {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline void internal_wait_for_interrupt(void)
+RA8_INTERNAL static inline void internal_wait_for_interrupt(void)
 {
   ra8_hw_dsb();
   ra8_hw_wfi();
@@ -136,7 +136,7 @@ static inline void internal_wait_for_interrupt(void)
  * @note Not thread-safe against concurrent SCR writers.
  * @since 0.1.0
  */
-static inline void internal_set_sleepdeep(bool enable)
+RA8_INTERNAL static inline void internal_set_sleepdeep(bool enable)
 {
   /* Arm Cortex-M85 SCB->SCR (Armv8-M System Control Space; no HUM
    * chapter -- architectural register). */
@@ -162,7 +162,7 @@ static inline void internal_set_sleepdeep(bool enable)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_validate_mode(ra8_sleep_mode_t mode)
+RA8_INTERNAL static ra8_err_t internal_validate_mode(ra8_sleep_mode_t mode)
 {
   ra8_err_t result = k_ra8_err_invalid_arg;
   switch (mode) {
@@ -197,7 +197,7 @@ static ra8_err_t internal_validate_mode(ra8_sleep_mode_t mode)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_lpm_off_t internal_clock_offset(ra8_lpm_clock_t clock)
+RA8_INTERNAL static ra8_lpm_off_t internal_clock_offset(ra8_lpm_clock_t clock)
 {
   ra8_lpm_off_t off = k_ra8_lpm_mococr_off;
   switch (clock) {
@@ -243,7 +243,7 @@ static ra8_lpm_off_t internal_clock_offset(ra8_lpm_clock_t clock)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_lpm_off_t internal_dpsier_offset(ra8_lpm_dpsier_idx_t idx)
+RA8_INTERNAL static ra8_lpm_off_t internal_dpsier_offset(ra8_lpm_dpsier_idx_t idx)
 {
   ra8_lpm_off_t off = k_ra8_lpm_dpsier3_off;
   switch (idx) {
@@ -283,7 +283,7 @@ static ra8_lpm_off_t internal_dpsier_offset(ra8_lpm_dpsier_idx_t idx)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_lpm_off_t internal_dpsifr_offset(ra8_lpm_dpsier_idx_t idx)
+RA8_INTERNAL static ra8_lpm_off_t internal_dpsifr_offset(ra8_lpm_dpsier_idx_t idx)
 {
   ra8_lpm_off_t off = k_ra8_lpm_dpsifr3_off;
   switch (idx) {
@@ -327,7 +327,7 @@ static ra8_lpm_off_t internal_dpsifr_offset(ra8_lpm_dpsier_idx_t idx)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_lpm_off_t internal_dpsiegr_offset(ra8_lpm_dpsier_idx_t idx)
+RA8_INTERNAL static ra8_lpm_off_t internal_dpsiegr_offset(ra8_lpm_dpsier_idx_t idx)
 {
   ra8_lpm_off_t off = k_ra8_lpm_dpsiegr2_off;
   switch (idx) {

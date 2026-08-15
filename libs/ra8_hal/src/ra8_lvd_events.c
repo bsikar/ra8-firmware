@@ -196,10 +196,10 @@ ra8_err_t ra8_lvd_relock_n_channels(void)
 ra8_err_t ra8_lvd_enable_elc_event(ra8_lvd_channel_t channel)
 {
   uint8_t         idx     = 0U;
-  const ra8_err_t map_err = ra8_lvd_internal_channel_to_idx(channel, &idx);
+  const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
   RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_enable_elc_event: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
-  const ra8_lvd_channel_map_t map = s_lvd_map[idx];
+  const ra8_lvd_channel_map_t map = g_lvd_map[idx];
   if (!map.has_irq) {
     return k_ra8_err_not_supported;
   }
@@ -211,7 +211,7 @@ ra8_err_t ra8_lvd_enable_elc_event(ra8_lvd_channel_t channel)
   const uint8_t sr      = *ra8_lvd_reg8(map.sr);
   *ra8_lvd_reg8(map.sr) = (uint8_t)(sr & (uint8_t)~k_ra8_lvd_sr_mask_det);
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
-  ra8_lvd_internal_cr0_rmw(&map, 0U, k_ra8_lvd_cr0_mask_cmpe);
+  priv_ra8_lvd_internal_cr0_rmw(&map, 0U, k_ra8_lvd_cr0_mask_cmpe);
   return k_ra8_ok;
 }
 
@@ -239,18 +239,18 @@ ra8_err_t ra8_lvd_enable_elc_event(ra8_lvd_channel_t channel)
 ra8_err_t ra8_lvd_disable_elc_event(ra8_lvd_channel_t channel)
 {
   uint8_t         idx     = 0U;
-  const ra8_err_t map_err = ra8_lvd_internal_channel_to_idx(channel, &idx);
+  const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
   RA8_RETURN_ON_ERROR(map_err,
                       s_tag,
                       "lvd_disable_elc_event: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
-  const ra8_lvd_channel_map_t map = s_lvd_map[idx];
+  const ra8_lvd_channel_map_t map = g_lvd_map[idx];
   if (!map.has_irq) {
     return k_ra8_err_not_supported;
   }
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 -- clear CMPE so the ELC line goes
    * inactive (HUM 8.7 p 315). */
-  ra8_lvd_internal_cr0_rmw(&map, k_ra8_lvd_cr0_mask_cmpe, 0U);
+  priv_ra8_lvd_internal_cr0_rmw(&map, k_ra8_lvd_cr0_mask_cmpe, 0U);
   return k_ra8_ok;
 }
 
@@ -278,12 +278,12 @@ ra8_err_t ra8_lvd_disable_elc_event(ra8_lvd_channel_t channel)
 ra8_err_t ra8_lvd_configure_for_standby(ra8_lvd_channel_t channel)
 {
   uint8_t         idx     = 0U;
-  const ra8_err_t map_err = ra8_lvd_internal_channel_to_idx(channel, &idx);
+  const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
   RA8_RETURN_ON_ERROR(map_err,
                       s_tag,
                       "lvd_configure_for_standby: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
-  const ra8_lvd_channel_map_t map = s_lvd_map[idx];
+  const ra8_lvd_channel_map_t map = g_lvd_map[idx];
 
   /* HUM Ch 8.5(1) "Setting in Software Standby mode" p 311 +
    * HUM Ch 8.5(2) "Settings in Deep Software Standby mode" p 312 --
@@ -295,7 +295,7 @@ ra8_err_t ra8_lvd_configure_for_standby(ra8_lvd_channel_t channel)
     clr_bits |= k_ra8_lvd_cr0_mask_rn;
   }
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
-  ra8_lvd_internal_cr0_rmw(&map, clr_bits, set_bits);
+  priv_ra8_lvd_internal_cr0_rmw(&map, clr_bits, set_bits);
   return k_ra8_ok;
 }
 
@@ -322,7 +322,7 @@ ra8_err_t ra8_lvd_cancel_deep_standby_path(void)
 {
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
   for (uint8_t i = 0U; i < k_ra8_lvd_nmi_channel_count; ++i) {
-    ra8_lvd_internal_cr0_rmw(&s_lvd_map[i], k_ra8_lvd_cr0_mask_ri, 0U);
+    priv_ra8_lvd_internal_cr0_rmw(&g_lvd_map[i], k_ra8_lvd_cr0_mask_ri, 0U);
   }
   return k_ra8_ok;
 }
@@ -362,9 +362,9 @@ uint32_t ra8_lvd_filter_delay_us(ra8_lvd_loco_div_t div, uint32_t loco_hz)
   if (safe_div > k_ra8_lvd_loco_div_max) {
     safe_div = k_ra8_lvd_loco_div_max;
   }
-  const uint32_t s_factor    = (uint32_t)1U << (safe_div + 1U);
-  const uint32_t loco_cycles = (k_ra8_lvd_filter_factor * s_factor) + k_ra8_lvd_filter_extra;
-  const uint32_t hz          = (loco_hz != 0U) ? loco_hz : k_ra8_lvd_loco_hz_default;
+  const uint32_t local_factor = (uint32_t)1U << (safe_div + 1U);
+  const uint32_t loco_cycles  = (k_ra8_lvd_filter_factor * local_factor) + k_ra8_lvd_filter_extra;
+  const uint32_t hz           = (loco_hz != 0U) ? loco_hz : k_ra8_lvd_loco_hz_default;
   /* +1 us round-up matches FSP's r_lvd_filter_delay computation. */
   return ((loco_cycles * k_ra8_lvd_us_per_sec) / hz) + 1U;
 }
@@ -430,12 +430,12 @@ ra8_err_t
 ra8_lvd_attach_channel_handler(ra8_lvd_channel_t channel, ra8_lvd_event_fn_t fn, void* ctx)
 {
   uint8_t         idx     = 0U;
-  const ra8_err_t map_err = ra8_lvd_internal_channel_to_idx(channel, &idx);
+  const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
   RA8_RETURN_ON_ERROR(map_err,
                       s_tag,
                       "lvd_attach_channel_handler: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
-  const ra8_lvd_channel_map_t map = s_lvd_map[idx];
+  const ra8_lvd_channel_map_t map = g_lvd_map[idx];
   if (!map.has_irq) {
     return k_ra8_err_not_supported;
   }
@@ -467,11 +467,11 @@ ra8_lvd_attach_channel_handler(ra8_lvd_channel_t channel, ra8_lvd_event_fn_t fn,
 void ra8_lvd_dispatch(ra8_lvd_channel_t channel)
 {
   uint8_t         idx     = 0U;
-  const ra8_err_t map_err = ra8_lvd_internal_channel_to_idx(channel, &idx);
+  const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
   if (map_err != k_ra8_ok) {
     return;
   }
-  const ra8_lvd_channel_map_t map = s_lvd_map[idx];
+  const ra8_lvd_channel_map_t map = g_lvd_map[idx];
 
   /* Only m channels have a status register / IRQ path. */
   if (!map.has_irq) {

@@ -40,13 +40,13 @@ static const char* s_tag = "SCI";
 /* ---- DMA TX / RX ----------------------------------------- */
 
 /* Build a DMA request descriptor for byte-stream to/from SCI TDR/RDR -- see surrounding code and HUM citations. */
-static ra8_dma_request_t internal_make_dma_request(uintptr_t             src,
-                                                   uintptr_t             dst,
-                                                   uint16_t              len,
-                                                   bool                  src_inc,
-                                                   bool                  dst_inc,
-                                                   ra8_dma_complete_fn_t on_complete,
-                                                   void*                 ctx)
+RA8_INTERNAL static ra8_dma_request_t internal_make_dma_request(uintptr_t             src,
+                                                                uintptr_t             dst,
+                                                                uint16_t              len,
+                                                                bool                  src_inc,
+                                                                bool                  dst_inc,
+                                                                ra8_dma_complete_fn_t on_complete,
+                                                                void*                 ctx)
 {
   ra8_dma_request_t req = {};
   req.src_addr          = src;

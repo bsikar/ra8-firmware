@@ -89,7 +89,7 @@ static ra8_touch_state_t s_state;
  * @since 0.1.0
  */
 RA8_INTERNAL
-static inline void priv_pack_reg(uint16_t reg, uint8_t* out_buf)
+RA8_INTERNAL static inline void internal_pack_reg(uint16_t reg, uint8_t* out_buf)
 {
   out_buf[0] = (uint8_t)(((uint32_t)reg >> k_ra8_touch_byte_shift) & k_ra8_touch_byte_mask);
   out_buf[1] = (uint8_t)((uint32_t)reg & k_ra8_touch_byte_mask);
@@ -118,10 +118,10 @@ static inline void priv_pack_reg(uint16_t reg, uint8_t* out_buf)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_gt911_read(uint16_t reg, uint8_t* buf, uint32_t len)
+RA8_INTERNAL static ra8_err_t internal_gt911_read(uint16_t reg, uint8_t* buf, uint32_t len)
 {
   uint8_t reg_bytes[k_ra8_touch_gt911_reg_ptr_bytes];
-  priv_pack_reg(reg, reg_bytes);
+  internal_pack_reg(reg, reg_bytes);
   return s_state.bus.transfer(s_state.bus.ctx,
                               s_state.target_7b,
                               reg_bytes,
@@ -148,13 +148,13 @@ static ra8_err_t priv_gt911_read(uint16_t reg, uint8_t* buf, uint32_t len)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_gt911_write_byte(uint16_t reg, uint8_t value)
+RA8_INTERNAL static ra8_err_t internal_gt911_write_byte(uint16_t reg, uint8_t value)
 {
   enum : uint8_t {
     k_payload_len = k_ra8_touch_gt911_reg_ptr_bytes + 1U, /**< Payload length. */
   };
   uint8_t payload[k_payload_len];
-  priv_pack_reg(reg, payload);
+  internal_pack_reg(reg, payload);
   payload[k_ra8_touch_gt911_reg_ptr_bytes] = value;
   return s_state.bus.write(s_state.bus.ctx,
                            s_state.target_7b,
@@ -178,7 +178,7 @@ static ra8_err_t priv_gt911_write_byte(uint16_t reg, uint8_t value)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_decode_one(const uint8_t* raw, ra8_touch_point_t* out)
+RA8_INTERNAL static void internal_decode_one(const uint8_t* raw, ra8_touch_point_t* out)
 {
   out->track_id = raw[k_ra8_touch_gt911_point_off_track];
   out->x = (uint16_t)((uint32_t)raw[k_ra8_touch_gt911_point_off_x_lsb] |
@@ -209,11 +209,11 @@ static void priv_decode_one(const uint8_t* raw, ra8_touch_point_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_decode_block(const uint8_t*     raw,
-                              uint8_t            n_points,
-                              ra8_touch_point_t* out,
-                              uint8_t            max_count,
-                              uint8_t*           got_count)
+RA8_INTERNAL static void internal_decode_block(const uint8_t*     raw,
+                                               uint8_t            n_points,
+                                               ra8_touch_point_t* out,
+                                               uint8_t            max_count,
+                                               uint8_t*           got_count)
 {
   uint8_t emit = n_points;
   if (emit > max_count) {
@@ -224,7 +224,7 @@ static void priv_decode_block(const uint8_t*     raw,
   }
   for (uint8_t i = 0U; i < emit; i++) {
     const size_t off = (size_t)i * (size_t)k_ra8_touch_gt911_point_bytes;
-    priv_decode_one(&raw[off], &out[i]);
+    internal_decode_one(&raw[off], &out[i]);
   }
   *got_count = emit;
 }
@@ -250,7 +250,7 @@ static void priv_decode_block(const uint8_t*     raw,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_validate_cfg(const ra8_touch_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_validate_cfg(const ra8_touch_cfg_t* cfg)
 {
   if ((cfg->bus.write == nullptr) || (cfg->bus.transfer == nullptr)) {
     return k_ra8_err_invalid_arg;
@@ -279,7 +279,7 @@ static ra8_err_t priv_validate_cfg(const ra8_touch_cfg_t* cfg)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_attach_irq_pin(uint8_t irq_pin)
+RA8_INTERNAL static ra8_err_t internal_attach_irq_pin(uint8_t irq_pin)
 {
   if ((uint32_t)irq_pin >= k_ra8_touch_irq_pin_count) {
     /* Either the sentinel value or any other "no pin" marker. */
@@ -306,7 +306,7 @@ static ra8_err_t priv_attach_irq_pin(uint8_t irq_pin)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_stash_state(const ra8_touch_cfg_t* cfg)
+RA8_INTERNAL static void internal_stash_state(const ra8_touch_cfg_t* cfg)
 {
   s_state.bus        = cfg->bus;
   s_state.target_7b  = cfg->target_7b;
@@ -340,11 +340,11 @@ static void priv_stash_state(const ra8_touch_cfg_t* cfg)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_check_product_id(void)
+RA8_INTERNAL static ra8_err_t internal_check_product_id(void)
 {
   uint8_t         product[k_ra8_touch_gt911_id_bytes] = {};
   const ra8_err_t pid_err =
-    priv_gt911_read(k_ra8_touch_gt911_reg_product, product, sizeof(product));
+    internal_gt911_read(k_ra8_touch_gt911_reg_product, product, sizeof(product));
   if (pid_err != k_ra8_ok) {
     return k_ra8_err_hw_init_failed;
   }
@@ -374,14 +374,14 @@ static ra8_err_t priv_check_product_id(void)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_open_finalise(const ra8_touch_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_open_finalise(const ra8_touch_cfg_t* cfg)
 {
-  const ra8_err_t pid_err = priv_check_product_id();
+  const ra8_err_t pid_err = internal_check_product_id();
   if (pid_err != k_ra8_ok) {
     return pid_err;
   }
-  (void)priv_gt911_write_byte(k_ra8_touch_gt911_reg_status, k_ra8_touch_gt911_cmd_clear_status);
-  return priv_attach_irq_pin(cfg->irq_pin);
+  (void)internal_gt911_write_byte(k_ra8_touch_gt911_reg_status, k_ra8_touch_gt911_cmd_clear_status);
+  return internal_attach_irq_pin(cfg->irq_pin);
 }
 
 [[nodiscard]] ra8_err_t ra8_touch_open(const ra8_touch_cfg_t* cfg)
@@ -390,12 +390,12 @@ static ra8_err_t priv_open_finalise(const ra8_touch_cfg_t* cfg)
   if (s_state.opened) {
     return k_ra8_err_invalid_state;
   }
-  const ra8_err_t cfg_err = priv_validate_cfg(cfg);
+  const ra8_err_t cfg_err = internal_validate_cfg(cfg);
   RA8_RETURN_ON_ERROR(cfg_err, s_tag, "ra8_touch_open: cfg validation"); /* GCOVR_EXCL_BR_LINE */
 
-  priv_stash_state(cfg);
+  internal_stash_state(cfg);
 
-  const ra8_err_t fin_err = priv_open_finalise(cfg);
+  const ra8_err_t fin_err = internal_open_finalise(cfg);
   RA8_RETURN_ON_ERROR(fin_err, s_tag, "ra8_touch_open: finalise"); /* GCOVR_EXCL_BR_LINE */
 
   s_state.cb     = nullptr;
@@ -461,7 +461,7 @@ void ra8_touch_dispatch_irq(void)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_clamp_emit(uint8_t status_byte, uint8_t max_count)
+RA8_INTERNAL static uint8_t internal_clamp_emit(uint8_t status_byte, uint8_t max_count)
 {
   uint8_t emit = status_byte & k_ra8_touch_gt911_status_count_mask;
   if (emit > max_count) {
@@ -485,9 +485,9 @@ static uint8_t priv_clamp_emit(uint8_t status_byte, uint8_t max_count)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_ack_frame(void)
+RA8_INTERNAL static void internal_ack_frame(void)
 {
-  (void)priv_gt911_write_byte(k_ra8_touch_gt911_reg_status, k_ra8_touch_gt911_cmd_clear_status);
+  (void)internal_gt911_write_byte(k_ra8_touch_gt911_reg_status, k_ra8_touch_gt911_cmd_clear_status);
 }
 
 /**
@@ -507,12 +507,12 @@ static void priv_ack_frame(void)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-priv_read_inner(ra8_touch_point_t* out_points, uint8_t max_count, uint8_t* got_count)
+RA8_INTERNAL static ra8_err_t
+internal_read_inner(ra8_touch_point_t* out_points, uint8_t max_count, uint8_t* got_count)
 {
   /* Step 1: read the status byte. */
   uint8_t         status     = 0U;
-  const ra8_err_t status_err = priv_gt911_read(k_ra8_touch_gt911_reg_status, &status, 1U);
+  const ra8_err_t status_err = internal_gt911_read(k_ra8_touch_gt911_reg_status, &status, 1U);
   if (status_err != k_ra8_ok) {
     *got_count = 0U;
     return k_ra8_err_hw_error;
@@ -525,17 +525,17 @@ priv_read_inner(ra8_touch_point_t* out_points, uint8_t max_count, uint8_t* got_c
   }
 
   /* Step 3 + 4: clamp, pull the per-point block, decode. */
-  const uint8_t emit = priv_clamp_emit(status, max_count);
+  const uint8_t emit = internal_clamp_emit(status, max_count);
   uint8_t raw[(size_t)k_ra8_touch_gt911_max_points * (size_t)k_ra8_touch_gt911_point_bytes] = {};
   if (emit > 0U) {
     const uint32_t  bytes   = (uint32_t)emit * (uint32_t)k_ra8_touch_gt911_point_bytes;
-    const ra8_err_t blk_err = priv_gt911_read(k_ra8_touch_gt911_reg_point0, raw, bytes);
+    const ra8_err_t blk_err = internal_gt911_read(k_ra8_touch_gt911_reg_point0, raw, bytes);
     if (blk_err != k_ra8_ok) {
       *got_count = 0U;
-      priv_ack_frame();
+      internal_ack_frame();
       return k_ra8_err_hw_error;
     }
-    priv_decode_block(raw, emit, out_points, max_count, got_count);
+    internal_decode_block(raw, emit, out_points, max_count, got_count);
   } else {
     /* Frame-ready with zero contacts: a full-release frame. Nothing to
      * decode -- fall through to the ack so the IC latches the next one. */
@@ -543,7 +543,7 @@ priv_read_inner(ra8_touch_point_t* out_points, uint8_t max_count, uint8_t* got_c
   }
 
   /* Step 5: ack the frame so the IC latches the next one. */
-  priv_ack_frame();
+  internal_ack_frame();
   return k_ra8_ok;
 }
 
@@ -560,7 +560,7 @@ ra8_touch_read(ra8_touch_point_t* out_points, uint8_t max_count, uint8_t* got_co
     *got_count = 0U;
     return k_ra8_err_not_initialized;
   }
-  return priv_read_inner(out_points, max_count, got_count);
+  return internal_read_inner(out_points, max_count, got_count);
 }
 
 [[nodiscard]] ra8_err_t ra8_touch_calibrate(void)
@@ -583,7 +583,7 @@ ra8_touch_read(ra8_touch_point_t* out_points, uint8_t max_count, uint8_t* got_co
     *got_count = 0U;
     return k_ra8_err_invalid_arg;
   }
-  priv_decode_block(raw, n_points, out_points, max_count, got_count);
+  internal_decode_block(raw, n_points, out_points, max_count, got_count);
   return k_ra8_ok;
 }
 #endif /* UNIT_TEST */

@@ -55,7 +55,7 @@
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool ra8_i3c_internal_recv_ccc_invalid(uint8_t addr_mask, uint8_t target, uint8_t max_len)
+bool priv_ra8_i3c_internal_recv_ccc_invalid(uint8_t addr_mask, uint8_t target, uint8_t max_len)
 {
   return (target > addr_mask) || (max_len == 0U);
 }
@@ -77,10 +77,10 @@ bool ra8_i3c_internal_recv_ccc_invalid(uint8_t addr_mask, uint8_t target, uint8_
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool ra8_i3c_internal_hdr_mode_invalid(uint32_t sdr_val,
-                                       uint32_t ddr_val,
-                                       uint32_t ts_val,
-                                       uint32_t mode)
+bool priv_ra8_i3c_internal_hdr_mode_invalid(uint32_t sdr_val,
+                                            uint32_t ddr_val,
+                                            uint32_t ts_val,
+                                            uint32_t mode)
 {
   return (mode != sdr_val) && (mode != ddr_val) && (mode != ts_val);
 }
@@ -136,7 +136,7 @@ static ra8_i3c_chan_state_t s_i3c_chan[k_ra8_i3c_i2c_channel_count];
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void priv_ra8_i3c_reset_sequence(volatile r_i3c_regs_t* reg)
+RA8_INTERNAL static void internal_ra8_i3c_reset_sequence(volatile r_i3c_regs_t* reg)
 {
   /* HUM Ch 40 "CECTL : Clock Enable Control Register" p 2445-2701 */
   reg->CECTL = 1U;
@@ -173,7 +173,7 @@ static void priv_ra8_i3c_reset_sequence(volatile r_i3c_regs_t* reg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint32_t priv_ra8_i3c_xfer_cmd_word(uint8_t target_addr, bool rnw)
+RA8_INTERNAL static uint32_t internal_ra8_i3c_xfer_cmd_word(uint8_t target_addr, bool rnw)
 {
   uint32_t cmd = 0U;
   cmd |= ((uint32_t)target_addr) << k_ra8_i3c_cmd_dev_index_shift;
@@ -202,7 +202,8 @@ static uint32_t priv_ra8_i3c_xfer_cmd_word(uint8_t target_addr, bool rnw)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint32_t priv_ra8_i3c_ccc_cmd_word(uint8_t ccc, uint8_t target_addr, bool rnw)
+RA8_INTERNAL static uint32_t
+internal_ra8_i3c_ccc_cmd_word(uint8_t ccc, uint8_t target_addr, bool rnw)
 {
   uint32_t cmd = 0U;
   cmd |= 1U << k_ra8_i3c_cmd_cp_shift;                /* command-present (CCC). */
@@ -235,7 +236,8 @@ static uint32_t priv_ra8_i3c_ccc_cmd_word(uint8_t ccc, uint8_t target_addr, bool
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void priv_ra8_i3c_fifo_write(volatile r_i3c_regs_t* reg, const uint8_t* data, uint32_t len)
+RA8_INTERNAL static void
+internal_ra8_i3c_fifo_write(volatile r_i3c_regs_t* reg, const uint8_t* data, uint32_t len)
 {
   uint32_t       i           = 0U;
   const uint32_t k_word_size = k_ra8_i3c_word_size;
@@ -277,7 +279,8 @@ static void priv_ra8_i3c_fifo_write(volatile r_i3c_regs_t* reg, const uint8_t* d
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void priv_ra8_i3c_fifo_read(volatile r_i3c_regs_t* reg, uint8_t* out, uint32_t len)
+RA8_INTERNAL static void
+internal_ra8_i3c_fifo_read(volatile r_i3c_regs_t* reg, uint8_t* out, uint32_t len)
 {
   uint32_t       i           = 0U;
   const uint32_t k_word_size = k_ra8_i3c_word_size;
@@ -315,7 +318,7 @@ ra8_err_t ra8_i3c_init(uint8_t channel, const ra8_i3c_cfg_t* cfg)
   if (cfg->mode == k_ra8_i3c_mode_i2c) {
     /* I2C-compat: delegate bring-up to the legacy IIC_B path. */
     const ra8_i3c_i2c_cfg_t bcfg = {.bus_hz = cfg->bus_hz, .pclka_hz = cfg->pclka_hz};
-    const ra8_err_t         e    = internal_i3c_i2c_init(channel, &bcfg);
+    const ra8_err_t         e    = ra8_i3c_i2c_init(channel, &bcfg);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -324,7 +327,7 @@ ra8_err_t ra8_i3c_init(uint8_t channel, const ra8_i3c_cfg_t* cfg)
     const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_i3c);
     RA8_RETURN_ON_ERROR(mst_err, s_tag, "i3c_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
     volatile r_i3c_regs_t* reg = ra8_i3c();
-    priv_ra8_i3c_reset_sequence(reg);
+    internal_ra8_i3c_reset_sequence(reg);
     /* Clear every status / enable register to a deterministic state.
      * INSTFC is write-only (force-clear), so we treat it as a clear. */
     reg->INST   = 0U;
@@ -347,7 +350,7 @@ ra8_err_t ra8_i3c_deinit(uint8_t channel)
   }
   ra8_err_t err;
   if (s_i3c_chan[channel].mode == k_ra8_i3c_mode_i2c) {
-    err = internal_i3c_i2c_deinit(channel);
+    err = ra8_i3c_i2c_deinit(channel);
   } else {
     volatile r_i3c_regs_t* reg = ra8_i3c();
     /* HUM Ch 40 "BCTL : Bus Control Register" p 2445-2701 */
@@ -428,8 +431,8 @@ void ra8_i3c_dispatch(uint8_t channel)
   if (s_i3c_chan[channel].mode == k_ra8_i3c_mode_i2c) {
     /* Surface the latched I2C error mask through the public IIC_B API. */
     uint8_t mask = 0U;
-    (void)internal_i3c_i2c_get_errors(channel, &mask);
-    (void)internal_i3c_i2c_clear_errors(channel);
+    (void)ra8_i3c_i2c_get_errors(channel, &mask);
+    (void)ra8_i3c_i2c_clear_errors(channel);
     if (fn != nullptr) {
       fn(ctx, (uint32_t)mask);
     }
@@ -496,7 +499,7 @@ ra8_err_t ra8_i3c_dynamic_address_assign(ra8_i3c_daa_target_t* targets, uint8_t 
       k_idx_dcr           = 7U, /**< Index dcr.         */
     };
     uint8_t pid_bcr_dcr[k_pid_bcr_dcr_bytes] = {};
-    priv_ra8_i3c_fifo_read(reg, pid_bcr_dcr, sizeof(pid_bcr_dcr));
+    internal_ra8_i3c_fifo_read(reg, pid_bcr_dcr, sizeof(pid_bcr_dcr));
     for (uint8_t j = 0U; j < (uint8_t)k_ra8_i3c_pid_bytes; ++j) {
       targets[i].pid[j] = pid_bcr_dcr[j];
     }
@@ -518,7 +521,8 @@ ra8_err_t ra8_i3c_set_dynamic_address(uint8_t static_addr, uint8_t dynamic_addr)
   }
 
   volatile r_i3c_regs_t* reg = ra8_i3c();
-  uint32_t cmd = priv_ra8_i3c_ccc_cmd_word(k_ra8_i3c_ccc_d_setdasa, static_addr, false /* write */);
+  uint32_t               cmd =
+    internal_ra8_i3c_ccc_cmd_word(k_ra8_i3c_ccc_d_setdasa, static_addr, false /* write */);
   /* SETDASA carries a single payload byte (the new dynamic address)
    * in immediate-data mode -- mirror the FSP path for transfers
    * <= 4 bytes. */
@@ -534,7 +538,7 @@ ra8_err_t ra8_i3c_reset_dynamic_addresses(void)
 {
   volatile r_i3c_regs_t* reg = ra8_i3c();
   /* RSTDAA is a payload-less broadcast CCC. */
-  uint32_t cmd = priv_ra8_i3c_ccc_cmd_word(k_ra8_i3c_ccc_b_rstdaa, 0U /* broadcast */, false);
+  uint32_t cmd = internal_ra8_i3c_ccc_cmd_word(k_ra8_i3c_ccc_b_rstdaa, 0U /* broadcast */, false);
   reg->NCMDQP  = cmd;
   reg->NCMDQP  = 0U;
   reg->NTST    = reg->NTST & ~k_ra8_i3c_ntst_cmdqef_mask;
@@ -559,7 +563,7 @@ ra8_err_t ra8_i3c_send_ccc(uint8_t ccc, uint8_t target_addr, const uint8_t* payl
    * field -- the runtime range check is unnecessary here. */
 
   volatile r_i3c_regs_t* reg = ra8_i3c();
-  uint32_t               cmd = priv_ra8_i3c_ccc_cmd_word(ccc, target_addr, false);
+  uint32_t               cmd = internal_ra8_i3c_ccc_cmd_word(ccc, target_addr, false);
 
   if (len <= (uint8_t)k_ra8_i3c_immediate_max_bytes) {
     /* Immediate-data transfer: byte count goes in cmd1, the actual
@@ -577,7 +581,7 @@ ra8_err_t ra8_i3c_send_ccc(uint8_t ccc, uint8_t target_addr, const uint8_t* payl
      * length in [31:16]; payload pushed through NTDTBP0. */
     reg->NCMDQP = cmd;
     reg->NCMDQP = (uint32_t)len << k_ra8_i3c_cmd_xfer_length_shift;
-    priv_ra8_i3c_fifo_write(reg, payload, (uint32_t)len);
+    internal_ra8_i3c_fifo_write(reg, payload, (uint32_t)len);
   }
   reg->NTST = reg->NTST & ~k_ra8_i3c_ntst_cmdqef_mask;
   return k_ra8_ok;
@@ -592,15 +596,15 @@ ra8_i3c_recv_ccc(uint8_t ccc, uint8_t target_addr, uint8_t* buf, uint8_t max_len
     /* Only direct CCCs return data. */
     return k_ra8_err_invalid_arg;
   }
-  if (ra8_i3c_internal_recv_ccc_invalid((uint8_t)k_ra8_i3c_addr_mask, target_addr, max_len)) {
+  if (priv_ra8_i3c_internal_recv_ccc_invalid((uint8_t)k_ra8_i3c_addr_mask, target_addr, max_len)) {
     return k_ra8_err_invalid_arg;
   }
 
   volatile r_i3c_regs_t* reg = ra8_i3c();
-  uint32_t               cmd = priv_ra8_i3c_ccc_cmd_word(ccc, target_addr, true /* read */);
+  uint32_t               cmd = internal_ra8_i3c_ccc_cmd_word(ccc, target_addr, true /* read */);
   reg->NCMDQP                = cmd;
   reg->NCMDQP                = (uint32_t)max_len << k_ra8_i3c_cmd_xfer_length_shift;
-  priv_ra8_i3c_fifo_read(reg, buf, (uint32_t)max_len);
+  internal_ra8_i3c_fifo_read(reg, buf, (uint32_t)max_len);
   *got_len  = max_len;
   reg->NTST = reg->NTST & ~k_ra8_i3c_ntst_cmdqef_mask;
   return k_ra8_ok;
@@ -621,7 +625,7 @@ ra8_i3c_write(uint8_t channel, uint8_t addr, const uint8_t* data, uint32_t len, 
     return k_ra8_err_invalid_state;
   }
   if (s_i3c_chan[channel].mode == k_ra8_i3c_mode_i2c) {
-    return internal_i3c_i2c_write(channel, addr, data, len, restart);
+    return ra8_i3c_i2c_write(channel, addr, data, len, restart);
   }
   (void)restart;
   const uint8_t target_addr = addr;
@@ -636,7 +640,7 @@ ra8_i3c_write(uint8_t channel, uint8_t addr, const uint8_t* data, uint32_t len, 
   }
 
   volatile r_i3c_regs_t* reg = ra8_i3c();
-  uint32_t               cmd = priv_ra8_i3c_xfer_cmd_word(target_addr, false);
+  uint32_t               cmd = internal_ra8_i3c_xfer_cmd_word(target_addr, false);
 
   if (len <= k_ra8_i3c_immediate_max_bytes) {
     cmd |= k_ra8_i3c_cmd_attr_immed << k_ra8_i3c_cmd_attr_shift;
@@ -651,7 +655,7 @@ ra8_i3c_write(uint8_t channel, uint8_t addr, const uint8_t* data, uint32_t len, 
     reg->NCMDQP = cmd;
     reg->NCMDQP = (len << k_ra8_i3c_cmd_xfer_length_shift) &
                   (k_ra8_i3c_cmd_xfer_length_max << k_ra8_i3c_cmd_xfer_length_shift);
-    priv_ra8_i3c_fifo_write(reg, data, len);
+    internal_ra8_i3c_fifo_write(reg, data, len);
   }
   reg->NTST = reg->NTST & ~k_ra8_i3c_ntst_cmdqef_mask;
   return k_ra8_ok;
@@ -666,7 +670,7 @@ ra8_err_t ra8_i3c_read(uint8_t channel, uint8_t addr, uint8_t* buf, uint32_t len
     return k_ra8_err_invalid_state;
   }
   if (s_i3c_chan[channel].mode == k_ra8_i3c_mode_i2c) {
-    return internal_i3c_i2c_read(channel, addr, buf, len, restart);
+    return ra8_i3c_i2c_read(channel, addr, buf, len, restart);
   }
   (void)restart;
   const uint8_t target_addr = addr;
@@ -679,11 +683,11 @@ ra8_err_t ra8_i3c_read(uint8_t channel, uint8_t addr, uint8_t* buf, uint32_t len
   }
 
   volatile r_i3c_regs_t* reg = ra8_i3c();
-  uint32_t               cmd = priv_ra8_i3c_xfer_cmd_word(target_addr, true);
+  uint32_t               cmd = internal_ra8_i3c_xfer_cmd_word(target_addr, true);
   reg->NCMDQP                = cmd;
   reg->NCMDQP                = (len << k_ra8_i3c_cmd_xfer_length_shift) &
                                (k_ra8_i3c_cmd_xfer_length_max << k_ra8_i3c_cmd_xfer_length_shift);
-  priv_ra8_i3c_fifo_read(reg, buf, len);
+  internal_ra8_i3c_fifo_read(reg, buf, len);
   reg->NTST = reg->NTST & ~k_ra8_i3c_ntst_cmdqef_mask;
   return k_ra8_ok;
 }
@@ -706,7 +710,7 @@ ra8_err_t ra8_i3c_transfer(uint8_t        channel,
   if (s_i3c_chan[channel].mode != k_ra8_i3c_mode_i2c) {
     return k_ra8_err_invalid_state;
   }
-  return internal_i3c_i2c_transfer(channel, addr, wr, wr_len, rd, rd_len);
+  return ra8_i3c_i2c_transfer(channel, addr, wr, wr_len, rd, rd_len);
 }
 
 ra8_err_t ra8_i3c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz)
@@ -717,7 +721,7 @@ ra8_err_t ra8_i3c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz)
   if (s_i3c_chan[channel].mode != k_ra8_i3c_mode_i2c) {
     return k_ra8_err_invalid_state;
   }
-  return internal_i3c_i2c_set_clock(channel, bus_hz, pclka_hz);
+  return ra8_i3c_i2c_set_clock(channel, bus_hz, pclka_hz);
 }
 
 ra8_err_t ra8_i3c_scan(uint8_t channel, uint8_t addr, bool* out_acked)
@@ -728,7 +732,7 @@ ra8_err_t ra8_i3c_scan(uint8_t channel, uint8_t addr, bool* out_acked)
   if (s_i3c_chan[channel].mode != k_ra8_i3c_mode_i2c) {
     return k_ra8_err_invalid_state;
   }
-  return internal_i3c_i2c_scan(channel, addr, out_acked);
+  return ra8_i3c_i2c_scan(channel, addr, out_acked);
 }
 
 ra8_err_t ra8_i3c_get_errors(uint8_t channel, uint8_t* out_mask)
@@ -739,7 +743,7 @@ ra8_err_t ra8_i3c_get_errors(uint8_t channel, uint8_t* out_mask)
   if (s_i3c_chan[channel].mode != k_ra8_i3c_mode_i2c) {
     return k_ra8_err_invalid_state;
   }
-  return internal_i3c_i2c_get_errors(channel, out_mask);
+  return ra8_i3c_i2c_get_errors(channel, out_mask);
 }
 
 ra8_err_t ra8_i3c_clear_errors(uint8_t channel)
@@ -750,7 +754,7 @@ ra8_err_t ra8_i3c_clear_errors(uint8_t channel)
   if (s_i3c_chan[channel].mode != k_ra8_i3c_mode_i2c) {
     return k_ra8_err_invalid_state;
   }
-  return internal_i3c_i2c_clear_errors(channel);
+  return ra8_i3c_i2c_clear_errors(channel);
 }
 
 ra8_err_t ra8_i3c_abort(uint8_t channel)
@@ -761,7 +765,7 @@ ra8_err_t ra8_i3c_abort(uint8_t channel)
   if (s_i3c_chan[channel].mode != k_ra8_i3c_mode_i2c) {
     return k_ra8_err_invalid_state;
   }
-  return internal_i3c_i2c_abort(channel);
+  return ra8_i3c_i2c_abort(channel);
 }
 
 /* =============================================================================
@@ -779,7 +783,7 @@ ra8_err_t ra8_i3c_peripheral_open(uint8_t channel, const ra8_i3c_peripheral_cfg_
    * the close/send/receive/status guards accept it. */
   const ra8_i3c_i2c_peripheral_cfg_t bcfg = {.peripheral_addr_7b = cfg->peripheral_addr_7b,
                                              .general_call       = cfg->general_call};
-  const ra8_err_t                    err  = internal_i3c_i2c_peripheral_open(channel, &bcfg);
+  const ra8_err_t                    err  = ra8_i3c_i2c_peripheral_open(channel, &bcfg);
   if (err == k_ra8_ok) {
     s_i3c_chan[channel].mode        = k_ra8_i3c_mode_i2c;
     s_i3c_chan[channel].initialized = true;
@@ -795,7 +799,7 @@ ra8_err_t ra8_i3c_peripheral_close(uint8_t channel)
   if (s_i3c_chan[channel].mode != k_ra8_i3c_mode_i2c) {
     return k_ra8_err_invalid_state;
   }
-  return internal_i3c_i2c_peripheral_close(channel);
+  return ra8_i3c_i2c_peripheral_close(channel);
 }
 
 ra8_err_t ra8_i3c_peripheral_send(uint8_t channel, const uint8_t* data, uint32_t len)
@@ -806,7 +810,7 @@ ra8_err_t ra8_i3c_peripheral_send(uint8_t channel, const uint8_t* data, uint32_t
   if (s_i3c_chan[channel].mode != k_ra8_i3c_mode_i2c) {
     return k_ra8_err_invalid_state;
   }
-  return internal_i3c_i2c_peripheral_send(channel, data, len);
+  return ra8_i3c_i2c_peripheral_send(channel, data, len);
 }
 
 ra8_err_t ra8_i3c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t len)
@@ -817,7 +821,7 @@ ra8_err_t ra8_i3c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t len
   if (s_i3c_chan[channel].mode != k_ra8_i3c_mode_i2c) {
     return k_ra8_err_invalid_state;
   }
-  return internal_i3c_i2c_peripheral_receive(channel, buf, len);
+  return ra8_i3c_i2c_peripheral_receive(channel, buf, len);
 }
 
 ra8_err_t ra8_i3c_peripheral_status(uint8_t channel, uint8_t* out_mask)
@@ -828,7 +832,7 @@ ra8_err_t ra8_i3c_peripheral_status(uint8_t channel, uint8_t* out_mask)
   if (s_i3c_chan[channel].mode != k_ra8_i3c_mode_i2c) {
     return k_ra8_err_invalid_state;
   }
-  return internal_i3c_i2c_peripheral_status(channel, out_mask);
+  return ra8_i3c_i2c_peripheral_status(channel, out_mask);
 }
 
 /* =============================================================================
@@ -841,17 +845,17 @@ ra8_err_t ra8_i3c_set_hdr_mode(uint8_t target_addr, ra8_i3c_hdr_mode_t mode)
   if (target_addr > (uint8_t)k_ra8_i3c_addr_mask) {
     return k_ra8_err_invalid_arg;
   }
-  if (ra8_i3c_internal_hdr_mode_invalid((uint32_t)k_ra8_i3c_hdr_mode_sdr,
-                                        (uint32_t)k_ra8_i3c_hdr_mode_ddr,
-                                        (uint32_t)k_ra8_i3c_hdr_mode_ts,
-                                        (uint32_t)mode)) {
+  if (priv_ra8_i3c_internal_hdr_mode_invalid((uint32_t)k_ra8_i3c_hdr_mode_sdr,
+                                             (uint32_t)k_ra8_i3c_hdr_mode_ddr,
+                                             (uint32_t)k_ra8_i3c_hdr_mode_ts,
+                                             (uint32_t)mode)) {
     return k_ra8_err_invalid_arg;
   }
 
   /* HUM Ch 40 "Command Descriptor / Transfer Mode" pp 2445-2701 --
    * regular-xfer attribute (0) + dynamic address + transfer-mode
    * bits at [27:26]. */
-  uint32_t       cmd       = priv_ra8_i3c_xfer_cmd_word(target_addr, false);
+  uint32_t       cmd       = internal_ra8_i3c_xfer_cmd_word(target_addr, false);
   const uint32_t mode_bits = ((uint32_t)mode & k_ra8_i3c_cmd_hdr_mode_mask)
                              << k_ra8_i3c_cmd_xfer_mode_shift;
   cmd |= mode_bits;
@@ -954,7 +958,7 @@ ra8_err_t ra8_i3c_ibi_read(ra8_i3c_ibi_t* out_ibi)
     out_ibi->payload[i] = 0U;
   }
   if (to_copy > 0U) {
-    priv_ra8_i3c_fifo_read(reg, out_ibi->payload, (uint32_t)to_copy);
+    internal_ra8_i3c_fifo_read(reg, out_ibi->payload, (uint32_t)to_copy);
   }
   enum : uint32_t {
     k_ibi_last_mask = 1U, /**< Ibi last mask. */

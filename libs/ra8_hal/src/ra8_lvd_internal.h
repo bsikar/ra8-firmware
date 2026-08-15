@@ -56,7 +56,7 @@ typedef struct {
 
 /**
  * @enum ra8_lvd_map_idx_t
- * @brief Indices into ``s_lvd_map``.
+ * @brief Indices into ``g_lvd_map``.
  */
 typedef enum : uint8_t {
   k_ra8_lvd_map_idx_ch1   = 0U, /**< PVD1.     */
@@ -67,7 +67,7 @@ typedef enum : uint8_t {
 } ra8_lvd_map_idx_t;
 
 /**
- * @var s_lvd_map
+ * @var g_lvd_map
  * @brief Lookup table from ``ra8_lvd_map_idx_t`` to register offsets.
  *
  * @details
@@ -78,10 +78,10 @@ typedef enum : uint8_t {
  * @warning Read-only; do not mutate.
  * @since 0.1.0
  */
-extern const ra8_lvd_channel_map_t s_lvd_map[k_ra8_lvd_map_idx_count];
+extern const ra8_lvd_channel_map_t g_lvd_map[k_ra8_lvd_map_idx_count];
 
 /**
- * @brief Translate a public channel id to an index into ``s_lvd_map``.
+ * @brief Translate a public channel id to an index into ``g_lvd_map``.
  *
  * @param[in]  channel Public channel id.
  * @param[out] out_idx On success, the index in [0..3].
@@ -90,7 +90,7 @@ extern const ra8_lvd_channel_map_t s_lvd_map[k_ra8_lvd_map_idx_count];
  * @details
  * Folds the public ::ra8_lvd_channel_t enumerator (which uses the
  * datasheet's PVD1/2/4/5 numbering) into a 0..3 array index used by
- * the internal ``s_lvd_map`` lookup table. Shared across the ra8_lvd
+ * the internal ``g_lvd_map`` lookup table. Shared across the ra8_lvd
  * translation units.
  *
  * @retval k_ra8_ok               Mapping succeeded.
@@ -104,7 +104,8 @@ extern const ra8_lvd_channel_map_t s_lvd_map[k_ra8_lvd_map_idx_count];
  * @note Pure helper; safe from any context. Driver-internal.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_lvd_internal_channel_to_idx(ra8_lvd_channel_t channel, uint8_t* out_idx);
+RA8_PRIV ra8_err_t priv_ra8_lvd_internal_channel_to_idx(ra8_lvd_channel_t channel,
+                                                        uint8_t*          out_idx);
 
 /**
  * @brief Validate FSAMP[1:0] candidate (0..3).
@@ -127,7 +128,7 @@ RA8_PRIV ra8_err_t ra8_lvd_internal_channel_to_idx(ra8_lvd_channel_t channel, ui
  * @note Pure helper; safe from any context. Driver-internal.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_lvd_internal_validate_div(ra8_lvd_loco_div_t div);
+RA8_PRIV ra8_err_t priv_ra8_lvd_internal_validate_div(ra8_lvd_loco_div_t div);
 
 /**
  * @brief Read PVDmCR0.RI for an m channel.
@@ -150,7 +151,7 @@ RA8_PRIV ra8_err_t ra8_lvd_internal_validate_div(ra8_lvd_loco_div_t div);
  * @note Read-only; safe under simple races. Driver-internal.
  * @since 0.1.0
  */
-RA8_PRIV uint8_t ra8_lvd_internal_read_ri(const ra8_lvd_channel_map_t* map);
+RA8_PRIV uint8_t priv_ra8_lvd_internal_read_ri(const ra8_lvd_channel_map_t* map);
 
 /**
  * @brief Read-modify-write helper for PVDmCR0 / PVDnCR0 with reserved-bit
@@ -173,8 +174,9 @@ RA8_PRIV uint8_t ra8_lvd_internal_read_ri(const ra8_lvd_channel_map_t* map);
  * @note Internal helper; not thread-safe. Driver-internal.
  * @since 0.1.0
  */
-RA8_PRIV void
-ra8_lvd_internal_cr0_rmw(const ra8_lvd_channel_map_t* map, uint8_t clear_mask, uint8_t set_bits);
+RA8_PRIV void priv_ra8_lvd_internal_cr0_rmw(const ra8_lvd_channel_map_t* map,
+                                            uint8_t                      clear_mask,
+                                            uint8_t                      set_bits);
 
 /**
  * @brief Pure predicate for "RN=1 prohibited when RHSEL=1" rejection.
@@ -208,10 +210,10 @@ ra8_lvd_internal_cr0_rmw(const ra8_lvd_channel_map_t* map, uint8_t clear_mask, u
  *
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_lvd_internal_reject_hvd_after(uint32_t hvd_val,
-                                                uint32_t after_assert_val,
-                                                uint32_t hysteresis,
-                                                uint32_t negate);
+RA8_PRIV bool priv_ra8_lvd_internal_reject_hvd_after(uint32_t hvd_val,
+                                                     uint32_t after_assert_val,
+                                                     uint32_t hysteresis,
+                                                     uint32_t negate);
 
 /**
  * @brief Pure predicate for the CR0 "set RI bit" decision.
@@ -245,7 +247,7 @@ RA8_PRIV bool ra8_lvd_internal_reject_hvd_after(uint32_t hvd_val,
  * @since 0.1.0
  */
 RA8_PRIV bool
-ra8_lvd_internal_set_ri_bit(uint32_t reset_val, uint32_t reset_on_rise_val, uint32_t response);
+priv_ra8_lvd_internal_set_ri_bit(uint32_t reset_val, uint32_t reset_on_rise_val, uint32_t response);
 
 #ifdef __cplusplus
 }

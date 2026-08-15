@@ -41,7 +41,7 @@
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool ra8_rmac_phy_internal_speed_ok(ra8_err_t err, uint16_t reg_value, uint16_t mask)
+bool priv_ra8_rmac_phy_internal_speed_ok(ra8_err_t err, uint16_t reg_value, uint16_t mask)
 {
   return (err == k_ra8_ok) && ((reg_value & mask) != 0U);
 }
@@ -447,11 +447,11 @@ static void internal_resolve_speed(ra8_rmac_phy_link_t* out)
     uint16_t msr = 0U;
     err =
       s_state.io.read(s_state.io.ctx, s_state.phy_address, k_ra8_rmac_phy_reg_1000t_status, &msr);
-    if (ra8_rmac_phy_internal_speed_ok(err, msr, (uint16_t)k_ra8_rmac_phy_msr_1000full)) {
+    if (priv_ra8_rmac_phy_internal_speed_ok(err, msr, (uint16_t)k_ra8_rmac_phy_msr_1000full)) {
       out->speed = k_ra8_rmac_phy_speed_1000f;
       return;
     }
-    if (ra8_rmac_phy_internal_speed_ok(err, msr, (uint16_t)k_ra8_rmac_phy_msr_1000half)) {
+    if (priv_ra8_rmac_phy_internal_speed_ok(err, msr, (uint16_t)k_ra8_rmac_phy_msr_1000half)) {
       out->speed = k_ra8_rmac_phy_speed_1000h;
       return;
     }

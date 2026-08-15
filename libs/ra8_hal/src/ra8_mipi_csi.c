@@ -349,7 +349,7 @@ ra8_err_t ra8_mipi_csi_deinit(void)
   /* HUM Ch 66.3.27 "GSIE : Generic Short Packet Interrupt Enable" p 3958 */
   *ra8_mipi_csi_reg32(k_ra8_mipi_csi_off_gsie) = 0UL;
 
-  ra8_mipi_csi_detach_all_handlers();
+  priv_ra8_mipi_csi_detach_all_handlers();
 
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
   return ra8_mstp_disable(k_ra8_mstp_mipi_csi);

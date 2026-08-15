@@ -28,6 +28,7 @@
 #include "adc_internal.h"
 #include "ra8_adc.h"
 #include "ra8_adc_b_regs.h"
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -104,7 +105,8 @@ typedef enum : int32_t {
  * @note Re-entrant; touches no globals or MMIO.
  * @since 0.1.0
  */
-static bool internal_diagval_for_mode(ra8_adc_selfdiag_mode_t mode, uint32_t* out_diagval)
+RA8_INTERNAL static bool internal_diagval_for_mode(ra8_adc_selfdiag_mode_t mode,
+                                                   uint32_t*               out_diagval)
 {
   switch (mode) {
     case k_ra8_adc_selfdiag_mode_1:
@@ -138,7 +140,7 @@ static bool internal_diagval_for_mode(ra8_adc_selfdiag_mode_t mode, uint32_t* ou
  * @note Re-entrant; touches no globals or MMIO.
  * @since 0.1.0
  */
-static int32_t internal_selfdiag_expected(ra8_adc_selfdiag_mode_t mode)
+RA8_INTERNAL static int32_t internal_selfdiag_expected(ra8_adc_selfdiag_mode_t mode)
 {
   switch (mode) {
     case k_ra8_adc_selfdiag_mode_2:
@@ -168,7 +170,7 @@ static int32_t internal_selfdiag_expected(ra8_adc_selfdiag_mode_t mode)
  * @note Re-entrant; touches no globals or MMIO.
  * @since 0.1.0
  */
-static bool internal_selfdiag_in_band(int32_t diff)
+RA8_INTERNAL static bool internal_selfdiag_in_band(int32_t diff)
 {
   return (diff <= (int32_t)k_ra8_adc_selfdiag_tol_lsb) &&
          (diff >= -(int32_t)k_ra8_adc_selfdiag_tol_lsb);
@@ -191,7 +193,7 @@ static bool internal_selfdiag_in_band(int32_t diff)
  * @note Re-entrant; touches no globals or MMIO.
  * @since 0.1.0
  */
-static bool internal_is_supported_ext_chan(ra8_adc_internal_chan_t chan)
+RA8_INTERNAL static bool internal_is_supported_ext_chan(ra8_adc_internal_chan_t chan)
 {
   return (chan == k_ra8_adc_chan_temperature) || (chan == k_ra8_adc_chan_int_ref_volt);
 }
@@ -212,7 +214,7 @@ static bool internal_is_supported_ext_chan(ra8_adc_internal_chan_t chan)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void
+RA8_INTERNAL static void
 internal_program_ext_channel(uint8_t vch, uint8_t physical_ch, uint8_t group, bool differential)
 {
   volatile uint32_t* reg = ra8_adc_b_adchcr(vch);
@@ -245,7 +247,7 @@ internal_program_ext_channel(uint8_t vch, uint8_t physical_ch, uint8_t group, bo
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void internal_set_data_format(uint8_t vch, uint8_t adprc, uint8_t signsel)
+RA8_INTERNAL static void internal_set_data_format(uint8_t vch, uint8_t adprc, uint8_t signsel)
 {
   volatile uint32_t* reg = ra8_adc_b_addopcrc(vch);
   if (reg == nullptr) {
@@ -278,7 +280,7 @@ static void internal_set_data_format(uint8_t vch, uint8_t adprc, uint8_t signsel
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_start_and_wait(uint8_t group)
+RA8_INTERNAL static ra8_err_t internal_start_and_wait(uint8_t group)
 {
   volatile uint32_t* adstr = ra8_adc_b_adstr(group);
   if (adstr == nullptr) {
@@ -318,7 +320,7 @@ static ra8_err_t internal_start_and_wait(uint8_t group)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_selfdiag_run(uint32_t diagval)
+RA8_INTERNAL static ra8_err_t internal_selfdiag_run(uint32_t diagval)
 {
   internal_program_ext_channel((uint8_t)k_ra8_adc_diag_vchan,
                                (uint8_t)k_ra8_adc_b_chan_selfdiag_adc0,

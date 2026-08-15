@@ -150,7 +150,7 @@ typedef enum : uint32_t {
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
-static bool internal_pdg_is_initialized(void)
+RA8_INTERNAL static bool internal_pdg_is_initialized(void)
 {
   /* HUM Ch 23.2.1 "GTDLYCR : PWM Output Delay Control Register" p 1154 */
   const uint16_t cr = ra8_pdg()->GTDLYCR;
@@ -198,7 +198,7 @@ static void* s_pdg_event_ctx;
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
-static void internal_busy_wait_us(uint16_t usec)
+RA8_INTERNAL static void internal_busy_wait_us(uint16_t usec)
 {
   for (uint16_t u = 0U; u < usec; ++u) {
     for (uint16_t i = 0U; i < k_ra8_pdg_busy_loops_per_us; ++i) {
@@ -219,7 +219,7 @@ static void internal_busy_wait_us(uint16_t usec)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_wait_5_gtclk(void)
+RA8_INTERNAL static void internal_wait_5_gtclk(void)
 {
   /* HUM Ch 23.3.1 "Adjustments to the Timing of Rising and Falling Edges" p 1159
  * The fastest GTCLK is 300 MHz, so 5 cycles ~= 17 ns; this loop
@@ -244,7 +244,7 @@ static void internal_wait_5_gtclk(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static bool internal_frange_ok(ra8_pdg_frange_t f)
+RA8_INTERNAL static bool internal_frange_ok(ra8_pdg_frange_t f)
 {
   if (f == k_ra8_pdg_frange_80_160_mhz) {
     return true;
@@ -274,7 +274,7 @@ static bool internal_frange_ok(ra8_pdg_frange_t f)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_validate_cfg(const ra8_pdg_config_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_validate_cfg(const ra8_pdg_config_t* cfg)
 {
   if (((uint16_t)cfg->channel_mask & ~k_ra8_pdg_channel_mask_all) != 0U) {
     return k_ra8_err_invalid_arg;
@@ -304,7 +304,7 @@ static ra8_err_t internal_validate_cfg(const ra8_pdg_config_t* cfg)
  * MUST have already validated the indices.
  */
 RA8_HW_REGISTER_ACCESS
-static inline volatile uint16_t*
+RA8_INTERNAL static inline volatile uint16_t*
 internal_dly_cell(uint8_t channel, ra8_pdg_pin_t pin, ra8_pdg_edge_t edge)
 {
   /* HUM Ch 23.2.3 "GTDLYRnA: GTIOCnA Rising Output Delay Register" p 1156 */
@@ -332,7 +332,7 @@ internal_dly_cell(uint8_t channel, ra8_pdg_pin_t pin, ra8_pdg_edge_t edge)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 internal_validate_slot(uint8_t channel, ra8_pdg_pin_t pin, ra8_pdg_edge_t edge, uint8_t code)
 {
   if ((uint16_t)channel >= (uint16_t)k_ra8_pdg_channel_count) {
@@ -365,7 +365,7 @@ internal_validate_slot(uint8_t channel, ra8_pdg_pin_t pin, ra8_pdg_edge_t edge, 
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint32_t internal_freq_to_period_ns(uint32_t hz)
+RA8_INTERNAL static uint32_t internal_freq_to_period_ns(uint32_t hz)
 {
   /* hz > 0 guaranteed by callers. */
   return k_ra8_pdg_ns_per_sec / hz;
@@ -397,7 +397,8 @@ static uint32_t internal_freq_to_period_ns(uint32_t hz)
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
-static void internal_program_dll(const ra8_pdg_config_t* cfg, ra8_pdg_frange_t frange_use)
+RA8_INTERNAL static void internal_program_dll(const ra8_pdg_config_t* cfg,
+                                              ra8_pdg_frange_t        frange_use)
 {
   volatile r_pdg_regs_t* reg = ra8_pdg();
 

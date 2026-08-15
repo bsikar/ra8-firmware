@@ -13,6 +13,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_drw.h"
 #include "ra8_drw_dlist.h"
 #include "ra8_drw_internal.h"
@@ -66,18 +67,16 @@ typedef enum : uint32_t {
 } ra8_drw_test_const_t;
 
 /**
- * @brief Reset hardware fake, ref-count table, and callback latches.
- */
-static void prep(void)
+ * @brief Reset hardware fake, ref-count table, and callback latches. @details Implements the prep fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
 }
 
 /**
- * @brief Build a default config that points at the SDRAM mmap region.
- */
-static ra8_drw_config_t make_cfg(void)
+ * @brief Build a default config that points at the SDRAM mmap region. @details Implements the make cfg fixture operation used only by this focused test executable. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_drw_config_t internal_make_cfg(void)
 {
   const ra8_drw_config_t cfg = {
     .framebuffer_addr       = (uintptr_t)k_ra8_drw_test_fb_addr_lo,
@@ -94,7 +93,8 @@ static ra8_drw_config_t make_cfg(void)
  * =============================================================================
  */
 
-static ra8_drw_texture_t make_tex(void)
+/** @brief Prepare the fixture's make tex state. @details Implements the make tex fixture operation used only by this focused test executable. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_drw_texture_t internal_make_tex(void)
 {
   const ra8_drw_texture_t tex = {
     .base_addr        = (uintptr_t)k_ra8_drw_test_tex_addr,
@@ -121,13 +121,12 @@ static ra8_drw_texture_t make_tex(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_texture_argb8888(void)
+ * code under test that this case touches) @brief Verify set texture argb8888 behavior. @details Executes the set texture argb8888 scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_texture_argb8888(void)
 {
   TEST_BEGIN("drw set_texture ARGB8888 + filter + clamp + colour key");
-  prep();
-  const ra8_drw_texture_t tex = make_tex();
+  internal_prep();
+  const ra8_drw_texture_t tex = internal_make_tex();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_set_texture(&tex));
 
   TEST_ASSERT_EQ(tex.base_addr, *ra8_drw_reg32(k_ra8_drw_off_texorigin));
@@ -152,13 +151,12 @@ static void test_set_texture_argb8888(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_texture_clut_rle(void)
+ * code under test that this case touches) @brief Verify set texture clut rle behavior. @details Executes the set texture clut rle scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_texture_clut_rle(void)
 {
   TEST_BEGIN("drw set_texture CLUT + RLE bits");
-  prep();
-  ra8_drw_texture_t tex = make_tex();
+  internal_prep();
+  ra8_drw_texture_t tex = internal_make_tex();
   tex.format            = k_ra8_drw_readfmt_clut8;
   tex.enable_clut       = true;
   tex.clut_565          = true;
@@ -178,14 +176,13 @@ static void test_set_texture_clut_rle(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_texture_rejects(void)
+ * code under test that this case touches) @brief Verify set texture rejects behavior. @details Executes the set texture rejects scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_texture_rejects(void)
 {
   TEST_BEGIN("drw set_texture rejects null + oversize pitch");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_drw_set_texture(nullptr));
-  ra8_drw_texture_t tex = make_tex();
+  ra8_drw_texture_t tex = internal_make_tex();
   tex.pitch_px          = (uint16_t)(k_ra8_drw_max_texpitch_tx + 1U);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_drw_set_texture(&tex));
   TEST_END("drw set_texture rejects null + oversize pitch");
@@ -195,13 +192,12 @@ static void test_set_texture_rejects(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_clear_texture(void)
+ * code under test that this case touches) @brief Verify clear texture behavior. @details Executes the clear texture scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_clear_texture(void)
 {
   TEST_BEGIN("drw clear_texture clears CONTROL2 bits");
-  prep();
-  ra8_drw_texture_t tex = make_tex();
+  internal_prep();
+  ra8_drw_texture_t tex = internal_make_tex();
   tex.enable_rle        = true;
   tex.enable_clut       = true;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_set_texture(&tex));
@@ -217,12 +213,11 @@ static void test_clear_texture(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_load_clut_happy_and_bounds(void)
+ * code under test that this case touches) @brief Verify load clut happy and bounds behavior. @details Executes the load clut happy and bounds scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_load_clut_happy_and_bounds(void)
 {
   TEST_BEGIN("drw load_clut writes addr + data");
-  prep();
+  internal_prep();
   uint32_t entries[k_ra8_drw_test_clut_count];
   for (uint32_t i = 0UL; i < (uint32_t)k_ra8_drw_test_clut_count; ++i) {
     entries[i] = k_drw_alpha_opaque | (i * k_drw_grey_step);
@@ -248,12 +243,13 @@ static void test_load_clut_happy_and_bounds(void)
   * code under test that this case touches)
  */
 
-static void test_fill_rect_happy(void)
+/** @brief Verify fill rect happy behavior. @details Executes the fill rect happy scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_fill_rect_happy(void)
 {
   TEST_BEGIN("drw fill_rect happy");
-  prep();
+  internal_prep();
 
-  const ra8_drw_config_t cfg = make_cfg();
+  const ra8_drw_config_t cfg = internal_make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_init(&cfg));
 
   const ra8_drw_rect_t rect = {
@@ -308,12 +304,11 @@ static void test_fill_rect_happy(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_fill_rect_null(void)
+ * code under test that this case touches) @brief Verify fill rect null behavior. @details Executes the fill rect null scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_fill_rect_null(void)
 {
   TEST_BEGIN("drw fill_rect null");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_drw_fill_rect(nullptr));
   TEST_END("drw fill_rect null");
 }
@@ -322,12 +317,11 @@ static void test_fill_rect_null(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_fill_rect_zero_dim(void)
+ * code under test that this case touches) @brief Verify fill rect zero dim behavior. @details Executes the fill rect zero dim scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_fill_rect_zero_dim(void)
 {
   TEST_BEGIN("drw fill_rect zero dim");
-  prep();
+  internal_prep();
 
   ra8_drw_rect_t rect = {
     .x              = 0,
@@ -348,12 +342,11 @@ static void test_fill_rect_zero_dim(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_fill_rect_too_big(void)
+ * code under test that this case touches) @brief Verify fill rect too big behavior. @details Executes the fill rect too big scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_fill_rect_too_big(void)
 {
   TEST_BEGIN("drw fill_rect oversize");
-  prep();
+  internal_prep();
 
   ra8_drw_rect_t rect = {
     .x              = 0,
@@ -374,13 +367,12 @@ static void test_fill_rect_too_big(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_blit_textured_rect(void)
+ * code under test that this case touches) @brief Verify blit textured rect behavior. @details Executes the blit textured rect scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_blit_textured_rect(void)
 {
   TEST_BEGIN("drw blit_textured_rect happy + bad args");
-  prep();
-  const ra8_drw_texture_t tex = make_tex();
+  internal_prep();
+  const ra8_drw_texture_t tex = internal_make_tex();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_set_texture(&tex));
   const ra8_drw_rect_t rect = {
     .x              = 0,
@@ -411,12 +403,11 @@ static void test_blit_textured_rect(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_draw_line(void)
+ * code under test that this case touches) @brief Verify draw line behavior. @details Executes the draw line scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_draw_line(void)
 {
   TEST_BEGIN("drw draw_line writes limiters + bands");
-  prep();
+  internal_prep();
   const ra8_drw_line_t line = {
     .x0             = 10,
     .y0             = 20,
@@ -446,12 +437,11 @@ static void test_draw_line(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_draw_triangle(void)
+ * code under test that this case touches) @brief Verify draw triangle behavior. @details Executes the draw triangle scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_draw_triangle(void)
 {
   TEST_BEGIN("drw draw_triangle writes 3 limiters");
-  prep();
+  internal_prep();
   const ra8_drw_triangle_t tri = {
     .x0             = 0,
     .y0             = 0,
@@ -479,10 +469,11 @@ static void test_draw_triangle(void)
   * code under test that this case touches)
  */
 
-static void test_run_dlist(void)
+/** @brief Verify run dlist behavior. @details Executes the run dlist scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_run_dlist(void)
 {
   TEST_BEGIN("drw run_dlist alignment + happy");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_drw_run_dlist(nullptr));
   /* Unaligned address rejected. */
   const uint32_t* unaligned = (const uint32_t*)(uintptr_t)(k_ra8_drw_test_dlist_addr | 0x1UL);
@@ -525,8 +516,8 @@ typedef enum : uint32_t {
   k_drw_dl_fill_cap    = 9UL,          /**< One fill, no room for the term. */
 } drw_dlist_expect_t;
 
-/** @brief Build a clear+fill display list into @p buf; return the word count. */
-static uint32_t build_clear_fill(uint32_t* buf, uint32_t cap)
+/** @brief Build a clear+fill display list into @p buf; return the word count. @details Implements the build clear fill fixture operation used only by this focused test executable. @param[in,out] buf Fixture argument governed by the exercised interface contract. @param[in] cap Fixture argument governed by the exercised interface contract. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static uint32_t internal_build_clear_fill(uint32_t* buf, uint32_t cap)
 {
   ra8_drw_dlist_t dl;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_dlist_begin(&dl, buf, cap));
@@ -546,8 +537,8 @@ static uint32_t build_clear_fill(uint32_t* buf, uint32_t cap)
   return dl.count;
 }
 
-/** @brief Assert @p buf holds the exact bench-observed clear+fill words. */
-static void assert_clear_fill_words(const uint32_t* buf)
+/** @brief Assert @p buf holds the exact bench-observed clear+fill words. @details Implements the assert clear fill words fixture operation used only by this focused test executable. @param[in] buf Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_assert_clear_fill_words(const uint32_t* buf)
 {
   const uint32_t clear_size = ((uint32_t)k_drw_dl_clear_dim << 16U) | (uint32_t)k_drw_dl_clear_dim;
   const uint32_t box_size   = ((uint32_t)k_drw_dl_box_wh << 16U) | (uint32_t)k_drw_dl_box_wh;
@@ -586,31 +577,29 @@ static void assert_clear_fill_words(const uint32_t* buf)
  *
  * @par MC/DC:
  * (no compound decisions in this test -- asserts the emitted encoding of the
- * public builder API against literal bench-observed words)
- */
-static void test_dlist_build_encoding(void)
+ * public builder API against literal bench-observed words) @details Executes the dlist build encoding scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_dlist_build_encoding(void)
 {
   TEST_BEGIN("drw dlist build encoding");
-  prep();
-  const ra8_drw_config_t cfg = make_cfg();
+  internal_prep();
+  const ra8_drw_config_t cfg = internal_make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_init(&cfg));
 
   uint32_t buf[k_drw_dl_cap] = {};
-  TEST_ASSERT_EQ(k_drw_dl_words, build_clear_fill(buf, (uint32_t)k_drw_dl_cap));
-  assert_clear_fill_words(buf);
+  TEST_ASSERT_EQ(k_drw_dl_words, internal_build_clear_fill(buf, (uint32_t)k_drw_dl_cap));
+  internal_assert_clear_fill_words(buf);
   TEST_END("drw dlist build encoding");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises begin/add_fill/end reject
- * contracts; the reused rect predicates are covered by their own MC/DC cases)
- */
-static void test_dlist_begin_add_rejects(void)
+ * contracts; the reused rect predicates are covered by their own MC/DC cases) @brief Verify dlist begin add rejects behavior. @details Executes the dlist begin add rejects scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_dlist_begin_add_rejects(void)
 {
   TEST_BEGIN("drw dlist begin/add rejects");
-  prep();
-  const ra8_drw_config_t cfg = make_cfg();
+  internal_prep();
+  const ra8_drw_config_t cfg = internal_make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_init(&cfg));
 
   uint32_t        buf[k_drw_dl_cap] = {};
@@ -652,13 +641,12 @@ static void test_dlist_begin_add_rejects(void)
 /**
  * @par MC/DC:
  * (no compound decisions -- exercises the single-condition capacity guard in
- * add_fill and end, and the overflow latch)
- */
-static void test_dlist_overflow(void)
+ * add_fill and end, and the overflow latch) @brief Verify dlist overflow behavior. @details Executes the dlist overflow scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_dlist_overflow(void)
 {
   TEST_BEGIN("drw dlist overflow");
-  prep();
-  const ra8_drw_config_t cfg = make_cfg();
+  internal_prep();
+  const ra8_drw_config_t cfg = internal_make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_init(&cfg));
 
   /* A single fill needs 9 words; a smaller buffer cannot hold one. */
@@ -699,13 +687,12 @@ static void test_dlist_overflow(void)
  * - V2: overflow=T, terminated=T, count>0 -> T (varies A)
  * - V3: overflow=F, terminated=F, count>0 -> T (varies B)
  * - V4: overflow=F, terminated=T, count=0 -> T (varies C)
- * V1+V2 prove A, V1+V3 prove B, V1+V4 prove C. N+1 = 4 vectors.
- */
-static void test_mcdc_dlist_run(void)
+ * V1+V2 prove A, V1+V3 prove B, V1+V4 prove C. N+1 = 4 vectors. @brief Verify mcdc dlist run behavior. @details Executes the mcdc dlist run scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_dlist_run(void)
 {
   TEST_BEGIN("drw MC/DC: dlist_run OR");
-  prep();
-  const ra8_drw_config_t cfg = make_cfg();
+  internal_prep();
+  const ra8_drw_config_t cfg = internal_make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_init(&cfg));
 
   uint32_t buf[k_drw_dl_cap] = {};
@@ -759,10 +746,11 @@ static void test_mcdc_dlist_run(void)
   * code under test that this case touches)
  */
 
-static void test_perf_arm_read_reset(void)
+/** @brief Verify perf arm read reset behavior. @details Executes the perf arm read reset scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_perf_arm_read_reset(void)
 {
   TEST_BEGIN("drw perf arm/read/reset");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_drw_perf_arm(k_ra8_drw_perfev_active_cycles, k_ra8_drw_perfev_fb_read));
   /* Verify packing of PERFTRIGGER. */
@@ -794,7 +782,7 @@ static void test_perf_arm_read_reset(void)
 }
 
 /**
- * @test test_mcdc_drw
+ * @test internal_test_mcdc_drw
  *
  * @par MC/DC:
  * Decision: ``ra8_drw_cache_flush`` line 422,
@@ -815,13 +803,12 @@ static void test_perf_arm_read_reset(void)
  * (2 conditions, ``||`` short-circuit). N+1 = 3 vectors:
  * - V1: ctr1 in range, ctr2 in range -> both F -> dec F (ok)
  * - V2: ctr1 out, ctr2 in range      -> C1=T short-circuits -> dec T
- * - V3: ctr1 in range, ctr2 out      -> C1=F, C2=T -> dec T
- */
-static void test_mcdc_drw(void)
+ * - V3: ctr1 in range, ctr2 out      -> C1=F, C2=T -> dec T @brief Verify mcdc drw behavior. @details Executes the mcdc drw scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_drw(void)
 {
   TEST_BEGIN("drw MC/DC: cache_flush + perf_arm 2-cond decisions");
-  prep();
-  const ra8_drw_config_t cfg = make_cfg();
+  internal_prep();
+  const ra8_drw_config_t cfg = internal_make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_init(&cfg));
 
   /* Decision A vectors. All three return ok; correctness = no crash &
@@ -849,7 +836,7 @@ static void test_mcdc_drw(void)
 }
 
 /**
- * @test test_mcdc_drw_internal_rect_below_min
+ * @test internal_test_mcdc_drw_internal_rect_below_min
  *
  * @par MC/DC:
  * Decision at libs/ra8_hal/src/ra8_drw.c (call site) -> helper at
@@ -858,19 +845,18 @@ static void test_mcdc_drw(void)
  * - V1: w=10, h=10 -> false
  * - V2: w=0,  h=10 -> true (varies left)
  * - V3: w=10, h=0  -> true (varies right)
- * N+1 = 3.
- */
-static void test_mcdc_drw_internal_rect_below_min(void)
+ * N+1 = 3. @brief Verify mcdc drw internal rect below min behavior. @details Executes the mcdc drw internal rect below min scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_drw_internal_rect_below_min(void)
 {
   TEST_BEGIN("drw MC/DC: rect_below_min OR");
-  TEST_ASSERT(!ra8_drw_internal_rect_below_min(1U, 10U, 10U));
-  TEST_ASSERT(ra8_drw_internal_rect_below_min(1U, 0U, 10U));
-  TEST_ASSERT(ra8_drw_internal_rect_below_min(1U, 10U, 0U));
+  TEST_ASSERT(!priv_ra8_drw_internal_rect_below_min(1U, 10U, 10U));
+  TEST_ASSERT(priv_ra8_drw_internal_rect_below_min(1U, 0U, 10U));
+  TEST_ASSERT(priv_ra8_drw_internal_rect_below_min(1U, 10U, 0U));
   TEST_END("drw MC/DC: rect_below_min OR");
 }
 
 /**
- * @test test_mcdc_drw_internal_rect_above_max
+ * @test internal_test_mcdc_drw_internal_rect_above_max
  *
  * @par MC/DC:
  * Decision at libs/ra8_hal/src/ra8_drw.c (call site) -> helper at
@@ -879,35 +865,33 @@ static void test_mcdc_drw_internal_rect_below_min(void)
  * - V1: w=10,   h=10   -> false
  * - V2: w=2000, h=10   -> true (varies left)
  * - V3: w=10,   h=2000 -> true (varies right)
- * N+1 = 3.
- */
-static void test_mcdc_drw_internal_rect_above_max(void)
+ * N+1 = 3. @brief Verify mcdc drw internal rect above max behavior. @details Executes the mcdc drw internal rect above max scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_drw_internal_rect_above_max(void)
 {
   TEST_BEGIN("drw MC/DC: rect_above_max OR");
-  TEST_ASSERT(!ra8_drw_internal_rect_above_max(1024U, 1024U, 10U, 10U));
-  TEST_ASSERT(ra8_drw_internal_rect_above_max(1024U, 1024U, 2000U, 10U));
-  TEST_ASSERT(ra8_drw_internal_rect_above_max(1024U, 1024U, 10U, 2000U));
+  TEST_ASSERT(!priv_ra8_drw_internal_rect_above_max(1024U, 1024U, 10U, 10U));
+  TEST_ASSERT(priv_ra8_drw_internal_rect_above_max(1024U, 1024U, 2000U, 10U));
+  TEST_ASSERT(priv_ra8_drw_internal_rect_above_max(1024U, 1024U, 10U, 2000U));
   TEST_END("drw MC/DC: rect_above_max OR");
 }
 
 /**
- * @test test_mcdc_drw_internal_rect_off_surface
+ * @test internal_test_mcdc_drw_internal_rect_off_surface
  *
  * @par MC/DC:
- * Decision at libs/ra8_hal/src/ra8_drw.c, ra8_drw_internal_rect_off_surface:
+ * Decision at libs/ra8_hal/src/ra8_drw.c, priv_ra8_drw_internal_rect_off_surface:
  *   ``rect->x < 0 || rect->y < 0`` (2 conditions C1, C2; ``||`` short-circuit).
  * - V1: x>=0, y>=0 -> C1=F, C2=F -> false (control; on-surface rect)
  * - V2: x<0,  y>=0 -> C1=T (short-circuit) -> true  (varies C1 only)
  * - V3: x>=0, y<0  -> C1=F, C2=T -> true  (varies C2 only)
  * Pairs: (V1,V2) flips C1 with C2 fixed>=0; (V1,V3) flips C2 with C1 fixed>=0.
  * N+1 = 3 vectors for 2 conditions. The driver is init'd first so the cached
- * pitch keeps the on-surface rect's independent ``right > pitch`` leg false.
- */
-static void test_mcdc_drw_internal_rect_off_surface(void)
+ * pitch keeps the on-surface rect's independent ``right > pitch`` leg false. @brief Verify mcdc drw internal rect off surface behavior. @details Executes the mcdc drw internal rect off surface scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_drw_internal_rect_off_surface(void)
 {
   TEST_BEGIN("drw MC/DC: rect_off_surface OR");
-  prep();
-  const ra8_drw_config_t cfg = make_cfg();
+  internal_prep();
+  const ra8_drw_config_t cfg = internal_make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_init(&cfg));
 
   const ra8_drw_rect_t on = {
@@ -922,36 +906,35 @@ static void test_mcdc_drw_internal_rect_off_surface(void)
   ra8_drw_rect_t neg_y = on;
   neg_y.y              = (int16_t)-1;
 
-  TEST_ASSERT(!ra8_drw_internal_rect_off_surface(&on));   /* V1: F || F -> F       */
-  TEST_ASSERT(ra8_drw_internal_rect_off_surface(&neg_x)); /* V2: T -> T (varies x) */
-  TEST_ASSERT(ra8_drw_internal_rect_off_surface(&neg_y)); /* V3: F || T -> T (y)   */
+  TEST_ASSERT(!priv_ra8_drw_internal_rect_off_surface(&on));   /* V1: F || F -> F       */
+  TEST_ASSERT(priv_ra8_drw_internal_rect_off_surface(&neg_x)); /* V2: T -> T (varies x) */
+  TEST_ASSERT(priv_ra8_drw_internal_rect_off_surface(&neg_y)); /* V3: F || T -> T (y)   */
   TEST_END("drw MC/DC: rect_off_surface OR");
 }
 
 int32_t main(void)
 {
-  test_set_texture_argb8888();
-  test_set_texture_clut_rle();
-  test_set_texture_rejects();
-  test_clear_texture();
-  test_load_clut_happy_and_bounds();
-  test_fill_rect_happy();
-  test_fill_rect_null();
-  test_fill_rect_zero_dim();
-  test_fill_rect_too_big();
-  test_blit_textured_rect();
-  test_draw_line();
-  test_draw_triangle();
-  test_run_dlist();
-  test_dlist_build_encoding();
-  test_dlist_begin_add_rejects();
-  test_dlist_overflow();
-  test_mcdc_dlist_run();
-  test_perf_arm_read_reset();
-  test_mcdc_drw();
-  test_mcdc_drw_internal_rect_below_min();
-  test_mcdc_drw_internal_rect_above_max();
-  test_mcdc_drw_internal_rect_off_surface();
-  (void)fprintf(stderr, "[OK  ] test_ra8_drw_render.c\n");
+  internal_test_set_texture_argb8888();
+  internal_test_set_texture_clut_rle();
+  internal_test_set_texture_rejects();
+  internal_test_clear_texture();
+  internal_test_load_clut_happy_and_bounds();
+  internal_test_fill_rect_happy();
+  internal_test_fill_rect_null();
+  internal_test_fill_rect_zero_dim();
+  internal_test_fill_rect_too_big();
+  internal_test_blit_textured_rect();
+  internal_test_draw_line();
+  internal_test_draw_triangle();
+  internal_test_run_dlist();
+  internal_test_dlist_build_encoding();
+  internal_test_dlist_begin_add_rejects();
+  internal_test_dlist_overflow();
+  internal_test_mcdc_dlist_run();
+  internal_test_perf_arm_read_reset();
+  internal_test_mcdc_drw();
+  internal_test_mcdc_drw_internal_rect_below_min();
+  internal_test_mcdc_drw_internal_rect_above_max();
+  internal_test_mcdc_drw_internal_rect_off_surface();
   return 0;
 }

@@ -19,10 +19,10 @@
  *
  * This header is private to the MIPI D-PHY driver only -- no other module
  * includes it. It exports:
- *  - ``internal_mipi_phy_write_timing``: defined in ``ra8_mipi_phy.c`` and
+ *  - ``priv_mipi_phy_write_timing``: defined in ``ra8_mipi_phy.c`` and
  *    used by the table-driven ``ra8_mipi_phy_select_timing`` in
  *    ``ra8_mipi_phy_timing.c``;
- *  - ``internal_mipi_phy_compute_freq``: defined in
+ *  - ``priv_mipi_phy_compute_freq``: defined in
  *    ``ra8_mipi_phy_timing.c`` and used by ``ra8_mipi_phy_validate_pll_band``
  *    in ``ra8_mipi_phy.c``.
  *
@@ -60,7 +60,7 @@
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
-RA8_PRIV void internal_mipi_phy_write_timing(const ra8_mipi_phy_timing_t* t);
+RA8_PRIV void priv_mipi_phy_write_timing(const ra8_mipi_phy_timing_t* t);
 
 /**
  * @brief Compute the PLL output frequency for a ``(mosc, pll)`` tuple.
@@ -86,4 +86,4 @@ RA8_PRIV void internal_mipi_phy_write_timing(const ra8_mipi_phy_timing_t* t);
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
-RA8_PRIV uint32_t internal_mipi_phy_compute_freq(const ra8_mipi_phy_pll_t* pll, uint8_t mosc_mhz);
+RA8_PRIV uint32_t priv_mipi_phy_compute_freq(const ra8_mipi_phy_pll_t* pll, uint8_t mosc_mhz);

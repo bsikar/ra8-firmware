@@ -10,7 +10,7 @@
  * or disables the Transmitter Delay Compensation block in CFDCnFDCFG for
  * one CANFD channel. The write is bracketed by CH_RESET / CH_OPERATION
  * mode transitions using the shared helper
- * ``ra8_canfd_internal_set_channel_mode`` (promoted to TU-external linkage
+ * ``priv_ra8_canfd_internal_set_channel_mode`` (promoted to TU-external linkage
  * in ``ra8_hal_internal.h``) -- the same strategy used by
  * ``ra8_canfd_set_bitrate`` in ``ra8_canfd_timing.c``.
  *
@@ -46,7 +46,7 @@ ra8_err_t ra8_canfd_set_tdc(uint8_t channel, const ra8_canfd_tdc_cfg_t* cfg)
   /* FDCFG is only writable in CH_RESET or CH_HALT; use CH_RESET as
    * the immediate abort path (mirrors ra8_canfd_set_bitrate). */
   /* HUM Ch 41 "CFDCnFDCFG" p 2788 */
-  const ra8_err_t rst_err = ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_reset);
+  const ra8_err_t rst_err = priv_ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_reset);
   if (rst_err != k_ra8_ok) {
     return rst_err;
   }
@@ -68,7 +68,7 @@ ra8_err_t ra8_canfd_set_tdc(uint8_t channel, const ra8_canfd_tdc_cfg_t* cfg)
   /* HUM Ch 41 "CFDCnFDCFG" p 2788 */
   reg->CFDC2[0].FDCFG = fdcfg;
 
-  const ra8_err_t op_err = ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_operation);
+  const ra8_err_t op_err = priv_ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_operation);
   if (op_err != k_ra8_ok) {
     return op_err;
   }

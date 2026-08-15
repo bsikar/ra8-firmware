@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_flash.h"
@@ -61,7 +62,7 @@
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-static void internal_irq_rmw8(uint16_t off, uint8_t bit, bool enable)
+RA8_INTERNAL static void internal_irq_rmw8(uint16_t off, uint8_t bit, bool enable)
 {
   uint8_t v = *ra8_mram_reg8(off);
   if (enable) {
@@ -93,7 +94,7 @@ static void internal_irq_rmw8(uint16_t off, uint8_t bit, bool enable)
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-static void internal_apply_ecc_irq(uint16_t off, bool is_ted, bool enable)
+RA8_INTERNAL static void internal_apply_ecc_irq(uint16_t off, bool is_ted, bool enable)
 {
   uint8_t bit = k_ra8_mrcraeint_mask_intenbdc;
   if (is_ted) {
@@ -121,7 +122,7 @@ static void internal_apply_ecc_irq(uint16_t off, bool is_ted, bool enable)
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-static void internal_apply_extra_err_irq(bool err_kind, bool enable)
+RA8_INTERNAL static void internal_apply_extra_err_irq(bool err_kind, bool enable)
 {
   uint8_t bit = k_ra8_mpaeint_mask_cmdlkie;
   if (err_kind) {
@@ -179,8 +180,8 @@ ra8_err_t ra8_flash_set_irq_enable(ra8_flash_irq_src_t src, bool enable)
 
 ra8_err_t ra8_flash_callback_set(ra8_flash_callback_t cb, void* user_ctx)
 {
-  s_flash_rt.cb       = cb;
-  s_flash_rt.user_ctx = user_ctx;
+  g_flash_rt.cb       = cb;
+  g_flash_rt.user_ctx = user_ctx;
   return k_ra8_ok;
 }
 
@@ -202,18 +203,19 @@ ra8_err_t ra8_flash_callback_set(ra8_flash_callback_t cb, void* user_ctx)
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-static void internal_deliver(ra8_flash_irq_src_t src, uint32_t fault_addr, uint32_t status_word)
+RA8_INTERNAL static void
+internal_deliver(ra8_flash_irq_src_t src, uint32_t fault_addr, uint32_t status_word)
 {
-  if (s_flash_rt.cb == nullptr) {
+  if (g_flash_rt.cb == nullptr) {
     return;
   }
   const ra8_flash_isr_event_t ev = {
     .src         = src,
     .fault_addr  = fault_addr,
     .status_word = status_word,
-    .user_ctx    = s_flash_rt.user_ctx,
+    .user_ctx    = g_flash_rt.user_ctx,
   };
-  s_flash_rt.cb(&ev);
+  g_flash_rt.cb(&ev);
 }
 
 /**
@@ -244,11 +246,11 @@ static void internal_deliver(ra8_flash_irq_src_t src, uint32_t fault_addr, uint3
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-static uint32_t internal_dispatch_ecc(uint16_t            status_off,
-                                      uint16_t            ted_addr_off,
-                                      uint16_t            dec_addr_off,
-                                      ra8_flash_irq_src_t ted_src,
-                                      ra8_flash_irq_src_t dec_src)
+RA8_INTERNAL static uint32_t internal_dispatch_ecc(uint16_t            status_off,
+                                                   uint16_t            ted_addr_off,
+                                                   uint16_t            dec_addr_off,
+                                                   ra8_flash_irq_src_t ted_src,
+                                                   ra8_flash_irq_src_t dec_src)
 {
   uint32_t      delivered = 0U;
   const uint8_t status    = *ra8_mram_reg8(status_off);
@@ -341,15 +343,15 @@ ra8_err_t ra8_flash_close(void)
 ra8_err_t ra8_flash_set_window(uintptr_t low, uintptr_t high)
 {
   if (low == 0U && high == 0U) {
-    s_flash_rt.win_low  = 0U;
-    s_flash_rt.win_high = 0U;
+    g_flash_rt.win_low  = 0U;
+    g_flash_rt.win_high = 0U;
     return k_ra8_ok;
   }
   if (low >= high) {
     return k_ra8_err_invalid_arg;
   }
-  s_flash_rt.win_low  = low;
-  s_flash_rt.win_high = high;
+  g_flash_rt.win_low  = low;
+  g_flash_rt.win_high = high;
   return k_ra8_ok;
 }
 
@@ -377,7 +379,7 @@ ra8_err_t ra8_flash_set_window(uintptr_t low, uintptr_t high)
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-static ra8_err_t internal_validate_range(uintptr_t address, uint64_t total_len)
+RA8_INTERNAL static ra8_err_t internal_validate_range(uintptr_t address, uint64_t total_len)
 {
   if ((address & (k_ra8_mram_block_size_bytes - 1U)) != 0U) {
     return k_ra8_err_invalid_arg;
@@ -389,7 +391,7 @@ static ra8_err_t internal_validate_range(uintptr_t address, uint64_t total_len)
   if (end_excl > (uint64_t)k_ra8_flash_code_start + (uint64_t)k_ra8_flash_code_size) {
     return k_ra8_err_invalid_arg;
   }
-  if (!ra8_flash_internal_window_allows(address, (uint32_t)total_len)) {
+  if (!priv_ra8_flash_internal_window_allows(address, (uint32_t)total_len)) {
     return k_ra8_err_out_of_range;
   }
   return k_ra8_ok;
@@ -397,13 +399,13 @@ static ra8_err_t internal_validate_range(uintptr_t address, uint64_t total_len)
 
 ra8_err_t ra8_flash_erase(uintptr_t address, uint32_t num_blocks)
 {
-  RA8_VALIDATE_INIT(s_flash_rt.initialized, s_flash_tag, "flash_erase before init");
+  RA8_VALIDATE_INIT(g_flash_rt.initialized, g_flash_tag, "flash_erase before init");
   if (num_blocks == 0U) {
     return k_ra8_err_invalid_arg;
   }
   const uint64_t  total_bytes = (uint64_t)num_blocks * (uint64_t)k_ra8_mram_block_size_bytes;
   const ra8_err_t v_err       = internal_validate_range(address, total_bytes);
-  RA8_RETURN_ON_ERROR(v_err, s_flash_tag, "flash_erase: validate"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, g_flash_tag, "flash_erase: validate"); /* GCOVR_EXCL_BR_LINE */
   /* internal_validate_range above rejects any address outside
    * [k_ra8_flash_code_start, +k_ra8_flash_code_size), which is the default
    * (non-secure) 0x02000000 code-MRAM view -- HUM Ch 59.1 "Address Map" p 3543.
@@ -427,13 +429,13 @@ ra8_err_t ra8_flash_erase(uintptr_t address, uint32_t num_blocks)
 
 ra8_err_t ra8_flash_write(uintptr_t address, const uint8_t* src, uint32_t len)
 {
-  RA8_CHECK_NULL_PTR(src, s_flash_tag, "src must not be nullptr");
-  RA8_VALIDATE_INIT(s_flash_rt.initialized, s_flash_tag, "flash_write before init");
+  RA8_CHECK_NULL_PTR(src, g_flash_tag, "src must not be nullptr");
+  RA8_VALIDATE_INIT(g_flash_rt.initialized, g_flash_tag, "flash_write before init");
   if (len == 0U || (len % k_ra8_mram_write_size_bytes) != 0U) {
     return k_ra8_err_invalid_arg;
   }
   const ra8_err_t v_err = internal_validate_range(address, (uint64_t)len);
-  RA8_RETURN_ON_ERROR(v_err, s_flash_tag, "flash_write: validate"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, g_flash_tag, "flash_write: validate"); /* GCOVR_EXCL_BR_LINE */
   /* Same reasoning as ra8_flash_erase: the validated range lies inside the
    * default non-secure code-MRAM view, so MRCPC0 is provably correct. */
   const ra8_flash_world_t world = k_ra8_flash_world_ns;
@@ -462,7 +464,7 @@ typedef enum : uint8_t {
 
 ra8_err_t ra8_flash_blank_check(uintptr_t address, uint32_t len, bool* out_blank)
 {
-  RA8_CHECK_NULL_PTR(out_blank, s_flash_tag, "out_blank must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_blank, g_flash_tag, "out_blank must not be nullptr");
   if (len == 0U) {
     return k_ra8_err_invalid_arg;
   }
@@ -504,7 +506,7 @@ ra8_err_t ra8_flash_blank_check(uintptr_t address, uint32_t len, bool* out_blank
 
 ra8_err_t ra8_flash_status(ra8_flash_status_t* out)
 {
-  RA8_CHECK_NULL_PTR(out, s_flash_tag, "out must not be nullptr");
+  RA8_CHECK_NULL_PTR(out, g_flash_tag, "out must not be nullptr");
 
   /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
   const uint8_t mrcps = *ra8_mram_reg8(k_ra8_mram_off_mrcps);

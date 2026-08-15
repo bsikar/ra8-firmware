@@ -68,7 +68,7 @@ ra8_usb_queue_in(ra8_usb_speed_t speed, uint8_t pipe_num, const uint8_t* data, u
    * host, not by this code. See the matching note in
    * port/usbx/src/ux_dcd_ra8_usb.c (auto-echo block) for the full
    * chain-of-causality + what it would take to lift the ceiling. */
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -79,17 +79,17 @@ ra8_usb_queue_in(ra8_usb_speed_t speed, uint8_t pipe_num, const uint8_t* data, u
     return k_ra8_err_invalid_arg;
   }
 
-  internal_select_cfifo(reg, pipe_num, true);
-  const ra8_err_t ready = internal_wait_frdy(reg);
+  priv_select_cfifo(reg, pipe_num, true);
+  const ra8_err_t ready = priv_wait_frdy(reg);
   RA8_RETURN_ON_ERROR(ready, s_tag, "queue_in: FRDY timeout");
 
   if (len > 0U) {
-    internal_fifo_write(reg, data, len);
+    priv_fifo_write(reg, data, len);
   }
 
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
   reg->CFIFOCTR = k_ra8_fifoctr_bval;
-  internal_pipe_pid(reg, pipe_num, k_ra8_pid_buf);
+  priv_pipe_pid(reg, pipe_num, k_ra8_pid_buf);
   return k_ra8_ok;
 }
 
@@ -98,7 +98,7 @@ ra8_usb_queue_in(ra8_usb_speed_t speed, uint8_t pipe_num, const uint8_t* data, u
  *
  * @details Drives the multi-chunk loop so ``ra8_usb_dcp_in_data`` stays
  * under the clang-tidy statement-count threshold. Pushes at most
- * DCPMAXP bytes per iteration via ``internal_dcp_push_chunk``, then
+ * DCPMAXP bytes per iteration via ``priv_dcp_push_chunk``, then
  * raises DCPCTR.PID to BUF after the first successful push. The
  * controller services subsequent IN tokens automatically.
  *
@@ -129,11 +129,11 @@ internal_dcp_in_payload(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_
   while (remaining > 0U) {
     const uint16_t chunk =
       (remaining > k_ra8_usb_dcp_max_packet) ? (uint16_t)k_ra8_usb_dcp_max_packet : remaining;
-    const ra8_err_t pushed = internal_dcp_push_chunk(reg, &data[offset], chunk);
+    const ra8_err_t pushed = priv_dcp_push_chunk(reg, &data[offset], chunk);
     RA8_RETURN_ON_ERROR(pushed, s_tag, "dcp_in_data: chunk push failed");
     if (!pid_raised) {
       /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1999 */
-      internal_dcp_pid(reg, k_ra8_pid_buf);
+      priv_dcp_pid(reg, k_ra8_pid_buf);
       pid_raised = true;
     }
     offset    = (uint16_t)(offset + chunk);
@@ -168,30 +168,30 @@ internal_dcp_in_payload(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_
 RA8_INTERNAL
 static ra8_err_t internal_dcp_in_zlp(volatile r_usb_regs_t* reg)
 {
-  const ra8_err_t ready = internal_wait_frdy(reg);
+  const ra8_err_t ready = priv_wait_frdy(reg);
   RA8_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (zlp)");
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
   reg->CFIFOCTR = k_ra8_fifoctr_bval;
   /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1999 */
-  internal_dcp_pid(reg, k_ra8_pid_buf);
+  priv_dcp_pid(reg, k_ra8_pid_buf);
   return k_ra8_ok;
 }
 
 /* Diagnostic probes for the DCP IN data push (read via JLink). */
-volatile uint32_t s_dcp_push_count       = 0U;
-volatile uint16_t s_dcp_dcpctr_pre_push  = 0U;
-volatile uint16_t s_dcp_dcpctr_post_push = 0U;
-volatile uint16_t s_dcp_cfifoctr_pre     = 0U;
-volatile uint16_t s_dcp_cfifoctr_post    = 0U;
-volatile uint16_t s_dcp_last_len         = 0U;
-volatile uint8_t  s_dcp_last_err         = 0U; /* 0=ok, 1=frdy timeout, 2=null arg */
+volatile uint32_t g_dcp_push_count       = 0U;
+volatile uint16_t g_dcp_dcpctr_pre_push  = 0U;
+volatile uint16_t g_dcp_dcpctr_post_push = 0U;
+volatile uint16_t g_dcp_cfifoctr_pre     = 0U;
+volatile uint16_t g_dcp_cfifoctr_post    = 0U;
+volatile uint16_t g_dcp_last_len         = 0U;
+volatile uint8_t  g_dcp_last_err         = 0U; /* 0=ok, 1=frdy timeout, 2=null arg */
 
 /**
  * @brief Implementation of `ra8_usb_dcp_in_data()`.
  * @details Push a control-IN data-stage payload (or zero-length packet) into
  *          the DCP FIFO, set BVAL=1 and DCPCTR.PID=BUF so the chip
  *          transmits on the next IN token from the host. Captures
- *          pre/post register snapshots into ::s_dcp_push_count and
+ *          pre/post register snapshots into ::g_dcp_push_count and
  *          friends for JLink-readable diagnostic. The status stage (CCPL) is
  *          intentionally NOT pulsed here -- the bridge handles it on the CTSQ
  *          status-stage edge.
@@ -213,30 +213,30 @@ volatile uint8_t  s_dcp_last_err         = 0U; /* 0=ok, 1=frdy timeout, 2=null a
  */
 ra8_err_t ra8_usb_dcp_in_data(ra8_usb_speed_t speed, const uint8_t* data, uint16_t len)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
-    s_dcp_last_err = 2U;
+    g_dcp_last_err = 2U;
     return k_ra8_err_invalid_arg;
   }
   if ((data == nullptr) && (len != 0U)) {
-    s_dcp_last_err = 2U;
+    g_dcp_last_err = 2U;
     return k_ra8_err_invalid_arg;
   }
-  s_dcp_push_count++;
-  s_dcp_last_len        = len;
-  s_dcp_dcpctr_pre_push = reg->DCPCTR;
+  g_dcp_push_count++;
+  g_dcp_last_len        = len;
+  g_dcp_dcpctr_pre_push = reg->DCPCTR;
 
   /* Select DCP (CURPIPE = 0) on CFIFO in IN direction. Done once; the
    * selection persists across chunks.
    * HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
-  internal_select_cfifo(reg, 0U, true);
-  s_dcp_cfifoctr_pre = reg->CFIFOCTR;
+  priv_select_cfifo(reg, 0U, true);
+  g_dcp_cfifoctr_pre = reg->CFIFOCTR;
 
   /* Discard any stale, unconsumed buffer content before writing the
    * fresh response. If a previous control-IN payload was never pulled
    * by the host (a missed response window followed by a SETUP
    * retransmit), the CFIFO is left non-empty, FRDY write-ready never
-   * re-asserts, and internal_wait_frdy below times out. Mirrors the
+   * re-asserts, and priv_wait_frdy below times out. Mirrors the
    * hw_usb_set_bclr in FSP usb_pstd_ctrl_read.
    * HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
   reg->CFIFOCTR = (uint16_t)k_ra8_fifoctr_bclr;
@@ -247,9 +247,9 @@ ra8_err_t ra8_usb_dcp_in_data(ra8_usb_speed_t speed, const uint8_t* data, uint16
   } else {
     err = internal_dcp_in_payload(reg, data, len);
   }
-  s_dcp_cfifoctr_post    = reg->CFIFOCTR;
-  s_dcp_dcpctr_post_push = reg->DCPCTR;
-  s_dcp_last_err         = (uint8_t)((err == k_ra8_ok) ? 0U : 1U);
+  g_dcp_cfifoctr_post    = reg->CFIFOCTR;
+  g_dcp_dcpctr_post_push = reg->DCPCTR;
+  g_dcp_last_err         = (uint8_t)((err == k_ra8_ok) ? 0U : 1U);
   return err;
 }
 
@@ -311,7 +311,7 @@ ra8_err_t ra8_usb_queue_out(ra8_usb_speed_t speed,
                             uint16_t*       inout_len,
                             bool            rearm)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -339,8 +339,8 @@ ra8_err_t ra8_usb_queue_out(ra8_usb_speed_t speed,
    * lose every other packet. */
   reg->BRDYSTS = (uint16_t)(~pipe_bit);
 
-  internal_select_cfifo(reg, pipe_num, false);
-  const ra8_err_t ready = internal_wait_frdy(reg);
+  priv_select_cfifo(reg, pipe_num, false);
+  const ra8_err_t ready = priv_wait_frdy(reg);
   RA8_RETURN_ON_ERROR(ready, s_tag, "queue_out: FRDY timeout");
 
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
@@ -356,7 +356,7 @@ ra8_err_t ra8_usb_queue_out(ra8_usb_speed_t speed,
     return k_ra8_err_no_data;
   }
   const uint16_t take = (available < *inout_len) ? available : *inout_len;
-  internal_fifo_read(reg, out_buf, take);
+  priv_fifo_read(reg, out_buf, take);
   *inout_len = take;
   /* No BCLR for non-zero drain (FSP semantics). The FIFO read above
    * drained `take` bytes; the remainder (if take < available) is lost
@@ -364,7 +364,7 @@ ra8_err_t ra8_usb_queue_out(ra8_usb_speed_t speed,
    * packet, which is what one bank holds. */
   if (rearm) {
     /* Re-arm PID=BUF; rearm == false callers own the arm/park decision. */
-    internal_pipe_pid(reg, pipe_num, k_ra8_pid_buf);
+    priv_pipe_pid(reg, pipe_num, k_ra8_pid_buf);
   }
   return k_ra8_ok;
 }
@@ -397,7 +397,7 @@ ra8_err_t ra8_usb_queue_out(ra8_usb_speed_t speed,
  */
 ra8_err_t ra8_usb_rearm_out_pipe(ra8_usb_speed_t speed, uint8_t pipe_num)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -411,7 +411,7 @@ ra8_err_t ra8_usb_rearm_out_pipe(ra8_usb_speed_t speed, uint8_t pipe_num)
   reg->NRDYSTS            = (uint16_t)(~pipe_bit);
   /* HUM Ch 36.2.27 "PIPEnCTR : PIPE n Control Register", p 2005. Force
    * PID=BUF so the next host OUT token is ACKed. */
-  internal_pipe_pid(reg, pipe_num, k_ra8_pid_buf);
+  priv_pipe_pid(reg, pipe_num, k_ra8_pid_buf);
   return k_ra8_ok;
 }
 
@@ -440,7 +440,7 @@ ra8_err_t ra8_usb_rearm_out_pipe(ra8_usb_speed_t speed, uint8_t pipe_num)
  */
 ra8_err_t ra8_usb_park_out_pipe(ra8_usb_speed_t speed, uint8_t pipe_num)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -448,7 +448,7 @@ ra8_err_t ra8_usb_park_out_pipe(ra8_usb_speed_t speed, uint8_t pipe_num)
     return k_ra8_err_invalid_arg;
   }
   /* HUM Ch 36.2.27 "PIPEnCTR : PIPE n Control Register" p 2005 */
-  internal_pipe_pid(reg, pipe_num, k_ra8_pid_nak);
+  priv_pipe_pid(reg, pipe_num, k_ra8_pid_nak);
   return k_ra8_ok;
 }
 
@@ -479,7 +479,7 @@ ra8_err_t ra8_usb_park_out_pipe(ra8_usb_speed_t speed, uint8_t pipe_num)
 ra8_err_t ra8_usb_read_setup_if_valid(ra8_usb_speed_t speed, ra8_usb_setup_t* out_setup)
 {
   RA8_CHECK_NULL_PTR(out_setup, s_tag, "read_setup_if_valid: out_setup");
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -529,7 +529,7 @@ ra8_err_t ra8_usb_read_setup_if_valid(ra8_usb_speed_t speed, ra8_usb_setup_t* ou
 ra8_err_t ra8_usb_read_setup_unconditional(ra8_usb_speed_t speed, ra8_usb_setup_t* out_setup)
 {
   RA8_CHECK_NULL_PTR(out_setup, s_tag, "read_setup_unconditional: out_setup");
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -566,17 +566,17 @@ ra8_err_t ra8_usb_read_setup_unconditional(ra8_usb_speed_t speed, ra8_usb_setup_
  */
 ra8_err_t ra8_usb_control_response(ra8_usb_speed_t speed, bool accept)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
   if (!accept) {
     /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1999 */
-    internal_dcp_pid(reg, k_ra8_pid_stall);
+    priv_dcp_pid(reg, k_ra8_pid_stall);
     return k_ra8_ok;
   }
-  internal_dcp_pid(reg, k_ra8_pid_buf);
+  priv_dcp_pid(reg, k_ra8_pid_buf);
   /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1999 */
-  internal_rmw16(&reg->DCPCTR, (uint16_t)(1U << k_ra8_dcpctr_bit_ccpl), 0U);
+  priv_rmw16(&reg->DCPCTR, (uint16_t)(1U << k_ra8_dcpctr_bit_ccpl), 0U);
   return k_ra8_ok;
 }

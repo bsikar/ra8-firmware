@@ -17,8 +17,8 @@
  * - ``ra8_xspi_flash_read_status()``  -- 0x05.
  * - ``ra8_xspi_flash_read_id()``      -- 0x9F JEDEC ID.
  *
- * The two manual-command primitives ``ra8_xspi_kick_command()`` and
- * ``ra8_xspi_issue_simple_opcode()`` are exported via
+ * The two manual-command primitives ``priv_ra8_xspi_kick_command()`` and
+ * ``priv_ra8_xspi_issue_simple_opcode()`` are exported via
  * ``ra8_xspi_internal.h`` because the lifecycle surface in ``ra8_xspi.c``
  * (suspend / resume / software-reset) reuses them.
  *
@@ -269,14 +269,14 @@ static ra8_err_t internal_wait_command_done(volatile r_xspi_regs_t* reg)
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_xspi_kick_command(volatile r_xspi_regs_t* reg)
+ra8_err_t priv_ra8_xspi_kick_command(volatile r_xspi_regs_t* reg)
 {
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
   reg->CDCTL0 |= k_ra8_xspi_cdctl0_mask_trreq;
   return internal_wait_command_done(reg);
 }
 
-ra8_err_t ra8_xspi_issue_simple_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode)
+ra8_err_t priv_ra8_xspi_issue_simple_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode)
 {
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
   /* Populate CDBUF slot 0 per FSP ``r_ospi_b_direct_transfer``:
@@ -293,7 +293,7 @@ ra8_err_t ra8_xspi_issue_simple_opcode(volatile r_xspi_regs_t* reg, uint8_t opco
   reg->CDBUF[k_ra8_xspi_cdbuf_idx_addr]  = 0U;
   reg->CDBUF[k_ra8_xspi_cdbuf_idx_data0] = 0U;
   reg->CDBUF[k_ra8_xspi_cdbuf_idx_data1] = 0U;
-  return ra8_xspi_kick_command(reg);
+  return priv_ra8_xspi_kick_command(reg);
 }
 
 /**
@@ -333,7 +333,7 @@ internal_issue_read_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode, uint8_t 
   reg->CDBUF[k_ra8_xspi_cdbuf_idx_addr]  = 0U;
   reg->CDBUF[k_ra8_xspi_cdbuf_idx_data0] = 0U;
   reg->CDBUF[k_ra8_xspi_cdbuf_idx_data1] = 0U;
-  return ra8_xspi_kick_command(reg);
+  return priv_ra8_xspi_kick_command(reg);
 }
 
 /**
@@ -413,7 +413,7 @@ static ra8_err_t internal_flash_read_chunk(volatile r_xspi_regs_t* reg,
                               flash_addr,
                               (uint8_t)chunk,
                               k_ra8_xspi_cdt_trtype_read);
-  const ra8_err_t wait = ra8_xspi_kick_command(reg);
+  const ra8_err_t wait = priv_ra8_xspi_kick_command(reg);
   if (wait != k_ra8_ok) {
     return wait;
   }
@@ -507,7 +507,7 @@ RA8_INTERNAL
 static ra8_err_t
 internal_flash_stage_program(volatile r_xspi_regs_t* reg, uint32_t flash_addr, uint32_t len)
 {
-  const ra8_err_t wren = ra8_xspi_issue_simple_opcode(reg, k_ra8_spi_flash_op_write_enable);
+  const ra8_err_t wren = priv_ra8_xspi_issue_simple_opcode(reg, k_ra8_spi_flash_op_write_enable);
   if (wren != k_ra8_ok) {
     return wren;
   }
@@ -634,7 +634,7 @@ internal_xspi_stage_payload(volatile r_xspi_regs_t* reg, const uint8_t* data, ui
  *      TRREQ.
  *   2. ``internal_xspi_stage_payload`` packs ``data[]`` into
  *      CDBUF[CDD0/CDD1].
- *   3. ``ra8_xspi_kick_command`` asserts CDCTL0.TRREQ and polls
+ *   3. ``priv_ra8_xspi_kick_command`` asserts CDCTL0.TRREQ and polls
  *      CMDCMP.
  *   4. ``internal_poll_wip_clear`` issues 0x05 RDSR until WIP=0.
  *
@@ -674,7 +674,7 @@ static ra8_err_t internal_flash_program_chunk(volatile r_xspi_regs_t* reg,
   }
   /* Stage CDD0/CDD1 BEFORE TRREQ (cf. internal_xspi_stage_payload). */
   internal_xspi_stage_payload(reg, data, chunk);
-  const ra8_err_t kick = ra8_xspi_kick_command(reg);
+  const ra8_err_t kick = priv_ra8_xspi_kick_command(reg);
   if (kick != k_ra8_ok) {
     return kick;
   }
@@ -730,7 +730,7 @@ ra8_err_t ra8_xspi_flash_erase_sector(uint8_t instance, uint32_t flash_addr)
     return rng;
   }
 
-  const ra8_err_t wren = ra8_xspi_issue_simple_opcode(reg, k_ra8_spi_flash_op_write_enable);
+  const ra8_err_t wren = priv_ra8_xspi_issue_simple_opcode(reg, k_ra8_spi_flash_op_write_enable);
   if (wren != k_ra8_ok) {
     return wren;
   }
@@ -743,7 +743,7 @@ ra8_err_t ra8_xspi_flash_erase_sector(uint8_t instance, uint32_t flash_addr)
                               0U,
                               k_ra8_xspi_cdt_trtype_write);
 
-  const ra8_err_t wait = ra8_xspi_kick_command(reg);
+  const ra8_err_t wait = priv_ra8_xspi_kick_command(reg);
   if (wait != k_ra8_ok) {
     return wait;
   }

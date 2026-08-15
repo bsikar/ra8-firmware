@@ -169,55 +169,55 @@
 #define RA8_SECTION(name) [[gnu::used, gnu::section(name)]]
 #endif
 
-RA8_SECTION(".option_setting_ofs0") static const uint32_t g_ra8_ofs0 = BSP_CFG_OPTION_SETTING_OFS0;
+RA8_SECTION(".option_setting_ofs0") static const uint32_t s_ra8_ofs0 = BSP_CFG_OPTION_SETTING_OFS0;
 
-RA8_SECTION(".option_setting_ofs1") static const uint32_t g_ra8_ofs1 = BSP_CFG_OPTION_SETTING_OFS1;
+RA8_SECTION(".option_setting_ofs1") static const uint32_t s_ra8_ofs1 = BSP_CFG_OPTION_SETTING_OFS1;
 
-RA8_SECTION(".option_setting_ofs2") static const uint32_t g_ra8_ofs2 = BSP_CFG_OPTION_SETTING_OFS2;
+RA8_SECTION(".option_setting_ofs2") static const uint32_t s_ra8_ofs2 = BSP_CFG_OPTION_SETTING_OFS2;
 
-RA8_SECTION(".option_setting_ofs3") static const uint32_t g_ra8_ofs3 = BSP_CFG_OPTION_SETTING_OFS3;
+RA8_SECTION(".option_setting_ofs3") static const uint32_t s_ra8_ofs3 = BSP_CFG_OPTION_SETTING_OFS3;
 
-RA8_SECTION(".option_setting_sas") static const uint32_t g_ra8_sas = BSP_CFG_OPTION_SETTING_SAS;
+RA8_SECTION(".option_setting_sas") static const uint32_t s_ra8_sas = BSP_CFG_OPTION_SETTING_SAS;
 
 RA8_SECTION(".option_setting_ofs1_sec")
-static const uint32_t g_ra8_ofs1_sec = BSP_CFG_OPTION_SETTING_OFS1_SEC;
+static const uint32_t s_ra8_ofs1_sec = BSP_CFG_OPTION_SETTING_OFS1_SEC;
 
 RA8_SECTION(".option_setting_ofs1_sel")
-static const uint32_t g_ra8_ofs1_sel = BSP_CFG_OPTION_SETTING_OFS1_SEL;
+static const uint32_t s_ra8_ofs1_sel = BSP_CFG_OPTION_SETTING_OFS1_SEL;
 
 /* OFS3_SEC / OFS3_SEL are the TrustZone secure-attribution selectors for OFS3,
  * present on both parts alongside it. */
 RA8_SECTION(".option_setting_ofs3_sec")
-static const uint32_t g_ra8_ofs3_sec = BSP_CFG_OPTION_SETTING_OFS3_SEC;
+static const uint32_t s_ra8_ofs3_sec = BSP_CFG_OPTION_SETTING_OFS3_SEC;
 
 RA8_SECTION(".option_setting_ofs3_sel")
-static const uint32_t g_ra8_ofs3_sel = BSP_CFG_OPTION_SETTING_OFS3_SEL;
+static const uint32_t s_ra8_ofs3_sel = BSP_CFG_OPTION_SETTING_OFS3_SEL;
 
-RA8_SECTION(".option_setting_bps") static const uint32_t g_ra8_bps = BSP_CFG_OPTION_SETTING_BPS;
+RA8_SECTION(".option_setting_bps") static const uint32_t s_ra8_bps = BSP_CFG_OPTION_SETTING_BPS;
 
 RA8_SECTION(".option_setting_bps_sec")
-static const uint32_t g_ra8_bps_sec = BSP_CFG_OPTION_SETTING_BPS_SEC;
+static const uint32_t s_ra8_bps_sec = BSP_CFG_OPTION_SETTING_BPS_SEC;
 
 RA8_SECTION(".option_setting_otp_fsblctrl0")
-static const uint32_t g_ra8_otp_fsblctrl0 = BSP_CFG_OPTION_SETTING_OTP_FSBLCTRL0;
+static const uint32_t s_ra8_otp_fsblctrl0 = BSP_CFG_OPTION_SETTING_OTP_FSBLCTRL0;
 
 RA8_SECTION(".option_setting_otp_fsblctrl1")
-static const uint32_t g_ra8_otp_fsblctrl1 = BSP_CFG_OPTION_SETTING_OTP_FSBLCTRL1;
+static const uint32_t s_ra8_otp_fsblctrl1 = BSP_CFG_OPTION_SETTING_OTP_FSBLCTRL1;
 
 RA8_SECTION(".option_setting_otp_fsblctrl2")
-static const uint32_t g_ra8_otp_fsblctrl2 = BSP_CFG_OPTION_SETTING_OTP_FSBLCTRL2;
+static const uint32_t s_ra8_otp_fsblctrl2 = BSP_CFG_OPTION_SETTING_OTP_FSBLCTRL2;
 
 RA8_SECTION(".option_setting_otp_samr")
-static const uint32_t g_ra8_otp_samr = BSP_CFG_OPTION_SETTING_OTP_SAMR;
+static const uint32_t s_ra8_otp_samr = BSP_CFG_OPTION_SETTING_OTP_SAMR;
 
 RA8_SECTION(".option_setting_otp_pbps")
-static const uint32_t g_ra8_otp_pbps = BSP_CFG_OPTION_SETTING_OTP_PBPS;
+static const uint32_t s_ra8_otp_pbps = BSP_CFG_OPTION_SETTING_OTP_PBPS;
 
 RA8_SECTION(".option_setting_otp_pbps_sec")
-static const uint32_t g_ra8_otp_pbps_sec = BSP_CFG_OPTION_SETTING_OTP_PBPS_SEC;
+static const uint32_t s_ra8_otp_pbps_sec = BSP_CFG_OPTION_SETTING_OTP_PBPS_SEC;
 
 RA8_SECTION(".option_setting_otp_zhuk")
-static const uint32_t g_ra8_otp_zhuk = BSP_CFG_OPTION_SETTING_OTP_ZHUK;
+static const uint32_t s_ra8_otp_zhuk = BSP_CFG_OPTION_SETTING_OTP_ZHUK;
 
 /* =============================================================================
  * OFS boot-map inventory -- contract in ra8_ofs.h

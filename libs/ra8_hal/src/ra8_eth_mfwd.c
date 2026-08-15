@@ -150,7 +150,7 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 RA8_HW_REGISTER_ACCESS
-static inline volatile uint32_t* internal_mfwd_fwpbfcsdc(uint8_t port)
+RA8_INTERNAL static inline volatile uint32_t* internal_mfwd_fwpbfcsdc(uint8_t port)
 {
   const uintptr_t addr =
     (uintptr_t)k_ra8_mfwd_base_addr +

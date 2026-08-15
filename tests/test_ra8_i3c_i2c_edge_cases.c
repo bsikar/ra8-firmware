@@ -9,7 +9,7 @@
  *   - bus-busy (BFREF=0) timeout during the START gate;
  *   - NAK on the address byte vs. NAK on a data byte (both must yield
  *     ``k_ra8_err_nack`` with a final STOP);
- *   - repeated-START sequences via ``internal_i3c_i2c_transfer`` (write -> read);
+ *   - repeated-START sequences via ``ra8_i3c_i2c_transfer`` (write -> read);
  *   - clock-stretching upper bound: a long-buffer transfer where the
  *     peripheral never ACKs (TDBEF0 stays low for the duration) returns the
  *     hardware-timeout error rather than spinning forever;
@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_fake_mmio.h"
@@ -58,7 +59,7 @@ typedef enum : uint32_t {
   k_iic_b_edge_long_len = 1000000U, /**< Iic b edge long length. */
 } ra8_i3c_i2c_edge_timing_t;
 
-static const ra8_i3c_i2c_cfg_t k_iic_b_edge_cfg = {
+static const ra8_i3c_i2c_cfg_t s_iic_b_edge_cfg = {
   .bus_hz   = (uint32_t)k_ra8_i3c_i2c_speed_fast,
   .pclka_hz = 60000000U,
 };
@@ -71,14 +72,16 @@ static const uint8_t s_iic_b_edge_payload[3] = {
 
 static uint8_t s_iic_b_edge_long[k_i2c_oversize_bytes];
 
-static void prep(void)
+/** @brief Provide the file-local prep test helper. @details Implements the prep fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   ra8_fake_mmio_reset();
   (void)ra8_mstp_init();
 }
 
-static void prime_ntst_and_bus(uint8_t channel)
+/** @brief Provide the file-local prime ntst and bus test helper. @details Implements the prime ntst and bus fixture operation used only by this focused test executable. @param[in] channel Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prime_ntst_and_bus(uint8_t channel)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   reg->NTST = (uint32_t)k_ra8_i3c_i2c_msk_ntst_tdbef0 | (uint32_t)k_ra8_i3c_i2c_msk_ntst_rdbff0;
@@ -99,9 +102,8 @@ static void prime_ntst_and_bus(uint8_t channel)
 static uint8_t s_nack_ch;
 
 /**
- * @brief Poll-hook body: latch BST.NACKDF on the target channel.
- */
-static void iic_b_nack_hook(void)
+ * @brief Poll-hook body: latch BST.NACKDF on the target channel. @details Implements the iic b nack hook fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_iic_b_nack_hook(void)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(s_nack_ch);
   if (reg != nullptr) {
@@ -112,18 +114,16 @@ static void iic_b_nack_hook(void)
 /**
  * @brief Install the NACK poll-hook for @p channel.
  *
- * @param[in] channel Channel index to inject into.
- */
-static void iic_b_nack_hook_arm(uint8_t channel)
+ * @param[in] channel Channel index to inject into. @details Implements the iic b nack hook arm fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_iic_b_nack_hook_arm(uint8_t channel)
 {
   s_nack_ch = channel;
-  ra8_fake_mmio_set_poll_hook(iic_b_nack_hook);
+  ra8_fake_mmio_set_poll_hook(internal_iic_b_nack_hook);
 }
 
 /**
- * @brief Remove the NACK poll-hook.
- */
-static void iic_b_nack_hook_disarm(void)
+ * @brief Remove the NACK poll-hook. @details Implements the iic b nack hook disarm fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_iic_b_nack_hook_disarm(void)
 {
   ra8_fake_mmio_set_poll_hook(nullptr);
 }
@@ -134,13 +134,12 @@ static void iic_b_nack_hook_disarm(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_bus_busy_during_start_repeated(void)
+ * code under test that this case touches) @brief Verify bus busy during start repeated behavior. @details Executes the bus busy during start repeated scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_bus_busy_during_start_repeated(void)
 {
   TEST_BEGIN("iic_b bus-busy during START rejected on every retry");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_edge_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_edge_cfg));
   /* BFREF=0: bus reported busy. Hammer the gate; every call must return
    * busy without touching CNDCTL.STCND. */
   i3c_i2c_regs(0U)->BCST   = 0U;
@@ -148,7 +147,7 @@ static void test_bus_busy_during_start_repeated(void)
   for (uint8_t i = 0U; i < k_i2c_probe_rounds; ++i) {
     TEST_ASSERT_EQ(
       k_ra8_err_busy,
-      internal_i3c_i2c_write(0U, (uint8_t)k_iic_b_edge_target, s_iic_b_edge_payload, 1U, false));
+      ra8_i3c_i2c_write(0U, (uint8_t)k_iic_b_edge_target, s_iic_b_edge_payload, 1U, false));
   }
   /* CNDCTL must never have been set to START. */
   TEST_ASSERT_EQ(0U, (i3c_i2c_regs(0U)->CNDCTL & (uint32_t)k_ra8_i3c_i2c_msk_cndctl_stcnd));
@@ -161,21 +160,20 @@ static void test_bus_busy_during_start_repeated(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_nak_on_address_byte(void)
+ * code under test that this case touches) @brief Verify nak on address byte behavior. @details Executes the nak on address byte scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_nak_on_address_byte(void)
 {
   TEST_BEGIN("iic_b NAK on address byte yields nack + STOP");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_edge_cfg));
-  prime_ntst_and_bus(0U);
-  iic_b_nack_hook_arm(0U);
-  const ra8_err_t r = internal_i3c_i2c_write(0U,
-                                             (uint8_t)k_iic_b_edge_target,
-                                             s_iic_b_edge_long,
-                                             (uint32_t)k_iic_b_edge_long_len,
-                                             false);
-  iic_b_nack_hook_disarm();
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_edge_cfg));
+  internal_prime_ntst_and_bus(0U);
+  internal_iic_b_nack_hook_arm(0U);
+  const ra8_err_t r = ra8_i3c_i2c_write(0U,
+                                        (uint8_t)k_iic_b_edge_target,
+                                        s_iic_b_edge_long,
+                                        (uint32_t)k_iic_b_edge_long_len,
+                                        false);
+  internal_iic_b_nack_hook_disarm();
   TEST_ASSERT_EQ(k_ra8_err_nack, r);
   TEST_ASSERT_EQ(k_ra8_i3c_i2c_msk_cndctl_spcnd, i3c_i2c_regs(0U)->CNDCTL);
   TEST_END("iic_b NAK on address byte yields nack + STOP");
@@ -185,21 +183,20 @@ static void test_nak_on_address_byte(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_nak_on_data_byte(void)
+ * code under test that this case touches) @brief Verify nak on data byte behavior. @details Executes the nak on data byte scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_nak_on_data_byte(void)
 {
   TEST_BEGIN("iic_b NAK after address (data byte) yields nack + STOP");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_edge_cfg));
-  prime_ntst_and_bus(0U);
-  iic_b_nack_hook_arm(0U);
-  const ra8_err_t r = internal_i3c_i2c_write(0U,
-                                             (uint8_t)k_iic_b_edge_target,
-                                             s_iic_b_edge_long,
-                                             (uint32_t)k_iic_b_edge_long_len,
-                                             false);
-  iic_b_nack_hook_disarm();
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_edge_cfg));
+  internal_prime_ntst_and_bus(0U);
+  internal_iic_b_nack_hook_arm(0U);
+  const ra8_err_t r = ra8_i3c_i2c_write(0U,
+                                        (uint8_t)k_iic_b_edge_target,
+                                        s_iic_b_edge_long,
+                                        (uint32_t)k_iic_b_edge_long_len,
+                                        false);
+  internal_iic_b_nack_hook_disarm();
   /* Both paths funnel into the same return code today, but the post-state
    * STOP must be observable regardless of where the NACK was latched. */
   TEST_ASSERT_EQ(k_ra8_err_nack, r);
@@ -213,18 +210,16 @@ static void test_nak_on_data_byte(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_repeated_start_sequence(void)
+ * code under test that this case touches) @brief Verify repeated start sequence behavior. @details Executes the repeated start sequence scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_repeated_start_sequence(void)
 {
   TEST_BEGIN("iic_b repeated-start: write+read transfer");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_edge_cfg));
-  prime_ntst_and_bus(0U);
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_edge_cfg));
+  internal_prime_ntst_and_bus(0U);
   uint8_t       rx     = 0U;
   const uint8_t tx[2U] = {(uint8_t)k_iic_b_edge_byte_a, (uint8_t)k_iic_b_edge_byte_b};
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 internal_i3c_i2c_transfer(0U, (uint8_t)k_iic_b_edge_target, tx, 2U, &rx, 1U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_transfer(0U, (uint8_t)k_iic_b_edge_target, tx, 2U, &rx, 1U));
   /* Combined transfer must close with STOP. The read phase overwrites
    * NTDTBP0 with the rx byte, so we only assert the bus-close state. */
   TEST_ASSERT_EQ(k_ra8_i3c_i2c_msk_cndctl_spcnd, i3c_i2c_regs(0U)->CNDCTL);
@@ -240,13 +235,12 @@ static void test_repeated_start_sequence(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_clock_stretch_timeout(void)
+ * code under test that this case touches) @brief Verify clock stretch timeout behavior. @details Executes the clock stretch timeout scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_clock_stretch_timeout(void)
 {
   TEST_BEGIN("iic_b clock-stretch limit: TDBEF0 never sets => hw_timeout");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_edge_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_edge_cfg));
   /* Bus free so the busy gate passes, but NTST left clear -- the peripheral is
    * holding SCL low (or just never ACKing). The driver must fail with
    * hw_timeout instead of looping forever. */
@@ -254,7 +248,7 @@ static void test_clock_stretch_timeout(void)
   i3c_i2c_regs(0U)->NTST = 0U;
   TEST_ASSERT_EQ(
     k_ra8_err_hw_timeout,
-    internal_i3c_i2c_write(0U, (uint8_t)k_iic_b_edge_target, s_iic_b_edge_payload, 3U, false));
+    ra8_i3c_i2c_write(0U, (uint8_t)k_iic_b_edge_target, s_iic_b_edge_payload, 3U, false));
   TEST_END("iic_b clock-stretch limit: TDBEF0 never sets => hw_timeout");
 }
 
@@ -264,34 +258,32 @@ static void test_clock_stretch_timeout(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_clock_extremes(void)
+ * code under test that this case touches) @brief Verify set clock extremes behavior. @details Executes the set clock extremes scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_clock_extremes(void)
 {
   TEST_BEGIN("iic_b set_clock extreme values");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_edge_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_edge_cfg));
   /* bus_hz = 0, pclka_hz = 0 -> invalid_arg. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_i3c_i2c_set_clock(0U, 0U, 60000000U));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_i3c_i2c_set_clock(0U, 100000U, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_i2c_set_clock(0U, 0U, 60000000U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_i2c_set_clock(0U, 100000U, 0U));
   /* Channel out of range. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_i3c_i2c_set_clock(99U, 100000U, 60000000U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_i2c_set_clock(99U, 100000U, 60000000U));
   /* Standard + Fast modes both succeed. */
   TEST_ASSERT_EQ(k_ra8_ok,
-                 internal_i3c_i2c_set_clock(0U, (uint32_t)k_ra8_i3c_i2c_speed_standard, 60000000U));
+                 ra8_i3c_i2c_set_clock(0U, (uint32_t)k_ra8_i3c_i2c_speed_standard, 60000000U));
   TEST_ASSERT_EQ(k_ra8_ok,
-                 internal_i3c_i2c_set_clock(0U, (uint32_t)k_ra8_i3c_i2c_speed_fast, 60000000U));
+                 ra8_i3c_i2c_set_clock(0U, (uint32_t)k_ra8_i3c_i2c_speed_fast, 60000000U));
   TEST_END("iic_b set_clock extreme values");
 }
 
 int32_t main(void)
 {
-  test_bus_busy_during_start_repeated();
-  test_nak_on_address_byte();
-  test_nak_on_data_byte();
-  test_repeated_start_sequence();
-  test_clock_stretch_timeout();
-  test_set_clock_extremes();
-  (void)fprintf(stderr, "[OK  ] test_ra8_i3c_i2c_edge_cases.c\n");
+  internal_test_bus_busy_during_start_repeated();
+  internal_test_nak_on_address_byte();
+  internal_test_nak_on_data_byte();
+  internal_test_repeated_start_sequence();
+  internal_test_clock_stretch_timeout();
+  internal_test_set_clock_extremes();
   return 0;
 }

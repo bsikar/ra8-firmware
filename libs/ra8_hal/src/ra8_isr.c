@@ -18,6 +18,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_intrinsics.h"
@@ -104,7 +105,7 @@ static_assert((uint16_t)k_ra8_isr_slot_count == (uint16_t)k_ra8_icu_num_ielsr,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_nvic_enable(uint16_t n)
+RA8_INTERNAL static void internal_nvic_enable(uint16_t n)
 {
   const uint16_t     word = n / k_ra8_isr_nvic_bits_per_word;
   const uint16_t     bit  = n % k_ra8_isr_nvic_bits_per_word;
@@ -125,7 +126,7 @@ static void internal_nvic_enable(uint16_t n)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_nvic_disable(uint16_t n)
+RA8_INTERNAL static void internal_nvic_disable(uint16_t n)
 {
   const uint16_t     word = n / k_ra8_isr_nvic_bits_per_word;
   const uint16_t     bit  = n % k_ra8_isr_nvic_bits_per_word;
@@ -146,7 +147,7 @@ static void internal_nvic_disable(uint16_t n)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_nvic_clear_pending(uint16_t n)
+RA8_INTERNAL static void internal_nvic_clear_pending(uint16_t n)
 {
   const uint16_t     word = n / k_ra8_isr_nvic_bits_per_word;
   const uint16_t     bit  = n % k_ra8_isr_nvic_bits_per_word;
@@ -168,7 +169,7 @@ static void internal_nvic_clear_pending(uint16_t n)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_nvic_set_priority(uint16_t n, uint8_t prio)
+RA8_INTERNAL static void internal_nvic_set_priority(uint16_t n, uint8_t prio)
 {
   volatile uint8_t* ipr = (volatile uint8_t*)(k_ra8_isr_nvic_ipr_base + (uintptr_t)n);
   *ipr                  = (uint8_t)(prio << k_ra8_isr_nvic_prio_shift);
@@ -191,7 +192,7 @@ static void internal_nvic_set_priority(uint16_t n, uint8_t prio)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_ielsr_write(uint16_t slot, ra8_elc_event_t event)
+RA8_INTERNAL static void internal_ielsr_write(uint16_t slot, ra8_elc_event_t event)
 {
   volatile uint32_t* ielsr = ra8_icu_ielsr(slot);
   if (ielsr != nullptr) { /* GCOVR_EXCL_BR_LINE -- slot bounds already validated */
@@ -212,7 +213,7 @@ static void internal_ielsr_write(uint16_t slot, ra8_elc_event_t event)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_ielsr_clear(uint16_t slot)
+RA8_INTERNAL static void internal_ielsr_clear(uint16_t slot)
 {
   volatile uint32_t* ielsr = ra8_icu_ielsr(slot);
   if (ielsr != nullptr) { /* GCOVR_EXCL_BR_LINE -- slot bounds already validated */
@@ -258,7 +259,7 @@ ra8_err_t ra8_isr_init(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint16_t internal_find_event(ra8_elc_event_t event)
+RA8_INTERNAL static uint16_t internal_find_event(ra8_elc_event_t event)
 {
   for (uint16_t slot = 0U; slot < k_ra8_isr_slot_count; ++slot) {
     if (s_slots[slot].in_use && s_slots[slot].event == event) {
@@ -282,7 +283,7 @@ static uint16_t internal_find_event(ra8_elc_event_t event)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint16_t internal_find_free(void)
+RA8_INTERNAL static uint16_t internal_find_free(void)
 {
   for (uint16_t slot = 0U; slot < k_ra8_isr_slot_count; ++slot) {
     if (!s_slots[slot].in_use) {

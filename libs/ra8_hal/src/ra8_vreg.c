@@ -59,6 +59,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -121,7 +122,7 @@ static void* s_vreg_ctx;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_validate_cfg(const ra8_vreg_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_validate_cfg(const ra8_vreg_cfg_t* cfg)
 {
   if ((uint8_t)cfg->mode > k_ra8_vreg_mode_dcdc) {
     return k_ra8_err_invalid_arg;
@@ -153,7 +154,7 @@ static ra8_err_t internal_validate_cfg(const ra8_vreg_cfg_t* cfg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint8_t internal_lvocr_from_profile(ra8_vreg_lv_profile_t profile)
+RA8_INTERNAL static uint8_t internal_lvocr_from_profile(ra8_vreg_lv_profile_t profile)
 {
   if (profile == k_ra8_vreg_lv_p0) {
     return k_ra8_vreg_mask_lvo0e;
@@ -179,7 +180,7 @@ static uint8_t internal_lvocr_from_profile(ra8_vreg_lv_profile_t profile)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_vreg_lv_profile_t internal_profile_from_lvocr(uint8_t lvocr)
+RA8_INTERNAL static ra8_vreg_lv_profile_t internal_profile_from_lvocr(uint8_t lvocr)
 {
   const uint8_t bits = (uint8_t)(lvocr & k_ra8_vreg_mask_lvo_all);
   if (bits == k_ra8_vreg_mask_lvo0e) {
@@ -206,7 +207,7 @@ static ra8_vreg_lv_profile_t internal_profile_from_lvocr(uint8_t lvocr)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_vreg_ocp_t internal_ocp_from_dcdcctl(uint8_t dcdcctl)
+RA8_INTERNAL static ra8_vreg_ocp_t internal_ocp_from_dcdcctl(uint8_t dcdcctl)
 {
   if ((dcdcctl & k_ra8_vreg_mask_ocpen) == 0U) {
     return k_ra8_vreg_ocp_off;
@@ -235,7 +236,7 @@ static ra8_vreg_ocp_t internal_ocp_from_dcdcctl(uint8_t dcdcctl)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint8_t internal_pack_ldo_dcdcctl(const ra8_vreg_cfg_t* cfg)
+RA8_INTERNAL static uint8_t internal_pack_ldo_dcdcctl(const ra8_vreg_cfg_t* cfg)
 {
   uint8_t v = 0U;
   if (cfg->ocp != k_ra8_vreg_ocp_off) {
@@ -276,7 +277,7 @@ static uint8_t internal_pack_ldo_dcdcctl(const ra8_vreg_cfg_t* cfg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_dcdc_enable_sequence(bool fast)
+RA8_INTERNAL static void internal_dcdc_enable_sequence(bool fast)
 {
   uint8_t cur = *ra8_vreg_dcdcctl();
 
@@ -327,7 +328,7 @@ static void internal_dcdc_enable_sequence(bool fast)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_dcdc_disable_sequence(bool keep_lcboost)
+RA8_INTERNAL static void internal_dcdc_disable_sequence(bool keep_lcboost)
 {
   /* The LDO selection is "everything off" -- optionally with LCBOOST
    * still asserted so the LDO can run at subosc-speed VDD.

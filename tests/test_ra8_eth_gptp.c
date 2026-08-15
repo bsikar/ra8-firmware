@@ -16,12 +16,12 @@
  *     and the L-first read latch (HUM 35.4.1.3.4 p 1946) -- the assertions
  *     here check final values, and would pass under any ordering;
  *   - `PTPTMEC` / `PTPTMDC` write-1-to-set / write-1-to-clear coupling, which
- *     is why ``test_timer_enable_disable`` inspects `PTPTMDC` directly instead
+ *     is why ``internal_test_timer_enable_disable`` inspects `PTPTMDC` directly instead
  *     of asserting that a disable clears `PTPTMEC`;
  *   - that `PTPIPV` is read-only, which the presence probe relies on --
- *     ``test_ip_version`` has to write it to plant a value.
+ *     ``internal_test_ip_version`` has to write it to plant a value.
  * The per-timer `PTPTIVC` / `PTPTOVC` assertions and the 0x40-stride check in
- * ``test_increment`` are the ones carrying real weight here: they prove the
+ * ``internal_test_increment`` are the ones carrying real weight here: they prove the
  * driver reaches the HUM offsets rather than an invented window, which is the
  * defect this file exists to prevent recurring (#498).
  *
@@ -31,6 +31,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_eth_gptp.h"
 #include "ra8_ether_regs.h"
@@ -143,7 +144,7 @@ typedef enum : uint32_t {
  * @note Thread-unsafe -- single-threaded test context.
  * @since 0.1.0
  */
-static void prep(void)
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   ra8_fake_mmio_reset();
@@ -158,7 +159,7 @@ static void prep(void)
  * derivation is a formula rather than a lookup table: 8 ns x 2^27 =
  * 0x4000_0000.
  *
- * @pre ::prep has reset the MMIO window and the MSTP driver.
+ * @pre ::internal_prep has reset the MMIO window and the MSTP driver.
  * @pre The caller is inside a ``TEST_BEGIN`` / ``TEST_END`` pair.
  * @post Both timer units hold ::k_fix_tiv_125m in `PTPTIVCt`.
  * @post Both timer units are stopped with a zero offset.
@@ -166,7 +167,7 @@ static void prep(void)
  * @note Thread-unsafe -- single-threaded test context.
  * @since 0.1.0
  */
-static void arm_125m(void)
+RA8_INTERNAL static void internal_arm_125m(void)
 {
   const ra8_eth_gptp_cfg_t cfg = {.clk_hz = (uint32_t)k_fix_hz_125m};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gptp_init(&cfg));
@@ -178,12 +179,11 @@ static void arm_125m(void)
  * @par MC/DC:
  * (no compound decisions in this test -- every guard in
  * ``ra8_eth_gptp_tiv_from_hz`` is a single condition, exercised here in
- * both directions; no `&&` or `||` in the code under test)
- */
-static void test_tiv_from_hz(void)
+ * both directions; no `&&` or `||` in the code under test) @brief Verify tiv from hz behavior. @details Executes the tiv from hz scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_tiv_from_hz(void)
 {
   TEST_BEGIN("gptp tiv from hz");
-  prep();
+  internal_prep();
   uint32_t tiv = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gptp_tiv_from_hz((uint32_t)k_fix_hz_50m, &tiv));
   TEST_ASSERT_EQ(k_fix_tiv_50m, tiv);
@@ -209,12 +209,11 @@ static void test_tiv_from_hz(void)
  * @par MC/DC:
  * (no compound decisions in this test -- the init guards are single
  * conditions and the loop bound is a constant; no `&&` or `||` in the code
- * under test)
- */
-static void test_init(void)
+ * under test) @brief Verify init behavior. @details Executes the init scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init(void)
 {
   TEST_BEGIN("gptp init");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gptp_init(nullptr));
 
   const ra8_eth_gptp_cfg_t bad = {.clk_hz = 0U};
@@ -223,7 +222,7 @@ static void test_init(void)
   const ra8_eth_gptp_cfg_t slow = {.clk_hz = (uint32_t)k_fix_hz_too_slow};
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_eth_gptp_init(&slow));
 
-  arm_125m();
+  internal_arm_125m();
   volatile r_gptp_regs_t* reg = ra8_gptp();
   TEST_ASSERT_EQ(k_fix_tiv_125m, reg->TIMER[k_ra8_gptp_timer_0].PTPTIVC);
   TEST_ASSERT_EQ(k_fix_tiv_125m, reg->TIMER[k_ra8_gptp_timer_1].PTPTIVC);
@@ -239,13 +238,12 @@ static void test_init(void)
  *
  * @par MC/DC:
  * (no compound decisions in this test -- ``ra8_eth_gptp_deinit`` has no
- * conditional at all; no `&&` or `||` in the code under test)
- */
-static void test_deinit(void)
+ * conditional at all; no `&&` or `||` in the code under test) @brief Verify deinit behavior. @details Executes the deinit scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_deinit(void)
 {
   TEST_BEGIN("gptp deinit");
-  prep();
-  arm_125m();
+  internal_prep();
+  internal_arm_125m();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gptp_deinit());
   volatile r_gptp_regs_t* reg = ra8_gptp();
   TEST_ASSERT_EQ(0U, reg->TIMER[k_ra8_gptp_timer_0].PTPTIVC);
@@ -258,13 +256,12 @@ static void test_deinit(void)
  *
  * @par MC/DC:
  * (no compound decisions in this test -- the only guard is a null check;
- * no `&&` or `||` in the code under test)
- */
-static void test_ip_version(void)
+ * no `&&` or `||` in the code under test) @brief Verify ip version behavior. @details Executes the ip version scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_ip_version(void)
 {
   TEST_BEGIN("gptp ip version");
-  prep();
-  arm_125m();
+  internal_prep();
+  internal_arm_125m();
   ra8_gptp()->PTPIPV = (uint32_t)k_probe_ipv;
   uint32_t version   = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gptp_ip_version(&version));
@@ -279,13 +276,12 @@ static void test_ip_version(void)
  * @par MC/DC:
  * (no compound decisions in this test -- each range guard is a single
  * condition, exercised true and false; no `&&` or `||` in the code under
- * test)
- */
-static void test_timer_enable_disable(void)
+ * test) @brief Verify timer enable disable behavior. @details Executes the timer enable disable scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_timer_enable_disable(void)
 {
   TEST_BEGIN("gptp timer enable/disable");
-  prep();
-  arm_125m();
+  internal_prep();
+  internal_arm_125m();
   volatile r_gptp_regs_t* reg = ra8_gptp();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gptp_timer_enable(k_ra8_gptp_timer_1));
@@ -315,13 +311,12 @@ static void test_timer_enable_disable(void)
  * @par MC/DC:
  * (no compound decisions in this test -- the setter's two guards are
  * separate single-condition `if`s, each exercised both ways; no `&&` or
- * `||` in the code under test)
- */
-static void test_increment(void)
+ * `||` in the code under test) @brief Verify increment behavior. @details Executes the increment scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_increment(void)
 {
   TEST_BEGIN("gptp increment");
-  prep();
-  arm_125m();
+  internal_prep();
+  internal_arm_125m();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gptp_set_increment(k_ra8_gptp_timer_1, (uint32_t)k_probe_tiv));
   uint32_t tiv = 0U;
@@ -345,13 +340,12 @@ static void test_increment(void)
  * @par MC/DC:
  * (no compound decisions in this test -- the three range guards are
  * separate single-condition `if`s, each exercised both ways; no `&&` or
- * `||` in the code under test)
- */
-static void test_set_offset(void)
+ * `||` in the code under test) @brief Verify set offset behavior. @details Executes the set offset scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_offset(void)
 {
   TEST_BEGIN("gptp set offset");
-  prep();
-  arm_125m();
+  internal_prep();
+  internal_arm_125m();
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_eth_gptp_set_offset(k_ra8_gptp_timer_0,
@@ -376,13 +370,12 @@ static void test_set_offset(void)
  * @par MC/DC:
  * (no compound decisions in this test -- two null guards and one range
  * guard, each a single condition exercised both ways; no `&&` or `||` in
- * the code under test)
- */
-static void test_get_time(void)
+ * the code under test) @brief Verify get time behavior. @details Executes the get time scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_get_time(void)
 {
   TEST_BEGIN("gptp get time");
-  prep();
-  arm_125m();
+  internal_prep();
+  internal_arm_125m();
   volatile r_gptp_timer_regs_t* t1 = &ra8_gptp()->TIMER[k_ra8_gptp_timer_1];
   t1->PTPGPTPTML                   = (uint32_t)k_probe_nsec;
   t1->PTPGPTPTMM                   = (uint32_t)k_probe_sec_lo;
@@ -415,13 +408,12 @@ static void test_get_time(void)
  * @par MC/DC:
  * (no compound decisions in this test -- one null guard and one range
  * guard, each a single condition exercised both ways; no `&&` or `||` in
- * the code under test)
- */
-static void test_get_avtp_ns(void)
+ * the code under test) @brief Verify get avtp ns behavior. @details Executes the get avtp ns scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_get_avtp_ns(void)
 {
   TEST_BEGIN("gptp get avtp ns");
-  prep();
-  arm_125m();
+  internal_prep();
+  internal_arm_125m();
   volatile r_gptp_timer_regs_t* t0 = &ra8_gptp()->TIMER[k_ra8_gptp_timer_0];
   t0->PTPAVTPTML                   = (uint32_t)k_probe_avtp_lo;
   t0->PTPAVTPTMU                   = (uint32_t)k_probe_avtp_hi;
@@ -441,13 +433,12 @@ static void test_get_avtp_ns(void)
  *
  * @par MC/DC:
  * (no compound decisions in this test -- neither stop-path function has a
- * conditional; no `&&` or `||` in the code under test)
- */
-static void test_power_transition(void)
+ * conditional; no `&&` or `||` in the code under test) @brief Verify power transition behavior. @details Executes the power transition scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_power_transition(void)
 {
   TEST_BEGIN("gptp power transition");
-  prep();
-  arm_125m();
+  internal_prep();
+  internal_arm_125m();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gptp_enter_stop());
   /* A module stop is a clock gate, not a reset: TIV must survive it. */
   TEST_ASSERT_EQ(k_fix_tiv_125m, ra8_gptp()->TIMER[k_ra8_gptp_timer_0].PTPTIVC);
@@ -468,14 +459,13 @@ static void test_power_transition(void)
  * @par MC/DC:
  * (no compound decisions in this test -- the guard is a single condition per
  * function, exercised false here and true by every other case in this file;
- * no `&&` or `||` in the code under test)
- */
-static void test_use_before_init(void)
+ * no `&&` or `||` in the code under test) @brief Verify use before init behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_use_before_init(void)
 {
   TEST_BEGIN("gptp use before init");
-  prep();
+  internal_prep();
   /* Leave the driver un-initialised: a previous case may have opened it. */
-  arm_125m();
+  internal_arm_125m();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gptp_deinit());
 
   uint32_t word    = 0U;
@@ -512,17 +502,16 @@ static void test_use_before_init(void)
  * The ESWM module-stop handshake is the one failure ``ra8_eth_gptp_init``
  * cannot recover from, and every stop-path function documents
  * ``k_ra8_err_hw_timeout``. The ``ra8_fake_mmio`` seam in
- * ``ra8_mstp_wait_reg_settle_internal`` makes that leg reachable on the host,
+ * ``priv_ra8_mstp_wait_reg_settle_internal`` makes that leg reachable on the host,
  * so it is asserted rather than excluded from coverage.
  *
  * @par MC/DC:
  * (no compound decisions in this test -- the propagation is a single
- * ``RA8_RETURN_ON_ERROR``; no `&&` or `||` in the code under test)
- */
-static void test_mstp_timeout(void)
+ * ``RA8_RETURN_ON_ERROR``; no `&&` or `||` in the code under test) @brief Verify mstp timeout behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mstp_timeout(void)
 {
   TEST_BEGIN("gptp mstp timeout");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&ra8_mstp()->MSTPCRC));
   const ra8_eth_gptp_cfg_t cfg = {.clk_hz = (uint32_t)k_fix_hz_125m};
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_eth_gptp_init(&cfg));
@@ -541,18 +530,17 @@ static void test_mstp_timeout(void)
 
 int32_t main(void)
 {
-  test_tiv_from_hz();
-  test_init();
-  test_deinit();
-  test_ip_version();
-  test_timer_enable_disable();
-  test_increment();
-  test_set_offset();
-  test_get_time();
-  test_get_avtp_ns();
-  test_power_transition();
-  test_use_before_init();
-  test_mstp_timeout();
-  (void)fprintf(stderr, "[OK  ] test_ra8_eth_gptp.c\n");
+  internal_test_tiv_from_hz();
+  internal_test_init();
+  internal_test_deinit();
+  internal_test_ip_version();
+  internal_test_timer_enable_disable();
+  internal_test_increment();
+  internal_test_set_offset();
+  internal_test_get_time();
+  internal_test_get_avtp_ns();
+  internal_test_power_transition();
+  internal_test_use_before_init();
+  internal_test_mstp_timeout();
   return 0;
 }

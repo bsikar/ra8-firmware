@@ -15,10 +15,10 @@
  * accordingly.
  *
  * Public surface (mirrors FSP ``R_IIC_B_PERIPHERAL_*``):
- *   - ``internal_i3c_i2c_peripheral_open`` / ``_close``
- *   - ``internal_i3c_i2c_peripheral_send`` -- respond to a controller-read
- *   - ``internal_i3c_i2c_peripheral_receive`` -- consume a controller-write
- *   - ``internal_i3c_i2c_peripheral_status``
+ *   - ``ra8_i3c_i2c_peripheral_open`` / ``_close``
+ *   - ``ra8_i3c_i2c_peripheral_send`` -- respond to a controller-read
+ *   - ``ra8_i3c_i2c_peripheral_receive`` -- consume a controller-write
+ *   - ``ra8_i3c_i2c_peripheral_status``
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -36,7 +36,7 @@ extern "C" {
 
 /**
  * @struct ra8_i3c_i2c_peripheral_cfg_t
- * @brief Configuration descriptor for ``internal_i3c_i2c_peripheral_open``.
+ * @brief Configuration descriptor for ``ra8_i3c_i2c_peripheral_open``.
  *
  * @details
  * ``peripheral_addr_7b`` is programmed into the controller-target-address-register
@@ -45,7 +45,7 @@ extern "C" {
  * NTST.RDBFF0 / TDBEF0 to flag inbound / outbound bytes.
  *
  * cppcheck cannot see tests/ so it flags every field as unused; each
- * member is read in ``internal_i3c_i2c_peripheral_open`` /
+ * member is read in ``ra8_i3c_i2c_peripheral_open`` /
  * ``libs/ra8_hal/src/ra8_i3c_i2c_peripheral.c``.
  */
 typedef struct {
@@ -79,8 +79,8 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t internal_i3c_i2c_peripheral_open(uint8_t channel,
-                                                         const ra8_i3c_i2c_peripheral_cfg_t* cfg);
+[[nodiscard]] ra8_err_t ra8_i3c_i2c_peripheral_open(uint8_t                             channel,
+                                                    const ra8_i3c_i2c_peripheral_cfg_t* cfg);
 
 /**
  * @brief Close the peripheral channel.
@@ -93,7 +93,7 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t internal_i3c_i2c_peripheral_close(uint8_t channel);
+[[nodiscard]] ra8_err_t ra8_i3c_i2c_peripheral_close(uint8_t channel);
 
 /**
  * @brief Push ``len`` bytes into NTDTBP0 in response to a controller-read.
@@ -111,7 +111,7 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t
-internal_i3c_i2c_peripheral_send(uint8_t channel, const uint8_t* data, uint32_t len);
+ra8_i3c_i2c_peripheral_send(uint8_t channel, const uint8_t* data, uint32_t len);
 
 /**
  * @brief Drain ``len`` bytes from NTDTBP0 after a controller-write.
@@ -128,8 +128,7 @@ internal_i3c_i2c_peripheral_send(uint8_t channel, const uint8_t* data, uint32_t 
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t
-internal_i3c_i2c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t len);
+[[nodiscard]] ra8_err_t ra8_i3c_i2c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t len);
 
 /**
  * @brief Read latched peripheral-side status mask.
@@ -144,7 +143,7 @@ internal_i3c_i2c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t len)
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t internal_i3c_i2c_peripheral_status(uint8_t channel, uint8_t* out_mask);
+[[nodiscard]] ra8_err_t ra8_i3c_i2c_peripheral_status(uint8_t channel, uint8_t* out_mask);
 
 #ifdef __cplusplus
 }

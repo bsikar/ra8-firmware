@@ -22,7 +22,7 @@
  * ``internal_asym_pull`` are defined in ``ra8_rsip_asym.c`` and shared
  * with the ECDSA / ECDH / EdDSA code there; their declarations live in
  * ``ra8_rsip_asym_internal.h``. The remaining cross-TU primitives
- * (``internal_load_handle``, ``internal_complete``) are declared in
+ * (``priv_load_handle``, ``priv_complete``) are declared in
  * ``ra8_rsip_internal.h``. The RSIP engine exposes no documented asymmetric
  * register interface (HUM Ch 52 is a feature overview, p 3302-3307), so the
  * fake command path here is a modelled fiction, not a real hardware sequence.
@@ -86,13 +86,13 @@ ra8_err_t ra8_rsip_rsa_sign(const ra8_rsip_key_handle_t* key,
       (size != k_ra8_rsip_rsa_3072) && (size != k_ra8_rsip_rsa_4096)) {
     return k_ra8_err_invalid_arg;
   }
-  internal_load_handle(key);
+  priv_load_handle(key);
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_rsa_size) = (uint32_t)size;
   internal_asym_push(k_ra8_rsip_off_asym_msg_in, digest, digest_len);
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_ctrl) = k_ra8_rsip_asym_op_rsa_sign;
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op)   = k_ra8_rsip_asym_op_rsa_sign;
 
-  const ra8_err_t err = internal_complete(k_ra8_rsip_mask_isr_asym_done);
+  const ra8_err_t err = priv_complete(k_ra8_rsip_mask_isr_asym_done);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -114,7 +114,7 @@ ra8_err_t ra8_rsip_rsa_verify(const ra8_rsip_key_handle_t* key,
       (size != k_ra8_rsip_rsa_3072) && (size != k_ra8_rsip_rsa_4096)) {
     return k_ra8_err_invalid_arg;
   }
-  internal_load_handle(key);
+  priv_load_handle(key);
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_rsa_size) = (uint32_t)size;
   internal_asym_push(k_ra8_rsip_off_asym_msg_in, digest, digest_len);
   const uint32_t sig_len = (uint32_t)size / k_ra8_rsip_byte_bits;
@@ -122,7 +122,7 @@ ra8_err_t ra8_rsip_rsa_verify(const ra8_rsip_key_handle_t* key,
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_ctrl) = k_ra8_rsip_asym_op_rsa_verify;
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op)   = k_ra8_rsip_asym_op_rsa_verify;
 
-  return internal_complete(k_ra8_rsip_mask_isr_asym_done);
+  return priv_complete(k_ra8_rsip_mask_isr_asym_done);
 }
 
 /**
@@ -277,13 +277,13 @@ static ra8_err_t internal_rsa_dispatch(const ra8_rsip_key_handle_t* key,
                                        uint32_t                     in_len,
                                        ra8_rsip_asym_op_t           op)
 {
-  internal_load_handle(key);
+  priv_load_handle(key);
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_rsa_size) = (uint32_t)size;
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_arg)      = (uint32_t)pad;
   internal_asym_push(k_ra8_rsip_off_asym_msg_in, in, in_len);
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_ctrl) = (uint32_t)op;
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op)   = (uint32_t)op;
-  return internal_complete(k_ra8_rsip_mask_isr_asym_done);
+  return priv_complete(k_ra8_rsip_mask_isr_asym_done);
 }
 
 ra8_err_t ra8_rsip_rsa_encrypt(const ra8_rsip_key_handle_t* key,

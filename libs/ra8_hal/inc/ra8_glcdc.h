@@ -1,6 +1,8 @@
 /**
  * @file ra8_glcdc.h
  * @brief Graphics LCD Controller driver (two-layer with alpha blending)
+ *
+ * @details Declares timing, layer, framebuffer, and lifecycle contracts for the RA8 graphics LCD controller.
  * @ingroup grp_hal_display
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

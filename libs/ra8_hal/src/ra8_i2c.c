@@ -43,6 +43,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
@@ -50,18 +51,18 @@
 #include "ra8_i2c_regs.h"
 
 /**
- * @var s_i2c_tag
+ * @var g_i2c_tag
  * @brief Log tag for this driver, shared with ``ra8_i2c_config.c``.
  *
  * @details
- * Owning definition for the ``s_i2c_tag`` symbol declared ``extern`` in
+ * Owning definition for the ``g_i2c_tag`` symbol declared ``extern`` in
  * ``ra8_i2c_internal.h``; both I2C translation units log under "I2C".
  *
  * @note Read-only string pointer; not mutated after static init.
  *
  * @since 0.1.0
  */
-const char* const s_i2c_tag = "I2C";
+const char* const g_i2c_tag = "I2C";
 
 /**
  * @enum ra8_i2c_internal_t
@@ -110,7 +111,7 @@ typedef enum : uint32_t {
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool ra8_i2c_internal_clk_invalid(uint32_t bus_hz, uint32_t pclkb_hz)
+bool priv_ra8_i2c_internal_clk_invalid(uint32_t bus_hz, uint32_t pclkb_hz)
 {
   return (bus_hz == 0U) || (pclkb_hz == 0U);
 }
@@ -151,7 +152,8 @@ ra8_i2c_state_t s_i2c_state[k_ra8_i2c_channel_count];
  * @note Thread safety: not thread-safe (reads a single channel).
  * @since 0.1.0
  */
-static ra8_err_t internal_i2c_wait_icsr2(volatile const r_i2c_regs_t* reg, uint8_t mask)
+RA8_INTERNAL static ra8_err_t internal_i2c_wait_icsr2(volatile const r_i2c_regs_t* reg,
+                                                      uint8_t                      mask)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_i2c_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
@@ -187,7 +189,7 @@ static ra8_err_t internal_i2c_wait_icsr2(volatile const r_i2c_regs_t* reg, uint8
  * @note Thread safety: pure; thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_i2c_status_from_icsr2(uint8_t icsr2)
+RA8_INTERNAL static ra8_err_t internal_i2c_status_from_icsr2(uint8_t icsr2)
 {
   if ((icsr2 & (uint8_t)k_ra8_i2c_msk_icsr2_nackf) != 0U) {
     return k_ra8_err_nack;
@@ -215,7 +217,7 @@ static ra8_err_t internal_i2c_status_from_icsr2(uint8_t icsr2)
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static void internal_i2c_clear_status(volatile r_i2c_regs_t* reg)
+RA8_INTERNAL static void internal_i2c_clear_status(volatile r_i2c_regs_t* reg)
 {
   enum : uint8_t {
     k_ra8_i2c_status_clear_mask =
@@ -243,7 +245,7 @@ static void internal_i2c_clear_status(volatile r_i2c_regs_t* reg)
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static void internal_i2c_start(volatile r_i2c_regs_t* reg)
+RA8_INTERNAL static void internal_i2c_start(volatile r_i2c_regs_t* reg)
 {
   /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2" p 2371 */
   reg->ICCR2 = (uint8_t)(reg->ICCR2 | (uint8_t)k_ra8_i2c_msk_iccr2_st);
@@ -265,7 +267,7 @@ static void internal_i2c_start(volatile r_i2c_regs_t* reg)
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static void internal_i2c_restart(volatile r_i2c_regs_t* reg)
+RA8_INTERNAL static void internal_i2c_restart(volatile r_i2c_regs_t* reg)
 {
   /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2" p 2371 */
   reg->ICCR2 = (uint8_t)(reg->ICCR2 | (uint8_t)k_ra8_i2c_msk_iccr2_rs);
@@ -299,7 +301,7 @@ static void internal_i2c_restart(volatile r_i2c_regs_t* reg)
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static void internal_i2c_wait_bus_free(volatile const r_i2c_regs_t* reg)
+RA8_INTERNAL static void internal_i2c_wait_bus_free(volatile const r_i2c_regs_t* reg)
 {
   /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2 -- BBSY" p 2371 */
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_i2c_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
@@ -327,7 +329,7 @@ static void internal_i2c_wait_bus_free(volatile const r_i2c_regs_t* reg)
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static void internal_i2c_stop_request(volatile r_i2c_regs_t* reg)
+RA8_INTERNAL static void internal_i2c_stop_request(volatile r_i2c_regs_t* reg)
 {
   /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
   reg->ICSR2 = (uint8_t)(reg->ICSR2 & (uint8_t)~(uint8_t)k_ra8_i2c_msk_icsr2_stop);
@@ -352,7 +354,7 @@ static void internal_i2c_stop_request(volatile r_i2c_regs_t* reg)
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static void internal_i2c_stop(volatile r_i2c_regs_t* reg)
+RA8_INTERNAL static void internal_i2c_stop(volatile r_i2c_regs_t* reg)
 {
   internal_i2c_stop_request(reg);
   internal_i2c_wait_bus_free(reg);
@@ -375,7 +377,7 @@ static void internal_i2c_stop(volatile r_i2c_regs_t* reg)
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static void internal_i2c_set_nack(volatile r_i2c_regs_t* reg)
+RA8_INTERNAL static void internal_i2c_set_nack(volatile r_i2c_regs_t* reg)
 {
   /* HUM Ch 39.2.5 "ICMR3 : I2C Bus Mode Register 3 -- ACKWP/ACKBT" p 2376 */
   reg->ICMR3 = (uint8_t)(reg->ICMR3 | (uint8_t)k_ra8_i2c_msk_icmr3_ackwp);
@@ -401,7 +403,7 @@ static void internal_i2c_set_nack(volatile r_i2c_regs_t* reg)
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static void internal_i2c_open_phase(volatile r_i2c_regs_t* reg, bool bus_held)
+RA8_INTERNAL static void internal_i2c_open_phase(volatile r_i2c_regs_t* reg, bool bus_held)
 {
   if (bus_held) {
     internal_i2c_restart(reg);
@@ -432,7 +434,8 @@ static void internal_i2c_open_phase(volatile r_i2c_regs_t* reg, bool bus_held)
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_i2c_busy_gate(volatile const r_i2c_regs_t* reg, bool bus_held)
+RA8_INTERNAL static ra8_err_t internal_i2c_busy_gate(volatile const r_i2c_regs_t* reg,
+                                                     bool                         bus_held)
 {
   if (bus_held) {
     return k_ra8_ok;
@@ -464,7 +467,8 @@ static ra8_err_t internal_i2c_busy_gate(volatile const r_i2c_regs_t* reg, bool b
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_i2c_send_address(volatile r_i2c_regs_t* reg, uint8_t address_byte)
+RA8_INTERNAL static ra8_err_t internal_i2c_send_address(volatile r_i2c_regs_t* reg,
+                                                        uint8_t                address_byte)
 {
   /* Wait for TDRE (set after START issues and TRS = transmit).
    * HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
@@ -499,7 +503,7 @@ static ra8_err_t internal_i2c_send_address(volatile r_i2c_regs_t* reg, uint8_t a
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 internal_i2c_drain_tx(volatile r_i2c_regs_t* reg, const uint8_t* data, uint32_t len)
 {
   ra8_err_t err = k_ra8_ok;
@@ -543,7 +547,7 @@ internal_i2c_drain_tx(volatile r_i2c_regs_t* reg, const uint8_t* data, uint32_t 
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 internal_i2c_finish_tx(volatile r_i2c_regs_t* reg, uint8_t channel, ra8_err_t err, bool send_stop)
 {
   if (err == k_ra8_ok) {
@@ -568,8 +572,8 @@ ra8_err_t ra8_i2c_write(uint8_t        channel,
                         bool           send_stop)
 {
   volatile r_i2c_regs_t* reg = ra8_i2c_regs(channel);
-  RA8_CHECK_NULL_PTR(reg, s_i2c_tag, "i2c_write: channel");
-  RA8_CHECK_NULL_PTR(data, s_i2c_tag, "i2c_write: data");
+  RA8_CHECK_NULL_PTR(reg, g_i2c_tag, "i2c_write: channel");
+  RA8_CHECK_NULL_PTR(data, g_i2c_tag, "i2c_write: data");
 
   const bool      bus_held  = s_i2c_state[channel].bus_held;
   const ra8_err_t busy_gate = internal_i2c_busy_gate(reg, bus_held);
@@ -621,7 +625,8 @@ ra8_err_t ra8_i2c_write(uint8_t        channel,
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_i2c_drain_rx(volatile r_i2c_regs_t* reg, uint8_t* out, uint32_t len)
+RA8_INTERNAL static ra8_err_t
+internal_i2c_drain_rx(volatile r_i2c_regs_t* reg, uint8_t* out, uint32_t len)
 {
   /* First RDRF marks the address-phase completion. Arm the short-read
    * end-of-frame controls before the dummy read kicks off the data clock.
@@ -672,8 +677,8 @@ static ra8_err_t internal_i2c_drain_rx(volatile r_i2c_regs_t* reg, uint8_t* out,
 ra8_err_t ra8_i2c_read(uint8_t channel, uint8_t peripheral_7b, uint8_t* data, uint32_t len)
 {
   volatile r_i2c_regs_t* reg = ra8_i2c_regs(channel);
-  RA8_CHECK_NULL_PTR(reg, s_i2c_tag, "i2c_read: channel");
-  RA8_CHECK_NULL_PTR(data, s_i2c_tag, "i2c_read: data");
+  RA8_CHECK_NULL_PTR(reg, g_i2c_tag, "i2c_read: channel");
+  RA8_CHECK_NULL_PTR(data, g_i2c_tag, "i2c_read: data");
   if (len == 0U) {
     return k_ra8_err_invalid_arg;
   }
@@ -746,8 +751,8 @@ ra8_err_t ra8_i2c_transfer(uint8_t        channel,
 ra8_err_t ra8_i2c_scan(uint8_t channel, uint8_t peripheral_7b, bool* out_acked)
 {
   volatile r_i2c_regs_t* reg = ra8_i2c_regs(channel);
-  RA8_CHECK_NULL_PTR(reg, s_i2c_tag, "i2c_scan: channel");
-  RA8_CHECK_NULL_PTR(out_acked, s_i2c_tag, "i2c_scan: out_acked");
+  RA8_CHECK_NULL_PTR(reg, g_i2c_tag, "i2c_scan: channel");
+  RA8_CHECK_NULL_PTR(out_acked, g_i2c_tag, "i2c_scan: out_acked");
 
   *out_acked                = false;
   const ra8_err_t busy_gate = internal_i2c_busy_gate(reg, s_i2c_state[channel].bus_held);

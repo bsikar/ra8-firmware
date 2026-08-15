@@ -2,6 +2,8 @@
  * @file test_ra8_usb_pmsc.c
  * @brief Unit tests for the native USB device-side MSC class layer
  *
+ * @details Exercises mass-storage BOT command validation, data phases, status emission, resets, and transport failures with bounded fixtures.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -9,6 +11,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
@@ -130,7 +133,9 @@ static const uint8_t s_test_product[16] =
   {'T', 'E', 'S', 'T', 'D', 'R', 'V', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
 static const uint8_t s_test_revision[4] = {'1', '.', '0', '0'};
 
-static ra8_err_t stub_read_block(void* ctx, uint32_t lba, uint32_t block_count, uint8_t* buf)
+/** @brief Provide the file-local stub read block test helper. @details Implements the stub read block fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] lba Fixture argument governed by the exercised interface contract. @param[in] block_count Fixture argument governed by the exercised interface contract. @param[out] buf Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_stub_read_block(void* ctx, uint32_t lba, uint32_t block_count, uint8_t* buf)
 {
   (void)ctx;
   s_storage_state.read_calls++;
@@ -142,7 +147,9 @@ static ra8_err_t stub_read_block(void* ctx, uint32_t lba, uint32_t block_count, 
   return k_ra8_ok;
 }
 
-static ra8_err_t stub_write_block(void* ctx, uint32_t lba, uint32_t block_count, const uint8_t* buf)
+/** @brief Provide the file-local stub write block test helper. @details Implements the stub write block fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] lba Fixture argument governed by the exercised interface contract. @param[in] block_count Fixture argument governed by the exercised interface contract. @param[in] buf Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_stub_write_block(void* ctx, uint32_t lba, uint32_t block_count, const uint8_t* buf)
 {
   (void)ctx;
   s_storage_state.write_calls++;
@@ -154,7 +161,9 @@ static ra8_err_t stub_write_block(void* ctx, uint32_t lba, uint32_t block_count,
   return k_ra8_ok;
 }
 
-static ra8_err_t stub_get_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+/** @brief Provide the file-local stub get capacity test helper. @details Implements the stub get capacity fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[out] block_count Fixture argument governed by the exercised interface contract. @param[out] block_size Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_stub_get_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   s_storage_state.capacity_calls++;
@@ -163,8 +172,9 @@ static ra8_err_t stub_get_capacity(void* ctx, uint32_t* block_count, uint32_t* b
   return k_ra8_ok;
 }
 
-static ra8_err_t
-stub_get_inquiry(void* ctx, uint8_t* vendor8, uint8_t* product16, uint8_t* revision4)
+/** @brief Provide the file-local stub get inquiry test helper. @details Implements the stub get inquiry fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in,out] vendor8 Fixture argument governed by the exercised interface contract. @param[in,out] product16 Fixture argument governed by the exercised interface contract. @param[in,out] revision4 Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_stub_get_inquiry(void* ctx, uint8_t* vendor8, uint8_t* product16, uint8_t* revision4)
 {
   (void)ctx;
   s_storage_state.inquiry_calls++;
@@ -181,14 +191,15 @@ stub_get_inquiry(void* ctx, uint8_t* vendor8, uint8_t* product16, uint8_t* revis
 }
 
 static const ra8_usb_pmsc_storage_t s_test_storage = {
-  .read_block   = stub_read_block,
-  .write_block  = stub_write_block,
-  .get_capacity = stub_get_capacity,
-  .get_inquiry  = stub_get_inquiry,
+  .read_block   = internal_stub_read_block,
+  .write_block  = internal_stub_write_block,
+  .get_capacity = internal_stub_get_capacity,
+  .get_inquiry  = internal_stub_get_inquiry,
   .ctx          = nullptr,
 };
 
-static void prep(void)
+/** @brief Provide the file-local prep test helper. @details Implements the prep fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
@@ -199,13 +210,14 @@ static void prep(void)
 
 /* ---- Helpers ---- */
 
-static void build_cbw(uint8_t*       cbw,
-                      uint32_t       tag,
-                      uint32_t       data_xfer_len,
-                      bool           data_in,
-                      uint8_t        lun,
-                      const uint8_t* cdb,
-                      uint8_t        cdb_len)
+/** @brief Prepare the fixture's build cbw state. @details Implements the build cbw fixture operation used only by this focused test executable. @param[in,out] cbw Fixture argument governed by the exercised interface contract. @param[in] tag Fixture argument governed by the exercised interface contract. @param[in] data_xfer_len Fixture argument governed by the exercised interface contract. @param[in] data_in Fixture argument governed by the exercised interface contract. @param[in] lun Fixture argument governed by the exercised interface contract. @param[in] cdb Fixture argument governed by the exercised interface contract. @param[in] cdb_len Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_build_cbw(uint8_t*       cbw,
+                                            uint32_t       tag,
+                                            uint32_t       data_xfer_len,
+                                            bool           data_in,
+                                            uint8_t        lun,
+                                            const uint8_t* cdb,
+                                            uint8_t        cdb_len)
 {
   for (uint8_t i = 0U; i < k_test_pmsc_cbw_len; ++i) {
     cbw[i] = 0U;
@@ -240,12 +252,11 @@ static void build_cbw(uint8_t*       cbw,
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_init_fs_returns_ok(void)
+ * code under test that this case touches) @brief Verify init fs returns ok behavior. @details Executes the init fs returns ok scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_fs_returns_ok(void)
 {
   TEST_BEGIN("ra8_usb_pmsc_init FS returns k_ra8_ok");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
   TEST_END("ra8_usb_pmsc_init FS returns k_ra8_ok");
 }
@@ -254,12 +265,11 @@ static void test_init_fs_returns_ok(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_init_hs_returns_ok(void)
+ * code under test that this case touches) @brief Verify init hs returns ok behavior. @details Executes the init hs returns ok scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_hs_returns_ok(void)
 {
   TEST_BEGIN("ra8_usb_pmsc_init HS returns k_ra8_ok");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_hs));
   TEST_END("ra8_usb_pmsc_init HS returns k_ra8_ok");
 }
@@ -268,12 +278,11 @@ static void test_init_hs_returns_ok(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_init_bad_speed(void)
+ * code under test that this case touches) @brief Verify init bad speed behavior. @details Executes the init bad speed scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_bad_speed(void)
 {
   TEST_BEGIN("ra8_usb_pmsc_init rejects bogus speed");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pmsc_init((ra8_usb_speed_t)9U));
   TEST_END("ra8_usb_pmsc_init rejects bogus speed");
 }
@@ -282,12 +291,11 @@ static void test_init_bad_speed(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_close_without_init(void)
+ * code under test that this case touches) @brief Verify close without init behavior. @details Executes the close without init scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_close_without_init(void)
 {
   TEST_BEGIN("ra8_usb_pmsc_close before init returns invalid_state");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_pmsc_close());
   TEST_END("ra8_usb_pmsc_close before init returns invalid_state");
 }
@@ -296,12 +304,11 @@ static void test_close_without_init(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_feed_cbw_bad_signature_emits_phase_error(void)
+ * code under test that this case touches) @brief Verify feed cbw bad signature emits phase error behavior. @details Executes the feed cbw bad signature emits phase error scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_feed_cbw_bad_signature_emits_phase_error(void)
 {
   TEST_BEGIN("feed_cbw with wrong signature -> phase-error CSW");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
 
@@ -343,12 +350,11 @@ static void test_feed_cbw_bad_signature_emits_phase_error(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_inquiry_returns_backend_strings(void)
+ * code under test that this case touches) @brief Verify inquiry returns backend strings behavior. @details Executes the inquiry returns backend strings scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_inquiry_returns_backend_strings(void)
 {
   TEST_BEGIN("INQUIRY response includes backend-supplied vendor / product / revision");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
 
@@ -356,7 +362,7 @@ static void test_inquiry_returns_backend_strings(void)
   cdb[0]                           = (uint8_t)k_test_pmsc_scsi_inquiry;
   cdb[4]                           = k_t_inquiry_len; /* allocation length */
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, k_t_tag_inquiry, k_t_inquiry_len, true, 0U, cdb, 6U);
+  internal_build_cbw(cbw, k_t_tag_inquiry, k_t_inquiry_len, true, 0U, cdb, 6U);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
 
@@ -397,19 +403,18 @@ static void test_inquiry_returns_backend_strings(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_read_capacity_returns_count_minus_one_be(void)
+ * code under test that this case touches) @brief Verify read capacity returns count minus one be behavior. @details Executes the read capacity returns count minus one be scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_read_capacity_returns_count_minus_one_be(void)
 {
   TEST_BEGIN("READ_CAPACITY(10) returns block_count-1 + block_size big-endian");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
 
   uint8_t cdb[k_t_cdb_len_10]      = {};
   cdb[0]                           = (uint8_t)k_test_pmsc_scsi_read_capacity_10;
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, 1U, 8U, true, 0U, cdb, k_t_cdb_len_10);
+  internal_build_cbw(cbw, 1U, 8U, true, 0U, cdb, k_t_cdb_len_10);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
 
@@ -441,12 +446,11 @@ static void test_read_capacity_returns_count_minus_one_be(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_read10_calls_backend_and_returns_512(void)
+ * code under test that this case touches) @brief Verify read10 calls backend and returns 512 behavior. @details Executes the read10 calls backend and returns 512 scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_read10_calls_backend_and_returns_512(void)
 {
   TEST_BEGIN("READ(10) happy path -- backend produces 512 bytes");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
 
@@ -456,7 +460,7 @@ static void test_read10_calls_backend_and_returns_512(void)
   cdb[k_t_cdb10_off_lba_b3]        = k_t_read_lba; /* LBA low byte.   */
   cdb[8]                           = 1U;           /* count low byte. */
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, 2U, k_test_pmsc_block_size, true, 0U, cdb, k_t_cdb_len_10);
+  internal_build_cbw(cbw, 2U, k_test_pmsc_block_size, true, 0U, cdb, k_t_cdb_len_10);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
 
   uint8_t                   data[k_test_pmsc_buf_capacity] = {};
@@ -481,12 +485,11 @@ static void test_read10_calls_backend_and_returns_512(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_write10_calls_backend(void)
+ * code under test that this case touches) @brief Verify write10 calls backend behavior. @details Executes the write10 calls backend scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_write10_calls_backend(void)
 {
   TEST_BEGIN("WRITE(10) happy path -- backend receives 512 bytes");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
 
@@ -496,7 +499,7 @@ static void test_write10_calls_backend(void)
   cdb[k_t_cdb10_off_lba_b3]        = k_t_write_lba;
   cdb[8]                           = 1U;
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, 3U, k_test_pmsc_block_size, false, 0U, cdb, k_t_cdb_len_10);
+  internal_build_cbw(cbw, 3U, k_test_pmsc_block_size, false, 0U, cdb, k_t_cdb_len_10);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
 
   /* The data buffer holds the host-supplied payload; pre-fill it so
@@ -524,19 +527,18 @@ static void test_write10_calls_backend(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_test_unit_ready_no_data_phase(void)
+ * code under test that this case touches) @brief Verify test unit ready no data phase behavior. @details Executes the test unit ready no data phase scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_test_unit_ready_no_data_phase(void)
 {
   TEST_BEGIN("TEST_UNIT_READY produces zero-byte data phase + passed CSW");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
 
   uint8_t cdb[6]                   = {};
   cdb[0]                           = (uint8_t)k_test_pmsc_scsi_test_unit_ready;
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, 4U, 0U, true, 0U, cdb, 6U);
+  internal_build_cbw(cbw, 4U, 0U, true, 0U, cdb, 6U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
 
   uint8_t                   data[k_test_pmsc_buf_capacity] = {};
@@ -555,19 +557,18 @@ static void test_test_unit_ready_no_data_phase(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_unsupported_opcode_fails(void)
+ * code under test that this case touches) @brief Verify unsupported opcode fails behavior. @details Executes the unsupported opcode fails scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_unsupported_opcode_fails(void)
 {
   TEST_BEGIN("Unsupported SCSI opcode -> CSW status FAILED");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
 
   uint8_t cdb[k_t_cdb_len_10]      = {};
   cdb[0]                           = k_t_opcode_unknown; /* not a SCSI opcode the driver knows */
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, k_t_read_lba, 0U, true, 0U, cdb, k_t_cdb_len_10);
+  internal_build_cbw(cbw, k_t_read_lba, 0U, true, 0U, cdb, k_t_cdb_len_10);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
 
   uint8_t                   data[k_test_pmsc_buf_capacity] = {};
@@ -586,12 +587,11 @@ static void test_unsupported_opcode_fails(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_step_state_machine_loops(void)
+ * code under test that this case touches) @brief Verify step state machine loops behavior. @details Executes the step state machine loops scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_step_state_machine_loops(void)
 {
   TEST_BEGIN("step transitions through phases and lands back at IDLE");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
 
@@ -609,12 +609,11 @@ static void test_step_state_machine_loops(void)
  * @par MC/DC:
  * (no compound decisions -- drives the REQUEST SENSE + MODE SENSE(6)
  * arms of the SCSI dispatch `switch`, which is a multi-way selection,
- * not a boolean `&&`/`||` decision.)
- */
-static void test_dispatch_request_sense_and_mode_sense(void)
+ * not a boolean `&&`/`||` decision.) @brief Verify dispatch request sense and mode sense behavior. @details Executes the dispatch request sense and mode sense scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_dispatch_request_sense_and_mode_sense(void)
 {
   TEST_BEGIN("dispatch routes REQUEST SENSE + MODE SENSE(6) to their handlers");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
 
@@ -626,7 +625,7 @@ static void test_dispatch_request_sense_and_mode_sense(void)
   uint8_t cdb_sense[6]             = {};
   cdb_sense[0]                     = (uint8_t)k_test_pmsc_scsi_request_sense;
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, 0x10U, k_t_sense_len, true, 0U, cdb_sense, 6U);
+  internal_build_cbw(cbw, 0x10U, k_t_sense_len, true, 0U, cdb_sense, 6U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -639,7 +638,7 @@ static void test_dispatch_request_sense_and_mode_sense(void)
    * re-arms CDB_DECODE regardless of the prior data-phase state. */
   uint8_t cdb_mode[6] = {};
   cdb_mode[0]         = (uint8_t)k_test_pmsc_scsi_mode_sense_6;
-  build_cbw(cbw, k_t_bad_tag_b0, 4U, true, 0U, cdb_mode, 6U);
+  internal_build_cbw(cbw, k_t_bad_tag_b0, 4U, true, 0U, cdb_mode, 6U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
   data_len = 0U;
   status   = k_ra8_pmsc_csw_status_failed;
@@ -657,12 +656,11 @@ static void test_dispatch_request_sense_and_mode_sense(void)
  * @par MC/DC:
  * (no compound decisions -- exercises the single `bot_state !=
  * CDB_DECODE` precondition guard; dispatching before feed_cbw leaves
- * the machine in IDLE so the guard fires.)
- */
-static void test_dispatch_wrong_bot_state_rejected(void)
+ * the machine in IDLE so the guard fires.) @brief Verify dispatch wrong bot state rejected behavior. @details Executes the dispatch wrong bot state rejected scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_dispatch_wrong_bot_state_rejected(void)
 {
   TEST_BEGIN("dispatch before feed_cbw is rejected with invalid_state");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
 
@@ -679,19 +677,18 @@ static void test_dispatch_wrong_bot_state_rejected(void)
  * @par MC/DC:
  * (no compound decisions -- exercises the single `data_buf_capacity ==
  * 0` precondition guard after a valid CBW put the machine in
- * CDB_DECODE.)
- */
-static void test_dispatch_zero_capacity_rejected(void)
+ * CDB_DECODE.) @brief Verify dispatch zero capacity rejected behavior. @details Executes the dispatch zero capacity rejected scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_dispatch_zero_capacity_rejected(void)
 {
   TEST_BEGIN("dispatch with zero capacity is rejected with invalid_size");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
 
   uint8_t cdb[6]                   = {};
   cdb[0]                           = (uint8_t)k_test_pmsc_scsi_inquiry;
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, 0x20U, k_t_inquiry_len, true, 0U, cdb, 6U);
+  internal_build_cbw(cbw, 0x20U, k_t_inquiry_len, true, 0U, cdb, 6U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
 
   uint8_t                   data[16] = {};
@@ -707,23 +704,22 @@ static void test_dispatch_zero_capacity_rejected(void)
  * (no compound decisions -- exercises the single `err != k_ra8_ok`
  * guard after dispatch: a non-zero but too-small buffer makes the
  * INQUIRY handler return invalid_size, forcing CSW status FAILED and a
- * zeroed data length.)
- */
-static void test_dispatch_handler_error_marks_failed(void)
+ * zeroed data length.) @brief Verify dispatch handler error marks failed behavior. @details Executes the dispatch handler error marks failed scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_dispatch_handler_error_marks_failed(void)
 {
   TEST_BEGIN("dispatch handler error -> CSW FAILED + zero data_len");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
 
   uint8_t cdb[6]                   = {};
   cdb[0]                           = (uint8_t)k_test_pmsc_scsi_inquiry;
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, k_t_tag_phase_a, k_t_inquiry_len, true, 0U, cdb, 6U);
+  internal_build_cbw(cbw, k_t_tag_phase_a, k_t_inquiry_len, true, 0U, cdb, 6U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
 
   /* Capacity 4 clears the "== 0" guard but is below the 36-byte
-   * INQUIRY response, so internal_handle_inquiry returns invalid_size
+   * INQUIRY response, so priv_handle_inquiry returns invalid_size
    * and dispatch flips the CSW to FAILED. */
   uint8_t                   data[k_test_pmsc_tiny_cap] = {};
   uint32_t                  data_len                   = k_t_byte_mask;
@@ -740,19 +736,18 @@ static void test_dispatch_handler_error_marks_failed(void)
  * @par MC/DC:
  * (no compound decisions -- drives the DATA_TX/DATA_RX arm of the step
  * `switch` (a multi-way selection). A data-producing command parks the
- * machine in DATA_TX; one step advances it to CSW_TX.)
- */
-static void test_step_from_data_phase_advances_to_csw(void)
+ * machine in DATA_TX; one step advances it to CSW_TX.) @brief Verify step from data phase advances to csw behavior. @details Executes the step from data phase advances to csw scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_step_from_data_phase_advances_to_csw(void)
 {
   TEST_BEGIN("step from DATA_TX advances to CSW_TX");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
 
   uint8_t cdb[6]                   = {};
   cdb[0]                           = (uint8_t)k_test_pmsc_scsi_inquiry;
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, k_t_tag_phase_b, k_t_inquiry_len, true, 0U, cdb, 6U);
+  internal_build_cbw(cbw, k_t_tag_phase_b, k_t_inquiry_len, true, 0U, cdb, 6U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
 
   uint8_t                   data[k_test_pmsc_buf_capacity] = {};
@@ -762,10 +757,10 @@ static void test_step_from_data_phase_advances_to_csw(void)
     k_ra8_ok,
     ra8_usb_pmsc_dispatch_command(data, (uint32_t)k_test_pmsc_buf_capacity, &data_len, &status));
   /* Data-IN command with 36 bytes -> machine is now in DATA_TX. */
-  TEST_ASSERT_EQ(k_ra8_pmsc_state_data_tx, s_usb_pmsc_state.bot_state);
+  TEST_ASSERT_EQ(k_ra8_pmsc_state_data_tx, g_usb_pmsc_state.bot_state);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_step());
-  TEST_ASSERT_EQ(k_ra8_pmsc_state_csw_tx, s_usb_pmsc_state.bot_state);
+  TEST_ASSERT_EQ(k_ra8_pmsc_state_csw_tx, g_usb_pmsc_state.bot_state);
   TEST_END("step from DATA_TX advances to CSW_TX");
 }
 
@@ -773,12 +768,11 @@ static void test_step_from_data_phase_advances_to_csw(void)
  * @par MC/DC:
  * (no compound decisions -- drives the CSW_TX arm of the step
  * `switch`. An invalid-signature CBW parks the machine in CSW_TX; one
- * step rewinds it to IDLE.)
- */
-static void test_step_from_csw_tx_rewinds_to_idle(void)
+ * step rewinds it to IDLE.) @brief Verify step from csw tx rewinds to idle behavior. @details Executes the step from csw tx rewinds to idle scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_step_from_csw_tx_rewinds_to_idle(void)
 {
   TEST_BEGIN("step from CSW_TX rewinds to IDLE");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
 
@@ -789,10 +783,10 @@ static void test_step_from_csw_tx_rewinds_to_idle(void)
   bad_cbw[2]                           = k_t_bad_sig_b2;
   bad_cbw[3]                           = k_t_bad_sig_b3;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pmsc_feed_cbw(bad_cbw));
-  TEST_ASSERT_EQ(k_ra8_pmsc_state_csw_tx, s_usb_pmsc_state.bot_state);
+  TEST_ASSERT_EQ(k_ra8_pmsc_state_csw_tx, g_usb_pmsc_state.bot_state);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_step());
-  TEST_ASSERT_EQ(k_ra8_pmsc_state_idle, s_usb_pmsc_state.bot_state);
+  TEST_ASSERT_EQ(k_ra8_pmsc_state_idle, g_usb_pmsc_state.bot_state);
   TEST_END("step from CSW_TX rewinds to IDLE");
 }
 
@@ -801,12 +795,11 @@ static void test_step_from_csw_tx_rewinds_to_idle(void)
  * (no compound decisions -- exercises the single `usb_err != k_ra8_ok`
  * guard in ra8_usb_pmsc_init. Saturating the USB module-stop refcount
  * makes the underlying ra8_usb_device_init fail, which the init maps to
- * k_ra8_err_hw_init_failed.)
- */
-static void test_init_hw_init_failed_on_mstp_saturation(void)
+ * k_ra8_err_hw_init_failed.) @brief Verify init hw init failed on mstp saturation behavior. @details Executes the init hw init failed on mstp saturation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_hw_init_failed_on_mstp_saturation(void)
 {
   TEST_BEGIN("init maps a device_init failure to hw_init_failed");
-  prep();
+  internal_prep();
 
   /* Drive the USB module-stop refcount to its UINT8_MAX ceiling by
    * enabling the controller directly. The next enable -- the one
@@ -821,7 +814,7 @@ static void test_init_hw_init_failed_on_mstp_saturation(void)
 }
 
 /**
- * @test test_mcdc_pmsc
+ * @test internal_test_mcdc_pmsc
  *
  * @par MC/DC:
  * Covers the compound boolean decision flagged in docs/MCDC_GAPS.csv
@@ -833,16 +826,15 @@ static void test_init_hw_init_failed_on_mstp_saturation(void)
  *   - V2 HS -> C1=T, C2=F           -> dec=F (init ok)
  *   - V3 9  -> C1=T, C2=T           -> dec=T (invalid_arg)
  * Vectors V1+V3 vary C1 with C2 implicit (decision flips); V2+V3 vary
- * C2 with C1 held T (decision flips). N+1=3 minimal MC/DC.
- */
-static void test_mcdc_pmsc(void)
+ * C2 with C1 held T (decision flips). N+1=3 minimal MC/DC. @brief Verify mcdc pmsc behavior. @details Executes the mcdc pmsc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_pmsc(void)
 {
   TEST_BEGIN("pmsc MC/DC: init speed gate");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_hs));
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pmsc_init((ra8_usb_speed_t)9U));
   TEST_END("pmsc MC/DC: init speed gate");
 }
@@ -858,26 +850,26 @@ static void test_mcdc_pmsc(void)
  * @note Order is significant: cases run top to bottom, exactly as before.
  */
 static void (*const s_test_roster[])(void) = {
-  test_init_fs_returns_ok,
-  test_init_hs_returns_ok,
-  test_init_bad_speed,
-  test_close_without_init,
-  test_feed_cbw_bad_signature_emits_phase_error,
-  test_inquiry_returns_backend_strings,
-  test_read_capacity_returns_count_minus_one_be,
-  test_read10_calls_backend_and_returns_512,
-  test_write10_calls_backend,
-  test_test_unit_ready_no_data_phase,
-  test_unsupported_opcode_fails,
-  test_step_state_machine_loops,
-  test_dispatch_request_sense_and_mode_sense,
-  test_dispatch_wrong_bot_state_rejected,
-  test_dispatch_zero_capacity_rejected,
-  test_dispatch_handler_error_marks_failed,
-  test_step_from_data_phase_advances_to_csw,
-  test_step_from_csw_tx_rewinds_to_idle,
-  test_init_hw_init_failed_on_mstp_saturation,
-  test_mcdc_pmsc,
+  internal_test_init_fs_returns_ok,
+  internal_test_init_hs_returns_ok,
+  internal_test_init_bad_speed,
+  internal_test_close_without_init,
+  internal_test_feed_cbw_bad_signature_emits_phase_error,
+  internal_test_inquiry_returns_backend_strings,
+  internal_test_read_capacity_returns_count_minus_one_be,
+  internal_test_read10_calls_backend_and_returns_512,
+  internal_test_write10_calls_backend,
+  internal_test_test_unit_ready_no_data_phase,
+  internal_test_unsupported_opcode_fails,
+  internal_test_step_state_machine_loops,
+  internal_test_dispatch_request_sense_and_mode_sense,
+  internal_test_dispatch_wrong_bot_state_rejected,
+  internal_test_dispatch_zero_capacity_rejected,
+  internal_test_dispatch_handler_error_marks_failed,
+  internal_test_step_from_data_phase_advances_to_csw,
+  internal_test_step_from_csw_tx_rewinds_to_idle,
+  internal_test_init_hw_init_failed_on_mstp_saturation,
+  internal_test_mcdc_pmsc,
 };
 
 int32_t main(void)
@@ -885,6 +877,5 @@ int32_t main(void)
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
     s_test_roster[i]();
   }
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_pmsc.c\n");
   return 0;
 }

@@ -135,7 +135,7 @@ static const ra8_mstp_t s_canfd_mstp_table[] = {
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-ra8_err_t ra8_canfd_internal_set_channel_mode(volatile r_canfd_t* reg, ra8_chmdc_mode_t mode)
+ra8_err_t priv_ra8_canfd_internal_set_channel_mode(volatile r_canfd_t* reg, ra8_chmdc_mode_t mode)
 {
   /* Read-modify-write the CTR register, mask CHMDC to bits [1:0],
    * stamp the requested mode. Also clear CSLPR (bit 2): the channel
@@ -388,7 +388,7 @@ static ra8_err_t internal_wait_canfdcksrdy(uint8_t expected)
  * before the chip raises ``CANFDCKSRDY`` and declares the clock stable.
  * Without that handshake the canfd block's internal state machine
  * cannot reach CH_HALT after the first ``CFDCnCTR.CHMDC`` write --
- * symptom seen on HIL: ``ra8_canfd_set_test_mode -> ra8_canfd_internal_set_channel_mode
+ * symptom seen on HIL: ``ra8_canfd_set_test_mode -> priv_ra8_canfd_internal_set_channel_mode
  * (k_ra8_chmdc_halt) -> internal_wait_status_bit`` times out on CHLTSTS
  * for ``can_classic_loopback`` / ``canfd_loopback`` / ``canfd_filter_demo``.
  *
@@ -425,8 +425,8 @@ static ra8_err_t internal_wait_canfdcksrdy(uint8_t expected)
 RA8_INTERNAL
 static ra8_err_t internal_canfd_clock_block_init(void)
 {
-  static bool s_canfd_clock_inited = false;
-  if (s_canfd_clock_inited) {
+  static bool local_canfd_clock_inited = false;
+  if (local_canfd_clock_inited) {
     return k_ra8_ok;
   }
   ra8_err_t err = k_ra8_ok;
@@ -460,7 +460,7 @@ static ra8_err_t internal_canfd_clock_block_init(void)
     }
   }
   if (err == k_ra8_ok) {
-    s_canfd_clock_inited = true;
+    local_canfd_clock_inited = true;
     ra8_log_info(s_tag, "canfd block clock stable");
   }
   return err;
@@ -492,7 +492,7 @@ RA8_INTERNAL
 static ra8_err_t internal_canfd_open_channel(volatile r_canfd_t* reg)
 {
   (void)internal_set_global_mode(reg, k_ra8_gctr_value_reset);
-  (void)ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_reset);
+  (void)priv_ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_reset);
 
   internal_install_default_afl(reg);
   internal_configure_rx_fifo0(reg);
@@ -504,7 +504,7 @@ static ra8_err_t internal_canfd_open_channel(volatile r_canfd_t* reg)
   /* RFE is only writable in GL_HALT / GL_OPERATION, so enable RX FIFO
    * 0 only after the global block has actually transitioned. */
   internal_enable_rx_fifo0(reg);
-  return ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_operation);
+  return priv_ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_operation);
 }
 
 ra8_err_t ra8_canfd_init(uint8_t channel)
@@ -548,7 +548,7 @@ ra8_err_t ra8_canfd_deinit(uint8_t channel)
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
   /* HUM Ch 41 "CFDCnCTR.CHMDC" p 2762 */ /* "CFDCnCTR.CHMDC" -- park channel in reset. */
-  (void)ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_reset);
+  (void)priv_ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_reset);
   return k_ra8_ok;
 }
 
@@ -739,10 +739,10 @@ ra8_err_t ra8_canfd_set_test_mode(uint8_t channel, ra8_ctms_mode_t mode)
    * [26:25]) are only writable in CH_HALT mode.  ra8_canfd_init parks
    * the channel in CH_OPERATION so we transition through CH_HALT to
    * land the test-mode select, then return to CH_OPERATION. */
-  const ra8_err_t halt_err = ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_halt);
+  const ra8_err_t halt_err = priv_ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_halt);
   if (halt_err != k_ra8_ok) {
     /* Best-effort recover the channel before reporting the error. */
-    (void)ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_operation);
+    (void)priv_ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_operation);
     return halt_err;
   }
 
@@ -754,7 +754,7 @@ ra8_err_t ra8_canfd_set_test_mode(uint8_t channel, ra8_ctms_mode_t mode)
   ctr |= ((uint32_t)mode << (uint32_t)k_ra8_cnctr_bit_ctms) & k_ra8_cnctr_mask_ctms;
   reg->CFDC[0].CTR = ctr;
 
-  return ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_operation);
+  return priv_ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_operation);
 }
 
 ra8_err_t ra8_canfd_set_iso_mode(bool enable)

@@ -1,6 +1,8 @@
 /**
  * @file ra8_i3c_internal.h
  * @brief Test-access surface for ra8_i3c internal helpers (MC/DC).
+ *
+ * @details Declares bounded module-private predicates used to validate I3C controller operations and expose focused coverage seams.
  * @ingroup grp_hal_comms
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -48,7 +50,7 @@ extern "C" {
  * @since 0.1.0
  */
 RA8_PRIV
-bool ra8_i3c_internal_recv_ccc_invalid(uint8_t addr_mask, uint8_t target, uint8_t max_len);
+bool priv_ra8_i3c_internal_recv_ccc_invalid(uint8_t addr_mask, uint8_t target, uint8_t max_len);
 
 /**
  * @brief Pure predicate: HDR mode value is not one of {SDR, DDR, TS}.
@@ -83,10 +85,10 @@ bool ra8_i3c_internal_recv_ccc_invalid(uint8_t addr_mask, uint8_t target, uint8_
  * @since 0.1.0
  */
 RA8_PRIV
-bool ra8_i3c_internal_hdr_mode_invalid(uint32_t sdr_val,
-                                       uint32_t ddr_val,
-                                       uint32_t ts_val,
-                                       uint32_t mode);
+bool priv_ra8_i3c_internal_hdr_mode_invalid(uint32_t sdr_val,
+                                            uint32_t ddr_val,
+                                            uint32_t ts_val,
+                                            uint32_t mode);
 
 #ifdef __cplusplus
 }

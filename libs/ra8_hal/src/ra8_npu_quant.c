@@ -23,6 +23,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -84,7 +85,7 @@ static const float s_quant_half = 0.5F;
  * @note Re-entrant; no shared state.
  * @since 0.1.0
  */
-static int32_t
+RA8_INTERNAL static int32_t
 internal_quant_round_clamp(float scaled, int32_t zero_point, int32_t qmin, int32_t qmax)
 {
   float rounded = (scaled >= 0.0F) ? (scaled + s_quant_half) : (scaled - s_quant_half);

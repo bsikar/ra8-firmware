@@ -34,6 +34,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_flash.h"
@@ -89,7 +90,7 @@ typedef enum : uint16_t {
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-static uint8_t internal_arc_to_mcntselr(ra8_flash_arc_id_t id)
+RA8_INTERNAL static uint8_t internal_arc_to_mcntselr(ra8_flash_arc_id_t id)
 {
   switch (id) {
     case k_ra8_flash_arc_sec:
@@ -129,7 +130,7 @@ static uint8_t internal_arc_to_mcntselr(ra8_flash_arc_id_t id)
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-static uint32_t internal_arc_max_count(ra8_flash_arc_id_t id)
+RA8_INTERNAL static uint32_t internal_arc_max_count(ra8_flash_arc_id_t id)
 {
   if (id == k_ra8_flash_arc_sec) {
     return k_ra8_arc_sec_max_bits;
@@ -167,7 +168,7 @@ static uint32_t internal_arc_max_count(ra8_flash_arc_id_t id)
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-static uint32_t internal_popcount32(uint32_t x)
+RA8_INTERNAL static uint32_t internal_popcount32(uint32_t x)
 {
   /* Avoid relying on __builtin_popcount so the off-target build
    * does not pick up a different implementation than the firmware
@@ -229,8 +230,8 @@ ra8_err_t ra8_flash_set_startup_area(ra8_flash_startup_t target, bool temporary)
 
 ra8_err_t ra8_flash_get_startup_area(uint8_t* out_btflg, uint8_t* out_fspr)
 {
-  RA8_CHECK_NULL_PTR(out_btflg, s_flash_tag, "out_btflg must not be nullptr");
-  RA8_CHECK_NULL_PTR(out_fspr, s_flash_tag, "out_fspr must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_btflg, g_flash_tag, "out_btflg must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_fspr, g_flash_tag, "out_fspr must not be nullptr");
   /* HUM Ch 59 "MSUASMON : Start-Up Area Monitor" p 3573 */
   const uint32_t v = *ra8_mram_reg32(k_ra8_mram_off_msuasmon);
   *out_btflg       = (uint8_t)((v & k_ra8_msuasmon_mask_btflg) != 0U);
@@ -245,7 +246,7 @@ ra8_err_t ra8_flash_get_startup_area(uint8_t* out_btflg, uint8_t* out_fspr)
 
 ra8_err_t ra8_flash_config_set_write(uint32_t target_addr, const uint16_t* words)
 {
-  RA8_CHECK_NULL_PTR(words, s_flash_tag, "words must not be nullptr");
+  RA8_CHECK_NULL_PTR(words, g_flash_tag, "words must not be nullptr");
   /* One MACI byte-stream shape -- ``<opener>, N, 8 halfwords, 0xD0`` -- serves
    * two target regions, and the opener opcode is chosen per region below:
    *   - OFS configuration area (HUM Ch 7 "Option-Setting Memory" p 278) at
@@ -274,18 +275,18 @@ ra8_err_t ra8_flash_config_set_write(uint32_t target_addr, const uint16_t* words
    * HUM Ch 59.7.4.8 p 3594. */
   const uint8_t opener =
     in_extra ? (uint8_t)k_ra8_maci_cmd_program : (uint8_t)k_ra8_maci_cmd_config_set;
-  ra8_flash_internal_maci_cmd8(opener);
-  ra8_flash_internal_maci_cmd8(k_ra8_maci_cmd_word_count_n);
+  priv_ra8_flash_internal_maci_cmd8(opener);
+  priv_ra8_flash_internal_maci_cmd8(k_ra8_maci_cmd_word_count_n);
 
   /* N = k_ra8_mram_config_set_word_count halfwords of payload.
    * HUM Ch 59.7.4.5 Fig 59.13 p 3592 / HUM Ch 59.7.4.8 p 3595. */
   for (uint32_t i = 0U; i < k_ra8_mram_config_set_word_count; ++i) {
-    ra8_flash_internal_maci_cmd16(words[i]);
+    priv_ra8_flash_internal_maci_cmd16(words[i]);
   }
   /* Trailer 0xD0 starts command processing. HUM Ch 59.7.4.5 Fig 59.13 p 3592. */
-  ra8_flash_internal_maci_cmd8(k_ra8_maci_cmd_final);
+  priv_ra8_flash_internal_maci_cmd8(k_ra8_maci_cmd_final);
 
-  ra8_err_t err = ra8_flash_internal_wait_mrdy(k_ra8_flash_maci_spin_limit);
+  ra8_err_t err = priv_ra8_flash_internal_wait_mrdy(k_ra8_flash_maci_spin_limit);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -323,13 +324,13 @@ ra8_err_t ra8_flash_config_set_write(uint32_t target_addr, const uint16_t* words
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-static ra8_err_t internal_arc_cmd(uint8_t mcntselr, uint8_t cmd)
+RA8_INTERNAL static ra8_err_t internal_arc_cmd(uint8_t mcntselr, uint8_t cmd)
 {
   /* HUM Ch 59 "MCNTSELR : MRAM Counter Select Register" p 3565 */
   *ra8_mram_reg8(k_ra8_mram_off_mcntselr) = (uint8_t)(mcntselr & k_ra8_mcntselr_mask);
-  ra8_flash_internal_maci_cmd8(cmd);
-  ra8_flash_internal_maci_cmd8(k_ra8_maci_cmd_final);
-  ra8_err_t err = ra8_flash_internal_wait_mrdy(k_ra8_flash_maci_spin_limit);
+  priv_ra8_flash_internal_maci_cmd8(cmd);
+  priv_ra8_flash_internal_maci_cmd8(k_ra8_maci_cmd_final);
+  ra8_err_t err = priv_ra8_flash_internal_wait_mrdy(k_ra8_flash_maci_spin_limit);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -364,7 +365,7 @@ static ra8_err_t internal_arc_cmd(uint8_t mcntselr, uint8_t cmd)
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-static uint32_t internal_arc_nsec_count(ra8_flash_arc_id_t id)
+RA8_INTERNAL static uint32_t internal_arc_nsec_count(ra8_flash_arc_id_t id)
 {
   /* HUM Ch 7.2.21 "ARCCS" p 296 */
   const uint16_t arccs = *(volatile const uint16_t*)k_ra8_flash_ofs_arccs_addr;
@@ -393,7 +394,7 @@ static uint32_t internal_arc_nsec_count(ra8_flash_arc_id_t id)
 }
 
 /* internal_arc_read_locked -- see header for full description. */
-static ra8_err_t internal_arc_read_locked(ra8_flash_arc_id_t id, uint32_t* out_count)
+RA8_INTERNAL static ra8_err_t internal_arc_read_locked(ra8_flash_arc_id_t id, uint32_t* out_count)
 {
   uint8_t  mcntselr = internal_arc_to_mcntselr(id);
   uint32_t count    = 0U;
@@ -433,7 +434,7 @@ ra8_err_t ra8_flash_arc_increment(ra8_flash_arc_id_t counter)
   if (counter >= k_ra8_flash_arc_count) {
     return k_ra8_err_invalid_arg;
   }
-  RA8_VALIDATE_INIT(s_flash_rt.initialized, s_flash_tag, "arc_inc before init");
+  RA8_VALIDATE_INIT(g_flash_rt.initialized, g_flash_tag, "arc_inc before init");
 
   ra8_err_t err = ra8_flash_enter_pe_mode();
   if (err != k_ra8_ok) {
@@ -465,11 +466,11 @@ ra8_err_t ra8_flash_arc_increment(ra8_flash_arc_id_t counter)
 
 ra8_err_t ra8_flash_arc_read(ra8_flash_arc_id_t counter, uint32_t* out_count)
 {
-  RA8_CHECK_NULL_PTR(out_count, s_flash_tag, "out_count must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_count, g_flash_tag, "out_count must not be nullptr");
   if (counter >= k_ra8_flash_arc_count) {
     return k_ra8_err_invalid_arg;
   }
-  RA8_VALIDATE_INIT(s_flash_rt.initialized, s_flash_tag, "arc_read before init");
+  RA8_VALIDATE_INIT(g_flash_rt.initialized, g_flash_tag, "arc_read before init");
 
   if (counter == k_ra8_flash_arc_oembl) {
     ra8_err_t err = ra8_flash_enter_pe_mode();
@@ -493,7 +494,7 @@ ra8_err_t ra8_flash_arc_read(ra8_flash_arc_id_t counter, uint32_t* out_count)
 
 ra8_err_t ra8_flash_zeroize_huk(void)
 {
-  RA8_VALIDATE_INIT(s_flash_rt.initialized, s_flash_tag, "zeroize before init");
+  RA8_VALIDATE_INIT(g_flash_rt.initialized, g_flash_tag, "zeroize before init");
   /* HUM Ch 59 "MREZC : Extra MRAM Zeroization Control" p 3561 */
   *ra8_mram_reg16(k_ra8_mram_off_mrezc) = k_ra8_mrezc_full_zero;
 
@@ -568,10 +569,10 @@ ra8_err_t ra8_flash_get_ecc_error_addr(uint32_t* out_code_ted,
                                        uint32_t* out_extra_ted,
                                        uint32_t* out_extra_dec)
 {
-  RA8_CHECK_NULL_PTR(out_code_ted, s_flash_tag, "out_code_ted null");
-  RA8_CHECK_NULL_PTR(out_code_dec, s_flash_tag, "out_code_dec null");
-  RA8_CHECK_NULL_PTR(out_extra_ted, s_flash_tag, "out_extra_ted null");
-  RA8_CHECK_NULL_PTR(out_extra_dec, s_flash_tag, "out_extra_dec null");
+  RA8_CHECK_NULL_PTR(out_code_ted, g_flash_tag, "out_code_ted null");
+  RA8_CHECK_NULL_PTR(out_code_dec, g_flash_tag, "out_code_dec null");
+  RA8_CHECK_NULL_PTR(out_extra_ted, g_flash_tag, "out_extra_ted null");
+  RA8_CHECK_NULL_PTR(out_extra_dec, g_flash_tag, "out_extra_dec null");
 
   /* HUM Ch 59 "MRCRTEA : Code MRAM TED Error Address" p 3555 */
   *out_code_ted = *ra8_mram_reg32(k_ra8_mram_off_mrcrtea);
@@ -586,7 +587,7 @@ ra8_err_t ra8_flash_get_ecc_error_addr(uint32_t* out_code_ted,
 
 ra8_err_t ra8_flash_get_program_error_addr(uint32_t* out_addr)
 {
-  RA8_CHECK_NULL_PTR(out_addr, s_flash_tag, "out_addr must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_addr, g_flash_tag, "out_addr must not be nullptr");
   /* HUM Ch 59 "MRCPEA : Code MRAM Program Error Address" p 3579 */
   *out_addr = *ra8_mram_reg32(k_ra8_mram_off_mrcpea);
   return k_ra8_ok;
@@ -600,8 +601,8 @@ ra8_err_t ra8_flash_update_clock_freq(uint16_t mrcfreq_mhz, uint8_t mrefreq_mhz)
   if (mrefreq_mhz > (uint8_t)k_ra8_flash_max_mrefreq_mhz) {
     return k_ra8_err_invalid_arg;
   }
-  const bool prefetch_was = s_flash_rt.prefetch_on;
-  ra8_flash_internal_set_prefetch(false);
+  const bool prefetch_was = g_flash_rt.prefetch_on;
+  priv_ra8_flash_internal_set_prefetch(false);
 
   /* HUM Ch 59.5.2 "MRCFREQ : Code MRAM Frequency Notifications Register" p 3551 */
   *ra8_mram_reg32(k_ra8_mram_off_mrcfreq) =
@@ -610,7 +611,7 @@ ra8_err_t ra8_flash_update_clock_freq(uint16_t mrcfreq_mhz, uint8_t mrefreq_mhz)
   *ra8_mram_reg32(k_ra8_mram_off_mrefreq) =
     (k_ra8_flash_mrefreq_key << k_ra8_flash_freq_key_shift) | (uint32_t)mrefreq_mhz;
 
-  ra8_flash_internal_set_prefetch(prefetch_was);
+  priv_ra8_flash_internal_set_prefetch(prefetch_was);
   return k_ra8_ok;
 }
 
@@ -634,9 +635,9 @@ ra8_err_t ra8_flash_set_update_transfer(uint8_t list_select)
 
 ra8_err_t ra8_flash_get_update_status(uint8_t* out_busy, uint8_t* out_done, uint8_t* out_err)
 {
-  RA8_CHECK_NULL_PTR(out_busy, s_flash_tag, "out_busy null");
-  RA8_CHECK_NULL_PTR(out_done, s_flash_tag, "out_done null");
-  RA8_CHECK_NULL_PTR(out_err, s_flash_tag, "out_err null");
+  RA8_CHECK_NULL_PTR(out_busy, g_flash_tag, "out_busy null");
+  RA8_CHECK_NULL_PTR(out_done, g_flash_tag, "out_done null");
+  RA8_CHECK_NULL_PTR(out_err, g_flash_tag, "out_err null");
   /* HUM Ch 59 "MCTRSTATR : MRAM Update Transfer Status" p 3568 */
   const uint16_t v = *ra8_mram_reg16(k_ra8_mram_off_mctrstatr);
   *out_busy        = (uint8_t)((v & k_ra8_mctrstatr_mask_busy) != 0U);
@@ -677,10 +678,11 @@ ra8_err_t ra8_flash_get_update_status(uint8_t* out_busy, uint8_t* out_done, uint
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-static void priv_pack_config_words(const uint8_t* src,
-                                   uint32_t       len,
-                                   uint32_t       done,
-                                   uint16_t       words[k_ra8_mram_config_set_word_count])
+RA8_INTERNAL static void
+internal_pack_config_words(const uint8_t* src,
+                           uint32_t       len,
+                           uint32_t       done,
+                           uint16_t       words[k_ra8_mram_config_set_word_count])
 {
   for (uint32_t i = 0U; i < k_ra8_mram_config_set_word_count; ++i) {
     const uint32_t base = done + (i * 2U);
@@ -692,7 +694,7 @@ static void priv_pack_config_words(const uint8_t* src,
 
 ra8_err_t ra8_flash_extra_mram_write(uint32_t mram_addr, const uint8_t* src, uint32_t len)
 {
-  RA8_CHECK_NULL_PTR(src, s_flash_tag, "src must not be nullptr");
+  RA8_CHECK_NULL_PTR(src, g_flash_tag, "src must not be nullptr");
   if (len == 0U || len > k_ra8_mram_write_size_bytes) {
     return k_ra8_err_invalid_arg;
   }
@@ -732,7 +734,7 @@ ra8_err_t ra8_flash_extra_mram_write(uint32_t mram_addr, const uint8_t* src, uin
    * MSADDR write is needed here. Tail bytes pad to 0xFFFF. */
   for (uint32_t done = 0U; done < len; done += (uint32_t)k_ra8_mram_config_set_bytes) {
     uint16_t cfg_words[k_ra8_mram_config_set_word_count] = {};
-    priv_pack_config_words(src, len, done, cfg_words);
+    internal_pack_config_words(src, len, done, cfg_words);
     err = ra8_flash_config_set_write(mram_addr + done, cfg_words);
     if (err != k_ra8_ok) {
       break;
@@ -751,10 +753,10 @@ ra8_err_t ra8_flash_extra_mram_erase(uint32_t mram_addr)
   if ((mram_addr & (k_ra8_mram_block_size_bytes - 1U)) != 0U) {
     return k_ra8_err_invalid_arg;
   }
-  static const uint8_t s_ones[k_ra8_mram_block_size_bytes] = {
+  static const uint8_t local_ones[k_ra8_mram_block_size_bytes] = {
     0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,
     0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,
     0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,
   };
-  return ra8_flash_extra_mram_write(mram_addr, s_ones, k_ra8_mram_block_size_bytes);
+  return ra8_flash_extra_mram_write(mram_addr, local_ones, k_ra8_mram_block_size_bytes);
 }

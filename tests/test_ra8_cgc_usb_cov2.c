@@ -41,6 +41,8 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+#include "ra8_cgc_internal.h"
 #include "ra8_cgc_regs.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
@@ -52,10 +54,10 @@
  * =============================================================================
  */
 
-/** @brief Result ::mock_wait_oscsf_clear returns (PLL2SF stop wait). */
+/** @brief Result ::internal_mock_wait_oscsf_clear returns (PLL2SF stop wait). */
 static ra8_err_t s_clear_result = k_ra8_ok;
 /**
- * @brief OSCSF bit for which ::mock_wait_oscsf_set reports a timeout.
+ * @brief OSCSF bit for which ::internal_mock_wait_oscsf_set reports a timeout.
  * @details -1 means "no bit fails" (every set-poll succeeds).
  */
 static int s_set_fail_bit = -1;
@@ -91,7 +93,7 @@ typedef enum : uint8_t {
 } cov2_pll2_arg_t;
 
 /** @brief HOCOCR value with HCSTP set, used to drive the "restart HOCO" branch. */
-static const uint8_t k_cov2_hococr_hcstp = (uint8_t)(1U << k_ra8_hococr_hcstp);
+static const uint8_t s_cov2_hococr_hcstp = (uint8_t)(1U << k_ra8_hococr_hcstp);
 
 /** @brief Active SRDY drive policy for both USB clock registers. */
 static cov2_srdy_mode_t s_srdy_mode = k_cov2_srdy_follow;
@@ -100,8 +102,8 @@ static volatile uint8_t s_usbfs_ckcr = 0U;
 /** @brief Scriptable backing byte for USB60CKCR (USB-HS source select). */
 static volatile uint8_t s_usb60ckcr = 0U;
 
-/** @brief Apply the active SRDY policy to @p reg before a read/write dereference. */
-static void cov2_apply_srdy(volatile uint8_t* reg)
+/** @brief Apply the active SRDY policy to @p reg before a read/write dereference. @details Implements the cov2 apply srdy fixture operation used only by this focused test executable. @param[in,out] reg Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_cov2_apply_srdy(volatile uint8_t* reg)
 {
   const uint8_t sreq = (uint8_t)(1U << k_ra8_usbckcr_bit_sreq);
   const uint8_t srdy = (uint8_t)(1U << k_ra8_usbckcr_bit_srdy);
@@ -115,21 +117,21 @@ static void cov2_apply_srdy(volatile uint8_t* reg)
 }
 
 /** @brief Stateful mock for `ra8_sys_usbckcr()` -- drives the USB-FS handshake. */
-static volatile uint8_t* mock_ra8_sys_usbckcr(void)
+RA8_INTERNAL static volatile uint8_t* internal_mock_ra8_sys_usbckcr(void)
 {
-  cov2_apply_srdy(&s_usbfs_ckcr);
+  internal_cov2_apply_srdy(&s_usbfs_ckcr);
   return &s_usbfs_ckcr;
 }
 
 /** @brief Stateful mock for `ra8_sys_usb60ckcr()` -- drives the USB-HS handshake. */
-static volatile uint8_t* mock_ra8_sys_usb60ckcr(void)
+RA8_INTERNAL static volatile uint8_t* internal_mock_ra8_sys_usb60ckcr(void)
 {
-  cov2_apply_srdy(&s_usb60ckcr);
+  internal_cov2_apply_srdy(&s_usb60ckcr);
   return &s_usb60ckcr;
 }
 
-/** @brief Reset the fake mirror, the OSCSF mocks, and the SRDY model to baseline. */
-static void cov_reset(void)
+/** @brief Reset the fake mirror, the OSCSF mocks, and the SRDY model to baseline. @details Implements the cov reset fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_cov_reset(void)
 {
   ra8_fake_mmap_reset();
   s_clear_result = k_ra8_ok;
@@ -142,15 +144,11 @@ static void cov_reset(void)
 /* Rename the exported symbols so the instrumented copy does not clash with the
  * production driver in ra8_core_hal; redirect the OSCSF poll helpers and the two
  * USB clock-register accessors to the scriptable mocks above. */
-/* The two OSCSF poll mocks are only DECLARED here and defined below the
- * driver include. `ra8_cgc_internal.h` carries RA8_PRIV on the real
- * declarations, and the #define maps that annotated declaration onto the
- * mock -- clang rejects an attribute on a declaration that follows the
- * definition, so the definition has to come last. The declaration must also
- * be `static` and come first, or the header's expansion introduces the
- * symbol with external linkage and the definition then conflicts with it. */
-static ra8_err_t mock_wait_oscsf_clear(uint8_t bit);
-static ra8_err_t mock_wait_oscsf_set(uint8_t bit);
+/* The real private declarations are included above before interposition, so
+ * the included driver observes the header guard and only its call sites are
+ * redirected. The mocks therefore remain genuine file-local test helpers. */
+RA8_INTERNAL static ra8_err_t internal_mock_wait_oscsf_clear(uint8_t bit);
+RA8_INTERNAL static ra8_err_t internal_mock_wait_oscsf_set(uint8_t bit);
 
 ra8_err_t ra8_cgc_pll2_enable_cov2(uint8_t mul_int, uint8_t mul_quarters, ra8_plodiv_t p_div_code);
 ra8_err_t ra8_cgc_usbfs_clock_enable_cov2(void);
@@ -170,15 +168,15 @@ ra8_err_t ra8_cgc_ensure_hoco_running_for_usb_ck_cov2(void);
 /** @brief RA8 cgc usbhs pll enable. */
 #define ra8_cgc_usbhs_pll_enable ra8_cgc_usbhs_pll_enable_cov2
 /** @brief RA8 cgc ensure hoco running for USB ck. */
-#define ra8_cgc_ensure_hoco_running_for_usb_ck ra8_cgc_ensure_hoco_running_for_usb_ck_cov2
+#define priv_ra8_cgc_ensure_hoco_running_for_usb_ck ra8_cgc_ensure_hoco_running_for_usb_ck_cov2
 /** @brief RA8 cgc wait oscsf set. */
-#define ra8_cgc_wait_oscsf_set mock_wait_oscsf_set
+#define priv_ra8_cgc_wait_oscsf_set internal_mock_wait_oscsf_set
 /** @brief RA8 cgc wait oscsf clear. */
-#define ra8_cgc_wait_oscsf_clear mock_wait_oscsf_clear
+#define priv_ra8_cgc_wait_oscsf_clear internal_mock_wait_oscsf_clear
 /** @brief RA8 sys usbckcr. */
-#define ra8_sys_usbckcr mock_ra8_sys_usbckcr
+#define ra8_sys_usbckcr internal_mock_ra8_sys_usbckcr
 /** @brief RA8 sys usb60ckcr. */
-#define ra8_sys_usb60ckcr mock_ra8_sys_usb60ckcr
+#define ra8_sys_usb60ckcr internal_mock_ra8_sys_usb60ckcr
 // NOLINTEND(readability-identifier-naming)
 
 /* Undefine RA8_OFF_TARGET for the driver body ONLY so the static SRDY poll
@@ -186,15 +184,15 @@ ra8_err_t ra8_cgc_ensure_hoco_running_for_usb_ck_cov2(void);
 #undef RA8_OFF_TARGET
 #include "ra8_cgc_usb.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
 
-/** @brief Mock for `ra8_cgc_wait_oscsf_clear()` -- returns the scripted result. */
-static ra8_err_t mock_wait_oscsf_clear(uint8_t bit)
+/** @brief Mock for `priv_ra8_cgc_wait_oscsf_clear()` -- returns the scripted result. @details Implements the mock wait oscsf clear fixture operation used only by this focused test executable. @param[in] bit Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_mock_wait_oscsf_clear(uint8_t bit)
 {
   (void)bit;
   return s_clear_result;
 }
 
-/** @brief Mock for `ra8_cgc_wait_oscsf_set()` -- fails only for ::s_set_fail_bit. */
-static ra8_err_t mock_wait_oscsf_set(uint8_t bit)
+/** @brief Mock for `priv_ra8_cgc_wait_oscsf_set()` -- fails only for ::s_set_fail_bit. @details Implements the mock wait oscsf set fixture operation used only by this focused test executable. @param[in] bit Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_mock_wait_oscsf_set(uint8_t bit)
 {
   if ((int)bit == s_set_fail_bit) {
     return k_ra8_err_hw_timeout;
@@ -208,7 +206,7 @@ static ra8_err_t mock_wait_oscsf_set(uint8_t bit)
  */
 
 /**
- * @test test_pll2_arg_and_idempotency
+ * @test internal_test_pll2_arg_and_idempotency
  *
  * @brief PLL2 argument validation + the "already locked" idempotency return.
  *
@@ -220,12 +218,11 @@ static ra8_err_t mock_wait_oscsf_set(uint8_t bit)
  *
  * @par MC/DC:
  * (no compound decisions in the code under test -- each guard is a single
- * condition `if`, no `&&`/`||`.)
- */
-static void test_pll2_arg_and_idempotency(void)
+ * condition `if`, no `&&`/`||`.) @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pll2_arg_and_idempotency(void)
 {
   TEST_BEGIN("pll2: zero-mul + bad-quarters reject; already-locked skips; ok programs");
-  cov_reset();
+  internal_cov_reset();
 
   /* mul_int == 0 -> invalid_arg. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
@@ -240,7 +237,7 @@ static void test_pll2_arg_and_idempotency(void)
                                           k_ra8_plodiv_div4));
 
   /* OSCSF.PLL2SF pre-asserted -> idempotency short-circuit returns ok. */
-  cov_reset();
+  internal_cov_reset();
   *ra8_sys_oscsf() = (uint8_t)(1U << k_ra8_oscsf_bit_pll2sf);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_cgc_pll2_enable_cov2((uint8_t)k_cov2_pll2_mul,
@@ -248,7 +245,7 @@ static void test_pll2_arg_and_idempotency(void)
                                           k_ra8_plodiv_div4));
 
   /* PLL2SF clear + passing polls -> full program + lock success return. */
-  cov_reset();
+  internal_cov_reset();
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_cgc_pll2_enable_cov2((uint8_t)k_cov2_pll2_mul,
                                           (uint8_t)k_cov2_pll2_ok_quarters,
@@ -258,7 +255,7 @@ static void test_pll2_arg_and_idempotency(void)
 }
 
 /**
- * @test test_usbfs_pll2_enable_failed
+ * @test internal_test_usbfs_pll2_enable_failed
  *
  * @brief USB-FS bring-up aborts when the inner PLL2 enable fails.
  *
@@ -269,12 +266,11 @@ static void test_pll2_arg_and_idempotency(void)
  *
  * @par MC/DC:
  * (no compound decisions in the code under test -- single-condition
- * `if (pll2_err != k_ra8_ok)`.)
- */
-static void test_usbfs_pll2_enable_failed(void)
+ * `if (pll2_err != k_ra8_ok)`.) @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_usbfs_pll2_enable_failed(void)
 {
   TEST_BEGIN("usbfs: inner PLL2 lock timeout aborts before the handshake");
-  cov_reset();
+  internal_cov_reset();
 
   s_set_fail_bit = (int)k_ra8_oscsf_bit_pll2sf; /* PLL2SF lock poll times out. */
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_usbfs_clock_enable_cov2());
@@ -283,7 +279,7 @@ static void test_usbfs_pll2_enable_failed(void)
 }
 
 /**
- * @test test_usbfs_hoco_stabilize_timeout
+ * @test internal_test_usbfs_hoco_stabilize_timeout
  *
  * @brief USB-FS bring-up aborts when the HOCO stabilization poll times out.
  *
@@ -293,12 +289,11 @@ static void test_usbfs_pll2_enable_failed(void)
  *
  * @par MC/DC:
  * (no compound decisions in the code under test -- single-condition
- * `if (hoco_err != k_ra8_ok)`.)
- */
-static void test_usbfs_hoco_stabilize_timeout(void)
+ * `if (hoco_err != k_ra8_ok)`.) @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_usbfs_hoco_stabilize_timeout(void)
 {
   TEST_BEGIN("usbfs: HOCO stabilization poll timeout aborts before handshake");
-  cov_reset();
+  internal_cov_reset();
 
   s_set_fail_bit = (int)k_ra8_oscsf_bit_hocosf; /* PLL2SF passes; HOCOSF fails. */
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_usbfs_clock_enable_cov2());
@@ -307,7 +302,7 @@ static void test_usbfs_hoco_stabilize_timeout(void)
 }
 
 /**
- * @test test_usbfs_hcstp_and_second_srdy_timeout
+ * @test internal_test_usbfs_hcstp_and_second_srdy_timeout
  *
  * @brief USB-FS HOCO-restart branch + the USBCKCR **second** SRDY (SRDY=0) timeout.
  *
@@ -320,14 +315,13 @@ static void test_usbfs_hoco_stabilize_timeout(void)
  *
  * @par MC/DC:
  * (no compound decisions in the code under test -- the HCSTP guard, the poll
- * `if (got == expected)`, and each `if (err != k_ra8_ok)` are single-condition.)
- */
-static void test_usbfs_hcstp_and_second_srdy_timeout(void)
+ * `if (got == expected)`, and each `if (err != k_ra8_ok)` are single-condition.) @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_usbfs_hcstp_and_second_srdy_timeout(void)
 {
   TEST_BEGIN("usbfs: HCSTP restart + USBCKCR second-wait (SRDY=0) timeout");
-  cov_reset();
+  internal_cov_reset();
 
-  *ra8_sys_hococr() = k_cov2_hococr_hcstp; /* Exercise the HOCO-restart branch. */
+  *ra8_sys_hococr() = s_cov2_hococr_hcstp; /* Exercise the HOCO-restart branch. */
   s_set_fail_bit    = -1;                  /* All OSCSF polls pass.             */
   s_srdy_mode       = k_cov2_srdy_stuck_high;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_usbfs_clock_enable_cov2());
@@ -336,7 +330,7 @@ static void test_usbfs_hcstp_and_second_srdy_timeout(void)
 }
 
 /**
- * @test test_usbfs_full_success
+ * @test internal_test_usbfs_full_success
  *
  * @brief USB-FS bring-up completes end-to-end when the handshake acknowledges.
  *
@@ -348,12 +342,11 @@ static void test_usbfs_hcstp_and_second_srdy_timeout(void)
  *
  * @par MC/DC:
  * (no compound decisions in the code under test -- the poll and error checks
- * are single-condition.)
- */
-static void test_usbfs_full_success(void)
+ * are single-condition.) @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_usbfs_full_success(void)
 {
   TEST_BEGIN("usbfs: full bring-up succeeds when SRDY acknowledges");
-  cov_reset();
+  internal_cov_reset();
 
   s_set_fail_bit = -1;                 /* All OSCSF polls pass. */
   s_srdy_mode    = k_cov2_srdy_follow; /* SRDY tracks SREQ.     */
@@ -363,7 +356,7 @@ static void test_usbfs_full_success(void)
 }
 
 /**
- * @test test_ensure_hoco_hcstp_restart
+ * @test internal_test_ensure_hoco_hcstp_restart
  *
  * @brief The HOCO-restart helper clears HCSTP then honours the poll result.
  *
@@ -372,14 +365,13 @@ static void test_usbfs_full_success(void)
  *
  * @par MC/DC:
  * (no compound decisions in the code under test -- the HCSTP guard is a single
- * condition `if` and the return is the poll result directly.)
- */
-static void test_ensure_hoco_hcstp_restart(void)
+ * condition `if` and the return is the poll result directly.) @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_ensure_hoco_hcstp_restart(void)
 {
   TEST_BEGIN("ensure_hoco: clears HCSTP then returns the stabilization poll result");
-  cov_reset();
+  internal_cov_reset();
 
-  *ra8_sys_hococr() = k_cov2_hococr_hcstp;
+  *ra8_sys_hococr() = s_cov2_hococr_hcstp;
   s_set_fail_bit    = -1;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cgc_ensure_hoco_running_for_usb_ck_cov2());
 
@@ -387,7 +379,7 @@ static void test_ensure_hoco_hcstp_restart(void)
 }
 
 /**
- * @test test_usbhs_pll2_enable_failed
+ * @test internal_test_usbhs_pll2_enable_failed
  *
  * @brief USB-HS bring-up aborts when PLL2 enable fails after MOSCSF is stable.
  *
@@ -396,12 +388,11 @@ static void test_ensure_hoco_hcstp_restart(void)
  *
  * @par MC/DC:
  * (no compound decisions in the code under test -- single-condition
- * `if (pll2_err != k_ra8_ok)`.)
- */
-static void test_usbhs_pll2_enable_failed(void)
+ * `if (pll2_err != k_ra8_ok)`.) @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_usbhs_pll2_enable_failed(void)
 {
   TEST_BEGIN("usbhs: PLL2 enable failure propagates after MOSCSF is stable");
-  cov_reset();
+  internal_cov_reset();
 
   s_set_fail_bit = (int)k_ra8_oscsf_bit_pll2sf; /* MOSCSF passes; PLL2SF fails. */
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_usbhs_pll_enable_cov2());
@@ -410,7 +401,7 @@ static void test_usbhs_pll2_enable_failed(void)
 }
 
 /**
- * @test test_usbhs_hoco_stabilize_timeout
+ * @test internal_test_usbhs_hoco_stabilize_timeout
  *
  * @brief USB-HS bring-up aborts when the HOCO stabilization poll times out.
  *
@@ -420,12 +411,11 @@ static void test_usbhs_pll2_enable_failed(void)
  *
  * @par MC/DC:
  * (no compound decisions in the code under test -- single-condition
- * `if (hoco_err != k_ra8_ok)`.)
- */
-static void test_usbhs_hoco_stabilize_timeout(void)
+ * `if (hoco_err != k_ra8_ok)`.) @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_usbhs_hoco_stabilize_timeout(void)
 {
   TEST_BEGIN("usbhs: HOCO stabilization poll timeout aborts before handshake");
-  cov_reset();
+  internal_cov_reset();
 
   s_set_fail_bit = (int)k_ra8_oscsf_bit_hocosf; /* MOSCSF + PLL2SF pass; HOCOSF fails. */
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_usbhs_pll_enable_cov2());
@@ -434,7 +424,7 @@ static void test_usbhs_hoco_stabilize_timeout(void)
 }
 
 /**
- * @test test_usbhs_hcstp_and_second_srdy_timeout
+ * @test internal_test_usbhs_hcstp_and_second_srdy_timeout
  *
  * @brief USB-HS ensure-HOCO HCSTP restart + USB60CKCR **second** SRDY timeout.
  *
@@ -447,14 +437,13 @@ static void test_usbhs_hoco_stabilize_timeout(void)
  *
  * @par MC/DC:
  * (no compound decisions in the code under test -- the HCSTP guard, the poll
- * `if (got == expected)`, and each `if (err != k_ra8_ok)` are single-condition.)
- */
-static void test_usbhs_hcstp_and_second_srdy_timeout(void)
+ * `if (got == expected)`, and each `if (err != k_ra8_ok)` are single-condition.) @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_usbhs_hcstp_and_second_srdy_timeout(void)
 {
   TEST_BEGIN("usbhs: HCSTP restart + USB60CKCR second-wait (SRDY=0) timeout");
-  cov_reset();
+  internal_cov_reset();
 
-  *ra8_sys_hococr() = k_cov2_hococr_hcstp; /* Exercise the ensure-HOCO restart. */
+  *ra8_sys_hococr() = s_cov2_hococr_hcstp; /* Exercise the ensure-HOCO restart. */
   s_set_fail_bit    = -1;                  /* All OSCSF polls pass.             */
   s_srdy_mode       = k_cov2_srdy_stuck_high;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_usbhs_pll_enable_cov2());
@@ -464,15 +453,14 @@ static void test_usbhs_hcstp_and_second_srdy_timeout(void)
 
 int32_t main(void)
 {
-  test_pll2_arg_and_idempotency();
-  test_usbfs_pll2_enable_failed();
-  test_usbfs_hoco_stabilize_timeout();
-  test_usbfs_hcstp_and_second_srdy_timeout();
-  test_usbfs_full_success();
-  test_ensure_hoco_hcstp_restart();
-  test_usbhs_pll2_enable_failed();
-  test_usbhs_hoco_stabilize_timeout();
-  test_usbhs_hcstp_and_second_srdy_timeout();
-  (void)fprintf(stderr, "[OK  ] test_ra8_cgc_usb_cov2.c\n");
+  internal_test_pll2_arg_and_idempotency();
+  internal_test_usbfs_pll2_enable_failed();
+  internal_test_usbfs_hoco_stabilize_timeout();
+  internal_test_usbfs_hcstp_and_second_srdy_timeout();
+  internal_test_usbfs_full_success();
+  internal_test_ensure_hoco_hcstp_restart();
+  internal_test_usbhs_pll2_enable_failed();
+  internal_test_usbhs_hoco_stabilize_timeout();
+  internal_test_usbhs_hcstp_and_second_srdy_timeout();
   return 0;
 }

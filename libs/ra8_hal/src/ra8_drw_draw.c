@@ -67,14 +67,14 @@ static const char* s_tag = "DRW";
       (uint16_t)rect->height_px > k_ra8_drw_max_height_px) {
     return k_ra8_err_invalid_arg;
   }
-  if (ra8_drw_internal_rect_off_surface(rect)) {
+  if (priv_ra8_drw_internal_rect_off_surface(rect)) {
     return k_ra8_err_invalid_arg;
   }
 
   /* COLOR1 goes through the shadowed writer (write-only register). */
-  ra8_drw_internal_color1_write(rect->color_argb8888);
+  priv_ra8_drw_internal_color1_write(rect->color_argb8888);
 
-  internal_program_rect_bbox(rect);
+  priv_program_rect_bbox(rect);
 
   /* HUM Ch 62.2.1 "CONTROL: Geometry Control Register", p 3689 */
   /* No spatial limiter: the bounding box scan (HUM Ch 62.6.2 p 3716) already
@@ -90,7 +90,7 @@ static const char* s_tag = "DRW";
    * written last and points at the rectangle's own top-left pixel rather
    * than the framebuffer base. Without the trigger the engine never
    * rasterizes (silicon-verified: the demo framebuffer stayed zero-filled). */
-  *ra8_drw_reg32(k_ra8_drw_off_origin) = ra8_drw_internal_rect_origin(rect);
+  *ra8_drw_reg32(k_ra8_drw_off_origin) = priv_ra8_drw_internal_rect_origin(rect);
 
   return k_ra8_ok;
 }
@@ -98,22 +98,22 @@ static const char* s_tag = "DRW";
 [[nodiscard]] ra8_err_t ra8_drw_blit_textured_rect(const ra8_drw_rect_t* rect)
 {
   RA8_CHECK_NULL_PTR(rect, s_tag, "rect must not be nullptr");
-  if (ra8_drw_internal_rect_below_min((uint16_t)k_ra8_drw_min_dim_px,
-                                      (uint16_t)rect->width_px,
-                                      (uint16_t)rect->height_px)) {
+  if (priv_ra8_drw_internal_rect_below_min((uint16_t)k_ra8_drw_min_dim_px,
+                                           (uint16_t)rect->width_px,
+                                           (uint16_t)rect->height_px)) {
     return k_ra8_err_invalid_arg;
   }
-  if (ra8_drw_internal_rect_above_max((uint16_t)k_ra8_drw_max_width_px,
-                                      (uint16_t)k_ra8_drw_max_height_px,
-                                      (uint16_t)rect->width_px,
-                                      (uint16_t)rect->height_px)) {
+  if (priv_ra8_drw_internal_rect_above_max((uint16_t)k_ra8_drw_max_width_px,
+                                           (uint16_t)k_ra8_drw_max_height_px,
+                                           (uint16_t)rect->width_px,
+                                           (uint16_t)rect->height_px)) {
     return k_ra8_err_invalid_arg;
   }
-  if (ra8_drw_internal_rect_off_surface(rect)) {
+  if (priv_ra8_drw_internal_rect_off_surface(rect)) {
     return k_ra8_err_invalid_arg;
   }
 
-  internal_program_rect_bbox(rect);
+  priv_program_rect_bbox(rect);
 
   /* HUM Ch 62.2.18 "LUSTART: U Limiter Start Value Register" p 3701 */
   *ra8_drw_reg32(k_ra8_drw_off_lustart) = 0UL;
@@ -147,7 +147,7 @@ static const char* s_tag = "DRW";
 
   /* HUM Ch 62.2.31 "ORIGIN: Framebuffer Base Address Register", p 3705 */
   /* ORIGIN positions the bounding box AND triggers the render. */
-  *ra8_drw_reg32(k_ra8_drw_off_origin) = ra8_drw_internal_rect_origin(rect);
+  *ra8_drw_reg32(k_ra8_drw_off_origin) = priv_ra8_drw_internal_rect_origin(rect);
   return k_ra8_ok;
 }
 
@@ -211,7 +211,7 @@ static void internal_program_line_limiters(const ra8_drw_line_t* line)
   }
 
   /* COLOR1 goes through the shadowed writer (write-only register). */
-  ra8_drw_internal_color1_write(line->color_argb8888);
+  priv_ra8_drw_internal_color1_write(line->color_argb8888);
 
   /* Compute the bounding box of the stroke for SIZE: a simple
    * over-estimate using axis-aligned span + width. The DRW only uses
@@ -238,7 +238,7 @@ static void internal_program_line_limiters(const ra8_drw_line_t* line)
 
   /* HUM Ch 62.2.31 "ORIGIN: Framebuffer Base Address Register", p 3705 */
   /* ORIGIN write = render trigger (see ra8_drw_fill_rect). */
-  *ra8_drw_reg32(k_ra8_drw_off_origin) = ra8_drw_internal_origin();
+  *ra8_drw_reg32(k_ra8_drw_off_origin) = priv_ra8_drw_internal_origin();
   return k_ra8_ok;
 }
 
@@ -247,7 +247,7 @@ static void internal_program_line_limiters(const ra8_drw_line_t* line)
   RA8_CHECK_NULL_PTR(tri, s_tag, "tri must not be nullptr");
 
   /* COLOR1 goes through the shadowed writer (write-only register). */
-  ra8_drw_internal_color1_write(tri->color_argb8888);
+  priv_ra8_drw_internal_color1_write(tri->color_argb8888);
 
   /* Bounding box for SIZE -- HUM Ch 62.2.29 p 3704. */
   int32_t min_x = (tri->x0 < tri->x1) ? tri->x0 : tri->x1;
@@ -300,7 +300,7 @@ static void internal_program_line_limiters(const ra8_drw_line_t* line)
 
   /* HUM Ch 62.2.31 "ORIGIN: Framebuffer Base Address Register", p 3705 */
   /* ORIGIN write = render trigger (see ra8_drw_fill_rect). */
-  *ra8_drw_reg32(k_ra8_drw_off_origin) = ra8_drw_internal_origin();
+  *ra8_drw_reg32(k_ra8_drw_off_origin) = priv_ra8_drw_internal_origin();
   return k_ra8_ok;
 }
 
@@ -426,18 +426,18 @@ static void internal_dlist_put_special(ra8_drw_dlist_t* dl, uint32_t arg)
 {
   RA8_CHECK_NULL_PTR(dl, s_tag, "dl must not be nullptr");
   RA8_CHECK_NULL_PTR(rect, s_tag, "rect must not be nullptr");
-  if (ra8_drw_internal_rect_below_min((uint16_t)k_ra8_drw_min_dim_px,
-                                      (uint16_t)rect->width_px,
-                                      (uint16_t)rect->height_px)) {
+  if (priv_ra8_drw_internal_rect_below_min((uint16_t)k_ra8_drw_min_dim_px,
+                                           (uint16_t)rect->width_px,
+                                           (uint16_t)rect->height_px)) {
     return k_ra8_err_invalid_arg;
   }
-  if (ra8_drw_internal_rect_above_max((uint16_t)k_ra8_drw_max_width_px,
-                                      (uint16_t)k_ra8_drw_max_height_px,
-                                      (uint16_t)rect->width_px,
-                                      (uint16_t)rect->height_px)) {
+  if (priv_ra8_drw_internal_rect_above_max((uint16_t)k_ra8_drw_max_width_px,
+                                           (uint16_t)k_ra8_drw_max_height_px,
+                                           (uint16_t)rect->width_px,
+                                           (uint16_t)rect->height_px)) {
     return k_ra8_err_invalid_arg;
   }
-  if (ra8_drw_internal_rect_off_surface(rect)) {
+  if (priv_ra8_drw_internal_rect_off_surface(rect)) {
     return k_ra8_err_invalid_arg;
   }
   /* Reject up front so no partial primitive is left in the buffer. */
@@ -457,7 +457,7 @@ static void internal_dlist_put_special(ra8_drw_dlist_t* dl, uint32_t arg)
                          ((uint32_t)rect->height_px << k_ra8_drw_size_height_pos) |
                            (uint32_t)rect->width_px);
   internal_dlist_put_reg(dl, k_ra8_drw_dlr_idx_control, 0UL);
-  internal_dlist_put_reg(dl, k_ra8_drw_dlr_idx_origin, ra8_drw_internal_rect_origin(rect));
+  internal_dlist_put_reg(dl, k_ra8_drw_dlr_idx_origin, priv_ra8_drw_internal_rect_origin(rect));
   /* Wait for the pipeline and framebuffer cache to drain so this primitive
    * fully lands before the next one (or the CPU read) begins. */
   internal_dlist_put_special(dl, (uint32_t)k_ra8_drw_dlr_arg_wait);

@@ -72,7 +72,7 @@
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool ra8_drw_internal_rect_below_min(uint16_t min_dim, uint16_t width, uint16_t height)
+bool priv_ra8_drw_internal_rect_below_min(uint16_t min_dim, uint16_t width, uint16_t height)
 {
   return (width < min_dim) || (height < min_dim);
 }
@@ -94,10 +94,10 @@ bool ra8_drw_internal_rect_below_min(uint16_t min_dim, uint16_t width, uint16_t 
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool ra8_drw_internal_rect_above_max(uint16_t max_w,
-                                     uint16_t max_h,
-                                     uint16_t width,
-                                     uint16_t height)
+bool priv_ra8_drw_internal_rect_above_max(uint16_t max_w,
+                                          uint16_t max_h,
+                                          uint16_t width,
+                                          uint16_t height)
 {
   return (width > max_w) || (height > max_h);
 }
@@ -173,7 +173,7 @@ static uint32_t s_drw_control2;
  * COLOR1 is W-only like the rest of the DRW register file, so the
  * alpha-preserving update in ::ra8_drw_set_blend cannot read it back from
  * hardware. Every COLOR1 write goes through
- * ::ra8_drw_internal_color1_write, which keeps this shadow coherent.
+ * ::priv_ra8_drw_internal_color1_write, which keeps this shadow coherent.
  *
  * @note Updated on every COLOR1 write (gradient, blend, fill).
  * @warning Never read COLOR1 from hardware; use this shadow.
@@ -208,13 +208,13 @@ static uint32_t s_drw_pitch_px;
  */
 static uint32_t s_drw_bytes_px;
 
-/** @brief Implementation of `ra8_drw_internal_origin()` -- shadow read. */
-uint32_t ra8_drw_internal_origin(void)
+/** @brief Implementation of `priv_ra8_drw_internal_origin()` -- shadow read. */
+uint32_t priv_ra8_drw_internal_origin(void)
 {
   return s_drw_origin;
 }
 
-uint32_t ra8_drw_internal_rect_origin(const ra8_drw_rect_t* rect)
+uint32_t priv_ra8_drw_internal_rect_origin(const ra8_drw_rect_t* rect)
 {
   const uint32_t x   = (uint32_t)(int32_t)rect->x;
   const uint32_t y   = (uint32_t)(int32_t)rect->y;
@@ -222,7 +222,7 @@ uint32_t ra8_drw_internal_rect_origin(const ra8_drw_rect_t* rect)
   return s_drw_origin + off;
 }
 
-bool ra8_drw_internal_rect_off_surface(const ra8_drw_rect_t* rect)
+bool priv_ra8_drw_internal_rect_off_surface(const ra8_drw_rect_t* rect)
 {
   bool off = false;
   if ((rect->x < 0) || (rect->y < 0)) {
@@ -234,8 +234,8 @@ bool ra8_drw_internal_rect_off_surface(const ra8_drw_rect_t* rect)
   return off;
 }
 
-/** @brief Implementation of `ra8_drw_internal_color1_write()` -- MMIO + shadow. */
-void ra8_drw_internal_color1_write(uint32_t argb8888)
+/** @brief Implementation of `priv_ra8_drw_internal_color1_write()` -- MMIO + shadow. */
+void priv_ra8_drw_internal_color1_write(uint32_t argb8888)
 {
   /* HUM Ch 62.2.7 "COLOR1: Base Color Register", p 3697 */
   *ra8_drw_reg32(k_ra8_drw_off_color1) = argb8888;
@@ -413,7 +413,7 @@ static inline uint32_t internal_control2_rmw(uint32_t clear_mask, uint32_t set_m
   return nxt;
 }
 
-void internal_program_rect_bbox(const ra8_drw_rect_t* rect)
+void priv_program_rect_bbox(const ra8_drw_rect_t* rect)
 {
   /* HUM Ch 62.2.29 "SIZE: Bounding Box Dimension Register", p 3704 */
   /* The bounding box IS the rectangle: HUM Ch 62.6.2 p 3716 has the engine
@@ -710,7 +710,7 @@ void ra8_drw_dispatch(void)
 {
   RA8_CHECK_NULL_PTR(grad, s_tag, "grad must not be nullptr");
   /* COLOR1 goes through the shadowed writer (write-only register). */
-  ra8_drw_internal_color1_write(grad->color1_argb8888);
+  priv_ra8_drw_internal_color1_write(grad->color1_argb8888);
   /* HUM Ch 62.2.8 "COLOR2: Secondary Color Register", p 3697 */
   *ra8_drw_reg32(k_ra8_drw_off_color2) = grad->color2_argb8888;
   return k_ra8_ok;
@@ -816,7 +816,7 @@ static uint32_t internal_pack_blend_bits(const ra8_drw_blend_t* blend)
    * software shadow, and the write goes through the shadowed writer. */
   const uint32_t new_color1 = (s_drw_color1 & k_ra8_drw_internal_color_alpha_mask) |
                               ((uint32_t)blend->global_alpha << k_ra8_drw_color_a_pos);
-  ra8_drw_internal_color1_write(new_color1);
+  priv_ra8_drw_internal_color1_write(new_color1);
 
   return k_ra8_ok;
 }

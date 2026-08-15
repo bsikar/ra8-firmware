@@ -1,6 +1,8 @@
 /**
  * @file ra8_ulpt.h
  * @brief Ultra-Low-Power Timer (ULPT) driver header
+ *
+ * @details Declares reset, configuration, start, stop, and counter access for the two ultra-low-power timer channels.
  * @ingroup grp_hal_timers
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

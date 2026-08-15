@@ -277,7 +277,7 @@ static ra8_eth_gwca_default_state_t s_gwca_state;
 ra8_eth_state_t s_eth_state;
 
 /**
- * @var s_eth_mac_speed_resynced
+ * @var g_eth_mac_speed_resynced
  * @brief Latch -- true once ::ra8_eth_link_status has re-programmed
  *        MPIC.LSC / MPIC.PIPP to match the PHY's negotiated link.
  *
@@ -291,7 +291,7 @@ ra8_eth_state_t s_eth_state;
  * @note File-scope state, not thread-safe.
  * @since 0.1.0
  */
-bool s_eth_mac_speed_resynced = false;
+bool g_eth_mac_speed_resynced = false;
 
 /**
  * @brief Saturating-add helper for the 32-bit software counters.
@@ -344,7 +344,7 @@ static inline void internal_byte_copy(uint8_t* dst, const uint8_t* src, uint32_t
   }
 }
 
-ra8_rmac_port_t ra8_eth_channel_to_port(uint8_t channel)
+ra8_rmac_port_t priv_ra8_eth_channel_to_port(uint8_t channel)
 {
   if (channel == 0U) {
     return k_ra8_rmac_port_0;
@@ -448,7 +448,7 @@ static ra8_err_t internal_bring_up_rmac(const ra8_eth_cfg_t* cfg)
    * The board layer ran the bracket once during ra8_rmac_init; we have
    * to repeat it here so the application-supplied MAC actually lands
    * in MRMAC0/MRMAC1. */
-  const ra8_rmac_port_t rmac_port = ra8_eth_channel_to_port(cfg->channel);
+  const ra8_rmac_port_t rmac_port = priv_ra8_eth_channel_to_port(cfg->channel);
   const ra8_etha_port_t etha_port =
     (cfg->channel == 0U) ? (ra8_etha_port_t)k_ra8_etha_port_0 : (ra8_etha_port_t)k_ra8_etha_port_1;
   uint8_t mac_copy[k_ra8_eth_mac_len];
@@ -733,10 +733,10 @@ static ra8_err_t internal_open_gwca_path(void)
    * destination masks BEFORE bringing the GWCA up. 0x7F = allow all
    * destinations (permissive baseline; tightens once L3 filtering
    * lands). */
-  static const uint8_t s_fwpbfc_masks[3] = {k_eth_fwpbfc_mask,
-                                            k_eth_fwpbfc_mask,
-                                            k_eth_fwpbfc_mask};
-  (void)ra8_eth_mfwd_set_forwarding_masks(s_fwpbfc_masks);
+  static const uint8_t local_fwpbfc_masks[3] = {k_eth_fwpbfc_mask,
+                                                k_eth_fwpbfc_mask,
+                                                k_eth_fwpbfc_mask};
+  (void)ra8_eth_mfwd_set_forwarding_masks(local_fwpbfc_masks);
 
   const ra8_err_t err = ra8_eth_gwca_default_open(&s_gwca_state);
   if (err != k_ra8_ok) {
@@ -778,7 +778,7 @@ ra8_err_t ra8_eth_open(const ra8_eth_cfg_t* cfg)
    * so the on-chip RMAC's MPIC.LSC matches whatever speed the PHY
    * actually negotiated (HUM Ch 33.4.1.2 "MPIC : PHY Interfaces
    * Configuration Register" p 1707). */
-  s_eth_mac_speed_resynced = false;
+  g_eth_mac_speed_resynced = false;
 
   internal_capture_state(cfg);
 
@@ -809,7 +809,7 @@ ra8_err_t ra8_eth_close(void)
   (void)ra8_eth_gwca_set_operation_mode(k_ra8_gwmc_opc_disable);
 
   /* Tear down the local RMAC port (MSTP-gate ref-counted). */
-  const ra8_rmac_port_t rmac_port = ra8_eth_channel_to_port(s_eth_state.cfg.channel);
+  const ra8_rmac_port_t rmac_port = priv_ra8_eth_channel_to_port(s_eth_state.cfg.channel);
   (void)ra8_rmac_deinit(rmac_port);
 
   /* Balance the second ESWM-MSTP enable that ::ra8_eth_gwca_default_open
@@ -819,7 +819,7 @@ ra8_err_t ra8_eth_close(void)
   (void)ra8_eth_gwca_deinit();
 
   s_eth_state.opened       = 0U;
-  s_eth_mac_speed_resynced = false;
+  g_eth_mac_speed_resynced = false;
   return ra8_mstp_disable(k_ra8_mstp_eswm);
 }
 

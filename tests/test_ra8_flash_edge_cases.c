@@ -24,8 +24,8 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_flash.h"
@@ -56,7 +56,8 @@ typedef enum : uint32_t {
   k_flash_edge_addr_below_mram = 0x01FFFFF0UL, /**< Flash edge address below MRAM. */
 } ra8_flash_edge_addr_t;
 
-static ra8_flash_cfg_t make_cfg(void)
+/** @brief Prepare the fixture's make cfg state. @details Implements the make cfg fixture operation used only by this focused test executable. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_flash_cfg_t internal_make_cfg(void)
 {
   return (ra8_flash_cfg_t){
     .mrcfreq_mhz        = k_flash_core_clock_mhz,
@@ -73,13 +74,12 @@ static ra8_flash_cfg_t make_cfg(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_blank_check_partial_page(void)
+ * code under test that this case touches) @brief Verify blank check partial page behavior. @details Executes the blank check partial page scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_blank_check_partial_page(void)
 {
   TEST_BEGIN("flash blank_check on partially-erased page returns false");
   ra8_fake_mmap_reset();
-  const ra8_flash_cfg_t cfg = make_cfg();
+  const ra8_flash_cfg_t cfg = internal_make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
 
   /* Stage a 32-byte page where only the first 16 bytes are erased. */
@@ -110,13 +110,12 @@ static void test_blank_check_partial_page(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_blank_check_page_boundary(void)
+ * code under test that this case touches) @brief Verify blank check page boundary behavior. @details Executes the blank check page boundary scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_blank_check_page_boundary(void)
 {
   TEST_BEGIN("flash blank_check spanning page boundary");
   ra8_fake_mmap_reset();
-  const ra8_flash_cfg_t cfg = make_cfg();
+  const ra8_flash_cfg_t cfg = internal_make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
 
   /* Stage 64 bytes: first 32 dirty, second 32 erased. The check covers
@@ -141,9 +140,8 @@ static void test_blank_check_page_boundary(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_write_block_crosses_page(void)
+ * code under test that this case touches) @brief Verify write block crosses page behavior. @details Executes the write block crosses page scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_write_block_crosses_page(void)
 {
   TEST_BEGIN("flash write_block rejects spans crossing the 32-byte page");
   ra8_fake_mmap_reset();
@@ -169,9 +167,8 @@ static void test_write_block_crosses_page(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_config_set_write_error_rollback(void)
+ * code under test that this case touches) @brief Verify config set write error rollback behavior. @details Executes the config set write error rollback scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_config_set_write_error_rollback(void)
 {
   TEST_BEGIN("flash config_set_write returns hw_error when MSTATR sets OTERR");
   ra8_fake_mmap_reset();
@@ -195,9 +192,8 @@ static void test_config_set_write_error_rollback(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_extra_mram_erase_bad_addr(void)
+ * code under test that this case touches) @brief Verify extra mram erase bad addr behavior. @details Executes the extra mram erase bad addr scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_extra_mram_erase_bad_addr(void)
 {
   TEST_BEGIN("flash extra_mram_erase rejects address outside the window");
   ra8_fake_mmap_reset();
@@ -214,9 +210,8 @@ static void test_extra_mram_erase_bad_addr(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_write_during_read_collision(void)
+ * code under test that this case touches) @brief Verify write during read collision behavior. @details Executes the write during read collision scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_write_during_read_collision(void)
 {
   TEST_BEGIN("flash config_set_write returns hw_timeout if MRDY never asserts");
   ra8_fake_mmap_reset();
@@ -232,12 +227,12 @@ static void test_write_during_read_collision(void)
 }
 
 /**
- * @test test_mcdc_flash_window_allows_pure
+ * @test internal_test_mcdc_flash_window_allows_pure
  *
  * @par MC/DC:
  * Decision at libs/ra8_hal/src/ra8_flash.c
  *   ``if (s_rt.win_low == 0U && s_rt.win_high == 0U)`` (2 conditions, AND).
- * Promoted via @ref ra8_flash_internal_window_allows_pure so the test
+ * Promoted via @ref priv_ra8_flash_internal_window_allows_pure so the test
  * can drive the four input dimensions independently of module state.
  *
  * - V1: win_low=0, win_high=0 -> C1=T C2=T -> "no window" -> true.
@@ -249,31 +244,30 @@ static void test_write_during_read_collision(void)
  * (addr<low and end_excl>high) so the helper is fully covered.
  *
  * @par DO-178C 6.4.4.3 rationale:
- * 2-condition AND; N+1 = 3 vectors satisfy MC/DC fully.
- */
-static void test_mcdc_flash_window_allows_pure(void)
+ * 2-condition AND; N+1 = 3 vectors satisfy MC/DC fully. @brief Verify mcdc flash window allows pure behavior. @details Executes the mcdc flash window allows pure scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_flash_window_allows_pure(void)
 {
   TEST_BEGIN("flash MC/DC: window_allows_pure AND");
 
   /* V1: both zero -> permissive sentinel, returns true regardless of addr/len. */
-  TEST_ASSERT(ra8_flash_internal_window_allows_pure(0x100U, 16U, 0U, 0U));
-  TEST_ASSERT(ra8_flash_internal_window_allows_pure(0xFFFFFFFFU, 1U, 0U, 0U));
+  TEST_ASSERT(priv_ra8_flash_internal_window_allows_pure(0x100U, 16U, 0U, 0U));
+  TEST_ASSERT(priv_ra8_flash_internal_window_allows_pure(0xFFFFFFFFU, 1U, 0U, 0U));
 
   /* V2: win_low non-zero (C1=F) -- addr inside window passes. */
-  TEST_ASSERT(ra8_flash_internal_window_allows_pure(0x200U, 16U, 0x100U, 0x300U));
+  TEST_ASSERT(priv_ra8_flash_internal_window_allows_pure(0x200U, 16U, 0x100U, 0x300U));
   /* V2b: addr below window low -> false. */
-  TEST_ASSERT(!ra8_flash_internal_window_allows_pure(0x50U, 16U, 0x100U, 0x300U));
+  TEST_ASSERT(!priv_ra8_flash_internal_window_allows_pure(0x50U, 16U, 0x100U, 0x300U));
 
   /* V3: win_high non-zero (C2=F) -- end_excl exceeds high -> false. */
-  TEST_ASSERT(!ra8_flash_internal_window_allows_pure(0x2F0U, 32U, 0U, 0x300U));
+  TEST_ASSERT(!priv_ra8_flash_internal_window_allows_pure(0x2F0U, 32U, 0U, 0x300U));
   /* V3b: end_excl exactly equals high -> true (high is exclusive upper). */
-  TEST_ASSERT(ra8_flash_internal_window_allows_pure(0x2F0U, 16U, 0U, 0x300U));
+  TEST_ASSERT(priv_ra8_flash_internal_window_allows_pure(0x2F0U, 16U, 0U, 0x300U));
 
   TEST_END("flash MC/DC: window_allows_pure AND");
 }
 
 /**
- * @test test_mcdc_flash_wait_buffer_ready_pair
+ * @test internal_test_mcdc_flash_wait_buffer_ready_pair
  *
  * @par MC/DC:
  * Decision (libs/ra8_hal/src/ra8_flash.c line 150):
@@ -281,7 +275,7 @@ static void test_mcdc_flash_window_allows_pure(void)
  * (2 conditions, AND; N+1 = 3 vectors).
  *
  * Reaches the production helper directly through
- * @ref ra8_flash_internal_wait_buffer_ready_call (test-access wrapper)
+ * @ref priv_ra8_flash_internal_wait_buffer_ready_call (test-access wrapper)
  * with the fake-backed MRCPS register pre-populated.
  *
  * - V1: MRCPS = PRGBSYC|ABUFFULL -> C1=F, C2=F. Decision F. With limit=2
@@ -290,9 +284,8 @@ static void test_mcdc_flash_window_allows_pure(void)
  * - V3: MRCPS = ABUFFULL         -> C1=T, C2=F. Decision F. hw_timeout.
  * - V4: MRCPS = 0                -> C1=T, C2=T. Decision T. ok.
  * V1+V4 vary both; V2+V4 isolate C1; V3+V4 isolate C2. Provides the N+1
- * minimal MC/DC for the 2-condition AND.
- */
-static void test_mcdc_flash_wait_buffer_ready_pair(void)
+ * minimal MC/DC for the 2-condition AND. @brief Verify mcdc flash wait buffer ready pair behavior. @details Executes the mcdc flash wait buffer ready pair scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_flash_wait_buffer_ready_pair(void)
 {
   TEST_BEGIN("flash MC/DC: wait_buffer_ready AND (line 150)");
   ra8_fake_mmap_reset();
@@ -300,25 +293,25 @@ static void test_mcdc_flash_wait_buffer_ready_pair(void)
   /* V1: both bits set -> decision F every iteration -> timeout. */
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) =
     (uint8_t)(k_ra8_mrcps_mask_prgbsyc | k_ra8_mrcps_mask_abuffull);
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_flash_internal_wait_buffer_ready_call(2U));
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, priv_ra8_flash_internal_wait_buffer_ready_call(2U));
 
   /* V2: PRGBSYC=1, ABUFFULL=0 -> C1=F shorts -> still decision F -> timeout. */
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) = (uint8_t)k_ra8_mrcps_mask_prgbsyc;
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_flash_internal_wait_buffer_ready_call(2U));
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, priv_ra8_flash_internal_wait_buffer_ready_call(2U));
 
   /* V3: PRGBSYC=0, ABUFFULL=1 -> C1=T C2=F -> decision F -> timeout. */
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) = (uint8_t)k_ra8_mrcps_mask_abuffull;
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_flash_internal_wait_buffer_ready_call(2U));
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, priv_ra8_flash_internal_wait_buffer_ready_call(2U));
 
   /* V4: both clear -> decision T -> ok on first iteration. */
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_internal_wait_buffer_ready_call(2U));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_flash_internal_wait_buffer_ready_call(2U));
 
   TEST_END("flash MC/DC: wait_buffer_ready AND (line 150)");
 }
 
 /**
- * @test test_mcdc_flash_wait_commit_done_pair
+ * @test internal_test_mcdc_flash_wait_commit_done_pair
  *
  * @par MC/DC:
  * Decision (libs/ra8_hal/src/ra8_flash.c line 181):
@@ -329,44 +322,42 @@ static void test_mcdc_flash_wait_buffer_ready_pair(void)
  * - V2: MRCPS = ABUFEMP|PRGBSYC  -> C1=T, C2=F. Decision F. hw_timeout.
  * - V3: MRCPS = PRGBSYC          -> C1=F, C2=F. Decision F. hw_timeout.
  * - V4: MRCPS = ABUFEMP          -> C1=T, C2=T. Decision T. ok.
- * V1+V4 isolate C1; V2+V4 isolate C2.
- */
-static void test_mcdc_flash_wait_commit_done_pair(void)
+ * V1+V4 isolate C1; V2+V4 isolate C2. @brief Verify mcdc flash wait commit done pair behavior. @details Executes the mcdc flash wait commit done pair scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_flash_wait_commit_done_pair(void)
 {
   TEST_BEGIN("flash MC/DC: wait_commit_done AND (line 181)");
   ra8_fake_mmap_reset();
 
   /* V1: ABUFEMP=0, PRGBSYC=0 -> C1=F shorts -> timeout. */
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_flash_internal_wait_commit_done_call(2U));
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, priv_ra8_flash_internal_wait_commit_done_call(2U));
 
   /* V2: ABUFEMP=1, PRGBSYC=1 -> C1=T C2=F -> timeout. */
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) =
     (uint8_t)(k_ra8_mrcps_mask_abufemp | k_ra8_mrcps_mask_prgbsyc);
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_flash_internal_wait_commit_done_call(2U));
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, priv_ra8_flash_internal_wait_commit_done_call(2U));
 
   /* V3: ABUFEMP=0, PRGBSYC=1 -> both conds F -> timeout. */
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) = (uint8_t)k_ra8_mrcps_mask_prgbsyc;
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_flash_internal_wait_commit_done_call(2U));
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, priv_ra8_flash_internal_wait_commit_done_call(2U));
 
   /* V4: ABUFEMP=1, PRGBSYC=0 -> all T -> ok. */
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) = (uint8_t)k_ra8_mrcps_mask_abufemp;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_internal_wait_commit_done_call(2U));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_flash_internal_wait_commit_done_call(2U));
 
   TEST_END("flash MC/DC: wait_commit_done AND (line 181)");
 }
 
 int32_t main(void)
 {
-  test_blank_check_partial_page();
-  test_blank_check_page_boundary();
-  test_write_block_crosses_page();
-  test_config_set_write_error_rollback();
-  test_extra_mram_erase_bad_addr();
-  test_write_during_read_collision();
-  test_mcdc_flash_window_allows_pure();
-  test_mcdc_flash_wait_buffer_ready_pair();
-  test_mcdc_flash_wait_commit_done_pair();
-  (void)fprintf(stderr, "[OK  ] test_ra8_flash_edge_cases.c\n");
+  internal_test_blank_check_partial_page();
+  internal_test_blank_check_page_boundary();
+  internal_test_write_block_crosses_page();
+  internal_test_config_set_write_error_rollback();
+  internal_test_extra_mram_erase_bad_addr();
+  internal_test_write_during_read_collision();
+  internal_test_mcdc_flash_window_allows_pure();
+  internal_test_mcdc_flash_wait_buffer_ready_pair();
+  internal_test_mcdc_flash_wait_commit_done_pair();
   return 0;
 }

@@ -25,6 +25,7 @@
 extern "C" {
 #endif
 
+#include "ra8_attributes.h"
 #include "ra8_etha.h"
 
 /**
@@ -68,7 +69,7 @@ extern ra8_etha_slot_t s_etha_slots[k_ra8_etha_port_count];
  * @note Thread safety: pure function, safe from any context.
  * @since 0.1.0
  */
-static inline bool internal_port_ok(ra8_etha_port_t port)
+RA8_INTERNAL static inline bool internal_port_ok(ra8_etha_port_t port)
 {
   return (uint8_t)port < k_ra8_etha_port_count;
 }

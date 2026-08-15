@@ -1,6 +1,8 @@
 /**
  * @file ra8_drw_internal.h
  * @brief Test-access surface for ra8_drw internal helpers (MC/DC).
+ *
+ * @details Declares module-private geometry helpers shared by the DRW command and drawing translation units.
  * @ingroup grp_hal_display
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -77,7 +79,7 @@ typedef enum : uint32_t {
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-static inline uint32_t internal_to_subpixel(int32_t px)
+RA8_INTERNAL static inline uint32_t internal_to_subpixel(int32_t px)
 {
   /* Cast to unsigned BEFORE the shift: px can be negative, and left-shifting a
    * negative signed value is undefined behaviour. The two's-complement result
@@ -105,7 +107,7 @@ static inline uint32_t internal_to_subpixel(int32_t px)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-static inline int32_t internal_iabs(int32_t v)
+RA8_INTERNAL static inline int32_t internal_iabs(int32_t v)
 {
   return (v < 0) ? -v : v;
 }
@@ -134,7 +136,7 @@ static inline int32_t internal_iabs(int32_t v)
  * @note Not thread-safe; writes MMIO.
  * @since 0.1.0
  */
-RA8_PRIV void internal_program_rect_bbox(const ra8_drw_rect_t* rect);
+RA8_PRIV void priv_program_rect_bbox(const ra8_drw_rect_t* rect);
 
 /**
  * @brief Framebuffer byte address of a rectangle's top-left pixel.
@@ -152,14 +154,14 @@ RA8_PRIV void internal_program_rect_bbox(const ra8_drw_rect_t* rect);
  * @retval base The rect is at (0, 0).
  *
  * @pre Driver initialized (pitch and pixel stride cached).
- * @pre @p rect lies on the surface -- see ::ra8_drw_internal_rect_off_surface.
+ * @pre @p rect lies on the surface -- see ::priv_ra8_drw_internal_rect_off_surface.
  * @post No state mutated.
  * @post Result is within the framebuffer for an on-surface rect.
  *
  * @note Pure with respect to hardware; reads driver-private state.
  * @since 0.1.0
  */
-RA8_PRIV uint32_t ra8_drw_internal_rect_origin(const ra8_drw_rect_t* rect);
+RA8_PRIV uint32_t priv_ra8_drw_internal_rect_origin(const ra8_drw_rect_t* rect);
 
 /**
  * @brief Reject a rectangle that would rasterize outside the framebuffer.
@@ -191,7 +193,7 @@ RA8_PRIV uint32_t ra8_drw_internal_rect_origin(const ra8_drw_rect_t* rect);
  * @note Not thread-safe; reads driver-private state.
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_drw_internal_rect_off_surface(const ra8_drw_rect_t* rect);
+RA8_PRIV bool priv_ra8_drw_internal_rect_off_surface(const ra8_drw_rect_t* rect);
 
 /**
  * @brief Pure predicate for the "rect is below min dim" rejection.
@@ -224,7 +226,8 @@ RA8_PRIV bool ra8_drw_internal_rect_off_surface(const ra8_drw_rect_t* rect);
  *
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_drw_internal_rect_below_min(uint16_t min_dim, uint16_t width, uint16_t height);
+RA8_PRIV bool
+priv_ra8_drw_internal_rect_below_min(uint16_t min_dim, uint16_t width, uint16_t height);
 
 /**
  * @brief Pure predicate for the "rect exceeds max dim" rejection.
@@ -258,8 +261,10 @@ RA8_PRIV bool ra8_drw_internal_rect_below_min(uint16_t min_dim, uint16_t width, 
  *
  * @since 0.1.0
  */
-RA8_PRIV bool
-ra8_drw_internal_rect_above_max(uint16_t max_w, uint16_t max_h, uint16_t width, uint16_t height);
+RA8_PRIV bool priv_ra8_drw_internal_rect_above_max(uint16_t max_w,
+                                                   uint16_t max_h,
+                                                   uint16_t width,
+                                                   uint16_t height);
 
 /**
  * @brief Read the cached ORIGIN (framebuffer base) render-trigger value.
@@ -283,7 +288,7 @@ ra8_drw_internal_rect_above_max(uint16_t max_w, uint16_t max_h, uint16_t width, 
  *       re-init.
  * @since 0.1.0
  */
-RA8_PRIV uint32_t ra8_drw_internal_origin(void);
+RA8_PRIV uint32_t priv_ra8_drw_internal_origin(void);
 
 /**
  * @brief Write COLOR1 through the software shadow (write-only register).
@@ -305,7 +310,7 @@ RA8_PRIV uint32_t ra8_drw_internal_origin(void);
  * @note Not thread-safe; writes MMIO.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_drw_internal_color1_write(uint32_t argb8888);
+RA8_PRIV void priv_ra8_drw_internal_color1_write(uint32_t argb8888);
 
 #ifdef __cplusplus
 }

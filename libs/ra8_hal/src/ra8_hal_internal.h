@@ -51,7 +51,7 @@
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline bool ra8_dotf_internal_channel_in_range(uint8_t channel)
+RA8_INTERNAL static inline bool internal_ra8_dotf_internal_channel_in_range(uint8_t channel)
 {
   return (uint16_t)channel < (uint16_t)k_ra8_dotf_channel_count;
 }
@@ -87,7 +87,7 @@ static inline bool ra8_dotf_internal_channel_in_range(uint8_t channel)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline bool internal_port_ok(ra8_rmac_port_t port)
+RA8_INTERNAL static inline bool internal_port_ok(ra8_rmac_port_t port)
 {
   return (uint8_t)port < k_ra8_rmac_port_count;
 }
@@ -122,7 +122,7 @@ static inline bool internal_port_ok(ra8_rmac_port_t port)
  * @note Not thread-safe; the caller must serialise concurrent access.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_mipi_csi_detach_all_handlers(void);
+RA8_PRIV void priv_ra8_mipi_csi_detach_all_handlers(void);
 
 /* =============================================================================
  * ra8_ssie: split between ra8_ssie.c (lifecycle / register knobs / polled FIFO /
@@ -156,7 +156,7 @@ typedef struct {
 } ra8_ssie_runtime_t;
 
 /**
- * @var s_ssie_runtime
+ * @var g_ssie_runtime
  * @brief Per-channel SSIE runtime state, shared across the ra8_ssie split.
  *
  * @details
@@ -169,7 +169,7 @@ typedef struct {
  * @warning Not thread-safe; callers must serialise concurrent access.
  * @since 0.1.0
  */
-extern ra8_ssie_runtime_t s_ssie_runtime[k_ra8_ssie_channel_count];
+extern ra8_ssie_runtime_t g_ssie_runtime[k_ra8_ssie_channel_count];
 
 /**
  * @brief Validate an SSIE channel index and return its register block.
@@ -192,7 +192,7 @@ extern ra8_ssie_runtime_t s_ssie_runtime[k_ra8_ssie_channel_count];
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV volatile r_ssie_regs_t* ra8_ssie_internal_regs(uint8_t channel);
+RA8_PRIV volatile r_ssie_regs_t* priv_ra8_ssie_internal_regs(uint8_t channel);
 
 /* =============================================================================
  * ra8_usb_hmsc: split between ra8_usb_hmsc.c (CBW/CSW helpers, lifecycle, attach
@@ -228,7 +228,7 @@ typedef struct {
 } ra8_usb_hmsc_state_t;
 
 /**
- * @var s_usb_hmsc_state
+ * @var g_usb_hmsc_state
  * @brief Singleton host-MSC shadow state, shared across the ra8_usb_hmsc split.
  *
  * @details
@@ -242,7 +242,7 @@ typedef struct {
  * @warning Not thread-safe; callers must serialise concurrent access.
  * @since 0.1.0
  */
-extern ra8_usb_hmsc_state_t s_usb_hmsc_state;
+extern ra8_usb_hmsc_state_t g_usb_hmsc_state;
 
 /* =============================================================================
  * ra8_canfd: split between ra8_canfd.c (clock / MSTP / global+channel mode state
@@ -282,5 +282,5 @@ extern ra8_usb_hmsc_state_t s_usb_hmsc_state;
  * @note Module-private to ``libs/ra8_hal/src``; not part of the public surface.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_canfd_internal_set_channel_mode(volatile r_canfd_t* reg,
-                                                       ra8_chmdc_mode_t    mode);
+RA8_PRIV ra8_err_t priv_ra8_canfd_internal_set_channel_mode(volatile r_canfd_t* reg,
+                                                            ra8_chmdc_mode_t    mode);

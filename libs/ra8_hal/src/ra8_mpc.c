@@ -18,6 +18,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -42,7 +43,7 @@ static const char* s_tag = "MPC";
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_check(ra8_port_t port, ra8_pin_t pin)
+RA8_INTERNAL static ra8_err_t internal_check(ra8_port_t port, ra8_pin_t pin)
 {
   if ((uint8_t)port > k_ra8_port_max) {
     return k_ra8_err_gpio_invalid_port;
@@ -72,7 +73,7 @@ static ra8_err_t internal_check(ra8_port_t port, ra8_pin_t pin)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void
+RA8_INTERNAL static void
 internal_update_pfs(ra8_port_t port, ra8_pin_t pin, uint32_t clear_mask, uint32_t set_mask)
 {
   volatile uint32_t* pfs = ra8_pfs_pmn(port, pin);
@@ -107,7 +108,7 @@ internal_update_pfs(ra8_port_t port, ra8_pin_t pin, uint32_t clear_mask, uint32_
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_reset_pfs(ra8_port_t port, ra8_pin_t pin, uint32_t set_mask)
+RA8_INTERNAL static void internal_reset_pfs(ra8_port_t port, ra8_pin_t pin, uint32_t set_mask)
 {
   volatile uint32_t* pfs = ra8_pfs_pmn(port, pin);
   if (pfs == nullptr) { /* GCOVR_EXCL_BR_LINE -- bounds already validated by caller */

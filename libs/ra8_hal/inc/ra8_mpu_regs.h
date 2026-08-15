@@ -1,6 +1,8 @@
 /**
  * @file ra8_mpu_regs.h
  * @brief Memory Protection Unit register layout for the Renesas RA8D2
+ *
+ * @details Defines typed Cortex-M85 MPU and RA8 memory-protection register layouts plus their fixed MMIO addresses.
  * @ingroup grp_hal_system
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

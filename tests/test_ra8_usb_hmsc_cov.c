@@ -13,7 +13,7 @@
  *
  * This suite injects the post-enumeration precondition -- the driver's
  * `attached` shadow flag -- directly through the module-private singleton
- * `s_usb_hmsc_state` (shared via `ra8_hal_internal.h`, the same object the
+ * `g_usb_hmsc_state` (shared via `ra8_hal_internal.h`, the same object the
  * enumeration ladder writes on a real attach). With the device marked
  * attached, every SCSI entry point (INQUIRY / READ_CAPACITY(10) /
  * READ(10) / WRITE(10)) runs its full CDB assembly and Bulk-Only-Transport
@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_hal_internal.h"
@@ -60,12 +61,11 @@ typedef enum : uint8_t {
 /**
  * @brief Reset the register mirror and driver state to a known baseline.
  *
- * @details Mirrors `test_ra8_usb_hmsc.c::prep`: wipes the fake MMIO
+ * @details Mirrors `test_ra8_usb_hmsc.c::internal_prep`: wipes the fake MMIO
  * windows, brings the module-stop gate up, and force-closes any prior
  * host-MSC session so each test starts from a clean, uninitialised
- * driver.
- */
-static void prep(void)
+ * driver. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
@@ -80,11 +80,10 @@ static void prep(void)
  * register mirror cannot answer that ladder, so the tests write the shadow
  * flag directly -- the same singleton object the ladder mutates -- to reach
  * the SCSI command path. `initialized` is already true from
- * `ra8_usb_hmsc_init`; only `attached` needs injecting.
- */
-static void mark_attached(void)
+ * `ra8_usb_hmsc_init`; only `attached` needs injecting. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_mark_attached(void)
 {
-  s_usb_hmsc_state.attached = true;
+  g_usb_hmsc_state.attached = true;
 }
 
 /* ---- SCSI INQUIRY: CDB build + CBW push (times out at the bulk-OUT wait) ---- */
@@ -95,14 +94,13 @@ static void mark_attached(void)
  * point, `internal_check_ready` LUN-in-range leg, the INQUIRY CDB builder,
  * and the BOT CBW push are all straight-line; the bulk-OUT completion wait
  * returns `k_ra8_err_hw_timeout` because the fake cannot re-assert the
- * pipe's BEMPSTS bit)
- */
-static void test_inquiry_attached_drives_bot_push(void)
+ * pipe's BEMPSTS bit) @brief Verify inquiry attached drives bot push behavior. @details Executes the inquiry attached drives bot push scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_inquiry_attached_drives_bot_push(void)
 {
   TEST_BEGIN("inquiry (attached) builds CDB + pushes CBW, bulk-OUT wait times out");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_hmsc_init(k_ra8_usb_speed_fs));
-  mark_attached();
+  internal_mark_attached();
 
   ra8_usb_hmsc_inquiry_response_t resp = {};
   /* Reaches internal_check_ready (LUN in range -> k_ra8_ok),
@@ -121,14 +119,13 @@ static void test_inquiry_attached_drives_bot_push(void)
  * (no compound decisions in the code this case touches -- the read-capacity
  * entry point, its CDB builder, and the BOT CBW push are straight-line;
  * the decode of the 8-byte capacity response is downstream of a successful
- * push and is not reached)
- */
-static void test_read_capacity_attached_drives_bot_push(void)
+ * push and is not reached) @brief Verify read capacity attached drives bot push behavior. @details Executes the read capacity attached drives bot push scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_read_capacity_attached_drives_bot_push(void)
 {
   TEST_BEGIN("read_capacity (attached) builds CDB + pushes CBW, bulk-OUT wait times out");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_hmsc_init(k_ra8_usb_speed_fs));
-  mark_attached();
+  internal_mark_attached();
 
   uint32_t block_count = 0U;
   uint32_t block_size  = 0U;
@@ -144,14 +141,13 @@ static void test_read_capacity_attached_drives_bot_push(void)
  * @par MC/DC:
  * (the only decision touched is `if (block_count == 0U)` -- a single
  * condition, driven false with block_count = 1; the base suite already
- * drives it true. The READ(10) CDB builder and CBW push are straight-line)
- */
-static void test_read10_attached_drives_bot_push(void)
+ * drives it true. The READ(10) CDB builder and CBW push are straight-line) @brief Verify read10 attached drives bot push behavior. @details Executes the read10 attached drives bot push scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_read10_attached_drives_bot_push(void)
 {
   TEST_BEGIN("read10 (attached) builds READ(10) CDB + pushes CBW, bulk-OUT wait times out");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_hmsc_init(k_ra8_usb_speed_fs));
-  mark_attached();
+  internal_mark_attached();
 
   uint8_t buf[k_test_scratch_len] = {};
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
@@ -168,14 +164,13 @@ static void test_read10_attached_drives_bot_push(void)
  * condition, driven false with block_count = 1. The WRITE(10) CDB builder
  * and the data-OUT run (`internal_run_data_out`) up to and including the
  * CBW push are straight-line; the per-packet data chunk loop is downstream
- * of a successful push and is not reached)
- */
-static void test_write10_attached_drives_bot_push(void)
+ * of a successful push and is not reached) @brief Verify write10 attached drives bot push behavior. @details Executes the write10 attached drives bot push scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_write10_attached_drives_bot_push(void)
 {
   TEST_BEGIN("write10 (attached) builds WRITE(10) CDB + pushes CBW, bulk-OUT wait times out");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_hmsc_init(k_ra8_usb_speed_fs));
-  mark_attached();
+  internal_mark_attached();
 
   uint8_t buf[k_test_scratch_len] = {};
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
@@ -193,14 +188,13 @@ static void test_write10_attached_drives_bot_push(void)
  * !attached legs; this case covers the `target_lun > k_ra8_hmsc_max_lun`
  * leg with an attached device and an out-of-range LUN, so the check
  * reaches and rejects on the LUN guard rather than short-circuiting on the
- * attach state. Every SCSI entry point funnels through the same guard.)
- */
-static void test_scsi_lun_out_of_range_rejected(void)
+ * attach state. Every SCSI entry point funnels through the same guard.) @brief Verify scsi lun out of range rejected behavior. @details Executes the scsi lun out of range rejected scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_scsi_lun_out_of_range_rejected(void)
 {
   TEST_BEGIN("attached SCSI ops reject an out-of-range LUN via internal_check_ready");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_hmsc_init(k_ra8_usb_speed_fs));
-  mark_attached();
+  internal_mark_attached();
 
   ra8_usb_hmsc_inquiry_response_t resp                    = {};
   uint32_t                        block_count             = 0U;
@@ -223,11 +217,10 @@ static void test_scsi_lun_out_of_range_rejected(void)
 
 int32_t main(void)
 {
-  test_inquiry_attached_drives_bot_push();
-  test_read_capacity_attached_drives_bot_push();
-  test_read10_attached_drives_bot_push();
-  test_write10_attached_drives_bot_push();
-  test_scsi_lun_out_of_range_rejected();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_hmsc_cov.c\n");
+  internal_test_inquiry_attached_drives_bot_push();
+  internal_test_read_capacity_attached_drives_bot_push();
+  internal_test_read10_attached_drives_bot_push();
+  internal_test_write10_attached_drives_bot_push();
+  internal_test_scsi_lun_out_of_range_rejected();
   return 0;
 }

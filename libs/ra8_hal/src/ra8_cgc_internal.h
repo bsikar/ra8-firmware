@@ -82,7 +82,7 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_cgc_wait_oscsf_set(uint8_t bit);
+RA8_PRIV ra8_err_t priv_ra8_cgc_wait_oscsf_set(uint8_t bit);
 
 /**
  * @brief Bounded poll on a single OSCSF flag becoming clear.
@@ -107,7 +107,7 @@ RA8_PRIV ra8_err_t ra8_cgc_wait_oscsf_set(uint8_t bit);
  *
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_cgc_wait_oscsf_clear(uint8_t bit);
+RA8_PRIV ra8_err_t priv_ra8_cgc_wait_oscsf_clear(uint8_t bit);
 
 /**
  * @brief Ensure HOCO is running so a USBCKCR/USB60CKCR/ESWCKCR SREQ->SRDY
@@ -138,4 +138,4 @@ RA8_PRIV ra8_err_t ra8_cgc_wait_oscsf_clear(uint8_t bit);
  *
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_cgc_ensure_hoco_running_for_usb_ck(void);
+RA8_PRIV ra8_err_t priv_ra8_cgc_ensure_hoco_running_for_usb_ck(void);
