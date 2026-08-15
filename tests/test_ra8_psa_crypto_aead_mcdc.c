@@ -743,6 +743,5 @@ int32_t main(void)
   test_mcdc_aead_decrypt_out_pair();
   test_mcdc_fake_aead_buf_loops();
   test_mcdc_fake_aead_buf_loops_overflow();
-  (void)fprintf(stderr, "[OK  ] test_ra8_psa_crypto_aead_mcdc.c\n");
   return 0;
 }

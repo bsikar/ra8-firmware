@@ -733,6 +733,5 @@ int32_t main(void)
   test_verify_error_legs();
   test_aead_encrypt_error_legs();
   test_aead_decrypt_error_legs();
-  (void)fprintf(stderr, "[OK  ] test_ra8_psa_crypto_guards.c\n");
   return 0;
 }
