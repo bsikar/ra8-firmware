@@ -34,7 +34,7 @@ static const char* const s_tag_chunked = "ra8_book_chunked";
  * Requires `table[0] == 0`, strictly increasing entries, an end offset equal
  * to @p payload_len (the streams exactly tile the rest of the file), and
  * every chunk's compressed length within the staging budget. Split from
- * `s_load_table` so each half stays within the function-size budget.
+ * `internal_load_table` so each half stays within the function-size budget.
  *
  * @param[in] rd          Reader carrying the parsed header fields.
  * @param[in] table_buf   Loaded table (`chunk_count + 1` entries).
@@ -56,7 +56,7 @@ static const char* const s_tag_chunked = "ra8_book_chunked";
  */
 RA8_INTERNAL
 static ra8_err_t
-s_table_check(const ra8_book_chunked_t* rd, const uint64_t* table_buf, uint64_t payload_len)
+internal_table_check(const ra8_book_chunked_t* rd, const uint64_t* table_buf, uint64_t payload_len)
 {
   if (table_buf[0] != 0U) {
     return k_ra8_err_invalid_arg;
@@ -99,9 +99,10 @@ s_table_check(const ra8_book_chunked_t* rd, const uint64_t* table_buf, uint64_t 
  *
  * @return ra8_err_t Status code.
  * @retval k_ra8_ok               Table loaded and validated; @p rd bound.
- * @retval k_ra8_err_invalid_arg  Table shape invalid (start, monotonicity, end).
- * @retval k_ra8_err_invalid_size Table exceeds the caller buffer / file bounds /
- *                               one-call read limit, or a chunk exceeds staging.
+ * @retval k_ra8_err_invalid_arg  Table shape invalid (start, monotonicity,
+ * end).
+ * @retval k_ra8_err_invalid_size Table exceeds the caller buffer / file bounds
+ * / one-call read limit, or a chunk exceeds staging.
  * @retval k_ra8_err_*            A file-read error, returned verbatim.
  *
  * @pre @p rd's header fields were populated by the caller.
@@ -114,10 +115,10 @@ s_table_check(const ra8_book_chunked_t* rd, const uint64_t* table_buf, uint64_t 
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_load_table(ra8_book_chunked_t* rd,
-                              uint64_t            file_len,
-                              uint64_t*           table_buf,
-                              uint32_t            table_cap_entries)
+static ra8_err_t internal_load_table(ra8_book_chunked_t* rd,
+                                     uint64_t            file_len,
+                                     uint64_t*           table_buf,
+                                     uint32_t            table_cap_entries)
 {
   const uint64_t entries     = (uint64_t)rd->chunk_count + 1U;
   const uint64_t table_bytes = entries * k_ra8_book_container_entry_len;
@@ -138,12 +139,13 @@ static ra8_err_t s_load_table(ra8_book_chunked_t* rd,
     return err;
   }
   const uint64_t  payload_off = (uint64_t)k_ra8_book_container_header_len + table_bytes;
-  const ra8_err_t shape       = s_table_check(rd, table_buf, file_len - payload_off);
+  const ra8_err_t shape       = internal_table_check(rd, table_buf, file_len - payload_off);
   if (shape != k_ra8_ok) {
     return shape;
   }
-  rd->table       = table_buf;
-  rd->payload_off = payload_off;
+  rd->table             = table_buf;
+  rd->table_cap_entries = table_cap_entries;
+  rd->payload_off       = payload_off;
   return k_ra8_ok;
 }
 
@@ -178,10 +180,10 @@ static ra8_err_t s_load_table(ra8_book_chunked_t* rd,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_chunked_open_body(ra8_book_chunked_t* rd,
-                                     uint64_t            file_len,
-                                     uint64_t*           table_buf,
-                                     uint32_t            table_cap_entries)
+static ra8_err_t internal_chunked_open_body(ra8_book_chunked_t* rd,
+                                            uint64_t            file_len,
+                                            uint64_t*           table_buf,
+                                            uint32_t            table_cap_entries)
 {
   if (file_len < (uint64_t)k_ra8_book_container_header_len) {
     return k_ra8_err_invalid_size;
@@ -196,7 +198,7 @@ static ra8_err_t s_chunked_open_body(ra8_book_chunked_t* rd,
   if (err != k_ra8_ok) {
     return err;
   }
-  return s_load_table(rd, file_len, table_buf, table_cap_entries);
+  return internal_load_table(rd, file_len, table_buf, table_cap_entries);
 }
 
 ra8_err_t ra8_book_chunked_open(ra8_book_chunked_t* rd,
@@ -221,7 +223,7 @@ ra8_err_t ra8_book_chunked_open(ra8_book_chunked_t* rd,
   rd->inflate     = inflate;
   rd->staging     = staging;
   rd->staging_cap = staging_cap;
-  return s_chunked_open_body(rd, file_len, table_buf, table_cap_entries);
+  return internal_chunked_open_body(rd, file_len, table_buf, table_cap_entries);
 }
 
 /**
@@ -255,7 +257,7 @@ ra8_err_t ra8_book_chunked_open(ra8_book_chunked_t* rd,
  */
 RA8_INTERNAL
 static ra8_err_t
-s_stage_and_inflate(const ra8_book_chunked_t* rd, uint32_t idx, uint8_t* buf, uint32_t len)
+internal_stage_and_inflate(const ra8_book_chunked_t* rd, uint32_t idx, uint8_t* buf, uint32_t len)
 {
   const uint64_t clen = rd->table[idx + 1U] - rd->table[idx];
   ra8_err_t      err =
@@ -295,5 +297,5 @@ ra8_err_t ra8_book_chunked_read(void* ctx, uint64_t offset, uint8_t* buf, uint32
   if ((uint64_t)len != expected) {
     return k_ra8_err_invalid_arg;
   }
-  return s_stage_and_inflate(rd, (uint32_t)(offset / (uint64_t)rd->chunk_bytes), buf, len);
+  return internal_stage_and_inflate(rd, (uint32_t)(offset / (uint64_t)rd->chunk_bytes), buf, len);
 }
