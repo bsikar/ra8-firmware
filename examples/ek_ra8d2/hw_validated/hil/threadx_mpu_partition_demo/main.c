@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -185,8 +186,25 @@ volatile uint32_t g_threadx_mpu_partition_match = 0U;
 
 /**
  * @brief Worker thread: blink LED1 to prove MPU did not wedge us.
+ *
+ * @details Toggles the board LED, advances the externally probed liveness
+ *          counter, and sleeps for the configured ThreadX interval forever.
+ *          Continued progress demonstrates that the MPU partition permits the
+ *          scheduler and board-control paths required by this thread.
+ *
+ * @param[in] thread_input ThreadX entry cookie; this demo does not use it.
+ *
+ * @return None.
+ *
+ * @pre ThreadX has started the scheduler and dispatched this worker.
+ * @pre LED1 and the static worker stack were initialized successfully.
+ * @post Each completed iteration toggles LED1 once.
+ * @post Each completed iteration advances ::g_threadx_mpu_partition_match.
+ *
+ * @note This is a permanent, single-instance ThreadX worker.
+ * @since 0.1.0
  */
-static void thread_entry(ULONG thread_input)
+RA8_INTERNAL static void internal_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
   while (1) {
@@ -203,7 +221,7 @@ void tx_application_define(void* first_unused_memory)
 
   UINT err = tx_thread_create(&s_thread,
                               "mpu_blink",
-                              thread_entry,
+                              internal_thread_entry,
                               0U,
                               s_thread_stack,
                               (ULONG)k_mpu_thread_stack_bytes,

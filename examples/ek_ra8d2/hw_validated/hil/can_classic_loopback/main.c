@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_canfd.h"
 #include "ra8_canfd_regs.h"
@@ -94,8 +95,23 @@ volatile uint32_t g_can_match = 0U;
  */
 volatile uint32_t g_can_mismatch = 0U;
 
-/** @brief Park forever after fatal init failure. */
-static void can_demo_panic_halt(void)
+/**
+ * @brief Park forever after a fatal classic-CAN demo failure.
+ *
+ * @details Retains the controller, LED, and HIL counter state in a permanent
+ *          wait-for-interrupt loop for debugger inspection.
+ *
+ * @return None.
+ *
+ * @pre The caller has determined that loopback validation cannot continue.
+ * @pre Any mismatch counter update required by the failure is complete.
+ * @post The function never returns to its caller.
+ * @post No later CAN transmit or receive is attempted.
+ *
+ * @note Fatal-path helper for this single-core image only.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_can_demo_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -105,6 +121,12 @@ static void can_demo_panic_halt(void)
 /**
  * @brief Enable Self-test 1 (internal loopback) on @p channel.
  *
+ * @details Delegates the channel halt, test-mode write, and operation-mode
+ *          restore sequence to the CAN-FD HAL while retaining classic framing.
+ *
+ * @param[in] channel CAN-FD controller channel configured for classic frames.
+ *
+ * @return ra8_err_t Status from applying the controller test mode.
  * @par MC/DC:
  * Decision: ``reg == nullptr``. One atomic condition x 2 vectors --
  * valid channel here, bad-channel covered in
@@ -118,9 +140,11 @@ static void can_demo_panic_halt(void)
  * @post CFDC[channel].CTR has CTME=1, CTMS=11b.
  * @post Channel is back in CH_OPERATION ready to TX.
  *
+ * @note The caller must ensure no frame is active during the mode transition.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t can_demo_enable_internal_loopback(uint8_t channel)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t
+internal_can_demo_enable_internal_loopback(uint8_t channel)
 {
   return ra8_canfd_set_test_mode(channel, k_ra8_ctms_self_test_1);
 }
@@ -134,39 +158,44 @@ static void can_demo_panic_halt(void)
  * documented way to keep the controller in classic CAN 2.0B mode
  * (DBR is left at reset).
  *
- * @pre Reset_Handler set up the C runtime.
- * @post CANFD0 is in operation mode with internal loopback on.
+ * @return None.
  *
+ * @pre Reset_Handler set up the C runtime.
+ * @pre CAN-FD channel 0 and LED1/LED2 are available to this image.
+ * @post CANFD0 is in operation mode with internal loopback on.
+ * @post On any dependency failure the function enters the permanent panic halt.
+ *
+ * @note Single-shot boot helper; it is not reentrant.
  * @since 0.1.0
  */
-static void can_demo_setup_or_halt(void)
+RA8_INTERNAL static void internal_can_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    can_demo_panic_halt();
+    internal_can_demo_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    can_demo_panic_halt();
+    internal_can_demo_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    can_demo_panic_halt();
+    internal_can_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    can_demo_panic_halt();
+    internal_can_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
-    can_demo_panic_halt();
+    internal_can_demo_panic_halt();
   }
   if (ra8_canfd_init((uint8_t)k_can_demo_channel) != k_ra8_ok) {
-    can_demo_panic_halt();
+    internal_can_demo_panic_halt();
   }
   /* Classic CAN: data_bitrate_bps == 0. */
   if (ra8_canfd_set_bitrate((uint8_t)k_can_demo_channel, (uint32_t)k_can_demo_bitrate, 0U) !=
       k_ra8_ok) {
-    can_demo_panic_halt();
+    internal_can_demo_panic_halt();
   }
-  if (can_demo_enable_internal_loopback((uint8_t)k_can_demo_channel) != k_ra8_ok) {
-    can_demo_panic_halt();
+  if (internal_can_demo_enable_internal_loopback((uint8_t)k_can_demo_channel) != k_ra8_ok) {
+    internal_can_demo_panic_halt();
   }
 }
 
@@ -180,7 +209,7 @@ static void can_demo_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t can_demo_one_round_trip(uint8_t seq)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_can_demo_one_round_trip(uint8_t seq)
 {
   ra8_canfd_frame_t tx = {
     .id          = (uint32_t)k_can_demo_id,
@@ -211,12 +240,12 @@ static void can_demo_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  can_demo_setup_or_halt();
+  internal_can_demo_setup_or_halt();
   ra8_isr_globals_enable();
 
   uint8_t seq = 0U;
   while (1) {
-    if (can_demo_one_round_trip(seq) == k_ra8_ok) {
+    if (internal_can_demo_one_round_trip(seq) == k_ra8_ok) {
       (void)ra8_board_led_toggle(k_ra8_board_led1);
       g_can_match += 1U;
     } else {
@@ -226,7 +255,7 @@ int32_t main(void)
     seq++;
     ra8_delay_ms((uint32_t)k_can_demo_period_ms);
   }
-  can_demo_panic_halt();
+  internal_can_demo_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

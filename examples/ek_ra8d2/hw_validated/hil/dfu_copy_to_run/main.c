@@ -24,7 +24,7 @@
  * run window, CycleCnt advancing, CFSR/HFSR clean, not in a fault spinner" is a
  * specific proof that copy-to-run executed. If the launch's run-target check
  * fails (it never should: a fixed run base + a valid length), control returns
- * and parks in ::dcr_panic_halt, which the alive gate flags as a fault spinner.
+ * and parks in ::internal_dcr_panic_halt, which the alive gate flags as a fault spinner.
  *
  * Unlike the bootloader's alive gate (which can also pass via the DFU-device
  * fallback when no slot is valid), this app ALWAYS copies-to-run, so its alive
@@ -41,6 +41,7 @@
 #include <string.h>
 
 #include "payload_image.h"
+#include "ra8_attributes.h"
 #include "ra8_dfu.h"
 
 /**
@@ -107,7 +108,7 @@ typedef enum : uintptr_t {
  * @note Named `*panic_halt` so the HIL alive gate's fault-spinner check matches.
  * @since 0.1.0
  */
-[[noreturn]] static void dcr_panic_halt(void)
+[[noreturn]] RA8_INTERNAL static void internal_dcr_panic_halt(void)
 {
   /* NASA Rule 2 exemption: terminal panic spin -- intentionally never exits. */
   while (1) {
@@ -123,13 +124,13 @@ typedef enum : uintptr_t {
  * @pre Reset_Handler copied .data and zeroed .bss; SystemInit ran.
  * @pre The embedded image's first two words are a valid MSP + Thumb reset vector.
  * @post On success, control is at the image's reset vector in the SRAM run window.
- * @post On a failed run-target check, control parks in ::dcr_panic_halt.
+ * @post On a failed run-target check, control parks in ::internal_dcr_panic_halt.
  * @note Single entry point; not re-entrant.
  * @since 0.1.0
  */
 int32_t main(void)
 {
-  static_assert(sizeof(g_payload_image) >= (2U * sizeof(uint32_t)),
+  static_assert(sizeof(s_payload_image) >= (2U * sizeof(uint32_t)),
                 "payload image must contain at least the 2-word vector table");
 
   /* HIL contract: the memprobe gate reads g_dcr_run_heartbeat by name and asserts
@@ -137,32 +138,32 @@ int32_t main(void)
    * addresses the payload writes (payload.c k_payload_probe_*). Trip the fault
    * path loudly (and freeze the heartbeat) if a future edit breaks either pin. */
   if ((uintptr_t)&g_dcr_run_sentinel != (uintptr_t)k_dcr_probe_sentinel_addr) {
-    dcr_panic_halt();
+    internal_dcr_panic_halt();
   }
   if ((uintptr_t)&g_dcr_run_heartbeat != (uintptr_t)k_dcr_probe_counter_addr) {
-    dcr_panic_halt();
+    internal_dcr_panic_halt();
   }
 
   uint32_t initial_sp  = 0U;
   uint32_t reset_entry = 0U;
-  memcpy(&initial_sp, &g_payload_image[0], sizeof(initial_sp));
-  memcpy(&reset_entry, &g_payload_image[sizeof(initial_sp)], sizeof(reset_entry));
+  memcpy(&initial_sp, &s_payload_image[0], sizeof(initial_sp));
+  memcpy(&reset_entry, &s_payload_image[sizeof(initial_sp)], sizeof(reset_entry));
   /* Preconditions (NASA Rule 5): the embedded image must carry a plausible SRAM
    * stack pointer and a Thumb reset vector before we hand off to it. */
   if ((initial_sp & (uint32_t)k_dcr_sram_mask) != (uint32_t)k_dcr_sram_base) {
-    dcr_panic_halt();
+    internal_dcr_panic_halt();
   }
   if ((reset_entry & (uint32_t)k_dcr_thumb_bit) == 0U) {
-    dcr_panic_halt();
+    internal_dcr_panic_halt();
   }
 
   /* Copy-to-run: ra8_dfu_launch copies the image to k_ra8_dfu_run_base and branches
    * there. It returns only if the run-target check fails (it should not). */
-  ra8_dfu_launch((uintptr_t)g_payload_image,
-                 (uint32_t)sizeof(g_payload_image),
+  ra8_dfu_launch((uintptr_t)s_payload_image,
+                 (uint32_t)sizeof(s_payload_image),
                  (uint32_t)k_ra8_dfu_run_base);
 
-  dcr_panic_halt();
+  internal_dcr_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

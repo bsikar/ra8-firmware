@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_dac_b.h"
@@ -69,38 +70,86 @@ typedef enum : uint8_t {
  */
 volatile uint32_t g_dac_b_demo_tick = 0U;
 
-static void dac_b_demo_panic_halt(void)
+/**
+ * @brief Park the processor after an unrecoverable DAC demo failure.
+ *
+ * @details Enters a permanent wait-for-interrupt loop so an attached debugger
+ *          can inspect the DAC, LED, and ramp state at the failure point.
+ *
+ * @return None.
+ *
+ * @pre The caller has determined that continuing the analog ramp is unsafe.
+ * @pre Any desired LED or debugger diagnostic has already been requested.
+ * @post The function never returns to its caller.
+ * @post No further DAC samples or liveness increments are produced.
+ *
+ * @note Fatal-path helper for this single-core demo only.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_dac_b_demo_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-static void dac_b_demo_setup_or_halt(void)
+/**
+ * @brief Initialize the DAC demo's clock, time base, and status LED.
+ *
+ * @details Starts CGC, derives CPUCLK0 for the millisecond time service, and
+ *          initializes LED1. Any dependency error enters the permanent fatal
+ *          halt instead of exposing partially initialized state.
+ *
+ * @return None.
+ *
+ * @pre Reset-time platform initialization configured the core and C runtime.
+ * @pre LED1 is available for exclusive use by this demonstration image.
+ * @post On success the time base and LED1 are ready for the DAC ramp loop.
+ * @post On failure the function never returns to its caller.
+ *
+ * @note Single-shot boot helper; it is not reentrant.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_dac_b_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    dac_b_demo_panic_halt();
+    internal_dac_b_demo_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    dac_b_demo_panic_halt();
+    internal_dac_b_demo_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    dac_b_demo_panic_halt();
+    internal_dac_b_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    dac_b_demo_panic_halt();
+    internal_dac_b_demo_panic_halt();
   }
 }
 
 /**
  * @brief Configure DAC_B in 12-bit, normal-vref mode.
  *
+ * @details Selects right-aligned samples with the normal reference and enables
+ *          channel 0 while leaving channel 1 disabled.
+ *
  * @par MC/DC:
  * Decision: ``ra8_dac_b_init_configured != ok``. One atomic condition
  * x 2 vectors -- golden (this) + null cfg (test_app_dac_b_demo.c).
+ *
+ * @return ra8_err_t Status from the configured DAC initialization.
+ * @retval k_ra8_ok Channel 0 was configured with the requested sample format.
+ * @retval (other)  The DAC driver rejected or could not apply the configuration.
+ *
+ * @pre ::internal_dac_b_demo_setup_or_halt completed successfully.
+ * @pre No other context is configuring DAC_B concurrently.
+ * @post On success channel 0 is configured but output enable remains caller-controlled.
+ * @post Channel 1 remains disabled by this configuration.
+ *
+ * @note Output enable and ramp writes are deliberately performed by the caller.
+ * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t dac_b_demo_arm(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_dac_b_demo_arm(void)
 {
   const ra8_dac_b_cfg_t cfg = {
     .vref            = k_ra8_dac_b_vref_normal,
@@ -115,14 +164,14 @@ static void dac_b_demo_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  dac_b_demo_setup_or_halt();
+  internal_dac_b_demo_setup_or_halt();
   ra8_isr_globals_enable();
 
-  if (dac_b_demo_arm() != k_ra8_ok) {
-    dac_b_demo_panic_halt();
+  if (internal_dac_b_demo_arm() != k_ra8_ok) {
+    internal_dac_b_demo_panic_halt();
   }
   if (ra8_dac_b_set_output_enable((uint8_t)k_dac_b_demo_channel, true) != k_ra8_ok) {
-    dac_b_demo_panic_halt();
+    internal_dac_b_demo_panic_halt();
   }
 
   uint16_t code = 0U;
@@ -149,7 +198,7 @@ int32_t main(void)
     }
     ra8_delay_ms((uint32_t)k_dac_b_demo_step_ms);
   }
-  dac_b_demo_panic_halt();
+  internal_dac_b_demo_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_doc.h"
@@ -42,7 +43,7 @@ typedef enum : uint8_t {
 } doc_demo_layout_t;
 
 /** @brief Eight 16-bit operands chained through DOC.add. */
-static const uint16_t k_doc_demo_operands[k_doc_demo_table_len] = {
+static const uint16_t s_doc_demo_operands[k_doc_demo_table_len] = {
   0x1111U,
   0x2222U,
   0x3333U,
@@ -53,8 +54,17 @@ static const uint16_t k_doc_demo_operands[k_doc_demo_table_len] = {
   0xDEADU,
 };
 
-/** @brief Park the CPU forever after fatal init failure. */
-static void doc_demo_panic_halt(void)
+/**
+ * @brief Park the core after an unrecoverable DOC demo failure.
+ * @details Repeatedly executes WFI, retaining DOC and clock state for debugging.
+ * @pre Called only from a fatal boot or terminal foreground path.
+ * @pre The caller does not require recovery without reset.
+ * @post The core stays in the WFI loop until external intervention.
+ * @post Neither HIL result counter changes after entry.
+ * @note Not thread-safe; this is the terminal single-threaded path.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -98,29 +108,38 @@ volatile uint32_t g_doc_mismatch = 0U;
 
 /**
  * @brief Software reference: sum every operand modulo 2^16.
+ * @details Walks the immutable operand table in order with explicit 16-bit
+ *          wraparound, providing the reference for the DOC accumulator.
  *
  * @par MC/DC:
  * Loop bound is statically known; no compound boolean decisions in
  * this helper. (MC/DC vector pattern: trivial; covered by any call.)
  *
  * @return Wrap-around sum.
+ * @retval 0..UINT16_MAX Deterministic modulo-2^16 table sum.
  *
  * @pre None.
+ * @pre The file-scope operand table is fully initialized.
  * @post Return value is reproducible for the fixed operand table.
+ * @post Neither the table nor any peripheral state is modified.
+ * @note Pure and reentrant.
  *
  * @since 0.1.0
  */
-static uint16_t doc_demo_sw_sum(void)
+RA8_INTERNAL static uint16_t internal_sw_sum(void)
 {
   uint16_t acc = 0U;
   for (uint8_t i = 0U; i < (uint8_t)k_doc_demo_table_len; ++i) {
-    acc = (uint16_t)(acc + k_doc_demo_operands[i]);
+    acc = (uint16_t)(acc + s_doc_demo_operands[i]);
   }
   return acc;
 }
 
 /**
  * @brief Hardware DOC sum: chain seven add16 calls into the accumulator.
+ * @details Seeds the accumulator from the first table item, applies each
+ *          remaining operand through DOC add16, and publishes only the final
+ *          complete result.
  *
  * @par MC/DC:
  * Compound decision: ``ra8_doc_add16 != ok``. One atomic condition x
@@ -128,18 +147,24 @@ static uint16_t doc_demo_sw_sum(void)
  * pointer rejection).
  *
  * @param[out] out_sum Receives the chained DOC sum.
+ * @return Status of the chained hardware calculation.
+ * @retval k_ra8_ok Every DOC addition succeeded and ``*out_sum`` was written.
+ * @retval (other) The first DOC operation error, returned without publishing.
  *
  * @pre out_sum non-NULL.
- * @post On success *out_sum == doc_demo_sw_sum().
+ * @pre ``ra8_doc_init`` completed successfully.
+ * @post On success *out_sum == internal_sw_sum().
+ * @post On failure no later table operand is processed.
+ * @note Not thread-safe with concurrent access to the DOC accumulator.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t doc_demo_hw_sum(uint16_t* out_sum)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_hw_sum(uint16_t* out_sum)
 {
-  uint16_t acc = k_doc_demo_operands[0];
+  uint16_t acc = s_doc_demo_operands[0];
   for (uint8_t i = 1U; i < (uint8_t)k_doc_demo_table_len; ++i) {
     uint16_t        partial = 0U;
-    const ra8_err_t err     = ra8_doc_add16(acc, k_doc_demo_operands[i], &partial);
+    const ra8_err_t err     = ra8_doc_add16(acc, s_doc_demo_operands[i], &partial);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -149,32 +174,45 @@ static uint16_t doc_demo_sw_sum(void)
   return k_ra8_ok;
 }
 
-/** @brief Bring CGC + SysTick + LEDs + DOC up. Halts on any error. */
-static void doc_demo_setup_or_halt(void)
+/**
+ * @brief Bring CGC, SysTick, both LEDs, and DOC up or halt.
+ * @details Initializes dependencies in order and transfers to the panic helper
+ *          on the first failed HAL operation.
+ * @pre Reset startup initialized static storage and the vector table.
+ * @pre Called once before global interrupt enable.
+ * @post On return, DOC and both status LEDs are ready for the compare loop.
+ * @post The delay service uses the measured CPU clock.
+ * @note Not thread-safe; it mutates global peripheral state.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    doc_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    doc_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    doc_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    doc_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
-    doc_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_doc_init() != k_ra8_ok) {
-    doc_demo_panic_halt();
+    internal_panic_halt();
   }
 }
 
 /**
  * @brief One iteration: HW sum + SW sum + compare.
+ * @details Runs the hardware calculation first, computes the immutable software
+ *          reference only after hardware success, and normalizes equality to a
+ *          one-byte boolean result.
  *
  * @par MC/DC:
  * Compound decision: ``hw_err != ok || hw_sum != sw_sum``. Two
@@ -183,35 +221,52 @@ static void doc_demo_setup_or_halt(void)
  * a wrong DODSR value).
  *
  * @param[out] out_match Receives 1 if hw == sw, 0 otherwise.
- * @return ra8_err_t from doc_demo_hw_sum.
+ * @return Status from ``internal_hw_sum``.
+ * @retval k_ra8_ok ``*out_match`` contains the normalized comparison result.
+ * @retval (other) Hardware calculation failed and comparison was skipped.
  *
  * @pre out_match non-NULL.
+ * @pre The DOC peripheral was initialized by ``internal_setup_or_halt``.
  * @post On success *out_match is 0 or 1.
+ * @post On failure the hardware error is returned unchanged.
+ * @note Not thread-safe with concurrent DOC access.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t doc_demo_one_iter(uint8_t* out_match)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_one_iter(uint8_t* out_match)
 {
   uint16_t        hw  = 0U;
-  const ra8_err_t err = doc_demo_hw_sum(&hw);
+  const ra8_err_t err = internal_hw_sum(&hw);
   if (err != k_ra8_ok) {
     return err;
   }
-  const uint16_t sw = doc_demo_sw_sum();
+  const uint16_t sw = internal_sw_sum();
   *out_match        = (hw == sw) ? 1U : 0U;
   return k_ra8_ok;
 }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
+/**
+ * @brief Compare DOC and software sums continuously for HIL observation.
+ * @details Initializes the demo, executes one comparison per period, increments
+ *          the exported match or mismatch counter, and toggles the matching LED.
+ * @return Unreachable success value retained for the freestanding ABI.
+ * @pre Reset startup and SystemInit completed successfully.
+ * @pre DOC and the status LEDs are not owned by another context.
+ * @post Every iteration increments exactly one HIL result counter.
+ * @post LED1 represents matches and LED2 represents failures or mismatches.
+ * @note Does not return during normal operation.
+ * @since 0.1.0
+ */
 int32_t main(void)
 {
-  doc_demo_setup_or_halt();
+  internal_setup_or_halt();
   ra8_isr_globals_enable();
 
   while (1) {
     uint8_t         match = 0U;
-    const ra8_err_t err   = doc_demo_one_iter(&match);
+    const ra8_err_t err   = internal_one_iter(&match);
     if (err != k_ra8_ok) {
       g_doc_mismatch += 1U;
       (void)ra8_board_led_toggle(k_ra8_board_led2);
@@ -224,7 +279,7 @@ int32_t main(void)
     }
     ra8_delay_ms((uint32_t)k_doc_demo_period_ms);
   }
-  doc_demo_panic_halt();
+  internal_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

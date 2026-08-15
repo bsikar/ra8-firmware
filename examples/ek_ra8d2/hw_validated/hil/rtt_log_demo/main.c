@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -80,8 +81,17 @@ static uint8_t s_rtt_down_buf[k_rtt_down_buf_bytes];
 /** @brief The control block itself. */
 static rtt_cb_t s_rtt_cb;
 
-/** @brief Park the CPU after a fatal init failure. */
-static void rtt_demo_panic_halt(void)
+/**
+ * @brief Park the core after an unrecoverable RTT demo failure.
+ * @details Repeatedly executes WFI while preserving the ring and clock state.
+ * @pre Called only from a fatal boot or terminal foreground path.
+ * @pre The caller does not require recovery without reset.
+ * @post The core stays in WFI until external intervention.
+ * @post No RTT producer index changes after entry.
+ * @note Not thread-safe; this is the terminal single-threaded path.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -96,12 +106,15 @@ static void rtt_demo_panic_halt(void)
  * a search for ``"SEGGER RTT"`` in the firmware image only matches the
  * runtime control block, not a stale literal pool entry.
  *
- * @pre Called once before the first @ref rtt_write.
+ * @pre Called once before the first @ref internal_write.
+ * @pre The file-scope control block and buffers occupy writable SRAM.
  * @post @c s_rtt_cb.id begins with ``S E G G E R sp R T T``.
+ * @post Both channel descriptors use empty, bounded caller-owned rings.
+ * @note Not thread-safe; initialization replaces every descriptor field.
  *
  * @since 0.1.0
  */
-static void rtt_init(void)
+RA8_INTERNAL static void internal_init(void)
 {
   static const char k_magic[] = {'S', 'E', 'G', 'G', 'E', 'R', ' ', 'R', 'T', 'T', 0};
   for (size_t i = 0U; i < sizeof k_magic; i++) {
@@ -134,12 +147,19 @@ static void rtt_init(void)
  * @param[in] data Bytes to enqueue.
  * @param[in] len  Byte count; data fitting beyond head is dropped.
  *
+ * @return RTT producer status.
  * @retval k_ra8_ok            Bytes were appended (or dropped silently).
  * @retval k_ra8_err_null_ptr  data was NULL.
  *
+ * @pre ``internal_init`` configured channel zero and its backing buffer.
+ * @pre The host owns only ``rd_off`` while this producer owns ``wr_off``.
+ * @post Successfully enqueued bytes precede the published write offset.
+ * @post The producer never advances into the consumer's current read slot.
+ * @note Single-producer only; not thread-safe across firmware writers.
+ *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t rtt_write(const uint8_t* data, uint32_t len)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_write(const uint8_t* data, uint32_t len)
 {
   if (data == nullptr) {
     return k_ra8_err_null_ptr;
@@ -161,12 +181,21 @@ static void rtt_init(void)
 
 /**
  * @brief Format ``"rtt_log_demo: NNN\r\n"`` into @p buf.
+ * @details Copies the fixed prefix, converts the counter through a bounded
+ *          reverse digit buffer, and appends CRLF without a NUL terminator.
  *
  * @param[in]  counter Number to render in base-10 ASCII.
  * @param[out] buf     Output buffer (>= k_rtt_msg_buf_bytes).
  * @return Number of bytes written.
+ * @retval 17..26 Complete line length, depending on counter width.
+ * @pre ``buf`` points to at least ``k_rtt_msg_buf_bytes`` writable bytes.
+ * @pre ``counter`` is a complete 32-bit sample.
+ * @post The returned prefix of ``buf`` contains one CRLF-terminated line.
+ * @post No byte beyond the returned count is modified.
+ * @note Reentrant when callers provide distinct output buffers.
+ * @since 0.1.0
  */
-static uint8_t rtt_format_line(uint32_t counter, char* buf)
+RA8_INTERNAL static uint8_t internal_format_line(uint32_t counter, char* buf)
 {
   static const char prefix[] = "rtt_log_demo: ";
   uint8_t           n        = 0U;
@@ -190,37 +219,57 @@ static uint8_t rtt_format_line(uint32_t counter, char* buf)
 
 /**
  * @brief Bring CGC + SysTick + LED1 + RTT control block up.
+ * @details Initializes clocks, the delay service, LED1, and the in-SRAM RTT
+ *          descriptor in dependency order, halting on a failed HAL operation.
+ * @pre Reset startup initialized static storage and the vector table.
+ * @pre Called once before global interrupt enable.
+ * @post On return, channel zero is ready for non-blocking firmware writes.
+ * @post LED1 and the millisecond delay service are ready.
+ * @note Not thread-safe; it owns the demo's global initialization.
+ * @since 0.1.0
  */
-static void rtt_demo_setup_or_halt(void)
+RA8_INTERNAL static void internal_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    rtt_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    rtt_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    rtt_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    rtt_demo_panic_halt();
+    internal_panic_halt();
   }
-  rtt_init();
+  internal_init();
 }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
+/**
+ * @brief Publish a monotonically increasing RTT line once per second.
+ * @details Initializes channel zero, formats and enqueues each counter line,
+ *          toggles LED1, and delays before incrementing the next sample.
+ * @return Unreachable success value retained for the freestanding ABI.
+ * @pre Reset startup and SystemInit completed successfully.
+ * @pre J-Link may update only the consumer offset in the shared descriptor.
+ * @post Each successful iteration advances the counter and toggles LED1.
+ * @post Any producer or LED error leads to the terminal panic helper.
+ * @note Does not return during normal operation.
+ * @since 0.1.0
+ */
 int32_t main(void)
 {
-  rtt_demo_setup_or_halt();
+  internal_setup_or_halt();
   ra8_isr_globals_enable();
 
   uint32_t counter = 0U;
   while (1) {
     char          buf[k_rtt_msg_buf_bytes];
-    const uint8_t n = rtt_format_line(counter, buf);
-    if (rtt_write((const uint8_t*)buf, (uint32_t)n) != k_ra8_ok) {
+    const uint8_t n = internal_format_line(counter, buf);
+    if (internal_write((const uint8_t*)buf, (uint32_t)n) != k_ra8_ok) {
       break;
     }
     if (ra8_board_led_toggle(k_ra8_board_led1) != k_ra8_ok) {
@@ -229,7 +278,7 @@ int32_t main(void)
     counter++;
     ra8_delay_ms(k_rtt_demo_period_ms);
   }
-  rtt_demo_panic_halt();
+  internal_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

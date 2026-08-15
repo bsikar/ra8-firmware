@@ -59,6 +59,8 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 #ifdef RA8_TRUSTZONE_ENABLE
 
 /* =============================================================================
@@ -117,35 +119,91 @@ typedef enum : uint32_t {
  * =============================================================================
  */
 
-static inline void internal_dsb(void)
+/**
+ * @brief Complete all explicit memory accesses before continuing.
+ * @details Issues a system-scope data-synchronization barrier with a compiler
+ *          memory clobber around SAU programming sequences.
+ * @pre Called from secure privileged initialization context.
+ * @pre Any register writes that require ordering were issued before this call.
+ * @post Earlier explicit memory accesses are globally observed first.
+ * @post Later C memory operations remain ordered after the barrier.
+ * @note Has no mutable C state and is safe only where DSB is permitted.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static inline void internal_dsb(void)
 {
   __asm__ volatile("dsb 0xF" ::: "memory");
 }
 
-static inline void internal_isb(void)
+/**
+ * @brief Flush the instruction pipeline after attribution changes.
+ * @details Issues a system-scope instruction-synchronization barrier so later
+ *          fetches use the newly programmed SAU configuration.
+ * @pre Called from secure privileged initialization context.
+ * @pre Required system-register writes and a DSB completed first.
+ * @post Subsequent instructions observe prior system-register changes.
+ * @post The pipeline no longer contains instructions fetched under old state.
+ * @note Has no mutable C state and is safe only where ISB is permitted.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static inline void internal_isb(void)
 {
   __asm__ volatile("isb 0xF" ::: "memory");
 }
 
-static void internal_write32(uintptr_t addr, uint32_t value)
+/**
+ * @brief Write one 32-bit memory-mapped system register.
+ * @details Performs exactly one volatile store to the supplied address.
+ * @param[in] addr Register address, aligned for a 32-bit access.
+ * @param[in] value Value to store.
+ * @pre ``addr`` identifies a writable secure system register.
+ * @pre ``addr`` is aligned for a 32-bit volatile access.
+ * @post The volatile store has been issued exactly once.
+ * @post No other C object is modified by this helper.
+ * @note Not thread-safe with another writer to the same register.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_write32(uintptr_t addr, uint32_t value)
 {
   *(volatile uint32_t*)addr = value;
 }
 
-static uint32_t internal_read32(uintptr_t addr)
+/**
+ * @brief Read one 32-bit memory-mapped system register.
+ * @details Performs exactly one volatile load from the supplied address.
+ * @param[in] addr Register address, aligned for a 32-bit access.
+ * @return Sampled register value.
+ * @retval 0..UINT32_MAX Exact value returned by the volatile load.
+ * @pre ``addr`` identifies a readable secure system register.
+ * @pre ``addr`` is aligned for a 32-bit volatile access.
+ * @post No memory-mapped register is modified.
+ * @post The returned value is the single sampled register value.
+ * @note Not synchronized with concurrent register writers.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_read32(uintptr_t addr)
 {
   return *(volatile uint32_t*)addr;
 }
 
 /**
  * @brief Programme one SAU region via RNR/RBAR/RLAR.
+ * @details Selects the region, writes its aligned base, combines the aligned
+ *          limit with ENABLE and optional NSC, then publishes the limit word.
  *
  * @param[in] region Region number 0..(SAU_TYPE.SREGION - 1).
  * @param[in] base Start address (32-byte aligned).
  * @param[in] limit Upper bound minus 32 (32-byte aligned).
  * @param[in] is_nsc ``true`` to mark the region as NSC.
+ * @pre Secure privileged code owns the SAU programming sequence.
+ * @pre ``base`` and ``limit`` satisfy the documented 32-byte alignment.
+ * @post The selected region is enabled with the requested address bounds.
+ * @post NSC is set exactly when ``is_nsc`` is true.
+ * @note Not thread-safe; callers must serialize SAU configuration.
+ * @since 0.1.0
  */
-static void internal_sau_set_region(uint32_t region, uint32_t base, uint32_t limit, bool is_nsc)
+RA8_INTERNAL static void
+internal_sau_set_region(uint32_t region, uint32_t base, uint32_t limit, bool is_nsc)
 {
   internal_write32(k_ra8_sau_rnr_addr, region);
   internal_write32(k_ra8_sau_rbar_addr, base);

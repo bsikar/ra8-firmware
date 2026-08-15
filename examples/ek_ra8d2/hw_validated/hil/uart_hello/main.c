@@ -48,6 +48,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -61,18 +62,26 @@ typedef enum : uint32_t {
 } uart_hello_config_t;
 
 /** @brief Greeting string sent every period. Must remain ASCII. */
-static const uint8_t k_uart_hello_greeting[] = "hello, ra8d2!\r\n";
+static const uint8_t s_uart_hello_greeting[] = "hello, ra8d2!\r\n";
 
 /**
  * @brief Halt forever in WFI -- used as a panic stop on init failure.
  *
+ * @details Preserves the failed boot state in a low-activity loop that remains
+ *          accessible to an attached debugger.
+ *
+ * @return None.
+ *
  * @pre Called only after a fatal error in boot.
+ * @pre The caller has no remaining recovery or diagnostic write to perform.
  *
  * @post CPU is parked; only a debugger or external reset wakes it.
+ * @post The demo emits no further UART bytes or LED transitions.
  *
+ * @note Interrupt wakeups return immediately to the permanent loop.
  * @since 0.1.0
  */
-static void uart_hello_panic_halt(void)
+RA8_INTERNAL static void internal_uart_hello_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -89,26 +98,34 @@ static void uart_hello_panic_halt(void)
  * SCI8 init. That keeps the demo correct when the CGC driver is
  * retargeted to a different clock tree.
  *
+ * @return None.
+ *
+ * @pre Reset-time initialization configured the core and vector table.
+ * @pre The EK-RA8D2 SCI8 console pins and LED1 are available to this app.
+ * @post On success the millisecond time base and 115200-baud console are ready.
+ * @post On success LED1 is initialized; on failure the function never returns.
+ *
+ * @note Single-shot boot helper; it is not reentrant.
  * @since 0.1.0
  */
-static void uart_hello_setup_or_halt(void)
+RA8_INTERNAL static void internal_uart_hello_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
   if (ra8_cgc_init() != k_ra8_ok) {
-    uart_hello_panic_halt();
+    internal_uart_hello_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    uart_hello_panic_halt();
+    internal_uart_hello_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    uart_hello_panic_halt();
+    internal_uart_hello_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_uart_hello_baud) != k_ra8_ok) {
-    uart_hello_panic_halt();
+    internal_uart_hello_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    uart_hello_panic_halt();
+    internal_uart_hello_panic_halt();
   }
 }
 
@@ -129,20 +146,20 @@ static void uart_hello_setup_or_halt(void)
  */
 int32_t main(void)
 {
-  uart_hello_setup_or_halt();
+  internal_uart_hello_setup_or_halt();
 
   ra8_isr_globals_enable();
 
   while (1) {
-    (void)ra8_board_uart_console_write(k_uart_hello_greeting,
-                                       (size_t)(sizeof(k_uart_hello_greeting) - 1U));
+    (void)ra8_board_uart_console_write(s_uart_hello_greeting,
+                                       (size_t)(sizeof(s_uart_hello_greeting) - 1U));
     if (ra8_board_led_toggle(k_ra8_board_led1) != k_ra8_ok) {
       break;
     }
     ra8_delay_ms(k_uart_hello_period_ms);
   }
 
-  uart_hello_panic_halt();
+  internal_uart_hello_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

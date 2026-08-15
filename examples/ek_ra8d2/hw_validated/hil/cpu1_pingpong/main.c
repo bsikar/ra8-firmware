@@ -94,6 +94,8 @@ volatile uint32_t g_cpu1_pingpong_release_err = k_cpu1_pingpong_err_none;
 
 /**
  * @brief Poll until ``pong_seq`` reaches ``target`` or the budget runs out.
+ * @details Re-reads the volatile response sequence up to the fixed iteration
+ *          bound and returns immediately when CPU1 publishes the target.
  *
  * @param[in] shared Pointer to the shared message struct.
  * @param[in] target Sequence value to wait for.
@@ -111,7 +113,8 @@ volatile uint32_t g_cpu1_pingpong_release_err = k_cpu1_pingpong_err_none;
  *       always times out.
  * @since 0.1.0
  */
-static bool wait_for_pong(volatile cpu1_pingpong_shared_t* shared, uint32_t target)
+RA8_INTERNAL static bool internal_wait_for_pong(volatile cpu1_pingpong_shared_t* shared,
+                                                uint32_t                         target)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_cpu1_pingpong_poll_budget; ++i) {
     if (shared->pong_seq == target) {
@@ -135,7 +138,7 @@ static bool wait_for_pong(volatile cpu1_pingpong_shared_t* shared, uint32_t targ
  */
 int main(void)
 {
-  volatile cpu1_pingpong_shared_t* shared = cpu1_pingpong_shared();
+  volatile cpu1_pingpong_shared_t* shared = internal_shared();
   /* CPU0 owns initialization of the shared block. Zero everything
    * before releasing CPU1 so CPU1 can rely on starting from a known
    * clean state. */
@@ -166,7 +169,7 @@ int main(void)
     __asm volatile("dsb" ::: "memory");
     shared->ping_seq = next_seq;
 
-    if (!wait_for_pong(shared, next_seq)) {
+    if (!internal_wait_for_pong(shared, next_seq)) {
       g_cpu1_pingpong_mismatch += 1U;
       next_seq += 1U;
       continue;

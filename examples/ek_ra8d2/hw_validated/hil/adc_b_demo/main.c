@@ -27,6 +27,7 @@
 #include <stdint.h>
 
 #include "ra8_adc.h"
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -63,14 +64,32 @@ typedef enum : uint8_t {
   k_adc_b_demo_lf         = '\n', /**< ADC b demo lf.                           */
 } adc_b_demo_fmt_t;
 
-static const uint8_t k_adc_b_demo_log_prefix[] = "adc: raw=";
-static const uint8_t k_adc_b_demo_mv_sep[]     = " mv=";
+static const uint8_t s_adc_b_demo_log_prefix[] = "adc: raw=";
+static const uint8_t s_adc_b_demo_mv_sep[]     = " mv=";
 
 /** @brief Verdict line emitted only after a successful channel read. */
-static const uint8_t k_adc_b_demo_pass_msg[] = "adc: read PASS\r\n";
+static const uint8_t s_adc_b_demo_pass_msg[] = "adc: read PASS\r\n";
 
-/** @brief Write decimal digits of val into buf; return count written. */
-static uint32_t adc_b_demo_u16_to_dec(uint8_t* buf, uint16_t val)
+/**
+ * @brief Write the decimal digits of a 16-bit value into a byte buffer.
+ *
+ * @details Handles zero explicitly; otherwise collects least-significant
+ *          digits in a bounded local array and reverses them into the caller's
+ *          destination without appending a NUL terminator.
+ *
+ * @param[out] buf Destination with room for five decimal digits.
+ * @param[in] val Value to convert.
+ * @return Number of bytes written to ``buf``.
+ * @retval 1 Zero or a single-digit value was written.
+ * @retval 2..5 The exact digit count of a larger value.
+ * @pre ``buf`` points to at least ``k_adc_b_demo_dec_digits`` writable bytes.
+ * @pre The destination does not overlap this function's local storage.
+ * @post The returned prefix of ``buf`` is the base-10 representation of ``val``.
+ * @post No byte beyond the returned count is modified.
+ * @note Reentrant when callers provide distinct output buffers.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_u16_to_dec(uint8_t* buf, uint16_t val)
 {
   if (val == 0U) {
     buf[0] = (uint8_t)'0';
@@ -90,42 +109,73 @@ static uint32_t adc_b_demo_u16_to_dec(uint8_t* buf, uint16_t val)
   return n;
 }
 
-static void adc_b_demo_panic_halt(void)
+/**
+ * @brief Park the core after an unrecoverable ADC demo failure.
+ * @details Repeatedly executes WFI, preserving failure state for a debugger.
+ * @pre Called only from boot failure or the terminal foreground path.
+ * @pre The caller does not require recovery without reset.
+ * @post The core stays in the WFI loop until external intervention.
+ * @post No more ADC conversions or console writes are requested.
+ * @note Not thread-safe; this is a terminal single-threaded path.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-static void adc_b_demo_setup_or_halt(void)
+/**
+ * @brief Initialize clocks, SysTick, SCI8, and LED1.
+ * @details Brings dependencies up in order and parks on the first HAL error.
+ * @pre Reset startup initialized static storage and the vector table.
+ * @pre Called once before global interrupt enable.
+ * @post On return, delays, console output, and LED1 are ready.
+ * @post ADC_B remains unconfigured until ``internal_arm`` runs.
+ * @note Not thread-safe; it mutates global board and clock state.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    adc_b_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    adc_b_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    adc_b_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_adc_b_demo_baud) != k_ra8_ok) {
-    adc_b_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    adc_b_demo_panic_halt();
+    internal_panic_halt();
   }
 }
 
 /**
  * @brief Configure ADC_B in 12-bit software-trigger mode.
+ * @details Supplies the fixed resolution, trigger, alignment, and single-scan
+ *          policy to the configured ADC initialization API.
  *
  * @par MC/DC:
  * Decision: ``ra8_adc_init_configured != ok``. One atomic condition x
  * 2 vectors -- golden (this) + null cfg reject
  * (test_app_adc_b_demo.c).
+ * @return ADC configuration status from the HAL.
+ * @retval k_ra8_ok ADC_B accepted the fixed demo configuration.
+ * @retval (other) ADC_B initialization failed or rejected the configuration.
+ * @pre ``internal_setup_or_halt`` completed clock initialization.
+ * @pre No other context owns ADC_B configuration.
+ * @post On success, software-triggered channel reads are available.
+ * @post On failure, the error is returned unchanged to the caller.
+ * @note Not thread-safe with concurrent ADC configuration.
+ * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t adc_b_demo_arm(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_arm(void)
 {
   const ra8_adc_cfg_t cfg = {
     .resolution    = k_ra8_adc_res_12bit,
@@ -138,13 +188,25 @@ static void adc_b_demo_setup_or_halt(void)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
+/**
+ * @brief Sample ADC_B and report raw and converted values continuously.
+ * @details Initializes and arms ADC_B, formats each successful channel sample
+ *          without variadic I/O, emits the verdict, toggles LED1, and delays.
+ * @return Unreachable success value retained for the freestanding ABI.
+ * @pre Reset startup and SystemInit completed successfully.
+ * @pre The selected ADC channel matches the board analog connection.
+ * @post Every PASS verdict follows a successful channel read.
+ * @post Any read or LED failure leads to the terminal panic helper.
+ * @note Does not return during normal operation.
+ * @since 0.1.0
+ */
 int32_t main(void)
 {
-  adc_b_demo_setup_or_halt();
+  internal_setup_or_halt();
   ra8_isr_globals_enable();
 
-  if (adc_b_demo_arm() != k_ra8_ok) {
-    adc_b_demo_panic_halt();
+  if (internal_arm() != k_ra8_ok) {
+    internal_panic_halt();
   }
 
   while (1) {
@@ -157,26 +219,26 @@ int32_t main(void)
 
     uint8_t  line[k_adc_b_demo_line_max];
     uint32_t pos = 0U;
-    for (uint32_t i = 0U; i < (sizeof(k_adc_b_demo_log_prefix) - 1U); i++) {
-      line[pos++] = k_adc_b_demo_log_prefix[i];
+    for (uint32_t i = 0U; i < (sizeof(s_adc_b_demo_log_prefix) - 1U); i++) {
+      line[pos++] = s_adc_b_demo_log_prefix[i];
     }
-    pos += adc_b_demo_u16_to_dec(&line[pos], raw);
-    for (uint32_t i = 0U; i < (sizeof(k_adc_b_demo_mv_sep) - 1U); i++) {
-      line[pos++] = k_adc_b_demo_mv_sep[i];
+    pos += internal_u16_to_dec(&line[pos], raw);
+    for (uint32_t i = 0U; i < (sizeof(s_adc_b_demo_mv_sep) - 1U); i++) {
+      line[pos++] = s_adc_b_demo_mv_sep[i];
     }
-    pos += adc_b_demo_u16_to_dec(&line[pos], mv);
+    pos += internal_u16_to_dec(&line[pos], mv);
     line[pos++] = (uint8_t)k_adc_b_demo_cr;
     line[pos++] = (uint8_t)k_adc_b_demo_lf;
 
     (void)ra8_board_uart_console_write(line, (size_t)pos);
-    (void)ra8_board_uart_console_write(k_adc_b_demo_pass_msg,
-                                       (size_t)(sizeof(k_adc_b_demo_pass_msg) - 1U));
+    (void)ra8_board_uart_console_write(s_adc_b_demo_pass_msg,
+                                       (size_t)(sizeof(s_adc_b_demo_pass_msg) - 1U));
     if (ra8_board_led_toggle(k_ra8_board_led1) != k_ra8_ok) {
       break;
     }
     ra8_delay_ms((uint32_t)k_adc_b_demo_period_ms);
   }
-  adc_b_demo_panic_halt();
+  internal_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -85,38 +86,86 @@ volatile uint32_t g_gpt_pwm_match = 0U;
  */
 volatile uint32_t g_gpt_pwm_mismatch = 0U;
 
-static void gpt_pwm_demo_panic_halt(void)
+/**
+ * @brief Park the processor after an unrecoverable PWM demo failure.
+ *
+ * @details Enters a permanent wait-for-interrupt loop so the GPT counter,
+ *          duty, and HIL counters remain available to a debugger.
+ *
+ * @return None.
+ *
+ * @pre The caller has determined the PWM validation cannot continue.
+ * @pre Any mismatch counter update required by the failure is complete.
+ * @post The function never returns to its caller.
+ * @post No further duty updates or liveness increments occur.
+ *
+ * @note Fatal-path helper for this single-core image only.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gpt_pwm_demo_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-static void gpt_pwm_demo_setup_or_halt(void)
+/**
+ * @brief Initialize clocks, timing, and the PWM demo status LED.
+ *
+ * @details Starts CGC and the millisecond time base, then claims LED1 before
+ *          GPT configuration. Any failed dependency enters the permanent
+ *          panic halt rather than exposing partial setup.
+ *
+ * @return None.
+ *
+ * @pre Reset-time initialization configured the core and C runtime.
+ * @pre LED1 is available for exclusive use by this image.
+ * @post On success the time base and LED1 are ready for the PWM loop.
+ * @post On failure the function never returns to its caller.
+ *
+ * @note Single-shot boot helper; it is not reentrant.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gpt_pwm_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    gpt_pwm_demo_panic_halt();
+    internal_gpt_pwm_demo_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    gpt_pwm_demo_panic_halt();
+    internal_gpt_pwm_demo_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    gpt_pwm_demo_panic_halt();
+    internal_gpt_pwm_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    gpt_pwm_demo_panic_halt();
+    internal_gpt_pwm_demo_panic_halt();
   }
 }
 
 /**
  * @brief Configure GPT0 for saw-wave PWM with ``auto_start = true``.
  *
+ * @details Selects the divide-by-four source, configured period, zero initial
+ *          duty on both compare channels, and immediate counter start.
+ *
  * @par MC/DC:
  * Decision: ``ra8_gpt_init != ok``. One atomic condition x 2 vectors --
  * golden (this) + null-cfg reject (covered in test_app_gpt_pwm_demo.c).
+ *
+ * @return ra8_err_t Status from GPT channel initialization.
+ * @retval k_ra8_ok GPT0 was configured and started in saw-PWM mode.
+ * @retval (other)  The GPT driver rejected or could not apply the configuration.
+ *
+ * @pre ::internal_gpt_pwm_demo_setup_or_halt completed successfully.
+ * @pre GPT channel 0 is not owned by another driver.
+ * @post On success GPT0 counts with both duties initially zero.
+ * @post On failure no runtime duty update is attempted by this helper.
+ *
+ * @note Runtime duty sweeps and counter checks remain the caller's responsibility.
+ * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t gpt_pwm_demo_arm(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_gpt_pwm_demo_arm(void)
 {
   const ra8_gpt_cfg_t cfg = {
     .mode       = k_ra8_gpt_mode_saw_pwm,
@@ -133,11 +182,11 @@ static void gpt_pwm_demo_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  gpt_pwm_demo_setup_or_halt();
+  internal_gpt_pwm_demo_setup_or_halt();
   ra8_isr_globals_enable();
 
-  if (gpt_pwm_demo_arm() != k_ra8_ok) {
-    gpt_pwm_demo_panic_halt();
+  if (internal_gpt_pwm_demo_arm() != k_ra8_ok) {
+    internal_gpt_pwm_demo_panic_halt();
   }
 
   uint32_t duty       = 0U;
@@ -178,7 +227,7 @@ int32_t main(void)
     }
     ra8_delay_ms((uint32_t)k_gpt_pwm_demo_step_ms);
   }
-  gpt_pwm_demo_panic_halt();
+  internal_gpt_pwm_demo_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

@@ -19,6 +19,7 @@
 #include <stdint.h>
 
 #include "c6_camera_server.h"
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_camera.h"
 #include "ra8_camera_codec_jpeg_sw.h"
@@ -81,7 +82,7 @@ static ra8_camera_codec_jpeg_sw_state_t s_codec_state;
  * @note Probing occurs during camera initialization.
  * @since 0.1.0
  */
-static ra8_err_t c6_cam_sensor_bind(void)
+RA8_INTERNAL static ra8_err_t internal_c6_cam_sensor_bind(void)
 {
   const ra8_ov5640_bus_t bus = {
     .read_reg  = ra8_board_camera_sccb_read_reg,
@@ -104,7 +105,7 @@ static ra8_err_t c6_cam_sensor_bind(void)
  * @note Software conversion and JPEG encoding occur after CEU capture.
  * @since 0.1.0
  */
-static ra8_camera_source_ceu_cfg_t c6_cam_source_config(void)
+RA8_INTERNAL static ra8_camera_source_ceu_cfg_t internal_c6_cam_source_config(void)
 {
   const ra8_ceu_config_t ceu = {
     .width_px        = (uint16_t)k_sw_cam_source_width,
@@ -160,7 +161,7 @@ ra8_err_t c6_cam_camera_init(void)
   if (err != k_ra8_ok) {
     return err;
   }
-  err = c6_cam_sensor_bind();
+  err = internal_c6_cam_sensor_bind();
   if (err != k_ra8_ok) {
     return err;
   }
@@ -177,7 +178,7 @@ ra8_err_t c6_cam_camera_init(void)
   if (err != k_ra8_ok) {
     return err;
   }
-  const ra8_camera_source_ceu_cfg_t source_cfg = c6_cam_source_config();
+  const ra8_camera_source_ceu_cfg_t source_cfg = internal_c6_cam_source_config();
   err = ra8_camera_source_ceu_init(&s_source, &s_source_state, &source_cfg);
   if (err != k_ra8_ok) {
     return err;

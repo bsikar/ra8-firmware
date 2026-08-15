@@ -46,6 +46,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -80,14 +81,32 @@ typedef enum : uint8_t {
   k_bgc_cycle_count = 4U, /**< Bgc cycle count. */
 } lcd_bgc_count_t;
 
-static const uint32_t k_lcd_bgc_cycle[k_bgc_cycle_count] = {
+/** @brief Ordered GLCDC background colors emitted by the demo loop. */
+static const uint32_t s_lcd_bgc_cycle[k_bgc_cycle_count] = {
   (uint32_t)k_bgc_red,
   (uint32_t)k_bgc_green,
   (uint32_t)k_bgc_blue,
   (uint32_t)k_bgc_white,
 };
 
-static void lcd_panic_halt(void)
+/**
+ * @brief Illuminate the red LED and park after an unrecoverable LCD failure.
+ *
+ * @details Requests the board panic indicator, then remains in a permanent
+ *          wait-for-interrupt loop so an attached debugger can inspect the
+ *          failed display bring-up state.
+ *
+ * @return None.
+ *
+ * @pre Board-level LED access is safe from the current boot context.
+ * @pre The caller has no remaining recovery action to perform.
+ * @post The red board LED is requested on before the processor parks.
+ * @post The function never returns to its caller.
+ *
+ * @note The LED request is best-effort because this is already a fatal path.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_lcd_panic_halt(void)
 {
   (void)ra8_board_led_on(k_ra8_board_led_red);
   while (1) {
@@ -105,6 +124,7 @@ static void lcd_panic_halt(void)
  *
  * @return CPUCLK0 frequency in Hz; the caller passes it on to
  *         ::ra8_time_init for tick generation.
+ * @retval nonzero The initialized CPUCLK0 frequency; failures do not return.
  *
  * @pre Reset handler has populated ``.data`` / ``.bss``.
  * @pre Interrupts are still globally disabled.
@@ -114,26 +134,26 @@ static void lcd_panic_halt(void)
  * @note Not thread-safe; single-shot startup helper.
  * @since 0.1.0
  */
-static uint32_t lcd_bringup_clocks(void)
+RA8_INTERNAL static uint32_t internal_lcd_bringup_clocks(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    lcd_panic_halt();
+    internal_lcd_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    lcd_panic_halt();
+    internal_lcd_panic_halt();
   }
   if (ra8_mstp_init() != k_ra8_ok) {
-    lcd_panic_halt();
+    internal_lcd_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    lcd_panic_halt();
+    internal_lcd_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led_blue) != k_ra8_ok) {
-    lcd_panic_halt();
+    internal_lcd_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led_red) != k_ra8_ok) {
-    lcd_panic_halt();
+    internal_lcd_panic_halt();
   }
   ra8_isr_globals_enable();
   return cpuclk0_hz;
@@ -149,15 +169,17 @@ static uint32_t lcd_bringup_clocks(void)
  * GLCDC controller itself with an initial red background. Any failure
  * halts in the red-LED panic loop.
  *
- * @pre ::lcd_bringup_clocks has run successfully.
+ * @pre ::internal_lcd_bringup_clocks has run successfully.
  * @pre Interrupts are globally enabled.
  * @post GLCDC is running and driving the panel with the initial colour.
  * @post Panel back-light and 3.3 V rail are on.
  *
+ * @return None.
+ *
  * @note Not thread-safe; single-shot startup helper.
  * @since 0.1.0
  */
-static void lcd_bringup_panel(void)
+RA8_INTERNAL static void internal_lcd_bringup_panel(void)
 {
   /* Stabilization delays: PLLs, SDRAM, and the panel itself all need
    * a few hundred ms after power-on to settle.  Without these, the
@@ -168,15 +190,15 @@ static void lcd_bringup_panel(void)
   /* SDRAM is initialized so the framebuffer region at 0x68000000 is
    * accessible for follow-on apps; this demo doesn't use it. */
   if (ra8_sdramc_init() != k_ra8_ok) {
-    lcd_panic_halt();
+    internal_lcd_panic_halt();
   }
   ra8_delay_ms(k_lcd_sdram_settle_ms);
 
   if (ra8_board_lcd_panel_power_on() != k_ra8_ok) {
-    lcd_panic_halt();
+    internal_lcd_panic_halt();
   }
   if (ra8_board_glcdc_init(k_ra8_board_glcdc_fmt_rgb888) != k_ra8_ok) {
-    lcd_panic_halt();
+    internal_lcd_panic_halt();
   }
   ra8_delay_ms(k_lcd_pin_settle_ms); /* let pins settle in output mode */
 
@@ -191,13 +213,13 @@ static void lcd_bringup_panel(void)
     .timing           = k_ra8_panel_ek_ra8d2_timing,
   };
   if (ra8_glcdc_init(&cfg) != k_ra8_ok) {
-    lcd_panic_halt();
+    internal_lcd_panic_halt();
   }
   if (ra8_glcdc_set_background_color(k_bgc_red) != k_ra8_ok) {
-    lcd_panic_halt();
+    internal_lcd_panic_halt();
   }
   if (ra8_glcdc_start(true) != k_ra8_ok) {
-    lcd_panic_halt();
+    internal_lcd_panic_halt();
   }
 }
 
@@ -205,12 +227,12 @@ static void lcd_bringup_panel(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  (void)lcd_bringup_clocks();
-  lcd_bringup_panel();
+  (void)internal_lcd_bringup_clocks();
+  internal_lcd_bringup_panel();
 
   uint8_t i = 0U;
   while (1) {
-    (void)ra8_glcdc_set_background_color(k_lcd_bgc_cycle[i & (k_bgc_cycle_count - 1U)]);
+    (void)ra8_glcdc_set_background_color(s_lcd_bgc_cycle[i & (k_bgc_cycle_count - 1U)]);
     (void)ra8_board_led_toggle(k_ra8_board_led_blue);
     ra8_delay_ms(k_lcd_cycle_ms);
     i++;

@@ -52,6 +52,8 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -139,7 +141,7 @@ typedef struct {
  * @note Both CPUs call this; the pointer arithmetic is identical.
  * @since 0.1.0
  */
-static inline volatile cache_coherency_shared_t* cache_coherency_shared(void)
+RA8_INTERNAL static inline volatile cache_coherency_shared_t* internal_shared(void)
 {
   return (volatile cache_coherency_shared_t*)(uintptr_t)k_cache_coherency_shared_addr;
 }

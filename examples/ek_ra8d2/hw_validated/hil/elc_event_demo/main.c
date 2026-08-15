@@ -40,6 +40,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_elc.h"
@@ -66,13 +67,20 @@ typedef enum : uint8_t {
   k_elc_demo_print_buf    = 48U, /**< Max bytes in one print line.                          */
 } elc_demo_byte_t;
 
-/** @brief Park forever after a fatal init failure.
+/**
+ * @brief Park forever after a fatal init failure.
+ *
+ * @details Repeatedly executes WFI so an attached debugger can inspect
+ *          the failed bring-up state without further peripheral traffic.
  *
  * @pre Called only after a fatal error in boot.
+ * @pre No caller requires recovery without an external reset.
  * @post CPU is parked; only a debugger or external reset wakes it.
+ * @post No application state is modified after the first WFI.
+ * @note Not thread-safe; this is the terminal single-threaded boot path.
  * @since 0.1.0
  */
-static void elc_demo_panic_halt(void)
+RA8_INTERNAL static void internal_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -82,58 +90,75 @@ static void elc_demo_panic_halt(void)
 /**
  * @brief Bring CGC + SysTick + console + ELC up. Panic-halts on any fail.
  *
+ * @details Initializes the clocks, timebase, polled console, ELC slot-zero
+ *          route, and both status LEDs in dependency order. Any failed HAL
+ *          call transfers control to the terminal panic helper.
+ *
+ * @pre Reset startup has initialized static storage and the vector table.
+ * @pre This function is called exactly once before global IRQ enable.
+ * @post On return, ELSR0 routes ICU IRQ0 and both LEDs are usable.
+ * @post The console and delay service are ready for the foreground loop.
+ * @note Not thread-safe; it mutates global peripheral configuration.
  * @since 0.1.0
  */
-static void elc_demo_setup_or_halt(void)
+RA8_INTERNAL static void internal_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
   if (ra8_cgc_init() != k_ra8_ok) {
-    elc_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    elc_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_mstp_init() != k_ra8_ok) {
-    elc_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    elc_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_elc_demo_baud) != k_ra8_ok) {
-    elc_demo_panic_halt();
+    internal_panic_halt();
   }
 
   if (ra8_elc_init() != k_ra8_ok) {
-    elc_demo_panic_halt();
+    internal_panic_halt();
   }
   /* Route IRQ0 -> ELSR0 so a real button press would chain a GPT
    * capture without CPU intervention; the software trigger below
    * keeps the demo self-contained. */
   if (ra8_elc_link((uint8_t)k_elc_demo_slot, k_ra8_elc_event_icu_irq0) != k_ra8_ok) {
-    elc_demo_panic_halt();
+    internal_panic_halt();
   }
 
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    elc_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
-    elc_demo_panic_halt();
+    internal_panic_halt();
   }
 }
 
 /**
  * @brief Write a decimal uint32 into ``buf``.
  *
+ * @details Extracts digits into a fixed local reverse buffer, then copies
+ *          them in display order. Zero takes the explicit single-digit path.
+ *
  * @param[out] buf Destination buffer (must hold at least 10 chars).
  * @param[in]  v   Value to render.
  * @return Number of ASCII digits written.
+ * @retval 1 A zero or single-digit value was rendered.
+ * @retval 2..10 The exact number of digits in a larger value.
  *
  * @pre ``buf`` is non-NULL with >= 10 bytes capacity.
+ * @pre The destination does not overlap this function's local storage.
  * @post No null terminator is written.
+ * @post The returned prefix of ``buf`` is the base-10 representation of ``v``.
+ * @note Reentrant when callers provide distinct destination buffers.
  * @since 0.1.0
  */
-static uint8_t elc_demo_uint_to_dec(uint8_t* buf, uint32_t v)
+RA8_INTERNAL static uint8_t internal_uint_to_dec(uint8_t* buf, uint32_t v)
 {
   uint8_t  tmp[k_elc_demo_uint_dec_max];
   uint8_t  n = 0U;
@@ -157,17 +182,25 @@ static uint8_t elc_demo_uint_to_dec(uint8_t* buf, uint32_t v)
 /**
  * @brief Format the per-cycle "elc: en=N trig=NN\r\n" line.
  *
+ * @details Copies fixed prefix, separator, and line-ending fragments around
+ *          one enabled digit and the decimal trigger count without using a
+ *          NUL-terminated or variadic formatting API.
+ *
  * @param[out] out        Destination buffer.
  * @param[in]  enabled    ELCR.ELCON state.
  * @param[in]  trig_count Software-trigger count.
  * @return Bytes written into @p out.
+ * @retval 18..27 Complete line length, depending on trigger-count width.
  *
  * @pre ``out`` is non-NULL with >= k_elc_demo_print_buf capacity.
+ * @pre ``enabled`` and ``trig_count`` are stable for the duration of the call.
  * @post No bytes beyond the returned length are touched.
+ * @post The returned prefix contains exactly one complete CRLF-terminated line.
+ * @note Reentrant when callers provide distinct output buffers.
  *
  * @since 0.1.0
  */
-static uint32_t elc_demo_format_line(uint8_t* out, bool enabled, uint32_t trig_count)
+RA8_INTERNAL static uint32_t internal_format_line(uint8_t* out, bool enabled, uint32_t trig_count)
 {
   uint32_t      off      = 0U;
   const uint8_t prefix[] = "elc: en=";
@@ -180,7 +213,7 @@ static uint32_t elc_demo_format_line(uint8_t* out, bool enabled, uint32_t trig_c
   for (uint32_t i = 0U; i < sizeof(mid) - 1U; i++) {
     out[off++] = mid[i];
   }
-  off += elc_demo_uint_to_dec(&out[off], trig_count);
+  off += internal_uint_to_dec(&out[off], trig_count);
   for (uint32_t i = 0U; i < sizeof(suffix) - 1U; i++) {
     out[off++] = suffix[i];
   }
@@ -204,7 +237,7 @@ static uint32_t elc_demo_format_line(uint8_t* out, bool enabled, uint32_t trig_c
  */
 int32_t main(void)
 {
-  elc_demo_setup_or_halt();
+  internal_setup_or_halt();
   ra8_isr_globals_enable();
 
   uint32_t trig_count = 0U;
@@ -227,7 +260,7 @@ int32_t main(void)
       (void)ra8_board_uart_console_write(enabled_fail, (size_t)(sizeof(enabled_fail) - 1U));
     }
     uint8_t        out[k_elc_demo_print_buf] = {};
-    const uint32_t off                       = elc_demo_format_line(out, enabled, trig_count);
+    const uint32_t off                       = internal_format_line(out, enabled, trig_count);
     if (ra8_board_uart_console_write(out, (size_t)off) != k_ra8_ok) {
       break;
     }
@@ -237,7 +270,7 @@ int32_t main(void)
     ra8_delay_ms(k_elc_demo_period_ms);
   }
 
-  elc_demo_panic_halt();
+  internal_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

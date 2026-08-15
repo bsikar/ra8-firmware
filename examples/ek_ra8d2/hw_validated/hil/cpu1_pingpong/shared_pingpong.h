@@ -47,6 +47,8 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -109,7 +111,7 @@ typedef struct {
  * @note Both CPUs call this; the pointer arithmetic is identical.
  * @since 0.1.0
  */
-static inline volatile cpu1_pingpong_shared_t* cpu1_pingpong_shared(void)
+RA8_INTERNAL static inline volatile cpu1_pingpong_shared_t* internal_shared(void)
 {
   return (volatile cpu1_pingpong_shared_t*)(uintptr_t)k_cpu1_pingpong_shared_addr;
 }

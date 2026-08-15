@@ -36,6 +36,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -58,16 +59,22 @@ typedef enum : uint8_t {
   k_spi_demo_pattern_base = 0xA0U, /**< SPI demo pattern base.   */
 } spi_demo_byte_t;
 
-static const uint8_t k_spi_demo_msg_pass[] = "spi: pass\r\n";
-static const uint8_t k_spi_demo_msg_fail[] = "spi: FAIL\r\n";
+static const uint8_t s_spi_demo_msg_pass[] = "spi: pass\r\n";
+static const uint8_t s_spi_demo_msg_fail[] = "spi: FAIL\r\n";
 
-/** @brief Park forever after a fatal init failure.
+/**
+ * @brief Park forever after a fatal initialization failure.
+ * @details Repeatedly executes WFI so an attached debugger can inspect the
+ *          failed clock or SPI state without further bus traffic.
  *
  * @pre Called only after a fatal error in boot.
+ * @pre The caller does not require recovery without reset.
  * @post CPU is parked; only a debugger or external reset wakes it.
+ * @post No further SPI or console transfer is requested.
+ * @note Not thread-safe; this is the terminal single-threaded path.
  * @since 0.1.0
  */
-static void spi_demo_panic_halt(void)
+RA8_INTERNAL static void internal_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -76,28 +83,34 @@ static void spi_demo_panic_halt(void)
 
 /**
  * @brief Bring CGC, MSTP and SysTick up. Returns PCLKA Hz via ``out_pclka``.
+ * @details Initializes the canonical clock tree, samples CPUCLK0 and PCLKA,
+ *          ungates peripheral modules, and starts the millisecond timebase.
  *
+ * @param[out] out_pclka Receives the measured peripheral clock frequency.
  * @pre Reset_Handler has finished C-runtime init.
+ * @pre ``out_pclka`` points to writable caller-owned storage.
  * @post CGC, MSTP and SysTick are live; ``*out_pclka`` holds PCLKA in Hz.
+ * @post Any failed dependency transfers control to ``internal_panic_halt``.
+ * @note Not thread-safe; it mutates global clock and module-stop state.
  * @since 0.1.0
  */
-static void spi_demo_clocks_or_halt(uint32_t* out_pclka)
+RA8_INTERNAL static void internal_clocks_or_halt(uint32_t* out_pclka)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    spi_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    spi_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, out_pclka) != k_ra8_ok) {
-    spi_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_mstp_init() != k_ra8_ok) {
-    spi_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    spi_demo_panic_halt();
+    internal_panic_halt();
   }
 }
 
@@ -110,14 +123,19 @@ static void spi_demo_clocks_or_halt(uint32_t* out_pclka)
  * p 2889).  The silicon then ties COPI to CIPO internally; no
  * external loopback jumper required.
  *
+ * @pre Reset startup initialized static storage and the vector table.
+ * @pre Called once before global interrupt enable.
+ * @post On return, SPI_B channel zero runs in internal non-inverting loopback.
+ * @post SCI8 and both result LEDs are ready for the foreground loop.
+ * @note Not thread-safe; it owns the demo's peripheral configuration.
  * @since 0.1.0
  */
-static void spi_demo_setup_or_halt(void)
+RA8_INTERNAL static void internal_setup_or_halt(void)
 {
   uint32_t pclka_hz = 0U;
-  spi_demo_clocks_or_halt(&pclka_hz);
+  internal_clocks_or_halt(&pclka_hz);
   if (ra8_board_uart_console_init((uint32_t)k_spi_demo_baud) != k_ra8_ok) {
-    spi_demo_panic_halt();
+    internal_panic_halt();
   }
 
   const ra8_spi_cfg_t spi_cfg = {
@@ -128,27 +146,34 @@ static void spi_demo_setup_or_halt(void)
     .loopback  = true,
   };
   if (ra8_spi_init((uint8_t)k_spi_demo_spi_channel, &spi_cfg) != k_ra8_ok) {
-    spi_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    spi_demo_panic_halt();
+    internal_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
-    spi_demo_panic_halt();
+    internal_panic_halt();
   }
 }
 
 /**
  * @brief Walk the test pattern once and return whether RX matches TX.
+ * @details Sends the deterministic 0xA0..0xAF sequence one byte at a time and
+ *          stops at the first HAL error or non-identical loopback byte.
  *
  * @return ``true`` when every byte read back matches the byte sent.
+ * @retval true All pattern bytes completed and matched.
+ * @retval false A transfer failed or a received byte differed.
  *
  * @pre ``ra8_spi_init`` succeeded and SPLP is set.
+ * @pre No other context is using SPI_B channel zero.
  * @post No external bus traffic occurred (loopback is internal).
+ * @post The SPI channel remains configured for the next round.
+ * @note Not thread-safe with concurrent SPI channel access.
  *
  * @since 0.1.0
  */
-static bool spi_demo_round_trip_ok(void)
+RA8_INTERNAL static bool internal_round_trip_ok(void)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_spi_demo_pattern_len; i++) {
     const uint8_t tx = (uint8_t)((uint8_t)k_spi_demo_pattern_base + i);
@@ -180,19 +205,19 @@ static bool spi_demo_round_trip_ok(void)
  */
 int32_t main(void)
 {
-  spi_demo_setup_or_halt();
+  internal_setup_or_halt();
   ra8_isr_globals_enable();
 
   while (1) {
-    const bool     ok = spi_demo_round_trip_ok();
+    const bool     ok = internal_round_trip_ok();
     const uint8_t* msg;
     uint32_t       msg_len;
     if (ok) {
-      msg     = k_spi_demo_msg_pass;
-      msg_len = (uint32_t)(sizeof(k_spi_demo_msg_pass) - 1U);
+      msg     = s_spi_demo_msg_pass;
+      msg_len = (uint32_t)(sizeof(s_spi_demo_msg_pass) - 1U);
     } else {
-      msg     = k_spi_demo_msg_fail;
-      msg_len = (uint32_t)(sizeof(k_spi_demo_msg_fail) - 1U);
+      msg     = s_spi_demo_msg_fail;
+      msg_len = (uint32_t)(sizeof(s_spi_demo_msg_fail) - 1U);
     }
     if (!ok) {
       (void)ra8_board_led_on(k_ra8_board_led2);
@@ -204,7 +229,7 @@ int32_t main(void)
     ra8_delay_ms(k_spi_demo_period_ms);
   }
 
-  spi_demo_panic_halt();
+  internal_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

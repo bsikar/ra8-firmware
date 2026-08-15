@@ -63,6 +63,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cache.h"
 #include "ra8_cgc.h"
@@ -89,10 +90,10 @@ typedef enum : uint8_t {
 } dma_coh_byte_t;
 
 /** @brief VCOM success banner. Unique; not a substring of the FAIL line. */
-static const uint8_t k_dma_coh_pass_banner[] = "dma_coherency_hil: dma coherent PASS\r\n";
+static const uint8_t s_dma_coh_pass_banner[] = "dma_coherency_hil: dma coherent PASS\r\n";
 
 /** @brief VCOM failure banner (caught by hil.conf HIL_EXPECT_NEGATIVE). */
-static const uint8_t k_dma_coh_fail_banner[] = "dma_coherency_hil: dma coherent FAIL\r\n";
+static const uint8_t s_dma_coh_fail_banner[] = "dma_coherency_hil: dma coherent FAIL\r\n";
 
 /**
  * @brief Source buffer -- M85 writes leave it dirty in the D-cache.
@@ -135,7 +136,7 @@ alignas(k_dma_coh_align) static uint32_t s_dst[k_dma_coh_buf_words];
  * @note Not thread-safe; terminal sink.
  * @since 0.1.0
  */
-[[noreturn]] static void dma_coh_park(void)
+[[noreturn]] RA8_INTERNAL static void internal_park(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -158,22 +159,22 @@ alignas(k_dma_coh_align) static uint32_t s_dst[k_dma_coh_buf_words];
  * @note Single-threaded init context; not thread-safe.
  * @since 0.1.0
  */
-static void dma_coh_setup_or_halt(void)
+RA8_INTERNAL static void internal_setup_or_halt(void)
 {
   if (ra8_cgc_init() != k_ra8_ok) {
-    dma_coh_park();
+    internal_park();
   }
   if (ra8_mstp_init() != k_ra8_ok) {
-    dma_coh_park();
+    internal_park();
   }
   if (ra8_board_uart_console_init((uint32_t)k_dma_coh_baud) != k_ra8_ok) {
-    dma_coh_park();
+    internal_park();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    dma_coh_park();
+    internal_park();
   }
   if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
-    dma_coh_park();
+    internal_park();
   }
 }
 
@@ -196,7 +197,7 @@ static void dma_coh_setup_or_halt(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void dma_coh_fill_buffers(void)
+RA8_INTERNAL static void internal_fill_buffers(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_dma_coh_buf_words; ++i) {
     s_src[i] = i ^ (i >> (uint32_t)k_dma_coh_byte_sh);
@@ -228,7 +229,7 @@ static void dma_coh_fill_buffers(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static uint8_t dma_coh_verify(void)
+[[nodiscard]] RA8_INTERNAL static uint8_t internal_verify(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_dma_coh_buf_words; ++i) {
     if (s_dst[i] != s_src[i]) {
@@ -272,7 +273,7 @@ static void dma_coh_fill_buffers(void)
  * @note Not thread-safe; single-shot init-context use.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t dma_coh_run_copy(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_run_copy(void)
 {
   /* clean-before: dirty src lines -> SRAM so the DMAC reads fresh bytes. */
   if (ra8_cache_dcache_clean_by_addr(s_src, (uint32_t)sizeof(s_src)) != k_ra8_ok) {
@@ -331,6 +332,10 @@ static void dma_coh_fill_buffers(void)
 /**
  * @brief Emit the PASS/FAIL result over VCOM and ITM, toggle an LED.
  *
+ * @details Chooses one result banner, flushes it to VCOM, mirrors the
+ *          result through the logging backend, and toggles the matching
+ *          board LED so both automated and visual probes see one outcome.
+ *
  * @param[in] ok Non-zero if the coherency check passed.
  *
  * @pre The console has been initialised by ``dma_coh_setup_or_halt``.
@@ -341,17 +346,17 @@ static void dma_coh_fill_buffers(void)
  * @note Not thread-safe; single-shot reporting.
  * @since 0.1.0
  */
-static void dma_coh_report(uint8_t ok)
+RA8_INTERNAL static void internal_report(uint8_t ok)
 {
   if (ok != 0U) {
-    (void)ra8_board_uart_console_write(k_dma_coh_pass_banner,
-                                       (size_t)(sizeof(k_dma_coh_pass_banner) - 1U));
+    (void)ra8_board_uart_console_write(s_dma_coh_pass_banner,
+                                       (size_t)(sizeof(s_dma_coh_pass_banner) - 1U));
     (void)ra8_board_uart_console_flush();
     ra8_log_info("dma_coherency_hil", "dma coherent PASS");
     (void)ra8_board_led_toggle(k_ra8_board_led1);
   } else {
-    (void)ra8_board_uart_console_write(k_dma_coh_fail_banner,
-                                       (size_t)(sizeof(k_dma_coh_fail_banner) - 1U));
+    (void)ra8_board_uart_console_write(s_dma_coh_fail_banner,
+                                       (size_t)(sizeof(s_dma_coh_fail_banner) - 1U));
     (void)ra8_board_uart_console_flush();
     ra8_log_info("dma_coherency_hil", "dma coherent FAIL");
     (void)ra8_board_led_toggle(k_ra8_board_led2);
@@ -374,15 +379,15 @@ static void dma_coh_report(uint8_t ok)
  */
 int32_t main(void)
 {
-  dma_coh_setup_or_halt();
+  internal_setup_or_halt();
   ra8_isr_globals_enable();
 
-  dma_coh_fill_buffers();
-  const ra8_err_t err = dma_coh_run_copy();
-  const uint8_t   ok  = (err == k_ra8_ok && dma_coh_verify() != 0U) ? 1U : 0U;
-  dma_coh_report(ok);
+  internal_fill_buffers();
+  const ra8_err_t err = internal_run_copy();
+  const uint8_t   ok  = (err == k_ra8_ok && internal_verify() != 0U) ? 1U : 0U;
+  internal_report(ok);
 
-  dma_coh_park();
+  internal_park();
   return 0;
 }
 #pragma GCC diagnostic pop

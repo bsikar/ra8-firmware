@@ -53,6 +53,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -67,9 +68,9 @@ typedef enum : uint32_t {
   k_lpm_deep_baud          = 115200U, /**< Lpm deep baud.          */
 } lpm_deep_config_t;
 
-/** @brief Boot + wake banners. */
-static const uint8_t k_lpm_deep_msg_boot[] = "lpm_deep: boot\r\n";
-static const uint8_t k_lpm_deep_msg_woke[] = "lpm_deep: woke\r\n";
+/** @brief Fixed UART banners emitted before and after the Deep-Sleep cycle. */
+static const uint8_t s_lpm_deep_msg_boot[] = "lpm_deep: boot\r\n";
+static const uint8_t s_lpm_deep_msg_woke[] = "lpm_deep: woke\r\n";
 
 /**
  * @var g_lpm_deep_pre_count
@@ -97,8 +98,23 @@ volatile uint32_t g_lpm_deep_pre_count = 0U;
  */
 volatile uint32_t g_lpm_deep_wake_count = 0U;
 
-/** @brief Park forever after a fatal init failure. */
-static void lpm_deep_panic_halt(void)
+/**
+ * @brief Park forever after a fatal low-power demo failure.
+ *
+ * @details Repeats wait-for-interrupt without initiating another low-power
+ *          transition, preserving the wake and setup state for a debugger.
+ *
+ * @return None.
+ *
+ * @pre The caller has determined that entering or continuing sleep is unsafe.
+ * @pre Any required UART diagnostic has already been completed.
+ * @post The function never returns to its caller.
+ * @post The pre-sleep and wake counters are no longer modified.
+ *
+ * @note Interrupt wakeups return immediately to the permanent loop.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_lpm_deep_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -108,31 +124,38 @@ static void lpm_deep_panic_halt(void)
 /**
  * @brief Bring CGC + SysTick + LED1 + SCI8 + LPM up.
  *
+ * @details Initializes the clock and time base, board status LED, UART console,
+ *          and LPM policy required for the single Deep-Sleep transition. Any
+ *          dependency failure enters the permanent panic halt.
+ *
+ * @return None.
+ *
  * @pre IRQs disabled at entry.
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @post On success the five sub-systems are armed.
  * @post LPSCR.LPMD == 0 (System Active); the first WFI is a plain
  *       CPU sleep until ``ra8_lpm_enter_sleep`` is called.
  *
+ * @note Single-shot boot helper; it is not reentrant.
  * @since 0.1.0
  */
-static void lpm_deep_setup_or_halt(void)
+RA8_INTERNAL static void internal_lpm_deep_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    lpm_deep_panic_halt();
+    internal_lpm_deep_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    lpm_deep_panic_halt();
+    internal_lpm_deep_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    lpm_deep_panic_halt();
+    internal_lpm_deep_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    lpm_deep_panic_halt();
+    internal_lpm_deep_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_lpm_deep_baud) != k_ra8_ok) {
-    lpm_deep_panic_halt();
+    internal_lpm_deep_panic_halt();
   }
   const ra8_lpm_config_t lpm_cfg = {
     .io_port_keep     = false,
@@ -142,7 +165,7 @@ static void lpm_deep_setup_or_halt(void)
     .sscr_low_power   = k_ra8_lpm_ss2lp_default,
   };
   if (ra8_lpm_init(&lpm_cfg) != k_ra8_ok) {
-    lpm_deep_panic_halt();
+    internal_lpm_deep_panic_halt();
   }
 }
 
@@ -171,11 +194,11 @@ static void lpm_deep_setup_or_halt(void)
  */
 int32_t main(void)
 {
-  lpm_deep_setup_or_halt();
+  internal_lpm_deep_setup_or_halt();
   ra8_isr_globals_enable();
 
-  (void)ra8_board_uart_console_write(k_lpm_deep_msg_boot,
-                                     (size_t)(sizeof(k_lpm_deep_msg_boot) - 1U));
+  (void)ra8_board_uart_console_write(s_lpm_deep_msg_boot,
+                                     (size_t)(sizeof(s_lpm_deep_msg_boot) - 1U));
 
   g_lpm_deep_pre_count++;
 
@@ -188,13 +211,13 @@ int32_t main(void)
    * demo would need RTC/AGT (sub-clock-sourced, survives
    * SLEEPDEEP) as the wake source instead of SysTick. */
   if (ra8_lpm_enter_sleep(k_ra8_sleep_mode_deep_sleep) != k_ra8_ok) {
-    lpm_deep_panic_halt();
+    internal_lpm_deep_panic_halt();
   }
 
   g_lpm_deep_wake_count++;
 
-  (void)ra8_board_uart_console_write(k_lpm_deep_msg_woke,
-                                     (size_t)(sizeof(k_lpm_deep_msg_woke) - 1U));
+  (void)ra8_board_uart_console_write(s_lpm_deep_msg_woke,
+                                     (size_t)(sizeof(s_lpm_deep_msg_woke) - 1U));
 
   /* Park in a normal (non-LPM) loop so subsequent bench flashes can
    * halt the CPU without an Initialize step. SysTick + the CPU stay
@@ -203,7 +226,7 @@ int32_t main(void)
     (void)ra8_board_led_toggle(k_ra8_board_led1);
     ra8_delay_ms((uint32_t)k_lpm_deep_park_blink_ms);
   }
-  lpm_deep_panic_halt();
+  internal_lpm_deep_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

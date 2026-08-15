@@ -112,7 +112,7 @@ volatile uint32_t g_cache_coherency_match = 0U;
 volatile uint32_t g_cache_coherency_mismatch = 0U;
 
 /**
- * @var k_cache_coherency_pass_banner
+ * @var s_cache_coherency_pass_banner
  * @brief Deterministic HIL success banner (uart_scrape / emulator-scrape).
  * @details Emitted once, after ::k_cache_coherency_rounds rounds verify, on the
  *          success path only. Additive to the ``ra8_log`` ITM trace so a rig with
@@ -122,7 +122,7 @@ volatile uint32_t g_cache_coherency_mismatch = 0U;
  *          failure string in the binary.
  * @since 0.1.0
  */
-static const uint8_t k_cache_coherency_pass_banner[] = "cache_coherency_hil: 8 rounds PASS\r\n";
+static const uint8_t s_cache_coherency_pass_banner[] = "cache_coherency_hil: 8 rounds PASS\r\n";
 
 /**
  * @brief Bring up the SCI8 / J-Link OB VCOM console for the HIL banner.
@@ -144,7 +144,7 @@ static const uint8_t k_cache_coherency_pass_banner[] = "cache_coherency_hil: 8 r
  * @note Not thread-safe; single-threaded boot context.
  * @since 0.1.0
  */
-static bool cache_coherency_console_init(void)
+RA8_INTERNAL static bool internal_console_init(void)
 {
   if (ra8_cgc_init() != k_ra8_ok) {
     return false;
@@ -158,7 +158,7 @@ static bool cache_coherency_console_init(void)
 /**
  * @brief Emit the deterministic HIL success banner over the VCOM console + ITM.
  *
- * @details Writes ::k_cache_coherency_pass_banner to the SCI8 / J-Link OB VCOM
+ * @details Writes ::s_cache_coherency_pass_banner to the SCI8 / J-Link OB VCOM
  * console and flushes it, then mirrors the same verdict over ``ra8_log`` so
  * ra8_emulator surfaces it as an ``[itm]`` line. A no-op on the wire if the console
  * never came up (the write returns ``k_ra8_err_not_initialized``, ignored).
@@ -166,17 +166,17 @@ static bool cache_coherency_console_init(void)
  * @return Nothing.
  *
  * @pre Reached only after ::k_cache_coherency_rounds rounds verified.
- * @pre ::cache_coherency_console_init was attempted during bring-up.
+ * @pre ::internal_console_init was attempted during bring-up.
  * @post The banner has been handed to SCI8 and the TX FIFO drained (if up).
  * @post No shared / M33 state is modified.
  *
  * @note Not thread-safe; single-threaded boot context.
  * @since 0.1.0
  */
-static void cache_coherency_emit_pass(void)
+RA8_INTERNAL static void internal_emit_pass(void)
 {
-  (void)ra8_board_uart_console_write(k_cache_coherency_pass_banner,
-                                     (size_t)(sizeof(k_cache_coherency_pass_banner) - 1U));
+  (void)ra8_board_uart_console_write(s_cache_coherency_pass_banner,
+                                     (size_t)(sizeof(s_cache_coherency_pass_banner) - 1U));
   (void)ra8_board_uart_console_flush();
   ra8_log_info("M85", "cache_coherency_hil: 8 rounds PASS");
 }
@@ -197,7 +197,7 @@ static void cache_coherency_emit_pass(void)
  * @note Mirrors the M33's fault handler for symmetry.
  * @since 0.1.0
  */
-[[noreturn]] static void park_forever(void)
+[[noreturn]] RA8_INTERNAL static void internal_park_forever(void)
 {
   while (1) {
     __asm volatile("nop");
@@ -206,6 +206,9 @@ static void cache_coherency_emit_pass(void)
 
 /**
  * @brief Poll until ``pong_seq`` reaches ``target`` or the budget runs out.
+ * @details Re-reads the volatile sequence field up to the fixed budget and
+ *          returns immediately on the target value; a null pointer is treated
+ *          as a bounded failure without dereferencing shared SRAM.
  *
  * @param[in] shared Pointer to the shared message struct (never NULL).
  * @param[in] target Sequence value to wait for (the value just written to
@@ -224,7 +227,8 @@ static void cache_coherency_emit_pass(void)
  *       times out.
  * @since 0.1.0
  */
-static bool wait_for_pong(volatile cache_coherency_shared_t* shared, uint32_t target)
+RA8_INTERNAL static bool internal_wait_for_pong(volatile cache_coherency_shared_t* shared,
+                                                uint32_t                           target)
 {
   if (shared == nullptr) {
     return false;
@@ -260,8 +264,8 @@ static bool wait_for_pong(volatile cache_coherency_shared_t* shared, uint32_t ta
  * @note Not thread-safe; single-threaded M85 context.
  * @since 0.1.0
  */
-static void
-cache_coherency_round(volatile cache_coherency_shared_t* shared, uint32_t round, uint32_t* next_seq)
+RA8_INTERNAL static void
+internal_round(volatile cache_coherency_shared_t* shared, uint32_t round, uint32_t* next_seq)
 {
   if ((shared == nullptr) || (next_seq == nullptr)) {
     return;
@@ -272,7 +276,7 @@ cache_coherency_round(volatile cache_coherency_shared_t* shared, uint32_t round,
   __asm volatile("dsb" ::: "memory");
   shared->ping_seq = *next_seq;
 
-  bool ok = wait_for_pong(shared, *next_seq);
+  bool ok = internal_wait_for_pong(shared, *next_seq);
   if (ok) {
     ok = (shared->pong_payload == expect);
   }
@@ -302,7 +306,7 @@ int main(void)
   ra8_log_init();
   ra8_log_info("M85", "cache_coherency_hil: D-cache ON, non-cacheable shared SRAM");
 
-  volatile cache_coherency_shared_t* shared = cache_coherency_shared();
+  volatile cache_coherency_shared_t* shared = internal_shared();
   /* CPU0 owns initialisation of the shared block. Zero it before
    * releasing CPU1 so CPU1 starts from a known clean state. */
   shared->ping_seq     = 0U;
@@ -312,7 +316,7 @@ int main(void)
   __asm volatile("dsb" ::: "memory");
 
   /* Best-effort VCOM console (banner) + LED1 (self-test heartbeat). */
-  const bool console_up = cache_coherency_console_init();
+  const bool console_up = internal_console_init();
   if (!console_up) {
     ra8_log_info("M85", "VCOM console init failed -- banner over ITM only");
   }
@@ -322,7 +326,7 @@ int main(void)
   ra8_log_info_val("M85", "ra8_cpu1_release rc (0 = ok)", (uint32_t)err);
   if (err != k_ra8_ok) {
     ra8_log_info("M85", "release FAILED -- halting");
-    park_forever();
+    internal_park_forever();
   }
 
   uint32_t next_seq    = 1U;
@@ -339,10 +343,10 @@ int main(void)
       (void)ra8_board_led_toggle(k_ra8_board_led1);
     }
 
-    cache_coherency_round(shared, round, &next_seq);
+    internal_round(shared, round, &next_seq);
 
     if (!banner_sent && (g_cache_coherency_match >= (uint32_t)k_cache_coherency_rounds)) {
-      cache_coherency_emit_pass();
+      internal_emit_pass();
       banner_sent = true;
     }
     round += 1U;

@@ -27,6 +27,7 @@
 #include <stdint.h>
 
 #include "ra8_acmphs.h"
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -66,8 +67,23 @@ typedef enum : uint8_t {
  */
 volatile uint32_t g_acmphs_compare_tick = 0U;
 
-/** @brief Park the CPU forever after fatal init failure. */
-static void acmphs_demo_panic_halt(void)
+/**
+ * @brief Park the CPU forever after a fatal comparator-demo failure.
+ *
+ * @details Enters a permanent wait-for-interrupt loop so the comparator and
+ *          LED state at the point of failure remain available to a debugger.
+ *
+ * @return None.
+ *
+ * @pre The caller has determined the demo cannot safely continue.
+ * @pre Any pending LED diagnostic has already been requested.
+ * @post The function never returns to its caller.
+ * @post No further comparator samples or liveness increments occur.
+ *
+ * @note Fatal-path helper for this single-core image only.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_acmphs_demo_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -77,19 +93,28 @@ static void acmphs_demo_panic_halt(void)
 /**
  * @brief Bring CGC + SysTick + LEDs + ACMPHS channel 0 up.
  *
+ * @details Initializes the clock and time base, configures all three board LEDs,
+ *          enables the comparator block, and binds channel 0 to the demo's
+ *          selected input and reference without edge interrupts or filtering.
+ *
  * @par MC/DC:
  * Compound decision: ``ra8_acmphs_init != ok || ra8_acmphs_channel_init !=
  * ok``. Two atomic conditions x N+1 = 3 vectors -- both-ok (steady
  * state), each-fail (mock injection in test_app_acmphs_compare).
  *
  * @return Error code from the first failing primitive.
+ * @retval k_ra8_ok All clocks, LEDs, and comparator state were initialized.
+ * @retval (other)  The first error reported by a board or HAL dependency.
  *
  * @pre Reset_Handler has set up the C runtime.
+ * @pre The comparator input and reference selections match the board wiring.
  * @post On success ACMPHS channel 0 is enabled in polling mode.
+ * @post On failure no later initialization step is attempted.
  *
+ * @note Single-shot boot helper; it is not safe to invoke concurrently.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t acmphs_demo_setup(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_acmphs_demo_setup(void)
 {
   uint32_t  cpuclk0_hz = 0U;
   ra8_err_t err        = ra8_cgc_init();
@@ -133,16 +158,27 @@ static void acmphs_demo_panic_halt(void)
 /**
  * @brief Read the comparator output and route to the matching LED.
  *
+ * @details Polls channel 0 once, toggling LED1 for a high result and LED2 for a
+ *          low result while preserving the first HAL or BSP error.
+ *
  * @par MC/DC:
  * Compound decision: ``ra8_acmphs_read_output != ok``. One atomic
  * condition x 2 vectors -- success (steady state) + driver-failure
  * (test mock).
  *
  * @return Error code from ra8_acmphs_read_output.
+ * @retval k_ra8_ok The sample was read and the selected LED toggled.
+ * @retval (other)  The comparator read or selected LED update failed.
  *
+ * @pre ::internal_acmphs_demo_setup completed successfully.
+ * @pre This demo exclusively owns channel 0 and LED1/LED2 updates.
+ * @post On success exactly one of LED1 or LED2 is toggled.
+ * @post On a read error neither LED is changed.
+ *
+ * @note Polling helper; no comparator interrupt state is consumed.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t acmphs_demo_one_iter(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_acmphs_demo_one_iter(void)
 {
   ra8_level_t     lv  = k_ra8_level_low;
   const ra8_err_t err = ra8_acmphs_read_output((uint8_t)k_acmphs_demo_channel, &lv);
@@ -159,20 +195,20 @@ static void acmphs_demo_panic_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  if (acmphs_demo_setup() != k_ra8_ok) {
-    acmphs_demo_panic_halt();
+  if (internal_acmphs_demo_setup() != k_ra8_ok) {
+    internal_acmphs_demo_panic_halt();
   }
   ra8_isr_globals_enable();
 
   while (1) {
-    if (acmphs_demo_one_iter() != k_ra8_ok) {
+    if (internal_acmphs_demo_one_iter() != k_ra8_ok) {
       (void)ra8_board_led_on(k_ra8_board_led3);
       break;
     }
     g_acmphs_compare_tick += 1U;
     ra8_delay_ms((uint32_t)k_acmphs_demo_period_ms);
   }
-  acmphs_demo_panic_halt();
+  internal_acmphs_demo_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

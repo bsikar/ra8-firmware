@@ -37,6 +37,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2_peripherals.h"
 #include "ra8_cgc.h"
 #include "ra8_dual_core.h"
@@ -61,7 +62,7 @@ typedef enum : uint32_t {
 } blink_m33_hil_t;
 
 /**
- * @var k_blink_m33_pass_banner
+ * @var s_blink_m33_pass_banner
  * @brief Deterministic HIL banner: the M33 secondary core was released (uart_scrape).
  * @details This template has no shared-SRAM mailbox -- the M33's proof-of-life is
  *          the LED1 blink the M85 never drives. The strongest verdict the M85 can
@@ -73,7 +74,7 @@ typedef enum : uint32_t {
  * @warning Do not modify; the HIL gate (hil.conf HIL_EXPECT) matches it exactly.
  * @since 0.1.0
  */
-static const uint8_t k_blink_m33_pass_banner[] = "blink_m33: m33 released PASS\r\n";
+static const uint8_t s_blink_m33_pass_banner[] = "blink_m33: m33 released PASS\r\n";
 
 /**
  * @brief Bring up the SCI8 / J-Link OB VCOM console for the HIL success banner.
@@ -98,7 +99,7 @@ static const uint8_t k_blink_m33_pass_banner[] = "blink_m33: m33 released PASS\r
  * @note Not thread-safe; single-threaded boot context.
  * @since 0.1.0
  */
-static bool blink_m33_hil_console_init(void)
+RA8_INTERNAL static bool internal_console_init(void)
 {
   if (ra8_cgc_init() != k_ra8_ok) {
     return false;
@@ -113,24 +114,24 @@ static bool blink_m33_hil_console_init(void)
  * @brief Emit the deterministic HIL success banner over the VCOM console.
  *
  * @details
- * Writes ::k_blink_m33_pass_banner to the SCI8 / J-Link OB VCOM console and
+ * Writes ::s_blink_m33_pass_banner to the SCI8 / J-Link OB VCOM console and
  * flushes it so the bytes clock out before the M85 parks in WFI. A no-op if the
  * console never came up (the write returns `k_ra8_err_not_initialized`, ignored).
  *
  * @return Nothing.
  *
  * @pre Reached only after `ra8_cpu1_release` returned k_ra8_ok (single guard).
- * @pre ::blink_m33_hil_console_init was attempted during bring-up.
+ * @pre ::internal_console_init was attempted during bring-up.
  * @post The banner has been handed to SCI8 and the TX FIFO drained (if up).
  * @post No M33 / mailbox state is modified.
  *
  * @note Not thread-safe; single-threaded boot context.
  * @since 0.1.0
  */
-static void blink_m33_hil_emit_pass(void)
+RA8_INTERNAL static void internal_emit_pass(void)
 {
-  (void)ra8_board_uart_console_write(k_blink_m33_pass_banner,
-                                     (size_t)(sizeof(k_blink_m33_pass_banner) - 1U));
+  (void)ra8_board_uart_console_write(s_blink_m33_pass_banner,
+                                     (size_t)(sizeof(s_blink_m33_pass_banner) - 1U));
   (void)ra8_board_uart_console_flush();
 }
 
@@ -151,7 +152,7 @@ static void blink_m33_hil_emit_pass(void)
  * @note Mirrors the M33's fault handler for symmetry.
  * @since 0.1.0
  */
-[[noreturn]] static void park_forever(void)
+[[noreturn]] RA8_INTERNAL static void internal_park_forever(void)
 {
   while (1) {
     __asm volatile("nop");
@@ -177,7 +178,7 @@ static void blink_m33_hil_emit_pass(void)
  *       M85 simply stays asleep.
  * @since 0.1.0
  */
-[[noreturn]] static void idle_forever(void)
+[[noreturn]] RA8_INTERNAL static void internal_idle_forever(void)
 {
   while (1) {
     __asm volatile("wfi");
@@ -190,7 +191,7 @@ static void blink_m33_hil_emit_pass(void)
  * @details Brings up logging, releases the Cortex-M33 (which then blinks LED1),
  * and idles. See the file header for the teaching narrative.
  *
- * @return Never returns (ends in ::idle_forever).
+ * @return Never returns (ends in ::internal_idle_forever).
  * @retval (none) Control stays in the idle loop.
  *
  * @pre `SystemInit` has completed core bring-up.
@@ -209,7 +210,7 @@ int main(void)
 
   /* Bring up the VCOM console so the post-release success path can emit the HIL
    * banner. Best-effort: a failure is narrated over ITM and the demo continues. */
-  if (!blink_m33_hil_console_init()) {
+  if (!internal_console_init()) {
     ra8_log_info("M85", "VCOM console init failed -- HIL banner unavailable");
   }
 
@@ -219,13 +220,13 @@ int main(void)
   ra8_log_info_val("M85", "ra8_cpu1_release rc (0 = ok)", (uint32_t)err);
   if (err != k_ra8_ok) {
     ra8_log_info("M85", "release FAILED -- halting");
-    park_forever();
+    internal_park_forever();
   }
 
   ra8_log_info("M85", "M33 released -- it now blinks LED1 (BLUE, P600)");
   /* Additive HIL banner: the M33 has been released (its blink is visually
    * confirmed on the bench); mirror the verdict to VCOM for uart_scrape. */
-  blink_m33_hil_emit_pass();
+  internal_emit_pass();
   ra8_log_info("M85", "M85 entering WFI idle -- low-power co-processor model");
-  idle_forever();
+  internal_idle_forever();
 }

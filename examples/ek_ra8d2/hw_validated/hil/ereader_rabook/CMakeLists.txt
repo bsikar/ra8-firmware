@@ -16,8 +16,8 @@ cmake_minimum_required(VERSION 3.20)
 # add_subdirectory() (project() is already called at the root), so guard on
 # PARENT_DIRECTORY to avoid a redundant nested sub-project. ra8_add_app()
 # below re-runs project() in the standalone case to apply the shared VERSION
-# and the app description. ra8_epub pulls in C++ (tinyxml2 +
-# the XML shim), so the languages must include CXX.
+# and the app description. CXX remains enabled for linked C++ components;
+# the project therefore keeps CXX enabled.
 
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
