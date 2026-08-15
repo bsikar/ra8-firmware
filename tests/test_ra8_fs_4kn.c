@@ -440,7 +440,7 @@ RA8_INTERNAL static void internal_test_4kn_exfat_roundtrip(void)
  * a 4Kn device); the sibling FAT tests hold it FALSE. Decision (exFAT): the
  * three-condition shift guard
  * `(shift < 9) || (shift > 12) || ((1 << shift) != bytes_per_sector)` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_read.c@priv_exfat_parse`:
+ * `libs/ra8_fs/src/ra8_fs_fat_exfat_read.c@internal_exfat_parse`:
  * - shift 12 image on a 512-byte device -> F,F,T (mismatch independence);
  * - shift 13 image                      -> F,T,- (ceiling independence);
  * - a sub-9 shift arrives from the sibling suites' garbage-VBR parses, and

@@ -245,7 +245,7 @@ RA8_INTERNAL static void internal_test_classify_illegal_characters(void)
  *
  * @par MC/DC:
  * Decision: `if ((base_len == 0U) || (base_len > k_filename_base_len))` in
- * `libs/ra8_fs/src/ra8_fs_fat_name.c@priv_name_is_83` (2 conditions).
+ * `libs/ra8_fs/src/ra8_fs_fat_name.c@internal_name_is_83` (2 conditions).
  * - V1: `"BASE.TXT"`     -> C1=F, C2=F -> false -> short.
  * - V2: `".profile"`     -> C1=T       -> true  -> long (empty base).
  * - V3: `"NINECHARS.TX"` -> C1=F, C2=T -> true  -> long (nine-character base).
@@ -413,7 +413,7 @@ RA8_INTERNAL static void internal_expect_alias(const char* leaf, uint32_t tail, 
  *
  * @par MC/DC:
  * Decision: `if ((c == ' ') || (c == '.'))` in
- * `libs/ra8_fs/src/ra8_fs_fat_name.c@priv_alias_collect` (2 conditions).
+ * `libs/ra8_fs/src/ra8_fs_fat_name.c@internal_alias_collect` (2 conditions).
  * - V1: `'M'` in `"My Report.txt"` -> C1=F, C2=F -> false -> the character is kept.
  * - V2: the space in the same name -> C1=T       -> true  -> dropped.
  * - V3: the first dot in `"a.b.c"` -> C1=F, C2=T -> true  -> dropped.
@@ -451,7 +451,7 @@ RA8_INTERNAL static void internal_test_alias_basis_shapes(void)
  *
  * @par MC/DC:
  * Decision: `while ((digits < k_alias_digits_max) && (tail >= scale))` in
- * `libs/ra8_fs/src/ra8_fs_fat_name.c@priv_alias_digits` (2 conditions).
+ * `libs/ra8_fs/src/ra8_fs_fat_name.c@internal_alias_digits` (2 conditions).
  * - V1: tail = 1      -> C1=T, C2=F -> false on the first test -> 1 digit.
  * - V2: tail = 10     -> C1=T, C2=T -> true once               -> 2 digits.
  * - V3: tail = 999999 -> C1 goes F at the cap                  -> 6 digits.

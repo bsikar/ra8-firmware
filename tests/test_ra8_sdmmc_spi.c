@@ -372,8 +372,8 @@ RA8_INTERNAL static void internal_test_bind_fs_backend_uninitialized_rejected(vo
  *                 (transport->cs == nullptr) ||
  *                 (transport->xfer == nullptr))``
  * (3 conditions;
- * libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi.c@internal_validate_transport) inside
- * ``internal_validate_transport``.
+ * libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi.c@priv_sdmmc_spi_validate_transport) inside
+ * ``priv_sdmmc_spi_validate_transport``.
  *
  * Per DO-178C 6.4.4.3 representative-subset, N+1 = 4 vectors. Each
  * sub-test holds two conditions fixed and flips the third so the

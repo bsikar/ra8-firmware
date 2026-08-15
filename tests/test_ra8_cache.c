@@ -188,7 +188,7 @@ static uint32_t ccsidr_one_set_one_way(void)
  * @test test_invalidate_all_geometry_guard
  *
  * @par MC/DC:
- * Cited: `libs/ra8_hal/src/ra8_cache.c@ra8_cache_setway_all` -- the compound
+ * Cited: `libs/ra8_hal/src/ra8_cache.c@internal_ra8_cache_setway_all` -- the compound
  * decision was factored out of `ra8_cache_dcache_invalidate_all` into the shared
  * set/way walk; it is exercised here through that public entry point.
  * Decision: `if ((ccsidr == 0) || (ccsidr == UINT32_MAX))` (2 conditions)

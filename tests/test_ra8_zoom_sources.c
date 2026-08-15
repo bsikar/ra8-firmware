@@ -395,7 +395,7 @@ static void t_tile_read_edges_and_failclosed(ra8_tile_cache_t* cache, ra8_zoom_t
  * @test tile_read_assembles_and_bounds_residency
  *
  * @par MC/DC:
- * Decision libs/ra8_zoom/src/ra8_zoom_tiles.c@zoom_read_rect_ok
+ * Decision libs/ra8_zoom/src/ra8_zoom_tiles.c@internal_read_rect_ok
  * `if ((w == 0U) || (h == 0U) || (out_stride < w))` (3 conditions):
  * - V1: w=40, h=20, stride=64 -> false (control: assembled)
  * - V2: w=0,  h=20, stride=64 -> true  (varies w only)
@@ -408,7 +408,7 @@ static void t_tile_read_edges_and_failclosed(ra8_tile_cache_t* cache, ra8_zoom_t
  * Each vector pairs with its control for independent influence. N+1 = 4 and 3.
  *
  * @par MC/DC:
- * Decision libs/ra8_zoom/src/ra8_zoom_tiles.c@zoom_tile_fetch
+ * Decision libs/ra8_zoom/src/ra8_zoom_tiles.c@internal_tile_fetch
  * `if (((uint32_t)tile.width != exp_w) || ((uint32_t)tile.height != exp_h))`
  * (2 conditions):
  * - V8:  a decoder reporting the declared extent -> false (control: copies)
