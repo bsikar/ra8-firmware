@@ -456,3 +456,59 @@ misra-c2012-17.3:port/netxduo/src/nx_ether_driver_c6.c
 # to assembling and stripping the 14-byte 802.3 header, and mirrors the sibling
 # nx_ether_driver_ra8_eth.c (18.4 baselined there). Rule 18.4 is Advisory.
 misra-c2012-18.4:port/netxduo/src/nx_ether_driver_c6.c
+
+# constParameterCallback on first-party vtable rows across the audio, camera,
+# storage, archive and CLI-tool source families. Every row named here has its
+# address stored in a function-pointer table -- ra8_audio_source_iface_t,
+# ra8_camera_source_iface_t, ra8_io_blockdev_iface_t, ra8_io_fs_iface_t,
+# ra8_fmt_stream_t, mdl_storage's validate-stage hook, protobuf-c's
+# ProtobufCAllocator, or a test's injected hash vtable -- and each of those
+# typedefs declares the context parameter as plain `void*`. Const-qualifying
+# one row makes the assignment that binds it a type error, and the parameter
+# cannot be const in the general case because sibling implementations behind
+# the same interface genuinely write through it (a memory source does not, a
+# PDM or CEU source does). cppcheck reports the binding site itself on each of
+# these with "You might need to cast the function pointer here", which is the
+# limitation, not a finding. Listed rather than inline so each row's Doxygen
+# block stays adjacent to its function for the doc-coverage audit -- the same
+# reasoning and mechanism as the ra8_ftl / ra8_comic / ra8_epub entries above.
+constParameterCallback:libs/ra8_audio/src/ra8_audio_source_memory.c
+constParameterCallback:libs/ra8_audio/src/ra8_audio_source_pdm.c
+constParameterCallback:libs/ra8_camera/src/ra8_camera_source_ceu.c
+constParameterCallback:libs/ra8_camera/src/ra8_camera_source_memory.c
+constParameterCallback:examples/ek_ra8d2/hil_needs_revalidation/ra8_io_fsfmt_demo/main.c
+constParameterCallback:tools/cache_bench/cache_bench_host.c
+constParameterCallback:tools/exfat_mkimage/exfat_mkimage.c
+constParameterCallback:tools/media_dl/src/mdl_export_zip.c
+constParameterCallback:tools/media_dl/src/mdl_storage.c
+constParameterCallback:tools/media_dl/tests/test_media_dl_net_c6link.c
+constParameterCallback:tools/mkbookimg/mkbookimg.c
+constParameterCallback:tools/mkfontimg/mkfontimg_host.c
+constParameterCallback:tools/rabook_imagepack/tests/test_ra8_fmt_stream_inspect.c
+constParameterCallback:tools/rabook_imagepack/tests/test_ra8_fmt_stream_rabook.c
+constParameterCallback:tools/reader_vmem/reader_vmem.c
+
+# redundantAssignment on host-test fixture state that the code under test reads
+# back through an injected pointer. In each of these the test sets a field, then
+# calls a production entry point that reaches that same field through a bound
+# context -- test_cache_bench's `bytes` array via cb_source_t::ctx and its read
+# callback, test_media_dl_fetch_body's `fixture.fault.flags` via the storage
+# fault hook, test_media_dl_net's `body.failure` via the bound sink view -- and
+# only afterwards restores it. cppcheck's value flow does not follow the write
+# through the callback, so it sees the restore overwriting an unread value. The
+# writes are read; the analyser cannot see where. Root-fixing this would mean
+# deleting the fault injection the tests exist to perform.
+redundantAssignment:tools/cache_bench/tests/test_cache_bench.c
+redundantAssignment:tools/media_dl/tests/test_media_dl_fetch_body.c
+redundantAssignment:tools/media_dl/tests/test_media_dl_net.c
+
+# knownConditionTrueFalse on the media_download app's build-configuration
+# guards. `s_ssid` and `s_url` are initialised from RA8_C6_WIFI_SSID and
+# RA8_MEDIA_DOWNLOAD_URL, which the app's CMakeLists supplies from the
+# environment and whose in-file `#ifndef` fallback is the empty string
+# specifically so an unconfigured image refuses before any radio or HTTPS
+# activity. cppcheck runs without those -D flags, so it always sees the empty
+# fallback and constant-folds `s_ssid[0] == '\0'` to true. The guards are the
+# whole point of the fallback and are genuinely variable in a configured build;
+# this is cppcheck checking one configuration, not a defect.
+knownConditionTrueFalse:examples/ek_ra8d2/hw_pending/media_download/main.c
