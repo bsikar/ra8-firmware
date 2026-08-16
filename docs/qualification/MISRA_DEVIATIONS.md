@@ -141,7 +141,8 @@ Every `misra-c2012-*` row in `.cppcheck-suppressions` narrows the
 audit, so every rule family there is accounted for below (unlisted
 family or ghost bullet = gate failure); justifications live with the rows.
 
-- `misra-c2012-7.4` (2 rows, 2 paths): esp-hosted tooling gap.
+- `misra-c2012-7.4` (4 rows, 4 paths): esp-hosted tooling gap, plus the
+  same char-array-initialiser gap on two media_dl host tests.
 - `misra-c2012-8.9` (1 row, 1 path): `ra8_wdt.c` parse artefact.
 - `misra-c2012-11.1` (1 row, 1 path): `tools/ra8_emulator` block.
 - `misra-c2012-11.2` (1 row, 1 path): `tools/ra8_emulator` block.
@@ -156,6 +157,8 @@ family or ghost bullet = gate failure); justifications live with the rows.
 - `misra-c2012-18.4` (1 row, 1 path): `nx_ether_driver_c6.c` header assembly (Advisory).
 - `misra-c2012-21.3` (1 row, 1 path): `tools/ra8_emulator` block.
 - `misra-c2012-21.6` (1 row, 1 path): `tools/ra8_emulator` block.
+- `misra-c2012-21.16` (1 row, 1 path): `char`-typed `memcmp` operand forced
+  by `mdl_net_get_buf()`'s `char*` contract, compared only against zero.
 
 ---
 
