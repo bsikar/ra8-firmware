@@ -74,8 +74,10 @@ RA8_INTERNAL static uint32_t internal_intern_span(ra8_rabook_ctx_t* ctx,
   while (scan < ctx->string_size) {
     const char*  candidate = &ctx->buf.string_pool[scan];
     const size_t length    = strlen(candidate);
-    if ((length == written) && (memcmp(candidate, scratch, written) == 0)) {
-      return scan;
+    if (length == written) {
+      if (memcmp(candidate, scratch, written) == 0) {
+        return scan;
+      }
     }
     scan += (uint32_t)length + 1U;
   }
@@ -118,9 +120,12 @@ RA8_INTERNAL static ra8_err_t internal_attributes(const uint8_t*              so
   for (uint16_t i = 0U; i < event->attribute_count; ++i) {
     ra8_xml_attribute_t attribute = {};
     bool                has_value = false;
-    if ((ra8_xml_attr_next(source, source_len, event, &cursor, &attribute, &has_value) !=
-         k_ra8_ok) ||
-        !has_value) {
+    const ra8_err_t     attr_err =
+      ra8_xml_attr_next(source, source_len, event, &cursor, &attribute, &has_value);
+    if (attr_err != k_ra8_ok) {
+      return k_ra8_err_validation_failed;
+    }
+    if (!has_value) {
       return k_ra8_err_validation_failed;
     }
     workspace->attributes[i].name_off =
@@ -206,8 +211,10 @@ RA8_INTERNAL static ra8_err_t internal_element(const uint8_t*              sourc
     return k_ra8_err_no_mem;
   }
   const uint16_t level = (uint16_t)(event->depth - selected_depth);
-  if ((level > 0U) && (internal_link(ctx, workspace, (uint16_t)(level - 1U), node) != k_ra8_ok)) {
-    return k_ra8_err_no_mem;
+  if (level > 0U) {
+    if (internal_link(ctx, workspace, (uint16_t)(level - 1U), node) != k_ra8_ok) {
+      return k_ra8_err_no_mem;
+    }
   }
   workspace->element_nodes[level] = node;
   workspace->last_children[level] = (uint32_t)k_ra8_book_nil;
@@ -289,25 +296,31 @@ RA8_INTERNAL static ra8_err_t internal_select(const uint8_t*       source,
   while (err == k_ra8_ok) {
     ra8_xml_event_t event = {};
     err                   = ra8_xml_reader_next(&reader, &event);
-    if ((err != k_ra8_ok) || (event.kind == (uint8_t)k_ra8_xml_event_none)) {
+    if (err != k_ra8_ok) {
       break;
     }
-    if (!saw_root && (event.kind == (uint8_t)k_ra8_xml_event_start)) {
-      saw_root   = true;
-      root_depth = event.depth;
-      *out       = (priv_selection_t){event.markup.offset, event.depth};
-      continue;
+    if (event.kind == (uint8_t)k_ra8_xml_event_none) {
+      break;
     }
-    if ((event.kind == (uint8_t)k_ra8_xml_event_start) &&
-        (event.depth == (uint16_t)(root_depth + 1U))) {
-      if (direct_children >= (uint16_t)k_ra8_rabook_xml_body_siblings) {
-        return k_ra8_err_validation_failed;
+    if (!saw_root) {
+      if (event.kind == (uint8_t)k_ra8_xml_event_start) {
+        saw_root   = true;
+        root_depth = event.depth;
+        *out       = (priv_selection_t){event.markup.offset, event.depth};
+        continue;
       }
-      if (ra8_xml_span_equal(source, length, event.name, "body")) {
-        *out = (priv_selection_t){event.markup.offset, event.depth};
-        return k_ra8_ok;
+    }
+    if (event.kind == (uint8_t)k_ra8_xml_event_start) {
+      if (event.depth == (uint16_t)(root_depth + 1U)) {
+        if (direct_children >= (uint16_t)k_ra8_rabook_xml_body_siblings) {
+          return k_ra8_err_validation_failed;
+        }
+        if (ra8_xml_span_equal(source, length, event.name, "body")) {
+          *out = (priv_selection_t){event.markup.offset, event.depth};
+          return k_ra8_ok;
+        }
+        ++direct_children;
       }
-      ++direct_children;
     }
   }
   return err;
@@ -346,12 +359,17 @@ RA8_INTERNAL static ra8_err_t internal_emit(const uint8_t*              source,
   while (err == k_ra8_ok) {
     ra8_xml_event_t event = {};
     err                   = ra8_xml_reader_next(&reader, &event);
-    if ((err != k_ra8_ok) || (event.kind == (uint8_t)k_ra8_xml_event_none)) {
+    if (err != k_ra8_ok) {
+      break;
+    }
+    if (event.kind == (uint8_t)k_ra8_xml_event_none) {
       break;
     }
     if (!active) {
-      if ((event.kind != (uint8_t)k_ra8_xml_event_start) ||
-          (event.markup.offset != selection->offset)) {
+      if (event.kind != (uint8_t)k_ra8_xml_event_start) {
+        continue;
+      }
+      if (event.markup.offset != selection->offset) {
         continue;
       }
       active = true;
@@ -362,14 +380,19 @@ RA8_INTERNAL static ra8_err_t internal_emit(const uint8_t*              source,
       if (event.markup.offset == selection->offset) {
         *out_root = node;
       }
-      if ((err == k_ra8_ok) && (event.self_closing != 0U) &&
-          (event.markup.offset == selection->offset)) {
-        active = false;
+      if (err == k_ra8_ok) {
+        if (event.self_closing != 0U) {
+          if (event.markup.offset == selection->offset) {
+            active = false;
+          }
+        }
       }
     } else if (event.kind == (uint8_t)k_ra8_xml_event_text) {
       err = internal_text(source, length, &event, selection->depth, ctx, workspace);
-    } else if ((event.kind == (uint8_t)k_ra8_xml_event_end) && (event.depth == selection->depth)) {
-      active = false;
+    } else if (event.kind == (uint8_t)k_ra8_xml_event_end) {
+      if (event.depth == selection->depth) {
+        active = false;
+      }
     }
   }
   return err;
@@ -382,8 +405,19 @@ ra8_err_t ra8_rabook_xml_parse_chapter(const uint8_t*              xhtml_bytes,
                                        const char*                 chapter_title,
                                        ra8_rabook_xml_workspace_t* workspace)
 {
-  if ((xhtml_bytes == nullptr) || (ctx == nullptr) || (chapter_href == nullptr) ||
-      (chapter_title == nullptr) || (workspace == nullptr)) {
+  if (xhtml_bytes == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (ctx == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (chapter_href == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (chapter_title == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (workspace == nullptr) {
     return k_ra8_err_null_ptr;
   }
   if (xhtml_len == 0U) {
@@ -399,9 +433,17 @@ ra8_err_t ra8_rabook_xml_parse_chapter(const uint8_t*              xhtml_bytes,
   if (err == k_ra8_ok) {
     err = internal_emit(xhtml_bytes, xhtml_len, &selection, ctx, workspace, &root);
   }
-  if ((err != k_ra8_ok) || ctx->failed || (root == (uint32_t)k_ra8_book_nil)) {
+  if (err != k_ra8_ok) {
     *ctx = checkpoint;
     return (err == k_ra8_err_validation_failed) ? err : k_ra8_err_no_mem;
+  }
+  if (ctx->failed) {
+    *ctx = checkpoint;
+    return k_ra8_err_no_mem;
+  }
+  if (root == (uint32_t)k_ra8_book_nil) {
+    *ctx = checkpoint;
+    return k_ra8_err_no_mem;
   }
   const uint32_t title   = ra8_rabook_intern(ctx, chapter_title);
   const uint32_t href    = ra8_rabook_intern(ctx, chapter_href);
