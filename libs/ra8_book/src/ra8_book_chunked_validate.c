@@ -314,6 +314,7 @@ RA8_INTERNAL
 static ra8_err_t internal_chunk_flat_read(void* opaque, uint64_t offset, uint8_t* dst, uint32_t len)
 {
   chunk_validate_t* ctx = (chunk_validate_t*)opaque;
+  // mcdc-deactivated: internal_chunk_flat_read range guard; this callback is reachable only from ra8_book_validate_stream_strict, whose priv_book_stream_read applies the identical `(off > source_size) || (len > source_size - off)` test against the same rd->inflated_total before invoking it, so neither condition can be true here -- it is a defensive duplicate of an upstream bound.
   if ((offset > ctx->rd->inflated_total) || ((uint64_t)len > (ctx->rd->inflated_total - offset))) {
     return k_ra8_err_out_of_range;
   }

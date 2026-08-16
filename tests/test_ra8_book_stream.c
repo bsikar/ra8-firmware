@@ -869,6 +869,267 @@ static void internal_test_chunked_workspace_and_reader_guards(void)
   TEST_END("strict chunked workspace and reader guards");
 }
 
+/**
+ * @test internal_test_mcdc_stream_header_string_and_dom_operands
+ * @brief Isolate the header, string-status, chapter-root, and link operands.
+ * @par MC/DC:
+ * An unsupported format version varies the first operand of the header
+ * feature guard against the canonical control. A shortened image pool leaves
+ * every segment canonical but the walked cursor short of total_size, varying
+ * the cursor operand of the exact-length gate. A read fault on the first
+ * string byte varies the status operand of both the boundary and the
+ * non-empty string checks. An out-of-pool chapter title varies the status
+ * operand of the chapter root-bound gate. A text root, and an element root
+ * carrying a sibling, independently vary the two operands of the root-shape
+ * gate. A child index equal to the node count varies the upper-bound operand
+ * of the forward-link rule against the already-covered lower bound.
+ * Decisions:
+ * - libs/ra8_book/src/ra8_book_stream.c@internal_validate_header_layout
+ * - libs/ra8_book/src/ra8_book_stream.c@internal_string_ref
+ * - libs/ra8_book/src/ra8_book_stream.c@internal_nonempty_string_ref
+ * - libs/ra8_book/src/ra8_book_stream.c@internal_validate_chapters
+ * - libs/ra8_book/src/ra8_book_stream.c@internal_forward_link
+ */
+RA8_INTERNAL static void internal_test_mcdc_stream_header_string_and_dom_operands(void)
+{
+  TEST_BEGIN("book stream header, string and DOM operand MC/DC");
+  internal_setup_book();
+  s_book.hdr.format_version = (uint32_t)k_ra8_book_format_version + 1U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
+
+  internal_setup_book();
+  s_book.hdr.image_pool_size = (uint32_t)sizeof(s_book.pool) - 1U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, internal_validate_flat());
+
+  internal_setup_book();
+  stream_mem_t      mem    = {};
+  stream_validate_t ctx    = internal_direct_context(&mem);
+  uint32_t          cursor = 0U;
+  mem.calls                = 0U;
+  mem.fail_call            = 1U;
+  TEST_ASSERT_EQ(
+    k_ra8_err_hw_timeout,
+    priv_book_stream_validate_element(&ctx, (const uint8_t*)&s_book.nodes[0], &cursor));
+
+  internal_setup_book();
+  s_book.chapters[0].title_off = s_book.hdr.string_size;
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
+
+  internal_setup_book();
+  s_book.chapters[0].root_node = 1U;
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
+
+  internal_setup_book();
+  s_book.nodes[0].next_sibling = 1U;
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
+
+  internal_setup_book();
+  s_book.nodes[0].first_child = s_book.hdr.node_count;
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
+
+  internal_setup_book();
+  TEST_END("book stream header, string and DOM operand MC/DC");
+}
+
+/**
+ * @test internal_test_mcdc_stream_raster_operands
+ * @brief Isolate every raster-shape, raster-size, and reserved-field operand.
+ * @par MC/DC:
+ * Zero width, zero height, an unknown depth, and the eight-bit depth
+ * independently vary the four operands of the raster-shape gate: the eight-bit
+ * vector is the one that leaves the not-gray4 operand true while the not-gray8
+ * operand is false, and it validates end to end. A raw length that disagrees
+ * with the computed extent varies the third operand of the raster-size gate. A
+ * non-zero reserved field and an empty image id independently vary the two
+ * operands of the reserved gate.
+ * Decisions:
+ * - libs/ra8_book/src/ra8_book_stream.c@internal_validate_raster
+ * - libs/ra8_book/src/ra8_book_stream.c@internal_validate_images
+ */
+RA8_INTERNAL static void internal_test_mcdc_stream_raster_operands(void)
+{
+  TEST_BEGIN("book stream raster operand MC/DC");
+  internal_setup_book();
+  s_book.images[0].width = 0U;
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
+
+  internal_setup_book();
+  s_book.images[0].height = 0U;
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
+
+  internal_setup_book();
+  s_book.images[0].pixel_format = UINT8_MAX;
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
+
+  internal_setup_book();
+  s_book.images[0].width        = 2U;
+  s_book.images[0].height       = 1U;
+  s_book.images[0].pixel_format = (uint8_t)k_ra8_book_pixfmt_gray8;
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_ok, internal_validate_flat());
+
+  internal_setup_book();
+  s_book.images[0].raw_size = s_book.images[0].data_size + 1U;
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, internal_validate_flat());
+
+  internal_setup_book();
+  s_book.images[0].reserved2 = 1U;
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
+
+  internal_setup_book();
+  s_book.images[0].id_off = 0U;
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
+
+  internal_setup_book();
+  TEST_END("book stream raster operand MC/DC");
+}
+
+/**
+ * @test internal_test_mcdc_stream_svg_and_tiling_operands
+ * @brief Isolate every SVG sentinel, SVG size, and pool-tiling operand.
+ * @par MC/DC:
+ * A non-zero SVG width, height, and depth independently vary the three
+ * operands of the SVG sentinel gate; an SVG whose raw length differs from its
+ * stored length varies the second operand of its size gate; and an oversized
+ * SVG payload sitting at the canonical pool offset varies the remaining-bytes
+ * operand of the tiling gate while its offset operand stays false.
+ * Decisions:
+ * - libs/ra8_book/src/ra8_book_stream.c@internal_validate_svg
+ * - libs/ra8_book/src/ra8_book_stream.c@internal_validate_images
+ */
+RA8_INTERNAL static void internal_test_mcdc_stream_svg_and_tiling_operands(void)
+{
+  TEST_BEGIN("book stream SVG and tiling operand MC/DC");
+  internal_setup_book();
+  s_book.images[1].width = 1U;
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
+
+  internal_setup_book();
+  s_book.images[1].height = 1U;
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
+
+  internal_setup_book();
+  s_book.images[1].pixel_format = (uint8_t)k_ra8_book_pixfmt_gray8;
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
+
+  internal_setup_book();
+  s_book.images[1].raw_size = s_book.images[1].data_size + 1U;
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
+
+  internal_setup_book();
+  s_book.images[1].data_size = s_book.hdr.image_pool_size;
+  s_book.images[1].raw_size  = s_book.hdr.image_pool_size;
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, internal_validate_flat());
+
+  internal_setup_book();
+  TEST_END("book stream SVG and tiling operand MC/DC");
+}
+
+/**
+ * @test internal_test_mcdc_stream_flat_guards
+ * @brief Vary each public flat-validator argument guard operand alone.
+ * @par MC/DC:
+ * A null scratch varies the second operand of the pointer guard against the
+ * already-covered null callback, and a source shorter than the fixed header
+ * varies the first operand of the size guard against the already-covered zero
+ * scratch capacity. Both rejected vectors leave the pre-seeded output header
+ * cleared.
+ * Decisions: libs/ra8_book/src/ra8_book_stream.c@ra8_book_validate_stream_strict
+ */
+RA8_INTERNAL static void internal_test_mcdc_stream_flat_guards(void)
+{
+  TEST_BEGIN("book stream flat guard MC/DC");
+  internal_setup_book();
+  stream_mem_t      mem = {.data = (uint8_t*)&s_book, .len = internal_flat_len()};
+  ra8_book_header_t hdr = {.total_size = UINT32_MAX};
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_book_validate_stream_strict(internal_memory_read, &mem, mem.len, nullptr, 1U, &hdr));
+  TEST_ASSERT_EQ(0U, hdr.total_size);
+  hdr.total_size = UINT32_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_book_validate_stream_strict(internal_memory_read,
+                                                 &mem,
+                                                 (uint64_t)k_ra8_book_sizeof_header - 1U,
+                                                 s_validate_work,
+                                                 sizeof(s_validate_work),
+                                                 &hdr));
+  TEST_ASSERT_EQ(0U, hdr.total_size);
+  TEST_END("book stream flat guard MC/DC");
+}
+
+/**
+ * @test internal_test_mcdc_chunked_argument_guards
+ * @brief Vary each chunked-validator argument guard operand alone.
+ * @par MC/DC:
+ * A null transfer buffer and a null scratch independently vary the two
+ * operands of the chunked pointer guard, and a zero transfer capacity and a
+ * zero scratch capacity independently vary the two operands of its size guard,
+ * each against the fully valid control the round-trip test supplies. Every
+ * rejected vector leaves the pre-seeded output header cleared.
+ * Decisions:
+ * libs/ra8_book/src/ra8_book_chunked_validate.c@ra8_book_chunked_validate_strict
+ */
+RA8_INTERNAL static void internal_test_mcdc_chunked_argument_guards(void)
+{
+  TEST_BEGIN("book stream chunked guard MC/DC");
+  stream_guard_fixture_t fixture = {};
+  internal_open_chunk_guard_fixture(&fixture);
+  ra8_book_header_t hdr = {.total_size = UINT32_MAX};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_book_chunked_validate_strict(&fixture.reader,
+                                                  nullptr,
+                                                  sizeof(s_reader_chunk),
+                                                  s_validate_work,
+                                                  sizeof(s_validate_work),
+                                                  &hdr));
+  TEST_ASSERT_EQ(0U, hdr.total_size);
+  hdr.total_size = UINT32_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_book_chunked_validate_strict(&fixture.reader,
+                                                  s_reader_chunk,
+                                                  sizeof(s_reader_chunk),
+                                                  nullptr,
+                                                  sizeof(s_validate_work),
+                                                  &hdr));
+  TEST_ASSERT_EQ(0U, hdr.total_size);
+  hdr.total_size = UINT32_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_book_chunked_validate_strict(&fixture.reader,
+                                                  s_reader_chunk,
+                                                  0U,
+                                                  s_validate_work,
+                                                  sizeof(s_validate_work),
+                                                  &hdr));
+  TEST_ASSERT_EQ(0U, hdr.total_size);
+  hdr.total_size = UINT32_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_book_chunked_validate_strict(&fixture.reader,
+                                                  s_reader_chunk,
+                                                  sizeof(s_reader_chunk),
+                                                  s_validate_work,
+                                                  0U,
+                                                  &hdr));
+  TEST_ASSERT_EQ(0U, hdr.total_size);
+  internal_setup_book();
+  TEST_END("book stream chunked guard MC/DC");
+}
+
 int main(void)
 {
   internal_test_mcdc_stream_read_and_envelope();
@@ -880,5 +1141,10 @@ int main(void)
   internal_test_image_corruption();
   internal_test_production_rbkc_round_trip_and_chunk_corruption();
   internal_test_chunked_workspace_and_reader_guards();
+  internal_test_mcdc_stream_header_string_and_dom_operands();
+  internal_test_mcdc_stream_raster_operands();
+  internal_test_mcdc_stream_svg_and_tiling_operands();
+  internal_test_mcdc_stream_flat_guards();
+  internal_test_mcdc_chunked_argument_guards();
   return 0;
 }
