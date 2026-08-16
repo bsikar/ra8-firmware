@@ -18,9 +18,12 @@
 # Usage:
 #   ./coprocessor/esp32c6/build.sh
 #
-# Requires (NONE of which live on the dev box -- build on the Pi bench host):
-#   - esp-idf ESP_IDF_VERSION exported so idf.py is on PATH (. $IDF_PATH/export.sh)
-#   - network access for git clone + the esp-idf component manager
+# Requires:
+#   - exact esp-idf ESP_IDF_VERSION exported so idf.py is on PATH
+#     (. "$IDF_PATH/export.sh"), on any adequately provisioned build host;
+#   - network access for the initial clone and esp-idf component resolution.
+# Building is hardware-free. Flashing and mixed-image qualification remain
+# restricted to the Pi bench workflow.
 #
 # The pinned upstream base recipe was built, flashed, and booted on the bench
 # with these pins before the media component was added. The component itself
