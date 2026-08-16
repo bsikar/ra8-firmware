@@ -123,6 +123,28 @@ if(NOT TARGET test_ra8_c6link_mdl)
   add_test(NAME test_ra8_c6link_mdl COMMAND test_ra8_c6link_mdl)
 endif()
 
+# test_ra8_esp32_c6_mdl_service: the concrete ESP-IDF HTTP adapter compiled
+# against deterministic host implementations of its exact consumed SDK
+# surface. This reaches the real retained-client/open/read/hash state machine
+# through the public CustomRpc hook without requiring a network or C6 board.
+add_executable(
+  test_ra8_esp32_c6_mdl_service
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_esp32_c6_mdl_service.c
+  ${FW_ROOT}/port/esp32_c6/src/mdl_service.c
+  ${FW_ROOT}/libs/ra8_c6link/src/ra8_c6link_mdl_service.c
+  ${FW_ROOT}/libs/ra8_c6link/src/ra8_media_download.pb-c.c
+  ${RA8_C6LINK_VENDOR_DIR}/common/protobuf-c/protobuf-c/protobuf-c.c
+)
+target_compile_options(
+  test_ra8_esp32_c6_mdl_service PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter
+)
+target_include_directories(
+  test_ra8_esp32_c6_mdl_service
+  PRIVATE ${RA8_C6LINK_INCLUDE_DIRS} ${FW_ROOT}/port/esp32_c6/inc ${FW_ROOT}/port/esp32_c6/src
+          ${FW_ROOT}/port/esp-hosted/inc/idf_compat
+)
+add_test(NAME test_ra8_esp32_c6_mdl_service COMMAND test_ra8_esp32_c6_mdl_service)
+
 # test_ra8_mdl_storage_vfs: the production media-download transaction binding
 # over a real RAM blockdev -> ra8_fs -> named-VFS stack. The adapter depends on
 # the c6link-owned storage seam but not the protobuf runtime or transport.

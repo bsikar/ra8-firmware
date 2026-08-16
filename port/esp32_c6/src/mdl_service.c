@@ -158,13 +158,27 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_begin(void* ctx, const char* url
 {
   mdl_http_state_t* state            = (mdl_http_state_t*)ctx;
   const size_t      https_prefix_len = sizeof("https://") - 1U;
-  if ((state == nullptr) || !state->client_ready || (url == nullptr) ||
-      (strncmp(url, "https://", https_prefix_len) != 0) || (url[https_prefix_len] == '\0')) {
+  if (state == nullptr) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (!state->client_ready) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (url == nullptr) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (strncmp(url, "https://", https_prefix_len) != 0) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (url[https_prefix_len] == '\0') {
     return k_ra8_err_invalid_arg;
   }
   internal_mdl_http_reset_job(state);
   const size_t len = strnlen(url, sizeof(state->url));
-  if ((len == 0U) || (len >= sizeof(state->url))) {
+  if (len == 0U) {
+    return k_ra8_err_invalid_size;
+  }
+  if (len >= sizeof(state->url)) {
     return k_ra8_err_invalid_size;
   }
   memcpy(state->url, url, len + 1U);
@@ -206,7 +220,10 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_open(mdl_http_state_t* state)
   }
   const int64_t content_length = esp_http_client_fetch_headers(state->http);
   const int     status         = esp_http_client_get_status_code(state->http);
-  if ((status < k_mdl_http_status_success_min) || (status >= k_mdl_http_status_redirect)) {
+  if (status < k_mdl_http_status_success_min) {
+    return k_ra8_err_protocol_error;
+  }
+  if (status >= k_mdl_http_status_redirect) {
     return k_ra8_err_protocol_error;
   }
   state->total       = (content_length >= 0) ? (uint64_t)content_length : 0U;
@@ -215,8 +232,53 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_open(mdl_http_state_t* state)
   return k_ra8_ok;
 }
 
-// Kept linear so EOF, truncation, hash finalisation, and reset remain one ordered state transition.
-// NOLINTBEGIN(readability-function-size)
+/**
+ * @brief Validate EOF and publish the terminal length and digest.
+ * @details Rejects truncated or length-mismatched responses, finalizes SHA,
+ *          derives an unknown total from counted bytes, and closes job state.
+ * @param[in,out] state Open response and active hash state.
+ * @param[out] total_bytes Advertised or independently counted final length.
+ * @param[out] complete Receives true only for verified terminal success.
+ * @param[out] sha256 Complete-body digest destination.
+ * @return Terminal response status.
+ * @retval k_ra8_ok Terminal metadata and digest were published.
+ * @retval k_ra8_err_protocol_error HTTP completeness or length is incoherent.
+ * @retval k_ra8_fail SHA finalization failed.
+ * @pre Output pointers are non-null and @p state owns an open response.
+ * @pre Every returned body byte was counted and hashed exactly once.
+ * @post Success closes job state after publishing terminal outputs.
+ * @post Failure closes job state without claiming completion.
+ * @note Close-delimited responses publish their independently counted length.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_mdl_http_finish(mdl_http_state_t* state,
+                                                       uint64_t*         total_bytes,
+                                                       bool*             complete,
+                                                       uint8_t sha256[k_ra8_mdl_sha256_bytes])
+{
+  if (!esp_http_client_is_complete_data_received(state->http)) {
+    internal_mdl_http_reset_job(state);
+    return k_ra8_err_protocol_error;
+  }
+  if (state->total_known) {
+    if (state->received != state->total) {
+      internal_mdl_http_reset_job(state);
+      return k_ra8_err_protocol_error;
+    }
+  }
+  if (mbedtls_sha256_finish(&state->sha, sha256) != 0) {
+    internal_mdl_http_reset_job(state);
+    return k_ra8_fail;
+  }
+  if (!state->total_known) {
+    state->total = state->received;
+  }
+  *total_bytes = state->total;
+  *complete    = true;
+  internal_mdl_http_reset_job(state);
+  return k_ra8_ok;
+}
+
 /**
  * @brief Pull one bounded body span or verified terminal metadata
  * @details Counts and hashes every returned byte and rejects truncated bodies.
@@ -257,7 +319,11 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_read(void*     ctx,
     return opened;
   }
   const int read = esp_http_client_read(state->http, (char*)out, cap);
-  if ((read < 0) || ((uint32_t)read > (uint32_t)cap)) {
+  if (read < 0) {
+    internal_mdl_http_reset_job(state);
+    return k_ra8_fail;
+  }
+  if ((uint32_t)read > (uint32_t)cap) {
     internal_mdl_http_reset_job(state);
     return k_ra8_fail;
   }
@@ -267,9 +333,11 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_read(void*     ctx,
       return k_ra8_err_invalid_size;
     }
     const uint64_t next_received = state->received + (uint64_t)read;
-    if (state->total_known && (next_received > state->total)) {
-      internal_mdl_http_reset_job(state);
-      return k_ra8_err_protocol_error;
+    if (state->total_known) {
+      if (next_received > state->total) {
+        internal_mdl_http_reset_job(state);
+        return k_ra8_err_protocol_error;
+      }
     }
     if (mbedtls_sha256_update(&state->sha, out, (size_t)read) != 0) {
       internal_mdl_http_reset_job(state);
@@ -278,29 +346,10 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_read(void*     ctx,
     state->received = next_received;
     *got            = (uint16_t)read;
     *total_bytes    = state->total;
-  } else {
-    const bool body_complete  = esp_http_client_is_complete_data_received(state->http);
-    const bool length_matches = !state->total_known || (state->received == state->total);
-    if ((!body_complete) || (!length_matches)) {
-      internal_mdl_http_reset_job(state);
-      return k_ra8_err_protocol_error;
-    }
-    if (mbedtls_sha256_finish(&state->sha, sha256) != 0) {
-      internal_mdl_http_reset_job(state);
-      return k_ra8_fail;
-    }
-    /* A close-delimited or chunked response has no advertised length. Publish
-     * the independently counted length in its final COMPLETE response. */
-    if (!state->total_known) {
-      state->total = state->received;
-    }
-    *total_bytes = state->total;
-    *complete    = true;
-    internal_mdl_http_reset_job(state);
+    return k_ra8_ok;
   }
-  return k_ra8_ok;
+  return internal_mdl_http_finish(state, total_bytes, complete, sha256);
 }
-// NOLINTEND(readability-function-size)
 
 /**
  * @brief Cancel the active HTTP job while retaining one-time objects
