@@ -207,7 +207,7 @@ RA8_INTERNAL static void internal_test_buffer_and_sink(void)
   size_t              length = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  mdl_net_get_buf(&net,
-                                 "https://example.test/source",
+                                 "https://example.test/book",
                                  &request,
                                  buffer,
                                  sizeof(buffer),
@@ -230,7 +230,7 @@ RA8_INTERNAL static void internal_test_buffer_and_sink(void)
   };
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    mdl_net_get_body(&net, "https://example.test/source", &request, &sink, &length, &response));
+    mdl_net_get_body(&net, "https://example.test/book", &request, &sink, &length, &response));
   TEST_ASSERT_EQ(sizeof(s_body) - 1U, sink_state.length);
   TEST_ASSERT(memcmp(sink_state.bytes, s_body, sink_state.length) == 0);
   mdl_net_destroy(&net);
@@ -257,7 +257,7 @@ RA8_INTERNAL static void internal_test_fail_closed(void)
   const mdl_net_req_t unsupported = {.user_agent = "ra8-test"};
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
                  mdl_net_get_buf(&net,
-                                 "https://example.test/source",
+                                 "https://example.test/book",
                                  &unsupported,
                                  buffer,
                                  sizeof(buffer),
@@ -268,7 +268,7 @@ RA8_INTERNAL static void internal_test_fail_closed(void)
   const mdl_net_req_t request = {};
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
                  mdl_net_get_buf(&net,
-                                 "https://example.test/source",
+                                 "https://example.test/book",
                                  &request,
                                  buffer,
                                  sizeof(buffer),
@@ -284,7 +284,7 @@ RA8_INTERNAL static void internal_test_fail_closed(void)
   char full[k_internal_sink_bytes] = "old";
   TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch,
                  mdl_net_get_buf(&net,
-                                 "https://example.test/source",
+                                 "https://example.test/book",
                                  &request,
                                  full,
                                  sizeof(full),
