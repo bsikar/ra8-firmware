@@ -1,4 +1,4 @@
-# Media Download -- C6 HTTPS to strict SD `.rabook`
+# Media Download -- C6 HTTPS source to strict SD `.rabook`
 
 This hardware-pending app is the real RA8 composition root for the reusable
 media-transfer path. It uses Pmod1 for the ESP32-C6 and Pmod2 for a micro-SD
@@ -8,10 +8,11 @@ card containing an existing FAT volume. One run:
 2. mounts the existing SD volume as `sd` without formatting it;
 3. creates `sd:/BOOKS` when absent and refuses a non-directory collision;
 4. streams the configured HTTPS response body in 1024-byte RPC pulls;
-5. persists each accepted byte to `C6STAGE.TMP` while independently hashing it
-   with the caller-owned RA8 SHA-256 stream;
-6. compares the C6 terminal digest, closes the stage, strictly validates every
-   RBKC zlib stream and the complete inner RABOOK1 structure/CRC;
+5. either treats that body as a prebuilt `.rabook`, or retains one bounded
+   encoded image in caller-owned SDRAM and converts it to canonical RABOOK1
+   plus its RBKC random-access container on the RA8;
+6. independently hashes the final artifact, closes the private stage, and
+   strictly validates every RBKC zlib stream plus the inner RABOOK1 structure;
 7. publishes `sd:/BOOKS/C6BOOK.RBK` through the VFS no-replace rename; and
 8. reopens, strictly revalidates, reads metadata, and demand-loads the first
    exact inflated chunk from the committed file.
@@ -37,6 +38,22 @@ The Makefile also sources the gitignored `coprocessor/esp32c6/wifi.env` when it
 exists. An aggregate/no-secret build leaves all three values empty; that image
 builds but fails before mounting storage or issuing an RPC.
 
+To fetch a direct JPEG, PNG, GIF, BMP, or WebP source and save it as a real
+reader-native `.rabook`, enable source-image mode:
+
+```sh
+RA8_C6_WIFI_SSID=ra8-bench \
+RA8_C6_WIFI_PSK='...' \
+RA8_MEDIA_DOWNLOAD_URL='https://host/path/page.webp' \
+RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE=ON \
+make
+```
+
+This mode is conversion, not relabeling: the RA8 decodes and normalizes the
+image, emits a one-page RABOOK1 book, wraps it as RBKC, and passes those new
+bytes through the same strict pre-publication validator. The default remains
+direct transfer of an already-produced `.rabook` for compatibility.
+
 `make compile-proof` uses reserved, non-secret values in a separate
 `build-proof` directory. That keeps the complete transfer path reachable under
 optimization and then asserts that the final ELF contains the C6 transfer and
@@ -53,7 +70,7 @@ invent those guarantees.
 ## Verification boundary
 
 The configured RA8 cross-build proves the real board, C6, SD/FAT/VFS, strict
-reader, and SHA types compose with fixed storage. The matching ESP32-C6 image
+reader, source formatter, and SHA types compose with fixed storage. The matching ESP32-C6 image
 also compiles and links from current sources under pinned ESP-IDF v5.5.4; its
 post-link checks require the strong media handler and component ABI marker in
 the final ELF. Host tests exercise success, transport corruption, coherent
