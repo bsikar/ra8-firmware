@@ -142,23 +142,50 @@ RA8_INTERNAL static ra8_err_t internal_validate(ra8_rabook_flat_read_fn         
                                                 const uint64_t*                         out_len,
                                                 uint32_t*                               out_count)
 {
-  if ((read == nullptr) || (write_at == nullptr) || (ws == nullptr) || (out_len == nullptr) ||
-      (out_count == nullptr)) {
+  if (read == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  if ((ws->input == nullptr) || (ws->compressed == nullptr) || (ws->compressor == nullptr) ||
-      (ws->offsets == nullptr)) {
+  if (write_at == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  if ((flat_len == 0U) || (chunk_bytes == 0U)) {
+  if (ws == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (out_len == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (out_count == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (ws->input == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (ws->compressed == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (ws->compressor == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (ws->offsets == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (flat_len == 0U) {
     return k_ra8_err_invalid_arg;
   }
-  if ((chunk_bytes > ws->input_cap) ||
-      (ws->compressor_cap < (uint32_t)k_ra8_io_compress_scratch_bytes)) {
+  if (chunk_bytes == 0U) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (chunk_bytes > ws->input_cap) {
+    return k_ra8_err_invalid_size;
+  }
+  if (ws->compressor_cap < (uint32_t)k_ra8_io_compress_scratch_bytes) {
     return k_ra8_err_invalid_size;
   }
   const uint32_t count = ((flat_len - 1U) / chunk_bytes) + 1U;
-  if ((count == UINT32_MAX) || (ws->offset_cap < (count + 1U))) {
+  if (count == UINT32_MAX) {
+    return k_ra8_err_invalid_size;
+  }
+  if (ws->offset_cap < (count + 1U)) {
     return k_ra8_err_invalid_size;
   }
   *out_count = count;
@@ -272,8 +299,10 @@ RA8_INTERNAL static ra8_err_t internal_write_chunks(ra8_rabook_flat_read_fn     
     if (err != k_ra8_ok) {
       return err;
     }
-    if (((uint64_t)packed > (UINT64_MAX - payload_len)) ||
-        (payload_len > (UINT64_MAX - payload_off))) {
+    if ((uint64_t)packed > (UINT64_MAX - payload_len)) {
+      return k_ra8_err_invalid_size;
+    }
+    if (payload_len > (UINT64_MAX - payload_off)) {
       return k_ra8_err_invalid_size;
     }
     ws->offsets[i] = payload_len;
