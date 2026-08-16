@@ -17,7 +17,7 @@
 
 /** @brief Small test-only backing bound independently twice. */
 typedef struct {
-  alignas(max_align_t) uint8_t bytes[16384U]; /**< Test-owned workspace bytes.             */
+  alignas(max_align_t) uint8_t bytes[16384U]; /**< Test-owned workspace bytes. */
 } test_backing_t;
 
 /** @brief First explicit test composition backing. */

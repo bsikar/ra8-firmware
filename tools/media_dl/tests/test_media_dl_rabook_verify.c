@@ -40,7 +40,7 @@ typedef enum : uint32_t {
 
 /** @brief Maximally aligned miniz compressor storage. */
 typedef struct {
-  alignas(max_align_t) tdefl_compressor compressor; /**< Production compressor state.       */
+  alignas(max_align_t) tdefl_compressor compressor; /**< Production compressor state. */
 } mdl_rabook_compressor_t;
 
 /** @brief Maximally aligned portable directory workspace. */

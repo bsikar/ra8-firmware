@@ -30,7 +30,7 @@ typedef enum : uint16_t {
 
 /** @brief Maximally aligned storage-facade workspace. */
 typedef struct {
-  alignas(max_align_t) uint8_t bytes[k_body_workspace_bytes]; /**< Opaque backend state.      */
+  alignas(max_align_t) uint8_t bytes[k_body_workspace_bytes]; /**< Opaque backend state. */
 } body_test_workspace_t;
 
 /** @brief One root-confined POSIX backend with an injected-fault facade. */
