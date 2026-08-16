@@ -313,7 +313,10 @@ endfunction()
 mdl_add_unit_test(test_media_dl tests/test_media_dl.c)
 target_sources(test_media_dl PRIVATE tests/test_media_dl_logic_cli.c)
 mdl_add_unit_test(test_media_dl_export tests/test_media_dl_export.c)
-target_sources(test_media_dl_export PRIVATE tests/test_media_dl_export_xml.c)
+target_sources(
+  test_media_dl_export PRIVATE tests/test_media_dl_export_workspace.c
+                               tests/test_media_dl_export_xml.c
+)
 add_executable(
   test_media_dl_rabook_verify
   tests/test_media_dl_rabook_verify.c ${MDL_TEST_COMMON_SRC}
