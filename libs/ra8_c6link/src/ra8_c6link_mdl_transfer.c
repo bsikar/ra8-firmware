@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include "ra8_attributes.h"
+#include "ra8_c6link_mdl_transfer_internal.h"
 
 /** @brief State that must be unwound together after storage begins. */
 typedef struct {
@@ -215,6 +216,17 @@ RA8_INTERNAL static ra8_err_t internal_mdl_transfer_commit(mdl_transfer_state_t*
   return err;
 }
 
+RA8_TEST_HELPER ra8_err_t
+ra8_c6link_mdl_transfer_commit_test(const ra8_mdl_transfer_config_t* config,
+                                    const ra8_mdl_chunk_t*           chunk,
+                                    uint64_t                         bytes_stored,
+                                    uint32_t                         chunks_received,
+                                    ra8_mdl_transfer_result_t*       result)
+{
+  mdl_transfer_state_t state = {.config = config, .storage_active = true};
+  return internal_mdl_transfer_commit(&state, chunk, bytes_stored, chunks_received, result);
+}
+
 ra8_err_t ra8_c6link_mdl_transfer(ra8_c6link_t*                    link,
                                   const char*                      url,
                                   const char*                      destination,
@@ -255,10 +267,12 @@ ra8_err_t ra8_c6link_mdl_transfer(ra8_c6link_t*                    link,
     } else if ((err == k_ra8_ok) && (chunk.state == k_ra8_mdl_state_complete)) {
       err = internal_mdl_transfer_commit(&state, &chunk, bytes_stored, pull + 1U, result);
       return (err == k_ra8_ok) ? k_ra8_ok : internal_mdl_transfer_abort(&state, err);
+      // mcdc-deactivated: ra8_c6link_mdl_transfer CANCELLED dispatch guard; whenever this arm is evaluated with err == k_ra8_ok the state is necessarily CANCELLED, so the second operand cannot be flipped. DOWNLOADING and COMPLETE are consumed by the two preceding arms, ACCEPTED and every unassigned state value are rejected by internal_mdl_chunk_semantics_valid's default arm before ra8_c6link_mdl_next returns, and FAILED must carry a nonzero status by that same validator, which internal_mdl_accept_chunk returns verbatim -- so a FAILED chunk always arrives with err != k_ra8_ok.
     } else if ((err == k_ra8_ok) && (chunk.state == k_ra8_mdl_state_cancelled)) {
       err = k_ra8_err_cancelled;
     }
   }
+  // mcdc-deactivated: ra8_c6link_mdl_transfer exhausted-budget timeout guard; `state.session.active` is constant-true whenever err == k_ra8_ok here. The loop leaves err == k_ra8_ok only by exhausting max_chunks, and the session is deactivated only by a terminal response -- COMPLETE returns from inside the loop, CANCELLED sets err = k_ra8_err_cancelled, and FAILED returns its mandatory nonzero status -- so no reachable path arrives here with an inactive session and no earlier cause.
   if ((err == k_ra8_ok) && state.session.active) {
     err = k_ra8_err_timeout;
   }
