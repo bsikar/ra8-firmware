@@ -212,13 +212,13 @@ RA8_INTERNAL static void internal_expected_digest(const uint8_t* body,
 }
 
 /* ESP-IDF stand-ins implement the contracts declared by the compatibility header. */
-esp_err_t esp_crt_bundle_attach(void* conf)
+RA8_PRIV esp_err_t esp_crt_bundle_attach(void* conf)
 {
   (void)conf;
   return ESP_OK;
 }
 
-esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t* config)
+RA8_PRIV esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t* config)
 {
   TEST_ASSERT(config != nullptr);
   if (s_model.init_fail) {
@@ -228,14 +228,14 @@ esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t* co
   return &s_client;
 }
 
-esp_err_t esp_http_client_close(esp_http_client_handle_t client)
+RA8_PRIV esp_err_t esp_http_client_close(esp_http_client_handle_t client)
 {
   TEST_ASSERT(client == &s_client);
   ++s_model.close_calls;
   return ESP_OK;
 }
 
-esp_err_t esp_http_client_set_url(esp_http_client_handle_t client, const char* url)
+RA8_PRIV esp_err_t esp_http_client_set_url(esp_http_client_handle_t client, const char* url)
 {
   TEST_ASSERT(client == &s_client);
   TEST_ASSERT(url != nullptr);
@@ -247,26 +247,26 @@ esp_err_t esp_http_client_set_url(esp_http_client_handle_t client, const char* u
   return ESP_OK;
 }
 
-esp_err_t esp_http_client_open(esp_http_client_handle_t client, int64_t write_len)
+RA8_PRIV esp_err_t esp_http_client_open(esp_http_client_handle_t client, int64_t write_len)
 {
   TEST_ASSERT(client == &s_client);
   TEST_ASSERT_EQ((int64_t)0, write_len);
   return s_model.open_fail ? ESP_FAIL : ESP_OK;
 }
 
-int64_t esp_http_client_fetch_headers(esp_http_client_handle_t client)
+RA8_PRIV int64_t esp_http_client_fetch_headers(esp_http_client_handle_t client)
 {
   TEST_ASSERT(client == &s_client);
   return s_model.content_length;
 }
 
-int esp_http_client_get_status_code(esp_http_client_handle_t client)
+RA8_PRIV int esp_http_client_get_status_code(esp_http_client_handle_t client)
 {
   TEST_ASSERT(client == &s_client);
   return s_model.status;
 }
 
-int esp_http_client_read(esp_http_client_handle_t client, char* buffer, int len)
+RA8_PRIV int esp_http_client_read(esp_http_client_handle_t client, char* buffer, int len)
 {
   TEST_ASSERT(client == &s_client);
   TEST_ASSERT(buffer != nullptr);
@@ -289,19 +289,19 @@ int esp_http_client_read(esp_http_client_handle_t client, char* buffer, int len)
   return (int)count;
 }
 
-bool esp_http_client_is_complete_data_received(esp_http_client_handle_t client)
+RA8_PRIV bool esp_http_client_is_complete_data_received(esp_http_client_handle_t client)
 {
   TEST_ASSERT(client == &s_client);
   return s_model.complete;
 }
 
-void mbedtls_sha256_init(mbedtls_sha256_context* ctx)
+RA8_PRIV void mbedtls_sha256_init(mbedtls_sha256_context* ctx)
 {
   TEST_ASSERT(ctx != nullptr);
   *ctx = (mbedtls_sha256_context){};
 }
 
-int mbedtls_sha256_starts(mbedtls_sha256_context* ctx, int is224)
+RA8_PRIV int mbedtls_sha256_starts(mbedtls_sha256_context* ctx, int is224)
 {
   TEST_ASSERT(ctx != nullptr);
   TEST_ASSERT_EQ((int64_t)0, (int64_t)is224);
@@ -309,7 +309,8 @@ int mbedtls_sha256_starts(mbedtls_sha256_context* ctx, int is224)
   return s_model.sha_start_fail ? -1 : 0;
 }
 
-int mbedtls_sha256_update(mbedtls_sha256_context* ctx, const unsigned char* input, size_t ilen)
+RA8_PRIV int
+mbedtls_sha256_update(mbedtls_sha256_context* ctx, const unsigned char* input, size_t ilen)
 {
   TEST_ASSERT(ctx != nullptr);
   TEST_ASSERT(input != nullptr);
@@ -322,7 +323,7 @@ int mbedtls_sha256_update(mbedtls_sha256_context* ctx, const unsigned char* inpu
   return 0;
 }
 
-int mbedtls_sha256_finish(mbedtls_sha256_context* ctx, unsigned char output[32])
+RA8_PRIV int mbedtls_sha256_finish(mbedtls_sha256_context* ctx, unsigned char output[32])
 {
   TEST_ASSERT(ctx != nullptr);
   TEST_ASSERT(output != nullptr);

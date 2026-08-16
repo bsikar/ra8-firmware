@@ -34,6 +34,7 @@
 #include <stdint.h>
 
 #include "esp_err.h"
+#include "ra8_attributes.h"
 
 /** @brief Opaque host-parser stand-in for an ESP-IDF HTTP client. */
 typedef struct esp_http_client* esp_http_client_handle_t;
@@ -58,6 +59,25 @@ typedef struct mbedtls_sha256_context {
   uint64_t opaque[32]; /**< Never interpreted outside the real ESP-IDF build. */
 } mbedtls_sha256_context;
 
+/*
+ * The host parser/test build supplies cross-TU stand-ins for the vendor APIs.
+ * Give those first-party stand-ins private identities while leaving the real
+ * ESP-IDF build's symbol spellings and ABI untouched.
+ */
+#define esp_crt_bundle_attach                     priv_esp_crt_bundle_attach
+#define esp_http_client_init                      priv_esp_http_client_init
+#define esp_http_client_close                     priv_esp_http_client_close
+#define esp_http_client_set_url                   priv_esp_http_client_set_url
+#define esp_http_client_open                      priv_esp_http_client_open
+#define esp_http_client_fetch_headers             priv_esp_http_client_fetch_headers
+#define esp_http_client_get_status_code           priv_esp_http_client_get_status_code
+#define esp_http_client_read                      priv_esp_http_client_read
+#define esp_http_client_is_complete_data_received priv_esp_http_client_is_complete_data_received
+#define mbedtls_sha256_init                       priv_mbedtls_sha256_init
+#define mbedtls_sha256_starts                     priv_mbedtls_sha256_starts
+#define mbedtls_sha256_update                     priv_mbedtls_sha256_update
+#define mbedtls_sha256_finish                     priv_mbedtls_sha256_finish
+
 /**
  * @brief Attach ESP-IDF's certificate bundle to one TLS configuration
  * @details Parser-only mirror of the ESP-IDF callback consumed by the media adapter.
@@ -72,7 +92,7 @@ typedef struct mbedtls_sha256_context {
  * @note Implemented by ESP-IDF; this header supplies no host implementation.
  * @since 0.1.0
  */
-esp_err_t esp_crt_bundle_attach(void* conf);
+RA8_PRIV esp_err_t esp_crt_bundle_attach(void* conf);
 
 /**
  * @brief Create one ESP-IDF HTTP client
@@ -87,7 +107,8 @@ esp_err_t esp_crt_bundle_attach(void* conf);
  * @note Implemented by ESP-IDF and may allocate internally.
  * @since 0.1.0
  */
-esp_http_client_handle_t esp_http_client_init( // alloc-allow: parser mirror of ESP-IDF SOUP
+RA8_PRIV esp_http_client_handle_t
+esp_http_client_init( // alloc-allow: parser mirror of ESP-IDF SOUP
   const esp_http_client_config_t* config);
 
 /**
@@ -104,7 +125,7 @@ esp_http_client_handle_t esp_http_client_init( // alloc-allow: parser mirror of 
  * @note Implemented by ESP-IDF and may release internal resources.
  * @since 0.1.0
  */
-esp_err_t esp_http_client_close( // alloc-allow: parser mirror of ESP-IDF SOUP
+RA8_PRIV esp_err_t esp_http_client_close( // alloc-allow: parser mirror of ESP-IDF SOUP
   esp_http_client_handle_t client);
 
 /**
@@ -122,7 +143,7 @@ esp_err_t esp_http_client_close( // alloc-allow: parser mirror of ESP-IDF SOUP
  * @note Implemented by ESP-IDF and may allocate internally.
  * @since 0.1.0
  */
-esp_err_t esp_http_client_set_url( // alloc-allow: parser mirror of ESP-IDF SOUP
+RA8_PRIV esp_err_t esp_http_client_set_url( // alloc-allow: parser mirror of ESP-IDF SOUP
   esp_http_client_handle_t client,
   const char*              url);
 
@@ -141,7 +162,7 @@ esp_err_t esp_http_client_set_url( // alloc-allow: parser mirror of ESP-IDF SOUP
  * @note Implemented by ESP-IDF and may allocate during TLS setup.
  * @since 0.1.0
  */
-esp_err_t esp_http_client_open( // alloc-allow: parser mirror of ESP-IDF SOUP
+RA8_PRIV esp_err_t esp_http_client_open( // alloc-allow: parser mirror of ESP-IDF SOUP
   esp_http_client_handle_t client,
   int64_t                  write_len);
 
@@ -158,7 +179,7 @@ esp_err_t esp_http_client_open( // alloc-allow: parser mirror of ESP-IDF SOUP
  * @note Implemented by ESP-IDF; status must be checked independently.
  * @since 0.1.0
  */
-int64_t esp_http_client_fetch_headers(esp_http_client_handle_t client);
+RA8_PRIV int64_t esp_http_client_fetch_headers(esp_http_client_handle_t client);
 
 /**
  * @brief Return the HTTP response status code
@@ -173,7 +194,7 @@ int64_t esp_http_client_fetch_headers(esp_http_client_handle_t client);
  * @note Implemented by ESP-IDF.
  * @since 0.1.0
  */
-int esp_http_client_get_status_code(esp_http_client_handle_t client);
+RA8_PRIV int esp_http_client_get_status_code(esp_http_client_handle_t client);
 
 /**
  * @brief Read at most one bounded span of response body bytes
@@ -191,7 +212,7 @@ int esp_http_client_get_status_code(esp_http_client_handle_t client);
  * @note Implemented by ESP-IDF.
  * @since 0.1.0
  */
-int esp_http_client_read(esp_http_client_handle_t client, char* buffer, int len);
+RA8_PRIV int esp_http_client_read(esp_http_client_handle_t client, char* buffer, int len);
 
 /**
  * @brief Report whether ESP-IDF received the complete response body
@@ -207,7 +228,7 @@ int esp_http_client_read(esp_http_client_handle_t client, char* buffer, int len)
  * @note Implemented by ESP-IDF.
  * @since 0.1.0
  */
-bool esp_http_client_is_complete_data_received(esp_http_client_handle_t client);
+RA8_PRIV bool esp_http_client_is_complete_data_received(esp_http_client_handle_t client);
 
 /**
  * @brief Initialize one SHA-256 context
@@ -220,7 +241,7 @@ bool esp_http_client_is_complete_data_received(esp_http_client_handle_t client);
  * @note Implemented by the ESP-IDF-provided mbedTLS library.
  * @since 0.1.0
  */
-void mbedtls_sha256_init(mbedtls_sha256_context* ctx);
+RA8_PRIV void mbedtls_sha256_init(mbedtls_sha256_context* ctx);
 
 /**
  * @brief Start a SHA-224 or SHA-256 operation
@@ -236,7 +257,7 @@ void mbedtls_sha256_init(mbedtls_sha256_context* ctx);
  * @note Implemented by the ESP-IDF-provided mbedTLS library.
  * @since 0.1.0
  */
-int mbedtls_sha256_starts(mbedtls_sha256_context* ctx, int is224);
+RA8_PRIV int mbedtls_sha256_starts(mbedtls_sha256_context* ctx, int is224);
 
 /**
  * @brief Add bytes to the active SHA operation
@@ -253,7 +274,8 @@ int mbedtls_sha256_starts(mbedtls_sha256_context* ctx, int is224);
  * @note Implemented by the ESP-IDF-provided mbedTLS library.
  * @since 0.1.0
  */
-int mbedtls_sha256_update(mbedtls_sha256_context* ctx, const unsigned char* input, size_t ilen);
+RA8_PRIV int
+mbedtls_sha256_update(mbedtls_sha256_context* ctx, const unsigned char* input, size_t ilen);
 
 /**
  * @brief Finalize the active SHA-256 operation
@@ -269,6 +291,6 @@ int mbedtls_sha256_update(mbedtls_sha256_context* ctx, const unsigned char* inpu
  * @note Implemented by the ESP-IDF-provided mbedTLS library.
  * @since 0.1.0
  */
-int mbedtls_sha256_finish(mbedtls_sha256_context* ctx, unsigned char output[32]);
+RA8_PRIV int mbedtls_sha256_finish(mbedtls_sha256_context* ctx, unsigned char output[32]);
 
 #endif
