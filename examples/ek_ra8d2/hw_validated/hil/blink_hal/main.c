@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
@@ -72,9 +73,7 @@ volatile uint32_t g_blink_hal_tick = 0U;
 [[nodiscard]] RA8_INTERNAL static ra8_err_t internal_blink_pins_init(void);
 [[nodiscard]] RA8_INTERNAL static ra8_err_t internal_blink_pins_toggle_all(void);
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   if (ra8_time_init(k_blink_cpu_hz_at_reset) != k_ra8_ok) {
     while (1) {
@@ -102,7 +101,6 @@ int32_t main(void)
     __asm__ volatile("wfi");
   }
 }
-#pragma GCC diagnostic pop
 
 /**
  * @brief Configure all three EK-RA8D2 user LEDs as outputs.

@@ -48,6 +48,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -154,8 +155,6 @@ RA8_INTERNAL static void internal_clock_check_panic_halt(void)
 /**
  * @brief Application entry. Lights HOCO + PLL, then runs a 1 Hz blink.
  *
- * @return Never returns.
- *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
  *
@@ -164,9 +163,7 @@ RA8_INTERNAL static void internal_clock_check_panic_halt(void)
  *
  * @since 0.1.0
  */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   if (ra8_cgc_init() != k_ra8_ok) {
     internal_clock_check_panic_halt();
@@ -201,9 +198,7 @@ int32_t main(void)
   }
 
   internal_clock_check_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop
 
 /**
  * @brief Configure all three EK-RA8D2 user LEDs as outputs (low).

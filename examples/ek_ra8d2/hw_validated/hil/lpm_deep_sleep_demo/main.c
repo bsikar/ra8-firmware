@@ -53,6 +53,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -169,8 +170,6 @@ RA8_INTERNAL static void internal_lpm_deep_setup_or_halt(void)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry. Performs one Deep-Sleep cycle, emits the
  *        wake banner, then parks in a normal blink loop.
@@ -181,8 +180,6 @@ RA8_INTERNAL static void internal_lpm_deep_setup_or_halt(void)
  * enter_sleep fails (covered by host test), sci_write fails (covered
  * by host test).
  *
- * @return Never returns.
- *
  * @pre Reset_Handler / SystemInit completed normally.
  * @pre LPM init has not yet been attempted.
  *
@@ -192,7 +189,7 @@ RA8_INTERNAL static void internal_lpm_deep_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   internal_lpm_deep_setup_or_halt();
   ra8_isr_globals_enable();
@@ -227,6 +224,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_lpm_deep_park_blink_ms);
   }
   internal_lpm_deep_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

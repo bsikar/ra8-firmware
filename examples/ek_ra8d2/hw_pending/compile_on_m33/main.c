@@ -42,6 +42,7 @@
 
 #include "compile_on_m33.h"
 #include "parity_fixture.h"
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_book.h"
 #include "ra8_dual_core.h"
@@ -410,9 +411,6 @@ static bool verify_blob(volatile com33_mailbox_t* mb)
  * PASS/FAIL verdict and the chapter count read back from the blob. See the file
  * header for the offload narrative.
  *
- * @return Never returns (ends in ::park_forever after logging the result).
- * @retval (none) Control stays in the final spin.
- *
  * @pre `SystemInit` has completed core bring-up.
  * @pre The M33 is held inactive by hardware until released here.
  * @post The M33 has built a RABOOK1 blob and the M85 has validated it.
@@ -421,7 +419,7 @@ static bool verify_blob(volatile com33_mailbox_t* mb)
  * @note Single-threaded; no RTOS on the M85 in this example.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   ra8_log_init();
   ra8_log_info("M85", "==== RA8D2 compile_on_m33 demo (#149b emitter offload) ====");

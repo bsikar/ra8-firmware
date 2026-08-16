@@ -44,6 +44,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
@@ -571,9 +572,6 @@ static ra8_err_t demo_run(void)
  *          wear-levelling + power-cycle-survival flow, and prints a single
  *          PASS/FAIL verdict.
  *
- * @return Never returns.
- * @retval (none) The function does not return (final `while (true)`).
- *
  * @pre SystemInit configured VTOR / FPU / priority grouping.
  * @pre The extra-MRAM region is present (modelled in ra8_emulator, real on silicon).
  * @post Exactly one PASS or FAIL verdict line has been queued on SCI8.
@@ -582,7 +580,7 @@ static ra8_err_t demo_run(void)
  * @note Single-threaded; runs to the park loop on the main stack.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   ra8_log_init();
   demo_setup_or_halt();

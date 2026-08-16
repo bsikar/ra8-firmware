@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
@@ -178,9 +179,8 @@ static ra8_err_t demo_run(ra8_fs_mount_t** out_mount)
  * @brief Firmware entry point.
  *
  * @pre SystemInit set VTOR / FPU / priority grouping.
- * @return Never returns.
  */
-int main(void)
+void main(void)
 {
   ra8_log_init();
   demo_setup_or_halt();

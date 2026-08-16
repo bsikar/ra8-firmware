@@ -31,6 +31,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -206,9 +207,6 @@ static ra8_err_t demo_run(void)
  *          runs the erase-before-write round-trip, and prints a single PASS/FAIL
  *          verdict line over SCI8 before parking in an infinite loop.
  *
- * @return Never returns.
- * @retval (none) The function does not return (final `while (true)`).
- *
  * @pre SystemInit configured VTOR / FPU / priority grouping.
  * @pre The OSPI NOR array is present (modelled in ra8_emulator, real on silicon).
  * @post Exactly one PASS or FAIL verdict line has been queued on SCI8.
@@ -217,7 +215,7 @@ static ra8_err_t demo_run(void)
  * @note Single-threaded; runs to the park loop on the main stack.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   ra8_log_init();
   demo_setup_or_halt();

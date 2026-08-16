@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_dual_core.h"
 #include "ra8_err.h"
 #include "shared_pingpong.h"
@@ -127,8 +128,6 @@ RA8_INTERNAL static bool internal_wait_for_pong(volatile cpu1_pingpong_shared_t*
 /**
  * @brief CPU0 application entry.
  * @details See file header for behaviour summary.
- * @return Never returns.
- * @retval 0 Never returned.
  * @pre Boot init has completed.
  * @pre CPU1 is held in reset.
  * @post CPU1 released and the ping-pong loop running.
@@ -136,7 +135,7 @@ RA8_INTERNAL static bool internal_wait_for_pong(volatile cpu1_pingpong_shared_t*
  * @note Single-threaded entry.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   volatile cpu1_pingpong_shared_t* shared = internal_shared();
   /* CPU0 owns initialization of the shared block. Zero everything

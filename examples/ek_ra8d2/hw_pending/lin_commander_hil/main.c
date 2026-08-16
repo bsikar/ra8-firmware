@@ -45,6 +45,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -226,12 +227,8 @@ static ra8_err_t lin_hil_send_frame(uint8_t id)
                                    (uint8_t)k_lin_hil_data_len);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry. Brings up the LIN commander then drives frames.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
@@ -239,7 +236,7 @@ static ra8_err_t lin_hil_send_frame(uint8_t id)
  * @post On any HAL init failure the function halts in WFI.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   lin_hil_setup_or_halt();
   ra8_isr_globals_enable();
@@ -265,6 +262,4 @@ int32_t main(void)
   }
 
   lin_hil_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

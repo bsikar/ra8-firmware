@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -192,12 +193,8 @@ static void i3c_demo_setup_or_halt(void)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry. Brings up CGC + IIC_B + console then probes.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
@@ -207,7 +204,7 @@ static void i3c_demo_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   i3c_demo_setup_or_halt();
   ra8_isr_globals_enable();
@@ -237,6 +234,4 @@ int32_t main(void)
   }
 
   i3c_demo_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

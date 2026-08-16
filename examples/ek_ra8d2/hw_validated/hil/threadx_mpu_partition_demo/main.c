@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -240,16 +241,12 @@ void tx_application_define(void* first_unused_memory)
 /**
  * @brief Application entry: program MPU, init GPIO, dispatch ThreadX.
  *
- * @return Never returns.
- *
  * @pre Reset_Handler completed .data/.bss init.
  *
  * @post MPU is enabled with the s_mpu_cfg partition table.
  * @post Worker thread is running and blinking LED1.
  */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   /* CGC bring-up FIRST. tx_initialize_low_level.S programs SysTick
    * with a reload sized for the post-PLL CPUCLK0 = 1 GHz (see the
@@ -285,4 +282,3 @@ int32_t main(void)
     __asm__ volatile("wfi");
   }
 }
-#pragma GCC diagnostic pop

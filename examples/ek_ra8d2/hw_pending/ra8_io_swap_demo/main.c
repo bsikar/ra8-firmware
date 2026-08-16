@@ -52,6 +52,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -509,9 +510,6 @@ RA8_INTERNAL static void internal_demo_setup_or_halt(void)
  *          the RAM capture out of the UART, and prints a single PASS/FAIL verdict
  *          per abstraction before parking in an infinite loop.
  *
- * @return Never returns.
- * @retval (none) The function does not return (final `while (true)`).
- *
  * @pre SystemInit configured VTOR / FPU / priority grouping.
  * @pre The OSPI NOR array is present (modelled in ra8_emulator, real on silicon).
  * @post A PASS or FAIL verdict line has been queued on SCI8 for each abstraction.
@@ -520,7 +518,7 @@ RA8_INTERNAL static void internal_demo_setup_or_halt(void)
  * @note Single-threaded; runs to the park loop on the main stack.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   ra8_log_init();
   internal_demo_setup_or_halt();

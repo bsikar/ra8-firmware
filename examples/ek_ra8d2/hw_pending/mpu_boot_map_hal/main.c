@@ -47,6 +47,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -361,9 +362,6 @@ static void mpu_boot_emit(const uint8_t* line, size_t len)
  * three-step self-test (MPU enabled, canonical boot map, Device MMIO), emits the
  * matching PASS / FAIL banner over the console and ``ra8_log``, then parks in WFI.
  *
- * @return Never returns (ends in ::mpu_boot_wfi_forever).
- * @retval (none) Control stays in the WFI idle loop.
- *
  * @pre ``Reset_Handler`` has copied ``.data`` and zeroed ``.bss``.
  * @pre ``SystemInit`` installed the boot map via ``ra8_mpu_apply_boot_map()``.
  * @post Exactly one banner (PASS or a step-specific FAIL) has been emitted.
@@ -372,7 +370,7 @@ static void mpu_boot_emit(const uint8_t* line, size_t len)
  * @note Single-threaded; no RTOS and no IRQ sources in this template.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   ra8_log_init();
   ra8_log_info("MPU_BOOT", "==== mpu_boot_map_hal: MPU boot map via ra8_mpu HAL ====");

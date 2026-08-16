@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -183,9 +184,7 @@ internal_eth_loopback_run_once(ra8_etha_port_stats_t* out)
   return ra8_etha_get_stats(k_ra8_etha_port_0, out);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   internal_eth_loopback_setup_or_halt();
   ra8_isr_globals_enable();
@@ -209,6 +208,4 @@ int32_t main(void)
   while (1) {
     __asm__ volatile("wfi");
   }
-  return 0;
 }
-#pragma GCC diagnostic pop

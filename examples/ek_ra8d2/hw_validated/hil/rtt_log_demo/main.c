@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -246,13 +247,10 @@ RA8_INTERNAL static void internal_setup_or_halt(void)
   internal_init();
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Publish a monotonically increasing RTT line once per second.
  * @details Initializes channel zero, formats and enqueues each counter line,
  *          toggles LED1, and delays before incrementing the next sample.
- * @return Unreachable success value retained for the freestanding ABI.
  * @pre Reset startup and SystemInit completed successfully.
  * @pre J-Link may update only the consumer offset in the shared descriptor.
  * @post Each successful iteration advances the counter and toggles LED1.
@@ -260,7 +258,7 @@ RA8_INTERNAL static void internal_setup_or_halt(void)
  * @note Does not return during normal operation.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   internal_setup_or_halt();
   ra8_isr_globals_enable();
@@ -279,6 +277,4 @@ int32_t main(void)
     ra8_delay_ms(k_rtt_demo_period_ms);
   }
   internal_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

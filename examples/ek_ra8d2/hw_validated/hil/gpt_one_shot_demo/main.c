@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -189,16 +190,12 @@ RA8_INTERNAL static bool internal_wait_ovf(void)
   return false;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Repeatedly start and verify GPT0 one-shot intervals.
  *
  * @details Initializes and arms GPT0 once, then starts, polls, records the
  *          exported pass/failure counters, toggles LED1 on completion, and
  *          delays before the next one-shot.
- *
- * @return Unreachable success value retained for the freestanding ABI.
  *
  * @pre Reset startup and SystemInit completed successfully.
  * @pre GPT0 and LED1 are not owned by another execution context.
@@ -207,7 +204,7 @@ RA8_INTERNAL static bool internal_wait_ovf(void)
  * @note Does not return during normal operation.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   internal_setup_or_halt();
   ra8_isr_globals_enable();
@@ -232,6 +229,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_gpt_os_demo_rearm_delay_ms);
   }
   internal_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

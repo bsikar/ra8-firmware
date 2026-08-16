@@ -42,6 +42,7 @@
 
 #include "mg_page_fixture.h"
 #include "mg_reader.h"
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_display_pal.h"
@@ -511,17 +512,14 @@ static void mg_poll_touch(bool* was_touching)
   *was_touching = touching;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief App entry: panel bring-up -> atlas -> tile cache -> pan/zoom loop.
- * @return Never returns.
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR / FPU / priority grouping.
  * @post The boot banner is emitted; the reader loop services taps forever.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   mg_bringup_clocks();
   mg_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
@@ -559,6 +557,4 @@ int32_t main(void)
     ticks++;
     ra8_delay_ms((uint32_t)k_mg_frame_ms);
   }
-  return 0;
 }
-#pragma GCC diagnostic pop

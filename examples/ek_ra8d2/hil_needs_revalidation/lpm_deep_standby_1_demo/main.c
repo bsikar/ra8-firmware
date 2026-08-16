@@ -39,6 +39,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -226,9 +227,7 @@ internal_lpm_dpsby1_arm_wake(const ra8_rtc_datetime_t* now)
   return ra8_lpm_arm_wupen0_bits((uint32_t)k_ra8_lpm_wupen0_rtcalm);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   internal_lpm_dpsby1_setup_or_halt();
   ra8_isr_globals_enable();
@@ -256,6 +255,4 @@ int32_t main(void)
     }
   }
   internal_lpm_dpsby1_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

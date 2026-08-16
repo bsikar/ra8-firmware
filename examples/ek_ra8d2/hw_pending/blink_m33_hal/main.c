@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_dual_core.h"
 #include "ra8_err.h"
@@ -94,9 +95,6 @@ extern uint32_t g_ra8_ls_cpu1_stack_top;
  * @details Brings up logging and the clock tree, releases the Cortex-M33 (which
  * then blinks LED1 via `ra8_pcntr_set_output()`), and idles. See the file header.
  *
- * @return Never returns (ends in ::idle_forever).
- * @retval (none) Control stays in the idle loop.
- *
  * @pre `SystemInit` has completed core bring-up.
  * @pre The M33 is held in reset by hardware until released here.
  * @post The M33 has been released and is blinking LED1.
@@ -105,7 +103,7 @@ extern uint32_t g_ra8_ls_cpu1_stack_top;
  * @note Single-threaded; no RTOS on the M85 in this template.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   /* Publish the clock tree the released M33 shares BEFORE logging comes up --
    * the console derives its baud from PCLKA, so bringing the clock up second

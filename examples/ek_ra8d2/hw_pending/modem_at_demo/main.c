@@ -49,6 +49,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -886,12 +887,8 @@ static bool modem_phase_error(void)
  * =============================================================================
  */
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry: bring up SCI7 + the AT driver, walk the state machine.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
@@ -900,7 +897,7 @@ static bool modem_phase_error(void)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   modem_setup_or_halt();
   ra8_isr_globals_enable();
@@ -932,6 +929,4 @@ int32_t main(void)
   }
 
   modem_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

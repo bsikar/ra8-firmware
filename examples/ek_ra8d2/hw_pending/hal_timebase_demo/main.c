@@ -46,6 +46,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -266,12 +267,8 @@ static void demo_emit_measurement(uint32_t cpuclk_hz)
   demo_emit(k_demo_crlf, sizeof(k_demo_crlf) - 1U);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry. Brings up the timebase then measures forever.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
@@ -281,7 +278,7 @@ static void demo_emit_measurement(uint32_t cpuclk_hz)
  * @note Never returns.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (demo_setup_or_halt(&cpuclk0_hz) != k_ra8_ok) {
@@ -298,6 +295,4 @@ int32_t main(void)
   }
 
   demo_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

@@ -53,6 +53,7 @@
 #include <stdint.h>
 
 #include "cache_coherency_shared.h"
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2_peripherals.h"
 #include "ra8_cgc.h"
 #include "ra8_dual_core.h"
@@ -291,8 +292,6 @@ internal_round(volatile cache_coherency_shared_t* shared, uint32_t round, uint32
 /**
  * @brief CPU0 (Cortex-M85) application entry.
  * @details See the file header for the full behaviour summary.
- * @return Never returns (loops round-tripping forever).
- * @retval (none) Control stays in the round-trip loop.
  * @pre ``SystemInit`` has enabled the caches + MPU (this build defines
  *      ``RA8_BOOT_ENABLE_CACHE_MPU``).
  * @pre The M33 is held in reset by hardware until released here.
@@ -301,7 +300,7 @@ internal_round(volatile cache_coherency_shared_t* shared, uint32_t round, uint32
  * @note Single-threaded; no RTOS on the M85 in this template.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   ra8_log_init();
   ra8_log_info("M85", "cache_coherency_hil: D-cache ON, non-cacheable shared SRAM");

@@ -36,6 +36,7 @@
 #include <string.h>
 
 #include "mbedtls/memory_buffer_alloc.h"
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_dfu.h"
@@ -128,9 +129,7 @@ static bool sb_tampered_rejected(void)
   return true;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   sb_setup_or_halt();
   ra8_isr_globals_enable();
@@ -156,6 +155,4 @@ int32_t main(void)
   sb_write(k_sb_msg_launchfail, (size_t)(sizeof(k_sb_msg_launchfail) - 1U));
   (void)ra8_board_led_toggle(k_ra8_board_led2);
   sb_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

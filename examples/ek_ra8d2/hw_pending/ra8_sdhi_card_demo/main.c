@@ -36,6 +36,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -352,8 +353,6 @@ static void sdhi_card_fill_payload(void)
  * =============================================================================
  */
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief App entry: bring up the bus + card, raw-block round-trip, print PASS.
  *
@@ -363,8 +362,6 @@ static void sdhi_card_fill_payload(void)
  *          prints the exact PASS banner; on any failure it prints `FAIL` and parks
  *          the core.
  *
- * @return Never returns.
- *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
  * @post On a clean run the CPU loops forever after the PASS banner.
@@ -373,7 +370,7 @@ static void sdhi_card_fill_payload(void)
  * @note Not thread-safe; this is the single-threaded app entry.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   sdhi_card_setup_or_halt();
   ra8_isr_globals_enable();
@@ -395,4 +392,3 @@ int main(void)
     __asm__ volatile("wfi");
   }
 }
-#pragma GCC diagnostic pop

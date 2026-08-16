@@ -37,6 +37,7 @@
 #include <stdint.h>
 
 #include "dualcore_background.h"
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2_peripherals.h"
 #include "ra8_cgc.h"
@@ -253,9 +254,6 @@ static bool wait_for_done(volatile dualcore_bg_t* bg)
  * autonomously to ::k_bg_target_count. After the M33 sets `done`, the M85
  * reads the counter and logs the PASS/FAIL verdict.
  *
- * @return Never returns (ends in ::park_forever after logging the result).
- * @retval (none) Control stays in the final spin.
- *
  * @pre `SystemInit` has completed core bring-up.
  * @pre The M33 is held in reset by hardware until released here.
  * @post The M33 has autonomously incremented the counter and set done.
@@ -264,7 +262,7 @@ static bool wait_for_done(volatile dualcore_bg_t* bg)
  * @note Single-threaded; no RTOS on the M85 in this example.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   ra8_log_init();
   ra8_log_info("M85", "==== RA8D2 dualcore_background_m33 demo ====");

@@ -35,6 +35,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -149,10 +150,9 @@ static bool webp_demo_decode_ok(void)
 
 /**
  * @brief Application entry point.
- * @return Never returns (parks in a WFI loop after emitting the banner).
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   webp_demo_setup_or_halt();
 
@@ -162,5 +162,4 @@ int main(void)
   (void)ra8_board_uart_console_write(banner, ban_len);
 
   webp_demo_panic_halt();
-  return 0;
 }

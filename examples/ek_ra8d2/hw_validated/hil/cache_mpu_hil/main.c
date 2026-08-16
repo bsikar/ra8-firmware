@@ -57,6 +57,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cache.h"
 #include "ra8_cgc.h"
@@ -463,9 +464,6 @@ static void cache_mpu_emit(const uint8_t* line, size_t len)
  * Every byte the self-test touches runs with the L1 caches and MPU enabled by
  * the shared boot (``RA8_BOOT_ENABLE_CACHE_MPU``).
  *
- * @return Never returns (ends in ::cache_mpu_wfi_forever).
- * @retval (none) Control stays in the WFI idle loop.
- *
  * @pre ``Reset_Handler`` has copied ``.data`` and zeroed ``.bss``.
  * @pre ``SystemInit`` enabled the MPU + I-cache + D-cache (cache+MPU build).
  * @post Exactly one banner (PASS or a step-specific FAIL) has been emitted.
@@ -474,7 +472,7 @@ static void cache_mpu_emit(const uint8_t* line, size_t len)
  * @note Single-threaded; no RTOS and no IRQ sources in this template.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   ra8_log_init();
   ra8_log_info("CACHE_MPU", "==== cache_mpu_hil: M85 L1 cache + MPU self-test ====");

@@ -51,6 +51,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cache.h"
 #include "ra8_cgc.h"
@@ -268,9 +269,6 @@ static void cache_hal_emit(const uint8_t* line, size_t len)
  * touches runs with the L1 caches + MPU enabled by the shared boot
  * (``RA8_BOOT_ENABLE_CACHE_MPU`` + ``RA8_BOOT_CACHE_VIA_HAL``).
  *
- * @return Never returns (ends in ::cache_hal_wfi_forever).
- * @retval (none) Control stays in the WFI idle loop.
- *
  * @pre ``Reset_Handler`` has copied ``.data`` and zeroed ``.bss``.
  * @pre ``SystemInit`` enabled the MPU + I-cache + D-cache via the ra8_cache HAL.
  * @post Exactly one banner (PASS or FAIL) has been emitted.
@@ -279,7 +277,7 @@ static void cache_hal_emit(const uint8_t* line, size_t len)
  * @note Single-threaded; no RTOS and no IRQ sources in this template.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   ra8_log_init();
   ra8_log_info("CACHE_HAL", "==== cache_hal_enable_demo: L1 cache via ra8_cache HAL ====");

@@ -47,6 +47,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -365,9 +366,7 @@ static bool gpt_ecc_service_capture(uint32_t* prev_latch)
   return true;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   gpt_ecc_clocks_or_halt();
   gpt_ecc_route_pins_or_halt();
@@ -402,6 +401,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_gpt_ecc_poll_period_ms);
   }
   gpt_ecc_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

@@ -29,6 +29,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -217,19 +218,15 @@ static void iu_setup_or_halt(void)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief App entry: inject synthetic taps + nav events, assert, print result.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR / FPU / priority grouping.
  * @post The hit-test / nav result banner is emitted; the CPU loops in WFI.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   iu_setup_or_halt();
   ra8_isr_globals_enable();
@@ -274,4 +271,3 @@ int32_t main(void)
     __asm__ volatile("wfi");
   }
 }
-#pragma GCC diagnostic pop

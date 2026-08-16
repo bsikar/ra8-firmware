@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -329,9 +330,7 @@ static void flash_journal_setup_or_halt(void)
   g_fj_jedec_id = jedec_id;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   flash_journal_setup_or_halt();
   ra8_isr_globals_enable();
@@ -355,6 +354,4 @@ int32_t main(void)
     ra8_delay_ms(k_journal_period_ms);
   }
   flash_journal_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

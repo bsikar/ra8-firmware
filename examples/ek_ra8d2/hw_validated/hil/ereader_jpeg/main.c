@@ -34,6 +34,7 @@
 #include <stdint.h>
 
 #include "jpeg_fixture.h"
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -173,19 +174,15 @@ static void iv_setup_or_halt(void)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief App entry: decode + scale + blit the cover to SRAM, hash it, print.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR / FPU / priority grouping.
  * @post The framebuffer hash banner is emitted; the CPU then loops in WFI.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   iv_setup_or_halt();
   ra8_isr_globals_enable();
@@ -231,4 +228,3 @@ int32_t main(void)
     __asm__ volatile("wfi");
   }
 }
-#pragma GCC diagnostic pop

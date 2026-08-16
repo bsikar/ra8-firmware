@@ -48,6 +48,7 @@
 #include <stdint.h>
 
 #include "literata_latin1.h"
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -751,12 +752,8 @@ RA8_INTERNAL static void internal_pc_invalidate_check_or_halt(uint32_t font_len,
   g_pc_invalidate = 1U;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief App entry: SD bring-up -> font -> cache round-trip -> heartbeat idle.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR / FPU / priority grouping.
@@ -764,7 +761,7 @@ RA8_INTERNAL static void internal_pc_invalidate_check_or_halt(uint32_t font_len,
  * @post On any failure ::g_pc_err is non-zero and the CPU parks (no heartbeat).
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   uint32_t pclka_hz = 0U;
   internal_pc_setup_or_halt(&pclka_hz);
@@ -799,4 +796,3 @@ int32_t main(void)
     g_pc_heartbeat++;
   }
 }
-#pragma GCC diagnostic pop

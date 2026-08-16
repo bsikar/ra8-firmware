@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -190,16 +191,12 @@ RA8_INTERNAL static bool internal_edge(ra8_board_sw_state_t* prev)
   return fell;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Run the software input-capture and GPT liveness loop.
  *
  * @details Initializes the demo, tracks falling SW1 edges as counter deltas,
  *          and independently increments the exported liveness counter whenever
  *          successive GPT samples advance.
- *
- * @return Unreachable success value retained for the freestanding ABI.
  *
  * @pre Reset startup and SystemInit completed successfully.
  * @pre The board wiring matches the EK-RA8D2 LED1 and SW1 definitions.
@@ -208,7 +205,7 @@ RA8_INTERNAL static bool internal_edge(ra8_board_sw_state_t* prev)
  * @note Does not return during normal operation.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   internal_setup_or_halt();
   ra8_isr_globals_enable();
@@ -240,6 +237,4 @@ int32_t main(void)
     ra8_delay_ms(k_gpt_capture_poll_period_ms);
   }
   internal_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

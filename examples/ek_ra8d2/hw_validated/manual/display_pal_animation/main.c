@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_display_pal.h"
@@ -284,9 +285,7 @@ static void app_paint_bars(uint32_t scroll_offset)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   app_bringup_clocks();
   ra8_delay_ms(k_app_powerup_ms);
@@ -310,6 +309,4 @@ int32_t main(void)
     s_scroll_offset = (s_scroll_offset + 1U) % (uint32_t)s_fb.height_px;
     ra8_delay_ms((uint32_t)k_app_frame_period_ms);
   }
-  return 0;
 }
-#pragma GCC diagnostic pop

@@ -54,6 +54,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_dfu.h"
@@ -762,11 +763,8 @@ static void blc_setup_or_halt(void)
   blc_route_usb_or_halt();
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry: decide, then boot a slot or enter the DFU device.
- * @return Never returns (jumps to an app or stays in ``tx_kernel_enter``).
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR, FPU, priority grouping.
  * @post Control passes to the active app, or to the ThreadX-hosted DFU device.
@@ -774,7 +772,7 @@ static void blc_setup_or_halt(void)
  * @note Single entry point; not re-entrant.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   blc_setup_or_halt();
   ra8_isr_globals_enable();
@@ -808,6 +806,4 @@ int32_t main(void)
 #endif
 
   blc_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

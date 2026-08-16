@@ -64,6 +64,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -391,13 +392,9 @@ void tx_application_define(void* first_unused_memory)
  * main()
  * --------------------------------------------------------------------------- */
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry. Brings up CGC + SCI8 then drops into the
  *        ThreadX scheduler.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
@@ -406,7 +403,7 @@ void tx_application_define(void* first_unused_memory)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   ipc_demo_setup_or_halt();
 
@@ -417,6 +414,4 @@ int32_t main(void)
 #endif
 
   ipc_demo_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

@@ -44,6 +44,7 @@
 #include <string.h>
 
 #include "literata_latin1.h"
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_display_pal.h"
@@ -329,9 +330,7 @@ static void sfr_render_or_halt(void)
  * Main
  * =========================================================================== */
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   sfr_bringup_clocks();
   sfr_bringup_panel();
@@ -347,4 +346,3 @@ int32_t main(void)
     g_sfr_heartbeat++;
   }
 }
-#pragma GCC diagnostic pop

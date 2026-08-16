@@ -52,6 +52,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -271,9 +272,7 @@ internal_dotf_demo_verdict(ra8_err_t st0_err, ra8_err_t st1_err, ra8_err_t statu
   return stat_err;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   internal_dotf_demo_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the
@@ -305,6 +304,4 @@ int32_t main(void)
     ra8_delay_ms(k_dotf_demo_period_ms);
   }
   internal_dotf_demo_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

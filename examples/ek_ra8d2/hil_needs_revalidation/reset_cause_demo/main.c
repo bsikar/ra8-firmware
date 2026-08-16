@@ -38,6 +38,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_isr.h"
@@ -108,9 +109,7 @@ RA8_INTERNAL static void internal_reset_cause_panic_halt(void)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   if (ra8_time_init(k_reset_cause_cpu_hz_at_reset) != k_ra8_ok) {
     internal_reset_cause_panic_halt();
@@ -143,4 +142,3 @@ int32_t main(void)
     ra8_delay_ms(k_reset_cause_loop_period_ms);
   }
 }
-#pragma GCC diagnostic pop

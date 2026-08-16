@@ -30,6 +30,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -149,9 +150,7 @@ static void wdt_rr_arm_and_wait_for_reset(void)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   wdt_rr_setup_or_halt();
   ra8_isr_globals_enable();
@@ -180,6 +179,4 @@ int32_t main(void)
   /* Stage A: power-on (or any non-WWDT cause). Arm WWDT, refresh
    * briefly, then stop refreshing to trigger the reset. */
   wdt_rr_arm_and_wait_for_reset();
-  return 0;
 }
-#pragma GCC diagnostic pop

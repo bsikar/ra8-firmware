@@ -45,6 +45,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_crashlog.h"
@@ -277,9 +278,7 @@ static void fc_make_synth(ra8_exception_last_t* out)
   out->diag.cfsr  = (uint32_t)k_fc_synth_cfsr;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   fc_setup_or_halt();
   ra8_isr_globals_enable();
@@ -326,6 +325,4 @@ int32_t main(void)
   while (1) {
     __asm__ volatile("wfi");
   }
-  return 0;
 }
-#pragma GCC diagnostic pop

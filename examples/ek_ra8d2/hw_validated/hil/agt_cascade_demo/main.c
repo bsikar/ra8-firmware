@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_agt.h"
 #include "ra8_agt_regs.h"
 #include "ra8_attributes.h"
@@ -223,9 +224,7 @@ RA8_INTERNAL static void internal_format_tick(uint32_t tick, uint8_t* digits)
                                       (size_t)(sizeof(s_agt_cas_msg_tail) - 1U));
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   internal_setup_or_halt();
   ra8_isr_globals_enable();
@@ -262,6 +261,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_agt_cas_poll_ms);
   }
   internal_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

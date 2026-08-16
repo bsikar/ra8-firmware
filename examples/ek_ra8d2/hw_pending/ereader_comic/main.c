@@ -43,6 +43,7 @@
 
 #include "cm_tiled_check.h"
 #include "comic_pages_fixture.h"
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_comic.h"
@@ -932,18 +933,15 @@ static void cm_print_banner(void)
   cm_print(k_cm_msg_ok, (uint32_t)sizeof(k_cm_msg_ok) - 1U);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief App entry: bring up the panel, open the comic, render + poll taps.
- * @return Never returns.
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR / FPU / priority grouping.
  * @post The reader loop runs forever, redrawing on each tap.
  * @post A page-1 banner is emitted once after the first render.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   cm_bringup_clocks();
   cm_print(k_cm_msg_boot, (uint32_t)sizeof(k_cm_msg_boot) - 1U);
@@ -968,6 +966,4 @@ int32_t main(void)
     s_loop_ticks++;
     ra8_delay_ms((uint32_t)k_cm_frame_ms);
   }
-  return 0;
 }
-#pragma GCC diagnostic pop

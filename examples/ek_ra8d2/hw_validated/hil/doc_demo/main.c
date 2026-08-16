@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -245,13 +246,10 @@ RA8_INTERNAL static void internal_setup_or_halt(void)
   return k_ra8_ok;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Compare DOC and software sums continuously for HIL observation.
  * @details Initializes the demo, executes one comparison per period, increments
  *          the exported match or mismatch counter, and toggles the matching LED.
- * @return Unreachable success value retained for the freestanding ABI.
  * @pre Reset startup and SystemInit completed successfully.
  * @pre DOC and the status LEDs are not owned by another context.
  * @post Every iteration increments exactly one HIL result counter.
@@ -259,7 +257,7 @@ RA8_INTERNAL static void internal_setup_or_halt(void)
  * @note Does not return during normal operation.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   internal_setup_or_halt();
   ra8_isr_globals_enable();
@@ -280,6 +278,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_doc_demo_period_ms);
   }
   internal_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

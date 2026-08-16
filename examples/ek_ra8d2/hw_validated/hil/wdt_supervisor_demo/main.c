@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -294,15 +295,11 @@ void tx_application_define(void* first_unused)
   wdt_sup_demo_spawn_workers();
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   if (ra8_cgc_init() != k_ra8_ok) {
     wdt_sup_demo_halt();
   }
   tx_kernel_enter();
   wdt_sup_demo_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

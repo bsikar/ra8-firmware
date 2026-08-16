@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -189,9 +190,7 @@ internal_rtc_demo_arm_alarm(const ra8_rtc_datetime_t* now)
     (uint8_t)((uint8_t)k_ra8_rtc_irq_alarm | (uint8_t)k_ra8_rtc_irq_periodic));
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   internal_rtc_demo_setup_or_halt();
   ra8_isr_globals_enable();
@@ -232,6 +231,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_rtc_demo_advance_secs * (uint32_t)k_rtc_demo_ms_per_sec);
   }
   internal_rtc_demo_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

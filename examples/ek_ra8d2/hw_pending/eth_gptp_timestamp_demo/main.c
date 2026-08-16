@@ -50,6 +50,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -481,9 +482,7 @@ static void gptp_setup_or_halt(void)
   return ra8_eth_gptp_timer_enable(k_ra8_gptp_timer_0);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   gptp_setup_or_halt();
   ra8_isr_globals_enable();
@@ -505,6 +504,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_gptp_period_ms);
   }
   gptp_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

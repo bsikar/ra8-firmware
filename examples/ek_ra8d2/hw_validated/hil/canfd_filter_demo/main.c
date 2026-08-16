@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_canfd.h"
@@ -322,9 +323,7 @@ RA8_INTERNAL static void internal_canfd_filter_setup_or_halt(void)
   return k_ra8_err_no_data;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   internal_canfd_filter_setup_or_halt();
   ra8_isr_globals_enable();
@@ -373,6 +372,4 @@ int32_t main(void)
     ra8_delay_ms(k_canfd_filter_period_ms);
   }
   internal_canfd_filter_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

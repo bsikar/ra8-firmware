@@ -47,6 +47,7 @@
 #include "cache_store_demo.h"
 #include "lx_api.h"
 #include "lx_nor_ram.h"
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cache_store.h"
@@ -244,18 +245,15 @@ RA8_INTERNAL static cache_store_demo_cfg_t internal_rcs_build_cfg(void)
   };
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry: bring up clocks + console, run the demo, report.
- * @return Never returns.
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre The shared board boot files installed the vector table.
  * @post The demo has run once and its verdict banner is streaming steadily.
  * @post The CPU idles re-emitting the banner (or halts after a fatal init error).
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   internal_rcs_setup_or_halt();
   ra8_isr_globals_enable();
@@ -272,6 +270,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_rcs_reemit_ms);
     internal_rcs_report(rc, &res);
   }
-  return 0;
 }
-#pragma GCC diagnostic pop

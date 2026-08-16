@@ -16,11 +16,8 @@
 #include <stdint.h>
 
 #include "c6_camera_server.h"
+#include "ra8_boot_entry.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
-  return c6_cam_app_run();
 }
-#pragma GCC diagnostic pop

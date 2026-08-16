@@ -48,6 +48,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -129,12 +130,8 @@ RA8_INTERNAL static void internal_uart_hello_setup_or_halt(void)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry. Brings up CGC + SCI8 + LED1 then prints.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
@@ -144,7 +141,7 @@ RA8_INTERNAL static void internal_uart_hello_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   internal_uart_hello_setup_or_halt();
 
@@ -160,6 +157,4 @@ int32_t main(void)
   }
 
   internal_uart_hello_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

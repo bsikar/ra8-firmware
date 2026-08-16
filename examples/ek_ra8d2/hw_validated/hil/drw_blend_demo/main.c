@@ -47,6 +47,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -436,9 +437,7 @@ static void drw_blend_print_pass(uint32_t crc)
                                      (size_t)(sizeof(k_drw_blend_pass_sfx) - 1U));
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   drw_blend_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the
@@ -466,6 +465,4 @@ int32_t main(void)
     ra8_delay_ms(k_drw_blend_period_ms);
   }
   drw_blend_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

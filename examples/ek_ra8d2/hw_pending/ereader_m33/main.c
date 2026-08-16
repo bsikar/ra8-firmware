@@ -51,6 +51,7 @@
 #include <stdint.h>
 
 #include "ereader_m33.h"
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_dual_core.h"
 #include "ra8_err.h"
@@ -889,9 +890,6 @@ static void run_mode_switch(volatile erm33_mailbox_t* mb)
  * low-power WFI and waking on the M33's page-turn pokes -- before logging the
  * handoff verdict and parking for good. See the file header for the narrative.
  *
- * @return Never returns (ends in ::park_low_power, or ::park_forever on error).
- * @retval (none) Control stays parked.
- *
  * @pre `SystemInit` has completed core bring-up.
  * @pre The M33 is held inactive by hardware until released here.
  * @post The M33 has rendered + re-rendered the held page and the M85 is parked.
@@ -900,7 +898,7 @@ static void run_mode_switch(volatile erm33_mailbox_t* mb)
  * @note Single-threaded; no RTOS on the M85 in this example.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   ra8_log_init();
   ra8_log_info("M85", "==== RA8D2 ereader_m33 demo (#150 M85-park / M33-hold) ====");

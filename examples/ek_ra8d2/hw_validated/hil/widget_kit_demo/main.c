@@ -55,6 +55,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_box.h"
 #include "ra8_cgc.h"
@@ -603,12 +604,8 @@ static void wk_tick_live(void)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief App entry: bring the panel up, self-check, then run the live loop.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR / FPU / priority grouping.
@@ -617,7 +614,7 @@ static void wk_tick_live(void)
  *       the panel updates a button live (the damage-tracked path).
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   wk_setup_or_halt();
   ra8_isr_globals_enable();
@@ -652,4 +649,3 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_wk_frame_ms);
   }
 }
-#pragma GCC diagnostic pop

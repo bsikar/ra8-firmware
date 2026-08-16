@@ -48,6 +48,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -828,15 +829,11 @@ static void wlun_setup_or_halt(void)
   wlun_route_usb_or_halt();
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry: bring the board up, then hand off to ThreadX.
  *
  * @details Both USB controllers' clocks and pins come up before the
  * kernel so the workers only deal with stack bring-up.
- *
- * @return Never returns (``tx_kernel_enter`` is __noreturn).
  *
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR, FPU, priority grouping.
@@ -846,7 +843,7 @@ static void wlun_setup_or_halt(void)
  * @note Single entry point; not re-entrant.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   wlun_setup_or_halt();
 
@@ -857,6 +854,4 @@ int32_t main(void)
 #endif
 
   wlun_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

@@ -31,6 +31,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -172,9 +173,7 @@ static bool wdt_window_demo_iter(void)
   return true;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   wdt_window_demo_setup_or_halt();
   ra8_isr_globals_enable();
@@ -206,6 +205,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_wdt_window_demo_poll_ms);
   }
   wdt_window_demo_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

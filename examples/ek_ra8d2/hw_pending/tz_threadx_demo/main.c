@@ -17,6 +17,7 @@
  */
 
 #include <stdint.h>
+#include "ra8_boot_entry.h"
 
 /**
  * @var g_tz_threadx_demo_fallback_count
@@ -27,10 +28,9 @@ volatile uint32_t g_tz_threadx_demo_fallback_count = 0U;
 
 /**
  * @brief Secure fallback main entry point.
- * @return Never returns.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   g_tz_threadx_demo_fallback_count = 1U;
 

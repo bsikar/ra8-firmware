@@ -37,6 +37,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -353,8 +354,6 @@ void tx_application_define(void* first_unused_memory)
 /**
  * @brief Application entry. Brings up LED, console, SDHI pins, then ThreadX.
  *
- * @return Never returns -- ``tx_kernel_enter`` does not.
- *
  * @pre Reset_Handler has copied .data + zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
  * @post CPUCLK0 is raised to the PLL1 target before the kernel starts.
@@ -363,9 +362,7 @@ void tx_application_define(void* first_unused_memory)
  *
  * @since 0.1.0
  */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   /* CGC bring-up FIRST. tx_initialize_low_level.S programs SysTick from
    * the post-CGC CPUCLK0 target (1 GHz); entering the kernel on the
@@ -402,4 +399,3 @@ int32_t main(void)
     __asm__ volatile("wfi");
   }
 }
-#pragma GCC diagnostic pop

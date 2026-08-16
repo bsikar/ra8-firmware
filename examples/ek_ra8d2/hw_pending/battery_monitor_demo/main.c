@@ -38,6 +38,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_batt.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -242,9 +243,7 @@ static void bm_read_or_halt(uint8_t* out_soc, uint8_t* out_chg)
   *out_chg = ((crate_hi & (uint8_t)k_bm_sign_mask) == 0U) ? 1U : 0U;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   uint32_t pclka_hz = 0U;
   bm_setup_or_halt(&pclka_hz);
@@ -303,6 +302,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_bm_period_ms);
   }
   bm_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
-  return 0;
 }
-#pragma GCC diagnostic pop

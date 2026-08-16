@@ -37,6 +37,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2_peripherals.h"
 #include "ra8_cgc.h"
@@ -191,9 +192,6 @@ RA8_INTERNAL static void internal_emit_pass(void)
  * @details Brings up logging, releases the Cortex-M33 (which then blinks LED1),
  * and idles. See the file header for the teaching narrative.
  *
- * @return Never returns (ends in ::internal_idle_forever).
- * @retval (none) Control stays in the idle loop.
- *
  * @pre `SystemInit` has completed core bring-up.
  * @pre The M33 is held in reset by hardware until released here.
  * @post The M33 has been released and is blinking LED1.
@@ -202,7 +200,7 @@ RA8_INTERNAL static void internal_emit_pass(void)
  * @note Single-threaded; no RTOS on the M85 in this template.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   ra8_log_init();
   ra8_log_info("M85", "==== RA8D2 dual-core blink template ====");

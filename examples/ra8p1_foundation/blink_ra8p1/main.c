@@ -34,6 +34,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ra8p1.h"
 #include "ra8_device.h"
@@ -90,9 +91,7 @@ RA8_INTERNAL static void internal_blink_ra8p1_panic_halt(void)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   if (ra8_time_init(k_blink_cpu_hz_at_reset) != k_ra8_ok) {
     internal_blink_ra8p1_panic_halt();
@@ -112,6 +111,4 @@ int32_t main(void)
   }
 
   internal_blink_ra8p1_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

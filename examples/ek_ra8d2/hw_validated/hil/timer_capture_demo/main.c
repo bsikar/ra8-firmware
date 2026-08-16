@@ -32,6 +32,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -205,9 +206,7 @@ static void timer_demo_setup_or_halt(void)
   return ra8_board_uart_console_write(k_timer_demo_eol, (size_t)(sizeof(k_timer_demo_eol) - 1U));
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   timer_demo_setup_or_halt();
   ra8_isr_globals_enable();
@@ -219,6 +218,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_timer_demo_period_ms);
   }
   timer_demo_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

@@ -38,6 +38,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -412,17 +413,14 @@ void tx_application_define(void* first_unused_memory)
 }
 #endif /* !RA8_OFF_TARGET */
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry. Brings up clocks + UART, then enters ThreadX.
  *
- * @return Never returns.
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @post On clean entry the kernel runs the worker thread once.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   demo_setup_or_halt();
   ra8_isr_globals_enable();
@@ -433,6 +431,4 @@ int32_t main(void)
 #endif
 
   demo_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

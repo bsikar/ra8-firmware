@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -314,8 +315,6 @@ RA8_INTERNAL static void internal_sd_demo_init_card_or_halt(uint32_t pclka_hz)
  * =============================================================================
  */
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief App entry: bring up the bus + card, run the ra8_io round-trip, print PASS.
  *
@@ -323,8 +322,6 @@ RA8_INTERNAL static void internal_sd_demo_init_card_or_halt(uint32_t pclka_hz)
  *          `ra8_io` VFS round-trip over the SD-over-SPI block device. On success
  *          it prints the exact PASS banner the HIL runner and ra8_emulator smoke
  *          gate scrape for; on any failure it prints `FAIL` and parks the core.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
@@ -334,7 +331,7 @@ RA8_INTERNAL static void internal_sd_demo_init_card_or_halt(uint32_t pclka_hz)
  * @note Not thread-safe; this is the single-threaded app entry.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   uint32_t pclka_hz = 0U;
   internal_sd_demo_setup_or_halt(&pclka_hz);
@@ -356,4 +353,3 @@ int main(void)
     __asm__ volatile("wfi");
   }
 }
-#pragma GCC diagnostic pop

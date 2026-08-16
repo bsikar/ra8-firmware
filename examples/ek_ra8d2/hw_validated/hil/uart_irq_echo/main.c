@@ -44,6 +44,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_elc.h"
@@ -282,18 +283,15 @@ static void uart_irq_setup_or_halt(void)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry. Brings up SCI8 + ISRs, prints, then echoes via IRQ.
  *
- * @return Never returns.
  * @pre Reset_Handler has copied .data and zeroed .bss; SystemInit set VTOR/FPU.
  * @post On clean entry the CPU idles while the SCI ISRs echo received bytes.
  * @post On any HAL init failure the function halts in WFI.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   uart_irq_setup_or_halt();
 
@@ -314,6 +312,4 @@ int32_t main(void)
   }
 
   uart_irq_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop
