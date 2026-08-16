@@ -590,31 +590,32 @@ RA8_INTERNAL static bool internal_prepare(uint32_t             budget,
  * @brief Execute one complete cache run and atomic trace transaction.
  * @details Composes workspace/source/cache state, drives every workload phase,
  * validates production statistics, and publishes only a complete synced trace.
+ * The driver, the cache and the trace are all owned by this one frame, so the
+ * cache and trace pointers the driver carries can never outlive their objects.
  * @param[in] trace_path Final trace destination.
  * @param[in] budget Requested frame budget.
- * @param[in,out] driver Caller-owned workload state initialized with the seed.
  * @return Whether a complete trace was atomically published.
  * @retval true Run, statistics, sync, and publication succeeded.
  * @retval false Setup, cache, trace, or publication failed.
- * @pre @p trace_path is non-null and NUL-terminated; @p driver is writable.
+ * @pre @p trace_path is non-null and NUL-terminated.
  * @pre @p budget is non-zero and subject to the compiled maximum check.
  * @post Success publishes one complete deterministic trace and prints statistics.
  * @post Failure removes the owned private trace; pre-rename final is preserved.
  * @note Not thread-safe through production cache global/static limits.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool
-internal_execute(const char* trace_path, uint32_t budget, rv_driver_t* driver)
+RA8_INTERNAL static bool internal_execute(const char* trace_path, uint32_t budget)
 {
-  internal_layout_book(driver);
+  rv_driver_t driver = {.rng = (uint64_t)k_rv_rng_seed};
+  internal_layout_book(&driver);
   const rv_book_t book = {
-    .bytes = (uint64_t)driver->total_frames * (uint64_t)k_rv_frame_bytes,
+    .bytes = (uint64_t)driver.total_frames * (uint64_t)k_rv_frame_bytes,
   };
   rv_workspace_t      workspace              = {};
   rv_workspace_need_t need                   = {};
   ra8_vsource_obj_t   objects[k_rv_max_objs] = {};
   ra8_vsource_t       sources                = {};
-  if (!internal_prepare(budget, &book, &workspace, &sources, objects, &driver->object_id, &need)) {
+  if (!internal_prepare(budget, &book, &workspace, &sources, objects, &driver.object_id, &need)) {
     return false;
   }
   ra8_vmem_t vm = {};
@@ -629,22 +630,22 @@ internal_execute(const char* trace_path, uint32_t budget, rv_driver_t* driver)
     priv_rv_diag("\n");
     return false;
   }
-  driver->vm    = &vm;
-  driver->trace = &trace;
-  internal_phase_linear(driver);
-  internal_phase_toc(driver);
-  internal_phase_scan(driver);
+  driver.vm    = &vm;
+  driver.trace = &trace;
+  internal_phase_linear(&driver);
+  internal_phase_toc(&driver);
+  internal_phase_scan(&driver);
   uint32_t   hits      = 0U;
   uint32_t   misses    = 0U;
   uint32_t   evictions = 0U;
   const bool stats_ok  = ra8_vmem_stats(&vm, &hits, &misses, &evictions) == k_ra8_ok;
-  const bool run_ok    = !driver->failed && stats_ok;
+  const bool run_ok    = !driver.failed && stats_ok;
   if (!run_ok || !priv_rv_trace_commit(&trace)) {
     priv_rv_trace_abort(&trace);
     priv_rv_diag("reader_vmem: trace generation failed\n");
     return false;
   }
-  internal_report(driver, &book, budget, trace_path, hits, misses, evictions);
+  internal_report(&driver, &book, budget, trace_path, hits, misses, evictions);
   return true;
 }
 
@@ -678,6 +679,5 @@ int main(int argc, char** argv)
     internal_usage();
     return 2;
   }
-  rv_driver_t driver = {.rng = (uint64_t)k_rv_rng_seed};
-  return internal_execute(trace_path, budget, &driver) ? 0 : 1;
+  return internal_execute(trace_path, budget) ? 0 : 1;
 }
