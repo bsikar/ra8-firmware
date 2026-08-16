@@ -260,6 +260,28 @@ firmware_pass_args() {
 # an include this does not cover fails LOUDLY as a clang-diagnostic-error
 # rather than being silently skipped.
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Four fixture-path definitions each tool CMakeLists supplies through
+# target_compile_definitions. Without them the TU stops at a deliberate
+# `#error "... must name the ..."` guard and is never linted -- a parse failure
+# reported as a finding, which is the #369 shape again. Mirroring them here is
+# safe precisely BECAUSE of those guards: if a name changes, the #error fires
+# and says so rather than the value drifting silently.
+# ---------------------------------------------------------------------------
+tools_fixture_definitions() {
+  printf -- '--extra-arg=-DRA8_FMT_TEST_PNG="%s"\n' \
+    "$FIRMWARE_DIR/tests/fixtures/rabook_fixed_layout/OEBPS/images/page1.png"
+  printf -- '--extra-arg=-DMDL_SITE_CONFIG_DIR="%s"\n' "$FIRMWARE_DIR/tools/media_dl/sites"
+  printf -- '--extra-arg=-DMDL_SITE_FIXTURE_DIR="%s"\n' \
+    "$FIRMWARE_DIR/tools/media_dl/tests/fixtures/sites"
+  # ...and the shipped-descriptor count, counted the same way the listfile
+  # counts it (a CONFIGURE_DEPENDS glob over sites/*.conf) so the two cannot
+  # disagree about how many descriptors ship.
+  local site_count
+  site_count="$(git -C "$FIRMWARE_DIR" ls-files "tools/media_dl/sites/*.conf" | wc -l)"
+  printf -- '--extra-arg=-DMDL_SHIPPED_SITE_COUNT=%s\n' "$site_count"
+}
+
 tools_pass_args() {
   magic_number_dedup_arg
   local dir
@@ -304,23 +326,7 @@ tools_pass_args() {
   # behind it. Without it here the TU degrades to clang-diagnostic-error and
   # is never actually linted.
   #
-  # Four fixture-path definitions each tool CMakeLists supplies through
-  # target_compile_definitions. Without them the TU stops at a deliberate
-  # `#error "... must name the ..."` guard and is never linted -- a parse
-  # failure reported as a finding, which is the #369 shape again. Mirroring
-  # them here is safe precisely BECAUSE of those guards: if a name changes,
-  # the #error fires and says so rather than the value drifting silently.
-  printf -- '--extra-arg=-DRA8_FMT_TEST_PNG="%s"\n' \
-    "$FIRMWARE_DIR/tests/fixtures/rabook_fixed_layout/OEBPS/images/page1.png"
-  printf -- '--extra-arg=-DMDL_SITE_CONFIG_DIR="%s"\n' "$FIRMWARE_DIR/tools/media_dl/sites"
-  printf -- '--extra-arg=-DMDL_SITE_FIXTURE_DIR="%s"\n' \
-    "$FIRMWARE_DIR/tools/media_dl/tests/fixtures/sites"
-  # ...and the shipped-descriptor count, counted the same way the listfile
-  # counts it (a CONFIGURE_DEPENDS glob over sites/*.conf) so the two cannot
-  # disagree about how many descriptors ship.
-  local site_count
-  site_count="$(git -C "$FIRMWARE_DIR" ls-files "tools/media_dl/sites/*.conf" | wc -l)"
-  printf -- '--extra-arg=-DMDL_SHIPPED_SITE_COUNT=%s\n' "$site_count"
+  tools_fixture_definitions
   # CMAKE_C_EXTENSIONS is ON for every tool (ra8_emulator) or -std=gnu23 is set
   # explicitly (the Makefile tools), so lint them as GNU C23 too.
   printf '%s\n' '--' 'cc' '-std=gnu2x' '-D_GNU_SOURCE'
