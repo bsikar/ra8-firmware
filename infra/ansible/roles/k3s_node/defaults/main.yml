@@ -59,5 +59,9 @@ k3s_node_apt_packages:
   - buildah
 
 # The Python client kubernetes.core needs on the target for its k8s modules.
+# Pinned below 36: kubernetes 36.0.3 raised its floor to pyyaml >= 6.0.3, and
+# pip cannot replace the node distro debian-managed PyYAML 6.0.1 (no RECORD
+# file), so an unpinned install hard-fails mid-play. 35.x is satisfied by the
+# distro PyYAML. Revisit when the node image ships pyyaml >= 6.0.3.
 k3s_node_pip_packages:
-  - kubernetes
+  - kubernetes<36
