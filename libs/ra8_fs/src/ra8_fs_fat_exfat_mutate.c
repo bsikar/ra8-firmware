@@ -792,18 +792,24 @@ ra8_err_t priv_exfat_dir_next(const ra8_fs_mount_t* m,
   while (cur->scanned < (uint32_t)k_exfat_scan_limit) {
     uint8_t   entry[k_exfat_entry_bytes] = {};
     ra8_err_t err                        = priv_exfat_next_entry(m, cur, entry);
-    if ((err == k_ra8_err_not_found) || (entry[0] == (uint8_t)k_exfat_entry_eod)) {
-      return (err == k_ra8_err_not_found) ? k_ra8_ok : err;
+    if (err == k_ra8_err_not_found) {
+      return k_ra8_ok;
     }
     if (err != k_ra8_ok) {
       return err;
+    }
+    if (entry[0] == (uint8_t)k_exfat_entry_eod) {
+      return k_ra8_ok;
     }
     if (entry[0] != (uint8_t)k_exfat_entry_file) {
       continue;
     }
     err = internal_exfat_list_emit(m, cur, entry, out, out_entry);
-    if ((err != k_ra8_ok) || *out_entry) {
+    if (err != k_ra8_ok) {
       return err;
+    }
+    if (*out_entry) {
+      return k_ra8_ok;
     }
   }
   return k_ra8_err_invalid_size;
