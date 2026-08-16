@@ -149,10 +149,132 @@ RA8_INTERNAL static void internal_test_lifecycle_guards(void)
   TEST_END("mdl storage ram: lifecycle guards");
 }
 
+/**
+ * @brief Initialization and begin callbacks independently reject null inputs.
+ * @test N+1 vectors vary each term while every other term remains false.
+ * @details Uses a valid constructor/begin control, then nulls each required
+ *          output, buffer, callback context, and destination in isolation.
+ * @par MC/DC:
+ * `libs/ra8_c6link/src/ra8_mdl_storage_ram.c@ra8_mdl_storage_ram_init`
+ * receives `(F,F,F)->F`, `(T,-,-)->T`, `(F,T,-)->T`, `(F,F,T)->T`.
+ * `libs/ra8_c6link/src/ra8_mdl_storage_ram.c@internal_ram_begin` receives
+ * `(F,F)->F`, `(T,-)->T`, and `(F,T)->T`.
+ * @pre Shared fixture storage is exclusively owned.
+ * @pre Stack outputs are writable for every non-null vector.
+ * @post Every rejected vector returns the null-pointer status.
+ * @post The successful transaction is aborted back to idle.
+ * @note Calls production callbacks through the published storage interface.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_mcdc_init_and_begin(void)
+{
+  TEST_BEGIN("mdl storage ram: init and begin MC/DC");
+  ra8_mdl_storage_ram_t   storage   = {};
+  ra8_mdl_storage_iface_t interface = {};
+  uint8_t                 byte      = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_storage_ram_init(nullptr, &interface, &byte, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_storage_ram_init(&storage, nullptr, &byte, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_storage_ram_init(&storage, &interface, nullptr, 1U));
+  internal_bind(&storage, &interface);
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, interface.begin(nullptr, "source"));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, interface.begin(interface.ctx, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, interface.begin(interface.ctx, "source"));
+  TEST_ASSERT_EQ(k_ra8_ok, interface.abort(interface.ctx));
+  TEST_END("mdl storage ram: init and begin MC/DC");
+}
+
+/**
+ * @brief Write and commit decisions independently reject malformed state.
+ * @test Callback pointer, zero-length, and lifecycle terms receive N+1 vectors.
+ * @details Begins one transaction, varies callback inputs without corrupting
+ *          it, publishes one byte, then constructs each invalid commit state.
+ * @par MC/DC:
+ * `libs/ra8_c6link/src/ra8_mdl_storage_ram.c@internal_ram_write` receives
+ * `(F,F)->F`, `(T,-)->T`, `(F,T)->T` for its pointer OR and `(F,F)->F`,
+ * `(T,F)->F`, `(T,T)->T` for its data/length AND.
+ * `libs/ra8_c6link/src/ra8_mdl_storage_ram.c@internal_ram_commit` receives
+ * `(F,F)->F`, `(T,-)->T`, and `(F,T)->T`.
+ * @pre Shared fixture storage is exclusively owned.
+ * @pre The valid byte remains readable throughout the callback vectors.
+ * @post Only the valid write advances storage by one byte.
+ * @post Final abort restores the empty transaction to idle.
+ * @note Short-circuit vectors deliberately leave later terms unevaluated.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_mcdc_write_and_commit(void)
+{
+  TEST_BEGIN("mdl storage ram: write and commit MC/DC");
+  ra8_mdl_storage_ram_t   storage   = {};
+  ra8_mdl_storage_iface_t interface = {};
+  internal_bind(&storage, &interface);
+  TEST_ASSERT_EQ(k_ra8_ok, interface.begin(interface.ctx, "source"));
+  const uint8_t byte    = 0x5AU;
+  uint16_t      written = UINT16_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, interface.write(nullptr, &byte, 1U, &written));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, interface.write(interface.ctx, &byte, 1U, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, interface.write(interface.ctx, &byte, 1U, &written));
+  TEST_ASSERT_EQ(k_ra8_ok, interface.write(interface.ctx, nullptr, 0U, &written));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, interface.write(interface.ctx, nullptr, 1U, &written));
+  TEST_ASSERT_EQ(k_ra8_ok, interface.commit(interface.ctx));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, interface.commit(interface.ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, interface.begin(interface.ctx, "empty"));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, interface.commit(interface.ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, interface.abort(interface.ctx));
+  TEST_END("mdl storage ram: write and commit MC/DC");
+}
+
+/**
+ * @brief Committed-view pointer and lifecycle terms vary independently.
+ * @test A valid one-byte publication anchors both N+1 decision tables.
+ * @details Rejects each null output independently, then mutates only the public
+ *          lifecycle fields to isolate committed, active, and length terms.
+ * @par MC/DC:
+ * `libs/ra8_c6link/src/ra8_mdl_storage_ram.c@ra8_mdl_storage_ram_view`
+ * receives `(F,F,F)->F` plus each one-true pointer vector, and state vectors
+ * `(F,F,F)->F`, `(T,-,-)->T`, `(F,T,-)->T`, `(F,F,T)->T`.
+ * @pre Shared fixture storage is exclusively owned.
+ * @pre One byte is committed before view validation begins.
+ * @post The valid control exposes the exact backing pointer and length one.
+ * @post Every one-true state vector returns invalid-state.
+ * @note Direct state mutation is confined to this transparent adapter fixture.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_mcdc_view(void)
+{
+  TEST_BEGIN("mdl storage ram: view MC/DC");
+  ra8_mdl_storage_ram_t   storage   = {};
+  ra8_mdl_storage_iface_t interface = {};
+  internal_bind(&storage, &interface);
+  const uint8_t byte    = 0xA5U;
+  uint16_t      written = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, interface.begin(interface.ctx, "source"));
+  TEST_ASSERT_EQ(k_ra8_ok, interface.write(interface.ctx, &byte, 1U, &written));
+  TEST_ASSERT_EQ(k_ra8_ok, interface.commit(interface.ctx));
+  const uint8_t* view   = nullptr;
+  size_t         length = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_storage_ram_view(nullptr, &view, &length));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_storage_ram_view(&storage, nullptr, &length));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_storage_ram_view(&storage, &view, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mdl_storage_ram_view(&storage, &view, &length));
+  TEST_ASSERT_EQ(1U, length);
+  storage.committed = false;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_mdl_storage_ram_view(&storage, &view, &length));
+  storage.committed = true;
+  storage.active    = true;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_mdl_storage_ram_view(&storage, &view, &length));
+  storage.active = false;
+  storage.length = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_mdl_storage_ram_view(&storage, &view, &length));
+  TEST_END("mdl storage ram: view MC/DC");
+}
+
 int main(void)
 {
   internal_test_commit_view();
   internal_test_capacity_abort();
   internal_test_lifecycle_guards();
+  internal_test_mcdc_init_and_begin();
+  internal_test_mcdc_write_and_commit();
+  internal_test_mcdc_view();
   return 0;
 }
