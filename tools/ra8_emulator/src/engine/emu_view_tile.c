@@ -133,17 +133,15 @@ RA8_INTERNAL static void internal_rotate_tile(const emu_presentation_workspace_t
 {
   for (uint16_t y = 0U; y < height; y++) {
     for (uint16_t x = 0U; x < width; x++) {
-      uint16_t destination_x = x;
-      uint16_t destination_y = y;
+      /* The caller rejects 0 degrees, so 270 is the remaining default. */
+      uint16_t destination_x = y;
+      uint16_t destination_y = (uint16_t)(width - 1U - x);
       if (presentation->rotate_deg == (uint32_t)k_rotate_90) {
         destination_x = (uint16_t)(height - 1U - y);
         destination_y = x;
       } else if (presentation->rotate_deg == (uint32_t)k_rotate_180) {
         destination_x = (uint16_t)(width - 1U - x);
         destination_y = (uint16_t)(height - 1U - y);
-      } else {
-        destination_x = y;
-        destination_y = (uint16_t)(width - 1U - x);
       }
       rotated[((size_t)destination_y * output_width) + destination_x] =
         source[((size_t)y * width) + x];

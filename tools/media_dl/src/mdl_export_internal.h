@@ -167,7 +167,7 @@ RA8_PRIV ra8_err_t priv_mdl_zip_workspace_error(const mdl_zip_allocator_t* alloc
  */
 RA8_PRIV ra8_err_t priv_mdl_export_prepare_cover(mdl_storage_t*           storage,
                                                  const mdl_export_meta_t* meta,
-                                                 char                     names[][k_name_max],
+                                                 const char               names[][k_name_max],
                                                  size_t                   count,
                                                  mdl_external_cover_t*    cover);
 
