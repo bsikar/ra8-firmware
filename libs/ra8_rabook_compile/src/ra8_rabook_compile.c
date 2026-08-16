@@ -374,8 +374,6 @@ uint32_t ra8_rabook_add_image(ra8_rabook_ctx_t* ctx,
       ctx->failed = true;
       return (uint32_t)k_ra8_book_nil;
     }
-  }
-  if (data_size != 0U) {
     if (data == nullptr) {
       ctx->failed = true;
       return (uint32_t)k_ra8_book_nil;
