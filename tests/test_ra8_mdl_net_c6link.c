@@ -29,8 +29,8 @@ typedef enum : uint16_t {
 /** @brief Caller-owned body sink state. */
 typedef struct {
   uint8_t bytes[k_internal_sink_bytes]; /**< Accepted body bytes.  */
-  size_t  length;                       /**< Valid byte count.      */
-  bool    fail_reset;                   /**< Inject reset failure.  */
+  size_t  length;                       /**< Valid byte count.     */
+  bool    fail_reset;                   /**< Inject reset failure. */
 } internal_c6_sink_t;
 
 /** @brief SHA context plus terminal corruption injection. */
@@ -40,7 +40,7 @@ typedef struct {
 } internal_c6_sha_t;
 
 static const uint8_t     s_body[] = "portable-c6-body"; /**< Deterministic HTTPS body. */
-static internal_c6_sha_t s_sha;                         /**< Adapter SHA state.         */
+static internal_c6_sha_t s_sha;                         /**< Adapter SHA state.        */
 
 /**
  * @brief Reset the real streaming digest context.
