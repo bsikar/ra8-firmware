@@ -24,31 +24,26 @@
 #include "miniz.h"
 #include "ra8_attributes.h"
 #include "unity_minimal.h"
-
 /** @brief Permission bits for metadata test scratch directories. */
 typedef enum : uint16_t {
   k_mdl_test_dir_mode = 0755U, /**< rwxr-xr-x. */
 } mdl_metadata_test_mode_t;
-
 /** @brief Named fixture and metadata-test capacities. */
 typedef enum : uint32_t {
   k_fixture_bytes           = 4U,                 /**< Synthetic page bytes.   */
   k_meta_line_test_slack    = 16U,                /**< Key/delimiter overhead. */
   k_test_export_arena_bytes = 8U * 1024U * 1024U, /**< Test exporter arena.    */
 } mdl_metadata_test_bound_t;
-
 /** @brief Caller-owned workspace backing every metadata export. */
 static uint8_t s_test_export_arena[k_test_export_arena_bytes];
 /** @brief Second arena used by the simultaneous deterministic-reader check. */
 static uint8_t s_test_export_arena_two[k_test_export_arena_bytes];
-
 /** @brief Raw descriptor state borrowed by one bounded miniz reader. */
 typedef struct {
   int       descriptor; /**< Open read-only artifact descriptor. */
   uint64_t  size_bytes; /**< Immutable artifact extent.          */
   ra8_err_t read_error; /**< First positioned-read failure.      */
 } mdl_test_zip_io_t;
-
 /** @brief Complete caller-owned state for one allocation-free ZIP reader. */
 typedef struct {
   mz_zip_archive         zip;       /**< Miniz reader descriptor.       */
@@ -56,7 +51,6 @@ typedef struct {
   mdl_export_workspace_t workspace; /**< Arena descriptor.              */
   mdl_test_zip_io_t      io;        /**< Positioned raw-file reader.    */
 } mdl_test_zip_reader_t;
-
 /** @brief Adapt bounded positioned descriptor reads to miniz.
  * @details Exercises the zip read scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
  * @param[in,out] opaque Opaque reader context supplied by the archive seam.
@@ -204,7 +198,6 @@ RA8_INTERNAL static bool internal_test_zip_text(mdl_test_zip_reader_t* reader,
   destination[length] = '\0';
   return true;
 }
-
 /**
  * @brief Write one complete binary fixture through a raw descriptor.
  * @param[in] path Absolute fixture path.
@@ -676,8 +669,9 @@ RA8_INTERNAL static void internal_assert_epub_opf(const mdl_export_meta_t* meta)
 }
 
 /**
- * @brief Assert deterministic EPUB identifiers for identical metadata.
- * @details Executes the assert epub deterministic scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @brief Assert different chapters receive distinct EPUB identifiers.
+ * @details Changes the canonical chapter title and source URL, then proves the
+ * generated identifier field differs from the first chapter's identifier.
  * @param[in] meta Metadata record to read or update.
  * @pre Assertions are enabled for contract verification.
  * @pre The test fixture workspace is isolated for this scenario.
@@ -686,12 +680,17 @@ RA8_INTERNAL static void internal_assert_epub_opf(const mdl_export_meta_t* meta)
  * @note Test helper; an assertion failure terminates the test process.
  * @since 0.1.0
  */
-RA8_INTERNAL static void internal_assert_epub_deterministic(const mdl_export_meta_t* meta)
+RA8_INTERNAL static void internal_assert_epub_distinct_identifiers(const mdl_export_meta_t* meta)
 {
-  const char* dir    = "/tmp/mdl_epub_meta_chap";
-  const char* first  = "/tmp/mdl_epub_meta_chap.epub";
-  const char* second = "/tmp/mdl_epub_meta_chap_2.epub";
-  TEST_ASSERT(internal_export_chapter_meta(k_mdl_fmt_epub, dir, second, meta) == k_ra8_ok);
+  const char*       dir    = "/tmp/mdl_epub_meta_chap";
+  const char*       first  = "/tmp/mdl_epub_meta_chap.epub";
+  const char*       second = "/tmp/mdl_epub_meta_chap_2.epub";
+  mdl_export_meta_t other  = *meta;
+  (void)__builtin_snprintf(other.chapter_title, sizeof(other.chapter_title), "EPUB Chapter 2");
+  (void)__builtin_snprintf(other.source_url,
+                           sizeof(other.source_url),
+                           "https://example.test/chapter/2");
+  TEST_ASSERT(internal_export_chapter_meta(k_mdl_fmt_epub, dir, second, &other) == k_ra8_ok);
   mdl_test_zip_reader_t one;
   mdl_test_zip_reader_t two;
   TEST_ASSERT(
@@ -702,7 +701,10 @@ RA8_INTERNAL static void internal_assert_epub_deterministic(const mdl_export_met
   char opf_two[4096];
   TEST_ASSERT(internal_test_zip_text(&one, "OEBPS/content.opf", opf_one, sizeof(opf_one)));
   TEST_ASSERT(internal_test_zip_text(&two, "OEBPS/content.opf", opf_two, sizeof(opf_two)));
-  TEST_ASSERT(strcmp(opf_one, opf_two) == 0);
+  const char* id_one = strstr(opf_one, "<dc:identifier id=\"bookid\">");
+  const char* id_two = strstr(opf_two, "<dc:identifier id=\"bookid\">");
+  TEST_ASSERT((id_one != nullptr) && (id_two != nullptr));
+  TEST_ASSERT(strncmp(id_one, id_two, 80U) != 0);
   TEST_ASSERT(internal_test_zip_close(&one));
   TEST_ASSERT(internal_test_zip_close(&two));
 }
@@ -751,7 +753,7 @@ RA8_INTERNAL static void internal_test_epub_metadata_and_uuid(void)
   mdl_export_meta_t meta;
   internal_init_epub_meta(&meta);
   internal_assert_epub_opf(&meta);
-  internal_assert_epub_deterministic(&meta);
+  internal_assert_epub_distinct_identifiers(&meta);
   internal_assert_epub_rejection(&meta);
   (void)unlink("/tmp/mdl_epub_meta_chap/page_001.jpg");
   (void)unlink("/tmp/mdl_epub_meta_chap/page_002.jpg");
