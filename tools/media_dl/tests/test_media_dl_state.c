@@ -52,9 +52,8 @@ typedef enum : uint16_t {
 } mdl_state_fs_limit_t;
 
 /** @brief Maximally aligned backend workspace. */
-typedef union {
-  max_align_t align;                  /**< Force natural maximum alignment. */
-  uint8_t     bytes[k_fs_work_bytes]; /**< Opaque backend bytes.            */
+typedef struct {
+  alignas(max_align_t) uint8_t bytes[k_fs_work_bytes]; /**< Opaque backend bytes.            */
 } fs_workspace_t;
 
 /** @brief Sparse-file size just beyond mdl_hash_file's production bound. */

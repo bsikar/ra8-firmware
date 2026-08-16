@@ -41,9 +41,9 @@ typedef enum : uint32_t {
 } image_limit_t;
 
 /** @brief Aligned caller-owned miniz compressor storage. */
-typedef union {
-  max_align_t align;                                  /**< Portable alignment member. */
-  uint8_t     bytes[k_ra8_io_compress_scratch_bytes]; /**< Compressor state bytes.    */
+typedef struct {
+  /** @brief Compressor state bytes. */
+  alignas(max_align_t) uint8_t bytes[k_ra8_io_compress_scratch_bytes];
 } image_compressor_t;
 
 /** @brief Real application output selection, independent of the C6 transport.

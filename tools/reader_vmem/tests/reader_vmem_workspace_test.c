@@ -16,9 +16,8 @@
 #include "reader_vmem_internal.h"
 
 /** @brief Small test-only backing bound independently twice. */
-typedef union {
-  max_align_t alignment;     /**< Establishes required backing alignment. */
-  uint8_t     bytes[16384U]; /**< Test-owned workspace bytes.             */
+typedef struct {
+  alignas(max_align_t) uint8_t bytes[16384U]; /**< Test-owned workspace bytes.             */
 } test_backing_t;
 
 /** @brief First explicit test composition backing. */

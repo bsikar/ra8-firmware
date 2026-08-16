@@ -31,9 +31,8 @@ typedef enum : uint32_t {
 } mdl_export_fault_limit_t;
 
 /** @brief Maximally aligned portable backend workspace. */
-typedef union {
-  max_align_t alignment;                    /**< Force maximum alignment. */
-  uint8_t     bytes[k_fault_storage_bytes]; /**< Backend-private state.   */
+typedef struct {
+  alignas(max_align_t) uint8_t bytes[k_fault_storage_bytes]; /**< Backend-private state.   */
 } internal_fault_workspace_t;
 
 /** @brief Transaction-only deterministic fail-on-Nth-begin wrapper. */

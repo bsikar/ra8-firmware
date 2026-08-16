@@ -41,21 +41,18 @@
 #include "ra8_io_stream_posix.h"
 
 /** @brief Naturally aligned, caller-owned exporter workspace storage. */
-typedef union {
-  max_align_t align;                       /**< Force maximum C alignment. */
-  uint8_t     bytes[k_export_arena_bytes]; /**< Bounded scratch bytes.     */
+typedef struct {
+  alignas(max_align_t) uint8_t bytes[k_export_arena_bytes]; /**< Bounded scratch bytes.     */
 } export_arena_storage_t;
 
 /** @brief Maximally aligned storage for one filesystem backend handle. */
-typedef union {
-  max_align_t align;                       /**< Force maximum C alignment. */
-  uint8_t     bytes[k_storage_work_bytes]; /**< Opaque backend state.      */
+typedef struct {
+  alignas(max_align_t) uint8_t bytes[k_storage_work_bytes]; /**< Opaque backend state.      */
 } storage_workspace_t;
 
 /** @brief Maximally aligned storage for one filesystem directory cursor. */
-typedef union {
-  max_align_t align;                         /**< Force maximum C alignment. */
-  uint8_t     bytes[k_mdl_storage_io_bytes]; /**< Opaque cursor state.       */
+typedef struct {
+  alignas(max_align_t) uint8_t bytes[k_mdl_storage_io_bytes]; /**< Opaque cursor state.       */
 } directory_workspace_t;
 
 /** @brief Explicit host credential input capacities. */

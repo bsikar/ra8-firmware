@@ -30,10 +30,9 @@ typedef enum : size_t {
 } test_limit_t;
 
 /** @brief Aligned scratch plus pre/post canaries. */
-typedef union {
-  max_align_t alignment; /**< Ensures the bound interior is RGB565-aligned. */
+typedef struct {
   /** @brief Guarded scratch bytes. */
-  uint8_t bytes[k_emu_presentation_max_scratch_bytes + (2U * k_guard_bytes)];
+  alignas(max_align_t) uint8_t bytes[k_emu_presentation_max_scratch_bytes + (2U * k_guard_bytes)];
 } test_guarded_scratch_t;
 
 /** @brief Legacy memory composite for a 3x2 panel plus minimum sidebar. */
