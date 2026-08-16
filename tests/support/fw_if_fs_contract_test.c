@@ -262,6 +262,7 @@ internal_expect_interface_rejection(const fw_fs_t*                   fs,
 RA8_INTERNAL static void internal_check_required_namespace(const fw_fs_t* fs)
 {
   fw_fs_namespace_iface_t names = *fs->names.iface;
+  /** @brief Reject one namespace vtable with the selected member cleared. */
 #define EXPECT_MISSING_NAMESPACE(member)                                                           \
   do {                                                                                             \
     names        = *fs->names.iface;                                                               \
@@ -290,6 +291,7 @@ RA8_INTERNAL static void internal_check_required_namespace(const fw_fs_t* fs)
 RA8_INTERNAL static void internal_check_required_streams(const fw_fs_t* fs)
 {
   fw_fs_stream_iface_t streams = *fs->streams.iface;
+  /** @brief Reject one stream vtable with the selected member cleared. */
 #define EXPECT_MISSING_STREAM(member)                                                              \
   do {                                                                                             \
     streams        = *fs->streams.iface;                                                           \
@@ -317,6 +319,7 @@ RA8_INTERNAL static void internal_check_required_streams(const fw_fs_t* fs)
 RA8_INTERNAL static void internal_check_required_transactions(const fw_fs_t* fs)
 {
   fw_fs_transaction_iface_t transactions = *fs->transactions.iface;
+  /** @brief Reject one transaction vtable with the selected member cleared. */
 #define EXPECT_MISSING_TRANSACTION(member)                                                         \
   do {                                                                                             \
     transactions        = *fs->transactions.iface;                                                 \
@@ -552,8 +555,8 @@ RA8_INTERNAL static void internal_check_public_null_tuples(const fw_fs_t* fs)
 RA8_INTERNAL static void internal_check_stat_contracts(const fw_fs_t* fs)
 {
   typedef struct {
-    fw_fs_stat_t stat;
-    ra8_err_t    expected;
+    fw_fs_stat_t stat;     /**< Candidate callback result. */
+    ra8_err_t    expected; /**< Expected facade status.    */
   } stat_case_t;
   static const stat_case_t k_cases[] = {
     {.stat = {.exists = false, .type = k_fw_fs_node_none, .size_bytes = 0U}, .expected = k_ra8_ok},
