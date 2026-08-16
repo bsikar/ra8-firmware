@@ -40,6 +40,37 @@ typedef enum : uint8_t {
   k_t_bits_per_byte = 8U, /**< Binary bits represented by one fixture byte. */
 } t_rbkc_bits_t;
 
+/** @brief Argument and postcondition constants used by the guard vectors. */
+typedef enum : uint32_t {
+  k_t_zero_chunk = 0U,         /**< Rejected zero inflated chunk size.     */
+  k_t_min_chunk  = 1U,         /**< Smallest accepted inflated chunk size. */
+  k_t_flat_max   = UINT32_MAX, /**< Largest representable flat length.     */
+  k_t_no_bytes   = 0U,         /**< Output length produced by a failure.   */
+  k_t_no_calls   = 0U,         /**< Destination calls made before writing. */
+} t_rbkc_guard_t;
+
+/**
+ * @brief Destination-callback invocation selected for a staged write fault.
+ * @details The producer writes its header, then `count + 1` reserved table
+ *          entries, then one payload stream per chunk, then the back-filled
+ *          table. With the fixed fixture geometry each selector therefore
+ *          lands strictly inside one stage rather than on its boundary.
+ */
+typedef enum : uint32_t {
+  k_t_fail_table_reserve_call = 3U,  /**< Inside the reserved-table loop.  */
+  k_t_fail_payload_call       = 8U,  /**< Inside the compressed payloads.  */
+  k_t_fail_backfill_call      = 13U, /**< Inside the final table back-fill. */
+} t_rbkc_stage_t;
+
+/** @brief Workspace member replaced by NULL for one required-pointer vector. */
+typedef enum : uint8_t {
+  k_t_null_input        = 0U, /**< Uncompressed chunk staging buffer. */
+  k_t_null_compressed   = 1U, /**< Compressed stream destination.     */
+  k_t_null_compressor   = 2U, /**< tdefl compressor storage.          */
+  k_t_null_offsets      = 3U, /**< Payload-relative offset table.     */
+  k_t_null_member_count = 4U, /**< Number of workspace member vectors. */
+} t_ws_member_t;
+
 /** @brief Memory-backed source/destination plus deterministic fault injection. */
 typedef struct {
   const uint8_t* src;              /**< Flat source bytes.                     */
@@ -153,6 +184,38 @@ RA8_INTERNAL static ra8_rabook_container_workspace_t internal_full_workspace(voi
                                             .compressed_cap = sizeof(s_compressed),
                                             .compressor_cap = sizeof(s_compressor.bytes),
                                             .offset_cap     = k_t_offset_count};
+}
+
+/**
+ * @brief Return a full workspace with exactly one member pointer removed.
+ * @details Every capacity and every other pointer keeps its valid control
+ *          value, so a rejection can only be attributed to @p member.
+ * @param[in] member Workspace member to replace with NULL.
+ * @return Workspace descriptor missing exactly one pointer.
+ * @retval ra8_rabook_container_workspace_t Descriptor with one NULL member.
+ * @pre @p member is one of the declared workspace-member selectors.
+ * @pre The static fixture buffers have process lifetime.
+ * @post No buffer byte is modified.
+ * @post Exactly one member pointer of the result is NULL.
+ * @note Thread-safe as a descriptor constructor; later shared use is not.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_rabook_container_workspace_t internal_ws_missing(t_ws_member_t member)
+{
+  ra8_rabook_container_workspace_t ws = internal_full_workspace();
+  if (member == k_t_null_input) {
+    ws.input = nullptr;
+  }
+  if (member == k_t_null_compressed) {
+    ws.compressed = nullptr;
+  }
+  if (member == k_t_null_compressor) {
+    ws.compressor = nullptr;
+  }
+  if (member == k_t_null_offsets) {
+    ws.offsets = nullptr;
+  }
+  return ws;
 }
 
 /**
@@ -527,11 +590,183 @@ RA8_INTERNAL static void internal_test_read_and_capacity_faults(void)
   TEST_END("rabook container read and capacity faults");
 }
 
+/**
+ * @test internal_test_required_pointers
+ * @brief Verify every required pointer and workspace member is rejected alone.
+ * @details Removes the destination callback, the workspace, the result pointer,
+ *          and then each workspace member in turn while every peer argument
+ *          keeps its valid control value.
+ * @pre The full workspace and memory context constructors return valid objects.
+ * @pre Each vector removes exactly one required pointer.
+ * @post Every vector returns the null-pointer status.
+ * @post No vector reaches the destination callback.
+ * @note Validation must precede any mutation of the staging object.
+ * @since 0.1.0
+ * @par MC/DC:
+ * The required-pointer chain is a sequence of independent single-condition
+ * guards, one per `if`, rather than one compound decision: each vector drives
+ * exactly one of them true while every earlier guard stays false, and the
+ * round-trip test supplies the all-false control. The nominal control also
+ * covers the workspace-member chain's false arm for all four members.
+ */
+RA8_INTERNAL static void internal_test_required_pointers(void)
+{
+  TEST_BEGIN("rabook container required pointers");
+  internal_fill_flat();
+  t_io_t                           io      = internal_full_io();
+  ra8_rabook_container_workspace_t ws      = internal_full_workspace();
+  uint64_t                         out_len = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_rabook_container_write(internal_mem_read,
+                                            &io,
+                                            k_t_flat_bytes,
+                                            k_t_chunk_bytes,
+                                            nullptr,
+                                            &io,
+                                            &ws,
+                                            &out_len));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_rabook_container_write(internal_mem_read,
+                                            &io,
+                                            k_t_flat_bytes,
+                                            k_t_chunk_bytes,
+                                            internal_mem_write,
+                                            &io,
+                                            nullptr,
+                                            &out_len));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_rabook_container_write(internal_mem_read,
+                                            &io,
+                                            k_t_flat_bytes,
+                                            k_t_chunk_bytes,
+                                            internal_mem_write,
+                                            &io,
+                                            &ws,
+                                            nullptr));
+  for (uint8_t member = 0U; member < (uint8_t)k_t_null_member_count; member++) {
+    ra8_rabook_container_workspace_t partial = internal_ws_missing((t_ws_member_t)member);
+    TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                   ra8_rabook_container_write(internal_mem_read,
+                                              &io,
+                                              k_t_flat_bytes,
+                                              k_t_chunk_bytes,
+                                              internal_mem_write,
+                                              &io,
+                                              &partial,
+                                              &out_len));
+    TEST_ASSERT_EQ(k_t_no_bytes, out_len);
+  }
+  TEST_ASSERT_EQ(k_t_no_calls, io.write_calls);
+  TEST_ASSERT_EQ(k_t_no_calls, io.read_calls);
+  TEST_END("rabook container required pointers");
+}
+
+/**
+ * @test internal_test_size_arguments
+ * @brief Verify a zero chunk size and an unrepresentable chunk count are refused.
+ * @details A zero chunk size cannot describe any partition, and the largest
+ *          flat length divided into single-byte chunks demands a chunk count
+ *          the table's terminal entry cannot address.
+ * @pre The workspace input capacity accepts the single-byte chunk size.
+ * @pre The compressor scratch satisfies the documented minimum.
+ * @post Both vectors return their documented canonical status.
+ * @post Neither vector calls the source or destination callback.
+ * @note The oversized vector never reads the declared flat bytes.
+ * @since 0.1.0
+ * @par MC/DC:
+ * Size decision `(flat_len == 0) || (chunk_bytes == 0)` receives `(F,T)->T`
+ * here; the companion validation test supplies `(T,-)->T` and the round-trip
+ * control supplies `(F,F)->F`, completing the N+1 independence set.
+ * Count/table decision `(count == UINT32_MAX) || (offset_cap < count + 1)`
+ * receives `(T,-)->T` here, completing the set whose `(F,T)->T` and `(F,F)->F`
+ * vectors the validation and round-trip tests already supply.
+ */
+RA8_INTERNAL static void internal_test_size_arguments(void)
+{
+  TEST_BEGIN("rabook container size arguments");
+  t_io_t                           io      = internal_full_io();
+  ra8_rabook_container_workspace_t ws      = internal_full_workspace();
+  uint64_t                         out_len = UINT64_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_rabook_container_write(internal_mem_read,
+                                            &io,
+                                            k_t_flat_bytes,
+                                            k_t_zero_chunk,
+                                            internal_mem_write,
+                                            &io,
+                                            &ws,
+                                            &out_len));
+  TEST_ASSERT_EQ(k_t_no_bytes, out_len);
+  out_len = UINT64_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_rabook_container_write(internal_mem_read,
+                                            &io,
+                                            k_t_flat_max,
+                                            k_t_min_chunk,
+                                            internal_mem_write,
+                                            &io,
+                                            &ws,
+                                            &out_len));
+  TEST_ASSERT_EQ(k_t_no_bytes, out_len);
+  TEST_ASSERT_EQ(k_t_no_calls, io.write_calls);
+  TEST_ASSERT_EQ(k_t_no_calls, io.read_calls);
+  TEST_END("rabook container size arguments");
+}
+
+/**
+ * @test internal_test_write_stage_faults
+ * @brief Verify each write stage propagates a destination failure unchanged.
+ * @details Selects one failing destination call inside the reserved-table
+ *          loop, inside the compressed payload stream loop, and inside the
+ *          final table back-fill, so all three stages are observed separately.
+ * @pre The source, workspace, and destination capacities are otherwise valid.
+ * @pre Each vector starts with fresh callback counters.
+ * @post Every vector returns the scripted backend status unchanged.
+ * @post No vector claims a final container length.
+ * @note The caller owns cleanup of the intentionally partial staging object.
+ * @since 0.1.0
+ * @par MC/DC:
+ * Each stage's `err != k_ra8_ok` propagation is a single condition: these
+ * vectors drive it true once per stage and the round-trip control drives every
+ * one of them false. The exact-write decision `written == len` stays true here
+ * because the backend refuses rather than shortens, which is what separates
+ * these vectors from the short-write test.
+ */
+RA8_INTERNAL static void internal_test_write_stage_faults(void)
+{
+  TEST_BEGIN("rabook container staged write faults");
+  internal_fill_flat();
+  ra8_rabook_container_workspace_t ws       = internal_full_workspace();
+  const uint32_t                   stages[] = {(uint32_t)k_t_fail_table_reserve_call,
+                                               (uint32_t)k_t_fail_payload_call,
+                                               (uint32_t)k_t_fail_backfill_call};
+  for (size_t i = 0U; i < (sizeof stages / sizeof stages[0]); i++) {
+    t_io_t   io        = internal_full_io();
+    uint64_t out_len   = UINT64_MAX;
+    io.fail_write_call = stages[i];
+    TEST_ASSERT_EQ(k_ra8_fail,
+                   ra8_rabook_container_write(internal_mem_read,
+                                              &io,
+                                              k_t_flat_bytes,
+                                              k_t_chunk_bytes,
+                                              internal_mem_write,
+                                              &io,
+                                              &ws,
+                                              &out_len));
+    TEST_ASSERT_EQ(k_t_no_bytes, out_len);
+    TEST_ASSERT_EQ(stages[i] + 1U, io.write_calls);
+  }
+  TEST_END("rabook container staged write faults");
+}
+
 int main(void)
 {
   internal_test_multi_chunk_round_trip();
   internal_test_validation();
   internal_test_write_faults();
   internal_test_read_and_capacity_faults();
+  internal_test_required_pointers();
+  internal_test_size_arguments();
+  internal_test_write_stage_faults();
   return 0;
 }

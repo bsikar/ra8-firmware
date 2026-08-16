@@ -108,6 +108,17 @@ RA8_INTERNAL static ra8_err_t internal_parse_chapter(const uint8_t*    bytes,
   return ra8_rabook_xml_parse_chapter(bytes, length, ctx, href, title, &s_xml_workspace);
 }
 
+/** @brief Call the production parser with an explicitly chosen workspace. @details The object-like macro below rewrites every later call site to the five-argument wrapper, so the workspace guard needs an entry point declared before it that still forwards the caller's own pointer. @param[in] bytes Immutable XHTML bytes. @param[in] length Readable extent of the source. @param[in,out] ctx Builder receiving one chapter. @param[in] href Chapter identity string. @param[in] title Chapter title string. @param[in,out] workspace Caller workspace, or NULL for the workspace guard. @return RA8 status from the production parser. @retval k_ra8_ok The chapter was appended. @retval k_ra8_err_null_ptr A required pointer was NULL. @pre Fixed-capacity fixture storage required by this operation is available. @pre Non-NULL arguments follow the production interface contract. @post The production result is returned unchanged. @post No file-local fixture state is modified by the wrapper. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_parse_chapter_ws(const uint8_t*              bytes,
+                                                        size_t                      length,
+                                                        ra8_rabook_ctx_t*           ctx,
+                                                        const char*                 href,
+                                                        const char*                 title,
+                                                        ra8_rabook_xml_workspace_t* workspace)
+{
+  return ra8_rabook_xml_parse_chapter(bytes, length, ctx, href, title, workspace);
+}
+
 /** @brief Route legacy call sites through the test-owned XML workspace wrapper. */
 #define ra8_rabook_xml_parse_chapter internal_parse_chapter
 
@@ -696,6 +707,107 @@ RA8_INTERNAL static void internal_test_walk_builder_overflow()
 }
 
 /* -------------------------------------------------------------------------- */
+/* Arena-starvation and lifecycle edges of the public entry point. */
+/* -------------------------------------------------------------------------- */
+
+typedef enum : uint16_t {
+  k_attr_string_cap   = 2U, /**< Pool holding the empty sentinel plus one byte.  */
+  k_text_node_cap     = 2U, /**< Root and one element; no room for a text node.  */
+  k_no_chapter_cap    = 0U, /**< Chapter table that cannot hold one entry.       */
+  k_zero_length       = 0U, /**< Zero-length source for the length guard.        */
+  k_self_closed_nodes = 1U, /**< Nodes emitted by a self-closing selected root.  */
+} edge_limit_t;
+
+/** @brief Build a builder context with chosen node, string, and chapter caps. @details Initialises against the shared arenas and then narrows only the three capacities under test, so a starved vector can fail in exactly one table; the empty-string sentinel interned by init still fits every narrowed pool. @param[in] node_cap DOM node-table capacity. @param[in] string_cap String-pool byte capacity. @param[in] chapter_cap Chapter-table capacity. @return The initialised builder context. @retval value A context bound to the shared fixture arenas. @pre Fixed-capacity fixture storage required by this operation is available. @pre Each requested capacity still admits the already-interned sentinel. @post The context carries the requested capacities and zero live rows. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_rabook_ctx_t
+internal_make_ctx_limits(uint32_t node_cap, uint32_t string_cap, uint32_t chapter_cap)
+{
+  ra8_rabook_ctx_t ctx = internal_make_ctx();
+  ctx.buf.node_cap     = node_cap;
+  ctx.buf.string_cap   = string_cap;
+  ctx.buf.chapter_cap  = chapter_cap;
+  return ctx;
+}
+
+/* A self-closing <body> selected under a wrapper: nothing after it is emitted. */
+constexpr const char* s_xhtml_self_closing_body = "<?xml version=\"1.0\"?>"
+                                                  "<html><body/><p>after</p></html>";
+
+/* One attribute on the root: its name is the first string the parser interns. */
+constexpr const char* s_xhtml_attr = "<?xml version=\"1.0\"?><body a=\"v\"/>";
+
+/** @test internal_test_entry_guards @brief The workspace pointer and the source length are each rejected alone. @details Every other required pointer stays valid in both vectors, so the observed status names the one argument under test: a missing workspace is a null-pointer error and a zero-length source is a size error, never a parse error. @pre Fixed-capacity fixture storage required by this operation is available. @pre The source pointer addresses at least one readable byte. @post Each vector returns its own canonical status. @post The builder is left exactly as it was constructed. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_entry_guards()
+{
+  ra8_rabook_ctx_t ctx    = internal_make_ctx();
+  const auto       before = ctx;
+  const ra8_err_t  no_ws =
+    internal_parse_chapter_ws(reinterpret_cast<const uint8_t*>(s_xhtml_empty_body),
+                              std::strlen(s_xhtml_empty_body),
+                              &ctx,
+                              "ch.xhtml",
+                              "T",
+                              nullptr);
+  internal_check(no_ws == k_ra8_err_null_ptr, "null workspace -> null_ptr");
+  const uint8_t   dummy = static_cast<uint8_t>('<');
+  const ra8_err_t empty =
+    ra8_rabook_xml_parse_chapter(&dummy, (size_t)k_zero_length, &ctx, "ch.xhtml", "T");
+  internal_check(empty == k_ra8_err_invalid_size, "zero length -> invalid_size");
+  internal_check(internal_same_ctx_state(ctx, before), "entry guards preserve builder state");
+}
+
+/** @brief Parse one document into a deliberately starved builder. @details Every vector must report the exhaustion rather than emit a partial chapter, and must restore the complete logical builder state it started from. @param[in] ctx Builder whose arenas were narrowed for this vector. @param[in] doc NUL-terminated XHTML source. @param[in] label Vector name used in the assertion record. @pre Fixed-capacity fixture storage required by this operation is available. @pre The document is well formed, so only an arena can fail. @post The parse returns the no-memory status. @post The builder is restored to its entry state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void
+internal_expect_starved(ra8_rabook_ctx_t ctx, const char* doc, const char* label)
+{
+  const auto      before = ctx;
+  const ra8_err_t err    = ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(doc),
+                                                        std::strlen(doc),
+                                                        &ctx,
+                                                        "starved.xhtml",
+                                                        "Starved");
+  internal_check(err == k_ra8_err_no_mem, label);
+  internal_check(internal_same_ctx_state(ctx, before), label);
+}
+
+/** @test internal_test_starved_arenas @brief Each starved builder arena stops the chapter with no-memory. @details The string pool holds only the empty sentinel, so an attribute name exhausts it and the following value intern observes the latched failure; the node table holds the body and its element child exactly, so the first text run is the allocation that fails; the chapter table cannot hold a row, so a completely emitted DOM is still rejected. Each vector must undo every node and string it appended. @pre Fixed-capacity fixture storage required by this operation is available. @pre Every document is well formed and every other arena is sufficient. @post Every vector returns the no-memory status. @post Every failure is atomic: the builder is restored to its entry state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_starved_arenas()
+{
+  internal_expect_starved(
+    internal_make_ctx_limits(k_node_cap, (uint32_t)k_attr_string_cap, k_chapter_cap),
+    s_xhtml_attr,
+    "attr-pool: exhausted string pool -> no_mem");
+  internal_expect_starved(
+    internal_make_ctx_limits((uint32_t)k_text_node_cap, k_string_cap, k_chapter_cap),
+    s_xhtml_simple,
+    "text-overflow: text node cannot be added -> no_mem");
+  internal_expect_starved(
+    internal_make_ctx_limits(k_node_cap, k_string_cap, (uint32_t)k_no_chapter_cap),
+    s_xhtml_empty_body,
+    "chapter-full: no chapter row -> no_mem");
+}
+
+/** @test internal_test_self_closing_body_ends_subtree @brief A self-closing selected root closes the subtree immediately. @details `<body/>` under `<html>` is selected, emitted, and finished by the same event, so the sibling `<p>` that follows it is outside the chapter. If the emitter stayed active the sibling and its text would land in the chapter, so the exact node count is what distinguishes the two behaviours. @pre Fixed-capacity fixture storage required by this operation is available. @pre The document has a body sibling that would otherwise be emitted. @post The parse succeeds with exactly the self-closing body emitted. @post The chapter root is that body element. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_self_closing_body_ends_subtree()
+{
+  ra8_rabook_ctx_t ctx = internal_make_ctx();
+  const ra8_err_t  err =
+    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(s_xhtml_self_closing_body),
+                                 std::strlen(s_xhtml_self_closing_body),
+                                 &ctx,
+                                 "selfclose.xhtml",
+                                 "SelfClose");
+  internal_check(err == k_ra8_ok, "self-closing body: parse ok");
+  internal_check(ctx.node_count == (uint32_t)k_self_closed_nodes,
+                 "self-closing body: only the body is emitted");
+  internal_check(ctx.chapter_count == 1U, "self-closing body: one chapter");
+  internal_check(std::strcmp(internal_pool_str(ctx, ctx.buf.nodes[0].name_off), "body") == 0,
+                 "self-closing body: root tag is 'body'");
+  internal_check(ctx.buf.nodes[0].first_child == k_ra8_book_nil,
+                 "self-closing body: root has no children");
+}
+
+/* -------------------------------------------------------------------------- */
 /* Deep nesting: the bounded XML reader element-depth cap. */
 /* -------------------------------------------------------------------------- */
 
@@ -857,6 +969,9 @@ int main()
   internal_test_walk_builder_overflow();
   internal_test_deep_at_reader_cap();
   internal_test_deep_beyond_reader_cap();
+  internal_test_entry_guards();
+  internal_test_starved_arenas();
+  internal_test_self_closing_body_ends_subtree();
 
   return (s_pass == s_total) ? 0 : 1;
 }
