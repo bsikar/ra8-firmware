@@ -291,6 +291,13 @@ foreach(src ${RA8_TEST_SOURCES})
   ra8_add_test(${name})
 endforeach()
 
+# This test deliberately forges logical source names with #line directives to
+# pin Unity's exact diagnostics. Keep executing it in coverage builds, but do
+# not ask gcov to resolve those synthetic names as repository source paths.
+if(RA8_COVERAGE AND TARGET test_ra8_unity_output)
+  target_compile_options(test_ra8_unity_output PRIVATE -fno-profile-arcs -fno-test-coverage)
+endif()
+
 # The strict book-stream MC/DC vectors call documented private validator seams
 # whose types and declarations remain outside the public library ABI.
 if(TARGET test_ra8_book_stream)
