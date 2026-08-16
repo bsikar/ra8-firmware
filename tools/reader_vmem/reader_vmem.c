@@ -74,9 +74,9 @@ static_assert(READER_VMEM_MAX_BUDGET > 0U);
 static_assert(k_rv_workspace_storage_bytes <= SIZE_MAX);
 
 /** @brief Explicit aligned storage owned only by this single-process CLI. */
-typedef union {
-  max_align_t alignment;                           /**< Enforces region alignment. */
-  uint8_t     bytes[k_rv_workspace_storage_bytes]; /**< Cache workspace backing.   */
+typedef struct {
+  /** @brief Cache workspace backing. */
+  alignas(max_align_t) uint8_t bytes[k_rv_workspace_storage_bytes];
 } rv_workspace_storage_t;
 
 /**

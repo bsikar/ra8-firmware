@@ -55,10 +55,9 @@ typedef enum : uint64_t {
 } test_constant_t;
 
 /** @brief Aligned scratch with fixed pre/post canaries. */
-typedef union {
-  max_align_t alignment; /**< Ensures the interior meets every scalar alignment. */
+typedef struct {
   /** @brief Canary-surrounded scratch bytes. */
-  uint8_t bytes[k_emu_memmap_scratch_bytes + (2U * k_test_guard_bytes)];
+  alignas(max_align_t) uint8_t bytes[k_emu_memmap_scratch_bytes + (2U * k_test_guard_bytes)];
 } test_guarded_scratch_t;
 
 /** @brief Return the failing source line without process output. */

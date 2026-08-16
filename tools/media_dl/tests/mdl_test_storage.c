@@ -19,9 +19,8 @@ typedef enum : uint16_t {
 } mdl_test_storage_limit_t;
 
 /** @brief Maximally aligned generic backend workspace. */
-typedef union {
-  max_align_t alignment;                        /**< Force maximum alignment. */
-  uint8_t     bytes[k_test_storage_work_bytes]; /**< Opaque backend storage.  */
+typedef struct {
+  alignas(max_align_t) uint8_t bytes[k_test_storage_work_bytes]; /**< Opaque backend storage.  */
 } mdl_test_storage_workspace_t;
 
 static fw_fs_t                      s_test_fs;

@@ -25,9 +25,8 @@ typedef enum : uint16_t {
 } mdl_atom_directory_limit_t;
 
 /** @brief Maximally aligned storage for one injected directory cursor. */
-typedef union {
-  max_align_t alignment;                          /**< Force maximum alignment. */
-  uint8_t     bytes[k_atom_directory_work_bytes]; /**< Backend-private bytes.   */
+typedef struct {
+  alignas(max_align_t) uint8_t bytes[k_atom_directory_work_bytes]; /**< Backend-private bytes.   */
 } mdl_atom_directory_workspace_t;
 
 /* ---- a failed re-fetch must not destroy the file already on disk --------- */

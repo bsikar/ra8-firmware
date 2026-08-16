@@ -39,15 +39,14 @@ typedef enum : uint32_t {
 } mdl_rabook_verify_limit_t;
 
 /** @brief Maximally aligned miniz compressor storage. */
-typedef union {
-  max_align_t      alignment;  /**< Forces portable maximum alignment. */
-  tdefl_compressor compressor; /**< Production compressor state.       */
+typedef struct {
+  alignas(max_align_t) tdefl_compressor compressor; /**< Production compressor state.       */
 } mdl_rabook_compressor_t;
 
 /** @brief Maximally aligned portable directory workspace. */
-typedef union {
-  max_align_t alignment;                    /**< Forces portable maximum alignment. */
-  uint8_t     bytes[k_test_dir_work_bytes]; /**< Opaque directory cursor state.     */
+typedef struct {
+  /** @brief Opaque directory cursor state. */
+  alignas(max_align_t) uint8_t bytes[k_test_dir_work_bytes];
 } mdl_rabook_dir_workspace_t;
 
 /** @brief Memory source/destination for one container write. */
