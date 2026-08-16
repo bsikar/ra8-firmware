@@ -363,7 +363,7 @@ RA8_INTERNAL static ra8_err_t internal_jof_one(mdl_storage_t*          storage,
   /* Produce into the storage transaction's borrowed stage; canonical
    * validation must pass before the transaction publishes this page. */
   mdl_export_output_t output = {};
-  rc = priv_mdl_export_output_begin(&output, storage, out_path, k_mdl_fmt_jof);
+  rc = priv_mdl_export_output_begin(&output, storage, out_path, k_ra8_mdl_format_jof);
   if (rc == k_ra8_ok) {
     rc = internal_jof_produce_page(src, slen, w, h, tile_h, work_cap, &output, ws);
   }

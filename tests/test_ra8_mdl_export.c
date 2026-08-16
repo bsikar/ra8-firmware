@@ -141,7 +141,7 @@ RA8_INTERNAL static void internal_write_fixture(mdl_storage_t* storage,
  * @since 0.1.0
  */
 RA8_INTERNAL static uint64_t internal_export_hash(mdl_storage_t*           storage,
-                                                  mdl_format_t             format,
+                                                  ra8_mdl_format_t         format,
                                                   const char*              output,
                                                   const char*              verify_path,
                                                   const mdl_export_meta_t* metadata)
@@ -183,14 +183,14 @@ RA8_INTERNAL static void internal_run_formats(mdl_storage_t* storage, uint64_t h
   (void)memcpy(metadata.chapter_title, "Portable Chapter", sizeof("Portable Chapter"));
   (void)memcpy(metadata.modified, "2026-08-15T00:00:00Z", sizeof("2026-08-15T00:00:00Z"));
   const struct {
-    mdl_format_t format; /**< Selected exporter/verifier format. */
-    const char*  output; /**< Exporter destination path.         */
-    const char*  verify; /**< Exact published artifact path.     */
-  } cases[] = {{k_mdl_fmt_cbz, "/book.cbz", "/book.cbz"},
-               {k_mdl_fmt_cbt, "/book.cbt", "/book.cbt"},
-               {k_mdl_fmt_cbt_gz, "/book.cbt.gz", "/book.cbt.gz"},
-               {k_mdl_fmt_epub, "/book.epub", "/book.epub"},
-               {k_mdl_fmt_jof, "/chapter", "/chapter/001.jof"}};
+    ra8_mdl_format_t format; /**< Selected exporter/verifier format. */
+    const char*      output; /**< Exporter destination path.         */
+    const char*      verify; /**< Exact published artifact path.     */
+  } cases[] = {{k_ra8_mdl_format_cbz, "/book.cbz", "/book.cbz"},
+               {k_ra8_mdl_format_cbt, "/book.cbt", "/book.cbt"},
+               {k_ra8_mdl_format_cbt_gz, "/book.cbt.gz", "/book.cbt.gz"},
+               {k_ra8_mdl_format_epub, "/book.epub", "/book.epub"},
+               {k_ra8_mdl_format_jof, "/chapter", "/chapter/001.jof"}};
   for (size_t i = 0U; i < (sizeof(cases) / sizeof(cases[0])); ++i) {
     hashes[i] =
       internal_export_hash(storage, cases[i].format, cases[i].output, cases[i].verify, &metadata);
@@ -304,7 +304,7 @@ RA8_INTERNAL static void internal_test_export_portability(void)
   mdl_export_workspace_init(&workspace, s_export_arena, sizeof(s_export_arena));
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
                  mdl_export_chapter_meta_ws(&vfs_storage.storage,
-                                            k_mdl_fmt_cbz,
+                                            k_ra8_mdl_format_cbz,
                                             "/chapter",
                                             "/book.cbz",
                                             &metadata,

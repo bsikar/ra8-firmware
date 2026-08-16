@@ -392,8 +392,9 @@ RA8_INTERNAL static ra8_err_t internal_emit_container(mdl_storage_t*            
                                                       mdl_export_workspace_t*   workspace)
 {
   mdl_export_output_t output = {};
-  ra8_err_t error = priv_mdl_export_output_begin(&output, storage, destination, k_mdl_fmt_rabook);
-  uint64_t  container_length = 0U;
+  ra8_err_t           error =
+    priv_mdl_export_output_begin(&output, storage, destination, k_ra8_mdl_format_rabook);
+  uint64_t container_length = 0U;
   if (error == k_ra8_ok) {
     error = ra8_rabook_container_write(priv_mdl_rabook_flat_read,
                                        flat,

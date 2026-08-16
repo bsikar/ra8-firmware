@@ -37,7 +37,7 @@ typedef struct {
 /** @brief One validated staged publication, including random ZIP backfill. */
 typedef struct {
   mdl_storage_txn_t writer; /**< Active storage transaction.    */
-  mdl_format_t      format; /**< Canonical verifier selection.  */
+  ra8_mdl_format_t  format; /**< Canonical verifier selection.  */
   uint64_t          offset; /**< Current staged write position. */
   uint64_t          extent; /**< Greatest written byte edge.    */
   ra8_err_t         error;  /**< First callback error, if any.  */
@@ -67,7 +67,7 @@ typedef ra8_err_t (*mdl_export_sink_fn_t)(void* ctx, const uint8_t* bytes, uint3
 RA8_PRIV ra8_err_t priv_mdl_export_output_begin(mdl_export_output_t* output,
                                                 mdl_storage_t*       storage,
                                                 const char*          destination,
-                                                mdl_format_t         format);
+                                                ra8_mdl_format_t     format);
 
 /**
  * @brief Bind a create-new validated publication transaction.
@@ -91,7 +91,7 @@ RA8_PRIV ra8_err_t priv_mdl_export_output_begin(mdl_export_output_t* output,
 RA8_PRIV ra8_err_t priv_mdl_export_output_begin_new(mdl_export_output_t* output,
                                                     mdl_storage_t*       storage,
                                                     const char*          destination,
-                                                    mdl_format_t         format);
+                                                    ra8_mdl_format_t     format);
 
 /**
  * @brief Append one complete byte span to an active export stage.

@@ -92,7 +92,7 @@ typedef struct {
   const char*           series_url;   /**< Series page URL.                */
   const char*           out_dir;      /**< Output library root.            */
   const char*           cache_dir;    /**< Per-host persistent cache root. */
-  mdl_format_t          format;       /**< Output container.               */
+  ra8_mdl_format_t      format;       /**< Output container.               */
   bool                  combine;      /**< Combine into one archive.       */
   bool                  update;       /**< Incremental (skip complete).    */
   bool                  from_present; /**< Whether from_num applies.       */
@@ -368,7 +368,7 @@ RA8_PRIV int priv_mdl_app_run_page(const char*           url,
  * pointer.
  * @since 0.1.0
  */
-RA8_PRIV int priv_mdl_app_run_pack(const char* dir, mdl_format_t format);
+RA8_PRIV int priv_mdl_app_run_pack(const char* dir, ra8_mdl_format_t format);
 /**
  * @brief Build a prepared series-run value from validated arguments.
  * @details Copies only validated selections, numeric bounds, output format, and
@@ -388,7 +388,7 @@ RA8_PRIV int priv_mdl_app_run_pack(const char* dir, mdl_format_t format);
  * @since 0.1.0
  */
 RA8_PRIV series_run_t priv_mdl_app_build_run(const mdl_args_t*     args,
-                                             mdl_format_t          format,
+                                             ra8_mdl_format_t      format,
                                              const mdl_run_opts_t* opts,
                                              const mdl_nums_t*     nums);
 /**

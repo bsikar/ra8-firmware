@@ -18,20 +18,7 @@
 
 #include "mdl_storage.h"
 #include "ra8_err.h"
-
-/** @brief Output container selected by `--format`. */
-typedef enum : uint8_t {
-  k_mdl_fmt_loose   = 0,   /**< Leave loose page images (no archive).    */
-  k_mdl_fmt_cbz     = 1,   /**< ZIP of images (`.cbz`).                  */
-  k_mdl_fmt_cbt     = 2,   /**< tar of images (`.cbt`).                  */
-  k_mdl_fmt_cbr     = 3,   /**< Reserved; not accepted by the CLI.       */
-  k_mdl_fmt_cbt_xz  = 4,   /**< Reserved; not accepted by the CLI.       */
-  k_mdl_fmt_cbt_gz  = 5,   /**< gzip-compressed tar (`.cbt.gz`).         */
-  k_mdl_fmt_epub    = 6,   /**< EPUB of images (`.epub`).                */
-  k_mdl_fmt_jof     = 7,   /**< Native JOF tile atlas per page (`.jof`). */
-  k_mdl_fmt_rabook  = 8,   /**< Chunked reader-native book (`.rabook`).  */
-  k_mdl_fmt_invalid = 255, /**< Unrecognised `--format` string.          */
-} mdl_format_t;
+#include "ra8_mdl_format.h"
 
 /**
  * @brief Map a `--format` string to a container kind.
@@ -40,21 +27,21 @@ typedef enum : uint8_t {
  *          explicit `loose` token select loose pages, while reserved formats
  *          remain invalid until their writer and validator are available.
  * @param[in] s Format name, or NULL (treated as "loose").
- * @return The matching kind, or ::k_mdl_fmt_invalid.
- * @retval k_mdl_fmt_loose @p s is NULL or names loose output.
- * @retval k_mdl_fmt_rabook @p s names the strict reader-native container.
- * @retval k_mdl_fmt_invalid @p s is an unknown or reserved format name.
+ * @return The matching kind, or ::k_ra8_mdl_format_invalid.
+ * @retval k_ra8_mdl_format_loose @p s is NULL or names loose output.
+ * @retval k_ra8_mdl_format_rabook @p s names the strict reader-native container.
+ * @retval k_ra8_mdl_format_invalid @p s is an unknown or reserved format name.
  * @pre @p s is NULL or points to a NUL-terminated string.
  * @pre The caller treats format names as case-sensitive CLI tokens.
  * @post No caller-owned memory is modified.
- * @post The return value is always a member of ::mdl_format_t.
+ * @post The return value is always a member of ::ra8_mdl_format_t.
  * @note Thread-safe: this is a pure string classifier.
  * @since 0.1.0
  */
-mdl_format_t mdl_format_from_str(const char* s);
+ra8_mdl_format_t mdl_format_from_str(const char* s);
 
 /** @brief File extension (without dot) for a format, e.g. "cbz" / "cbt.xz". */
-const char* mdl_format_ext(mdl_format_t fmt);
+const char* mdl_format_ext(ra8_mdl_format_t fmt);
 
 /**
  * @brief Whether `fmt` writes per-page sibling files rather than one container.
@@ -70,10 +57,10 @@ const char* mdl_format_ext(mdl_format_t fmt);
  * @param[in] fmt Format to classify.
  *
  * @return Whether @p fmt produces per-page sibling files in the chapter dir.
- * @retval true  @p fmt is ::k_mdl_fmt_jof (per-page `.jof` siblings).
+ * @retval true  @p fmt is ::k_ra8_mdl_format_jof (per-page `.jof` siblings).
  * @retval false @p fmt produces a single container file at `out_path`.
  *
- * @pre @p fmt is a value of ::mdl_format_t.
+ * @pre @p fmt is a value of ::ra8_mdl_format_t.
  * @pre The caller distinguishes directory output from writer availability.
  * @post No state is mutated (pure classifier).
  * @post Repeated calls with the same value return the same result.
@@ -82,7 +69,7 @@ const char* mdl_format_ext(mdl_format_t fmt);
  * @see mdl_export_chapter_ws()
  * @since 0.1.0
  */
-bool mdl_format_is_dir_output(mdl_format_t fmt);
+bool mdl_format_is_dir_output(ra8_mdl_format_t fmt);
 
 /** @brief Sizing constants for metadata fields. */
 typedef enum : uint16_t {
@@ -304,7 +291,7 @@ void* mdl_export_workspace_take(mdl_export_workspace_t* ws, size_t bytes, size_t
  * @since 0.1.0
  */
 ra8_err_t mdl_export_chapter_meta_ws(mdl_storage_t*           storage,
-                                     mdl_format_t             fmt,
+                                     ra8_mdl_format_t         fmt,
                                      const char*              chapter_dir,
                                      const char*              out_path,
                                      const mdl_export_meta_t* meta,
@@ -335,7 +322,7 @@ ra8_err_t mdl_export_chapter_meta_ws(mdl_storage_t*           storage,
  * @since 0.1.0
  */
 ra8_err_t mdl_export_chapter_ws(mdl_storage_t*          storage,
-                                mdl_format_t            fmt,
+                                ra8_mdl_format_t        fmt,
                                 const char*             chapter_dir,
                                 const char*             out_path,
                                 mdl_export_workspace_t* ws);

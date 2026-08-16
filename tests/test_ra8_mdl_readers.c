@@ -60,9 +60,9 @@ typedef struct {
 
 /** @brief Expected verifier format, path, and member count. */
 typedef struct {
-  const char*  path;    /**< Canonical fixture path.           */
-  mdl_format_t format;  /**< Expected artifact format.         */
-  size_t       members; /**< Expected structural member count. */
+  const char*      path;    /**< Canonical fixture path.           */
+  ra8_mdl_format_t format;  /**< Expected artifact format.         */
+  size_t           members; /**< Expected structural member count. */
 } mdl_reader_verify_case_t;
 
 static uint8_t s_disk[(size_t)k_reader_disk_blocks * (size_t)k_ra8_io_block_size_bytes];
@@ -79,11 +79,11 @@ static mdl_reader_verify_workspace_t s_verify_work;
 
 /** @brief Valid artifact cases shared by parity and fault vectors. */
 static const mdl_reader_verify_case_t s_verify_cases[] = {
-  {"/book.cbz", k_mdl_fmt_cbz, 2U},
-  {"/book.epub", k_mdl_fmt_epub, 5U},
-  {"/book.cbt", k_mdl_fmt_cbt, 2U},
-  {"/book.cbt.gz", k_mdl_fmt_cbt_gz, 2U},
-  {"/book.jof", k_mdl_fmt_jof, 1U},
+  {"/book.cbz", k_ra8_mdl_format_cbz, 2U},
+  {"/book.epub", k_ra8_mdl_format_epub, 5U},
+  {"/book.cbt", k_ra8_mdl_format_cbt, 2U},
+  {"/book.cbt.gz", k_ra8_mdl_format_cbt_gz, 2U},
+  {"/book.jof", k_ra8_mdl_format_jof, 1U},
 };
 
 /** @brief Minimal valid CBZ with one image and ComicInfo.xml. */
@@ -517,7 +517,7 @@ RA8_INTERNAL static uint32_t internal_reader_make_jof(uint8_t* jof)
  * @note The helper performs no allocation. @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_reader_verify(mdl_storage_t*       storage,
-                                                     mdl_format_t         format,
+                                                     ra8_mdl_format_t     format,
                                                      const char*          path,
                                                      size_t               capacity,
                                                      mdl_verify_report_t* report,
@@ -549,7 +549,7 @@ RA8_INTERNAL static ra8_err_t internal_reader_verify(mdl_storage_t*       storag
  * @note Proves `mdl_verify_open_file` does not take ownership. @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_reader_verify_borrowed(mdl_storage_t*       storage,
-                                                              mdl_format_t         format,
+                                                              ra8_mdl_format_t     format,
                                                               const char*          path,
                                                               mdl_verify_report_t* report)
 {
@@ -588,19 +588,19 @@ RA8_INTERNAL static ra8_err_t internal_reader_verify_borrowed(mdl_storage_t*    
  * @post The expected error is observed. @post Every sentinel report field remains unchanged.
  * @note Assertion failure terminates the test. @since 0.1.0
  */
-RA8_INTERNAL static void internal_reader_expect_error(mdl_storage_t* storage,
-                                                      mdl_format_t   format,
-                                                      const char*    path,
-                                                      ra8_err_t      expected)
+RA8_INTERNAL static void internal_reader_expect_error(mdl_storage_t*   storage,
+                                                      ra8_mdl_format_t format,
+                                                      const char*      path,
+                                                      ra8_err_t        expected)
 {
-  mdl_verify_report_t report = {.format           = k_mdl_fmt_cbr,
+  mdl_verify_report_t report = {.format           = k_ra8_mdl_format_cbr,
                                 .page_count       = 17U,
                                 .member_count     = 19U,
                                 .metadata_present = true};
   TEST_ASSERT_EQ(
     expected,
     internal_reader_verify(storage, format, path, sizeof(s_verify_work.bytes), &report, nullptr));
-  TEST_ASSERT_EQ(k_mdl_fmt_cbr, report.format);
+  TEST_ASSERT_EQ(k_ra8_mdl_format_cbr, report.format);
   TEST_ASSERT_EQ((size_t)17U, report.page_count);
   TEST_ASSERT_EQ((size_t)19U, report.member_count);
   TEST_ASSERT(report.metadata_present);
@@ -705,10 +705,10 @@ RA8_INTERNAL static void internal_reader_verify_valid(mdl_storage_t*        stor
 RA8_INTERNAL static void internal_reader_verify_capacity(mdl_storage_t* storage)
 {
   for (size_t index = 0U; index < 2U; ++index) {
-    const char*         path       = (index == 0U) ? "/book.cbz" : "/book.cbt.gz";
-    const mdl_format_t  format     = (index == 0U) ? k_mdl_fmt_cbz : k_mdl_fmt_cbt_gz;
-    mdl_verify_report_t report     = {};
-    size_t              high_water = 0U;
+    const char*            path   = (index == 0U) ? "/book.cbz" : "/book.cbt.gz";
+    const ra8_mdl_format_t format = (index == 0U) ? k_ra8_mdl_format_cbz : k_ra8_mdl_format_cbt_gz;
+    mdl_verify_report_t    report = {};
+    size_t                 high_water = 0U;
     TEST_ASSERT_EQ(k_ra8_ok,
                    internal_reader_verify(storage,
                                           format,
@@ -720,9 +720,9 @@ RA8_INTERNAL static void internal_reader_verify_capacity(mdl_storage_t* storage)
     TEST_ASSERT_EQ(k_ra8_ok,
                    internal_reader_verify(storage, format, path, high_water, &report, nullptr));
     mdl_export_workspace_t tiny = {.data = s_verify_work.bytes, .cap = high_water - 1U};
-    report                      = (mdl_verify_report_t){.format = k_mdl_fmt_cbr, .page_count = 17U};
+    report = (mdl_verify_report_t){.format = k_ra8_mdl_format_cbr, .page_count = 17U};
     TEST_ASSERT_EQ(k_ra8_err_invalid_size, mdl_verify_file(storage, format, path, &tiny, &report));
-    TEST_ASSERT_EQ(k_mdl_fmt_cbr, report.format);
+    TEST_ASSERT_EQ(k_ra8_mdl_format_cbr, report.format);
   }
 }
 /**
@@ -738,29 +738,50 @@ RA8_INTERNAL static void internal_reader_verify_archive_corrupt(mdl_storage_t* s
   memcpy(s_archive, s_cbz, sizeof(s_cbz));
   s_archive[38] ^= 1U;
   internal_reader_write(storage, "/book.cbz", s_archive, sizeof(s_cbz));
-  internal_reader_expect_error(storage, k_mdl_fmt_cbz, "/book.cbz", k_ra8_err_validation_failed);
+  internal_reader_expect_error(storage,
+                               k_ra8_mdl_format_cbz,
+                               "/book.cbz",
+                               k_ra8_err_validation_failed);
   memcpy(s_archive, s_cbz, sizeof(s_cbz));
   TEST_ASSERT_EQ((uint32_t)2U,
                  internal_reader_replace(s_archive, sizeof(s_cbz), "page.jpg", "../x.jpg"));
   internal_reader_write(storage, "/book.cbz", s_archive, sizeof(s_cbz));
-  internal_reader_expect_error(storage, k_mdl_fmt_cbz, "/book.cbz", k_ra8_err_validation_failed);
+  internal_reader_expect_error(storage,
+                               k_ra8_mdl_format_cbz,
+                               "/book.cbz",
+                               k_ra8_err_validation_failed);
   internal_reader_write(storage, "/book.cbz", s_cbz, sizeof(s_cbz) - 1U);
-  internal_reader_expect_error(storage, k_mdl_fmt_cbz, "/book.cbz", k_ra8_err_validation_failed);
+  internal_reader_expect_error(storage,
+                               k_ra8_mdl_format_cbz,
+                               "/book.cbz",
+                               k_ra8_err_validation_failed);
   memcpy(s_archive, s_epub, sizeof(s_epub));
   TEST_ASSERT_EQ((uint32_t)2U,
                  internal_reader_replace(s_archive, sizeof(s_epub), "mimetype", "mimeXype"));
   internal_reader_write(storage, "/book.epub", s_archive, sizeof(s_epub));
-  internal_reader_expect_error(storage, k_mdl_fmt_epub, "/book.epub", k_ra8_err_validation_failed);
+  internal_reader_expect_error(storage,
+                               k_ra8_mdl_format_epub,
+                               "/book.epub",
+                               k_ra8_err_validation_failed);
   internal_reader_write(storage, "/book.epub", s_epub, sizeof(s_epub) - 1U);
-  internal_reader_expect_error(storage, k_mdl_fmt_epub, "/book.epub", k_ra8_err_validation_failed);
+  internal_reader_expect_error(storage,
+                               k_ra8_mdl_format_epub,
+                               "/book.epub",
+                               k_ra8_err_validation_failed);
   uint32_t tar_length = internal_reader_make_tar(s_archive);
   s_archive[148] ^= 1U;
   internal_reader_write(storage, "/book.cbt", s_archive, tar_length);
-  internal_reader_expect_error(storage, k_mdl_fmt_cbt, "/book.cbt", k_ra8_err_validation_failed);
+  internal_reader_expect_error(storage,
+                               k_ra8_mdl_format_cbt,
+                               "/book.cbt",
+                               k_ra8_err_validation_failed);
   tar_length = internal_reader_make_tar(s_archive);
   memcpy(s_archive, "../x.jpg", 8U);
   internal_reader_write(storage, "/book.cbt", s_archive, tar_length);
-  internal_reader_expect_error(storage, k_mdl_fmt_cbt, "/book.cbt", k_ra8_err_validation_failed);
+  internal_reader_expect_error(storage,
+                               k_ra8_mdl_format_cbt,
+                               "/book.cbt",
+                               k_ra8_err_validation_failed);
 }
 /**
  * @brief Exercise gzip framing, JOF structure, and truncated archive rejection.
@@ -774,39 +795,48 @@ RA8_INTERNAL static void internal_reader_verify_stream_corrupt(mdl_storage_t* st
 {
   uint32_t tar_length = internal_reader_make_tar(s_archive);
   internal_reader_write(storage, "/book.cbt", s_archive, tar_length - 1U);
-  internal_reader_expect_error(storage, k_mdl_fmt_cbt, "/book.cbt", k_ra8_err_validation_failed);
+  internal_reader_expect_error(storage,
+                               k_ra8_mdl_format_cbt,
+                               "/book.cbt",
+                               k_ra8_err_validation_failed);
   uint32_t gzip_length = internal_reader_make_gzip(s_archive, tar_length, s_archive_copy);
   s_archive_copy[gzip_length - 8U] ^= 1U;
   internal_reader_write(storage, "/book.cbt.gz", s_archive_copy, gzip_length);
   internal_reader_expect_error(storage,
-                               k_mdl_fmt_cbt_gz,
+                               k_ra8_mdl_format_cbt_gz,
                                "/book.cbt.gz",
                                k_ra8_err_validation_failed);
   gzip_length = internal_reader_make_gzip(s_archive, tar_length, s_archive_copy);
   s_archive_copy[gzip_length - 4U] ^= 1U;
   internal_reader_write(storage, "/book.cbt.gz", s_archive_copy, gzip_length);
   internal_reader_expect_error(storage,
-                               k_mdl_fmt_cbt_gz,
+                               k_ra8_mdl_format_cbt_gz,
                                "/book.cbt.gz",
                                k_ra8_err_validation_failed);
   gzip_length                 = internal_reader_make_gzip(s_archive, tar_length, s_archive_copy);
   s_archive_copy[gzip_length] = 0U;
   internal_reader_write(storage, "/book.cbt.gz", s_archive_copy, gzip_length + 1U);
   internal_reader_expect_error(storage,
-                               k_mdl_fmt_cbt_gz,
+                               k_ra8_mdl_format_cbt_gz,
                                "/book.cbt.gz",
                                k_ra8_err_validation_failed);
   internal_reader_write(storage, "/book.cbt.gz", s_archive_copy, gzip_length - 1U);
   internal_reader_expect_error(storage,
-                               k_mdl_fmt_cbt_gz,
+                               k_ra8_mdl_format_cbt_gz,
                                "/book.cbt.gz",
                                k_ra8_err_validation_failed);
   const uint32_t jof_length = internal_reader_make_jof(s_archive);
   s_archive[0]              = 'X';
   internal_reader_write(storage, "/book.jof", s_archive, jof_length);
-  internal_reader_expect_error(storage, k_mdl_fmt_jof, "/book.jof", k_ra8_err_validation_failed);
+  internal_reader_expect_error(storage,
+                               k_ra8_mdl_format_jof,
+                               "/book.jof",
+                               k_ra8_err_validation_failed);
   internal_reader_write(storage, "/book.jof", s_archive, jof_length - 1U);
-  internal_reader_expect_error(storage, k_mdl_fmt_jof, "/book.jof", k_ra8_err_validation_failed);
+  internal_reader_expect_error(storage,
+                               k_ra8_mdl_format_jof,
+                               "/book.jof",
+                               k_ra8_err_validation_failed);
 }
 /**
  * @brief Prove borrowed validation propagates seek faults without taking ownership.
@@ -831,12 +861,12 @@ RA8_INTERNAL static void internal_reader_verify_borrowed_fault(mdl_storage_t*   
   uint64_t borrowed_size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_file_size(&borrowed, &borrowed_size));
   mdl_export_workspace_t work   = {.data = s_verify_work.bytes, .cap = sizeof(s_verify_work.bytes)};
-  mdl_verify_report_t    report = {.format = k_mdl_fmt_cbr, .page_count = 17U};
+  mdl_verify_report_t    report = {.format = k_ra8_mdl_format_cbr, .page_count = 17U};
   fault->flags                  = (uint32_t)k_mdl_state_fault_stream_seek;
   TEST_ASSERT_EQ(
     k_ra8_err_hw_error,
-    mdl_verify_open_file(storage, k_mdl_fmt_cbz, &borrowed, borrowed_size, &work, &report));
-  TEST_ASSERT_EQ(k_mdl_fmt_cbr, report.format);
+    mdl_verify_open_file(storage, k_ra8_mdl_format_cbz, &borrowed, borrowed_size, &work, &report));
+  TEST_ASSERT_EQ(k_ra8_mdl_format_cbr, report.format);
   TEST_ASSERT_EQ((size_t)17U, report.page_count);
   fault->flags = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_file_size(&borrowed, &borrowed_size));
@@ -870,15 +900,15 @@ RA8_INTERNAL static void internal_reader_verify_faults(mdl_storage_t*        sto
                                  k_ra8_err_hw_error);
   }
   fault->flags = (uint32_t)k_mdl_state_fault_stream_seek;
-  internal_reader_expect_error(storage, k_mdl_fmt_cbz, "/book.cbz", k_ra8_err_hw_error);
-  internal_reader_expect_error(storage, k_mdl_fmt_jof, "/book.jof", k_ra8_err_hw_error);
+  internal_reader_expect_error(storage, k_ra8_mdl_format_cbz, "/book.cbz", k_ra8_err_hw_error);
+  internal_reader_expect_error(storage, k_ra8_mdl_format_jof, "/book.jof", k_ra8_err_hw_error);
   fault->flags = 0U;
   internal_reader_verify_borrowed_fault(storage, fault);
   fault->flags = (uint32_t)k_mdl_state_fault_media;
-  internal_reader_expect_error(storage, k_mdl_fmt_cbt, "/book.cbt", k_ra8_err_hw_not_ready);
+  internal_reader_expect_error(storage, k_ra8_mdl_format_cbt, "/book.cbt", k_ra8_err_hw_not_ready);
   fault->flags = 0U;
-  internal_reader_expect_error(storage, k_mdl_fmt_cbt, "book.cbt", k_ra8_err_invalid_arg);
-  internal_reader_expect_error(storage, k_mdl_fmt_cbr, "/book.cbz", k_ra8_err_not_supported);
+  internal_reader_expect_error(storage, k_ra8_mdl_format_cbt, "book.cbt", k_ra8_err_invalid_arg);
+  internal_reader_expect_error(storage, k_ra8_mdl_format_cbr, "/book.cbz", k_ra8_err_not_supported);
 }
 /**
  * @brief Exercise valid, bounded, corrupt, unsafe, and faulted validators.

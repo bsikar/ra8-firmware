@@ -298,7 +298,7 @@ RA8_INTERNAL static void internal_verify_artifact_entry(const char*             
                                                         const fw_fs_dirent_value_t* entry,
                                                         verify_stats_t*             st)
 {
-  mdl_format_t format = k_mdl_fmt_invalid;
+  ra8_mdl_format_t format = k_ra8_mdl_format_invalid;
   if (mdl_format_from_path(entry->name, &format) != k_ra8_ok) {
     return;
   }

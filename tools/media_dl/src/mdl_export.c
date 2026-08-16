@@ -29,65 +29,65 @@ typedef enum : uint8_t {
   k_export_seconds_per_minute = 60U, /**< Civil seconds per minute.    */
 } mdl_export_time_radix_t;
 
-mdl_format_t mdl_format_from_str(const char* s)
+ra8_mdl_format_t mdl_format_from_str(const char* s)
 {
   if ((s == nullptr) || (strcmp(s, "loose") == 0)) {
-    return k_mdl_fmt_loose;
+    return k_ra8_mdl_format_loose;
   }
   if (strcmp(s, "cbz") == 0) {
-    return k_mdl_fmt_cbz;
+    return k_ra8_mdl_format_cbz;
   }
   if (strcmp(s, "cbt") == 0) {
-    return k_mdl_fmt_cbt;
+    return k_ra8_mdl_format_cbt;
   }
   if (strcmp(s, "cbt.gz") == 0) {
-    return k_mdl_fmt_cbt_gz;
+    return k_ra8_mdl_format_cbt_gz;
   }
   if (strcmp(s, "epub") == 0) {
-    return k_mdl_fmt_epub;
+    return k_ra8_mdl_format_epub;
   }
   if (strcmp(s, "jof") == 0) {
-    return k_mdl_fmt_jof;
+    return k_ra8_mdl_format_jof;
   }
   if (strcmp(s, "rabook") == 0) {
-    return k_mdl_fmt_rabook;
+    return k_ra8_mdl_format_rabook;
   }
-  return k_mdl_fmt_invalid;
+  return k_ra8_mdl_format_invalid;
 }
 
-const char* mdl_format_ext(mdl_format_t fmt)
+const char* mdl_format_ext(ra8_mdl_format_t fmt)
 {
   switch (fmt) {
-    case k_mdl_fmt_cbz:
+    case k_ra8_mdl_format_cbz:
       return "cbz";
-    case k_mdl_fmt_cbt:
+    case k_ra8_mdl_format_cbt:
       return "cbt";
-    case k_mdl_fmt_cbr:
+    case k_ra8_mdl_format_cbr:
       return "cbr";
-    case k_mdl_fmt_cbt_xz:
+    case k_ra8_mdl_format_cbt_xz:
       return "cbt.xz";
-    case k_mdl_fmt_cbt_gz:
+    case k_ra8_mdl_format_cbt_gz:
       return "cbt.gz";
-    case k_mdl_fmt_epub:
+    case k_ra8_mdl_format_epub:
       return "epub";
-    case k_mdl_fmt_jof:
+    case k_ra8_mdl_format_jof:
       return "jof";
-    case k_mdl_fmt_rabook:
+    case k_ra8_mdl_format_rabook:
       return "rabook";
-    case k_mdl_fmt_loose:
-    case k_mdl_fmt_invalid:
+    case k_ra8_mdl_format_loose:
+    case k_ra8_mdl_format_invalid:
     default:
       return "";
   }
 }
 
-bool mdl_format_is_dir_output(mdl_format_t fmt)
+bool mdl_format_is_dir_output(ra8_mdl_format_t fmt)
 {
   /* JOF is inherently per-page: one `.jof` band atlas is written beside each
    * source image, so a chapter is a directory of atlases rather than a single
    * container file at out_path. Every other archive format produces one file.
    */
-  return fmt == k_mdl_fmt_jof;
+  return fmt == k_ra8_mdl_format_jof;
 }
 
 /**
@@ -378,7 +378,7 @@ RA8_INTERNAL static bool internal_metadata_set_page_timestamp(mdl_storage_t*    
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_export_dispatch(mdl_storage_t*           storage,
-                                                       mdl_format_t             fmt,
+                                                       ra8_mdl_format_t         fmt,
                                                        const char*              dir,
                                                        char                     names[][k_name_max],
                                                        size_t                   count,
@@ -387,21 +387,21 @@ RA8_INTERNAL static ra8_err_t internal_export_dispatch(mdl_storage_t*           
                                                        mdl_export_workspace_t*  ws)
 {
   switch (fmt) {
-    case k_mdl_fmt_cbz:
+    case k_ra8_mdl_format_cbz:
       return priv_mdl_export_cbz(storage, dir, names, count, output, meta, ws);
-    case k_mdl_fmt_cbt:
+    case k_ra8_mdl_format_cbt:
       return priv_mdl_export_tar(storage, dir, names, count, output, meta);
-    case k_mdl_fmt_cbt_gz:
+    case k_ra8_mdl_format_cbt_gz:
       return priv_mdl_export_tar_gzip(storage, dir, names, count, output, meta, ws);
-    case k_mdl_fmt_epub:
+    case k_ra8_mdl_format_epub:
       return priv_mdl_export_epub(storage, dir, names, count, output, meta, ws);
-    case k_mdl_fmt_cbr:
-    case k_mdl_fmt_cbt_xz:
+    case k_ra8_mdl_format_cbr:
+    case k_ra8_mdl_format_cbt_xz:
       return k_ra8_err_not_supported;
-    case k_mdl_fmt_rabook:
-    case k_mdl_fmt_jof:
-    case k_mdl_fmt_loose:
-    case k_mdl_fmt_invalid:
+    case k_ra8_mdl_format_rabook:
+    case k_ra8_mdl_format_jof:
+    case k_ra8_mdl_format_loose:
+    case k_ra8_mdl_format_invalid:
     default:
       return k_ra8_err_invalid_arg;
   }
@@ -435,12 +435,12 @@ RA8_INTERNAL static ra8_err_t internal_export_dispatch(mdl_storage_t*           
  * @note Not thread-safe for the same destination or workspace.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_export_transaction(mdl_storage_t* storage,
-                                                          mdl_format_t   fmt,
-                                                          const char*    dir,
-                                                          char           names[][k_name_max],
-                                                          size_t         count,
-                                                          const char*    out_path,
+RA8_INTERNAL static ra8_err_t internal_export_transaction(mdl_storage_t*   storage,
+                                                          ra8_mdl_format_t fmt,
+                                                          const char*      dir,
+                                                          char             names[][k_name_max],
+                                                          size_t           count,
+                                                          const char*      out_path,
                                                           const mdl_export_meta_t* meta,
                                                           mdl_export_workspace_t*  ws)
 {
@@ -502,19 +502,19 @@ RA8_INTERNAL static ra8_err_t internal_resolve_export_metadata(mdl_storage_t* st
 }
 
 ra8_err_t mdl_export_chapter_meta_ws(mdl_storage_t*           storage,
-                                     mdl_format_t             fmt,
+                                     ra8_mdl_format_t         fmt,
                                      const char*              chapter_dir,
                                      const char*              out_path,
                                      const mdl_export_meta_t* meta,
                                      mdl_export_workspace_t*  ws)
 {
   if ((storage == nullptr) || (chapter_dir == nullptr) || (out_path == nullptr) ||
-      (fmt == k_mdl_fmt_loose) || (fmt == k_mdl_fmt_invalid) || (ws == nullptr) ||
+      (fmt == k_ra8_mdl_format_loose) || (fmt == k_ra8_mdl_format_invalid) || (ws == nullptr) ||
       (ws->data == nullptr)) {
     return k_ra8_err_invalid_arg;
   }
   ws->used = 0U;
-  if ((fmt == k_mdl_fmt_cbr) || (fmt == k_mdl_fmt_cbt_xz)) {
+  if ((fmt == k_ra8_mdl_format_cbr) || (fmt == k_ra8_mdl_format_cbt_xz)) {
     return k_ra8_err_not_supported;
   }
 
@@ -542,13 +542,13 @@ ra8_err_t mdl_export_chapter_meta_ws(mdl_storage_t*           storage,
     return meta_rc;
   }
 
-  if (fmt == k_mdl_fmt_jof) {
+  if (fmt == k_ra8_mdl_format_jof) {
     /* JOF writes one `.jof` sibling per page into chapter_dir; out_path names
      * no single container (see mdl_format_is_dir_output), so there is no single
      * file to rename into place -- priv_mdl_export_jof commits each page itself. */
     return priv_mdl_export_jof(storage, chapter_dir, names, count, ws);
   }
-  if (fmt == k_mdl_fmt_rabook) {
+  if (fmt == k_ra8_mdl_format_rabook) {
     return priv_mdl_export_rabook(storage, chapter_dir, names, count, out_path, &resolved, ws);
   }
   return internal_export_transaction(storage,
@@ -562,7 +562,7 @@ ra8_err_t mdl_export_chapter_meta_ws(mdl_storage_t*           storage,
 }
 
 ra8_err_t mdl_export_chapter_ws(mdl_storage_t*          storage,
-                                mdl_format_t            fmt,
+                                ra8_mdl_format_t        fmt,
                                 const char*             chapter_dir,
                                 const char*             out_path,
                                 mdl_export_workspace_t* ws)

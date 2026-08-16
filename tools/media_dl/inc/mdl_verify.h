@@ -16,10 +16,10 @@
 #include "ra8_err.h"
 
 typedef struct {
-  mdl_format_t format;           /**< Format selected for validation.          */
-  size_t       page_count;       /**< Image members found in the artifact.     */
-  size_t       member_count;     /**< Total members reported by the container. */
-  bool         metadata_present; /**< Required format metadata was present.    */
+  ra8_mdl_format_t format;           /**< Format selected for validation.          */
+  size_t           page_count;       /**< Image members found in the artifact.     */
+  size_t           member_count;     /**< Total members reported by the container. */
+  bool             metadata_present; /**< Required format metadata was present.    */
 } mdl_verify_report_t;
 
 /**
@@ -37,11 +37,11 @@ typedef struct {
  * @pre @p path, when non-NULL, is NUL-terminated.
  * @pre @p out_format, when non-NULL, addresses writable storage.
  * @post Success stores a verifiable format in @p out_format.
- * @post Failure for an unknown suffix stores ::k_mdl_fmt_invalid.
+ * @post Failure for an unknown suffix stores ::k_ra8_mdl_format_invalid.
  * @note Thread-safe: reads arguments and writes caller-owned storage only.
  * @since 0.1.0
  */
-ra8_err_t mdl_format_from_path(const char* path, mdl_format_t* out_format);
+ra8_err_t mdl_format_from_path(const char* path, ra8_mdl_format_t* out_format);
 
 /**
  * @brief Report whether a format has an in-process structural validator
@@ -52,14 +52,14 @@ ra8_err_t mdl_format_from_path(const char* path, mdl_format_t* out_format);
  * @return Whether ::mdl_verify_file implements the format.
  * @retval true The format can be structurally validated in process.
  * @retval false The format is invalid, loose, or currently unsupported.
- * @pre @p format is represented by ::mdl_format_t.
+ * @pre @p format is represented by ::ra8_mdl_format_t.
  * @pre The caller does not infer writer availability from this predicate.
  * @post No caller or global state is modified.
  * @post Repeated calls with the same value return the same result.
  * @note Thread-safe: this is a pure classifier.
  * @since 0.1.0
  */
-bool mdl_format_is_verifiable(mdl_format_t format);
+bool mdl_format_is_verifiable(ra8_mdl_format_t format);
 
 /**
  * @brief Validate an artifact through a borrowed open filesystem handle
@@ -92,7 +92,7 @@ bool mdl_format_is_verifiable(mdl_format_t format);
  * @since 0.1.0
  */
 ra8_err_t mdl_verify_open_file(mdl_storage_t*          storage,
-                               mdl_format_t            fmt,
+                               ra8_mdl_format_t        fmt,
                                fw_fs_file_t*           file,
                                uint64_t                size_bytes,
                                mdl_export_workspace_t* ws,
@@ -128,7 +128,7 @@ ra8_err_t mdl_verify_open_file(mdl_storage_t*          storage,
  * @since 0.1.0
  */
 ra8_err_t mdl_verify_file(mdl_storage_t*          storage,
-                          mdl_format_t            fmt,
+                          ra8_mdl_format_t        fmt,
                           const char*             path,
                           mdl_export_workspace_t* ws,
                           mdl_verify_report_t*    report);

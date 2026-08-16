@@ -93,7 +93,8 @@ RA8_PRIV ra8_err_t priv_mdl_rabook_temp_begin(mdl_export_output_t* output,
     if (priv_mdl_export_path_join(path, capacity, directory, leaf) != k_ra8_ok) {
       return k_ra8_err_invalid_size;
     }
-    const ra8_err_t error = priv_mdl_export_output_begin_new(output, storage, path, k_mdl_fmt_epub);
+    const ra8_err_t error =
+      priv_mdl_export_output_begin_new(output, storage, path, k_ra8_mdl_format_epub);
     if (error == k_ra8_ok) {
       return k_ra8_ok;
     }

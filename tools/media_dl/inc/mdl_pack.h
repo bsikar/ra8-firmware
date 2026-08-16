@@ -31,7 +31,7 @@
  * or an export error, is reported and counted as one failure.
  *
  * @param[in,out] storage Injected portable file reader.
- * @param[in] format     Output container/format (never ::k_mdl_fmt_loose here).
+ * @param[in] format     Output container/format (never ::k_ra8_mdl_format_loose here).
  * @param[in] series_dir Absolute, resolved series directory.
  * @param[in] chap_id    Sanitised chapter identifier (the page folder leaf).
  * @param[in,out] ws     Caller-owned bounded exporter workspace.
@@ -51,7 +51,7 @@
  * @since 0.1.0
  */
 size_t mdl_pack_one(mdl_storage_t*          storage,
-                    mdl_format_t            format,
+                    ra8_mdl_format_t        format,
                     const char*             series_dir,
                     const char*             chap_id,
                     mdl_export_workspace_t* ws,
@@ -82,7 +82,7 @@ size_t mdl_pack_one(mdl_storage_t*          storage,
  * @since 0.1.0
  */
 size_t mdl_pack_one_meta(mdl_storage_t*           storage,
-                         mdl_format_t             format,
+                         ra8_mdl_format_t         format,
                          const char*              series_dir,
                          const char*              chap_id,
                          const mdl_export_meta_t* meta,
@@ -116,7 +116,7 @@ size_t mdl_pack_one_meta(mdl_storage_t*           storage,
  * @since 0.1.0
  */
 size_t mdl_pack_combined(mdl_storage_t*           storage,
-                         mdl_format_t             format,
+                         ra8_mdl_format_t         format,
                          bool                     allow_incomplete,
                          const char*              series_dir,
                          const char*              combined_rel,
@@ -151,7 +151,7 @@ size_t mdl_pack_combined(mdl_storage_t*           storage,
  * @since 0.1.0
  */
 size_t mdl_pack_combined_meta(mdl_storage_t*           storage,
-                              mdl_format_t             format,
+                              ra8_mdl_format_t         format,
                               bool                     allow_incomplete,
                               const char*              series_dir,
                               const char*              combined_rel,
