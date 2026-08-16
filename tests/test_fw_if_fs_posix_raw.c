@@ -23,6 +23,7 @@
 #include <unistd.h>
 
 #include "fw_if_fs.h"
+#include "fw_if_fs_backend.h"
 #include "fw_if_fs_posix.h"
 #include "fw_if_fs_posix_internal.h"
 #include "ra8_attributes.h"
@@ -455,11 +456,356 @@ RA8_INTERNAL static void internal_test_raw_failures(void)
   TEST_END("fw_if_fs POSIX raw malformed/error records");
 }
 
+/** @brief Fixed operands used by the portable filesystem facade guard matrix. */
+typedef enum : uint16_t {
+  k_guard_work_bytes    = 128U,                            /**< Guard workspace bytes.    */
+  k_guard_need_bytes    = 32U,                             /**< Backend workspace demand.  */
+  k_guard_good_align    = 4U,                              /**< Power-of-two alignment.    */
+  k_guard_odd_align     = 3U,                              /**< Non power-of-two operand.  */
+  k_guard_no_align      = 0U,                              /**< Zero alignment operand.    */
+  k_guard_skew          = 1U,                              /**< Offset breaking alignment. */
+  k_guard_bad_mode      = 9U,                              /**< Mode outside its enum.     */
+  k_guard_bad_policy    = 7U,                              /**< Policy outside its enum.   */
+  k_guard_one           = 1U,                              /**< One byte or one entry.     */
+  k_guard_none          = 0U,                              /**< Zero bytes or entries.     */
+  k_guard_short_path    = 1U,                              /**< Below the two-byte floor.  */
+  k_guard_tiny_path     = 4U,                              /**< Too small for the vector.  */
+  k_guard_name_cap      = 8U,                              /**< Component byte ceiling.    */
+  k_guard_over_path_cap = (uint16_t)k_fw_fs_path_cap + 1U, /**< Above the interface cap.   */
+} guard_limits_t;
+
+/** @brief Accept any staged artifact; supplied only as a non-null validator. @details Implements the bounded guard validator fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] staged Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL
+static ra8_err_t internal_guard_validator(void* ctx, fw_fs_file_t* staged)
+{
+  (void)ctx;
+  (void)staged;
+  return k_ra8_ok;
+}
+
+/** @brief Prove the portable path grammar rejects every malformed operand. @details Runs the path grammar vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_path_grammar_guards(void)
+{
+  fw_fs_caps_t caps = {.path_max_bytes = (uint16_t)k_fw_fs_path_cap,
+                       .name_max_bytes = (uint16_t)k_guard_name_cap};
+  TEST_BEGIN("fw_if_fs path grammar guards");
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_path_validate(nullptr, "/"));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_path_validate(&caps, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_path_validate(&caps, "/a\x01"));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_path_validate(&caps, "/a\x7f"));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, fw_fs_path_validate(&caps, "/abcdefghi"));
+  caps.path_max_bytes = (uint16_t)k_guard_tiny_path;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, fw_fs_path_validate(&caps, "/abcdef"));
+  caps.path_max_bytes = (uint16_t)k_guard_short_path;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_path_validate(&caps, "/"));
+  caps.path_max_bytes = (uint16_t)k_guard_over_path_cap;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_path_validate(&caps, "/"));
+  caps.path_max_bytes = (uint16_t)k_fw_fs_path_cap;
+  caps.name_max_bytes = (uint16_t)k_guard_none;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_path_validate(&caps, "/"));
+  TEST_END("fw_if_fs path grammar guards");
+}
+
+/** @brief Prove every namespace call refuses an absent or unbound facade. @details Runs the namespace handle vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_namespace_handle_guards(void)
+{
+  const fw_fs_namespace_t unbound  = {};
+  fw_fs_stat_t            stat     = {};
+  fw_fs_space_t           space    = {};
+  uint32_t                count    = 0U;
+  bool                    complete = false;
+  TEST_BEGIN("fw_if_fs namespace handle guards");
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_stat(nullptr, "/", &stat));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, fw_fs_stat(&unbound, "/", &stat));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    fw_fs_listdir(nullptr, "/", k_guard_one, internal_capture, nullptr, &count, &complete));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_mkdir(nullptr, "/x"));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_unlink(nullptr, "/x"));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_rmdir(nullptr, "/x"));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_rename(nullptr, "/a", "/b", false));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_space(nullptr, &space));
+  TEST_END("fw_if_fs namespace handle guards");
+}
+
+/** @brief Prove every stream call refuses a closed or unbound file handle. @details Runs the stream handle vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_stream_handle_guards(void)
+{
+  fw_fs_file_t closed  = {};
+  fw_fs_file_t unbound = {.is_open = true};
+  uint8_t      byte    = 0U;
+  uint32_t     moved   = 0U;
+  uint64_t     scalar  = 0U;
+  TEST_BEGIN("fw_if_fs stream handle guards");
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_read(nullptr, &byte, k_guard_one, &moved));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_read(&closed, &byte, k_guard_one, &moved));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, fw_fs_read(&unbound, &byte, k_guard_one, &moved));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_write(&closed, &byte, k_guard_one, &moved));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_seek(&closed, k_guard_none));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_tell(&closed, &scalar));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_file_size(&closed, &scalar));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_sync(&closed));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_close(&closed));
+  TEST_END("fw_if_fs stream handle guards");
+}
+
+/** @brief Prove every transaction call refuses an inactive or unbound handle. @details Runs the transaction handle vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_transaction_handle_guards(void)
+{
+  fw_fs_transaction_t inactive  = {};
+  fw_fs_transaction_t unbound   = {.active = true};
+  uint8_t             byte      = 0U;
+  uint32_t            written   = 0U;
+  bool                published = false;
+  TEST_BEGIN("fw_if_fs transaction handle guards");
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 fw_fs_transaction_write(nullptr, &byte, k_guard_one, &written));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 fw_fs_transaction_write(&inactive, &byte, k_guard_one, &written));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized,
+                 fw_fs_transaction_write(&unbound, &byte, k_guard_one, &written));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_transaction_seek(&inactive, k_guard_none));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 fw_fs_transaction_validate(&inactive, internal_guard_validator, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_transaction_commit(&inactive, &published));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_transaction_abort(&inactive));
+  TEST_END("fw_if_fs transaction handle guards");
+}
+
+/** @brief Prove the workspace contract rejects every unusable caller buffer. @details Implements the bounded workspace guard fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_workspace_guards(const fw_fs_t* fs)
+{
+  alignas(uint64_t) uint8_t work[k_guard_work_bytes] = {};
+  fw_fs_stream_port_t       port                     = fs->streams;
+  fw_fs_file_t              file                     = {};
+  port.caps.file_workspace_bytes = (uint32_t)k_guard_need_bytes;
+  port.caps.file_workspace_align = (uint8_t)k_guard_good_align;
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    fw_fs_open(&port, "/alpha", k_fw_fs_open_read, &file, nullptr, k_guard_need_bytes));
+  TEST_ASSERT_EQ(k_ra8_err_no_mem,
+                 fw_fs_open(&port, "/alpha", k_fw_fs_open_read, &file, work, k_guard_none));
+  port.caps.file_workspace_align = (uint8_t)k_guard_no_align;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 fw_fs_open(&port, "/alpha", k_fw_fs_open_read, &file, work, k_guard_need_bytes));
+  port.caps.file_workspace_align = (uint8_t)k_guard_odd_align;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 fw_fs_open(&port, "/alpha", k_fw_fs_open_read, &file, work, k_guard_need_bytes));
+  port.caps.file_workspace_align = (uint8_t)k_guard_good_align;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 fw_fs_open(&port,
+                            "/alpha",
+                            k_fw_fs_open_read,
+                            &file,
+                            &work[k_guard_skew],
+                            k_guard_need_bytes));
+}
+
+/** @brief Prove open, caps, and listing refuse unusable ports and bounds. @details Implements the bounded open guard fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_open_guards(const fw_fs_t* fs)
+{
+  alignas(uint64_t) uint8_t work[k_guard_work_bytes] = {};
+  const fw_fs_stream_port_t unbound                  = {};
+  fw_fs_file_t              file                     = {};
+  fw_fs_t                   blank                    = {};
+  fw_fs_caps_t              caps                     = {};
+  uint32_t                  count                    = 0U;
+  bool                      complete                 = false;
+  TEST_ASSERT_EQ(
+    k_ra8_err_not_initialized,
+    fw_fs_open(&unbound, "/alpha", k_fw_fs_open_read, &file, work, k_guard_work_bytes));
+  file.is_open = true;
+  TEST_ASSERT_EQ(
+    k_ra8_err_busy,
+    fw_fs_open(&fs->streams, "/alpha", k_fw_fs_open_read, &file, work, k_guard_work_bytes));
+  file.is_open = false;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 fw_fs_open(&fs->streams,
+                            "/alpha",
+                            (fw_fs_open_mode_t)k_guard_bad_mode,
+                            &file,
+                            work,
+                            k_guard_work_bytes));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 fw_fs_open(&fs->streams, "/", k_fw_fs_open_read, &file, work, k_guard_work_bytes));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, fw_fs_get_caps(&blank, &caps));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_stat(&fs->names, "/alpha", nullptr));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    fw_fs_listdir(&fs->names, "/", k_guard_none, internal_capture, nullptr, &count, &complete));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 fw_fs_listdir(&fs->names,
+                               "relative",
+                               k_guard_one,
+                               internal_capture,
+                               nullptr,
+                               &count,
+                               &complete));
+  file = (fw_fs_file_t){.iface = fs->streams.iface, .ctx = fs->streams.ctx, .is_open = true};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_tell(&file, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_file_size(&file, nullptr));
+}
+
+/** @brief Prove namespace policy fires before any backend operation runs. @details Implements the bounded namespace policy guard fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_namespace_policy_guards(const fw_fs_t* fs)
+{
+  fw_fs_namespace_iface_t iface = *fs->names.iface;
+  fw_fs_namespace_t       port  = fs->names;
+  fw_fs_space_t           space = {};
+  iface.mkdir = nullptr;
+  iface.space = nullptr;
+  port.iface  = &iface;
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, fw_fs_mkdir(&port, "/x"));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_mkdir(&fs->names, "relative"));
+  TEST_ASSERT_EQ(k_ra8_err_access_denied, fw_fs_mkdir(&fs->names, "/"));
+  port.caps.flags |= (uint32_t)k_fw_fs_cap_space_query;
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, fw_fs_space(&port, &space));
+  port.iface = fs->names.iface;
+  port.caps.flags &= ~(uint32_t)k_fw_fs_cap_space_query;
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, fw_fs_space(&port, &space));
+  port.caps.flags &= ~(uint32_t)k_fw_fs_cap_atomic_replace;
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, fw_fs_rename(&port, "/a", "/b", true));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_rename(&fs->names, "relative", "/b", false));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_rename(&fs->names, "/a", "relative", false));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_space(&fs->names, nullptr));
+}
+
+/** @brief Prove staged publication refuses unsupported and malformed starts. @details Implements the bounded transaction begin guard fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_transaction_begin_guards(const fw_fs_t* fs)
+{
+  alignas(uint64_t) uint8_t work[k_guard_work_bytes] = {};
+  fw_fs_transaction_port_t  port                     = fs->transactions;
+  fw_fs_transaction_t       txn                      = {};
+  port.caps.flags &= ~(uint32_t)k_fw_fs_cap_transactions;
+  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+                 fw_fs_transaction_begin(&port,
+                                         "/stage.bin",
+                                         k_fw_fs_txn_create_new,
+                                         &txn,
+                                         work,
+                                         k_guard_work_bytes));
+  txn.active = true;
+  TEST_ASSERT_EQ(k_ra8_err_busy,
+                 fw_fs_transaction_begin(&fs->transactions,
+                                         "/stage.bin",
+                                         k_fw_fs_txn_create_new,
+                                         &txn,
+                                         work,
+                                         k_guard_work_bytes));
+  txn.active = false;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 fw_fs_transaction_begin(&fs->transactions,
+                                         "/stage.bin",
+                                         (fw_fs_transaction_policy_t)k_guard_bad_policy,
+                                         &txn,
+                                         work,
+                                         k_guard_work_bytes));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 fw_fs_transaction_begin(&fs->transactions,
+                                         "relative",
+                                         k_fw_fs_txn_create_new,
+                                         &txn,
+                                         work,
+                                         k_guard_work_bytes));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 fw_fs_transaction_begin(&fs->transactions,
+                                         "/",
+                                         k_fw_fs_txn_create_new,
+                                         &txn,
+                                         work,
+                                         k_guard_work_bytes));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 fw_fs_transaction_begin(&fs->transactions,
+                                         "/stage.bin",
+                                         k_fw_fs_txn_create_new,
+                                         &txn,
+                                         nullptr,
+                                         k_guard_work_bytes));
+}
+
+/** @brief Prove validation and publication respect their required ordering. @details Implements the bounded transaction state guard fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_transaction_state_guards(const fw_fs_t* fs)
+{
+  fw_fs_transaction_t txn       = {.iface  = fs->transactions.iface,
+                                   .ctx    = fs->transactions.ctx,
+                                   .active = true};
+  bool                published = false;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_transaction_validate(&txn, nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_fs_transaction_commit(&txn, &published));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_transaction_commit(&txn, nullptr));
+  txn.validated = true;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 fw_fs_transaction_validate(&txn, internal_guard_validator, nullptr));
+}
+
+/** @brief Prove the binder refuses contradictory capability records. @details Implements the bounded bind guard fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_bind_guards(const fw_fs_t* fs)
+{
+  fw_fs_t      bound = {};
+  fw_fs_caps_t caps  = fs->caps;
+  caps.flags &= ~((uint32_t)k_fw_fs_cap_namespace | (uint32_t)k_fw_fs_cap_stream);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 fw_fs_bind(&bound,
+                            fs->names.iface,
+                            fs->streams.iface,
+                            fs->transactions.iface,
+                            (void*)fs,
+                            &caps));
+  caps                      = fs->caps;
+  caps.file_workspace_align = (uint8_t)k_guard_no_align;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 fw_fs_bind(&bound,
+                            fs->names.iface,
+                            fs->streams.iface,
+                            fs->transactions.iface,
+                            (void*)fs,
+                            &caps));
+  caps                             = fs->caps;
+  caps.transaction_workspace_align = (uint8_t)k_guard_odd_align;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 fw_fs_bind(&bound,
+                            fs->names.iface,
+                            fs->streams.iface,
+                            fs->transactions.iface,
+                            (void*)fs,
+                            &caps));
+  caps                = fs->caps;
+  caps.path_max_bytes = (uint16_t)k_guard_short_path;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 fw_fs_bind(&bound,
+                            fs->names.iface,
+                            fs->streams.iface,
+                            fs->transactions.iface,
+                            (void*)fs,
+                            &caps));
+}
+
+/** @brief Run the portable facade guard matrix over a confined POSIX root. @details Runs the facade guard vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_facade_guards(void)
+{
+  posix_fixture_t fixture = {};
+  internal_fixture_init(&fixture);
+  TEST_BEGIN("fw_if_fs facade guards");
+  internal_test_workspace_guards(&fixture.fs);
+  internal_test_open_guards(&fixture.fs);
+  internal_test_namespace_policy_guards(&fixture.fs);
+  internal_test_transaction_begin_guards(&fixture.fs);
+  internal_test_transaction_state_guards(&fixture.fs);
+  internal_test_bind_guards(&fixture.fs);
+  internal_fixture_deinit(&fixture);
+  TEST_END("fw_if_fs facade guards");
+}
+
 int main(void)
 {
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_posix_test_set_directory_reader(nullptr, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_fs_posix_test_set_directory_reader(internal_script_read, nullptr));
+  internal_test_path_grammar_guards();
+  internal_test_namespace_handle_guards();
+  internal_test_stream_handle_guards();
+  internal_test_transaction_handle_guards();
+  internal_test_facade_guards();
   internal_test_native_directory();
   internal_test_empty_mixed_interrupted();
   internal_test_callback_and_entry_bounds();

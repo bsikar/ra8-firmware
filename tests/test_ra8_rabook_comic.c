@@ -45,6 +45,21 @@ typedef enum : uint32_t {
   k_comic_validate_bytes   = 512U,     /**< Strict validator scratch.       */
 } comic_fixture_limit_t;
 
+/** @brief Builder capacities a fault fixture deliberately constrains. */
+typedef enum : uint32_t {
+  k_comic_cap_none      = 0U,  /**< Table that cannot hold one entry.            */
+  k_comic_strings_min   = 1U,  /**< Pool holding only the empty-string sentinel. */
+  k_comic_strings_tight = 32U, /**< Pool that fills while interning metadata.    */
+} comic_fault_cap_t;
+
+/** @brief Argument and postcondition constants used by the fault fixtures. */
+typedef enum : uint32_t {
+  k_comic_edge_unclamped = 0U, /**< Longer-edge clamp disabled.        */
+  k_comic_no_pages       = 0U, /**< Pages retained after a fault.      */
+  k_comic_no_bytes       = 0U, /**< Byte extent produced by a fault.   */
+  k_comic_one_page       = 1U, /**< Pages in a one-page fault fixture. */
+} comic_fault_expect_t;
+
 /** @brief One bounded memory source/destination used by all callbacks. */
 typedef struct {
   uint8_t* bytes;       /**< Mutable backing bytes.              */
@@ -52,6 +67,23 @@ typedef struct {
   uint32_t length;      /**< Highest initialized byte plus one.  */
   bool     short_write; /**< Inject a successful one-byte short. */
 } comic_memory_t;
+
+/** @brief Builder arena capacities for one deliberately constrained build. */
+typedef struct {
+  uint32_t chapter_cap; /**< Chapter-table entry capacity. */
+  uint32_t image_cap;   /**< Image-table entry capacity.   */
+  uint32_t string_cap;  /**< String-pool byte capacity.    */
+} comic_caps_t;
+
+/** @brief Complete caller state retained through one constrained comic build. */
+typedef struct {
+  ra8_rabook_comic_t           comic;     /**< Production facade state.  */
+  ra8_rabook_comic_workspace_t workspace; /**< Bound caller workspace.   */
+  ra8_img_arena_t              stb;       /**< stb decoder descriptor.   */
+  ra8_webp_arena_t             webp;      /**< WebP decoder descriptor.  */
+  comic_memory_t               image;     /**< Normalized image spool.   */
+  comic_memory_t               flat;      /**< Flat RABOOK1 destination. */
+} comic_fault_fixture_t;
 
 /** @brief Compressor scratch with portable alignment. */
 typedef union {
@@ -164,6 +196,21 @@ RA8_INTERNAL static ra8_err_t internal_image_write(void*          ctx,
                                                    uint32_t*      out_written)
 {
   return internal_memory_write(ctx, offset, source, requested, out_written);
+}
+
+/** @brief Fail every image-spool write with a distinctive backend status. @details Models a storage backend that rejects the transfer outright rather than accepting a short span, so the facade's propagation of a callback error is observable separately from its short-write guard. @param[in,out] ctx Ignored spool context. @param[in] offset Ignored logical image-pool offset. @param[in] source Ignored normalized image bytes. @param[in] requested Ignored requested byte count. @param[out] out_written Set to zero because nothing was accepted. @return Fixed backend failure. @retval k_ra8_err_hw_error The scripted backend refused the write. @pre Callback arguments satisfy ::ra8_rabook_comic_write_at_fn. @pre @p out_written addresses writable storage. @post No destination byte is modified. @post Reported progress is exactly zero. @note Test-only callback; holds no state and is thread-safe. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_image_write_fault(void*          ctx,
+                                                         uint32_t       offset,
+                                                         const uint8_t* source,
+                                                         uint32_t       requested,
+                                                         uint32_t*      out_written)
+{
+  (void)ctx;
+  (void)offset;
+  (void)source;
+  (void)requested;
+  *out_written = 0U;
+  return k_ra8_err_hw_error;
 }
 
 /**
@@ -514,6 +561,55 @@ RA8_INTERNAL static ra8_err_t internal_wrap_and_validate(const comic_memory_t* f
   return result;
 }
 
+/** @brief Bind one comic fixture whose builder arenas carry chosen capacities. @details Reuses the shared workspace constructor, then narrows only the chapter, image, and string capacities so each fault vector starves exactly one arena while every other input stays valid. @param[out] fixture Complete caller state for one constrained build. @param[in] caps Chapter, image, and string capacities for this vector. @return Production initialization status. @retval k_ra8_ok The empty comic is active and ready for one page. @return Constructor validation or builder errors propagate unchanged. @pre Static fixture storage is exclusively owned by the caller. @pre @p fixture and @p caps are non-NULL and writable/readable. @post Success leaves an active zero-page comic bound to @p fixture storage. @post Both fixture memory extents start at zero initialized bytes. @note Not thread-safe because the fixture shares static backing arrays. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_begin_capped(comic_fault_fixture_t* fixture,
+                                                    const comic_caps_t*    caps)
+{
+  *fixture           = (comic_fault_fixture_t){};
+  fixture->image     = (comic_memory_t){.bytes = s_image_bytes, .capacity = sizeof s_image_bytes};
+  fixture->flat      = (comic_memory_t){.bytes = s_flat_bytes, .capacity = sizeof s_flat_bytes};
+  fixture->workspace = internal_workspace(&fixture->stb, &fixture->webp);
+  fixture->workspace.builder.chapter_cap = caps->chapter_cap;
+  fixture->workspace.builder.image_cap   = caps->image_cap;
+  fixture->workspace.builder.string_cap  = caps->string_cap;
+  return ra8_rabook_comic_init(&fixture->comic,
+                               &fixture->workspace,
+                               internal_memory_read_progress,
+                               internal_image_write,
+                               &fixture->image,
+                               (uint16_t)k_comic_edge_unclamped,
+                               (uint8_t)k_ra8_book_pixfmt_gray4);
+}
+
+/** @brief Run one add-page vector against a freshly constrained fixture. @details Normalizes the real BMP fixture so the failure originates in the builder arena under test, then proves the build is poisoned by rejecting a second page without touching the spool again. @param[in] caps Chapter, image, and string capacities for this vector. @param[in] expected Exact expected add-page status. @pre Static fixture storage is exclusively owned by the caller. @pre @p caps leaves every arena except the one under test sufficient. @post The observed add-page result equals @p expected. @post A failed vector reports zero pages and refuses further pages. @note Test-only orchestration helper; not thread-safe. @since 0.1.0 */
+RA8_INTERNAL static void internal_expect_capped_add(const comic_caps_t* caps, ra8_err_t expected)
+{
+  comic_fault_fixture_t fixture = {};
+  TEST_ASSERT_EQ(k_ra8_ok, internal_begin_capped(&fixture, caps));
+  TEST_ASSERT_EQ(expected, ra8_rabook_comic_add_page(&fixture.comic, "pg", s_bmp, sizeof s_bmp));
+  TEST_ASSERT_EQ(k_comic_no_pages, fixture.comic.page_count);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 ra8_rabook_comic_add_page(&fixture.comic, "pg2", s_bmp, sizeof s_bmp));
+}
+
+/** @brief Run one finish vector against a freshly built one-page comic. @details Requires the page to land before finish runs, so a metadata or string-arena failure cannot be confused with an earlier fault. @param[in] caps Chapter, image, and string capacities for this vector. @param[in] metadata Candidate final metadata, or NULL for the null guard. @param[in] expected Exact expected finish status. @pre Static fixture storage is exclusively owned by the caller. @pre Non-NULL metadata members remain readable for the call. @post The observed finish result equals @p expected. @post Exactly one page was appended before finish was invoked. @note Test-only orchestration helper; not thread-safe. @since 0.1.0 */
+RA8_INTERNAL static void internal_expect_capped_finish(const comic_caps_t*                caps,
+                                                       const ra8_rabook_comic_metadata_t* metadata,
+                                                       ra8_err_t                          expected)
+{
+  comic_fault_fixture_t fixture = {};
+  TEST_ASSERT_EQ(k_ra8_ok, internal_begin_capped(&fixture, caps));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_comic_add_page(&fixture.comic, "pg", s_bmp, sizeof s_bmp));
+  TEST_ASSERT_EQ(k_comic_one_page, fixture.comic.page_count);
+  uint32_t flat_length = UINT32_MAX;
+  TEST_ASSERT_EQ(expected,
+                 ra8_rabook_comic_finish(&fixture.comic,
+                                         metadata,
+                                         internal_flat_append,
+                                         &fixture.flat,
+                                         &flat_length));
+}
+
 /**
  * @brief Comic pages become a strict reader-consumable RBKC artifact.
  * @test The production image-sequence facade emits a usable `.rabook` file.
@@ -596,9 +692,235 @@ RA8_INTERNAL static void internal_test_short_spool_write_fails_closed(void)
   TEST_END("rabook comic: short spool write fails closed");
 }
 
+/**
+ * @brief Every public entry rejects a NULL comic before touching the caller.
+ * @test The three facade entry points guard their own state pointer.
+ * @details Each call supplies otherwise-complete arguments so the only reason
+ * to fail is the missing builder state itself.
+ * @pre Static fixture state is exclusively owned.
+ * @pre The workspace and metadata controls are complete and valid.
+ * @post Every entry point returns the null-pointer status.
+ * @post No fixture byte is written because no build was ever created.
+ * @note These are single-condition guards, so no MC/DC vector table applies.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_null_comic_rejected(void)
+{
+  TEST_BEGIN("rabook comic: null comic rejected");
+  comic_memory_t   image = {.bytes = s_image_bytes, .capacity = sizeof s_image_bytes};
+  comic_memory_t   flat  = {.bytes = s_flat_bytes, .capacity = sizeof s_flat_bytes};
+  ra8_img_arena_t  stb   = {};
+  ra8_webp_arena_t webp  = {};
+  const ra8_rabook_comic_workspace_t workspace   = internal_workspace(&stb, &webp);
+  const ra8_rabook_comic_metadata_t  metadata    = {.title      = "Comic",
+                                                    .author     = "RA8",
+                                                    .language   = "en",
+                                                    .identifier = "urn:ra8:test:null"};
+  uint32_t                           flat_length = UINT32_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_rabook_comic_init(nullptr,
+                                       &workspace,
+                                       internal_memory_read_progress,
+                                       internal_image_write,
+                                       &image,
+                                       (uint16_t)k_comic_edge_unclamped,
+                                       (uint8_t)k_ra8_book_pixfmt_gray4));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_rabook_comic_add_page(nullptr, "page.bmp", s_bmp, sizeof s_bmp));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_rabook_comic_finish(nullptr, &metadata, internal_flat_append, &flat, &flat_length));
+  TEST_ASSERT_EQ(k_comic_no_bytes, image.length);
+  TEST_ASSERT_EQ(k_comic_no_bytes, flat.length);
+  TEST_END("rabook comic: null comic rejected");
+}
+
+/**
+ * @brief An unterminated page identifier is rejected and poisons the build.
+ * @test The bounded-string scan refuses metadata that never terminates.
+ * @details The candidate identifier fills the complete public string window
+ * with non-NUL bytes, which is exactly the bound the scanner may inspect.
+ * @pre Static fixture state is exclusively owned.
+ * @pre The hostile identifier spans the exact public bound in readable bytes.
+ * @post Add-page returns the invalid-size status and appends no page.
+ * @post The poisoned build refuses a later well-formed page.
+ * @note The scan reads no byte beyond the fixed public window.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_unbounded_page_id_rejected(void)
+{
+  TEST_BEGIN("rabook comic: unbounded page id rejected");
+  const comic_caps_t    roomy   = {.chapter_cap = k_comic_chapters,
+                                   .image_cap   = k_comic_images,
+                                   .string_cap  = k_comic_strings};
+  comic_fault_fixture_t fixture = {};
+  TEST_ASSERT_EQ(k_ra8_ok, internal_begin_capped(&fixture, &roomy));
+  char page_id[k_ra8_rabook_comic_string_max];
+  (void)memset(page_id, 'x', sizeof page_id);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_rabook_comic_add_page(&fixture.comic, page_id, s_bmp, sizeof s_bmp));
+  TEST_ASSERT_EQ(k_comic_no_pages, fixture.comic.page_count);
+  TEST_ASSERT_EQ(k_comic_no_bytes, fixture.image.length);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 ra8_rabook_comic_add_page(&fixture.comic, "later.bmp", s_bmp, sizeof s_bmp));
+  TEST_END("rabook comic: unbounded page id rejected");
+}
+
+/**
+ * @brief Finishing an empty comic reports empty, then reports inactive.
+ * @test The finish lifecycle transition happens before the emptiness check.
+ * @details A comic that never received a page cannot produce a book, and the
+ * failed finish still consumes the build so a retry is a state error.
+ * @pre Static fixture state is exclusively owned.
+ * @pre The metadata control is complete and bounded.
+ * @post The first finish returns the empty status and writes no flat byte.
+ * @post The second finish returns the invalid-state status.
+ * @note Both guards are single conditions, so no MC/DC vector table applies.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_empty_then_inactive_finish(void)
+{
+  TEST_BEGIN("rabook comic: empty then inactive finish");
+  const comic_caps_t    roomy   = {.chapter_cap = k_comic_chapters,
+                                   .image_cap   = k_comic_images,
+                                   .string_cap  = k_comic_strings};
+  comic_fault_fixture_t fixture = {};
+  TEST_ASSERT_EQ(k_ra8_ok, internal_begin_capped(&fixture, &roomy));
+  const ra8_rabook_comic_metadata_t metadata    = {.title      = "Comic",
+                                                   .author     = "RA8",
+                                                   .language   = "en",
+                                                   .identifier = "urn:ra8:test:empty"};
+  uint32_t                          flat_length = UINT32_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_empty,
+                 ra8_rabook_comic_finish(&fixture.comic,
+                                         &metadata,
+                                         internal_flat_append,
+                                         &fixture.flat,
+                                         &flat_length));
+  TEST_ASSERT_EQ(k_comic_no_bytes, fixture.flat.length);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 ra8_rabook_comic_finish(&fixture.comic,
+                                         &metadata,
+                                         internal_flat_append,
+                                         &fixture.flat,
+                                         &flat_length));
+  TEST_ASSERT_EQ(k_comic_no_bytes, fixture.flat.length);
+  TEST_END("rabook comic: empty then inactive finish");
+}
+
+/**
+ * @brief Missing, unbounded, and unstorable metadata each fail their own way.
+ * @test Final metadata is validated and interned before any book is streamed.
+ * @details The absent record, the absent title, and a title too large for the
+ * remaining string arena select three distinct production rejections after a
+ * real page has already been normalized and spooled.
+ * @pre Static fixture state is exclusively owned.
+ * @pre The tight fixture leaves fewer free string bytes than the long title.
+ * @post Each vector returns its canonical status and streams no flat book.
+ * @post No vector can be satisfied by a different guard's status.
+ * @note The tight vector proves the metadata intern failure propagates.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_metadata_guards(void)
+{
+  TEST_BEGIN("rabook comic: metadata guards");
+  const comic_caps_t                roomy         = {.chapter_cap = k_comic_chapters,
+                                                     .image_cap   = k_comic_images,
+                                                     .string_cap  = k_comic_strings};
+  const comic_caps_t                tight         = {.chapter_cap = k_comic_chapters,
+                                                     .image_cap   = k_comic_images,
+                                                     .string_cap  = k_comic_strings_tight};
+  const ra8_rabook_comic_metadata_t missing_title = {.title      = nullptr,
+                                                     .author     = "RA8",
+                                                     .language   = "en",
+                                                     .identifier = "urn:ra8:test:meta"};
+  const ra8_rabook_comic_metadata_t long_title    = {.title      = "AAAAAAAAAAAAAAAAAAAAAAAA",
+                                                     .author     = "RA8",
+                                                     .language   = "en",
+                                                     .identifier = "urn:ra8:test:meta"};
+  internal_expect_capped_finish(&roomy, nullptr, k_ra8_err_null_ptr);
+  internal_expect_capped_finish(&roomy, &missing_title, k_ra8_err_invalid_size);
+  internal_expect_capped_finish(&tight, &long_title, k_ra8_err_no_mem);
+  TEST_END("rabook comic: metadata guards");
+}
+
+/**
+ * @brief Each starved builder arena stops the page before it is counted.
+ * @test String, image, and chapter exhaustion are all reported as no-memory.
+ * @details The three vectors starve one arena apiece: the string pool cannot
+ * intern the page identifier, the image table cannot hold a descriptor, and
+ * the chapter table cannot hold the DOM chapter that a stored page requires.
+ * @pre Static fixture state is exclusively owned.
+ * @pre Every arena except the one under test remains sufficient.
+ * @post Every vector returns no-memory and retains zero pages.
+ * @post Every failed build refuses a later page with an invalid-state status.
+ * @note Each vector owns a fresh private build and spool.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_builder_capacity_faults(void)
+{
+  TEST_BEGIN("rabook comic: builder capacity faults");
+  const comic_caps_t no_strings  = {.chapter_cap = k_comic_chapters,
+                                    .image_cap   = k_comic_images,
+                                    .string_cap  = k_comic_strings_min};
+  const comic_caps_t no_images   = {.chapter_cap = k_comic_chapters,
+                                    .image_cap   = k_comic_cap_none,
+                                    .string_cap  = k_comic_strings};
+  const comic_caps_t no_chapters = {.chapter_cap = k_comic_cap_none,
+                                    .image_cap   = k_comic_images,
+                                    .string_cap  = k_comic_strings};
+  internal_expect_capped_add(&no_strings, k_ra8_err_no_mem);
+  internal_expect_capped_add(&no_images, k_ra8_err_no_mem);
+  internal_expect_capped_add(&no_chapters, k_ra8_err_no_mem);
+  TEST_END("rabook comic: builder capacity faults");
+}
+
+/**
+ * @brief A refused image-spool write propagates its backend status unchanged.
+ * @test The facade never rewrites a storage failure into its own vocabulary.
+ * @details The scripted backend refuses the transfer instead of accepting a
+ * short span, so the observed status distinguishes error propagation from the
+ * short-write conversion the companion fault test covers.
+ * @pre Static fixture state is exclusively owned.
+ * @pre The refusing callback reports zero accepted bytes.
+ * @post Add-page returns the exact backend status and counts no page.
+ * @post The private spool remains completely uninitialized.
+ * @note The caller discards the private spool after this fault.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_spool_write_error_propagates(void)
+{
+  TEST_BEGIN("rabook comic: spool write error propagates");
+  comic_memory_t               image = {.bytes = s_image_bytes, .capacity = sizeof s_image_bytes};
+  ra8_img_arena_t              stb   = {};
+  ra8_webp_arena_t             webp  = {};
+  ra8_rabook_comic_workspace_t workspace = internal_workspace(&stb, &webp);
+  ra8_rabook_comic_t           comic     = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_rabook_comic_init(&comic,
+                                       &workspace,
+                                       internal_memory_read_progress,
+                                       internal_image_write_fault,
+                                       &image,
+                                       (uint16_t)k_comic_edge_unclamped,
+                                       (uint8_t)k_ra8_book_pixfmt_gray4));
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_rabook_comic_add_page(&comic, "pg", s_bmp, sizeof s_bmp));
+  TEST_ASSERT_EQ(k_comic_no_pages, comic.page_count);
+  TEST_ASSERT_EQ(k_comic_no_bytes, image.length);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 ra8_rabook_comic_add_page(&comic, "pg2", s_bmp, sizeof s_bmp));
+  TEST_END("rabook comic: spool write error propagates");
+}
+
 int main(void)
 {
   internal_test_image_sequence_to_rbkc();
   internal_test_short_spool_write_fails_closed();
+  internal_test_null_comic_rejected();
+  internal_test_unbounded_page_id_rejected();
+  internal_test_empty_then_inactive_finish();
+  internal_test_metadata_guards();
+  internal_test_builder_capacity_faults();
+  internal_test_spool_write_error_propagates();
   return 0;
 }
