@@ -127,6 +127,7 @@ RA8_GATE_REGISTRY=(
   "format|fast|clang-format dry run"
   "pre-commit-checks|fast|the check_*.py gate suite"
   "shebangs|fast|first-party shell scripts carry an env-based shebang"
+  "entry-points|fast|hosted vs freestanding main() contract per build domain"
   "bench-lock|fast|every bench-touching script takes the bench lock"
   "annotations|fast|RA8_* annotation attributes (libclang)"
   "doc-attachment|fast|a Doxygen block describes the symbol it is attached to"

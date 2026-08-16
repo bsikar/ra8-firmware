@@ -418,6 +418,7 @@ jobs:
           fetch-depth: 0
       - run: bash scripts/ci.sh --gate pre-commit-checks
       - run: bash scripts/ci.sh --gate shebangs
+      - run: bash scripts/ci.sh --gate entry-points
       - run: bash scripts/ci.sh --gate tests-readme
       - run: bash scripts/ci.sh --gate disambig-readmes
       - run: bash scripts/ci.sh --gate init-order-freshness

@@ -108,6 +108,21 @@ route_bucket() {
   case "$f" in
     # Cross-compiled firmware: examples/ and port/ in full.
     */examples/* | */port/*) echo firmware && return 0 ;;
+    # A board layer's boot/ directory is the reset path compiled into every
+    # image of that board -- firmware by any definition, but it lives under
+    # libs/ and so used to fall through to the host bucket, whose database
+    # does not contain it at all. clang-tidy then analysed it with default
+    # HOSTED flags, which is precisely the wrong-flags failure this router
+    # exists to prevent. It surfaced when `main` became `void main(void)`
+    # behind `__STDC_HOSTED__ == 0`: a hosted-flags parse cannot see the
+    # declaration and reports `use of undeclared identifier 'main'` (#707).
+    */libs/ra8_board_*/boot/*) echo firmware && return 0 ;;
+    # src/app is the ra8d2-ereader image -- a cross-compiled application built
+    # by ra8_add_app(), registered in RA8_APPS, and present in the cross
+    # database. It is firmware that happens not to live under examples/, and
+    # routing it to the host bucket analysed its `void main(void)` entry point
+    # as if it were a hosted program (#707).
+    */src/app/*) echo firmware && return 0 ;;
   esac
   # A libs/ or src/ TU that includes a ThreadX / NetX / USBX vendor header is
   # firmware too: the host database carries no path to those headers, so it

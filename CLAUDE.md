@@ -665,6 +665,7 @@ with the appropriate label (`roadmap`, `todo`, `tech-debt`, `gaps`).
 - **C23 Syntax**: Use `bool`, `true`, and `false` directly. Do NOT include `<stdbool.h>`. Use `static_assert` directly without `_Static_assert` or `<assert.h>`. Zero-initialize structs/arrays with `= {}` (never `= {0}`).
 - **C23 Typed Enums**: Every enum MUST specify an explicit underlying type (`typedef enum : uint8_t { ... } name_t;`). Select the smallest fitting type. Use `uintptr_t` for register base addresses. NO macros for integer constants.
 - **Header Guards**: Use `#pragma once` at the top of headers. DO NOT use traditional include guards.
+- **Program Entry Points**: firmware (`examples/`, `src/`, `port/`) uses `void main(void)` and MUST `#include "ra8_boot_entry.h"`, which holds the one declaration; it contains no `return <value>;`. Hosted code (`tests/`, `tools/`) uses ISO `int main(void)` / `int main(int, char**)`. `void` is legal only because the firmware lane compiles `-ffreestanding` -- the flag and the signature travel together. Enforced by `scripts/checks/check_entry_points.py`; see `docs/STYLE_GUIDE.md`.
 - **Function Validation**: Minimum 2 validation checks (preconditions and postconditions) per function (NASA Power of 10 Rule 5). Use `RA8_CHECK_NULL_PTR` from `ra8_check.h` for null guards.
 
 ### Constants and Macros (all first-party C, repo-wide)

@@ -195,10 +195,21 @@ firmware_pass_args() {
   # So the rule is still enforced here, by the checker that gets it right; what
   # is switched off is a second, coarser implementation of the same rule that
   # would only ever report the 822 it gets wrong.
+  # -ffreestanding: the firmware lane really is compiled that way
+  # (cmake/ra8_add_app.cmake), so analysing it any other way analyses a
+  # program the build never produces. For a TU the cross database describes,
+  # this merely restates the flag already in its command line; it is
+  # load-bearing for the TUs the database does NOT describe -- e.g.
+  # libs/ra8_board_ra8p1/boot/vector_table.c appears in no compile database at
+  # all, so clang-tidy falls back to defaults, and a hosted default cannot see
+  # the freestanding `void main(void)` declaration that
+  # libs/ra8_core/inc/ra8_boot_entry.h guards behind `__STDC_HOSTED__ == 0`
+  # (#707).
   printf '%s\n' \
     "-p=$CROSS_DB_DIR" \
     "--checks=-readability-magic-numbers" \
-    "--extra-arg=-Wno-unknown-warning-option"
+    "--extra-arg=-Wno-unknown-warning-option" \
+    "--extra-arg=-ffreestanding"
   arm_system_includes
 }
 

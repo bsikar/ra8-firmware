@@ -447,6 +447,36 @@ gate_roadmap_dashboard_freshness() (
   python3 scripts/checks/check_roadmap_dashboard_freshness.py
 )
 
+# --- entry-points ---------------------------------------------------------
+# Two build domains, two entry-point contracts, one boundary (#707). Hosted
+# code (tests/, tools/) runs under an OS and uses ISO `int main(...)`.
+# Firmware (examples/, src/, port/) is reached from Reset_Handler with no
+# process and no exit status, so it uses `void main(void)`, declared once in
+# libs/ra8_core/inc/ra8_boot_entry.h and legal only because the firmware lane
+# compiles -ffreestanding.
+#
+# The compiler cannot police this on its own, which is why the gate exists.
+# `int32_t` is `long int` on arm-none-eabi and `int` on the host, so the old
+# `int32_t main(void)` meant a different function TYPE per domain -- and the
+# declaration lived in sixteen copy-pasted `extern int32_t main(void);` lines
+# in vector tables, a different translation unit from every definition. About
+# thirty apps had drifted into declaring one type and defining another with
+# nothing able to notice, and 208 files carried a local
+# `#pragma GCC diagnostic ignored "-Wmain"` to keep the contradiction quiet.
+#
+# Requiring the shared header at each definition is what lets the compiler
+# check; this gate enforces the include, the spelling, the absence of a
+# value-returning `return` in a void main, and that no suppression comes back.
+# It carries per-domain non-vacuity floors plus a MUST_DISCOVER set, so a scan
+# that stops reaching a root fails instead of reporting a clean tree.
+# --selftest FIRST, both directions.
+gate_entry_points() (
+  set -e
+  require_cmd python3 "the entry-points gate scans first-party C for main()"
+  python3 scripts/checks/check_entry_points.py --selftest
+  python3 scripts/checks/check_entry_points.py
+)
+
 # --- pinout-freshness -----------------------------------------------------
 # docs/pinouts/ is COMMITTED yet GENERATED: scripts/gen/gen_pinouts.py parses
 # the ball maps for all 64 RA8D2/RA8P1 part numbers straight out of section 1.7
