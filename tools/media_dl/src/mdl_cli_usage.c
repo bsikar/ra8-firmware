@@ -37,7 +37,7 @@ RA8_INTERNAL static ra8_err_t internal_cli_usage_discovery(ra8_io_stream_t* diag
     " --config SITE.conf --series URL [--chapters N] [--from CHAP]\n"
     "       [--update] [--out DIR] [--cache-dir DIR] [--format FMT] [--separate] [--seed S]\n"
     "       [--timeout MS]\n"
-    "       Formats: cbz|cbt|cbt.gz|epub|jof\n"
+    "       Formats: cbz|cbt|cbt.gz|epub|jof|rabook\n"
     "       Default: N chapters combine into ONE <slug>-<lo>-<hi>.<ext>.\n"
     "       --separate keeps one archive per chapter.\n"
     "       --from CHAP starts at chapter NUMBERED CHAP (not an index).\n"

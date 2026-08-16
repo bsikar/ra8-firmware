@@ -107,7 +107,82 @@ set(MDL_EXPORT_SRC
     src/mdl_export_epub.c
     src/mdl_export_jof.c
 )
-set(MDL_VERIFY_SRC src/mdl_verify.c src/mdl_verify_rabook.c ${MDL_RABOOK_READER_SRC})
+set(MDL_VERIFY_SRC src/mdl_verify.c)
+
+# The strict reader and bounded EPUB -> RABOOK compiler are shared by the CLI
+# and every focused downloader test. Build them once: duplicating the firmware
+# parser/raster stack into each test executable wastes link time and can let
+# per-target compile definitions drift.
+set(MDL_RABOOK_RUNTIME_SRC
+    src/mdl_export_rabook.c
+    src/mdl_export_rabook_io.c
+    src/mdl_verify_rabook.c
+    ${MDL_RABOOK_READER_SRC}
+    ${FW}/ra8_xml/src/ra8_xml.c
+    ${FW}/ra8_xml/src/ra8_xml_doctype.c
+    ${FW}/ra8_epub/src/ra8_epub_miniz_alloc.c
+    ${FW}/ra8_epub/src/ra8_epub_open.c
+    ${FW}/ra8_epub/src/ra8_epub_entry.c
+    ${FW}/ra8_epub/src/ra8_epub_chapter.c
+    ${FW}/ra8_epub/src/ra8_epub_xml_shim.c
+    ${FW}/ra8_epub/src/ra8_epub_zip_guard.c
+    ${FW}/ra8_rabook_compile/src/ra8_rabook_compile.c
+    ${FW}/ra8_rabook_compile/src/ra8_rabook_finalize.c
+    ${FW}/ra8_rabook_compile/src/ra8_rabook_container.c
+    ${FW}/ra8_rabook_compile/src/ra8_rabook_gray4.c
+    ${FW}/ra8_rabook_compile/src/ra8_rabook_pipeline.c
+    ${FW}/ra8_rabook_compile/src/ra8_rabook_xml_shim.c
+    ${FW}/ra8_io/src/ra8_io_compress.c
+    ${FW}/ra8_reflow/src/ra8_img_arena.c
+    ${FW}/ra8_reflow/src/ra8_stbtt_alloc.c
+    ${FW}/ra8_reflow/src/ra8_stbtt_guard.c
+    ${FW}/third_party/stb/stb_image_impl.c
+    ${FW}/third_party/stb/stb_truetype_impl.c
+)
+add_library(mdl_rabook_runtime STATIC ${MDL_RABOOK_RUNTIME_SRC})
+target_include_directories(
+  mdl_rabook_runtime
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/src
+          ${FW}/ra8_core/inc
+          ${FW}/third_party/miniz
+          ${FW}/third_party/stb
+          ${FW}/ra8_book/inc
+          ${FW}/ra8_book/src
+          ${FW}/ra8_mem/inc
+          ${FW}/ra8_io/inc
+          ${FW}/ra8_xml/inc
+          ${FW}/ra8_xml/src
+          ${FW}/ra8_epub/inc
+          ${FW}/ra8_epub/src
+          ${FW}/ra8_rabook_compile/inc
+          ${FW}/ra8_rabook_compile/src
+          ${FW}/ra8_reflow/inc
+          ${FW}/ra8_reflow/src
+          ${FW}/ra8_fs/inc
+          ${MDL_FS_INC}
+)
+target_compile_definitions(
+  mdl_rabook_runtime
+  PRIVATE _GNU_SOURCE
+          MINIZ_NO_TIME
+          MINIZ_NO_STDIO
+          MINIZ_NO_MALLOC
+          RA8_OFF_TARGET
+)
+target_compile_options(mdl_rabook_runtime PRIVATE -Wall -Wextra -Werror)
+set_source_files_properties(${FW}/third_party/stb/stb_image_impl.c PROPERTIES COMPILE_OPTIONS -w)
+set_property(
+  SOURCE ${FW}/third_party/stb/stb_truetype_impl.c
+  APPEND
+  PROPERTY COMPILE_OPTIONS
+           -w
+           -include
+           "${FW}/ra8_reflow/inc/ra8_stbtt_alloc.h"
+           "-DSTBTT_malloc(x,u)=ra8_stbtt_malloc(x)"
+           "-DSTBTT_free(x,u)=ra8_stbtt_free(x)"
+)
+target_link_libraries(mdl_rabook_runtime PUBLIC m)
 
 add_executable(
   media_dl
@@ -176,7 +251,7 @@ target_include_directories(
 
 target_compile_definitions(media_dl PRIVATE _GNU_SOURCE MINIZ_NO_TIME RA8_OFF_TARGET)
 target_compile_options(media_dl PRIVATE -Wall -Wextra -Werror)
-target_link_libraries(media_dl PRIVATE CURL::libcurl)
+target_link_libraries(media_dl PRIVATE CURL::libcurl mdl_rabook_runtime)
 ra8_webp_attach(media_dl ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 
 # Host unit tests (unity_minimal harness, like the repo's tests/). The pure
@@ -228,6 +303,7 @@ function(mdl_add_unit_test target source)
   )
   target_compile_definitions(${target} PRIVATE _GNU_SOURCE MINIZ_NO_TIME RA8_OFF_TARGET)
   target_compile_options(${target} PRIVATE -Wall -Wextra -Werror)
+  target_link_libraries(${target} PRIVATE mdl_rabook_runtime)
   ra8_webp_attach(${target} ${CMAKE_CURRENT_SOURCE_DIR}/../..)
   add_test(NAME ${target} COMMAND ${target})
 endfunction()
@@ -238,11 +314,7 @@ mdl_add_unit_test(test_media_dl_export tests/test_media_dl_export.c)
 target_sources(test_media_dl_export PRIVATE tests/test_media_dl_export_xml.c)
 add_executable(
   test_media_dl_rabook_verify
-  tests/test_media_dl_rabook_verify.c
-  ${MDL_TEST_COMMON_SRC}
-  ${FW}/ra8_rabook_compile/src/ra8_rabook_compile.c
-  ${FW}/ra8_rabook_compile/src/ra8_rabook_finalize.c
-  ${FW}/ra8_rabook_compile/src/ra8_rabook_container.c
+  tests/test_media_dl_rabook_verify.c ${MDL_TEST_COMMON_SRC}
   ${CMAKE_CURRENT_SOURCE_DIR}/../../tests/support/rabook_compile_test_fixture.c
 )
 target_include_directories(
@@ -261,6 +333,7 @@ target_compile_definitions(
   test_media_dl_rabook_verify PRIVATE _GNU_SOURCE MINIZ_NO_TIME RA8_OFF_TARGET
 )
 target_compile_options(test_media_dl_rabook_verify PRIVATE -Wall -Wextra -Werror)
+target_link_libraries(test_media_dl_rabook_verify PRIVATE mdl_rabook_runtime)
 ra8_webp_attach(test_media_dl_rabook_verify ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 add_test(NAME test_media_dl_rabook_verify COMMAND test_media_dl_rabook_verify)
 mdl_add_unit_test(test_media_dl_export_fault tests/test_media_dl_export_fault.c)
