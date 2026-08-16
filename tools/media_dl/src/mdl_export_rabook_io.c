@@ -19,8 +19,8 @@
 typedef enum : uint32_t {
   k_rabook_temp_attempts = 16U,         /**< Create-new sibling candidates. */
   k_rabook_read_calls    = 1000000U,    /**< EPUB random-read ceiling.      */
-  k_rabook_fnv_offset    = 2166136261U, /**< FNV-1a seed for temp names. */
-  k_rabook_fnv_prime     = 16777619U,   /**< FNV-1a multiplier.          */
+  k_rabook_fnv_offset    = 2166136261U, /**< FNV-1a seed for temp names.    */
+  k_rabook_fnv_prime     = 16777619U,   /**< FNV-1a multiplier.             */
 } mdl_rabook_io_limit_t;
 
 /**

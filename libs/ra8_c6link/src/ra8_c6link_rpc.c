@@ -43,16 +43,16 @@
 
 /** @enum c6link_esp_status_t @brief Stable ESP-IDF general error values carried on the wire. */
 typedef enum : int32_t {
-  k_c6link_esp_err_no_mem           = 0x101, /**< Remote allocation failed.              */
-  k_c6link_esp_err_invalid_arg      = 0x102, /**< Remote argument validation failed.     */
+  k_c6link_esp_err_no_mem           = 0x101, /**< Remote allocation failed.               */
+  k_c6link_esp_err_invalid_arg      = 0x102, /**< Remote argument validation failed.      */
   k_c6link_esp_err_invalid_state    = 0x103, /**< Remote service state rejected the call. */
-  k_c6link_esp_err_invalid_size     = 0x104, /**< Remote extent validation failed.       */
-  k_c6link_esp_err_not_found        = 0x105, /**< Remote object was absent.              */
-  k_c6link_esp_err_not_supported    = 0x106, /**< Remote image lacks the operation.      */
-  k_c6link_esp_err_timeout          = 0x107, /**< Remote operation timed out.            */
-  k_c6link_esp_err_invalid_response = 0x108, /**< Remote protocol validation failed.     */
-  k_c6link_esp_err_invalid_crc      = 0x109, /**< Remote checksum validation failed.     */
-  k_c6link_esp_err_not_allowed      = 0x10D, /**< Remote policy denied the operation.    */
+  k_c6link_esp_err_invalid_size     = 0x104, /**< Remote extent validation failed.        */
+  k_c6link_esp_err_not_found        = 0x105, /**< Remote object was absent.               */
+  k_c6link_esp_err_not_supported    = 0x106, /**< Remote image lacks the operation.       */
+  k_c6link_esp_err_timeout          = 0x107, /**< Remote operation timed out.             */
+  k_c6link_esp_err_invalid_response = 0x108, /**< Remote protocol validation failed.      */
+  k_c6link_esp_err_invalid_crc      = 0x109, /**< Remote checksum validation failed.      */
+  k_c6link_esp_err_not_allowed      = 0x10D, /**< Remote policy denied the operation.     */
 } c6link_esp_status_t;
 
 /**

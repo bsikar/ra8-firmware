@@ -21,9 +21,9 @@
 
 /** @brief Open portable EPUB stream retained during one compile. */
 typedef struct {
-  fw_fs_file_t file;       /**< Borrowed portable file handle.   */
-  uint64_t     size_bytes; /**< Immutable complete EPUB extent.  */
-  uint32_t     calls;      /**< Bounded random-read call tally.  */
+  fw_fs_file_t file;       /**< Borrowed portable file handle.    */
+  uint64_t     size_bytes; /**< Immutable complete EPUB extent.   */
+  uint32_t     calls;      /**< Bounded random-read call tally.   */
   ra8_err_t    error;      /**< First read/seek protocol failure. */
 } mdl_rabook_epub_source_t;
 

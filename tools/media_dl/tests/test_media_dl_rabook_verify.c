@@ -29,10 +29,10 @@
 
 /** @brief Small complete-book fixture capacities. */
 typedef enum : uint32_t {
-  k_test_rbkc_bytes         = 8192U,               /**< Complete compressed container. */
-  k_test_chunk_bytes        = 1024U,               /**< Inflated bytes per chunk.      */
-  k_test_compressed_bytes   = 2048U,               /**< One compressed stream.         */
-  k_test_offset_entries     = 16U,                 /**< Chunk-table entries.           */
+  k_test_rbkc_bytes         = 8192U,               /**< Complete compressed container.  */
+  k_test_chunk_bytes        = 1024U,               /**< Inflated bytes per chunk.       */
+  k_test_compressed_bytes   = 2048U,               /**< One compressed stream.          */
+  k_test_offset_entries     = 16U,                 /**< Chunk-table entries.            */
   k_test_verify_arena_bytes = 96U * 1024U * 1024U, /**< Writer and strict-reader arena. */
   k_test_small_arena_bytes  = 1U * 1024U * 1024U,  /**< Forced profile rejection.       */
   k_test_dir_work_bytes     = 8192U,               /**< Portable directory cursor.      */
@@ -47,7 +47,7 @@ typedef union {
 /** @brief Maximally aligned portable directory workspace. */
 typedef union {
   max_align_t alignment;                    /**< Forces portable maximum alignment. */
-  uint8_t     bytes[k_test_dir_work_bytes]; /**< Opaque directory cursor state.      */
+  uint8_t     bytes[k_test_dir_work_bytes]; /**< Opaque directory cursor state.     */
 } mdl_rabook_dir_workspace_t;
 
 /** @brief Memory source/destination for one container write. */

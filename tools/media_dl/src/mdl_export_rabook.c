@@ -24,21 +24,21 @@
 /** @brief Fixed production conversion profile within the 96 MiB CLI arena. */
 typedef enum : uint32_t {
   k_rabook_page_cap          = 47U,                 /**< EPUB manifest-safe page count. */
-  k_rabook_chapter_cap       = 48U,                 /**< Builder chapter rows.           */
-  k_rabook_node_cap          = 512U,                /**< Fixed-page XHTML DOM nodes.      */
-  k_rabook_attr_cap          = 256U,                /**< Fixed-page XHTML attributes.     */
-  k_rabook_style_cap         = 4U,                  /**< Stylesheet descriptors.          */
-  k_rabook_image_cap         = 48U,                 /**< Pages plus one external cover.   */
-  k_rabook_string_bytes      = 256U * 1024U,        /**< Interned metadata/DOM strings.   */
+  k_rabook_chapter_cap       = 48U,                 /**< Builder chapter rows.          */
+  k_rabook_node_cap          = 512U,                /**< Fixed-page XHTML DOM nodes.    */
+  k_rabook_attr_cap          = 256U,                /**< Fixed-page XHTML attributes.   */
+  k_rabook_style_cap         = 4U,                  /**< Stylesheet descriptors.        */
+  k_rabook_image_cap         = 48U,                 /**< Pages plus one external cover. */
+  k_rabook_string_bytes      = 256U * 1024U,        /**< Interned metadata/DOM strings. */
   k_rabook_image_pool_bytes  = 24U * 1024U * 1024U, /**< 48 gray4 1024-square rasters.  */
-  k_rabook_flat_bytes        = 26U * 1024U * 1024U, /**< Flat RABOOK1 output.            */
-  k_rabook_xhtml_bytes       = 64U * 1024U,         /**< One page XHTML member.           */
-  k_rabook_image_raw_bytes   = 8U * 1024U * 1024U,  /**< One encoded image member.        */
+  k_rabook_flat_bytes        = 26U * 1024U * 1024U, /**< Flat RABOOK1 output.           */
+  k_rabook_xhtml_bytes       = 64U * 1024U,         /**< One page XHTML member.         */
+  k_rabook_image_raw_bytes   = 8U * 1024U * 1024U,  /**< One encoded image member.      */
   k_rabook_image_arena_bytes = 20U * 1024U * 1024U, /**< One stb grayscale decode.      */
-  k_rabook_gray_bytes        = 1024U * 1024U,       /**< 1024-square downscale buffer.   */
-  k_rabook_css_bytes         = 64U * 1024U,         /**< One stylesheet member.          */
-  k_rabook_max_image_edge    = 1024U,               /**< Output raster long-edge clamp.  */
-  k_rabook_chunk_bytes       = 1024U * 1024U,       /**< Independent RBKC chunk size.    */
+  k_rabook_gray_bytes        = 1024U * 1024U,       /**< 1024-square downscale buffer.  */
+  k_rabook_css_bytes         = 64U * 1024U,         /**< One stylesheet member.         */
+  k_rabook_max_image_edge    = 1024U,               /**< Output raster long-edge clamp. */
+  k_rabook_chunk_bytes       = 1024U * 1024U,       /**< Independent RBKC chunk size.   */
   k_rabook_compressed_bytes  = k_rabook_chunk_bytes + (64U * 1024U),
   /**< One complete zlib stream. */
   k_rabook_offset_entries = 64U, /**< RBKC offset table entries. */
@@ -46,11 +46,11 @@ typedef enum : uint32_t {
 
 /** @brief All fixed-profile views carved from the export workspace. */
 typedef struct {
-  ra8_epub_book_t*                 book;        /**< Streamed intermediate EPUB. */
-  ra8_rabook_buffers_t             builder;     /**< Flat-book builder arenas.   */
-  ra8_rabook_pipeline_scratch_t    pipeline;    /**< EPUB compiler scratch.      */
+  ra8_epub_book_t*                 book;        /**< Streamed intermediate EPUB.  */
+  ra8_rabook_buffers_t             builder;     /**< Flat-book builder arenas.    */
+  ra8_rabook_pipeline_scratch_t    pipeline;    /**< EPUB compiler scratch.       */
   ra8_img_arena_t                  image_arena; /**< stb decode arena descriptor. */
-  ra8_rabook_container_workspace_t container;   /**< RBKC writer workspace.      */
+  ra8_rabook_container_workspace_t container;   /**< RBKC writer workspace.       */
 } mdl_rabook_profile_t;
 
 /**
