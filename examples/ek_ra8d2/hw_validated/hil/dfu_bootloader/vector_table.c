@@ -26,6 +26,14 @@
 
 #include <stdint.h>
 
+/* Unconditional, and at the top: `Reset_Handler` calls `SystemInit()`
+ * and `main()` several hundred lines below, and this header is the one
+ * declaration of both. It used to sit near the bottom of the file inside
+ * `#ifdef RA8_ENABLE_ROOT_OF_TRUST`, i.e. after both uses and only in one
+ * build configuration -- which is why clang-tidy already reported
+ * `use of undeclared identifier 'SystemInit'` here before #707. */
+#include "ra8_boot_entry.h"
+
 #ifndef __APPLE__
 /* On the firmware target every IRQ vector slot forwards to the
  * substrate dispatcher so drivers that called ra8_isr_register get
@@ -52,13 +60,6 @@ extern uint32_t g_ra8_ls_ebss;           /**< End of .bss in SRAM.              
 extern uint32_t g_ra8_ls_ssram_text;     /**< Start of .sram_text in SRAM.       */
 extern uint32_t g_ra8_ls_esram_text;     /**< End of .sram_text in SRAM.         */
 extern uint32_t g_ra8_ls_sram_text_load; /**< Source of .sram_text in MRAM.      */
-
-/* =============================================================================
- * main()
- * =============================================================================
- */
-
-extern int32_t main(void);
 
 /* =============================================================================
  * Handler declarations
@@ -454,7 +455,7 @@ void Reset_Handler(void)
 
   /* Step 4: enter C. `main()` is responsible for enabling interrupts
    * via `__enable_irq()` once all drivers are ready. */
-  (void)main();
+  main();
 
   /* main() should never return; if it does, halt. */
   while (1) {
@@ -487,7 +488,6 @@ typedef enum : uint32_t {
 
 #ifndef RA8_OFF_TARGET
 #ifdef RA8_ENABLE_ROOT_OF_TRUST
-#include "ra8_boot_entry.h"
 #include "ra8_dfu_antirollback.h"
 #endif
 
