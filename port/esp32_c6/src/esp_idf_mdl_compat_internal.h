@@ -36,6 +36,12 @@
 #include "esp_err.h"
 #include "ra8_attributes.h"
 
+/* Every name below IS the ESP-IDF ABI spelling. This branch of the header
+ * exists so the annotation walker and clang-tidy can parse mdl_service.c
+ * without the SDK installed, which only works if the mirror declares exactly
+ * the vendor identifiers the adapter calls -- renaming them to the project
+ * conventions would make the mirror wrong rather than compliant.            */
+// NOLINTBEGIN(readability-identifier-naming)
 /** @brief Opaque host-parser stand-in for an ESP-IDF HTTP client. */
 typedef struct esp_http_client* esp_http_client_handle_t;
 
@@ -402,5 +408,6 @@ mbedtls_sha256_update(mbedtls_sha256_context* ctx, const unsigned char* input, s
  * @since 0.1.0
  */
 RA8_PRIV int mbedtls_sha256_finish(mbedtls_sha256_context* ctx, unsigned char output[32]);
+// NOLINTEND(readability-identifier-naming)
 
 #endif
