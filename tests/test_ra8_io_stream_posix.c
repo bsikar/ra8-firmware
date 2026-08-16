@@ -55,6 +55,9 @@ typedef struct {
 /** @brief Canonical descriptor-write errno vectors. */
 static const errno_vector_t s_errno_vectors[] = {
   {.error_number = EAGAIN, .expected = k_ra8_err_would_block},
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+  {.error_number = EWOULDBLOCK, .expected = k_ra8_err_would_block},
+#endif
   {.error_number = EBADF, .expected = k_ra8_err_invalid_state},
   {.error_number = ENOSPC, .expected = k_ra8_err_no_mem},
   {.error_number = EDQUOT, .expected = k_ra8_err_no_mem},
@@ -163,6 +166,12 @@ RA8_INTERNAL static void internal_test_two_bindings(void)
 
 /**
  * @brief Prove initialization validation and failure-atomic output handling.
+ *
+ * @par MC/DC:
+ * `port/posix/src/ra8_io_stream_posix.c@ra8_io_stream_posix_init` validates
+ * `stream == NULL || state == NULL`. The first two calls isolate C1 and C2;
+ * the valid descriptor bind makes both operands false. These are the three
+ * required vectors for the two-condition OR.
  * @post Invalid calls preserve both caller objects; valid calls bind the fd. @details Executes the init contract scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
 RA8_INTERNAL static void internal_test_init_contract(void)
 {
@@ -324,6 +333,15 @@ RA8_INTERNAL static void internal_test_write_retry_limit(const uint8_t* bytes, u
 
 /**
  * @brief Prove impossible progress and exhausted interruptions fail closed.
+ *
+ * @par MC/DC:
+ * `port/posix/src/ra8_io_stream_posix.c@priv_ra8_io_stream_posix_write_loop`
+ * contains two compound guards. The pointer guard's three one-null calls plus
+ * the valid zero-length call isolate C1, C2, C3, and all-false. The progress
+ * guard's zero-result and over-report calls isolate its two true operands;
+ * internal_test_write_progress() supplies a positive in-range result with both
+ * operands false. These are the N+1 sets for the three-condition and
+ * two-condition ORs.
  * @post No vector publishes bytes that were not accepted. @details Executes the write protocol scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
 RA8_INTERNAL static void internal_test_write_protocol(void)
 {
@@ -337,6 +355,14 @@ RA8_INTERNAL static void internal_test_write_protocol(void)
 
 /**
  * @brief Prove every adapter-specific errno mapping.
+ *
+ * @par MC/DC:
+ * `port/posix/src/ra8_io_stream_posix.c@internal_map_errno` contains five
+ * two-condition errno ORs. The table supplies each left errno, each right
+ * errno, and ENOENT as the shared all-false result. EWOULDBLOCK is included
+ * separately exactly on hosts where it differs from EAGAIN; where they are
+ * equal the preprocessor removes that second condition. Each compiled OR
+ * therefore has its required three vectors.
  * @post Each vector returns its canonical status with zero accepted bytes. @details Executes the errno map scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
 RA8_INTERNAL static void internal_test_errno_map(void)
 {
