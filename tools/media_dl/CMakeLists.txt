@@ -47,6 +47,7 @@ set_source_files_properties(
 # Compiling them quietly here hid host-only findings the ARM build never sees,
 # which is what a 64-bit host build is for (#309).
 set(FW ${CMAKE_CURRENT_SOURCE_DIR}/../../libs)
+set(MDL_PUBLIC_INC ${CMAKE_CURRENT_SOURCE_DIR}/inc ${FW}/ra8_mdl/inc)
 set(MDL_FS_SRC
     ${FW}/if/src/fw_if_fs.c
     ${FW}/if/src/fw_if_fs_dir.c
@@ -143,7 +144,7 @@ set(MDL_RABOOK_RUNTIME_SRC
 add_library(mdl_rabook_runtime STATIC ${MDL_RABOOK_RUNTIME_SRC})
 target_include_directories(
   mdl_rabook_runtime
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+  PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${FW}/ra8_core/inc
           ${FW}/third_party/miniz
@@ -239,7 +240,7 @@ add_executable(
 
 target_include_directories(
   media_dl
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+  PRIVATE ${MDL_PUBLIC_INC}
           # Reuse the firmware error contract host-side. RA8_OFF_TARGET is the
           # same switch the host unit-test build uses so register-reaching code
           # takes the host-safe path.
@@ -293,7 +294,7 @@ function(mdl_add_unit_test target source)
   add_executable(${target} ${source} ${MDL_TEST_COMMON_SRC})
   target_include_directories(
     ${target}
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+    PRIVATE ${MDL_PUBLIC_INC}
             ${CMAKE_CURRENT_SOURCE_DIR}/src
             ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
             ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
@@ -320,7 +321,7 @@ add_executable(
 )
 target_include_directories(
   test_media_dl_rabook_verify
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+  PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
@@ -363,7 +364,7 @@ add_executable(
 )
 target_include_directories(
   test_media_dl_net
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+  PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${MDL_FS_INC}
@@ -387,7 +388,7 @@ add_executable(
 )
 target_include_directories(
   test_media_dl_credentials
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/src
+  PRIVATE ${MDL_PUBLIC_INC} ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
 )
@@ -420,7 +421,7 @@ add_executable(
 )
 target_include_directories(
   test_media_dl_session
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+  PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_io/inc
@@ -451,7 +452,7 @@ add_executable(
 )
 target_include_directories(
   test_media_dl_state
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+  PRIVATE ${MDL_PUBLIC_INC} ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests ${MDL_FS_INC}
 )
 target_compile_definitions(test_media_dl_state PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
@@ -496,7 +497,7 @@ add_executable(
 )
 target_include_directories(
   test_media_dl_fetch
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+  PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_io/inc
@@ -538,7 +539,7 @@ add_executable(
 )
 target_include_directories(
   test_media_dl_fetch_cache
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+  PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_io/inc
@@ -565,7 +566,7 @@ add_executable(
 )
 target_include_directories(
   test_media_dl_cache
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+  PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${CMAKE_CURRENT_SOURCE_DIR}/tests
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
@@ -594,7 +595,7 @@ add_executable(
 )
 target_include_directories(
   test_media_dl_fetch_body
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+  PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
@@ -614,7 +615,7 @@ add_test(NAME test_media_dl_fetch_body COMMAND test_media_dl_fetch_body)
 add_executable(test_media_dl_governor tests/test_media_dl_governor.c src/mdl_politeness.c)
 target_include_directories(
   test_media_dl_governor
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+  PRIVATE ${MDL_PUBLIC_INC} ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
 )
 target_compile_definitions(test_media_dl_governor PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
@@ -631,7 +632,7 @@ add_executable(
 )
 target_include_directories(
   test_media_dl_search
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+  PRIVATE ${MDL_PUBLIC_INC} ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
 )
 target_compile_definitions(test_media_dl_search PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
@@ -655,7 +656,7 @@ add_executable(
 )
 target_include_directories(
   test_media_dl_cli
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+  PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_io/inc
@@ -686,7 +687,7 @@ add_executable(
 )
 target_include_directories(
   test_media_dl_sites
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+  PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/tests
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests

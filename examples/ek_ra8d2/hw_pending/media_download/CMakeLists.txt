@@ -23,6 +23,7 @@ ra8_add_app(
   USES threadx esp_hosted
   LIBS ra8_board_ek_ra8d2
        ra8_c6link
+       ra8_mdl
        ra8_mdl_storage_vfs
        ra8_webp
        ra8_io
