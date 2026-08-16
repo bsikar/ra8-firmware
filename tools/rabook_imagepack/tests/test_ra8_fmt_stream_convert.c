@@ -394,7 +394,7 @@ static void internal_test_faults(const ra8_fmt_source_t*                   sourc
 int main(void)
 {
   ra8_fmt_host_source_t source = {.fd = -1};
-  CHECK(ra8_fmt_host_source_open(RA8_FMT_TEST_PNG, 4096U, &source) == k_ra8_ok);
+  CHECK(priv_fmt_host_source_open(RA8_FMT_TEST_PNG, 4096U, &source) == k_ra8_ok);
   ra8_fmt_jof_convert_requirements_t requirements = {};
   CHECK(ra8_fmt_jof_convert_requirements(&source.source, &requirements) == k_ra8_ok);
   if (requirements.work_bytes != 0U) {
@@ -402,6 +402,6 @@ int main(void)
     internal_test_short_workspace(&source.source, &requirements);
     internal_test_faults(&source.source, &requirements);
   }
-  ra8_fmt_host_source_close(&source);
+  priv_fmt_host_source_close(&source);
   return s_failures;
 }

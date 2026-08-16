@@ -359,7 +359,7 @@ static int internal_open(const char*              input,
                          const ra8_fmt_sink_t*    errors)
 {
   ra8_fmt_host_source_t host_source = {.fd = -1};
-  ra8_err_t             rc     = ra8_fmt_host_source_open(input, k_cli_input_cap, &host_source);
+  ra8_err_t             rc     = priv_fmt_host_source_open(input, k_cli_input_cap, &host_source);
   cli_format_t          format = k_cli_format_none;
   if (rc == k_ra8_ok) {
     rc = internal_format(&host_source.source, explicit_name, &format);
@@ -369,23 +369,23 @@ static int internal_open(const char*              input,
     return (int)k_cli_exit_fail;
   }
   if (format == k_cli_format_none) {
-    ra8_fmt_host_source_close(&host_source);
+    priv_fmt_host_source_close(&host_source);
     *handled = false;
     return (int)k_cli_exit_ok;
   }
   ra8_fmt_host_fd_sink_t output_state = {.fd = STDOUT_FILENO};
-  const ra8_fmt_sink_t   output       = ra8_fmt_host_fd_sink(&output_state);
+  const ra8_fmt_sink_t   output       = priv_fmt_host_fd_sink(&output_state);
   const int status = (format == k_cli_format_jof)
                        ? internal_run_jof(&host_source.source, verbose, workspace, &output, errors)
                        : internal_run_rabook(&host_source.source, verbose, workspace, &output);
-  ra8_fmt_host_source_close(&host_source);
+  priv_fmt_host_source_close(&host_source);
   return status;
 }
 
-int ra8_fmt_try_portable_inspect(int                      argc,
-                                 char**                   argv,
-                                 ra8_fmt_cli_workspace_t* workspace,
-                                 bool*                    handled)
+RA8_PRIV int priv_fmt_try_portable_inspect(int                      argc,
+                                           char**                   argv,
+                                           ra8_fmt_cli_workspace_t* workspace,
+                                           bool*                    handled)
 {
   if ((handled == nullptr) || (workspace == nullptr)) {
     return (int)k_cli_exit_fail;
@@ -398,7 +398,7 @@ int ra8_fmt_try_portable_inspect(int                      argc,
   const char*            format      = nullptr;
   bool                   verbose     = false;
   ra8_fmt_host_fd_sink_t error_state = {.fd = STDERR_FILENO};
-  const ra8_fmt_sink_t   errors      = ra8_fmt_host_fd_sink(&error_state);
+  const ra8_fmt_sink_t   errors      = priv_fmt_host_fd_sink(&error_state);
   if (!internal_parse(argc, argv, &input, &format, &verbose)) {
     *handled = true;
     (void)internal_text(&errors, "ra8_fmt: invalid inspect arguments\n");
