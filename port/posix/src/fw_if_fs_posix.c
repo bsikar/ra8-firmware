@@ -76,7 +76,10 @@ static const fw_fs_stream_iface_t s_stream_iface;
 /* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_component_copy(const char* start, uint16_t length, char* out)
 {
-  if (length == 0U || length >= (uint16_t)k_posix_component_cap) {
+  if (length == 0U) {
+    return k_ra8_err_invalid_size;
+  }
+  if (length >= (uint16_t)k_posix_component_cap) {
     return k_ra8_err_invalid_size;
   }
   for (uint16_t i = 0U; i < length; ++i) {
@@ -115,7 +118,10 @@ RA8_INTERNAL static ra8_err_t internal_parent_open(fw_fs_posix_state_t* state,
   const char* cursor = &path[1];
   for (uint16_t component = 0U; component < (uint16_t)k_fw_fs_path_cap; ++component) {
     uint16_t length = 0U;
-    while (cursor[length] != '\0' && cursor[length] != '/') {
+    while (cursor[length] != '\0') {
+      if (cursor[length] == '/') {
+        break;
+      }
       ++length;
       if (length >= (uint16_t)k_posix_component_cap) {
         (void)priv_fs_posix_close_fd(&current);
@@ -305,11 +311,18 @@ RA8_PRIV ra8_err_t priv_fs_posix_dir_next(void*                 ctx,
     bool                     at_end = false;
     ra8_err_t                err =
       priv_fs_posix_directory_next(directory->fd, &directory->reader, &record, &at_end);
-    if ((err != k_ra8_ok) || at_end) {
+    if (err != k_ra8_ok) {
       *out_entry = false;
       return err;
     }
-    if ((strcmp(record.name, ".") == 0) || (strcmp(record.name, "..") == 0)) {
+    if (at_end) {
+      *out_entry = false;
+      return err;
+    }
+    if (strcmp(record.name, ".") == 0) {
+      continue;
+    }
+    if (strcmp(record.name, "..") == 0) {
       continue;
     }
     struct stat meta = {};
@@ -450,6 +463,52 @@ internal_rename_noreplace(int old_fd, const char* old_leaf, int new_fd, const ch
 #endif
 }
 
+/**
+ * @brief Validate opened parents and perform the selected rename operation.
+ * @details Proves both parents occupy one filesystem, then dispatches to
+ *          atomic replacement or the host's atomic no-replace primitive.
+ * @param[in] old_fd Open source-parent descriptor.
+ * @param[in] old_leaf Source leaf relative to @p old_fd.
+ * @param[in] new_fd Open destination-parent descriptor.
+ * @param[in] new_leaf Destination leaf relative to @p new_fd.
+ * @param[in] replace Whether an existing destination may be replaced.
+ * @return Rename status or mapped host failure.
+ * @retval k_ra8_ok The entry was renamed atomically.
+ * @retval k_ra8_err_invalid_arg Parent descriptors name different filesystems.
+ * @retval k_ra8_err_* Metadata or rename failures are mapped unchanged.
+ * @pre Both descriptors are live, owned by the caller, and name directories.
+ * @pre Both leaf strings are bounded validated path components.
+ * @post Success moves exactly the source entry to the destination name.
+ * @post Descriptor ownership remains with the caller on every result.
+ * @note No-replace mode never falls back to a racy check-then-rename sequence.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_rename_opened(int         old_fd,
+                                                     const char* old_leaf,
+                                                     int         new_fd,
+                                                     const char* new_leaf,
+                                                     bool        replace)
+{
+  struct stat old_parent = {};
+  if (fstat(old_fd, &old_parent) != 0) {
+    return priv_fs_posix_errno(errno);
+  }
+  struct stat new_parent = {};
+  if (fstat(new_fd, &new_parent) != 0) {
+    return priv_fs_posix_errno(errno);
+  }
+  if (old_parent.st_dev != new_parent.st_dev) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (!replace) {
+    return internal_rename_noreplace(old_fd, old_leaf, new_fd, new_leaf);
+  }
+  if (renameat(old_fd, old_leaf, new_fd, new_leaf) != 0) {
+    return priv_fs_posix_errno(errno);
+  }
+  return k_ra8_ok;
+}
+
 /* see header for full description */
 RA8_INTERNAL static ra8_err_t
 internal_rename(void* ctx, const char* old_path, const char* new_path, bool replace)
@@ -458,8 +517,11 @@ internal_rename(void* ctx, const char* old_path, const char* new_path, bool repl
   struct stat          source        = {};
   bool                 source_exists = false;
   const ra8_err_t      stated = internal_native_stat(state, old_path, &source, &source_exists);
-  if (stated != k_ra8_ok || !source_exists) {
-    return (stated == k_ra8_ok) ? k_ra8_err_not_found : stated;
+  if (stated != k_ra8_ok) {
+    return stated;
+  }
+  if (!source_exists) {
+    return k_ra8_err_not_found;
   }
   if (S_ISLNK(source.st_mode)) {
     return k_ra8_err_access_denied;
@@ -471,8 +533,10 @@ internal_rename(void* ctx, const char* old_path, const char* new_path, bool repl
   if (destination_stat != k_ra8_ok) {
     return destination_stat;
   }
-  if (destination_exists && S_ISLNK(destination.st_mode)) {
-    return k_ra8_err_access_denied;
+  if (destination_exists) {
+    if (S_ISLNK(destination.st_mode)) {
+      return k_ra8_err_access_denied;
+    }
   }
   int       old_fd = -1;
   int       new_fd = -1;
@@ -482,18 +546,8 @@ internal_rename(void* ctx, const char* old_path, const char* new_path, bool repl
   if (result == k_ra8_ok) {
     result = internal_parent_open(state, new_path, &new_fd, new_leaf);
   }
-  struct stat old_parent = {};
-  struct stat new_parent = {};
-  if (result == k_ra8_ok && (fstat(old_fd, &old_parent) != 0 || fstat(new_fd, &new_parent) != 0)) {
-    result = priv_fs_posix_errno(errno);
-  }
-  if (result == k_ra8_ok && old_parent.st_dev != new_parent.st_dev) {
-    result = k_ra8_err_invalid_arg;
-  }
-  if (result == k_ra8_ok && replace && renameat(old_fd, old_leaf, new_fd, new_leaf) != 0) {
-    result = priv_fs_posix_errno(errno);
-  } else if (result == k_ra8_ok && !replace) {
-    result = internal_rename_noreplace(old_fd, old_leaf, new_fd, new_leaf);
+  if (result == k_ra8_ok) {
+    result = internal_rename_opened(old_fd, old_leaf, new_fd, new_leaf, replace);
   }
   if (old_fd >= 0) {
     const ra8_err_t closed = priv_fs_posix_close_fd(&old_fd);
@@ -580,7 +634,12 @@ RA8_INTERNAL static ra8_err_t internal_open(void*             ctx,
     return closed;
   }
   struct stat meta = {};
-  if (fstat(opened, &meta) != 0 || !S_ISREG(meta.st_mode)) {
+  if (fstat(opened, &meta) != 0) {
+    int owned = opened;
+    (void)priv_fs_posix_close_fd(&owned);
+    return k_ra8_err_invalid_arg;
+  }
+  if (!S_ISREG(meta.st_mode)) {
     int owned = opened;
     (void)priv_fs_posix_close_fd(&owned);
     return k_ra8_err_invalid_arg;
@@ -596,9 +655,15 @@ internal_read(void* ctx, void* file_state, uint8_t* dst, uint32_t cap, uint32_t*
   (void)ctx;
   const int fd  = ((posix_file_state_t*)file_state)->fd;
   ssize_t   got = -1;
-  do {
+  for (;;) {
     got = read(fd, dst, (size_t)cap);
-  } while (got < 0 && errno == EINTR);
+    if (got >= 0) {
+      break;
+    }
+    if (errno != EINTR) {
+      break;
+    }
+  }
   if (got < 0) {
     return priv_fs_posix_errno(errno);
   }
@@ -615,10 +680,10 @@ internal_write(void* ctx, void* file_state, const uint8_t* src, uint32_t len, ui
   while (*out_written < len) {
     const uint32_t remaining = len - *out_written;
     ssize_t        wrote     = write(fd, &src[*out_written], (size_t)remaining);
-    if (wrote < 0 && errno == EINTR) {
-      continue;
-    }
     if (wrote < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
       return priv_fs_posix_errno(errno);
     }
     if (wrote == 0) {
@@ -726,8 +791,10 @@ RA8_INTERNAL static ra8_err_t internal_txn_begin(void*                      ctx,
     return k_ra8_err_no_mem;
   }
   fw_fs_posix_state_t* state = (fw_fs_posix_state_t*)ctx;
-  if (policy == k_fw_fs_txn_create_new && !state->atomic_noreplace) {
-    return k_ra8_err_not_supported;
+  if (policy == k_fw_fs_txn_create_new) {
+    if (!state->atomic_noreplace) {
+      return k_ra8_err_not_supported;
+    }
   }
   fw_fs_stat_t    destination_stat = {};
   const ra8_err_t stated           = internal_stat(state, destination, &destination_stat);
@@ -740,8 +807,10 @@ RA8_INTERNAL static ra8_err_t internal_txn_begin(void*                      ctx,
   if (destination_stat.type == k_fw_fs_node_directory) {
     return k_ra8_err_invalid_arg;
   }
-  if (policy == k_fw_fs_txn_create_new && destination_stat.exists) {
-    return k_ra8_err_exists;
+  if (policy == k_fw_fs_txn_create_new) {
+    if (destination_stat.exists) {
+      return k_ra8_err_exists;
+    }
   }
   posix_transaction_state_t* txn = (posix_transaction_state_t*)transaction_state;
   (void)memset(txn, 0, sizeof(*txn));
