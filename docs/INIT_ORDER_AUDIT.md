@@ -35,10 +35,10 @@ Source: ``examples/_unsupported/threadx_nimble_peripheral/main.c``
 
 Source: ``examples/_unsupported/threadx_sdcard_demo/main.c``
 
-- L376: ra8_cgc_init  (rank 10)
-- L381: ra8_board_led_init  (rank 100)
-- L386: ra8_board_uart_console_init  (rank 100)
-- L392: ra8_board_sdhi_pins_init  (rank 100)
+- L373: ra8_cgc_init  (rank 10)
+- L378: ra8_board_led_init  (rank 100)
+- L383: ra8_board_uart_console_init  (rank 100)
+- L389: ra8_board_sdhi_pins_init  (rank 100)
 
 ### usb_audio_device
 
@@ -62,7 +62,7 @@ Source: ``examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/main.c``
 
 Source: ``examples/ek_ra8d2/hil_needs_revalidation/epub_open/main.c``
 
-- L401: ra8_log_init  (rank 100)
+- L398: ra8_log_init  (rank 100)
 
 ### epub_parse
 
@@ -74,7 +74,7 @@ Source: ``examples/ek_ra8d2/hil_needs_revalidation/epub_parse/main.c``
 
 Source: ``examples/ek_ra8d2/hil_needs_revalidation/epub_toc/main.c``
 
-- L455: ra8_log_init  (rank 100)
+- L452: ra8_log_init  (rank 100)
 
 ### ereader_shelf
 
@@ -164,7 +164,7 @@ Source: ``examples/ek_ra8d2/hil_needs_revalidation/mpu_partition_simple/main.c``
 
 Source: ``examples/ek_ra8d2/hil_needs_revalidation/pagecache/main.c``
 
-- L772: ra8_log_init  (rank 100)
+- L769: ra8_log_init  (rank 100)
 
 ### pdg_delay_demo
 
@@ -228,7 +228,7 @@ Source: ``examples/ek_ra8d2/hil_needs_revalidation/ra8_io_fsfmt_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sd_demo/main.c``
 
-- L342: ra8_log_init  (rank 100)
+- L339: ra8_log_init  (rank 100)
 
 ### ra8_io_sdram_demo
 
@@ -241,22 +241,22 @@ Source: ``examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sdram_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hil_needs_revalidation/ra8_io_xspi_demo/main.c``
 
-- L222: ra8_log_init  (rank 100)
-- L224: ra8_io_stream_uart_init  (rank 100)
+- L220: ra8_log_init  (rank 100)
+- L222: ra8_io_stream_uart_init  (rank 100)
 
 ### reflow_content
 
 Source: ``examples/ek_ra8d2/hil_needs_revalidation/reflow_content/main.c``
 
-- L316: ra8_gfx_init  (rank 100)
-- L322: ra8_reflow_init  (rank 100)
+- L313: ra8_gfx_init  (rank 100)
+- L319: ra8_reflow_init  (rank 100)
 
 ### reset_cause_demo
 
 Source: ``examples/ek_ra8d2/hil_needs_revalidation/reset_cause_demo/main.c``
 
-- L115: ra8_time_init  (rank 35)
-- L120: ra8_reset_init  (rank 100)
+- L114: ra8_time_init  (rank 35)
+- L119: ra8_reset_init  (rank 100)
 
 ### rng_demo
 
@@ -298,7 +298,7 @@ Source: ``examples/ek_ra8d2/hil_needs_revalidation/touch_cal/main.c``
 
 Source: ``examples/ek_ra8d2/hil_needs_revalidation/touch_demo/main.c``
 
-- L288: ra8_i3c_init  (rank 100)
+- L285: ra8_i3c_init  (rank 100)
 
 ### tz_nsc_cgc_usb
 
@@ -322,16 +322,16 @@ Source: ``examples/ek_ra8d2/hw_pending/adc_diag_tsn_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hw_pending/battery_monitor_demo/main.c``
 
-- L261: ra8_i3c_init  (rank 100)
-- L272: ra8_smbus_init  (rank 100)
-- L277: ra8_batt_monitor_init  (rank 100)
+- L260: ra8_i3c_init  (rank 100)
+- L271: ra8_smbus_init  (rank 100)
+- L276: ra8_batt_monitor_init  (rank 100)
 
 ### blink_m33_hal
 
 Source: ``examples/ek_ra8d2/hw_pending/blink_m33_hal/main.c``
 
-- L115: ra8_cgc_init  (rank 10)
-- L117: ra8_log_init  (rank 100)
+- L113: ra8_cgc_init  (rank 10)
+- L115: ra8_log_init  (rank 100)
 
 ### c6_mdl_test
 
@@ -343,13 +343,13 @@ Source: ``examples/ek_ra8d2/hw_pending/c6/c6_mdl_test/main.c``
 
 Source: ``examples/ek_ra8d2/hw_pending/cache_hal_enable_demo/main.c``
 
-- L284: ra8_log_init  (rank 100)
+- L282: ra8_log_init  (rank 100)
 
 ### compile_on_m33
 
 Source: ``examples/ek_ra8d2/hw_pending/compile_on_m33/main.c``
 
-- L426: ra8_log_init  (rank 100)
+- L424: ra8_log_init  (rank 100)
 
 ### dtc_isr_arm_demo
 
@@ -379,20 +379,20 @@ Source: ``examples/ek_ra8d2/hw_pending/ereader_comic/main.c``
 
 Source: ``examples/ek_ra8d2/hw_pending/ereader_cover/main.c``
 
-- L231: ra8_gfx_init  (rank 100)
+- L228: ra8_gfx_init  (rank 100)
 
 ### ereader_longstrip
 
 Source: ``examples/ek_ra8d2/hw_pending/ereader_longstrip/main.c``
 
-- L973: ra8_board_sw_init  (rank 100)
-- L974: ra8_board_sw_init  (rank 100)
+- L971: ra8_board_sw_init  (rank 100)
+- L972: ra8_board_sw_init  (rank 100)
 
 ### ereader_m33
 
 Source: ``examples/ek_ra8d2/hw_pending/ereader_m33/main.c``
 
-- L905: ra8_log_init  (rank 100)
+- L903: ra8_log_init  (rank 100)
 
 ### ereader_manga
 
@@ -458,13 +458,13 @@ Source: ``examples/ek_ra8d2/hw_pending/i3c_i2c_peripheral_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hw_pending/import_reader/main.c``
 
-- L670: ra8_log_init  (rank 100)
+- L668: ra8_log_init  (rank 100)
 
 ### imu_lsm6dso_demo
 
 Source: ``examples/ek_ra8d2/hw_pending/imu_lsm6dso_demo/main.c``
 
-- L509: ra8_lsm6dso_init  (rank 100)
+- L506: ra8_lsm6dso_init  (rank 100)
 
 ### lin_commander_hil
 
@@ -476,7 +476,7 @@ Source: ``examples/ek_ra8d2/hw_pending/lin_commander_hil/main.c``
 
 Source: ``examples/ek_ra8d2/hw_pending/lowpower_holdpage/main.c``
 
-- L165: ra8_log_init  (rank 100)
+- L163: ra8_log_init  (rank 100)
 
 ### usb_msc_sdcard
 
@@ -488,16 +488,16 @@ Source: ``examples/ek_ra8d2/hw_pending/manual/usb_msc_sdcard/main.c``
 
 Source: ``examples/ek_ra8d2/hw_pending/manual/usb_printer_vendor/main.c``
 
-- L584: ra8_cgc_init  (rank 10)
-- L590: ra8_cgc_get_clock_hz  (rank 10)
-- L593: ra8_time_init  (rank 35)
-- L596: ra8_board_uart_console_init  (rank 100)
+- L581: ra8_cgc_init  (rank 10)
+- L587: ra8_cgc_get_clock_hz  (rank 10)
+- L590: ra8_time_init  (rank 35)
+- L593: ra8_board_uart_console_init  (rank 100)
 
 ### media_download
 
 Source: ``examples/ek_ra8d2/hw_pending/media_download/main.c``
 
-- L35: ra8_log_init  (rank 100)
+- (no init calls detected)
 
 ### modem_at_demo
 
@@ -509,7 +509,7 @@ Source: ``examples/ek_ra8d2/hw_pending/modem_at_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hw_pending/mpu_boot_map_hal/main.c``
 
-- L377: ra8_log_init  (rank 100)
+- L375: ra8_log_init  (rank 100)
 
 ### ota_ab_orchestration
 
@@ -521,35 +521,35 @@ Source: ``examples/ek_ra8d2/hw_pending/ota_ab_orchestration/main.c``
 
 Source: ``examples/ek_ra8d2/hw_pending/ra8_ftl_demo/main.c``
 
-- L587: ra8_log_init  (rank 100)
-- L589: ra8_io_stream_uart_init  (rank 100)
+- L585: ra8_log_init  (rank 100)
+- L587: ra8_io_stream_uart_init  (rank 100)
 
 ### ra8_io_mram_demo
 
 Source: ``examples/ek_ra8d2/hw_pending/ra8_io_mram_demo/main.c``
 
-- L261: ra8_log_init  (rank 100)
-- L263: ra8_io_stream_uart_init  (rank 100)
+- L259: ra8_log_init  (rank 100)
+- L261: ra8_io_stream_uart_init  (rank 100)
 
 ### ra8_io_sdhi_demo
 
 Source: ``examples/ek_ra8d2/hw_pending/ra8_io_sdhi_demo/main.c``
 
-- L434: ra8_log_init  (rank 100)
+- L431: ra8_log_init  (rank 100)
 
 ### ra8_io_swap_demo
 
 Source: ``examples/ek_ra8d2/hw_pending/ra8_io_swap_demo/main.c``
 
-- L525: ra8_log_init  (rank 100)
-- L527: ra8_io_stream_uart_init  (rank 100)
-- L533: ra8_io_stream_ram_init  (rank 100)
+- L523: ra8_log_init  (rank 100)
+- L525: ra8_io_stream_uart_init  (rank 100)
+- L531: ra8_io_stream_ram_init  (rank 100)
 
 ### ra8_sdhi_card_demo
 
 Source: ``examples/ek_ra8d2/hw_pending/ra8_sdhi_card_demo/main.c``
 
-- L380: ra8_log_init  (rank 100)
+- L377: ra8_log_init  (rank 100)
 
 ### scb_diag_demo
 
@@ -561,14 +561,14 @@ Source: ``examples/ek_ra8d2/hw_pending/scb_diag_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/main.c``
 
-- L339: ra8_psa_crypto_init  (rank 100)
+- L338: ra8_psa_crypto_init  (rank 100)
 
 ### smbus_demo
 
 Source: ``examples/ek_ra8d2/hw_pending/smbus_demo/main.c``
 
-- L211: ra8_i3c_init  (rank 100)
-- L222: ra8_smbus_init  (rank 100)
+- L208: ra8_i3c_init  (rank 100)
+- L219: ra8_smbus_init  (rank 100)
 
 ### tls_client
 
@@ -670,32 +670,32 @@ Source: ``examples/ek_ra8d2/hw_validated/hil/agt_pulse_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/app_launch_demo/main.c``
 
-- L636: ra8_log_init  (rank 100)
+- L633: ra8_log_init  (rank 100)
 
 ### app_shell_demo
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/app_shell_demo/main.c``
 
-- L931: ra8_log_init  (rank 100)
+- L928: ra8_log_init  (rank 100)
 
 ### blink
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/blink/main.c``
 
-- L95: ra8_time_init  (rank 35)
-- L98: ra8_board_led_init  (rank 100)
+- L94: ra8_time_init  (rank 35)
+- L97: ra8_board_led_init  (rank 100)
 
 ### blink_hal
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/blink_hal/main.c``
 
-- L79: ra8_time_init  (rank 35)
+- L78: ra8_time_init  (rank 35)
 
 ### blink_m33
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/blink_m33/main.c``
 
-- L207: ra8_log_init  (rank 100)
+- L205: ra8_log_init  (rank 100)
 
 ### bscan_selftest
 
@@ -713,14 +713,14 @@ Source: ``examples/ek_ra8d2/hw_validated/hil/cac_accuracy_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/cache_coherency_hil/main.c``
 
-- L306: ra8_log_init  (rank 100)
-- L323: ra8_board_led_init  (rank 100)
+- L305: ra8_log_init  (rank 100)
+- L322: ra8_board_led_init  (rank 100)
 
 ### cache_mpu_hil
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/cache_mpu_hil/main.c``
 
-- L479: ra8_log_init  (rank 100)
+- L477: ra8_log_init  (rank 100)
 
 ### camera_capture
 
@@ -750,9 +750,9 @@ Source: ``examples/ek_ra8d2/hw_validated/hil/canfd_loopback/main.c``
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/clock_check/main.c``
 
-- L171: ra8_cgc_init  (rank 10)
-- L176: ra8_cgc_get_clock_hz  (rank 10)
-- L180: ra8_time_init  (rank 35)
+- L168: ra8_cgc_init  (rank 10)
+- L173: ra8_cgc_get_clock_hz  (rank 10)
+- L177: ra8_time_init  (rank 35)
 
 ### cpu1_pingpong
 
@@ -842,7 +842,7 @@ Source: ``examples/ek_ra8d2/hw_validated/hil/doc_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/dotf_selftest_demo/main.c``
 
-- L284: ra8_dotf_init  (rank 100)
+- L283: ra8_dotf_init  (rank 100)
 
 ### drw_blend_demo
 
@@ -866,7 +866,7 @@ Source: ``examples/ek_ra8d2/hw_validated/hil/drw_fill_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/dtc_coherency_hil/main.c``
 
-- L724: ra8_log_init  (rank 100)
+- L720: ra8_log_init  (rank 100)
 
 ### dtc_transfer_demo
 
@@ -878,13 +878,13 @@ Source: ``examples/ek_ra8d2/hw_validated/hil/dtc_transfer_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/main.c``
 
-- L269: ra8_log_init  (rank 100)
+- L267: ra8_log_init  (rank 100)
 
 ### dualcore_mailbox
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/main.c``
 
-- L368: ra8_log_init  (rank 100)
+- L366: ra8_log_init  (rank 100)
 
 ### ecc_monitor_demo
 
@@ -902,25 +902,25 @@ Source: ``examples/ek_ra8d2/hw_validated/hil/elc_event_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/ereader_align/main.c``
 
-- L173: ra8_reflow_init  (rank 100)
+- L170: ra8_reflow_init  (rank 100)
 
 ### ereader_chrome
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/ereader_chrome/main.c``
 
-- L301: ra8_gfx_init  (rank 100)
+- L298: ra8_gfx_init  (rank 100)
 
 ### ereader_image
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/ereader_image/main.c``
 
-- L194: ra8_gfx_init  (rank 100)
+- L191: ra8_gfx_init  (rank 100)
 
 ### ereader_imgfmt
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/ereader_imgfmt/main.c``
 
-- L191: ra8_gfx_init  (rank 100)
+- L188: ra8_gfx_init  (rank 100)
 
 ### ereader_input
 
@@ -932,41 +932,41 @@ Source: ``examples/ek_ra8d2/hw_validated/hil/ereader_input/main.c``
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/ereader_jpeg/main.c``
 
-- L194: ra8_gfx_init  (rank 100)
+- L191: ra8_gfx_init  (rank 100)
 
 ### ereader_link
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/ereader_link/main.c``
 
-- L225: ra8_reflow_init  (rank 100)
+- L222: ra8_reflow_init  (rank 100)
 
 ### ereader_rabook
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/ereader_rabook/main.c``
 
-- L323: ra8_gfx_init  (rank 100)
-- L329: ra8_reflow_init  (rank 100)
+- L320: ra8_gfx_init  (rank 100)
+- L326: ra8_reflow_init  (rank 100)
 
 ### ereader_svg
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/ereader_svg/main.c``
 
-- L200: ra8_gfx_init  (rank 100)
+- L197: ra8_gfx_init  (rank 100)
 
 ### ereader_table
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/ereader_table/main.c``
 
-- L175: ra8_reflow_init  (rank 100)
+- L172: ra8_reflow_init  (rank 100)
 
 ### ereader_ui
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/ereader_ui/main.c``
 
-- L680: ra8_batt_monitor_init  (rank 100)
+- L679: ra8_batt_monitor_init  (rank 100)
+- L682: ra8_board_sw_init  (rank 100)
 - L683: ra8_board_sw_init  (rank 100)
-- L684: ra8_board_sw_init  (rank 100)
-- L689: ra8_ui_nav_init  (rank 100)
+- L688: ra8_ui_nav_init  (rank 100)
 
 ### eth_loopback
 
@@ -1002,7 +1002,7 @@ Source: ``examples/ek_ra8d2/hw_validated/hil/flash_journal/main.c``
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/fs_format_mount/main.c``
 
-- L711: ra8_log_init  (rank 100)
+- L708: ra8_log_init  (rank 100)
 
 ### glcdc_render
 
@@ -1074,20 +1074,20 @@ Source: ``examples/ek_ra8d2/hw_validated/hil/icu_extint_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/iic_b_facade_demo/main.c``
 
-- L464: ra8_i3c_init  (rank 100)
+- L461: ra8_i3c_init  (rank 100)
 
 ### iwdt_demo
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/iwdt_demo/main.c``
 
-- L165: ra8_iwdt_init  (rank 100)
+- L162: ra8_iwdt_init  (rank 100)
 
 ### keyboard
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/keyboard/main.c``
 
-- L191: ra8_kbd_layout_init  (rank 100)
-- L196: ra8_kbd_text_init  (rank 100)
+- L188: ra8_kbd_layout_init  (rank 100)
+- L193: ra8_kbd_text_init  (rank 100)
 
 ### kint_demo
 
@@ -1147,18 +1147,18 @@ Source: ``examples/ek_ra8d2/hw_validated/hil/ssie_audio_loop/main.c``
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/threadx_blink/main.c``
 
-- L314: ra8_cgc_init  (rank 10)
-- L322: ra8_board_led_init  (rank 100)
-- L327: ra8_board_led_init  (rank 100)
+- L311: ra8_cgc_init  (rank 10)
+- L319: ra8_board_led_init  (rank 100)
+- L324: ra8_board_led_init  (rank 100)
 
 ### threadx_canfd_demo
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/threadx_canfd_demo/main.c``
 
-- L299: ra8_cgc_init  (rank 10)
-- L305: ra8_board_led_init  (rank 100)
-- L310: ra8_board_led_init  (rank 100)
-- L316: ra8_canfd_init  (rank 100)
+- L296: ra8_cgc_init  (rank 10)
+- L302: ra8_board_led_init  (rank 100)
+- L307: ra8_board_led_init  (rank 100)
+- L313: ra8_canfd_init  (rank 100)
 
 ### threadx_fs_demo
 
@@ -1188,8 +1188,8 @@ Source: ``examples/ek_ra8d2/hw_validated/hil/threadx_levelx_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/threadx_mpu_partition_demo/main.c``
 
-- L262: ra8_cgc_init  (rank 10)
-- L274: ra8_board_led_init  (rank 100)
+- L259: ra8_cgc_init  (rank 10)
+- L271: ra8_board_led_init  (rank 100)
 
 ### threadx_netx_tcp_echo
 
@@ -1201,8 +1201,8 @@ Source: ``examples/ek_ra8d2/hw_validated/hil/threadx_netx_tcp_echo/main.c``
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/threadx_systick_retune/main.c``
 
-- L290: ra8_cgc_init  (rank 10)
-- L295: ra8_board_led_init  (rank 100)
+- L287: ra8_cgc_init  (rank 10)
+- L292: ra8_board_led_init  (rank 100)
 
 ### timer_capture_demo
 
@@ -1214,7 +1214,7 @@ Source: ``examples/ek_ra8d2/hw_validated/hil/timer_capture_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/tz_secure_only_sd/main.c``
 
-- L442: ra8_log_init  (rank 100)
+- L439: ra8_log_init  (rank 100)
 
 ### uart_hello
 
@@ -1322,20 +1322,20 @@ Source: ``examples/ek_ra8d2/hw_validated/hil/wdt_reset_recovery_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/wdt_supervisor_demo/main.c``
 
-- L301: ra8_cgc_init  (rank 10)
+- L300: ra8_cgc_init  (rank 10)
 
 ### wdt_window_demo
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/wdt_window_demo/main.c``
 
-- L199: ra8_wdt_init  (rank 100)
+- L198: ra8_wdt_init  (rank 100)
 
 ### widget_app
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/widget_app/main.c``
 
-- L293: ra8_gfx_init  (rank 100)
-- L316: ra8_app_registry_init  (rank 100)
+- L290: ra8_gfx_init  (rank 100)
+- L313: ra8_app_registry_init  (rank 100)
 
 ### widget_app_demo
 
@@ -1383,50 +1383,50 @@ Source: ``examples/ek_ra8d2/hw_validated/manual/lcd_draw_x/main.c``
 
 Source: ``examples/ek_ra8d2/hw_validated/manual/threadx_usbx_cdc_demo/main.c``
 
-- L753: ra8_cgc_init  (rank 10)
-- L769: ra8_cgc_get_clock_hz  (rank 10)
-- L772: ra8_time_init  (rank 35)
-- L775: ra8_board_led_init  (rank 100)
-- L781: ra8_log_init  (rank 100)
+- L750: ra8_cgc_init  (rank 10)
+- L766: ra8_cgc_get_clock_hz  (rank 10)
+- L769: ra8_time_init  (rank 35)
+- L772: ra8_board_led_init  (rank 100)
+- L778: ra8_log_init  (rank 100)
 
 ### tz_secure_only_usb_fs
 
 Source: ``examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_fs/main.c``
 
-- L753: ra8_cgc_init  (rank 10)
-- L769: ra8_cgc_get_clock_hz  (rank 10)
-- L772: ra8_time_init  (rank 35)
-- L775: ra8_board_led_init  (rank 100)
-- L781: ra8_log_init  (rank 100)
+- L750: ra8_cgc_init  (rank 10)
+- L766: ra8_cgc_get_clock_hz  (rank 10)
+- L769: ra8_time_init  (rank 35)
+- L772: ra8_board_led_init  (rank 100)
+- L778: ra8_log_init  (rank 100)
 
 ### tz_secure_only_usb_hs
 
 Source: ``examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/main.c``
 
-- L209: ra8_cgc_init  (rank 10)
-- L232: ra8_cgc_get_clock_hz  (rank 10)
-- L235: ra8_time_init  (rank 35)
-- L238: ra8_board_led_init  (rank 100)
-- L244: ra8_log_init  (rank 100)
+- L206: ra8_cgc_init  (rank 10)
+- L229: ra8_cgc_get_clock_hz  (rank 10)
+- L232: ra8_time_init  (rank 35)
+- L235: ra8_board_led_init  (rank 100)
+- L241: ra8_log_init  (rank 100)
 
 ### usb_cdc_echo
 
 Source: ``examples/ek_ra8d2/hw_validated/manual/usb_cdc_echo/main.c``
 
-- L753: ra8_cgc_init  (rank 10)
-- L769: ra8_cgc_get_clock_hz  (rank 10)
-- L772: ra8_time_init  (rank 35)
-- L775: ra8_board_led_init  (rank 100)
-- L781: ra8_log_init  (rank 100)
+- L750: ra8_cgc_init  (rank 10)
+- L766: ra8_cgc_get_clock_hz  (rank 10)
+- L769: ra8_time_init  (rank 35)
+- L772: ra8_board_led_init  (rank 100)
+- L778: ra8_log_init  (rank 100)
 
 ### usb_hid_device
 
 Source: ``examples/ek_ra8d2/hw_validated/manual/usb_hid_device/main.c``
 
-- L792: ra8_cgc_init  (rank 10)
-- L801: ra8_cgc_get_clock_hz  (rank 10)
-- L804: ra8_time_init  (rank 35)
-- L807: ra8_board_led_init  (rank 100)
+- L789: ra8_cgc_init  (rank 10)
+- L798: ra8_cgc_get_clock_hz  (rank 10)
+- L801: ra8_time_init  (rank 35)
+- L804: ra8_board_led_init  (rank 100)
 
 ### usb_host_file_ops
 
@@ -1438,35 +1438,35 @@ Source: ``examples/ek_ra8d2/hw_validated/manual/usb_host_file_ops/main.c``
 
 Source: ``examples/ek_ra8d2/hw_validated/manual/usb_msc_device/main.c``
 
-- L666: ra8_cgc_init  (rank 10)
-- L678: ra8_cgc_get_clock_hz  (rank 10)
-- L681: ra8_time_init  (rank 35)
-- L684: ra8_board_led_init  (rank 100)
+- L663: ra8_cgc_init  (rank 10)
+- L675: ra8_cgc_get_clock_hz  (rank 10)
+- L678: ra8_time_init  (rank 35)
+- L681: ra8_board_led_init  (rank 100)
 
 ### usb_msc_mram
 
 Source: ``examples/ek_ra8d2/hw_validated/manual/usb_msc_mram/main.c``
 
-- L647: ra8_cgc_init  (rank 10)
-- L659: ra8_cgc_get_clock_hz  (rank 10)
-- L662: ra8_time_init  (rank 35)
-- L665: ra8_board_led_init  (rank 100)
+- L644: ra8_cgc_init  (rank 10)
+- L656: ra8_cgc_get_clock_hz  (rank 10)
+- L659: ra8_time_init  (rank 35)
+- L662: ra8_board_led_init  (rank 100)
 
 ### usb_msc_mram_hs
 
 Source: ``examples/ek_ra8d2/hw_validated/manual/usb_msc_mram_hs/main.c``
 
-- L819: ra8_cgc_init  (rank 10)
-- L828: ra8_cgc_get_clock_hz  (rank 10)
-- L831: ra8_time_init  (rank 35)
-- L834: ra8_board_led_init  (rank 100)
+- L816: ra8_cgc_init  (rank 10)
+- L825: ra8_cgc_get_clock_hz  (rank 10)
+- L828: ra8_time_init  (rank 35)
+- L831: ra8_board_led_init  (rank 100)
 
 ### blink_ra8p1
 
 Source: ``examples/ra8p1_foundation/blink_ra8p1/main.c``
 
-- L97: ra8_time_init  (rank 35)
-- L100: ra8_board_led_init  (rank 100)
+- L96: ra8_time_init  (rank 35)
+- L99: ra8_board_led_init  (rank 100)
 
 ### npu_infer
 
@@ -1478,11 +1478,11 @@ Source: ``examples/ra8p1_foundation/npu_infer/main.c``
 
 Source: ``examples/ra8p1_foundation/npu_smoke/main.c``
 
-- L422: ra8_npu_init  (rank 100)
+- L419: ra8_npu_init  (rank 100)
 
 ### npu_vela
 
 Source: ``examples/ra8p1_foundation/npu_vela/main.c``
 
-- L345: ra8_npu_init  (rank 100)
+- L342: ra8_npu_init  (rank 100)
 
