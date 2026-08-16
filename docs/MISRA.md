@@ -67,14 +67,21 @@ project -- see `docs/qualification/MISRA_DEVIATIONS.md` Section
 party who adopts this codebase for a regulated product is responsible
 for procuring their own qualified checker.
 
-A second important limitation: cppcheck 2.20 does not yet support
-`--std=c23`. This codebase uses C23 typed enums (`enum : uint8_t`) and
-`[[nodiscard]]` / `[[maybe_unused]]` attributes. cppcheck raises
-`syntaxError` on the affected declarations and continues parsing the
-rest of the translation unit, so we lose MISRA coverage on the
-declaration line itself but retain coverage on the function bodies.
-This will resolve when cppcheck ships C23 support; until then the
-advisory baseline understates a small number of true violations.
+A second important limitation: the pinned cppcheck (2.13.0, run at
+`--std=c11`) does not parse C23 syntax. This codebase uses C23 typed
+enums (`enum : uint8_t`) and `[[nodiscard]]` / `[[maybe_unused]]`
+attributes. cppcheck raises `syntaxError` on the affected declarations
+and continues parsing the rest of the translation unit, so we lose
+MISRA coverage on the declaration line itself but retain coverage on
+the function bodies, and the baseline understates a small number of
+true violations while over-reporting the tooling-gap rules.
+
+**Measured 2026-08-15: cppcheck 2.21.0 accepts `--std=c23` and parses
+those attributes**, so the early-review trigger on the C23 tooling-gap
+deviations has fired. Adopting it means moving the pin *and* a full
+rebaseline -- finding sets are not comparable across versions or `--std`
+modes -- so the audit deliberately stays on 2.13.0 until that review
+lands. See `docs/qualification/MISRA_DEVIATIONS.md` D-002 and D-005.
 
 A third limitation: cppcheck cannot redistribute the MISRA-C 2012 rule
 texts (copyright MISRA Ltd). The audit therefore prints the rule ID
@@ -163,7 +170,7 @@ machine-checked index.
 * **Rule 9.2 (initializer braces) -- 35 violations.** Required. The
   C23 `= {}` empty-initializer (allowed by CLAUDE.md) is currently
   read as an under-braced aggregate initializer. Likely tooling
-  gap; revisit after cppcheck-C23.
+  gap; revisit if the pin moves to a C23-parsing cppcheck.
 
 ## Gap-closure plan
 
@@ -181,10 +188,10 @@ The triage below tracks that decision per top-violated rule.
 | Rule              | Count (2026-05-02) | Disposition       | Rationale |
 |-------------------|------:|-------------------|-----------|
 | misra-c2012-15.5  | 751 | Project deviation (D-001) | Single-exit conflicts with NASA Power-of-10 Rule 7 (check every return value) and with the project's `RA8_RETURN_ON_ERROR` macro. Mitigation: NASA Rule 5 enforces >= 2 pre/post-condition assertions per function plus 100% MC/DC at Phase 1, which provides equivalent assurance against missed cleanup paths. |
-| misra-c2012-8.4   | 196 | Tooling gap (D-005)        | Caused by cppcheck-2.20 syntaxError on the C23 `[[nodiscard]]` attribute on public-header prototypes (and by intentional exclusion of `libs/third_party/` headers for the `port/` files). Authoritative check is arm-none-eabi-gcc `-Wmissing-prototypes -Werror`. Re-audit after cppcheck adds `--std=c23`. |
-| misra-c2012-17.3  | 170 | Tooling gap (D-002)        | Re-audit after cppcheck adds `--std=c23`. Track residual count and reclassify whatever remains. |
+| misra-c2012-8.4   | 196 | Tooling gap (D-005)        | Caused by cppcheck-2.20 syntaxError on the C23 `[[nodiscard]]` attribute on public-header prototypes (and by intentional exclusion of `libs/third_party/` headers for the `port/` files). Authoritative check is arm-none-eabi-gcc `-Wmissing-prototypes -Werror`. Re-audit if the pin moves to a C23-parsing cppcheck (trigger FIRED 2026-08-15). |
+| misra-c2012-17.3  | 170 | Tooling gap (D-002)        | Re-audit if the pin moves to a C23-parsing cppcheck (2.21.0 ships one; trigger FIRED 2026-08-15). Track residual count and reclassify whatever remains. |
 | misra-c2012-12.1  | 101 | Partial deviation + Code change (D-004) | Accept implicit precedence for `* /` over `+ -`, unary over binary, member-access over any, postfix call over any. Add redundant parentheses everywhere else. clang-format will not re-flatten them. |
-| misra-c2012-9.2   |  35 | Tooling gap (D-003)        | Caused by C23 `= {}` empty-aggregate initializers. Re-audit after cppcheck-C23. |
+| misra-c2012-9.2   |  35 | Tooling gap (D-003)        | Caused by C23 `= {}` empty-aggregate initializers. Re-audit if the pin moves to a C23-parsing cppcheck (trigger FIRED 2026-08-15). |
 | misra-c2012-13.3, 8.9, 18.4, 10.8, 17.8, 17.7, 7.3, 21.x | 90 | Mixed | Per-finding triage in the next audit pass. |
 
 ### Workflow
