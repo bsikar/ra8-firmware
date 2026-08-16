@@ -438,6 +438,34 @@ gate_roadmap_dashboard_freshness() (
   python3 scripts/checks/check_roadmap_dashboard_freshness.py
 )
 
+# --- pinout-freshness -----------------------------------------------------
+# docs/pinouts/ is COMMITTED yet GENERATED: scripts/gen/gen_pinouts.py parses
+# the ball maps for all 64 RA8D2/RA8P1 part numbers straight out of section 1.7
+# "Pin Lists" of the two committed datasheets. The file it replaced was a
+# hand-written quick reference that had drifted into stating a 2 MB SRAM and a
+# guessed port-availability table for a part whose datasheet says otherwise --
+# which is the whole reason the data is now parsed rather than typed. This gate
+# re-parses and byte-compares, so a datasheet revision that moves a ball cannot
+# land without the reference moving with it.
+#
+# The generator's own parse floors do the load-bearing work: it fails unless it
+# recovers exactly 32 part numbers per group, exactly the ball count the package
+# names, exactly the I/O-port count the datasheet's Function Comparison table
+# prints for that variant, and a port set equal to the one drawn by the
+# section 1.6 ball-grid FIGURE for that variant -- an independent rendering of
+# the same fact, so the parse is cross-checked rather than merely
+# self-consistent. A pdftotext or poppler change that mangles the column layout
+# therefore reds the gate instead of silently emitting a thinner table.
+# --selftest FIRST, both directions, so a parser that stopped detecting a
+# ragged table cannot pass as a clean tree.
+gate_pinout_freshness() (
+  set -e
+  require_cmd python3 "the pinout-freshness gate re-parses the RA8 datasheets"
+  require_cmd pdftotext "poppler-utils provides pdftotext; the datasheets are PDFs"
+  python3 scripts/gen/gen_pinouts.py --selftest
+  python3 scripts/gen/gen_pinouts.py --check
+)
+
 # --- bench-lock -----------------------------------------------------------
 # One EK-RA8D2, ~20 concurrent agents, a nightly CI job and two humans. Every
 # script that drives it must take the bench lock first (#497); this proves the

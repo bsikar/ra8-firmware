@@ -118,6 +118,15 @@ Consequently there is no `RA8_HAS_OFS3` flag, no `k_ra8_feat_ofs3`, and no
 enforces that the option-setting family is all-or-nothing per script, so this
 cannot regress a third time.
 
+## Pin compatibility is now established, not asserted
+
+The "same pin-compatible 289-pin BGA" line above was an assertion until
+`scripts/gen/gen_pinouts.py` began parsing section 1.7 "Pin Lists" out of both
+datasheets and diffing them. It is now a measurement: across all three packages
+and both MIPI variants, every ball carries an identical function set on the two
+groups, and the `pinout-freshness` gate re-establishes that on every run. See
+[`docs/pinouts/README.md`](../pinouts/README.md).
+
 Identical on both: TrustZone-M v2 (NS-alias = address bit 28), `R_CPSCU`
 `0x40008000`, `R_PSCU` `0x40204000`, **RSIP-E50D**, DLM 8-state, boot modes
 (single-chip / JTAG / SCI / USB), secure boot (immutable FSBL in OTP), 14 port
@@ -130,9 +139,11 @@ PDM, CAC, DMAC x8, DTC, ELC, IPC dual-core).
 RA8P1 HUM R01UH1064EJ0130 Rev.1.30 and datasheet R01DS0439EJ0130 Rev.1.30 (both
 read directly and full-text searched -- see the two "Correction" sections above).
 
-> **Verify per claim, not per document.** Neither RA8P1 PDF is committed to this
-> repo (the HUM is ~49 MB), so "the manual was searched" is not something a
-> reader can re-check from the tree. Both corrections above are cases where a
+> **Verify per claim, not per document.** The RA8P1 **datasheet** is now
+> committed as `docs/reference/ra8p1-datasheet.pdf`, so any claim sourced from
+> it is re-checkable from the tree. The RA8P1 **HUM** is not (it is ~49 MB), so
+> "the manual was searched" is still not something a reader can re-check for
+> HUM-sourced claims. Both corrections above are cases where a
 > line in this file cited the RA8P1 HUM for something the RA8P1 HUM does not say
 > -- the OFS3 claim came from an FSP feature flag alone. When a claim here drives
 > a code change, re-derive it from the manual and record the section AND printed
