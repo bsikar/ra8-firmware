@@ -206,9 +206,9 @@ RA8_INTERNAL static uint32_t internal_dispatch_start(void)
                                           &response_len));
   Ra8__Mdl__Accepted* accepted = ra8__mdl__accepted__unpack(nullptr, response_len, s_response);
   TEST_ASSERT(accepted != nullptr);
-  TEST_ASSERT_EQ((int64_t)k_ra8_mdl_protocol_version, (int64_t)accepted->protocol_version);
+  TEST_ASSERT_EQ(k_ra8_mdl_protocol_version, accepted->protocol_version);
   TEST_ASSERT(accepted->job_id != 0U);
-  TEST_ASSERT_EQ((int64_t)k_ra8_mdl_chunk_data_max, (int64_t)accepted->max_chunk_bytes);
+  TEST_ASSERT_EQ(k_ra8_mdl_chunk_data_max, accepted->max_chunk_bytes);
   const uint32_t job = accepted->job_id;
   ra8__mdl__accepted__free_unpacked(accepted, nullptr);
   return job;
@@ -262,37 +262,37 @@ RA8_INTERNAL static void internal_test_service_multichunk_and_digest(void)
   TEST_BEGIN("mdl protobuf service multi-chunk");
   internal_reset_service();
   const uint32_t job = internal_dispatch_start();
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_backend.begins);
+  TEST_ASSERT_EQ(1, s_backend.begins);
 
   Ra8__Mdl__Chunk* first = internal_dispatch_next(job, 0U, 4U);
   TEST_ASSERT(first != nullptr);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)first->sequence);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)first->offset);
-  TEST_ASSERT_EQ((int64_t)4, (int64_t)first->data.len);
+  TEST_ASSERT_EQ(0, first->sequence);
+  TEST_ASSERT_EQ(0, first->offset);
+  TEST_ASSERT_EQ(4, first->data.len);
   TEST_ASSERT(memcmp(first->data.data, "abcd", 4U) == 0);
-  TEST_ASSERT_EQ((int64_t)RA8__MDL__STATE__STATE_DOWNLOADING, (int64_t)first->state);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)first->sha256.len);
+  TEST_ASSERT_EQ(RA8__MDL__STATE__STATE_DOWNLOADING, first->state);
+  TEST_ASSERT_EQ(0, first->sha256.len);
   ra8__mdl__chunk__free_unpacked(first, nullptr);
 
   Ra8__Mdl__Chunk* second = internal_dispatch_next(job, 4U, 4U);
   TEST_ASSERT(second != nullptr);
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)second->sequence);
-  TEST_ASSERT_EQ((int64_t)4, (int64_t)second->offset);
-  TEST_ASSERT_EQ((int64_t)2, (int64_t)second->data.len);
+  TEST_ASSERT_EQ(1, second->sequence);
+  TEST_ASSERT_EQ(4, second->offset);
+  TEST_ASSERT_EQ(2, second->data.len);
   TEST_ASSERT(memcmp(second->data.data, "ef", 2U) == 0);
-  TEST_ASSERT_EQ((int64_t)RA8__MDL__STATE__STATE_DOWNLOADING, (int64_t)second->state);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)second->sha256.len);
+  TEST_ASSERT_EQ(RA8__MDL__STATE__STATE_DOWNLOADING, second->state);
+  TEST_ASSERT_EQ(0, second->sha256.len);
   ra8__mdl__chunk__free_unpacked(second, nullptr);
 
   Ra8__Mdl__Chunk* terminal = internal_dispatch_next(job, 6U, 4U);
   TEST_ASSERT(terminal != nullptr);
-  TEST_ASSERT_EQ((int64_t)2, (int64_t)terminal->sequence);
-  TEST_ASSERT_EQ((int64_t)6, (int64_t)terminal->offset);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)terminal->data.len);
-  TEST_ASSERT_EQ((int64_t)RA8__MDL__STATE__STATE_COMPLETE, (int64_t)terminal->state);
-  TEST_ASSERT_EQ((int64_t)k_ra8_mdl_sha256_bytes, (int64_t)terminal->sha256.len);
+  TEST_ASSERT_EQ(2, terminal->sequence);
+  TEST_ASSERT_EQ(6, terminal->offset);
+  TEST_ASSERT_EQ(0, terminal->data.len);
+  TEST_ASSERT_EQ(RA8__MDL__STATE__STATE_COMPLETE, terminal->state);
+  TEST_ASSERT_EQ(k_ra8_mdl_sha256_bytes, terminal->sha256.len);
   for (size_t i = 0U; i < terminal->sha256.len; ++i) {
-    TEST_ASSERT_EQ((int64_t)0xA5, (int64_t)terminal->sha256.data[i]);
+    TEST_ASSERT_EQ(0xA5, terminal->sha256.data[i]);
   }
   ra8__mdl__chunk__free_unpacked(terminal, nullptr);
   TEST_ASSERT(!s_service.active);
@@ -369,9 +369,9 @@ RA8_INTERNAL static void internal_test_service_busy_stale_and_cancel(void)
                                           &response_len));
   Ra8__Mdl__Cancelled* ack = ra8__mdl__cancelled__unpack(nullptr, response_len, s_response);
   TEST_ASSERT(ack != nullptr);
-  TEST_ASSERT_EQ((int64_t)job, (int64_t)ack->job_id);
+  TEST_ASSERT_EQ(job, ack->job_id);
   ra8__mdl__cancelled__free_unpacked(ack, nullptr);
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_backend.cancels);
+  TEST_ASSERT_EQ(1, s_backend.cancels);
   TEST_ASSERT(!s_service.active);
   TEST_END("mdl service busy stale cancel");
 }
@@ -401,8 +401,8 @@ static void internal_expect_start_capacity_rejection(void)
                                           s_response,
                                           1U,
                                           &response_len));
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)response_len);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_backend.begins);
+  TEST_ASSERT_EQ(0, response_len);
+  TEST_ASSERT_EQ(0, s_backend.begins);
   TEST_ASSERT(!s_service.active);
 }
 
@@ -434,10 +434,10 @@ static void internal_expect_next_capacity_rejection(uint32_t job)
                                           s_response,
                                           1U,
                                           &response_len));
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)response_len);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_backend.at);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_service.next_offset);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_service.next_sequence);
+  TEST_ASSERT_EQ(0, response_len);
+  TEST_ASSERT_EQ(0, s_backend.at);
+  TEST_ASSERT_EQ(0, s_service.next_offset);
+  TEST_ASSERT_EQ(0, s_service.next_sequence);
 }
 
 /** @brief Reject then accept Cancel without premature backend cancellation.
@@ -466,8 +466,8 @@ static void internal_expect_cancel_capacity_transaction(uint32_t job)
                                           s_response,
                                           1U,
                                           &response_len));
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)response_len);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_backend.cancels);
+  TEST_ASSERT_EQ(0, response_len);
+  TEST_ASSERT_EQ(0, s_backend.cancels);
   TEST_ASSERT(s_service.active);
 
   response_len = 0U;
@@ -479,7 +479,7 @@ static void internal_expect_cancel_capacity_transaction(uint32_t job)
                                           s_response,
                                           sizeof(s_response),
                                           &response_len));
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_backend.cancels);
+  TEST_ASSERT_EQ(1, s_backend.cancels);
   TEST_ASSERT(!s_service.active);
 }
 
@@ -511,12 +511,12 @@ RA8_INTERNAL static void internal_test_response_capacity_is_transactional(void)
   internal_expect_start_capacity_rejection();
 
   const uint32_t job = internal_dispatch_start();
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_backend.begins);
+  TEST_ASSERT_EQ(1, s_backend.begins);
   internal_expect_next_capacity_rejection(job);
 
   Ra8__Mdl__Chunk* first = internal_dispatch_next(job, 0U, 4U);
   TEST_ASSERT(first != nullptr);
-  TEST_ASSERT_EQ((int64_t)4, (int64_t)first->data.len);
+  TEST_ASSERT_EQ(4, first->data.len);
   TEST_ASSERT(memcmp(first->data.data, "abcd", 4U) == 0);
   ra8__mdl__chunk__free_unpacked(first, nullptr);
   internal_expect_cancel_capacity_transaction(job);
@@ -558,7 +558,7 @@ RA8_INTERNAL static void internal_test_rejects_malformed(void)
                                           s_response,
                                           sizeof(s_response),
                                           &response_len));
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)response_len);
+  TEST_ASSERT_EQ(0, response_len);
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
                  ra8_mdl_service_dispatch(&s_service,
                                           k_ra8_mdl_rpc_start,
@@ -580,8 +580,8 @@ RA8_INTERNAL static void internal_test_rejects_malformed(void)
                                           s_response,
                                           sizeof(s_response),
                                           &response_len));
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)response_len);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_backend.begins);
+  TEST_ASSERT_EQ(0, response_len);
+  TEST_ASSERT_EQ(0, s_backend.begins);
   TEST_ASSERT(!s_service.active);
   TEST_END("mdl rejects malformed");
 }
@@ -614,8 +614,8 @@ RA8_INTERNAL static void internal_expect_legacy_format_rejection(void)
                                           s_response,
                                           sizeof(s_response),
                                           &response_len));
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)response_len);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_backend.begins);
+  TEST_ASSERT_EQ(0, response_len);
+  TEST_ASSERT_EQ(0, s_backend.begins);
   TEST_ASSERT(!s_service.active);
 }
 
@@ -656,10 +656,10 @@ RA8_INTERNAL static void internal_test_rejects_unknown_request_fields(void)
                                           s_response,
                                           sizeof(s_response),
                                           &response_len));
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)response_len);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_backend.at);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_service.next_offset);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_service.next_sequence);
+  TEST_ASSERT_EQ(0, response_len);
+  TEST_ASSERT_EQ(0, s_backend.at);
+  TEST_ASSERT_EQ(0, s_service.next_offset);
+  TEST_ASSERT_EQ(0, s_service.next_sequence);
 
   Ra8__Mdl__CancelRequest cancel = RA8__MDL__CANCEL_REQUEST__INIT;
   cancel.protocol_version        = k_ra8_mdl_protocol_version;
@@ -676,8 +676,8 @@ RA8_INTERNAL static void internal_test_rejects_unknown_request_fields(void)
                                           s_response,
                                           sizeof(s_response),
                                           &response_len));
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)response_len);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_backend.cancels);
+  TEST_ASSERT_EQ(0, response_len);
+  TEST_ASSERT_EQ(0, s_backend.cancels);
   TEST_ASSERT(s_service.active);
   request_len = ra8__mdl__cancel_request__pack(&cancel, s_request);
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -688,7 +688,7 @@ RA8_INTERNAL static void internal_test_rejects_unknown_request_fields(void)
                                           s_response,
                                           sizeof(s_response),
                                           &response_len));
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_backend.cancels);
+  TEST_ASSERT_EQ(1, s_backend.cancels);
   TEST_ASSERT(!s_service.active);
   TEST_END("mdl rejects unknown request fields");
 }
@@ -723,8 +723,8 @@ RA8_INTERNAL static void internal_expect_next_protocol_error(uint32_t job, uint6
                                           s_response,
                                           sizeof(s_response),
                                           &response_len));
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)response_len);
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_backend.cancels);
+  TEST_ASSERT_EQ(0, response_len);
+  TEST_ASSERT_EQ(1, s_backend.cancels);
   TEST_ASSERT(!s_service.active);
 }
 
@@ -899,8 +899,8 @@ RA8_INTERNAL static void internal_test_rejects_incoherent_terminal_total(void)
                                           s_response,
                                           sizeof(s_response),
                                           &response_len));
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)response_len);
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_backend.cancels);
+  TEST_ASSERT_EQ(0, response_len);
+  TEST_ASSERT_EQ(1, s_backend.cancels);
   TEST_ASSERT(!s_service.active);
   TEST_END("mdl rejects incoherent terminal total");
 }

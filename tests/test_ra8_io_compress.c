@@ -132,13 +132,13 @@ RA8_INTERNAL static void internal_test_zlib_round_trip(void)
                                       k_ra8_io_compress_scratch_bytes,
                                       &packed_len));
   TEST_ASSERT(packed_len > 0U);
-  TEST_ASSERT_EQ((int64_t)k_t_zlib_cmf, (int64_t)s_packed[0]);
+  TEST_ASSERT_EQ(k_t_zlib_cmf, s_packed[0]);
   const size_t restored = tinfl_decompress_mem_to_mem(s_restored,
                                                       (size_t)k_t_payload_bytes,
                                                       s_packed,
                                                       (size_t)packed_len,
                                                       TINFL_FLAG_PARSE_ZLIB_HEADER);
-  TEST_ASSERT_EQ((int64_t)k_t_payload_bytes, (int64_t)restored);
+  TEST_ASSERT_EQ(k_t_payload_bytes, restored);
   TEST_ASSERT_EQ(0, memcmp(s_payload, s_restored, (size_t)k_t_payload_bytes));
   TEST_END("zlib compress round-trip");
 }

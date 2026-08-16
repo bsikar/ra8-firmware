@@ -60,7 +60,7 @@ RA8_INTERNAL static void internal_test_required_values(ra8_c6link_t*            
   TEST_ASSERT_EQ(
     k_ra8_err_busy,
     ra8_c6link_mdl_transfer(link, "https://example.test/book", "/book", base, &result));
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_validation_begins);
+  TEST_ASSERT_EQ(1, s_validation_begins);
 
   s_validation_begins = 0U;
   TEST_ASSERT_EQ(
@@ -77,7 +77,7 @@ RA8_INTERNAL static void internal_test_required_values(ra8_c6link_t*            
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
     ra8_c6link_mdl_transfer(link, "https://example.test/book", "/book", base, nullptr));
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_validation_begins);
+  TEST_ASSERT_EQ(0, s_validation_begins);
 }
 
 /**
@@ -118,7 +118,7 @@ RA8_INTERNAL static void internal_test_required_callbacks(ra8_c6link_t*         
   EXPECT_NULL(sha256.final);
   EXPECT_NULL(sha256.ctx);
 #undef EXPECT_NULL
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_validation_begins);
+  TEST_ASSERT_EQ(0, s_validation_begins);
 }
 
 /**
@@ -160,7 +160,7 @@ RA8_INTERNAL static void internal_test_transfer_bounds(ra8_c6link_t*            
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_size,
     ra8_c6link_mdl_transfer(link, "https://example.test/book", "/book", &config, &result));
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_validation_begins);
+  TEST_ASSERT_EQ(0, s_validation_begins);
 }
 
 RA8_PRIV void priv_test_c6link_transfer_validation_run(ra8_c6link_t*                    link,

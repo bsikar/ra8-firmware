@@ -161,7 +161,7 @@ static void internal_create_file(int root_fd, const char* name)
   const int fd =
     openat(root_fd, name, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, (mode_t)k_test_file_mode);
   TEST_ASSERT(fd >= 0);
-  TEST_ASSERT_EQ((int64_t)sizeof(s_file_bytes), write(fd, s_file_bytes, sizeof(s_file_bytes)));
+  TEST_ASSERT_EQ(sizeof(s_file_bytes), write(fd, s_file_bytes, sizeof(s_file_bytes)));
   TEST_ASSERT_EQ(0, close(fd));
 }
 

@@ -127,8 +127,7 @@ RA8_INTERNAL static void internal_test_native_pipe(void)
   TEST_ASSERT_EQ(sizeof(payload), written);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_flush(&stream));
   uint8_t captured[(size_t)k_test_byte_count] = {};
-  TEST_ASSERT_EQ((int64_t)sizeof(captured),
-                 (int64_t)read(descriptors[0], captured, sizeof(captured)));
+  TEST_ASSERT_EQ(sizeof(captured), read(descriptors[0], captured, sizeof(captured)));
   TEST_ASSERT(memcmp(payload, captured, sizeof(payload)) == 0);
   TEST_ASSERT_EQ(0, close(descriptors[0]));
   TEST_ASSERT_EQ(0, close(descriptors[1]));
@@ -212,7 +211,7 @@ RA8_INTERNAL static void internal_test_write_progress(void)
                                                      &model));
   TEST_ASSERT_EQ(sizeof(bytes), written);
   TEST_ASSERT_EQ(3U, model.cursor);
-  TEST_ASSERT_EQ((int)k_test_fake_fd, model.last_fd);
+  TEST_ASSERT_EQ(k_test_fake_fd, model.last_fd);
   TEST_ASSERT_EQ(2U, model.last_length);
 
   model = (write_model_t){
@@ -328,7 +327,7 @@ RA8_INTERNAL static void internal_test_write_retry_limit(const uint8_t* bytes, u
     k_ra8_err_retry_limit,
     priv_ra8_io_stream_posix_write_loop(1, bytes, length, &written, internal_model_write, &model));
   TEST_ASSERT_EQ(0U, written);
-  TEST_ASSERT_EQ((uint32_t)k_test_eintr_count, model.cursor);
+  TEST_ASSERT_EQ(k_test_eintr_count, model.cursor);
 }
 
 /**

@@ -242,7 +242,7 @@ RA8_INTERNAL static void internal_reader_config_vectors(mdl_storage_t*        st
   TEST_ASSERT_EQ(k_ra8_ok, mdl_config_load(storage, "/site.conf", &site));
   TEST_ASSERT(strcmp(site.host, "test.example") == 0);
   TEST_ASSERT(strcmp(site.name, "Portable") == 0);
-  TEST_ASSERT_EQ((uint32_t)2U, site.burst);
+  TEST_ASSERT_EQ(2U, site.burst);
 
   fault->flags = (uint32_t)k_mdl_state_fault_read;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, mdl_config_load(storage, "/site.conf", &site));
@@ -583,8 +583,8 @@ RA8_INTERNAL static void internal_reader_expect_error(mdl_storage_t*   storage,
     expected,
     internal_reader_verify(storage, format, path, sizeof(s_verify_work.bytes), &report, nullptr));
   TEST_ASSERT_EQ(k_ra8_mdl_format_cbr, report.format);
-  TEST_ASSERT_EQ((size_t)17U, report.page_count);
-  TEST_ASSERT_EQ((size_t)19U, report.member_count);
+  TEST_ASSERT_EQ(17U, report.page_count);
+  TEST_ASSERT_EQ(19U, report.member_count);
   TEST_ASSERT(report.metadata_present);
 }
 /**
@@ -664,7 +664,7 @@ RA8_INTERNAL static void internal_reader_verify_valid(mdl_storage_t*        stor
                                           &report,
                                           nullptr));
     TEST_ASSERT_EQ(s_verify_cases[index].format, report.format);
-    TEST_ASSERT_EQ((size_t)1U, report.page_count);
+    TEST_ASSERT_EQ(1U, report.page_count);
     TEST_ASSERT_EQ(s_verify_cases[index].members, report.member_count);
     report = (mdl_verify_report_t){};
     TEST_ASSERT_EQ(k_ra8_ok,
@@ -725,8 +725,7 @@ RA8_INTERNAL static void internal_reader_verify_archive_corrupt(mdl_storage_t* s
                                "/book.cbz",
                                k_ra8_err_validation_failed);
   memcpy(s_archive, s_cbz, sizeof(s_cbz));
-  TEST_ASSERT_EQ((uint32_t)2U,
-                 internal_reader_replace(s_archive, sizeof(s_cbz), "page.jpg", "../x.jpg"));
+  TEST_ASSERT_EQ(2U, internal_reader_replace(s_archive, sizeof(s_cbz), "page.jpg", "../x.jpg"));
   internal_reader_write(storage, "/book.cbz", s_archive, sizeof(s_cbz));
   internal_reader_expect_error(storage,
                                k_ra8_mdl_format_cbz,
@@ -738,8 +737,7 @@ RA8_INTERNAL static void internal_reader_verify_archive_corrupt(mdl_storage_t* s
                                "/book.cbz",
                                k_ra8_err_validation_failed);
   memcpy(s_archive, s_epub, sizeof(s_epub));
-  TEST_ASSERT_EQ((uint32_t)2U,
-                 internal_reader_replace(s_archive, sizeof(s_epub), "mimetype", "mimeXype"));
+  TEST_ASSERT_EQ(2U, internal_reader_replace(s_archive, sizeof(s_epub), "mimetype", "mimeXype"));
   internal_reader_write(storage, "/book.epub", s_archive, sizeof(s_epub));
   internal_reader_expect_error(storage,
                                k_ra8_mdl_format_epub,
@@ -849,7 +847,7 @@ RA8_INTERNAL static void internal_reader_verify_borrowed_fault(mdl_storage_t*   
     k_ra8_err_hw_error,
     mdl_verify_open_file(storage, k_ra8_mdl_format_cbz, &borrowed, borrowed_size, &work, &report));
   TEST_ASSERT_EQ(k_ra8_mdl_format_cbr, report.format);
-  TEST_ASSERT_EQ((size_t)17U, report.page_count);
+  TEST_ASSERT_EQ(17U, report.page_count);
   fault->flags = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_file_size(&borrowed, &borrowed_size));
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_close(&borrowed));

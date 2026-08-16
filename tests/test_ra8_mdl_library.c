@@ -276,7 +276,7 @@ RA8_INTERNAL static void internal_library_enumeration_vectors(mdl_storage_t* sto
   policy.max_entries          = (uint32_t)k_library_entry_capacity;
   mdl_library_visit_t visit   = {};
   TEST_ASSERT_EQ(k_ra8_ok, internal_library_enumerate(storage, "/absent", &policy, &visit));
-  TEST_ASSERT_EQ((uint32_t)0U, visit.calls);
+  TEST_ASSERT_EQ(0U, visit.calls);
 
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_mkdir(&storage->fs->names, "/empty"));
   TEST_ASSERT_EQ(k_ra8_ok, internal_library_enumerate(storage, "/empty", &policy, &visit));
@@ -295,12 +295,12 @@ RA8_INTERNAL static void internal_library_enumeration_vectors(mdl_storage_t* sto
 
   visit = (mdl_library_visit_t){};
   TEST_ASSERT_EQ(k_ra8_ok, internal_library_enumerate(storage, "/mixed", &policy, &visit));
-  TEST_ASSERT_EQ((uint32_t)2U, visit.calls);
+  TEST_ASSERT_EQ(2U, visit.calls);
   TEST_ASSERT(visit.saw_alpha);
   TEST_ASSERT(visit.saw_beta);
   visit = (mdl_library_visit_t){.stop_first = true};
   TEST_ASSERT_EQ(k_ra8_ok, internal_library_enumerate(storage, "/mixed", &policy, &visit));
-  TEST_ASSERT_EQ((uint32_t)1U, visit.calls);
+  TEST_ASSERT_EQ(1U, visit.calls);
   visit = (mdl_library_visit_t){.error = k_ra8_err_cancelled};
   TEST_ASSERT_EQ(k_ra8_err_cancelled,
                  internal_library_enumerate(storage, "/mixed", &policy, &visit));
@@ -356,7 +356,7 @@ RA8_INTERNAL static void internal_library_enumeration_faults(mdl_storage_t*     
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_mkdir(&storage->fs->names, "/cap/c"));
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  internal_library_enumerate(storage, "/cap", &policy, &visit));
-  TEST_ASSERT_EQ((uint32_t)3U, s_library_workspace.required_entries);
+  TEST_ASSERT_EQ(3U, s_library_workspace.required_entries);
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_mkdir(&storage->fs->names, "/fault-enum"));
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_mkdir(&storage->fs->names, "/fault-enum/item"));
   internal_library_save(storage, "/fault-enum/item/.mdl_state", "fault");
@@ -520,8 +520,8 @@ RA8_INTERNAL static void internal_library_removal_vectors(mdl_storage_t*        
   policy.max_entries = 1U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  mdl_library_remove_tree(storage, "/entry-over", &policy, &s_library_workspace));
-  TEST_ASSERT_EQ((uint32_t)1U, s_library_workspace.entries);
-  TEST_ASSERT_EQ((uint32_t)2U, s_library_workspace.required_entries);
+  TEST_ASSERT_EQ(1U, s_library_workspace.entries);
+  TEST_ASSERT_EQ(2U, s_library_workspace.required_entries);
   internal_library_expect_exists(storage, "/entry-over", true);
   policy = mdl_library_policy_default();
   TEST_ASSERT_EQ(k_ra8_ok,

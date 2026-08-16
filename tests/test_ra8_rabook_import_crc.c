@@ -74,7 +74,7 @@ static void internal_test_exact_success(void)
                                                    2U,
                                                    &size,
                                                    &crc));
-  TEST_ASSERT_EQ((uint32_t)sizeof(data), size);
+  TEST_ASSERT_EQ(sizeof(data), size);
   TEST_ASSERT_EQ(0xED82CD11U, crc);
   TEST_ASSERT_EQ(3U, rd.calls);
   crc_reader_t empty = {};
