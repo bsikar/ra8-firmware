@@ -97,7 +97,7 @@ internal_c6_output_write(void* ctx, const uint8_t* data, uint16_t len, uint16_t*
     if ((output->length >= output->cap) || ((size_t)len > (output->cap - output->length - 1U))) {
       return k_ra8_err_no_mem;
     }
-    memcpy(&output->buffer[output->length], data, len);
+    (void)memcpy(&output->buffer[output->length], data, len);
   } else {
     uint32_t        accepted    = 0U;
     const ra8_err_t sink_result = output->sink->write(output->sink->ctx, data, len, &accepted);
@@ -220,10 +220,12 @@ RA8_INTERNAL static ra8_err_t internal_c6_get(mdl_net_c6link_t*    backend,
     }
     if (resp != nullptr) {
       resp->status = transfer.response.status;
-      memcpy(resp->retry_after, transfer.response.retry_after, sizeof(resp->retry_after));
-      memcpy(resp->etag, transfer.response.etag, sizeof(resp->etag));
-      memcpy(resp->last_modified, transfer.response.last_modified, sizeof(resp->last_modified));
-      memcpy(resp->content_type, transfer.response.content_type, sizeof(resp->content_type));
+      (void)memcpy(resp->retry_after, transfer.response.retry_after, sizeof(resp->retry_after));
+      (void)memcpy(resp->etag, transfer.response.etag, sizeof(resp->etag));
+      (void)memcpy(resp->last_modified,
+                   transfer.response.last_modified,
+                   sizeof(resp->last_modified));
+      (void)memcpy(resp->content_type, transfer.response.content_type, sizeof(resp->content_type));
     }
     const ra8_err_t classified = priv_mdl_net_classify_http(transfer.response.status);
     if (classified != k_ra8_ok) {
@@ -275,13 +277,6 @@ RA8_INTERNAL static void internal_c6_destroy(void* ctx)
   (void)ctx;
 }
 
-/** @brief Immutable method table for caller-owned C6 backend state. */
-static const mdl_net_vtable_t s_c6_vtable = {
-  .get_buf  = internal_c6_get_buf,
-  .get_body = internal_c6_get_body,
-  .destroy  = internal_c6_destroy,
-};
-
 ra8_err_t mdl_net_c6link_init(mdl_net_iface_t*              net,
                               mdl_net_c6link_t*             backend,
                               ra8_c6link_t*                 link,
@@ -307,6 +302,12 @@ ra8_err_t mdl_net_c6link_init(mdl_net_iface_t*              net,
     .chunk_bytes = chunk_bytes,
     .max_chunks  = max_chunks,
   };
-  *net = (mdl_net_iface_t){.vtable = &s_c6_vtable, .ctx = backend};
+  /** @brief Immutable method table for caller-owned C6 backend state. */
+  static const mdl_net_vtable_t k_c6_vtable = {
+    .get_buf  = internal_c6_get_buf,
+    .get_body = internal_c6_get_body,
+    .destroy  = internal_c6_destroy,
+  };
+  *net = (mdl_net_iface_t){.vtable = &k_c6_vtable, .ctx = backend};
   return k_ra8_ok;
 }
