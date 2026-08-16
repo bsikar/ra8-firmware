@@ -141,7 +141,7 @@ static void test_sha256_nist_million_a(void)
   TEST_END("PSA SHA-256 KAT: 1,000,000 x 'a' NIST long-message vector");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_sha256_nist_short_vectors();
   test_sha256_nist_million_a();

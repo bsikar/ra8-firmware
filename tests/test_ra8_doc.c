@@ -153,7 +153,7 @@ static void test_sub16_null_out(void)
   TEST_END("doc sub16 null out");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_clears_regs();
   test_add16_programs_trace();

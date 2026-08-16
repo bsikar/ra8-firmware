@@ -114,7 +114,7 @@ static void test_ra8_fpu_dp_madd_wide_magnitude(void)
   TEST_END("ra8_fpu_dp_madd preserves binary64 magnitude");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_ra8_fpu_dp_madd_values();
   test_ra8_fpu_dp_madd_wide_magnitude();

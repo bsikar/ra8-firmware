@@ -142,7 +142,7 @@ static void test_systick_handler_increments_counter(void)
   TEST_END("SysTick_Handler increments tick counter");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_rejects_zero_hz();
   test_init_accepts_reasonable_hz();

@@ -770,7 +770,7 @@ RA8_INTERNAL static void internal_test_mutex_lock_unlock_and_unbalanced_release(
  * ---------------------------------------------------------------------------
  */
 
-int32_t main(void)
+int main(void)
 {
   internal_test_aligned_alloc_returns_aligned_and_frees();
   internal_test_realloc_preserves_contents_growing_and_shrinking();

@@ -653,7 +653,7 @@ RA8_INTERNAL static void internal_test_stream_volume_full(void)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_stream_fragmentation_forces_chain();
   internal_test_stream_chained_file_reads_and_frees();

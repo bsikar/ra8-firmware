@@ -470,7 +470,7 @@ static void test_rsa_decrypt_reaches_opcode(void)
  * @return 0 on success (failures call exit(1) inside the asserts).
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   test_eddsa_sign_selects_eddsa_opcode();
   test_eddsa_verify_selects_eddsa_opcode();

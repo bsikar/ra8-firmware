@@ -189,7 +189,7 @@ static void test_fsp_class_to_bit_mapping(void)
   TEST_END("PRCR class-to-bit mapping cross-verified against FSP");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_unlock_value_constant();
   test_protected_write_unlocks_then_relocks();

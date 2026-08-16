@@ -430,7 +430,7 @@ static void test_link_10half(void)
   TEST_END("link_status resolves LPA 10Base-T half-duplex");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_reset_write_fail();
   test_reset_read_fail();

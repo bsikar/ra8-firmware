@@ -314,7 +314,7 @@ static void test_cov_dispatch_fanout_all_and_none(void)
   TEST_END("mipi_dsi cov dispatch fan-out all + none");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_cov_video_start_hbp_hfp_no_lp();
   test_cov_clear_status_all_classes();

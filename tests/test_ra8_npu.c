@@ -633,7 +633,7 @@ static void test_exec_rejects_non_fake_stream(void)
   TEST_END("npu exec rejects non-fake stream");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_uninitialized_rejects();
   test_init_ungates_and_reads_id();

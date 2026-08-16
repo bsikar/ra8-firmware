@@ -72,7 +72,7 @@ RA8_INTERNAL static void internal_test_mcdc_reflow_parse_xhtml_null_guard(void)
   TEST_END("ra8_reflow_parse_xhtml MC/DC: engine NULL || xhtml_buf NULL");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mcdc_reflow_parse_xhtml_null_guard();
   return 0;

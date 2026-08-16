@@ -536,7 +536,7 @@ RA8_INTERNAL static void internal_test_mcdc_bps_valid(void)
 }
 
 /** @brief Implementation of `main()` -- the 4Kn campaign, in order. */
-int32_t main(void)
+int main(void)
 {
   internal_test_4kn_fat16_roundtrip();
   internal_test_4kn_fat32_roundtrip();

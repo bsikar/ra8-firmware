@@ -170,7 +170,7 @@ static void test_app_boot_map_insufficient_regions(void)
   TEST_END("mpu_boot_map_hal: apply fails + MPU stays off on too few regions");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_app_boot_map_installs_and_enables();
   test_app_verdict_fails_without_apply();

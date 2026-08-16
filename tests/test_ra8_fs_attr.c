@@ -490,7 +490,7 @@ RA8_INTERNAL static void internal_test_attr_errors(void)
   TEST_END("ra8_fs set_attr MC/DC: mask validation + null/root/missing/state");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_attr_honor_fat();
   internal_test_attr_honor_exfat();

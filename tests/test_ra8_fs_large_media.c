@@ -231,7 +231,7 @@ RA8_INTERNAL static void internal_test_large_media_file_io(void)
 }
 
 /** @brief Implementation of `main()` -- the beyond-2-TiB campaign, in order. */
-int32_t main(void)
+int main(void)
 {
   internal_test_large_media_plant_and_mount();
   internal_test_large_media_file_io();

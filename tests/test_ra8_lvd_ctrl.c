@@ -677,7 +677,7 @@ RA8_INTERNAL static void internal_test_mcdc_lvd_internal_set_ri_bit(void)
   TEST_END("lvd MC/DC: set_ri_bit OR");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_set_filter_full_range();
   internal_test_set_hysteresis_lvd_then_hvd();

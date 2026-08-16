@@ -199,7 +199,7 @@ static void test_mcdc_read_inner_loop_bound(void)
   TEST_END("secure_trng MC/DC: inner-loop b<8 && written<len (secure_trng.c:89)");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_reset_is_idempotent();
   test_read_happy_path();

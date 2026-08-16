@@ -932,7 +932,7 @@ RA8_INTERNAL static void internal_test_real_posix_collision_and_parent(void)
 }
 
 /** @brief Run the bounded fixture helper proof suite. */
-int32_t main(void)
+int main(void)
 {
   internal_test_read_success_and_bindings();
   internal_test_read_failures_preserve_destination();

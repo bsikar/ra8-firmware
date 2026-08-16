@@ -382,7 +382,7 @@ static void test_cgc_usbhs_pll_enable_timeout(void)
   TEST_END("cgc usbhs_pll_enable times out when MOSCSF never sets");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_cgc_get_clock_hz_before_init();
   test_cgc_switch_pll1_zero_hz();

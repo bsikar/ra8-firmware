@@ -247,7 +247,7 @@ static void test_manga_stream_split_tuning(void)
  * @note Not thread-safe. No SIGALRM / timers used.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   test_manga_stream_metadata_scan_resistance();
   test_manga_stream_split_tuning();

@@ -813,7 +813,7 @@ static void test_cov_csd_unknown_structure(void)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   test_cov_cmd8_echo_mismatch();
   test_cov_acmd41_cmd55_fails();

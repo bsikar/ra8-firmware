@@ -958,7 +958,7 @@ static void test_asym_and_kdf_error_paths(void)
   TEST_END("rsip asymmetric and KDF error paths");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_back_to_back_key_install();
   test_wrong_key_size_rejected();

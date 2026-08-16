@@ -289,7 +289,7 @@ static void test_power_transition(void)
   TEST_END("ulpt power transition");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_clears_regs();
   test_start_channel_0();

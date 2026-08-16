@@ -917,7 +917,7 @@ static void internal_test_media_transfer_cancellation_is_atomic(void)
   TEST_END("c6link media transfer cancellation");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_media_download_roundtrip();
   internal_test_media_download_rejects_bad_terminal_frames();

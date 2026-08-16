@@ -223,7 +223,7 @@ static void test_power_transition(void)
   TEST_END("dtc power transition");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_null_vector();
   test_init_happy();

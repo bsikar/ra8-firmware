@@ -685,7 +685,7 @@ RA8_INTERNAL static void internal_test_mcdc_decode_skip_appn_marker(void)
   TEST_END("jpeg_sw MC/DC decode: skip APPn marker mid-stream");
 }
 
-int32_t main(void)
+int main(void)
 {
   ra8_fake_mmap_reset();
   internal_test_mcdc_decode_pad_byte_chain();

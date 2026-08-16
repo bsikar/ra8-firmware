@@ -390,7 +390,7 @@ static void test_mcdc_hhub(void)
   TEST_END("hhub MC/DC: init speed / port_ok bounds");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_fs_returns_ok();
   test_init_bad_speed();

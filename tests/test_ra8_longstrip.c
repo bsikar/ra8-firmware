@@ -913,7 +913,7 @@ static void t_paginated_last_page_is_not_clamped(void)
  *
  * @return 0 on success; any assertion `exit(1)`s before returning.
  */
-int32_t main(void)
+int main(void)
 {
   t_open_validates();
   t_open_rejects_non_band();

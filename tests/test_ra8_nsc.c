@@ -330,7 +330,7 @@ static void internal_test_periph_init_idempotent(void)
   TEST_END("ra8_nsc_periph_init: idempotent");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_xspi_read_validates_args();
   internal_test_xspi_status_forwards_to_driver();

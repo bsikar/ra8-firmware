@@ -543,7 +543,7 @@ static void test_bbr_mirror(void)
   TEST_END("cnecc bbr mirror tracks dispatch + reset");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_null_cfg();
   test_init_happy();

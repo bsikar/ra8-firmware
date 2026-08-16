@@ -236,7 +236,7 @@ static void test_zero_count_is_noop(void)
   TEST_END("npu quant zero count is a no-op");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_quantize_rejects_bad_args();
   test_quantize_i8_affine();

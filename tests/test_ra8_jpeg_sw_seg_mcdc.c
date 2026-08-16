@@ -646,7 +646,7 @@ RA8_INTERNAL static void internal_test_mcdc_decode_rst_in_marker_chain(void)
   TEST_END("jpeg_sw MC/DC decode: RST in marker chain");
 }
 
-int32_t main(void)
+int main(void)
 {
   ra8_fake_mmap_reset();
   internal_test_mcdc_get_dimensions_pad_and_marker();

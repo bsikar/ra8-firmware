@@ -388,7 +388,7 @@ RA8_INTERNAL static void internal_test_fs_bridge_fat_roundtrip(void)
   TEST_END("fs bridge FAT round-trip");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_ram_init_validation();
   internal_test_ram_caps();

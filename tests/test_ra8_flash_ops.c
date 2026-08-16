@@ -683,7 +683,7 @@ static void test_mcdc_flash_status_or_pairs(void)
   TEST_END("flash status MC/DC: OR pairs in busy/illegal/protected");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_set_irq_enable();
   test_callback_set_and_dispatch();

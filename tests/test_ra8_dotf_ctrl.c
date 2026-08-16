@@ -640,7 +640,7 @@ static void test_mcdc_dotf_install_key_size_3cond(void)
   TEST_END("dotf install_key MC/DC: size != 128 && != 192 && != 256");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_set_sca_level();
   test_set_key_size();

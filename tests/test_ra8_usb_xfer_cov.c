@@ -359,7 +359,7 @@ RA8_INTERNAL static void internal_test_queue_out_frdy_timeout(void)
   TEST_END("ra8_usb_queue_out FRDY timeout leg after BRDY latch");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_dcp_in_data_bogus_speed();
   internal_test_queue_out_zlp_drain();

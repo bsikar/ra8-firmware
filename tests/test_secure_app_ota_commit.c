@@ -159,7 +159,7 @@ static void test_mcdc_swap_bank_target_validation(void)
   TEST_END("ota_commit MC/DC: bank-target validation (ota_commit.c:65)");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_reset_clears_pending();
   test_swap_then_pending();

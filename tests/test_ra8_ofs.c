@@ -159,7 +159,7 @@ static void test_ra8_ofs_addresses(void)
   TEST_END("ra8_ofs addresses match the HUM Figure 7.1 literals");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_ra8_ofs_compiled();
   test_mcdc_ra8_ofs();

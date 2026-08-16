@@ -663,7 +663,7 @@ static void internal_test_mcdc_reset_line_buf_pair(void)
   TEST_END("mcdc reset_line buf+len pair (init-validator equivalence)");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mcdc_register_urc_prefix_len();
   internal_test_mcdc_capture_expected_response();

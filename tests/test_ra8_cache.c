@@ -329,7 +329,7 @@ static void test_cache_enable_sets_both_ic_and_dc(void)
   TEST_END("ra8_cache: cache_enable sets both CCR.IC and CCR.DC");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_line_bytes_decodes_ctr();
   test_clean_aligned_single_line();

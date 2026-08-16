@@ -242,7 +242,7 @@ static void test_etha_open_phy_step_error_legs(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   test_etha_open_covers_phy_seq();
   test_etha_open_phy_step_error_legs();

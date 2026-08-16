@@ -162,7 +162,7 @@ static void test_wdt_refresh_instance_oob_writes_to_wdt0(void)
  * ---------------------------------------------------------------------------
  */
 
-int32_t main(void)
+int main(void)
 {
   test_wdt_for_wdt1_returns_wdt1_base();
   test_wdt_for_oob_falls_back_to_wdt0();

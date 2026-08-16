@@ -851,7 +851,7 @@ RA8_INTERNAL static void internal_test_host_announcement(void)
   TEST_END("c6link host announcement");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_open_validation();
   internal_test_host_announcement();

@@ -389,7 +389,7 @@ static void test_interrupt_stream(void)
   TEST_END("pdm interrupt stream");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_deinit();
   test_configure();

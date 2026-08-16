@@ -770,7 +770,7 @@ RA8_INTERNAL static void internal_test_sd_card_serves_font_to_reflow(void)
   TEST_END("SD card (SPI) serves FAT font -> ra8_fs -> ra8_reflow");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_sd_card_serves_font_to_reflow();
   TEST_ASSERT_EQ(

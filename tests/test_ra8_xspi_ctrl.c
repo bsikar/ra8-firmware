@@ -412,7 +412,7 @@ static void test_software_reset_mcdc_cmd_bytes(void)
   TEST_END("xspi software_reset MC/DC: cmd_bytes != 1 && cmd_bytes != 2");
 }
 
-int32_t main(void)
+int main(void)
 {
   /* Runs first: the OCTACKCR handshake is a one-shot latch that only
    * sets on success, so its timeout legs are reachable only before the

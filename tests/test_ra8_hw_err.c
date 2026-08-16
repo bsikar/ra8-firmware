@@ -209,7 +209,7 @@ static void test_zero_budget_immediate_timeout(void)
   TEST_END("ra8_hw_wait_flag_*: zero budget times out without polling");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_set8_already_set_returns_immediately();
   test_set8_clear_times_out();

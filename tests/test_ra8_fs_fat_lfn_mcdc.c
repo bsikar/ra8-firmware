@@ -417,7 +417,7 @@ RA8_INTERNAL static void internal_test_mcdc_free_chain_walk_bound(void)
   TEST_END("ra8_fs MC/DC: priv_free_chain walk bound (robustness vectors)");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mcdc_lfn_name_for_guard();
   internal_test_mcdc_dir_find_free_marker();

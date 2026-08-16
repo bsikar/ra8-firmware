@@ -781,7 +781,7 @@ static void (*const s_test_roster[])(void) = {
   internal_test_mcdc_i3c_internal_hdr_mode_invalid,
 };
 
-int32_t main(void)
+int main(void)
 {
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
     s_test_roster[i]();

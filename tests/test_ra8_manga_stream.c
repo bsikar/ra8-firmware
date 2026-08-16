@@ -349,7 +349,7 @@ static void test_manga_stream_bounded_and_correct(void)
  * @note Not thread-safe. No SIGALRM / timers used.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   test_manga_stream_bounded_and_correct();
   return 0;

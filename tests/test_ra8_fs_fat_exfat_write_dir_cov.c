@@ -480,7 +480,7 @@ RA8_INTERNAL static void internal_test_write_dir_set_write_fail(void)
  * @note Not thread-safe (single-threaded test runner).
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_create_empty_path();
   internal_test_create_path_too_long();

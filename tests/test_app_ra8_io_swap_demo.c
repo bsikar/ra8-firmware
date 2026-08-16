@@ -510,7 +510,7 @@ static void test_swap_integration(void)
  * @note Single-threaded host test.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   test_pattern();
   test_verdict();

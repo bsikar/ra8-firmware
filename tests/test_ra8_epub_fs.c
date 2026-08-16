@@ -445,7 +445,7 @@ RA8_INTERNAL static void internal_test_epub_fs_streamed_guards(void)
   TEST_END("ra8_epub_fs: streamed open guards");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_epub_fs_streamed_roundtrip();
   internal_test_epub_fs_streamed_guards();

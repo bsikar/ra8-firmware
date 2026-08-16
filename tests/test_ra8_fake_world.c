@@ -122,7 +122,7 @@ static void test_region_table_full(void)
   TEST_END("ra8_fake_world: table-full reports no_mem");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_empty_world_rejects_everything();
   test_mark_ns_covers_query();

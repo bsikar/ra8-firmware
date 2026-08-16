@@ -466,7 +466,7 @@ static void test_arduino_pin_init_valid_modes(void)
  * @note Not thread-safe; single-threaded test runner.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   test_sw_pin_null_out_pin();
   test_sw_init_invalid_id();

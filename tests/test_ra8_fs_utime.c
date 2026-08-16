@@ -307,7 +307,7 @@ RA8_INTERNAL static void internal_test_utime_errors(void)
   TEST_END("ra8_fs utime MC/DC: (handle||path) NULL pair + root/missing/state");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_utime_fat16();
   internal_test_utime_exfat();

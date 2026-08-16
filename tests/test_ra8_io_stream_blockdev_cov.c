@@ -382,7 +382,7 @@ RA8_INTERNAL static void internal_test_bdsink_write_error_propagates_no_out_writ
  *
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_bdsink_flush_no_pending_bytes();
   internal_test_bdsink_write_out_written_nonnull_success();

@@ -372,7 +372,7 @@ RA8_INTERNAL static void internal_test_mcdc_label_field_copy_pad(void)
   TEST_END("ra8_fs MC/DC: priv_fmt_label_field copy/pad (!past_end && NUL)");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mcdc_parse_bpb_guards();
   internal_test_mcdc_choose_geometry_sweep_exhaustion();

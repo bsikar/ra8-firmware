@@ -883,7 +883,7 @@ RA8_INTERNAL static void internal_test_produce_work_bytes(void)
  * @note Not thread-safe. No SIGALRM / timers used.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_produce_png_colortypes();
   internal_test_produce_jpeg_parity();

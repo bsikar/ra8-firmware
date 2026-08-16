@@ -965,7 +965,7 @@ RA8_INTERNAL static void internal_test_deinit_reports_a_refused_delete(void)
  * ---------------------------------------------------------------------------
  */
 
-int32_t main(void)
+int main(void)
 {
   internal_test_ms_to_ticks_maps_every_class();
   internal_test_queue_words_rounds_up_and_rejects_oversize();

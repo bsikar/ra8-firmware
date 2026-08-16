@@ -354,7 +354,7 @@ RA8_INTERNAL static void internal_test_first_error_keeps_the_earliest_failure(vo
  * @note Single-threaded.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_cfg_check_rejects_each_field();
   internal_test_pins_check_rejects_duplicates();

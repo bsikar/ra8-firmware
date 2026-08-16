@@ -447,7 +447,7 @@ RA8_INTERNAL static void internal_test_jpeg_unsupported_sofn_mcdc(void)
  * @return 0 on success; unity macros call exit(1) on the first failure.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_gfx_blit_gray8_arg_guard_mcdc();
   internal_test_gfx_blit_gray8_clip_mcdc();

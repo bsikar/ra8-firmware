@@ -618,7 +618,7 @@ static void test_aead_invalid_args(void)
   TEST_END("psa aead invalid args");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_double();
   test_deinit_without_init();

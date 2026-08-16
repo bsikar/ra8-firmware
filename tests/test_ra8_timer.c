@@ -79,7 +79,7 @@ static void test_sleep_ms_zero_returns_immediately(void)
   TEST_END("timer sleep_ms zero returns immediately");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_now_ms_matches_time_ms();
   test_now_ms_advances_with_ticks();

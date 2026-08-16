@@ -428,7 +428,7 @@ static void test_clock_init_invalid_src(void)
   TEST_END("ra8_rtc_clock_init rejects bad src");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_happy_path();
   test_set_null_rejected();

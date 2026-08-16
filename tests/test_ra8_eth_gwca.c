@@ -655,7 +655,7 @@ static void test_rx_frame(void)
   TEST_END("gwca rx_frame");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init();
   test_deinit();

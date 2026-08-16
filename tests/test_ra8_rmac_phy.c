@@ -364,7 +364,7 @@ RA8_INTERNAL static void internal_test_mcdc_rmac_phy_internal_speed_ok(void)
   TEST_END("rmac_phy MC/DC: speed_ok AND");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_open_null();
   internal_test_open_bad_args();

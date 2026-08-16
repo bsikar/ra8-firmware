@@ -642,7 +642,7 @@ RA8_INTERNAL static void internal_test_rename_fault_and_no_replace(void)
   TEST_END("media VFS storage rename fault and no-replace");
 }
 
-int32_t main(void)
+int main(void)
 {
   ra8_log_set_byte_sink(internal_discard_log_byte, nullptr);
   internal_test_init_guards();

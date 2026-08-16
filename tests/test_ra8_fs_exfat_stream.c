@@ -549,7 +549,7 @@ RA8_INTERNAL static void internal_test_stream_name_guards(void)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_stream_create_multi_cluster();
   internal_test_stream_append_extends();

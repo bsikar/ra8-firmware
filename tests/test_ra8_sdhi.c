@@ -546,7 +546,7 @@ static void test_attach_dma_toggle(void)
   TEST_END("sdhi attach_dma: toggles SD_DMAEN + INFO2_MASK");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_happy();
   test_init_bad();

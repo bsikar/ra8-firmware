@@ -763,7 +763,7 @@ static void test_lin_check_response(void)
   TEST_END("ra8_sci_lin_check_response: verify checksum");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_lin_init_register_image();
   test_lin_init_validation();

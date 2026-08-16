@@ -578,7 +578,7 @@ RA8_INTERNAL static void internal_test_erase_clear_region_modes(void)
   TEST_END("ra8_fs format: erase-or-zero clear_region");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_format_fat12_round_trip();
   internal_test_format_fat16_round_trip();

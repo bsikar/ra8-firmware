@@ -339,7 +339,7 @@ RA8_INTERNAL static void internal_test_lfn_listdir_reports_long_name(void)
   TEST_END("ra8_fs LFN: listdir reports the long name");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_lfn_open_by_long_and_short();
   internal_test_lfn_listdir_reports_long_name();

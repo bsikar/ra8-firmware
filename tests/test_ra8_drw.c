@@ -529,7 +529,7 @@ static void test_set_color_key(void)
   TEST_ASSERT((ctl2b & (uint32_t)k_ra8_drw_control2_colkeyenable) == 0UL);
   TEST_END("drw set_color_key writes COLKEY + bit");
 }
-int32_t main(void)
+int main(void)
 {
   test_init_happy();
   test_init_null_cfg();

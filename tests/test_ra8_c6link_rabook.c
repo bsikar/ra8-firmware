@@ -432,7 +432,7 @@ static void internal_test_sha256_known_answer(void)
   TEST_END("C6 RPC transfer SHA256 known answer");
 }
 
-int32_t main(void)
+int main(void)
 {
   ra8_log_set_byte_sink(internal_discard_log, nullptr);
   internal_test_sha256_known_answer();

@@ -359,7 +359,7 @@ static void test_cmac_arg_validation(void)
   TEST_END("sec_cmac: argument validation");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_cmac_kat_vectors();
   test_mcdc_cmac_verify_verdict();

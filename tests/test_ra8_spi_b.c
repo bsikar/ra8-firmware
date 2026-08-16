@@ -392,7 +392,7 @@ static void test_mcdc_dispatch_spei_callback_guard(void)
   TEST_END("spi_b MC/DC dispatch_spei: mask && cb");
 }
 
-int32_t main(void)
+int main(void)
 {
   ra8_fake_mmap_reset();
   test_mcdc_internal_spbr_zero_args();

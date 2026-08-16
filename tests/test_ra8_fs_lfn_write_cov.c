@@ -800,7 +800,7 @@ RA8_INTERNAL static void internal_test_fat32_root_grows(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_create_io_sweeps();
   internal_test_unlink_io_sweeps();

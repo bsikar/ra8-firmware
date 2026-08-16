@@ -910,7 +910,7 @@ RA8_INTERNAL static void internal_test_default_spi_config(void)
   TEST_END("osi default spi configuration");
 }
 
-int32_t main(void)
+int main(void)
 {
   ra8_log_init();
   ra8_log_set_byte_sink(internal_t_log_sink, nullptr);

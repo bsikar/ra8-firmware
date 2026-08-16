@@ -296,7 +296,7 @@ static void test_set_accept_filter_bad_target_rx(void)
   TEST_END("canfd set_accept_filter rejects bad target_rx");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_set_accept_filter_programs_two_rules();
   test_set_accept_filter_standard_rule();

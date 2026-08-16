@@ -240,7 +240,7 @@ static void test_deinit_validation(void)
   TEST_END("ra8_sci_deinit: bad channel rejected");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_set_baud_guarded_preserves_ccr2_and_ccr0();
   test_set_baud_validation();

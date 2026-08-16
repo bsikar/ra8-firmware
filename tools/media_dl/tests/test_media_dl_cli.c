@@ -394,7 +394,7 @@ RA8_INTERNAL static void internal_test_diagnostic_failures_propagate(void)
   TEST_END("CLI diagnostic failures propagate");
 }
 
-int32_t main(void)
+int main(void)
 {
   priv_test_mdl_cli_matrix_run();
   internal_test_all_modes();

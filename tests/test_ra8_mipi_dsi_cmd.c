@@ -587,7 +587,7 @@ static void test_ulps_clock_lane_continuous_rejected(void)
   TEST_END("mipi_dsi ULPS clock lane rejected in continuous mode");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_happy();
   test_init_null_cfg();

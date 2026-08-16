@@ -647,7 +647,7 @@ static void (*const s_test_roster[])(void) = {
   test_start_cascade_no_callback,
 };
 
-int32_t main(void)
+int main(void)
 {
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
     s_test_roster[i]();

@@ -177,7 +177,7 @@ static void test_xip_exit_bad_instance(void)
   TEST_END("ra8_xspi_xip_exit rejects out-of-range instance");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_xip_enter_happy();
   test_xip_enter_bad_instance();

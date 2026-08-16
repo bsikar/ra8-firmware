@@ -379,7 +379,7 @@ RA8_INTERNAL static void internal_test_mcdc_sqmon_edge_guard(void)
   TEST_END("ux_dcd_ra8_usb MC/DC: SQMON rising-edge guard (line 1348)");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mcdc_xfer_request_null_guard();
   internal_test_mcdc_ep0_in_data_guard();

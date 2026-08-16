@@ -162,7 +162,7 @@ static void test_power_transition(void)
   TEST_END("sdramc power transition");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_programs_registers();
   test_deinit();

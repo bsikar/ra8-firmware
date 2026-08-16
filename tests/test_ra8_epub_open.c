@@ -66,7 +66,7 @@ RA8_INTERNAL static void internal_test_mcdc_epub_open_mem_data_or_size(void)
   TEST_END("epub_open MC/DC: (mem->data==NULL || mem->size==0)");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mcdc_epub_open_media_or_book_null();
   internal_test_mcdc_epub_open_mem_data_or_size();

@@ -177,7 +177,7 @@ static void test_mcdc_supervisor_tick_invoke_refresh(void)
   TEST_END("ra8_wdt_supervisor_tick MC/DC: will_refresh && refresh != NULL");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_mcdc_supervisor_tick_will_refresh();
   test_mcdc_supervisor_tick_invoke_refresh();
