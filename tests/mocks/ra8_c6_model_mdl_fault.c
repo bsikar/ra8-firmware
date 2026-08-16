@@ -20,6 +20,8 @@ static const uint8_t s_mdl_unknown_field[] = {0x78U, 0x01U};
 
 /**
  * @brief Clear COMPLETE-only HTTP metadata before changing terminal state
+ * @details Restores the nonterminal wire invariant so each injected state
+ * mutation tests only its intended protocol fault.
  * @param[in,out] chunk Decoded generated response.
  * @pre @p chunk is non-null and caller-owned.
  * @pre String fields still reference decoder-owned storage.

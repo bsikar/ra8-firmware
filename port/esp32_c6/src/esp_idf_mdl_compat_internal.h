@@ -196,6 +196,8 @@ RA8_PRIV esp_err_t esp_http_client_set_url( // alloc-allow: parser mirror of ESP
 
 /**
  * @brief Set one request header on the retained HTTP client
+ * @details Mirrors the exact ESP-IDF operation used to apply one bounded
+ * portable request-policy field before opening a GET.
  * @param[in,out] client Valid retained client handle.
  * @param[in] key NUL-terminated header name.
  * @param[in] value NUL-terminated header value.
@@ -216,6 +218,8 @@ RA8_PRIV esp_err_t esp_http_client_set_header( // alloc-allow: parser mirror of 
 
 /**
  * @brief Remove one retained request header
+ * @details Mirrors the ESP-IDF operation used to clear state that must not
+ * leak from a prior request on the reused client handle.
  * @param[in,out] client Valid retained client handle.
  * @param[in] key NUL-terminated header name.
  * @return ESP-IDF header-removal status.
@@ -232,6 +236,8 @@ RA8_PRIV esp_err_t esp_http_client_delete_header(esp_http_client_handle_t client
 
 /**
  * @brief Set the retained client's operation timeout
+ * @details Mirrors the ESP-IDF operation used to apply the portable request
+ * budget to the reused client before opening its connection.
  * @param[in,out] client Valid retained client handle.
  * @param[in] timeout_ms Positive timeout in milliseconds.
  * @return ESP-IDF timeout-setting status.

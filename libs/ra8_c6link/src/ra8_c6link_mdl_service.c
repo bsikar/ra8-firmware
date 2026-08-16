@@ -71,6 +71,8 @@ RA8_INTERNAL static bool internal_mdl_request_field_valid(const char* text, size
 
 /**
  * @brief Validate fixed terminal response metadata returned by a backend.
+ * @details Requires an HTTP-shaped status and independently bounds every
+ * selected header before any generated response points at backend storage.
  * @param[in] response Candidate status and selected headers.
  * @return Response validity.
  * @retval true Status is HTTP-shaped and every array is bounded single-line text.
@@ -246,6 +248,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_pack_chunk(const Ra8__Mdl__Chunk* msg
 
 /**
  * @brief Validate every generated Start field before backend activation
+ * @details Checks the protocol version, HTTPS URL, format, timeout, and each
+ * optional request header before constructing the portable backend request.
  * @param[in] request Decoded generated request.
  * @return Field validity.
  * @retval true Version, URL, format, timeout, and headers are bounded.

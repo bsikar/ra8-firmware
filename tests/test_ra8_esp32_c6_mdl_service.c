@@ -154,6 +154,8 @@ internal_start_policy(const char* url, const ra8_mdl_http_policy_t* policy, uint
 
 /**
  * @brief Start one request with the adapter's default HTTP policy
+ * @details Exercises the zero-initialized policy path while reusing the same
+ * generated Start encoder and response decoder as explicit-policy tests.
  * @param[in] url Absolute HTTPS URL.
  * @param[out] out_job Accepted nonzero job identifier.
  * @return Concrete handler status.
@@ -298,6 +300,8 @@ RA8_INTERNAL static char* internal_model_header_slot(const char* key, size_t* ca
 
 /**
  * @brief Emit one modelled response-header event
+ * @details Borrows the supplied strings into one synchronous event and calls
+ * the production callback exactly as ESP-IDF would during header parsing.
  * @param[in] key Header name supplied to the production callback.
  * @param[in] value Header value supplied to the production callback.
  * @pre The retained client has a configured event callback.

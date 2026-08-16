@@ -118,6 +118,8 @@ RA8_INTERNAL static void internal_mdl_http_reset_job(mdl_http_state_t* state)
 
 /**
  * @brief Compare one HTTP header name without ASCII case sensitivity
+ * @details Folds only the ASCII uppercase range because HTTP field names are
+ * ASCII tokens and locale-dependent case conversion is forbidden here.
  * @param[in] lhs Candidate response-header name.
  * @param[in] rhs Canonical response-header name.
  * @return Whether both NUL-terminated names are equal ignoring ASCII case.
@@ -153,6 +155,8 @@ RA8_INTERNAL static bool internal_mdl_header_equal(const char* lhs, const char* 
 
 /**
  * @brief Copy one optional bounded HTTP field into retained storage
+ * @details Canonicalizes an absent value to empty, rejects line breaks, and
+ * retains one exact NUL-terminated value for the synchronous exchange.
  * @param[out] destination Fixed-capacity destination.
  * @param[in] capacity Total destination capacity including NUL.
  * @param[in] source Optional NUL-terminated field value.
@@ -189,6 +193,8 @@ internal_mdl_copy_field(char* destination, size_t capacity, const char* source)
 
 /**
  * @brief Select retained storage for one response header
+ * @details Maps the four protocol-selected field names to their fixed arrays
+ * while leaving all other response headers intentionally ignored.
  * @param[in,out] state Active HTTP state.
  * @param[in] key NUL-terminated response-header name.
  * @param[out] destination Selected destination, or null for an ignored header.
@@ -224,6 +230,8 @@ RA8_INTERNAL static void internal_mdl_select_response_header(mdl_http_state_t* s
 
 /**
  * @brief Capture selected response headers from ESP-IDF events
+ * @details Filters the event stream to header events and records the first
+ * bounded-copy failure so the later read path fails closed.
  * @param[in,out] event ESP-IDF event record.
  * @return ESP-IDF callback status.
  * @retval ESP_OK The event was ignored or captured safely.
@@ -296,6 +304,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_init(mdl_http_state_t* state)
 
 /**
  * @brief Replace one optional retained request header
+ * @details Clears prior client state first, then installs the new value only
+ * when the portable request selected a nonempty header.
  * @param[in,out] state Retained HTTP state.
  * @param[in] name Canonical request-header name.
  * @param[in] value Bounded retained value, or empty to omit.
@@ -321,6 +331,8 @@ internal_mdl_http_set_header(mdl_http_state_t* state, const char* name, const ch
 
 /**
  * @brief Copy and apply the complete bounded request policy
+ * @details Retains every caller string, applies the resolved timeout, and
+ * replaces all optional headers before the HTTP request may open.
  * @param[in,out] state Reset retained HTTP state.
  * @param[in] request Validated portable media request.
  * @return Policy configuration status.
