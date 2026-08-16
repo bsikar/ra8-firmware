@@ -25,6 +25,7 @@ ra8_add_app(
        ra8_c6link
        ra8_mdl_storage_vfs
        ra8_rabook_compile
+       ra8_epub
        ra8_io
        ra8_fs
        ra8_sdmmc_spi
