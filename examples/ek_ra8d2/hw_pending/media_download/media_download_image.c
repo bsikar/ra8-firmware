@@ -298,8 +298,10 @@ RA8_INTERNAL static ra8_err_t internal_publish(const ra8_mdl_transfer_config_t* 
     err = transfer->storage.validate(transfer->storage.ctx, packed_size, digest);
   }
   if (err == k_ra8_ok) {
-    err    = transfer->storage.commit(transfer->storage.ctx);
-    active = false;
+    err = transfer->storage.commit(transfer->storage.ctx);
+    if (err == k_ra8_ok) {
+      active = false;
+    }
   }
   if ((err != k_ra8_ok) && active) {
     (void)transfer->storage.abort(transfer->storage.ctx);
