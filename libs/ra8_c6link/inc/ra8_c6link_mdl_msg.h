@@ -18,6 +18,7 @@
 
 #include "ra8_err.h"
 #include "ra8_mdl_http.h"
+#include "ra8_mdl_protocol.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -81,6 +82,46 @@ typedef struct ra8_mdl_service_backend {
 } ra8_mdl_service_backend_t;
 
 /**
+ * @brief Bounded protobuf decode storage one dispatch may consume
+ * @details Sized for the largest legal Start request: a maximum URL plus every
+ * bounded HTTP header, plus the generated decoder's per-message overhead.
+ * @since 0.1.0
+ */
+typedef enum : uint16_t {
+  k_ra8_mdl_decode_arena_bytes = k_ra8_mdl_url_max + k_ra8_mdl_user_agent_max +
+                                 k_ra8_mdl_referer_max + k_ra8_mdl_etag_max +
+                                 k_ra8_mdl_http_date_max + 512U, /**< Per-dispatch arena size. */
+  k_ra8_mdl_decode_align       = 8U, /**< Alignment every arena span is issued on. */
+} ra8_mdl_decode_arena_limit_t;
+
+/**
+ * @struct ra8_mdl_decode_arena
+ * @brief Linear allocator storage the generated decoder draws one dispatch from
+ * @details A bump allocator with no free list: ::ra8_mdl_service_dispatch
+ * clears the whole object before it decodes, so every dispatch starts from an
+ * empty arena and nothing survives the call that produced it. It lives in
+ * ::ra8_mdl_service rather than on the dispatch stack because a two-kilobyte
+ * automatic object put ::ra8_mdl_service_dispatch over the 2048-byte
+ * first-party frame budget on the Cortex-M85 (`-fstack-usage`); the service is
+ * caller-owned and single-job, so the move changes no ownership or reentrancy
+ * property.
+ * @invariant `used` never exceeds `sizeof(bytes)`.
+ * @invariant Every live decoded pointer refers into `bytes`.
+ * @code
+ * ra8_mdl_service_t service = {};
+ * @endcode
+ * @see ra8_mdl_service_dispatch
+ * @since 0.1.0
+ */
+typedef struct ra8_mdl_decode_arena {
+  alignas(k_ra8_mdl_decode_align) uint8_t bytes[k_ra8_mdl_decode_arena_bytes];
+  /**< Fixed protobuf decode storage. The allocator rounds every span it issues
+       up to ::k_ra8_mdl_decode_align, which only yields aligned spans if the
+       base is aligned too -- decoded messages carry 64-bit fields. */
+  size_t used; /**< Bytes already allocated. */
+} ra8_mdl_decode_arena_t;
+
+/**
  * @struct ra8_mdl_service
  * @brief Caller-owned one-job portable service state
  * @details Correlates Start, Next, and Cancel independently of the concrete
@@ -98,6 +139,7 @@ typedef struct ra8_mdl_service {
   uint64_t                  next_offset;   /**< Byte offset required from the next pull.   */
   ra8_mdl_format_t          active_format; /**< Artifact identity of the active job.       */
   bool                      active;        /**< Whether Next or Cancel is currently valid. */
+  ra8_mdl_decode_arena_t    arena;         /**< Decode storage for the running dispatch.   */
 } ra8_mdl_service_t;
 
 /**
@@ -120,8 +162,8 @@ typedef struct ra8_mdl_service {
 
 /**
  * @brief Dispatch Start, Next, or Cancel generated protobuf payloads
- * @details Decodes into a bounded stack arena, validates job correlation, and
- * packs exactly one response into caller-owned storage.
+ * @details Decodes into the service-owned bounded arena, validates job
+ * correlation, and packs exactly one response into caller-owned storage.
  * @param[in,out] ctx Initialised ::ra8_mdl_service_t.
  * @param[in] operation One ::ra8_mdl_rpc_id_t value.
  * @param[in] request Packed generated request bytes.
