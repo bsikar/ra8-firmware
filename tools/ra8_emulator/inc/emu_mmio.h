@@ -40,7 +40,7 @@ extern "C" {
  * "wait for ready bit" polls fall through instead of spinning forever.
  *
  * @invariant The window covers every Renesas peripheral block.
- * @see emu_memmap_init()  Installs the callbacks over this window.
+ * @see emu_memmap_attach()  Installs the callbacks over this window.
  * @since 0.1.0
  */
 typedef enum : uint64_t {
@@ -71,7 +71,7 @@ typedef enum : uint64_t {
  * @param[in]     user   Hook cookie (unused).
  * @return The value the firmware reads.
  * @retval 0 One phase of the settle toggle (with all-ones as the other).
- * @pre The window was installed by emu_memmap_init().
+ * @pre The window was installed by emu_memmap_attach().
  * @pre @p offset lies inside the mapped window.
  * @post The access counters and per-slot read runs are updated.
  * @note Not thread-safe; the emulator is single-threaded host-side.
@@ -95,7 +95,7 @@ uint64_t mmio_read(uc_engine* uc, uint64_t offset, unsigned size, void* user);
  * @param[in]     value  Value being written.
  * @param[in]     user   Hook cookie (unused).
  * @return Nothing.
- * @pre The window was installed by emu_memmap_init().
+ * @pre The window was installed by emu_memmap_attach().
  * @pre @p offset lies inside the mapped window.
  * @post The write landed in a block model or the sparse shadow.
  * @note Not thread-safe; the emulator is single-threaded host-side.

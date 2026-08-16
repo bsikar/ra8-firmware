@@ -285,10 +285,6 @@ void priv_run_report(const run_loop_t* st)
 void priv_run_write_outputs(const run_loop_t* st)
 {
   const emu_run_cfg_t* cfg = st->cfg;
-  if (emu_memmap_is_poisoned(cfg->memory)) {
-    (void)priv_emu_io_err_text("ra8_emulator: memory backing fault; outputs preserved\n");
-    return;
-  }
   if ((cfg->ppm_path != nullptr) && (st->presentation->fd >= 0)) {
     const bool built = build_composite(cfg->uc, st->presentation, cfg->win_title);
     if (built && (write_ppm(cfg->ppm_path, st->presentation) == 0)) {
@@ -316,10 +312,6 @@ void priv_run_hold_view(const run_loop_t* st)
   if (st->view == nullptr) {
     return;
   }
-  if (emu_memmap_is_poisoned(cfg->memory)) {
-    board_view_close(st->view);
-    return;
-  }
   if (!st->closed) { /* run ended on its own -- keep the last frame up until
                         closed */
     if (build_composite(cfg->uc, st->presentation, cfg->win_title)) {
@@ -335,9 +327,8 @@ void priv_run_hold_view(const run_loop_t* st)
 
 int priv_run_cleanup(const run_loop_t* st)
 {
-  const emu_run_cfg_t* cfg       = st->cfg;
-  const bool           memory_ok = !emu_memmap_is_poisoned(cfg->memory);
-  if (memory_ok && (cfg->save_sd_path != nullptr)) {
+  const emu_run_cfg_t* cfg = st->cfg;
+  if (cfg->save_sd_path != nullptr) {
     (void)board_sd_save(cfg->save_sd_path);
   }
   (void)emu_presentation_close(cfg->presentation);
@@ -348,9 +339,7 @@ int priv_run_cleanup(const run_loop_t* st)
   (void)emu_memmap_close(cfg->memory);
 
   emu_exit_t exit_code = k_emu_exit_ok;
-  if (!memory_ok) {
-    exit_code = k_emu_exit_fault;
-  } else if (emu_exc_bkpt_hit()) {
+  if (emu_exc_bkpt_hit()) {
     exit_code = k_emu_exit_bkpt;
   } else if (st->err != UC_ERR_OK) {
     exit_code = k_emu_exit_fault;
