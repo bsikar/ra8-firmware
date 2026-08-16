@@ -324,6 +324,18 @@ RA8_INTERNAL static void internal_test_stream_validation(void)
  * @details Proves binding failure is non-mutating, exact success is accepted,
  *          short/over success is classified as a backend protocol defect, and
  *          a real partial error preserves its accepted count.
+ *
+ * @par MC/DC:
+ * - `libs/ra8_io/src/ra8_io_stream.c@ra8_io_stream_bind` validates
+ *   `stream == NULL || iface == NULL || context == NULL`. The first three
+ *   calls make C1, C2, and C3 independently true while the other operands are
+ *   false; the valid bind makes all three false. These four vectors are the
+ *   required N+1 set for the three-condition OR.
+ * - `libs/ra8_io/src/ra8_io_stream.c@ra8_io_stream_write` validates
+ *   `error == k_ra8_ok && accepted != len`. Short success makes both
+ *   conditions true, exact success holds C1 true while making C2 false, and
+ *   the partial-error vector holds C2 true while making C1 false. These three
+ *   vectors independently determine both operands of the two-condition AND.
  * @pre The immutable probe vtables remain valid for the test duration.
  * @pre The probe state is exclusively owned by this test.
  * @post Every vector leaves the handle bound to the same caller state.
