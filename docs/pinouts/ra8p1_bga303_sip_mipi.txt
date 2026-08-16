@@ -1,0 +1,495 @@
+================================================================================
+RA8P1 group pinout -- LFBGA 303-pin, with MIPI DSI/CSI
+================================================================================
+
+GENERATED FILE -- DO NOT EDIT BY HAND.
+  Regenerate with: python3 scripts/gen/gen_pinouts.py
+
+Source : RA8P1 Group Datasheet R01DS0439EJ, section 1.7
+         "Pin Lists", Table 1.18 "Pin list for the SiP product",
+         column "BGA303".
+
+Package       : PLBG0303GA-A (P-LFBGA303-15x15-0.80)
+                LFBGA 303-pin, 15 mm x 15 mm, 0.80 mm pitch
+Balls         : 303
+I/O port pins : 186
+MIPI DSI/CSI  : available
+Group         : RA8D2 plus an Arm Ethos-U55 NPU; pin-compatible
+                with the RA8D2 in every package
+
+Part numbers using this ball map (4):
+
+    Part number      Cores   Code memory                      Junction temp
+    ---------------- ------- -------------------------------- --------------
+    R7JA8P1KRLSAJ    dual    5 MB (1 MB MRAM + 4 MB flash)    0 to 95 C
+    R7JA8P1KSLSAJ    dual    9 MB (1 MB MRAM + 8 MB flash)    0 to 95 C
+    R7JA8P1KRDSAJ    dual    5 MB (1 MB MRAM + 4 MB flash)    -40 to 105 C
+    R7JA8P1KSDSAJ    dual    9 MB (1 MB MRAM + 8 MB flash)    -40 to 105 C
+
+Every part number above has an identical ball map; they
+differ only in core count, memory size and temperature
+grade. See docs/pinouts/README.md for the full matrix.
+
+--------------------------------------------------------------------------------
+1. Ball grid (top view)
+--------------------------------------------------------------------------------
+
+Each cell names the I/O port pin, or the power/system
+function for balls that are not port pins. Blank = no ball.
+
+      1          2          3          4          5          6          7          8          9          10         11         12         13         14         15         16         17         18
+A    VSS        P114       P609       P113       P301       P208       P210       VLO        VLO      VSS_DCDC   VCC_DCDC   VCC_DCDC     P309       P906       P905       P907       P207       VSS
+B    P813       PA12       P115       PA11       P112       P209       P211       VLO        VLO      VSS_DCDC   VCC_DCDC   VCC_DCDC     P311       P908       P909       P904       PD01       PD02
+C    PA06       P613       PA13       P300       P302       P200       RES        P110       P903       P308       P305       P307       P911       P206       PD04       PD03       PD05       PD06
+D    PA04       P611       P610       PA14       P303       P915       P108       P111       P109       P310       P304       P306       P912       PB04       PB07       PB05       PB03       PB01
+E    PA15       P615       P614       P612       P914       P201                                        P902       P312       P910       P913       PB02       PB06       PD07       PB00       P706
+F    PA02       PA10       PA08       PA09       PC14                 VCC_08     VSS_08      VSS3       VCL3      VSS_07     VCC_07      P700       P702       P406       P701       P707       P705
+G    PA00       PA03       PA05       PA07       PC12                 VCC_09     VSS_09      VSS4       VCL4      VSS_06     VCC_06      P405       P704       P703      VSS_03     VCC_05     VSS_05
+H    P504       P503       P505       PA01       PC11                 VCC_10     VSS_10      VSS7       VCL5       VSS5      VCC_04     VSS_04                VCC_03   VCC_USBHS   USBHS_DP   USBHS_DM
+J    P506       P507       P508       P509       PC13                VCC2_11     VSS_11      VCL7       VCL6       VSS6       VCL2       VSS2                 VSS_02   USBHS_RREF VSS2_USBHS VSS1_USBHS
+K    PC15       P608       P510       PD00       VSS        VSS       VSS_12      VSS9       VCL9       VCL8       VSS8       VCL1       VSS1                 VCC_02   AVCC_USBHS    P213       P212
+L    PC10       VSS        PUP      VCC2_16     VSS_16               VCC2_12     VSS_14     VSS_15     VSS10      VCL10       VCL0       VSS0       P403       P404      VCC_01      P214       P215
+M    PC09       VSS        VSS      VCC2_17     VSS_17                          VCC2_14    VCC2_15                VSS11      VCL11                  P414       P402       P410      VBATT      VSS_01
+N    PC08       VSS        VSS      VCC2_18     VSS_18                 P105                             P810                                        P710       P411       P408       P412       P401
+P    VSS        VSS        VSS      VCC2_19     VSS_19      P104       P107       P106       P811       P013       P011       P807       P708       P712       P714       P711       P713       P400
+R    P602       VSS        VSS        P600       P601       P102       P801       P803       P812       P012       P010       P009       P805       P512       P413       P515       P709       P407
+T    Vpp        VSS     VCC18_MIPI  VSS_MIPI     P103       P101       P802       P804       P501      AVCC0      AVSS0       P005       P003       P513       P514       P415       P409     VCC_USB
+U  VCC2_13   MIPI_DL0_P MIPI_CL_P  MIPI_DL1_P AVCC_MIPI     P809       P800       P502       P014      VREFL      VREFL0      P004       P007       P001       P806       P715       P815     VSS_USB
+V    VSS     MIPI_DL0_N MIPI_CL_N  MIPI_DL1_N   VSS_13      P808       P100       P500       P015      VREFH      VREFH0      P008       P006       P000       P002       P511       P814       VSS
+
+--------------------------------------------------------------------------------
+2. Alternate functions per ball
+--------------------------------------------------------------------------------
+
+  PORT   I/O port
+  POWER  Power, system, clock, debug, CAC
+  EXBUS  External bus / SDRAM
+  IRQ    External interrupt
+  COMMS  SCI/IIC/I3C/SPI/CANFD/USBFS/USBHS/OSPI/SSIE/SDHI/MMC/ESWM(GMII,RGMII,MII,RMII)/PDMIF
+  TIMER  GPT/AGT/ULPT/RTC
+  ANALOG ADC16H/DAC12/ACMPHS
+  VIDEO  MIPI/GLCDC/CEU
+
+  A field reads "-" when the ball offers nothing in that
+  category. Suffixes _A/_B/_C are the datasheet's pin-
+  candidate variants; "-DS" marks a deep-standby-capable
+  interrupt input.
+
+BALL PORT   POWER        EXBUS     IRQ         COMMS                                        TIMER                    ANALOG      VIDEO
+--------------------------------------------------------------------------------------------------------------------------------------
+A1   -      VSS          -         -           -                                            -                        -           -
+A2   P114   -            D5/DQ5    IRQ30-DS    CTS_RTS0_A/SS0_A/DE0/SSLA0_B/SSIRXD0_B/      GTETRGC/GTIOC2B          ADSYNC      LCD_DATA8_A
+                                               SD0DAT6_B
+A3   P609   -            D7/DQ7    IRQ29       TXD0_C/SDA0_C/MOSI0_C/MISOA_B/CTX1           GTIU/GTIOC5B/ULPTOA1-DS  AD1FLAG1    LCD_DATA6_A
+A4   P113   -            D4/DQ4    IRQ28       RXD0_A/SCL0_A/MISO0_A/SSLA1_B/SSILRCK0_B/    GTETRGB/GTIOC2A/         ADST1       LCD_DATA9_A
+                                               SSIFS0_B/SD0DAT5_B                           ULPTOA0-DS
+A5   P301   -            D1/DQ1    IRQ6        TXD6_B/SDA6_B/MOSI6_B/SD0DAT2_B              GTOULO/GTIOC4B/AGTIO0/   -           LCD_DATA12_A
+                                                                                            ULPTEE0-DS
+A6   P208   TDI          -         IRQ3        RXD9_B/SCL9_B/MISO9_B/CRX1                   GTOVLO/GTIOC1B           VCOUT       -
+A7   P210   TMS/SWDIO    -         IRQ24       CTS_RTS9_B/SS9_B/DE9                         GTOULO/GTIOC0B           -           -
+A8   -      VLO          -         -           -                                            -                        -           -
+A9   -      VLO          -         -           -                                            -                        -           -
+A10  -      VSS_DCDC     -         -           -                                            -                        -           -
+A11  -      VCC_DCDC     -         -           -                                            -                        -           -
+A12  -      VCC_DCDC     -         -           -                                            -                        -           -
+A13  P309   -            -         IRQ25-DS    CTS9_B/ET1_GTX_CLK/RGMII1_TXC                GTCPPO8                  VCOUT       LCD_DATA15_A/
+                                                                                                                                 VIO_D10
+A14  P906   -            -         IRQ9        CTS6_A/USB_ID/SSILRCK1_A/SSIFS1_A/ET1_RXD0/  GTIOC13B/ULPTO1          AD0FLAG1    LCD_DATA20_A/
+                                               RGMII1_RXD0/RMII1_RXD0/PDMDAT0                                                    VIO_D5
+A15  P905   -            -         IRQ8        RXD3_B/SCL3_B/MISO3_B/ET1_RX_CLK/RGMII1_RXC/ GTCPPO13                 AD1FLAG1    LCD_DATA19_A/
+                                               RMII1_REF50CK/PDMDAT1                                                             VIO_D6
+A16  P907   -            -         IRQ10       SCK6_A/DE6/USB_EXICEN/SSIBCK1_A/ET1_RXD1/    GTIOC13A/ULPTEE1         ADSYNC      LCD_DATA21_A/
+                                               RGMII1_RXD1/RMII1_RXD1/PDMCLK2                                                    VIO_D4
+A17  P207   -            -         IRQ25       ET1_RXD5                                     GTCPPO3                  -           LCD_DATA9_B
+A18  -      VSS          -         -           -                                            -                        -           -
+B1   P813   -            SDCS      IRQ15       SCK7_A/DE7/PDMCLK2                           GTETRGA/GTIOC7B          -           VIO_D13
+B2   PA12   -            D9/DQ9    IRQ11       RXD9_C/SCL9_C/MISO9_C                        GTIW/GTIOC6B             -           -
+B3   P115   -            D6/DQ6    IRQ31-DS    CTS0_A/MOSIA_B/SSITXD0_B/SD0DAT7_B           GTETRGD/GTIOC5A          AD0FLAG1    LCD_DATA7_A
+B4   PA11   -            D8/DQ8    IRQ10       SCK9_C/DE9                                   GTIV/GTIOC6A             -           -
+B5   P112   -            D3/DQ3    IRQ27       TXD0_A/SDA0_A/MOSI0_A/SSLA2_B/SSIBCK0_B/     GTETRGA/GTIOC3B/         ADST0       LCD_DATA10_A
+                                               SD0DAT4_B                                    ULPTOB0-DS
+B6   P209   TDO/SWO/     -         IRQ25       TXD9_B/SDA9_B/MOSI9_B/CTX1                   GTOVUP/GTIOC1A           -           -
+            CLKOUT
+B7   P211   TCK/SWCLK    -         IRQ23       SCK9_B/DE9                                   GTOUUP/GTIOC0A           -           -
+B8   -      VLO          -         -           -                                            -                        -           -
+B9   -      VLO          -         -           -                                            -                        -           -
+B10  -      VSS_DCDC     -         -           -                                            -                        -           -
+B11  -      VCC_DCDC     -         -           -                                            -                        -           -
+B12  -      VCC_DCDC     -         -           -                                            -                        -           -
+B13  P311   -            -         IRQ23-DS    SCK3_B/DE3/CRX0/ET1_TX_CLK                   GTADSM1/GTCPPO6/AGTOB1   -           LCD_DATA17_A/
+                                                                                                                                 VIO_D8
+B14  P908   -            -         IRQ11       TXD6_A/SDA6_A/MOSI6_A/CRX1/USB_OVRCURB/      GTIOC12B/ULPTEVI1        ADST1       LCD_DATA22_A/
+                                               USBHS_ID/ET1_RXD2/RGMII1_RXD2/PDMCLK1                                             VIO_D3
+B15  P909   -            -         IRQ21-DS    RXD6_A/SCL6_A/MISO6_A/CTX1/USB_OVRCURA/      GTIOC12A/ULPTOA1         ADST0       LCD_DATA23_A/
+                                               USBHS_EXICEN/ET1_RXD3/RGMII1_RXD3/PDMCLK0                                         VIO_D2
+B16  P904   -            -         IRQ2        ET1_RXD4                                     GTIOC11B                 -           LCD_DATA8_B
+B17  PD01   -            -         IRQ22       SCK8_C/DE8/SD0DAT2_C/ET1_RXD6                GTCPPO2                  -           -
+B18  PD02   -            -         IRQ21       TXD8_C/SDA8_C/MOSI8_C/SD0DAT1_C/ET1_RXD7     GTCPPO1                  -           -
+C1   PA06   -            CS1/CKE   IRQ17       CTS2_C/SD0DAT1_A/PDMDAT1                     GTETRGC/GTIOC7B          -           VIO_D11
+C2   P613   -            D15/DQ15  IRQ19       CTS0_C/USBHS_OVRCURB                         GTETRGA/GTIOC9B/AGTO1    -           LCD_DATA2_A
+C3   PA13   -            D10/DQ10  IRQ12       CTS_RTS9_C/SS9_C/DE9                         GTOVUP/GTIOC10A          -           -
+C4   P300   -            D2/DQ2    IRQ4        SCK0_A/DE0/SSLA3_B/SD0DAT3_B                 GTIOC3A/ULPTEVI0-DS      -           LCD_DATA11_A
+C5   P302   -            D0/DQ0    IRQ5        RXD6_B/SCL6_B/MISO6_B/SD0DAT1_B              GTOUUP/GTIOC4A/ULPTO0-DS -           LCD_DATA13_A
+C6   P200   -            -         NMI         -                                            -                        -           -
+C7   -      RES          -         -           -                                            -                        -           -
+C8   P110   -            -         IRQ20       SD0DAT4_C                                    GTIOC9B                  -           -
+C9   P903   -            -         IRQ1        -                                            GTIOC11A                 -           LCD_DATA2_B
+C10  P308   TCLK         -         IRQ26-DS    CTS3_B/SD0CLK_B/ET1_TX_ER/ETHPHYCLK          GTIU/GTCPPO9/ULPTOB1     -           VIO_D11
+C11  P305   TDATA2       -         IRQ8        SD0WP/ET1_TXD2/RGMII1_TXD2                   GTOVUP/GTCPPO12/ULPTEE1  -           VIO_D14
+C12  P307   TDATA0       -         IRQ27-DS    CTS_RTS6_A/SS6_A/DE6/SD0CMD_B/ET1_TXD0/      GTIV/GTCPPO10/ULPTOA1    -           VIO_D12
+                                               RGMII1_TXD0/RMII1_TXD0
+C13  P911   -            -         IRQ6        ET1_TXD5                                     GTIOC3B                  -           LCD_DATA5_B
+C14  P206   CLKOUT       CS7       IRQ0-DS     USB_VBUSEN/SSIDATA1_A/SD0DAT7_C/ET1_RX_DV/   GTIU/GTCPPO0/ULPTOB1     -           VIO_D0
+                                               RGMII1_RX_CTL/RMII1_CRS_DV
+C15  PD04   -            -         IRQ20       CTS_RTS8_C/SS8_C/DE8/USBHS_ID/SD0CMD_C/      GTIOC3A                  -           -
+                                               ET0_RXD5
+C16  PD03   -            -         IRQ21       RXD8_C/SCL8_C/MISO8_C/USBHS_EXICEN/          GTIOC3B                  -           -
+                                               SD0DAT0_C/ET0_RXD4
+C17  PD05   -            -         IRQ19       CTS8_C/USBHS_OVRCURB/SD0CLK_C/ET0_RXD6       GTIOC2B                  -           -
+C18  PD06   -            -         IRQ18       USBHS_OVRCURA/SD0WP/ET0_RXD7                 GTIOC2A                  -           -
+D1   PA04   -            A1        IRQ19       SCK2_C/DE2/SD0DAT3_A                         GTIU/GTIOC4B             ADST0       VIO_D9
+D2   P611   CACREF/      D13/DQ13  IRQ17       SCK0_C/DE0/MOSIA_B/USBHS_VBUSEN              GTOULO/GTIOC4B           -           LCD_DATA4_A
+            CLKOUT
+D3   P610   -            D12/DQ12  IRQ16       RXD0_C/SCL0_C/MISO0_C/RSPCKA_B/CRX1          GTOUUP/GTIOC4A/          -           LCD_DATA5_A
+                                                                                            ULPTOB1-DS
+D4   PA14   -            D11/DQ11  IRQ13       TXD9_C/SDA9_C/MOSI9_C                        GTOVLO/GTIOC10B          -           -
+D5   P303   -            -         IRQ29-DS    SCK6_B/DE6                                   GTIOC7B                  -           LCD_DATA14_A
+D6   P915   -            -         IRQ8        CTS6_B                                       GTIOC5A                  -           LCD_DATA1_B
+D7   P108   -            -         IRQ24       SD0DAT6_C                                    GTIOC10B                 -           -
+D8   P111   -            -         IRQ19       SD0DAT3_C                                    GTIOC9A                  -           -
+D9   P109   -            -         IRQ23       SD0DAT5_C                                    GTIOC10A                 -           -
+D10  P310   -            -         IRQ24-DS    TXD3_B/SDA3_B/MOSI3_B/ET1_TX_EN/             GTCPPO7/AGTEE1           -           LCD_DATA16_A/
+                                               RGMII1_TX_CTL/RMII1_TX_EN                                                         VIO_D9
+D11  P304   TDATA3       -         IRQ9        SD0DAT0_B/ET1_TXD3/RGMII1_TXD3               GTOVLO/GTIOC7A/ULPTO1    -           VIO_D15
+D12  P306   TDATA1       -         IRQ28-DS    SD0CD/ET1_TXD1/RGMII1_TXD1/RMII1_TXD1        GTIW/GTCPPO11/ULPTEVI1   -           VIO_D13
+D13  P912   -            -         IRQ5        ET1_TXD6                                     GTIOC3A                  -           LCD_DATA6_B
+D14  PB04   -            -         IRQ9        SCK5_C/DE5/ET0_TXD3/RGMII0_TXD3              GTCPPO3                  AD0FLAG1    LCD_DATA14_B/
+                                                                                                                                 VIO_CLK
+D15  PB07   -            -         IRQ1        ET0_TXD5                                     GTIOC9B                  -           LCD_DATA10_B
+D16  PB05   -            -         IRQ15       CTS5_C/ET0_TXD7                              GTCPPO4                  -           LCD_DATA12_B
+D17  PB03   -            -         IRQ13       TXD5_C/SDA5_C/MOSI5_C/ET0_TXD2/RGMII0_TXD2   GTCPPO1                  ADSYNC      LCD_DATA15_B/
+                                                                                                                                 VIO_HD
+D18  PB01   -            ALE       IRQ12       CTS_RTS1_B/SS1_B/DE1/ET0_TX_CLK              GTCPPO2                  AD1FLAG1    LCD_DATA13_B/
+                                                                                                                                 VIO_FLD
+E1   PA15   -            EBCLK/    IRQ14       CTS9_C/PDMCLK1                               GTIOC7A                  -           VIO_D14
+                         SDCLK
+E2   P615   -            -         IRQ7        TXD7_A/SDA7_A/MOSI7_A/USBHS_EXICEN           GTETRGC/GTCPPO10         -           LCD_DATA0_A
+E3   P614   -            WR/WR0/   IRQ20       RXD7_A/SCL7_A/MISO7_A/USBHS_ID               GTETRGB/GTCPPO9/AGTO0    -           LCD_DATA1_A
+                         DQM0
+E4   P612   -            D14/DQ14  IRQ18       CTS_RTS0_C/SS0_C/DE0/SSLA0_B/USBHS_OVRCURA   GTIOC9A                  -           LCD_DATA3_A
+E5   P914   -            -         IRQ9        CTS_RTS6_B/SS6_B/DE6                         GTIOC5B                  -           LCD_DATA0_B
+E6   P201   MD           -         IRQ4        -                                            -                        -           -
+E10  P902   -            ALE       IRQ0        AUDIO_CLK/ETHPHYCLK                          GTCPPO13                 -           LCD_DATA3_B/VIO_D1
+E11  P312   -            -         IRQ22-DS    CTS_RTS3_B/SS3_B/DE3/CTX0/ET1_RX_ER/         GTADSM0/GTCPPO5/AGTOA1   -           LCD_DATA18_A/
+                                               RMII1_RX_ER/PDMDAT2                                                               VIO_D7
+E12  P910   -            -         IRQ7        ET1_TXD4                                     GTCPPO12                 -           LCD_DATA4_B
+E13  P913   CLKOUT       -         IRQ3        ET1_TXD7                                     GTCPPO11                 -           LCD_DATA7_B
+E14  PB02   -            -         IRQ11       RXD5_C/SCL5_C/MISO5_C/ET0_TXD1/RGMII0_TXD1/  GTCPPO0                  ADST1       LCD_DATA16_B/
+                                               RMII0_TXD1                                                                        VIO_VD
+E15  PB06   -            -         IRQ0        CTS_RTS5_C/SS5_C/DE5/ET0_TXD6                GTIOC9A                  -           LCD_DATA11_B
+E16  PD07   -            -         IRQ17       USBHS_VBUSEN/SD0CD/ET0_TXD4                  GTCPPO0                  -           -
+E17  PB00   -            -         IRQ10       SCK1_B/DE1/USBHS_VBUSEN/ET0_TXD0/            GTCPPO4                  ADST0       LCD_DATA17_B
+                                               RGMII0_TXD0/RMII0_TXD0/PDMDAT2
+E18  P706   -            -         IRQ7        RXD1_B/SCL1_B/MISO1_B/USBHS_OVRCURB-DS/      GTCPPO2/AGTIO0           -           VIO_D10
+                                               ET0_GTX_CLK/RGMII0_TXC/ETHPHYCLK/PDMDAT0
+F1   PA02   -            A3        IRQ31       RXD2_C/SCL2_C/MISO2_C/SD0DAT5_A              GTIW/GTCPPO9             ADSYNC      VIO_D7
+F2   PA10   -            CS2/RAS   IRQ4        SCK5_B/DE5/PDMCLK0                           GTCPPO13                 -           LCD_TCON1_A/
+                                                                                                                                 VIO_D15
+F3   PA08   -            CS0/WE    IRQ6        RXD5_B/SCL5_B/MISO5_B                        GTETRGD/GTCPPO11         -           LCD_TCON3_A
+F4   PA09   -            CS3/CAS   IRQ5        TXD5_B/SDA5_B/MOSI5_B                        GTCPPO12                 -           LCD_TCON2_A
+F5   PC14   -            -         IRQ0        TXD6_C/SDA6_C/MOSI6_C/ET0_WOL                GTADSM1/GTCPPO9          -           -
+F7   -      VCC_08       -         -           -                                            -                        -           -
+F8   -      VSS_08       -         -           -                                            -                        -           -
+F9   -      VSS3         -         -           -                                            -                        -           -
+F10  -      VCL3         -         -           -                                            -                        -           -
+F11  -      VSS_07       -         -           -                                            -                        -           -
+F12  -      VCC_07       -         -           -                                            -                        -           -
+F13  P700   -            -         IRQ16-DS    RXD2_B/SCL2_B/MISO2_B/MISOA_C/SSIDATA1_B/    GTIOC5A                  -           VIO_D4
+                                               SD1WP/ET0_RXD2/RGMII0_RXD2
+F14  P702   -            -         IRQ18-DS    CTS2_B/RSPCKA_C/SSIBCK1_B/SD1DAT5_B/         GTIOC6A/ULPTO0           -           VIO_D6
+                                               ET0_RXD0/RGMII0_RXD0/RMII0_RXD0
+F15  P406   -            -         IRQ31       TXD2_B/SDA2_B/MOSI2_B/SSLA3_C/SSIRXD0_A/     GTIOC1B                  -           VIO_D3
+                                               SD1CD/ET0_RXD3/RGMII0_RXD3
+F16  P701   -            -         IRQ17-DS    CTS_RTS2_B/SS2_B/DE2/MOSIA_C/SSILRCK1_B/     GTIOC5B/ULPTO1           -           VIO_D5
+                                               SSIFS1_B/SD1DAT4_B/ET0_RXD1/RGMII0_RXD1/
+                                               RMII0_RXD1
+F17  P707   -            -         IRQ8        TXD1_B/SDA1_B/MOSI1_B/USBHS_OVRCURA-DS/      GTCPPO3                  -           LCD_DATA18_B/
+                                               ET0_TX_ER/ETHPHYCLK/PDMDAT1                                                       VIO_D11
+F18  P705   -            -         IRQ19       CTS1_B/SSLA2_C/CRX0/ET0_TX_EN/RGMII0_TX_CTL/ GTADSM1/GTCPPO1/AGTIO0   -           VIO_D9
+                                               RMII0_TX_EN/PDMCLK2
+G1   PA00   -            A5        IRQ22       CTS_RTS5_B/SS5_B/DE5/SD0DAT7_A               GTOVLO/GTCPPO7           AD1FLAG1    LCD_CLK_A/VIO_D5
+G2   PA03   -            A2        IRQ20       TXD2_C/SDA2_C/MOSI2_C/SD0DAT4_A              GTIV/GTCPPO10            ADST1       VIO_D8
+G3   PA05   -            A0/BC0/   IRQ18       CTS_RTS2_C/SS2_C/DE2/SD0DAT2_A/PDMDAT2       GTETRGD/GTIOC4A          -           VIO_D10
+                         DQM1
+G4   PA07   -            RD        IRQ16       CTS7_A/SD0DAT0_A/PDMDAT0                     GTETRGB/GTIOC7A          VCOUT       VIO_D12
+G5   PC12   -            -         IRQ2        SCK6_C/DE6/ET0_MDIO                          GTCPPO11                 -           -
+G7   -      VCC_09       -         -           -                                            -                        -           -
+G8   -      VSS_09       -         -           -                                            -                        -           -
+G9   -      VSS4         -         -           -                                            -                        -           -
+G10  -      VCL4         -         -           -                                            -                        -           -
+G11  -      VSS_06       -         -           -                                            -                        -           -
+G12  -      VCC_06       -         -           -                                            -                        -           -
+G13  P405   -            -         IRQ30       SCK2_B/DE2/SSITXD0_A/SD1DAT3_B/ET0_RX_DV/    GTIOC1A/AGTIO1           -           VIO_D2
+                                               RGMII0_RX_CTL/RMII0_CRS_DV
+G14  P704   -            -         IRQ26       SSLA1_C/CTX0/SD1DAT7_B/ET0_RX_ER/            GTADSM0/GTCPPO0/AGTO0    -           VIO_D8
+                                               RMII0_RX_ER/PDMCLK1
+G15  P703   -            -         IRQ19-DS    SSLA0_C/SD1DAT6_B/ET0_RX_CLK/RGMII0_RXC/     GTIOC6B/AGTO1            VCOUT       VIO_D7
+                                               RMII0_REF50CK/PDMCLK0
+G16  -      VSS_03       -         -           -                                            -                        -           -
+G17  -      VCC_05       -         -           -                                            -                        -           -
+G18  -      VSS_05       -         -           -                                            -                        -           -
+H1   P504   -            A7        IRQ7        SD0WP                                        GTOULO/GTCPPO1           -           VIO_D3
+H2   P503   -            A6        IRQ6        SD0CD                                        GTOUUP/GTCPPO6           -           VIO_D4
+H3   P505   -            A8        IRQ8        SD0CLK_A                                     GTOWUP/GTCPPO2           -           VIO_D2
+H4   PA01   -            A4        IRQ21       CTS5_B/SD0DAT6_A                             GTOVUP/GTCPPO8           AD0FLAG1    LCD_TCON0_A/VIO_D6
+H5   PC11   -            -         IRQ3        CTS_RTS6_C/SS6_C/DE6/ET0_MDC                 GTCPPO12                 -           -
+H7   -      VCC_10       -         -           -                                            -                        -           -
+H8   -      VSS_10       -         -           -                                            -                        -           -
+H9   -      VSS7         -         -           -                                            -                        -           -
+H10  -      VCL5         -         -           -                                            -                        -           -
+H11  -      VSS5         -         -           -                                            -                        -           -
+H12  -      VCC_04       -         -           -                                            -                        -           -
+H13  -      VSS_04       -         -           -                                            -                        -           -
+H15  -      VCC_03       -         -           -                                            -                        -           -
+H16  -      VCC_USBHS    -         -           -                                            -                        -           -
+H17  -      USBHS_DP     -         -           -                                            -                        -           -
+H18  -      USBHS_DM     -         -           -                                            -                        -           -
+J1   P506   -            A9        IRQ9        SD0CMD_A                                     GTOWLO/GTCPPO3           -           VIO_D1
+J2   P507   -            A10       IRQ10       CTS_RTS7_A/SS7_A/DE7/ET_TAS_STA0             GTADSM0/GTIOC0A          -           LCD_EXTCLK_A/
+                                                                                                                                 VIO_D0
+J3   P508   -            A11       IRQ1        CTS5_A/ET_TAS_STA1                           GTADSM1/GTIOC0B          -           VIO_VD
+J4   P509   -            A12       IRQ2        CTS_RTS5_A/SS5_A/DE5/ET_TAS_STA2             GTIOC1A/ULPTEVI1         -           VIO_HD
+J5   PC13   -            -         IRQ1        RXD6_C/SCL6_C/MISO6_C/ET0_INT                GTCPPO10                 -           -
+J7   -      VCC2_11      -         -           -                                            -                        -           -
+J8   -      VSS_11       -         -           -                                            -                        -           -
+J9   -      VCL7         -         -           -                                            -                        -           -
+J10  -      VCL6         -         -           -                                            -                        -           -
+J11  -      VSS6         -         -           -                                            -                        -           -
+J12  -      VCL2         -         -           -                                            -                        -           -
+J13  -      VSS2         -         -           -                                            -                        -           -
+J15  -      VSS_02       -         -           -                                            -                        -           -
+J16  -      USBHS_RREF   -         -           -                                            -                        -           -
+J17  -      VSS2_USBHS   -         -           -                                            -                        -           -
+J18  -      VSS1_USBHS   -         -           -                                            -                        -           -
+K1   PC15   -            A16       IRQ30       CTS6_C/CRX1                                  GTADSM0                  -           -
+K2   P608   CACREF       A14       IRQ22       TXD5_A/SDA5_A/MOSI5_A                        GTOWUP/GTCPPO4           -           VIO_FLD
+K3   P510   -            A13       IRQ3        RXD5_A/SCL5_A/MISO5_A/ET_TAS_STA3            GTIOC1B/ULPTEVI0         -           VIO_CLK
+K4   PD00   -            A15       IRQ23       SCK5_A/DE5/CTX1                              GTOWLO/GTCPPO5           -           -
+K5   -      VSS          -         -           -                                            -                        -           -
+K6   -      VSS          -         -           -                                            -                        -           -
+K7   -      VSS_12       -         -           -                                            -                        -           -
+K8   -      VSS9         -         -           -                                            -                        -           -
+K9   -      VCL9         -         -           -                                            -                        -           -
+K10  -      VCL8         -         -           -                                            -                        -           -
+K11  -      VSS8         -         -           -                                            -                        -           -
+K12  -      VCL1         -         -           -                                            -                        -           -
+K13  -      VSS1         -         -           -                                            -                        -           -
+K15  -      VCC_02       -         -           -                                            -                        -           -
+K16  -      AVCC_USBHS   -         -           -                                            -                        -           -
+K17  P213   XTAL         -         IRQ2        TXD1_C/SDA1_C/MOSI1_C                        GTETRGC/GTIOC0A/ULPTEE0  ADTRG1      -
+K18  P212   EXTAL        -         IRQ3        RXD1_C/SCL1_C/MISO1_C                        GTETRGD/GTIOC0B/AGTEE1   -           -
+L1   PC10   -            -         IRQ4        -                                            GTCPPO13                 -           -
+L2   -      VSS          -         -           -                                            -                        -           -
+L3   -      PUP          -         -           -                                            -                        -           -
+L4   -      VCC2_16      -         -           -                                            -                        -           -
+L5   -      VSS_16       -         -           -                                            -                        -           -
+L7   -      VCC2_12      -         -           -                                            -                        -           -
+L8   -      VSS_14       -         -           -                                            -                        -           -
+L9   -      VSS_15       -         -           -                                            -                        -           -
+L10  -      VSS10        -         -           -                                            -                        -           -
+L11  -      VCL10        -         -           -                                            -                        -           -
+L12  -      VCL0         -         -           -                                            -                        -           -
+L13  -      VSS0         -         -           -                                            -                        -           -
+L14  P403   -            -         IRQ14-DS    CTS_RTS1_A/SS1_A/DE1/SSIBCK0_A/SD1DAT1_B/    GTIOC3A/RTCIC1           AD0FLAG1    -
+                                               ET1_WOL
+L15  P404   -            -         IRQ15-DS    CTS1_A/SSILRCK0_A/SSIFS0_A/SD1DAT2_B/ET0_WOL GTIOC3B/RTCIC2           AD1FLAG1    -
+L16  -      VCC_01       -         -           -                                            -                        -           -
+L17  P214   XCOUT        -         IRQ21       -                                            -                        -           -
+L18  P215   XCIN/EXCIN   -         IRQ20       -                                            -                        -           -
+M1   PC09   -            -         IRQ5        -                                            -                        -           -
+M2   -      VSS          -         -           -                                            -                        -           -
+M3   -      VSS          -         -           -                                            -                        -           -
+M4   -      VCC2_17      -         -           -                                            -                        -           -
+M5   -      VSS_17       -         -           -                                            -                        -           -
+M8   -      VCC2_14      -         -           -                                            -                        -           -
+M9   -      VCC2_15      -         -           -                                            -                        -           -
+M11  -      VSS11        -         -           -                                            -                        -           -
+M12  -      VCL11        -         -           -                                            -                        -           -
+M14  P414   -            A23       IRQ9        RXD4_B/SCL4_B/MISO4_B/SSLB0_B/CRX1/ET1_MDIO  GTIOC0B                  -           VIO_CLK
+M15  P402   CACREF       -         IRQ4-DS     SCK1_A/DE1/CRX0/AUDIO_CLK/SD1DAT0_B/         RTCIC0                   -           -
+                                               ET0_LINKSTA
+M16  P410   -            A19       IRQ5        SCK3_A/DE3/SCL0_A*1/USB_OVRCURB-DS/          GTOVLO/GTIOC9B/AGTOB1    ADST0       -
+                                               USBHS_OVRCURB/GPTP_MATCH0
+M17  -      VBATT        -         -           -                                            -                        -           -
+M18  -      VSS_01       -         -           -                                            -                        -           -
+N1   PC08   -            -         IRQ29       -                                            GTCPPO8                  -           -
+N2   -      VSS          -         -           -                                            -                        -           -
+N3   -      VSS          -         -           -                                            -                        -           -
+N4   -      VCC2_18      -         -           -                                            -                        -           -
+N5   -      VSS_18       -         -           -                                            -                        -           -
+N7   P105   -            -         IRQ0        CTS_RTS8_B/SS8_B/DE8/SSLB2_A/OM_0_ECSINT1    GTIOC1A/ULPTO1-DS        ADSYNC      -
+N10  P810   -            -         IRQ21       SCK7_B/DE7/SD1DAT2_A/PDMCLK0                 GTIOC10A/ULPTOA0         -           -
+N14  P710   -            CS5       IRQ17       CTS4_B/SSLB3_B/ET0_LINKSTA                   GTIOC11B                 -           LCD_EXTCLK_B/
+                                                                                                                                 VIO_D12
+N15  P411   CACREF       A20       IRQ4        CTS_RTS3_A/SS3_A/DE3/USB_ID/USBHS_ID/        GTOVUP/GTIOC9A/AGTOA1    -           DSI_TE
+                                               GPTP_PTPOUT1
+N16  P408   -            A17       IRQ7        RXD3_A/SCL3_A/MISO3_A/SCL0_B*1/USB_VBUSEN/   GTOWLO/GTIOC10A/ULPTOB0  ADSYNC      -
+                                               USBHS_VBUS/GPTP_PTPOUT2
+N17  P412   -            A21       IRQ20-DS    CTS3_A/USB_EXICEN/USBHS_EXICEN/GPTP_PTPOUT0  GTOULO/GTCPPO8/AGTEE1    -           -
+N18  P401   -            -         IRQ5-DS     RXD1_A/SCL1_A/MISO1_A/I3C_SDA0/CTX0/SD1CMD_B GTETRGA/GTIOC6B          -           VIO_D1
+P1   -      VSS          -         -           -                                            -                        -           -
+P2   -      VSS          -         -           -                                            -                        -           -
+P3   -      VSS          -         -           -                                            -                        -           -
+P4   -      VCC2_19      -         -           -                                            -                        -           -
+P5   -      VSS_19       -         -           -                                            -                        -           -
+P6   P104   -            -         IRQ1        CTS9_A/SSLB1_A/OM_0_CS1                      GTETRGB/GTIOC1B          AD0FLAG1    -
+P7   P107   -            -         IRQ31       CTS4_A/OM_0_CS0                              GTOWUP/GTIOC8A/AGTOA0    ADST0       -
+P8   P106   -            -         IRQ16       CTS8_B/SSLB3_A/OM_0_RESET                    GTOWLO/GTIOC8B/AGTOB0/   ADST1       -
+                                                                                            ULPTEE1-DS
+P9   P811   -            -         IRQ22       CTS7_B/USB_ID/SD1DAT3_A/PDMCLK1              GTIOC10B/ULPTOB0         -           -
+P10  P013   -            -         IRQ14       -                                            -                        AN013       -
+P11  P011   -            -         IRQ16       -                                            -                        AN011       -
+P12  P807   -            -         IRQ11       -                                            GTIOC13A                 -           LCD_TCON2_B
+P13  P708   CACREF       WR1/BC1   IRQ11       SCK4_B/DE4/SDA2_A*1/MOSIB_B/AUDIO_CLK/       GTCPPO6                  -           VIO_VD
+                                               ET0_MDC
+P14  P712   -            -         IRQ2        CTS1_C/SSLB1_B/GPTP_CAPTURE1                 GTIOC2B/AGTOB0           -           LCD_DATA20_B
+P15  P714   -            -         IRQ13       TXD4_C/SDA4_C/MOSI4_C/GPTP_PPS1              GTIOC12B                 -           DSI_TE/
+                                                                                                                                 LCD_DATA22_B
+P16  P711   -            -         IRQ3        CTS_RTS1_C/SS1_C/DE1/SSLB2_B/GPTP_PPS0       GTIOC11A/AGTEE0          -           LCD_DATA19_B
+P17  P713   -            -         IRQ14       CTS4_C/GPTP_MATCH1                           GTIOC2A/AGTOA0           -           LCD_DATA21_B
+P18  P400   -            -         IRQ0        TXD1_A/SDA1_A/MOSI1_A/I3C_SCL0/AUDIO_CLK/    GTIOC6A/AGTIO1           ADTRG1      VIO_D0
+                                               SD1CLK_B
+R1   P602   -            -         IRQ28       RXD0_B/SCL0_B/MISO0_B                        GTIOC7B/ULPTEE0          -           -
+R2   -      VSS          -         -           -                                            -                        -           -
+R3   -      VSS          -         -           -                                            -                        -           -
+R4   P600   CACREF       -         IRQ30       OM_0_RSTO1                                   GTIOC6B/ULPTEVI1-DS      -           -
+R5   P601   -            -         IRQ29       SCK0_B/DE0/OM_0_WP1                          GTIOC6A/ULPTEVI0/RTCOUT  -           -
+R6   P102   -            -         IRQ17       TXD9_A/SDA9_A/MOSI9_A/RSPCKB_A/CRX0/         GTOWLO/GTIOC2B/AGTO0     ADTRG0      -
+                                               OM_0_SIO4
+R7   P801   -            -         IRQ12       TXD2_A/SDA2_A/MOSI2_A/OM_0_DQS               GTIV/GTIOC11B/AGTOB0     -           -
+R8   P803   -            -         IRQ19       SCK2_A/DE2/OM_0_SIO1                         GTETRGC/GTIOC12B         -           -
+R9   P812   -            -         IRQ23       CTS_RTS7_B/SS7_B/DE7/USB_EXICEN/SD1DAT4_A/   GTIOC11A                 AN022       -
+                                               PDMCLK2
+R10  P012   -            -         IRQ15       -                                            -                        AN012       -
+R11  P010   -            -         IRQ14       -                                            -                        AN010       -
+R12  P009   -            -         IRQ13-DS    -                                            -                        AN009/      -
+                                                                                                                     IVREF1
+R13  P805   -            -         IRQ30       TXD8_A/SDA8_A/MOSI8_A/ET1_MDIO               -                        AN017/      LCD_TCON1_B/
+                                                                                                                     IVCMP0      VIO_D15
+R14  P512   -            -         IRQ14       CTS8_A/SCL1_A*1/CTX1/ET1_INT                 GTIOC0A                  -           -
+R15  P413   -            A22       IRQ18       ET_TAS_STA3                                  GTOUUP/GTCPPO7/ULPTEE1   -           -
+R16  P515   -            -         IRQ12       CTS_RTS4_C/SS4_C/DE4/SCL2_B*1/ET_TAS_STA0    GTIOC13A                 -           LCD_CLK_B
+R17  P709   -            CS4       IRQ10       CTS_RTS4_B/SS4_B/DE4/SCL2_A*1/MISOB_B/       GTCPPO5                  -           VIO_D13
+                                               ET0_MDIO
+R18  P407   -            CS6       IRQ22       SCK1_C/DE1/SDA0_B*1/USB_VBUS/USBHS_VBUSEN/   GTIOC10B/AGTIO0/RTCOUT   ADTRG0      -
+                                               GPTP_PTPOUT3
+T1   -      Vpp          -         -           -                                            -                        -           -
+T2   -      VSS          -         -           -                                            -                        -           -
+T3   -      VCC18_MIPI   -         -           -                                            -                        -           -
+T4   -      VSS_MIPI     -         -           -                                            -                        -           -
+T5   P103   -            -         IRQ16       CTS_RTS9_A/SS9_A/DE9/SSLB0_A/CTX0/OM_0_SIO2  GTOWUP/GTIOC2A           AD1FLAG1    -
+T6   P101   -            -         IRQ1        RXD9_A/SCL9_A/MISO9_A/MOSIB_A/OM_0_SIO3      GTETRGB/GTIOC8A/AGTEE0   -           -
+T7   P802   -            -         IRQ18       RXD2_A/SCL2_A/MISO2_A/OM_0_SIO6              GTIW/GTIOC12A            -           -
+T8   P804   -            -         IRQ14       CTS_RTS2_A/SS2_A/DE2/OM_0_SIO7               GTETRGD/GTIOC13A         -           DSI_TE
+T9   P501   -            -         IRQ25       TXD8_B/SDA8_B/MOSI8_B/USB_OVRCURA/SD1DAT6_A/ GTIOC12A                 AN020       -
+                                               PDMDAT1
+T10  -      AVCC0        -         -           -                                            -                        -           -
+T11  -      AVSS0        -         -           -                                            -                        -           -
+T12  P005   -            -         IRQ10-DS    -                                            -                        AN005/      -
+                                                                                                                     IVCMP3
+T13  P003   -            -         IRQ29       -                                            -                        AN003/      -
+                                                                                                                     IVCMP3
+T14  P513   -            -         IRQ31       SCK8_A/DE8/ET0_INT                           GTIOC13B                 AN016/      LCD_TCON3_B/
+                                                                                                                     IVCMP0      VIO_FLD
+T15  P514   -            -         IRQ13       SCK4_C/DE4/SDA2_B*1/ET_TAS_STA1              GTIOC13B                 -           LCD_EXTCLK_B
+T16  P415   -            WAIT      IRQ8        TXD4_B/SDA4_B/MOSI4_B/RSPCKB_B/CTX1/ET1_MDC  GTIOC0A                  -           VIO_HD
+T17  P409   -            A18       IRQ6        TXD3_A/SDA3_A/MOSI3_A/SDA0_A*1/              GTOWUP/ULPTOA0           ADST1       -
+                                               USB_OVRCURA-DS/USBHS_OVRCURA/GPTP_CAPTURE0
+T18  -      VCC_USB      -         -           -                                            -                        -           -
+U1   -      VCC2_13      -         -           -                                            -                        -           -
+U2   -      MIPI_DL0_P   -         -           -                                            -                        -           -
+U3   -      MIPI_CL_P    -         -           -                                            -                        -           -
+U4   -      MIPI_DL1_P   -         -           -                                            -                        -           -
+U5   -      AVCC_MIPI    -         -           -                                            -                        -           -
+U6   P809   -            -         IRQ20       TXD7_B/SDA7_B/MOSI7_B/OM_0_SCLKN             -                        -           -
+U7   P800   -            -         IRQ11       CTS2_A/OM_0_SIO5                             GTIU/GTIOC11A/AGTOA0     -           -
+U8   P502   -            -         IRQ26       SCK8_B/DE8/USB_OVRCURB/SD1DAT7_A/PDMDAT2     GTIOC12B                 AN019       -
+U9   P014   -            -         IRQ27       -                                            -                        AN014/DA0/  -
+                                                                                                                     IVCMP0
+U10  -      VREFL        -         -           -                                            -                        -           -
+U11  -      VREFL0       -         -           -                                            -                        -           -
+U12  P004   -            -         IRQ9-DS     -                                            -                        AN004/      -
+                                                                                                                     IVCMP2
+U13  P007   -            -         IRQ28       -                                            -                        AN007/      -
+                                                                                                                     IVCMP3
+U14  P001   -            -         IRQ7-DS     -                                            -                        AN001/      -
+                                                                                                                     IVCMP3
+U15  P806   -            -         IRQ0        RXD8_A/SCL8_A/MISO8_A/ET1_MDC                -                        AN018       LCD_TCON0_B/
+                                                                                                                                 VIO_D14
+U16  P715   -            -         IRQ12       RXD4_C/SCL4_C/MISO4_C/ET_TAS_STA2            GTIOC12A                 -           LCD_DATA23_B
+U17  P815   -            -         IRQ15       CTX0/USB_DM                                  GTIOC8A                  -           -
+U18  -      VSS_USB      -         -           -                                            -                        -           -
+V1   -      VSS          -         -           -                                            -                        -           -
+V2   -      MIPI_DL0_N   -         -           -                                            -                        -           -
+V3   -      MIPI_CL_N    -         -           -                                            -                        -           -
+V4   -      MIPI_DL1_N   -         -           -                                            -                        -           -
+V5   -      VSS_13       -         -           -                                            -                        -           -
+V6   P808   -            -         IRQ15       RXD7_B/SCL7_B/MISO7_B/OM_0_SCLK              GTIOC13B                 -           -
+V7   P100   -            -         IRQ2        SCK9_A/DE9/MISOB_A/OM_0_SIO0                 GTETRGA/GTIOC8B/AGTIO0   -           -
+V8   P500   CACREF       -         IRQ24       RXD8_B/SCL8_B/MISO8_B/USB_VBUSEN/SD1DAT5_A/  GTIOC11B                 AN021       -
+                                               PDMDAT0
+V9   P015   -            -         IRQ13       -                                            -                        AN015/DA1/  -
+                                                                                                                     IVCMP0
+V10  -      VREFH        -         -           -                                            -                        -           -
+V11  -      VREFH0       -         -           -                                            -                        -           -
+V12  P008   -            -         IRQ12-DS    -                                            -                        AN008/      -
+                                                                                                                     IVREF0
+V13  P006   -            -         IRQ11-DS    -                                            -                        AN006/      -
+                                                                                                                     IVCMP2
+V14  P000   -            -         IRQ6-DS     -                                            -                        AN000/      -
+                                                                                                                     IVCMP2
+V15  P002   -            -         IRQ8-DS     -                                            -                        AN002/      -
+                                                                                                                     IVCMP2
+V16  P511   -            -         IRQ15       CTS_RTS8_A/SS8_A/DE8/SDA1_A*1/CRX1/          GTIOC0B                  -           -
+                                               ET1_LINKSTA
+V17  P814   -            -         IRQ16       CRX0/USB_DP                                  GTIOC8B                  -           -
+V18  -      VSS          -         -           -                                            -                        -           -
+
+--------------------------------------------------------------------------------
+3. I/O port pin index
+--------------------------------------------------------------------------------
+
+186 port pins, in port order.
+
+    P000  V14   P001  U14   P002  V15   P003  T13   P004  U12   P005  T12
+    P006  V13   P007  U13   P008  V12   P009  R12   P010  R11   P011  P11
+    P012  R10   P013  P10   P014  U9    P015  V9    P100  V7    P101  T6
+    P102  R6    P103  T5    P104  P6    P105  N7    P106  P8    P107  P7
+    P108  D7    P109  D9    P110  C8    P111  D8    P112  B5    P113  A4
+    P114  A2    P115  B3    P200  C6    P201  E6    P206  C14   P207  A17
+    P208  A6    P209  B6    P210  A7    P211  B7    P212  K18   P213  K17
+    P214  L17   P215  L18   P300  C4    P301  A5    P302  C5    P303  D5
+    P304  D11   P305  C11   P306  D12   P307  C12   P308  C10   P309  A13
+    P310  D10   P311  B13   P312  E11   P400  P18   P401  N18   P402  M15
+    P403  L14   P404  L15   P405  G13   P406  F15   P407  R18   P408  N16
+    P409  T17   P410  M16   P411  N15   P412  N17   P413  R15   P414  M14
+    P415  T16   P500  V8    P501  T9    P502  U8    P503  H2    P504  H1
+    P505  H3    P506  J1    P507  J2    P508  J3    P509  J4    P510  K3
+    P511  V16   P512  R14   P513  T14   P514  T15   P515  R16   P600  R4
+    P601  R5    P602  R1    P608  K2    P609  A3    P610  D3    P611  D2
+    P612  E4    P613  C2    P614  E3    P615  E2    P700  F13   P701  F16
+    P702  F14   P703  G15   P704  G14   P705  F18   P706  E18   P707  F17
+    P708  P13   P709  R17   P710  N14   P711  P16   P712  P14   P713  P17
+    P714  P15   P715  U16   P800  U7    P801  R7    P802  T7    P803  R8
+    P804  T8    P805  R13   P806  U15   P807  P12   P808  V6    P809  U6
+    P810  N10   P811  P9    P812  R9    P813  B1    P814  V17   P815  U17
+    P902  E10   P903  C9    P904  B16   P905  A15   P906  A14   P907  A16
+    P908  B14   P909  B15   P910  E12   P911  C13   P912  D13   P913  E13
+    P914  E5    P915  D6    PA00  G1    PA01  H4    PA02  F1    PA03  G2
+    PA04  D1    PA05  G3    PA06  C1    PA07  G4    PA08  F3    PA09  F4
+    PA10  F2    PA11  B4    PA12  B2    PA13  C3    PA14  D4    PA15  E1
+    PB00  E17   PB01  D18   PB02  E14   PB03  D17   PB04  D14   PB05  D16
+    PB06  E15   PB07  D15   PC08  N1    PC09  M1    PC10  L1    PC11  H5
+    PC12  G5    PC13  J5    PC14  F5    PC15  K1    PD00  K4    PD01  B17
+    PD02  B18   PD03  C16   PD04  C15   PD05  C17   PD06  C18   PD07  E16
+

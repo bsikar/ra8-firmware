@@ -422,6 +422,7 @@ jobs:
       - run: bash scripts/ci.sh --gate disambig-readmes
       - run: bash scripts/ci.sh --gate init-order-freshness
       - run: bash scripts/ci.sh --gate roadmap-dashboard-freshness
+      - run: bash scripts/ci.sh --gate pinout-freshness
       - run: bash scripts/ci.sh --gate bench-lock
       - name: Install ruff, shellcheck and shfmt
         run: |
