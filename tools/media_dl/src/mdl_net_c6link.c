@@ -32,12 +32,16 @@ typedef struct {
 
 /**
  * @brief Reject request policy the version-1 C6 wire cannot represent.
+ * @details Accepts only the unconditional request shape whose semantics the
+ *          current remote protocol can preserve exactly.
  * @param[in] req Downloader request policy.
  * @return Capability status.
  * @retval k_ra8_ok The request is an unconditional transfer.
  * @retval k_ra8_err_not_supported At least one unsupported field is present.
  * @pre @p req is non-null.
+ * @pre The caller has already validated the containing network request.
  * @post No request or backend state is modified.
+ * @post Success proves every optional policy field is absent.
  * @note Pure and thread-safe.
  * @since 0.1.0
  */
@@ -53,6 +57,8 @@ RA8_INTERNAL static ra8_err_t internal_c6_request_supported(const mdl_net_req_t*
 
 /**
  * @brief Begin the local half of one transfer transaction.
+ * @details Validates the coordinator placeholder and resets only the selected
+ *          local output shape before the first remote body chunk arrives.
  * @param[in,out] ctx Bound ::mdl_c6_output_t.
  * @param[in] destination Nonempty coordinator placeholder.
  * @return Local readiness status.
@@ -80,6 +86,8 @@ RA8_INTERNAL static ra8_err_t internal_c6_output_begin(void* ctx, const char* de
 
 /**
  * @brief Append one verified-order C6 chunk to the selected output.
+ * @details Copies into the bounded text destination or delegates to the
+ *          injected streaming sink while enforcing exact progress.
  * @param[in,out] ctx Bound ::mdl_c6_output_t.
  * @param[in] data Remote body bytes.
  * @param[in] len Valid byte count.
@@ -122,6 +130,8 @@ internal_c6_output_write(void* ctx, const uint8_t* data, uint16_t len, uint16_t*
 
 /**
  * @brief Publish the completed response to the caller-visible output.
+ * @details Terminates bounded text output after digest validation; streaming
+ *          sinks are already caller-visible and require no extra operation.
  * @param[in,out] ctx Bound ::mdl_c6_output_t.
  * @return Publication status.
  * @retval k_ra8_ok Output is complete and visible.
@@ -143,6 +153,8 @@ RA8_INTERNAL static ra8_err_t internal_c6_output_commit(void* ctx)
 
 /**
  * @brief Discard caller-visible partial bytes after a failed transfer.
+ * @details Clears bounded text directly or delegates reset to the injected
+ *          body sink, preserving cleanup failure for coordinator precedence.
  * @param[in,out] ctx Bound ::mdl_c6_output_t.
  * @return Cleanup status.
  * @retval k_ra8_ok Partial output was cleared.
@@ -170,6 +182,8 @@ RA8_INTERNAL static ra8_err_t internal_c6_output_abort(void* ctx)
 
 /**
  * @brief Execute one digest-verified unconditional C6 GET.
+ * @details Binds the selected output as a transfer storage transaction, runs
+ *          the C6 coordinator, and synthesizes only metadata the wire proves.
  * @param[in,out] backend Bound C6 network state.
  * @param[in] url HTTPS source URL.
  * @param[in] req Request policy to validate.

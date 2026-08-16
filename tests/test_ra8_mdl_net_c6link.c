@@ -44,10 +44,16 @@ static internal_c6_sha_t s_sha;                         /**< Adapter SHA state. 
 
 /**
  * @brief Reset the real streaming digest context.
+ * @details Delegates to the production SHA-256 initializer over the fixture's
+ *          caller-owned context.
  * @param[in,out] ctx Bound ::internal_c6_sha_t.
  * @return SHA initialization status.
+ * @retval k_ra8_ok A fresh digest operation is active.
+ * @retval k_ra8_fail The production SHA initializer rejected the context.
  * @pre @p ctx is non-null and exclusively owned.
+ * @pre No prior digest operation still owns the context.
  * @post Success starts a fresh SHA-256 operation.
+ * @post Failure leaves no test output published.
  * @note Test adapter; not thread-safe.
  * @since 0.1.0
  */
@@ -58,12 +64,18 @@ RA8_INTERNAL static ra8_err_t internal_sha_init(void* ctx)
 
 /**
  * @brief Feed one ordered C6 chunk into the real digest.
+ * @details Exercises the production incremental SHA update on exactly the
+ *          fragment delivered by the modelled C6 transfer.
  * @param[in,out] ctx Bound ::internal_c6_sha_t.
  * @param[in] data Chunk bytes.
  * @param[in] len Valid byte count.
  * @return SHA update status.
+ * @retval k_ra8_ok The complete fragment was incorporated.
+ * @retval k_ra8_fail The production SHA update rejected the fragment.
  * @pre Pointers are non-null and @p data spans @p len bytes.
+ * @pre A digest operation was initialized on @p ctx.
  * @post Success incorporates exactly @p len bytes.
+ * @post Failure publishes no digest or response bytes.
  * @note Test adapter; not thread-safe.
  * @since 0.1.0
  */
@@ -74,11 +86,17 @@ RA8_INTERNAL static ra8_err_t internal_sha_update(void* ctx, const uint8_t* data
 
 /**
  * @brief Finalize and optionally corrupt the local digest.
+ * @details Finalizes the production SHA stream and flips one result bit only
+ *          when the fixture requests a terminal integrity fault.
  * @param[in,out] ctx Bound ::internal_c6_sha_t.
  * @param[out] out Exact SHA-256 destination.
  * @return SHA finalization status.
+ * @retval k_ra8_ok One possibly fault-injected digest was written.
+ * @retval k_ra8_fail The production finalizer rejected the active stream.
  * @pre Pointers are non-null and a digest operation is active.
+ * @pre @p out spans exactly ::k_ra8_mdl_sha256_bytes writable bytes.
  * @post Success writes one digest and honors the fault flag.
+ * @post Failure does not deliberately mutate the digest for fault injection.
  * @note The fault proves remote digest comparison is non-vacuous.
  * @since 0.1.0
  */
@@ -94,10 +112,16 @@ RA8_INTERNAL static ra8_err_t internal_sha_final(void* ctx, uint8_t out[k_ra8_md
 
 /**
  * @brief Clear one caller-owned RAM body sink.
+ * @details Applies the reset fault first, otherwise clears both the retained
+ *          body bytes and their visible length.
  * @param[in,out] ctx Bound ::internal_c6_sink_t.
  * @return Reset status or injected failure.
+ * @retval k_ra8_ok The sink is empty and reusable.
+ * @retval k_ra8_fail The configured reset fault fired.
  * @pre @p ctx is non-null.
+ * @pre @p ctx points to a writable ::internal_c6_sink_t.
  * @post Success clears length and bytes.
+ * @post Injected failure preserves the prior sink contents.
  * @note Test adapter; not thread-safe.
  * @since 0.1.0
  */
@@ -114,6 +138,8 @@ RA8_INTERNAL static ra8_err_t internal_sink_reset(void* ctx)
 
 /**
  * @brief Append one response chunk to the RAM body sink.
+ * @details Performs a bounded append into the fixture buffer and reports exact
+ *          progress through the downloader sink contract.
  * @param[in,out] ctx Bound ::internal_c6_sink_t.
  * @param[in] bytes Response bytes.
  * @param[in] length Valid byte count.
@@ -122,7 +148,9 @@ RA8_INTERNAL static ra8_err_t internal_sink_reset(void* ctx)
  * @retval k_ra8_ok Every byte fit.
  * @retval k_ra8_err_no_mem The fixed sink is full.
  * @pre Pointer spans are valid and exclusively owned.
+ * @pre @p out_written is writable and distinct from the source span.
  * @post Success appends exactly @p length bytes.
+ * @post Failure reports zero accepted bytes and preserves the visible length.
  * @note Test adapter; not thread-safe.
  * @since 0.1.0
  */
@@ -142,9 +170,12 @@ internal_sink_write(void* ctx, const uint8_t* bytes, uint32_t length, uint32_t* 
 
 /**
  * @brief Rebind the model to the deterministic source and open its link.
+ * @details Hashes the fixture body with production SHA-256, resets the model,
+ *          and installs the exact body and digest as the next C6 response.
  * @pre Shared model state is not in use by another test.
  * @pre The source and digest storage outlive the exchange.
  * @post The test link is ready and the source offset is zero.
+ * @post The model advertises the digest of exactly ::s_body without its NUL.
  * @note Assertion failure terminates the process.
  * @since 0.1.0
  */
@@ -159,11 +190,14 @@ RA8_INTERNAL static void internal_prepare_source(void)
 
 /**
  * @brief Bind the portable network interface to the shared model link.
+ * @details Resets the fixture SHA state and injects the model link, digest
+ *          callbacks, chunk geometry, and hard pull bound into the backend.
  * @param[out] net Interface under test.
  * @param[out] backend Caller-owned C6 adapter state.
  * @pre ::internal_prepare_source completed.
  * @pre Static SHA state is exclusively owned.
  * @post Both outputs are initialized and ready.
+ * @post The backend owns no storage outside the supplied fixture objects.
  * @note Assertion failure terminates the process.
  * @since 0.1.0
  */
@@ -188,9 +222,12 @@ RA8_INTERNAL static void internal_bind(mdl_net_iface_t* net, mdl_net_c6link_t* b
 /**
  * @test internal_test_buffer_and_sink
  * @brief Both network output shapes receive exact digest-verified bytes.
+ * @details Runs the same deterministic C6 body through bounded string output
+ *          and the reset/write streaming sink, comparing every visible byte.
  * @pre Model and static hash state are exclusively owned.
  * @pre Fixed buffers are large enough for the deterministic source.
  * @post Buffer output is NUL-terminated and sink output is byte-identical.
+ * @post The network adapter is destroyed after both successful transfers.
  * @note Assertion failure terminates the process.
  * @since 0.1.0
  */
@@ -237,9 +274,12 @@ RA8_INTERNAL static void internal_test_buffer_and_sink(void)
 /**
  * @test internal_test_fail_closed
  * @brief Unsupported policy, capacity, and digest faults publish no bytes.
+ * @details Injects an unrepresentable request, insufficient destination, and
+ *          terminal digest corruption to prove each boundary fails closed.
  * @pre Model and static hash state are exclusively owned.
  * @pre The small buffer intentionally cannot hold the source and NUL.
  * @post Every failure leaves the caller buffer empty.
+ * @post The adapter is destroyed after all three rejection paths are checked.
  * @note Assertion failure terminates the process.
  * @since 0.1.0
  */
