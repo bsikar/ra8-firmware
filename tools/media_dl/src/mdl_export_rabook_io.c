@@ -21,6 +21,10 @@ typedef enum : uint32_t {
   k_rabook_read_calls    = 1000000U,    /**< EPUB random-read ceiling.      */
   k_rabook_fnv_offset    = 2166136261U, /**< FNV-1a seed for temp names.    */
   k_rabook_fnv_prime     = 16777619U,   /**< FNV-1a multiplier.             */
+  k_rabook_hex_digits    = 7U,          /**< Hex digits in a temp leaf.     */
+  k_rabook_hex_mask      = 0x0FU,       /**< One hexadecimal nibble.        */
+  k_rabook_suffix_bytes  = 5U,          /**< `.EPB` plus NUL terminator.    */
+  k_rabook_value_mask    = 0x0FFFFFFFU, /**< Low 28 temporary-name bits.    */
 } mdl_rabook_io_limit_t;
 
 /**
@@ -61,13 +65,13 @@ RA8_INTERNAL static uint32_t internal_temp_seed(const char* destination)
  */
 RA8_INTERNAL static void internal_temp_leaf(uint32_t value, char leaf[13])
 {
-  static const char s_hex[] = "0123456789ABCDEF";
+  static const char k_hex[] = "0123456789ABCDEF";
   leaf[0]                   = 'R';
-  for (uint32_t index = 0U; index < 7U; ++index) {
-    const uint32_t shift = (6U - index) * 4U;
-    leaf[index + 1U]     = s_hex[(value >> shift) & UINT32_C(0x0f)];
+  for (uint32_t index = 0U; index < (uint32_t)k_rabook_hex_digits; ++index) {
+    const uint32_t shift = ((uint32_t)k_rabook_hex_digits - 1U - index) * 4U;
+    leaf[index + 1U]     = k_hex[(value >> shift) & (uint32_t)k_rabook_hex_mask];
   }
-  (void)memcpy(&leaf[8], ".EPB", 5U);
+  (void)memcpy(&leaf[8], ".EPB", (size_t)k_rabook_suffix_bytes);
 }
 
 RA8_PRIV ra8_err_t priv_mdl_rabook_temp_begin(mdl_export_output_t* output,
@@ -81,10 +85,10 @@ RA8_PRIV ra8_err_t priv_mdl_rabook_temp_begin(mdl_export_output_t* output,
       (destination == nullptr) || (path == nullptr) || (capacity == 0U)) {
     return k_ra8_err_invalid_arg;
   }
-  const uint32_t seed = internal_temp_seed(destination) & UINT32_C(0x0fffffff);
+  const uint32_t seed = internal_temp_seed(destination) & (uint32_t)k_rabook_value_mask;
   for (uint32_t attempt = 0U; attempt < (uint32_t)k_rabook_temp_attempts; ++attempt) {
     char           leaf[13] = {};
-    const uint32_t value    = (seed + attempt) & UINT32_C(0x0fffffff);
+    const uint32_t value    = (seed + attempt) & (uint32_t)k_rabook_value_mask;
     internal_temp_leaf(value, leaf);
     if (priv_mdl_export_path_join(path, capacity, directory, leaf) != k_ra8_ok) {
       return k_ra8_err_invalid_size;

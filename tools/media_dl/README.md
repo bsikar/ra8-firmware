@@ -307,14 +307,18 @@ unavailable. Sites requiring a JavaScript challenge are not claimed supported.
 | `cbt.gz` | miniz DEFLATE + RFC-1952 gzip framing | nothing |
 | `epub` | a valid EPUB3 of the pages via vendored miniz (`ra8_epub` opens it) | nothing |
 | `jof` | per-page native JOF tile atlas via the firmware `ra8_jof` producer -- a full-width column (`tile_w == width`) the `ra8_longstrip` engine opens directly | nothing |
+| `rabook` | strict reader-native RABOOK1 data in an independently compressed RBKC container | nothing |
 
-`cbz`/`cbt`/`cbt.gz`/`epub`/`jof` are fully self-contained (in-tree/vendored
+`cbz`/`cbt`/`cbt.gz`/`epub`/`jof`/`rabook` are fully self-contained (in-tree/vendored
 code, no system library or external process): `epub` is hand-built with miniz,
 and `jof` reuses the firmware's own `ra8_jof_produce` host-side, so a
 `.jof` the CLI writes is byte-identical to one the RA8 produces (webtoon
-column). CBR, CBT.XZ, and rabook enums remain for reader compatibility but are
-not accepted as host CLI export formats. The `.gz` variant wraps a whole tar
-and is opened on-device by `ra8_comic_open_wrapped`. JOF writes one
+column). RABOOK export builds an EPUB-compatible page source, compiles it to
+the native RABOOK1 model, writes the chunked RBKC container, strictly validates
+the staged bytes, and only then publishes the `.rabook` file. CBR and CBT.XZ
+enums remain for reader compatibility but are not accepted as host CLI export
+formats. The `.gz` variant wraps a whole tar and is opened on-device by
+`ra8_comic_open_wrapped`. JOF writes one
 `page_NNN.jof` per page into the
 chapter folder (the webtoon-native form), not a single archive file.
 
