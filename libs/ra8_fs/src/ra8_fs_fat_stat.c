@@ -37,7 +37,6 @@ typedef enum : uint16_t {
   k_stat_fat_second_mask    = 0x1FU,   /**< FAT half-second-field mask.           */
   k_stat_tenths_per_second  = 100U,    /**< Ten-millisecond units per second.     */
   k_stat_month_max          = 12U,     /**< Largest civil month.                  */
-  k_stat_day_max            = 31U,     /**< Largest civil day accepted here.      */
   k_stat_hour_max           = 23U,     /**< Largest civil hour.                   */
   k_stat_minute_max         = 59U,     /**< Largest civil minute.                 */
   k_stat_second_max         = 59U,     /**< Largest civil second.                 */
@@ -85,6 +84,10 @@ static bool internal_path_is_root(const char* path)
  *
  * @details Reconstructs FAT's even-second field and optional creation
  *          centiseconds, then rejects every out-of-range calendar component.
+ *          There is deliberately no upper-bound check on the day: FAT stores it
+ *          in five bits, so `date & k_stat_fat_day_mask` cannot exceed 31, which
+ *          is already the largest civil day. Only `day == 0` is representable
+ *          and illegal, and that is the guard below.
  *
  * @param[in]  date       Packed FAT date word.
  * @param[in]  time       Packed FAT time word (zero for date-only access time).
@@ -127,10 +130,6 @@ static void internal_stat_decode_fat(uint16_t            date,
     return;
   }
   if (v.day == 0U) {
-    *out = (ra8_fs_timestamp_t){};
-    return;
-  }
-  if (v.day > (uint8_t)k_stat_day_max) {
     *out = (ra8_fs_timestamp_t){};
     return;
   }
