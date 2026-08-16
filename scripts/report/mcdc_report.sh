@@ -481,7 +481,23 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
   # test harness, system / libc++ headers, and the macOS-only host display
   # backend (ra8_display_pal_host_macos*) -- a desktop dev-preview tool, not
   # airborne firmware, so DO-178C MC/DC does not apply to it.
-  mcdc_ignore_re='(third_party|/tests/|/usr/|c\+\+/v[0-9]+|ra8_display_pal_host_macos)'
+  #
+  # ...and tools/media_dl, which is the one tool that carries its OWN
+  # ratcheted coverage gate (`tools-coverage`, per-file line/branch over its
+  # own 19-binary CTest suite, currently 83.4% line / 65.1% branch and green).
+  # Its production sources appear here only as LINK dependencies of the
+  # portable-contract tests under tests/ -- each of those drives one contract
+  # through the same code the tool build compiles, so the sources cannot be
+  # trimmed from those targets (verified: of 62 media_dl sources across the
+  # five mdl units, exactly one is unreferenced). Instrumenting them from here
+  # put 1094 MC/DC conditions into this denominator with 961 never executed,
+  # because the suite that does exercise them is a different build this report
+  # never runs. origin/dev's report contains zero media_dl files; this keeps
+  # the report measuring what it is the gate for, and leaves media_dl measured
+  # where it is actually tested. Unifying the two regimes -- measuring MC/DC
+  # from each tool's own suite -- is the real answer and is filed separately.
+  mcdc_ignore_re='(third_party|/tests/|/usr/|c\+\+/v[0-9]+|ra8_display_pal_host_macos'
+  mcdc_ignore_re+='|tools/media_dl/)'
 
   # Per-file MC/DC dump (verbose, for human inspection).
   "$LLVM_COV_BIN" show \
@@ -542,6 +558,24 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
   if command -v python3 >/dev/null 2>&1; then
     python3 "$REPO_ROOT/scripts/fix/regen_mcdc_gaps.py" || true
   fi
+
+  # ------------------------------------------------------------
+  # NON-VACUITY FLOOR on the report itself, before any verdict is
+  # drawn from it. Every line above that narrows the denominator --
+  # the ignore regex most of all -- is one edit away from narrowing
+  # it to nothing, and a report over almost no files produces a
+  # SMALLER uncovered count and a HIGHER percentage, i.e. it reads
+  # as an improvement. dev measures 513 files and this branch 542,
+  # so 300 clears both with margin while a collapsed scan trips it.
+  # ------------------------------------------------------------
+  measured_files="$(awk "NF>=16 && \$1 ~ /\// {n++} END{print n+0}" "$SUMMARY_REPORT")"
+  if [[ "$measured_files" -lt 300 ]]; then
+    echo "FAIL: the MC/DC report covers only $measured_files file(s) (floor 300)." >&2
+    echo "      The denominator collapsed -- check -ignore-filename-regex and the" >&2
+    echo "      test-binary list before believing any percentage from this run." >&2
+    exit 1
+  fi
+  echo "==> MC/DC report covers $measured_files first-party file(s) (floor 300)"
 
   # ------------------------------------------------------------
   # Per-file MC/DC FLOOR (no allowlist). The reachable-rate gate
