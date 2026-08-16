@@ -83,6 +83,7 @@ void SystemInit(void);
  */
 void Default_Handler(void);
 
+#if __STDC_HOSTED__ == 0
 /**
  * @brief The application entry point `Reset_Handler` hands control to.
  *
@@ -133,7 +134,6 @@ void Default_Handler(void);
  *
  * @since 0.1.0
  */
-#if __STDC_HOSTED__ == 0
 void main(void);
 #endif
 
