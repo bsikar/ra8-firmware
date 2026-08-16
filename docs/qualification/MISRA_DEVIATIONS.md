@@ -1,6 +1,6 @@
 # MISRA-C 2012 Deviation Register
 
-**Last refreshed**: 2026-08-15 (D-001..D-010 active). That ID range, the
+**Last refreshed**: 2026-08-16 (D-001..D-010 active). That ID range, the
 index's `Findings`/`Files` columns, the "Derived population" section and
 every in-section population restatement are machine-checked against the
 committed baseline by `check_misra_deviations.py` in the `misra` gate (#632).
@@ -99,16 +99,16 @@ classes enumerated inside it, Code change for every hit outside them.
 
 | ID    | Rule            | Category | Class             | Status   | MAR        | Findings | Files |
 |-------|-----------------|----------|-------------------|----------|------------|---------:|------:|
-| D-001 | misra-c2012-15.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 10494 | 493 |
-| D-002 | misra-c2012-17.3 | Mandatory | Tooling gap       | Active   | 2026-11-02 | 262 | 110 |
-| D-003 | misra-c2012-9.2  | Required  | Tooling gap       | Active   | 2026-11-02 | 559 | 200 |
-| D-004 | misra-c2012-12.1 | Advisory  | Partial deviation | Active   | 2027-05-02 | 220 | 74 |
-| D-005 | misra-c2012-8.4  | Required  | Tooling gap       | Active   | 2026-11-02 | 1873 | 313 |
+| D-001 | misra-c2012-15.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 13113 | 590 |
+| D-002 | misra-c2012-17.3 | Mandatory | Tooling gap       | Active   | 2026-11-02 | 569 | 155 |
+| D-003 | misra-c2012-9.2  | Required  | Tooling gap       | Active   | 2026-11-02 | 1066 | 291 |
+| D-004 | misra-c2012-12.1 | Advisory  | Partial deviation | Active   | 2027-05-02 | 440 | 123 |
+| D-005 | misra-c2012-8.4  | Required  | Tooling gap       | Active   | 2026-11-02 | 2106 | 378 |
 | D-006 | misra-c2012-20.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 7 | 4 |
-| D-007 | misra-c2012-14.2 | Required  | Tooling gap       | Active   | 2026-11-02 | 87 | 36 |
-| D-008 | misra-c2012-17.1 | Required  | Project deviation | Active   | 2027-07-27 | 24 | 5 |
-| D-009 | misra-c2012-9.5  | Required  | Tooling gap       | Active   | 2026-11-02 | 6 | 4 |
-| D-010 | misra-c2012-11.5 | Advisory  | Project deviation | Active   | 2027-08-03 | 265 | 105 |
+| D-007 | misra-c2012-14.2 | Required  | Tooling gap       | Active   | 2026-11-02 | 91 | 41 |
+| D-008 | misra-c2012-17.1 | Required  | Project deviation | Active   | 2027-07-27 | 42 | 8 |
+| D-009 | misra-c2012-9.5  | Required  | Tooling gap       | Active   | 2026-11-02 | 8 | 5 |
+| D-010 | misra-c2012-11.5 | Advisory  | Project deviation | Active   | 2027-08-03 | 543 | 163 |
 
 `MAR` = mandatory annual review date (or earlier review trigger when
 the underlying tooling assumption changes). `Findings` / `Files` are
@@ -129,8 +129,8 @@ embeds them in the dumps handed to `misra.py`, so a suppressed finding
 never reaches the results (verified on the pinned binary, 2026-08-15) --
 then `misra_ratchet.py` freezes that population in the baseline below.
 
-Baseline: 16165 findings across 2229 file/rule rows (Cppcheck 2.13.0).
-Residual (no deviation record): 53 rules, 2368 findings, 885 rows.
+Baseline: 21011 findings across 3009 file/rule rows (Cppcheck 2.13.0).
+Residual (no deviation record): 57 rules, 3026 findings, 1251 rows.
 The residual population is implementation debt dispositioned **Code
 change** in aggregate: ratchet-held, burned down per `docs/MISRA.md`,
 never accepted.
@@ -398,7 +398,7 @@ configured to leave redundant parentheses untouched.
 
 ### Population, review record, and reconciliation
 
-Current population: 220 findings across 74 files (machine-checked
+Current population: 440 findings across 123 files (machine-checked
 index above; per-file inventory in the committed baseline). It
 partitions into three parts; only the first is formally accepted:
 
@@ -463,7 +463,7 @@ and let the ratchet hold the count.
 - **Disposition**: Tooling gap (false positive).
 - **Scope**: the cppcheck audit baseline only (2.20 then; now the
   pinned version in the baseline header).
-- **Files affected**: 1873 findings across 313 files (machine-checked).
+- **Files affected**: 2106 findings across 378 files (machine-checked).
   The 2026-05-02 audit recorded 196; the population scaled with the
   tree -- the HAL build-out applies `[[nodiscard]]` to every fallible
   public prototype, `tools/` entered audit scope on 2026-08-13, and
@@ -758,13 +758,10 @@ audit tool is supplementary.
   `<stdarg.h>` shall not be used.
 - **Category**: Required.
 - **Disposition**: Project deviation (formal).
-- **Scope**: the esp-hosted logging bridge only --
-  `port/esp-hosted/src/ra8_esp_hosted_fmt.c`,
-  `ra8_esp_hosted_fmt_internal.h`, `ra8_esp_hosted_log.c`,
-  `ra8_esp_hosted_log_internal.h`, and the one vtable row in
-  `ra8_esp_hosted_osi.c` that forwards to it. No other first-party
-  file in the repository uses `<stdarg.h>`, and none may without
-  extending this record.
+- **Scope**: three bounded adapters: the five-file esp-hosted bridge
+  (`ra8_esp_hosted_fmt*`, `ra8_esp_hosted_log*`, `ra8_esp_hosted_osi.c`),
+  `tools/ra8_emulator/src/host/emu_host_io*`, and
+  `tools/cache_bench/cache_bench_io.{c,h}`. Any new user must extend this record.
 
 ### Why the variadic interface is not a choice here
 
@@ -783,27 +780,29 @@ A port that refused variadic arguments could therefore only drop the
 driver's diagnostics entirely. On a link that has never been driven on
 hardware, the diagnostics are the bring-up instrument.
 
+The emulator and cache benchmark are hosted diagnostics. Each shares one
+bounded formatter for typed messages or CSV; removing it would duplicate
+formatting without removing the width-mismatch hazard.
+
 ### Why this is bounded
 
-- **One entry point.** Every variadic path in the port funnels into
-  `ra8_esp_hosted_log_vwrite`, which immediately converts the argument
-  list into a finished string and calls nothing variadic thereafter.
-  Nothing else in `port/esp-hosted/` takes a `...` parameter.
-- **The formatter is first-party and fully tested.** The concern behind
+- **Three bounded adapters.** Every path funnels into
+  `ra8_esp_hosted_log_vwrite`, emulator `internal_vformat`, or
+  `cb_sink_vformat`. Each renders immediately into fixed-capacity,
+  caller-owned storage and retains no `va_list` state.
+- **The formatters are first-party and tested.** The concern behind
   Rule 17.1 is that `va_arg` is unchecked: read at the wrong width and
   every later argument misaligns. `ra8_esp_hosted_fmt.c` addresses that
   directly -- it parses the length modifier explicitly and reads at
   exactly the named width, refuses to consume an argument for a
   conversion it does not implement (copying the specifier through
   verbatim instead, so later arguments stay aligned), and bounds every
-  loop by a compile-time constant. `tests/test_ra8_esp_hosted_fmt.c`
-  drives all of that, including the misalignment case, with MC/DC
-  vectors.
-- **The compiler checks the call sites.** Both the log entry point and
-  the vtable row carry `[[gnu::format(printf, 3, 4)]]`, and the project
-  builds with `-Wformat=2`, so a format string that disagrees with its
-  arguments is a build error at the vendored call site -- which is the
-  check Rule 17.1 exists to substitute for.
+  loop by a compile-time constant. Focused esp-hosted, emulator-output
+  and cache-bench tests pin success, truncation and write-fault paths.
+- **The compiler checks annotated call sites.** The esp-hosted and
+  emulator entry points carry `[[gnu::format(printf, ...)]]`, and the
+  project builds with `-Wformat=2`; cache-bench output is pinned by an
+  exact deterministic golden.
 - **No allocation, bounded output.** The formatter writes only into a
   caller-supplied buffer and never calls the C library's `printf`
   family, whose formatting paths this project cannot admit (NASA Power
@@ -812,12 +811,12 @@ hardware, the diagnostics are the bring-up instrument.
 ### Review
 
 - **Author**: Brighton Sikarskie.
-- **Approved**: 2026-07-27.
+- **Approved**: 2026-07-27; host-tool scope reviewed 2026-08-16.
 - **Mandatory annual review**: 2027-07-27.
-- **Trigger for early review**: the vendored driver is re-vendored
-  with a non-variadic logging seam, or the port stops carrying the
-  driver's diagnostics -- either way this deviation is withdrawn, not
-  renewed.
+- **Trigger for early review**: another first-party `stdarg` user appears,
+  an adapter loses its bounded formatter, or the vendored driver gains a
+  non-variadic logging seam. A retired adapter leaves this deviation; it
+  does not justify keeping unused scope.
 
 ---
 
@@ -830,11 +829,12 @@ hardware, the diagnostics are the bring-up instrument.
 - **Category**: Required.
 - **Disposition**: Tooling gap (false positive).
 - **Scope**: cppcheck 2.13.0 audit baseline only.
-- **Files affected**: 6 spurious findings across 4 files (index
+- **Files affected**: 8 spurious findings across 5 files (index
   above), in
   `libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2.c` (3),
   `libs/ra8_hal/src/ra8_lvd.c` (1), `libs/ra8_hal/src/ra8_ssie.c` (1)
-  and `libs/ra8_mpu/src/ra8_mpu.c` (1).
+  `libs/ra8_mpu/src/ra8_mpu.c` (1), and
+  `tools/media_dl/tests/test_media_dl_cli_matrix.c` (2).
 
 ### Root cause
 
@@ -997,4 +997,4 @@ annotation gate are those measures.
 | 2026-07-22 | Brighton Sikarskie  | Add D-007 (Rule 14.2, C23 attribute phantom). |
 | 2026-07-27 | Brighton Sikarskie  | Add D-008 (Rule 17.1, esp-hosted log bridge). |
 | 2026-08-03 | Brighton Sikarskie  | Add D-009 (Rule 9.5) and D-010 (Rule 11.5). |
-| 2026-08-15 | Brighton Sikarskie  | Re-derive every inventory from the committed baseline; add the machine-checked "Derived population" section and gate it (issue #632). Move this log to the end. |
+| 2026-08-16 | Brighton Sikarskie  | Re-derive the register after the integration sweep; expand D-008 to the two bounded host-tool formatters; retain the machine-checked inventory gate from issue #632. |
