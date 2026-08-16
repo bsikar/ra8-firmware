@@ -153,12 +153,9 @@ static const uint8_t s_epub[] = {
  * MMIO, including under address-sanitizer shadow-memory layouts.
  * @param[in] ctx Unused logger context.
  * @param[in] byte Unused emitted byte.
- * @pre The callback is installed only for this single-threaded test process.
- * @pre Both arguments may carry arbitrary values.
- * @post No memory, filesystem, or logger state is modified.
- * @post The supplied byte is intentionally discarded.
- * @note Thread-safe because it performs no operation.
- * @since 0.1.0
+ * @pre The callback is installed only for this single-threaded test process. @pre Both arguments may carry arbitrary values.
+ * @post No memory, filesystem, or logger state is modified. @post The supplied byte is intentionally discarded.
+ * @note Thread-safe because it performs no operation. @since 0.1.0
  */
 RA8_INTERNAL static void internal_reader_log_sink(void* ctx, uint8_t byte)
 {
@@ -172,12 +169,9 @@ RA8_INTERNAL static void internal_reader_log_sink(void* ctx, uint8_t byte)
  * @param[in] inner Real filesystem under qualification.
  * @param[out] fault Fault wrapper to initialize.
  * @param[out] storage Downloader storage binding to initialize.
- * @pre All pointers are non-NULL and shared workspaces are idle.
- * @pre @p inner implements the complete portable filesystem contract.
- * @post The binding is ready with every fault initially disabled.
- * @post No backend file or transaction is left open.
- * @note Unity assertions terminate the vector on setup failure.
- * @since 0.1.0
+ * @pre All pointers are non-NULL and shared workspaces are idle. @pre @p inner implements the complete portable filesystem contract.
+ * @post The binding is ready with every fault initially disabled. @post No backend file or transaction is left open.
+ * @note Unity assertions terminate the vector on setup failure. @since 0.1.0
  */
 RA8_INTERNAL static void
 internal_reader_bind(const fw_fs_t* inner, mdl_state_fault_fs_t* fault, mdl_storage_t* storage)
@@ -201,12 +195,9 @@ internal_reader_bind(const fw_fs_t* inner, mdl_state_fault_fs_t* fault, mdl_stor
  * @param[in] path Canonical destination path.
  * @param[in] bytes Readable fixture bytes.
  * @param[in] length Exact fixture extent.
- * @pre All pointers are non-NULL and @p bytes covers @p length bytes.
- * @pre @p path is canonical for the bound portable filesystem.
- * @post The destination contains exactly the supplied bytes.
- * @post The portable handle is closed before return.
- * @note Short writes are retried even though no write fault is armed.
- * @since 0.1.0
+ * @pre All pointers are non-NULL and @p bytes covers @p length bytes. @pre @p path is canonical for the bound portable filesystem.
+ * @post The destination contains exactly the supplied bytes. @post The portable handle is closed before return.
+ * @note Short writes are retried even though no write fault is armed. @since 0.1.0
  */
 RA8_INTERNAL static void internal_reader_write(mdl_storage_t* storage,
                                                const char*    path,
@@ -237,12 +228,9 @@ RA8_INTERNAL static void internal_reader_write(mdl_storage_t* storage,
  * overflow.
  * @param[in,out] storage Initialized fault-wrapped storage.
  * @param[in,out] fault Active deterministic fault wrapper.
- * @pre Both pointers are non-NULL and no file is open.
- * @pre @p storage is backed by the supplied @p fault facade.
- * @post Every opened config handle was consumed, including on failure.
- * @post The config fixture remains available for later cleanup.
- * @note Runs identically for every real backend.
- * @since 0.1.0
+ * @pre Both pointers are non-NULL and no file is open. @pre @p storage is backed by the supplied @p fault facade.
+ * @post Every opened config handle was consumed, including on failure. @post The config fixture remains available for later cleanup.
+ * @note Runs identically for every real backend. @since 0.1.0
  */
 RA8_INTERNAL static void internal_reader_config_vectors(mdl_storage_t*        storage,
                                                         mdl_state_fault_fs_t* fault)
@@ -279,12 +267,9 @@ RA8_INTERNAL static void internal_reader_config_vectors(mdl_storage_t*        st
  * @param[in,out] storage Initialized fault-wrapped storage.
  * @param[in,out] fault Active deterministic fault wrapper.
  * @param[in] image Expected signature and classification.
- * @pre All pointers are non-NULL and no file is open.
- * @pre @p image describes readable magic bytes and expected constant strings.
- * @post Extension and MIME exactly match the case.
- * @post The injected short-read flag is cleared.
- * @note The common path is rewritten for each case.
- * @since 0.1.0
+ * @pre All pointers are non-NULL and no file is open. @pre @p image describes readable magic bytes and expected constant strings.
+ * @post Extension and MIME exactly match the case. @post The injected short-read flag is cleared.
+ * @note The common path is rewritten for each case. @since 0.1.0
  */
 RA8_INTERNAL static void internal_reader_assert_image(mdl_storage_t*                 storage,
                                                       mdl_state_fault_fs_t*          fault,
@@ -307,12 +292,9 @@ RA8_INTERNAL static void internal_reader_assert_image(mdl_storage_t*            
  *          content-type fallback, missing-path, and canonical-path contracts.
  * @param[in,out] storage Initialized fault-wrapped storage.
  * @param[in,out] fault Active deterministic fault wrapper.
- * @pre Both pointers are non-NULL and no file is open.
- * @pre @p storage is backed by the supplied @p fault facade.
- * @post Failed reads and closes leave classification outputs unchanged.
- * @post Every opened image handle is consumed before return.
- * @note Runs identically for every real backend.
- * @since 0.1.0
+ * @pre Both pointers are non-NULL and no file is open. @pre @p storage is backed by the supplied @p fault facade.
+ * @post Failed reads and closes leave classification outputs unchanged. @post Every opened image handle is consumed before return.
+ * @note Runs identically for every real backend. @since 0.1.0
  */
 RA8_INTERNAL static void internal_reader_image_vectors(mdl_storage_t*        storage,
                                                        mdl_state_fault_fs_t* fault)
@@ -935,12 +917,9 @@ RA8_INTERNAL static void internal_reader_verify_vectors(mdl_storage_t*        st
  * behavior-identical.
  * @param[in] label Unity vector label.
  * @param[in] inner Real filesystem under qualification.
- * @pre Both pointers are non-NULL and the backend root is writable.
- * @pre @p inner implements the complete portable filesystem contract.
- * @post All common fixtures are removed.
- * @post No portable handle or transaction remains active.
- * @note The fault wrapper owns no backend resource.
- * @since 0.1.0
+ * @pre Both pointers are non-NULL and the backend root is writable. @pre @p inner implements the complete portable filesystem contract.
+ * @post All common fixtures are removed. @post No portable handle or transaction remains active.
+ * @note The fault wrapper owns no backend resource. @since 0.1.0
  */
 RA8_INTERNAL static void internal_reader_run(const char* label, const fw_fs_t* inner)
 {
@@ -965,12 +944,9 @@ RA8_INTERNAL static void internal_reader_run(const char* label, const fw_fs_t* i
  * @brief Qualify the hosted POSIX filesystem port.
  * @details Creates a private temporary root, runs the common reader vectors,
  *          then deinitializes the port and removes the empty root.
- * @pre The process can create a private directory under `/tmp`.
- * @pre The POSIX filesystem adapter is available in this test build.
- * @post The adapter is deinitialized and its root directory is removed.
- * @post No file descriptor or portable handle remains open.
- * @note Uses a private `mkdtemp` root to avoid collisions between test runs.
- * @since 0.1.0
+ * @pre The process can create a private directory under `/tmp`. @pre The POSIX filesystem adapter is available in this test build.
+ * @post The adapter is deinitialized and its root directory is removed. @post No file descriptor or portable handle remains open.
+ * @note Uses a private `mkdtemp` root to avoid collisions between test runs. @since 0.1.0
  */
 RA8_INTERNAL static void internal_reader_test_posix(void)
 {
@@ -988,12 +964,9 @@ RA8_INTERNAL static void internal_reader_test_posix(void)
  * @brief Qualify the RAM block-device through FAT12 and the RA8 VFS port.
  * @details Formats the fixed RAM block device, mounts it through the RA8 VFS
  *          adapter, runs common reader vectors, and tears the mount down.
- * @pre The shared RAM disk and mount pointer are idle.
- * @pre The block-device, FAT12, VFS, and portable adapters are linked.
- * @post The named VFS mount and filesystem mount are both released.
- * @post ::s_mount is reset to NULL after successful teardown.
- * @note No heap storage is introduced by the reader test fixture.
- * @since 0.1.0
+ * @pre The shared RAM disk and mount pointer are idle. @pre The block-device, FAT12, VFS, and portable adapters are linked.
+ * @post The named VFS mount and filesystem mount are both released. @post ::s_mount is reset to NULL after successful teardown.
+ * @note No heap storage is introduced by the reader test fixture. @since 0.1.0
  */
 RA8_INTERNAL static void internal_reader_test_vfs(void)
 {
