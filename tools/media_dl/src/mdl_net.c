@@ -23,7 +23,7 @@
 /** @brief HTTP statuses that have downloader-specific handling. */
 typedef enum : long {
   k_mdl_http_client_error = 400L, /**< First client-error status. */
-  k_mdl_http_too_many     = 429L, /**< Too Many Requests.        */
+  k_mdl_http_too_many     = 429L, /**< Too Many Requests.         */
   k_mdl_http_server_error = 500L, /**< First server-error status. */
   k_mdl_http_unavailable  = 503L, /**< Service Unavailable.       */
 } mdl_http_status_t;
