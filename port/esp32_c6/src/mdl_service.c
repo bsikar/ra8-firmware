@@ -26,9 +26,9 @@
 
 /** @brief Fixed HTTP policy values for the concrete ESP-IDF adapter. */
 typedef enum : uint16_t {
-  k_mdl_http_timeout_ms         = 15000U, /**< Per-operation HTTP timeout.        */
-  k_mdl_http_status_success_min = 200U,   /**< Lowest successful HTTP status.     */
-  k_mdl_http_status_redirect    = 300U,   /**< First redirect/non-success status. */
+  k_mdl_http_timeout_ms = 15000U, /**< Default whole-request timeout. */
+  k_mdl_http_status_min = 100U,   /**< Lowest valid terminal status. */
+  k_mdl_http_status_max = 599U,   /**< Highest valid terminal status. */
 } mdl_http_const_t;
 
 /**
@@ -41,13 +41,19 @@ typedef struct mdl_http_state {
   esp_http_client_handle_t http;                   /**< Retained ESP HTTP client handle.         */
   mbedtls_sha256_context   sha;                    /**< Retained streaming SHA context.          */
   char                     url[k_ra8_mdl_url_max]; /**< Bounded active HTTPS URL.                */
-  uint64_t                 total;                  /**< Advertised body length, or zero.         */
-  uint64_t                 received;               /**< Independently counted body bytes.        */
-  ra8_mdl_format_t         format;                 /**< Requested artifact identity.             */
-  bool                     total_known;            /**< Whether Content-Length was present.      */
-  bool                     opened;                 /**< Whether response headers were accepted.  */
-  bool                     hashing;                /**< Whether a SHA operation is active.       */
-  bool                     client_ready;           /**< Whether one-time client setup succeeded. */
+  char user_agent[k_ra8_mdl_user_agent_max];       /**< Active User-Agent request value.         */
+  char referer[k_ra8_mdl_referer_max];             /**< Active Referer request value.            */
+  char if_none_match[k_ra8_mdl_etag_max];          /**< Active If-None-Match request value.      */
+  char if_modified_since[k_ra8_mdl_http_date_max]; /**< Active If-Modified-Since request value. */
+  ra8_mdl_http_response_t response;                /**< Selected terminal response metadata.    */
+  ra8_err_t               header_error;            /**< First response-header capture failure.  */
+  uint64_t                total;                   /**< Advertised body length, or zero.         */
+  uint64_t                received;                /**< Independently counted body bytes.        */
+  ra8_mdl_format_t        format;                  /**< Requested artifact identity.             */
+  bool                    total_known;             /**< Whether Content-Length was present.      */
+  bool                    opened;                  /**< Whether response headers were accepted.  */
+  bool                    hashing;                 /**< Whether a SHA operation is active.       */
+  bool                    client_ready;            /**< Whether one-time client setup succeeded. */
 } mdl_http_state_t;
 
 static mdl_http_state_t  s_http;
@@ -95,13 +101,161 @@ RA8_INTERNAL static void internal_mdl_http_reset_job(mdl_http_state_t* state)
   if (state->http != nullptr) {
     (void)esp_http_client_close(state->http); /* alloc-allow: ESP-IDF teardown */
   }
-  state->url[0]      = '\0';
-  state->total       = 0U;
-  state->received    = 0U;
-  state->format      = k_ra8_mdl_format_invalid;
-  state->total_known = false;
-  state->opened      = false;
-  state->hashing     = false;
+  state->url[0]               = '\0';
+  state->user_agent[0]        = '\0';
+  state->referer[0]           = '\0';
+  state->if_none_match[0]     = '\0';
+  state->if_modified_since[0] = '\0';
+  state->response             = (ra8_mdl_http_response_t){};
+  state->header_error         = k_ra8_ok;
+  state->total                = 0U;
+  state->received             = 0U;
+  state->format               = k_ra8_mdl_format_invalid;
+  state->total_known          = false;
+  state->opened               = false;
+  state->hashing              = false;
+}
+
+/**
+ * @brief Compare one HTTP header name without ASCII case sensitivity
+ * @param[in] lhs Candidate response-header name.
+ * @param[in] rhs Canonical response-header name.
+ * @return Whether both NUL-terminated names are equal ignoring ASCII case.
+ * @retval true The names are equal.
+ * @retval false The names differ or either pointer is null.
+ * @pre Non-null inputs are NUL-terminated.
+ * @pre Header names contain only ASCII octets.
+ * @post No input or service state is modified.
+ * @post The result is independent of the process locale.
+ * @note HTTP field names are case-insensitive.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_mdl_header_equal(const char* lhs, const char* rhs)
+{
+  if ((lhs == nullptr) || (rhs == nullptr)) {
+    return false;
+  }
+  while ((*lhs != '\0') && (*rhs != '\0')) {
+    unsigned char left  = (unsigned char)*lhs++;
+    unsigned char right = (unsigned char)*rhs++;
+    if ((left >= (unsigned char)'A') && (left <= (unsigned char)'Z')) {
+      left = (unsigned char)(left + ((unsigned char)'a' - (unsigned char)'A'));
+    }
+    if ((right >= (unsigned char)'A') && (right <= (unsigned char)'Z')) {
+      right = (unsigned char)(right + ((unsigned char)'a' - (unsigned char)'A'));
+    }
+    if (left != right) {
+      return false;
+    }
+  }
+  return (*lhs == '\0') && (*rhs == '\0');
+}
+
+/**
+ * @brief Copy one optional bounded HTTP field into retained storage
+ * @param[out] destination Fixed-capacity destination.
+ * @param[in] capacity Total destination capacity including NUL.
+ * @param[in] source Optional NUL-terminated field value.
+ * @return Copy status.
+ * @retval k_ra8_ok The value or canonical empty string was copied.
+ * @retval k_ra8_err_invalid_arg The value contains CR or LF.
+ * @retval k_ra8_err_invalid_size The value does not fit.
+ * @pre @p destination is writable for @p capacity bytes.
+ * @pre @p capacity is positive.
+ * @post Success leaves @p destination NUL-terminated.
+ * @post Failure leaves @p destination as an empty string.
+ * @note Null and empty inputs both represent an absent field.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_mdl_copy_field(char* destination, size_t capacity, const char* source)
+{
+  destination[0] = '\0';
+  if ((source == nullptr) || (source[0] == '\0')) {
+    return k_ra8_ok;
+  }
+  const size_t length = strnlen(source, capacity);
+  if (length >= capacity) {
+    return k_ra8_err_invalid_size;
+  }
+  for (size_t i = 0U; i < length; ++i) {
+    if ((source[i] == '\r') || (source[i] == '\n')) {
+      return k_ra8_err_invalid_arg;
+    }
+  }
+  memcpy(destination, source, length + 1U);
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Select retained storage for one response header
+ * @param[in,out] state Active HTTP state.
+ * @param[in] key NUL-terminated response-header name.
+ * @param[out] destination Selected destination, or null for an ignored header.
+ * @param[out] capacity Selected destination capacity.
+ * @pre All pointers are non-null and @p key is NUL-terminated.
+ * @pre @p state owns initialized response storage.
+ * @post Known names select exactly one bounded response field.
+ * @post Unknown names produce a null destination and zero capacity.
+ * @note Matching is ASCII case-insensitive.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_mdl_select_response_header(mdl_http_state_t* state,
+                                                             const char*       key,
+                                                             char**            destination,
+                                                             size_t*           capacity)
+{
+  *destination = nullptr;
+  *capacity    = 0U;
+  if (internal_mdl_header_equal(key, "Retry-After")) {
+    *destination = state->response.retry_after;
+    *capacity    = sizeof(state->response.retry_after);
+  } else if (internal_mdl_header_equal(key, "ETag")) {
+    *destination = state->response.etag;
+    *capacity    = sizeof(state->response.etag);
+  } else if (internal_mdl_header_equal(key, "Last-Modified")) {
+    *destination = state->response.last_modified;
+    *capacity    = sizeof(state->response.last_modified);
+  } else if (internal_mdl_header_equal(key, "Content-Type")) {
+    *destination = state->response.content_type;
+    *capacity    = sizeof(state->response.content_type);
+  }
+}
+
+/**
+ * @brief Capture selected response headers from ESP-IDF events
+ * @param[in,out] event ESP-IDF event record.
+ * @return ESP-IDF callback status.
+ * @retval ESP_OK The event was ignored or captured safely.
+ * @retval ESP_FAIL A selected header was malformed or oversized.
+ * @pre @p event is non-null when called by ESP-IDF.
+ * @pre `event->user_data` points to the retained backend state.
+ * @post Selected valid headers are copied into bounded retained storage.
+ * @post The first selected-header failure is retained for portable reporting.
+ * @note Body data is consumed synchronously through ::esp_http_client_read.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static esp_err_t internal_mdl_http_event(esp_http_client_event_t* event)
+{
+  if ((event == nullptr) || (event->user_data == nullptr)) {
+    return ESP_FAIL;
+  }
+  if (event->event_id != HTTP_EVENT_ON_HEADER) {
+    return ESP_OK;
+  }
+  mdl_http_state_t* state = (mdl_http_state_t*)event->user_data;
+  char*             destination;
+  size_t            capacity;
+  internal_mdl_select_response_header(state, event->header_key, &destination, &capacity);
+  if (destination == nullptr) {
+    return ESP_OK;
+  }
+  const ra8_err_t copied = internal_mdl_copy_field(destination, capacity, event->header_value);
+  if (copied != k_ra8_ok) {
+    state->header_error = copied;
+    return ESP_FAIL;
+  }
+  return ESP_OK;
 }
 
 /**
@@ -128,6 +282,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_init(mdl_http_state_t* state)
     .buffer_size           = k_ra8_mdl_chunk_data_max,
     .crt_bundle_attach     = esp_crt_bundle_attach,
     .disable_auto_redirect = true,
+    .event_handler         = internal_mdl_http_event,
+    .user_data             = state,
   };
   state->http = esp_http_client_init(&cfg); /* alloc-allow: retained client init */
   if (state->http == nullptr) {
@@ -139,11 +295,94 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_init(mdl_http_state_t* state)
 }
 
 /**
+ * @brief Replace one optional retained request header
+ * @param[in,out] state Retained HTTP state.
+ * @param[in] name Canonical request-header name.
+ * @param[in] value Bounded retained value, or empty to omit.
+ * @return Header configuration status.
+ * @retval k_ra8_ok The next request has the selected header policy.
+ * @retval k_ra8_fail ESP-IDF rejected a nonempty header value.
+ * @pre All pointers are non-null and strings are NUL-terminated.
+ * @pre No request is open on the retained client.
+ * @post Success installs @p value or leaves @p name absent.
+ * @post Failure does not authorize the next request.
+ * @note Deleting an already-absent header is intentionally idempotent.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_mdl_http_set_header(mdl_http_state_t* state, const char* name, const char* value)
+{
+  (void)esp_http_client_delete_header(state->http, name);
+  if (value[0] == '\0') {
+    return k_ra8_ok;
+  }
+  return (esp_http_client_set_header(state->http, name, value) == ESP_OK) ? k_ra8_ok : k_ra8_fail;
+}
+
+/**
+ * @brief Copy and apply the complete bounded request policy
+ * @param[in,out] state Reset retained HTTP state.
+ * @param[in] request Validated portable media request.
+ * @return Policy configuration status.
+ * @retval k_ra8_ok All strings and ESP-IDF settings were accepted.
+ * @retval k_ra8_err_invalid_arg A field contains a forbidden line break.
+ * @retval k_ra8_err_invalid_size A field exceeds its fixed capacity.
+ * @retval k_ra8_fail ESP-IDF rejected timeout or header configuration.
+ * @pre @p state owns a closed retained client.
+ * @pre @p request and its URL are non-null.
+ * @post Success retains every request string through the HTTP exchange.
+ * @post Failure leaves no request eligible to open.
+ * @note Zero timeout selects the adapter default.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_mdl_http_apply_request(mdl_http_state_t*        state,
+                                                              const ra8_mdl_request_t* request)
+{
+  ra8_err_t result = internal_mdl_copy_field(state->url, sizeof(state->url), request->url);
+  if (result == k_ra8_ok) {
+    result = internal_mdl_copy_field(state->user_agent,
+                                     sizeof(state->user_agent),
+                                     request->http.user_agent);
+  }
+  if (result == k_ra8_ok) {
+    result = internal_mdl_copy_field(state->referer, sizeof(state->referer), request->http.referer);
+  }
+  if (result == k_ra8_ok) {
+    result = internal_mdl_copy_field(state->if_none_match,
+                                     sizeof(state->if_none_match),
+                                     request->http.if_none_match);
+  }
+  if (result == k_ra8_ok) {
+    result = internal_mdl_copy_field(state->if_modified_since,
+                                     sizeof(state->if_modified_since),
+                                     request->http.if_modified_since);
+  }
+  const uint32_t timeout =
+    (request->http.timeout_ms == 0U) ? k_mdl_http_timeout_ms : request->http.timeout_ms;
+  if ((result == k_ra8_ok) &&
+      (esp_http_client_set_timeout_ms(state->http, (int)timeout) != ESP_OK)) {
+    result = k_ra8_fail;
+  }
+  if (result == k_ra8_ok) {
+    result = internal_mdl_http_set_header(state, "User-Agent", state->user_agent);
+  }
+  if (result == k_ra8_ok) {
+    result = internal_mdl_http_set_header(state, "Referer", state->referer);
+  }
+  if (result == k_ra8_ok) {
+    result = internal_mdl_http_set_header(state, "If-None-Match", state->if_none_match);
+  }
+  if (result == k_ra8_ok) {
+    result = internal_mdl_http_set_header(state, "If-Modified-Since", state->if_modified_since);
+  }
+  return result;
+}
+
+/**
  * @brief Validate and prepare one typed HTTPS-artifact job
  * @details Reuses retained client/hash objects and resets only per-job fields.
  * @param[in,out] ctx Initialised ::mdl_http_state_t.
- * @param[in] url NUL-terminated HTTPS URL within the fixed URL buffer.
- * @param[in] format Artifact identity the URL must return.
+ * @param[in] request Complete typed HTTPS request and optional policy.
  * @return Begin status.
  * @retval k_ra8_ok Job state and SHA stream are ready.
  * @retval k_ra8_err_invalid_arg URL is not a non-empty HTTPS URL.
@@ -157,39 +396,30 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_init(mdl_http_state_t* state)
  * @warning esp_http_client_set_url may allocate internally.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t
-internal_mdl_http_begin(void* ctx, const char* url, ra8_mdl_format_t format)
+RA8_INTERNAL static ra8_err_t internal_mdl_http_begin(void* ctx, const ra8_mdl_request_t* request)
 {
   mdl_http_state_t* state            = (mdl_http_state_t*)ctx;
   const size_t      https_prefix_len = sizeof("https://") - 1U;
-  if (state == nullptr) {
+  if ((state == nullptr) || (request == nullptr) || (request->url == nullptr) ||
+      !state->client_ready) {
     return k_ra8_err_invalid_arg;
   }
-  if (!state->client_ready) {
+  if ((uint32_t)request->format > (uint32_t)k_ra8_mdl_format_rabook) {
     return k_ra8_err_invalid_arg;
   }
-  if (url == nullptr) {
+  if (strncmp(request->url, "https://", https_prefix_len) != 0) {
     return k_ra8_err_invalid_arg;
   }
-  if ((uint32_t)format > (uint32_t)k_ra8_mdl_format_rabook) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (strncmp(url, "https://", https_prefix_len) != 0) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (url[https_prefix_len] == '\0') {
+  if (request->url[https_prefix_len] == '\0') {
     return k_ra8_err_invalid_arg;
   }
   internal_mdl_http_reset_job(state);
-  const size_t len = strnlen(url, sizeof(state->url));
-  if (len == 0U) {
-    return k_ra8_err_invalid_size;
+  const ra8_err_t applied = internal_mdl_http_apply_request(state, request);
+  if (applied != k_ra8_ok) {
+    internal_mdl_http_reset_job(state);
+    return applied;
   }
-  if (len >= sizeof(state->url)) {
-    return k_ra8_err_invalid_size;
-  }
-  memcpy(state->url, url, len + 1U);
-  state->format = format;
+  state->format = request->format;
   if (esp_http_client_set_url(state->http, state->url) != ESP_OK) { /* alloc-allow: URL state */
     internal_mdl_http_reset_job(state);
     return k_ra8_fail;
@@ -204,13 +434,14 @@ internal_mdl_http_begin(void* ctx, const char* url, ra8_mdl_format_t format)
 
 /**
  * @brief Open lazily so Start returns without waiting for network exchange
- * @details Accepts only successful HTTP status and records bounded body
- * metadata.
+ * @details Records the actual final status and bounded selected headers so the
+ * portable downloader, rather than this transport, owns HTTP semantics.
  * @param[in,out] state Prepared job state.
  * @return Open status.
- * @retval k_ra8_ok Headers describe a successful HTTP response.
+ * @retval k_ra8_ok Headers describe a syntactically valid HTTP response.
  * @retval k_ra8_fail ESP-IDF failed to open the HTTPS connection.
- * @retval k_ra8_err_protocol_error HTTP status is outside 200..299.
+ * @retval k_ra8_err_protocol_error HTTP status is outside 100..599.
+ * @retval k_ra8_err_invalid_size A selected response header is oversized.
  * @pre @p state completed ::internal_mdl_http_begin successfully.
  * @pre No concurrent request uses the retained client.
  * @post Success marks the response opened and records advertised length.
@@ -229,15 +460,16 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_open(mdl_http_state_t* state)
   }
   const int64_t content_length = esp_http_client_fetch_headers(state->http);
   const int     status         = esp_http_client_get_status_code(state->http);
-  if (status < k_mdl_http_status_success_min) {
+  if (state->header_error != k_ra8_ok) {
+    return state->header_error;
+  }
+  if ((status < k_mdl_http_status_min) || (status > k_mdl_http_status_max)) {
     return k_ra8_err_protocol_error;
   }
-  if (status >= k_mdl_http_status_redirect) {
-    return k_ra8_err_protocol_error;
-  }
-  state->total       = (content_length >= 0) ? (uint64_t)content_length : 0U;
-  state->total_known = (content_length >= 0);
-  state->opened      = true;
+  state->response.status = status;
+  state->total           = (content_length >= 0) ? (uint64_t)content_length : 0U;
+  state->total_known     = (content_length >= 0);
+  state->opened          = true;
   return k_ra8_ok;
 }
 
@@ -249,6 +481,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_open(mdl_http_state_t* state)
  * @param[out] total_bytes Advertised or independently counted final length.
  * @param[out] complete Receives true only for verified terminal success.
  * @param[out] sha256 Complete-body digest destination.
+ * @param[out] response Final status and selected response headers.
  * @return Terminal response status.
  * @retval k_ra8_ok Terminal metadata and digest were published.
  * @retval k_ra8_err_protocol_error HTTP completeness or length is incoherent.
@@ -263,7 +496,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_open(mdl_http_state_t* state)
 RA8_INTERNAL static ra8_err_t internal_mdl_http_finish(mdl_http_state_t* state,
                                                        uint64_t*         total_bytes,
                                                        bool*             complete,
-                                                       uint8_t sha256[k_ra8_mdl_sha256_bytes])
+                                                       uint8_t sha256[k_ra8_mdl_sha256_bytes],
+                                                       ra8_mdl_http_response_t* response)
 {
   if (!esp_http_client_is_complete_data_received(state->http)) {
     internal_mdl_http_reset_job(state);
@@ -284,6 +518,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_finish(mdl_http_state_t* state,
   }
   *total_bytes = state->total;
   *complete    = true;
+  *response    = state->response;
   internal_mdl_http_reset_job(state);
   return k_ra8_ok;
 }
@@ -298,6 +533,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_finish(mdl_http_state_t* state,
  * @param[out] total_bytes Advertised or independently counted total.
  * @param[out] complete Whether this response is terminal.
  * @param[out] sha256 Complete-body digest when terminal.
+ * @param[out] response Final status and selected headers when terminal.
  * @return Read status.
  * @retval k_ra8_ok Data or one verified terminal record is available.
  * @retval k_ra8_err_protocol_error HTTP status/body completion is incoherent.
@@ -316,11 +552,13 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_read(void*     ctx,
                                                      uint16_t* got,
                                                      uint64_t* total_bytes,
                                                      bool*     complete,
-                                                     uint8_t   sha256[k_ra8_mdl_sha256_bytes])
+                                                     uint8_t   sha256[k_ra8_mdl_sha256_bytes],
+                                                     ra8_mdl_http_response_t* response)
 {
   *got                     = 0U;
   *total_bytes             = 0U;
   *complete                = false;
+  *response                = (ra8_mdl_http_response_t){};
   mdl_http_state_t* state  = (mdl_http_state_t*)ctx;
   const ra8_err_t   opened = internal_mdl_http_open(state);
   if (opened != k_ra8_ok) {
@@ -357,7 +595,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_read(void*     ctx,
     *total_bytes    = state->total;
     return k_ra8_ok;
   }
-  return internal_mdl_http_finish(state, total_bytes, complete, sha256);
+  return internal_mdl_http_finish(state, total_bytes, complete, sha256, response);
 }
 
 /**

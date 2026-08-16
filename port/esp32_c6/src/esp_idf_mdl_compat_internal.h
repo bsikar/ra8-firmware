@@ -42,6 +42,32 @@ typedef struct esp_http_client* esp_http_client_handle_t;
 /** @brief HTTPS certificate-bundle attach callback used by ESP-IDF. */
 typedef esp_err_t (*esp_crt_bundle_attach_fn_t)(void* conf);
 
+/** @brief Consumed ESP-IDF HTTP event identifiers. */
+typedef enum esp_http_client_event_id_t {
+  HTTP_EVENT_ERROR = 0,    /**< Transport error. */
+  HTTP_EVENT_ON_CONNECTED, /**< Connection established. */
+  HTTP_EVENT_HEADERS_SENT, /**< Request headers sent. */
+  HTTP_EVENT_ON_HEADER,    /**< One response header is available. */
+  HTTP_EVENT_ON_DATA,      /**< Response body data is available. */
+  HTTP_EVENT_ON_FINISH,    /**< Response completed. */
+  HTTP_EVENT_DISCONNECTED, /**< Connection closed. */
+  HTTP_EVENT_REDIRECT,     /**< Redirect response observed. */
+} esp_http_client_event_id_t;
+
+/** @brief Parser mirror of the ESP-IDF HTTP event record. */
+typedef struct esp_http_client_event_t {
+  esp_http_client_event_id_t event_id;     /**< Event selector. */
+  esp_http_client_handle_t   client;       /**< Originating client. */
+  void*                      data;         /**< Event data, if any. */
+  int                        data_len;     /**< Event-data bytes. */
+  void*                      user_data;    /**< Configuration context. */
+  char*                      header_key;   /**< Header name for ON_HEADER. */
+  char*                      header_value; /**< Header value for ON_HEADER. */
+} esp_http_client_event_t;
+
+/** @brief HTTP event callback signature consumed by the adapter. */
+typedef esp_err_t (*esp_http_client_event_cb_t)(esp_http_client_event_t* event);
+
 /**
  * @struct esp_http_client_config_t
  * @brief Exact consumed subset of ESP-IDF's HTTP client configuration.
@@ -52,6 +78,8 @@ typedef struct esp_http_client_config_t {
   int                        buffer_size;           /**< Receive-buffer capacity.      */
   esp_crt_bundle_attach_fn_t crt_bundle_attach;     /**< Root-certificate attachment.  */
   bool                       disable_auto_redirect; /**< Redirects remain fail-closed. */
+  esp_http_client_event_cb_t event_handler;         /**< Response event callback.      */
+  void*                      user_data;             /**< Event callback context.       */
 } esp_http_client_config_t;
 
 /** @brief Parser-only storage standing in for ESP-IDF's SHA-256 context. */
@@ -72,6 +100,12 @@ typedef struct mbedtls_sha256_context {
 #define esp_http_client_close                     priv_esp_http_client_close
 /** @brief Map the parser URL setter to its module-private stand-in. */
 #define esp_http_client_set_url                   priv_esp_http_client_set_url
+/** @brief Map the parser request-header setter to its private stand-in. */
+#define esp_http_client_set_header                priv_esp_http_client_set_header
+/** @brief Map the parser request-header remover to its private stand-in. */
+#define esp_http_client_delete_header             priv_esp_http_client_delete_header
+/** @brief Map the parser timeout setter to its private stand-in. */
+#define esp_http_client_set_timeout_ms            priv_esp_http_client_set_timeout_ms
 /** @brief Map the parser HTTP open operation to its private stand-in. */
 #define esp_http_client_open                      priv_esp_http_client_open
 /** @brief Map the parser header fetch to its module-private stand-in. */
@@ -159,6 +193,58 @@ RA8_PRIV esp_err_t esp_http_client_close( // alloc-allow: parser mirror of ESP-I
 RA8_PRIV esp_err_t esp_http_client_set_url( // alloc-allow: parser mirror of ESP-IDF SOUP
   esp_http_client_handle_t client,
   const char*              url);
+
+/**
+ * @brief Set one request header on the retained HTTP client
+ * @param[in,out] client Valid retained client handle.
+ * @param[in] key NUL-terminated header name.
+ * @param[in] value NUL-terminated header value.
+ * @return ESP-IDF header status.
+ * @retval ESP_OK The header was retained.
+ * @retval ESP_FAIL The header could not be retained.
+ * @pre All pointers are non-null and strings are NUL-terminated.
+ * @pre No request is open on @p client.
+ * @post Success applies the header to the next request.
+ * @post Failure makes no header-retention claim.
+ * @note Implemented by ESP-IDF and may allocate internally.
+ * @since 0.1.0
+ */
+RA8_PRIV esp_err_t esp_http_client_set_header( // alloc-allow: parser mirror of ESP-IDF SOUP
+  esp_http_client_handle_t client,
+  const char*              key,
+  const char*              value);
+
+/**
+ * @brief Remove one retained request header
+ * @param[in,out] client Valid retained client handle.
+ * @param[in] key NUL-terminated header name.
+ * @return ESP-IDF header-removal status.
+ * @retval ESP_OK The header is absent.
+ * @retval ESP_FAIL The operation could not be completed.
+ * @pre All pointers are non-null and @p key is NUL-terminated.
+ * @pre No request is open on @p client.
+ * @post Success leaves the named header absent.
+ * @post Failure makes no header-state claim.
+ * @note The adapter tolerates an already-absent header.
+ * @since 0.1.0
+ */
+RA8_PRIV esp_err_t esp_http_client_delete_header(esp_http_client_handle_t client, const char* key);
+
+/**
+ * @brief Set the retained client's operation timeout
+ * @param[in,out] client Valid retained client handle.
+ * @param[in] timeout_ms Positive timeout in milliseconds.
+ * @return ESP-IDF timeout-setting status.
+ * @retval ESP_OK The timeout was accepted.
+ * @retval ESP_FAIL The timeout could not be applied.
+ * @pre @p client is valid and @p timeout_ms is positive.
+ * @pre No request is open on @p client.
+ * @post Success applies the timeout to the next request.
+ * @post Failure makes no timeout-state claim.
+ * @note Implemented by ESP-IDF.
+ * @since 0.1.0
+ */
+RA8_PRIV esp_err_t esp_http_client_set_timeout_ms(esp_http_client_handle_t client, int timeout_ms);
 
 /**
  * @brief Open the configured HTTP request
