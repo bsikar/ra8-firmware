@@ -13,6 +13,7 @@
 
 #include "ra8_attributes.h"
 #include "ra8_c6link_mdl_msg.h"
+#include "ra8_c6link_mdl_service_internal.h"
 #include "ra8_media_download.pb-c.h"
 
 /** @brief Decode arena sized for the bounded start request and URL. */
@@ -27,6 +28,15 @@ typedef struct {
   uint8_t bytes[k_mdl_decode_arena_bytes]; /**< Fixed protobuf decode storage. */
   size_t  used;                            /**< Bytes already allocated.       */
 } mdl_decode_arena_t;
+
+RA8_PRIV bool priv_c6link_mdl_decode_allocation_fits(size_t used, size_t len, size_t capacity)
+{
+  if (len > (SIZE_MAX - k_mdl_decode_align_mask)) {
+    return false;
+  }
+  const size_t aligned = (len + k_mdl_decode_align_mask) & ~(size_t)k_mdl_decode_align_mask;
+  return (aligned <= capacity) && (used <= (capacity - aligned));
+}
 
 /**
  * @brief Allocate one aligned span from a per-dispatch bounded arena
@@ -43,12 +53,12 @@ typedef struct {
  */
 RA8_INTERNAL static void* internal_mdl_decode_alloc(void* data, size_t len)
 {
-  mdl_decode_arena_t* arena   = (mdl_decode_arena_t*)data;
-  const size_t        aligned = (len + k_mdl_decode_align_mask) & ~(size_t)k_mdl_decode_align_mask;
-  if ((aligned > sizeof(arena->bytes)) || (arena->used > (sizeof(arena->bytes) - aligned))) {
+  mdl_decode_arena_t* arena = (mdl_decode_arena_t*)data;
+  if (!priv_c6link_mdl_decode_allocation_fits(arena->used, len, sizeof(arena->bytes))) {
     return nullptr;
   }
-  void* out = &arena->bytes[arena->used];
+  const size_t aligned = (len + k_mdl_decode_align_mask) & ~(size_t)k_mdl_decode_align_mask;
+  void*        out     = &arena->bytes[arena->used];
   arena->used += aligned;
   return out;
 }
