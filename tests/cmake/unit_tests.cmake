@@ -302,12 +302,16 @@ endif()
 
 # The strict book-stream MC/DC vectors call documented private validator seams
 # whose types and declarations remain outside the public library ABI. The
-# shared RABOOK1 fixture is compiled in from its own translation unit rather
-# than carried inline, so the vector suite stays inside the file-size cap.
-if(TARGET test_ra8_book_stream)
-  target_include_directories(test_ra8_book_stream PRIVATE ${FW_ROOT}/libs/ra8_book/src)
-  target_sources(test_ra8_book_stream PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/book_stream_fixture.c)
-endif()
+# strict-reader suites and the per-operand MC/DC suites are two translation
+# units so neither reaches the file-size cap, and each links its own copy of
+# the shared RABOOK1 fixture so neither test process depends on state owned by
+# its sibling.
+foreach(book_stream_test IN ITEMS test_ra8_book_stream test_ra8_book_stream_mcdc)
+  if(TARGET ${book_stream_test})
+    target_include_directories(${book_stream_test} PRIVATE ${FW_ROOT}/libs/ra8_book/src)
+    target_sources(${book_stream_test} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/book_stream_fixture.c)
+  endif()
+endforeach()
 
 # The DOCTYPE lexer's entry guard re-checks a nine-byte prefix that
 # ra8_xml_reader_next() has already matched, so its length and mismatch
