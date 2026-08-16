@@ -293,10 +293,11 @@ internal_fat_dir_next(ra8_fs_dir_private_t* state, ra8_fs_dirent_t* out, bool* o
       const uint16_t* name_units =
         priv_lfn_units_for(&state->fat_lfn, &entry[k_dir_off_name], &units);
       const char* name = short_name;
-      if ((name_units != nullptr) &&
-          (priv_utf16_to_utf8(name_units, units, long_name, (uint32_t)sizeof(long_name)) ==
-           k_ra8_ok)) {
-        name = long_name;
+      if (name_units != nullptr) {
+        if (priv_utf16_to_utf8(name_units, units, long_name, (uint32_t)sizeof(long_name)) ==
+            k_ra8_ok) {
+          name = long_name;
+        }
       }
       (void)memcpy(out->name, name, strlen(name) + 1U);
       out->attr       = entry[k_dir_off_attr];
