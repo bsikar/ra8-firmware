@@ -90,7 +90,7 @@ typedef struct {
 /** @brief Single bounded stream context for the foreign demo file. */
 typedef struct {
   uint32_t offset; /**< Current read cursor within ::s_demo_stub_payload. */
-  bool     open;   /**< True while the immutable file is open.           */
+  bool     open;   /**< True while the immutable file is open.            */
 } demo_stub_file_t;
 
 /** @brief Caller-independent foreign-format mount state. */

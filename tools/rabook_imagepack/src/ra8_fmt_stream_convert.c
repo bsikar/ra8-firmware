@@ -40,8 +40,8 @@ typedef enum : uint32_t {
   k_convert_decimal_max    = 20U,   /**< Decimal digits in uint64_t.               */
   k_convert_decimal_base   = 10U,   /**< Report integer radix.                     */
   k_convert_u32_high_shift = 24U,   /**< Shift of a big-endian uint32 high byte.   */
-  k_convert_jpeg_sof_last  = 0xCFU, /**< Last JPEG SOF-range marker.              */
-  k_convert_probe_min      = 12U,   /**< Smallest supported image prefix.           */
+  k_convert_jpeg_sof_last  = 0xCFU, /**< Last JPEG SOF-range marker.               */
+  k_convert_probe_min      = 12U,   /**< Smallest supported image prefix.          */
 } convert_const_t;
 
 /** @brief Accepted source encoding selected by the header probe. */

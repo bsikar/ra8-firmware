@@ -35,7 +35,7 @@ typedef enum : uint16_t {
   k_stat_fat_minute_shift   = 5U,      /**< FAT minute-field shift.               */
   k_stat_fat_minute_mask    = 0x3FU,   /**< FAT minute-field mask.                */
   k_stat_fat_second_mask    = 0x1FU,   /**< FAT half-second-field mask.           */
-  k_stat_tenths_per_second  = 100U,    /**< Ten-millisecond units per second.      */
+  k_stat_tenths_per_second  = 100U,    /**< Ten-millisecond units per second.     */
   k_stat_month_max          = 12U,     /**< Largest civil month.                  */
   k_stat_day_max            = 31U,     /**< Largest civil day accepted here.      */
   k_stat_hour_max           = 23U,     /**< Largest civil hour.                   */
