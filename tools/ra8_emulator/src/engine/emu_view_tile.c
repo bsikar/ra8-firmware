@@ -142,6 +142,8 @@ RA8_INTERNAL static void internal_rotate_tile(const emu_presentation_workspace_t
       } else if (presentation->rotate_deg == (uint32_t)k_rotate_180) {
         destination_x = (uint16_t)(width - 1U - x);
         destination_y = (uint16_t)(height - 1U - y);
+      } else {
+        /* 270 degrees: the seeded destination above already describes it. */
       }
       rotated[((size_t)destination_y * output_width) + destination_x] =
         source[((size_t)y * width) + x];
