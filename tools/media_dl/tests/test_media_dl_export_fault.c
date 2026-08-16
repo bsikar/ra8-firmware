@@ -184,12 +184,12 @@ RA8_INTERNAL static void internal_assert_no_stage(const char* path)
  * @note Test-only adapter over the public exporter contract.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_export(mdl_storage_t* storage,
-                                              mdl_format_t   format,
-                                              const char*    directory,
-                                              const char*    output,
-                                              uint8_t*       arena,
-                                              size_t         arena_bytes)
+RA8_INTERNAL static ra8_err_t internal_export(mdl_storage_t*   storage,
+                                              ra8_mdl_format_t format,
+                                              const char*      directory,
+                                              const char*      output,
+                                              uint8_t*         arena,
+                                              size_t           arena_bytes)
 {
   mdl_export_workspace_t workspace;
   mdl_export_workspace_init(&workspace, arena, arena_bytes);
@@ -450,12 +450,12 @@ RA8_INTERNAL static void internal_test_short_io_and_two_bindings(void)
   s_fault_fs.flags =
     (uint32_t)k_mdl_state_fault_short_read | (uint32_t)k_mdl_state_fault_short_write;
   const struct {
-    mdl_format_t format; /**< Selected bounded container writer. */
-    const char*  path;   /**< Destination fixture path.          */
-  } formats[] = {{k_mdl_fmt_cbz, "/tmp/mdl_export_short/a.cbz"},
-                 {k_mdl_fmt_cbt, "/tmp/mdl_export_short/a.cbt"},
-                 {k_mdl_fmt_cbt_gz, "/tmp/mdl_export_short/a.cbt.gz"},
-                 {k_mdl_fmt_epub, "/tmp/mdl_export_short/a.epub"}};
+    ra8_mdl_format_t format; /**< Selected bounded container writer. */
+    const char*      path;   /**< Destination fixture path.          */
+  } formats[] = {{k_ra8_mdl_format_cbz, "/tmp/mdl_export_short/a.cbz"},
+                 {k_ra8_mdl_format_cbt, "/tmp/mdl_export_short/a.cbt"},
+                 {k_ra8_mdl_format_cbt_gz, "/tmp/mdl_export_short/a.cbt.gz"},
+                 {k_ra8_mdl_format_epub, "/tmp/mdl_export_short/a.epub"}};
   for (size_t i = 0U; i < (sizeof(formats) / sizeof(formats[0])); ++i) {
     TEST_ASSERT_EQ(k_ra8_ok,
                    internal_export(&s_fault_storage,
@@ -473,12 +473,12 @@ RA8_INTERNAL static void internal_test_short_io_and_two_bindings(void)
                  priv_mdl_export_output_begin(&first,
                                               &s_fault_storage,
                                               "/tmp/mdl_export_short/one.cbz",
-                                              k_mdl_fmt_cbz));
+                                              k_ra8_mdl_format_cbz));
   TEST_ASSERT_EQ(k_ra8_ok,
                  priv_mdl_export_output_begin(&second,
                                               &s_nth_storage,
                                               "/tmp/mdl_export_short/two.cbz",
-                                              k_mdl_fmt_cbz));
+                                              k_ra8_mdl_format_cbz));
   TEST_ASSERT_EQ(k_ra8_ok, priv_mdl_export_output_abort(&first));
   TEST_ASSERT_EQ(k_ra8_ok, priv_mdl_export_output_abort(&second));
   internal_assert_no_stage(directory);
@@ -527,7 +527,7 @@ RA8_INTERNAL static void internal_test_transaction_fault_preservation(void)
     internal_write_bytes(output, old, sizeof(old));
     s_fault_fs.flags = faults[i];
     TEST_ASSERT(internal_export(&s_fault_storage,
-                                k_mdl_fmt_cbz,
+                                k_ra8_mdl_format_cbz,
                                 directory,
                                 output,
                                 s_fault_arena,
@@ -537,7 +537,7 @@ RA8_INTERNAL static void internal_test_transaction_fault_preservation(void)
   }
   s_fault_fs.flags = (uint32_t)k_mdl_state_fault_commit_after;
   TEST_ASSERT(internal_export(&s_fault_storage,
-                              k_mdl_fmt_cbz,
+                              k_ra8_mdl_format_cbz,
                               directory,
                               output,
                               s_fault_arena,
@@ -548,7 +548,7 @@ RA8_INTERNAL static void internal_test_transaction_fault_preservation(void)
   mdl_export_workspace_init(&workspace, s_fault_arena, sizeof(s_fault_arena));
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    mdl_verify_file(mdl_test_storage_get(), k_mdl_fmt_cbz, output, &workspace, &report));
+    mdl_verify_file(mdl_test_storage_get(), k_ra8_mdl_format_cbz, output, &workspace, &report));
   internal_assert_no_stage(directory);
   (void)unlink("/tmp/mdl_export_fault/001.jpg");
   (void)unlink(output);
@@ -578,8 +578,9 @@ RA8_INTERNAL static void internal_test_backfill_seek_fault(void)
   (void)mkdir(directory, 0755);
   internal_write_bytes(output, old, sizeof(old));
   mdl_export_output_t stage = {};
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 priv_mdl_export_output_begin(&stage, &s_fault_storage, output, k_mdl_fmt_cbz));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    priv_mdl_export_output_begin(&stage, &s_fault_storage, output, k_ra8_mdl_format_cbz));
   TEST_ASSERT_EQ(k_ra8_ok, priv_mdl_export_output_write(&stage, data, sizeof(data)));
   s_fault_fs.flags = (uint32_t)k_mdl_state_fault_seek;
   TEST_ASSERT(priv_mdl_export_zip_write(&stage, 0U, data, sizeof(data)) == 0U);
@@ -616,7 +617,7 @@ RA8_INTERNAL static void internal_test_symlink_rejection(void)
   internal_write_bytes("/tmp/mdl_export_link/out.cbz", old, sizeof(old));
   TEST_ASSERT(symlink("real.jpg", "/tmp/mdl_export_link/link.jpg") == 0);
   TEST_ASSERT(internal_export(&s_fault_storage,
-                              k_mdl_fmt_cbz,
+                              k_ra8_mdl_format_cbz,
                               directory,
                               "/tmp/mdl_export_link/out.cbz",
                               s_fault_arena,
@@ -625,7 +626,7 @@ RA8_INTERNAL static void internal_test_symlink_rejection(void)
   (void)unlink("/tmp/mdl_export_link/link.jpg");
   TEST_ASSERT(symlink("out.cbz", "/tmp/mdl_export_link/output-link.cbz") == 0);
   TEST_ASSERT(internal_export(&s_fault_storage,
-                              k_mdl_fmt_cbz,
+                              k_ra8_mdl_format_cbz,
                               directory,
                               "/tmp/mdl_export_link/output-link.cbz",
                               s_fault_arena,
@@ -674,7 +675,7 @@ RA8_INTERNAL static void internal_test_jof_page_two_partial_failure(void)
                         s_nth_io);
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
                  internal_export(&s_nth_storage,
-                                 k_mdl_fmt_jof,
+                                 k_ra8_mdl_format_jof,
                                  directory,
                                  directory,
                                  s_second_arena,
@@ -687,7 +688,7 @@ RA8_INTERNAL static void internal_test_jof_page_two_partial_failure(void)
   mdl_export_workspace_init(&workspace, s_fault_arena, sizeof(s_fault_arena));
   TEST_ASSERT_EQ(k_ra8_ok,
                  mdl_verify_file(mdl_test_storage_get(),
-                                 k_mdl_fmt_jof,
+                                 k_ra8_mdl_format_jof,
                                  "/tmp/mdl_export_jof_fault/001.jof",
                                  &workspace,
                                  &report));

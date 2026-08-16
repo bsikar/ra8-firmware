@@ -317,7 +317,7 @@ RA8_INTERNAL static bool internal_test_zip_text(mdl_test_zip_reader_t* reader,
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t
-internal_export_chapter(mdl_format_t fmt, const char* chapter_dir, const char* out_path)
+internal_export_chapter(ra8_mdl_format_t fmt, const char* chapter_dir, const char* out_path)
 {
   mdl_export_workspace_t ws;
   mdl_export_workspace_init(&ws, s_test_export_arena, sizeof(s_test_export_arena));
@@ -341,7 +341,7 @@ internal_export_chapter(mdl_format_t fmt, const char* chapter_dir, const char* o
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t
-internal_verify_file(mdl_format_t fmt, const char* path, mdl_verify_report_t* report)
+internal_verify_file(ra8_mdl_format_t fmt, const char* path, mdl_verify_report_t* report)
 {
   mdl_export_workspace_t ws;
   mdl_export_workspace_init(&ws, s_test_export_arena, sizeof(s_test_export_arena));
@@ -365,7 +365,7 @@ internal_verify_file(mdl_format_t fmt, const char* path, mdl_verify_report_t* re
  * @note Test helper; an assertion failure terminates the test process.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_export_chapter_meta(mdl_format_t             fmt,
+RA8_INTERNAL static ra8_err_t internal_export_chapter_meta(ra8_mdl_format_t         fmt,
                                                            const char*              chapter_dir,
                                                            const char*              out_path,
                                                            const mdl_export_meta_t* meta)
@@ -414,10 +414,10 @@ RA8_INTERNAL static void internal_test_export_cbz_roundtrip(void)
   internal_write_fixture("/tmp/mdl_test_chap/page_001.jpg", 'a');
   internal_write_fixture("/tmp/mdl_test_chap/page_002.jpg", 'b');
 
-  const ra8_err_t rc = internal_export_chapter(k_mdl_fmt_cbz, dir, out);
+  const ra8_err_t rc = internal_export_chapter(k_ra8_mdl_format_cbz, dir, out);
   TEST_ASSERT(rc == k_ra8_ok);
   mdl_verify_report_t verified = {};
-  TEST_ASSERT(internal_verify_file(k_mdl_fmt_cbz, out, &verified) == k_ra8_ok);
+  TEST_ASSERT(internal_verify_file(k_ra8_mdl_format_cbz, out, &verified) == k_ra8_ok);
   TEST_ASSERT(verified.page_count == k_expect_pages);
 
   mdl_test_zip_reader_t reader;
@@ -463,13 +463,13 @@ RA8_INTERNAL static void internal_test_export_cbt_structure(void)
   mdl_export_meta_t meta;
   mdl_meta_init(&meta);
   (void)__builtin_snprintf(meta.language, sizeof(meta.language), "fr");
-  TEST_ASSERT(internal_export_chapter_meta(k_mdl_fmt_cbt, dir, out, &meta) == k_ra8_ok);
+  TEST_ASSERT(internal_export_chapter_meta(k_ra8_mdl_format_cbt, dir, out, &meta) == k_ra8_ok);
   mdl_verify_report_t verified = {};
-  TEST_ASSERT(internal_verify_file(k_mdl_fmt_cbt, out, &verified) == k_ra8_ok);
+  TEST_ASSERT(internal_verify_file(k_ra8_mdl_format_cbt, out, &verified) == k_ra8_ok);
   TEST_ASSERT(verified.page_count == k_expect_pages);
-  TEST_ASSERT(internal_export_chapter_meta(k_mdl_fmt_cbt_gz, dir, gz, &meta) == k_ra8_ok);
+  TEST_ASSERT(internal_export_chapter_meta(k_ra8_mdl_format_cbt_gz, dir, gz, &meta) == k_ra8_ok);
   verified = (mdl_verify_report_t){};
-  TEST_ASSERT(internal_verify_file(k_mdl_fmt_cbt_gz, gz, &verified) == k_ra8_ok);
+  TEST_ASSERT(internal_verify_file(k_ra8_mdl_format_cbt_gz, gz, &verified) == k_ra8_ok);
   TEST_ASSERT(verified.page_count == k_expect_pages);
 
   uint8_t tar[k_tar_fixture_bytes];
@@ -521,7 +521,7 @@ RA8_INTERNAL static void internal_test_export_skips_non_images(void)
   internal_write_fixture("/tmp/mdl_mixed_chap/notes.txt", 't');
   internal_write_fixture("/tmp/mdl_mixed_chap/.DS_Store", 'd');
 
-  TEST_ASSERT(internal_export_chapter(k_mdl_fmt_cbz, dir, out) == k_ra8_ok);
+  TEST_ASSERT(internal_export_chapter(k_ra8_mdl_format_cbz, dir, out) == k_ra8_ok);
   mdl_test_zip_reader_t reader;
   TEST_ASSERT(internal_test_zip_open(&reader, out));
   TEST_ASSERT_EQ(k_expect_pages + 1U, (uint16_t)mz_zip_reader_get_num_files(&reader.zip));
@@ -580,9 +580,9 @@ RA8_INTERNAL static void internal_test_export_epub_roundtrip(void)
   (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
   internal_write_fixture("/tmp/mdl_epub_chap/page_001.jpg", 'a');
   internal_write_fixture("/tmp/mdl_epub_chap/page_002.jpg", 'b');
-  TEST_ASSERT(internal_export_chapter(k_mdl_fmt_epub, dir, out) == k_ra8_ok);
+  TEST_ASSERT(internal_export_chapter(k_ra8_mdl_format_epub, dir, out) == k_ra8_ok);
   mdl_verify_report_t verified = {};
-  TEST_ASSERT(internal_verify_file(k_mdl_fmt_epub, out, &verified) == k_ra8_ok);
+  TEST_ASSERT(internal_verify_file(k_ra8_mdl_format_epub, out, &verified) == k_ra8_ok);
   TEST_ASSERT(verified.page_count == k_expect_pages);
 
   mdl_test_zip_reader_t reader;
@@ -622,12 +622,12 @@ RA8_INTERNAL static void internal_test_export_jof_roundtrip(void)
   /* JOF is a directory-output format: it writes a `.jof` sibling per page into
    * the chapter dir and does not use out_path (no single container exists), so
    * the caller must report the directory, never a phantom archive file. */
-  TEST_ASSERT(mdl_format_is_dir_output(k_mdl_fmt_jof));
-  TEST_ASSERT(!mdl_format_is_dir_output(k_mdl_fmt_cbz));
-  TEST_ASSERT(!mdl_format_is_dir_output(k_mdl_fmt_epub));
-  TEST_ASSERT(internal_export_chapter(k_mdl_fmt_jof, dir, dir) == k_ra8_ok);
+  TEST_ASSERT(mdl_format_is_dir_output(k_ra8_mdl_format_jof));
+  TEST_ASSERT(!mdl_format_is_dir_output(k_ra8_mdl_format_cbz));
+  TEST_ASSERT(!mdl_format_is_dir_output(k_ra8_mdl_format_epub));
+  TEST_ASSERT(internal_export_chapter(k_ra8_mdl_format_jof, dir, dir) == k_ra8_ok);
   mdl_verify_report_t verified = {};
-  TEST_ASSERT(internal_verify_file(k_mdl_fmt_jof, jof, &verified) == k_ra8_ok);
+  TEST_ASSERT(internal_verify_file(k_ra8_mdl_format_jof, jof, &verified) == k_ra8_ok);
   TEST_ASSERT(verified.page_count == 1U);
 
   /* The reported output -- the `.jof` sibling -- actually exists on disk. */
@@ -671,7 +671,7 @@ RA8_INTERNAL static void internal_test_tar_rejects_long_name(void)
   char path[k_buf_320];
   (void)__builtin_snprintf(path, sizeof(path), "%s/%s", dir, name);
   internal_write_fixture(path, 'x');
-  TEST_ASSERT(internal_export_chapter(k_mdl_fmt_cbt, dir, out) == k_ra8_err_invalid_size);
+  TEST_ASSERT(internal_export_chapter(k_ra8_mdl_format_cbt, dir, out) == k_ra8_err_invalid_size);
   (void)unlink(path);
   (void)unlink(out);
   (void)rmdir(dir);
@@ -680,7 +680,7 @@ RA8_INTERNAL static void internal_test_tar_rejects_long_name(void)
   const char* okout = "/tmp/mdl_okname_chap.cbt";
   (void)mkdir(okdir, (mode_t)k_mdl_test_dir_mode);
   internal_write_fixture("/tmp/mdl_okname_chap/page_001.jpg", 'x');
-  TEST_ASSERT(internal_export_chapter(k_mdl_fmt_cbt, okdir, okout) == k_ra8_ok);
+  TEST_ASSERT(internal_export_chapter(k_ra8_mdl_format_cbt, okdir, okout) == k_ra8_ok);
   (void)unlink("/tmp/mdl_okname_chap/page_001.jpg");
   (void)unlink(okout);
   (void)rmdir(okdir);
@@ -706,7 +706,7 @@ RA8_INTERNAL static void internal_test_epub_escapes_name(void)
   const char* img = "/tmp/mdl_xml_chap/a&b<c>d.jpg";
   (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
   internal_write_fixture(img, 'x');
-  TEST_ASSERT(internal_export_chapter(k_mdl_fmt_epub, dir, out) == k_ra8_ok);
+  TEST_ASSERT(internal_export_chapter(k_ra8_mdl_format_epub, dir, out) == k_ra8_ok);
 
   mdl_test_zip_reader_t reader;
   TEST_ASSERT(internal_test_zip_open(&reader, out));
@@ -765,7 +765,7 @@ RA8_INTERNAL static void internal_test_epub_long_filenames(void)
   char path[k_buf_320];
   (void)__builtin_snprintf(path, sizeof(path), "%s/%s", dir, raw);
   internal_write_fixture(path, 'x');
-  TEST_ASSERT(internal_export_chapter(k_mdl_fmt_epub, dir, out) == k_ra8_ok);
+  TEST_ASSERT(internal_export_chapter(k_ra8_mdl_format_epub, dir, out) == k_ra8_ok);
 
   mdl_test_zip_reader_t reader;
   TEST_ASSERT(internal_test_zip_open(&reader, out));
@@ -815,7 +815,7 @@ RA8_INTERNAL static void internal_test_export_page_cap(void)
     internal_write_fixture(path, 'x');
   }
   /* One image too many -> refuse rather than package a short chapter. */
-  TEST_ASSERT(internal_export_chapter(k_mdl_fmt_cbz, dir, out) == k_ra8_err_invalid_size);
+  TEST_ASSERT(internal_export_chapter(k_ra8_mdl_format_cbz, dir, out) == k_ra8_err_invalid_size);
 
   for (size_t i = 0U; i < over; ++i) {
     char path[k_buf_256];
@@ -883,12 +883,12 @@ RA8_INTERNAL static void internal_test_export_workspace_bounds(void)
 
   mdl_export_workspace_t ws;
   mdl_export_workspace_init(&ws, s_test_export_arena, k_names_bytes - 1U);
-  TEST_ASSERT(mdl_export_chapter_ws(mdl_test_storage_get(), k_mdl_fmt_cbz, dir, out, &ws) ==
+  TEST_ASSERT(mdl_export_chapter_ws(mdl_test_storage_get(), k_ra8_mdl_format_cbz, dir, out, &ws) ==
               k_ra8_err_invalid_size);
   TEST_ASSERT(ws.high_water == 0U);
 
   mdl_export_workspace_init(&ws, s_test_export_arena, sizeof(s_test_export_arena));
-  TEST_ASSERT(mdl_export_chapter_ws(mdl_test_storage_get(), k_mdl_fmt_cbz, dir, out, &ws) ==
+  TEST_ASSERT(mdl_export_chapter_ws(mdl_test_storage_get(), k_ra8_mdl_format_cbz, dir, out, &ws) ==
               k_ra8_ok);
   const size_t cbz_high_water = ws.high_water;
   TEST_ASSERT(cbz_high_water > k_names_bytes);
@@ -896,22 +896,24 @@ RA8_INTERNAL static void internal_test_export_workspace_bounds(void)
 
   internal_write_fixture(out, 'z');
   mdl_export_workspace_init(&ws, s_test_export_arena, cbz_high_water - 1U);
-  TEST_ASSERT(mdl_export_chapter_ws(mdl_test_storage_get(), k_mdl_fmt_cbz, dir, out, &ws) ==
+  TEST_ASSERT(mdl_export_chapter_ws(mdl_test_storage_get(), k_ra8_mdl_format_cbz, dir, out, &ws) ==
               k_ra8_err_invalid_size);
   TEST_ASSERT(ws.high_water <= cbz_high_water - 1U);
   internal_assert_fixture_bytes(out, 'z');
 
   mdl_export_workspace_init(&ws, s_test_export_arena, sizeof(s_test_export_arena));
-  TEST_ASSERT(mdl_export_chapter_ws(mdl_test_storage_get(), k_mdl_fmt_epub, dir, epub_out, &ws) ==
-              k_ra8_ok);
+  TEST_ASSERT(
+    mdl_export_chapter_ws(mdl_test_storage_get(), k_ra8_mdl_format_epub, dir, epub_out, &ws) ==
+    k_ra8_ok);
   const size_t epub_high_water = ws.high_water;
   TEST_ASSERT(epub_high_water > cbz_high_water);
   TEST_ASSERT(epub_high_water <= sizeof(s_test_export_arena));
 
   internal_write_fixture(epub_out, 'e');
   mdl_export_workspace_init(&ws, s_test_export_arena, epub_high_water - 1U);
-  TEST_ASSERT(mdl_export_chapter_ws(mdl_test_storage_get(), k_mdl_fmt_epub, dir, epub_out, &ws) ==
-              k_ra8_err_invalid_size);
+  TEST_ASSERT(
+    mdl_export_chapter_ws(mdl_test_storage_get(), k_ra8_mdl_format_epub, dir, epub_out, &ws) ==
+    k_ra8_err_invalid_size);
   TEST_ASSERT(ws.high_water <= epub_high_water - 1U);
   internal_assert_fixture_bytes(epub_out, 'e');
 
@@ -938,23 +940,23 @@ RA8_INTERNAL static void internal_test_verify_rejects_truncation(void)
 {
   TEST_BEGIN("verify rejects truncation");
   static const struct {
-    const char*  path;   /**< Temporary malformed artifact path. */
-    mdl_format_t format; /**< Expected verifier format.          */
-  } cases[] = {{"/tmp/mdl_bad.cbz", k_mdl_fmt_cbz},
-               {"/tmp/mdl_bad.cbt", k_mdl_fmt_cbt},
-               {"/tmp/mdl_bad.cbt.gz", k_mdl_fmt_cbt_gz},
-               {"/tmp/mdl_bad.epub", k_mdl_fmt_epub},
-               {"/tmp/mdl_bad.jof", k_mdl_fmt_jof},
-               {"/tmp/mdl_bad.rabook", k_mdl_fmt_rabook}};
+    const char*      path;   /**< Temporary malformed artifact path. */
+    ra8_mdl_format_t format; /**< Expected verifier format.          */
+  } cases[] = {{"/tmp/mdl_bad.cbz", k_ra8_mdl_format_cbz},
+               {"/tmp/mdl_bad.cbt", k_ra8_mdl_format_cbt},
+               {"/tmp/mdl_bad.cbt.gz", k_ra8_mdl_format_cbt_gz},
+               {"/tmp/mdl_bad.epub", k_ra8_mdl_format_epub},
+               {"/tmp/mdl_bad.jof", k_ra8_mdl_format_jof},
+               {"/tmp/mdl_bad.rabook", k_ra8_mdl_format_rabook}};
   for (size_t i = 0U; i < sizeof(cases) / sizeof(cases[0]); ++i) {
     internal_write_fixture(cases[i].path, 'x');
     mdl_verify_report_t report = {};
     TEST_ASSERT(internal_verify_file(cases[i].format, cases[i].path, &report) != k_ra8_ok);
     (void)unlink(cases[i].path);
   }
-  mdl_format_t inferred = k_mdl_fmt_invalid;
+  ra8_mdl_format_t inferred = k_ra8_mdl_format_invalid;
   TEST_ASSERT(mdl_format_from_path("/tmp/book.cbt.gz.part", &inferred) == k_ra8_err_not_supported);
-  TEST_ASSERT(inferred == k_mdl_fmt_invalid);
+  TEST_ASSERT(inferred == k_ra8_mdl_format_invalid);
   TEST_END("verify rejects truncation");
 }
 

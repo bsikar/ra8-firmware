@@ -75,7 +75,7 @@ RA8_INTERNAL static bool internal_pack_snprintf_fit(int n, size_t cap)
 }
 
 size_t mdl_pack_one_meta(mdl_storage_t*           storage,
-                         mdl_format_t             format,
+                         ra8_mdl_format_t         format,
                          const char*              series_dir,
                          const char*              chap_id,
                          const mdl_export_meta_t* meta,
@@ -144,7 +144,7 @@ size_t mdl_pack_one_meta(mdl_storage_t*           storage,
 }
 
 size_t mdl_pack_one(mdl_storage_t*          storage,
-                    mdl_format_t            format,
+                    ra8_mdl_format_t        format,
                     const char*             series_dir,
                     const char*             chap_id,
                     mdl_export_workspace_t* ws,
@@ -206,7 +206,7 @@ internal_pack_metadata(mdl_storage_t* storage, const mdl_export_meta_t* meta, co
  * @since 0.1.0
  */
 RA8_INTERNAL static size_t internal_pack_combined_dir(mdl_storage_t*           storage,
-                                                      mdl_format_t             format,
+                                                      ra8_mdl_format_t         format,
                                                       const char*              series_dir,
                                                       const char*              combined_rel,
                                                       bool                     incomplete,
@@ -268,7 +268,7 @@ RA8_INTERNAL static size_t internal_pack_combined_dir(mdl_storage_t*           s
 }
 
 size_t mdl_pack_combined_meta(mdl_storage_t*           storage,
-                              mdl_format_t             format,
+                              ra8_mdl_format_t         format,
                               bool                     allow_incomplete,
                               const char*              series_dir,
                               const char*              combined_rel,
@@ -310,7 +310,7 @@ size_t mdl_pack_combined_meta(mdl_storage_t*           storage,
 }
 
 size_t mdl_pack_combined(mdl_storage_t*           storage,
-                         mdl_format_t             format,
+                         ra8_mdl_format_t         format,
                          bool                     allow_incomplete,
                          const char*              series_dir,
                          const char*              combined_rel,
