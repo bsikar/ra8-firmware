@@ -15,13 +15,13 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 - Source files with at least one decision: **272**
 - Total compound decisions in scope: **1574**
-- Decisions at 100% MC/DC (`yes`): **1361**
+- Decisions at 100% MC/DC (`yes`): **1364**
 - Decisions partially covered (`partial`): **95**
-- Decisions fully uncovered (`no`): **118**
-- Coverage rate (yes / total): **86.47%**
-- Deactivated gap conditions (DO-178C 6.4.4.3): **90**
-- Reachable-condition denominator (total - deactivated): **1484**
-- **Reachable MC/DC rate**: **91.71%** -- the enforced ratchet threshold is recorded in `.github/mcdc-baseline.txt`.
+- Decisions fully uncovered (`no`): **115**
+- Coverage rate (yes / total): **86.66%**
+- Deactivated gap conditions (DO-178C 6.4.4.3): **92**
+- Reachable-condition denominator (total - deactivated): **1482**
+- **Reachable MC/DC rate**: **92.04%** -- the enforced ratchet threshold is recorded in `.github/mcdc-baseline.txt`.
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -71,11 +71,6 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | libs/ra8_c6link/src/ra8_c6link_mdl_service.c | 6 | internal_mdl_next_capacity | `if ((req->protocol_version != k_ra8_mdl_protocol_version) \|\| !service->acti...` | partial |
 | libs/ra8_c6link/src/ra8_c6link_mdl_service.c | 3 | internal_mdl_next_capacity | `if ((req->protocol_version != k_ra8_mdl_protocol_version) \|\| !service->acti...` | no |
 | libs/ra8_c6link/src/ra8_c6link_mdl_service.c | 5 | ra8_mdl_service_init | `if ((ctx == nullptr) \|\| (request == nullptr) \|\| (request_len == 0U) \|\| ...` | no |
-| libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c | 2 | (file scope) | `if ((!chunk->has_sha256) \|\| (chunk->total_bytes != bytes_stored)) {` | no |
-| libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c | 2 | (file scope) | `for (uint32_t pull = 0U; (pull < config->max_chunks) && (err == k_ra8_ok); pu...` | partial |
-| libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c | 2 | (file scope) | `} else if ((err == k_ra8_ok) && (chunk.state == k_ra8_mdl_state_complete)) {` | partial |
-| libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c | 2 | (file scope) | `} else if ((err == k_ra8_ok) && (chunk.state == k_ra8_mdl_state_cancelled)) {` | no |
-| libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c | 2 | (file scope) | `if ((err == k_ra8_ok) && state.session.active) {` | no |
 | port/esp-hosted/src/ra8_esp_hosted_fmt.c | 2 | internal_put | `if ((cur == nullptr) \|\| (cur->out == nullptr)) {` | no |
 | port/esp-hosted/src/ra8_esp_hosted_gpio.c | 2 | internal_isr_trampoline | `if ((row == nullptr) \|\| (row->handler == nullptr)) {` | no |
 | port/esp-hosted/src/ra8_esp_hosted_rtos.c | 2 | internal_copy_name | `if ((dst == nullptr) \|\| (cap == 0U)) {` | no |
@@ -89,7 +84,12 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | internal_ra8_esp_hosted_tx_shim_set_ticks | `if ((status == nullptr) \|\| (idx >= (uint32_t)k_ra8_esp_hosted_tx_shim_famil...` | no |
 | port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | internal_ra8_esp_hosted_tx_shim_set_ticks | `if ((status == nullptr) \|\| (idx >= (uint32_t)k_ra8_esp_hosted_tx_shim_famil...` | no |
 | port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | internal_ra8_esp_hosted_tx_shim_set_ticks | `if ((status == nullptr) \|\| (idx >= (uint32_t)k_ra8_esp_hosted_tx_shim_famil...` | no |
-| ... | | | | *(63 more rows in CSV)* | |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | internal_ra8_esp_hosted_tx_shim_set_ticks | `if ((status == nullptr) \|\| (idx >= (uint32_t)k_ra8_esp_hosted_tx_shim_famil...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | internal_ra8_esp_hosted_tx_shim_set_ticks | `if ((status == nullptr) \|\| (idx >= (uint32_t)k_ra8_esp_hosted_tx_shim_famil...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | internal_ra8_esp_hosted_tx_shim_set_ticks | `if ((status == nullptr) \|\| (idx >= (uint32_t)k_ra8_esp_hosted_tx_shim_famil...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | internal_ra8_esp_hosted_tx_shim_set_ticks | `if ((status == nullptr) \|\| (idx >= (uint32_t)k_ra8_esp_hosted_tx_shim_famil...` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | internal_ra8_esp_hosted_tx_shim_fire_timer | `if ((timer_ptr == nullptr) \|\| (timer_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
+| ... | | | | *(58 more rows in CSV)* | |
 
 ## Deactivated gaps (DO-178C 6.4.4.3 exempted)
 
@@ -101,6 +101,8 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_book/src/ra8_book_chunked_validate.c | 2 | internal_chunk_flat_read | `if ((offset > ctx->rd->inflated_total) \|\| ((uint64_t)le...` | Annotated deactivation: internal_chunk_flat_read range gu... |
 | libs/ra8_book/src/ra8_book_stream.c | 3 | internal_validate_raster | `if ((expect > (uint64_t)UINT32_MAX) \|\|` | Annotated deactivation: internal_validate_raster overflow... |
 | libs/ra8_box/src/ra8_box.c | 2 | internal_iter_live | `return (link != (int32_t)k_ra8_box_none) && (guard < count);` | Annotated deactivation: guard<count is an acyclic-tree cy... |
+| libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c | 2 | (file scope) | `} else if ((err == k_ra8_ok) && (chunk.state == k_ra8_mdl...` | Annotated deactivation: ra8_c6link_mdl_transfer CANCELLED... |
+| libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c | 2 | (file scope) | `if ((err == k_ra8_ok) && state.session.active) {` | Annotated deactivation: ra8_c6link_mdl_transfer exhausted... |
 | libs/ra8_core/src/ra8_log.c | 2 | internal_itm_put_u32 | `while (value != 0U && i < k_ra8_u32_max_digits) {` | Annotated deactivation: internal_itm_put_u32 digit-buffer... |
 | libs/ra8_dfu/src/ra8_rot.c | 2 | internal_ct_equal | `if ((psa_err != k_ra8_ok) && (psa_err != k_ra8_err_exists...` | Annotated deactivation: DO-178C 6.4.4.3 -- under RA8_OFF_... |
 | libs/ra8_epub/src/ra8_epub_fs.c | 3 | internal_fs_stream_read | `if (io == nullptr \|\| io->file == nullptr \|\| buf == nu...` | TU-local static helper `internal_fs_stream_read` -- defen... |
@@ -202,7 +204,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | media_download_format | 9 | 0 | 0 | 9 |
 | ra8_xml | 80 | 73 | 6 | 1 |
 | ra8_esp_hosted_rtos | 15 | 9 | 3 | 3 |
-| ra8_c6link_mdl_transfer | 10 | 5 | 2 | 3 |
 | ra8_psa_crypto_fake | 6 | 1 | 5 | 0 |
 | ra8_jof_produce | 19 | 15 | 1 | 3 |
 | ra8_jpeg_sw_decode | 16 | 12 | 4 | 0 |
@@ -217,6 +218,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_reflow_css_cascade | 23 | 21 | 2 | 0 |
 | ra8_reflow_css_rules | 21 | 19 | 2 | 0 |
 | ra8_reflow_tokenize_lex | 11 | 9 | 2 | 0 |
+| ra8_c6link_mdl_transfer | 10 | 8 | 2 | 0 |
 | ra8_ble | 8 | 6 | 0 | 2 |
 | ra8_reflow_layout_image | 6 | 4 | 2 | 0 |
 | ra8_eth | 4 | 2 | 2 | 0 |
@@ -478,7 +480,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_epub_xml_shim | 5 | 10 | 55 | 70 |
 | ra8_c6link_mdl | 4 | 7 | 13 | 24 |
 | ra8_esp_hosted_rtos | 3 | 3 | 9 | 15 |
-| ra8_c6link_mdl_transfer | 3 | 2 | 5 | 10 |
 | ra8_jof_produce | 3 | 1 | 15 | 19 |
 | ra8_epub_open | 3 | 0 | 6 | 9 |
 | ra8_c6link_mdl_service | 2 | 2 | 4 | 8 |
