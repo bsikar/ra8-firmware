@@ -430,11 +430,16 @@ emu_memmap_result_t emu_memmap_requirements(void)
 
 emu_memmap_result_t emu_memmap_open(emu_memmap_workspace_t* workspace)
 {
-  if (workspace == nullptr) {
+  if ((workspace == nullptr) || workspace->open) {
     return internal_result(k_emu_memmap_invalid, 0);
   }
-  emu_memmap_workspace_t candidate                 = {};
-  const uint64_t sizes[k_emu_memmap_backing_count] = {k_sram_size, k_sdram_size, k_ospi_size};
+  emu_memmap_workspace_t candidate                         = {};
+  const uint64_t         sizes[k_emu_memmap_backing_count] = {
+    [k_backing_sram]  = k_sram_size,
+    [k_backing_sdram] = k_sdram_size,
+    [k_backing_ospi]  = k_ospi_size,
+  };
+
   for (size_t index = 0U; index < k_emu_memmap_backing_count; index++) {
     if (!internal_backing_open(sizes[index], &candidate.backings[index])) {
       const int failure = errno;
@@ -463,7 +468,7 @@ emu_memmap_result_t emu_memmap_attach(emu_memmap_workspace_t* workspace, uc_engi
     return internal_result(k_emu_memmap_invalid, 0);
   }
   if (!internal_map_regions(workspace, uc) || !internal_map_periph_mmio(uc)) {
-    return internal_result(k_emu_memmap_unicorn, workspace->os_error);
+    return internal_result(k_emu_memmap_unicorn, 0);
   }
   *binding = (emu_memmap_binding_t){.uc = uc, .active = true};
   internal_seed_tsn(uc);
