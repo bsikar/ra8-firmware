@@ -80,12 +80,11 @@
 alignas(max_align_t) static uint8_t
   s_main_presentation_scratch[k_emu_presentation_max_scratch_bytes];
 
-/** @brief Exact caller-owned page scratch for sparse memory backing. */
-alignas(max_align_t) static uint8_t s_main_memmap_scratch[k_emu_memmap_scratch_bytes];
-
 /**
- * @brief Open the authoritative aliased-memory backing before engine mutation.
- * @details Open the authoritative aliased-memory backing before engine mutation; this step is contained within the main model and uses bounded caller or module-owned storage.
+ * @brief Open the shared aliased-memory backing before engine mutation.
+ * @details Acquires the three host apertures the Secure and Non-secure views of
+ * SRAM, SDRAM and OSPI share; this step is contained within the main model and
+ * uses bounded caller or module-owned storage.
  * @param[in,out] memory Memory state or storage updated in place by the operation.
  * @return The main open memory result produced by the main model.
  * @retval true The main open memory condition holds or completed successfully; false otherwise.
@@ -96,17 +95,13 @@ alignas(max_align_t) static uint8_t s_main_memmap_scratch[k_emu_memmap_scratch_b
  */
 RA8_INTERNAL static bool internal_main_open_memory(emu_memmap_workspace_t* memory)
 {
-  const emu_memmap_result_t result =
-    emu_memmap_open(s_main_memmap_scratch, sizeof(s_main_memmap_scratch), memory);
+  const emu_memmap_result_t result = emu_memmap_open(memory);
   if (result.status == k_emu_memmap_ok) {
     return true;
   }
-  (void)priv_emu_io_errf("ra8_emulator: memory backing failed (%u): "
-                         "logical=%llu scratch-required=%zu scratch-supplied=%zu os=%d\n",
+  (void)priv_emu_io_errf("ra8_emulator: memory backing failed (%u): logical=%llu os=%d\n",
                          (unsigned int)result.status,
                          (unsigned long long)result.logical_backing_bytes,
-                         result.required_scratch_bytes,
-                         result.supplied_scratch_bytes,
                          result.os_error);
   return false;
 }

@@ -98,6 +98,7 @@ add_executable(
   src/engine/emu_elf_symbols.c
   src/engine/emu_engine.c
   src/engine/emu_memmap.c
+  src/engine/emu_memory_access.c
   src/engine/emu_mmio.c
   src/engine/emu_mpu.c
   src/engine/emu_prof.c
@@ -227,7 +228,7 @@ if(BUILD_TESTING)
   add_executable(
     test_emu_elf_source
     tests/test_emu_elf_source.c
-    tests/test_emu_memmap_stub.c
+    src/engine/emu_memory_access.c
     src/host/emu_host_io.c
     src/engine/emu_elf.c
     src/engine/emu_elf_source.c
@@ -247,6 +248,7 @@ if(BUILD_TESTING)
 
   add_executable(
     test_emu_memmap tests/test_emu_memmap.c src/host/emu_host_io.c src/engine/emu_memmap.c
+                    src/engine/emu_memory_access.c
   )
   target_include_directories(
     test_emu_memmap
