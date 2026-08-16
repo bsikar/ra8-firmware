@@ -91,8 +91,6 @@ typedef struct emu_memmap_workspace {
   emu_memmap_backing_t backings[k_emu_memmap_backing_count];
   /** @brief Active Unicorn engine views. */
   emu_memmap_binding_t bindings[k_emu_memmap_binding_count];
-  /** @brief First fatal host error. */
-  int os_error;
   /** @brief Whether the host mappings are owned. */
   bool open;
 } emu_memmap_workspace_t;
@@ -123,10 +121,11 @@ typedef struct emu_memmap_workspace {
  * @param[out] workspace Receives the owned mappings on success.
  * @return Exact geometry and completion status.
  * @retval k_emu_memmap_ok Every aperture mapping was acquired.
- * @retval k_emu_memmap_invalid @p workspace was null.
+ * @retval k_emu_memmap_invalid @p workspace was null or already open.
  * @retval k_emu_memmap_backing A host mapping failed; @c os_error holds errno.
  * @pre @p workspace is non-null.
- * @pre @p workspace is not already open.
+ * @pre @p workspace is not already open; re-opening one is rejected rather
+ * than leaking the apertures it already owns.
  * @post Success leaves every aperture zero-filled and no page resident.
  * @post Failure acquires nothing and leaves @p workspace untouched.
  * @note Distinct workspaces own independent mappings and state.
