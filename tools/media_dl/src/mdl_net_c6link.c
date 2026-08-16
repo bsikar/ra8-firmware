@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "mdl_net_internal.h"
 #include "ra8_attributes.h"
 
 /** @brief Output destination selected for one synchronous adapter call. */
@@ -173,14 +174,17 @@ RA8_INTERNAL static ra8_err_t internal_c6_output_abort(void* ctx)
  * @param[in] req Request policy to validate.
  * @param[in,out] output Selected caller output transaction.
  * @param[out] out_len Optional completed byte length.
- * @param[out] resp Optional synthesized success metadata.
+ * @param[out] resp Optional observed response metadata.
  * @return Transfer, sink, or digest status.
- * @retval k_ra8_ok The complete verified body was published.
+ * @retval k_ra8_ok The complete verified body has HTTP status below 400.
+ * @retval k_ra8_err_busy HTTP status 429 or 503 requires backoff.
+ * @retval k_ra8_err_not_found Another HTTP 4xx status was observed.
+ * @retval k_ra8_fail An HTTP 5xx status was observed.
  * @pre Pointer arguments are non-null except optional outputs.
  * @pre The C6 link and SHA context are exclusively owned.
  * @post Success reports the exact terminal HTTP status and selected headers.
  * @post Failure leaves partial output cleared by the transaction abort.
- * @note HTTP response interpretation remains portable downloader policy.
+ * @note Classification is shared exactly with the curl backend.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_c6_get(mdl_net_c6link_t*    backend,
@@ -214,15 +218,19 @@ RA8_INTERNAL static ra8_err_t internal_c6_get(mdl_net_c6link_t*    backend,
     if (transfer.bytes_stored > SIZE_MAX) {
       return k_ra8_err_invalid_size;
     }
-    if (out_len != nullptr) {
-      *out_len = (size_t)transfer.bytes_stored;
-    }
     if (resp != nullptr) {
       resp->status = transfer.response.status;
       memcpy(resp->retry_after, transfer.response.retry_after, sizeof(resp->retry_after));
       memcpy(resp->etag, transfer.response.etag, sizeof(resp->etag));
       memcpy(resp->last_modified, transfer.response.last_modified, sizeof(resp->last_modified));
       memcpy(resp->content_type, transfer.response.content_type, sizeof(resp->content_type));
+    }
+    const ra8_err_t classified = priv_mdl_net_classify_http(transfer.response.status);
+    if (classified != k_ra8_ok) {
+      return classified;
+    }
+    if (out_len != nullptr) {
+      *out_len = (size_t)transfer.bytes_stored;
     }
   }
   return result;

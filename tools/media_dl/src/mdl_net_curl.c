@@ -29,6 +29,7 @@
 
 #include "mdl_net.h"
 #include "mdl_net_curl_internal.h"
+#include "mdl_net_internal.h"
 #include "mdl_url_guard.h"
 #include "ra8_attributes.h"
 
@@ -611,16 +612,7 @@ RA8_PRIV ra8_err_t priv_mdl_net_curl_classify(CURLcode code, bool overflow, long
   if (code != CURLE_OK) {
     return k_ra8_fail;
   }
-  if ((status == (long)k_http_too_many_req) || (status == (long)k_http_unavailable)) {
-    return k_ra8_err_busy; /* 429 / 503: throttled -- the governor must back off. */
-  }
-  if (status >= (long)k_http_server_err_min) {
-    return k_ra8_fail; /* 5xx: server error -- retryable later. */
-  }
-  if (status >= (long)k_http_client_err_min) {
-    return k_ra8_err_not_found; /* 404 and other 4xx: skip this resource. */
-  }
-  return k_ra8_ok;
+  return priv_mdl_net_classify_http(status);
 }
 
 /**
