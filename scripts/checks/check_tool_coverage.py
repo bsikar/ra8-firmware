@@ -25,6 +25,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 COVERAGE_JSON = REPO_ROOT / "build" / "tool-coverage" / "media_dl" / "coverage.json"
 BASELINE_FILE = REPO_ROOT / ".github" / "tool-coverage-baseline.txt"
 SOURCE_DIR = REPO_ROOT / "tools" / "media_dl" / "src"
+TRACKED_INLINE_SOURCES = {"tools/media_dl/src/mdl_extract_internal.h"}
 
 LINE_FLOOR_PCT = 90
 BRANCH_FLOOR_PCT = 80
@@ -75,8 +76,11 @@ def load_baseline(path: Path) -> dict[str, Coverage]:
 
 
 def expected_sources(root: Path = SOURCE_DIR) -> set[str]:
-    """Return every production C source the media_dl coverage report owes."""
-    return {f"tools/media_dl/src/{path.name}" for path in root.glob("*.c")}
+    """Return every instrumented production unit the coverage report owes."""
+    sources = {f"tools/media_dl/src/{path.name}" for path in root.glob("*.c")}
+    if root == SOURCE_DIR:
+        sources.update(TRACKED_INLINE_SOURCES)
+    return sources
 
 
 def _below_floor(covered: int, total: int, floor: int) -> bool:
@@ -185,6 +189,12 @@ def selftest() -> int:
             "zero-line report entry fires",
             {"tools/media_dl/src/frozen.c": (0, 0, 0, 0)},
             expected,
+            True,
+        ),
+        (
+            "missing tracked inline source fires",
+            frozen,
+            expected | TRACKED_INLINE_SOURCES,
             True,
         ),
     ]

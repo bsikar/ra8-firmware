@@ -2,29 +2,67 @@
 # New files must enter at >=90% line and >=80% branch coverage.
 # Existing files may neither gain uncovered debt nor lose coverage ratio.
 # columns: file<TAB>line-covered<TAB>line-total<TAB>branch-covered<TAB>branch-total
-# rows: 24
+# Re-derived 2026-08-16 after responsibility splits expanded 24 legacy rows
+# into 57 measured production units. Aggregate line coverage improved from
+# 2103/3518 to 8367/10034 and branch coverage from 1349/2564 to 5322/8171.
+# The previously unmeasured C6 backend enters at 85/85 lines and 51/54 branches.
+# Future updates remain shrink-only through check_tool_coverage.py --update.
+# rows: 57
 
-tools/media_dl/src/main.c	0	396	0	202
-tools/media_dl/src/mdl_atomic.c	22	26	20	24
-tools/media_dl/src/mdl_cli.c	0	157	0	102
-tools/media_dl/src/mdl_config.c	94	119	40	56
-tools/media_dl/src/mdl_discover.c	0	128	0	84
-tools/media_dl/src/mdl_export.c	235	406	121	271
-tools/media_dl/src/mdl_export_jof.c	77	112	25	54
-tools/media_dl/src/mdl_extract.c	230	282	167	286
-tools/media_dl/src/mdl_fetch.c	229	312	114	194
-tools/media_dl/src/mdl_hash.c	33	36	17	22
-tools/media_dl/src/mdl_library.c	0	41	0	44
-tools/media_dl/src/mdl_net.c	23	24	27	30
-tools/media_dl/src/mdl_net_curl.c	107	222	62	190
-tools/media_dl/src/mdl_pack.c	0	59	0	38
-tools/media_dl/src/mdl_pathfs.c	8	13	3	6
-tools/media_dl/src/mdl_politeness.c	193	214	114	138
-tools/media_dl/src/mdl_report.c	0	46	0	18
-tools/media_dl/src/mdl_robots.c	206	214	143	180
-tools/media_dl/src/mdl_sanitize.c	120	127	100	118
-tools/media_dl/src/mdl_search.c	64	70	66	72
-tools/media_dl/src/mdl_session.c	46	51	36	40
-tools/media_dl/src/mdl_state.c	232	261	124	181
-tools/media_dl/src/mdl_url_guard.c	116	129	115	140
-tools/media_dl/src/mdl_urlname.c	68	73	55	74
+tools/media_dl/src/main.c	240	290	150	219
+tools/media_dl/src/mdl_app_admin.c	202	260	111	188
+tools/media_dl/src/mdl_app_cover.c	69	106	36	72
+tools/media_dl/src/mdl_app_direct.c	232	323	92	166
+tools/media_dl/src/mdl_app_library.c	100	136	43	70
+tools/media_dl/src/mdl_app_prepare.c	127	208	48	118
+tools/media_dl/src/mdl_app_series.c	222	285	80	156
+tools/media_dl/src/mdl_app_storage.c	44	59	41	76
+tools/media_dl/src/mdl_cache.c	121	138	76	116
+tools/media_dl/src/mdl_cache_io.c	278	317	153	270
+tools/media_dl/src/mdl_cli.c	294	305	197	220
+tools/media_dl/src/mdl_cli_nums.c	105	123	59	86
+tools/media_dl/src/mdl_cli_stream.c	12	15	10	14
+tools/media_dl/src/mdl_cli_usage.c	19	20	8	10
+tools/media_dl/src/mdl_config.c	215	242	106	150
+tools/media_dl/src/mdl_discover.c	149	211	66	132
+tools/media_dl/src/mdl_export.c	175	206	118	153
+tools/media_dl/src/mdl_export_epub.c	223	264	109	180
+tools/media_dl/src/mdl_export_io.c	215	266	154	282
+tools/media_dl/src/mdl_export_jof.c	74	101	34	68
+tools/media_dl/src/mdl_export_meta.c	301	354	219	324
+tools/media_dl/src/mdl_export_rabook.c	138	152	72	126
+tools/media_dl/src/mdl_export_rabook_io.c	74	94	50	102
+tools/media_dl/src/mdl_export_tar.c	104	112	46	74
+tools/media_dl/src/mdl_export_workspace.c	18	21	13	22
+tools/media_dl/src/mdl_export_zip.c	144	168	92	142
+tools/media_dl/src/mdl_extract.c	63	102	52	104
+tools/media_dl/src/mdl_extract_hits.c	198	218	128	194
+tools/media_dl/src/mdl_extract_internal.h	58	62	59	86
+tools/media_dl/src/mdl_fetch.c	263	333	138	212
+tools/media_dl/src/mdl_fetch_body.c	97	110	59	94
+tools/media_dl/src/mdl_fetch_page.c	195	233	103	162
+tools/media_dl/src/mdl_hash.c	56	64	38	56
+tools/media_dl/src/mdl_host_credentials.c	9	10	14	22
+tools/media_dl/src/mdl_library.c	174	209	100	180
+tools/media_dl/src/mdl_net.c	36	37	42	48
+tools/media_dl/src/mdl_net_c6link.c	85	85	51	54
+tools/media_dl/src/mdl_net_curl.c	259	294	163	272
+tools/media_dl/src/mdl_net_curl_credentials.c	133	154	148	204
+tools/media_dl/src/mdl_pack.c	30	107	12	42
+tools/media_dl/src/mdl_pathfs.c	11	15	13	22
+tools/media_dl/src/mdl_politeness.c	209	217	118	138
+tools/media_dl/src/mdl_report.c	38	95	8	34
+tools/media_dl/src/mdl_robots.c	227	248	169	226
+tools/media_dl/src/mdl_sanitize.c	120	127	101	118
+tools/media_dl/src/mdl_search.c	82	89	83	92
+tools/media_dl/src/mdl_session.c	101	118	66	78
+tools/media_dl/src/mdl_state.c	245	268	190	278
+tools/media_dl/src/mdl_state_codec.c	335	360	276	368
+tools/media_dl/src/mdl_state_decimal.c	133	156	82	112
+tools/media_dl/src/mdl_state_store.c	369	426	193	304
+tools/media_dl/src/mdl_storage.c	205	254	123	218
+tools/media_dl/src/mdl_stream.c	6	18	4	16
+tools/media_dl/src/mdl_url_guard.c	117	130	114	140
+tools/media_dl/src/mdl_urlname.c	227	241	205	284
+tools/media_dl/src/mdl_verify.c	352	435	265	437
+tools/media_dl/src/mdl_verify_rabook.c	39	43	22	40
