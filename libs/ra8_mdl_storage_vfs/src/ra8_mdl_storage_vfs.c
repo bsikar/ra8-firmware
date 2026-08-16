@@ -75,7 +75,10 @@ RA8_INTERNAL static bool internal_is_dot_component(const char* text, uint16_t le
 RA8_INTERNAL static ra8_err_t
 internal_bounded_length(const char* text, uint16_t cap, uint16_t* out_len)
 {
-  if (text == nullptr || out_len == nullptr) {
+  if (text == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (out_len == nullptr) {
     return k_ra8_err_null_ptr;
   }
   for (uint16_t i = 0U; i < cap; ++i) {
@@ -120,7 +123,13 @@ internal_mount_prefix(const char* path, uint16_t len, uint16_t* out_colon)
       *out_colon = i;
       return k_ra8_ok;
     }
-    if ((path[i] == '/') || (path[i] == '\\') || ((uint8_t)path[i] < 0x20U)) {
+    if (path[i] == '/') {
+      return k_ra8_err_invalid_arg;
+    }
+    if (path[i] == '\\') {
+      return k_ra8_err_invalid_arg;
+    }
+    if ((uint8_t)path[i] < 0x20U) {
       return k_ra8_err_invalid_arg;
     }
   }
@@ -153,8 +162,12 @@ internal_path_components(const char* path, uint16_t len, uint16_t colon, uint16_
   uint16_t start = (uint16_t)(colon + 2U);
   uint16_t slash = (uint16_t)(colon + 1U);
   for (uint16_t i = start; i <= len; ++i) {
-    const char c = path[i];
-    if ((c == '/') || (c == '\0')) {
+    const char c        = path[i];
+    bool       boundary = c == '/';
+    if (c == '\0') {
+      boundary = true;
+    }
+    if (boundary) {
       const uint16_t component_len = (uint16_t)(i - start);
       if (component_len == 0U) {
         return k_ra8_err_invalid_arg;
@@ -168,7 +181,13 @@ internal_path_components(const char* path, uint16_t len, uint16_t colon, uint16_
       }
       continue;
     }
-    if ((c == ':') || (c == '\\') || ((uint8_t)c < 0x20U)) {
+    if (c == ':') {
+      return k_ra8_err_invalid_arg;
+    }
+    if (c == '\\') {
+      return k_ra8_err_invalid_arg;
+    }
+    if ((uint8_t)c < 0x20U) {
       return k_ra8_err_invalid_arg;
     }
   }
@@ -245,7 +264,16 @@ RA8_INTERNAL static ra8_err_t internal_stage_leaf_check(const char* leaf, uint16
   }
   for (uint16_t i = 0U; i < *out_len; ++i) {
     const char c = leaf[i];
-    if ((c == '/') || (c == '\\') || (c == ':') || ((uint8_t)c < 0x20U)) {
+    if (c == '/') {
+      return k_ra8_err_invalid_arg;
+    }
+    if (c == '\\') {
+      return k_ra8_err_invalid_arg;
+    }
+    if (c == ':') {
+      return k_ra8_err_invalid_arg;
+    }
+    if ((uint8_t)c < 0x20U) {
       return k_ra8_err_invalid_arg;
     }
   }
@@ -491,13 +519,17 @@ RA8_INTERNAL static ra8_err_t internal_close_writer(ra8_mdl_storage_vfs_t* ctx)
  */
 RA8_INTERNAL static ra8_err_t internal_begin(void* opaque, const char* destination)
 {
-  if (opaque == nullptr || destination == nullptr) {
+  if (opaque == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (destination == nullptr) {
     return k_ra8_err_null_ptr;
   }
   ra8_mdl_storage_vfs_t* const ctx = opaque;
-  if ((ctx->state != k_ra8_mdl_storage_vfs_idle) &&
-      (ctx->state != k_ra8_mdl_storage_vfs_committed)) {
-    return k_ra8_err_invalid_state;
+  if (ctx->state != k_ra8_mdl_storage_vfs_idle) {
+    if (ctx->state != k_ra8_mdl_storage_vfs_committed) {
+      return k_ra8_err_invalid_state;
+    }
   }
   ctx->state         = k_ra8_mdl_storage_vfs_idle;
   path_facts_t facts = {};
@@ -554,7 +586,10 @@ RA8_INTERNAL static ra8_err_t internal_begin(void* opaque, const char* destinati
 RA8_INTERNAL static ra8_err_t
 internal_write(void* opaque, const uint8_t* data, uint16_t len, uint16_t* written)
 {
-  if (opaque == nullptr || written == nullptr) {
+  if (opaque == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (written == nullptr) {
     return k_ra8_err_null_ptr;
   }
   *written = 0U;
@@ -640,7 +675,10 @@ RA8_INTERNAL static ra8_err_t internal_staged_file_check(const ra8_mdl_storage_v
 RA8_INTERNAL static ra8_err_t
 internal_validate(void* opaque, uint64_t total_bytes, const uint8_t sha256[k_ra8_mdl_sha256_bytes])
 {
-  if (opaque == nullptr || sha256 == nullptr) {
+  if (opaque == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (sha256 == nullptr) {
     return k_ra8_err_null_ptr;
   }
   ra8_mdl_storage_vfs_t* const ctx = opaque;
@@ -654,8 +692,10 @@ internal_validate(void* opaque, uint64_t total_bytes, const uint8_t sha256[k_ra8
   if (err == k_ra8_ok) {
     err = internal_staged_file_check(ctx, total_bytes);
   }
-  if ((err == k_ra8_ok) && (ctx->validate != nullptr)) {
-    err = ctx->validate(ctx->validate_ctx, ctx->staging_path, total_bytes, sha256);
+  if (err == k_ra8_ok) {
+    if (ctx->validate != nullptr) {
+      err = ctx->validate(ctx->validate_ctx, ctx->staging_path, total_bytes, sha256);
+    }
   }
   if (err == k_ra8_ok) {
     ctx->state = k_ra8_mdl_storage_vfs_ready;
@@ -775,7 +815,13 @@ ra8_err_t ra8_mdl_storage_vfs_init(ra8_mdl_storage_vfs_t*              storage,
                                    const ra8_mdl_storage_vfs_config_t* config,
                                    ra8_mdl_storage_iface_t*            out_iface)
 {
-  if (storage == nullptr || config == nullptr || out_iface == nullptr) {
+  if (storage == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (config == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (out_iface == nullptr) {
     return k_ra8_err_null_ptr;
   }
   if (config->stage_leaf == nullptr) {
