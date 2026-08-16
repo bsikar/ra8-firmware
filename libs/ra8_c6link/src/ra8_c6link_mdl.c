@@ -27,14 +27,6 @@ static_assert((uint32_t)k_ra8_mdl_format_jof == RA8__MDL__FORMAT__FORMAT_JOF);
 static_assert((uint32_t)k_ra8_mdl_format_rabook == RA8__MDL__FORMAT__FORMAT_RABOOK);
 static_assert((uint32_t)k_ra8_mdl_format_invalid == RA8__MDL__FORMAT__FORMAT_INVALID);
 
-/** @brief Largest encoded inner request (bounded URL plus protobuf overhead).
- */
-typedef enum : uint16_t {
-  k_mdl_request_bytes = k_ra8_mdl_url_max + k_ra8_mdl_user_agent_max + k_ra8_mdl_referer_max +
-                        k_ra8_mdl_etag_max + k_ra8_mdl_http_date_max +
-                        96U, /**< Maximum packed request bytes. */
-} mdl_request_const_t;
-
 /** @brief Response extractor variants. */
 typedef enum : uint8_t {
   k_mdl_take_accepted  = 1U, /**< Extract an Accepted response. */
@@ -483,10 +475,10 @@ ra8_err_t ra8_c6link_mdl_start_request(ra8_c6link_t*            link,
     (char*)((request->http.if_none_match != nullptr) ? request->http.if_none_match : "");
   inner.if_modified_since =
     (char*)((request->http.if_modified_since != nullptr) ? request->http.if_modified_since : "");
-  inner.timeout_ms = request->http.timeout_ms;
-  uint8_t      data[k_mdl_request_bytes];
-  const size_t packed = ra8__mdl__start_request__get_packed_size(&inner);
-  if ((packed == 0U) || (packed > sizeof(data)) ||
+  inner.timeout_ms      = request->http.timeout_ms;
+  uint8_t* const data   = link->mdl_request;
+  const size_t   packed = ra8__mdl__start_request__get_packed_size(&inner);
+  if ((packed == 0U) || (packed > sizeof(link->mdl_request)) ||
       (ra8__mdl__start_request__pack(&inner, data) != packed)) {
     return k_ra8_err_invalid_size;
   }
@@ -526,9 +518,9 @@ ra8_err_t ra8_c6link_mdl_next(ra8_c6link_t*      link,
   inner.job_id                = session->job_id;
   inner.acknowledged_offset   = session->next_offset;
   inner.max_bytes             = max_bytes;
-  uint8_t      data[k_mdl_request_bytes];
-  const size_t packed = ra8__mdl__next_request__get_packed_size(&inner);
-  if ((packed == 0U) || (packed > sizeof(data)) ||
+  uint8_t* const data         = link->mdl_request;
+  const size_t   packed       = ra8__mdl__next_request__get_packed_size(&inner);
+  if ((packed == 0U) || (packed > sizeof(link->mdl_request)) ||
       (ra8__mdl__next_request__pack(&inner, data) != packed)) {
     return k_ra8_err_invalid_size;
   }
@@ -550,9 +542,9 @@ ra8_err_t ra8_c6link_mdl_cancel(ra8_c6link_t* link, ra8_mdl_session_t* session)
   Ra8__Mdl__CancelRequest inner = RA8__MDL__CANCEL_REQUEST__INIT;
   inner.protocol_version        = k_ra8_mdl_protocol_version;
   inner.job_id                  = session->job_id;
-  uint8_t      data[k_mdl_request_bytes];
-  const size_t packed = ra8__mdl__cancel_request__get_packed_size(&inner);
-  if ((packed == 0U) || (packed > sizeof(data)) ||
+  uint8_t* const data           = link->mdl_request;
+  const size_t   packed         = ra8__mdl__cancel_request__get_packed_size(&inner);
+  if ((packed == 0U) || (packed > sizeof(link->mdl_request)) ||
       (ra8__mdl__cancel_request__pack(&inner, data) != packed)) {
     return k_ra8_err_invalid_size;
   }
