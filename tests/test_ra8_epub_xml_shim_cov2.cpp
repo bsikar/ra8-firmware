@@ -295,6 +295,148 @@ RA8_INTERNAL static void internal_test_cov2_nav_edges(void)
   assert(std::strcmp(book.toc[0].href, "c1.xhtml") == 0);
 }
 
+/* A container whose rootfiles wrapper is preceded by a sibling at the same
+ * depth, and by a global rootfile that the parent-scoped search must skip. */
+constexpr const char* s_container_sibling_first =
+  "<container><other/><rootfiles><rootfile full-path='x.opf'/></rootfiles></container>";
+constexpr const char* s_container_global_first =
+  "<container><rootfile full-path='a.opf'/><rootfiles>"
+  "<rootfile full-path='b.opf'/></rootfiles></container>";
+
+/* An OPF whose package carries no unique-identifier, whose metadata holds an
+ * identifier with and without an id, whose spine precedes its manifest, and
+ * which nests a non-item child under manifest and a grandchild under item. */
+constexpr const char* s_opf_operand_matrix =
+  "<?xml version=\"1.0\"?>"
+  "<package version=\"3.0\">"
+  "<metadata><dc:identifier>urn:a</dc:identifier>"
+  "<dc:identifier id=\"q\">urn:b</dc:identifier></metadata>"
+  "<spine><other/><itemref idref=\"c1\"/></spine>"
+  "<manifest><other2/>"
+  "<item id=\"c1\" href=\"c1.xhtml\" media-type=\"application/xhtml+xml\"><child/></item>"
+  "</manifest>"
+  "<guide/>"
+  "</package>";
+
+/* An NCX whose navMap carries a label and a content element that no navPoint
+ * owns, ahead of one well-formed navPoint. */
+constexpr const char* s_ncx_unowned_label =
+  "<ncx><navMap>"
+  "<navLabel><text>Top</text></navLabel>"
+  "<content src=\"top.xhtml\"/>"
+  "<navPoint><navLabel><text>One</text></navLabel><content src=\"c1.xhtml\"/></navPoint>"
+  "</navMap></ncx>";
+
+/* A nav whose only ordered list sits one level too deep to be its child. */
+constexpr const char* s_nav_indirect_ol = "<html><body><nav epub:type=\"toc\"><div><ol>"
+                                          "<li><a href=\"c1.xhtml\">One</a></li>"
+                                          "</ol></div></nav></body></html>";
+
+/* A nav list holding an unowned anchor, an entry whose span text follows an
+ * anchor that already supplied a title, and an entry titled only by CDATA. */
+constexpr const char* s_nav_operand_matrix = "<html><body><nav epub:type=\"toc\"><ol>"
+                                             "<a href=\"x.xhtml\">Stray</a>"
+                                             "<li><a href=\"c1.xhtml\">First<b>x</b>Second</a></li>"
+                                             "<li><span>Only</span></li>"
+                                             "<li><a href=\"c3.xhtml\"><![CDATA[raw]]></a></li>"
+                                             "</ol></nav></body></html>";
+
+/**
+ * @test internal_test_cov2_operand_matrix
+ *
+ * @par MC/DC:
+ * Container: a sibling at the parent's own depth varies the markup-identity
+ * operand of the parent-selection guard, and a globally-earlier rootfile
+ * varies the parent-active operand of the acceptance guard, both against the
+ * accepted control.
+ * OPF: an identifier without an id and an identifier with an id under a
+ * package that declares no unique-identifier independently vary the first two
+ * operands of the package-identifier match; a depth-one `guide` varies the
+ * name operand of the spine selector; a grandchild under `item` varies the
+ * direct-child operand of both the metadata and manifest arms; a non-item
+ * direct child of manifest varies the item-name operand; a manifest that
+ * follows the spine varies the frame-name operand of the spine-child arms;
+ * and a non-itemref direct child of spine varies their name operands.
+ * NCX: a content element and a navLabel that no navPoint owns independently
+ * vary the marker operand of the href and title stores.
+ * Nav: an ordered list one level too deep varies the direct-child operand of
+ * the list probe; an anchor directly inside the list varies the marker operand
+ * of the anchor store and of the title store; anchor text that follows a
+ * nested element varies the empty-title operand; a span-titled entry varies
+ * the span-name operand; and CDATA inside an anchor varies the event-kind
+ * operand of the closing arm.
+ * Decisions:
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_find
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_mark_metadata
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_opf_first
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_collect_spine
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_opf_shape
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_ncx_event
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_nav_has_list
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_nav_event
+ *
+ * @brief Vary the remaining container, OPF, NCX, and nav consumer operands.
+ * @details Drives one fixture per uncovered operand through the production
+ * private entry points, asserting the committed metadata, spine, and TOC state
+ * each fixture must produce.
+ * @pre Fixed-capacity fixture storage required by this operation is available.
+ * @pre Arguments follow the interface contract exercised by this helper.
+ * @post Documented outputs contain the exercised result when the operation
+ * succeeds.
+ * @post Mutations remain confined to documented outputs and file-local fixture
+ * state.
+ * @note File-local helper; no ownership escapes this focused test executable.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_test_cov2_operand_matrix(void)
+{
+  ra8_epub_container_result_t res = {};
+  assert(priv_ra8_epub_xml_parse_container(internal_bytes_of(s_container_sibling_first),
+                                           std::strlen(s_container_sibling_first),
+                                           &res,
+                                           &s_xml_workspace) == k_ra8_ok);
+  assert(std::strcmp(res.opf_path, "x.opf") == 0);
+
+  std::memset(&res, 0, sizeof(res));
+  assert(priv_ra8_epub_xml_parse_container(internal_bytes_of(s_container_global_first),
+                                           std::strlen(s_container_global_first),
+                                           &res,
+                                           &s_xml_workspace) == k_ra8_ok);
+  assert(std::strcmp(res.opf_path, "b.opf") == 0);
+
+  static ra8_epub_book_t s_book;
+  std::memset(&s_book, 0, sizeof(s_book));
+  assert(priv_ra8_epub_xml_parse_opf(internal_bytes_of(s_opf_operand_matrix),
+                                     std::strlen(s_opf_operand_matrix),
+                                     &s_book) == k_ra8_ok);
+  assert(s_book.chapter_count == 1U);
+  assert(std::strcmp(s_book.chapter_paths[0], "c1.xhtml") == 0);
+  assert(std::strcmp(s_book.identifier, "urn:a") == 0);
+
+  std::memset(&s_book, 0, sizeof(s_book));
+  assert(priv_ra8_epub_xml_parse_ncx(internal_bytes_of(s_ncx_unowned_label),
+                                     std::strlen(s_ncx_unowned_label),
+                                     &s_book) == k_ra8_ok);
+  assert(s_book.toc_count == 1U);
+  assert(std::strcmp(s_book.toc[0].title, "One") == 0);
+  assert(std::strcmp(s_book.toc[0].href, "c1.xhtml") == 0);
+
+  std::memset(&s_book, 0, sizeof(s_book));
+  assert(priv_ra8_epub_xml_parse_nav(internal_bytes_of(s_nav_indirect_ol),
+                                     std::strlen(s_nav_indirect_ol),
+                                     &s_book) == k_ra8_err_validation_failed);
+
+  std::memset(&s_book, 0, sizeof(s_book));
+  assert(priv_ra8_epub_xml_parse_nav(internal_bytes_of(s_nav_operand_matrix),
+                                     std::strlen(s_nav_operand_matrix),
+                                     &s_book) == k_ra8_ok);
+  assert(s_book.toc_count == 3U);
+  assert(std::strcmp(s_book.toc[0].title, "First") == 0);
+  assert(std::strcmp(s_book.toc[0].href, "c1.xhtml") == 0);
+  assert(std::strcmp(s_book.toc[1].title, "Only") == 0);
+  assert(std::strcmp(s_book.toc[2].href, "c3.xhtml") == 0);
+}
+
 } /* namespace */
 
 /** @brief Run the focused test cases in this executable. @details Invokes each isolated case once and returns the accumulated assertion status. @return Process status from the accumulated assertions. @retval 0 Every focused assertion passed. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
@@ -305,5 +447,6 @@ int main(void)
   internal_test_cov2_opf_edges();
   internal_test_cov2_ncx_edges();
   internal_test_cov2_nav_edges();
+  internal_test_cov2_operand_matrix();
   return 0;
 }

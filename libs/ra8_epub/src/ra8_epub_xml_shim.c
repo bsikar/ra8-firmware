@@ -53,6 +53,7 @@ RA8_INTERNAL static priv_attr_t internal_attr(const uint8_t*         source,
   for (uint16_t i = 0U; i < event->attribute_count; ++i) {
     ra8_xml_attribute_t attribute = {};
     bool                present   = false;
+    // mcdc-deactivated: internal_attr attribute re-walk gate; internal_attributes fixed event->attribute_count by successfully parsing exactly that many attributes over these immutable bytes, so the bounded re-parse cannot fail and ra8_xml_attr_next() only clears `present` once `emitted` reaches that same count, which this loop never exceeds -- both conditions are constant-false.
     if ((ra8_xml_attr_next(source, source_len, event, &cursor, &attribute, &present) != k_ra8_ok) ||
         !present) {
       break;
@@ -329,6 +330,7 @@ RA8_INTERNAL static void internal_mark_metadata(const uint8_t*         source,
 RA8_INTERNAL static ra8_err_t
 internal_opf_status(ra8_err_t err, uint16_t manifest_depth, uint16_t spine_depth)
 {
+  // mcdc-deactivated: internal_opf_status package-shape gate; it runs only after internal_opf_shape accepted the same bytes using the identical depth-1 <manifest>/<spine> predicates that assign manifest_depth and spine_depth here, so neither can still be UINT16_MAX, and the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here -- all three conditions are constant.
   return ((err == k_ra8_ok) && ((manifest_depth == UINT16_MAX) || (spine_depth == UINT16_MAX)))
            ? k_ra8_err_validation_failed
            : err;
@@ -349,6 +351,7 @@ RA8_INTERNAL static ra8_err_t internal_opf_first(const uint8_t*   source,
   while (err == k_ra8_ok) {
     ra8_xml_event_t event = {};
     err                   = ra8_xml_reader_next(&reader, &event);
+    // mcdc-deactivated: internal_opf_first pull-loop status gate; the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here and only the end-of-document condition varies.
     if ((err != k_ra8_ok) || (event.kind == (uint8_t)k_ra8_xml_event_none)) {
       break;
     }
@@ -411,6 +414,7 @@ internal_collect_spine(const uint8_t* source, size_t length, ra8_epub_book_t* bo
   while (err == k_ra8_ok) {
     ra8_xml_event_t event = {};
     err                   = ra8_xml_reader_next(&reader, &event);
+    // mcdc-deactivated: internal_collect_spine pull-loop status gate; the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here and only the end-of-document condition varies.
     if ((err != k_ra8_ok) || (event.kind == (uint8_t)k_ra8_xml_event_none)) {
       break;
     }
@@ -451,6 +455,7 @@ RA8_INTERNAL static ra8_err_t internal_manifest_lookup(const uint8_t*           
   while (err == k_ra8_ok) {
     ra8_xml_event_t event = {};
     err                   = ra8_xml_reader_next(&reader, &event);
+    // mcdc-deactivated: internal_manifest_lookup pull-loop status gate; the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here and only the end-of-document condition varies.
     if ((err != k_ra8_ok) || (event.kind == (uint8_t)k_ra8_xml_event_none)) {
       break;
     }
@@ -488,6 +493,7 @@ internal_opf_shape(const uint8_t* source, size_t length, ra8_epub_xml_workspace_
   while (err == k_ra8_ok) {
     ra8_xml_event_t event = {};
     err                   = ra8_xml_reader_next(&reader, &event);
+    // mcdc-deactivated: internal_opf_shape pull-loop status gate; the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here and only the end-of-document condition varies.
     if ((err != k_ra8_ok) || (event.kind == (uint8_t)k_ra8_xml_event_none)) {
       break;
     }
@@ -509,6 +515,7 @@ internal_opf_shape(const uint8_t* source, size_t length, ra8_epub_xml_workspace_
       ++references;
     }
   }
+  // mcdc-deactivated: internal_opf_shape completeness gate; the loop above exits only by end-of-document or by returning k_ra8_err_no_mem outright, and the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here, so `err` is always k_ra8_ok here and only the two shape flags vary.
   if ((err == k_ra8_ok) && (!saw_manifest || !saw_spine)) {
     return k_ra8_err_validation_failed;
   }
@@ -645,6 +652,7 @@ RA8_INTERNAL static ra8_err_t internal_toc_capacity(const uint8_t*            so
   while (err == k_ra8_ok) {
     ra8_xml_event_t event = {};
     err                   = ra8_xml_reader_next(&reader, &event);
+    // mcdc-deactivated: internal_toc_capacity pull-loop status gate; the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here and only the end-of-document condition varies.
     if ((err != k_ra8_ok) || (event.kind == (uint8_t)k_ra8_xml_event_none)) {
       break;
     }
@@ -748,6 +756,7 @@ priv_ra8_epub_xml_parse_ncx(const uint8_t* xml_bytes, size_t xml_len, ra8_epub_b
   while (err == k_ra8_ok) {
     ra8_xml_event_t event = {};
     err                   = ra8_xml_reader_next(&reader, &event);
+    // mcdc-deactivated: priv_ra8_epub_xml_parse_ncx pull-loop status gate; the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here and only the end-of-document condition varies.
     if ((err != k_ra8_ok) || (event.kind == (uint8_t)k_ra8_xml_event_none)) {
       break;
     }
@@ -768,6 +777,7 @@ RA8_INTERNAL static ra8_err_t internal_select_nav(const uint8_t*            sour
   while (err == k_ra8_ok) {
     ra8_xml_event_t event = {};
     err                   = ra8_xml_reader_next(&reader, &event);
+    // mcdc-deactivated: internal_select_nav pull-loop status gate; the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here and only the end-of-document condition varies.
     if ((err != k_ra8_ok) || (event.kind == (uint8_t)k_ra8_xml_event_none)) {
       break;
     }
@@ -785,6 +795,7 @@ RA8_INTERNAL static ra8_err_t internal_select_nav(const uint8_t*            sour
       }
     }
   }
+  // mcdc-deactivated: internal_select_nav fallback gate; the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here, so the loop can only exit at end-of-document with `err` equal to k_ra8_ok and the status condition is constant-true.
   if ((err == k_ra8_ok) && (fallback.kind != (uint8_t)k_ra8_xml_event_none)) {
     *out = fallback;
     return k_ra8_ok;
@@ -804,6 +815,7 @@ RA8_INTERNAL static ra8_err_t internal_nav_has_list(const uint8_t*            so
   while (err == k_ra8_ok) {
     ra8_xml_event_t event = {};
     err                   = ra8_xml_reader_next(&reader, &event);
+    // mcdc-deactivated: internal_nav_has_list pull-loop status gate; the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here and only the end-of-document condition varies.
     if ((err != k_ra8_ok) || (event.kind == (uint8_t)k_ra8_xml_event_none)) {
       break;
     }
@@ -859,6 +871,7 @@ RA8_INTERNAL static void internal_nav_event(priv_nav_ctx_t* ctx, const ra8_xml_e
         }
       }
     }
+    // mcdc-deactivated: internal_nav_event text-depth gate; this arm is reached only while ctx->active, which spans the subtree of a <nav> that internal_select_nav selected at depth >= 1, so every event inside it sits at depth > 0 and the depth condition is constant-true.
   } else if ((event->kind == (uint8_t)k_ra8_xml_event_text) && (event->depth > 0U)) {
     const ra8_xml_span_t parent = internal_ancestor_name(ctx->reader, event->depth, 1U);
     const uint16_t       marker = internal_ancestor_marker(ctx->reader, event->depth, 1U);
@@ -911,11 +924,13 @@ priv_ra8_epub_xml_parse_nav(const uint8_t* xml_bytes, size_t xml_len, ra8_epub_b
   while (err == k_ra8_ok) {
     ra8_xml_event_t event = {};
     err                   = ra8_xml_reader_next(&reader, &event);
+    // mcdc-deactivated: priv_ra8_epub_xml_parse_nav pull-loop status gate; the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here and only the end-of-document condition varies.
     if ((err != k_ra8_ok) || (event.kind == (uint8_t)k_ra8_xml_event_none)) {
       break;
     }
     internal_nav_event(&ctx, &event);
   }
+  // mcdc-deactivated: priv_ra8_epub_xml_parse_nav completion gate; this point is reached only after internal_nav_has_list accepted the same bytes with the identical direct-child <ol> predicate that sets ctx.saw_ol in internal_nav_event, so saw_ol is always true, and the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here.
   if ((err != k_ra8_ok) || !ctx.saw_ol) {
     return (err == k_ra8_ok) ? k_ra8_err_validation_failed : err;
   }
