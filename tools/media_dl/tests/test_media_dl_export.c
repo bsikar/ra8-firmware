@@ -56,7 +56,7 @@ typedef enum : uint32_t {
   k_long_amp_run            = 240U,               /**< Ampersands in long-name probe.  */
   k_amp_esc_len             = 5U,                 /**< Bytes in `&amp;`.               */
   k_names_bytes             = 2048U * 256U,       /**< Complete page-name table.       */
-  k_test_export_arena_bytes = 8U * 1024U * 1024U, /**< Test exporter arena. */
+  k_test_export_arena_bytes = 8U * 1024U * 1024U, /**< Test exporter arena.            */
 } mdl_export_test_bound_t;
 
 /** @brief Caller-owned workspace backing every export in this process. */
@@ -810,7 +810,7 @@ RA8_INTERNAL static void internal_test_epub_long_filenames(void)
   (void)__builtin_snprintf(href, sizeof(href), "images/%s", esc);
   TEST_ASSERT(strstr(opf, href) != nullptr);          /* whole escaped name present */
   TEST_ASSERT(strstr(opf, "</manifest>") != nullptr); /* manifest not truncated     */
-  TEST_ASSERT(strstr(opf, "</package>") != nullptr);  /* document closed */
+  TEST_ASSERT(strstr(opf, "</package>") != nullptr);  /* document closed            */
   /* the image entry is stored under the raw (unescaped) name, untruncated. */
   char zipname[k_buf_320];
   (void)__builtin_snprintf(zipname, sizeof(zipname), "OEBPS/images/%s", raw);
