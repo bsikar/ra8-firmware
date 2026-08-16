@@ -16,6 +16,17 @@
 #include "ra8_c6link_mdl_service_internal.h"
 #include "ra8_media_download.pb-c.h"
 
+static_assert((uint32_t)k_ra8_mdl_format_loose == RA8__MDL__FORMAT__FORMAT_LOOSE);
+static_assert((uint32_t)k_ra8_mdl_format_cbz == RA8__MDL__FORMAT__FORMAT_CBZ);
+static_assert((uint32_t)k_ra8_mdl_format_cbt == RA8__MDL__FORMAT__FORMAT_CBT);
+static_assert((uint32_t)k_ra8_mdl_format_cbr == RA8__MDL__FORMAT__FORMAT_CBR);
+static_assert((uint32_t)k_ra8_mdl_format_cbt_xz == RA8__MDL__FORMAT__FORMAT_CBT_XZ);
+static_assert((uint32_t)k_ra8_mdl_format_cbt_gz == RA8__MDL__FORMAT__FORMAT_CBT_GZ);
+static_assert((uint32_t)k_ra8_mdl_format_epub == RA8__MDL__FORMAT__FORMAT_EPUB);
+static_assert((uint32_t)k_ra8_mdl_format_jof == RA8__MDL__FORMAT__FORMAT_JOF);
+static_assert((uint32_t)k_ra8_mdl_format_rabook == RA8__MDL__FORMAT__FORMAT_RABOOK);
+static_assert((uint32_t)k_ra8_mdl_format_invalid == RA8__MDL__FORMAT__FORMAT_INVALID);
+
 /** @brief Decode arena sized for the bounded start request and URL. */
 typedef enum : uint16_t {
   k_mdl_decode_arena_bytes = k_ra8_mdl_url_max + 384U, /**< Per-dispatch arena size.    */
@@ -176,7 +187,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_pack_chunk(const Ra8__Mdl__Chunk* msg
 }
 
 /**
- * @brief Validate and begin one raw-body service job
+ * @brief Validate and begin one typed-artifact service job
  * @details Pre-packs the bounded response before allowing backend side effects.
  * @param[in,out] service Initialised portable service.
  * @param[in,out] alloc Bounded per-dispatch protobuf allocator.
@@ -187,7 +198,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_pack_chunk(const Ra8__Mdl__Chunk* msg
  * @param[out] response_len Packed response length.
  * @return Start status.
  * @retval k_ra8_ok Backend accepted a correlated job.
- * @retval k_ra8_err_protocol_error Decode failed or unknown fields were present.
+ * @retval k_ra8_err_protocol_error Decode failed or unknown fields were
+ * present.
  * @retval k_ra8_err_invalid_arg Version or URL is invalid.
  * @retval k_ra8_err_busy A job is already active.
  * @pre All pointers are non-null and service access is exclusive.
@@ -220,7 +232,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_start(ra8_mdl_service_t*  se
   const bool   valid = (req->protocol_version == k_ra8_mdl_protocol_version) && (url_len != 0U) &&
                        (url_len < k_ra8_mdl_url_max) &&
                        (strncmp(req->url, "https://", https_prefix_len) == 0) &&
-                       (req->url[https_prefix_len] != '\0');
+                       (req->url[https_prefix_len] != '\0') &&
+                       ((uint32_t)req->format <= (uint32_t)RA8__MDL__FORMAT__FORMAT_RABOOK);
   if (!valid) {
     return k_ra8_err_invalid_arg;
   }
@@ -235,12 +248,14 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_start(ra8_mdl_service_t*  se
   out.protocol_version   = k_ra8_mdl_protocol_version;
   out.job_id             = next_job_id;
   out.max_chunk_bytes    = k_ra8_mdl_chunk_data_max;
+  out.format             = req->format;
   const ra8_err_t prepacked =
     internal_mdl_pack_accepted(&out, response, response_cap, response_len);
   if (prepacked != k_ra8_ok) {
     return prepacked;
   }
-  const ra8_err_t begun = service->backend.begin(service->backend.ctx, req->url);
+  const ra8_err_t begun =
+    service->backend.begin(service->backend.ctx, req->url, (ra8_mdl_format_t)req->format);
   if (begun != k_ra8_ok) {
     *response_len = 0U;
     return begun;
@@ -249,6 +264,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_start(ra8_mdl_service_t*  se
   service->active_job_id = service->next_job_id;
   service->next_sequence = 0U;
   service->next_offset   = 0U;
+  service->active_format = (ra8_mdl_format_t)req->format;
   service->active        = true;
   return k_ra8_ok;
 }
@@ -321,9 +337,10 @@ static ra8_err_t internal_mdl_next_capacity(uint32_t max_data, size_t response_c
 }
 
 /**
- * @brief Pull and validate one backend response without advancing service state.
- * @details Reads into fixed storage, proves byte/count/offset/terminal invariants,
- * and cancels the job on any backend or protocol failure.
+ * @brief Pull and validate one backend response without advancing service
+ * state.
+ * @details Reads into fixed storage, proves byte/count/offset/terminal
+ * invariants, and cancels the job on any backend or protocol failure.
  * @param[in,out] service Active portable service context.
  * @param[in] max_data Maximum permitted body bytes.
  * @param[out] result Receives bounded backend data and derived end offset.
@@ -464,7 +481,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_next(ra8_mdl_service_t*  ser
  * @param[out] response_len Packed response length.
  * @return Cancellation status.
  * @retval k_ra8_ok Backend cancelled and acknowledgement was packed.
- * @retval k_ra8_err_protocol_error Decode failed or unknown fields were present.
+ * @retval k_ra8_err_protocol_error Decode failed or unknown fields were
+ * present.
  * @retval k_ra8_err_invalid_state Job correlation is invalid.
  * @retval k_ra8_err_invalid_size Acknowledgement does not fit.
  * @retval k_ra8_err_validation_failed Codec length and write disagree.

@@ -17,6 +17,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_mdl_format.h"
 #include "ra8_mdl_protocol.h"
 
 #ifdef __cplusplus
@@ -57,25 +58,27 @@ typedef ra8_err_t (*ra8_mdl_service_dispatch_fn)(void*          ctx,
 
 /**
  * @struct ra8_mdl_service_backend
- * @brief Bounded raw-byte source seam implemented by the C6 port
+ * @brief Bounded typed-artifact source seam implemented by the C6 port
  * @details Separates protobuf/job orchestration from the concrete HTTPS and
  * SHA-256 mechanism. Implementations own all network and digest state.
  * @invariant Every callback and `ctx` is non-null after service initialisation.
- * @invariant At most one job is active because the portable service serialises it.
+ * @invariant At most one job is active because the portable service serialises
+ * it.
  * @since 0.1.0
  */
 typedef struct ra8_mdl_service_backend {
-  ra8_err_t (*begin)(void* ctx, const char* url); /**< Validate and begin one HTTPS body. */
-  ra8_err_t (*read)(
-    void*     ctx,
-    uint8_t*  out,
-    uint16_t  cap,
-    uint16_t* got,
-    uint64_t* total_bytes,
-    bool*     complete,
-    uint8_t   sha256[k_ra8_mdl_sha256_bytes]); /**< Pull bytes or terminal metadata.           */
-  ra8_err_t (*cancel)(void* ctx);              /**< Cancel and release the active backend job. */
-  void* ctx;                                   /**< Backend callback context.                  */
+  ra8_err_t (*begin)(void* ctx, const char* url, ra8_mdl_format_t format);
+  /**< Validate and begin one HTTPS artifact of the selected format. */
+  ra8_err_t (*read)(void*     ctx,
+                    uint8_t*  out,
+                    uint16_t  cap,
+                    uint16_t* got,
+                    uint64_t* total_bytes,
+                    bool*     complete,
+                    uint8_t   sha256[k_ra8_mdl_sha256_bytes]); /**< Pull bytes or terminal
+                                                  metadata.           */
+  ra8_err_t (*cancel)(void* ctx); /**< Cancel and release the active backend job. */
+  void* ctx;                      /**< Backend callback context.                  */
 } ra8_mdl_service_backend_t;
 
 /**
@@ -84,15 +87,17 @@ typedef struct ra8_mdl_service_backend {
  * @details Correlates Start, Next, and Cancel independently of the concrete
  * C6 HTTPS backend and retains no request/response pointers.
  * @invariant An active service has non-zero `active_job_id`.
- * @invariant `next_sequence` and `next_offset` advance only after a successful read.
+ * @invariant `next_sequence` and `next_offset` advance only after a successful
+ * read.
  * @since 0.1.0
  */
 typedef struct ra8_mdl_service {
-  ra8_mdl_service_backend_t backend;       /**< Injected raw-byte source mechanism.        */
+  ra8_mdl_service_backend_t backend;       /**< Injected typed-artifact source mechanism.  */
   uint32_t                  next_job_id;   /**< Monotonic id candidate for the next Start. */
   uint32_t                  active_job_id; /**< Correlation id of the current job.         */
   uint32_t                  next_sequence; /**< Sequence required from the next pull.      */
   uint64_t                  next_offset;   /**< Byte offset required from the next pull.   */
+  ra8_mdl_format_t          active_format; /**< Artifact identity of the active job.       */
   bool                      active;        /**< Whether Next or Cancel is currently valid. */
 } ra8_mdl_service_t;
 

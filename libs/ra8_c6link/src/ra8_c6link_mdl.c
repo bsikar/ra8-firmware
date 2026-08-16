@@ -16,7 +16,19 @@
 #include "ra8_c6link_internal.h"
 #include "ra8_media_download.pb-c.h"
 
-/** @brief Largest encoded inner request (bounded URL plus protobuf overhead). */
+static_assert((uint32_t)k_ra8_mdl_format_loose == RA8__MDL__FORMAT__FORMAT_LOOSE);
+static_assert((uint32_t)k_ra8_mdl_format_cbz == RA8__MDL__FORMAT__FORMAT_CBZ);
+static_assert((uint32_t)k_ra8_mdl_format_cbt == RA8__MDL__FORMAT__FORMAT_CBT);
+static_assert((uint32_t)k_ra8_mdl_format_cbr == RA8__MDL__FORMAT__FORMAT_CBR);
+static_assert((uint32_t)k_ra8_mdl_format_cbt_xz == RA8__MDL__FORMAT__FORMAT_CBT_XZ);
+static_assert((uint32_t)k_ra8_mdl_format_cbt_gz == RA8__MDL__FORMAT__FORMAT_CBT_GZ);
+static_assert((uint32_t)k_ra8_mdl_format_epub == RA8__MDL__FORMAT__FORMAT_EPUB);
+static_assert((uint32_t)k_ra8_mdl_format_jof == RA8__MDL__FORMAT__FORMAT_JOF);
+static_assert((uint32_t)k_ra8_mdl_format_rabook == RA8__MDL__FORMAT__FORMAT_RABOOK);
+static_assert((uint32_t)k_ra8_mdl_format_invalid == RA8__MDL__FORMAT__FORMAT_INVALID);
+
+/** @brief Largest encoded inner request (bounded URL plus protobuf overhead).
+ */
 typedef enum : uint16_t {
   k_mdl_request_bytes = k_ra8_mdl_url_max + 32U, /**< Maximum packed request bytes. */
 } mdl_request_const_t;
@@ -28,14 +40,16 @@ typedef enum : uint8_t {
   k_mdl_take_cancelled = 3U, /**< Extract a Cancelled response. */
 } mdl_take_kind_t;
 
-/** @brief Context consumed synchronously by the CustomRpc response extractor. */
+/** @brief Context consumed synchronously by the CustomRpc response extractor.
+ */
 typedef struct {
-  ra8_c6link_t*      link;            /**< Link whose arena decoded the response. */
-  ra8_mdl_session_t* session;         /**< Correlated caller session.             */
-  ra8_mdl_chunk_t*   chunk;           /**< Optional caller chunk destination.     */
-  uint32_t           operation;       /**< Expected CustomRpc operation id.       */
-  uint16_t           requested_bytes; /**< Maximum accepted response body bytes.  */
-  mdl_take_kind_t    kind;            /**< Expected generated response variant.   */
+  ra8_c6link_t*      link;             /**< Link whose arena decoded the response.  */
+  ra8_mdl_session_t* session;          /**< Correlated caller session.              */
+  ra8_mdl_chunk_t*   chunk;            /**< Optional caller chunk destination.      */
+  uint32_t           operation;        /**< Expected CustomRpc operation id.        */
+  uint16_t           requested_bytes;  /**< Maximum accepted response body bytes.   */
+  ra8_mdl_format_t   requested_format; /**< Format the Accepted response must echo. */
+  mdl_take_kind_t    kind;             /**< Expected generated response variant.    */
 } mdl_take_ctx_t;
 
 /**
@@ -81,7 +95,8 @@ RA8_INTERNAL static bool internal_mdl_chunk_semantics_valid(const Ra8__Mdl__Chun
 
 /**
  * @brief Decode and validate one accepted-job response
- * @details Uses the link-owned bounded arena and updates the session only after validation.
+ * @details Uses the link-owned bounded arena and updates the session only after
+ * validation.
  * @param[in,out] take Response extraction context.
  * @param[in] data Packed generated Accepted response.
  * @return Decode status.
@@ -106,13 +121,15 @@ RA8_INTERNAL static ra8_err_t internal_mdl_take_accepted(mdl_take_ctx_t*        
   const bool valid = (msg->base.n_unknown_fields == 0U) &&
                      (msg->protocol_version == k_ra8_mdl_protocol_version) && (msg->job_id != 0U) &&
                      (msg->max_chunk_bytes != 0U) &&
-                     (msg->max_chunk_bytes <= k_ra8_mdl_chunk_data_max);
+                     (msg->max_chunk_bytes <= k_ra8_mdl_chunk_data_max) &&
+                     ((uint32_t)msg->format == (uint32_t)take->requested_format);
   if (valid) {
     *take->session = (ra8_mdl_session_t){
       .job_id          = msg->job_id,
       .next_sequence   = 0U,
       .next_offset     = 0U,
       .max_chunk_bytes = msg->max_chunk_bytes,
+      .format          = take->requested_format,
       .active          = true,
     };
   }
@@ -122,7 +139,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_take_accepted(mdl_take_ctx_t*        
 
 /**
  * @brief Decode a chunk and enforce correlation and size bounds
- * @details Accepts only the exact active job, sequence, offset, and requested span.
+ * @details Accepts only the exact active job, sequence, offset, and requested
+ * span.
  * @param[in,out] take Active extraction/session context.
  * @param[in] data Packed generated Chunk response.
  * @return Decode or remote terminal status.
@@ -220,7 +238,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_take_cancelled(mdl_take_ctx_t*       
 
 /**
  * @brief Extract one generated media payload from a CustomRpc response
- * @details Validates outer response identity/status before selecting the expected inner type.
+ * @details Validates outer response identity/status before selecting the
+ * expected inner type.
  * @param[in,out] ctx ::mdl_take_ctx_t selected by the initiating call.
  * @param[in] msg_v Decoded ESP-hosted Rpc response.
  * @return Extraction status.
@@ -260,11 +279,13 @@ RA8_INTERNAL static ra8_err_t internal_mdl_take_response(void* ctx, const void* 
   }
 }
 
-/* protobuf-c's pack-only binary-data ABI still declares its byte pointer mutable. */
+/* protobuf-c's pack-only binary-data ABI still declares its byte pointer
+ * mutable. */
 // NOLINTBEGIN(readability-non-const-parameter)
 /**
  * @brief Send one already-encoded generated message through CustomRpc
- * @details Wraps caller-owned inner bytes without retaining them after the synchronous call.
+ * @details Wraps caller-owned inner bytes without retaining them after the
+ * synchronous call.
  * @param[in,out] link Already-open exclusively owned c6link.
  * @param[in] operation Stable media operation identifier.
  * @param[in] data Packed inner request bytes.
@@ -305,7 +326,10 @@ RA8_INTERNAL static ra8_err_t internal_mdl_call(ra8_c6link_t*   link,
 }
 // NOLINTEND(readability-non-const-parameter)
 
-ra8_err_t ra8_c6link_mdl_start(ra8_c6link_t* link, const char* url, ra8_mdl_session_t* session)
+ra8_err_t ra8_c6link_mdl_start(ra8_c6link_t*      link,
+                               const char*        url,
+                               ra8_mdl_format_t   format,
+                               ra8_mdl_session_t* session)
 {
   if ((link == nullptr) || (url == nullptr) || (session == nullptr)) {
     return k_ra8_err_null_ptr;
@@ -316,6 +340,9 @@ ra8_err_t ra8_c6link_mdl_start(ra8_c6link_t* link, const char* url, ra8_mdl_sess
       (strncmp(url, "https://", https_prefix_len) != 0) || (url[https_prefix_len] == '\0')) {
     return k_ra8_err_invalid_arg;
   }
+  if ((uint32_t)format > (uint32_t)k_ra8_mdl_format_rabook) {
+    return k_ra8_err_invalid_arg;
+  }
   *session = (ra8_mdl_session_t){};
   char url_copy[k_ra8_mdl_url_max];
   memcpy(url_copy, url, url_len + 1U);
@@ -323,13 +350,16 @@ ra8_err_t ra8_c6link_mdl_start(ra8_c6link_t* link, const char* url, ra8_mdl_sess
   ra8__mdl__start_request__init(&inner);
   inner.protocol_version = k_ra8_mdl_protocol_version;
   inner.url              = url_copy;
+  inner.format           = (Ra8__Mdl__Format)format;
   uint8_t      data[k_mdl_request_bytes];
   const size_t packed = ra8__mdl__start_request__get_packed_size(&inner);
   if ((packed == 0U) || (packed > sizeof(data)) ||
       (ra8__mdl__start_request__pack(&inner, data) != packed)) {
     return k_ra8_err_invalid_size;
   }
-  mdl_take_ctx_t take = {.session = session, .kind = k_mdl_take_accepted};
+  mdl_take_ctx_t take = {.session          = session,
+                         .requested_format = format,
+                         .kind             = k_mdl_take_accepted};
   return internal_mdl_call(link, k_ra8_mdl_rpc_start, data, packed, &take);
 }
 

@@ -32,9 +32,11 @@ RA8_INTERNAL static void internal_assert_start_fault(ra8_c6_model_mdl_fault_t fa
   priv_c6link_test_bringup();
   ra8_c6_model()->mdl_fault = fault;
   ra8_mdl_session_t session = {};
-  TEST_ASSERT_EQ(
-    k_ra8_err_protocol_error,
-    ra8_c6link_mdl_start(priv_c6link_test_link(), "https://example.test/book", &session));
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error,
+                 ra8_c6link_mdl_start(priv_c6link_test_link(),
+                                      "https://example.test/book",
+                                      k_ra8_mdl_format_rabook,
+                                      &session));
   TEST_ASSERT(!session.active);
   TEST_ASSERT_EQ(0, session.job_id);
 }
@@ -65,6 +67,7 @@ RA8_INTERNAL static void internal_test_accepted_decoder_mcdc(void)
   internal_assert_start_fault(k_c6m_mdl_fault_accepted_zero_job);
   internal_assert_start_fault(k_c6m_mdl_fault_accepted_zero_max);
   internal_assert_start_fault(k_c6m_mdl_fault_accepted_large_max);
+  internal_assert_start_fault(k_c6m_mdl_fault_accepted_wrong_format);
   TEST_END("c6link media Accepted decoder MC/DC");
 }
 

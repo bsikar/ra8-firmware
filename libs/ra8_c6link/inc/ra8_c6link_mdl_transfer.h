@@ -8,10 +8,11 @@
  *
  * @details
  * This module composes an already-open ::ra8_c6link_t with caller-owned
- * storage and SHA-256 implementations. The C6 only fetches source bytes; the
- * RA8 owns the destination, verifies the digest independently, and publishes
- * the temporary object atomically. Every buffer and context is caller-owned,
- * and the transfer loop is bounded by `max_chunks`.
+ * storage and SHA-256 implementations. The selected format is carried across
+ * the wire and correlated by the response; the RA8 owns the destination,
+ * verifies the digest and artifact independently, and publishes the temporary
+ * object atomically. Every buffer and context is caller-owned, and the transfer
+ * loop is bounded by `max_chunks`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -24,7 +25,8 @@
 #include "ra8_c6link_mdl.h"
 #include "ra8_err.h"
 
-/** @brief Absolute transfer policy limits independent of caller chunk geometry. */
+/** @brief Absolute transfer policy limits independent of caller chunk geometry.
+ */
 typedef enum : uint64_t {
   k_ra8_mdl_transfer_bytes_max = UINT64_C(67108864), /**< Maximum one-object byte budget. */
 } ra8_mdl_transfer_limit_t;
@@ -39,7 +41,7 @@ typedef enum : uint64_t {
  * temporary state. A backend may represent SD, XSPI, MRAM, or an e-reader
  * content store without exposing its handles to the C6 protocol. A `.rabook`
  * integration supplies `validate` to check its magic, header, and structure;
- * leaving it null explicitly selects format-agnostic raw-byte transfer.
+ * leaving it null is valid only when the transfer format is `loose`.
  *
  * @invariant Every function pointer and `ctx` is non-null during a transfer.
  * @invariant A successful `commit` is atomic from the reader's perspective.
@@ -66,7 +68,7 @@ typedef struct ra8_mdl_storage_iface {
    * @param[in] total_bytes Verified object byte length.
    * @param[in] sha256 Independently verified SHA-256 digest.
    * @return Validation status; non-success prevents commit and triggers abort.
-   * @note Optional. Null means raw bytes with no claimed artifact format.
+   * @note Optional only for `loose`; every named artifact requires validation.
    */
   ra8_err_t (*validate)(void*         ctx,
                         uint64_t      total_bytes,
@@ -133,16 +135,21 @@ typedef bool (*ra8_mdl_cancel_requested_fn)(void* ctx);
  *
  * @details `chunk_bytes` controls backpressure and `max_chunks` is the hard
  * loop bound. Their product may not exceed ::k_ra8_mdl_transfer_bytes_max.
- * The optional cancellation callback is the only policy hook. Storage and SHA
+ * A non-loose format requires `storage.validate`; this prevents a caller from
+ * relabelling arbitrary bytes as RABOOK or another container. The optional
+ * cancellation callback is the only policy hook. Storage and SHA
  * implementations remain independently substitutable.
  *
  * @invariant `chunk_bytes` is in 1..::k_ra8_mdl_chunk_data_max.
  * @invariant `max_chunks` is non-zero and bounds every remote pull.
- * @invariant The configured byte budget is at most ::k_ra8_mdl_transfer_bytes_max.
+ * @invariant The configured byte budget is at most
+ * ::k_ra8_mdl_transfer_bytes_max.
+ * @invariant Non-loose formats provide `storage.validate`.
  *
  * @code
  * ra8_mdl_transfer_config_t cfg = {
  *   .storage = storage, .sha256 = hash,
+ *   .format = k_ra8_mdl_format_rabook,
  *   .cancel_requested = ui_cancelled, .cancel_ctx = &ui,
  *   .chunk_bytes = k_ra8_mdl_chunk_data_max, .max_chunks = 4096U,
  * };
@@ -154,6 +161,7 @@ typedef bool (*ra8_mdl_cancel_requested_fn)(void* ctx);
 typedef struct ra8_mdl_transfer_config {
   ra8_mdl_storage_iface_t     storage;          /**< Transactional RA8-local destination. */
   ra8_mdl_sha256_iface_t      sha256;           /**< Independent running digest.          */
+  ra8_mdl_format_t            format;           /**< Requested and validated artifact.    */
   ra8_mdl_cancel_requested_fn cancel_requested; /**< Optional cooperative cancel query.   */
   void*                       cancel_ctx;       /**< Context for `cancel_requested`.      */
   uint16_t                    chunk_bytes;      /**< Maximum bytes requested per pull.    */
@@ -169,6 +177,7 @@ typedef struct ra8_mdl_transfer_config {
  *
  * @invariant `bytes_stored` equals the committed object's byte length.
  * @invariant `sha256` is the digest verified against the C6 terminal record.
+ * @invariant `format` is the requested, response-correlated artifact identity.
  *
  * @code
  * ra8_mdl_transfer_result_t result = {};
@@ -178,9 +187,10 @@ typedef struct ra8_mdl_transfer_config {
  * @since 0.1.0
  */
 typedef struct ra8_mdl_transfer_result {
-  uint64_t bytes_stored;                   /**< Bytes atomically committed.    */
-  uint32_t chunks_received;                /**< Remote responses consumed.     */
-  uint8_t  sha256[k_ra8_mdl_sha256_bytes]; /**< Independently verified digest. */
+  uint64_t         bytes_stored;                   /**< Bytes atomically committed.    */
+  uint32_t         chunks_received;                /**< Remote responses consumed.     */
+  ra8_mdl_format_t format;                         /**< Validated committed format.    */
+  uint8_t          sha256[k_ra8_mdl_sha256_bytes]; /**< Independently verified digest. */
 } ra8_mdl_transfer_result_t;
 
 #ifdef __cplusplus
@@ -190,36 +200,43 @@ extern "C" {
 /**
  * @brief Fetch, verify, and atomically publish one remote byte stream
  *
- * @details Starts a raw HTTPS byte transfer on an already-open c6link, pulls
+ * @details Starts a typed artifact transfer on an already-open c6link, pulls
  * ordered bounded chunks, hashes exactly the bytes accepted by storage,
  * compares the local digest with the C6 terminal digest, invokes the optional
  * artifact validator against the private object, then commits. SHA equality
  * proves transport integrity but does not prove `.rabook` identity: callers
- * claiming that format must supply `storage.validate`. After a successful
- * storage `begin`, every non-success path calls `abort`; an active remote
- * session is also cancelled on local failure or cancellation.
+ * claiming any non-loose format must supply `storage.validate`. After a
+ * successful storage `begin`, every non-success path calls `abort`; an active
+ * remote session is also cancelled on local failure or cancellation.
  *
  * @param[in,out] link Already-open, exclusively owned c6link handle.
  * @param[in] url NUL-terminated source URL accepted by the C6 HTTPS backend.
  * @param[in] destination RA8-local destination understood only by `storage`.
- * @param[in] config Complete fixed-size storage, hash, cancellation, and bound policy.
+ * @param[in] config Complete fixed-size storage, hash, cancellation, and bound
+ * policy.
  * @param[out] result Verified committed byte count and digest.
  * @return Canonical transfer status.
  * @retval k_ra8_ok Object verified and atomically committed.
  * @retval k_ra8_err_null_ptr Required pointer or injected function is null.
  * @retval k_ra8_err_invalid_arg Configuration or URL is invalid.
- * @retval k_ra8_err_invalid_size Chunk bound, response length, or byte count is invalid.
+ * @retval k_ra8_err_invalid_size Chunk bound, response length, or byte count is
+ * invalid.
  * @retval k_ra8_err_protocol_error Remote state or ordering is incoherent.
  * @retval k_ra8_err_checksum_mismatch Local and remote SHA-256 digests differ.
- * @retval k_ra8_err_cancelled Caller requested cancellation or remote cancelled.
+ * @retval k_ra8_err_cancelled Caller requested cancellation or remote
+ * cancelled.
  * @retval k_ra8_err_timeout `max_chunks` was exhausted before completion.
  * @retval k_ra8_fail Injected storage, hash, or transport mechanism failed.
  * @pre ::ra8_c6link_open completed successfully for @p link.
  * @pre No other thread uses @p link or any injected context concurrently.
- * @post Success leaves exactly one committed destination and no temporary state.
- * @post Failure leaves no committed destination and calls storage `abort` exactly once.
- * @note Not thread-safe; c6link and injected contexts require exclusive ownership.
- * @warning `commit` must provide the atomic publication guarantee; this module cannot synthesize it.
+ * @post Success leaves exactly one committed destination and no temporary
+ * state.
+ * @post Failure leaves no committed destination and calls storage `abort`
+ * exactly once.
+ * @note Not thread-safe; c6link and injected contexts require exclusive
+ * ownership.
+ * @warning `commit` must provide the atomic publication guarantee; this module
+ * cannot synthesize it.
  * @see ra8_c6link_mdl_start
  * @since 0.1.0
  */

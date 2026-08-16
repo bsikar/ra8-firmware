@@ -200,9 +200,9 @@ RA8_INTERNAL static ra8_err_t internal_c6_output_abort(void* ctx)
  * @retval k_ra8_err_not_supported Version-1 request policy is insufficient.
  * @pre Pointer arguments are non-null except optional outputs.
  * @pre The C6 link and SHA context are exclusively owned.
- * @post Success reports HTTP 200 because version 1 accepts only 2xx bodies.
+ * @post Success reports HTTP 200 because protocol v2 accepts only 2xx bodies.
  * @post Failure leaves partial output cleared by the transaction abort.
- * @note Response headers are unavailable in protocol version 1.
+ * @note Response headers are unavailable in protocol version 2.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_c6_get(mdl_net_c6link_t*    backend,
@@ -224,6 +224,7 @@ RA8_INTERNAL static ra8_err_t internal_c6_get(mdl_net_c6link_t*    backend,
                     .abort    = internal_c6_output_abort,
                     .ctx      = output},
     .sha256      = backend->sha256,
+    .format      = k_ra8_mdl_format_loose,
     .chunk_bytes = backend->chunk_bytes,
     .max_chunks  = backend->max_chunks,
   };
