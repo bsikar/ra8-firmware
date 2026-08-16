@@ -15,8 +15,8 @@
 
 /** @brief Maximum imported cookie row including its terminating NUL. */
 typedef enum : uint16_t {
-  k_cookie_line_max    = 4096U, /**< Honest fixed per-row importer bound. */
-  k_cookie_name_field  = 5U,    /**< Netscape cookie name-field ordinal.  */
+  k_cookie_line_max    = 4096U, /**< Honest fixed per-row importer bound.  */
+  k_cookie_name_field  = 5U,    /**< Netscape cookie name-field ordinal.   */
   k_cookie_field_count = 7U,    /**< Required Netscape cookie field count. */
   k_cookie_ascii_del   = 0x7FU, /**< First non-printable high ASCII byte.  */
 } mdl_cookie_limit_t;
