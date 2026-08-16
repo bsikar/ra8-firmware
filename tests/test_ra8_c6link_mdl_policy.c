@@ -269,8 +269,7 @@ RA8_INTERNAL static void internal_expect_start_rejection(Ra8__Mdl__StartRequest*
 {
   const size_t request_len = ra8__mdl__start_request__get_packed_size(request);
   TEST_ASSERT(request_len <= sizeof(s_policy_request));
-  TEST_ASSERT_EQ((int64_t)request_len,
-                 (int64_t)ra8__mdl__start_request__pack(request, s_policy_request));
+  TEST_ASSERT_EQ(request_len, ra8__mdl__start_request__pack(request, s_policy_request));
   size_t response_len = k_t_policy_len_sentinel;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_mdl_service_dispatch(&s_policy_service,
@@ -303,8 +302,7 @@ RA8_INTERNAL static uint32_t internal_expect_start_acceptance(Ra8__Mdl__StartReq
 {
   const size_t request_len = ra8__mdl__start_request__get_packed_size(request);
   TEST_ASSERT(request_len <= sizeof(s_policy_request));
-  TEST_ASSERT_EQ((int64_t)request_len,
-                 (int64_t)ra8__mdl__start_request__pack(request, s_policy_request));
+  TEST_ASSERT_EQ(request_len, ra8__mdl__start_request__pack(request, s_policy_request));
   size_t response_len = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_mdl_service_dispatch(&s_policy_service,
