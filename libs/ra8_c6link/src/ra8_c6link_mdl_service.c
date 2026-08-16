@@ -245,6 +245,38 @@ RA8_INTERNAL static ra8_err_t internal_mdl_pack_chunk(const Ra8__Mdl__Chunk* msg
 }
 
 /**
+ * @brief Validate every generated Start field before backend activation
+ * @param[in] request Decoded generated request.
+ * @return Field validity.
+ * @retval true Version, URL, format, timeout, and headers are bounded.
+ * @retval false At least one field is absent, malformed, or unsupported.
+ * @pre @p request is non-null and owns decoded string pointers.
+ * @pre The bounded protobuf arena remains live.
+ * @post No request, service, or backend state is modified.
+ * @post True authorizes construction of ::ra8_mdl_request_t.
+ * @note HTTPS is the only accepted transport scheme.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_mdl_start_valid(const Ra8__Mdl__StartRequest* request)
+{
+  if (request->url == nullptr) {
+    return false;
+  }
+  const size_t https_prefix_len = sizeof("https://") - 1U;
+  const size_t url_len          = strnlen(request->url, k_ra8_mdl_url_max);
+  return (request->protocol_version == k_ra8_mdl_protocol_version) && (url_len != 0U) &&
+         (url_len < k_ra8_mdl_url_max) &&
+         (strncmp(request->url, "https://", https_prefix_len) == 0) &&
+         (request->url[https_prefix_len] != '\0') &&
+         ((uint32_t)request->format <= (uint32_t)RA8__MDL__FORMAT__FORMAT_RABOOK) &&
+         (request->timeout_ms <= k_ra8_mdl_timeout_ms_max) &&
+         internal_mdl_request_field_valid(request->user_agent, k_ra8_mdl_user_agent_max) &&
+         internal_mdl_request_field_valid(request->referer, k_ra8_mdl_referer_max) &&
+         internal_mdl_request_field_valid(request->if_none_match, k_ra8_mdl_etag_max) &&
+         internal_mdl_request_field_valid(request->if_modified_since, k_ra8_mdl_http_date_max);
+}
+
+/**
  * @brief Validate and begin one typed-artifact service job
  * @details Pre-packs the bounded response before allowing backend side effects.
  * @param[in,out] service Initialised portable service.
@@ -282,22 +314,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_start(ra8_mdl_service_t*  se
   if (req->base.n_unknown_fields != 0U) {
     return k_ra8_err_protocol_error;
   }
-  if (req->url == nullptr) {
-    return k_ra8_err_invalid_arg;
-  }
-  const size_t https_prefix_len = sizeof("https://") - 1U;
-  const size_t url_len          = strnlen(req->url, k_ra8_mdl_url_max);
-  const bool   valid =
-    (req->protocol_version == k_ra8_mdl_protocol_version) && (url_len != 0U) &&
-    (url_len < k_ra8_mdl_url_max) && (strncmp(req->url, "https://", https_prefix_len) == 0) &&
-    (req->url[https_prefix_len] != '\0') &&
-    ((uint32_t)req->format <= (uint32_t)RA8__MDL__FORMAT__FORMAT_RABOOK) &&
-    (req->timeout_ms <= k_ra8_mdl_timeout_ms_max) &&
-    internal_mdl_request_field_valid(req->user_agent, k_ra8_mdl_user_agent_max) &&
-    internal_mdl_request_field_valid(req->referer, k_ra8_mdl_referer_max) &&
-    internal_mdl_request_field_valid(req->if_none_match, k_ra8_mdl_etag_max) &&
-    internal_mdl_request_field_valid(req->if_modified_since, k_ra8_mdl_http_date_max);
-  if (!valid) {
+  if (!internal_mdl_start_valid(req)) {
     return k_ra8_err_invalid_arg;
   }
   if (service->active) {
