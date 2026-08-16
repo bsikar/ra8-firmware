@@ -29,7 +29,12 @@ extern "C" {
 #include "ra8_attributes.h"
 
 /* Preserve ThreadX source spellings while keeping host-only implementations
- * honestly file-local under the repository's private naming contract. */
+ * honestly file-local under the repository's private naming contract.
+ *
+ * These ten names ARE the vendor API spelling; the supervisor source calls
+ * them because the real tx_api.h defines them, so there is no alternative
+ * name to rename them to. Same reasoning as the five type aliases below.  */
+// NOLINTBEGIN(readability-identifier-naming)
 /** @def tx_mutex_create Host-source alias for the file-local mutex-create stub. */
 #define tx_mutex_create internal_tx_mutex_create
 /** @def tx_mutex_get Host-source alias for the file-local mutex-lock stub. */
@@ -48,6 +53,7 @@ extern "C" {
 #define tx_thread_sleep internal_tx_thread_sleep
 /** @def tx_time_get Host-source alias for the file-local time-query stub. */
 #define tx_time_get internal_tx_time_get
+// NOLINTEND(readability-identifier-naming)
 
 /* The five ThreadX type aliases (ULONG, UINT, CHAR, TX_MUTEX, TX_THREAD)
  * intentionally violate the project's lower_case typedef rule because
