@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 """Recover the RA8 pin-list tables from the datasheet PDFs.
@@ -28,44 +27,51 @@ import re
 import shutil
 import subprocess
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from pinout_model import (  # noqa: E402
+from pinout_model import (
     BALL_COLUMNS,
     BALL_RE,
     DASH,
     FIELDS,
     FIGURE_RE,
     FIGURE_VARIANTS,
-    PACKAGES,
     PORT_RE,
     ROW_START_RE,
     TABLE_RE,
     Group,
-    Part,
     ParseError,
+    Part,
     decode_part,
 )
+
+MIN_LAYOUT_VOTES = 2
 
 
 def pdf_text(pdf: Path) -> str:
     """Return the whole PDF as layout-preserving text."""
-    if shutil.which("pdftotext") is None:
-        raise ParseError(
+    pdftotext = shutil.which("pdftotext")
+    if pdftotext is None:
+        msg = (
             "pdftotext not found. Install poppler "
             "(apt-get install poppler-utils / brew install poppler)."
         )
+        raise ParseError(msg)
     if not pdf.is_file():
-        raise ParseError(f"datasheet not found: {pdf}")
-    proc = subprocess.run(
-        ["pdftotext", "-layout", str(pdf), "-"],
-        capture_output=True, text=True, check=True,
+        msg = f"datasheet not found: {pdf}"
+        raise ParseError(msg)
+    proc = subprocess.run(  # noqa: S603 -- executable resolved by shutil.which
+        [pdftotext, "-layout", str(pdf), "-"],
+        capture_output=True,
+        text=True,
+        check=True,
     )
     return proc.stdout
 
 
-def split_table_blocks(text: str):
+def split_table_blocks(text: str) -> Iterator[tuple[str, str, int, int, list[str]]]:
     """Yield ``(table_no, kind, part, total, lines)`` per printed table page.
 
     Each printed page repeats the table caption, so a block is exactly one
@@ -80,8 +86,12 @@ def split_table_blocks(text: str):
             if match:
                 if current is not None:
                     yield (*current, lines)
-                current = (match.group(1), match.group(2).lower(),
-                           int(match.group(3)), int(match.group(4)))
+                current = (
+                    match.group(1),
+                    match.group(2).lower(),
+                    int(match.group(3)),
+                    int(match.group(4)),
+                )
                 lines = []
             elif current is not None:
                 lines.append(line)
@@ -97,27 +107,21 @@ def column_origins(rows: list[str], n_cols: int) -> tuple[int, ...]:
     word-start offsets -- the column origins. Taking the modal tuple
     tolerates the wrapped rows without trusting any single row.
     """
-    votes = collections.Counter(
-        tuple(m.start() for m in re.finditer(r"\S+", row)) for row in rows
-    )
+    votes = collections.Counter(tuple(m.start() for m in re.finditer(r"\S+", row)) for row in rows)
     for origins, count in votes.most_common():
         if len(origins) == n_cols:
-            if count < 2:
-                raise ParseError(
-                    f"only {count} row(s) agree on a {n_cols}-column layout"
-                )
+            if count < MIN_LAYOUT_VOTES:
+                msg = f"only {count} row(s) agree on a {n_cols}-column layout"
+                raise ParseError(msg)
             return origins
-    raise ParseError(
-        f"no row on this page has {n_cols} columns "
-        f"(saw widths {sorted({len(o) for o in votes})})"
-    )
+    msg = f"no row on this page has {n_cols} columns (saw widths {sorted({len(o) for o in votes})})"
+    raise ParseError(msg)
 
 
 def slice_row(line: str, origins: tuple[int, ...]) -> list[str]:
     """Split one physical line into cells at the given column origins."""
-    bounds = list(origins) + [len(line) + 1]
-    return [line[bounds[i]:bounds[i + 1]].strip()
-            for i in range(len(origins))]
+    bounds = [*list(origins), len(line) + 1]
+    return [line[bounds[i] : bounds[i + 1]].strip() for i in range(len(origins))]
 
 
 def aligned_continuation(line: str, origins: tuple[int, ...]) -> bool:
@@ -143,7 +147,8 @@ def parse_block(lines: list[str], n_ball_cols: int) -> list[list[str]]:
         if ROW_START_RE.match(line):
             cells = slice_row(line, origins)
             if len(cells) != n_cols:
-                raise ParseError(f"row split into {len(cells)} cells: {line!r}")
+                msg = f"row split into {len(cells)} cells: {line!r}"
+                raise ParseError(msg)
             rows.append(cells)
         elif rows and aligned_continuation(line, origins):
             # A wrapped cell. pdftotext breaks mid-token, so the fragments
@@ -165,31 +170,32 @@ def parse_pin_list(text: str, group: Group, kind: str) -> list[dict]:
         if block_kind != kind:
             continue
         if table_no != want:
-            raise ParseError(
+            msg = (
                 f"{group.name}: expected the {kind} pin list to be Table "
                 f"{want}, found Table {table_no}"
             )
+            raise ParseError(msg)
         seen_parts.add(part)
         total_parts = total
         rows.extend(parse_block(lines, len(ball_cols)))
 
     if total_parts is None:
-        raise ParseError(f"{group.name}: no {kind} pin list found")
+        msg = f"{group.name}: no {kind} pin list found"
+        raise ParseError(msg)
     missing = set(range(1, total_parts + 1)) - seen_parts
     if missing:
-        raise ParseError(
-            f"{group.name} {kind} pin list: missing page(s) "
-            f"{sorted(missing)} of {total_parts}"
-        )
+        msg = f"{group.name} {kind} pin list: missing page(s) {sorted(missing)} of {total_parts}"
+        raise ParseError(msg)
 
     out = []
     for cells in rows:
-        balls = [c if c != DASH else None for c in cells[:len(ball_cols)]]
+        balls = [c if c != DASH else None for c in cells[: len(ball_cols)]]
         for ball in balls:
             if ball is not None and not BALL_RE.match(ball):
-                raise ParseError(f"not a ball coordinate: {ball!r}")
+                msg = f"not a ball coordinate: {ball!r}"
+                raise ParseError(msg)
         entry = {"balls": dict(zip(ball_cols, balls))}
-        for name, cell in zip(FIELDS, cells[len(ball_cols):]):
+        for name, cell in zip(FIELDS, cells[len(ball_cols) :]):
             entry[name] = "" if cell == DASH else cell
         out.append(entry)
     return out
@@ -213,15 +219,14 @@ def figure_port_sets(text: str) -> dict:
         if match:
             captions.append((i, match.group(1)))
     if len(captions) != len(FIGURE_VARIANTS):
-        raise ParseError(
-            f"expected {len(FIGURE_VARIANTS)} pin-assignment figures, "
-            f"found {len(captions)}"
-        )
+        msg = f"expected {len(FIGURE_VARIANTS)} pin-assignment figures, found {len(captions)}"
+        raise ParseError(msg)
 
     out = {}
     for index, (end, label) in enumerate(captions):
         if label not in FIGURE_VARIANTS:
-            raise ParseError(f"unknown pin-assignment figure: {label!r}")
+            msg = f"unknown pin-assignment figure: {label!r}"
+            raise ParseError(msg)
         start = captions[index - 1][0] + 1 if index else 0
         ports = set(PORT_RE.findall("\n".join(lines[start:end])))
         out[FIGURE_VARIANTS[label]] = ports
@@ -234,10 +239,12 @@ def extract_parts(text: str, group: Group) -> list[Part]:
     for token in re.findall(r"\bR7[KJ]A8(?:D2|P1)[A-Z]{4}A[BCJ]\b", text):
         if token not in numbers:
             numbers.append(token)
-    parts = [decode_part(n) for n in numbers if n.startswith(f"R7KA8{group.name[3:]}")
-             or n.startswith(f"R7JA8{group.name[3:]}")]
+    parts = [
+        decode_part(n)
+        for n in numbers
+        if n.startswith((f"R7KA8{group.name[3:]}", f"R7JA8{group.name[3:]}"))
+    ]
     if not parts:
-        raise ParseError(f"{group.name}: no part numbers found")
+        msg = f"{group.name}: no part numbers found"
+        raise ParseError(msg)
     return parts
-
-
