@@ -106,6 +106,14 @@ route_bucket() {
     *.cpp | *.cc | *.cxx | *.hpp | *.hh | *.hxx) echo cxx && return 0 ;;
   esac
   case "$f" in
+    # ...except the HOSTED ports. port/posix/ binds fw_if_fs and
+    # ra8_io_stream to the host kernel ABI, declares itself
+    # `[Ring 4 / Host Port] {World: Host}`, and is compiled only by
+    # tests/cmake/unit_tests.cmake -- so the HOST database is the one that
+    # knows how it compiles, and no app cross-compiles it at all. Checked
+    # before the generic port/ rule below, and kept in step with
+    # HOST_PORT_ROOTS in scripts/builders/build_cross_compile_db.py.
+    */port/posix/*) echo host && return 0 ;;
     # Cross-compiled firmware: examples/ and port/ in full.
     */examples/* | */port/*) echo firmware && return 0 ;;
     # A board layer's boot/ directory is the reset path compiled into every

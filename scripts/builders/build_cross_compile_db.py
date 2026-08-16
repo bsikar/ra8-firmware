@@ -113,6 +113,17 @@ UNIFIED_MIDDLEWARE_OFF = ("RA8_USE_LEVELX_STANDALONE",)
 # compile database cannot describe.
 FIRMWARE_ROOTS = ("examples/", "port/")
 
+# ...minus the ports that are HOSTED, not cross-compiled. `port/posix/` binds
+# `fw_if_fs` and `ra8_io_stream` to the host kernel's open/read/getdents ABI;
+# it declares itself `[Ring 4 / Host Port] {World: Host}` and is compiled ONLY
+# by tests/cmake/unit_tests.cmake, so it is already in the HOST compile
+# database and is analysed by clang-tidy's host pass. No app cross-compiles it,
+# so demanding a cross command for it can only ever be satisfied by a donor
+# probe borrowing some unrelated app's flags -- which is how one of its three
+# TUs "passed" while the other three failed on an unreachable `fw_if_fs.h`.
+# Keep the two lists in step with route_bucket() in scripts/checks/tidy/collect.sh.
+HOST_PORT_ROOTS = ("port/posix/",)
+
 # Vendored SOUP under a firmware root -- CLAUDE.md exempts it from first-party
 # standards, so it is not part of what this database must cover. None exists
 # today; kept as the extension point if a firmware root ever vendors SOUP.
@@ -176,6 +187,7 @@ def firmware_sources() -> set[str]:
         if rel.endswith(".c")
         and rel.startswith(FIRMWARE_ROOTS)
         and not rel.startswith(FIRMWARE_EXEMPT)
+        and not rel.startswith(HOST_PORT_ROOTS)
     }
 
 
@@ -631,11 +643,22 @@ def selftest() -> int:
     failures = _selftest_database() + _selftest_reporting() + _selftest_command_building()
 
     # 8. The floor must reject a database that collapsed to almost nothing.
-    if len(firmware_sources()) < TU_FLOOR:
+    sources = firmware_sources()
+    if len(sources) < TU_FLOOR:
         failures.append(
-            f"firmware_sources() found {len(firmware_sources())} TUs, "
+            f"firmware_sources() found {len(sources)} TUs, "
             f"below the floor of {TU_FLOOR} -- enumeration is broken"
         )
+
+    # 9. The hosted-port carve-out, both directions. A carve-out that widened
+    #    to swallow the cross-compiled ports would drop real firmware out of
+    #    the database and read as a smaller, cleaner run; one that stopped
+    #    matching would put the host port back in and demand a cross command
+    #    that no configure can ever supply.
+    if any(rel.startswith(HOST_PORT_ROOTS) for rel in sources):
+        failures.append("firmware_sources() still claims a hosted port root")
+    if not any(rel.startswith("port/") for rel in sources):
+        failures.append("firmware_sources() claims no port/ TU at all -- carve-out too wide")
 
     if failures:
         print("SELFTEST FAILED:", file=sys.stderr)
