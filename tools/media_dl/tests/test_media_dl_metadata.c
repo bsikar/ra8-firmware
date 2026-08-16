@@ -60,12 +60,9 @@ typedef struct {
  * @return Value produced by the bounded test helper.
  * @retval 0 The helper produced its zero-valued boundary result.
  * @retval nonzero The helper produced its documented nonzero result.
- * @pre The host test process exclusively owns its fixture state.
- * @pre Required fakes and bounded buffers are initialized before use.
- * @post Normal return means every scenario assertion passed.
- * @post No fixture resource ownership is transferred by this test.
- * @note Host-only and synchronous; assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre The host test process exclusively owns its fixture state. @pre Required fakes and bounded buffers are initialized before use.
+ * @post Normal return means every scenario assertion passed. @post No fixture resource ownership is transferred by this test.
+ * @note Host-only and synchronous; assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static size_t
 internal_test_zip_read(void* opaque, mz_uint64 offset, void* destination, size_t length)
@@ -102,8 +99,7 @@ internal_test_zip_read(void* opaque, mz_uint64 offset, void* destination, size_t
  * @return Whether descriptor and miniz initialization succeeded.
  * @pre @p reader is inactive and the arena remains live through close.
  * @post Failure retains no descriptor; success leaves one active reader.
- * @note Test-only and allocation-free.
- * @since 0.1.0
+ * @note Test-only and allocation-free. @since 0.1.0
  * @details Exercises the zip open scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
  * @retval true The requested fixture condition succeeded.
  * @retval false The helper rejected or could not complete the condition.
@@ -146,12 +142,9 @@ RA8_INTERNAL static bool internal_test_zip_open(mdl_test_zip_reader_t* reader,
  * @return True when the helper condition succeeds; otherwise false.
  * @retval true The requested fixture condition succeeded.
  * @retval false The helper rejected or could not complete the condition.
- * @pre The host test process exclusively owns its fixture state.
- * @pre Required fakes and bounded buffers are initialized before use.
- * @post Normal return means every scenario assertion passed.
- * @post No fixture resource ownership is transferred by this test.
- * @note Host-only and synchronous; assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre The host test process exclusively owns its fixture state. @pre Required fakes and bounded buffers are initialized before use.
+ * @post Normal return means every scenario assertion passed. @post No fixture resource ownership is transferred by this test.
+ * @note Host-only and synchronous; assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static bool internal_test_zip_close(mdl_test_zip_reader_t* reader)
 {
@@ -171,8 +164,7 @@ RA8_INTERNAL static bool internal_test_zip_close(mdl_test_zip_reader_t* reader)
  * @return Whether the complete member fit and was extracted.
  * @pre Every pointer is non-NULL and @p capacity is nonzero.
  * @post Success initializes one NUL-terminated member body.
- * @note Binary members are unsupported by this helper.
- * @since 0.1.0
+ * @note Binary members are unsupported by this helper. @since 0.1.0
  * @details Exercises the zip text scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
  * @retval true The requested fixture condition succeeded.
  * @retval false The helper rejected or could not complete the condition.
@@ -206,8 +198,7 @@ RA8_INTERNAL static bool internal_test_zip_text(mdl_test_zip_reader_t* reader,
  * @return Whether create, write, and close all succeeded.
  * @pre @p data spans @p length readable bytes.
  * @post Success leaves exactly @p length bytes at @p path.
- * @note Test-only POSIX fixture helper.
- * @since 0.1.0
+ * @note Test-only POSIX fixture helper. @since 0.1.0
  * @details Implements this test-only seam with caller-owned fixtures, bounded storage, and explicit propagation of the result observed by its caller.
  * @retval true The requested fixture condition succeeded.
  * @retval false The helper rejected or could not complete the condition.
@@ -244,12 +235,9 @@ RA8_INTERNAL static bool internal_write_bytes(const char* path, const uint8_t* d
  * @return Canonical downloader status.
  * @retval k_ra8_ok The operation completed.
  * @retval other Validation, capacity, network, or storage failed.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_export_chapter_meta(ra8_mdl_format_t         fmt,
                                                            const char*              chapter_dir,
@@ -266,12 +254,9 @@ RA8_INTERNAL static ra8_err_t internal_export_chapter_meta(ra8_mdl_format_t     
  * @details Executes the write fixture scenario through production interfaces and checks its observable success, rejection, and boundary results.
  * @param[in] path Filesystem path for the operation.
  * @param[in] fill Fill value for this operation.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_write_fixture(const char* path, char fill)
 {
@@ -286,12 +271,9 @@ RA8_INTERNAL static void internal_write_fixture(const char* path, char fill)
  * @param[in] path Filesystem path for the operation.
  * @param[in] data Input byte sequence.
  * @param[in] len Number of input bytes.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void
 internal_write_binary_fixture(const char* path, const void* data, size_t len)
@@ -303,12 +285,9 @@ internal_write_binary_fixture(const char* path, const void* data, size_t len)
  * @brief Assert complete key-value metadata parsing.
  * @details Executes the assert kv metadata scenario through production interfaces and checks its observable success, rejection, and boundary results.
  * @param[in,out] meta Metadata record to read or update.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_assert_kv_metadata(mdl_export_meta_t* meta)
 {
@@ -345,12 +324,9 @@ RA8_INTERNAL static void internal_assert_kv_metadata(mdl_export_meta_t* meta)
  * @brief Assert exact and overflowing metadata path bounds.
  * @details Executes the assert metadata bounds scenario through production interfaces and checks its observable success, rejection, and boundary results.
  * @param[in,out] meta Metadata record to read or update.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_assert_metadata_bounds(mdl_export_meta_t* meta)
 {
@@ -397,12 +373,9 @@ RA8_INTERNAL static void internal_assert_metadata_bounds(mdl_export_meta_t* meta
  * @brief Assert ComicInfo-style XML metadata parsing.
  * @details Executes the assert xml metadata scenario through production interfaces and checks its observable success, rejection, and boundary results.
  * @param[in,out] meta Metadata record to read or update.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_assert_xml_metadata(mdl_export_meta_t* meta)
 {
@@ -433,12 +406,9 @@ RA8_INTERNAL static void internal_assert_xml_metadata(mdl_export_meta_t* meta)
  * @brief Assert directory metadata auto-discovery.
  * @details Executes the assert metadata load scenario through production interfaces and checks its observable success, rejection, and boundary results.
  * @param[in,out] meta Metadata record to read or update.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_assert_metadata_load(mdl_export_meta_t* meta)
 {
@@ -459,12 +429,9 @@ RA8_INTERNAL static void internal_assert_metadata_load(mdl_export_meta_t* meta)
  * @test Rich metadata init, key-value parsing, XML parsing, and dir auto-discovery.
  * @brief Exercise the meta init parse load regression scenario.
  * @details Executes the meta init parse load scenario through production interfaces and checks its observable success, rejection, and boundary results.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_meta_init_parse_load(void)
 {
@@ -484,12 +451,9 @@ RA8_INTERNAL static void internal_test_meta_init_parse_load(void)
  * @brief Initialize the rich ComicInfo fixture metadata.
  * @details Executes the init comicinfo meta scenario through production interfaces and checks its observable success, rejection, and boundary results.
  * @param[in,out] meta Metadata record to read or update.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_init_comicinfo_meta(mdl_export_meta_t* meta)
 {
@@ -512,12 +476,9 @@ RA8_INTERNAL static void internal_init_comicinfo_meta(mdl_export_meta_t* meta)
  * @brief Assert the complete generated ComicInfo document.
  * @details Executes the assert comicinfo document scenario through production interfaces and checks its observable success, rejection, and boundary results.
  * @param[in] meta Metadata record to read or update.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_assert_comicinfo_document(const mdl_export_meta_t* meta)
 {
@@ -542,12 +503,9 @@ RA8_INTERNAL static void internal_assert_comicinfo_document(const mdl_export_met
  * @brief Assert CBZ metadata insertion and bounded source rejection.
  * @details Executes the assert cbz comicinfo scenario through production interfaces and checks its observable success, rejection, and boundary results.
  * @param[in] meta Metadata record to read or update.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_assert_cbz_comicinfo(const mdl_export_meta_t* meta)
 {
@@ -585,12 +543,9 @@ RA8_INTERNAL static void internal_assert_cbz_comicinfo(const mdl_export_meta_t* 
  * @test Build ComicInfo.xml string and verify CBZ metadata insertion.
  * @brief Exercise the comicinfo xml generation regression scenario.
  * @details Executes the comicinfo xml generation scenario through production interfaces and checks its observable success, rejection, and boundary results.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_comicinfo_xml_generation(void)
 {
@@ -606,12 +561,9 @@ RA8_INTERNAL static void internal_test_comicinfo_xml_generation(void)
  * @brief Initialize the rich EPUB metadata fixture.
  * @details Executes the init epub meta scenario through production interfaces and checks its observable success, rejection, and boundary results.
  * @param[in,out] meta Metadata record to read or update.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_init_epub_meta(mdl_export_meta_t* meta)
 {
@@ -633,12 +585,9 @@ RA8_INTERNAL static void internal_init_epub_meta(mdl_export_meta_t* meta)
  * @brief Assert EPUB OPF metadata and cover-image semantics.
  * @details Executes the assert epub opf scenario through production interfaces and checks its observable success, rejection, and boundary results.
  * @param[in] meta Metadata record to read or update.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_assert_epub_opf(const mdl_export_meta_t* meta)
 {
@@ -673,12 +622,9 @@ RA8_INTERNAL static void internal_assert_epub_opf(const mdl_export_meta_t* meta)
  * @details Changes the canonical chapter title and source URL, then proves the
  * generated identifier field differs from the first chapter's identifier.
  * @param[in] meta Metadata record to read or update.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_assert_epub_distinct_identifiers(const mdl_export_meta_t* meta)
 {
@@ -713,12 +659,9 @@ RA8_INTERNAL static void internal_assert_epub_distinct_identifiers(const mdl_exp
  * @brief Assert overlong EPUB source metadata fails without publication.
  * @details Executes the assert epub rejection scenario through production interfaces and checks its observable success, rejection, and boundary results.
  * @param[in] meta Metadata record to read or update.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_assert_epub_rejection(const mdl_export_meta_t* meta)
 {
@@ -737,12 +680,9 @@ RA8_INTERNAL static void internal_assert_epub_rejection(const mdl_export_meta_t*
  * @test EPUB metadata generation, unique UUID identifier, and cover image property.
  * @brief Exercise the epub metadata and uuid regression scenario.
  * @details Executes the epub metadata and uuid scenario through production interfaces and checks its observable success, rejection, and boundary results.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_epub_metadata_and_uuid(void)
 {
@@ -771,12 +711,9 @@ RA8_INTERNAL static void internal_test_epub_metadata_and_uuid(void)
  * @param[in] meta Metadata record to read or update.
  * @param[in] expected Expected value for this operation.
  * @param[in] expected_bytes Expected bytes value for this operation.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_assert_external_cbz(const mdl_export_meta_t* meta,
                                                       const void*              expected,
@@ -807,12 +744,9 @@ RA8_INTERNAL static void internal_assert_external_cbz(const mdl_export_meta_t* m
  * @param[in] meta Metadata record to read or update.
  * @param[in] expected Expected value for this operation.
  * @param[in] expected_bytes Expected bytes value for this operation.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_assert_external_epub(const mdl_export_meta_t* meta,
                                                        const void*              expected,
@@ -846,12 +780,9 @@ RA8_INTERNAL static void internal_assert_external_epub(const mdl_export_meta_t* 
  * @brief Assert an untyped external cover fails without publication.
  * @details Executes the assert external cover rejected scenario through production interfaces and checks its observable success, rejection, and boundary results.
  * @param[in,out] meta Metadata record to read or update.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_assert_external_cover_rejected(mdl_export_meta_t* meta)
 {
@@ -871,12 +802,9 @@ RA8_INTERNAL static void internal_assert_external_cover_rejected(mdl_export_meta
  * @test An external series cover is typed by bytes and embedded canonically.
  * @brief Exercise the external cover embedding regression scenario.
  * @details Executes the external cover embedding scenario through production interfaces and checks its observable success, rejection, and boundary results.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_external_cover_embedding(void)
 {
@@ -910,12 +838,9 @@ RA8_INTERNAL static void internal_test_external_cover_embedding(void)
  * @param[in] content_type Content type value for this operation.
  * @param[in] expected_ext Expected ext value for this operation.
  * @param[in] expected_mime Expected mime value for this operation.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_assert_image_type(const uint8_t* bytes,
                                                     size_t         count,
@@ -935,12 +860,9 @@ RA8_INTERNAL static void internal_assert_image_type(const uint8_t* bytes,
  * @test internal_test_image_magic_bytes
  * @brief Unit tests for image magic and MIME typing, including BMP consistency.
  * @details Executes the image magic bytes scenario through production interfaces and checks its observable success, rejection, and boundary results.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
+ * @pre Assertions are enabled for contract verification. @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed. @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_image_magic_bytes(void)
 {
@@ -980,12 +902,9 @@ RA8_INTERNAL static void internal_test_image_magic_bytes(void)
  * @brief Run publication-metadata tests.
  * @return Zero after every assertion passes.
  * @retval 0 Every metadata test passed.
- * @pre Test fixtures are writable below `/tmp`.
- * @pre The unity-minimal assertion process is initialized.
- * @post Every invoked test completed.
- * @post Each test removes its scratch output.
- * @note Runs serially in one process.
- * @since 0.1.0
+ * @pre Test fixtures are writable below `/tmp`. @pre The unity-minimal assertion process is initialized.
+ * @post Every invoked test completed. @post Each test removes its scratch output.
+ * @note Runs serially in one process. @since 0.1.0
  */
 int main(void)
 {

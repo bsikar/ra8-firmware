@@ -24,6 +24,7 @@
 #include "mdl_verify.h"
 #include "miniz.h"
 #include "ra8_jof.h"
+#include "test_media_dl_export_workspace_internal.h"
 #include "test_media_dl_export_xml_internal.h"
 #include "tiny_jpeg_fixture.h"
 #include "unity_minimal.h"
@@ -55,7 +56,7 @@ typedef enum : uint32_t {
   k_long_amp_run            = 240U,               /**< Ampersands in long-name probe.  */
   k_amp_esc_len             = 5U,                 /**< Bytes in `&amp;`.               */
   k_names_bytes             = 2048U * 256U,       /**< Complete page-name table.       */
-  k_test_export_arena_bytes = 8U * 1024U * 1024U, /**< Test exporter arena.            */
+  k_test_export_arena_bytes = 8U * 1024U * 1024U, /**< Test exporter arena. */
 } mdl_export_test_bound_t;
 
 /** @brief Caller-owned workspace backing every export in this process. */
@@ -86,10 +87,12 @@ typedef struct {
  * @post Success leaves exactly @p length bytes at @p path.
  * @note Test-only POSIX fixture helper.
  * @since 0.1.0
- * @details Implements this test-only seam with caller-owned fixtures, bounded storage, and explicit propagation of the result observed by its caller.
+ * @details Implements this test-only seam with caller-owned fixtures, bounded
+ * storage, and explicit propagation of the result observed by its caller.
  * @retval true The requested fixture condition succeeded.
  * @retval false The helper rejected or could not complete the condition.
- * @pre Pointer arguments satisfy their documented readable and writable extents.
+ * @pre Pointer arguments satisfy their documented readable and writable
+ * extents.
  * @post Documented outputs reflect the processed fixture on success.
  */
 RA8_INTERNAL static bool internal_write_bytes(const char* path, const uint8_t* data, size_t length)
@@ -123,10 +126,12 @@ RA8_INTERNAL static bool internal_write_bytes(const char* path, const uint8_t* d
  * @post Success initializes exactly `*out_length` bytes.
  * @note Test-only POSIX fixture helper.
  * @since 0.1.0
- * @details Implements this test-only seam with caller-owned fixtures, bounded storage, and explicit propagation of the result observed by its caller.
+ * @details Implements this test-only seam with caller-owned fixtures, bounded
+ * storage, and explicit propagation of the result observed by its caller.
  * @retval true The requested fixture condition succeeded.
  * @retval false The helper rejected or could not complete the condition.
- * @pre Pointer arguments satisfy their documented readable and writable extents.
+ * @pre Pointer arguments satisfy their documented readable and writable
+ * extents.
  * @post Documented outputs reflect the processed fixture on success.
  */
 RA8_INTERNAL static bool
@@ -158,7 +163,9 @@ internal_read_file(const char* path, uint8_t* destination, size_t capacity, size
 }
 
 /** @brief Adapt bounded positioned descriptor reads to miniz.
- * @details Exercises the zip read scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
+ * @details Exercises the zip read scenario through production media-downloader
+ * interfaces and checks its observable success, rejection, and boundary
+ * results.
  * @param[in,out] opaque Opaque reader context supplied by the archive seam.
  * @param[in] offset Zero-based source byte offset.
  * @param[out] destination Caller-owned destination for the requested bytes.
@@ -170,7 +177,8 @@ internal_read_file(const char* path, uint8_t* destination, size_t capacity, size
  * @pre Required fakes and bounded buffers are initialized before use.
  * @post Normal return means every scenario assertion passed.
  * @post No fixture resource ownership is transferred by this test.
- * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @note Host-only and synchronous; assertion failure terminates the test
+ * process.
  * @since 0.1.0
  */
 RA8_INTERNAL static size_t
@@ -208,7 +216,9 @@ internal_test_zip_read(void* opaque, mz_uint64 offset, void* destination, size_t
  * @post Success leaves one active reader; failure retains no descriptor.
  * @note Test-only and non-reentrant because it borrows the shared arena.
  * @since 0.1.0
- * @details Exercises the zip open scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
+ * @details Exercises the zip open scenario through production media-downloader
+ * interfaces and checks its observable success, rejection, and boundary
+ * results.
  * @retval true The requested fixture condition succeeded.
  * @retval false The helper rejected or could not complete the condition.
  * @pre The host test process exclusively owns its fixture state.
@@ -242,7 +252,9 @@ RA8_INTERNAL static bool internal_test_zip_open(mdl_test_zip_reader_t* reader, c
 }
 
 /** @brief End one initialized test ZIP reader and release its resources.
- * @details Exercises the zip close scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
+ * @details Exercises the zip close scenario through production media-downloader
+ * interfaces and checks its observable success, rejection, and boundary
+ * results.
  * @param[in,out] reader Caller-owned archive reader to close.
  * @return True when the helper condition succeeds; otherwise false.
  * @retval true The requested fixture condition succeeded.
@@ -251,7 +263,8 @@ RA8_INTERNAL static bool internal_test_zip_open(mdl_test_zip_reader_t* reader, c
  * @pre Required fakes and bounded buffers are initialized before use.
  * @post Normal return means every scenario assertion passed.
  * @post No fixture resource ownership is transferred by this test.
- * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @note Host-only and synchronous; assertion failure terminates the test
+ * process.
  * @since 0.1.0
  */
 RA8_INTERNAL static bool internal_test_zip_close(mdl_test_zip_reader_t* reader)
@@ -274,7 +287,9 @@ RA8_INTERNAL static bool internal_test_zip_close(mdl_test_zip_reader_t* reader)
  * @post Success initializes one NUL-terminated member body.
  * @note Binary members are unsupported by this text helper.
  * @since 0.1.0
- * @details Exercises the zip text scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
+ * @details Exercises the zip text scenario through production media-downloader
+ * interfaces and checks its observable success, rejection, and boundary
+ * results.
  * @retval true The requested fixture condition succeeded.
  * @retval false The helper rejected or could not complete the condition.
  * @pre The host test process exclusively owns its fixture state.
@@ -302,7 +317,8 @@ RA8_INTERNAL static bool internal_test_zip_text(mdl_test_zip_reader_t* reader,
 
 /**
  * @brief Perform the export chapter step.
- * @details Executes the export chapter scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @details Executes the export chapter scenario through production interfaces
+ * and checks its observable success, rejection, and boundary results.
  * @param[in] fmt Selected output format.
  * @param[in] chapter_dir Chapter dir value for this operation.
  * @param[in] out_path Out path value for this operation.
@@ -326,7 +342,8 @@ internal_export_chapter(ra8_mdl_format_t fmt, const char* chapter_dir, const cha
 
 /**
  * @brief Perform the verify file step.
- * @details Executes the verify file scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @details Executes the verify file scenario through production interfaces and
+ * checks its observable success, rejection, and boundary results.
  * @param[in] fmt Selected output format.
  * @param[in] path Filesystem path for the operation.
  * @param[out] report Report value for this operation.
@@ -350,7 +367,9 @@ internal_verify_file(ra8_mdl_format_t fmt, const char* path, mdl_verify_report_t
 
 /**
  * @brief Perform the export chapter meta step.
- * @details Executes the export chapter meta scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @details Executes the export chapter meta scenario through production
+ * interfaces and checks its observable success, rejection, and boundary
+ * results.
  * @param[in] fmt Selected output format.
  * @param[in] chapter_dir Chapter dir value for this operation.
  * @param[in] out_path Out path value for this operation.
@@ -377,7 +396,8 @@ RA8_INTERNAL static ra8_err_t internal_export_chapter_meta(ra8_mdl_format_t     
 
 /**
  * @brief Write `k_fixture_bytes` of `fill` to `path`.
- * @details Executes the write fixture scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @details Executes the write fixture scenario through production interfaces
+ * and checks its observable success, rejection, and boundary results.
  * @param[in] path Filesystem path for the operation.
  * @param[in] fill Fill value for this operation.
  * @pre Assertions are enabled for contract verification.
@@ -397,7 +417,9 @@ RA8_INTERNAL static void internal_write_fixture(const char* path, char fill)
 /**
  * @test Export a folder to CBZ, then re-open it with the miniz reader.
  * @brief Exercise the export cbz roundtrip regression scenario.
- * @details Executes the export cbz roundtrip scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @details Executes the export cbz roundtrip scenario through production
+ * interfaces and checks its observable success, rejection, and boundary
+ * results.
  * @pre Assertions are enabled for contract verification.
  * @pre The test fixture workspace is isolated for this scenario.
  * @post Normal return means every reached contract assertion passed.
@@ -443,7 +465,9 @@ RA8_INTERNAL static void internal_test_export_cbz_roundtrip(void)
 /**
  * @test CBT contains sorted source bytes plus a semantic ComicInfo member.
  * @brief Exercise the export cbt structure regression scenario.
- * @details Executes the export cbt structure scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @details Executes the export cbt structure scenario through production
+ * interfaces and checks its observable success, rejection, and boundary
+ * results.
  * @pre Assertions are enabled for contract verification.
  * @pre The test fixture workspace is isolated for this scenario.
  * @post Normal return means every reached contract assertion passed.
@@ -496,7 +520,9 @@ RA8_INTERNAL static void internal_test_export_cbt_structure(void)
 /**
  * @test Packaging ingests ONLY page images; sibling output/junk is skipped.
  * @brief Exercise the export skips non images regression scenario.
- * @details Executes the export skips non images scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @details Executes the export skips non images scenario through production
+ * interfaces and checks its observable success, rejection, and boundary
+ * results.
  * @pre Assertions are enabled for contract verification.
  * @pre The test fixture workspace is isolated for this scenario.
  * @post Normal return means every reached contract assertion passed.
@@ -545,7 +571,8 @@ RA8_INTERNAL static void internal_test_export_skips_non_images(void)
 
 /**
  * @brief Read a little-endian u16 from `p`.
- * @details Executes the rd u16 scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @details Executes the rd u16 scenario through production interfaces and
+ * checks its observable success, rejection, and boundary results.
  * @param[in] p P value for this operation.
  * @return The bounded result computed from the supplied input.
  * @retval other The computed result in the function's declared domain.
@@ -564,7 +591,9 @@ RA8_INTERNAL static uint16_t internal_read_u16(const uint8_t* p)
 /**
  * @test Export a folder to EPUB; re-open it and assert the OCF layout.
  * @brief Exercise the export epub roundtrip regression scenario.
- * @details Executes the export epub roundtrip scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @details Executes the export epub roundtrip scenario through production
+ * interfaces and checks its observable success, rejection, and boundary
+ * results.
  * @pre Assertions are enabled for contract verification.
  * @pre The test fixture workspace is isolated for this scenario.
  * @post Normal return means every reached contract assertion passed.
@@ -603,7 +632,9 @@ RA8_INTERNAL static void internal_test_export_epub_roundtrip(void)
 /**
  * @test Transcode a real JPEG to JOF; assert magics + webtoon column geometry.
  * @brief Exercise the export jof roundtrip regression scenario.
- * @details Executes the export jof roundtrip scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @details Executes the export jof roundtrip scenario through production
+ * interfaces and checks its observable success, rejection, and boundary
+ * results.
  * @pre Assertions are enabled for contract verification.
  * @pre The test fixture workspace is isolated for this scenario.
  * @post Normal return means every reached contract assertion passed.
@@ -651,7 +682,9 @@ RA8_INTERNAL static void internal_test_export_jof_roundtrip(void)
 /**
  * @test A ustar name that will not fit is rejected, a normal one packages.
  * @brief Exercise the tar rejects long name regression scenario.
- * @details Executes the tar rejects long name scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @details Executes the tar rejects long name scenario through production
+ * interfaces and checks its observable success, rejection, and boundary
+ * results.
  * @pre Assertions are enabled for contract verification.
  * @pre The test fixture workspace is isolated for this scenario.
  * @post Normal return means every reached contract assertion passed.
@@ -690,7 +723,9 @@ RA8_INTERNAL static void internal_test_tar_rejects_long_name(void)
 /**
  * @test A filename with XML metacharacters yields escaped, well-formed EPUB.
  * @brief Exercise the epub escapes name regression scenario.
- * @details Executes the epub escapes name scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @details Executes the epub escapes name scenario through production
+ * interfaces and checks its observable success, rejection, and boundary
+ * results.
  * @pre Assertions are enabled for contract verification.
  * @pre The test fixture workspace is isolated for this scenario.
  * @post Normal return means every reached contract assertion passed.
@@ -775,7 +810,7 @@ RA8_INTERNAL static void internal_test_epub_long_filenames(void)
   (void)__builtin_snprintf(href, sizeof(href), "images/%s", esc);
   TEST_ASSERT(strstr(opf, href) != nullptr);          /* whole escaped name present */
   TEST_ASSERT(strstr(opf, "</manifest>") != nullptr); /* manifest not truncated     */
-  TEST_ASSERT(strstr(opf, "</package>") != nullptr);  /* document closed            */
+  TEST_ASSERT(strstr(opf, "</package>") != nullptr);  /* document closed */
   /* the image entry is stored under the raw (unescaped) name, untruncated. */
   char zipname[k_buf_320];
   (void)__builtin_snprintf(zipname, sizeof(zipname), "OEBPS/images/%s", raw);
@@ -828,107 +863,11 @@ RA8_INTERNAL static void internal_test_export_page_cap(void)
 }
 
 /**
- * @brief Assert that a bounded publication sentinel remains byte-identical.
- * @details Executes the assert fixture bytes scenario through production interfaces and checks its observable success, rejection, and boundary results.
- * @param[in] path Filesystem path for the operation.
- * @param[in] expected Expected value for this operation.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_assert_fixture_bytes(const char* path, int expected)
-{
-  uint8_t bytes[k_fixture_bytes];
-  size_t  length = 0U;
-  TEST_ASSERT(internal_read_file(path, bytes, sizeof(bytes), &length));
-  TEST_ASSERT(length == sizeof(bytes));
-  for (size_t i = 0U; i < (size_t)k_fixture_bytes; ++i) {
-    TEST_ASSERT(bytes[i] == (uint8_t)expected);
-  }
-}
-
-/**
- * @test Export and miniz writer arenas fail closed and report deterministic high-water.
- * @brief Exercise the export workspace bounds regression scenario.
- * @details Executes the export workspace bounds scenario through production interfaces and checks its observable success, rejection, and boundary results.
- * @pre Assertions are enabled for contract verification.
- * @pre The test fixture workspace is isolated for this scenario.
- * @post Normal return means every reached contract assertion passed.
- * @post The caller receives no transferred fixture ownership.
- * @note Test helper; an assertion failure terminates the test process.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_test_export_workspace_bounds(void)
-{
-  TEST_BEGIN("export workspace bounds");
-  char root[] = "/tmp/mdl_ws.XXXXXX";
-  char dir[k_buf_512];
-  char page[k_buf_512];
-  char out[k_buf_512];
-  char epub_out[k_buf_512];
-  TEST_ASSERT(mkdtemp(root) == root);
-  const int dir_len = __builtin_snprintf(dir, sizeof(dir), "%s/chapter", root);
-  TEST_ASSERT((dir_len > 0) && ((size_t)dir_len < sizeof(dir)));
-  const int page_len = __builtin_snprintf(page, sizeof(page), "%s/page_001.jpg", dir);
-  TEST_ASSERT((page_len > 0) && ((size_t)page_len < sizeof(page)));
-  const int out_len = __builtin_snprintf(out, sizeof(out), "%s/chapter.cbz", root);
-  TEST_ASSERT((out_len > 0) && ((size_t)out_len < sizeof(out)));
-  const int epub_len = __builtin_snprintf(epub_out, sizeof(epub_out), "%s/chapter.epub", root);
-  TEST_ASSERT((epub_len > 0) && ((size_t)epub_len < sizeof(epub_out)));
-  TEST_ASSERT(mkdir(dir, (mode_t)k_mdl_test_dir_mode) == 0);
-  internal_write_fixture(page, 'a');
-
-  mdl_export_workspace_t ws;
-  mdl_export_workspace_init(&ws, s_test_export_arena, k_names_bytes - 1U);
-  TEST_ASSERT(mdl_export_chapter_ws(mdl_test_storage_get(), k_ra8_mdl_format_cbz, dir, out, &ws) ==
-              k_ra8_err_invalid_size);
-  TEST_ASSERT(ws.high_water == 0U);
-
-  mdl_export_workspace_init(&ws, s_test_export_arena, sizeof(s_test_export_arena));
-  TEST_ASSERT(mdl_export_chapter_ws(mdl_test_storage_get(), k_ra8_mdl_format_cbz, dir, out, &ws) ==
-              k_ra8_ok);
-  const size_t cbz_high_water = ws.high_water;
-  TEST_ASSERT(cbz_high_water > k_names_bytes);
-  TEST_ASSERT(cbz_high_water <= sizeof(s_test_export_arena));
-
-  internal_write_fixture(out, 'z');
-  mdl_export_workspace_init(&ws, s_test_export_arena, cbz_high_water - 1U);
-  TEST_ASSERT(mdl_export_chapter_ws(mdl_test_storage_get(), k_ra8_mdl_format_cbz, dir, out, &ws) ==
-              k_ra8_err_invalid_size);
-  TEST_ASSERT(ws.high_water <= cbz_high_water - 1U);
-  internal_assert_fixture_bytes(out, 'z');
-
-  mdl_export_workspace_init(&ws, s_test_export_arena, sizeof(s_test_export_arena));
-  TEST_ASSERT(
-    mdl_export_chapter_ws(mdl_test_storage_get(), k_ra8_mdl_format_epub, dir, epub_out, &ws) ==
-    k_ra8_ok);
-  const size_t epub_high_water = ws.high_water;
-  TEST_ASSERT(epub_high_water > cbz_high_water);
-  TEST_ASSERT(epub_high_water <= sizeof(s_test_export_arena));
-
-  internal_write_fixture(epub_out, 'e');
-  mdl_export_workspace_init(&ws, s_test_export_arena, epub_high_water - 1U);
-  TEST_ASSERT(
-    mdl_export_chapter_ws(mdl_test_storage_get(), k_ra8_mdl_format_epub, dir, epub_out, &ws) ==
-    k_ra8_err_invalid_size);
-  TEST_ASSERT(ws.high_water <= epub_high_water - 1U);
-  internal_assert_fixture_bytes(epub_out, 'e');
-
-  (void)unlink(page);
-  (void)unlink(out);
-  (void)unlink(epub_out);
-  (void)rmdir(dir);
-  (void)rmdir(root);
-  TEST_END("export workspace bounds");
-}
-
-/**
  * @test Every advertised validator rejects a truncated or wrong container.
  * @brief Exercise the verify rejects truncation regression scenario.
- * @details Executes the verify rejects truncation scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @details Executes the verify rejects truncation scenario through production
+ * interfaces and checks its observable success, rejection, and boundary
+ * results.
  * @pre Assertions are enabled for contract verification.
  * @pre The test fixture workspace is isolated for this scenario.
  * @post Normal return means every reached contract assertion passed.
@@ -975,7 +914,7 @@ int main(void)
 {
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_init());
   internal_test_export_cbz_roundtrip();
-  internal_test_export_workspace_bounds();
+  priv_test_mdl_export_workspace_run();
   internal_test_export_cbt_structure();
   internal_test_verify_rejects_truncation();
   internal_test_export_skips_non_images();
