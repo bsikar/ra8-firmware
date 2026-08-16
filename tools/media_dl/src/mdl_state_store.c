@@ -767,8 +767,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_state_build_stage(mdl_storage_t*     
                                .payload_bytes = 0U,
                                .crc_state     = UINT32_MAX,
                                .calls         = 0U};
-  uint8_t            placeholder[k_state_header_bytes] = {};
   if (err == k_ra8_ok) {
+    const uint8_t placeholder[k_state_header_bytes] = {};
     err = internal_mdl_state_write_all(&writer, placeholder, sizeof(placeholder));
   }
   if (err == k_ra8_ok) {

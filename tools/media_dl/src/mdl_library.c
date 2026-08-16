@@ -544,11 +544,10 @@ RA8_INTERNAL static ra8_err_t internal_library_remove_walk(mdl_storage_t*       
                                                            const mdl_library_policy_t* policy,
                                                            mdl_library_workspace_t*    workspace)
 {
-  ra8_err_t err = k_ra8_ok;
   for (;;) {
     fw_fs_dirent_value_t child   = {};
     bool                 present = false;
-    err                          = internal_library_first_child(storage,
+    ra8_err_t            err     = internal_library_first_child(storage,
                                                                 workspace->paths[workspace->depth],
                                                                 policy,
                                                                 workspace,

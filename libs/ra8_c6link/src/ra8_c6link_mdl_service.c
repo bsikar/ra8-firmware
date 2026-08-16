@@ -415,7 +415,7 @@ static ra8_err_t internal_mdl_fail_job(ra8_mdl_service_t* service, ra8_err_t err
 RA8_INTERNAL
 static ra8_err_t internal_mdl_next_capacity(uint32_t max_data, size_t response_cap)
 {
-  uint8_t max_bytes[k_ra8_mdl_chunk_data_max];
+  uint8_t max_bytes[k_ra8_mdl_chunk_data_max] = {};
   uint8_t max_digest[k_ra8_mdl_sha256_bytes];
   char    retry_after[k_ra8_mdl_retry_after_max];
   char    etag[k_ra8_mdl_etag_max];
