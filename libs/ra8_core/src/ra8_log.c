@@ -302,9 +302,7 @@ RA8_INTERNAL static inline void internal_itm_put_u32(uint32_t value)
     internal_itm_putc('0');
     return;
   }
-  /* mcdc-deactivated: digit-buffer bound; uint32_t max is 10 digits
-   * (k_ra8_u32_max_digits == 10), so the loop always terminates by `value == 0`
-   * first; the bound is a defensive watchdog. */
+  /* mcdc-deactivated: internal_itm_put_u32 digit-buffer watchdog; UINT32_MAX is exactly 10 decimal digits and k_ra8_u32_max_digits == 10, so `value` reaches 0 on or before the tenth iteration and `i < k_ra8_u32_max_digits` is constant-true whenever it is evaluated. */
   while (value != 0U && i < k_ra8_u32_max_digits) {
     buf[i++] = (char)('0' + (char)(value % (uint32_t)k_ra8_decimal_base));
     value /= (uint32_t)k_ra8_decimal_base;
