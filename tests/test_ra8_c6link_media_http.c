@@ -62,6 +62,50 @@ static void internal_mdl_expect_policy_rejection(const ra8_mdl_request_t* reques
 }
 
 /**
+ * @brief Reject each single-operand HTTP-policy variation of the control.
+ * @details Carries vectors V1 through V6 of the Start policy matrix: the
+ * timeout bound, one CR or LF inside each of the four conditional-request
+ * headers, and a cap-length User-Agent.
+ * @param[in] control Accepted all-false control request.
+ * @pre The shared model fixture is brought up and no job is active.
+ * @pre @p control is the request the client has already accepted.
+ * @post Every candidate is rejected before transport.
+ * @post The modelled service observes no additional Start.
+ * @note File-local helper; no ownership escapes this focused test executable.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static void internal_mdl_expect_policy_rejections(const ra8_mdl_request_t* control)
+{
+  ra8_mdl_request_t candidate = *control;
+  candidate.http.timeout_ms   = (uint32_t)k_ra8_mdl_timeout_ms_max + 1U;
+  internal_mdl_expect_policy_rejection(&candidate);
+
+  candidate                 = *control;
+  candidate.http.user_agent = "ra8-media/3\rX-Injected: 1";
+  internal_mdl_expect_policy_rejection(&candidate);
+
+  candidate              = *control;
+  candidate.http.referer = "https://example.test/catalog\nX-Injected: 1";
+  internal_mdl_expect_policy_rejection(&candidate);
+
+  candidate                    = *control;
+  candidate.http.if_none_match = "\"cached-etag\"\rX-Injected: 1";
+  internal_mdl_expect_policy_rejection(&candidate);
+
+  candidate                        = *control;
+  candidate.http.if_modified_since = "Tue, 20 Oct 2015 07:28:00 GMT\nX-Injected: 1";
+  internal_mdl_expect_policy_rejection(&candidate);
+
+  char overlong_agent[k_ra8_mdl_user_agent_max + 1U];
+  (void)memset(overlong_agent, 'u', sizeof(overlong_agent));
+  overlong_agent[k_ra8_mdl_user_agent_max] = '\0';
+  candidate                                = *control;
+  candidate.http.user_agent                = overlong_agent;
+  internal_mdl_expect_policy_rejection(&candidate);
+}
+
+/**
  * @test internal_test_media_start_request_policy_mcdc
  * @brief Exercise every protocol-v3 HTTP-policy operand of Start.
  * @par MC/DC:
@@ -124,32 +168,7 @@ RA8_INTERNAL static void internal_test_media_start_request_policy_mcdc(void)
   TEST_ASSERT(strcmp(ra8_c6_model()->mdl_if_modified_since, control.http.if_modified_since) == 0);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_cancel(link, &session));
 
-  ra8_mdl_request_t candidate = control;
-  candidate.http.timeout_ms   = (uint32_t)k_ra8_mdl_timeout_ms_max + 1U;
-  internal_mdl_expect_policy_rejection(&candidate);
-
-  candidate                 = control;
-  candidate.http.user_agent = "ra8-media/3\rX-Injected: 1";
-  internal_mdl_expect_policy_rejection(&candidate);
-
-  candidate              = control;
-  candidate.http.referer = "https://example.test/catalog\nX-Injected: 1";
-  internal_mdl_expect_policy_rejection(&candidate);
-
-  candidate                    = control;
-  candidate.http.if_none_match = "\"cached-etag\"\rX-Injected: 1";
-  internal_mdl_expect_policy_rejection(&candidate);
-
-  candidate                        = control;
-  candidate.http.if_modified_since = "Tue, 20 Oct 2015 07:28:00 GMT\nX-Injected: 1";
-  internal_mdl_expect_policy_rejection(&candidate);
-
-  char overlong_agent[k_ra8_mdl_user_agent_max + 1U];
-  (void)memset(overlong_agent, 'u', sizeof(overlong_agent));
-  overlong_agent[k_ra8_mdl_user_agent_max] = '\0';
-  candidate                                = control;
-  candidate.http.user_agent                = overlong_agent;
-  internal_mdl_expect_policy_rejection(&candidate);
+  internal_mdl_expect_policy_rejections(&control);
 
   const ra8_mdl_request_t absent = {.url    = "https://example.test/book",
                                     .format = k_ra8_mdl_format_rabook};

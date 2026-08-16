@@ -330,6 +330,51 @@ RA8_INTERNAL static uint32_t internal_expect_start_acceptance(Ra8__Mdl__StartReq
 }
 
 /**
+ * @brief Reject each HTTP-policy variation of the canonical StartRequest.
+ * @details Carries vectors V7 through V12 of the Start field matrix: the
+ * timeout bound, one CR or LF inside each of the four conditional-request
+ * headers, and a cap-length User-Agent.
+ * @return Nothing.
+ * @pre The fixture was reset and no job is active.
+ * @pre The declared header caps fit the fixed request scratch buffer.
+ * @post Every candidate is rejected before the backend is begun.
+ * @post The service is still inactive on return.
+ * @note File-local helper; no ownership escapes this focused test executable.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_expect_start_policy_rejections(void)
+{
+  char capped_agent[k_ra8_mdl_user_agent_max + 1U];
+  memset(capped_agent, 'a', sizeof(capped_agent));
+  capped_agent[k_ra8_mdl_user_agent_max] = '\0';
+
+  Ra8__Mdl__StartRequest candidate = RA8__MDL__START_REQUEST__INIT;
+  internal_fill_start_control(&candidate);
+  candidate.timeout_ms = k_ra8_mdl_timeout_ms_max + 1U;
+  internal_expect_start_rejection(&candidate);
+
+  internal_fill_start_control(&candidate);
+  candidate.user_agent = (char*)"ra8-test/3\rX-Injected: 1";
+  internal_expect_start_rejection(&candidate);
+
+  internal_fill_start_control(&candidate);
+  candidate.referer = (char*)"https://example.test/catalog\nX-Injected: 1";
+  internal_expect_start_rejection(&candidate);
+
+  internal_fill_start_control(&candidate);
+  candidate.if_none_match = (char*)"\"cached-etag\"\rX-Injected: 1";
+  internal_expect_start_rejection(&candidate);
+
+  internal_fill_start_control(&candidate);
+  candidate.if_modified_since = (char*)"Tue, 20 Oct 2015 07:28:00 GMT\nX-Injected: 1";
+  internal_expect_start_rejection(&candidate);
+
+  internal_fill_start_control(&candidate);
+  candidate.user_agent = capped_agent;
+  internal_expect_start_rejection(&candidate);
+}
+
+/**
  * @test internal_test_start_request_fields_mcdc
  * @brief Prove every Start field operand independently rejects a request.
  * @par MC/DC:
@@ -380,9 +425,6 @@ RA8_INTERNAL static void internal_test_start_request_fields_mcdc(void)
   memset(capped_url, 'u', sizeof(capped_url));
   memcpy(capped_url, "https://", sizeof("https://") - 1U);
   capped_url[k_ra8_mdl_url_max] = '\0';
-  char capped_agent[k_ra8_mdl_user_agent_max + 1U];
-  memset(capped_agent, 'a', sizeof(capped_agent));
-  capped_agent[k_ra8_mdl_user_agent_max] = '\0';
 
   Ra8__Mdl__StartRequest candidate = RA8__MDL__START_REQUEST__INIT;
   internal_policy_reset();
@@ -410,29 +452,7 @@ RA8_INTERNAL static void internal_test_start_request_fields_mcdc(void)
   candidate.format = RA8__MDL__FORMAT__FORMAT_INVALID;
   internal_expect_start_rejection(&candidate);
 
-  internal_fill_start_control(&candidate);
-  candidate.timeout_ms = k_ra8_mdl_timeout_ms_max + 1U;
-  internal_expect_start_rejection(&candidate);
-
-  internal_fill_start_control(&candidate);
-  candidate.user_agent = (char*)"ra8-test/3\rX-Injected: 1";
-  internal_expect_start_rejection(&candidate);
-
-  internal_fill_start_control(&candidate);
-  candidate.referer = (char*)"https://example.test/catalog\nX-Injected: 1";
-  internal_expect_start_rejection(&candidate);
-
-  internal_fill_start_control(&candidate);
-  candidate.if_none_match = (char*)"\"cached-etag\"\rX-Injected: 1";
-  internal_expect_start_rejection(&candidate);
-
-  internal_fill_start_control(&candidate);
-  candidate.if_modified_since = (char*)"Tue, 20 Oct 2015 07:28:00 GMT\nX-Injected: 1";
-  internal_expect_start_rejection(&candidate);
-
-  internal_fill_start_control(&candidate);
-  candidate.user_agent = capped_agent;
-  internal_expect_start_rejection(&candidate);
+  internal_expect_start_policy_rejections();
   TEST_END("mdl start request fields MC/DC");
 }
 
