@@ -7,12 +7,12 @@
  *
  * @details
  * This hardware-pending composition root joins Wi-Fi through the ESP32-C6,
- * mounts an existing FAT volume on Pmod2 micro-SD, downloads one RBKC
- * `.rabook` body through the C6 media RPC, hashes every accepted byte on the
- * RA8, strictly validates the staged container, publishes it with the VFS
- * no-replace transaction, then reopens and consumes its first inflated chunk.
- * Every large workspace is caller-owned SDRAM; neither first-party heap nor
- * stdio is used.
+ * mounts an existing FAT volume on Pmod2 micro-SD, and downloads either one
+ * prebuilt RBKC `.rabook` body or one encoded image through the C6 media RPC.
+ * Image mode converts the source into a reader-native RABOOK1 book and RBKC
+ * container on the RA8. Both modes hash, strictly validate, transactionally
+ * publish, reopen, and consume the result. Every large workspace is
+ * caller-owned SDRAM; neither first-party heap nor stdio is used.
  *
  * Empty build-time URL or Wi-Fi credentials produce a valid image that refuses
  * before touching storage or starting an RPC. The app stays in `hw_pending`
@@ -27,6 +27,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "media_download_image_internal.h"
 #include "miniz.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
@@ -62,6 +63,13 @@
 /** @brief Empty default makes an unconfigured image fail before any RPC. */
 #define RA8_MEDIA_DOWNLOAD_URL ""
 #endif
+#ifndef RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE
+/** @brief Default preserves direct validation of prebuilt `.rabook` bodies. */
+#define RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE 0
+#endif
+
+static_assert((RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE == 0) || (RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE == 1),
+              "RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE must be 0 or 1");
 
 /** @brief Fixed application bounds and board integration policy. */
 typedef enum : uint32_t {
@@ -94,6 +102,8 @@ static const char s_url[] = RA8_MEDIA_DOWNLOAD_URL;
 static const char s_destination[] = "sd:/BOOKS/C6BOOK.RBK";
 /** @brief Reserved sibling transaction name. */
 static const char s_stage_leaf[] = "C6STAGE.TMP";
+/** @brief Build-time input policy: encoded image or prebuilt RBKC body. */
+static const bool s_source_is_image = RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE != 0;
 
 /** @brief Cached CPU clock for the delay service. */
 static uint32_t s_cpuclk_hz;
@@ -581,7 +591,8 @@ RA8_INTERNAL static ra8_err_t internal_consume(void)
 /**
  * @brief Execute the complete hardware composition once.
  * @details Sequences storage mount, RSIP self-test, C6 association, bounded
- * transfer, strict precommit validation, publication, and final consumption.
+ * transfer, optional image-to-RABOOK formatting, strict precommit validation,
+ * publication, and final consumption.
  * @return End-to-end verdict.
  * @retval true The artifact was downloaded, committed, and consumed.
  * @retval false One named stage failed.
@@ -617,8 +628,12 @@ RA8_INTERNAL static bool internal_run(void)
   ra8_mdl_transfer_config_t transfer = {};
   err                                = internal_bind_transfer(&transfer);
   if (err == k_ra8_ok) {
-    ra8_mdl_transfer_result_t result = {};
-    err = ra8_c6link_mdl_transfer(&s_link, s_url, s_destination, &transfer, &result);
+    if (s_source_is_image) {
+      err = priv_media_download_image_run(&s_link, s_url, s_destination, &transfer);
+    } else {
+      ra8_mdl_transfer_result_t result = {};
+      err = ra8_c6link_mdl_transfer(&s_link, s_url, s_destination, &transfer, &result);
+    }
   }
   if (err == k_ra8_ok) {
     err = internal_consume();
@@ -627,7 +642,7 @@ RA8_INTERNAL static bool internal_run(void)
   if (err != k_ra8_ok) {
     return internal_fail("transfer/consume", err);
   }
-  internal_puts("media_download: PASS C6->SD strict rabook publish and read\r\n");
+  internal_puts("media_download: PASS C6->RABOOK->SD publish and read\r\n");
   return true;
 }
 

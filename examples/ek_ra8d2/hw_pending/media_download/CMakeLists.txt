@@ -19,17 +19,24 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME media_download
   STACK_BYTES 8192
-  DESCRIPTION "C6 HTTPS to transactional SD strict .rabook publish and read (#665)"
+  DESCRIPTION "C6 HTTPS source to transactional SD strict .rabook publish and read (#665)"
   USES threadx esp_hosted
   LIBS ra8_board_ek_ra8d2
        ra8_c6link
        ra8_mdl_storage_vfs
+       ra8_rabook_compile
        ra8_io
        ra8_fs
        ra8_sdmmc_spi
        ra8_book
        miniz
+  EXTRA_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/media_download_format.c
+             ${CMAKE_CURRENT_SOURCE_DIR}/media_download_image.c
 )
+
+option(RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE
+       "Treat the C6 HTTPS body as one encoded image and format it as RABOOK"
+       OFF)
 
 if(TARGET media_download.elf)
   set(_media_url "")
@@ -56,6 +63,7 @@ if(TARGET media_download.elf)
     PRIVATE "RA8_MEDIA_DOWNLOAD_URL=\"${_media_url}\""
             "RA8_C6_WIFI_SSID=\"${_media_ssid}\""
             "RA8_C6_WIFI_PSK=\"${_media_psk}\""
+            "RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE=$<BOOL:${RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE}>"
             MINIZ_NO_MALLOC
             MINIZ_NO_STDIO
             MINIZ_NO_TIME

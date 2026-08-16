@@ -24,7 +24,7 @@ all: build
 
 help:
 	@echo "$(APP): C6 HTTPS body -> strict transactional SD .rabook"
-	@echo "  build  cross-compile with optional RA8_MEDIA_DOWNLOAD_URL and Wi-Fi env"
+	@echo "  build  cross-compile with optional URL, Wi-Fi, and SOURCE_IMAGE env"
 	@echo "  compile-proof  retain and assert the complete configured transfer path"
 	@echo "  clean  remove $(BUILD_DIR) and $(PROOF_BUILD_DIR)"
 	@echo "  flash / ozone / debug / size  standard board workflows"
@@ -38,6 +38,7 @@ build:
 	    -DRA8_USE_THREADX=ON \
 	    -DRA8_USE_ESP_HOSTED=ON \
 	    $${RA8_MEDIA_DOWNLOAD_URL:+-DRA8_MEDIA_DOWNLOAD_URL="$$RA8_MEDIA_DOWNLOAD_URL"} \
+	    $${RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE:+-DRA8_MEDIA_DOWNLOAD_SOURCE_IMAGE="$$RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE"} \
 	    $${RA8_C6_WIFI_SSID:+-DRA8_C6_WIFI_SSID="$$RA8_C6_WIFI_SSID"} \
 	    $${RA8_C6_WIFI_PSK:+-DRA8_C6_WIFI_PSK="$$RA8_C6_WIFI_PSK"} && \
 	$(CMAKE) --build $(BUILD_DIR)
