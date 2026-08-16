@@ -738,6 +738,7 @@ RA8_INTERNAL static ra8_err_t internal_validate_raster(const uint8_t* rec)
   const uint64_t pixels = (uint64_t)width * (uint64_t)height;
   const uint64_t expect =
     (pixfmt == (uint8_t)k_ra8_book_pixfmt_gray4) ? ((pixels + 1U) / 2U) : pixels;
+  // mcdc-deactivated: internal_validate_raster overflow backstop; width and height are decoded from 16-bit wire fields, so `pixels` is at most 65535*65535 == 0xFFFE0001 and `expect` (pixels, or half of it for gray4) can never exceed UINT32_MAX -- the first condition is provably constant-false and no input can flip it.
   if ((expect > (uint64_t)UINT32_MAX) ||
       (internal_le32(&rec[k_stream_image_data_size]) != expect) ||
       (internal_le32(&rec[k_stream_image_raw_size]) != expect)) {
