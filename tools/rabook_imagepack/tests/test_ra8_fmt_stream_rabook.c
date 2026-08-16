@@ -35,8 +35,7 @@ typedef enum : uint32_t {
 
 /** @brief Aligned compressor state. */
 typedef struct {
-  alignas(max_align_t)
-    uint8_t bytes[k_ra8_io_compress_scratch_bytes]; /**< tdefl state bytes.                 */
+  alignas(max_align_t) uint8_t bytes[k_ra8_io_compress_scratch_bytes]; /**< tdefl state bytes. */
 } test_compressor_t;
 
 /** @brief Memory object used by both production and inspect callbacks. */
