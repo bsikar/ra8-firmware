@@ -20,16 +20,16 @@
 
 /** @brief Bounded dimensions shared by both protocol endpoints. */
 typedef enum : uint16_t {
-  k_ra8_mdl_url_max          = 512U,   /**< Maximum URL buffer size, including NUL.      */
-  k_ra8_mdl_user_agent_max   = 256U,   /**< Maximum User-Agent size, including NUL.      */
-  k_ra8_mdl_referer_max      = 512U,   /**< Maximum Referer size, including NUL.         */
-  k_ra8_mdl_etag_max         = 128U,   /**< Maximum ETag size, including NUL.            */
-  k_ra8_mdl_http_date_max    = 64U,    /**< Maximum HTTP-date size, including NUL.       */
-  k_ra8_mdl_retry_after_max  = 64U,    /**< Maximum Retry-After size, including NUL.     */
-  k_ra8_mdl_content_type_max = 128U,   /**< Maximum Content-Type size, including NUL.    */
-  k_ra8_mdl_chunk_data_max   = 1024U,  /**< Maximum raw body bytes in one chunk.         */
-  k_ra8_mdl_sha256_bytes     = 32U,    /**< SHA-256 digest size in bytes.                */
-  k_ra8_mdl_timeout_ms_max   = 60000U, /**< Maximum caller-selected HTTP timeout in ms.  */
+  k_ra8_mdl_url_max          = 512U,   /**< Maximum URL buffer size, including NUL.     */
+  k_ra8_mdl_user_agent_max   = 256U,   /**< Maximum User-Agent size, including NUL.     */
+  k_ra8_mdl_referer_max      = 512U,   /**< Maximum Referer size, including NUL.        */
+  k_ra8_mdl_etag_max         = 128U,   /**< Maximum ETag size, including NUL.           */
+  k_ra8_mdl_http_date_max    = 64U,    /**< Maximum HTTP-date size, including NUL.      */
+  k_ra8_mdl_retry_after_max  = 64U,    /**< Maximum Retry-After size, including NUL.    */
+  k_ra8_mdl_content_type_max = 128U,   /**< Maximum Content-Type size, including NUL.   */
+  k_ra8_mdl_chunk_data_max   = 1024U,  /**< Maximum raw body bytes in one chunk.        */
+  k_ra8_mdl_sha256_bytes     = 32U,    /**< SHA-256 digest size in bytes.               */
+  k_ra8_mdl_timeout_ms_max   = 60000U, /**< Maximum caller-selected HTTP timeout in ms. */
 } ra8_mdl_dimension_t;
 
 /** @brief Version included in every media RPC request and response. */

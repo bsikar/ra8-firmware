@@ -22,50 +22,50 @@
 
 /** @brief Fixed fixture capacities and HTTP values. */
 typedef enum : uint16_t {
-  k_c6_http_request_cap     = 256U,  /**< Packed request scratch.          */
-  k_c6_http_response_cap    = 4608U, /**< Packed response scratch.         */
-  k_c6_http_status_ok       = 200U,  /**< Canonical successful status.      */
-  k_c6_http_status_low      = 99U,   /**< Below the HTTP status range.      */
-  k_c6_http_status_redirect = 300U,  /**< Visible non-followed redirect.    */
-  k_c6_http_status_high     = 600U,  /**< Above the HTTP status range.      */
+  k_c6_http_request_cap     = 256U,  /**< Packed request scratch.        */
+  k_c6_http_response_cap    = 4608U, /**< Packed response scratch.       */
+  k_c6_http_status_ok       = 200U,  /**< Canonical successful status.   */
+  k_c6_http_status_low      = 99U,   /**< Below the HTTP status range.   */
+  k_c6_http_status_redirect = 300U,  /**< Visible non-followed redirect. */
+  k_c6_http_status_high     = 600U,  /**< Above the HTTP status range.   */
 } c6_http_test_limits_t;
 
 /** @brief Deterministic host model for the consumed ESP-IDF surface. */
 typedef struct {
-  const uint8_t* body;                                 /**< Borrowed response body.             */
-  size_t         body_bytes;                           /**< Complete body extent.               */
-  size_t         cursor;                               /**< Next unread body byte.              */
-  int64_t        content_length;                       /**< Advertised length, or negative.     */
-  int            status;                               /**< HTTP response status.               */
-  bool           complete;                             /**< ESP-IDF completeness verdict.       */
-  bool           init_fail;                            /**< Fail retained-client creation.      */
-  bool           set_url_fail;                         /**< Fail URL installation.              */
-  bool           set_header_fail;                      /**< Fail request-header installation.   */
-  bool           set_timeout_fail;                     /**< Fail request-timeout installation. */
-  bool           open_fail;                            /**< Fail request opening.               */
-  bool           read_fail;                            /**< Return a negative body read.        */
-  bool           read_oversize;                        /**< Return one byte beyond capacity.    */
-  bool           sha_start_fail;                       /**< Fail SHA stream initialization.     */
-  bool           sha_update_fail;                      /**< Fail SHA body incorporation.        */
-  bool           sha_finish_fail;                      /**< Fail terminal digest publication.   */
-  uint32_t       init_calls;                           /**< Observed retained-client creations. */
-  uint32_t       close_calls;                          /**< Observed per-job close operations.  */
-  int            timeout_ms;                           /**< Most recently applied timeout.      */
-  char           user_agent[k_ra8_mdl_user_agent_max]; /**< Applied User-Agent.       */
-  char           referer[k_ra8_mdl_referer_max];       /**< Applied Referer.          */
-  char           if_none_match[k_ra8_mdl_etag_max];    /**< Applied ETag condition.   */
-  char           if_modified_since[k_ra8_mdl_http_date_max]; /**< Applied date condition.   */
-  const char*    retry_after;   /**< Modelled Retry-After response value. */
-  const char*    etag;          /**< Modelled ETag response value. */
-  const char*    last_modified; /**< Modelled Last-Modified response value. */
-  const char*    content_type;  /**< Modelled Content-Type response value. */
+  const uint8_t* body;                                       /**< Response body.    */
+  size_t         body_bytes;                                 /**< Body extent.      */
+  size_t         cursor;                                     /**< Read position.    */
+  int64_t        content_length;                             /**< Advertised size.  */
+  int            status;                                     /**< HTTP status.      */
+  bool           complete;                                   /**< Complete flag.    */
+  bool           init_fail;                                  /**< Init fault.       */
+  bool           set_url_fail;                               /**< URL fault.        */
+  bool           set_header_fail;                            /**< Header fault.     */
+  bool           set_timeout_fail;                           /**< Timeout fault.    */
+  bool           open_fail;                                  /**< Open fault.       */
+  bool           read_fail;                                  /**< Read fault.       */
+  bool           read_oversize;                              /**< Oversize read.    */
+  bool           sha_start_fail;                             /**< SHA init fault.   */
+  bool           sha_update_fail;                            /**< SHA update fault. */
+  bool           sha_finish_fail;                            /**< SHA final fault.  */
+  uint32_t       init_calls;                                 /**< Init calls.       */
+  uint32_t       close_calls;                                /**< Close calls.      */
+  int            timeout_ms;                                 /**< Applied timeout.  */
+  char           user_agent[k_ra8_mdl_user_agent_max];       /**< User-Agent.       */
+  char           referer[k_ra8_mdl_referer_max];             /**< Referer.          */
+  char           if_none_match[k_ra8_mdl_etag_max];          /**< ETag condition.   */
+  char           if_modified_since[k_ra8_mdl_http_date_max]; /**< Date condition.   */
+  const char*    retry_after;                                /**< Retry-After.      */
+  const char*    etag;                                       /**< ETag.             */
+  const char*    last_modified;                              /**< Last-Modified.    */
+  const char*    content_type;                               /**< Content-Type.     */
 } c6_http_model_t;
 
 /** @brief Concrete storage behind the opaque ESP-IDF handle type. */
 struct esp_http_client {
   const char*                url;           /**< Last URL accepted by the model. */
-  esp_http_client_event_cb_t event_handler; /**< Configured event callback. */
-  void*                      user_data;     /**< Configured callback context. */
+  esp_http_client_event_cb_t event_handler; /**< Configured event callback.      */
+  void*                      user_data;     /**< Configured callback context.    */
 };
 
 static struct esp_http_client s_client;

@@ -30,11 +30,11 @@
  * @since 0.1.0
  */
 typedef struct {
-  const char* user_agent;        /**< User-Agent value, or null/empty to omit.      */
-  const char* referer;           /**< Referer value, or null/empty to omit.         */
-  const char* if_none_match;     /**< If-None-Match value, or null/empty to omit.   */
-  const char* if_modified_since; /**< If-Modified-Since value, or null/empty.       */
-  uint32_t    timeout_ms;        /**< Whole-request timeout, or zero for default.   */
+  const char* user_agent;        /**< User-Agent value, or null/empty to omit.    */
+  const char* referer;           /**< Referer value, or null/empty to omit.       */
+  const char* if_none_match;     /**< If-None-Match value, or null/empty to omit. */
+  const char* if_modified_since; /**< If-Modified-Since value, or null/empty.     */
+  uint32_t    timeout_ms;        /**< Whole-request timeout, or zero for default. */
 } ra8_mdl_http_policy_t;
 
 /**
@@ -45,11 +45,11 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  int32_t status;                                   /**< Final HTTP status.          */
-  char    retry_after[k_ra8_mdl_retry_after_max];   /**< Retry-After or empty.       */
-  char    etag[k_ra8_mdl_etag_max];                 /**< ETag or empty.              */
-  char    last_modified[k_ra8_mdl_http_date_max];   /**< Last-Modified or empty.     */
-  char    content_type[k_ra8_mdl_content_type_max]; /**< Content-Type or empty.      */
+  int32_t status;                                   /**< Final HTTP status.      */
+  char    retry_after[k_ra8_mdl_retry_after_max];   /**< Retry-After or empty.   */
+  char    etag[k_ra8_mdl_etag_max];                 /**< ETag or empty.          */
+  char    last_modified[k_ra8_mdl_http_date_max];   /**< Last-Modified or empty. */
+  char    content_type[k_ra8_mdl_content_type_max]; /**< Content-Type or empty.  */
 } ra8_mdl_http_response_t;
 
 /**
@@ -60,7 +60,7 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  const char*           url;    /**< Absolute HTTPS source URL. */
+  const char*           url;    /**< Absolute HTTPS source URL.        */
   ra8_mdl_format_t      format; /**< Exact returned artifact identity. */
-  ra8_mdl_http_policy_t http;   /**< Forwarded request policy. */
+  ra8_mdl_http_policy_t http;   /**< Forwarded request policy.         */
 } ra8_mdl_request_t;

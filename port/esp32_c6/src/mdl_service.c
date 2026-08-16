@@ -27,7 +27,7 @@
 /** @brief Fixed HTTP policy values for the concrete ESP-IDF adapter. */
 typedef enum : uint16_t {
   k_mdl_http_timeout_ms = 15000U, /**< Default whole-request timeout. */
-  k_mdl_http_status_min = 100U,   /**< Lowest valid terminal status. */
+  k_mdl_http_status_min = 100U,   /**< Lowest valid terminal status.  */
   k_mdl_http_status_max = 599U,   /**< Highest valid terminal status. */
 } mdl_http_const_t;
 
@@ -44,9 +44,9 @@ typedef struct mdl_http_state {
   char user_agent[k_ra8_mdl_user_agent_max];       /**< Active User-Agent request value.         */
   char referer[k_ra8_mdl_referer_max];             /**< Active Referer request value.            */
   char if_none_match[k_ra8_mdl_etag_max];          /**< Active If-None-Match request value.      */
-  char if_modified_since[k_ra8_mdl_http_date_max]; /**< Active If-Modified-Since request value. */
-  ra8_mdl_http_response_t response;                /**< Selected terminal response metadata.    */
-  ra8_err_t               header_error;            /**< First response-header capture failure.  */
+  char if_modified_since[k_ra8_mdl_http_date_max]; /**< Active If-Modified-Since request value.  */
+  ra8_mdl_http_response_t response;                /**< Selected terminal response metadata.     */
+  ra8_err_t               header_error;            /**< First response-header capture failure.   */
   uint64_t                total;                   /**< Advertised body length, or zero.         */
   uint64_t                received;                /**< Independently counted body bytes.        */
   ra8_mdl_format_t        format;                  /**< Requested artifact identity.             */
