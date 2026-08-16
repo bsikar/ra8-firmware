@@ -9,7 +9,7 @@
 # Future updates remain shrink-only through check_tool_coverage.py --update.
 # rows: 57
 
-tools/media_dl/src/main.c	240	290	150	219
+tools/media_dl/src/main.c	238	288	150	219
 tools/media_dl/src/mdl_app_admin.c	202	260	111	188
 tools/media_dl/src/mdl_app_cover.c	69	106	36	72
 tools/media_dl/src/mdl_app_direct.c	232	323	92	166
@@ -43,7 +43,7 @@ tools/media_dl/src/mdl_fetch_body.c	97	110	59	94
 tools/media_dl/src/mdl_fetch_page.c	195	233	103	162
 tools/media_dl/src/mdl_hash.c	56	64	38	56
 tools/media_dl/src/mdl_host_credentials.c	9	10	14	22
-tools/media_dl/src/mdl_library.c	174	209	100	180
+tools/media_dl/src/mdl_library.c	173	208	100	180
 tools/media_dl/src/mdl_net.c	36	37	42	48
 tools/media_dl/src/mdl_net_c6link.c	85	85	51	54
 tools/media_dl/src/mdl_net_curl.c	259	294	163	272
