@@ -1,5 +1,5 @@
 /**
- * @file ra8_c6link_transfer_coordinator_test_internal.h
+ * @file test_ra8_c6link_transfer_coordinator_internal.h
  * @brief Private runner for transactional-coordinator MC/DC vectors
  * @details Keeps the pull-budget, remote-cancellation, and terminal-metadata
  * matrix out of the already-large media suite while sharing its executable.
