@@ -18,6 +18,4 @@
 #include "c6_camera_server.h"
 #include "ra8_boot_entry.h"
 
-void main(void)
-{
-}
+void main(void) {}

@@ -32,8 +32,8 @@
 
 #include "c6_join.h"
 #include "nx_ether_driver_c6.h"
-#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_boot_entry.h"
 #include "ra8_c6link.h"
 #include "ra8_c6link_wifi.h"
 #include "ra8_cgc.h"

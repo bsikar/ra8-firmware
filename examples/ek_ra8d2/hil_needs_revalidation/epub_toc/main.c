@@ -43,8 +43,8 @@
 #include <stdint.h>
 
 #include "epub_toc_fixture.h"
-#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_epub.h"
 #include "ra8_epub_fs.h"

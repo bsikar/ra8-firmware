@@ -47,8 +47,8 @@
 
 #include <stdint.h>
 
-#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
 #include "ra8_gpio_constants.h"

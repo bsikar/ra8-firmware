@@ -48,9 +48,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ra8p1.h"
+#include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_device.h"
 #include "ra8_err.h"

@@ -17,6 +17,7 @@
  */
 
 #include <stdint.h>
+
 #include "ra8_boot_entry.h"
 
 /**

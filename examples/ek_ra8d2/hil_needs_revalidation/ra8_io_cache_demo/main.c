@@ -34,8 +34,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
+#include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
