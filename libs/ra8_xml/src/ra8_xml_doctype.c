@@ -148,6 +148,7 @@ RA8_INTERNAL static ra8_err_t
 internal_keyword(const uint8_t* source, size_t end, size_t* position, const char* keyword)
 {
   const size_t length = strlen(keyword);
+  // mcdc-deactivated: internal_keyword prefix recheck; the only caller, internal_external_id, has already proved `(*position + 6U) <= end` and matched the same six bytes with memcmp before selecting the keyword, and both keywords are exactly six bytes long, so both conditions are constant-false on every reachable path.
   if (((*position + length) > end) || (memcmp(&source[*position], keyword, length) != 0)) {
     return k_ra8_err_validation_failed;
   }

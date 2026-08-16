@@ -304,6 +304,15 @@ if(TARGET test_ra8_book_stream)
   target_include_directories(test_ra8_book_stream PRIVATE ${FW_ROOT}/libs/ra8_book/src)
 endif()
 
+# The DOCTYPE lexer's entry guard re-checks a nine-byte prefix that
+# ra8_xml_reader_next() has already matched, so its length and mismatch
+# operands are only reachable through priv_ra8_xml_doctype(), declared in the
+# module's ra8_xml_internal.h (see CLAUDE.md "Test access to internal
+# symbols"). Expose that src/ directory to the XML reader test alone.
+if(TARGET test_ra8_xml)
+  target_include_directories(test_ra8_xml PRIVATE ${FW_ROOT}/libs/ra8_xml/src)
+endif()
+
 # The resident and streaming RABOOK1 tests share one caller-owned fixture
 # implementation. Compile it into each standalone executable so neither test
 # depends on state or symbols owned by its sibling process.
