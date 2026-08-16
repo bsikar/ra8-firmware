@@ -41,7 +41,7 @@ Expected console output:
 
 ```
 [uart] SCI8: ra8_io_fsfmt_demo: boot
-[uart] SCI8: ra8_io_fsfmt_demo: probed fat maxname=12 + foreign stub seam PASS
+[uart] SCI8: ra8_io_fsfmt_demo: probed fat maxname=741 + foreign stub seam PASS
 ```
 
 ## Status
