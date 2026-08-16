@@ -59,6 +59,8 @@ typedef struct {
   const char*    etag;                                       /**< ETag.             */
   const char*    last_modified;                              /**< Last-Modified.    */
   const char*    content_type;                               /**< Content-Type.     */
+  const char*    etag_key;                                   /**< ETag field name.  */
+  bool           null_etag_value;                            /**< Valueless ETag.   */
 } c6_http_model_t;
 
 /** @brief Concrete storage behind the opaque ESP-IDF handle type. */
@@ -96,7 +98,8 @@ RA8_INTERNAL static void internal_model_reset(const uint8_t* body, size_t body_b
                               .retry_after    = "4",
                               .etag           = "\"esp-etag\"",
                               .last_modified  = "Wed, 21 Oct 2015 07:28:00 GMT",
-                              .content_type   = "application/x-rabook"};
+                              .content_type   = "application/x-rabook",
+                              .etag_key       = "eTaG"};
 }
 
 /**
@@ -299,15 +302,41 @@ RA8_INTERNAL static char* internal_model_header_slot(const char* key, size_t* ca
 }
 
 /**
- * @brief Emit one modelled response-header event
+ * @brief Emit one modelled response-header event exactly as supplied
  * @details Borrows the supplied strings into one synchronous event and calls
- * the production callback exactly as ESP-IDF would during header parsing.
- * @param[in] key Header name supplied to the production callback.
- * @param[in] value Header value supplied to the production callback.
+ * the production callback exactly as ESP-IDF would during header parsing. A
+ * null name or value is passed through unchanged, which is how the malformed
+ * header-event vectors reach the production guards.
+ * @param[in] key Header name supplied to the production callback, or null.
+ * @param[in] value Header value supplied to the production callback, or null.
  * @pre The retained client has a configured event callback.
- * @pre @p key and @p value are NUL-terminated.
+ * @pre Non-null @p key and @p value are NUL-terminated.
  * @post Production state has consumed the complete synchronous event.
  * @post Model response strings remain borrowed and unmodified.
+ * @note Uses mixed-case names to verify HTTP field-name matching.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_model_emit_header_raw(const char* key, const char* value)
+{
+  esp_http_client_event_t event = {.event_id     = HTTP_EVENT_ON_HEADER,
+                                   .client       = &s_client,
+                                   .user_data    = s_client.user_data,
+                                   .header_key   = (char*)key,
+                                   .header_value = (char*)value};
+  (void)s_client.event_handler(&event);
+}
+
+/**
+ * @brief Emit one modelled response-header event that carries a value
+ * @details Treats a null value as "this header was not present at all", so a
+ * deliberately valueless header must be emitted through
+ * ::internal_model_emit_header_raw instead.
+ * @param[in] key Header name supplied to the production callback.
+ * @param[in] value Header value, or null to omit the header entirely.
+ * @pre The retained client has a configured event callback.
+ * @pre A non-null @p value is NUL-terminated.
+ * @post A present header reaches the production callback exactly once.
+ * @post An absent header produces no event.
  * @note Uses mixed-case names to verify HTTP field-name matching.
  * @since 0.1.0
  */
@@ -316,12 +345,7 @@ RA8_INTERNAL static void internal_model_emit_header(const char* key, const char*
   if (value == nullptr) {
     return;
   }
-  esp_http_client_event_t event = {.event_id     = HTTP_EVENT_ON_HEADER,
-                                   .client       = &s_client,
-                                   .user_data    = s_client.user_data,
-                                   .header_key   = (char*)key,
-                                   .header_value = (char*)value};
-  (void)s_client.event_handler(&event);
+  internal_model_emit_header_raw(key, value);
 }
 
 /* ESP-IDF stand-ins implement the contracts declared by the compatibility
@@ -415,7 +439,11 @@ RA8_PRIV int64_t esp_http_client_fetch_headers(esp_http_client_handle_t client)
 {
   TEST_ASSERT(client == &s_client);
   internal_model_emit_header("rEtRy-AfTeR", s_model.retry_after);
-  internal_model_emit_header("eTaG", s_model.etag);
+  if (s_model.null_etag_value) {
+    internal_model_emit_header_raw(s_model.etag_key, nullptr);
+  } else {
+    internal_model_emit_header(s_model.etag_key, s_model.etag);
+  }
   internal_model_emit_header("lAsT-mOdIfIeD", s_model.last_modified);
   internal_model_emit_header("cOnTeNt-TyPe", s_model.content_type);
   return s_model.content_length;
@@ -529,6 +557,28 @@ RA8_INTERNAL static void internal_test_unknown_operation_first_refusal(void)
  * @brief Verify retained initialization retries and begin-stage failures.
  * @details Proves a failed retained-client allocation is retryable and URL/SHA
  *          setup failures do not activate a portable job.
+ * @par MC/DC:
+ * For `(result == k_ra8_ok) && (esp_http_client_set_timeout_ms(...) != ESP_OK)`
+ * in ::internal_mdl_http_apply_request, every accepted Start in this file is
+ * V1 T,F/false and the `set_timeout_fail` vector here is V2 T,T/true; V1/V2
+ * independently vary the setter result. Its first conjunct cannot be driven
+ * false through the component's only entry point: the copies that precede it
+ * are bounded by the very same caps the portable ::internal_mdl_start_valid
+ * already enforced -- URL, User-Agent, Referer, If-None-Match and
+ * If-Modified-Since each use one shared limit on both sides -- so no request
+ * that reaches this adapter can fail one of them.
+ * For
+ * `(state == nullptr) || (request == nullptr) || (request->url == nullptr) ||
+ * !state->client_ready` in ::internal_mdl_http_begin, every accepted Start is
+ * the all-false control. No true vector is reachable either: the portable
+ * service is the sole caller, it passes the singleton backend context and the
+ * address of its own stack request, it rejects a null or empty URL before
+ * calling begin, and the hook returns ESP_FAIL without registering the
+ * backend when one-time initialization leaves `client_ready` false -- which
+ * the `init_fail` vector here executes.
+ * Decisions:
+ * port/esp32_c6/src/mdl_service.c@internal_mdl_http_apply_request
+ * Decisions: port/esp32_c6/src/mdl_service.c@internal_mdl_http_begin
  * @pre The retained service is uninitialized and the model has no active job.
  * @pre Generated protobuf scratch has fixed sufficient capacity.
  * @post A successful retained client exists for all later vectors.
@@ -743,6 +793,13 @@ RA8_INTERNAL static void internal_test_unknown_length(void)
  * @brief Verify HTTP open failures and status transport semantics.
  * @details Rejects values outside the HTTP status domain while surfacing a
  * non-followed redirect intact for portable downloader interpretation.
+ * @par MC/DC:
+ * The status-domain decision `(status < min) || (status > max)` in
+ * ::internal_mdl_http_open executes V1 status 300 -> F,F/false, V2 status 99
+ * -> T,-/true, and V3 status 600 -> F,T/true, all with the same open, header
+ * and body model. V1/V2 independently vary the lower bound and V1/V3 the
+ * upper bound.
+ * Decisions: port/esp32_c6/src/mdl_service.c@internal_mdl_http_open
  * @pre Retained service initialization is live and no job is active.
  * @pre Each model reset clears the prior injected fault.
  * @post Every malformed or failed job is cancelled before the next Start.
@@ -829,7 +886,115 @@ RA8_INTERNAL static void internal_test_read_and_hash_faults(void)
   internal_model_reset(empty, 0U);
   s_model.etag = "bad\r\nheader";
   internal_expect_first_next_failure(ESP_ERR_INVALID_ARG);
+
+  internal_model_reset(empty, 0U);
+  s_model.etag = "bad\nheader";
+  internal_expect_first_next_failure(ESP_ERR_INVALID_ARG);
   TEST_END("C6 HTTP read and hash faults");
+}
+
+/**
+ * @brief Run one complete job and assert the ETag the adapter captured.
+ * @details Drives the empty-body model end to end so the first pull is the
+ * terminal one, then reads back the header the production selector chose to
+ * retain.
+ * @param[in] expected Exact ETag the terminal Chunk must carry.
+ * @pre The model is configured and no portable job is active.
+ * @pre Retained service initialization is live.
+ * @post The job completes and its decoded response is released.
+ * @post The captured ETag matches @p expected exactly.
+ * @note An ignored or absent header leaves the protocol's empty string.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_expect_captured_etag(const char* expected)
+{
+  uint32_t job = 0U;
+  TEST_ASSERT_EQ(ESP_OK, internal_start("https://example.test/book", &job));
+  Ra8__Mdl__Chunk* chunk = nullptr;
+  TEST_ASSERT_EQ(ESP_OK, internal_next(job, 0U, 8U, &chunk));
+  TEST_ASSERT_EQ(RA8__MDL__STATE__STATE_COMPLETE, chunk->state);
+  TEST_ASSERT(strcmp(chunk->etag, expected) == 0);
+  ra8__mdl__chunk__free_unpacked(chunk, nullptr);
+}
+
+/**
+ * @test internal_test_header_capture_mcdc
+ * @brief Prove the event guard, name matcher and field copier per condition.
+ * @par MC/DC:
+ * ::internal_mdl_http_event -- `(event == nullptr) || (event->user_data ==
+ * nullptr)`: every modelled header event is V1 F,F/false, the null event here
+ * is V2 T,-/true, and the context-less event is V3 F,T/true.
+ * ::internal_mdl_header_equal, against the matching `eTaG` control:
+ * - `(lhs == nullptr) || (rhs == nullptr)`: the control is F,F/false and the
+ *   null header name is T,-/true. The right operand is always one of the four
+ *   canonical name literals, so its true value is structurally unreachable.
+ * - `(lhs[index] != '\\0') && (rhs[index] != '\\0')`: the control iterates
+ *   T,T/true, the short name `ETa` exits F,-/false, and the long name `ETagX`
+ *   exits T,F/false.
+ * - `(lhs[index] == '\\0') && (rhs[index] == '\\0')`: the control returns
+ *   T,T/true, `ETagX` returns F,-/false, and `ETa` returns T,F/false.
+ * - `(left >= 'A') && (left <= 'Z')` and its right-hand twin: matching
+ *   `rEtRy-AfTeR` against `Retry-After` walks an upper-case letter (T,T/true),
+ *   a lower-case letter (T,F/false) and the hyphen (F,-/false) on each side.
+ * ::internal_mdl_copy_field:
+ * - `(source == nullptr) || (source[0] == '\\0')`: a captured value is
+ *   F,F/false, the valueless ETag event is T,-/true, and the empty ETag value
+ *   is F,T/true.
+ * - `(source[i] == '\\r') || (source[i] == '\\n')`: every accepted value byte
+ *   is F,F/false, and `internal_test_read_and_hash_faults` supplies the
+ *   CR-first value (T,-/true) and the LF-only value (F,T/true).
+ * Decisions: port/esp32_c6/src/mdl_service.c@internal_mdl_http_event
+ * Decisions: port/esp32_c6/src/mdl_service.c@internal_mdl_header_equal
+ * Decisions: port/esp32_c6/src/mdl_service.c@internal_mdl_copy_field
+ * @details Header-name and value variations are observed through the terminal
+ * Chunk, so each assertion reads production state rather than the model's.
+ * @pre Retained service initialization is live and no job is active.
+ * @pre The retained client published its production event callback.
+ * @post Every ignored or malformed header leaves the response field empty.
+ * @post The canonical mixed-case name is still captured verbatim.
+ * @note Header names are ASCII tokens, so only that range is case-folded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_header_capture_mcdc(void)
+{
+  static const uint8_t empty[] = {0U};
+  internal_model_reset(empty, 0U);
+  TEST_ASSERT(s_client.event_handler != nullptr);
+  TEST_ASSERT_EQ(ESP_FAIL, s_client.event_handler(nullptr));
+  esp_http_client_event_t orphan = {.event_id     = HTTP_EVENT_ON_HEADER,
+                                    .client       = &s_client,
+                                    .user_data    = nullptr,
+                                    .header_key   = (char*)"ETag",
+                                    .header_value = (char*)"\"orphan\""};
+  TEST_ASSERT_EQ(ESP_FAIL, s_client.event_handler(&orphan));
+  esp_http_client_event_t body = {.event_id  = HTTP_EVENT_ON_DATA,
+                                  .client    = &s_client,
+                                  .user_data = s_client.user_data};
+  TEST_ASSERT_EQ(ESP_OK, s_client.event_handler(&body));
+
+  internal_model_reset(empty, 0U);
+  internal_expect_captured_etag("\"esp-etag\"");
+
+  internal_model_reset(empty, 0U);
+  s_model.etag_key = "ETagX";
+  internal_expect_captured_etag("");
+
+  internal_model_reset(empty, 0U);
+  s_model.etag_key = "ETa";
+  internal_expect_captured_etag("");
+
+  internal_model_reset(empty, 0U);
+  s_model.etag_key = nullptr;
+  internal_expect_captured_etag("");
+
+  internal_model_reset(empty, 0U);
+  s_model.null_etag_value = true;
+  internal_expect_captured_etag("");
+
+  internal_model_reset(empty, 0U);
+  s_model.etag = "";
+  internal_expect_captured_etag("");
+  TEST_END("C6 HTTP header capture MC/DC");
 }
 
 /**
@@ -855,5 +1020,6 @@ int main(void)
   internal_test_unknown_length();
   internal_test_open_and_status_faults();
   internal_test_read_and_hash_faults();
+  internal_test_header_capture_mcdc();
   return 0;
 }
