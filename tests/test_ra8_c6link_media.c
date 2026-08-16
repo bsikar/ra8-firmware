@@ -22,6 +22,7 @@
 #include "ra8_c6link_model_test_internal.h"
 #include "ra8_c6link_transfer_validation_test_internal.h"
 #include "ra8_err.h"
+#include "test_ra8_c6link_mdl_decode_internal.h"
 #include "test_ra8_c6link_media_decoder_internal.h"
 #include "test_ra8_c6link_media_http_internal.h"
 #include "test_ra8_c6link_transfer_coordinator_internal.h"
@@ -979,5 +980,6 @@ int main(void)
   internal_test_media_transfer_aborts_integrity_failures();
   internal_test_media_transfer_cancellation_is_atomic();
   priv_test_c6link_transfer_coordinator_run();
+  priv_test_c6link_mdl_decode_run();
   return 0;
 }
