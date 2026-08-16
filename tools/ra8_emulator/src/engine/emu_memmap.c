@@ -224,7 +224,7 @@ RA8_INTERNAL static emu_memmap_result_t internal_result(emu_memmap_status_t stat
 
 /**
  * @brief Resolve a guest region base to its shared host aperture address.
- * @details Looks the region up in ::s_aliased_windows and returns the host
+ * @details Looks the region up in the aliased-window table and returns the host
  * address the window starts at, after proving the whole window fits inside the
  * aperture. Any region that is not an aliased window returns nullptr and is
  * mapped as ordinary private Unicorn memory.
