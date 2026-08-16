@@ -61,6 +61,54 @@ static const float s_test_glyph_px = 16.0F;
 static const float s_test_glyph_px_zero = 0.0F;
 
 /**
+ * @test internal_test_mcdc_epub_open_private_guards
+ * @brief Drive the resident-reader and allocator-binding guards directly.
+ *
+ * @par MC/DC:
+ * `libs/ra8_epub/src/ra8_epub_open.c@priv_epub_mem_read` has a
+ * four-condition OR. The first four calls make the media pointer, output
+ * pointer, offset bound, and remaining-length bound independently true; the
+ * fifth call makes every condition false and proves the copied suffix.
+ * `libs/ra8_epub/src/ra8_epub_open.c@priv_epub_set_miniz_alloc` has a
+ * two-condition OR. Its first two calls isolate each null operand and the
+ * third makes both false, initializing the embedded arena and callbacks.
+ * @details Uses the module's documented private MC/DC seam; no public EPUB ABI
+ * is added or changed.
+ * @pre The local book and ZIP descriptors are zero-initialized.
+ * @pre The resident payload remains readable for the complete test.
+ * @post Every guard has an independently determining vector.
+ * @post The successful allocator binding is deinitialized before return.
+ * @note Test-only helper with caller-owned fixtures.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_mcdc_epub_open_private_guards(void)
+{
+  TEST_BEGIN("epub open private guard MC/DC");
+  static const uint8_t bytes[]   = {0x11U, 0x22U, 0x33U, 0x44U};
+  ra8_epub_mem_media_t media     = {.data = bytes, .size = sizeof(bytes)};
+  uint8_t              output[2] = {};
+  TEST_ASSERT_EQ(0U, priv_epub_mem_read(nullptr, 0U, output, 1U));
+  TEST_ASSERT_EQ(0U, priv_epub_mem_read((void*)&media, 0U, nullptr, 1U));
+  TEST_ASSERT_EQ(0U, priv_epub_mem_read((void*)&media, sizeof(bytes) + 1U, output, 1U));
+  TEST_ASSERT_EQ(0U, priv_epub_mem_read((void*)&media, sizeof(bytes) - 1U, output, 2U));
+  TEST_ASSERT_EQ(sizeof(output), priv_epub_mem_read((void*)&media, 1U, output, sizeof(output)));
+  TEST_ASSERT_EQ(bytes[1], output[0]);
+  TEST_ASSERT_EQ(bytes[2], output[1]);
+
+  mz_zip_archive  zip  = {};
+  ra8_epub_book_t book = {};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, priv_epub_set_miniz_alloc(nullptr, &book));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, priv_epub_set_miniz_alloc(&zip, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_epub_set_miniz_alloc(&zip, &book));
+  TEST_ASSERT(zip.m_pAlloc == ra8_epub_miniz_alloc);
+  TEST_ASSERT(zip.m_pFree == ra8_epub_miniz_free);
+  TEST_ASSERT(zip.m_pRealloc == ra8_epub_miniz_realloc);
+  TEST_ASSERT(zip.m_pAlloc_opaque == &book.miniz_arena);
+  ra8_epub_miniz_arena_deinit(&book.miniz_arena);
+  TEST_END("epub open private guard MC/DC");
+}
+
+/**
  * @test internal_test_mcdc_epub_get_chapter_count_null_pair
  *
  * @par MC/DC:
@@ -799,6 +847,7 @@ RA8_INTERNAL static void internal_test_epub_render_glyph_guards(void)
  * @note Order is significant: cases run top to bottom, exactly as before.
  */
 static void (*const s_test_roster[])(void) = {
+  internal_test_mcdc_epub_open_private_guards,
   internal_test_mcdc_epub_get_chapter_count_null_pair,
   internal_test_mcdc_epub_get_metadata_null_pair,
   internal_test_mcdc_epub_set_font_null_pair,

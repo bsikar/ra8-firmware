@@ -504,6 +504,8 @@ RA8_INTERNAL static void internal_test_arena_capacity_and_failure_preservation(v
  * @brief Invalid descriptors and misaligned storage fail without mutation.
  *
  * @par MC/DC:
+ * Decision identity:
+ * `libs/ra8_epub/src/ra8_epub_miniz_alloc.c@ra8_epub_miniz_arena_init`.
  * Decision `(arena == NULL) || (workspace == NULL)` has the N+1 vectors
  * `(T,-)->T`, `(F,T)->T`, and the `(F,F)->F` control supplied by the capacity
  * test's non-NULL init calls. Each condition therefore independently changes

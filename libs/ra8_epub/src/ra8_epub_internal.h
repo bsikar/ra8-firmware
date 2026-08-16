@@ -24,7 +24,55 @@ extern "C" {
 
 #include "miniz.h"
 #include "ra8_attributes.h"
+#include "ra8_epub.h"
 #include "ra8_err.h"
+
+/**
+ * @brief Read one bounded span from resident EPUB media.
+ * @details Test-access form of the callback used by the resident ZIP and
+ * decompression preflight paths; production callers keep using the public EPUB
+ * facade.
+ * @param[in] ctx Bound ::ra8_epub_mem_media_t descriptor.
+ * @param[in] offset Absolute archive offset.
+ * @param[out] buf Destination for exactly @p len bytes.
+ * @param[in] len Requested byte count.
+ * @return Number of bytes copied, or zero when any guard rejects the request.
+ * @retval 0 One guard rejected the request.
+ * @retval len Exactly the requested bytes were copied.
+ * @pre Non-null arguments address their documented extents.
+ * @pre The resident media outlives the call.
+ * @post Success copies exactly @p len bytes.
+ * @post Rejection does not modify the destination.
+ * @note Test-access only; performs no allocation.
+ * @par MC/DC:
+ * The four-condition OR rejects null media, null output, an offset past the
+ * archive, and a length beyond the remaining suffix. Its N+1 vectors are in
+ * test_ra8_epub_chapter.c.
+ * @since 0.1.0
+ */
+RA8_PRIV size_t priv_epub_mem_read(void* ctx, uint64_t offset, void* buf, size_t len);
+
+/**
+ * @brief Bind one ZIP reader to a book's caller-owned miniz arena.
+ * @details Test-access form of the shared resident/streamed open helper. It
+ * initializes the embedded arena and installs all three allocation callbacks
+ * plus their opaque context.
+ * @param[in,out] zip Zeroed archive descriptor to configure.
+ * @param[in,out] book Book owning the arena and workspace.
+ * @return Arena initialization or argument-validation status.
+ * @retval k_ra8_ok The arena and callbacks were installed.
+ * @retval k_ra8_err_null_ptr One required object was null.
+ * @pre Non-null objects are writable and distinct.
+ * @pre @p zip has not entered a miniz reader mode.
+ * @post Success binds every allocator callback to @p book.
+ * @post Null rejection mutates neither candidate object.
+ * @note Test-access only; the public EPUB ABI is unchanged.
+ * @par MC/DC:
+ * The two-condition null OR has one-null-at-a-time and all-valid vectors in
+ * test_ra8_epub_chapter.c.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t priv_epub_set_miniz_alloc(mz_zip_archive* zip, ra8_epub_book_t* book);
 
 /**
  * @brief Concatenate ``dir`` and ``name`` into ``dst``, NUL-terminated.

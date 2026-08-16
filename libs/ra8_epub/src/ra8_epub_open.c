@@ -84,23 +84,8 @@ static void internal_byte_copy(uint8_t* dst, const uint8_t* src, size_t n)
   }
 }
 
-/**
- * @brief Adapt resident EPUB bytes to the streamed read callback shape.
- * @details Copies only an in-range request; an invalid or short request returns zero.
- * @param[in] ctx Resident ::ra8_epub_mem_media_t descriptor.
- * @param[in] offset Absolute byte offset into the resident archive.
- * @param[out] buf Destination for exactly @p len bytes.
- * @param[in] len Requested byte count.
- * @return Bytes copied.
- * @retval 0 The request was invalid or exceeded the archive.
- * @pre @p ctx and @p buf are either valid or the caller accepts a zero result.
- * @pre The resident bytes outlive this call.
- * @post A successful request copies exactly @p len bytes.
- * @post The resident archive remains unchanged.
- * @note This adapter performs no allocation.
- * @since 0.1.0
- */
-RA8_INTERNAL static size_t internal_mem_read(void* ctx, uint64_t offset, void* buf, size_t len)
+/* see header for full description */
+RA8_PRIV size_t priv_epub_mem_read(void* ctx, uint64_t offset, void* buf, size_t len)
 {
   const ra8_epub_mem_media_t* const mem = (const ra8_epub_mem_media_t*)ctx;
   if ((mem == nullptr) || (buf == nullptr) || (offset > (uint64_t)mem->size) ||
@@ -371,28 +356,8 @@ static ra8_err_t internal_parse_archive(mz_zip_archive*  zip,
   return k_ra8_ok;
 }
 
-/**
- * @brief Bind miniz to the book's caller-owned allocation arena.
- *
- * @details
- * Shared by both the resident (`ra8_epub_open`) and streamed
- * (`ra8_epub_open_streamed`) open paths. Host and target use the same bounded
- * allocator, and each book supplies a distinct workspace through
- * ``m_pAlloc_opaque``.
- *
- * @param[in,out] zip Inline archive to configure (must be zeroed first).
- * @param[in,out] book Book that owns the arena and workspace.
- * @return Arena initialisation status.
- * @retval k_ra8_ok Allocator callbacks and opaque context were installed.
- * @pre @p zip points at the book's zeroed inline archive storage.
- * @pre Called before `mz_zip_reader_init*`.
- * @post On success the archive uses @p book's private miniz arena.
- * @post No I/O is performed.
- * @note Not thread-safe; single-threaded init context.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t internal_set_miniz_alloc(mz_zip_archive* zip, ra8_epub_book_t* book)
+/* see header for full description */
+RA8_PRIV ra8_err_t priv_epub_set_miniz_alloc(mz_zip_archive* zip, ra8_epub_book_t* book)
 {
   if ((zip == nullptr) || (book == nullptr)) {
     return k_ra8_err_null_ptr; /* GCOVR_EXCL_LINE -- callers pass both inline objects */
@@ -516,7 +481,7 @@ ra8_err_t ra8_epub_open(const void* media, const char* path, ra8_epub_book_t* ou
 
   ra8_epub_mem_media_t preflight_mem = *mem;
   const ra8_err_t      cap_err =
-    ra8_decomp_zip_entry_preflight(internal_mem_read, &preflight_mem, preflight_mem.size);
+    ra8_decomp_zip_entry_preflight(priv_epub_mem_read, &preflight_mem, preflight_mem.size);
   if (cap_err != k_ra8_ok) {
     return cap_err;
   }
@@ -530,7 +495,7 @@ ra8_err_t ra8_epub_open(const void* media, const char* path, ra8_epub_book_t* ou
    * storage punning is intentional and documented in the header. */
   void* const     zip_storage = &out_book->zip_archive_storage[0];
   mz_zip_archive* zip         = (mz_zip_archive*)zip_storage;
-  const ra8_err_t aerr        = internal_set_miniz_alloc(zip, out_book);
+  const ra8_err_t aerr        = priv_epub_set_miniz_alloc(zip, out_book);
   if (aerr != k_ra8_ok) {
     internal_byte_zero((uint8_t*)out_book, sizeof(*out_book));
     return aerr; /* GCOVR_EXCL_LINE -- embedded workspace is exact and aligned */
@@ -579,7 +544,7 @@ ra8_err_t ra8_epub_open_streamed(const ra8_epub_stream_media_t* media,
 
   void* const     zip_storage = &out_book->zip_archive_storage[0];
   mz_zip_archive* zip         = (mz_zip_archive*)zip_storage;
-  const ra8_err_t aerr        = internal_set_miniz_alloc(zip, out_book);
+  const ra8_err_t aerr        = priv_epub_set_miniz_alloc(zip, out_book);
   if (aerr != k_ra8_ok) {
     internal_byte_zero((uint8_t*)out_book, sizeof(*out_book));
     return aerr; /* GCOVR_EXCL_LINE -- embedded workspace is exact and aligned */
