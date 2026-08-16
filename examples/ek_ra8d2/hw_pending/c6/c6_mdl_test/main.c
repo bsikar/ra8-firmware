@@ -15,13 +15,12 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_c6link_mdl.h"
 #include "ra8_c6link_mdl_transfer.h"
 
 /**
  * @brief Prove the public raw-transfer types are available to a target app
- * @return Process status.
- * @retval 0 Compile/link fixture completed without running hardware.
  * @pre The application links `ra8_c6link` and ESP-hosted generated codecs.
  * @pre No hardware validation is inferred from this function.
  * @post No c6link operation is attempted.
@@ -29,9 +28,8 @@
  * @note Single-threaded compile fixture.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   static_assert(sizeof(ra8_mdl_chunk_t) >= k_ra8_mdl_chunk_data_max);
   static_assert(sizeof(ra8_mdl_transfer_result_t) > k_ra8_mdl_sha256_bytes);
-  return 0;
 }

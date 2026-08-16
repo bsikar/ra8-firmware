@@ -69,6 +69,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -646,9 +647,7 @@ static void tsn_setup_or_halt(void)
   return ra8_etha_init(k_ra8_etha_port_0, &cfg);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   tsn_setup_or_halt();
   ra8_isr_globals_enable();
@@ -670,6 +669,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_tsn_period_ms);
   }
   tsn_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

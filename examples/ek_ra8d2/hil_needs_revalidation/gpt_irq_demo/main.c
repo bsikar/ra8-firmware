@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -179,9 +180,7 @@ RA8_INTERNAL static void internal_gpt_irq_demo_setup_or_halt(void)
   return ra8_gpt_start_free_run((uint8_t)k_gpt_irq_demo_channel, (uint32_t)k_gpt_irq_demo_period);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   internal_gpt_irq_demo_setup_or_halt();
 
@@ -197,6 +196,4 @@ int32_t main(void)
   }
 
   internal_gpt_irq_demo_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

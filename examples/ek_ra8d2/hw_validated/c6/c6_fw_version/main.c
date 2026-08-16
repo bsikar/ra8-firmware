@@ -49,6 +49,7 @@
 
 #include "c6_fwver.h"
 #include "esp_hosted_interface.h"
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -396,11 +397,8 @@ void tx_application_define(void* first_unused_memory)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry: clocks, console, banner, then ThreadX.
- * @return Never returns.
  * @pre ``Reset_Handler`` has copied ``.data`` and zeroed ``.bss``.
  * @pre ``SystemInit`` has set VTOR, the FPU and the priority grouping.
  * @post The banner was printed exactly once.
@@ -409,7 +407,7 @@ void tx_application_define(void* first_unused_memory)
  *       panic-halt below is reached only if the kernel refuses to start.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   c6_fwver_setup_or_halt();
   ra8_isr_globals_enable();
@@ -420,6 +418,4 @@ int32_t main(void)
   tx_kernel_enter();
 
   c6_fwver_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

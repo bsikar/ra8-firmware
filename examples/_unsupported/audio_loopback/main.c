@@ -44,6 +44,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -283,12 +284,8 @@ RA8_INTERNAL static void internal_audio_loopback_print_count(uint32_t block_coun
                                      (size_t)(sizeof(s_audio_loopback_msg_suffix) - 1U));
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry. Brings up CGC + BSP audio then plays blocks.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
@@ -298,7 +295,7 @@ RA8_INTERNAL static void internal_audio_loopback_print_count(uint32_t block_coun
  *
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   internal_audio_loopback_init_clocks_and_led();
   internal_audio_loopback_init_console();
@@ -321,6 +318,4 @@ int32_t main(void)
   }
 
   internal_audio_loopback_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

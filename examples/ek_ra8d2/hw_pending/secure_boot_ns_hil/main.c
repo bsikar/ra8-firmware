@@ -57,6 +57,7 @@
 #include <stdint.h>
 
 #include "mbedtls/memory_buffer_alloc.h"
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
 #include "ra8_mstp.h"
@@ -329,9 +330,7 @@ static void sbns_console_say_reject(ra8_err_t err)
   sbns_console_say(k_sbns_msg_crlf, (uint32_t)(sizeof(k_sbns_msg_crlf) - 1U));
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   /* Bring up the crypto heap + PSA facade the root-of-trust verify needs. The
    * SAU + NS-image copy already ran in ra8_trustzone_init (SystemInit). */
@@ -365,6 +364,4 @@ int32_t main(void)
   g_sbns_step     = k_sbns_step_denied;
   sbns_console_say_reject(jump_err);
   sbns_park();
-  return 0;
 }
-#pragma GCC diagnostic pop

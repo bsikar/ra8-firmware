@@ -54,6 +54,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -546,9 +547,7 @@ static uint8_t dtc_arm_all_equal(uint32_t expect)
   return k_ra8_ok;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   dtc_arm_setup_or_halt();
   dtc_arm_bringup_or_halt();
@@ -583,6 +582,4 @@ int32_t main(void)
     ++g_dtc_heartbeat;
     ra8_delay_ms(k_dtc_arm_period_ms);
   }
-  return 0;
 }
-#pragma GCC diagnostic pop

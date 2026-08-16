@@ -55,6 +55,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_book.h"
 #include "ra8_cgc.h"
@@ -650,11 +651,8 @@ static void imp_run(ra8_fs_mount_t* mount)
  * =============================================================================
  */
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief App entry: bring up the SD card, mount, import + cache + read, PASS.
- * @return Never returns.
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
  * @post On a clean run the PASS banner is printed and the CPU loops in WFI.
@@ -662,7 +660,7 @@ static void imp_run(ra8_fs_mount_t* mount)
  * @note Not thread-safe; single-threaded app entry.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   uint32_t pclka_hz = 0U;
   imp_setup_or_halt(&pclka_hz);
@@ -685,4 +683,3 @@ int main(void)
     __asm__ volatile("wfi");
   }
 }
-#pragma GCC diagnostic pop

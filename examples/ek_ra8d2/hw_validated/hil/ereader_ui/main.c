@@ -45,6 +45,7 @@
 #include "er_pageturn.h"
 #include "ereader_ui_steps.h"
 #include "literata_latin1.h"
+#include "ra8_boot_entry.h"
 #include "ra8_app.h"
 #include "ra8_batt.h"
 #include "ra8_board_ek_ra8d2.h"
@@ -669,9 +670,7 @@ void er_flush_event(display_turn_event_t event)
   g_er_cur_page  = s_reading_page;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   app_bringup_clocks();
   app_bringup_panel();
@@ -705,6 +704,4 @@ int32_t main(void)
     g_er_loop_ticks++;
     ra8_delay_ms((uint32_t)k_er_frame_ms);
   }
-  return 0;
 }
-#pragma GCC diagnostic pop

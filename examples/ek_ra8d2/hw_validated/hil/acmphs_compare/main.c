@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_acmphs.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
@@ -191,9 +192,7 @@ RA8_INTERNAL static void internal_acmphs_demo_panic_halt(void)
   return ra8_board_led_toggle(k_ra8_board_led2);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   if (internal_acmphs_demo_setup() != k_ra8_ok) {
     internal_acmphs_demo_panic_halt();
@@ -209,6 +208,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_acmphs_demo_period_ms);
   }
   internal_acmphs_demo_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

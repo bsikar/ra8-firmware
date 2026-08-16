@@ -39,6 +39,7 @@
 #include <stdint.h>
 
 #include "lowpower_holdpage.h"
+#include "ra8_boot_entry.h"
 #include "ra8_dual_core.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -149,9 +150,6 @@ static void render_page0(volatile lowpower_mailbox_t* mb)
  * releases the Cortex-M33 into its hold loop, and parks the M85 in low-power
  * WFI sleep. See the file header for the power-saving narrative.
  *
- * @return Never returns (ends in ::park_low_power, or ::park_forever on error).
- * @retval (none) Control stays parked.
- *
  * @pre `SystemInit` has completed core bring-up.
  * @pre The M33 is held inactive by hardware until released here.
  * @post The M33 owns the held page and the M85 is parked.
@@ -160,7 +158,7 @@ static void render_page0(volatile lowpower_mailbox_t* mb)
  * @note Single-threaded; no RTOS on the M85 in this example.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   ra8_log_init();
   ra8_log_info("M85", "==== RA8D2 low-power hold-page demo ====");

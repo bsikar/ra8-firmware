@@ -49,6 +49,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -689,13 +690,9 @@ static void fs_fmt_count_cb(const char* name, uint8_t attr, uint64_t size, void*
  * =============================================================================
  */
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief App entry: bring up the bus + card, then format/mount/file-cycle each
  *        FAT type and print the overall PASS banner.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
@@ -703,7 +700,7 @@ static void fs_fmt_count_cb(const char* name, uint8_t attr, uint64_t size, void*
  * @post On any failure the function halts in WFI after a FAIL diagnostic.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   uint32_t pclka_hz = 0U;
   fs_fmt_setup_or_halt(&pclka_hz);
@@ -752,4 +749,3 @@ int32_t main(void)
     __asm__ volatile("wfi");
   }
 }
-#pragma GCC diagnostic pop

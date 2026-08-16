@@ -40,6 +40,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_audio.h"
 #include "ra8_audio_source_pdm.h"
 #include "ra8_board_ek_ra8d2.h"
@@ -590,12 +591,8 @@ static bool pdm_demo_run_window(int32_t vary, pdm_metrics_t* out_m)
  * =============================================================================
  */
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry: bring up the PDM mic and report plausibility.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU and priority grouping.
@@ -604,7 +601,7 @@ static bool pdm_demo_run_window(int32_t vary, pdm_metrics_t* out_m)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   pdm_demo_clocks_or_halt();
   pdm_demo_io_or_halt();
@@ -634,6 +631,4 @@ int32_t main(void)
   }
 
   pdm_demo_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

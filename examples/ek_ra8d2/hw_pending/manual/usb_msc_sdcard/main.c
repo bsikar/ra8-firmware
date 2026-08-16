@@ -52,6 +52,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -395,15 +396,11 @@ VOID tx_application_define(VOID* first_unused_memory)
 }
 #endif /* !RA8_OFF_TARGET */
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry: bring the board up, then hand off to ThreadX.
  *
  * @details The USB clock, pins, console, and the SD card all come up
  * before the kernel so the worker only deals with USB stack bring-up.
- *
- * @return Never returns (``tx_kernel_enter`` is __noreturn).
  *
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR, FPU, priority grouping.
@@ -413,7 +410,7 @@ VOID tx_application_define(VOID* first_unused_memory)
  * @note Single entry point; not re-entrant.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   sdmsc_setup_or_halt();
 
@@ -424,6 +421,4 @@ int32_t main(void)
 #endif
 
   sdmsc_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

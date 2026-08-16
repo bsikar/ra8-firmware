@@ -64,6 +64,7 @@
 
 #include "cam_ceu.h"
 #include "cam_image.h"
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_camera.h"
 #include "ra8_camera_source_ceu.h"
@@ -840,12 +841,8 @@ static void cam_run(void)
   cam_capture_and_verdict();
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry: OV5640 CEU capture plausibility self-test.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR, FPU and priority grouping.
@@ -853,16 +850,14 @@ static void cam_run(void)
  * @post The result globals hold the outcome for SWD probing.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   if (cam_bringup() != k_ra8_ok) {
     (void)cam_puts("cam: bringup ERROR verdict=FAIL\r\n");
     cam_park();
-    return 0;
+    return;
   }
   ra8_isr_globals_enable();
   cam_run();
   cam_park();
-  return 0;
 }
-#pragma GCC diagnostic pop

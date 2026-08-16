@@ -43,6 +43,7 @@
 #include <stdint.h>
 
 #include "epub_toc_fixture.h"
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_epub.h"
@@ -433,12 +434,8 @@ static void etoc_check_bad(ra8_fs_mount_t* mount)
   (void)ra8_epub_close_streamed_fs(&s_epub_io, &s_book);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief App entry: SD bring-up -> provision -> TOC asserts -> heartbeat idle.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR / FPU / priority grouping.
@@ -447,7 +444,7 @@ static void etoc_check_bad(ra8_fs_mount_t* mount)
  * @post On any failure ::g_etoc_err is non-zero and the CPU parks (no heartbeat).
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   uint32_t pclka_hz = 0U;
   etoc_setup_or_halt(&pclka_hz);
@@ -473,4 +470,3 @@ int32_t main(void)
     g_etoc_heartbeat++;
   }
 }
-#pragma GCC diagnostic pop

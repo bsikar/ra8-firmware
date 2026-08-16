@@ -31,6 +31,7 @@
 #include <stdint.h>
 
 #include "epub_fixture.h"
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_epub.h"
@@ -182,19 +183,15 @@ static uint16_t ep_parse_or_halt(uint32_t* out_crc)
   return chapters;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief App entry: parse the baked EPUB on silicon, print the banner.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR / FPU / priority grouping.
  * @post The chapters/ch0-CRC banner is emitted; the CPU then loops in WFI.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   ep_setup_or_halt();
   ra8_isr_globals_enable();
@@ -213,4 +210,3 @@ int32_t main(void)
     __asm__ volatile("wfi");
   }
 }
-#pragma GCC diagnostic pop

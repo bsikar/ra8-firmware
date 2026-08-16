@@ -30,6 +30,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -242,9 +243,7 @@ RA8_INTERNAL static uint8_t internal_verify(void)
   return k_ra8_err_hw_timeout;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   internal_setup_or_halt();
   ra8_isr_globals_enable();
@@ -265,6 +264,4 @@ int32_t main(void)
     ra8_delay_ms(k_dma_demo_period_ms);
   }
   internal_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

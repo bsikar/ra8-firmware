@@ -34,6 +34,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -266,9 +267,8 @@ RA8_INTERNAL static ra8_err_t internal_demo_run(uint32_t* out_hits, uint32_t* ou
  * @brief Firmware entry point.
  *
  * @pre SystemInit set VTOR / FPU / priority grouping.
- * @return Never returns.
  */
-int main(void)
+void main(void)
 {
   ra8_log_init();
   internal_demo_setup_or_halt();

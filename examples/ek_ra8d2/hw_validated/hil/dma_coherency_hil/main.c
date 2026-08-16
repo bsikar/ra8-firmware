@@ -63,6 +63,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cache.h"
@@ -363,12 +364,8 @@ RA8_INTERNAL static void internal_report(uint8_t ok)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry: one-shot DMAC coherency proof, then WFI.
- *
- * @return Never returns (parks in WFI after reporting).
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit enabled the MPU + caches via RA8_BOOT_ENABLE_CACHE_MPU.
@@ -377,7 +374,7 @@ RA8_INTERNAL static void internal_report(uint8_t ok)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   internal_setup_or_halt();
   ra8_isr_globals_enable();
@@ -388,6 +385,4 @@ int32_t main(void)
   internal_report(ok);
 
   internal_park();
-  return 0;
 }
-#pragma GCC diagnostic pop

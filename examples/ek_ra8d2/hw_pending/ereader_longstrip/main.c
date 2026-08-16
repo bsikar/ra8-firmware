@@ -45,6 +45,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -952,18 +953,15 @@ static void ls_poll_buttons(void)
  * ===========================================================================
  */
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief App entry: bring up the panel, build the strip, run the reader loop.
  *
- * @return Never returns.
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR / FPU / priority grouping.
  * @post The panel shows the reader screen and the input loop runs forever.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   app_bringup_clocks();
   ls_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
@@ -990,4 +988,3 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_ls_frame_ms);
   }
 }
-#pragma GCC diagnostic pop

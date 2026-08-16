@@ -75,6 +75,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -187,12 +188,8 @@ static void demo_panic_halt(void)
   return ra8_gpio_output_init(k_demo_pin_pd07_role, k_ra8_level_low);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry. Brings up CGC + USB-HS pin + LED1 + ThreadX.
- *
- * @return Never returns (``tx_kernel_enter`` is __noreturn).
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
@@ -202,7 +199,7 @@ static void demo_panic_halt(void)
  * @note Single entry point; not re-entrant.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
@@ -252,6 +249,4 @@ int32_t main(void)
 #endif
 
   demo_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

@@ -61,6 +61,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -931,12 +932,8 @@ RA8_INTERNAL static void internal_tc_calibrate_and_report(display_handle_t* disp
  * ===========================================================================
  */
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief App entry: bring up panel + touch, run calibration, print the banner.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR / FPU / priority grouping.
@@ -944,7 +941,7 @@ RA8_INTERNAL static void internal_tc_calibrate_and_report(display_handle_t* disp
  *       sentinel are emitted; the CPU then loops in WFI.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   internal_tc_setup_or_halt();
   ra8_isr_globals_enable();
@@ -969,4 +966,3 @@ int32_t main(void)
     __asm__ volatile("wfi");
   }
 }
-#pragma GCC diagnostic pop

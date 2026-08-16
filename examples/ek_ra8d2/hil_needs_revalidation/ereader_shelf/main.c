@@ -30,6 +30,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_display_pal.h"
@@ -718,8 +719,6 @@ static void sh_demo_step(uint32_t step)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Run the reader superloop -- input pump, opt-in self-demo, watchdog, backlight idle-dim.
  *
@@ -776,12 +775,11 @@ static void sh_run(void)
 
 /**
  * @brief App entry: bring up panel + optional SD, build the shelf, pump input.
- * @return Never returns.
  * @pre Reset_Handler copied .data and zeroed .bss; SystemInit set VTOR/FPU.
  * @post The shelf scans on the panel; taps open books, browse, and read.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   sh_setup_or_halt();
   ra8_isr_globals_enable();
@@ -810,6 +808,4 @@ int32_t main(void)
   sh_print_banner(&cbz, &cbr, rtl_ok);
 
   sh_run(); /* never returns */
-  return 0;
 }
-#pragma GCC diagnostic pop

@@ -41,6 +41,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -231,9 +232,7 @@ static void drw_demo_setup_or_halt(void)
   return k_ra8_ok;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   drw_demo_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the
@@ -263,6 +262,4 @@ int32_t main(void)
     ra8_delay_ms(k_drw_demo_period_ms);
   }
   drw_demo_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

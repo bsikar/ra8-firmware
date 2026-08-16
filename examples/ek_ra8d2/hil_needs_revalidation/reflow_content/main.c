@@ -29,6 +29,7 @@
 #include <stdint.h>
 
 #include "font_fixture.h"
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -295,19 +296,15 @@ RA8_INTERNAL static void internal_rc_setup_or_halt(void)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief App entry: paginate + render the chapter, re-flow bigger, print.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR / FPU / priority grouping.
  * @post The page-count + render-hash banner is emitted; the CPU loops in WFI.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   internal_rc_setup_or_halt();
   ra8_isr_globals_enable();
@@ -361,4 +358,3 @@ int32_t main(void)
     __asm__ volatile("wfi");
   }
 }
-#pragma GCC diagnostic pop
