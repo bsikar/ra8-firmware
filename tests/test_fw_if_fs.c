@@ -133,6 +133,17 @@ internal_count_entry(void* ctx, const fw_fs_dirent_t* entry, bool* out_continue)
   return k_ra8_ok;
 }
 
+/** @brief Accept one entry and then stop delivery from inside the callback. @details Implements the bounded stop entry fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] entry Value required by this filesystem vector. @param[out] out_continue Caller-owned output populated on success. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_stop_entry(void* ctx, const fw_fs_dirent_t* entry, bool* out_continue)
+{
+  list_ctx_t* list = (list_ctx_t*)ctx;
+  (void)entry;
+  ++list->count;
+  *out_continue = false;
+  return k_ra8_ok;
+}
+
 /** @brief Create/truncate and write one small file. @details Implements the bounded write file fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @param[in] path Validated fixture path or name value. @param[in] bytes Caller-supplied bounded extent or quantity. @param[in] length Caller-supplied bounded extent or quantity. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
 RA8_INTERNAL static void
 internal_write_file(const fw_fs_t* fs, const char* path, const uint8_t* bytes, uint32_t length)
@@ -257,6 +268,13 @@ RA8_INTERNAL static void internal_check_namespace_cleanup(const fw_fs_t* fs)
     k_ra8_ok,
     fw_fs_listdir(&fs->names, "/books", 16U, internal_count_entry, &list, &count, &complete));
   TEST_ASSERT(complete && count >= 1U && list.saw_directory);
+  list = (list_ctx_t){};
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    fw_fs_listdir(&fs->names, "/books", 16U, internal_stop_entry, &list, &count, &complete));
+  TEST_ASSERT_EQ(1U, count);
+  TEST_ASSERT_EQ(1U, list.count);
+  TEST_ASSERT(!complete);
 
   TEST_ASSERT_EQ(k_ra8_err_not_empty, fw_fs_rmdir(&fs->names, "/books"));
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_rename(&fs->names, "/books/a.bin", "/books/b.bin", false));
@@ -687,6 +705,153 @@ RA8_INTERNAL static void internal_check_vfs_full_media(const fw_fs_t* fs)
   TEST_END("fw_if_fs VFS full-media transaction");
 }
 
+/** @brief Fixed operands used by the firmware VFS adapter guard matrix. */
+typedef enum : uint32_t {
+  k_vfs_over_bytes = (uint32_t)k_fw_fs_path_cap + 2U, /**< Never-terminating path buffer. */
+  k_vfs_small      = 32U,                             /**< State below the cursor base.   */
+  k_vfs_large      = 128U,                            /**< State at the cursor base.      */
+  k_vfs_align      = 128U,                            /**< Synthetic cursor alignment.    */
+  k_vfs_native     = 100000U,                         /**< Cursor demand beyond state.    */
+  k_vfs_seed       = 0x100U,                          /**< Stage id before the collision. */
+  k_vfs_next       = 0x102U,                          /**< Stage id after one retry.      */
+} vfs_guard_limits_t;
+
+/** @brief Reject unusable mounts, over-long paths, and unsupported modes. @details Implements the bounded check vfs path guards fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @param[in] over Validated fixture path or name value. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_check_vfs_path_guards(const fw_fs_t* fs, const char* over)
+{
+  const fw_fs_namespace_iface_t* ns       = fs->names.iface;
+  const fw_fs_stream_iface_t*    st       = fs->streams.iface;
+  void*                          ctx      = fs->names.ctx;
+  fw_fs_ra8_vfs_state_t          bad      = *(const fw_fs_ra8_vfs_state_t*)ctx;
+  test_workspace_t               work     = {};
+  fw_fs_stat_t                   stat     = {};
+  fw_fs_space_t                  space    = {};
+  list_ctx_t                     list     = {};
+  fw_fs_dirent_value_t           value    = {};
+  uint32_t                       count    = 0U;
+  bool                           complete = false;
+  bool                           present  = false;
+  const uintptr_t                mask     = (uintptr_t)k_vfs_align - 1U;
+  uint8_t*                       base     = (uint8_t*)(((uintptr_t)work.bytes + mask) & ~mask);
+  (void)memset(bad.mount_name, 'x', sizeof(bad.mount_name));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ns->stat(&bad, "/x", &stat));
+  (void)memcpy(bad.mount_name, "absent", sizeof("absent"));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ns->stat(&bad, "/x", &stat));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ns->space(&bad, &space));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ns->stat(ctx, over, &stat));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ns->mkdir(ctx, over));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ns->rename(ctx, "/a", "/b", true));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ns->rename(ctx, over, "/b", false));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ns->rename(ctx, "/a", over, false));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ns->listdir(ctx, over, 1U, internal_count_entry, &list, &count, &complete));
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, st->open(ctx, "/x", k_fw_fs_open_read, work.bytes, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+                 st->open(ctx, "/x", k_fw_fs_open_create_new, work.bytes, k_vfs_small));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 st->open(ctx, over, k_fw_fs_open_read, work.bytes, k_vfs_small));
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, ns->dir_open(ctx, "/", work.bytes, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ns->dir_open(ctx, over, work.bytes, k_vfs_large));
+  bad.directory_workspace_align = (uint8_t)k_vfs_align;
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, ns->dir_open(&bad, "/", &base[1], k_vfs_small));
+  bad.directory_workspace_bytes = k_vfs_native;
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, ns->dir_open(&bad, "/", base, k_vfs_large));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ns->dir_next(ctx, work.bytes, &value, &present));
+}
+
+/** @brief Reject staged writes through unopened or unsupported transactions. @details Implements the bounded check vfs transaction guards fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @param[in] over Validated fixture path or name value. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_check_vfs_transaction_guards(const fw_fs_t* fs, const char* over)
+{
+  const fw_fs_transaction_iface_t* tx    = fs->transactions.iface;
+  void*                            ctx   = fs->transactions.ctx;
+  fw_fs_ra8_vfs_state_t*           state = (fw_fs_ra8_vfs_state_t*)ctx;
+
+  static const uint8_t  seed[]    = {'s', 'e', 'e', 'd'};
+  const validator_ctx_t reject    = {.bytes = seed, .length = sizeof(seed), .reject = true};
+  test_workspace_t      work      = {};
+  uint32_t              written   = 0U;
+  bool                  published = false;
+
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, tx->begin(ctx, work.bytes, 1U, "/x", k_fw_fs_txn_create_new));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+                 tx->begin(ctx, work.bytes, k_test_txn_work, "/x", k_fw_fs_txn_replace_atomic));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 tx->begin(ctx, work.bytes, k_test_txn_work, over, k_fw_fs_txn_create_new));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, tx->write(ctx, work.bytes, seed, 1U, &written));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, tx->seek(ctx, work.bytes, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 tx->validate(ctx, work.bytes, internal_validate_exact, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 tx->begin(ctx, work.bytes, k_test_txn_work, "/g.bin", k_fw_fs_txn_create_new));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, tx->commit(ctx, work.bytes, &published));
+  TEST_ASSERT(!published);
+  TEST_ASSERT_EQ(k_ra8_ok, tx->abort(ctx, work.bytes));
+  TEST_ASSERT_EQ(k_ra8_err_not_found,
+                 tx->begin(ctx, work.bytes, k_test_txn_work, "/no/x.bin", k_fw_fs_txn_create_new));
+  state->transaction_id = k_vfs_seed;
+  internal_write_file(fs, "/TX000101.TMP", seed, sizeof(seed));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 tx->begin(ctx, work.bytes, k_test_txn_work, "/c.bin", k_fw_fs_txn_create_new));
+  TEST_ASSERT_EQ(k_vfs_next, state->transaction_id);
+  TEST_ASSERT_EQ(k_ra8_ok, tx->abort(ctx, work.bytes));
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/TX000101.TMP"));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 tx->begin(ctx, work.bytes, k_test_txn_work, "/r.bin", k_fw_fs_txn_create_new));
+  TEST_ASSERT_EQ(k_ra8_ok, tx->write(ctx, work.bytes, seed, sizeof(seed), &written));
+  TEST_ASSERT_EQ(sizeof(seed), written);
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error,
+                 tx->validate(ctx, work.bytes, internal_validate_exact, (void*)&reject));
+  TEST_ASSERT_EQ(k_ra8_ok, tx->abort(ctx, work.bytes));
+}
+
+/** @brief Run every firmware VFS adapter argument and lifecycle guard. @details Implements the bounded check vfs adapter guards fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_check_vfs_adapter_guards(const fw_fs_t* fs)
+{
+  char over[k_vfs_over_bytes] = {};
+  TEST_BEGIN("fw_if_fs VFS adapter guards");
+  (void)memset(over, 'a', sizeof(over) - 1U);
+  over[0] = '/';
+  internal_check_vfs_path_guards(fs, over);
+  internal_check_vfs_transaction_guards(fs, over);
+  TEST_END("fw_if_fs VFS adapter guards");
+}
+
+/** @brief Reject every unusable VFS binding request and honour media policy. @details Runs the firmware VFS initializer vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_vfs_init_guards(void)
+{
+  fw_fs_t               removable = {};
+  fw_fs_ra8_vfs_state_t state     = {};
+  ra8_fs_mount_t        idle      = {};
+  fw_fs_ra8_vfs_cfg_t   cfg       = {.mount_name = "ram", .mount = s_mount};
+  TEST_BEGIN("fw_if_fs VFS init guards");
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_ra8_vfs_init(nullptr, &state, &cfg));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_ra8_vfs_init(&removable, nullptr, &cfg));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_ra8_vfs_init(&removable, &state, nullptr));
+  cfg.mount_name = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
+  cfg.mount_name = "ram";
+  cfg.mount      = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
+  cfg.mount = &idle;
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
+  cfg.mount      = s_mount;
+  cfg.mount_name = "ra:m";
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
+  cfg.mount_name = "ra/m";
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
+  cfg.mount_name = "";
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
+  cfg.mount_name = "0123456789abcdef";
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
+  cfg.mount_name = "absent";
+  TEST_ASSERT_EQ(k_ra8_err_not_found, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
+  cfg.mount_name      = "ram";
+  cfg.removable_media = true;
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
+  TEST_ASSERT((removable.caps.flags & (uint32_t)k_fw_fs_cap_removable_media) != 0U);
+  TEST_END("fw_if_fs VFS init guards");
+}
+
 /** @brief POSIX-specific proof that final/intermediate symlinks are never
  * followed. @details Implements the bounded check posix symlinks fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @param[in] root Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
@@ -812,6 +977,8 @@ RA8_INTERNAL static void internal_test_vfs_conformance(void)
   internal_run_conformance("fw_if_fs RAM/FAT/VFS conformance", &fs);
   internal_check_mdl_storage_portability("media_dl RAM/FAT/VFS storage", &fs);
   internal_check_vfs_full_media(&fs);
+  internal_check_vfs_adapter_guards(&fs);
+  internal_test_vfs_init_guards();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_unmount("ram"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(s_mount));
   s_mount = nullptr;
