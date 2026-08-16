@@ -1,0 +1,293 @@
+/**
+ * @file test_media_dl_rabook_verify.c
+ * @brief Positive and corruption tests for the downloader's strict RBKC reader.
+ *
+ * @details Produces a real flat RABOOK1 with the firmware builder, wraps it with
+ * the production RBKC writer, publishes it through portable storage, and proves
+ * the downloader validator accepts the exact file and rejects a corrupted copy.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ * @since 0.1.0
+ */
+
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
+
+#include "mdl_storage.h"
+#include "mdl_test_storage.h"
+#include "mdl_verify.h"
+#include "miniz.h"
+#include "ra8_attributes.h"
+#include "ra8_book.h"
+#include "ra8_rabook_container.h"
+#include "support/rabook_compile_test_fixture.h"
+#include "unity_minimal.h"
+
+/** @brief Small complete-book fixture capacities. */
+typedef enum : uint32_t {
+  k_test_rbkc_bytes         = 8192U,               /**< Complete compressed container. */
+  k_test_chunk_bytes        = 1024U,               /**< Inflated bytes per chunk.      */
+  k_test_compressed_bytes   = 2048U,               /**< One compressed stream.         */
+  k_test_offset_entries     = 16U,                 /**< Chunk-table entries.           */
+  k_test_verify_arena_bytes = 16U * 1024U * 1024U, /**< Strict-reader arena.           */
+} mdl_rabook_verify_limit_t;
+
+/** @brief Maximally aligned miniz compressor storage. */
+typedef union {
+  max_align_t      alignment;  /**< Forces portable maximum alignment. */
+  tdefl_compressor compressor; /**< Production compressor state.       */
+} mdl_rabook_compressor_t;
+
+/** @brief Memory source/destination for one container write. */
+typedef struct {
+  const uint8_t* flat;      /**< Complete flat RABOOK1 bytes. */
+  uint32_t       flat_size; /**< Flat source extent.          */
+  uint8_t*       rbkc;      /**< RBKC destination bytes.      */
+  uint32_t       rbkc_cap;  /**< RBKC destination capacity.   */
+} mdl_rabook_memory_t;
+
+static ra8_test_rabook_fixture_t s_fixture;
+static uint8_t                   s_rbkc[k_test_rbkc_bytes];
+static uint8_t                   s_chunk[k_test_chunk_bytes];
+static uint8_t                   s_compressed[k_test_compressed_bytes];
+static uint64_t                  s_offsets[k_test_offset_entries];
+static mdl_rabook_compressor_t   s_compressor;
+static uint8_t                   s_verify_arena[k_test_verify_arena_bytes];
+
+/**
+ * @brief Copy one exact flat range from the resident fixture.
+ * @details Bounds the requested interval before copying it into the container
+ *          writer's one-chunk workspace.
+ * @param[in] opaque Bound ::mdl_rabook_memory_t.
+ * @param[in] offset Flat source offset.
+ * @param[out] destination Read destination.
+ * @param[in] requested Exact requested bytes.
+ * @param[out] out_read Exact copied bytes on success.
+ * @return Bounded memory-read status.
+ * @retval k_ra8_ok The complete requested range was copied.
+ * @retval k_ra8_err_out_of_range The range exceeds the flat blob.
+ * @pre All pointers are non-NULL and destination capacity matches requested.
+ * @pre The flat fixture remains immutable during the call.
+ * @post Success initializes every requested destination byte.
+ * @post Failure sets @p out_read to zero.
+ * @note Test-only and synchronous.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_flat_read(void*     opaque,
+                                    uint32_t  offset,
+                                    uint8_t*  destination,
+                                    uint32_t  requested,
+                                    uint32_t* out_read)
+{
+  mdl_rabook_memory_t* memory = (mdl_rabook_memory_t*)opaque;
+  *out_read                   = 0U;
+  if ((offset > memory->flat_size) || (requested > (memory->flat_size - offset))) {
+    return k_ra8_err_out_of_range;
+  }
+  (void)memcpy(destination, &memory->flat[offset], requested);
+  *out_read = requested;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Copy one exact RBKC range into the resident destination.
+ * @details Implements the production writer's random-write contract including
+ *          bounded offset-table backfill.
+ * @param[in] opaque Bound ::mdl_rabook_memory_t.
+ * @param[in] offset RBKC destination offset.
+ * @param[in] source Source bytes.
+ * @param[in] requested Exact requested bytes.
+ * @param[out] out_written Exact copied bytes on success.
+ * @return Bounded memory-write status.
+ * @retval k_ra8_ok The complete requested range was copied.
+ * @retval k_ra8_err_invalid_size The destination range exceeds its cap.
+ * @pre All pointers are non-NULL and source spans requested bytes.
+ * @pre The destination remains exclusively mutable.
+ * @post Success initializes the requested RBKC destination range.
+ * @post Failure sets @p out_written to zero.
+ * @note Test-only and synchronous.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_rbkc_write(void*          opaque,
+                                     uint64_t       offset,
+                                     const uint8_t* source,
+                                     uint32_t       requested,
+                                     uint32_t*      out_written)
+{
+  mdl_rabook_memory_t* memory = (mdl_rabook_memory_t*)opaque;
+  *out_written                = 0U;
+  if ((offset > memory->rbkc_cap) ||
+      ((uint64_t)requested > ((uint64_t)memory->rbkc_cap - offset))) {
+    return k_ra8_err_invalid_size;
+  }
+  (void)memcpy(&memory->rbkc[(size_t)offset], source, requested);
+  *out_written = requested;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Publish one byte span through the downloader transaction seam.
+ * @details Removes a prior fixture if present, creates a private stage, writes
+ *          the complete payload, independently validates its identity, and commits.
+ * @param[in] path Canonical test destination.
+ * @param[in] bytes Complete payload bytes.
+ * @param[in] length Payload extent.
+ * @return Portable transaction status.
+ * @retval k_ra8_ok The complete fixture was published.
+ * @retval other Namespace, write, validation, or commit failure.
+ * @pre Storage is initialized and all pointers are valid for their extents.
+ * @pre @p path remains stable and no concurrent fixture writer exists.
+ * @post Success exposes exactly @p length bytes at @p path.
+ * @post Failure does not claim publication.
+ * @note Test-only and not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_publish(const char* path, const uint8_t* bytes, uint32_t length)
+{
+  mdl_storage_t* storage = mdl_test_storage_get();
+  fw_fs_stat_t   stat    = {};
+  ra8_err_t      error   = fw_fs_stat(&storage->fs->names, path, &stat);
+  if ((error == k_ra8_ok) && stat.exists) {
+    error = fw_fs_unlink(&storage->fs->names, path);
+  }
+  mdl_storage_txn_t writer = {};
+  if (error == k_ra8_ok) {
+    error = mdl_storage_txn_begin_new(&writer, storage, path);
+  }
+  if (error == k_ra8_ok) {
+    error = mdl_storage_txn_write(&writer, bytes, length);
+  }
+  if (error == k_ra8_ok) {
+    error = mdl_storage_txn_commit(&writer);
+  } else if (writer.transaction.active) {
+    const ra8_err_t aborted = mdl_storage_txn_abort(&writer);
+    if (aborted != k_ra8_ok) {
+      error = aborted;
+    }
+  }
+  return error;
+}
+
+/**
+ * @brief Build the shared flat-book fixture and wrap it in a real RBKC container.
+ * @details Runs the production flat-book finalizer and chunked container writer
+ *          against bounded test-owned buffers, returning the encoded extent.
+ * @param[out] rbkc_size Receives the encoded container extent.
+ * @return Production builder/container status.
+ * @retval k_ra8_ok The complete RBKC container occupies @p s_rbkc.
+ * @retval other Flat-book finalization or container encoding failed.
+ * @pre The shared fixture arrays are exclusively owned by this test.
+ * @pre @p rbkc_size is non-NULL and writable.
+ * @post Success publishes an extent no larger than @p s_rbkc.
+ * @post Failure makes no validity claim about the shared output bytes.
+ * @note Test-only and not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_build_rbkc(uint64_t* rbkc_size)
+{
+  ra8_rabook_ctx_t            builder   = {};
+  ra8_test_rabook_roundtrip_t roundtrip = {};
+  ra8_test_rabook_init(&s_fixture, &builder);
+  ra8_test_rabook_populate(&s_fixture, &builder, &roundtrip, false);
+  ra8_err_t error = ra8_rabook_finalize(&builder, &roundtrip.blob, &roundtrip.blob_len);
+
+  mdl_rabook_memory_t              memory    = {.flat      = (const uint8_t*)roundtrip.blob,
+                                                .flat_size = roundtrip.blob_len,
+                                                .rbkc      = s_rbkc,
+                                                .rbkc_cap  = sizeof(s_rbkc)};
+  ra8_rabook_container_workspace_t workspace = {
+    .input          = s_chunk,
+    .compressed     = s_compressed,
+    .compressor     = &s_compressor.compressor,
+    .offsets        = s_offsets,
+    .input_cap      = sizeof(s_chunk),
+    .compressed_cap = sizeof(s_compressed),
+    .compressor_cap = sizeof(s_compressor.compressor),
+    .offset_cap     = (uint32_t)k_test_offset_entries,
+  };
+  if (error == k_ra8_ok) {
+    error = ra8_rabook_container_write(internal_flat_read,
+                                       &memory,
+                                       roundtrip.blob_len,
+                                       (uint32_t)k_test_chunk_bytes,
+                                       internal_rbkc_write,
+                                       &memory,
+                                       &workspace,
+                                       rbkc_size);
+  }
+  return error;
+}
+
+/**
+ * @test internal_test_strict_rabook_verify
+ * @brief A real RBKC passes and a one-byte-corrupted stream is rejected.
+ * @details Builds through production flat/container writers, publishes through
+ *          portable transactions, checks reported chapter/image counts, then
+ *          flips a compressed payload byte and proves strict validation fails.
+ * @pre The shared fixture arrays and `/tmp` paths are exclusively owned.
+ * @pre Downloader storage initialization succeeded.
+ * @post The valid report matches the builder fixture.
+ * @post Both temporary files are removed before return.
+ * @note Test-only; assertion failure terminates the process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_strict_rabook_verify(void)
+{
+  TEST_BEGIN("media rabook strict verify");
+  uint64_t rbkc_size = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, internal_build_rbkc(&rbkc_size));
+  TEST_ASSERT(rbkc_size <= UINT32_MAX);
+  const char* const valid_path = "/tmp/mdl-rabook-valid.rabook";
+  const char* const bad_path   = "/tmp/mdl-rabook-bad.rabook";
+  TEST_ASSERT_EQ(k_ra8_ok, internal_publish(valid_path, s_rbkc, (uint32_t)rbkc_size));
+
+  mdl_export_workspace_t verify_workspace;
+  mdl_export_workspace_init(&verify_workspace, s_verify_arena, sizeof(s_verify_arena));
+  mdl_verify_report_t report = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 mdl_verify_file(mdl_test_storage_get(),
+                                 k_mdl_fmt_rabook,
+                                 valid_path,
+                                 &verify_workspace,
+                                 &report));
+  TEST_ASSERT_EQ(1U, report.page_count);
+  TEST_ASSERT_EQ(1U, report.member_count);
+  TEST_ASSERT(report.metadata_present);
+
+  s_rbkc[(size_t)rbkc_size - 1U] ^= UINT8_C(0x01);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_publish(bad_path, s_rbkc, (uint32_t)rbkc_size));
+  mdl_export_workspace_init(&verify_workspace, s_verify_arena, sizeof(s_verify_arena));
+  TEST_ASSERT(mdl_verify_file(mdl_test_storage_get(),
+                              k_mdl_fmt_rabook,
+                              bad_path,
+                              &verify_workspace,
+                              &report) != k_ra8_ok);
+
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&mdl_test_storage_get()->fs->names, valid_path));
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&mdl_test_storage_get()->fs->names, bad_path));
+  TEST_END("media rabook strict verify");
+}
+
+/**
+ * @brief Run the strict RBKC verifier regression.
+ * @return Zero after all assertions pass.
+ * @retval 0 The real and corrupt container vectors behaved exactly.
+ * @pre The root-confined portable test storage can be initialized.
+ * @pre The Unity-minimal assertion process is active.
+ * @post Test storage is deinitialized and fixture paths are absent.
+ * @post No ownership escapes the process.
+ * @note Host-only and serial.
+ * @since 0.1.0
+ */
+int main(void)
+{
+  TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_init());
+  internal_test_strict_rabook_verify();
+  TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_deinit());
+  return 0;
+}

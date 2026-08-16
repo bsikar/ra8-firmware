@@ -6,8 +6,9 @@
  * The currently supported writers are CBZ (ZIP), CBT (tar), gzip-wrapped CBT,
  * EPUB, and the native JOF tile atlas. They use in-tree implementations and
  * caller-owned bounded storage so the host tool exercises the same no-heap
- * constraints as portable reader code. CBR, xz-wrapped CBT, and RABOOK enum
- * values remain reserved until in-tree bounded writers and validators exist.
+ * constraints as portable reader code. CBR and xz-wrapped CBT remain reserved.
+ * RABOOK has an in-tree strict reader but remains unavailable as a chapter
+ * writer until its bounded fixed-layout export path is composed here.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

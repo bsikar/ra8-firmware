@@ -13,6 +13,7 @@
 #include <limits.h>
 #include <string.h>
 
+#include "mdl_verify_rabook_internal.h"
 #include "miniz.h"
 #include "ra8_attributes.h"
 #include "ra8_jof.h"
@@ -187,6 +188,7 @@ ra8_err_t mdl_format_from_path(const char* path, mdl_format_t* out_format)
     const char*  suffix; /**< Complete artifact suffix. */
     mdl_format_t format; /**< Corresponding format.     */
   } formats[] = {{".cbt.gz", k_mdl_fmt_cbt_gz},
+                 {".rabook", k_mdl_fmt_rabook},
                  {".epub", k_mdl_fmt_epub},
                  {".cbz", k_mdl_fmt_cbz},
                  {".cbt", k_mdl_fmt_cbt},
@@ -204,7 +206,7 @@ ra8_err_t mdl_format_from_path(const char* path, mdl_format_t* out_format)
 bool mdl_format_is_verifiable(mdl_format_t format)
 {
   return (format == k_mdl_fmt_cbz) || (format == k_mdl_fmt_cbt) || (format == k_mdl_fmt_cbt_gz) ||
-         (format == k_mdl_fmt_epub) || (format == k_mdl_fmt_jof);
+         (format == k_mdl_fmt_epub) || (format == k_mdl_fmt_jof) || (format == k_mdl_fmt_rabook);
 }
 
 /** @brief Allocate one aligned miniz span from a monotonic arena. */
@@ -907,9 +909,10 @@ RA8_INTERNAL static ra8_err_t internal_verify_borrowed(mdl_verify_io_t*        i
       return internal_verify_jof(io, report);
     case k_mdl_fmt_cbt_gz:
       return internal_verify_gzip_tar(io, workspace, report);
+    case k_mdl_fmt_rabook:
+      return priv_mdl_verify_rabook(io->file, io->size_bytes, workspace, report);
     case k_mdl_fmt_cbr:
     case k_mdl_fmt_cbt_xz:
-    case k_mdl_fmt_rabook:
       return k_ra8_err_not_supported;
     case k_mdl_fmt_loose:
     case k_mdl_fmt_invalid:
