@@ -519,7 +519,7 @@ RA8_INTERNAL static void internal_test_get_dim_sof0_bad_precision(void)
  * @return 0 on success; non-zero (via exit(1)) on any assertion failure.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   ra8_fake_mmap_reset();
   internal_test_br_fill_empty_buffer();

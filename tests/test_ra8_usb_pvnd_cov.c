@@ -273,7 +273,7 @@ RA8_INTERNAL static void internal_test_init_device_init_failure(void)
   TEST_END("ra8_usb_pvnd_init maps a device-init failure to hw_init_failed");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_set_descriptors_paths();
   internal_test_recv_empty_pipe();

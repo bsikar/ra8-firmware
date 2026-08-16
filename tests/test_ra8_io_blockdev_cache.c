@@ -194,7 +194,7 @@ RA8_INTERNAL static void internal_test_init_validation(void)
   TEST_END("cache init validation");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_hit_miss_lru();
   internal_test_write_through();

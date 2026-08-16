@@ -739,7 +739,7 @@ RA8_INTERNAL static void internal_test_is_num_start_above_nine_mcdc(void)
  * @note Not thread-safe (single-threaded test runner).
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_ws_class_mcdc();
   internal_test_hex_digit_mcdc();

@@ -589,7 +589,7 @@ RA8_INTERNAL static void internal_test_render_glyph_success(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   /* Load the real font once before the font-dependent groups. */
   (void)internal_load_ahem();

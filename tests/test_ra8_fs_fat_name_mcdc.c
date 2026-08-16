@@ -170,7 +170,7 @@ RA8_INTERNAL static void internal_test_mcdc_83_to_str_kanji_escape(void)
   TEST_END("ra8_fs name MC/DC: priv_83_to_str kanji escape (deactivated)");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mcdc_to_upper_ascii_range();
   internal_test_mcdc_pack_base_scan_loop();

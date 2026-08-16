@@ -607,7 +607,7 @@ static void test_uart_console_read_byte_available(void)
  * @note Not thread-safe; single-threaded test runner.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   test_mipi_dsi_phy_succeeds_hs_clock_fails();
   test_uart_console_write_not_initialized();

@@ -717,7 +717,7 @@ static void test_aead_decrypt_error_legs(void)
   TEST_END("psa aead_decrypt error legs (not-init, out_cap < plain_len)");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_mcdc_handle_valid_range_check();
   test_mcdc_key_import_arg_quad();

@@ -129,7 +129,7 @@ static void test_mem_ecc_2bit_decodes_uncorrectable(void)
   TEST_END("mem_ecc: 2-bit injection decodes as uncorrectable");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_mem_ecc_1bit_decodes_correctable();
   test_mem_ecc_2bit_decodes_uncorrectable();

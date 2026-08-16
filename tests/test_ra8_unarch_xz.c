@@ -703,7 +703,7 @@ static void internal_test_xz_unwrap_policy_bounds(void)
  * @brief Test entry point -- runs the XZ wrapper suite in order.
  * @return 0 on success; unity_minimal.h exits non-zero on the first failure.
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_xz_pool_edges();
   internal_test_xz_mem_read_edges();

@@ -592,7 +592,7 @@ RA8_INTERNAL static void internal_test_exfat_gather_name_skip_non_name(void)
 
 /* ---- entry point -------------------------------------------------------- */
 
-int32_t main(void)
+int main(void)
 {
   internal_test_exfat_unlink_not_found();
   internal_test_exfat_rename_new_exists();

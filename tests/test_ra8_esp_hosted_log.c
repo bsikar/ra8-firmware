@@ -811,7 +811,7 @@ RA8_INTERNAL static void internal_test_log_alloc_failed(void)
   TEST_END("log alloc failed");
 }
 
-int32_t main(void)
+int main(void)
 {
   ra8_log_init();
   ra8_log_set_byte_sink(internal_t_sink, nullptr);

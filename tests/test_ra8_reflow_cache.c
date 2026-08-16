@@ -555,7 +555,7 @@ RA8_INTERNAL static void internal_test_mcdc_cache_load(void)
   TEST_END("reflow_cache: ra8_reflow_cache_load MC/DC");
 }
 
-int32_t main(void)
+int main(void)
 {
   for (size_t i = 0U; i < (size_t)k_t_font_len; ++i) {
     s_font[i] = (uint8_t)((i * (size_t)k_t_font_seed) + 1U);

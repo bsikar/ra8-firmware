@@ -428,7 +428,7 @@ static void test_mcdc_adc_selfdiag(void)
   TEST_END("MC/DC: in_band AND, pass AND, supported_chan OR");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_self_diagnose_rejects();
   test_self_diagnose_mode1_pass();

@@ -888,7 +888,7 @@ RA8_INTERNAL static void internal_host_log_sink(void* context, uint8_t byte)
  * @note Not thread-safe. No SIGALRM / timers used.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   ra8_log_set_byte_sink(internal_host_log_sink, nullptr);
   test_manga_work_arena_covers_advertised_cap();

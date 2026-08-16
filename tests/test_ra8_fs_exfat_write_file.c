@@ -636,7 +636,7 @@ RA8_INTERNAL static void internal_test_exfat_rmdir_dispatches(void)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_exfat_create_new();
   internal_test_exfat_overwrite_same_size();

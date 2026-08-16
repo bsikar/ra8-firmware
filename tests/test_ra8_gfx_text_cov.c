@@ -436,7 +436,7 @@ static void test_text_size_measures(void)
  * @note Not thread-safe; runs single-threaded.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   /* MUST be first: lands the not-initialised guards before any init. */
   test_uninitialized_guards();

@@ -308,7 +308,7 @@ static void test_dwt_reset_and_read(void)
   TEST_END("dwt reset zeroes CYCCNT; read samples it");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_reload_for_rejects_null();
   test_reload_for_computes_values();

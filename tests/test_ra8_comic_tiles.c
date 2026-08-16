@@ -940,7 +940,7 @@ RA8_INTERNAL static void internal_test_guards(void)
   TEST_END("comic tiles: fail-closed guards");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_footprint_and_budget();
   internal_test_large_page_opens();

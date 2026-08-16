@@ -473,7 +473,7 @@ RA8_INTERNAL static void internal_test_mstp_init_passes_with_ns_usb(void)
   TEST_END("ra8_mstp_init: succeeds with USB delegated Non-secure");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_init_zeroes_refcounts_and_sets_all_stopped();
   internal_test_enable_clears_bit_first_request();

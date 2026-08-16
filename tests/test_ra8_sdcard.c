@@ -453,7 +453,7 @@ static void test_init_4bit_declined_stays_1bit(void)
   TEST_END("sdcard init: declined 4-bit falls back to 1-bit, init ok");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_null_cfg();
   test_deinit_idempotent();

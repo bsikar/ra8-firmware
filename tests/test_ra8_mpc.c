@@ -218,7 +218,7 @@ static void test_bounds_checks(void)
   TEST_END("ra8_mpc: bounds checks");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_route_peripheral_sets_pmr_and_psel();
   test_set_gpio_output_clears_pmr();

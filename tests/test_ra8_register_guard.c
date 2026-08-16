@@ -44,7 +44,7 @@ static void test_nested_guards(void)
   TEST_END("nested guards");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_enter_exit_compiles();
   test_nested_guards();

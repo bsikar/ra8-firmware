@@ -593,7 +593,7 @@ static void test_eth_frame_parse_short_frame(void)
   TEST_END("eth frame fixture: short frame -> k_ra8_err_invalid_arg");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_clear_status_mcdc_port_block();
   test_set_mode_mcdc_port_mode();

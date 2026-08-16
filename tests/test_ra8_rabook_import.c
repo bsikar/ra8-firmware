@@ -574,7 +574,7 @@ RA8_INTERNAL static void internal_test_name_derivation_edges(void)
   TEST_END("ra8_rabook_import: name derivation edges");
 }
 
-int32_t main(void)
+int main(void)
 {
   ra8_log_set_byte_sink(internal_test_log_sink, nullptr);
   internal_test_miss_then_hit();

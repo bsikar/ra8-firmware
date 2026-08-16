@@ -262,7 +262,7 @@ static void test_mcdc_software_standby_wupen(void)
   TEST_END("ra8_pwr_enter_software_standby MC/DC: wupen0==0 && wupen1==0");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_clears_wupen_and_resets_mstp();
   test_module_request_release_round_trip();

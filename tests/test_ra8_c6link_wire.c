@@ -611,7 +611,7 @@ RA8_INTERNAL static void internal_test_mcdc_caps_guard(void)
   TEST_END("c6link caps guard vectors");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_arena_guards();
   internal_test_arena_bump();

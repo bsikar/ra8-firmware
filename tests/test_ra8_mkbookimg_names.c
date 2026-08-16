@@ -205,7 +205,7 @@ static void test_longname_roundtrips_through_mount(void)
   TEST_END("mkbookimg: long book names round-trip through a mount");
 }
 
-int32_t main(void)
+int main(void)
 {
   ra8_log_set_byte_sink(test_log_sink, nullptr);
   test_dest_name_derivation();

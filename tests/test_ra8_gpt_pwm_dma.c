@@ -634,7 +634,7 @@ static void test_mcdc_dead_time_set_tde_predicate(void)
   TEST_END("gpt dead_time_set MC/DC: rising!=0 || falling!=0");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_gpt_write_dma_streams_periods_to_gtpr();
   test_gpt_read_dma_captures_gtcnt();

@@ -893,7 +893,7 @@ RA8_INTERNAL static void internal_test_arc_sweep0_dt_positive_mcdc(void)
  * @note Not thread-safe (single-threaded test runner).
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_xform_separators_unknown();
   internal_test_circle_skip_and_rotated_mcdc();

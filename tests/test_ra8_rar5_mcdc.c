@@ -507,7 +507,7 @@ RA8_INTERNAL static void internal_test_rar5_guards(void)
 
 /* ---- CBR facade: compressed-page parity + RAR4 unsupported --------------- */
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mcdc_copy_match();
   internal_test_mcdc_filter_delta();

@@ -118,7 +118,7 @@ static void test_tamper_dpa_fail_closed(void)
   TEST_END("devsec: tamper + DPA fail closed (no fabricated state)");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_life_fail_closed();
   test_debug_level_fail_closed();

@@ -254,7 +254,7 @@ static void test_default_refresh_hook_called_by_tick(void)
   TEST_END("internal_default_refresh via tick (no custom refresh hook)");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_default_now_hook_called_by_register();
   test_default_refresh_hook_called_by_tick();

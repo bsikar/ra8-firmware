@@ -123,7 +123,7 @@ RA8_INTERNAL static void internal_test_reuse_exfat_then_fat(void)
   TEST_END("ra8_fs mount reuse: exFAT slot reused for FAT16 keeps no stale field");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_reuse_fat_then_exfat();
   internal_test_reuse_exfat_then_fat();

@@ -528,7 +528,7 @@ RA8_INTERNAL static void internal_test_read_and_capacity_faults(void)
   TEST_END("rabook container read and capacity faults");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_multi_chunk_round_trip();
   internal_test_validation();

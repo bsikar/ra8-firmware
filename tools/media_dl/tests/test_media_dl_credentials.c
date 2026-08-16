@@ -172,7 +172,7 @@ RA8_INTERNAL static void internal_test_subsecond_mutation_rejected(void)
   TEST_END("subsecond credential mutation");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_cookie_rows_accepted();
   internal_test_credential_rejection();

@@ -976,7 +976,7 @@ static void test_ra8_book_paged_prefetch_warms(void)
 
   TEST_END("ra8_book prefetch warms adjacent chapter into the cache");
 }
-int32_t main(void)
+int main(void)
 {
   test_ra8_book_paged_chunked_backing();
   test_ra8_book_paged_cyclic_walk_guard();

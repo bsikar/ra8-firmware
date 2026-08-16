@@ -392,7 +392,7 @@ static void test_clip_confines_drawing(void)
   TEST_END("set_clip confines draws; reset_clip + empty clip");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_mcdc_gfx_init_width_range();
   test_mcdc_gfx_init_height_range();

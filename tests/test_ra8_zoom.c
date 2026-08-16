@@ -957,7 +957,7 @@ static void t_dither_phase_is_pan_stable(void)
  * @brief Host test entry point.
  * @return 0 on success; any assertion `exit(1)`s before returning.
  */
-int32_t main(void)
+int main(void)
 {
   t_source_init_validates();
   t_view_open_validates();

@@ -356,7 +356,7 @@ RA8_INTERNAL static void internal_test_subdir_rename_unlink(void)
   TEST_END("rename + unlink inside a subdirectory");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mkdir_basic();
   internal_test_file_in_subdir();

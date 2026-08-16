@@ -469,7 +469,7 @@ static void test_xfer_propagates_timeout(void)
   TEST_END("ra8_sci_spi_xfer: forwards per-frame timeout");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_happy_path();
   test_init_mode3_lsb_first();

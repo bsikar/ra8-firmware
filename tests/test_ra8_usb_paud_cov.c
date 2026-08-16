@@ -202,7 +202,7 @@ RA8_INTERNAL static void internal_test_handle_setup_callback_stall(void)
   TEST_END("ra8_usb_paud_handle_setup stalls EP0 when the callback rejects");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_set_descriptors_post_init();
   internal_test_recv_frame_post_init();

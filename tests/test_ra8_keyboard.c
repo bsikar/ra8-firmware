@@ -372,7 +372,7 @@ RA8_INTERNAL static void internal_test_null_guards(void)
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_layout_letters();
   internal_test_typing_layers();

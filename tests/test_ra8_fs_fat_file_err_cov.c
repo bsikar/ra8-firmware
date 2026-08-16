@@ -479,7 +479,7 @@ RA8_INTERNAL static void internal_test_dir_find_io_error(void)
  * @note Not thread-safe (single-threaded test runner).
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_root_dir_full();
   internal_test_create_no_file_slot();

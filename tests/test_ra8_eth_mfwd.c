@@ -164,7 +164,7 @@ static void test_mcdc_route_queue_bounds(void)
   TEST_END("mfwd route_queue MC/DC bounds");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init();
   test_deinit();

@@ -231,7 +231,7 @@ static void test_attach_and_dispatch(void)
   TEST_END("iwdt attach + dispatch");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_returns_ok();
   test_register_layout_matches_fsp();

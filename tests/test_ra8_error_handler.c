@@ -171,7 +171,7 @@ RA8_INTERNAL static void internal_test_fatal_error_large_code(void)
   TEST_END("ra8_fatal_error with large err");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_fatal_error_path();
   internal_test_fatal_error_zero_code();

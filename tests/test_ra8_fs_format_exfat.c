@@ -323,7 +323,7 @@ RA8_INTERNAL static void internal_test_format_exfat_upcase_write_fail(void)
   TEST_END("ra8_fs format: exFAT up-case write failure aborts the format");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_format_exfat_mount_empty();
   internal_test_exfat_spc_shift_tiers();

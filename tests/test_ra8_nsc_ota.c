@@ -102,7 +102,7 @@ static void internal_test_nsc_flash_bank_config_forward(void)
   TEST_END("ra8_nsc_flash_bank_config forwards (no compound decisions)");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mcdc_nsc_ota_commit_target_bank();
   internal_test_nsc_flash_bank_config_forward();

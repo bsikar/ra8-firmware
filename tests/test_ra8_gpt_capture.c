@@ -343,7 +343,7 @@ static void test_mcdc_event_count_configure_arg_guard(void)
   TEST_END("gpt event_count_configure MC/DC: up&~valid || down&~valid");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_capture_configure_a_writes_gticasr();
   test_capture_configure_b_writes_gticbsr();

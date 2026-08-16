@@ -726,7 +726,7 @@ RA8_INTERNAL static void internal_test_mcdc_itm_put_u32_loop(void)
   TEST_END("ra8_log put_u32 MC/DC: value!=0 && i<max_digits");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_log_unbound_host_drops();
   internal_test_log_init_runs();

@@ -461,7 +461,7 @@ static void t_fnv1a_matches_the_reference(void)
  * @brief Host test entry point.
  * @return 0 on success; any assertion `exit(1)`s before returning.
  */
-int32_t main(void)
+int main(void)
 {
   t_scene_init_validates();
   t_page_sampler_is_pure_and_bounded();

@@ -402,7 +402,7 @@ RA8_INTERNAL static void internal_test_mcdc_exfat_get_label(void)
   TEST_END("ra8_fs label MC/DC: exfat_get_label (!present || not-0x83)");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_label_fat16_roundtrip();
   internal_test_label_fat16_default_noname();

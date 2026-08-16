@@ -284,7 +284,7 @@ static void test_mcdc_resolve_slot_match(void)
   TEST_END("key_import MC/DC: slot-used && handle-match");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_reset_clears_state();
   test_seal_and_resolve_happy();

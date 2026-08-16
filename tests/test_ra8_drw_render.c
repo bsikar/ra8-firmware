@@ -912,7 +912,7 @@ RA8_INTERNAL static void internal_test_mcdc_drw_internal_rect_off_surface(void)
   TEST_END("drw MC/DC: rect_off_surface OR");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_set_texture_argb8888();
   internal_test_set_texture_clut_rle();

@@ -567,7 +567,7 @@ RA8_INTERNAL static void internal_test_external_link_mcdc(void)
   TEST_END("<link> load decision MC/DC");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_is_xml_whitespace();
   internal_test_classify();

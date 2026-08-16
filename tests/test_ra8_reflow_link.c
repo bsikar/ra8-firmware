@@ -402,7 +402,7 @@ RA8_INTERNAL static void internal_test_hit_test_image_mcdc(void)
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_href_split_classify_mcdc();
   internal_test_href_split_spans();

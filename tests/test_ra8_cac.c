@@ -225,7 +225,7 @@ static void test_power_transition(void)
   TEST_END("cac power transition");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_writes_limits();
   test_measure_null_out_pointer();

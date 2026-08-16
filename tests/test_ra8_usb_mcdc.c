@@ -541,7 +541,7 @@ static void test_mcdc_dcp_in_data_len_data(void)
   TEST_END("mcdc: dcp_in_data (len/data) compound decision");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_mcdc_check_ep_args_pipe_num();
   test_mcdc_check_ep_args_ep_addr();

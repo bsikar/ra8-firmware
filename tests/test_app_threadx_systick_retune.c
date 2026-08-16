@@ -261,7 +261,7 @@ static void test_retune_matches_live_clock(void)
  * @post Every registered test has run.
  * @post Process exit status reflects pass/fail.
  */
-int32_t main(void)
+int main(void)
 {
   test_reload_for_rejects_null();
   test_reload_for_computes_1ghz();

@@ -905,7 +905,7 @@ RA8_INTERNAL static void internal_test_rejects_incoherent_terminal_total(void)
   TEST_END("mdl rejects incoherent terminal total");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_service_init_mcdc();
   internal_test_decode_allocation_mcdc();

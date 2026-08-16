@@ -107,7 +107,7 @@ static void internal_test_mcdc_ra8_nsc_xspi(void)
   TEST_END("ra8_nsc_xspi_read MC/DC: length validator OR");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mcdc_ra8_nsc_xspi();
   return 0;

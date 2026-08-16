@@ -440,7 +440,7 @@ static void test_rar_extract_dispatch(void)
   TEST_END("rar: extract dispatch (store / compressed / guards)");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_rar_extract_dispatch();
   test_cbr_compressed_parity();

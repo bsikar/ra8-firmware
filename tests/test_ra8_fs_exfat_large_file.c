@@ -336,7 +336,7 @@ RA8_INTERNAL static void internal_test_large_truncate_down_through_line(void)
 }
 
 /** @brief Implementation of `main()` -- the >4 GiB exFAT campaign, in order. */
-int32_t main(void)
+int main(void)
 {
   internal_test_large_grow_and_boundary_reads();
   internal_test_large_written_data_across_boundary();

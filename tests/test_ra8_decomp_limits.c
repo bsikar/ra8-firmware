@@ -415,7 +415,7 @@ RA8_INTERNAL static void internal_test_zip_entry_preflight(void)
  * @brief Test entry point -- runs the decompression-limits suite in order.
  * @return 0 on success; unity_minimal.h exits non-zero on the first failure.
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_decomp_default_policy();
   internal_test_decomp_zero_field_rejected();

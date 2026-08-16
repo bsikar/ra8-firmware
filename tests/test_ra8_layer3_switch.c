@@ -149,7 +149,7 @@ static void test_status(void)
   TEST_END("status_get null + reflects state");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_open_null();
   test_open_bad_args();

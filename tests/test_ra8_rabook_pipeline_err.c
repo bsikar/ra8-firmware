@@ -676,7 +676,7 @@ RA8_INTERNAL static void internal_test_pipeline_closed_book_chapter_count_fails(
   TEST_END("ra8_rabook_pipeline: closed book fails at chapter count");
 }
 
-int32_t main(void)
+int main(void)
 {
   ra8_log_set_byte_sink(internal_log_sink, nullptr);
   internal_test_pipeline_raster_images_transcoded();

@@ -870,7 +870,7 @@ RA8_INTERNAL static void internal_test_cluster_at_chain_ends_early(void)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_grow_bitmap_lookup_read_fails();
   internal_test_grow_bitmap_probe_read_fails();

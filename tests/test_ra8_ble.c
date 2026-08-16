@@ -526,7 +526,7 @@ static void test_mcdc_ble_acl_inject_args(void)
   TEST_END("ble MC/DC: send_acl_data + inject_rx arg pairs");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_open_close();
   test_open_null_cfg();

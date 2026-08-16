@@ -460,7 +460,7 @@ RA8_INTERNAL static void internal_test_body_postcommit_truth_and_nonregular_reje
   TEST_END("fetch body commit truth + nonregular");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_body_chunk_splits_short_writes_and_instances();
   internal_test_body_zero_and_magic_fail_closed();

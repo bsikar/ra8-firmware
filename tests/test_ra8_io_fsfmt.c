@@ -681,7 +681,7 @@ RA8_INTERNAL static void internal_test_mcdc_directory_cursor_guards(void)
   TEST_END("vfs directory cursor guards");
 }
 
-int32_t main(void)
+int main(void)
 {
   ra8_log_set_byte_sink(internal_log_sink, nullptr);
   internal_test_mcdc_directory_cursor_guards();

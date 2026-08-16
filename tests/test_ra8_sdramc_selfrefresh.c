@@ -343,7 +343,7 @@ static void test_init_pin_routing_conflict(void)
   TEST_END("ra8_sdramc_init: pre-claimed bus pin -> routing conflict");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_enter_happy_path();
   test_exit_happy_path();

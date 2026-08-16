@@ -293,7 +293,7 @@ static void (*const s_roster[])(void) = {
  * @note Not thread-safe. No SIGALRM / timers used.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   for (size_t i = 0U; i < (sizeof(s_roster) / sizeof(s_roster[0])); ++i) {
     s_roster[i]();

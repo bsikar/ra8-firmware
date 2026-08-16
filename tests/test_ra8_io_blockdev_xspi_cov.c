@@ -640,7 +640,7 @@ RA8_INTERNAL static void internal_test_xspi_get_caps(void)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_xspi_bounds_count_too_big();
   internal_test_xspi_bounds_lba_overflow();

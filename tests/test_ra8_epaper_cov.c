@@ -936,7 +936,7 @@ static void test_validate_and_size_mcdc(void)
   TEST_END("validate_cfg 5-cond + load_image size 2-cond MC/DC");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_send16_recv16_legs();
   test_wait_ready_fake_leg();

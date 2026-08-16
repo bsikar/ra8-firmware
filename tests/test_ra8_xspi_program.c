@@ -510,7 +510,7 @@ static void test_flash_cmdcmp_timeout(void)
   TEST_END("ra8_xspi flash ops surface a CMDCMP timeout");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_flash_program_address_overflow();
   test_flash_program_and_read_round_trip();

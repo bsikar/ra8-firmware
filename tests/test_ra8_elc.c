@@ -241,7 +241,7 @@ static void test_is_enabled_null_out(void)
   TEST_END("ra8_elc_is_enabled: NULL out rejected");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_link_first_slot();
   test_link_mid_slot();

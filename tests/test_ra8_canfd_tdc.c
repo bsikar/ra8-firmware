@@ -279,7 +279,7 @@ RA8_INTERNAL static void internal_test_tdc_channel1_enable(void)
   TEST_END("tdc channel 1 enable: FDCFG.TDE set");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_tdc_enable_manual_offset();
   internal_test_tdc_enable_measured_mode();

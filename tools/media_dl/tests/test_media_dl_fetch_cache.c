@@ -574,7 +574,7 @@ RA8_INTERNAL static void internal_test_fetch_asset_policy_atomic_and_nonempty(vo
   TEST_END("fetch asset policy + atomic + nonempty");
 }
 
-int32_t main(void)
+int main(void)
 {
   const fw_fs_posix_cfg_t cfg = {.root_path = "/", .removable_media = false};
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_init(&s_fs, &s_fs_posix, &cfg));

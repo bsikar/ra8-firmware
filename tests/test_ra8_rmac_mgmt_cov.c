@@ -275,7 +275,7 @@ static void test_link_status_mdio_error_leg(void)
   TEST_END("rmac_phy_link_status propagates an MDIO read error");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_get_status_bad_port();
   test_clear_status_bad_port();

@@ -398,7 +398,7 @@ RA8_INTERNAL static void internal_test_crashlog_hook_persists_report(void)
   TEST_END("ra8_exception_report persists through the installed hook");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_crashlog_empty_after_wipe();
   internal_test_crashlog_record_then_peek();

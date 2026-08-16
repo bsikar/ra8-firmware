@@ -182,7 +182,7 @@ static void test_null_free_is_noop(void)
   TEST_END("ra8_stbtt_alloc: free(nullptr) is a no-op");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_alignment_and_high_water();
   test_full_drain_auto_reset();

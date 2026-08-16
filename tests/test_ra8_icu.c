@@ -196,7 +196,7 @@ static void test_nmi_enable_disable_clear(void)
   TEST_END("ra8_icu_nmi_enable / disable / clear");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_clears_irqcr_and_nmi();
   test_configure_irq_pin();

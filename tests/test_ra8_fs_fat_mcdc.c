@@ -759,7 +759,7 @@ RA8_INTERNAL static void internal_test_mcdc_exfat_label_pack_terminator_and_cap(
   TEST_END("ra8_fs format MC/DC: exFAT label pack (n<max && label[n])");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mcdc_lfn_name_compare_lengths();
   internal_test_mcdc_lfn_terminator_vs_pad();

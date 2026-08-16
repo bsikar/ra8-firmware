@@ -280,7 +280,7 @@ static void test_target_spcmd_lsb_first(void)
  * =============================================================================
  */
 
-int32_t main(void)
+int main(void)
 {
   ra8_fake_mmap_reset();
   test_target_spcmd_mode1();

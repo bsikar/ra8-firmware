@@ -861,7 +861,7 @@ static void test_persist_power_cycle_roundtrip(void)
   TEST_END("ftl power-cycle survival");
 }
 
-int32_t main(void)
+int main(void)
 {
   ra8_log_set_byte_sink(internal_log_sink, nullptr);
   test_persist_phys_of();

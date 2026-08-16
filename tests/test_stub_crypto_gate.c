@@ -135,7 +135,7 @@ static void test_rsip_key_wrap_roundtrips_stub(void)
   TEST_END("stub-gate: RSIP key-wrap round-trips (non-cryptographic)");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_trng_is_deterministic_stub();
   test_key_vault_challenge_is_reachable();

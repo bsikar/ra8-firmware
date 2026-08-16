@@ -746,7 +746,7 @@ RA8_INTERNAL static void internal_test_name_chunk_eq_folds_a_non_ascii_unit(void
  * @note Not thread-safe.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_decode_lengths();
   internal_test_mixed_name_round_trip();

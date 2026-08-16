@@ -521,7 +521,7 @@ RA8_INTERNAL static void internal_test_retrofit_cbr_paths(void)
  * @brief Test entry point -- runs the retrofit suite in order.
  * @return 0 on success; unity_minimal.h exits non-zero on the first failure.
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_retrofit_epub_guards_direct();
   internal_test_retrofit_epub_open_paths();

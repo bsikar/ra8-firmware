@@ -259,7 +259,7 @@ static void test_sem_is_locked(void)
   TEST_END("ipc sem is_locked");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_semaphore_accessor();
   test_sem_try_take_and_release();

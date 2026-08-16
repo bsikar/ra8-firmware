@@ -817,7 +817,7 @@ static void internal_test_tar_base256_and_gnu_magic(void)
  * @brief Test entry point -- runs the tar walker suite in order.
  * @return 0 on success; unity_minimal.h exits non-zero on the first failure.
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_tar_num_fields();
   internal_test_tar_block_primitives();

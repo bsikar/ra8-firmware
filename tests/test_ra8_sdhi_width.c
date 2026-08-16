@@ -428,7 +428,7 @@ static void test_switch8_bad_instance(void)
   TEST_END("sdhi cmd6: bad instance");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_set_bus_width_validation();
   test_set_bus_width_preserves_timeout();

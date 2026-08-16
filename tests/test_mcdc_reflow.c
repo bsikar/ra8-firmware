@@ -160,7 +160,7 @@ RA8_INTERNAL static void internal_test_svg_scanners_mcdc(void)
  * @return 0 on success; unity macros call exit(1) on the first failure.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_css_ci_eq_null_guard_mcdc();
   internal_test_svg_scanners_mcdc();

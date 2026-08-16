@@ -772,7 +772,7 @@ static void test_mcdc_read_dma_reg_len(void)
   TEST_END("mcdc: read_dma (reg||len==0) decision");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_write_dma_streams_buffer_to_tdr();
   test_read_dma_streams_rdr_to_buffer();

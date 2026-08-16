@@ -418,7 +418,7 @@ static void internal_test_check_report_transaction(void)
   TEST_END("ra8_fs_check publishes its report only after a complete scan");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_check_fat16_exact_bound_tail();
   internal_test_check_fat16_exact_bound_dir_tail();

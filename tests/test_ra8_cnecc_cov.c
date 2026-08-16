@@ -324,7 +324,7 @@ static void test_attach_isr_rolls_back_on_second_failure(void)
   TEST_END("cnecc attach_isr rolls back CAN0 when CAN1 registration fails");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_open_arms_both_instances();
   test_compute_is_deterministic();

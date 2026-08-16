@@ -415,7 +415,7 @@ static void test_set_dtc_rejects_bad_inputs(void)
   TEST_END("ra8_isr_set_dtc: rejects out-of-range and unregistered slots");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_clears_state();
   test_register_allocates_first_slot();

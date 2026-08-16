@@ -368,7 +368,7 @@ RA8_INTERNAL static void internal_test_sdspi_sdhi_bind(void)
   TEST_END("sdspi/sdhi bind");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_sdram_backend();
   internal_test_xspi_geom();

@@ -299,7 +299,7 @@ static void test_power_transition(void)
   TEST_END("poeg power transition");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_configured();
   test_init_null_cfg();

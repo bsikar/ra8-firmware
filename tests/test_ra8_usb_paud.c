@@ -604,7 +604,7 @@ RA8_INTERNAL static void internal_test_mcdc_paud_class_envelope_or_chain(void)
   TEST_END("paud MC/DC: 4-cond class envelope OR (lines 234-235)");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_init_default_format();
   internal_test_init_bad_speed();

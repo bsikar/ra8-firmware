@@ -205,7 +205,7 @@ static void internal_test_glcdc_pdm_eth_init(void)
   TEST_END("ra8_nsc_{glcdc,pdm,eth}_init forwards");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_gpt_init_forwards();
   internal_test_adc_dac_acmphs_init_forwards();

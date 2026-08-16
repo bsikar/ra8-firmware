@@ -748,7 +748,7 @@ RA8_INTERNAL static void internal_log_sink(void* ctx, uint8_t byte)
  * @brief Test entry point -- runs the CBZ comic suite in order.
  * @return 0 on success; unity_minimal.h exits non-zero on the first failure.
  */
-int32_t main(void)
+int main(void)
 {
   ra8_log_set_byte_sink(internal_log_sink, nullptr);
   internal_test_comic_cbz_sorted_extract_decode();

@@ -200,7 +200,7 @@ static void test_mac_key_provisioning(void)
   TEST_END("ra8_key_vault_set/load_mac_key: provision + read back the KAK");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_zeroes_vault();
   test_store_then_challenge();

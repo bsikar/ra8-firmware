@@ -206,7 +206,7 @@ static void test_srand_different_seeds_differ(void)
   TEST_END("srand with different seeds produces different sequences");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_srand_zero_does_not_lock();
   test_srand_nonzero_seeds_deterministically();

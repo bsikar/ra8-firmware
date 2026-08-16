@@ -927,7 +927,7 @@ RA8_INTERNAL static void internal_test_state_coverage(void)
  * @return 0 when all tests passed; a failing assertion aborts via the harness.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   const fw_fs_posix_cfg_t cfg = {.root_path = "/", .removable_media = false};
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_init(&s_fs, &s_fs_posix, &cfg));

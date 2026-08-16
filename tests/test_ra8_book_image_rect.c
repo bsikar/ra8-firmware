@@ -735,7 +735,7 @@ static void test_ra8_book_src_image_rect_faults(void)
   TEST_END("ra8_book_src_image_rect fault propagation");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_ra8_book_src_image_descriptor();
   test_ra8_book_src_image_rect_matches();

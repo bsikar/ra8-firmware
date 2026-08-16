@@ -422,7 +422,7 @@ RA8_INTERNAL static void internal_test_pipeline_parity_realbook_byte_identical(v
 /* Branch-coverage tests (raster transcode, TOC, CSS, error legs) */
 /* -------------------------------------------------------------------------- */
 
-int32_t main(void)
+int main(void)
 {
   ra8_log_set_byte_sink(internal_log_sink, nullptr);
   internal_test_pipeline_text_only_no_cover();

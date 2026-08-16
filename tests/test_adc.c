@@ -102,7 +102,7 @@ static void test_mcdc_adc_validate_group_cfg_num_channels(void)
   TEST_END("adc validate_group_cfg MC/DC: num==0 || num>max");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_mcdc_adc_read_channel_chcr_addr_null();
   test_mcdc_adc_validate_group_cfg_num_channels();

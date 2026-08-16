@@ -467,7 +467,7 @@ static void test_mcdc_ra8_ipc(void)
   TEST_END("ipc MC/DC: can_access + dispatch 2-cond decisions");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_ring_init_and_predicates();
   test_ring_init_bad_params();

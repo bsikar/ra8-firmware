@@ -755,7 +755,7 @@ static void test_deinit(void)
   TEST_END("rmac deinit");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_happy();
   test_init_null_cfg();

@@ -402,7 +402,7 @@ RA8_INTERNAL static void internal_test_font_on_fat_renders_via_reflow(void)
   TEST_END("font on FAT volume -> ra8_fs -> ra8_reflow render");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_font_on_fat_renders_via_reflow();
   TEST_ASSERT_EQ(k_ra8_test_output_ok,

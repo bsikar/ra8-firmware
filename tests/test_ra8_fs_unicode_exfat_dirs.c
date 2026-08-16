@@ -492,7 +492,7 @@ RA8_INTERNAL static void internal_test_unicode_showcase_volume(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_mkdir_non_ascii_round_trip();
   internal_test_nested_non_ascii_path();

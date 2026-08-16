@@ -847,7 +847,7 @@ RA8_INTERNAL static void internal_test_mcdc_aes_cipher_block_align_quad(void)
   TEST_END("rsip aes_cipher MC/DC: (ECB||CBC||CMAC) && len%16!=0");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_install_aes128_plain();
   internal_test_install_aes_192_256();

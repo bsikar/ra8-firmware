@@ -143,7 +143,7 @@ static void test_memzero_clears_and_guards(void)
   TEST_END("ra8_secure_memzero: clears buffer + NULL/zero-length guards");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_ct_equal_matches();
   test_ct_equal_differs();

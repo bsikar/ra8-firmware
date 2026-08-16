@@ -374,7 +374,7 @@ RA8_INTERNAL static void internal_test_cov_setattr_io_errors(void)
   TEST_END("ra8_fs set_attr cov: FAT + exFAT resolve/read/write errors");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_cov_space_io_errors();
   internal_test_cov_label_io_errors();

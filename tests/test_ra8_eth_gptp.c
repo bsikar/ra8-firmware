@@ -528,7 +528,7 @@ RA8_INTERNAL static void internal_test_mstp_timeout(void)
   TEST_END("gptp mstp timeout");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_tiv_from_hz();
   internal_test_init();

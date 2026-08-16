@@ -183,7 +183,7 @@ static void test_demo_micros_conversion(void)
   TEST_END("hal_timebase_demo: cycles-to-microseconds conversion");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_demo_reload_banner();
   test_demo_arms_systick();

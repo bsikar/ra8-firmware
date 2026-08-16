@@ -109,7 +109,7 @@ static void internal_test_nsc_wdt_refresh_kicks(void)
  * @brief Test entry point -- runs the NSC WDT veneer suite in order.
  * @return 0 on success; unity_minimal.h exits non-zero on the first failure.
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_nsc_wdt_start_arms();
   internal_test_nsc_wdt_refresh_kicks();

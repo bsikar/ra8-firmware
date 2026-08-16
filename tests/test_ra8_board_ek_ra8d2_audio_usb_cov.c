@@ -692,7 +692,7 @@ RA8_INTERNAL static void internal_test_usbhs_host_init_full_bringup(void)
  * @note Not thread-safe; single-threaded test runner.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_audio_init_all_bit_depths();
   internal_test_audio_route_pin_conflict();

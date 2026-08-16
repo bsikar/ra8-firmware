@@ -382,7 +382,7 @@ RA8_INTERNAL static void internal_test_errno_map(void)
   TEST_END("POSIX stream errno");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_native_pipe();
   internal_test_two_bindings();

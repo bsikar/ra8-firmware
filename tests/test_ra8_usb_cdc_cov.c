@@ -185,7 +185,7 @@ static void test_recv_forwards_to_queue_out(void)
   TEST_END("ra8_usb_cdc_recv forwards to ra8_usb_queue_out (no-data leg)");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_handle_setup_set_line_coding();
   test_handle_setup_unknown_class_request();

@@ -583,7 +583,7 @@ RA8_INTERNAL static void internal_test_bulk_in_frdy_timeout(void)
   TEST_END("ra8_usb_host_bulk_in surfaces the rx-packet FRDY timeout");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_set_target_rejects_and_applies();
   internal_test_pipe_setup_arg_validation();

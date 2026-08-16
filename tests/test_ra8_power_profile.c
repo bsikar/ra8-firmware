@@ -355,7 +355,7 @@ RA8_INTERNAL static void internal_test_multiple_regions_independent(void)
   TEST_END("multiple regions independent");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_init_rejects_null_cfg();
   internal_test_init_zeroes_stats();

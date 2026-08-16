@@ -628,7 +628,7 @@ RA8_INTERNAL static void internal_test_cov_render_face_index_clamp(void)
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_cov_render_bad_default_font();
   internal_test_cov_render_link_underline();

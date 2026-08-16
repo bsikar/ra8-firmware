@@ -452,7 +452,7 @@ RA8_INTERNAL static void internal_test_uart_sink_errors(void)
   TEST_END("uart sink errors");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_vfs_compress_round_trip();
   internal_test_vfs_compress_write_validation();

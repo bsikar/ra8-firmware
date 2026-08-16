@@ -650,7 +650,7 @@ RA8_INTERNAL static void internal_test_dcp_out_read_frdy_timeout(void)
   TEST_END("dcp_out_read surfaces the FRDY timeout leg");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_control_xfer_guards();
   internal_test_setup_error_legs();

@@ -245,7 +245,7 @@ static void test_null_args(void)
   TEST_END("rsip ki null args");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_inject_aes128_roundtrip();
   test_inject_aes_bad_width();

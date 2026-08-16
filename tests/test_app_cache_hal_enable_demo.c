@@ -152,7 +152,7 @@ static void test_cacheable_round_trip_matches(void)
   TEST_END("cache_hal_enable_demo: cacheable-SRAM round-trip matches");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_boot_enable_sequence_brings_up_both_caches();
   test_cacheable_round_trip_matches();

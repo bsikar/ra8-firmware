@@ -317,7 +317,7 @@ static void test_enter_exit_stop(void)
   TEST_END("sram enter_stop / exit_stop ok");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_null_cfg();
   test_init_happy_disabled();

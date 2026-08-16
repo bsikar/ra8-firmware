@@ -218,7 +218,7 @@ RA8_INTERNAL static void internal_host_log_sink(void* context, uint8_t byte)
   (void)byte;
 }
 
-int32_t main(void)
+int main(void)
 {
   ra8_log_set_byte_sink(internal_host_log_sink, nullptr);
   internal_test_init_alloc_exhaust();

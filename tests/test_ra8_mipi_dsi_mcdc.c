@@ -713,7 +713,7 @@ static void test_mcdc_ulps_exit_clock_lane_state_pair(void)
   TEST_END("mipi_dsi MC/DC ulps_exit: (lanes & CLOCK) && s_clock_in_ulps");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_mcdc_validate_cfg_lane_count();
   test_mcdc_validate_cmd_short_paths();

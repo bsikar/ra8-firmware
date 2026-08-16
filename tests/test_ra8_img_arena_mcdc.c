@@ -83,7 +83,7 @@ static void test_arena_free_null_guard_mcdc(void)
  * @return 0 on success; unity macros call exit(1) on the first failure.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   test_arena_free_null_guard_mcdc();
   return 0;

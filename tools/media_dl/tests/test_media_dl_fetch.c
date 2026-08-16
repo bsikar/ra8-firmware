@@ -823,7 +823,7 @@ RA8_INTERNAL static void internal_test_progress_failure_stops_run(void)
   TEST_END("progress failure stops remaining work");
 }
 
-int32_t main(void)
+int main(void)
 {
   const fw_fs_posix_cfg_t cfg = {.root_path = "/", .removable_media = false};
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_init(&s_fs, &s_fs_posix, &cfg));

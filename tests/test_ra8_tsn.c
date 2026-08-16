@@ -387,7 +387,7 @@ static void test_mcdc_ra8_tsn(void)
   TEST_END("tsn MC/DC: validate_cfg high/low ref decisions");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_happy();
   test_init_null_cfg();

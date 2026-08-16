@@ -179,7 +179,7 @@ static void test_hmac_sha256_rfc4231(void)
   TEST_END("RSIP HMAC-SHA-256 RFC 4231 known-answer vectors");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_hmac_sha256_rfc4231();
   return 0;

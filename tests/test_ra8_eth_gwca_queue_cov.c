@@ -235,7 +235,7 @@ RA8_INTERNAL static void internal_test_tx_frame_unbacked_slot(void)
   TEST_END("tx_frame unbacked slot");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_compose_stop_on_last();
   internal_test_decode_ptr_null();

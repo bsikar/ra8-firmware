@@ -239,7 +239,7 @@ static void test_install_uninstall_isr(void)
   TEST_END("ipc install/uninstall ISR");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_attach_and_dispatch_message();
   test_dispatch_no_callback_is_safe();

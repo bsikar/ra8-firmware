@@ -322,7 +322,7 @@ RA8_INTERNAL static void internal_test_align_offset_mcdc(void)
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_align_left_right_center();
   internal_test_align_justify();

@@ -616,7 +616,7 @@ static void test_cov_byte_swap_16_bit(void)
  * @note Not thread-safe; runs as a single-threaded process.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   test_cov_validate_y_bottom_misaligned();
   test_cov_validate_c_bottom_misaligned();

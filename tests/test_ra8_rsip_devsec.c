@@ -664,7 +664,7 @@ RA8_INTERNAL static void internal_test_mcdc_kdf_hkdf_ikm_required_quad(void)
   TEST_END("rsip kdf MC/DC: (HKDF256||HKDF384||HKDF512) && ikm==NULL");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_rsa_sign_verify();
   internal_test_rsa_engine_error_paths();

@@ -359,7 +359,7 @@ RA8_INTERNAL static void internal_test_exception_report_clears_stale_nmi_cause(v
   TEST_END("ra8_exception_report clears the staged NMI cause");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_capture_diagnostics_happy();
   internal_test_capture_diagnostics_null();

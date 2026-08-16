@@ -501,7 +501,7 @@ static void test_link_status_speed_10half(void)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   test_open_write_fails();
   test_open_poll_read_fails();

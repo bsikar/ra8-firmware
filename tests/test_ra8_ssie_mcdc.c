@@ -520,7 +520,7 @@ static void test_mcdc_attach_dma_pair(void)
                                           (uint8_t)k_ssie_mcdc_dma_bad));
   TEST_END("ssie MC/DC attach_dma_pair both-out-of-range guard");
 }
-int32_t main(void)
+int main(void)
 {
   test_mcdc_init_lrcont();
   test_mcdc_init_bckastp();

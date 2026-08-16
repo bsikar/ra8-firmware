@@ -540,7 +540,7 @@ static void test_eri_dispatch_clears_errors(void)
   TEST_END("ra8_sci_dispatch_eri clears CSR flags");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_sets_ccr0_enables();
   test_init_rejects_bad_channel();

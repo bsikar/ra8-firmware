@@ -955,7 +955,7 @@ RA8_INTERNAL static void internal_test_ncov_dir_find_initial_read_fail(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_ncov_path_to_83_null_guards();
   internal_test_ncov_path_to_83_leading_slash();

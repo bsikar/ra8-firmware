@@ -313,7 +313,7 @@ static void test_pin_map_invariants(void)
   TEST_END("pins map invariants");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_irq_num_routed_pins();
   test_irq_num_unrouted_pins();

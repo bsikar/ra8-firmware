@@ -526,7 +526,7 @@ RA8_INTERNAL static void internal_test_exfat_truncate_rejects_readonly(void)
  * @post A success banner is written to stderr.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_exfat_shrink_contiguous();
   internal_test_exfat_shrink_to_zero();

@@ -874,7 +874,7 @@ RA8_INTERNAL static void internal_test_write_file_refuses_a_directory(void)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_rmdir_basic();
   internal_test_rmdir_nested();

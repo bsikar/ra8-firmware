@@ -208,7 +208,7 @@ static void internal_test_periph_init_always_ok_after_first(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_periph_init_first_call();
   internal_test_periph_init_idempotent_second_call();

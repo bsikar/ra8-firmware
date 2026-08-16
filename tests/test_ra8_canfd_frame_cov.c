@@ -312,7 +312,7 @@ static void test_receive_standard_classic_ch1(void)
  * @return 0 on success; calls exit(1) on first assertion failure.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   test_receive_empty_fifo_no_data();
   test_receive_full_payload_ext_fd();

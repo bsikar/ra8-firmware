@@ -383,7 +383,7 @@ static void test_dispatch_out_of_range(void)
   TEST_END("ra8_dma_dispatch_complete: out-of-range is no-op");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_marks_channels_free();
   test_request_allocates_channel_zero();

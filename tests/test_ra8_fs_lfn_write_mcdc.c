@@ -653,7 +653,7 @@ RA8_INTERNAL static void internal_test_fill_slot_round_trips_through_the_reader(
  * @note Not thread-safe.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_classify_length_bounds();
   internal_test_classify_illegal_characters();

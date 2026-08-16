@@ -929,7 +929,7 @@ RA8_INTERNAL static void internal_test_read_cache_unset_after_write(void)
   TEST_END("ra8_fs_fileio: read after write walks from head (cache unset)");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_read_seek_tell_size_not_in_use();
   internal_test_read_cache_unset_after_write();

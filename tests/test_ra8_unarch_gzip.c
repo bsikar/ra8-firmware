@@ -504,7 +504,7 @@ static void internal_test_gzip_policy_bounds(void)
  * @brief Test entry point -- runs the gzip decoder suite in order.
  * @return 0 on success; unity_minimal.h exits non-zero on the first failure.
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_gzip_magic_and_guards();
   internal_test_gzip_honest_members();

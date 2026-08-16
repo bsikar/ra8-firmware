@@ -460,7 +460,7 @@ RA8_INTERNAL static void internal_test_fat32_root_walker_skips_and_follows_chain
   TEST_END("ra8_fs FAT32: root walker skips deleted/LFN and follows chain");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_fat12_large_chain_hits_12bit_dispatch_and_straddle();
   internal_test_fat32_write_preserves_reserved_nibble_and_round_trips();

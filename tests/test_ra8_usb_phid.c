@@ -719,7 +719,7 @@ RA8_INTERNAL static void internal_test_mcdc_phid_known_class_request_or_chain(vo
   TEST_END("phid MC/DC: 6-cond known-class-request OR (lines 220-222)");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_init_fs();
   internal_test_init_bad_speed();

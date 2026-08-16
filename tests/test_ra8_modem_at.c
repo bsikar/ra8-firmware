@@ -853,7 +853,7 @@ static void internal_test_default_timeout_used(void)
   TEST_END("modem_at default timeout applied when 0 passed");
 }
 
-int32_t main(void)
+int main(void)
 {
   /* This test must run BEFORE internal_bring_up() so the initialized flag is 0.
    */

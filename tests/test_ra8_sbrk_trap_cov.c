@@ -245,7 +245,7 @@ RA8_INTERNAL static void internal_test_sbrk_trap_never_returns(void)
   TEST_END("sbrk trap: forked child halts and never returns from _sbrk");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_sbrk_trap_reaches_fatal_sink();
   internal_test_sbrk_trap_never_returns();

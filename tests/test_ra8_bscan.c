@@ -298,7 +298,7 @@ static void test_idcode_constant_matches_header(void)
   TEST_END("bscan idcode constant matches header");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_happy();
   test_get_idcode_happy();

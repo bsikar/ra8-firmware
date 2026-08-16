@@ -549,7 +549,7 @@ RA8_INTERNAL static void internal_test_stream_write_over_directory_refused(void)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_stream_read_past_valid_is_zero();
   internal_test_stream_append_fills_the_gap();

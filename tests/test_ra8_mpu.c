@@ -817,7 +817,7 @@ RA8_INTERNAL static void internal_test_is_enabled_tracks_ctrl(void)
   TEST_END("ra8_mpu_is_enabled reflects MPU_CTRL.ENABLE");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_register_layout();
   internal_test_configure_null_cfg();

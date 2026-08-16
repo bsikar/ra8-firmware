@@ -215,7 +215,7 @@ RA8_INTERNAL static void internal_test_scsi_lun_out_of_range_rejected(void)
   TEST_END("attached SCSI ops reject an out-of-range LUN via internal_check_ready");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_inquiry_attached_drives_bot_push();
   internal_test_read_capacity_attached_drives_bot_push();

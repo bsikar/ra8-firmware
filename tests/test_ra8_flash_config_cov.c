@@ -442,7 +442,7 @@ static void test_extra_mram_write_end_past_extra(void)
  * @return 0 always (a failing assertion aborts the process).
  * @post Every registered test has executed once.
  */
-int32_t main(void)
+int main(void)
 {
   test_arc_read_sec_counts_bits();
   test_arc_read_nsec_all_slots_single();

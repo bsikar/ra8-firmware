@@ -636,7 +636,7 @@ RA8_INTERNAL static void internal_test_write10_backend_error_propagates(void)
   TEST_END("WRITE(10) propagates a write_block backend error");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_inquiry_buffer_too_small();
   internal_test_inquiry_backend_error_propagates();

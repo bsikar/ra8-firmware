@@ -143,7 +143,7 @@ static void test_tx_time_get_returns_zero(void)
  * ---------------------------------------------------------------------------
  */
 
-int32_t main(void)
+int main(void)
 {
   test_tx_thread_sleep_zero_ticks();
   test_tx_thread_sleep_nonzero_ticks();

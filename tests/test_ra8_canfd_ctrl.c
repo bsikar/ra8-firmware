@@ -603,7 +603,7 @@ RA8_INTERNAL static void internal_test_filter_set_timeout_and_page1_legs(void)
 
   TEST_END("canfd filter_set page-1 bump-skip + GL-mode timeouts");
 }
-int32_t main(void)
+int main(void)
 {
   /* Clock-handshake timeout legs MUST run before any successful
    * ra8_canfd_init: the CANFD clock block latches a one-shot static

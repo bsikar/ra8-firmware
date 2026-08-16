@@ -833,7 +833,7 @@ RA8_INTERNAL static void internal_test_decode_grayscale_edge_success(void)
  *         failure.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   ra8_fake_mmap_reset();
   internal_test_decode_top_level_guards();

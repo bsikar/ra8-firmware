@@ -124,7 +124,7 @@ static void test_eth_hal_bringup_coma_timeout(void)
   TEST_END("eth_hal_bringup: COMA CABPIRM.BPR timeout aborts the flow");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_eth_hal_bringup_ok();
   test_eth_hal_bringup_coma_timeout();

@@ -206,7 +206,7 @@ RA8_INTERNAL static void internal_test_vsource_wiring(void)
   TEST_END("bdvs wired into ra8_vsource_add_paged");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_init_validation();
   internal_test_read_validation();

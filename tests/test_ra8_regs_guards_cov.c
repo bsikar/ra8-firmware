@@ -145,7 +145,7 @@ static void test_ulpt_guard(void)
   TEST_END("ulpt guard");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_acmphs_guard();
   test_cnecc_guard();

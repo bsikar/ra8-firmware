@@ -683,7 +683,7 @@ RA8_INTERNAL static void internal_test_foreign_upcase_table_refuses_non_ascii(vo
  * @note Not thread-safe.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_exfat_non_ascii_round_trip();
   internal_test_exfat_name_entries_hold_real_units();

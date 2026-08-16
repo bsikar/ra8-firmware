@@ -568,7 +568,7 @@ RA8_INTERNAL static void internal_test_corpus_truncated_epub_rejected(void)
   TEST_END("reflow_corpus: truncated EPUB rejected");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_corpus_live_cache_identity();
   internal_test_corpus_font_size_invalidates();

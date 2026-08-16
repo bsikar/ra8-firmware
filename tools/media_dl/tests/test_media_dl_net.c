@@ -885,7 +885,7 @@ RA8_INTERNAL static void internal_test_net_conditional_and_response_headers(void
   TEST_END("net conditional and response headers");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_net_conditional_and_response_headers();
   internal_test_net_dispatch_guard();

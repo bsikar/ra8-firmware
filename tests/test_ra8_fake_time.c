@@ -88,7 +88,7 @@ static void test_advance_zero_is_noop(void)
   TEST_END("ra8_fake_time_advance_ms(0) is a no-op");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_reset_zeros_counter();
   test_advance_ms_matches_count();
