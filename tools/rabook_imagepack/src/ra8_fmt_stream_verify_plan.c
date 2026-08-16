@@ -27,12 +27,12 @@ typedef enum : uint32_t {
   k_verify_jpeg_jpg         = 0xC8U,       /**< JPEG reserved SOF-range code.     */
   k_verify_jpeg_dac         = 0xCCU,       /**< JPEG arithmetic table code.       */
   k_verify_jpeg_marker      = 0xFFU,       /**< JPEG marker introducer.           */
-  k_verify_jpeg_soi         = 0xD8U,       /**< JPEG start-of-image marker.        */
-  k_verify_jpeg_sof_last    = 0xCFU,       /**< Last JPEG SOF-range marker.        */
-  k_verify_u32_high_shift   = 24U,         /**< Big-endian uint32 high shift.      */
-  k_verify_jpeg_components  = 7U,          /**< Component-count offset after len.  */
-  k_verify_png_chunk_record = 12U,         /**< PNG chunk framing bytes.           */
-  k_verify_png_color_type   = 25U,         /**< PNG IHDR colour-type offset.       */
+  k_verify_jpeg_soi         = 0xD8U,       /**< JPEG start-of-image marker.       */
+  k_verify_jpeg_sof_last    = 0xCFU,       /**< Last JPEG SOF-range marker.       */
+  k_verify_u32_high_shift   = 24U,         /**< Big-endian uint32 high shift.     */
+  k_verify_jpeg_components  = 7U,          /**< Component-count offset after len. */
+  k_verify_png_chunk_record = 12U,         /**< PNG chunk framing bytes.          */
+  k_verify_png_color_type   = 25U,         /**< PNG IHDR colour-type offset.      */
 } verify_plan_const_t;
 
 /**

@@ -17,23 +17,23 @@
 
 /** @brief Canonical binary layout and bounded I/O constants. */
 typedef enum : uint32_t {
-  k_cache_header_bytes    = 32U,      /**< Fixed index header width.    */
-  k_cache_record_bytes    = 36U,      /**< Fixed record header width.   */
-  k_cache_trailer_bytes   = 8U,       /**< Payload-hash trailer width.  */
-  k_cache_io_call_max     = 2000000U, /**< Short-I/O progress ceiling.  */
-  k_cache_status_min      = 100U,     /**< Smallest retained HTTP code. */
-  k_cache_status_max      = 599U,     /**< Largest retained HTTP code.  */
+  k_cache_header_bytes    = 32U,      /**< Fixed index header width.       */
+  k_cache_record_bytes    = 36U,      /**< Fixed record header width.      */
+  k_cache_trailer_bytes   = 8U,       /**< Payload-hash trailer width.     */
+  k_cache_io_call_max     = 2000000U, /**< Short-I/O progress ceiling.     */
+  k_cache_status_min      = 100U,     /**< Smallest retained HTTP code.    */
+  k_cache_status_max      = 599U,     /**< Largest retained HTTP code.     */
   k_cache_hex_high_shift  = 60U,      /**< Shift of the first hash nibble. */
   k_cache_nibble_mask     = 0x0FU,    /**< Low hexadecimal nibble mask.    */
-  k_cache_u64_high_shift  = 56U,      /**< Shift of the first uint64 byte.  */
-  k_cache_record_status   = 24U,      /**< Record HTTP-status offset.       */
-  k_cache_record_url_len  = 26U,      /**< Record URL-length offset.        */
-  k_cache_record_path_len = 28U,      /**< Record path-length offset.       */
-  k_cache_record_etag_len = 30U,      /**< Record ETag-length offset.       */
-  k_cache_record_time_len = 32U,      /**< Record modified-length offset.   */
-  k_cache_record_reserved = 34U,      /**< Record reserved-field offset.    */
-  k_cache_header_count    = 12U,      /**< Header record-count offset.      */
-  k_cache_header_host     = 24U,      /**< Header host-hash offset.         */
+  k_cache_u64_high_shift  = 56U,      /**< Shift of the first uint64 byte. */
+  k_cache_record_status   = 24U,      /**< Record HTTP-status offset.      */
+  k_cache_record_url_len  = 26U,      /**< Record URL-length offset.       */
+  k_cache_record_path_len = 28U,      /**< Record path-length offset.      */
+  k_cache_record_etag_len = 30U,      /**< Record ETag-length offset.      */
+  k_cache_record_time_len = 32U,      /**< Record modified-length offset.  */
+  k_cache_record_reserved = 34U,      /**< Record reserved-field offset.   */
+  k_cache_header_count    = 12U,      /**< Header record-count offset.     */
+  k_cache_header_host     = 24U,      /**< Header host-hash offset.        */
 } mdl_cache_binary_limit_t;
 
 /** @brief Canonical cache index magic. */
