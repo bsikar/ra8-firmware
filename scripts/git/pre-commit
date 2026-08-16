@@ -405,6 +405,17 @@ if ! python3 scripts/checks/check_example_board_pins.py; then
   error_found=1
 fi
 
+# Entry points follow their build domain's contract: firmware is
+# `void main(void)` including ra8_boot_entry.h, hosted is ISO `int main(...)`
+# (#707). The compiler cannot see the mismatch on its own -- the declaration
+# and the definition are in different translation units.
+if ! python3 scripts/checks/check_entry_points.py; then
+  echo "[FAIL] an entry point does not match its build domain's contract."
+  echo "   Firmware: void main(void) + #include \"ra8_boot_entry.h\"."
+  echo "   Hosted:   int main(void) / int main(int, char**)."
+  error_found=1
+fi
+
 # No .gitignore directory pattern may match at arbitrary depth. An unanchored
 # `build/` hid every directory of that name from git AND from thirteen checkers,
 # in complete silence, for the life of the tree (#377).

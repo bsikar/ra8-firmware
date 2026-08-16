@@ -11,14 +11,15 @@ restates the most-violated rules but **this file is the source of truth**.
 3. [Comment formatting](#comment-formatting)
 4. [Naming](#naming)
 5. [Types and constants (C23)](#types-and-constants-c23)
-6. [Header guards](#header-guards)
-7. [Hardware register access](#hardware-register-access)
-8. [HUM citations](#hum-citations)
-9. [SOLID principles for C](#solid-principles-for-c)
-10. [NASA Power of 10](#nasa-power-of-10)
-11. [Backward compatibility (there is none)](#backward-compatibility-there-is-none)
-12. [Character encoding](#character-encoding)
-13. [Ring and World tagging](#ring-and-world-tagging)
+6. [Program entry points](#program-entry-points)
+7. [Header guards](#header-guards)
+8. [Hardware register access](#hardware-register-access)
+9. [HUM citations](#hum-citations)
+10. [SOLID principles for C](#solid-principles-for-c)
+11. [NASA Power of 10](#nasa-power-of-10)
+12. [Backward compatibility (there is none)](#backward-compatibility-there-is-none)
+13. [Character encoding](#character-encoding)
+14. [Ring and World tagging](#ring-and-world-tagging)
 
 ## File-header Doxygen block
 
@@ -282,6 +283,79 @@ buf[k_idx_high_byte] = (uint8_t)((val >> k_shift_byte) & k_mask_byte);
 // WRONG
 buf[0] = (uint8_t)((val >> 8) & 0xFF);  // What is 0? 8? 0xFF?
 ```
+
+## Program entry points
+
+`main` is spelled differently in the two build domains, because the two
+domains genuinely are different, and `scripts/checks/check_entry_points.py`
+holds each to its own contract.
+
+| Domain | Where | Signature |
+|---|---|---|
+| Hosted | `tests/`, `tools/` | `int main(void)` or `int main(int argc, char** argv)` |
+| Freestanding | `examples/`, `src/`, `port/` | `void main(void)` |
+
+**Hosted code returns `int` because ISO C says so.** These programs run under
+an operating system that reads the exit status, and both host compilers
+enforce the signature themselves.
+
+**Firmware returns nothing because there is nothing to return to.** A bare-metal
+image is reached from `Reset_Handler`, not from a C runtime; there is no
+process and no exit status, and every call site discards the value. ISO C fixes
+`main` at `int` only for a *hosted* implementation -- for a freestanding one
+(C23 5.1.2.1) the startup function's name and type are implementation-defined,
+and `void main(void)` is this project's definition.
+
+A firmware entry point therefore:
+
+- returns `void`, and contains **no** `return <value>;` -- there is nowhere to
+  return a value to. A bare `return;` for an early exit is fine.
+- includes `"ra8_boot_entry.h"`, which holds the **one** declaration of `main`.
+  This is not decoration: GCC exempts `main` from `-Wmissing-prototypes`, so
+  without the include nothing ever compares the definition against the
+  declaration.
+
+```c
+#include "ra8_boot_entry.h"
+
+void main(void)
+{
+  if (bringup() != k_ra8_ok) {
+    park();
+    return;          /* bare -- never `return 1;` */
+  }
+  run_forever();
+}
+```
+
+### Why this is a rule and not a preference
+
+Firmware used to declare `int32_t main(void)`. `int32_t` is not a type; it is a
+nickname for whichever type is 32 bits wide, and that is `int` on the host but
+`long int` on arm-none-eabi. The firmware entry point therefore had a *different
+type* on the chip than the same source had on the host, which is
+`error: return type of 'main' is not 'int'` under `-Werror` -- silenced, at the
+peak, by 208 copies of `#pragma GCC diagnostic ignored "-Wmain"`.
+
+The declaration also lived in sixteen copy-pasted `extern int32_t main(void);`
+lines inside vector tables. A vector table is a different translation unit from
+the `main.c` it calls, so the compiler never saw the two together, and about
+thirty applications had drifted into declaring one type while defining
+another. They linked and ran only because both types happen to be 32 bits wide
+and returned in the same register.
+
+The single declaration is what makes the compiler able to check this at all,
+and `-ffreestanding` on the firmware lane (`cmake/ra8_add_app.cmake`) is what
+makes `void` legal. **The flag and the signature travel together** -- remove the
+flag and every firmware `main.c` stops compiling.
+
+The declaration in `ra8_boot_entry.h` therefore sits behind
+`#if __STDC_HOSTED__ == 0`, the macro `-ffreestanding` clears and a hosted
+build sets. That guard is load-bearing, not decoration: `ra8_core` is also
+compiled natively for the host unit tests, and an unguarded `void main(void);`
+makes every hosted translation unit that reaches this header fail with
+`conflicting types for 'main'` against its own ISO entry point. The
+declaration exists exactly where its contract does. See issue #707.
 
 ## Header guards
 
