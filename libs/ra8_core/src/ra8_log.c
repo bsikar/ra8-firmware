@@ -70,6 +70,7 @@ typedef enum : uintptr_t {
   k_ra8_itm_tenr_addr = 0xE0000E00UL, /**< ITM Trace Enable  Register. */
 } ra8_itm_addr_t;
 
+#ifndef RA8_OFF_TARGET
 /**
  * @brief Get the ITM stimulus-port-0 register.
  *
@@ -92,7 +93,6 @@ RA8_HW_REGISTER_ACCESS RA8_INTERNAL static inline volatile uint32_t* internal_it
   return (volatile uint32_t*)k_ra8_itm_stim_base;
 }
 
-#ifndef RA8_OFF_TARGET
 /**
  * @brief Get the ITM Trace Control Register.
  *
@@ -209,13 +209,17 @@ RA8_INTERNAL static inline bool internal_itm_ready(void)
 /**
  * @brief Blocking-but-bounded write of a single byte to ITM port 0.
  *
- * @details Polls the FIFO-ready bit up to `k_ra8_itm_poll_limit` times,
- *          then either writes the byte or gives up silently.
+ * @details An installed byte sink takes the byte and the function returns.
+ *          Otherwise, on target, polls the FIFO-ready bit up to
+ *          `k_ra8_itm_poll_limit` times, then either writes the byte or gives
+ *          up silently. Hosted (`RA8_OFF_TARGET`) builds compile that ITM
+ *          fallback out entirely and drop the byte, so no host build holds a
+ *          reference to a target MMIO address.
  *
  * @param[in] byte Character to emit.
  *
  * @pre None -- caller does not need to pre-check ready state.
- * @pre Underlying MMIO is mapped.
+ * @pre On target, the underlying MMIO is mapped.
  * @post Either the byte has been pushed into the FIFO or the poll
  *       budget has been exhausted (drop).
  * @post No other state modified.
@@ -230,6 +234,16 @@ RA8_INTERNAL static inline void internal_itm_putc(uint8_t byte)
     s_byte_sink(s_byte_sink_ctx, byte);
     return;
   }
+#ifdef RA8_OFF_TARGET
+  /* Hosted builds reach this only with no sink installed, and
+   * `internal_itm_ready()` already reported the backend unavailable in that
+   * case, so every caller has returned before here. Compiling the ITM
+   * fallback out completes commit "keep hosted logging off target MMIO":
+   * the target-only accessors above are already excluded the same way, and
+   * leaving this loop in would be the one remaining host reference to
+   * `k_ra8_itm_stim_base`. */
+  (void)byte;
+#else
   /* A real build should pre-check `internal_itm_ready()` once during
    * init and skip the call entirely when the debugger is absent. For
    * now we poll with a small bound so a disconnected debugger never
@@ -243,6 +257,7 @@ RA8_INTERNAL static inline void internal_itm_putc(uint8_t byte)
       return;
     }
   }
+#endif
 }
 
 /**
