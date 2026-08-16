@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 """Render parsed RA8 pin lists into the files under ``docs/pinouts/``.
@@ -21,7 +20,7 @@ import textwrap
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from pinout_model import (  # noqa: E402
+from pinout_model import (
     COLUMN_ORDER,
     FIELD_HEADINGS,
     GROUPS,
@@ -41,8 +40,15 @@ RULE = "-" * 80
 # field in the source (a single ball can offer a dozen alternates), so it
 # gets the slack; anything longer wraps within its own column.
 TABLE_WIDTHS = {
-    "ball": 5, "port": 6, "power": 12, "exbus": 9, "irq": 11,
-    "comms": 44, "timer": 24, "analog": 11, "video": 18,
+    "ball": 5,
+    "port": 6,
+    "power": 12,
+    "exbus": 9,
+    "irq": 11,
+    "comms": 44,
+    "timer": 24,
+    "analog": 11,
+    "video": 18,
 }
 
 PORTS_PER_LINE = 6
@@ -62,7 +68,8 @@ def wrap_cell(value: str, width: int) -> list[str]:
     pieces[-1] = pieces[-1][:-1]
     out: list[str] = []
     line = ""
-    for piece in pieces:
+    for raw_piece in pieces:
+        piece = raw_piece
         if line and len(line) + len(piece) > width:
             out.append(line)
             line = ""
@@ -86,66 +93,73 @@ def render_grid(rows: list[dict], column: tuple) -> list[str]:
         if ball is not None:
             placed[ball] = row["port"] or row["power"] or "-"
 
-    letters = sorted({b.rstrip("0123456789") for b in placed},
-                     key=lambda r: (len(r), r))
-    numbers = sorted({int(b.lstrip("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
-                      for b in placed})
-    width = max(max(len(v) for v in placed.values()),
-                max(len(str(n)) for n in numbers))
+    letters = sorted({b.rstrip("0123456789") for b in placed}, key=lambda r: (len(r), r))
+    numbers = sorted({int(b.lstrip("ABCDEFGHIJKLMNOPQRSTUVWXYZ")) for b in placed})
+    width = max(*(len(v) for v in placed.values()), *(len(str(n)) for n in numbers))
     pad = max(len(letter) for letter in letters)
 
     out = [" " * pad + " " + " ".join(str(n).center(width) for n in numbers)]
     for letter in letters:
-        cells = [placed.get(f"{letter}{num}", "").center(width)
-                 for num in numbers]
+        cells = [placed.get(f"{letter}{num}", "").center(width) for num in numbers]
         out.append(f"{letter:<{pad}} " + " ".join(cells).rstrip())
     return out
 
 
-def _variant_header(group: Group, package: str, mipi: bool,
-                    balls: int, io_pins: int) -> list[str]:
+def _variant_header(group: Group, package: str, mipi: bool, balls: int, io_pins: int) -> list[str]:
     """The provenance block every variant file opens with."""
     pkg = PACKAGES[package]
     table = group.sip_table if pkg.sip else group.std_table
     kind = "SiP" if pkg.sip else "Standard"
-    title = (f"{group.name} group pinout -- LFBGA {pkg.balls}-pin, "
-             f"{'with' if mipi else 'without'} MIPI DSI/CSI")
+    title = (
+        f"{group.name} group pinout -- LFBGA {pkg.balls}-pin, "
+        f"{'with' if mipi else 'without'} MIPI DSI/CSI"
+    )
 
-    lines = ["=" * 80, title, "=" * 80, "",
-             "GENERATED FILE -- DO NOT EDIT BY HAND.",
-             "  Regenerate with: python3 scripts/gen/gen_pinouts.py",
-             "",
-             f"Source : {group.name} Group Datasheet {group.doc_id}, "
-             f"section 1.7",
-             f"         \"Pin Lists\", Table {table} \"Pin list for the "
-             f"{kind} product\",",
-             f"         column \"BGA{pkg.balls}"
-             f"{'' if mipi else ' without MIPI'}\".",
-             "",
-             f"Package       : {pkg.renesas} ({pkg.jeita})",
-             f"                LFBGA {pkg.balls}-pin, {pkg.body}",
-             f"Balls         : {balls}",
-             f"I/O port pins : {io_pins}",
-             f"MIPI DSI/CSI  : {'available' if mipi else 'not available'}"]
-    lines += textwrap.wrap(group.tagline, width=64,
-                           initial_indent="Group         : ",
-                           subsequent_indent="                ")
-    return lines + [""]
+    lines = [
+        "=" * 80,
+        title,
+        "=" * 80,
+        "",
+        "GENERATED FILE -- DO NOT EDIT BY HAND.",
+        "  Regenerate with: python3 scripts/gen/gen_pinouts.py",
+        "",
+        f"Source : {group.name} Group Datasheet {group.doc_id}, section 1.7",
+        f'         "Pin Lists", Table {table} "Pin list for the {kind} product",',
+        f'         column "BGA{pkg.balls}{"" if mipi else " without MIPI"}".',
+        "",
+        f"Package       : {pkg.renesas} ({pkg.jeita})",
+        f"                LFBGA {pkg.balls}-pin, {pkg.body}",
+        f"Balls         : {balls}",
+        f"I/O port pins : {io_pins}",
+        f"MIPI DSI/CSI  : {'available' if mipi else 'not available'}",
+    ]
+    lines += textwrap.wrap(
+        group.tagline,
+        width=64,
+        initial_indent="Group         : ",
+        subsequent_indent="                ",
+    )
+    return [*lines, ""]
 
 
 def _variant_parts(parts: list[Part], package: str, mipi: bool) -> list[str]:
     """The list of part numbers that share this ball map."""
     matching = [p for p in parts if p.package == package and p.mipi == mipi]
-    lines = [f"Part numbers using this ball map ({len(matching)}):", "",
-             f"    {'Part number':<16} {'Cores':<7} {'Code memory':<32} "
-             f"{'Junction temp':<14}".rstrip(),
-             f"    {'-' * 16} {'-' * 7} {'-' * 32} {'-' * 14}"]
-    for part in matching:
-        lines.append(
+    lines = [
+        f"Part numbers using this ball map ({len(matching)}):",
+        "",
+        f"    {'Part number':<16} {'Cores':<7} {'Code memory':<32} {'Junction temp':<14}".rstrip(),
+        f"    {'-' * 16} {'-' * 7} {'-' * 32} {'-' * 14}",
+    ]
+    lines.extend(
+        (
             f"    {part.number:<16} {part.cores:<7} "
             f"{MRAM_SIZES[part.mram]:<32} {TEMP_GRADES[part.temp]:<14}"
         )
-    return lines + [
+        for part in matching
+    )
+    return [
+        *lines,
         "",
         "Every part number above has an identical ball map; they",
         "differ only in core count, memory size and temperature",
@@ -157,19 +171,19 @@ def _variant_parts(parts: list[Part], package: str, mipi: bool) -> list[str]:
 def _function_table(rows: list[dict], column: tuple) -> list[str]:
     """Section 2: every ball with every alternate function it offers."""
     lines = [RULE, "2. Alternate functions per ball", RULE, ""]
-    lines += [f"  {key.upper():<7}{FIELD_HEADINGS[key]}"
-              for key in COLUMN_ORDER]
+    lines += [f"  {key.upper():<7}{FIELD_HEADINGS[key]}" for key in COLUMN_ORDER]
     lines += [
         "",
-        "  A field reads \"-\" when the ball offers nothing in that",
+        '  A field reads "-" when the ball offers nothing in that',
         "  category. Suffixes _A/_B/_C are the datasheet's pin-",
-        "  candidate variants; \"-DS\" marks a deep-standby-capable",
+        '  candidate variants; "-DS" marks a deep-standby-capable',
         "  interrupt input.",
         "",
     ]
 
     header = f"{'BALL':<{TABLE_WIDTHS['ball']}}" + "".join(
-        f"{k.upper():<{TABLE_WIDTHS[k] + 1}}" for k in COLUMN_ORDER)
+        f"{k.upper():<{TABLE_WIDTHS[k] + 1}}" for k in COLUMN_ORDER
+    )
     lines += [header.rstrip(), "-" * len(header.rstrip())]
 
     for row in rows:
@@ -181,35 +195,50 @@ def _function_table(rows: list[dict], column: tuple) -> list[str]:
                 piece = cells[key][i] if i < len(cells[key]) else ""
                 text += f"{piece:<{TABLE_WIDTHS[key] + 1}}"
             lines.append(text.rstrip())
-    return lines + [""]
+    return [*lines, ""]
 
 
 def _port_index(io_pins: list[dict], column: tuple) -> list[str]:
     """Section 3: port name -> ball, the lookup people actually run."""
-    lines = [RULE, "3. I/O port pin index", RULE, "",
-             f"{len(io_pins)} port pins, in port order.", ""]
+    lines = [
+        RULE,
+        "3. I/O port pin index",
+        RULE,
+        "",
+        f"{len(io_pins)} port pins, in port order.",
+        "",
+    ]
     by_port = sorted(io_pins, key=lambda r: port_key(r["port"]))
     for i in range(0, len(by_port), PORTS_PER_LINE):
-        chunk = by_port[i:i + PORTS_PER_LINE]
-        lines.append("    " + "  ".join(
-            f"{r['port']:<5} {r['balls'][column]:<4}" for r in chunk).rstrip())
-    return lines + [""]
+        chunk = by_port[i : i + PORTS_PER_LINE]
+        lines.append(
+            "    " + "  ".join(f"{r['port']:<5} {r['balls'][column]:<4}" for r in chunk).rstrip()
+        )
+    return [*lines, ""]
 
 
-def render_variant(group: Group, package: str, mipi: bool,
-                   rows: list[dict], parts: list[Part]) -> str:
+def render_variant(
+    group: Group, package: str, mipi: bool, rows: list[dict], parts: list[Part]
+) -> str:
     """Render one variant's whole reference file."""
     column = (package, mipi)
-    mine = sorted((r for r in rows if r["balls"][column] is not None),
-                  key=lambda r: ball_key(r["balls"][column]))
+    mine = sorted(
+        (r for r in rows if r["balls"][column] is not None),
+        key=lambda r: ball_key(r["balls"][column]),
+    )
     io_pins = [r for r in mine if r["port"]]
 
     lines = _variant_header(group, package, mipi, len(mine), len(io_pins))
     lines += _variant_parts(parts, package, mipi)
-    lines += [RULE, "1. Ball grid (top view)", RULE, "",
-              "Each cell names the I/O port pin, or the power/system",
-              "function for balls that are not port pins. Blank = no ball.",
-              ""]
+    lines += [
+        RULE,
+        "1. Ball grid (top view)",
+        RULE,
+        "",
+        "Each cell names the I/O port pin, or the power/system",
+        "function for balls that are not port pins. Blank = no ball.",
+        "",
+    ]
     lines += render_grid(rows, column)
     lines.append("")
     lines += _function_table(mine, column)
@@ -222,11 +251,9 @@ def _index_intro() -> list[str]:
         "# RA8 pinout reference",
         "",
         "Ball maps for every orderable RA8D2 and RA8P1 part number, parsed",
-        "out of section 1.7 \"Pin Lists\" of the two group datasheets by",
-        "`scripts/gen/gen_pinouts.py`. **These files are generated -- edit "
-        "the",
-        "generator, not the output.** `gen_pinouts.py --check` runs in CI, "
-        "so",
+        'out of section 1.7 "Pin Lists" of the two group datasheets by',
+        "`scripts/gen/gen_pinouts.py`. **These files are generated -- edit the",
+        "generator, not the output.** `gen_pinouts.py --check` runs in CI, so",
         "a datasheet revision that moves a ball cannot land without the",
         "reference moving with it.",
         "",
@@ -242,8 +269,10 @@ def _index_intro() -> list[str]:
 
 
 def _index_variant_table(variants: list) -> list[str]:
-    lines = ["| Group | Package | MIPI DSI/CSI | Balls | I/O | Pinout file |",
-             "|---|---|---|---|---|---|"]
+    lines = [
+        "| Group | Package | MIPI DSI/CSI | Balls | I/O | Pinout file |",
+        "|---|---|---|---|---|---|",
+    ]
     for group, package, mipi, filename, balls, io_pins, _ in variants:
         pkg = PACKAGES[package]
         lines.append(
@@ -251,7 +280,7 @@ def _index_variant_table(variants: list) -> list[str]:
             f"{'yes' if mipi else 'no'} | {balls} | {io_pins} | "
             f"[`{filename}`]({filename}) |"
         )
-    return lines + [""]
+    return [*lines, ""]
 
 
 def _index_part_table(parts: list) -> list[str]:
@@ -274,18 +303,14 @@ def _index_part_table(parts: list) -> list[str]:
             f"LFBGA {pkg.balls}{' SiP' if pkg.sip else ''} | "
             f"[`{filename}`]({filename}) |"
         )
-    return lines + [
+    return [
+        *lines,
         "",
-        "[^sram]: SRAM is the one column here that is not pinout data and "
-        "not read",
-        "    per-part: the Function Comparison table merges it across "
-        "columns, giving",
-        "    1792 KB for the single-core feature sets (`A`, `B`) and 1664 KB "
-        "for the",
-        "    dual-core ones (`J`, `K`), the latter spending 128 KB on the "
-        "CM33 TCM.",
-        "    Every SiP part is dual-core. Take it as orientation and confirm "
-        "against",
+        "[^sram]: SRAM is the one column here that is not pinout data and not read",
+        "    per-part: the Function Comparison table merges it across columns, giving",
+        "    1792 KB for the single-core feature sets (`A`, `B`) and 1664 KB for the",
+        "    dual-core ones (`J`, `K`), the latter spending 128 KB on the CM33 TCM.",
+        "    Every SiP part is dual-core. Take it as orientation and confirm against",
         "    the datasheet before sizing anything against it.",
         "",
     ]
@@ -297,20 +322,16 @@ def _index_scheme() -> list[str]:
         "",
         "```",
         "R 7 K A 8 D 2 A D L C AB",
-        "          | | | | | |  +-- package: AB=LFBGA224 AC=LFBGA289 "
-        "AJ=LFBGA303",
+        "          | | | | | |  +-- package: AB=LFBGA224 AC=LFBGA289 AJ=LFBGA303",
         "          | | | | | +----- quality grade: C=standard S=SiP",
         "          | | | | +------- junction temp: L=0..95C D=-40..105C",
-        "          | | | +--------- code memory: D=512KB F=1MB "
-        "R=1MB+4MB S=1MB+8MB",
-        "          | | +----------- feature set: A/B single core, "
-        "J/K dual core;",
+        "          | | | +--------- code memory: D=512KB F=1MB R=1MB+4MB S=1MB+8MB",
+        "          | | +----------- feature set: A/B single core, J/K dual core;",
         "          | |              B/K bond out MIPI DSI/CSI, A/J do not",
         "          +-+------------- group: D2=RA8D2, P1=RA8P1",
         "```",
         "",
-        "The leading `R7K`/`R7J` also encodes the memory technology "
-        "(`K`=MRAM,",
+        "The leading `R7K`/`R7J` also encodes the memory technology (`K`=MRAM,",
         "`J`=MRAM+flash SiP) and so tracks the quality-grade and package",
         "fields; the generator rejects a part number where the three",
         "disagree.",
@@ -319,14 +340,13 @@ def _index_scheme() -> list[str]:
 
 
 def _index_sources() -> list[str]:
-    lines = ["## Sources", "",
-             "| Group | Datasheet | Committed as |", "|---|---|---|"]
-    for group in GROUPS:
-        lines.append(
-            f"| {group.name} | {group.doc_id} | "
-            f"`{group.pdf.relative_to(REPO_ROOT)}` |"
-        )
-    return lines + [
+    lines = ["## Sources", "", "| Group | Datasheet | Committed as |", "|---|---|---|"]
+    lines.extend(
+        f"| {group.name} | {group.doc_id} | `{group.pdf.relative_to(REPO_ROOT)}` |"
+        for group in GROUPS
+    )
+    return [
+        *lines,
         "",
         "The Hardware User's Manual, not the datasheet, is the authority on",
         "*register* programming for any of these pins -- see",

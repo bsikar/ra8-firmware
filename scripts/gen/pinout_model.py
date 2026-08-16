@@ -1,8 +1,6 @@
-#!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Product matrix for the RA8D2 and RA8P1 groups, and the shape of the
-pin-list tables that describe them.
+"""Product matrix and pin-list table shape for the RA8D2 and RA8P1 groups.
 
 Everything here is transcribed from the two datasheets' own front matter --
 the part-numbering scheme figure, the product list, the package dimensions
@@ -39,9 +37,9 @@ class ParseError(RuntimeError):
 
 FEATURE_SETS = {
     "A": ("single", False),  # Single core (CM85 only), no MIPI DSI/CSI
-    "B": ("single", True),   # Single core (CM85 only), MIPI DSI/CSI
-    "J": ("dual", False),    # Dual core, no MIPI DSI/CSI
-    "K": ("dual", True),     # Dual core, MIPI DSI/CSI
+    "B": ("single", True),  # Single core (CM85 only), MIPI DSI/CSI
+    "J": ("dual", False),  # Dual core, no MIPI DSI/CSI
+    "K": ("dual", True),  # Dual core, MIPI DSI/CSI
 }
 
 MRAM_SIZES = {
@@ -61,21 +59,39 @@ TEMP_GRADES = {
 class Package:
     """One package option from the part-number scheme."""
 
-    code: str        # part-number package field, e.g. "AC"
-    balls: int       # ball count
-    renesas: str     # Renesas package code, e.g. "PLBG0289JA-A"
-    jeita: str       # JEITA outline, e.g. "P-LFBGA289-12x12-0.65"
-    body: str        # human-readable body/pitch summary
-    sip: bool        # True for the MRAM+flash SiP package
+    code: str  # part-number package field, e.g. "AC"
+    balls: int  # ball count
+    renesas: str  # Renesas package code, e.g. "PLBG0289JA-A"
+    jeita: str  # JEITA outline, e.g. "P-LFBGA289-12x12-0.65"
+    body: str  # human-readable body/pitch summary
+    sip: bool  # True for the MRAM+flash SiP package
 
 
 PACKAGES = {
-    "AB": Package("AB", 224, "PLBG0224JA-A", "P-LFBGA224-11x11-0.65",
-                  "11 mm x 11 mm, 0.65 mm pitch", False),
-    "AC": Package("AC", 289, "PLBG0289JA-A", "P-LFBGA289-12x12-0.65",
-                  "12 mm x 12 mm, 0.65 mm pitch", False),
-    "AJ": Package("AJ", 303, "PLBG0303GA-A", "P-LFBGA303-15x15-0.80",
-                  "15 mm x 15 mm, 0.80 mm pitch", True),
+    "AB": Package(
+        "AB",
+        224,
+        "PLBG0224JA-A",
+        "P-LFBGA224-11x11-0.65",
+        "11 mm x 11 mm, 0.65 mm pitch",
+        sip=False,
+    ),
+    "AC": Package(
+        "AC",
+        289,
+        "PLBG0289JA-A",
+        "P-LFBGA289-12x12-0.65",
+        "12 mm x 12 mm, 0.65 mm pitch",
+        sip=False,
+    ),
+    "AJ": Package(
+        "AJ",
+        303,
+        "PLBG0303GA-A",
+        "P-LFBGA303-15x15-0.80",
+        "15 mm x 15 mm, 0.80 mm pitch",
+        sip=True,
+    ),
 }
 
 
@@ -83,13 +99,13 @@ PACKAGES = {
 class Group:
     """One MCU group and the datasheet that defines its pin lists."""
 
-    name: str            # "RA8D2"
-    slug: str            # "ra8d2"
-    pdf: Path            # committed datasheet
-    doc_id: str          # "R01DS0493EJ"
-    std_table: str       # table number of the Standard-product pin list
-    sip_table: str       # table number of the SiP-product pin list
-    tagline: str         # one-line group description
+    name: str  # "RA8D2"
+    slug: str  # "ra8d2"
+    pdf: Path  # committed datasheet
+    doc_id: str  # "R01DS0493EJ"
+    std_table: str  # table number of the Standard-product pin list
+    sip_table: str  # table number of the SiP-product pin list
+    tagline: str  # one-line group description
 
 
 GROUPS = (
@@ -101,7 +117,7 @@ GROUPS = (
         std_table="1.16",
         sip_table="1.17",
         tagline="Arm Cortex-M85 @ 1 GHz (+ Cortex-M33 @ 250 MHz on dual-core "
-                "feature sets), graphics and Ethernet MCU",
+        "feature sets), graphics and Ethernet MCU",
     ),
     Group(
         name="RA8P1",
@@ -110,8 +126,7 @@ GROUPS = (
         doc_id="R01DS0439EJ",
         std_table="1.17",
         sip_table="1.18",
-        tagline="RA8D2 plus an Arm Ethos-U55 NPU; pin-compatible with the "
-                "RA8D2 in every package",
+        tagline="RA8D2 plus an Arm Ethos-U55 NPU; pin-compatible with the RA8D2 in every package",
     ),
 )
 
@@ -128,8 +143,7 @@ FIELD_HEADINGS = {
     "power": "Power, system, clock, debug, CAC",
     "exbus": "External bus / SDRAM",
     "irq": "External interrupt",
-    "comms": "SCI/IIC/I3C/SPI/CANFD/USBFS/USBHS/OSPI/SSIE/SDHI/MMC/"
-             "ESWM(GMII,RGMII,MII,RMII)/PDMIF",
+    "comms": "SCI/IIC/I3C/SPI/CANFD/USBFS/USBHS/OSPI/SSIE/SDHI/MMC/ESWM(GMII,RGMII,MII,RMII)/PDMIF",
     "timer": "GPT/AGT/ULPT/RTC",
     "analog": "ADC16H/DAC12/ACMPHS",
     "video": "MIPI/GLCDC/CEU",
@@ -137,8 +151,7 @@ FIELD_HEADINGS = {
 
 # The order the columns are printed in, which is not the order the
 # datasheet's raw cells arrive in (it prints the port name second).
-COLUMN_ORDER = ("port", "power", "exbus", "irq", "comms", "timer", "analog",
-                "video")
+COLUMN_ORDER = ("port", "power", "exbus", "irq", "comms", "timer", "analog", "video")
 
 # Leading ball columns of each table, in printed order, as (package code,
 # has-MIPI). The datasheet prints "<pkg>" then "<pkg> without MIPI".
@@ -150,9 +163,7 @@ BALL_COLUMNS = {
 # Section 1.6 prints the same information a second way, as one ball-grid
 # figure per variant. Its caption sits BELOW the grid, so a figure's text
 # runs from the previous caption to its own.
-FIGURE_RE = re.compile(
-    r"^\s*Figure 1\.[3-8]\s+Pin assignment for (.+?)\s*$"
-)
+FIGURE_RE = re.compile(r"^\s*Figure 1\.[3-8]\s+Pin assignment for (.+?)\s*$")
 
 # Figure caption -> the variant it draws.
 FIGURE_VARIANTS = {
@@ -201,10 +212,12 @@ class Part:
 
     @property
     def cores(self) -> str:
+        """Return the core-count class encoded by this part's feature set."""
         return FEATURE_SETS[self.feature][0]
 
     @property
     def mipi(self) -> bool:
+        """Return whether this part bonds out the MIPI DSI/CSI pins."""
         return FEATURE_SETS[self.feature][1]
 
 
@@ -216,7 +229,8 @@ def decode_part(number: str) -> Part:
         number,
     )
     if not match:
-        raise ParseError(f"unparsable part number: {number}")
+        msg = f"unparsable part number: {number}"
+        raise ParseError(msg)
     part = Part(
         number=number,
         group=f"RA8{match['grp']}",
@@ -230,11 +244,13 @@ def decode_part(number: str) -> Part:
     # from two directions; disagreement means a misread part number.
     sip = PACKAGES[part.package].sip
     if (match["mem"] == "J") != sip or (part.quality == "S") != sip:
-        raise ParseError(f"inconsistent SiP encoding in {number}")
+        msg = f"inconsistent SiP encoding in {number}"
+        raise ParseError(msg)
     return part
 
 
 def variant_slug(package: str, mipi: bool) -> str:
+    """Return the stable generated-file slug for one package variant."""
     pkg = PACKAGES[package]
     kind = "mipi" if mipi else "nomipi"
     tail = "_sip" if pkg.sip else ""
@@ -249,6 +265,7 @@ def ball_key(ball: str) -> tuple:
 
 
 def port_key(port: str) -> tuple:
+    """Return a numeric sort key for a port name, after known port names."""
     match = re.fullmatch(r"P([0-9A-F])(\d{2})", port)
     if not match:
         return (1, port, 0)
