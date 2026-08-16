@@ -22,6 +22,51 @@
 #
 # Prints the number of failures.
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# The include-fragment carve-out, in both directions, over REAL files -- the
+# rule reads file contents, so fake paths cannot exercise it.
+#
+# Must fire: a header declaring a non-inline file-scope `static` function.
+# Must stay quiet: a header of `static inline` accessors (the HAL shape), and
+# a header with no `static` at all. A carve-out that widened to every header
+# would drop the whole first-party header surface out of the analysis and read
+# as a smaller, cleaner run.
+#
+# Prints the number of failures.
+# ---------------------------------------------------------------------------
+selftest_include_fragments() {
+  local failures=0 tmp
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/ra8-tidy-frag.XXXXXXXX")"
+  printf "%s\n" "RA8_INTERNAL static int internal_helper(void);" >"$tmp/fragment.h"
+  printf "%s\n" "static inline int accessor(void) { return 0; }" >"$tmp/inline.h"
+  printf "%s\n" "int public_api(void);" >"$tmp/plain.h"
+  local got
+  got="$(route_bucket "$tmp/fragment.h")"
+  if [[ "$got" != "included" ]]; then
+    print_error "selftest: a static-declaring header routed to '$got', expected 'included'"
+    failures=$((failures + 1))
+  fi
+  for got in inline plain; do
+    if [[ "$(route_bucket "$tmp/$got.h")" == "included" ]]; then
+      print_error "selftest: $got.h was treated as an include fragment"
+      failures=$((failures + 1))
+    fi
+  done
+  rm -rf -- "$tmp"
+
+  # ...and the live floor: the real tree carries this class, so a rule that
+  # stopped matching would report zero and go unnoticed.
+  local live=0 f
+  while IFS= read -r f; do
+    [[ "$(route_bucket "$f")" == "included" ]] && live=$((live + 1))
+  done < <(git -C "$FIRMWARE_DIR" ls-files "tests/support/*.h")
+  if [[ "$live" -eq 0 ]]; then
+    print_error "selftest: no tests/support header is recognised as an include fragment"
+    failures=$((failures + 1))
+  fi
+  printf "%s\n" "$failures"
+}
+
 selftest_routing() {
   local failures=0
   local -a cases=(
@@ -45,6 +90,7 @@ selftest_routing() {
       failures=$((failures + 1))
     fi
   done
+  failures=$((failures + $(selftest_include_fragments)))
   printf '%s\n' "$failures"
 }
 

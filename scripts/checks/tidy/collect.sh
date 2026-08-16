@@ -126,8 +126,51 @@ collect_source_files() {
 # quietly sent every file to one bucket would still "lint everything" and
 # report success while analysing most files with the wrong flags.
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Is this header a textual include-FRAGMENT rather than a translation unit?
+#
+# A header that declares a file-scope `static` function has no standalone TU by
+# construction: `static` gives internal linkage to the INCLUDING translation
+# unit, so the declaration only means anything textually. This tree uses the
+# construct deliberately -- `*_contracts_internal.h` / `*_fixture.h` carry the
+# forward declarations of a large .c file`s file-local helpers, which is how
+# several suites got back under the file-size cap.
+#
+# Analysing such a header as its own TU parses it with no includer context, and
+# every finding that comes back is either a clang-diagnostic-error or a naming
+# finding derived from a type that never got declared -- 181 findings across 16
+# headers, not one of them actionable, and not one of them in the committed
+# baseline. Skipping the DIRECT analysis does not unlint them: .clang-tidy sets
+# HeaderFilterRegex to every first-party .h, so their contents are still
+# reported when the .c that includes them is analysed, with the right flags.
+#
+# `static inline` is deliberately NOT this class: a header full of inline
+# accessors (the HAL register banks) is self-contained and parses standalone,
+# so it stays in the normal passes. The test is a non-inline `static` FUNCTION
+# declaration, not merely the word `static`.
+# ---------------------------------------------------------------------------
+header_is_include_fragment() {
+  local f="$1"
+  [[ -f "$f" ]] || return 1
+  grep -qE "^([A-Za-z_][A-Za-z0-9_]*[[:space:]]+)*static[[:space:]]+inline[[:space:]]" "$f" &&
+    return 1
+  grep -qE \
+    "^([A-Za-z_][A-Za-z0-9_]*[[:space:]]+)*static[[:space:]]+[A-Za-z_][A-Za-z0-9_ *]*[[:space:]]\*?[A-Za-z_][A-Za-z0-9_]*[[:space:]]*\(" \
+    "$f"
+}
+
 route_bucket() {
   local f="$1"
+  case "$f" in
+    # A header that is only ever textually included cannot be its own TU.
+    # Checked before every path rule: this is a property of the FILE, and the
+    # class spans tests/, libs/ and port/ alike.
+    *.h | *.hpp | *.hh | *.hxx)
+      if header_is_include_fragment "$f"; then
+        echo included && return 0
+      fi
+      ;;
+  esac
   case "$f" in
     *.m) echo objc && return 0 ;;
     # C++, but cross-compiled: the first-party Ethos-U55 kernel is pulled into
