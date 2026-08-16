@@ -361,6 +361,31 @@ knownConditionTrueFalse:libs/ra8_core/src/ra8_time.c
 misra-c2012-7.4:port/esp-hosted/src/ra8_esp_hosted_gpio_edge.c
 misra-c2012-7.4:port/esp-hosted/src/ra8_esp_hosted_rtos_pool.c
 
+# ---------------------------------------------------------------------------
+# Rule 7.4 on the media_dl host tests, same tooling gap as the two rows above.
+# `char body[k_internal_sink_bytes] = "old";` and the mkstemp template
+# `char root[] = "/tmp/mdl_ws.XXXXXX";` both INITIALISE a char array from a
+# literal, which Rule 7.4 explicitly permits and which both objects require:
+# mdl_net_get_buf() writes through a `char*` output buffer, and mkstemp()
+# rewrites its template in place. Neither object aliases the literal.
+# ---------------------------------------------------------------------------
+misra-c2012-7.4:tools/media_dl/tests/test_media_dl_net_c6link.c
+misra-c2012-7.4:tools/media_dl/tests/test_media_dl_export_workspace.c
+
+# ---------------------------------------------------------------------------
+# Rule 21.16 on the media_dl C6-backend buffer test.
+# Rule 21.16 requires memcmp's operands to be essentially signed, unsigned,
+# enum or pointer -- never essentially char. The buffer here is `char` because
+# that is mdl_net_get_buf()'s output type (`char* buf`), so the test cannot
+# declare it `uint8_t` without failing to compile against the API under test,
+# and casting it would trade Rule 21.16 for Rule 11.3. The comparison is tested
+# only for equality with zero, so the implementation-defined signedness of
+# plain `char` -- the entire concern behind the rule -- cannot change the
+# outcome. Suppressed rather than deviated because it is one call site in a
+# host test, not a firmware idiom.
+# ---------------------------------------------------------------------------
+misra-c2012-21.16:tools/media_dl/tests/test_media_dl_net_c6link.c
+
 # constParameterCallback on the esp-hosted port's OS-abstraction vtable rows.
 # Every row here is bound to a member of `hosted_osi_funcs_t`
 # (libs/third_party/esp-hosted/host/esp_hosted_os_abstraction.h), whose

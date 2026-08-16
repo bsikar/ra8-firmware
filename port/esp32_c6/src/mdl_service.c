@@ -137,9 +137,10 @@ RA8_INTERNAL static bool internal_mdl_header_equal(const char* lhs, const char* 
   if ((lhs == nullptr) || (rhs == nullptr)) {
     return false;
   }
-  while ((*lhs != '\0') && (*rhs != '\0')) {
-    unsigned char left  = (unsigned char)*lhs++;
-    unsigned char right = (unsigned char)*rhs++;
+  size_t index = 0U;
+  while ((lhs[index] != '\0') && (rhs[index] != '\0')) {
+    unsigned char left  = (unsigned char)lhs[index];
+    unsigned char right = (unsigned char)rhs[index];
     if ((left >= (unsigned char)'A') && (left <= (unsigned char)'Z')) {
       left = (unsigned char)(left + ((unsigned char)'a' - (unsigned char)'A'));
     }
@@ -149,8 +150,9 @@ RA8_INTERNAL static bool internal_mdl_header_equal(const char* lhs, const char* 
     if (left != right) {
       return false;
     }
+    index++;
   }
-  return (*lhs == '\0') && (*rhs == '\0');
+  return (lhs[index] == '\0') && (rhs[index] == '\0');
 }
 
 /**
@@ -225,6 +227,8 @@ RA8_INTERNAL static void internal_mdl_select_response_header(mdl_http_state_t* s
   } else if (internal_mdl_header_equal(key, "Content-Type")) {
     *destination = state->response.content_type;
     *capacity    = sizeof(state->response.content_type);
+  } else {
+    /* Unselected header: destination stays null and capacity stays zero. */
   }
 }
 

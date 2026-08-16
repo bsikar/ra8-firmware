@@ -46,7 +46,7 @@ static uint8_t s_workspace_arena[k_workspace_arena_bytes];
 RA8_INTERNAL static void internal_workspace_write_fixture(const char* path, uint8_t fill)
 {
   uint8_t bytes[k_workspace_fixture_bytes];
-  memset(bytes, (int)fill, sizeof(bytes));
+  (void)memset(bytes, (int)fill, sizeof(bytes));
   const ra8_test_file_result_t result = internal_test_file_replace(path, bytes, sizeof(bytes));
   TEST_ASSERT(result.status == k_ra8_test_file_ok);
   TEST_ASSERT(result.transferred == sizeof(bytes));
