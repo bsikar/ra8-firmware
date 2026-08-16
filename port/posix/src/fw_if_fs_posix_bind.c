@@ -75,11 +75,17 @@ RA8_INTERNAL static bool internal_atomic_noreplace_available(void)
 #if defined(__linux__) && defined(SYS_renameat2)
   errno             = 0;
   const long result = syscall(SYS_renameat2, -1, "x", -1, "y", RENAME_NOREPLACE);
-  return result == -1L && errno == EBADF;
+  if (result != -1L) {
+    return false;
+  }
+  return errno == EBADF;
 #elif defined(__APPLE__)
   errno            = 0;
   const int result = renameatx_np(-1, "x", -1, "y", RENAME_EXCL);
-  return result == -1 && errno == EBADF;
+  if (result != -1) {
+    return false;
+  }
+  return errno == EBADF;
 #else
   return false;
 #endif
@@ -133,7 +139,13 @@ RA8_INTERNAL static void internal_caps(const fw_fs_posix_state_t* state, fw_fs_c
 
 ra8_err_t fw_fs_posix_init(fw_fs_t* out, fw_fs_posix_state_t* state, const fw_fs_posix_cfg_t* cfg)
 {
-  if (out == nullptr || state == nullptr || cfg == nullptr) {
+  if (out == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (state == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (cfg == nullptr) {
     return k_ra8_err_null_ptr;
   }
   if (cfg->root_path == nullptr) {
