@@ -29,7 +29,6 @@ function(c6_camera_server_add_app)
          ra8_c6link
          ra8_audio
          ra8_camera
-         ra8_jpeg
          ra8_ov5640
     EXTRA_SRCS "${_common}/src/c6_cam_app.c" "${_common}/src/c6_cam_audio.c"
                "${_common}/src/c6_cam_console.c" "${_common}/src/c6_cam_net.c"
