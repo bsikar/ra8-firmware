@@ -37,6 +37,13 @@ The Makefile also sources the gitignored `coprocessor/esp32c6/wifi.env` when it
 exists. An aggregate/no-secret build leaves all three values empty; that image
 builds but fails before mounting storage or issuing an RPC.
 
+`make compile-proof` uses reserved, non-secret values in a separate
+`build-proof` directory. That keeps the complete transfer path reachable under
+optimization and then asserts that the final ELF contains the C6 transfer and
+strict RABOOK validation symbols plus nonempty SDRAM workspace. Use that target
+for composition evidence: an empty-config aggregate build is intentionally a
+fail-closed image and is not evidence that the linker retained the feature.
+
 Publication is deliberately create-new. A second successful run with the same
 destination refuses to replace `C6BOOK.RBK`; remove or rename the existing book
 through an authorized UI/maintenance path first. Native FAT/exFAT does not
