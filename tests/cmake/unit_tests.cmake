@@ -421,7 +421,9 @@ if(TARGET test_ra8_mdl_readers)
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
             ${FW_ROOT}/tools/media_dl/src/mdl_config.c
             ${FW_ROOT}/tools/media_dl/src/mdl_urlname.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_export_workspace.c
             ${FW_ROOT}/tools/media_dl/src/mdl_verify.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_verify_rabook.c
             ${FW_ROOT}/tools/media_dl/src/mdl_sanitize.c
             ${FW_ROOT}/tools/media_dl/src/mdl_storage.c
             ${FW_ROOT}/tools/media_dl/src/mdl_hash.c
@@ -479,13 +481,17 @@ if(TARGET test_ra8_mdl_export)
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
             ${FW_ROOT}/tools/media_dl/src/mdl_export.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_export_workspace.c
             ${FW_ROOT}/tools/media_dl/src/mdl_export_io.c
             ${FW_ROOT}/tools/media_dl/src/mdl_export_meta.c
             ${FW_ROOT}/tools/media_dl/src/mdl_export_zip.c
             ${FW_ROOT}/tools/media_dl/src/mdl_export_tar.c
             ${FW_ROOT}/tools/media_dl/src/mdl_export_epub.c
             ${FW_ROOT}/tools/media_dl/src/mdl_export_jof.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_export_rabook.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_export_rabook_io.c
             ${FW_ROOT}/tools/media_dl/src/mdl_verify.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_verify_rabook.c
             ${FW_ROOT}/tools/media_dl/src/mdl_urlname.c
             ${FW_ROOT}/tools/media_dl/src/mdl_url_guard.c
             ${FW_ROOT}/tools/media_dl/src/mdl_sanitize.c
