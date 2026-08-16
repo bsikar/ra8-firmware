@@ -18,16 +18,16 @@
 /** @brief Output destination selected for one synchronous adapter call. */
 typedef enum : uint8_t {
   k_mdl_c6_output_buffer = 1U, /**< Bounded NUL-terminated caller buffer. */
-  k_mdl_c6_output_sink   = 2U, /**< Injected streaming body sink.        */
+  k_mdl_c6_output_sink   = 2U, /**< Injected streaming body sink.         */
 } mdl_c6_output_kind_t;
 
 /** @brief Transaction state that turns one C6 body into a network response. */
 typedef struct {
   mdl_c6_output_kind_t kind;   /**< Selected output union member. */
   char*                buffer; /**< Text buffer or null.          */
-  size_t               cap;    /**< Text-buffer capacity.        */
+  size_t               cap;    /**< Text-buffer capacity.         */
   mdl_net_body_sink_t* sink;   /**< Streaming sink or null.       */
-  size_t               length; /**< Bytes accepted so far.       */
+  size_t               length; /**< Bytes accepted so far.        */
 } mdl_c6_output_t;
 
 /**

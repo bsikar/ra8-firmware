@@ -26,18 +26,18 @@
 /** @brief Fixed one-page source and conversion capacities. */
 typedef enum : uint32_t {
   k_image_source_bytes     = 4194304U,  /**< Maximum fetched encoded image. */
-  k_image_stb_arena_bytes  = 12582912U, /**< stb decoder allocation arena. */
-  k_image_webp_arena_bytes = 4194304U,  /**< WebP decoder scratch arena.   */
-  k_image_rgba_bytes       = 16777216U, /**< Maximum decoded RGBA frame.   */
-  k_image_edge             = 1600U,     /**< Longest normalized page edge. */
-  k_image_gray_bytes       = 2560000U,  /**< 1600x1600 grayscale frame.    */
-  k_image_normalized_bytes = 1280000U,  /**< Gray4 normalized page bytes.  */
-  k_image_flat_bytes       = 1500000U,  /**< Flat RABOOK1 capacity.        */
-  k_image_packed_bytes     = 1600000U,  /**< Final RBKC capacity.          */
-  k_image_string_bytes     = 1024U,     /**< Builder string-pool bytes.    */
-  k_image_chunk_bytes      = 65536U,    /**< RBKC inflated chunk geometry. */
-  k_image_compressed_bytes = 66560U,    /**< One zlib stream capacity.     */
-  k_image_offset_entries   = 25U,       /**< Flat chunks plus terminator.  */
+  k_image_stb_arena_bytes  = 12582912U, /**< stb decoder allocation arena.  */
+  k_image_webp_arena_bytes = 4194304U,  /**< WebP decoder scratch arena.    */
+  k_image_rgba_bytes       = 16777216U, /**< Maximum decoded RGBA frame.    */
+  k_image_edge             = 1600U,     /**< Longest normalized page edge.  */
+  k_image_gray_bytes       = 2560000U,  /**< 1600x1600 grayscale frame.     */
+  k_image_normalized_bytes = 1280000U,  /**< Gray4 normalized page bytes.   */
+  k_image_flat_bytes       = 1500000U,  /**< Flat RABOOK1 capacity.         */
+  k_image_packed_bytes     = 1600000U,  /**< Final RBKC capacity.           */
+  k_image_string_bytes     = 1024U,     /**< Builder string-pool bytes.     */
+  k_image_chunk_bytes      = 65536U,    /**< RBKC inflated chunk geometry.  */
+  k_image_compressed_bytes = 66560U,    /**< One zlib stream capacity.      */
+  k_image_offset_entries   = 25U,       /**< Flat chunks plus terminator.   */
 } image_limit_t;
 
 /** @brief Aligned caller-owned miniz compressor storage. */

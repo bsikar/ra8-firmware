@@ -33,10 +33,10 @@
  * @since 0.1.0
  */
 typedef struct {
-  ra8_c6link_t*          link;        /**< Borrowed open C6 link.             */
-  ra8_mdl_sha256_iface_t sha256;      /**< Caller-owned independent digest.   */
-  uint16_t               chunk_bytes; /**< Requested bytes per remote pull.   */
-  uint32_t               max_chunks;  /**< Hard pull bound for one response.  */
+  ra8_c6link_t*          link;        /**< Borrowed open C6 link.            */
+  ra8_mdl_sha256_iface_t sha256;      /**< Caller-owned independent digest.  */
+  uint16_t               chunk_bytes; /**< Requested bytes per remote pull.  */
+  uint32_t               max_chunks;  /**< Hard pull bound for one response. */
 } mdl_net_c6link_t;
 
 #ifdef __cplusplus
