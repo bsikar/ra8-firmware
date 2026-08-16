@@ -106,8 +106,10 @@ RA8_INTERNAL static uint32_t internal_hash(const uint8_t* bytes, size_t len, boo
   uint32_t h       = (uint32_t)k_jof_audit_fnv_basis;
   bool     uniform = true;
   for (size_t i = 0U; i < len; ++i) {
-    if ((i != 0U) && (bytes[i] != bytes[0])) {
-      uniform = false;
+    if (i != 0U) {
+      if (bytes[i] != bytes[0]) {
+        uniform = false;
+      }
     }
     h ^= (uint32_t)bytes[i];
     h *= (uint32_t)k_jof_audit_fnv_prime;
@@ -169,7 +171,65 @@ RA8_INTERNAL static ra8_err_t internal_make_span(const void* ptr, size_t len, in
 RA8_INTERNAL static bool internal_spans_overlap(const internal_span_t* left,
                                                 const internal_span_t* right)
 {
-  return (left->begin < right->end) && (right->begin < left->end);
+  if (left->begin >= right->end) {
+    return false;
+  }
+  return right->begin < left->end;
+}
+
+/**
+ * @brief Check every pair of writable audit spans for overlap.
+ * @details Evaluates the ten unique pairs in a fixed order and stops at the
+ *          first shared byte, including the result and workspace descriptors.
+ * @param[in] workspace Workspace descriptor span.
+ * @param[in] records Record-array span.
+ * @param[in] tile Decoded-tile span.
+ * @param[in] scratch Codec-scratch span, possibly empty.
+ * @param[in] result Public result span.
+ * @return Whether any supplied pair overlaps.
+ * @retval true At least one pair shares a byte.
+ * @retval false Every pair is disjoint.
+ * @pre Every span came from ::internal_make_span.
+ * @pre All span objects are non-NULL and readable.
+ * @post No span or caller storage is modified.
+ * @post False proves pairwise separation of all five spans.
+ * @note Empty spans compare disjoint from every span.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_any_workspace_overlap(const internal_span_t* workspace,
+                                                        const internal_span_t* records,
+                                                        const internal_span_t* tile,
+                                                        const internal_span_t* scratch,
+                                                        const internal_span_t* result)
+{
+  if (internal_spans_overlap(workspace, records)) {
+    return true;
+  }
+  if (internal_spans_overlap(workspace, tile)) {
+    return true;
+  }
+  if (internal_spans_overlap(workspace, scratch)) {
+    return true;
+  }
+  if (internal_spans_overlap(workspace, result)) {
+    return true;
+  }
+  if (internal_spans_overlap(records, tile)) {
+    return true;
+  }
+  if (internal_spans_overlap(records, scratch)) {
+    return true;
+  }
+  if (internal_spans_overlap(records, result)) {
+    return true;
+  }
+  if (internal_spans_overlap(tile, scratch)) {
+    return true;
+  }
+  if (internal_spans_overlap(tile, result)) {
+    return true;
+  }
+  return internal_spans_overlap(scratch, result);
 }
 
 ra8_err_t ra8_jof_audit_requirements(ra8_jof_pread_fn              pread,
@@ -177,7 +237,10 @@ ra8_err_t ra8_jof_audit_requirements(ra8_jof_pread_fn              pread,
                                      uint64_t                      total_size,
                                      ra8_jof_audit_requirements_t* out)
 {
-  if ((pread == nullptr) || (out == nullptr)) {
+  if (pread == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (out == nullptr) {
     return k_ra8_err_null_ptr;
   }
   ra8_jof_info_t  info = {};
@@ -196,11 +259,71 @@ ra8_err_t ra8_jof_audit_requirements(ra8_jof_pread_fn              pread,
     .scratch_bytes =
       (info.codec == (uint8_t)k_ra8_jof_codec_deflate) ? ra8_jof_stored_bound(tile) : 0U,
   };
-  if ((candidate.tile_bytes == 0U) ||
-      ((info.codec == (uint8_t)k_ra8_jof_codec_deflate) && (candidate.scratch_bytes == 0U))) {
+  if (candidate.tile_bytes == 0U) {
     return k_ra8_err_invalid_size;
   }
+  if (info.codec == (uint8_t)k_ra8_jof_codec_deflate) {
+    if (candidate.scratch_bytes == 0U) {
+      return k_ra8_err_invalid_size;
+    }
+  }
   *out = candidate;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Validate the writable audit span layout.
+ * @details Builds checked integer spans for every caller-owned destination and
+ *          rejects arithmetic overflow or any pairwise overlap.
+ * @param[in] ws Caller workspace.
+ * @param[in] need Exact requirements.
+ * @param[in] out Public result destination.
+ * @param[in] record_bytes Size of the complete record array.
+ * @return Span validation status.
+ * @retval k_ra8_ok Every writable span is representable and disjoint.
+ * @retval k_ra8_err_invalid_size A span end cannot be represented.
+ * @retval k_ra8_err_invalid_arg At least two writable spans overlap.
+ * @pre All required workspace pointers and capacities are already validated.
+ * @pre @p record_bytes is the checked record-array byte count.
+ * @post No caller buffer contents are modified.
+ * @post Success proves pairwise separation of all writable destinations.
+ * @note Thread-safe and allocation-free.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_check_workspace_spans(const ra8_jof_audit_workspace_t*    ws,
+                               const ra8_jof_audit_requirements_t* need,
+                               const ra8_jof_audit_result_t*       out,
+                               size_t                              record_bytes)
+{
+  internal_span_t workspace_span = {};
+  internal_span_t record_span    = {};
+  internal_span_t tile_span      = {};
+  internal_span_t scratch_span   = {};
+  internal_span_t result_span    = {};
+  ra8_err_t       rc             = internal_make_span(ws, sizeof(*ws), &workspace_span);
+  if (rc == k_ra8_ok) {
+    rc = internal_make_span(ws->records, record_bytes, &record_span);
+  }
+  if (rc == k_ra8_ok) {
+    rc = internal_make_span(ws->tile, need->tile_bytes, &tile_span);
+  }
+  if (rc == k_ra8_ok) {
+    rc = internal_make_span(ws->scratch, need->scratch_bytes, &scratch_span);
+  }
+  if (rc == k_ra8_ok) {
+    rc = internal_make_span(out, sizeof(*out), &result_span);
+  }
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+  if (internal_any_workspace_overlap(&workspace_span,
+                                     &record_span,
+                                     &tile_span,
+                                     &scratch_span,
+                                     &result_span)) {
+    return k_ra8_err_invalid_arg;
+  }
   return k_ra8_ok;
 }
 
@@ -226,58 +349,36 @@ RA8_INTERNAL static ra8_err_t internal_check_workspace(const ra8_jof_audit_works
                                                        const ra8_jof_audit_requirements_t* need,
                                                        const ra8_jof_audit_result_t*       out)
 {
-  if ((ws == nullptr) || (ws->records == nullptr) || (ws->tile == nullptr)) {
+  if (ws == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  if ((need->scratch_bytes != 0U) && (ws->scratch == nullptr)) {
+  if (ws->records == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  if ((ws->record_cap < need->record_count) || (ws->tile_cap < need->tile_bytes) ||
-      (ws->scratch_cap < need->scratch_bytes)) {
+  if (ws->tile == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (need->scratch_bytes != 0U) {
+    if (ws->scratch == nullptr) {
+      return k_ra8_err_null_ptr;
+    }
+  }
+  if (ws->record_cap < need->record_count) {
+    return k_ra8_err_invalid_size;
+  }
+  if (ws->tile_cap < need->tile_bytes) {
+    return k_ra8_err_invalid_size;
+  }
+  if (ws->scratch_cap < need->scratch_bytes) {
     return k_ra8_err_invalid_size;
   }
   const size_t record_bytes = (size_t)need->record_count * sizeof(*ws->records);
-  if ((need->record_count != 0U) &&
-      ((record_bytes / sizeof(*ws->records)) != (size_t)need->record_count)) {
-    return k_ra8_err_invalid_size;
+  if (need->record_count != 0U) {
+    if ((record_bytes / sizeof(*ws->records)) != (size_t)need->record_count) {
+      return k_ra8_err_invalid_size;
+    }
   }
-
-  internal_span_t workspace_span = {};
-  internal_span_t record_span    = {};
-  internal_span_t tile_span      = {};
-  internal_span_t scratch_span   = {};
-  internal_span_t result_span    = {};
-  ra8_err_t       rc             = internal_make_span(ws, sizeof(*ws), &workspace_span);
-  if (rc == k_ra8_ok) {
-    rc = internal_make_span(ws->records, record_bytes, &record_span);
-  }
-  if (rc == k_ra8_ok) {
-    rc = internal_make_span(ws->tile, need->tile_bytes, &tile_span);
-  }
-  if (rc == k_ra8_ok) {
-    rc = internal_make_span(ws->scratch, need->scratch_bytes, &scratch_span);
-  }
-  if (rc == k_ra8_ok) {
-    rc = internal_make_span(out, sizeof(*out), &result_span);
-  }
-  if (rc != k_ra8_ok) {
-    return rc;
-  }
-
-  const bool overlap = internal_spans_overlap(&workspace_span, &record_span) ||
-                       internal_spans_overlap(&workspace_span, &tile_span) ||
-                       internal_spans_overlap(&workspace_span, &scratch_span) ||
-                       internal_spans_overlap(&workspace_span, &result_span) ||
-                       internal_spans_overlap(&record_span, &tile_span) ||
-                       internal_spans_overlap(&record_span, &scratch_span) ||
-                       internal_spans_overlap(&record_span, &result_span) ||
-                       internal_spans_overlap(&tile_span, &scratch_span) ||
-                       internal_spans_overlap(&tile_span, &result_span) ||
-                       internal_spans_overlap(&scratch_span, &result_span);
-  if (overlap) {
-    return k_ra8_err_invalid_arg;
-  }
-  return k_ra8_ok;
+  return internal_check_workspace_spans(ws, need, out, record_bytes);
 }
 
 /**
@@ -306,9 +407,12 @@ RA8_INTERNAL static uint32_t internal_duplicate_count(const ra8_jof_audit_record
   }
   uint32_t matches = 0U;
   for (uint32_t i = 0U; i < count; ++i) {
-    if (!records[i].uniform && (records[i].payload == item->payload) &&
-        (records[i].content_hash == item->content_hash)) {
-      matches++;
+    if (!records[i].uniform) {
+      if (records[i].payload == item->payload) {
+        if (records[i].content_hash == item->content_hash) {
+          matches++;
+        }
+      }
     }
   }
   return matches;
@@ -389,7 +493,11 @@ static ra8_err_t internal_audit_tile(internal_audit_context_t* context, uint32_t
   if (rc != k_ra8_ok) {
     return rc;
   }
-  if ((record->width != want_w) || (record->height != want_h)) {
+  bool geometry_error = record->width != want_w;
+  if (record->height != want_h) {
+    geometry_error = true;
+  }
+  if (geometry_error) {
     context->candidate->geometry_errors++;
   }
   record->content_hash = internal_hash(context->workspace->tile, record->payload, &record->uniform);
@@ -405,7 +513,10 @@ ra8_err_t ra8_jof_audit(ra8_jof_pread_fn           pread,
                         ra8_jof_audit_workspace_t* workspace,
                         ra8_jof_audit_result_t*    out)
 {
-  if ((pread == nullptr) || (out == nullptr)) {
+  if (pread == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (out == nullptr) {
     return k_ra8_err_null_ptr;
   }
   ra8_jof_audit_requirements_t need = {};
@@ -438,7 +549,11 @@ ra8_err_t ra8_jof_audit(ra8_jof_pread_fn           pread,
     candidate.coverage_errors++;
   }
   *out = candidate;
-  return ((candidate.coverage_errors == 0U) && (candidate.geometry_errors == 0U))
-           ? k_ra8_ok
-           : k_ra8_err_validation_failed;
+  if (candidate.coverage_errors != 0U) {
+    return k_ra8_err_validation_failed;
+  }
+  if (candidate.geometry_errors != 0U) {
+    return k_ra8_err_validation_failed;
+  }
+  return k_ra8_ok;
 }
