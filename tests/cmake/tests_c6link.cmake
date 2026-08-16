@@ -197,6 +197,31 @@ target_compile_options(test_ra8_mdl_storage_ram PRIVATE -Wall -Wextra -Werror)
 target_include_directories(test_ra8_mdl_storage_ram PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
 add_test(NAME test_ra8_mdl_storage_ram COMMAND test_ra8_mdl_storage_ram)
 
+# test_app_media_download_format: the target app's portable source-image
+# formatter, exercised with production raster, book, compressor, and reader
+# implementations. No C6 transport or target-only peripheral is linked here.
+add_executable(
+  test_app_media_download_format
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_app_media_download_format.c
+  ${FW_ROOT}/examples/ek_ra8d2/hw_pending/media_download/media_download_format.c
+  $<TARGET_OBJECTS:ra8_core_hal>
+)
+set_target_properties(test_app_media_download_format PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_options(test_app_media_download_format PRIVATE -Wall -Wextra -Werror)
+target_include_directories(
+  test_app_media_download_format
+  PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/media_download
+          ${FW_ROOT}/libs/ra8_book/inc
+          ${FW_ROOT}/libs/ra8_io/inc
+          ${FW_ROOT}/libs/ra8_mem/inc
+          ${FW_ROOT}/libs/ra8_rabook_compile/inc
+          ${FW_ROOT}/libs/ra8_reflow/inc
+          ${FW_ROOT}/libs/ra8_webp/inc
+          ${FW_ROOT}/libs/third_party/miniz
+          ${RA8_C6LINK_INCLUDE_DIRS}
+)
+add_test(NAME test_app_media_download_format COMMAND test_app_media_download_format)
+
 # test_ra8_c6link_rabook: the full mixed-image acceptance path. A generated
 # RBKC artifact crosses the portable C6 service and RA client, is written to a
 # real FAT/VFS transaction, strictly validated before publication, then reopened
