@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "idf_compat/esp_err.h"
 #include "ra8_attributes.h"
 #include "ra8_c6_model.h"
 #include "ra8_c6link.h"
@@ -808,6 +809,45 @@ RA8_INTERNAL static void internal_test_mcdc_facade_guards(void)
 }
 
 /**
+ * @test internal_test_remote_error_mapping
+ * @brief Preserve actionable C6 general errors without losing raw fault evidence.
+ * @details Drives every portable mapping plus generic and success controls
+ * directly through the shared response-status seam.
+ * @pre The facade fixture exposes one reset caller-owned link.
+ * @pre ESP-IDF compatibility constants match the C6 wire ABI.
+ * @post Every known status returns its closest RA8 error.
+ * @post The last fault retains the exact final nonzero remote status.
+ * @note Component-specific unknown values deliberately remain protocol errors.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_remote_error_mapping(void)
+{
+  TEST_BEGIN("c6link remote error mapping");
+  priv_c6link_test_reset();
+  ra8_c6link_t* link = priv_c6link_test_link();
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, priv_c6link_resp(link, 1U, ESP_ERR_NO_MEM));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_c6link_resp(link, 2U, ESP_ERR_INVALID_ARG));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, priv_c6link_resp(link, 3U, ESP_ERR_INVALID_STATE));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, priv_c6link_resp(link, 4U, ESP_ERR_INVALID_SIZE));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, priv_c6link_resp(link, 5U, ESP_ERR_NOT_FOUND));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, priv_c6link_resp(link, 6U, ESP_ERR_NOT_SUPPORTED));
+  TEST_ASSERT_EQ(k_ra8_err_timeout, priv_c6link_resp(link, 7U, ESP_ERR_TIMEOUT));
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, priv_c6link_resp(link, 8U, ESP_ERR_INVALID_RESPONSE));
+  TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch, priv_c6link_resp(link, 9U, ESP_ERR_INVALID_CRC));
+  TEST_ASSERT_EQ(k_ra8_err_access_denied, priv_c6link_resp(link, 10U, ESP_ERR_NOT_ALLOWED));
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, priv_c6link_resp(link, 11U, ESP_FAIL));
+  ra8_c6link_fault_t fault = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_last_fault(link, &fault));
+  TEST_ASSERT_EQ(11U, fault.rpc_id);
+  TEST_ASSERT_EQ(ESP_FAIL, fault.resp);
+  TEST_ASSERT_EQ(k_ra8_ok, priv_c6link_resp(link, 12U, ESP_OK));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_last_fault(link, &fault));
+  TEST_ASSERT_EQ(0U, fault.rpc_id);
+  TEST_ASSERT_EQ(ESP_OK, fault.resp);
+  TEST_END("c6link remote error mapping");
+}
+
+/**
  * @par MC/DC:
  * (no compound decision under test -- the announcement is transmitted, its
  * octets are checked against the protocol, and a request issued before it is
@@ -870,5 +910,6 @@ int main(void)
   internal_test_rejected_frames();
   internal_test_rpc_call_guards();
   internal_test_mcdc_facade_guards();
+  internal_test_remote_error_mapping();
   return 0;
 }

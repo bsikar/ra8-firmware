@@ -41,6 +41,20 @@
 #include "ra8_c6link.h"
 #include "ra8_c6link_internal.h"
 
+/** @enum c6link_esp_status_t @brief Stable ESP-IDF general error values carried on the wire. */
+typedef enum : int32_t {
+  k_c6link_esp_err_no_mem           = 0x101, /**< Remote allocation failed.              */
+  k_c6link_esp_err_invalid_arg      = 0x102, /**< Remote argument validation failed.     */
+  k_c6link_esp_err_invalid_state    = 0x103, /**< Remote service state rejected the call. */
+  k_c6link_esp_err_invalid_size     = 0x104, /**< Remote extent validation failed.       */
+  k_c6link_esp_err_not_found        = 0x105, /**< Remote object was absent.              */
+  k_c6link_esp_err_not_supported    = 0x106, /**< Remote image lacks the operation.      */
+  k_c6link_esp_err_timeout          = 0x107, /**< Remote operation timed out.            */
+  k_c6link_esp_err_invalid_response = 0x108, /**< Remote protocol validation failed.     */
+  k_c6link_esp_err_invalid_crc      = 0x109, /**< Remote checksum validation failed.     */
+  k_c6link_esp_err_not_allowed      = 0x10D, /**< Remote policy denied the operation.    */
+} c6link_esp_status_t;
+
 /**
  * @brief Stage a packed request in the link's transmit transaction.
  * @details Packs directly into the transmit transaction behind its envelope,
@@ -85,6 +99,56 @@ RA8_INTERNAL static ra8_err_t internal_c6link_rpc_stage(ra8_c6link_t* link, Rpc*
   return k_ra8_ok;
 }
 
+/**
+ * @brief Translate one nonzero ESP-IDF wire status into the RA8 error domain.
+ * @details Preserves actionable general-purpose failures while mapping unknown,
+ * component-specific, and generic ESP failures to a protocol error.
+ * @param[in] response Nonzero `esp_err_t` value received from the C6.
+ * @return Closest stable RA8 error with no retained state.
+ * @retval k_ra8_err_no_mem The C6 exhausted memory.
+ * @retval k_ra8_err_invalid_arg The C6 rejected an argument.
+ * @retval k_ra8_err_invalid_state The C6 rejected its current state.
+ * @retval k_ra8_err_invalid_size The C6 rejected an extent.
+ * @retval k_ra8_err_not_found The requested remote object was absent.
+ * @retval k_ra8_err_not_supported The remote image lacks the operation.
+ * @retval k_ra8_err_timeout The remote operation timed out.
+ * @retval k_ra8_err_checksum_mismatch The remote checksum did not verify.
+ * @retval k_ra8_err_access_denied Remote policy denied the operation.
+ * @retval k_ra8_err_protocol_error The status was generic or unknown.
+ * @pre @p response is nonzero and came from a decoded RPC response.
+ * @pre ESP-IDF general error values retain their published wire numbers.
+ * @post No link or caller state is modified.
+ * @post The returned value is always a non-success RA8 error.
+ * @note Component-specific ESP errors remain available in the raw fault slot.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_c6link_remote_error(int32_t response)
+{
+  switch (response) {
+    case k_c6link_esp_err_no_mem:
+      return k_ra8_err_no_mem;
+    case k_c6link_esp_err_invalid_arg:
+      return k_ra8_err_invalid_arg;
+    case k_c6link_esp_err_invalid_state:
+      return k_ra8_err_invalid_state;
+    case k_c6link_esp_err_invalid_size:
+      return k_ra8_err_invalid_size;
+    case k_c6link_esp_err_not_found:
+      return k_ra8_err_not_found;
+    case k_c6link_esp_err_not_supported:
+      return k_ra8_err_not_supported;
+    case k_c6link_esp_err_timeout:
+      return k_ra8_err_timeout;
+    case k_c6link_esp_err_invalid_crc:
+      return k_ra8_err_checksum_mismatch;
+    case k_c6link_esp_err_not_allowed:
+      return k_ra8_err_access_denied;
+    case k_c6link_esp_err_invalid_response:
+    default:
+      return k_ra8_err_protocol_error;
+  }
+}
+
 RA8_PRIV ra8_err_t priv_c6link_resp(ra8_c6link_t* link, uint32_t rpc_id, int32_t resp)
 {
   if (link == nullptr) {
@@ -93,7 +157,7 @@ RA8_PRIV ra8_err_t priv_c6link_resp(ra8_c6link_t* link, uint32_t rpc_id, int32_t
   if (resp != 0) {
     link->fault.rpc_id = rpc_id;
     link->fault.resp   = resp;
-    return k_ra8_err_protocol_error;
+    return internal_c6link_remote_error(resp);
   }
   link->fault.rpc_id = 0U;
   link->fault.resp   = 0;
