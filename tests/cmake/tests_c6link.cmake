@@ -95,6 +95,7 @@ add_executable(
   test_ra8_c6link_media
   ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media.c
   ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media_decoder.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media_http.c
   ${CMAKE_CURRENT_SOURCE_DIR}/ra8_c6link_transfer_validation_test.c
   ${RA8_C6LINK_TEST_SUPPORT}
   ${RA8_C6LINK_TEST_MODEL}
@@ -138,6 +139,7 @@ if(NOT TARGET test_ra8_c6link_mdl)
   add_executable(
     test_ra8_c6link_mdl
     ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl_policy.c
     ${FW_ROOT}/libs/ra8_c6link/src/ra8_c6link_mdl_service.c
     ${FW_ROOT}/libs/ra8_c6link/src/ra8_media_download.pb-c.c
     ${RA8_C6LINK_VENDOR_DIR}/common/protobuf-c/protobuf-c/protobuf-c.c
@@ -154,6 +156,7 @@ endif()
 add_executable(
   test_ra8_esp32_c6_mdl_service
   ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_esp32_c6_mdl_service.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/esp32_c6_http_model.c
   ${FW_ROOT}/port/esp32_c6/src/mdl_service.c
   ${FW_ROOT}/libs/ra8_c6link/src/ra8_c6link_mdl_service.c
   ${FW_ROOT}/libs/ra8_c6link/src/ra8_media_download.pb-c.c

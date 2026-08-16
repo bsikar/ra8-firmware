@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "esp32_c6_http_model_internal.h"
 #include "esp_idf_mdl_compat_internal.h"
 #include "ra8_attributes.h"
 #include "ra8_c6link_mdl.h"
@@ -20,87 +21,8 @@
 #include "ra8_media_download.pb-c.h"
 #include "unity_minimal.h"
 
-/** @brief Fixed fixture capacities and HTTP values. */
-typedef enum : uint16_t {
-  k_c6_http_request_cap     = 256U,  /**< Packed request scratch.        */
-  k_c6_http_response_cap    = 4608U, /**< Packed response scratch.       */
-  k_c6_http_status_ok       = 200U,  /**< Canonical successful status.   */
-  k_c6_http_status_low      = 99U,   /**< Below the HTTP status range.   */
-  k_c6_http_status_redirect = 300U,  /**< Visible non-followed redirect. */
-  k_c6_http_status_high     = 600U,  /**< Above the HTTP status range.   */
-} c6_http_test_limits_t;
-
-/** @brief Deterministic host model for the consumed ESP-IDF surface. */
-typedef struct {
-  const uint8_t* body;                                       /**< Response body.    */
-  size_t         body_bytes;                                 /**< Body extent.      */
-  size_t         cursor;                                     /**< Read position.    */
-  int64_t        content_length;                             /**< Advertised size.  */
-  int            status;                                     /**< HTTP status.      */
-  bool           complete;                                   /**< Complete flag.    */
-  bool           init_fail;                                  /**< Init fault.       */
-  bool           set_url_fail;                               /**< URL fault.        */
-  bool           set_header_fail;                            /**< Header fault.     */
-  bool           set_timeout_fail;                           /**< Timeout fault.    */
-  bool           open_fail;                                  /**< Open fault.       */
-  bool           read_fail;                                  /**< Read fault.       */
-  bool           read_oversize;                              /**< Oversize read.    */
-  bool           sha_start_fail;                             /**< SHA init fault.   */
-  bool           sha_update_fail;                            /**< SHA update fault. */
-  bool           sha_finish_fail;                            /**< SHA final fault.  */
-  uint32_t       init_calls;                                 /**< Init calls.       */
-  uint32_t       close_calls;                                /**< Close calls.      */
-  int            timeout_ms;                                 /**< Applied timeout.  */
-  char           user_agent[k_ra8_mdl_user_agent_max];       /**< User-Agent.       */
-  char           referer[k_ra8_mdl_referer_max];             /**< Referer.          */
-  char           if_none_match[k_ra8_mdl_etag_max];          /**< ETag condition.   */
-  char           if_modified_since[k_ra8_mdl_http_date_max]; /**< Date condition.   */
-  const char*    retry_after;                                /**< Retry-After.      */
-  const char*    etag;                                       /**< ETag.             */
-  const char*    last_modified;                              /**< Last-Modified.    */
-  const char*    content_type;                               /**< Content-Type.     */
-  const char*    etag_key;                                   /**< ETag field name.  */
-  bool           null_etag_value;                            /**< Valueless ETag.   */
-} c6_http_model_t;
-
-/** @brief Concrete storage behind the opaque ESP-IDF handle type. */
-struct esp_http_client {
-  const char*                url;           /**< Last URL accepted by the model. */
-  esp_http_client_event_cb_t event_handler; /**< Configured event callback.      */
-  void*                      user_data;     /**< Configured callback context.    */
-};
-
-static struct esp_http_client s_client;
-static c6_http_model_t        s_model;
-static uint8_t                s_request[k_c6_http_request_cap];
-static uint8_t                s_response[k_c6_http_response_cap];
-
-/**
- * @brief Reset the model to one successful deterministic response.
- * @details Clears every injected fault while retaining the production service's
- *          independently owned one-time client state.
- * @param[in] body Borrowed response bytes.
- * @param[in] body_bytes Readable bytes at @p body.
- * @pre @p body is non-NULL when @p body_bytes is nonzero.
- * @pre No public handler call executes concurrently.
- * @post The next URL/open/read sequence starts at body offset zero.
- * @post Content-Length equals @p body_bytes and completeness defaults true.
- * @note File-local fixture mutation only.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_model_reset(const uint8_t* body, size_t body_bytes)
-{
-  s_model = (c6_http_model_t){.body           = body,
-                              .body_bytes     = body_bytes,
-                              .content_length = (int64_t)body_bytes,
-                              .status         = (int)k_c6_http_status_ok,
-                              .complete       = true,
-                              .retry_after    = "4",
-                              .etag           = "\"esp-etag\"",
-                              .last_modified  = "Wed, 21 Oct 2015 07:28:00 GMT",
-                              .content_type   = "application/x-rabook",
-                              .etag_key       = "eTaG"};
-}
+static uint8_t s_request[k_c6_http_request_cap];
+static uint8_t s_response[k_c6_http_response_cap];
 
 /**
  * @brief Pack and dispatch one generated Start request.
@@ -266,266 +188,6 @@ RA8_INTERNAL static void internal_expected_digest(const uint8_t* body,
 }
 
 /**
- * @brief Select model storage for one request header
- * @param[in] key Canonical request-header name.
- * @param[out] capacity Selected storage capacity.
- * @return Selected model buffer, or null for an unexpected name.
- * @retval non-NULL The exact observed-header buffer.
- * @retval NULL The production adapter supplied an unknown header.
- * @pre @p key and @p capacity are non-null.
- * @pre @p key is NUL-terminated.
- * @post No model buffer is modified.
- * @post Success publishes the exact matching capacity.
- * @note Header names emitted by production use canonical case.
- * @since 0.1.0
- */
-RA8_INTERNAL static char* internal_model_header_slot(const char* key, size_t* capacity)
-{
-  if (strcmp(key, "User-Agent") == 0) {
-    *capacity = sizeof(s_model.user_agent);
-    return s_model.user_agent;
-  }
-  if (strcmp(key, "Referer") == 0) {
-    *capacity = sizeof(s_model.referer);
-    return s_model.referer;
-  }
-  if (strcmp(key, "If-None-Match") == 0) {
-    *capacity = sizeof(s_model.if_none_match);
-    return s_model.if_none_match;
-  }
-  if (strcmp(key, "If-Modified-Since") == 0) {
-    *capacity = sizeof(s_model.if_modified_since);
-    return s_model.if_modified_since;
-  }
-  *capacity = 0U;
-  return nullptr;
-}
-
-/**
- * @brief Emit one modelled response-header event exactly as supplied
- * @details Borrows the supplied strings into one synchronous event and calls
- * the production callback exactly as ESP-IDF would during header parsing. A
- * null name or value is passed through unchanged, which is how the malformed
- * header-event vectors reach the production guards.
- * @param[in] key Header name supplied to the production callback, or null.
- * @param[in] value Header value supplied to the production callback, or null.
- * @pre The retained client has a configured event callback.
- * @pre Non-null @p key and @p value are NUL-terminated.
- * @post Production state has consumed the complete synchronous event.
- * @post Model response strings remain borrowed and unmodified.
- * @note Uses mixed-case names to verify HTTP field-name matching.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_model_emit_header_raw(const char* key, const char* value)
-{
-  esp_http_client_event_t event = {.event_id     = HTTP_EVENT_ON_HEADER,
-                                   .client       = &s_client,
-                                   .user_data    = s_client.user_data,
-                                   .header_key   = (char*)key,
-                                   .header_value = (char*)value};
-  (void)s_client.event_handler(&event);
-}
-
-/**
- * @brief Emit one modelled response-header event that carries a value
- * @details Treats a null value as "this header was not present at all", so a
- * deliberately valueless header must be emitted through
- * ::internal_model_emit_header_raw instead.
- * @param[in] key Header name supplied to the production callback.
- * @param[in] value Header value, or null to omit the header entirely.
- * @pre The retained client has a configured event callback.
- * @pre A non-null @p value is NUL-terminated.
- * @post A present header reaches the production callback exactly once.
- * @post An absent header produces no event.
- * @note Uses mixed-case names to verify HTTP field-name matching.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_model_emit_header(const char* key, const char* value)
-{
-  if (value == nullptr) {
-    return;
-  }
-  internal_model_emit_header_raw(key, value);
-}
-
-/* ESP-IDF stand-ins implement the contracts declared by the compatibility
- * header. */
-RA8_PRIV esp_err_t esp_crt_bundle_attach(void* conf)
-{
-  (void)conf;
-  return ESP_OK;
-}
-
-RA8_PRIV esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t* config)
-{
-  TEST_ASSERT(config != nullptr);
-  ++s_model.init_calls;
-  if (s_model.init_fail) {
-    return nullptr;
-  }
-  s_client = (struct esp_http_client){.event_handler = config->event_handler,
-                                      .user_data     = config->user_data};
-  return &s_client;
-}
-
-RA8_PRIV esp_err_t esp_http_client_close(esp_http_client_handle_t client)
-{
-  TEST_ASSERT(client == &s_client);
-  ++s_model.close_calls;
-  return ESP_OK;
-}
-
-RA8_PRIV esp_err_t esp_http_client_set_url(esp_http_client_handle_t client, const char* url)
-{
-  TEST_ASSERT(client == &s_client);
-  TEST_ASSERT(url != nullptr);
-  if (s_model.set_url_fail) {
-    return ESP_FAIL;
-  }
-  client->url    = url;
-  s_model.cursor = 0U;
-  return ESP_OK;
-}
-
-RA8_PRIV esp_err_t esp_http_client_set_header(esp_http_client_handle_t client,
-                                              const char*              key,
-                                              const char*              value)
-{
-  TEST_ASSERT(client == &s_client);
-  TEST_ASSERT(key != nullptr);
-  TEST_ASSERT(value != nullptr);
-  if (s_model.set_header_fail) {
-    return ESP_FAIL;
-  }
-  size_t capacity = 0U;
-  char*  slot     = internal_model_header_slot(key, &capacity);
-  TEST_ASSERT(slot != nullptr);
-  const size_t length = strnlen(value, capacity);
-  TEST_ASSERT(length < capacity);
-  (void)memcpy(slot, value, length + 1U);
-  return ESP_OK;
-}
-
-RA8_PRIV esp_err_t esp_http_client_delete_header(esp_http_client_handle_t client, const char* key)
-{
-  TEST_ASSERT(client == &s_client);
-  TEST_ASSERT(key != nullptr);
-  size_t capacity = 0U;
-  char*  slot     = internal_model_header_slot(key, &capacity);
-  TEST_ASSERT(slot != nullptr);
-  slot[0] = '\0';
-  return ESP_OK;
-}
-
-RA8_PRIV esp_err_t esp_http_client_set_timeout_ms(esp_http_client_handle_t client, int timeout_ms)
-{
-  TEST_ASSERT(client == &s_client);
-  TEST_ASSERT(timeout_ms > 0);
-  if (s_model.set_timeout_fail) {
-    return ESP_FAIL;
-  }
-  s_model.timeout_ms = timeout_ms;
-  return ESP_OK;
-}
-
-RA8_PRIV esp_err_t esp_http_client_open(esp_http_client_handle_t client, int64_t write_len)
-{
-  TEST_ASSERT(client == &s_client);
-  TEST_ASSERT_EQ(0, write_len);
-  return s_model.open_fail ? ESP_FAIL : ESP_OK;
-}
-
-RA8_PRIV int64_t esp_http_client_fetch_headers(esp_http_client_handle_t client)
-{
-  TEST_ASSERT(client == &s_client);
-  internal_model_emit_header("rEtRy-AfTeR", s_model.retry_after);
-  if (s_model.null_etag_value) {
-    internal_model_emit_header_raw(s_model.etag_key, nullptr);
-  } else {
-    internal_model_emit_header(s_model.etag_key, s_model.etag);
-  }
-  internal_model_emit_header("lAsT-mOdIfIeD", s_model.last_modified);
-  internal_model_emit_header("cOnTeNt-TyPe", s_model.content_type);
-  return s_model.content_length;
-}
-
-RA8_PRIV int esp_http_client_get_status_code(esp_http_client_handle_t client)
-{
-  TEST_ASSERT(client == &s_client);
-  return s_model.status;
-}
-
-RA8_PRIV int esp_http_client_read(esp_http_client_handle_t client, char* buffer, int len)
-{
-  TEST_ASSERT(client == &s_client);
-  TEST_ASSERT(buffer != nullptr);
-  if (s_model.read_fail) {
-    return -1;
-  }
-  if (s_model.read_oversize) {
-    return len + 1;
-  }
-  const size_t remaining = s_model.body_bytes - s_model.cursor;
-  if (remaining == 0U) {
-    return 0;
-  }
-  size_t count = remaining;
-  if (count > (size_t)len) {
-    count = (size_t)len;
-  }
-  (void)memcpy(buffer, &s_model.body[s_model.cursor], count);
-  s_model.cursor += count;
-  return (int)count;
-}
-
-RA8_PRIV bool esp_http_client_is_complete_data_received(esp_http_client_handle_t client)
-{
-  TEST_ASSERT(client == &s_client);
-  return s_model.complete;
-}
-
-RA8_PRIV void mbedtls_sha256_init(mbedtls_sha256_context* ctx)
-{
-  TEST_ASSERT(ctx != nullptr);
-  *ctx = (mbedtls_sha256_context){};
-}
-
-RA8_PRIV int mbedtls_sha256_starts(mbedtls_sha256_context* ctx, int is224)
-{
-  TEST_ASSERT(ctx != nullptr);
-  TEST_ASSERT_EQ(0, is224);
-  ctx->opaque[0] = 0U;
-  return s_model.sha_start_fail ? -1 : 0;
-}
-
-RA8_PRIV int
-mbedtls_sha256_update(mbedtls_sha256_context* ctx, const unsigned char* input, size_t ilen)
-{
-  TEST_ASSERT(ctx != nullptr);
-  TEST_ASSERT(input != nullptr);
-  if (s_model.sha_update_fail) {
-    return -1;
-  }
-  for (size_t i = 0U; i < ilen; ++i) {
-    ctx->opaque[0] += input[i];
-  }
-  return 0;
-}
-
-RA8_PRIV int mbedtls_sha256_finish(mbedtls_sha256_context* ctx, unsigned char output[32])
-{
-  TEST_ASSERT(ctx != nullptr);
-  TEST_ASSERT(output != nullptr);
-  if (s_model.sha_finish_fail) {
-    return -1;
-  }
-  for (uint8_t i = 0U; i < (uint8_t)k_ra8_mdl_sha256_bytes; ++i) {
-    output[i] = (uint8_t)(ctx->opaque[0] + i);
-  }
-  return 0;
-}
-
-/**
  * @brief Verify an unrelated CustomRpc operation is left to ESP-hosted
  * @details Sends an unknown identifier before one-time HTTP initialization and
  *          proves first-refusal neither creates a client nor claims a response.
@@ -539,7 +201,7 @@ RA8_PRIV int mbedtls_sha256_finish(mbedtls_sha256_context* ctx, unsigned char ou
 RA8_INTERNAL static void internal_test_unknown_operation_first_refusal(void)
 {
   static const uint8_t empty[] = {0U};
-  internal_model_reset(empty, 0U);
+  priv_c6_http_model_reset(empty, 0U);
   size_t response_len = sizeof(s_response);
   TEST_ASSERT_EQ(ESP_ERR_NOT_SUPPORTED,
                  esp_hosted_custom_rpc_sync_handler(UINT32_MAX,
@@ -549,7 +211,7 @@ RA8_INTERNAL static void internal_test_unknown_operation_first_refusal(void)
                                                     sizeof(s_response),
                                                     &response_len));
   TEST_ASSERT_EQ(0, response_len);
-  TEST_ASSERT_EQ(0, s_model.init_calls);
+  TEST_ASSERT_EQ(0, priv_c6_http_model()->init_calls);
   TEST_END("C6 HTTP unknown operation first refusal");
 }
 
@@ -590,25 +252,25 @@ RA8_INTERNAL static void internal_test_initialization_and_begin_faults(void)
 {
   static const uint8_t empty[] = {0U};
   uint32_t             job     = 0U;
-  internal_model_reset(empty, 0U);
-  s_model.init_fail = true;
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->init_fail = true;
   TEST_ASSERT_EQ(ESP_FAIL, internal_start("https://example.test/book", &job));
 
-  internal_model_reset(empty, 0U);
-  s_model.set_url_fail = true;
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->set_url_fail = true;
   TEST_ASSERT_EQ(ESP_FAIL, internal_start("https://example.test/book", &job));
 
-  internal_model_reset(empty, 0U);
-  s_model.sha_start_fail = true;
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->sha_start_fail = true;
   TEST_ASSERT_EQ(ESP_FAIL, internal_start("https://example.test/book", &job));
 
-  internal_model_reset(empty, 0U);
-  s_model.set_timeout_fail = true;
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->set_timeout_fail = true;
   TEST_ASSERT_EQ(ESP_FAIL, internal_start("https://example.test/book", &job));
 
-  internal_model_reset(empty, 0U);
-  s_model.set_header_fail            = true;
-  const ra8_mdl_http_policy_t policy = {.user_agent = "ra8-test"};
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->set_header_fail = true;
+  const ra8_mdl_http_policy_t policy    = {.user_agent = "ra8-test"};
   TEST_ASSERT_EQ(ESP_FAIL, internal_start_policy("https://example.test/book", &policy, &job));
   TEST_END("C6 HTTP initialization and begin faults");
 }
@@ -681,7 +343,7 @@ RA8_INTERNAL static void internal_test_known_operation_error_mapping(void)
 RA8_INTERNAL static void internal_test_known_length_multichunk(void)
 {
   static const uint8_t body[] = {'a', 'b', 'c'};
-  internal_model_reset(body, sizeof(body));
+  priv_c6_http_model_reset(body, sizeof(body));
   uint32_t job = 0U;
   TEST_ASSERT_EQ(ESP_OK, internal_start("https://example.test/book", &job));
 
@@ -723,7 +385,7 @@ RA8_INTERNAL static void internal_test_known_length_multichunk(void)
 RA8_INTERNAL static void internal_test_http_policy_and_metadata(void)
 {
   static const uint8_t empty[] = {0U};
-  internal_model_reset(empty, 0U);
+  priv_c6_http_model_reset(empty, 0U);
   const ra8_mdl_http_policy_t policy = {
     .user_agent        = "ra8-c6-test/3",
     .referer           = "https://example.test/catalog",
@@ -733,11 +395,11 @@ RA8_INTERNAL static void internal_test_http_policy_and_metadata(void)
   };
   uint32_t job = 0U;
   TEST_ASSERT_EQ(ESP_OK, internal_start_policy("https://example.test/book", &policy, &job));
-  TEST_ASSERT(strcmp(s_model.user_agent, policy.user_agent) == 0);
-  TEST_ASSERT(strcmp(s_model.referer, policy.referer) == 0);
-  TEST_ASSERT(strcmp(s_model.if_none_match, policy.if_none_match) == 0);
-  TEST_ASSERT(strcmp(s_model.if_modified_since, policy.if_modified_since) == 0);
-  TEST_ASSERT_EQ(4321, s_model.timeout_ms);
+  TEST_ASSERT(strcmp(priv_c6_http_model()->user_agent, policy.user_agent) == 0);
+  TEST_ASSERT(strcmp(priv_c6_http_model()->referer, policy.referer) == 0);
+  TEST_ASSERT(strcmp(priv_c6_http_model()->if_none_match, policy.if_none_match) == 0);
+  TEST_ASSERT(strcmp(priv_c6_http_model()->if_modified_since, policy.if_modified_since) == 0);
+  TEST_ASSERT_EQ(4321, priv_c6_http_model()->timeout_ms);
 
   Ra8__Mdl__Chunk* chunk = nullptr;
   TEST_ASSERT_EQ(ESP_OK, internal_next(job, 0U, 8U, &chunk));
@@ -748,13 +410,13 @@ RA8_INTERNAL static void internal_test_http_policy_and_metadata(void)
   TEST_ASSERT(strcmp(chunk->content_type, "application/x-rabook") == 0);
   ra8__mdl__chunk__free_unpacked(chunk, nullptr);
 
-  internal_model_reset(empty, 0U);
+  priv_c6_http_model_reset(empty, 0U);
   TEST_ASSERT_EQ(ESP_OK, internal_start("https://example.test/book", &job));
-  TEST_ASSERT_EQ(0, s_model.user_agent[0]);
-  TEST_ASSERT_EQ(0, s_model.referer[0]);
-  TEST_ASSERT_EQ(0, s_model.if_none_match[0]);
-  TEST_ASSERT_EQ(0, s_model.if_modified_since[0]);
-  TEST_ASSERT_EQ(15000, s_model.timeout_ms);
+  TEST_ASSERT_EQ(0, priv_c6_http_model()->user_agent[0]);
+  TEST_ASSERT_EQ(0, priv_c6_http_model()->referer[0]);
+  TEST_ASSERT_EQ(0, priv_c6_http_model()->if_none_match[0]);
+  TEST_ASSERT_EQ(0, priv_c6_http_model()->if_modified_since[0]);
+  TEST_ASSERT_EQ(15000, priv_c6_http_model()->timeout_ms);
   TEST_ASSERT_EQ(ESP_OK, internal_next(job, 0U, 8U, &chunk));
   ra8__mdl__chunk__free_unpacked(chunk, nullptr);
   TEST_END("C6 HTTP policy and response metadata");
@@ -774,9 +436,9 @@ RA8_INTERNAL static void internal_test_http_policy_and_metadata(void)
 RA8_INTERNAL static void internal_test_unknown_length(void)
 {
   static const uint8_t body[] = {'z'};
-  internal_model_reset(body, sizeof(body));
-  s_model.content_length = -1;
-  uint32_t job           = 0U;
+  priv_c6_http_model_reset(body, sizeof(body));
+  priv_c6_http_model()->content_length = -1;
+  uint32_t job                         = 0U;
   TEST_ASSERT_EQ(ESP_OK, internal_start("https://example.test/book", &job));
   Ra8__Mdl__Chunk* chunk = nullptr;
   TEST_ASSERT_EQ(ESP_OK, internal_next(job, 0U, 4U, &chunk));
@@ -810,25 +472,25 @@ RA8_INTERNAL static void internal_test_unknown_length(void)
 RA8_INTERNAL static void internal_test_open_and_status_faults(void)
 {
   static const uint8_t empty[] = {0U};
-  internal_model_reset(empty, 0U);
-  s_model.open_fail = true;
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->open_fail = true;
   internal_expect_first_next_failure(ESP_FAIL);
 
-  internal_model_reset(empty, 0U);
-  s_model.status = (int)k_c6_http_status_low;
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->status = (int)k_c6_http_status_low;
   internal_expect_first_next_failure(ESP_ERR_INVALID_RESPONSE);
 
-  internal_model_reset(empty, 0U);
-  s_model.status = (int)k_c6_http_status_redirect;
-  uint32_t job   = 0U;
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->status = (int)k_c6_http_status_redirect;
+  uint32_t job                 = 0U;
   TEST_ASSERT_EQ(ESP_OK, internal_start("https://example.test/book", &job));
   Ra8__Mdl__Chunk* chunk = nullptr;
   TEST_ASSERT_EQ(ESP_OK, internal_next(job, 0U, 8U, &chunk));
   TEST_ASSERT_EQ(k_c6_http_status_redirect, chunk->http_status);
   ra8__mdl__chunk__free_unpacked(chunk, nullptr);
 
-  internal_model_reset(empty, 0U);
-  s_model.status = (int)k_c6_http_status_high;
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->status = (int)k_c6_http_status_high;
   internal_expect_first_next_failure(ESP_ERR_INVALID_RESPONSE);
   TEST_END("C6 HTTP open and status faults");
 }
@@ -851,44 +513,44 @@ RA8_INTERNAL static void internal_test_read_and_hash_faults(void)
   char                 oversized_etag[k_ra8_mdl_etag_max + 1U];
   (void)memset(oversized_etag, 'x', sizeof(oversized_etag) - 1U);
   oversized_etag[sizeof(oversized_etag) - 1U] = '\0';
-  internal_model_reset(empty, 0U);
-  s_model.read_fail = true;
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->read_fail = true;
   internal_expect_first_next_failure(ESP_FAIL);
 
-  internal_model_reset(empty, 0U);
-  s_model.read_oversize = true;
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->read_oversize = true;
   internal_expect_first_next_failure(ESP_FAIL);
 
-  internal_model_reset(body, sizeof(body));
-  s_model.content_length = 0;
+  priv_c6_http_model_reset(body, sizeof(body));
+  priv_c6_http_model()->content_length = 0;
   internal_expect_first_next_failure(ESP_ERR_INVALID_RESPONSE);
 
-  internal_model_reset(empty, 0U);
-  s_model.content_length = 1;
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->content_length = 1;
   internal_expect_first_next_failure(ESP_ERR_INVALID_RESPONSE);
 
-  internal_model_reset(empty, 0U);
-  s_model.complete = false;
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->complete = false;
   internal_expect_first_next_failure(ESP_ERR_INVALID_RESPONSE);
 
-  internal_model_reset(body, sizeof(body));
-  s_model.sha_update_fail = true;
+  priv_c6_http_model_reset(body, sizeof(body));
+  priv_c6_http_model()->sha_update_fail = true;
   internal_expect_first_next_failure(ESP_FAIL);
 
-  internal_model_reset(empty, 0U);
-  s_model.sha_finish_fail = true;
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->sha_finish_fail = true;
   internal_expect_first_next_failure(ESP_FAIL);
 
-  internal_model_reset(empty, 0U);
-  s_model.etag = oversized_etag;
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->etag = oversized_etag;
   internal_expect_first_next_failure(ESP_ERR_INVALID_SIZE);
 
-  internal_model_reset(empty, 0U);
-  s_model.etag = "bad\r\nheader";
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->etag = "bad\r\nheader";
   internal_expect_first_next_failure(ESP_ERR_INVALID_ARG);
 
-  internal_model_reset(empty, 0U);
-  s_model.etag = "bad\nheader";
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->etag = "bad\nheader";
   internal_expect_first_next_failure(ESP_ERR_INVALID_ARG);
   TEST_END("C6 HTTP read and hash faults");
 }
@@ -958,41 +620,41 @@ RA8_INTERNAL static void internal_expect_captured_etag(const char* expected)
 RA8_INTERNAL static void internal_test_header_capture_mcdc(void)
 {
   static const uint8_t empty[] = {0U};
-  internal_model_reset(empty, 0U);
-  TEST_ASSERT(s_client.event_handler != nullptr);
-  TEST_ASSERT_EQ(ESP_FAIL, s_client.event_handler(nullptr));
+  priv_c6_http_model_reset(empty, 0U);
+  TEST_ASSERT(priv_c6_http_client()->event_handler != nullptr);
+  TEST_ASSERT_EQ(ESP_FAIL, priv_c6_http_client()->event_handler(nullptr));
   esp_http_client_event_t orphan = {.event_id     = HTTP_EVENT_ON_HEADER,
-                                    .client       = &s_client,
+                                    .client       = priv_c6_http_client(),
                                     .user_data    = nullptr,
                                     .header_key   = (char*)"ETag",
                                     .header_value = (char*)"\"orphan\""};
-  TEST_ASSERT_EQ(ESP_FAIL, s_client.event_handler(&orphan));
+  TEST_ASSERT_EQ(ESP_FAIL, priv_c6_http_client()->event_handler(&orphan));
   esp_http_client_event_t body = {.event_id  = HTTP_EVENT_ON_DATA,
-                                  .client    = &s_client,
-                                  .user_data = s_client.user_data};
-  TEST_ASSERT_EQ(ESP_OK, s_client.event_handler(&body));
+                                  .client    = priv_c6_http_client(),
+                                  .user_data = priv_c6_http_client()->user_data};
+  TEST_ASSERT_EQ(ESP_OK, priv_c6_http_client()->event_handler(&body));
 
-  internal_model_reset(empty, 0U);
+  priv_c6_http_model_reset(empty, 0U);
   internal_expect_captured_etag("\"esp-etag\"");
 
-  internal_model_reset(empty, 0U);
-  s_model.etag_key = "ETagX";
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->etag_key = "ETagX";
   internal_expect_captured_etag("");
 
-  internal_model_reset(empty, 0U);
-  s_model.etag_key = "ETa";
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->etag_key = "ETa";
   internal_expect_captured_etag("");
 
-  internal_model_reset(empty, 0U);
-  s_model.etag_key = nullptr;
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->etag_key = nullptr;
   internal_expect_captured_etag("");
 
-  internal_model_reset(empty, 0U);
-  s_model.null_etag_value = true;
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->null_etag_value = true;
   internal_expect_captured_etag("");
 
-  internal_model_reset(empty, 0U);
-  s_model.etag = "";
+  priv_c6_http_model_reset(empty, 0U);
+  priv_c6_http_model()->etag = "";
   internal_expect_captured_etag("");
   TEST_END("C6 HTTP header capture MC/DC");
 }
