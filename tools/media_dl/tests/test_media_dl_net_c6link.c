@@ -131,7 +131,7 @@ RA8_INTERNAL static ra8_err_t internal_hash_final(void* ctx, uint8_t out[k_ra8_m
   if ((ctx == nullptr) || (out == nullptr)) {
     return k_ra8_err_null_ptr;
   }
-  memset(out, 0, k_ra8_mdl_sha256_bytes);
+  (void)memset(out, 0, k_ra8_mdl_sha256_bytes);
   return k_ra8_ok;
 }
 
@@ -157,7 +157,7 @@ RA8_INTERNAL static ra8_err_t internal_sink_reset(void* ctx)
   if (sink->fail_second_reset && (sink->reset_count > 1U)) {
     return k_ra8_fail;
   }
-  memset(sink->bytes, 0, sizeof(sink->bytes));
+  (void)memset(sink->bytes, 0, sizeof(sink->bytes));
   sink->length = 0U;
   return k_ra8_ok;
 }
@@ -193,7 +193,7 @@ internal_sink_write(void* ctx, const uint8_t* bytes, uint32_t length, uint32_t* 
     return k_ra8_ok;
   }
   TEST_ASSERT(sink->length + length <= sizeof(sink->bytes));
-  memcpy(&sink->bytes[sink->length], bytes, length);
+  (void)memcpy(&sink->bytes[sink->length], bytes, length);
   sink->length += length;
   *out_written = length;
   return k_ra8_ok;
@@ -507,7 +507,7 @@ RA8_INTERNAL static void internal_test_local_failures(void)
   internal_script_reset();
   s_script.result = k_ra8_err_timeout;
   internal_bind(&net, &backend);
-  memcpy(body, "old", 4U);
+  (void)memcpy(body, "old", 4U);
   TEST_ASSERT_EQ(k_ra8_err_timeout,
                  mdl_net_get_buf(&net,
                                  "https://example.test/body",
