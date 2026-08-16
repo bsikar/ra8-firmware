@@ -20,6 +20,7 @@
 #include "ra8_c6link_mdl.h"
 #include "ra8_c6link_mdl_transfer.h"
 #include "ra8_c6link_model_test_internal.h"
+#include "ra8_c6link_transfer_validation_test_internal.h"
 #include "ra8_err.h"
 #include "test_ra8_c6link_media_decoder_internal.h"
 #include "unity_minimal.h"
@@ -733,6 +734,36 @@ static ra8_err_t internal_mdl_transfer_run(const ra8_mdl_transfer_config_t* conf
 }
 
 /**
+ * @test internal_test_media_transfer_validation_mcdc
+ * @brief Exercise every transfer configuration guard independently.
+ * @par MC/DC:
+ * The complete control reaches the injected storage begin with all five
+ * top-level pointer disjuncts false, all nine callback/context disjuncts false,
+ * and all three numeric-bound disjuncts false. The private runner then nulls
+ * each required value independently, sets chunk size to zero and over maximum
+ * independently, and sets max_chunks to zero independently; every fault is
+ * rejected before begin.
+ * Decisions:
+ * libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c@internal_mdl_transfer_validate
+ * @details Supplies the production media fixture's valid configuration to a
+ * responsibility-split validation matrix.
+ * @pre The model fixture can provide a complete transfer configuration.
+ * @pre The shared test link remains addressable but need not be open.
+ * @post The valid control reaches storage begin exactly once.
+ * @post Every isolated invalid configuration is rejected without side effects.
+ * @note The companion runner stops the valid control at storage begin.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_media_transfer_validation_mcdc(void)
+{
+  TEST_BEGIN("c6link media transfer validation MC/DC");
+  ra8_mdl_transfer_config_t config = {};
+  internal_mdl_transfer_cfg(&config);
+  priv_test_c6link_transfer_validation_run(priv_c6link_test_link(), &config);
+  TEST_END("c6link media transfer validation MC/DC");
+}
+
+/**
  * @par MC/DC:
  * Exercises the false branch of every failure/cancellation decision and the
  * COMPLETE branch after three ordered pulls. Other tests below vary each
@@ -896,6 +927,7 @@ int32_t main(void)
   internal_test_media_next_argument_mcdc();
   internal_test_media_cancel_argument_mcdc();
   priv_test_c6link_media_decoder_run();
+  internal_test_media_transfer_validation_mcdc();
   internal_test_media_transfer_commits_verified_bytes();
   internal_test_media_transfer_aborts_storage_failures();
   internal_test_media_transfer_aborts_integrity_failures();
