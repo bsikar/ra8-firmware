@@ -172,10 +172,12 @@ static void internal_test_sink_contract(void)
 /**
  * @brief Verify trace binding, workspace isolation, mutation, and source faults.
  * @details Uses one-byte injected reads and two distinct workspaces to prove
- *          exact sizing and non-aliasing before exercising failure paths.
+ *          exact sizing and full workspace re-initialisation before exercising
+ *          failure paths.
  * @pre The registered policy table contains at least one policy.
  * @pre Local aligned arrays cover the expected small replay demand.
  * @post Equivalent workspaces produce identical three-access results.
+ * @post A workspace dirtied between replays yields the same result.
  * @post Mutated and faulting sources are rejected.
  * @note All test storage has automatic duration.
  * @since 0.1.0
@@ -209,9 +211,12 @@ static void internal_test_trace_and_workspace(void)
   internal_test_expect(cb_replay(policy, &trace, 4U, &one, &a) == 0);
   internal_test_expect(cb_replay(policy, &trace, 4U, &two, &b) == 0);
   internal_test_expect((memcmp(&a, &b, sizeof(a)) == 0) && (a.accesses == 3U));
-  const uint8_t second_before = second[0];
-  first[0] ^= 0x5AU;
-  internal_test_expect(second[0] == second_before);
+
+  /* A workspace holding stale bytes must be fully re-initialised on reuse. */
+  one.data[0] ^= 0x5AU;
+  cb_result_t reused = {};
+  internal_test_expect(cb_replay(policy, &trace, 4U, &one, &reused) == 0);
+  internal_test_expect(memcmp(&a, &reused, sizeof(a)) == 0);
 
   bytes[0] = (uint8_t)'9';
   internal_test_expect(cb_replay(policy, &trace, 4U, &one, &a) != 0);
