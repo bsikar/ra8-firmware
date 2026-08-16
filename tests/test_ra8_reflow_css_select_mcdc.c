@@ -397,6 +397,8 @@ RA8_INTERNAL static void internal_test_match_face_length_mismatch(void)
  * @brief Each remaining @font-face bold keyword isolates one OR condition.
  *
  * @par MC/DC:
+ * Decision identity:
+ * `libs/ra8_reflow/src/ra8_reflow_css_rules.c@internal_is_bold_kw`.
  * Decision (internal_is_bold_kw): `bold || bolder || 600 || 700 || 800 || 900`
  * (6-cond OR). The existing suite drives cond6 (900), cond2 (bolder) and the
  * all-false arm (normal). This isolates the four still-uncovered conditions, one
