@@ -1,17 +1,17 @@
+# clang-tidy ratchet baseline -- per-file-per-check finding counts.
+# Consumed by scripts/checks/tidy_ratchet.py --check (CI gate: tidy).
 #
+# These are PRE-EXISTING findings on the surface that #369 and #370
+# brought into clang-tidy's scope for the first time. The gate fails on
+# any INCREASE, so the debt is frozen and can only be burned down.
 #
-#
-#
+# Regenerate after burning findings down:
 #   bash scripts/checks/clang_tidy.sh --check > /tmp/tidy.log 2>&1
 #   python3 scripts/checks/tidy_ratchet.py --update /tmp/tidy.log
+#
 # Closing this out means this file reaching zero rows and being
-# Consumed by scripts/checks/tidy_ratchet.py --check (CI gate: tidy).
 # DELETED -- never regenerated larger.
-# Regenerate after burning findings down:
-# These are PRE-EXISTING findings on the surface that #369 and #370
-# any INCREASE, so the debt is frozen and can only be burned down.
-# brought into clang-tidy's scope for the first time. The gate fails on
-# clang-tidy ratchet baseline -- per-file-per-check finding counts.
+#
 # file<TAB>check<TAB>count
 examples/_unsupported/threadx_https_client/main.c	bugprone-branch-clone	1
 examples/_unsupported/threadx_https_client/main.c	clang-diagnostic-cast-qual	4
@@ -41,7 +41,6 @@ examples/ek_ra8d2/hw_pending/gpt_edge_capture_count/main.c	readability-function-
 examples/ek_ra8d2/hw_pending/manual/usb_msc_sdcard/main.c	cert-dcl37-c	1
 examples/ek_ra8d2/hw_pending/manual/usb_msc_sdcard/src/usb_msc_sdcard_steps.c	bugprone-casting-through-void	1
 examples/ek_ra8d2/hw_pending/manual/usb_msc_sdcard/src/usb_msc_sdcard_steps.c	clang-diagnostic-cast-qual	1
-examples/ek_ra8d2/hw_pending/media_download/main.c	clang-diagnostic-error	1
 examples/ek_ra8d2/hw_pending/ra8_ftl_demo/main.c	readability-function-size	2
 examples/ek_ra8d2/hw_pending/ra8_io_sdhi_demo/main.c	readability-function-size	1
 examples/ek_ra8d2/hw_pending/ra8_io_swap_demo/main.c	readability-function-cognitive-complexity	1

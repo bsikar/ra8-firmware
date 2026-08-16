@@ -193,7 +193,7 @@ def _md_topline(h: dict) -> list[str]:
     )
     md_lines.append(
         f"- **Reachable MC/DC rate**: **{reachable_rate:.2f}%**"
-        " -- this is the gate threshold (100% required)."
+        " -- the enforced ratchet threshold is recorded in `.github/mcdc-baseline.txt`."
     )
     md_lines.append("")
     md_lines.append(

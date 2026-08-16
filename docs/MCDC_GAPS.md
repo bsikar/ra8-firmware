@@ -21,7 +21,7 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 - Coverage rate (yes / total): **86.54%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **89**
 - Reachable-condition denominator (total - deactivated): **1248**
-- **Reachable MC/DC rate**: **92.71%** -- this is the gate threshold (100% required).
+- **Reachable MC/DC rate**: **92.71%** -- the enforced ratchet threshold is recorded in `.github/mcdc-baseline.txt`.
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
