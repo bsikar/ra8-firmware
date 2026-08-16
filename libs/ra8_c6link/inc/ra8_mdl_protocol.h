@@ -5,10 +5,10 @@
  * @par Tag
  * [Ring 4 / PAL] {World: NS}
  *
- * @details Defines only raw HTTPS-body transfer semantics. Site scraping,
- * conversion, and export formats are intentionally outside this wire contract.
- * Both endpoints reject unknown protobuf fields, so extensions require an
- * explicit protocol-version change rather than silent semantic widening.
+ * @details Defines bounded HTTPS-body transfer semantics plus the selected
+ * artifact identity. Version 2 restores the typed format carried by Start and
+ * echoed by Accepted. The C6 never receives a destination path; the RA8 still
+ * validates and transactionally publishes the returned bytes.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -25,14 +25,14 @@ typedef enum : uint16_t {
 
 /** @brief Version included in every media RPC request and response. */
 typedef enum : uint32_t {
-  k_ra8_mdl_protocol_version = 1U, /**< Initial raw-byte protocol version. */
+  k_ra8_mdl_protocol_version = 2U, /**< Typed-artifact transfer protocol. */
 } ra8_mdl_protocol_version_t;
 
 /** @brief Stable CustomRpc operation IDs (`MD` + version + operation). */
 typedef enum : uint32_t {
-  k_ra8_mdl_rpc_start  = 0x4D440101U, /**< Start one raw HTTPS-body job.   */
-  k_ra8_mdl_rpc_next   = 0x4D440102U, /**< Pull one ordered bounded chunk. */
-  k_ra8_mdl_rpc_cancel = 0x4D440103U, /**< Cancel one active job.          */
+  k_ra8_mdl_rpc_start  = 0x4D440201U, /**< Start one typed-artifact job.   */
+  k_ra8_mdl_rpc_next   = 0x4D440202U, /**< Pull one ordered bounded chunk. */
+  k_ra8_mdl_rpc_cancel = 0x4D440203U, /**< Cancel one active job.          */
 } ra8_mdl_rpc_id_t;
 
 /** @brief Remote job state. */

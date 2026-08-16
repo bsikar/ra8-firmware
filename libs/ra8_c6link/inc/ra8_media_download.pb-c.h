@@ -39,6 +39,23 @@ typedef struct Ra8__Mdl__Cancelled Ra8__Mdl__Cancelled;
 
 /* --- enums --- */
 
+/*
+ * Values intentionally match ra8_mdl_format_t. Keep the generated and shared
+ * enums synchronized; production TUs assert the mapping at compile time.
+ */
+typedef enum _Ra8__Mdl__Format { /* C23HDR-OK: protoc-c 1.5.2 owns this enum ABI. */
+  RA8__MDL__FORMAT__FORMAT_LOOSE = 0,
+  RA8__MDL__FORMAT__FORMAT_CBZ = 1,
+  RA8__MDL__FORMAT__FORMAT_CBT = 2,
+  RA8__MDL__FORMAT__FORMAT_CBR = 3,
+  RA8__MDL__FORMAT__FORMAT_CBT_XZ = 4,
+  RA8__MDL__FORMAT__FORMAT_CBT_GZ = 5,
+  RA8__MDL__FORMAT__FORMAT_EPUB = 6,
+  RA8__MDL__FORMAT__FORMAT_JOF = 7,
+  RA8__MDL__FORMAT__FORMAT_RABOOK = 8,
+  RA8__MDL__FORMAT__FORMAT_INVALID = 255
+    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RA8__MDL__FORMAT)
+} Ra8__Mdl__Format;
 typedef enum _Ra8__Mdl__State { /* C23HDR-OK: protoc-c 1.5.2 owns this enum ABI. */
   RA8__MDL__STATE__STATE_UNSPECIFIED = 0,
   RA8__MDL__STATE__STATE_ACCEPTED = 1,
@@ -56,10 +73,11 @@ struct  Ra8__Mdl__StartRequest
   ProtobufCMessage base;
   uint32_t protocol_version;
   char *url;
+  Ra8__Mdl__Format format;
 };
 #define RA8__MDL__START_REQUEST__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&ra8__mdl__start_request__descriptor) \
-, 0, (char *)protobuf_c_empty_string }
+, 0, (char *)protobuf_c_empty_string, RA8__MDL__FORMAT__FORMAT_LOOSE }
 
 
 struct  Ra8__Mdl__Accepted
@@ -68,10 +86,11 @@ struct  Ra8__Mdl__Accepted
   uint32_t protocol_version;
   uint32_t job_id;
   uint32_t max_chunk_bytes;
+  Ra8__Mdl__Format format;
 };
 #define RA8__MDL__ACCEPTED__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&ra8__mdl__accepted__descriptor) \
-, 0, 0, 0 }
+, 0, 0, 0, RA8__MDL__FORMAT__FORMAT_LOOSE }
 
 
 struct  Ra8__Mdl__NextRequest
@@ -268,6 +287,7 @@ typedef void (*Ra8__Mdl__Cancelled_Closure)
 
 /* --- descriptors --- */
 
+extern const ProtobufCEnumDescriptor    ra8__mdl__format__descriptor;
 extern const ProtobufCEnumDescriptor    ra8__mdl__state__descriptor;
 extern const ProtobufCMessageDescriptor ra8__mdl__start_request__descriptor;
 extern const ProtobufCMessageDescriptor ra8__mdl__accepted__descriptor;

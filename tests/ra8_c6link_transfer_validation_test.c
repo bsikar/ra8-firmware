@@ -90,7 +90,8 @@ RA8_INTERNAL static void internal_test_required_values(ra8_c6link_t*            
  * @pre Every callback and context in @p base is initially non-null.
  * @post Each isolated null returns `k_ra8_err_null_ptr`.
  * @post No rejected vector reaches storage begin.
- * @note Optional storage validation and cancellation remain deliberately null.
+ * @note Validation is required for the base RABOOK format; cancellation is
+ * optional.
  * @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_required_callbacks(ra8_c6link_t*                    link,
@@ -110,6 +111,7 @@ RA8_INTERNAL static void internal_test_required_callbacks(ra8_c6link_t*         
   s_validation_begins = 0U;
   EXPECT_NULL(storage.begin);
   EXPECT_NULL(storage.write);
+  EXPECT_NULL(storage.validate);
   EXPECT_NULL(storage.commit);
   EXPECT_NULL(storage.abort);
   EXPECT_NULL(storage.ctx);
@@ -118,31 +120,44 @@ RA8_INTERNAL static void internal_test_required_callbacks(ra8_c6link_t*         
   EXPECT_NULL(sha256.final);
   EXPECT_NULL(sha256.ctx);
 #undef EXPECT_NULL
-  TEST_ASSERT_EQ(0, s_validation_begins);
+  config                  = *base;
+  config.format           = k_ra8_mdl_format_loose;
+  config.storage.validate = nullptr;
+  TEST_ASSERT_EQ(
+    k_ra8_err_busy,
+    ra8_c6link_mdl_transfer(link, "https://example.test/book", "/book", &config, &result));
+  TEST_ASSERT_EQ(1, s_validation_begins);
 }
 
 /**
  * @brief Exercise every transfer-bound operand independently.
  * @details Restores the complete base before selecting zero chunk size,
- * oversize chunk size, zero pull budget, and an excessive total byte budget
- * in turn.
+ * oversize chunk size, zero pull budget, an excessive total byte budget, and
+ * an invalid artifact format in turn.
  * @param[in,out] link Valid link that no rejected vector reaches.
  * @param[in] base Complete configuration with the test begin seam installed.
  * @pre @p link and @p base are non-null.
  * @pre @p base has a legal chunk size and non-zero chunk limit.
  * @post Zero and oversize chunks return `k_ra8_err_invalid_size`.
- * @post Zero and excessive chunk-count budgets return `k_ra8_err_invalid_size` before begin.
+ * @post Zero and excessive chunk-count budgets return `k_ra8_err_invalid_size`
+ * before begin.
  * @note No transport or storage state is created.
  * @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_transfer_bounds(ra8_c6link_t*                    link,
                                                        const ra8_mdl_transfer_config_t* base)
 {
-  ra8_mdl_transfer_result_t result = {};
-  ra8_mdl_transfer_config_t config = *base;
-  config.chunk_bytes               = 0U;
+  const uint32_t            begins_before = s_validation_begins;
+  ra8_mdl_transfer_result_t result        = {};
+  ra8_mdl_transfer_config_t config        = *base;
+  config.chunk_bytes                      = 0U;
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_size,
+    ra8_c6link_mdl_transfer(link, "https://example.test/book", "/book", &config, &result));
+  config        = *base;
+  config.format = k_ra8_mdl_format_invalid;
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
     ra8_c6link_mdl_transfer(link, "https://example.test/book", "/book", &config, &result));
   config             = *base;
   config.chunk_bytes = k_ra8_mdl_chunk_data_max + 1U;
@@ -160,7 +175,7 @@ RA8_INTERNAL static void internal_test_transfer_bounds(ra8_c6link_t*            
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_size,
     ra8_c6link_mdl_transfer(link, "https://example.test/book", "/book", &config, &result));
-  TEST_ASSERT_EQ(0, s_validation_begins);
+  TEST_ASSERT_EQ(begins_before, s_validation_begins);
 }
 
 RA8_PRIV void priv_test_c6link_transfer_validation_run(ra8_c6link_t*                    link,

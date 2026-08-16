@@ -155,6 +155,9 @@ RA8_INTERNAL static void internal_repack_accepted(uint8_t*                 respo
     case k_c6m_mdl_fault_accepted_large_max:
       accepted->max_chunk_bytes = k_ra8_mdl_chunk_data_max + 1U;
       break;
+    case k_c6m_mdl_fault_accepted_wrong_format:
+      accepted->format = RA8__MDL__FORMAT__FORMAT_LOOSE;
+      break;
     default:
       TEST_ASSERT(false);
   }
@@ -210,7 +213,7 @@ RA8_PRIV void priv_c6_model_mdl_fault_apply(ra8_c6_model_mdl_fault_t* fault_slot
     return;
   }
   const bool accepted_fault = (fault >= k_c6m_mdl_fault_accepted_bad_version) &&
-                              (fault <= k_c6m_mdl_fault_accepted_large_max);
+                              (fault <= k_c6m_mdl_fault_accepted_wrong_format);
   const bool outer_fault =
     (fault >= k_c6m_mdl_fault_response_no_body) && (fault <= k_c6m_mdl_fault_response_empty_data);
   const bool start_response = body->custom_msg_id == (uint32_t)k_ra8_mdl_rpc_start;

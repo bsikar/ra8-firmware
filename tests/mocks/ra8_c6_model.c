@@ -33,10 +33,11 @@ static const uint8_t s_mdl_bytes[] = {'a', 'b', 'c', 'd', 'e', 'f'};
 
 /** @brief State behind the modelled C6 media backend. */
 typedef struct {
-  const uint8_t* data;                           /**< Borrowed source bytes.   */
-  size_t         len;                            /**< Complete source length.  */
-  size_t         at;                             /**< Offset of the next byte. */
-  uint8_t        digest[k_ra8_mdl_sha256_bytes]; /**< Caller-supplied SHA-256. */
+  const uint8_t*   data;                           /**< Borrowed source bytes.          */
+  size_t           len;                            /**< Complete source length.         */
+  size_t           at;                             /**< Offset of the next byte.        */
+  uint8_t          digest[k_ra8_mdl_sha256_bytes]; /**< Caller-supplied SHA-256.        */
+  ra8_mdl_format_t format;                         /**< Most recently requested format. */
 } c6m_mdl_backend_t;
 
 static c6m_mdl_backend_t s_mdl_backend;
@@ -48,23 +49,27 @@ static ra8_mdl_service_t s_mdl_service;
  * backend cursor.
  * @param[in,out] ctx Model media-backend context supplied by the service.
  * @param[in] url NUL-terminated media URL requested by the host.
+ * @param[in] format Artifact identity requested by the host.
  * @return Bounded media-backend status.
  * @retval k_ra8_ok The fixture URL was accepted and rewound.
  * @retval k_ra8_err_invalid_arg The URL is not the deterministic fixture URL.
  * @pre @p ctx points to initialized backend state. @pre @p url is non-null and
  * NUL-terminated.
- * @post Success sets the next-byte offset to zero. @post Failure leaves backend
- * state unchanged.
+ * @post Success sets the next-byte offset to zero and records @p format.
+ * @post Failure leaves backend state unchanged.
  * @note The fake intentionally models a single stable origin.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_c6m_mdl_begin(void* ctx, const char* url)
+RA8_INTERNAL static ra8_err_t
+internal_c6m_mdl_begin(void* ctx, const char* url, ra8_mdl_format_t format)
 {
   c6m_mdl_backend_t* backend = (c6m_mdl_backend_t*)ctx;
   if (strcmp(url, "https://example.test/book") != 0) {
     return k_ra8_err_invalid_arg;
   }
-  backend->at = 0U;
+  backend->at                = 0U;
+  backend->format            = format;
+  ra8_c6_model()->mdl_format = format;
   return k_ra8_ok;
 }
 
@@ -614,15 +619,19 @@ RA8_INTERNAL static bool internal_c6m_rich_answer(Rpc* out, uint32_t req_id, int
 }
 
 /** @brief Run an inner media message through the portable C6 service.
- * @details Dispatches one inner media request through the portable bounded service and returns its packed generated response.
+ * @details Dispatches one inner media request through the portable bounded
+ * service and returns its packed generated response.
  * @param[out] out Destination buffer or response envelope populated on success.
  * @param[in] req Decoded outer request whose custom payload is dispatched.
- * @param[in] scripted_resp Forced outer result code, or zero to dispatch normally.
+ * @param[in] scripted_resp Forced outer result code, or zero to dispatch
+ * normally.
  * @return Whether this request was recognized and answered.
  * @retval true A custom RPC response was prepared.
  * @retval false The request is not a custom RPC request.
- * @pre @p out and @p req are initialized. @pre The model media service has been reset.
- * @post True leaves response storage valid through packing. @post False leaves @p out unchanged.
+ * @pre @p out and @p req are initialized. @pre The model media service has been
+ * reset.
+ * @post True leaves response storage valid through packing. @post False leaves
+ * @p out unchanged.
  * @note Static response storage is safe because model exchanges are serialized.
  * @since 0.1.0
  */
@@ -674,9 +683,11 @@ RA8_INTERNAL static bool internal_c6m_custom_answer(Rpc* out, const Rpc* req, in
  * @pre The queue has room, or the answer is dropped.
  * @post The request id was recorded in arrival order.
  * @post Exactly one answer is queued unless the model was told to stay mute.
- * @note The scripted UID and message-id corruptions prove the host correlates rather than merely receives.
+ * @note The scripted UID and message-id corruptions prove the host correlates
+ * rather than merely receives.
  * @since 0.1.0
- * @details Records correlation state, applies scripted faults, selects the response builder, and queues at most one reply.
+ * @details Records correlation state, applies scripted faults, selects the
+ * response builder, and queues at most one reply.
  */
 RA8_INTERNAL static void internal_c6m_answer(const Rpc* req)
 {
@@ -726,9 +737,11 @@ RA8_INTERNAL static void internal_c6m_answer(const Rpc* req)
  * @post The transmitted checksum was proven to cover header plus payload.
  * @post No model state is modified.
  * @note The checksum is recomputed over a field-zeroed copy, as upstream's
- * `process_spi_rx_buf()` does, rather than using the host's subtraction shortcut.
+ * `process_spi_rx_buf()` does, rather than using the host's subtraction
+ * shortcut.
  * @since 0.1.0
- * @details Checks the envelope bytes and declared payload size before generated RPC decode.
+ * @details Checks the envelope bytes and declared payload size before generated
+ * RPC decode.
  */
 RA8_INTERNAL static void internal_c6m_verify_framing(const uint8_t*                   tx,
                                                      const struct esp_payload_header* hdr)
@@ -748,11 +761,13 @@ RA8_INTERNAL static void internal_c6m_verify_framing(const uint8_t*             
  * @return Nothing.
  * @pre The transaction is ::k_ra8_c6link_frame_bytes long.
  * @pre The model has been reset at least once.
- * @post A control request was answered, data was recorded, or idle filler caused no change.
+ * @post A control request was answered, data was recorded, or idle filler
+ * caused no change.
  * @post The host's framing was verified for every non-idle frame.
  * @note Decode failure proves the host encoded a request incorrectly.
  * @since 0.1.0
- * @details Classifies private-interface announcements separately and records capabilities.
+ * @details Classifies private-interface announcements separately and records
+ * capabilities.
  */
 RA8_INTERNAL static void internal_c6m_observe(const uint8_t* tx)
 {

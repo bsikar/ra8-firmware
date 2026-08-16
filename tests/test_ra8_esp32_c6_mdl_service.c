@@ -103,6 +103,7 @@ RA8_INTERNAL static esp_err_t internal_start(const char* url, uint32_t* out_job)
   Ra8__Mdl__StartRequest request = RA8__MDL__START_REQUEST__INIT;
   request.protocol_version       = k_ra8_mdl_protocol_version;
   request.url                    = (char*)url;
+  request.format                 = RA8__MDL__FORMAT__FORMAT_RABOOK;
   const size_t request_len       = ra8__mdl__start_request__pack(&request, s_request);
   size_t       response_len      = 0U;
   *out_job                       = 0U;
@@ -118,6 +119,7 @@ RA8_INTERNAL static esp_err_t internal_start(const char* url, uint32_t* out_job)
   Ra8__Mdl__Accepted* accepted = ra8__mdl__accepted__unpack(nullptr, response_len, s_response);
   TEST_ASSERT(accepted != nullptr);
   TEST_ASSERT(accepted->job_id != 0U);
+  TEST_ASSERT_EQ(RA8__MDL__FORMAT__FORMAT_RABOOK, accepted->format);
   *out_job = accepted->job_id;
   ra8__mdl__accepted__free_unpacked(accepted, nullptr);
   return status;
@@ -212,7 +214,8 @@ RA8_INTERNAL static void internal_expected_digest(const uint8_t* body,
   }
 }
 
-/* ESP-IDF stand-ins implement the contracts declared by the compatibility header. */
+/* ESP-IDF stand-ins implement the contracts declared by the compatibility
+ * header. */
 RA8_PRIV esp_err_t esp_crt_bundle_attach(void* conf)
 {
   (void)conf;
@@ -409,7 +412,8 @@ RA8_INTERNAL static void internal_test_initialization_and_begin_faults(void)
  * @pre No portable media job is active.
  * @post Known malformed operations return ::ESP_ERR_INVALID_RESPONSE.
  * @post ESP-hosted will not invoke its unrelated legacy CustomRpc handler.
- * @note Pins the numeric-domain collision that previously made fallback unreachable.
+ * @note Pins the numeric-domain collision that previously made fallback
+ * unreachable.
  * @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_known_operation_error_mapping(void)

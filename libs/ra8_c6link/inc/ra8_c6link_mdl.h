@@ -22,28 +22,32 @@
 
 #include "ra8_c6link.h"
 #include "ra8_err.h"
+#include "ra8_mdl_format.h"
 #include "ra8_mdl_protocol.h"
 
 /**
  * @struct ra8_mdl_session_t
- * @brief RA8-local state for one accepted remote raw-byte job
+ * @brief RA8-local state for one accepted remote artifact job
  * @details Maintains the correlation values the next response must carry.
  * Callers allocate it; the client never allocates or retains caller memory.
  * @invariant An active session has a non-zero `job_id` and `max_chunk_bytes`.
- * @invariant `next_offset` and `next_sequence` advance only after a valid response.
+ * @invariant `next_offset` and `next_sequence` advance only after a valid
+ * response.
  * @code
  * ra8_mdl_session_t session = {};
- * (void)ra8_c6link_mdl_start(&link, "https://host/book.rabook", &session);
+ * (void)ra8_c6link_mdl_start(
+ *   &link, "https://host/book.rabook", k_ra8_mdl_format_rabook, &session);
  * @endcode
  * @see ra8_c6link_mdl_start
  * @since 0.1.0
  */
 typedef struct {
-  uint32_t job_id;          /**< Remote-generated non-zero identifier.              */
-  uint32_t next_sequence;   /**< Exact sequence required from the next response.    */
-  uint64_t next_offset;     /**< Exact byte offset required from the next response. */
-  uint32_t max_chunk_bytes; /**< Maximum accepted pull size negotiated at start.    */
-  bool     active;          /**< Whether next/cancel is currently valid.            */
+  uint32_t         job_id;          /**< Remote-generated non-zero identifier.              */
+  uint32_t         next_sequence;   /**< Exact sequence required from the next response.    */
+  uint64_t         next_offset;     /**< Exact byte offset required from the next response. */
+  uint32_t         max_chunk_bytes; /**< Maximum accepted pull size negotiated at start.    */
+  ra8_mdl_format_t format;          /**< Requested format echoed by the C6.                 */
+  bool             active;          /**< Whether next/cancel is currently valid.            */
 } ra8_mdl_session_t;
 
 /**
@@ -77,28 +81,34 @@ extern "C" {
 #endif
 
 /**
- * @brief Start raw HTTPS body retrieval and receive its job identifier
- * @details Encodes a generated protobuf StartRequest. It requests no media
- * conversion, export, or site scraping; those are RA8/application policy.
+ * @brief Start retrieval of one selected artifact and receive its job
+ * identifier
+ * @details Encodes a generated protobuf StartRequest with the exact artifact
+ * identity. `loose` selects an untyped source body; other values require the
+ * returned bytes to be that format and must be validated before publication.
  * @param[in,out] link Already-open exclusively owned c6link.
  * @param[in] url NUL-terminated HTTPS source URL below ::k_ra8_mdl_url_max.
+ * @param[in] format Artifact identity requested from the C6 backend.
  * @param[out] session Accepted job correlation state.
  * @return Start status.
  * @retval k_ra8_ok Remote job accepted.
  * @retval k_ra8_err_null_ptr A required pointer is null.
- * @retval k_ra8_err_invalid_arg URL is empty.
+ * @retval k_ra8_err_invalid_arg URL or format is invalid.
  * @retval k_ra8_err_invalid_size URL or encoded request exceeds its bound.
  * @retval k_ra8_err_protocol_error Remote response is malformed.
  * @retval k_ra8_err_timeout C6 did not answer inside the RPC budget.
  * @pre ::ra8_c6link_open completed successfully for @p link.
  * @pre No other thread uses @p link concurrently.
  * @post Success produces an active non-zero job in @p session.
- * @post Failure leaves @p session inactive and zeroed after argument validation.
+ * @post Failure leaves @p session inactive and zeroed after argument
+ * validation.
  * @note Not thread-safe; the c6link handle is single-owner.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t
-ra8_c6link_mdl_start(ra8_c6link_t* link, const char* url, ra8_mdl_session_t* session);
+[[nodiscard]] ra8_err_t ra8_c6link_mdl_start(ra8_c6link_t*      link,
+                                             const char*        url,
+                                             ra8_mdl_format_t   format,
+                                             ra8_mdl_session_t* session);
 
 /**
  * @brief Pull the next bounded chunk while acknowledging the prior offset
@@ -113,11 +123,13 @@ ra8_c6link_mdl_start(ra8_c6link_t* link, const char* url, ra8_mdl_session_t* ses
  * @retval k_ra8_err_null_ptr A required pointer is null.
  * @retval k_ra8_err_invalid_state Session is inactive or invalid.
  * @retval k_ra8_err_invalid_size Requested or encoded size exceeds a bound.
- * @retval k_ra8_err_protocol_error Job, sequence, offset, state, or fields are incoherent.
+ * @retval k_ra8_err_protocol_error Job, sequence, offset, state, or fields are
+ * incoherent.
  * @retval k_ra8_err_timeout C6 did not answer inside the RPC budget.
  * @pre @p session came from a successful ::ra8_c6link_mdl_start.
  * @pre `max_bytes` is non-zero and no larger than the negotiated maximum.
- * @post Success advances session correlation by exactly the returned data length.
+ * @post Success advances session correlation by exactly the returned data
+ * length.
  * @post A terminal response makes @p session inactive.
  * @note Not thread-safe; the c6link handle and session are single-owner.
  * @since 0.1.0

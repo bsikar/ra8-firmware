@@ -290,7 +290,7 @@ void   ra8__mdl__cancelled__free_unpacked
   assert(message->base.descriptor == &ra8__mdl__cancelled__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-static const ProtobufCFieldDescriptor ra8__mdl__start_request__field_descriptors[2] =
+static const ProtobufCFieldDescriptor ra8__mdl__start_request__field_descriptors[3] =
 {
   {
     "protocol_version",
@@ -301,7 +301,7 @@ static const ProtobufCFieldDescriptor ra8__mdl__start_request__field_descriptors
     offsetof(Ra8__Mdl__StartRequest, protocol_version),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
@@ -313,18 +313,31 @@ static const ProtobufCFieldDescriptor ra8__mdl__start_request__field_descriptors
     offsetof(Ra8__Mdl__StartRequest, url),
     NULL,
     &protobuf_c_empty_string,
-    0,             /* flags                    */
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "format",
+    3,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_ENUM,
+    0,   /* quantifier_offset */
+    offsetof(Ra8__Mdl__StartRequest, format),
+    &ra8__mdl__format__descriptor,
+    NULL,
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
 static const unsigned ra8__mdl__start_request__field_indices_by_name[] = {
+  2,   /* field[2] = format */
   0,   /* field[0] = protocol_version */
-  1,   /* field[1] = url              */
+  1,   /* field[1] = url */
 };
 static const ProtobufCIntRange ra8__mdl__start_request__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 2 }
+  { 0, 3 }
 };
 const ProtobufCMessageDescriptor ra8__mdl__start_request__descriptor =
 {
@@ -334,14 +347,14 @@ const ProtobufCMessageDescriptor ra8__mdl__start_request__descriptor =
   "Ra8__Mdl__StartRequest",
   "ra8.mdl",
   sizeof(Ra8__Mdl__StartRequest),
-  2,
+  3,
   ra8__mdl__start_request__field_descriptors,
   ra8__mdl__start_request__field_indices_by_name,
   1,  ra8__mdl__start_request__number_ranges,
   (ProtobufCMessageInit) ra8__mdl__start_request__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor ra8__mdl__accepted__field_descriptors[3] =
+static const ProtobufCFieldDescriptor ra8__mdl__accepted__field_descriptors[4] =
 {
   {
     "protocol_version",
@@ -352,7 +365,7 @@ static const ProtobufCFieldDescriptor ra8__mdl__accepted__field_descriptors[3] =
     offsetof(Ra8__Mdl__Accepted, protocol_version),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
@@ -364,7 +377,7 @@ static const ProtobufCFieldDescriptor ra8__mdl__accepted__field_descriptors[3] =
     offsetof(Ra8__Mdl__Accepted, job_id),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
@@ -376,19 +389,32 @@ static const ProtobufCFieldDescriptor ra8__mdl__accepted__field_descriptors[3] =
     offsetof(Ra8__Mdl__Accepted, max_chunk_bytes),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "format",
+    4,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_ENUM,
+    0,   /* quantifier_offset */
+    offsetof(Ra8__Mdl__Accepted, format),
+    &ra8__mdl__format__descriptor,
+    NULL,
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
 static const unsigned ra8__mdl__accepted__field_indices_by_name[] = {
-  1,   /* field[1] = job_id           */
-  2,   /* field[2] = max_chunk_bytes  */
+  3,   /* field[3] = format */
+  1,   /* field[1] = job_id */
+  2,   /* field[2] = max_chunk_bytes */
   0,   /* field[0] = protocol_version */
 };
 static const ProtobufCIntRange ra8__mdl__accepted__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 3 }
+  { 0, 4 }
 };
 const ProtobufCMessageDescriptor ra8__mdl__accepted__descriptor =
 {
@@ -398,7 +424,7 @@ const ProtobufCMessageDescriptor ra8__mdl__accepted__descriptor =
   "Ra8__Mdl__Accepted",
   "ra8.mdl",
   sizeof(Ra8__Mdl__Accepted),
-  3,
+  4,
   ra8__mdl__accepted__field_descriptors,
   ra8__mdl__accepted__field_indices_by_name,
   1,  ra8__mdl__accepted__number_ranges,
@@ -416,7 +442,7 @@ static const ProtobufCFieldDescriptor ra8__mdl__next_request__field_descriptors[
     offsetof(Ra8__Mdl__NextRequest, protocol_version),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
@@ -428,7 +454,7 @@ static const ProtobufCFieldDescriptor ra8__mdl__next_request__field_descriptors[
     offsetof(Ra8__Mdl__NextRequest, job_id),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
@@ -440,7 +466,7 @@ static const ProtobufCFieldDescriptor ra8__mdl__next_request__field_descriptors[
     offsetof(Ra8__Mdl__NextRequest, acknowledged_offset),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
@@ -452,15 +478,15 @@ static const ProtobufCFieldDescriptor ra8__mdl__next_request__field_descriptors[
     offsetof(Ra8__Mdl__NextRequest, max_bytes),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
 static const unsigned ra8__mdl__next_request__field_indices_by_name[] = {
   2,   /* field[2] = acknowledged_offset */
-  1,   /* field[1] = job_id              */
-  3,   /* field[3] = max_bytes           */
-  0,   /* field[0] = protocol_version    */
+  1,   /* field[1] = job_id */
+  3,   /* field[3] = max_bytes */
+  0,   /* field[0] = protocol_version */
 };
 static const ProtobufCIntRange ra8__mdl__next_request__number_ranges[1 + 1] =
 {
@@ -493,7 +519,7 @@ static const ProtobufCFieldDescriptor ra8__mdl__chunk__field_descriptors[9] =
     offsetof(Ra8__Mdl__Chunk, protocol_version),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
@@ -505,7 +531,7 @@ static const ProtobufCFieldDescriptor ra8__mdl__chunk__field_descriptors[9] =
     offsetof(Ra8__Mdl__Chunk, job_id),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
@@ -517,7 +543,7 @@ static const ProtobufCFieldDescriptor ra8__mdl__chunk__field_descriptors[9] =
     offsetof(Ra8__Mdl__Chunk, sequence),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
@@ -529,7 +555,7 @@ static const ProtobufCFieldDescriptor ra8__mdl__chunk__field_descriptors[9] =
     offsetof(Ra8__Mdl__Chunk, offset),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
@@ -541,7 +567,7 @@ static const ProtobufCFieldDescriptor ra8__mdl__chunk__field_descriptors[9] =
     offsetof(Ra8__Mdl__Chunk, data),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
@@ -553,7 +579,7 @@ static const ProtobufCFieldDescriptor ra8__mdl__chunk__field_descriptors[9] =
     offsetof(Ra8__Mdl__Chunk, total_bytes),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
@@ -565,7 +591,7 @@ static const ProtobufCFieldDescriptor ra8__mdl__chunk__field_descriptors[9] =
     offsetof(Ra8__Mdl__Chunk, state),
     &ra8__mdl__state__descriptor,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
@@ -577,7 +603,7 @@ static const ProtobufCFieldDescriptor ra8__mdl__chunk__field_descriptors[9] =
     offsetof(Ra8__Mdl__Chunk, status),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
@@ -589,20 +615,20 @@ static const ProtobufCFieldDescriptor ra8__mdl__chunk__field_descriptors[9] =
     offsetof(Ra8__Mdl__Chunk, sha256),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
 static const unsigned ra8__mdl__chunk__field_indices_by_name[] = {
-  4,   /* field[4] = data             */
-  1,   /* field[1] = job_id           */
-  3,   /* field[3] = offset           */
+  4,   /* field[4] = data */
+  1,   /* field[1] = job_id */
+  3,   /* field[3] = offset */
   0,   /* field[0] = protocol_version */
-  2,   /* field[2] = sequence         */
-  8,   /* field[8] = sha256           */
-  6,   /* field[6] = state            */
-  7,   /* field[7] = status           */
-  5,   /* field[5] = total_bytes      */
+  2,   /* field[2] = sequence */
+  8,   /* field[8] = sha256 */
+  6,   /* field[6] = state */
+  7,   /* field[7] = status */
+  5,   /* field[5] = total_bytes */
 };
 static const ProtobufCIntRange ra8__mdl__chunk__number_ranges[1 + 1] =
 {
@@ -635,7 +661,7 @@ static const ProtobufCFieldDescriptor ra8__mdl__cancel_request__field_descriptor
     offsetof(Ra8__Mdl__CancelRequest, protocol_version),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
@@ -647,12 +673,12 @@ static const ProtobufCFieldDescriptor ra8__mdl__cancel_request__field_descriptor
     offsetof(Ra8__Mdl__CancelRequest, job_id),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
 static const unsigned ra8__mdl__cancel_request__field_indices_by_name[] = {
-  1,   /* field[1] = job_id           */
+  1,   /* field[1] = job_id */
   0,   /* field[0] = protocol_version */
 };
 static const ProtobufCIntRange ra8__mdl__cancel_request__number_ranges[1 + 1] =
@@ -686,7 +712,7 @@ static const ProtobufCFieldDescriptor ra8__mdl__cancelled__field_descriptors[3] 
     offsetof(Ra8__Mdl__Cancelled, protocol_version),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
@@ -698,7 +724,7 @@ static const ProtobufCFieldDescriptor ra8__mdl__cancelled__field_descriptors[3] 
     offsetof(Ra8__Mdl__Cancelled, job_id),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
@@ -710,14 +736,14 @@ static const ProtobufCFieldDescriptor ra8__mdl__cancelled__field_descriptors[3] 
     offsetof(Ra8__Mdl__Cancelled, status),
     NULL,
     NULL,
-    0,             /* flags                    */
+    0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
 static const unsigned ra8__mdl__cancelled__field_indices_by_name[] = {
-  1,   /* field[1] = job_id           */
+  1,   /* field[1] = job_id */
   0,   /* field[0] = protocol_version */
-  2,   /* field[2] = status           */
+  2,   /* field[2] = status */
 };
 static const ProtobufCIntRange ra8__mdl__cancelled__number_ranges[1 + 1] =
 {
@@ -738,6 +764,50 @@ const ProtobufCMessageDescriptor ra8__mdl__cancelled__descriptor =
   1,  ra8__mdl__cancelled__number_ranges,
   (ProtobufCMessageInit) ra8__mdl__cancelled__init,
   NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCEnumValue ra8__mdl__format__enum_values_by_number[10] =
+{
+  { "FORMAT_LOOSE", "RA8__MDL__FORMAT__FORMAT_LOOSE", 0 },
+  { "FORMAT_CBZ", "RA8__MDL__FORMAT__FORMAT_CBZ", 1 },
+  { "FORMAT_CBT", "RA8__MDL__FORMAT__FORMAT_CBT", 2 },
+  { "FORMAT_CBR", "RA8__MDL__FORMAT__FORMAT_CBR", 3 },
+  { "FORMAT_CBT_XZ", "RA8__MDL__FORMAT__FORMAT_CBT_XZ", 4 },
+  { "FORMAT_CBT_GZ", "RA8__MDL__FORMAT__FORMAT_CBT_GZ", 5 },
+  { "FORMAT_EPUB", "RA8__MDL__FORMAT__FORMAT_EPUB", 6 },
+  { "FORMAT_JOF", "RA8__MDL__FORMAT__FORMAT_JOF", 7 },
+  { "FORMAT_RABOOK", "RA8__MDL__FORMAT__FORMAT_RABOOK", 8 },
+  { "FORMAT_INVALID", "RA8__MDL__FORMAT__FORMAT_INVALID", 255 },
+};
+static const ProtobufCIntRange ra8__mdl__format__value_ranges[] = {
+{0, 0},{255, 9},{0, 10}
+};
+static const ProtobufCEnumValueIndex ra8__mdl__format__enum_values_by_name[10] =
+{
+  { "FORMAT_CBR", 3 },
+  { "FORMAT_CBT", 2 },
+  { "FORMAT_CBT_GZ", 5 },
+  { "FORMAT_CBT_XZ", 4 },
+  { "FORMAT_CBZ", 1 },
+  { "FORMAT_EPUB", 6 },
+  { "FORMAT_INVALID", 9 },
+  { "FORMAT_JOF", 7 },
+  { "FORMAT_LOOSE", 0 },
+  { "FORMAT_RABOOK", 8 },
+};
+const ProtobufCEnumDescriptor ra8__mdl__format__descriptor =
+{
+  PROTOBUF_C__ENUM_DESCRIPTOR_MAGIC,
+  "ra8.mdl.Format",
+  "Format",
+  "Ra8__Mdl__Format",
+  "ra8.mdl",
+  10,
+  ra8__mdl__format__enum_values_by_number,
+  10,
+  ra8__mdl__format__enum_values_by_name,
+  2,
+  ra8__mdl__format__value_ranges,
+  NULL,NULL,NULL,NULL   /* reserved[1234] */
 };
 static const ProtobufCEnumValue ra8__mdl__state__enum_values_by_number[6] =
 {

@@ -42,16 +42,18 @@ typedef enum : uint8_t {
  * its all-true control (zero data, 32-byte non-null digest, status zero, and
  * total equal to end); the explicit cancel then exercises the separately
  * correlated cancellation-acknowledgement path.
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_chunk_semantics_valid
+ * Decisions:
+ * libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_chunk_semantics_valid
  * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_chunk
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_cancelled @details
- * Executes the media download roundtrip scenario with bounded fixture state and
- * asserts the contract-specific result. @pre Fixed-capacity fixture storage
- * required by this operation is available. @pre Arguments follow the interface
- * contract exercised by this helper. @post Documented outputs contain the
- * exercised result when the operation succeeds. @post Mutations remain confined
- * to documented outputs and file-local fixture state. @note File-local helper;
- * no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_cancelled
+ * @details Executes the media download roundtrip scenario with bounded fixture
+ * state and asserts the contract-specific result. @pre Fixed-capacity fixture
+ * storage required by this operation is available. @pre Arguments follow the
+ * interface contract exercised by this helper. @post Documented outputs contain
+ * the exercised result when the operation succeeds. @post Mutations remain
+ * confined to documented outputs and file-local fixture state. @note File-local
+ * helper; no ownership escapes this focused test executable. @since Version
+ * 0.1.0 */
 RA8_INTERNAL
 static void internal_test_media_download_roundtrip(void)
 {
@@ -59,11 +61,15 @@ static void internal_test_media_download_roundtrip(void)
   priv_c6link_test_bringup();
 
   ra8_mdl_session_t session = {};
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_c6link_mdl_start(priv_c6link_test_link(), "https://example.test/book", &session));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_c6link_mdl_start(priv_c6link_test_link(),
+                                      "https://example.test/book",
+                                      k_ra8_mdl_format_rabook,
+                                      &session));
   TEST_ASSERT(session.active);
   TEST_ASSERT(session.job_id != 0U);
+  TEST_ASSERT_EQ(k_ra8_mdl_format_rabook, session.format);
+  TEST_ASSERT_EQ(k_ra8_mdl_format_rabook, ra8_c6_model()->mdl_format);
 
   uint8_t received[sizeof "abcdef" - 1U] = {};
   size_t  received_len                   = 0U;
@@ -81,9 +87,11 @@ static void internal_test_media_download_roundtrip(void)
   TEST_ASSERT_EQ(sizeof(received), received_len);
   TEST_ASSERT(memcmp(received, "abcdef", sizeof(received)) == 0);
 
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_c6link_mdl_start(priv_c6link_test_link(), "https://example.test/book", &session));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_c6link_mdl_start(priv_c6link_test_link(),
+                                      "https://example.test/book",
+                                      k_ra8_mdl_format_rabook,
+                                      &session));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_cancel(priv_c6link_test_link(), &session));
   TEST_ASSERT(!session.active);
   TEST_END("c6link media download roundtrip");
@@ -102,9 +110,11 @@ static void internal_test_media_download_roundtrip(void)
 RA8_INTERNAL
 static void internal_mdl_before_terminal(ra8_mdl_session_t* session)
 {
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_c6link_mdl_start(priv_c6link_test_link(), "https://example.test/book", session));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_c6link_mdl_start(priv_c6link_test_link(),
+                                      "https://example.test/book",
+                                      k_ra8_mdl_format_rabook,
+                                      session));
   ra8_mdl_chunk_t data = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_next(priv_c6link_test_link(), session, 6U, &data));
   TEST_ASSERT_EQ(6, data.data_len);
@@ -128,14 +138,16 @@ static void internal_mdl_before_terminal(ra8_mdl_session_t* session)
  * this test first consumes; V5 CANCELLED with data changes `data.len==0` from
  * true to false (control in `internal_test_media_download_terminal_status`).
  * Every rejected vector preserves the active session and its offset/sequence.
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_chunk_semantics_valid
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_chunk @details
- * Executes the media download rejects bad terminal frames scenario with bounded
- * fixture state and asserts the contract-specific result. @pre Fixed-capacity
- * fixture storage required by this operation is available. @pre Arguments
- * follow the interface contract exercised by this helper. @post Documented
- * outputs contain the exercised result when the operation succeeds. @post
- * Mutations remain confined to documented outputs and file-local fixture state.
+ * Decisions:
+ * libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_chunk_semantics_valid
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_chunk
+ * @details Executes the media download rejects bad terminal frames scenario
+ * with bounded fixture state and asserts the contract-specific result. @pre
+ * Fixed-capacity fixture storage required by this operation is available. @pre
+ * Arguments follow the interface contract exercised by this helper. @post
+ * Documented outputs contain the exercised result when the operation succeeds.
+ * @post Mutations remain confined to documented outputs and file-local fixture
+ * state.
  * @note File-local helper; no ownership escapes this focused test executable.
  * @since Version 0.1.0 */
 RA8_INTERNAL
@@ -173,9 +185,11 @@ static void internal_test_media_download_rejects_bad_terminal_frames(void)
 
   priv_c6link_test_bringup();
   session = (ra8_mdl_session_t){};
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_c6link_mdl_start(priv_c6link_test_link(), "https://example.test/book", &session));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_c6link_mdl_start(priv_c6link_test_link(),
+                                      "https://example.test/book",
+                                      k_ra8_mdl_format_rabook,
+                                      &session));
   ra8_c6_model()->mdl_fault = k_c6m_mdl_fault_downloading_error;
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
                  ra8_c6link_mdl_next(priv_c6link_test_link(), &session, 6U, &chunk));
@@ -204,16 +218,17 @@ static void internal_test_media_download_rejects_bad_terminal_frames(void)
  * state-specific semantic conjunctions execute their all-true controls:
  * FAILED has a positive bounded status with no data/digest, while CANCELLED
  * has zero status with no data/digest.
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_chunk_semantics_valid
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_chunk @details
- * Executes the media download terminal status scenario with bounded fixture
- * state and asserts the contract-specific result. @pre Fixed-capacity fixture
- * storage required by this operation is available. @pre Arguments follow the
- * interface contract exercised by this helper. @post Documented outputs contain
- * the exercised result when the operation succeeds. @post Mutations remain
- * confined to documented outputs and file-local fixture state. @note File-local
- * helper; no ownership escapes this focused test executable. @since Version
- * 0.1.0 */
+ * Decisions:
+ * libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_chunk_semantics_valid
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_chunk
+ * @details Executes the media download terminal status scenario with bounded
+ * fixture state and asserts the contract-specific result. @pre Fixed-capacity
+ * fixture storage required by this operation is available. @pre Arguments
+ * follow the interface contract exercised by this helper. @post Documented
+ * outputs contain the exercised result when the operation succeeds. @post
+ * Mutations remain confined to documented outputs and file-local fixture state.
+ * @note File-local helper; no ownership escapes this focused test executable.
+ * @since Version 0.1.0 */
 RA8_INTERNAL
 static void internal_test_media_download_terminal_status(void)
 {
@@ -268,15 +283,19 @@ RA8_INTERNAL static void internal_test_media_download_rejects_unknown_response_f
   priv_c6link_test_bringup();
   ra8_c6_model()->mdl_fault = k_c6m_mdl_fault_unknown_field;
   ra8_mdl_session_t session = {};
-  TEST_ASSERT_EQ(
-    k_ra8_err_protocol_error,
-    ra8_c6link_mdl_start(priv_c6link_test_link(), "https://example.test/book", &session));
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error,
+                 ra8_c6link_mdl_start(priv_c6link_test_link(),
+                                      "https://example.test/book",
+                                      k_ra8_mdl_format_rabook,
+                                      &session));
   TEST_ASSERT(!session.active);
 
   priv_c6link_test_bringup();
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_c6link_mdl_start(priv_c6link_test_link(), "https://example.test/book", &session));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_c6link_mdl_start(priv_c6link_test_link(),
+                                      "https://example.test/book",
+                                      k_ra8_mdl_format_rabook,
+                                      &session));
   const uint32_t job        = session.job_id;
   ra8_c6_model()->mdl_fault = k_c6m_mdl_fault_unknown_field;
   ra8_mdl_chunk_t chunk     = {};
@@ -290,9 +309,11 @@ RA8_INTERNAL static void internal_test_media_download_rejects_unknown_response_f
 
   priv_c6link_test_bringup();
   session = (ra8_mdl_session_t){};
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_c6link_mdl_start(priv_c6link_test_link(), "https://example.test/book", &session));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_c6link_mdl_start(priv_c6link_test_link(),
+                                      "https://example.test/book",
+                                      k_ra8_mdl_format_rabook,
+                                      &session));
   ra8_c6_model()->mdl_fault = k_c6m_mdl_fault_unknown_field;
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
                  ra8_c6link_mdl_cancel(priv_c6link_test_link(), &session));
@@ -330,21 +351,33 @@ RA8_INTERNAL static void internal_test_media_start_argument_mcdc(void)
   priv_c6link_test_bringup();
   ra8_mdl_session_t session = {};
   ra8_c6link_t*     link    = priv_c6link_test_link();
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_c6link_mdl_start(nullptr, "https://example.test/book", k_ra8_mdl_format_rabook, &session));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_c6link_mdl_start(nullptr, "https://example.test/book", &session));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_c6link_mdl_start(link, nullptr, &session));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_c6link_mdl_start(link, "https://example.test/book", nullptr));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_c6link_mdl_start(link, "", &session));
+                 ra8_c6link_mdl_start(link, nullptr, k_ra8_mdl_format_rabook, &session));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_c6link_mdl_start(link, "https://example.test/book", k_ra8_mdl_format_rabook, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_c6link_mdl_start(link, "http://example.test/book", &session));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_c6link_mdl_start(link, "https://", &session));
+                 ra8_c6link_mdl_start(link, "", k_ra8_mdl_format_rabook, &session));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    ra8_c6link_mdl_start(link, "http://example.test/book", k_ra8_mdl_format_rabook, &session));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_c6link_mdl_start(link, "https://", k_ra8_mdl_format_rabook, &session));
   char overlong[k_ra8_mdl_url_max + 1U];
   (void)memset(overlong, 'a', sizeof(overlong));
   (void)memcpy(overlong, "https://", sizeof("https://") - 1U);
   overlong[k_ra8_mdl_url_max] = '\0';
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_c6link_mdl_start(link, overlong, &session));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_start(link, "https://example.test/book", &session));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_c6link_mdl_start(link, overlong, k_ra8_mdl_format_rabook, &session));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    ra8_c6link_mdl_start(link, "https://example.test/book", k_ra8_mdl_format_invalid, &session));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_c6link_mdl_start(link, "https://example.test/book", k_ra8_mdl_format_rabook, &session));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_cancel(link, &session));
   TEST_ASSERT(!session.active);
   TEST_END("c6link media Start argument MC/DC");
@@ -377,7 +410,9 @@ RA8_INTERNAL static void internal_test_media_next_argument_mcdc(void)
   priv_c6link_test_bringup();
   ra8_c6link_t*     link    = priv_c6link_test_link();
   ra8_mdl_session_t session = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_start(link, "https://example.test/book", &session));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_c6link_mdl_start(link, "https://example.test/book", k_ra8_mdl_format_rabook, &session));
   ra8_mdl_chunk_t chunk = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_next(link, &session, 4U, &chunk));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_c6link_mdl_next(nullptr, &session, 4U, &chunk));
@@ -428,7 +463,9 @@ RA8_INTERNAL static void internal_test_media_cancel_argument_mcdc(void)
   priv_c6link_test_bringup();
   ra8_c6link_t*     link    = priv_c6link_test_link();
   ra8_mdl_session_t session = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_start(link, "https://example.test/book", &session));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_c6link_mdl_start(link, "https://example.test/book", k_ra8_mdl_format_rabook, &session));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_c6link_mdl_cancel(nullptr, &session));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_c6link_mdl_cancel(link, nullptr));
   ra8_mdl_session_t candidate = session;
@@ -561,14 +598,15 @@ static ra8_err_t internal_mdl_store_validate(void*         ctx,
 
 /** @brief Publish the modelled object. @details Implements the mdl store commit
  * fixture operation used only by this focused test executable.
- * @param[in,out] ctx Fixture argument governed by the exercised interface contract. @return
- * RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture
- * operation completed successfully. @pre Fixed-capacity fixture storage
- * required by this operation is available. @pre Arguments follow the interface
- * contract exercised by this helper. @post Documented outputs contain the
- * exercised result when the operation succeeds. @post Mutations remain confined
- * to documented outputs and file-local fixture state. @note File-local helper;
- * no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * @param[in,out] ctx Fixture argument governed by the exercised interface
+ * contract. @return RA8 status from the exercised fixture operation. @retval
+ * k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity
+ * fixture storage required by this operation is available. @pre Arguments
+ * follow the interface contract exercised by this helper. @post Documented
+ * outputs contain the exercised result when the operation succeeds. @post
+ * Mutations remain confined to documented outputs and file-local fixture state.
+ * @note File-local helper; no ownership escapes this focused test executable.
+ * @since Version 0.1.0 */
 RA8_INTERNAL
 static ra8_err_t internal_mdl_store_commit(void* ctx)
 {
@@ -704,6 +742,7 @@ static void internal_mdl_transfer_cfg(ra8_mdl_transfer_config_t* config)
                          .update = internal_mdl_sha_update,
                          .final  = internal_mdl_sha_final,
                          .ctx    = &s_mdl_transfer.hash},
+    .format           = k_ra8_mdl_format_rabook,
     .cancel_requested = internal_mdl_cancelled,
     .cancel_ctx       = &s_mdl_transfer.cancel,
     .chunk_bytes      = 4U,
@@ -842,7 +881,8 @@ static void internal_test_media_transfer_aborts_storage_failures(void)
  * executes F,F/false before the digest-only mismatch and validation-only
  * failure select their respective single decisions.
  * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_chunk
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c@internal_mdl_transfer_commit
+ * Decisions:
+ * libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c@internal_mdl_transfer_commit
  * Decisions:
  * libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c@ra8_c6link_mdl_transfer
  * @details Executes the media transfer aborts integrity failures scenario with

@@ -46,7 +46,8 @@ typedef union {
   uint8_t     bytes[k_ra8_io_compress_scratch_bytes]; /**< Compressor state bytes.    */
 } image_compressor_t;
 
-/** @brief Real application output selection, independent of the C6 transport. */
+/** @brief Real application output selection, independent of the C6 transport.
+ */
 static const ra8_mdl_format_t s_output_format = k_ra8_mdl_format_rabook;
 /** @brief Private transaction for the encoded source bytes. */
 static ra8_mdl_storage_ram_t s_source_storage;
@@ -361,11 +362,12 @@ RA8_PRIV ra8_err_t priv_media_download_image_run(ra8_c6link_t*                  
   ra8_err_t                 err             = internal_check_transfer(transfer);
   ra8_mdl_transfer_config_t source_transfer = {};
   if (err == k_ra8_ok) {
-    source_transfer = *transfer;
-    err             = ra8_mdl_storage_ram_init(&s_source_storage,
-                                               &source_transfer.storage,
-                                               s_source,
-                                               sizeof s_source);
+    source_transfer        = *transfer;
+    source_transfer.format = k_ra8_mdl_format_loose;
+    err                    = ra8_mdl_storage_ram_init(&s_source_storage,
+                                                      &source_transfer.storage,
+                                                      s_source,
+                                                      sizeof s_source);
   }
   if (err == k_ra8_ok) {
     ra8_mdl_transfer_result_t result = {};

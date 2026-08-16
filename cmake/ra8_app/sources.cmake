@@ -108,6 +108,10 @@ macro(_ra8_app_collect_sources)
   # Keep warnings enabled for the handwritten client and service while
   # treating this one generated translation unit like the vendored codec.
   if("ra8_c6link" IN_LIST _RA8_APP_LIBS)
+    # The media RPC carries the canonical ra8_mdl_format_t in its public
+    # request contract. Consumers need the declaration even when they use
+    # c6link only for Wi-Fi and do not otherwise compile ra8_mdl sources.
+    list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_mdl/inc)
     set_source_files_properties(
       ${RA8_REPO_ROOT}/libs/ra8_c6link/src/ra8_media_download.pb-c.c PROPERTIES COMPILE_OPTIONS
                                                                                 "-w"

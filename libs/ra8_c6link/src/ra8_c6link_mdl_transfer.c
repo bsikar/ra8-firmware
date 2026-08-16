@@ -64,6 +64,12 @@ internal_mdl_transfer_validate(ra8_c6link_t*                    link,
       (config->sha256.ctx == nullptr)) {
     return k_ra8_err_null_ptr;
   }
+  if ((uint32_t)config->format > (uint32_t)k_ra8_mdl_format_rabook) {
+    return k_ra8_err_invalid_arg;
+  }
+  if ((config->format != k_ra8_mdl_format_loose) && (config->storage.validate == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
   const uint64_t byte_budget = (uint64_t)config->chunk_bytes * config->max_chunks;
   if ((config->chunk_bytes == 0U) || (config->chunk_bytes > k_ra8_mdl_chunk_data_max) ||
       (config->max_chunks == 0U) || (byte_budget > k_ra8_mdl_transfer_bytes_max)) {
@@ -73,11 +79,14 @@ internal_mdl_transfer_validate(ra8_c6link_t*                    link,
 }
 
 /**
- * @brief Cancel the remote job when active and always abort local temporary state
+ * @brief Cancel the remote job when active and always abort local temporary
+ * state
  * @details Cleanup failures are returned only when no earlier cause exists.
  * @param[in,out] state Transfer resources to unwind.
- * @param[in] cause Original failure, or success when cleanup itself triggered the result.
- * @return Original cause, then cancel error, then abort error in priority order.
+ * @param[in] cause Original failure, or success when cleanup itself triggered
+ * the result.
+ * @return Original cause, then cancel error, then abort error in priority
+ * order.
  * @retval k_ra8_ok No cause and both cleanup operations succeeded.
  * @retval k_ra8_err_cancelled Cancellation completed normally.
  * @retval k_ra8_fail A cleanup mechanism failed without an earlier cause.
@@ -197,6 +206,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_transfer_commit(mdl_transfer_state_t*
     *result = (ra8_mdl_transfer_result_t){
       .bytes_stored    = bytes_stored,
       .chunks_received = chunks_received,
+      .format          = state->config->format,
     };
     memcpy(result->sha256, digest, sizeof(digest));
     state->storage_active = false;
@@ -224,7 +234,7 @@ ra8_err_t ra8_c6link_mdl_transfer(ra8_c6link_t*                    link,
   state.storage_active = true;
   err                  = config->sha256.init(config->sha256.ctx);
   if (err == k_ra8_ok) {
-    err = ra8_c6link_mdl_start(link, url, &state.session);
+    err = ra8_c6link_mdl_start(link, url, config->format, &state.session);
   }
   uint64_t bytes_stored = 0U;
   for (uint32_t pull = 0U; (pull < config->max_chunks) && (err == k_ra8_ok); pull++) {
