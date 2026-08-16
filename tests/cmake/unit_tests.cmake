@@ -265,14 +265,12 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_emulator_
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media_decoder.c)
-<<<<<<< HEAD
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media_http.c)
-=======
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_transfer_coordinator.c)
->>>>>>> 2c156f36a (test(c6link): name the coordinator companion so the MC/DC ratchet sees it)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_wire.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl_policy.c)
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl_codec.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_rabook.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_app_media_download_format.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_mdl_net_c6link.c)
@@ -299,9 +297,17 @@ endforeach()
 
 # This test deliberately forges logical source names with #line directives to
 # pin Unity's exact diagnostics. Keep executing it in coverage builds, but do
-# not ask gcov to resolve those synthetic names as repository source paths.
-if(RA8_COVERAGE AND TARGET test_ra8_unity_output)
-  target_compile_options(test_ra8_unity_output PRIVATE -fno-profile-arcs -fno-test-coverage)
+# not ask gcov to resolve those synthetic names as repository source paths --
+# gcovr cannot, and aborts the entire report rather than skipping the file.
+#
+# The opt-out is a property the coverage flags in host_config.cmake honour, not
+# a per-target `-fno-profile-arcs -fno-test-coverage`: that pair does not undo
+# `--coverage` under gcc and is a -Werror unused-argument error under clang.
+# See the RA8_SKIP_COVERAGE_INSTRUMENTATION block in host_config.cmake.
+if(TARGET test_ra8_unity_output)
+  set_target_properties(
+    test_ra8_unity_output PROPERTIES RA8_SKIP_COVERAGE_INSTRUMENTATION ON
+  )
 endif()
 
 # The strict book-stream MC/DC vectors call documented private validator seams
