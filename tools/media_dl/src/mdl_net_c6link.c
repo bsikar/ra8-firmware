@@ -21,11 +21,6 @@ typedef enum : uint8_t {
   k_mdl_c6_output_sink   = 2U, /**< Injected streaming body sink.         */
 } mdl_c6_output_kind_t;
 
-/** @brief Synthesized status proven by a successful version-1 transfer. */
-typedef enum : int32_t {
-  k_mdl_c6_http_success = 200, /**< Successful body; C6 accepts only HTTP 2xx. */
-} mdl_c6_http_status_t;
-
 /** @brief Transaction state that turns one C6 body into a network response. */
 typedef struct {
   mdl_c6_output_kind_t kind;   /**< Selected output union member. */
@@ -35,30 +30,14 @@ typedef struct {
   size_t               length; /**< Bytes accepted so far.        */
 } mdl_c6_output_t;
 
-/**
- * @brief Reject request policy the version-1 C6 wire cannot represent.
- * @details Accepts only the unconditional request shape whose semantics the
- *          current remote protocol can preserve exactly.
- * @param[in] req Downloader request policy.
- * @return Capability status.
- * @retval k_ra8_ok The request is an unconditional transfer.
- * @retval k_ra8_err_not_supported At least one unsupported field is present.
- * @pre @p req is non-null.
- * @pre The caller has already validated the containing network request.
- * @post No request or backend state is modified.
- * @post Success proves every optional policy field is absent.
- * @note Pure and thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_c6_request_supported(const mdl_net_req_t* req)
-{
-  if ((req->user_agent != nullptr) || (req->referer != nullptr) ||
-      (req->if_none_match != nullptr) || (req->if_modified_since != nullptr) ||
-      (req->timeout_ms != 0U)) {
-    return k_ra8_err_not_supported;
-  }
-  return k_ra8_ok;
-}
+static_assert((uint32_t)k_mdl_retry_after_max == (uint32_t)k_ra8_mdl_retry_after_max,
+              "C6 and downloader Retry-After capacities must match");
+static_assert((uint32_t)k_mdl_etag_max == (uint32_t)k_ra8_mdl_etag_max,
+              "C6 and downloader ETag capacities must match");
+static_assert((uint32_t)k_mdl_last_mod_max == (uint32_t)k_ra8_mdl_http_date_max,
+              "C6 and downloader HTTP-date capacities must match");
+static_assert((uint32_t)k_mdl_content_type_max == (uint32_t)k_ra8_mdl_content_type_max,
+              "C6 and downloader Content-Type capacities must match");
 
 /**
  * @brief Begin the local half of one transfer transaction.
@@ -186,23 +165,22 @@ RA8_INTERNAL static ra8_err_t internal_c6_output_abort(void* ctx)
 }
 
 /**
- * @brief Execute one digest-verified unconditional C6 GET.
+ * @brief Execute one digest-verified policy-preserving C6 GET.
  * @details Binds the selected output as a transfer storage transaction, runs
- *          the C6 coordinator, and synthesizes only metadata the wire proves.
+ *          the C6 coordinator, and copies only metadata proven by the wire.
  * @param[in,out] backend Bound C6 network state.
  * @param[in] url HTTPS source URL.
  * @param[in] req Request policy to validate.
  * @param[in,out] output Selected caller output transaction.
  * @param[out] out_len Optional completed byte length.
  * @param[out] resp Optional synthesized success metadata.
- * @return Transfer, policy, sink, or digest status.
+ * @return Transfer, sink, or digest status.
  * @retval k_ra8_ok The complete verified body was published.
- * @retval k_ra8_err_not_supported Version-1 request policy is insufficient.
  * @pre Pointer arguments are non-null except optional outputs.
  * @pre The C6 link and SHA context are exclusively owned.
- * @post Success reports HTTP 200 because protocol v2 accepts only 2xx bodies.
+ * @post Success reports the exact terminal HTTP status and selected headers.
  * @post Failure leaves partial output cleared by the transaction abort.
- * @note Response headers are unavailable in protocol version 2.
+ * @note HTTP response interpretation remains portable downloader policy.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_c6_get(mdl_net_c6link_t*    backend,
@@ -212,10 +190,6 @@ RA8_INTERNAL static ra8_err_t internal_c6_get(mdl_net_c6link_t*    backend,
                                               size_t*              out_len,
                                               mdl_net_resp_t*      resp)
 {
-  const ra8_err_t supported = internal_c6_request_supported(req);
-  if (supported != k_ra8_ok) {
-    return supported;
-  }
   const ra8_mdl_transfer_config_t config = {
     .storage     = {.begin    = internal_c6_output_begin,
                     .write    = internal_c6_output_write,
@@ -225,6 +199,11 @@ RA8_INTERNAL static ra8_err_t internal_c6_get(mdl_net_c6link_t*    backend,
                     .ctx      = output},
     .sha256      = backend->sha256,
     .format      = k_ra8_mdl_format_loose,
+    .http        = {.user_agent        = req->user_agent,
+                    .referer           = req->referer,
+                    .if_none_match     = req->if_none_match,
+                    .if_modified_since = req->if_modified_since,
+                    .timeout_ms        = req->timeout_ms},
     .chunk_bytes = backend->chunk_bytes,
     .max_chunks  = backend->max_chunks,
   };
@@ -239,7 +218,11 @@ RA8_INTERNAL static ra8_err_t internal_c6_get(mdl_net_c6link_t*    backend,
       *out_len = (size_t)transfer.bytes_stored;
     }
     if (resp != nullptr) {
-      resp->status = k_mdl_c6_http_success;
+      resp->status = transfer.response.status;
+      memcpy(resp->retry_after, transfer.response.retry_after, sizeof(resp->retry_after));
+      memcpy(resp->etag, transfer.response.etag, sizeof(resp->etag));
+      memcpy(resp->last_modified, transfer.response.last_modified, sizeof(resp->last_modified));
+      memcpy(resp->content_type, transfer.response.content_type, sizeof(resp->content_type));
     }
   }
   return result;
