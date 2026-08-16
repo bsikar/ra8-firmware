@@ -41,21 +41,33 @@ so prose re-wrapping cannot silently detach a number from its pattern):
    followed by ``| `path` | <count> |`` rows that must equal the true top-N
    (count descending, path ascending).  An excerpt-shaped row outside a
    parsed excerpt table -- the footprint of a wrapped or deleted intro
-   line -- is malformed, so an excerpt cannot silently drop out of scope.
-6. Populations:  any ``<N> findings across <M> files`` phrase inside a
-   ``## D-NNN`` section body is re-derived against that section's rule,
-   so a headline number restated in prose moves with the baseline too.
+   line -- is malformed.
+6. Populations:  any ``<N> findings across|in <M> files`` phrase is
+   re-derived against the rule of the ``## D-NNN`` section it sits in, and
+   is MALFORMED outside such a section, where no rule could derive it.  An
+   unanchored population sentence in the top matter is how the #632 rot was
+   worded, so the shape is refused rather than ignored.
 
 Structural cross-checks: the ``## D-NNN: Rule R`` section headings and the
-register rows must describe the same (ID, rule) set -- a missing or extra
-row on either side fails.
+register rows must describe the same (ID, rule) set; that set must be exactly
+the contiguous range the document header declares as active, so a deviation
+cannot be retired, added or renumbered without amending the header; and every
+row's rule must exist in the baseline, so an invented or typo'd rule id
+cannot pass by claiming zero findings.
 
 Non-vacuity floors (documented to SHRINK with the debt, never grow): the
-baseline must parse to at least ``MIN_BASELINE_RULES`` distinct rules and the
-register to at least ``MIN_REGISTER_ROWS`` deviations, else the scan is
-treated as collapsed (exit 2), not clean.  There is no suppressive baseline of
-its own: every discrepancy is a failure the register must absorb by being
-corrected.
+baseline must parse to at least ``MIN_BASELINE_RULES`` distinct rules, and the
+register to at least ``MIN_REGISTER_ROWS`` deviations,
+``MIN_OWNERSHIP_FAMILIES`` ownership bullets and ``MIN_EXCERPTS`` excerpt
+tables, else the scan is treated as collapsed (exit 2), not clean -- deleting
+a claim class outright must never read as verifying it.  There is no
+suppressive baseline of its own: every discrepancy is a failure the register
+must absorb by being corrected.
+
+What this checker does NOT verify, so the register's own wording must not
+claim it does: the index's Category / Class / Status / MAR columns, prose that
+does not use one of the shapes above, and the identity (as opposed to the
+count) of the suppression rows behind each ownership bullet.
 
 Exit codes: 0 clean, 1 drift (a claim disagrees with the evidence), 2
 malformed input or collapsed/vacuous scan.
@@ -67,13 +79,17 @@ Usage::
 
 ``--selftest`` builds a fixture register + baseline + suppressions in a
 temporary tree and drives ``run_check`` -- the identical entry point
-``--check`` uses -- through every failure class (stale count, missing row,
-extra row, misshapen row, short deviation ID in a row or heading, malformed
-document, missing document, tampered baseline header, vacuous / two-column /
-below-floor baselines, suppression drift, unowned suppression family, ghost
-bullet, heading mismatch, misordered excerpt, wrapped excerpt intro, stale
-in-section population) plus the must-stay-quiet direction, and finally
-asserts the live tree clears the floors.
+``--check`` uses -- through every failure class: stale count, missing /
+extra / misshapen register row, short deviation ID in a row or heading, a
+row naming a rule absent from the baseline, a retirement that leaves the
+header's ID range stale, a missing ID range, malformed and missing
+documents, tampered / vacuous / two-column / below-floor baselines,
+suppression drift, unowned family, ghost bullet, heading mismatch,
+misordered excerpt, wrapped excerpt intro, a deleted excerpt block, a
+deleted ownership list, and a population claim that is stale, reworded
+``in``, or stranded outside any deviation section -- plus the
+must-stay-quiet direction, and finally asserts the live tree clears the
+floors.
 """
 
 from __future__ import annotations
@@ -112,10 +128,29 @@ MIN_REGISTER_ROWS = 5
 
 The register only ever loses rows when a deviation is formally retired, so a
 parse that suddenly sees fewer than this is a collapsed scan, not progress.
+The header's declared ID range is the tighter guard: a retirement that does
+not also amend the range fails, so this floor only has to catch a collapse.
+"""
+
+MIN_OWNERSHIP_FAMILIES = 10
+"""Floor on suppression-ownership bullets parsed from the register (15 today).
+
+Without it, commenting out every ``misra-c2012-*`` suppression row and
+deleting the bullet list verifies nothing and still announces PASS.  Shrink
+it as families are genuinely retired; never raise it to hide a parse break.
+"""
+
+MIN_EXCERPTS = 1
+"""Floor on highest-count-file excerpt tables parsed from the register.
+
+An excerpt is the one claim class a maintainer could delete outright rather
+than let it drift, so a floor is what keeps "0 excerpt(s) verified" from
+reading as a clean run.
 """
 
 RULE_PATTERN = r"misra-c2012-\d+\.\d+"
 
+HEADER_RANGE_RE = re.compile(r"\(D-(\d{3})\.\.D-(\d{3}) active\)")
 HEADING_RE = re.compile(r"^## (D-\d{3}): Rule (\d+\.\d+) ")
 ANY_HEADING_RE = re.compile(r"^## D-")
 ANY_REGISTER_ROW_RE = re.compile(r"^\|\s*D-\d+")
@@ -137,7 +172,16 @@ EXCERPT_INTRO_RE = re.compile(
 EXCERPT_ROW_RE = re.compile(r"^\|\s*`([^`|]+)`\s*\|\s*(\d+)\s*\|$")
 TABLE_DECOR_RE = re.compile(r"^\|[\s:|-]+\|$")
 TOTAL_HEADER_RE = re.compile(r"^# total findings: (\d+)$")
-POPULATION_RE = re.compile(r"\b(\d+)(?: spurious)? findings across (\d+) files\b")
+POPULATION_RE = re.compile(r"\b(\d+)(?: spurious)? findings (?:across|in) (\d+) files?(?![\w/])")
+"""A per-rule population restated in prose.
+
+Matched ANYWHERE in the register: inside a ``## D-NNN`` section it is
+re-derived against that section's rule, and outside one it is malformed --
+there is no rule to derive it against, and an unanchored population sentence
+in the top matter is exactly how the #632 rot was worded.  A deliberately
+HISTORICAL figure must therefore not use this phrasing; the register says
+"751 violations in the 2026-05-02 baseline" for those.
+"""
 
 
 @dataclass
@@ -148,6 +192,7 @@ class DocClaims:
     derived: list[tuple[str, str, int, int]] = field(default_factory=list)
     residual: list[tuple[int, int, int]] = field(default_factory=list)
     headings: dict[str, str] = field(default_factory=dict)
+    declared_range: tuple[str, str] | None = None
     populations: list[tuple[str, int, int]] = field(default_factory=list)
     ownership: dict[str, tuple[int, int]] = field(default_factory=dict)
     excerpts: list[tuple[str, int, list[tuple[str, int]]]] = field(default_factory=list)
@@ -232,12 +277,17 @@ def parse_doc(path: Path) -> DocClaims:
         if line.startswith("## "):
             heading = HEADING_RE.match(line)
             current_rule = "misra-c2012-" + heading.group(2) if heading else None
+        if claims.declared_range is None and (rm := HEADER_RANGE_RE.search(line)):
+            claims.declared_range = ("D-" + rm.group(1), "D-" + rm.group(2))
         _classify_line(claims, line)
-        if current_rule:
-            claims.populations.extend(
-                (current_rule, int(pm.group(1)), int(pm.group(2)))
-                for pm in POPULATION_RE.finditer(line)
-            )
+        for pm in POPULATION_RE.finditer(line):
+            if current_rule is None:
+                claims.malformed.append(
+                    f"population claim outside any deviation section (no rule to derive "
+                    f"it against): {line.strip()!r}"
+                )
+            else:
+                claims.populations.append((current_rule, int(pm.group(1)), int(pm.group(2))))
         i += 1
     if len(claims.provenance) != 1:
         claims.malformed.append(
@@ -325,6 +375,32 @@ def _per_rule(counts: Counter[tuple[str, str]]) -> dict[str, tuple[int, int]]:
     return {rule: (f, n) for rule, (f, n) in agg.items()}
 
 
+def _range_problems(claims: DocClaims) -> list[str]:
+    """Check the header's declared ID range against the rows actually present.
+
+    Args:
+        claims: The parsed register claims.
+
+    Returns:
+        Problems describing a silently retired, added or renumbered deviation.
+    """
+    if claims.declared_range is None:
+        return ["header declares no '(D-NNN..D-NNN active)' range -- cannot bound the register"]
+    first, last = claims.declared_range
+    want = [f"D-{n:03d}" for n in range(int(first[2:]), int(last[2:]) + 1)]
+    got = sorted({dev_id for dev_id, _r, _f, _n in claims.derived})
+    if got != want:
+        missing = [d for d in want if d not in got]
+        extra = [d for d in got if d not in want]
+        return [
+            f"header declares {first}..{last} active but the index holds "
+            f"{len(got)} row(s)"
+            + (f"; missing {missing}" if missing else "")
+            + (f"; unexpected {extra}" if extra else "")
+        ]
+    return []
+
+
 def _register_problems(claims: DocClaims, per_rule: dict[str, tuple[int, int]]) -> list[str]:
     """Cross-check section headings and register rows against the baseline."""
     problems: list[str] = []
@@ -338,7 +414,13 @@ def _register_problems(claims: DocClaims, per_rule: dict[str, tuple[int, int]]) 
         rule, doc_f, doc_n = derived[dev_id]
         if claims.headings.get(dev_id, rule) != rule:
             problems.append(f"{dev_id}: rule mismatch between section heading and register row")
-        real_f, real_n = per_rule.get(rule, (0, 0))
+        if rule not in per_rule:
+            problems.append(
+                f"{dev_id}: rule {rule} appears nowhere in the baseline -- a typo, an "
+                f"invented id, or a deviation whose debt is gone and which must be retired"
+            )
+            continue
+        real_f, real_n = per_rule[rule]
         if (doc_f, doc_n) != (real_f, real_n):
             problems.append(
                 f"{dev_id} ({rule}): register claims {doc_f} findings / {doc_n} files, "
@@ -456,15 +538,21 @@ def evaluate(
             f"baseline parsed to {len(per_rule)} distinct rules, below the "
             f"non-vacuity floor of {MIN_BASELINE_RULES} -- collapsed scan, refusing to pass"
         )
-    if len(claims.derived) < MIN_REGISTER_ROWS:
-        malformed.append(
-            f"register parsed to {len(claims.derived)} derived-population rows, below the "
-            f"non-vacuity floor of {MIN_REGISTER_ROWS} -- collapsed scan, refusing to pass"
-        )
+    for parsed, floor, what in (
+        (len(claims.derived), MIN_REGISTER_ROWS, "derived-population rows"),
+        (len(claims.ownership), MIN_OWNERSHIP_FAMILIES, "suppression-ownership bullets"),
+        (len(claims.excerpts), MIN_EXCERPTS, "excerpt tables"),
+    ):
+        if parsed < floor:
+            malformed.append(
+                f"register parsed to {parsed} {what}, below the non-vacuity floor of "
+                f"{floor} -- collapsed scan, refusing to pass"
+            )
     if malformed:
         return [], malformed
     drift = (
         _provenance_problems(claims, counts, version)
+        + _range_problems(claims)
         + _register_problems(claims, per_rule)
         + _population_problems(claims, per_rule)
         + _residual_problems(claims, per_rule)
@@ -534,6 +622,7 @@ def _fixture_files() -> dict[str, str]:
             f"{rules[0]}:a.c:10",
             f"{rules[0]}:a.c:20",
             f"{rules[1]}:glob/*",
+            *[f"{r}:filler{i}.c" for i, r in enumerate(rules[2:12])],
             "",
         ]
     )
@@ -550,6 +639,8 @@ def _fixture_files() -> dict[str, str]:
         [
             "# Fixture register",
             "",
+            "Fixture header (D-001..D-006 active).",
+            "",
             "## Deviation index",
             "",
             "| ID    | Rule | Category | Class | Status | MAR | Findings | Files |",
@@ -565,6 +656,7 @@ def _fixture_files() -> dict[str, str]:
             "",
             f"- `{rules[0]}` (2 rows, 1 path): fixture family one.",
             f"- `{rules[1]}` (1 row, 1 path): fixture family two.",
+            *[f"- `{r}` (1 row, 1 path): fixture filler family." for r in rules[2:12]],
             "",
             f"Highest-count files for {rules[0]} (top 2, derived):",
             "",
@@ -707,6 +799,56 @@ def _selftest_cases() -> list[tuple[str, str, str, str, int]]:
             "## D-11: Rule 2.1 -- fixture",
             EXIT_MALFORMED,
         ),
+        (
+            "deleting the whole excerpt block is malformed",
+            "doc",
+            "Highest-count files for misra-c2012-1.1 (top 2, derived):\n\n"
+            "| File | Findings |\n|------|---------:|\n| `a.c` | 3 |\n| `b.c` | 1 |\n",
+            "",
+            EXIT_MALFORMED,
+        ),
+        (
+            "deleting one ownership bullet fires as an unowned waiver",
+            "doc",
+            "- `misra-c2012-1.1` (2 rows, 1 path): fixture family one.",
+            "",
+            EXIT_DRIFT,
+        ),
+        (
+            "population claim outside a deviation section is malformed",
+            "doc",
+            "## Derived population",
+            "Rule 1.1 alone accounts for 4 findings across 2 files.\n\n## Derived population",
+            EXIT_MALFORMED,
+        ),
+        (
+            "population claim reworded with 'in' still fires",
+            "doc",
+            "6 findings across 1 files.",
+            "7 findings in 1 file.",
+            EXIT_DRIFT,
+        ),
+        (
+            "retiring a deviation without amending the header range fires",
+            "doc",
+            "| D-006 | misra-c2012-6.1 | Advisory | Fixture | Active | 2027-01-01 | 6 | 1 |\n",
+            "",
+            EXIT_DRIFT,
+        ),
+        (
+            "a register row naming a rule absent from the baseline fires",
+            "doc",
+            "| D-006 | misra-c2012-6.1 | Advisory | Fixture | Active | 2027-01-01 | 6 | 1 |",
+            "| D-006 | misra-c2012-99.9 | Advisory | Fixture | Active | 2027-01-01 | 0 | 0 |",
+            EXIT_DRIFT,
+        ),
+        (
+            "a missing header range is malformed",
+            "doc",
+            "Fixture header (D-001..D-006 active).",
+            "Fixture header.",
+            EXIT_DRIFT,
+        ),
     ]
 
 
@@ -760,6 +902,13 @@ def selftest() -> int:
         problem = _run_fixture_case(tmp, floor_files, "below-floor baseline", EXIT_MALFORMED)
         if problem:
             failures.append(problem)
+        stripped = dict(_fixture_files())
+        stripped["doc"] = "\n".join(
+            line for line in stripped["doc"].splitlines() if not line.startswith("- `misra-c2012-")
+        )
+        problem = _run_fixture_case(tmp, stripped, "no ownership bullets at all", EXIT_MALFORMED)
+        if problem:
+            failures.append(problem)
         good = _fixture_files()
         (tmp / "misra-baseline.txt").write_text(good["baseline"], encoding="utf-8")
         (tmp / "cppcheck-suppressions").write_text(good["suppressions"], encoding="utf-8")
@@ -775,7 +924,7 @@ def selftest() -> int:
         print(f"{tag}: FAIL: {failure}", file=sys.stderr)
     if failures:
         return 1
-    print(f"{tag}: PASS ({len(_selftest_cases()) + 2} both-direction cases + live floors)")
+    print(f"{tag}: PASS ({len(_selftest_cases()) + 3} both-direction cases + live floors)")
     return 0
 
 

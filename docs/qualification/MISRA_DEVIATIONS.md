@@ -1,9 +1,9 @@
 # MISRA-C 2012 Deviation Register
 
-**Last refreshed**: 2026-08-15 (D-001..D-010 active). The index's
-`Findings` / `Files` columns and the "Derived population" section are
-machine-checked against the committed baseline by
-`scripts/checks/check_misra_deviations.py` in the `misra` gate (#632).
+**Last refreshed**: 2026-08-15 (D-001..D-010 active). That ID range, the
+index's `Findings`/`Files` columns, the "Derived population" section and
+every in-section population restatement are machine-checked against the
+committed baseline by `check_misra_deviations.py` in the `misra` gate (#632).
 
 This document records every formal deviation taken against MISRA-C 2012
 in the ra8-firmware codebase, following the deviation procedure in
@@ -116,18 +116,18 @@ the rule's current measured population (next section).
 
 ## Derived population (machine-checked)
 
-Every number here (and the index's `Findings` / `Files` columns) is
-re-derived by `scripts/checks/check_misra_deviations.py` on every
-`misra` gate run -- a stale number is a CI failure, never prose.
-`misra_check_inner.sh` scans `libs/ src/ port/ tools/` (`examples/`
-and `tests/` are out of audit scope) with `.cppcheck-suppressions`
-applied: cppcheck embeds the suppressions in the dumps it hands to
-`misra.py`, so a finding matching one by rule + file (or rule + file +
-exact line) never reaches the results -- verified by experiment on the
-pinned binary, 2026-08-15. `misra_ratchet.py` freezes that
-post-suppression population in `.github/misra-baseline.txt`, which
-everything below derives from. A count is a measurement; each
-deviation's own section says what its disposition actually accepts.
+`scripts/checks/check_misra_deviations.py` re-derives, on every `misra`
+gate run: the ID range above, each index row's `Findings`/`Files`, the
+provenance and residual lines, every ownership bullet, the excerpt table
+and every in-section `N findings across M files` restatement. It does
+NOT check Category / Class / Status / MAR, free prose, or which rows sit
+behind an ownership bullet -- those stay review obligations. A count is
+a measurement; each deviation says what it actually accepts. Evidence:
+`misra_check_inner.sh` scans `libs/ src/ port/ tools/` (`examples/` and
+`tests/` out of scope) with `.cppcheck-suppressions` applied -- cppcheck
+embeds them in the dumps handed to `misra.py`, so a suppressed finding
+never reaches the results (verified on the pinned binary, 2026-08-15) --
+then `misra_ratchet.py` freezes that population in the baseline below.
 
 Baseline: 16165 findings across 2229 file/rule rows (Cppcheck 2.13.0).
 Residual (no deviation record): 53 rules, 2368 findings, 885 rows.
@@ -291,7 +291,7 @@ mis-reads it.
   Both toolchains support C23 declarations natively and produce zero
   implicit-declaration diagnostics.
 
-### Alternative verification (until cppcheck ships C23)
+### Alternative verification (audit pinned to C11)
 
 - The arm-none-eabi-gcc cross build with `-std=gnu23
   -Wimplicit-function-declaration -Werror` is the authoritative
@@ -314,8 +314,9 @@ audit tool is supplementary.
 - **Approved**: 2026-05-02.
 - **Mandatory annual review**: 2026-11-02 (six-month review tied to
   cppcheck release cadence; see TOOL_QUALIFICATION.md).
-- **Trigger for early review**: a cppcheck release that parses C23
-  attributes (checked 2026-08-15: 2.21.0 does not; see D-005).
+- **Trigger for early review**: **FIRED 2026-08-15** -- cppcheck 2.21.0
+  parses C23 attributes under `--std=c23`. The audit stays pinned until
+  that review lands; D-005 records what adopting it would cost.
 
 ---
 
@@ -359,7 +360,7 @@ for syntactic initializer-form rules.
 - **Author**: Brighton Sikarskie.
 - **Approved**: 2026-05-02.
 - **Mandatory annual review**: 2026-11-02.
-- **Trigger for early review**: cppcheck adds `--std=c23`.
+- **Trigger for early review**: **FIRED 2026-08-15** (see D-002/D-005).
 
 ---
 
@@ -407,22 +408,22 @@ partitions into three parts; only the first is formally accepted:
    their code: 10 with the BLE host facade (retired 2026-07-26), 21
    with the lwIP port and hand-rolled TCP stack (deleted 2026-07-14),
    leaving the 70 rows across 10 paths pinned above.
-2. **Anchor decay.** A line-anchored suppression filters a finding
-   only at its exact file:line coordinate. At this refresh
-   (2026-08-15), 17 of the 70 anchors point past their file's end (16
-   stranded by the `ra8_fs_fat.c` split) and 9 of the 10 files carry
-   12.1 rows in the committed baseline again: the reviewed *instances*
-   are back in the measured population, ratchet-frozen. The block is
-   review evidence, not an active filter.
+2. **Anchor decay.** A line-anchored suppression filters a finding only
+   at its exact file:line coordinate. At this refresh (2026-08-15), 17
+   of the 70 anchors point past their file's end (16 stranded by the
+   `ra8_fs_fat.c` split) and 9 of the 10 files carry 12.1 rows in the
+   baseline again: the reviewed *instances* are back in the measured
+   population, ratchet-frozen. The block is review evidence, not a
+   live filter.
 3. **Unreviewed debt.** The remainder -- 65 of the 74 files, including
    everything under `libs/ra8_hal/` and the `tools/` population that
    entered audit scope on 2026-08-13 -- has never been triaged against
    the accepted-as-implicit classes. It is implementation debt, never
    accepted: ratchet-held and burned down per `docs/MISRA.md`.
 
-Any future 12.1 hit must be re-triaged: add parentheses for genuine
-ambiguity, or record the acceptance here (this register owns the
-accepted classes) and let the ratchet baseline hold the count.
+Any future 12.1 hit must be re-triaged: parenthesise genuine ambiguity,
+or record the acceptance here (this register owns the accepted classes)
+and let the ratchet hold the count.
 
 ### Standards basis
 
@@ -469,7 +470,7 @@ accepted classes) and let the ratchet baseline hold the count.
   the 2.13.0-pinned ratchet baseline became the audit of record on
   2026-07-15 -- so the baseline is the per-file authority.
 
-Highest-count files for misra-c2012-8.4 (top 5, derived):
+Highest-count files for misra-c2012-8.4 (top 6, derived):
 
 | File | Findings |
 |------|---------:|
@@ -478,6 +479,7 @@ Highest-count files for misra-c2012-8.4 (top 5, derived):
 | `port/nimble/src/nimble_npl_threadx.c` | 29 |
 | `libs/ra8_hal/src/ra8_ceu.c` | 26 |
 | `libs/ra8_hal/src/ra8_etha.c` | 26 |
+| `libs/ra8_hal/src/ra8_rsip_asym.c` | 26 |
 
 ### Root cause
 
@@ -516,18 +518,17 @@ confirm both root causes are gone.
   every commit at the pre-commit clang-tidy + CI build gate.
 - Every public function in the affected files is declared in the
   matching `*/inc/*.h` header, included before the definitions.
-  Re-verified 2026-08-15 instance-precisely against the baseline:
-  `libs/ra8_mpu/src/ra8_mpu.c` defines 7 external functions, exactly
-  the 6 with `[[nodiscard]]` prototypes flagged (plain-pointer
-  `ra8_mpu_boot_map()` is not); `tools/rabook_imagepack/src/ra8_fmt_util.c`
-  likewise at 5-of-7 -- the differentials isolate the attribute --
-  and `port/nimble/src/nimble_npl_threadx.c` defines exactly 29
-  `ble_npl_*` functions matching its 29 findings (class 2).
+  Re-verified 2026-08-15 against the baseline: `libs/ra8_mpu/src/ra8_mpu.c`
+  defines 7 external functions, exactly the 6 with `[[nodiscard]]`
+  prototypes flagged (plain-pointer `ra8_mpu_boot_map()` is not);
+  `tools/rabook_imagepack/src/ra8_fmt_util.c` likewise at 5-of-7 -- the
+  differentials isolate the attribute -- and `nimble_npl_threadx.c`
+  defines exactly 29 `ble_npl_*` functions matching its 29 findings.
 - Module-internal functions are marked `static` and are caught
   separately by clang-tidy's `misc-unused-using-decls` and gcc's
   `-Wmissing-declarations`.
 
-### Alternative verification (until cppcheck ships C23)
+### Alternative verification (audit pinned to C11)
 
 - arm-none-eabi-gcc cross build with the warning flags listed above
   is the authoritative Required-rule check for 8.4.
@@ -556,12 +557,11 @@ rules; the unqualified open-source audit tool is supplementary.
 - **Approved**: 2026-05-02.
 - **Mandatory annual review**: 2026-11-02 (tied to cppcheck release
   cadence -- shared review window with D-002 and D-003).
-- **Trigger for early review**: a cppcheck release that parses C23
-  attributes; or removing `[[nodiscard]]` from public-header
-  prototypes. Checked 2026-08-15: cppcheck 2.21.0 does not clear the
-  root cause -- it still `syntaxError`s on C23 attributes under
-  `--std=c11` and now abandons the whole configuration, losing those
-  translation units' MISRA output entirely; the audit stays pinned.
+- **Trigger for early review**: **FIRED**. Measured 2026-08-15: cppcheck
+  2.21.0 parses C23 attributes under `--std=c23`; under the audit's
+  `--std=c11` it still `syntaxError`s and now loses the whole TU's MISRA
+  output. Adopting it means moving the pin AND a full rebaseline, so the
+  audit stays on 2.13.0/`--std=c11` and this record holds for it.
 
 ---
 
@@ -717,7 +717,7 @@ the attribute, not the loop.
   `-Wall -Wextra -Werror`; a genuinely malformed loop would not survive
   the cross build or the host unit-test build.
 
-### Alternative verification (until cppcheck ships C23)
+### Alternative verification (audit pinned to C11)
 
 - arm-none-eabi-gcc cross build with the warning flags above.
 - Host unit-test build (`make test`), a second independent compiler
@@ -745,9 +745,9 @@ audit tool is supplementary.
 - **Approved**: 2026-07-22.
 - **Mandatory annual review**: 2026-11-02 (shared cppcheck-cadence
   window with D-002, D-003 and D-005).
-- **Trigger for early review**: cppcheck shipping `--std=c23`; or any
-  change that removes `[[nodiscard]]` from the affected functions or
-  reworks `RA8_PROTECTED_WRITE` away from a `for`-loop guard.
+- **Trigger for early review**: **FIRED 2026-08-15** (see D-005); or
+  any change that removes `[[nodiscard]]` from the affected functions
+  or reworks `RA8_PROTECTED_WRITE` away from a `for`-loop guard.
 
 ---
 
@@ -913,7 +913,7 @@ the unqualified open-source audit tool is supplementary.
 - **Rule text (paraphrased per MISRA licence)**: a conversion should
   not be performed from pointer to void into pointer to object.
 - **Category**: Advisory.
-- **Disposition**: Project deviation.
+- **Disposition**: Project deviation (formal).
 - **Scope**: first-party code implementing a dependency-injection
   seam; current population in the index above (83 file rows at its
   2026-08-03 approval).
