@@ -32,8 +32,12 @@
     chart_version: "{{ openbao_chart_version }}"
     release_namespace: "{{ openbao_namespace }}"
     kubeconfig: "{{ k3s_kubeconfig }}"
-    values_files:
-      - "{{ openbao_values_file }}"
+    # Read control-side: this module executes on the TARGET, where the control
+    # node's checkout path does not exist. values_files handed it that path
+    # verbatim, so the task only ever worked when the control checkout
+    # happened to be mirrored on the node. A lookup resolves on the control
+    # node by definition, same lesson as ci_runner's staged build context.
+    values: "{{ lookup('file', openbao_values_file) | from_yaml }}"
 
 - name: Publish the vault on a LAN NodePort
   # Not part of the chart, and not optional in practice: every consumer of this
