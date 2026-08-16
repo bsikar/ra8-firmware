@@ -56,6 +56,24 @@ typedef enum : uint8_t {
 } ra8_io_fsfmt_limits_t;
 
 /**
+ * @enum ra8_io_fsfmt_name_limit_t
+ * @brief Public UTF-8 name-byte limits of the two built-in formats.
+ *
+ * @details Published so a consumer asserts THE definition instead of a copy of
+ *          it. FAT's ra8_io_fsfmt_caps_t::max_name_len moved from the 8.3
+ *          value of 12 to the long-name limit when the FAT driver gained LFN
+ *          support, and a hand-copied 12 elsewhere in the tree fell silently
+ *          out of step with it. Each value is the worst case of a three-byte
+ *          UTF-8 encoding of that format's UTF-16 code-unit limit.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint16_t {
+  k_ra8_io_fsfmt_fat_max_name_utf8   = 741U, /**< 247 UTF-16 units, worst case. */
+  k_ra8_io_fsfmt_exfat_max_name_utf8 = 192U, /**< 64 UTF-16 units, worst case.  */
+} ra8_io_fsfmt_name_limit_t;
+
+/**
  * @struct ra8_io_fsfmt_caps_t
  * @brief What a filesystem format supports.
  *

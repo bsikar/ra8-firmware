@@ -29,12 +29,6 @@
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_io_fsfmt";
 
-/** @brief Public UTF-8 name-byte limits of the two native implementations. */
-typedef enum : uint16_t {
-  k_fat_max_name_utf8   = 741U, /**< 247 UTF-16 units, worst-case 3-byte UTF-8. */
-  k_exfat_max_name_utf8 = 192U, /**< 64 UTF-16 units, worst-case 3-byte UTF-8.  */
-} fsfmt_name_limit_t;
-
 /** @brief Registered formats, in probe priority order. */
 static const ra8_io_fsfmt_t* s_reg[(uint32_t)k_ra8_io_fsfmt_max];
 /** @brief Occupied entries in ::s_reg. */
@@ -582,7 +576,7 @@ static const ra8_io_fsfmt_t s_fmt_fat = {
   .caps =
     {
       .directory_workspace_bytes = sizeof(ra8_fs_dir_t),
-      .max_name_len              = (uint16_t)k_fat_max_name_utf8,
+      .max_name_len              = (uint16_t)k_ra8_io_fsfmt_fat_max_name_utf8,
       .max_open_directories      = UINT16_MAX,
       .directory_workspace_align = (uint8_t)_Alignof(ra8_fs_dir_t),
       .read_only                 = false,
@@ -632,7 +626,7 @@ static const ra8_io_fsfmt_t s_fmt_exfat = {
   .caps =
     {
       .directory_workspace_bytes = sizeof(ra8_fs_dir_t),
-      .max_name_len              = (uint16_t)k_exfat_max_name_utf8,
+      .max_name_len              = (uint16_t)k_ra8_io_fsfmt_exfat_max_name_utf8,
       .max_open_directories      = UINT16_MAX,
       .directory_workspace_align = (uint8_t)_Alignof(ra8_fs_dir_t),
       .read_only                 = false,

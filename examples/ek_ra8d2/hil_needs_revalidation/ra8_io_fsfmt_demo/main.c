@@ -22,7 +22,7 @@
  *
  * The ra8_emulator captures the SCI8 console, so the PASS line is
  * observable headlessly: a successful run prints
- * `ra8_io_fsfmt_demo: probed fat maxname=12 + foreign stub seam PASS`.
+ * `ra8_io_fsfmt_demo: probed fat maxname=741 + foreign stub seam PASS`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -52,7 +52,6 @@ typedef enum : uint32_t {
   k_demo_disk_blocks  = 512U,    /**< 256 KiB RAM-disk (FAT12).             */
   k_demo_stub_blocks  = 8U,      /**< 4 KiB tiny disk for the stub vol.     */
   k_demo_pin_shift    = 8U,      /**< Port byte position in ra8_port_pin_t. */
-  k_demo_fat_maxname  = 12U,     /**< Expected FAT 8.3 name length.         */
   k_demo_stub_maxname = 16U,     /**< Stub format max name length.          */
   k_demo_stub_magic   = 0x5AU,   /**< Stub block-0 signature byte.          */
 } demo_const_t;
@@ -567,7 +566,7 @@ RA8_INTERNAL static ra8_err_t internal_demo_probe_fat(const ra8_io_fsfmt_t** out
   if ((*out_fmt)->caps.read_only || !(*out_fmt)->caps.supports_streaming_write) {
     return k_ra8_err_not_supported;
   }
-  if ((*out_fmt)->caps.max_name_len != (uint16_t)k_demo_fat_maxname) {
+  if ((*out_fmt)->caps.max_name_len != (uint16_t)k_ra8_io_fsfmt_fat_max_name_utf8) {
     return k_ra8_err_invalid_size;
   }
   return k_ra8_ok;
