@@ -27,6 +27,7 @@ selftest_routing() {
   local -a cases=(
     "$FIRMWARE_DIR/examples/x/y/main.c:firmware"
     "$FIRMWARE_DIR/port/usbx/src/a.c:firmware"
+    "$FIRMWARE_DIR/port/posix/src/fw_if_fs_posix.c:host"
     "$FIRMWARE_DIR/libs/ra8_epub/src/shim.cpp:cxx"
     "$FIRMWARE_DIR/libs/ra8_hal/src/k.cc:cxx"
     "$FIRMWARE_DIR/tools/ra8_emulator/src/display/board_view.m:objc"
