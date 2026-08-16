@@ -1,7 +1,7 @@
 /**
  * @file main.c
- * @brief Bounded host composition root for the streamed JOF viewer.
- * @details One named ten-MiB backing holds the reader plus the mutually
+ * @brief Bounded host composition root for the JOF/comic viewer.
+ * @details One named 32-MiB backing holds the reader plus the mutually
  * exclusive headless-tile or Cocoa-view scratch. Exact requirements are checked
  * before every bind; larger atlases fail visibly instead of reaching an
  * allocator or acquiring an implicit mapping.
@@ -34,7 +34,7 @@ typedef enum : int32_t {
   k_viewer_min_args  = 2,        /**< argv count with an input path. */
   k_viewer_radix_dec = 10,       /**< Decimal option radix.          */
   /** @brief Entire first-party byte budget. */
-  k_viewer_composition_bytes = 10 * 1024 * 1024,
+  k_viewer_composition_bytes = 32 * 1024 * 1024,
 } viewer_main_config_t;
 
 /** @brief Parsed command-line options. */

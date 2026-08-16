@@ -6,7 +6,7 @@
 #
 # Builds the corpus with gen_corpus.py, then runs the viewer headless over every
 # fixture and asserts the outcome, so a regression in workspace bounds or
-# unsupported-format dispatch is caught without a human opening a window:
+# archive decoding is caught without a human opening a window:
 #
 #   * malicious fixtures MUST exit with a clean ra8_err_t (exit 1) -- never 0
 #     (an unsafe input slipped through), never a crash (killed by a
@@ -23,6 +23,8 @@ WORK="${2:-$(mktemp -d)}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CORPUS="$WORK/corpus"
 PPM="$WORK/out.ppm"
+COMIC="$HERE/../fixtures/sample.cbz"
+COMIC_PPM_SHA256="003c60d6ff5b4f1ea4671193c278817878223605aabcafc2dab7e47927a4665d"
 
 command -v python3 >/dev/null || {
   echo "run_corpus: python3 is required to build the corpus" >&2
@@ -38,6 +40,7 @@ fi
 
 mkdir -p "$WORK"
 python3 "$HERE/gen_corpus.py" "$CORPUS"
+cp "$COMIC" "$CORPUS/legit.cbz"
 
 rc=0
 fail=0
@@ -80,7 +83,7 @@ for f in "${malicious[@]}"; do
 done
 
 # --- legitimate: a valid atlas must still decode ----------------------------
-legit=(legit.jof legit_deflate.jof)
+legit=(legit.jof legit_deflate.jof legit.cbz)
 for f in "${legit[@]}"; do
   run_one "$f"
   if [[ "$rc" -ne 0 ]]; then
@@ -88,6 +91,10 @@ for f in "${legit[@]}"; do
     fail=1
   elif [[ "$(head -c 2 "$PPM" 2>/dev/null)" != "P6" ]]; then
     echo "FAIL: legitimate $f produced no P6 image" >&2
+    fail=1
+  elif [[ "$f" == "legit.cbz" ]] &&
+    [[ "$(python3 -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' "$PPM")" != "$COMIC_PPM_SHA256" ]]; then
+    echo "FAIL: legitimate $f pixels differ from the committed RGB golden" >&2
     fail=1
   else
     echo "PASS decoded: $f -> $(wc -c <"$PPM") bytes of P6"
