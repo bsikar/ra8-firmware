@@ -227,7 +227,7 @@ The triage below tracks that decision per top-violated rule.
 | `scripts/checks/misra_check_inner.sh`       | This audit. Generates `build/misra/results.txt` and prints per-rule tally. Invoked by `make misra`. |
 | `scripts/checks/misra_ratchet.py`     | Ratchet comparator: fails on any (file, rule) count above `.github/misra-baseline.txt`; `--update` regenerates the baseline. Invoked by `make misra-check` / `make misra-baseline` and the `misra` CI job. |
 | `.github/misra-baseline.txt`         | Committed per-file-per-rule finding counts + the generating cppcheck version. |
-| `scripts/checks/misra_check.sh`             | Older baseline-gated MISRA-C 2023 wrapper -- complementary, not redundant. |
+| `scripts/checks/misra_check.sh`             | Developer front end for the same pinned audit; `--check` also runs the committed ratchet. |
 | `scripts/checks/check_misra_deviations.py` | Re-derives every machine-checked claim in `docs/qualification/MISRA_DEVIATIONS.md` from the baseline and the suppression list; runs in the `misra` gate. |
 | `.cppcheck-suppressions`             | Project-wide suppressions with justification comments. Every `misra-c2012-*` rule family here must be owned by the deviation register's "Suppression ownership" list (gated). |
 | `docs/MISRA_GAPS.csv`                | Capped per-violation excerpt of the 2026-05-02 audit (1000 rows + tail summary), hand-trimmed since. |
