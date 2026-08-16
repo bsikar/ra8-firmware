@@ -58,9 +58,13 @@ RA8_INTERNAL static bool internal_is_webp(const uint8_t* source, size_t source_s
 {
   static const uint8_t k_riff[] = {'R', 'I', 'F', 'F'};
   static const uint8_t k_webp[] = {'W', 'E', 'B', 'P'};
-  return (source_size >= (size_t)k_raster_webp_signature_size) &&
-         (memcmp(source, k_riff, sizeof k_riff) == 0) &&
-         (memcmp(&source[k_raster_webp_form_offset], k_webp, sizeof k_webp) == 0);
+  if (source_size < (size_t)k_raster_webp_signature_size) {
+    return false;
+  }
+  if (memcmp(source, k_riff, sizeof k_riff) != 0) {
+    return false;
+  }
+  return memcmp(&source[k_raster_webp_form_offset], k_webp, sizeof k_webp) == 0;
 }
 
 /**
@@ -149,12 +153,17 @@ RA8_INTERNAL static ra8_err_t internal_scale(const uint8_t*                 sour
                                              ra8_rabook_raster_workspace_t* workspace,
                                              const uint8_t**                out_gray)
 {
-  if ((source_width == out_width) && (source_height == out_height)) {
-    *out_gray = source_gray;
-    return k_ra8_ok;
+  if (source_width == out_width) {
+    if (source_height == out_height) {
+      *out_gray = source_gray;
+      return k_ra8_ok;
+    }
   }
   const uint32_t pixels = (uint32_t)out_width * (uint32_t)out_height;
-  if ((workspace->gray == nullptr) || ((size_t)pixels > workspace->gray_cap)) {
+  if (workspace->gray == nullptr) {
+    return k_ra8_err_no_mem;
+  }
+  if ((size_t)pixels > workspace->gray_cap) {
     return k_ra8_err_no_mem;
   }
   const ra8_err_t rc = ra8_rabook_gray4_downscale(source_gray,
@@ -244,13 +253,21 @@ RA8_INTERNAL static ra8_err_t internal_decode_webp(const uint8_t*               
   if (rc != k_ra8_ok) {
     return rc;
   }
-  if ((width > UINT16_MAX) || (height > UINT16_MAX)) {
+  if (width > UINT16_MAX) {
+    return k_ra8_err_invalid_size;
+  }
+  if (height > UINT16_MAX) {
     return k_ra8_err_invalid_size;
   }
   const uint64_t frame_size =
     (uint64_t)width * (uint64_t)height * (uint64_t)k_raster_webp_bytes_per_px;
-  if ((workspace->webp_arena == nullptr) || (workspace->rgba == nullptr) ||
-      (frame_size > (uint64_t)workspace->rgba_cap)) {
+  if (workspace->webp_arena == nullptr) {
+    return k_ra8_err_no_mem;
+  }
+  if (workspace->rgba == nullptr) {
+    return k_ra8_err_no_mem;
+  }
+  if (frame_size > (uint64_t)workspace->rgba_cap) {
     return k_ra8_err_no_mem;
   }
   rc = ra8_webp_decode_rgba(source,
@@ -303,8 +320,11 @@ RA8_INTERNAL static ra8_err_t internal_decode_stb(const uint8_t*                
                                                   uint16_t*                      out_width,
                                                   uint16_t*                      out_height)
 {
-  if ((workspace->stb_arena == nullptr) || (source_size > (size_t)INT_MAX)) {
-    return (source_size > (size_t)INT_MAX) ? k_ra8_err_invalid_size : k_ra8_err_no_mem;
+  if (source_size > (size_t)INT_MAX) {
+    return k_ra8_err_invalid_size;
+  }
+  if (workspace->stb_arena == nullptr) {
+    return k_ra8_err_no_mem;
   }
   int width      = 0;
   int height     = 0;
@@ -320,7 +340,17 @@ RA8_INTERNAL static ra8_err_t internal_decode_stb(const uint8_t*                
     ra8_img_arena_unbind();
     return k_ra8_err_validation_failed;
   }
-  if ((width <= 0) || (height <= 0) || (width > (int)UINT16_MAX) || (height > (int)UINT16_MAX)) {
+  bool dimensions_valid = width > 0;
+  if (height <= 0) {
+    dimensions_valid = false;
+  }
+  if (width > (int)UINT16_MAX) {
+    dimensions_valid = false;
+  }
+  if (height > (int)UINT16_MAX) {
+    dimensions_valid = false;
+  }
+  if (!dimensions_valid) {
     stbi_image_free(pixels); /* alloc-allow: caller-bound ra8_img_arena */
     ra8_img_arena_unbind();
     return k_ra8_err_invalid_size;
@@ -468,17 +498,26 @@ ra8_err_t ra8_rabook_raster_encode(const uint8_t*                 source,
                                    size_t                         encoded_cap,
                                    ra8_rabook_raster_result_t*    result)
 {
-  if ((source == nullptr) || (workspace == nullptr) || (encoded == nullptr) ||
-      (result == nullptr)) {
+  if (source == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (workspace == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (encoded == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (result == nullptr) {
     return k_ra8_err_null_ptr;
   }
   *result = (ra8_rabook_raster_result_t){0};
   if (source_size == 0U) {
     return k_ra8_err_invalid_arg;
   }
-  if ((pixel_format != (uint8_t)k_ra8_book_pixfmt_gray4) &&
-      (pixel_format != (uint8_t)k_ra8_book_pixfmt_gray8)) {
-    return k_ra8_err_invalid_arg;
+  if (pixel_format != (uint8_t)k_ra8_book_pixfmt_gray4) {
+    if (pixel_format != (uint8_t)k_ra8_book_pixfmt_gray8) {
+      return k_ra8_err_invalid_arg;
+    }
   }
 
   return internal_encode_source(source,
