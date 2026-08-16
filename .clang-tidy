@@ -204,9 +204,15 @@ CheckOptions:
   # Macros: UPPER_CASE (SCREAMING_SNAKE_CASE)
   - key: readability-identifier-naming.MacroDefinitionCase
     value: UPPER_CASE
-  # Allow lowercase macros for function-like logging/check macros.
+  # Allow lowercase macros for function-like logging/check macros, and the
+  # standard feature-test macros (_GNU_SOURCE, _POSIX_C_SOURCE, ...), whose
+  # leading underscore UPPER_CASE rejects. Their spelling is fixed by ISO C
+  # and by glibc; a file that needs one has no alternative name to use, so
+  # flagging them reports a rule the code cannot satisfy. Scoped to the
+  # leading-underscore-then-uppercase shape, so an ordinary lowercase macro
+  # is still caught.
   - key: readability-identifier-naming.MacroDefinitionIgnoredRegexp
-    value: '^(ra8_log_|__ARM|__CORTEX).*'
+    value: '^(ra8_log_|__ARM|__CORTEX|_[A-Z][A-Z0-9_]*$).*'
 
   # Global variables (non-static, non-const): g_ prefix
   # Note: clang-tidy classifies file-scope 'static' vars as "global" in C.
