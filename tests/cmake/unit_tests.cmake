@@ -264,6 +264,7 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_emulator_
 # registered by hand in tests_c6link.cmake rather than through the auto-glob.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media.c)
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media_decoder.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_wire.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_rabook.c)
