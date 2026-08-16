@@ -369,9 +369,11 @@ uint32_t ra8_rabook_add_image(ra8_rabook_ctx_t* ctx,
   if (ctx->failed) {
     return (uint32_t)k_ra8_book_nil;
   }
-  if ((data_size != 0U) && (ctx->image_pool_mode == (uint8_t)k_rabook_pool_external)) {
-    ctx->failed = true;
-    return (uint32_t)k_ra8_book_nil;
+  if (data_size != 0U) {
+    if (ctx->image_pool_mode == (uint8_t)k_rabook_pool_external) {
+      ctx->failed = true;
+      return (uint32_t)k_ra8_book_nil;
+    }
   }
   if (data_size != 0U) {
     if (data == nullptr) {
@@ -417,13 +419,19 @@ uint32_t ra8_rabook_add_image_external(ra8_rabook_ctx_t* ctx,
   if (ctx == nullptr) {
     return (uint32_t)k_ra8_book_nil;
   }
-  if ((out_data_off == nullptr) || ctx->failed) {
+  if (out_data_off == nullptr) {
     ctx->failed = true;
     return (uint32_t)k_ra8_book_nil;
   }
-  if ((data_size != 0U) && (ctx->image_pool_mode == (uint8_t)k_rabook_pool_internal)) {
+  if (ctx->failed) {
     ctx->failed = true;
     return (uint32_t)k_ra8_book_nil;
+  }
+  if (data_size != 0U) {
+    if (ctx->image_pool_mode == (uint8_t)k_rabook_pool_internal) {
+      ctx->failed = true;
+      return (uint32_t)k_ra8_book_nil;
+    }
   }
   if (ctx->image_count >= ctx->buf.image_cap) {
     ctx->failed = true;
