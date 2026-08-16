@@ -45,9 +45,11 @@ invent those guarantees.
 
 ## Verification boundary
 
-The cross-build proves the real board, C6, SD/FAT/VFS, strict reader, and SHA
-types compose with fixed storage. Host tests exercise success, transport
-corruption, coherent invalid RBKC, no-stage cleanup, and exact readback. This
-app remains under `hw_pending` until the matching ESP32-C6 image is built with
-the pinned ESP-IDF toolchain and physical mixed-image HIL proves success plus
-failure cleanup on the EK-RA8D2. No flash is part of the normal build.
+The configured RA8 cross-build proves the real board, C6, SD/FAT/VFS, strict
+reader, and SHA types compose with fixed storage. The matching ESP32-C6 image
+also compiles and links from current sources under pinned ESP-IDF v5.5.4; its
+post-link checks require the strong media handler and component ABI marker in
+the final ELF. Host tests exercise success, transport corruption, coherent
+invalid RBKC, no-stage cleanup, and exact readback. This app remains under
+`hw_pending` until physical mixed-image HIL proves success plus failure cleanup
+on the EK-RA8D2. No flash is part of the normal build.
