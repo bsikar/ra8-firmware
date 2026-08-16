@@ -90,37 +90,6 @@ bool mdl_format_is_dir_output(mdl_format_t fmt)
   return fmt == k_mdl_fmt_jof;
 }
 
-void mdl_export_workspace_init(mdl_export_workspace_t* ws, void* data, size_t cap)
-{
-  if (ws == nullptr) {
-    return;
-  }
-  ws->data       = (uint8_t*)data;
-  ws->cap        = (data == nullptr) ? 0U : cap;
-  ws->used       = 0U;
-  ws->high_water = 0U;
-}
-
-void* mdl_export_workspace_take(mdl_export_workspace_t* ws, size_t bytes, size_t alignment)
-{
-  if ((ws == nullptr) || (ws->data == nullptr) || (bytes == 0U) || (alignment == 0U) ||
-      ((alignment & (alignment - 1U)) != 0U)) {
-    return nullptr;
-  }
-  const size_t mask = alignment - 1U;
-  if (ws->used > (SIZE_MAX - mask)) {
-    return nullptr;
-  }
-  const size_t start = (ws->used + mask) & ~mask;
-  if ((start > ws->cap) || (bytes > (ws->cap - start))) {
-    return nullptr;
-  }
-  ws->used = start + bytes;
-  if (ws->used > ws->high_water) {
-    ws->high_water = ws->used;
-  }
-  return &ws->data[start];
-}
 /**
  * @brief Test a filename suffix without ASCII case sensitivity
  * @details Compares only the tail and rejects a suffix longer than the name.
