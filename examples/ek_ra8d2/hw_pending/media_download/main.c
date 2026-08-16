@@ -36,7 +36,6 @@
 #include "ra8_c6link.h"
 #include "ra8_c6link_mdl_transfer.h"
 #include "ra8_c6link_wifi.h"
-#include "ra8_cgc.h"
 #include "ra8_err.h"
 #include "ra8_esp_hosted_c6link.h"
 #include "ra8_esp_hosted_port.h"
@@ -222,10 +221,13 @@ RA8_INTERNAL static bool internal_fail(const char* stage, ra8_err_t err)
  */
 RA8_INTERNAL static void internal_setup_or_halt(void)
 {
-  if ((ra8_cgc_init() != k_ra8_ok) ||
-      (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &s_cpuclk_hz) != k_ra8_ok) ||
-      (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &s_pclka_hz) != k_ra8_ok) ||
-      (ra8_mstp_init() != k_ra8_ok) || (ra8_time_init(s_cpuclk_hz) != k_ra8_ok) ||
+  ra8_board_clock_rates_t clock_rates = {};
+  if (ra8_board_clocks_init(&clock_rates) != k_ra8_ok) {
+    internal_halt();
+  }
+  s_cpuclk_hz = clock_rates.cpuclk0_hz;
+  s_pclka_hz  = clock_rates.pclka_hz;
+  if ((ra8_mstp_init() != k_ra8_ok) || (ra8_time_init(s_cpuclk_hz) != k_ra8_ok) ||
       (ra8_board_uart_console_init((uint32_t)k_media_uart_baud) != k_ra8_ok)) {
     internal_halt();
   }
