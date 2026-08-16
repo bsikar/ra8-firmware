@@ -321,14 +321,13 @@ RA8_INTERNAL static void internal_test_multi_chunk_round_trip(void)
                                                            &s_packed[payload_off + begin],
                                                            (size_t)(end - begin),
                                                            TINFL_FLAG_PARSE_ZLIB_HEADER);
-    TEST_ASSERT_EQ((int64_t)expected, (int64_t)got);
+    TEST_ASSERT_EQ(expected, got);
   }
   TEST_ASSERT_EQ(0, memcmp(s_flat, s_restored, sizeof(s_flat)));
   TEST_ASSERT_EQ(
-    (int64_t)out_len,
-    (int64_t)(payload_off +
-              internal_rd_u64(&s_packed[k_ra8_book_container_header_len +
-                                        (k_t_chunk_count * k_ra8_book_container_entry_len)])));
+    out_len,
+    (payload_off + internal_rd_u64(&s_packed[k_ra8_book_container_header_len +
+                                             (k_t_chunk_count * k_ra8_book_container_entry_len)])));
   TEST_END("rabook container multi-chunk round-trip");
 }
 

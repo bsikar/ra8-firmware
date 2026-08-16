@@ -38,7 +38,7 @@ static void internal_test_check_fat16_exact_bound_tail(void)
   const uint32_t first =
     (uint32_t)internal_disk_rd16(eo + (uint32_t)k_chk_off_fst_lo) |
     ((uint32_t)internal_disk_rd16(eo + (uint32_t)k_chk_off_fst_hi) << (uint32_t)k_chk_shl_b2);
-  TEST_ASSERT_EQ((uint32_t)k_chk_first_clus, first);
+  TEST_ASSERT_EQ(k_chk_first_clus, first);
   for (uint32_t i = 0U; i + 1U < (uint32_t)k_chk_bound_clusters; i++) {
     internal_disk_wr16(internal_fat16_off(h, first + i), (uint16_t)(first + i + 1U));
   }
@@ -165,7 +165,7 @@ static void internal_test_check_exfat_exact_bound_tails(void)
                              .bitmap_bits = (uint32_t)k_chk_bound_clusters};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_check_test_exfat_mark_fatchain(&ctx, (uint32_t)k_chk_first_clus));
   TEST_ASSERT_EQ(k_ra8_fs_check_fault_crosslink, r.first_fault.kind);
-  TEST_ASSERT_EQ((uint32_t)k_chk_first_clus, r.first_fault.cluster);
+  TEST_ASSERT_EQ(k_chk_first_clus, r.first_fault.cluster);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   internal_disk_wr32(tail_off, (uint32_t)k_chk_first_clus + (uint32_t)k_chk_bound_clusters);
@@ -220,8 +220,7 @@ static void internal_test_check_exfat_exact_bound_run(void)
                                    (uint32_t)k_chk_first_clus,
                                    (uint32_t)k_chk_bound_clusters + 1U);
   TEST_ASSERT_EQ(k_ra8_fs_check_fault_bad_dir_entry, r.first_fault.kind);
-  TEST_ASSERT_EQ((uint32_t)k_chk_first_clus + (uint32_t)k_chk_bound_clusters,
-                 r.first_fault.cluster);
+  TEST_ASSERT_EQ(k_chk_first_clus + (uint32_t)k_chk_bound_clusters, r.first_fault.cluster);
 
   memset(visited, 0, sizeof(visited));
   r   = (ra8_fs_check_report_t){.clusters_total = (uint32_t)k_chk_bound_clusters};
@@ -231,8 +230,7 @@ static void internal_test_check_exfat_exact_bound_run(void)
                              .bitmap_bits = (uint32_t)k_chk_bound_clusters};
   ra8_fs_check_test_exfat_mark_run(&ctx, (uint32_t)k_chk_first_clus, UINT64_MAX);
   TEST_ASSERT_EQ(k_ra8_fs_check_fault_bad_dir_entry, r.first_fault.kind);
-  TEST_ASSERT_EQ((uint32_t)k_chk_first_clus + (uint32_t)k_chk_bound_clusters,
-                 r.first_fault.cluster);
+  TEST_ASSERT_EQ(k_chk_first_clus + (uint32_t)k_chk_bound_clusters, r.first_fault.cluster);
   internal_chk_teardown(h);
   TEST_END("ra8_fs_check exFAT contiguous run rejects an exact-bound overrun");
 }
@@ -302,7 +300,7 @@ static void internal_test_check_exfat_valid_exact_scan_bound(void)
     internal_chk_setup((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat, nullptr, 0U);
   const uint32_t entries_per_cluster =
     (h->sectors_per_cluster * (uint32_t)k_fmt_block_size) / (uint32_t)k_chk_dir_ent;
-  TEST_ASSERT_EQ(0U, (uint32_t)k_chk_scan_limit % entries_per_cluster);
+  TEST_ASSERT_EQ(0U, k_chk_scan_limit % entries_per_cluster);
   const uint32_t exact_clusters = (uint32_t)k_chk_scan_limit / entries_per_cluster;
   internal_exfat_build_bound_directory(h, exact_clusters);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
@@ -331,7 +329,7 @@ static void internal_test_check_exfat_scan_truncated(void)
     internal_chk_setup((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat, nullptr, 0U);
   const uint32_t entries_per_cluster =
     (h->sectors_per_cluster * (uint32_t)k_fmt_block_size) / (uint32_t)k_chk_dir_ent;
-  TEST_ASSERT_EQ(0U, (uint32_t)k_chk_scan_limit % entries_per_cluster);
+  TEST_ASSERT_EQ(0U, k_chk_scan_limit % entries_per_cluster);
   const uint32_t exact_clusters = (uint32_t)k_chk_scan_limit / entries_per_cluster;
   internal_exfat_build_bound_directory(h, exact_clusters + 1U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
@@ -361,7 +359,7 @@ static void internal_test_check_exfat_set_straddles_scan_bound(void)
     internal_chk_setup((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat, nullptr, 0U);
   const uint32_t cbytes              = h->sectors_per_cluster * (uint32_t)k_fmt_block_size;
   const uint32_t entries_per_cluster = cbytes / (uint32_t)k_chk_dir_ent;
-  TEST_ASSERT_EQ(0U, (uint32_t)k_chk_scan_limit % entries_per_cluster);
+  TEST_ASSERT_EQ(0U, k_chk_scan_limit % entries_per_cluster);
   const uint32_t exact_clusters = (uint32_t)k_chk_scan_limit / entries_per_cluster;
   internal_exfat_build_bound_directory(h, exact_clusters);
   const uint32_t first_extra = internal_disk_rd32(internal_exfat_fat_off(h, h->root_cluster));
@@ -410,7 +408,7 @@ static void internal_test_check_report_transaction(void)
   TEST_ASSERT(ra8_fs_check(h, s_chk_bitmap, (uint32_t)sizeof(s_chk_bitmap), &r) != k_ra8_ok);
   const uint8_t* const bytes = (const uint8_t*)&r;
   for (uint32_t i = 0U; i < (uint32_t)sizeof(r); i++) {
-    TEST_ASSERT_EQ((uint8_t)k_chk_report_fill, bytes[i]);
+    TEST_ASSERT_EQ(k_chk_report_fill, bytes[i]);
   }
   internal_fault_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));

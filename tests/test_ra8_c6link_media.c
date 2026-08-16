@@ -75,10 +75,10 @@ static void internal_test_media_download_roundtrip(void)
     received_len += chunk.data_len;
     if (!session.active) {
       TEST_ASSERT(chunk.has_sha256);
-      TEST_ASSERT_EQ((int64_t)0xA5, (int64_t)chunk.sha256[0]);
+      TEST_ASSERT_EQ(0xA5, chunk.sha256[0]);
     }
   }
-  TEST_ASSERT_EQ((int64_t)sizeof(received), (int64_t)received_len);
+  TEST_ASSERT_EQ(sizeof(received), received_len);
   TEST_ASSERT(memcmp(received, "abcdef", sizeof(received)) == 0);
 
   TEST_ASSERT_EQ(
@@ -107,10 +107,10 @@ static void internal_mdl_before_terminal(ra8_mdl_session_t* session)
     ra8_c6link_mdl_start(priv_c6link_test_link(), "https://example.test/book", session));
   ra8_mdl_chunk_t data = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_next(priv_c6link_test_link(), session, 6U, &data));
-  TEST_ASSERT_EQ((int64_t)6, (int64_t)data.data_len);
-  TEST_ASSERT_EQ((int64_t)k_ra8_mdl_state_downloading, (int64_t)data.state);
+  TEST_ASSERT_EQ(6, data.data_len);
+  TEST_ASSERT_EQ(k_ra8_mdl_state_downloading, data.state);
   TEST_ASSERT(session->active);
-  TEST_ASSERT_EQ((int64_t)6, (int64_t)session->next_offset);
+  TEST_ASSERT_EQ(6, session->next_offset);
 }
 
 /**
@@ -151,8 +151,8 @@ static void internal_test_media_download_rejects_bad_terminal_frames(void)
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
                  ra8_c6link_mdl_next(priv_c6link_test_link(), &session, 6U, &chunk));
   TEST_ASSERT(session.active);
-  TEST_ASSERT_EQ((int64_t)6, (int64_t)session.next_offset);
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)session.next_sequence);
+  TEST_ASSERT_EQ(6, session.next_offset);
+  TEST_ASSERT_EQ(1, session.next_sequence);
 
   priv_c6link_test_bringup();
   session = (ra8_mdl_session_t){};
@@ -161,7 +161,7 @@ static void internal_test_media_download_rejects_bad_terminal_frames(void)
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
                  ra8_c6link_mdl_next(priv_c6link_test_link(), &session, 6U, &chunk));
   TEST_ASSERT(session.active);
-  TEST_ASSERT_EQ((int64_t)6, (int64_t)session.next_offset);
+  TEST_ASSERT_EQ(6, session.next_offset);
 
   priv_c6link_test_bringup();
   session = (ra8_mdl_session_t){};
@@ -180,7 +180,7 @@ static void internal_test_media_download_rejects_bad_terminal_frames(void)
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
                  ra8_c6link_mdl_next(priv_c6link_test_link(), &session, 6U, &chunk));
   TEST_ASSERT(session.active);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)session.next_offset);
+  TEST_ASSERT_EQ(0, session.next_offset);
 
   priv_c6link_test_bringup();
   session = (ra8_mdl_session_t){};
@@ -226,9 +226,9 @@ static void internal_test_media_download_terminal_status(void)
   ra8_mdl_chunk_t chunk     = {};
   TEST_ASSERT_EQ(k_ra8_fail, ra8_c6link_mdl_next(priv_c6link_test_link(), &session, 6U, &chunk));
   TEST_ASSERT(!session.active);
-  TEST_ASSERT_EQ((int64_t)k_ra8_mdl_state_failed, (int64_t)chunk.state);
-  TEST_ASSERT_EQ((int64_t)k_ra8_fail, (int64_t)chunk.status);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)chunk.data_len);
+  TEST_ASSERT_EQ(k_ra8_mdl_state_failed, chunk.state);
+  TEST_ASSERT_EQ(k_ra8_fail, chunk.status);
+  TEST_ASSERT_EQ(0, chunk.data_len);
   TEST_ASSERT(!chunk.has_sha256);
 
   priv_c6link_test_bringup();
@@ -238,9 +238,9 @@ static void internal_test_media_download_terminal_status(void)
   chunk                     = (ra8_mdl_chunk_t){};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_next(priv_c6link_test_link(), &session, 6U, &chunk));
   TEST_ASSERT(!session.active);
-  TEST_ASSERT_EQ((int64_t)k_ra8_mdl_state_cancelled, (int64_t)chunk.state);
-  TEST_ASSERT_EQ((int64_t)k_ra8_ok, (int64_t)chunk.status);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)chunk.data_len);
+  TEST_ASSERT_EQ(k_ra8_mdl_state_cancelled, chunk.state);
+  TEST_ASSERT_EQ(k_ra8_ok, chunk.status);
+  TEST_ASSERT_EQ(0, chunk.data_len);
   TEST_ASSERT(!chunk.has_sha256);
 
   TEST_END("c6link media terminal status");
@@ -283,9 +283,9 @@ RA8_INTERNAL static void internal_test_media_download_rejects_unknown_response_f
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
                  ra8_c6link_mdl_next(priv_c6link_test_link(), &session, 4U, &chunk));
   TEST_ASSERT(session.active);
-  TEST_ASSERT_EQ((int64_t)job, (int64_t)session.job_id);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)session.next_offset);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)session.next_sequence);
+  TEST_ASSERT_EQ(job, session.job_id);
+  TEST_ASSERT_EQ(0, session.next_offset);
+  TEST_ASSERT_EQ(0, session.next_sequence);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_cancel(priv_c6link_test_link(), &session));
 
   priv_c6link_test_bringup();
@@ -297,8 +297,8 @@ RA8_INTERNAL static void internal_test_media_download_rejects_unknown_response_f
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
                  ra8_c6link_mdl_cancel(priv_c6link_test_link(), &session));
   TEST_ASSERT(session.active);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)session.next_offset);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)session.next_sequence);
+  TEST_ASSERT_EQ(0, session.next_offset);
+  TEST_ASSERT_EQ(0, session.next_sequence);
   TEST_END("c6link media rejects unknown response fields");
 }
 
@@ -784,11 +784,11 @@ static void internal_test_media_transfer_commits_verified_bytes(void)
   ra8_mdl_transfer_config_t config = {};
   internal_mdl_transfer_cfg(&config);
   TEST_ASSERT_EQ(k_ra8_ok, internal_mdl_transfer_run(&config));
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.begins);
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.commits);
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.validations);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_mdl_transfer.store.aborts);
-  TEST_ASSERT_EQ((int64_t)6, (int64_t)s_mdl_transfer.store.len);
+  TEST_ASSERT_EQ(1, s_mdl_transfer.store.begins);
+  TEST_ASSERT_EQ(1, s_mdl_transfer.store.commits);
+  TEST_ASSERT_EQ(1, s_mdl_transfer.store.validations);
+  TEST_ASSERT_EQ(0, s_mdl_transfer.store.aborts);
+  TEST_ASSERT_EQ(6, s_mdl_transfer.store.len);
   TEST_ASSERT(memcmp(s_mdl_transfer.store.bytes, "abcdef", 6U) == 0);
   TEST_ASSERT(memcmp(s_mdl_transfer.hash.bytes, "abcdef", 6U) == 0);
   TEST_END("c6link media transfer verified commit");
@@ -816,15 +816,15 @@ static void internal_test_media_transfer_aborts_storage_failures(void)
   internal_mdl_transfer_cfg(&config);
   s_mdl_transfer.store.short_write = true;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, internal_mdl_transfer_run(&config));
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.aborts);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_mdl_transfer.store.commits);
+  TEST_ASSERT_EQ(1, s_mdl_transfer.store.aborts);
+  TEST_ASSERT_EQ(0, s_mdl_transfer.store.commits);
 
   priv_c6link_test_bringup();
   internal_mdl_transfer_cfg(&config);
   s_mdl_transfer.store.write_error = k_ra8_err_no_mem;
   TEST_ASSERT_EQ(k_ra8_err_no_mem, internal_mdl_transfer_run(&config));
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.aborts);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_mdl_transfer.store.commits);
+  TEST_ASSERT_EQ(1, s_mdl_transfer.store.aborts);
+  TEST_ASSERT_EQ(0, s_mdl_transfer.store.commits);
   TEST_END("c6link media transfer storage failures");
 }
 
@@ -862,22 +862,22 @@ static void internal_test_media_transfer_aborts_integrity_failures(void)
   internal_mdl_transfer_cfg(&config);
   s_mdl_transfer.hash.bad_digest = true;
   TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch, internal_mdl_transfer_run(&config));
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.aborts);
+  TEST_ASSERT_EQ(1, s_mdl_transfer.store.aborts);
 
   priv_c6link_test_bringup();
   internal_mdl_transfer_cfg(&config);
   ra8_c6_model()->mdl_fault = k_c6m_mdl_fault_out_of_order;
   TEST_ASSERT_EQ(k_ra8_err_protocol_error, internal_mdl_transfer_run(&config));
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.aborts);
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)ra8_c6_model()->mdl_cancels);
+  TEST_ASSERT_EQ(1, s_mdl_transfer.store.aborts);
+  TEST_ASSERT_EQ(1, ra8_c6_model()->mdl_cancels);
 
   priv_c6link_test_bringup();
   internal_mdl_transfer_cfg(&config);
   s_mdl_transfer.store.validation_error = k_ra8_err_validation_failed;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_mdl_transfer_run(&config));
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.validations);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_mdl_transfer.store.commits);
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.aborts);
+  TEST_ASSERT_EQ(1, s_mdl_transfer.store.validations);
+  TEST_ASSERT_EQ(0, s_mdl_transfer.store.commits);
+  TEST_ASSERT_EQ(1, s_mdl_transfer.store.aborts);
   TEST_END("c6link media transfer integrity failures");
 }
 
@@ -911,9 +911,9 @@ static void internal_test_media_transfer_cancellation_is_atomic(void)
   internal_mdl_transfer_cfg(&config);
   s_mdl_transfer.cancel = true;
   TEST_ASSERT_EQ(k_ra8_err_cancelled, internal_mdl_transfer_run(&config));
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.aborts);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_mdl_transfer.store.commits);
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)ra8_c6_model()->mdl_cancels);
+  TEST_ASSERT_EQ(1, s_mdl_transfer.store.aborts);
+  TEST_ASSERT_EQ(0, s_mdl_transfer.store.commits);
+  TEST_ASSERT_EQ(1, ra8_c6_model()->mdl_cancels);
   TEST_END("c6link media transfer cancellation");
 }
 
