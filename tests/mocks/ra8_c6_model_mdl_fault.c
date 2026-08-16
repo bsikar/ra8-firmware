@@ -105,6 +105,39 @@ RA8_INTERNAL static void internal_mutate_chunk(Ra8__Mdl__Chunk*         chunk,
       TEST_ASSERT_NOT_NULL(chunk->data.data);
       chunk->data.data[0] ^= 1U;
       break;
+    case k_c6m_mdl_fault_data_http_status:
+      chunk->http_status = (int32_t)k_ra8_mdl_http_status_min;
+      break;
+    case k_c6m_mdl_fault_data_retry_after:
+      chunk->retry_after = (char*)"5";
+      break;
+    case k_c6m_mdl_fault_data_etag:
+      chunk->etag = (char*)"\"data-etag\"";
+      break;
+    case k_c6m_mdl_fault_data_last_modified:
+      chunk->last_modified = (char*)"Wed, 21 Oct 2015 07:28:00 GMT";
+      break;
+    case k_c6m_mdl_fault_data_content_type:
+      chunk->content_type = (char*)"application/octet-stream";
+      break;
+    case k_c6m_mdl_fault_complete_low_status:
+      chunk->http_status = (int32_t)k_ra8_mdl_http_status_min - 1;
+      break;
+    case k_c6m_mdl_fault_complete_high_status:
+      chunk->http_status = (int32_t)k_ra8_mdl_http_status_max + 1;
+      break;
+    case k_c6m_mdl_fault_complete_split_retry:
+      chunk->retry_after = (char*)"5\rX-Injected: 1";
+      break;
+    case k_c6m_mdl_fault_complete_split_etag:
+      chunk->etag = (char*)"\"etag\"\nX-Injected: 1";
+      break;
+    case k_c6m_mdl_fault_complete_split_date:
+      chunk->last_modified = (char*)"Wed, 21 Oct 2015 07:28:00 GMT\rX-Injected: 1";
+      break;
+    case k_c6m_mdl_fault_complete_split_type:
+      chunk->content_type = (char*)"application/octet-stream\nX-Injected: 1";
+      break;
     default:
       TEST_ASSERT(false);
   }
