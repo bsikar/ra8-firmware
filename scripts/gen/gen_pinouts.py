@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 """Generate the committed per-package pinout references under ``docs/pinouts/``.
@@ -55,8 +54,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import pinout_selftest  # noqa: E402
-from pinout_model import (  # noqa: E402
+import pinout_selftest
+from pinout_model import (
     BALL_COLUMNS,
     EXPECTED_IO_PORTS,
     FIELDS,
@@ -64,23 +63,25 @@ from pinout_model import (  # noqa: E402
     OUT_DIR,
     PACKAGES,
     REPO_ROOT,
+    Group,
     ParseError,
     sram_for,
     variant_slug,
 )
-from pinout_parse import (  # noqa: E402
+from pinout_parse import (
     extract_parts,
     figure_port_sets,
     parse_pin_list,
     pdf_text,
 )
-from pinout_render import render_index, render_variant  # noqa: E402
+from pinout_render import render_index, render_variant
 
 PARTS_PER_GROUP = 32
 
 
-def validate_variant(group, column: tuple, rows: list[dict],
-                     figures: dict) -> tuple[list[dict], int]:
+def validate_variant(
+    group: Group, column: tuple, rows: list[dict], figures: dict
+) -> tuple[list[dict], int]:
     """Hold one variant to every count the datasheet states elsewhere.
 
     Returns its balls and I/O-port count. Raises rather than returning a
@@ -93,44 +94,42 @@ def validate_variant(group, column: tuple, rows: list[dict],
     mine = [r for r in rows if r["balls"][column] is not None]
 
     if len({r["balls"][column] for r in mine}) != len(mine):
-        raise ParseError(f"{where}: the same ball appears twice")
+        msg = f"{where}: the same ball appears twice"
+        raise ParseError(msg)
 
     if len(mine) != PACKAGES[package].balls:
-        raise ParseError(
-            f"{where}: parsed {len(mine)} balls, the package has "
-            f"{PACKAGES[package].balls}"
-        )
+        msg = f"{where}: parsed {len(mine)} balls, the package has {PACKAGES[package].balls}"
+        raise ParseError(msg)
 
     ports = {r["port"] for r in mine if r["port"]}
     if len(ports) != EXPECTED_IO_PORTS[column]:
-        raise ParseError(
+        msg = (
             f"{where}: parsed {len(ports)} I/O port pins, the datasheet's "
             f"Function Comparison table says {EXPECTED_IO_PORTS[column]}"
         )
+        raise ParseError(msg)
 
     drawn = figures[column]
     if ports != drawn:
-        raise ParseError(
+        msg = (
             f"{where}: the section 1.7 pin list and the section 1.6 "
             f"ball-grid figure disagree -- only in the list "
             f"{sorted(ports - drawn)}, only in the figure "
             f"{sorted(drawn - ports)}"
         )
+        raise ParseError(msg)
     return mine, len(ports)
 
 
-def build_group(group) -> tuple[dict, list, list, dict]:
+def build_group(group: Group) -> tuple[dict, list, list, dict]:
     """Parse, validate and render one MCU group."""
     text = pdf_text(group.pdf)
     parts = extract_parts(text, group)
     if len(parts) != PARTS_PER_GROUP:
-        raise ParseError(
-            f"{group.name}: expected {PARTS_PER_GROUP} part numbers, "
-            f"found {len(parts)}"
-        )
+        msg = f"{group.name}: expected {PARTS_PER_GROUP} part numbers, found {len(parts)}"
+        raise ParseError(msg)
     figures = figure_port_sets(text)
-    by_kind = {kind: parse_pin_list(text, group, kind)
-               for kind in BALL_COLUMNS}
+    by_kind = {kind: parse_pin_list(text, group, kind) for kind in BALL_COLUMNS}
 
     files: dict[str, str] = {}
     variants = []
@@ -139,14 +138,13 @@ def build_group(group) -> tuple[dict, list, list, dict]:
             package, mipi = column
             mine, io_pins = validate_variant(group, column, rows, figures)
             filename = f"{group.slug}_{variant_slug(package, mipi)}.txt"
-            files[filename] = render_variant(group, package, mipi, rows,
-                                             parts)
-            variants.append((group.name, package, mipi, filename,
-                             len(mine), io_pins, kind))
+            files[filename] = render_variant(group, package, mipi, rows, parts)
+            variants.append((group.name, package, mipi, filename, len(mine), io_pins, kind))
 
-    index = [(part, sram_for(part),
-              f"{group.slug}_{variant_slug(part.package, part.mipi)}.txt")
-             for part in parts]
+    index = [
+        (part, sram_for(part), f"{group.slug}_{variant_slug(part.package, part.mipi)}.txt")
+        for part in parts
+    ]
     return files, variants, index, by_kind
 
 
@@ -164,11 +162,13 @@ def build() -> dict:
         parts_index += group_parts
         per_group_rows[group.name] = rows
 
-    files["README.md"] = render_index({
-        "variants": variants,
-        "parts": parts_index,
-        "compat": compare_groups(per_group_rows),
-    })
+    files["README.md"] = render_index(
+        {
+            "variants": variants,
+            "parts": parts_index,
+            "compat": compare_groups(per_group_rows),
+        }
+    )
     return {name: scrub(body) for name, body in files.items()}
 
 
@@ -196,8 +196,7 @@ def compare_groups(per_group_rows: dict) -> list[str]:
         sig_b = _signature(per_group_rows[b.name][kind])
         only_a = sorted(set(sig_a) - set(sig_b))
         only_b = sorted(set(sig_b) - set(sig_a))
-        differing = sorted(k for k in set(sig_a) & set(sig_b)
-                           if sig_a[k] != sig_b[k])
+        differing = sorted(k for k in set(sig_a) & set(sig_b) if sig_a[k] != sig_b[k])
         label = "Standard" if kind == "standard" else "SiP"
 
         if not (only_a or only_b or differing):
@@ -221,14 +220,12 @@ def compare_groups(per_group_rows: dict) -> list[str]:
                 f"{'' if column[1] else ' without MIPI'})"
             )
 
-    return notes + [
+    return [
+        *notes,
         "",
-        "The one function the two groups do not share (the RA8P1's "
-        "Ethos-U55",
-        "NPU) is not pinned out, so pin compatibility is what the diff "
-        "above",
-        "shows. See `docs/reference/ra8p1_vs_ra8d2.md` for the "
-        "register-level delta.",
+        "The one function the two groups do not share (the RA8P1's Ethos-U55",
+        "NPU) is not pinned out, so pin compatibility is what the diff above",
+        "shows. See `docs/reference/ra8p1_vs_ra8d2.md` for the register-level delta.",
     ]
 
 
@@ -257,26 +254,33 @@ def check(files: dict[str, str]) -> int:
         elif path.read_text(encoding="utf-8") != content:
             problems.append(f"stale: {path.relative_to(REPO_ROOT)}")
     if OUT_DIR.is_dir():
-        for extra in sorted(OUT_DIR.iterdir()):
-            if extra.name not in files:
-                problems.append(f"unexpected: {extra.relative_to(REPO_ROOT)}")
+        problems.extend(
+            f"unexpected: {extra.relative_to(REPO_ROOT)}"
+            for extra in sorted(OUT_DIR.iterdir())
+            if extra.name not in files
+        )
 
     for problem in problems:
         print(f"gen_pinouts: {problem}", file=sys.stderr)
     if problems:
-        print("gen_pinouts: run 'python3 scripts/gen/gen_pinouts.py' and "
-              "commit the result", file=sys.stderr)
+        print(
+            "gen_pinouts: run 'python3 scripts/gen/gen_pinouts.py' and commit the result",
+            file=sys.stderr,
+        )
         return 1
     print(f"gen_pinouts: {len(files)} file(s) up to date")
     return 0
 
 
 def main() -> int:
+    """Run the self-test, freshness check, or generator requested by the CLI."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--check", action="store_true",
-                        help="fail if the committed files are stale")
-    parser.add_argument("--selftest", action="store_true",
-                        help="assert the parser fires and stays quiet")
+    parser.add_argument(
+        "--check", action="store_true", help="fail if the committed files are stale"
+    )
+    parser.add_argument(
+        "--selftest", action="store_true", help="assert the parser fires and stays quiet"
+    )
     args = parser.parse_args()
 
     if args.selftest:
@@ -291,8 +295,7 @@ def main() -> int:
     if args.check:
         return check(files)
     write(files)
-    print(f"gen_pinouts: wrote {len(files)} file(s) to "
-          f"{OUT_DIR.relative_to(REPO_ROOT)}/")
+    print(f"gen_pinouts: wrote {len(files)} file(s) to {OUT_DIR.relative_to(REPO_ROOT)}/")
     return 0
 
 
