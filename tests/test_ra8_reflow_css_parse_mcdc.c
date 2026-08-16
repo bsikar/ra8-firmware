@@ -317,6 +317,49 @@ RA8_INTERNAL static void internal_test_font_style_oblique(void)
 }
 
 /**
+ * @test internal_test_mcdc_emphasis_property_names
+ * @brief Isolate both emphasis-property aliases and the non-emphasis arm.
+ *
+ * @par MC/DC:
+ * Decision identity:
+ * `libs/ra8_reflow/src/ra8_reflow_css.c@internal_apply_emphasis`.
+ * The sibling font-weight and font-style tests above provide the N+1 vectors
+ * for this function's value-keyword ORs. This test completes its property-name
+ * OR, `text-decoration || text-decoration-line` (2 conditions; N+1 = 3):
+ *  - `text-decoration`      -> C1 true; underline is applied.
+ *  - `text-decoration-line` -> C1 false, C2 true; underline is applied.
+ *  - `color`                -> both false; emphasis declines the property and
+ *                              the color handler applies it instead.
+ * @details Exercises every property-routing outcome without bypassing the
+ * public inline-style parser.
+ * @pre The inline declaration fixture accepts one bounded declaration.
+ * @pre Each result record is independently initialized by inl().
+ * @post Both emphasis aliases set the underline value and presence bits.
+ * @post The all-false vector sets color and leaves underline absent.
+ * @note Together with internal_test_font_weight_keywords() and
+ * internal_test_font_style_oblique(), this certifies every compound decision
+ * in internal_apply_emphasis().
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_mcdc_emphasis_property_names(void)
+{
+  TEST_BEGIN("css emphasis property-name OR");
+  const uint8_t         underline_set = (uint8_t)k_ra8_css_set_underline;
+  const uint8_t         underline_bit = (uint8_t)k_ra8_reflow_style_underline;
+  const ra8_css_style_t legacy        = inl("text-decoration: underline");
+  const ra8_css_style_t modern        = inl("text-decoration-line: underline");
+  const ra8_css_style_t other         = inl("color: red");
+  TEST_ASSERT((legacy.set & underline_set) != 0U);
+  TEST_ASSERT((legacy.style & underline_bit) != 0U);
+  TEST_ASSERT((modern.set & underline_set) != 0U);
+  TEST_ASSERT((modern.style & underline_bit) != 0U);
+  TEST_ASSERT((other.set & (uint8_t)k_ra8_css_set_color) != 0U);
+  TEST_ASSERT_EQ(k_css_color_red, other.color);
+  TEST_ASSERT((other.set & underline_set) == 0U);
+  TEST_END("css emphasis property-name OR");
+}
+
+/**
  * @test internal_test_empty_decl_guard
  * @brief Declarations missing a property or value name are skipped.
  *
@@ -821,6 +864,7 @@ static void (*const s_test_roster[])(void) = {
   internal_test_fontsize_fractional_loops,
   internal_test_font_weight_keywords,
   internal_test_font_style_oblique,
+  internal_test_mcdc_emphasis_property_names,
   internal_test_empty_decl_guard,
   internal_test_name_overflow_rejected,
   internal_test_at_rule_split,
