@@ -371,6 +371,59 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_cancel(void* ctx)
 }
 
 /**
+ * @brief Translate a portable media-service result into ESP-IDF's error domain
+ * @details Uses an explicit semantic mapping so equal numeric values in the
+ *          unrelated RA8 and ESP-IDF enumerations cannot change meaning.
+ * @param[in] result Portable media-service result.
+ * @return Equivalent ESP-IDF status for the outer CustomRpc response.
+ * @retval ESP_OK Portable dispatch produced a complete inner response.
+ * @retval ESP_ERR_NO_MEM The bounded decode arena was exhausted.
+ * @retval ESP_ERR_INVALID_ARG A pointer or argument was invalid.
+ * @retval ESP_ERR_INVALID_STATE The media service was busy or in the wrong state.
+ * @retval ESP_ERR_INVALID_SIZE A request or response extent was invalid.
+ * @retval ESP_ERR_NOT_FOUND A requested object was absent.
+ * @retval ESP_ERR_TIMEOUT The operation exceeded its bounded work budget.
+ * @retval ESP_ERR_INVALID_RESPONSE Protocol or structural validation failed.
+ * @retval ESP_ERR_INVALID_CRC A digest comparison failed.
+ * @retval ESP_FAIL No more specific ESP-IDF status represents @p result.
+ * @pre @p result is a value returned by the portable media service.
+ * @pre Unknown operation identifiers are rejected before this mapping.
+ * @post No service, HTTP, SHA, or response state is modified.
+ * @post ::ESP_ERR_NOT_SUPPORTED is never returned for a recognized media operation.
+ * @note Keeping first-refusal separate prevents backend failures from invoking
+ *       ESP-hosted's unrelated legacy CustomRpc fallback.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static esp_err_t internal_mdl_to_esp_status(ra8_err_t result)
+{
+  switch (result) {
+    case k_ra8_ok:
+      return ESP_OK;
+    case k_ra8_err_no_mem:
+      return ESP_ERR_NO_MEM;
+    case k_ra8_err_null_ptr:
+    case k_ra8_err_invalid_arg:
+      return ESP_ERR_INVALID_ARG;
+    case k_ra8_err_busy:
+    case k_ra8_err_invalid_state:
+      return ESP_ERR_INVALID_STATE;
+    case k_ra8_err_invalid_size:
+      return ESP_ERR_INVALID_SIZE;
+    case k_ra8_err_not_found:
+      return ESP_ERR_NOT_FOUND;
+    case k_ra8_err_timeout:
+      return ESP_ERR_TIMEOUT;
+    case k_ra8_err_protocol_error:
+    case k_ra8_err_validation_failed:
+      return ESP_ERR_INVALID_RESPONSE;
+    case k_ra8_err_checksum_mismatch:
+      return ESP_ERR_INVALID_CRC;
+    default:
+      return ESP_FAIL;
+  }
+}
+
+/**
  * @brief Strong implementation consumed by the pinned ESP-hosted patch.
  *
  * @details The hook runs on ESP-hosted's serialized control path. It returns
@@ -386,6 +439,11 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_cancel(void* ctx)
  * @return ESP-hosted hook status.
  * @retval ESP_OK A valid inner response was produced.
  * @retval ESP_FAIL Component or one-time backend initialisation failed.
+ * @retval ESP_ERR_NOT_SUPPORTED The operation is not owned by the media service.
+ * @retval ESP_ERR_INVALID_ARG A request argument or pointer was invalid.
+ * @retval ESP_ERR_INVALID_STATE The media service is busy or inactive.
+ * @retval ESP_ERR_INVALID_SIZE A bounded request or response extent was rejected.
+ * @retval ESP_ERR_INVALID_RESPONSE The inner protobuf or response was invalid.
  * @pre ESP-hosted invokes the hook on its serialized control path.
  * @pre Request/response spans are valid and do not overlap.
  * @post Success sets @p response_len within @p response_cap.
@@ -401,6 +459,14 @@ esp_err_t esp_hosted_custom_rpc_sync_handler(uint32_t       message_id,
                                              size_t         response_cap,
                                              size_t*        response_len)
 {
+  if (response_len == nullptr) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  *response_len = 0U;
+  if ((message_id != k_ra8_mdl_rpc_start) && (message_id != k_ra8_mdl_rpc_next) &&
+      (message_id != k_ra8_mdl_rpc_cancel)) {
+    return ESP_ERR_NOT_SUPPORTED;
+  }
   if (s_component_abi() != 1U) {
     return ESP_FAIL;
   }
@@ -424,5 +490,5 @@ esp_err_t esp_hosted_custom_rpc_sync_handler(uint32_t       message_id,
                                                     response,
                                                     response_cap,
                                                     response_len);
-  return (result == k_ra8_ok) ? ESP_OK : (esp_err_t)result;
+  return internal_mdl_to_esp_status(result);
 }
