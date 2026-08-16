@@ -1,18 +1,16 @@
 /**
  * @file ra8_viewer_reader.h
- * @brief Caller-owned host JOF reader and RGB565 render surface.
+ * @brief Caller-owned host JOF/comic reader and RGB565 render surface.
  *
  * @details The reader is deliberately storage- and allocator-agnostic below its
  * POSIX composition edge. A format-aware requirements query reports the exact
- * bytes and alignment needed by one JOF document; bind partitions caller-owned
- * storage; open attaches a raw descriptor behind a positional-read callback.
- * No reusable reader function owns dynamic memory or exposes a hosted stream type.
- *
- * Comic extensions are classified but currently return
- * ::k_ra8_err_not_supported. Their shared decoder contracts still require a
- * contiguous stb decode arena, a resident encoded-page pointer, and (for
- * gzip/XZ) a whole-output unwrap buffer. Those contracts must become streaming
- * source/sink or spool seams before comics can satisfy this bounded workspace.
+ * bytes and alignment needed by one JOF or bare CBZ/CBR/CBT document; bind
+ * partitions caller-owned storage; open attaches a raw descriptor behind a
+ * positional-read callback. No reusable reader function owns dynamic memory or
+ * exposes a hosted stream type. Comic decoding uses explicit bounded slices for
+ * its page index, name arena, resident encoded page, and stb decode arena.
+ * Gzip/XZ-wrapped comics remain unsupported because the shared wrapper API still
+ * requires the complete unwrapped archive to be resident at once.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -38,6 +36,12 @@ typedef enum : uint16_t {
 /** @brief Opaque state bound inside caller-owned workspace. */
 typedef struct ra8_viewer_reader ra8_viewer_reader_t;
 
+/** @brief Reader engine selected by the requirements query. */
+typedef enum : uint32_t {
+  k_ra8_viewer_engine_jof   = 1U, /**< Streamed JOF long-strip engine. */
+  k_ra8_viewer_engine_comic = 2U, /**< Bare CBZ/CBR/CBT comic engine.  */
+} ra8_viewer_reader_engine_t;
+
 /**
  * @struct ra8_viewer_reader_requirements_t
  * @brief Exact immutable layout returned for one document.
@@ -51,7 +55,12 @@ typedef struct {
   size_t   dimensions_bytes;   /**< Two resident per-tile dimension arrays.   */
   size_t   cell_bytes;         /**< One resident decoded JOF band.            */
   size_t   scratch_bytes;      /**< One bounded compressed-band staging area. */
+  size_t   comic_pages_bytes;  /**< Comic page-index storage, or zero.        */
+  size_t   comic_names_bytes;  /**< Comic member-name arena, or zero.         */
+  size_t   comic_page_bytes;   /**< Resident encoded-page storage, or zero.   */
+  size_t   comic_arena_bytes;  /**< stb decode arena storage, or zero.        */
   uint32_t tile_count;         /**< Number of viewport tiles in the strip.    */
+  uint32_t engine;             /**< ::ra8_viewer_reader_engine_t selection.   */
   uint32_t layout_version;     /**< ABI guard consumed by bind.               */
 } ra8_viewer_reader_requirements_t;
 
@@ -66,11 +75,11 @@ typedef struct {
  * @param[in] path NUL-terminated host path.
  * @param[out] out Exact requirements on success.
  * @return ::k_ra8_ok on success; an error for I/O, unsupported format, or an
- * invalid JOF geometry.
+ * invalid document geometry.
  * @retval k_ra8_ok Requirements are complete.
  * @retval k_ra8_err_null_ptr A required pointer was NULL.
  * @retval k_ra8_err_not_found The input is absent, empty, or not regular.
- * @retval k_ra8_err_not_supported The classified format is not JOF.
+ * @retval k_ra8_err_not_supported The format is wrapped, reflow, or unknown.
  * @post On failure @p out is zeroed.
  * @note The sizing descriptor opened internally is closed before return.
  */
@@ -98,14 +107,14 @@ typedef struct {
                                                ra8_viewer_workspace_report_t*          report);
 
 /**
- * @brief Open the JOF document used to size and bind @p reader.
+ * @brief Open the document class used to size and bind @p reader.
  * @param[in,out] reader Bound, closed reader.
- * @param[in] path NUL-terminated JOF path.
+ * @param[in] path NUL-terminated JOF or bare comic path.
  * @return ::k_ra8_ok on success or a propagated parse/open error.
- * @retval k_ra8_ok The descriptor and long-strip engine are open.
+ * @retval k_ra8_ok The descriptor and selected reader engine are open.
  * @retval k_ra8_err_null_ptr A required pointer was NULL.
  * @retval k_ra8_err_invalid_state The reader is unbound or already open.
- * @retval k_ra8_err_not_supported @p path is not JOF.
+ * @retval k_ra8_err_not_supported @p path does not match the bound engine.
  * @post Failure leaves @p reader closed.
  * @note The reader owns only its raw descriptor; all memory remains borrowed.
  */

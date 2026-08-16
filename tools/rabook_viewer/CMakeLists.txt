@@ -3,20 +3,20 @@
 #
 # tools/rabook_viewer -- native macOS reader viewer (direct-call, not an emulator).
 #
-# Links the firmware's platform-agnostic JOF long-strip libraries compiled
+# Links the firmware's platform-agnostic JOF and comic libraries compiled
 # host-side (RA8_OFF_TARGET, C23) and calls them directly to rasterise tiles into
 # an RGB565 framebuffer, which a layer-backed Cocoa NSWindow presents.
 # Unlike tools/ra8_emulator (which emulates the firmware ELF under Unicorn), this
 # tool runs no ARM code -- it is purely a viewer, so it is far faster.
 #
 #   cmake -B build -S . && cmake --build build -j
-#   ./build/rabook_viewer path/to/book.jof               # window; arrows turn pages
+#   ./build/rabook_viewer path/to/book.cbz               # window; arrows turn pages
 #   ./build/rabook_viewer book.jof --headless --dump-ppm page0.ppm   # no display
 #
-# Reader engine coverage is intentionally the firmware-native JOF long-strip
-# atlas only. Comic and wrapped-comic extensions are recognised but rejected
-# until their shared codec APIs support streamed sources/sinks or a descriptor
-# spool without resident contiguous decode/unwrap arenas.
+# Reader engine coverage is bare CBZ/CBR/CBT plus the firmware-native JOF
+# long-strip atlas. Every comic buffer is a bounded caller-workspace slice.
+# Gzip/XZ-wrapped comics remain rejected until their wrapper API can stream or
+# descriptor-spool output instead of retaining the whole archive.
 #
 #
 
@@ -120,6 +120,8 @@ endfunction()
 # consume their firmware libraries the same way). ra8_longstrip renders the
 # firmware-native `.jof` vertical-scroll tile atlas.
 file(GLOB RA8_LONGSTRIP_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_longstrip/src/*.c)
+file(GLOB RA8_COMIC_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_comic/src/*.c)
+file(GLOB RA8_GFX_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/*.c)
 
 # Partial-read-path libraries -- the viewer links only the read members. The JOF
 # strip parses through ra8_jof (DEFLATE tiles inflate via ra8_io_compress over
@@ -135,6 +137,52 @@ ra8_viewer_read_path(
        ra8_jof_png_chunk.c
        ra8_jof_produce.c
        ra8_jof_produce_webp.c
+)
+
+ra8_viewer_read_path(
+  RA8_EPUB_SRC ${FW_ROOT}/libs/ra8_epub/src
+  KEEP ra8_epub_miniz_alloc.c
+  DROP ra8_epub_chapter.c
+       ra8_epub_entry.c
+       ra8_epub_fs.c
+       ra8_epub_img_import.c
+       ra8_epub_img_tiles.c
+       ra8_epub_open.c
+       ra8_epub_xml_shim.c
+       ra8_epub_zip_guard.c
+)
+
+ra8_viewer_read_path(
+  RA8_REFLOW_SRC ${FW_ROOT}/libs/ra8_reflow/src
+  KEEP ra8_img_arena.c
+       ra8_reflow_image.c
+       ra8_reflow_svg.c
+       ra8_reflow_svg_doc.c
+       ra8_reflow_svg_path.c
+       ra8_reflow_svg_shape.c
+       ra8_reflow_svg_xform.c
+  DROP ra8_reflow_cache.c
+       ra8_reflow_css.c
+       ra8_reflow_css_cascade.c
+       ra8_reflow_css_rules.c
+       ra8_reflow_layout.c
+       ra8_reflow_layout_driver.c
+       ra8_reflow_layout_image.c
+       ra8_reflow_layout_table.c
+       ra8_reflow_link.c
+       ra8_reflow_parse.c
+       ra8_reflow_render.c
+       ra8_reflow_tokenize.c
+       ra8_reflow_tokenize_attr.c
+       ra8_reflow_tokenize_lex.c
+       ra8_stbtt_alloc.c
+       ra8_stbtt_guard.c
+)
+
+ra8_viewer_read_path(
+  RA8_UNARCH_SRC ${FW_ROOT}/libs/ra8_unarch/src
+  KEEP ra8_unarch_io.c ra8_unarch_tar.c ra8_unarch_tar_fields.c
+  DROP ra8_unarch_gzip.c ra8_unarch_xz.c ra8_unarch_xz_pool.c
 )
 
 ra8_viewer_read_path(
@@ -191,13 +239,20 @@ ra8_viewer_read_path(
        ra8_time.c
 )
 
-set(RA8_THIRD_PARTY_SRC ${FW_ROOT}/libs/third_party/miniz/miniz.c)
+set(RA8_THIRD_PARTY_SRC ${FW_ROOT}/libs/third_party/miniz/miniz.c
+                        ${FW_ROOT}/libs/third_party/stb/stb_image_impl.c
+)
 set(RA8_STREAM_POSIX_SRC ${FW_ROOT}/port/posix/src/ra8_io_stream_posix.c)
 set(RA8_STREAM_RAM_SRC ${FW_ROOT}/libs/ra8_io/src/ra8_io_stream_ram.c)
 
 add_library(
   ra8_reader STATIC
+  ${RA8_COMIC_SRC}
+  ${RA8_GFX_SRC}
+  ${RA8_UNARCH_SRC}
   ${RA8_LONGSTRIP_SRC}
+  ${RA8_EPUB_SRC}
+  ${RA8_REFLOW_SRC}
   ${RA8_JOF_SRC}
   ${RA8_IO_SRC}
   ${RA8_MEM_SRC}
@@ -215,11 +270,17 @@ target_compile_options(ra8_reader PRIVATE -Wall -Wextra -Werror)
 target_include_directories(
   ra8_reader
   PUBLIC ${FW_ROOT}/libs/ra8_core/inc
+         ${FW_ROOT}/libs/ra8_comic/inc
+         ${FW_ROOT}/libs/ra8_epub/inc
+         ${FW_ROOT}/libs/ra8_gfx/inc
          ${FW_ROOT}/libs/ra8_longstrip/inc
          ${FW_ROOT}/libs/ra8_jof/inc
          ${FW_ROOT}/libs/ra8_io/inc
          ${FW_ROOT}/libs/ra8_mem/inc
+         ${FW_ROOT}/libs/ra8_reflow/inc
+         ${FW_ROOT}/libs/ra8_unarch/inc
          ${FW_ROOT}/libs/third_party/miniz
+         ${FW_ROOT}/libs/third_party/stb
 )
 # The vendored miniz decoder type-puns through byte buffers; silence its
 # warnings and disable strict aliasing exactly as the host-test build does.
@@ -241,13 +302,14 @@ else()
   set(RA8_VIEWER_VIEW_SRC src/ra8_viewer_view_stub.c)
 endif()
 
-# The reader core is one module split across public dispatch, the streamed JOF
-# engine, and the shared RGB565 / descriptor-backed PPM writer.
+# The reader core is split across public dispatch, comic and JOF engines, and
+# the shared RGB565 / descriptor-backed PPM writer.
 add_executable(
   rabook_viewer
   src/main.c
   src/ra8_viewer_output.c
   src/ra8_viewer_reader.c
+  src/ra8_viewer_comic.c
   src/ra8_viewer_jof.c
   src/ra8_viewer_ppm.c
   ${RA8_STREAM_POSIX_SRC}
@@ -262,12 +324,27 @@ target_compile_options(rabook_viewer PRIVATE -Wall -Wextra -Werror)
 include(CTest)
 if(BUILD_TESTING)
   add_executable(
-    test_viewer_workspace tests/test_viewer_workspace.c src/ra8_viewer_reader.c
-                          src/ra8_viewer_jof.c src/ra8_viewer_ppm.c
+    test_viewer_workspace
+    tests/test_viewer_workspace.c
+    src/ra8_viewer_reader.c
+    src/ra8_viewer_comic.c
+    src/ra8_viewer_jof.c
+    src/ra8_viewer_ppm.c
   )
   target_include_directories(test_viewer_workspace PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
   target_link_libraries(test_viewer_workspace PRIVATE ra8_reader)
   target_compile_options(test_viewer_workspace PRIVATE -Wall -Wextra -Werror)
+  add_executable(
+    test_viewer_comic_workspace
+    tests/test_viewer_comic_workspace.c
+    src/ra8_viewer_reader.c
+    src/ra8_viewer_comic.c
+    src/ra8_viewer_jof.c
+    src/ra8_viewer_ppm.c
+  )
+  target_include_directories(test_viewer_comic_workspace PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
+  target_link_libraries(test_viewer_comic_workspace PRIVATE ra8_reader)
+  target_compile_options(test_viewer_comic_workspace PRIVATE -Wall -Wextra -Werror)
   add_executable(
     test_viewer_output tests/test_viewer_output.c src/ra8_viewer_output.c ${RA8_STREAM_RAM_SRC}
                        ${RA8_STREAM_POSIX_SRC}
@@ -282,6 +359,9 @@ if(BUILD_TESTING)
                    $<TARGET_FILE:test_viewer_workspace> ${CMAKE_CURRENT_BINARY_DIR}/workspace_test
   )
   add_test(NAME viewer_output COMMAND test_viewer_output)
+  add_test(NAME viewer_comic_workspace COMMAND test_viewer_comic_workspace
+                                               ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/sample.cbz
+  )
 endif()
 
 if(APPLE)
@@ -290,5 +370,6 @@ if(APPLE)
 else()
   # The SVG rasteriser calls sinf/cosf/tanf/sqrtf/atan2f. macOS keeps those in
   # libSystem; every other POSIX host needs libm named explicitly.
+  target_link_libraries(ra8_reader PUBLIC m)
   target_link_libraries(rabook_viewer PRIVATE m)
 endif()

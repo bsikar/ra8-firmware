@@ -3,9 +3,8 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """Generate the ra8_viewer malformed-input security corpus.
 
-The viewer opens attacker-supplied JOF atlases and sizes caller-owned workspace
-regions from their metadata. It also recognises archive extensions that remain
-unsupported until their shared codec APIs can stream. This script emits a small
+The viewer opens attacker-supplied JOF atlases and comic archives and sizes
+caller-owned workspace regions from their metadata. This script emits a small
 corpus that exercises both sides of that policy:
 
   * malicious fixtures that MUST be refused with a clean ra8_err_t (process exit
@@ -130,7 +129,7 @@ def build_cbz(entry_name: str, data: bytes, forced_uncomp: int | None = None) ->
 
     zipfile writes the true sizes; when forced_uncomp is set, the central
     directory's uncompressed-size field is patched afterwards. miniz's
-    mz_zip_reader_file_stat reads that field, so a future comic backend sees
+    mz_zip_reader_file_stat reads that field, so the comic backend sees
     the lie at open and ra8_decomp_check_declared refuses it before any inflate.
 
     Args:
