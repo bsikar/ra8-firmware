@@ -42,8 +42,13 @@ typedef struct esp_http_client* esp_http_client_handle_t;
 /** @brief HTTPS certificate-bundle attach callback used by ESP-IDF. */
 typedef esp_err_t (*esp_crt_bundle_attach_fn_t)(void* conf);
 
-/** @brief Consumed ESP-IDF HTTP event identifiers. */
-typedef enum esp_http_client_event_id_t {
+/**
+ * @brief Consumed ESP-IDF HTTP event identifiers.
+ * @details The underlying type is stated explicitly so the audit mirror has
+ * the same width as the plain (implicitly `int`-backed) ESP-IDF enum this
+ * declaration stands in for.
+ */
+typedef enum esp_http_client_event_id_t : int32_t {
   HTTP_EVENT_ERROR = 0,    /**< Transport error.                  */
   HTTP_EVENT_ON_CONNECTED, /**< Connection established.           */
   HTTP_EVENT_HEADERS_SENT, /**< Request headers sent.             */
