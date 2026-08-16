@@ -64,7 +64,7 @@ bool mdl_format_is_verifiable(mdl_format_t format);
 /**
  * @brief Validate an artifact through a borrowed open filesystem handle
  *
- * @details Dispatches to the same ZIP, tar, gzip, or JOF validator used by
+ * @details Dispatches to the same ZIP, tar, gzip, JOF, or strict RBKC validator used by
  *          ::mdl_verify_file after seeking @p file to offset zero. This entry
  *          point lets an exporter validate a staged transaction before commit
  *          without publishing or reopening the stage by name. The handle is
@@ -101,7 +101,7 @@ ra8_err_t mdl_verify_open_file(mdl_storage_t*          storage,
 /**
  * @brief Validate a completed artifact using caller-owned scratch only
  *
- * @details Dispatches to the format-specific ZIP, tar, gzip, or JOF reader,
+ * @details Dispatches to the format-specific ZIP, tar, gzip, JOF, or strict RBKC reader,
  *          rejects unsafe member paths and missing required metadata, and
  *          resets the workspace so `high_water` describes this call alone.
  *          ZIP and JOF use positioned reads; TAR and gzip are streamed through

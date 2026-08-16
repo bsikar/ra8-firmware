@@ -81,6 +81,11 @@ set(MDL_JOF_INC
 set(MDL_STREAM_CORE_SRC ${FW}/ra8_io/src/ra8_io_stream.c)
 set(MDL_STREAM_RAM_SRC ${FW}/ra8_io/src/ra8_io_stream_ram.c)
 set(MDL_STREAM_POSIX_SRC ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/src/ra8_io_stream_posix.c)
+set(MDL_RABOOK_READER_SRC
+    ${FW}/ra8_book/src/ra8_book.c ${FW}/ra8_book/src/ra8_book_stream.c
+    ${FW}/ra8_book/src/ra8_book_chunked.c ${FW}/ra8_book/src/ra8_book_chunked_validate.c
+)
+set(MDL_RABOOK_READER_INC ${FW}/ra8_book/inc ${FW}/ra8_book/src ${FW}/ra8_mem/inc)
 
 # WebP decode for the JOF exporter: the sites this CLI scrapes serve .webp pages
 # (mdl_export's page-extension table has always accepted them), so the
@@ -102,6 +107,7 @@ set(MDL_EXPORT_SRC
     src/mdl_export_epub.c
     src/mdl_export_jof.c
 )
+set(MDL_VERIFY_SRC src/mdl_verify.c src/mdl_verify_rabook.c ${MDL_RABOOK_READER_SRC})
 
 add_executable(
   media_dl
@@ -147,7 +153,7 @@ add_executable(
   src/mdl_pack.c
   src/mdl_library.c
   ${MDL_EXPORT_SRC}
-  src/mdl_verify.c
+  ${MDL_VERIFY_SRC}
   ${MDL_JOF_SRC}
   ${MDL_FS_SRC}
   ${MDL_STREAM_CORE_SRC}
@@ -164,6 +170,7 @@ target_include_directories(
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
           ${MDL_JOF_INC}
+          ${MDL_RABOOK_READER_INC}
           ${MDL_FS_INC}
 )
 
@@ -191,7 +198,7 @@ set(MDL_TEST_COMMON_SRC
     src/mdl_storage.c
     tests/mdl_test_storage.c
     ${MDL_EXPORT_SRC}
-    src/mdl_verify.c
+    ${MDL_VERIFY_SRC}
     src/mdl_cli.c
     src/mdl_cli_nums.c
     src/mdl_cli_stream.c
@@ -216,6 +223,7 @@ function(mdl_add_unit_test target source)
             ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
             ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
             ${MDL_JOF_INC}
+            ${MDL_RABOOK_READER_INC}
             ${MDL_FS_INC}
   )
   target_compile_definitions(${target} PRIVATE _GNU_SOURCE MINIZ_NO_TIME RA8_OFF_TARGET)
@@ -228,6 +236,33 @@ mdl_add_unit_test(test_media_dl tests/test_media_dl.c)
 target_sources(test_media_dl PRIVATE tests/test_media_dl_logic_cli.c)
 mdl_add_unit_test(test_media_dl_export tests/test_media_dl_export.c)
 target_sources(test_media_dl_export PRIVATE tests/test_media_dl_export_xml.c)
+add_executable(
+  test_media_dl_rabook_verify
+  tests/test_media_dl_rabook_verify.c
+  ${MDL_TEST_COMMON_SRC}
+  ${FW}/ra8_rabook_compile/src/ra8_rabook_compile.c
+  ${FW}/ra8_rabook_compile/src/ra8_rabook_finalize.c
+  ${FW}/ra8_rabook_compile/src/ra8_rabook_container.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../tests/support/rabook_compile_test_fixture.c
+)
+target_include_directories(
+  test_media_dl_rabook_verify
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/src
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
+          ${FW}/ra8_rabook_compile/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+          ${MDL_JOF_INC}
+          ${MDL_RABOOK_READER_INC}
+          ${MDL_FS_INC}
+)
+target_compile_definitions(
+  test_media_dl_rabook_verify PRIVATE _GNU_SOURCE MINIZ_NO_TIME RA8_OFF_TARGET
+)
+target_compile_options(test_media_dl_rabook_verify PRIVATE -Wall -Wextra -Werror)
+ra8_webp_attach(test_media_dl_rabook_verify ${CMAKE_CURRENT_SOURCE_DIR}/../..)
+add_test(NAME test_media_dl_rabook_verify COMMAND test_media_dl_rabook_verify)
 mdl_add_unit_test(test_media_dl_export_fault tests/test_media_dl_export_fault.c)
 target_sources(
   test_media_dl_export_fault

@@ -944,7 +944,8 @@ RA8_INTERNAL static void internal_test_verify_rejects_truncation(void)
                {"/tmp/mdl_bad.cbt", k_mdl_fmt_cbt},
                {"/tmp/mdl_bad.cbt.gz", k_mdl_fmt_cbt_gz},
                {"/tmp/mdl_bad.epub", k_mdl_fmt_epub},
-               {"/tmp/mdl_bad.jof", k_mdl_fmt_jof}};
+               {"/tmp/mdl_bad.jof", k_mdl_fmt_jof},
+               {"/tmp/mdl_bad.rabook", k_mdl_fmt_rabook}};
   for (size_t i = 0U; i < sizeof(cases) / sizeof(cases[0]); ++i) {
     internal_write_fixture(cases[i].path, 'x');
     mdl_verify_report_t report = {};

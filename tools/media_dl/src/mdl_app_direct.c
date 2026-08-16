@@ -667,7 +667,7 @@ RA8_PRIV int priv_mdl_app_run_artifact(const char*           url,
                                                 "media_dl: direct artifact '",
                                                 leaf,
                                                 "' has no supported structural validator "
-                                                "(cbz|cbt|cbt.gz|epub|jof)\n"));
+                                                "(cbz|cbt|cbt.gz|epub|jof|rabook)\n"));
     return 1;
   }
   char final_path[k_fw_fs_path_cap];
