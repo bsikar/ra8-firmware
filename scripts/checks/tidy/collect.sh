@@ -185,7 +185,15 @@ header_is_include_fragment() {
     "$f"
 }
 
-route_bucket() {
+# ---------------------------------------------------------------------------
+# The language half of the routing decision, kept apart from the path half so
+# neither grows past the 60-line function cap.
+#
+# Prints a bucket and returns 0 when the file`s LANGUAGE (or its being a
+# textual include fragment) settles the question; returns 1 when the answer
+# depends on where the file lives.
+# ---------------------------------------------------------------------------
+route_bucket_by_language() {
   local f="$1"
   case "$f" in
     # A header that is only ever textually included cannot be its own TU.
@@ -206,6 +214,12 @@ route_bucket() {
     */ra8_ethosu_kernel.cc) echo firmware && return 0 ;;
     *.cpp | *.cc | *.cxx | *.hpp | *.hh | *.hxx) echo cxx && return 0 ;;
   esac
+  return 1
+}
+
+route_bucket() {
+  local f="$1"
+  route_bucket_by_language "$f" && return 0
   case "$f" in
     # ...except the HOSTED ports. port/posix/ binds fw_if_fs and
     # ra8_io_stream to the host kernel ABI, declares itself

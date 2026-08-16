@@ -337,6 +337,43 @@ internal_opf_status(ra8_err_t err, uint16_t manifest_depth, uint16_t spine_depth
 }
 
 /* see header for the documented contract. */
+/**
+ * @brief Record one direct metadata child of the OPF metadata element.
+ * @details Marks the Dublin Core element, then captures the EPUB 2 legacy
+ * cover pointer carried by `<meta name="cover" content="..."/>`.
+ * @param[in] source Complete OPF byte range being parsed.
+ * @param[in] length Readable bytes at @p source.
+ * @param[in] event Start event for the metadata child.
+ * @param[in,out] reader Reader whose frame stack names the enclosing element.
+ * @param[in] unique_id Span naming the package unique-identifier attribute.
+ * @param[in,out] book Book whose XML workspace receives the recorded values.
+ * @return Nothing.
+ * @pre @p event is a start event whose parent is the metadata element.
+ * @pre @p book owns a live XML workspace.
+ * @post Recognised Dublin Core elements are marked in the workspace.
+ * @post A legacy cover meta records its content span; nothing else is touched.
+ * @note Extracted from ::internal_opf_first so both stay within the
+ * 60-line function cap; the vectors that cover it are unchanged.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_opf_metadata_child(const uint8_t*         source,
+                                                     size_t                 length,
+                                                     const ra8_xml_event_t* event,
+                                                     ra8_xml_reader_t*      reader,
+                                                     ra8_xml_span_t         unique_id,
+                                                     ra8_epub_book_t*       book)
+{
+  internal_mark_metadata(source, length, event, reader, unique_id);
+  if (!ra8_xml_span_local_equal(source, length, event->name, "meta")) {
+    return;
+  }
+  const priv_attr_t name    = internal_attr(source, length, event, "name");
+  const priv_attr_t content = internal_attr(source, length, event, "content");
+  if (name.present && content.present && ra8_xml_span_equal(source, length, name.span, "cover")) {
+    book->xml_workspace.legacy_cover_id = content.span;
+  }
+}
+
 RA8_INTERNAL static ra8_err_t internal_opf_first(const uint8_t*   source,
                                                  size_t           length,
                                                  ra8_epub_book_t* book,
@@ -381,15 +418,7 @@ RA8_INTERNAL static ra8_err_t internal_opf_first(const uint8_t*   source,
                                         length,
                                         internal_frame_name(&reader, metadata_depth),
                                         "metadata")) {
-      internal_mark_metadata(source, length, &event, &reader, unique_id);
-      if (ra8_xml_span_local_equal(source, length, event.name, "meta")) {
-        const priv_attr_t name    = internal_attr(source, length, &event, "name");
-        const priv_attr_t content = internal_attr(source, length, &event, "content");
-        if (name.present && content.present &&
-            ra8_xml_span_equal(source, length, name.span, "cover")) {
-          book->xml_workspace.legacy_cover_id = content.span;
-        }
-      }
+      internal_opf_metadata_child(source, length, &event, &reader, unique_id, book);
     } else if (internal_direct_child(event.depth, manifest_depth) &&
                ra8_xml_span_local_equal(source,
                                         length,
