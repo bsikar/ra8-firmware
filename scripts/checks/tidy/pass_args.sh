@@ -266,6 +266,18 @@ tools_pass_args() {
   for dir in "$FIRMWARE_DIR"/tools/*/ "$FIRMWARE_DIR"/tools/*/inc "$FIRMWARE_DIR"/tools/*/src; do
     [[ -d "$dir" ]] && printf -- '--extra-arg=-I%s\n' "${dir%/}"
   done
+  # ...and every OTHER directory under tools/ that really holds a header.
+  # The three globs above stop at tools/<tool>/src, but ra8_emulator keeps its
+  # private headers a level deeper (src/host/emu_host_io_internal.h,
+  # src/engine/emu_elf_source_internal.h), so 78 of its TUs came back as
+  # clang-diagnostic-error "file not found" -- not linted at all, just
+  # unparsed. Derived from git rather than from a fixed depth, for the same
+  # reason the collection is: a new nested directory is picked up the day it
+  # lands, and a gitignored build tree is never on the list.
+  while IFS= read -r dir; do
+    printf -- '--extra-arg=-I%s/%s\n' "$FIRMWARE_DIR" "$dir"
+  done < <(git -C "$FIRMWARE_DIR" ls-files "tools/*.h" "tools/*.hpp" |
+    sed -E "s#/[^/]+\$##" | sort -u)
   local cflag
   local pkg
   if command -v pkg-config &>/dev/null; then
