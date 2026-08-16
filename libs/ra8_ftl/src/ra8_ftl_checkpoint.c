@@ -191,7 +191,10 @@ RA8_INTERNAL static bool internal_ranges_overlap(const void* first,
 {
   const uintptr_t first_start  = (uintptr_t)first;
   const uintptr_t second_start = (uintptr_t)second;
-  if (first_bytes == 0U || second_bytes == 0U) {
+  if (first_bytes == 0U) {
+    return false;
+  }
+  if (second_bytes == 0U) {
     return false;
   }
   if (first_start > UINTPTR_MAX - ((uintptr_t)first_bytes - 1U)) {
@@ -202,7 +205,10 @@ RA8_INTERNAL static bool internal_ranges_overlap(const void* first,
   }
   const uintptr_t first_end  = first_start + (uintptr_t)first_bytes - 1U;
   const uintptr_t second_end = second_start + (uintptr_t)second_bytes - 1U;
-  return (first_start <= second_end) && (second_start <= first_end);
+  if (first_start > second_end) {
+    return false;
+  }
+  return second_start <= first_end;
 }
 
 /**
@@ -254,7 +260,10 @@ RA8_INTERNAL static ra8_err_t internal_ready(const ra8_ftl_t* ftl)
 RA8_INTERNAL static ra8_err_t
 internal_size_values(uint32_t logical_blocks, uint32_t physical_blocks, uint32_t* out)
 {
-  if (logical_blocks == 0U || physical_blocks > (uint32_t)k_ra8_ftl_max_pblocks) {
+  if (logical_blocks == 0U) {
+    return k_ra8_err_invalid_size;
+  }
+  if (physical_blocks > (uint32_t)k_ra8_ftl_max_pblocks) {
     return k_ra8_err_invalid_size;
   }
   if (physical_blocks <= logical_blocks) {
@@ -388,9 +397,11 @@ internal_native_window(const ra8_ftl_t* ftl, uint32_t base, uint32_t count)
     if ((uint32_t)phys >= ftl->physical_blocks) {
       return k_ra8_err_invalid_state;
     }
-    if ((uint32_t)phys >= base && (uint32_t)phys - base < count) {
-      if (internal_bit_was_set(ftl->scratch, (uint32_t)phys - base)) {
-        return k_ra8_err_invalid_state;
+    if ((uint32_t)phys >= base) {
+      if ((uint32_t)phys - base < count) {
+        if (internal_bit_was_set(ftl->scratch, (uint32_t)phys - base)) {
+          return k_ra8_err_invalid_state;
+        }
       }
     }
   }
@@ -472,9 +483,11 @@ RA8_INTERNAL static ra8_err_t internal_wire_window(const ra8_ftl_t* ftl,
     if ((uint32_t)phys >= ftl->physical_blocks) {
       return k_ra8_err_invalid_state;
     }
-    if ((uint32_t)phys >= base && (uint32_t)phys - base < count) {
-      if (internal_bit_was_set(ftl->scratch, (uint32_t)phys - base)) {
-        return k_ra8_err_invalid_state;
+    if ((uint32_t)phys >= base) {
+      if ((uint32_t)phys - base < count) {
+        if (internal_bit_was_set(ftl->scratch, (uint32_t)phys - base)) {
+          return k_ra8_err_invalid_state;
+        }
       }
     }
   }
@@ -552,7 +565,10 @@ internal_validate_header(const ra8_ftl_t* ftl, const uint8_t* buf, uint32_t buf_
     return k_ra8_err_invalid_size;
   }
   const uint32_t magic = internal_get_le32(buf);
-  if (magic == (uint32_t)k_ck_legacy_magic_le || magic == (uint32_t)k_ck_legacy_magic_swapped) {
+  if (magic == (uint32_t)k_ck_legacy_magic_le) {
+    return k_ra8_err_not_supported;
+  }
+  if (magic == (uint32_t)k_ck_legacy_magic_swapped) {
     return k_ra8_err_not_supported;
   }
   if (magic != (uint32_t)k_ck_magic) {
@@ -567,7 +583,10 @@ internal_validate_header(const ra8_ftl_t* ftl, const uint8_t* buf, uint32_t buf_
   if (internal_get_le16(&buf[k_ck_off_header_bytes]) != (uint16_t)k_ck_header_bytes) {
     return k_ra8_err_invalid_size;
   }
-  if (internal_get_le32(&buf[k_ck_off_total_bytes]) != buf_len || buf_len != need) {
+  if (internal_get_le32(&buf[k_ck_off_total_bytes]) != buf_len) {
+    return k_ra8_err_invalid_size;
+  }
+  if (buf_len != need) {
     return k_ra8_err_invalid_size;
   }
   if (internal_get_le32(&buf[k_ck_off_logical_blocks]) != ftl->logical_blocks) {
