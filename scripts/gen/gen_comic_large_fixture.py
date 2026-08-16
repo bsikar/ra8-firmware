@@ -175,14 +175,22 @@ def emit_header(path: str | Path, cbz: bytes) -> None:
     for start in range(0, len(cbz), BYTES_PER_ROW):
         chunk = cbz[start : start + BYTES_PER_ROW]
         rows.append("  " + " ".join(f"0x{byte:02X}," for byte in chunk))
+    # The length is derived from the array rather than emitted as a literal,
+    # and the geometry is a typed enum: check_magic_numbers.py now reads
+    # headers too, and both spellings are what the project rule asks for.
     footer = (
         "\n};\n\n"
         "/** @brief Length of ::k_comic_large_cbz in bytes. */\n"
-        f"static const uint32_t k_comic_large_cbz_len = {len(cbz)}U;\n\n"
-        "/** @brief Decoded width of the baked oversized page, pixels. */\n"
-        f"static const uint32_t k_comic_large_w = {PAGE_W}U;\n\n"
-        "/** @brief Decoded height of the baked oversized page, pixels. */\n"
-        f"static const uint32_t k_comic_large_h = {PAGE_H}U;\n"
+        "static const uint32_t k_comic_large_cbz_len = (uint32_t)sizeof(k_comic_large_cbz);\n\n"
+        "/**\n"
+        " * @brief Decoded geometry of the baked oversized page.\n"
+        " * @details These are properties of the baked bytes above, not tunables: the\n"
+        " * decoder must reproduce exactly this size or the fixture is wrong.\n"
+        " */\n"
+        "typedef enum : uint32_t {\n"
+        f"  k_comic_large_w = {PAGE_W}U, /**< Decoded width in pixels.  */\n"
+        f"  k_comic_large_h = {PAGE_H}U, /**< Decoded height in pixels. */\n"
+        "} comic_large_geometry_t;\n"
     )
     Path(path).write_text(header + "\n".join(rows) + footer, encoding="ascii")
 

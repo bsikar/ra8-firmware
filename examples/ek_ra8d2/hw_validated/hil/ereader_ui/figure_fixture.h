@@ -66,4 +66,4 @@ static const uint8_t k_er_figure_png[] = {
 };
 
 /** @brief Length of ::k_er_figure_png in bytes. */
-static const uint32_t k_er_figure_png_len = 735U;
+static const uint32_t k_er_figure_png_len = (uint32_t)sizeof(k_er_figure_png);
