@@ -286,6 +286,12 @@ foreach(src ${RA8_TEST_SOURCES})
   ra8_add_test(${name})
 endforeach()
 
+# The strict book-stream MC/DC vectors call documented private validator seams
+# whose types and declarations remain outside the public library ABI.
+if(TARGET test_ra8_book_stream)
+  target_include_directories(test_ra8_book_stream PRIVATE ${FW_ROOT}/libs/ra8_book/src)
+endif()
+
 # The resident and streaming RABOOK1 tests share one caller-owned fixture
 # implementation. Compile it into each standalone executable so neither test
 # depends on state or symbols owned by its sibling process.

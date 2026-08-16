@@ -20,6 +20,7 @@
 #include "ra8_attributes.h"
 #include "ra8_book_chunked.h"
 #include "ra8_book_stream.h"
+#include "ra8_book_stream_internal.h"
 #include "ra8_io_compress.h"
 #include "ra8_rabook_container.h"
 #include "unity_minimal.h"
@@ -82,13 +83,13 @@ static tinfl_decompressor  s_tinfl;
 
 /** @brief Compute the fixture's logical length without trailing struct padding.
  */
-static uint32_t flat_len(void)
+RA8_INTERNAL static uint32_t internal_flat_len(void)
 {
   return (uint32_t)(offsetof(stream_book_t, pool) + sizeof(s_book.pool));
 }
 
 /** @brief Compute the standard reflected CRC-32 used by the RABOOK header. */
-static uint32_t fixture_crc32(const uint8_t* data, uint32_t len)
+RA8_INTERNAL static uint32_t internal_fixture_crc32(const uint8_t* data, uint32_t len)
 {
   uint32_t crc = 0xFFFFFFFFU;
   for (uint32_t i = 0U; i < len; ++i) {
@@ -102,14 +103,15 @@ static uint32_t fixture_crc32(const uint8_t* data, uint32_t len)
 }
 
 /** @brief Refresh the body CRC after one semantic corruption vector. */
-static void refresh_crc(void)
+RA8_INTERNAL static void internal_refresh_crc(void)
 {
   const uint8_t* body = (const uint8_t*)&s_book + k_ra8_book_sizeof_header;
-  s_book.hdr.crc32    = fixture_crc32(body, flat_len() - (uint32_t)k_ra8_book_sizeof_header);
+  s_book.hdr.crc32 =
+    internal_fixture_crc32(body, internal_flat_len() - (uint32_t)k_ra8_book_sizeof_header);
 }
 
 /** @brief Append one NUL-terminated string to the exact fixture pool. */
-static uint32_t fixture_intern(uint32_t* cursor, const char* text)
+RA8_INTERNAL static uint32_t internal_fixture_intern(uint32_t* cursor, const char* text)
 {
   const uint32_t at  = *cursor;
   const uint32_t len = (uint32_t)strlen(text) + 1U;
@@ -126,7 +128,7 @@ static void internal_setup_book_header(void)
   (void)memset(&s_book, 0, sizeof(s_book));
   (void)memcpy(s_book.hdr.magic, "RABOOK1", sizeof(s_book.hdr.magic));
   s_book.hdr.format_version   = (uint32_t)k_ra8_book_format_version;
-  s_book.hdr.total_size       = flat_len();
+  s_book.hdr.total_size       = internal_flat_len();
   s_book.hdr.chapter_count    = 1U;
   s_book.hdr.chapter_off      = offsetof(stream_book_t, chapters);
   s_book.hdr.node_count       = 2U;
@@ -149,15 +151,15 @@ static void internal_setup_book(void)
 {
   internal_setup_book_header();
   uint32_t       cursor        = 1U;
-  const uint32_t body          = fixture_intern(&cursor, "body");
-  const uint32_t klass         = fixture_intern(&cursor, "class");
-  const uint32_t page          = fixture_intern(&cursor, "page");
-  const uint32_t text          = fixture_intern(&cursor, "hello");
-  const uint32_t title         = fixture_intern(&cursor, "one");
-  const uint32_t href          = fixture_intern(&cursor, "one.xhtml");
-  const uint32_t css           = fixture_intern(&cursor, "p{}");
-  const uint32_t raster        = fixture_intern(&cursor, "p.gray");
-  const uint32_t svg           = fixture_intern(&cursor, "v.svg");
+  const uint32_t body          = internal_fixture_intern(&cursor, "body");
+  const uint32_t klass         = internal_fixture_intern(&cursor, "class");
+  const uint32_t page          = internal_fixture_intern(&cursor, "page");
+  const uint32_t text          = internal_fixture_intern(&cursor, "hello");
+  const uint32_t title         = internal_fixture_intern(&cursor, "one");
+  const uint32_t href          = internal_fixture_intern(&cursor, "one.xhtml");
+  const uint32_t css           = internal_fixture_intern(&cursor, "p{}");
+  const uint32_t raster        = internal_fixture_intern(&cursor, "p.gray");
+  const uint32_t svg           = internal_fixture_intern(&cursor, "v.svg");
   s_book.hdr.title_off         = title;
   s_book.hdr.author_off        = 0U;
   s_book.hdr.language_off      = 0U;
@@ -201,11 +203,12 @@ static void internal_setup_book(void)
   s_book.pool[0]   = 0x1FU;
   s_book.pool[1]   = 0xA5U;
   (void)memcpy(&s_book.pool[2], "<s/>", 4U);
-  refresh_crc();
+  internal_refresh_crc();
 }
 
 /** @brief Exact random read used by flat and packed-memory fixtures. */
-static ra8_err_t memory_read(void* ctx, uint64_t offset, uint8_t* dst, uint32_t len)
+RA8_INTERNAL static ra8_err_t
+internal_memory_read(void* ctx, uint64_t offset, uint8_t* dst, uint32_t len)
 {
   stream_mem_t* mem = (stream_mem_t*)ctx;
   mem->calls++;
@@ -220,11 +223,11 @@ static ra8_err_t memory_read(void* ctx, uint64_t offset, uint8_t* dst, uint32_t 
 }
 
 /** @brief Validate the current flat fixture through the public strict API. */
-static ra8_err_t validate_flat(void)
+RA8_INTERNAL static ra8_err_t internal_validate_flat(void)
 {
-  stream_mem_t      mem = {.data = (uint8_t*)&s_book, .len = flat_len()};
+  stream_mem_t      mem = {.data = (uint8_t*)&s_book, .len = internal_flat_len()};
   ra8_book_header_t hdr = {};
-  return ra8_book_validate_stream_strict(memory_read,
+  return ra8_book_validate_stream_strict(internal_memory_read,
                                          &mem,
                                          mem.len,
                                          s_validate_work,
@@ -232,12 +235,177 @@ static ra8_err_t validate_flat(void)
                                          &hdr);
 }
 
+/**
+ * @brief Bind direct private-validator calls to the canonical flat fixture.
+ * @param[out] mem Receives the exact memory-source descriptor.
+ * @return Fully initialized private validation context.
+ * @pre internal_setup_book() initialized ::s_book.
+ * @pre @p mem addresses one writable descriptor.
+ * @post The result reads from ::s_book and borrows ::s_validate_work.
+ * @post No validation pass has run yet.
+ * @note Test-only fixture helper with caller-owned storage.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static stream_validate_t internal_direct_context(stream_mem_t* mem)
+{
+  *mem = (stream_mem_t){.data = (uint8_t*)&s_book, .len = internal_flat_len()};
+  return (stream_validate_t){.read        = internal_memory_read,
+                             .read_ctx    = mem,
+                             .source_size = mem->len,
+                             .scratch     = s_validate_work,
+                             .scratch_cap = sizeof(s_validate_work),
+                             .hdr         = s_book.hdr};
+}
+
+/**
+ * @test internal_test_mcdc_stream_read_and_envelope
+ * @brief Isolate exact-read and string-envelope compound guards.
+ * @par MC/DC:
+ * `libs/ra8_book/src/ra8_book_stream.c@priv_book_stream_read` receives the
+ * valid end/zero control, then offset-past-end and length-past-remaining
+ * vectors that independently determine its two-condition OR.
+ * `libs/ra8_book/src/ra8_book_stream.c@priv_book_stream_validate_string_envelope`
+ * receives canonical, first-byte, last-byte, and same-corruption/read-fault
+ * vectors. They independently determine read success and both sentinel tests.
+ * @details Calls the documented private seam because validated public layouts
+ * cannot request an out-of-range internal span.
+ * @pre The fixture source is mutable and restored before each vector.
+ * @pre The validation context borrows live fixture storage.
+ * @post Every compound condition has an independently determining vector.
+ * @post The final fixture is canonical.
+ * @note Test-only; no public book ABI changes.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_test_mcdc_stream_read_and_envelope(void)
+{
+  TEST_BEGIN("book stream read and envelope MC/DC");
+  internal_setup_book();
+  stream_mem_t      mem  = {};
+  stream_validate_t ctx  = internal_direct_context(&mem);
+  uint8_t           byte = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, priv_book_stream_read(&ctx, ctx.source_size, &byte, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 priv_book_stream_read(&ctx, ctx.source_size + 1U, &byte, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, priv_book_stream_read(&ctx, ctx.source_size, &byte, 1U));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_book_stream_validate_string_envelope(&ctx));
+  s_book.strings[0] = 1;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_book_stream_validate_string_envelope(&ctx));
+  mem.calls     = 0U;
+  mem.fail_call = 1U;
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, priv_book_stream_validate_string_envelope(&ctx));
+  internal_setup_book();
+  ctx                                         = internal_direct_context(&mem);
+  s_book.strings[sizeof(s_book.strings) - 1U] = 1;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_book_stream_validate_string_envelope(&ctx));
+  internal_setup_book();
+  TEST_END("book stream read and envelope MC/DC");
+}
+
+/**
+ * @test internal_test_mcdc_stream_metadata_and_styles
+ * @brief Isolate optional cover and stylesheet-scope guards.
+ * @par MC/DC:
+ * `libs/ra8_book/src/ra8_book_stream.c@priv_book_stream_validate_metadata`
+ * receives nil, valid, and image-count cover values for its two-condition AND.
+ * `libs/ra8_book/src/ra8_book_stream.c@priv_book_stream_validate_styles`
+ * receives nil, valid, out-of-range, and invalid-source/out-of-range vectors
+ * for read success, non-nil scope, and the chapter bound.
+ * @details Rebuilds the canonical flat fixture between independent mutations.
+ * @pre Fixture records use canonical host/wire little-endian layout.
+ * @pre The direct context borrows the current fixture.
+ * @post All metadata and stylesheet conditions independently determine.
+ * @post The final fixture is canonical.
+ * @note Test-only direct private-seam coverage.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_test_mcdc_stream_metadata_and_styles(void)
+{
+  TEST_BEGIN("book stream metadata and styles MC/DC");
+  internal_setup_book();
+  stream_mem_t      mem = {};
+  stream_validate_t ctx = internal_direct_context(&mem);
+  TEST_ASSERT_EQ(k_ra8_ok, priv_book_stream_validate_metadata(&ctx));
+  ctx.hdr.cover_image_index = (uint32_t)k_ra8_book_nil;
+  TEST_ASSERT_EQ(k_ra8_ok, priv_book_stream_validate_metadata(&ctx));
+  ctx.hdr.cover_image_index = ctx.hdr.image_count;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_book_stream_validate_metadata(&ctx));
+  ctx.hdr = s_book.hdr;
+  TEST_ASSERT_EQ(k_ra8_ok, priv_book_stream_validate_styles(&ctx));
+  s_book.styles[0].scope_chapter = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, priv_book_stream_validate_styles(&ctx));
+  s_book.styles[0].scope_chapter = ctx.hdr.chapter_count;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_book_stream_validate_styles(&ctx));
+  s_book.styles[0].source_off = ctx.hdr.string_size;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_book_stream_validate_styles(&ctx));
+  internal_setup_book();
+  TEST_END("book stream metadata and styles MC/DC");
+}
+
+/**
+ * @test internal_test_mcdc_stream_node_kinds
+ * @brief Isolate element attribute-span and text-field guards.
+ * @par MC/DC:
+ * `libs/ra8_book/src/ra8_book_stream.c@priv_book_stream_validate_element`
+ * receives canonical, wrong-first, and excessive-count vectors for its OR.
+ * `libs/ra8_book/src/ra8_book_stream.c@priv_book_stream_validate_text`
+ * receives canonical plus one mutation for each of its four OR operands.
+ * @details Copies canonical records before each one-field mutation.
+ * @pre The string pool and referenced names are canonical.
+ * @pre Host layout matches the asserted RABOOK1 wire record layout.
+ * @post Every element and text operand independently determines rejection.
+ * @post The source fixture remains usable by later tests.
+ * @note Test-only direct private-seam coverage.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_test_mcdc_stream_node_kinds(void)
+{
+  TEST_BEGIN("book stream node-kind MC/DC");
+  internal_setup_book();
+  stream_mem_t      mem    = {};
+  stream_validate_t ctx    = internal_direct_context(&mem);
+  uint32_t          cursor = 0U;
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    priv_book_stream_validate_element(&ctx, (const uint8_t*)&s_book.nodes[0], &cursor));
+  ra8_book_node_t element = s_book.nodes[0];
+  element.first_attr      = 1U;
+  cursor                  = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 priv_book_stream_validate_element(&ctx, (const uint8_t*)&element, &cursor));
+  element            = s_book.nodes[0];
+  element.attr_count = 2U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 priv_book_stream_validate_element(&ctx, (const uint8_t*)&element, &cursor));
+  const ra8_book_node_t canonical = s_book.nodes[1];
+  TEST_ASSERT_EQ(k_ra8_ok, priv_book_stream_validate_text(&ctx, (const uint8_t*)&canonical));
+  ra8_book_node_t text = canonical;
+  text.attr_count      = 1U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 priv_book_stream_validate_text(&ctx, (const uint8_t*)&text));
+  text          = canonical;
+  text.name_off = 1U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 priv_book_stream_validate_text(&ctx, (const uint8_t*)&text));
+  text            = canonical;
+  text.first_attr = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 priv_book_stream_validate_text(&ctx, (const uint8_t*)&text));
+  text             = canonical;
+  text.first_child = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 priv_book_stream_validate_text(&ctx, (const uint8_t*)&text));
+  TEST_END("book stream node-kind MC/DC");
+}
+
 /** @brief Flat-source callback expected by the production RBKC writer. */
-static ra8_err_t
-writer_read(void* ctx, uint32_t offset, uint8_t* dst, uint32_t requested, uint32_t* out_read)
+RA8_INTERNAL static ra8_err_t internal_writer_read(void*     ctx,
+                                                   uint32_t  offset,
+                                                   uint8_t*  dst,
+                                                   uint32_t  requested,
+                                                   uint32_t* out_read)
 {
   stream_mem_t*   mem = (stream_mem_t*)ctx;
-  const ra8_err_t err = memory_read(mem, offset, dst, requested);
+  const ra8_err_t err = internal_memory_read(mem, offset, dst, requested);
   if (err == k_ra8_ok) {
     *out_read = requested;
   }
@@ -245,11 +413,11 @@ writer_read(void* ctx, uint32_t offset, uint8_t* dst, uint32_t requested, uint32
 }
 
 /** @brief Random-write callback expected by the production RBKC writer. */
-static ra8_err_t writer_write(void*          ctx,
-                              uint64_t       offset,
-                              const uint8_t* src,
-                              uint32_t       requested,
-                              uint32_t*      out_written)
+RA8_INTERNAL static ra8_err_t internal_writer_write(void*          ctx,
+                                                    uint64_t       offset,
+                                                    const uint8_t* src,
+                                                    uint32_t       requested,
+                                                    uint32_t*      out_written)
 {
   stream_mem_t* mem = (stream_mem_t*)ctx;
   if ((offset > mem->len) || ((uint64_t)requested > (mem->len - offset))) {
@@ -261,8 +429,11 @@ static ra8_err_t writer_write(void*          ctx,
 }
 
 /** @brief RFC 1950 inflater used by the production chunk reader. */
-static ra8_err_t
-fixture_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* out_len)
+RA8_INTERNAL static ra8_err_t internal_fixture_inflate(const void* src,
+                                                       size_t      src_len,
+                                                       void*       dst,
+                                                       size_t      dst_cap,
+                                                       size_t*     out_len)
 {
   tinfl_init(&s_tinfl);
   size_t             in_n   = src_len;
@@ -298,18 +469,18 @@ fixture_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size
  * Decisions: libs/ra8_book/src/ra8_book_stream.c@ra8_book_validate_stream_strict
  * Decisions: libs/ra8_book/src/ra8_book_xhtml.c@ra8_book_chapter_to_xhtml
  */
-static void test_flat_happy_and_args(void)
+RA8_INTERNAL static void internal_test_flat_happy_and_args(void)
 {
   TEST_BEGIN("strict stream flat happy and arguments");
   internal_setup_book();
-  TEST_ASSERT_EQ(k_ra8_ok, validate_flat());
+  TEST_ASSERT_EQ(k_ra8_ok, internal_validate_flat());
   char   xhtml[64] = {};
   size_t xhtml_len = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_book_chapter_to_xhtml(&s_book, 0U, xhtml, sizeof(xhtml) - 1U, &xhtml_len));
   TEST_ASSERT_EQ(strlen("<body class=\"page\">hello</body>"), xhtml_len);
   TEST_ASSERT_EQ(0, strcmp(xhtml, "<body class=\"page\">hello</body>"));
-  stream_mem_t      mem = {.data = (uint8_t*)&s_book, .len = flat_len()};
+  stream_mem_t      mem = {.data = (uint8_t*)&s_book, .len = internal_flat_len()};
   ra8_book_header_t hdr = {.total_size = UINT32_MAX};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_book_validate_stream_strict(NULL,
@@ -318,9 +489,13 @@ static void test_flat_happy_and_args(void)
                                                  s_validate_work,
                                                  sizeof(s_validate_work),
                                                  &hdr));
-  TEST_ASSERT_EQ(
-    k_ra8_err_invalid_size,
-    ra8_book_validate_stream_strict(memory_read, &mem, mem.len, s_validate_work, 0U, &hdr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_book_validate_stream_strict(internal_memory_read,
+                                                 &mem,
+                                                 mem.len,
+                                                 s_validate_work,
+                                                 0U,
+                                                 &hdr));
   TEST_ASSERT_EQ(0U, hdr.total_size);
   TEST_END("strict stream flat happy and arguments");
 }
@@ -343,29 +518,29 @@ static void test_flat_happy_and_args(void)
  * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_validate_chapters
  * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_validate_crc
  */
-static void test_header_table_string_crc_corruption(void)
+RA8_INTERNAL static void internal_test_header_table_string_crc_corruption(void)
 {
   TEST_BEGIN("strict stream header table string and CRC corruption");
   internal_setup_book();
   s_book.hdr.magic[0] = 'X';
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
   internal_setup_book();
   s_book.hdr.flags = 0x80000000U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
   internal_setup_book();
   s_book.hdr.chapter_off++;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, validate_flat());
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, internal_validate_flat());
   internal_setup_book();
   s_book.hdr.title_off++;
-  refresh_crc();
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
   internal_setup_book();
   s_book.chapters[0].root_node = s_book.hdr.node_count;
-  refresh_crc();
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
   internal_setup_book();
   s_book.hdr.crc32 ^= UINT32_MAX;
-  TEST_ASSERT_EQ(k_ra8_err_range_check_failed, validate_flat());
+  TEST_ASSERT_EQ(k_ra8_err_range_check_failed, internal_validate_flat());
   TEST_END("strict stream header table string and CRC corruption");
 }
 
@@ -386,32 +561,32 @@ static void test_header_table_string_crc_corruption(void)
  * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_mark_forward_link
  * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_validate_nodes
  */
-static void test_dom_ownership_and_renderer_safety(void)
+RA8_INTERNAL static void internal_test_dom_ownership_and_renderer_safety(void)
 {
   TEST_BEGIN("strict stream DOM ownership and renderer safety");
   internal_setup_book();
   s_book.nodes[1].next_sibling = 0U;
-  refresh_crc();
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
   internal_setup_book();
   s_book.nodes[1].kind         = (uint8_t)k_ra8_book_node_element;
   s_book.nodes[1].name_off     = s_book.nodes[0].name_off;
   s_book.nodes[1].text_off     = 0U;
   s_book.chapters[0].root_node = 1U;
-  refresh_crc();
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
   internal_setup_book();
   s_book.nodes[0].first_child = (uint32_t)k_ra8_book_nil;
-  refresh_crc();
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
   internal_setup_book();
   s_book.nodes[0].name_off = 0U;
-  refresh_crc();
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
   internal_setup_book();
   s_book.attrs[0].name_off = 0U;
-  refresh_crc();
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
   TEST_END("strict stream DOM ownership and renderer safety");
 }
 
@@ -434,31 +609,31 @@ static void test_dom_ownership_and_renderer_safety(void)
  * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_validate_svg
  * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_validate_images
  */
-static void test_image_corruption(void)
+RA8_INTERNAL static void internal_test_image_corruption(void)
 {
   TEST_BEGIN("strict stream image corruption");
   internal_setup_book();
   s_book.images[0].format = UINT8_MAX;
-  refresh_crc();
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, validate_flat());
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_validate_flat());
   internal_setup_book();
   s_book.images[0].data_size++;
-  refresh_crc();
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, validate_flat());
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, internal_validate_flat());
   internal_setup_book();
   s_book.images[1].data_off++;
-  refresh_crc();
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, validate_flat());
+  internal_refresh_crc();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, internal_validate_flat());
   internal_setup_book();
   s_book.images[1].data_size = 0U;
   s_book.images[1].raw_size  = 0U;
   s_book.hdr.image_pool_size = 2U;
   s_book.hdr.total_size      = s_book.hdr.image_pool_off + 2U;
-  refresh_crc();
+  internal_refresh_crc();
   stream_mem_t      mem = {.data = (uint8_t*)&s_book, .len = s_book.hdr.total_size};
   ra8_book_header_t hdr = {};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_book_validate_stream_strict(memory_read,
+                 ra8_book_validate_stream_strict(internal_memory_read,
                                                  &mem,
                                                  mem.len,
                                                  s_validate_work,
@@ -482,12 +657,12 @@ static void test_image_corruption(void)
  * Decisions: libs/ra8_book/src/ra8_book_chunked_validate.c@internal_chunk_flat_read
  * Decisions: libs/ra8_book/src/ra8_book_chunked_validate.c@ra8_book_chunked_validate_strict
  */
-static void test_production_rbkc_round_trip_and_chunk_corruption(void)
+RA8_INTERNAL static void internal_test_production_rbkc_round_trip_and_chunk_corruption(void)
 {
   TEST_BEGIN("strict stream production RBKC round trip and chunk corruption");
   internal_setup_book();
   (void)memset(s_packed, 0, sizeof(s_packed));
-  stream_mem_t                     source = {.data = (uint8_t*)&s_book, .len = flat_len()};
+  stream_mem_t                     source = {.data = (uint8_t*)&s_book, .len = internal_flat_len()};
   stream_mem_t                     dest   = {.data = s_packed, .len = sizeof(s_packed)};
   ra8_rabook_container_workspace_t ws = {.input          = s_chunk_in,
                                          .compressed     = s_compressed,
@@ -499,11 +674,11 @@ static void test_production_rbkc_round_trip_and_chunk_corruption(void)
                                          .offset_cap = sizeof(s_offsets) / sizeof(s_offsets[0])};
   uint64_t                         packed_len = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_rabook_container_write(writer_read,
+                 ra8_rabook_container_write(internal_writer_read,
                                             &source,
-                                            flat_len(),
+                                            internal_flat_len(),
                                             k_stream_chunk,
-                                            writer_write,
+                                            internal_writer_write,
                                             &dest,
                                             &ws,
                                             &packed_len));
@@ -512,10 +687,10 @@ static void test_production_rbkc_round_trip_and_chunk_corruption(void)
   ra8_book_chunked_t rd                      = {};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_book_chunked_open(&rd,
-                                       memory_read,
+                                       internal_memory_read,
                                        &file,
                                        file.len,
-                                       fixture_inflate,
+                                       internal_fixture_inflate,
                                        table,
                                        sizeof(table) / sizeof(table[0]),
                                        s_reader_staging,
@@ -528,7 +703,7 @@ static void test_production_rbkc_round_trip_and_chunk_corruption(void)
                                                   s_validate_work,
                                                   sizeof(s_validate_work),
                                                   &hdr));
-  TEST_ASSERT_EQ(flat_len(), hdr.total_size);
+  TEST_ASSERT_EQ(internal_flat_len(), hdr.total_size);
   const uint32_t middle     = rd.chunk_count / 2U;
   const uint64_t corrupt_at = rd.payload_off + rd.table[middle] + 2U;
   s_packed[corrupt_at] ^= 0x5AU;
@@ -548,7 +723,7 @@ static void internal_open_chunk_guard_fixture(stream_guard_fixture_t* fixture)
 {
   internal_setup_book();
   (void)memset(s_packed, 0, sizeof(s_packed));
-  stream_mem_t                     source = {.data = (uint8_t*)&s_book, .len = flat_len()};
+  stream_mem_t                     source = {.data = (uint8_t*)&s_book, .len = internal_flat_len()};
   stream_mem_t                     dest   = {.data = s_packed, .len = sizeof(s_packed)};
   ra8_rabook_container_workspace_t ws = {.input          = s_chunk_in,
                                          .compressed     = s_compressed,
@@ -560,21 +735,21 @@ static void internal_open_chunk_guard_fixture(stream_guard_fixture_t* fixture)
                                          .offset_cap = sizeof(s_offsets) / sizeof(s_offsets[0])};
   uint64_t                         packed_len = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_rabook_container_write(writer_read,
+                 ra8_rabook_container_write(internal_writer_read,
                                             &source,
-                                            flat_len(),
+                                            internal_flat_len(),
                                             k_stream_chunk,
-                                            writer_write,
+                                            internal_writer_write,
                                             &dest,
                                             &ws,
                                             &packed_len));
   fixture->file = (stream_mem_t){.data = s_packed, .len = packed_len};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_book_chunked_open(&fixture->reader,
-                                       memory_read,
+                                       internal_memory_read,
                                        &fixture->file,
                                        fixture->file.len,
-                                       fixture_inflate,
+                                       internal_fixture_inflate,
                                        fixture->table,
                                        sizeof(fixture->table) / sizeof(fixture->table[0]),
                                        s_reader_staging,
@@ -696,11 +871,14 @@ static void internal_test_chunked_workspace_and_reader_guards(void)
 
 int main(void)
 {
-  test_flat_happy_and_args();
-  test_header_table_string_crc_corruption();
-  test_dom_ownership_and_renderer_safety();
-  test_image_corruption();
-  test_production_rbkc_round_trip_and_chunk_corruption();
+  internal_test_mcdc_stream_read_and_envelope();
+  internal_test_mcdc_stream_metadata_and_styles();
+  internal_test_mcdc_stream_node_kinds();
+  internal_test_flat_happy_and_args();
+  internal_test_header_table_string_crc_corruption();
+  internal_test_dom_ownership_and_renderer_safety();
+  internal_test_image_corruption();
+  internal_test_production_rbkc_round_trip_and_chunk_corruption();
   internal_test_chunked_workspace_and_reader_guards();
   return 0;
 }
