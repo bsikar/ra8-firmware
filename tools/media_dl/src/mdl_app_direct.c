@@ -15,7 +15,7 @@ typedef struct {
   mdl_export_output_t output;      /**< Structurally validated output stage. */
   mdl_storage_t*      storage;     /**< Exclusive portable storage binding.  */
   const char*         destination; /**< Canonical final artifact path.       */
-  mdl_format_t        format;      /**< Exact canonical verifier selection.  */
+  ra8_mdl_format_t    format;      /**< Exact canonical verifier selection.  */
 } mdl_direct_artifact_sink_t;
 
 /** @brief Append three borrowed direct-action fragments to one stream.
@@ -589,7 +589,7 @@ internal_finish_artifact_fetch(mdl_direct_artifact_sink_t* state, ra8_err_t erro
  */
 RA8_INTERNAL static bool internal_fetch_artifact(const char*           url,
                                                  const char*           final_path,
-                                                 mdl_format_t          format,
+                                                 ra8_mdl_format_t      format,
                                                  uint32_t              timeout,
                                                  const mdl_run_opts_t* opts,
                                                  size_t*               got)
@@ -661,7 +661,7 @@ RA8_PRIV int priv_mdl_app_run_artifact(const char*           url,
 {
   char leaf[k_leaf_name_bytes];
   mdl_urlname_last_segment(url, leaf, sizeof(leaf));
-  mdl_format_t format = k_mdl_fmt_invalid;
+  ra8_mdl_format_t format = k_ra8_mdl_format_invalid;
   if ((mdl_format_from_path(leaf, &format) != k_ra8_ok) || !mdl_format_is_verifiable(format)) {
     internal_direct_latch(internal_direct_text3(priv_mdl_app_context()->diagnostic,
                                                 "media_dl: direct artifact '",
@@ -850,7 +850,7 @@ RA8_PRIV int priv_mdl_app_run_page(const char*           url,
  * @since Version 0.1.0
  */
 RA8_INTERNAL static int
-internal_pack_directory_output(const char* dir, const char* ext, mdl_format_t format)
+internal_pack_directory_output(const char* dir, const char* ext, ra8_mdl_format_t format)
 {
   const ra8_err_t error = mdl_export_chapter_ws(&priv_mdl_app_context()->storage,
                                                 format,
@@ -887,7 +887,7 @@ internal_pack_directory_output(const char* dir, const char* ext, mdl_format_t fo
  * @since Version 0.1.0
  */
 RA8_INTERNAL static int
-internal_pack_file_output(const char* dir, const char* ext, mdl_format_t format)
+internal_pack_file_output(const char* dir, const char* ext, ra8_mdl_format_t format)
 {
   char      out[k_fw_fs_path_cap];
   const int length = snprintf(out, sizeof(out), "%s.%s", dir, ext);
@@ -931,9 +931,9 @@ internal_pack_file_output(const char* dir, const char* ext, mdl_format_t format)
  * @note Not thread-safe because it uses the shared exporter workspace.
  * @since 0.1.0
  */
-RA8_PRIV int priv_mdl_app_run_pack(const char* dir, mdl_format_t format)
+RA8_PRIV int priv_mdl_app_run_pack(const char* dir, ra8_mdl_format_t format)
 {
-  if ((format == k_mdl_fmt_loose) || (format == k_mdl_fmt_invalid)) {
+  if ((format == k_ra8_mdl_format_loose) || (format == k_ra8_mdl_format_invalid)) {
     const ra8_err_t output_error = priv_mdl_stream_text(k_ra8_ok,
                                                         priv_mdl_app_context()->diagnostic,
                                                         "media_dl: --pack needs a --format "
@@ -977,7 +977,7 @@ RA8_PRIV int priv_mdl_app_run_pack(const char* dir, mdl_format_t format)
  * @since 0.1.0
  */
 RA8_PRIV series_run_t priv_mdl_app_build_run(const mdl_args_t*     a,
-                                             mdl_format_t          format,
+                                             ra8_mdl_format_t      format,
                                              const mdl_run_opts_t* opts,
                                              const mdl_nums_t*     n)
 {

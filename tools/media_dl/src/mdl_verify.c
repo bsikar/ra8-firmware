@@ -179,34 +179,35 @@ RA8_INTERNAL static bool internal_safe_member_name(const char* name)
   }
 }
 
-ra8_err_t mdl_format_from_path(const char* path, mdl_format_t* out_format)
+ra8_err_t mdl_format_from_path(const char* path, ra8_mdl_format_t* out_format)
 {
   if ((path == nullptr) || (out_format == nullptr)) {
     return k_ra8_err_invalid_arg;
   }
   static const struct {
-    const char*  suffix; /**< Complete artifact suffix. */
-    mdl_format_t format; /**< Corresponding format.     */
-  } formats[] = {{".cbt.gz", k_mdl_fmt_cbt_gz},
-                 {".rabook", k_mdl_fmt_rabook},
-                 {".epub", k_mdl_fmt_epub},
-                 {".cbz", k_mdl_fmt_cbz},
-                 {".cbt", k_mdl_fmt_cbt},
-                 {".jof", k_mdl_fmt_jof}};
+    const char*      suffix; /**< Complete artifact suffix. */
+    ra8_mdl_format_t format; /**< Corresponding format.     */
+  } formats[] = {{".cbt.gz", k_ra8_mdl_format_cbt_gz},
+                 {".rabook", k_ra8_mdl_format_rabook},
+                 {".epub", k_ra8_mdl_format_epub},
+                 {".cbz", k_ra8_mdl_format_cbz},
+                 {".cbt", k_ra8_mdl_format_cbt},
+                 {".jof", k_ra8_mdl_format_jof}};
   for (size_t i = 0U; i < (sizeof(formats) / sizeof(formats[0])); ++i) {
     if (internal_ends_ci(path, formats[i].suffix)) {
       *out_format = formats[i].format;
       return k_ra8_ok;
     }
   }
-  *out_format = k_mdl_fmt_invalid;
+  *out_format = k_ra8_mdl_format_invalid;
   return k_ra8_err_not_supported;
 }
 
-bool mdl_format_is_verifiable(mdl_format_t format)
+bool mdl_format_is_verifiable(ra8_mdl_format_t format)
 {
-  return (format == k_mdl_fmt_cbz) || (format == k_mdl_fmt_cbt) || (format == k_mdl_fmt_cbt_gz) ||
-         (format == k_mdl_fmt_epub) || (format == k_mdl_fmt_jof) || (format == k_mdl_fmt_rabook);
+  return (format == k_ra8_mdl_format_cbz) || (format == k_ra8_mdl_format_cbt) ||
+         (format == k_ra8_mdl_format_cbt_gz) || (format == k_ra8_mdl_format_epub) ||
+         (format == k_ra8_mdl_format_jof) || (format == k_ra8_mdl_format_rabook);
 }
 
 /** @brief Allocate one aligned miniz span from a monotonic arena. */
@@ -446,22 +447,23 @@ internal_zip_member(mz_zip_archive* zip, mz_uint index, mdl_zip_scan_t* scan)
  * @pre scan and report are valid. @pre format is CBZ or EPUB.
  * @post Success publishes semantic counts. @post Failure does not touch caller output. @note ZIP structure is already verified. @since v0.1.0
  */
-RA8_INTERNAL static ra8_err_t
-internal_zip_semantics(mdl_format_t format, const mdl_zip_scan_t* scan, mdl_verify_report_t* report)
+RA8_INTERNAL static ra8_err_t internal_zip_semantics(ra8_mdl_format_t      format,
+                                                     const mdl_zip_scan_t* scan,
+                                                     mdl_verify_report_t*  report)
 {
   if ((scan->members == 0U) || (scan->pages == 0U)) {
     return k_ra8_err_validation_failed;
   }
-  if ((format == k_mdl_fmt_cbz) && !scan->comicinfo) {
+  if ((format == k_ra8_mdl_format_cbz) && !scan->comicinfo) {
     return k_ra8_err_validation_failed;
   }
-  if ((format == k_mdl_fmt_epub) &&
+  if ((format == k_ra8_mdl_format_epub) &&
       !(scan->mimetype && scan->container && scan->opf && scan->nav)) {
     return k_ra8_err_validation_failed;
   }
   report->page_count       = scan->pages;
   report->member_count     = scan->members;
-  report->metadata_present = (format == k_mdl_fmt_cbz) ? scan->comicinfo : scan->opf;
+  report->metadata_present = (format == k_ra8_mdl_format_cbz) ? scan->comicinfo : scan->opf;
   return k_ra8_ok;
 }
 
@@ -472,7 +474,7 @@ internal_zip_semantics(mdl_format_t format, const mdl_zip_scan_t* scan, mdl_veri
  * @post The input remains open. @post Success fills report. @note Every file member is CRC checked. @since v0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_verify_zip(mdl_verify_io_t*        io,
-                                                  mdl_format_t            format,
+                                                  ra8_mdl_format_t        format,
                                                   mdl_export_workspace_t* workspace,
                                                   mdl_verify_report_t*    report)
 {
@@ -895,34 +897,34 @@ RA8_INTERNAL static ra8_err_t internal_verify_jof(mdl_verify_io_t* io, mdl_verif
  * @post io remains open. @post Success fills report. @note Unsupported formats stay explicit. @since v0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_verify_borrowed(mdl_verify_io_t*        io,
-                                                       mdl_format_t            format,
+                                                       ra8_mdl_format_t        format,
                                                        mdl_export_workspace_t* workspace,
                                                        mdl_verify_report_t*    report)
 {
   switch (format) {
-    case k_mdl_fmt_cbz:
-    case k_mdl_fmt_epub:
+    case k_ra8_mdl_format_cbz:
+    case k_ra8_mdl_format_epub:
       return internal_verify_zip(io, format, workspace, report);
-    case k_mdl_fmt_cbt:
+    case k_ra8_mdl_format_cbt:
       return internal_verify_tar(io, report);
-    case k_mdl_fmt_jof:
+    case k_ra8_mdl_format_jof:
       return internal_verify_jof(io, report);
-    case k_mdl_fmt_cbt_gz:
+    case k_ra8_mdl_format_cbt_gz:
       return internal_verify_gzip_tar(io, workspace, report);
-    case k_mdl_fmt_rabook:
+    case k_ra8_mdl_format_rabook:
       return priv_mdl_verify_rabook(io->file, io->size_bytes, workspace, report);
-    case k_mdl_fmt_cbr:
-    case k_mdl_fmt_cbt_xz:
+    case k_ra8_mdl_format_cbr:
+    case k_ra8_mdl_format_cbt_xz:
       return k_ra8_err_not_supported;
-    case k_mdl_fmt_loose:
-    case k_mdl_fmt_invalid:
+    case k_ra8_mdl_format_loose:
+    case k_ra8_mdl_format_invalid:
     default:
       return k_ra8_err_invalid_arg;
   }
 }
 
 ra8_err_t mdl_verify_open_file(mdl_storage_t*          storage,
-                               mdl_format_t            format,
+                               ra8_mdl_format_t        format,
                                fw_fs_file_t*           file,
                                uint64_t                size_bytes,
                                mdl_export_workspace_t* workspace,
@@ -951,7 +953,7 @@ ra8_err_t mdl_verify_open_file(mdl_storage_t*          storage,
 }
 
 ra8_err_t mdl_verify_file(mdl_storage_t*          storage,
-                          mdl_format_t            format,
+                          ra8_mdl_format_t        format,
                           const char*             path,
                           mdl_export_workspace_t* workspace,
                           mdl_verify_report_t*    report)

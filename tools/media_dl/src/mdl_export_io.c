@@ -27,7 +27,7 @@ typedef enum : uint32_t {
 typedef struct {
   mdl_storage_t*          storage;           /**< Borrowed storage scratch.  */
   mdl_export_workspace_t* workspace;         /**< Borrowed verifier arena.   */
-  mdl_format_t            format;            /**< Exact artifact format.     */
+  ra8_mdl_format_t        format;            /**< Exact artifact format.     */
   uint64_t                extent;            /**< Exact staged extent.       */
   size_t                  export_high_water; /**< Pre-validation high-water. */
 } internal_export_validation_t;
@@ -129,7 +129,7 @@ RA8_INTERNAL static ra8_err_t internal_output_write_at(mdl_export_output_t* outp
 ra8_err_t priv_mdl_export_output_begin(mdl_export_output_t* output,
                                        mdl_storage_t*       storage,
                                        const char*          destination,
-                                       mdl_format_t         format)
+                                       ra8_mdl_format_t     format)
 {
   if ((output == nullptr) || (storage == nullptr) || (destination == nullptr) ||
       !mdl_format_is_verifiable(format)) {
@@ -146,7 +146,7 @@ ra8_err_t priv_mdl_export_output_begin(mdl_export_output_t* output,
 RA8_PRIV ra8_err_t priv_mdl_export_output_begin_new(mdl_export_output_t* output,
                                                     mdl_storage_t*       storage,
                                                     const char*          destination,
-                                                    mdl_format_t         format)
+                                                    ra8_mdl_format_t     format)
 {
   if ((output == nullptr) || (storage == nullptr) || (destination == nullptr) ||
       !mdl_format_is_verifiable(format)) {

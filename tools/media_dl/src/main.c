@@ -805,7 +805,7 @@ internal_prepare_args(mdl_args_t* args, mdl_cli_mode_t mode, ra8_io_stream_t* di
  */
 RA8_INTERNAL static int internal_dispatch_run(const mdl_args_t*     a,
                                               mdl_cli_mode_t        mode,
-                                              mdl_format_t          format,
+                                              ra8_mdl_format_t      format,
                                               const mdl_run_opts_t* opts,
                                               const mdl_nums_t*     nums,
                                               const series_run_t*   run)
@@ -861,10 +861,10 @@ RA8_INTERNAL static int internal_dispatch_run(const mdl_args_t*     a,
  * @note Thread safety follows ownership of the supplied context; no synchronization is added.
  */
 RA8_INTERNAL static int
-internal_prepare_run_policy(const mdl_args_t* args, mdl_run_opts_t* opts, mdl_format_t* format)
+internal_prepare_run_policy(const mdl_args_t* args, mdl_run_opts_t* opts, ra8_mdl_format_t* format)
 {
   *format = mdl_format_from_str(args->format);
-  if (*format == k_mdl_fmt_invalid) {
+  if (*format == k_ra8_mdl_format_invalid) {
     const char* const parts[] = {"media_dl: bad --format '",
                                  args->format,
                                  "' (loose|cbz|cbt|cbt.gz|epub|jof|rabook)\n"};
@@ -923,9 +923,9 @@ int main(int argc, char** argv)
   if (cli_err != k_ra8_ok) {
     return internal_exit_from_error(cli_err, true);
   }
-  mdl_run_opts_t opts          = mdl_cli_run_opts(&a);
-  mdl_format_t   format        = k_mdl_fmt_invalid;
-  const int      policy_status = internal_prepare_run_policy(&a, &opts, &format);
+  mdl_run_opts_t   opts          = mdl_cli_run_opts(&a);
+  ra8_mdl_format_t format        = k_ra8_mdl_format_invalid;
+  const int        policy_status = internal_prepare_run_policy(&a, &opts, &format);
   if (policy_status != 0) {
     return policy_status;
   }

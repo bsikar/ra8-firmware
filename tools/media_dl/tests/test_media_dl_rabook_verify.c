@@ -336,7 +336,7 @@ RA8_INTERNAL static void internal_test_strict_rabook_verify(void)
   mdl_verify_report_t report = {};
   TEST_ASSERT_EQ(k_ra8_ok,
                  mdl_verify_file(mdl_test_storage_get(),
-                                 k_mdl_fmt_rabook,
+                                 k_ra8_mdl_format_rabook,
                                  valid_path,
                                  &verify_workspace,
                                  &report));
@@ -348,7 +348,7 @@ RA8_INTERNAL static void internal_test_strict_rabook_verify(void)
   TEST_ASSERT_EQ(k_ra8_ok, internal_publish(bad_path, s_rbkc, (uint32_t)rbkc_size));
   mdl_export_workspace_init(&verify_workspace, s_verify_arena, sizeof(s_verify_arena));
   TEST_ASSERT(mdl_verify_file(mdl_test_storage_get(),
-                              k_mdl_fmt_rabook,
+                              k_ra8_mdl_format_rabook,
                               bad_path,
                               &verify_workspace,
                               &report) != k_ra8_ok);
@@ -392,7 +392,7 @@ RA8_INTERNAL static void internal_test_rabook_writer(void)
   mdl_export_workspace_init(&workspace, s_verify_arena, sizeof(s_verify_arena));
   TEST_ASSERT_EQ(k_ra8_ok,
                  mdl_export_chapter_meta_ws(mdl_test_storage_get(),
-                                            k_mdl_fmt_rabook,
+                                            k_ra8_mdl_format_rabook,
                                             directory,
                                             output,
                                             &meta,
@@ -404,7 +404,7 @@ RA8_INTERNAL static void internal_test_rabook_writer(void)
   mdl_export_workspace_init(&workspace, s_verify_arena, sizeof(s_verify_arena));
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    mdl_verify_file(mdl_test_storage_get(), k_mdl_fmt_rabook, output, &workspace, &report));
+    mdl_verify_file(mdl_test_storage_get(), k_ra8_mdl_format_rabook, output, &workspace, &report));
   TEST_ASSERT_EQ(1U, report.page_count);
   TEST_ASSERT_EQ(1U, report.member_count);
   TEST_ASSERT(report.metadata_present);
@@ -412,7 +412,7 @@ RA8_INTERNAL static void internal_test_rabook_writer(void)
   mdl_export_workspace_init(&workspace, s_small_arena, sizeof(s_small_arena));
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  mdl_export_chapter_meta_ws(mdl_test_storage_get(),
-                                            k_mdl_fmt_rabook,
+                                            k_ra8_mdl_format_rabook,
                                             directory,
                                             output,
                                             &meta,
@@ -420,7 +420,7 @@ RA8_INTERNAL static void internal_test_rabook_writer(void)
   mdl_export_workspace_init(&workspace, s_verify_arena, sizeof(s_verify_arena));
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    mdl_verify_file(mdl_test_storage_get(), k_mdl_fmt_rabook, output, &workspace, &report));
+    mdl_verify_file(mdl_test_storage_get(), k_ra8_mdl_format_rabook, output, &workspace, &report));
   TEST_ASSERT_EQ(k_ra8_ok, internal_check_no_temp(directory));
 
   TEST_ASSERT_EQ(k_ra8_ok, internal_remove_path(output, false));

@@ -251,7 +251,7 @@ RA8_INTERNAL static bool internal_write_bytes(const char* path, const uint8_t* d
  * @note Test helper; an assertion failure terminates the test process.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_export_chapter_meta(mdl_format_t             fmt,
+RA8_INTERNAL static ra8_err_t internal_export_chapter_meta(ra8_mdl_format_t         fmt,
                                                            const char*              chapter_dir,
                                                            const char*              out_path,
                                                            const mdl_export_meta_t* meta)
@@ -555,7 +555,7 @@ RA8_INTERNAL static void internal_assert_cbz_comicinfo(const mdl_export_meta_t* 
   const char* out = "/tmp/mdl_cbz_meta_chap.cbz";
   (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
   internal_write_fixture("/tmp/mdl_cbz_meta_chap/page_001.jpg", 'a');
-  TEST_ASSERT(internal_export_chapter_meta(k_mdl_fmt_cbz, dir, out, meta) == k_ra8_ok);
+  TEST_ASSERT(internal_export_chapter_meta(k_ra8_mdl_format_cbz, dir, out, meta) == k_ra8_ok);
   mdl_test_zip_reader_t reader;
   TEST_ASSERT(
     internal_test_zip_open(&reader, out, s_test_export_arena, sizeof(s_test_export_arena)));
@@ -572,7 +572,7 @@ RA8_INTERNAL static void internal_assert_cbz_comicinfo(const mdl_export_meta_t* 
   memset(overlong.source_url, 'x', sizeof(overlong.source_url));
   const char* rejected = "/tmp/mdl_cbz_meta_rejected.cbz";
   (void)unlink(rejected);
-  TEST_ASSERT(internal_export_chapter_meta(k_mdl_fmt_cbz, dir, rejected, &overlong) ==
+  TEST_ASSERT(internal_export_chapter_meta(k_ra8_mdl_format_cbz, dir, rejected, &overlong) ==
               k_ra8_err_invalid_size);
   TEST_ASSERT(access(rejected, F_OK) != 0);
   (void)unlink("/tmp/mdl_cbz_meta_chap/page_001.jpg");
@@ -644,7 +644,7 @@ RA8_INTERNAL static void internal_assert_epub_opf(const mdl_export_meta_t* meta)
 {
   const char* dir = "/tmp/mdl_epub_meta_chap";
   const char* out = "/tmp/mdl_epub_meta_chap.epub";
-  TEST_ASSERT(internal_export_chapter_meta(k_mdl_fmt_epub, dir, out, meta) == k_ra8_ok);
+  TEST_ASSERT(internal_export_chapter_meta(k_ra8_mdl_format_epub, dir, out, meta) == k_ra8_ok);
   mdl_test_zip_reader_t reader;
   TEST_ASSERT(
     internal_test_zip_open(&reader, out, s_test_export_arena, sizeof(s_test_export_arena)));
@@ -690,7 +690,7 @@ RA8_INTERNAL static void internal_assert_epub_distinct_identifiers(const mdl_exp
   (void)__builtin_snprintf(other.source_url,
                            sizeof(other.source_url),
                            "https://example.test/chapter/2");
-  TEST_ASSERT(internal_export_chapter_meta(k_mdl_fmt_epub, dir, second, &other) == k_ra8_ok);
+  TEST_ASSERT(internal_export_chapter_meta(k_ra8_mdl_format_epub, dir, second, &other) == k_ra8_ok);
   mdl_test_zip_reader_t one;
   mdl_test_zip_reader_t two;
   TEST_ASSERT(
@@ -726,9 +726,10 @@ RA8_INTERNAL static void internal_assert_epub_rejection(const mdl_export_meta_t*
   memset(overlong.source_url, 'x', sizeof(overlong.source_url));
   const char* rejected = "/tmp/mdl_epub_meta_rejected.epub";
   (void)unlink(rejected);
-  TEST_ASSERT(
-    internal_export_chapter_meta(k_mdl_fmt_epub, "/tmp/mdl_epub_meta_chap", rejected, &overlong) ==
-    k_ra8_err_invalid_size);
+  TEST_ASSERT(internal_export_chapter_meta(k_ra8_mdl_format_epub,
+                                           "/tmp/mdl_epub_meta_chap",
+                                           rejected,
+                                           &overlong) == k_ra8_err_invalid_size);
   TEST_ASSERT(access(rejected, F_OK) != 0);
 }
 
@@ -783,7 +784,7 @@ RA8_INTERNAL static void internal_assert_external_cbz(const mdl_export_meta_t* m
 {
   const char* out = "/tmp/mdl_external_cover_chap.cbz";
   TEST_ASSERT(
-    internal_export_chapter_meta(k_mdl_fmt_cbz, "/tmp/mdl_external_cover_chap", out, meta) ==
+    internal_export_chapter_meta(k_ra8_mdl_format_cbz, "/tmp/mdl_external_cover_chap", out, meta) ==
     k_ra8_ok);
   mdl_test_zip_reader_t reader;
   TEST_ASSERT(
@@ -818,9 +819,10 @@ RA8_INTERNAL static void internal_assert_external_epub(const mdl_export_meta_t* 
                                                        size_t                   expected_bytes)
 {
   const char* out = "/tmp/mdl_external_cover_chap.epub";
-  TEST_ASSERT(
-    internal_export_chapter_meta(k_mdl_fmt_epub, "/tmp/mdl_external_cover_chap", out, meta) ==
-    k_ra8_ok);
+  TEST_ASSERT(internal_export_chapter_meta(k_ra8_mdl_format_epub,
+                                           "/tmp/mdl_external_cover_chap",
+                                           out,
+                                           meta) == k_ra8_ok);
   mdl_test_zip_reader_t reader;
   TEST_ASSERT(
     internal_test_zip_open(&reader, out, s_test_export_arena, sizeof(s_test_export_arena)));
@@ -858,9 +860,10 @@ RA8_INTERNAL static void internal_assert_external_cover_rejected(mdl_export_meta
   internal_write_fixture(bad_path, 'x');
   (void)__builtin_snprintf(meta->cover_path, sizeof(meta->cover_path), "%s", bad_path);
   (void)unlink(bad_out);
-  TEST_ASSERT(
-    internal_export_chapter_meta(k_mdl_fmt_cbz, "/tmp/mdl_external_cover_chap", bad_out, meta) ==
-    k_ra8_err_validation_failed);
+  TEST_ASSERT(internal_export_chapter_meta(k_ra8_mdl_format_cbz,
+                                           "/tmp/mdl_external_cover_chap",
+                                           bad_out,
+                                           meta) == k_ra8_err_validation_failed);
   TEST_ASSERT(access(bad_out, F_OK) != 0);
 }
 

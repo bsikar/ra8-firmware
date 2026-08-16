@@ -273,7 +273,7 @@ RA8_INTERNAL static bool internal_build_export_metadata(const char*             
  * @note Not thread-safe because it uses shared state and workspace.
  * @since 0.1.0
  */
-RA8_INTERNAL static size_t internal_export_fresh_separate(mdl_format_t          format,
+RA8_INTERNAL static size_t internal_export_fresh_separate(ra8_mdl_format_t      format,
                                                           const char*           abs_dir,
                                                           const mdl_url_list_t* sel,
                                                           int64_t               run_start)
@@ -367,7 +367,7 @@ RA8_INTERNAL static mdl_fetch_layout_t internal_choose_layout(const series_run_t
                                                               const char*           slug)
 {
   combined_rel[0] = '\0';
-  if (r->update || !r->combine || (r->format == k_mdl_fmt_loose)) {
+  if (r->update || !r->combine || (r->format == k_ra8_mdl_format_loose)) {
     return k_mdl_layout_separate;
   }
   double lo = 0.0;
@@ -460,7 +460,7 @@ RA8_INTERNAL static size_t internal_export_after(const series_run_t*      r,
                                                  const mdl_fetch_stats_t* stats,
                                                  int64_t                  run_start)
 {
-  if (r->format == k_mdl_fmt_loose) {
+  if (r->format == k_ra8_mdl_format_loose) {
     return 0U;
   }
   if (layout == k_mdl_layout_combined) {
