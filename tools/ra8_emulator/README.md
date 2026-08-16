@@ -149,23 +149,26 @@ there is no separate native UI tool.
 - **CPU**: Unicorn (QEMU's core as a library) tops out at Cortex-M33 (Armv8-M),
   but the M85 (Armv8.1-M) firmware executes on it -- the boot path emits no
   v8.1-M-only opcode. An invalid-instruction trap reports any that ever appears.
-- **Memory map**: ITCM / MRAM (code+vectors) / DTCM / SRAM / SDRAM / OSPI / PPB
-  are Unicorn-owned guest pages; the Renesas peripheral space (`0x40000000`+)
-  is callback MMIO. SRAM, SDRAM, and OSPI bytes are authoritative in three
-  independent unlinked sparse raw descriptors. A 4 KiB caller scratch and a
-  4,155-byte dirty-page index stream committed pages into CPU0/CPU1 Secure and
-  Non-secure aliases. The protected host-association page at `0xFFFFF000` is
-  checked against every RA8/MMIO range at attach and is neither guest-readable
-  nor executable. `DATA_FLASH` intentionally remains unmapped because the
-  RA8D2 silicon does not decode the legacy `0x27000000` declaration.
+- **Memory map**: ITCM / MRAM (code+vectors) / DTCM / TRIM / OFS / PPB are
+  Unicorn-owned guest pages; the Renesas peripheral space (`0x40000000`+) is
+  callback MMIO. SRAM, SDRAM, and OSPI live in three workspace-owned host
+  apertures, and every engine maps BOTH the Secure window and its IDAU bit[28]
+  Non-secure alias (`0x32100000` / `0x78000000` / `0x90000000`) onto those same
+  pages with `uc_mem_map_ptr`. Secure/Non-secure coherence and CPU0/CPU1
+  coherence are therefore structural: a guest store stays on the translator's
+  fast path, and no write hook, mirror step, or dirty-page index sits in the
+  store path. `DATA_FLASH` intentionally remains unmapped because the RA8D2
+  silicon does not decode the legacy `0x27000000` declaration.
 
-  First-party emulator code does not acquire these memory pages with a C
-  allocator or `mmap`: the composition root supplies exactly 4,096 static
-  scratch bytes, the workspace owns raw descriptors, and every publication is
-  mirrored or poisons the run before PPM/profile/SD output. Unicorn necessarily
-  owns its internal guest-page and translation structures; that opaque library
-  ownership is an explicit dependency boundary, not a claim that Unicorn itself
-  performs no dynamic allocation.
+  The apertures are anonymous host mappings rather than allocator memory, and
+  they are never pre-touched, so 130 MiB of logical guest memory costs resident
+  host memory only for the pages the firmware actually writes -- the
+  `test_emu_memmap` suite asserts both directions of that with `mincore`.
+  Closing a workspace refuses while any engine is still bound, because a bound
+  engine holds `uc_mem_map_ptr` references into the pages the close releases.
+  Unicorn necessarily owns its internal guest-page and translation structures;
+  that opaque library ownership is an explicit dependency boundary, not a claim
+  that Unicorn itself performs no dynamic allocation.
 - **Peripheral model** (sparse): control writes read back as written, so
   "configure then verify" works; once the firmware spins reading one address (a
   "wait for ready/idle" poll) past a threshold, reads alternate `0` / all-ones so

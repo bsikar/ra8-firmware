@@ -387,9 +387,6 @@ RA8_INTERNAL static void internal_run_loop_record(run_loop_t* st)
   /* Dual-core: step cpu1 interleaved with cpu0; a cpu1 fault just stops cpu1.
    */
   emu_cpu1_step();
-  if (emu_memmap_is_poisoned(cfg->memory)) {
-    return;
-  }
   /* --record: dump the composite every k_record_every chunks as a numbered PPM.
    */
   if ((cfg->record_dir != nullptr) && (st->presentation->fd >= 0) &&
@@ -839,11 +836,6 @@ RA8_INTERNAL static void internal_run_loop(run_loop_t* st)
     }
     internal_run_loop_tick_inputs(st);
     const loop_action_t chunk = internal_run_loop_run_chunk(st);
-    if (emu_memmap_is_poisoned(st->cfg->memory)) {
-      (void)emu_memmap_reconcile(st->cfg->memory);
-      st->err = UC_ERR_RESOURCE;
-      break;
-    }
     if (chunk == k_loop_break) {
       break;
     }
@@ -851,11 +843,6 @@ RA8_INTERNAL static void internal_run_loop(run_loop_t* st)
       continue;
     }
     internal_run_loop_record(st);
-    if (emu_memmap_is_poisoned(st->cfg->memory)) {
-      (void)emu_memmap_reconcile(st->cfg->memory);
-      st->err = UC_ERR_RESOURCE;
-      break;
-    }
     if (internal_run_loop_present_and_stops(st) == k_loop_break) {
       break;
     }
