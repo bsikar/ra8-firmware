@@ -189,14 +189,36 @@ def _path_included(path: str, *, prefixes: tuple[str, ...]) -> bool:
 
 
 def _is_test_source_name(name: str) -> bool:
-    """Whether ``name`` is a supported top-level MC/DC test translation unit."""
-    return name.startswith("test_") and name.endswith(TEST_SOURCE_SUFFIXES)
+    """Whether ``name`` is a supported MC/DC test translation unit.
+
+    Both orderings of the convention count. ``test_<module>.c`` is the common
+    one, but the tree also carries ``<module>_test.c`` and companion units
+    under ``tests/support/``, and a citation written in one of those used to be
+    invisible: the glob was ``tests/test_*.{c,cpp}`` only, so every decision
+    those suites cover read as UNCOVERED. That is the same scope collapse that
+    once hid 81 decisions in the two ``.cpp`` EPUB suites -- a checker whose
+    scope quietly stops matching reports FEWER findings, which reads as an
+    improvement.
+    """
+    return (name.startswith("test_") or name.endswith(_TEST_NAME_SUFFIXES)) and name.endswith(
+        TEST_SOURCE_SUFFIXES
+    )
+
+
+#: Trailing forms of the same convention, checked before the extension.
+_TEST_NAME_SUFFIXES = tuple(f"_test{suffix}" for suffix in TEST_SOURCE_SUFFIXES)
 
 
 def _working_test_sources(tests_dir: Path) -> list[Path]:
-    """Return supported top-level test translation units in stable order."""
+    """Return every supported test translation unit under ``tests_dir``.
+
+    Recursive: ``tests/support/`` holds contract and model units that carry
+    citations of their own, and a top-level-only scan dropped them.
+    """
     return sorted(
-        path for path in tests_dir.iterdir() if path.is_file() and _is_test_source_name(path.name)
+        path
+        for path in tests_dir.rglob("*")
+        if path.is_file() and _is_test_source_name(path.name)
     )
 
 
@@ -820,6 +842,39 @@ def _st_check(files: list[str], findings: list[tuple[str, int, str]]) -> list[st
     return failures
 
 
+def _st_check_test_scope() -> list[str]:
+    """Assert the test-source name rule, in both directions.
+
+    Must accept both orderings of the convention and both extensions, and must
+    still REFUSE an ordinary source file -- a rule that widened to every .c
+    would sweep production files into the citation index and make uncovered
+    decisions look covered.
+
+    Returns:
+        One message per misclassification; empty when the rule is correct.
+    """
+    failures: list[str] = [
+        f"  {name} is not recognised as a test translation unit"
+        for name in ("test_x.c", "test_x.cpp", "x_test.c", "x_test.cpp")
+        if not _is_test_source_name(name)
+    ]
+    failures += [
+        f"  {name} was wrongly recognised as a test translation unit"
+        for name in ("latest.c", "protest.cpp", "x_tester.c", "test_x.h", "mdl_net.c")
+        if _is_test_source_name(name)
+    ]
+    with tempfile.TemporaryDirectory() as td:
+        tests_dir = Path(td) / "tests"
+        (tests_dir / "support").mkdir(parents=True)
+        (tests_dir / "test_top.c").write_text("", encoding="utf-8")
+        (tests_dir / "support" / "thing_test.c").write_text("", encoding="utf-8")
+        (tests_dir / "support" / "helper.c").write_text("", encoding="utf-8")
+        found = {path.name for path in _working_test_sources(tests_dir)}
+    if found != {"test_top.c", "thing_test.c"}:
+        failures.append(f"  the recursive enumeration returned {sorted(found)}")
+    return failures
+
+
 def selftest() -> int:
     """Assert the detector fires on a new uncovered decision and stays quiet otherwise.
 
@@ -839,6 +894,7 @@ def selftest() -> int:
             return 1
         files, findings = audit_range(str(repo), *rng)
         failures = _st_check(files, findings)
+    failures += _st_check_test_scope()
 
     if failures:
         print("check_new_compound_has_mcdc.py: --selftest FAILED", file=sys.stderr)
@@ -847,7 +903,7 @@ def selftest() -> int:
     print(
         "check_new_compound_has_mcdc.py: --selftest OK "
         "(fires on a new uncovered decision; silent on pre-existing, "
-        "vector-covered, and SOUP decisions)."
+        "vector-covered, and SOUP decisions; test-source scope holds both ways)."
     )
     return 0
 
