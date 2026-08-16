@@ -206,6 +206,32 @@ internal_listdir_locked(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir
 
 RA8_EXPECTS_LOCK("ra8_fs_lock")
 /**
+ * @brief Advance an independent FAT cursor to its next directory sector.
+ * @details Delegates the format-specific sector walk and records clean end in
+ *          the stable cursor before returning the walk result.
+ * @param[in,out] state Open private FAT cursor state.
+ * @return Sector-walk status.
+ * @retval k_ra8_ok The cursor advanced or reached clean end.
+ * @retval k_ra8_err_* Media, chain, or directory-walk failure.
+ * @pre @p state is non-NULL and the filesystem lock is held.
+ * @pre @p state was initialized for a mounted FAT volume.
+ * @post The sector walk advances according to the underlying FAT chain.
+ * @post Clean end sets @p state->finished before this function returns.
+ * @note An error is returned unchanged even when the walker also reports end.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_fat_dir_advance_sector(ra8_fs_dir_private_t* state)
+{
+  uint8_t         end  = 0U;
+  const ra8_err_t step = priv_dir_walk_next_sector(state->mount, &state->fat_walk, &end);
+  if (end != 0U) {
+    state->finished = true;
+  }
+  return step;
+}
+
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+/**
  * @brief Copy one visible FAT entry from an independent cursor.
  * @details Walks bounded directory sectors, assembles valid LFN fragments,
  *          and copies one stable name/attribute/size value per successful step.
@@ -228,11 +254,12 @@ internal_fat_dir_next(ra8_fs_dir_private_t* state, ra8_fs_dirent_t* out, bool* o
   *out_entry = false;
   while (!state->finished) {
     if (state->fat_walk.entry_idx >= priv_bps(state->mount)) {
-      uint8_t         end  = 0U;
-      const ra8_err_t step = priv_dir_walk_next_sector(state->mount, &state->fat_walk, &end);
-      if ((step != k_ra8_ok) || (end != 0U)) {
-        state->finished = end != 0U;
+      const ra8_err_t step = internal_fat_dir_advance_sector(state);
+      if (step != k_ra8_ok) {
         return step;
+      }
+      if (state->finished) {
+        return k_ra8_ok;
       }
     }
     uint8_t* const sector = priv_sec_walk();
@@ -658,7 +685,13 @@ ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb,
 RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_dir_open(ra8_fs_mount_t* handle, const char* path, ra8_fs_dir_t* directory)
 {
-  if ((handle == nullptr) || (path == nullptr) || (directory == nullptr)) {
+  if (handle == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (path == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (directory == nullptr) {
     return k_ra8_err_null_ptr;
   }
   if (directory->is_open) {
@@ -680,7 +713,13 @@ ra8_err_t ra8_fs_dir_open(ra8_fs_mount_t* handle, const char* path, ra8_fs_dir_t
 RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_dir_next(ra8_fs_dir_t* directory, ra8_fs_dirent_t* out, bool* out_entry)
 {
-  if ((directory == nullptr) || (out == nullptr) || (out_entry == nullptr)) {
+  if (directory == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (out == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (out_entry == nullptr) {
     return k_ra8_err_null_ptr;
   }
   if (!directory->is_open) {
@@ -692,15 +731,19 @@ ra8_err_t ra8_fs_dir_next(ra8_fs_dir_t* directory, ra8_fs_dirent_t* out, bool* o
   ra8_fs_dir_private_t* const state        = state_memory;
   priv_lock_acquire();
   ra8_err_t err = (state->mount->in_use != 0U) ? k_ra8_ok : k_ra8_err_invalid_state;
-  if ((err == k_ra8_ok) && !state->finished) {
-    if (state->mount->type == k_ra8_fs_type_exfat) {
-      err = priv_exfat_dir_next(state->mount, &state->exfat_cursor, out, out_entry);
-    } else {
-      err = internal_fat_dir_next(state, out, out_entry);
+  if (err == k_ra8_ok) {
+    if (!state->finished) {
+      if (state->mount->type == k_ra8_fs_type_exfat) {
+        err = priv_exfat_dir_next(state->mount, &state->exfat_cursor, out, out_entry);
+      } else {
+        err = internal_fat_dir_next(state, out, out_entry);
+      }
     }
   }
-  if ((err == k_ra8_ok) && !*out_entry) {
-    state->finished = true;
+  if (err == k_ra8_ok) {
+    if (!*out_entry) {
+      state->finished = true;
+    }
   }
   priv_lock_release();
   return err;
