@@ -50,7 +50,8 @@ compile-proof:
 	    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
 	    -DRA8_USE_THREADX=ON \
 	    -DRA8_USE_ESP_HOSTED=ON \
-	    -DRA8_MEDIA_DOWNLOAD_URL=https://compile-proof.invalid/book.rabook \
+	    -DRA8_MEDIA_DOWNLOAD_URL=https://compile-proof.invalid/page.webp \
+	    -DRA8_MEDIA_DOWNLOAD_SOURCE_IMAGE=ON \
 	    -DRA8_C6_WIFI_SSID=compile-proof \
 	    -DRA8_C6_WIFI_PSK=compile-proof-pass
 	$(CMAKE) --build $(PROOF_BUILD_DIR)
@@ -58,6 +59,10 @@ compile-proof:
 	    grep -Eq '[[:space:]]ra8_c6link_mdl_transfer$$'
 	@$(ARM_NM) --defined-only $(PROOF_ELF) | \
 	    grep -Eq '[[:space:]]ra8_mdl_rabook_vfs_validate$$'
+	@$(ARM_NM) --defined-only $(PROOF_ELF) | \
+	    grep -Eq '[[:space:]]priv_media_download_image_run$$'
+	@$(ARM_NM) --defined-only $(PROOF_ELF) | \
+	    grep -Eq '[[:space:]]ra8_rabook_comic_add_page$$'
 	@$(ARM_SIZE) -A $(PROOF_ELF) | \
 	    awk '$$1 == ".sdram_data" && $$2 > 0 { found = 1 } END { exit !found }'
 
