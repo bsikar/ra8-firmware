@@ -98,6 +98,7 @@ add_executable(
   ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media_http.c
   ${CMAKE_CURRENT_SOURCE_DIR}/ra8_c6link_transfer_validation_test.c
   ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_transfer_coordinator.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl_decode.c
   ${RA8_C6LINK_TEST_SUPPORT}
   ${RA8_C6LINK_TEST_MODEL}
   ${RA8_C6LINK_SOURCES}
@@ -141,6 +142,7 @@ if(NOT TARGET test_ra8_c6link_mdl)
     test_ra8_c6link_mdl
     ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl.c
     ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl_policy.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl_guards.c
     ${FW_ROOT}/libs/ra8_c6link/src/ra8_c6link_mdl_service.c
     ${FW_ROOT}/libs/ra8_c6link/src/ra8_media_download.pb-c.c
     ${RA8_C6LINK_VENDOR_DIR}/common/protobuf-c/protobuf-c/protobuf-c.c

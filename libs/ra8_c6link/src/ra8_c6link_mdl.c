@@ -14,6 +14,7 @@
 #include <string.h>
 
 #include "ra8_c6link_internal.h"
+#include "ra8_c6link_mdl_internal.h"
 #include "ra8_media_download.pb-c.h"
 
 static_assert((uint32_t)k_ra8_mdl_format_loose == RA8__MDL__FORMAT__FORMAT_LOOSE);
@@ -438,6 +439,31 @@ RA8_INTERNAL static ra8_err_t internal_mdl_call(ra8_c6link_t*   link,
 }
 // NOLINTEND(readability-non-const-parameter)
 
+RA8_TEST_HELPER ra8_err_t ra8_c6link_mdl_take_cancelled_test(ra8_c6link_t*      link,
+                                                             ra8_mdl_session_t* session,
+                                                             const uint8_t*     packed,
+                                                             size_t             len)
+{
+  mdl_take_ctx_t            take = {.link = link, .session = session, .kind = k_mdl_take_cancelled};
+  const ProtobufCBinaryData body = {.len = len, .data = (uint8_t*)packed};
+  return internal_mdl_take_cancelled(&take, &body);
+}
+
+RA8_TEST_HELPER bool ra8_c6link_mdl_http_field_valid_test(const char* text, size_t cap)
+{
+  return internal_mdl_http_field_valid(text, cap);
+}
+
+RA8_TEST_HELPER bool ra8_c6link_mdl_http_response_valid_test(const Ra8__Mdl__Chunk* msg)
+{
+  return internal_mdl_http_response_valid(msg);
+}
+
+RA8_TEST_HELPER bool ra8_c6link_mdl_chunk_semantics_valid_test(const Ra8__Mdl__Chunk* msg)
+{
+  return internal_mdl_chunk_semantics_valid(msg);
+}
+
 ra8_err_t ra8_c6link_mdl_start_request(ra8_c6link_t*            link,
                                        const ra8_mdl_request_t* request,
                                        ra8_mdl_session_t*       session)
@@ -478,6 +504,7 @@ ra8_err_t ra8_c6link_mdl_start_request(ra8_c6link_t*            link,
   inner.timeout_ms      = request->http.timeout_ms;
   uint8_t* const data   = link->mdl_request;
   const size_t   packed = ra8__mdl__start_request__get_packed_size(&inner);
+  // mcdc-deactivated: ra8_c6link_mdl_start_request codec self-consistency guard; all three conditions are constant-false on every reachable path, so this is a fail-closed backstop against a codec defect rather than an input class. get_packed_size() counts a message whose protocol_version is the non-zero k_ra8_mdl_protocol_version, so it never reports 0; k_ra8_mdl_request_bytes_max is the exact sum of every bounded field plus 96 bytes of tag and varint headroom, and each field was bounded before this point, so the packed message cannot exceed link->mdl_request; and protobuf-c pack() returns exactly what get_packed_size() computed for the same message.
   if ((packed == 0U) || (packed > sizeof(link->mdl_request)) ||
       (ra8__mdl__start_request__pack(&inner, data) != packed)) {
     return k_ra8_err_invalid_size;
@@ -520,6 +547,7 @@ ra8_err_t ra8_c6link_mdl_next(ra8_c6link_t*      link,
   inner.max_bytes             = max_bytes;
   uint8_t* const data         = link->mdl_request;
   const size_t   packed       = ra8__mdl__next_request__get_packed_size(&inner);
+  // mcdc-deactivated: ra8_c6link_mdl_next codec self-consistency guard; all three conditions are constant-false on every reachable path, so this is a fail-closed backstop against a codec defect rather than an input class. get_packed_size() counts a message whose protocol_version is the non-zero k_ra8_mdl_protocol_version, so it never reports 0; k_ra8_mdl_request_bytes_max is the exact sum of every bounded field plus 96 bytes of tag and varint headroom, and each field was bounded before this point, so the packed message cannot exceed link->mdl_request; and protobuf-c pack() returns exactly what get_packed_size() computed for the same message.
   if ((packed == 0U) || (packed > sizeof(link->mdl_request)) ||
       (ra8__mdl__next_request__pack(&inner, data) != packed)) {
     return k_ra8_err_invalid_size;
@@ -544,6 +572,7 @@ ra8_err_t ra8_c6link_mdl_cancel(ra8_c6link_t* link, ra8_mdl_session_t* session)
   inner.job_id                  = session->job_id;
   uint8_t* const data           = link->mdl_request;
   const size_t   packed         = ra8__mdl__cancel_request__get_packed_size(&inner);
+  // mcdc-deactivated: ra8_c6link_mdl_cancel codec self-consistency guard; all three conditions are constant-false on every reachable path, so this is a fail-closed backstop against a codec defect rather than an input class. get_packed_size() counts a message whose protocol_version is the non-zero k_ra8_mdl_protocol_version, so it never reports 0; k_ra8_mdl_request_bytes_max is the exact sum of every bounded field plus 96 bytes of tag and varint headroom, and each field was bounded before this point, so the packed message cannot exceed link->mdl_request; and protobuf-c pack() returns exactly what get_packed_size() computed for the same message.
   if ((packed == 0U) || (packed > sizeof(link->mdl_request)) ||
       (ra8__mdl__cancel_request__pack(&inner, data) != packed)) {
     return k_ra8_err_invalid_size;
