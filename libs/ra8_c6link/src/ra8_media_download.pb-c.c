@@ -290,7 +290,7 @@ void   ra8__mdl__cancelled__free_unpacked
   assert(message->base.descriptor == &ra8__mdl__cancelled__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-static const ProtobufCFieldDescriptor ra8__mdl__start_request__field_descriptors[3] =
+static const ProtobufCFieldDescriptor ra8__mdl__start_request__field_descriptors[8] =
 {
   {
     "protocol_version",
@@ -328,16 +328,81 @@ static const ProtobufCFieldDescriptor ra8__mdl__start_request__field_descriptors
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "user_agent",
+    4,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(Ra8__Mdl__StartRequest, user_agent),
+    NULL,
+    &protobuf_c_empty_string,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "referer",
+    5,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(Ra8__Mdl__StartRequest, referer),
+    NULL,
+    &protobuf_c_empty_string,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "if_none_match",
+    6,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(Ra8__Mdl__StartRequest, if_none_match),
+    NULL,
+    &protobuf_c_empty_string,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "if_modified_since",
+    7,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(Ra8__Mdl__StartRequest, if_modified_since),
+    NULL,
+    &protobuf_c_empty_string,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "timeout_ms",
+    8,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(Ra8__Mdl__StartRequest, timeout_ms),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned ra8__mdl__start_request__field_indices_by_name[] = {
   2,   /* field[2] = format */
+  6,   /* field[6] = if_modified_since */
+  5,   /* field[5] = if_none_match */
   0,   /* field[0] = protocol_version */
+  4,   /* field[4] = referer */
+  7,   /* field[7] = timeout_ms */
   1,   /* field[1] = url */
+  3,   /* field[3] = user_agent */
 };
 static const ProtobufCIntRange ra8__mdl__start_request__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 3 }
+  { 0, 8 }
 };
 const ProtobufCMessageDescriptor ra8__mdl__start_request__descriptor =
 {
@@ -347,7 +412,7 @@ const ProtobufCMessageDescriptor ra8__mdl__start_request__descriptor =
   "Ra8__Mdl__StartRequest",
   "ra8.mdl",
   sizeof(Ra8__Mdl__StartRequest),
-  3,
+  8,
   ra8__mdl__start_request__field_descriptors,
   ra8__mdl__start_request__field_indices_by_name,
   1,  ra8__mdl__start_request__number_ranges,
@@ -508,7 +573,7 @@ const ProtobufCMessageDescriptor ra8__mdl__next_request__descriptor =
   (ProtobufCMessageInit) ra8__mdl__next_request__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor ra8__mdl__chunk__field_descriptors[9] =
+static const ProtobufCFieldDescriptor ra8__mdl__chunk__field_descriptors[14] =
 {
   {
     "protocol_version",
@@ -618,12 +683,77 @@ static const ProtobufCFieldDescriptor ra8__mdl__chunk__field_descriptors[9] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "http_status",
+    10,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(Ra8__Mdl__Chunk, http_status),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "retry_after",
+    11,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(Ra8__Mdl__Chunk, retry_after),
+    NULL,
+    &protobuf_c_empty_string,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "etag",
+    12,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(Ra8__Mdl__Chunk, etag),
+    NULL,
+    &protobuf_c_empty_string,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "last_modified",
+    13,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(Ra8__Mdl__Chunk, last_modified),
+    NULL,
+    &protobuf_c_empty_string,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "content_type",
+    14,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(Ra8__Mdl__Chunk, content_type),
+    NULL,
+    &protobuf_c_empty_string,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned ra8__mdl__chunk__field_indices_by_name[] = {
+  13,   /* field[13] = content_type */
   4,   /* field[4] = data */
+  11,   /* field[11] = etag */
+  9,   /* field[9] = http_status */
   1,   /* field[1] = job_id */
+  12,   /* field[12] = last_modified */
   3,   /* field[3] = offset */
   0,   /* field[0] = protocol_version */
+  10,   /* field[10] = retry_after */
   2,   /* field[2] = sequence */
   8,   /* field[8] = sha256 */
   6,   /* field[6] = state */
@@ -633,7 +763,7 @@ static const unsigned ra8__mdl__chunk__field_indices_by_name[] = {
 static const ProtobufCIntRange ra8__mdl__chunk__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 9 }
+  { 0, 14 }
 };
 const ProtobufCMessageDescriptor ra8__mdl__chunk__descriptor =
 {
@@ -643,7 +773,7 @@ const ProtobufCMessageDescriptor ra8__mdl__chunk__descriptor =
   "Ra8__Mdl__Chunk",
   "ra8.mdl",
   sizeof(Ra8__Mdl__Chunk),
-  9,
+  14,
   ra8__mdl__chunk__field_descriptors,
   ra8__mdl__chunk__field_indices_by_name,
   1,  ra8__mdl__chunk__number_ranges,

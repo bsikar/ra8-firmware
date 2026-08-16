@@ -48,28 +48,39 @@ static ra8_mdl_service_t s_mdl_service;
  * @details Accepts only the deterministic fixture URL and rewinds the bound
  * backend cursor.
  * @param[in,out] ctx Model media-backend context supplied by the service.
- * @param[in] url NUL-terminated media URL requested by the host.
- * @param[in] format Artifact identity requested by the host.
+ * @param[in] request Complete typed HTTP request from the host.
  * @return Bounded media-backend status.
  * @retval k_ra8_ok The fixture URL was accepted and rewound.
  * @retval k_ra8_err_invalid_arg The URL is not the deterministic fixture URL.
- * @pre @p ctx points to initialized backend state. @pre @p url is non-null and
- * NUL-terminated.
- * @post Success sets the next-byte offset to zero and records @p format.
+ * @pre @p ctx points to initialized backend state. @pre @p request is non-null
+ * and already bounded by the portable service.
+ * @post Success sets the next-byte offset to zero and records @p request.
  * @post Failure leaves backend state unchanged.
  * @note The fake intentionally models a single stable origin.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t
-internal_c6m_mdl_begin(void* ctx, const char* url, ra8_mdl_format_t format)
+RA8_INTERNAL static ra8_err_t internal_c6m_mdl_begin(void* ctx, const ra8_mdl_request_t* request)
 {
   c6m_mdl_backend_t* backend = (c6m_mdl_backend_t*)ctx;
-  if (strcmp(url, "https://example.test/book") != 0) {
+  if (strcmp(request->url, "https://example.test/book") != 0) {
     return k_ra8_err_invalid_arg;
   }
-  backend->at                = 0U;
-  backend->format            = format;
-  ra8_c6_model()->mdl_format = format;
+  backend->at                    = 0U;
+  backend->format                = request->format;
+  ra8_c6_model()->mdl_format     = request->format;
+  ra8_c6_model()->mdl_timeout_ms = request->http.timeout_ms;
+  (void)memcpy(ra8_c6_model()->mdl_user_agent,
+               request->http.user_agent,
+               strlen(request->http.user_agent) + 1U);
+  (void)memcpy(ra8_c6_model()->mdl_referer,
+               request->http.referer,
+               strlen(request->http.referer) + 1U);
+  (void)memcpy(ra8_c6_model()->mdl_if_none_match,
+               request->http.if_none_match,
+               strlen(request->http.if_none_match) + 1U);
+  (void)memcpy(ra8_c6_model()->mdl_if_modified_since,
+               request->http.if_modified_since,
+               strlen(request->http.if_modified_since) + 1U);
   return k_ra8_ok;
 }
 
@@ -86,6 +97,7 @@ internal_c6m_mdl_begin(void* ctx, const char* url, ra8_mdl_format_t format)
  * read.
  * @param[out] sha256 Receives the terminal fixture digest when @p complete is
  * true.
+ * @param[out] response Receives terminal HTTP status and selected headers.
  * @return Bounded media-backend status.
  * @retval k_ra8_ok The deterministic backend operation completed.
  * @pre All output pointers are non-null and @p ctx is initialized. @pre @p out
@@ -101,11 +113,13 @@ RA8_INTERNAL static ra8_err_t internal_c6m_mdl_read(void*     ctx,
                                                     uint16_t* got,
                                                     uint64_t* total_bytes,
                                                     bool*     complete,
-                                                    uint8_t   sha256[k_ra8_mdl_sha256_bytes])
+                                                    uint8_t   sha256[k_ra8_mdl_sha256_bytes],
+                                                    ra8_mdl_http_response_t* response)
 {
   c6m_mdl_backend_t* backend = (c6m_mdl_backend_t*)ctx;
-  const size_t       left    = backend->len - backend->at;
-  const size_t       take    = (left < cap) ? left : cap;
+  *response                  = (ra8_mdl_http_response_t){};
+  const size_t left          = backend->len - backend->at;
+  const size_t take          = (left < cap) ? left : cap;
   if (take != 0U) {
     (void)memcpy(out, &backend->data[backend->at], take);
     backend->at += take;
@@ -115,6 +129,15 @@ RA8_INTERNAL static ra8_err_t internal_c6m_mdl_read(void*     ctx,
   *complete    = (take == 0U);
   if (*complete) {
     (void)memcpy(sha256, backend->digest, k_ra8_mdl_sha256_bytes);
+    response->status = ra8_c6_model()->mdl_http_status;
+    (void)memcpy(response->retry_after, "5", sizeof("5"));
+    (void)memcpy(response->etag, "\"c6-model-etag\"", sizeof("\"c6-model-etag\""));
+    (void)memcpy(response->last_modified,
+                 "Wed, 21 Oct 2015 07:28:00 GMT",
+                 sizeof("Wed, 21 Oct 2015 07:28:00 GMT"));
+    (void)memcpy(response->content_type,
+                 "application/octet-stream",
+                 sizeof("application/octet-stream"));
   }
   return k_ra8_ok;
 }
@@ -147,9 +170,10 @@ ra8_c6_model_t* ra8_c6_model(void)
 
 void ra8_c6_model_reset(void)
 {
-  s_c6           = (ra8_c6_model_t){};
-  s_c6.handshake = true;
-  s_mdl_backend  = (c6m_mdl_backend_t){.data = s_mdl_bytes, .len = sizeof(s_mdl_bytes)};
+  s_c6                 = (ra8_c6_model_t){};
+  s_c6.handshake       = true;
+  s_c6.mdl_http_status = 200;
+  s_mdl_backend        = (c6m_mdl_backend_t){.data = s_mdl_bytes, .len = sizeof(s_mdl_bytes)};
   (void)memset(s_mdl_backend.digest, k_c6m_mdl_digest_fill, sizeof(s_mdl_backend.digest));
   const ra8_mdl_service_backend_t backend = {.begin  = internal_c6m_mdl_begin,
                                              .read   = internal_c6m_mdl_read,

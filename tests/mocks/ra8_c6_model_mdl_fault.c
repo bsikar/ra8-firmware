@@ -19,6 +19,25 @@
 static const uint8_t s_mdl_unknown_field[] = {0x78U, 0x01U};
 
 /**
+ * @brief Clear COMPLETE-only HTTP metadata before changing terminal state
+ * @param[in,out] chunk Decoded generated response.
+ * @pre @p chunk is non-null and caller-owned.
+ * @pre String fields still reference decoder-owned storage.
+ * @post HTTP status is zero and selected headers are empty.
+ * @post Binary payload and decoder ownership are unchanged.
+ * @note Keeps each injected state fault isolated from metadata validation.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_clear_http_metadata(Ra8__Mdl__Chunk* chunk)
+{
+  chunk->http_status   = 0;
+  chunk->retry_after   = (char*)"";
+  chunk->etag          = (char*)"";
+  chunk->last_modified = (char*)"";
+  chunk->content_type  = (char*)"";
+}
+
+/**
  * @brief Mutate one decoded Chunk according to the selected fault.
  * @details Rewrites only fields needed for the selected negative or terminal
  * scenario while preserving the generated decoder's owned byte spans.
@@ -44,24 +63,28 @@ RA8_INTERNAL static void internal_mutate_chunk(Ra8__Mdl__Chunk*         chunk,
       chunk->total_bytes = chunk->offset + chunk->data.len + 1U;
       break;
     case k_c6m_mdl_fault_failed:
+      internal_clear_http_metadata(chunk);
       chunk->state  = RA8__MDL__STATE__STATE_FAILED;
       chunk->status = (int32_t)k_ra8_fail;
       chunk->data   = (ProtobufCBinaryData){};
       chunk->sha256 = (ProtobufCBinaryData){};
       break;
     case k_c6m_mdl_fault_failed_zero_status:
+      internal_clear_http_metadata(chunk);
       chunk->state  = RA8__MDL__STATE__STATE_FAILED;
       chunk->status = 0;
       chunk->data   = (ProtobufCBinaryData){};
       chunk->sha256 = (ProtobufCBinaryData){};
       break;
     case k_c6m_mdl_fault_cancelled:
+      internal_clear_http_metadata(chunk);
       chunk->state  = RA8__MDL__STATE__STATE_CANCELLED;
       chunk->status = 0;
       chunk->data   = (ProtobufCBinaryData){};
       chunk->sha256 = (ProtobufCBinaryData){};
       break;
     case k_c6m_mdl_fault_cancelled_with_data:
+      internal_clear_http_metadata(chunk);
       chunk->state  = RA8__MDL__STATE__STATE_CANCELLED;
       chunk->status = 0;
       chunk->data   = (ProtobufCBinaryData){.len = 1U, .data = &bad_data};
@@ -108,14 +131,22 @@ RA8_INTERNAL static void internal_repack_chunk(uint8_t*                 response
 {
   Ra8__Mdl__Chunk* chunk = ra8__mdl__chunk__unpack(nullptr, *response_len, response);
   TEST_ASSERT_NOT_NULL(chunk);
-  const ProtobufCBinaryData owned_data = chunk->data;
-  const ProtobufCBinaryData owned_sha  = chunk->sha256;
+  const ProtobufCBinaryData owned_data          = chunk->data;
+  const ProtobufCBinaryData owned_sha           = chunk->sha256;
+  char* const               owned_retry_after   = chunk->retry_after;
+  char* const               owned_etag          = chunk->etag;
+  char* const               owned_last_modified = chunk->last_modified;
+  char* const               owned_content_type  = chunk->content_type;
   internal_mutate_chunk(chunk, fault);
   *response_len = ra8__mdl__chunk__get_packed_size(chunk);
   TEST_ASSERT(*response_len <= response_cap);
   TEST_ASSERT_EQ((int64_t)*response_len, (int64_t)ra8__mdl__chunk__pack(chunk, response));
-  chunk->data   = owned_data;
-  chunk->sha256 = owned_sha;
+  chunk->data          = owned_data;
+  chunk->sha256        = owned_sha;
+  chunk->retry_after   = owned_retry_after;
+  chunk->etag          = owned_etag;
+  chunk->last_modified = owned_last_modified;
+  chunk->content_type  = owned_content_type;
   ra8__mdl__chunk__free_unpacked(chunk, nullptr);
 }
 

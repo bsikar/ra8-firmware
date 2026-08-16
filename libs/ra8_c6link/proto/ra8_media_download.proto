@@ -41,6 +41,11 @@ message StartRequest {
   uint32 protocol_version = 1;
   string url = 2;
   Format format = 3;
+  string user_agent = 4;
+  string referer = 5;
+  string if_none_match = 6;
+  string if_modified_since = 7;
+  uint32 timeout_ms = 8;
 }
 
 message Accepted {
@@ -67,6 +72,11 @@ message Chunk {
   State state = 7;
   int32 status = 8;
   bytes sha256 = 9;
+  int32 http_status = 10;
+  string retry_after = 11;
+  string etag = 12;
+  string last_modified = 13;
+  string content_type = 14;
 }
 
 message CancelRequest {

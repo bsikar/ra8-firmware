@@ -207,6 +207,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_transfer_commit(mdl_transfer_state_t*
       .bytes_stored    = bytes_stored,
       .chunks_received = chunks_received,
       .format          = state->config->format,
+      .response        = chunk->response,
     };
     memcpy(result->sha256, digest, sizeof(digest));
     state->storage_active = false;
@@ -234,7 +235,12 @@ ra8_err_t ra8_c6link_mdl_transfer(ra8_c6link_t*                    link,
   state.storage_active = true;
   err                  = config->sha256.init(config->sha256.ctx);
   if (err == k_ra8_ok) {
-    err = ra8_c6link_mdl_start(link, url, config->format, &state.session);
+    const ra8_mdl_request_t request = {
+      .url    = url,
+      .format = config->format,
+      .http   = config->http,
+    };
+    err = ra8_c6link_mdl_start_request(link, &request, &state.session);
   }
   uint64_t bytes_stored = 0U;
   for (uint32_t pull = 0U; (pull < config->max_chunks) && (err == k_ra8_ok); pull++) {

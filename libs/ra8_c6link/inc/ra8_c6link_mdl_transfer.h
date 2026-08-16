@@ -162,6 +162,7 @@ typedef struct ra8_mdl_transfer_config {
   ra8_mdl_storage_iface_t     storage;          /**< Transactional RA8-local destination. */
   ra8_mdl_sha256_iface_t      sha256;           /**< Independent running digest.          */
   ra8_mdl_format_t            format;           /**< Requested and validated artifact.    */
+  ra8_mdl_http_policy_t       http;             /**< Forwarded downloader request policy. */
   ra8_mdl_cancel_requested_fn cancel_requested; /**< Optional cooperative cancel query.   */
   void*                       cancel_ctx;       /**< Context for `cancel_requested`.      */
   uint16_t                    chunk_bytes;      /**< Maximum bytes requested per pull.    */
@@ -187,10 +188,11 @@ typedef struct ra8_mdl_transfer_config {
  * @since 0.1.0
  */
 typedef struct ra8_mdl_transfer_result {
-  uint64_t         bytes_stored;                   /**< Bytes atomically committed.    */
-  uint32_t         chunks_received;                /**< Remote responses consumed.     */
-  ra8_mdl_format_t format;                         /**< Validated committed format.    */
-  uint8_t          sha256[k_ra8_mdl_sha256_bytes]; /**< Independently verified digest. */
+  uint64_t                bytes_stored;                   /**< Bytes atomically committed.    */
+  uint32_t                chunks_received;                /**< Remote responses consumed.     */
+  ra8_mdl_format_t        format;                         /**< Validated committed format.    */
+  uint8_t                 sha256[k_ra8_mdl_sha256_bytes]; /**< Independently verified digest. */
+  ra8_mdl_http_response_t response;                       /**< Proven terminal HTTP metadata. */
 } ra8_mdl_transfer_result_t;
 
 #ifdef __cplusplus

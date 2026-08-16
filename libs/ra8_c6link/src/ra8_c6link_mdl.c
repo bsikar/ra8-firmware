@@ -30,7 +30,9 @@ static_assert((uint32_t)k_ra8_mdl_format_invalid == RA8__MDL__FORMAT__FORMAT_INV
 /** @brief Largest encoded inner request (bounded URL plus protobuf overhead).
  */
 typedef enum : uint16_t {
-  k_mdl_request_bytes = k_ra8_mdl_url_max + 32U, /**< Maximum packed request bytes. */
+  k_mdl_request_bytes = k_ra8_mdl_url_max + k_ra8_mdl_user_agent_max + k_ra8_mdl_referer_max +
+                        k_ra8_mdl_etag_max + k_ra8_mdl_http_date_max +
+                        96U, /**< Maximum packed request bytes. */
 } mdl_request_const_t;
 
 /** @brief Response extractor variants. */
@@ -51,6 +53,88 @@ typedef struct {
   ra8_mdl_format_t   requested_format; /**< Format the Accepted response must echo. */
   mdl_take_kind_t    kind;             /**< Expected generated response variant.    */
 } mdl_take_ctx_t;
+
+/**
+ * @brief Validate one optional HTTP field against its protocol bound.
+ * @details Treats null as absent and rejects CR/LF header injection.
+ * @param[in] text Optional NUL-terminated field.
+ * @param[in] cap Maximum extent including NUL.
+ * @return Field validity.
+ * @retval true Field is absent or bounded and single-line.
+ * @retval false Field is unterminated, too large, or contains CR/LF.
+ * @pre @p cap is nonzero.
+ * @pre Non-null @p text is readable through its first NUL or @p cap bytes.
+ * @post No input or global state is modified.
+ * @post True guarantees the field can be encoded within its fixed bound.
+ * @note Pure and reentrant.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_mdl_http_field_valid(const char* text, size_t cap)
+{
+  if (text == nullptr) {
+    return true;
+  }
+  const size_t length = strnlen(text, cap);
+  if (length >= cap) {
+    return false;
+  }
+  for (size_t index = 0U; index < length; index++) {
+    if ((text[index] == '\r') || (text[index] == '\n')) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * @brief Validate terminal HTTP metadata carried by a generated Chunk.
+ * @details Requires a real status only on COMPLETE and bounds every selected
+ * response header before any caller copy.
+ * @param[in] msg Decoded generated chunk.
+ * @return Metadata validity.
+ * @retval true Metadata matches the chunk state and all string bounds.
+ * @retval false Status, presence, termination, or a header bound is invalid.
+ * @pre @p msg is non-null and owns decoded string pointers.
+ * @pre The protobuf arena remains live for the complete call.
+ * @post No decoded or caller-owned state is modified.
+ * @post True authorizes bounded response-header copies.
+ * @note Pure and reentrant for independent messages.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_mdl_http_response_valid(const Ra8__Mdl__Chunk* msg)
+{
+  const bool empty = (msg->retry_after != nullptr) && (msg->retry_after[0] == '\0') &&
+                     (msg->etag != nullptr) && (msg->etag[0] == '\0') &&
+                     (msg->last_modified != nullptr) && (msg->last_modified[0] == '\0') &&
+                     (msg->content_type != nullptr) && (msg->content_type[0] == '\0');
+  if (msg->state != RA8__MDL__STATE__STATE_COMPLETE) {
+    return (msg->http_status == 0) && empty;
+  }
+  return (msg->http_status >= 100) && (msg->http_status <= 599) &&
+         internal_mdl_http_field_valid(msg->retry_after, k_ra8_mdl_retry_after_max) &&
+         internal_mdl_http_field_valid(msg->etag, k_ra8_mdl_etag_max) &&
+         internal_mdl_http_field_valid(msg->last_modified, k_ra8_mdl_http_date_max) &&
+         internal_mdl_http_field_valid(msg->content_type, k_ra8_mdl_content_type_max);
+}
+
+/**
+ * @brief Copy one already-bounded HTTP field into fixed response storage.
+ * @param[out] destination Fixed caller response array.
+ * @param[in] source Validated NUL-terminated decoded field.
+ * @param[in] cap Capacity of @p destination and validated source bound.
+ * @pre Pointers are non-null and @p source terminates before @p cap.
+ * @pre Source and destination do not overlap.
+ * @post Destination contains one exact NUL-terminated copy.
+ * @post Bytes beyond the terminator are unchanged.
+ * @note Caller validation makes this helper infallible.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_mdl_http_field_copy(char* destination, const char* source, size_t cap)
+{
+  const size_t length = strnlen(source, cap);
+  memcpy(destination, source, length + 1U);
+}
 
 /**
  * @brief Validate state-specific fields of one correlated chunk
@@ -74,6 +158,9 @@ RA8_INTERNAL static bool internal_mdl_chunk_semantics_valid(const Ra8__Mdl__Chun
   const uint64_t end               = msg->offset + msg->data.len;
   const bool     total_covers_data = (msg->total_bytes == 0U) || (end <= msg->total_bytes);
   if (!total_covers_data) {
+    return false;
+  }
+  if (!internal_mdl_http_response_valid(msg)) {
     return false;
   }
   switch (msg->state) {
@@ -186,6 +273,21 @@ RA8_INTERNAL static ra8_err_t internal_mdl_take_chunk(mdl_take_ctx_t*           
     }
     if (take->chunk->has_sha256) {
       memcpy(take->chunk->sha256, msg->sha256.data, k_ra8_mdl_sha256_bytes);
+    }
+    if (msg->state == RA8__MDL__STATE__STATE_COMPLETE) {
+      take->chunk->response.status = msg->http_status;
+      internal_mdl_http_field_copy(take->chunk->response.retry_after,
+                                   msg->retry_after,
+                                   sizeof(take->chunk->response.retry_after));
+      internal_mdl_http_field_copy(take->chunk->response.etag,
+                                   msg->etag,
+                                   sizeof(take->chunk->response.etag));
+      internal_mdl_http_field_copy(take->chunk->response.last_modified,
+                                   msg->last_modified,
+                                   sizeof(take->chunk->response.last_modified));
+      internal_mdl_http_field_copy(take->chunk->response.content_type,
+                                   msg->content_type,
+                                   sizeof(take->chunk->response.content_type));
     }
     take->session->next_offset += msg->data.len;
     take->session->next_sequence += 1U;
@@ -326,31 +428,44 @@ RA8_INTERNAL static ra8_err_t internal_mdl_call(ra8_c6link_t*   link,
 }
 // NOLINTEND(readability-non-const-parameter)
 
-ra8_err_t ra8_c6link_mdl_start(ra8_c6link_t*      link,
-                               const char*        url,
-                               ra8_mdl_format_t   format,
-                               ra8_mdl_session_t* session)
+ra8_err_t ra8_c6link_mdl_start_request(ra8_c6link_t*            link,
+                                       const ra8_mdl_request_t* request,
+                                       ra8_mdl_session_t*       session)
 {
-  if ((link == nullptr) || (url == nullptr) || (session == nullptr)) {
+  if ((link == nullptr) || (request == nullptr) || (request->url == nullptr) ||
+      (session == nullptr)) {
     return k_ra8_err_null_ptr;
   }
   const size_t https_prefix_len = sizeof("https://") - 1U;
-  const size_t url_len          = strnlen(url, k_ra8_mdl_url_max);
+  const size_t url_len          = strnlen(request->url, k_ra8_mdl_url_max);
   if ((url_len == 0U) || (url_len >= k_ra8_mdl_url_max) ||
-      (strncmp(url, "https://", https_prefix_len) != 0) || (url[https_prefix_len] == '\0')) {
+      (strncmp(request->url, "https://", https_prefix_len) != 0) ||
+      (request->url[https_prefix_len] == '\0')) {
     return k_ra8_err_invalid_arg;
   }
-  if ((uint32_t)format > (uint32_t)k_ra8_mdl_format_rabook) {
+  if (((uint32_t)request->format > (uint32_t)k_ra8_mdl_format_rabook) ||
+      (request->http.timeout_ms > k_ra8_mdl_timeout_ms_max) ||
+      !internal_mdl_http_field_valid(request->http.user_agent, k_ra8_mdl_user_agent_max) ||
+      !internal_mdl_http_field_valid(request->http.referer, k_ra8_mdl_referer_max) ||
+      !internal_mdl_http_field_valid(request->http.if_none_match, k_ra8_mdl_etag_max) ||
+      !internal_mdl_http_field_valid(request->http.if_modified_since, k_ra8_mdl_http_date_max)) {
     return k_ra8_err_invalid_arg;
   }
   *session = (ra8_mdl_session_t){};
   char url_copy[k_ra8_mdl_url_max];
-  memcpy(url_copy, url, url_len + 1U);
+  memcpy(url_copy, request->url, url_len + 1U);
   Ra8__Mdl__StartRequest inner;
   ra8__mdl__start_request__init(&inner);
   inner.protocol_version = k_ra8_mdl_protocol_version;
   inner.url              = url_copy;
-  inner.format           = (Ra8__Mdl__Format)format;
+  inner.format           = (Ra8__Mdl__Format)request->format;
+  inner.user_agent = (char*)((request->http.user_agent != nullptr) ? request->http.user_agent : "");
+  inner.referer    = (char*)((request->http.referer != nullptr) ? request->http.referer : "");
+  inner.if_none_match =
+    (char*)((request->http.if_none_match != nullptr) ? request->http.if_none_match : "");
+  inner.if_modified_since =
+    (char*)((request->http.if_modified_since != nullptr) ? request->http.if_modified_since : "");
+  inner.timeout_ms = request->http.timeout_ms;
   uint8_t      data[k_mdl_request_bytes];
   const size_t packed = ra8__mdl__start_request__get_packed_size(&inner);
   if ((packed == 0U) || (packed > sizeof(data)) ||
@@ -358,9 +473,18 @@ ra8_err_t ra8_c6link_mdl_start(ra8_c6link_t*      link,
     return k_ra8_err_invalid_size;
   }
   mdl_take_ctx_t take = {.session          = session,
-                         .requested_format = format,
+                         .requested_format = request->format,
                          .kind             = k_mdl_take_accepted};
   return internal_mdl_call(link, k_ra8_mdl_rpc_start, data, packed, &take);
+}
+
+ra8_err_t ra8_c6link_mdl_start(ra8_c6link_t*      link,
+                               const char*        url,
+                               ra8_mdl_format_t   format,
+                               ra8_mdl_session_t* session)
+{
+  const ra8_mdl_request_t request = {.url = url, .format = format};
+  return ra8_c6link_mdl_start_request(link, &request, session);
 }
 
 ra8_err_t ra8_c6link_mdl_next(ra8_c6link_t*      link,

@@ -29,10 +29,68 @@ static_assert((uint32_t)k_ra8_mdl_format_invalid == RA8__MDL__FORMAT__FORMAT_INV
 
 /** @brief Decode arena sized for the bounded start request and URL. */
 typedef enum : uint16_t {
-  k_mdl_decode_arena_bytes = k_ra8_mdl_url_max + 384U, /**< Per-dispatch arena size.    */
-  k_mdl_decode_align       = 8U,                       /**< Arena allocation alignment. */
-  k_mdl_decode_align_mask  = k_mdl_decode_align - 1U,  /**< Mask used to round sizes.   */
+  k_mdl_decode_arena_bytes = k_ra8_mdl_url_max + k_ra8_mdl_user_agent_max + k_ra8_mdl_referer_max +
+                             k_ra8_mdl_etag_max + k_ra8_mdl_http_date_max +
+                             512U,                    /**< Per-dispatch arena size. */
+  k_mdl_decode_align       = 8U,                      /**< Arena allocation alignment. */
+  k_mdl_decode_align_mask  = k_mdl_decode_align - 1U, /**< Mask used to round sizes.   */
 } mdl_svc_const_t;
+
+/**
+ * @brief Validate one decoded optional request header.
+ * @details Requires bounded single-line text so a remote request cannot inject
+ * additional ESP-IDF headers.
+ * @param[in] text Decoded protobuf string.
+ * @param[in] cap Maximum extent including NUL.
+ * @return Header validity.
+ * @retval true Text terminates before @p cap and contains no CR/LF.
+ * @retval false Pointer, bound, termination, or line discipline is invalid.
+ * @pre @p cap is nonzero.
+ * @pre Non-null @p text belongs to the current decode arena.
+ * @post No decoded or service state is modified.
+ * @post True authorizes passing the string to the backend.
+ * @note Empty strings are valid and mean header absent.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_mdl_request_field_valid(const char* text, size_t cap)
+{
+  if (text == nullptr) {
+    return false;
+  }
+  const size_t length = strnlen(text, cap);
+  if (length >= cap) {
+    return false;
+  }
+  for (size_t index = 0U; index < length; index++) {
+    if ((text[index] == '\r') || (text[index] == '\n')) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * @brief Validate fixed terminal response metadata returned by a backend.
+ * @param[in] response Candidate status and selected headers.
+ * @return Response validity.
+ * @retval true Status is HTTP-shaped and every array is bounded single-line text.
+ * @retval false Status or a selected header violates the protocol contract.
+ * @pre @p response is non-null and fully initialized by the backend.
+ * @pre Every array is readable for its declared extent.
+ * @post No response or service state is modified.
+ * @post True authorizes protobuf packing of every selected header.
+ * @note Pure and reentrant.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_mdl_response_valid(const ra8_mdl_http_response_t* response)
+{
+  return (response->status >= 100) && (response->status <= 599) &&
+         internal_mdl_request_field_valid(response->retry_after, sizeof(response->retry_after)) &&
+         internal_mdl_request_field_valid(response->etag, sizeof(response->etag)) &&
+         internal_mdl_request_field_valid(response->last_modified,
+                                          sizeof(response->last_modified)) &&
+         internal_mdl_request_field_valid(response->content_type, sizeof(response->content_type));
+}
 
 /** @brief Linear allocator used by protobuf-c; reset after every dispatch. */
 typedef struct {
@@ -229,11 +287,16 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_start(ra8_mdl_service_t*  se
   }
   const size_t https_prefix_len = sizeof("https://") - 1U;
   const size_t url_len          = strnlen(req->url, k_ra8_mdl_url_max);
-  const bool   valid = (req->protocol_version == k_ra8_mdl_protocol_version) && (url_len != 0U) &&
-                       (url_len < k_ra8_mdl_url_max) &&
-                       (strncmp(req->url, "https://", https_prefix_len) == 0) &&
-                       (req->url[https_prefix_len] != '\0') &&
-                       ((uint32_t)req->format <= (uint32_t)RA8__MDL__FORMAT__FORMAT_RABOOK);
+  const bool   valid =
+    (req->protocol_version == k_ra8_mdl_protocol_version) && (url_len != 0U) &&
+    (url_len < k_ra8_mdl_url_max) && (strncmp(req->url, "https://", https_prefix_len) == 0) &&
+    (req->url[https_prefix_len] != '\0') &&
+    ((uint32_t)req->format <= (uint32_t)RA8__MDL__FORMAT__FORMAT_RABOOK) &&
+    (req->timeout_ms <= k_ra8_mdl_timeout_ms_max) &&
+    internal_mdl_request_field_valid(req->user_agent, k_ra8_mdl_user_agent_max) &&
+    internal_mdl_request_field_valid(req->referer, k_ra8_mdl_referer_max) &&
+    internal_mdl_request_field_valid(req->if_none_match, k_ra8_mdl_etag_max) &&
+    internal_mdl_request_field_valid(req->if_modified_since, k_ra8_mdl_http_date_max);
   if (!valid) {
     return k_ra8_err_invalid_arg;
   }
@@ -254,8 +317,16 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_start(ra8_mdl_service_t*  se
   if (prepacked != k_ra8_ok) {
     return prepacked;
   }
-  const ra8_err_t begun =
-    service->backend.begin(service->backend.ctx, req->url, (ra8_mdl_format_t)req->format);
+  const ra8_mdl_request_t backend_request = {
+    .url    = req->url,
+    .format = (ra8_mdl_format_t)req->format,
+    .http   = {.user_agent        = req->user_agent,
+               .referer           = req->referer,
+               .if_none_match     = req->if_none_match,
+               .if_modified_since = req->if_modified_since,
+               .timeout_ms        = req->timeout_ms},
+  };
+  const ra8_err_t begun = service->backend.begin(service->backend.ctx, &backend_request);
   if (begun != k_ra8_ok) {
     *response_len = 0U;
     return begun;
@@ -271,12 +342,13 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_start(ra8_mdl_service_t*  se
 
 /** @brief Caller-bounded bytes and metadata returned by one backend pull. */
 typedef struct internal_mdl_next_read_t {
-  uint8_t  bytes[k_ra8_mdl_chunk_data_max]; /**< Returned body bytes.        */
-  uint8_t  digest[k_ra8_mdl_sha256_bytes];  /**< Terminal SHA-256 digest.    */
-  uint16_t got;                             /**< Valid body byte count.      */
-  uint64_t total;                           /**< Declared complete size.     */
-  uint64_t end_offset;                      /**< Offset after returned data. */
-  bool     complete;                        /**< Whether this is terminal.   */
+  uint8_t                 bytes[k_ra8_mdl_chunk_data_max]; /**< Returned body bytes.        */
+  uint8_t                 digest[k_ra8_mdl_sha256_bytes];  /**< Terminal SHA-256 digest.    */
+  uint16_t                got;                             /**< Valid body byte count.      */
+  uint64_t                total;                           /**< Declared complete size.     */
+  uint64_t                end_offset;                      /**< Offset after returned data. */
+  bool                    complete;                        /**< Whether this is terminal.   */
+  ra8_mdl_http_response_t response;                        /**< Terminal HTTP metadata.     */
 } internal_mdl_next_read_t;
 
 /**
@@ -321,19 +393,49 @@ static ra8_err_t internal_mdl_fail_job(ra8_mdl_service_t* service, ra8_err_t err
 RA8_INTERNAL
 static ra8_err_t internal_mdl_next_capacity(uint32_t max_data, size_t response_cap)
 {
-  uint8_t         max_bytes[k_ra8_mdl_chunk_data_max];
-  uint8_t         max_digest[k_ra8_mdl_sha256_bytes];
-  Ra8__Mdl__Chunk largest  = RA8__MDL__CHUNK__INIT;
-  largest.protocol_version = UINT32_MAX;
-  largest.job_id           = UINT32_MAX;
-  largest.sequence         = UINT32_MAX;
-  largest.offset           = UINT64_MAX;
-  largest.data             = (ProtobufCBinaryData){.len = max_data, .data = max_bytes};
-  largest.total_bytes      = UINT64_MAX;
-  largest.state            = RA8__MDL__STATE__STATE_COMPLETE;
-  largest.status           = INT32_MAX;
-  largest.sha256           = (ProtobufCBinaryData){.len = sizeof(max_digest), .data = max_digest};
-  return internal_mdl_check_response_size(ra8__mdl__chunk__get_packed_size(&largest), response_cap);
+  uint8_t max_bytes[k_ra8_mdl_chunk_data_max];
+  uint8_t max_digest[k_ra8_mdl_sha256_bytes];
+  char    retry_after[k_ra8_mdl_retry_after_max];
+  char    etag[k_ra8_mdl_etag_max];
+  char    last_modified[k_ra8_mdl_http_date_max];
+  char    content_type[k_ra8_mdl_content_type_max];
+  memset(retry_after, 'x', sizeof(retry_after) - 1U);
+  memset(etag, 'x', sizeof(etag) - 1U);
+  memset(last_modified, 'x', sizeof(last_modified) - 1U);
+  memset(content_type, 'x', sizeof(content_type) - 1U);
+  retry_after[sizeof(retry_after) - 1U]     = '\0';
+  etag[sizeof(etag) - 1U]                   = '\0';
+  last_modified[sizeof(last_modified) - 1U] = '\0';
+  content_type[sizeof(content_type) - 1U]   = '\0';
+  Ra8__Mdl__Chunk data                      = RA8__MDL__CHUNK__INIT;
+  data.protocol_version                     = UINT32_MAX;
+  data.job_id                               = UINT32_MAX;
+  data.sequence                             = UINT32_MAX;
+  data.offset                               = UINT64_MAX;
+  data.data        = (ProtobufCBinaryData){.len = max_data, .data = max_bytes};
+  data.total_bytes = UINT64_MAX;
+  data.state       = RA8__MDL__STATE__STATE_DOWNLOADING;
+  const ra8_err_t data_fit =
+    internal_mdl_check_response_size(ra8__mdl__chunk__get_packed_size(&data), response_cap);
+  if (data_fit != k_ra8_ok) {
+    return data_fit;
+  }
+
+  Ra8__Mdl__Chunk terminal  = RA8__MDL__CHUNK__INIT;
+  terminal.protocol_version = UINT32_MAX;
+  terminal.job_id           = UINT32_MAX;
+  terminal.sequence         = UINT32_MAX;
+  terminal.offset           = UINT64_MAX;
+  terminal.total_bytes      = UINT64_MAX;
+  terminal.state            = RA8__MDL__STATE__STATE_COMPLETE;
+  terminal.sha256           = (ProtobufCBinaryData){.len = sizeof(max_digest), .data = max_digest};
+  terminal.http_status      = 599;
+  terminal.retry_after      = retry_after;
+  terminal.etag             = etag;
+  terminal.last_modified    = last_modified;
+  terminal.content_type     = content_type;
+  return internal_mdl_check_response_size(ra8__mdl__chunk__get_packed_size(&terminal),
+                                          response_cap);
 }
 
 /**
@@ -366,7 +468,8 @@ static ra8_err_t internal_mdl_read_next(ra8_mdl_service_t*        service,
                                                &result->got,
                                                &result->total,
                                                &result->complete,
-                                               result->digest);
+                                               result->digest,
+                                               &result->response);
   if (read != k_ra8_ok) {
     return internal_mdl_fail_job(service, read);
   }
@@ -380,7 +483,9 @@ static ra8_err_t internal_mdl_read_next(ra8_mdl_service_t*        service,
   }
   if ((result->got > max_data) || ((!result->complete) && (result->got == 0U)) ||
       (result->complete && (result->got != 0U)) || offset_overflow || total_invalid ||
-      (service->next_sequence == UINT32_MAX)) {
+      (service->next_sequence == UINT32_MAX) ||
+      (result->complete && !internal_mdl_response_valid(&result->response)) ||
+      (!result->complete && (result->response.status != 0))) {
     return internal_mdl_fail_job(service, k_ra8_err_protocol_error);
   }
   return k_ra8_ok;
@@ -454,7 +559,12 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_next(ra8_mdl_service_t*  ser
     result.complete ? RA8__MDL__STATE__STATE_COMPLETE : RA8__MDL__STATE__STATE_DOWNLOADING;
   out.status = 0;
   if (result.complete) {
-    out.sha256 = (ProtobufCBinaryData){.len = k_ra8_mdl_sha256_bytes, .data = result.digest};
+    out.sha256        = (ProtobufCBinaryData){.len = k_ra8_mdl_sha256_bytes, .data = result.digest};
+    out.http_status   = result.response.status;
+    out.retry_after   = result.response.retry_after;
+    out.etag          = result.response.etag;
+    out.last_modified = result.response.last_modified;
+    out.content_type  = result.response.content_type;
   }
   const ra8_err_t packed = internal_mdl_pack_chunk(&out, response, response_cap, response_len);
   if (packed != k_ra8_ok) {

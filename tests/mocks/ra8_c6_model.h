@@ -155,6 +155,8 @@ typedef struct ra8_c6_model {
   uint32_t                 delays;           /**< Times the host asked the seam to wait.     */
   uint16_t                 mdl_cancels;      /**< Media cancel operations accepted.          */
   ra8_mdl_format_t         mdl_format;       /**< Artifact identity observed by the service. */
+  int32_t                  mdl_http_status;  /**< Terminal HTTP status emitted by the model. */
+  uint32_t                 mdl_timeout_ms;   /**< HTTP timeout observed by the service.       */
   uint16_t                 last_delay_ms;    /**< Milliseconds the newest wait asked for.    */
   uint32_t                 seen[k_c6m_seen]; /**< Request ids observed, in order.            */
   uint8_t                  seen_n;           /**< Entries in `seen`.                         */
@@ -167,8 +169,12 @@ typedef struct ra8_c6_model {
   bool     caps_seen;              /**< The host announced itself on ESP_PRIV_IF. */
   uint8_t  caps[k_c6m_caps_bytes]; /**< The announcement's octets, as received.   */
   uint8_t  caps_len;               /**< Octets of `caps` the host sent.           */
-  uint16_t eth_tx_len;             /**< Length of the last 802.3 frame sent up.   */
-  uint8_t  eth_tx[k_c6m_eth_len];  /**< Its leading octets.                       */
+  char     mdl_user_agent[k_ra8_mdl_user_agent_max];       /**< Observed User-Agent.       */
+  char     mdl_referer[k_ra8_mdl_referer_max];             /**< Observed Referer.          */
+  char     mdl_if_none_match[k_ra8_mdl_etag_max];          /**< Observed ETag condition.   */
+  char     mdl_if_modified_since[k_ra8_mdl_http_date_max]; /**< Observed date condition.   */
+  uint16_t eth_tx_len;            /**< Length of the last 802.3 frame sent up.   */
+  uint8_t  eth_tx[k_c6m_eth_len]; /**< Its leading octets.                       */
   /** Frames to send. */
   uint8_t queue[k_c6m_queue][k_ra8_c6link_frame_bytes];
   /** Next queue slot to transmit. */
