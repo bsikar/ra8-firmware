@@ -47,10 +47,14 @@ static const uint8_t k_comic_large_cbz[] = {
 };
 
 /** @brief Length of ::k_comic_large_cbz in bytes. */
-static const uint32_t k_comic_large_cbz_len = 423U;
+static const uint32_t k_comic_large_cbz_len = (uint32_t)sizeof(k_comic_large_cbz);
 
-/** @brief Decoded width of the baked oversized page, pixels. */
-static const uint32_t k_comic_large_w = 1024U;
-
-/** @brief Decoded height of the baked oversized page, pixels. */
-static const uint32_t k_comic_large_h = 1400U;
+/**
+ * @brief Decoded geometry of the baked oversized page.
+ * @details These are properties of the baked bytes above, not tunables: the
+ * decoder must reproduce exactly this size or the fixture is wrong.
+ */
+typedef enum : uint32_t {
+  k_comic_large_w = 1024U, /**< Decoded width in pixels.  */
+  k_comic_large_h = 1400U, /**< Decoded height in pixels. */
+} comic_large_geometry_t;

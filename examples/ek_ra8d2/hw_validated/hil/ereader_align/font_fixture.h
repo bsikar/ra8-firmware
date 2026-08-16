@@ -886,4 +886,4 @@ static const uint8_t k_ahem_ttf[] = {
 };
 
 /** @brief Length of ::k_ahem_ttf in bytes. */
-static const uint32_t k_ahem_ttf_len = 13884U;
+static const uint32_t k_ahem_ttf_len = (uint32_t)sizeof(k_ahem_ttf);
