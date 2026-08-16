@@ -743,6 +743,13 @@ RA8_INTERNAL static void internal_check_posix_symlinks(const fw_fs_t* fs, const 
  * `libs/if/src/fw_if_fs.c@fw_fs_space`. Finally, success/unpublished,
  * failure/unpublished, and success/published cover
  * `libs/if/src/fw_if_fs.c@fw_fs_transaction_commit`.
+ * Zero, non-power-two, and valid alignments cover
+ * `libs/if/src/fw_if_fs_dir.c@internal_cursor_workspace`. The cursor fault
+ * table isolates every name length, terminator, node type, and directory-size
+ * operand in `libs/if/src/fw_if_fs_dir.c@internal_cursor_entry`; the suffix and
+ * embedded-NUL cases cover the structurally coupled termination predicates.
+ * One-null output tuples plus success/present, success/absent, and
+ * failure/present results cover `libs/if/src/fw_if_fs_dir.c@fw_fs_dir_next`.
  * @details Runs the POSIX conformance and hostile-contract matrices through
  * production filesystem seams and checks observable state.
  * @pre Pointer arguments address their documented readable or writable extents.
