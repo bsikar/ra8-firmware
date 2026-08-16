@@ -100,6 +100,7 @@ set(MDL_CACHE_SRC src/mdl_cache.c src/mdl_cache_io.c)
 
 set(MDL_EXPORT_SRC
     src/mdl_export.c
+    src/mdl_export_workspace.c
     src/mdl_export_io.c
     src/mdl_export_meta.c
     src/mdl_export_zip.c
