@@ -31,6 +31,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_agt.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
@@ -149,9 +150,7 @@ RA8_INTERNAL static void internal_agt_periodic_setup_or_halt(void)
   return ra8_agt_start_free_run((uint8_t)k_agt_periodic_channel, (uint16_t)k_agt_periodic_reload);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   internal_agt_periodic_setup_or_halt();
   ra8_isr_globals_enable();
@@ -184,6 +183,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_agt_periodic_poll_ms);
   }
   internal_agt_periodic_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

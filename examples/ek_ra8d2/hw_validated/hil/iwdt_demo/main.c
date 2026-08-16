@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -134,16 +135,12 @@ RA8_INTERNAL static bool internal_in_window(uint16_t counter)
          (counter <= (uint16_t)k_iwdt_demo_window_high);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Poll and refresh the IWDT only inside its legal window.
  *
  * @details Emits the boot banner, initializes the option-controlled IWDT,
  *          samples its counter, and on legal samples queues a refresh, clears
  *          status, toggles LED1, and emits the refresh banner.
- *
- * @return Unreachable success value retained for the freestanding ABI.
  *
  * @pre Reset startup and SystemInit completed successfully.
  * @pre OFS0 contains the window policy represented by the demo constants.
@@ -152,7 +149,7 @@ RA8_INTERNAL static bool internal_in_window(uint16_t counter)
  * @note Does not return during normal operation.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   internal_setup_or_halt();
   ra8_isr_globals_enable();
@@ -188,6 +185,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_iwdt_demo_poll_ms);
   }
   internal_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

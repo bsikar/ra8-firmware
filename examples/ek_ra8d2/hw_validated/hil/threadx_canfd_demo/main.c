@@ -34,6 +34,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_canfd.h"
@@ -279,16 +280,12 @@ void tx_application_define(void* first_unused_memory)
 /**
  * @brief Application entry: GPIO bring-up then ThreadX dispatch.
  *
- * @return Never returns.
- *
  * @pre Reset_Handler completed .data/.bss init.
  * @pre SystemInit set VTOR + FPU.
  *
  * @post Two CANFD demo threads are running.
  */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   /* CGC bring-up FIRST so the ThreadX SysTick reload (programmed in
    * tx_initialize_low_level.S assuming RA8_BOOT_CLOCK_HZ = 1 GHz)
@@ -344,4 +341,3 @@ int32_t main(void)
     __asm__ volatile("wfi");
   }
 }
-#pragma GCC diagnostic pop

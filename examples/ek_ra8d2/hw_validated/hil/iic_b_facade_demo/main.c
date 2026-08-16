@@ -49,6 +49,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -433,12 +434,8 @@ static void iic_setup_or_halt(uint32_t* out_pclka_hz)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief App entry: facade controller round-trip, then target-mode responder.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR / FPU / priority grouping.
@@ -446,7 +443,7 @@ static void iic_setup_or_halt(uint32_t* out_pclka_hz)
  * @post On any bring-up failure the CPU BKPT-halts before the loop.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   uint32_t pclka_hz = 0U;
   iic_setup_or_halt(&pclka_hz);
@@ -480,6 +477,4 @@ int32_t main(void)
     (void)ra8_board_led_toggle(k_ra8_board_led1);
     ra8_delay_ms((uint32_t)k_iic_period_ms);
   }
-  return 0;
 }
-#pragma GCC diagnostic pop

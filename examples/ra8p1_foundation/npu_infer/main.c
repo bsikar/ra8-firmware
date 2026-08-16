@@ -48,6 +48,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -491,18 +492,14 @@ internal_npu_infer_execute(uint32_t* out_id, bool* out_tflm, uint32_t* out_check
   return internal_npu_infer_verify(out_check);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry: quantize + NPU op (IRQ) + dequantize, print verdict.
- *
- * @return Never returns (halts in WFI after emitting the banner).
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @post The verdict banner is on the console; the CPU is parked in WFI.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   internal_npu_infer_setup_or_halt();
 
@@ -519,6 +516,4 @@ int32_t main(void)
   internal_npu_infer_emit(id, tflm, run_ok, check, pass);
 
   internal_npu_infer_park();
-  return 0;
 }
-#pragma GCC diagnostic pop

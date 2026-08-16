@@ -48,6 +48,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ra8p1.h"
 #include "ra8_cgc.h"
@@ -399,18 +400,14 @@ internal_npu_smoke_emit(uint32_t id, bool run_ok, uint32_t check, bool pass)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry: bring up the NPU, run a checkable job, print verdict.
- *
- * @return Never returns (halts in WFI after emitting the banner).
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @post The verdict banner is on the console; the CPU is parked in WFI.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   internal_npu_smoke_setup_or_halt();
 
@@ -440,6 +437,4 @@ int32_t main(void)
   internal_npu_smoke_emit(id, run_ok, check, pass);
 
   internal_npu_smoke_park();
-  return 0;
 }
-#pragma GCC diagnostic pop

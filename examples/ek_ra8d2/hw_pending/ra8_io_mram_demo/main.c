@@ -39,6 +39,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -245,9 +246,6 @@ RA8_INTERNAL static ra8_err_t internal_demo_roundtrip(void)
  * @details Initialises logging + console, brings up the MRAM volume, runs the
  *          program/erase round-trip, and prints a single PASS/FAIL verdict.
  *
- * @return Never returns.
- * @retval (none) The function does not return (final `while (true)`).
- *
  * @pre SystemInit configured VTOR / FPU / priority grouping.
  * @pre The extra-MRAM region is present (modelled in ra8_emulator, real on silicon).
  * @post Exactly one PASS or FAIL verdict line has been queued on SCI8.
@@ -256,7 +254,7 @@ RA8_INTERNAL static ra8_err_t internal_demo_roundtrip(void)
  * @note Single-threaded; runs to the park loop on the main stack.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   ra8_log_init();
   internal_demo_setup_or_halt();

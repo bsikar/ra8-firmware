@@ -41,6 +41,7 @@
 #include <string.h>
 
 #include "payload_image.h"
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_dfu.h"
 
@@ -116,11 +117,8 @@ typedef enum : uintptr_t {
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Entry: launch the embedded copy-to-run image; never returns on success.
- * @return Never returns (control passes to the launched image, or parks).
  * @pre Reset_Handler copied .data and zeroed .bss; SystemInit ran.
  * @pre The embedded image's first two words are a valid MSP + Thumb reset vector.
  * @post On success, control is at the image's reset vector in the SRAM run window.
@@ -128,7 +126,7 @@ typedef enum : uintptr_t {
  * @note Single entry point; not re-entrant.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   static_assert(sizeof(s_payload_image) >= (2U * sizeof(uint32_t)),
                 "payload image must contain at least the 2-word vector table");
@@ -164,6 +162,4 @@ int32_t main(void)
                  (uint32_t)k_ra8_dfu_run_base);
 
   internal_dcr_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

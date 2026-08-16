@@ -54,6 +54,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -911,12 +912,9 @@ static void app_print_banner(bool staged, bool committed, bool rolled_back)
   app_print("\r\n");
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry: run both A/B paths once, then report forever.
  *
- * @return Never returns (loops reporting the latched verdict).
  * @pre Reset_Handler initialised the C runtime; SystemInit ran.
  * @pre The EK-RA8D2 J-Link OB VCOM console is attached for the banner.
  * @post The commit + rollback attempts have executed against extra-MRAM.
@@ -924,7 +922,7 @@ static void app_print_banner(bool staged, bool committed, bool rolled_back)
  * @note Single entry point; not re-entrant.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   if (app_setup() != k_ra8_ok) {
     /* NASA Rule 2 exemption: terminal panic spin on a fatal bring-up error. */
@@ -959,4 +957,3 @@ int32_t main(void)
     }
   }
 }
-#pragma GCC diagnostic pop

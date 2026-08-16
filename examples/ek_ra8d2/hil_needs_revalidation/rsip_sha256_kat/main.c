@@ -33,6 +33,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -175,9 +176,7 @@ internal_kat_one(const uint8_t* msg, uint32_t len, const uint8_t* expect)
   return memcmp(digest, expect, (size_t)k_ra8_rsip_sha256_digest_bytes) == 0;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   internal_kat_setup_or_halt();
   ra8_isr_globals_enable();
@@ -204,6 +203,4 @@ int32_t main(void)
     ra8_delay_ms(k_kat_period_ms);
   }
   internal_kat_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

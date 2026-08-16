@@ -42,6 +42,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -344,13 +345,9 @@ static const char* fileops_port_name(ra8_usb_speed_t speed)
  * =============================================================================
  */
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry. Alternates between the HS and FS host ports
  *        and runs the file-op suite until it fully passes.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
@@ -359,7 +356,7 @@ static const char* fileops_port_name(ra8_usb_speed_t speed)
  * @post On any HAL init failure the function halts in WFI.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   fileops_setup_or_halt();
 
@@ -391,6 +388,4 @@ int32_t main(void)
     __asm__ volatile("wfi");
   }
 
-  return 0;
 }
-#pragma GCC diagnostic pop

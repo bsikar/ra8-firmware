@@ -67,6 +67,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -449,13 +450,9 @@ RA8_INTERNAL static void internal_usb_audio_log_frames(uint32_t frames)
   (void)ra8_board_led_toggle(k_ra8_board_led1);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry. Brings up CGC + USB-FS + UAC1, then enters
  *        the iso-IN feed loop forever.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
@@ -464,7 +461,7 @@ RA8_INTERNAL static void internal_usb_audio_log_frames(uint32_t frames)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   internal_usb_audio_setup_or_halt();
   ra8_isr_globals_enable();
@@ -483,6 +480,4 @@ int32_t main(void)
   }
 
   internal_usb_audio_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

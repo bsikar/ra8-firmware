@@ -48,6 +48,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_app.h"
 #include "ra8_board_ek_ra8d2_peripherals.h"
 #include "ra8_cgc.h"
@@ -618,12 +619,8 @@ static void app_launch_banner(void)
   app_launch_hil_emit_pass();
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief App entry: register the apps, run the self-check, emit PASS, park.
- *
- * @return Never returns (parks in WFI).
  *
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit set VTOR / FPU / priority grouping.
@@ -631,7 +628,7 @@ static void app_launch_banner(void)
  * @post The CPU parks in WFI (observable on ra8_emulator until its budget).
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   ra8_log_init();
   ra8_log_info("app_launch", "boot");
@@ -660,4 +657,3 @@ int32_t main(void)
     __asm__ volatile("wfi");
   }
 }
-#pragma GCC diagnostic pop

@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -132,16 +133,12 @@ RA8_INTERNAL static void internal_setup_or_halt(void)
   return ra8_ulpt_start((uint8_t)k_ulpt_demo_channel, (uint32_t)k_ulpt_demo_period_ticks);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Report and re-arm each observed ULPT0 underflow.
  *
  * @details Initializes and arms ULPT0, then polls its underflow bit. Each event
  *          emits the fixed wake banner, stops the channel to clear status, and
  *          starts the next interval with the same reload.
- *
- * @return Unreachable success value retained for the freestanding ABI.
  *
  * @pre Reset startup and SystemInit completed successfully.
  * @pre The EK-RA8D2 console wiring matches the board definition.
@@ -150,7 +147,7 @@ RA8_INTERNAL static void internal_setup_or_halt(void)
  * @note Does not return during normal operation.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   internal_setup_or_halt();
   ra8_isr_globals_enable();
@@ -179,6 +176,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_ulpt_demo_poll_ms);
   }
   internal_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

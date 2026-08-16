@@ -82,6 +82,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cache.h"
 #include "ra8_cgc.h"
@@ -698,8 +699,6 @@ static void dtc_coh_report(uint8_t ok)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry: one-shot DTC descriptor-coherency proof, then WFI.
  *
@@ -707,9 +706,6 @@ static void dtc_coh_report(uint8_t ok)
  * a software-triggered DTC block copy, runs it with the L1 caches + MPU enabled by
  * the shared boot (``RA8_BOOT_ENABLE_CACHE_MPU``), emits the matching PASS / FAIL
  * banner over the console and ``ra8_log``, then parks in WFI.
- *
- * @return Never returns (parks in WFI after reporting).
- * @retval (none) Control stays in the WFI idle loop.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit enabled the MPU + caches via RA8_BOOT_ENABLE_CACHE_MPU.
@@ -719,7 +715,7 @@ static void dtc_coh_report(uint8_t ok)
  * @note Single-threaded; the completion IRQ is left masked and the result polled.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   ra8_log_init();
   ra8_log_info(s_tag, "==== dtc_coherency_hil: M85 D-cache DTC descriptor coherency ====");
@@ -736,6 +732,4 @@ int32_t main(void)
   dtc_coh_report(good);
 
   dtc_coh_park();
-  return 0;
 }
-#pragma GCC diagnostic pop

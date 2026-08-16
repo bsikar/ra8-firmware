@@ -47,6 +47,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_display_pal.h"
@@ -803,12 +804,8 @@ static void ep_run_refresh_cycle(ra8_err_t* full_err, ra8_err_t* part_err)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry: e-ink full + partial refresh through the PAL.
- *
- * @return Never returns.
  *
  * @pre  Reset_Handler copied .data and zeroed .bss.
  * @pre  SystemInit set VTOR / FPU / priority grouping.
@@ -818,7 +815,7 @@ static void ep_run_refresh_cycle(ra8_err_t* full_err, ra8_err_t* part_err)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   uint32_t pclka_hz = 0U;
   ep_bringup_core(&pclka_hz);
@@ -870,6 +867,4 @@ int32_t main(void)
     (void)ra8_board_led_toggle(k_ra8_board_led_blue);
     ra8_delay_ms((uint32_t)k_ep_heartbeat_ms);
   }
-  return 0;
 }
-#pragma GCC diagnostic pop

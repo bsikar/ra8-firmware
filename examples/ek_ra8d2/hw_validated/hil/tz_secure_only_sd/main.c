@@ -47,6 +47,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -420,13 +421,9 @@ static ra8_fs_mount_t* sd_demo_mount_or_halt(void)
  * =============================================================================
  */
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry: bring up the bus, probe the SD card,
  *        write a payload, read it back, compare, print result.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
@@ -434,7 +431,7 @@ static ra8_fs_mount_t* sd_demo_mount_or_halt(void)
  * @post On any HAL init failure the function halts in WFI.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   uint32_t pclka_hz = 0U;
   sd_demo_setup_or_halt(&pclka_hz);
@@ -467,4 +464,3 @@ int32_t main(void)
     __asm__ volatile("wfi");
   }
 }
-#pragma GCC diagnostic pop

@@ -58,6 +58,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -562,12 +563,8 @@ static void demo_panic_halt(void)
   return ra8_usb_device_attach(k_ra8_usb_speed_fs, true);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry: bring up the clocks + USB + poll chapter-9.
- *
- * @return Never returns in normal operation.
  *
  * @pre Reset_Handler copied .data and zeroed .bss.
  * @pre SystemInit configured VTOR / FPU.
@@ -577,7 +574,7 @@ static void demo_panic_halt(void)
  * @note Single entry point; not re-entrant.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
@@ -618,4 +615,3 @@ int32_t main(void)
     demo_poll_once();
   }
 }
-#pragma GCC diagnostic pop

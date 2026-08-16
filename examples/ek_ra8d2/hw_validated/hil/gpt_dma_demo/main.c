@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -249,13 +250,10 @@ RA8_INTERNAL static bool internal_run_one(void)
   return true;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Repeatedly stream the fixed period table into GPT0 through DMA.
  * @details Initializes the demo and GPT0, runs one bounded DMA request per
  *          iteration, updates the exported match/mismatch counter, and delays.
- * @return Unreachable success value retained for the freestanding ABI.
  * @pre Reset startup and SystemInit completed successfully.
  * @pre GPT0 and the DMA allocator are not owned by another context.
  * @post Every iteration increments exactly one HIL result counter.
@@ -263,7 +261,7 @@ RA8_INTERNAL static bool internal_run_one(void)
  * @note Does not return during normal operation.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   internal_setup_or_halt();
   ra8_isr_globals_enable();
@@ -281,6 +279,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_gpt_dma_demo_rearm_delay_ms);
   }
   internal_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

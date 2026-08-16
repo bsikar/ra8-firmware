@@ -54,6 +54,7 @@
 #include <stdint.h>
 
 #include "c6_probe.h"
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -311,12 +312,8 @@ static void c6_probe_run(void)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Application entry: probe the ESP32-C6 esp-hosted SPI link.
- *
- * @return Never returns.
  *
  * @pre Reset_Handler has copied ``.data`` and zeroed ``.bss``.
  * @pre SystemInit has set VTOR, the FPU and priority grouping.
@@ -325,7 +322,7 @@ static void c6_probe_run(void)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   c6_probe_setup_or_halt();
   ra8_isr_globals_enable();
@@ -353,6 +350,4 @@ int32_t main(void)
   }
 
   c6_probe_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

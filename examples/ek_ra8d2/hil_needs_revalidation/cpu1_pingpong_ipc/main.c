@@ -28,6 +28,7 @@
  */
 
 #include <stdint.h>
+#include "ra8_boot_entry.h"
 
 /**
  * @var g_cpu1_pingpong_s_fallback_count
@@ -51,9 +52,6 @@ volatile uint32_t g_cpu1_pingpong_s_fallback_count = 0U;
  *
  * @details See file header.
  *
- * @return Never returns.
- * @retval 0 Never returned.
- *
  * @pre Boot init has completed.
  * @pre The secure-boot library's BLXNS into NS image either failed or
  *      was skipped (the call site in ``ra8_trustzone_init`` is a no-op
@@ -65,7 +63,7 @@ volatile uint32_t g_cpu1_pingpong_s_fallback_count = 0U;
  *
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   g_cpu1_pingpong_s_fallback_count = 1U;
 

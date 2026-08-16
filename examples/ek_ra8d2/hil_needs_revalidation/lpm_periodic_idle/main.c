@@ -63,6 +63,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_elc_regs.h"
@@ -420,9 +421,7 @@ static void lpi_setup_or_halt(void)
   return ra8_ulpt_stop((uint8_t)k_lpi_channel);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   lpi_setup_or_halt();
 
@@ -453,6 +452,4 @@ int32_t main(void)
   }
 
   lpi_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

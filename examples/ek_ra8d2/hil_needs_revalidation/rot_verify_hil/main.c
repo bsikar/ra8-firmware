@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include "mbedtls/memory_buffer_alloc.h"
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -129,9 +130,7 @@ static void rot_setup_or_halt(void)
   rot_write(k_rot_diag_psa_ok, (size_t)(sizeof(k_rot_diag_psa_ok) - 1U));
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   rot_setup_or_halt();
   ra8_isr_globals_enable();
@@ -163,6 +162,4 @@ int32_t main(void)
     ra8_delay_ms(k_rot_period_ms);
   }
   rot_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

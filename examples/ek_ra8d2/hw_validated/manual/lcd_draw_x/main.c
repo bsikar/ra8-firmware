@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_display_pal.h"
@@ -188,9 +189,7 @@ static display_handle_t* lcd_bringup_panel(void)
   return d;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   lcd_bringup_clocks();
   ra8_delay_ms(k_lcd_powerup_delay_ms);
@@ -204,6 +203,4 @@ int32_t main(void)
     (void)ra8_board_led_toggle(k_ra8_board_led_blue);
     ra8_delay_ms(k_lcd_heartbeat_ms);
   }
-  return 0;
 }
-#pragma GCC diagnostic pop

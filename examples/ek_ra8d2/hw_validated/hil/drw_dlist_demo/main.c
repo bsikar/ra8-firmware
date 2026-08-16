@@ -37,6 +37,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -277,9 +278,7 @@ static void demo_report(uint32_t crc, bool match)
   }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   demo_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch ra8_delay_ms(). No NVIC sources are
@@ -318,6 +317,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_demo_period_ms);
   }
   demo_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

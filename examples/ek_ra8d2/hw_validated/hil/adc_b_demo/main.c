@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_adc.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
@@ -186,13 +187,10 @@ RA8_INTERNAL static void internal_setup_or_halt(void)
   return ra8_adc_init_configured(&cfg);
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
 /**
  * @brief Sample ADC_B and report raw and converted values continuously.
  * @details Initializes and arms ADC_B, formats each successful channel sample
  *          without variadic I/O, emits the verdict, toggles LED1, and delays.
- * @return Unreachable success value retained for the freestanding ABI.
  * @pre Reset startup and SystemInit completed successfully.
  * @pre The selected ADC channel matches the board analog connection.
  * @post Every PASS verdict follows a successful channel read.
@@ -200,7 +198,7 @@ RA8_INTERNAL static void internal_setup_or_halt(void)
  * @note Does not return during normal operation.
  * @since 0.1.0
  */
-int32_t main(void)
+void main(void)
 {
   internal_setup_or_halt();
   ra8_isr_globals_enable();
@@ -239,6 +237,4 @@ int32_t main(void)
     ra8_delay_ms((uint32_t)k_adc_b_demo_period_ms);
   }
   internal_panic_halt();
-  return 0;
 }
-#pragma GCC diagnostic pop

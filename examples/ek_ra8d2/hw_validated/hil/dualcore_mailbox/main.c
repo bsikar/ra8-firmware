@@ -42,6 +42,7 @@
 #include <stdint.h>
 
 #include "dualcore_mailbox.h"
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2_peripherals.h"
 #include "ra8_cgc.h"
 #include "ra8_dual_core.h"
@@ -352,9 +353,6 @@ static void zero_mailbox(volatile dualcore_mailbox_t* mb)
  * runs ::k_m85_demo_rounds narrated mailbox rounds, then drops into the idle
  * heartbeat. See the file header for the teaching narrative.
  *
- * @return Never returns (ends in ::heartbeat_loop).
- * @retval (none) Control stays in the heartbeat loop.
- *
  * @pre `SystemInit` has completed core bring-up.
  * @pre The M33 is held in reset by hardware until released here.
  * @post The M33 has been released and the mailbox exchange is running.
@@ -363,7 +361,7 @@ static void zero_mailbox(volatile dualcore_mailbox_t* mb)
  * @note Single-threaded; no RTOS on the M85 in this example.
  * @since 0.1.0
  */
-int main(void)
+void main(void)
 {
   ra8_log_init();
   ra8_log_info("M85", "==== RA8D2 dual-core mailbox demo ====");

@@ -41,6 +41,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -242,9 +243,7 @@ static void ehb_setup_or_halt(void)
   return rc;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+void main(void)
 {
   ehb_setup_or_halt();
   ra8_isr_globals_enable();
@@ -260,6 +259,4 @@ int32_t main(void)
   while (1) {
     __asm__ volatile("wfi");
   }
-  return 0;
 }
-#pragma GCC diagnostic pop
