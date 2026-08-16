@@ -482,7 +482,7 @@ static ra8_err_t internal_source_validate(void* ctx, uint64_t expected_size)
   if ((source == nullptr) || (source->source.size != expected_size)) {
     return k_ra8_err_validation_failed;
   }
-  return ra8_fmt_host_source_unchanged(source);
+  return priv_fmt_host_source_unchanged(source);
 }
 
 static const ra8_fmt_transaction_ops_t s_transaction_ops = {
@@ -491,7 +491,9 @@ static const ra8_fmt_transaction_ops_t s_transaction_ops = {
   .abort  = internal_transaction_abort,
 };
 
-ra8_err_t ra8_fmt_host_source_open(const char* path, uint64_t max_size, ra8_fmt_host_source_t* out)
+RA8_PRIV ra8_err_t priv_fmt_host_source_open(const char*            path,
+                                             uint64_t               max_size,
+                                             ra8_fmt_host_source_t* out)
 {
   if ((path == nullptr) || (out == nullptr)) {
     return k_ra8_err_null_ptr;
@@ -516,8 +518,8 @@ ra8_err_t ra8_fmt_host_source_open(const char* path, uint64_t max_size, ra8_fmt_
   return k_ra8_ok;
 }
 
-bool ra8_fmt_host_sources_same(const ra8_fmt_host_source_t* first,
-                               const ra8_fmt_host_source_t* second)
+RA8_PRIV bool priv_fmt_host_sources_same(const ra8_fmt_host_source_t* first,
+                                         const ra8_fmt_host_source_t* second)
 {
   if ((first == nullptr) || (second == nullptr) || (first == second) || (first->fd < 0) ||
       (second->fd < 0) || (first->fd == second->fd)) {
@@ -526,7 +528,7 @@ bool ra8_fmt_host_sources_same(const ra8_fmt_host_source_t* first,
   return internal_snapshot_same(&first->snapshot, &second->snapshot);
 }
 
-ra8_err_t ra8_fmt_host_source_unchanged(const ra8_fmt_host_source_t* source)
+RA8_PRIV ra8_err_t priv_fmt_host_source_unchanged(const ra8_fmt_host_source_t* source)
 {
   if ((source == nullptr) || (source->fd < 0)) {
     return k_ra8_err_invalid_state;
@@ -544,7 +546,7 @@ ra8_err_t ra8_fmt_host_source_unchanged(const ra8_fmt_host_source_t* source)
                                                              : k_ra8_err_validation_failed;
 }
 
-void ra8_fmt_host_source_close(ra8_fmt_host_source_t* source)
+RA8_PRIV void priv_fmt_host_source_close(ra8_fmt_host_source_t* source)
 {
   if ((source != nullptr) && (source->fd >= 0)) {
     (void)close(source->fd);
@@ -552,19 +554,19 @@ void ra8_fmt_host_source_close(ra8_fmt_host_source_t* source)
   }
 }
 
-ra8_fmt_sink_t ra8_fmt_host_fd_sink(ra8_fmt_host_fd_sink_t* state)
+RA8_PRIV ra8_fmt_sink_t priv_fmt_host_fd_sink(ra8_fmt_host_fd_sink_t* state)
 {
   return (ra8_fmt_sink_t){.write = internal_fd_write, .ctx = state};
 }
 
-void ra8_fmt_host_log_byte(void* ctx, uint8_t byte)
+RA8_PRIV void priv_fmt_host_log_byte(void* ctx, uint8_t byte)
 {
   (void)internal_fd_write(ctx, &byte, 1U);
 }
 
-ra8_err_t ra8_fmt_host_transaction_begin(const char*                 path,
-                                         ra8_fmt_host_transaction_t* state,
-                                         ra8_fmt_transaction_t*      out)
+RA8_PRIV ra8_err_t priv_fmt_host_transaction_begin(const char*                 path,
+                                                   ra8_fmt_host_transaction_t* state,
+                                                   ra8_fmt_transaction_t*      out)
 {
   if ((path == nullptr) || (state == nullptr) || (out == nullptr)) {
     return k_ra8_err_null_ptr;

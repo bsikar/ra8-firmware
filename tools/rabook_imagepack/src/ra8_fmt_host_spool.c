@@ -299,8 +299,9 @@ static ra8_err_t internal_create(int parent_fd, ra8_fmt_host_spool_t* state)
   return k_ra8_err_exists;
 }
 
-ra8_err_t
-ra8_fmt_host_spool_open(const char* anchor_path, ra8_fmt_host_spool_t* state, ra8_fmt_spool_t* out)
+RA8_PRIV ra8_err_t priv_fmt_host_spool_open(const char*           anchor_path,
+                                            ra8_fmt_host_spool_t* state,
+                                            ra8_fmt_spool_t*      out)
 {
   if ((anchor_path == nullptr) || (state == nullptr) || (out == nullptr)) {
     return k_ra8_err_null_ptr;
@@ -329,7 +330,7 @@ ra8_fmt_host_spool_open(const char* anchor_path, ra8_fmt_host_spool_t* state, ra
   return rc;
 }
 
-void ra8_fmt_host_spool_close(ra8_fmt_host_spool_t* state)
+RA8_PRIV void priv_fmt_host_spool_close(ra8_fmt_host_spool_t* state)
 {
   if ((state != nullptr) && (state->fd >= 0)) {
     (void)close(state->fd);

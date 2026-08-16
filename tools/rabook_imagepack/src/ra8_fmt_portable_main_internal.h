@@ -12,6 +12,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_fmt_stream.h"
 
 /** @brief Explicit composition-root RAM budget for image-to-JOF conversion. */
@@ -56,11 +57,11 @@ typedef struct {
  * @post An over-budget input fails before any output transaction begins.
  * @since 0.1.0
  */
-[[nodiscard]] int ra8_fmt_try_portable_convert(int      argc,
-                                               char**   argv,
-                                               uint8_t* arena,
-                                               size_t   arena_cap,
-                                               bool*    handled);
+RA8_PRIV [[nodiscard]] int priv_fmt_try_portable_convert(int      argc,
+                                                         char**   argv,
+                                                         uint8_t* arena,
+                                                         size_t   arena_cap,
+                                                         bool*    handled);
 
 /**
  * @brief Try strict streamed JOF or RBKC inspection.
@@ -70,10 +71,10 @@ typedef struct {
  * @param[out] handled Set when this function owns the exit status.
  * @return Process exit status when handled; unspecified otherwise.
  */
-[[nodiscard]] int ra8_fmt_try_portable_inspect(int                      argc,
-                                               char**                   argv,
-                                               ra8_fmt_cli_workspace_t* workspace,
-                                               bool*                    handled);
+RA8_PRIV [[nodiscard]] int priv_fmt_try_portable_inspect(int                      argc,
+                                                         char**                   argv,
+                                                         ra8_fmt_cli_workspace_t* workspace,
+                                                         bool*                    handled);
 
 /**
  * @brief Try the bounded two-spool JOF-verification command path.
@@ -88,7 +89,7 @@ typedef struct {
  * validation.
  * @since 0.1.0
  */
-[[nodiscard]] int ra8_fmt_try_portable_verify(int                      argc,
-                                              char**                   argv,
-                                              ra8_fmt_cli_workspace_t* workspace,
-                                              bool*                    handled);
+RA8_PRIV [[nodiscard]] int priv_fmt_try_portable_verify(int                      argc,
+                                                        char**                   argv,
+                                                        ra8_fmt_cli_workspace_t* workspace,
+                                                        bool*                    handled);

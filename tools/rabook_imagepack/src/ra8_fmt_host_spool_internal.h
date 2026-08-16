@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_fmt_stream.h"
 
 /** @brief Caller-owned state for one unlinked scratch file. */
@@ -33,8 +34,9 @@ typedef struct {
  * @note Host composition edge only; the portable verifier sees callbacks.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t
-ra8_fmt_host_spool_open(const char* anchor_path, ra8_fmt_host_spool_t* state, ra8_fmt_spool_t* out);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_fmt_host_spool_open(const char*           anchor_path,
+                                                          ra8_fmt_host_spool_t* state,
+                                                          ra8_fmt_spool_t*      out);
 
 /**
  * @brief Close an anonymous scratch artifact.
@@ -47,4 +49,4 @@ ra8_fmt_host_spool_open(const char* anchor_path, ra8_fmt_host_spool_t* state, ra
  * @note Idempotent for sequential cleanup.
  * @since 0.1.0
  */
-void ra8_fmt_host_spool_close(ra8_fmt_host_spool_t* state);
+RA8_PRIV void priv_fmt_host_spool_close(ra8_fmt_host_spool_t* state);

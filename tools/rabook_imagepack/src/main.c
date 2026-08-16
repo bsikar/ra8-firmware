@@ -83,16 +83,16 @@ static void internal_usage(const ra8_fmt_sink_t* errors)
 RA8_INTERNAL
 static int internal_dispatch(int argc, char** argv, bool* handled)
 {
-  int status = ra8_fmt_try_portable_convert(argc,
-                                            argv,
-                                            s_cli_workspace.bytes,
-                                            k_ra8_fmt_cli_convert_arena_bytes,
-                                            handled);
+  int status = priv_fmt_try_portable_convert(argc,
+                                             argv,
+                                             s_cli_workspace.bytes,
+                                             k_ra8_fmt_cli_convert_arena_bytes,
+                                             handled);
   if (!*handled) {
-    status = ra8_fmt_try_portable_verify(argc, argv, &s_cli_workspace, handled);
+    status = priv_fmt_try_portable_verify(argc, argv, &s_cli_workspace, handled);
   }
   if (!*handled) {
-    status = ra8_fmt_try_portable_inspect(argc, argv, &s_cli_workspace, handled);
+    status = priv_fmt_try_portable_inspect(argc, argv, &s_cli_workspace, handled);
   }
   return status;
 }
@@ -100,8 +100,8 @@ static int internal_dispatch(int argc, char** argv, bool* handled)
 int main(int argc, char** argv)
 {
   ra8_fmt_host_fd_sink_t error_state = {.fd = STDERR_FILENO};
-  const ra8_fmt_sink_t   errors      = ra8_fmt_host_fd_sink(&error_state);
-  ra8_log_set_byte_sink(ra8_fmt_host_log_byte, &error_state);
+  const ra8_fmt_sink_t   errors      = priv_fmt_host_fd_sink(&error_state);
+  ra8_log_set_byte_sink(priv_fmt_host_log_byte, &error_state);
   bool      handled = false;
   const int status  = internal_dispatch(argc, argv, &handled);
   if (handled) {
