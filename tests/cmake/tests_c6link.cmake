@@ -29,6 +29,7 @@ set(RA8_C6LINK_INCLUDE_DIRS
     ${FW_ROOT}/libs/ra8_c6link/inc
     ${FW_ROOT}/libs/ra8_c6link/src
     ${FW_ROOT}/libs/ra8_core/inc
+    ${FW_ROOT}/port/esp-hosted/inc
     # tests/ itself, for unity_minimal.h -- the mock asserts inside the
     # transport rows, so it needs the harness the tests use.
     ${CMAKE_CURRENT_SOURCE_DIR}

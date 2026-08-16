@@ -746,9 +746,10 @@ priv_c6link_rpc_consume(ra8_c6link_t* link, const uint8_t* payload, uint16_t len
  *
  * @details
  * Every `Resp_*` message carries an `int32_t resp` that is an `esp_err_t` on
- * the far side. This turns a non-zero one into ::k_ra8_err_protocol_error and
- * records both it and the request id in the link's fault slot, so a bring-up
- * can say which request the co-processor refused and what it said.
+ * the far side. This preserves the general-purpose error's meaning in the RA8
+ * domain while recording both the original value and request id in the fault
+ * slot. Unknown and component-specific values remain protocol errors, but the
+ * retained raw status still tells bring-up exactly what the C6 reported.
  *
  * @param[in,out] link Open handle; must be non-null.
  * @param[in] rpc_id `RPC_ID__Req_*` the answer belongs to.
@@ -756,8 +757,8 @@ priv_c6link_rpc_consume(ra8_c6link_t* link, const uint8_t* payload, uint16_t len
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok @p resp was zero and the fault slot was cleared.
- * @retval k_ra8_err_protocol_error @p resp was non-zero; the fault slot names
- *         @p rpc_id and @p resp.
+ * @retval k_ra8_err_* A mapped general error, or protocol error for an unknown
+ *         status; the fault slot names @p rpc_id and the exact raw @p resp.
  *
  * @pre @p link is open.
  * @pre @p resp came from a decoded answer, not from a default.
