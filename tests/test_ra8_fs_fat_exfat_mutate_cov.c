@@ -590,6 +590,52 @@ RA8_INTERNAL static void internal_test_exfat_gather_name_skip_non_name(void)
   TEST_END("exfat mutate cov: non-name secondary skipped in gather_name (lines 488-489)");
 }
 
+/**
+ * @test test_exfat_listdir_read_fault
+ * @brief `priv_exfat_listdir` propagates a backend read failure.
+ *
+ * @details
+ * Arms the fixture's one-shot read fault immediately before `ra8_fs_listdir`,
+ * so the first sector read inside `priv_exfat_dir_next` fails. The walk
+ * returns that error instead of an entry, which is the only way the listdir
+ * loop's status operand can be true.
+ *
+ * @par MC/DC:
+ * Decision: `if ((err != k_ra8_ok) || !present)` in `priv_exfat_listdir`
+ * -- 2 conditions.
+ * V1: err = k_ra8_ok, present = true  -> F,F -> false (every listing test).
+ * V2: err = k_ra8_ok, present = false -> F,T -> true  (end of directory).
+ * V3: err = k_ra8_err_out_of_range    -> T,- -> true  (this test).
+ * V1+V3 prove the status condition independently affects the outcome; V1+V2
+ * do the same for the entry-present condition. N+1 = 3 vectors for N = 2.
+ *
+ * @pre Volume is formatted, mounted, and holds one file.
+ * @post ra8_fs_listdir returns the backend error and reported nothing.
+ * @post The one-shot fault has disarmed itself.
+ *
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
+ */
+RA8_INTERNAL static void internal_test_exfat_listdir_read_fault(void)
+{
+  TEST_BEGIN("exfat mutate cov: listdir propagates a backend read fault");
+  internal_build_exfat_volume();
+  ra8_fs_mount_t* h = nullptr;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
+
+  const uint8_t dummy = (uint8_t)'A';
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", &dummy, 1U));
+
+  mut_list_ctx_t ctx = {};
+  s_mut_rd_fail_in   = 0;
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_fs_listdir(h, "/", internal_count_cb, &ctx));
+  s_mut_rd_fail_in = (int32_t)k_mut_fault_never;
+  TEST_ASSERT_EQ(0U, ctx.count);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
+  internal_free_volume();
+  TEST_END("exfat mutate cov: listdir propagates a backend read fault");
+}
+
 /* ---- entry point -------------------------------------------------------- */
 
 int main(void)
@@ -606,5 +652,6 @@ int main(void)
   internal_test_exfat_too_many_secondary();
   internal_test_exfat_listdir_skip_non_stream();
   internal_test_exfat_gather_name_skip_non_name();
+  internal_test_exfat_listdir_read_fault();
   return 0;
 }
