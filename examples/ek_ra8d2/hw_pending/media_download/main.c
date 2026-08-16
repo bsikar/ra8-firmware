@@ -66,20 +66,20 @@
 /** @brief Fixed application bounds and board integration policy. */
 typedef enum : uint32_t {
   k_media_uart_baud          = 115200U,  /**< J-Link OB console rate.                   */
-  k_media_c6_sck_hz          = 5000000U, /**< Bench-proven C6 SPI rate.   */
-  k_media_c6_edge_poll_ms    = 2U,       /**< C6 side-band poll period.   */
-  k_media_c6_boot_wait_ms    = 200U,     /**< Coprocessor settle time. */
+  k_media_c6_sck_hz          = 5000000U, /**< Bench-proven C6 SPI rate.                 */
+  k_media_c6_edge_poll_ms    = 2U,       /**< C6 side-band poll period.                 */
+  k_media_c6_boot_wait_ms    = 200U,     /**< Coprocessor settle time.                  */
   k_media_assoc_tries        = 200U,     /**< Bounded station-event polls.              */
   k_media_assoc_gap_ms       = 50U,      /**< Delay between association polls.          */
-  k_media_heartbeat_ms       = 5000U,    /**< Persistent verdict interval.       */
-  k_media_worker_stack_bytes = 8192U,    /**< ThreadX worker stack. */
-  k_media_worker_priority    = 8U,       /**< Worker priority and threshold.       */
-  k_media_c6_arena_bytes     = 4096U,    /**< Protobuf decode arena.     */
-  k_media_transfer_chunk     = 1024U,    /**< Bytes requested per C6 body pull.     */
-  k_media_transfer_chunks    = 32768U,   /**< 32 MiB compressed-body ceiling.   */
+  k_media_heartbeat_ms       = 5000U,    /**< Persistent verdict interval.              */
+  k_media_worker_stack_bytes = 8192U,    /**< ThreadX worker stack.                     */
+  k_media_worker_priority    = 8U,       /**< Worker priority and threshold.            */
+  k_media_c6_arena_bytes     = 4096U,    /**< Protobuf decode arena.                    */
+  k_media_transfer_chunk     = 1024U,    /**< Bytes requested per C6 body pull.         */
+  k_media_transfer_chunks    = 32768U,   /**< 32 MiB compressed-body ceiling.           */
   k_media_rbkc_chunk_bytes   = 65536U,   /**< Accepted inflated RBKC chunk geometry.    */
   k_media_compressed_bytes   = 66560U,   /**< One worst-case zlib-wrapped 64 KiB chunk. */
-  k_media_table_entries      = 2049U,    /**< 2048 chunks + terminal offset. */
+  k_media_table_entries      = 2049U,    /**< 2048 chunks + terminal offset.            */
   k_media_scratch_bytes      = 65536U,   /**< Strict CRC/ownership validation scratch.  */
 } media_limit_t;
 
