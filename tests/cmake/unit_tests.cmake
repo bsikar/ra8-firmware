@@ -437,6 +437,7 @@ if(TARGET test_ra8_mdl_readers)
     test_ra8_mdl_readers
     PRIVATE ${FW_ROOT}/libs/if/inc
             ${FW_ROOT}/libs/if_ra8_vfs/inc
+            ${FW_ROOT}/libs/ra8_mdl/inc
             ${FW_ROOT}/port/posix/inc
             ${FW_ROOT}/port/posix/src
             ${FW_ROOT}/tools/media_dl/inc
@@ -505,6 +506,7 @@ if(TARGET test_ra8_mdl_export)
     test_ra8_mdl_export
     PRIVATE ${FW_ROOT}/libs/if/inc
             ${FW_ROOT}/libs/if_ra8_vfs/inc
+            ${FW_ROOT}/libs/ra8_mdl/inc
             ${FW_ROOT}/port/posix/inc
             ${FW_ROOT}/port/posix/src
             ${FW_ROOT}/tools/media_dl/inc
