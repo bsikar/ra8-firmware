@@ -24,6 +24,11 @@
 #include "ra8_c6link_mdl.h"
 #include "ra8_err.h"
 
+/** @brief Absolute transfer policy limits independent of caller chunk geometry. */
+typedef enum : uint64_t {
+  k_ra8_mdl_transfer_bytes_max = UINT64_C(67108864), /**< Maximum one-object byte budget. */
+} ra8_mdl_transfer_limit_t;
+
 /**
  * @struct ra8_mdl_storage_iface
  * @brief Transactional destination seam for one downloaded object
@@ -127,11 +132,13 @@ typedef bool (*ra8_mdl_cancel_requested_fn)(void* ctx);
  * @brief Fixed policy and injected mechanisms for one transfer
  *
  * @details `chunk_bytes` controls backpressure and `max_chunks` is the hard
- * loop bound. The optional cancellation callback is the only policy hook.
- * Storage and SHA implementations remain independently substitutable.
+ * loop bound. Their product may not exceed ::k_ra8_mdl_transfer_bytes_max.
+ * The optional cancellation callback is the only policy hook. Storage and SHA
+ * implementations remain independently substitutable.
  *
  * @invariant `chunk_bytes` is in 1..::k_ra8_mdl_chunk_data_max.
  * @invariant `max_chunks` is non-zero and bounds every remote pull.
+ * @invariant The configured byte budget is at most ::k_ra8_mdl_transfer_bytes_max.
  *
  * @code
  * ra8_mdl_transfer_config_t cfg = {

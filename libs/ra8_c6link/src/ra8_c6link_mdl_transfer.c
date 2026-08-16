@@ -64,8 +64,9 @@ internal_mdl_transfer_validate(ra8_c6link_t*                    link,
       (config->sha256.ctx == nullptr)) {
     return k_ra8_err_null_ptr;
   }
+  const uint64_t byte_budget = (uint64_t)config->chunk_bytes * config->max_chunks;
   if ((config->chunk_bytes == 0U) || (config->chunk_bytes > k_ra8_mdl_chunk_data_max) ||
-      (config->max_chunks == 0U)) {
+      (config->max_chunks == 0U) || (byte_budget > k_ra8_mdl_transfer_bytes_max)) {
     return k_ra8_err_invalid_size;
   }
   return k_ra8_ok;
