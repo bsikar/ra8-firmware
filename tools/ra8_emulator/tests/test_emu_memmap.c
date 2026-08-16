@@ -289,6 +289,9 @@ RA8_INTERNAL static int internal_test_geometry_and_lazy_backing(void)
     total += workspace.backings[index].size;
   }
   TEST_CHECK(total == k_test_logical_bytes);
+  /* Re-opening would strand the apertures this workspace already owns. */
+  TEST_CHECK(emu_memmap_open(&workspace).status == k_emu_memmap_invalid);
+  TEST_CHECK(workspace.backings[k_test_backing_sdram].host != nullptr);
   TEST_CHECK(internal_test_resident_pages(&workspace.backings[k_test_backing_sdram],
                                           k_test_sdram_pages) == 0U);
 
