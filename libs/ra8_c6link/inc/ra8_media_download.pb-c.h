@@ -74,10 +74,15 @@ struct  Ra8__Mdl__StartRequest
   uint32_t protocol_version;
   char *url;
   Ra8__Mdl__Format format;
+  char *user_agent;
+  char *referer;
+  char *if_none_match;
+  char *if_modified_since;
+  uint32_t timeout_ms;
 };
 #define RA8__MDL__START_REQUEST__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&ra8__mdl__start_request__descriptor) \
-, 0, (char *)protobuf_c_empty_string, RA8__MDL__FORMAT__FORMAT_LOOSE }
+, 0, (char *)protobuf_c_empty_string, RA8__MDL__FORMAT__FORMAT_LOOSE, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string, 0 }
 
 
 struct  Ra8__Mdl__Accepted
@@ -118,10 +123,15 @@ struct  Ra8__Mdl__Chunk
   Ra8__Mdl__State state;
   int32_t status;
   ProtobufCBinaryData sha256;
+  int32_t http_status;
+  char *retry_after;
+  char *etag;
+  char *last_modified;
+  char *content_type;
 };
 #define RA8__MDL__CHUNK__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&ra8__mdl__chunk__descriptor) \
-, 0, 0, 0, 0, {0,NULL}, 0, RA8__MDL__STATE__STATE_UNSPECIFIED, 0, {0,NULL} }
+, 0, 0, 0, 0, {0,NULL}, 0, RA8__MDL__STATE__STATE_UNSPECIFIED, 0, {0,NULL}, 0, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string }
 
 
 struct  Ra8__Mdl__CancelRequest

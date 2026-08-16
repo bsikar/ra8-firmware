@@ -16,9 +16,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra8_err.h"
-#include "ra8_mdl_format.h"
-#include "ra8_mdl_protocol.h"
+#include "ra8_c6link_mdl.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -67,16 +65,16 @@ typedef ra8_err_t (*ra8_mdl_service_dispatch_fn)(void*          ctx,
  * @since 0.1.0
  */
 typedef struct ra8_mdl_service_backend {
-  ra8_err_t (*begin)(void* ctx, const char* url, ra8_mdl_format_t format);
-  /**< Validate and begin one HTTPS artifact of the selected format. */
-  ra8_err_t (*read)(void*     ctx,
-                    uint8_t*  out,
-                    uint16_t  cap,
-                    uint16_t* got,
-                    uint64_t* total_bytes,
-                    bool*     complete,
-                    uint8_t   sha256[k_ra8_mdl_sha256_bytes]); /**< Pull bytes or terminal
-                                                  metadata.           */
+  ra8_err_t (*begin)(void* ctx, const ra8_mdl_request_t* request);
+  /**< Validate and begin one bounded typed HTTPS request. */
+  ra8_err_t (*read)(void*                    ctx,
+                    uint8_t*                 out,
+                    uint16_t                 cap,
+                    uint16_t*                got,
+                    uint64_t*                total_bytes,
+                    bool*                    complete,
+                    uint8_t                  sha256[k_ra8_mdl_sha256_bytes],
+                    ra8_mdl_http_response_t* response); /**< Pull bytes or terminal metadata. */
   ra8_err_t (*cancel)(void* ctx); /**< Cancel and release the active backend job. */
   void* ctx;                      /**< Backend callback context.                  */
 } ra8_mdl_service_backend_t;
