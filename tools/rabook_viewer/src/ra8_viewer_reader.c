@@ -1,8 +1,8 @@
 /**
  * @file ra8_viewer_reader.c
  * @brief Requirements, workspace binding, descriptor lifecycle, and dispatch.
- * @details Implements the JOF-only requirements-to-bind lifecycle and keeps
- * host descriptor ownership at this composition edge.
+ * @details Implements the JOF/bare-comic requirements-to-bind lifecycle and
+ * keeps host descriptor ownership at this composition edge.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
@@ -33,10 +33,11 @@
 
 /** @brief Recognised filename classes at the host composition edge. */
 typedef enum : uint8_t {
-  k_viewer_fmt_unknown = 0U, /**< Unrecognised extension.                */
-  k_viewer_fmt_jof     = 1U, /**< Supported streamed JOF.                */
-  k_viewer_fmt_comic   = 2U, /**< Comic blocked on streaming codec APIs. */
-  k_viewer_fmt_reflow  = 3U, /**< EPUB/RABOOK engine not wired.          */
+  k_viewer_fmt_unknown    = 0U, /**< Unrecognised extension.            */
+  k_viewer_fmt_jof        = 1U, /**< Supported streamed JOF.            */
+  k_viewer_fmt_comic      = 2U, /**< Supported bare CBZ/CBR/CBT.        */
+  k_viewer_fmt_comic_wrap = 3U, /**< Gzip/XZ whole-output seam remains. */
+  k_viewer_fmt_reflow     = 4U, /**< EPUB/RABOOK engine not wired.      */
 } viewer_fmt_t;
 
 /** @brief Mutable cursor used to calculate or bind one aligned layout. */
@@ -108,6 +109,72 @@ RA8_INTERNAL static void* internal_take(viewer_layout_t* layout, size_t bytes, s
 }
 
 /**
+ * @brief Take the complete JOF-specific workspace tail.
+ * @details Charges or binds the one-cell cache metadata and compressed scratch.
+ * @param[in,out] layout Active sizing or binding cursor.
+ * @param[in] requirements Valid JOF requirements.
+ * @return JOF pointer bundle; pointers are NULL in sizing mode.
+ * @retval viewer_jof_t The complete bound or sizing-mode bundle.
+ * @pre @p layout and @p requirements are valid.
+ * @pre `requirements->engine == k_ra8_viewer_engine_jof`.
+ * @post The cursor advances through every JOF-specific slice.
+ * @post Failure marks the cursor invalid.
+ * @note Performs no workspace writes.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static viewer_jof_t
+internal_take_jof(viewer_layout_t* layout, const ra8_viewer_reader_requirements_t* requirements)
+{
+  viewer_jof_t jof = {};
+  jof.cells = (uint8_t*)internal_take(layout, requirements->cell_bytes, alignof(max_align_t));
+  jof.meta  = (ra8_keycache_cell_t*)internal_take(layout,
+                                                  sizeof(ra8_keycache_cell_t),
+                                                  alignof(ra8_keycache_cell_t));
+  jof.keys =
+    (ra8_tile_key_t*)internal_take(layout, sizeof(ra8_tile_key_t), alignof(ra8_tile_key_t));
+  jof.dims =
+    (ra8_tile_dims_t*)internal_take(layout, sizeof(ra8_tile_dims_t), alignof(ra8_tile_dims_t));
+  jof.buckets  = (int32_t*)internal_take(layout,
+                                         (size_t)k_viewer_jof_buckets * sizeof(int32_t),
+                                         alignof(int32_t));
+  jof.scratch  = (uint8_t*)internal_take(layout, requirements->scratch_bytes, alignof(max_align_t));
+  jof.cell_cap = requirements->cell_bytes;
+  jof.scratch_cap = requirements->scratch_bytes;
+  return jof;
+}
+
+/**
+ * @brief Take the complete comic-specific workspace tail.
+ * @details Charges or binds page index, names, encoded-page, and decode-arena slices.
+ * @param[in,out] layout Active sizing or binding cursor.
+ * @param[in] requirements Valid comic requirements.
+ * @return Comic pointer bundle; pointers are NULL in sizing mode.
+ * @retval viewer_comic_t The complete bound or sizing-mode bundle.
+ * @pre @p layout and @p requirements are valid.
+ * @pre `requirements->engine == k_ra8_viewer_engine_comic`.
+ * @post The cursor advances through every comic-specific slice.
+ * @post Failure marks the cursor invalid.
+ * @note Performs no workspace writes.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static viewer_comic_t
+internal_take_comic(viewer_layout_t* layout, const ra8_viewer_reader_requirements_t* requirements)
+{
+  viewer_comic_t comic = {};
+  comic.pages          = (ra8_comic_page_t*)internal_take(layout,
+                                                          requirements->comic_pages_bytes,
+                                                          alignof(ra8_comic_page_t));
+  comic.names = (char*)internal_take(layout, requirements->comic_names_bytes, alignof(char));
+  comic.page =
+    (uint8_t*)internal_take(layout, requirements->comic_page_bytes, alignof(max_align_t));
+  comic.arena =
+    (uint8_t*)internal_take(layout, requirements->comic_arena_bytes, alignof(max_align_t));
+  comic.page_cap  = requirements->comic_page_bytes;
+  comic.arena_cap = requirements->comic_arena_bytes;
+  return comic;
+}
+
+/**
  * @brief Test one case-insensitive ASCII filename suffix.
  * @details Folds only ASCII uppercase characters in the path tail.
  * @param[in] path NUL-terminated path.
@@ -161,9 +228,11 @@ RA8_INTERNAL static viewer_fmt_t internal_classify(const char* path)
     return k_viewer_fmt_jof;
   }
   if (internal_ends_with(path, ".cbz") || internal_ends_with(path, ".cbr") ||
-      internal_ends_with(path, ".cbt") || internal_ends_with(path, ".gz") ||
-      internal_ends_with(path, ".xz")) {
+      internal_ends_with(path, ".cbt")) {
     return k_viewer_fmt_comic;
+  }
+  if (internal_ends_with(path, ".gz") || internal_ends_with(path, ".xz")) {
+    return k_viewer_fmt_comic_wrap;
   }
   if (internal_ends_with(path, ".epub") || internal_ends_with(path, ".epb") ||
       internal_ends_with(path, ".rabook") || internal_ends_with(path, ".rbk")) {
@@ -217,10 +286,9 @@ RA8_INTERNAL static ra8_err_t internal_reject(viewer_fmt_t format, const char* p
 {
   internal_stderr_write("ra8_viewer: '");
   internal_stderr_write(path);
-  if (format == k_viewer_fmt_comic) {
-    internal_stderr_write("' recognised but comic rendering requires streaming codec "
-                          "source/sink/spool APIs (contiguous stb arena, encoded-page "
-                          "pointer, and whole-output gzip/XZ remain)");
+  if (format == k_viewer_fmt_comic_wrap) {
+    internal_stderr_write("' recognised but wrapped comics require a streaming or "
+                          "descriptor-spooled gzip/XZ output seam");
   } else if (format == k_viewer_fmt_reflow) {
     internal_stderr_write("' recognised but its reflow reader engine "
                           "(font + image loader) is not wired into the viewer yet");
@@ -308,7 +376,7 @@ priv_viewer_pread(void* ctx, uint64_t offset, uint8_t* buffer, size_t length, si
 
 /**
  * @brief Charge the complete deterministic reader layout.
- * @details Walks state, framebuffer, dimensions, one cache cell, and scratch.
+ * @details Walks common state then the selected JOF or comic engine tail.
  * @param[in] need Valid requirements fields.
  * @param[in,out] base Backing base, or NULL for sizing only.
  * @param[in] capacity Accessible extent when @p base is non-NULL.
@@ -330,13 +398,48 @@ internal_layout(const ra8_viewer_reader_requirements_t* need, uint8_t* base, siz
   const size_t dimension_bytes = need->dimensions_bytes / 2U;
   (void)internal_take(&layout, dimension_bytes, alignof(uint32_t));
   (void)internal_take(&layout, dimension_bytes, alignof(uint32_t));
-  (void)internal_take(&layout, need->cell_bytes, alignof(max_align_t));
-  (void)internal_take(&layout, sizeof(ra8_keycache_cell_t), alignof(ra8_keycache_cell_t));
-  (void)internal_take(&layout, sizeof(ra8_tile_key_t), alignof(ra8_tile_key_t));
-  (void)internal_take(&layout, sizeof(ra8_tile_dims_t), alignof(ra8_tile_dims_t));
-  (void)internal_take(&layout, (size_t)k_viewer_jof_buckets * sizeof(int32_t), alignof(int32_t));
-  (void)internal_take(&layout, need->scratch_bytes, alignof(max_align_t));
+  if (need->engine == (uint32_t)k_ra8_viewer_engine_jof) {
+    (void)internal_take_jof(&layout, need);
+  } else if (need->engine == (uint32_t)k_ra8_viewer_engine_comic) {
+    (void)internal_take_comic(&layout, need);
+  } else {
+    layout.valid = false;
+  }
   return layout;
+}
+
+/**
+ * @brief Validate engine-specific requirement fields.
+ * @details Requires exact fixed comic capacities or mutually exclusive JOF slices.
+ * @param[in] need Candidate requirements object.
+ * @return Whether its selected engine fields are canonical.
+ * @retval true The engine and all exclusive fields match policy.
+ * @retval false The object is stale, forged, or internally inconsistent.
+ * @pre @p need is non-NULL.
+ * @pre Common fields are checked separately.
+ * @post No state is mutated.
+ * @post Exactly one engine shape can pass.
+ * @note Pure and thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool
+internal_engine_requirements_valid(const ra8_viewer_reader_requirements_t* need)
+{
+  if (need->engine == (uint32_t)k_ra8_viewer_engine_jof) {
+    return (need->cell_bytes != 0U) && (need->scratch_bytes != 0U) &&
+           (need->comic_pages_bytes == 0U) && (need->comic_names_bytes == 0U) &&
+           (need->comic_page_bytes == 0U) && (need->comic_arena_bytes == 0U);
+  }
+  if (need->engine == (uint32_t)k_ra8_viewer_engine_comic) {
+    return (need->cell_bytes == 0U) && (need->scratch_bytes == 0U) &&
+           (need->tile_count == (uint32_t)k_viewer_comic_page_cap) &&
+           (need->comic_pages_bytes ==
+            ((size_t)k_viewer_comic_page_cap * sizeof(ra8_comic_page_t))) &&
+           (need->comic_names_bytes == (size_t)k_viewer_comic_name_bytes) &&
+           (need->comic_page_bytes == (size_t)k_viewer_comic_page_bytes) &&
+           (need->comic_arena_bytes == (size_t)k_viewer_comic_arena_bytes);
+  }
+  return false;
 }
 
 /**
@@ -360,11 +463,78 @@ RA8_INTERNAL static bool internal_requirements_valid(const ra8_viewer_reader_req
       (need->framebuffer_bytes !=
        ((size_t)k_ra8_viewer_fb_width * (size_t)k_ra8_viewer_fb_height * sizeof(uint16_t))) ||
       (need->dimensions_bytes != ((size_t)need->tile_count * 2U * sizeof(uint32_t))) ||
-      (need->cell_bytes == 0U) || (need->scratch_bytes == 0U)) {
+      !internal_engine_requirements_valid(need)) {
     return false;
   }
   const viewer_layout_t layout = internal_layout(need, nullptr, 0U);
   return layout.valid && (layout.used == need->required_bytes);
+}
+
+/**
+ * @brief Populate JOF-specific requirements from one open descriptor.
+ * @details Parses geometry, validates the declared decoded band, and sizes one
+ * cache cell plus the exact compressed-band staging bound.
+ * @param[in,out] file Open regular JOF descriptor.
+ * @param[out] out Requirements object with common fields initialized.
+ * @return Parse or geometry status.
+ * @retval k_ra8_ok Canonical JOF requirements were published.
+ * @retval k_ra8_err_invalid_size Decoded band geometry is invalid.
+ * @pre @p file is open and non-empty.
+ * @pre @p out is writable and zero-initialized.
+ * @post Success publishes a canonical JOF engine shape.
+ * @post Failure acquires no memory or descriptor.
+ * @note The caller retains descriptor ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_require_jof(viewer_file_ctx_t*                file,
+                                                   ra8_viewer_reader_requirements_t* out)
+{
+  ra8_jof_info_t info  = {};
+  ra8_err_t      error = ra8_jof_parse(priv_viewer_pread, file, file->size, &info);
+  const uint64_t band  = (uint64_t)info.tile_w * (uint64_t)info.tile_h * (uint64_t)info.bpp;
+  if ((error == k_ra8_ok) && (band == 0U)) {
+    error = k_ra8_err_invalid_size;
+  }
+  const ra8_decomp_limits_t limits = ra8_decomp_limits_default();
+  if (error == k_ra8_ok) {
+    error = ra8_decomp_check_declared(&limits, file->size, band);
+  }
+  if (error != k_ra8_ok) {
+    return error;
+  }
+  const uint32_t tiles  = ((uint32_t)info.height + (uint32_t)k_ra8_viewer_fb_height - 1U) /
+                          (uint32_t)k_ra8_viewer_fb_height;
+  out->dimensions_bytes = (size_t)tiles * 2U * sizeof(uint32_t);
+  out->cell_bytes       = (size_t)band;
+  out->scratch_bytes    = (info.codec == (uint8_t)k_ra8_jof_codec_raw)
+                            ? 1U
+                            : (size_t)ra8_jof_stored_bound((uint32_t)band);
+  out->tile_count       = tiles;
+  out->engine           = (uint32_t)k_ra8_viewer_engine_jof;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Populate the fixed bounded bare-comic requirements shape.
+ * @details Reserves maximum page metadata plus explicit encoded/decode slices;
+ * archive parsing happens only after those caller-owned regions are bound.
+ * @param[out] out Requirements object with common fields initialized.
+ * @pre @p out is writable and zero-initialized.
+ * @pre Fixed comic capacities fit size_t.
+ * @post A canonical comic engine shape is published.
+ * @post No file bytes or workspace bytes are touched.
+ * @note Pure apart from @p out.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_require_comic(ra8_viewer_reader_requirements_t* out)
+{
+  out->tile_count        = (uint32_t)k_viewer_comic_page_cap;
+  out->dimensions_bytes  = (size_t)out->tile_count * 2U * sizeof(uint32_t);
+  out->comic_pages_bytes = (size_t)out->tile_count * sizeof(ra8_comic_page_t);
+  out->comic_names_bytes = (size_t)k_viewer_comic_name_bytes;
+  out->comic_page_bytes  = (size_t)k_viewer_comic_page_bytes;
+  out->comic_arena_bytes = (size_t)k_viewer_comic_arena_bytes;
+  out->engine            = (uint32_t)k_ra8_viewer_engine_comic;
 }
 
 ra8_err_t ra8_viewer_reader_requirements(const char* path, ra8_viewer_reader_requirements_t* out)
@@ -374,41 +544,29 @@ ra8_err_t ra8_viewer_reader_requirements(const char* path, ra8_viewer_reader_req
   }
   *out                      = (ra8_viewer_reader_requirements_t){};
   const viewer_fmt_t format = internal_classify(path);
-  if (format != k_viewer_fmt_jof) {
+  if ((format != k_viewer_fmt_jof) && (format != k_viewer_fmt_comic)) {
     return internal_reject(format, path);
   }
   viewer_file_ctx_t file  = {.fd = -1};
   ra8_err_t         error = internal_file_open(&file, path);
-  ra8_jof_info_t    info  = {};
   if (error == k_ra8_ok) {
-    error = ra8_jof_parse(priv_viewer_pread, &file, file.size, &info);
+    out->required_alignment = alignof(max_align_t);
+    out->framebuffer_bytes =
+      (size_t)k_ra8_viewer_fb_width * (size_t)k_ra8_viewer_fb_height * sizeof(uint16_t);
+    out->layout_version = (uint32_t)k_viewer_layout_version;
+    if (format == k_viewer_fmt_jof) {
+      error = internal_require_jof(&file, out);
+    } else {
+      internal_require_comic(out);
+    }
   }
   if (file.is_open) {
     (void)close(file.fd);
   }
-  const uint64_t band = (uint64_t)info.tile_w * (uint64_t)info.tile_h * (uint64_t)info.bpp;
-  if ((error == k_ra8_ok) && (band == 0U)) {
-    error = k_ra8_err_invalid_size;
-  }
-  const ra8_decomp_limits_t limits = ra8_decomp_limits_default();
-  if (error == k_ra8_ok) {
-    error = ra8_decomp_check_declared(&limits, file.size, band);
-  }
   if (error != k_ra8_ok) {
+    *out = (ra8_viewer_reader_requirements_t){};
     return error;
   }
-  const uint32_t tiles    = ((uint32_t)info.height + (uint32_t)k_ra8_viewer_fb_height - 1U) /
-                            (uint32_t)k_ra8_viewer_fb_height;
-  out->required_alignment = alignof(max_align_t);
-  out->framebuffer_bytes =
-    (size_t)k_ra8_viewer_fb_width * (size_t)k_ra8_viewer_fb_height * sizeof(uint16_t);
-  out->dimensions_bytes        = (size_t)tiles * 2U * sizeof(uint32_t);
-  out->cell_bytes              = (size_t)band;
-  out->scratch_bytes           = (info.codec == (uint8_t)k_ra8_jof_codec_raw)
-                                   ? 1U
-                                   : (size_t)ra8_jof_stored_bound((uint32_t)band);
-  out->tile_count              = tiles;
-  out->layout_version          = (uint32_t)k_viewer_layout_version;
   const viewer_layout_t layout = internal_layout(out, nullptr, 0U);
   if (!layout.valid) {
     *out = (ra8_viewer_reader_requirements_t){};
@@ -443,26 +601,23 @@ ra8_err_t ra8_viewer_reader_bind(ra8_viewer_reader_t**                   out,
     (ra8_viewer_reader_t*)internal_take(&layout, sizeof(*reader), alignof(max_align_t));
   uint16_t* framebuffer =
     (uint16_t*)internal_take(&layout, requirements->framebuffer_bytes, alignof(uint16_t));
-  const size_t dimension_bytes = requirements->dimensions_bytes / 2U;
-  uint32_t*    widths  = (uint32_t*)internal_take(&layout, dimension_bytes, alignof(uint32_t));
-  uint32_t*    heights = (uint32_t*)internal_take(&layout, dimension_bytes, alignof(uint32_t));
-  uint8_t* cells = (uint8_t*)internal_take(&layout, requirements->cell_bytes, alignof(max_align_t));
-  ra8_keycache_cell_t* meta =
-    (ra8_keycache_cell_t*)internal_take(&layout, sizeof(*meta), alignof(ra8_keycache_cell_t));
-  ra8_tile_key_t* keys =
-    (ra8_tile_key_t*)internal_take(&layout, sizeof(*keys), alignof(ra8_tile_key_t));
-  ra8_tile_dims_t* dims =
-    (ra8_tile_dims_t*)internal_take(&layout, sizeof(*dims), alignof(ra8_tile_dims_t));
-  int32_t* buckets = (int32_t*)internal_take(&layout,
-                                             (size_t)k_viewer_jof_buckets * sizeof(*buckets),
-                                             alignof(int32_t));
-  uint8_t* scratch =
-    (uint8_t*)internal_take(&layout, requirements->scratch_bytes, alignof(max_align_t));
+  const size_t   dimension_bytes = requirements->dimensions_bytes / 2U;
+  uint32_t*      widths  = (uint32_t*)internal_take(&layout, dimension_bytes, alignof(uint32_t));
+  uint32_t*      heights = (uint32_t*)internal_take(&layout, dimension_bytes, alignof(uint32_t));
+  viewer_jof_t   jof     = {};
+  viewer_comic_t comic   = {};
+  if (requirements->engine == (uint32_t)k_ra8_viewer_engine_jof) {
+    jof = internal_take_jof(&layout, requirements);
+  } else {
+    comic = internal_take_comic(&layout, requirements);
+  }
   if (!layout.valid || (layout.used != requirements->required_bytes)) {
     return k_ra8_err_invalid_size;
   }
   *reader = (ra8_viewer_reader_t){.file     = {.fd = -1},
                                   .is_bound = true,
+                                  .engine   = requirements->engine,
+                                  .limits   = ra8_decomp_limits_default(),
                                   .fb       = framebuffer,
                                   .tile_wpx = widths,
                                   .tile_hpx = heights,
@@ -470,16 +625,80 @@ ra8_err_t ra8_viewer_reader_bind(ra8_viewer_reader_t**                   out,
                                   .rt565    = framebuffer,
                                   .rt_w     = (uint32_t)k_ra8_viewer_fb_width,
                                   .rt_h     = (uint32_t)k_ra8_viewer_fb_height,
-                                  .jof      = {.cells       = cells,
-                                               .meta        = meta,
-                                               .keys        = keys,
-                                               .dims        = dims,
-                                               .buckets     = buckets,
-                                               .scratch     = scratch,
-                                               .cell_cap    = requirements->cell_bytes,
-                                               .scratch_cap = requirements->scratch_bytes}};
+                                  .jof      = jof,
+                                  .comic    = comic};
   *out    = reader;
   return k_ra8_ok;
+}
+
+/**
+ * @brief Open and size the reader's selected engine.
+ * @details Dispatches only from the immutable engine recorded at bind time and
+ * populates the common tile count/dimension arrays before publication.
+ * @param[in,out] reader Bound reader with an open descriptor.
+ * @return Engine open, geometry, or capacity status.
+ * @retval k_ra8_ok The selected engine and all tile dimensions are ready.
+ * @retval k_ra8_err_invalid_state The bound engine is unknown.
+ * @pre `reader->file` is open and matches the bound engine's path class.
+ * @pre Every engine-specific workspace slice is bound.
+ * @post Success publishes a non-zero tile count no greater than tile capacity.
+ * @post Failure leaves `reader->is_open` false.
+ * @note Not thread-safe; drives the selected parser.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_open_selected(ra8_viewer_reader_t* reader)
+{
+  ra8_err_t error = k_ra8_err_invalid_state;
+  if (reader->engine == (uint32_t)k_ra8_viewer_engine_jof) {
+    error = priv_viewer_open_jof(reader);
+    if (error == k_ra8_ok) {
+      reader->tile_n =
+        ((uint32_t)reader->jof.dctx.info.height + (uint32_t)k_ra8_viewer_fb_height - 1U) /
+        (uint32_t)k_ra8_viewer_fb_height;
+    }
+    if ((error == k_ra8_ok) && ((reader->tile_n == 0U) || (reader->tile_n > reader->tile_cap))) {
+      error = k_ra8_err_invalid_size;
+    }
+    if (error == k_ra8_ok) {
+      priv_viewer_size_jof_tiles(reader, reader->tile_n);
+    }
+  } else if (reader->engine == (uint32_t)k_ra8_viewer_engine_comic) {
+    error = priv_viewer_open_comic(reader);
+    if (error == k_ra8_ok) {
+      reader->tile_n = ra8_comic_page_count(&reader->comic.archive);
+    }
+    if ((error == k_ra8_ok) && ((reader->tile_n == 0U) || (reader->tile_n > reader->tile_cap))) {
+      error = k_ra8_err_invalid_size;
+    }
+    if (error == k_ra8_ok) {
+      error = priv_viewer_size_comic_tiles(reader);
+    }
+  }
+  return error;
+}
+
+/**
+ * @brief Whether a path class matches the engine frozen at bind time.
+ * @details Prevents a requirements object calculated for one engine from being
+ * reused to open a differently laid-out document.
+ * @param[in] reader Bound reader.
+ * @param[in] format Classified requested path.
+ * @return Whether the pair is compatible.
+ * @retval true The path and workspace select the same engine.
+ * @retval false They differ or the engine is unknown.
+ * @pre @p reader is non-NULL and bound.
+ * @pre @p format came from ::internal_classify.
+ * @post No state is mutated.
+ * @post A wrapped or reflow format never matches.
+ * @note Pure and thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_engine_matches(const ra8_viewer_reader_t* reader,
+                                                 viewer_fmt_t               format)
+{
+  return ((reader->engine == (uint32_t)k_ra8_viewer_engine_jof) && (format == k_viewer_fmt_jof)) ||
+         ((reader->engine == (uint32_t)k_ra8_viewer_engine_comic) &&
+          (format == k_viewer_fmt_comic));
 }
 
 ra8_err_t ra8_viewer_open(ra8_viewer_reader_t* reader, const char* path)
@@ -491,25 +710,19 @@ ra8_err_t ra8_viewer_open(ra8_viewer_reader_t* reader, const char* path)
     return k_ra8_err_invalid_state;
   }
   const viewer_fmt_t format = internal_classify(path);
-  if (format != k_viewer_fmt_jof) {
-    return internal_reject(format, path);
+  if (!internal_engine_matches(reader, format)) {
+    return k_ra8_err_invalid_state;
   }
   ra8_err_t error = internal_file_open(&reader->file, path);
   if (error == k_ra8_ok) {
-    error = priv_viewer_open_jof(reader);
+    error = internal_open_selected(reader);
   }
   if (error == k_ra8_ok) {
-    reader->tile_n =
-      ((uint32_t)reader->jof.dctx.info.height + (uint32_t)k_ra8_viewer_fb_height - 1U) /
-      (uint32_t)k_ra8_viewer_fb_height;
-    if (reader->tile_n > reader->tile_cap) {
-      error = k_ra8_err_invalid_size;
-    }
-  }
-  if (error == k_ra8_ok) {
-    priv_viewer_size_jof_tiles(reader, reader->tile_n);
     reader->is_open = true;
     return k_ra8_ok;
+  }
+  if (reader->engine == (uint32_t)k_ra8_viewer_engine_comic) {
+    (void)ra8_comic_close(&reader->comic.archive);
   }
   if (reader->file.is_open) {
     (void)close(reader->file.fd);
@@ -535,7 +748,9 @@ ra8_err_t ra8_viewer_render_page(ra8_viewer_reader_t* reader, uint32_t page)
   if (page >= reader->tile_n) {
     return k_ra8_err_out_of_range;
   }
-  return priv_viewer_render_jof(reader, page);
+  return (reader->engine == (uint32_t)k_ra8_viewer_engine_comic)
+           ? priv_viewer_render_comic(reader, page)
+           : priv_viewer_render_jof(reader, page);
 }
 
 uint32_t ra8_viewer_tile_count(const ra8_viewer_reader_t* reader)
@@ -608,7 +823,9 @@ ra8_err_t ra8_viewer_render_tile565(ra8_viewer_reader_t*           reader,
     return k_ra8_err_invalid_size;
   }
   const ra8_err_t render =
-    priv_viewer_tile_jof(reader, index, (uint16_t*)workspace, workspace_bytes, width, height);
+    (reader->engine == (uint32_t)k_ra8_viewer_engine_comic)
+      ? priv_viewer_tile_comic(reader, index, (uint16_t*)workspace, workspace_bytes, width, height)
+      : priv_viewer_tile_jof(reader, index, (uint16_t*)workspace, workspace_bytes, width, height);
   if (render == k_ra8_ok) {
     *out_pixels = (uint16_t*)workspace;
   }
@@ -621,6 +838,9 @@ void ra8_viewer_close(ra8_viewer_reader_t* reader)
     return;
   }
   if (reader->file.is_open) {
+    if (reader->engine == (uint32_t)k_ra8_viewer_engine_comic) {
+      (void)ra8_comic_close(&reader->comic.archive);
+    }
     (void)close(reader->file.fd);
   }
   reader->file    = (viewer_file_ctx_t){.fd = -1};

@@ -84,11 +84,10 @@ _tb_media_dl() (
   ctest --test-dir "$root/media_dl" --output-on-failure
 )
 
-# rabook_viewer: build, link, and exercise the supported headless JOF path.
+# rabook_viewer: build, link, and exercise the supported headless read paths.
 # Linking is not evidence the reader still decodes anything, so the corpus
-# drives both raw and DEFLATE JOF fixtures through the renderer and checks that
-# each produces a P6 image. It also verifies clean rejection of malformed and
-# currently unsupported archive inputs.
+# drives raw/DEFLATE JOF plus a real CBZ through the renderer. The comic output
+# is pinned by exact pixel hash, and malformed archives must fail cleanly.
 _tb_rabook_viewer() (
   set -e
   local cc="$1" root="$2" jobs="$3"
