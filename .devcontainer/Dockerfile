@@ -106,6 +106,15 @@ ARG DOXYGEN_SHA256_LINUX_X64=a56f885d37e3aae08a99f638d17bbb381224c03a878d9e2dda4
 # no other: gate_bench_lock_selftest declares `ssh` and the image carried none
 # -- the third case of "a gate asserts a tool the image lacks" inside two days,
 # after `gh` and `jq`, and the first one found by a check instead of a person.
+#
+# openssl is the fourth, and it arrived through a route runner-image-deps
+# cannot see: tools/media_dl/CMakeLists.txt find_program()s the openssl CLI as
+# REQUIRED for its HTTPS integration test, so the tools-build gate depended on
+# a binary no require_cmd declared and this list never carried. Every developer
+# box has it; ubuntu:24.04 plus the list above does not, so the gate failed at
+# `cmake -S tools/media_dl` on the runner and nowhere else. A CMake
+# find_program(... REQUIRED) is a host-tool declaration too -- if you add one,
+# add the package here.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
       ca-certificates \
@@ -132,6 +141,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       locales \
       ninja-build \
       openssh-client \
+      openssl \
       pkg-config \
       poppler-utils \
       python3 \

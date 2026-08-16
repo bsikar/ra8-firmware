@@ -149,6 +149,16 @@ gate_tools_build() (
   require_cmd gcc-14 "the tools-build gate's second warning arm pins gcc-14 (#356)"
   require_cmd cmake
   require_cmd ctest
+  # media_dl's CMakeLists find_program()s these two as REQUIRED for its
+  # real-libcurl HTTPS integration test (it mints a throwaway server cert with
+  # the openssl CLI and serves it from python3's http.server). A runner without
+  # them fails at `cmake -S tools/media_dl` with a CMake "could not find
+  # MDL_OPENSSL_EXECUTABLE" error 700 lines before the gate says anything, and
+  # the openssl CLI reaches the runner image only as a transitive apt
+  # dependency of ca-certificates -- it is named nowhere. Name the dependency
+  # where every other dependency of this gate is named, and fail on it here.
+  require_cmd openssl "media_dl's HTTPS integration test mints its server cert with the openssl CLI"
+  require_cmd python3 "media_dl's HTTPS integration test serves its fixtures from python3 http.server"
   # gcc-14 is enforced to its pin the same way the other gates enforce theirs
   # (#333/#447): the wrong gcc silently changes which warnings the arm holds.
   require_tool_versions gcc-14
