@@ -119,6 +119,8 @@ RA8_INTERNAL static bool internal_mdl_http_response_valid(const Ra8__Mdl__Chunk*
 
 /**
  * @brief Copy one already-bounded HTTP field into fixed response storage.
+ * @details Copies through the validated terminator so the public response
+ * retains the exact header spelling selected by the C6 service.
  * @param[out] destination Fixed caller response array.
  * @param[in] source Validated NUL-terminated decoded field.
  * @param[in] cap Capacity of @p destination and validated source bound.
@@ -138,6 +140,8 @@ internal_mdl_http_field_copy(char* destination, const char* source, size_t cap)
 
 /**
  * @brief Copy one validated generated chunk and advance its active session
+ * @details Translates generated state and metadata into the allocation-free
+ * client contract after correlation and capacity checks have succeeded.
  * @param[in,out] take Active extraction and session context.
  * @param[in] msg Fully validated generated Chunk.
  * @return Remote terminal status.
