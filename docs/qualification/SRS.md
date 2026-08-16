@@ -442,7 +442,7 @@ recorded.
 | REQ-SAFE-009     | P10 Rule 9 -- function pointers permitted only as DIP injection seams (intentional deviation).         | recorded in `CLAUDE.md` "Rule 9"                                                                                   | (deviation; documented)                                       |
 | REQ-SAFE-010     | P10 Rule 10 -- `-Wall -Wextra -Werror`; build fails on any warning.                                    | `cmake/toolchain-ra8d2.cmake`, CI matrix                                                                            | (CI gate)                                                     |
 
-### 5.2 MISRA-C 2012 deviations (REQ-SAFE-011..015)
+### 5.2 MISRA-C 2012 deviations (REQ-SAFE-011..015, 021..025)
 
 The deviation register is
 [`./MISRA_DEVIATIONS.md`](./MISRA_DEVIATIONS.md). Each row is mirrored
@@ -455,6 +455,15 @@ here as a software requirement so the SVP can pick it up.
 | REQ-SAFE-013     | D-003 Rule 9.2 braced-aggregate-init -- tooling gap (C23 `= {}` permitted by project standard).      | Tooling gap                                                | `MISRA_DEVIATIONS.md` D-003                |
 | REQ-SAFE-014     | D-004 Rule 12.1 explicit-precedence -- partial deviation; bracket-where-ambiguous remains required.  | Partial deviation                                          | `MISRA_DEVIATIONS.md` D-004                |
 | REQ-SAFE-015     | D-005 Rule 8.4 declaration-before-definition -- tooling gap; compiler `-Wmissing-prototypes` covers. | Tooling gap                                                | `MISRA_DEVIATIONS.md` D-005                |
+| REQ-SAFE-021     | D-006 Rule 20.5 `#undef` -- single authoritative `RA8_NSC_VENEER` redefinition keeps the CMSE attribute include-order-proof. | Project deviation (formal)                                 | `MISRA_DEVIATIONS.md` D-006                |
+| REQ-SAFE-022     | D-007 Rule 14.2 for-loop form -- cppcheck C23 `[[nodiscard]]` parse defect mischarges the well-formed `RA8_PROTECTED_WRITE` guard loop. | Tooling gap                                                | `MISRA_DEVIATIONS.md` D-007                |
+| REQ-SAFE-023     | D-008 Rule 17.1 stdarg -- three bounded variadic adapters (esp-hosted log bridge, emulator host I/O, cache_bench I/O). | Project deviation (formal)                                 | `MISRA_DEVIATIONS.md` D-008                |
+| REQ-SAFE-024     | D-009 Rule 9.5 array extents -- enum-named extents are explicit sizes the cppcheck MISRA addon cannot resolve. | Tooling gap                                                | `MISRA_DEVIATIONS.md` D-009                |
+| REQ-SAFE-025     | D-010 Rule 11.5 void-pointer conversion -- DI seams recover typed context from `void *` per the project's P10 Rule 9 deviation. | Project deviation (formal)                                 | `MISRA_DEVIATIONS.md` D-010                |
+
+REQ-SAFE-016..020 were already assigned to the IEC 61508 evidence
+requirements below when D-006..D-010 were registered, so the
+deviation mirrors continue at REQ-SAFE-021.
 
 ### 5.3 IEC 61508 SIL 3 evidence requirements (REQ-SAFE-016..020)
 
