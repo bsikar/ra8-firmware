@@ -21,6 +21,11 @@ typedef enum : uint8_t {
   k_mdl_c6_output_sink   = 2U, /**< Injected streaming body sink.         */
 } mdl_c6_output_kind_t;
 
+/** @brief Synthesized status proven by a successful version-1 transfer. */
+typedef enum : int32_t {
+  k_mdl_c6_http_success = 200, /**< Successful body; C6 accepts only HTTP 2xx. */
+} mdl_c6_http_status_t;
+
 /** @brief Transaction state that turns one C6 body into a network response. */
 typedef struct {
   mdl_c6_output_kind_t kind;   /**< Selected output union member. */
@@ -233,7 +238,7 @@ RA8_INTERNAL static ra8_err_t internal_c6_get(mdl_net_c6link_t*    backend,
       *out_len = (size_t)transfer.bytes_stored;
     }
     if (resp != nullptr) {
-      resp->status = 200L;
+      resp->status = k_mdl_c6_http_success;
     }
   }
   return result;
