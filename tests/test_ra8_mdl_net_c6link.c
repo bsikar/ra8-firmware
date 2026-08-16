@@ -218,10 +218,7 @@ RA8_INTERNAL static void internal_test_buffer_and_sink(void)
   TEST_ASSERT(memcmp(buffer, s_body, length) == 0);
   TEST_ASSERT_EQ('\0', buffer[length]);
 
-  uint8_t digest[k_ra8_mdl_sha256_bytes] = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256(s_body, sizeof(s_body) - 1U, digest));
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_c6_model_mdl_source(s_body, (uint32_t)(sizeof(s_body) - 1U), digest));
+  internal_prepare_source();
   internal_c6_sink_t  sink_state = {};
   mdl_net_body_sink_t sink       = {
     .reset = internal_sink_reset,
@@ -276,10 +273,7 @@ RA8_INTERNAL static void internal_test_fail_closed(void)
                                  nullptr));
   TEST_ASSERT_EQ('\0', buffer[0]);
 
-  uint8_t digest[k_ra8_mdl_sha256_bytes] = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256(s_body, sizeof(s_body) - 1U, digest));
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_c6_model_mdl_source(s_body, (uint32_t)(sizeof(s_body) - 1U), digest));
+  internal_prepare_source();
   s_sha.bad_final                  = true;
   char full[k_internal_sink_bytes] = "old";
   TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch,
