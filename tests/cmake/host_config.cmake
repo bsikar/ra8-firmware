@@ -164,12 +164,27 @@ if(RA8_MCDC)
   # is performed below, after the source lists are populated.
   add_compile_options(${RA8_MCDC_C_FLAGS})
 elseif(RA8_COVERAGE)
+  # A target may opt out of gcov instrumentation by setting the custom property
+  # RA8_SKIP_COVERAGE_INSTRUMENTATION. Exactly one does: test_ra8_unity_output
+  # forges source names with #line directives so it can pin Unity's rendered
+  # "[FAIL] <file>:<line> <msg>" diagnostic byte for byte. gcov records those
+  # synthetic names in its notes; gcovr then cannot resolve `unity_output_fixture.c`
+  # from ANY directory, walks up to `/`, and aborts the whole report with
+  # `no_working_dir_found` (exit 64) -- no XML, so the gate fails having measured
+  # nothing.
+  #
+  # This has to be a generator expression on the DIRECTORY options, which is
+  # where the coverage flags live. Appending `-fno-profile-arcs
+  # -fno-test-coverage` to the target instead does NOT work: measured with
+  # gcc-14, `--coverage -fno-profile-arcs -fno-test-coverage` still emits the
+  # .gcno and still leaves __gcov0.* counters in the object, because the driver
+  # expands --coverage independently of the later negation. It is also a hard
+  # error under clang (`argument unused during compilation` with -Werror), which
+  # is what broke the scan-build gate.
   add_compile_options(
     -O0
     -g
-    --coverage
-    -fprofile-arcs
-    -ftest-coverage
+    "$<$<NOT:$<BOOL:$<TARGET_PROPERTY:RA8_SKIP_COVERAGE_INSTRUMENTATION>>>:--coverage;-fprofile-arcs;-ftest-coverage>"
   )
   add_link_options(--coverage -fprofile-arcs -ftest-coverage)
 endif()
