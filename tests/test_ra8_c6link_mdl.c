@@ -13,6 +13,7 @@
 #include "ra8_attributes.h"
 #include "ra8_c6link_mdl.h"
 #include "ra8_c6link_mdl_msg.h"
+#include "ra8_c6link_mdl_service_internal.h"
 #include "ra8_media_download.pb-c.h"
 #include "unity_minimal.h"
 
@@ -24,14 +25,23 @@ typedef enum : uint16_t {
   k_t_mdl_digest_fill    = 0xA5U, /**< Deterministic digest test octet.  */
 } t_mdl_const_t;
 
+/** @brief Single backend metadata fault selected by one test vector. */
+typedef enum : uint8_t {
+  k_t_mdl_read_fault_none = 0U,     /**< Return canonical backend metadata.    */
+  k_t_mdl_read_fault_oversize,      /**< Report more data than requested.      */
+  k_t_mdl_read_fault_empty_active,  /**< Report no data without completing.    */
+  k_t_mdl_read_fault_terminal_data, /**< Report terminal state with body data. */
+} t_mdl_read_fault_t;
+
 /** @brief State for the deterministic media backend. */
 typedef struct {
-  const uint8_t* bytes;               /**< Modelled response body.       */
-  size_t         len;                 /**< Total response body length.   */
-  size_t         at;                  /**< Offset of the next body byte. */
-  uint32_t       begins;              /**< Successful begin call count.  */
-  uint32_t       cancels;             /**< Successful cancel call count. */
-  bool           terminal_total_zero; /**< Corrupt terminal-total fault. */
+  const uint8_t*     bytes;               /**< Modelled response body.       */
+  size_t             len;                 /**< Total response body length.   */
+  size_t             at;                  /**< Offset of the next body byte. */
+  uint32_t           begins;              /**< Successful begin call count.  */
+  uint32_t           cancels;             /**< Successful cancel call count. */
+  bool               terminal_total_zero; /**< Corrupt terminal-total fault. */
+  t_mdl_read_fault_t read_fault;          /**< One selected metadata fault.  */
 } fake_backend_t;
 
 static fake_backend_t    s_backend;
@@ -94,8 +104,28 @@ RA8_INTERNAL static ra8_err_t internal_fake_read(void*     ctx,
                                                  uint8_t   sha256[k_ra8_mdl_sha256_bytes])
 {
   fake_backend_t* fake = (fake_backend_t*)ctx;
-  const size_t    left = fake->len - fake->at;
-  const size_t    take = (left < cap) ? left : cap;
+  if (fake->read_fault == k_t_mdl_read_fault_oversize) {
+    *got         = (uint16_t)(cap + 1U);
+    *total_bytes = *got;
+    *complete    = false;
+    return k_ra8_ok;
+  }
+  if (fake->read_fault == k_t_mdl_read_fault_empty_active) {
+    *got         = 0U;
+    *total_bytes = fake->len;
+    *complete    = false;
+    return k_ra8_ok;
+  }
+  if (fake->read_fault == k_t_mdl_read_fault_terminal_data) {
+    out[0]       = 'x';
+    *got         = 1U;
+    *total_bytes = 1U;
+    *complete    = true;
+    memset(sha256, k_t_mdl_digest_fill, k_ra8_mdl_sha256_bytes);
+    return k_ra8_ok;
+  }
+  const size_t left = fake->len - fake->at;
+  const size_t take = (left < cap) ? left : cap;
   if (take != 0U) {
     memcpy(out, &fake->bytes[fake->at], take);
     fake->at += take;
@@ -595,8 +625,10 @@ RA8_INTERNAL static void internal_expect_legacy_format_rejection(void)
  * @details Pins the removed legacy Start field and a future unknown varint on
  *          active Next and Cancel calls.
  * @pre The deterministic service fixture and request buffers are available.
+ * @pre No backend job exists before the fixture reset.
  * @post Start does not begin a backend; Next does not consume bytes; Cancel does
  *       not cancel, and a subsequent canonical Cancel remains accepted.
+ * @post Every rejected request publishes zero response bytes.
  * @note Protobuf-c preserves unknown fields, so the application rejects them.
  * @since 0.1.0
  */
@@ -662,6 +694,161 @@ RA8_INTERNAL static void internal_test_rejects_unknown_request_fields(void)
 }
 
 /**
+ * @brief Dispatch one correlated Next request that the backend must invalidate.
+ * @details Packs the ordinary Next request so the selected backend metadata is
+ * the only source of protocol rejection.
+ * @param[in] job Active service job identifier.
+ * @param[in] offset Acknowledged offset matching the mutated service state.
+ * @pre The service owns an active job and the backend fault is configured.
+ * @pre The response buffer has capacity for every canonical response.
+ * @post Dispatch reports a protocol error and publishes zero response bytes.
+ * @post Backend cancellation occurs once and deactivates the service.
+ * @note File-local helper for backend-coherence fault vectors.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_expect_next_protocol_error(uint32_t job, uint64_t offset)
+{
+  Ra8__Mdl__NextRequest next = RA8__MDL__NEXT_REQUEST__INIT;
+  next.protocol_version      = k_ra8_mdl_protocol_version;
+  next.job_id                = job;
+  next.acknowledged_offset   = offset;
+  next.max_bytes             = 4U;
+  const size_t request_len   = ra8__mdl__next_request__pack(&next, s_request);
+  size_t       response_len  = k_t_mdl_len_sentinel;
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error,
+                 ra8_mdl_service_dispatch(&s_service,
+                                          k_ra8_mdl_rpc_next,
+                                          s_request,
+                                          request_len,
+                                          s_response,
+                                          sizeof(s_response),
+                                          &response_len));
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)response_len);
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_backend.cancels);
+  TEST_ASSERT(!s_service.active);
+}
+
+/**
+ * @brief Exercise one isolated backend metadata fault.
+ * @details Creates a fresh job, installs one read fault, and delegates the
+ * rejection and cleanup assertions to the correlated-request helper.
+ * @param[in] fault Fault selected for the next backend read.
+ * @pre The deterministic service fixture can be reset and started.
+ * @pre @p fault selects exactly one metadata mutation.
+ * @post The corrupted pull is rejected and the backend is cancelled once.
+ * @post No response bytes or active service job survive.
+ * @note File-local helper; each call creates an independent job.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_expect_read_fault(t_mdl_read_fault_t fault)
+{
+  internal_reset_service();
+  const uint32_t job   = internal_dispatch_start();
+  s_backend.read_fault = fault;
+  internal_expect_next_protocol_error(job, 0U);
+}
+
+/**
+ * @test internal_test_backend_metadata_mcdc
+ * @brief Prove every backend-coherence operand independently rejects a pull.
+ * @par MC/DC:
+ * The valid data pull in `internal_test_service_multichunk_and_digest` is the
+ * all-false control. V1 over-reports `got`; V2 returns zero bytes while active;
+ * V3 returns body data while terminal; V4 sets only offset overflow; V5 is the
+ * incoherent terminal-total test below; and V6 sets only the sequence limit.
+ * Each vector keeps every other disjunct false and causes one cancellation.
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_read_next
+ * @details Uses fresh jobs so no rejected vector can affect a later operand.
+ * @pre The deterministic backend and request buffers are available.
+ * @pre The canonical six-byte body provides a valid all-false control.
+ * @post Every injected metadata fault returns a protocol error.
+ * @post Every rejected job is cancelled and deactivated transactionally.
+ * @note The terminal-total operand remains pinned by its dedicated test.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_backend_metadata_mcdc(void)
+{
+  TEST_BEGIN("mdl backend metadata MC/DC");
+  internal_expect_read_fault(k_t_mdl_read_fault_oversize);
+  internal_expect_read_fault(k_t_mdl_read_fault_empty_active);
+  internal_expect_read_fault(k_t_mdl_read_fault_terminal_data);
+
+  internal_reset_service();
+  uint32_t job          = internal_dispatch_start();
+  s_service.next_offset = UINT64_MAX;
+  internal_expect_next_protocol_error(job, UINT64_MAX);
+
+  internal_reset_service();
+  job                     = internal_dispatch_start();
+  s_service.next_sequence = UINT32_MAX;
+  internal_expect_next_protocol_error(job, 0U);
+  TEST_END("mdl backend metadata MC/DC");
+}
+
+/**
+ * @test internal_test_service_init_mcdc
+ * @brief Exercise every required service-initialization pointer independently.
+ * @par MC/DC:
+ * The canonical backend is the all-false control. Five otherwise-identical
+ * vectors independently null service, backend, begin, read, and cancel.
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_service.c@ra8_mdl_service_init
+ * @details Confirms rejection precedes any write to the candidate service.
+ * @pre The deterministic callback functions are addressable.
+ * @pre The candidate service and backend storage are writable.
+ * @post The complete backend initializes successfully.
+ * @post Every single-null variant returns `k_ra8_err_null_ptr`.
+ * @note Backend context is optional under the published service contract.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_service_init_mcdc(void)
+{
+  TEST_BEGIN("mdl service init MC/DC");
+  ra8_mdl_service_backend_t backend = {.begin  = internal_fake_begin,
+                                       .read   = internal_fake_read,
+                                       .cancel = internal_fake_cancel,
+                                       .ctx    = &s_backend};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mdl_service_init(&s_service, &backend));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_service_init(nullptr, &backend));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_service_init(&s_service, nullptr));
+  backend.begin = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_service_init(&s_service, &backend));
+  backend.begin = internal_fake_begin;
+  backend.read  = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_service_init(&s_service, &backend));
+  backend.read   = internal_fake_read;
+  backend.cancel = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_service_init(&s_service, &backend));
+  TEST_END("mdl service init MC/DC");
+}
+
+/**
+ * @test internal_test_decode_allocation_mcdc
+ * @brief Cover overflow and both aligned-arena capacity operands.
+ * @par MC/DC:
+ * V1 is the all-true fit. V2 makes only aligned-size capacity false; V3 keeps
+ * aligned size bounded but makes remaining capacity false. V4 independently
+ * selects the pre-alignment overflow guard with `SIZE_MAX`.
+ * Decisions:
+ * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@priv_c6link_mdl_decode_allocation_fits
+ * @details Calls the pure private predicate without mutating a decode arena.
+ * @pre `size_t` represents the fixed test capacities and `SIZE_MAX`.
+ * @pre The service alignment remains eight bytes.
+ * @post Every fitting vector returns true.
+ * @post Every overflow or exhausted-capacity vector returns false.
+ * @note The production allocator uses the same predicate before alignment.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_decode_allocation_mcdc(void)
+{
+  TEST_BEGIN("mdl decode allocation MC/DC");
+  TEST_ASSERT(priv_c6link_mdl_decode_allocation_fits(0U, 8U, 64U));
+  TEST_ASSERT(!priv_c6link_mdl_decode_allocation_fits(0U, 65U, 64U));
+  TEST_ASSERT(!priv_c6link_mdl_decode_allocation_fits(60U, 8U, 64U));
+  TEST_ASSERT(!priv_c6link_mdl_decode_allocation_fits(0U, SIZE_MAX, 64U));
+  TEST_END("mdl decode allocation MC/DC");
+}
+
+/**
  * @test internal_test_rejects_incoherent_terminal_total
  * @brief Reject a backend that erases a known total at terminal completion.
  * @details Consumes the complete body before injecting `complete=true` with a
@@ -720,11 +907,14 @@ RA8_INTERNAL static void internal_test_rejects_incoherent_terminal_total(void)
 
 int32_t main(void)
 {
+  internal_test_service_init_mcdc();
+  internal_test_decode_allocation_mcdc();
   internal_test_service_multichunk_and_digest();
   internal_test_service_busy_stale_and_cancel();
   internal_test_response_capacity_is_transactional();
   internal_test_rejects_malformed();
   internal_test_rejects_unknown_request_fields();
+  internal_test_backend_metadata_mcdc();
   internal_test_rejects_incoherent_terminal_total();
   return 0;
 }

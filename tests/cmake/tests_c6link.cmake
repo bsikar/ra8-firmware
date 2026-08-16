@@ -93,6 +93,7 @@ add_executable(
   test_ra8_c6link_media
   ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media.c
   ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media_decoder.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/ra8_c6link_transfer_validation_test.c
   ${RA8_C6LINK_TEST_SUPPORT}
   ${RA8_C6LINK_TEST_MODEL}
   ${RA8_C6LINK_SOURCES}
