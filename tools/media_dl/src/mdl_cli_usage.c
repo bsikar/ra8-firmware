@@ -102,7 +102,7 @@ RA8_INTERNAL static ra8_err_t internal_cli_usage_actions(ra8_io_stream_t* diagno
     a0,
     " https://HOST/PATH/BOOK.cbz [--out DIR] [network options]\n"
     "       Downloads to staging and publishes only after structural\n"
-    "       verification. Verified formats: cbz|cbt|cbt.gz|epub|jof.\n\n"
+    "       verification. Verified formats: cbz|cbt|cbt.gz|epub|jof|rabook.\n\n"
     "  page:\n"
     "    ",
     a0,

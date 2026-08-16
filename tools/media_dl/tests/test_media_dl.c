@@ -162,6 +162,8 @@ RA8_INTERNAL static void internal_test_format_mapping(void)
   TEST_ASSERT(inferred == k_mdl_fmt_invalid);
   TEST_ASSERT(mdl_format_from_path("/tmp/book.epub", &inferred) == k_ra8_ok);
   TEST_ASSERT(inferred == k_mdl_fmt_epub);
+  TEST_ASSERT(mdl_format_from_path("/tmp/book.RABOOK", &inferred) == k_ra8_ok);
+  TEST_ASSERT(inferred == k_mdl_fmt_rabook);
   TEST_ASSERT(mdl_format_from_path("/tmp/book.INCOMPLETE.cbt.gz", &inferred) == k_ra8_ok);
   TEST_ASSERT(inferred == k_mdl_fmt_cbt_gz);
   TEST_ASSERT(mdl_format_from_path("/tmp/book.zip", &inferred) == k_ra8_err_not_supported);
@@ -179,6 +181,7 @@ RA8_INTERNAL static void internal_test_format_mapping(void)
   TEST_ASSERT(mdl_format_is_verifiable(k_mdl_fmt_epub));
   TEST_ASSERT(mdl_format_is_verifiable(k_mdl_fmt_jof));
   TEST_ASSERT(mdl_format_is_verifiable(k_mdl_fmt_cbt_gz));
+  TEST_ASSERT(mdl_format_is_verifiable(k_mdl_fmt_rabook));
   TEST_END("format mapping");
 }
 
