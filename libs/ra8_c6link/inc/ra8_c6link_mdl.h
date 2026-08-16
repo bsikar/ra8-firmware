@@ -73,7 +73,7 @@ typedef struct {
   uint8_t         data[k_ra8_mdl_chunk_data_max]; /**< Bounded raw body bytes.                    */
   bool            has_sha256;                     /**< Whether `sha256` is valid.                 */
   uint8_t         sha256[k_ra8_mdl_sha256_bytes]; /**< Complete-body SHA-256.                     */
-  ra8_mdl_http_response_t response;               /**< Terminal HTTP metadata.                   */
+  ra8_mdl_http_response_t response;               /**< Terminal HTTP metadata.                    */
 } ra8_mdl_chunk_t;
 
 #ifdef __cplusplus

@@ -31,7 +31,7 @@ static_assert((uint32_t)k_ra8_mdl_format_invalid == RA8__MDL__FORMAT__FORMAT_INV
 typedef enum : uint16_t {
   k_mdl_decode_arena_bytes = k_ra8_mdl_url_max + k_ra8_mdl_user_agent_max + k_ra8_mdl_referer_max +
                              k_ra8_mdl_etag_max + k_ra8_mdl_http_date_max +
-                             512U,                    /**< Per-dispatch arena size. */
+                             512U,                    /**< Per-dispatch arena size.    */
   k_mdl_decode_align       = 8U,                      /**< Arena allocation alignment. */
   k_mdl_decode_align_mask  = k_mdl_decode_align - 1U, /**< Mask used to round sizes.   */
 } mdl_svc_const_t;

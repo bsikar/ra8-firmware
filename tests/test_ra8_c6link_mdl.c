@@ -36,17 +36,17 @@ typedef enum : uint8_t {
 
 /** @brief State for the deterministic media backend. */
 typedef struct {
-  const uint8_t*     bytes;                                      /**< Modelled response body. */
-  size_t             len;                                        /**< Complete body length.   */
+  const uint8_t*     bytes;                                      /**< Modelled response body.  */
+  size_t             len;                                        /**< Complete body length.    */
   size_t             at;                                         /**< Next body byte offset.   */
-  uint32_t           begins;                                     /**< Successful begin count. */
+  uint32_t           begins;                                     /**< Successful begin count.  */
   uint32_t           cancels;                                    /**< Successful cancel count. */
-  ra8_mdl_format_t   format;                                     /**< Requested format.       */
-  uint32_t           timeout_ms;                                 /**< Requested timeout.      */
-  char               user_agent[k_ra8_mdl_user_agent_max];       /**< Copied User-Agent.      */
-  char               referer[k_ra8_mdl_referer_max];             /**< Copied Referer.         */
-  char               if_none_match[k_ra8_mdl_etag_max];          /**< Copied ETag condition.  */
-  char               if_modified_since[k_ra8_mdl_http_date_max]; /**< Copied date condition.  */
+  ra8_mdl_format_t   format;                                     /**< Requested format.        */
+  uint32_t           timeout_ms;                                 /**< Requested timeout.       */
+  char               user_agent[k_ra8_mdl_user_agent_max];       /**< Copied User-Agent.       */
+  char               referer[k_ra8_mdl_referer_max];             /**< Copied Referer.          */
+  char               if_none_match[k_ra8_mdl_etag_max];          /**< Copied ETag condition.   */
+  char               if_modified_since[k_ra8_mdl_http_date_max]; /**< Copied date condition.   */
   bool               terminal_total_zero;                        /**< Bad terminal total.      */
   t_mdl_read_fault_t read_fault;                                 /**< Selected metadata fault. */
 } fake_backend_t;

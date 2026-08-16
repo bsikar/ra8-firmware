@@ -44,24 +44,24 @@ typedef esp_err_t (*esp_crt_bundle_attach_fn_t)(void* conf);
 
 /** @brief Consumed ESP-IDF HTTP event identifiers. */
 typedef enum esp_http_client_event_id_t {
-  HTTP_EVENT_ERROR = 0,    /**< Transport error. */
-  HTTP_EVENT_ON_CONNECTED, /**< Connection established. */
-  HTTP_EVENT_HEADERS_SENT, /**< Request headers sent. */
+  HTTP_EVENT_ERROR = 0,    /**< Transport error.                  */
+  HTTP_EVENT_ON_CONNECTED, /**< Connection established.           */
+  HTTP_EVENT_HEADERS_SENT, /**< Request headers sent.             */
   HTTP_EVENT_ON_HEADER,    /**< One response header is available. */
-  HTTP_EVENT_ON_DATA,      /**< Response body data is available. */
-  HTTP_EVENT_ON_FINISH,    /**< Response completed. */
-  HTTP_EVENT_DISCONNECTED, /**< Connection closed. */
-  HTTP_EVENT_REDIRECT,     /**< Redirect response observed. */
+  HTTP_EVENT_ON_DATA,      /**< Response body data is available.  */
+  HTTP_EVENT_ON_FINISH,    /**< Response completed.               */
+  HTTP_EVENT_DISCONNECTED, /**< Connection closed.                */
+  HTTP_EVENT_REDIRECT,     /**< Redirect response observed.       */
 } esp_http_client_event_id_t;
 
 /** @brief Parser mirror of the ESP-IDF HTTP event record. */
 typedef struct esp_http_client_event_t {
-  esp_http_client_event_id_t event_id;     /**< Event selector. */
-  esp_http_client_handle_t   client;       /**< Originating client. */
-  void*                      data;         /**< Event data, if any. */
-  int                        data_len;     /**< Event-data bytes. */
-  void*                      user_data;    /**< Configuration context. */
-  char*                      header_key;   /**< Header name for ON_HEADER. */
+  esp_http_client_event_id_t event_id;     /**< Event selector.             */
+  esp_http_client_handle_t   client;       /**< Originating client.         */
+  void*                      data;         /**< Event data, if any.         */
+  int                        data_len;     /**< Event-data bytes.           */
+  void*                      user_data;    /**< Configuration context.      */
+  char*                      header_key;   /**< Header name for ON_HEADER.  */
   char*                      header_value; /**< Header value for ON_HEADER. */
 } esp_http_client_event_t;
 
