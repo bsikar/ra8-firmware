@@ -55,13 +55,6 @@ extern uint32_t g_ra8_ls_sbss;      /**< Start of .bss in SRAM.             */
 extern uint32_t g_ra8_ls_ebss;      /**< End of .bss in SRAM.               */
 
 /* =============================================================================
- * main()
- * =============================================================================
- */
-
-extern int32_t main(void);
-
-/* =============================================================================
  * Handler declarations
  * =============================================================================
  */
@@ -456,8 +449,7 @@ void Reset_Handler(void)
 
   /* Step 4: enter C. `main()` is responsible for enabling interrupts
    * via `__enable_irq()` once all drivers are ready. */
-  (void)main();
-
+  main();
   /* main() should never return; if it does, halt. */
   while (1) {
     __asm__ volatile("wfi");
