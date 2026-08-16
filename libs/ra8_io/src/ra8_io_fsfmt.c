@@ -297,7 +297,10 @@ internal_native_listdir(void* mount_ctx, const char* path, ra8_fs_listdir_cb_t c
     ra8_fs_dirent_t entry   = {};
     bool            present = false;
     err                     = ra8_fs_dir_next(&directory, &entry, &present);
-    if ((err != k_ra8_ok) || !present) {
+    if (err != k_ra8_ok) {
+      break;
+    }
+    if (!present) {
       break;
     }
     cb(entry.name, entry.attr, entry.size_bytes, cb_ctx);

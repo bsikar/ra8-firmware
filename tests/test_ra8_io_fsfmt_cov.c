@@ -305,6 +305,7 @@ RA8_INTERNAL static void internal_cursor_capability_consistency(void)
  * @brief Every capability-to-operation invariant is checked independently.
  *
  * @par MC/DC:
+ * Covers `libs/ra8_io/src/ra8_io_fsfmt.c@internal_validate_caps`.
  * Capability validation uses nested single-condition decisions, not `&&` or
  * `||`. The valid descriptor supplies `capability=false`; each mismatch sets
  * only that capability true and its operation null, exercising the advertised
