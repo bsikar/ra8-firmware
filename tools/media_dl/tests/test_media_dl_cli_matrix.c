@@ -795,9 +795,41 @@ RA8_INTERNAL static void internal_test_help_long_options_have_matrix_rows(void)
   TEST_END("CLI help options covered by matrix");
 }
 
+/**
+ * @test test_matrix_tables_are_populated
+ * @brief Require every designated matrix row to carry a real fixture.
+ * @details Both tables are built with designated initializers indexed by their
+ *          own enum, so a mode or option added to the enum without a matching
+ *          row stays zero-filled and is then exercised as an empty fixture that
+ *          proves nothing. Reading each row's diagnostic name detects exactly
+ *          that omission.
+ * @pre ::s_matrix_modes has one row per ::cli_matrix_mode_t value.
+ * @pre ::s_matrix_options has one row per ::cli_matrix_option_t value.
+ * @post Every mode row carries a nonempty name and a populated argv.
+ * @post Every option row carries a nonempty name and at least one token.
+ * @note Host-only table audit; performs no parsing, filesystem, or network I/O.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_matrix_tables_are_populated(void)
+{
+  TEST_BEGIN("CLI matrix tables fully populated");
+  for (size_t mode = 0U; mode < (size_t)k_matrix_mode_count; ++mode) {
+    TEST_ASSERT_NOT_NULL(s_matrix_modes[mode].name);
+    TEST_ASSERT(s_matrix_modes[mode].name[0] != '\0');
+    TEST_ASSERT(s_matrix_modes[mode].argc > 0U);
+  }
+  for (size_t opt = 0U; opt < (size_t)k_matrix_option_count; ++opt) {
+    TEST_ASSERT_NOT_NULL(s_matrix_options[opt].name);
+    TEST_ASSERT(s_matrix_options[opt].name[0] != '\0');
+    TEST_ASSERT(s_matrix_options[opt].count > 0U);
+  }
+  TEST_END("CLI matrix tables fully populated");
+}
+
 /* see header for full description */
 RA8_PRIV void priv_test_mdl_cli_matrix_run(void)
 {
+  internal_test_matrix_tables_are_populated();
   internal_test_exhaustive_mode_option_matrix();
   internal_test_every_public_option_repeated();
   internal_test_discovery_download_options_require_pick();
