@@ -30,5 +30,5 @@ symbol: ra8_wifi_wait_ip
 symbol: k_ra8_wifi_state_ip_bound
 symbol: ra8_c6link_wifi_join
 users: ra8_wifi = 1
-users: ra8_c6link = 4
+users: ra8_c6link = 5
 -->
