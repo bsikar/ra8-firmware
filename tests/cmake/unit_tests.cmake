@@ -301,9 +301,12 @@ if(RA8_COVERAGE AND TARGET test_ra8_unity_output)
 endif()
 
 # The strict book-stream MC/DC vectors call documented private validator seams
-# whose types and declarations remain outside the public library ABI.
+# whose types and declarations remain outside the public library ABI. The
+# shared RABOOK1 fixture is compiled in from its own translation unit rather
+# than carried inline, so the vector suite stays inside the file-size cap.
 if(TARGET test_ra8_book_stream)
   target_include_directories(test_ra8_book_stream PRIVATE ${FW_ROOT}/libs/ra8_book/src)
+  target_sources(test_ra8_book_stream PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/book_stream_fixture.c)
 endif()
 
 # The DOCTYPE lexer's entry guard re-checks a nine-byte prefix that
