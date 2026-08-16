@@ -36,7 +36,7 @@ RA8_INTERNAL static void internal_assert_start_fault(ra8_c6_model_mdl_fault_t fa
     k_ra8_err_protocol_error,
     ra8_c6link_mdl_start(priv_c6link_test_link(), "https://example.test/book", &session));
   TEST_ASSERT(!session.active);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)session.job_id);
+  TEST_ASSERT_EQ(0, session.job_id);
 }
 
 /**

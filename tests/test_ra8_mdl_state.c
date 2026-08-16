@@ -153,7 +153,7 @@ internal_assert_loaded(mdl_storage_t* storage, const char* path, const char* tit
   const mdl_chapter_rec_t* chapter = mdl_state_find_chapter(&s_loaded, "chapter-1");
   TEST_ASSERT_NOT_NULL(chapter);
   TEST_ASSERT(memcmp(&chapter->number, &number, sizeof(number)) == 0);
-  TEST_ASSERT_EQ((uint32_t)1U, s_loaded.page_rec_count);
+  TEST_ASSERT_EQ(1U, s_loaded.page_rec_count);
 }
 
 /**
@@ -394,14 +394,14 @@ RA8_INTERNAL static void internal_run_migration_vectors(mdl_storage_t* storage)
   internal_save_ok(storage, "/legacy/.mdl_state");
   internal_remove_file_if_present(storage, "/legacy/.mdl_state");
   TEST_ASSERT_EQ(k_ra8_ok, mdl_state_load(storage, "/legacy/.mdl_state", &s_loaded));
-  TEST_ASSERT_EQ((uint16_t)k_mdl_state_version, s_loaded.version);
+  TEST_ASSERT_EQ(k_mdl_state_version, s_loaded.version);
 
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_mkdir(&storage->fs->names, "/bad"));
   internal_write_fixture(storage, "/bad/.mdl_state", (const uint8_t*)"broken", 6U);
   internal_seed_state("sentinel", 9.0);
   s_loaded = s_state;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, mdl_state_load(storage, "/bad/.mdl_state", &s_loaded));
-  TEST_ASSERT_EQ((uint16_t)0U, s_loaded.chapter_count);
+  TEST_ASSERT_EQ(0U, s_loaded.chapter_count);
   TEST_ASSERT(s_loaded.series_title[0] == '\0');
 }
 
@@ -530,10 +530,10 @@ RA8_INTERNAL static void internal_run_stream_fault_vectors(mdl_state_fault_fs_t*
   internal_assert_loaded(storage, "/fault/.mdl_state", "short-write", 7.25);
   fault->flags = (uint32_t)k_mdl_state_fault_read;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, mdl_state_load(storage, "/fault/.mdl_state", &s_loaded));
-  TEST_ASSERT_EQ((uint16_t)0U, s_loaded.chapter_count);
+  TEST_ASSERT_EQ(0U, s_loaded.chapter_count);
   fault->flags = (uint32_t)k_mdl_state_fault_close;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, mdl_state_load(storage, "/fault/.mdl_state", &s_loaded));
-  TEST_ASSERT_EQ((uint16_t)0U, s_loaded.chapter_count);
+  TEST_ASSERT_EQ(0U, s_loaded.chapter_count);
   fault->flags = 0U;
 }
 

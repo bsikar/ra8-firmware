@@ -252,7 +252,7 @@ RA8_PRIV esp_err_t esp_http_client_set_url(esp_http_client_handle_t client, cons
 RA8_PRIV esp_err_t esp_http_client_open(esp_http_client_handle_t client, int64_t write_len)
 {
   TEST_ASSERT(client == &s_client);
-  TEST_ASSERT_EQ((int64_t)0, write_len);
+  TEST_ASSERT_EQ(0, write_len);
   return s_model.open_fail ? ESP_FAIL : ESP_OK;
 }
 
@@ -306,7 +306,7 @@ RA8_PRIV void mbedtls_sha256_init(mbedtls_sha256_context* ctx)
 RA8_PRIV int mbedtls_sha256_starts(mbedtls_sha256_context* ctx, int is224)
 {
   TEST_ASSERT(ctx != nullptr);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)is224);
+  TEST_ASSERT_EQ(0, is224);
   ctx->opaque[0] = 0U;
   return s_model.sha_start_fail ? -1 : 0;
 }
@@ -361,8 +361,8 @@ RA8_INTERNAL static void internal_test_unknown_operation_first_refusal(void)
                                                     s_response,
                                                     sizeof(s_response),
                                                     &response_len));
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)response_len);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_model.init_calls);
+  TEST_ASSERT_EQ(0, response_len);
+  TEST_ASSERT_EQ(0, s_model.init_calls);
   TEST_END("C6 HTTP unknown operation first refusal");
 }
 
@@ -444,7 +444,7 @@ RA8_INTERNAL static void internal_test_known_operation_error_mapping(void)
                                                     s_response,
                                                     sizeof(s_response),
                                                     &response_len));
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)response_len);
+  TEST_ASSERT_EQ(0, response_len);
   TEST_END("C6 HTTP known operation error mapping");
 }
 
@@ -468,22 +468,22 @@ RA8_INTERNAL static void internal_test_known_length_multichunk(void)
 
   Ra8__Mdl__Chunk* chunk = nullptr;
   TEST_ASSERT_EQ(ESP_OK, internal_next(job, 0U, 2U, &chunk));
-  TEST_ASSERT_EQ((int64_t)2, (int64_t)chunk->data.len);
+  TEST_ASSERT_EQ(2, chunk->data.len);
   TEST_ASSERT_EQ(0, memcmp(body, chunk->data.data, 2U));
-  TEST_ASSERT_EQ((int64_t)sizeof(body), (int64_t)chunk->total_bytes);
+  TEST_ASSERT_EQ(sizeof(body), chunk->total_bytes);
   ra8__mdl__chunk__free_unpacked(chunk, nullptr);
 
   TEST_ASSERT_EQ(ESP_OK, internal_next(job, 2U, 2U, &chunk));
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)chunk->data.len);
+  TEST_ASSERT_EQ(1, chunk->data.len);
   TEST_ASSERT_EQ(0, memcmp(&body[2], chunk->data.data, 1U));
   ra8__mdl__chunk__free_unpacked(chunk, nullptr);
 
   TEST_ASSERT_EQ(ESP_OK, internal_next(job, 3U, 2U, &chunk));
   uint8_t expected[k_ra8_mdl_sha256_bytes];
   internal_expected_digest(body, sizeof(body), expected);
-  TEST_ASSERT_EQ((int64_t)RA8__MDL__STATE__STATE_COMPLETE, (int64_t)chunk->state);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)chunk->data.len);
-  TEST_ASSERT_EQ((int64_t)sizeof(expected), (int64_t)chunk->sha256.len);
+  TEST_ASSERT_EQ(RA8__MDL__STATE__STATE_COMPLETE, chunk->state);
+  TEST_ASSERT_EQ(0, chunk->data.len);
+  TEST_ASSERT_EQ(sizeof(expected), chunk->sha256.len);
   TEST_ASSERT_EQ(0, memcmp(expected, chunk->sha256.data, sizeof(expected)));
   ra8__mdl__chunk__free_unpacked(chunk, nullptr);
   TEST_END("C6 HTTP known-length multichunk");
@@ -509,11 +509,11 @@ RA8_INTERNAL static void internal_test_unknown_length(void)
   TEST_ASSERT_EQ(ESP_OK, internal_start("https://example.test/book", &job));
   Ra8__Mdl__Chunk* chunk = nullptr;
   TEST_ASSERT_EQ(ESP_OK, internal_next(job, 0U, 4U, &chunk));
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)chunk->total_bytes);
+  TEST_ASSERT_EQ(0, chunk->total_bytes);
   ra8__mdl__chunk__free_unpacked(chunk, nullptr);
   TEST_ASSERT_EQ(ESP_OK, internal_next(job, 1U, 4U, &chunk));
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)chunk->total_bytes);
-  TEST_ASSERT_EQ((int64_t)RA8__MDL__STATE__STATE_COMPLETE, (int64_t)chunk->state);
+  TEST_ASSERT_EQ(1, chunk->total_bytes);
+  TEST_ASSERT_EQ(RA8__MDL__STATE__STATE_COMPLETE, chunk->state);
   ra8__mdl__chunk__free_unpacked(chunk, nullptr);
   TEST_END("C6 HTTP unknown length accounting");
 }

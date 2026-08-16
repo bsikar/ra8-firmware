@@ -481,11 +481,11 @@ static void test_persist_golden_wire(void)
   (void)memset(wire, (int)k_persist_padding_fill, sizeof(wire));
   uint32_t need = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_checkpoint_size(&ftl, &need));
-  TEST_ASSERT_EQ((uint32_t)k_persist_golden_bytes, need);
+  TEST_ASSERT_EQ(k_persist_golden_bytes, need);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_checkpoint_save(&ftl, wire, (uint32_t)sizeof(wire)));
   TEST_ASSERT(memcmp(wire, k_golden_checkpoint, sizeof(k_golden_checkpoint)) == 0);
   for (size_t i = sizeof(k_golden_checkpoint); i < sizeof(wire); ++i) {
-    TEST_ASSERT_EQ((uint8_t)k_persist_padding_fill, wire[i]);
+    TEST_ASSERT_EQ(k_persist_padding_fill, wire[i]);
   }
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_init(&ftl, &fake, map, 1U, pb, 2U, scratch));
@@ -493,10 +493,10 @@ static void test_persist_golden_wire(void)
     k_ra8_ok,
     ra8_ftl_checkpoint_load(&ftl, k_golden_checkpoint, (uint32_t)sizeof(k_golden_checkpoint)));
   TEST_ASSERT_EQ(1U, map[0]);
-  TEST_ASSERT_EQ((uint32_t)k_persist_golden_erase_0, pb[0].erase_count);
-  TEST_ASSERT_EQ((uint8_t)k_ra8_ftl_pstate_stale, pb[0].state);
-  TEST_ASSERT_EQ((uint32_t)k_persist_golden_erase_1, pb[1].erase_count);
-  TEST_ASSERT_EQ((uint8_t)k_ra8_ftl_pstate_live, pb[1].state);
+  TEST_ASSERT_EQ(k_persist_golden_erase_0, pb[0].erase_count);
+  TEST_ASSERT_EQ(k_ra8_ftl_pstate_stale, pb[0].state);
+  TEST_ASSERT_EQ(k_persist_golden_erase_1, pb[1].erase_count);
+  TEST_ASSERT_EQ(k_ra8_ftl_pstate_live, pb[1].state);
   TEST_END("ftl canonical checkpoint golden bytes");
 }
 
