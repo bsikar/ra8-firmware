@@ -60,8 +60,38 @@
 # was never a wider glob -- it was a database that describes how those TUs
 # actually compile.
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# The exact paths a generator owns, printed one per line.
+#
+# Read from scripts/checks/lint_coverage_rules.py, which is the ONE registry
+# that classifies a path as `generated-source`; format_code.sh and the
+# annotation walker already read the same classification. Linting generated
+# output reports style on bytes nobody edits and that the generator will
+# overwrite -- 79 findings on the two protobuf-c codec files alone, none of
+# them actionable.
+#
+# It is deliberately a registry of EXACT paths and not a `*.pb-c.*` wildcard:
+# a suffix rule silently exempts the next generated-looking file, which is the
+# defect the registry was created to prevent. A new generated file has to be
+# classified by hand, and until it is, it is linted as hand-authored C.
+# ---------------------------------------------------------------------------
+generated_source_paths() {
+  python3 - <<'PY_GENERATED'
+import sys
+
+sys.path.insert(0, "scripts/checks")
+from lint_coverage_rules import PATH_CLASS  # noqa: E402 -- path set above
+
+for rel, cls in sorted(PATH_CLASS.items()):
+    if cls == "generated-source":
+        print(rel)
+PY_GENERATED
+}
+
 collect_source_files() {
   cd "$FIRMWARE_DIR" || return 1
+  local generated
+  generated="$(generated_source_paths)"
   git ls-files --cached --others --exclude-standard |
     grep -E '\.(c|h|cpp|cc|cxx|hpp|hh|hxx|m)$' |
     grep -E '^(libs|src|tests|tools|examples|port)/' |
@@ -69,6 +99,8 @@ collect_source_files() {
     grep -Ev '^(libs/third_party/|libs/ra8_fonts/|tools/vela/generated/)' |
     # Build trees and CMake-fetched deps are not source.
     grep -Ev '(^|/)(build|build-[^/]*|_deps)/' |
+    # Generator-owned bytes, by exact path (see generated_source_paths).
+    grep -vxF -e "$generated" |
     while IFS= read -r f; do
       # Objective-C needs the macOS SDK's AppKit / CoreGraphics headers to
       # parse at all, so it can only be linted on a macOS host. Claim it only
