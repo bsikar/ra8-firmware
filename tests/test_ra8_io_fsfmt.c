@@ -562,9 +562,129 @@ RA8_INTERNAL static void internal_log_sink(void* ctx, uint8_t byte)
   (void)byte;
 }
 
+/**
+ * @brief Exercise the directory-requirements nullable operands.
+ * @details Supplies each null operand independently, then verifies the native
+ *          format's successful requirements tuple.
+ * @pre The `cursor` mount is live and advertises a native directory cursor.
+ * @pre Output objects are writable for the complete call sequence.
+ * @post Every nullable operand has independently produced null-pointer status.
+ * @post The all-present control reports the native cursor size and alignment.
+ * @note Called only by the focused MC/DC vector below.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_assert_directory_requirements_guards(void)
+{
+  uint32_t cursor_bytes = 0U;
+  uint8_t  cursor_align = 0U;
+  uint16_t cursor_count = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_io_vfs_dir_requirements(nullptr, &cursor_bytes, &cursor_align, &cursor_count));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_io_vfs_dir_requirements("cursor:/", nullptr, &cursor_align, &cursor_count));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_io_vfs_dir_requirements("cursor:/", &cursor_bytes, nullptr, &cursor_count));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_io_vfs_dir_requirements("cursor:/", &cursor_bytes, &cursor_align, nullptr));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_io_vfs_dir_requirements("cursor:/", &cursor_bytes, &cursor_align, &cursor_count));
+  TEST_ASSERT_EQ(sizeof(ra8_fs_dir_t), cursor_bytes);
+  TEST_ASSERT_EQ(_Alignof(ra8_fs_dir_t), cursor_align);
+  TEST_ASSERT(cursor_count != 0U);
+}
+
+/**
+ * @brief Exercise directory open, iteration, state, and close guards.
+ * @details Opens one real native cursor while copied handles independently
+ *          exercise the closed and missing-format state operands.
+ * @pre The `cursor` mount is live and supports a native directory cursor.
+ * @pre The root directory is safe to enumerate without retaining entry bytes.
+ * @post Every nullable and invalid-state operand has both outcomes.
+ * @post The real cursor is closed before return.
+ * @note Invalid copied handles never own or release the real workspace.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_assert_directory_lifecycle_guards(void)
+{
+  ra8_fs_dir_t     workspace = {};
+  ra8_io_vfs_dir_t directory = {};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_io_vfs_dir_open(nullptr, &directory, &workspace, sizeof(workspace)));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_io_vfs_dir_open("cursor:/", nullptr, &workspace, sizeof(workspace)));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_io_vfs_dir_open("cursor:/", &directory, nullptr, sizeof(workspace)));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_io_vfs_dir_open("cursor:/", &directory, &workspace, sizeof(workspace)));
+
+  ra8_fs_dirent_t entry   = {};
+  bool            present = false;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_vfs_dir_next(nullptr, &entry, &present));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_vfs_dir_next(&directory, nullptr, &present));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_vfs_dir_next(&directory, &entry, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_dir_next(&directory, &entry, &present));
+
+  ra8_io_vfs_dir_t invalid = directory;
+  invalid.is_open          = false;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_io_vfs_dir_next(&invalid, &entry, &present));
+  invalid        = directory;
+  invalid.format = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_io_vfs_dir_next(&invalid, &entry, &present));
+
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_vfs_dir_close(nullptr));
+  invalid         = directory;
+  invalid.is_open = false;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_io_vfs_dir_close(&invalid));
+  invalid        = directory;
+  invalid.format = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_io_vfs_dir_close(&invalid));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_dir_close(&directory));
+}
+
+/**
+ * @brief Prove every public directory-cursor guard independently.
+ * @details Formats and mounts a native FAT volume, then supplies one invalid
+ *          operand at a time before exercising the successful cursor lifecycle.
+ *
+ * @par MC/DC:
+ * Covers `libs/ra8_io/src/ra8_io_vfs.c@ra8_io_vfs_dir_requirements`,
+ * `libs/ra8_io/src/ra8_io_vfs.c@ra8_io_vfs_dir_open`,
+ * `libs/ra8_io/src/ra8_io_vfs.c@ra8_io_vfs_dir_next`, and
+ * `libs/ra8_io/src/ra8_io_vfs.c@ra8_io_vfs_dir_close`. The all-valid calls
+ * make every guard operand false. Each preceding call makes exactly one null
+ * operand true; copied directory handles independently make `!is_open` and
+ * `format == nullptr` true while the other state operand remains false.
+ *
+ * @pre The native fixture storage is exclusively owned by this test.
+ * @pre FAT16 formatting fits within ::k_t_native_blocks.
+ * @post Every nullable operand and invalid-state operand has both outcomes.
+ * @post The real cursor and mounted volume are closed before return.
+ * @note No invalid handle reaches the format callback.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_mcdc_directory_cursor_guards(void)
+{
+  TEST_BEGIN("vfs directory cursor guards");
+  ra8_io_blockdev_ram_state_t state    = {};
+  ra8_io_blockdev_t           blockdev = {};
+  ra8_fs_backend_t            backend  = {};
+  TEST_ASSERT_EQ(k_ra8_ok, internal_make_backend(s_native_a, &state, &blockdev, &backend));
+  const ra8_fs_format_opts_t opts = {.type = k_ra8_fs_type_fat16, .label = "CURSOR"};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&backend, &opts));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_fsfmt_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_mount_auto("cursor", &backend));
+  internal_assert_directory_requirements_guards();
+  internal_assert_directory_lifecycle_guards();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_unmount("cursor"));
+  TEST_END("vfs directory cursor guards");
+}
+
 int32_t main(void)
 {
   ra8_log_set_byte_sink(internal_log_sink, nullptr);
+  internal_test_mcdc_directory_cursor_guards();
   internal_test_native_dispatch();
   internal_test_foreign_end_to_end();
   return 0;
