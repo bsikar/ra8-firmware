@@ -138,7 +138,7 @@ project as the per-phase acceptance gates defined in
 - Phase 2 -> 3: first-party reachable MC/DC at 100% (met.
 - Phase 3 -> 4: Doxygen audit clean (met -- 0 functions with gaps).
 - Phase 4 -> 5: MISRA audit stable modulo cppcheck-only policy
-  (`docs/CERTIFICATION_SCOPE.md`); D-001..D-005 cover the long tail.
+  (`docs/CERTIFICATION_SCOPE.md`); D-001..D-010 cover the long tail.
 - Phase 5 -> 6: every EVM app has at least one host integration test
   (25/26 today).
 - Phase 6 -> 7: HIL is developer-laptop pre-push, not a CI gate
