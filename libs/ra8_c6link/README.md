@@ -63,6 +63,11 @@ generator pair used for the committed output (protobuf-c 1.5.2 and libprotoc
 35.1) so regeneration is deterministic rather than dependent on the developer's
 installed compiler.
 
+Protocol version 2 carries one `ra8_mdl_format_t` value in `StartRequest` and
+echoes it in `Accepted`. `loose` means an untyped source body; named artifacts
+such as RABOOK must be supplied in that exact representation and pass the
+RA8-owned validator before the storage transaction can publish them.
+
 ## No heap, and no borrowed one either
 
 `rpc__unpack()` allocates. This firmware has none -- `_sbrk` is a strong symbol

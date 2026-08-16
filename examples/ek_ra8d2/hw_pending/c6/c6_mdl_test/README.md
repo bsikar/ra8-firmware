@@ -1,7 +1,8 @@
 # c6_mdl_test
 
-Cross-build fixture for the generated raw-byte protobuf, RA8 c6link client,
-and transactional transfer coordinator.
+Cross-build fixture for the generated typed-artifact protobuf, RA8 c6link
+client, and transactional transfer coordinator. Protocol v2 carries and echoes
+the selected `ra8_mdl_format_t`, including `k_ra8_mdl_format_rabook`.
 It is not hardware-validation evidence: the prior contents were copied from
 `c6_fw_version` and never exercised media download at all.
 
