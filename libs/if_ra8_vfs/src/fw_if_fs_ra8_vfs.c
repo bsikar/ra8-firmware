@@ -188,8 +188,10 @@ internal_dir_open(void* ctx, const char* path, void* directory_state, uint32_t s
   const uintptr_t align       = (uintptr_t)state->directory_workspace_align;
   const uintptr_t native_base = (first + align - 1U) & ~(align - 1U);
   const uintptr_t consumed    = native_base - (uintptr_t)directory_state;
-  if ((consumed > (uintptr_t)state_bytes) ||
-      ((uint64_t)state->directory_workspace_bytes > ((uint64_t)state_bytes - consumed))) {
+  if (consumed > (uintptr_t)state_bytes) {
+    return k_ra8_err_no_mem;
+  }
+  if ((uint64_t)state->directory_workspace_bytes > ((uint64_t)state_bytes - consumed)) {
     return k_ra8_err_no_mem;
   }
   return ra8_io_vfs_dir_open(state->path_a,
@@ -206,7 +208,10 @@ internal_dir_next(void* ctx, void* directory_state, fw_fs_dirent_value_t* out, b
   vfs_directory_state_t* directory = (vfs_directory_state_t*)directory_state;
   ra8_fs_dirent_t        native    = {};
   const ra8_err_t        err       = ra8_io_vfs_dir_next(&directory->native, &native, out_entry);
-  if ((err != k_ra8_ok) || !*out_entry) {
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  if (!*out_entry) {
     return err;
   }
   const uint16_t length = internal_len(native.name, (uint16_t)k_fw_fs_path_cap);
@@ -271,7 +276,10 @@ internal_list_entry(const char* name, uint8_t attr, uint64_t size, void* ctx)
   bool keep_going       = true;
   state->callback_error = state->callback(state->callback_ctx, &entry, &keep_going);
   ++state->count;
-  state->stopped = (state->callback_error != k_ra8_ok) || !keep_going;
+  state->stopped = state->callback_error != k_ra8_ok;
+  if (!keep_going) {
+    state->stopped = true;
+  }
 }
 
 /* see header for full description */
@@ -767,12 +775,18 @@ RA8_INTERNAL static ra8_err_t internal_mount_name(fw_fs_ra8_vfs_state_t* state, 
     if (value == '\0') {
       break;
     }
-    if (value == ':' || value == '/') {
+    if (value == ':') {
+      return k_ra8_err_invalid_arg;
+    }
+    if (value == '/') {
       return k_ra8_err_invalid_arg;
     }
     ++length;
   }
-  if (length == 0U || length >= (uint16_t)k_ra8_io_vfs_name_max) {
+  if (length == 0U) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (length >= (uint16_t)k_ra8_io_vfs_name_max) {
     return k_ra8_err_invalid_arg;
   }
   for (uint16_t i = 0U; i <= length; ++i) {
@@ -830,34 +844,28 @@ RA8_INTERNAL static ra8_err_t internal_dir_requirements(fw_fs_ra8_vfs_state_t* s
   return k_ra8_ok;
 }
 
-ra8_err_t
-fw_fs_ra8_vfs_init(fw_fs_t* out, fw_fs_ra8_vfs_state_t* state, const fw_fs_ra8_vfs_cfg_t* cfg)
+/**
+ * @brief Compose the portable capability record for one mounted VFS format.
+ * @details Combines fixed adapter services with format-dependent file/name
+ *          limits and the previously queried directory workspace contract.
+ * @param[in] cfg Validated adapter configuration.
+ * @param[in] directory_bytes Complete directory workspace requirement.
+ * @param[in] directory_alignment Required directory workspace alignment.
+ * @param[in] max_directories Format-reported concurrent cursor ceiling.
+ * @return Fully initialized portable filesystem capabilities.
+ * @retval fw_fs_caps_t Capability record matching the selected mount.
+ * @pre @p cfg and its mounted format are non-NULL and initialized.
+ * @pre Directory requirement arguments came from ::internal_dir_requirements.
+ * @post The returned flags describe every adapter service exposed below.
+ * @post No caller, mount, or adapter state is modified.
+ * @note Removable-media capability follows the caller configuration exactly.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static fw_fs_caps_t internal_capabilities(const fw_fs_ra8_vfs_cfg_t* cfg,
+                                                       uint32_t                   directory_bytes,
+                                                       uint8_t  directory_alignment,
+                                                       uint16_t max_directories)
 {
-  if (out == nullptr || state == nullptr || cfg == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (cfg->mount_name == nullptr || cfg->mount == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (cfg->mount->in_use == 0U) {
-    return k_ra8_err_not_initialized;
-  }
-  (void)memset(state, 0, sizeof(*state));
-  const ra8_err_t named = internal_mount_name(state, cfg->mount_name);
-  if (named != k_ra8_ok) {
-    return named;
-  }
-  state->mount                        = cfg->mount;
-  state->removable_media              = cfg->removable_media;
-  uint32_t        directory_bytes     = 0U;
-  uint16_t        max_directories     = 0U;
-  uint8_t         directory_alignment = 0U;
-  const ra8_err_t directory_requirements =
-    internal_dir_requirements(state, &directory_bytes, &directory_alignment, &max_directories);
-  if (directory_requirements != k_ra8_ok) {
-    return directory_requirements;
-  }
-
   fw_fs_caps_t caps = {
     .max_file_bytes = (cfg->mount->type == k_ra8_fs_type_exfat)
                         ? UINT64_MAX
@@ -883,5 +891,46 @@ fw_fs_ra8_vfs_init(fw_fs_t* out, fw_fs_ra8_vfs_state_t* state, const fw_fs_ra8_v
   if (cfg->removable_media) {
     caps.flags |= (uint32_t)k_fw_fs_cap_removable_media;
   }
+  return caps;
+}
+
+ra8_err_t
+fw_fs_ra8_vfs_init(fw_fs_t* out, fw_fs_ra8_vfs_state_t* state, const fw_fs_ra8_vfs_cfg_t* cfg)
+{
+  if (out == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (state == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (cfg == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (cfg->mount_name == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (cfg->mount == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (cfg->mount->in_use == 0U) {
+    return k_ra8_err_not_initialized;
+  }
+  (void)memset(state, 0, sizeof(*state));
+  const ra8_err_t named = internal_mount_name(state, cfg->mount_name);
+  if (named != k_ra8_ok) {
+    return named;
+  }
+  state->mount                        = cfg->mount;
+  state->removable_media              = cfg->removable_media;
+  uint32_t        directory_bytes     = 0U;
+  uint16_t        max_directories     = 0U;
+  uint8_t         directory_alignment = 0U;
+  const ra8_err_t directory_requirements =
+    internal_dir_requirements(state, &directory_bytes, &directory_alignment, &max_directories);
+  if (directory_requirements != k_ra8_ok) {
+    return directory_requirements;
+  }
+  const fw_fs_caps_t caps =
+    internal_capabilities(cfg, directory_bytes, directory_alignment, max_directories);
   return fw_fs_bind(out, &s_namespace_iface, &s_stream_iface, &s_transaction_iface, state, &caps);
 }
