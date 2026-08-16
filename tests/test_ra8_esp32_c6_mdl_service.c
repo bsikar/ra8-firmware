@@ -398,10 +398,16 @@ RA8_INTERNAL static void internal_test_initialization_and_begin_faults(void)
 /**
  * @brief Verify malformed media input maps into ESP-IDF's error domain
  * @details Dispatches a known operation with an invalid protobuf byte and
- *          checks that it is not mistaken for the upstream fallback sentinel.
+ *          checks every owned message identifier against the fallback sentinel.
+ * @par MC/DC:
+ * `port/esp32_c6/src/mdl_service.c@esp_hosted_custom_rpc_sync_handler`
+ * - V1: Start -- C1 false, decision false.
+ * - V2: Next -- C1 true, C2 false, decision false.
+ * - V3: Cancel -- C1 true, C2 true, C3 false, decision false.
+ * - V4: unknown -- C1 true, C2 true, C3 true, decision true.
  * @pre Retained service initialization succeeded in the prior vector.
  * @pre No portable media job is active.
- * @post The handler returns ::ESP_ERR_INVALID_RESPONSE with zero response bytes.
+ * @post Known malformed operations return ::ESP_ERR_INVALID_RESPONSE.
  * @post ESP-hosted will not invoke its unrelated legacy CustomRpc handler.
  * @note Pins the numeric-domain collision that previously made fallback unreachable.
  * @since 0.1.0
@@ -412,6 +418,27 @@ RA8_INTERNAL static void internal_test_known_operation_error_mapping(void)
   size_t               response_len = sizeof(s_response);
   TEST_ASSERT_EQ(ESP_ERR_INVALID_RESPONSE,
                  esp_hosted_custom_rpc_sync_handler(k_ra8_mdl_rpc_start,
+                                                    malformed,
+                                                    sizeof(malformed),
+                                                    s_response,
+                                                    sizeof(s_response),
+                                                    &response_len));
+  TEST_ASSERT_EQ(ESP_ERR_INVALID_RESPONSE,
+                 esp_hosted_custom_rpc_sync_handler(k_ra8_mdl_rpc_next,
+                                                    malformed,
+                                                    sizeof(malformed),
+                                                    s_response,
+                                                    sizeof(s_response),
+                                                    &response_len));
+  TEST_ASSERT_EQ(ESP_ERR_INVALID_RESPONSE,
+                 esp_hosted_custom_rpc_sync_handler(k_ra8_mdl_rpc_cancel,
+                                                    malformed,
+                                                    sizeof(malformed),
+                                                    s_response,
+                                                    sizeof(s_response),
+                                                    &response_len));
+  TEST_ASSERT_EQ(ESP_ERR_NOT_SUPPORTED,
+                 esp_hosted_custom_rpc_sync_handler(UINT32_MAX,
                                                     malformed,
                                                     sizeof(malformed),
                                                     s_response,
