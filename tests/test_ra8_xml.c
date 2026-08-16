@@ -788,6 +788,15 @@ RA8_INTERNAL static void internal_xml_pi_vectors(void)
   internal_reject(pi_punct, sizeof(pi_punct) - 1U);
 }
 
+/** @brief Assert one short byte sequence initialises without skipping a BOM. */
+RA8_INTERNAL static void internal_expect_no_bom(const uint8_t* source, size_t length)
+{
+  ra8_xml_workspace_t workspace = {};
+  ra8_xml_reader_t    reader    = {};
+  assert(ra8_xml_reader_init(&reader, source, length, &workspace) == k_ra8_ok);
+  assert(reader.position == 0U);
+}
+
 /**
  * @brief Complete the public span, decode-capacity, and BOM operand vectors.
  * @par MC/DC:
@@ -824,12 +833,9 @@ RA8_INTERNAL static void internal_xml_public_boundary_vectors(void)
   assert(!ra8_xml_decoded_equal(values, sizeof(values) - 1U, forged, right));
   assert(ra8_xml_reader_init(&reader, values, (size_t)UINT32_MAX + 1U, &workspace) ==
          k_ra8_err_invalid_size);
-  assert(ra8_xml_reader_init(&reader, short_bom, sizeof(short_bom), &workspace) == k_ra8_ok);
-  assert(reader.position == 0U);
-  assert(ra8_xml_reader_init(&reader, wrong_two, sizeof(wrong_two), &workspace) == k_ra8_ok);
-  assert(reader.position == 0U);
-  assert(ra8_xml_reader_init(&reader, wrong_three, sizeof(wrong_three), &workspace) == k_ra8_ok);
-  assert(reader.position == 0U);
+  internal_expect_no_bom(short_bom, sizeof(short_bom));
+  internal_expect_no_bom(wrong_two, sizeof(wrong_two));
+  internal_expect_no_bom(wrong_three, sizeof(wrong_three));
 }
 
 int main(void)
