@@ -31,21 +31,22 @@ typedef enum : uint16_t {
 
 /** @brief Deterministic host model for the consumed ESP-IDF surface. */
 typedef struct {
-  const uint8_t* body;            /**< Borrowed response body.            */
-  size_t         body_bytes;      /**< Complete body extent.              */
-  size_t         cursor;          /**< Next unread body byte.             */
-  int64_t        content_length;  /**< Advertised length, or negative.    */
-  int            status;          /**< HTTP response status.              */
-  bool           complete;        /**< ESP-IDF completeness verdict.      */
-  bool           init_fail;       /**< Fail retained-client creation.     */
-  bool           set_url_fail;    /**< Fail URL installation.             */
-  bool           open_fail;       /**< Fail request opening.              */
-  bool           read_fail;       /**< Return a negative body read.       */
-  bool           read_oversize;   /**< Return one byte beyond capacity.   */
-  bool           sha_start_fail;  /**< Fail SHA stream initialization.    */
-  bool           sha_update_fail; /**< Fail SHA body incorporation.       */
-  bool           sha_finish_fail; /**< Fail terminal digest publication.  */
-  uint32_t       close_calls;     /**< Observed per-job close operations. */
+  const uint8_t* body;            /**< Borrowed response body.             */
+  size_t         body_bytes;      /**< Complete body extent.               */
+  size_t         cursor;          /**< Next unread body byte.              */
+  int64_t        content_length;  /**< Advertised length, or negative.     */
+  int            status;          /**< HTTP response status.               */
+  bool           complete;        /**< ESP-IDF completeness verdict.       */
+  bool           init_fail;       /**< Fail retained-client creation.      */
+  bool           set_url_fail;    /**< Fail URL installation.              */
+  bool           open_fail;       /**< Fail request opening.               */
+  bool           read_fail;       /**< Return a negative body read.        */
+  bool           read_oversize;   /**< Return one byte beyond capacity.    */
+  bool           sha_start_fail;  /**< Fail SHA stream initialization.     */
+  bool           sha_update_fail; /**< Fail SHA body incorporation.        */
+  bool           sha_finish_fail; /**< Fail terminal digest publication.   */
+  uint32_t       init_calls;      /**< Observed retained-client creations. */
+  uint32_t       close_calls;     /**< Observed per-job close operations.  */
 } c6_http_model_t;
 
 /** @brief Concrete storage behind the opaque ESP-IDF handle type. */
@@ -89,7 +90,7 @@ RA8_INTERNAL static void internal_model_reset(const uint8_t* body, size_t body_b
  * @return Concrete handler status.
  * @retval ESP_OK The service accepted the job and @p out_job is initialized.
  * @retval ESP_FAIL One-time component initialization failed.
- * @retval k_ra8_err_* Portable or backend start failure cast to esp_err_t.
+ * @retval ESP_ERR_* Portable validation failures mapped into ESP-IDF's domain.
  * @pre @p url and @p out_job are non-NULL.
  * @pre The model is configured before the call.
  * @post Success consumes and frees the generated Accepted object.
@@ -132,7 +133,7 @@ RA8_INTERNAL static esp_err_t internal_start(const char* url, uint32_t* out_job)
  * @param[out] out_chunk Allocated decoded response on success.
  * @return Concrete handler status.
  * @retval ESP_OK @p out_chunk owns a decoded Chunk.
- * @retval k_ra8_err_* Backend or portable service failure cast to esp_err_t.
+ * @retval ESP_ERR_* Backend or portable service failure mapped explicitly.
  * @pre @p out_chunk is non-NULL and the request tuple is protocol-valid.
  * @pre Any returned chunk is freed by the caller.
  * @post Failure leaves @p out_chunk NULL.
@@ -221,6 +222,7 @@ RA8_PRIV esp_err_t esp_crt_bundle_attach(void* conf)
 RA8_PRIV esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t* config)
 {
   TEST_ASSERT(config != nullptr);
+  ++s_model.init_calls;
   if (s_model.init_fail) {
     return nullptr;
   }
@@ -337,10 +339,38 @@ RA8_PRIV int mbedtls_sha256_finish(mbedtls_sha256_context* ctx, unsigned char ou
 }
 
 /**
+ * @brief Verify an unrelated CustomRpc operation is left to ESP-hosted
+ * @details Sends an unknown identifier before one-time HTTP initialization and
+ *          proves first-refusal neither creates a client nor claims a response.
+ * @pre Production and model state are at process-start defaults.
+ * @pre The request and response spans are valid but semantically irrelevant.
+ * @post ::ESP_ERR_NOT_SUPPORTED selects the patched upstream fallback.
+ * @post No HTTP client is created and response length is reset to zero.
+ * @note Must execute before every media operation in this process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_unknown_operation_first_refusal(void)
+{
+  static const uint8_t empty[] = {0U};
+  internal_model_reset(empty, 0U);
+  size_t response_len = sizeof(s_response);
+  TEST_ASSERT_EQ(ESP_ERR_NOT_SUPPORTED,
+                 esp_hosted_custom_rpc_sync_handler(UINT32_MAX,
+                                                    empty,
+                                                    sizeof(empty),
+                                                    s_response,
+                                                    sizeof(s_response),
+                                                    &response_len));
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)response_len);
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_model.init_calls);
+  TEST_END("C6 HTTP unknown operation first refusal");
+}
+
+/**
  * @brief Verify retained initialization retries and begin-stage failures.
  * @details Proves a failed retained-client allocation is retryable and URL/SHA
  *          setup failures do not activate a portable job.
- * @pre Global production and model state are at process-start defaults.
+ * @pre The retained service is uninitialized and the model has no active job.
  * @pre Generated protobuf scratch has fixed sufficient capacity.
  * @post A successful retained client exists for all later vectors.
  * @post No job remains active after either begin-stage failure.
@@ -357,12 +387,38 @@ RA8_INTERNAL static void internal_test_initialization_and_begin_faults(void)
 
   internal_model_reset(empty, 0U);
   s_model.set_url_fail = true;
-  TEST_ASSERT_EQ(k_ra8_fail, internal_start("https://example.test/book", &job));
+  TEST_ASSERT_EQ(ESP_FAIL, internal_start("https://example.test/book", &job));
 
   internal_model_reset(empty, 0U);
   s_model.sha_start_fail = true;
-  TEST_ASSERT_EQ(k_ra8_fail, internal_start("https://example.test/book", &job));
+  TEST_ASSERT_EQ(ESP_FAIL, internal_start("https://example.test/book", &job));
   TEST_END("C6 HTTP initialization and begin faults");
+}
+
+/**
+ * @brief Verify malformed media input maps into ESP-IDF's error domain
+ * @details Dispatches a known operation with an invalid protobuf byte and
+ *          checks that it is not mistaken for the upstream fallback sentinel.
+ * @pre Retained service initialization succeeded in the prior vector.
+ * @pre No portable media job is active.
+ * @post The handler returns ::ESP_ERR_INVALID_RESPONSE with zero response bytes.
+ * @post ESP-hosted will not invoke its unrelated legacy CustomRpc handler.
+ * @note Pins the numeric-domain collision that previously made fallback unreachable.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_known_operation_error_mapping(void)
+{
+  static const uint8_t malformed[]  = {0x80U};
+  size_t               response_len = sizeof(s_response);
+  TEST_ASSERT_EQ(ESP_ERR_INVALID_RESPONSE,
+                 esp_hosted_custom_rpc_sync_handler(k_ra8_mdl_rpc_start,
+                                                    malformed,
+                                                    sizeof(malformed),
+                                                    s_response,
+                                                    sizeof(s_response),
+                                                    &response_len));
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)response_len);
+  TEST_END("C6 HTTP known operation error mapping");
 }
 
 /**
@@ -451,15 +507,15 @@ RA8_INTERNAL static void internal_test_open_and_status_faults(void)
   static const uint8_t empty[] = {0U};
   internal_model_reset(empty, 0U);
   s_model.open_fail = true;
-  internal_expect_first_next_failure(k_ra8_fail);
+  internal_expect_first_next_failure(ESP_FAIL);
 
   internal_model_reset(empty, 0U);
   s_model.status = (int)k_c6_http_status_low;
-  internal_expect_first_next_failure(k_ra8_err_protocol_error);
+  internal_expect_first_next_failure(ESP_ERR_INVALID_RESPONSE);
 
   internal_model_reset(empty, 0U);
   s_model.status = (int)k_c6_http_status_redirect;
-  internal_expect_first_next_failure(k_ra8_err_protocol_error);
+  internal_expect_first_next_failure(ESP_ERR_INVALID_RESPONSE);
   TEST_END("C6 HTTP open and status faults");
 }
 
@@ -480,38 +536,38 @@ RA8_INTERNAL static void internal_test_read_and_hash_faults(void)
   static const uint8_t body[]  = {'x'};
   internal_model_reset(empty, 0U);
   s_model.read_fail = true;
-  internal_expect_first_next_failure(k_ra8_fail);
+  internal_expect_first_next_failure(ESP_FAIL);
 
   internal_model_reset(empty, 0U);
   s_model.read_oversize = true;
-  internal_expect_first_next_failure(k_ra8_fail);
+  internal_expect_first_next_failure(ESP_FAIL);
 
   internal_model_reset(body, sizeof(body));
   s_model.content_length = 0;
-  internal_expect_first_next_failure(k_ra8_err_protocol_error);
+  internal_expect_first_next_failure(ESP_ERR_INVALID_RESPONSE);
 
   internal_model_reset(empty, 0U);
   s_model.content_length = 1;
-  internal_expect_first_next_failure(k_ra8_err_protocol_error);
+  internal_expect_first_next_failure(ESP_ERR_INVALID_RESPONSE);
 
   internal_model_reset(empty, 0U);
   s_model.complete = false;
-  internal_expect_first_next_failure(k_ra8_err_protocol_error);
+  internal_expect_first_next_failure(ESP_ERR_INVALID_RESPONSE);
 
   internal_model_reset(body, sizeof(body));
   s_model.sha_update_fail = true;
-  internal_expect_first_next_failure(k_ra8_fail);
+  internal_expect_first_next_failure(ESP_FAIL);
 
   internal_model_reset(empty, 0U);
   s_model.sha_finish_fail = true;
-  internal_expect_first_next_failure(k_ra8_fail);
+  internal_expect_first_next_failure(ESP_FAIL);
   TEST_END("C6 HTTP read and hash faults");
 }
 
 /**
  * @brief Run the concrete ESP32-C6 HTTP service host model.
- * @details Executes initialization first, then success and fault vectors in a
- *          deterministic order against one retained production service.
+ * @details Exercises unknown-operation first refusal before initialization,
+ *          then success and fault vectors against one retained service.
  * @return Process test status.
  * @retval 0 Every assertion passed.
  * @pre No other thread invokes the production singleton service.
@@ -523,7 +579,9 @@ RA8_INTERNAL static void internal_test_read_and_hash_faults(void)
  */
 int32_t main(void)
 {
+  internal_test_unknown_operation_first_refusal();
   internal_test_initialization_and_begin_faults();
+  internal_test_known_operation_error_mapping();
   internal_test_known_length_multichunk();
   internal_test_unknown_length();
   internal_test_open_and_status_faults();
