@@ -80,7 +80,7 @@ is opened for writes too. Standard `cat /dev/cu.usbmodem*` does
 RDONLY and shows zero bytes. `picocom`, `screen`, and `cu` all do
 RDWR and work.
 
-## Pinout (`r7ka8d2kflcac_pinout.txt`)
+## Pinout
 
 ```
 TXD8 -- PD_02       (PFS PSEL = k_ra8_psel_sci_async, 0x04)
@@ -88,7 +88,11 @@ RXD8 -- PD_03       (PFS PSEL = k_ra8_psel_sci_async, 0x04)
 ```
 
 These pins are wired straight to the J-Link OB on the EK-RA8D2 and
-cannot be re-routed at runtime. Hardware flow control is also wired
+cannot be re-routed at runtime. The board-side fact lives in
+`libs/ra8_board_ek_ra8d2`; for the chip-side ball map -- which ball
+PD02 is, and everything else it can be muxed to -- see
+[`docs/pinouts/ra8d2_bga289_mipi.txt`](../../../../../docs/pinouts/ra8d2_bga289_mipi.txt)
+(the EK-RA8D2 carries an `R7KA8D2KFLCAC`). Hardware flow control is also wired
 (PD04 RTS, PD05 CTS) but the demo runs without it.
 
 ## Build + flash

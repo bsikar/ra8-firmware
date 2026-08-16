@@ -134,6 +134,7 @@ RA8_GATE_REGISTRY=(
   "disambig-readmes|fast|disambiguation READMEs: every machine-checked claim still holds"
   "init-order-freshness|fast|committed docs/INIT_ORDER_AUDIT.md matches a fresh regenerate"
   "roadmap-dashboard-freshness|fast|committed docs/ROADMAP_DASHBOARD.md matches a fresh regenerate"
+  "pinout-freshness|fast|committed docs/pinouts/ matches a fresh parse of the datasheets"
   "lint-py-shell|fast|ruff + shellcheck + shfmt"
   "lint-cmake|fast|cmake-format + cmake-lint over every listfile"
   "lint-yaml|fast|yamllint + actionlint over the workflows"
