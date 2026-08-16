@@ -110,10 +110,9 @@ _tb_rabook_viewer() (
 )
 
 # The remaining first-party CMake tools no job built. #335 asked for these to
-# be enumerated rather than fixing media_dl alone. They have no test binary of
-# their own, so building and linking them IS the check: each pulls a different
-# slice of the firmware (rabook_imagepack the JOF/JPEG stack, mkbookimg, mkfontimg
-# and exfat_mkimage the whole FAT/exFAT driver) host-side.
+# be enumerated rather than fixing media_dl alone. Build and link each distinct
+# firmware slice, then run every CTest it registers; a configured detector that
+# never executes is not evidence (rabook_imagepack alone has ten tests).
 _tb_other_tools() (
   set -e
   local cc="$1" root="$2" jobs="$3" tool
@@ -124,6 +123,7 @@ _tb_other_tools() (
       -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON "$@"
     cmake --build "$root/$tool" -j "$jobs"
     test -x "$root/$tool/$tool"
+    ctest --test-dir "$root/$tool" --output-on-failure
   done
 )
 
