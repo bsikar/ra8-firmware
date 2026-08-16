@@ -70,6 +70,7 @@ EXIT_FAIL = 1
 EXIT_CONFIG = 2
 
 BOOT_HEADER = "ra8_boot_entry.h"
+BOOT_HEADER_REL = "libs/ra8_core/inc/ra8_boot_entry.h"
 
 # Roots whose entry points are reached from Reset_Handler rather than from a C
 # runtime. Derived from where the build actually cross-compiles: the app
@@ -99,6 +100,7 @@ SUFFIXES = (".c", ".cpp", ".h")
 # Anchored at column 0: an entry point is never nested or indented, and the
 # anchor keeps the pattern off `static int main_loop(...)` and friends.
 MAIN_DEF_RE = re.compile(r"^(?P<ret>[A-Za-z_][A-Za-z0-9_ ]*?)\s+main\s*\((?P<args>[^)]*)\)\s*$")
+MAIN_DECL_RE = re.compile(r"^\s*(?:extern\s+)?[A-Za-z_][A-Za-z0-9_ ]*?\s+main\s*\([^)]*\)\s*;\s*$")
 INCLUDE_RE = re.compile(r'^\s*#\s*include\s+"([^"]+)"')
 RETURN_VALUE_RE = re.compile(r"^\s*return\s+[^;]+;")
 SUPPRESSION_RE = re.compile(
@@ -162,10 +164,24 @@ def body_returns_a_value(lines: list[str], sig: int) -> int | None:
     return None
 
 
+def copied_main_declarations(rel: str, lines: list[str]) -> list[str]:
+    """Reject declarations copied outside the one authoritative header."""
+    if rel == BOOT_HEADER_REL:
+        return []
+    return [
+        f"{rel}:{i + 1}: duplicates the main() declaration outside "
+        f'{BOOT_HEADER_REL}. Include "{BOOT_HEADER}" instead so every '
+        f"firmware definition is checked against one authoritative type."
+        for i, line in enumerate(lines)
+        if MAIN_DECL_RE.match(line)
+    ]
+
+
 def check_file(rel: str, text: str) -> tuple[list[str], str | None]:
     """Findings for one file, plus the domain of any entry point it defines."""
     findings: list[str] = []
     lines = text.splitlines()
+    findings.extend(copied_main_declarations(rel, lines))
 
     for i, line in enumerate(lines):
         if SUPPRESSION_RE.search(line):
@@ -245,7 +261,7 @@ def check_shared_declaration() -> list[str]:
     guard and every hosted TU that includes the header stops compiling with
     `conflicting types for 'main'`.
     """
-    rel = "libs/ra8_core/inc/ra8_boot_entry.h"
+    rel = BOOT_HEADER_REL
     try:
         text = (REPO_ROOT / rel).read_text(encoding="utf-8")
     except OSError:
@@ -312,6 +328,11 @@ def _selftest_quiet(failures: list[str]) -> None:
         "a function merely NAMED like main is not an entry point",
         failures,
     )
+    expect(
+        not check_file(BOOT_HEADER_REL, "void main(void);\n")[0],
+        "the one declaration in the shared header is silent",
+        failures,
+    )
 
 
 def _selftest_fires(failures: list[str]) -> None:
@@ -342,6 +363,10 @@ def _selftest_fires(failures: list[str]) -> None:
         "an entry point in an unclassifiable root": (
             "libs/ra8_core/src/x.c",
             "int main(void)\n{\n  return 0;\n}\n",
+        ),
+        "a copied main declaration outside the shared header": (
+            "examples/x/vector_table.c",
+            "extern int32_t main(void);\n",
         ),
     }
     for label, (rel, text) in fires.items():

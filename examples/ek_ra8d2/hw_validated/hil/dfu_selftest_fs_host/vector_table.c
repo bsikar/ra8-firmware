@@ -56,13 +56,6 @@ extern uint32_t g_ra8_ls_esram_text;     /**< End of .sram_text in SRAM.        
 extern uint32_t g_ra8_ls_sram_text_load; /**< Source of .sram_text in MRAM.      */
 
 /* =============================================================================
- * main()
- * =============================================================================
- */
-
-extern int32_t main(void);
-
-/* =============================================================================
  * Handler declarations
  * =============================================================================
  */
@@ -456,7 +449,7 @@ void Reset_Handler(void)
 
   /* Step 4: enter C. `main()` is responsible for enabling interrupts
    * via `__enable_irq()` once all drivers are ready. */
-  (void)main();
+  main();
 
   /* main() should never return; if it does, halt. */
   while (1) {
