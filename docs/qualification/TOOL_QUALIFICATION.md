@@ -107,17 +107,19 @@ hand-traced decisions, and so on.
 |                                 | required MISRA-C 2012 rules per `docs/MISRA.md` -- partial         |
 |                                 | coverage is acknowledged. (b) Every emitted finding is reviewed    |
 |                                 | by hand and recorded in                                            |
-|                                 | `docs/qualification/MISRA_DEVIATIONS.md` (D-001..D-005).           |
+|                                 | `docs/qualification/MISRA_DEVIATIONS.md` (D-001..D-010).           |
 |                                 | (c) The arm-none-eabi-gcc cross build with `-std=gnu23             |
 |                                 | -Wimplicit-function-declaration -Werror -Wmissing-prototypes`      |
 |                                 | is the **authoritative checker** for the Mandatory rules           |
 |                                 | (e.g. 17.3, 8.4) -- cppcheck is supplementary.                     |
-| Compensating verification       | (a) Cross-compiler `-Werror` gate. (b) Five formal MISRA           |
+| Compensating verification       | (a) Cross-compiler `-Werror` gate. (b) Ten formal MISRA            |
 |                                 | deviations covering every persistent finding class.                |
 |                                 | (c) Quarterly re-audit cadence per `docs/MISRA.md`.                |
 | Re-qualification trigger        | cppcheck major-version bump, especially the release that adds     |
-|                                 | `--std=c23` (D-002, D-003, D-005 retire as soon as the parser     |
-|                                 | accepts C23). Tracked at MAR 2026-11-02 in MISRA_DEVIATIONS.md.    |
+|                                 | `--std=c23` (D-002, D-003, D-005 and D-007 retire as soon as the  |
+|                                 | parser accepts C23; D-009 retires when the MISRA addon resolves   |
+|                                 | enum-named array extents). Tracked at MAR 2026-11-02 in            |
+|                                 | MISRA_DEVIATIONS.md.                                               |
 | Upgrade path                    | None. Commercial MISRA checkers (LDRA / Helix QAC / Polyspace /   |
 |                                 | PVS-Studio) are explicitly out of scope for this MIT-licensed,    |
 |                                 | non-certifying project. See                                        |

@@ -81,7 +81,7 @@ Certification).
 | Verification specification   | SVCP                               | First draft (this commit)               |
 | Verification results         | SVR                                | First draft (this commit)               |
 | Tool qualification           | TOOL_QUALIFICATION                 | First draft (this commit)               |
-| MISRA-C 2012 deviations      | MISRA_DEVIATIONS                   | Active (D-001 through D-005)            |
+| MISRA-C 2012 deviations      | MISRA_DEVIATIONS                   | Active (D-001 through D-010)            |
 
 The SAS will be re-issued at the close of Phase 7 once every plan
 has its first complete revision.
@@ -119,8 +119,11 @@ The project uses MISRA-C 2012 as its coding language subset, per
 IEC 61508-3 Annex A.4 (Highly Recommended at SIL 3) and DO-178C
 section 11.8 (mandatory coding standard). The 2026-05-02 audit
 (`docs/MISRA.md`) reports 1271 unique findings; every finding maps
-to one of five active deviations (D-001 through D-005) recorded in
-`docs/qualification/MISRA_DEVIATIONS.md`. The dispositions are:
+to one of ten active deviations (D-001 through D-010) recorded in
+`docs/qualification/MISRA_DEVIATIONS.md`. D-001 through D-005 date
+from that audit; D-006 through D-010 were registered afterwards as
+the audit scope widened, with current populations tracked in the
+register's deviation index. The dispositions are:
 
 - **D-001 (Rule 15.5, single-exit)**: project-wide formal deviation
   per MISRA-C:2012 sec. 5.2. Mitigation = NASA P10 Rule 5 (>= 2
@@ -135,6 +138,21 @@ to one of five active deviations (D-001 through D-005) recorded in
   parenthesis disposition.
 - **D-005 (Rule 8.4, declaration before definition)**: cppcheck-2.20
   C23-parser tooling gap. 196 findings.
+- **D-006 (Rule 20.5, `#undef`)**: project-wide formal deviation for
+  the single `RA8_NSC_VENEER` redefinition site that keeps the CMSE
+  attribute authoritative regardless of include order.
+- **D-007 (Rule 14.2, for-loop form)**: cppcheck C23 `[[nodiscard]]`
+  parse defect mischarges the well-formed `RA8_PROTECTED_WRITE`
+  run-once guard loop. Tooling gap.
+- **D-008 (Rule 17.1, stdarg)**: formal deviation for three bounded
+  variadic adapters (esp-hosted log bridge, emulator host I/O,
+  cache_bench I/O).
+- **D-009 (Rule 9.5, explicit array size)**: enum-named array extents
+  are explicit sizes the cppcheck MISRA addon cannot resolve. Tooling
+  gap.
+- **D-010 (Rule 11.5, void-pointer conversion)**: formal deviation
+  for dependency-injection seams recovering typed context from
+  `void *`, per the project's NASA P10 Rule 9 deviation.
 
 The complete deviation register is the authoritative artifact.
 

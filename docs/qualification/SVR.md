@@ -28,7 +28,7 @@ cited in-line so a reviewer can re-derive the number on demand.
 | Doxygen functions with gaps                  | **0**                | same                                               |
 | Doxygen total missing-tag instances          | 0                    | same                                               |
 | MISRA-C 2012 unique findings (cppcheck-only) | 1271                 | `docs/MISRA.md` audit results; cppcheck-only policy per `docs/CERTIFICATION_SCOPE.md` |
-| MISRA active deviations registered           | 5 (D-001..D-005)     | `docs/qualification/MISRA_DEVIATIONS.md`           |
+| MISRA active deviations registered           | 10 (D-001..D-010)    | `docs/qualification/MISRA_DEVIATIONS.md`           |
 | EVM-tier apps swept on hardware              | 26                   | `docs/HARDWARE_BRINGUP.md` evening + night sweeps  |
 | Hardware sweep PASS                          | 20                   | same                                               |
 | Hardware sweep WIP                           | 4                    | same                                               |
@@ -268,9 +268,11 @@ Top-5 violated rules and their disposition:
 | misra-c2012-9.2   | 35    | Required  | Tooling gap       | D-003        |
 | (long-tail rules) | ~18   | Mixed     | Per-finding triage pending | -    |
 
-D-001 through D-005 each carry a written rationale, alternative
+D-001 through D-010 each carry a written rationale, alternative
 mitigation, and reviewer sign-off in
-`docs/qualification/MISRA_DEVIATIONS.md`. The 12.1 rule was the only
+`docs/qualification/MISRA_DEVIATIONS.md`. D-006 through D-010 were
+registered after the audit snapshot above; their current populations
+are tracked in the register's deviation index. The 12.1 rule was the only
 one that received a code-change disposition (101 advisory hits closed
 under D-004 by adding per-line suppression entries to
 `.cppcheck-suppressions`); the original 1371-finding baseline was
