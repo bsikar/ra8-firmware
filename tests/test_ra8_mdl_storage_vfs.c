@@ -35,6 +35,17 @@ typedef enum : uint32_t {
   k_written_sentinel   = 99U,    /**< Detect failure-path output reset. */
 } test_limits_t;
 
+/** @brief Byte offsets and octets used to build deliberately unsafe names. */
+typedef enum : uint16_t {
+  k_control_byte            = 0x01U, /**< Non-printable byte every grammar rejects.  */
+  k_high_byte               = 0xC3U, /**< Truncated UTF-8 lead byte FAT cannot name. */
+  k_mount_control_index     = 2U,    /**< Patched offset inside the mount prefix.    */
+  k_leaf_control_index      = 2U,    /**< Patched offset inside the staging leaf.    */
+  k_component_control_index = 6U,    /**< Patched offset inside a path component.    */
+  k_deep_slash_index        = 755U,  /**< Final separator of the deep-parent path.   */
+  k_deep_leaf_index         = 756U,  /**< First leaf byte of the deep-parent path.   */
+} test_path_index_t;
+
 /** @brief Backend fault controller wrapped around the real RAM bridge. */
 typedef struct {
   ra8_fs_backend_t inner;       /**< Real blockdev-to-fs bridge.   */
@@ -339,12 +350,18 @@ RA8_INTERNAL static void internal_assert_absent(const char* path)
 /**
  * @brief Initialisation rejects bad staging ownership without modifying VFS.
  * @details Covers null bindings, invalid leaf forms, and unterminated names before any I/O.
+ * Each leaf-grammar vector defects exactly one property -- emptiness, a dot
+ * component, a separator, a backslash, a colon, a control byte, or a missing
+ * terminator -- so the reported status names that property alone.
  *
  * @par MC/DC:
  * For `storage == nullptr || config == nullptr || out_iface == nullptr`, valid
  * bindings elsewhere provide `(F,F,F) -> false`; this test provides `(T,-,-)`,
  * `(F,T,-)`, and `(F,F,T)`, each true. Holding the other conditions false
- * proves each pointer independently controls the decision; N=3, N+1=4.
+ * proves each pointer independently controls the decision; N=3, N+1=4. The
+ * leaf-byte guards are separate N=1 decisions: the accepted `MDLSTAGE.TMP`
+ * leaf is their common all-false control and each defective leaf drives
+ * exactly one of them true.
  * @pre The VFS fixture is not required. @pre Local output objects are writable.
  * @post Every invalid configuration returns its exact status. @post No transaction begins.
  * @note This vector intentionally exercises only initialization policy. @since 0.1.0
@@ -363,6 +380,16 @@ RA8_INTERNAL static void internal_test_init_guards(void)
   config.stage_leaf = ".";
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mdl_storage_vfs_init(&storage, &config, &iface));
   config.stage_leaf = "../BAD";
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mdl_storage_vfs_init(&storage, &config, &iface));
+  config.stage_leaf = "";
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mdl_storage_vfs_init(&storage, &config, &iface));
+  config.stage_leaf = "BAD\\LEAF.TMP";
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mdl_storage_vfs_init(&storage, &config, &iface));
+  config.stage_leaf = "BAD:LEAF.TMP";
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mdl_storage_vfs_init(&storage, &config, &iface));
+  char control_leaf[]                = "STXGE.TMP";
+  control_leaf[k_leaf_control_index] = (char)k_control_byte;
+  config.stage_leaf                  = control_leaf;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mdl_storage_vfs_init(&storage, &config, &iface));
   char unterminated[k_ra8_mdl_storage_vfs_stage_leaf_capacity];
   (void)memset(unterminated, 'A', sizeof(unterminated));
@@ -642,6 +669,263 @@ RA8_INTERNAL static void internal_test_rename_fault_and_no_replace(void)
   TEST_END("media VFS storage rename fault and no-replace");
 }
 
+/**
+ * @brief Reject every malformed path spelling before any filesystem access.
+ * @details One vector per grammar guard: a path too short to carry a mount, a
+ * terminator before any separator, an empty mount name, a leading separator, a
+ * control byte in the mount name, a mount name past its fixed capacity, a colon
+ * in a component, a control byte in a component, and finally a canonical path
+ * whose parent pushes the sibling staging spelling past the path capacity.
+ * @par MC/DC:
+ * Each guard is an independent N=1 decision whose common all-false control is
+ * the accepted `ram:/BOOKS/BOOK.RBK` path of the commit test; every vector here
+ * makes exactly one true while the earlier ones stay false. The staging-capacity
+ * decision `needed > capacity` is likewise false for every accepted path and
+ * true only for the deep-parent vector, one byte too long for the reserved leaf.
+ * @pre The adapter owns the `MDLSTAGE.TMP` leaf. @pre No transaction is active.
+ * @post Every malformed spelling returns `k_ra8_err_invalid_arg`.
+ * @post The unbuildable staging path returns `k_ra8_err_invalid_size`.
+ * @note Rejection precedes every VFS call, so no volume is needed. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_path_grammar_guards(void)
+{
+  TEST_BEGIN("media VFS storage path grammar guards");
+  ra8_mdl_storage_vfs_t   storage = {};
+  ra8_mdl_storage_iface_t iface   = {};
+  internal_bind_adapter(&storage, &iface, nullptr);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, iface.begin(iface.ctx, "ram"));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, iface.begin(iface.ctx, "ramX.RBK"));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, iface.begin(iface.ctx, ":/X.RBK"));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, iface.begin(iface.ctx, "/ram:/X.RBK"));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, iface.begin(iface.ctx, "ABCDEFGHIJKLMNOPQ:/X.RBK"));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, iface.begin(iface.ctx, "ram:/A:B.RBK"));
+  char control_mount[]                 = "raXm:/X.RBK";
+  control_mount[k_mount_control_index] = (char)k_control_byte;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, iface.begin(iface.ctx, control_mount));
+  char control_component[]                     = "ram:/AXB.RBK";
+  control_component[k_component_control_index] = (char)k_control_byte;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, iface.begin(iface.ctx, control_component));
+  char deep[k_ra8_mdl_storage_vfs_path_capacity];
+  (void)memset(deep, 'A', sizeof(deep));
+  (void)memcpy(deep, "ram:/", sizeof("ram:/") - 1U);
+  deep[k_deep_slash_index] = '/';
+  (void)memcpy(&deep[k_deep_leaf_index], "X.RBK", sizeof("X.RBK"));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, iface.begin(iface.ctx, deep));
+  TEST_END("media VFS storage path grammar guards");
+}
+
+/**
+ * @brief Every coordinator callback rejects its own null arguments.
+ * @details Drives each published callback with one required pointer null at a
+ * time, then proves validation refuses an adapter that is not writing.
+ * @par MC/DC:
+ * Each entry guard is an independent N=1 decision; the successful multi-chunk
+ * transaction supplies every all-false control and each call here makes exactly
+ * one true. The write callback also proves the output count is untouched before
+ * the context guard and zeroed after it.
+ * @pre The adapter is initialised and idle. @pre No mounted volume is required.
+ * @post Every null argument returns `k_ra8_err_null_ptr`.
+ * @post Validation on an idle adapter returns `k_ra8_err_invalid_state`.
+ * @note No call reaches the VFS, so nothing can change. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_callback_null_guards(void)
+{
+  TEST_BEGIN("media VFS storage callback null guards");
+  ra8_mdl_storage_vfs_t   storage                        = {};
+  ra8_mdl_storage_iface_t iface                          = {};
+  const uint8_t           payload[]                      = {1U, 2U, 3U, 4U};
+  uint8_t                 digest[k_ra8_mdl_sha256_bytes] = {};
+  internal_bind_adapter(&storage, &iface, nullptr);
+  uint16_t written = k_written_sentinel;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, iface.begin(nullptr, "ram:/NULL.RBK"));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, iface.begin(iface.ctx, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, iface.write(nullptr, payload, sizeof(payload), &written));
+  TEST_ASSERT_EQ(k_written_sentinel, written);
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, iface.write(iface.ctx, payload, sizeof(payload), nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, iface.write(iface.ctx, nullptr, sizeof(payload), &written));
+  TEST_ASSERT_EQ(0U, written);
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, iface.validate(nullptr, sizeof(payload), digest));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, iface.validate(iface.ctx, sizeof(payload), nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, iface.validate(iface.ctx, sizeof(payload), digest));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, iface.commit(nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, iface.abort(nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, iface.abort(iface.ctx));
+  TEST_END("media VFS storage callback null guards");
+}
+
+/**
+ * @brief Refuse out-of-order lifecycle calls and impossible byte accounting.
+ * @details Writes before any transaction, writes with the writing state forced
+ * on but no live writer, begins twice, commits before validation, and finally
+ * saturates the byte counter so the overflow guard is the only thing that can
+ * reject an otherwise valid chunk.
+ * @par MC/DC:
+ * `bytes_written > UINT64_MAX - len` is true with the counter saturated and
+ * false on the immediately following retry with it restored; payload, writer,
+ * and state are identical across the pair, so that decision alone selects the
+ * outcome. The state guards are separate N=1 decisions whose all-false controls
+ * are the accepted calls of the multi-chunk transaction.
+ * @pre A fresh mounted volume exists. @pre The adapter is initialised and idle.
+ * @post Every out-of-order call returns `k_ra8_err_invalid_state`.
+ * @post The abandoned transaction publishes nothing and removes its stage.
+ * @note Accounting is forced directly; no real transfer can reach it. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_state_machine_guards(void)
+{
+  TEST_BEGIN("media VFS storage lifecycle state guards");
+  internal_setup_volume();
+  const uint8_t           payload[] = {0x11U, 0x22U, 0x33U, 0x44U};
+  ra8_mdl_storage_vfs_t   storage   = {};
+  ra8_mdl_storage_iface_t iface     = {};
+  internal_bind_adapter(&storage, &iface, nullptr);
+  uint16_t written = k_written_sentinel;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 iface.write(iface.ctx, payload, sizeof(payload), &written));
+  TEST_ASSERT_EQ(0U, written);
+  storage.state = k_ra8_mdl_storage_vfs_writing;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 iface.write(iface.ctx, payload, sizeof(payload), &written));
+  storage.state = k_ra8_mdl_storage_vfs_idle;
+  TEST_ASSERT_EQ(k_ra8_ok, iface.begin(iface.ctx, "ram:/STATE.RBK"));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, iface.begin(iface.ctx, "ram:/OTHER.RBK"));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, iface.commit(iface.ctx));
+  storage.bytes_written = UINT64_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 iface.write(iface.ctx, payload, sizeof(payload), &written));
+  TEST_ASSERT_EQ(0U, written);
+  storage.bytes_written = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, iface.write(iface.ctx, payload, sizeof(payload), &written));
+  TEST_ASSERT_EQ(sizeof(payload), written);
+  TEST_ASSERT_EQ(k_ra8_ok, iface.abort(iface.ctx));
+  internal_assert_absent("ram:/STATE.RBK");
+  internal_assert_absent("ram:/MDLSTAGE.TMP");
+  TEST_END("media VFS storage lifecycle state guards");
+}
+
+/**
+ * @brief A reserved leaf the mounted filesystem cannot name fails closed.
+ * @details The adapter's leaf grammar admits any byte at or above the space
+ * character, but a truncated UTF-8 lead byte is not a nameable FAT long name,
+ * so the probe that clears a stale stage reports an error. That error is
+ * propagated instead of being read as "no stale stage present".
+ * @par MC/DC:
+ * `stat error != k_ra8_ok` in the stale-stage step is the varied condition. The
+ * control adapter differs only in its reserved leaf and takes the false branch,
+ * opening its writer on the same destination; the unnameable leaf takes the true
+ * branch. Destination, mount, and parent are identical across the pair.
+ * @pre A fresh mounted volume exists. @pre The destination is canonical and absent.
+ * @post The rejected transaction returns the propagated metadata error.
+ * @post No writer, stage, or destination is created and the adapter stays idle.
+ * @note The byte is patched at run time so this source stays 7-bit ASCII. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_unrepresentable_stage_leaf(void)
+{
+  TEST_BEGIN("media VFS storage propagates an unnameable stage probe");
+  internal_setup_volume();
+  ra8_mdl_storage_vfs_t   control_storage = {};
+  ra8_mdl_storage_iface_t control_iface   = {};
+  internal_bind_adapter(&control_storage, &control_iface, nullptr);
+  TEST_ASSERT_EQ(k_ra8_ok, control_iface.begin(control_iface.ctx, "ram:/LEAF.RBK"));
+  TEST_ASSERT_EQ(k_ra8_ok, control_iface.abort(control_iface.ctx));
+  char leaf[]                                = "STXGE.TMP";
+  leaf[k_leaf_control_index]                 = (char)k_high_byte;
+  ra8_mdl_storage_vfs_config_t configuration = {.stage_leaf = leaf};
+  ra8_mdl_storage_vfs_t        storage       = {};
+  ra8_mdl_storage_iface_t      iface         = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mdl_storage_vfs_init(&storage, &configuration, &iface));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, iface.begin(iface.ctx, "ram:/LEAF.RBK"));
+  TEST_ASSERT_EQ(k_ra8_mdl_storage_vfs_idle, storage.state);
+  TEST_ASSERT(storage.file == nullptr);
+  internal_assert_absent("ram:/LEAF.RBK");
+  internal_assert_absent("ram:/MDLSTAGE.TMP");
+  TEST_END("media VFS storage propagates an unnameable stage probe");
+}
+
+/**
+ * @brief Publication rechecks the validated stage and refuses every drift.
+ * @details After a validated transaction the private stage is shrunk, then made
+ * unreadable, then deleted outright; each publication attempt reports the exact
+ * reason and preserves the absent destination. The final abort proves an
+ * already-absent stage still returns the adapter to idle.
+ * @par MC/DC:
+ * The recheck is a chain of independent N=1 decisions on one stat: the
+ * successful commit in `internal_test_rename_fault_and_no_replace` is their
+ * all-false control, and the three vectors here make the stat-error, existence,
+ * and size decisions true in turn while the others stay false.
+ * @pre A fresh mounted volume exists. @pre The transaction validated successfully.
+ * @post Each drift returns its exact status and publishes nothing.
+ * @post Abort with no stage present leaves the adapter idle.
+ * @note The stage is mutated through the real VFS, not adapter state. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_commit_stage_recheck(void)
+{
+  TEST_BEGIN("media VFS storage commit rechecks the stage");
+  internal_setup_volume();
+  const uint8_t           payload[]                      = {0xA1U, 0xB2U, 0xC3U, 0xD4U};
+  const uint8_t           shrunk[]                       = {0x55U, 0x66U};
+  uint8_t                 digest[k_ra8_mdl_sha256_bytes] = {};
+  ra8_mdl_storage_vfs_t   storage                        = {};
+  ra8_mdl_storage_iface_t iface                          = {};
+  internal_bind_adapter(&storage, &iface, nullptr);
+  uint16_t written = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, iface.begin(iface.ctx, "ram:/RECHECK.RBK"));
+  TEST_ASSERT_EQ(k_ra8_ok, iface.write(iface.ctx, payload, sizeof(payload), &written));
+  TEST_ASSERT_EQ(k_ra8_ok, iface.validate(iface.ctx, sizeof(payload), digest));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(s_mount, "/MDLSTAGE.TMP", shrunk, sizeof(shrunk)));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, iface.commit(iface.ctx));
+  s_fault.removed = true;
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, iface.commit(iface.ctx));
+  s_fault.removed = false;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_unlink("ram:/MDLSTAGE.TMP"));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, iface.commit(iface.ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, iface.abort(iface.ctx));
+  TEST_ASSERT_EQ(k_ra8_mdl_storage_vfs_idle, storage.state);
+  internal_assert_absent("ram:/RECHECK.RBK");
+  TEST_END("media VFS storage commit rechecks the stage");
+}
+
+/**
+ * @brief A directory at the reserved stage is never published or removed.
+ * @details Replaces the validated private file with a directory of the same
+ * reserved name, so publication and cleanup must both refuse rather than rename
+ * or unlink it; removing the directory then lets cleanup finish.
+ * @par MC/DC:
+ * `stat.is_directory` is the varied condition in two separate decisions. In the
+ * publication recheck and in cleanup it is false for the regular stage of every
+ * other test and true here, with existence true in both cases, so the directory
+ * condition alone selects `k_ra8_err_invalid_state`.
+ * @pre A fresh mounted volume exists. @pre The transaction validated successfully.
+ * @post Neither publication nor cleanup removes the directory.
+ * @post Cleanup succeeds and returns to idle once the directory is gone.
+ * @note The adapter owns the leaf but only ever unlinks a regular file. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_commit_rejects_directory_stage(void)
+{
+  TEST_BEGIN("media VFS storage refuses a directory at the reserved stage");
+  internal_setup_volume();
+  const uint8_t           payload[]                      = {0xA1U, 0xB2U, 0xC3U, 0xD4U};
+  uint8_t                 digest[k_ra8_mdl_sha256_bytes] = {};
+  ra8_mdl_storage_vfs_t   storage                        = {};
+  ra8_mdl_storage_iface_t iface                          = {};
+  internal_bind_adapter(&storage, &iface, nullptr);
+  uint16_t written = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, iface.begin(iface.ctx, "ram:/DIRSTAGE.RBK"));
+  TEST_ASSERT_EQ(k_ra8_ok, iface.write(iface.ctx, payload, sizeof(payload), &written));
+  TEST_ASSERT_EQ(k_ra8_ok, iface.validate(iface.ctx, sizeof(payload), digest));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_unlink("ram:/MDLSTAGE.TMP"));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_mkdir("ram:/MDLSTAGE.TMP"));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, iface.commit(iface.ctx));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, iface.abort(iface.ctx));
+  ra8_io_vfs_stat_t stat = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_stat("ram:/MDLSTAGE.TMP", &stat));
+  TEST_ASSERT(stat.is_directory);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_rmdir("ram:/MDLSTAGE.TMP"));
+  TEST_ASSERT_EQ(k_ra8_ok, iface.abort(iface.ctx));
+  TEST_ASSERT_EQ(k_ra8_mdl_storage_vfs_idle, storage.state);
+  internal_assert_absent("ram:/DIRSTAGE.RBK");
+  TEST_END("media VFS storage refuses a directory at the reserved stage");
+}
+
 int main(void)
 {
   ra8_log_set_byte_sink(internal_discard_log_byte, nullptr);
@@ -650,6 +934,12 @@ int main(void)
   internal_test_validation_failure_abort();
   internal_test_stale_stage_recovery();
   internal_test_path_and_existing_final_guards();
+  internal_test_path_grammar_guards();
+  internal_test_callback_null_guards();
+  internal_test_state_machine_guards();
+  internal_test_unrepresentable_stage_leaf();
+  internal_test_commit_stage_recheck();
+  internal_test_commit_rejects_directory_stage();
   internal_test_write_and_removal_faults();
   internal_test_rename_fault_and_no_replace();
   return 0;
