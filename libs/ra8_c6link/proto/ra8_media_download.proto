@@ -6,10 +6,27 @@ syntax = "proto3";
 package ra8.mdl;
 
 // Payloads carried inside ESP-hosted's generated CustomRpc protobuf envelope.
-// The RA8 owns destination paths, storage, and media transformation. The C6
-// performs one operation only: bounded retrieval of the raw HTTPS body.
-// Both endpoints reject unknown fields. Wire extensions therefore require an
-// explicit protocol-version change instead of silently changing job semantics.
+// The RA8 owns destination paths and transactional storage. The requested
+// format names the bytes the C6 returns: LOOSE is an untyped source body,
+// while a container format requires the source/backend to provide that exact
+// artifact and the RA8 to validate it before publication. Both endpoints
+// reject unknown fields. Wire extensions therefore require an explicit
+// protocol-version change instead of silently changing job semantics.
+
+// Values intentionally match ra8_mdl_format_t. Keep the generated and shared
+// enums synchronized; production TUs assert the mapping at compile time.
+enum Format {
+  FORMAT_LOOSE = 0;
+  FORMAT_CBZ = 1;
+  FORMAT_CBT = 2;
+  FORMAT_CBR = 3;
+  FORMAT_CBT_XZ = 4;
+  FORMAT_CBT_GZ = 5;
+  FORMAT_EPUB = 6;
+  FORMAT_JOF = 7;
+  FORMAT_RABOOK = 8;
+  FORMAT_INVALID = 255;
+}
 
 enum State {
   STATE_UNSPECIFIED = 0;
@@ -23,14 +40,14 @@ enum State {
 message StartRequest {
   uint32 protocol_version = 1;
   string url = 2;
-  reserved 3;
-  reserved "format";
+  Format format = 3;
 }
 
 message Accepted {
   uint32 protocol_version = 1;
   uint32 job_id = 2;
   uint32 max_chunk_bytes = 3;
+  Format format = 4;
 }
 
 message NextRequest {

@@ -43,6 +43,7 @@ typedef struct mdl_http_state {
   char                     url[k_ra8_mdl_url_max]; /**< Bounded active HTTPS URL.                */
   uint64_t                 total;                  /**< Advertised body length, or zero.         */
   uint64_t                 received;               /**< Independently counted body bytes.        */
+  ra8_mdl_format_t         format;                 /**< Requested artifact identity.             */
   bool                     total_known;            /**< Whether Content-Length was present.      */
   bool                     opened;                 /**< Whether response headers were accepted.  */
   bool                     hashing;                /**< Whether a SHA operation is active.       */
@@ -97,6 +98,7 @@ RA8_INTERNAL static void internal_mdl_http_reset_job(mdl_http_state_t* state)
   state->url[0]      = '\0';
   state->total       = 0U;
   state->received    = 0U;
+  state->format      = k_ra8_mdl_format_invalid;
   state->total_known = false;
   state->opened      = false;
   state->hashing     = false;
@@ -137,10 +139,11 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_init(mdl_http_state_t* state)
 }
 
 /**
- * @brief Validate and prepare one raw HTTPS-body job
+ * @brief Validate and prepare one typed HTTPS-artifact job
  * @details Reuses retained client/hash objects and resets only per-job fields.
  * @param[in,out] ctx Initialised ::mdl_http_state_t.
  * @param[in] url NUL-terminated HTTPS URL within the fixed URL buffer.
+ * @param[in] format Artifact identity the URL must return.
  * @return Begin status.
  * @retval k_ra8_ok Job state and SHA stream are ready.
  * @retval k_ra8_err_invalid_arg URL is not a non-empty HTTPS URL.
@@ -154,7 +157,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_init(mdl_http_state_t* state)
  * @warning esp_http_client_set_url may allocate internally.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_mdl_http_begin(void* ctx, const char* url)
+RA8_INTERNAL static ra8_err_t
+internal_mdl_http_begin(void* ctx, const char* url, ra8_mdl_format_t format)
 {
   mdl_http_state_t* state            = (mdl_http_state_t*)ctx;
   const size_t      https_prefix_len = sizeof("https://") - 1U;
@@ -165,6 +169,9 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_begin(void* ctx, const char* url
     return k_ra8_err_invalid_arg;
   }
   if (url == nullptr) {
+    return k_ra8_err_invalid_arg;
+  }
+  if ((uint32_t)format > (uint32_t)k_ra8_mdl_format_rabook) {
     return k_ra8_err_invalid_arg;
   }
   if (strncmp(url, "https://", https_prefix_len) != 0) {
@@ -182,6 +189,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_begin(void* ctx, const char* url
     return k_ra8_err_invalid_size;
   }
   memcpy(state->url, url, len + 1U);
+  state->format = format;
   if (esp_http_client_set_url(state->http, state->url) != ESP_OK) { /* alloc-allow: URL state */
     internal_mdl_http_reset_job(state);
     return k_ra8_fail;
@@ -196,7 +204,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_begin(void* ctx, const char* url
 
 /**
  * @brief Open lazily so Start returns without waiting for network exchange
- * @details Accepts only successful HTTP status and records bounded body metadata.
+ * @details Accepts only successful HTTP status and records bounded body
+ * metadata.
  * @param[in,out] state Prepared job state.
  * @return Open status.
  * @retval k_ra8_ok Headers describe a successful HTTP response.
@@ -379,7 +388,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_cancel(void* ctx)
  * @retval ESP_OK Portable dispatch produced a complete inner response.
  * @retval ESP_ERR_NO_MEM The bounded decode arena was exhausted.
  * @retval ESP_ERR_INVALID_ARG A pointer or argument was invalid.
- * @retval ESP_ERR_INVALID_STATE The media service was busy or in the wrong state.
+ * @retval ESP_ERR_INVALID_STATE The media service was busy or in the wrong
+ * state.
  * @retval ESP_ERR_INVALID_SIZE A request or response extent was invalid.
  * @retval ESP_ERR_NOT_FOUND A requested object was absent.
  * @retval ESP_ERR_TIMEOUT The operation exceeded its bounded work budget.
@@ -389,7 +399,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_cancel(void* ctx)
  * @pre @p result is a value returned by the portable media service.
  * @pre Unknown operation identifiers are rejected before this mapping.
  * @post No service, HTTP, SHA, or response state is modified.
- * @post ::ESP_ERR_NOT_SUPPORTED is never returned for a recognized media operation.
+ * @post ::ESP_ERR_NOT_SUPPORTED is never returned for a recognized media
+ * operation.
  * @note Keeping first-refusal separate prevents backend failures from invoking
  *       ESP-hosted's unrelated legacy CustomRpc fallback.
  * @since 0.1.0
@@ -439,10 +450,12 @@ RA8_INTERNAL static esp_err_t internal_mdl_to_esp_status(ra8_err_t result)
  * @return ESP-hosted hook status.
  * @retval ESP_OK A valid inner response was produced.
  * @retval ESP_FAIL Component or one-time backend initialisation failed.
- * @retval ESP_ERR_NOT_SUPPORTED The operation is not owned by the media service.
+ * @retval ESP_ERR_NOT_SUPPORTED The operation is not owned by the media
+ * service.
  * @retval ESP_ERR_INVALID_ARG A request argument or pointer was invalid.
  * @retval ESP_ERR_INVALID_STATE The media service is busy or inactive.
- * @retval ESP_ERR_INVALID_SIZE A bounded request or response extent was rejected.
+ * @retval ESP_ERR_INVALID_SIZE A bounded request or response extent was
+ * rejected.
  * @retval ESP_ERR_INVALID_RESPONSE The inner protobuf or response was invalid.
  * @pre ESP-hosted invokes the hook on its serialized control path.
  * @pre Request/response spans are valid and do not overlap.

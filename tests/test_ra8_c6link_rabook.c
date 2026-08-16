@@ -84,7 +84,16 @@ static uint8_t               s_reader_scratch[k_internal_rbkc_work_bytes];
 static uint8_t               s_consumed_flat[k_ra8_test_rabook_out_cap];
 static ra8_rsip_sha256_ctx_t s_transfer_sha;
 
-/** @brief Discard expected negative-path logs without host ITM access. @details Implements the discard log fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] byte Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+/** @brief Discard expected negative-path logs without host ITM access. @details
+ * Implements the discard log fixture operation used only by this focused test
+ * executable. @param[in,out] ctx Fixture argument governed by the exercised
+ * interface contract. @param[in] byte Fixture argument governed by the
+ * exercised interface contract. @pre Fixed-capacity fixture storage required by
+ * this operation is available. @pre Arguments follow the interface contract
+ * exercised by this helper. @post Documented outputs contain the exercised
+ * result when the operation succeeds. @post Mutations remain confined to
+ * documented outputs and file-local fixture state. @note File-local helper; no
+ * ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL
 static void internal_discard_log(void* ctx, uint8_t byte)
 {
@@ -92,7 +101,21 @@ static void internal_discard_log(void* ctx, uint8_t byte)
   (void)byte;
 }
 
-/** @brief Read an exact range from the finalized flat compiler output. @details Implements the flat read fixture operation used only by this focused test executable. @param[in,out] opaque Fixture argument governed by the exercised interface contract. @param[in] offset Fixture argument governed by the exercised interface contract. @param[out] dst Fixture argument governed by the exercised interface contract. @param[in] requested Fixture argument governed by the exercised interface contract. @param[out] out_read Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+/** @brief Read an exact range from the finalized flat compiler output. @details
+ * Implements the flat read fixture operation used only by this focused test
+ * executable. @param[in,out] opaque Fixture argument governed by the exercised
+ * interface contract. @param[in] offset Fixture argument governed by the
+ * exercised interface contract. @param[out] dst Fixture argument governed by
+ * the exercised interface contract. @param[in] requested Fixture argument
+ * governed by the exercised interface contract. @param[out] out_read Fixture
+ * argument governed by the exercised interface contract. @return RA8 status
+ * from the exercised fixture operation. @retval k_ra8_ok The fixture operation
+ * completed successfully. @pre Fixed-capacity fixture storage required by this
+ * operation is available. @pre Arguments follow the interface contract
+ * exercised by this helper. @post Documented outputs contain the exercised
+ * result when the operation succeeds. @post Mutations remain confined to
+ * documented outputs and file-local fixture state. @note File-local helper; no
+ * ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL
 static ra8_err_t internal_flat_read(void*     opaque,
                                     uint32_t  offset,
@@ -110,7 +133,21 @@ static ra8_err_t internal_flat_read(void*     opaque,
   return k_ra8_ok;
 }
 
-/** @brief Random-write one exact generated RBKC range into bounded RAM. @details Implements the rbkc write fixture operation used only by this focused test executable. @param[in,out] opaque Fixture argument governed by the exercised interface contract. @param[in] offset Fixture argument governed by the exercised interface contract. @param[in] src Fixture argument governed by the exercised interface contract. @param[in] requested Fixture argument governed by the exercised interface contract. @param[out] out_written Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+/** @brief Random-write one exact generated RBKC range into bounded RAM.
+ * @details Implements the rbkc write fixture operation used only by this
+ * focused test executable. @param[in,out] opaque Fixture argument governed by
+ * the exercised interface contract. @param[in] offset Fixture argument governed
+ * by the exercised interface contract. @param[in] src Fixture argument governed
+ * by the exercised interface contract. @param[in] requested Fixture argument
+ * governed by the exercised interface contract. @param[out] out_written Fixture
+ * argument governed by the exercised interface contract. @return RA8 status
+ * from the exercised fixture operation. @retval k_ra8_ok The fixture operation
+ * completed successfully. @pre Fixed-capacity fixture storage required by this
+ * operation is available. @pre Arguments follow the interface contract
+ * exercised by this helper. @post Documented outputs contain the exercised
+ * result when the operation succeeds. @post Mutations remain confined to
+ * documented outputs and file-local fixture state. @note File-local helper; no
+ * ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL
 static ra8_err_t internal_rbkc_write(void*          opaque,
                                      uint64_t       offset,
@@ -128,7 +165,21 @@ static ra8_err_t internal_rbkc_write(void*          opaque,
   return k_ra8_ok;
 }
 
-/** @brief Heap-free RFC 1950 inflater matching the book reader callback. @details Implements the inflate fixture operation used only by this focused test executable. @param[in] src Fixture argument governed by the exercised interface contract. @param[in] src_len Fixture argument governed by the exercised interface contract. @param[out] dst Fixture argument governed by the exercised interface contract. @param[in] dst_cap Fixture argument governed by the exercised interface contract. @param[out] out_len Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+/** @brief Heap-free RFC 1950 inflater matching the book reader callback.
+ * @details Implements the inflate fixture operation used only by this focused
+ * test executable. @param[in] src Fixture argument governed by the exercised
+ * interface contract. @param[in] src_len Fixture argument governed by the
+ * exercised interface contract. @param[out] dst Fixture argument governed by
+ * the exercised interface contract. @param[in] dst_cap Fixture argument
+ * governed by the exercised interface contract. @param[out] out_len Fixture
+ * argument governed by the exercised interface contract. @return RA8 status
+ * from the exercised fixture operation. @retval k_ra8_ok The fixture operation
+ * completed successfully. @pre Fixed-capacity fixture storage required by this
+ * operation is available. @pre Arguments follow the interface contract
+ * exercised by this helper. @post Documented outputs contain the exercised
+ * result when the operation succeeds. @post Mutations remain confined to
+ * documented outputs and file-local fixture state. @note File-local helper; no
+ * ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL
 static ra8_err_t
 internal_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* out_len)
@@ -149,28 +200,68 @@ internal_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, siz
   return k_ra8_ok;
 }
 
-/** @brief Initialize the real software SHA-256 stream. @details Implements the sha init fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+/** @brief Initialize the real software SHA-256 stream. @details Implements the
+ * sha init fixture operation used only by this focused test executable.
+ * @param[in,out] ctx Fixture argument governed by the exercised interface
+ * contract. @return RA8 status from the exercised fixture operation. @retval
+ * k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity
+ * fixture storage required by this operation is available. @pre Arguments
+ * follow the interface contract exercised by this helper. @post Documented
+ * outputs contain the exercised result when the operation succeeds. @post
+ * Mutations remain confined to documented outputs and file-local fixture state.
+ * @note File-local helper; no ownership escapes this focused test executable.
+ * @since Version 0.1.0 */
 RA8_INTERNAL
 static ra8_err_t internal_sha_init(void* ctx)
 {
   return ra8_rsip_sha256_init((ra8_rsip_sha256_ctx_t*)ctx);
 }
 
-/** @brief Feed one RPC chunk to the real software SHA-256 stream. @details Implements the sha update fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] data Fixture argument governed by the exercised interface contract. @param[in] len Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+/** @brief Feed one RPC chunk to the real software SHA-256 stream. @details
+ * Implements the sha update fixture operation used only by this focused test
+ * executable. @param[in,out] ctx Fixture argument governed by the exercised
+ * interface contract. @param[in] data Fixture argument governed by the
+ * exercised interface contract. @param[in] len Fixture argument governed by the
+ * exercised interface contract. @return RA8 status from the exercised fixture
+ * operation. @retval k_ra8_ok The fixture operation completed successfully.
+ * @pre Fixed-capacity fixture storage required by this operation is available.
+ * @pre Arguments follow the interface contract exercised by this helper. @post
+ * Documented outputs contain the exercised result when the operation succeeds.
+ * @post Mutations remain confined to documented outputs and file-local fixture
+ * state. @note File-local helper; no ownership escapes this focused test
+ * executable. @since Version 0.1.0 */
 RA8_INTERNAL
 static ra8_err_t internal_sha_update(void* ctx, const uint8_t* data, uint16_t len)
 {
   return ra8_rsip_sha256_update((ra8_rsip_sha256_ctx_t*)ctx, data, len);
 }
 
-/** @brief Finalize the real software SHA-256 stream. @details Implements the sha final fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] out Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+/** @brief Finalize the real software SHA-256 stream. @details Implements the
+ * sha final fixture operation used only by this focused test executable.
+ * @param[in,out] ctx Fixture argument governed by the exercised interface
+ * contract. @param[in] out Fixture argument governed by the exercised interface
+ * contract. @return RA8 status from the exercised fixture operation. @retval
+ * k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity
+ * fixture storage required by this operation is available. @pre Arguments
+ * follow the interface contract exercised by this helper. @post Documented
+ * outputs contain the exercised result when the operation succeeds. @post
+ * Mutations remain confined to documented outputs and file-local fixture state.
+ * @note File-local helper; no ownership escapes this focused test executable.
+ * @since Version 0.1.0 */
 RA8_INTERNAL
 static ra8_err_t internal_sha_final(void* ctx, uint8_t out[k_ra8_mdl_sha256_bytes])
 {
   return ra8_rsip_sha256_final((ra8_rsip_sha256_ctx_t*)ctx, out);
 }
 
-/** @brief Format and mount one fresh real FAT16 volume. @details Implements the setup volume fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+/** @brief Format and mount one fresh real FAT16 volume. @details Implements the
+ * setup volume fixture operation used only by this focused test executable.
+ * @pre Fixed-capacity fixture storage required by this operation is available.
+ * @pre Arguments follow the interface contract exercised by this helper. @post
+ * Documented outputs contain the exercised result when the operation succeeds.
+ * @post Mutations remain confined to documented outputs and file-local fixture
+ * state. @note File-local helper; no ownership escapes this focused test
+ * executable. @since Version 0.1.0 */
 RA8_INTERNAL
 static void internal_setup_volume(void)
 {
@@ -190,7 +281,15 @@ static void internal_setup_volume(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_mkdir("ram:/BOOKS"));
 }
 
-/** @brief Assert one named VFS path is absent. @details Implements the assert absent fixture operation used only by this focused test executable. @param[in] path Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+/** @brief Assert one named VFS path is absent. @details Implements the assert
+ * absent fixture operation used only by this focused test executable.
+ * @param[in] path Fixture argument governed by the exercised interface
+ * contract. @pre Fixed-capacity fixture storage required by this operation is
+ * available. @pre Arguments follow the interface contract exercised by this
+ * helper. @post Documented outputs contain the exercised result when the
+ * operation succeeds. @post Mutations remain confined to documented outputs and
+ * file-local fixture state. @note File-local helper; no ownership escapes this
+ * focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL
 static void internal_assert_absent(const char* path)
 {
@@ -199,7 +298,14 @@ static void internal_assert_absent(const char* path)
   TEST_ASSERT(!stat.exists);
 }
 
-/** @brief Produce a real strict RBKC file and its real SHA-256 digest. @details Implements the generate rabook fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+/** @brief Produce a real strict RBKC file and its real SHA-256 digest. @details
+ * Implements the generate rabook fixture operation used only by this focused
+ * test executable. @pre Fixed-capacity fixture storage required by this
+ * operation is available. @pre Arguments follow the interface contract
+ * exercised by this helper. @post Documented outputs contain the exercised
+ * result when the operation succeeds. @post Mutations remain confined to
+ * documented outputs and file-local fixture state. @note File-local helper; no
+ * ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL
 static void internal_generate_rabook(void)
 {
@@ -238,7 +344,18 @@ static void internal_generate_rabook(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256(s_rbkc, (uint32_t)s_rbkc_len, s_rbkc_digest));
 }
 
-/** @brief Bind validator, VFS transaction, SHA stream, and transfer policy. @details Implements the bind pipeline fixture operation used only by this focused test executable. @param[in,out] rabook Fixture argument governed by the exercised interface contract. @param[in,out] storage Fixture argument governed by the exercised interface contract. @param[in,out] transfer Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+/** @brief Bind validator, VFS transaction, SHA stream, and transfer policy.
+ * @details Implements the bind pipeline fixture operation used only by this
+ * focused test executable. @param[in,out] rabook Fixture argument governed by
+ * the exercised interface contract. @param[in,out] storage Fixture argument
+ * governed by the exercised interface contract. @param[in,out] transfer Fixture
+ * argument governed by the exercised interface contract. @pre Fixed-capacity
+ * fixture storage required by this operation is available. @pre Arguments
+ * follow the interface contract exercised by this helper. @post Documented
+ * outputs contain the exercised result when the operation succeeds. @post
+ * Mutations remain confined to documented outputs and file-local fixture state.
+ * @note File-local helper; no ownership escapes this focused test executable.
+ * @since Version 0.1.0 */
 RA8_INTERNAL
 static void internal_bind_pipeline(ra8_mdl_rabook_vfs_t*      rabook,
                                    ra8_mdl_storage_vfs_t*     storage,
@@ -269,12 +386,30 @@ static void internal_bind_pipeline(ra8_mdl_rabook_vfs_t*      rabook,
                     .update = internal_sha_update,
                     .final  = internal_sha_final,
                     .ctx    = &s_transfer_sha},
+    .format      = k_ra8_mdl_format_rabook,
     .chunk_bytes = k_internal_rpc_chunk_bytes,
     .max_chunks  = k_internal_rpc_max_chunks,
   };
 }
 
-/** @brief Run one mixed-image transfer with selected source and wire fault. @details Implements the transfer fixture operation used only by this focused test executable. @param[in] source Fixture argument governed by the exercised interface contract. @param[in] source_len Fixture argument governed by the exercised interface contract. @param[in] digest Fixture argument governed by the exercised interface contract. @param[in] fault Fixture argument governed by the exercised interface contract. @param[out] destination Fixture argument governed by the exercised interface contract. @param[in,out] rabook Fixture argument governed by the exercised interface contract. @param[in,out] storage Fixture argument governed by the exercised interface contract. @param[out] result Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+/** @brief Run one mixed-image transfer with selected source and wire fault.
+ * @details Implements the transfer fixture operation used only by this focused
+ * test executable. @param[in] source Fixture argument governed by the exercised
+ * interface contract. @param[in] source_len Fixture argument governed by the
+ * exercised interface contract. @param[in] digest Fixture argument governed by
+ * the exercised interface contract. @param[in] fault Fixture argument governed
+ * by the exercised interface contract. @param[out] destination Fixture argument
+ * governed by the exercised interface contract. @param[in,out] rabook Fixture
+ * argument governed by the exercised interface contract. @param[in,out] storage
+ * Fixture argument governed by the exercised interface contract. @param[out] result
+ * Fixture argument governed by the exercised interface contract. @return
+ * RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture
+ * operation completed successfully. @pre Fixed-capacity fixture storage
+ * required by this operation is available. @pre Arguments follow the interface
+ * contract exercised by this helper. @post Documented outputs contain the
+ * exercised result when the operation succeeds. @post Mutations remain confined
+ * to documented outputs and file-local fixture state. @note File-local helper;
+ * no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL
 static ra8_err_t internal_transfer(const uint8_t*             source,
                                    uint32_t                   source_len,
@@ -301,7 +436,14 @@ static ra8_err_t internal_transfer(const uint8_t*             source,
  * @brief Publish, reopen, and consume the generated `.rabook` end to end.
  * @par MC/DC:
  * Supplies all-success vectors through RPC ordering, exact storage writes,
- * digest equality, optional validator dispatch, and strict RBKC validation. @details Executes the publish and consume scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * digest equality, optional validator dispatch, and strict RBKC validation.
+ * @details Executes the publish and consume scenario with bounded fixture state
+ * and asserts the contract-specific result. @pre Fixed-capacity fixture storage
+ * required by this operation is available. @pre Arguments follow the interface
+ * contract exercised by this helper. @post Documented outputs contain the
+ * exercised result when the operation succeeds. @post Mutations remain confined
+ * to documented outputs and file-local fixture state. @note File-local helper;
+ * no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL
 static void internal_test_publish_and_consume(void)
 {
@@ -320,6 +462,7 @@ static void internal_test_publish_and_consume(void)
                                    &storage,
                                    &result));
   TEST_ASSERT_EQ(s_rbkc_len, result.bytes_stored);
+  TEST_ASSERT_EQ(k_ra8_mdl_format_rabook, result.format);
   TEST_ASSERT(memcmp(result.sha256, s_rbkc_digest, sizeof(s_rbkc_digest)) == 0);
   TEST_ASSERT(rabook.transfer_validated);
   TEST_ASSERT(memcmp(rabook.digest, s_rbkc_digest, sizeof(s_rbkc_digest)) == 0);
@@ -361,7 +504,14 @@ static void internal_test_publish_and_consume(void)
  * @par MC/DC:
  * Holds the source, terminal digest, and storage backend constant while only
  * the mixed-image response mutation changes; digest comparison alone selects
- * failure and transactional abort. @details Executes the transport corruption aborts scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * failure and transactional abort. @details Executes the transport corruption
+ * aborts scenario with bounded fixture state and asserts the contract-specific
+ * result. @pre Fixed-capacity fixture storage required by this operation is
+ * available. @pre Arguments follow the interface contract exercised by this
+ * helper. @post Documented outputs contain the exercised result when the
+ * operation succeeds. @post Mutations remain confined to documented outputs and
+ * file-local fixture state. @note File-local helper; no ownership escapes this
+ * focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL
 static void internal_test_transport_corruption_aborts(void)
 {
@@ -389,7 +539,14 @@ static void internal_test_transport_corruption_aborts(void)
  * @brief Reject an invalid RBKC even when transport byte count and SHA agree.
  * @par MC/DC:
  * Digest equality remains true while only the first RBKC magic byte differs,
- * proving artifact validation independently prevents commit. @details Executes the invalid artifact aborts scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * proving artifact validation independently prevents commit. @details Executes
+ * the invalid artifact aborts scenario with bounded fixture state and asserts
+ * the contract-specific result. @pre Fixed-capacity fixture storage required by
+ * this operation is available. @pre Arguments follow the interface contract
+ * exercised by this helper. @post Documented outputs contain the exercised
+ * result when the operation succeeds. @post Mutations remain confined to
+ * documented outputs and file-local fixture state. @note File-local helper; no
+ * ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL
 static void internal_test_invalid_artifact_aborts(void)
 {
@@ -416,7 +573,14 @@ static void internal_test_invalid_artifact_aborts(void)
   TEST_END("C6 RPC coherently hashed invalid rabook aborts");
 }
 
-/** @brief Pin the real SHA-256 adapter to the standard `abc` known answer. @details Executes the sha256 known answer scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+/** @brief Pin the real SHA-256 adapter to the standard `abc` known answer.
+ * @details Executes the sha256 known answer scenario with bounded fixture state
+ * and asserts the contract-specific result. @pre Fixed-capacity fixture storage
+ * required by this operation is available. @pre Arguments follow the interface
+ * contract exercised by this helper. @post Documented outputs contain the
+ * exercised result when the operation succeeds. @post Mutations remain confined
+ * to documented outputs and file-local fixture state. @note File-local helper;
+ * no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL
 static void internal_test_sha256_known_answer(void)
 {

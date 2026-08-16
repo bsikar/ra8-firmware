@@ -27,10 +27,11 @@ typedef enum : uint16_t {
 
 /** @brief Single backend metadata fault selected by one test vector. */
 typedef enum : uint8_t {
-  k_t_mdl_read_fault_none = 0U,     /**< Return canonical backend metadata.    */
-  k_t_mdl_read_fault_oversize,      /**< Report more data than requested.      */
-  k_t_mdl_read_fault_empty_active,  /**< Report no data without completing.    */
-  k_t_mdl_read_fault_terminal_data, /**< Report terminal state with body data. */
+  k_t_mdl_read_fault_none = 0U,     /**< Return canonical backend metadata. */
+  k_t_mdl_read_fault_oversize,      /**< Report more data than requested.   */
+  k_t_mdl_read_fault_empty_active,  /**< Report no data without completing. */
+  k_t_mdl_read_fault_terminal_data, /**< Report terminal state with body data.
+                                     */
 } t_mdl_read_fault_t;
 
 /** @brief State for the deterministic media backend. */
@@ -40,6 +41,7 @@ typedef struct {
   size_t             at;                  /**< Offset of the next body byte. */
   uint32_t           begins;              /**< Successful begin call count.  */
   uint32_t           cancels;             /**< Successful cancel call count. */
+  ra8_mdl_format_t   format;              /**< Format observed by begin.     */
   bool               terminal_total_zero; /**< Corrupt terminal-total fault. */
   t_mdl_read_fault_t read_fault;          /**< One selected metadata fault.  */
 } fake_backend_t;
@@ -49,9 +51,6 @@ static ra8_mdl_service_t s_service;
 static uint8_t           s_request[k_t_mdl_request_bytes];
 static uint8_t           s_response[k_t_mdl_response_bytes];
 
-/** @brief Legacy PR field 3 carrying the removed `format = "rabook"` value. */
-static const uint8_t s_legacy_format_field[] = {0x1AU, 0x06U, 'r', 'a', 'b', 'o', 'o', 'k'};
-
 /** @brief Unknown field 15 carrying the canonical varint value one. */
 static const uint8_t s_unknown_varint_field[] = {0x78U, 0x01U};
 
@@ -59,7 +58,8 @@ static const uint8_t s_unknown_varint_field[] = {0x78U, 0x01U};
  * the fake begin fixture operation used only by this focused test executable.
  * @param[in,out] ctx Fixture argument governed by the exercised interface
  * contract. @param[in] url Fixture argument governed by the exercised interface
- * contract. @return RA8 status from the exercised fixture operation. @retval
+ * contract. @param[in] format Requested artifact identity. @return RA8 status
+ * from the exercised fixture operation. @retval
  * k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity
  * fixture storage required by this operation is available. @pre Arguments
  * follow the interface contract exercised by this helper. @post Documented
@@ -67,13 +67,15 @@ static const uint8_t s_unknown_varint_field[] = {0x78U, 0x01U};
  * Mutations remain confined to documented outputs and file-local fixture state.
  * @note File-local helper; no ownership escapes this focused test executable.
  * @since Version 0.1.0 */
-RA8_INTERNAL static ra8_err_t internal_fake_begin(void* ctx, const char* url)
+RA8_INTERNAL static ra8_err_t
+internal_fake_begin(void* ctx, const char* url, ra8_mdl_format_t format)
 {
   fake_backend_t* fake = (fake_backend_t*)ctx;
   if (strcmp(url, "https://example.test/book") != 0) {
     return k_ra8_err_invalid_arg;
   }
-  fake->at = 0U;
+  fake->at     = 0U;
+  fake->format = format;
   fake->begins += 1U;
   return k_ra8_ok;
 }
@@ -194,6 +196,7 @@ RA8_INTERNAL static uint32_t internal_dispatch_start(void)
   Ra8__Mdl__StartRequest req = RA8__MDL__START_REQUEST__INIT;
   req.protocol_version       = k_ra8_mdl_protocol_version;
   req.url                    = (char*)"https://example.test/book";
+  req.format                 = RA8__MDL__FORMAT__FORMAT_RABOOK;
   const size_t request_len   = ra8__mdl__start_request__pack(&req, s_request);
   size_t       response_len  = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -209,6 +212,7 @@ RA8_INTERNAL static uint32_t internal_dispatch_start(void)
   TEST_ASSERT_EQ(k_ra8_mdl_protocol_version, accepted->protocol_version);
   TEST_ASSERT(accepted->job_id != 0U);
   TEST_ASSERT_EQ(k_ra8_mdl_chunk_data_max, accepted->max_chunk_bytes);
+  TEST_ASSERT_EQ(RA8__MDL__FORMAT__FORMAT_RABOOK, accepted->format);
   const uint32_t job = accepted->job_id;
   ra8__mdl__accepted__free_unpacked(accepted, nullptr);
   return job;
@@ -248,7 +252,8 @@ internal_dispatch_next(uint32_t job, uint64_t offset, uint32_t max_bytes)
  * single-fault vectors below; the three pulls also execute false/false/true
  * outcomes of the simple complete state selector and verify the digest is
  * published only on the terminal response.
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_next
+ * Decisions:
+ * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_next
  * @brief Verify service multichunk and digest behavior. @details Executes the
  * service multichunk and digest scenario with bounded fixture state and asserts
  * the contract-specific result. @pre Fixed-capacity fixture storage required by
@@ -263,6 +268,8 @@ RA8_INTERNAL static void internal_test_service_multichunk_and_digest(void)
   internal_reset_service();
   const uint32_t job = internal_dispatch_start();
   TEST_ASSERT_EQ(1, s_backend.begins);
+  TEST_ASSERT_EQ(k_ra8_mdl_format_rabook, s_backend.format);
+  TEST_ASSERT_EQ(k_ra8_mdl_format_rabook, s_service.active_format);
 
   Ra8__Mdl__Chunk* first = internal_dispatch_next(job, 0U, 4U);
   TEST_ASSERT(first != nullptr);
@@ -310,12 +317,14 @@ RA8_INTERNAL static void internal_test_service_multichunk_and_digest(void)
  * CancelRequest supplies the all-false control for
  * `(req == nullptr) || bad_protocol || !active || bad_job` and therefore
  * reaches the backend cancel exactly once. Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_start Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_next Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_cancel @brief
- * Verify service busy stale and cancel behavior. @details Executes the service
- * busy stale and cancel scenario with bounded fixture state and asserts the
- * contract-specific result. @pre Fixed-capacity fixture storage required by
+ * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_start
+ * Decisions:
+ * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_next
+ * Decisions:
+ * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_cancel
+ * @brief Verify service busy stale and cancel behavior. @details Executes the
+ * service busy stale and cancel scenario with bounded fixture state and asserts
+ * the contract-specific result. @pre Fixed-capacity fixture storage required by
  * this operation is available. @pre Arguments follow the interface contract
  * exercised by this helper. @post Documented outputs contain the exercised
  * result when the operation succeeds. @post Mutations remain confined to
@@ -330,6 +339,7 @@ RA8_INTERNAL static void internal_test_service_busy_stale_and_cancel(void)
   Ra8__Mdl__StartRequest second = RA8__MDL__START_REQUEST__INIT;
   second.protocol_version       = k_ra8_mdl_protocol_version;
   second.url                    = (char*)"https://example.test/book";
+  second.format                 = RA8__MDL__FORMAT__FORMAT_RABOOK;
   size_t request_len            = ra8__mdl__start_request__pack(&second, s_request);
   size_t response_len           = 0U;
   TEST_ASSERT_EQ(k_ra8_err_busy,
@@ -391,6 +401,7 @@ static void internal_expect_start_capacity_rejection(void)
   Ra8__Mdl__StartRequest start = RA8__MDL__START_REQUEST__INIT;
   start.protocol_version       = k_ra8_mdl_protocol_version;
   start.url                    = (char*)"https://example.test/book";
+  start.format                 = RA8__MDL__FORMAT__FORMAT_RABOOK;
   const size_t request_len     = ra8__mdl__start_request__pack(&start, s_request);
   size_t       response_len    = k_t_mdl_len_sentinel;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
@@ -493,9 +504,12 @@ static void internal_expect_cancel_capacity_transaction(uint32_t job)
  * the backend begin/read/cancel side effect and service
  * offset/sequence/activity changes occur only on V2. Decisions:
  * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_check_response_size
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_start
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_next
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_cancel
+ * Decisions:
+ * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_start
+ * Decisions:
+ * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_next
+ * Decisions:
+ * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_cancel
  * @brief Verify response capacity is transactional behavior. @details Executes
  * the response capacity is transactional scenario with bounded fixture state
  * and asserts the contract-specific result. @pre Fixed-capacity fixture storage
@@ -536,7 +550,8 @@ RA8_INTERNAL static void internal_test_response_capacity_is_transactional(void)
  * backend or activates the service.
  * Decisions:
  * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@ra8_mdl_service_dispatch
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_start
+ * Decisions:
+ * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_dispatch_start
  * @brief Verify rejects malformed behavior. @details Executes the rejects
  * malformed scenario with bounded fixture state and asserts the
  * contract-specific result. @pre Fixed-capacity fixture storage required by
@@ -570,6 +585,7 @@ RA8_INTERNAL static void internal_test_rejects_malformed(void)
   Ra8__Mdl__StartRequest insecure = RA8__MDL__START_REQUEST__INIT;
   insecure.protocol_version       = k_ra8_mdl_protocol_version;
   insecure.url                    = (char*)"http://example.test/book";
+  insecure.format                 = RA8__MDL__FORMAT__FORMAT_RABOOK;
   const size_t insecure_len       = ra8__mdl__start_request__pack(&insecure, s_request);
   response_len                    = k_t_mdl_len_sentinel;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
@@ -587,26 +603,25 @@ RA8_INTERNAL static void internal_test_rejects_malformed(void)
 }
 
 /**
- * @brief Reject the removed legacy format field before backend activation.
- * @details Appends the original field-3 `format = "rabook"` wire bytes to an
- * otherwise canonical StartRequest.
+ * @brief Reject an invalid typed format before backend activation.
+ * @details Sends the reserved invalid enum through an otherwise canonical
+ * StartRequest.
  * @pre The deterministic service fixture is reset and request storage fits.
  * @pre No backend job is active.
- * @post Dispatch returns a protocol error and emits no response.
+ * @post Dispatch returns invalid-argument and emits no response.
  * @post The backend remains unstarted and the service remains inactive.
- * @note Protobuf-c preserves this reserved field as an unknown field.
+ * @note Unknown future fields are covered separately below.
  * @since 0.1.0
  */
-RA8_INTERNAL static void internal_expect_legacy_format_rejection(void)
+RA8_INTERNAL static void internal_expect_invalid_format_rejection(void)
 {
   Ra8__Mdl__StartRequest start = RA8__MDL__START_REQUEST__INIT;
   start.protocol_version       = k_ra8_mdl_protocol_version;
   start.url                    = (char*)"https://example.test/book";
-  size_t request_len           = ra8__mdl__start_request__pack(&start, s_request);
-  memcpy(&s_request[request_len], s_legacy_format_field, sizeof(s_legacy_format_field));
-  request_len += sizeof(s_legacy_format_field);
-  size_t response_len = k_t_mdl_len_sentinel;
-  TEST_ASSERT_EQ(k_ra8_err_protocol_error,
+  start.format                 = RA8__MDL__FORMAT__FORMAT_INVALID;
+  const size_t request_len     = ra8__mdl__start_request__pack(&start, s_request);
+  size_t       response_len    = k_t_mdl_len_sentinel;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_mdl_service_dispatch(&s_service,
                                           k_ra8_mdl_rpc_start,
                                           s_request,
@@ -621,13 +636,14 @@ RA8_INTERNAL static void internal_expect_legacy_format_rejection(void)
 
 /**
  * @test internal_test_rejects_unknown_request_fields
- * @brief Reject unknown protobuf fields without backend or service-state effects.
- * @details Pins the removed legacy Start field and a future unknown varint on
- *          active Next and Cancel calls.
+ * @brief Reject unknown protobuf fields without backend or service-state
+ * effects.
+ * @details Pins an invalid typed Start format and a future unknown varint on
+ * active Next and Cancel calls.
  * @pre The deterministic service fixture and request buffers are available.
  * @pre No backend job exists before the fixture reset.
- * @post Start does not begin a backend; Next does not consume bytes; Cancel does
- *       not cancel, and a subsequent canonical Cancel remains accepted.
+ * @post Start does not begin a backend; Next does not consume bytes; Cancel
+ * does not cancel, and a subsequent canonical Cancel remains accepted.
  * @post Every rejected request publishes zero response bytes.
  * @note Protobuf-c preserves unknown fields, so the application rejects them.
  * @since 0.1.0
@@ -636,7 +652,7 @@ RA8_INTERNAL static void internal_test_rejects_unknown_request_fields(void)
 {
   TEST_BEGIN("mdl rejects unknown request fields");
   internal_reset_service();
-  internal_expect_legacy_format_rejection();
+  internal_expect_invalid_format_rejection();
   size_t                request_len  = 0U;
   size_t                response_len = k_t_mdl_len_sentinel;
   const uint32_t        job          = internal_dispatch_start();
@@ -757,7 +773,8 @@ RA8_INTERNAL static void internal_expect_read_fault(t_mdl_read_fault_t fault)
  * V3 returns body data while terminal; V4 sets only offset overflow; V5 is the
  * incoherent terminal-total test below; and V6 sets only the sequence limit.
  * Each vector keeps every other disjunct false and causes one cancellation.
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_read_next
+ * Decisions:
+ * libs/ra8_c6link/src/ra8_c6link_mdl_service.c@internal_mdl_read_next
  * @details Uses fresh jobs so no rejected vector can affect a later operand.
  * @pre The deterministic backend and request buffers are available.
  * @pre The canonical six-byte body provides a valid all-false control.

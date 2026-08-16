@@ -26,6 +26,7 @@
 #include "ra8_c6link.h"
 #include "ra8_c6link_wifi.h"
 #include "ra8_err.h"
+#include "ra8_mdl_format.h"
 #include "ra8_mdl_protocol.h"
 
 /**
@@ -63,9 +64,9 @@ typedef enum : uint32_t {
   k_c6m_eth_len               = 64U,   /**< Length of the modelled Ethernet frame.       */
   k_c6m_wifi_ev               = 2U,    /**< `WIFI_EVENT_STA_START`, as the bench saw it. */
   k_c6m_bssid_first           = 2U,    /**< First octet of the modelled AP address; the
-       rest ascend from it.                        */
+rest ascend from it.                        */
   k_c6m_mac_first             = 9U,    /**< First octet of the modelled station address;
-       the rest descend from it.                   */
+the rest descend from it.                   */
   k_c6m_eth_first             = 0x80U, /**< First octet of the modelled 802.3 frame.      */
   k_c6m_caps_bytes            = 17U,   /**< Octets in the host-capabilities announcement. */
   k_c6m_mdl_digest_fill       = 0xA5U, /**< Deterministic media digest test octet.        */
@@ -98,24 +99,26 @@ typedef enum : int32_t {
 
 /** @brief Test-only corruption applied to the next media response. */
 typedef enum : uint8_t {
-  k_c6m_mdl_fault_none = 0U,            /**< Leave the next chunk unchanged.   */
-  k_c6m_mdl_fault_complete_no_sha,      /**< Omit the terminal digest.         */
-  k_c6m_mdl_fault_complete_bad_total,   /**< Corrupt the terminal total.       */
-  k_c6m_mdl_fault_failed,               /**< Emit a coherent failure.          */
-  k_c6m_mdl_fault_failed_zero_status,   /**< Emit failure with zero status.    */
-  k_c6m_mdl_fault_cancelled,            /**< Emit coherent cancellation.       */
-  k_c6m_mdl_fault_cancelled_with_data,  /**< Attach data to cancellation.      */
-  k_c6m_mdl_fault_downloading_error,    /**< Attach error to active data.      */
-  k_c6m_mdl_fault_out_of_order,         /**< Increment the response sequence.  */
-  k_c6m_mdl_fault_corrupt_data,         /**< Corrupt one data response byte.   */
-  k_c6m_mdl_fault_unknown_field,        /**< Append an unknown protobuf field. */
-  k_c6m_mdl_fault_accepted_bad_version, /**< Change the accepted protocol.     */
-  k_c6m_mdl_fault_accepted_zero_job,    /**< Clear the accepted job id.        */
-  k_c6m_mdl_fault_accepted_zero_max,    /**< Clear the accepted chunk cap.     */
-  k_c6m_mdl_fault_accepted_large_max,   /**< Exceed the client chunk cap.      */
-  k_c6m_mdl_fault_response_no_body,     /**< Omit the outer custom body.       */
-  k_c6m_mdl_fault_response_wrong_id,    /**< Corrupt the outer operation id.   */
-  k_c6m_mdl_fault_response_empty_data,  /**< Omit the inner response bytes.    */
+  k_c6m_mdl_fault_none = 0U,             /**< Leave the next chunk unchanged.   */
+  k_c6m_mdl_fault_complete_no_sha,       /**< Omit the terminal digest.         */
+  k_c6m_mdl_fault_complete_bad_total,    /**< Corrupt the terminal total.       */
+  k_c6m_mdl_fault_failed,                /**< Emit a coherent failure.          */
+  k_c6m_mdl_fault_failed_zero_status,    /**< Emit failure with zero status.    */
+  k_c6m_mdl_fault_cancelled,             /**< Emit coherent cancellation.       */
+  k_c6m_mdl_fault_cancelled_with_data,   /**< Attach data to cancellation.      */
+  k_c6m_mdl_fault_downloading_error,     /**< Attach error to active data.      */
+  k_c6m_mdl_fault_out_of_order,          /**< Increment the response sequence.  */
+  k_c6m_mdl_fault_corrupt_data,          /**< Corrupt one data response byte.   */
+  k_c6m_mdl_fault_unknown_field,         /**< Append an unknown protobuf field. */
+  k_c6m_mdl_fault_accepted_bad_version,  /**< Change the accepted protocol.     */
+  k_c6m_mdl_fault_accepted_zero_job,     /**< Clear the accepted job id.        */
+  k_c6m_mdl_fault_accepted_zero_max,     /**< Clear the accepted chunk cap.     */
+  k_c6m_mdl_fault_accepted_large_max,    /**< Exceed the client chunk cap.      */
+  k_c6m_mdl_fault_accepted_wrong_format, /**< Echo a different artifact format.
+                                          */
+  k_c6m_mdl_fault_response_no_body,      /**< Omit the outer custom body.     */
+  k_c6m_mdl_fault_response_wrong_id,     /**< Corrupt the outer operation id. */
+  k_c6m_mdl_fault_response_empty_data,   /**< Omit the inner response bytes.  */
 } ra8_c6_model_mdl_fault_t;
 
 /**
@@ -151,6 +154,7 @@ typedef struct ra8_c6_model {
   uint16_t                 transfers;        /**< Transactions the host has clocked.         */
   uint32_t                 delays;           /**< Times the host asked the seam to wait.     */
   uint16_t                 mdl_cancels;      /**< Media cancel operations accepted.          */
+  ra8_mdl_format_t         mdl_format;       /**< Artifact identity observed by the service. */
   uint16_t                 last_delay_ms;    /**< Milliseconds the newest wait asked for.    */
   uint32_t                 seen[k_c6m_seen]; /**< Request ids observed, in order.            */
   uint8_t                  seen_n;           /**< Entries in `seen`.                         */

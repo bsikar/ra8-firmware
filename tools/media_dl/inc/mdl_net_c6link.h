@@ -9,8 +9,10 @@
  * downloader. Artifact selection remains RA8-side policy through
  * ::ra8_mdl_format_t; the transport never relabels raw bytes as a container.
  *
- * Protocol version 1 cannot carry User-Agent, Referer, conditional headers, or
- * a caller timeout. Requests using those fields fail with
+ * Protocol version 2 carries the artifact identity, but this generic network
+ * adapter deliberately requests `loose`: downloader policy still owns any
+ * later conversion. User-Agent, Referer, conditional headers, and a caller
+ * timeout remain unsupported; requests using them fail with
  * ::k_ra8_err_not_supported rather than silently dropping policy.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
