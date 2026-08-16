@@ -78,6 +78,7 @@ extern "C" {
 
 #include "ra8_c6link_transport.h"
 #include "ra8_err.h"
+#include "ra8_mdl_protocol.h"
 
 /**
  * @enum ra8_c6link_geometry_t
@@ -536,6 +537,16 @@ typedef struct ra8_c6link {
   /**< Transmit transaction. */
   alignas(k_ra8_c6link_dma_align) uint8_t rx[k_ra8_c6link_frame_bytes];
   /**< Receive transaction. */
+  uint8_t mdl_request[k_ra8_mdl_request_bytes_max];
+  /**< Packed inner media request awaiting transmission. Owned by the link
+       rather than by the media RPC that packs it: as an automatic object it
+       put ::ra8_c6link_mdl_start_request over the 2048-byte first-party frame
+       budget on the Cortex-M85 (`-fstack-usage`). One outstanding request per
+       link is already the rule -- ::ra8_c6link_mdl_start_request,
+       ::ra8_c6link_mdl_next and ::ra8_c6link_mdl_cancel each pack, transmit
+       and finish before the next may begin, and a second concurrent request
+       is refused with `k_ra8_err_busy` -- so sharing one buffer between them
+       is the same exclusivity `tx` already assumes. */
 } ra8_c6link_t;
 
 /**

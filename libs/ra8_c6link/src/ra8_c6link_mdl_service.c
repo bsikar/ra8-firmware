@@ -27,14 +27,17 @@ static_assert((uint32_t)k_ra8_mdl_format_jof == RA8__MDL__FORMAT__FORMAT_JOF);
 static_assert((uint32_t)k_ra8_mdl_format_rabook == RA8__MDL__FORMAT__FORMAT_RABOOK);
 static_assert((uint32_t)k_ra8_mdl_format_invalid == RA8__MDL__FORMAT__FORMAT_INVALID);
 
-/** @brief Decode arena sized for the bounded start request and URL. */
+/** @brief Rounding mask derived from the arena's published alignment. */
 typedef enum : uint16_t {
-  k_mdl_decode_arena_bytes = k_ra8_mdl_url_max + k_ra8_mdl_user_agent_max + k_ra8_mdl_referer_max +
-                             k_ra8_mdl_etag_max + k_ra8_mdl_http_date_max +
-                             512U,                    /**< Per-dispatch arena size.    */
-  k_mdl_decode_align       = 8U,                      /**< Arena allocation alignment. */
-  k_mdl_decode_align_mask  = k_mdl_decode_align - 1U, /**< Mask used to round sizes.   */
+  k_mdl_decode_align_mask = k_ra8_mdl_decode_align - 1U, /**< Mask used to round sizes. */
 } mdl_svc_const_t;
+
+/* The worst-case response sizing below reads one bounded run of filler through
+ * four header pointers of different lengths, so the run must be at least as
+ * long as the longest of them. */
+static_assert(k_ra8_mdl_retry_after_max <= k_ra8_mdl_etag_max);
+static_assert(k_ra8_mdl_http_date_max <= k_ra8_mdl_etag_max);
+static_assert(k_ra8_mdl_content_type_max <= k_ra8_mdl_etag_max);
 
 /**
  * @brief Validate one decoded optional request header.
@@ -95,12 +98,6 @@ RA8_INTERNAL static bool internal_mdl_response_valid(const ra8_mdl_http_response
          internal_mdl_request_field_valid(response->content_type, sizeof(response->content_type));
 }
 
-/** @brief Linear allocator used by protobuf-c; reset after every dispatch. */
-typedef struct {
-  uint8_t bytes[k_mdl_decode_arena_bytes]; /**< Fixed protobuf decode storage. */
-  size_t  used;                            /**< Bytes already allocated.       */
-} mdl_decode_arena_t;
-
 RA8_PRIV bool priv_c6link_mdl_decode_allocation_fits(size_t used, size_t len, size_t capacity)
 {
   if (len > (SIZE_MAX - k_mdl_decode_align_mask)) {
@@ -112,7 +109,7 @@ RA8_PRIV bool priv_c6link_mdl_decode_allocation_fits(size_t used, size_t len, si
 
 /**
  * @brief Allocate one aligned span from a per-dispatch bounded arena
- * @param[in,out] data ::mdl_decode_arena_t owned by the current dispatch.
+ * @param[in,out] data ::ra8_mdl_decode_arena_t owned by the current dispatch.
  * @param[in] len Requested bytes.
  * @return Allocated span or null when the arena is exhausted.
  * @retval nullptr The aligned request exceeds remaining arena capacity.
@@ -125,7 +122,7 @@ RA8_PRIV bool priv_c6link_mdl_decode_allocation_fits(size_t used, size_t len, si
  */
 RA8_INTERNAL static void* internal_mdl_decode_alloc(void* data, size_t len)
 {
-  mdl_decode_arena_t* arena = (mdl_decode_arena_t*)data;
+  ra8_mdl_decode_arena_t* arena = (ra8_mdl_decode_arena_t*)data;
   if (!priv_c6link_mdl_decode_allocation_fits(arena->used, len, sizeof(arena->bytes))) {
     return nullptr;
   }
@@ -409,34 +406,30 @@ static ra8_err_t internal_mdl_fail_job(ra8_mdl_service_t* service, ra8_err_t err
  * @pre @p response_cap is the actual writable response capacity.
  * @post No backend callback is invoked.
  * @post Service and caller buffers are unchanged.
- * @note Local arrays provide addresses required by protobuf sizing only.
+ * @note One bounded filler run supplies every length protobuf sizing reads.
  * @since 0.1.0
  */
 RA8_INTERNAL
 static ra8_err_t internal_mdl_next_capacity(uint32_t max_data, size_t response_cap)
 {
-  uint8_t max_bytes[k_ra8_mdl_chunk_data_max] = {};
-  uint8_t max_digest[k_ra8_mdl_sha256_bytes];
-  char    retry_after[k_ra8_mdl_retry_after_max];
-  char    etag[k_ra8_mdl_etag_max];
-  char    last_modified[k_ra8_mdl_http_date_max];
-  char    content_type[k_ra8_mdl_content_type_max];
-  memset(retry_after, 'x', sizeof(retry_after) - 1U);
-  memset(etag, 'x', sizeof(etag) - 1U);
-  memset(last_modified, 'x', sizeof(last_modified) - 1U);
-  memset(content_type, 'x', sizeof(content_type) - 1U);
-  retry_after[sizeof(retry_after) - 1U]     = '\0';
-  etag[sizeof(etag) - 1U]                   = '\0';
-  last_modified[sizeof(last_modified) - 1U] = '\0';
-  content_type[sizeof(content_type) - 1U]   = '\0';
-  Ra8__Mdl__Chunk data                      = RA8__MDL__CHUNK__INIT;
-  data.protocol_version                     = UINT32_MAX;
-  data.job_id                               = UINT32_MAX;
-  data.sequence                             = UINT32_MAX;
-  data.offset                               = UINT64_MAX;
-  data.data        = (ProtobufCBinaryData){.len = max_data, .data = max_bytes};
-  data.total_bytes = UINT64_MAX;
-  data.state       = RA8__MDL__STATE__STATE_DOWNLOADING;
+  /* `get_packed_size()` reads a string field only through `strlen()` and a
+   * bytes field only through its `len`, never through its `data` pointer
+   * (protobuf-c `required_field_get_packed_size`). So one filler run measures
+   * every header: a field of capacity `cap` takes the suffix at
+   * `sizeof(filler) - cap`, whose length is exactly `cap - 1`. Six
+   * separate worst-case buffers cost 1440 stack bytes and measured the same
+   * numbers. */
+  char filler[k_ra8_mdl_etag_max];
+  memset(filler, 'x', sizeof(filler) - 1U);
+  filler[sizeof(filler) - 1U] = '\0';
+  Ra8__Mdl__Chunk data        = RA8__MDL__CHUNK__INIT;
+  data.protocol_version       = UINT32_MAX;
+  data.job_id                 = UINT32_MAX;
+  data.sequence               = UINT32_MAX;
+  data.offset                 = UINT64_MAX;
+  data.data                   = (ProtobufCBinaryData){.len = max_data, .data = (uint8_t*)filler};
+  data.total_bytes            = UINT64_MAX;
+  data.state                  = RA8__MDL__STATE__STATE_DOWNLOADING;
   const ra8_err_t data_fit =
     internal_mdl_check_response_size(ra8__mdl__chunk__get_packed_size(&data), response_cap);
   if (data_fit != k_ra8_ok) {
@@ -450,12 +443,13 @@ static ra8_err_t internal_mdl_next_capacity(uint32_t max_data, size_t response_c
   terminal.offset           = UINT64_MAX;
   terminal.total_bytes      = UINT64_MAX;
   terminal.state            = RA8__MDL__STATE__STATE_COMPLETE;
-  terminal.sha256           = (ProtobufCBinaryData){.len = sizeof(max_digest), .data = max_digest};
-  terminal.http_status      = (int32_t)k_ra8_mdl_http_status_max;
-  terminal.retry_after      = retry_after;
-  terminal.etag             = etag;
-  terminal.last_modified    = last_modified;
-  terminal.content_type     = content_type;
+  terminal.sha256 =
+    (ProtobufCBinaryData){.len = (size_t)k_ra8_mdl_sha256_bytes, .data = (uint8_t*)filler};
+  terminal.http_status   = (int32_t)k_ra8_mdl_http_status_max;
+  terminal.retry_after   = &filler[sizeof(filler) - k_ra8_mdl_retry_after_max];
+  terminal.etag          = filler; /* the longest header: the whole run */
+  terminal.last_modified = &filler[sizeof(filler) - k_ra8_mdl_http_date_max];
+  terminal.content_type  = &filler[sizeof(filler) - k_ra8_mdl_content_type_max];
   return internal_mdl_check_response_size(ra8__mdl__chunk__get_packed_size(&terminal),
                                           response_cap);
 }
@@ -688,11 +682,14 @@ ra8_err_t ra8_mdl_service_dispatch(void*          ctx,
     return k_ra8_err_null_ptr;
   }
   *response_len              = 0U;
-  mdl_decode_arena_t arena   = {};
-  ProtobufCAllocator alloc   = {.alloc          = internal_mdl_decode_alloc,
-                                .free           = internal_mdl_decode_free,
-                                .allocator_data = &arena};
   ra8_mdl_service_t* service = (ra8_mdl_service_t*)ctx;
+  /* Cleared here, not declared here: an automatic arena of this size put this
+   * function over the 2048-byte first-party frame budget. Clearing the whole
+   * object gives every dispatch the same empty arena the automatic one did. */
+  service->arena           = (ra8_mdl_decode_arena_t){};
+  ProtobufCAllocator alloc = {.alloc          = internal_mdl_decode_alloc,
+                              .free           = internal_mdl_decode_free,
+                              .allocator_data = &service->arena};
   switch (operation) {
     case k_ra8_mdl_rpc_start:
       return internal_mdl_dispatch_start(service,

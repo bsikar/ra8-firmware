@@ -33,6 +33,21 @@ typedef enum : uint16_t {
 } ra8_mdl_dimension_t;
 
 /**
+ * @brief Largest packed inner request either endpoint has to hold
+ * @details A Start request carries the bounded URL and every bounded HTTP
+ * header; the constant adds the generated encoder's per-field tag and varint
+ * overhead on top. Next and Cancel are far smaller and share the buffer.
+ * @invariant No legal packed inner request exceeds this bound.
+ * @see ra8_c6link_mdl_start_request
+ * @since 0.1.0
+ */
+typedef enum : uint16_t {
+  k_ra8_mdl_request_bytes_max = k_ra8_mdl_url_max + k_ra8_mdl_user_agent_max +
+                                k_ra8_mdl_referer_max + k_ra8_mdl_etag_max +
+                                k_ra8_mdl_http_date_max + 96U, /**< Maximum packed request bytes. */
+} ra8_mdl_request_bound_t;
+
+/**
  * @brief Inclusive bounds of the HTTP status codes the protocol admits.
  * @details RFC 9110 assigns status codes the three-digit range 100..599, so a
  * response outside it is malformed rather than merely unsuccessful. Both
