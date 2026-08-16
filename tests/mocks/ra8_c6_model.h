@@ -109,6 +109,17 @@ typedef enum : uint8_t {
   k_c6m_mdl_fault_downloading_error,     /**< Attach error to active data.      */
   k_c6m_mdl_fault_out_of_order,          /**< Increment the response sequence.  */
   k_c6m_mdl_fault_corrupt_data,          /**< Corrupt one data response byte.   */
+  k_c6m_mdl_fault_data_http_status,      /**< Status on a nonterminal chunk.    */
+  k_c6m_mdl_fault_data_retry_after,      /**< Retry-After on active data.       */
+  k_c6m_mdl_fault_data_etag,             /**< ETag on active data.              */
+  k_c6m_mdl_fault_data_last_modified,    /**< Last-Modified on active data.     */
+  k_c6m_mdl_fault_data_content_type,     /**< Content-Type on active data.      */
+  k_c6m_mdl_fault_complete_low_status,   /**< Terminal status below 100.        */
+  k_c6m_mdl_fault_complete_high_status,  /**< Terminal status above 599.        */
+  k_c6m_mdl_fault_complete_split_retry,  /**< CR inside terminal Retry-After.   */
+  k_c6m_mdl_fault_complete_split_etag,   /**< LF inside the terminal ETag.      */
+  k_c6m_mdl_fault_complete_split_date,   /**< CR inside terminal Last-Modified. */
+  k_c6m_mdl_fault_complete_split_type,   /**< LF inside terminal Content-Type.  */
   k_c6m_mdl_fault_unknown_field,         /**< Append an unknown protobuf field. */
   k_c6m_mdl_fault_accepted_bad_version,  /**< Change the accepted protocol.     */
   k_c6m_mdl_fault_accepted_zero_job,     /**< Clear the accepted job id.        */
