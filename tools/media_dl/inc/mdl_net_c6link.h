@@ -9,11 +9,10 @@
  * downloader. Artifact selection remains RA8-side policy through
  * ::ra8_mdl_format_t; the transport never relabels raw bytes as a container.
  *
- * Protocol version 2 carries the artifact identity, but this generic network
- * adapter deliberately requests `loose`: downloader policy still owns any
- * later conversion. User-Agent, Referer, conditional headers, and a caller
- * timeout remain unsupported; requests using them fail with
- * ::k_ra8_err_not_supported rather than silently dropping policy.
+ * Protocol version 3 carries the artifact identity, bounded request headers,
+ * timeout, final HTTP status, and selected response headers. This generic
+ * network adapter deliberately requests `loose`: downloader policy still owns
+ * whether raw image bytes are later formatted and saved as RABOOK.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -54,7 +53,7 @@ extern "C" {
  * @param[in] chunk_bytes Requested bytes per pull.
  * @param[in] max_chunks Hard maximum pulls per response.
  * @return Binding status.
- * @retval k_ra8_ok The interface is ready for unconditional HTTPS requests.
+ * @retval k_ra8_ok The interface is ready for policy-preserving HTTPS requests.
  * @retval k_ra8_err_null_ptr A required pointer or SHA callback is null.
  * @retval k_ra8_err_invalid_size A transfer bound is zero or excessive.
  * @pre No request is active on @p link or @p backend.
