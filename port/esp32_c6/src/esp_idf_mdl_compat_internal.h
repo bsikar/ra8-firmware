@@ -64,18 +64,31 @@ typedef struct mbedtls_sha256_context {
  * Give those first-party stand-ins private identities while leaving the real
  * ESP-IDF build's symbol spellings and ABI untouched.
  */
+/** @brief Map the parser bundle callback to its module-private stand-in. */
 #define esp_crt_bundle_attach                     priv_esp_crt_bundle_attach
+/** @brief Map the parser HTTP constructor to its module-private stand-in. */
 #define esp_http_client_init                      priv_esp_http_client_init
+/** @brief Map the parser HTTP close operation to its private stand-in. */
 #define esp_http_client_close                     priv_esp_http_client_close
+/** @brief Map the parser URL setter to its module-private stand-in. */
 #define esp_http_client_set_url                   priv_esp_http_client_set_url
+/** @brief Map the parser HTTP open operation to its private stand-in. */
 #define esp_http_client_open                      priv_esp_http_client_open
+/** @brief Map the parser header fetch to its module-private stand-in. */
 #define esp_http_client_fetch_headers             priv_esp_http_client_fetch_headers
+/** @brief Map the parser status accessor to its module-private stand-in. */
 #define esp_http_client_get_status_code           priv_esp_http_client_get_status_code
+/** @brief Map the parser body reader to its module-private stand-in. */
 #define esp_http_client_read                      priv_esp_http_client_read
+/** @brief Map the parser completion query to its module-private stand-in. */
 #define esp_http_client_is_complete_data_received priv_esp_http_client_is_complete_data_received
+/** @brief Map the parser SHA-256 initializer to its private stand-in. */
 #define mbedtls_sha256_init                       priv_mbedtls_sha256_init
+/** @brief Map the parser SHA-256 start operation to its private stand-in. */
 #define mbedtls_sha256_starts                     priv_mbedtls_sha256_starts
+/** @brief Map the parser SHA-256 update operation to its private stand-in. */
 #define mbedtls_sha256_update                     priv_mbedtls_sha256_update
+/** @brief Map the parser SHA-256 finalizer to its private stand-in. */
 #define mbedtls_sha256_finish                     priv_mbedtls_sha256_finish
 
 /**
