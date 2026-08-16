@@ -292,6 +292,38 @@ RA8_PRIV ra8_err_t priv_mdl_export_epub(mdl_storage_t*           storage,
                                         mdl_export_workspace_t*  ws);
 
 /**
+ * @brief Compile one page directory into a strict chunked RABOOK artifact.
+ * @details Produces a private fixed-layout EPUB with the production writer,
+ *          compiles it through the firmware RABOOK1 pipeline, wraps the flat
+ *          blob as independent RBKC chunks, and validates the complete staged
+ *          artifact before atomic publication.
+ * @param[in,out] storage Injected portable storage and transaction provider.
+ * @param[in] dir Canonical chapter directory.
+ * @param[in] names Sorted page-name rows.
+ * @param[in] count Page count within the fixed RABOOK profile.
+ * @param[in] destination Canonical final `.rabook` path.
+ * @param[in] meta Resolved metadata to embed.
+ * @param[in,out] ws Exclusive caller-owned export/compiler workspace.
+ * @return Writer, compiler, validator, or publication status.
+ * @retval k_ra8_ok One strict RBKC artifact was published.
+ * @retval k_ra8_err_invalid_size A page/profile/workspace bound was exceeded.
+ * @retval k_ra8_err_validation_failed An intermediate or final artifact failed validation.
+ * @pre All pointers and page rows are valid and stable for the complete call.
+ * @pre @p ws is exclusively mutable and no competing writer owns the destination.
+ * @post Success publishes exactly one reader-openable RABOOK artifact.
+ * @post Failure removes private intermediates and preserves any prior destination.
+ * @note Not thread-safe for shared storage, destination, or workspace.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t priv_mdl_export_rabook(mdl_storage_t*           storage,
+                                          const char*              dir,
+                                          char                     names[][k_name_max],
+                                          size_t                   count,
+                                          const char*              destination,
+                                          const mdl_export_meta_t* meta,
+                                          mdl_export_workspace_t*  ws);
+
+/**
  * @brief Convert every page in a chapter directory to a sibling `.jof` atlas.
  *
  * @details

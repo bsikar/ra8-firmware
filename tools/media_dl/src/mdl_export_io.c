@@ -143,6 +143,23 @@ ra8_err_t priv_mdl_export_output_begin(mdl_export_output_t* output,
   return err;
 }
 
+RA8_PRIV ra8_err_t priv_mdl_export_output_begin_new(mdl_export_output_t* output,
+                                                    mdl_storage_t*       storage,
+                                                    const char*          destination,
+                                                    mdl_format_t         format)
+{
+  if ((output == nullptr) || (storage == nullptr) || (destination == nullptr) ||
+      !mdl_format_is_verifiable(format)) {
+    return k_ra8_err_invalid_arg;
+  }
+  *output             = (mdl_export_output_t){.format = format};
+  const ra8_err_t err = mdl_storage_txn_begin_new(&output->writer, storage, destination);
+  if (err != k_ra8_ok) {
+    *output = (mdl_export_output_t){};
+  }
+  return err;
+}
+
 ra8_err_t
 priv_mdl_export_output_write(mdl_export_output_t* output, const uint8_t* bytes, uint32_t length)
 {
@@ -155,6 +172,29 @@ priv_mdl_export_output_write(mdl_export_output_t* output, const uint8_t* bytes, 
     output->error = err;
   }
   return err;
+}
+
+RA8_PRIV ra8_err_t priv_mdl_export_output_write_at(void*          opaque,
+                                                   uint64_t       offset,
+                                                   const uint8_t* bytes,
+                                                   uint32_t       length,
+                                                   uint32_t*      out_written)
+{
+  mdl_export_output_t* output = (mdl_export_output_t*)opaque;
+  if (out_written != nullptr) {
+    *out_written = 0U;
+  }
+  if ((output == nullptr) || (out_written == nullptr) || ((bytes == nullptr) && (length != 0U)) ||
+      !output->writer.transaction.active || (output->error != k_ra8_ok)) {
+    return k_ra8_err_invalid_arg;
+  }
+  const ra8_err_t err = internal_output_write_at(output, offset, bytes, length);
+  if (err != k_ra8_ok) {
+    output->error = err;
+    return err;
+  }
+  *out_written = length;
+  return k_ra8_ok;
 }
 
 size_t

@@ -4,11 +4,10 @@
  *
  * @details
  * The currently supported writers are CBZ (ZIP), CBT (tar), gzip-wrapped CBT,
- * EPUB, and the native JOF tile atlas. They use in-tree implementations and
- * caller-owned bounded storage so the host tool exercises the same no-heap
- * constraints as portable reader code. CBR and xz-wrapped CBT remain reserved.
- * RABOOK has an in-tree strict reader but remains unavailable as a chapter
- * writer until its bounded fixed-layout export path is composed here.
+ * EPUB, the native JOF tile atlas, and chunked RABOOK. They use in-tree
+ * implementations and caller-owned bounded storage so the host tool exercises
+ * the same no-heap constraints as portable reader code. CBR and xz-wrapped CBT
+ * remain reserved.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -30,7 +29,7 @@ typedef enum : uint8_t {
   k_mdl_fmt_cbt_gz  = 5,   /**< gzip-compressed tar (`.cbt.gz`).         */
   k_mdl_fmt_epub    = 6,   /**< EPUB of images (`.epub`).                */
   k_mdl_fmt_jof     = 7,   /**< Native JOF tile atlas per page (`.jof`). */
-  k_mdl_fmt_rabook  = 8,   /**< Reserved; not accepted by the CLI.       */
+  k_mdl_fmt_rabook  = 8,   /**< Chunked reader-native book (`.rabook`).  */
   k_mdl_fmt_invalid = 255, /**< Unrecognised `--format` string.          */
 } mdl_format_t;
 
@@ -43,6 +42,7 @@ typedef enum : uint8_t {
  * @param[in] s Format name, or NULL (treated as "loose").
  * @return The matching kind, or ::k_mdl_fmt_invalid.
  * @retval k_mdl_fmt_loose @p s is NULL or names loose output.
+ * @retval k_mdl_fmt_rabook @p s names the strict reader-native container.
  * @retval k_mdl_fmt_invalid @p s is an unknown or reserved format name.
  * @pre @p s is NULL or points to a NUL-terminated string.
  * @pre The caller treats format names as case-sensitive CLI tokens.
