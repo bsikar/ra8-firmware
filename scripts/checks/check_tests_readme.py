@@ -37,6 +37,8 @@ from __future__ import annotations
 
 import argparse
 import re
+import shutil
+import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
@@ -60,6 +62,44 @@ EXIT_DRIFT = 1
 EXIT_VACUOUS = 2
 
 
+def _ignored_names(tests_dir: Path, names: set[str]) -> set[str]:
+    """Return the subset of ``names`` git ignores under ``tests_dir``.
+
+    A filesystem scan cannot tell test content from BUILD OUTPUT: the moment a
+    developer runs the host suite, ``tests/build/`` and ``tests/build-cov/``
+    appear and this gate demands a README row for each of them. Both are
+    gitignored artefacts that never exist in a CI checkout, so the gate failed
+    only on the machines where it was run by hand -- the mirror image of the
+    ``git ls-files`` scope trap, and just as good at training people to ignore
+    it. Git owns the tracked/ignored distinction, so ask git.
+
+    Args:
+        tests_dir: The ``tests/`` directory being scanned.
+        names: Candidate subdirectory names found on disk.
+
+    Returns:
+        The names git reports as ignored. Empty when ``tests_dir`` is not
+        inside a git work tree -- which is exactly the selftest`s throwaway
+        fixture, so the fixtures keep behaving as plain directory scans.
+    """
+    if not names:
+        return set()
+    probe = subprocess.run(  # noqa: S603 -- fixed argv, paths built from tests_dir
+        [
+            shutil.which("git") or "git",
+            "-C",
+            str(tests_dir),
+            "check-ignore",
+            "--stdin",
+        ],
+        input="\n".join(sorted(names)) + "\n",
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return {line.strip() for line in probe.stdout.splitlines() if line.strip()}
+
+
 def immediate_subdirs(tests_dir: Path) -> set[str]:
     """Return the names of the directories directly under `tests_dir`.
 
@@ -67,10 +107,11 @@ def immediate_subdirs(tests_dir: Path) -> set[str]:
         tests_dir: The ``tests/`` directory to scan.
 
     Returns:
-        Every immediate child directory name, excluding dot-directories, which
-        are tooling rather than test content.
+        Every immediate child directory name, excluding dot-directories (which
+        are tooling rather than test content) and gitignored build output.
     """
-    return {p.name for p in tests_dir.iterdir() if p.is_dir() and not p.name.startswith(".")}
+    found = {p.name for p in tests_dir.iterdir() if p.is_dir() and not p.name.startswith(".")}
+    return found - _ignored_names(tests_dir, found)
 
 
 def documented_subdirs(readme_text: str) -> set[str]:
@@ -224,6 +265,47 @@ def _run_case(root: Path, case: _Case) -> list[str]:
     return failures
 
 
+def _selftest_ignored() -> list[str]:
+    """Assert the gitignore carve-out, in both directions.
+
+    Builds a real throwaway git work tree so ``git check-ignore`` has something
+    to answer, then checks that an IGNORED subdirectory needs no README row
+    while an identically-shaped TRACKABLE one still does. Without the second
+    half a carve-out that had widened to swallow every directory would report
+    the cleanest tree it has ever seen.
+
+    Returns:
+        One message per way the carve-out misbehaved; empty when it is correct.
+    """
+    failures: list[str] = []
+    git = shutil.which("git") or "git"
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        subprocess.run(  # noqa: S603 -- fixed argv, temp path
+            [git, "init", "--quiet", str(root)], capture_output=True, text=True, check=False
+        )
+        (root / ".gitignore").write_text("build/\n", encoding="utf-8")
+        tests_dir = root / "tests"
+        tests_dir.mkdir()
+        for name in ("alpha", "beta", "gamma", "build"):
+            (tests_dir / name).mkdir()
+        readme = tests_dir / "README.md"
+        rows = "".join(f"| `{name}/` | fixture |\n" for name in ("alpha", "beta", "gamma"))
+        readme.write_text(
+            "# tests/\n\n| Subdirectory | What it holds |\n|---|---|\n" + rows,
+            encoding="utf-8",
+        )
+        code, messages = evaluate(tests_dir, readme, min_subdirs=3)
+        if code != EXIT_OK:
+            failures.append(f"  ignored build/ still demanded a README row: exit {code} {messages}")
+        # ...and the must-fire half: a directory git does NOT ignore still does.
+        (tests_dir / "delta").mkdir()
+        code, messages = evaluate(tests_dir, readme, min_subdirs=3)
+        if code != EXIT_DRIFT or not any("tests/delta/" in message for message in messages):
+            failures.append(f"  a trackable subdir stopped firing: exit {code} {messages}")
+    return failures
+
+
 def _selftest() -> int:
     """Prove both drift directions fire, a clean tree stays quiet, the floor holds.
 
@@ -235,11 +317,15 @@ def _selftest() -> int:
     for case in cases:
         with tempfile.TemporaryDirectory() as tmp:
             failures += _run_case(Path(tmp), case)
+    failures += _selftest_ignored()
     if failures:
         print("check_tests_readme selftest FAILED:", file=sys.stderr)
         print("\n".join(failures), file=sys.stderr)
         return 1
-    print(f"selftest OK: {len(cases)} cases (both drift directions + non-vacuity floor)")
+    print(
+        f"selftest OK: {len(cases)} cases plus the gitignore carve-out "
+        "(both drift directions + non-vacuity floor)"
+    )
     return 0
 
 

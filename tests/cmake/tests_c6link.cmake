@@ -124,8 +124,8 @@ add_executable(
 set_target_properties(test_ra8_mdl_net_c6link PROPERTIES LINKER_LANGUAGE CXX)
 target_compile_options(test_ra8_mdl_net_c6link PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
 target_include_directories(
-  test_ra8_mdl_net_c6link
-  PRIVATE ${RA8_C6LINK_INCLUDE_DIRS} ${FW_ROOT}/tools/media_dl/inc ${FW_ROOT}/libs/ra8_hal/inc
+  test_ra8_mdl_net_c6link PRIVATE ${RA8_C6LINK_INCLUDE_DIRS} ${FW_ROOT}/tools/media_dl/inc
+                                  ${FW_ROOT}/libs/ra8_hal/inc
 )
 add_test(NAME test_ra8_mdl_net_c6link COMMAND test_ra8_mdl_net_c6link)
 
@@ -190,9 +190,8 @@ add_test(NAME test_ra8_mdl_storage_vfs COMMAND test_ra8_mdl_storage_vfs)
 # transform verified C6 response bytes before publishing a reader artifact.
 # It compiles only the caller-buffer adapter and does not need protobuf or VFS.
 add_executable(
-  test_ra8_mdl_storage_ram
-  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_mdl_storage_ram.c
-  ${FW_ROOT}/libs/ra8_c6link/src/ra8_mdl_storage_ram.c
+  test_ra8_mdl_storage_ram ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_mdl_storage_ram.c
+                           ${FW_ROOT}/libs/ra8_c6link/src/ra8_mdl_storage_ram.c
 )
 target_compile_options(test_ra8_mdl_storage_ram PRIVATE -Wall -Wextra -Werror)
 target_include_directories(test_ra8_mdl_storage_ram PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
