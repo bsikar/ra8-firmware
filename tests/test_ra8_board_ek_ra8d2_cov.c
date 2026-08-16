@@ -25,6 +25,11 @@
  * Lines marked GCOVR_EXCL_LINE in the source (HW-only paths):
  *   187, 213, 487, 558, 634, 721
  *
+ * The companion SPH0690 microphone policy in ra8_board_ek_ra8d2_pdm.c is
+ * covered here too (it had no test at all): both microphone pin routes and
+ * their conflict legs, and the MIC1 / MIC2 edge selection checked where it
+ * lands -- PDMDSR.INPSEL after the returned policy is handed to the PDM HAL.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -34,6 +39,9 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
+#include "ra8_pdm.h"
+#include "ra8_pdm_regs.h"
+#include "ra8_pfs_regs.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
 #include "unity_minimal.h"
@@ -447,6 +455,141 @@ static void test_arduino_pin_init_valid_modes(void)
 }
 
 /* -------------------------------------------------------------------------
+ * 11. ra8_board_ek_ra8d2_pdm.c -- SPH0690 microphone routing and policy
+ * -------------------------------------------------------------------------
+ */
+
+/**
+ * @enum pdm_mic_expect_t
+ * @brief Register-visible results of the board microphone policy.
+ *
+ * @details
+ * ``k_pdm_pfs_routed`` is the exact PmnPFS word a PDM-IF route leaves behind:
+ * PSEL = 0x1B (``k_ra8_psel_pdm``) in bits 31:24 with PMR set, so a route that
+ * programmed the wrong peripheral select is visible rather than merely
+ * "non-zero".  ``k_pdm_mic1_dsr`` / ``k_pdm_mic2_dsr`` are the PDMDSR words the
+ * PDM HAL packs from the returned policy: the shared SFMD = 4 sinc order in
+ * bits 6:4 with the per-microphone INPSEL edge in bit 0.
+ */
+typedef enum : uint32_t {
+  k_pdm_pfs_routed = 0x1B010000U, /**< PmnPFS: PSEL=0x1B (PDM-IF), PMR=1.  */
+  k_pdm_rate_hz    = 16000U,      /**< SPH0690 decimated sample rate.      */
+  k_pdm_valid_bits = 20U,         /**< Significant PCM bits per sample.    */
+  k_pdm_mic1_dsr   = 0x40U,       /**< PDMDSR: SFMD=4, INPSEL=0 (MIC1).    */
+  k_pdm_mic2_dsr   = 0x41U,       /**< PDMDSR: SFMD=4, INPSEL=1 (MIC2).    */
+  k_pdm_sinc_dec   = 0x7CU,       /**< SPH0690 sinc decimation ratio.      */
+  k_pdm_comp_tap   = 0x1FE8U,     /**< Compensation filter tap h(10).      */
+  k_pdm_comp_last  = 10U,         /**< Last compensation-filter tap index. */
+} pdm_mic_expect_t;
+
+/** @brief EK-RA8D2 PDMCLK2 microphone clock pin (P812). */
+static const ra8_port_pin_t s_pdm_pin_clk = RA8_PIN(k_ra8_port_8, k_ra8_pin_12);
+/** @brief EK-RA8D2 PDMDAT2 microphone data pin (P502). */
+static const ra8_port_pin_t s_pdm_pin_dat = RA8_PIN(k_ra8_port_5, k_ra8_pin_2);
+
+/**
+ * @brief Verify microphone pin routing and both of its conflict legs.
+ *
+ * @details
+ * Routes P812/P502 to PDM-IF and checks the exact PmnPFS words, then
+ * pre-claims each pin in turn so the first and then the second
+ * ra8_pfs_route_peripheral call fails.  The pin that was NOT programmed
+ * identifies which of the two legs returned, which a bare "not ok" cannot.
+ *
+ * @par MC/DC:
+ * Decision: `if (err != k_ra8_ok)` after the clock-pin route (1 condition)
+ * - Vector 1: both pins free      -> false (both routes run)
+ * - Vector 2: clock pin pre-owned -> true  (data pin never programmed)
+ * Vectors 1+2 prove the condition independently affects the outcome; the
+ * data-pin claim additionally pins the second route's error return.
+ *
+ * @pre Clean pin-validator and register-window state.
+ * @pre No other owner holds P812 or P502.
+ * @post Both microphone pins carry the PDM-IF peripheral select.
+ * @post A pin claimed elsewhere makes routing report a GPIO conflict.
+ *
+ * @note Not thread-safe; single-threaded test context.
+ * @since 0.1.0
+ */
+static void test_pdm_mic_route(void)
+{
+  TEST_BEGIN("pdm_mic_route routes P812/P502 and reports conflicts");
+  reset_state();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_pdm_mic_route());
+  TEST_ASSERT_EQ(k_pdm_pfs_routed, *ra8_pfs_pmn(k_ra8_port_8, k_ra8_pin_12));
+  TEST_ASSERT_EQ(k_pdm_pfs_routed, *ra8_pfs_pmn(k_ra8_port_5, k_ra8_pin_2));
+
+  /* Clock pin owned elsewhere: the first route fails and the data pin is
+   * never programmed. */
+  reset_state();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_pin_validator_claim(s_pdm_pin_clk, "test.pdm.clk"));
+  TEST_ASSERT_EQ(k_ra8_err_gpio_conflict, ra8_board_pdm_mic_route());
+  TEST_ASSERT_EQ(0U, *ra8_pfs_pmn(k_ra8_port_5, k_ra8_pin_2));
+
+  /* Data pin owned elsewhere: the clock pin routes, the second call fails. */
+  reset_state();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_pin_validator_claim(s_pdm_pin_dat, "test.pdm.dat"));
+  TEST_ASSERT_EQ(k_ra8_err_gpio_conflict, ra8_board_pdm_mic_route());
+  TEST_ASSERT_EQ(k_pdm_pfs_routed, *ra8_pfs_pmn(k_ra8_port_8, k_ra8_pin_12));
+  TEST_END("pdm_mic_route routes P812/P502 and reports conflicts");
+}
+
+/**
+ * @brief Verify the per-microphone filter policy and its argument guards.
+ *
+ * @details
+ * Rejects a null destination and an out-of-range selector, then checks that
+ * MIC1 and MIC2 return the same SPH0690 coefficient set and differ only in the
+ * sampling edge.  Each returned policy is handed to the PDM HAL so the edge is
+ * asserted where it actually matters: PDMDSR.INPSEL.
+ *
+ * @par MC/DC:
+ * Decision: `(microphone == k_ra8_board_pdm_mic1) ? 0 : 1` (1 condition)
+ * - Vector 1: microphone=MIC1 -> true  (edge 0, PDMDSR 0x40)
+ * - Vector 2: microphone=MIC2 -> false (edge 1, PDMDSR 0x41)
+ * Vectors 1+2 prove the selector independently affects the outcome.  The null
+ * and out-of-range vectors cover the two single-condition guards ahead of it.
+ *
+ * @pre Clean register-window state; the PDM block can be clocked.
+ * @pre No PDM channel is mid-capture.
+ * @post Both microphones report 16 kHz, 20-bit, channel-2 mono policy.
+ * @post The PDM block is returned to module stop.
+ *
+ * @note Not thread-safe; single-threaded test context.
+ * @since 0.1.0
+ */
+static void test_pdm_mic_get_config(void)
+{
+  TEST_BEGIN("pdm_mic_get_config returns per-microphone edge policy");
+  reset_state();
+  ra8_board_pdm_mic_config_t cfg = {};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_board_pdm_mic_get_config(k_ra8_board_pdm_mic1, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_board_pdm_mic_get_config(k_ra8_board_pdm_mic_count, &cfg));
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_pdm_mic_get_config(k_ra8_board_pdm_mic1, &cfg));
+  TEST_ASSERT_EQ(k_pdm_rate_hz, cfg.sample_rate_hz);
+  TEST_ASSERT_EQ(k_ra8_pdm_ch2, cfg.channel);
+  TEST_ASSERT_EQ(k_pdm_valid_bits, cfg.valid_bits);
+  TEST_ASSERT_EQ(0U, cfg.pdm.edge);
+  TEST_ASSERT_EQ(k_pdm_sinc_dec, cfg.pdm.sinc_dec);
+  TEST_ASSERT_EQ(k_pdm_comp_tap, cfg.pdm.comp_h[k_pdm_comp_last]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_configure(cfg.channel, &cfg.pdm));
+  TEST_ASSERT_EQ(k_pdm_mic1_dsr, ra8_pdm_ch(k_ra8_pdm_ch2)->PDMDSR);
+
+  /* MIC2 shares the whole SPH0690 filter set and flips only the edge. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_pdm_mic_get_config(k_ra8_board_pdm_mic2, &cfg));
+  TEST_ASSERT_EQ(1U, cfg.pdm.edge);
+  TEST_ASSERT_EQ(k_pdm_sinc_dec, cfg.pdm.sinc_dec);
+  TEST_ASSERT_EQ(k_pdm_comp_tap, cfg.pdm.comp_h[k_pdm_comp_last]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_configure(cfg.channel, &cfg.pdm));
+  TEST_ASSERT_EQ(k_pdm_mic2_dsr, ra8_pdm_ch(k_ra8_pdm_ch2)->PDMDSR);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_deinit());
+  TEST_END("pdm_mic_get_config returns per-microphone edge policy");
+}
+
+/* -------------------------------------------------------------------------
  * Entry point
  * -------------------------------------------------------------------------
  */
@@ -479,5 +622,7 @@ int main(void)
   test_xspi_pins_init_pfs_conflict();
   test_sdhi_pins_init();
   test_arduino_pin_init_valid_modes();
+  test_pdm_mic_route();
+  test_pdm_mic_get_config();
   return 0;
 }

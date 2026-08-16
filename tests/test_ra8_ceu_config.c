@@ -14,18 +14,35 @@
  * Sibling suite: test_ra8_ceu_capture.c (init + capture / DMA
  * datapath + MC/DC vectors).
  *
+ * It also covers libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_camera.c,
+ * the EK-RA8D2 wiring the CEU capture path sits on: the J35 XCLK divisor
+ * bounds and pin routing, the U15 SW4-6 override, the eleven parallel
+ * DVP pin claims, the CAM_RST pulse, and the SCCB register transport.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+#include "ra8_board_ek_ra8d2.h"
 #include "ra8_ceu.h"
 #include "ra8_ceu_regs.h"
+#include "ra8_cgc.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_fake_mmio.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_gpt_regs.h"
+#include "ra8_i2c.h"
+#include "ra8_i2c_regs.h"
 #include "ra8_mstp.h"
+#include "ra8_pfs_regs.h"
+#include "ra8_pin_validator.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_regs.h"
+#include "ra8_time.h"
 #include "unity_minimal.h"
 
 /**
@@ -591,6 +608,257 @@ static void test_frame_drop_set(void)
   TEST_END("ceu frame_drop_set");
 }
 
+/* ---------------------------------------------------------------------------
+ * ra8_board_ek_ra8d2_camera.c -- the EK-RA8D2 wiring under the CEU
+ * --------------------------------------------------------------------------- */
+
+/**
+ * @enum test_board_cam_fixture_t
+ * @brief Board constants the camera BSP encodes, restated so a change is caught.
+ * @details These mirror private constants in the BSP: the U15 IODIR mask that
+ *          overrides SW4-6, the GPT channel driving XCLK, and the SCCB target
+ *          and register the transport cases address.
+ * @invariant k_board_cam_sw46_mask has exactly one bit set.
+ * @invariant k_board_cam_addr fits seven bits.
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_board_cam_sw46_mask   = 0x20U, /**< U15 IODIR bit that overrides SW4-6.   */
+  k_board_cam_gpt_channel = 12U,   /**< GPT channel wired to CAM_XCLK.        */
+  k_board_cam_addr        = 0x3CU, /**< 7-bit SCCB address used by the case.  */
+  k_board_cam_reg_hi      = 0x30U, /**< High byte of the addressed register.  */
+  k_board_cam_reg_lo      = 0x0AU, /**< Low byte of the addressed register.   */
+  k_board_cam_value       = 0x5AU, /**< Value written to that register.       */
+  k_board_cam_rx_byte     = 0xC3U, /**< Byte staged in ICDRR for the read.    */
+  k_board_cam_trace_cap   = 8U,    /**< Capacity of the SCCB byte trace.      */
+  k_board_cam_xclk_div    = 4U,    /**< PCLKD divisor the XCLK case asks for. */
+} test_board_cam_fixture_t;
+
+/**
+ * @enum test_board_cam_reg_t
+ * @brief The 16-bit sensor register the SCCB cases address.
+ * @details Split into its two transmitted bytes above so the big-endian
+ *          address encoding the BSP performs can be asserted byte by byte.
+ * @invariant k_board_cam_reg == ((k_board_cam_reg_hi << 8) | k_board_cam_reg_lo).
+ * @since 0.1.0
+ */
+typedef enum : uint16_t {
+  k_board_cam_reg = 0x300AU, /**< Addressed sensor register. */
+} test_board_cam_reg_t;
+
+/**
+ * @enum test_board_cam_clock_t
+ * @brief PCLKB frequency handed to the RIIC bit-rate calculation.
+ * @details Any real frequency works; 50 MHz matches the value the RIIC unit
+ *          tests use, so the divider lands on the same programmed bit rate.
+ * @invariant k_test_board_pclkb_hz is non-zero.
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_test_board_pclkb_hz = 50000000U, /**< 50 MHz PCLKB. */
+} test_board_cam_clock_t;
+
+/** @brief Distinct consecutive ICDRT values observed on the camera SCCB bus. */
+static uint8_t s_board_cam_trace[k_board_cam_trace_cap];
+
+/** @brief Number of entries recorded in ::s_board_cam_trace. */
+static uint8_t s_board_cam_trace_len;
+
+/**
+ * @brief Record each new byte the driver stages in the SCCB transmit register.
+ * @details Runs inline on the driver's own poll thread once per bounded status
+ *          poll, before the byte for that poll is written, so consecutive equal
+ *          samples are folded away and the trace is the transmitted sequence.
+ * @pre RIIC channel 1 registers are mapped.
+ * @pre The trace was cleared for the case being run.
+ * @post A byte differing from the previous sample is appended, bounded by capacity.
+ * @post No register is modified.
+ * @note Test-only and not thread-safe; the suite is single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_board_cam_trace_hook(void)
+{
+  volatile const r_i2c_regs_t* reg = ra8_i2c_regs((uint8_t)k_ra8_board_camera_i2c_channel);
+  if (reg == nullptr) {
+    return;
+  }
+  if (s_board_cam_trace_len >= (uint8_t)k_board_cam_trace_cap) {
+    return;
+  }
+  const uint8_t byte = reg->ICDRT;
+  if ((s_board_cam_trace_len != 0U) && (s_board_cam_trace[s_board_cam_trace_len - 1U] == byte)) {
+    return;
+  }
+  s_board_cam_trace[s_board_cam_trace_len] = byte;
+  s_board_cam_trace_len += 1U;
+}
+
+/**
+ * @brief Restore every hosted service the camera BSP touches. @details Zeroes the register window, disarms the MMIO fault seam and the SCCB trace hook, frees every pin claim and reinitialises the module-stop model, so a case cannot inherit a claim or a latched status flag. @pre May be called at any point; no prerequisites. @pre No board operation is in flight. @post No pin is claimed and no MMIO wait is armed. @post The SCCB byte trace is empty. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_board_cam_prep(void)
+{
+  ra8_fake_mmap_reset();
+  ra8_fake_mmio_reset();
+  ra8_pin_validator_reset();
+  (void)ra8_mstp_init();
+  s_board_cam_trace_len = 0U;
+}
+
+/**
+ * @brief Bring RIIC1 up and stage the flags every SCCB byte waits on. @details ra8_i2c_init leaves ICSR2 alone and the per-transfer status clear preserves TDRE, TEND and RDRF, so staging them once lets a whole address-plus-data sequence complete without a bounded-wait expiry. @pre The register window was reset for this case. @pre The module-stop model is initialized. @post RIIC1 is enabled at the standard bit rate. @post ICSR2 reports transmit-empty, transmit-end and receive-full. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_board_cam_bus_up(void)
+{
+  const ra8_i2c_cfg_t cfg = {
+    .bus_hz   = (uint32_t)k_ra8_i2c_speed_standard,
+    .pclkb_hz = (uint32_t)k_test_board_pclkb_hz,
+  };
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_init((uint8_t)k_ra8_board_camera_i2c_channel, &cfg));
+  volatile r_i2c_regs_t* reg = ra8_i2c_regs((uint8_t)k_ra8_board_camera_i2c_channel);
+  reg->ICSR2 = (uint8_t)((uint8_t)k_ra8_i2c_msk_icsr2_tdre | (uint8_t)k_ra8_i2c_msk_icsr2_tend |
+                         (uint8_t)k_ra8_i2c_msk_icsr2_rdrf);
+}
+
+/**
+ * @brief Reject unrepresentable XCLK divisors and forward a routing conflict. @details A zero request is refused before the clock is read; a request whose PCLKD divisor falls outside the GPT period range is refused after it; a CAM_XCLK pad already owned by another driver stops the sequence at the routing step; and with the pad free the GPT carries the computed saw-PWM period and half-period duty. @pre The module-stop model is initialized. @pre CGC reports a non-zero PCLKD frequency. @post A completed start leaves CAM_XCLK claimed by the board layer. @post GPT12 holds the exact period and duty the divisor implies. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+static void test_board_camera_xclk_bounds_and_routing(void)
+{
+  TEST_BEGIN("board camera: XCLK divisor bounds and routing");
+  internal_board_cam_prep();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_camera_xclk_start(0U));
+
+  uint32_t pclkd_hz = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cgc_get_clock_hz(k_ra8_clock_id_pclkd, &pclkd_hz));
+  TEST_ASSERT(pclkd_hz != 0U);
+  /* Divisor 1 is below the two-count GPT minimum; 1 Hz is above the maximum. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_camera_xclk_start(pclkd_hz));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_camera_xclk_start(1U));
+
+  const ra8_port_pin_t xclk = (ra8_port_pin_t)k_ra8_board_cam_xclk;
+  const uint32_t       freq = pclkd_hz / (uint32_t)k_board_cam_xclk_div;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_pin_validator_claim(xclk, "test.camera.xclk"));
+  TEST_ASSERT_EQ(k_ra8_err_gpio_conflict, ra8_board_camera_xclk_start(freq));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_pin_validator_release(xclk));
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_camera_xclk_start(freq));
+  TEST_ASSERT(ra8_pin_validator_is_claimed(xclk));
+  const uint32_t                       period = pclkd_hz / freq;
+  volatile const r_gpt_channel_regs_t* gpt    = ra8_gpt((uint8_t)k_board_cam_gpt_channel);
+  TEST_ASSERT_NOT_NULL(gpt);
+  TEST_ASSERT_EQ(period - 1U, gpt->GTPR);
+  TEST_ASSERT_EQ(period / 2U, gpt->GTCCR[0]);
+  TEST_END("board camera: XCLK divisor bounds and routing");
+}
+
+/**
+ * @brief Drive the U15 SW4-6 override that selects the parallel camera path. @details With RIIC1 un-armed the first expander register write never completes and the bounded wait expiry is forwarded unchanged; with the transmit flags staged the three-register sequence completes and the final write leaves the SW4-6 override mask in the transmit register. @pre The register window was reset for this case. @pre RIIC1 is reachable through the fake register window. @post The forwarded expander failure keeps its own error code. @post A completed override wrote exactly the SW4-6 mask as the direction byte. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+static void test_board_camera_select_parallel(void)
+{
+  TEST_BEGIN("board camera: SW4-6 override selects the parallel path");
+  internal_board_cam_prep();
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_board_camera_select_parallel());
+
+  internal_board_cam_prep();
+  volatile r_i2c_regs_t* reg = ra8_i2c_regs((uint8_t)k_ra8_board_camera_i2c_channel);
+  reg->ICSR2 = (uint8_t)((uint8_t)k_ra8_i2c_msk_icsr2_tdre | (uint8_t)k_ra8_i2c_msk_icsr2_tend);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_camera_select_parallel());
+  /* IODIR is the last of the three expander writes and carries the mask. */
+  TEST_ASSERT_EQ(k_board_cam_sw46_mask, reg->ICDRT);
+  TEST_END("board camera: SW4-6 override selects the parallel path");
+}
+
+/**
+ * @brief Route the eleven parallel DVP pads to the CEU. @details The first walk claims and muxes every pad in board order; the second stops at the first pad it can no longer claim, which is what leaves partial routing behind on a conflict. @pre No camera pad is claimed. @pre The register window was reset for this case. @post Every listed pad is claimed and carries the CEU peripheral function. @post A repeated walk is refused with a pin-ownership conflict. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+static void test_board_camera_routes_parallel_pins(void)
+{
+  TEST_BEGIN("board camera: parallel pins route to the CEU");
+  internal_board_cam_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_camera_route_parallel_pins());
+  TEST_ASSERT(ra8_pin_validator_is_claimed((ra8_port_pin_t)k_ra8_board_cam_d0));
+  TEST_ASSERT(ra8_pin_validator_is_claimed((ra8_port_pin_t)k_ra8_board_cam_d7));
+  TEST_ASSERT(ra8_pin_validator_is_claimed((ra8_port_pin_t)k_ra8_board_cam_vsync));
+  TEST_ASSERT(ra8_pin_validator_is_claimed((ra8_port_pin_t)k_ra8_board_cam_hsync));
+  TEST_ASSERT(ra8_pin_validator_is_claimed((ra8_port_pin_t)k_ra8_board_cam_pclk));
+
+  const ra8_port_pin_t d0 = (ra8_port_pin_t)k_ra8_board_cam_d0;
+  const uint32_t       expected_pfs =
+    (uint32_t)k_ra8_pfs_mask_pmr | ((uint32_t)k_ra8_psel_ceu << (uint32_t)k_ra8_pfs_bit_psel0);
+  TEST_ASSERT_EQ(expected_pfs, *ra8_pfs_pmn(RA8_PIN_PORT(d0), RA8_PIN_PIN(d0)));
+
+  TEST_ASSERT_EQ(k_ra8_err_gpio_conflict, ra8_board_camera_route_parallel_pins());
+  TEST_END("board camera: parallel pins route to the CEU");
+}
+
+/**
+ * @brief Pulse CAM_RST and leave the sensor released. @details The pad is claimed as an output driven low, held, then released high, so the port set/reset register ends holding the CAM_RST set bit; a pad already owned by another driver stops the sequence at its output-init step. @pre No camera pad is claimed. @pre The register window was reset for this case. @post CAM_RST is claimed as a board-owned output and driven high. @post A conflicting claim is forwarded as a pin-ownership error. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+static void test_board_camera_reset_pulses_pin(void)
+{
+  TEST_BEGIN("board camera: reset pulses CAM_RST and releases it");
+  internal_board_cam_prep();
+  const ra8_port_pin_t rst = (ra8_port_pin_t)k_ra8_board_cam_rst;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_camera_reset());
+  TEST_ASSERT(ra8_pin_validator_is_claimed(rst));
+  /* PCNTR3 low half is POSR: the release wrote the CAM_RST set bit last. */
+  volatile const r_port_regs_t* port = ra8_port(RA8_PIN_PORT(rst));
+  TEST_ASSERT_NOT_NULL(port);
+  TEST_ASSERT_EQ((uint32_t)(1UL << (uint32_t)RA8_PIN_PIN(rst)), port->PCNTR3);
+
+  TEST_ASSERT_EQ(k_ra8_err_gpio_conflict, ra8_board_camera_reset());
+  TEST_END("board camera: reset pulses CAM_RST and releases it");
+}
+
+/**
+ * @brief Encode SCCB register transfers as big-endian address plus data. @details The write case must put the peripheral address byte, then the register high byte, then its low byte on the bus and leave the value as the final transmitted byte; the read case must repeat the same two address bytes and hand back the received byte; a null destination is refused before any bus traffic. The delay adapter is exercised alongside them because it shares the transport callback signature. @pre RIIC1 is up with its transmit and receive flags staged. @pre The SCCB byte trace is empty. @post Both transfers report success and the traced bytes match the encoding. @post The delay adapter leaves the millisecond tick source unchanged. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+static void test_board_camera_sccb_transfers(void)
+{
+  TEST_BEGIN("board camera: SCCB register transfers");
+  internal_board_cam_prep();
+  uint8_t value = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_board_camera_sccb_read_reg(nullptr,
+                                                (uint8_t)k_board_cam_addr,
+                                                (uint16_t)k_board_cam_reg,
+                                                nullptr));
+
+  internal_board_cam_bus_up();
+  ra8_fake_mmio_set_poll_hook(internal_board_cam_trace_hook);
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_board_camera_sccb_write_reg(nullptr,
+                                                 (uint8_t)k_board_cam_addr,
+                                                 (uint16_t)k_board_cam_reg,
+                                                 (uint8_t)k_board_cam_value));
+  ra8_fake_mmio_set_poll_hook(nullptr);
+  volatile const r_i2c_regs_t* reg = ra8_i2c_regs((uint8_t)k_ra8_board_camera_i2c_channel);
+  TEST_ASSERT(s_board_cam_trace_len >= 4U);
+  TEST_ASSERT_EQ((uint32_t)k_board_cam_addr << 1U, s_board_cam_trace[1]);
+  TEST_ASSERT_EQ(k_board_cam_reg_hi, s_board_cam_trace[2]);
+  TEST_ASSERT_EQ(k_board_cam_reg_lo, s_board_cam_trace[3]);
+  TEST_ASSERT_EQ(k_board_cam_value, reg->ICDRT);
+
+  internal_board_cam_prep();
+  internal_board_cam_bus_up();
+  volatile r_i2c_regs_t* rx = ra8_i2c_regs((uint8_t)k_ra8_board_camera_i2c_channel);
+  rx->ICDRR                 = (uint8_t)k_board_cam_rx_byte;
+  ra8_fake_mmio_set_poll_hook(internal_board_cam_trace_hook);
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_board_camera_sccb_read_reg(nullptr,
+                                                (uint8_t)k_board_cam_addr,
+                                                (uint16_t)k_board_cam_reg,
+                                                &value));
+  ra8_fake_mmio_set_poll_hook(nullptr);
+  TEST_ASSERT_EQ(k_board_cam_rx_byte, value);
+  TEST_ASSERT(s_board_cam_trace_len >= 4U);
+  TEST_ASSERT_EQ((uint32_t)k_board_cam_addr << 1U, s_board_cam_trace[1]);
+  TEST_ASSERT_EQ(k_board_cam_reg_hi, s_board_cam_trace[2]);
+  TEST_ASSERT_EQ(k_board_cam_reg_lo, s_board_cam_trace[3]);
+
+  /* The delay adapter drives the platform delay, which off-target does not
+   * advance the tick source and touches no board state. */
+  const uint32_t before = ra8_time_ms();
+  ra8_board_camera_delay_ms(nullptr, (uint32_t)k_board_cam_value);
+  TEST_ASSERT_EQ(before, ra8_time_ms());
+  TEST_END("board camera: SCCB register transfers");
+}
+
 int main(void)
 {
   test_status_get_clear();
@@ -612,5 +880,10 @@ int main(void)
   test_low_pass_set();
   test_capture_mode_set();
   test_frame_drop_set();
+  test_board_camera_xclk_bounds_and_routing();
+  test_board_camera_select_parallel();
+  test_board_camera_routes_parallel_pins();
+  test_board_camera_reset_pulses_pin();
+  test_board_camera_sccb_transfers();
   return 0;
 }
