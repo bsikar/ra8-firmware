@@ -106,6 +106,28 @@ target_compile_options(test_ra8_c6link_media PRIVATE -Wall -Wextra -Wno-unused-p
 target_include_directories(test_ra8_c6link_media PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
 add_test(NAME test_ra8_c6link_media COMMAND test_ra8_c6link_media)
 
+# test_ra8_mdl_net_c6link: the downloader's real network vtable over the same
+# generated protobuf/model transport, with independent SHA verification and
+# both caller-buffer and streaming-sink output contracts.
+add_executable(
+  test_ra8_mdl_net_c6link
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_mdl_net_c6link.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../tools/media_dl/src/mdl_net.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../tools/media_dl/src/mdl_net_c6link.c
+  ${RA8_C6LINK_TEST_SUPPORT}
+  ${RA8_C6LINK_TEST_MODEL}
+  ${RA8_C6LINK_SOURCES}
+  ${RA8_C6LINK_SOUP}
+  $<TARGET_OBJECTS:ra8_core_hal>
+)
+set_target_properties(test_ra8_mdl_net_c6link PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_options(test_ra8_mdl_net_c6link PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
+target_include_directories(
+  test_ra8_mdl_net_c6link
+  PRIVATE ${RA8_C6LINK_INCLUDE_DIRS} ${FW_ROOT}/tools/media_dl/inc ${FW_ROOT}/libs/ra8_hal/inc
+)
+add_test(NAME test_ra8_mdl_net_c6link COMMAND test_ra8_mdl_net_c6link)
+
 # test_ra8_c6link_mdl: generated inner-protobuf round trips and the portable
 # service state machine. It deliberately stays independent of the large host
 # HAL object library, so this protocol test also runs on non-Linux hosts.
