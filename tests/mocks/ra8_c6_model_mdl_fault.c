@@ -40,21 +40,23 @@ RA8_INTERNAL static void internal_clear_http_metadata(Ra8__Mdl__Chunk* chunk)
 }
 
 /**
- * @brief Mutate one decoded Chunk according to the selected fault.
- * @details Rewrites only fields needed for the selected negative or terminal
- * scenario while preserving the generated decoder's owned byte spans.
+ * @brief Mutate the state, payload or correlation of one decoded Chunk.
+ * @details Rewrites only the fields the selected state fault needs, preserving
+ * the generated decoder's owned byte spans.
  * @param[in,out] chunk Decoded generated chunk to mutate in place.
- * @param[in] fault Malformed or terminal chunk shape to inject.
- * @return Nothing.
+ * @param[in] fault Candidate chunk mutation.
+ * @return Whether @p fault named a state, payload or correlation mutation.
+ * @retval true The selected mutation was applied.
+ * @retval false @p fault belongs to the metadata family instead.
  * @pre @p chunk is non-null and caller-owned.
- * @pre @p fault selects a chunk response mutation.
- * @post Exactly the selected fields are malformed.
- * @post Decoder allocation ownership is unchanged.
+ * @pre String fields still reference decoder-owned storage.
+ * @post A recognised fault malforms exactly the fields it names.
+ * @post An unrecognised fault leaves @p chunk untouched.
  * @note Corrupt-data injection asserts that decoded data is nonempty.
  * @since 0.1.0
  */
-RA8_INTERNAL static void internal_mutate_chunk(Ra8__Mdl__Chunk*         chunk,
-                                               ra8_c6_model_mdl_fault_t fault)
+RA8_INTERNAL static bool internal_mutate_chunk_state(Ra8__Mdl__Chunk*         chunk,
+                                                     ra8_c6_model_mdl_fault_t fault)
 {
   static uint8_t bad_data = k_c6m_mdl_digest_fill;
   switch (fault) {
@@ -105,6 +107,33 @@ RA8_INTERNAL static void internal_mutate_chunk(Ra8__Mdl__Chunk*         chunk,
       TEST_ASSERT_NOT_NULL(chunk->data.data);
       chunk->data.data[0] ^= 1U;
       break;
+    default:
+      return false;
+  }
+  return true;
+}
+
+/**
+ * @brief Mutate the HTTP response metadata of one decoded Chunk.
+ * @details Rewrites exactly one status or selected header so a client vector
+ * varies one response-metadata condition against an otherwise valid chunk.
+ * @param[in,out] chunk Decoded generated chunk to mutate in place.
+ * @param[in] fault Candidate chunk mutation.
+ * @return Whether @p fault named a response-metadata mutation.
+ * @retval true The selected mutation was applied.
+ * @retval false @p fault is not a metadata mutation.
+ * @pre @p chunk is non-null and caller-owned.
+ * @pre String fields still reference decoder-owned storage.
+ * @post A recognised fault malforms exactly one metadata field.
+ * @post An unrecognised fault leaves @p chunk untouched.
+ * @note Header literals outlive the repack because the caller restores the
+ * decoder's own pointers before releasing the message.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_mutate_chunk_metadata(Ra8__Mdl__Chunk*         chunk,
+                                                        ra8_c6_model_mdl_fault_t fault)
+{
+  switch (fault) {
     case k_c6m_mdl_fault_data_http_status:
       chunk->http_status = (int32_t)k_ra8_mdl_http_status_min;
       break;
@@ -139,8 +168,32 @@ RA8_INTERNAL static void internal_mutate_chunk(Ra8__Mdl__Chunk*         chunk,
       chunk->content_type = (char*)"application/octet-stream\nX-Injected: 1";
       break;
     default:
-      TEST_ASSERT(false);
+      return false;
   }
+  return true;
+}
+
+/**
+ * @brief Mutate one decoded Chunk according to the selected fault.
+ * @details Dispatches to the state family first, then the response-metadata
+ * family, so exactly one mutation is applied per injected fault.
+ * @param[in,out] chunk Decoded generated chunk to mutate in place.
+ * @param[in] fault Malformed or terminal chunk shape to inject.
+ * @return Nothing.
+ * @pre @p chunk is non-null and caller-owned.
+ * @pre @p fault selects a chunk response mutation.
+ * @post Exactly the selected fields are malformed.
+ * @post Decoder allocation ownership is unchanged.
+ * @note A fault belonging to neither family is a fixture assertion.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_mutate_chunk(Ra8__Mdl__Chunk*         chunk,
+                                               ra8_c6_model_mdl_fault_t fault)
+{
+  if (internal_mutate_chunk_state(chunk, fault)) {
+    return;
+  }
+  TEST_ASSERT(internal_mutate_chunk_metadata(chunk, fault));
 }
 
 /**
