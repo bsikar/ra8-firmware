@@ -500,7 +500,10 @@ static ra8_err_t internal_write_book(const ra8_rabook_ctx_t*    ctx,
 {
   ra8_err_t err =
     internal_write_exact(write, write_ctx, (const uint8_t*)hdr, (uint32_t)sizeof(*hdr));
-  for (uint8_t i = 0U; (i < (uint8_t)k_rabook_segment_count) && (err == k_ra8_ok); ++i) {
+  for (uint8_t i = 0U; i < (uint8_t)k_rabook_segment_count; ++i) {
+    if (err != k_ra8_ok) {
+      break;
+    }
     err = internal_write_exact(write, write_ctx, seg[i].data, seg[i].len);
   }
   if (err != k_ra8_ok) {
@@ -545,13 +548,20 @@ static ra8_err_t internal_validate_stream_args(const ra8_rabook_ctx_t*  ctx,
   if (ctx->failed) {
     return k_ra8_err_no_mem;
   }
-  const bool external =
-    (ctx->image_pool_size != 0U) && (ctx->image_pool_mode == (uint8_t)k_rabook_pool_external);
-  if (external && ((image_read == nullptr) || (scratch == nullptr))) {
-    return k_ra8_err_null_ptr;
+  bool external = false;
+  if (ctx->image_pool_size != 0U) {
+    external = ctx->image_pool_mode == (uint8_t)k_rabook_pool_external;
   }
-  if (external && (scratch_cap == 0U)) {
-    return k_ra8_err_invalid_size;
+  if (external) {
+    if (image_read == nullptr) {
+      return k_ra8_err_null_ptr;
+    }
+    if (scratch == nullptr) {
+      return k_ra8_err_null_ptr;
+    }
+    if (scratch_cap == 0U) {
+      return k_ra8_err_invalid_size;
+    }
   }
   return k_ra8_ok;
 }
