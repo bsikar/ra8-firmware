@@ -16,7 +16,8 @@
 #
 # Functions here: assert_scope_covered, detect_sdk_args,
 # route_files_into_lists, run_pass_host, run_pass_firmware, run_pass_cxx,
-# run_pass_objc, run_pass_ra8p1, run_pass_tools, run_all_passes
+# run_pass_objc, run_pass_ra8p1, run_pass_tools, run_pass_included,
+# run_all_passes
 
 # ---------------------------------------------------------------------------
 # State shared between run_clang_tidy and the per-pass functions below.
@@ -98,7 +99,7 @@ detect_sdk_args() {
 # ---------------------------------------------------------------------------
 route_files_into_lists() {
   local pass
-  for pass in host firmware cxx objc ra8p1 tools; do
+  for pass in host firmware cxx objc ra8p1 tools included; do
     : >"$TIDY_LIST_DIR/$pass.files"
   done
   local f bucket
@@ -108,7 +109,7 @@ route_files_into_lists() {
     # reads, and those files would go unlinted in silence -- the failure mode
     # this whole script is written to prevent. Refuse instead.
     case "$bucket" in
-      host | firmware | cxx | objc | ra8p1 | tools) ;;
+      host | firmware | cxx | objc | ra8p1 | tools | included) ;;
       *)
         print_error "route_bucket returned unknown bucket '$bucket' for $f."
         print_error "Every bucket needs a run_pass_* function, or its files go unlinted."
@@ -237,6 +238,22 @@ run_pass_tools() {
 #
 # $1  clang-tidy binary
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Pass 7 -- the include-fragment headers, which are analysed through their
+# includers rather than directly (see header_is_include_fragment in collect.sh).
+#
+# This pass runs no clang-tidy, and that is the point of writing it down: the
+# alternative is dropping those files out of route_files_into_lists silently,
+# and a silent drop is the failure mode this whole script exists to prevent.
+# It prints the count on every run so the decision is visible in the log and a
+# sudden jump is noticeable in a diff.
+# ---------------------------------------------------------------------------
+run_pass_included() {
+  local count
+  count="$(wc -l <"$TIDY_LIST_DIR/included.files")"
+  print_status "include-fragment headers: $count analysed via their includers, not directly"
+}
+
 run_all_passes() {
   local clang_tidy="$1"
   local exit_code=0
@@ -246,5 +263,6 @@ run_all_passes() {
   run_pass_objc "$clang_tidy" || exit_code=1
   run_pass_ra8p1 "$clang_tidy" || exit_code=1
   run_pass_tools "$clang_tidy" || exit_code=1
+  run_pass_included
   return "$exit_code"
 }
