@@ -39,42 +39,44 @@
 
 RA8_PRIV ra8_err_t priv_fs_posix_errno(int value)
 {
-  if (value == 0) {
-    return k_ra8_ok;
-  }
-  if (value == ENOENT || value == ENOTDIR) {
-    return k_ra8_err_not_found;
-  }
-  if (value == EEXIST) {
-    return k_ra8_err_exists;
-  }
-  if (value == ENOSPC || value == EDQUOT || value == EMFILE || value == ENFILE) {
-    return k_ra8_err_no_mem;
-  }
-  if (value == ENOTEMPTY) {
-    return k_ra8_err_not_empty;
-  }
-  if (value == EACCES || value == EPERM || value == ELOOP) {
-    return k_ra8_err_access_denied;
-  }
-  if (value == EINVAL || value == EXDEV || value == ENAMETOOLONG || value == EISDIR) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (value == EFBIG || value == EOVERFLOW) {
-    return k_ra8_err_invalid_size;
-  }
-  if (value == EBADF) {
-    return k_ra8_err_invalid_state;
-  }
-  if (value == EBUSY) {
-    return k_ra8_err_busy;
-  }
+  switch (value) {
+    case 0:
+      return k_ra8_ok;
+    case ENOENT:
+    case ENOTDIR:
+      return k_ra8_err_not_found;
+    case EEXIST:
+      return k_ra8_err_exists;
+    case ENOSPC:
+    case EDQUOT:
+    case EMFILE:
+    case ENFILE:
+      return k_ra8_err_no_mem;
+    case ENOTEMPTY:
+      return k_ra8_err_not_empty;
+    case EACCES:
+    case EPERM:
+    case ELOOP:
+      return k_ra8_err_access_denied;
+    case EINVAL:
+    case EXDEV:
+    case ENAMETOOLONG:
+    case EISDIR:
+      return k_ra8_err_invalid_arg;
+    case EFBIG:
+    case EOVERFLOW:
+      return k_ra8_err_invalid_size;
+    case EBADF:
+      return k_ra8_err_invalid_state;
+    case EBUSY:
+      return k_ra8_err_busy;
 #if defined(ENOTSUP)
-  if (value == ENOTSUP) {
-    return k_ra8_err_not_supported;
-  }
+    case ENOTSUP:
+      return k_ra8_err_not_supported;
 #endif
-  return k_ra8_fail;
+    default:
+      return k_ra8_fail;
+  }
 }
 
 RA8_PRIV ra8_err_t priv_fs_posix_close_fd(int* fd)
@@ -409,12 +411,20 @@ RA8_PRIV fw_fs_timestamp_t priv_fs_posix_timestamp(time_t seconds, long nanoseco
 {
   fw_fs_timestamp_t portable = {};
   struct tm         utc      = {};
-  if (nanoseconds < 0L || nanoseconds > (long)k_posix_nanosecond_max ||
-      gmtime_r(&seconds, &utc) == nullptr) {
+  if (nanoseconds < 0L) {
+    return portable;
+  }
+  if (nanoseconds > (long)k_posix_nanosecond_max) {
+    return portable;
+  }
+  if (gmtime_r(&seconds, &utc) == nullptr) {
     return portable;
   }
   const int64_t year = (int64_t)utc.tm_year + (int64_t)k_posix_epoch_year_offset;
-  if (year < 0 || year > (int64_t)UINT16_MAX) {
+  if (year < 0) {
+    return portable;
+  }
+  if (year > (int64_t)UINT16_MAX) {
     return portable;
   }
   portable.value.nanosecond     = (uint32_t)nanoseconds;
@@ -468,7 +478,10 @@ RA8_PRIV ra8_err_t priv_fs_posix_stage_path(const char* destination, uint32_t id
 {
   uint16_t last_slash = 0U;
   uint16_t length     = 0U;
-  while (length < (uint16_t)k_fw_fs_path_cap && destination[length] != '\0') {
+  while (length < (uint16_t)k_fw_fs_path_cap) {
+    if (destination[length] == '\0') {
+      break;
+    }
     if (destination[length] == '/') {
       last_slash = length;
     }
@@ -516,10 +529,11 @@ RA8_PRIV ra8_err_t priv_fs_posix_listdir(void*           ctx,
     fw_fs_dirent_value_t value   = {};
     bool                 present = false;
     result                       = priv_fs_posix_dir_next(ctx, &directory, &value, &present);
-    if ((result != k_ra8_ok) || !present) {
-      if (result == k_ra8_ok) {
-        *out_complete = true;
-      }
+    if (result != k_ra8_ok) {
+      break;
+    }
+    if (!present) {
+      *out_complete = true;
       break;
     }
     if (*out_count >= max_entries) {
@@ -532,7 +546,10 @@ RA8_PRIV ra8_err_t priv_fs_posix_listdir(void*           ctx,
     bool                 keep_going = true;
     result                          = callback(callback_ctx, &entry, &keep_going);
     ++(*out_count);
-    if ((result != k_ra8_ok) || !keep_going) {
+    if (result != k_ra8_ok) {
+      break;
+    }
+    if (!keep_going) {
       break;
     }
   }
