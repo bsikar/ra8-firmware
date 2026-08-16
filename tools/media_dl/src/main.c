@@ -306,7 +306,6 @@ RA8_INTERNAL static ra8_err_t internal_prepare_credentials(const mdl_args_t* arg
                                                            ra8_io_stream_t*  diagnostic)
 {
   mdl_net_bytes_t cookies  = {};
-  mdl_net_bytes_t ca_pem   = {};
   size_t          required = 0U;
   size_t          used     = 0U;
   policy->cookies          = (mdl_net_bytes_t){};
@@ -350,9 +349,8 @@ RA8_INTERNAL static ra8_err_t internal_prepare_credentials(const mdl_args_t* arg
   if ((error != k_ra8_ok) || (used == 0U)) {
     return (error == k_ra8_ok) ? k_ra8_err_invalid_arg : error;
   }
-  ca_pem          = (mdl_net_bytes_t){.data = s_ca_pem_input, .length = used};
   policy->cookies = cookies;
-  policy->ca_pem  = ca_pem;
+  policy->ca_pem  = (mdl_net_bytes_t){.data = s_ca_pem_input, .length = used};
   return k_ra8_ok;
 }
 

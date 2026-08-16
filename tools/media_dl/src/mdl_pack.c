@@ -86,9 +86,8 @@ size_t mdl_pack_one_meta(mdl_storage_t*           storage,
   const char* ext = mdl_format_ext(format);
   char        dir[k_pack_dir_bytes];
   if (!mdl_path_join(series_dir, chap_id, dir, sizeof(dir))) {
-    ra8_err_t output_error = internal_pack_text3(diagnostic, "  export ", chap_id, ".");
-    output_error           = internal_pack_text3(diagnostic, "", ext, " path rejected, skipped\n");
-    (void)output_error;
+    (void)internal_pack_text3(diagnostic, "  export ", chap_id, ".");
+    (void)internal_pack_text3(diagnostic, "", ext, " path rejected, skipped\n");
     return 1U;
   }
 
