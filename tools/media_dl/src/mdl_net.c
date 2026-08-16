@@ -17,7 +17,30 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "mdl_net_internal.h"
 #include "ra8_attributes.h"
+
+/** @brief HTTP statuses that have downloader-specific handling. */
+typedef enum : long {
+  k_mdl_http_client_error = 400L, /**< First client-error status. */
+  k_mdl_http_too_many     = 429L, /**< Too Many Requests.        */
+  k_mdl_http_server_error = 500L, /**< First server-error status. */
+  k_mdl_http_unavailable  = 503L, /**< Service Unavailable.       */
+} mdl_http_status_t;
+
+RA8_PRIV ra8_err_t priv_mdl_net_classify_http(long status)
+{
+  if ((status == k_mdl_http_too_many) || (status == k_mdl_http_unavailable)) {
+    return k_ra8_err_busy;
+  }
+  if (status >= k_mdl_http_server_error) {
+    return k_ra8_fail;
+  }
+  if (status >= k_mdl_http_client_error) {
+    return k_ra8_err_not_found;
+  }
+  return k_ra8_ok;
+}
 
 /**
  * @brief Zero a caller-supplied response block so early returns leave it clean.
