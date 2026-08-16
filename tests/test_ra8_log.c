@@ -85,6 +85,129 @@ typedef enum : uintptr_t {
 } test_itm_addr_t;
 
 /**
+ * @enum log_sink_cap_t
+ * @brief Capacity of the capturing byte sink installed by the sink vector.
+ */
+typedef enum : uint16_t {
+  k_log_sink_cap = 128U, /**< Capture buffer size in bytes, NUL included. */
+} log_sink_cap_t;
+
+/**
+ * @struct log_capture_t
+ * @brief Everything the capturing byte sink saw while one log line was emitted.
+ *
+ * @details The default backend hands the sink one byte at a time, so the only
+ *          way to assert on a whole line is to accumulate it. `dropped` exists
+ *          so a line that outgrew the buffer fails loudly instead of silently
+ *          comparing equal to its own truncation.
+ *
+ * @invariant `text` is NUL-terminated at index `len`.
+ * @invariant `dropped` is 0 whenever the captured line fitted.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  char     text[k_log_sink_cap]; /**< Bytes the logger handed to the sink.  */
+  uint32_t len;                  /**< Number of bytes captured in `text`.   */
+  uint32_t dropped;              /**< Bytes refused after `text` filled up. */
+} log_capture_t;
+
+/**
+ * @var s_log_capture
+ * @brief Capture buffer the byte-sink vector installs on the default backend.
+ * @details Holds the exact bytes ::internal_emit_line_i and friends produced,
+ *          so the assertions can compare a whole rendered line rather than
+ *          merely observing that a call returned.
+ * @note Single-threaded test fixture; no synchronization is provided.
+ * @warning Reset it with ::internal_capture_reset before every emit.
+ * @since 0.1.0
+ */
+static log_capture_t s_log_capture = {};
+
+/**
+ * @brief Append one log byte to ::s_log_capture.
+ *
+ * @details Installed through ::ra8_log_set_byte_sink, which is what makes the
+ *          hosted backend report itself ready; without it every emitter
+ *          short-circuits before rendering anything.
+ *
+ * @param[in,out] ctx  Capture buffer cookie (always &::s_log_capture).
+ * @param[in]     byte The log byte the backend produced.
+ *
+ * @return Nothing.
+ *
+ * @pre @p ctx addresses one writable ::log_capture_t.
+ * @pre That buffer was reset for the line being captured.
+ * @post The byte is appended, or `dropped` has been incremented.
+ * @post `text` remains NUL-terminated.
+ *
+ * @note Not thread-safe; the test fixture is single-threaded.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_capture_byte(void* ctx, uint8_t byte)
+{
+  log_capture_t* cap = (log_capture_t*)ctx;
+  if (cap->len >= ((uint32_t)k_log_sink_cap - 1U)) {
+    cap->dropped++;
+    return;
+  }
+  cap->text[cap->len] = (char)byte;
+  cap->len++;
+  cap->text[cap->len] = '\0';
+}
+
+/**
+ * @brief Empty ::s_log_capture before the next line is emitted.
+ *
+ * @details Each vector asserts on one complete line, so the buffer has to start
+ *          empty; leaving it accumulating would turn a missing line into a
+ *          passing comparison against the previous one.
+ *
+ * @return Nothing.
+ *
+ * @pre ::s_log_capture is not being written concurrently.
+ * @pre The previous line's assertions have already run.
+ * @post `len` and `dropped` are zero.
+ * @post `text` is an empty string.
+ *
+ * @note Not thread-safe; the test fixture is single-threaded.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_capture_reset(void)
+{
+  s_log_capture = (log_capture_t){};
+}
+
+/**
+ * @brief Require ::s_log_capture to hold exactly @p expected.
+ *
+ * @details Compares the length as well as the bytes, so a line that merely
+ *          starts with @p expected -- or one the capture buffer truncated --
+ *          fails rather than passes.
+ *
+ * @param[in] expected The complete line the backend should have rendered.
+ *
+ * @return Nothing.
+ *
+ * @pre @p expected is a NUL-terminated string.
+ * @pre Exactly one line was emitted since the last reset.
+ * @post No fixture state is modified.
+ * @post The process has exited when the captured bytes differ.
+ *
+ * @note Not thread-safe; the test fixture is single-threaded.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_expect_capture(const char* expected)
+{
+  TEST_ASSERT_EQ(0U, s_log_capture.dropped);
+  TEST_ASSERT_EQ((uint32_t)strlen(expected), s_log_capture.len);
+  TEST_ASSERT(strcmp(s_log_capture.text, expected) == 0);
+}
+
+/**
  * @brief Arm the ITM registers so internal_itm_ready() returns true.
  *
  * @details Programs the fake TCR, TENR, and stimulus registers with the
@@ -726,6 +849,82 @@ RA8_INTERNAL static void internal_test_mcdc_itm_put_u32_loop(void)
   TEST_END("ra8_log put_u32 MC/DC: value!=0 && i<max_digits");
 }
 
+/**
+ * @test internal_test_log_sink_signed_value_lines
+ *
+ * @brief Assert the exact bytes the signed-value emitter renders into a sink.
+ *
+ * @details
+ * On a hosted build the default backend reports itself ready only once a byte
+ * sink is installed, so this is the vector that actually runs the signed
+ * tagged-line renderer end to end: the bracketed tag, the level, the `=`
+ * separator, the sign, the digits and the CR/LF terminator. Every other log
+ * vector in this file drives an unarmed backend and can therefore only observe
+ * that a call returned.
+ *
+ * The vectors are chosen to separate the branches inside the decimal
+ * conversion: a negative value emits the `-` and negates through `int64_t`, a
+ * positive value skips both, zero takes the single-digit fast path that never
+ * enters the digit loop, and the two `int32_t` extremes prove `INT32_MIN` is
+ * rendered without signed-overflow behaviour. The final vector removes the sink
+ * again and requires the capture to stay empty, so the assertions above cannot
+ * be satisfied by anything other than the emitter running.
+ *
+ * @pre The fake MMIO map is resettable and ITM is deliberately left unarmed.
+ * @pre ::s_log_capture is large enough for the longest line asserted here.
+ * @post Every asserted line matched the backend's output byte for byte.
+ * @post The byte sink is uninstalled again before the vector returns.
+ *
+ * @note The ITM registers are never armed: the sink is the whole backend here.
+ *
+ * @since 0.1.0
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- `if (value < 0)`, `if (value == 0U)`
+ * and the sink-installed check are each a single condition; the bounded digit
+ * loop's `&&` is covered by ::internal_test_mcdc_itm_put_u32_loop)
+ */
+RA8_INTERNAL static void internal_test_log_sink_signed_value_lines(void)
+{
+  TEST_BEGIN("ra8_log renders signed-value lines byte-for-byte into a sink");
+  ra8_fake_mmap_reset();
+  ra8_log_set_byte_sink(internal_capture_byte, &s_log_capture);
+  ra8_log_init();
+
+  internal_capture_reset();
+  ra8_log_emit_debug_val("SINK", "delta", (int32_t)-k_log_val_small_signed);
+  internal_expect_capture("[SINK] DEBUG: delta=-42\r\n");
+
+  internal_capture_reset();
+  ra8_log_emit_debug_val("SINK", "delta", (int32_t)k_log_val_small_signed);
+  internal_expect_capture("[SINK] DEBUG: delta=42\r\n");
+
+  internal_capture_reset();
+  ra8_log_emit_debug_val("SINK", "delta", 0);
+  internal_expect_capture("[SINK] DEBUG: delta=0\r\n");
+
+  internal_capture_reset();
+  ra8_log_emit_debug_val("SINK", "edge", (int32_t)(-k_log_val_i32_max - 1));
+  internal_expect_capture("[SINK] DEBUG: edge=-2147483648\r\n");
+
+  internal_capture_reset();
+  ra8_log_emit_debug_val("SINK", "edge", (int32_t)k_log_val_i32_max);
+  internal_expect_capture("[SINK] DEBUG: edge=2147483647\r\n");
+
+  internal_capture_reset();
+  ra8_log_emit_info_val("SINK", "count", 0U);
+  internal_expect_capture("[SINK] INFO: count=0\r\n");
+
+  /* Removing the sink must silence the hosted backend completely. */
+  ra8_log_set_byte_sink(nullptr, nullptr);
+  internal_capture_reset();
+  ra8_log_emit_debug_val("SINK", "delta", (int32_t)-k_log_val_small_signed);
+  TEST_ASSERT_EQ(0U, s_log_capture.len);
+  TEST_ASSERT_EQ(0U, s_log_capture.dropped);
+
+  TEST_END("ra8_log renders signed-value lines byte-for-byte into a sink");
+}
+
 int main(void)
 {
   internal_test_log_unbound_host_drops();
@@ -744,5 +943,6 @@ int main(void)
   internal_test_err_to_str_every_code();
   internal_test_err_to_str_unknown_default();
   internal_test_mcdc_itm_put_u32_loop();
+  internal_test_log_sink_signed_value_lines();
   return 0;
 }
