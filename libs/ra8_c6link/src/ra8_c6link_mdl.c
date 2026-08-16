@@ -110,7 +110,8 @@ RA8_INTERNAL static bool internal_mdl_http_response_valid(const Ra8__Mdl__Chunk*
   if (msg->state != RA8__MDL__STATE__STATE_COMPLETE) {
     return (msg->http_status == 0) && empty;
   }
-  return (msg->http_status >= 100) && (msg->http_status <= 599) &&
+  return (msg->http_status >= (int32_t)k_ra8_mdl_http_status_min) &&
+         (msg->http_status <= (int32_t)k_ra8_mdl_http_status_max) &&
          internal_mdl_http_field_valid(msg->retry_after, k_ra8_mdl_retry_after_max) &&
          internal_mdl_http_field_valid(msg->etag, k_ra8_mdl_etag_max) &&
          internal_mdl_http_field_valid(msg->last_modified, k_ra8_mdl_http_date_max) &&

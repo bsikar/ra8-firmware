@@ -32,6 +32,20 @@ typedef enum : uint16_t {
   k_ra8_mdl_timeout_ms_max   = 60000U, /**< Maximum caller-selected HTTP timeout in ms. */
 } ra8_mdl_dimension_t;
 
+/**
+ * @brief Inclusive bounds of the HTTP status codes the protocol admits.
+ * @details RFC 9110 assigns status codes the three-digit range 100..599, so a
+ * response outside it is malformed rather than merely unsuccessful. Both
+ * endpoints reject such a response instead of forwarding it.
+ * @invariant ::k_ra8_mdl_http_status_min <= ::k_ra8_mdl_http_status_max.
+ * @see ra8_mdl_http_response_t
+ * @since 0.1.0
+ */
+typedef enum : uint16_t {
+  k_ra8_mdl_http_status_min = 100U, /**< Lowest well-formed HTTP status code.  */
+  k_ra8_mdl_http_status_max = 599U, /**< Highest well-formed HTTP status code. */
+} ra8_mdl_http_status_bound_t;
+
 /** @brief Version included in every media RPC request and response. */
 typedef enum : uint32_t {
   k_ra8_mdl_protocol_version = 3U, /**< Typed HTTP-artifact transfer protocol. */

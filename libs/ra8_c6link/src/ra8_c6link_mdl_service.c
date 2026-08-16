@@ -86,7 +86,8 @@ RA8_INTERNAL static bool internal_mdl_request_field_valid(const char* text, size
  */
 RA8_INTERNAL static bool internal_mdl_response_valid(const ra8_mdl_http_response_t* response)
 {
-  return (response->status >= 100) && (response->status <= 599) &&
+  return (response->status >= (int32_t)k_ra8_mdl_http_status_min) &&
+         (response->status <= (int32_t)k_ra8_mdl_http_status_max) &&
          internal_mdl_request_field_valid(response->retry_after, sizeof(response->retry_after)) &&
          internal_mdl_request_field_valid(response->etag, sizeof(response->etag)) &&
          internal_mdl_request_field_valid(response->last_modified,
@@ -450,7 +451,7 @@ static ra8_err_t internal_mdl_next_capacity(uint32_t max_data, size_t response_c
   terminal.total_bytes      = UINT64_MAX;
   terminal.state            = RA8__MDL__STATE__STATE_COMPLETE;
   terminal.sha256           = (ProtobufCBinaryData){.len = sizeof(max_digest), .data = max_digest};
-  terminal.http_status      = 599;
+  terminal.http_status      = (int32_t)k_ra8_mdl_http_status_max;
   terminal.retry_after      = retry_after;
   terminal.etag             = etag;
   terminal.last_modified    = last_modified;
