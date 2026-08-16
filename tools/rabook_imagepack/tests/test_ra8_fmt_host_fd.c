@@ -122,28 +122,28 @@ static void internal_test(void)
   CHECK(internal_create(input, source_bytes, sizeof(source_bytes)));
 
   ra8_fmt_host_source_t source = {.fd = -1};
-  CHECK(ra8_fmt_host_source_open(input, sizeof(source_bytes), &source) == k_ra8_ok);
+  CHECK(priv_fmt_host_source_open(input, sizeof(source_bytes), &source) == k_ra8_ok);
   uint8_t readback[k_test_data_len] = {};
   size_t  got                       = 0U;
   CHECK(source.source.read_at(source.source.ctx, 0U, readback, sizeof(readback), &got) == k_ra8_ok);
   CHECK((got == sizeof(readback)) && (memcmp(readback, source_bytes, sizeof(readback)) == 0));
-  ra8_fmt_host_source_close(&source);
+  priv_fmt_host_source_close(&source);
 
   CHECK(symlink(input, link) == 0);
-  CHECK(ra8_fmt_host_source_open(link, sizeof(source_bytes), &source) == k_ra8_err_access_denied);
+  CHECK(priv_fmt_host_source_open(link, sizeof(source_bytes), &source) == k_ra8_err_access_denied);
   CHECK(internal_create(output, source_bytes, sizeof(source_bytes)));
   ra8_fmt_host_transaction_t state;
   ra8_fmt_transaction_t      transaction;
-  CHECK(ra8_fmt_host_transaction_begin(output, &state, &transaction) == k_ra8_ok);
+  CHECK(priv_fmt_host_transaction_begin(output, &state, &transaction) == k_ra8_ok);
   CHECK(transaction.ops->append(transaction.ctx, output_bytes, sizeof(output_bytes)) == k_ra8_ok);
   CHECK(transaction.ops->commit(transaction.ctx) == k_ra8_ok);
-  CHECK(ra8_fmt_host_source_open(output, sizeof(output_bytes), &source) == k_ra8_ok);
+  CHECK(priv_fmt_host_source_open(output, sizeof(output_bytes), &source) == k_ra8_ok);
   got = 0U;
   CHECK(source.source.read_at(source.source.ctx, 0U, readback, sizeof(readback), &got) == k_ra8_ok);
   CHECK((got == sizeof(readback)) && (memcmp(readback, output_bytes, sizeof(readback)) == 0));
-  ra8_fmt_host_source_close(&source);
+  priv_fmt_host_source_close(&source);
 
-  CHECK(ra8_fmt_host_transaction_begin(aborted, &state, &transaction) == k_ra8_ok);
+  CHECK(priv_fmt_host_transaction_begin(aborted, &state, &transaction) == k_ra8_ok);
   CHECK(transaction.ops->append(transaction.ctx, output_bytes, sizeof(output_bytes)) == k_ra8_ok);
   transaction.ops->abort(transaction.ctx);
   CHECK(access(aborted, F_OK) != 0);

@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_fmt_stream.h"
 
 /** @brief Bounded host path and transaction-name capacities. */
@@ -55,8 +56,8 @@ typedef struct {
 } ra8_fmt_host_transaction_t;
 
 /** @brief Open a bounded, regular, non-symlink input object. */
-[[nodiscard]] ra8_err_t
-ra8_fmt_host_source_open(const char* path, uint64_t max_size, ra8_fmt_host_source_t* out);
+RA8_PRIV [[nodiscard]] ra8_err_t
+priv_fmt_host_source_open(const char* path, uint64_t max_size, ra8_fmt_host_source_t* out);
 
 /**
  * @brief Confirm two opens captured the same unchanged regular-file object.
@@ -68,8 +69,8 @@ ra8_fmt_host_source_open(const char* path, uint64_t max_size, ra8_fmt_host_sourc
  * @note Pure over captured evidence.
  * @since 0.1.0
  */
-[[nodiscard]] bool ra8_fmt_host_sources_same(const ra8_fmt_host_source_t* first,
-                                             const ra8_fmt_host_source_t* second);
+RA8_PRIV [[nodiscard]] bool priv_fmt_host_sources_same(const ra8_fmt_host_source_t* first,
+                                                       const ra8_fmt_host_source_t* second);
 
 /**
  * @brief Revalidate one open descriptor against its captured snapshot.
@@ -83,7 +84,8 @@ ra8_fmt_host_source_open(const char* path, uint64_t max_size, ra8_fmt_host_sourc
  * @note Detects in-place concurrent mutation between verifier phase boundaries.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fmt_host_source_unchanged(const ra8_fmt_host_source_t* source);
+RA8_PRIV [[nodiscard]] ra8_err_t
+priv_fmt_host_source_unchanged(const ra8_fmt_host_source_t* source);
 
 /**
  * @brief Close an open host source; safe after failed open.
@@ -96,10 +98,10 @@ ra8_fmt_host_source_open(const char* path, uint64_t max_size, ra8_fmt_host_sourc
  * @note Idempotent for sequential cleanup calls.
  * @since 0.1.0
  */
-void ra8_fmt_host_source_close(ra8_fmt_host_source_t* source);
+RA8_PRIV void priv_fmt_host_source_close(ra8_fmt_host_source_t* source);
 
 /** @brief Obtain the exact-write portable sink for a raw descriptor. */
-[[nodiscard]] ra8_fmt_sink_t ra8_fmt_host_fd_sink(ra8_fmt_host_fd_sink_t* state);
+RA8_PRIV [[nodiscard]] ra8_fmt_sink_t priv_fmt_host_fd_sink(ra8_fmt_host_fd_sink_t* state);
 
 /**
  * @brief Adapt a logging byte to an injected raw-fd sink.
@@ -114,9 +116,9 @@ void ra8_fmt_host_source_close(ra8_fmt_host_source_t* source);
  * @note Matches the no-status byte-sink contract of `ra8_log_set_byte_sink()`.
  * @since 0.1.0
  */
-void ra8_fmt_host_log_byte(void* ctx, uint8_t byte);
+RA8_PRIV void priv_fmt_host_log_byte(void* ctx, uint8_t byte);
 
 /** @brief Begin a sibling-temp durable replacement transaction. */
-[[nodiscard]] ra8_err_t ra8_fmt_host_transaction_begin(const char*                 path,
-                                                       ra8_fmt_host_transaction_t* state,
-                                                       ra8_fmt_transaction_t*      out);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_fmt_host_transaction_begin(const char*                 path,
+                                                                 ra8_fmt_host_transaction_t* state,
+                                                                 ra8_fmt_transaction_t*      out);

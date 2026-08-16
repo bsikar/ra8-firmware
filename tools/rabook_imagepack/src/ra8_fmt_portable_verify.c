@@ -410,10 +410,10 @@ static void internal_cleanup(ra8_fmt_host_source_t* ref,
                              ra8_fmt_host_spool_t*  ref_spool,
                              ra8_fmt_host_spool_t*  got_spool)
 {
-  ra8_fmt_host_spool_close(ref_spool);
-  ra8_fmt_host_spool_close(got_spool);
-  ra8_fmt_host_source_close(ref);
-  ra8_fmt_host_source_close(got);
+  priv_fmt_host_spool_close(ref_spool);
+  priv_fmt_host_spool_close(got_spool);
+  priv_fmt_host_source_close(ref);
+  priv_fmt_host_source_close(got);
 }
 
 /**
@@ -495,9 +495,9 @@ static int internal_execute(const verify_cli_args_t*                 args,
   ra8_fmt_host_spool_t got_host_spool = {.fd = -1};
   ra8_fmt_spool_t      ref_spool      = {};
   ra8_fmt_spool_t      got_spool      = {};
-  ra8_err_t            rc = ra8_fmt_host_spool_open(args->input, &ref_host_spool, &ref_spool);
+  ra8_err_t            rc = priv_fmt_host_spool_open(args->input, &ref_host_spool, &ref_spool);
   if (rc == k_ra8_ok) {
-    rc = ra8_fmt_host_spool_open(args->input, &got_host_spool, &got_spool);
+    rc = priv_fmt_host_spool_open(args->input, &got_host_spool, &got_spool);
   }
   if (rc != k_ra8_ok) {
     internal_status(errors, "ra8_fmt: cannot create verify spool (rc=", rc);
@@ -508,7 +508,7 @@ static int internal_execute(const verify_cli_args_t*                 args,
   ra8_fmt_transaction_t      dump      = {};
   ra8_fmt_transaction_t*     dump_ptr  = nullptr;
   if (args->output != nullptr) {
-    rc = ra8_fmt_host_transaction_begin(args->output, &host_dump, &dump);
+    rc = priv_fmt_host_transaction_begin(args->output, &host_dump, &dump);
     if (rc != k_ra8_ok) {
       dump = (ra8_fmt_transaction_t){.ops = &s_failed_transaction_ops, .ctx = nullptr};
     }
@@ -532,10 +532,10 @@ static int internal_execute(const verify_cli_args_t*                 args,
   return (rc == k_ra8_ok) ? (int)k_verify_cli_ok : (int)k_verify_cli_fail;
 }
 
-int ra8_fmt_try_portable_verify(int                      argc,
-                                char**                   argv,
-                                ra8_fmt_cli_workspace_t* workspace,
-                                bool*                    handled)
+RA8_PRIV int priv_fmt_try_portable_verify(int                      argc,
+                                          char**                   argv,
+                                          ra8_fmt_cli_workspace_t* workspace,
+                                          bool*                    handled)
 {
   if ((handled == nullptr) || (workspace == nullptr)) {
     return (int)k_verify_cli_fail;
@@ -552,17 +552,17 @@ int ra8_fmt_try_portable_verify(int                      argc,
   *handled                            = true;
   ra8_fmt_host_fd_sink_t error_state  = {.fd = STDERR_FILENO};
   ra8_fmt_host_fd_sink_t report_state = {.fd = STDOUT_FILENO};
-  const ra8_fmt_sink_t   errors       = ra8_fmt_host_fd_sink(&error_state);
-  const ra8_fmt_sink_t   report       = ra8_fmt_host_fd_sink(&report_state);
+  const ra8_fmt_sink_t   errors       = priv_fmt_host_fd_sink(&error_state);
+  const ra8_fmt_sink_t   report       = priv_fmt_host_fd_sink(&report_state);
   ra8_fmt_host_source_t  ref_source   = {.fd = -1};
   ra8_fmt_host_source_t  got_source   = {.fd = -1};
-  ra8_err_t              rc = ra8_fmt_host_source_open(args.input, k_verify_cli_input, &ref_source);
+  ra8_err_t rc = priv_fmt_host_source_open(args.input, k_verify_cli_input, &ref_source);
   if (rc == k_ra8_ok) {
-    rc = ra8_fmt_host_source_open(args.input, k_verify_cli_input, &got_source);
+    rc = priv_fmt_host_source_open(args.input, k_verify_cli_input, &got_source);
   }
-  if ((rc == k_ra8_ok) && (!ra8_fmt_host_sources_same(&ref_source, &got_source) ||
-                           (ra8_fmt_host_source_unchanged(&ref_source) != k_ra8_ok) ||
-                           (ra8_fmt_host_source_unchanged(&got_source) != k_ra8_ok))) {
+  if ((rc == k_ra8_ok) && (!priv_fmt_host_sources_same(&ref_source, &got_source) ||
+                           (priv_fmt_host_source_unchanged(&ref_source) != k_ra8_ok) ||
+                           (priv_fmt_host_source_unchanged(&got_source) != k_ra8_ok))) {
     rc = k_ra8_err_validation_failed;
   }
   if (rc != k_ra8_ok) {

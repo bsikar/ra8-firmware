@@ -288,7 +288,7 @@ static ra8_err_t internal_run(const ra8_fmt_source_t*                   source,
 {
   ra8_fmt_host_transaction_t host_transaction;
   ra8_fmt_transaction_t      transaction;
-  ra8_err_t rc = ra8_fmt_host_transaction_begin(output, &host_transaction, &transaction);
+  ra8_err_t rc = priv_fmt_host_transaction_begin(output, &host_transaction, &transaction);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -302,11 +302,11 @@ static ra8_err_t internal_run(const ra8_fmt_source_t*                   source,
   return rc;
 }
 
-int ra8_fmt_try_portable_convert(int      argc,
-                                 char**   argv,
-                                 uint8_t* arena,
-                                 size_t   arena_cap,
-                                 bool*    handled)
+RA8_PRIV int priv_fmt_try_portable_convert(int      argc,
+                                           char**   argv,
+                                           uint8_t* arena,
+                                           size_t   arena_cap,
+                                           bool*    handled)
 {
   if ((handled == nullptr) || (arena == nullptr)) {
     return (int)k_convert_cli_fail;
@@ -322,13 +322,13 @@ int ra8_fmt_try_portable_convert(int      argc,
   }
   *handled                           = true;
   ra8_fmt_host_fd_sink_t error_state = {.fd = STDERR_FILENO};
-  const ra8_fmt_sink_t   errors      = ra8_fmt_host_fd_sink(&error_state);
+  const ra8_fmt_sink_t   errors      = priv_fmt_host_fd_sink(&error_state);
   if ((args.input == nullptr) || (args.output == nullptr)) {
     (void)internal_text(&errors, "ra8_fmt: JOF convert needs --in and --out\n");
     return (int)k_convert_cli_usage;
   }
   ra8_fmt_host_source_t source = {.fd = -1};
-  ra8_err_t             rc     = ra8_fmt_host_source_open(args.input, k_convert_cli_input, &source);
+  ra8_err_t             rc = priv_fmt_host_source_open(args.input, k_convert_cli_input, &source);
   if (rc != k_ra8_ok) {
     internal_status(&errors, "ra8_fmt: cannot open convert input (rc=", rc);
     return (int)k_convert_cli_fail;
@@ -344,11 +344,11 @@ int ra8_fmt_try_portable_convert(int      argc,
     rc = k_ra8_err_invalid_size;
   }
   ra8_fmt_host_fd_sink_t output_state = {.fd = STDOUT_FILENO};
-  const ra8_fmt_sink_t   report       = ra8_fmt_host_fd_sink(&output_state);
+  const ra8_fmt_sink_t   report       = priv_fmt_host_fd_sink(&output_state);
   if (rc == k_ra8_ok) {
     rc = internal_run(&source.source, args.output, &requirements, arena, webp_offset, &report);
   }
-  ra8_fmt_host_source_close(&source);
+  priv_fmt_host_source_close(&source);
   if ((rc != k_ra8_ok) && sized && (high_water <= arena_cap)) {
     internal_status(&errors, "ra8_fmt: JOF convert failed (rc=", rc);
   } else if ((rc != k_ra8_ok) && !sized) {
