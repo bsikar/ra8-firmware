@@ -378,6 +378,26 @@ target_compile_options(test_media_dl_net PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(test_media_dl_net PRIVATE CURL::libcurl)
 add_test(NAME test_media_dl_net COMMAND test_media_dl_net)
 
+# The C6 network backend is production media_dl code but is not part of the
+# host CLI's libcurl composition. Exercise it through a deterministic stub of
+# the already-independent transfer coordinator so the tool coverage report
+# measures the adapter without duplicating the full protobuf model here.
+add_executable(
+  test_media_dl_net_c6link tests/test_media_dl_net_c6link.c src/mdl_net.c src/mdl_net_c6link.c
+)
+target_include_directories(
+  test_media_dl_net_c6link
+  PRIVATE ${MDL_PUBLIC_INC}
+          ${CMAKE_CURRENT_SOURCE_DIR}/src
+          ${FW}/ra8_core/inc
+          ${FW}/ra8_mdl/inc
+          ${FW}/ra8_c6link/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+)
+target_compile_definitions(test_media_dl_net_c6link PRIVATE RA8_OFF_TARGET)
+target_compile_options(test_media_dl_net_c6link PRIVATE -Wall -Wextra -Werror)
+add_test(NAME test_media_dl_net_c6link COMMAND test_media_dl_net_c6link)
+
 # Host credential policy tests keep path opening at composition while proving
 # strict cookie/CA byte validation and nanosecond mutation detection.
 add_executable(

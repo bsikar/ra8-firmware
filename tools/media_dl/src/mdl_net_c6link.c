@@ -227,6 +227,7 @@ RA8_INTERNAL static ra8_err_t internal_c6_get(mdl_net_c6link_t*    backend,
     }
     const ra8_err_t classified = priv_mdl_net_classify_http(transfer.response.status);
     if (classified != k_ra8_ok) {
+      (void)internal_c6_output_abort(output);
       return classified;
     }
     if (out_len != nullptr) {
