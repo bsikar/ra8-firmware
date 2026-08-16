@@ -32,7 +32,7 @@ typedef enum : uint32_t {
 
 /** @brief Maximally aligned portable backend workspace. */
 typedef struct {
-  alignas(max_align_t) uint8_t bytes[k_fault_storage_bytes]; /**< Backend-private state.   */
+  alignas(max_align_t) uint8_t bytes[k_fault_storage_bytes]; /**< Backend-private state. */
 } internal_fault_workspace_t;
 
 /** @brief Transaction-only deterministic fail-on-Nth-begin wrapper. */
