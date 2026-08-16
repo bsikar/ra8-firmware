@@ -21,7 +21,7 @@
 
 /** @brief Workspace fixture capacities and permissions. */
 typedef enum : uint32_t {
-  k_workspace_fixture_bytes = 4U,                 /**< Sentinel file bytes.  */
+  k_workspace_fixture_bytes = 4U,                 /**< Sentinel file bytes. */
   k_workspace_path_bytes    = 512U,               /**< Absolute path bytes. */
   k_workspace_arena_bytes   = 8U * 1024U * 1024U, /**< Export arena bytes.  */
   k_workspace_dir_mode      = 0755U,              /**< rwxr-xr-x.           */

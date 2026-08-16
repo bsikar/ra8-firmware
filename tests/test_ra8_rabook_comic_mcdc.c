@@ -21,34 +21,34 @@
 
 /** @brief Bounded capacities for one-page guard fixtures. */
 typedef enum : uint32_t {
-  k_mcdc_chapters         = 2U,       /**< Chapter rows.              */
-  k_mcdc_nodes            = 4U,       /**< DOM nodes.                 */
-  k_mcdc_attrs            = 2U,       /**< DOM attributes.            */
-  k_mcdc_images           = 2U,       /**< Image descriptors.         */
-  k_mcdc_strings          = 2048U,    /**< Interned strings.          */
-  k_mcdc_codec_bytes      = 1U << 20, /**< Decoder arena bytes.       */
-  k_mcdc_pixel_bytes      = 256U,     /**< RGBA scratch bytes.        */
-  k_mcdc_gray_bytes       = 64U,      /**< Gray scratch bytes.        */
-  k_mcdc_normalized_bytes = 64U,      /**< Normalized page bytes.     */
-  k_mcdc_spool_bytes      = 256U,     /**< External image spool.      */
-  k_mcdc_flat_bytes       = 4096U,    /**< Flat RABOOK destination.   */
+  k_mcdc_chapters         = 2U,       /**< Chapter rows.            */
+  k_mcdc_nodes            = 4U,       /**< DOM nodes.               */
+  k_mcdc_attrs            = 2U,       /**< DOM attributes.          */
+  k_mcdc_images           = 2U,       /**< Image descriptors.       */
+  k_mcdc_strings          = 2048U,    /**< Interned strings.        */
+  k_mcdc_codec_bytes      = 1U << 20, /**< Decoder arena bytes.     */
+  k_mcdc_pixel_bytes      = 256U,     /**< RGBA scratch bytes.      */
+  k_mcdc_gray_bytes       = 64U,      /**< Gray scratch bytes.      */
+  k_mcdc_normalized_bytes = 64U,      /**< Normalized page bytes.   */
+  k_mcdc_spool_bytes      = 256U,     /**< External image spool.    */
+  k_mcdc_flat_bytes       = 4096U,    /**< Flat RABOOK destination. */
 } comic_mcdc_limit_t;
 
 /** @brief One bounded in-memory source or destination. */
 typedef struct {
-  uint8_t* bytes;    /**< Mutable caller backing.             */
-  uint32_t capacity; /**< Accessible byte capacity.           */
-  uint32_t length;   /**< Highest initialized byte plus one.  */
+  uint8_t* bytes;    /**< Mutable caller backing.            */
+  uint32_t capacity; /**< Accessible byte capacity.          */
+  uint32_t length;   /**< Highest initialized byte plus one. */
 } comic_mcdc_memory_t;
 
 /** @brief Complete caller state retained through one comic operation. */
 typedef struct {
-  ra8_rabook_comic_t           comic;     /**< Production facade state.   */
-  ra8_rabook_comic_workspace_t workspace; /**< Bound caller workspace.    */
-  ra8_img_arena_t              stb;       /**< stb decoder descriptor.    */
-  ra8_webp_arena_t             webp;      /**< WebP decoder descriptor.   */
-  comic_mcdc_memory_t          image;     /**< Normalized image spool.    */
-  comic_mcdc_memory_t          flat;      /**< Flat RABOOK destination.   */
+  ra8_rabook_comic_t           comic;     /**< Production facade state. */
+  ra8_rabook_comic_workspace_t workspace; /**< Bound caller workspace.  */
+  ra8_img_arena_t              stb;       /**< stb decoder descriptor.  */
+  ra8_webp_arena_t             webp;      /**< WebP decoder descriptor. */
+  comic_mcdc_memory_t          image;     /**< Normalized image spool.  */
+  comic_mcdc_memory_t          flat;      /**< Flat RABOOK destination. */
 } comic_mcdc_fixture_t;
 
 /** @brief 2x2 24-bit BMP used by every reachable page vector. */
