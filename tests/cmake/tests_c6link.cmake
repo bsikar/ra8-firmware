@@ -46,6 +46,9 @@ file(GLOB RA8_C6LINK_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_c6link/src/*.
 # It owns the decode arena and observation log inside each executable, while its
 # internal header exposes only deliberate test operations and observations.
 set(RA8_C6LINK_TEST_SUPPORT ${CMAKE_CURRENT_SOURCE_DIR}/support/ra8_c6link_model_test.c)
+set(RA8_C6LINK_TEST_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_c6_model.c
+                          ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_c6_model_mdl_fault.c
+)
 
 # esp-hosted SOUP: silence upstream's warnings, exactly as cmake/esp_hosted.cmake
 # does for the cross build. It is already outside the coverage filter
@@ -72,7 +75,7 @@ add_executable(
   test_ra8_c6link
   ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link.c
   ${RA8_C6LINK_TEST_SUPPORT}
-  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_c6_model.c
+  ${RA8_C6LINK_TEST_MODEL}
   ${RA8_C6LINK_SOURCES}
   ${RA8_C6LINK_SOUP}
   $<TARGET_OBJECTS:ra8_core_hal>
@@ -89,8 +92,9 @@ add_test(NAME test_ra8_c6link COMMAND test_ra8_c6link)
 add_executable(
   test_ra8_c6link_media
   ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media_decoder.c
   ${RA8_C6LINK_TEST_SUPPORT}
-  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_c6_model.c
+  ${RA8_C6LINK_TEST_MODEL}
   ${RA8_C6LINK_SOURCES}
   ${RA8_C6LINK_SOUP}
   $<TARGET_OBJECTS:ra8_core_hal>
@@ -146,7 +150,7 @@ add_executable(
   ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_rabook.c
   ${RA8_C6LINK_TEST_SUPPORT}
   ${CMAKE_CURRENT_SOURCE_DIR}/support/rabook_compile_test_fixture.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_c6_model.c
+  ${RA8_C6LINK_TEST_MODEL}
   ${FW_ROOT}/libs/ra8_mdl_storage_vfs/src/ra8_mdl_storage_vfs.c
   ${FW_ROOT}/libs/ra8_mdl_storage_vfs/src/ra8_mdl_rabook_vfs.c
   ${RA8_C6LINK_SOURCES}

@@ -35,7 +35,7 @@ set(RA8_WIFI_INCLUDE_DIRS ${RA8_C6LINK_INCLUDE_DIRS} ${FW_ROOT}/libs/ra8_wifi/in
 add_executable(
   test_ra8_wifi_c6link
   ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_wifi_c6link.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_c6_model.c
+  ${RA8_C6LINK_TEST_MODEL}
   ${RA8_WIFI_C6_BACKEND}
   ${RA8_C6LINK_SOURCES}
   ${RA8_C6LINK_SOUP}

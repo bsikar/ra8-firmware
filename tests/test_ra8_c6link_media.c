@@ -21,6 +21,7 @@
 #include "ra8_c6link_mdl_transfer.h"
 #include "ra8_c6link_model_test_internal.h"
 #include "ra8_err.h"
+#include "test_ra8_c6link_media_decoder_internal.h"
 #include "unity_minimal.h"
 
 /** @enum internal_media_const_t @brief Media fixture constants. */
@@ -894,6 +895,7 @@ int32_t main(void)
   internal_test_media_start_argument_mcdc();
   internal_test_media_next_argument_mcdc();
   internal_test_media_cancel_argument_mcdc();
+  priv_test_c6link_media_decoder_run();
   internal_test_media_transfer_commits_verified_bytes();
   internal_test_media_transfer_aborts_storage_failures();
   internal_test_media_transfer_aborts_integrity_failures();

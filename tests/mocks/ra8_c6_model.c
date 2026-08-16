@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "ra8_attributes.h"
+#include "ra8_c6_model_mdl_fault_internal.h"
 #include "ra8_c6link.h"
 #include "ra8_c6link_internal.h"
 #include "ra8_c6link_mdl_msg.h"
@@ -29,9 +30,6 @@ static ra8_c6_model_t s_c6;
 
 /** @brief Deterministic media bytes served through the modelled custom RPC. */
 static const uint8_t s_mdl_bytes[] = {'a', 'b', 'c', 'd', 'e', 'f'};
-
-/** @brief Unknown protobuf field 15 carrying the canonical varint value one. */
-static const uint8_t s_mdl_unknown_field[] = {0x78U, 0x01U};
 
 /** @brief State behind the modelled C6 media backend. */
 typedef struct {
@@ -615,111 +613,6 @@ RA8_INTERNAL static bool internal_c6m_rich_answer(Rpc* out, uint32_t req_id, int
   return true;
 }
 
-/** @brief Mutate one decoded Chunk according to the selected fault.
- * @details Rewrites one decoded chunk into the selected malformed or terminal shape while retaining decoder-owned buffers.
- * @param[in,out] chunk Decoded generated chunk to mutate in place.
- * @param[in] fault Malformed or terminal chunk shape to inject.
- * @pre @p chunk is non-null and caller-owned. @pre @p fault is not `k_c6m_mdl_fault_none`.
- * @post Exactly the selected fields are malformed. @post Decoder allocation ownership is unchanged.
- * @note Corrupt-data injection asserts that the decoded payload is nonempty.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static void internal_mdl_mutate_chunk(Ra8__Mdl__Chunk* chunk, ra8_c6_model_mdl_fault_t fault)
-{
-  static uint8_t bad_data = k_c6m_mdl_digest_fill;
-  switch (fault) {
-    case k_c6m_mdl_fault_complete_no_sha:
-      chunk->sha256 = (ProtobufCBinaryData){};
-      break;
-    case k_c6m_mdl_fault_complete_bad_total:
-      chunk->total_bytes = chunk->offset + chunk->data.len + 1U;
-      break;
-    case k_c6m_mdl_fault_failed:
-      chunk->state  = RA8__MDL__STATE__STATE_FAILED;
-      chunk->status = (int32_t)k_ra8_fail;
-      chunk->data   = (ProtobufCBinaryData){};
-      chunk->sha256 = (ProtobufCBinaryData){};
-      break;
-    case k_c6m_mdl_fault_failed_zero_status:
-      chunk->state  = RA8__MDL__STATE__STATE_FAILED;
-      chunk->status = 0;
-      chunk->data   = (ProtobufCBinaryData){};
-      chunk->sha256 = (ProtobufCBinaryData){};
-      break;
-    case k_c6m_mdl_fault_cancelled:
-      chunk->state  = RA8__MDL__STATE__STATE_CANCELLED;
-      chunk->status = 0;
-      chunk->data   = (ProtobufCBinaryData){};
-      chunk->sha256 = (ProtobufCBinaryData){};
-      break;
-    case k_c6m_mdl_fault_cancelled_with_data:
-      chunk->state  = RA8__MDL__STATE__STATE_CANCELLED;
-      chunk->status = 0;
-      chunk->data   = (ProtobufCBinaryData){.len = 1U, .data = &bad_data};
-      chunk->sha256 = (ProtobufCBinaryData){};
-      break;
-    case k_c6m_mdl_fault_downloading_error:
-      chunk->state  = RA8__MDL__STATE__STATE_DOWNLOADING;
-      chunk->status = (int32_t)k_ra8_fail;
-      chunk->sha256 = (ProtobufCBinaryData){};
-      break;
-    case k_c6m_mdl_fault_out_of_order:
-      chunk->sequence += 1U;
-      break;
-    case k_c6m_mdl_fault_corrupt_data:
-      TEST_ASSERT(chunk->data.len != 0U);
-      TEST_ASSERT_NOT_NULL(chunk->data.data);
-      chunk->data.data[0] ^= 1U;
-      break;
-    default:
-      TEST_ASSERT(false);
-  }
-}
-
-/** @brief Apply one requested malformed media-response shape, then consume it.
- * @details Appends an unknown field directly or decodes and mutates a Chunk,
- * then repacks within the supplied capacity and restores decoder ownership.
- * @param[in,out] response Packed media response to mutate.
- * @param[in] response_cap Writable capacity of @p response.
- * @param[in,out] response_len Packed length on entry and after fault repacking.
- * @pre All pointers are non-null. @pre `*response_len` is no greater than @p response_cap.
- * @post A pending fault is consumed at most once. @post Repacked output remains within capacity.
- * @note Decode failure and capacity overflow are surfaced as test assertions.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static void internal_mdl_apply_fault(uint8_t* response, size_t response_cap, size_t* response_len)
-{
-  const ra8_c6_model_mdl_fault_t fault = s_c6.mdl_fault;
-  if (fault == k_c6m_mdl_fault_none) {
-    return;
-  }
-  s_c6.mdl_fault = k_c6m_mdl_fault_none;
-  if (fault == k_c6m_mdl_fault_unknown_field) {
-    TEST_ASSERT(response_cap >= *response_len);
-    TEST_ASSERT((response_cap - *response_len) >= sizeof(s_mdl_unknown_field));
-    memcpy(&response[*response_len], s_mdl_unknown_field, sizeof(s_mdl_unknown_field));
-    *response_len += sizeof(s_mdl_unknown_field);
-    return;
-  }
-
-  Ra8__Mdl__Chunk* chunk = ra8__mdl__chunk__unpack(nullptr, *response_len, response);
-  if (chunk == nullptr) {
-    TEST_ASSERT_NOT_NULL(chunk);
-    return;
-  }
-  const ProtobufCBinaryData owned_data = chunk->data;
-  const ProtobufCBinaryData owned_sha  = chunk->sha256;
-  internal_mdl_mutate_chunk(chunk, fault);
-  *response_len = ra8__mdl__chunk__get_packed_size(chunk);
-  TEST_ASSERT(*response_len <= response_cap);
-  TEST_ASSERT_EQ((int64_t)*response_len, (int64_t)ra8__mdl__chunk__pack(chunk, response));
-  chunk->data   = owned_data;
-  chunk->sha256 = owned_sha;
-  ra8__mdl__chunk__free_unpacked(chunk, nullptr);
-}
-
 /** @brief Run an inner media message through the portable C6 service.
  * @details Dispatches one inner media request through the portable bounded service and returns its packed generated response.
  * @param[out] out Destination buffer or response envelope populated on success.
@@ -753,20 +646,23 @@ RA8_INTERNAL static bool internal_c6m_custom_answer(Rpc* out, const Rpc* req, in
     response_body.resp = scripted_resp;
     return true;
   }
-  size_t response_len       = 0U;
-  response_body.resp        = (int32_t)ra8_mdl_service_dispatch(&s_mdl_service,
-                                                                response_body.custom_msg_id,
-                                                                req->req_custom_rpc->data.data,
-                                                                req->req_custom_rpc->data.len,
-                                                                response_bytes,
-                                                                sizeof(response_bytes),
-                                                                &response_len);
-  const bool inject_unknown = s_c6.mdl_fault == k_c6m_mdl_fault_unknown_field;
-  if ((response_body.resp == (int32_t)k_ra8_ok) &&
-      ((response_body.custom_msg_id == (uint32_t)k_ra8_mdl_rpc_next) || inject_unknown)) {
-    internal_mdl_apply_fault(response_bytes, sizeof(response_bytes), &response_len);
+  size_t response_len = 0U;
+  response_body.resp  = (int32_t)ra8_mdl_service_dispatch(&s_mdl_service,
+                                                          response_body.custom_msg_id,
+                                                          req->req_custom_rpc->data.data,
+                                                          req->req_custom_rpc->data.len,
+                                                          response_bytes,
+                                                          sizeof(response_bytes),
+                                                          &response_len);
+  response_body.data  = (ProtobufCBinaryData){.len = response_len, .data = response_bytes};
+  if (response_body.resp == (int32_t)k_ra8_ok) {
+    priv_c6_model_mdl_fault_apply(&s_c6.mdl_fault,
+                                  out,
+                                  &response_body,
+                                  response_bytes,
+                                  sizeof(response_bytes),
+                                  &response_len);
   }
-  response_body.data = (ProtobufCBinaryData){.len = response_len, .data = response_bytes};
   return true;
 }
 
