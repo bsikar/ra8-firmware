@@ -54,6 +54,44 @@ typedef enum : uint32_t {
 } bcx_dim_t;
 
 /**
+ * @enum bcx_validate_dim_t
+ * @brief Workspace budgets and 32-bit fault magnitudes used by the
+ *        strict-validation guard vectors.
+ */
+typedef enum : uint32_t {
+  k_bcx_validate_scratch = 64U,  /**< Strict-validation scratch budget.       */
+  k_bcx_short_chunk_cap  = 255U, /**< One byte under the inflated chunk size. */
+  k_bcx_one_chunk_byte   = 1U,   /**< Chunk size that forces a huge count.    */
+  k_bcx_table_bad_first  = 1U,   /**< Non-zero first chunk-table entry.       */
+} bcx_validate_dim_t;
+
+/**
+ * @enum bcx_validate_wide_t
+ * @brief 64-bit fault magnitudes for the reader-geometry rejections.
+ */
+typedef enum : uint64_t {
+  k_bcx_total_over_u32  = (uint64_t)UINT32_MAX + 2U, /**< Chunk count over UINT32_MAX. */
+  k_bcx_payload_ceiling = UINT64_MAX,                /**< Payload offset at the top.   */
+} bcx_validate_wide_t;
+
+/**
+ * @enum bcx_validate_addr_t
+ * @brief Address-space ceiling gap for the unrepresentable-span vectors.
+ */
+typedef enum : uintptr_t {
+  k_bcx_ceiling_gap = 8U, /**< Bytes between a fabricated base and UINTPTR_MAX. */
+} bcx_validate_addr_t;
+
+/**
+ * @enum bcx_table_idx_t
+ * @brief Chunk-table entry indices mutated by the table-shape vectors.
+ */
+typedef enum : uint8_t {
+  k_bcx_table_first  = 0U, /**< First chunk-table entry.  */
+  k_bcx_table_second = 1U, /**< Second chunk-table entry. */
+} bcx_table_idx_t;
+
+/**
  * @struct bcx_file_t
  * @brief An in-memory container "file" served through the read callback.
  */
@@ -633,6 +671,224 @@ static void test_ra8_book_chunked_read_guards(void)
   TEST_END("ra8_book_chunked_read guards");
 }
 
+/**
+ * @struct bcx_validate_ctx_t
+ * @brief Opened reader plus the caller workspaces every strict-validation
+ *        guard vector shares.
+ * @invariant Every pointer references caller-owned storage that out-lives the
+ *            vectors, and @c table is a mutable copy of the reader's table.
+ * @see test_ra8_book_chunked_validate_guards
+ */
+typedef struct {
+  ra8_book_chunked_t* rd;      /**< Opened reader under test.        */
+  uint8_t*            chunk;   /**< Inflated-chunk workspace.        */
+  uint8_t*            scratch; /**< Strict-validation scratch.       */
+  uint64_t*           table;   /**< Mutable copy of the chunk table. */
+} bcx_validate_ctx_t;
+
+/** @brief Assert one fabricated reader is rejected as an invalid reader state. @details Runs strict validation with valid workspaces, so @p broken is the only defect, then proves the result object was cleared first. @param[in] v Shared reader and workspace fixture. @param[in] broken Reader descriptor carrying the fabricated field(s). @pre @p v references live workspaces sized for the fixture geometry. @pre @p broken differs from the opened reader only in the field under test. @post `ra8_book_chunked_validate_strict` returned k_ra8_err_invalid_state. @post The caller's result object was zeroed before the rejection. @note Not thread-safe; single-threaded host-test helper. @since 0.1.0 */
+RA8_INTERNAL static void bcx_expect_state_reject(const bcx_validate_ctx_t* v,
+                                                 ra8_book_chunked_t        broken)
+{
+  ra8_book_header_t hdr = {.total_size = UINT32_MAX};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 ra8_book_chunked_validate_strict(&broken,
+                                                  v->chunk,
+                                                  k_bcx_chunk_bytes,
+                                                  v->scratch,
+                                                  k_bcx_validate_scratch,
+                                                  &hdr));
+  TEST_ASSERT_EQ(0U, hdr.total_size);
+}
+
+/** @brief Exercise the pointer and capacity guards of strict validation. @details Supplies exactly one invalid argument per call so each guard is the only reason the request can fail. @param[in] v Shared reader and workspace fixture. @pre @p v references live workspaces sized for the fixture geometry. @pre The reader in @p v is open and internally consistent. @post Every null argument returned k_ra8_err_null_ptr. @post Every zero or short capacity returned k_ra8_err_invalid_size. @note Not thread-safe; single-threaded host-test helper. @since 0.1.0 */
+RA8_INTERNAL static void bcx_validate_arg_guards(const bcx_validate_ctx_t* v)
+{
+  ra8_book_header_t hdr = {.total_size = UINT32_MAX};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_book_chunked_validate_strict(v->rd,
+                                                  v->chunk,
+                                                  k_bcx_chunk_bytes,
+                                                  v->scratch,
+                                                  k_bcx_validate_scratch,
+                                                  nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_book_chunked_validate_strict(nullptr,
+                                                  v->chunk,
+                                                  k_bcx_chunk_bytes,
+                                                  v->scratch,
+                                                  k_bcx_validate_scratch,
+                                                  &hdr));
+  TEST_ASSERT_EQ(0U, hdr.total_size);
+  hdr.total_size = UINT32_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_book_chunked_validate_strict(v->rd,
+                                                  nullptr,
+                                                  k_bcx_chunk_bytes,
+                                                  v->scratch,
+                                                  k_bcx_validate_scratch,
+                                                  &hdr));
+  TEST_ASSERT_EQ(0U, hdr.total_size);
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_book_chunked_validate_strict(v->rd,
+                                                  v->chunk,
+                                                  k_bcx_chunk_bytes,
+                                                  nullptr,
+                                                  k_bcx_validate_scratch,
+                                                  &hdr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_book_chunked_validate_strict(v->rd,
+                                                  v->chunk,
+                                                  0U,
+                                                  v->scratch,
+                                                  k_bcx_validate_scratch,
+                                                  &hdr));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_size,
+    ra8_book_chunked_validate_strict(v->rd, v->chunk, k_bcx_chunk_bytes, v->scratch, 0U, &hdr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_book_chunked_validate_strict(v->rd,
+                                                  v->chunk,
+                                                  k_bcx_short_chunk_cap,
+                                                  v->scratch,
+                                                  k_bcx_validate_scratch,
+                                                  &hdr));
+}
+
+/** @brief Reject a reader whose scalar geometry or callbacks are incomplete. @details Copies the open reader and fabricates exactly one field per vector, covering each independent single-condition reader-state guard. @param[in] v Shared reader and workspace fixture. @pre @p v references live workspaces sized for the fixture geometry. @pre The reader in @p v is open and internally consistent. @post Every fabricated reader returned k_ra8_err_invalid_state. @post The opened reader itself is left unmodified. @note Not thread-safe; single-threaded host-test helper. @since 0.1.0 */
+RA8_INTERNAL static void bcx_validate_reader_fields(const bcx_validate_ctx_t* v)
+{
+  ra8_book_chunked_t broken = *v->rd;
+  broken.file_read          = nullptr;
+  bcx_expect_state_reject(v, broken);
+  broken         = *v->rd;
+  broken.inflate = nullptr;
+  bcx_expect_state_reject(v, broken);
+  broken       = *v->rd;
+  broken.table = nullptr;
+  bcx_expect_state_reject(v, broken);
+  broken             = *v->rd;
+  broken.chunk_bytes = 0U;
+  bcx_expect_state_reject(v, broken);
+  broken             = *v->rd;
+  broken.chunk_count = 0U;
+  bcx_expect_state_reject(v, broken);
+  broken                = *v->rd;
+  broken.inflated_total = 0U;
+  bcx_expect_state_reject(v, broken);
+  broken             = *v->rd;
+  broken.staging_cap = 0U;
+  bcx_expect_state_reject(v, broken);
+  broken                = *v->rd;
+  broken.chunk_bytes    = k_bcx_one_chunk_byte;
+  broken.inflated_total = k_bcx_total_over_u32;
+  bcx_expect_state_reject(v, broken);
+  broken             = *v->rd;
+  broken.payload_off = k_bcx_payload_ceiling;
+  bcx_expect_state_reject(v, broken);
+}
+
+/** @brief Reject a reader whose chunk table has an illegal shape. @details Restores a pristine table copy before each mutation so exactly one table invariant is broken per vector. @param[in] v Shared reader and workspace fixture, including a table copy. @pre @p v references live workspaces sized for the fixture geometry. @pre `v->table` has room for `chunk_count + 1` entries. @post A non-zero first entry, a non-increasing entry, and an over-staging chunk each returned k_ra8_err_invalid_state. @post The reader's own table is never modified. @note Not thread-safe; single-threaded host-test helper. @since 0.1.0 */
+RA8_INTERNAL static void bcx_validate_reader_table(const bcx_validate_ctx_t* v)
+{
+  ra8_book_chunked_t broken  = *v->rd;
+  broken.table               = v->table;
+  const size_t entries_bytes = ((size_t)k_bcx_chunk_count + 1U) * sizeof(v->table[0]);
+
+  memcpy(v->table, v->rd->table, entries_bytes);
+  v->table[k_bcx_table_first] = k_bcx_table_bad_first;
+  bcx_expect_state_reject(v, broken);
+
+  memcpy(v->table, v->rd->table, entries_bytes);
+  v->table[k_bcx_table_second] = v->table[k_bcx_table_first];
+  bcx_expect_state_reject(v, broken);
+
+  memcpy(v->table, v->rd->table, entries_bytes);
+  v->table[k_bcx_table_second] = (uint64_t)k_bcx_staging_cap + 1U;
+  bcx_expect_state_reject(v, broken);
+}
+
+/** @brief Reject spans whose exclusive end address is not representable. @details Supplies a result object and then a reader staging buffer whose declared extent runs past the address ceiling, proving the alias check fails closed instead of comparing wrapped addresses. @param[in] v Shared reader and workspace fixture. @pre @p v references live workspaces sized for the fixture geometry. @pre No fabricated span is ever dereferenced by the implementation. @post Both unrepresentable spans returned k_ra8_err_invalid_arg. @post A detected alias rejection leaves the caller's result untouched. @note Not thread-safe; single-threaded host-test helper. @since 0.1.0 */
+RA8_INTERNAL static void bcx_validate_span_overflow(const bcx_validate_ctx_t* v)
+{
+  ra8_book_header_t* const ceiling =
+    (ra8_book_header_t*)(UINTPTR_MAX - (uintptr_t)k_bcx_ceiling_gap);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_book_chunked_validate_strict(v->rd,
+                                                  v->chunk,
+                                                  k_bcx_chunk_bytes,
+                                                  v->scratch,
+                                                  k_bcx_validate_scratch,
+                                                  ceiling));
+
+  ra8_book_header_t  hdr    = {.total_size = UINT32_MAX};
+  ra8_book_chunked_t broken = *v->rd;
+  broken.staging            = (uint8_t*)(UINTPTR_MAX - (uintptr_t)k_bcx_ceiling_gap);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_book_chunked_validate_strict(&broken,
+                                                  v->chunk,
+                                                  k_bcx_chunk_bytes,
+                                                  v->scratch,
+                                                  k_bcx_validate_scratch,
+                                                  &hdr));
+  TEST_ASSERT_EQ(UINT32_MAX, hdr.total_size);
+}
+
+/**
+ * @test test_ra8_book_chunked_validate_guards
+ * @brief Every strict-validation guard rejects its malformed input before I/O.
+ *
+ * @par Targeted code:
+ * `ra8_book_chunked_validate_strict`'s argument guards (null result, null
+ * reader, null workspace, zero capacity, chunk buffer shorter than the
+ * inflated chunk size), `internal_validate_reader`'s callback, geometry,
+ * capacity, chunk-count and table-shape rejections, `internal_spans_overlap`'s
+ * unrepresentable-end returns, and `internal_output_is_aliased`'s zero-length
+ * skip plus its fail-closed return for an unrepresentable span.
+ *
+ * @par MC/DC:
+ * Decision `(chunk == nullptr) || (scratch == nullptr)`:
+ * - Vector 1: chunk=valid, scratch=valid -> false (the short-capacity vector
+ *   reaches the later capacity guard, so this decision was false)
+ * - Vector 2: chunk=NULL, scratch=valid -> true (varies chunk only)
+ * - Vector 3: chunk=valid, scratch=NULL -> true (varies scratch only)
+ * Vectors 1+2 prove `chunk` independently affects the outcome; 1+3 prove the
+ * same for `scratch`. N+1 = 3 vectors for N=2 conditions.
+ * Decision `(chunk_cap == 0U) || (scratch_cap == 0U)`:
+ * - Vector 4: chunk_cap=256, scratch_cap=64 -> false (control)
+ * - Vector 5: chunk_cap=0, scratch_cap=64 -> true (varies chunk_cap only)
+ * - Vector 6: chunk_cap=256, scratch_cap=0 -> true (varies scratch_cap only)
+ * Vectors 4+5 and 4+6 give each condition an independently determining pair.
+ */
+static void test_ra8_book_chunked_validate_guards(void)
+{
+  TEST_BEGIN("ra8_book_chunked_validate_strict guards");
+  bcx_fill_blob();
+  static uint8_t s_container[k_bcx_file_cap];
+  const uint64_t file_len = bcx_pack(s_container, false);
+
+  ra8_book_chunked_t rd                         = {};
+  bcx_file_t         file                       = {};
+  uint64_t           table_buf[k_bcx_table_cap] = {};
+  static uint8_t     s_staging[k_bcx_staging_cap];
+  TEST_ASSERT_EQ(k_ra8_ok, bcx_open(&rd, &file, s_container, file_len, table_buf, s_staging));
+
+  static uint8_t           s_chunk[k_bcx_chunk_bytes];
+  static uint8_t           s_scratch[k_bcx_validate_scratch];
+  uint64_t                 bad_table[k_bcx_table_cap] = {};
+  const bcx_validate_ctx_t v                          = {.rd      = &rd,
+                                                         .chunk   = s_chunk,
+                                                         .scratch = s_scratch,
+                                                         .table   = bad_table};
+
+  bcx_validate_arg_guards(&v);
+  bcx_validate_reader_fields(&v);
+  bcx_validate_reader_table(&v);
+  bcx_validate_span_overflow(&v);
+
+  TEST_END("ra8_book_chunked_validate_strict guards");
+}
+
 /** @brief Consume expected guard-path logs without touching host ITM MMIO. */
 RA8_INTERNAL static void internal_log_sink(void* ctx, uint8_t byte)
 {
@@ -647,5 +903,6 @@ int main(void)
   test_ra8_book_chunked_open_guards();
   test_ra8_book_chunked_read_happy();
   test_ra8_book_chunked_read_guards();
+  test_ra8_book_chunked_validate_guards();
   return 0;
 }

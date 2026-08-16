@@ -344,6 +344,34 @@ static void internal_generate_rabook(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256(s_rbkc, (uint32_t)s_rbkc_len, s_rbkc_digest));
 }
 
+/** @brief Complete strict-reader binding shared by every reader fixture. */
+static const ra8_mdl_rabook_vfs_config_t s_valid_reader_config = {
+  .inflate        = internal_inflate,
+  .table          = s_reader_table,
+  .compressed     = s_reader_compressed,
+  .chunk          = s_reader_chunk,
+  .scratch        = s_reader_scratch,
+  .table_cap      = k_internal_rbkc_table_entries,
+  .compressed_cap = sizeof(s_reader_compressed),
+  .chunk_cap      = sizeof(s_reader_chunk),
+  .scratch_cap    = sizeof(s_reader_scratch),
+};
+
+/** @brief Initialize one strict reader against the shared workspace binding.
+ * @details Implements the init reader fixture operation used only by this
+ * focused test executable. @param[out] rabook Fixture argument governed by the
+ * exercised interface contract. @pre Fixed-capacity fixture storage required by
+ * this operation is available. @pre Arguments follow the interface contract
+ * exercised by this helper. @post Documented outputs contain the exercised
+ * result when the operation succeeds. @post Mutations remain confined to
+ * documented outputs and file-local fixture state. @note File-local helper; no
+ * ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL
+static void internal_init_reader(ra8_mdl_rabook_vfs_t* rabook)
+{
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mdl_rabook_vfs_init(rabook, &s_valid_reader_config));
+}
+
 /** @brief Bind validator, VFS transaction, SHA stream, and transfer policy.
  * @details Implements the bind pipeline fixture operation used only by this
  * focused test executable. @param[in,out] rabook Fixture argument governed by
@@ -361,18 +389,7 @@ static void internal_bind_pipeline(ra8_mdl_rabook_vfs_t*      rabook,
                                    ra8_mdl_storage_vfs_t*     storage,
                                    ra8_mdl_transfer_config_t* transfer)
 {
-  const ra8_mdl_rabook_vfs_config_t rabook_config = {
-    .inflate        = internal_inflate,
-    .table          = s_reader_table,
-    .compressed     = s_reader_compressed,
-    .chunk          = s_reader_chunk,
-    .scratch        = s_reader_scratch,
-    .table_cap      = k_internal_rbkc_table_entries,
-    .compressed_cap = sizeof(s_reader_compressed),
-    .chunk_cap      = sizeof(s_reader_chunk),
-    .scratch_cap    = sizeof(s_reader_scratch),
-  };
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_mdl_rabook_vfs_init(rabook, &rabook_config));
+  internal_init_reader(rabook);
   const ra8_mdl_storage_vfs_config_t storage_config = {
     .stage_leaf   = "C6STAGE.TMP",
     .validate     = ra8_mdl_rabook_vfs_validate,
@@ -596,13 +613,279 @@ static void internal_test_sha256_known_answer(void)
   TEST_END("C6 RPC transfer SHA256 known answer");
 }
 
+/** @brief The single binding a reader-initializer rejection vector defects. */
+typedef enum : uint8_t {
+  k_internal_defect_inflate = 0U,   /**< Null inflater callback.       */
+  k_internal_defect_table,          /**< Null offset-table workspace.  */
+  k_internal_defect_compressed,     /**< Null compressed staging span. */
+  k_internal_defect_chunk,          /**< Null inflated-chunk span.     */
+  k_internal_defect_scratch,        /**< Null strict scratch span.     */
+  k_internal_defect_table_cap,      /**< Table capacity below two.     */
+  k_internal_defect_compressed_cap, /**< Zero compressed capacity.     */
+  k_internal_defect_chunk_cap,      /**< Zero inflated-chunk capacity. */
+  k_internal_defect_scratch_cap,    /**< Zero strict-scratch capacity. */
+} internal_rabook_defect_t;
+
+/**
+ * @struct internal_rabook_init_vector_t
+ * @brief One reader-initializer rejection vector.
+ * @details Each vector defects exactly one binding of an otherwise complete
+ * configuration, so the reported status names that binding alone.
+ * @invariant `expected` is never ::k_ra8_ok.
+ * @since 0.1.0
+ */
+typedef struct {
+  internal_rabook_defect_t defect;   /**< Binding mutated by this vector. */
+  ra8_err_t                expected; /**< Exact rejection status.         */
+} internal_rabook_init_vector_t;
+
+/** @brief One rejection vector per initializer guard, in guard order. */
+static const internal_rabook_init_vector_t s_init_vectors[] = {
+  {k_internal_defect_inflate, k_ra8_err_null_ptr},
+  {k_internal_defect_table, k_ra8_err_null_ptr},
+  {k_internal_defect_compressed, k_ra8_err_null_ptr},
+  {k_internal_defect_chunk, k_ra8_err_null_ptr},
+  {k_internal_defect_scratch, k_ra8_err_null_ptr},
+  {k_internal_defect_table_cap, k_ra8_err_invalid_size},
+  {k_internal_defect_compressed_cap, k_ra8_err_invalid_size},
+  {k_internal_defect_chunk_cap, k_ra8_err_invalid_size},
+  {k_internal_defect_scratch_cap, k_ra8_err_invalid_size},
+};
+
+/** @brief Defect exactly one binding of a complete reader configuration.
+ * @details Implements the apply defect fixture operation used only by this
+ * focused test executable. @param[in,out] config Fixture argument governed by
+ * the exercised interface contract. @param[in] defect Fixture argument governed
+ * by the exercised interface contract. @pre Fixed-capacity fixture storage
+ * required by this operation is available. @pre Arguments follow the interface
+ * contract exercised by this helper. @post Documented outputs contain the
+ * exercised result when the operation succeeds. @post Mutations remain confined
+ * to documented outputs and file-local fixture state. @note File-local helper;
+ * no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL
+static void internal_apply_defect(ra8_mdl_rabook_vfs_config_t* config,
+                                  internal_rabook_defect_t     defect)
+{
+  switch (defect) {
+    case k_internal_defect_inflate:
+      config->inflate = nullptr;
+      break;
+    case k_internal_defect_table:
+      config->table = nullptr;
+      break;
+    case k_internal_defect_compressed:
+      config->compressed = nullptr;
+      break;
+    case k_internal_defect_chunk:
+      config->chunk = nullptr;
+      break;
+    case k_internal_defect_scratch:
+      config->scratch = nullptr;
+      break;
+    case k_internal_defect_table_cap:
+      config->table_cap = 1U;
+      break;
+    case k_internal_defect_compressed_cap:
+      config->compressed_cap = 0U;
+      break;
+    case k_internal_defect_chunk_cap:
+      config->chunk_cap = 0U;
+      break;
+    case k_internal_defect_scratch_cap:
+      config->scratch_cap = 0U;
+      break;
+  }
+}
+
+/** @brief Stage the generated container under a fixed guard-fixture path.
+ * @details Implements the stage guard book fixture operation used only by this
+ * focused test executable. @pre Fixed-capacity fixture storage required by this
+ * operation is available. @pre Arguments follow the interface contract
+ * exercised by this helper. @post Documented outputs contain the exercised
+ * result when the operation succeeds. @post Mutations remain confined to
+ * documented outputs and file-local fixture state. @note File-local helper; no
+ * ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL
+static void internal_stage_guard_book(void)
+{
+  internal_setup_volume();
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_fs_write_file(s_mount, "/BOOKS/GUARD.RBK", s_rbkc, (uint32_t)s_rbkc_len));
+}
+
+/**
+ * @test internal_test_init_rejects_incomplete_bindings
+ * @brief Reject every incomplete strict-reader binding with its exact status.
+ * @par MC/DC:
+ * The initializer is a chain of eleven independent N=1 decisions. The complete
+ * configuration is the all-false control that reaches success; each vector
+ * makes exactly one decision true while every earlier decision stays false, so
+ * each guard is proven to decide the reported status on its own.
+ * @details Executes the initializer rejection scenario with bounded fixture
+ * state and asserts the contract-specific result. @pre Fixed-capacity fixture
+ * storage required by this operation is available. @pre Arguments follow the
+ * interface contract exercised by this helper. @post Documented outputs contain
+ * the exercised result when the operation succeeds. @post Mutations remain
+ * confined to documented outputs and file-local fixture state. @note
+ * File-local helper; no ownership escapes this focused test executable. @since
+ * Version 0.1.0 */
+RA8_INTERNAL
+static void internal_test_init_rejects_incomplete_bindings(void)
+{
+  TEST_BEGIN("C6 RPC rabook init rejects incomplete bindings");
+  ra8_mdl_rabook_vfs_t accepted = {};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_rabook_vfs_init(nullptr, &s_valid_reader_config));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_rabook_vfs_init(&accepted, nullptr));
+  TEST_ASSERT(accepted.inflate == nullptr);
+  for (size_t i = 0U; i < (sizeof(s_init_vectors) / sizeof(s_init_vectors[0])); ++i) {
+    ra8_mdl_rabook_vfs_config_t defective = s_valid_reader_config;
+    internal_apply_defect(&defective, s_init_vectors[i].defect);
+    ra8_mdl_rabook_vfs_t rejected = {};
+    TEST_ASSERT_EQ(s_init_vectors[i].expected, ra8_mdl_rabook_vfs_init(&rejected, &defective));
+    TEST_ASSERT(rejected.inflate == nullptr);
+    TEST_ASSERT_EQ(0U, rejected.chunk_cap);
+  }
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mdl_rabook_vfs_init(&accepted, &s_valid_reader_config));
+  TEST_ASSERT(accepted.inflate == internal_inflate);
+  TEST_ASSERT_EQ(sizeof(s_reader_chunk), accepted.chunk_cap);
+  TEST_ASSERT(!accepted.open);
+  TEST_END("C6 RPC rabook init rejects incomplete bindings");
+}
+
+/**
+ * @test internal_test_public_argument_guards
+ * @brief Reject null arguments and closed readers with their exact statuses.
+ * @details Every public entry point is called with each required pointer null
+ * in turn, and the read/metadata entry points are additionally called on an
+ * initialized but closed reader. No call reaches the VFS.
+ * @pre Fixed-capacity fixture storage required by this operation is available.
+ * @pre The reader used here is initialized and holds no facade.
+ * @post Every rejected call returns its documented status.
+ * @post No mount, file, or fixture byte is modified.
+ * @note File-local helper; no ownership escapes this focused test executable.
+ * @since Version 0.1.0 */
+RA8_INTERNAL
+static void internal_test_public_argument_guards(void)
+{
+  TEST_BEGIN("C6 RPC rabook public argument guards");
+  ra8_mdl_rabook_vfs_t closed = {};
+  internal_init_reader(&closed);
+  uint8_t           byte      = 0U;
+  ra8_book_header_t header    = {};
+  uint64_t          flat_size = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_mdl_rabook_vfs_validate(nullptr, "ram:/BOOKS/X.RBK", 0U, s_rbkc_digest));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_mdl_rabook_vfs_validate(&closed, nullptr, 0U, s_rbkc_digest));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_mdl_rabook_vfs_validate(&closed, "ram:/BOOKS/X.RBK", 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_rabook_vfs_open(nullptr, "ram:/BOOKS/X.RBK"));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_rabook_vfs_open(&closed, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_rabook_vfs_read_chunk(nullptr, 0U, &byte, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_rabook_vfs_read_chunk(&closed, 0U, nullptr, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_mdl_rabook_vfs_read_chunk(&closed, 0U, &byte, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_rabook_vfs_info(nullptr, &header, &flat_size));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_rabook_vfs_info(&closed, nullptr, &flat_size));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_rabook_vfs_info(&closed, &header, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_mdl_rabook_vfs_info(&closed, &header, &flat_size));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mdl_rabook_vfs_close(nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mdl_rabook_vfs_close(&closed));
+  TEST_END("C6 RPC rabook public argument guards");
+}
+
+/**
+ * @test internal_test_reader_state_guards
+ * @brief Refuse an absent artifact and every inconsistent retained state.
+ * @details Proves a failed open retains no facade, that a retained facade
+ * blocks both validation and a second open, and that an asserted open flag
+ * without a facade blocks reads and metadata instead of dereferencing null.
+ * @pre A fresh volume holds the staged guard container.
+ * @pre The reader is initialized against the shared workspace binding.
+ * @post Every inconsistent state returns ::k_ra8_err_invalid_state.
+ * @post The borrowed facade is closed and the reader left closed.
+ * @note File-local helper; no ownership escapes this focused test executable.
+ * @since Version 0.1.0 */
+RA8_INTERNAL
+static void internal_test_reader_state_guards(void)
+{
+  TEST_BEGIN("C6 RPC rabook reader state guards");
+  internal_stage_guard_book();
+  ra8_mdl_rabook_vfs_t rabook = {};
+  internal_init_reader(&rabook);
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_mdl_rabook_vfs_open(&rabook, "ram:/BOOKS/ABSENT.RBK"));
+  TEST_ASSERT(rabook.file == nullptr);
+  TEST_ASSERT(!rabook.open);
+  ra8_io_vfs_file_t* borrowed = nullptr;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_io_vfs_file_open("ram:/BOOKS/GUARD.RBK", k_ra8_fs_mode_read, &borrowed));
+  rabook.file = borrowed;
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_state,
+    ra8_mdl_rabook_vfs_validate(&rabook, "ram:/BOOKS/GUARD.RBK", s_rbkc_len, s_rbkc_digest));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_mdl_rabook_vfs_open(&rabook, "ram:/BOOKS/GUARD.RBK"));
+  rabook.file = nullptr;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_file_close(borrowed));
+  rabook.open                 = true;
+  uint8_t           byte      = 0U;
+  ra8_book_header_t header    = {};
+  uint64_t          flat_size = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_mdl_rabook_vfs_read_chunk(&rabook, 0U, &byte, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_mdl_rabook_vfs_info(&rabook, &header, &flat_size));
+  rabook.open = false;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mdl_rabook_vfs_close(&rabook));
+  TEST_END("C6 RPC rabook reader state guards");
+}
+
+/**
+ * @test internal_test_exact_read_callback_guards
+ * @brief Pin the exact-range reader callback the strict reader is bound to.
+ * @par MC/DC:
+ * For the callback's own guards the in-range read is the all-false control
+ * returning ::k_ra8_ok. The null-context vector varies only `opaque == nullptr`
+ * and the detached-context vector varies only `ctx->file == nullptr`, each
+ * independently selecting ::k_ra8_err_invalid_state. The end-of-file vector
+ * keeps both false and drives the zero-progress decision true instead.
+ * @details Executes the exact-read callback scenario with bounded fixture state
+ * and asserts the contract-specific result.
+ * @pre A fresh volume holds the staged guard container.
+ * @pre The strict reader opened that container successfully.
+ * @post A successful in-range read returns the exact staged byte.
+ * @post The reader is closed and retains no facade.
+ * @note File-local helper; no ownership escapes this focused test executable.
+ * @since Version 0.1.0 */
+RA8_INTERNAL
+static void internal_test_exact_read_callback_guards(void)
+{
+  TEST_BEGIN("C6 RPC rabook exact-read callback guards");
+  internal_stage_guard_book();
+  ra8_mdl_rabook_vfs_t rabook = {};
+  internal_init_reader(&rabook);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mdl_rabook_vfs_open(&rabook, "ram:/BOOKS/GUARD.RBK"));
+  TEST_ASSERT(rabook.reader.file_read != nullptr);
+  ra8_mdl_rabook_vfs_t detached = {};
+  uint8_t              byte     = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, rabook.reader.file_read(nullptr, 0U, &byte, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, rabook.reader.file_read(&detached, 0U, &byte, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 rabook.reader.file_read(&rabook, rabook.file_size, &byte, 1U));
+  TEST_ASSERT_EQ(k_ra8_ok, rabook.reader.file_read(&rabook, 0U, &byte, 1U));
+  TEST_ASSERT_EQ(s_rbkc[0], byte);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mdl_rabook_vfs_close(&rabook));
+  TEST_ASSERT(rabook.file == nullptr);
+  TEST_END("C6 RPC rabook exact-read callback guards");
+}
+
 int main(void)
 {
   ra8_log_set_byte_sink(internal_discard_log, nullptr);
   internal_test_sha256_known_answer();
+  internal_test_init_rejects_incomplete_bindings();
+  internal_test_public_argument_guards();
   internal_generate_rabook();
   internal_test_publish_and_consume();
   internal_test_transport_corruption_aborts();
   internal_test_invalid_artifact_aborts();
+  internal_test_reader_state_guards();
+  internal_test_exact_read_callback_guards();
   return 0;
 }

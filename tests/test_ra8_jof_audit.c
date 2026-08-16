@@ -45,8 +45,61 @@ typedef enum : uint32_t {
 } test_atlas_const_t;
 
 /**
+ * @enum test_geometry_const_t
+ * @brief Layout of the single-tile atlases used for derived-size rejections.
+ */
+typedef enum : uint32_t {
+  k_test_geo_index_off  = 32U, /**< Index directly after the fixed header. */
+  k_test_geo_footer_off = 40U, /**< Footer after the single index entry.   */
+  k_test_geo_size       = 56U, /**< Header + one index entry + footer.     */
+  k_test_geo_tiles      = 1U,  /**< Single-tile grid.                      */
+  k_test_geo_dim        = 1U,  /**< One-pixel image width and height.      */
+} test_geometry_const_t;
+
+/**
+ * @enum test_geometry_tile_t
+ * @brief Tile edges whose derived byte counts exceed 32-bit budgets.
+ *
+ * @details The bound pair is exact rather than merely large: with four bytes
+ *          per pixel a tile of 17920 x 53261 pixels is 3817748480 bytes, and
+ *          `raw + raw / 8 + 256` is then exactly 2^32, so the stored bound
+ *          wraps to zero and must be refused.
+ */
+typedef enum : uint16_t {
+  k_test_geo_huge_tile    = 65535U, /**< Largest tile edge: tile bytes over 2^32. */
+  k_test_geo_bound_tile_w = 17920U, /**< Bound-overflow tile width.               */
+  k_test_geo_bound_tile_h = 53261U, /**< Bound-overflow tile height.              */
+} test_geometry_tile_t;
+
+/**
+ * @enum test_pixel_const_t
+ * @brief Pixel depth selecting the four-byte JOF layout.
+ */
+typedef enum : uint8_t {
+  k_test_bpp_rgba = 4U, /**< RGBA8888 bytes per pixel. */
+} test_pixel_const_t;
+
+/**
+ * @enum test_address_const_t
+ * @brief Address-ceiling gap used by the unrepresentable-span vector.
+ */
+typedef enum : uintptr_t {
+  k_test_ceiling_gap = 1U, /**< Bytes between a fabricated base and UINTPTR_MAX. */
+} test_address_const_t;
+
+/**
+ * @enum test_fault_const_t
+ * @brief Injected fault magnitudes for the per-tile audit rejections.
+ */
+typedef enum : uint32_t {
+  k_test_offset_ceiling  = UINT32_MAX, /**< Stored offset whose end wraps 32 bits. */
+  k_test_reads_per_parse = 2U,         /**< Header plus footer reads in one parse. */
+  k_test_tiny_scratch    = 1U,         /**< Scratch capacity below the exact need. */
+} test_fault_const_t;
+
+/**
  * @struct test_store_t
- * @brief Immutable memory backing plus one injected read-failure control.
+ * @brief Immutable memory backing plus injected read-failure controls.
  */
 typedef struct test_store_t {
   const uint8_t* bytes;          /**< Complete readable backing bytes.       */
@@ -54,6 +107,8 @@ typedef struct test_store_t {
   bool           fail;           /**< Whether every read must fail.          */
   bool           fail_at_offset; /**< Whether one selected offset must fail. */
   uint64_t       fail_offset;    /**< Selected failing absolute offset.      */
+  uint32_t       calls;          /**< Positioned reads served so far.        */
+  uint32_t       fail_after;     /**< Reads served before failing (0 = off). */
 } test_store_t;
 
 /** @brief Shared-address storage for explicit result/record alias testing. */
@@ -61,6 +116,38 @@ typedef union test_alias_t {
   ra8_jof_audit_record_t records[k_test_tile_count]; /**< Record view. */
   ra8_jof_audit_result_t result;                     /**< Result view. */
 } test_alias_t;
+
+/** @brief Shared-address storage for explicit result/workspace alias testing. */
+typedef union test_ws_alias_t {
+  ra8_jof_audit_workspace_t workspace; /**< Workspace view. */
+  ra8_jof_audit_result_t    result;    /**< Result view.    */
+} test_ws_alias_t;
+
+/** @brief Shared-address storage for explicit result/tile alias testing. */
+typedef union test_tile_alias_t {
+  uint8_t                tile[k_test_tile_bytes]; /**< Decoded-tile view. */
+  ra8_jof_audit_result_t result;                  /**< Result view.       */
+} test_tile_alias_t;
+
+/**
+ * @struct test_deflate_bufs_t
+ * @brief Fixed-layout audit buffers separated by more than one stored bound.
+ * @details The pads make the scratch-overlap vectors deterministic: a staging
+ *          span of ::k_test_deflate_scratch bytes started at one member cannot
+ *          reach the next member, so exactly the intended pair overlaps.
+ * @invariant Each pad is at least as long as one complete staging span.
+ * @see internal_test_scratch_overlap_guards
+ */
+typedef struct test_deflate_bufs_t {
+  ra8_jof_audit_record_t records[k_test_tile_count];          /**< Record array.   */
+  uint8_t                pad_records[k_test_deflate_scratch]; /**< Record padding. */
+  uint8_t                tile[k_test_tile_bytes];             /**< Decoded tile.   */
+  uint8_t                pad_tile[k_test_deflate_scratch];    /**< Tile padding.   */
+  uint8_t                scratch[k_test_deflate_scratch];     /**< Staging buffer. */
+} test_deflate_bufs_t;
+
+/** @brief The separated deflate audit buffers used by the overlap vectors. */
+static test_deflate_bufs_t s_deflate_bufs;
 
 static int s_failures;
 
@@ -272,7 +359,11 @@ internal_test_pread(void* ctx, uint64_t offset, uint8_t* buf, size_t len, size_t
 {
   test_store_t* store = (test_store_t*)ctx;
   *got                = 0U;
+  store->calls++;
   if (store->fail || (store->fail_at_offset && (offset == store->fail_offset))) {
+    return k_ra8_fail;
+  }
+  if ((store->fail_after != 0U) && (store->calls > store->fail_after)) {
     return k_ra8_fail;
   }
   if (offset >= store->len) {
@@ -478,6 +569,254 @@ static void internal_test_read_failures(void)
   CHECK(ra8_jof_audit_requirements(nullptr, &store, store.len, &need) == k_ra8_err_null_ptr);
 }
 
+/** @brief Construct a single-tile atlas carrying only geometry @details Emits a header, an all-zero index entry, and a footer whose cross-checks accept the caller's tile geometry, so requirement derivation is reached without any stored payload. @param[out] atlas Complete geometry-only atlas buffer. @param[in] tile_w Declared tile width in pixels. @param[in] tile_h Declared tile height in pixels. @param[in] codec Declared per-atlas tile codec. @pre @p atlas is writable for ::k_test_geo_size bytes. @pre @p tile_w and @p tile_h are non-zero, so the parse accepts them. @post The atlas parses as a one-tile grid with the requested geometry. @post No tile stream exists, so only requirement derivation is exercised. @note Test-local, thread-safe, and allocation-free. @since 0.1.0 */
+RA8_INTERNAL static void internal_make_geometry_atlas(uint8_t  atlas[k_test_geo_size],
+                                                      uint16_t tile_w,
+                                                      uint16_t tile_h,
+                                                      uint8_t  codec)
+{
+  (void)memset(atlas, 0, k_test_geo_size);
+  (void)memcpy(&atlas[k_ra8_jof_ofs_magic], "JOF1", k_test_magic_bytes); /* MAGIC-OK */
+  internal_write_u16(&atlas[k_ra8_jof_ofs_width], (uint16_t)k_test_geo_dim);
+  internal_write_u16(&atlas[k_ra8_jof_ofs_height], (uint16_t)k_test_geo_dim);
+  internal_write_u16(&atlas[k_ra8_jof_ofs_tile_w], tile_w);
+  internal_write_u16(&atlas[k_ra8_jof_ofs_tile_h], tile_h);
+  atlas[k_ra8_jof_ofs_bpp]   = (uint8_t)k_test_bpp_rgba;
+  atlas[k_ra8_jof_ofs_codec] = codec;
+  internal_write_u32(&atlas[k_ra8_jof_ofs_tile_count], k_test_geo_tiles);
+  internal_write_u32(&atlas[k_test_geo_footer_off + k_ra8_jof_ftr_index_off], k_test_geo_index_off);
+  internal_write_u32(&atlas[k_test_geo_footer_off + k_ra8_jof_ftr_tile_count], k_test_geo_tiles);
+  internal_write_u32(&atlas[k_test_geo_footer_off + k_ra8_jof_ftr_total_size], k_test_geo_size);
+  (void)memcpy(&atlas[k_test_geo_footer_off + k_ra8_jof_ftr_magic],
+               "JOFE",
+               k_test_magic_bytes); /* MAGIC-OK */
+}
+
+/** @brief Assert one overlapping workspace is refused before any tile is read @details Poisons the result, runs the audit, and requires both the documented rejection code and a completely untouched result object. @param[in,out] store Backing description passed to the injected reader. @param[in,out] ws Workspace whose spans overlap exactly one neighbour. @param[out] out Result storage that does not alias @p ws. @pre @p out is a distinct object from every span described by @p ws. @pre The backing atlas parses, so the audit reaches the overlap check. @post The audit returned k_ra8_err_invalid_arg. @post The poisoned result value survived unchanged. @note Test-local and allocation-free. @since 0.1.0 */
+RA8_INTERNAL static void internal_expect_overlap(test_store_t*              store,
+                                                 ra8_jof_audit_workspace_t* ws,
+                                                 ra8_jof_audit_result_t*    out)
+{
+  *out = (ra8_jof_audit_result_t){.decoded_tiles = k_test_record_poison};
+  CHECK(ra8_jof_audit(internal_test_pread, store, store->len, ws, out) == k_ra8_err_invalid_arg);
+  CHECK(out->decoded_tiles == k_test_record_poison);
+}
+
+/** @brief Reject every null public operand of both audit entry points @details Supplies one absent pointer per call so each guard is the only reason the request can fail, then proves a failed parse is propagated. @pre The synthetic raw atlas parses when no fault is injected. @pre The caller-owned workspace buffers are exclusively owned here. @post Every absent operand returned k_ra8_err_null_ptr. @post A failed requirement derivation propagated verbatim and preserved the caller's result object. @note Test-local and allocation-free. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_public_argument_guards(void)
+{
+  const uint8_t top[k_test_tile_bytes]    = {1U, 2U};
+  const uint8_t bottom[k_test_tile_bytes] = {3U, 4U};
+  uint8_t       atlas[k_test_atlas_size];
+  internal_make_atlas(atlas, top, bottom);
+  test_store_t              store                      = {.bytes = atlas, .len = sizeof(atlas)};
+  ra8_jof_audit_record_t    records[k_test_tile_count] = {};
+  uint8_t                   tile[k_test_tile_bytes]    = {};
+  ra8_jof_audit_result_t    result                     = {.decoded_tiles = k_test_record_poison};
+  ra8_jof_audit_workspace_t workspace                  = {.records    = records,
+                                                          .record_cap = k_test_tile_count,
+                                                          .tile       = tile,
+                                                          .tile_cap   = sizeof(tile)};
+
+  CHECK(ra8_jof_audit_requirements(internal_test_pread, &store, store.len, nullptr) ==
+        k_ra8_err_null_ptr);
+  CHECK(ra8_jof_audit(nullptr, &store, store.len, &workspace, &result) == k_ra8_err_null_ptr);
+  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &workspace, nullptr) ==
+        k_ra8_err_null_ptr);
+  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, nullptr, &result) ==
+        k_ra8_err_null_ptr);
+  workspace.records = nullptr;
+  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &workspace, &result) ==
+        k_ra8_err_null_ptr);
+  workspace.records = records;
+  workspace.tile    = nullptr;
+  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &workspace, &result) ==
+        k_ra8_err_null_ptr);
+  workspace.tile = tile;
+  store.fail     = true;
+  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &workspace, &result) == k_ra8_fail);
+  CHECK(result.decoded_tiles == k_test_record_poison);
+}
+
+/** @brief Reject an absent or undersized compressed-stream workspace @details A deflate atlas requires an exact stored-stream bound, so a null scratch and a scratch smaller than that bound are independently refused. @pre The synthetic deflate atlas parses and requires non-zero scratch. @pre Record and tile capacities already satisfy the derived requirements. @post The absent scratch returned k_ra8_err_null_ptr. @post The undersized scratch returned k_ra8_err_invalid_size and left both the caller's result object and the record array untouched. @note Test-local and allocation-free. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_workspace_capacity_guards(void)
+{
+  const uint8_t top[k_test_tile_bytes]           = {1U, 2U};
+  const uint8_t bottom[k_test_tile_bytes]        = {3U, 4U};
+  uint8_t       atlas[k_test_deflate_atlas_size] = {};
+  internal_make_deflate_atlas(atlas, top, bottom);
+  test_store_t           store = {.bytes = atlas, .len = sizeof(atlas)};
+  ra8_jof_audit_record_t records[k_test_tile_count];
+  uint8_t                tile[k_test_tile_bytes]         = {};
+  uint8_t                scratch[k_test_deflate_scratch] = {};
+  ra8_jof_audit_result_t result                          = {.decoded_tiles = k_test_record_poison};
+  (void)memset(records, k_test_record_poison_byte, sizeof(records));
+  ra8_jof_audit_workspace_t workspace = {.records     = records,
+                                         .record_cap  = k_test_tile_count,
+                                         .tile        = tile,
+                                         .tile_cap    = sizeof(tile),
+                                         .scratch     = nullptr,
+                                         .scratch_cap = sizeof(scratch)};
+
+  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &workspace, &result) ==
+        k_ra8_err_null_ptr);
+  workspace.scratch     = scratch;
+  workspace.scratch_cap = k_test_tiny_scratch;
+  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &workspace, &result) ==
+        k_ra8_err_invalid_size);
+  CHECK(result.decoded_tiles == k_test_record_poison);
+  CHECK(records[0].offset == k_test_record_poison);
+}
+
+/** @brief Reject workspace spans that overlap the workspace descriptor itself @details Points the record array and then the decoded tile at the descriptor, and finally advertises a tile span whose end address is not representable. @pre The synthetic raw atlas parses and needs no compressed scratch. @pre No fabricated span is ever dereferenced by the implementation. @post Both descriptor overlaps returned k_ra8_err_invalid_arg. @post The unrepresentable span returned k_ra8_err_invalid_size and preserved the caller's result object. @note Test-local and allocation-free. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_descriptor_overlap_guards(void)
+{
+  const uint8_t top[k_test_tile_bytes]    = {1U, 2U};
+  const uint8_t bottom[k_test_tile_bytes] = {3U, 4U};
+  uint8_t       atlas[k_test_atlas_size];
+  internal_make_atlas(atlas, top, bottom);
+  test_store_t              store                      = {.bytes = atlas, .len = sizeof(atlas)};
+  ra8_jof_audit_record_t    records[k_test_tile_count] = {};
+  uint8_t                   tile[k_test_tile_bytes]    = {};
+  ra8_jof_audit_result_t    result                     = {};
+  ra8_jof_audit_workspace_t workspace                  = {.records    = records,
+                                                          .record_cap = k_test_tile_count,
+                                                          .tile       = tile,
+                                                          .tile_cap   = sizeof(tile)};
+
+  workspace.records = (ra8_jof_audit_record_t*)(void*)&workspace;
+  internal_expect_overlap(&store, &workspace, &result);
+  workspace.records = records;
+
+  workspace.tile = (uint8_t*)(void*)&workspace;
+  internal_expect_overlap(&store, &workspace, &result);
+
+  workspace.tile = (uint8_t*)(UINTPTR_MAX - (uintptr_t)k_test_ceiling_gap);
+  result         = (ra8_jof_audit_result_t){.decoded_tiles = k_test_record_poison};
+  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &workspace, &result) ==
+        k_ra8_err_invalid_size);
+  CHECK(result.decoded_tiles == k_test_record_poison);
+}
+
+/** @brief Reject a result object that aliases the tile or the descriptor @details Unions place the public result over the decoded-tile buffer and then over the workspace descriptor, which are the two writable spans a caller can most plausibly reuse. @pre The synthetic raw atlas parses and needs no compressed scratch. @pre Every non-aliased span references distinct caller storage. @post Both aliases returned k_ra8_err_invalid_arg. @post Neither the poisoned result nor the descriptor was modified. @note Test-local and allocation-free. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_result_alias_guards(void)
+{
+  const uint8_t top[k_test_tile_bytes]    = {1U, 2U};
+  const uint8_t bottom[k_test_tile_bytes] = {3U, 4U};
+  uint8_t       atlas[k_test_atlas_size];
+  internal_make_atlas(atlas, top, bottom);
+  test_store_t           store                      = {.bytes = atlas, .len = sizeof(atlas)};
+  ra8_jof_audit_record_t records[k_test_tile_count] = {};
+  uint8_t                tile[k_test_tile_bytes]    = {};
+
+  test_tile_alias_t         tile_alias = {.result = {.decoded_tiles = k_test_record_poison}};
+  ra8_jof_audit_workspace_t workspace  = {.records    = records,
+                                          .record_cap = k_test_tile_count,
+                                          .tile       = tile_alias.tile,
+                                          .tile_cap   = sizeof(tile_alias.tile)};
+  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &workspace, &tile_alias.result) ==
+        k_ra8_err_invalid_arg);
+  CHECK(tile_alias.result.decoded_tiles == k_test_record_poison);
+
+  test_ws_alias_t ws_alias = {};
+  ws_alias.workspace       = (ra8_jof_audit_workspace_t){.records    = records,
+                                                         .record_cap = k_test_tile_count,
+                                                         .tile       = tile,
+                                                         .tile_cap   = sizeof(tile)};
+  const ra8_jof_audit_record_t* before = ws_alias.workspace.records;
+  CHECK(
+    ra8_jof_audit(internal_test_pread, &store, store.len, &ws_alias.workspace, &ws_alias.result) ==
+    k_ra8_err_invalid_arg);
+  CHECK(ws_alias.workspace.records == before);
+}
+
+/** @brief Reject a compressed-stream workspace that overlaps another span @details A fixed-layout static block separates the record array, the decoded tile, and the staging buffer by more than one stored-stream bound, so a staging span pointed at one neighbour cannot reach any other. @pre The synthetic deflate atlas parses and requires non-zero scratch. @pre The descriptor and result live outside the static block. @post Staging over the descriptor, the records, and the tile each returned k_ra8_err_invalid_arg. @post Every rejection preserved the caller's result object. @note Test-local and allocation-free. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_scratch_overlap_guards(void)
+{
+  const uint8_t top[k_test_tile_bytes]           = {1U, 2U};
+  const uint8_t bottom[k_test_tile_bytes]        = {3U, 4U};
+  uint8_t       atlas[k_test_deflate_atlas_size] = {};
+  internal_make_deflate_atlas(atlas, top, bottom);
+  test_store_t              store  = {.bytes = atlas, .len = sizeof(atlas)};
+  ra8_jof_audit_result_t    result = {};
+  ra8_jof_audit_workspace_t workspace =
+    (ra8_jof_audit_workspace_t){.records     = s_deflate_bufs.records,
+                                .record_cap  = k_test_tile_count,
+                                .tile        = s_deflate_bufs.tile,
+                                .tile_cap    = sizeof(s_deflate_bufs.tile),
+                                .scratch     = s_deflate_bufs.scratch,
+                                .scratch_cap = sizeof(s_deflate_bufs.scratch)};
+
+  workspace.scratch = (uint8_t*)(void*)&workspace;
+  internal_expect_overlap(&store, &workspace, &result);
+
+  workspace.scratch = (uint8_t*)(void*)s_deflate_bufs.records;
+  internal_expect_overlap(&store, &workspace, &result);
+
+  workspace.scratch = s_deflate_bufs.tile;
+  internal_expect_overlap(&store, &workspace, &result);
+}
+
+/** @brief Preserve public outputs when the audit's own reads or windows fail @details Fails the index-entry read, then the second structural parse, then presents a stored window whose end offset does not fit 32 bits. @pre The synthetic raw atlas parses when no fault is injected. @pre The result object is poisoned before every vector. @post The read faults propagated k_ra8_fail verbatim. @post The 32-bit window overflow returned k_ra8_err_validation_failed and no vector published a partial result. @note Test-local and allocation-free. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_tile_fault_paths(void)
+{
+  const uint8_t top[k_test_tile_bytes]    = {1U, 2U};
+  const uint8_t bottom[k_test_tile_bytes] = {3U, 4U};
+  uint8_t       atlas[k_test_atlas_size];
+  internal_make_atlas(atlas, top, bottom);
+  ra8_jof_audit_record_t    records[k_test_tile_count] = {};
+  uint8_t                   tile[k_test_tile_bytes]    = {};
+  ra8_jof_audit_result_t    result                     = {.decoded_tiles = k_test_record_poison};
+  ra8_jof_audit_workspace_t workspace                  = {.records    = records,
+                                                          .record_cap = k_test_tile_count,
+                                                          .tile       = tile,
+                                                          .tile_cap   = sizeof(tile)};
+
+  test_store_t store = {.bytes          = atlas,
+                        .len            = sizeof(atlas),
+                        .fail_at_offset = true,
+                        .fail_offset    = k_test_index_off};
+  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &workspace, &result) == k_ra8_fail);
+  CHECK(result.decoded_tiles == k_test_record_poison);
+
+  store =
+    (test_store_t){.bytes = atlas, .len = sizeof(atlas), .fail_after = k_test_reads_per_parse};
+  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &workspace, &result) == k_ra8_fail);
+  CHECK(result.decoded_tiles == k_test_record_poison);
+
+  internal_write_u32(&atlas[k_test_index_off], k_test_offset_ceiling);
+  store = (test_store_t){.bytes = atlas, .len = sizeof(atlas)};
+  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &workspace, &result) ==
+        k_ra8_err_validation_failed);
+  CHECK(result.decoded_tiles == k_test_record_poison);
+}
+
+/** @brief Refuse geometries whose derived byte counts leave the 32-bit budget @details One atlas declares a tile larger than 2^32 bytes; the other declares the exact tile size whose worst-case stored bound is 2^32 and therefore cannot be represented. @pre Both geometry-only atlases satisfy every structural cross-check. @pre The requirements record is poisoned before each vector. @post Both derivations returned k_ra8_err_invalid_size. @post Neither derivation published a usable requirements record. @note Test-local and allocation-free. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_geometry_limits(void)
+{
+  uint8_t atlas[k_test_geo_size] = {};
+  internal_make_geometry_atlas(atlas,
+                               (uint16_t)k_test_geo_huge_tile,
+                               (uint16_t)k_test_geo_huge_tile,
+                               (uint8_t)k_ra8_jof_codec_raw);
+  test_store_t                 store = {.bytes = atlas, .len = sizeof(atlas)};
+  ra8_jof_audit_requirements_t need  = {.record_count  = k_test_record_poison,
+                                        .tile_bytes    = k_test_record_poison,
+                                        .scratch_bytes = k_test_record_poison};
+  CHECK(ra8_jof_audit_requirements(internal_test_pread, &store, store.len, &need) ==
+        k_ra8_err_invalid_size);
+  CHECK(need.tile_bytes == k_test_record_poison);
+
+  internal_make_geometry_atlas(atlas,
+                               (uint16_t)k_test_geo_bound_tile_w,
+                               (uint16_t)k_test_geo_bound_tile_h,
+                               (uint8_t)k_ra8_jof_codec_deflate);
+  store = (test_store_t){.bytes = atlas, .len = sizeof(atlas)};
+  CHECK(ra8_jof_audit_requirements(internal_test_pread, &store, store.len, &need) ==
+        k_ra8_err_invalid_size);
+  CHECK(need.scratch_bytes == k_test_record_poison);
+}
+
 /**
  * @brief Exercise exact capacities, malformed coverage, and duplicate evidence
  * @details Builds deterministic raw atlases and verifies every public outcome.
@@ -498,6 +837,13 @@ int main(void)
   internal_test_workspace_guards();
   internal_test_duplicate_and_coverage();
   internal_test_read_failures();
+  internal_test_public_argument_guards();
+  internal_test_workspace_capacity_guards();
+  internal_test_descriptor_overlap_guards();
+  internal_test_result_alias_guards();
+  internal_test_scratch_overlap_guards();
+  internal_test_tile_fault_paths();
+  internal_test_geometry_limits();
   if (s_failures != 0) {
     return 1;
   }

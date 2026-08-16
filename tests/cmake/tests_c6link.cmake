@@ -150,6 +150,27 @@ if(NOT TARGET test_ra8_c6link_mdl)
   add_test(NAME test_ra8_c6link_mdl COMMAND test_ra8_c6link_mdl)
 endif()
 
+# test_ra8_c6link_mdl_codec: wire round trips for the generated media-download
+# codec itself -- __pack() against __pack_to_buffer() through a
+# ProtobufCBufferSimple, __get_packed_size(), field-by-field __unpack(), and
+# __free_unpacked(). It is a sibling of test_ra8_c6link_mdl rather than more
+# cases inside it because that file is already at the 1000-line cap, and it
+# needs strictly less: the generated codec and the protobuf-c runtime, with no
+# service state machine and no co-processor model.
+if(NOT TARGET test_ra8_c6link_mdl_codec)
+  add_executable(
+    test_ra8_c6link_mdl_codec
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl_codec.c
+    ${FW_ROOT}/libs/ra8_c6link/src/ra8_media_download.pb-c.c
+    ${RA8_C6LINK_VENDOR_DIR}/common/protobuf-c/protobuf-c/protobuf-c.c
+  )
+  target_compile_options(
+    test_ra8_c6link_mdl_codec PRIVATE -Wall -Wextra -Wno-unused-parameter
+  )
+  target_include_directories(test_ra8_c6link_mdl_codec PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
+  add_test(NAME test_ra8_c6link_mdl_codec COMMAND test_ra8_c6link_mdl_codec)
+endif()
+
 # test_ra8_esp32_c6_mdl_service: the concrete ESP-IDF HTTP adapter compiled
 # against deterministic host implementations of its exact consumed SDK
 # surface. This reaches the real retained-client/open/read/hash state machine
