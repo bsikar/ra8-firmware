@@ -24,8 +24,7 @@ ra8_add_app(
   LIBS ra8_board_ek_ra8d2
        ra8_c6link
        ra8_mdl_storage_vfs
-       ra8_rabook_compile
-       ra8_epub
+       ra8_webp
        ra8_io
        ra8_fs
        ra8_sdmmc_spi
@@ -33,6 +32,14 @@ ra8_add_app(
        miniz
   EXTRA_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/media_download_format.c
              ${CMAKE_CURRENT_SOURCE_DIR}/media_download_image.c
+             ${_d}/libs/ra8_rabook_compile/src/ra8_rabook_comic.c
+             ${_d}/libs/ra8_rabook_compile/src/ra8_rabook_compile.c
+             ${_d}/libs/ra8_rabook_compile/src/ra8_rabook_container.c
+             ${_d}/libs/ra8_rabook_compile/src/ra8_rabook_finalize.c
+             ${_d}/libs/ra8_rabook_compile/src/ra8_rabook_gray4.c
+             ${_d}/libs/ra8_rabook_compile/src/ra8_rabook_raster.c
+             ${_d}/libs/ra8_reflow/src/ra8_img_arena.c
+             ${_d}/libs/third_party/stb/stb_image_impl.c
 )
 
 option(RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE
@@ -40,6 +47,12 @@ option(RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE
        OFF)
 
 if(TARGET media_download.elf)
+  target_include_directories(
+    media_download.elf
+    PRIVATE ${_d}/libs/ra8_rabook_compile/inc
+            ${_d}/libs/ra8_reflow/inc
+            ${_d}/libs/third_party/stb
+  )
   set(_media_url "")
   set(_media_ssid "")
   set(_media_psk "")
