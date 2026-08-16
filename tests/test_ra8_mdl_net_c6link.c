@@ -288,14 +288,14 @@ RA8_INTERNAL static void internal_test_buffer_and_sink(void)
 
 /**
  * @test internal_test_http_status_is_not_synthesized
- * @brief Surface a non-success HTTP response without transport relabeling.
+ * @brief Surface and classify a non-success HTTP response without relabeling.
  * @details Configures the C6 model to return 429 with Retry-After and proves
- * the network adapter publishes that exact metadata alongside verified bytes.
+ * the network adapter publishes that exact metadata and shared throttle result.
  * @pre Model and static hash state are exclusively owned.
  * @pre The deterministic source digest matches the model body.
- * @post The transfer succeeds at the transport layer with status 429 intact.
- * @post Caller policy can distinguish throttling from a successful response.
- * @note `mdl_fetch` owns the eventual throttle decision.
+ * @post The adapter returns busy with status 429 and Retry-After intact.
+ * @post Success-only output length remains untouched on the HTTP error.
+ * @note Classification is required to match the curl backend contract.
  * @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_http_status_is_not_synthesized(void)
@@ -310,7 +310,7 @@ RA8_INTERNAL static void internal_test_http_status_is_not_synthesized(void)
   mdl_net_resp_t      response;
   char                buffer[k_internal_sink_bytes];
   size_t              length = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
+  TEST_ASSERT_EQ(k_ra8_err_busy,
                  mdl_net_get_buf(&net,
                                  "https://example.test/book",
                                  &request,
@@ -320,7 +320,35 @@ RA8_INTERNAL static void internal_test_http_status_is_not_synthesized(void)
                                  &response));
   TEST_ASSERT_EQ(429L, response.status);
   TEST_ASSERT(strcmp(response.retry_after, "5") == 0);
-  TEST_ASSERT_EQ(sizeof(s_body) - 1U, length);
+  TEST_ASSERT_EQ(0, length);
+
+  mdl_net_destroy(&net);
+  internal_prepare_source();
+  internal_bind(&net, &backend);
+  ra8_c6_model()->mdl_http_status = 404;
+  TEST_ASSERT_EQ(k_ra8_err_not_found,
+                 mdl_net_get_buf(&net,
+                                 "https://example.test/book",
+                                 &request,
+                                 buffer,
+                                 sizeof(buffer),
+                                 &length,
+                                 &response));
+  TEST_ASSERT_EQ(404L, response.status);
+
+  mdl_net_destroy(&net);
+  internal_prepare_source();
+  internal_bind(&net, &backend);
+  ra8_c6_model()->mdl_http_status = 500;
+  TEST_ASSERT_EQ(k_ra8_fail,
+                 mdl_net_get_buf(&net,
+                                 "https://example.test/book",
+                                 &request,
+                                 buffer,
+                                 sizeof(buffer),
+                                 &length,
+                                 &response));
+  TEST_ASSERT_EQ(500L, response.status);
   mdl_net_destroy(&net);
   TEST_END("c6 media net preserves HTTP status");
 }
@@ -367,7 +395,9 @@ RA8_INTERNAL static void internal_test_fail_closed(void)
                                  nullptr));
   TEST_ASSERT_EQ('\0', buffer[0]);
 
+  mdl_net_destroy(&net);
   internal_prepare_source();
+  internal_bind(&net, &backend);
   s_sha.bad_final                  = true;
   char full[k_internal_sink_bytes] = "old";
   TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch,
