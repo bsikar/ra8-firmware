@@ -45,18 +45,28 @@ static ra8_err_t
 internal_rabook_read_exact(void* opaque, uint64_t offset, uint8_t* dst, uint32_t len)
 {
   ra8_mdl_rabook_vfs_t* const ctx = opaque;
-  if ((ctx == nullptr) || (ctx->file == nullptr)) {
+  if (ctx == nullptr) {
+    return k_ra8_err_invalid_state;
+  }
+  if (ctx->file == nullptr) {
     return k_ra8_err_invalid_state;
   }
   ra8_err_t err  = ra8_io_vfs_file_seek(ctx->file, offset);
   uint32_t  done = 0U;
   RA8_LOOP_BOUND(UINT32_MAX);
-  while ((err == k_ra8_ok) && (done < len)) {
+  while (done < len) {
+    if (err != k_ra8_ok) {
+      break;
+    }
     uint32_t got = 0U;
     err          = ra8_io_vfs_file_read(ctx->file, &dst[done], len - done, &got);
-    if ((err == k_ra8_ok) && (got == 0U)) {
-      err = k_ra8_err_invalid_size;
-    } else if (got > (len - done)) {
+    if (err == k_ra8_ok) {
+      if (got == 0U) {
+        err = k_ra8_err_invalid_size;
+        continue;
+      }
+    }
+    if (got > (len - done)) {
       err = k_ra8_err_protocol_error;
     } else {
       done += got;
@@ -142,8 +152,12 @@ static ra8_err_t internal_rabook_open_reader(ra8_mdl_rabook_vfs_t* ctx,
     return err;
   }
   err = ra8_io_vfs_file_size(ctx->file, &ctx->file_size);
-  if ((err == k_ra8_ok) && enforce_size && (ctx->file_size != expected_size)) {
-    err = k_ra8_err_invalid_size;
+  if (err == k_ra8_ok) {
+    if (enforce_size) {
+      if (ctx->file_size != expected_size) {
+        err = k_ra8_err_invalid_size;
+      }
+    }
   }
   if (err == k_ra8_ok) {
     err = ra8_book_chunked_open(&ctx->reader,
@@ -194,16 +208,37 @@ static ra8_err_t internal_rabook_validate_open(ra8_mdl_rabook_vfs_t* ctx,
 ra8_err_t ra8_mdl_rabook_vfs_init(ra8_mdl_rabook_vfs_t*              ctx,
                                   const ra8_mdl_rabook_vfs_config_t* config)
 {
-  if ((ctx == nullptr) || (config == nullptr)) {
+  if (ctx == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  if ((config->inflate == nullptr) || (config->table == nullptr) ||
-      (config->compressed == nullptr) || (config->chunk == nullptr) ||
-      (config->scratch == nullptr)) {
+  if (config == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  if ((config->table_cap < 2U) || (config->compressed_cap == 0U) || (config->chunk_cap == 0U) ||
-      (config->scratch_cap == 0U)) {
+  if (config->inflate == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (config->table == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (config->compressed == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (config->chunk == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (config->scratch == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (config->table_cap < 2U) {
+    return k_ra8_err_invalid_size;
+  }
+  if (config->compressed_cap == 0U) {
+    return k_ra8_err_invalid_size;
+  }
+  if (config->chunk_cap == 0U) {
+    return k_ra8_err_invalid_size;
+  }
+  if (config->scratch_cap == 0U) {
     return k_ra8_err_invalid_size;
   }
   const ra8_mdl_rabook_vfs_t initialized = {
@@ -226,11 +261,20 @@ ra8_err_t ra8_mdl_rabook_vfs_validate(void*         opaque,
                                       uint64_t      total_bytes,
                                       const uint8_t sha256[k_ra8_mdl_sha256_bytes])
 {
-  if ((opaque == nullptr) || (staging_path == nullptr) || (sha256 == nullptr)) {
+  if (opaque == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (staging_path == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (sha256 == nullptr) {
     return k_ra8_err_null_ptr;
   }
   ra8_mdl_rabook_vfs_t* const ctx = opaque;
-  if (ctx->open || (ctx->file != nullptr)) {
+  if (ctx->open) {
+    return k_ra8_err_invalid_state;
+  }
+  if (ctx->file != nullptr) {
     return k_ra8_err_invalid_state;
   }
   ctx->transfer_validated = false;
@@ -255,10 +299,16 @@ ra8_err_t ra8_mdl_rabook_vfs_validate(void*         opaque,
 
 ra8_err_t ra8_mdl_rabook_vfs_open(ra8_mdl_rabook_vfs_t* ctx, const char* path)
 {
-  if ((ctx == nullptr) || (path == nullptr)) {
+  if (ctx == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  if (ctx->open || (ctx->file != nullptr)) {
+  if (path == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (ctx->open) {
+    return k_ra8_err_invalid_state;
+  }
+  if (ctx->file != nullptr) {
     return k_ra8_err_invalid_state;
   }
   ra8_err_t         err       = internal_rabook_open_reader(ctx, path, 0U, false);
@@ -281,10 +331,16 @@ ra8_err_t ra8_mdl_rabook_vfs_read_chunk(ra8_mdl_rabook_vfs_t* ctx,
                                         uint8_t*              dst,
                                         uint32_t              len)
 {
-  if ((ctx == nullptr) || (dst == nullptr)) {
+  if (ctx == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  if (!ctx->open || (ctx->file == nullptr)) {
+  if (dst == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (!ctx->open) {
+    return k_ra8_err_invalid_state;
+  }
+  if (ctx->file == nullptr) {
     return k_ra8_err_invalid_state;
   }
   return ra8_book_chunked_read(&ctx->reader, offset, dst, len);
@@ -294,10 +350,19 @@ ra8_err_t ra8_mdl_rabook_vfs_info(const ra8_mdl_rabook_vfs_t* ctx,
                                   ra8_book_header_t*          out_header,
                                   uint64_t*                   out_flat_size)
 {
-  if ((ctx == nullptr) || (out_header == nullptr) || (out_flat_size == nullptr)) {
+  if (ctx == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  if (!ctx->open || (ctx->file == nullptr)) {
+  if (out_header == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (out_flat_size == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (!ctx->open) {
+    return k_ra8_err_invalid_state;
+  }
+  if (ctx->file == nullptr) {
     return k_ra8_err_invalid_state;
   }
   *out_header    = ctx->header;
