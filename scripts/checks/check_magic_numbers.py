@@ -113,6 +113,17 @@ IGNORED_INT = {0, 1, 2, 3, 4, 6, 8, 16, 32}
 # ``.clang-tidy``: readability-magic-numbers.IgnoredFloatingPointValues.
 IGNORED_FLOAT = {0.0, 1.0}
 
+# Suffixes this gate owns. HEADERS ARE IN SCOPE: they carry array extents,
+# fixture lengths, geometry constants and -- in one HAL header -- four bare
+# absolute register addresses, and none of that was ever scanned while the
+# enumeration stopped at *.c. Widening it found 23 real findings that had sat
+# unflagged, four of them exactly the "hardware register addresses as literals"
+# construct CLAUDE.md forbids by name. Keeping headers out would also make the
+# clang-tidy de-duplication in scripts/checks/tidy/pass_args.sh dishonest: that
+# switches readability-magic-numbers off on the grounds that THIS checker owns
+# the rule over the same files, which is only true if it reads the same files.
+SOURCE_SUFFIXES = (".c", ".h")
+
 # Per-line opt-out marker.
 OPT_OUT = "MAGIC-OK"
 
@@ -439,12 +450,13 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
                 p = REPO_ROOT / p
             if p.is_dir():
                 out.extend(p.rglob("*.c"))
-            elif p.suffix == ".c":
+                out.extend(p.rglob("*.h"))
+            elif p.suffix in SOURCE_SUFFIXES:
                 out.append(p)
         return [p for p in out if not _is_excluded(p)]
 
-    # No-argument mode scans every GIT-VISIBLE .c so nothing first-party is
-    # silently skipped (new top-level dirs, tools/, port/, etc. are covered
+    # No-argument mode scans every GIT-VISIBLE .c and .h so nothing first-party
+    # is silently skipped (new top-level dirs, tools/, port/, etc. are covered
     # automatically -- there is no allowlist to forget to update).
     # Enumerating via ``git ls-files`` (tracked plus untracked-but-not-
     # ignored) instead of a filesystem walk keeps gitignored artifacts out:
@@ -465,7 +477,7 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
     # (the #296 / #332 / #358 / #369 defect family).
     git_tool = shutil.which("git") or "git"
     proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool path
-        [git_tool, "ls-files", "--cached", "--others", "--exclude-standard", "--", "*.c"],
+        [git_tool, "ls-files", "--cached", "--others", "--exclude-standard", "--", "*.c", "*.h"],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,

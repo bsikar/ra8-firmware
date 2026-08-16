@@ -58,6 +58,29 @@ typedef enum : uint16_t {
 } ra8_lpm_safe_boot_prcr_t;
 
 /**
+ * @enum ra8_lpm_safe_boot_addr_t
+ * @brief Absolute addresses of the four SYSC LPM registers this restores.
+ *
+ * @details
+ * uintptr_t, per the project rule for address enums: on the 32-bit RA8D2
+ * target it is uint32_t, while on the 64-bit unit-test host a uint32_t enum
+ * would truncate the cast and produce a wrong pointer. This header predates
+ * ra8_sysc_regs.h and is deliberately self-contained -- it is included from
+ * the reset path, before any register-bank header is available.
+ *
+ * @invariant Each value is the absolute address of the register its name
+ * gives; the HUM chapters are cited on the accesses in ra8_lpm_safe_boot().
+ * @see ra8_lpm_safe_boot()
+ * @since 0.1.0
+ */
+typedef enum : uintptr_t {
+  k_ra8_lpm_safe_boot_prcr_addr    = 0x4001E3FAUL, /**< SYSC.PRCR, 16-bit.   */
+  k_ra8_lpm_safe_boot_sbycr_addr   = 0x4001E00CUL, /**< SYSC.SBYCR, 8-bit.   */
+  k_ra8_lpm_safe_boot_lpscr_addr   = 0x4001EA90UL, /**< SYSC.LPSCR, 8-bit.   */
+  k_ra8_lpm_safe_boot_dpsbycr_addr = 0x4001EA00UL, /**< SYSC.DPSBYCR, 8-bit. */
+} ra8_lpm_safe_boot_addr_t;
+
+/**
  * @enum ra8_lpm_safe_boot_val_t
  * @brief Cold-reset values for LPSCR / SBYCR / DPSBYCR.
  *
@@ -101,14 +124,14 @@ typedef enum : uint8_t {
 [[gnu::always_inline]] static inline void ra8_lpm_safe_boot(void)
 {
 #ifndef RA8_OFF_TARGET
-  /* SYSC.PRCR (16-bit, write-protect key) @ 0x4001E3FA */
-  volatile uint16_t* const prcr = (volatile uint16_t*)0x4001E3FAUL;
-  /* SBYCR (8-bit) @ 0x4001E00C  -- Standby Control Register */
-  volatile uint8_t* const sbycr = (volatile uint8_t*)0x4001E00CUL;
-  /* LPSCR (8-bit) @ 0x4001EA90  -- Low Power State Control Register */
-  volatile uint8_t* const lpscr = (volatile uint8_t*)0x4001EA90UL;
-  /* DPSBYCR (8-bit) @ 0x4001EA00  -- Deep Software Standby Ctrl */
-  volatile uint8_t* const dpsbycr = (volatile uint8_t*)0x4001EA00UL;
+  /* SYSC.PRCR (16-bit, write-protect key) */
+  volatile uint16_t* const prcr = (volatile uint16_t*)k_ra8_lpm_safe_boot_prcr_addr;
+  /* SBYCR (8-bit) -- Standby Control Register */
+  volatile uint8_t* const sbycr = (volatile uint8_t*)k_ra8_lpm_safe_boot_sbycr_addr;
+  /* LPSCR (8-bit) -- Low Power State Control Register */
+  volatile uint8_t* const lpscr = (volatile uint8_t*)k_ra8_lpm_safe_boot_lpscr_addr;
+  /* DPSBYCR (8-bit) -- Deep Software Standby Ctrl */
+  volatile uint8_t* const dpsbycr = (volatile uint8_t*)k_ra8_lpm_safe_boot_dpsbycr_addr;
 
   *prcr    = (uint16_t)k_ra8_lpm_safe_boot_prcr_unlock;
   *lpscr   = (uint8_t)k_ra8_lpm_safe_boot_lpscr_sleep;

@@ -121,4 +121,4 @@ static const uint8_t k_cover_jpg[] = {
 };
 
 /** @brief Length of ::k_cover_jpg in bytes. */
-static const uint32_t k_cover_jpg_len = 1606U;
+static const uint32_t k_cover_jpg_len = (uint32_t)sizeof(k_cover_jpg);

@@ -899,4 +899,4 @@ static const uint8_t s_ahem_ttf[] = {
  * @note Must remain synchronized with the embedded fixture payload.
  * @since 0.1.0
  */
-static const uint32_t s_ahem_ttf_len = 13884U;
+static const uint32_t s_ahem_ttf_len = (uint32_t)sizeof(s_ahem_ttf);

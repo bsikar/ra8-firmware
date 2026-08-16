@@ -34,7 +34,35 @@
 # errors when it parses the file with clang. -Wno-unknown-warning-option
 # silences those without affecting the actual GCC firmware build.
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# The one place the no-magic-numbers de-duplication is written down.
+#
+# scripts/checks/check_magic_numbers.py OWNS this rule across every first-party
+# .c and .h, it runs blocking in the pre-commit-checks gate, and it is the only
+# one of the two implementations that models the rule correctly: it knows about
+# data rows (a line of pure numeric literals is data, not logic -- 822 of the
+# firmware surface's 887 findings were USB descriptor tables), it honours
+# MAGIC-OK and clang-tidy's own NOLINT waivers, and it carries the project's
+# explicit, written position that unit tests are exempt because a test is built
+# from literal stimulus and expected-value vectors.
+#
+# clang-tidy's readability-magic-numbers is a second, coarser implementation of
+# the same rule. The firmware pass switched it off for exactly this reason; the
+# host, C++, tools and Objective-C passes never did, so they kept reporting a
+# rule the tree enforces elsewhere and deliberately exempts here -- 398 findings
+# on this branch, essentially all of them in test code, against a ratchet
+# baseline that carries not one magic-number row.
+#
+# This is de-duplication, not exemption. The rule is still enforced, by the
+# checker that gets it right, over a scope that now includes headers precisely
+# so that this claim stays true.
+# ---------------------------------------------------------------------------
+magic_number_dedup_arg() {
+  printf '%s\n' "--checks=-readability-magic-numbers"
+}
+
 db_pass_args() {
+  magic_number_dedup_arg
   printf '%s\n' \
     "-p=$BUILD_DIR" \
     "--extra-arg-before=-std=c2x" \
@@ -56,6 +84,7 @@ db_pass_args() {
 # is in it; -std=c++17 is the floor the vendored tinyxml2 and litehtml need.
 # ---------------------------------------------------------------------------
 cxx_pass_args() {
+  magic_number_dedup_arg
   printf '%s\n' \
     "-p=$BUILD_DIR" \
     "--extra-arg-before=-xc++" \
@@ -75,6 +104,7 @@ cxx_pass_args() {
 # The macOS SDK root is supplied separately by run_clang_tidy.
 # ---------------------------------------------------------------------------
 objc_pass_args() {
+  magic_number_dedup_arg
   local dir
   for dir in "$FIRMWARE_DIR"/tools/*/ "$FIRMWARE_DIR"/tools/*/inc "$FIRMWARE_DIR"/tools/*/src; do
     [[ -d "$dir" ]] && printf -- '--extra-arg=-I%s\n' "${dir%/}"
@@ -205,9 +235,9 @@ firmware_pass_args() {
   # the freestanding `void main(void)` declaration that
   # libs/ra8_core/inc/ra8_boot_entry.h guards behind `__STDC_HOSTED__ == 0`
   # (#707).
+  magic_number_dedup_arg
   printf '%s\n' \
     "-p=$CROSS_DB_DIR" \
-    "--checks=-readability-magic-numbers" \
     "--extra-arg=-Wno-unknown-warning-option" \
     "--extra-arg=-ffreestanding"
   arm_system_includes
@@ -231,6 +261,7 @@ firmware_pass_args() {
 # rather than being silently skipped.
 # ---------------------------------------------------------------------------
 tools_pass_args() {
+  magic_number_dedup_arg
   local dir
   for dir in "$FIRMWARE_DIR"/tools/*/ "$FIRMWARE_DIR"/tools/*/inc "$FIRMWARE_DIR"/tools/*/src; do
     [[ -d "$dir" ]] && printf -- '--extra-arg=-I%s\n' "${dir%/}"
