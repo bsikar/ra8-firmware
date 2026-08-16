@@ -334,7 +334,7 @@ RA8_PRIV void priv_c6_model_mdl_fault_apply(ra8_c6_model_mdl_fault_t* fault_slot
   const bool accepted_fault = (fault >= k_c6m_mdl_fault_accepted_bad_version) &&
                               (fault <= k_c6m_mdl_fault_accepted_wrong_format);
   const bool outer_fault =
-    (fault >= k_c6m_mdl_fault_response_no_body) && (fault <= k_c6m_mdl_fault_response_empty_data);
+    (fault >= k_c6m_mdl_fault_response_no_body) && (fault <= k_c6m_mdl_fault_response_zero_len);
   const bool start_response = body->custom_msg_id == (uint32_t)k_ra8_mdl_rpc_start;
   const bool next_response  = body->custom_msg_id == (uint32_t)k_ra8_mdl_rpc_next;
   if ((accepted_fault && !start_response) ||
@@ -350,6 +350,13 @@ RA8_PRIV void priv_c6_model_mdl_fault_apply(ra8_c6_model_mdl_fault_t* fault_slot
   }
   if (fault == k_c6m_mdl_fault_response_wrong_id) {
     body->custom_msg_id ^= 1U;
+    return;
+  }
+  if (fault == k_c6m_mdl_fault_response_zero_len) {
+    /* A present-but-empty bytes field: protobuf-c treats only a NULL pointer
+       as absent, so this is packed onto the wire as a zero-length field and
+       the client decodes it to a non-null span of length zero. */
+    body->data.len = 0U;
     return;
   }
   if (fault == k_c6m_mdl_fault_response_empty_data) {

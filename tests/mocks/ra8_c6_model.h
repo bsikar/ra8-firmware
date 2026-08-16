@@ -130,6 +130,7 @@ typedef enum : uint8_t {
   k_c6m_mdl_fault_response_no_body,      /**< Omit the outer custom body.     */
   k_c6m_mdl_fault_response_wrong_id,     /**< Corrupt the outer operation id. */
   k_c6m_mdl_fault_response_empty_data,   /**< Omit the inner response bytes.  */
+  k_c6m_mdl_fault_response_zero_len,     /**< Present but empty inner body.   */
 } ra8_c6_model_mdl_fault_t;
 
 /**

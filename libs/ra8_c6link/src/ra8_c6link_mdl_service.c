@@ -659,6 +659,21 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_cancel(ra8_mdl_service_t*  s
   return k_ra8_ok;
 }
 
+RA8_TEST_HELPER bool ra8_mdl_service_field_valid_test(const char* text, size_t cap)
+{
+  return internal_mdl_request_field_valid(text, cap);
+}
+
+RA8_TEST_HELPER bool ra8_mdl_service_response_valid_test(const ra8_mdl_http_response_t* response)
+{
+  return internal_mdl_response_valid(response);
+}
+
+RA8_TEST_HELPER ra8_err_t ra8_mdl_service_check_size_test(size_t len, size_t response_cap)
+{
+  return internal_mdl_check_response_size(len, response_cap);
+}
+
 ra8_err_t ra8_mdl_service_init(ra8_mdl_service_t* service, const ra8_mdl_service_backend_t* backend)
 {
   if ((service == nullptr) || (backend == nullptr) || (backend->begin == nullptr) ||
