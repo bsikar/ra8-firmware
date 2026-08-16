@@ -36,14 +36,19 @@ typedef enum : uint8_t {
 
 /** @brief State for the deterministic media backend. */
 typedef struct {
-  const uint8_t*     bytes;               /**< Modelled response body.       */
-  size_t             len;                 /**< Total response body length.   */
-  size_t             at;                  /**< Offset of the next body byte. */
-  uint32_t           begins;              /**< Successful begin call count.  */
-  uint32_t           cancels;             /**< Successful cancel call count. */
-  ra8_mdl_format_t   format;              /**< Format observed by begin.     */
-  bool               terminal_total_zero; /**< Corrupt terminal-total fault. */
-  t_mdl_read_fault_t read_fault;          /**< One selected metadata fault.  */
+  const uint8_t*     bytes;                                      /**< Modelled response body. */
+  size_t             len;                                        /**< Complete body length.   */
+  size_t             at;                                         /**< Next body byte offset.   */
+  uint32_t           begins;                                     /**< Successful begin count. */
+  uint32_t           cancels;                                    /**< Successful cancel count. */
+  ra8_mdl_format_t   format;                                     /**< Requested format.       */
+  uint32_t           timeout_ms;                                 /**< Requested timeout.      */
+  char               user_agent[k_ra8_mdl_user_agent_max];       /**< Copied User-Agent.      */
+  char               referer[k_ra8_mdl_referer_max];             /**< Copied Referer.         */
+  char               if_none_match[k_ra8_mdl_etag_max];          /**< Copied ETag condition.  */
+  char               if_modified_since[k_ra8_mdl_http_date_max]; /**< Copied date condition.  */
+  bool               terminal_total_zero;                        /**< Bad terminal total.      */
+  t_mdl_read_fault_t read_fault;                                 /**< Selected metadata fault. */
 } fake_backend_t;
 
 static fake_backend_t    s_backend;
@@ -57,8 +62,7 @@ static const uint8_t s_unknown_varint_field[] = {0x78U, 0x01U};
 /** @brief Provide the file-local fake begin test helper. @details Implements
  * the fake begin fixture operation used only by this focused test executable.
  * @param[in,out] ctx Fixture argument governed by the exercised interface
- * contract. @param[in] url Fixture argument governed by the exercised interface
- * contract. @param[in] format Requested artifact identity. @return RA8 status
+ * contract. @param[in] request Complete typed HTTP request. @return RA8 status
  * from the exercised fixture operation. @retval
  * k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity
  * fixture storage required by this operation is available. @pre Arguments
@@ -67,15 +71,23 @@ static const uint8_t s_unknown_varint_field[] = {0x78U, 0x01U};
  * Mutations remain confined to documented outputs and file-local fixture state.
  * @note File-local helper; no ownership escapes this focused test executable.
  * @since Version 0.1.0 */
-RA8_INTERNAL static ra8_err_t
-internal_fake_begin(void* ctx, const char* url, ra8_mdl_format_t format)
+RA8_INTERNAL static ra8_err_t internal_fake_begin(void* ctx, const ra8_mdl_request_t* request)
 {
   fake_backend_t* fake = (fake_backend_t*)ctx;
-  if (strcmp(url, "https://example.test/book") != 0) {
+  if (strcmp(request->url, "https://example.test/book") != 0) {
     return k_ra8_err_invalid_arg;
   }
-  fake->at     = 0U;
-  fake->format = format;
+  fake->at         = 0U;
+  fake->format     = request->format;
+  fake->timeout_ms = request->http.timeout_ms;
+  memcpy(fake->user_agent, request->http.user_agent, strlen(request->http.user_agent) + 1U);
+  memcpy(fake->referer, request->http.referer, strlen(request->http.referer) + 1U);
+  memcpy(fake->if_none_match,
+         request->http.if_none_match,
+         strlen(request->http.if_none_match) + 1U);
+  memcpy(fake->if_modified_since,
+         request->http.if_modified_since,
+         strlen(request->http.if_modified_since) + 1U);
   fake->begins += 1U;
   return k_ra8_ok;
 }
@@ -88,8 +100,9 @@ internal_fake_begin(void* ctx, const char* url, ra8_mdl_format_t format)
  * interface contract. @param[out] got Fixture argument governed by the
  * exercised interface contract. @param[out] total_bytes Fixture argument
  * governed by the exercised interface contract. @param[out] complete Fixture
- * argument governed by the exercised interface contract. @param[in] sha256
- * Fixture argument governed by the exercised interface contract. @return RA8
+ * argument governed by the exercised interface contract. @param[out] sha256
+ * Terminal digest storage. @param[out] response Terminal HTTP metadata storage.
+ * @return RA8
  * status from the exercised fixture operation. @retval k_ra8_ok The fixture
  * operation completed successfully. @pre Fixed-capacity fixture storage
  * required by this operation is available. @pre Arguments follow the interface
@@ -103,9 +116,11 @@ RA8_INTERNAL static ra8_err_t internal_fake_read(void*     ctx,
                                                  uint16_t* got,
                                                  uint64_t* total_bytes,
                                                  bool*     complete,
-                                                 uint8_t   sha256[k_ra8_mdl_sha256_bytes])
+                                                 uint8_t   sha256[k_ra8_mdl_sha256_bytes],
+                                                 ra8_mdl_http_response_t* response)
 {
   fake_backend_t* fake = (fake_backend_t*)ctx;
+  *response            = (ra8_mdl_http_response_t){};
   if (fake->read_fault == k_t_mdl_read_fault_oversize) {
     *got         = (uint16_t)(cap + 1U);
     *total_bytes = *got;
@@ -124,6 +139,7 @@ RA8_INTERNAL static ra8_err_t internal_fake_read(void*     ctx,
     *total_bytes = 1U;
     *complete    = true;
     memset(sha256, k_t_mdl_digest_fill, k_ra8_mdl_sha256_bytes);
+    response->status = 200;
     return k_ra8_ok;
   }
   const size_t left = fake->len - fake->at;
@@ -140,6 +156,13 @@ RA8_INTERNAL static ra8_err_t internal_fake_read(void*     ctx,
       *total_bytes = 0U;
     }
     memset(sha256, k_t_mdl_digest_fill, k_ra8_mdl_sha256_bytes);
+    response->status = 200;
+    memcpy(response->retry_after, "3", sizeof("3"));
+    memcpy(response->etag, "\"fixture-etag\"", sizeof("\"fixture-etag\""));
+    memcpy(response->last_modified,
+           "Wed, 21 Oct 2015 07:28:00 GMT",
+           sizeof("Wed, 21 Oct 2015 07:28:00 GMT"));
+    memcpy(response->content_type, "application/x-rabook", sizeof("application/x-rabook"));
   }
   return k_ra8_ok;
 }
@@ -197,6 +220,11 @@ RA8_INTERNAL static uint32_t internal_dispatch_start(void)
   req.protocol_version       = k_ra8_mdl_protocol_version;
   req.url                    = (char*)"https://example.test/book";
   req.format                 = RA8__MDL__FORMAT__FORMAT_RABOOK;
+  req.user_agent             = (char*)"ra8-test/3";
+  req.referer                = (char*)"https://example.test/catalog";
+  req.if_none_match          = (char*)"\"cached-etag\"";
+  req.if_modified_since      = (char*)"Tue, 20 Oct 2015 07:28:00 GMT";
+  req.timeout_ms             = 4321U;
   const size_t request_len   = ra8__mdl__start_request__pack(&req, s_request);
   size_t       response_len  = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -213,6 +241,11 @@ RA8_INTERNAL static uint32_t internal_dispatch_start(void)
   TEST_ASSERT(accepted->job_id != 0U);
   TEST_ASSERT_EQ(k_ra8_mdl_chunk_data_max, accepted->max_chunk_bytes);
   TEST_ASSERT_EQ(RA8__MDL__FORMAT__FORMAT_RABOOK, accepted->format);
+  TEST_ASSERT(strcmp(s_backend.user_agent, "ra8-test/3") == 0);
+  TEST_ASSERT(strcmp(s_backend.referer, "https://example.test/catalog") == 0);
+  TEST_ASSERT(strcmp(s_backend.if_none_match, "\"cached-etag\"") == 0);
+  TEST_ASSERT(strcmp(s_backend.if_modified_since, "Tue, 20 Oct 2015 07:28:00 GMT") == 0);
+  TEST_ASSERT_EQ(4321, s_backend.timeout_ms);
   const uint32_t job = accepted->job_id;
   ra8__mdl__accepted__free_unpacked(accepted, nullptr);
   return job;
@@ -298,6 +331,11 @@ RA8_INTERNAL static void internal_test_service_multichunk_and_digest(void)
   TEST_ASSERT_EQ(0, terminal->data.len);
   TEST_ASSERT_EQ(RA8__MDL__STATE__STATE_COMPLETE, terminal->state);
   TEST_ASSERT_EQ(k_ra8_mdl_sha256_bytes, terminal->sha256.len);
+  TEST_ASSERT_EQ(200, terminal->http_status);
+  TEST_ASSERT(strcmp(terminal->retry_after, "3") == 0);
+  TEST_ASSERT(strcmp(terminal->etag, "\"fixture-etag\"") == 0);
+  TEST_ASSERT(strcmp(terminal->last_modified, "Wed, 21 Oct 2015 07:28:00 GMT") == 0);
+  TEST_ASSERT(strcmp(terminal->content_type, "application/x-rabook") == 0);
   for (size_t i = 0U; i < terminal->sha256.len; ++i) {
     TEST_ASSERT_EQ(0xA5, terminal->sha256.data[i]);
   }

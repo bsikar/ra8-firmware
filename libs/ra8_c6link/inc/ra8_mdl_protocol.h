@@ -6,9 +6,11 @@
  * [Ring 4 / PAL] {World: NS}
  *
  * @details Defines bounded HTTPS-body transfer semantics plus the selected
- * artifact identity. Version 2 restores the typed format carried by Start and
- * echoed by Accepted. The C6 never receives a destination path; the RA8 still
- * validates and transactionally publishes the returned bytes.
+ * artifact identity and downloader request/response policy. Version 3 carries
+ * the conditional request fields and response metadata required by portable
+ * `mdl_fetch` instead of fabricating an HTTP status on the RA8. The C6 never
+ * receives a destination path; the RA8 still validates and transactionally
+ * publishes the returned bytes.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -18,21 +20,28 @@
 
 /** @brief Bounded dimensions shared by both protocol endpoints. */
 typedef enum : uint16_t {
-  k_ra8_mdl_url_max        = 512U,  /**< Maximum URL buffer size, including NUL. */
-  k_ra8_mdl_chunk_data_max = 1024U, /**< Maximum raw body bytes in one chunk.    */
-  k_ra8_mdl_sha256_bytes   = 32U,   /**< SHA-256 digest size in bytes.           */
+  k_ra8_mdl_url_max          = 512U,   /**< Maximum URL buffer size, including NUL.      */
+  k_ra8_mdl_user_agent_max   = 256U,   /**< Maximum User-Agent size, including NUL.      */
+  k_ra8_mdl_referer_max      = 512U,   /**< Maximum Referer size, including NUL.         */
+  k_ra8_mdl_etag_max         = 128U,   /**< Maximum ETag size, including NUL.            */
+  k_ra8_mdl_http_date_max    = 64U,    /**< Maximum HTTP-date size, including NUL.       */
+  k_ra8_mdl_retry_after_max  = 64U,    /**< Maximum Retry-After size, including NUL.     */
+  k_ra8_mdl_content_type_max = 128U,   /**< Maximum Content-Type size, including NUL.    */
+  k_ra8_mdl_chunk_data_max   = 1024U,  /**< Maximum raw body bytes in one chunk.         */
+  k_ra8_mdl_sha256_bytes     = 32U,    /**< SHA-256 digest size in bytes.                */
+  k_ra8_mdl_timeout_ms_max   = 60000U, /**< Maximum caller-selected HTTP timeout in ms.  */
 } ra8_mdl_dimension_t;
 
 /** @brief Version included in every media RPC request and response. */
 typedef enum : uint32_t {
-  k_ra8_mdl_protocol_version = 2U, /**< Typed-artifact transfer protocol. */
+  k_ra8_mdl_protocol_version = 3U, /**< Typed HTTP-artifact transfer protocol. */
 } ra8_mdl_protocol_version_t;
 
 /** @brief Stable CustomRpc operation IDs (`MD` + version + operation). */
 typedef enum : uint32_t {
-  k_ra8_mdl_rpc_start  = 0x4D440201U, /**< Start one typed-artifact job.   */
-  k_ra8_mdl_rpc_next   = 0x4D440202U, /**< Pull one ordered bounded chunk. */
-  k_ra8_mdl_rpc_cancel = 0x4D440203U, /**< Cancel one active job.          */
+  k_ra8_mdl_rpc_start  = 0x4D440301U, /**< Start one typed-artifact job.   */
+  k_ra8_mdl_rpc_next   = 0x4D440302U, /**< Pull one ordered bounded chunk. */
+  k_ra8_mdl_rpc_cancel = 0x4D440303U, /**< Cancel one active job.          */
 } ra8_mdl_rpc_id_t;
 
 /** @brief Remote job state. */

@@ -26,6 +26,50 @@
 #include "ra8_mdl_protocol.h"
 
 /**
+ * @struct ra8_mdl_http_policy_t
+ * @brief Bounded request policy forwarded to the C6 HTTP client.
+ * @invariant Null and empty strings both mean that the header is absent.
+ * @invariant Nonempty strings contain no CR or LF characters.
+ * @invariant `timeout_ms == 0` selects the C6 backend default.
+ * @since 0.1.0
+ */
+typedef struct {
+  const char* user_agent;        /**< User-Agent value, or null/empty to omit.      */
+  const char* referer;           /**< Referer value, or null/empty to omit.         */
+  const char* if_none_match;     /**< If-None-Match value, or null/empty to omit.   */
+  const char* if_modified_since; /**< If-Modified-Since value, or null/empty.       */
+  uint32_t    timeout_ms;        /**< Whole-request timeout, or zero for default.   */
+} ra8_mdl_http_policy_t;
+
+/**
+ * @struct ra8_mdl_http_response_t
+ * @brief HTTP status and selected response headers proven by the C6 backend.
+ * @invariant `status` is in the inclusive range 100..599 on success.
+ * @invariant Every array is NUL-terminated, including when its header is absent.
+ * @since 0.1.0
+ */
+typedef struct {
+  int32_t status;                                   /**< Final HTTP status.          */
+  char    retry_after[k_ra8_mdl_retry_after_max];   /**< Retry-After or empty.       */
+  char    etag[k_ra8_mdl_etag_max];                 /**< ETag or empty.              */
+  char    last_modified[k_ra8_mdl_http_date_max];   /**< Last-Modified or empty.     */
+  char    content_type[k_ra8_mdl_content_type_max]; /**< Content-Type or empty.      */
+} ra8_mdl_http_response_t;
+
+/**
+ * @struct ra8_mdl_request_t
+ * @brief Complete typed HTTPS request accepted by protocol version 3.
+ * @invariant `url` is a nonempty HTTPS URL shorter than ::k_ra8_mdl_url_max.
+ * @invariant `format` is one concrete ::ra8_mdl_format_t value through RABOOK.
+ * @since 0.1.0
+ */
+typedef struct {
+  const char*           url;    /**< Absolute HTTPS source URL. */
+  ra8_mdl_format_t      format; /**< Exact returned artifact identity. */
+  ra8_mdl_http_policy_t http;   /**< Forwarded request policy. */
+} ra8_mdl_request_t;
+
+/**
  * @struct ra8_mdl_session_t
  * @brief RA8-local state for one accepted remote artifact job
  * @details Maintains the correlation values the next response must carry.
@@ -74,6 +118,7 @@ typedef struct {
   uint8_t         data[k_ra8_mdl_chunk_data_max]; /**< Bounded raw body bytes.                    */
   bool            has_sha256;                     /**< Whether `sha256` is valid.                 */
   uint8_t         sha256[k_ra8_mdl_sha256_bytes]; /**< Complete-body SHA-256.                     */
+  ra8_mdl_http_response_t response;               /**< Terminal HTTP metadata.                   */
 } ra8_mdl_chunk_t;
 
 #ifdef __cplusplus
@@ -109,6 +154,31 @@ extern "C" {
                                              const char*        url,
                                              ra8_mdl_format_t   format,
                                              ra8_mdl_session_t* session);
+
+/**
+ * @brief Start one typed request while preserving downloader HTTP policy.
+ * @details This is the protocol-v3 entry point used by the portable network
+ * adapter. It validates every bounded header locally before encoding it.
+ * ::ra8_c6link_mdl_start is the empty-policy convenience wrapper.
+ * @param[in,out] link Already-open exclusively owned c6link.
+ * @param[in] request Complete typed HTTPS request and optional headers.
+ * @param[out] session Accepted job correlation state.
+ * @return Start status.
+ * @retval k_ra8_ok Remote job accepted.
+ * @retval k_ra8_err_null_ptr A required pointer is null.
+ * @retval k_ra8_err_invalid_arg URL, format, timeout, or header is invalid.
+ * @retval k_ra8_err_invalid_size A bounded string or request encoding is too large.
+ * @retval k_ra8_err_protocol_error Remote response is malformed.
+ * @pre ::ra8_c6link_open completed successfully for @p link.
+ * @pre No other thread uses @p link concurrently.
+ * @post Success produces an active non-zero job in @p session.
+ * @post Failure leaves @p session inactive after pointer validation.
+ * @note Not thread-safe; the c6link handle is single-owner.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_c6link_mdl_start_request(ra8_c6link_t*            link,
+                                                     const ra8_mdl_request_t* request,
+                                                     ra8_mdl_session_t*       session);
 
 /**
  * @brief Pull the next bounded chunk while acknowledging the prior offset
