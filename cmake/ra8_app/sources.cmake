@@ -170,6 +170,21 @@ macro(_ra8_app_collect_sources)
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_mem/inc)
   endif()
 
+  # ra8_camera always compiles its software-JPEG codec backend
+  # (ra8_camera_codec_jpeg_sw.c), which calls ra8_jpeg_sw_encode(). Software
+  # JPEG is a pure-software Domain codec and moved out of ra8_hal into its own
+  # libs/ra8_jpeg, so it is no longer swept in by the always-globbed HAL. Wire
+  # it transitively here for the same reason the ra8_jof block below does:
+  # which image codec the camera driver dispatches to internally is the
+  # driver's business, not the application's.
+  if("ra8_camera" IN_LIST _RA8_APP_LIBS)
+    if(NOT "ra8_jpeg" IN_LIST _RA8_APP_LIBS)
+      file(GLOB_RECURSE _ra8_camera_jpeg CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_jpeg/src/*.c)
+      list(APPEND _ra8_lib_extra ${_ra8_camera_jpeg})
+    endif()
+    list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_jpeg/inc)
+  endif()
+
   # ra8_epub parses ZIP through vendored miniz and XML through the first-party
   # bounded ra8_xml pull reader. Only miniz is SOUP; no C++ parser is linked.
   set(_ra8_epub_vendor "")
