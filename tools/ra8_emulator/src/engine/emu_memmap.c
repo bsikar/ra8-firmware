@@ -24,7 +24,16 @@
 #include "emu_mmio.h"
 
 #ifndef MAP_ANONYMOUS
-/* Build configuration: macOS spells the anonymous-mapping flag MAP_ANON. */
+/**
+ * @def MAP_ANONYMOUS
+ * @brief Portable spelling of the anonymous-mapping flag.
+ * @details Build-configuration alias only: macOS SDKs that predate the
+ * MAP_ANONYMOUS spelling supply the same flag as MAP_ANON. Defined only when
+ * the platform header did not, so a host that has the standard name keeps it.
+ * @note Not a numeric constant of this module's own; it names a platform flag,
+ * which is why it is a macro rather than a typed enum.
+ * @since 0.1.0
+ */
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 
@@ -190,16 +199,6 @@ typedef struct {
   uint64_t offset;  /**< Byte offset of the window in the aperture. */
 } aliased_window_t;
 
-/** @brief Every guest window bound to shared host pages, Secure and NS alike. */
-static const aliased_window_t s_aliased_windows[] = {
-  {(uint64_t)k_sram_base, k_backing_sram, 0U},
-  {(uint64_t)k_ns_sram2_base, k_backing_sram, k_ns_sram2_offset},
-  {(uint64_t)k_sdram_base, k_backing_sdram, 0U},
-  {(uint64_t)k_ns_sdram_base, k_backing_sdram, 0U},
-  {(uint64_t)k_ospi_xip_base, k_backing_ospi, 0U},
-  {(uint64_t)k_ospi_ns_base, k_backing_ospi, 0U},
-};
-
 /**
  * @brief Construct one exact lifecycle result.
  * @details Construct one exact lifecycle result; every lifecycle entry point
@@ -244,9 +243,18 @@ RA8_INTERNAL static emu_memmap_result_t internal_result(emu_memmap_status_t stat
 RA8_INTERNAL static uint8_t*
 internal_window_host(const emu_memmap_workspace_t* workspace, uint64_t base, uint64_t size)
 {
-  for (size_t index = 0U; index < (sizeof(s_aliased_windows) / sizeof(s_aliased_windows[0]));
+  /** @brief Every guest window bound to shared host pages, Secure and NS alike. */
+  static const aliased_window_t k_aliased_windows[] = {
+    {(uint64_t)k_sram_base, k_backing_sram, 0U},
+    {(uint64_t)k_ns_sram2_base, k_backing_sram, k_ns_sram2_offset},
+    {(uint64_t)k_sdram_base, k_backing_sdram, 0U},
+    {(uint64_t)k_ns_sdram_base, k_backing_sdram, 0U},
+    {(uint64_t)k_ospi_xip_base, k_backing_ospi, 0U},
+    {(uint64_t)k_ospi_ns_base, k_backing_ospi, 0U},
+  };
+  for (size_t index = 0U; index < (sizeof(k_aliased_windows) / sizeof(k_aliased_windows[0]));
        index++) {
-    const aliased_window_t* const window = &s_aliased_windows[index];
+    const aliased_window_t* const window = &k_aliased_windows[index];
     if (window->base != base) {
       continue;
     }
@@ -255,7 +263,7 @@ internal_window_host(const emu_memmap_workspace_t* workspace, uint64_t base, uin
         (window->offset > (backing->size - size))) {
       return nullptr;
     }
-    return backing->host + window->offset;
+    return &backing->host[window->offset];
   }
   return nullptr;
 }

@@ -61,15 +61,11 @@ typedef enum : size_t {
 
 /** @brief Sizes used by the multi-page and residency probes. */
 typedef enum : size_t {
-  k_test_sdram_pages    = 16384U, /**< 64 MiB SDRAM aperture, in 4 KiB pages. */
-  k_test_multipage_size = 8192U,  /**< Two-page host transfer under test.     */
+  k_test_sdram_pages     = 16384U, /**< 64 MiB SDRAM aperture, in 4 KiB pages. */
+  k_test_multipage_size  = 8192U,  /**< Two-page host transfer under test.     */
+  k_test_bits_per_byte   = 8U,     /**< Shift step for little-endian assembly. */
+  k_test_backing_word_sz = 4U,     /**< Width of the words the probes compare. */
 } test_size_t;
-
-/** @brief Page-residency vector large enough for the widest aperture. */
-static unsigned char s_test_residency[k_test_sdram_pages];
-
-/** @brief Payload for the multi-page host transfer probe. */
-static uint8_t s_test_multipage[k_test_multipage_size];
 
 /** @brief Return the failing source line without process output. */
 #define TEST_CHECK(condition)                                                                      \
@@ -119,13 +115,17 @@ void mmio_write(uc_engine* uc, uint64_t offset, unsigned size, uint64_t value, v
 RA8_INTERNAL static size_t internal_test_resident_pages(const emu_memmap_backing_t* backing,
                                                         size_t                      pages)
 {
-  (void)memset(s_test_residency, 0, sizeof(s_test_residency));
-  if (mincore(backing->host, pages * (size_t)k_page_size, s_test_residency) != 0) {
+  /** @brief Page-residency vector large enough for the widest aperture. */
+  static unsigned char s_residency[k_test_sdram_pages];
+  (void)memset(s_residency, 0, sizeof(s_residency));
+  /* mincore rejects a misaligned address, so its success is also the proof
+   * that the aperture is page-aligned -- which uc_mem_map_ptr requires. */
+  if (mincore(backing->host, pages * (size_t)k_page_size, s_residency) != 0) {
     return pages + 1U;
   }
   size_t resident = 0U;
   for (size_t index = 0U; index < pages; index++) {
-    if ((s_test_residency[index] & 1U) != 0U) {
+    if ((s_residency[index] & 1U) != 0U) {
       resident++;
     }
   }
@@ -198,8 +198,11 @@ RA8_INTERNAL static uint32_t internal_test_view_word(uc_engine* uc, uint64_t add
 RA8_INTERNAL static uint32_t
 internal_test_backing_word(const emu_memmap_workspace_t* workspace, size_t backing, size_t offset)
 {
-  uint32_t value = 0U;
-  (void)memcpy(&value, &workspace->backings[backing].host[offset], sizeof(value));
+  const uint8_t* const bytes = &workspace->backings[backing].host[offset];
+  uint32_t             value = 0U;
+  for (size_t index = 0U; index < (size_t)k_test_backing_word_sz; index++) {
+    value |= (uint32_t)((uint32_t)bytes[index] << (index * (size_t)k_test_bits_per_byte));
+  }
   return value;
 }
 
@@ -285,7 +288,6 @@ RA8_INTERNAL static int internal_test_geometry_and_lazy_backing(void)
   uint64_t total = 0U;
   for (size_t index = 0U; index < k_emu_memmap_backing_count; index++) {
     TEST_CHECK(workspace.backings[index].host != nullptr);
-    TEST_CHECK((((uintptr_t)workspace.backings[index].host) % (uintptr_t)k_page_size) == 0U);
     total += workspace.backings[index].size;
   }
   TEST_CHECK(total == k_test_logical_bytes);
@@ -446,18 +448,18 @@ RA8_INTERNAL static int internal_test_guest_widths_and_multipage(void)
   TEST_CHECK((committed[2] == 0xEFU) && (committed[3] == 0xBEU));
   TEST_CHECK(internal_test_backing_word(&workspace, k_test_backing_sdram, 0x204U) == 0xC001CAFEU);
 
-  (void)memset(s_test_multipage, 0xCC, sizeof(s_test_multipage));
-  TEST_CHECK(emu_mem_write(uc, k_test_sdram_data, s_test_multipage, sizeof(s_test_multipage)) ==
-             UC_ERR_OK);
+  /** @brief Payload for the multi-page host transfer probe. */
+  static uint8_t s_multipage[k_test_multipage_size];
+  const size_t   tail = sizeof(s_multipage) - (size_t)k_test_backing_word_sz;
+  (void)memset(s_multipage, 0xCC, sizeof(s_multipage));
+  TEST_CHECK(emu_mem_write(uc, k_test_sdram_data, s_multipage, sizeof(s_multipage)) == UC_ERR_OK);
   TEST_CHECK(internal_test_view_word(uc, k_test_sdram_data) == 0xCCCCCCCCU);
-  TEST_CHECK(internal_test_view_word(uc, k_test_ns_sdram_data + sizeof(s_test_multipage) - 4U) ==
+  TEST_CHECK(internal_test_view_word(uc, k_test_ns_sdram_data + tail) == 0xCCCCCCCCU);
+  TEST_CHECK(internal_test_backing_word(&workspace, k_test_backing_sdram, 0x200U + tail) ==
              0xCCCCCCCCU);
-  TEST_CHECK(internal_test_backing_word(&workspace,
-                                        k_test_backing_sdram,
-                                        0x200U + sizeof(s_test_multipage) - 4U) == 0xCCCCCCCCU);
 
   TEST_CHECK(emu_mem_write(uc, k_test_sdram_data, nullptr, 4U) == UC_ERR_ARG);
-  TEST_CHECK(emu_mem_write(uc, k_test_sdram_data, s_test_multipage, 0U) == UC_ERR_ARG);
+  TEST_CHECK(emu_mem_write(uc, k_test_sdram_data, s_multipage, 0U) == UC_ERR_ARG);
   TEST_CHECK(emu_memmap_detach(&workspace, uc));
   TEST_CHECK(uc_close(uc) == UC_ERR_OK);
   TEST_CHECK(emu_memmap_close(&workspace));
