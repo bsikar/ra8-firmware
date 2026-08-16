@@ -336,7 +336,6 @@ internal_opf_status(ra8_err_t err, uint16_t manifest_depth, uint16_t spine_depth
            : err;
 }
 
-/* see header for the documented contract. */
 /**
  * @brief Record one direct metadata child of the OPF metadata element.
  * @details Marks the Dublin Core element, then captures the EPUB 2 legacy
@@ -374,6 +373,7 @@ RA8_INTERNAL static void internal_opf_metadata_child(const uint8_t*         sour
   }
 }
 
+/* see header for the documented contract. */
 RA8_INTERNAL static ra8_err_t internal_opf_first(const uint8_t*   source,
                                                  size_t           length,
                                                  ra8_epub_book_t* book,
