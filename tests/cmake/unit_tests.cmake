@@ -267,6 +267,7 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_me
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_wire.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_rabook.c)
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_esp32_c6_mdl_service.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_mdl_storage_vfs.c)
 
 # test_ra8_wifi_c6link.c drives the ESP32-C6 ra8_wifi backend, which -- like the
