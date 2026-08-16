@@ -203,6 +203,7 @@ RA8_INTERNAL static ra8_err_t internal_entity(const uint8_t* source,
   }
   size_t   cursor = position + 2U;
   uint32_t base   = k_priv_xml_decimal_base;
+  // mcdc-deactivated: internal_entity radix probe; the `(position + 2U) >= end` precheck at the top of this function has already returned for every shorter span, so `cursor == position + 2U` is strictly less than `end` on every reachable path and the bound condition is constant-true.
   if ((cursor < end) && ((source[cursor] == (uint8_t)'x') || (source[cursor] == (uint8_t)'X'))) {
     base = 16U;
     ++cursor;
@@ -406,6 +407,7 @@ bool ra8_xml_decoded_equal(const uint8_t* source,
   for (size_t i = 0U; i < left_size; ++i) {
     uint8_t lb = 0U;
     uint8_t rb = 0U;
+    // mcdc-deactivated: ra8_xml_decoded_equal byte-walk status guards; ra8_xml_decoded_size already decoded both spans end to end and reported exactly left_size/right_size bytes, so for every i < left_size both internal_decoded_byte() calls are re-walking bytes proven decodable -- only the byte-inequality condition can flip.
     if ((internal_decoded_byte(source, &li, &lb) != k_ra8_ok) ||
         (internal_decoded_byte(source, &ri, &rb) != k_ra8_ok) || (lb != rb)) {
       return false;
@@ -561,6 +563,7 @@ internal_attributes(const uint8_t* source, size_t source_len, ra8_xml_event_t* e
     }
     ra8_xml_attribute_t attribute = {};
     const ra8_err_t     err = internal_attr_parse(source, source_len, end, &cursor, &attribute);
+    // mcdc-deactivated: internal_attributes attribute-count saturation guard; it exists to stop `count` wrapping the uint16_t event->attribute_count, and flipping it needs 65535 mutually distinct attributes on ONE element while internal_attr_duplicate re-parses every prior attribute per new one -- a quadratic ~2.1e9-parse input that no bounded unit test can drive.
     if ((err != k_ra8_ok) || (count == UINT16_MAX) ||
         internal_attr_duplicate(source, source_len, event, &attribute, count)) {
       return k_ra8_err_validation_failed;
@@ -568,6 +571,7 @@ internal_attributes(const uint8_t* source, size_t source_len, ra8_xml_event_t* e
     ++count;
   }
   if (event->self_closing != 0U) {
+    // mcdc-deactivated: internal_attributes self-closing slash recheck; the attribute loop above breaks only on `position >= end` or `source[position] == '/'`, and self_closing was set from a non-space '/' that lies inside the still-unscanned range, so the loop necessarily stopped on that slash -- both conditions are constant-false here.
     if ((cursor.position >= end) || (source[cursor.position] != (uint8_t)'/')) {
       return k_ra8_err_validation_failed;
     }
@@ -730,9 +734,8 @@ RA8_INTERNAL static bool internal_xml_target(const uint8_t* source, size_t start
 /* see header for the documented contract. */
 RA8_INTERNAL static bool internal_encoding(const uint8_t* source, ra8_xml_span_t value)
 {
-  return ((value.length == k_priv_xml_encoding_bytes) &&
-          (memcmp(&source[value.offset], "UTF-8", k_priv_xml_encoding_bytes) == 0)) ||
-         ((value.length == k_priv_xml_encoding_bytes) &&
+  return (value.length == k_priv_xml_encoding_bytes) &&
+         ((memcmp(&source[value.offset], "UTF-8", k_priv_xml_encoding_bytes) == 0) ||
           (memcmp(&source[value.offset], "utf-8", k_priv_xml_encoding_bytes) == 0));
 }
 
@@ -767,6 +770,7 @@ internal_declaration(ra8_xml_reader_t* reader, size_t target_end, size_t term)
 {
   const bool initial = (reader->position == 0U) ||
                        ((reader->position == 3U) && (reader->source[0] == k_priv_utf8_bom_first));
+  // mcdc-deactivated: internal_declaration placement gate; `initial` is only true at offset 0 or at offset 3 behind a BOM, and both declaration_seen and root_count are set by passes that leave reader->position beyond those offsets, so conditions 2 and 3 cannot be true while condition 1 is false. Condition 5 is likewise constant: internal_pi has already rejected `(target_end < term) && !internal_space(source[target_end])`, so reaching here with `target_end < term` implies the byte IS spacing. Only the `target_end >= term` condition varies.
   if (!initial || (reader->declaration_seen != 0U) || (reader->root_count != 0U) ||
       (target_end >= term) || !internal_space(reader->source[target_end])) {
     return k_ra8_err_validation_failed;
@@ -873,6 +877,7 @@ internal_special(ra8_xml_reader_t* reader, ra8_xml_event_t* event, bool* out_emi
       (memcmp(&reader->source[pos], "<!DOCTYPE", k_priv_xml_doctype_open_bytes) == 0)) {
     return priv_ra8_xml_doctype(reader);
   }
+  // mcdc-deactivated: internal_special processing-instruction probe; ra8_xml_reader_next rejects `(position + 1U) >= source_len` before dispatching here, so `(pos + 2U) <= source_len` holds on every reachable call and only the '?' byte test varies.
   if (((pos + 2U) <= reader->source_len) && (reader->source[pos + 1U] == (uint8_t)'?')) {
     return internal_pi(reader);
   }
@@ -964,6 +969,7 @@ ra8_err_t ra8_xml_reader_next(ra8_xml_reader_t* reader, ra8_xml_event_t* out_eve
     }
     return internal_start(reader, end, out_event);
   }
+  // mcdc-deactivated: ra8_xml_reader_next end-of-document completeness gate; root_closed is set by the only two ways the element stack can drain back to zero after a root was started (a self-closing root in internal_start, a matching end tag in internal_end), so `stack_size == 0 && root_count == 1 && root_closed == 0` is unreachable and the third condition cannot flip independently.
   if ((reader->stack_size != 0U) || (reader->root_count != 1U) || (reader->root_closed == 0U)) {
     return k_ra8_err_validation_failed;
   }

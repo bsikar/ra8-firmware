@@ -15,6 +15,7 @@
 
 #include "ra8_attributes.h"
 #include "ra8_xml.h"
+#include "ra8_xml_internal.h"
 
 /** @brief Build a document with exactly @p levels element levels. */
 RA8_INTERNAL static size_t
@@ -518,6 +519,319 @@ RA8_INTERNAL static void internal_public_span_guards(void)
   assert(!ra8_xml_decoded_equal(nullptr, sizeof(values) - 1U, left, right));
 }
 
+/**
+ * @brief Complete the DOCTYPE lexer's spacing, literal, and terminator vectors.
+ * @par MC/DC:
+ * Tab/CR/LF spacing bytes independently select the three remaining operands of
+ * the XML S classifier; a source that ends inside the declaration varies the
+ * range operand of every bounded scan; a double-quoted, a bare, and an absent
+ * literal independently vary the three quote operands; a truncated tail varies
+ * the six-byte keyword-lookahead bound; an unseparated name varies the
+ * separator operand; and a second declaration varies the already-seen operand.
+ * Decisions:
+ * - libs/ra8_xml/src/ra8_xml_doctype.c@internal_space
+ * - libs/ra8_xml/src/ra8_xml_doctype.c@internal_skip_space
+ * - libs/ra8_xml/src/ra8_xml_doctype.c@internal_literal
+ * - libs/ra8_xml/src/ra8_xml_doctype.c@internal_external_id
+ * - libs/ra8_xml/src/ra8_xml_doctype.c@priv_ra8_xml_doctype
+ */
+RA8_INTERNAL static void internal_doctype_lexer_vectors(void)
+{
+  static const uint8_t tab_spacing[]   = "<!DOCTYPE\ta\t\r\n><a/>";
+  static const uint8_t double_quoted[] = "<!DOCTYPE a SYSTEM \"x\"><a/>";
+  static const uint8_t twice[]         = "<!DOCTYPE a><!DOCTYPE b><a/>";
+  static const uint8_t prefix_only[]   = "<!DOCTYPE";
+  static const uint8_t open_system[]   = "<!DOCTYPE a SYSTEM ";
+  static const uint8_t bare_literal[]  = "<!DOCTYPE a SYSTEM x>";
+  static const uint8_t short_tail[]    = "<!DOCTYPE a xy";
+  static const uint8_t space_tail[]    = "<!DOCTYPE a ";
+  static const uint8_t unseparated[]   = "<!DOCTYPE a'sys'>";
+  static const uint8_t trailing_byte[] = "<!DOCTYPE a SYSTEM 'x'y>";
+  ra8_xml_workspace_t  workspace       = {};
+  assert(ra8_xml_validate(tab_spacing, sizeof(tab_spacing) - 1U, &workspace) == k_ra8_ok);
+  assert(ra8_xml_validate(double_quoted, sizeof(double_quoted) - 1U, &workspace) == k_ra8_ok);
+  internal_reject(twice, sizeof(twice) - 1U);
+  internal_reject(prefix_only, sizeof(prefix_only) - 1U);
+  internal_reject(open_system, sizeof(open_system) - 1U);
+  internal_reject(bare_literal, sizeof(bare_literal) - 1U);
+  internal_reject(short_tail, sizeof(short_tail) - 1U);
+  internal_reject(space_tail, sizeof(space_tail) - 1U);
+  internal_reject(unseparated, sizeof(unseparated) - 1U);
+  internal_reject(trailing_byte, sizeof(trailing_byte) - 1U);
+}
+
+/**
+ * @brief Drive the DOCTYPE prefix guard through its documented private seam.
+ * @par MC/DC:
+ * `ra8_xml_reader_next()` only dispatches to the lexer once it has already
+ * proved the nine prefix bytes are present and equal, so the length and
+ * mismatch operands of the entry guard are unreachable from the pull loop. The
+ * private seam is called directly with a truncated and with a mistyped prefix,
+ * each varying exactly one of those operands against the accepted control.
+ * Decisions: libs/ra8_xml/src/ra8_xml_doctype.c@priv_ra8_xml_doctype
+ */
+RA8_INTERNAL static void internal_doctype_direct_seam(void)
+{
+  static const uint8_t truncated[] = "<!DOC";
+  static const uint8_t mistyped[]  = "<!DOCTYPX a>";
+  ra8_xml_workspace_t  workspace   = {};
+  ra8_xml_reader_t     reader      = {};
+  assert(ra8_xml_reader_init(&reader, truncated, sizeof(truncated) - 1U, &workspace) == k_ra8_ok);
+  assert(priv_ra8_xml_doctype(&reader) == k_ra8_err_validation_failed);
+  assert(ra8_xml_reader_init(&reader, mistyped, sizeof(mistyped) - 1U, &workspace) == k_ra8_ok);
+  assert(priv_ra8_xml_doctype(&reader) == k_ra8_err_validation_failed);
+}
+
+/**
+ * @brief Complete the name, UTF-8 lead, and numeric-entity operand vectors.
+ * @par MC/DC:
+ * A byte above 'z' varies the lower-case upper bound of the ASCII letter test;
+ * an empty tag varies the start-past-end operand of the QName scan; a colon at
+ * the markup terminator varies its lookahead bound; a 0xF5 lead varies the
+ * four-byte UTF-8 upper bound; a sign byte varies the decimal-digit lower
+ * bound and reaches both hex tables with base ten; 'a'..'f', 'g', and '/'
+ * independently vary the two hex-range operands; an upper-case radix marker
+ * varies the second radix operand; and an unterminated numeric reference
+ * varies the scan bound and the terminator operand.
+ * Decisions:
+ * - libs/ra8_xml/src/ra8_xml.c@internal_ascii_letter
+ * - libs/ra8_xml/src/ra8_xml.c@priv_ra8_xml_qname
+ * - libs/ra8_xml/src/ra8_xml.c@internal_utf8_next
+ * - libs/ra8_xml/src/ra8_xml.c@internal_digit
+ * - libs/ra8_xml/src/ra8_xml.c@internal_entity
+ */
+RA8_INTERNAL static void internal_xml_lexer_vectors(void)
+{
+  static const uint8_t hex_letter[]  = "<a>&#xab;</a>";
+  static const uint8_t hex_upper_x[] = "<a>&#X41;</a>";
+  static const uint8_t high_letter[] = "<a{/>";
+  static const uint8_t empty_tag[]   = "<>";
+  static const uint8_t tail_colon[]  = "<a:>";
+  static const uint8_t bad_four[]    = {'<', 'a', '>', 0xF5U, '<', '/', 'a', '>'};
+  static const uint8_t sign_entity[] = "<a>&#+1;</a>";
+  static const uint8_t hex_above_f[] = "<a>&#xg;</a>";
+  static const uint8_t hex_below_a[] = "<a>&#x/;</a>";
+  static const uint8_t open_entity[] = "<a>&#41</a>";
+  ra8_xml_workspace_t  workspace     = {};
+  assert(ra8_xml_validate(hex_letter, sizeof(hex_letter) - 1U, &workspace) == k_ra8_ok);
+  assert(ra8_xml_validate(hex_upper_x, sizeof(hex_upper_x) - 1U, &workspace) == k_ra8_ok);
+  internal_reject(high_letter, sizeof(high_letter) - 1U);
+  internal_reject(empty_tag, sizeof(empty_tag) - 1U);
+  internal_reject(tail_colon, sizeof(tail_colon) - 1U);
+  internal_reject(bad_four, sizeof(bad_four));
+  internal_reject(sign_entity, sizeof(sign_entity) - 1U);
+  internal_reject(hex_above_f, sizeof(hex_above_f) - 1U);
+  internal_reject(hex_below_a, sizeof(hex_below_a) - 1U);
+  internal_reject(open_entity, sizeof(open_entity) - 1U);
+}
+
+/**
+ * @brief Complete the attribute scanner's bound and delimiter vectors.
+ * @par MC/DC:
+ * A name that ends at the markup terminator varies the range operand of the
+ * post-name space scan and the range operand of the equals test; a second name
+ * varies the equals byte itself; an equals at the terminator varies the range
+ * operand of the pre-value space scan and of the quote test while a spaced
+ * equals varies that same scan's spacing operand; an unquoted value
+ * varies both quote bytes; a spaced solidus varies the trailing-space scan in
+ * both directions; and a spaced element name varies the trailing-trim scan.
+ * Decisions:
+ * - libs/ra8_xml/src/ra8_xml.c@internal_attr_parse
+ * - libs/ra8_xml/src/ra8_xml.c@internal_attributes
+ * - libs/ra8_xml/src/ra8_xml.c@internal_start
+ */
+RA8_INTERNAL static void internal_xml_attribute_vectors(void)
+{
+  static const uint8_t slash_space[]   = "<a / >";
+  static const uint8_t space_tag[]     = "<a ></a>";
+  static const uint8_t spaced_equals[] = "<a x = '1'/>";
+  static const uint8_t name_at_end[]   = "<a x></a>";
+  static const uint8_t no_equals[]     = "<a x y='1'></a>";
+  static const uint8_t equals_at_end[] = "<a x=></a>";
+  static const uint8_t unquoted[]      = "<a x=1></a>";
+  static const uint8_t slash_junk[]    = "<a /x>";
+  ra8_xml_workspace_t  workspace       = {};
+  assert(ra8_xml_validate(slash_space, sizeof(slash_space) - 1U, &workspace) == k_ra8_ok);
+  assert(ra8_xml_validate(space_tag, sizeof(space_tag) - 1U, &workspace) == k_ra8_ok);
+  assert(ra8_xml_validate(spaced_equals, sizeof(spaced_equals) - 1U, &workspace) == k_ra8_ok);
+  internal_reject(name_at_end, sizeof(name_at_end) - 1U);
+  internal_reject(no_equals, sizeof(no_equals) - 1U);
+  internal_reject(equals_at_end, sizeof(equals_at_end) - 1U);
+  internal_reject(unquoted, sizeof(unquoted) - 1U);
+  internal_reject(slash_junk, sizeof(slash_junk) - 1U);
+}
+
+/**
+ * @brief Vary each caller-supplied attribute event and cursor guard alone.
+ * @par MC/DC:
+ * The attribute cursor and event are caller-owned, so the public entry point
+ * must reject any provenance a caller can present. A forged name span varies
+ * the second operand of the provenance guard, a zero-length markup span varies
+ * the third, and a cursor parked on the markup terminator varies the range
+ * operand of the leading-space scan -- each against the same accepted control.
+ * Decisions:
+ * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_attr_next
+ * - libs/ra8_xml/src/ra8_xml.c@internal_attr_parse
+ */
+RA8_INTERNAL static void internal_xml_attr_guard_vectors(void)
+{
+  static const uint8_t source[]  = "<a x='12'/>";
+  ra8_xml_workspace_t  workspace = {};
+  ra8_xml_reader_t     reader    = {};
+  ra8_xml_event_t      event     = {};
+  ra8_xml_attribute_t  attribute = {};
+  bool                 present   = false;
+  assert(ra8_xml_reader_init(&reader, source, sizeof(source) - 1U, &workspace) == k_ra8_ok);
+  assert(ra8_xml_reader_next(&reader, &event) == k_ra8_ok);
+
+  ra8_xml_attr_cursor_t cursor      = {};
+  ra8_xml_event_t       forged_name = event;
+  forged_name.name.offset           = UINT32_MAX;
+  ra8_xml_attr_begin(&forged_name, &cursor);
+  assert(
+    ra8_xml_attr_next(source, sizeof(source) - 1U, &forged_name, &cursor, &attribute, &present) ==
+    k_ra8_err_validation_failed);
+
+  ra8_xml_event_t empty_markup = event;
+  empty_markup.markup.length   = 0U;
+  ra8_xml_attr_begin(&empty_markup, &cursor);
+  assert(
+    ra8_xml_attr_next(source, sizeof(source) - 1U, &empty_markup, &cursor, &attribute, &present) ==
+    k_ra8_err_validation_failed);
+
+  ra8_xml_attr_cursor_t parked = {.position = event.markup.offset + event.markup.length - 1U,
+                                  .emitted  = 0U};
+  assert(ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &parked, &attribute, &present) ==
+         k_ra8_err_validation_failed);
+}
+
+/**
+ * @brief Complete the element, comment, text, and dispatch operand vectors.
+ * @par MC/DC:
+ * A second root varies the already-closed operand of the start guard; a close
+ * tag with trailing junk varies the trailing-space scan and the exact-end
+ * operand of the end guard; an unmatched close varies its empty-stack operand;
+ * a longer close name varies the length operand of the name comparison; an
+ * empty comment varies the adjacency operand of the trailing-hyphen guard;
+ * bracket runs vary the second and third operands of the CDATA-close scan; and
+ * a two-byte source varies the length operand of every markup-prefix probe.
+ * Decisions:
+ * - libs/ra8_xml/src/ra8_xml.c@internal_start
+ * - libs/ra8_xml/src/ra8_xml.c@internal_end
+ * - libs/ra8_xml/src/ra8_xml.c@internal_comment
+ * - libs/ra8_xml/src/ra8_xml.c@internal_text
+ * - libs/ra8_xml/src/ra8_xml.c@internal_special
+ */
+RA8_INTERNAL static void internal_xml_structure_vectors(void)
+{
+  static const uint8_t empty_comment[] = "<a><!----></a>";
+  static const uint8_t bracket_text[]  = "<a>]x]]yy</a>";
+  static const uint8_t second_root[]   = "<a/><b/>";
+  static const uint8_t close_junk[]    = "<a></a x>";
+  static const uint8_t orphan_close[]  = "</a>";
+  static const uint8_t long_close[]    = "<a></ab>";
+  static const uint8_t short_bang[]    = "<!";
+  ra8_xml_workspace_t  workspace       = {};
+  assert(ra8_xml_validate(empty_comment, sizeof(empty_comment) - 1U, &workspace) == k_ra8_ok);
+  assert(ra8_xml_validate(bracket_text, sizeof(bracket_text) - 1U, &workspace) == k_ra8_ok);
+  internal_reject(second_root, sizeof(second_root) - 1U);
+  internal_reject(close_junk, sizeof(close_junk) - 1U);
+  internal_reject(orphan_close, sizeof(orphan_close) - 1U);
+  internal_reject(long_close, sizeof(long_close) - 1U);
+  internal_reject(short_bang, sizeof(short_bang) - 1U);
+}
+
+/**
+ * @brief Complete the processing-instruction and declaration operand vectors.
+ * @par MC/DC:
+ * Three-letter targets that differ in exactly one position independently vary
+ * the second, third, and fourth operands of the `xml` target test; a
+ * standalone `no` varies the second accepted value; a trailing space varies
+ * the range operand of the inner space scan; an encoding-first declaration
+ * varies the version-name operand; a declaration whose encoding follows
+ * standalone varies the already-seen-standalone operands of both attribute
+ * arms; a declaration at a non-initial offset varies the BOM operand of the
+ * placement test; an empty declaration varies the target-versus-terminator
+ * operand; a malformed trailing attribute varies the attribute-status operand;
+ * an unterminated value varies the range operand of the value scan; and a
+ * quoted byte after a PI target varies both operands of the separator test.
+ * Decisions:
+ * - libs/ra8_xml/src/ra8_xml.c@internal_xml_target
+ * - libs/ra8_xml/src/ra8_xml.c@internal_declaration_attr
+ * - libs/ra8_xml/src/ra8_xml.c@internal_declaration
+ * - libs/ra8_xml/src/ra8_xml.c@internal_attr_parse
+ * - libs/ra8_xml/src/ra8_xml.c@internal_pi
+ */
+RA8_INTERNAL static void internal_xml_pi_vectors(void)
+{
+  static const uint8_t alt_targets[]    = "<?yml a?><?xnl a?><?xmz a?><a/>";
+  static const uint8_t standalone_no[]  = "<?xml version='1.0' standalone='no'?><a/>";
+  static const uint8_t trailing_space[] = "<?xml version='1.0' ?><a/>";
+  static const uint8_t no_version[]     = "<?xml encoding='UTF-8'?><a/>";
+  static const uint8_t late_encoding[] =
+    "<?xml version='1.0' standalone='yes' encoding='UTF-8'?><a/>";
+  static const uint8_t offset_decl[] = "   <?xml version='1.0'?><a/>";
+  static const uint8_t empty_decl[]  = "<?xml?><a/>";
+  static const uint8_t attr_fault[]  = "<?xml version='1.0' x?><a/>";
+  static const uint8_t open_value[]  = "<?xml version='1.0?><a/>";
+  static const uint8_t pi_punct[]    = "<?ab'c'?><a/>";
+  ra8_xml_workspace_t  workspace     = {};
+  assert(ra8_xml_validate(alt_targets, sizeof(alt_targets) - 1U, &workspace) == k_ra8_ok);
+  assert(ra8_xml_validate(standalone_no, sizeof(standalone_no) - 1U, &workspace) == k_ra8_ok);
+  assert(ra8_xml_validate(trailing_space, sizeof(trailing_space) - 1U, &workspace) == k_ra8_ok);
+  internal_reject(no_version, sizeof(no_version) - 1U);
+  internal_reject(late_encoding, sizeof(late_encoding) - 1U);
+  internal_reject(offset_decl, sizeof(offset_decl) - 1U);
+  internal_reject(empty_decl, sizeof(empty_decl) - 1U);
+  internal_reject(attr_fault, sizeof(attr_fault) - 1U);
+  internal_reject(open_value, sizeof(open_value) - 1U);
+  internal_reject(pi_punct, sizeof(pi_punct) - 1U);
+}
+
+/**
+ * @brief Complete the public span, decode-capacity, and BOM operand vectors.
+ * @par MC/DC:
+ * A span whose length overruns the source varies the remaining-length operand
+ * of the span validator; a zero destination capacity varies the capacity
+ * operand of the decoder preflight; a forged left operand varies the first
+ * status operand of the decoded comparison; a length above UINT32_MAX varies
+ * the upper size bound of reader init; and two-byte, wrong-second-byte, and
+ * wrong-third-byte sources independently vary the three remaining operands of
+ * the BOM probe.
+ * Decisions:
+ * - libs/ra8_xml/src/ra8_xml.c@internal_span_valid
+ * - libs/ra8_xml/src/ra8_xml.c@internal_decode
+ * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_decoded_equal
+ * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_reader_init
+ */
+RA8_INTERNAL static void internal_xml_public_boundary_vectors(void)
+{
+  static const uint8_t values[]      = "A&amp;A&amp;B";
+  static const uint8_t short_bom[]   = {0xEFU, 0xBBU};
+  static const uint8_t wrong_two[]   = {0xEFU, 0x41U, 0x42U};
+  static const uint8_t wrong_three[] = {0xEFU, 0xBBU, 0x41U};
+  const ra8_xml_span_t left          = {0U, 6U};
+  const ra8_xml_span_t right         = {6U, 6U};
+  const ra8_xml_span_t overrun       = {0U, (uint32_t)sizeof(values)};
+  const ra8_xml_span_t forged        = {UINT32_MAX, 8U};
+  char                 decoded[3]    = {};
+  size_t               length        = 0U;
+  ra8_xml_workspace_t  workspace     = {};
+  ra8_xml_reader_t     reader        = {};
+  assert(!ra8_xml_span_equal(values, sizeof(values) - 1U, overrun, "A&"));
+  assert(ra8_xml_decode(values, sizeof(values) - 1U, left, decoded, 0U, &length) ==
+         k_ra8_err_no_mem);
+  assert(!ra8_xml_decoded_equal(values, sizeof(values) - 1U, forged, right));
+  assert(ra8_xml_reader_init(&reader, values, (size_t)UINT32_MAX + 1U, &workspace) ==
+         k_ra8_err_invalid_size);
+  assert(ra8_xml_reader_init(&reader, short_bom, sizeof(short_bom), &workspace) == k_ra8_ok);
+  assert(reader.position == 0U);
+  assert(ra8_xml_reader_init(&reader, wrong_two, sizeof(wrong_two), &workspace) == k_ra8_ok);
+  assert(reader.position == 0U);
+  assert(ra8_xml_reader_init(&reader, wrong_three, sizeof(wrong_three), &workspace) == k_ra8_ok);
+  assert(reader.position == 0U);
+}
+
 int main(void)
 {
   internal_depth_bound();
@@ -531,5 +845,13 @@ int main(void)
   internal_declaration_faults();
   internal_span_bounds_and_prefix();
   internal_public_span_guards();
+  internal_doctype_lexer_vectors();
+  internal_doctype_direct_seam();
+  internal_xml_lexer_vectors();
+  internal_xml_attribute_vectors();
+  internal_xml_attr_guard_vectors();
+  internal_xml_structure_vectors();
+  internal_xml_pi_vectors();
+  internal_xml_public_boundary_vectors();
   return 0;
 }
