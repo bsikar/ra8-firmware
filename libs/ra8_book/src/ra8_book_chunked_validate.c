@@ -58,15 +58,26 @@ internal_spans_overlap(const void* a, uint64_t a_len, const void* b, uint64_t b_
 {
   const uintptr_t a_begin = (uintptr_t)a;
   const uintptr_t b_begin = (uintptr_t)b;
-  *invalid                = (a_len > (uint64_t)UINTPTR_MAX) || (b_len > (uint64_t)UINTPTR_MAX) ||
-                            (a_begin > (UINTPTR_MAX - (uintptr_t)a_len)) ||
-                            (b_begin > (UINTPTR_MAX - (uintptr_t)b_len));
-  if (*invalid) {
+  *invalid                = true;
+  if (a_len > (uint64_t)UINTPTR_MAX) {
     return false;
   }
+  if (b_len > (uint64_t)UINTPTR_MAX) {
+    return false;
+  }
+  if (a_begin > (UINTPTR_MAX - (uintptr_t)a_len)) {
+    return false;
+  }
+  if (b_begin > (UINTPTR_MAX - (uintptr_t)b_len)) {
+    return false;
+  }
+  *invalid              = false;
   const uintptr_t a_end = a_begin + (uintptr_t)a_len;
   const uintptr_t b_end = b_begin + (uintptr_t)b_len;
-  return (a_begin < b_end) && (b_begin < a_end);
+  if (a_begin >= b_end) {
+    return false;
+  }
+  return b_begin < a_end;
 }
 
 /**
@@ -88,25 +99,51 @@ internal_spans_overlap(const void* a, uint64_t a_len, const void* b, uint64_t b_
 RA8_INTERNAL
 static ra8_err_t internal_validate_reader(const ra8_book_chunked_t* rd)
 {
-  if ((rd->file_read == nullptr) || (rd->inflate == nullptr) || (rd->table == nullptr) ||
-      (rd->staging == nullptr) || (rd->chunk_bytes == 0U) || (rd->chunk_count == 0U) ||
-      (rd->inflated_total == 0U) || (rd->staging_cap == 0U)) {
+  if (rd->file_read == nullptr) {
+    return k_ra8_err_invalid_state;
+  }
+  if (rd->inflate == nullptr) {
+    return k_ra8_err_invalid_state;
+  }
+  if (rd->table == nullptr) {
+    return k_ra8_err_invalid_state;
+  }
+  if (rd->staging == nullptr) {
+    return k_ra8_err_invalid_state;
+  }
+  if (rd->chunk_bytes == 0U) {
+    return k_ra8_err_invalid_state;
+  }
+  if (rd->chunk_count == 0U) {
+    return k_ra8_err_invalid_state;
+  }
+  if (rd->inflated_total == 0U) {
+    return k_ra8_err_invalid_state;
+  }
+  if (rd->staging_cap == 0U) {
     return k_ra8_err_invalid_state;
   }
   const uint64_t expected_count =
     (rd->inflated_total / (uint64_t)rd->chunk_bytes) +
     ((rd->inflated_total % (uint64_t)rd->chunk_bytes) != 0U ? 1U : 0U);
   const uint64_t table_entries = (uint64_t)rd->chunk_count + 1U;
-  if ((expected_count > (uint64_t)UINT32_MAX) || ((uint64_t)rd->chunk_count != expected_count) ||
-      (table_entries > (uint64_t)rd->table_cap_entries)) {
+  if (expected_count > (uint64_t)UINT32_MAX) {
+    return k_ra8_err_invalid_state;
+  }
+  if ((uint64_t)rd->chunk_count != expected_count) {
+    return k_ra8_err_invalid_state;
+  }
+  if (table_entries > (uint64_t)rd->table_cap_entries) {
     return k_ra8_err_invalid_state;
   }
   if (rd->table[0] != 0U) {
     return k_ra8_err_invalid_state;
   }
   for (uint32_t i = 0U; i < rd->chunk_count; ++i) {
-    if ((rd->table[i + 1U] <= rd->table[i]) ||
-        ((rd->table[i + 1U] - rd->table[i]) > (uint64_t)rd->staging_cap)) {
+    if (rd->table[i + 1U] <= rd->table[i]) {
+      return k_ra8_err_invalid_state;
+    }
+    if ((rd->table[i + 1U] - rd->table[i]) > (uint64_t)rd->staging_cap) {
       return k_ra8_err_invalid_state;
     }
   }
@@ -154,10 +191,15 @@ static bool internal_output_is_aliased(const ra8_book_chunked_t* rd,
                                                        rd->staging_cap,
                                                        table_len};
   for (uint8_t i = 0U; i < k_chunk_validate_span_count; ++i) {
-    if ((bases[i] != nullptr) && (lens[i] != 0U)) {
+    if (bases[i] != nullptr) {
+      if (lens[i] == 0U) {
+        continue;
+      }
       bool invalid = false;
-      if (internal_spans_overlap(out_header, sizeof(*out_header), bases[i], lens[i], &invalid) ||
-          invalid) {
+      if (internal_spans_overlap(out_header, sizeof(*out_header), bases[i], lens[i], &invalid)) {
+        return true;
+      }
+      if (invalid) {
         return true;
       }
     }
@@ -201,7 +243,10 @@ static ra8_err_t internal_validate_workspaces(const ra8_book_chunked_t* rd,
   for (uint8_t i = 0U; i < k_chunk_validate_span_count; ++i) {
     for (uint8_t j = (uint8_t)(i + 1U); j < k_chunk_validate_span_count; ++j) {
       bool invalid = false;
-      if (internal_spans_overlap(bases[i], lens[i], bases[j], lens[j], &invalid) || invalid) {
+      if (internal_spans_overlap(bases[i], lens[i], bases[j], lens[j], &invalid)) {
+        return k_ra8_err_invalid_arg;
+      }
+      if (invalid) {
         return k_ra8_err_invalid_arg;
       }
     }
