@@ -252,8 +252,10 @@ static void internal_test_media_download_terminal_status(void)
  * Cancelled messages after the service has packed otherwise canonical
  * responses.
  * @pre Each model bring-up resets the portable service and response-fault slot.
+ * @pre The shared model accepts the canonical start, next, and cancel requests.
  * @post Rejected responses do not activate, advance, or deactivate the caller's
  *       session; a canonical cancel still recovers the rejected Chunk session.
+ * @post Each rejected response returns ``k_ra8_err_protocol_error``.
  * @note Remote service effects may already have occurred before response
  * decode.
  * @since 0.1.0
@@ -296,6 +298,147 @@ RA8_INTERNAL static void internal_test_media_download_rejects_unknown_response_f
   TEST_ASSERT_EQ((int64_t)0, (int64_t)session.next_offset);
   TEST_ASSERT_EQ((int64_t)0, (int64_t)session.next_sequence);
   TEST_END("c6link media rejects unknown response fields");
+}
+
+/**
+ * @test internal_test_media_start_argument_mcdc
+ * @brief Exercise every public Start pointer and URL guard.
+ * @par MC/DC:
+ * A canonical call supplies all-false pointer and URL decisions, then each
+ * pointer is null independently. Empty, cap-length, wrong-prefix, and
+ * prefix-only URLs independently reach each rejection cause. The canonical
+ * generated request also proves all three pack-failure operands false; their
+ * true values are structurally infeasible for the initialized bounded schema
+ * because its encoded URL is nonempty, its maximum packed size is below the
+ * fixed request buffer, and protobuf-c pack returns that computed size.
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@ra8_c6link_mdl_start
+ * @details Runs every public pre-transport Start validation against the real
+ * modelled link, then cancels the one accepted control job.
+ * @pre The shared C6 model fixture can be reset and brought up.
+ * @pre The compile-time URL and request bounds fit their declared arrays.
+ * @post Every malformed call is rejected before transport.
+ * @post The accepted control session is cancelled and inactive.
+ * @note The generated-code impossibility argument qualifies the defensive pack
+ * triplet; it is not treated as an executable malformed-codec vector.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_media_start_argument_mcdc(void)
+{
+  TEST_BEGIN("c6link media Start argument MC/DC");
+  priv_c6link_test_bringup();
+  ra8_mdl_session_t session = {};
+  ra8_c6link_t*     link    = priv_c6link_test_link();
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_c6link_mdl_start(nullptr, "https://example.test/book", &session));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_c6link_mdl_start(link, nullptr, &session));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_c6link_mdl_start(link, "https://example.test/book", nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_c6link_mdl_start(link, "", &session));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_c6link_mdl_start(link, "http://example.test/book", &session));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_c6link_mdl_start(link, "https://", &session));
+  char overlong[k_ra8_mdl_url_max + 1U];
+  (void)memset(overlong, 'a', sizeof(overlong));
+  (void)memcpy(overlong, "https://", sizeof("https://") - 1U);
+  overlong[k_ra8_mdl_url_max] = '\0';
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_c6link_mdl_start(link, overlong, &session));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_start(link, "https://example.test/book", &session));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_cancel(link, &session));
+  TEST_ASSERT(!session.active);
+  TEST_END("c6link media Start argument MC/DC");
+}
+
+/**
+ * @test internal_test_media_next_argument_mcdc
+ * @brief Exercise every public Next pointer, lifecycle, and size guard.
+ * @par MC/DC:
+ * One accepted pull supplies all-false vectors. Link, session, and chunk are
+ * then nulled independently; inactive/nonzero-job and active/zero-job sessions
+ * isolate both lifecycle operands. Zero, above-session, and above-absolute
+ * sizes isolate all three size operands, using a synthetic high session limit
+ * only for the absolute-cap vector. The valid generated request gives the
+ * pack triplet its all-false result; as for Start, its true operands are
+ * structurally infeasible for the fixed initialized schema and buffer.
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@ra8_c6link_mdl_next
+ * @details Uses a real model job for the accepted control and caller-created
+ * session copies for every pre-transport rejection.
+ * @pre The shared C6 model fixture can be reset and brought up.
+ * @pre The absolute chunk cap is representable below UINT16_MAX.
+ * @post Rejected vectors do not advance the live model session.
+ * @post The accepted control session is cancelled and inactive.
+ * @note Caller-created sessions are valid inputs to the public validation API.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_media_next_argument_mcdc(void)
+{
+  TEST_BEGIN("c6link media Next argument MC/DC");
+  priv_c6link_test_bringup();
+  ra8_c6link_t*     link    = priv_c6link_test_link();
+  ra8_mdl_session_t session = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_start(link, "https://example.test/book", &session));
+  ra8_mdl_chunk_t chunk = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_next(link, &session, 4U, &chunk));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_c6link_mdl_next(nullptr, &session, 4U, &chunk));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_c6link_mdl_next(link, nullptr, 4U, &chunk));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_c6link_mdl_next(link, &session, 4U, nullptr));
+  ra8_mdl_session_t candidate = session;
+  candidate.active            = false;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_c6link_mdl_next(link, &candidate, 4U, &chunk));
+  candidate        = session;
+  candidate.job_id = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_c6link_mdl_next(link, &candidate, 4U, &chunk));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_c6link_mdl_next(link, &session, 0U, &chunk));
+  candidate                 = session;
+  candidate.max_chunk_bytes = 1U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_c6link_mdl_next(link, &candidate, 2U, &chunk));
+  candidate.max_chunk_bytes = UINT16_MAX;
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_size,
+    ra8_c6link_mdl_next(link, &candidate, (uint16_t)(k_ra8_mdl_chunk_data_max + 1U), &chunk));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_cancel(link, &session));
+  TEST_ASSERT(!session.active);
+  TEST_END("c6link media Next argument MC/DC");
+}
+
+/**
+ * @test internal_test_media_cancel_argument_mcdc
+ * @brief Exercise every public Cancel pointer and lifecycle guard.
+ * @par MC/DC:
+ * A canonical cancellation supplies all-false pointer/lifecycle decisions.
+ * Null link and null session independently select the pointer guard;
+ * inactive/nonzero-job and active/zero-job copies isolate both lifecycle
+ * operands. The canonical generated request supplies the pack triplet's
+ * all-false vector; initialized fixed-schema packing makes its true operands
+ * structurally infeasible under this public contract.
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@ra8_c6link_mdl_cancel
+ * @details Uses a real active model job for the accepted control and local
+ * session copies for all rejected lifecycle shapes.
+ * @pre The shared C6 model fixture can be reset and brought up.
+ * @pre The canonical Start request succeeds.
+ * @post Rejected vectors leave the live session active.
+ * @post The accepted control cancellation deactivates it.
+ * @note No malformed vector reaches the remote service.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_media_cancel_argument_mcdc(void)
+{
+  TEST_BEGIN("c6link media Cancel argument MC/DC");
+  priv_c6link_test_bringup();
+  ra8_c6link_t*     link    = priv_c6link_test_link();
+  ra8_mdl_session_t session = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_start(link, "https://example.test/book", &session));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_c6link_mdl_cancel(nullptr, &session));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_c6link_mdl_cancel(link, nullptr));
+  ra8_mdl_session_t candidate = session;
+  candidate.active            = false;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_c6link_mdl_cancel(link, &candidate));
+  candidate        = session;
+  candidate.job_id = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_c6link_mdl_cancel(link, &candidate));
+  TEST_ASSERT(session.active);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_cancel(link, &session));
+  TEST_ASSERT(!session.active);
+  TEST_END("c6link media Cancel argument MC/DC");
 }
 
 /** @brief Failure injection and observations for a transactional store. */
@@ -415,8 +558,8 @@ static ra8_err_t internal_mdl_store_validate(void*         ctx,
 }
 
 /** @brief Publish the modelled object. @details Implements the mdl store commit
- * fixture operation used only by this focused test executable. @param[in,out]
- * ctx Fixture argument governed by the exercised interface contract. @return
+ * fixture operation used only by this focused test executable.
+ * @param[in,out] ctx Fixture argument governed by the exercised interface contract. @return
  * RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture
  * operation completed successfully. @pre Fixed-capacity fixture storage
  * required by this operation is available. @pre Arguments follow the interface
@@ -748,6 +891,9 @@ int32_t main(void)
   internal_test_media_download_rejects_bad_terminal_frames();
   internal_test_media_download_terminal_status();
   internal_test_media_download_rejects_unknown_response_fields();
+  internal_test_media_start_argument_mcdc();
+  internal_test_media_next_argument_mcdc();
+  internal_test_media_cancel_argument_mcdc();
   internal_test_media_transfer_commits_verified_bytes();
   internal_test_media_transfer_aborts_storage_failures();
   internal_test_media_transfer_aborts_integrity_failures();
