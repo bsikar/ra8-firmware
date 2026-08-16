@@ -27,9 +27,9 @@
 
 #include <stdint.h>
 
-#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_boot_entry.h"
 #include "ra8_err.h"
 #include "ra8_isr.h"
 #include "ra8_time.h"

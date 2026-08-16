@@ -42,9 +42,9 @@
 
 #include "compile_on_m33.h"
 #include "parity_fixture.h"
-#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
 #include "ra8_book.h"
+#include "ra8_boot_entry.h"
 #include "ra8_dual_core.h"
 #include "ra8_err.h"
 #include "ra8_ipc.h"

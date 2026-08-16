@@ -41,8 +41,8 @@
 #include <string.h>
 
 #include "payload_image.h"
-#include "ra8_boot_entry.h"
 #include "ra8_attributes.h"
+#include "ra8_boot_entry.h"
 #include "ra8_dfu.h"
 
 /**
