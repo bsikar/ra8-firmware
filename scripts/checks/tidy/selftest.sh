@@ -54,6 +54,24 @@ selftest_include_fragments() {
   done
   rm -rf -- "$tmp"
 
+  # The exact-path registry must name only files that still exist. A stale row
+  # is how a registry rots into an allowlist nobody re-reads, and it would go
+  # on silently exempting a path that had moved.
+  local registered
+  for registered in "${TIDY_HEADER_FRAGMENTS[@]}"; do
+    if [[ ! -f "$FIRMWARE_DIR/$registered" ]]; then
+      print_error "selftest: registered fragment $registered no longer exists"
+      failures=$((failures + 1))
+    elif [[ "$(route_bucket "$FIRMWARE_DIR/$registered")" != "included" ]]; then
+      print_error "selftest: registered fragment $registered did not route to included"
+      failures=$((failures + 1))
+    fi
+  done
+  if [[ "${#TIDY_HEADER_FRAGMENTS[@]}" -eq 0 ]]; then
+    print_error "selftest: the fragment registry is empty"
+    failures=$((failures + 1))
+  fi
+
   # ...and the live floor: the real tree carries this class, so a rule that
   # stopped matching would report zero and go unnoticed.
   local live=0 f

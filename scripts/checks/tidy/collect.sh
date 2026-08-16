@@ -149,9 +149,35 @@ collect_source_files() {
 # so it stays in the normal passes. The test is a non-inline `static` FUNCTION
 # declaration, not merely the word `static`.
 # ---------------------------------------------------------------------------
+# Headers that are include-FRAGMENTS for a reason the content rule below
+# cannot see, listed by EXACT repo-relative path with the reason beside them.
+#
+# A naming convention (`*_internal.h`, `*_fixture.h`) would be the wrong rule
+# here: most headers with those names ARE self-contained -- libs/ra8_hal/src is
+# full of them -- and a suffix wildcard would drop the whole private-header
+# surface out of the analysis while reporting a smaller, cleaner run. So this
+# is an exact-path registry, the same mechanism lint_coverage_rules.py uses for
+# generated sources, and the selftest fails if a row names a file that no
+# longer exists, so it cannot rot into a stale allowlist.
+TIDY_HEADER_FRAGMENTS=(
+  # A ThreadX MODEL whose single shared state object is defined by whichever
+  # TU sets RA8_ESP_HOSTED_TX_SHIM_IMPL first. Parsed alone it has neither the
+  # vendor types nor that define: 38 findings, all parse errors.
+  "port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h"
+  # Fixture constants and storage for the cache-store suite. It deliberately
+  # inherits <stdint.h> and the ra8_cache_store types from its includer, so
+  # standalone it cannot name uint8_t: 17 findings, all parse errors.
+  "tests/support/ra8_cache_store_fixture.h"
+)
+
 header_is_include_fragment() {
   local f="$1"
   [[ -f "$f" ]] || return 1
+  local rel registered
+  rel="${f#"$FIRMWARE_DIR"/}"
+  for registered in "${TIDY_HEADER_FRAGMENTS[@]}"; do
+    [[ "$rel" == "$registered" ]] && return 0
+  done
   grep -qE "^([A-Za-z_][A-Za-z0-9_]*[[:space:]]+)*static[[:space:]]+inline[[:space:]]" "$f" &&
     return 1
   grep -qE \
