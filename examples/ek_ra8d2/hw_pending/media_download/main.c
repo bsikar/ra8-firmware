@@ -71,6 +71,7 @@ typedef enum : uint32_t {
   k_media_c6_boot_wait_ms    = 200U,     /**< Coprocessor settle time.                  */
   k_media_assoc_tries        = 200U,     /**< Bounded station-event polls.              */
   k_media_assoc_gap_ms       = 50U,      /**< Delay between association polls.          */
+  k_media_diagnostic_bytes   = 256U,     /**< Maximum emitted diagnostic length.        */
   k_media_heartbeat_ms       = 5000U,    /**< Persistent verdict interval.              */
   k_media_worker_stack_bytes = 8192U,    /**< ThreadX worker stack.                     */
   k_media_worker_priority    = 8U,       /**< Worker priority and threshold.            */
@@ -142,8 +143,8 @@ static ra8_rsip_sha256_ctx_t s_sha;
  * byte span through the board's allocation-free UART adapter.
  * @param[in] text NUL-terminated text to emit.
  * @pre The J-Link OB console was initialized.
- * @pre @p text is non-null and terminates within 256 bytes.
- * @post At most 256 bytes were presented to the UART driver.
+ * @pre @p text is non-null and terminates within the diagnostic cap.
+ * @post At most ::k_media_diagnostic_bytes were presented to the UART driver.
  * @post No application state was modified.
  * @note Single-worker use; no synchronization is provided.
  * @since 0.1.0
@@ -151,7 +152,7 @@ static ra8_rsip_sha256_ctx_t s_sha;
 RA8_INTERNAL static void internal_puts(const char* text)
 {
   size_t length = 0U;
-  while ((length < 256U) && (text[length] != '\0')) {
+  while ((length < (size_t)k_media_diagnostic_bytes) && (text[length] != '\0')) {
     length++;
   }
   (void)ra8_board_uart_console_write((const uint8_t*)text, length);
