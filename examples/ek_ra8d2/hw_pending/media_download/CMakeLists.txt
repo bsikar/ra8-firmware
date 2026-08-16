@@ -44,15 +44,13 @@ ra8_add_app(
 )
 
 option(RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE
-       "Treat the C6 HTTPS body as one encoded image and format it as RABOOK"
-       OFF)
+       "Treat the C6 HTTPS body as one encoded image and format it as RABOOK" OFF
+)
 
 if(TARGET media_download.elf)
   target_include_directories(
-    media_download.elf
-    PRIVATE ${_d}/libs/ra8_rabook_compile/inc
-            ${_d}/libs/ra8_reflow/inc
-            ${_d}/libs/third_party/stb
+    media_download.elf PRIVATE ${_d}/libs/ra8_rabook_compile/inc ${_d}/libs/ra8_reflow/inc
+                               ${_d}/libs/third_party/stb
   )
   set(_media_url "")
   set(_media_ssid "")

@@ -451,9 +451,8 @@ add_executable(
   ${MDL_FS_SRC}
 )
 target_include_directories(
-  test_media_dl_state
-  PRIVATE ${MDL_PUBLIC_INC} ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests ${MDL_FS_INC}
+  test_media_dl_state PRIVATE ${MDL_PUBLIC_INC} ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+                              ${CMAKE_CURRENT_SOURCE_DIR}/../../tests ${MDL_FS_INC}
 )
 target_compile_definitions(test_media_dl_state PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_state PRIVATE -Wall -Wextra -Werror)
