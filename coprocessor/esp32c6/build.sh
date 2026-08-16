@@ -139,6 +139,8 @@ cp "${SCRIPT_DIR}/../../libs/ra8_c6link/inc/ra8_c6link_mdl_msg.h" \
   "${COMPONENT_DIR}/include/ra8_c6link_mdl_msg.h"
 cp "${SCRIPT_DIR}/../../libs/ra8_c6link/inc/ra8_mdl_protocol.h" \
   "${COMPONENT_DIR}/include/ra8_mdl_protocol.h"
+cp "${SCRIPT_DIR}/../../libs/ra8_c6link/inc/ra8_mdl_http.h" \
+  "${COMPONENT_DIR}/include/ra8_mdl_http.h"
 cp "${SCRIPT_DIR}/../../libs/ra8_mdl/inc/ra8_mdl_format.h" \
   "${COMPONENT_DIR}/include/ra8_mdl_format.h"
 cp "${SCRIPT_DIR}/../../libs/ra8_c6link/inc/ra8_media_download.pb-c.h" \

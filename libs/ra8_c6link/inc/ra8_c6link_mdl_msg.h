@@ -16,7 +16,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra8_c6link_mdl.h"
+#include "ra8_err.h"
+#include "ra8_mdl_http.h"
 
 #ifdef __cplusplus
 extern "C" {
