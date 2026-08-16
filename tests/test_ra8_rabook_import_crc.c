@@ -77,6 +77,21 @@ static void internal_test_exact_success(void)
   TEST_ASSERT_EQ((uint32_t)sizeof(data), size);
   TEST_ASSERT_EQ(0xED82CD11U, crc);
   TEST_ASSERT_EQ(3U, rd.calls);
+  crc_reader_t empty = {};
+  size               = UINT32_MAX;
+  crc                = UINT32_MAX;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_rabook_import_crc_stream_test(internal_crc_read,
+                                                   &empty,
+                                                   0U,
+                                                   buf,
+                                                   (uint32_t)sizeof(buf),
+                                                   1U,
+                                                   &size,
+                                                   &crc));
+  TEST_ASSERT_EQ(0U, size);
+  TEST_ASSERT_EQ(0U, crc);
+  TEST_ASSERT_EQ(1U, empty.calls);
   TEST_END("rabook import CRC exact bounded success");
 }
 
@@ -105,6 +120,16 @@ static void internal_test_preflight_rejection(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_rabook_import_crc_stream_test(internal_crc_read,
                                                    &rd,
+                                                   sizeof(data),
+                                                   buf,
+                                                   0U,
+                                                   UINT32_MAX,
+                                                   &size,
+                                                   &crc));
+  TEST_ASSERT_EQ(0U, rd.calls);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_rabook_import_crc_stream_test(internal_crc_read,
+                                                   &rd,
                                                    (uint64_t)UINT32_MAX + 1U,
                                                    buf,
                                                    (uint32_t)sizeof(buf),
@@ -115,16 +140,45 @@ static void internal_test_preflight_rejection(void)
   TEST_END("rabook import CRC preflight rejection");
 }
 
-/** @test Short, oversized, appended, and failed reads never publish a key. */
+/**
+ * @test Zero-progress and exhausted-budget reads never publish a key.
+ * @par MC/DC:
+ * Decision identity:
+ * `libs/ra8_rabook_import/src/ra8_rabook_import.c@priv_ra8_rabook_import_crc_stream`.
+ * The capacity/width OR uses the exact-success all-false control plus the
+ * zero-capacity and UINT32_MAX+1 vectors in the preflight test. The loop AND
+ * uses non-empty entry, empty-stream T,F exit, and exhausted-budget F,T exit.
+ * The progress OR uses an ordinary bounded read plus zero-progress and
+ * report-excess vectors. Each operand therefore independently determines.
+ * @details Output sentinels prove every rejected stream remains unpublished.
+ * @pre The injected reader owns stable source bytes for each vector.
+ * @pre The local buffer is writable for its advertised nonzero capacity.
+ * @post Every compound operand has an independently determining vector.
+ * @post Rejection preserves both output sentinels.
+ * @note The exact and preflight companion tests supply named control vectors.
+ * @since Version 0.1.0
+ */
 RA8_INTERNAL
-static void internal_test_read_faults(void)
+static void internal_test_progress_faults(void)
 {
-  TEST_BEGIN("rabook import CRC read faults preserve outputs");
+  TEST_BEGIN("rabook import CRC progress faults preserve outputs");
   static const uint8_t data[] = {1U, 2U, 3U, 4U};
   uint8_t              buf[4] = {};
   uint32_t             size   = 0x11223344U;
   uint32_t             crc    = 0x55667788U;
-  crc_reader_t         rd     = {.data = data, .len = 2U};
+  crc_reader_t         rd     = {.data = data, .len = 0U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_rabook_import_crc_stream_test(internal_crc_read,
+                                                   &rd,
+                                                   1U,
+                                                   buf,
+                                                   (uint32_t)sizeof(buf),
+                                                   1U,
+                                                   &size,
+                                                   &crc));
+  TEST_ASSERT_EQ(0x11223344U, size);
+  TEST_ASSERT_EQ(0x55667788U, crc);
+  rd = (crc_reader_t){.data = data, .len = 2U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_rabook_import_crc_stream_test(internal_crc_read,
                                                    &rd,
@@ -136,7 +190,28 @@ static void internal_test_read_faults(void)
                                                    &crc));
   TEST_ASSERT_EQ(0x11223344U, size);
   TEST_ASSERT_EQ(0x55667788U, crc);
-  rd = (crc_reader_t){.data = data, .len = (uint32_t)sizeof(data), .report_excess = true};
+  TEST_END("rabook import CRC progress faults preserve outputs");
+}
+
+/**
+ * @test Oversized, appended, and failed reads never publish a source key.
+ * @details Drives the remaining reader-contract faults after progress/budget
+ * coverage is established by internal_test_progress_faults().
+ * @pre The injected reader owns stable source bytes for every vector.
+ * @pre The local output sentinels begin unpublished.
+ * @post Every vector returns its exact failure status.
+ * @post Both output sentinels remain unchanged.
+ * @note Test-only fault-injection helper.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_test_read_faults(void)
+{
+  TEST_BEGIN("rabook import CRC read faults preserve outputs");
+  static const uint8_t data[] = {1U, 2U, 3U, 4U};
+  uint8_t              buf[4] = {};
+  uint32_t             size   = 0x11223344U;
+  uint32_t             crc    = 0x55667788U;
+  crc_reader_t         rd = {.data = data, .len = (uint32_t)sizeof(data), .report_excess = true};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_rabook_import_crc_stream_test(internal_crc_read,
                                                    &rd,
@@ -175,6 +250,7 @@ int main(void)
 {
   internal_test_exact_success();
   internal_test_preflight_rejection();
+  internal_test_progress_faults();
   internal_test_read_faults();
   return 0;
 }
