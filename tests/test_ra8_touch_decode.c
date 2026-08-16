@@ -275,7 +275,7 @@ static void test_decode_null_args(void)
   TEST_END("ra8_touch_test_decode: NULL args rejected");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_decode_one_point();
   test_decode_three_points();

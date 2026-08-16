@@ -499,7 +499,7 @@ static void test_delay_ns_to_code_low_band(void)
                  ra8_pdg_delay_ns_to_code(1U, 1U, (ra8_pdg_frange_t)0xFFU, &code));
   TEST_END("pdg delay_ns_to_code low band");
 }
-int32_t main(void)
+int main(void)
 {
   test_init_happy();
   test_init_null_cfg();

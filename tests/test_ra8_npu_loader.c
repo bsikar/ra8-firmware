@@ -508,7 +508,7 @@ static void test_load_runtime_arena_limits(void)
   TEST_END("loader rejects when runtime regions do not fit");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_load_golden_maps_job();
   test_load_rejects_null();

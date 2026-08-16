@@ -759,7 +759,7 @@ RA8_INTERNAL static void internal_test_check_exfat_no_bitmap(void)
   TEST_END("ra8_fs_check exFAT reports a volume with no allocation bitmap");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_check_fat16_clean();
   internal_test_check_fat_only_mode();

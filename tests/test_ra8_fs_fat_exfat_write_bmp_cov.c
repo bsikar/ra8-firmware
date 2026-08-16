@@ -342,7 +342,7 @@ RA8_INTERNAL static void internal_test_bmp_switch_read_fail(void)
  * @note Not thread-safe (single-threaded test runner).
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_find_bitmap_eod();
   internal_test_find_bitmap_read_fail();

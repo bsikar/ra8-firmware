@@ -374,7 +374,7 @@ RA8_INTERNAL static void internal_test_usbhs_handshake_srdy_timeout(void)
   TEST_END("usbhs: USB60CKCR SREQ/SRDY handshake times out");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_pll2_program_success();
   internal_test_pll2_stop_wait_timeout();

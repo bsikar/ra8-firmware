@@ -304,7 +304,7 @@ static void test_window_compare_not_compare_mode_rejected(void)
   TEST_END("doc window_compare OMS!=0 -> k_ra8_err_invalid_state");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_set_window_inside_programs_regs();
   test_set_window_outside_programs_regs();

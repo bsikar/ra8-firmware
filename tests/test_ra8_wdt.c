@@ -157,7 +157,7 @@ static void test_wdt_attach_and_dispatch(void)
   TEST_END("wdt attach + dispatch");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_wdt_init_ok();
   test_wdt_refresh_writes_sequence();

@@ -284,7 +284,7 @@ RA8_INTERNAL static void internal_test_rmdir(void)
   TEST_END("vfs rmdir");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mount_table();
   internal_test_open_read();

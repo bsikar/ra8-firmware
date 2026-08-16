@@ -354,7 +354,7 @@ RA8_INTERNAL static void internal_test_mcdc_reflow_internal_final_page_needed(vo
   TEST_END("reflow MC/DC: final_page_needed AND");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mcdc_reflow_init_null_pair();
   internal_test_mcdc_reflow_init_viewport_zero();

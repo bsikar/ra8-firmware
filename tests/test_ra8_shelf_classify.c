@@ -257,7 +257,7 @@ static void test_discovery_roundtrips_through_mount(void)
   TEST_END("shelf: long book names discovered + openable through a mount");
 }
 
-int32_t main(void)
+int main(void)
 {
   ra8_log_set_byte_sink(test_log_sink, nullptr);
   test_classify_extensions();

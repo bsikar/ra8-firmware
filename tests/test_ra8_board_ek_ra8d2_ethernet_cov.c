@@ -216,7 +216,7 @@ static void test_eth_route_alt_pins_pfs_conflict(void)
  * @note Not thread-safe; single-threaded test runner.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   test_eth_phy_hw_reset_gpio_conflict();
   test_eth_route_alt_pins_pfs_conflict();

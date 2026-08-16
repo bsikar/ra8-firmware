@@ -390,7 +390,7 @@ RA8_INTERNAL static void internal_test_mcdc_pvnd_vendor_envelope_or_chain(void)
   TEST_END("pvnd MC/DC: 6-cond vendor envelope OR (lines 153-155)");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_init_fs();
   internal_test_init_bad_speed();

@@ -398,7 +398,7 @@ RA8_INTERNAL static void internal_test_mcdc_pprn(void)
   TEST_END("pprn MC/DC: init / send envelope / handle_setup decisions");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_init_default_status();
   internal_test_init_bad_speed();

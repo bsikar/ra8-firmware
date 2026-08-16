@@ -460,7 +460,7 @@ static void test_init_programs_sram_wait_state(void)
   TEST_END("cgc init programs SRAMWTSC.WTEN");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_get_clock_hz_null_out();
   test_get_clock_hz_all_ids();

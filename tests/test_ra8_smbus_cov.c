@@ -563,7 +563,7 @@ static void test_block_read_count_overflow(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   /* not-initialized guards */
   test_receive_byte_not_initialized();

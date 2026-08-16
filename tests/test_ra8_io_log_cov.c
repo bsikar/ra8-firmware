@@ -118,7 +118,7 @@ RA8_INTERNAL static void internal_test_attach_emit_detach(void)
   TEST_END("attach emit detach");
 }
 
-int32_t main(void)
+int main(void)
 {
   ra8_log_set_byte_sink(internal_discard_log_byte, nullptr);
   internal_test_attach_rejects_invalid();

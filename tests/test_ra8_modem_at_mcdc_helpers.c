@@ -785,7 +785,7 @@ static void internal_test_mcdc_wait_response_should_clear_capture_pure(void)
   TEST_END("modem_at MC/DC: wait_response should-clear capture (2-cond AND, "
            "direct)");
 }
-int32_t main(void)
+int main(void)
 {
   internal_test_mcdc_internal_classify_cmd_echo_pair();
   internal_test_mcdc_internal_str_len_pair();

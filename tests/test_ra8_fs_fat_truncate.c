@@ -852,7 +852,7 @@ RA8_INTERNAL static void internal_test_fat16_shrink_grow_roundtrip(void)
  * @post A success banner is written to the diagnostic descriptor.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_fat_shrink_keeps_prefix();
   internal_test_fat_shrink_to_zero();

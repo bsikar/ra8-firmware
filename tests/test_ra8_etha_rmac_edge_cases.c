@@ -241,7 +241,7 @@ static void test_irq_enable_blocks_independent(void)
   TEST_END("etha enable/disable IRQ across all three blocks is non-destructive");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_tx_ring_full_at_ceiling();
   test_rx_overrun_saturates();

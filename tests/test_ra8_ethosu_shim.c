@@ -460,7 +460,7 @@ static void test_invoke_rejected_after_deinit(void)
   TEST_END("ethosu invoke fails after the NPU is de-initialised");
 }
 
-int32_t main(void)
+int main(void)
 {
   /* test_reserve_reports_init_failure MUST run first: it needs the shim's
    * ready flag still clear so ethosu_reserve_driver() actually calls

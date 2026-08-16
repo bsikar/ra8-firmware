@@ -71,7 +71,7 @@ static void test_ra8_err_to_str_unknown(void)
   TEST_END("ra8_err_to_str unknown code");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_k_ra8_ok_is_zero();
   test_ra8_err_is_error();

@@ -733,7 +733,7 @@ RA8_INTERNAL static void internal_test_repeated_304_rejected(void)
  * @note Assertion failure terminates the process.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_init());
   internal_test_conditional_304();

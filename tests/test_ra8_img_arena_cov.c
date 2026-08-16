@@ -314,7 +314,7 @@ static void test_realloc_shrink(void)
  * @return 0 on success; unity macros call exit(1) on the first failure.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   test_malloc_partial_capacity_oom();
   test_realloc_non_null_success_with_copy();

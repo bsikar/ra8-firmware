@@ -400,7 +400,7 @@ static void test_book_grid_guards(void)
  * @note Not thread-safe. No SIGALRM / timers used.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   test_book_grid_render();
   test_book_grid_render_edges();

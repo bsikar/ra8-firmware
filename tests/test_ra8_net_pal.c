@@ -541,7 +541,7 @@ static void internal_test_mcdc_eth_event_dispatch(void)
   TEST_END("mcdc: eth_event dispatch (event_fn && pal_mask)");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_init_with_mac();
   internal_test_init_null_mac_keeps_default();

@@ -652,7 +652,7 @@ RA8_INTERNAL static void internal_test_page_has_content_mcdc(void)
  * @note Not thread-safe (single-threaded test runner).
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_finish_line_no_slack_mcdc();
   internal_test_open_block_anchor_mcdc();

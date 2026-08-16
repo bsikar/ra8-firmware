@@ -352,7 +352,7 @@ RA8_INTERNAL static void internal_test_stat_exfat(void)
   TEST_END("stat on exFAT: file, missing, root");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_stat_fat_file_dir_missing();
   internal_test_stat_reports_the_real_attribute_byte();

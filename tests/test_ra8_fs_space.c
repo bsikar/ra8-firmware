@@ -243,7 +243,7 @@ RA8_INTERNAL static void internal_test_space_null_guard(void)
   TEST_END("ra8_fs free_space MC/DC: (handle||out) NULL pair + invalid_state");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_space_fat16();
   internal_test_space_fat32();

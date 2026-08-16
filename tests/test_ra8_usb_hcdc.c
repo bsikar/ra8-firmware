@@ -418,7 +418,7 @@ static void test_mcdc_hcdc(void)
   TEST_END("hcdc MC/DC: init speed / send NULL-with-len");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_fs_returns_ok();
   test_init_hs_returns_ok();

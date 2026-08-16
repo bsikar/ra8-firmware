@@ -822,7 +822,7 @@ RA8_INTERNAL static void internal_test_mcdc_set_glyph_atlas_storage_zeros(void)
   TEST_END("ra8_reflow_set_glyph_atlas storage-zero MC/DC");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mcdc_priv_blit_glyph_size();
   internal_test_render_glyph_size_both_arms();

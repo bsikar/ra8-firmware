@@ -63,7 +63,7 @@ static void test_double_init_is_safe(void)
   TEST_END("ra8_infrastructure_init is safe to call twice");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_infrastructure_init_runs();
   test_stack_canary_check_host();

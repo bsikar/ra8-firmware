@@ -451,7 +451,7 @@ RA8_INTERNAL static void internal_test_usbhs_hcstp_and_second_srdy_timeout(void)
   TEST_END("usbhs: HCSTP restart + USB60CKCR second-wait (SRDY=0) timeout");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_pll2_arg_and_idempotency();
   internal_test_usbfs_pll2_enable_failed();

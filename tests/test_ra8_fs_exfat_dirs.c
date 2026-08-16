@@ -820,7 +820,7 @@ RA8_INTERNAL static void internal_test_rename_within_a_subdirectory(void)
  *
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_mkdir_lists_as_a_directory();
   internal_test_mkdir_file_inside_round_trip();

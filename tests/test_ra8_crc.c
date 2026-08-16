@@ -413,7 +413,7 @@ static void test_mcdc_is_32bit_poly(void)
   TEST_END("crc compute MC/DC: poly==32_ieee || poly==32c_rev");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_programs_poly_crc8();
   test_init_programs_poly_crc16();

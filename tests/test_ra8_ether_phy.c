@@ -308,7 +308,7 @@ static void test_mcdc_link_status_resolved_speed_guard(void)
   TEST_END("ra8_ether_phy_link_status_get MC/DC: link_up && auto_neg_done");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_open_null();
   test_open_bad_addr();

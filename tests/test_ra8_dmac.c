@@ -671,7 +671,7 @@ RA8_INTERNAL static void internal_test_wait_idle(void)
   TEST_END("dmac wait_idle polls DMSTS.ACT");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_start_null_cfg();
   internal_test_start_bad_channel();

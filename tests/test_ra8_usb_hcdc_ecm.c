@@ -435,7 +435,7 @@ static void test_mcdc_hcdc_ecm(void)
   TEST_END("hcdc_ecm MC/DC: init speed / send_frame / hex_nibble ranges");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_close_fs_returns_ok();
   test_init_hs_returns_ok();

@@ -385,7 +385,7 @@ static void test_mcdc_set_gamma_count_guard(void)
  * =============================================================================
  */
 
-int32_t main(void)
+int main(void)
 {
   test_set_gamma_r_writes_lut_and_area();
   test_set_gamma_g_writes_lut_and_area();

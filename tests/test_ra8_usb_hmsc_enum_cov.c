@@ -952,7 +952,7 @@ RA8_INTERNAL static void internal_test_enumerate_ladder_failure_and_guard(void)
   TEST_END("enumerate: pre-init guard + hunt-timeout propagation");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_read_dev_desc_short_and_full();
   internal_test_hunt_success_and_attach_timeout();

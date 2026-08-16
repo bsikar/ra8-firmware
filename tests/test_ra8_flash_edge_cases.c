@@ -348,7 +348,7 @@ RA8_INTERNAL static void internal_test_mcdc_flash_wait_commit_done_pair(void)
   TEST_END("flash MC/DC: wait_commit_done AND (line 181)");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_blank_check_partial_page();
   internal_test_blank_check_page_boundary();

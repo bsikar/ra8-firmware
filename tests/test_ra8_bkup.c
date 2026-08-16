@@ -453,7 +453,7 @@ static void test_clear_status(void)
   TEST_END("bkup clear_status");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_happy();
   test_init_null_cfg();

@@ -593,7 +593,7 @@ static void test_cov_sync(void)
  * =============================================================================
  */
 
-int32_t main(void)
+int main(void)
 {
   test_cov_cap_errors();
   test_cov_not_init();

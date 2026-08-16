@@ -277,7 +277,7 @@ RA8_INTERNAL static void internal_test_set_clock_extremes(void)
   TEST_END("iic_b set_clock extreme values");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_bus_busy_during_start_repeated();
   internal_test_nak_on_address_byte();

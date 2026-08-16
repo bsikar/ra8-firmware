@@ -591,7 +591,7 @@ static void test_frame_drop_set(void)
   TEST_END("ceu frame_drop_set");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_status_get_clear();
   test_status_snapshot();

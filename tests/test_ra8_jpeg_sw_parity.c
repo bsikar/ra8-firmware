@@ -297,7 +297,7 @@ RA8_INTERNAL static void internal_test_parity_stream_equals_whole_buffer(void)
   TEST_END("jpeg_sw parity: streaming decode matches whole-buffer goldens");
 }
 
-int32_t main(void)
+int main(void)
 {
   ra8_fake_mmap_reset();
   internal_test_parity_encoder_bytes();

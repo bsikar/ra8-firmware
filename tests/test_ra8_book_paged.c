@@ -674,7 +674,7 @@ static void test_ra8_book_paged_read_faults(void)
   TEST_END("ra8_book paged read faults propagate");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_ra8_book_paged_matches_resident();
   test_ra8_book_paged_guards();

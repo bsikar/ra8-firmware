@@ -482,7 +482,7 @@ RA8_INTERNAL static void internal_test_formatted_volume_images(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_unlink_leaves_no_orphans();
   internal_test_orphan_scan_negative_control();

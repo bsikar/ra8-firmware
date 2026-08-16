@@ -406,7 +406,7 @@ static void test_target_xfer_timeout_sprf(void)
  * =============================================================================
  */
 
-int32_t main(void)
+int main(void)
 {
   ra8_fake_mmap_reset();
   test_target_init_register_image();

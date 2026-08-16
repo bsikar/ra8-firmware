@@ -361,7 +361,7 @@ static void test_mcdc_cdc(void)
   TEST_END("cdc MC/DC: init / send / handle_setup compound decisions");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_fs_default_coding();
   test_init_bad_speed();

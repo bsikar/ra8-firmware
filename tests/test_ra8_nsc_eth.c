@@ -98,7 +98,7 @@ static void internal_test_mcdc_ra8_nsc_eth(void)
   TEST_END("ra8_nsc_eth_send MC/DC: length validator OR");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mcdc_ra8_nsc_eth();
   return 0;

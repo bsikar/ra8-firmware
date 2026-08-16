@@ -804,7 +804,7 @@ RA8_INTERNAL static void internal_test_size_null_and_fallback_arms_mcdc(void)
  * @note Not thread-safe (single-threaded test runner).
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_grad_radial_first_and_unmatched_mcdc();
   internal_test_grad_stop_percent_and_default_color();

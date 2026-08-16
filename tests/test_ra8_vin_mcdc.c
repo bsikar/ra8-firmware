@@ -495,7 +495,7 @@ static void test_mcdc_set_window_pair(void)
   TEST_END("vin set_window MC/DC: pixel_end||line_end > mask");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_set_uds_clip_mcdc_bounds();
   test_set_window_zero_dim_mcdc();

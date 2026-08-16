@@ -342,7 +342,7 @@ static void test_descriptor_tables(void)
  * @pre None.
  * @post All test cases have executed.
  */
-int32_t main(void)
+int main(void)
 {
   test_route_standard();
   test_route_type();

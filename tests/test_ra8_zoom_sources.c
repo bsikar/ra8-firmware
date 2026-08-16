@@ -838,7 +838,7 @@ static void t_book_src_binds_both_depths(void)
  * @brief Host test entry point.
  * @return 0 on success; any assertion `exit(1)`s before returning.
  */
-int32_t main(void)
+int main(void)
 {
   t_tile_rect_of_pixels();
   t_tile_src_init_validates();

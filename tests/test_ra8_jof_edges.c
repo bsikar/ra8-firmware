@@ -480,7 +480,7 @@ RA8_INTERNAL static void internal_t_edge_distinct(void)
  *
  * @return 0 on success; any assertion `exit(1)`s before returning.
  */
-int32_t main(void)
+int main(void)
 {
   internal_t_edge_dims();
   internal_t_edge_roundtrip();

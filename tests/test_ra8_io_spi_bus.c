@@ -367,7 +367,7 @@ RA8_INTERNAL static void internal_test_as_ops_bridge(void)
   TEST_END("ra8_io_spi_bus_as_ops: seam trampoline forwards + guards");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_null_and_unbound_rejected();
   internal_test_bind_validation();

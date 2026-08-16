@@ -894,7 +894,7 @@ RA8_INTERNAL static void internal_test_png_hostile_direct_seam(void)
  * @note Not thread-safe. No SIGALRM / timers used.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_png_hostile_pixel_layer();
   internal_test_png_hostile_chunk_layer();

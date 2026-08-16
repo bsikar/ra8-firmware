@@ -386,7 +386,7 @@ static void test_fake_peek_request_edge_cases(void)
  * -------------------------------------------------------------------------
  */
 
-int32_t main(void)
+int main(void)
 {
   test_request_invalid_width();
   test_init_mstp_enable_fails();

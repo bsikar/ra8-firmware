@@ -324,7 +324,7 @@ RA8_INTERNAL static void internal_test_mcdc_exchk_diff_byte(void)
   TEST_END("MC/DC priv_exchk_diff_byte: bitmap-vs-referenced both ways");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mcdc_fat_entry();
   internal_test_mcdc_fat_tree();

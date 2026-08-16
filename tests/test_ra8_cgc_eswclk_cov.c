@@ -449,7 +449,7 @@ RA8_INTERNAL static void internal_test_eswclk_init_cksrdy_timeout_legs(void)
   TEST_END("eswclk init ESWCKCR/ESWPCKCR handshake timeout legs");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_eswclk_hz_null();
   internal_test_eswclk_hz_before_init();

@@ -418,7 +418,7 @@ RA8_INTERNAL static void internal_test_ra8_log_redirect(void)
   TEST_END("ra8_log redirect");
 }
 
-int32_t main(void)
+int main(void)
 {
   ra8_log_set_byte_sink(internal_log_sink, nullptr);
   internal_test_ram_sink();

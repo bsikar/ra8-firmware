@@ -205,7 +205,7 @@ RA8_INTERNAL static void internal_test_busreset_rearm_hs_full_path(void)
   TEST_END("ra8_usb_device_busreset_rearm HS re-arms the HS controller");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_device_attach_bogus_speed();
   internal_test_busreset_rearm_bogus_speed();

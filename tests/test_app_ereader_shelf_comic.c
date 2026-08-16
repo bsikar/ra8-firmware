@@ -338,7 +338,7 @@ static void test_comic_classify_mcdc(void)
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
-int32_t main(void)
+int main(void)
 {
   test_comic_page0_digest_matches_golden();
   test_comic_edge_dir_rtl_mcdc();

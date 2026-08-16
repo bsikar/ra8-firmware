@@ -461,7 +461,7 @@ static void test_window_ok_mcdc(void)
   TEST_END("mem_subsystem: window_ok MC/DC");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_slab_reset();
   test_arena_reset();

@@ -192,7 +192,7 @@ static void test_scb_trace_query_and_enable(void)
   TEST_END("ra8_scb_trace_enabled / trace_enable + bit preservation");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_scb_read_fault_status_fills();
   test_scb_read_fault_status_null();

@@ -730,7 +730,7 @@ static void test_mcdc_fake_aead_buf_loops_overflow(void)
   TEST_END("psa MC/DC: fake AEAD scratch overflow (C2 for line 485)");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_mcdc_aead_encrypt_check_triple();
   test_mcdc_aead_encrypt_check_plain_aad_quad();

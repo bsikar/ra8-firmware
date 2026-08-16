@@ -675,7 +675,7 @@ RA8_INTERNAL static void internal_test_cbt_dead_walker_guards(void)
  * @brief Test entry point -- runs the CBT / wrapped-open suite in order.
  * @return 0 on success; unity_minimal.h exits non-zero on the first failure.
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_cbt_bare_tar_open();
   internal_test_cbt_wrapped_gzip_and_xz();

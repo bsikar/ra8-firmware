@@ -253,7 +253,7 @@ static void test_handle_setup_callback_stall(void)
   TEST_END("ra8_usb_pprn_handle_setup STALLs the control endpoint on callback error");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_hw_init_failed();
   test_recv_success_drain();

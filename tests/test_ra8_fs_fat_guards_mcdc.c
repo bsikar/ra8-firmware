@@ -504,7 +504,7 @@ RA8_INTERNAL static void internal_test_mcdc_format_null_and_ops(void)
   TEST_END("ra8_fs MC/DC: ra8_fs_format null + ops guards");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mcdc_mount_null_and_ops();
   internal_test_mcdc_open_null_guard();

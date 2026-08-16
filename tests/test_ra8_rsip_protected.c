@@ -768,7 +768,7 @@ static void test_protected_ecdsa_sign_arg_errors(void)
   TEST_END("rsip protected ecdsa arg errors");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_protected_aes_roundtrip();
   test_protected_aes192_init();

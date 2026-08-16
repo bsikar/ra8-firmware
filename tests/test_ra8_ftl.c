@@ -462,7 +462,7 @@ static void test_ftl_caps_free_overwrite(void)
   TEST_END("ftl caps free overwrite");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_fake_rejects_nonblank();
   test_ftl_init_validation();

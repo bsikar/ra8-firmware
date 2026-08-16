@@ -361,7 +361,7 @@ RA8_INTERNAL static void internal_test_mcdc_encode_quality_range(void)
   TEST_END("jpeg_sw MC/DC encode: quality<min || quality>max");
 }
 
-int32_t main(void)
+int main(void)
 {
   ra8_fake_mmap_reset();
   internal_test_get_dimensions_parses_sof0();

@@ -574,7 +574,7 @@ RA8_INTERNAL static void internal_test_independent_arenas_teardown_reuse(void)
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_alloc_align_and_distinct();
   internal_test_free_coalesce_reclaim();

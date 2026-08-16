@@ -422,7 +422,7 @@ RA8_INTERNAL static void internal_test_svg_render_polygon_arc_mcdc(void)
  * @return 0 on success; unity macros call exit(1) on the first failure.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   internal_test_svgp_numf_scanner_mcdc();
   internal_test_svgp_xform_list_mcdc();

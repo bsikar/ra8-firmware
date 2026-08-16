@@ -928,7 +928,7 @@ RA8_INTERNAL static void internal_test_lfn_cov_protocol_error(void)
  * ===========================================================================
  */
 
-int32_t main(void)
+int main(void)
 {
   internal_test_lfn_cov_checksum_mismatch();
   internal_test_lfn_cov_leading_slash();

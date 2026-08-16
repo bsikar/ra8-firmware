@@ -253,7 +253,7 @@ static void test_fake_mmio_wait_eval_direct(void)
   TEST_END("ra8_fake_mmio_wait_eval succeeds for an un-armed register");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_hw_err_null_ptr();
   test_hw_err_unarmed_succeeds();

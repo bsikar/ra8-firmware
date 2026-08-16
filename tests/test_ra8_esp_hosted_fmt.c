@@ -978,7 +978,7 @@ RA8_INTERNAL static void internal_test_vformat_bounded_string(void)
   TEST_END("fmt vformat bounded string");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_utoa_guards();
   internal_test_utoa_renders();

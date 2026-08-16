@@ -339,7 +339,7 @@ RA8_INTERNAL static void internal_test_peppercarrot_descriptor(void)
   TEST_END("shipped descriptor: peppercarrot");
 }
 
-int32_t main(void)
+int main(void)
 {
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_init());
   TEST_BEGIN("all shipped descriptors have qualification vectors");

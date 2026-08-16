@@ -982,7 +982,7 @@ RA8_INTERNAL static void internal_test_image_magic_bytes(void)
  * @note Runs serially in one process.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_init());
   internal_test_meta_init_parse_load();

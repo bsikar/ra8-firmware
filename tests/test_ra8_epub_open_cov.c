@@ -927,7 +927,7 @@ RA8_INTERNAL static void internal_test_toc_ncx_branch(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-int32_t main(void)
+int main(void)
 {
   /* Group A/C: priv_extract error returns (lines 181, 188, 318, 390, 391). */
   internal_test_open_no_container_xml();

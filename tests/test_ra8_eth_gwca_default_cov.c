@@ -503,7 +503,7 @@ static void test_default_open_init_saturation(void)
   TEST_END("default_open init saturation");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_default_send_guards_and_rearm();
   test_default_send_reload_failure();

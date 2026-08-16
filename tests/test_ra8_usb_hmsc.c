@@ -527,7 +527,7 @@ static void test_mcdc_hmsc_decode_csw_status_and_chain(void)
   TEST_END("hmsc MC/DC: decode_csw 3-cond status AND-chain");
 }
 
-int32_t main(void)
+int main(void)
 {
   test_init_fs_returns_ok();
   test_init_bad_speed();

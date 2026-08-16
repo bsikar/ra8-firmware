@@ -278,7 +278,7 @@ RA8_INTERNAL static void internal_test_decompress_validation(void)
   TEST_END("decompress validation");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_round_trip();
   internal_test_zlib_round_trip();

@@ -586,7 +586,7 @@ RA8_INTERNAL static void internal_test_removing_the_binding_stops_the_calls(void
   TEST_END("set_lock(nullptr) removes the binding");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_mcdc_set_lock_validates();
   internal_test_no_lock_is_the_default();

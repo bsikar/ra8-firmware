@@ -981,7 +981,7 @@ static void test_comic_cbr_sort_and_empty(void)
  * @brief Test entry point -- runs the RAR / CBR suite in order.
  * @return 0 on success; unity_minimal.h exits non-zero on the first failure.
  */
-int32_t main(void)
+int main(void)
 {
   test_rar_open_version_detect();
   test_comic_cbr5_pages();

@@ -544,7 +544,7 @@ static void internal_test_usb_init_and_attach(void)
   TEST_END("ra8_nsc_usb_{init,attach} forwards");
 }
 
-int32_t main(void)
+int main(void)
 {
   internal_test_sci_init_forwards();
   internal_test_sci_init_null();
