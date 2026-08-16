@@ -238,10 +238,16 @@ RA8_INTERNAL static void internal_test_buffer_and_sink(void)
   mdl_net_iface_t  net;
   mdl_net_c6link_t backend;
   internal_bind(&net, &backend);
-  const mdl_net_req_t request = {};
-  mdl_net_resp_t      response;
-  char                buffer[k_internal_sink_bytes];
-  size_t              length = 0U;
+  const mdl_net_req_t request = {
+    .user_agent        = "ra8-media-test/3",
+    .referer           = "https://example.test/catalog",
+    .if_none_match     = "\"prior-etag\"",
+    .if_modified_since = "Tue, 20 Oct 2015 07:28:00 GMT",
+    .timeout_ms        = 6789U,
+  };
+  mdl_net_resp_t response;
+  char           buffer[k_internal_sink_bytes];
+  size_t         length = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  mdl_net_get_buf(&net,
                                  "https://example.test/book",
@@ -252,6 +258,15 @@ RA8_INTERNAL static void internal_test_buffer_and_sink(void)
                                  &response));
   TEST_ASSERT_EQ(sizeof(s_body) - 1U, length);
   TEST_ASSERT_EQ(200L, response.status);
+  TEST_ASSERT(strcmp(response.retry_after, "5") == 0);
+  TEST_ASSERT(strcmp(response.etag, "\"c6-model-etag\"") == 0);
+  TEST_ASSERT(strcmp(response.last_modified, "Wed, 21 Oct 2015 07:28:00 GMT") == 0);
+  TEST_ASSERT(strcmp(response.content_type, "application/octet-stream") == 0);
+  TEST_ASSERT(strcmp(ra8_c6_model()->mdl_user_agent, request.user_agent) == 0);
+  TEST_ASSERT(strcmp(ra8_c6_model()->mdl_referer, request.referer) == 0);
+  TEST_ASSERT(strcmp(ra8_c6_model()->mdl_if_none_match, request.if_none_match) == 0);
+  TEST_ASSERT(strcmp(ra8_c6_model()->mdl_if_modified_since, request.if_modified_since) == 0);
+  TEST_ASSERT_EQ(6789, ra8_c6_model()->mdl_timeout_ms);
   TEST_ASSERT(memcmp(buffer, s_body, length) == 0);
   TEST_ASSERT_EQ('\0', buffer[length]);
 
@@ -272,9 +287,48 @@ RA8_INTERNAL static void internal_test_buffer_and_sink(void)
 }
 
 /**
+ * @test internal_test_http_status_is_not_synthesized
+ * @brief Surface a non-success HTTP response without transport relabeling.
+ * @details Configures the C6 model to return 429 with Retry-After and proves
+ * the network adapter publishes that exact metadata alongside verified bytes.
+ * @pre Model and static hash state are exclusively owned.
+ * @pre The deterministic source digest matches the model body.
+ * @post The transfer succeeds at the transport layer with status 429 intact.
+ * @post Caller policy can distinguish throttling from a successful response.
+ * @note `mdl_fetch` owns the eventual throttle decision.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_http_status_is_not_synthesized(void)
+{
+  TEST_BEGIN("c6 media net preserves HTTP status");
+  internal_prepare_source();
+  ra8_c6_model()->mdl_http_status = 429;
+  mdl_net_iface_t  net;
+  mdl_net_c6link_t backend;
+  internal_bind(&net, &backend);
+  const mdl_net_req_t request = {};
+  mdl_net_resp_t      response;
+  char                buffer[k_internal_sink_bytes];
+  size_t              length = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 mdl_net_get_buf(&net,
+                                 "https://example.test/book",
+                                 &request,
+                                 buffer,
+                                 sizeof(buffer),
+                                 &length,
+                                 &response));
+  TEST_ASSERT_EQ(429L, response.status);
+  TEST_ASSERT(strcmp(response.retry_after, "5") == 0);
+  TEST_ASSERT_EQ(sizeof(s_body) - 1U, length);
+  mdl_net_destroy(&net);
+  TEST_END("c6 media net preserves HTTP status");
+}
+
+/**
  * @test internal_test_fail_closed
- * @brief Unsupported policy, capacity, and digest faults publish no bytes.
- * @details Injects an unrepresentable request, insufficient destination, and
+ * @brief Malformed policy, capacity, and digest faults publish no bytes.
+ * @details Injects a header line break, insufficient destination, and
  *          terminal digest corruption to prove each boundary fails closed.
  * @pre Model and static hash state are exclusively owned.
  * @pre The small buffer intentionally cannot hold the source and NUL.
@@ -290,17 +344,17 @@ RA8_INTERNAL static void internal_test_fail_closed(void)
   mdl_net_iface_t  net;
   mdl_net_c6link_t backend;
   internal_bind(&net, &backend);
-  char                buffer[4]   = "old";
-  const mdl_net_req_t unsupported = {.user_agent = "ra8-test"};
-  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+  char                buffer[4] = "old";
+  const mdl_net_req_t malformed = {.user_agent = "ra8-test\r\nInjected: value"};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  mdl_net_get_buf(&net,
                                  "https://example.test/book",
-                                 &unsupported,
+                                 &malformed,
                                  buffer,
                                  sizeof(buffer),
                                  nullptr,
                                  nullptr));
-  TEST_ASSERT(strcmp(buffer, "old") == 0);
+  TEST_ASSERT_EQ('\0', buffer[0]);
 
   const mdl_net_req_t request = {};
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
@@ -332,6 +386,7 @@ RA8_INTERNAL static void internal_test_fail_closed(void)
 int main(void)
 {
   internal_test_buffer_and_sink();
+  internal_test_http_status_is_not_synthesized();
   internal_test_fail_closed();
   return 0;
 }
