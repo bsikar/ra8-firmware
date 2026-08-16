@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "mdl_export.h"
 #include "mdl_storage.h"
 #include "mdl_test_storage.h"
 #include "mdl_verify.h"
@@ -23,6 +24,7 @@
 #include "ra8_book.h"
 #include "ra8_rabook_container.h"
 #include "support/rabook_compile_test_fixture.h"
+#include "tiny_jpeg_fixture.h"
 #include "unity_minimal.h"
 
 /** @brief Small complete-book fixture capacities. */
@@ -31,7 +33,9 @@ typedef enum : uint32_t {
   k_test_chunk_bytes        = 1024U,               /**< Inflated bytes per chunk.      */
   k_test_compressed_bytes   = 2048U,               /**< One compressed stream.         */
   k_test_offset_entries     = 16U,                 /**< Chunk-table entries.           */
-  k_test_verify_arena_bytes = 16U * 1024U * 1024U, /**< Strict-reader arena.           */
+  k_test_verify_arena_bytes = 96U * 1024U * 1024U, /**< Writer and strict-reader arena. */
+  k_test_small_arena_bytes  = 1U * 1024U * 1024U,  /**< Forced profile rejection.       */
+  k_test_dir_work_bytes     = 8192U,               /**< Portable directory cursor.      */
 } mdl_rabook_verify_limit_t;
 
 /** @brief Maximally aligned miniz compressor storage. */
@@ -39,6 +43,12 @@ typedef union {
   max_align_t      alignment;  /**< Forces portable maximum alignment. */
   tdefl_compressor compressor; /**< Production compressor state.       */
 } mdl_rabook_compressor_t;
+
+/** @brief Maximally aligned portable directory workspace. */
+typedef union {
+  max_align_t alignment;                    /**< Forces portable maximum alignment. */
+  uint8_t     bytes[k_test_dir_work_bytes]; /**< Opaque directory cursor state.      */
+} mdl_rabook_dir_workspace_t;
 
 /** @brief Memory source/destination for one container write. */
 typedef struct {
@@ -48,13 +58,15 @@ typedef struct {
   uint32_t       rbkc_cap;  /**< RBKC destination capacity.   */
 } mdl_rabook_memory_t;
 
-static ra8_test_rabook_fixture_t s_fixture;
-static uint8_t                   s_rbkc[k_test_rbkc_bytes];
-static uint8_t                   s_chunk[k_test_chunk_bytes];
-static uint8_t                   s_compressed[k_test_compressed_bytes];
-static uint64_t                  s_offsets[k_test_offset_entries];
-static mdl_rabook_compressor_t   s_compressor;
-static uint8_t                   s_verify_arena[k_test_verify_arena_bytes];
+static ra8_test_rabook_fixture_t  s_fixture;
+static uint8_t                    s_rbkc[k_test_rbkc_bytes];
+static uint8_t                    s_chunk[k_test_chunk_bytes];
+static uint8_t                    s_compressed[k_test_compressed_bytes];
+static uint64_t                   s_offsets[k_test_offset_entries];
+static mdl_rabook_compressor_t    s_compressor;
+static uint8_t                    s_verify_arena[k_test_verify_arena_bytes];
+static uint8_t                    s_small_arena[k_test_small_arena_bytes];
+static mdl_rabook_dir_workspace_t s_dir_workspace;
 
 /**
  * @brief Copy one exact flat range from the resident fixture.
@@ -174,6 +186,79 @@ static ra8_err_t internal_publish(const char* path, const uint8_t* bytes, uint32
 }
 
 /**
+ * @brief Remove one test fixture path when it already exists.
+ * @details Stats the fixture first so a missing path is success and selects
+ *          the matching injected file or directory namespace operation.
+ * @param[in] path Canonical fixture path.
+ * @param[in] directory Whether the node must be removed as a directory.
+ * @return Portable stat/removal status.
+ * @retval k_ra8_ok The path is now absent.
+ * @retval other The portable namespace operation failed.
+ * @pre Test storage is initialized and @p path is non-NULL.
+ * @pre No open cursor or file retains the named node.
+ * @post Success leaves the path absent.
+ * @post Unrelated namespace entries are unchanged.
+ * @note Test-only and serial.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_remove_path(const char* path, bool directory)
+{
+  mdl_storage_t* storage = mdl_test_storage_get();
+  fw_fs_stat_t   stat    = {};
+  ra8_err_t      error   = fw_fs_stat(&storage->fs->names, path, &stat);
+  if ((error == k_ra8_ok) && stat.exists) {
+    error =
+      directory ? fw_fs_rmdir(&storage->fs->names, path) : fw_fs_unlink(&storage->fs->names, path);
+  }
+  return error;
+}
+
+/**
+ * @brief Prove the private EPUB intermediate was removed after RABOOK export.
+ * @details Walks the portable directory cursor and accepts only the original
+ *          `001.jpg` page, rejecting any leaked or unrelated sibling.
+ * @param[in] directory Canonical fixture directory.
+ * @return Portable cursor status.
+ * @retval k_ra8_ok Exactly the original page remains.
+ * @retval k_ra8_err_validation_failed A temporary or unexpected entry remains.
+ * @pre Test storage is initialized and @p directory exists.
+ * @pre No concurrent fixture mutation occurs.
+ * @post The directory and every entry remain unchanged.
+ * @post The cursor is closed on every opened path.
+ * @note Test-only and serial.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_check_no_temp(const char* directory)
+{
+  mdl_storage_t* storage = mdl_test_storage_get();
+  fw_fs_dir_t    cursor  = {};
+  ra8_err_t      error   = fw_fs_dir_open(&storage->fs->names,
+                                          directory,
+                                          &cursor,
+                                          s_dir_workspace.bytes,
+                                          sizeof(s_dir_workspace.bytes));
+  uint32_t       entries = 0U;
+  bool           more    = true;
+  while ((error == k_ra8_ok) && more) {
+    fw_fs_dirent_value_t value = {};
+    error                      = fw_fs_dir_next(&cursor, &value, &more);
+    if ((error == k_ra8_ok) && more) {
+      ++entries;
+      if (strcmp(value.name, "001.jpg") != 0) {
+        error = k_ra8_err_validation_failed;
+      }
+    }
+  }
+  if (cursor.is_open) {
+    const ra8_err_t closed = fw_fs_dir_close(&cursor);
+    if ((error == k_ra8_ok) && (closed != k_ra8_ok)) {
+      error = closed;
+    }
+  }
+  return ((error == k_ra8_ok) && (entries != 1U)) ? k_ra8_err_validation_failed : error;
+}
+
+/**
  * @brief Build the shared flat-book fixture and wrap it in a real RBKC container.
  * @details Runs the production flat-book finalizer and chunked container writer
  *          against bounded test-owned buffers, returning the encoded extent.
@@ -274,6 +359,77 @@ RA8_INTERNAL static void internal_test_strict_rabook_verify(void)
 }
 
 /**
+ * @test internal_test_rabook_writer
+ * @brief A real page directory exports to strict RBKC with failure preservation.
+ * @details Writes a deterministic JPEG, runs the public chapter exporter,
+ *          verifies the resulting reader report, proves no private EPUB remains,
+ *          then forces workspace exhaustion and proves the valid output survives.
+ * @pre Test storage and shared arenas are exclusively owned.
+ * @pre The deterministic fixture paths can be created beneath `/tmp`.
+ * @post The writer output and all source fixtures are removed.
+ * @post The one-megabyte failure leaves the prior strict artifact unchanged.
+ * @note Test-only; assertion failure terminates the process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_rabook_writer(void)
+{
+  TEST_BEGIN("media rabook writer");
+  const char* const directory = "/tmp/mdl-rabook-export";
+  const char* const page      = "/tmp/mdl-rabook-export/001.jpg";
+  const char* const output    = "/tmp/mdl-rabook-export.rabook";
+  TEST_ASSERT_EQ(k_ra8_ok, internal_remove_path(output, false));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_remove_path(page, false));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_remove_path(directory, true));
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_mkdir(&mdl_test_storage_get()->fs->names, directory));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_publish(page, s_tiny_jpeg, s_tiny_jpeg_len));
+
+  mdl_export_meta_t meta;
+  mdl_meta_init(&meta);
+  (void)memcpy(meta.series_title, "Writer Fixture", sizeof("Writer Fixture"));
+  (void)memcpy(meta.chapter_title, "Chapter One", sizeof("Chapter One"));
+  (void)memcpy(meta.identifier, "urn:ra8:test:rabook-writer", sizeof("urn:ra8:test:rabook-writer"));
+  mdl_export_workspace_t workspace;
+  mdl_export_workspace_init(&workspace, s_verify_arena, sizeof(s_verify_arena));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 mdl_export_chapter_meta_ws(mdl_test_storage_get(),
+                                            k_mdl_fmt_rabook,
+                                            directory,
+                                            output,
+                                            &meta,
+                                            &workspace));
+  TEST_ASSERT(workspace.high_water <= sizeof(s_verify_arena));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_check_no_temp(directory));
+
+  mdl_verify_report_t report = {};
+  mdl_export_workspace_init(&workspace, s_verify_arena, sizeof(s_verify_arena));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    mdl_verify_file(mdl_test_storage_get(), k_mdl_fmt_rabook, output, &workspace, &report));
+  TEST_ASSERT_EQ(1U, report.page_count);
+  TEST_ASSERT_EQ(1U, report.member_count);
+  TEST_ASSERT(report.metadata_present);
+
+  mdl_export_workspace_init(&workspace, s_small_arena, sizeof(s_small_arena));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 mdl_export_chapter_meta_ws(mdl_test_storage_get(),
+                                            k_mdl_fmt_rabook,
+                                            directory,
+                                            output,
+                                            &meta,
+                                            &workspace));
+  mdl_export_workspace_init(&workspace, s_verify_arena, sizeof(s_verify_arena));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    mdl_verify_file(mdl_test_storage_get(), k_mdl_fmt_rabook, output, &workspace, &report));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_check_no_temp(directory));
+
+  TEST_ASSERT_EQ(k_ra8_ok, internal_remove_path(output, false));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_remove_path(page, false));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_remove_path(directory, true));
+  TEST_END("media rabook writer");
+}
+
+/**
  * @brief Run the strict RBKC verifier regression.
  * @return Zero after all assertions pass.
  * @retval 0 The real and corrupt container vectors behaved exactly.
@@ -288,6 +444,7 @@ int main(void)
 {
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_init());
   internal_test_strict_rabook_verify();
+  internal_test_rabook_writer();
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_deinit());
   return 0;
 }

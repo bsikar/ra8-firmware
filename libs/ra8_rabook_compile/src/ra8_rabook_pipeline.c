@@ -24,6 +24,7 @@
 #include "ra8_log.h"
 #include "ra8_rabook_compile.h"
 #include "ra8_rabook_gray4.h"
+#include "ra8_rabook_pipeline_internal.h"
 #include "ra8_rabook_xml_shim.h"
 #include "ra8_reflow_image.h"
 #include "stb_image.h"
@@ -294,10 +295,9 @@ static const char* internal_chapter_title(const ra8_epub_book_t* epub,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_check_compile_common(const ra8_epub_book_t*               epub,
-                                               const ra8_rabook_buffers_t*          bufs,
-                                               const ra8_rabook_pipeline_scratch_t* scr)
+RA8_PRIV ra8_err_t priv_rabook_pipeline_check_common(const ra8_epub_book_t*               epub,
+                                                     const ra8_rabook_buffers_t*          bufs,
+                                                     const ra8_rabook_pipeline_scratch_t* scr)
 {
   RA8_CHECK_NULL_PTR(epub, s_tag, "epub");
   RA8_CHECK_NULL_PTR(bufs, s_tag, "bufs");
@@ -645,33 +645,11 @@ ra8_err_t ra8_rabook_compile_from_epub_to_buffer(ra8_epub_book_t*               
                                                  const void**                         out_blob,
                                                  uint32_t*                            out_len)
 {
-  ra8_err_t err = internal_check_compile_common(epub, bufs, scr);
+  ra8_err_t err = priv_rabook_pipeline_check_common(epub, bufs, scr);
   if (err != k_ra8_ok) {
     return err;
   }
   RA8_CHECK_NULL_PTR(out_blob, s_tag, "out_blob");
   RA8_CHECK_NULL_PTR(out_len, s_tag, "out_len");
   return internal_compile_to_blob(epub, bufs, scr, out_blob, out_len);
-}
-
-ra8_err_t ra8_rabook_compile_from_epub(ra8_epub_book_t*                     epub,
-                                       const ra8_rabook_buffers_t*          bufs,
-                                       const ra8_rabook_pipeline_scratch_t* scr,
-                                       ra8_fs_mount_t*                      mount,
-                                       const char*                          out_path)
-{
-  ra8_err_t err = internal_check_compile_common(epub, bufs, scr);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  RA8_CHECK_NULL_PTR(mount, s_tag, "mount");
-  RA8_CHECK_NULL_PTR(out_path, s_tag, "out_path");
-
-  const void* blob     = nullptr;
-  uint32_t    blob_len = 0U;
-  err                  = internal_compile_to_blob(epub, bufs, scr, &blob, &blob_len);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  return ra8_fs_write_file(mount, out_path, (const uint8_t*)blob, blob_len);
 }

@@ -937,7 +937,7 @@ RA8_PRIV int priv_mdl_app_run_pack(const char* dir, mdl_format_t format)
     const ra8_err_t output_error = priv_mdl_stream_text(k_ra8_ok,
                                                         priv_mdl_app_context()->diagnostic,
                                                         "media_dl: --pack needs a --format "
-                                                        "(cbz|cbt|cbt.gz|epub|jof)\n");
+                                                        "(cbz|cbt|cbt.gz|epub|jof|rabook)\n");
     return (output_error == k_ra8_ok) ? 2 : 1;
   }
   fw_fs_stat_t source = {};

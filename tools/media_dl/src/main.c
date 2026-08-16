@@ -867,7 +867,7 @@ internal_prepare_run_policy(const mdl_args_t* args, mdl_run_opts_t* opts, mdl_fo
   if (*format == k_mdl_fmt_invalid) {
     const char* const parts[] = {"media_dl: bad --format '",
                                  args->format,
-                                 "' (loose|cbz|cbt|cbt.gz|epub|jof)\n"};
+                                 "' (loose|cbz|cbt|cbt.gz|epub|jof|rabook)\n"};
     const ra8_err_t   error =
       priv_mdl_cli_reject_parts(&s_diagnostic, parts, sizeof(parts) / sizeof(parts[0]));
     return internal_exit_from_error(error, true);

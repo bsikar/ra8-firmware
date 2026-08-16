@@ -172,7 +172,7 @@ RA8_INTERNAL static void internal_test_format_mapping(void)
   TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_cbt_gz), "cbt.gz") == 0);
   TEST_ASSERT(mdl_format_from_str("epub") == k_mdl_fmt_epub);
   TEST_ASSERT(mdl_format_from_str("jof") == k_mdl_fmt_jof);
-  TEST_ASSERT(mdl_format_from_str("rabook") == k_mdl_fmt_invalid);
+  TEST_ASSERT(mdl_format_from_str("rabook") == k_mdl_fmt_rabook);
   TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_epub), "epub") == 0);
   TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_jof), "jof") == 0);
   TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_rabook), "rabook") == 0);

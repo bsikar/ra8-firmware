@@ -70,6 +70,30 @@ RA8_PRIV ra8_err_t priv_mdl_export_output_begin(mdl_export_output_t* output,
                                                 mdl_format_t         format);
 
 /**
+ * @brief Bind a create-new validated publication transaction.
+ * @details Mirrors ::priv_mdl_export_output_begin but refuses an existing
+ *          destination, which is required for private intermediate artifacts.
+ * @param[out] output Caller-owned output state to initialize.
+ * @param[in,out] storage Exclusive portable storage transaction provider.
+ * @param[in] destination Canonical absent destination path.
+ * @param[in] format Exact format used by the staged verifier.
+ * @return Transaction-open status.
+ * @retval k_ra8_ok A new unpublished stage is active.
+ * @retval k_ra8_err_exists The destination already exists.
+ * @retval k_ra8_err_invalid_arg An argument or format is invalid.
+ * @pre All pointers are non-NULL and @p destination is stable for the call.
+ * @pre @p output is not already bound to an active transaction.
+ * @post Success initializes every output field and owns one active stage.
+ * @post Failure leaves @p output inactive and changes no named file.
+ * @note Thread-safe across distinct storage and output bindings.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t priv_mdl_export_output_begin_new(mdl_export_output_t* output,
+                                                    mdl_storage_t*       storage,
+                                                    const char*          destination,
+                                                    mdl_format_t         format);
+
+/**
  * @brief Append one complete byte span to an active export stage.
  * @details Retries bounded short writes, advances the sequential cursor, and
  *          retains the first storage failure in the output state.
@@ -89,6 +113,32 @@ RA8_PRIV ra8_err_t priv_mdl_export_output_begin(mdl_export_output_t* output,
 RA8_PRIV ra8_err_t priv_mdl_export_output_write(mdl_export_output_t* output,
                                                 const uint8_t*       bytes,
                                                 uint32_t             length);
+
+/**
+ * @brief Write one complete span at an absolute active-stage offset.
+ * @details Adapts the export transaction to the RABOOK container writer's
+ *          random-write contract while retaining the first output error.
+ * @param[in,out] opaque Bound ::mdl_export_output_t.
+ * @param[in] offset Absolute stage offset; holes are rejected.
+ * @param[in] bytes Readable source bytes.
+ * @param[in] length Exact requested byte count.
+ * @param[out] out_written Exact written byte count on success.
+ * @return Complete random-write status.
+ * @retval k_ra8_ok Every requested byte was staged.
+ * @retval k_ra8_err_invalid_arg A pointer or output lifecycle is invalid.
+ * @retval k_ra8_err_invalid_size The write would create a hole or overflow.
+ * @pre @p opaque owns one active transaction and @p bytes spans @p length bytes.
+ * @pre @p out_written is non-NULL and exclusively writable.
+ * @post Success sets @p out_written to @p length and updates the staged extent.
+ * @post Failure sets @p out_written to zero and retains the first output error.
+ * @note Not thread-safe for a shared output.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t priv_mdl_export_output_write_at(void*          opaque,
+                                                   uint64_t       offset,
+                                                   const uint8_t* bytes,
+                                                   uint32_t       length,
+                                                   uint32_t*      out_written);
 
 /**
  * @brief Adapt random-offset miniz output to the active export stage.

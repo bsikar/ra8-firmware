@@ -83,7 +83,7 @@ typedef struct {
   const char* max;              /**< --max.                                                     */
   const char* seed;             /**< --seed.                                                    */
   const char* timeout;          /**< --timeout.                                                 */
-  const char* format;           /**< --format (cbz/cbt/cbt.gz/epub/jof).                        */
+  const char* format;           /**< --format (cbz/cbt/cbt.gz/epub/jof/rabook).                 */
   const char* pack;             /**< --pack DIR: package an existing folder, no network.        */
   const char* contact;          /**< --contact: operator identity for the User-Agent.           */
   const char* max_bytes;        /**< --max-bytes: per-response size cap.                        */
