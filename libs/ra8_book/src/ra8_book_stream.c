@@ -62,7 +62,7 @@ RA8_INTERNAL static uint32_t internal_le32(const uint8_t* p)
          ((uint32_t)p[3] << k_stream_le_shift_3);
 }
 
-/**
+/*
  * @brief Read an exact, already-sized source span.
  * @details Performs an overflow-safe bounds proof before invoking the injected
  *          exact-read callback, so malformed wire extents never reach storage.
@@ -80,9 +80,10 @@ RA8_INTERNAL static uint32_t internal_le32(const uint8_t* p)
  * @note Not thread-safe with respect to @p ctx.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t
-internal_read(const stream_validate_t* ctx, uint64_t off, uint8_t* dst, uint32_t len)
+RA8_PRIV ra8_err_t priv_book_stream_read(const stream_validate_t* ctx,
+                                         uint64_t                 off,
+                                         uint8_t*                 dst,
+                                         uint32_t                 len)
 {
   if ((off > ctx->source_size) || ((uint64_t)len > (ctx->source_size - off))) {
     return k_ra8_err_invalid_size;
@@ -269,7 +270,7 @@ RA8_INTERNAL static ra8_err_t internal_string_ref(const stream_validate_t* ctx, 
   }
   uint8_t   preceding = 0U;
   ra8_err_t err =
-    internal_read(ctx, (uint64_t)ctx->hdr.string_off + (uint64_t)off - 1U, &preceding, 1U);
+    priv_book_stream_read(ctx, (uint64_t)ctx->hdr.string_off + (uint64_t)off - 1U, &preceding, 1U);
   if ((err == k_ra8_ok) && (preceding != 0U)) {
     err = k_ra8_err_invalid_arg;
   }
@@ -299,7 +300,7 @@ RA8_INTERNAL static ra8_err_t internal_nonempty_string_ref(const stream_validate
   ra8_err_t err   = internal_string_ref(ctx, off);
   uint8_t   first = 0U;
   if (err == k_ra8_ok) {
-    err = internal_read(ctx, (uint64_t)ctx->hdr.string_off + off, &first, 1U);
+    err = priv_book_stream_read(ctx, (uint64_t)ctx->hdr.string_off + off, &first, 1U);
   }
   if ((err == k_ra8_ok) && (first == 0U)) {
     err = k_ra8_err_invalid_arg;
@@ -307,7 +308,7 @@ RA8_INTERNAL static ra8_err_t internal_nonempty_string_ref(const stream_validate
   return err;
 }
 
-/**
+/*
  * @brief Validate the empty-string sentinel and terminal pool NUL.
  * @details Requires a non-empty string pool whose first and last bytes are NUL,
  *          establishing bounded sentinels for all later reference checks.
@@ -323,19 +324,19 @@ RA8_INTERNAL static ra8_err_t internal_nonempty_string_ref(const stream_validate
  * @note Performs at most two one-byte reads.
  * @since Version 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_validate_string_envelope(const stream_validate_t* ctx)
+RA8_PRIV ra8_err_t priv_book_stream_validate_string_envelope(const stream_validate_t* ctx)
 {
   if (ctx->hdr.string_size == 0U) {
     return k_ra8_err_invalid_size;
   }
   uint8_t   first = 0U;
   uint8_t   last  = 0U;
-  ra8_err_t err   = internal_read(ctx, ctx->hdr.string_off, &first, 1U);
+  ra8_err_t err   = priv_book_stream_read(ctx, ctx->hdr.string_off, &first, 1U);
   if (err == k_ra8_ok) {
-    err = internal_read(ctx,
-                        (uint64_t)ctx->hdr.string_off + (uint64_t)ctx->hdr.string_size - 1U,
-                        &last,
-                        1U);
+    err = priv_book_stream_read(ctx,
+                                (uint64_t)ctx->hdr.string_off + (uint64_t)ctx->hdr.string_size - 1U,
+                                &last,
+                                1U);
   }
   if ((err == k_ra8_ok) && ((first != 0U) || (last != 0U))) {
     err = k_ra8_err_invalid_arg;
@@ -343,7 +344,7 @@ RA8_INTERNAL static ra8_err_t internal_validate_string_envelope(const stream_val
   return err;
 }
 
-/**
+/*
  * @brief Validate the four metadata strings and optional cover index.
  * @details Validates every metadata string boundary and requires any non-nil
  *          cover reference to select an existing image descriptor.
@@ -358,7 +359,7 @@ RA8_INTERNAL static ra8_err_t internal_validate_string_envelope(const stream_val
  * @note Not thread-safe with respect to the source callback.
  * @since Version 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_validate_metadata(const stream_validate_t* ctx)
+RA8_PRIV ra8_err_t priv_book_stream_validate_metadata(const stream_validate_t* ctx)
 {
   const uint32_t refs[4] = {
     ctx->hdr.title_off,
@@ -401,7 +402,7 @@ RA8_INTERNAL static ra8_err_t internal_validate_chapters(const stream_validate_t
   for (uint32_t i = 0U; i < ctx->hdr.chapter_count; ++i) {
     const uint64_t off =
       (uint64_t)ctx->hdr.chapter_off + ((uint64_t)i * (uint64_t)k_ra8_book_sizeof_chapter);
-    ra8_err_t err = internal_read(ctx, off, rec, (uint32_t)sizeof(rec));
+    ra8_err_t err = priv_book_stream_read(ctx, off, rec, (uint32_t)sizeof(rec));
     if (err != k_ra8_ok) {
       return err;
     }
@@ -415,11 +416,11 @@ RA8_INTERNAL static ra8_err_t internal_validate_chapters(const stream_validate_t
     }
     if (err == k_ra8_ok) {
       uint8_t node[k_ra8_book_sizeof_node] = {};
-      err = internal_read(ctx,
-                          (uint64_t)ctx->hdr.node_off +
-                            ((uint64_t)root * (uint64_t)k_ra8_book_sizeof_node),
-                          node,
-                          (uint32_t)sizeof(node));
+      err = priv_book_stream_read(ctx,
+                                  (uint64_t)ctx->hdr.node_off +
+                                    ((uint64_t)root * (uint64_t)k_ra8_book_sizeof_node),
+                                  node,
+                                  (uint32_t)sizeof(node));
       if ((err == k_ra8_ok) &&
           ((node[k_stream_node_kind] != (uint8_t)k_ra8_book_node_element) ||
            (internal_le32(&node[k_stream_node_next_sibling]) != (uint32_t)k_ra8_book_nil))) {
@@ -504,7 +505,7 @@ internal_mark_forward_link(const stream_validate_t* ctx, uint32_t link, uint32_t
   return k_ra8_ok;
 }
 
-/**
+/*
  * @brief Validate one element node and advance canonical attribute ownership.
  * @details Requires element-only fields, a non-empty name, and either no
  *          attributes or the exact next contiguous attribute-table span.
@@ -521,9 +522,9 @@ internal_mark_forward_link(const stream_validate_t* ctx, uint32_t link, uint32_t
  * @note Not thread-safe with respect to the source callback.
  * @since Version 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t
-internal_validate_element(const stream_validate_t* ctx, const uint8_t* rec, uint32_t* attr_cursor)
+RA8_PRIV ra8_err_t priv_book_stream_validate_element(const stream_validate_t* ctx,
+                                                     const uint8_t*           rec,
+                                                     uint32_t*                attr_cursor)
 {
   if (internal_le32(&rec[k_stream_node_text]) != 0U) {
     return k_ra8_err_invalid_arg;
@@ -544,7 +545,7 @@ internal_validate_element(const stream_validate_t* ctx, const uint8_t* rec, uint
   return k_ra8_ok;
 }
 
-/**
+/*
  * @brief Validate one text-node invariant set.
  * @details Rejects element-only fields on text records, then validates the
  *          text string boundary through the shared string-pool contract.
@@ -561,8 +562,7 @@ internal_validate_element(const stream_validate_t* ctx, const uint8_t* rec, uint
  * @note Not thread-safe with respect to the source callback.
  * @since Version 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_validate_text(const stream_validate_t* ctx,
-                                                     const uint8_t*           rec)
+RA8_PRIV ra8_err_t priv_book_stream_validate_text(const stream_validate_t* ctx, const uint8_t* rec)
 {
   if ((internal_le16(&rec[k_stream_node_attr_count]) != 0U) ||
       (internal_le32(&rec[k_stream_node_name]) != 0U) ||
@@ -596,7 +596,7 @@ RA8_INTERNAL static ra8_err_t internal_validate_nodes(const stream_validate_t* c
   for (uint32_t i = 0U; i < ctx->hdr.node_count; ++i) {
     const uint64_t off =
       (uint64_t)ctx->hdr.node_off + ((uint64_t)i * (uint64_t)k_ra8_book_sizeof_node);
-    ra8_err_t err = internal_read(ctx, off, rec, (uint32_t)sizeof(rec));
+    ra8_err_t err = priv_book_stream_read(ctx, off, rec, (uint32_t)sizeof(rec));
     if (err != k_ra8_ok) {
       return err;
     }
@@ -604,9 +604,9 @@ RA8_INTERNAL static ra8_err_t internal_validate_nodes(const stream_validate_t* c
       return k_ra8_err_invalid_arg;
     }
     if (rec[k_stream_node_kind] == (uint8_t)k_ra8_book_node_element) {
-      err = internal_validate_element(ctx, rec, &attr_cursor);
+      err = priv_book_stream_validate_element(ctx, rec, &attr_cursor);
     } else if (rec[k_stream_node_kind] == (uint8_t)k_ra8_book_node_text) {
-      err = internal_validate_text(ctx, rec);
+      err = priv_book_stream_validate_text(ctx, rec);
     } else {
       err = k_ra8_err_invalid_arg;
     }
@@ -652,11 +652,11 @@ RA8_INTERNAL static ra8_err_t internal_validate_attrs(const stream_validate_t* c
 {
   uint8_t rec[k_ra8_book_sizeof_attr] = {};
   for (uint32_t i = 0U; i < ctx->hdr.attr_count; ++i) {
-    ra8_err_t err =
-      internal_read(ctx,
-                    (uint64_t)ctx->hdr.attr_off + ((uint64_t)i * (uint64_t)k_ra8_book_sizeof_attr),
-                    rec,
-                    (uint32_t)sizeof(rec));
+    ra8_err_t err = priv_book_stream_read(ctx,
+                                          (uint64_t)ctx->hdr.attr_off +
+                                            ((uint64_t)i * (uint64_t)k_ra8_book_sizeof_attr),
+                                          rec,
+                                          (uint32_t)sizeof(rec));
     if (err == k_ra8_ok) {
       err = internal_nonempty_string_ref(ctx, internal_le32(&rec[0]));
     }
@@ -670,7 +670,7 @@ RA8_INTERNAL static ra8_err_t internal_validate_attrs(const stream_validate_t* c
   return k_ra8_ok;
 }
 
-/**
+/*
  * @brief Validate every stylesheet source and scope.
  * @details Validates each stylesheet source string and permits only nil or an
  *          existing chapter index as its optional scope.
@@ -685,15 +685,15 @@ RA8_INTERNAL static ra8_err_t internal_validate_attrs(const stream_validate_t* c
  * @note Iteration is bounded by stylesheet_count.
  * @since Version 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_validate_styles(const stream_validate_t* ctx)
+RA8_PRIV ra8_err_t priv_book_stream_validate_styles(const stream_validate_t* ctx)
 {
   uint8_t rec[k_ra8_book_sizeof_stylesheet] = {};
   for (uint32_t i = 0U; i < ctx->hdr.stylesheet_count; ++i) {
-    ra8_err_t err = internal_read(ctx,
-                                  (uint64_t)ctx->hdr.stylesheet_off +
-                                    ((uint64_t)i * (uint64_t)k_ra8_book_sizeof_stylesheet),
-                                  rec,
-                                  (uint32_t)sizeof(rec));
+    ra8_err_t err = priv_book_stream_read(ctx,
+                                          (uint64_t)ctx->hdr.stylesheet_off +
+                                            ((uint64_t)i * (uint64_t)k_ra8_book_sizeof_stylesheet),
+                                          rec,
+                                          (uint32_t)sizeof(rec));
     if (err == k_ra8_ok) {
       err = internal_string_ref(ctx, internal_le32(&rec[0]));
     }
@@ -795,11 +795,11 @@ RA8_INTERNAL static ra8_err_t internal_validate_images(const stream_validate_t* 
   uint8_t  rec[k_ra8_book_sizeof_image] = {};
   uint32_t pool_cursor                  = 0U;
   for (uint32_t i = 0U; i < ctx->hdr.image_count; ++i) {
-    ra8_err_t err = internal_read(ctx,
-                                  (uint64_t)ctx->hdr.image_off +
-                                    ((uint64_t)i * (uint64_t)k_ra8_book_sizeof_image),
-                                  rec,
-                                  (uint32_t)sizeof(rec));
+    ra8_err_t err = priv_book_stream_read(ctx,
+                                          (uint64_t)ctx->hdr.image_off +
+                                            ((uint64_t)i * (uint64_t)k_ra8_book_sizeof_image),
+                                          rec,
+                                          (uint32_t)sizeof(rec));
     if (err == k_ra8_ok) {
       err = internal_nonempty_string_ref(ctx, internal_le32(&rec[k_stream_image_id]));
     }
@@ -854,7 +854,7 @@ RA8_INTERNAL static ra8_err_t internal_validate_crc(const stream_validate_t* ctx
     if (remain < (uint64_t)span) {
       span = (uint32_t)remain;
     }
-    const ra8_err_t err = internal_read(ctx, at, ctx->scratch, span);
+    const ra8_err_t err = priv_book_stream_read(ctx, at, ctx->scratch, span);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -884,16 +884,16 @@ RA8_INTERNAL static ra8_err_t internal_validate_crc(const stream_validate_t* ctx
 RA8_INTERNAL static ra8_err_t internal_validate_body(stream_validate_t* ctx)
 {
   uint8_t   raw[k_ra8_book_sizeof_header] = {};
-  ra8_err_t err                           = internal_read(ctx, 0U, raw, (uint32_t)sizeof(raw));
+  ra8_err_t err = priv_book_stream_read(ctx, 0U, raw, (uint32_t)sizeof(raw));
   if (err == k_ra8_ok) {
     internal_decode_header(raw, &ctx->hdr);
     err = internal_validate_header_layout(ctx);
   }
   if (err == k_ra8_ok) {
-    err = internal_validate_string_envelope(ctx);
+    err = priv_book_stream_validate_string_envelope(ctx);
   }
   if (err == k_ra8_ok) {
-    err = internal_validate_metadata(ctx);
+    err = priv_book_stream_validate_metadata(ctx);
   }
   if (err == k_ra8_ok) {
     const uint32_t mark_bytes =
@@ -910,7 +910,7 @@ RA8_INTERNAL static ra8_err_t internal_validate_body(stream_validate_t* ctx)
     err = internal_validate_attrs(ctx);
   }
   if (err == k_ra8_ok) {
-    err = internal_validate_styles(ctx);
+    err = priv_book_stream_validate_styles(ctx);
   }
   if (err == k_ra8_ok) {
     err = internal_validate_images(ctx);
