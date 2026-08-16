@@ -356,33 +356,35 @@ void ra8_rsip_dispatch(void);
 
 /**
  * @enum ra8_rsip_sha_buf_t
- * @brief Capacity caps for the incremental SHA / HMAC streaming buffers.
+ * @brief Fixed geometry for the incremental SHA / HMAC state.
  *
  * @details
- * The incremental SHA / HMAC API buffers all input, then runs a single
- * software SHA-256 pass (``internal_sha256_dispatch``) at ``final()``.
- * There is no RSIP hash-hardware backend on this silicon: HUM Ch 52 is
- * a feature overview with no hash register map (issue #215). The buffer
- * cap is sized for TLS 1.2 / 1.3 handshake transcripts.
+ * The software backend compresses complete SHA-256 blocks as they arrive and
+ * retains only one partial block. Input length is therefore independent of
+ * context size; the 64-bit byte count enforces the FIPS 180-4 bit-length
+ * encoding bound at update time.
  */
 typedef enum : uint16_t {
-  k_ra8_rsip_inc_buf_bytes  = 8192U, /**< Streaming buffer for incremental hash. */
-  k_ra8_rsip_sha256_block   = 64U,   /**< SHA-256 message-block byte length.     */
-  k_ra8_rsip_hmac_inner_pad = 0x36U, /**< RFC 2104 inner-pad fill byte.          */
-  k_ra8_rsip_hmac_outer_pad = 0x5CU, /**< RFC 2104 outer-pad fill byte.          */
+  k_ra8_rsip_sha256_state_words = 8U,    /**< SHA-256 chaining-state words.      */
+  k_ra8_rsip_sha256_block       = 64U,   /**< SHA-256 message-block byte length. */
+  k_ra8_rsip_hmac_inner_pad     = 0x36U, /**< RFC 2104 inner-pad fill byte.      */
+  k_ra8_rsip_hmac_outer_pad     = 0x5CU, /**< RFC 2104 outer-pad fill byte.      */
 } ra8_rsip_sha_buf_t;
 
 /**
  * @struct ra8_rsip_sha256_ctx_t
  * @brief Streaming state for incremental SHA-256.
  *
- * @invariant ``used`` <= ``k_ra8_rsip_inc_buf_bytes``.
+ * @invariant ``used`` is less than ::k_ra8_rsip_sha256_block.
+ * @invariant ``total_bytes`` fits SHA-256's 64-bit bit-length field.
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t  buf[k_ra8_rsip_inc_buf_bytes]; /**< Accumulated message bytes.  */
-  uint32_t used;                          /**< Bytes currently in ``buf``. */
-  uint8_t  initialized;                   /**< 1 = ready, 0 = unset.       */
+  uint32_t state[k_ra8_rsip_sha256_state_words]; /**< Chaining words H0..H7. */
+  uint8_t  block[k_ra8_rsip_sha256_block];       /**< Partial message block. */
+  uint64_t total_bytes;                          /**< Bytes absorbed so far. */
+  uint32_t used;                                 /**< Bytes in @ref block.   */
+  uint8_t  initialized;                          /**< 1 = ready, 0 = unset.  */
 } ra8_rsip_sha256_ctx_t;
 
 /**
@@ -397,7 +399,8 @@ typedef struct {
  * @pre ``ra8_rsip_init`` has been called at least once since reset.
  * @pre ``ctx`` is non-NULL.
  *
- * @post ``ctx->used == 0`` and ``ctx->initialized == 1``.
+ * @post ``ctx->used == 0``, ``ctx->total_bytes == 0`` and
+ *       ``ctx->initialized == 1``.
  * @post No engine state is modified.
  *
  * @note Thread safety: not thread-safe.
@@ -425,15 +428,17 @@ typedef struct {
  * @param[in]     len  Number of bytes in ``data``.
  *
  * @return ``ra8_err_t`` error code.
- * @retval k_ra8_ok                Bytes accumulated.
+ * @retval k_ra8_ok                Bytes compressed or retained.
  * @retval k_ra8_err_null_ptr      ``ctx`` was nullptr or ``data`` was NULL with non-zero ``len``.
  * @retval k_ra8_err_invalid_state ``ctx`` was not initialized.
- * @retval k_ra8_err_invalid_arg   Cumulative input exceeds ``k_ra8_rsip_inc_buf_bytes``.
+ * @retval k_ra8_err_invalid_size  Cumulative input cannot be represented by
+ *                                 SHA-256's 64-bit bit-length field.
  *
  * @pre ``ctx->initialized == 1``.
  * @pre Either ``len == 0`` or ``data`` is non-NULL.
  *
- * @post On success ``ctx->used`` grew by ``len``.
+ * @post On success ``ctx->total_bytes`` grew by ``len`` and ``ctx->used``
+ *       identifies only the retained partial block.
  * @post On failure ``ctx`` is unchanged.
  *
  * @note Thread safety: not thread-safe.
@@ -453,13 +458,12 @@ ra8_rsip_sha256_update(ra8_rsip_sha256_ctx_t* ctx, const uint8_t* data, uint32_t
  * @retval k_ra8_ok                Digest written.
  * @retval k_ra8_err_null_ptr      ``ctx`` or ``digest_out`` was nullptr.
  * @retval k_ra8_err_invalid_state ``ctx`` was not initialized.
- * @retval k_ra8_err_hw_timeout    Underlying ``ra8_rsip_sha256`` timed out.
  *
  * @pre ``ctx->initialized == 1``.
  * @pre ``digest_out`` is non-NULL.
  *
  * @post On success ``digest_out[0..31]`` holds the SHA-256.
- * @post On any return ``ctx->initialized == 0``.
+ * @post On success ``ctx`` is cleared and no message bytes remain resident.
  *
  * @note Thread safety: not thread-safe.
  * @see ra8_rsip_sha256_init
@@ -525,12 +529,13 @@ ra8_rsip_hmac_sha256_init(ra8_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* key, u
  * @retval k_ra8_ok                Bytes accumulated.
  * @retval k_ra8_err_null_ptr      ``ctx`` was nullptr or ``data`` NULL with non-zero ``len``.
  * @retval k_ra8_err_invalid_state ``ctx`` was not initialized.
- * @retval k_ra8_err_invalid_arg   Cumulative input exceeds the buffer cap.
+ * @retval k_ra8_err_invalid_size  Cumulative input exceeds SHA-256's encoded
+ *                                 length range.
  *
  * @pre ``ctx->initialized == 1``.
  * @pre Either ``len == 0`` or ``data`` is non-NULL.
  *
- * @post On success ``ctx->inner.used`` grew by ``len``.
+ * @post On success ``ctx->inner.total_bytes`` grew by ``len``.
  * @post On failure ``ctx`` is unchanged.
  *
  * @note Thread safety: not thread-safe.

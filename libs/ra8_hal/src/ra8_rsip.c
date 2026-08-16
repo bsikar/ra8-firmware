@@ -447,29 +447,28 @@ ra8_err_t ra8_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
  * straight FIPS PUB 180-4 Section 4.2.2 / 6.2.1 references.
  */
 typedef enum : uint32_t {
-  k_ra8_rsip_sw_sha256_block_w   = 16U,   /**< 64-byte block = 16 words.      */
-  k_ra8_rsip_sw_sha256_round_cnt = 64U,   /**< Sched + compression rounds.    */
-  k_ra8_rsip_sw_sha256_state_w   = 8U,    /**< 8 working-state words.         */
-  k_ra8_rsip_sw_sha256_pad_min   = 9U,    /**< 0x80 + 8 length bytes minimum. */
-  k_ra8_rsip_sw_sha256_len_bytes = 8U,    /**< 64-bit length encoding tail.   */
-  k_ra8_rsip_sw_sha256_pad_byte  = 0x80U, /**< RFC 6234 / FIPS 180-4 marker.  */
-  k_ra8_rsip_sw_sha256_w_back_2  = 2U,    /**< W[i-2]  schedule lookback.     */
-  k_ra8_rsip_sw_sha256_w_back_7  = 7U,    /**< W[i-7]  schedule lookback.     */
-  k_ra8_rsip_sw_sha256_w_back_15 = 15U,   /**< W[i-15] schedule lookback.     */
-  k_ra8_rsip_sw_sha256_w_back_16 = 16U,   /**< W[i-16] schedule lookback.     */
-  k_ra8_rsip_sw_rotr_2           = 2U,    /**< RA8 rsip sw rotr 2.            */
-  k_ra8_rsip_sw_rotr_3           = 3U,    /**< RA8 rsip sw rotr 3.            */
-  k_ra8_rsip_sw_rotr_6           = 6U,    /**< RA8 rsip sw rotr 6.            */
-  k_ra8_rsip_sw_rotr_7           = 7U,    /**< RA8 rsip sw rotr 7.            */
-  k_ra8_rsip_sw_rotr_10          = 10U,   /**< RA8 rsip sw rotr 10.           */
-  k_ra8_rsip_sw_rotr_11          = 11U,   /**< RA8 rsip sw rotr 11.           */
-  k_ra8_rsip_sw_rotr_13          = 13U,   /**< RA8 rsip sw rotr 13.           */
-  k_ra8_rsip_sw_rotr_17          = 17U,   /**< RA8 rsip sw rotr 17.           */
-  k_ra8_rsip_sw_rotr_18          = 18U,   /**< RA8 rsip sw rotr 18.           */
-  k_ra8_rsip_sw_rotr_19          = 19U,   /**< RA8 rsip sw rotr 19.           */
-  k_ra8_rsip_sw_rotr_22          = 22U,   /**< RA8 rsip sw rotr 22.           */
-  k_ra8_rsip_sw_rotr_25          = 25U,   /**< RA8 rsip sw rotr 25.           */
-  k_ra8_rsip_sw_word_bits        = 32U,   /**< Word width in bits.            */
+  k_ra8_rsip_sw_sha256_block_w   = 16U,   /**< 64-byte block = 16 words.     */
+  k_ra8_rsip_sw_sha256_round_cnt = 64U,   /**< Sched + compression rounds.   */
+  k_ra8_rsip_sw_sha256_state_w   = 8U,    /**< 8 working-state words.        */
+  k_ra8_rsip_sw_sha256_len_bytes = 8U,    /**< 64-bit length encoding tail.  */
+  k_ra8_rsip_sw_sha256_pad_byte  = 0x80U, /**< RFC 6234 / FIPS 180-4 marker. */
+  k_ra8_rsip_sw_sha256_w_back_2  = 2U,    /**< W[i-2]  schedule lookback.    */
+  k_ra8_rsip_sw_sha256_w_back_7  = 7U,    /**< W[i-7]  schedule lookback.    */
+  k_ra8_rsip_sw_sha256_w_back_15 = 15U,   /**< W[i-15] schedule lookback.    */
+  k_ra8_rsip_sw_sha256_w_back_16 = 16U,   /**< W[i-16] schedule lookback.    */
+  k_ra8_rsip_sw_rotr_2           = 2U,    /**< RA8 rsip sw rotr 2.           */
+  k_ra8_rsip_sw_rotr_3           = 3U,    /**< RA8 rsip sw rotr 3.           */
+  k_ra8_rsip_sw_rotr_6           = 6U,    /**< RA8 rsip sw rotr 6.           */
+  k_ra8_rsip_sw_rotr_7           = 7U,    /**< RA8 rsip sw rotr 7.           */
+  k_ra8_rsip_sw_rotr_10          = 10U,   /**< RA8 rsip sw rotr 10.          */
+  k_ra8_rsip_sw_rotr_11          = 11U,   /**< RA8 rsip sw rotr 11.          */
+  k_ra8_rsip_sw_rotr_13          = 13U,   /**< RA8 rsip sw rotr 13.          */
+  k_ra8_rsip_sw_rotr_17          = 17U,   /**< RA8 rsip sw rotr 17.          */
+  k_ra8_rsip_sw_rotr_18          = 18U,   /**< RA8 rsip sw rotr 18.          */
+  k_ra8_rsip_sw_rotr_19          = 19U,   /**< RA8 rsip sw rotr 19.          */
+  k_ra8_rsip_sw_rotr_22          = 22U,   /**< RA8 rsip sw rotr 22.          */
+  k_ra8_rsip_sw_rotr_25          = 25U,   /**< RA8 rsip sw rotr 25.          */
+  k_ra8_rsip_sw_word_bits        = 32U,   /**< Word width in bits.           */
 } ra8_rsip_sw_sha256_t;
 
 /* 32-bit right-rotate -- see surrounding code and HUM citations. */
@@ -636,40 +635,44 @@ static void internal_sw_sha256_compress(uint32_t      state[k_ra8_rsip_sw_sha256
   }
 }
 
-/* Build the SHA-256 padding tail (0x80 + zeros + 64-bit length) -- see surrounding code and HUM citations. */
+/**
+ * @brief Finalize one streaming SHA-256 chaining state.
+ *
+ * @details Appends the FIPS 180-4 marker, zero padding, and big-endian
+ * 64-bit message length, compressing one or two final blocks as required.
+ *
+ * @param[in,out] ctx Initialized streaming context to pad and compress.
+ *
+ * @pre ``ctx`` is non-NULL and initialized by ::ra8_rsip_sha256_init.
+ * @pre ``ctx->used`` is less than ::k_ra8_rsip_sha256_block.
+ *
+ * @post ``ctx->state`` contains the final chaining words.
+ * @post No storage outside ``ctx`` is modified.
+ *
+ * @note File-local helper; the caller emits and clears the resulting state.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
-static void internal_sw_sha256_pad(uint32_t       state[k_ra8_rsip_sw_sha256_state_w],
-                                   const uint8_t* msg,
-                                   uint32_t       msg_len,
-                                   uint32_t       consumed)
+static void internal_sw_sha256_finalize(ra8_rsip_sha256_ctx_t* ctx)
 {
-  uint8_t        block[k_ra8_rsip_sha256_block];
-  const uint32_t rem     = msg_len - consumed;
-  const uint64_t bit_len = (uint64_t)msg_len * (uint64_t)k_ra8_rsip_byte_bits;
-
-  for (uint32_t b = 0U; b < rem; ++b) {
-    block[b] = msg[consumed + b];
-  }
-  block[rem]       = (uint8_t)k_ra8_rsip_sw_sha256_pad_byte;
-  uint32_t pad_idx = rem + 1U;
-  while (pad_idx < k_ra8_rsip_sha256_block) {
-    block[pad_idx] = 0x00U;
-    ++pad_idx;
-  }
-  /* If we cannot fit the 8-byte length, push this block and start a fresh one. */
-  if (rem >= ((uint32_t)k_ra8_rsip_sha256_block - (uint32_t)k_ra8_rsip_sw_sha256_pad_min + 1U)) {
-    internal_sw_sha256_compress(state, block);
-    for (uint32_t b = 0U; b < k_ra8_rsip_sha256_block; ++b) {
-      block[b] = 0x00U;
+  const uint64_t bit_len  = ctx->total_bytes * (uint64_t)k_ra8_rsip_byte_bits;
+  ctx->block[ctx->used++] = (uint8_t)k_ra8_rsip_sw_sha256_pad_byte;
+  if (ctx->used > ((uint32_t)k_ra8_rsip_sha256_block - k_ra8_rsip_sw_sha256_len_bytes)) {
+    while (ctx->used < k_ra8_rsip_sha256_block) {
+      ctx->block[ctx->used++] = 0U;
     }
+    internal_sw_sha256_compress(ctx->state, ctx->block);
+    ctx->used = 0U;
   }
-  /* Encode bit length big-endian into the last 8 bytes. */
+  while (ctx->used < ((uint32_t)k_ra8_rsip_sha256_block - k_ra8_rsip_sw_sha256_len_bytes)) {
+    ctx->block[ctx->used++] = 0U;
+  }
   for (uint32_t b = 0U; b < k_ra8_rsip_sw_sha256_len_bytes; ++b) {
     const uint32_t shift = (k_ra8_rsip_sw_sha256_len_bytes - 1U - b) * k_ra8_rsip_byte_bits;
-    block[(uint32_t)k_ra8_rsip_sha256_block - (uint32_t)k_ra8_rsip_sw_sha256_len_bytes + b] =
+    ctx->block[(uint32_t)k_ra8_rsip_sha256_block - k_ra8_rsip_sw_sha256_len_bytes + b] =
       (uint8_t)((bit_len >> shift) & (uint64_t)k_ra8_rsip_byte_mask);
   }
-  internal_sw_sha256_compress(state, block);
+  internal_sw_sha256_compress(ctx->state, ctx->block);
 }
 
 /* Emit a big-endian 32-byte SHA-256 digest from working state -- see surrounding code and HUM citations. */
@@ -719,19 +722,10 @@ static void internal_sw_sha256_emit(const uint32_t state[k_ra8_rsip_sw_sha256_st
 RA8_INTERNAL
 static void internal_sw_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
 {
-  uint32_t state[k_ra8_rsip_sw_sha256_state_w];
-  for (uint32_t i = 0U; i < k_ra8_rsip_sw_sha256_state_w; ++i) {
-    state[i] = s_sw_sha256_h0[i];
-  }
-
-  uint32_t i = 0U;
-  while ((i + k_ra8_rsip_sha256_block) <= msg_len) {
-    internal_sw_sha256_compress(state, &msg[i]);
-    i += k_ra8_rsip_sha256_block;
-  }
-
-  internal_sw_sha256_pad(state, msg, msg_len, i);
-  internal_sw_sha256_emit(state, digest);
+  ra8_rsip_sha256_ctx_t ctx = {};
+  (void)ra8_rsip_sha256_init(&ctx);
+  (void)ra8_rsip_sha256_update(&ctx, msg, msg_len);
+  (void)ra8_rsip_sha256_final(&ctx, digest);
 }
 
 #endif /* RA8_RSIP_SOFTWARE_BACKEND */
@@ -752,7 +746,11 @@ static ra8_err_t internal_sha256_dispatch(const uint8_t* msg, uint32_t msg_len, 
 ra8_err_t ra8_rsip_sha256_init(ra8_rsip_sha256_ctx_t* ctx)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
+  for (uint32_t i = 0U; i < k_ra8_rsip_sha256_state_words; ++i) {
+    ctx->state[i] = s_sw_sha256_h0[i];
+  }
   ctx->used        = 0U;
+  ctx->total_bytes = 0U;
   ctx->initialized = 1U;
   return k_ra8_ok;
 }
@@ -769,13 +767,26 @@ ra8_err_t ra8_rsip_sha256_update(ra8_rsip_sha256_ctx_t* ctx, const uint8_t* data
   if (len == 0U) {
     return k_ra8_ok;
   }
-  if ((ctx->used + len) > (uint32_t)k_ra8_rsip_inc_buf_bytes) {
-    return k_ra8_err_invalid_arg;
+  const uint64_t max_bytes = UINT64_MAX / (uint64_t)k_ra8_rsip_byte_bits;
+  if ((ctx->total_bytes > max_bytes) || ((uint64_t)len > (max_bytes - ctx->total_bytes))) {
+    return k_ra8_err_invalid_size;
   }
-  for (uint32_t i = 0U; i < len; ++i) {
-    ctx->buf[ctx->used + i] = data[i];
+  uint32_t consumed = 0U;
+  while ((ctx->used != 0U) && (consumed < len)) {
+    ctx->block[ctx->used++] = data[consumed++];
+    if (ctx->used == k_ra8_rsip_sha256_block) {
+      internal_sw_sha256_compress(ctx->state, ctx->block);
+      ctx->used = 0U;
+    }
   }
-  ctx->used += len;
+  while ((len - consumed) >= k_ra8_rsip_sha256_block) {
+    internal_sw_sha256_compress(ctx->state, &data[consumed]);
+    consumed += k_ra8_rsip_sha256_block;
+  }
+  while (consumed < len) {
+    ctx->block[ctx->used++] = data[consumed++];
+  }
+  ctx->total_bytes += len;
   return k_ra8_ok;
 }
 
@@ -786,10 +797,18 @@ ra8_err_t ra8_rsip_sha256_final(ra8_rsip_sha256_ctx_t* ctx, uint8_t* digest_out)
   if (ctx->initialized != 1U) {
     return k_ra8_err_invalid_state;
   }
-  const ra8_err_t err = internal_sha256_dispatch(ctx->buf, ctx->used, digest_out);
-  ctx->initialized    = 0U;
-  ctx->used           = 0U;
-  return err;
+  internal_sw_sha256_finalize(ctx);
+  internal_sw_sha256_emit(ctx->state, digest_out);
+  for (uint32_t i = 0U; i < k_ra8_rsip_sha256_state_words; ++i) {
+    ctx->state[i] = 0U;
+  }
+  for (uint32_t i = 0U; i < k_ra8_rsip_sha256_block; ++i) {
+    ctx->block[i] = 0U;
+  }
+  ctx->total_bytes = 0U;
+  ctx->used        = 0U;
+  ctx->initialized = 0U;
+  return k_ra8_ok;
 }
 
 /* =============================================================================
@@ -865,9 +884,9 @@ ra8_rsip_hmac_sha256_update(ra8_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* data
  *
  * @details
  * Uses a stack-local 96-byte buffer (K_opad + inner_digest = 64 + 32)
- * directly through ``internal_sha256_dispatch`` rather than spinning up
- * an ``ra8_rsip_sha256_ctx_t`` (which carries an 8 KiB streaming buffer
- * and would blow the firmware's 2200-byte stack ceiling).
+ * directly through ``internal_sha256_dispatch``. The dispatcher's streaming
+ * context retains only one partial SHA-256 block, so this composition remains
+ * comfortably inside the firmware's 2200-byte stack ceiling.
  *
  * @param[in]  key_block 64-byte prepared HMAC key block.
  * @param[in]  inner     32-byte inner-hash digest.

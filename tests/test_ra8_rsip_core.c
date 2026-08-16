@@ -72,6 +72,8 @@ typedef enum : uint32_t {
   k_ra8_rsip_test_invalid_len = 5U,           /**< Non-multiple-of-4 length.    */
   k_ra8_rsip_test_isr_garbage = 0x40000000UL, /**< Bit outside ISR field.       */
   k_ra8_rsip_test_bist_polls  = 3U,           /**< Late BIST pass poll index.   */
+  k_ra8_rsip_test_kat_chunk   = 1000U,        /**< Bytes per million-a update.  */
+  k_ra8_rsip_test_kat_repeats = 1000U,        /**< Updates in million-a KAT.    */
 } ra8_rsip_test_const_t;
 
 /**
@@ -570,43 +572,44 @@ RA8_INTERNAL static void internal_test_sha256_inc_abc_split(void)
 }
 
 /**
- * @brief Incremental SHA-256 across a full block boundary.
+ * @brief Incremental SHA-256 million-`a` long-message KAT.
   *
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches) @details Executes the sha256 inc block boundary scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_sha256_inc_block_boundary(void)
+  * code under test that this case touches) @details Streams one million `a`
+  * bytes through 1,000 independent updates and compares every digest byte with
+  * the FIPS 180-4 long-message result. @pre Fixed-capacity fixture storage
+  * required by this operation is available. @pre Arguments follow the
+  * interface contract exercised by this helper. @post Documented outputs
+  * contain the exercised result when the operation succeeds. @post Mutations
+  * remain confined to documented outputs and file-local fixture state. @note
+  * File-local helper; no ownership escapes this focused test executable.
+  * @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_sha256_inc_long_message(void)
 {
-  TEST_BEGIN("rsip sha256 incremental block boundary");
+  TEST_BEGIN("rsip sha256 incremental million-a");
   internal_prep_running();
-
-  uint8_t input[k_t_hmac_block_len];
-  for (uint32_t i = 0U; i < k_t_hmac_block_len; ++i) {
-    input[i] = (uint8_t)i;
+  static const uint8_t local_expected[32] = {
+    0xCDU, 0xC7U, 0x6EU, 0x5CU, 0x99U, 0x14U, 0xFBU, 0x92U, 0x81U, 0xA1U, 0xC7U,
+    0xE2U, 0x84U, 0xD7U, 0x3EU, 0x67U, 0xF1U, 0x80U, 0x9AU, 0x48U, 0xA4U, 0x97U,
+    0x20U, 0x0EU, 0x04U, 0x6DU, 0x39U, 0xCCU, 0xC7U, 0x11U, 0x2CU, 0xD0U,
+  };
+  uint8_t input[k_ra8_rsip_test_kat_chunk];
+  for (uint32_t i = 0U; i < (uint32_t)sizeof(input); ++i) {
+    input[i] = (uint8_t)'a';
   }
-
-  ra8_rsip_sha256_ctx_t ref_ctx = {};
-  uint8_t               ref[32] = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_init(&ref_ctx));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&ref_ctx, input, 64U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_final(&ref_ctx, ref));
-
-  ra8_rsip_sha256_ctx_t ctx        = {};
-  uint8_t               digest[32] = {};
+  ra8_rsip_sha256_ctx_t ctx                            = {};
+  uint8_t               digest[sizeof(local_expected)] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_init(&ctx));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&ctx, input, 8U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&ctx, &input[8], 8U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&ctx, &input[16], 8U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&ctx, &input[24], 8U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&ctx, &input[32], 8U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&ctx, &input[40], 24U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_final(&ctx, digest));
-
-  for (uint32_t i = 0U; i < 32U; ++i) {
-    TEST_ASSERT_EQ(ref[i], digest[i]);
+  for (uint32_t i = 0U; i < k_ra8_rsip_test_kat_repeats; ++i) {
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&ctx, input, (uint32_t)sizeof(input)));
   }
-  TEST_END("rsip sha256 incremental block boundary");
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_final(&ctx, digest));
+  for (uint32_t i = 0U; i < (uint32_t)sizeof(digest); ++i) {
+    TEST_ASSERT_EQ(local_expected[i], digest[i]);
+  }
+  TEST_END("rsip sha256 incremental million-a");
 }
 
 /**
@@ -636,6 +639,11 @@ RA8_INTERNAL static void internal_test_sha256_inc_arg_check(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_rsip_sha256_update(&ctx, nullptr, 4U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&ctx, nullptr, 0U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_final(&ctx, digest));
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_init(&ctx));
+  ctx.total_bytes = UINT64_MAX;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_rsip_sha256_update(&ctx, data, 1U));
+  TEST_ASSERT_EQ(UINT64_MAX, ctx.total_bytes);
 
   TEST_END("rsip sha256 incremental arg check");
 }
@@ -955,7 +963,7 @@ static void (*const s_test_roster[])(void) = {
   /* Sweep 15 / Phase 1.1: incremental hash + HMAC for TLS handshakes. */
   internal_test_sha256_inc_empty,
   internal_test_sha256_inc_abc_split,
-  internal_test_sha256_inc_block_boundary,
+  internal_test_sha256_inc_long_message,
   internal_test_sha256_inc_arg_check,
   internal_test_hmac_sha256_inc_rfc4231_1,
   internal_test_hmac_sha256_inc_oversized_key,
