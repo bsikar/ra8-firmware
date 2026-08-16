@@ -716,12 +716,41 @@ RA8_INTERNAL static void internal_check_posix_symlinks(const fw_fs_t* fs, const 
  * @brief Run the shared suite against the secure POSIX root adapter.
  *
  * @par MC/DC:
- * `fw_fs_bind` evaluates `file_sync_capable && (streams->sync == nullptr)`.
- * This test supplies the minimal three-vector set: POSIX initialization uses
- * `(true, false) -> false`, the optional binding uses `(false, true) -> false`,
- * and the dishonest binding uses `(true, true) -> true`. The latter two prove
- * the capability condition independently; the first and last prove the sync
- * pointer condition independently. @details Runs the posix conformance vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
+ * The contract helper called here starts with one complete, truthful binding
+ * and removes every required namespace, stream, and transaction callback one
+ * at a time. That supplies the all-false vector plus one independently true
+ * operand for every grouped decision in
+ * `libs/if/src/fw_if_fs.c@internal_interfaces`.
+ * For `libs/if/src/fw_if_fs.c@fw_fs_bind`, it independently nulls every member
+ * of both pointer tuples; toggles space, sync, durable-sync, and transaction
+ * capability/table pairs; and sets each directory workspace operand invalid
+ * while the others remain valid. The POSIX and VFS initializers supply the
+ * truthful all-false vectors, including the three-vector file-sync matrix.
+ * Normal conformance calls plus one-null-at-a-time faults cover the tuple
+ * decisions in `libs/if/src/fw_if_fs.c@fw_fs_get_caps`,
+ * `libs/if/src/fw_if_fs.c@fw_fs_listdir`,
+ * `libs/if/src/fw_if_fs.c@fw_fs_open`,
+ * `libs/if/src/fw_if_fs.c@fw_fs_read`,
+ * `libs/if/src/fw_if_fs.c@fw_fs_write`,
+ * `libs/if/src/fw_if_fs.c@fw_fs_transaction_begin`, and
+ * `libs/if/src/fw_if_fs.c@fw_fs_transaction_write`.
+ * The stat table for `libs/if/src/fw_if_fs.c@fw_fs_stat` supplies coherent
+ * missing/file/directory outputs and isolates invalid type, missing type,
+ * missing size, present-none, and directory-size operands. Root-old,
+ * root-new, and ordinary-path vectors cover
+ * `libs/if/src/fw_if_fs.c@fw_fs_rename`. Valid accounting, callback failure,
+ * excess-free, and excess-used vectors cover both decisions in
+ * `libs/if/src/fw_if_fs.c@fw_fs_space`. Finally, success/unpublished,
+ * failure/unpublished, and success/published cover
+ * `libs/if/src/fw_if_fs.c@fw_fs_transaction_commit`.
+ * @details Runs the POSIX conformance and hostile-contract matrices through
+ * production filesystem seams and checks observable state.
+ * @pre Pointer arguments address their documented readable or writable extents.
+ * @pre Required fixture and backend state is initialized before the call.
+ * @post No access exceeds a caller-advertised capacity.
+ * @post The return value or assertions describe the observed filesystem state.
+ * @note Test-only helpers retain no hidden ownership beyond documented fixture state.
+ * @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_posix_conformance(void)
 {
@@ -746,7 +775,15 @@ RA8_INTERNAL static void internal_test_posix_conformance(void)
  * The VFS binding contributes `(file_sync_capable=false, streams->sync=null) ->
  * false` to the `fw_fs_bind` capability/operation decision. Together with the
  * preceding POSIX test's `(true, nonnull) -> false` and `(true, null) -> true`
- * vectors, each condition independently changes the decision; N=2, N+1=3. @details Runs the vfs conformance vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
+ * vectors, each condition independently changes the decision; N=2, N+1=3.
+ * @details Runs the VFS conformance vector through production filesystem seams
+ * and checks observable state.
+ * @pre Pointer arguments address their documented readable or writable extents.
+ * @pre Required fixture and backend state is initialized before the call.
+ * @post No access exceeds a caller-advertised capacity.
+ * @post The return value or assertions describe the observed filesystem state.
+ * @note Test-only helpers retain no hidden ownership beyond documented fixture state.
+ * @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_vfs_conformance(void)
 {
