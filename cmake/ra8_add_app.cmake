@@ -315,7 +315,22 @@ macro(ra8_add_app)
   _ra8_app_vendored_flags()
 
   ra8_target_enable_project_warnings(${_ra8_elf} STACK_USAGE_BYTES ${_RA8_APP_STACK_BYTES})
-  target_compile_options(${_ra8_elf} PRIVATE -fshort-enums)
+
+  # -ffreestanding: this is bare metal. There is no hosted C environment here --
+  # no OS, no process, no exit status, and `main` is reached from
+  # Reset_Handler, not from a C runtime that has a return value to hand
+  # anywhere. Saying so is what lets the entry point be `void main(void)`
+  # (libs/ra8_core/inc/ra8_boot_entry.h): in a freestanding implementation the
+  # standard leaves the startup function's name and type implementation-defined,
+  # whereas a hosted one pins `main` to `int` and both GCC and clang enforce
+  # that. The M33 CPU1 image below has always been built this way; the M85 lane
+  # was not, which is why 208 app files used to carry a local
+  # `#pragma GCC diagnostic ignored "-Wmain"` to silence the contradiction
+  # instead of resolving it (#707).
+  #
+  # The flag and the `void` entry point travel together: drop it and every
+  # firmware main.c stops compiling.
+  target_compile_options(${_ra8_elf} PRIVATE -ffreestanding -fshort-enums)
 
   # Vendored RTOS / middleware headers trip several strict-warning gates we
   # apply to first-party code (CHAR* params, redundant decls, casts,

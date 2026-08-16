@@ -83,6 +83,60 @@ void SystemInit(void);
  */
 void Default_Handler(void);
 
+/**
+ * @brief The application entry point `Reset_Handler` hands control to.
+ *
+ * @details
+ * Returns `void`, not `int`. This is a **freestanding** image: there is no
+ * hosted C environment, no process and nothing to report an exit status to.
+ * ISO C fixes `main` at `int` only for a hosted implementation; for a
+ * freestanding one (C23 5.1.2.1) the startup function's name and type are
+ * implementation-defined, and this is that definition. `Reset_Handler`
+ * discards no value because there is none to discard, and if `main` ever
+ * does return, startup halts the CPU rather than resuming anything.
+ *
+ * The firmware lane is compiled `-ffreestanding` (see
+ * `cmake/ra8_add_app.cmake`) and **the flag and this signature travel
+ * together**: without it both GCC and clang reject a non-`int` `main`
+ * (`-Wmain` / `-Wmain-return-type`). Do not remove one without the other.
+ *
+ * That coupling is why the declaration sits behind `__STDC_HOSTED__ == 0`,
+ * which `-ffreestanding` sets and a hosted build does not. The guard is not
+ * defensive dressing: this header is reachable from host builds (the unit
+ * tests compile `ra8_core` natively), and an unguarded `void main(void);`
+ * makes every hosted translation unit that includes it fail with
+ * `conflicting types for 'main'` against its own ISO `int main`. The
+ * declaration therefore exists exactly where its contract does.
+ *
+ * Hosted first-party code -- everything under `tests/` and `tools/` -- uses
+ * the ISO `int main(...)` contract instead, because it genuinely does run
+ * under an OS that reads the exit status. `scripts/checks/check_entry_points.py`
+ * holds each domain to its own contract (#707).
+ *
+ * Declared here, once, for the same reason `SystemInit` is: every
+ * `vector_table.c` used to restate it as a local
+ * `extern int32_t main(void);`, sixteen copies that no compiler ever
+ * compared against the definition -- and roughly thirty of them had
+ * silently drifted out of agreement with the `main` they called.
+ *
+ * @pre `Reset_Handler` has copied `.data` and zeroed `.bss`.
+ * @pre `SystemInit` has configured the clock tree and VTOR.
+ * @post Control does not return; the image runs until reset or halt.
+ * @post Any value the application wanted to report has been logged, not
+ *       returned.
+ *
+ * @note Not thread-safe; single-threaded startup context only.
+ * @warning Only valid while the translation unit is compiled
+ *          `-ffreestanding`. A hosted build rejects this signature.
+ *
+ * @see SystemInit()
+ *
+ * @since 0.1.0
+ */
+#if __STDC_HOSTED__ == 0
+void main(void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
