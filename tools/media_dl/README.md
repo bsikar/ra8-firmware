@@ -360,15 +360,16 @@ Working and host-qualified: strict descriptor-driven series/discovery commands;
 fractional chapter selection; rich series/chapter metadata and covers;
 polite/resumable/revalidated downloads; persistent library operations; direct
 verified HTTPS artifacts; and bounded export/verification for CBZ, CBT, CBT.GZ,
-EPUB, and JOF. Page and cover names are selected from content bytes rather than
-trusted URL suffixes. ManhwaUS and Pepper&Carrot have descriptor fixtures; live
-sites can still change independently and therefore remain observable runtime
-dependencies, not permanent guarantees.
+EPUB, JOF, and RABOOK. Page and cover names are selected from content bytes
+rather than trusted URL suffixes. ManhwaUS and Pepper&Carrot have descriptor
+fixtures; live sites can still change independently and therefore remain
+observable runtime dependencies, not permanent guarantees.
 
-Not yet claimed complete: CBR, CBT.XZ, and RABOOK host export; a fixed-memory
-arbitrary-URL HTTPS implementation on the ESP32-C6 (ESP-IDF's HTTP/TLS stack
-allocates transitively); full scrape/package work on the C6; and real hardware
-reader/RPC qualification. The protobuf RPC coordinator and model tests are real,
-but the current C6 path transfers a prebuilt artifact rather than implementing
-the full scraper/packer promised by issue #665. Those boundaries return or are
-documented as unsupported instead of masquerading as completed functionality.
+Not yet claimed complete: CBR and CBT.XZ host export; a fixed-memory arbitrary-URL
+HTTPS implementation on the ESP32-C6 (ESP-IDF's HTTP/TLS stack allocates
+transitively); full scrape/package orchestration across the two processors; and
+real hardware reader/RPC qualification. The protobuf RPC coordinator and model
+tests are real, but the current C6 path transfers a prebuilt artifact rather
+than implementing the full URL-to-RABOOK workflow promised by issue #665. Those
+boundaries return or are documented as unsupported instead of masquerading as
+completed functionality.
