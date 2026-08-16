@@ -1,5 +1,5 @@
 /**
- * @file ra8_c6link_transfer_coordinator_test.c
+ * @file test_ra8_c6link_transfer_coordinator.c
  * @brief Isolated transactional-coordinator sequencing and MC/DC vectors
  * @details Drives the bounded pull budget, the remote-cancellation dispatch
  * arm, and the terminal-metadata guard of the transfer coordinator from one
@@ -15,8 +15,8 @@
 #include "ra8_c6_model.h"
 #include "ra8_c6link_mdl_transfer_internal.h"
 #include "ra8_c6link_model_test_internal.h"
-#include "ra8_c6link_transfer_coordinator_test_internal.h"
 #include "ra8_err.h"
+#include "test_ra8_c6link_transfer_coordinator_internal.h"
 #include "unity_minimal.h"
 
 /** @enum internal_coordinator_limit_t @brief Bounded coordinator fixture geometry. */

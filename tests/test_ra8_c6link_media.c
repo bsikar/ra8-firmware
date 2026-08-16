@@ -20,11 +20,11 @@
 #include "ra8_c6link_mdl.h"
 #include "ra8_c6link_mdl_transfer.h"
 #include "ra8_c6link_model_test_internal.h"
-#include "ra8_c6link_transfer_coordinator_test_internal.h"
 #include "ra8_c6link_transfer_validation_test_internal.h"
 #include "ra8_err.h"
 #include "test_ra8_c6link_media_decoder_internal.h"
 #include "test_ra8_c6link_media_http_internal.h"
+#include "test_ra8_c6link_transfer_coordinator_internal.h"
 #include "unity_minimal.h"
 
 /** @enum internal_media_const_t @brief Media fixture constants. */
