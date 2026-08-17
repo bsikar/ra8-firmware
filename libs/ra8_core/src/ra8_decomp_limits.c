@@ -235,6 +235,62 @@ RA8_INTERNAL static uint16_t internal_zip_u16(const uint8_t* bytes)
   return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
 }
 
+/**
+ * @brief Search one loaded scan window backward for a verified ZIP EOCD record.
+ * @details Walks @p chunk from its high end looking for the EOCD signature,
+ *          re-reads the full record at each candidate, and accepts the first
+ *          one whose declared comment length lands exactly on @p archive_size.
+ *          A signature match that fails re-read or comment-length validation
+ *          is a hash collision in the scan window, not the true record, so
+ *          the scan continues past it.
+ * @param[in] read Caller-owned positioned-read callback.
+ * @param[in,out] ctx Opaque context forwarded to @p read.
+ * @param[in] chunk Bytes already loaded for the current scan window.
+ * @param[in] start Absolute archive offset of chunk[0].
+ * @param[in] count Number of leading bytes of @p chunk to search.
+ * @param[in] archive_size Total archive size in bytes.
+ * @param[out] out_status Preflight result, valid only when this returns true.
+ * @return Whether a verified EOCD record was found in this window.
+ * @retval true A verified record was found; @p out_status holds its result.
+ * @retval false No verified record in this window; the caller should rescan
+ *         an earlier window.
+ * @pre @p chunk holds at least @p count plus the signature length bytes.
+ * @pre @p out_status is non-NULL.
+ * @post @p out_status is written if and only if this returns true.
+ * @note Not thread-safe if @p read mutates shared state; the reader owns that.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static bool internal_zip_scan_window_for_eocd(ra8_decomp_read_fn read,
+                                                           void*              ctx,
+                                                           const uint8_t*     chunk,
+                                                           uint64_t           start,
+                                                           size_t             count,
+                                                           uint64_t           archive_size,
+                                                           ra8_err_t*         out_status)
+{
+  uint8_t eocd[k_priv_zip_eocd_bytes];
+  for (size_t i = count; i > 0U; --i) {
+    const size_t at = i - 1U;
+    if (memcmp(&chunk[at], s_zip_eocd_signature, k_priv_zip_sig_bytes) != 0) {
+      continue;
+    }
+    const uint64_t position = start + (uint64_t)at;
+    if (read(ctx, position, eocd, sizeof(eocd)) != sizeof(eocd)) {
+      continue;
+    }
+    const uint16_t comment = internal_zip_u16(&eocd[k_priv_zip_comment_offset]);
+    if ((position + sizeof(eocd) + (uint64_t)comment) != archive_size) {
+      continue;
+    }
+    const uint16_t entries = internal_zip_u16(&eocd[k_priv_zip_entries_offset]);
+    *out_status            = ((uint32_t)entries > (uint32_t)k_ra8_decomp_def_max_entries)
+                               ? k_ra8_err_decomp_entries
+                               : k_ra8_ok;
+    return true;
+  }
+  return false;
+}
+
 ra8_err_t ra8_decomp_zip_entry_preflight(ra8_decomp_read_fn read, void* ctx, uint64_t archive_size)
 {
   RA8_CHECK_NULL_PTR(read, s_tag_decomp, "zip preflight: null reader");
@@ -246,7 +302,6 @@ ra8_err_t ra8_decomp_zip_entry_preflight(ra8_decomp_read_fn read, void* ctx, uin
   const uint64_t lower      = (candidates > window) ? (candidates - window) : 0U;
   uint64_t       end        = candidates;
   uint8_t        chunk[k_priv_zip_scan_chunk + k_priv_zip_sig_bytes - 1U];
-  uint8_t        eocd[k_priv_zip_eocd_bytes];
   while (end > lower) {
     const uint64_t start = ((end - lower) > (uint64_t)k_priv_zip_scan_chunk)
                              ? (end - (uint64_t)k_priv_zip_scan_chunk)
@@ -256,22 +311,9 @@ ra8_err_t ra8_decomp_zip_entry_preflight(ra8_decomp_read_fn read, void* ctx, uin
         count + k_priv_zip_sig_bytes - 1U) {
       return k_ra8_ok;
     }
-    for (size_t i = count; i > 0U; --i) {
-      const size_t at = i - 1U;
-      if (memcmp(&chunk[at], s_zip_eocd_signature, k_priv_zip_sig_bytes) != 0) {
-        continue;
-      }
-      const uint64_t position = start + (uint64_t)at;
-      if (read(ctx, position, eocd, sizeof(eocd)) != sizeof(eocd)) {
-        continue;
-      }
-      const uint16_t comment = internal_zip_u16(&eocd[k_priv_zip_comment_offset]);
-      if ((position + sizeof(eocd) + (uint64_t)comment) != archive_size) {
-        continue;
-      }
-      const uint16_t entries = internal_zip_u16(&eocd[k_priv_zip_entries_offset]);
-      return ((uint32_t)entries > (uint32_t)k_ra8_decomp_def_max_entries) ? k_ra8_err_decomp_entries
-                                                                          : k_ra8_ok;
+    ra8_err_t status = k_ra8_ok;
+    if (internal_zip_scan_window_for_eocd(read, ctx, chunk, start, count, archive_size, &status)) {
+      return status;
     }
     end = start;
   }

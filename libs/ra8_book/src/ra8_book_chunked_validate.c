@@ -96,8 +96,24 @@ internal_spans_overlap(const void* a, uint64_t a_len, const void* b, uint64_t b_
  * @note Pure and thread-safe for an immutable reader.
  * @since Version 0.1.0
  */
+/**
+ * @brief Require every reader callback and geometry field to be present.
+ * @details Rejects a NULL file-read or inflate callback, a NULL table or
+ *          staging buffer, and a zero chunk size, chunk count, inflated
+ *          total, or staging capacity, before any arithmetic on those fields
+ *          is attempted.
+ * @param[in] rd Candidate open reader.
+ * @return Field-presence validation status.
+ * @retval k_ra8_ok Every required callback and geometry field is present.
+ * @retval k_ra8_err_invalid_state A required callback, buffer, or geometry
+ *         field is NULL or zero.
+ * @pre @p rd is non-NULL.
+ * @post No reader or caller storage is modified.
+ * @note Pure and thread-safe for an immutable reader.
+ * @since Version 0.1.0
+ */
 RA8_INTERNAL
-static ra8_err_t internal_validate_reader(const ra8_book_chunked_t* rd)
+static ra8_err_t internal_validate_reader_fields(const ra8_book_chunked_t* rd)
 {
   if (rd->file_read == nullptr) {
     return k_ra8_err_invalid_state;
@@ -123,6 +139,34 @@ static ra8_err_t internal_validate_reader(const ra8_book_chunked_t* rd)
   if (rd->staging_cap == 0U) {
     return k_ra8_err_invalid_state;
   }
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Revalidate the derived chunk count and the offset table's shape.
+ * @details Recomputes the chunk count implied by `inflated_total` and
+ *          `chunk_bytes` and requires it to match `chunk_count` exactly,
+ *          requires the table to fit its declared capacity and start at
+ *          zero, walks every entry to require strict monotonic increase
+ *          bounded by the staging capacity, and requires the final payload
+ *          offset addition not to overflow.
+ * @param[in] rd Candidate open reader whose field presence already passed
+ *            ::internal_validate_reader_fields.
+ * @return Table-shape validation status.
+ * @retval k_ra8_ok The derived count matches and every table entry is sound.
+ * @retval k_ra8_err_invalid_state The derived count, table bounds, or a table
+ *         entry is inconsistent, or the payload offset addition overflows.
+ * @pre @p rd is non-NULL.
+ * @pre `rd->chunk_bytes`, `rd->chunk_count`, `rd->inflated_total`, and
+ *      `rd->staging_cap` are all non-zero.
+ * @post No reader or caller storage is modified.
+ * @post Success proves every later table index and staging write is bounded.
+ * @note Pure and thread-safe for an immutable reader.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_validate_reader_table(const ra8_book_chunked_t* rd)
+{
   const uint64_t expected_count =
     (rd->inflated_total / (uint64_t)rd->chunk_bytes) +
     ((rd->inflated_total % (uint64_t)rd->chunk_bytes) != 0U ? 1U : 0U);
@@ -151,6 +195,16 @@ static ra8_err_t internal_validate_reader(const ra8_book_chunked_t* rd)
     return k_ra8_err_invalid_state;
   }
   return k_ra8_ok;
+}
+
+RA8_INTERNAL
+static ra8_err_t internal_validate_reader(const ra8_book_chunked_t* rd)
+{
+  const ra8_err_t fields = internal_validate_reader_fields(rd);
+  if (fields != k_ra8_ok) {
+    return fields;
+  }
+  return internal_validate_reader_table(rd);
 }
 
 /**
@@ -212,9 +266,9 @@ static bool internal_output_is_aliased(const ra8_book_chunked_t* rd,
  * @details Checks every pair among the reader, inflated chunk, semantic
  *          scratch, compressed staging, and exact validated table spans.
  * @param[in] rd Validated open reader.
- * @param[out] chunk Inflated-chunk workspace.
+ * @param[in] chunk Inflated-chunk workspace.
  * @param[in] chunk_len Bytes of @p chunk the adapter will access.
- * @param[out] scratch Semantic and CRC workspace.
+ * @param[in] scratch Semantic and CRC workspace.
  * @param[in] scratch_cap Writable bytes at @p scratch.
  * @return Workspace validation status.
  * @retval k_ra8_ok All five mutable/read-only workspace spans are disjoint.
@@ -228,9 +282,9 @@ static bool internal_output_is_aliased(const ra8_book_chunked_t* rd,
  */
 RA8_INTERNAL
 static ra8_err_t internal_validate_workspaces(const ra8_book_chunked_t* rd,
-                                              uint8_t*                  chunk,
+                                              const uint8_t*            chunk,
                                               uint32_t                  chunk_len,
-                                              uint8_t*                  scratch,
+                                              const uint8_t*            scratch,
                                               uint32_t                  scratch_cap)
 {
   const uint64_t table_len = ((uint64_t)rd->chunk_count + 1U) * sizeof(rd->table[0]);

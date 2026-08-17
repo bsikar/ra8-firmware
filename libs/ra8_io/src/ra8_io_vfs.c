@@ -449,6 +449,30 @@ static bool internal_file_valid(const ra8_io_vfs_file_t* file)
   return false;
 }
 
+/**
+ * @brief Reset one mount slot for global reinit, unmounting it first if owned.
+ * @details Unmounts through the bound format only when the slot is both
+ *          in use and owned by the VFS (a caller-supplied mount is never
+ *          unmounted here), then always clears the slot.
+ * @param[in,out] slot Mount slot to tear down and reset.
+ * @return The owned unmount's status, or k_ra8_ok when no unmount was needed.
+ * @retval k_ra8_ok The slot was already idle, borrowed, or unmounted cleanly.
+ * @retval other The bound format's unmount reported a failure.
+ * @pre @p slot is non-NULL.
+ * @post @p slot is zero-initialized.
+ * @note Not thread-safe; caller serializes VFS-table access.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_vfs_init_slot(vfs_slot_t* slot)
+{
+  ra8_err_t e = k_ra8_ok;
+  if (slot->in_use && slot->owned) {
+    e = slot->format->ops->unmount(slot->mount_ctx);
+  }
+  *slot = (vfs_slot_t){};
+  return e;
+}
+
 ra8_err_t ra8_io_vfs_init(void)
 {
   ra8_err_t first_error = k_ra8_ok;
@@ -456,15 +480,10 @@ ra8_err_t ra8_io_vfs_init(void)
     s_files[i] = (ra8_io_vfs_file_t){};
   }
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_io_vfs_max_mounts; ++i) {
-    if (s_table[i].in_use) {
-      if (s_table[i].owned) {
-        const ra8_err_t e = s_table[i].format->ops->unmount(s_table[i].mount_ctx);
-        if (first_error == k_ra8_ok) {
-          first_error = e;
-        }
-      }
+    const ra8_err_t e = internal_vfs_init_slot(&s_table[i]);
+    if (first_error == k_ra8_ok) {
+      first_error = e;
     }
-    s_table[i] = (vfs_slot_t){};
   }
   return first_error;
 }
@@ -489,6 +508,32 @@ ra8_err_t ra8_io_vfs_mount(const char* name, ra8_fs_mount_t* mount)
   return k_ra8_ok;
 }
 
+/**
+ * @brief Probe a backend's format and mount it through that format, guarded.
+ * @details Wraps the two format-layer calls each already guarded by
+ *          ::RA8_RETURN_ON_ERROR so their expansion is counted against a
+ *          dedicated frame rather than the caller's.
+ * @param[in] backend Candidate raw storage backend to probe and mount.
+ * @param[out] out_format Probed format on success.
+ * @param[out] out_mount_ctx Opaque mount context on success.
+ * @return Probe-then-mount status.
+ * @retval k_ra8_ok @p out_format and @p out_mount_ctx are both valid.
+ * @retval other The probe or the mount call failed; both outputs are
+ *         indeterminate.
+ * @pre @p backend, @p out_format, and @p out_mount_ctx are non-NULL.
+ * @post On failure no format is registered as owning @p backend.
+ * @note Not thread-safe; caller serializes VFS-table access.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_vfs_probe_and_mount(const ra8_fs_backend_t* backend,
+                                                           const ra8_io_fsfmt_t**  out_format,
+                                                           void**                  out_mount_ctx)
+{
+  RA8_RETURN_ON_ERROR(ra8_io_fsfmt_probe(backend, out_format), s_tag, "probe format");
+  RA8_RETURN_ON_ERROR((*out_format)->ops->mount(backend, out_mount_ctx), s_tag, "mount format");
+  return k_ra8_ok;
+}
+
 ra8_err_t ra8_io_vfs_mount_auto(const char* name, const ra8_fs_backend_t* backend)
 {
   RA8_CHECK_NULL_PTR(name, s_tag, "name must not be nullptr");
@@ -503,10 +548,12 @@ ra8_err_t ra8_io_vfs_mount_auto(const char* name, const ra8_fs_backend_t* backen
   if (slot == nullptr) {
     return k_ra8_err_no_mem;
   }
-  const ra8_io_fsfmt_t* format = nullptr;
-  RA8_RETURN_ON_ERROR(ra8_io_fsfmt_probe(backend, &format), s_tag, "probe format");
-  void* mount_ctx = nullptr;
-  RA8_RETURN_ON_ERROR(format->ops->mount(backend, &mount_ctx), s_tag, "mount format");
+  const ra8_io_fsfmt_t* format    = nullptr;
+  void*                 mount_ctx = nullptr;
+  const ra8_err_t       probed    = internal_vfs_probe_and_mount(backend, &format, &mount_ctx);
+  if (probed != k_ra8_ok) {
+    return probed;
+  }
   internal_store_mount(slot, name, format, mount_ctx, true);
   return k_ra8_ok;
 }
@@ -534,17 +581,48 @@ ra8_err_t ra8_io_vfs_unmount(const char* name)
   return e;
 }
 
+/**
+ * @brief Resolve a raw-open path and require the target format be native.
+ * @details Reuses ::internal_resolve to locate the mount and sub-path, then
+ *          requires the mount's format to hand back a native handle, then
+ *          requires the format to support @p mode.
+ * @param[in] path Full VFS path to resolve.
+ * @param[in] mode Requested open mode.
+ * @param[out] out_slot Resolved mount slot on success.
+ * @param[out] out_sub Sub-path within the mount on success.
+ * @return Resolve-and-capability status.
+ * @retval k_ra8_ok @p out_slot and @p out_sub are both valid for a raw open.
+ * @retval k_ra8_err_not_found No mount matches the resolved name.
+ * @retval k_ra8_err_not_supported The mount's format has no native handle,
+ *         or does not support @p mode.
+ * @pre @p path, @p out_slot, and @p out_sub are non-NULL.
+ * @post No mount table or file table entry is modified.
+ * @note Not thread-safe; caller serializes VFS-table access.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_vfs_open_resolve(const char*   path,
+                                                        ra8_fs_mode_t mode,
+                                                        vfs_slot_t**  out_slot,
+                                                        const char**  out_sub)
+{
+  RA8_RETURN_ON_ERROR(internal_resolve(path, out_slot, nullptr, out_sub), s_tag, "resolve");
+  if (!(*out_slot)->native) {
+    return k_ra8_err_not_supported;
+  }
+  RA8_RETURN_ON_ERROR(internal_can_open((*out_slot)->format, mode), s_tag, "open capability");
+  return k_ra8_ok;
+}
+
 ra8_err_t ra8_io_vfs_open(const char* path, ra8_fs_mode_t mode, ra8_fs_file_t** out_file)
 {
   RA8_CHECK_NULL_PTR(path, s_tag, "path must not be nullptr");
   RA8_CHECK_NULL_PTR(out_file, s_tag, "out_file must not be nullptr");
-  vfs_slot_t* slot = nullptr;
-  const char* sub  = nullptr;
-  RA8_RETURN_ON_ERROR(internal_resolve(path, &slot, nullptr, &sub), s_tag, "resolve");
-  if (!slot->native) {
-    return k_ra8_err_not_supported;
+  vfs_slot_t*     slot     = nullptr;
+  const char*     sub      = nullptr;
+  const ra8_err_t resolved = internal_vfs_open_resolve(path, mode, &slot, &sub);
+  if (resolved != k_ra8_ok) {
+    return resolved;
   }
-  RA8_RETURN_ON_ERROR(internal_can_open(slot->format, mode), s_tag, "open capability");
   void* file_ctx = nullptr;
   RA8_RETURN_ON_ERROR(slot->format->ops->open(slot->mount_ctx, sub, mode, &file_ctx),
                       s_tag,
@@ -553,15 +631,46 @@ ra8_err_t ra8_io_vfs_open(const char* path, ra8_fs_mode_t mode, ra8_fs_file_t** 
   return k_ra8_ok;
 }
 
+/**
+ * @brief Resolve a facade-open path and require the format support @p mode.
+ * @details Reuses ::internal_resolve to locate the mount, sub-path, and
+ *          mount-table index, then requires the format to support @p mode.
+ * @param[in] path Full VFS path to resolve.
+ * @param[in] mode Requested open mode.
+ * @param[out] out_slot Resolved mount slot on success.
+ * @param[out] out_index Resolved mount-table index on success.
+ * @param[out] out_sub Sub-path within the mount on success.
+ * @return Resolve-and-capability status.
+ * @retval k_ra8_ok @p out_slot, @p out_index, and @p out_sub are all valid.
+ * @retval k_ra8_err_not_found No mount matches the resolved name.
+ * @retval k_ra8_err_not_supported The mount's format does not support @p mode.
+ * @pre @p path, @p out_slot, @p out_index, and @p out_sub are non-NULL.
+ * @post No mount table or file table entry is modified.
+ * @note Not thread-safe; caller serializes VFS-table access.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_vfs_file_open_resolve(const char*   path,
+                                                             ra8_fs_mode_t mode,
+                                                             vfs_slot_t**  out_slot,
+                                                             uint8_t*      out_index,
+                                                             const char**  out_sub)
+{
+  RA8_RETURN_ON_ERROR(internal_resolve(path, out_slot, out_index, out_sub), s_tag, "resolve");
+  RA8_RETURN_ON_ERROR(internal_can_open((*out_slot)->format, mode), s_tag, "open capability");
+  return k_ra8_ok;
+}
+
 ra8_err_t ra8_io_vfs_file_open(const char* path, ra8_fs_mode_t mode, ra8_io_vfs_file_t** out_file)
 {
   RA8_CHECK_NULL_PTR(path, s_tag, "path must not be nullptr");
   RA8_CHECK_NULL_PTR(out_file, s_tag, "out_file must not be nullptr");
-  vfs_slot_t* slot  = nullptr;
-  uint8_t     index = 0U;
-  const char* sub   = nullptr;
-  RA8_RETURN_ON_ERROR(internal_resolve(path, &slot, &index, &sub), s_tag, "resolve");
-  RA8_RETURN_ON_ERROR(internal_can_open(slot->format, mode), s_tag, "open capability");
+  vfs_slot_t*     slot     = nullptr;
+  uint8_t         index    = 0U;
+  const char*     sub      = nullptr;
+  const ra8_err_t resolved = internal_vfs_file_open_resolve(path, mode, &slot, &index, &sub);
+  if (resolved != k_ra8_ok) {
+    return resolved;
+  }
   ra8_io_vfs_file_t* file = internal_free_file();
   if (file == nullptr) {
     return k_ra8_err_no_mem;
@@ -679,18 +788,55 @@ ra8_err_t ra8_io_vfs_unlink(const char* path)
   return slot->format->ops->unlink(slot->mount_ctx, sub);
 }
 
+/**
+ * @brief Split both rename paths and require them to name the same mount.
+ * @details Renaming across mounts is not a rename this facade supports (it
+ *          would need a cross-format copy), so both paths must resolve to
+ *          the identical mount name.
+ * @param[in] old_path Full VFS path of the existing entry.
+ * @param[in] new_path Full VFS path of the desired name.
+ * @param[out] old_name Mount-name buffer for @p old_path, at least
+ *             ::k_ra8_io_vfs_name_max bytes.
+ * @param[out] new_name Mount-name buffer for @p new_path, at least
+ *             ::k_ra8_io_vfs_name_max bytes.
+ * @param[out] out_old_sub Sub-path within the mount for @p old_path.
+ * @param[out] out_new_sub Sub-path within the mount for @p new_path.
+ * @return Split-and-match status.
+ * @retval k_ra8_ok Both paths split cleanly and name the same mount.
+ * @retval k_ra8_err_invalid_arg The two paths name different mounts.
+ * @retval other Either path failed to split.
+ * @pre All six parameters are non-NULL.
+ * @post No mount table entry is modified.
+ * @note Not thread-safe; caller serializes VFS-table access.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_vfs_rename_split(const char*  old_path,
+                                                        const char*  new_path,
+                                                        char*        old_name,
+                                                        char*        new_name,
+                                                        const char** out_old_sub,
+                                                        const char** out_new_sub)
+{
+  RA8_RETURN_ON_ERROR(internal_split(old_path, old_name, out_old_sub), s_tag, "old path");
+  RA8_RETURN_ON_ERROR(internal_split(new_path, new_name, out_new_sub), s_tag, "new path");
+  if (!internal_streq(old_name, new_name)) {
+    return k_ra8_err_invalid_arg;
+  }
+  return k_ra8_ok;
+}
+
 ra8_err_t ra8_io_vfs_rename(const char* old_path, const char* new_path)
 {
   RA8_CHECK_NULL_PTR(old_path, s_tag, "old_path must not be nullptr");
   RA8_CHECK_NULL_PTR(new_path, s_tag, "new_path must not be nullptr");
-  char        old_name[(uint32_t)k_ra8_io_vfs_name_max];
-  char        new_name[(uint32_t)k_ra8_io_vfs_name_max];
-  const char* old_sub = nullptr;
-  const char* new_sub = nullptr;
-  RA8_RETURN_ON_ERROR(internal_split(old_path, old_name, &old_sub), s_tag, "old path");
-  RA8_RETURN_ON_ERROR(internal_split(new_path, new_name, &new_sub), s_tag, "new path");
-  if (!internal_streq(old_name, new_name)) {
-    return k_ra8_err_invalid_arg;
+  char            old_name[(uint32_t)k_ra8_io_vfs_name_max];
+  char            new_name[(uint32_t)k_ra8_io_vfs_name_max];
+  const char*     old_sub = nullptr;
+  const char*     new_sub = nullptr;
+  const ra8_err_t split =
+    internal_vfs_rename_split(old_path, new_path, old_name, new_name, &old_sub, &new_sub);
+  if (split != k_ra8_ok) {
+    return split;
   }
   vfs_slot_t* slot = internal_find(old_name, nullptr);
   if (slot == nullptr) {
