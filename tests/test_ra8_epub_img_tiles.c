@@ -201,8 +201,8 @@ RA8_INTERNAL static void internal_png_chunk(const char* type, const uint8_t* dat
 RA8_INTERNAL static void internal_png_build(uint32_t w, uint32_t h)
 {
   static const uint8_t sig[8] = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
-  static uint8_t       local_raw[((size_t)k_big_w + 1U) * (size_t)k_big_h];
-  static uint8_t       local_zbuf[k_png_cap];
+  static uint8_t       s_raw[((size_t)k_big_w + 1U) * (size_t)k_big_h];
+  static uint8_t       s_zbuf[k_png_cap];
   s_png_len = 0U;
   memcpy(s_png, sig, sizeof(sig));
   s_png_len                         = sizeof(sig);
@@ -219,16 +219,16 @@ RA8_INTERNAL static void internal_png_build(uint32_t w, uint32_t h)
   internal_png_chunk("IHDR", ihdr, sizeof(ihdr));
   size_t o = 0U;
   for (uint32_t y = 0U; y < h; y++) {
-    local_raw[o] = 0U;
+    s_raw[o] = 0U;
     o++;
     for (uint32_t x = 0U; x < w; x++) {
-      local_raw[o] = internal_pix(x, y);
+      s_raw[o] = internal_pix(x, y);
       o++;
     }
   }
-  mz_ulong zlen = (mz_ulong)sizeof(local_zbuf);
-  TEST_ASSERT_EQ(MZ_OK, mz_compress(local_zbuf, &zlen, local_raw, (mz_ulong)o));
-  internal_png_chunk("IDAT", local_zbuf, (uint32_t)zlen);
+  mz_ulong zlen = (mz_ulong)sizeof(s_zbuf);
+  TEST_ASSERT_EQ(MZ_OK, mz_compress(s_zbuf, &zlen, s_raw, (mz_ulong)o));
+  internal_png_chunk("IDAT", s_zbuf, (uint32_t)zlen);
   internal_png_chunk("IEND", NULL, 0U);
 }
 
@@ -268,11 +268,11 @@ RA8_INTERNAL static void
 internal_bake_atlas(uint32_t w, uint32_t h, uint8_t codec, ra8_jof_memstore_t* store)
 {
   internal_png_build(w, h);
-  static mem_pull_t local_pull;
-  local_pull                      = (mem_pull_t){.pos = 0U};
+  static mem_pull_t s_pull;
+  s_pull                          = (mem_pull_t){.pos = 0U};
   const ra8_jof_produce_cfg_t cfg = {
     .pull       = internal_png_pull,
-    .pull_ctx   = &local_pull,
+    .pull_ctx   = &s_pull,
     .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = store,
     .tile_w     = (uint16_t)k_tile,

@@ -664,36 +664,36 @@ RA8_INTERNAL static bool internal_c6m_custom_answer(Rpc* out, const Rpc* req, in
   if ((uint32_t)req->msg_id != (uint32_t)RPC_ID__Req_CustomRpc) {
     return false;
   }
-  static uint8_t          response_bytes[k_c6m_custom_response_bytes];
-  static RpcRespCustomRpc response_body;
-  rpc__resp__custom_rpc__init(&response_body);
+  static uint8_t          s_response_bytes[k_c6m_custom_response_bytes];
+  static RpcRespCustomRpc s_response_body;
+  rpc__resp__custom_rpc__init(&s_response_body);
   out->msg_id          = RPC_ID__Resp_CustomRpc;
   out->payload_case    = RPC__PAYLOAD_RESP_CUSTOM_RPC;
-  out->resp_custom_rpc = &response_body;
+  out->resp_custom_rpc = &s_response_body;
   if (req->req_custom_rpc == nullptr) {
-    response_body.resp = (int32_t)k_ra8_err_protocol_error;
+    s_response_body.resp = (int32_t)k_ra8_err_protocol_error;
     return true;
   }
-  response_body.custom_msg_id = req->req_custom_rpc->custom_msg_id;
+  s_response_body.custom_msg_id = req->req_custom_rpc->custom_msg_id;
   if (scripted_resp != 0) {
-    response_body.resp = scripted_resp;
+    s_response_body.resp = scripted_resp;
     return true;
   }
-  size_t response_len = 0U;
-  response_body.resp  = (int32_t)ra8_mdl_service_dispatch(&s_mdl_service,
-                                                          response_body.custom_msg_id,
-                                                          req->req_custom_rpc->data.data,
-                                                          req->req_custom_rpc->data.len,
-                                                          response_bytes,
-                                                          sizeof(response_bytes),
-                                                          &response_len);
-  response_body.data  = (ProtobufCBinaryData){.len = response_len, .data = response_bytes};
-  if (response_body.resp == (int32_t)k_ra8_ok) {
+  size_t response_len  = 0U;
+  s_response_body.resp = (int32_t)ra8_mdl_service_dispatch(&s_mdl_service,
+                                                           s_response_body.custom_msg_id,
+                                                           req->req_custom_rpc->data.data,
+                                                           req->req_custom_rpc->data.len,
+                                                           s_response_bytes,
+                                                           sizeof(s_response_bytes),
+                                                           &response_len);
+  s_response_body.data = (ProtobufCBinaryData){.len = response_len, .data = s_response_bytes};
+  if (s_response_body.resp == (int32_t)k_ra8_ok) {
     priv_c6_model_mdl_fault_apply(&s_c6.mdl_fault,
                                   out,
-                                  &response_body,
-                                  response_bytes,
-                                  sizeof(response_bytes),
+                                  &s_response_body,
+                                  s_response_bytes,
+                                  sizeof(s_response_bytes),
                                   &response_len);
   }
   return true;

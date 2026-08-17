@@ -65,7 +65,7 @@ typedef enum : uint8_t {
 static const char* const s_tag = "ux_dcd_ra8_usb";
 
 /**
- * @var priv_syscfg_after_dcd_init
+ * @var g_syscfg_after_dcd_init
  * @brief SYSCFG snapshot at end of ux_dcd_ra8_usb_initialize.
  *
  * @details Bisect probe for the "USBE clears between phy bring-up and
@@ -77,10 +77,10 @@ static const char* const s_tag = "ux_dcd_ra8_usb";
  * @note Read-only from outside; written only by ::ux_dcd_ra8_usb_initialize.
  * @since 0.1.0
  */
-volatile uint16_t priv_syscfg_after_dcd_init = 0U;
+volatile uint16_t g_syscfg_after_dcd_init = 0U;
 
 /**
- * @var priv_lpsts_after_dcd_init
+ * @var g_lpsts_after_dcd_init
  * @brief LPSTS snapshot at end of ux_dcd_ra8_usb_initialize.
  *
  * @details Companion bisect probe; expected SUSPENDM=1 (0x4000). HUM
@@ -89,7 +89,7 @@ volatile uint16_t priv_syscfg_after_dcd_init = 0U;
  * @note Read-only from outside; written only by ::ux_dcd_ra8_usb_initialize.
  * @since 0.1.0
  */
-volatile uint16_t priv_lpsts_after_dcd_init = 0U;
+volatile uint16_t g_lpsts_after_dcd_init = 0U;
 
 /**
  * @var g_dcd
@@ -542,8 +542,8 @@ ra8_err_t ux_dcd_ra8_usb_initialize(ra8_usb_speed_t speed)
    * application calls ra8_usb_device_attach(true). HUM Ch 37.2.1 SYSCFG
    * p 2060, HUM Ch 37.2.43 LPSTS p 2111. */
   if (speed == k_ra8_usb_speed_hs) {
-    priv_syscfg_after_dcd_init = ra8_usb_hs()->SYSCFG;
-    priv_lpsts_after_dcd_init  = *ra8_usbhs_lpsts();
+    g_syscfg_after_dcd_init = ra8_usb_hs()->SYSCFG;
+    g_lpsts_after_dcd_init  = *ra8_usbhs_lpsts();
   }
 
   ra8_log_info(s_tag, "DCD bridge installed");

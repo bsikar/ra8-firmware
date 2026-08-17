@@ -457,11 +457,12 @@ RA8_INTERNAL static void internal_test_exfat_fat_chain_free(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   /* Write a 5000-byte file -> two 4 KiB clusters allocated. */
-  static uint8_t payload[k_mut_payload_two_cls];
+  static uint8_t s_payload[k_mut_payload_two_cls];
   for (uint32_t i = 0U; i < (uint32_t)k_mut_payload_two_cls; i++) {
-    payload[i] = (uint8_t)(i & (uint32_t)k_mut_mask_byte);
+    s_payload[i] = (uint8_t)(i & (uint32_t)k_mut_mask_byte);
   }
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", payload, (uint32_t)k_mut_payload_two_cls));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_fs_write_file(h, "A.TXT", s_payload, (uint32_t)k_mut_payload_two_cls));
 
   /* Read first_cluster from the Stream entry FirstCluster field. */
   const uint32_t strm_off    = internal_root_byte(h, (uint32_t)k_mut_root_strm0_idx);

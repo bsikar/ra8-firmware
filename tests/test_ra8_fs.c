@@ -645,8 +645,8 @@ RA8_INTERNAL static void internal_test_no_free_space(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "FILL.BIN", k_ra8_fs_mode_write, &f));
   /* The FAT12 disk has count_of_clusters << 4085, so try to write more
      bytes than the data region holds and expect k_ra8_err_no_mem. */
-  static uint8_t pad[k_disk_blocks_fat12 * k_disk_block_size] = {};
-  ra8_err_t      err                                          = ra8_fs_write(f, pad, sizeof pad);
+  static uint8_t s_pad[k_disk_blocks_fat12 * k_disk_block_size] = {};
+  ra8_err_t      err = ra8_fs_write(f, s_pad, sizeof s_pad);
   TEST_ASSERT(err == k_ra8_err_no_mem || err == k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));

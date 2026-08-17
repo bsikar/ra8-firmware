@@ -865,9 +865,9 @@ ra8_err_t priv_reflow_xml_walk(ra8_reflow_t* engine, const uint8_t* xhtml_buf, s
    * module-static storage instead of on the stack and reset it on entry.
    * Safe: priv_reflow_xml_walk has a single, non-recursive, single-threaded
    * caller (priv_reflow_parse), so the shared instance never overlaps. */
-  static tok_ctx_t walk_ctx;
-  walk_ctx       = (tok_ctx_t){};
-  tok_ctx_t* ctx = &walk_ctx;
+  static tok_ctx_t s_walk_ctx;
+  s_walk_ctx     = (tok_ctx_t){};
+  tok_ctx_t* ctx = &s_walk_ctx;
   ctx->engine    = engine;
   ctx->style     = (uint8_t)k_ra8_reflow_style_normal;
   ctx->color     = (uint32_t)k_ra8_reflow_color_inherit;

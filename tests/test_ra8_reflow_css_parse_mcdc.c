@@ -269,10 +269,10 @@ RA8_INTERNAL static void internal_test_font_weight_keywords(void)
   TEST_BEGIN("css font-weight bold keyword 6-OR");
   const uint8_t      bbit               = (uint8_t)k_ra8_reflow_style_bold;
   const uint8_t      bset               = (uint8_t)k_ra8_css_set_bold;
-  static const char* k_bold_kw[6]       = {"bold", "bolder", "600", "700", "800", "900"};
+  static const char* s_bold_kw[6]       = {"bold", "bolder", "600", "700", "800", "900"};
   char               buf[k_css_buf_cap] = {};
-  for (size_t w = 0U; w < (sizeof(k_bold_kw) / sizeof(k_bold_kw[0])); ++w) {
-    (void)snprintf(buf, sizeof buf, "font-weight: %s", k_bold_kw[w]);
+  for (size_t w = 0U; w < (sizeof(s_bold_kw) / sizeof(s_bold_kw[0])); ++w) {
+    (void)snprintf(buf, sizeof buf, "font-weight: %s", s_bold_kw[w]);
     ra8_css_style_t d = inl(buf);
     TEST_ASSERT((d.set & bset) != 0U);
     TEST_ASSERT((d.style & bbit) != 0U); /* this keyword set bold */

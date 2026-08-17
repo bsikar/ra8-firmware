@@ -267,12 +267,12 @@ RA8_INTERNAL static ra8_err_t internal_t_pull(void* ctx, uint8_t* buf, size_t ca
  * @since 0.1.0 @details Exercises the t produce path with bounded caller-owned fixture state and verifies its documented result. */
 RA8_INTERNAL static ra8_err_t internal_t_produce(ra8_jof_info_t* info)
 {
-  static t_pull_ctx_t local_pull;
-  local_pull = (t_pull_ctx_t){.d = s_src, .n = s_src_len, .pos = 0U};
-  s_store    = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  static t_pull_ctx_t s_pull;
+  s_pull  = (t_pull_ctx_t){.d = s_src, .n = s_src_len, .pos = 0U};
+  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   const ra8_jof_produce_cfg_t cfg = {
     .pull       = internal_t_pull,
-    .pull_ctx   = &local_pull,
+    .pull_ctx   = &s_pull,
     .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &s_store,
     .tile_w     = (uint16_t)k_te_tile,
