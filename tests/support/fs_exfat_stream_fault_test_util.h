@@ -454,9 +454,9 @@ RA8_INTERNAL static inline void internal_flt_mount(ra8_fs_mount_t** out_h)
 RA8_INTERNAL static inline void
 internal_flt_make_file(ra8_fs_mount_t* h, const char* name, uint32_t len)
 {
-  static uint8_t buf[k_flt_payload];
+  static uint8_t s_buf[k_flt_payload];
   for (uint32_t i = 0U; i < len; i++) {
-    buf[i] = (uint8_t)(i & (uint32_t)k_flt_byte_mask);
+    s_buf[i] = (uint8_t)(i & (uint32_t)k_flt_byte_mask);
   }
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, name, buf, len));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, name, s_buf, len));
 }

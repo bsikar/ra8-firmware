@@ -714,9 +714,9 @@ internal_render_page(const ra8_reflow_t* engine, uint32_t page_idx, int32_t ox, 
 
   /* One fontinfo per face (static -- render is single-threaded, like s_glyph_mask
    * below; keeps the ~1.4 KB off the stack). Default at 0, embedded at 1..N. */
-  static stbtt_fontinfo faces[1U + (uint32_t)k_ra8_reflow_max_faces];
+  static stbtt_fontinfo s_faces[1U + (uint32_t)k_ra8_reflow_max_faces];
   uint8_t               nfaces = 0U;
-  ra8_err_t             err    = internal_init_faces(engine, faces, &nfaces);
+  ra8_err_t             err    = internal_init_faces(engine, s_faces, &nfaces);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -729,7 +729,7 @@ internal_render_page(const ra8_reflow_t* engine, uint32_t page_idx, int32_t ox, 
     if (fi >= nfaces) {
       fi = 0U; /* defensive: out-of-range face index -> default */
     }
-    internal_blit_glyph(engine->glyph_atlas, fi, &faces[fi], g, ox, oy);
+    internal_blit_glyph(engine->glyph_atlas, fi, &s_faces[fi], g, ox, oy);
   }
   internal_render_images(engine, page_idx, ox, oy);
   return k_ra8_ok;

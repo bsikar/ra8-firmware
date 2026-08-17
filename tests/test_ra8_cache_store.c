@@ -551,12 +551,12 @@ RA8_INTERNAL static void internal_test_limits_and_sync(void)
   for (uint32_t i = 0U; i < (uint32_t)k_t_index_cap; i++) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_evict(&st, 1000U + i));
   }
-  static uint8_t local_big[k_cs_bytes_budget_hog];
-  internal_fill(local_big, sizeof(local_big), 4U);
+  static uint8_t s_big[k_cs_bytes_budget_hog];
+  internal_fill(s_big, sizeof(s_big), 4U);
   ra8_err_t rc = k_ra8_ok;
   uint32_t  n  = 0U;
   for (uint32_t i = 0U; i < k_cs_budget_put_attempts; i++) {
-    rc = ra8_cache_store_put(&st, k_cs_key_budget_base + i, local_big, sizeof(local_big));
+    rc = ra8_cache_store_put(&st, k_cs_key_budget_base + i, s_big, sizeof(s_big));
     if (rc != k_ra8_ok) {
       break;
     }
