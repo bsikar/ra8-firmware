@@ -133,14 +133,42 @@ RA8_INTERNAL static void internal_make_partly_valid_file(ra8_fs_mount_t* h)
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "VDL.BIN", k_ra8_fs_mode_write, &f));
-  static uint8_t poison[k_xs_multi_cluster];
-  memset(poison, (int)k_xsv_residue, sizeof poison);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, poison, (uint32_t)k_xs_multi_cluster));
+  static uint8_t s_poison[k_xs_multi_cluster];
+  memset(s_poison, (int)k_xsv_residue, sizeof s_poison);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_poison, (uint32_t)k_xs_multi_cluster));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   const uint32_t strm = internal_stream_strm0_off(h);
   internal_disk_set_u32le(strm + (uint32_t)k_xs_off_strm_valid, (uint32_t)k_xsv_valid_len);
   internal_repair_checksum(h);
+}
+
+/**
+ * @brief Assert a read-back span matches residue below `ValidDataLength`
+ * and zero at or past it.
+ * @details Compares every byte in @p buf against the expected
+ * residue-then-zero pattern, failing (and stopping) at the first mismatch.
+ * @param[in] buf Bytes read back from the file under test.
+ * @param[in] len Number of bytes in @p buf to check.
+ * @param[in] valid_len Byte offset at or past which zero is expected.
+ * @return Nothing; a mismatch fails the running test.
+ * @pre @p buf addresses at least @p len readable bytes.
+ * @pre @p valid_len is within `[0, len]`.
+ * @post Every byte up to the first mismatch (if any) has been asserted.
+ * @note Not thread-safe; the fixture is single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_expect_residue_then_zero(const uint8_t* buf, uint32_t len, uint32_t valid_len)
+{
+  for (uint32_t i = 0U; i < len; i++) {
+    const uint8_t want = (i < valid_len) ? (uint8_t)k_xsv_residue : 0U;
+    if (buf[i] == want) {
+      continue;
+    }
+    TEST_FAIL_FMT("byte %u should be 0x%02X", (unsigned)i, (unsigned)want);
+    break;
+  }
 }
 
 /**
@@ -181,24 +209,50 @@ RA8_INTERNAL static void internal_test_stream_read_past_valid_is_zero(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
   TEST_ASSERT_EQ(k_xs_multi_cluster, size);
 
-  static uint8_t whole[k_xs_multi_cluster];
+  static uint8_t s_whole[k_xs_multi_cluster];
   uint32_t       got = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, whole, (uint32_t)k_xs_multi_cluster, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_whole, (uint32_t)k_xs_multi_cluster, &got));
   TEST_ASSERT_EQ(k_xs_multi_cluster, got);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
-  for (uint32_t i = 0U; i < (uint32_t)k_xs_multi_cluster; i++) {
-    const uint8_t want = (i < (uint32_t)k_xsv_valid_len) ? (uint8_t)k_xsv_residue : 0U;
-    if (whole[i] != want) {
-      TEST_FAIL_FMT("byte %u should be 0x%02X", (unsigned)i, (unsigned)want);
-      break;
-    }
-  }
+  internal_expect_residue_then_zero(s_whole,
+                                    (uint32_t)k_xs_multi_cluster,
+                                    (uint32_t)k_xsv_valid_len);
 
   internal_stream_dump_image("stream_read_past_valid", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   internal_free_volume();
   TEST_END("exfat stream: reads past ValidDataLength are zeros");
+}
+
+/**
+ * @brief Assert the three regions of an appended-past-the-prefix file.
+ * @details Residue below the old prefix, real zeros across the gap the
+ * append had to fill, and the appended stream past the old length.
+ * @param[in] buf Bytes read back from the file under test.
+ * @param[in] total The file's length after the append.
+ * @return Nothing; a mismatch fails the running test.
+ * @pre @p buf addresses at least @p total readable bytes.
+ * @pre @p total is at least ::k_xs_multi_cluster.
+ * @post Every byte up to the first mismatch (if any) has been asserted.
+ * @note Not thread-safe; the fixture is single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_expect_three_region_bytes(const uint8_t* buf, uint32_t total)
+{
+  for (uint32_t i = 0U; i < total; i++) {
+    uint8_t want = 0U; /* the gap the append had to fill */
+    if (i < (uint32_t)k_xsv_valid_len) {
+      want = (uint8_t)k_xsv_residue;
+    } else if (i >= (uint32_t)k_xs_multi_cluster) {
+      want = internal_stream_byte_at(i, (uint8_t)k_xsv_tail_seed);
+    }
+    if (buf[i] == want) {
+      continue;
+    }
+    TEST_FAIL_FMT("byte %u should be 0x%02X", (unsigned)i, (unsigned)want);
+    break;
+  }
 }
 
 /**
@@ -225,23 +279,12 @@ RA8_INTERNAL static void internal_expect_three_regions(ra8_fs_mount_t* h, uint32
 {
   ra8_fs_file_t* r = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "VDL.BIN", k_ra8_fs_mode_read, &r));
-  static uint8_t whole[k_xs_multi_cluster + k_xsv_append_len];
+  static uint8_t s_whole[k_xs_multi_cluster + k_xsv_append_len];
   uint32_t       got = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(r, whole, total, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(r, s_whole, total, &got));
   TEST_ASSERT_EQ(total, got);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(r));
-  for (uint32_t i = 0U; i < total; i++) {
-    uint8_t want = 0U; /* the gap the append had to fill */
-    if (i < (uint32_t)k_xsv_valid_len) {
-      want = (uint8_t)k_xsv_residue;
-    } else if (i >= (uint32_t)k_xs_multi_cluster) {
-      want = internal_stream_byte_at(i, (uint8_t)k_xsv_tail_seed);
-    }
-    if (whole[i] != want) {
-      TEST_FAIL_FMT("byte %u should be 0x%02X", (unsigned)i, (unsigned)want);
-      break;
-    }
-  }
+  internal_expect_three_region_bytes(s_whole, total);
 }
 
 /**
