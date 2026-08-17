@@ -247,8 +247,8 @@ RA8_INTERNAL static void internal_png_chunk(const char* type, const uint8_t* dat
 RA8_INTERNAL static void internal_png_build_rgb(uint32_t w, uint32_t h)
 {
   static const uint8_t sig[8] = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
-  static uint8_t       raw[k_raw_cap];
-  static uint8_t       zbuf[k_png_cap];
+  static uint8_t       s_raw[k_raw_cap];
+  static uint8_t       s_zbuf[k_png_cap];
   s_png_len = 0U;
   (void)memcpy(s_png, sig, sizeof(sig));
   s_png_len                    = sizeof(sig);
@@ -266,18 +266,18 @@ RA8_INTERNAL static void internal_png_build_rgb(uint32_t w, uint32_t h)
   internal_png_chunk("IHDR", ihdr, (uint32_t)k_png_ihdr_len);
   size_t o = 0U;
   for (uint32_t y = 0U; y < h; y++) {
-    raw[o] = 0U; /* filter type 0 (none) */
+    s_raw[o] = 0U; /* filter type 0 (none) */
     o++;
     for (uint32_t x = 0U; x < w; x++) {
-      raw[o]      = internal_pix_rgb(x, y, (uint32_t)k_chan_r);
-      raw[o + 1U] = internal_pix_rgb(x, y, (uint32_t)k_chan_g);
-      raw[o + 2U] = internal_pix_rgb(x, y, (uint32_t)k_chan_b);
+      s_raw[o]      = internal_pix_rgb(x, y, (uint32_t)k_chan_r);
+      s_raw[o + 1U] = internal_pix_rgb(x, y, (uint32_t)k_chan_g);
+      s_raw[o + 2U] = internal_pix_rgb(x, y, (uint32_t)k_chan_b);
       o += (size_t)k_rgb_bpp;
     }
   }
-  mz_ulong zlen = (mz_ulong)sizeof(zbuf);
-  TEST_ASSERT_EQ(MZ_OK, mz_compress(zbuf, &zlen, raw, (mz_ulong)o));
-  internal_png_chunk("IDAT", zbuf, (uint32_t)zlen);
+  mz_ulong zlen = (mz_ulong)sizeof(s_zbuf);
+  TEST_ASSERT_EQ(MZ_OK, mz_compress(s_zbuf, &zlen, s_raw, (mz_ulong)o));
+  internal_png_chunk("IDAT", s_zbuf, (uint32_t)zlen);
   internal_png_chunk("IEND", nullptr, 0U);
 }
 

@@ -89,24 +89,24 @@ RA8_INTERNAL static void internal_test_compose_stop_on_last(void)
 {
   TEST_BEGIN("compose stop_on_last -> SL");
   internal_prep();
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t local_table[4];
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t local_chain[2];
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_install_linkfix(local_table, 4U));
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_table[4];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_chain[2];
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_install_linkfix(s_table, 4U));
 
   ra8_eth_gwca_queue_cfg_t cfg = {
     .priority     = 3U,
     .is_tx        = true,
     .stop_on_last = true,
     .extended     = false,
-    .chain_head   = local_chain,
+    .chain_head   = s_chain,
   };
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_configure_queue(local_table, 0U, &cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_configure_queue(s_table, 0U, &cfg));
 
   /* The composed GWDCC[0] must carry the SL bit and the DQT (TX) bit. */
   const uint32_t gwdcc0 = *ra8_gwca_gwdcc(0U);
   TEST_ASSERT_EQ(k_ra8_gwdcc_sl, gwdcc0 & (uint32_t)k_ra8_gwdcc_sl);
   TEST_ASSERT_EQ(k_ra8_gwdcc_dqt, gwdcc0 & (uint32_t)k_ra8_gwdcc_dqt);
-  TEST_ASSERT_EQ(k_ra8_gwdcc_dt_linkfix, local_table[0].dt);
+  TEST_ASSERT_EQ(k_ra8_gwdcc_dt_linkfix, s_table[0].dt);
   TEST_END("compose stop_on_last -> SL");
 }
 
@@ -149,29 +149,29 @@ RA8_INTERNAL static void internal_test_tx_frame_happy(void)
 {
   TEST_BEGIN("tx_frame happy path");
   internal_prep();
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t local_chain[4];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_chain[4];
   uint8_t* const                                          pool = (uint8_t*)k_sram_tx_pool_addr;
-  static uint8_t                                          local_frame[k_gwca_frame_bytes];
+  static uint8_t                                          s_frame[k_gwca_frame_bytes];
   uint32_t                                                tail = 0U;
 
   for (uint32_t i = 0U; i < k_gwca_frame_fill_len; ++i) {
-    local_frame[i] = (uint8_t)(k_gwca_frame_seed ^ i);
+    s_frame[i] = (uint8_t)(k_gwca_frame_seed ^ i);
   }
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(local_chain, 4U, 128U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_attach_buffers(local_chain, 4U, 128U, pool));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(s_chain, 4U, 128U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_attach_buffers(s_chain, 4U, 128U, pool));
 
   /* Slot 0 is FEMPTY and backed by pool[0]; enqueue must succeed. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_tx_frame(local_chain, 4U, &tail, local_frame, 64U, 128U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_tx_frame(s_chain, 4U, &tail, s_frame, 64U, 128U));
 
   /* Frame bytes copied into the slot buffer. */
   for (uint32_t i = 0U; i < k_gwca_frame_fill_len; ++i) {
-    TEST_ASSERT_EQ(local_frame[i], pool[i]);
+    TEST_ASSERT_EQ(s_frame[i], pool[i]);
   }
   /* DS stamped to frame_len, DT flipped to FSINGLE, tail advanced. */
-  const uint32_t ds_actual = (uint32_t)local_chain[0].ds_l | ((uint32_t)local_chain[0].ds_h << 8U);
+  const uint32_t ds_actual = (uint32_t)s_chain[0].ds_l | ((uint32_t)s_chain[0].ds_h << 8U);
   TEST_ASSERT_EQ(64U, ds_actual);
-  TEST_ASSERT_EQ(k_ra8_gwdcc_dt_fsingle, local_chain[0].dt);
+  TEST_ASSERT_EQ(k_ra8_gwdcc_dt_fsingle, s_chain[0].dt);
   TEST_ASSERT_EQ(1U, tail);
   TEST_END("tx_frame happy path");
 }
@@ -190,21 +190,20 @@ RA8_INTERNAL static void internal_test_tx_frame_queue_full(void)
 {
   TEST_BEGIN("tx_frame queue full");
   internal_prep();
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t local_chain[4];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_chain[4];
   uint8_t* const                                          pool = (uint8_t*)k_sram_tx_pool_addr;
-  static uint8_t                                          local_frame[k_gwca_frame_bytes];
+  static uint8_t                                          s_frame[k_gwca_frame_bytes];
   uint32_t                                                tail = 0U;
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(local_chain, 4U, 128U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_attach_buffers(local_chain, 4U, 128U, pool));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(s_chain, 4U, 128U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_attach_buffers(s_chain, 4U, 128U, pool));
 
   /* Mark all three data slots FSINGLE -> no FEMPTY slot remains. */
-  local_chain[0].dt = (uint8_t)k_ra8_gwdcc_dt_fsingle;
-  local_chain[1].dt = (uint8_t)k_ra8_gwdcc_dt_fsingle;
-  local_chain[2].dt = (uint8_t)k_ra8_gwdcc_dt_fsingle;
+  s_chain[0].dt = (uint8_t)k_ra8_gwdcc_dt_fsingle;
+  s_chain[1].dt = (uint8_t)k_ra8_gwdcc_dt_fsingle;
+  s_chain[2].dt = (uint8_t)k_ra8_gwdcc_dt_fsingle;
 
-  TEST_ASSERT_EQ(k_ra8_err_no_data,
-                 ra8_eth_gwca_tx_frame(local_chain, 4U, &tail, local_frame, 64U, 128U));
+  TEST_ASSERT_EQ(k_ra8_err_no_data, ra8_eth_gwca_tx_frame(s_chain, 4U, &tail, s_frame, 64U, 128U));
   TEST_END("tx_frame queue full");
 }
 
@@ -223,15 +222,15 @@ RA8_INTERNAL static void internal_test_tx_frame_unbacked_slot(void)
 {
   TEST_BEGIN("tx_frame unbacked slot");
   internal_prep();
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t local_chain[4];
-  static uint8_t                                          local_frame[k_gwca_frame_bytes];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_chain[4];
+  static uint8_t                                          s_frame[k_gwca_frame_bytes];
   uint32_t                                                tail = 0U;
 
   /* init_ring leaves ptr_h/ptr_l at zero (buffers not yet attached). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(local_chain, 4U, 128U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(s_chain, 4U, 128U));
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_eth_gwca_tx_frame(local_chain, 4U, &tail, local_frame, 64U, 128U));
+                 ra8_eth_gwca_tx_frame(s_chain, 4U, &tail, s_frame, 64U, 128U));
   TEST_END("tx_frame unbacked slot");
 }
 

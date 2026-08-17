@@ -361,13 +361,13 @@ RA8_INTERNAL static void internal_use_inject(ra8_fs_mount_t* h,
  */
 RA8_INTERNAL static void internal_seed_file(ra8_fs_mount_t* h, const char* name, uint32_t len)
 {
-  static uint8_t pat[k_fio_pat_max] = {};
+  static uint8_t s_pat[k_fio_pat_max] = {};
   for (uint32_t i = 0; i < len && i < (uint32_t)k_fio_pat_max; i++) {
-    pat[i] = (uint8_t)(i & k_byte_mask);
+    s_pat[i] = (uint8_t)(i & k_byte_mask);
   }
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, name, k_ra8_fs_mode_write, &f));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, pat, len));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_pat, len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 }
 
@@ -822,10 +822,10 @@ RA8_INTERNAL static void internal_test_walk_grow_fat_get_error(void)
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "WGGET.BIN", k_ra8_fs_mode_append, &f));
 
-  static uint8_t         data[k_fio_small_write] = {};
-  const ra8_fs_backend_t saved                   = h->backend;
+  static uint8_t         s_data[k_fio_small_write] = {};
+  const ra8_fs_backend_t saved                     = h->backend;
   internal_use_inject(h, k_fio_reads_walk_get, k_fio_lba_none, k_fio_lba_none, 0U);
-  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_write(f, data, sizeof(data))); /* 255 */
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_write(f, s_data, sizeof(s_data))); /* 255 */
   h->backend = saved;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
@@ -864,10 +864,10 @@ RA8_INTERNAL static void internal_test_walk_grow_fat_set_error(void)
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "WGSET.BIN", k_ra8_fs_mode_write, &f));
 
-  static uint8_t         data[k_fio_two_clusters] = {};
-  const ra8_fs_backend_t saved                    = h->backend;
+  static uint8_t         s_data[k_fio_two_clusters] = {};
+  const ra8_fs_backend_t saved                      = h->backend;
   internal_use_inject(h, k_fio_reads_walk_set, k_fio_lba_none, k_fio_lba_none, 0U);
-  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_write(f, data, sizeof(data))); /* 265 */
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_write(f, s_data, sizeof(s_data))); /* 265 */
   h->backend = saved;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
@@ -908,20 +908,20 @@ RA8_INTERNAL static void internal_test_read_cache_unset_after_write(void)
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "RDCACHE.BIN", k_ra8_fs_mode_write, &f));
 
-  static uint8_t wr[k_fio_two_clusters] = {};
+  static uint8_t s_wr[k_fio_two_clusters] = {};
   for (uint32_t i = 0; i < (uint32_t)k_fio_two_clusters; i++) {
-    wr[i] = (uint8_t)(i & k_byte_mask);
+    s_wr[i] = (uint8_t)(i & k_byte_mask);
   }
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, wr, sizeof(wr))); /* resets walk cache to 0 */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_wr, sizeof(s_wr))); /* resets walk cache to 0 */
 
   /* Same handle: seek to the start and read back. The first read chunk sees
    * walk_cache_cluster == 0, so the cache-set condition (C1) is false. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, 0U));
-  static uint8_t rd[k_fio_two_clusters] = {};
-  uint32_t       got                    = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, rd, sizeof(rd), &got));
+  static uint8_t s_rd[k_fio_two_clusters] = {};
+  uint32_t       got                      = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_rd, sizeof(s_rd), &got));
   TEST_ASSERT_EQ(k_fio_two_clusters, got);
-  TEST_ASSERT_EQ(0, memcmp(wr, rd, sizeof(wr)));
+  TEST_ASSERT_EQ(0, memcmp(s_wr, s_rd, sizeof(s_wr)));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));

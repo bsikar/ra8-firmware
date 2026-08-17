@@ -162,11 +162,11 @@ RA8_INTERNAL static void internal_test_large_grow_and_boundary_reads(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&be, &m));
   TEST_ASSERT_EQ(k_ra8_fs_type_exfat, m->type);
 
-  static uint8_t prefix[k_lf_prefix_len];
-  internal_lf_pattern(prefix, (uint32_t)k_lf_prefix_len, (uint8_t)k_lf_seed_prefix);
+  static uint8_t s_prefix[k_lf_prefix_len];
+  internal_lf_pattern(s_prefix, (uint32_t)k_lf_prefix_len, (uint8_t)k_lf_seed_prefix);
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(m, "BIG.BIN", k_ra8_fs_mode_write, &f));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, prefix, (uint32_t)k_lf_prefix_len));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_prefix, (uint32_t)k_lf_prefix_len));
   /* The grow: DataLength crosses 32 bits without 4 GiB of writes. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_truncate(f, (uint64_t)k_lf_big_size));
   uint64_t size = 0U;
@@ -174,7 +174,7 @@ RA8_INTERNAL static void internal_test_large_grow_and_boundary_reads(void)
   TEST_ASSERT_EQ(k_lf_big_size, size);
 
   /* Boundary probes: 0xFFFFFFFF - 1 and the first bytes past the line. All of
-   * it lies beyond ValidDataLength (the 4 KiB prefix), so the read path's
+   * it lies beyond ValidDataLength (the 4 KiB s_prefix), so the read path's
    * zero-serving arm must answer -- at 64-bit offsets the old 32-bit model
    * could not even express. The clusters underneath were genuinely allocated
    * by the grow; test 2 reads THROUGH them once the length is made valid. */
@@ -210,20 +210,20 @@ RA8_INTERNAL static void internal_test_large_grow_and_boundary_reads(void)
  */
 RA8_INTERNAL static void internal_lf_write_past_line(ra8_fs_mount_t* m)
 {
-  static uint8_t append[k_lf_append_len];
-  static uint8_t span[k_lf_span_len];
-  internal_lf_pattern(append, (uint32_t)k_lf_append_len, (uint8_t)k_lf_seed_append);
-  internal_lf_pattern(span, (uint32_t)k_lf_span_len, (uint8_t)k_lf_seed_span);
+  static uint8_t s_append[k_lf_append_len];
+  static uint8_t s_span[k_lf_span_len];
+  internal_lf_pattern(s_append, (uint32_t)k_lf_append_len, (uint8_t)k_lf_seed_append);
+  internal_lf_pattern(s_span, (uint32_t)k_lf_span_len, (uint8_t)k_lf_seed_span);
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(m, "BIG.BIN", k_ra8_fs_mode_append, &f));
   uint64_t pos = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_tell(f, &pos));
   TEST_ASSERT_EQ(k_lf_big_size, pos);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, append, (uint32_t)k_lf_append_len));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_append, (uint32_t)k_lf_append_len));
   /* A write SPANNING the 4 GiB line itself. */
   const uint64_t span_at = (uint64_t)k_lf_boundary - (uint64_t)k_lf_span_back;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, span_at));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, span, (uint32_t)k_lf_span_len));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_span, (uint32_t)k_lf_span_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 }
 
@@ -239,24 +239,24 @@ RA8_INTERNAL static void internal_lf_write_past_line(ra8_fs_mount_t* m)
  */
 RA8_INTERNAL static void internal_lf_read_back_past_line(ra8_fs_mount_t* m)
 {
-  static uint8_t expect[k_lf_append_len];
-  static uint8_t back[k_lf_append_len];
+  static uint8_t s_expect[k_lf_append_len];
+  static uint8_t s_back[k_lf_append_len];
   uint32_t       got = 0U;
   ra8_fs_file_t* f   = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(m, "BIG.BIN", k_ra8_fs_mode_read, &f));
   uint64_t size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
   TEST_ASSERT_EQ(k_lf_big_size + (uint64_t)k_lf_append_len, size);
-  internal_lf_pattern(expect, (uint32_t)k_lf_append_len, (uint8_t)k_lf_seed_append);
+  internal_lf_pattern(s_expect, (uint32_t)k_lf_append_len, (uint8_t)k_lf_seed_append);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, (uint64_t)k_lf_big_size));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, back, (uint32_t)k_lf_append_len, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_back, (uint32_t)k_lf_append_len, &got));
   TEST_ASSERT_EQ(k_lf_append_len, got);
-  TEST_ASSERT_EQ(0, memcmp(back, expect, (size_t)k_lf_append_len));
-  internal_lf_pattern(expect, (uint32_t)k_lf_span_len, (uint8_t)k_lf_seed_span);
+  TEST_ASSERT_EQ(0, memcmp(s_back, s_expect, (size_t)k_lf_append_len));
+  internal_lf_pattern(s_expect, (uint32_t)k_lf_span_len, (uint8_t)k_lf_seed_span);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, (uint64_t)k_lf_boundary - (uint64_t)k_lf_span_back));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, back, (uint32_t)k_lf_span_len, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_back, (uint32_t)k_lf_span_len, &got));
   TEST_ASSERT_EQ(k_lf_span_len, got);
-  TEST_ASSERT_EQ(0, memcmp(back, expect, (size_t)k_lf_span_len));
+  TEST_ASSERT_EQ(0, memcmp(s_back, s_expect, (size_t)k_lf_span_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 }
 
@@ -318,15 +318,15 @@ RA8_INTERNAL static void internal_test_large_truncate_down_through_line(void)
   TEST_ASSERT_EQ(k_lf_shrink_small, size);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
-  /* The original creation-time prefix is intact below the shrink. */
-  static uint8_t prefix[k_lf_prefix_len];
-  static uint8_t back[k_lf_prefix_len];
-  internal_lf_pattern(prefix, (uint32_t)k_lf_prefix_len, (uint8_t)k_lf_seed_prefix);
+  /* The original creation-time s_prefix is intact below the shrink. */
+  static uint8_t s_prefix[k_lf_prefix_len];
+  static uint8_t s_back[k_lf_prefix_len];
+  internal_lf_pattern(s_prefix, (uint32_t)k_lf_prefix_len, (uint8_t)k_lf_seed_prefix);
   uint32_t got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(m, "BIG.BIN", k_ra8_fs_mode_read, &f));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, back, (uint32_t)k_lf_prefix_len, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_back, (uint32_t)k_lf_prefix_len, &got));
   TEST_ASSERT_EQ(k_lf_prefix_len, got);
-  TEST_ASSERT_EQ(0, memcmp(back, prefix, (size_t)k_lf_prefix_len));
+  TEST_ASSERT_EQ(0, memcmp(s_back, s_prefix, (size_t)k_lf_prefix_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   /* The sparse store stayed inside its budget the whole campaign. */

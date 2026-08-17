@@ -38,7 +38,7 @@
 #include "ux_utility.h"
 
 /**
- * @var priv_isr_invocations
+ * @var g_isr_invocations
  * @brief Counter of NVIC ISR entries through ::internal_usbfs_isr or
  *        ::internal_usbhs_isr.
  *
@@ -53,10 +53,10 @@
  * @note Written only by the two ISR trampolines.
  * @since 0.1.0
  */
-volatile uint32_t priv_isr_invocations = 0U;
+volatile uint32_t g_isr_invocations = 0U;
 
 /**
- * @var priv_isr_intsts0_or
+ * @var g_isr_intsts0_or
  * @brief Cumulative bitwise-OR of every ``INTSTS0`` value observed at
  *        the entry of ::internal_usbhs_isr.
  *
@@ -72,10 +72,10 @@ volatile uint32_t priv_isr_invocations = 0U;
  * @note Written only by ::internal_usbhs_isr.
  * @since 0.1.0
  */
-volatile uint16_t priv_isr_intsts0_or = 0U;
+volatile uint16_t g_isr_intsts0_or = 0U;
 
 /**
- * @var priv_isr_dvst_count
+ * @var g_isr_dvst_count
  * @brief Per-bit ISR counter for ``INTSTS0.DVST`` (bit 12) entries.
  *
  * @details
@@ -87,22 +87,22 @@ volatile uint16_t priv_isr_intsts0_or = 0U;
  * @note Written only by ::internal_usbhs_isr.
  * @since 0.1.0
  */
-volatile uint32_t priv_isr_dvst_count = 0U;
+volatile uint32_t g_isr_dvst_count = 0U;
 
 /**
- * @var priv_isr_ctrt_count
+ * @var g_isr_ctrt_count
  * @brief Per-bit ISR counter for ``INTSTS0.CTRT`` (bit 11) entries.
  *
- * @details Sibling of ::priv_isr_dvst_count for the control-transfer-
+ * @details Sibling of ::g_isr_dvst_count for the control-transfer-
  * stage-transition bit (HUM Ch 36.2.14 p 1985).
  *
  * @note Written only by ::internal_usbhs_isr.
  * @since 0.1.0
  */
-volatile uint32_t priv_isr_ctrt_count = 0U;
+volatile uint32_t g_isr_ctrt_count = 0U;
 
 /**
- * @var priv_isr_valid_count
+ * @var g_isr_valid_count
  * @brief Per-bit ISR counter for ``INTSTS0.VALID`` (bit 3) entries.
  *
  * @details Counts ISR entries where the SETUP-detect flag was already
@@ -112,28 +112,28 @@ volatile uint32_t priv_isr_ctrt_count = 0U;
  * @note Written only by ::internal_usbhs_isr.
  * @since 0.1.0
  */
-volatile uint32_t priv_isr_valid_count = 0U;
+volatile uint32_t g_isr_valid_count = 0U;
 
 /**
- * @var priv_isr_brdy_count
+ * @var g_isr_brdy_count
  * @brief Per-bit ISR counter for ``INTSTS0.BRDY`` (bit 8) entries.
  *
  * @note Written only by ::internal_usbhs_isr.
  * @since 0.1.0
  */
-volatile uint32_t priv_isr_brdy_count = 0U;
+volatile uint32_t g_isr_brdy_count = 0U;
 
 /**
- * @var priv_isr_bemp_count
+ * @var g_isr_bemp_count
  * @brief Per-bit ISR counter for ``INTSTS0.BEMP`` (bit 10) entries.
  *
  * @note Written only by ::internal_usbhs_isr.
  * @since 0.1.0
  */
-volatile uint32_t priv_isr_bemp_count = 0U;
+volatile uint32_t g_isr_bemp_count = 0U;
 
 /**
- * @var priv_isr_nrdy_count
+ * @var g_isr_nrdy_count
  * @brief Per-bit ISR counter for ``INTSTS0.NRDY`` (bit 9) entries.
  *
  * @details Storm-localisation probe: a value in the millions after a
@@ -142,10 +142,10 @@ volatile uint32_t priv_isr_bemp_count = 0U;
  * clears it. Written by ::internal_usbfs_isr and ::internal_usbhs_isr.
  * @since 0.1.0
  */
-volatile uint32_t priv_isr_nrdy_count = 0U;
+volatile uint32_t g_isr_nrdy_count = 0U;
 
 /**
- * @var priv_isr_sofr_count
+ * @var g_isr_sofr_count
  * @brief Per-bit ISR counter for ``INTSTS0.SOFR`` (bit 13) entries.
  *
  * @details Storm-localisation probe. SOFR fires once per USB frame
@@ -154,9 +154,9 @@ volatile uint32_t priv_isr_nrdy_count = 0U;
  * to be co-asserted. Written by ::internal_usbfs_isr and ::internal_usbhs_isr.
  * @since 0.1.0
  */
-volatile uint32_t priv_isr_sofr_count = 0U;
+volatile uint32_t g_isr_sofr_count = 0U;
 
-volatile uint32_t priv_dcd_irq_spurious_mask_count = 0U;
+volatile uint32_t g_dcd_irq_spurious_mask_count = 0U;
 
 /* -------------------------------------------------------------------------- */
 /* USBFS interrupt-storm guard */
@@ -205,7 +205,7 @@ typedef enum : uint32_t {
  * @brief Bump the per-bit ISR counters for an INTSTS0 snapshot.
  *
  * @details Each ``s_isr_*_count`` counter is a JLink-readable probe so
- * a bench reader can correlate ::priv_isr_intsts0_or with which event bits
+ * a bench reader can correlate ::g_isr_intsts0_or with which event bits
  * fired this tick. Shared by the FS and HS ISRs to keep each outer ISR
  * within the NASA P10 Rule 4 size cap.
  *
@@ -222,25 +222,25 @@ typedef enum : uint32_t {
 RA8_INTERNAL static void internal_isr_bump_counts(uint16_t intsts0)
 {
   if ((intsts0 & (uint16_t)(1U << k_ra8_int0_bit_dvst)) != 0U) {
-    priv_isr_dvst_count++;
+    g_isr_dvst_count++;
   }
   if ((intsts0 & (uint16_t)(1U << k_ra8_int0_bit_ctrt)) != 0U) {
-    priv_isr_ctrt_count++;
+    g_isr_ctrt_count++;
   }
   if ((intsts0 & (uint16_t)k_ra8_intsts0_mask_valid) != 0U) {
-    priv_isr_valid_count++;
+    g_isr_valid_count++;
   }
   if ((intsts0 & (uint16_t)(1U << k_ra8_int0_bit_brdy)) != 0U) {
-    priv_isr_brdy_count++;
+    g_isr_brdy_count++;
   }
   if ((intsts0 & (uint16_t)(1U << k_ra8_int0_bit_bemp)) != 0U) {
-    priv_isr_bemp_count++;
+    g_isr_bemp_count++;
   }
   if ((intsts0 & (uint16_t)(1U << k_ra8_int0_bit_nrdy)) != 0U) {
-    priv_isr_nrdy_count++;
+    g_isr_nrdy_count++;
   }
   if ((intsts0 & (uint16_t)(1U << k_ra8_int0_bit_sofr)) != 0U) {
-    priv_isr_sofr_count++;
+    g_isr_sofr_count++;
   }
 }
 
@@ -256,7 +256,7 @@ RA8_INTERNAL static void internal_isr_bump_counts(uint16_t intsts0)
  *
  * The only added behaviour is the storm guard. An entry with no real
  * event bit (only RSME / SOFR / status bits -- these assert the NVIC
- * line independent of INTENB0) increments ::priv_isr_spurious_run; a real
+ * line independent of INTENB0) increments ::g_isr_spurious_run; a real
  * event resets it. ::ux_dcd_ra8_usb_irq_reenable (called from the per-app
  * 1 ms ``SysTick_Handler``) zeroes the counter, so it gauges the
  * event-less *rate*. Once it crosses ::k_ra8_usb_storm_mask_run within a
@@ -271,7 +271,7 @@ RA8_INTERNAL static void internal_isr_bump_counts(uint16_t intsts0)
  * @pre Bridge is in ``k_ux_dcd_ra8_usb_state_ready`` or ``_active``.
  * @pre ``ra8_usb_attach_handler`` has been called (done in the same init).
  *
- * @post ``priv_isr_invocations`` is incremented and ``ra8_usb_dispatch`` ran.
+ * @post ``g_isr_invocations`` is incremented and ``ra8_usb_dispatch`` ran.
  * @post On a sustained event-less run the USB IRQ is masked at the NVIC.
  *
  * @note Runs in NVIC handler mode; must not block.
@@ -286,7 +286,7 @@ RA8_INTERNAL static void internal_isr_bump_counts(uint16_t intsts0)
 RA8_INTERNAL static void internal_usbfs_isr(void* ctx)
 {
   (void)ctx;
-  priv_isr_invocations++;
+  g_isr_invocations++;
 
   /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1986.
    * event_msk is the real-event set: INTENB0 (BRDY/NRDY/BEMP/CTRT/
@@ -298,16 +298,16 @@ RA8_INTERNAL static void internal_usbfs_isr(void* ctx)
                                         (1U << k_ra8_int0_bit_dvst) | (1U << k_ra8_int0_bit_vbse) |
                                         (uint16_t)k_ra8_intsts0_mask_valid);
 
-  priv_isr_intsts0_or |= intsts0;
+  g_isr_intsts0_or |= intsts0;
 
   if ((intsts0 & event_msk) == 0U) {
-    priv_isr_spurious_run++;
-    if (priv_isr_spurious_run >= (uint32_t)k_ra8_usb_storm_mask_run) {
+    g_isr_spurious_run++;
+    if (g_isr_spurious_run >= (uint32_t)k_ra8_usb_storm_mask_run) {
       priv_usbfs_irq_mask();
-      priv_dcd_irq_spurious_mask_count++;
+      g_dcd_irq_spurious_mask_count++;
     }
   } else {
-    priv_isr_spurious_run = 0U;
+    g_isr_spurious_run = 0U;
   }
 
   internal_isr_bump_counts(intsts0);
@@ -333,7 +333,7 @@ RA8_INTERNAL static void internal_usbfs_isr(void* ctx)
  *
  * @pre Caller already determined ``(intsts0 & event_msk) == 0``.
  * @pre USB module for ``speed`` is initialized (``ra8_usb_device_init`` ran).
- * @post ``priv_dcd_irq_spurious_mask_count`` is incremented.
+ * @post ``g_dcd_irq_spurious_mask_count`` is incremented.
  * @post RSME/SOFR bits that were set are cleared via ::ra8_usb_clear_status.
  *
  * @note ISR-only; must not block.
@@ -358,7 +358,7 @@ RA8_INTERNAL static void internal_ack_spurious(ra8_usb_speed_t speed, uint16_t i
       reg->INTSTS1 = (uint16_t)~int1_mask;
     }
   }
-  priv_dcd_irq_spurious_mask_count++;
+  g_dcd_irq_spurious_mask_count++;
 }
 
 /**
@@ -375,9 +375,9 @@ RA8_INTERNAL static void internal_ack_spurious(ra8_usb_speed_t speed, uint16_t i
  * @pre USBHS module is past ``ra8_usb_device_init``.
  * @pre Caller is the NVIC USBHS_INT vector.
  *
- * @post ``priv_isr_invocations`` is incremented.
+ * @post ``g_isr_invocations`` is incremented.
  * @post On a real event ``ra8_usb_dispatch`` ran; on a spurious one
- *       RSME/SOFR were W0C-cleared and ``priv_dcd_irq_spurious_mask_count``
+ *       RSME/SOFR were W0C-cleared and ``g_dcd_irq_spurious_mask_count``
  *       is incremented.
  *
  * @note ISR-only; must not block. Not re-entrant within a single
@@ -387,7 +387,7 @@ RA8_INTERNAL static void internal_ack_spurious(ra8_usb_speed_t speed, uint16_t i
 RA8_INTERNAL static void internal_usbhs_isr(void* ctx)
 {
   (void)ctx;
-  priv_isr_invocations++;
+  g_isr_invocations++;
 
   /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1986.
    *
@@ -405,7 +405,7 @@ RA8_INTERNAL static void internal_usbhs_isr(void* ctx)
                                         (1U << k_ra8_int0_bit_dvst) | (1U << k_ra8_int0_bit_vbse) |
                                         (uint16_t)k_ra8_intsts0_mask_valid);
 
-  priv_isr_intsts0_or |= intsts0;
+  g_isr_intsts0_or |= intsts0;
 
   if ((intsts0 & event_msk) == 0U) {
     internal_ack_spurious(k_ra8_usb_speed_hs, intsts0);
@@ -416,13 +416,13 @@ RA8_INTERNAL static void internal_usbhs_isr(void* ctx)
      * resume within one tick. Without this the HS line stormed at
      * ~440k entries/s and starved thread mode completely (the USBX
      * storage thread never got a single timeslice). */
-    priv_isr_spurious_run++;
-    if (priv_isr_spurious_run >= (uint32_t)k_ra8_usb_storm_mask_run) {
+    g_isr_spurious_run++;
+    if (g_isr_spurious_run >= (uint32_t)k_ra8_usb_storm_mask_run) {
       priv_usbfs_irq_mask();
     }
     return;
   }
-  priv_isr_spurious_run = 0U;
+  g_isr_spurious_run = 0U;
 
   internal_isr_bump_counts(intsts0);
 

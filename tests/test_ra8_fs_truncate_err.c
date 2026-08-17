@@ -240,15 +240,15 @@ RA8_INTERNAL static void internal_seed_file(ra8_fs_mount_t* h, const char* name,
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, name, k_ra8_fs_mode_write, &f));
-  static uint8_t buf[k_ter_block_size];
-  memset(buf, (int)k_ter_seed, sizeof buf);
+  static uint8_t s_buf[k_ter_block_size];
+  memset(s_buf, (int)k_ter_seed, sizeof s_buf);
   uint32_t done = 0U;
   while (done < len) {
     uint32_t n = len - done;
     if (n > (uint32_t)k_ter_block_size) {
       n = (uint32_t)k_ter_block_size;
     }
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, buf, n));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_buf, n));
     done += n;
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));

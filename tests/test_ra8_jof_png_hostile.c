@@ -135,15 +135,15 @@ internal_make_zlib(uint32_t w, uint32_t h, uint8_t filter, uint8_t* out)
 /** @brief Run the producer over the crafted source; return its code. @details Exercises the craft produce path with bounded caller-owned fixture state and verifies its documented result. @param[in] fail_at Injected source byte offset that forces a read failure. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
 RA8_INTERNAL static ra8_err_t internal_craft_produce(size_t fail_at)
 {
-  static t_pull_t           local_pull;
-  static ra8_jof_memstore_t local_store;
-  local_pull  = (t_pull_t){.pos = 0U, .fail_at = fail_at};
-  local_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  static t_pull_t           s_pull;
+  static ra8_jof_memstore_t s_store;
+  s_pull  = (t_pull_t){.pos = 0U, .fail_at = fail_at};
+  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   const ra8_jof_produce_cfg_t cfg = {
     .pull       = internal_t_pull,
-    .pull_ctx   = &local_pull,
+    .pull_ctx   = &s_pull,
     .sink       = ra8_jof_memstore_sink,
-    .sink_ctx   = &local_store,
+    .sink_ctx   = &s_store,
     .tile_w     = (uint16_t)k_t_tile,
     .tile_h     = (uint16_t)k_t_tile,
     .codec      = (uint8_t)k_ra8_jof_codec_raw,
@@ -160,15 +160,15 @@ RA8_INTERNAL static ra8_err_t internal_craft_produce(size_t fail_at)
 RA8_INTERNAL static ra8_err_t
 internal_craft_produce_with(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t work_cap)
 {
-  static t_pull_t           local_pull;
-  static ra8_jof_memstore_t local_store;
-  local_pull  = (t_pull_t){.pos = 0U, .fail_at = 0U};
-  local_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  static t_pull_t           s_pull;
+  static ra8_jof_memstore_t s_store;
+  s_pull  = (t_pull_t){.pos = 0U, .fail_at = 0U};
+  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   const ra8_jof_produce_cfg_t cfg = {
     .pull       = internal_t_pull,
-    .pull_ctx   = &local_pull,
+    .pull_ctx   = &s_pull,
     .sink       = ra8_jof_memstore_sink,
-    .sink_ctx   = &local_store,
+    .sink_ctx   = &s_store,
     .tile_w     = tile_w,
     .tile_h     = tile_h,
     .codec      = codec,
@@ -276,8 +276,8 @@ RA8_INTERNAL static void internal_test_png_hostile_chunk_layer(void)
   internal_begin_png(k_t_w, k_t_h, 3U, 0U, 0U);
   const uint8_t plte[6] = {1U, 2U, 3U, 4U, 5U, 6U};
   internal_put_chunk("PLTE", plte, sizeof(plte));
-  static uint8_t local_big_trns[k_t_trns_oversize_len];
-  internal_put_chunk("tRNS", local_big_trns, sizeof(local_big_trns));
+  static uint8_t s_big_trns[k_t_trns_oversize_len];
+  internal_put_chunk("tRNS", s_big_trns, sizeof(s_big_trns));
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_craft_produce(0U));
 
   /* IEND before any IDAT. */
@@ -447,21 +447,21 @@ RA8_INTERNAL static void internal_test_png_hostile_geometry(void)
   TEST_BEGIN("png hostile: grid cap + pixel-path arena exhaustion");
 
   /* 300x300 at 1x1 tiles = 90000 tiles > the 65536 format cap. */
-  static uint8_t local_frame[(k_t_frame_dim * k_t_frame_stride)];
+  static uint8_t s_frame[(k_t_frame_dim * k_t_frame_stride)];
   size_t         fo = 0U;
   for (uint32_t y = 0U; y < k_t_frame_dim; y++) {
-    local_frame[fo] = 0U;
+    s_frame[fo] = 0U;
     fo++;
     for (uint32_t x = 0U; x < k_t_frame_dim; x++) {
-      local_frame[fo] = (uint8_t)(x ^ y);
+      s_frame[fo] = (uint8_t)(x ^ y);
       fo++;
     }
   }
-  static uint8_t local_zbig[k_t_zbig_kib * k_t_kib];
-  mz_ulong       zl = (mz_ulong)sizeof(local_zbig);
-  TEST_ASSERT_EQ(MZ_OK, mz_compress(local_zbig, &zl, local_frame, (mz_ulong)fo));
+  static uint8_t s_zbig[k_t_zbig_kib * k_t_kib];
+  mz_ulong       zl = (mz_ulong)sizeof(s_zbig);
+  TEST_ASSERT_EQ(MZ_OK, mz_compress(s_zbig, &zl, s_frame, (mz_ulong)fo));
   internal_begin_png(k_t_frame_dim, k_t_frame_dim, 0U, 0U, 0U);
-  internal_put_chunk("IDAT", local_zbig, (uint32_t)zl);
+  internal_put_chunk("IDAT", s_zbig, (uint32_t)zl);
   internal_put_chunk("IEND", nullptr, 0U);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  internal_craft_produce_with(1U, 1U, (uint8_t)k_ra8_jof_codec_raw, sizeof(s_work)));
@@ -542,8 +542,8 @@ RA8_INTERNAL static void internal_test_png_hostile_palette_arms(void)
 
   /* PLTE longer than 256 entries (771 stays a multiple of 3). */
   internal_begin_png(k_t_w, k_t_h, 3U, 0U, 0U);
-  static uint8_t local_big_plte[k_t_plte_oversize_len];
-  internal_put_chunk("PLTE", local_big_plte, sizeof(local_big_plte));
+  static uint8_t s_big_plte[k_t_plte_oversize_len];
+  internal_put_chunk("PLTE", s_big_plte, sizeof(s_big_plte));
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_craft_produce(0U));
 
   /* A second PLTE after a valid one. */
@@ -728,12 +728,12 @@ RA8_INTERNAL static void internal_test_png_hostile_residue(void)
   /* A 15x255 gray frame built from stored deflate blocks is exactly 4096
    * zlib bytes -- one full input window. Garbage after it in the same IDAT
    * is never windowed, so termination sees it via idat_rem alone. */
-  static uint8_t local_zbuf[k_t_zbuf_cap + k_png_hostile_trailing_len];
-  const uint32_t zl = internal_make_zlib_stored(15U, 255U, local_zbuf);
+  static uint8_t s_zbuf[k_t_zbuf_cap + k_png_hostile_trailing_len];
+  const uint32_t zl = internal_make_zlib_stored(15U, 255U, s_zbuf);
   TEST_ASSERT_EQ(4096U, zl);
-  memset(&local_zbuf[zl], k_png_hostile_fill_trailing, (size_t)k_png_hostile_trailing_len);
+  memset(&s_zbuf[zl], k_png_hostile_fill_trailing, (size_t)k_png_hostile_trailing_len);
   internal_begin_png(k_t_window_frame_w, k_t_window_frame_h, 0U, 0U, 0U);
-  internal_put_chunk("IDAT", local_zbuf, zl + k_png_hostile_trailing_len);
+  internal_put_chunk("IDAT", s_zbuf, zl + k_png_hostile_trailing_len);
   internal_put_chunk("IEND", nullptr, 0U);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, internal_craft_produce(0U));
   TEST_END("png hostile: partial-row + past-window IDAT residue");
@@ -876,12 +876,12 @@ RA8_INTERNAL static void internal_assert_png_null_guards(ra8_jof_bump_t* bump, t
 RA8_INTERNAL static void internal_test_png_hostile_direct_seam(void)
 {
   TEST_BEGIN("png hostile: direct seam (signature + null guards)");
-  static uint8_t  local_arena[k_t_arena_kib * k_t_kib];
-  ra8_jof_bump_t  bump = {.base = local_arena, .cap = sizeof(local_arena), .off = 0U};
-  static t_pull_t local_pull;
+  static uint8_t  s_arena[k_t_arena_kib * k_t_kib];
+  ra8_jof_bump_t  bump = {.base = s_arena, .cap = sizeof(s_arena), .off = 0U};
+  static t_pull_t s_pull;
 
-  internal_assert_png_signature_failures(&bump, &local_pull);
-  internal_assert_png_null_guards(&bump, &local_pull);
+  internal_assert_png_signature_failures(&bump, &s_pull);
+  internal_assert_png_null_guards(&bump, &s_pull);
   TEST_END("png hostile: direct seam (signature + null guards)");
 }
 /**

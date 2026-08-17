@@ -54,7 +54,7 @@
  * @param[in] ep_addr Endpoint address (bit 7 = direction).
  *
  * @pre ::ra8_usb_configure_endpoint has run for this pipe.
- * @pre Bridge speed ``priv_dcd.speed`` is valid.
+ * @pre Bridge speed ``g_dcd.speed`` is valid.
  * @post OUT pipe PID is BUF (auto-echo pipe) or NAK (all others).
  * @post IN pipe PID is left unchanged.
  *
@@ -68,18 +68,18 @@ RA8_INTERNAL static void internal_endpoint_arm_out_pid(uint8_t pipe, uint8_t ep_
   }
   /* Fresh OUT-pipe config: drop any orphan packet held from a prior
    * configuration so it cannot be misdelivered to a new transfer. */
-  priv_orphan_len     = 0U;
+  g_orphan_len        = 0U;
   bool auto_echo_pipe = false;
-  if (priv_dcd_auto_echo_enable != 0U) {
-    if (pipe == priv_dcd_auto_echo_out_pipe) {
+  if (g_dcd_auto_echo_enable != 0U) {
+    if (pipe == g_dcd_auto_echo_out_pipe) {
       auto_echo_pipe = true;
     }
   }
   /* HUM Ch 36.2.27 "PIPEnCTR : PIPE n Control Register" p 2005 */
   if (auto_echo_pipe) {
-    (void)ra8_usb_rearm_out_pipe(priv_dcd.speed, pipe);
+    (void)ra8_usb_rearm_out_pipe(g_dcd.speed, pipe);
   } else {
-    (void)ra8_usb_park_out_pipe(priv_dcd.speed, pipe);
+    (void)ra8_usb_park_out_pipe(g_dcd.speed, pipe);
   }
 }
 
@@ -99,7 +99,7 @@ RA8_INTERNAL static void internal_endpoint_arm_out_pid(uint8_t pipe, uint8_t ep_
  */
 RA8_INTERNAL static unsigned int internal_endpoint_create(struct UX_SLAVE_ENDPOINT_STRUCT* ep)
 {
-  priv_diag.ep_create_calls++;
+  g_diag.ep_create_calls++;
   if (ep == nullptr) {
     return UX_ERROR;
   }
@@ -129,20 +129,20 @@ RA8_INTERNAL static unsigned int internal_endpoint_create(struct UX_SLAVE_ENDPOI
       return UX_ERROR;
   }
 
-  if (ra8_usb_configure_endpoint(priv_dcd.speed,
+  if (ra8_usb_configure_endpoint(g_dcd.speed,
                                  pipe,
                                  (uint8_t)(ep_addr & (uint8_t)k_ra8_usb_ep_addr_num_mask),
                                  dir,
                                  type,
                                  (uint16_t)ep->ux_slave_endpoint_descriptor.wMaxPacketSize) !=
       k_ra8_ok) {
-    priv_diag.ep_create_fail++;
+    g_diag.ep_create_fail++;
     return UX_ERROR;
   }
-  priv_dcd.pipes[pipe].ep_addr = ep_addr;
-  priv_dcd.pipes[pipe].dir_in =
+  g_dcd.pipes[pipe].ep_addr = ep_addr;
+  g_dcd.pipes[pipe].dir_in =
     (uint8_t)((ep_addr & (uint8_t)k_ra8_usb_ep_addr_dir_in_bit) != 0U ? 1U : 0U);
-  priv_dcd.pipes[pipe].max_pkt = (uint16_t)ep->ux_slave_endpoint_descriptor.wMaxPacketSize;
+  g_dcd.pipes[pipe].max_pkt = (uint16_t)ep->ux_slave_endpoint_descriptor.wMaxPacketSize;
   internal_endpoint_arm_out_pid(pipe, ep_addr);
   return UX_SUCCESS;
 }
@@ -175,7 +175,7 @@ RA8_INTERNAL static unsigned int internal_endpoint_stall(struct UX_SLAVE_ENDPOIN
   if (pipe >= (uint8_t)k_ux_dcd_ra8_usb_max_pipes) {
     return UX_ERROR;
   }
-  return (ra8_usb_stall_endpoint(priv_dcd.speed, pipe) == k_ra8_ok) ? UX_SUCCESS : UX_ERROR;
+  return (ra8_usb_stall_endpoint(g_dcd.speed, pipe) == k_ra8_ok) ? UX_SUCCESS : UX_ERROR;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -199,7 +199,7 @@ RA8_INTERNAL static unsigned int internal_endpoint_stall(struct UX_SLAVE_ENDPOIN
  *
  * @pre Bridge is past ``ux_dcd_ra8_usb_initialize``.
  * @pre Caller is the USBX device-stack dispatcher.
- * @post ``priv_dcd.pipes[pipe].xfer`` is nullptr for the named pipe.
+ * @post ``g_dcd.pipes[pipe].xfer`` is nullptr for the named pipe.
  * @post No wire-side state mutated.
  *
  * @note Runs on the USBX device task context.
@@ -212,7 +212,7 @@ RA8_INTERNAL static unsigned int internal_endpoint_destroy(struct UX_SLAVE_ENDPO
   }
   const uint8_t pipe = priv_ep_to_pipe((uint8_t)ep->ux_slave_endpoint_descriptor.bEndpointAddress);
   if (pipe < (uint8_t)k_ux_dcd_ra8_usb_max_pipes) {
-    priv_dcd.pipes[pipe].xfer = nullptr;
+    g_dcd.pipes[pipe].xfer = nullptr;
   }
   return UX_SUCCESS;
 }
@@ -223,12 +223,12 @@ RA8_INTERNAL static unsigned int internal_endpoint_destroy(struct UX_SLAVE_ENDPO
  * @details Diagnostic brackets around the chapter-9 configuration
  * walk: the stack notifies ATTACHED during teardown and CONFIGURED at
  * the end, so the counter pair shows how far configuration processing
- * ran (read via JLink alongside ::priv_diag).
+ * ran (read via JLink alongside ::g_diag).
  *
  * @param[in] state The UX device state being announced.
  *
  * @pre Called from the DCD function dispatcher only.
- * @pre ::priv_diag is single-writer per counter.
+ * @pre ::g_diag is single-writer per counter.
  * @post The matching counter is incremented (others untouched).
  * @post No other state changes.
  *
@@ -238,10 +238,10 @@ RA8_INTERNAL static unsigned int internal_endpoint_destroy(struct UX_SLAVE_ENDPO
 RA8_INTERNAL static void internal_count_change_state(unsigned long state)
 {
   if (state == (unsigned long)UX_DEVICE_ATTACHED) {
-    priv_diag.chg_state_attached++;
+    g_diag.chg_state_attached++;
   }
   if (state == (unsigned long)UX_DEVICE_CONFIGURED) {
-    priv_diag.chg_state_configured++;
+    g_diag.chg_state_configured++;
   }
 }
 
@@ -256,7 +256,7 @@ unsigned int
  * routes each to the matching ``internal_*`` helper.
  *
  * @param[in,out] dcd USBX DCD ownership block (currently unused; the
- *                    bridge keeps its own static state in ``priv_dcd``).
+ *                    bridge keeps its own static state in ``g_dcd``).
  * @param[in] function USBX ``UX_DCD_*`` selector (e.g.
  *                     ``UX_DCD_TRANSFER_REQUEST``).
  * @param[in,out] parameter Selector-dependent argument
@@ -272,7 +272,7 @@ unsigned int
  * @pre Bridge is past ``ux_dcd_ra8_usb_initialize`` (or the call returns
  *      ``UX_CONTROLLER_UNKNOWN``).
  * @pre Caller is the USBX device stack.
- * @post ``priv_dcd`` updated per the dispatched selector.
+ * @post ``g_dcd`` updated per the dispatched selector.
  * @post Wire-side state may have been mutated (CREATE / STALL).
  *
  * @note Runs on the USBX device task context; not ISR-safe.
@@ -281,7 +281,7 @@ unsigned int
 _ux_dcd_ra8_usb_function(struct UX_SLAVE_DCD_STRUCT* dcd, unsigned int function, void* parameter)
 {
   (void)dcd;
-  if (priv_dcd.state == k_ux_dcd_ra8_usb_state_uninit) {
+  if (g_dcd.state == k_ux_dcd_ra8_usb_state_uninit) {
     return UX_CONTROLLER_UNKNOWN;
   }
 
@@ -322,8 +322,8 @@ _ux_dcd_ra8_usb_function(struct UX_SLAVE_DCD_STRUCT* dcd, unsigned int function,
 
     case UX_DCD_CHANGE_STATE:
       internal_count_change_state((unsigned long)parameter);
-      priv_dcd.state = ((unsigned long)parameter != 0UL) ? k_ux_dcd_ra8_usb_state_active
-                                                         : k_ux_dcd_ra8_usb_state_ready;
+      g_dcd.state = ((unsigned long)parameter != 0UL) ? k_ux_dcd_ra8_usb_state_active
+                                                      : k_ux_dcd_ra8_usb_state_ready;
       return UX_SUCCESS;
 
     case UX_DCD_ENDPOINT_STATUS:

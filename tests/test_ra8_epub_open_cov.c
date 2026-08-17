@@ -468,7 +468,7 @@ RA8_INTERNAL static void internal_test_open_container_too_large(void)
   /* Build a container.xml that is > 4096 bytes uncompressed.
    * Prefix a large XML comment so the document remains parseable in
    * isolation, but the extracted size exceeds the static scratch. */
-  static char local_big_container[k_cov_pad_len + k_epub_container_overflow_pad];
+  static char s_big_container[k_cov_pad_len + k_epub_container_overflow_pad];
   size_t      pos = 0U;
 
   /* Opening comment with lots of padding. */
@@ -477,30 +477,30 @@ RA8_INTERNAL static void internal_test_open_container_too_large(void)
   const size_t      co_len            = strlen(k_comment_open);
   const size_t      cc_len            = strlen(k_comment_close);
 
-  memcpy(local_big_container + pos, k_comment_open, co_len);
+  memcpy(s_big_container + pos, k_comment_open, co_len);
   pos += co_len;
 
   /* Fill padding. */
   for (size_t i = 0U; i < (size_t)k_cov_pad_len; ++i) {
-    local_big_container[pos + i] = 'x';
+    s_big_container[pos + i] = 'x';
   }
   pos += (size_t)k_cov_pad_len;
 
-  memcpy(local_big_container + pos, k_comment_close, cc_len);
+  memcpy(s_big_container + pos, k_comment_close, cc_len);
   pos += cc_len;
 
   /* Append the real container body. */
   const size_t body_len = strlen(s_container_good);
-  memcpy(local_big_container + pos, s_container_good, body_len);
+  memcpy(s_big_container + pos, s_container_good, body_len);
   pos += body_len;
-  local_big_container[pos] = '\0';
+  s_big_container[pos] = '\0';
 
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
   TEST_ASSERT(mz_zip_writer_init_heap(&zip, 0U, (size_t)k_cov_zip_buf) == MZ_TRUE);
   TEST_ASSERT(mz_zip_writer_add_mem(&zip,
                                     "META-INF/container.xml",
-                                    local_big_container,
+                                    s_big_container,
                                     pos,
                                     MZ_DEFAULT_COMPRESSION) == MZ_TRUE);
   internal_finalise(&zip);

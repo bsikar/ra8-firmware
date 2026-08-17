@@ -38,7 +38,7 @@
 #include "ux_utility.h"
 
 /**
- * @var priv_setup_dispatch_count
+ * @var g_setup_dispatch_count
  * @brief Counter of SETUP packets fed into the chapter-9 dispatcher.
  *
  * @details Bisect probe. Non-zero confirms a SETUP-drain entry point
@@ -51,10 +51,10 @@
  *       in ::ux_dcd_ra8_usb_irq.
  * @since 0.1.0
  */
-volatile uint32_t priv_setup_dispatch_count = 0U;
+volatile uint32_t g_setup_dispatch_count = 0U;
 
 /**
- * @var priv_setup_packet_buffer
+ * @var g_setup_packet_buffer
  * @brief Wire-format bytes of the most recent SETUP packet drained from
  *        the controller, ready for JLink inspection.
  *
@@ -69,19 +69,19 @@ volatile uint32_t priv_setup_dispatch_count = 0U;
  * @note Single-writer (::priv_dispatch_setup).
  * @since 0.1.0
  */
-volatile uint8_t priv_setup_packet_buffer[8] = {};
+volatile uint8_t g_setup_packet_buffer[8] = {};
 
 /**
- * @var priv_setup_packet_count
- * @brief Total SETUP packets latched into ::priv_setup_packet_buffer.
+ * @var g_setup_packet_count
+ * @brief Total SETUP packets latched into ::g_setup_packet_buffer.
  *
  * @note Single-writer (::priv_dispatch_setup).
  * @since 0.1.0
  */
-volatile uint32_t priv_setup_packet_count = 0U;
+volatile uint32_t g_setup_packet_count = 0U;
 
 /**
- * @var priv_dispatch_skip_reason
+ * @var g_dispatch_skip_reason
  * @brief Last-iteration bitmask of why the SQMON dispatch path skipped.
  *
  * @details Bits:
@@ -97,7 +97,7 @@ volatile uint32_t priv_setup_packet_count = 0U;
  * @note Single-writer (::internal_handle_dvst, ::priv_dispatch_setup).
  * @since 0.1.0
  */
-volatile uint32_t priv_dispatch_skip_reason = 0U;
+volatile uint32_t g_dispatch_skip_reason = 0U;
 
 /**
  * @var g_ctrl_out_pending
@@ -159,7 +159,7 @@ volatile uint32_t g_ctrl_out_rx = 0U;
 volatile uint32_t g_ctrl_out_done = 0U;
 
 /**
- * @var priv_last_dispatched_setup_fp
+ * @var g_last_dispatched_setup_fp
  * @brief 64-bit fingerprint of the last SETUP packet dispatched from
  *        the ISR-driven SETUP drain in ::priv_handle_ctrt.
  *
@@ -176,7 +176,7 @@ volatile uint32_t g_ctrl_out_done = 0U;
  * @note Single-writer (::priv_handle_ctrt).
  * @since 0.1.0
  */
-volatile uint64_t priv_last_dispatched_setup_fp = 0U;
+volatile uint64_t g_last_dispatched_setup_fp = 0U;
 
 /**
  * @var g_dispatched_fp_ring
@@ -395,7 +395,7 @@ RA8_INTERNAL static bool internal_try_defer_ctrl_out(const ra8_usb_setup_t* setu
       g_ctrl_out_tr      = tr;
       g_ctrl_out_wlen    = setup->w_length;
       g_ctrl_out_pending = true;
-      (void)ra8_usb_dcp_out_arm(priv_dcd.speed);
+      (void)ra8_usb_dcp_out_arm(g_dcd.speed);
       return true;
     }
   }
@@ -406,7 +406,7 @@ RA8_INTERNAL static bool internal_try_defer_ctrl_out(const ra8_usb_setup_t* setu
  * @brief Push a decoded SETUP packet into the USBX chapter-9 dispatcher.
  *
  * @details Mirrors the SETUP into the JLink-readable probe buffer
- * (``priv_setup_packet_buffer``) so the bench can confirm the bridge drained
+ * (``g_setup_packet_buffer``) so the bench can confirm the bridge drained
  * USBREQ/USBVAL/USBINDX/USBLENG correctly even before USBX is fully
  * bound, then forwards the packet through ``_ux_system_slave``'s EP0
  * transfer-request buffer into ``_ux_device_stack_control_request_process``.
@@ -438,8 +438,8 @@ unsigned int priv_dispatch_setup(const ra8_usb_setup_t* setup)
    * device stack init, no class registration), the bench can confirm
    * via JLink that the chip latched a real SETUP and the bridge drained
    * USBREQ/USBVAL/USBINDX/USBLENG correctly. */
-  internal_pack_setup_le(priv_setup_packet_buffer, setup);
-  priv_setup_packet_count++;
+  internal_pack_setup_le(g_setup_packet_buffer, setup);
+  g_setup_packet_count++;
   priv_trace_event((uint8_t)k_dcd_trace_kind_setup, setup->b_request, setup->w_value);
 
   /* USBX must already be bound to forward the SETUP into the chapter-9
@@ -447,14 +447,14 @@ unsigned int priv_dispatch_setup(const ra8_usb_setup_t* setup)
    * we still recorded the packet above. Mark the skip reason so a JLink
    * read disambiguates "USBX not bound" from "drain failed". */
   if (_ux_system_slave == UX_NULL) {
-    priv_dispatch_skip_reason |= 0x10U;
+    g_dispatch_skip_reason |= 0x10U;
     return UX_ERROR;
   }
   UX_SLAVE_DEVICE*   device = &_ux_system_slave->ux_system_slave_device;
   UX_SLAVE_TRANSFER* tr =
     &device->ux_slave_device_control_endpoint.ux_slave_endpoint_transfer_request;
   if (tr == UX_NULL) {
-    priv_dispatch_skip_reason |= 0x20U;
+    g_dispatch_skip_reason |= 0x20U;
     return UX_ERROR;
   }
 
@@ -472,15 +472,15 @@ unsigned int priv_dispatch_setup(const ra8_usb_setup_t* setup)
    * the DCP BRDY ISR (see internal_try_defer_ctrl_out); IN / no-data requests
    * fall through to the immediate chapter-9 dispatch below. */
   if (internal_try_defer_ctrl_out(setup, tr)) {
-    priv_dispatch_skip_reason |= (uint32_t)k_ra8_usb_skip_process_ok;
+    g_dispatch_skip_reason |= (uint32_t)k_ra8_usb_skip_process_ok;
     return UX_SUCCESS;
   }
 
   const unsigned int rc = _ux_device_stack_control_request_process(tr);
   if (rc != UX_SUCCESS) {
-    priv_dispatch_skip_reason |= 0x08U;
+    g_dispatch_skip_reason |= 0x08U;
   } else {
-    priv_dispatch_skip_reason |= (uint32_t)k_ra8_usb_skip_process_ok;
+    g_dispatch_skip_reason |= (uint32_t)k_ra8_usb_skip_process_ok;
   }
   return rc;
 }
@@ -503,7 +503,7 @@ unsigned int priv_dispatch_setup(const ra8_usb_setup_t* setup)
  *
  * @pre Caller has verified VALID is observed and the fingerprint is new.
  * @pre Controller register block matches ``speed``.
- * @post ``priv_last_dispatched_setup_fp`` updated.
+ * @post ``g_last_dispatched_setup_fp`` updated.
  * @post CCPL pulsed for no-data H2D control transfers.
  *
  * @note ISR-callback context; must not block.
@@ -516,8 +516,8 @@ RA8_INTERNAL static void internal_ctrt_dispatch_fresh_setup(ra8_usb_speed_t spee
   if (ra8_usb_read_setup_unconditional(speed, &setup) != k_ra8_ok) {
     return;
   }
-  priv_setup_dispatch_count++;
-  priv_last_dispatched_setup_fp                  = fingerprint;
+  g_setup_dispatch_count++;
+  g_last_dispatched_setup_fp                     = fingerprint;
   g_dispatched_fp_ring[g_dispatched_fp_ring_idx] = fingerprint;
   g_dispatched_fp_ring_idx = (uint8_t)((g_dispatched_fp_ring_idx + 1U) & 0x03U);
 
@@ -619,7 +619,7 @@ RA8_INTERNAL static void internal_ctrt_handle_valid(ra8_usb_speed_t speed)
 
   /* Dispatch every observed SETUP, including a host retransmit of
    * byte-identical bytes after a missed response window. The previous
-   * `fingerprint != priv_last_dispatched_setup_fp` skip dropped exactly
+   * `fingerprint != g_last_dispatched_setup_fp` skip dropped exactly
    * those retransmits and -- with the VALID clear also skipped -- left
    * the controller wedged. The early VALID clear above is the real
    * dedup; the fingerprint is now recorded for diagnostics only. */

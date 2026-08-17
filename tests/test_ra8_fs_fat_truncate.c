@@ -319,7 +319,7 @@ RA8_INTERNAL static void internal_write_file(ra8_fs_mount_t* h, const char* name
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, name, k_ra8_fs_mode_write, &f));
-  static uint8_t buf[k_ftr_block_size];
+  static uint8_t s_buf[k_ftr_block_size];
   uint32_t       done = 0U;
   while (done < len) {
     uint32_t n = len - done;
@@ -327,9 +327,9 @@ RA8_INTERNAL static void internal_write_file(ra8_fs_mount_t* h, const char* name
       n = (uint32_t)k_ftr_block_size;
     }
     for (uint32_t i = 0U; i < n; i++) {
-      buf[i] = internal_ftr_byte_at(done + i);
+      s_buf[i] = internal_ftr_byte_at(done + i);
     }
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, buf, n));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_buf, n));
     done += n;
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
@@ -389,7 +389,7 @@ RA8_INTERNAL static void internal_expect_pattern_then_zero(ra8_fs_mount_t* h,
   uint64_t size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
   TEST_ASSERT_EQ(total, size);
-  static uint8_t buf[k_ftr_block_size];
+  static uint8_t s_buf[k_ftr_block_size];
   uint32_t       pos = 0U;
   while (pos < total) {
     uint32_t want = total - pos;
@@ -397,9 +397,9 @@ RA8_INTERNAL static void internal_expect_pattern_then_zero(ra8_fs_mount_t* h,
       want = (uint32_t)k_ftr_block_size;
     }
     uint32_t got = 0U;
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, buf, want, &got));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_buf, want, &got));
     TEST_ASSERT_EQ(want, got);
-    internal_expect_span(buf, got, pos, pat_end);
+    internal_expect_span(s_buf, got, pos, pat_end);
     pos += got;
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));

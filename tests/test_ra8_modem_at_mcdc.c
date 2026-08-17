@@ -333,14 +333,14 @@ static void internal_test_mcdc_register_urc_prefix_len(void)
 
   /* V3: oversize prefix -> invalid_size (C2=T). The URC max prefix len
    * is enum-bound; build a string longer than the cap. */
-  static char big_prefix[k_mcdc_prefix_too_big + 1U];
+  static char s_big_prefix[k_mcdc_prefix_too_big + 1U];
   for (uint16_t i = 0U; i < (uint16_t)k_mcdc_prefix_too_big; ++i) {
-    big_prefix[i] = 'A';
+    s_big_prefix[i] = 'A';
   }
-  big_prefix[k_mcdc_prefix_too_big] = '\0';
+  s_big_prefix[k_mcdc_prefix_too_big] = '\0';
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_size,
-    ra8_modem_at_register_unsolicited_handler(big_prefix, internal_mcdc_dummy_urc, nullptr));
+    ra8_modem_at_register_unsolicited_handler(s_big_prefix, internal_mcdc_dummy_urc, nullptr));
   TEST_END("mcdc register_urc prefix length OR");
 }
 

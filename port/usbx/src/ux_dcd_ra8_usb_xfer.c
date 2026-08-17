@@ -37,11 +37,11 @@
 #include "ux_system.h"
 #include "ux_utility.h"
 
-uint8_t priv_orphan_buf[k_ra8_usb_orphan_bytes]; /**< One held OUT packet. */
+uint8_t g_orphan_buf[k_ra8_usb_orphan_bytes]; /**< One held OUT packet. */
 
-uint16_t priv_orphan_len = 0U; /**< Held byte count; 0 = empty. */
+uint16_t g_orphan_len = 0U; /**< Held byte count; 0 = empty. */
 
-uint8_t priv_orphan_pipe = 0U; /**< Pipe the held packet is on. */
+uint8_t g_orphan_pipe = 0U; /**< Pipe the held packet is on. */
 
 /* -------------------------------------------------------------------------- */
 /* Internal helpers */
@@ -113,14 +113,14 @@ RA8_INTERNAL static unsigned int internal_ep0_transfer(struct UX_SLAVE_TRANSFER_
      * ::ra8_usb_dcp_out_arm / ::ra8_usb_dcp_out_read path driven from
      * ::priv_dispatch_setup and ::priv_handle_ctrl_out_data. */
     const uint16_t len = (uint16_t)tr->ux_slave_transfer_request_in_transfer_length;
-    if (ra8_usb_dcp_in_data(priv_dcd.speed, tr->ux_slave_transfer_request_data_pointer, len) !=
+    if (ra8_usb_dcp_in_data(g_dcd.speed, tr->ux_slave_transfer_request_data_pointer, len) !=
         k_ra8_ok) {
       return UX_TRANSFER_ERROR;
     }
     tr->ux_slave_transfer_request_actual_length = len;
     return UX_SUCCESS;
   }
-  if (ra8_usb_control_response(priv_dcd.speed, true) != k_ra8_ok) {
+  if (ra8_usb_control_response(g_dcd.speed, true) != k_ra8_ok) {
     return UX_TRANSFER_ERROR;
   }
   return UX_SUCCESS;
@@ -138,16 +138,16 @@ RA8_INTERNAL static unsigned int internal_ep0_transfer(struct UX_SLAVE_TRANSFER_
  * busy-spin on ``(n == 0)``.
  *
  * @param[in,out] tr USBX transfer request being awaited.
- * @param[in] pipe Pipe index used for ``priv_diag`` accounting (2 == loopback).
+ * @param[in] pipe Pipe index used for ``g_diag`` accounting (2 == loopback).
  *
  * @return The completion code posted by the IRQ, or UX_TRANSFER_ERROR
  *         on semaphore failure.
  * @retval UX_SUCCESS IRQ posted a successful completion.
  * @retval UX_TRANSFER_ERROR Timeout / abort / IRQ-side error.
  *
- * @pre ``tr`` is the stashed transfer at ``priv_dcd.pipes[pipe].xfer``.
+ * @pre ``tr`` is the stashed transfer at ``g_dcd.pipes[pipe].xfer``.
  * @pre Caller is on the USBX task context (not in IRQ).
- * @post ``priv_dcd.pipes[pipe].xfer`` is nullptr if the wait failed.
+ * @post ``g_dcd.pipes[pipe].xfer`` is nullptr if the wait failed.
  * @post ``completion_code`` reflects the IRQ-posted result.
  *
  * @note Compiled out under ``UX_DEVICE_STANDALONE``; not used in that build.
@@ -163,16 +163,16 @@ RA8_INTERNAL static unsigned int internal_ep0_transfer(struct UX_SLAVE_TRANSFER_
  * directive between the block and the signature).
  *
  * @param[in,out] tr USBX transfer request being awaited.
- * @param[in] pipe Pipe index used for ``priv_diag`` accounting (2 == loopback).
+ * @param[in] pipe Pipe index used for ``g_diag`` accounting (2 == loopback).
  *
  * @return The completion code posted by the IRQ, or UX_TRANSFER_ERROR on
  *         semaphore failure.
  * @retval UX_SUCCESS IRQ posted a successful completion.
  * @retval UX_TRANSFER_ERROR Timeout / abort / IRQ-side error.
  *
- * @pre ``tr`` is the stashed transfer at ``priv_dcd.pipes[pipe].xfer``.
+ * @pre ``tr`` is the stashed transfer at ``g_dcd.pipes[pipe].xfer``.
  * @pre Caller is on the USBX task context (not in IRQ).
- * @post ``priv_dcd.pipes[pipe].xfer`` is nullptr if the wait failed.
+ * @post ``g_dcd.pipes[pipe].xfer`` is nullptr if the wait failed.
  * @post ``completion_code`` reflects the IRQ-posted result.
  *
  * @note Compiled out under ``UX_DEVICE_STANDALONE``; not used in that build.
@@ -186,16 +186,16 @@ RA8_INTERNAL static unsigned int internal_wait_completion(struct UX_SLAVE_TRANSF
     timeout = TX_WAIT_FOREVER;
   }
   if (pipe == 2U) {
-    priv_diag.xfer_req_pipe2_block++;
+    g_diag.xfer_req_pipe2_block++;
   }
   UINT sem_status = tx_semaphore_get(&tr->ux_slave_transfer_request_semaphore, timeout);
   if (pipe == 2U) {
-    priv_diag.xfer_req_pipe2_woken++;
+    g_diag.xfer_req_pipe2_woken++;
   }
   if (sem_status != TX_SUCCESS) {
     /* Timeout / aborted: drop the pipe slot so a stale stash cannot
      * cause the IRQ path to complete a now-defunct request. */
-    priv_dcd.pipes[pipe].xfer                     = nullptr;
+    g_dcd.pipes[pipe].xfer                        = nullptr;
     tr->ux_slave_transfer_request_completion_code = UX_TRANSFER_ERROR;
     return UX_TRANSFER_ERROR;
   }
@@ -207,7 +207,7 @@ RA8_INTERNAL static unsigned int internal_wait_completion(struct UX_SLAVE_TRANSF
 /**
  * @brief Deliver a held orphan OUT packet to a freshly submitted transfer.
  *
- * @details Called by ::internal_submit_pipe when ::priv_orphan_len is
+ * @details Called by ::internal_submit_pipe when ::g_orphan_len is
  * non-zero for the target pipe. Copies the held packet (captured by
  * ::internal_irq_drain_orphan_out) into the transfer buffer as packet
  * one. If the held packet fills the request, or is itself a short
@@ -217,15 +217,15 @@ RA8_INTERNAL static unsigned int internal_wait_completion(struct UX_SLAVE_TRANSF
  * streams the remainder from the held byte offset.
  *
  * @param[in,out] tr   USBX transfer request, already stashed on the pipe.
- * @param[in]     pipe Pipe index (1..max_pipes-1); equals ::priv_orphan_pipe.
+ * @param[in]     pipe Pipe index (1..max_pipes-1); equals ::g_orphan_pipe.
  *
  * @return USBX result code.
  * @retval UX_SUCCESS        Held packet delivered (transfer complete or armed).
  * @retval UX_TRANSFER_ERROR Re-arm of the OUT pipe failed.
  *
- * @pre ``priv_orphan_len != 0`` and ``priv_orphan_pipe == pipe``.
- * @pre Task context; the caller stashed ``tr`` at ``priv_dcd.pipes[pipe].xfer``.
- * @post ``priv_orphan_len == 0`` -- the held packet was consumed.
+ * @pre ``g_orphan_len != 0`` and ``g_orphan_pipe == pipe``.
+ * @pre Task context; the caller stashed ``tr`` at ``g_dcd.pipes[pipe].xfer``.
+ * @post ``g_orphan_len == 0`` -- the held packet was consumed.
  * @post On a completed transfer the semaphore is posted and the stash cleared.
  *
  * @note Task-context only; not ISR-safe.
@@ -235,12 +235,12 @@ RA8_INTERNAL static unsigned int internal_submit_consume_orphan(struct UX_SLAVE_
                                                                 uint8_t pipe)
 {
   const uint16_t req  = (uint16_t)tr->ux_slave_transfer_request_requested_length;
-  const uint16_t mps  = priv_dcd.pipes[pipe].max_pkt;
-  const uint16_t held = priv_orphan_len;
+  const uint16_t mps  = g_dcd.pipes[pipe].max_pkt;
+  const uint16_t held = g_orphan_len;
   const uint16_t n    = (held < req) ? held : req;
-  priv_trace_event((uint8_t)k_dcd_trace_kind_ouse, priv_orphan_buf[0], held);
-  (void)memcpy(tr->ux_slave_transfer_request_data_pointer, priv_orphan_buf, (size_t)n);
-  priv_orphan_len                             = 0U;
+  priv_trace_event((uint8_t)k_dcd_trace_kind_ouse, g_orphan_buf[0], held);
+  (void)memcpy(tr->ux_slave_transfer_request_data_pointer, g_orphan_buf, (size_t)n);
+  g_orphan_len                                = 0U;
   tr->ux_slave_transfer_request_actual_length = n;
 
   bool done = (n >= req);
@@ -249,15 +249,15 @@ RA8_INTERNAL static unsigned int internal_submit_consume_orphan(struct UX_SLAVE_
   }
   if (done) {
     tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
-    priv_dcd.pipes[pipe].xfer                     = nullptr;
+    g_dcd.pipes[pipe].xfer                        = nullptr;
 #ifndef UX_DEVICE_STANDALONE
     (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
 #endif
     return UX_SUCCESS;
   }
   /* Partial: more packets expected -- arm BUF for the streaming tail. */
-  if (ra8_usb_rearm_out_pipe(priv_dcd.speed, pipe) != k_ra8_ok) {
-    priv_dcd.pipes[pipe].xfer = nullptr;
+  if (ra8_usb_rearm_out_pipe(g_dcd.speed, pipe) != k_ra8_ok) {
+    g_dcd.pipes[pipe].xfer = nullptr;
     return UX_TRANSFER_ERROR;
   }
   return UX_SUCCESS;
@@ -337,10 +337,10 @@ RA8_INTERNAL static void internal_fifo_unlock(uint32_t primask)
  * @retval UX_SUCCESS        First chunk (and any ZLP) queued.
  * @retval UX_TRANSFER_ERROR Bridge rejected the queue; stash cleared.
  *
- * @pre ``priv_dcd.pipes[pipe].xfer == tr``.
+ * @pre ``g_dcd.pipes[pipe].xfer == tr``.
  * @pre Task (non-ISR) context.
  * @post On success ``actual_length`` holds the queued byte count.
- * @post On error ``priv_dcd.pipes[pipe].xfer`` is cleared.
+ * @post On error ``g_dcd.pipes[pipe].xfer`` is cleared.
  *
  * @note Task-context only; masks interrupts for the FIFO stage.
  * @since 0.1.0
@@ -349,15 +349,15 @@ RA8_INTERNAL static unsigned int internal_submit_in_pipe(struct UX_SLAVE_TRANSFE
                                                          uint8_t                          pipe)
 {
   const uint16_t total = (uint16_t)tr->ux_slave_transfer_request_requested_length;
-  const uint16_t mps   = priv_dcd.pipes[pipe].max_pkt;
+  const uint16_t mps   = g_dcd.pipes[pipe].max_pkt;
   const uint16_t chunk = (total > mps) ? mps : total;
   /* The ISR walk shares the CFIFO port; stage atomically (see
    * internal_fifo_lock). */
   const uint32_t primask = internal_fifo_lock();
-  if (ra8_usb_queue_in(priv_dcd.speed, pipe, tr->ux_slave_transfer_request_data_pointer, chunk) !=
+  if (ra8_usb_queue_in(g_dcd.speed, pipe, tr->ux_slave_transfer_request_data_pointer, chunk) !=
       k_ra8_ok) {
     internal_fifo_unlock(primask);
-    priv_dcd.pipes[pipe].xfer = nullptr;
+    g_dcd.pipes[pipe].xfer = nullptr;
     return UX_TRANSFER_ERROR;
   }
   tr->ux_slave_transfer_request_actual_length = chunk;
@@ -393,12 +393,12 @@ RA8_INTERNAL static unsigned int internal_submit_in_pipe(struct UX_SLAVE_TRANSFE
  *         bridge layer rejected the request.
  * @retval UX_SUCCESS Buffer queued (IN) or PIPECTR.PID == BUF (OUT).
  * @retval UX_TRANSFER_ERROR Bridge layer rejected the submission;
- *                           ``priv_dcd.pipes[pipe].xfer`` has been cleared.
+ *                           ``g_dcd.pipes[pipe].xfer`` has been cleared.
  *
- * @pre ``priv_dcd.pipes[pipe].xfer == tr`` (caller stashed the request).
+ * @pre ``g_dcd.pipes[pipe].xfer == tr`` (caller stashed the request).
  * @pre ``pipe != 0`` (EP0 handled separately).
  *
- * @post On error, ``priv_dcd.pipes[pipe].xfer`` is cleared.
+ * @post On error, ``g_dcd.pipes[pipe].xfer`` is cleared.
  * @post On success, ``tr->ux_slave_transfer_request_actual_length`` is
  *       set for IN transfers; OUT pipes have PIPECTR.PID == BUF.
  *
@@ -417,16 +417,16 @@ internal_submit_pipe(struct UX_SLAVE_TRANSFER_STRUCT* tr, uint8_t pipe, uint8_t 
    * stashes such a packet; the bulk-OUT wire is serial so it belongs to
    * THIS transfer -- deliver it as packet one. Nested ifs keep the test
    * out of the MC/DC inventory. */
-  if (priv_orphan_len != 0U) {
-    if (priv_orphan_pipe == pipe) {
+  if (g_orphan_len != 0U) {
+    if (g_orphan_pipe == pipe) {
       return internal_submit_consume_orphan(tr, pipe);
     }
   }
   /* No held packet: move PID from NAK to BUF so the controller ACKs the
    * host's first OUT token. internal_irq_complete_out parks the pipe
    * back at NAK once the transfer drains. HUM Ch 36.2.27 PIPECTR.PID. */
-  if (ra8_usb_rearm_out_pipe(priv_dcd.speed, pipe) != k_ra8_ok) {
-    priv_dcd.pipes[pipe].xfer = nullptr;
+  if (ra8_usb_rearm_out_pipe(g_dcd.speed, pipe) != k_ra8_ok) {
+    g_dcd.pipes[pipe].xfer = nullptr;
     return UX_TRANSFER_ERROR;
   }
   return UX_SUCCESS;
@@ -456,21 +456,21 @@ internal_submit_pipe(struct UX_SLAVE_TRANSFER_STRUCT* tr, uint8_t pipe, uint8_t 
  *
  * @pre Bridge is past ``ux_dcd_ra8_usb_initialize``.
  * @pre Caller is the USBX device-stack dispatcher (task context).
- * @post For non-EP0 IN transfers, ``priv_dcd.pipes[pipe]`` holds the active stash.
- * @post ``priv_diag`` counters reflect the dispatch.
+ * @post For non-EP0 IN transfers, ``g_dcd.pipes[pipe]`` holds the active stash.
+ * @post ``g_diag`` counters reflect the dispatch.
  *
  * @note Not ISR-safe; runs on the USBX device task context.
  * @since 0.1.0
  */
 unsigned int priv_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* tr)
 {
-  priv_diag.xfer_req_total++;
+  g_diag.xfer_req_total++;
   if (tr == nullptr) {
-    priv_diag.xfer_req_null_arg++;
+    g_diag.xfer_req_null_arg++;
     return UX_TRANSFER_ERROR;
   }
   if (tr->ux_slave_transfer_request_endpoint == nullptr) {
-    priv_diag.xfer_req_null_arg++;
+    g_diag.xfer_req_null_arg++;
     return UX_TRANSFER_ERROR;
   }
 
@@ -478,13 +478,13 @@ unsigned int priv_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* tr)
   const uint8_t      ep_addr = (uint8_t)ep->ux_slave_endpoint_descriptor.bEndpointAddress;
   const uint8_t      pipe    = priv_ep_to_pipe(ep_addr);
   if (pipe >= (uint8_t)k_ux_dcd_ra8_usb_max_pipes) {
-    priv_diag.xfer_req_bad_pipe++;
+    g_diag.xfer_req_bad_pipe++;
     return UX_TRANSFER_ERROR;
   }
   if (pipe == 2U) {
-    priv_diag.xfer_req_pipe2_in++;
+    g_diag.xfer_req_pipe2_in++;
     if ((ep_addr & (uint8_t)k_ra8_usb_ep_addr_dir_in_bit) == 0U) {
-      priv_diag.xfer_req_pipe2_out_dir++;
+      g_diag.xfer_req_pipe2_out_dir++;
     }
   }
 
@@ -493,13 +493,13 @@ unsigned int priv_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* tr)
   }
 
   /* Stash the active transfer so the IRQ path can post completion. */
-  priv_dcd.pipes[pipe].xfer    = tr;
-  priv_dcd.pipes[pipe].ep_addr = ep_addr;
-  priv_dcd.pipes[pipe].dir_in =
+  g_dcd.pipes[pipe].xfer    = tr;
+  g_dcd.pipes[pipe].ep_addr = ep_addr;
+  g_dcd.pipes[pipe].dir_in =
     (uint8_t)((ep_addr & (uint8_t)k_ra8_usb_ep_addr_dir_in_bit) != 0U ? 1U : 0U);
-  priv_dcd.pipes[pipe].max_pkt = (uint16_t)ep->ux_slave_endpoint_descriptor.wMaxPacketSize;
+  g_dcd.pipes[pipe].max_pkt = (uint16_t)ep->ux_slave_endpoint_descriptor.wMaxPacketSize;
   if (pipe == 2U) {
-    priv_diag.xfer_req_pipe2_stashed++;
+    g_diag.xfer_req_pipe2_stashed++;
   }
 
   const unsigned int submit = internal_submit_pipe(tr, pipe, ep_addr);

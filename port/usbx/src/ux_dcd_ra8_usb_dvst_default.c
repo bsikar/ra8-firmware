@@ -44,7 +44,7 @@
  *
  * @details Bisect probe. After plug-in macOS issues a bus reset every
  * ~10 ms until SETUP succeeds. If this counter grows but
- * ::priv_setup_packet_count stays at 0, the re-arm is firing but the IP
+ * ::g_setup_packet_count stays at 0, the re-arm is firing but the IP
  * is still failing to latch SETUP -- look at PIPECFG / DCPMAXP via
  * JLink. If the counter never grows, the DVST -> Default branch
  * isn't being taken (check ::priv_dvst_state_history).
@@ -136,7 +136,7 @@ volatile uint16_t priv_cfifosel_after_rearm = 0U;
 volatile uint16_t priv_dcpctr_pre_rearm = 0U;
 
 /**
- * @var priv_setup_token_observed
+ * @var g_setup_token_observed
  * @brief Counter incremented every time the IRQ snapshot proves the
  *        device-side controller latched a SETUP token from the host.
  *
@@ -159,7 +159,7 @@ volatile uint16_t priv_dcpctr_pre_rearm = 0U;
  * @note Single-writer (::ux_dcd_ra8_usb_irq + ::internal_handle_dvst).
  * @since 0.1.0
  */
-volatile uint32_t priv_setup_token_observed = 0U;
+volatile uint32_t g_setup_token_observed = 0U;
 
 /**
  * @var s_prev_dcpctr_sqmon
@@ -185,7 +185,7 @@ static volatile uint16_t s_prev_dcpctr_sqmon = 0U;
  * @brief Count of SQMON-driven dispatch attempts (regardless of outcome).
  *
  * @details Incremented on every Default-state DVST tick, before the
- * SQMON-driven SETUP drain. Pair with ::priv_setup_dispatch_count to see
+ * SQMON-driven SETUP drain. Pair with ::g_setup_dispatch_count to see
  * how many attempts produced a successful drain.
  *
  * @note Single-writer (::internal_handle_dvst).
@@ -335,7 +335,7 @@ typedef enum : uint16_t {
  * every SETUP. The four mirrors USBREQ/USBVAL/USBINDX/USBLENG
  * (HUM Ch 37.2.26..29 p 2090..2092) latch the wire-format SETUP and
  * PERSIST across the SIE's auto-clears. If any mirror is non-zero, copy
- * them into ``priv_setup_packet_buffer`` in USB 2.0 Ch 9.3 wire byte order.
+ * them into ``g_setup_packet_buffer`` in USB 2.0 Ch 9.3 wire byte order.
  *
  * @param[in] usbreq_live USBREQ snapshot.
  * @param[in] usbval_live USBVAL snapshot.
@@ -344,8 +344,8 @@ typedef enum : uint16_t {
  *
  * @pre Caller is on the ISR callback path in DVSQ=Default.
  * @pre All four arguments hold the live mirror values.
- * @post ``priv_setup_packet_buffer`` populated if any mirror is non-zero.
- * @post ``priv_setup_packet_count`` incremented in that case.
+ * @post ``g_setup_packet_buffer`` populated if any mirror is non-zero.
+ * @post ``g_setup_packet_count`` incremented in that case.
  *
  * @note ISR-callback context; must not block.
  * @since 0.1.0
@@ -359,19 +359,19 @@ RA8_INTERNAL static void internal_dvst_capture_setup_mirror(uint16_t usbreq_live
   if (!any_nonzero) {
     return;
   }
-  priv_setup_packet_buffer[k_setup_idx_bmrt] = (uint8_t)(usbreq_live & k_setup_byte_mask);
-  priv_setup_packet_buffer[k_setup_idx_brq] =
+  g_setup_packet_buffer[k_setup_idx_bmrt] = (uint8_t)(usbreq_live & k_setup_byte_mask);
+  g_setup_packet_buffer[k_setup_idx_brq] =
     (uint8_t)((usbreq_live >> k_setup_byte_shift) & k_setup_byte_mask);
-  priv_setup_packet_buffer[k_setup_idx_val_lo] = (uint8_t)(usbval_live & k_setup_byte_mask);
-  priv_setup_packet_buffer[k_setup_idx_val_hi] =
+  g_setup_packet_buffer[k_setup_idx_val_lo] = (uint8_t)(usbval_live & k_setup_byte_mask);
+  g_setup_packet_buffer[k_setup_idx_val_hi] =
     (uint8_t)((usbval_live >> k_setup_byte_shift) & k_setup_byte_mask);
-  priv_setup_packet_buffer[k_setup_idx_idx_lo] = (uint8_t)(usbindx_live & k_setup_byte_mask);
-  priv_setup_packet_buffer[k_setup_idx_idx_hi] =
+  g_setup_packet_buffer[k_setup_idx_idx_lo] = (uint8_t)(usbindx_live & k_setup_byte_mask);
+  g_setup_packet_buffer[k_setup_idx_idx_hi] =
     (uint8_t)((usbindx_live >> k_setup_byte_shift) & k_setup_byte_mask);
-  priv_setup_packet_buffer[k_setup_idx_len_lo] = (uint8_t)(usbleng_live & k_setup_byte_mask);
-  priv_setup_packet_buffer[k_setup_idx_len_hi] =
+  g_setup_packet_buffer[k_setup_idx_len_lo] = (uint8_t)(usbleng_live & k_setup_byte_mask);
+  g_setup_packet_buffer[k_setup_idx_len_hi] =
     (uint8_t)((usbleng_live >> k_setup_byte_shift) & k_setup_byte_mask);
-  priv_setup_packet_count++;
+  g_setup_packet_count++;
   if (priv_usbreq_first_nonzero == 0U) {
     priv_usbreq_first_nonzero = usbreq_live;
   }
@@ -409,7 +409,7 @@ RA8_INTERNAL static void internal_dvst_dispatch_if_new(volatile r_usb_regs_t* re
 {
   if (usbreq_live == priv_last_dispatched_usbreq) {
     /* USBREQ unchanged since last dispatch: do not re-fire. */
-    priv_dispatch_skip_reason |= (uint32_t)k_ra8_usb_skip_usbreq_unchanged;
+    g_dispatch_skip_reason |= (uint32_t)k_ra8_usb_skip_usbreq_unchanged;
     return;
   }
   ra8_usb_setup_t setup = {};
@@ -419,8 +419,8 @@ RA8_INTERNAL static void internal_dvst_dispatch_if_new(volatile r_usb_regs_t* re
   setup.w_index         = usbindx_live;
   setup.w_length        = usbleng_live;
 
-  priv_setup_token_observed++;
-  priv_setup_dispatch_count++;
+  g_setup_token_observed++;
+  g_setup_dispatch_count++;
   priv_unconditional_dispatch_count++;
   (void)priv_dispatch_setup(&setup);
   priv_last_dispatched_usbreq = usbreq_live;

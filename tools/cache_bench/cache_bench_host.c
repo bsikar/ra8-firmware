@@ -73,13 +73,13 @@ internal_sink_write(void* ctx, const uint8_t* data, size_t length, size_t* out_w
 
 void cb_host_standard_sinks(cb_sink_t* output, cb_sink_t* error)
 {
-  static int output_fd = STDOUT_FILENO;
-  static int error_fd  = STDERR_FILENO;
+  static int s_output_fd = STDOUT_FILENO;
+  static int s_error_fd  = STDERR_FILENO;
   if (output != nullptr) {
-    *output = (cb_sink_t){.write = internal_sink_write, .ctx = &output_fd};
+    *output = (cb_sink_t){.write = internal_sink_write, .ctx = &s_output_fd};
   }
   if (error != nullptr) {
-    *error = (cb_sink_t){.write = internal_sink_write, .ctx = &error_fd};
+    *error = (cb_sink_t){.write = internal_sink_write, .ctx = &s_error_fd};
   }
 }
 
