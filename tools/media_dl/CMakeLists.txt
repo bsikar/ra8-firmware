@@ -345,6 +345,28 @@ target_compile_options(test_media_dl_rabook_verify PRIVATE -Wall -Wextra -Werror
 target_link_libraries(test_media_dl_rabook_verify PRIVATE mdl_rabook_runtime)
 ra8_webp_attach(test_media_dl_rabook_verify ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 add_test(NAME test_media_dl_rabook_verify COMMAND test_media_dl_rabook_verify)
+add_executable(
+  test_media_dl_verify_stream tests/test_media_dl_verify_stream.c ${MDL_TEST_COMMON_SRC}
+)
+target_include_directories(
+  test_media_dl_verify_stream
+  PRIVATE ${MDL_PUBLIC_INC}
+          ${CMAKE_CURRENT_SOURCE_DIR}/src
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
+          ${FW}/ra8_rabook_compile/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+          ${MDL_JOF_INC}
+          ${MDL_RABOOK_READER_INC}
+          ${MDL_FS_INC}
+)
+target_compile_definitions(
+  test_media_dl_verify_stream PRIVATE _GNU_SOURCE MINIZ_NO_TIME RA8_OFF_TARGET
+)
+target_compile_options(test_media_dl_verify_stream PRIVATE -Wall -Wextra -Werror)
+target_link_libraries(test_media_dl_verify_stream PRIVATE mdl_rabook_runtime)
+ra8_webp_attach(test_media_dl_verify_stream ${CMAKE_CURRENT_SOURCE_DIR}/../..)
+add_test(NAME test_media_dl_verify_stream COMMAND test_media_dl_verify_stream)
 mdl_add_unit_test(test_media_dl_export_fault tests/test_media_dl_export_fault.c)
 target_sources(
   test_media_dl_export_fault

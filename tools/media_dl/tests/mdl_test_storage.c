@@ -56,6 +56,32 @@ mdl_storage_t* mdl_test_storage_get(void)
   return &s_test_storage;
 }
 
+ra8_err_t mdl_test_storage_publish(const char* path, const uint8_t* bytes, uint32_t length)
+{
+  mdl_storage_t* storage = mdl_test_storage_get();
+  fw_fs_stat_t   stat    = {};
+  ra8_err_t      error   = fw_fs_stat(&storage->fs->names, path, &stat);
+  if ((error == k_ra8_ok) && stat.exists) {
+    error = fw_fs_unlink(&storage->fs->names, path);
+  }
+  mdl_storage_txn_t writer = {};
+  if (error == k_ra8_ok) {
+    error = mdl_storage_txn_begin_new(&writer, storage, path);
+  }
+  if (error == k_ra8_ok) {
+    error = mdl_storage_txn_write(&writer, bytes, length);
+  }
+  if (error == k_ra8_ok) {
+    error = mdl_storage_txn_commit(&writer);
+  } else if (writer.transaction.active) {
+    const ra8_err_t aborted = mdl_storage_txn_abort(&writer);
+    if (aborted != k_ra8_ok) {
+      error = aborted;
+    }
+  }
+  return error;
+}
+
 ra8_err_t mdl_test_storage_deinit(void)
 {
   return fw_fs_posix_deinit(&s_test_posix);
