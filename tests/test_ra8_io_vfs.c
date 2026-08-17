@@ -782,7 +782,7 @@ RA8_INTERNAL static void internal_test_mock_file_table_limit(void)
   TEST_ASSERT_NULL(overflow);
   TEST_ASSERT_EQ(k_ra8_io_vfs_max_files, s_mock_stream.opens);
 
-  internal_expect_foreign_facade_rejected((ra8_io_vfs_file_t*)(void*)s_foreign_storage);
+  internal_expect_foreign_facade_rejected((ra8_io_vfs_file_t*)s_foreign_storage);
 
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_io_vfs_max_files; ++i) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_file_close(files[i]));
