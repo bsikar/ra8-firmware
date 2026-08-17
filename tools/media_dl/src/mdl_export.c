@@ -180,6 +180,48 @@ RA8_INTERNAL static void internal_sort_pages(char names[][k_name_max], size_t co
 }
 
 /**
+ * @brief Open the chapter directory cursor into workspace-backed state.
+ * @details Queries filesystem capabilities, reserves the directory cursor's
+ *          backend workspace, and opens the cursor at @p dir.
+ * @param[in,out] storage Bound portable filesystem.
+ * @param[in] dir Canonical chapter directory.
+ * @param[in,out] ws Export workspace providing the directory backend state.
+ * @param[out] directory Receives the opened directory cursor.
+ * @return Capability-query, workspace, or open status.
+ * @retval k_ra8_ok The directory cursor is open and ready to enumerate.
+ * @retval k_ra8_err_invalid_size The directory workspace reservation failed.
+ * @retval other A capability query or directory open failure propagated.
+ * @pre @p storage, @p dir, @p ws, and @p directory are non-NULL.
+ * @post On success @p directory->is_open is true.
+ * @note Not thread-safe against concurrent directory mutation.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_list_pages_open_dir(mdl_storage_t*          storage,
+                                                           const char*             dir,
+                                                           mdl_export_workspace_t* ws,
+                                                           fw_fs_dir_t*            directory)
+{
+  fw_fs_caps_t caps          = {};
+  ra8_err_t    err           = fw_fs_get_caps(storage->fs, &caps);
+  void*        dir_workspace = nullptr;
+  if (err == k_ra8_ok) {
+    dir_workspace =
+      mdl_export_workspace_take(ws, caps.directory_workspace_bytes, caps.directory_workspace_align);
+    if (dir_workspace == nullptr) {
+      err = k_ra8_err_invalid_size;
+    }
+  }
+  if (err == k_ra8_ok) {
+    err = fw_fs_dir_open(&storage->fs->names,
+                         dir,
+                         directory,
+                         dir_workspace,
+                         caps.directory_workspace_bytes);
+  }
+  return err;
+}
+
+/**
  * @brief List and sort regular chapter image entries through a portable cursor
  * @details Uses the injected directory cursor and caller arena, rejects
  *          symlink/nonregular qualifying entries, and closes before sorting.
@@ -206,27 +248,11 @@ RA8_INTERNAL static ra8_err_t internal_list_pages(mdl_storage_t*          storag
                                                   mdl_export_workspace_t* ws,
                                                   size_t*                 out_count)
 {
-  fw_fs_caps_t caps          = {};
-  ra8_err_t    err           = fw_fs_get_caps(storage->fs, &caps);
-  const size_t floor         = ws->used;
-  void*        dir_workspace = nullptr;
-  if (err == k_ra8_ok) {
-    dir_workspace =
-      mdl_export_workspace_take(ws, caps.directory_workspace_bytes, caps.directory_workspace_align);
-    if (dir_workspace == nullptr) {
-      err = k_ra8_err_invalid_size;
-    }
-  }
-  fw_fs_dir_t directory = {};
-  if (err == k_ra8_ok) {
-    err = fw_fs_dir_open(&storage->fs->names,
-                         dir,
-                         &directory,
-                         dir_workspace,
-                         caps.directory_workspace_bytes);
-  }
-  size_t count = 0U;
-  bool   entry = true;
+  const size_t floor     = ws->used;
+  fw_fs_dir_t  directory = {};
+  ra8_err_t    err       = internal_list_pages_open_dir(storage, dir, ws, &directory);
+  size_t       count     = 0U;
+  bool         entry     = true;
   while ((err == k_ra8_ok) && entry) {
     fw_fs_dirent_value_t value = {};
     err                        = fw_fs_dir_next(&directory, &value, &entry);
