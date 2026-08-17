@@ -119,7 +119,7 @@ def _repo_relative(path: str) -> str:
         return p[len(root) :]
     if "/work/" in p:
         return p.split("/work/", 1)[1]
-    m = re.search(r"(?:^|/)((?:libs|src|port|examples|tests)/.+)$", p)
+    m = re.search(r"(?:^|/)((?:libs|port|examples|tests)/.+)$", p)
     return m.group(1) if m else p
 
 
@@ -634,7 +634,6 @@ def is_deactivated_decision(rel_path: str, line: int, excerpt: str) -> tuple[boo
 
 # ---------------------------------------------------------------------------
 # Module-name extraction: libs/<group>/src/<module>.c -> <module>
-#                        src/<group>/<module>.c     -> <module>
 # ---------------------------------------------------------------------------
 def decision_snippet(excerpt: str, max_chars: int = 40) -> str:
     """Build a stable text-derived anchor fragment for a decision.

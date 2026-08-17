@@ -42,7 +42,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lint_targets import is_build_output_path
 
-ROOTS = ("libs", "src", "tests", "examples", "port", "tools", "apps")
+ROOTS = ("libs", "tests", "examples", "port", "tools", "apps")
 EXTS = (".c", ".h", ".cpp", ".hpp")
 EXEMPT_DIRS = ("/third_party/", "/ra8_fonts/")
 ALLOWED = {"interrupt", "cmse_nonsecure_entry", "cmse_nonsecure_call"}

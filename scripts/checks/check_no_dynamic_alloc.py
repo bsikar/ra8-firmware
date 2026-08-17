@@ -210,9 +210,6 @@ def _firmware_scan_dirs() -> list[pathlib.Path]:
             for entry in sorted(libs.iterdir())
             if entry.is_dir() and entry.name.startswith("ra8_")
         )
-    src = REPO_ROOT / "src"
-    if src.is_dir():
-        out.append(src)
     c6_port = REPO_ROOT / "port" / "esp32_c6"
     if c6_port.is_dir():
         out.append(c6_port)

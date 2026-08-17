@@ -4,7 +4,7 @@
  *
  * @details
  * This test executable exists solely to ensure every first-party
- * source file in libs/ and src/secure_app/ is compiled exactly once
+ * source file in libs/ is compiled exactly once
  * with the active coverage instrumentation flags. The per-test
  * executables in this directory each link against the same
  * `ra8_core_hal` OBJECT library, so the .gcno / .profraw files

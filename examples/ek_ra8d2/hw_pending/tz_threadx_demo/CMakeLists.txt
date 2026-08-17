@@ -36,7 +36,6 @@ ra8_add_app(
 set(_ra8_tz_implib ${CMAKE_CURRENT_BINARY_DIR}/tz_threadx_demo_cmse_import.o)
 target_compile_definitions(tz_threadx_demo.elf PRIVATE RA8_TRUSTZONE_ENABLE RA8_APP_UART_LOG)
 target_compile_options(tz_threadx_demo.elf PRIVATE -mcmse -fshort-enums -ffreestanding)
-target_include_directories(tz_threadx_demo.elf PRIVATE ${RA8_REPO_ROOT}/src/secure_app)
 
 target_link_options(
   tz_threadx_demo.elf

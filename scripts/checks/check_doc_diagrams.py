@@ -66,7 +66,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 #: Roots scanned for authored diagram blocks.  Mirrors the CLAUDE.md scope
 #: note: every first-party file, not just the firmware.
-SCAN_ROOTS = ("docs", "libs", "src", "port", "examples", "tools", "apps", "tests")
+SCAN_ROOTS = ("docs", "libs", "port", "examples", "tools", "apps", "tests")
 
 #: Suffixes that can carry a doxygen comment or a doxygen-rendered page.
 SCAN_SUFFIXES = (".md", ".c", ".h", ".cpp", ".hpp", ".dox")

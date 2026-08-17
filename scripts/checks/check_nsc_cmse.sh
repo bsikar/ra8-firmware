@@ -63,8 +63,6 @@ incs=()
 for d in libs/*/inc; do
   [ -d "$d" ] && incs+=("-I$d")
 done
-[ -d src/secure_app ] && incs+=("-Isrc/secure_app")
-[ -d src/secure_app/inc ] && incs+=("-Isrc/secure_app/inc")
 for d in port/threadx/inc port/usbx/inc port/threadx port/usbx libs/third_party; do
   [ -d "$d" ] && incs+=("-I$d")
 done

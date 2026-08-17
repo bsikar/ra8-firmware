@@ -19,7 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: First-party roots.  Mirrors the CLAUDE.md "Scope" note: every first-party
 #: file, not just the firmware.  ``tools/`` and ``tests/`` are in deliberately
 #: -- leaving them out is how a whole host emulator went ungated before.
-SCAN_ROOTS = ("libs", "src", "port", "examples", "tools", "apps", "tests")
+SCAN_ROOTS = ("libs", "port", "examples", "tools", "apps", "tests")
 
 #: Path fragments that mark non-first-party or generated trees.
 EXCLUDED_PARTS = frozenset(

@@ -109,11 +109,11 @@ function(ra8_add_test name)
             ${FW_ROOT}/libs/third_party/miniz
             ${FW_ROOT}/libs/third_party/stb
             ${FW_ROOT}/libs/third_party/xz_embedded
-            ${FW_ROOT}/src/secure_app
-            ${FW_ROOT}/src/secure_app/inc
+            ${FW_ROOT}/libs/ra8_secure_app/inc
             # Per-module src/ for MC/DC test access (see CLAUDE.md).
             ${FW_ROOT}/libs/ra8_core/src
             ${FW_ROOT}/libs/ra8_hal/src
+            ${FW_ROOT}/libs/ra8_secure_app/src
             ${FW_ROOT}/libs/ra8_jpeg/src
             ${FW_ROOT}/libs/ra8_net_pal/src
             ${FW_ROOT}/libs/ra8_modem_at/src

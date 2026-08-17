@@ -851,6 +851,11 @@ libs/ra8_reflow/v2/ra8_reflow_v2.cpp	UNMEASURED	platform-cross-only
 libs/ra8_sdfont/src/ra8_sdfont.c	UNMEASURED	platform-cross-only
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi.c	MEASURED	321	323	157	160
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	MEASURED	326	343	186	210
+libs/ra8_secure_app/src/key_import.c	MEASURED	61	65	30	38
+libs/ra8_secure_app/src/key_vault.c	MEASURED	122	122	52	52
+libs/ra8_secure_app/src/ota_commit.c	MEASURED	27	27	12	12
+libs/ra8_secure_app/src/sec_cmac.c	MEASURED	138	139	87	88
+libs/ra8_secure_app/src/secure_trng.c	MEASURED	21	21	12	12
 libs/ra8_tls/src/ra8_tls.c	MEASURED	139	148	87	96
 libs/ra8_touch_cal/src/ra8_touch_cal.c	MEASURED	217	217	94	96
 libs/ra8_tz_secure_boot/src/ra8_tz_secure_boot.c	MEASURED	107	116	35	44
@@ -921,11 +926,6 @@ port/usbx/src/ux_dcd_ra8_usb_setup.c	UNMEASURED	platform-cross-only
 port/usbx/src/ux_dcd_ra8_usb_xfer.c	UNMEASURED	platform-cross-only
 port/usbx/src/ux_device_class_storage_inquiry.c	UNMEASURED	platform-cross-only
 port/usbx/src/ux_hcd_ra8_usb.c	UNMEASURED	platform-cross-only
-src/secure_app/key_import.c	MEASURED	61	65	30	38
-src/secure_app/key_vault.c	MEASURED	122	122	52	52
-src/secure_app/ota_commit.c	MEASURED	27	27	12	12
-src/secure_app/sec_cmac.c	MEASURED	138	139	87	88
-src/secure_app/secure_trng.c	MEASURED	21	21	12	12
 tools/cache_bench/cache_bench.c	UNMEASURED	hosted-no-coverage-build
 tools/cache_bench/cache_bench_host.c	UNMEASURED	hosted-no-coverage-build
 tools/cache_bench/cache_bench_io.c	UNMEASURED	hosted-no-coverage-build

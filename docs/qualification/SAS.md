@@ -92,7 +92,7 @@ has its first complete revision.
 
 | Characteristic                        | Value                              | Source                       |
 |---------------------------------------|------------------------------------|------------------------------|
-| First-party C / C++ source files      | 143 (under `libs/` + `src/`)       | QUALIFICATION_ROADMAP.md S2  |
+| First-party C / C++ source files      | 143 (under `libs/`)                | QUALIFICATION_ROADMAP.md S2  |
 | Host test files                       | **190** (190/190 PASS)             | `ls tests/test_*.c \| wc -l` |
 | Test-to-source ratio                  | ~1.33 : 1                          | derived                      |
 | EVM-tier applications                 | 26                                 | `ls examples/ek_ra8d2/`      |

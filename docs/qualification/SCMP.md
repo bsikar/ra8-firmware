@@ -26,9 +26,7 @@ truth.
 
 | Path                              | Description                                                  |
 |-----------------------------------|--------------------------------------------------------------|
-| `src/`                            | Shared internals (no boot code, no `main`).                  |
-| `src/inc/`                        | Internal headers shared between translation units.           |
-| `src/secure_app/`                 | Ring 5 secure-side substrate (key vault, secure-only logic). |
+| `libs/ra8_secure_app/`             | Ring 5 secure-side substrate (key vault, secure-only logic). |
 | `libs/ra8_core/`                   | `ra8_err`, `ra8_check`, `ra8_log`, `ra8_assert`, helpers.        |
 | `libs/ra8_hal/`                    | Peripheral drivers and register header files.                |
 | `libs/ra8_nsc/`                    | TrustZone non-secure-callable veneers.                       |

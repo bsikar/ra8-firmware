@@ -37,7 +37,7 @@ dereferences peripheral addresses. Drivers build on top of a
 register header plus the utilities in `ra8_core` (error codes,
 pin validator, logging, IRQ-masked critical sections).
 
-## Source-tree layout: `examples/<app>/` vs `src/` vs `libs/`
+## Source-tree layout: `examples/<app>/` vs `libs/`
 
 Three distinct roles, often confused:
 
@@ -53,14 +53,13 @@ examples/<app>/      <- one standalone example application per dir
   CMakeLists.txt       per-app cmake target (consumed by top-level + standalone)
   Makefile             thin wrapper around cmake + scripts/ helpers
 
-src/                 <- shared internals (everyone uses these)
-  inc/                 Internal headers shared between TUs
-  secure_app/          Ring 5 secure-side code (key vault, secure veneer table)
-
 libs/                <- the standard library (everyone links it)
   ra8_core/             err, log, time, pin validator, register guards (no HW deps)
   ra8_hal/              every peripheral driver + register header
   ra8_nsc/              TrustZone Non-Secure-Callable veneers
+  ra8_secure_app/       Ring 5 secure-side substrate (key vault, key import,
+                         secure-OTA commit, CMAC, TRNG) -- compiled into every
+                         Secure image
   ra8_net_pal/          Ethernet PAL bridging the HAL to NetX Duo / similar
   ra8_usb_pal/          USB PAL bridging the HAL to CherryUSB / similar
   ra8_display_pal/      Display PAL: one function-pointer iface, two

@@ -62,7 +62,6 @@ INCLUDE_DIRS=(
   -Ilibs/ra8_core/inc
   -Ilibs/ra8_hal/inc
   -Ilibs/ra8_nsc/inc
-  -Isrc/inc
   -Itools/ra8_emulator/inc
   -Iapps/shared/media_dl/inc
   -Iapps/stand_alone/media_dl/inc

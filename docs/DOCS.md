@@ -86,9 +86,9 @@ The `INPUT` block in `Doxyfile` covers:
 - `docs/` (architecture / policy / reference Markdown:
   `RING_AND_WORLD.md`, `STYLE_GUIDE.md`, ADRs, qualification
   artifacts, ...)
-- `src/` (Ring 1 boot + Ring 5 secure-side substrate)
 - `libs/` (every first-party library: `ra8_core`, `ra8_hal`,
-  `ra8_net_pal`, `ra8_usb_pal`, `ra8_nsc`, `ra8_board_ek_ra8d2`,
+  `ra8_net_pal`, `ra8_usb_pal`, `ra8_nsc`, `ra8_secure_app`,
+  `ra8_board_ek_ra8d2`,
   `ra8_mpu`, etc.)
 - `examples/` (every per-app demo under `examples/<tier>/<app>/`)
 - `scripts/` and `tools/` (first-party tooling, including the

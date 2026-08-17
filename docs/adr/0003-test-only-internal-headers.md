@@ -57,7 +57,7 @@ musl's `__*` namespace, some CMSIS driver test suites).
   must not `#include` it. The pre-commit hook's
   `check_world_tags.py` is the gate: the internal header is
   tagged as such and only `tests/` and the module's own
-  `src/` are allowed to include it.
+  `src/` directory are allowed to include it.
 * **Symbols exposed via the internal header are renamed** from
   `static internal_x()` to `priv_<module>_x()` (or
   `ra8_<module>_priv_x()` for already-public-prefixed modules).

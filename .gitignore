@@ -37,8 +37,6 @@
 /local-poc/**/build/
 /local-poc/**/build-*/
 /port/**/build/
-/src/**/build/
-/src/**/build-*/
 /tools/**/build/
 CMakeFiles/
 CMakeCache.txt
@@ -182,7 +180,7 @@ doxy_run.txt
 # cppcheck writes its per-TU dump and cross-TU index NEXT TO the source, under
 # every first-party root, and misra_check_inner.sh sweeps both away when it
 # finishes. Only *.dump was ignored, so for the length of a MISRA run several
-# hundred *.ctu-info files sat untracked-and-unignored in libs/ src/ apps/ --
+# hundred *.ctu-info files sat untracked-and-unignored in libs/ apps/ --
 # and a `git add -A` in that window commits every one of them. Both halves of
 # the same artifact pair belong here.
 *.dump

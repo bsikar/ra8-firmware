@@ -16,7 +16,7 @@ nowhere else; the scanner never learns a path.
 
 The tiers, and the one direction the arrow points:
 
-* PLATFORM -- ``libs/``, ``port/``, ``src/``, ``tools/``. May not reach into
+* PLATFORM -- ``libs/``, ``port/``, ``tools/``. May not reach into
   ``apps/`` at all, in any category.
 * PRODUCTS -- ``apps/``. ``apps/shared/`` is the portable product-tier code and
   sits BELOW the form categories ``apps/stand_alone/`` and
@@ -81,8 +81,8 @@ SHARED_LAYER_NAME = "product-shared"
 LAYERS = (
     Layer(
         name=PLATFORM_LAYER_NAME,
-        c_roots=("libs/", "port/", "src/", "tools/"),
-        cmake_roots=("libs/", "port/", "src/", "tools/", "cmake/"),
+        c_roots=("libs/", "port/", "tools/"),
+        cmake_roots=("libs/", "port/", "tools/", "cmake/"),
         cmake_files=("CMakeLists.txt",),
         forbidden=(PRODUCTS_ROOT,),
     ),
@@ -120,13 +120,15 @@ EXCLUDED_PREFIXES = ("libs/third_party/", "libs/ra8_fonts/")
 # PLATFORM and PRODUCTS populations are counted SEPARATELY, so either census
 # collapsing fails loudly on its own terms rather than being hidden inside a
 # total. Measured 2026-08-17 (tracked + untracked-not-ignored, SOUP and fonts
-# excluded): libs 938, port 98, src 16, tools 214 C-family files; 74 platform
-# listfiles; 137 C-family files and 52 headers under apps/.
+# excluded): libs 948, port 98, tools 214 C-family files; 73 platform
+# listfiles; 143 C-family files and 52 headers under apps/. The libs/ figure
+# absorbed the 10 files of the dissolved src/ root (#724), so the platform
+# total is unchanged at 1260 and the per-root floors below still sum to 1070.
 #
 # Deliberately NOT floored: apps/shared/ and the individual form categories. A
 # product is allowed to live entirely in one of them while another is a
 # placeholder, and a floor there would fail the gate for a legal layout.
-C_ROOT_FILE_FLOORS = {"libs/": 800, "port/": 80, "src/": 10, "tools/": 180}
+C_ROOT_FILE_FLOORS = {"libs/": 810, "port/": 80, "tools/": 180}
 
 C_TOTAL_FILE_FLOOR = 1150
 

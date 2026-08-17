@@ -71,8 +71,6 @@ def _include_args(cindex: ModuleType) -> list[str]:  # noqa: ARG001  # kept for 
     for pattern in (
         "libs/*/inc",
         "libs/*/src",
-        "src/inc",
-        "src/secure_app",
         "tests/include",
         "tests",
         "port/*/inc",
