@@ -929,26 +929,8 @@ ra8_err_t mdl_state_load_authenticated(mdl_storage_t* storage, const char* path,
 
 /**
  * @brief Decide which generation slot the next save occupies, and clear it.
- * @details Derives both physical paths, scans both slots, asks the save plan
- *          which one is next, and unlinks it when a previous generation is
- *          still there -- so the caller only has to stage and commit.
- * @param[in,out] storage Initialized portable storage binding.
- * @param[in] path Logical base path.
- * @param[out] base Base-path buffer, written by the path derivation.
- * @param[out] alternate Alternate-path buffer, written by the same derivation.
- * @param[out] out_target Receives the chosen path, which aliases one of the
- *             two caller-owned buffers above.
- * @param[out] out_sequence Receives the sequence number the save must carry.
- * @return Canonical save-planning status.
- * @retval k_ra8_ok The target slot is chosen, empty and named by @p out_target.
- * @retval k_ra8_err_invalid_size The suffix would not fit the path capacity.
- * @retval other The path derivation, the plan or the unlink failed.
- * @pre @p base and @p alternate each span ::k_fw_fs_path_cap bytes.
- * @pre @p out_target and @p out_sequence are non-null and distinct.
- * @post Success leaves no file at the chosen path.
- * @post Failure performs no filesystem mutation beyond the attempted unlink.
- * @note Not reentrant; one storage binding serves one operation at a time.
- * @since 0.1.0
+ * @details Derives both physical paths, scans both slots, asks the save plan which is next, and unlinks it when a previous generation is still there. @param[in,out] storage Filesystem binding. @param[in] path Logical base. @param[out] base Base path buffer. @param[out] alternate `.alt` path buffer. @param[out] out_target Chosen path, aliasing one of those buffers. @param[out] out_sequence Sequence the save must carry. @return Canonical save-planning status. @retval k_ra8_ok The slot is chosen and empty. @retval k_ra8_err_invalid_size Suffix would exceed capacity.
+ * @pre Both buffers span ::k_fw_fs_path_cap bytes. @pre Both outputs are non-null and distinct. @post Success leaves no file at the chosen path. @post Failure mutates nothing beyond the attempted unlink. @note No host path API is used. @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_mdl_state_prepare_target(mdl_storage_t* storage,
                                                                 const char*    path,
