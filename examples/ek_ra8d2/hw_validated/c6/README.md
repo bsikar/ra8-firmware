@@ -1,66 +1,47 @@
 # examples/ek_ra8d2/hw_validated/c6/
 
 Apps that talk to the **ESP32-C6 companion radio** over esp-hosted. Every one
-of them has been run on real silicon and passes; they are `hw_validated`, not
-`hw_pending`. They live in their own tier because of the bench, not because of
-their maturity.
-
-Run the whole tier with:
-
-```sh
-make hil-c6              # every app in this lane
-make hil-c6 APP=c6_spi_probe
-```
-
-That is `scripts/hil/all.sh --dir examples/ek_ra8d2/hw_validated/c6` -- the
-same runner, the same per-app `hil.conf` manifests and the same bench hold the
-default suite uses. There is one HIL runner in this tree, not one per bench
-configuration.
+has been run on real silicon and passes. They live in their own tier because of
+the bench, not because of their maturity: `make hil-c6` runs the lane through
+the same runner and the same per-app `hil.conf` manifests as the default suite,
+because there is one HIL runner in this tree, not one per bench configuration.
 
 ## Why they are not in `hw_validated/hil/`
 
-Two independent reasons, and either alone would be enough.
+Two independent reasons, either sufficient on its own.
 
 **The DIP switches are mutually exclusive with the default pass.** These apps
-need **SW4 1=OFF 2=OFF 3=ON 4=OFF**. SW4-3 ON deactivates Octo-SPI so the U6/U9
-bus switches connect `P801`..`P804` to J26 at all; SW4-4 OFF deactivates the
-Arduino and mikroBUS connectors, which the rest of the tree's apps need. One
-run of the bench cannot satisfy both settings, so these cannot share a pass
-with `make hil-all`.
+need SW4 **1=OFF 2=OFF 3=ON 4=OFF**. SW4-3 ON deactivates Octo-SPI, which is
+what connects the SPI pins through the bus switches to J26 at all; SW4-4 OFF
+deactivates the Arduino and mikroBUS connectors, which the rest of the tree's
+apps need. One run of the bench cannot satisfy both settings.
 
-> Getting SW4-3 wrong leaves J26-1..J26-4 electrically disconnected from the
-> MCU while the board and the co-processor both look perfectly healthy. That
-> misreading -- not a wiring fault -- cost the whole 2026-07-26 bench day. If
-> the link stops working, check the switch bank **electrically** before
+> Getting SW4-3 wrong leaves the J26 signal holes electrically disconnected
+> from the MCU while the board and the co-processor both look perfectly
+> healthy. That misreading -- not a wiring fault -- cost an entire bench day.
+> If the link stops working, check the switch bank **electrically** before
 > suspecting anything else.
 
 **`ra8_emulator` models no ESP32-C6** (#494). `hw_validated/hil/` is bound by
 `check_hil_eil_parity.py` to the EIL suite: every app there must also be
-exercised in the emulator, with no skips. That gate is right, and these apps
-genuinely cannot satisfy it yet, so putting them there would mean either a
-failing gate or a hole punched in one. They stay outside it until the emulator
-grows a co-processor model.
+exercised in the emulator, with no skips. That gate is right and these apps
+genuinely cannot satisfy it, so putting them there would mean either a failing
+gate or a hole punched in one. They stay outside it until the emulator grows a
+co-processor model.
 
-## The apps, in the order to run them when triaging
+## They form a ladder
 
-| App | What it proves | Verdict line |
-|---|---|---|
-| `c6_spi_probe` | The physical link. Drives SCI2 Simple-SPI directly -- no port, no vendored driver -- characterising every J26 hole, hunting for the pin the co-processor answers chip-select on, then clocking esp-hosted transactions at a deliberately slow 1 MHz. | `c6_probe: PASS esp-hosted link up` |
-| `c6_hosted_init` | `port/esp-hosted/` on silicon. Brings the RA8D2 + ThreadX port up, prints the pin map and interrupt routing it resolved, and clocks one full-duplex transaction at 5 MHz. | `c6_hosted_init: PASS link up` |
-| `c6_fw_version` | The **protocol**. A real RPC request goes up, the co-processor parses it, and a populated response comes back whose fields are checked. Built by hand inside the app. | `c6_fwver: PASS esp-hosted RPC round-trip` |
-| `c6_wifi_link` | The **facade** (`libs/ra8_c6link`), and the co-processor's acceptance of a real `Req_WifiInit` configuration -- the one part of the control plane no host test can settle. Takes the station up, reads its MAC, tears it down. | `c6_wifi: PASS ra8_c6link drove the coprocessor station up` |
-| `c6_wifi_join` | The **network** (#492). Associates the station with a bench AP, runs a NetX Duo DHCP client over the `nx_ether_driver_c6` link driver to get a lease, and pings the gateway. Needs credentials compiled in (env / `coprocessor/esp32c6/wifi.env`) and an AP in range. | `c6_join: PASS ra8_c6link joined the bench Wi-Fi and DHCP leased an address` |
-| `wifi_hal_join` | The **facade** (`libs/ra8_wifi`). The same association + DHCP as `c6_wifi_join`, but every Wi-Fi step goes through `ra8_wifi_init` / `ra8_wifi_connect` / `ra8_wifi_wait_ip` instead of `ra8_c6link` directly -- a side-by-side of how much the HAL hides. Same credentials and AP requirement. | `wifi_hal: PASS ra8_wifi joined the bench Wi-Fi and DHCP leased an address` |
-| `c6_camera_livestream` | The **camera network path**. Captures OV5640 VGA frames, serves them through NetX over the C6, probes `/health`, decodes two 320x240 JPEG responses and rejects identical frames. Its dedicated HIL mode owns a temporary credential-bearing build tree. | `camera_livestream: PASS health + two changing 320x240 JPEG captures` |
-| `c6_camera_mjpeg` | The **accelerated camera path**. The OV5640 compresses live VGA frames in hardware, CEU captures the bounded JPEG byte stream with no copy, and the same server exposes still, WAV, and multipart endpoints. HIL decodes changing 640x480 stills and stream frames and validates microphone activity. | `camera_livestream: PASS startup selftest + health + two changing decodable 640x480 stills + audio WAV + multipart frames` |
+`c6_spi_probe` is the bench's negative control and is the first thing to run,
+always. It drives the SPI pins directly -- no port, no vendored driver -- so
+when something higher up fails it separates "the wire is wrong" from "the
+firmware is wrong". Above it the apps climb through the vendored host port on
+silicon, a hand-built RPC round trip, the `ra8_c6link` facade, a real network
+association with DHCP, the `ra8_wifi` HAL over that same path, and finally
+camera frames served over the radio.
 
-They form a ladder: when the top one fails, the one below separates "the wire
-is wrong" from "the firmware is wrong". `c6_spi_probe` is the bench's negative
-control and is the first thing to run, always.
-
-`c6_fw_version` and `c6_wifi_link` overlap deliberately: the former builds the
-protocol by hand and the latter goes through `libs/ra8_c6link`, so if one passes
-and the other fails, the difference is the facade rather than the link.
+Two rungs overlap deliberately: one builds the protocol by hand and the next
+goes through the facade, so when one passes and the other fails, the difference
+is the facade rather than the link.
 
 ## Bench setup
 
@@ -68,49 +49,30 @@ The harness is stripped 22AWG jumpers between J26 and the C6 dev board's
 headers. There is **no 3V3 wire**: the C6 is powered from its own USB, and
 J26-6 / J26-12 must stay empty.
 
-| Signal | RA8D2 pin | J26 | C6 GPIO |
-|---|---|---|---|
-| CS (Chip Select) | `P804` | J26-1 | GPIO0 |
-| COPI | `P801` | J26-2 | GPIO1 |
-| CIPO | `P802` | J26-3 | GPIO2 |
-| SCK | `P803` | J26-4 | GPIO3 |
-| HANDSHAKE | `P006` | J26-7 | GPIO6 |
-| DATA_READY | `P402` | J26-8 | GPIO4 |
-| GND | -- | J26-5, J26-11 | GND |
+The pin map lives in exactly two places -- the RA8-side pins header under
+`port/esp-hosted/` and `coprocessor/esp32c6/pins.env` -- and
+`scripts/checks/check_c6_pin_config.py` diffs them on every CI run so they
+cannot drift apart. Edit those, never a table in a document.
 
-`port/esp-hosted/inc/ra8_esp_hosted_pins.h` is the one file to edit if the
-harness moves; `coprocessor/esp32c6/pins.env` is the one file the co-processor
-image is built from, and `scripts/checks/check_c6_pin_config.py` diffs them on
-every CI run so they cannot drift apart.
-
-The co-processor runs esp-hosted-mcu peripheral-side firmware **2.12.11** (ESP-IDF
-v5.5.4, esp-hosted-mcu `949bb30`). Do not reflash it without a specific reason:
-`c6_fw_version` asserts that version against the vendored host driver's own, so
-a co-processor reflash without a matching vendor bump turns that test red on
+Do not reflash the co-processor without a specific reason. The firmware-version
+app asserts the running co-processor image against the vendored host driver's
+own version, so a reflash without a matching vendor bump turns that test red on
 purpose.
 
 ## Two bench facts that repeatedly cost time
 
 **`/dev/ttyACM*` numbering swaps across power cycles.** The J-Link, the chip's
-own USBHS CDC and the C6's CH343 bridge all enumerate in that namespace. Always
-address consoles through `/dev/serial/by-id/`; the HIL scripts already do
-(`scripts/hil/lib/tty_resolve.sh`).
+own USBHS CDC and the C6's USB-serial bridge all enumerate in that namespace.
+Always address consoles through `/dev/serial/by-id/`; the HIL scripts already
+do.
 
 **The co-processor's boot announcements are one-shot.** It queues them at boot
 and holds them until a transaction drains them, so whatever image is already in
-MRAM will eat them the moment the board powers up. To see them, flash a
-neutral app first, then power-cycle, then flash the app you want:
-
-```sh
-bash scripts/hil/flash.sh blink
-make hil-tapo TARGET=board CMD=cycle
-make hil-c6 APP=c6_fw_version
-```
+MRAM eats them the moment the board powers up. To see them, flash a neutral app
+first, power-cycle, then flash the app you actually want.
 
 ## See also
 
-- `docs/design/c6_wireless_architecture.md` -- how the co-processor fits into
-  the system.
-- `docs/SOUP/esp-hosted-host.md` -- the vendored host driver: what is compiled,
-  what is excluded and why.
-- `coprocessor/esp32c6/README.md` -- building and flashing the co-processor image.
+`docs/design/c6_wireless_architecture.md` for how the co-processor fits into
+the system, and `coprocessor/esp32c6/README.md` for building and flashing its
+image.

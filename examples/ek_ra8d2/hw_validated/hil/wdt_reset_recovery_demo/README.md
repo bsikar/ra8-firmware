@@ -1,23 +1,14 @@
 # wdt_reset_recovery_demo
 
-IWDT watchdog + reset-cause demo for the bare EK-RA8D2 EVM.
+The WWDT (WDT0) half of the watchdog reset story, companion to `watchdog_demo`,
+which covers the IWDT.
 
-On boot, logs the reset cause over SCI8 (115200 8N1, J-Link OB CDC port):
+First boot reads a power-on cause, arms the WWDT with reset-on-expiry, refreshes
+it for a couple of seconds, then stops. The WWDT underflows and trips an
+internal reset. The second boot reads `k_ra8_reset_cause_wdt0` back out of
+`RSTSR1.WDTRF`, prints that it was reset by the watchdog, and parks.
 
-- `wdt: boot reason=power_on` -- first boot after a real power-on.
-- `wdt: boot reason=iwdt`     -- woke up from a watchdog reset
-  triggered by the previous run.
-- `wdt: boot reason=other`    -- any other latched reset cause.
-
-Then refreshes the IWDT for 30 seconds (LED1 toggles each refresh as
-a heartbeat), logs `wdt: stopping refresh, expect reset`, and stops
-feeding the watchdog. The IWDT counter underflows and the chip
-resets; the next boot logs `iwdt`, demonstrating end-to-end
-reset-cause introspection.
-
-Build / flash:
-
-```
-make wdt_reset_recovery_demo
-make -C examples/ek_ra8d2/wdt_reset_recovery_demo flash
-```
+The gate scrapes for the *second* boot's banner, so a pass requires both halves:
+the reset has to fire, and the next boot has to decode the cause flag correctly.
+That also means the run takes as long as the WWDT underflow countdown, which is
+tens of seconds -- the timeout in `hil.conf` is sized for it, not padded.

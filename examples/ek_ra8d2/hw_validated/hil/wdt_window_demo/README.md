@@ -1,19 +1,16 @@
 # wdt_window_demo
 
-Demonstrates the IWDT in **window mode** (distinct from
-`watchdog_demo`, which simply refreshes-until-stop). Polls the live
-14-bit IWDTSR.CNTVAL counter via `ra8_iwdt_get_counter` and only writes
-the refresh sequence when the counter sits inside the legal window
-(`[k_wdt_window_demo_window_low, k_wdt_window_demo_window_high]`). LED1 toggles on
-each in-window refresh; SCI8 logs `iwdt: refresh in window`.
+Drives the WWDT in window mode: poll the down-counter and write the refresh
+sequence only while it sits inside the legal window, which here is the middle
+half of the period. LED1 toggles on each in-window refresh. A refresh outside
+the window raises a window violation, so "refreshed at all" is not enough to
+pass -- the window math has to be right.
 
-The actual window bounds are programmed by the OFS0 option-setting
-register at flash time -- the values in this demo are chosen to match
-the conventional EK-RA8D2 OFS0 layout used by the project's shared
-linker scripts.
+This is the runtime-configurable watchdog. Unlike the IWDT, whose period is
+fixed by OFS0 option-setting flash (`watchdog_demo`), the WWDT's timeout,
+divider and both window bounds are programmed by `ra8_wdt_init` at boot.
 
-Build:
-
-```
-make wdt_window_demo
-```
+One measured surprise: the WWDT counts on a slow base clock in the tens of Hz,
+not on PCLKB as the HUM nomenclature suggests, so a nominally 1024-cycle period
+runs for tens of seconds on the bench. Any timing assumption built on the PCLKB
+reading will be wrong by orders of magnitude.

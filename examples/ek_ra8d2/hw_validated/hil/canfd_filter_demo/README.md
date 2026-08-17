@@ -1,31 +1,16 @@
-# canfd_filter_demo (hw_pending)
+# canfd_filter_demo
 
-CAN-FD AFL filter test with three sub-rounds per iteration: exact
-match (0x100), masked match (0x110/mask 0x7F0), and a no-match
-ID (0x200) that should be filtered out.
+Exercises the CAN-FD acceptance filter in internal loopback with three
+sub-rounds per iteration: an exact-ID match (0x100), a masked match (0x110 under
+mask 0x7F0), and an ID that must be filtered out (0x200).
 
-## Status
+The no-match round is the one that matters and also the one that is easy to get
+wrong: a frame left in the RX FIFO by the previous matched round reads exactly
+like a leak through the filter. The demo drains the FIFO between sub-rounds for
+that reason, and keeps per-sub-round counters (`g_canfd_filter_exact_*`,
+`g_canfd_filter_mask_*`, `g_canfd_filter_nomatch_*`) alongside the aggregate
+`g_canfd_filter_match` / `_mismatch`, so a failure names the sub-round rather
+than just the app.
 
-After 7 chained chip-level fixes in commits 600b13b2 / 6fef1474 /
-the canfd HAL the demo's match counter went from 5 to ~12 in
-5 s windows (above the 10-match gate threshold) -- but the
-mismatch counter stays at ~6 per window. That means ~2 of 3
-sub-rounds match per iteration; one sub-round consistently
-misbehaves. Likely the no-match round occasionally consumes a
-late-arriving frame from the previous matched round; verifying
-needs per-sub-round counters + JTAG dumps of CFDRFSTS during
-the rx_spin.
-
-## How to graduate back
-
-1. Split g_canfd_filter_match into _exact, _mask, _nomatch
-   counters so the failing sub-round is identifiable.
-2. Add a between-sub-round drain (loop ra8_canfd_receive until
-   no_data) to flush any late frames before the next TX.
-3. Re-run; once all three counters advance cleanly, move the dir
-   back to hw_validated/hil/.
-
-The HAL fixes that landed during the investigation (CSLPR clear,
-CH_RESET-not-HALT for NCFG, RFE-after-GL_OPERATION, TMTRF clear,
-RNC0 bump, GAFLFDP0 routing, TMTRF wait) all benefit any future
-multi-filter CANFD work and should not be reverted.
+No transceiver or external harness: the on-chip CAN-FD IP is looped back to
+itself. `canfd_loopback` is the same loopback with no filtering.

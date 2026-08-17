@@ -1,11 +1,13 @@
 # gpt_dma_demo
 
-Sweeps GPT channel 0 PWM duty cycle in saw-wave mode so the LED fades up
-and back down at roughly 1 Hz. Demonstrates `ra8_gpt_init` (full
-descriptor path) plus runtime `ra8_gpt_set_duty` reconfiguration.
+Streams a table of GPT period values into GTPR over a DMAC channel, so the CPU
+never touches the period register per tick. The DMA-completion callback bumps a
+counter a bench probe watches, and the loop re-arms after each transfer.
 
-Build:
+The period table lives in `.rodata` and must outlive the transfer: the DMAC
+walks a physical address of its own, so a stack-local table would be a
+use-after-scope no compiler is going to warn about.
 
-```
-make gpt_dma_demo
-```
+What the counter catches that a fault check would not: DMA init failure, a
+refused DMAC channel allocation, a rejected `ra8_gpt_write_dma`, and a
+completion callback that never fires because the transfer wedged.

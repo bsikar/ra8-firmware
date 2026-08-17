@@ -1,22 +1,11 @@
 # canfd_loopback
 
-CANFD0 internal-loopback HIL test for the bare EK-RA8D2 EVM.
+Puts CANFD0 into Self-test 1 internal loopback (`CFDC[0].CTR.CTME = 1`,
+`CTMS = 11b`) at 500 kbps and round-trips an 8-byte frame at standard ID 0x123
+once a second. LED1 toggles on a completed round-trip, LED2 on a TX or RX
+failure.
 
-Brings up CANFD0 at 500 kbps, forces the channel into Self-test 1 /
-internal-loopback mode (`CFDC[0].CTR.CTME=1, CTMS=11b`) via
-`ra8_canfd_set_test_mode`, and once a second transmits an 8-byte
-heartbeat frame at standard ID `0x123`, polling the RX FIFO for the
-mirrored frame.
-
-- LED1 toggles on every successful TX/RX round-trip.
-- LED2 toggles on TX or RX failure.
-
-No external transceiver, board, or harness is required -- the demo
-runs against the on-chip CANFD IP only.
-
-Build / flash:
-
-```
-make canfd_loopback
-make -C examples/ek_ra8d2/canfd_loopback flash
-```
+No transceiver, shield or harness is needed -- the frame never leaves the chip.
+That is the point: it proves the CAN-FD controller, its bit timing and its RX
+FIFO without a bus, so a failure here is never the wiring.
+`canfd_filter_demo` adds acceptance filtering on top of the same loopback.

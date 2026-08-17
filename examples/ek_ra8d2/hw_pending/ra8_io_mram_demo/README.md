@@ -1,54 +1,30 @@
-# ra8_io_mram_demo -- ra8_io fabric over on-chip extra MRAM (epic #155)
+# ra8_io_mram_demo
 
-Proves the `ra8_io` fabric over the RA8D2's on-chip **extra MRAM** (data flash)
-at `0x27000000` -- a non-volatile, erase-before-write medium programmed through
-the MACI command sequencer. Same block-device vtable as the other `ra8_io` demos;
-only the backend differs (`ra8_io_blockdev_mram` instead of RAM/SD/OSPI).
+Drives the `ra8_io` fabric over the RA8D2's on-chip extra MRAM (epic #155,
+phase #156), programmed through the MACI command sequencer. Same block-device
+vtable as the other `ra8_io` demos; only the backend differs
+(`ra8_io_blockdev_mram` instead of RAM/SD/OSPI). It erases a 512-byte logical
+block, programs a deterministic pattern, reads it back and byte-compares -- the
+full erase + program + read path through the vtable -- and reports through a
+`ra8_io` UART stream sink with `ra8_log` routed into the same stream, so a
+failing step is visible (phase #157).
 
 ## Why raw block, not FAT
 
-The extra-MRAM window is exactly **12 KiB** and is **erase-before-write**: every
-write to a 512-byte sector must be preceded by a full block erase, which clears
-the sector to 0xFF. FAT requires free overwrite of individual sectors (write a
-new cluster-chain entry without erasing the whole block). Bridging erase-before-
-write storage to FAT requires a **Flash Translation Layer (FTL)** that remaps
-logical sectors to physical erase blocks and performs wear-levelling. No such FTL
-exists in this tree yet (see follow-up issue). The 12 KiB total capacity is also
-too small for a useful FAT12 volume once reserved sectors and FAT copies are
-accounted for.
+The window is **erase-before-write**: every write to a 512-byte sector must be
+preceded by a full block erase, which clears it to `0xFF`. FAT requires free
+overwrite of individual sectors, so bridging this medium to FAT needs a Flash
+Translation Layer -- see `ra8_ftl_demo`. The window is in any case far too small
+for a useful FAT12 volume once reserved sectors and FAT copies are accounted for.
+So this demo drives the block-device layer directly and skips FAT/VFS entirely;
+the FAT layer is already proven over the RAM, SD, OSPI and SDRAM backends, where
+free overwrite is available.
 
-This demo therefore drives the block-device layer directly and skips the FAT/VFS
-path. The FAT layer is already proven over the RAM, SD, OSPI, and SDRAM backends
-where free overwrite is available.
+## Blocked on
 
-## What the demo exercises
-
-1. `ra8_flash_init()` -- MRAM controller bring-up (Phase 1, #156).
-2. `ra8_io_blockdev_mram_init()` -- binds an erase-before-write block device over
-   the fenced 12 KiB window.
-3. Erase a 512-byte logical block (fills to 0xFF via MACI), program a
-   deterministic byte pattern, read it back, and byte-compare -- the full
-   erase + program + read path through the block-device vtable.
-4. Report on the SCI8 console through a `ra8_io` UART stream sink; `ra8_log` is
-   routed into the same stream so any failing step is visible (Phase 2, #157).
-
-ra8_emulator models the MACI program/erase sequence (`board_periph_mram.c`), so the
-round-trip runs headless.
-
-## Expected output (ra8_emulator or J-Link RTT/UART)
-
-```
-ra8_io_mram_demo: boot
-ra8_io_mram_demo: 512-byte block erase/program/read on extra MRAM PASS
-```
-
-## Build
-
-```
-make            # -> build/ra8_io_mram_demo.elf
-```
-
-## Status
-
-`hw_pending`: written and proven in ra8_emulator; not yet bench-validated on a
-physical EK-RA8D2.
+More than a bench run. As `main.c` warns, this window is **one-time-programmable
+option-setting / OTP memory, not a rewritable data flash** -- there is no erase,
+so the erase-and-reprogram cycle this demo exercises does not work on real
+silicon. The emulator maps the window and the round-trip passes there, which is
+optimistic rather than faithful. A rewritable-medium home for this demo (OSPI or
+SD) is tracked by #315.

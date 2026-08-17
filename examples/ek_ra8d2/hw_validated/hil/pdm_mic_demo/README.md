@@ -1,48 +1,34 @@
 # pdm_mic_demo
 
-Capture + plausibility demo for the EK-RA8D2 on-board SPH0690 PDM MEMS
-microphones through the caller-owned `ra8_audio` facade and its `ra8_pdm`
-backend. The board layer owns SPH0690 pins/filter policy; the app owns source
-state and PCM storage. Closes gap issue #129.
+Captures from the EK-RA8D2's on-board PDM MEMS microphones through the
+`ra8_audio` facade and its `ra8_pdm` backend, then judges whether what came
+back is plausibly acoustic. Closes gap issue #129.
 
-The app brings up PDM-IF channel 2, captures 20-bit PCM windows, computes
-AC RMS / peak / span and prints a plausibility verdict scraped by
-`hil.conf`:
-
-```
-pdm: init ch=2 clk=4mhz fs=16khz
-pdm: rms=612 peak=3480 mean=-3 span=6210 vary=180 active=Y
-pdm: rms=598 peak=3120 mean=-2 span=5904 vary=180 active=Y
-...
-```
-
-`active=Y` means at least one captured validation window is non-degenerate (not
-a stuck DC constant, not all-zero) and carries plausible acoustic energy
-(`span >= 8` and `rms >= 16` LSB of the +-524288 full scale). A dead line
-would print `active=N`, and a non-toggling PDM clock would print
-`pdm: no data (FIFO empty) -- clock/mic?`. The reported `vary` is the RMS spread
-across the validation sweep. After the terminal verdict, firmware parks in a
-low-power wait loop so HIL and EIL observe one stable result.
-
-The verdict is also latched in the J-Link-probable global
-`g_pdm_mic_result` (`magic` = `0x50444D31` once the first window
-completes).
+The verdict is the point. It captures 20-bit PCM windows and reports RMS, peak,
+mean and span, calling the line active only when a window is non-degenerate --
+not a stuck DC constant, not all zero -- and carries plausible energy. A dead
+mic line reads as inactive; a PDM clock that never toggles leaves the FIFO
+empty and says so. That is a distinction "did the driver return ok?" cannot
+make. After the terminal verdict the firmware parks in a low-power wait so the
+bench and the emulator observe one stable result, and the verdict is also
+latched in the J-Link-probable global `g_pdm_mic_result`.
 
 ## Hardware
 
-The EK-RA8D2 carries two SPH0690LM4H-1 PDM MEMS microphones (MIC1, MIC2)
-on the **underside** of the PCB. No external hardware is required.
+Two SPH0690LM4H-1 PDM MEMS microphones sit on the **underside** of the PCB. No
+external hardware is required.
 
-| SPH0690 pin | Signal | EVM net | MCU function |
-| ----------- | ------ | ------- | ------------ |
-| 1 (DATA)    | PDM data  | P502 | PDMDAT2 (PSEL 0x1B) |
-| 4 (CLOCK)   | PDM clock | P812 | PDMCLK2 (PSEL 0x1B) |
-| 2 (SELECT)  | L/R sel   | GND (MIC1) / +3.3V (MIC2) | rise / fall edge |
+| SPH0690 pin | Signal    | EVM net                   | MCU function        |
+| ----------- | --------- | ------------------------- | ------------------- |
+| 1 (DATA)    | PDM data  | P502                      | PDMDAT2 (PSEL 0x1B) |
+| 4 (CLOCK)   | PDM clock | P812                      | PDMCLK2 (PSEL 0x1B) |
+| 2 (SELECT)  | L/R sel   | GND (MIC1) / +3.3V (MIC2) | rise / fall edge    |
 
-Both mics share the single clock and data line (standard PDM stereo), so
-they are on PDM-IF **channel 2**. `INPSEL=0` selects the rise-edge mic
-(MIC1, SELECT=GND). Reference: EK-RA8D2 v1 UM Table 31 p 37; RA8D2
-datasheet pin functions for P502/P812.
+Both mics share the single clock and data line (standard PDM stereo), so both
+land on PDM-IF channel 2 and `INPSEL` chooses between them by clock edge --
+`INPSEL=0` selects the rise-edge mic, MIC1 with SELECT tied to GND. Pin
+assignments follow EK-RA8D2 v1 UM Table 31 p 37 and the RA8D2 datasheet pin
+functions for P502 / P812.
 
 ## Signal path (all hardware, HUM Ch 49)
 
@@ -54,23 +40,7 @@ PDMIFCLK = MOCO 8 MHz
   -> Fout = 4 MHz / (2*125) = 16 kHz, 20-bit signed PCM (PDDRRCH2)
 ```
 
-Decimation combo is a HUM Table 49.7 row (order 4). The filter
-coefficients are the RA8D2 reset-default SPH0690 set (HUM Ch 49.2
-register reset values), owned by the EK-RA8D2 PDM board adapter.
-
-## Build / run
-
-```
-cd examples/ek_ra8d2/hw_validated/hil/pdm_mic_demo
-make                 # -> build/pdm_mic_demo.elf / .hex
-bash ../../../../../scripts/hil/flash.sh pdm_mic_demo
-# scrape SCI8 console @115200:
-ssh star 'stty -F /dev/ttyACM0 115200 raw -echo; timeout 8 cat /dev/ttyACM0 | grep -a "pdm: rms="'
-```
-
-## Status
-
-`hw_validated/hil`: the strict `pdm: verdict=PASS active=Y` result is confirmed
-on the bench EK-RA8D2 and in `ra8_emulator`. The HIL manifest rejects a terminal inactive,
-empty, initialization-failure, and HardFault results; the EIL run exercises the
-same manifest against the PDM register model.
+That decimation combination is a HUM Table 49.7 row (order 4). The filter
+coefficients are the RA8D2 reset defaults for this microphone family (HUM
+Ch 49.2 register reset values), owned by the board's PDM adapter rather than by
+this app.

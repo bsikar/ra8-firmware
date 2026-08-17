@@ -1,18 +1,18 @@
 # rtc_periodic_demo
 
-RTC + alarm + UART log demo for the bare EK-RA8D2 EVM.
+Extends `rtc_alarm` to the RTC's periodic interrupt: after programming the same
+few-seconds-out calendar alarm it enables **both** the alarm and periodic IRQ
+flags (`RCR1.AIE` and `RCR1.PIE`), then polls `ra8_rtc_get_status` for either
+and logs a tick on whichever fires first. On real silicon `RCR1.PIE` drives an
+NVIC line; this demo stays polled so the RTC is the only thing under test.
 
-Sets the on-chip RTC to 2026-01-01 00:00:00, schedules an alarm five
-seconds in the future via the new `ra8_rtc_set_alarm` API, polls
-RCR1.AIF for the fire, then logs `rtc: alarm fired` over the J-Link OB
-CDC port (SCI8 @ 115200 8N1) and re-arms ten seconds later.
+Enabling both flags in one `ra8_rtc_set_irq_enable` call with a combined mask is
+the specific thing this app adds over its sibling -- that the driver accepts and
+honours a dual-flag mask.
 
-Build / flash:
+Like `rtc_alarm`, the fire depends on the sub-clock crystal (SOSC), which is
+intermittently populated on this EVM. An automated check can therefore only
+insist on the boot line, which proves the RTC came up and the dual-flag mask was
+accepted; the tick itself needs a board with a live crystal.
 
-```
-make rtc_periodic_demo
-make -C examples/ek_ra8d2/rtc_periodic_demo flash
-```
-
-Open `picocom -b 115200 /dev/cu.usbmodem...` (macOS) or
-`minicom -D /dev/ttyACM0 -b 115200` (Linux) to see the log lines.
+No external hardware required.
