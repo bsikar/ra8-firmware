@@ -521,14 +521,10 @@ RA8_INTERNAL static void internal_seed_fixture(void)
 
 /**
  * @brief Assert both chapter records survived the round-trip intact.
- * @details Checks completion, page count, title and the exact chapter number
- *          of both seeded chapters in the reloaded state.
- * @pre ::s_b holds the state reloaded from the fixture journal.
- * @pre The fixture seeded chapter-1 and chapter-2.
- * @post Normal return means every chapter field matched.
- * @post No fixture resource ownership is transferred.
- * @note Host-only; assertion failure terminates the test process.
- * @since 0.1.0
+ * @details Checks completion, page count, title and the exact chapter number of both seeded chapters in the reloaded state.
+ * @pre ::s_b holds the reloaded state. @pre The fixture seeded chapter-1 and chapter-2.
+ * @post Every chapter field matched. @post No fixture ownership is transferred.
+ * @note Host-only; assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_expect_roundtrip_chapters(void)
 {
@@ -549,14 +545,9 @@ RA8_INTERNAL static void internal_expect_roundtrip_chapters(void)
 
 /**
  * @brief Assert the page record survived the round-trip intact.
- * @details Checks the URL-hash lookup, content hash, relative path, validators
- *          and the recorded fetch metadata of the seeded page.
- * @pre ::s_b holds the state reloaded from the fixture journal.
- * @pre The fixture seeded the page keyed by ::k_uh_b.
- * @post Normal return means every page field matched.
- * @post No fixture resource ownership is transferred.
- * @note Host-only; assertion failure terminates the test process.
- * @since 0.1.0
+ * @details Checks the URL-hash lookup, content hash, relative path, validators and the recorded fetch metadata of the seeded page.
+ * @pre ::s_b holds the reloaded state. @pre The fixture seeded the page keyed by ::k_uh_b.
+ * @post Every page field matched. @post No fixture ownership is transferred. @note Host-only; assertion failure terminates the test process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_expect_roundtrip_page(void)
 {
@@ -829,23 +820,10 @@ RA8_INTERNAL static void internal_test_state_rejects_malformed_records(void)
 
 /**
  * @brief Report whether two binary64 values have identical object bytes.
- * @details The persisted format round-trips the exact bit pattern, so this is
- *          a representation comparison and not a numeric one -- that is what
- *          keeps -0.0 distinct from +0.0. The bytes are read into an unsigned
- *          integer and compared there, because `double` has no unique object
- *          representation and comparing two of them byte-wise says nothing
- *          about which of the two properties is being asserted.
- * @param[in] left First value.
- * @param[in] right Second value.
- * @return Whether both values have the same 64-bit representation.
- * @retval true The representations are identical.
- * @retval false At least one representation bit differs.
- * @pre `double` is IEEE-754 binary64 on this host.
- * @pre Both arguments are ordinary readable values.
- * @post Neither argument is modified.
- * @post The result depends only on the two representations.
- * @note Test-only helper with no production ABI.
- * @since 0.1.0
+ * @details The persisted format round-trips the exact bit pattern, so this is a representation comparison and not a numeric one -- that is what keeps -0.0 distinct from +0.0. The bytes go into an unsigned integer first because `double` has no unique object representation. @param[in] left First value. @param[in] right Second value. @return Whether both have the same 64-bit representation. @retval true The representations are identical. @retval false At least one bit differs.
+ * @pre `double` is IEEE-754 binary64 here. @pre Both arguments are ordinary readable values.
+ * @post Neither argument is modified. @post The result depends only on the representations.
+ * @note Test-only helper with no production ABI. @since 0.1.0
  */
 RA8_INTERNAL static bool internal_same_binary64(double left, double right)
 {
