@@ -251,12 +251,25 @@ internal_read_exact(const ra8_fmt_source_t* source, uint64_t offset, uint8_t* by
  * @note Uses bounded stack storage independent of dump length.
  * @since 0.1.0
  */
+/**
+ * @brief Emit the label/length/offset header line for a hex/ASCII dump.
+ * @param[in] report Report sink.
+ * @param[in] label Section label.
+ * @param[in] offset Absolute source offset.
+ * @param[in] len Byte count.
+ * @return Sink status.
+ * @retval k_ra8_ok The complete header line was emitted.
+ * @retval other First injected sink failure.
+ * @pre @p report and @p label are non-null.
+ * @post No source or report binding is modified.
+ * @note Thread safety inherits the injected sink.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
-static ra8_err_t internal_hex_dump(const ra8_fmt_source_t* source,
-                                   const ra8_fmt_sink_t*   report,
-                                   const char*             label,
-                                   uint64_t                offset,
-                                   size_t                  len)
+static ra8_err_t internal_hex_dump_header(const ra8_fmt_sink_t* report,
+                                          const char*           label,
+                                          uint64_t              offset,
+                                          size_t                len)
 {
   ra8_err_t rc = internal_text(report, label);
   if (rc == k_ra8_ok) {
@@ -274,8 +287,71 @@ static ra8_err_t internal_hex_dump(const ra8_fmt_source_t* source,
   if (rc == k_ra8_ok) {
     rc = internal_text(report, "):\n");
   }
-  uint8_t row[k_fmt_text_hex_row];
-  size_t  done = 0U;
+  return rc;
+}
+
+/**
+ * @brief Render one already-loaded hex/ASCII row: offset, hex bytes, ASCII.
+ * @param[in] report Report sink.
+ * @param[in] offset Absolute source offset of @p row[0].
+ * @param[in] row Loaded row bytes, exactly ::k_fmt_text_hex_row long.
+ * @param[in] count Valid leading bytes of @p row (the rest pad with spaces).
+ * @return Sink status.
+ * @retval k_ra8_ok The complete row was emitted.
+ * @retval other First injected sink failure.
+ * @pre @p report and @p row are non-null; @p count is at most
+ *      ::k_fmt_text_hex_row.
+ * @post No source or report binding is modified.
+ * @note Thread safety inherits the injected sink.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_hex_dump_row(const ra8_fmt_sink_t* report,
+                                       uint64_t              offset,
+                                       const uint8_t*        row,
+                                       size_t                count)
+{
+  ra8_err_t rc = internal_text(report, "  ");
+  if (rc == k_ra8_ok) {
+    rc = internal_hex(report, offset, 8U);
+  }
+  if (rc == k_ra8_ok) {
+    rc = internal_text(report, "  ");
+  }
+  for (size_t i = 0U; (i < (size_t)k_fmt_text_hex_row) && (rc == k_ra8_ok); ++i) {
+    if (i < count) {
+      rc = internal_hex(report, row[i], 2U);
+      if (rc == k_ra8_ok) {
+        rc = internal_char(report, ' ');
+      }
+    } else {
+      rc = internal_text(report, "   ");
+    }
+  }
+  if (rc == k_ra8_ok) {
+    rc = internal_text(report, " |");
+  }
+  for (size_t i = 0U; (i < count) && (rc == k_ra8_ok); ++i) {
+    const bool printable =
+      (row[i] >= (uint8_t)k_fmt_text_ascii_low) && (row[i] <= (uint8_t)k_fmt_text_ascii_high);
+    rc = internal_char(report, (char)(printable ? (char)row[i] : '.'));
+  }
+  if (rc == k_ra8_ok) {
+    rc = internal_text(report, "|\n");
+  }
+  return rc;
+}
+
+RA8_INTERNAL
+static ra8_err_t internal_hex_dump(const ra8_fmt_source_t* source,
+                                   const ra8_fmt_sink_t*   report,
+                                   const char*             label,
+                                   uint64_t                offset,
+                                   size_t                  len)
+{
+  ra8_err_t rc = internal_hex_dump_header(report, label, offset, len);
+  uint8_t   row[k_fmt_text_hex_row];
+  size_t    done = 0U;
   while ((done < len) && (rc == k_ra8_ok)) {
     size_t count = len - done;
     if (count > sizeof(row)) {
@@ -283,34 +359,7 @@ static ra8_err_t internal_hex_dump(const ra8_fmt_source_t* source,
     }
     rc = internal_read_exact(source, offset + done, row, count);
     if (rc == k_ra8_ok) {
-      rc = internal_text(report, "  ");
-    }
-    if (rc == k_ra8_ok) {
-      rc = internal_hex(report, offset + done, 8U);
-    }
-    if (rc == k_ra8_ok) {
-      rc = internal_text(report, "  ");
-    }
-    for (size_t i = 0U; (i < sizeof(row)) && (rc == k_ra8_ok); ++i) {
-      if (i < count) {
-        rc = internal_hex(report, row[i], 2U);
-        if (rc == k_ra8_ok) {
-          rc = internal_char(report, ' ');
-        }
-      } else {
-        rc = internal_text(report, "   ");
-      }
-    }
-    if (rc == k_ra8_ok) {
-      rc = internal_text(report, " |");
-    }
-    for (size_t i = 0U; (i < count) && (rc == k_ra8_ok); ++i) {
-      const bool printable =
-        (row[i] >= (uint8_t)k_fmt_text_ascii_low) && (row[i] <= (uint8_t)k_fmt_text_ascii_high);
-      rc = internal_char(report, printable ? (char)row[i] : '.');
-    }
-    if (rc == k_ra8_ok) {
-      rc = internal_text(report, "|\n");
+      rc = internal_hex_dump_row(report, offset + done, row, count);
     }
     done += count;
   }
@@ -449,6 +498,52 @@ static ra8_err_t internal_geometry(const ra8_fmt_source_t* source,
  * @note Output work is bounded even for the maximum legal atlas.
  * @since 0.1.0
  */
+/**
+ * @brief Render one audit-record row of the verbose per-tile table.
+ * @param[in] report Report sink.
+ * @param[in] index Zero-based row index, printed in the tile column.
+ * @param[in] record Completed audit record for this row.
+ * @return Sink status.
+ * @retval k_ra8_ok The complete row was emitted.
+ * @retval other First injected sink failure.
+ * @pre @p report and @p record are non-null.
+ * @post Record storage is unchanged.
+ * @note Thread safety inherits the injected sink.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_table_row(const ra8_fmt_sink_t*         report,
+                                    uint32_t                      index,
+                                    const ra8_jof_audit_record_t* record)
+{
+  ra8_err_t rc = internal_u64(report, index, 8U);
+  if (rc == k_ra8_ok) {
+    rc = internal_u64(report, record->offset, k_fmt_text_col_width);
+  }
+  if (rc == k_ra8_ok) {
+    rc = internal_u64(report, record->length, k_fmt_text_col_width);
+  }
+  if (rc == k_ra8_ok) {
+    rc = internal_u64(report, record->payload, k_fmt_text_col_width);
+  }
+  if (rc == k_ra8_ok) {
+    rc = internal_u64(report, record->width, 6U);
+  }
+  if (rc == k_ra8_ok) {
+    rc = internal_u64(report, record->height, 6U);
+  }
+  if (rc == k_ra8_ok) {
+    rc = internal_text(report, "   ");
+  }
+  if (rc == k_ra8_ok) {
+    rc = internal_hex(report, record->content_hash, 8U);
+  }
+  if (rc == k_ra8_ok) {
+    rc = internal_char(report, '\n');
+  }
+  return rc;
+}
+
 RA8_INTERNAL
 static ra8_err_t
 internal_table(const ra8_jof_audit_record_t* records, uint32_t count, const ra8_fmt_sink_t* report)
@@ -460,31 +555,7 @@ internal_table(const ra8_jof_audit_record_t* records, uint32_t count, const ra8_
     shown = k_fmt_text_max_rows;
   }
   for (uint32_t i = 0U; (i < shown) && (rc == k_ra8_ok); ++i) {
-    rc = internal_u64(report, i, 8U);
-    if (rc == k_ra8_ok) {
-      rc = internal_u64(report, records[i].offset, k_fmt_text_col_width);
-    }
-    if (rc == k_ra8_ok) {
-      rc = internal_u64(report, records[i].length, k_fmt_text_col_width);
-    }
-    if (rc == k_ra8_ok) {
-      rc = internal_u64(report, records[i].payload, k_fmt_text_col_width);
-    }
-    if (rc == k_ra8_ok) {
-      rc = internal_u64(report, records[i].width, 6U);
-    }
-    if (rc == k_ra8_ok) {
-      rc = internal_u64(report, records[i].height, 6U);
-    }
-    if (rc == k_ra8_ok) {
-      rc = internal_text(report, "   ");
-    }
-    if (rc == k_ra8_ok) {
-      rc = internal_hex(report, records[i].content_hash, 8U);
-    }
-    if (rc == k_ra8_ok) {
-      rc = internal_char(report, '\n');
-    }
+    rc = internal_table_row(report, i, &records[i]);
   }
   if ((shown < count) && (rc == k_ra8_ok)) {
     rc = internal_text(report, "  ... ");
