@@ -540,6 +540,55 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_finish(mdl_http_state_t* state,
 }
 
 /**
+ * @brief Account one successful nonzero body read into job state.
+ * @details Overflow-checks the running byte count against a 64-bit ceiling,
+ *          enforces it against any advertised total, folds the bytes into
+ *          the running SHA-256 digest, and reports the exact transfer.
+ * @param[in,out] state Prepared job state being accounted.
+ * @param[in] out Body bytes just read, spanning @p read bytes.
+ * @param[in] read Strictly positive byte count returned by the transport.
+ * @param[out] got Exact body bytes returned.
+ * @param[out] total_bytes Advertised or independently counted total.
+ * @return Accounting status.
+ * @retval k_ra8_ok The bytes were folded into state and reported.
+ * @retval k_ra8_err_invalid_size Received-byte count overflowed.
+ * @retval k_ra8_err_protocol_error The advertised total was exceeded.
+ * @retval k_ra8_fail SHA digest processing failed.
+ * @pre @p read is strictly positive.
+ * @pre @p out has at least @p read readable bytes.
+ * @post Success advances `state->received` by exactly @p read.
+ * @post Failure resets the job state before returning.
+ * @note Not thread-safe; service dispatch serializes calls.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_mdl_http_account_read(mdl_http_state_t* state,
+                                                             const uint8_t*    out,
+                                                             int               read,
+                                                             uint16_t*         got,
+                                                             uint64_t*         total_bytes)
+{
+  if (state->received > (UINT64_MAX - (uint64_t)read)) {
+    internal_mdl_http_reset_job(state);
+    return k_ra8_err_invalid_size;
+  }
+  const uint64_t next_received = state->received + (uint64_t)read;
+  if (state->total_known) {
+    if (next_received > state->total) {
+      internal_mdl_http_reset_job(state);
+      return k_ra8_err_protocol_error;
+    }
+  }
+  if (mbedtls_sha256_update(&state->sha, out, (size_t)read) != 0) {
+    internal_mdl_http_reset_job(state);
+    return k_ra8_fail;
+  }
+  state->received = next_received;
+  *got            = (uint16_t)read;
+  *total_bytes    = state->total;
+  return k_ra8_ok;
+}
+
+/**
  * @brief Pull one bounded body span or verified terminal metadata
  * @details Counts and hashes every returned byte and rejects truncated bodies.
  * @param[in,out] ctx Prepared ::mdl_http_state_t.
@@ -591,25 +640,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_read(void*     ctx,
     return k_ra8_fail;
   }
   if (read > 0) {
-    if (state->received > (UINT64_MAX - (uint64_t)read)) {
-      internal_mdl_http_reset_job(state);
-      return k_ra8_err_invalid_size;
-    }
-    const uint64_t next_received = state->received + (uint64_t)read;
-    if (state->total_known) {
-      if (next_received > state->total) {
-        internal_mdl_http_reset_job(state);
-        return k_ra8_err_protocol_error;
-      }
-    }
-    if (mbedtls_sha256_update(&state->sha, out, (size_t)read) != 0) {
-      internal_mdl_http_reset_job(state);
-      return k_ra8_fail;
-    }
-    state->received = next_received;
-    *got            = (uint16_t)read;
-    *total_bytes    = state->total;
-    return k_ra8_ok;
+    return internal_mdl_http_account_read(state, out, read, got, total_bytes);
   }
   return internal_mdl_http_finish(state, total_bytes, complete, sha256, response);
 }
