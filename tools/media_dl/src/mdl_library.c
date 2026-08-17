@@ -405,9 +405,54 @@ RA8_INTERNAL static ra8_err_t internal_library_first_child(mdl_storage_t*       
 }
 
 /**
+ * @brief Act on one revalidated child node according to its type.
+ * @details Pushes a directory onto the DFS stack, rejects a symlink, or
+ * unlinks a regular file.
+ * @param[in,out] storage Portable namespace binding.
+ * @param[in] policy Active traversal limits.
+ * @param[in,out] workspace Active DFS stack and counters.
+ * @param[in] path Canonical path of the revalidated node.
+ * @param[in] node Freshly stat'd node value for @p path.
+ * @return Canonical child-processing status.
+ * @retval k_ra8_ok The directory was pushed or the file was removed.
+ * @retval k_ra8_err_access_denied The node is a symlink.
+ * @retval k_ra8_err_invalid_size The DFS depth budget was exhausted.
+ * @retval k_ra8_err_invalid_arg The node is neither a directory, symlink,
+ * nor a regular file.
+ * @pre @p node was produced by a fresh `fw_fs_stat` on @p path.
+ * @post Success either increments @p workspace->depth exactly once or
+ * removes exactly one file.
+ * @note Not thread-safe with respect to concurrent mutation of @p storage.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_library_act_on_node(mdl_storage_t*              storage,
+                                                           const mdl_library_policy_t* policy,
+                                                           mdl_library_workspace_t*    workspace,
+                                                           const char*                 path,
+                                                           fw_fs_stat_t                node)
+{
+  if (node.type == k_fw_fs_node_directory) {
+    if (workspace->depth >= policy->max_depth) {
+      return k_ra8_err_invalid_size;
+    }
+    ++workspace->depth;
+    memcpy(workspace->paths[workspace->depth], path, strlen(path) + 1U);
+    return k_ra8_ok;
+  }
+  if (node.type == k_fw_fs_node_symlink) {
+    return k_ra8_err_access_denied;
+  }
+  if (node.type != k_fw_fs_node_file) {
+    return k_ra8_err_invalid_arg;
+  }
+  const ra8_err_t err = internal_library_take_operation(policy, workspace);
+  return (err == k_ra8_ok) ? fw_fs_unlink(&storage->fs->names, path) : err;
+}
+
+/**
  * @brief Remove or descend into one captured child.
  * @details Revalidates the stable leaf and node type after listdir closes,
- *          then unlinks files or pushes directories onto the fixed DFS stack.
+ *          then delegates to ::internal_library_act_on_node.
  * @param[in,out] storage Portable namespace binding.
  * @param[in] policy Active traversal limits.
  * @param[in,out] workspace Active DFS stack and counters.
@@ -453,22 +498,7 @@ RA8_INTERNAL static ra8_err_t internal_library_remove_child(mdl_storage_t*      
   if (!node.exists || (node.type != child->type)) {
     return k_ra8_err_invalid_state;
   }
-  if (node.type == k_fw_fs_node_directory) {
-    if (workspace->depth >= policy->max_depth) {
-      return k_ra8_err_invalid_size;
-    }
-    ++workspace->depth;
-    memcpy(workspace->paths[workspace->depth], path, strlen(path) + 1U);
-    return k_ra8_ok;
-  }
-  if (node.type == k_fw_fs_node_symlink) {
-    return k_ra8_err_access_denied;
-  }
-  if (node.type != k_fw_fs_node_file) {
-    return k_ra8_err_invalid_arg;
-  }
-  err = internal_library_take_operation(policy, workspace);
-  return (err == k_ra8_ok) ? fw_fs_unlink(&storage->fs->names, path) : err;
+  return internal_library_act_on_node(storage, policy, workspace, path, node);
 }
 
 /**

@@ -532,6 +532,64 @@ static int internal_execute(const verify_cli_args_t*                 args,
   return (rc == k_ra8_ok) ? (int)k_verify_cli_ok : (int)k_verify_cli_fail;
 }
 
+/**
+ * @brief Open both verify sources and compute the workspace sizing.
+ * @details Opens the reference and comparison file descriptors on the same
+ * input, confirms they observe the identical unchanged file, then derives
+ * the JOF verify requirements and workspace layout.
+ * @param[in] args Parsed CLI arguments (input path).
+ * @param[in] workspace_bytes Capacity of the CLI workspace scratch, in bytes.
+ * @param[out] ref_source Opened reference-pass source.
+ * @param[out] got_source Opened comparison-pass source.
+ * @param[out] need Derived JOF verify requirements.
+ * @param[out] layout Derived workspace layout.
+ * @param[in] errors Sink for open/validation diagnostics.
+ * @param[in] report Sink for capacity diagnostics.
+ * @return Open/sizing status.
+ * @retval k_ra8_ok Both sources are open, identical, unchanged, and sized.
+ * @retval other Open, identity, sizing, or capacity validation failed
+ * (already reported and cleaned up).
+ * @pre @p args->input names a readable file.
+ * @post On failure both sources are closed and no partial state escapes.
+ * @note Not thread-safe with respect to concurrent mutation of the input.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_open_and_size(const verify_cli_args_t* args,
+                                                     size_t                   workspace_bytes,
+                                                     ra8_fmt_host_source_t*   ref_source,
+                                                     ra8_fmt_host_source_t*   got_source,
+                                                     ra8_fmt_jof_verify_requirements_t* need,
+                                                     verify_layout_t*                   layout,
+                                                     const ra8_fmt_sink_t*              errors,
+                                                     const ra8_fmt_sink_t*              report)
+{
+  ra8_err_t rc = priv_fmt_host_source_open(args->input, k_verify_cli_input, ref_source);
+  if (rc == k_ra8_ok) {
+    rc = priv_fmt_host_source_open(args->input, k_verify_cli_input, got_source);
+  }
+  if ((rc == k_ra8_ok) && (!priv_fmt_host_sources_same(ref_source, got_source) ||
+                           (priv_fmt_host_source_unchanged(ref_source) != k_ra8_ok) ||
+                           (priv_fmt_host_source_unchanged(got_source) != k_ra8_ok))) {
+    rc = k_ra8_err_validation_failed;
+  }
+  if (rc != k_ra8_ok) {
+    internal_status(errors, "ra8_fmt: cannot open verify input (rc=", rc);
+    internal_cleanup(ref_source, got_source, nullptr, nullptr);
+    return rc;
+  }
+  rc               = ra8_fmt_jof_verify_requirements(&ref_source->source, need);
+  const bool sized = (rc == k_ra8_ok) && internal_layout(need, layout);
+  if ((rc == k_ra8_ok) && (!sized || (layout->total > workspace_bytes))) {
+    internal_capacity(errors, need, layout, workspace_bytes);
+    rc = k_ra8_err_invalid_size;
+  }
+  if (rc != k_ra8_ok) {
+    internal_status(report, "verify: cannot read source dimensions (rc=", rc);
+    internal_cleanup(ref_source, got_source, nullptr, nullptr);
+  }
+  return rc;
+}
+
 RA8_PRIV int priv_fmt_try_portable_verify(int                      argc,
                                           char**                   argv,
                                           ra8_fmt_cli_workspace_t* workspace,
@@ -549,38 +607,24 @@ RA8_PRIV int priv_fmt_try_portable_verify(int                      argc,
       (strcmp(args.format, "jof") != 0) || (args.input == nullptr)) {
     return (int)k_verify_cli_ok;
   }
-  *handled                            = true;
-  ra8_fmt_host_fd_sink_t error_state  = {.fd = STDERR_FILENO};
-  ra8_fmt_host_fd_sink_t report_state = {.fd = STDOUT_FILENO};
-  const ra8_fmt_sink_t   errors       = priv_fmt_host_fd_sink(&error_state);
-  const ra8_fmt_sink_t   report       = priv_fmt_host_fd_sink(&report_state);
-  ra8_fmt_host_source_t  ref_source   = {.fd = -1};
-  ra8_fmt_host_source_t  got_source   = {.fd = -1};
-  ra8_err_t rc = priv_fmt_host_source_open(args.input, k_verify_cli_input, &ref_source);
-  if (rc == k_ra8_ok) {
-    rc = priv_fmt_host_source_open(args.input, k_verify_cli_input, &got_source);
-  }
-  if ((rc == k_ra8_ok) && (!priv_fmt_host_sources_same(&ref_source, &got_source) ||
-                           (priv_fmt_host_source_unchanged(&ref_source) != k_ra8_ok) ||
-                           (priv_fmt_host_source_unchanged(&got_source) != k_ra8_ok))) {
-    rc = k_ra8_err_validation_failed;
-  }
+  *handled                                       = true;
+  ra8_fmt_host_fd_sink_t            error_state  = {.fd = STDERR_FILENO};
+  ra8_fmt_host_fd_sink_t            report_state = {.fd = STDOUT_FILENO};
+  const ra8_fmt_sink_t              errors       = priv_fmt_host_fd_sink(&error_state);
+  const ra8_fmt_sink_t              report       = priv_fmt_host_fd_sink(&report_state);
+  ra8_fmt_host_source_t             ref_source   = {.fd = -1};
+  ra8_fmt_host_source_t             got_source   = {.fd = -1};
+  ra8_fmt_jof_verify_requirements_t need         = {};
+  verify_layout_t                   layout       = {};
+  const ra8_err_t                   rc           = internal_open_and_size(&args,
+                                                                          sizeof(workspace->bytes),
+                                                                          &ref_source,
+                                                                          &got_source,
+                                                                          &need,
+                                                                          &layout,
+                                                                          &errors,
+                                                                          &report);
   if (rc != k_ra8_ok) {
-    internal_status(&errors, "ra8_fmt: cannot open verify input (rc=", rc);
-    internal_cleanup(&ref_source, &got_source, nullptr, nullptr);
-    return (int)k_verify_cli_fail;
-  }
-  ra8_fmt_jof_verify_requirements_t need = {};
-  rc                     = ra8_fmt_jof_verify_requirements(&ref_source.source, &need);
-  verify_layout_t layout = {};
-  const bool      sized  = (rc == k_ra8_ok) && internal_layout(&need, &layout);
-  if ((rc == k_ra8_ok) && (!sized || (layout.total > sizeof(workspace->bytes)))) {
-    internal_capacity(&errors, &need, &layout, sizeof(workspace->bytes));
-    rc = k_ra8_err_invalid_size;
-  }
-  if (rc != k_ra8_ok) {
-    internal_status(&report, "verify: cannot read source dimensions (rc=", rc);
-    internal_cleanup(&ref_source, &got_source, nullptr, nullptr);
     return (int)k_verify_cli_fail;
   }
   return internal_execute(&args,
