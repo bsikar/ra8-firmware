@@ -19,6 +19,7 @@
  */
 
 #include <stdint.h>
+#include <string.h>
 
 #include "ra8_attributes.h"
 #include "ra8_err.h"
@@ -32,13 +33,17 @@
  *
  * @details A 512-byte FAT16 directory sector holds 16 32-byte entries; a
  *          subdirectory already carries "." and "..", so 14 extra files pack
- *          its first sector completely (no EoD marker left).
+ *          its first sector completely (no EoD marker left). One more file
+ *          spills into the second sector of an SPC=2 cluster, which is what
+ *          the cursor test needs to make the walk cross a sector boundary.
  *
  * @invariant k_fill_subdir_files + 2 == entries per 512-byte dir sector.
+ * @invariant k_fill_spc2_sub_files == k_fill_subdir_files + 1.
  * @see create_empty_files()
  */
 typedef enum : uint8_t {
-  k_fill_subdir_files = 14U, /**< Files that fill /SUB's first sector. */
+  k_fill_subdir_files   = 14U, /**< Files that fill /SUB's first sector.  */
+  k_fill_spc2_sub_files = 15U, /**< ...plus one in its second sector.     */
 } dir_list_fill_t;
 
 /* ===========================================================================
@@ -258,6 +263,76 @@ RA8_INTERNAL static void internal_test_listdir_full_no_eod(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   internal_free_vol();
   TEST_END("listdir: 16-entry root, no EoD -> k_ra8_ok at line 159");
+}
+
+/* ===========================================================================
+ * Tests: ra8_fs_dir_open / ra8_fs_dir_next cursor walk
+ * ===========================================================================
+ */
+
+/**
+ * @test test_mcdc_dir_next_sector_exhausted
+ * @brief The cursor crosses a sector that yields no entry and no end marker.
+ *
+ * @details On an SPC=2 volume /SUB's single cluster spans two 512-byte sectors
+ *          (32 entries). "." and ".." take the first two slots and 14 files
+ *          fill the rest of sector 0; the 15th lands as the first entry of
+ *          sector 1. Unlinking those 14 leaves sector 0 holding nothing but
+ *          two dot slots and fourteen 0xE5 deleted slots, and no 0x00
+ *          end-of-directory marker, so the scan runs the sector out without
+ *          copying an entry and without reaching the end of the directory --
+ *          the only state in which the cursor advances to the next sector.
+ *
+ * @par MC/DC:
+ * Decision: `if (*out_entry || state->finished)` in
+ * `libs/ra8_fs/src/ra8_fs_fat_dir.c@internal_fat_dir_next` (2 conditions).
+ * - V1: out_entry=false, finished=false -> F,F -> dec F: sector 0 is exhausted
+ *       by the dot and deleted slots, so the walk advances to sector 1.
+ * - V2: out_entry=true (finished not evaluated) -> C1=T -> dec T: sector 1
+ *       holds the surviving file, which this same first `dir_next` returns.
+ * - V3: out_entry=false, finished=true -> C1=F, C2=T -> dec T: the second
+ *       `dir_next` meets the 0x00 end marker behind that file and reports EOF.
+ * V1+V2 prove `*out_entry` independently drives the outcome; V1+V3 prove the
+ * same for `state->finished`. N+1 = 3 vectors for N=2 conditions: minimal
+ * MC/DC. The decision's third condition disappeared with the dead `ra8_err_t`
+ * return of internal_fat_dir_scan_sector(), which had no failing path at all.
+ *
+ * @pre A FAT16 SPC=2 volume is built and mounted.
+ * @pre /SUB holds one surviving file in its second sector, behind a first
+ *      sector consumed entirely by dot and deleted slots.
+ * @post Both `dir_next` calls return k_ra8_ok.
+ * @post The first reports the surviving file and the second reports clean EOF.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
+ */
+RA8_INTERNAL static void internal_test_mcdc_dir_next_sector_exhausted(void)
+{
+  TEST_BEGIN("dir cursor MC/DC: sector runs out with no entry and no end marker");
+  internal_build_fat16_spc2_vol();
+  ra8_fs_mount_t* h = nullptr;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
+  internal_create_empty_files(h, "/SUB", (uint32_t)k_fill_spc2_sub_files);
+  internal_unlink_empty_files(h, "/SUB", (uint32_t)k_fill_subdir_files);
+
+  ra8_fs_dir_t    directory = {};
+  ra8_fs_dirent_t entry     = {};
+  bool            present   = false;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_dir_open(h, "/SUB", &directory));
+  /* V1 then V2 inside one call: sector 0 is exhausted by two dot slots and
+   * fourteen deleted ones, so the walk advances and finds the survivor. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_dir_next(&directory, &entry, &present));
+  TEST_ASSERT(present);
+  TEST_ASSERT(strcmp(entry.name, "G14.TXT") == 0);
+  /* V3: the 0x00 end marker behind that entry ends the walk. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_dir_next(&directory, &entry, &present));
+  TEST_ASSERT(!present);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_dir_close(&directory));
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
+  internal_free_vol();
+  TEST_END("dir cursor MC/DC: sector runs out with no entry and no end marker");
 }
 
 /* ===========================================================================
@@ -586,7 +661,7 @@ RA8_INTERNAL static void internal_test_mkdir_spc2_second_fail(void)
 /**
  * @brief Test executable entry point.
  *
- * @details Runs the listdir + mkdir coverage tests in sequence. Each test is
+ * @details Runs the listdir + cursor + mkdir coverage tests in sequence. Each test is
  *          self-contained: it builds the volume, mounts, exercises the target
  *          branches, unmounts, and frees the disk. Failure exits via
  *          TEST_FAIL_FMT (exit(1)).
@@ -607,6 +682,8 @@ int main(void)
   internal_test_listdir_read_error();
   internal_test_listdir_walk_fail();
   internal_test_listdir_full_no_eod();
+
+  internal_test_mcdc_dir_next_sector_exhausted();
 
   internal_test_mkdir_not_mounted();
   internal_test_mkdir_exfat_dispatches();
