@@ -189,6 +189,11 @@ gate_misra() (
   python3 scripts/checks/misra_ratchet.py --selftest
   python3 scripts/checks/check_misra_deviations.py --selftest
   python3 scripts/checks/check_misra_deviations.py --check
+  # The scan excludes BUILD OUTPUT, and only where build output can live:
+  # a blanket */build/* would swallow real source under libs/. Its selftest
+  # proves both halves against a throwaway tree, so an exclusion that had
+  # quietly become blanket cannot pass as a clean, quiet audit.
+  bash scripts/checks/misra_check_inner.sh --selftest
   bash scripts/checks/misra_check_inner.sh
   python3 scripts/checks/misra_ratchet.py --check
 )
