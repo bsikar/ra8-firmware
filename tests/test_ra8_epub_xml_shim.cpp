@@ -113,8 +113,8 @@ constexpr const char* s_container_empty_full_path =
  *
  * @par MC/DC:
  * Decisions:
- * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_attr
- * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_find
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@priv_ra8_epub_xml_attr
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@priv_ra8_epub_xml_find
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@priv_ra8_epub_xml_parse_container
  *
  * Decision 1: ``xml_bytes == nullptr || out == nullptr || workspace ==
@@ -333,11 +333,11 @@ RA8_INTERNAL void internal_assert_shared_toc(const ra8_epub_book_t& book)
  * Nested/flat entries, present/absent hrefs, first/repeated titles, anchor/span
  * labels, and self-closing anchors independently vary the event-consumer
  * predicates. Decisions:
- * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_ncx_event
- * - libs/ra8_epub/src/ra8_epub_xml_shim.c@priv_ra8_epub_xml_parse_ncx
- * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_nav_event
- * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_nav_event_start
- * - libs/ra8_epub/src/ra8_epub_xml_shim.c@priv_ra8_epub_xml_parse_nav
+ * - libs/ra8_epub/src/ra8_epub_xml_toc.c@internal_ncx_event
+ * - libs/ra8_epub/src/ra8_epub_xml_toc.c@priv_ra8_epub_xml_parse_ncx
+ * - libs/ra8_epub/src/ra8_epub_xml_toc.c@internal_nav_event
+ * - libs/ra8_epub/src/ra8_epub_xml_toc.c@internal_nav_event_start
+ * - libs/ra8_epub/src/ra8_epub_xml_toc.c@priv_ra8_epub_xml_parse_nav
  * @brief Verify parse ncx and nav behavior. @details Executes the parse ncx and nav scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL void internal_test_parse_ncx_and_nav(void)
 {
@@ -392,6 +392,19 @@ RA8_INTERNAL void internal_test_parse_ncx_and_nav(void)
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_opf_metadata_child
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_manifest_item
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_manifest_lookup
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_opf_resolve_refs
+ *
+ * The spine `toc` fallback gate
+ * ``if (err == k_ra8_ok && toc_kind != nav && spine_toc.length > 0U)`` moved
+ * into ``internal_opf_resolve_refs`` when the reference-resolution block was
+ * extracted from ``priv_ra8_epub_xml_parse_opf``; the vectors covering it are
+ * the three OPF fixtures below, unchanged by that extraction.
+ *  - V7: nav OPF   -> C2=F short. Decision F: toc_kind stays nav.
+ *  - V8: ncx OPF   -> C2=T,C3=T.  Decision T: toc_path == "toc.ncx".
+ *  - V9: plain OPF -> C2=T,C3=F.  Decision F: toc_path stays empty.
+ * V8+V7 isolate the TOC kind; V8+V9 isolate the spine `toc` attribute. C1
+ * (``err == k_ra8_ok``) cannot vary once the helper is entered and is
+ * catalogued as deactivated in docs/MCDC_DEACTIVATIONS.md.
  * @brief Verify parse opf toc source behavior. @details Executes the parse opf toc source scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL void internal_test_parse_opf_toc_source(void)
 {
@@ -432,10 +445,10 @@ RA8_INTERNAL void internal_test_parse_opf_toc_source(void)
  * the caller's TOC beyond the documented reset.
  * @par MC/DC:
  * Valid/missing selection and present/missing direct list controls exercise:
- * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_select_nav
- * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_nav_has_list
- * - libs/ra8_epub/src/ra8_epub_xml_shim.c@priv_ra8_epub_xml_parse_ncx
- * - libs/ra8_epub/src/ra8_epub_xml_shim.c@priv_ra8_epub_xml_parse_nav
+ * - libs/ra8_epub/src/ra8_epub_xml_toc.c@internal_select_nav
+ * - libs/ra8_epub/src/ra8_epub_xml_toc.c@internal_nav_has_list
+ * - libs/ra8_epub/src/ra8_epub_xml_toc.c@priv_ra8_epub_xml_parse_ncx
+ * - libs/ra8_epub/src/ra8_epub_xml_toc.c@priv_ra8_epub_xml_parse_nav
  * @brief Verify parse toc guards behavior. @details Executes the parse toc guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL void internal_test_parse_toc_guards(void)
 {
@@ -471,7 +484,7 @@ RA8_INTERNAL std::string internal_build_toc_document(bool nav, std::size_t entri
   return xml;
 }
 
-/** @test TOC capacity is exact and exhaustion is failure-atomic. @par MC/DC: NCX and nav at-cap/over-cap vectors independently vary list-required, enabled, entry, close, and exhaustion predicates in libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_toc_capacity. @brief Verify toc capacity atomicity behavior. @details Executes the toc capacity atomicity scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+/** @test TOC capacity is exact and exhaustion is failure-atomic. @par MC/DC: NCX and nav at-cap/over-cap vectors independently vary list-required, enabled, entry, close, and exhaustion predicates in libs/ra8_epub/src/ra8_epub_xml_toc.c@internal_toc_capacity. @brief Verify toc capacity atomicity behavior. @details Executes the toc capacity atomicity scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL void internal_test_toc_capacity_atomicity(void)
 {
   const std::string ncx_at = internal_build_toc_document(false, k_ra8_epub_max_toc);
@@ -650,8 +663,18 @@ RA8_INTERNAL void internal_test_mcdc_copy_bounded_truncation(void)
  * independently vary the collection and lookup predicates. Decisions:
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_collect_spine
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_manifest_lookup
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_opf_resolve_refs
  * The attribute-less item is skipped and the spine still resolves to the
- * second item, so exactly one chapter is recorded. @brief Verify mcdc manifest item missing id behavior. @details Executes the mcdc manifest item missing id scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * second item, so exactly one chapter is recorded. That resolution walk is the
+ * spine-reference loop
+ * ``for (i = 0U; err == k_ra8_ok && i < reference_count; ++i)``, which
+ * ``internal_opf_resolve_refs`` took over from
+ * ``priv_ra8_epub_xml_parse_opf``:
+ *  - V1: i < reference_count  -> C2=T. Decision T, the body resolves one href.
+ *  - V2: i == reference_count -> C2=F. Decision F, the loop ends.
+ * V1+V2 isolate the bound. C1 (``err == k_ra8_ok``) cannot vary once the
+ * helper is entered and is catalogued as deactivated in
+ * docs/MCDC_DEACTIVATIONS.md. @brief Verify mcdc manifest item missing id behavior. @details Executes the mcdc manifest item missing id scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL void internal_test_mcdc_manifest_item_missing_id(void)
 {
 
@@ -678,7 +701,26 @@ RA8_INTERNAL void internal_test_mcdc_manifest_item_missing_id(void)
  *    cover_path stays empty. Isolates C2 (V1 vs V3).
  *  - V4: name="generator", content="cov"  -> C1=T,C2=T,C3=F. Decision F.
  *    cover_path stays empty. Isolates C3 (V1 vs V4).
- * N+1 = 4 vectors for N=3 conditions: minimal MC/DC. @brief Verify mcdc cover by meta behavior. @details Executes the mcdc cover by meta scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * N+1 = 4 vectors for N=3 conditions: minimal MC/DC.
+ *
+ * Decisions:
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_opf_first
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_opf_resolve_refs
+ *
+ * The same fixtures drive the legacy-cover gate
+ * ``if (err == k_ra8_ok && cover_path[0] == '\0' && legacy_cover_id.length > 0U)``,
+ * which ``internal_opf_resolve_refs`` took over from
+ * ``priv_ra8_epub_xml_parse_opf``:
+ *  - V5 (V1 above): cover_path still empty, legacy id present -> C2=T,C3=T.
+ *    Decision T, the manifest lookup fills cover_path == "cover.png".
+ *  - V6 (V2/V3/V4 above): no usable legacy cover id -> C2=T,C3=F. Decision F,
+ *    cover_path stays empty. V5+V6 isolate the legacy-id condition.
+ *  - V7: the ``properties="cover-image"`` fixture driven by
+ *    internal_test_mcdc_nav_manifest_props_not_nav fills cover_path through
+ *    the EPUB 3 manifest path before this gate -> C2=F short. Decision F.
+ *    V5+V7 isolate the empty-cover-path condition.
+ * C1 (``err == k_ra8_ok``) cannot vary once the helper is entered and is
+ * catalogued as deactivated in docs/MCDC_DEACTIVATIONS.md. @brief Verify mcdc cover by meta behavior. @details Executes the mcdc cover by meta scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL void internal_test_mcdc_cover_by_meta(void)
 {
 
@@ -774,7 +816,7 @@ RA8_INTERNAL void internal_test_mcdc_collect_fonts_href_and_type(void)
  * @par MC/DC:
  * Landmarks/toc, untyped-then-toc, untyped-only fallback, and no-nav fixtures
  * vary event kind, depth, local name, type presence/match, and fallback state
- * in libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_select_nav. The typed toc
+ * in libs/ra8_epub/src/ra8_epub_xml_toc.c@internal_select_nav. The typed toc
  * following the untyped entry is selected here. @brief Verify mcdc nav by type untyped first behavior. @details Executes the mcdc nav by type untyped first scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL void internal_test_mcdc_nav_by_type_untyped_first(void)
 {

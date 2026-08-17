@@ -648,10 +648,10 @@ RA8_INTERNAL static void internal_assert_directory_lifecycle_guards(void)
  *          operand at a time before exercising the successful cursor lifecycle.
  *
  * @par MC/DC:
- * Covers `libs/ra8_io/src/ra8_io_vfs.c@ra8_io_vfs_dir_requirements`,
- * `libs/ra8_io/src/ra8_io_vfs.c@ra8_io_vfs_dir_open`,
- * `libs/ra8_io/src/ra8_io_vfs.c@ra8_io_vfs_dir_next`, and
- * `libs/ra8_io/src/ra8_io_vfs.c@ra8_io_vfs_dir_close`. The all-valid calls
+ * Covers `libs/ra8_io/src/ra8_io_vfs_namespace.c@ra8_io_vfs_dir_requirements`,
+ * `libs/ra8_io/src/ra8_io_vfs_namespace.c@ra8_io_vfs_dir_open`,
+ * `libs/ra8_io/src/ra8_io_vfs_namespace.c@ra8_io_vfs_dir_next`, and
+ * `libs/ra8_io/src/ra8_io_vfs_namespace.c@ra8_io_vfs_dir_close`. The all-valid calls
  * make every guard operand false. Each preceding call makes exactly one null
  * operand true; copied directory handles independently make `!is_open` and
  * `format == nullptr` true while the other state operand remains false.
