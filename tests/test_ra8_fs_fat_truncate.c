@@ -336,6 +336,29 @@ RA8_INTERNAL static void internal_write_file(ra8_fs_mount_t* h, const char* name
 }
 
 /**
+ * @brief Assert one byte at a known file offset is pattern or zero.
+ * @param[in] actual  Byte read back from the driver.
+ * @param[in] pos     File offset @p actual corresponds to.
+ * @param[in] pat_end File offsets below this must match the generator; the rest zero.
+ * @return Nothing; a mismatch fails and terminates the test process.
+ * @pre @p pos is a file offset, not a buffer index.
+ * @pre @p pat_end bounds which offsets must match the pattern generator.
+ * @post No state changes on a match.
+ * @post A mismatch is reported through TEST_FAIL_FMT before the process exits.
+ * @note Not thread-safe.
+ * @since 0.1.0
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static void internal_expect_span_byte(uint8_t actual, uint32_t pos, uint32_t pat_end)
+{
+  const uint8_t exp = (pos < pat_end) ? internal_ftr_byte_at(pos) : 0U;
+  if (actual != exp) {
+    TEST_FAIL_FMT("byte %u wrong", (unsigned)pos);
+  }
+}
+
+/**
  * @brief Assert @p got bytes at file offset @p pos are pattern then zeros.
  * @param[in] buf     Bytes read back from the driver.
  * @param[in] got     Number of bytes in @p buf.
@@ -355,11 +378,7 @@ RA8_INTERNAL static void
 internal_expect_span(const uint8_t* buf, uint32_t got, uint32_t pos, uint32_t pat_end)
 {
   for (uint32_t i = 0U; i < got; i++) {
-    const uint8_t exp = ((pos + i) < pat_end) ? internal_ftr_byte_at(pos + i) : 0U;
-    if (buf[i] != exp) {
-      TEST_FAIL_FMT("byte %u wrong", (unsigned)(pos + i));
-      return;
-    }
+    internal_expect_span_byte(buf[i], pos + i, pat_end);
   }
 }
 

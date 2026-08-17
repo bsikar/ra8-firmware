@@ -222,6 +222,51 @@ RA8_INTERNAL static void internal_reset_counts(void)
   s_fake.max_depth = 0;
 }
 
+/** @brief Assert the recorder saw exactly @p want acquires. @details Implements one bounded bracket-count check using caller-owned fixture state. @param[in] want Expected acquire count. @param[in] label Call being judged, for the failure message. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post A mismatch is reported through TEST_FAIL_FMT. @note Test-only helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_expect_acquired_count(uint32_t want, const char* label)
+{
+  if (s_fake.acquired != want) {
+    TEST_FAIL_FMT("%s: acquired %u, wanted %u", label, s_fake.acquired, want);
+  }
+}
+
+/** @brief Assert every recorded acquire was matched by a release. @details Implements one bounded bracket-balance check using caller-owned fixture state. @param[in] label Call being judged, for the failure message. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post A leak is reported through TEST_FAIL_FMT. @note Test-only helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_expect_balanced_release(const char* label)
+{
+  if (s_fake.released != s_fake.acquired) {
+    TEST_FAIL_FMT("%s: acquired %u but released %u -- the lock leaked",
+                  label,
+                  s_fake.acquired,
+                  s_fake.released);
+  }
+}
+
+/** @brief Assert the lock is not still held on return. @details Implements one bounded held-on-return check using caller-owned fixture state. @param[in] label Call being judged, for the failure message. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post A nonzero depth is reported through TEST_FAIL_FMT. @note Test-only helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_expect_zero_depth(const char* label)
+{
+  if (s_fake.depth != 0) {
+    TEST_FAIL_FMT("%s: still held on return (depth %d)", label, s_fake.depth);
+  }
+}
+
+/** @brief Assert the lock never nested past a non-recursive mutex's limit. @details Implements one bounded recursion-depth check using caller-owned fixture state. @param[in] label Call being judged, for the failure message. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post A depth past one is reported through TEST_FAIL_FMT. @note Test-only helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_expect_shallow_depth(const char* label)
+{
+  if (s_fake.max_depth > 1) {
+    TEST_FAIL_FMT("%s: took the lock %d deep -- a non-recursive mutex deadlocks here",
+                  label,
+                  s_fake.max_depth);
+  }
+}
+
+/** @brief Assert no callback observed a cookie other than the installed one. @details Implements one bounded wrong-context check using caller-owned fixture state. @param[in] label Call being judged, for the failure message. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post A stray cookie is reported through TEST_FAIL_FMT. @note Test-only helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_expect_no_wrong_ctx(const char* label)
+{
+  if (s_fake.wrong_ctx != 0U) {
+    TEST_FAIL_FMT("%s: a callback saw a cookie other than the installed one", label);
+  }
+}
+
 /**
  * @brief Assert that exactly @p want brackets ran and none of them leaked.
  *
@@ -230,26 +275,11 @@ RA8_INTERNAL static void internal_reset_counts(void)
  */
 RA8_INTERNAL static void internal_expect_brackets(uint32_t want, const char* label)
 {
-  if (s_fake.acquired != want) {
-    TEST_FAIL_FMT("%s: acquired %u, wanted %u", label, s_fake.acquired, want);
-  }
-  if (s_fake.released != s_fake.acquired) {
-    TEST_FAIL_FMT("%s: acquired %u but released %u -- the lock leaked",
-                  label,
-                  s_fake.acquired,
-                  s_fake.released);
-  }
-  if (s_fake.depth != 0) {
-    TEST_FAIL_FMT("%s: still held on return (depth %d)", label, s_fake.depth);
-  }
-  if (s_fake.max_depth > 1) {
-    TEST_FAIL_FMT("%s: took the lock %d deep -- a non-recursive mutex deadlocks here",
-                  label,
-                  s_fake.max_depth);
-  }
-  if (s_fake.wrong_ctx != 0U) {
-    TEST_FAIL_FMT("%s: a callback saw a cookie other than the installed one", label);
-  }
+  internal_expect_acquired_count(want, label);
+  internal_expect_balanced_release(label);
+  internal_expect_zero_depth(label);
+  internal_expect_shallow_depth(label);
+  internal_expect_no_wrong_ctx(label);
   internal_reset_counts();
 }
 

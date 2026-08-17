@@ -261,16 +261,17 @@ internal_library_expect_exists(mdl_storage_t* storage, const char* path, bool ex
 
 /**
  * @brief Exercise absent, empty, mixed, authenticated, and callback outcomes.
- * @details Builds a mixed portable library and proves authenticated enumeration fails closed.
+ * @details Builds a mixed portable library and proves counting, iteration
+ * order, early-stop, and callback-error propagation.
  * @param[in,out] storage Initialized fault-wrapped storage.
  * @pre @p storage is non-NULL and the vector paths are absent.
  * @pre No deterministic fault is armed.
  * @post Valid base/alternate generations are enumerated exactly once.
- * @post Corrupt, legacy, and non-file markers fail closed.
+ * @post No corrupt-shape vector runs in this helper.
  * @note Runs identically on both real backends.
  * @since 0.1.0
  */
-RA8_INTERNAL static void internal_library_enumeration_vectors(mdl_storage_t* storage)
+RA8_INTERNAL static void internal_library_enumeration_absent_and_mixed(mdl_storage_t* storage)
 {
   mdl_library_policy_t policy = mdl_library_policy_default();
   policy.max_entries          = (uint32_t)k_library_entry_capacity;
@@ -304,6 +305,26 @@ RA8_INTERNAL static void internal_library_enumeration_vectors(mdl_storage_t* sto
   visit = (mdl_library_visit_t){.error = k_ra8_err_cancelled};
   TEST_ASSERT_EQ(k_ra8_err_cancelled,
                  internal_library_enumerate(storage, "/mixed", &policy, &visit));
+}
+
+/**
+ * @brief Exercise corrupt, legacy, marker-directory, and non-directory shapes.
+ * @details Each vector proves one non-portable on-disk shape fails closed
+ * with the documented error instead of being silently skipped or accepted.
+ * @param[in,out] storage Initialized fault-wrapped storage; the `/mixed`
+ * fixture from a prior enumeration call may already exist on it.
+ * @pre @p storage is non-NULL.
+ * @pre No deterministic fault is armed.
+ * @post Every vectored bad shape returns its documented error.
+ * @post No enumeration observes a partial or corrupted entry as valid.
+ * @note Runs identically on both real backends.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_library_enumeration_bad_shapes(mdl_storage_t* storage)
+{
+  mdl_library_policy_t policy = mdl_library_policy_default();
+  policy.max_entries          = (uint32_t)k_library_entry_capacity;
+  mdl_library_visit_t visit   = {};
 
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_mkdir(&storage->fs->names, "/corrupt"));
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_mkdir(&storage->fs->names, "/corrupt/item"));
@@ -329,6 +350,23 @@ RA8_INTERNAL static void internal_library_enumeration_vectors(mdl_storage_t* sto
   internal_library_write(storage, "/root-file", (const uint8_t*)"x", 1U);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  internal_library_enumerate(storage, "/root-file", &policy, &visit));
+}
+
+/**
+ * @brief Exercise absent, empty, mixed, authenticated, and callback outcomes.
+ * @details Builds a mixed portable library and proves authenticated enumeration fails closed.
+ * @param[in,out] storage Initialized fault-wrapped storage.
+ * @pre @p storage is non-NULL and the vector paths are absent.
+ * @pre No deterministic fault is armed.
+ * @post Valid base/alternate generations are enumerated exactly once.
+ * @post Corrupt, legacy, and non-file markers fail closed.
+ * @note Runs identically on both real backends.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_library_enumeration_vectors(mdl_storage_t* storage)
+{
+  internal_library_enumeration_absent_and_mixed(storage);
+  internal_library_enumeration_bad_shapes(storage);
 }
 
 /**
