@@ -532,7 +532,7 @@ RA8_PRIV void priv_dvst_default_state(ra8_usb_speed_t speed);
  * @param[in] intsts0 INTSTS0 snapshot (forwarded to internal_handle_dvst).
  * @pre Caller has already verified the DVST bit is set in intsts0.
  * @pre ::g_dcd is past ux_dcd_ra8_usb_initialize.
- * @post ::priv_dvst_irq_count and the RHST history are updated.
+ * @post ::g_dvst_irq_count and the RHST history are updated.
  * @post Speed mirror updated and the DVST state-machine update has run.
  * @note ISR-only; must not block.
  * @since 0.1.0

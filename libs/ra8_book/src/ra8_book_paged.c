@@ -656,8 +656,8 @@ RA8_INTERNAL static bool internal_walk_text_paged(const ra8_book_src_t* src,
   /* Explicit DFS stack (2 KiB) kept in module-static storage so this frame
    * stays within the stack-usage budget; iterative (no recursion) and
    * single-threaded, so the shared buffer never overlaps. */
-  static uint32_t k_paged_stack[k_ra8_book_xhtml_stack];
-  uint32_t*       stack    = k_paged_stack;
+  static uint32_t s_paged_stack[k_ra8_book_xhtml_stack];
+  uint32_t*       stack    = s_paged_stack;
   uint32_t        sp       = 0U;
   bool            ok       = true;
   bool            at_break = true;

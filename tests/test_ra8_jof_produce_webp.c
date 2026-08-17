@@ -220,12 +220,12 @@ RA8_INTERNAL static ra8_err_t internal_produce_webp(const uint8_t*      src,
                                                     ra8_jof_memstore_t* store,
                                                     ra8_jof_info_t*     info)
 {
-  static t_mem_pull_t local_pull;
-  local_pull = (t_mem_pull_t){.d = src, .n = src_len, .pos = 0U};
-  *store     = (ra8_jof_memstore_t){.buf = store->buf, .cap = store->cap, .len = 0U};
+  static t_mem_pull_t s_pull;
+  s_pull = (t_mem_pull_t){.d = src, .n = src_len, .pos = 0U};
+  *store = (ra8_jof_memstore_t){.buf = store->buf, .cap = store->cap, .len = 0U};
   const ra8_jof_produce_cfg_t cfg = {
     .pull          = internal_t_mem_pull,
-    .pull_ctx      = &local_pull,
+    .pull_ctx      = &s_pull,
     .sink          = ra8_jof_memstore_sink,
     .sink_ctx      = store,
     .tile_w        = (uint16_t)k_t_tile,
@@ -506,12 +506,12 @@ RA8_INTERNAL static void internal_test_webp_png_byte_identical(void)
                                        &ia));
 
   internal_build_rgba_png();
-  static t_mem_pull_t local_pull;
-  local_pull                      = (t_mem_pull_t){.d = s_png, .n = s_png_len, .pos = 0U};
+  static t_mem_pull_t s_pull;
+  s_pull                          = (t_mem_pull_t){.d = s_png, .n = s_png_len, .pos = 0U};
   ra8_jof_memstore_t          sb  = {.buf = s_store_b, .cap = sizeof(s_store_b), .len = 0U};
   const ra8_jof_produce_cfg_t cfg = {
     .pull       = internal_t_mem_pull,
-    .pull_ctx   = &local_pull,
+    .pull_ctx   = &s_pull,
     .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &sb,
     .tile_w     = (uint16_t)k_t_tile,

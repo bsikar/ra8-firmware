@@ -335,22 +335,22 @@ internal_verify_mount_file_cycle(const ra8_fs_backend_t* be, ra8_fs_type_t type)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(be, &h));
   TEST_ASSERT_EQ(type, h->type);
 
-  static uint8_t wr[k_fmt_payload_bytes];
-  static uint8_t rd[k_fmt_payload_bytes];
+  static uint8_t s_wr[k_fmt_payload_bytes];
+  static uint8_t s_rd[k_fmt_payload_bytes];
   for (uint32_t i = 0U; i < (uint32_t)k_fmt_payload_bytes; i++) {
-    wr[i] = (uint8_t)((i * k_fs_pattern_stride) + k_fs_pattern_bias);
-    rd[i] = 0U;
+    s_wr[i] = (uint8_t)((i * k_fs_pattern_stride) + k_fs_pattern_bias);
+    s_rd[i] = 0U;
   }
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "HELLO.BIN", k_ra8_fs_mode_write, &f));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, wr, (uint32_t)k_fmt_payload_bytes));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_wr, (uint32_t)k_fmt_payload_bytes));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   uint32_t got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "HELLO.BIN", k_ra8_fs_mode_read, &f));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, rd, (uint32_t)k_fmt_payload_bytes, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_rd, (uint32_t)k_fmt_payload_bytes, &got));
   TEST_ASSERT_EQ(k_fmt_payload_bytes, got);
-  TEST_ASSERT_EQ(0, memcmp(wr, rd, (size_t)k_fmt_payload_bytes));
+  TEST_ASSERT_EQ(0, memcmp(s_wr, s_rd, (size_t)k_fmt_payload_bytes));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   list_ctx_t ctx = {};

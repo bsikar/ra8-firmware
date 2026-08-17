@@ -99,10 +99,10 @@ RA8_INTERNAL static void internal_test_attach_rejects_invalid(void)
 RA8_INTERNAL static void internal_test_attach_emit_detach(void)
 {
   TEST_BEGIN("attach emit detach");
-  static char               local_buf[(size_t)k_t_log_cap] = {};
-  ra8_io_stream_ram_state_t st                             = {};
-  ra8_io_stream_t           s                              = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_ram_init(&s, &st, (uint8_t*)local_buf, k_t_log_cap - 1U));
+  static char               s_buf[(size_t)k_t_log_cap] = {};
+  ra8_io_stream_ram_state_t st                         = {};
+  ra8_io_stream_t           s                          = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_ram_init(&s, &st, (uint8_t*)s_buf, k_t_log_cap - 1U));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_log_attach(&s));
   ra8_log_init();
@@ -112,9 +112,9 @@ RA8_INTERNAL static void internal_test_attach_emit_detach(void)
   uint32_t used = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_ram_used(&st, &used));
   TEST_ASSERT(used > 0U);
-  local_buf[used] = '\0';
-  TEST_ASSERT(strstr(local_buf, "IOL") != nullptr);
-  TEST_ASSERT(strstr(local_buf, "line") != nullptr);
+  s_buf[used] = '\0';
+  TEST_ASSERT(strstr(s_buf, "IOL") != nullptr);
+  TEST_ASSERT(strstr(s_buf, "line") != nullptr);
   TEST_END("attach emit detach");
 }
 

@@ -268,26 +268,26 @@ RA8_INTERNAL static void internal_resolve_fw_root(char* out, size_t cap)
  * @since 0.1.0 @retval true The named fixture condition holds. */
 RA8_INTERNAL static bool internal_load_ahem(void)
 {
-  static char local_root[k_cov_root_path_cap];
-  internal_resolve_fw_root(local_root, sizeof(local_root));
+  static char s_root[k_cov_root_path_cap];
+  internal_resolve_fw_root(s_root, sizeof(s_root));
 
   /* Build the absolute path by manual concatenation to avoid
    * -Wformat-truncation (the compiler cannot prove root fits). */
-  static char       local_path[k_cov_abs_path_cap];
+  static char       s_path[k_cov_abs_path_cap];
   const char* const k_rel = "/libs/third_party/litehtml/containers/test/fonts/ahem.ttf";
   size_t            rlen  = 0U;
-  while (rlen + 1U < sizeof(local_path) && local_root[rlen] != '\0') {
-    local_path[rlen] = local_root[rlen];
+  while (rlen + 1U < sizeof(s_path) && s_root[rlen] != '\0') {
+    s_path[rlen] = s_root[rlen];
     ++rlen;
   }
   size_t elen = 0U;
-  while (rlen + elen + 1U < sizeof(local_path) && k_rel[elen] != '\0') {
-    local_path[rlen + elen] = k_rel[elen];
+  while (rlen + elen + 1U < sizeof(s_path) && k_rel[elen] != '\0') {
+    s_path[rlen + elen] = k_rel[elen];
     ++elen;
   }
-  local_path[rlen + elen] = '\0';
+  s_path[rlen + elen] = '\0';
 
-  const int descriptor = open(local_path, O_RDONLY);
+  const int descriptor = open(s_path, O_RDONLY);
   if (descriptor < 0) {
     s_have_font = false;
     return false;
