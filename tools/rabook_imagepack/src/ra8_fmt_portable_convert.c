@@ -260,6 +260,47 @@ static void internal_capacity(const ra8_fmt_sink_t*                     errors,
 }
 
 /**
+ * @brief Probe exact producer requirements and confirm the caller arena fits.
+ * @details Delegates to the requirements API and the alignment-checked
+ * high-water sum, then reports and converts a too-small arena into a
+ * canonical sizing failure so the caller need not repeat that branch.
+ * @param[in] source Open host source already positioned for probing.
+ * @param[in] arena_cap Caller-supplied composition arena capacity.
+ * @param[in] errors Diagnostic sink.
+ * @param[out] requirements Receives the exact producer requirements.
+ * @param[out] webp_offset Receives the aligned optional WebP arena offset.
+ * @param[out] high_water Receives the exact shared arena high-water.
+ * @param[out] sized Receives whether @p high_water is representable.
+ * @return Canonical requirements or capacity status.
+ * @retval k_ra8_ok The arena is large enough for the probed source.
+ * @retval k_ra8_err_invalid_size Sizing overflowed or exceeded @p arena_cap.
+ * @retval other The requirements probe itself failed.
+ * @pre Every pointer argument is non-null.
+ * @pre @p source remains valid and positioned for the complete probe.
+ * @post Success writes representable, in-budget sizing into every output.
+ * @post Failure emits one diagnostic through @p errors before returning.
+ * @note Thread safety inherits the injected sink and source.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_size_input(const ra8_fmt_source_t*             source,
+                                     size_t                              arena_cap,
+                                     const ra8_fmt_sink_t*               errors,
+                                     ra8_fmt_jof_convert_requirements_t* requirements,
+                                     size_t*                             webp_offset,
+                                     size_t*                             high_water,
+                                     bool*                               sized)
+{
+  ra8_err_t rc = ra8_fmt_jof_convert_requirements(source, requirements);
+  *sized       = (rc == k_ra8_ok) && internal_high_water(requirements, webp_offset, high_water);
+  if ((rc == k_ra8_ok) && (!*sized || (*high_water > arena_cap))) {
+    internal_capacity(errors, requirements, *sized ? *high_water : SIZE_MAX, arena_cap);
+    rc = k_ra8_err_invalid_size;
+  }
+  return rc;
+}
+
+/**
  * @brief Bind exact work slices and execute one already-open conversion.
  * @details Begins the sibling transaction only after sizing, then delegates the full engine.
  * @param[in] source Open host source.
@@ -302,6 +343,39 @@ static ra8_err_t internal_run(const ra8_fmt_source_t*                   source,
   return rc;
 }
 
+/**
+ * @brief Emit the one diagnostic matching how a failed conversion failed.
+ * @details Distinguishes an in-budget engine failure from an unsized or
+ * over-budget source so the operator sees the correct rc-bearing line.
+ * @param[in] errors Diagnostic sink.
+ * @param[in] rc Canonical status returned by the conversion attempt.
+ * @param[in] sized Whether sizing produced a representable high-water.
+ * @param[in] high_water Exact shared arena high-water, if @p sized.
+ * @param[in] arena_cap Caller-supplied composition arena capacity.
+ * @pre @p errors and its write callback are non-null.
+ * @pre @p high_water is meaningful only when @p sized is true.
+ * @post A successful @p rc emits no diagnostic.
+ * @post A failing @p rc emits exactly one diagnostic line.
+ * @note Diagnostic sink failures are intentionally ignored.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void internal_report_run_failure(const ra8_fmt_sink_t* errors,
+                                        ra8_err_t             rc,
+                                        bool                  sized,
+                                        size_t                high_water,
+                                        size_t                arena_cap)
+{
+  if (rc == k_ra8_ok) {
+    return;
+  }
+  if (sized && (high_water <= arena_cap)) {
+    internal_status(errors, "ra8_fmt: JOF convert failed (rc=", rc);
+  } else if (!sized) {
+    internal_status(errors, "ra8_fmt: cannot size JOF convert (rc=", rc);
+  }
+}
+
 RA8_PRIV int priv_fmt_try_portable_convert(int      argc,
                                            char**   argv,
                                            uint8_t* arena,
@@ -334,25 +408,22 @@ RA8_PRIV int priv_fmt_try_portable_convert(int      argc,
     return (int)k_convert_cli_fail;
   }
   ra8_fmt_jof_convert_requirements_t requirements = {};
-  rc                     = ra8_fmt_jof_convert_requirements(&source.source, &requirements);
-  size_t     webp_offset = 0U;
-  size_t     high_water  = 0U;
-  const bool sized =
-    (rc == k_ra8_ok) && internal_high_water(&requirements, &webp_offset, &high_water);
-  if ((rc == k_ra8_ok) && (!sized || (high_water > arena_cap))) {
-    internal_capacity(&errors, &requirements, sized ? high_water : SIZE_MAX, arena_cap);
-    rc = k_ra8_err_invalid_size;
-  }
-  ra8_fmt_host_fd_sink_t output_state = {.fd = STDOUT_FILENO};
-  const ra8_fmt_sink_t   report       = priv_fmt_host_fd_sink(&output_state);
+  size_t                             webp_offset  = 0U;
+  size_t                             high_water   = 0U;
+  bool                               sized        = false;
+  rc                                              = internal_size_input(&source.source,
+                                                                        arena_cap,
+                                                                        &errors,
+                                                                        &requirements,
+                                                                        &webp_offset,
+                                                                        &high_water,
+                                                                        &sized);
+  ra8_fmt_host_fd_sink_t output_state             = {.fd = STDOUT_FILENO};
+  const ra8_fmt_sink_t   report                   = priv_fmt_host_fd_sink(&output_state);
   if (rc == k_ra8_ok) {
     rc = internal_run(&source.source, args.output, &requirements, arena, webp_offset, &report);
   }
   priv_fmt_host_source_close(&source);
-  if ((rc != k_ra8_ok) && sized && (high_water <= arena_cap)) {
-    internal_status(&errors, "ra8_fmt: JOF convert failed (rc=", rc);
-  } else if ((rc != k_ra8_ok) && !sized) {
-    internal_status(&errors, "ra8_fmt: cannot size JOF convert (rc=", rc);
-  }
+  internal_report_run_failure(&errors, rc, sized, high_water, arena_cap);
   return (rc == k_ra8_ok) ? (int)k_convert_cli_ok : (int)k_convert_cli_fail;
 }
