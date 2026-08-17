@@ -895,9 +895,10 @@ RA8_INTERNAL static void internal_check_posix_symlinks(const fw_fs_t* fs, const 
  * operand for every grouped decision in
  * `libs/if/src/fw_if_fs.c@internal_interfaces`.
  * For `libs/if/src/fw_if_fs.c@fw_fs_bind`, it independently nulls every member
- * of both pointer tuples; toggles space, sync, durable-sync, and transaction
- * capability/table pairs; and sets each directory workspace operand invalid
- * while the others remain valid. The POSIX and VFS initializers supply the
+ * of both pointer tuples. For `libs/if/src/fw_if_fs.c@internal_fw_fs_caps_validate`,
+ * it toggles space, sync, durable-sync, and transaction capability/table
+ * pairs, and sets each directory workspace operand invalid while the others
+ * remain valid. The POSIX and VFS initializers supply the
  * truthful all-false vectors, including the three-vector file-sync matrix.
  * Normal conformance calls plus one-null-at-a-time faults cover the tuple
  * decisions in `libs/if/src/fw_if_fs.c@fw_fs_get_caps`,
@@ -953,7 +954,8 @@ RA8_INTERNAL static void internal_test_posix_conformance(void)
  *
  * @par MC/DC:
  * The VFS binding contributes `(file_sync_capable=false, streams->sync=null) ->
- * false` to the `fw_fs_bind` capability/operation decision. Together with the
+ * false` to the `internal_fw_fs_caps_validate` capability/operation decision.
+ * Together with the
  * preceding POSIX test's `(true, nonnull) -> false` and `(true, null) -> true`
  * vectors, each condition independently changes the decision; N=2, N+1=3.
  * @details Runs the VFS conformance vector through production filesystem seams
