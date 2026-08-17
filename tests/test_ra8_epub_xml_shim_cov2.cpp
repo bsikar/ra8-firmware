@@ -369,11 +369,13 @@ constexpr const char* s_nav_operand_matrix = "<html><body><nav epub:type=\"toc\"
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_find
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_mark_metadata
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_opf_first
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_opf_first_event
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_collect_spine
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_opf_shape
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_ncx_event
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_nav_has_list
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_nav_event
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_nav_event_start
  *
  * @brief Vary the remaining container, OPF, NCX, and nav consumer operands.
  * @details Drives one fixture per uncovered operand through the production

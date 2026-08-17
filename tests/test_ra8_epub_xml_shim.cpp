@@ -336,6 +336,7 @@ RA8_INTERNAL void internal_assert_shared_toc(const ra8_epub_book_t& book)
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_ncx_event
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@priv_ra8_epub_xml_parse_ncx
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_nav_event
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_nav_event_start
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@priv_ra8_epub_xml_parse_nav
  * @brief Verify parse ncx and nav behavior. @details Executes the parse ncx and nav scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL void internal_test_parse_ncx_and_nav(void)
@@ -387,6 +388,7 @@ RA8_INTERNAL void internal_test_parse_ncx_and_nav(void)
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_metadata_text
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_mark_metadata
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_opf_first
+ * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_opf_first_event
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_opf_metadata_child
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_manifest_item
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_manifest_lookup
