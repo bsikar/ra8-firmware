@@ -134,7 +134,7 @@ RA8_INTERNAL static ra8_err_t internal_validate_pointers(ra8_rabook_flat_read_fn
                                                          ra8_rabook_write_at_fn  write_at,
                                                          const ra8_rabook_container_workspace_t* ws,
                                                          const uint64_t* out_len,
-                                                         uint32_t*       out_count)
+                                                         const uint32_t* out_count)
 {
   if (read == nullptr) {
     return k_ra8_err_null_ptr;
