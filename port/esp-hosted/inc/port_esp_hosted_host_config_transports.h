@@ -419,7 +419,6 @@
 #define H_HOST_SDIO_RESET_DELAY_MS (100)
 
 /**
- * @def H_SLAVE_RESET_ONLY_IF_NECESSARY LEGACY-OK: upstream esp-hosted macro name
  * @brief Whether the host resets the co-processor only when it looks stuck.
  * @details Zero, so the host resets on every boot. Conditional reset needs a
  * reliable "is it already up" probe, and this harness has no reset wire at

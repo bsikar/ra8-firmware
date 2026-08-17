@@ -17,6 +17,14 @@
  *        lives under libs/third_party and is excluded from these docs.
  */
 
+/*
+ * NOTE: the repo-root @dir port lives in the generated
+ * docs/generated/nav_dirs.dox (emitted by scripts/gen/gen_doxygen_nav.py with
+ * a path-qualified name). A plain "@dir port" here is ambiguous: doxygen
+ * resolves a directory reference by raw string suffix rather than by path
+ * component, so it also matches libs/ra8_rabook_import.
+ */
+
 /**
  * @dir docs
  * @brief Human-facing documentation: architecture, policy, the DO-178C /
@@ -63,6 +71,13 @@
 /**
  * @dir examples/ra8p1_foundation
  * @brief Foundation apps for the RA8P1 variant (RA8D2 + Ethos-U55 NPU).
+ */
+
+/**
+ * @dir coprocessor
+ * @brief Firmware for the companion co-processors, built by their own vendor
+ *        toolchains rather than this tree's: today the ESP32-C6 esp-hosted
+ *        peripheral image that libs/ra8_c6link talks to over SPI.
  */
 
 /**
