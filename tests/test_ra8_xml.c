@@ -8,7 +8,6 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
-#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -16,6 +15,7 @@
 #include "ra8_attributes.h"
 #include "ra8_xml.h"
 #include "ra8_xml_internal.h"
+#include "unity_minimal.h"
 
 /**
  * @brief The open and close element bytes appended by the depth fixture.
@@ -33,12 +33,12 @@ internal_deep_document(uint8_t* destination, size_t capacity, uint16_t levels)
 {
   size_t used = 0U;
   for (uint16_t i = 0U; i < levels; ++i) {
-    assert((used + 3U) <= capacity);
+    TEST_ASSERT((used + 3U) <= capacity);
     (void)memcpy(&destination[used], s_xml_open, sizeof(s_xml_open));
     used += 3U;
   }
   for (uint16_t i = 0U; i < levels; ++i) {
-    assert((used + 4U) <= capacity);
+    TEST_ASSERT((used + 4U) <= capacity);
     (void)memcpy(&destination[used], s_xml_close, sizeof(s_xml_close));
     used += 4U;
   }
@@ -58,13 +58,14 @@ internal_deep_document(uint8_t* destination, size_t capacity, uint16_t levels)
  */
 RA8_INTERNAL static void internal_depth_bound(void)
 {
-  static uint8_t      source[4096];
+  static uint8_t      s_source[4096];
   ra8_xml_workspace_t workspace = {};
-  size_t length = internal_deep_document(source, sizeof(source), k_ra8_xml_max_element_depth);
-  assert(ra8_xml_validate(source, length, &workspace) == k_ra8_ok);
-  length =
-    internal_deep_document(source, sizeof(source), (uint16_t)(k_ra8_xml_max_element_depth + 1U));
-  assert(ra8_xml_validate(source, length, &workspace) == k_ra8_err_validation_failed);
+  size_t length = internal_deep_document(s_source, sizeof(s_source), k_ra8_xml_max_element_depth);
+  TEST_ASSERT(ra8_xml_validate(s_source, length, &workspace) == k_ra8_ok);
+  length = internal_deep_document(s_source,
+                                  sizeof(s_source),
+                                  (uint16_t)(k_ra8_xml_max_element_depth + 1U));
+  TEST_ASSERT(ra8_xml_validate(s_source, length, &workspace) == k_ra8_err_validation_failed);
 }
 
 /**
@@ -85,19 +86,20 @@ RA8_INTERNAL static void internal_independent_readers(void)
   ra8_xml_reader_t     left_reader     = {};
   ra8_xml_reader_t     right_reader    = {};
   ra8_xml_event_t      event           = {};
-  assert(ra8_xml_reader_init(&left_reader, left, sizeof(left) - 1U, &left_workspace) == k_ra8_ok);
-  assert(ra8_xml_reader_init(&right_reader, right, sizeof(right) - 1U, &right_workspace) ==
-         k_ra8_ok);
-  assert(ra8_xml_reader_next(&left_reader, &event) == k_ra8_ok);
-  assert(ra8_xml_span_equal(left, sizeof(left) - 1U, event.name, "a"));
-  assert(ra8_xml_reader_next(&right_reader, &event) == k_ra8_ok);
-  assert(ra8_xml_span_equal(right, sizeof(right) - 1U, event.name, "r"));
-  assert(ra8_xml_reader_next(&left_reader, &event) == k_ra8_ok);
-  assert(ra8_xml_span_equal(left, sizeof(left) - 1U, event.name, "b"));
-  assert(ra8_xml_reader_next(&right_reader, &event) == k_ra8_ok);
-  assert(ra8_xml_span_equal(right, sizeof(right) - 1U, event.name, "s"));
-  assert(left_workspace.frames[0].name_offset == 1U);
-  assert(right_workspace.frames[0].name_offset == 1U);
+  TEST_ASSERT(ra8_xml_reader_init(&left_reader, left, sizeof(left) - 1U, &left_workspace) ==
+              k_ra8_ok);
+  TEST_ASSERT(ra8_xml_reader_init(&right_reader, right, sizeof(right) - 1U, &right_workspace) ==
+              k_ra8_ok);
+  TEST_ASSERT(ra8_xml_reader_next(&left_reader, &event) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_span_equal(left, sizeof(left) - 1U, event.name, "a"));
+  TEST_ASSERT(ra8_xml_reader_next(&right_reader, &event) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_span_equal(right, sizeof(right) - 1U, event.name, "r"));
+  TEST_ASSERT(ra8_xml_reader_next(&left_reader, &event) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_span_equal(left, sizeof(left) - 1U, event.name, "b"));
+  TEST_ASSERT(ra8_xml_reader_next(&right_reader, &event) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_span_equal(right, sizeof(right) - 1U, event.name, "s"));
+  TEST_ASSERT(left_workspace.frames[0].name_offset == 1U);
+  TEST_ASSERT(right_workspace.frames[0].name_offset == 1U);
 }
 
 /**
@@ -118,42 +120,49 @@ RA8_INTERNAL static void internal_public_reader_guards(void)
   ra8_xml_workspace_t  workspace = {};
   ra8_xml_reader_t     reader    = {};
   ra8_xml_event_t      event     = {};
-  assert(ra8_xml_reader_init(nullptr, source, sizeof(source) - 1U, &workspace) ==
-         k_ra8_err_null_ptr);
-  assert(ra8_xml_reader_init(&reader, nullptr, sizeof(source) - 1U, &workspace) ==
-         k_ra8_err_null_ptr);
-  assert(ra8_xml_reader_init(&reader, source, sizeof(source) - 1U, nullptr) == k_ra8_err_null_ptr);
-  assert(ra8_xml_reader_init(&reader, source, 0U, &workspace) == k_ra8_err_invalid_size);
-  assert(ra8_xml_reader_init(&reader, source, sizeof(source) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_reader_next(nullptr, &event) == k_ra8_err_null_ptr);
-  assert(ra8_xml_reader_next(&reader, nullptr) == k_ra8_err_null_ptr);
-  assert(ra8_xml_reader_next(&reader, &event) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_reader_init(nullptr, source, sizeof(source) - 1U, &workspace) ==
+              k_ra8_err_null_ptr);
+  TEST_ASSERT(ra8_xml_reader_init(&reader, nullptr, sizeof(source) - 1U, &workspace) ==
+              k_ra8_err_null_ptr);
+  TEST_ASSERT(ra8_xml_reader_init(&reader, source, sizeof(source) - 1U, nullptr) ==
+              k_ra8_err_null_ptr);
+  TEST_ASSERT(ra8_xml_reader_init(&reader, source, 0U, &workspace) == k_ra8_err_invalid_size);
+  TEST_ASSERT(ra8_xml_reader_init(&reader, source, sizeof(source) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_reader_next(nullptr, &event) == k_ra8_err_null_ptr);
+  TEST_ASSERT(ra8_xml_reader_next(&reader, nullptr) == k_ra8_err_null_ptr);
+  TEST_ASSERT(ra8_xml_reader_next(&reader, &event) == k_ra8_ok);
 
   ra8_xml_attr_cursor_t cursor = {.position = 7U, .emitted = 8U};
   ra8_xml_attr_begin(nullptr, &cursor);
-  assert((cursor.position == 7U) && (cursor.emitted == 8U));
+  TEST_ASSERT((cursor.position == 7U) && (cursor.emitted == 8U));
   ra8_xml_attr_begin(&event, nullptr);
   ra8_xml_attr_begin(&event, &cursor);
   ra8_xml_attribute_t attribute = {};
   bool                present   = false;
-  assert(ra8_xml_attr_next(nullptr, sizeof(source) - 1U, &event, &cursor, &attribute, &present) ==
-         k_ra8_err_null_ptr);
-  assert(ra8_xml_attr_next(source, sizeof(source) - 1U, nullptr, &cursor, &attribute, &present) ==
-         k_ra8_err_null_ptr);
-  assert(ra8_xml_attr_next(source, sizeof(source) - 1U, &event, nullptr, &attribute, &present) ==
-         k_ra8_err_null_ptr);
-  assert(ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &cursor, nullptr, &present) ==
-         k_ra8_err_null_ptr);
-  assert(ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &cursor, &attribute, nullptr) ==
-         k_ra8_err_null_ptr);
-  assert(ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &cursor, &attribute, &present) ==
-           k_ra8_ok &&
-         present);
+  TEST_ASSERT(
+    ra8_xml_attr_next(nullptr, sizeof(source) - 1U, &event, &cursor, &attribute, &present) ==
+    k_ra8_err_null_ptr);
+  TEST_ASSERT(
+    ra8_xml_attr_next(source, sizeof(source) - 1U, nullptr, &cursor, &attribute, &present) ==
+    k_ra8_err_null_ptr);
+  TEST_ASSERT(
+    ra8_xml_attr_next(source, sizeof(source) - 1U, &event, nullptr, &attribute, &present) ==
+    k_ra8_err_null_ptr);
+  TEST_ASSERT(ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &cursor, nullptr, &present) ==
+              k_ra8_err_null_ptr);
+  TEST_ASSERT(
+    ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &cursor, &attribute, nullptr) ==
+    k_ra8_err_null_ptr);
+  TEST_ASSERT(
+    ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &cursor, &attribute, &present) ==
+      k_ra8_ok &&
+    present);
   ra8_xml_event_t forged = event;
   forged.markup.offset   = UINT32_MAX;
   ra8_xml_attr_begin(&forged, &cursor);
-  assert(ra8_xml_attr_next(source, sizeof(source) - 1U, &forged, &cursor, &attribute, &present) ==
-         k_ra8_err_validation_failed);
+  TEST_ASSERT(
+    ra8_xml_attr_next(source, sizeof(source) - 1U, &forged, &cursor, &attribute, &present) ==
+    k_ra8_err_validation_failed);
 }
 
 /**
@@ -177,38 +186,39 @@ RA8_INTERNAL static void internal_entities_and_faults(void)
   uint8_t              snapshot[sizeof(source)] = {};
   (void)memcpy(snapshot, source, sizeof(source));
   ra8_xml_workspace_t workspace = {};
-  assert(ra8_xml_validate(source, sizeof(source) - 1U, &workspace) == k_ra8_ok);
-  assert(memcmp(snapshot, source, sizeof(source)) == 0);
+  TEST_ASSERT(ra8_xml_validate(source, sizeof(source) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(memcmp(snapshot, source, sizeof(source)) == 0);
   ra8_xml_reader_t reader = {};
   ra8_xml_event_t  event  = {};
-  assert(ra8_xml_reader_init(&reader, source, sizeof(source) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_reader_next(&reader, &event) == k_ra8_ok);
-  assert(event.attribute_count == 2U);
+  TEST_ASSERT(ra8_xml_reader_init(&reader, source, sizeof(source) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_reader_next(&reader, &event) == k_ra8_ok);
+  TEST_ASSERT(event.attribute_count == 2U);
   ra8_xml_attr_cursor_t cursor    = {};
   ra8_xml_attribute_t   attribute = {};
   bool                  present   = false;
   ra8_xml_attr_begin(&event, &cursor);
-  assert(ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &cursor, &attribute, &present) ==
-         k_ra8_ok);
-  assert(present && ra8_xml_span_equal(source, sizeof(source) - 1U, attribute.name, "a"));
+  TEST_ASSERT(
+    ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &cursor, &attribute, &present) ==
+    k_ra8_ok);
+  TEST_ASSERT(present && ra8_xml_span_equal(source, sizeof(source) - 1U, attribute.name, "a"));
   char   decoded[8]  = {};
   size_t decoded_len = 0U;
-  assert(ra8_xml_decode(source,
-                        sizeof(source) - 1U,
-                        attribute.value,
-                        decoded,
-                        sizeof(decoded),
-                        &decoded_len) == k_ra8_ok);
-  assert((decoded_len == 4U) && (strcmp(decoded, "A&BC") == 0));
+  TEST_ASSERT(ra8_xml_decode(source,
+                             sizeof(source) - 1U,
+                             attribute.value,
+                             decoded,
+                             sizeof(decoded),
+                             &decoded_len) == k_ra8_ok);
+  TEST_ASSERT((decoded_len == 4U) && (strcmp(decoded, "A&BC") == 0));
   static const uint8_t mismatch[]   = "<a><b></a></b>";
   static const uint8_t bad_entity[] = "<a>&unknown;</a>";
   static const uint8_t duplicate[]  = "<a x='1' x='2'/>";
-  assert(ra8_xml_validate(mismatch, sizeof(mismatch) - 1U, &workspace) ==
-         k_ra8_err_validation_failed);
-  assert(ra8_xml_validate(bad_entity, sizeof(bad_entity) - 1U, &workspace) ==
-         k_ra8_err_validation_failed);
-  assert(ra8_xml_validate(duplicate, sizeof(duplicate) - 1U, &workspace) ==
-         k_ra8_err_validation_failed);
+  TEST_ASSERT(ra8_xml_validate(mismatch, sizeof(mismatch) - 1U, &workspace) ==
+              k_ra8_err_validation_failed);
+  TEST_ASSERT(ra8_xml_validate(bad_entity, sizeof(bad_entity) - 1U, &workspace) ==
+              k_ra8_err_validation_failed);
+  TEST_ASSERT(ra8_xml_validate(duplicate, sizeof(duplicate) - 1U, &workspace) ==
+              k_ra8_err_validation_failed);
 }
 
 /**
@@ -224,27 +234,27 @@ RA8_INTERNAL static void internal_entity_comparison(void)
   ra8_xml_workspace_t  workspace = {};
   ra8_xml_reader_t     reader    = {};
   ra8_xml_event_t      event     = {};
-  assert(ra8_xml_reader_init(&reader, source, sizeof(source) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_reader_next(&reader, &event) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_reader_init(&reader, source, sizeof(source) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_reader_next(&reader, &event) == k_ra8_ok);
   ra8_xml_attr_cursor_t cursor  = {};
   ra8_xml_attribute_t   left    = {};
   ra8_xml_attribute_t   right   = {};
   bool                  present = false;
   ra8_xml_attr_begin(&event, &cursor);
-  assert(ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &cursor, &left, &present) ==
-           k_ra8_ok &&
-         present);
-  assert(ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &cursor, &right, &present) ==
-           k_ra8_ok &&
-         present);
-  assert(ra8_xml_decoded_equal(source, sizeof(source) - 1U, left.value, right.value));
+  TEST_ASSERT(ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &cursor, &left, &present) ==
+                k_ra8_ok &&
+              present);
+  TEST_ASSERT(ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &cursor, &right, &present) ==
+                k_ra8_ok &&
+              present);
+  TEST_ASSERT(ra8_xml_decoded_equal(source, sizeof(source) - 1U, left.value, right.value));
 }
 
 /** @brief Assert one static byte document is rejected as malformed XML. */
 RA8_INTERNAL static void internal_reject(const uint8_t* source, size_t length)
 {
   ra8_xml_workspace_t workspace = {};
-  assert(ra8_xml_validate(source, length, &workspace) == k_ra8_err_validation_failed);
+  TEST_ASSERT(ra8_xml_validate(source, length, &workspace) == k_ra8_err_validation_failed);
 }
 
 /**
@@ -286,8 +296,8 @@ RA8_INTERNAL static void internal_hostile_syntax(void)
   static const uint8_t invalid_attr[] =
     {'<', 'a', ' ', 'x', '=', '\'', 0xC0U, 0x80U, '\'', '/', '>'};
   ra8_xml_workspace_t workspace = {};
-  assert(ra8_xml_validate(close_space, sizeof(close_space) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_validate(good_colon, sizeof(good_colon) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(close_space, sizeof(close_space) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(good_colon, sizeof(good_colon) - 1U, &workspace) == k_ra8_ok);
   internal_reject(bad_start, sizeof(bad_start) - 1U);
   internal_reject(bad_dash_start, sizeof(bad_dash_start) - 1U);
   internal_reject(bad_lead_colon, sizeof(bad_lead_colon) - 1U);
@@ -336,9 +346,9 @@ RA8_INTERNAL static void internal_character_classes(void)
   static const uint8_t bad_numeric[]   = "<a>&#xG;</a>";
   static const uint8_t high_numeric[]  = "<a>&#x110000;</a>";
   ra8_xml_workspace_t  workspace       = {};
-  assert(ra8_xml_validate(names, sizeof(names) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_validate(entities, sizeof(entities) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_validate(utf8, sizeof(utf8) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(names, sizeof(names) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(entities, sizeof(entities) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(utf8, sizeof(utf8) - 1U, &workspace) == k_ra8_ok);
   internal_reject(overlong3, sizeof(overlong3));
   internal_reject(overlong4, sizeof(overlong4));
   internal_reject(surrogate, sizeof(surrogate));
@@ -394,14 +404,15 @@ RA8_INTERNAL static void internal_declarations(void)
   static const uint8_t misplaced_bom[]  = " \xEF\xBB\xBF<a/>";
   static const uint8_t feff_text[]      = "<a>\xEF\xBB\xBF</a>";
   ra8_xml_workspace_t  workspace        = {};
-  assert(ra8_xml_validate(declaration, sizeof(declaration) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_validate(lower_encoding, sizeof(lower_encoding) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_validate(doctype, sizeof(doctype) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_validate(system_id, sizeof(system_id) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_validate(public_id, sizeof(public_id) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_validate(valid_pi, sizeof(valid_pi) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_validate(bom, sizeof(bom) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_validate(feff_text, sizeof(feff_text) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(declaration, sizeof(declaration) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(lower_encoding, sizeof(lower_encoding) - 1U, &workspace) ==
+              k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(doctype, sizeof(doctype) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(system_id, sizeof(system_id) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(public_id, sizeof(public_id) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(valid_pi, sizeof(valid_pi) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(bom, sizeof(bom) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(feff_text, sizeof(feff_text) - 1U, &workspace) == k_ra8_ok);
   internal_reject(upper_xml, sizeof(upper_xml) - 1U);
   internal_reject(bad_version, sizeof(bad_version) - 1U);
   internal_reject(bad_encoding, sizeof(bad_encoding) - 1U);
@@ -458,28 +469,29 @@ RA8_INTERNAL static void internal_span_bounds_and_prefix(void)
   ra8_xml_workspace_t  workspace = {};
   ra8_xml_reader_t     reader    = {};
   ra8_xml_event_t      event     = {};
-  assert(ra8_xml_reader_init(&reader, source, sizeof(source) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_reader_next(&reader, &event) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_reader_init(&reader, source, sizeof(source) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_reader_next(&reader, &event) == k_ra8_ok);
   ra8_xml_attr_cursor_t cursor    = {};
   ra8_xml_attribute_t   attribute = {};
   bool                  present   = false;
   ra8_xml_attr_begin(&event, &cursor);
-  assert(ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &cursor, &attribute, &present) ==
-           k_ra8_ok &&
-         present);
+  TEST_ASSERT(
+    ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &cursor, &attribute, &present) ==
+      k_ra8_ok &&
+    present);
   char   decoded[5] = {};
   size_t length     = 0U;
-  assert(ra8_xml_decode_prefix(source,
-                               sizeof(source) - 1U,
-                               attribute.value,
-                               decoded,
-                               sizeof(decoded),
-                               &length) == k_ra8_ok);
-  assert((length == 4U) && (strcmp(decoded, "123&") == 0));
+  TEST_ASSERT(ra8_xml_decode_prefix(source,
+                                    sizeof(source) - 1U,
+                                    attribute.value,
+                                    decoded,
+                                    sizeof(decoded),
+                                    &length) == k_ra8_ok);
+  TEST_ASSERT((length == 4U) && (strcmp(decoded, "123&") == 0));
   const ra8_xml_span_t forged = {UINT32_MAX, 8U};
-  assert(!ra8_xml_span_equal(source, sizeof(source) - 1U, forged, "x"));
-  assert(ra8_xml_decoded_size(source, sizeof(source) - 1U, forged, &length) ==
-         k_ra8_err_validation_failed);
+  TEST_ASSERT(!ra8_xml_span_equal(source, sizeof(source) - 1U, forged, "x"));
+  TEST_ASSERT(ra8_xml_decoded_size(source, sizeof(source) - 1U, forged, &length) ==
+              k_ra8_err_validation_failed);
 }
 
 /** @brief Exercise public decode, span, local-name, and comparison guard matrices. */
@@ -494,39 +506,45 @@ RA8_INTERNAL static void internal_public_span_guards(void)
   const ra8_xml_span_t forged     = {UINT32_MAX, 8U};
   char                 decoded[3] = {};
   size_t               length     = 0U;
-  assert(ra8_xml_decode(values, sizeof(values) - 1U, left, decoded, sizeof(decoded), &length) ==
-           k_ra8_ok &&
-         (length == 2U) && (strcmp(decoded, "A&") == 0));
-  assert(ra8_xml_decode(values, sizeof(values) - 1U, left, decoded, 2U, &length) ==
-         k_ra8_err_no_mem);
-  assert(ra8_xml_decode(nullptr, sizeof(values) - 1U, left, decoded, sizeof(decoded), &length) ==
-         k_ra8_err_null_ptr);
-  assert(ra8_xml_decode(values, sizeof(values) - 1U, left, nullptr, sizeof(decoded), &length) ==
-         k_ra8_err_null_ptr);
-  assert(ra8_xml_decode(values, sizeof(values) - 1U, left, decoded, sizeof(decoded), nullptr) ==
-         k_ra8_err_null_ptr);
-  assert(
+  TEST_ASSERT(
+    ra8_xml_decode(values, sizeof(values) - 1U, left, decoded, sizeof(decoded), &length) ==
+      k_ra8_ok &&
+    (length == 2U) && (strcmp(decoded, "A&") == 0));
+  TEST_ASSERT(ra8_xml_decode(values, sizeof(values) - 1U, left, decoded, 2U, &length) ==
+              k_ra8_err_no_mem);
+  TEST_ASSERT(
+    ra8_xml_decode(nullptr, sizeof(values) - 1U, left, decoded, sizeof(decoded), &length) ==
+    k_ra8_err_null_ptr);
+  TEST_ASSERT(
+    ra8_xml_decode(values, sizeof(values) - 1U, left, nullptr, sizeof(decoded), &length) ==
+    k_ra8_err_null_ptr);
+  TEST_ASSERT(
+    ra8_xml_decode(values, sizeof(values) - 1U, left, decoded, sizeof(decoded), nullptr) ==
+    k_ra8_err_null_ptr);
+  TEST_ASSERT(
     ra8_xml_decode_prefix(nullptr, sizeof(values) - 1U, left, decoded, sizeof(decoded), &length) ==
     k_ra8_err_null_ptr);
-  assert(
+  TEST_ASSERT(
     ra8_xml_decode_prefix(values, sizeof(values) - 1U, left, nullptr, sizeof(decoded), &length) ==
     k_ra8_err_null_ptr);
-  assert(
+  TEST_ASSERT(
     ra8_xml_decode_prefix(values, sizeof(values) - 1U, left, decoded, sizeof(decoded), nullptr) ==
     k_ra8_err_null_ptr);
-  assert(ra8_xml_decoded_size(nullptr, sizeof(values) - 1U, left, &length) == k_ra8_err_null_ptr);
-  assert(ra8_xml_decoded_size(values, sizeof(values) - 1U, left, nullptr) == k_ra8_err_null_ptr);
-  assert(ra8_xml_span_equal(names, sizeof(names) - 1U, name, "ns:a"));
-  assert(!ra8_xml_span_equal(nullptr, sizeof(names) - 1U, name, "ns:a"));
-  assert(!ra8_xml_span_equal(names, sizeof(names) - 1U, name, nullptr));
-  assert(!ra8_xml_span_equal(names, sizeof(names) - 1U, forged, "a"));
-  assert(ra8_xml_span_local_equal(names, sizeof(names) - 1U, name, "a"));
-  assert(!ra8_xml_span_local_equal(nullptr, sizeof(names) - 1U, name, "a"));
-  assert(!ra8_xml_span_local_equal(names, sizeof(names) - 1U, forged, "a"));
-  assert(ra8_xml_decoded_equal(values, sizeof(values) - 1U, left, right));
-  assert(!ra8_xml_decoded_equal(values, sizeof(values) - 1U, left, different));
-  assert(!ra8_xml_decoded_equal(values, sizeof(values) - 1U, left, forged));
-  assert(!ra8_xml_decoded_equal(nullptr, sizeof(values) - 1U, left, right));
+  TEST_ASSERT(ra8_xml_decoded_size(nullptr, sizeof(values) - 1U, left, &length) ==
+              k_ra8_err_null_ptr);
+  TEST_ASSERT(ra8_xml_decoded_size(values, sizeof(values) - 1U, left, nullptr) ==
+              k_ra8_err_null_ptr);
+  TEST_ASSERT(ra8_xml_span_equal(names, sizeof(names) - 1U, name, "ns:a"));
+  TEST_ASSERT(!ra8_xml_span_equal(nullptr, sizeof(names) - 1U, name, "ns:a"));
+  TEST_ASSERT(!ra8_xml_span_equal(names, sizeof(names) - 1U, name, nullptr));
+  TEST_ASSERT(!ra8_xml_span_equal(names, sizeof(names) - 1U, forged, "a"));
+  TEST_ASSERT(ra8_xml_span_local_equal(names, sizeof(names) - 1U, name, "a"));
+  TEST_ASSERT(!ra8_xml_span_local_equal(nullptr, sizeof(names) - 1U, name, "a"));
+  TEST_ASSERT(!ra8_xml_span_local_equal(names, sizeof(names) - 1U, forged, "a"));
+  TEST_ASSERT(ra8_xml_decoded_equal(values, sizeof(values) - 1U, left, right));
+  TEST_ASSERT(!ra8_xml_decoded_equal(values, sizeof(values) - 1U, left, different));
+  TEST_ASSERT(!ra8_xml_decoded_equal(values, sizeof(values) - 1U, left, forged));
+  TEST_ASSERT(!ra8_xml_decoded_equal(nullptr, sizeof(values) - 1U, left, right));
 }
 
 /**
@@ -558,8 +576,8 @@ RA8_INTERNAL static void internal_doctype_lexer_vectors(void)
   static const uint8_t unseparated[]   = "<!DOCTYPE a'sys'>";
   static const uint8_t trailing_byte[] = "<!DOCTYPE a SYSTEM 'x'y>";
   ra8_xml_workspace_t  workspace       = {};
-  assert(ra8_xml_validate(tab_spacing, sizeof(tab_spacing) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_validate(double_quoted, sizeof(double_quoted) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(tab_spacing, sizeof(tab_spacing) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(double_quoted, sizeof(double_quoted) - 1U, &workspace) == k_ra8_ok);
   internal_reject(twice, sizeof(twice) - 1U);
   internal_reject(prefix_only, sizeof(prefix_only) - 1U);
   internal_reject(open_system, sizeof(open_system) - 1U);
@@ -586,10 +604,12 @@ RA8_INTERNAL static void internal_doctype_direct_seam(void)
   static const uint8_t mistyped[]  = "<!DOCTYPX a>";
   ra8_xml_workspace_t  workspace   = {};
   ra8_xml_reader_t     reader      = {};
-  assert(ra8_xml_reader_init(&reader, truncated, sizeof(truncated) - 1U, &workspace) == k_ra8_ok);
-  assert(priv_ra8_xml_doctype(&reader) == k_ra8_err_validation_failed);
-  assert(ra8_xml_reader_init(&reader, mistyped, sizeof(mistyped) - 1U, &workspace) == k_ra8_ok);
-  assert(priv_ra8_xml_doctype(&reader) == k_ra8_err_validation_failed);
+  TEST_ASSERT(ra8_xml_reader_init(&reader, truncated, sizeof(truncated) - 1U, &workspace) ==
+              k_ra8_ok);
+  TEST_ASSERT(priv_ra8_xml_doctype(&reader) == k_ra8_err_validation_failed);
+  TEST_ASSERT(ra8_xml_reader_init(&reader, mistyped, sizeof(mistyped) - 1U, &workspace) ==
+              k_ra8_ok);
+  TEST_ASSERT(priv_ra8_xml_doctype(&reader) == k_ra8_err_validation_failed);
 }
 
 /**
@@ -623,8 +643,8 @@ RA8_INTERNAL static void internal_xml_lexer_vectors(void)
   static const uint8_t hex_below_a[] = "<a>&#x/;</a>";
   static const uint8_t open_entity[] = "<a>&#41</a>";
   ra8_xml_workspace_t  workspace     = {};
-  assert(ra8_xml_validate(hex_letter, sizeof(hex_letter) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_validate(hex_upper_x, sizeof(hex_upper_x) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(hex_letter, sizeof(hex_letter) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(hex_upper_x, sizeof(hex_upper_x) - 1U, &workspace) == k_ra8_ok);
   internal_reject(high_letter, sizeof(high_letter) - 1U);
   internal_reject(empty_tag, sizeof(empty_tag) - 1U);
   internal_reject(tail_colon, sizeof(tail_colon) - 1U);
@@ -661,9 +681,9 @@ RA8_INTERNAL static void internal_xml_attribute_vectors(void)
   static const uint8_t unquoted[]      = "<a x=1></a>";
   static const uint8_t slash_junk[]    = "<a /x>";
   ra8_xml_workspace_t  workspace       = {};
-  assert(ra8_xml_validate(slash_space, sizeof(slash_space) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_validate(space_tag, sizeof(space_tag) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_validate(spaced_equals, sizeof(spaced_equals) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(slash_space, sizeof(slash_space) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(space_tag, sizeof(space_tag) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(spaced_equals, sizeof(spaced_equals) - 1U, &workspace) == k_ra8_ok);
   internal_reject(name_at_end, sizeof(name_at_end) - 1U);
   internal_reject(no_equals, sizeof(no_equals) - 1U);
   internal_reject(equals_at_end, sizeof(equals_at_end) - 1U);
@@ -691,28 +711,29 @@ RA8_INTERNAL static void internal_xml_attr_guard_vectors(void)
   ra8_xml_event_t      event     = {};
   ra8_xml_attribute_t  attribute = {};
   bool                 present   = false;
-  assert(ra8_xml_reader_init(&reader, source, sizeof(source) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_reader_next(&reader, &event) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_reader_init(&reader, source, sizeof(source) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_reader_next(&reader, &event) == k_ra8_ok);
 
   ra8_xml_attr_cursor_t cursor      = {};
   ra8_xml_event_t       forged_name = event;
   forged_name.name.offset           = UINT32_MAX;
   ra8_xml_attr_begin(&forged_name, &cursor);
-  assert(
+  TEST_ASSERT(
     ra8_xml_attr_next(source, sizeof(source) - 1U, &forged_name, &cursor, &attribute, &present) ==
     k_ra8_err_validation_failed);
 
   ra8_xml_event_t empty_markup = event;
   empty_markup.markup.length   = 0U;
   ra8_xml_attr_begin(&empty_markup, &cursor);
-  assert(
+  TEST_ASSERT(
     ra8_xml_attr_next(source, sizeof(source) - 1U, &empty_markup, &cursor, &attribute, &present) ==
     k_ra8_err_validation_failed);
 
   ra8_xml_attr_cursor_t parked = {.position = event.markup.offset + event.markup.length - 1U,
                                   .emitted  = 0U};
-  assert(ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &parked, &attribute, &present) ==
-         k_ra8_err_validation_failed);
+  TEST_ASSERT(
+    ra8_xml_attr_next(source, sizeof(source) - 1U, &event, &parked, &attribute, &present) ==
+    k_ra8_err_validation_failed);
 }
 
 /**
@@ -742,8 +763,8 @@ RA8_INTERNAL static void internal_xml_structure_vectors(void)
   static const uint8_t long_close[]    = "<a></ab>";
   static const uint8_t short_bang[]    = "<!";
   ra8_xml_workspace_t  workspace       = {};
-  assert(ra8_xml_validate(empty_comment, sizeof(empty_comment) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_validate(bracket_text, sizeof(bracket_text) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(empty_comment, sizeof(empty_comment) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(bracket_text, sizeof(bracket_text) - 1U, &workspace) == k_ra8_ok);
   internal_reject(second_root, sizeof(second_root) - 1U);
   internal_reject(close_junk, sizeof(close_junk) - 1U);
   internal_reject(orphan_close, sizeof(orphan_close) - 1U);
@@ -786,9 +807,10 @@ RA8_INTERNAL static void internal_xml_pi_vectors(void)
   static const uint8_t open_value[]  = "<?xml version='1.0?><a/>";
   static const uint8_t pi_punct[]    = "<?ab'c'?><a/>";
   ra8_xml_workspace_t  workspace     = {};
-  assert(ra8_xml_validate(alt_targets, sizeof(alt_targets) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_validate(standalone_no, sizeof(standalone_no) - 1U, &workspace) == k_ra8_ok);
-  assert(ra8_xml_validate(trailing_space, sizeof(trailing_space) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(alt_targets, sizeof(alt_targets) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(standalone_no, sizeof(standalone_no) - 1U, &workspace) == k_ra8_ok);
+  TEST_ASSERT(ra8_xml_validate(trailing_space, sizeof(trailing_space) - 1U, &workspace) ==
+              k_ra8_ok);
   internal_reject(no_version, sizeof(no_version) - 1U);
   internal_reject(late_encoding, sizeof(late_encoding) - 1U);
   internal_reject(offset_decl, sizeof(offset_decl) - 1U);
@@ -803,8 +825,8 @@ RA8_INTERNAL static void internal_expect_no_bom(const uint8_t* source, size_t le
 {
   ra8_xml_workspace_t workspace = {};
   ra8_xml_reader_t    reader    = {};
-  assert(ra8_xml_reader_init(&reader, source, length, &workspace) == k_ra8_ok);
-  assert(reader.position == 0U);
+  TEST_ASSERT(ra8_xml_reader_init(&reader, source, length, &workspace) == k_ra8_ok);
+  TEST_ASSERT(reader.position == 0U);
 }
 
 /**
@@ -837,12 +859,12 @@ RA8_INTERNAL static void internal_xml_public_boundary_vectors(void)
   size_t               length        = 0U;
   ra8_xml_workspace_t  workspace     = {};
   ra8_xml_reader_t     reader        = {};
-  assert(!ra8_xml_span_equal(values, sizeof(values) - 1U, overrun, "A&"));
-  assert(ra8_xml_decode(values, sizeof(values) - 1U, left, decoded, 0U, &length) ==
-         k_ra8_err_no_mem);
-  assert(!ra8_xml_decoded_equal(values, sizeof(values) - 1U, forged, right));
-  assert(ra8_xml_reader_init(&reader, values, (size_t)UINT32_MAX + 1U, &workspace) ==
-         k_ra8_err_invalid_size);
+  TEST_ASSERT(!ra8_xml_span_equal(values, sizeof(values) - 1U, overrun, "A&"));
+  TEST_ASSERT(ra8_xml_decode(values, sizeof(values) - 1U, left, decoded, 0U, &length) ==
+              k_ra8_err_no_mem);
+  TEST_ASSERT(!ra8_xml_decoded_equal(values, sizeof(values) - 1U, forged, right));
+  TEST_ASSERT(ra8_xml_reader_init(&reader, values, (size_t)UINT32_MAX + 1U, &workspace) ==
+              k_ra8_err_invalid_size);
   internal_expect_no_bom(short_bom, sizeof(short_bom));
   internal_expect_no_bom(wrong_two, sizeof(wrong_two));
   internal_expect_no_bom(wrong_three, sizeof(wrong_three));
