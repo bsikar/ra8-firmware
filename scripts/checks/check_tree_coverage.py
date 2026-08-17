@@ -27,9 +27,15 @@ They are one policy now:
   Uncovered debt may not grow and the ratio may not fall, so a unit standing at
   100% keeps it and a unit standing at 41% burns down toward the 90/80 floor
   instead of sliding. An improvement is silently welcome; ``--update`` is how
-  it gets frozen in.
+  it gets frozen in. A unit that only SHRANK is exempt from the ratio half --
+  deleting covered code lowers a ratio without making anything worse, and the
+  debt half still applies (see ``_only_lost_code``).
 * A unit with **no row** is new. It must enter at the full 90% line / 80%
   branch floor -- historical debt is not something a new file can inherit.
+* A unit that **moved** is not new. An unambiguous move -- one baseline path
+  gone, one path of the same basename arrived -- carries its frozen row to the
+  new path and answers to the same ratchet there, so reorganising the tree
+  costs no coverage work and launders no regression.
 * **UNMEASURED(<reason>)** rows are explicit. Nothing is silently absent: a
   unit no host build executes still has a row naming which of the four classes
   in ``tree_coverage_model`` it falls into, and the class is RE-DERIVED from
@@ -333,6 +339,36 @@ def _new_file_findings(rel: str, counts: Counts) -> list[Finding]:
     return out
 
 
+def _only_lost_code(now: tuple[int, int], base: tuple[int, int]) -> bool:
+    """True when the unit shrank and every covered item it lost simply left it.
+
+    The ratio rule below stops a unit's quality sliding, and the debt rule
+    already covers every way it can slide while STAYING THE SAME SIZE. Write
+    the base counts C/T and the current ones c/t. Non-increasing debt is
+    ``t - c <= T - C``. If ``t >= T`` that gives ``c - C >= t - T >= 0``, and
+    then ``cT - Ct >= (t - T)(T - C) >= 0`` -- so a ratio violation is
+    arithmetically impossible unless ``t < T``. The ratio rule's only distinct
+    effect on a debt-clean unit is therefore a tax on DELETING COVERED CODE.
+
+    That tax is not hypothetical and not small: moving a covered function to a
+    better home lowers the ratio of the file it left while making nothing worse
+    anywhere, and #725 hit it five times in one refactor -- in four of the five
+    the file's uncovered debt actually went DOWN while this rule called it a
+    regression. A ratchet that can only be satisfied by leaving code where it
+    is stops being a coverage policy and becomes a layout policy.
+
+    So a shrink is exempt, under the narrowest condition that cannot hide
+    growth: the unit is smaller, and it lost no more covered items than it lost
+    items. The debt rule still applies unconditionally, so a unit that shrinks
+    while gaining uncovered code is still caught -- and the ratio rule still
+    fires, as a second and more descriptive message, on any same-size or
+    growing unit whose ratio falls.
+    """
+    covered, total = now
+    base_covered, base_total = base
+    return (total < base_total) and ((base_covered - covered) <= (base_total - total))
+
+
 def _metric_findings(
     rel: str, label: str, now: tuple[int, int], base: tuple[int, int]
 ) -> list[Finding]:
@@ -348,7 +384,11 @@ def _metric_findings(
                 f"{base_total - base_covered} -> {total - covered}",
             )
         )
-    if base_total > 0 and covered * base_total < base_covered * total:
+    if (
+        base_total > 0
+        and covered * base_total < base_covered * total
+        and not _only_lost_code(now, base)
+    ):
         out.append(
             Finding(
                 HARD,
@@ -393,6 +433,49 @@ def _unmeasured_findings(rel: str, now: Row, base: Row) -> list[Finding]:
     return []
 
 
+def detect_moves(fresh: dict[str, Row], baseline: dict[str, Row]) -> dict[str, str]:
+    """Pair each vanished baseline path with the arrived unit that IS that unit.
+
+    A unit that moved is not a new unit. It carries the debt it was already
+    carrying and answers to the same ratchet at its new path. Without this
+    pairing every file move is a "new unit", which must enter at the full
+    90%/80% floor -- so a tree could only ever be reorganised by first getting
+    the moved file to the floor, or by hand-editing a baseline whose own header
+    says never to hand-edit it. Neither is a coverage decision, and a policy
+    that makes layout changes cost coverage work is a policy that stops layout
+    changes.
+
+    The pairing is deliberately narrow, because a wrong pairing would launder a
+    real regression: same BASENAME, and that basename must have vanished
+    exactly once and arrived exactly once. Anything ambiguous -- two files of
+    one name moving, a rename that also changes the basename, a split -- stays
+    unpaired and is reported as a deletion plus a new unit, which is the
+    conservative answer and the one that still fires.
+
+    Args:
+        fresh: What this measurement supports, from ``derive_rows``.
+        baseline: What is committed, from ``load_baseline``.
+
+    Returns:
+        New path -> the baseline path it moved from, for every unambiguous move.
+    """
+    vanished = _by_basename(set(baseline) - set(fresh))
+    arrived = _by_basename(set(fresh) - set(baseline))
+    return {
+        arrived[name][0]: paths[0]
+        for name, paths in vanished.items()
+        if len(paths) == 1 and len(arrived.get(name, [])) == 1
+    }
+
+
+def _by_basename(paths: set[str]) -> dict[str, list[str]]:
+    """Group repo-relative paths by their final component."""
+    groups: dict[str, list[str]] = {}
+    for rel in sorted(paths):
+        groups.setdefault(rel.rsplit("/", 1)[-1], []).append(rel)
+    return groups
+
+
 def evaluate(fresh: dict[str, Row], baseline: dict[str, Row]) -> list[Finding]:
     """Return every disagreement between the tree and the committed baseline.
 
@@ -404,22 +487,27 @@ def evaluate(fresh: dict[str, Row], baseline: dict[str, Row]) -> list[Finding]:
         Findings sorted by severity then message, so a HARD violation is always
         read before the drift it may have caused.
     """
+    moves = detect_moves(fresh, baseline)
     out: list[Finding] = [
         Finding(DRIFT, f"{rel}: baseline row is stale -- the unit is gone from the census")
-        for rel in sorted(set(baseline) - set(fresh))
+        for rel in sorted(set(baseline) - set(fresh) - set(moves.values()))
     ]
     for rel in sorted(fresh):
         now = fresh[rel]
-        base = baseline.get(rel)
+        origin = moves.get(rel)
+        base = baseline[origin] if origin is not None else baseline.get(rel)
         if base is None:
             if now.kind == KIND_MEASURED:
                 out.extend(_new_file_findings(rel, now.counts))
             else:
                 out.append(Finding(DRIFT, f"{rel}: new unit has no baseline row ({now.reason})"))
-        elif base.kind == KIND_MEASURED:
+            continue
+        if base.kind == KIND_MEASURED:
             out.extend(_measured_findings(rel, now, base))
         else:
             out.extend(_unmeasured_findings(rel, now, base))
+        if origin is not None:
+            out.append(Finding(DRIFT, f"{rel}: moved from {origin}; re-key its row"))
     return sorted(out, key=lambda f: (f.severity != HARD, f.message))
 
 
@@ -644,6 +732,10 @@ def _ratchet_cases() -> list[Case]:
         ("an improvement stays quiet", _swap(frozen, measured((97, 100, 88, 100))), False),
         ("burning debt down stays quiet", _swap(debt, measured((60, 100, 45, 100))), False),
         ("a debt unit sliding further fires", _swap(debt, measured((40, 100, 30, 100))), True),
+        # Deleting covered code lowers the ratio without making anything worse:
+        # exempt. Shrinking while uncovered debt grows is still caught.
+        ("moving covered code out stays quiet", _swap(debt, measured((31, 90, 25, 95))), False),
+        ("a shrink that grew debt still fires", _swap(debt, measured((30, 90, 30, 100))), True),
     ]
 
 
@@ -679,11 +771,69 @@ def _kind_cases() -> list[Case]:
     ]
 
 
+#: The unit the move cases relocate, and where they relocate it to.
+MOVE_FROM = "apps/shared/media_dl/src/debt.c"
+MOVE_TO = "apps/stand_alone/media_dl/src/debt.c"
+
+
+def _moved(destination: str, row: Row) -> dict[str, Row]:
+    """The baseline with ``MOVE_FROM`` relocated to ``destination``."""
+    out = {k: v for k, v in SELFTEST_BASELINE.items() if k != MOVE_FROM}
+    out[destination] = row
+    return out
+
+
+def _move_cases() -> list[Case]:
+    """Cases for move detection: a real move, and every ambiguity it refuses."""
+    carried = SELFTEST_BASELINE[MOVE_FROM]
+    return [
+        ("an unchanged tree pairs nothing", dict(SELFTEST_BASELINE), False),
+        ("a move still reports its stale row", _moved(MOVE_TO, carried), True),
+        ("a move that regressed fires", _moved(MOVE_TO, measured((40, 100, 30, 100))), True),
+        (
+            "a move that also renames the file is not paired",
+            _moved("apps/stand_alone/media_dl/src/renamed.c", carried),
+            True,
+        ),
+        (
+            "a split into two same-named units is not paired",
+            {**_moved(MOVE_TO, carried), "tools/demo/src/debt.c": carried},
+            True,
+        ),
+    ]
+
+
+def _move_failures() -> list[str]:
+    """Prove a move carries its debt, and that no ambiguous pairing does."""
+    carried = SELFTEST_BASELINE[MOVE_FROM]
+    out: list[str] = []
+    if detect_moves(SELFTEST_BASELINE, SELFTEST_BASELINE):
+        out.append("an unchanged tree must pair no move")
+    if detect_moves(_moved(MOVE_TO, carried), SELFTEST_BASELINE) != {MOVE_TO: MOVE_FROM}:
+        out.append("one vanished and one arrived unit of the same name must pair")
+    if detect_moves(
+        {**_moved(MOVE_TO, carried), "tools/demo/src/debt.c": carried}, SELFTEST_BASELINE
+    ):
+        out.append("an ambiguous same-basename arrival must not pair")
+    # The load-bearing pair: identical below-floor counts are HARD when the
+    # unit is new and quiet when the same unit merely moved.
+    as_new = evaluate({**SELFTEST_BASELINE, MOVE_TO: carried}, SELFTEST_BASELINE)
+    as_move = evaluate(_moved(MOVE_TO, carried), SELFTEST_BASELINE)
+    regressed = evaluate(_moved(MOVE_TO, measured((40, 100, 30, 100))), SELFTEST_BASELINE)
+    if not any(f.severity == HARD for f in as_new):
+        out.append("a genuinely new below-floor unit must stay HARD")
+    if any(f.severity == HARD for f in as_move):
+        out.append("a moved unit must carry its debt rather than re-enter at the floor")
+    if not any(f.severity == HARD for f in regressed):
+        out.append("a move must not launder a coverage regression")
+    return out
+
+
 def _evaluate_failures() -> list[str]:
     """Run every evaluate() case and name the ones that answered wrongly."""
     return [
         name
-        for name, fresh, should_fire in _ratchet_cases() + _kind_cases()
+        for name, fresh, should_fire in _ratchet_cases() + _kind_cases() + _move_cases()
         if bool(evaluate(fresh, SELFTEST_BASELINE)) != should_fire
     ]
 
@@ -692,13 +842,24 @@ def _severity_failures() -> list[str]:
     """Prove --update refuses a regression and accepts a pure staleness."""
     frozen = "libs/ra8_demo/src/frozen.c"
     tool = "tools/demo/src/host.c"
+    debt = "apps/shared/media_dl/src/debt.c"
     regression = evaluate(_swap(frozen, measured((80, 100, 80, 100))), SELFTEST_BASELINE)
     staleness = evaluate(_swap(tool, measured((10, 10, 10, 10))), SELFTEST_BASELINE)
+    shrink = evaluate(_swap(debt, measured((31, 90, 25, 95))), SELFTEST_BASELINE)
     out: list[str] = []
     if not any(f.severity == HARD for f in regression):
         out.append("a coverage regression must be HARD so --update refuses it")
     if any(f.severity == HARD for f in staleness):
         out.append("a unit that merely gained measurement must not be HARD")
+    if shrink:
+        out.append("deleting covered code must not be reported as a regression")
+    # The ratio rule must still bite where it adds signal: a unit that did NOT
+    # shrink. Without this the shrink exemption could widen into a no-op.
+    if not any(
+        "ratio regressed" in f.message
+        for f in evaluate(_swap(frozen, measured((85, 100, 80, 100))), SELFTEST_BASELINE)
+    ):
+        out.append("a same-size unit whose ratio fell must still report the ratio")
     return out
 
 
@@ -738,8 +899,14 @@ def _format_failures() -> list[str]:
 
 def selftest() -> int:
     """Prove every rule fires and stays quiet, and that no scope collapsed."""
-    cases = len(_ratchet_cases()) + len(_kind_cases())
-    failures = _evaluate_failures() + _severity_failures() + _scope_failures() + _format_failures()
+    cases = len(_ratchet_cases()) + len(_kind_cases()) + len(_move_cases())
+    failures = (
+        _evaluate_failures()
+        + _severity_failures()
+        + _move_failures()
+        + _scope_failures()
+        + _format_failures()
+    )
     if failures:
         for name in failures:
             print(f"check_tree_coverage.py --selftest: FAIL: {name}", file=sys.stderr)
