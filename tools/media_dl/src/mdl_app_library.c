@@ -63,7 +63,8 @@ RA8_INTERNAL static ra8_err_t internal_library_report(const char* action, ra8_er
                                   "media_dl: state file unreadable or corrupt while ",
                                   action,
                                   "\n");
-  } else if (error == k_ra8_err_invalid_size) {
+  }
+  if (error == k_ra8_err_invalid_size) {
     const mdl_library_workspace_t* workspace = &priv_mdl_app_context()->library_workspace;
     ra8_err_t output_error = internal_library_text3(priv_mdl_app_context()->diagnostic,
                                                     "media_dl: library capacity exceeded while ",
@@ -77,7 +78,8 @@ RA8_INTERNAL static ra8_err_t internal_library_report(const char* action, ra8_er
     output_error =
       priv_mdl_stream_u64(output_error, priv_mdl_app_context()->diagnostic, workspace->entry_limit);
     return priv_mdl_stream_text(output_error, priv_mdl_app_context()->diagnostic, ")\n");
-  } else if (error == k_ra8_err_hw_not_ready) {
+  }
+  if (error == k_ra8_err_hw_not_ready) {
     return internal_library_text3(priv_mdl_app_context()->diagnostic,
                                   "media_dl: library storage unavailable while ",
                                   action,
