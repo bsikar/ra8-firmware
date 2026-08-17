@@ -40,25 +40,27 @@ RA8_INTERNAL static void internal_clear_http_metadata(Ra8__Mdl__Chunk* chunk)
 }
 
 /**
- * @brief Mutate the state, payload or correlation of one decoded Chunk.
- * @details Rewrites only the fields the selected state fault needs, preserving
- * the generated decoder's owned byte spans.
+ * @brief Mutate the state, payload or correlation of one decoded Chunk for
+ * the terminal-state fault family.
+ * @details Rewrites only the fields the selected terminal-state fault needs,
+ * preserving the generated decoder's owned byte spans.
  * @param[in,out] chunk Decoded generated chunk to mutate in place.
  * @param[in] fault Candidate chunk mutation.
- * @return Whether @p fault named a state, payload or correlation mutation.
+ * @return Whether @p fault named a terminal-state mutation.
  * @retval true The selected mutation was applied.
- * @retval false @p fault belongs to the metadata family instead.
+ * @retval false @p fault does not belong to the terminal-state family.
  * @pre @p chunk is non-null and caller-owned.
  * @pre String fields still reference decoder-owned storage.
  * @post A recognised fault malforms exactly the fields it names.
  * @post An unrecognised fault leaves @p chunk untouched.
- * @note Corrupt-data injection asserts that decoded data is nonempty.
+ * @note Shares ::s_bad_data storage across calls; test exchanges are
+ * serialized, so the reused backing byte is safe.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool internal_mutate_chunk_state(Ra8__Mdl__Chunk*         chunk,
-                                                     ra8_c6_model_mdl_fault_t fault)
+RA8_INTERNAL static bool internal_mutate_chunk_state_terminal(Ra8__Mdl__Chunk*         chunk,
+                                                              ra8_c6_model_mdl_fault_t fault)
 {
-  static uint8_t bad_data = k_c6m_mdl_digest_fill;
+  static uint8_t s_bad_data = k_c6m_mdl_digest_fill;
   switch (fault) {
     case k_c6m_mdl_fault_complete_no_sha:
       chunk->sha256 = (ProtobufCBinaryData){};
@@ -91,7 +93,7 @@ RA8_INTERNAL static bool internal_mutate_chunk_state(Ra8__Mdl__Chunk*         ch
       internal_clear_http_metadata(chunk);
       chunk->state  = RA8__MDL__STATE__STATE_CANCELLED;
       chunk->status = 0;
-      chunk->data   = (ProtobufCBinaryData){.len = 1U, .data = &bad_data};
+      chunk->data   = (ProtobufCBinaryData){.len = 1U, .data = &s_bad_data};
       chunk->sha256 = (ProtobufCBinaryData){};
       break;
     case k_c6m_mdl_fault_downloading_error:
@@ -99,6 +101,33 @@ RA8_INTERNAL static bool internal_mutate_chunk_state(Ra8__Mdl__Chunk*         ch
       chunk->status = (int32_t)k_ra8_fail;
       chunk->sha256 = (ProtobufCBinaryData){};
       break;
+    default:
+      return false;
+  }
+  return true;
+}
+
+/**
+ * @brief Mutate the sequencing or payload of one decoded Chunk for the
+ * non-terminal fault family.
+ * @details Rewrites only the fields the selected sequencing or payload
+ * fault needs, preserving the generated decoder's owned byte spans.
+ * @param[in,out] chunk Decoded generated chunk to mutate in place.
+ * @param[in] fault Candidate chunk mutation.
+ * @return Whether @p fault named a sequencing or payload mutation.
+ * @retval true The selected mutation was applied.
+ * @retval false @p fault does not belong to this family.
+ * @pre @p chunk is non-null and caller-owned.
+ * @pre String fields still reference decoder-owned storage.
+ * @post A recognised fault malforms exactly the fields it names.
+ * @post An unrecognised fault leaves @p chunk untouched.
+ * @note Corrupt-data injection asserts that decoded data is nonempty.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_mutate_chunk_state_payload(Ra8__Mdl__Chunk*         chunk,
+                                                             ra8_c6_model_mdl_fault_t fault)
+{
+  switch (fault) {
     case k_c6m_mdl_fault_out_of_order:
       chunk->sequence += 1U;
       break;
@@ -111,6 +140,31 @@ RA8_INTERNAL static bool internal_mutate_chunk_state(Ra8__Mdl__Chunk*         ch
       return false;
   }
   return true;
+}
+
+/**
+ * @brief Mutate the state, payload or correlation of one decoded Chunk.
+ * @details Dispatches to the terminal-state family first, then the
+ * sequencing/payload family, so exactly one mutation is applied per fault.
+ * @param[in,out] chunk Decoded generated chunk to mutate in place.
+ * @param[in] fault Candidate chunk mutation.
+ * @return Whether @p fault named a state, payload or correlation mutation.
+ * @retval true The selected mutation was applied.
+ * @retval false @p fault belongs to the metadata family instead.
+ * @pre @p chunk is non-null and caller-owned.
+ * @pre String fields still reference decoder-owned storage.
+ * @post A recognised fault malforms exactly the fields it names.
+ * @post An unrecognised fault leaves @p chunk untouched.
+ * @note Corrupt-data injection asserts that decoded data is nonempty.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_mutate_chunk_state(Ra8__Mdl__Chunk*         chunk,
+                                                     ra8_c6_model_mdl_fault_t fault)
+{
+  if (internal_mutate_chunk_state_terminal(chunk, fault)) {
+    return true;
+  }
+  return internal_mutate_chunk_state_payload(chunk, fault);
 }
 
 /**
