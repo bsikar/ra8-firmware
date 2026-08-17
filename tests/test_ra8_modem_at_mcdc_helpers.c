@@ -371,12 +371,12 @@ static void internal_test_mcdc_internal_str_len_pair(void)
   TEST_ASSERT_EQ(5, priv_modem_str_len("HELLO"));
 
   /* V3: drive i to UINT16_MAX so C1 ("i < UINT16_MAX") flips to F. */
-  static char huge_text[(size_t)UINT16_MAX + 1U];
+  static char s_huge_text[(size_t)UINT16_MAX + 1U];
   for (size_t k = 0U; k < (size_t)UINT16_MAX; ++k) {
-    huge_text[k] = 'x';
+    s_huge_text[k] = 'x';
   }
-  huge_text[(size_t)UINT16_MAX] = '\0';
-  TEST_ASSERT_EQ(UINT16_MAX, priv_modem_str_len(huge_text));
+  s_huge_text[(size_t)UINT16_MAX] = '\0';
+  TEST_ASSERT_EQ(UINT16_MAX, priv_modem_str_len(s_huge_text));
 
   TEST_END("modem_at MC/DC: internal_str_len short-circuit");
 }

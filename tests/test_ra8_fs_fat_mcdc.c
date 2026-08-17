@@ -524,15 +524,15 @@ RA8_INTERNAL static void internal_test_mcdc_read_walk_cache_resume(void)
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
-  static uint8_t wr[k_read_payload];
-  static uint8_t rd[k_read_payload];
+  static uint8_t s_wr[k_read_payload];
+  static uint8_t s_rd[k_read_payload];
   for (uint32_t i = 0U; i < (uint32_t)k_read_payload; i++) {
-    wr[i] = (uint8_t)((i * k_fs_pattern_stride) + 3U);
-    rd[i] = 0U;
+    s_wr[i] = (uint8_t)((i * k_fs_pattern_stride) + 3U);
+    s_rd[i] = 0U;
   }
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "BACK.BIN", k_ra8_fs_mode_write, &f));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, wr, (uint32_t)k_read_payload));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_wr, (uint32_t)k_read_payload));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "BACK.BIN", k_ra8_fs_mode_read, &f));
@@ -540,23 +540,23 @@ RA8_INTERNAL static void internal_test_mcdc_read_walk_cache_resume(void)
   uint32_t total = 0U;
   while (total < (uint32_t)k_read_payload) {
     uint32_t got = 0U;
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, &rd[total], (uint32_t)k_read_chunk, &got));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, &s_rd[total], (uint32_t)k_read_chunk, &got));
     if (got == 0U) {
       break;
     }
     total += got;
   }
   TEST_ASSERT_EQ(k_read_payload, total);
-  TEST_ASSERT_EQ(0, memcmp(wr, rd, (size_t)k_read_payload));
+  TEST_ASSERT_EQ(0, memcmp(s_wr, s_rd, (size_t)k_read_payload));
 
   /* Backward seek to the chain head: cache set (C1=T) but target behind the
    * cached index (C2=F) -> walk from head. Re-read the first chunk. */
-  memset(rd, 0, (size_t)k_read_chunk);
+  memset(s_rd, 0, (size_t)k_read_chunk);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, 0U));
   uint32_t got2 = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, rd, (uint32_t)k_read_chunk, &got2));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_rd, (uint32_t)k_read_chunk, &got2));
   TEST_ASSERT_EQ(k_read_chunk, got2);
-  TEST_ASSERT_EQ(0, memcmp(wr, rd, (size_t)k_read_chunk));
+  TEST_ASSERT_EQ(0, memcmp(s_wr, s_rd, (size_t)k_read_chunk));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));

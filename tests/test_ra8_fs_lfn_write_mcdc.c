@@ -223,18 +223,18 @@ RA8_INTERNAL static void internal_test_classify_illegal_characters(void)
                                   '\0'};
   TEST_ASSERT_EQ(k_name_kind_long, internal_kind_of(accented)); /* above DEL: legal */
 
-  static const char* bad[] = {"who?.txt",
-                              "star*.txt",
-                              "pipe|.txt",
-                              "colon:.txt",
-                              "lt<.txt",
-                              "gt>.txt",
-                              "quote\".txt",
-                              "back\\slash.txt",
-                              "tab\there.txt",
-                              "del\x7f.txt"};
-  for (uint32_t i = 0U; i < (uint32_t)(sizeof(bad) / sizeof(bad[0])); i++) {
-    TEST_ASSERT_EQ(k_name_kind_invalid, internal_kind_of(bad[i]));
+  static const char* s_bad[] = {"who?.txt",
+                                "star*.txt",
+                                "pipe|.txt",
+                                "colon:.txt",
+                                "lt<.txt",
+                                "gt>.txt",
+                                "quote\".txt",
+                                "back\\slash.txt",
+                                "tab\there.txt",
+                                "del\x7f.txt"};
+  for (uint32_t i = 0U; i < (uint32_t)(sizeof(s_bad) / sizeof(s_bad[0])); i++) {
+    TEST_ASSERT_EQ(k_name_kind_invalid, internal_kind_of(s_bad[i]));
   }
   TEST_END("lfn classify MC/DC: illegal characters");
 }

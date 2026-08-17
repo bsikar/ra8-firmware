@@ -179,35 +179,35 @@ RA8_INTERNAL static void internal_test_get_dimensions_invalid(void)
 RA8_INTERNAL static void internal_test_encode_decode_roundtrip(void)
 {
   TEST_BEGIN("jpeg_sw encode + decode roundtrip");
-  static uint8_t local_rgb_in[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t local_rgb_out[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t local_jpeg[(uint32_t)k_jt_jpeg_cap];
-  internal_fill_gradient(local_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  static uint8_t s_rgb_in[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t s_rgb_out[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t s_jpeg[(uint32_t)k_jt_jpeg_cap];
+  internal_fill_gradient(s_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
 
   uint32_t  produced = 0U;
-  ra8_err_t e        = ra8_jpeg_sw_encode(local_rgb_in,
+  ra8_err_t e        = ra8_jpeg_sw_encode(s_rgb_in,
                                           (uint16_t)k_jt_w,
                                           (uint16_t)k_jt_h,
                                           (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                          local_jpeg,
+                                          s_jpeg,
                                           (uint32_t)k_jt_jpeg_cap,
                                           &produced);
   TEST_ASSERT_EQ(k_ra8_ok, e);
   TEST_ASSERT(produced > 4U);
-  TEST_ASSERT_EQ(0xFFU, local_jpeg[0]);
-  TEST_ASSERT_EQ(0xD8U, local_jpeg[1]);
-  TEST_ASSERT_EQ(0xFFU, local_jpeg[produced - 2U]);
-  TEST_ASSERT_EQ(0xD9U, local_jpeg[produced - 1U]);
+  TEST_ASSERT_EQ(0xFFU, s_jpeg[0]);
+  TEST_ASSERT_EQ(0xD8U, s_jpeg[1]);
+  TEST_ASSERT_EQ(0xFFU, s_jpeg[produced - 2U]);
+  TEST_ASSERT_EQ(0xD9U, s_jpeg[produced - 1U]);
 
   uint16_t dw = 0U;
   uint16_t dh = 0U;
-  e = ra8_jpeg_sw_decode(local_jpeg, produced, local_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh);
+  e           = ra8_jpeg_sw_decode(s_jpeg, produced, s_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh);
   TEST_ASSERT_EQ(k_ra8_ok, e);
   TEST_ASSERT_EQ(k_jt_w, dw);
   TEST_ASSERT_EQ(k_jt_h, dh);
 
   /* PSNR > 30 dB <=> MSE < ~65 (255^2 / 10^3). */
-  uint32_t mse = internal_rgb_mse(local_rgb_in, local_rgb_out, (uint32_t)k_jt_rgb_bytes);
+  uint32_t mse = internal_rgb_mse(s_rgb_in, s_rgb_out, (uint32_t)k_jt_rgb_bytes);
   TEST_ASSERT(mse < (uint32_t)k_jt_mse_psnr30_max);
   TEST_END("jpeg_sw encode + decode roundtrip");
 }
@@ -257,11 +257,11 @@ RA8_INTERNAL static void internal_test_encode_null_args(void)
 RA8_INTERNAL static void internal_test_encode_out_of_buffer(void)
 {
   TEST_BEGIN("jpeg_sw encode rejects undersized out_buf");
-  static uint8_t local_rgb_in[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t s_rgb_in[(uint32_t)k_jt_rgb_bytes];
   uint8_t        tiny[8U];
   uint32_t       produced = k_jpeg_poison_out;
-  internal_fill_gradient(local_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
-  ra8_err_t e = ra8_jpeg_sw_encode(local_rgb_in,
+  internal_fill_gradient(s_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  ra8_err_t e = ra8_jpeg_sw_encode(s_rgb_in,
                                    (uint16_t)k_jt_w,
                                    (uint16_t)k_jt_h,
                                    (uint8_t)k_ra8_jpeg_sw_quality_high,
@@ -290,32 +290,32 @@ typedef enum : uint8_t {
 RA8_INTERNAL static void internal_test_mcdc_encode_dim_zero(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC encode: w==0 || h==0");
-  static uint8_t local_rgb[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t local_out[(uint32_t)k_jt_jpeg_cap];
+  static uint8_t s_rgb[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t s_out[(uint32_t)k_jt_jpeg_cap];
   uint32_t       n = 0U;
-  internal_fill_gradient(local_rgb, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  internal_fill_gradient(s_rgb, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_jpeg_sw_encode(local_rgb,
+                 ra8_jpeg_sw_encode(s_rgb,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                    local_out,
+                                    s_out,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &n));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_jpeg_sw_encode(local_rgb,
+                 ra8_jpeg_sw_encode(s_rgb,
                                     0U,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                    local_out,
+                                    s_out,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &n));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_jpeg_sw_encode(local_rgb,
+                 ra8_jpeg_sw_encode(s_rgb,
                                     (uint16_t)k_jt_w,
                                     0U,
                                     (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                    local_out,
+                                    s_out,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &n));
   TEST_END("jpeg_sw MC/DC encode: w==0 || h==0");
@@ -330,32 +330,32 @@ RA8_INTERNAL static void internal_test_mcdc_encode_dim_zero(void)
 RA8_INTERNAL static void internal_test_mcdc_encode_quality_range(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC encode: quality<min || quality>max");
-  static uint8_t local_rgb[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t local_out[(uint32_t)k_jt_jpeg_cap];
+  static uint8_t s_rgb[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t s_out[(uint32_t)k_jt_jpeg_cap];
   uint32_t       n = 0U;
-  internal_fill_gradient(local_rgb, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  internal_fill_gradient(s_rgb, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_jpeg_sw_encode(local_rgb,
+                 ra8_jpeg_sw_encode(s_rgb,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                    local_out,
+                                    s_out,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &n));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_jpeg_sw_encode(local_rgb,
+                 ra8_jpeg_sw_encode(s_rgb,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_mcdc_jpeg_q_below,
-                                    local_out,
+                                    s_out,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &n));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_jpeg_sw_encode(local_rgb,
+                 ra8_jpeg_sw_encode(s_rgb,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_mcdc_jpeg_q_above,
-                                    local_out,
+                                    s_out,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &n));
   TEST_END("jpeg_sw MC/DC encode: quality<min || quality>max");

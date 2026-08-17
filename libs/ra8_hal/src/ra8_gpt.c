@@ -114,8 +114,8 @@ typedef enum : uint32_t {
  */
 RA8_INTERNAL static void internal_gpt_clock_block_init(void)
 {
-  static bool local_gpt_clock_inited = false;
-  if (local_gpt_clock_inited) {
+  static bool s_gpt_clock_inited = false;
+  if (s_gpt_clock_inited) {
     return;
   }
   /* Enable GTCLK source for the GPT block. */
@@ -123,7 +123,7 @@ RA8_INTERNAL static void internal_gpt_clock_block_init(void)
   /* HUM Ch 22.10.1 "Clock and Pin Setup" p 1146 */
   volatile uint32_t* gtclkcr = (volatile uint32_t*)k_ra8_gpt_gtclk_addr;
   *gtclkcr                   = (uint32_t)k_ra8_gptclkcr_bpen;
-  local_gpt_clock_inited     = true;
+  s_gpt_clock_inited         = true;
 }
 
 /**

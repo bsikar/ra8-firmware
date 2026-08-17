@@ -919,8 +919,8 @@ ra8_err_t ra8_jpeg_sw_decode(const uint8_t* jpeg_buf,
    * allocate as `static` so it doesn't blow the stack budget the
    * project enforces via `-Wstack-usage`. The codec is documented
    * as not thread-safe, so the static is fine. */
-  static ra8_jpeg_dec_ctx_t local_d;
-  ra8_jpeg_dec_ctx_t*       d = &local_d;
+  static ra8_jpeg_dec_ctx_t s_d;
+  ra8_jpeg_dec_ctx_t*       d = &s_d;
   memset(d, 0, sizeof(*d));
   d->src     = jpeg_buf;
   d->src_len = jpeg_len;

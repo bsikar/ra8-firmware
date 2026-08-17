@@ -223,14 +223,14 @@ RA8_INTERNAL static void internal_encode_pattern(uint32_t w, uint32_t h, uint8_t
 RA8_INTERNAL static ra8_err_t
 internal_stream_decode(uint32_t w, uint32_t h, size_t chunk, t_sink_t* sink)
 {
-  static t_src_t local_pull_src;
-  local_pull_src = (t_src_t){.pos = 0U, .chunk = chunk};
-  sink->w        = (uint16_t)w;
-  sink->h        = (uint16_t)h;
-  sink->ch       = 3U;
-  sink->next_y   = 0U;
+  static t_src_t s_pull_src;
+  s_pull_src   = (t_src_t){.pos = 0U, .chunk = chunk};
+  sink->w      = (uint16_t)w;
+  sink->h      = (uint16_t)h;
+  sink->ch     = 3U;
+  sink->next_y = 0U;
   return ra8_jpeg_sw_decode_stripes(internal_t_pull,
-                                    &local_pull_src,
+                                    &s_pull_src,
                                     s_win,
                                     (uint32_t)sizeof(s_win),
                                     internal_t_geom,
@@ -320,11 +320,11 @@ RA8_INTERNAL static void internal_test_jpeg_stream_argument_guards(void)
   internal_encode_pattern(k_t_w, k_t_h, (uint8_t)k_ra8_jpeg_sw_quality_default);
   t_sink_t sink = {};
 
-  static t_src_t local_pull_src;
-  local_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
+  static t_src_t s_pull_src;
+  s_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_jpeg_sw_decode_stripes(NULL,
-                                            &local_pull_src,
+                                            &s_pull_src,
                                             s_win,
                                             k_t_win_cap,
                                             internal_t_geom,
@@ -332,7 +332,7 @@ RA8_INTERNAL static void internal_test_jpeg_stream_argument_guards(void)
                                             &sink));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_jpeg_sw_decode_stripes(internal_t_pull,
-                                            &local_pull_src,
+                                            &s_pull_src,
                                             NULL,
                                             k_t_win_cap,
                                             internal_t_geom,
@@ -340,7 +340,7 @@ RA8_INTERNAL static void internal_test_jpeg_stream_argument_guards(void)
                                             &sink));
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_jpeg_sw_decode_stripes(internal_t_pull,
-                                            &local_pull_src,
+                                            &s_pull_src,
                                             s_win,
                                             1024U,
                                             internal_t_geom,
@@ -371,14 +371,14 @@ RA8_INTERNAL static void internal_test_jpeg_stream_rejects_malformed(void)
   internal_encode_pattern(k_t_w, k_t_h, (uint8_t)k_ra8_jpeg_sw_quality_default);
   const uint32_t full_len = s_src_len;
   t_sink_t       sink     = {.w = k_t_w, .h = k_t_h, .ch = 3U};
-  static t_src_t local_pull_src;
+  static t_src_t s_pull_src;
 
   /* Not a JPEG. */
-  s_src[0]       = 0x00U;
-  local_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
+  s_src[0]   = 0x00U;
+  s_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
                  ra8_jpeg_sw_decode_stripes(internal_t_pull,
-                                            &local_pull_src,
+                                            &s_pull_src,
                                             s_win,
                                             k_t_win_cap,
                                             internal_t_geom,
@@ -387,13 +387,13 @@ RA8_INTERNAL static void internal_test_jpeg_stream_rejects_malformed(void)
   s_src[0] = k_jpeg_marker_prefix;
 
   /* SOI+EOI only: EOI before any scan. */
-  s_src_len      = 4U;
-  s_src[2]       = k_jpeg_marker_prefix;
-  s_src[3]       = k_jpeg_marker_eoi;
-  local_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
+  s_src_len  = 4U;
+  s_src[2]   = k_jpeg_marker_prefix;
+  s_src[3]   = k_jpeg_marker_eoi;
+  s_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
                  ra8_jpeg_sw_decode_stripes(internal_t_pull,
-                                            &local_pull_src,
+                                            &s_pull_src,
                                             s_win,
                                             k_t_win_cap,
                                             internal_t_geom,
@@ -430,13 +430,13 @@ RA8_INTERNAL static void internal_test_jpeg_stream_geometry_hook_failures(void)
   TEST_BEGIN("jpeg stream: geometry hook refusals");
   internal_encode_pattern(k_t_w, k_t_h, (uint8_t)k_ra8_jpeg_sw_quality_default);
   t_sink_t       sink = {};
-  static t_src_t local_pull_src;
+  static t_src_t s_pull_src;
 
   /* Geometry hook rejects (the fail-closed budget seam). */
-  local_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
+  s_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
                  ra8_jpeg_sw_decode_stripes(internal_t_pull,
-                                            &local_pull_src,
+                                            &s_pull_src,
                                             s_win,
                                             k_t_win_cap,
                                             internal_t_geom_abort,
@@ -444,10 +444,10 @@ RA8_INTERNAL static void internal_test_jpeg_stream_geometry_hook_failures(void)
                                             &sink));
 
   /* Geometry hook hands back an undersized stripe. */
-  local_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
+  s_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_jpeg_sw_decode_stripes(internal_t_pull,
-                                            &local_pull_src,
+                                            &s_pull_src,
                                             s_win,
                                             k_t_win_cap,
                                             internal_t_geom_tiny,
@@ -605,12 +605,12 @@ RA8_INTERNAL static void internal_test_jpeg_stream_grayscale(void)
   memcpy(&s_src[s_src_len], s_jpeg_gray_body, sizeof(s_jpeg_gray_body));
   s_src_len += (uint32_t)sizeof(s_jpeg_gray_body);
 
-  static t_src_t local_pull_src;
-  local_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
-  t_sink_t sink  = {.w = 8U, .h = 8U, .ch = 1U};
+  static t_src_t s_pull_src;
+  s_pull_src    = (t_src_t){.pos = 0U, .chunk = 0U};
+  t_sink_t sink = {.w = 8U, .h = 8U, .ch = 1U};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_jpeg_sw_decode_stripes(internal_t_pull,
-                                            &local_pull_src,
+                                            &s_pull_src,
                                             s_win,
                                             k_t_win_cap,
                                             internal_t_geom,

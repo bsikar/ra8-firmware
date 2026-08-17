@@ -139,12 +139,12 @@ RA8_INTERNAL static void internal_test_probe_size_png(void)
 RA8_INTERNAL static void internal_test_decode_blit_pixels(void)
 {
   TEST_BEGIN("ra8_img_decode_blit: exact pixels 1:1 and 2x");
-  static uint8_t  scratch[k_t_scratch_kib * k_t_kib];
-  ra8_img_arena_t arena = {.base = scratch, .cap = sizeof scratch, .offset = 0U, .live = 0U};
+  static uint8_t  s_scratch[k_t_scratch_kib * k_t_kib];
+  ra8_img_arena_t arena = {.base = s_scratch, .cap = sizeof s_scratch, .offset = 0U, .live = 0U};
 
-  static uint8_t fb[4 * 4 * 3];
-  memset(fb, 0, sizeof fb);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(fb, 4, 4, k_ra8_gfx_format_rgb888));
+  static uint8_t s_fb[4 * 4 * 3];
+  memset(s_fb, 0, sizeof s_fb);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(s_fb, 4, 4, k_ra8_gfx_format_rgb888));
 
   int32_t ow = 0;
   int32_t oh = 0;
@@ -153,24 +153,24 @@ RA8_INTERNAL static void internal_test_decode_blit_pixels(void)
                  ra8_img_decode_blit(&arena, s_png_2x2, sizeof s_png_2x2, 0, 0, 2, 2, &ow, &oh));
   TEST_ASSERT_EQ(2, ow);
   TEST_ASSERT_EQ(2, oh);
-  TEST_ASSERT_EQ(k_red, internal_fb_px(fb, 4, 0, 0));
-  TEST_ASSERT_EQ(k_green, internal_fb_px(fb, 4, 1, 0));
-  TEST_ASSERT_EQ(k_blue, internal_fb_px(fb, 4, 0, 1));
-  TEST_ASSERT_EQ(k_white, internal_fb_px(fb, 4, 1, 1));
+  TEST_ASSERT_EQ(k_red, internal_fb_px(s_fb, 4, 0, 0));
+  TEST_ASSERT_EQ(k_green, internal_fb_px(s_fb, 4, 1, 0));
+  TEST_ASSERT_EQ(k_blue, internal_fb_px(s_fb, 4, 0, 1));
+  TEST_ASSERT_EQ(k_white, internal_fb_px(s_fb, 4, 1, 1));
   /* Arena fully drained -> zero heap. */
   TEST_ASSERT_EQ(0, arena.offset);
   TEST_ASSERT_EQ(0, arena.live);
 
   /* 2x nearest-neighbour upscale into a 4x4 box: corners preserved. */
-  memset(fb, 0, sizeof fb);
+  memset(s_fb, 0, sizeof s_fb);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_img_decode_blit(&arena, s_png_2x2, sizeof s_png_2x2, 0, 0, 4, 4, &ow, &oh));
   TEST_ASSERT_EQ(4, ow);
   TEST_ASSERT_EQ(4, oh);
-  TEST_ASSERT_EQ(k_red, internal_fb_px(fb, 4, 0, 0));
-  TEST_ASSERT_EQ(k_green, internal_fb_px(fb, 4, 3, 0));
-  TEST_ASSERT_EQ(k_blue, internal_fb_px(fb, 4, 0, 3));
-  TEST_ASSERT_EQ(k_white, internal_fb_px(fb, 4, 3, 3));
+  TEST_ASSERT_EQ(k_red, internal_fb_px(s_fb, 4, 0, 0));
+  TEST_ASSERT_EQ(k_green, internal_fb_px(s_fb, 4, 3, 0));
+  TEST_ASSERT_EQ(k_blue, internal_fb_px(s_fb, 4, 0, 3));
+  TEST_ASSERT_EQ(k_white, internal_fb_px(s_fb, 4, 3, 3));
   TEST_END("ra8_img_decode_blit: exact pixels 1:1 and 2x");
 }
 
@@ -202,10 +202,10 @@ RA8_INTERNAL static void internal_test_decode_blit_pixels(void)
 RA8_INTERNAL static void internal_test_decode_blit_precondition_mcdc(void)
 {
   TEST_BEGIN("ra8_img_decode_blit precondition MC/DC: len==0||box_w<1||box_h<1");
-  static uint8_t  scratch[k_t_scratch_kib * k_t_kib];
-  ra8_img_arena_t arena = {.base = scratch, .cap = sizeof scratch, .offset = 0U, .live = 0U};
-  static uint8_t  fb[4 * 4 * 3];
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(fb, 4, 4, k_ra8_gfx_format_rgb888));
+  static uint8_t  s_scratch[k_t_scratch_kib * k_t_kib];
+  ra8_img_arena_t arena = {.base = s_scratch, .cap = sizeof s_scratch, .offset = 0U, .live = 0U};
+  static uint8_t  s_fb[4 * 4 * 3];
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(s_fb, 4, 4, k_ra8_gfx_format_rgb888));
 
   /* V1: control -- all conditions false -> decodes. */
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -281,10 +281,10 @@ RA8_INTERNAL static void internal_test_fit_box_branch_mcdc(void)
   TEST_ASSERT_EQ(0, internal_mirror_fit_width_limited(4, 2, 2, 2)); /* V2: height-limited */
 
   /* Real path: a square 2x2 into a wide and a tall box both fit to 2x2. */
-  static uint8_t  scratch[k_t_scratch_kib * k_t_kib];
-  ra8_img_arena_t arena = {.base = scratch, .cap = sizeof scratch, .offset = 0U, .live = 0U};
-  static uint8_t  fb[8 * 8 * 3];
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(fb, 8, 8, k_ra8_gfx_format_rgb888));
+  static uint8_t  s_scratch[k_t_scratch_kib * k_t_kib];
+  ra8_img_arena_t arena = {.base = s_scratch, .cap = sizeof s_scratch, .offset = 0U, .live = 0U};
+  static uint8_t  s_fb[8 * 8 * 3];
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(s_fb, 8, 8, k_ra8_gfx_format_rgb888));
   int32_t ow = 0;
   int32_t oh = 0;
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -377,11 +377,11 @@ RA8_INTERNAL static void internal_test_decode_fail_classify_mcdc(void)
  */
 RA8_INTERNAL static void internal_test_arena_drained_and_no_mem(void)
 {
-  TEST_BEGIN("ra8_img_decode_blit: arena drain on failure + tiny-arena no_mem");
-  static uint8_t  scratch[k_t_scratch_kib * k_t_kib];
-  ra8_img_arena_t arena = {.base = scratch, .cap = sizeof scratch, .offset = 0U, .live = 0U};
-  static uint8_t  fb[4 * 4 * 3];
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(fb, 4, 4, k_ra8_gfx_format_rgb888));
+  TEST_BEGIN("ra8_img_decode_blit: arena drain on failure + s_tiny-arena no_mem");
+  static uint8_t  s_scratch[k_t_scratch_kib * k_t_kib];
+  ra8_img_arena_t arena = {.base = s_scratch, .cap = sizeof s_scratch, .offset = 0U, .live = 0U};
+  static uint8_t  s_fb[4 * 4 * 3];
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(s_fb, 4, 4, k_ra8_gfx_format_rgb888));
 
   /* Undecodable bytes -> not_supported, arena still drained. */
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
@@ -390,14 +390,14 @@ RA8_INTERNAL static void internal_test_arena_drained_and_no_mem(void)
   TEST_ASSERT_EQ(0, arena.live);
 
   /* Arena far too small for the decode -> no_mem (or not_supported), drained. */
-  static uint8_t  tiny[k_t_tiny_dst_cap];
-  ra8_img_arena_t small = {.base = tiny, .cap = sizeof tiny, .offset = 0U, .live = 0U};
+  static uint8_t  s_tiny[k_t_tiny_dst_cap];
+  ra8_img_arena_t small = {.base = s_tiny, .cap = sizeof s_tiny, .offset = 0U, .live = 0U};
   const ra8_err_t e =
     ra8_img_decode_blit(&small, s_png_2x2, sizeof s_png_2x2, 0, 0, 4, 4, NULL, NULL);
   TEST_ASSERT((e == k_ra8_err_no_mem) || (e == k_ra8_err_not_supported));
   TEST_ASSERT_EQ(0, small.offset);
   TEST_ASSERT_EQ(0, small.live);
-  TEST_END("ra8_img_decode_blit: arena drain on failure + tiny-arena no_mem");
+  TEST_END("ra8_img_decode_blit: arena drain on failure + s_tiny-arena no_mem");
 }
 
 /**
@@ -442,13 +442,13 @@ RA8_INTERNAL static void internal_test_arena_drained_and_no_mem(void)
 RA8_INTERNAL static void internal_test_decode_fail_real_paths_mcdc(void)
 {
   TEST_BEGIN("ra8_img_decode_blit decode-fail MC/DC: no_mem vs not_supported");
-  static uint8_t fb[4 * 4 * 3];
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(fb, 4, 4, k_ra8_gfx_format_rgb888));
+  static uint8_t s_fb[4 * 4 * 3];
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(s_fb, 4, 4, k_ra8_gfx_format_rgb888));
 
   /* V1: a valid PNG into an arena too small for the first stb allocation
      deterministically fails with the "outofmem" tag -> no_mem (true arm). */
-  static uint8_t  tiny[k_t_tiny_dst_cap];
-  ra8_img_arena_t small = {.base = tiny, .cap = sizeof tiny, .offset = 0U, .live = 0U};
+  static uint8_t  s_tiny[k_t_tiny_dst_cap];
+  ra8_img_arena_t small = {.base = s_tiny, .cap = sizeof s_tiny, .offset = 0U, .live = 0U};
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
                  ra8_img_decode_blit(&small, s_png_2x2, sizeof s_png_2x2, 0, 0, 4, 4, NULL, NULL));
   TEST_ASSERT_EQ(0, small.offset);
@@ -456,8 +456,8 @@ RA8_INTERNAL static void internal_test_decode_fail_real_paths_mcdc(void)
 
   /* V2: undecodable bytes into a large arena -> reason != "outofmem"
      -> not_supported (false arm). */
-  static uint8_t  scratch[k_t_scratch_kib * k_t_kib];
-  ra8_img_arena_t big = {.base = scratch, .cap = sizeof scratch, .offset = 0U, .live = 0U};
+  static uint8_t  s_scratch[k_t_scratch_kib * k_t_kib];
+  ra8_img_arena_t big = {.base = s_scratch, .cap = sizeof s_scratch, .offset = 0U, .live = 0U};
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
                  ra8_img_decode_blit(&big, s_junk, sizeof s_junk, 0, 0, 4, 4, NULL, NULL));
   TEST_ASSERT_EQ(0, big.offset);

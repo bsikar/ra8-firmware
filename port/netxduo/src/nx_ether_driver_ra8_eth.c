@@ -340,14 +340,14 @@ RA8_INTERNAL static void internal_rx_worker_entry(ULONG arg);
  */
 RA8_INTERNAL static void internal_spawn_rx_worker(NX_IP* ip, NX_INTERFACE* iface)
 {
-  static CHAR thread_name[] = {'r', 'a', '8', '_', 'e', 't', 'h', '_', 'r', 'x', '\0'};
+  static CHAR s_thread_name[] = {'r', 'a', '8', '_', 'e', 't', 'h', '_', 'r', 'x', '\0'};
   if (s_rx_thread_made != 0U) {
     return;
   }
   s_rx_ip    = ip;
   s_rx_iface = iface;
   UINT t     = tx_thread_create(&s_rx_thread,
-                                thread_name,
+                                s_thread_name,
                                 internal_rx_worker_entry,
                                 0,
                                 (VOID*)s_rx_thread_stack,

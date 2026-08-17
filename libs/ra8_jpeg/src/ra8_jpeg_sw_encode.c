@@ -748,10 +748,10 @@ internal_enc_run(ra8_jpeg_enc_ctx_t* e, const uint8_t* rgb, uint16_t w, uint16_t
   if ((uint32_t)pad_w > (uint32_t)k_ra8_jpeg_enc_max_w) {
     return k_ra8_err_invalid_arg;
   }
-  static int32_t local_y_strip[16U * (uint32_t)k_ra8_jpeg_enc_max_w];
-  static int32_t local_cb_strip[16U * (uint32_t)k_ra8_jpeg_enc_max_w];
-  static int32_t local_cr_strip[16U * (uint32_t)k_ra8_jpeg_enc_max_w];
-  static uint8_t local_tmp_rgb[3U * (uint32_t)k_ra8_jpeg_enc_max_w];
+  static int32_t s_y_strip[16U * (uint32_t)k_ra8_jpeg_enc_max_w];
+  static int32_t s_cb_strip[16U * (uint32_t)k_ra8_jpeg_enc_max_w];
+  static int32_t s_cr_strip[16U * (uint32_t)k_ra8_jpeg_enc_max_w];
+  static uint8_t s_tmp_rgb[3U * (uint32_t)k_ra8_jpeg_enc_max_w];
 
   for (uint16_t mby = 0U; mby < pad_h; mby = (uint16_t)(mby + 16U)) {
     internal_enc_convert_strip_to_ycc(rgb,
@@ -759,11 +759,11 @@ internal_enc_run(ra8_jpeg_enc_ctx_t* e, const uint8_t* rgb, uint16_t w, uint16_t
                                       h,
                                       pad_w,
                                       mby,
-                                      local_y_strip,
-                                      local_cb_strip,
-                                      local_cr_strip,
-                                      local_tmp_rgb);
-    internal_enc_encode_mcu_row(e, pad_w, local_y_strip, local_cb_strip, local_cr_strip);
+                                      s_y_strip,
+                                      s_cb_strip,
+                                      s_cr_strip,
+                                      s_tmp_rgb);
+    internal_enc_encode_mcu_row(e, pad_w, s_y_strip, s_cb_strip, s_cr_strip);
   }
 
   priv_jpeg_sw_enc_flush_bits(e);
@@ -797,8 +797,8 @@ ra8_err_t ra8_jpeg_sw_encode(const uint8_t* rgb_buf,
 
   /* Encoder context contains 2KiB of Huffman code/size LUTs; allocate
    * static to avoid the project's stack-usage budget firing. */
-  static ra8_jpeg_enc_ctx_t local_e;
-  ra8_jpeg_enc_ctx_t*       e = &local_e;
+  static ra8_jpeg_enc_ctx_t s_e;
+  ra8_jpeg_enc_ctx_t*       e = &s_e;
   memset(e, 0, sizeof(*e));
   e->dst = out_buf;
   e->cap = out_buf_len;

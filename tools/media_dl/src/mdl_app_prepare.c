@@ -263,15 +263,15 @@ RA8_INTERNAL static void internal_filter_prefix(mdl_url_list_t* l, const char* p
  */
 RA8_INTERNAL static ra8_err_t internal_warn_no_contact(void)
 {
-  static bool warned = false;
-  if (!warned) {
+  static bool s_warned = false;
+  if (!s_warned) {
     const ra8_err_t error =
       priv_mdl_stream_text(k_ra8_ok,
                            priv_mdl_app_context()->diagnostic,
                            "media_dl: WARNING: no contact configured; pass --contact "
                            "<email|url> so a site operator can reach you before banning\n");
     if (error == k_ra8_ok) {
-      warned = true;
+      s_warned = true;
     }
     return error;
   }
