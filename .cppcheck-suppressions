@@ -386,6 +386,35 @@ misra-c2012-7.4:tools/media_dl/tests/test_media_dl_export_workspace.c
 # ---------------------------------------------------------------------------
 misra-c2012-21.16:tools/media_dl/tests/test_media_dl_net_c6link.c
 
+# ---------------------------------------------------------------------------
+# Rule 21.6 on mdl_export_epub_meta.c -- the package-document half that the
+# eight-file split (25d37e53d) carved out of mdl_export_epub.c. media_dl is a
+# host CLI tool whose entire bounded-text strategy is snprintf(), so <stdio.h>
+# is its interface rather than an incidental include, and every one of the
+# other media_dl translation units carries the identical accepted row in
+# .github/misra-baseline.txt -- including mdl_export_epub.c, the file this one
+# was split from. Suppressed rather than baselined only because the split
+# created the file after the baseline was frozen; the disposition is the one
+# already accepted for its sibling, mirroring the nx_ether_driver_c6.c
+# precedent below.
+# ---------------------------------------------------------------------------
+misra-c2012-21.6:tools/media_dl/src/mdl_export_epub_meta.c
+
+# ---------------------------------------------------------------------------
+# Rule 11.6 on ra8_io_vfs_namespace.c -- the single line that validates a
+# caller's directory-cursor workspace against the mounted format's published
+# alignment, `((uintptr_t)workspace % caps->directory_workspace_align) != 0U`.
+# Testing a pointer's alignment cannot be expressed in C without converting it
+# to an integer, and the public entry point receives the workspace as `void*`,
+# so Rule 11.6 admits no conforming alternative here; deleting the guard would
+# remove a real trust-boundary check on caller-owned storage. The identical
+# predicate is already accepted in .github/misra-baseline.txt at
+# libs/ra8_io/src/ra8_io_vfs.c -- the file 25d37e53d split this one out of --
+# and at libs/if/src/fw_if_fs_dir.c. Scoped to this one file so Rule 11.6 stays
+# enforced everywhere else, mirroring the nx_ether_driver_c6.c precedent below.
+# ---------------------------------------------------------------------------
+misra-c2012-11.6:libs/ra8_io/src/ra8_io_vfs_namespace.c
+
 # constParameterCallback on the esp-hosted port's OS-abstraction vtable rows.
 # Every row here is bound to a member of `hosted_osi_funcs_t`
 # (libs/third_party/esp-hosted/host/esp_hosted_os_abstraction.h), whose
