@@ -369,8 +369,8 @@ misra-c2012-7.4:port/esp-hosted/src/ra8_esp_hosted_rtos_pool.c
 # mdl_net_get_buf() writes through a `char*` output buffer, and mkstemp()
 # rewrites its template in place. Neither object aliases the literal.
 # ---------------------------------------------------------------------------
-misra-c2012-7.4:tools/media_dl/tests/test_media_dl_net_c6link.c
-misra-c2012-7.4:tools/media_dl/tests/test_media_dl_export_workspace.c
+misra-c2012-7.4:apps/stand_alone/media_dl/tests/test_media_dl_net_c6link.c
+misra-c2012-7.4:apps/stand_alone/media_dl/tests/test_media_dl_export_workspace.c
 
 # ---------------------------------------------------------------------------
 # Rule 21.16 on the media_dl C6-backend buffer test.
@@ -384,7 +384,7 @@ misra-c2012-7.4:tools/media_dl/tests/test_media_dl_export_workspace.c
 # outcome. Suppressed rather than deviated because it is one call site in a
 # host test, not a firmware idiom.
 # ---------------------------------------------------------------------------
-misra-c2012-21.16:tools/media_dl/tests/test_media_dl_net_c6link.c
+misra-c2012-21.16:apps/stand_alone/media_dl/tests/test_media_dl_net_c6link.c
 
 # ---------------------------------------------------------------------------
 # Rule 21.6 on mdl_export_epub_meta.c -- the package-document half that the
@@ -398,7 +398,7 @@ misra-c2012-21.16:tools/media_dl/tests/test_media_dl_net_c6link.c
 # already accepted for its sibling, mirroring the nx_ether_driver_c6.c
 # precedent below.
 # ---------------------------------------------------------------------------
-misra-c2012-21.6:tools/media_dl/src/mdl_export_epub_meta.c
+misra-c2012-21.6:apps/stand_alone/media_dl/src/mdl_export_epub_meta.c
 
 # ---------------------------------------------------------------------------
 # Rule 11.6 on ra8_io_vfs_namespace.c -- the single line that validates a
@@ -508,9 +508,9 @@ constParameterCallback:libs/ra8_camera/src/ra8_camera_source_memory.c
 constParameterCallback:examples/ek_ra8d2/hil_needs_revalidation/ra8_io_fsfmt_demo/main.c
 constParameterCallback:tools/cache_bench/cache_bench_host.c
 constParameterCallback:tools/exfat_mkimage/exfat_mkimage.c
-constParameterCallback:tools/media_dl/src/mdl_export_zip.c
-constParameterCallback:tools/media_dl/src/mdl_storage.c
-constParameterCallback:tools/media_dl/tests/test_media_dl_net_c6link.c
+constParameterCallback:apps/stand_alone/media_dl/src/mdl_export_zip.c
+constParameterCallback:apps/stand_alone/media_dl/src/mdl_storage.c
+constParameterCallback:apps/stand_alone/media_dl/tests/test_media_dl_net_c6link.c
 constParameterCallback:tools/mkbookimg/mkbookimg.c
 constParameterCallback:tools/mkfontimg/mkfontimg_host.c
 constParameterCallback:tools/rabook_imagepack/tests/test_ra8_fmt_stream_inspect.c
@@ -528,8 +528,8 @@ constParameterCallback:tools/reader_vmem/reader_vmem.c
 # writes are read; the analyser cannot see where. Root-fixing this would mean
 # deleting the fault injection the tests exist to perform.
 redundantAssignment:tools/cache_bench/tests/test_cache_bench.c
-redundantAssignment:tools/media_dl/tests/test_media_dl_fetch_body.c
-redundantAssignment:tools/media_dl/tests/test_media_dl_net.c
+redundantAssignment:apps/stand_alone/media_dl/tests/test_media_dl_fetch_body.c
+redundantAssignment:apps/stand_alone/media_dl/tests/test_media_dl_net.c
 
 # knownConditionTrueFalse on the media_download app's build-configuration
 # guards. `s_ssid` and `s_url` are initialised from RA8_C6_WIFI_SSID and
@@ -550,8 +550,8 @@ knownConditionTrueFalse:examples/ek_ra8d2/hw_pending/media_download/main.c
 # library errno-setters, so the POSIX calls read as non-errno-setting and the
 # test is reported. The same pattern is long-established in
 # tools/exfat_mkimage. False positive of the checker model, not a deviation.
-misra-c2012-22.10:tools/media_dl/tests/test_media_dl_export_xml.c
-misra-c2012-22.10:tools/media_dl/tests/test_media_dl_state_metadata.c
+misra-c2012-22.10:apps/stand_alone/media_dl/tests/test_media_dl_export_xml.c
+misra-c2012-22.10:apps/stand_alone/media_dl/tests/test_media_dl_state_metadata.c
 
 # ---------------------------------------------------------------------------
 # Rule 8.9 counting artefacts in the media_dl hosted tests (see the
@@ -561,5 +561,5 @@ misra-c2012-22.10:tools/media_dl/tests/test_media_dl_state_metadata.c
 #   table reference is invisible to the single-function heuristic.
 # - test_media_dl_report_pack.c: s_faillog is used by two test functions and
 #   s_arena by five plus a file-scope sizeof; neither can move to block scope.
-misra-c2012-8.9:tools/media_dl/tests/test_media_dl_export_xml.c
-misra-c2012-8.9:tools/media_dl/tests/test_media_dl_report_pack.c
+misra-c2012-8.9:apps/stand_alone/media_dl/tests/test_media_dl_export_xml.c
+misra-c2012-8.9:apps/stand_alone/media_dl/tests/test_media_dl_report_pack.c

@@ -4,8 +4,8 @@
 # ra8-firmware -- MISRA-C 2012 audit (advisory)
 #
 # Runs cppcheck + the bundled misra.py addon over every first-party C source
-# root (libs/ + src/ + port/ + tools/, excluding vendored/generated code) and
-# emits:
+# root (libs/ + src/ + port/ + tools/ + apps/, excluding vendored/generated
+# code) and emits:
 #
 #   build/misra/results.txt  -- one violation per line, parsed
 #   build/misra/raw.txt      -- raw cppcheck stderr
@@ -46,14 +46,29 @@ RAW="$OUT_DIR/raw.txt"
 MISRA_RAW="$OUT_DIR/misra-raw.txt"
 RESULTS="$OUT_DIR/results.txt"
 
+# The first-party source roots this audit covers. Everything downstream --
+# the header search path, the cppcheck scan list, the dump discovery and the
+# cleanup trap -- is derived from this ONE array, so a root cannot be added
+# to some of those four and silently omitted from the others.
+#
+# It already was. When apps/ joined the scan list the header path beneath it
+# was still spelled as a hand-written glob naming only tools/*/inc, so every
+# header under apps/ became unreachable: cppcheck charged each caller MISRA
+# 17.3 for the resulting implicit declarations and each definition 8.4 for
+# the declaration it could no longer see, while SILENTLY LOSING the 9.2,
+# 11.x, 18.4, 20.1 and 21.15 findings it can only raise once the types in
+# those headers are known. A net drop in findings is the dangerous direction
+# of that failure -- it reads as a burn-down.
+RA8_MISRA_ROOTS=(libs src port tools apps)
+
 # Delete dump artefacts on EVERY exit path, not just success. A stale dump
 # left behind by an aborted run (disk-full, timeout, ^C) would be picked up
 # by the next run's find and could resurrect findings for source that has
 # since changed -- silent corruption of the ratchet comparison.
 # shellcheck disable=SC2329  # invoked by `trap cleanup_dumps EXIT` below.
 cleanup_dumps() {
-  find libs src port tools -name '*.dump' -not -path '*/third_party/*' -delete 2>/dev/null || true
-  find libs src port tools -name '*.ctu-info' -not -path '*/third_party/*' -delete 2>/dev/null || true
+  find "${RA8_MISRA_ROOTS[@]}" -name '*.dump' -not -path '*/third_party/*' -delete 2>/dev/null || true
+  find "${RA8_MISRA_ROOTS[@]}" -name '*.ctu-info' -not -path '*/third_party/*' -delete 2>/dev/null || true
 }
 trap cleanup_dumps EXIT
 
@@ -78,20 +93,31 @@ MISRA_PY="$ADDON_DIR/misra.py"
 
 JOBS="${JOBS:-$(ra8_max_jobs)}"
 
-# Header roots, derived from the repo layout rather than hand-picked. The
-# list used to name five directories while the audit scanned libs/, src/
+# Header roots, enumerated FROM the scan roots above rather than hand-picked,
+# and at ANY depth beneath them.
+#
+# The list used to name five directories while the audit scanned libs/, src/
 # AND port/, so every header under port/*/inc was invisible: cppcheck saw
 # the calls into those interfaces as implicitly-declared functions and
 # charged the caller MISRA 17.3 for them. That is a defect in the audit's
 # view of the tree, not in the tree -- the same failure the annotation
 # gate had when its include path was a hand-picked list (see
-# _include_args() in check_annotations.py). Deriving both from the layout
-# means a new library or port cannot silently fall outside either.
+# _include_args() in check_annotations.py).
+#
+# It recurred twice while apps/ was being added, which is why neither a
+# hand-written list nor a fixed-depth glob is used here any more. First the
+# glob still named only tools/*/inc, so the product headers under apps/ went
+# missing. Then the products moved down a level, under a category directory,
+# and a one-star glob missed them again. Finding every directory NAMED inc under
+# the scanned roots has no depth to get wrong: the audit's header path is a
+# consequence of the layout instead of a second description of it.
 INCLUDE_DIRS=()
-for _inc_dir in libs/*/inc src/inc src/*/inc port/*/inc tools/*/inc; do
-  case "$_inc_dir" in */third_party/*) continue ;; esac
-  [[ -d "$_inc_dir" ]] && INCLUDE_DIRS+=("-I$_inc_dir")
-done
+while IFS= read -r _inc_dir; do
+  [[ -n "$_inc_dir" ]] && INCLUDE_DIRS+=("-I$_inc_dir")
+done < <(
+  find "${RA8_MISRA_ROOTS[@]}" -type d -name inc \
+    -not -path '*/third_party/*' -not -path '*/build/*' 2>/dev/null | sort
+)
 if [[ ${#INCLUDE_DIRS[@]} -eq 0 ]]; then
   echo "[ERROR] no header roots found -- run from the repo root" >&2
   exit 2
@@ -153,7 +179,7 @@ done <"$ROOT_DIR/.cppcheck-suppressions"
 # are already comments. Suppressing the four rules or absorbing the
 # findings into the baseline would blind the ratchet to real defects in
 # every annotated file.
-echo "[INFO] generating cppcheck dumps under libs/, src/, port/, tools/ ..." >&2
+echo "[INFO] generating cppcheck dumps under ${RA8_MISRA_ROOTS[*]} ..." >&2
 set +e
 "${TIMEOUT_CMD[@]}" cppcheck \
   -j "$JOBS" \
@@ -175,7 +201,7 @@ set +e
   --quiet \
   --error-exitcode=0 \
   "${INCLUDE_DIRS[@]}" \
-  libs src port tools \
+  "${RA8_MISRA_ROOTS[@]}" \
   2>"$RAW"
 RC=$?
 set -e
@@ -185,9 +211,9 @@ if [[ "$RC" -eq 124 ]]; then
   exit 1
 fi
 
-# Run misra.py on every dump file produced under the four first-party roots.
+# Run misra.py on every dump file produced under the first-party roots.
 mapfile -t DUMPS < <(
-  find libs src port tools -name '*.dump' \
+  find "${RA8_MISRA_ROOTS[@]}" -name '*.dump' \
     -not -path '*/third_party/*' -not -path '*/vela/generated/*' | sort
 )
 echo "[INFO] running misra.py on ${#DUMPS[@]} dump file(s) ..." >&2

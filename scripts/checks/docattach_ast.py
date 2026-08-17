@@ -77,6 +77,9 @@ def _include_args(cindex: ModuleType) -> list[str]:  # noqa: ARG001  # kept for 
         "tests",
         "port/*/inc",
         "tools/*/inc",
+        # A product under apps/ carries its headers one level deeper than a
+        # tool, beneath its category directory.
+        "apps/*/*/inc",
     ):
         roots.extend(sorted(REPO_ROOT.glob(pattern)))
     return [f"-I{d}" for d in roots if d.is_dir() and "third_party" not in d.parts]

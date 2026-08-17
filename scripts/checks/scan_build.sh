@@ -121,9 +121,11 @@ unset _sb_base _sb_ver
 # configure or a no-op incremental build, not a policy on suite size.
 MIN_TRANSLATION_UNITS="${MIN_TRANSLATION_UNITS:-800}"
 
-# Measured eight immediate tools/*/CMakeLists.txt projects. Discovery is
-# derived, so adding a ninth automatically puts it under scan-build; the floor
-# turns a missing/collapsed tools root into a loud infrastructure failure.
+# Measured eight host CMake projects: seven under tools/ and one product under
+# apps/. Discovery is derived, so adding a ninth automatically puts it under
+# scan-build; the floor turns a missing/collapsed root into a loud
+# infrastructure failure -- as it did when media_dl moved out of tools/ and
+# left the tools-only glob discovering seven.
 MIN_TOOL_PROJECTS="${MIN_TOOL_PROJECTS:-8}"
 
 # ===========================================================================
@@ -358,8 +360,12 @@ fi
 # hand-list beside tools-build. Each gets its own build tree because CMake
 # projects are independent roots. A configure failure is as fatal here as it is
 # for the host tests: an analyzer cannot judge a TU it never compiled.
+# tools/<tool>/ and apps/<category>/<product>/ nest differently, so the two
+# globs differ by exactly one level. A product is a host CMake project like
+# any tool and gets the same analyzer treatment.
 TOOL_PROJECTS=()
-for cmake_file in "$REPO_ROOT"/tools/*/CMakeLists.txt; do
+for cmake_file in "$REPO_ROOT"/tools/*/CMakeLists.txt \
+  "$REPO_ROOT"/apps/*/*/CMakeLists.txt; do
   [[ -f "$cmake_file" ]] && TOOL_PROJECTS+=("${cmake_file%/CMakeLists.txt}")
 done
 if ! tool_scope_is_big_enough "${#TOOL_PROJECTS[@]}"; then

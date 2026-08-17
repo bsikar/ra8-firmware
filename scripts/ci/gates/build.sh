@@ -42,7 +42,7 @@
 # gcc-14 is the SECOND arm (#356). clang-18 and gcc-14 catch different warning
 # families, and a gate that holds the bar with one compiler holds only that
 # compiler's bar: gcc-14's -Wformat-truncation caught a silent PATH_MAX
-# path-join truncation in tools/media_dl that clang-18 did not flag. Both arms
+# path-join truncation in apps/stand_alone/media_dl that clang-18 did not flag. Both arms
 # build, link and test under -Wall -Wextra -Werror; neither may degrade to a
 # warning-only run, and check_tool_warning_flags.py --require-compilers makes a
 # silently-dropped arm a hard failure rather than a vacuous pass.
@@ -77,7 +77,7 @@ _tb_media_dl() (
   local cc="$1" root="$2" jobs="$3"
   shift 3
   echo "tools-build[$cc]: media_dl"
-  CC="$cc" cmake -S "$PWD/tools/media_dl" -B "$root/media_dl" \
+  CC="$cc" cmake -S "$PWD/apps/stand_alone/media_dl" -B "$root/media_dl" \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON "$@"
   cmake --build "$root/media_dl" -j "$jobs"
   test -x "$root/media_dl/media_dl"
@@ -152,7 +152,7 @@ gate_tools_build() (
   # media_dl's CMakeLists find_program()s these two as REQUIRED for its
   # real-libcurl HTTPS integration test (it mints a throwaway server cert with
   # the openssl CLI and serves it from python3's http.server). A runner without
-  # them fails at `cmake -S tools/media_dl` with a CMake "could not find
+  # them fails at `cmake -S apps/stand_alone/media_dl` with a CMake "could not find
   # MDL_OPENSSL_EXECUTABLE" error 700 lines before the gate says anything, and
   # the openssl CLI reaches the runner image only as a transitive apt
   # dependency of ca-certificates -- it is named nowhere. Name the dependency

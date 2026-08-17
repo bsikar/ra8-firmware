@@ -45,14 +45,14 @@ media_dl:
 	$(CMAKE) -B $(MEDIA_DL_DIR)/build -S $(MEDIA_DL_DIR)
 	$(CMAKE) --build $(MEDIA_DL_DIR)/build -j
 	@echo "  built $(MEDIA_DL_DIR)/build/media_dl"
-	@echo "  run:  make dl ARGS='--config tools/media_dl/sites/manhwaus.conf --series <url> --chapters 2 --format cbz'"
+	@echo "  run:  make dl ARGS='--config apps/stand_alone/media_dl/sites/manhwaus.conf --series <url> --chapters 2 --format cbz'"
 
 # `make dl ARGS='...'` -- build media_dl and run it with ARGS. This is the
 # make-native way to pass through flags (make does not forward bare '-- --flag'
 # words cleanly, so pass them as a single ARGS='...' string). The ARGS guard runs
 # BEFORE the build, so a bare `make dl` errors without building.
 dl:
-	@test -n "$(ARGS)" || { echo "usage: make dl ARGS='--config tools/media_dl/sites/<site>.conf --series <url> --chapters N --format cbz'"; exit 2; }
+	@test -n "$(ARGS)" || { echo "usage: make dl ARGS='--config apps/stand_alone/media_dl/sites/<site>.conf --series <url> --chapters N --format cbz'"; exit 2; }
 	$(MAKE) media_dl
 	$(MEDIA_DL_DIR)/build/media_dl $(ARGS)
 

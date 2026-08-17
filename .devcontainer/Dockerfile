@@ -30,7 +30,7 @@
 # compiles the first-party host tools under clang-18 AND gcc-14 so the warning
 # families each catches but the other misses are both held: gcc-14's
 # -Wformat-truncation found a silent PATH_MAX path-join truncation in
-# tools/media_dl that clang-18 did not flag. Like the clang family it tracks the
+# apps/stand_alone/media_dl that clang-18 did not flag. Like the clang family it tracks the
 # major-version package name (gcc-14) rather than an exact string, and
 # check_tool_versions.py reads that major from here.
 #
@@ -91,7 +91,7 @@ ARG DOXYGEN_SHA256_LINUX_X64=a56f885d37e3aae08a99f638d17bbb381224c03a878d9e2dda4
 
 # libcapstone-dev is the Capstone header that tools/ra8_emulator includes (for
 # disassembly only -- NOT the decode variable), and libcurl4-openssl-dev is the
-# libcurl header tools/media_dl's network backend includes. `make ci` lints
+# libcurl header apps/stand_alone/media_dl's network backend includes. `make ci` lints
 # tools/ (issue #296), so the tidy gate needs those headers present inside the
 # container even though the tidy pass builds neither tool. A missing header does
 # not fail loudly -- clang-tidy emits clang-diagnostic-error and never lints
@@ -108,11 +108,11 @@ ARG DOXYGEN_SHA256_LINUX_X64=a56f885d37e3aae08a99f638d17bbb381224c03a878d9e2dda4
 # after `gh` and `jq`, and the first one found by a check instead of a person.
 #
 # openssl is the fourth, and it arrived through a route runner-image-deps
-# cannot see: tools/media_dl/CMakeLists.txt find_program()s the openssl CLI as
+# cannot see: apps/stand_alone/media_dl/CMakeLists.txt find_program()s the openssl CLI as
 # REQUIRED for its HTTPS integration test, so the tools-build gate depended on
 # a binary no require_cmd declared and this list never carried. Every developer
 # box has it; ubuntu:24.04 plus the list above does not, so the gate failed at
-# `cmake -S tools/media_dl` on the runner and nowhere else. A CMake
+# `cmake -S apps/stand_alone/media_dl` on the runner and nowhere else. A CMake
 # find_program(... REQUIRED) is a host-tool declaration too -- if you add one,
 # add the package here.
 RUN apt-get update && apt-get install -y --no-install-recommends \

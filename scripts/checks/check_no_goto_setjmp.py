@@ -79,7 +79,7 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 # flow -- the same reason tests/ is exempt from MC/DC re-test and the
 # magic-number gate, and why sibling check_no_null.py scopes to
 # libs/src/port/examples only.
-ROOT_DIRS = ("libs", "src", "examples", "port", "tools")
+ROOT_DIRS = ("libs", "src", "examples", "port", "tools", "apps")
 
 # Path fragments that exclude a file from the scan. Vendored SOUP and generated
 # font tables are exempt -- their control flow is the upstream maintainer's

@@ -126,12 +126,22 @@ _INCLUDE_ROOT_PATTERNS = (
     "tools/*",
     "tools/*/inc",
     "tools/*/src",
+    # apps/<category>/<product>: a product is a host build like a tool, but
+    # it sits one level deeper so that a category (stand_alone/, and later
+    # threadx_modules/) can group builds of a kind. The include roots are
+    # therefore the same three shapes with one more star; spelling them at
+    # tools/ depth would resolve nothing and every declaration behind those
+    # headers would drop out of the call graph.
+    "apps/*/*",
+    "apps/*/*/inc",
+    "apps/*/*/src",
     # a tool whose src/ is grouped into domain subdirs (ra8_emulator:
     # engine/periph/usb/display/io) keeps its *_internal.h beside the .c;
     # a cross-boundary include from tests/ needs the subdir on the path,
     # so derive those roots too (the same courtesy libs/*/* already gets).
     "tools/*/src/*",
     "tools/*/generated",
+    "apps/*/*/src/*",
 )
 
 
