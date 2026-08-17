@@ -111,7 +111,9 @@ RA8_INTERNAL static uint32_t internal_crc32_block(uint32_t crc, const uint8_t* d
  * @retval k_ra8_err_invalid_size The reader returned zero or too many bytes.
  * @retval other The injected reader failed.
  * @pre @p total is strictly less than @p expected_size on entry.
+ * @pre @p buf holds at least @p cap writable bytes and @p cap is non-zero.
  * @post On success @p crc and @p total reflect the newly read chunk.
+ * @post On any failure @p crc and @p total are left at their entry values.
  * @note Not thread-safe: mutates caller-owned scratch state.
  * @since Version 0.1.0
  */
@@ -158,7 +160,9 @@ RA8_INTERNAL static ra8_err_t internal_crc_stream_read_chunk(ra8_rabook_import_r
  * @retval k_ra8_err_null_ptr A required pointer argument is NULL.
  * @retval k_ra8_err_invalid_size A capacity, size, or budget bound is violated.
  * @pre None; every argument is treated as untrusted.
+ * @pre @p max_reads is the caller's bounded read budget for the whole stream.
  * @post No argument or output state is modified.
+ * @post Success proves the read loop terminates within @p max_reads iterations.
  * @note Not thread-safe with respect to concurrent callers.
  * @since Version 0.1.0
  */

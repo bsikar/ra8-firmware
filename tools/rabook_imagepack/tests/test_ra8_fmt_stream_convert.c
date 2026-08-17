@@ -299,6 +299,7 @@ static ra8_err_t internal_convert(const ra8_fmt_source_t*                   sour
  * @pre Both pointers are non-null and the source remains open.
  * @pre Both static arenas are distinct and sufficiently aligned.
  * @post Both model transactions are committed without abort.
+ * @post Both workspace bindings are local; only @p first and @p second escape.
  * @note Test-only and sequential because the producer is documented non-reentrant.
  * @since 0.1.0
  */

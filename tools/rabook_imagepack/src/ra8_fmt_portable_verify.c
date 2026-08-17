@@ -550,7 +550,9 @@ static int internal_execute(const verify_cli_args_t*                 args,
  * @retval other Open, identity, sizing, or capacity validation failed
  * (already reported and cleaned up).
  * @pre @p args->input names a readable file.
+ * @pre Every output pointer and both sink bindings are valid and independent.
  * @post On failure both sources are closed and no partial state escapes.
+ * @post On success both open sources pass to the caller, which must close them.
  * @note Not thread-safe with respect to concurrent mutation of the input.
  * @since 0.1.0
  */

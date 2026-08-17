@@ -881,7 +881,9 @@ internal_prepare_run_policy(const mdl_args_t* args, mdl_run_opts_t* opts, ra8_md
  * @retval 0 Output, context, and argument parsing are ready.
  * @retval 1 Output stream initialization failed.
  * @pre @p argv is non-NULL and holds @p argc entries.
+ * @pre @p a addresses writable storage for one complete `mdl_args_t`.
  * @post On success @p a holds the raw parsed arguments.
+ * @post A failed output-stream init binds no context and no export arena.
  * @note Not thread-safe; initializes process-lifetime shared state.
  * @since 0.1.0
  */
@@ -914,7 +916,9 @@ RA8_INTERNAL static int internal_main_init(int argc, char** argv, mdl_args_t* a)
  * @retval 1 Filesystem binding or shutdown failed.
  * @retval other The dispatched mode's own failure status.
  * @pre All pointers are non-NULL.
+ * @pre @p opts already carries the credential views the run policy prepared.
  * @post Filesystem shutdown is attempted exactly once regardless of outcome.
+ * @post No mode handler runs when the portable filesystem binding fails.
  * @note Not thread-safe; binds and releases process-lifetime storage.
  * @since 0.1.0
  */

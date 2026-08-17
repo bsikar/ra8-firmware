@@ -299,28 +299,6 @@ RA8_INTERNAL static ra8_err_t internal_jof_produce_page(const uint8_t*          
 }
 
 /**
- * @brief Transcode one JPEG, PNG, or WebP page to a JOF band atlas
- * @details Bounds the source and producer arenas, probes dimensions through
- *          the firmware producer, validates the borrowed staged file with the
- *          canonical JOF verifier, and publishes the completed sibling.
- * @param[in,out] storage Injected portable storage and transaction provider.
- * @param[in] in_path NUL-terminated verified source image path.
- * @param[in] out_path NUL-terminated destination JOF path.
- * @param[in,out] ws Exclusive caller-owned export workspace.
- * @return Transcode status.
- * @retval k_ra8_ok A complete independently validated JOF was published.
- * @retval k_ra8_err_invalid_size A source or workspace bound was exceeded.
- * @retval k_ra8_err_not_supported The producer cannot decode the image.
- * @retval k_ra8_fail Storage, validation, or publication operations failed.
- * @pre Paths are non-NULL, NUL-terminated, and stable for the call.
- * @pre @p storage is initialized and exclusive to this operation.
- * @pre @p ws owns writable storage and is exclusive to this page.
- * @post Success leaves one complete reader-consumable JOF.
- * @post Failure before publication aborts the stage and preserves the prior sibling.
- * @note Not thread-safe for a shared workspace or destination.
- * @since 0.1.0
- */
-/**
  * @brief Stat, bound-check, arena-claim, and slurp one source image.
  * @details Requires a non-empty regular file within ::k_jof_source_cap,
  *          claims exactly that many bytes from @p ws, and reads the complete
@@ -337,7 +315,10 @@ RA8_INTERNAL static ra8_err_t internal_jof_produce_page(const uint8_t*          
  * @retval k_ra8_err_invalid_size The source or arena bound was exceeded.
  * @retval other The stat or slurp call failed.
  * @pre @p storage, @p in_path, @p ws, @p out_src, and @p out_slen are non-NULL.
+ * @pre @p ws is initialized and exclusive to this page.
  * @post On failure @p ws retains whatever partial claim it already made.
+ * @post On success @p out_src points inside @p ws and stays valid until the
+ *       caller rewinds that workspace.
  * @note Not thread-safe for a shared workspace.
  * @since Version 0.1.0
  */
@@ -373,6 +354,28 @@ RA8_INTERNAL static ra8_err_t internal_jof_load_source(mdl_storage_t*          s
   return k_ra8_ok;
 }
 
+/**
+ * @brief Transcode one JPEG, PNG, or WebP page to a JOF band atlas
+ * @details Bounds the source and producer arenas, probes dimensions through
+ *          the firmware producer, validates the borrowed staged file with the
+ *          canonical JOF verifier, and publishes the completed sibling.
+ * @param[in,out] storage Injected portable storage and transaction provider.
+ * @param[in] in_path NUL-terminated verified source image path.
+ * @param[in] out_path NUL-terminated destination JOF path.
+ * @param[in,out] ws Exclusive caller-owned export workspace.
+ * @return Transcode status.
+ * @retval k_ra8_ok A complete independently validated JOF was published.
+ * @retval k_ra8_err_invalid_size A source or workspace bound was exceeded.
+ * @retval k_ra8_err_not_supported The producer cannot decode the image.
+ * @retval k_ra8_fail Storage, validation, or publication operations failed.
+ * @pre Paths are non-NULL, NUL-terminated, and stable for the call.
+ * @pre @p storage is initialized and exclusive to this operation.
+ * @pre @p ws owns writable storage and is exclusive to this page.
+ * @post Success leaves one complete reader-consumable JOF.
+ * @post Failure before publication aborts the stage and preserves the prior sibling.
+ * @note Not thread-safe for a shared workspace or destination.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static ra8_err_t internal_jof_one(mdl_storage_t*          storage,
                                                const char*             in_path,
                                                const char*             out_path,

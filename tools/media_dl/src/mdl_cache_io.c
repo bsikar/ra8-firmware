@@ -758,6 +758,8 @@ RA8_PRIV ra8_err_t priv_mdl_cache_save(mdl_cache_t* cache, const mdl_cache_paths
  * @pre @p storage, @p body_path, and @p buffer are non-NULL.
  * @pre @p buffer holds at least @p size_bytes writable bytes.
  * @post The file handle is closed on every return path.
+ * @post On success exactly @p size_bytes sit in @p buffer; a failure leaves
+ *       its contents unspecified.
  * @note Not thread-safe; shares the caller's file workspace.
  * @since Version 0.1.0
  */

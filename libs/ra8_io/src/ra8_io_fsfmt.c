@@ -658,6 +658,7 @@ static const ra8_io_fsfmt_t s_fmt_exfat = {
  * @pre @p fmt->caps.supports_dir_cursor is true.
  * @pre @p fmt and `fmt->ops` are non-NULL.
  * @post No registry state is modified.
+ * @post Success proves a dir_open/dir_next/dir_close cursor can be workspace-allocated.
  * @note Covered by `internal_cursor_capability_consistency` in
  *       `tests/test_ra8_io_fsfmt_cov.c` (N+1 = 8 vectors for N = 7 conditions).
  * @since 0.1.0
@@ -739,6 +740,25 @@ static ra8_err_t internal_validate_single_op_caps(const ra8_io_fsfmt_t* fmt)
   return k_ra8_ok;
 }
 
+/**
+ * @brief Validate every optional capability flag against its backing operation.
+ * @details Runs the directory-cursor consistency check only when that capability
+ *          is claimed, then the six independent single-operation checks, then the
+ *          one flag-to-flag implication: `durable_sync` cannot be claimed without
+ *          `supports_sync`, because a durable sync is a stronger promise about
+ *          the same operation rather than a separate one.
+ * @param[in] fmt Candidate format descriptor.
+ * @return ra8_err_t Consistency result.
+ * @retval k_ra8_ok Every claimed capability is backed by an operation or flag.
+ * @retval k_ra8_err_invalid_arg A claimed capability lacks its operation,
+ *         capacity, alignment, or companion flag.
+ * @pre @p fmt and `fmt->ops` are non-NULL.
+ * @pre Mandatory operation pointers were already validated by the caller.
+ * @post No registry state is modified.
+ * @post The descriptor remains caller-owned and unchanged.
+ * @note Not thread-safe with respect to concurrent `ra8_io_fsfmt_register()`.
+ * @since 0.1.0
+ */
 static ra8_err_t internal_validate_caps(const ra8_io_fsfmt_t* fmt)
 {
   if (fmt->caps.supports_dir_cursor) {
@@ -765,12 +785,18 @@ ra8_err_t ra8_io_fsfmt_init(void)
 
 /**
  * @brief Validate that the first six mandatory format operations are present.
+ * @details Checks the probe, mount, unmount, open, close, and read pointers --
+ *          the operations every mount and every stream open must reach -- with
+ *          one `RA8_CHECK_NULL_PTR` per pointer, so each is an independent
+ *          decision rather than one compound condition.
  * @param[in] fmt Candidate format descriptor with a validated non-NULL `ops`.
  * @return ra8_err_t Consistency result.
  * @retval k_ra8_ok Every mandatory operation pointer in this group is present.
  * @retval k_ra8_err_null_ptr A mandatory operation pointer is absent.
  * @pre @p fmt and `fmt->ops` are non-NULL.
+ * @pre @p fmt->ops addresses a fully initialized operation table.
  * @post No registry state is modified.
+ * @post Success proves mount and stream-open dispatch cannot reach a NULL pointer.
  * @note Each operation check is independently MC/DC-testable.
  * @since 0.1.0
  */
@@ -788,12 +814,18 @@ static ra8_err_t internal_validate_required_ops_group1(const ra8_io_fsfmt_t* fmt
 
 /**
  * @brief Validate that the remaining five mandatory format operations are present.
+ * @details Checks the seek, tell, size, stat, and listdir pointers -- the rest
+ *          of the eleven every backend must implement -- with one
+ *          `RA8_CHECK_NULL_PTR` per pointer, so each is an independent decision
+ *          rather than one compound condition.
  * @param[in] fmt Candidate format descriptor with a validated non-NULL `ops`.
  * @return ra8_err_t Consistency result.
  * @retval k_ra8_ok Every mandatory operation pointer in this group is present.
  * @retval k_ra8_err_null_ptr A mandatory operation pointer is absent.
  * @pre @p fmt and `fmt->ops` are non-NULL.
+ * @pre @p fmt->ops addresses a fully initialized operation table.
  * @post No registry state is modified.
+ * @post Success proves positioning, sizing, and listing dispatch cannot reach NULL.
  * @note Each operation check is independently MC/DC-testable.
  * @since 0.1.0
  */
@@ -817,7 +849,9 @@ static ra8_err_t internal_validate_required_ops_group2(const ra8_io_fsfmt_t* fmt
  * @retval k_ra8_ok Every mandatory operation pointer is present.
  * @retval k_ra8_err_null_ptr A mandatory operation pointer is absent.
  * @pre @p fmt and `fmt->ops` are non-NULL.
+ * @pre @p fmt->ops addresses a fully initialized operation table.
  * @post No registry state is modified.
+ * @post Success proves all eleven mandatory operations are dispatchable.
  * @note Each operation check is independently MC/DC-testable.
  * @since 0.1.0
  */

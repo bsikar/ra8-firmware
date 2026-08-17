@@ -498,18 +498,6 @@ static ra8_err_t internal_invoke(test_source_t*                           ref_so
 }
 
 /**
- * @brief Prove exact legacy report and PPM output through two workspaces.
- * @details Runs the same PNG fixture through independent caller arenas.
- * @param[in] len Encoded fixture length.
- * @param[in] need Exact verifier requirements.
- * @pre The two source fixture arrays contain identical @p len bytes.
- * @pre Both fixed workspaces satisfy @p need.
- * @post Both instances commit the exact 781-byte P5 output.
- * @post Both reports exactly match the legacy golden text.
- * @note The final assertion proves the arena bindings do not alias.
- * @since 0.1.0
- */
-/**
  * @brief Run one golden round-trip instance through one caller arena.
  * @details Isolated in its own frame so the shared ::CHECK macro's internal
  *          control flow does not compound with a caller loop's nesting.
@@ -546,6 +534,18 @@ static void internal_test_golden_instance(size_t                                
   CHECK(strcmp((const char*)report.bytes, expected) == 0);
 }
 
+/**
+ * @brief Prove exact legacy report and PPM output through two workspaces.
+ * @details Runs the same PNG fixture through independent caller arenas.
+ * @param[in] len Encoded fixture length.
+ * @param[in] need Exact verifier requirements.
+ * @pre The two source fixture arrays contain identical @p len bytes.
+ * @pre Both fixed workspaces satisfy @p need.
+ * @post Both instances commit the exact 781-byte P5 output.
+ * @post Both reports exactly match the legacy golden text.
+ * @note The final assertion proves the arena bindings do not alias.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
 static void internal_test_golden(size_t len, const ra8_fmt_jof_verify_requirements_t* need)
 {
@@ -559,25 +559,17 @@ static void internal_test_golden(size_t len, const ra8_fmt_jof_verify_requiremen
 }
 
 /**
- * @brief Exercise source truncation, corruption, and concurrent-mutation guards.
- * @details Reinitializes every model between independent fault vectors.
- * @param[in] len Encoded fixture length.
- * @param[in] need Exact verifier requirements.
- * @pre Golden source arrays contain @p len bytes.
- * @pre Caller workspace satisfies @p need.
- * @post Every injected fault prevents dump commit.
- * @post Final stability failure returns validation status.
- * @note Assertions accumulate without skipping cleanup evidence.
- * @since 0.1.0
- */
-/**
  * @brief Prove a truncated reference source fails and never commits the dump.
+ * @details Halves the reference model's readable extent while leaving its
+ * declared size at @p len, so the shortfall surfaces as an end-of-source read
+ * partway through the reference pass rather than as a rejected size.
  * @param[in] len Encoded fixture length.
  * @param[in] need Exact verifier requirements.
  * @return Nothing; every check is asserted inside.
  * @pre Golden source arrays contain @p len bytes.
  * @pre Caller workspace satisfies @p need.
  * @post The dump was aborted, never committed.
+ * @post The subject model keeps its full extent, so only the reference faults.
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
@@ -599,12 +591,16 @@ static void internal_test_sources_truncated(size_t                              
 
 /**
  * @brief Prove an XOR-corrupted candidate source fails and never commits.
+ * @details Arms the subject model to flip one bit of the byte at offset 16 as it
+ * is copied out, so the two sources differ only in the returned bytes and the
+ * comparison, not the sizing, is what fails.
  * @param[in] len Encoded fixture length.
  * @param[in] need Exact verifier requirements.
  * @return Nothing; every check is asserted inside.
  * @pre Golden source arrays contain @p len bytes.
  * @pre Caller workspace satisfies @p need.
  * @post The dump was aborted, never committed.
+ * @post The backing fixture arrays are unchanged; only reads are corrupted.
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
@@ -627,12 +623,16 @@ static void internal_test_sources_corrupted(size_t                              
 
 /**
  * @brief Prove a reference mutated mid-verify fails validation, not silently.
+ * @details Arms the reference model's stability callback to fail on its second
+ * invocation, so the mutation is observed only after the verifier has already
+ * read through the source once.
  * @param[in] len Encoded fixture length.
  * @param[in] need Exact verifier requirements.
  * @return Nothing; every check is asserted inside.
  * @pre Golden source arrays contain @p len bytes.
  * @pre Caller workspace satisfies @p need.
  * @post The dump was aborted, never committed.
+ * @post The call reports ::k_ra8_err_validation_failed, not a generic failure.
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
@@ -652,6 +652,18 @@ static void internal_test_sources_concurrent_mutation(size_t                    
   CHECK(dump.aborted && !dump.committed);
 }
 
+/**
+ * @brief Exercise source truncation, corruption, and concurrent-mutation guards.
+ * @details Reinitializes every model between independent fault vectors.
+ * @param[in] len Encoded fixture length.
+ * @param[in] need Exact verifier requirements.
+ * @pre Golden source arrays contain @p len bytes.
+ * @pre Caller workspace satisfies @p need.
+ * @post Every injected fault prevents dump commit.
+ * @post Final stability failure returns validation status.
+ * @note Assertions accumulate without skipping cleanup evidence.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
 static void internal_test_sources(size_t len, const ra8_fmt_jof_verify_requirements_t* need)
 {
