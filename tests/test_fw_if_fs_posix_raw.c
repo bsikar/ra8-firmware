@@ -458,7 +458,7 @@ RA8_INTERNAL static void internal_test_raw_failures(void)
 
 /** @brief Fixed operands used by the portable filesystem facade guard matrix. */
 typedef enum : uint16_t {
-  k_guard_work_bytes    = 128U,                            /**< Guard workspace bytes.    */
+  k_guard_work_bytes    = 128U,                            /**< Guard workspace bytes.     */
   k_guard_need_bytes    = 32U,                             /**< Backend workspace demand.  */
   k_guard_good_align    = 4U,                              /**< Power-of-two alignment.    */
   k_guard_odd_align     = 3U,                              /**< Non power-of-two operand.  */
@@ -578,8 +578,8 @@ RA8_INTERNAL static void internal_test_workspace_guards(const fw_fs_t* fs)
   alignas(uint64_t) uint8_t work[k_guard_work_bytes] = {};
   fw_fs_stream_port_t       port                     = fs->streams;
   fw_fs_file_t              file                     = {};
-  port.caps.file_workspace_bytes = (uint32_t)k_guard_need_bytes;
-  port.caps.file_workspace_align = (uint8_t)k_guard_good_align;
+  port.caps.file_workspace_bytes                     = (uint32_t)k_guard_need_bytes;
+  port.caps.file_workspace_align                     = (uint8_t)k_guard_good_align;
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
     fw_fs_open(&port, "/alpha", k_fw_fs_open_read, &file, nullptr, k_guard_need_bytes));
@@ -592,13 +592,9 @@ RA8_INTERNAL static void internal_test_workspace_guards(const fw_fs_t* fs)
   TEST_ASSERT_EQ(k_ra8_err_invalid_state,
                  fw_fs_open(&port, "/alpha", k_fw_fs_open_read, &file, work, k_guard_need_bytes));
   port.caps.file_workspace_align = (uint8_t)k_guard_good_align;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 fw_fs_open(&port,
-                            "/alpha",
-                            k_fw_fs_open_read,
-                            &file,
-                            &work[k_guard_skew],
-                            k_guard_need_bytes));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    fw_fs_open(&port, "/alpha", k_fw_fs_open_read, &file, &work[k_guard_skew], k_guard_need_bytes));
 }
 
 /** @brief Prove open, caps, and listing refuse unusable ports and bounds. @details Implements the bounded open guard fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
@@ -652,9 +648,9 @@ RA8_INTERNAL static void internal_test_namespace_policy_guards(const fw_fs_t* fs
   fw_fs_namespace_iface_t iface = *fs->names.iface;
   fw_fs_namespace_t       port  = fs->names;
   fw_fs_space_t           space = {};
-  iface.mkdir = nullptr;
-  iface.space = nullptr;
-  port.iface  = &iface;
+  iface.mkdir                   = nullptr;
+  iface.space                   = nullptr;
+  port.iface                    = &iface;
   TEST_ASSERT_EQ(k_ra8_err_not_supported, fw_fs_mkdir(&port, "/x"));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_mkdir(&fs->names, "relative"));
   TEST_ASSERT_EQ(k_ra8_err_access_denied, fw_fs_mkdir(&fs->names, "/"));

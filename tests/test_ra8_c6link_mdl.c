@@ -15,8 +15,8 @@
 #include "ra8_c6link_mdl_msg.h"
 #include "ra8_c6link_mdl_service_internal.h"
 #include "ra8_media_download.pb-c.h"
-#include "test_ra8_c6link_mdl_policy_internal.h"
 #include "test_ra8_c6link_mdl_guards_internal.h"
+#include "test_ra8_c6link_mdl_policy_internal.h"
 #include "unity_minimal.h"
 
 /** @brief Fixed capacities and sentinels owned by this service fixture. */

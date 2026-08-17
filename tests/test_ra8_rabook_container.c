@@ -57,17 +57,17 @@ typedef enum : uint32_t {
  *          lands strictly inside one stage rather than on its boundary.
  */
 typedef enum : uint32_t {
-  k_t_fail_table_reserve_call = 3U,  /**< Inside the reserved-table loop.  */
-  k_t_fail_payload_call       = 8U,  /**< Inside the compressed payloads.  */
+  k_t_fail_table_reserve_call = 3U,  /**< Inside the reserved-table loop.   */
+  k_t_fail_payload_call       = 8U,  /**< Inside the compressed payloads.   */
   k_t_fail_backfill_call      = 13U, /**< Inside the final table back-fill. */
 } t_rbkc_stage_t;
 
 /** @brief Workspace member replaced by NULL for one required-pointer vector. */
 typedef enum : uint8_t {
-  k_t_null_input        = 0U, /**< Uncompressed chunk staging buffer. */
-  k_t_null_compressed   = 1U, /**< Compressed stream destination.     */
-  k_t_null_compressor   = 2U, /**< tdefl compressor storage.          */
-  k_t_null_offsets      = 3U, /**< Payload-relative offset table.     */
+  k_t_null_input        = 0U, /**< Uncompressed chunk staging buffer.  */
+  k_t_null_compressed   = 1U, /**< Compressed stream destination.      */
+  k_t_null_compressor   = 2U, /**< tdefl compressor storage.           */
+  k_t_null_offsets      = 3U, /**< Payload-relative offset table.      */
   k_t_null_member_count = 4U, /**< Number of workspace member vectors. */
 } t_ws_member_t;
 

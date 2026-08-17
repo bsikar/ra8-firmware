@@ -42,32 +42,32 @@ typedef enum : uint32_t {
  *          the input the raster normalizer's dimension contract must refuse.
  */
 typedef enum : uint32_t {
-  k_test_bmp_header_bytes = 54U, /**< Fixed BMP file header plus info header.      */
-  k_test_bmp_info_bytes   = 40U, /**< BITMAPINFOHEADER size field value.           */
-  k_test_bmp_planes       = 1U,  /**< The only plane count stb accepts.            */
-  k_test_bmp_bpp_rgb24    = 24U, /**< Uncompressed 24-bit true color.              */
-  k_test_dim_single       = 1U,  /**< Single-pixel edge.                           */
-  k_test_dim_empty        = 0U,  /**< Degenerate zero edge.                        */
-  k_test_cap_overshoot    = 1U,  /**< Bytes past a bounded capacity limit.         */
-  k_test_no_bytes         = 0U,  /**< Encoded bytes produced by a rejection.       */
-  k_test_arena_drained    = 0U,  /**< Live blocks and offset after a rejection.    */
-  k_test_clamp_to_one     = 1U,  /**< Longer-edge clamp forcing a downscale.       */
-  k_test_gray4_pair_bytes = 2U,  /**< Gray4 bytes emitted for the 2x2 fixture.     */
+  k_test_bmp_header_bytes = 54U, /**< Fixed BMP file header plus info header.   */
+  k_test_bmp_info_bytes   = 40U, /**< BITMAPINFOHEADER size field value.        */
+  k_test_bmp_planes       = 1U,  /**< The only plane count stb accepts.         */
+  k_test_bmp_bpp_rgb24    = 24U, /**< Uncompressed 24-bit true color.           */
+  k_test_dim_single       = 1U,  /**< Single-pixel edge.                        */
+  k_test_dim_empty        = 0U,  /**< Degenerate zero edge.                     */
+  k_test_cap_overshoot    = 1U,  /**< Bytes past a bounded capacity limit.      */
+  k_test_no_bytes         = 0U,  /**< Encoded bytes produced by a rejection.    */
+  k_test_arena_drained    = 0U,  /**< Live blocks and offset after a rejection. */
+  k_test_clamp_to_one     = 1U,  /**< Longer-edge clamp forcing a downscale.    */
+  k_test_gray4_pair_bytes = 2U,  /**< Gray4 bytes emitted for the 2x2 fixture.  */
 } test_raster_geometry_t;
 
 /** @brief Little-endian field offsets and widths inside the fixed BMP header. */
 typedef enum : uint8_t {
-  k_bmp_off_magic_first  = 0U,  /**< 'B' signature byte.            */
-  k_bmp_off_magic_second = 1U,  /**< 'M' signature byte.            */
-  k_bmp_off_pixel_data   = 10U, /**< uint32 first-pixel offset.     */
-  k_bmp_off_info_size    = 14U, /**< uint32 info-header size.       */
-  k_bmp_off_width        = 18U, /**< int32 declared pixel width.    */
-  k_bmp_off_height       = 22U, /**< int32 declared pixel height.   */
-  k_bmp_off_planes       = 26U, /**< uint16 plane count.            */
-  k_bmp_off_bpp          = 28U, /**< uint16 bits per pixel.         */
-  k_bmp_u16_bytes        = 2U,  /**< Little-endian uint16 width.    */
-  k_bmp_u32_bytes        = 4U,  /**< Little-endian uint32 width.    */
-  k_bmp_bits_per_byte    = 8U,  /**< Bits represented by one byte.  */
+  k_bmp_off_magic_first  = 0U,  /**< 'B' signature byte.           */
+  k_bmp_off_magic_second = 1U,  /**< 'M' signature byte.           */
+  k_bmp_off_pixel_data   = 10U, /**< uint32 first-pixel offset.    */
+  k_bmp_off_info_size    = 14U, /**< uint32 info-header size.      */
+  k_bmp_off_width        = 18U, /**< int32 declared pixel width.   */
+  k_bmp_off_height       = 22U, /**< int32 declared pixel height.  */
+  k_bmp_off_planes       = 26U, /**< uint16 plane count.           */
+  k_bmp_off_bpp          = 28U, /**< uint16 bits per pixel.        */
+  k_bmp_u16_bytes        = 2U,  /**< Little-endian uint16 width.   */
+  k_bmp_u32_bytes        = 4U,  /**< Little-endian uint32 width.   */
+  k_bmp_bits_per_byte    = 8U,  /**< Bits represented by one byte. */
 } test_bmp_field_t;
 
 /** @brief 2x2 24-bit BMP: top row red/green, bottom row blue/white. */
