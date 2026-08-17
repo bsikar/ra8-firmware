@@ -21,11 +21,6 @@
  * @since 0.1.0
  */
 
-#ifndef _GNU_SOURCE
-/** @brief Request GNU descriptor-relative syscall declarations on Linux. */
-#define _GNU_SOURCE
-#endif
-
 #include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
@@ -123,19 +118,17 @@ RA8_INTERNAL static ra8_err_t
 internal_read(void* ctx, void* file_state, uint8_t* dst, uint32_t cap, uint32_t* out_read)
 {
   (void)ctx;
-  const int fd  = ((posix_file_state_t*)file_state)->fd;
-  ssize_t   got = -1;
-  for (;;) {
+  const int fd    = ((posix_file_state_t*)file_state)->fd;
+  ssize_t   got   = -1;
+  int       saved = 0;
+  do {
     got = read(fd, dst, (size_t)cap);
-    if (got >= 0) {
-      break;
-    }
-    if (errno != EINTR) {
-      break;
-    }
-  }
+    /* Capture errno in the statement after the call that set it: nothing may
+     * run in between, and the retry test then reads a plain int. */
+    saved = (got < 0) ? errno : 0;
+  } while (saved == EINTR);
   if (got < 0) {
-    return priv_fs_posix_errno(errno);
+    return priv_fs_posix_errno(saved);
   }
   *out_read = (uint32_t)got;
   return k_ra8_ok;
@@ -152,12 +145,15 @@ RA8_PRIV ra8_err_t priv_fs_posix_write(void*          ctx,
   const int fd = ((posix_file_state_t*)file_state)->fd;
   while (*out_written < len) {
     const uint32_t remaining = len - *out_written;
-    ssize_t        wrote     = write(fd, &src[*out_written], (size_t)remaining);
+    const ssize_t  wrote     = write(fd, &src[*out_written], (size_t)remaining);
+    /* Capture errno in the statement after the call that set it (see the read
+     * loop above); the two tests below then read a plain int. */
+    const int saved = (wrote < 0) ? errno : 0;
     if (wrote < 0) {
-      if (errno == EINTR) {
+      if (saved == EINTR) {
         continue;
       }
-      return priv_fs_posix_errno(errno);
+      return priv_fs_posix_errno(saved);
     }
     if (wrote == 0) {
       return k_ra8_fail;
@@ -225,20 +221,19 @@ RA8_PRIV ra8_err_t priv_fs_posix_close(void* ctx, void* file_state)
   return priv_fs_posix_close_fd(&((posix_file_state_t*)file_state)->fd);
 }
 
-/** @brief Immutable POSIX stream vtable. */
-static const fw_fs_stream_iface_t s_stream_iface = {
-  .open  = priv_fs_posix_open,
-  .read  = internal_read,
-  .write = priv_fs_posix_write,
-  .seek  = priv_fs_posix_seek,
-  .tell  = internal_tell,
-  .size  = priv_fs_posix_size,
-  .sync  = priv_fs_posix_sync,
-  .close = priv_fs_posix_close,
-};
-
 /* see header for full description */
 RA8_PRIV const fw_fs_stream_iface_t* priv_fs_posix_stream_iface(void)
 {
-  return &s_stream_iface;
+  /** @brief Immutable POSIX stream vtable. */
+  static const fw_fs_stream_iface_t k_stream_iface = {
+    .open  = priv_fs_posix_open,
+    .read  = internal_read,
+    .write = priv_fs_posix_write,
+    .seek  = priv_fs_posix_seek,
+    .tell  = internal_tell,
+    .size  = priv_fs_posix_size,
+    .sync  = priv_fs_posix_sync,
+    .close = priv_fs_posix_close,
+  };
+  return &k_stream_iface;
 }
