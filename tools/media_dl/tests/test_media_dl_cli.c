@@ -390,7 +390,16 @@ RA8_INTERNAL static void internal_test_diagnostic_failures_propagate(void)
   mdl_nums_t       nums     = sentinel;
   mdl_args_t       bad_num  = {.timeout = "0"};
   TEST_ASSERT_EQ(k_ra8_err_no_mem, mdl_cli_parse_nums(&bad_num, &stream, &nums));
-  TEST_ASSERT(memcmp(&nums, &sentinel, sizeof(nums)) == 0);
+  /* Field by field, not byte by byte: `mdl_nums_t` mixes 32-bit, 64-bit and
+     bool members, so it carries padding the assignment above need not
+     copy. */
+  TEST_ASSERT_EQ(sentinel.seed, nums.seed);
+  TEST_ASSERT_EQ(sentinel.timeout, nums.timeout);
+  TEST_ASSERT_EQ(sentinel.chapters, nums.chapters);
+  TEST_ASSERT_EQ(sentinel.max_imgs, nums.max_imgs);
+  TEST_ASSERT(nums.from_present == sentinel.from_present);
+  TEST_ASSERT(nums.from_num == sentinel.from_num);
+  TEST_ASSERT_EQ(sentinel.pick, nums.pick);
   TEST_END("CLI diagnostic failures propagate");
 }
 

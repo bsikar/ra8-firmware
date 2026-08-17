@@ -170,6 +170,36 @@ static void internal_test_sink_contract(void)
 }
 
 /**
+ * @brief Report whether two replay results carry identical counters.
+ * @details Member-wise rather than byte-wise: ::cb_result_t places a 32-bit
+ *          counter between two 64-bit ones and therefore carries padding,
+ *          which `cb_replay` never writes. Comparing the object representation
+ *          would make the assertion depend on bytes no producer owns.
+ * @param[in] left First result row.
+ * @param[in] right Second result row.
+ * @return Whether every counter matches.
+ * @retval true The two replays are indistinguishable.
+ * @retval false At least one counter differs.
+ * @pre Both pointers address populated result rows.
+ * @pre Neither pointer is null.
+ * @post Neither row is modified.
+ * @post The result depends only on the five counters.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static bool internal_test_same_result(const cb_result_t* left, const cb_result_t* right)
+{
+  if ((left->accesses != right->accesses) || (left->hits != right->hits)) {
+    return false;
+  }
+  if ((left->evictions != right->evictions) || (left->worst_scan != right->worst_scan)) {
+    return false;
+  }
+  return left->total_scan == right->total_scan;
+}
+
+/**
  * @brief Verify trace binding, workspace isolation, mutation, and source faults.
  * @details Uses one-byte injected reads and two distinct workspaces to prove
  *          exact sizing and full workspace re-initialisation before exercising
@@ -210,13 +240,13 @@ static void internal_test_trace_and_workspace(void)
   cb_result_t    b   = {};
   internal_test_expect(cb_replay(policy, &trace, 4U, &one, &a) == 0);
   internal_test_expect(cb_replay(policy, &trace, 4U, &two, &b) == 0);
-  internal_test_expect((memcmp(&a, &b, sizeof(a)) == 0) && (a.accesses == 3U));
+  internal_test_expect(internal_test_same_result(&a, &b) && (a.accesses == 3U));
 
   /* A workspace holding stale bytes must be fully re-initialised on reuse. */
   one.data[0] ^= 0x5AU;
   cb_result_t reused = {};
   internal_test_expect(cb_replay(policy, &trace, 4U, &one, &reused) == 0);
-  internal_test_expect(memcmp(&a, &reused, sizeof(a)) == 0);
+  internal_test_expect(internal_test_same_result(&a, &reused));
 
   bytes[0] = (uint8_t)'9';
   internal_test_expect(cb_replay(policy, &trace, 4U, &one, &a) != 0);

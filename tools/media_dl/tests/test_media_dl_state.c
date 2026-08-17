@@ -796,6 +796,36 @@ RA8_INTERNAL static void internal_test_state_rejects_malformed_records(void)
 }
 
 /**
+ * @brief Report whether two binary64 values have identical object bytes.
+ * @details The persisted format round-trips the exact bit pattern, so this is
+ *          a representation comparison and not a numeric one -- that is what
+ *          keeps -0.0 distinct from +0.0. The bytes are read into an unsigned
+ *          integer and compared there, because `double` has no unique object
+ *          representation and comparing two of them byte-wise says nothing
+ *          about which of the two properties is being asserted.
+ * @param[in] left First value.
+ * @param[in] right Second value.
+ * @return Whether both values have the same 64-bit representation.
+ * @retval true The representations are identical.
+ * @retval false At least one representation bit differs.
+ * @pre `double` is IEEE-754 binary64 on this host.
+ * @pre Both arguments are ordinary readable values.
+ * @post Neither argument is modified.
+ * @post The result depends only on the two representations.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_same_binary64(double left, double right)
+{
+  static_assert(sizeof(double) == sizeof(uint64_t), "binary64 host required");
+  uint64_t left_bits  = 0U;
+  uint64_t right_bits = 0U;
+  (void)memcpy(&left_bits, &left, sizeof(left_bits));
+  (void)memcpy(&right_bits, &right, sizeof(right_bits));
+  return left_bits == right_bits;
+}
+
+/**
  * @brief Prove locale-free v2 migration at binary64 and int64 boundaries.
  * @details Executes the state v2 numeric migration scenario through production interfaces and checks its observable success, rejection, and boundary results.
  * @pre Assertions are enabled for contract verification.
@@ -832,7 +862,7 @@ RA8_INTERNAL static void internal_test_state_v2_numeric_migration(void)
     TEST_ASSERT_EQ((int64_t)k_ra8_ok, internal_load_state(path, &s_b));
     const mdl_chapter_rec_t* chapter = mdl_state_find_chapter(&s_b, "c");
     TEST_ASSERT_NOT_NULL(chapter);
-    TEST_ASSERT(memcmp(&chapter->number, &cases[i].number, sizeof(chapter->number)) == 0);
+    TEST_ASSERT(internal_same_binary64(chapter->number, cases[i].number));
     TEST_ASSERT_EQ(cases[i].epoch, chapter->fetched_at);
   }
   internal_remove_state_fixture(path);
