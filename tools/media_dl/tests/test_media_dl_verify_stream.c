@@ -157,23 +157,13 @@ static const mdl_tar_poke_t s_tar_pokes[] = {
   {"absolute member name", k_fx_page_pad, (uint8_t)'/', k_fx_one, true},
 };
 
-static const mdl_gz_poke_t s_gz_pokes[] = {
-  {"first magic byte", k_fx_idx0, k_fx_flip, false},
-  {"second magic byte", k_fx_idx1, k_fx_flip, false},
-  {"compression method", k_fx_idx2, k_fx_flip, false},
-  {"unsupported flag bits", k_fx_idx3, k_fx_gz_flag, false},
-  {"stored crc32", k_fx_gz_tail, k_fx_flip, true},
-  {"stored isize", k_fx_gz_isize, k_fx_flip, true},
-};
-
 static const char s_stream_path[] = "/tmp/mdl-verify-stream.bin";
 
-static uint8_t                 s_tar[k_fx_tar_cap];
-static uint8_t                 s_gz[k_fx_gz_cap];
-static uint8_t                 s_io[k_fx_io_cap];
-static mdl_export_workspace_t  s_gz_workspace;
-static mdl_stream_compressor_t s_compressor;
-static uint8_t                 s_verify_arena[k_test_verify_arena_bytes];
+static uint8_t                s_tar[k_fx_tar_cap];
+static uint8_t                s_gz[k_fx_gz_cap];
+static uint8_t                s_io[k_fx_io_cap];
+static mdl_export_workspace_t s_gz_workspace;
+static uint8_t                s_verify_arena[k_test_verify_arena_bytes];
 
 /**
  * @brief Encode one bounded octal tar field. @details Emits @p width minus one digits then a NUL.
@@ -383,6 +373,8 @@ RA8_INTERNAL static ra8_err_t internal_run_gzip(size_t               length,
  */
 RA8_INTERNAL static size_t internal_gz_build(size_t raw_len, uint32_t extra, size_t* out_body)
 {
+  /* Maximally aligned production compressor state, owned by this encoder. */
+  static mdl_stream_compressor_t s_compressor;
   (void)memset(s_gz, 0, sizeof(s_gz));
   s_gz[k_fx_idx0] = (uint8_t)k_fx_gz_id1;
   s_gz[k_fx_idx1] = (uint8_t)k_fx_gz_id2;
@@ -554,6 +546,15 @@ RA8_INTERNAL static void internal_test_tar_field_encodings(void)
 RA8_INTERNAL static void internal_test_gzip_framing(void)
 {
   TEST_BEGIN("media cbt gzip framing");
+  /* One byte-level corruption per fixed RFC 1952 framing guard. */
+  static const mdl_gz_poke_t s_gz_pokes[] = {
+    {"first magic byte", k_fx_idx0, k_fx_flip, false},
+    {"second magic byte", k_fx_idx1, k_fx_flip, false},
+    {"compression method", k_fx_idx2, k_fx_flip, false},
+    {"unsupported flag bits", k_fx_idx3, k_fx_gz_flag, false},
+    {"stored crc32", k_fx_gz_tail, k_fx_flip, true},
+    {"stored isize", k_fx_gz_isize, k_fx_flip, true},
+  };
   size_t body   = 0U;
   size_t length = internal_gz_build(internal_tar_build(&s_tar_shapes[k_fx_valid]), 0U, &body);
   mdl_verify_report_t report = {.member_count = (size_t)k_fx_sentinel};

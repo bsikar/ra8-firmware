@@ -187,7 +187,9 @@ RA8_INTERNAL static void internal_expect_text(const mdl_rp_capture_t* capture, c
   uint32_t used = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_ram_used(&capture->state, &used));
   TEST_ASSERT_EQ((int64_t)strlen(expected), (int64_t)used);
-  TEST_ASSERT(memcmp(capture->bytes, expected, (size_t)used) == 0);
+  for (size_t at = 0U; at < (size_t)used; ++at) {
+    TEST_ASSERT_EQ((uint8_t)expected[at], capture->bytes[at]);
+  }
 }
 
 /**

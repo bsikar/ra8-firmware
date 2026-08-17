@@ -87,9 +87,6 @@ static uint8_t s_xml_arena[k_xml_arena_bytes];
 /** @brief Bounded probe holding one complete produced archive. */
 static uint8_t s_xml_archive[k_xml_archive_bytes];
 
-/** @brief Bounded page-name table passed to the EPUB writer directly. */
-static char s_xml_names[k_xml_page_rows][k_name_max];
-
 /** @brief Caller workspace for one rendered package document. */
 static char s_xml_opf[k_xml_document_bytes];
 
@@ -229,7 +226,14 @@ internal_xml_bytes_contain(const uint8_t* haystack, size_t haystack_len, const c
     return false;
   }
   for (size_t offset = 0U; offset <= (haystack_len - needle_len); ++offset) {
-    if (memcmp(&haystack[offset], needle, needle_len) == 0) {
+    size_t matched = 0U;
+    while (matched < needle_len) {
+      if (haystack[offset + matched] != (uint8_t)needle[matched]) {
+        break;
+      }
+      ++matched;
+    }
+    if (matched == needle_len) {
       return true;
     }
   }
@@ -662,6 +666,8 @@ RA8_INTERNAL static void internal_test_epub_manifest_media_types(void)
 RA8_INTERNAL static void internal_test_epub_without_metadata(void)
 {
   TEST_BEGIN("epub without metadata");
+  /* Bounded page-name table passed to the EPUB writer directly. */
+  static char s_xml_names[k_xml_page_rows][k_name_max];
   const char* directory = "/tmp/mdl_xml_nometa";
   const char* output    = "/tmp/mdl_xml_nometa.epub";
   (void)mkdir(directory, (mode_t)k_xml_dir_mode);

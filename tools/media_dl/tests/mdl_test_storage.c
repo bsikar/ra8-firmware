@@ -73,10 +73,12 @@ ra8_err_t mdl_test_storage_publish(const char* path, const uint8_t* bytes, uint3
   }
   if (error == k_ra8_ok) {
     error = mdl_storage_txn_commit(&writer);
-  } else if (writer.transaction.active) {
-    const ra8_err_t aborted = mdl_storage_txn_abort(&writer);
-    if (aborted != k_ra8_ok) {
-      error = aborted;
+  } else {
+    if (writer.transaction.active) {
+      const ra8_err_t aborted = mdl_storage_txn_abort(&writer);
+      if (aborted != k_ra8_ok) {
+        error = aborted;
+      }
     }
   }
   return error;

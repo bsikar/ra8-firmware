@@ -41,21 +41,18 @@ typedef enum : int64_t {
   k_codec_content_hash = 0x2222, /**< Hexadecimal `2222` content field.    */
 } mdl_codec_expect_t;
 
+/** @brief Fixture file permissions. */
+typedef enum : uint16_t {
+  k_codec_file_mode = 0x180U, /**< rw------- (octal 0600) fixture file. */
+} mdl_codec_mode_t;
+
 /** @brief Maximally aligned opaque filesystem-backend workspace. */
 typedef struct {
   alignas(max_align_t) uint8_t bytes[k_codec_work_bytes]; /**< Opaque backend bytes. */
 } codec_workspace_t;
 
-/** @brief POSIX-rooted portable filesystem driving the codec fixtures. */
-static fw_fs_t s_codec_fs;
 /** @brief Backend state owned by the codec filesystem binding. */
 static fw_fs_posix_state_t s_codec_fs_posix = {.root_fd = -1};
-/** @brief Workspace for the one open codec fixture file. */
-static codec_workspace_t s_codec_file_work;
-/** @brief Workspace for the one staged codec publication. */
-static codec_workspace_t s_codec_txn_work;
-/** @brief Bounded stream scratch shared by every codec load. */
-static uint8_t s_codec_io[k_mdl_storage_io_bytes];
 /** @brief Storage binding injected into every codec load. */
 static mdl_storage_t s_codec_storage;
 /** @brief Destination state for every codec load. */
@@ -187,6 +184,14 @@ RA8_INTERNAL static void internal_test_state_metadata_setters(void)
  */
 RA8_INTERNAL static void internal_codec_fixture_open(void)
 {
+  /* POSIX-rooted portable filesystem driving the codec fixtures. */
+  static fw_fs_t s_codec_fs;
+  /* Workspace for the one open codec fixture file. */
+  static codec_workspace_t s_codec_file_work;
+  /* Workspace for the one staged codec publication. */
+  static codec_workspace_t s_codec_txn_work;
+  /* Bounded stream scratch shared by every codec load. */
+  static uint8_t          s_codec_io[k_mdl_storage_io_bytes];
   const fw_fs_posix_cfg_t cfg = {.root_path = "/", .removable_media = false};
   TEST_ASSERT_EQ((int64_t)k_ra8_ok, fw_fs_posix_init(&s_codec_fs, &s_codec_fs_posix, &cfg));
   TEST_ASSERT_EQ((int64_t)k_ra8_ok,
@@ -241,7 +246,8 @@ RA8_INTERNAL static void internal_codec_fixture_close(void)
  */
 RA8_INTERNAL static ra8_err_t internal_codec_load(const char* payload)
 {
-  const int descriptor = open(s_codec_path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0600);
+  const int descriptor =
+    open(s_codec_path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, (mode_t)k_codec_file_mode);
   TEST_ASSERT(descriptor >= 0);
   const size_t length = strlen(payload);
   size_t       offset = 0U;
