@@ -225,7 +225,9 @@ def _st_check(files: list[str], findings: list[tuple[str, int, str]]) -> list[st
     if "libs/third_party/soup.c" in files:
         failures.append("  selected a libs/third_party/ file (SOUP must be excluded)")
     if len(findings) != 2:  # noqa: PLR2004 -- fixture plants exactly 2 uncovered decisions
-        failures.append(f"  expected exactly 2 finding(s), got {len(findings)}: {sorted(found_paths)}")
+        failures.append(
+            f"  expected exactly 2 finding(s), got {len(findings)}: {sorted(found_paths)}"
+        )
     return failures
 
 

@@ -215,9 +215,7 @@ def _working_test_sources(tests_dir: Path) -> list[Path]:
     citations of their own, and a top-level-only scan dropped them.
     """
     return sorted(
-        path
-        for path in tests_dir.rglob("*")
-        if path.is_file() and _is_test_source_name(path.name)
+        path for path in tests_dir.rglob("*") if path.is_file() and _is_test_source_name(path.name)
     )
 
 
@@ -774,7 +772,9 @@ def main(argv: list[str]) -> int:
     if args.selftest:
         # Deferred import: check_new_compound_has_mcdc_selftest imports FROM
         # this module, so importing it at module load time would cycle.
-        from check_new_compound_has_mcdc_selftest import run_selftest
+        from check_new_compound_has_mcdc_selftest import (  # noqa: PLC0415
+            run_selftest,
+        )
 
         return run_selftest()
     if args.commit_range is not None:
