@@ -287,6 +287,76 @@ RA8_INTERNAL static ra8_err_t internal_write_temp_epub(mdl_storage_t*           
 }
 
 /**
+ * @brief Close both compile-time EPUB readers, preserving the first error.
+ * @details Closes the resident streamed book view first, then the portable
+ *          EPUB source reader, regardless of any prior pipeline failure. A
+ *          close failure only replaces @p error when the pipeline had
+ *          otherwise succeeded, so the earliest real failure always wins.
+ * @param[in] error Status accumulated by the compile pipeline before this
+ *                   close step; k_ra8_ok if every prior step succeeded.
+ * @param[in,out] book Resident streamed EPUB view; closed only if in use.
+ * @param[in,out] source Portable EPUB source reader; closed only if open.
+ * @return The first non-ok status among @p error and both close calls.
+ * @retval k_ra8_ok Every prior step and both closes succeeded.
+ * @retval other The first failure among @p error and the two closes.
+ * @pre @p book and @p source describe the same compile-time EPUB.
+ * @pre Both readers are safe to close exactly once from this call.
+ * @post Both readers are closed regardless of the returned status.
+ * @post @p error is never weakened: an existing failure survives an
+ *       independent close failure on either reader.
+ * @note Not thread-safe; the caller retains exclusive ownership of both
+ *       readers for the duration of this call.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_close_compile_sources(ra8_err_t                 error,
+                                                             ra8_epub_book_t*          book,
+                                                             mdl_rabook_epub_source_t* source)
+{
+  if ((book != nullptr) && (book->in_use != 0U)) {
+    const ra8_err_t closed = ra8_epub_close(book);
+    if ((error == k_ra8_ok) && (closed != k_ra8_ok)) {
+      error = closed;
+    }
+  }
+  if (source->file.is_open) {
+    const ra8_err_t closed = priv_mdl_rabook_epub_close(source);
+    if ((error == k_ra8_ok) && (closed != k_ra8_ok)) {
+      error = closed;
+    }
+  }
+  return error;
+}
+
+/**
+ * @brief Confirm the compiled flat book matches the source page count.
+ * @details Compares the RABOOK1 chapter and image counts against the
+ *          source EPUB's expected page count, tolerating exactly one
+ *          synthesized cover image beyond the page count.
+ * @param[in] blob Validated RABOOK1 buffer (already passed
+ *                  ::ra8_book_validate).
+ * @param[in] page_count Expected source spine/image minimum.
+ * @return Whether the compiled counts fall within the expected range.
+ * @retval k_ra8_ok Chapter and image counts both match expectations.
+ * @retval k_ra8_err_validation_failed A page or image was lost or added.
+ * @pre @p blob has already passed ::ra8_book_validate.
+ * @pre @p page_count is representable as a uint32_t.
+ * @post No state is mutated; only @p blob's header is read.
+ * @note Not thread-safe against a concurrent writer of @p blob.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_check_compiled_page_count(const void* blob,
+                                                                 size_t      page_count)
+{
+  const ra8_book_header_t* header         = ra8_book_header(blob);
+  const uint32_t           expected_pages = (uint32_t)page_count;
+  if ((header->chapter_count != expected_pages) || (header->image_count < expected_pages) ||
+      (header->image_count > (expected_pages + 1U))) {
+    return k_ra8_err_validation_failed;
+  }
+  return k_ra8_ok;
+}
+
+/**
  * @brief Compile one temporary EPUB into a validated resident flat RABOOK1.
  * @details Opens the EPUB through portable random reads, invokes the production
  *          compiler, closes both readers, and checks exact page/image counts.
@@ -337,28 +407,12 @@ RA8_INTERNAL static ra8_err_t internal_compile_temp(mdl_storage_t*            st
   if ((error == k_ra8_ok) && (source.error != k_ra8_ok)) {
     error = source.error;
   }
-  if ((profile->book != nullptr) && (profile->book->in_use != 0U)) {
-    const ra8_err_t closed = ra8_epub_close(profile->book);
-    if ((error == k_ra8_ok) && (closed != k_ra8_ok)) {
-      error = closed;
-    }
-  }
-  if (source.file.is_open) {
-    const ra8_err_t closed = priv_mdl_rabook_epub_close(&source);
-    if ((error == k_ra8_ok) && (closed != k_ra8_ok)) {
-      error = closed;
-    }
-  }
+  error = internal_close_compile_sources(error, profile->book, &source);
   if (error == k_ra8_ok) {
     error = ra8_book_validate(blob, length);
   }
   if (error == k_ra8_ok) {
-    const ra8_book_header_t* header         = ra8_book_header(blob);
-    const uint32_t           expected_pages = (uint32_t)page_count;
-    if ((header->chapter_count != expected_pages) || (header->image_count < expected_pages) ||
-        (header->image_count > (expected_pages + 1U))) {
-      error = k_ra8_err_validation_failed;
-    }
+    error = internal_check_compiled_page_count(blob, page_count);
   }
   if (error == k_ra8_ok) {
     *flat = (mdl_rabook_flat_source_t){.bytes = blob, .size_bytes = length};
