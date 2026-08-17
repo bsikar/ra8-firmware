@@ -383,7 +383,7 @@ RA8_INTERNAL static void internal_handle_dvst(ra8_usb_speed_t speed, uint16_t in
   if ((dvsq & (uint16_t)k_ra8_dvsq_suspend) == 0U) {
     /* Any non-suspend bus-state transition invalidates the SETUP
      * de-dup fingerprint. */
-    priv_last_dispatched_setup_fp = 0U;
+    g_last_dispatched_setup_fp = 0U;
   }
   /* Upgrade-only mirror; disconnect + apply on true bus reset only --
    * rationale in internal_dvst_policy_apply's header. */

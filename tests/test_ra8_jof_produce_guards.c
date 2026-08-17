@@ -208,15 +208,15 @@ RA8_INTERNAL static ra8_err_t internal_produce_with(uint16_t        tile_w,
                                                     size_t          work_cap,
                                                     ra8_jof_info_t* out_info)
 {
-  static g_pull_t           local_pull;
-  static ra8_jof_memstore_t local_store;
-  local_pull  = (g_pull_t){.pos = 0U};
-  local_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  static g_pull_t           s_pull;
+  static ra8_jof_memstore_t s_store;
+  s_pull  = (g_pull_t){.pos = 0U};
+  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   const ra8_jof_produce_cfg_t cfg = {
     .pull       = internal_g_pull,
-    .pull_ctx   = &local_pull,
+    .pull_ctx   = &s_pull,
     .sink       = ra8_jof_memstore_sink,
-    .sink_ctx   = &local_store,
+    .sink_ctx   = &s_store,
     .tile_w     = tile_w,
     .tile_h     = tile_h,
     .codec      = (uint8_t)k_ra8_jof_codec_raw,
@@ -271,18 +271,18 @@ RA8_INTERNAL static void internal_test_guards_work_bytes_overflow(void)
 RA8_INTERNAL static void internal_test_guards_bump_take(void)
 {
   TEST_BEGIN("produce guards: bump-carve argument + exhaustion arms");
-  static uint8_t local_backing[k_t_arena_cap];
-  ra8_jof_bump_t bump = {.base = local_backing, .cap = sizeof(local_backing), .off = 0U};
+  static uint8_t s_backing[k_t_arena_cap];
+  ra8_jof_bump_t bump = {.base = s_backing, .cap = sizeof(s_backing), .off = 0U};
 
   TEST_ASSERT(priv_jof_bump_take(&bump, 8U) != nullptr);
   TEST_ASSERT_NULL(priv_jof_bump_take(nullptr, 8U));
   TEST_ASSERT_NULL(priv_jof_bump_take(&bump, 0U));
 
   /* Length overruns the remainder (aligned stays inside). */
-  TEST_ASSERT_NULL(priv_jof_bump_take(&bump, sizeof(local_backing)));
+  TEST_ASSERT_NULL(priv_jof_bump_take(&bump, sizeof(s_backing)));
 
   /* Alignment alone overruns a nearly-full arena. */
-  ra8_jof_bump_t tight = {.base = local_backing, .cap = k_t_arena_cap_low, .off = k_t_arena_off};
+  ra8_jof_bump_t tight = {.base = s_backing, .cap = k_t_arena_cap_low, .off = k_t_arena_off};
   TEST_ASSERT_NULL(priv_jof_bump_take(&tight, 1U));
   TEST_END("produce guards: bump-carve argument + exhaustion arms");
 }

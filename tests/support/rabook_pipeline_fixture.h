@@ -620,8 +620,8 @@ RA8_INTERNAL static inline void internal_build_epub_chapter(const char* chapter)
  * @note Not thread-safe. @details Implements the build epub raster fixture operation used only by this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static inline void internal_build_epub_raster(void)
 {
-  static uint8_t local_small_bmp[k_rabook_pipeline_fixture_small_bmp_cap];
-  const size_t   small_len = internal_make_bmp(local_small_bmp, 2U, 2U, 0x80U);
+  static uint8_t s_small_bmp[k_rabook_pipeline_fixture_small_bmp_cap];
+  const size_t   small_len = internal_make_bmp(s_small_bmp, 2U, 2U, 0x80U);
   const size_t   big_len   = internal_make_bmp(s_bmp, (uint16_t)k_pl_big_edge, 1U, 0x80U);
 
   const pipe_zip_entry_t entries[] = {
@@ -629,7 +629,7 @@ RA8_INTERNAL static inline void internal_build_epub_raster(void)
     {"META-INF/container.xml", s_container, strlen(s_container), false},
     {"OEBPS/content.opf", s_opf_raster, strlen(s_opf_raster), false},
     {"OEBPS/c1.xhtml", s_chapter_xhtml, strlen(s_chapter_xhtml), false},
-    {"OEBPS/small.bmp", local_small_bmp, small_len, false},
+    {"OEBPS/small.bmp", s_small_bmp, small_len, false},
     {"OEBPS/big.bmp", s_bmp, big_len, false},
   };
   internal_build_zip(entries, sizeof(entries) / sizeof(entries[0]));

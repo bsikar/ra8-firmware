@@ -202,13 +202,13 @@ void nx_ether_driver_c6_bind(ra8_c6link_t* link)
    * fully-braced, non-const char array -- braced so it is not a bare string
    * literal assigned to CHAR* (MISRA 7.4), and fully initialised so no
    * element is left unset (MISRA 9.2/9.3). */
-  static CHAR mutex_name[] = {'c', '6', '_', 'w', 'i', 'r', 'e', '\0'};
+  static CHAR s_mutex_name[] = {'c', '6', '_', 'w', 'i', 'r', 'e', '\0'};
   if (link == NX_NULL) {
     return;
   }
   s_c6_link = link;
   if (s_c6_mtx_made == 0U) {
-    if (tx_mutex_create(&s_c6_mtx, mutex_name, TX_INHERIT) == TX_SUCCESS) {
+    if (tx_mutex_create(&s_c6_mtx, s_mutex_name, TX_INHERIT) == TX_SUCCESS) {
       s_c6_mtx_made = 1U;
     }
   }
@@ -354,7 +354,7 @@ void nx_ether_driver_c6_rx(void* ctx, const uint8_t* frame, uint16_t len)
    * block-scope static (MISRA 8.9) whose static storage duration keeps this
    * 1514-octet buffer off the RX worker's bounded stack. */
   /* cppcheck-suppress misra-c2012-18.8 -- a static array is never a VLA; its size is the C23 enum k_nx_c6_max_frame, which cppcheck 2.13 cannot parse and so misreads as a variable length. */
-  static uint8_t rx_staging[k_nx_c6_max_frame];
+  static uint8_t s_rx_staging[k_nx_c6_max_frame];
   (void)ctx;
   if (!internal_rx_acceptable(frame, len)) {
     s_nx_c6_diag.rx_drop += 1U;
@@ -376,13 +376,13 @@ void nx_ether_driver_c6_rx(void* ctx, const uint8_t* frame, uint16_t len)
   }
   /* Copy into a non-const staging buffer so the const-correct callback frame is
    * never cast away for NetX's non-const append parameter. */
-  (void)memcpy((void*)rx_staging, (const void*)frame, (size_t)len);
+  (void)memcpy((void*)s_rx_staging, (const void*)frame, (size_t)len);
   /* Slide prepend by two octets so the IP header lands word-aligned once the
    * 14-byte Ethernet header is stripped; NetX drops misaligned frames on
    * Cortex-M parts. */
   pkt->nx_packet_prepend_ptr = pkt->nx_packet_prepend_ptr + (ULONG)k_nx_c6_rx_align;
   pkt->nx_packet_append_ptr  = pkt->nx_packet_prepend_ptr;
-  if (nx_packet_data_append(pkt, rx_staging, (ULONG)len, pool, (ULONG)NX_NO_WAIT) != NX_SUCCESS) {
+  if (nx_packet_data_append(pkt, s_rx_staging, (ULONG)len, pool, (ULONG)NX_NO_WAIT) != NX_SUCCESS) {
     (void)nx_packet_release(pkt);
     s_nx_c6_diag.rx_drop += 1U;
     return;
@@ -461,27 +461,27 @@ RA8_INTERNAL static void internal_spawn_rx_worker(NX_IP* ip, NX_INTERFACE* iface
    * stack and the name for the life of the thread; the spawn guard makes a
    * second call a no-op. The name is a fully-braced, non-const char array
    * (avoids the 7.4 string-literal-to-CHAR* assignment and any partial init). */
-  static TX_THREAD          rx_thread;
-  alignas(8) static uint8_t rx_thread_stack[k_nx_c6_worker_stack_bytes];
-  static uint8_t            rx_thread_made;
-  static CHAR               rx_name[] = {'c', '6', '_', 'n', 'x', '_', 'r', 'x', '\0'};
-  if (rx_thread_made != 0U) {
+  static TX_THREAD          s_rx_thread;
+  alignas(8) static uint8_t s_rx_thread_stack[k_nx_c6_worker_stack_bytes];
+  static uint8_t            s_rx_thread_made;
+  static CHAR               s_rx_name[] = {'c', '6', '_', 'n', 'x', '_', 'r', 'x', '\0'};
+  if (s_rx_thread_made != 0U) {
     return;
   }
   s_rx_ip    = ip;
   s_rx_iface = iface;
-  UINT t     = tx_thread_create(&rx_thread,
-                                rx_name,
+  UINT t     = tx_thread_create(&s_rx_thread,
+                                s_rx_name,
                                 internal_rx_worker_entry,
                                 0U,
-                                (VOID*)rx_thread_stack,
+                                (VOID*)s_rx_thread_stack,
                                 (ULONG)k_nx_c6_worker_stack_bytes,
                                 (UINT)k_nx_c6_worker_priority,
                                 (UINT)k_nx_c6_worker_priority,
                                 (ULONG)TX_NO_TIME_SLICE,
                                 (UINT)TX_AUTO_START);
   if (t == TX_SUCCESS) {
-    rx_thread_made = 1U;
+    s_rx_thread_made = 1U;
   }
 }
 

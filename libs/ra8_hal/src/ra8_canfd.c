@@ -425,8 +425,8 @@ static ra8_err_t internal_wait_canfdcksrdy(uint8_t expected)
 RA8_INTERNAL
 static ra8_err_t internal_canfd_clock_block_init(void)
 {
-  static bool local_canfd_clock_inited = false;
-  if (local_canfd_clock_inited) {
+  static bool s_canfd_clock_inited = false;
+  if (s_canfd_clock_inited) {
     return k_ra8_ok;
   }
   ra8_err_t err = k_ra8_ok;
@@ -460,7 +460,7 @@ static ra8_err_t internal_canfd_clock_block_init(void)
     }
   }
   if (err == k_ra8_ok) {
-    local_canfd_clock_inited = true;
+    s_canfd_clock_inited = true;
     ra8_log_info(s_tag, "canfd block clock stable");
   }
   return err;
