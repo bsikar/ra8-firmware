@@ -244,7 +244,7 @@ def _md_gap_tables(h: dict) -> list[str]:
         rt = _truncate_md_cell(
             rationale.replace("|", "\\|"), EXCERPT_MAX_DEACTIVATED, EXCERPT_TRUNC_DEACTIVATED
         )
-        md_lines.append(f"| {src} | {n} | {func} | `{ex}` | {rt} |")
+        md_lines.append(f"| {src} | {n} | {func} | `{ex}` | {_escape_md_tags(rt)} |")
     md_lines.append("")
     return md_lines
 
@@ -328,6 +328,20 @@ def _deact_preamble() -> list[str]:
     ]
 
 
+def _escape_md_tags(text: str) -> str:
+    """Escape angle brackets outside backtick spans.
+
+    Deactivation rationales quote XML/HTML tag names (<nav>, <spine>, ...);
+    emitted raw into markdown they read as real markup to Doxygen's HTML
+    pass, which warns and fails the docs gate. Segments inside backtick code
+    spans are already literal to Doxygen and must stay byte-identical.
+    """
+    parts = text.split("`")
+    for i in range(0, len(parts), 2):
+        parts[i] = parts[i].replace("<", "&lt;").replace(">", "&gt;")
+    return "`".join(parts)
+
+
 def _deact_entries(deactivated_rows: list[tuple]) -> list[str]:
     """One catalog section per deactivated condition, keyed by a stable anchor.
 
@@ -339,7 +353,7 @@ def _deact_entries(deactivated_rows: list[tuple]) -> list[str]:
         return ["(no deactivated conditions detected)", ""]
     out: list[str] = []
     for src, _ln, n, func, excerpt, covered, _deact, rationale in deactivated_rows:
-        anchor = f"{src}::{func}::{decision_snippet(excerpt)}"
+        anchor = _escape_md_tags(f"{src}::{func}::{decision_snippet(excerpt)}")
         out.extend(
             [
                 f"### {anchor}",
@@ -348,7 +362,7 @@ def _deact_entries(deactivated_rows: list[tuple]) -> list[str]:
                 f"- **Conditions in decision**: {n}",
                 f"- **Current llvm-cov status**: {covered}",
                 f"- **Source line**: `{excerpt.strip()}`",
-                f"- **Rationale**: {rationale}",
+                f"- **Rationale**: {_escape_md_tags(rationale)}",
                 "- **DO-178C 6.4.4.3 basis**: defensive guard whose"
                 " upstream contract is enforced on every public-API"
                 " entry.",
