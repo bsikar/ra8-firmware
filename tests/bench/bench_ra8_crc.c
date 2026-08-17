@@ -80,7 +80,7 @@ static void fill_buf(void)
  * per-aspect suppression, so this also masks the statement count for this
  * function; keep it short.
  */
-// NOLINTNEXTLINE(readability-function-size)
+// NOLINTBEGIN(readability-function-size)
 static void
 run_one(ra8_test_output_t* output, ra8_test_output_t* errors, const char* name, uint32_t len)
 {
@@ -94,6 +94,7 @@ run_one(ra8_test_output_t* output, ra8_test_output_t* errors, const char* name, 
     (void)internal_test_output_text(errors, "unreachable\n");
   }
 }
+// NOLINTEND(readability-function-size)
 
 /**
  * @brief Bench entry.
