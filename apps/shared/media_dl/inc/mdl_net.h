@@ -251,6 +251,72 @@ typedef struct mdl_net_iface {
 } mdl_net_iface_t;
 
 /**
+ * @struct mdl_net_provider_t
+ * @brief An injected FACTORY for ::mdl_net_iface_t: which backend, decided once.
+ *
+ * @details
+ * ::mdl_net_iface_t makes the request path backend-agnostic; this makes the
+ * CONSTRUCTION path backend-agnostic too. Application code that opens a
+ * transport for a run used to name a concrete factory, which pinned every mode
+ * above it to one build form -- the orchestration could only be compiled where
+ * libcurl was. A provider replaces that name with a value the composition root
+ * supplies: the host CLI wires the libcurl factory, the device wires the C6
+ * link, a test wires a scripted fake, and the mode is the same code.
+ *
+ * The backend's caller-owned private storage lives behind `ctx`, so the
+ * provider is also where "who owns the bytes the backend needs" is answered --
+ * the composition root, once, rather than each mode on its own stack.
+ *
+ * @invariant `open` is non-NULL for a usable provider.
+ * @invariant `ctx` outlives every interface `open` produced from it.
+ * @see mdl_net_provider_open()
+ * @see mdl_net_iface_t
+ * @since 0.1.0
+ */
+typedef struct mdl_net_provider {
+  void* ctx; /**< Factory-private state; the dispatcher only forwards it. */
+  /**
+   * @brief Open one hardened interface over the factory's private storage.
+   * @param[in,out] ctx Factory-private state.
+   * @param[in] policy Session security policy to harden the backend with.
+   * @param[out] out_net Interface populated on success.
+   * @return Canonical backend initialisation status.
+   */
+  ra8_err_t (*open)(void* ctx, const mdl_net_policy_t* policy, mdl_net_iface_t* out_net);
+} mdl_net_provider_t;
+
+/**
+ * @brief Open a transport through an injected provider.
+ *
+ * @details
+ * The dispatcher half of the ::mdl_net_provider_t seam, matching the vtable
+ * dispatchers above: callers never invoke `open` directly, so the argument
+ * validation lives in one place and is testable with no backend at all. The
+ * output interface is cleared before anything else, so a rejected call leaves
+ * the caller a handle that ::mdl_net_destroy accepts.
+ *
+ * @param[in] provider Injected factory, or NULL.
+ * @param[in] policy Session security policy for the new interface.
+ * @param[out] out_net Caller-owned interface populated on success.
+ *
+ * @return Canonical initialisation status.
+ * @retval k_ra8_ok @p out_net owns a ready backend interface.
+ * @retval k_ra8_err_invalid_arg A required object was NULL or unusable.
+ * @retval other The backend factory's own failure.
+ *
+ * @pre @p out_net addresses writable interface storage.
+ * @pre Credential bytes referenced by @p policy outlive the interface.
+ * @post @p out_net contains only zero bytes on every failure path.
+ * @post Success transfers no ownership of @p provider or @p policy.
+ *
+ * @note Not thread-safe: one interface per worker.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t mdl_net_provider_open(const mdl_net_provider_t* provider,
+                                              const mdl_net_policy_t*   policy,
+                                              mdl_net_iface_t*          out_net);
+
+/**
  * @brief Deinitialise a caller-owned network interface. NULL-safe.
  *
  * @details

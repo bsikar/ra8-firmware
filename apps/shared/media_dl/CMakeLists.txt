@@ -243,7 +243,24 @@ target_link_libraries(mdl_rabook_runtime PUBLIC m)
 # nobody touched. An OBJECT library links every object unconditionally, so the
 # object set a form gets is exactly the one it used to compile itself.
 # ---------------------------------------------------------------------------
+# The application layer: one entry point per run mode, over the injected
+# transport / storage / stream seams. It sits here rather than in the host form
+# because a mode is the downloader DOING something, not the CLI asking for it --
+# the argv grammar that produced the request stays in the form, and everything
+# below it compiles with no libcurl and no POSIX (#725).
+set(MDL_APP_SRC
+    ${MDL_CORE_SRC_DIR}/mdl_app.c
+    ${MDL_CORE_SRC_DIR}/mdl_app_admin.c
+    ${MDL_CORE_SRC_DIR}/mdl_app_cover.c
+    ${MDL_CORE_SRC_DIR}/mdl_app_direct.c
+    ${MDL_CORE_SRC_DIR}/mdl_app_library.c
+    ${MDL_CORE_SRC_DIR}/mdl_app_prepare.c
+    ${MDL_CORE_SRC_DIR}/mdl_app_series.c
+    ${MDL_CORE_SRC_DIR}/mdl_app_storage.c
+)
+
 set(MDL_CORE_SRC
+    ${MDL_APP_SRC}
     ${MDL_CORE_SRC_DIR}/mdl_stream.c
     ${MDL_CORE_SRC_DIR}/mdl_net.c
     ${MDL_CORE_SRC_DIR}/mdl_url_guard.c
@@ -451,6 +468,23 @@ target_include_directories(
 target_compile_definitions(test_media_dl_net_c6link PRIVATE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_net_c6link PRIVATE -Wall -Wextra -Werror)
 add_test(NAME test_media_dl_net_c6link COMMAND test_media_dl_net_c6link)
+
+# The injected transport-factory seam (::mdl_net_provider_t). It is what lets
+# an application mode open a backend without naming one, so it is qualified
+# here with NO backend at all: a scripted factory plus the dispatcher. Linking
+# only mdl_net.c is the point -- if this ever needed CURL, the seam would have
+# stopped being a seam.
+add_executable(
+  test_media_dl_net_provider ${MDL_CORE_TESTS_DIR}/test_media_dl_net_provider.c
+                             ${MDL_CORE_SRC_DIR}/mdl_net.c
+)
+target_include_directories(
+  test_media_dl_net_provider PRIVATE ${MDL_PUBLIC_INC} ${MDL_CORE_SRC_DIR} ${FW}/ra8_core/inc
+                                     ${MDL_REPO_ROOT}/tests
+)
+target_compile_definitions(test_media_dl_net_provider PRIVATE RA8_OFF_TARGET)
+target_compile_options(test_media_dl_net_provider PRIVATE -Wall -Wextra -Werror)
+add_test(NAME test_media_dl_net_provider COMMAND test_media_dl_net_provider)
 
 # #302 session-level tests: the honest User-Agent + robots.txt gating driven
 # end-to-end through the #310 mdl_net vtable mock. A scripted fake backend

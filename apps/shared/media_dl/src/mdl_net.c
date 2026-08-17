@@ -61,6 +61,20 @@ RA8_INTERNAL static void internal_resp_reset(mdl_net_resp_t* resp)
   }
 }
 
+ra8_err_t mdl_net_provider_open(const mdl_net_provider_t* provider,
+                                const mdl_net_policy_t*   policy,
+                                mdl_net_iface_t*          out_net)
+{
+  if (out_net == nullptr) {
+    return k_ra8_err_invalid_arg;
+  }
+  *out_net = (mdl_net_iface_t){};
+  if ((provider == nullptr) || (provider->open == nullptr) || (policy == nullptr)) {
+    return k_ra8_err_invalid_arg;
+  }
+  return provider->open(provider->ctx, policy, out_net);
+}
+
 ra8_err_t mdl_net_get_buf(mdl_net_iface_t*     net,
                           const char*          url,
                           const mdl_net_req_t* req,

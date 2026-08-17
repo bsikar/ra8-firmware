@@ -53,46 +53,19 @@ RA8_INTERNAL static void internal_admin_text3(ra8_io_stream_t* stream,
   internal_admin_latch(priv_mdl_stream_text(error, stream, third));
 }
 
-/**
- * @brief Run search or browse discovery and optionally download one result.
- * @details Loads the descriptor, establishes policy/governor state, lists
- *          bounded hits, and feeds an explicitly selected URL to series mode.
- * @param[in] a Parsed command-line arguments.
- * @param[in] opts Validated run policy.
- * @param[in] n Validated numeric arguments.
- * @param[in] base Template series-run parameters.
- * @return Process-style status from discovery or the selected series run.
- * @retval 0 Results were listed or the selected series succeeded.
- * @retval nonzero Descriptor, network, discovery, selection, or series work
- * failed.
- * @pre All pointer arguments are non-NULL.
- * @pre Search/browse mode and descriptor requirements passed CLI validation.
- * @post The discovery network interface is destroyed before return.
- * @post A picked URL is downloaded only when selection produced a complete URL.
- * @note Not thread-safe because it uses shared discovery buffers.
- * @since 0.1.0
- */
-RA8_PRIV int priv_mdl_app_run_discover(const mdl_args_t*     a,
-                                       const mdl_run_opts_t* opts,
-                                       const mdl_nums_t*     n,
-                                       const series_run_t*   base)
+int mdl_app_run_discover(const mdl_discover_run_t* request,
+                         const mdl_run_opts_t*     opts,
+                         const mdl_series_run_t*   base)
 {
-  if (a->cfg == nullptr) {
-    (void)priv_mdl_stream_text(k_ra8_ok,
-                               priv_mdl_app_context()->diagnostic,
-                               "media_dl: --search/--browse requires --config SITE.conf\n");
-    return 2;
-  }
   mdl_site_t site;
-  if (mdl_config_load(&priv_mdl_app_context()->storage, a->cfg, &site) != k_ra8_ok) {
+  if (mdl_config_load(&priv_mdl_app_context()->storage, request->cfg_path, &site) != k_ra8_ok) {
     return 1;
   }
   if (opts->polite) {
     mdl_config_apply_polite(&site);
   }
-  mdl_net_iface_t        net     = {};
-  mdl_net_curl_storage_t storage = {};
-  if (mdl_net_curl_init(&net, &storage, &opts->policy) != k_ra8_ok) {
+  mdl_net_iface_t net = {};
+  if (mdl_net_provider_open(opts->net, &opts->policy, &net) != k_ra8_ok) {
     (void)priv_mdl_stream_text(k_ra8_ok,
                                priv_mdl_app_context()->diagnostic,
                                "media_dl: network init failed\n");
@@ -106,15 +79,15 @@ RA8_PRIV int priv_mdl_app_run_discover(const mdl_args_t*     a,
 
   mdl_governor_t      gov;
   const mdl_gov_cfg_t cfg = mdl_config_gov_cfg(&site);
-  mdl_governor_init(&gov, &cfg, n->seed);
+  mdl_governor_init(&gov, &cfg, request->seed);
 
   const mdl_discover_req_t req = {
     .session    = &priv_mdl_app_context()->session,
     .gov        = &gov,
     .site       = &site,
-    .mode       = a->browse ? k_mdl_discover_browse : k_mdl_discover_search,
-    .term       = a->search,
-    .timeout_ms = n->timeout,
+    .mode       = request->browse ? k_mdl_discover_browse : k_mdl_discover_search,
+    .term       = request->term,
+    .timeout_ms = request->timeout,
     .page_buf   = priv_mdl_app_context()->page,
     .page_cap   = sizeof(priv_mdl_app_context()->page),
     .hits       = &s_results,
@@ -123,14 +96,14 @@ RA8_PRIV int priv_mdl_app_run_discover(const mdl_args_t*     a,
     .io_error   = &priv_mdl_app_context()->io_error,
   };
   char      picked[k_mdl_url_max] = {};
-  const int rc                    = mdl_discover_run(&req, n->pick, picked, sizeof(picked));
+  const int rc                    = mdl_discover_run(&req, request->pick, picked, sizeof(picked));
   mdl_net_destroy(&net);
   if ((rc != 0) || (picked[0] == '\0')) {
     return rc; /* listed results, or an error, with nothing to download */
   }
-  series_run_t run = *base;
-  run.series_url   = picked; /* combined search-and-select: feed the pick in */
-  return priv_mdl_app_run_series(&run);
+  mdl_series_run_t run = *base;
+  run.series_url       = picked; /* combined search-and-select: feed the pick in */
+  return mdl_app_run_series(&run);
 }
 
 /**
@@ -195,26 +168,7 @@ RA8_INTERNAL static bool internal_init_site_identity(const char* url,
          mdl_path_join(descriptor_dir, leaf, out_path, (size_t)k_fw_fs_path_cap);
 }
 
-/**
- * @brief Generate a starter site descriptor from one URL.
- * @details Extracts and normalizes the host into bounded name/path fields,
- *          writes a commented conservative descriptor to a sibling temp, and
- *          publishes it with a no-replace hard link.
- * @param[in] url Absolute site URL.
- * @param[in] descriptor_dir Canonical directory that receives the descriptor.
- * @return Process-style status.
- * @retval 0 The descriptor template was created.
- * @retval 1 The destination file could not be created.
- * @retval 2 The URL was absent or its host could not be extracted.
- * @pre @p url is either NULL or points to a NUL-terminated string.
- * @pre CLI validation selected init-site mode.
- * @post Success creates one template without dynamic allocation.
- * @post Failure reports the rejected URL or destination and preserves any
- *       existing descriptor byte-for-byte.
- * @note Not safe for concurrent creation of the same descriptor path.
- * @since 0.1.0
- */
-RA8_PRIV int priv_mdl_app_run_init_site(const char* url, const char* descriptor_dir)
+int mdl_app_run_init_site(const char* url, const char* descriptor_dir)
 {
   char host[k_mdl_host_max] = {};
   char slug[k_mdl_name_max] = {};
@@ -598,22 +552,7 @@ RA8_INTERNAL static ra8_err_t internal_verify_print_summary(ra8_io_stream_t*    
   return priv_mdl_stream_text(error, output, " failed\n");
 }
 
-/**
- * @brief Verify a tracked series, a library root, or recognized artifacts.
- * @details Canonicalizes the target, detects a direct tracked-series marker or
- *          enumerates child series, validates artifacts, and prints totals.
- * @param[in] target_dir Requested directory, or NULL/empty for `downloads`.
- * @return Process-style verification status.
- * @retval 0 At least one target was found and every check passed.
- * @retval 1 The root was invalid, empty of targets, or any check failed.
- * @pre @p target_dir is NULL or points to a NUL-terminated path.
- * @pre ::priv_mdl_app_context()->export_ws is initialized.
- * @post No target content is modified.
- * @post Every discovered failure contributes to status and summary counters.
- * @note Not thread-safe because it uses shared state and validator workspace.
- * @since 0.1.0
- */
-RA8_PRIV int priv_mdl_app_run_verify(const char* target_dir)
+int mdl_app_run_verify(const char* target_dir)
 {
   const char*    dir  = target_dir;
   verify_stats_t st   = {};

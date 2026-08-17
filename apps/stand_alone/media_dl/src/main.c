@@ -27,6 +27,7 @@
  */
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -34,10 +35,14 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "mdl_app_internal.h"
+#include "fw_if_fs_posix.h"
+#include "mdl_app.h"
 #include "mdl_cli_internal.h"
+#include "mdl_compose_internal.h"
 #include "mdl_host_credentials_internal.h"
+#include "mdl_sanitize.h"
 #include "mdl_stream_internal.h"
+#include "ra8_attributes.h"
 #include "ra8_io_stream_posix.h"
 
 /** @brief Naturally aligned, caller-owned exporter workspace storage. */
@@ -378,12 +383,6 @@ RA8_INTERNAL static int internal_exit_from_error(ra8_err_t err, bool usage_error
     return 0;
   }
   return (usage_error && (err == k_ra8_err_invalid_arg)) ? 2 : 1;
-}
-
-/* see header for full description */
-RA8_PRIV mdl_app_context_t* priv_mdl_app_context(void)
-{
-  return &s_app;
 }
 
 /**
@@ -778,65 +777,6 @@ internal_prepare_args(mdl_args_t* args, mdl_cli_mode_t mode, ra8_io_stream_t* di
 }
 
 /**
- * @brief Dispatch the one mode selected by strict CLI validation.
- * @details Routes exactly one validated mode to its composition-root runner and
- *          supplies the corresponding parsed arguments and bounded state.
- * @param[in] a Parsed command-line arguments.
- * @param[in] mode Validated command mode.
- * @param[in] format Validated output format.
- * @param[in] opts Validated run policy.
- * @param[in] nums Validated numeric arguments.
- * @param[in] run Prepared series-run template.
- * @return Process-style status from the selected mode.
- * @retval 0 The selected operation completed successfully.
- * @retval 1 The selected operation reported an execution failure.
- * @retval 2 A usage/mode error was encountered.
- * @pre All pointer arguments are non-NULL.
- * @pre @p mode was produced by ::mdl_cli_validate.
- * @post Exactly one mode handler is invoked.
- * @post Nonselected mode handlers perform no work.
- * @note Not thread-safe because mode handlers share composition-root buffers.
- * @since 0.1.0
- */
-RA8_INTERNAL static int internal_dispatch_run(const mdl_args_t*     a,
-                                              mdl_cli_mode_t        mode,
-                                              ra8_mdl_format_t      format,
-                                              const mdl_run_opts_t* opts,
-                                              const mdl_nums_t*     nums,
-                                              const series_run_t*   run)
-{
-  switch (mode) {
-    case k_mdl_cli_mode_series:
-      return priv_mdl_app_run_series(run);
-    case k_mdl_cli_mode_search:
-    case k_mdl_cli_mode_browse:
-      return priv_mdl_app_run_discover(a, opts, nums, run);
-    case k_mdl_cli_mode_list:
-    case k_mdl_cli_mode_update_all:
-    case k_mdl_cli_mode_remove:
-      return priv_mdl_app_run_library(a, run);
-    case k_mdl_cli_mode_verify:
-      return priv_mdl_app_run_verify(a->verify_dir != nullptr ? a->verify_dir : a->out);
-    case k_mdl_cli_mode_init_site:
-      return priv_mdl_app_run_init_site(a->init_site_url, a->out);
-    case k_mdl_cli_mode_pack:
-      return priv_mdl_app_run_pack(a->pack, format);
-    case k_mdl_cli_mode_artifact:
-      return priv_mdl_app_run_artifact(a->page_url, a->out, nums->timeout, opts);
-    case k_mdl_cli_mode_page:
-      return priv_mdl_app_run_page(a->page_url,
-                                   a->out,
-                                   a->attr,
-                                   nums->max_imgs,
-                                   nums->seed,
-                                   nums->timeout,
-                                   opts);
-    default:
-      return 2;
-  }
-}
-
-/**
  * @brief Validate output format and attach bounded credential byte views.
  * @param[in] args Validated parsed command arguments.
  * @param[in,out] opts Mutable run policy receiving credential views.
@@ -895,9 +835,8 @@ RA8_INTERNAL static int internal_main_init(int argc, char** argv, mdl_args_t* a)
   s_app.output     = &s_output;
   s_app.diagnostic = &s_diagnostic;
   s_app.io_error   = k_ra8_ok;
-  mdl_export_workspace_init(&priv_mdl_app_context()->export_ws,
-                            s_export_arena.bytes,
-                            sizeof(s_export_arena.bytes));
+  mdl_export_workspace_init(&s_app.export_ws, s_export_arena.bytes, sizeof(s_export_arena.bytes));
+  mdl_app_bind(&s_app);
   mdl_cli_parse(argc, argv, a);
   return 0;
 }
@@ -928,12 +867,12 @@ RA8_INTERNAL static int internal_main_run(const mdl_args_t*     a,
                                           const mdl_run_opts_t* opts,
                                           const mdl_nums_t*     nums)
 {
-  const series_run_t run = priv_mdl_app_build_run(a, format, opts, nums);
+  const mdl_series_run_t run = priv_mdl_compose_build_run(a, format, opts, nums);
   if (internal_storage_init() != k_ra8_ok) {
     (void)internal_diagnostic("media_dl: could not initialize portable filesystem binding\n");
     return 1;
   }
-  const int result = internal_dispatch_run(a, mode, format, opts, nums, &run);
+  const int result = priv_mdl_compose_dispatch(a, mode, format, opts, nums, &run);
   if (fw_fs_posix_deinit(&s_fs_posix) != k_ra8_ok) {
     (void)internal_diagnostic("media_dl: filesystem shutdown failed\n");
     return 1;
@@ -944,7 +883,7 @@ RA8_INTERNAL static int internal_main_run(const mdl_args_t*     a,
 /**
  * @brief Program entry point: parse the command line and select a run mode.
  * @details Parses and validates the arguments, then hands off to
- * ::internal_dispatch_run, which selects a library command
+ * ::priv_mdl_compose_dispatch, which selects a library command
  * (`--list`/`--remove`/`--update-all`), search/browse discovery
  * (`--search`/`--browse`), pack mode (`--pack`), series mode (`--config` +
  * `--series`), or single-page mode (a bare URL), in that precedence.
@@ -982,7 +921,9 @@ int main(int argc, char** argv)
   if (cli_err != k_ra8_ok) {
     return internal_exit_from_error(cli_err, true);
   }
-  mdl_run_opts_t   opts          = mdl_cli_run_opts(&a);
+  mdl_run_opts_t opts = mdl_cli_run_opts(&a);
+  /* The one place this build form's transport is chosen. */
+  opts.net                       = priv_mdl_compose_net_provider();
   ra8_mdl_format_t format        = k_ra8_mdl_format_invalid;
   const int        policy_status = internal_prepare_run_policy(&a, &opts, &format);
   if (policy_status != 0) {

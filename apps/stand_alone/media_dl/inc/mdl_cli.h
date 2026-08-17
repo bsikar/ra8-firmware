@@ -5,8 +5,11 @@
  * @details
  * Splits argv handling out of `main.c`: the raw option strings land in
  * ::mdl_args_t, and the cross-cutting security/politeness knobs are folded into
- * ::mdl_run_opts_t for the run entry points. Numeric fields stay as strings so
- * `main` owns their conversion and defaulting.
+ * the portable ::mdl_run_opts_t the application layer already consumes.
+ * Numeric fields stay as strings so `main` owns their conversion and
+ * defaulting. Nothing here is reachable from the downloader itself -- the
+ * translation from these argv-shaped values into the ones ::mdl_app.h names
+ * happens once, in `mdl_compose.c`.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -15,28 +18,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "mdl_net.h"
+#include "mdl_app.h"
 #include "ra8_io_stream.h"
-
-/**
- * @struct mdl_run_opts_t
- * @brief Cross-cutting options threaded into every run mode.
- * @details Bundles the network policy and identity/politeness knobs so the run
- *          entry points take one options pointer rather than a long, swappable
- *          scalar parameter list.
- * @invariant `policy.max_response_bytes` is non-zero for a bounded fetch.
- * @see mdl_cli_run_opts()
- * @since 0.1.0
- */
-typedef struct {
-  mdl_net_policy_t policy;           /**< Backend security policy.             */
-  const char*      contact;          /**< --contact override, or NULL.         */
-  bool             honor_robots;     /**< False when --ignore-robots is set.   */
-  bool             polite;           /**< True when --polite is set.           */
-  bool             allow_incomplete; /**< True when --allow-incomplete is set. */
-  bool             progress;         /**< True when --progress is set.         */
-  bool             refetch;          /**< True when --refetch bypasses cache.  */
-} mdl_run_opts_t;
 
 /**
  * @brief Exactly one command mode selected by a valid invocation.

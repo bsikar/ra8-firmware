@@ -360,11 +360,11 @@ RA8_INTERNAL static ra8_err_t internal_report_stats(const char*              abs
  * @note Thread-safe for distinct output buffers.
  * @since 0.1.0
  */
-RA8_INTERNAL static mdl_fetch_layout_t internal_choose_layout(const series_run_t*   r,
-                                                              const mdl_url_list_t* sel,
-                                                              char*                 combined_rel,
-                                                              size_t                cap,
-                                                              const char*           slug)
+RA8_INTERNAL static mdl_fetch_layout_t internal_choose_layout(const mdl_series_run_t* r,
+                                                              const mdl_url_list_t*   sel,
+                                                              char*                   combined_rel,
+                                                              size_t                  cap,
+                                                              const char*             slug)
 {
   combined_rel[0] = '\0';
   if (r->update || !r->combine || (r->format == k_ra8_mdl_format_loose)) {
@@ -400,12 +400,12 @@ RA8_INTERNAL static mdl_fetch_layout_t internal_choose_layout(const series_run_t
  * @note Not thread-safe because the context references process-global storage.
  * @since 0.1.0
  */
-RA8_INTERNAL static mdl_fetch_ctx_t internal_make_ctx(const series_run_t* r,
-                                                      const mdl_site_t*   site,
-                                                      const char*         abs_dir,
-                                                      const char*         state_path,
-                                                      mdl_governor_t*     gov,
-                                                      mdl_cache_t*        cache)
+RA8_INTERNAL static mdl_fetch_ctx_t internal_make_ctx(const mdl_series_run_t* r,
+                                                      const mdl_site_t*       site,
+                                                      const char*             abs_dir,
+                                                      const char*             state_path,
+                                                      mdl_governor_t*         gov,
+                                                      mdl_cache_t*            cache)
 {
   return (mdl_fetch_ctx_t){.session        = &priv_mdl_app_context()->session,
                            .storage        = &priv_mdl_app_context()->storage,
@@ -452,7 +452,7 @@ RA8_INTERNAL static mdl_fetch_ctx_t internal_make_ctx(const series_run_t* r,
  * @note Not thread-safe because it uses shared exporter storage.
  * @since 0.1.0
  */
-RA8_INTERNAL static size_t internal_export_after(const series_run_t*      r,
+RA8_INTERNAL static size_t internal_export_after(const mdl_series_run_t*  r,
                                                  const char*              abs_dir,
                                                  mdl_fetch_layout_t       layout,
                                                  const char*              combined_rel,
@@ -555,8 +555,8 @@ RA8_INTERNAL static void internal_report_cover_failure(ra8_err_t error)
  * @note Not thread-safe; writes the shared selection-window scratch buffer.
  * @since Version 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_select_run_window(const series_run_t*    r,
-                                                         const mdl_url_list_t** out_sel)
+RA8_INTERNAL static ra8_err_t internal_select_run_window(const mdl_series_run_t* r,
+                                                         const mdl_url_list_t**  out_sel)
 {
   *out_sel = &priv_mdl_app_context()->chapters;
   if (!r->update) {
@@ -591,11 +591,11 @@ RA8_INTERNAL static ra8_err_t internal_select_run_window(const series_run_t*    
  * @note Not thread-safe because it owns the shared run composition state.
  * @since 0.1.0
  */
-RA8_INTERNAL static int internal_run_prepared(const series_run_t* r,
-                                              const mdl_site_t*   site,
-                                              const char*         abs_dir,
-                                              const char*         state_path,
-                                              mdl_cache_t*        cache)
+RA8_INTERNAL static int internal_run_prepared(const mdl_series_run_t* r,
+                                              const mdl_site_t*       site,
+                                              const char*             abs_dir,
+                                              const char*             state_path,
+                                              mdl_cache_t*            cache)
 {
   const mdl_url_list_t* sel = nullptr;
   if (internal_select_run_window(r, &sel) != k_ra8_ok) {
@@ -701,7 +701,7 @@ RA8_INTERNAL static void internal_snapshot_prior_metadata(series_prior_metadata_
  * @note Not thread-safe because it mutates the shared series state.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool internal_reconcile_series_state(const series_run_t*            run,
+RA8_INTERNAL static bool internal_reconcile_series_state(const mdl_series_run_t*        run,
                                                          const mdl_site_t*              site,
                                                          const series_prior_metadata_t* prior)
 {
@@ -752,7 +752,7 @@ RA8_INTERNAL static bool internal_reconcile_series_state(const series_run_t*    
  * @since 0.1.0
  */
 RA8_INTERNAL static int
-internal_run_series_paths(const series_run_t* run, const mdl_site_t* site, mdl_cache_t* cache)
+internal_run_series_paths(const mdl_series_run_t* run, const mdl_site_t* site, mdl_cache_t* cache)
 {
   char slug[k_slug_bytes];
   char abs_dir[k_fw_fs_path_cap];
@@ -791,8 +791,9 @@ internal_run_series_paths(const series_run_t* run, const mdl_site_t* site, mdl_c
 
 /**
  * @brief Run one prepared descriptor through the network-backed series flow.
- * @details Initializes the concrete network/session bindings, prepares cached
- *          chapters, reports the retained count, and runs path/state/export work.
+ * @details Opens a transport through the injected provider, binds the session,
+ *          prepares cached chapters, reports the retained count, and runs
+ *          path/state/export work.
  * @param[in] run Complete validated series-run parameters.
  * @param[in] site Loaded and policy-adjusted site descriptor.
  * @return Process-style status.
@@ -805,11 +806,10 @@ internal_run_series_paths(const series_run_t* run, const mdl_site_t* site, mdl_c
  * @note The cache index workspace is borrowed exclusively for this call.
  * @since 0.1.0
  */
-RA8_INTERNAL static int internal_run_series_network(const series_run_t* run, mdl_site_t* site)
+RA8_INTERNAL static int internal_run_series_network(const mdl_series_run_t* run, mdl_site_t* site)
 {
-  mdl_net_iface_t        net     = {};
-  mdl_net_curl_storage_t storage = {};
-  if (mdl_net_curl_init(&net, &storage, &run->opts->policy) != k_ra8_ok) {
+  mdl_net_iface_t net = {};
+  if (mdl_net_provider_open(run->opts->net, &run->opts->policy, &net) != k_ra8_ok) {
     (void)priv_mdl_stream_text(k_ra8_ok,
                                priv_mdl_app_context()->diagnostic,
                                "media_dl: network init failed\n");
@@ -850,22 +850,7 @@ RA8_INTERNAL static int internal_run_series_network(const series_run_t* run, mdl
   return rc;
 }
 
-/**
- * @brief Execute series mode from descriptor through download.
- * @details Loads policy, establishes networking, prepares chapters and the
- *          tracked directory, reconciles metadata, then runs the orchestrator.
- * @param[in] r Complete validated series-run parameters.
- * @return Process-style status.
- * @retval 0 Series processing completed without a reported failure.
- * @retval 1 Configuration, network, state, fetch, or export work failed.
- * @pre @p r and all required strings/options are non-NULL.
- * @pre The CLI has validated mode-specific argument combinations.
- * @post The network interface is destroyed on every initialized path.
- * @post Unreadable state is never silently overwritten.
- * @note Not thread-safe because it uses process-global run storage.
- * @since 0.1.0
- */
-RA8_PRIV int priv_mdl_app_run_series(const series_run_t* r)
+int mdl_app_run_series(const mdl_series_run_t* r)
 {
   if ((r == nullptr) || (r->cache_dir == nullptr) ||
       (priv_mdl_app_storage_ensure_directory(&priv_mdl_app_context()->storage, r->out_dir) !=

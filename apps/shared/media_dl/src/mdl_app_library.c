@@ -136,22 +136,7 @@ RA8_INTERNAL static ra8_err_t internal_list_cb(const char*        series_dir,
   return output_error;
 }
 
-/**
- * @brief Enumerate tracked series under an output root.
- * @details Visits library markers through ::internal_list_cb and distinguishes an empty
- *          library from traversal or state-read failures.
- * @param[in] out_dir Library root to enumerate.
- * @return Process-style status.
- * @retval 0 Enumeration completed and every state file was readable.
- * @retval 1 Traversal failed or at least one state file was unreadable.
- * @pre @p out_dir is non-NULL and NUL-terminated.
- * @pre Standard output is available.
- * @post Every discovered tracked series is reported once.
- * @post No library data is modified.
- * @note Not thread-safe because callbacks use shared state scratch.
- * @since 0.1.0
- */
-RA8_INTERNAL static int internal_run_list(const char* out_dir)
+int mdl_app_run_list(const char* out_dir)
 {
   list_ctx_t                 list   = {};
   const mdl_library_policy_t policy = mdl_library_policy_default();
@@ -248,24 +233,7 @@ internal_resolve_removal_target(const char* out_dir, const char* url_or_slug, ch
   return false;
 }
 
-/**
- * @brief Remove one explicitly tracked series directory.
- * @details Derives the bounded slug, rejects symbolic-link targets, parses the
- *          regular `.mdl_state` marker, and requires its recorded series URL to
- *          resolve to the same slug before delegating recursive removal.
- * @param[in] out_dir Library root.
- * @param[in] url_or_slug Series URL or slug selected by the user.
- * @return Process-style status.
- * @retval 0 The tracked tree was removed.
- * @retval 1 Resolution, marker validation, or removal failed.
- * @pre @p out_dir and @p url_or_slug are non-NULL.
- * @pre CLI validation authorized remove mode.
- * @post Untracked, corrupt, mismatched, or symbolic-link directories are never removed.
- * @post Success prints the removed directory path.
- * @note Not safe for concurrent mutation of the same tree.
- * @since 0.1.0
- */
-RA8_INTERNAL static int internal_run_remove(const char* out_dir, const char* url_or_slug)
+int mdl_app_run_remove(const char* out_dir, const char* url_or_slug)
 {
   char dir[k_dir_path_bytes];
   if (!internal_resolve_removal_target(out_dir, url_or_slug, dir)) {
@@ -293,9 +261,9 @@ RA8_INTERNAL static int internal_run_remove(const char* out_dir, const char* url
  * @since 0.1.0
  */
 typedef struct {
-  const series_run_t* base;    /**< Template run (format/knobs); url filled per series. */
-  size_t              updated; /**< Count of series updated.                            */
-  size_t              failed;  /**< Count of series skipped or unsuccessfully updated.  */
+  const mdl_series_run_t* base;    /**< Template run (format/knobs); url filled per series. */
+  size_t                  updated; /**< Count of series updated.                            */
+  size_t                  failed;  /**< Count of series skipped or unsuccessfully updated.  */
 } update_all_ctx_t;
 
 /**
@@ -313,7 +281,7 @@ typedef struct {
  * @pre @p ctx points to a valid template and writable counters.
  * @post Exactly one of `updated` or `failed` increases.
  * @post Unreadable or incomplete identity is never overwritten.
- * @note Not thread-safe because it invokes ::priv_mdl_app_run_series with shared state.
+ * @note Not thread-safe because it invokes ::mdl_app_run_series with shared state.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_update_all_cb(const char*        series_dir,
@@ -347,11 +315,11 @@ RA8_INTERNAL static ra8_err_t internal_update_all_cb(const char*        series_d
     *out_continue = false;
     return output_error;
   }
-  series_run_t run = *p->base;
-  run.series_url   = url;
-  run.cfg_path     = cfg;
-  run.update       = true;
-  if (priv_mdl_app_run_series(&run) == 0) {
+  mdl_series_run_t run = *p->base;
+  run.series_url       = url;
+  run.cfg_path         = cfg;
+  run.update           = true;
+  if (mdl_app_run_series(&run) == 0) {
     p->updated += 1U;
   } else {
     p->failed += 1U;
@@ -360,22 +328,7 @@ RA8_INTERNAL static ra8_err_t internal_update_all_cb(const char*        series_d
   return k_ra8_ok;
 }
 
-/**
- * @brief Incrementally update every tracked series.
- * @details Enumerates the library with a fixed run template and summarizes any
- *          series that could not be loaded or updated.
- * @param[in] base Template series-run parameters and library root.
- * @return Process-style status.
- * @retval 0 Traversal and every attempted update succeeded.
- * @retval 1 Traversal or at least one series update failed.
- * @pre @p base is non-NULL and contains a valid output root.
- * @pre Shared composition-root buffers are initialized.
- * @post Every tracked series is visited at most once.
- * @post Failures remain visible in the returned status and diagnostic output.
- * @note Not thread-safe because updates reuse global state.
- * @since 0.1.0
- */
-RA8_INTERNAL static int internal_run_update_all(const series_run_t* base)
+int mdl_app_run_update_all(const mdl_series_run_t* base)
 {
   update_all_ctx_t           c      = {.base = base, .updated = 0U, .failed = 0U};
   const mdl_library_policy_t policy = mdl_library_policy_default();
@@ -410,39 +363,4 @@ RA8_INTERNAL static int internal_run_update_all(const series_run_t* base)
     (void)internal_library_report("updating tracked series", rc);
   }
   return ((rc == k_ra8_ok) && (c.failed == 0U)) ? 0 : 1;
-}
-
-/**
- * @brief Dispatch one validated library command.
- * @details Selects list, remove, or update-all and enforces the descriptor
- *          requirement that remains specific to updating.
- * @param[in] a Parsed command-line arguments.
- * @param[in] run Template series-run parameters.
- * @return Process-style status from the selected library operation.
- * @retval 0 The selected operation completed successfully.
- * @retval 1 Library traversal/removal/update failed.
- * @retval 2 Update-all lacked a required descriptor.
- * @pre @p a and @p run are non-NULL.
- * @pre Exactly one library mode was selected by validation.
- * @post Exactly one library operation is invoked.
- * @post Nonselected library state is not modified.
- * @note Not thread-safe because update-all reuses shared state.
- * @since 0.1.0
- */
-RA8_PRIV int priv_mdl_app_run_library(const mdl_args_t* a, const series_run_t* run)
-{
-  if (a->list) {
-    return internal_run_list(a->out);
-  }
-  if (a->remove_series != nullptr) {
-    return internal_run_remove(a->out, a->remove_series);
-  }
-  if (a->cfg == nullptr) {
-    const ra8_err_t output_error =
-      priv_mdl_stream_text(k_ra8_ok,
-                           priv_mdl_app_context()->diagnostic,
-                           "media_dl: --update-all requires --config SITE.conf\n");
-    return (output_error == k_ra8_ok) ? 2 : 1;
-  }
-  return internal_run_update_all(run);
 }

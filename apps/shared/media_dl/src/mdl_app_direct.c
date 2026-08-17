@@ -594,9 +594,8 @@ RA8_INTERNAL static bool internal_fetch_artifact(const char*           url,
                                                  const mdl_run_opts_t* opts,
                                                  size_t*               got)
 {
-  mdl_net_iface_t        net     = {};
-  mdl_net_curl_storage_t storage = {};
-  if (mdl_net_curl_init(&net, &storage, &opts->policy) != k_ra8_ok) {
+  mdl_net_iface_t net = {};
+  if (mdl_net_provider_open(opts->net, &opts->policy, &net) != k_ra8_ok) {
     internal_direct_latch(priv_mdl_stream_text(k_ra8_ok,
                                                priv_mdl_app_context()->diagnostic,
                                                "media_dl: network init failed\n"));
@@ -634,30 +633,10 @@ RA8_INTERNAL static bool internal_fetch_artifact(const char*           url,
   return internal_finish_artifact_fetch(&state, rc, resp.status);
 }
 
-/**
- * @brief Download, validate, and atomically publish one artifact.
- * @details Accepts only formats with structural validators, stages the network
- *          response, validates through the reader path, then durably commits
- * it.
- * @param[in] url HTTPS artifact URL.
- * @param[in] out_dir Output directory.
- * @param[in] timeout Per-request timeout in milliseconds.
- * @param[in] opts Validated network and identity policy.
- * @return Process-style status.
- * @retval 0 A structurally valid artifact was published.
- * @retval 1 Format, path, network, validation, or commit failed.
- * @pre All pointer arguments are non-NULL.
- * @pre CLI validation authorized direct-artifact mode.
- * @post Success exposes only a structurally validated final file.
- * @post Failure aborts the reserved staging path.
- * @note Not thread-safe because validation uses
- * ::priv_mdl_app_context()->export_ws.
- * @since 0.1.0
- */
-RA8_PRIV int priv_mdl_app_run_artifact(const char*           url,
-                                       const char*           out_dir,
-                                       uint32_t              timeout,
-                                       const mdl_run_opts_t* opts)
+int mdl_app_run_artifact(const char*           url,
+                         const char*           out_dir,
+                         uint32_t              timeout,
+                         const mdl_run_opts_t* opts)
 {
   char leaf[k_leaf_name_bytes];
   mdl_urlname_last_segment(url, leaf, sizeof(leaf));
@@ -762,42 +741,20 @@ internal_extract_page_images(const char* url, const char* attr, uint32_t timeout
   return false;
 }
 
-/**
- * @brief Fetch one page and download its extracted image URLs.
- * @details Initializes the network session, enforces URL policy, extracts the
- *          selected image attribute, and downloads the bounded image set.
- * @param[in] url Absolute page URL.
- * @param[in] out_dir Output directory.
- * @param[in] attr Image attribute selector.
- * @param[in] max_imgs Maximum images, or zero for all extracted rows.
- * @param[in] seed Politeness jitter seed.
- * @param[in] timeout Per-request timeout in milliseconds.
- * @param[in] opts Validated run policy.
- * @return Process-style status.
- * @retval 0 Every attempted image succeeded.
- * @retval 1 Network, policy, or image download failed.
- * @pre All pointer arguments are non-NULL.
- * @pre CLI validation authorized page mode.
- * @post The network interface is destroyed on every initialized path.
- * @post Download failures remain visible in the returned status.
- * @note Not thread-safe because it uses global extraction buffers.
- * @since 0.1.0
- */
-RA8_PRIV int priv_mdl_app_run_page(const char*           url,
-                                   const char*           out_dir,
-                                   const char*           attr,
-                                   uint32_t              max_imgs,
-                                   uint64_t              seed,
-                                   uint32_t              timeout,
-                                   const mdl_run_opts_t* opts)
+int mdl_app_run_page(const char*           url,
+                     const char*           out_dir,
+                     const char*           attr,
+                     uint32_t              max_imgs,
+                     uint64_t              seed,
+                     uint32_t              timeout,
+                     const mdl_run_opts_t* opts)
 {
   char out_abs[k_fw_fs_path_cap];
   if (!internal_prepare_output_dir(out_dir, out_abs)) {
     return 1;
   }
-  mdl_net_iface_t        net     = {};
-  mdl_net_curl_storage_t storage = {};
-  if (mdl_net_curl_init(&net, &storage, &opts->policy) != k_ra8_ok) {
+  mdl_net_iface_t net = {};
+  if (mdl_net_provider_open(opts->net, &opts->policy, &net) != k_ra8_ok) {
     internal_direct_latch(priv_mdl_stream_text(k_ra8_ok,
                                                priv_mdl_app_context()->diagnostic,
                                                "media_dl: network init failed\n"));
@@ -914,24 +871,7 @@ internal_pack_file_output(const char* dir, const char* ext, ra8_mdl_format_t for
   return (output_error == k_ra8_ok) ? 0 : 1;
 }
 
-/**
- * @brief Package an existing image directory in a supported format.
- * @details Canonicalizes the source, distinguishes directory-output JOF from
- *          file containers, and delegates to the bounded exporter workspace.
- * @param[in] dir Existing image directory.
- * @param[in] format Validated output format.
- * @return Process-style status.
- * @retval 0 Packaging completed successfully.
- * @retval 1 Path resolution or export failed.
- * @retval 2 The requested format is absent or invalid for pack mode.
- * @pre @p dir is non-NULL and NUL-terminated.
- * @pre ::priv_mdl_app_context()->export_ws is initialized.
- * @post Successful file containers use the canonical source path plus suffix.
- * @post Export errors are reported with their exact format.
- * @note Not thread-safe because it uses the shared exporter workspace.
- * @since 0.1.0
- */
-RA8_PRIV int priv_mdl_app_run_pack(const char* dir, ra8_mdl_format_t format)
+int mdl_app_run_pack(const char* dir, ra8_mdl_format_t format)
 {
   if ((format == k_ra8_mdl_format_loose) || (format == k_ra8_mdl_format_invalid)) {
     const ra8_err_t output_error = priv_mdl_stream_text(k_ra8_ok,
@@ -957,41 +897,4 @@ RA8_PRIV int priv_mdl_app_run_pack(const char* dir, ra8_mdl_format_t format)
     return internal_pack_directory_output(dir, ext, format);
   }
   return internal_pack_file_output(dir, ext, format);
-}
-
-/**
- * @brief Assemble a series-run descriptor from validated CLI state.
- * @details Binds pointer options and parsed numeric values into one immutable
- *          value passed through series, discovery, and library modes.
- * @param[in] a Parsed command-line arguments.
- * @param[in] format Validated output format.
- * @param[in] opts Validated run policy.
- * @param[in] n Validated numeric arguments.
- * @return Fully populated ::series_run_t value.
- * @retval series_run_t Value referencing the caller-owned argument storage.
- * @pre @p a, @p opts, and @p n are non-NULL.
- * @pre Referenced strings outlive all dispatched run functions.
- * @post The result contains no dynamic ownership.
- * @post Input objects remain unchanged.
- * @note Thread-safe for independent input objects.
- * @since 0.1.0
- */
-RA8_PRIV series_run_t priv_mdl_app_build_run(const mdl_args_t*     a,
-                                             ra8_mdl_format_t      format,
-                                             const mdl_run_opts_t* opts,
-                                             const mdl_nums_t*     n)
-{
-  return (series_run_t){.cfg_path     = a->cfg,
-                        .series_url   = a->series,
-                        .out_dir      = a->out,
-                        .cache_dir    = a->cache_dir,
-                        .format       = format,
-                        .combine      = !a->separate,
-                        .update       = a->update,
-                        .from_present = n->from_present,
-                        .from_num     = n->from_num,
-                        .chapters     = n->chapters,
-                        .seed         = n->seed,
-                        .timeout      = n->timeout,
-                        .opts         = opts};
 }
