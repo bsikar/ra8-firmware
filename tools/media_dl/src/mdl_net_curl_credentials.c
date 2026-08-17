@@ -46,7 +46,7 @@ typedef enum : uint8_t {
  */
 RA8_INTERNAL static char internal_ascii_lower(char value)
 {
-  return ((value >= 'A') && (value <= 'Z')) ? (char)(value - 'A' + 'a') : value;
+  return (char)(((value >= 'A') && (value <= 'Z')) ? (value - 'A' + 'a') : value);
 }
 
 /**
