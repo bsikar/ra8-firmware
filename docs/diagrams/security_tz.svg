@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 714" width="900" role="img" aria-label="Security and TrustZone -- the veneer is the whole seam. an arrow from A to B means files in A #include a header owned by B; the number is how many of A's files do so (counted across libs/, port/ and src/) down: ra8_nsc - to  ra8_hal (33), src - to  ra8_core (35), ra8_nsc - to  ra8_core (27), ra8_dfu - to  ra8_core (17)       ra8_ota - to  ra8_core (14), ra8_dfu - to  ra8_hal (8), ra8_psa_crypto - to  ra8_core (7), ra8_mpu - to  ra8_hal (2) in:   none -- no library outside this set includes a header owned by any of it The load-bearing number is not an internal one: ra8_nsc - to  ra8_hal (33). The veneers are thin on each other and thick on hardware, which is what a secure gateway should look like. The dashed edge is a real cycle -- ra8_nsc includes src/ key-vault headers while src/ includes the veneer header. Five internal edges across nine libraries; the grey four have none. Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are no-ops and consumers glob libs/ lib to /src/*.c into one object library, so there are no target_link_libraries edges to read.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 714" width="900" role="img" aria-label="Security and TrustZone -- the veneer is the whole seam. an arrow from A to B means files in A #include a header owned by B; the number is how many of A's files do so (counted across libs/, port/ and src/) down: ra8_nsc - to  ra8_hal (33), src - to  ra8_core (35), ra8_nsc - to  ra8_core (27), ra8_dfu - to  ra8_core (17)       ra8_ota - to  ra8_core (14), ra8_dfu - to  ra8_hal (8), ra8_psa_crypto - to  ra8_core (7), ra8_mpu - to  ra8_hal (2) in:   none -- no library outside this set includes a header owned by any of it The load-bearing number is not an internal one: ra8_nsc - to  ra8_hal (33). The veneers are thin on each other and thick on hardware, which is what a secure gateway should look like. The dashed edge closes a real cycle, and a deliberate one -- the veneers call into the src/ secure app (key vault, OTA commit) and src/ consumes the veneer contract header. Five internal edges across nine libraries; the grey four have none. Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are no-ops and consumers glob libs/ lib to /src/*.c into one object library, so there are no target_link_libraries edges to read.">
   <defs>
     <marker id="aInk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1b1f24"/></marker>
     <marker id="aAcc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0969da"/></marker>
@@ -22,6 +22,13 @@
     <line x1="370" y1="172" x2="460" y2="139" stroke="#1b1f24" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#aInk)"/>
     <rect x="434" y="140" width="12" height="12" fill="#fdfdfb"/>
     <text x="440" y="149" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
+    <!-- The cycle reads as a mistake unless the figure says otherwise, so the
+         explanation sits against the edge pair, not only in the footer. Kept
+         left of x=326: the wedge between the two arrows has no room, and any
+         leader into it would have to cross the solid edge. -->
+    <text x="322" y="130" text-anchor="end" fill="#1b1f24" font-size="9">mutual include -- a real cycle, and deliberate:</text>
+    <text x="322" y="144" text-anchor="end" fill="#1b1f24" font-size="9">the veneers call into the src/ secure app, and</text>
+    <text x="322" y="158" text-anchor="end" fill="#1b1f24" font-size="9">src/ consumes the veneer contract header.</text>
     <!-- ra8_tz_secure_boot -> ra8_dfu (1) : lands top edge x=450 -->
     <line x1="556" y1="224" x2="450" y2="257" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
     <rect x="504" y="232" width="12" height="12" fill="#fdfdfb"/>
@@ -61,9 +68,9 @@
     <text x="34" y="564" fill="#57606a" font-size="9">down: ra8_nsc -&gt; ra8_hal (33), src -&gt; ra8_core (35), ra8_nsc -&gt; ra8_core (27), ra8_dfu -&gt; ra8_core (17)</text>
     <text x="34" y="580" fill="#57606a" font-size="9">      ra8_ota -&gt; ra8_core (14), ra8_dfu -&gt; ra8_hal (8), ra8_psa_crypto -&gt; ra8_core (7), ra8_mpu -&gt; ra8_hal (2)</text>
     <text x="34" y="596" fill="#57606a" font-size="9">in:   none -- no library outside this set includes a header owned by any of it</text>
-    <text x="24" y="624" fill="#57606a" font-size="9">The load-bearing number is not an internal one: ra8_nsc -&gt; ra8_hal (33). The veneers are thin on each other and thick on</text>
-    <text x="24" y="640" fill="#57606a" font-size="9">hardware, which is what a secure gateway should look like. The dashed edge is a real cycle -- ra8_nsc includes src/ key-vault</text>
-    <text x="24" y="656" fill="#57606a" font-size="9">headers while src/ includes the veneer header. Five internal edges across nine libraries; the grey four have none.</text>
+    <text x="24" y="624" fill="#57606a" font-size="9">The load-bearing number is not an internal one: ra8_nsc -&gt; ra8_hal (33). The veneers are thin on each other and thick on hardware, which is</text>
+    <text x="24" y="640" fill="#57606a" font-size="9">what a secure gateway should look like. The dashed edge closes a real cycle, and a deliberate one -- the veneers call into the src/ secure</text>
+    <text x="24" y="656" fill="#57606a" font-size="9">app (key vault, OTA commit) and src/ consumes the veneer contract header. Five internal edges across nine libraries; the grey four have none.</text>
     <text x="24" y="672" fill="#57606a" font-size="9">Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are</text>
     <text x="24" y="688" fill="#57606a" font-size="9">no-ops and consumers glob libs/&lt;lib&gt;/src/*.c into one object library, so there are no target_link_libraries edges to read.</text>
   </g>
