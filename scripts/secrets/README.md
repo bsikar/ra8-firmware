@@ -1,4 +1,4 @@
-# scripts/secrets/ -- credential handling
+# scripts/secrets
 
 Everything here touches key material. The dividing line that governs the whole
 directory:
@@ -13,12 +13,8 @@ arrive from stdin, from an operator-owned file, or from OpenBao itself.
 
 ## OpenBao
 
-The vault every other part of the rig reads credentials from at run time: the
-GitHub PAT the CI runner roles register with, the Tapo smart-plug credentials
-the HIL power control uses, and the whole bench-LAN credential set behind
-`infra/network/`.
-
-`infra/ansible/roles/openbao` deploys it and stops. The three steps below
+The vault every other part of the rig reads its credentials from at run time.
+`infra/ansible/roles/openbao` deploys it and stops; the three steps below
 produce or handle secrets and are therefore manual, in this order.
 
 ### 1. Initialise (once, ever)
@@ -32,8 +28,8 @@ chmod 600 ~/.openbao/init.json
 `init.json` holds the Shamir unseal keys **and** the root token. It is the one
 file whose loss is unrecoverable -- that is what a Shamir seal means, and no
 backup of the vault's data substitutes for it. Keep it at mode 0600, outside
-every checkout, and back it up somewhere that is not this repository and not
-the same machine.
+every checkout, and back it up somewhere that is neither this repository nor the
+same machine.
 
 It must never be committed. `infra/.gitignore` and the repo's pre-commit gates
 are a safety net, not the control: the control is that it lives in `~/.openbao`
@@ -66,12 +62,10 @@ The consumer then reads them through `openbao_client.py` with a
 `~/.config/hil/openbao.env` (mode 0600) naming `BAO_ADDR`, `BAO_KV_MOUNT`,
 `BAO_SECRET_PATH`, `ROLE_ID` and `SECRET_ID`.
 
-### What is deliberately not here
-
-Peer onboarding (a `userpass` login plus a per-person AppRole scoped to a
-read-only policy) is still a hand-run script on the vault node. It is a rare,
-interactive, one-person-at-a-time operation whose output is a password, so it
-has not been pulled in; the two scripts above are the ones the rig cannot be
+Peer onboarding -- a `userpass` login plus a per-person AppRole scoped to a
+read-only policy -- is deliberately not here. It is a rare, interactive,
+one-person-at-a-time operation whose output is a password, so it stays a
+hand-run script on the vault node; the two above are the ones the rig cannot be
 rebuilt without.
 
 ## Root of Trust
