@@ -2,7 +2,7 @@
 
 SRAM ECC **fault-injection + detection** demo for the EK-RA8D2 (issue #130).
 
-Where [`ecc_monitor_demo`](../ecc_monitor_demo/) only brings ECC up and reads a
+Where [`ecc_monitor_demo`](../../hw_validated/hil/ecc_monitor_demo/) only brings ECC up and reads a
 (clean) status, this demo closes the loop the SIL-3 / DAL-B bar cares about: it
 **deliberately provokes** a memory error and proves the hardware-error path
 latches it.
