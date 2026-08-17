@@ -525,10 +525,10 @@ typedef struct ra8_c6link {
   uint32_t               arena_used;  /**< Bump offset into `arena`.    */
   uint32_t               arena_last;  /**< Newest live block's offset plus one,
                                            or zero when there is none.         */
-  uint32_t               next_uid;    /**< UID for the next request issued.   */
-  ra8_c6link_wait_t      wait;        /**< The outstanding request, if any.   */
-  ra8_c6link_fault_t     fault;       /**< The last failing request.          */
-  ra8_c6link_stats_t*    stats;       /**< Counters for the running pump.     */
+  uint32_t               next_uid;    /**< UID for the next request issued. */
+  ra8_c6link_wait_t      wait;        /**< The outstanding request, if any. */
+  ra8_c6link_fault_t     fault;       /**< The last failing request.        */
+  ra8_c6link_stats_t*    stats;       /**< Counters for the running pump.   */
   /* tx_len/tx_if/open/boot_seen sit AFTER the two DMA-aligned frame buffers
      and mdl_request, not beside the other bookkeeping fields above: the
      bookkeeping ahead of `tx` already sums to an exact multiple of

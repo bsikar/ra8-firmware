@@ -42,8 +42,8 @@
  * @see create_empty_files()
  */
 typedef enum : uint8_t {
-  k_fill_subdir_files   = 14U, /**< Files that fill /SUB's first sector.  */
-  k_fill_spc2_sub_files = 15U, /**< ...plus one in its second sector.     */
+  k_fill_subdir_files   = 14U, /**< Files that fill /SUB's first sector. */
+  k_fill_spc2_sub_files = 15U, /**< ...plus one in its second sector.    */
 } dir_list_fill_t;
 
 /* ===========================================================================
