@@ -320,10 +320,32 @@ RA8_INTERNAL static ra8_err_t internal_jof_produce_page(const uint8_t*          
  * @note Not thread-safe for a shared workspace or destination.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_jof_one(mdl_storage_t*          storage,
-                                               const char*             in_path,
-                                               const char*             out_path,
-                                               mdl_export_workspace_t* ws)
+/**
+ * @brief Stat, bound-check, arena-claim, and slurp one source image.
+ * @details Requires a non-empty regular file within ::k_jof_source_cap,
+ *          claims exactly that many bytes from @p ws, and reads the complete
+ *          source into the claimed span.
+ * @param[in,out] storage Injected portable storage and transaction provider.
+ * @param[in] in_path NUL-terminated verified source image path.
+ * @param[in,out] ws Exclusive caller-owned export workspace to claim from.
+ * @param[out] out_src Claimed and filled source buffer on success.
+ * @param[out] out_slen Exact byte length read into @p out_src on success.
+ * @return Stat-claim-slurp status.
+ * @retval k_ra8_ok @p out_src holds @p out_slen valid source bytes.
+ * @retval k_ra8_err_not_found @p in_path does not exist.
+ * @retval k_ra8_err_invalid_arg @p in_path is not a regular non-empty file.
+ * @retval k_ra8_err_invalid_size The source or arena bound was exceeded.
+ * @retval other The stat or slurp call failed.
+ * @pre @p storage, @p in_path, @p ws, @p out_src, and @p out_slen are non-NULL.
+ * @post On failure @p ws retains whatever partial claim it already made.
+ * @note Not thread-safe for a shared workspace.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_jof_load_source(mdl_storage_t*          storage,
+                                                       const char*             in_path,
+                                                       mdl_export_workspace_t* ws,
+                                                       uint8_t**               out_src,
+                                                       size_t*                 out_slen)
 {
   fw_fs_stat_t stat = {};
   ra8_err_t    rc   = fw_fs_stat(&storage->fs->names, in_path, &stat);
@@ -343,8 +365,22 @@ RA8_INTERNAL static ra8_err_t internal_jof_one(mdl_storage_t*          storage,
   if (src == nullptr) {
     return k_ra8_err_invalid_size;
   }
-  size_t slen = 0U;
-  rc          = priv_mdl_export_source_slurp(storage, in_path, src, (size_t)stat.size_bytes, &slen);
+  rc = priv_mdl_export_source_slurp(storage, in_path, src, (size_t)stat.size_bytes, out_slen);
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+  *out_src = src;
+  return k_ra8_ok;
+}
+
+RA8_INTERNAL static ra8_err_t internal_jof_one(mdl_storage_t*          storage,
+                                               const char*             in_path,
+                                               const char*             out_path,
+                                               mdl_export_workspace_t* ws)
+{
+  uint8_t*  src  = nullptr;
+  size_t    slen = 0U;
+  ra8_err_t rc   = internal_jof_load_source(storage, in_path, ws, &src, &slen);
   if (rc != k_ra8_ok) {
     return rc;
   }
