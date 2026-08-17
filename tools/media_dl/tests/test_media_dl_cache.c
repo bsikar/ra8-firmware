@@ -151,10 +151,10 @@ RA8_INTERNAL static ra8_err_t internal_script_fetch(void*                context
   if ((step->status >= 200L) && (step->status <= 299L)) {
     const char*  body  = (step->body != nullptr) ? step->body : "";
     const size_t bytes = strlen(body);
-    if ((bytes == 0U) || (bytes > capacity)) {
+    if ((bytes == 0U) || ((bytes + 1U) > capacity)) {
       return k_ra8_err_invalid_size;
     }
-    memcpy(buffer, body, bytes);
+    memcpy(buffer, body, bytes + 1U);
     *out_length = bytes;
   }
   return k_ra8_ok;

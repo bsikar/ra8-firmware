@@ -354,7 +354,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_state_paths(const mdl_storage_t* stor
     return k_ra8_err_invalid_size;
   }
   memcpy(base, path, length + 1U);
-  memcpy(alternate, path, length);
+  memcpy(alternate, path, length + 1U);
   memcpy(&alternate[length], ".alt", (size_t)k_state_alt_suffix + 1U);
   return fw_fs_path_validate(&storage->fs->caps, alternate);
 }
