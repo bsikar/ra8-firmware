@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 698" width="900" role="img" aria-label="Security and TrustZone -- the veneer is the whole seam. coupling derived from #include edges between libs/, port/ and src/; the number on an arrow is how many files carry it down: ra8_nsc - to  ra8_hal (33), src - to  ra8_core (35), ra8_nsc - to  ra8_core (27), ra8_dfu - to  ra8_core (17)       ra8_ota - to  ra8_core (14), ra8_dfu - to  ra8_hal (8), ra8_psa_crypto - to  ra8_core (7), ra8_mpu - to  ra8_hal (2) in:   none -- no library outside this set includes a header owned by any of it The load-bearing number is not an internal one: ra8_nsc - to  ra8_hal (33). The veneers are thin on each other and thick on hardware, which is what a secure gateway should look like. The dashed edge is a real cycle -- ra8_nsc includes src/ key-vault headers while src/ includes the veneer header. Five internal edges across nine libraries; the grey four have none. Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are">
+  <defs>
+    <marker id="aInk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1b1f24"/></marker>
+    <marker id="aAcc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0969da"/></marker>
+    <marker id="aGrn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a7f37"/></marker>
+    <marker id="aWrm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#bc4c00"/></marker>
+  </defs>
+  <rect x="0" y="0" width="900" height="698" fill="#fdfdfb"/>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
+    <text x="24" y="32" fill="#1b1f24" font-size="14" font-weight="bold">Security and TrustZone -- the veneer is the whole seam</text>
+    <text x="24" y="52" fill="#57606a" font-size="9">coupling derived from #include edges between libs/, port/ and src/; the number on an arrow is how many files carry it</text>
+    <rect x="20" y="70" width="860" height="434" rx="8" fill="none" stroke="#aeb4bb" stroke-width="1.2"/>
+    <line x1="450" y1="140" x2="344" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="386" y="158" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
+    <line x1="450" y1="140" x2="556" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="514" y="158" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
+    <line x1="396" y1="170" x2="502" y2="140" stroke="#1b1f24" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#aInk)"/>
+    <text x="460" y="158" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
+    <line x1="556" y1="226" x2="450" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="514" y="244" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
+    <line x1="450" y1="312" x2="450" y2="342" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="438" y="330" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
+    <rect x="351" y="86" width="197" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="450" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">src/ (secure app)</text>
+    <text x="450" y="126" text-anchor="middle" fill="#57606a" font-size="9">key vault, NS entry</text>
+    <rect x="246" y="172" width="197" height="52" rx="5" fill="#fdfdfb" stroke="#1a7f37" stroke-width="1.4"/>
+    <text x="344" y="196" text-anchor="middle" fill="#1a7f37" font-size="10">ra8_nsc</text>
+    <text x="344" y="212" text-anchor="middle" fill="#57606a" font-size="9">NSC veneers</text>
+    <rect x="457" y="172" width="197" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="556" y="196" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_tz_secure_boot</text>
+    <text x="556" y="212" text-anchor="middle" fill="#57606a" font-size="9">CPU0 bring-up</text>
+    <rect x="351" y="258" width="197" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="450" y="282" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_dfu</text>
+    <text x="450" y="298" text-anchor="middle" fill="#57606a" font-size="9">DFU + root of trust</text>
+    <rect x="351" y="344" width="197" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="450" y="368" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_psa_crypto</text>
+    <text x="450" y="384" text-anchor="middle" fill="#57606a" font-size="9">PSA facade</text>
+    <rect x="35" y="430" width="197" height="52" rx="5" fill="#fdfdfb" stroke="#57606a" stroke-width="1.4"/>
+    <text x="134" y="454" text-anchor="middle" fill="#57606a" font-size="10">ra8_ota</text>
+    <text x="134" y="470" text-anchor="middle" fill="#57606a" font-size="9">update orchestration</text>
+    <rect x="246" y="430" width="197" height="52" rx="5" fill="#fdfdfb" stroke="#57606a" stroke-width="1.4"/>
+    <text x="344" y="454" text-anchor="middle" fill="#57606a" font-size="10">ra8_mpu</text>
+    <text x="344" y="470" text-anchor="middle" fill="#57606a" font-size="9">MPU config</text>
+    <rect x="457" y="430" width="197" height="52" rx="5" fill="#fdfdfb" stroke="#57606a" stroke-width="1.4"/>
+    <text x="556" y="454" text-anchor="middle" fill="#57606a" font-size="10">ra8_devcfg</text>
+    <text x="556" y="470" text-anchor="middle" fill="#57606a" font-size="9">per-unit record</text>
+    <rect x="668" y="430" width="197" height="52" rx="5" fill="#fdfdfb" stroke="#57606a" stroke-width="1.4"/>
+    <text x="766" y="454" text-anchor="middle" fill="#57606a" font-size="10">ra8_tls</text>
+    <text x="766" y="470" text-anchor="middle" fill="#57606a" font-size="9">Mbed TLS facade</text>
+    <rect x="20" y="528" width="860" height="74" rx="6" fill="none" stroke="#aeb4bb" stroke-width="1" stroke-dasharray="5 3"/>
+    <text x="34" y="546" fill="#1b1f24" font-size="10" font-weight="bold">seams to the rest of the tree</text>
+    <text x="34" y="564" fill="#57606a" font-size="9">down: ra8_nsc -&gt; ra8_hal (33), src -&gt; ra8_core (35), ra8_nsc -&gt; ra8_core (27), ra8_dfu -&gt; ra8_core (17)</text>
+    <text x="34" y="580" fill="#57606a" font-size="9">      ra8_ota -&gt; ra8_core (14), ra8_dfu -&gt; ra8_hal (8), ra8_psa_crypto -&gt; ra8_core (7), ra8_mpu -&gt; ra8_hal (2)</text>
+    <text x="34" y="596" fill="#57606a" font-size="9">in:   none -- no library outside this set includes a header owned by any of it</text>
+    <text x="24" y="624" fill="#57606a" font-size="9">The load-bearing number is not an internal one: ra8_nsc -&gt; ra8_hal (33). The veneers are thin on each other and thick on</text>
+    <text x="24" y="640" fill="#57606a" font-size="9">hardware, which is what a secure gateway should look like. The dashed edge is a real cycle -- ra8_nsc includes src/ key-vault</text>
+    <text x="24" y="656" fill="#57606a" font-size="9">headers while src/ includes the veneer header. Five internal edges across nine libraries; the grey four have none.</text>
+    <text x="24" y="672" fill="#57606a" font-size="9">Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are</text>
+  </g>
+</svg>

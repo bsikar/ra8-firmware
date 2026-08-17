@@ -35,6 +35,24 @@ under `ra8_core` includes a header owned by another library. Full ring numbering
 and the `{World: S/NS/NSC}` TrustZone tag every Ring-3+ file carries are in
 [`docs/RING_AND_WORLD.md`](../docs/RING_AND_WORLD.md).
 
+## Coupling maps
+
+Who actually includes whom, derived from the `#include` edges between `libs/`, `port/`
+and `src/` -- not from the CMake graph, which cannot answer it (every
+`libs/*/CMakeLists.txt` is a no-op and consumers glob the sources into one object
+library). The number on each arrow is how many files carry that edge.
+
+- [I/O fabric](../docs/diagrams/io_fabric.svg) -- `ra8_io` and the adapters above it, down to `ra8_fs` and the SD driver.
+- [Book pipeline](../docs/diagrams/book_pipeline.svg) -- EPUB and comics into a paged container -- the densest cluster in the tree.
+- [Display and render](../docs/diagrams/display_render.svg) -- The widget/reflow stack, and the display PAL that shares no edge with it.
+- [Networking](../docs/diagrams/networking.svg) -- Everything converging on `ra8_c6link`, the one boundary to the radio.
+- [Memory hierarchy](../docs/diagrams/memory_hierarchy.svg) -- Arenas and caches, and the libraries that reach for them.
+- [Security and TrustZone](../docs/diagrams/security_tz.svg) -- The NSC veneers, the secure app, and the DFU/root-of-trust chain.
+- [Audio and camera](../docs/diagrams/audio_camera.svg) -- Sparse on purpose: the transports arrive as injected vtables.
+
+The whole system, cores and all, is in
+[`docs/diagrams/system_map.svg`](../docs/diagrams/system_map.svg).
+
 ## The libraries
 
 `ls libs/` is the registry; the grouping below is a reading aid, and each
