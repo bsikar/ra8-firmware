@@ -159,8 +159,10 @@ complete filename.
   dispatchers, so swapping backends -- or a scripted mock in the host tests --
   is a vtable substitution, never a relink (NASA Rule 9 DIP deviation).
 - `mdl_net_curl.{h,c}` -- the concrete libcurl backend, registered through the
-  seam. `mdl_net_curl.h` (included only by the composition root, `main.c`) is
-  the ONE place that names the backend; every other layer sees only `mdl_net.h`.
+  seam. `mdl_net_curl.h` (included only by this form's composition file,
+  `mdl_compose.c`) is the ONE place that names the backend; every other layer
+  reaches it through `mdl_net_provider_t`, the injected factory, and sees only
+  `mdl_net.h`.
   libcurl gives TLS, redirects, gzip and one reused connection with a persistent
   cookie jar. On the RA8 this becomes NetX Duo + Mbed TLS over the C6; callers do
   not change. The backend is hardened for attacker-controlled URLs: transport
@@ -176,7 +178,17 @@ complete filename.
 - `mdl_robots.{h,c}` -- robots.txt parser (most-specific `User-agent` group,
   longest-match `Allow`/`Disallow`, `Crawl-delay`) + a per-host cache.
 - `mdl_session.{h,c}` -- honest configurable User-Agent + robots.txt gating.
-- `mdl_cli.{h,c}` -- command-line parsing.
+- `mdl_cli.{h,c}` -- command-line parsing. It exists only because this form has
+  a command line, so it lives in the form and nothing below it can see it.
+- `mdl_app.{h,c}` + `mdl_app_*.c` -- the **application layer**: one entry point
+  per run mode (series, list, remove, update-all, discover, verify, init-site,
+  pack, artifact, page) over the injected transport, storage and stream seams.
+  These are the downloader DOING something, as opposed to a CLI asking for it,
+  so they sit with the downloader rather than with either build form.
+- `mdl_compose.c` -- this form's composition: it binds libcurl into
+  `mdl_net_provider_t`, and translates one validated `mdl_args_t` plus the mode
+  `mdl_cli_validate` chose into a call on one `mdl_app.h` entry point. It is
+  the only file where the argv grammar and the application layer meet.
 - `mdl_extract.{h,c}` -- `<img>`/`<a>` tag scanner + relative-URL resolver.
   Replaced on-device by litehtml (already vendored) behind the same signatures.
 - `mdl_config.{h,c}` -- strict flat key=value **site descriptor** loader. Adding
