@@ -63,6 +63,33 @@ RA8_INTERNAL static ra8_err_t internal_ceu_get_info(void* ctx, ra8_camera_source
 }
 
 /**
+ * @brief Derive the captured byte count for one completed CPE event.
+ * @details A fixed-frame capture always reports the configured bound; a
+ * data-enable capture reports CDSSR when the peripheral latched a nonzero
+ * value and falls back to the configured bound otherwise.
+ * @param[in] state Initialized caller-owned CEU backend state.
+ * @param[in] status Status snapshot that observed the completion event.
+ * @param[out] out_bytes Captured byte count for this completion.
+ * @pre @p state is initialized and @p status observed `k_ra8_ceu_evt_cpe`.
+ * @pre @p out_bytes points to writable storage.
+ * @post @p out_bytes holds exactly the byte count this rule prescribes.
+ * @post Neither @p state nor CEU hardware is touched.
+ * @note Not thread-safe with respect to @p state.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_ceu_frame_bytes(const ra8_camera_source_ceu_state_t* state,
+                                                  const ra8_ceu_status_t*              status,
+                                                  uint32_t*                            out_bytes)
+{
+  *out_bytes = state->info.frame_bytes_max;
+  if (state->capture_format == k_ra8_ceu_fmt_data_enable) {
+    if (status->data_size != 0U) {
+      *out_bytes = status->data_size;
+    }
+  }
+}
+
+/**
  * @brief Poll bounded CEU status until completion, error, or timeout.
  * @details Accumulates diagnostics while waiting for completion. Sync-timing
  * events can precede a valid CPE and therefore do not terminate the capture;
@@ -103,12 +130,7 @@ RA8_INTERNAL static ra8_err_t internal_ceu_wait_for_frame(ra8_camera_source_ceu_
       return k_ra8_err_hw_error;
     }
     if ((status.events & (uint32_t)k_ra8_ceu_evt_cpe) != 0U) {
-      *out_bytes = state->info.frame_bytes_max;
-      if (state->capture_format == k_ra8_ceu_fmt_data_enable) {
-        if (status.data_size != 0U) {
-          *out_bytes = status.data_size;
-        }
-      }
+      internal_ceu_frame_bytes(state, &status, out_bytes);
       (void)ra8_ceu_clear_status(state->last_events);
       return k_ra8_ok;
     }
@@ -219,22 +241,25 @@ static const ra8_camera_source_iface_t s_ceu_source_iface = {
   .capture  = internal_ceu_capture,
 };
 
-/* See the public header for the documented contract. */
-ra8_err_t ra8_camera_source_ceu_init(ra8_camera_source_t*               source,
-                                     ra8_camera_source_ceu_state_t*     state,
-                                     const ra8_camera_source_ceu_cfg_t* cfg)
+/**
+ * @brief Validate CEU capture-source configuration bounds and format pairing
+ * @details Rejects zero geometry or polling bounds, a capture-format and
+ * output-format pairing that disagrees about JPEG framing, and (for JPEG)
+ * a non-zero row stride or an image-area size that does not match the
+ * caller's declared maximum frame size.
+ * @param[in] cfg Candidate CEU capture-source configuration.
+ * @return Error code.
+ * @retval k_ra8_ok Every bound and format pairing is valid.
+ * @retval k_ra8_err_invalid_arg A bound is zero or a format pairing disagrees.
+ * @pre @p cfg is non-null.
+ * @pre No hardware state has been touched by this call.
+ * @post @p cfg is unchanged.
+ * @post Neither backend state nor CEU hardware is touched.
+ * @note Thread-safe; reads only the caller-owned configuration.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_ceu_cfg_valid(const ra8_camera_source_ceu_cfg_t* cfg)
 {
-  if (source == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (state == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (cfg == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  *source = (ra8_camera_source_t){};
-  *state  = (ra8_camera_source_ceu_state_t){};
   if (cfg->output.frame_bytes_max == 0U) {
     return k_ra8_err_invalid_arg;
   }
@@ -261,6 +286,29 @@ ra8_err_t ra8_camera_source_ceu_init(ra8_camera_source_t*               source,
     if (cfg->ceu.image_area_size != cfg->output.frame_bytes_max) {
       return k_ra8_err_invalid_arg;
     }
+  }
+  return k_ra8_ok;
+}
+
+/* See the public header for the documented contract. */
+ra8_err_t ra8_camera_source_ceu_init(ra8_camera_source_t*               source,
+                                     ra8_camera_source_ceu_state_t*     state,
+                                     const ra8_camera_source_ceu_cfg_t* cfg)
+{
+  if (source == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (state == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (cfg == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  *source                   = (ra8_camera_source_t){};
+  *state                    = (ra8_camera_source_ceu_state_t){};
+  const ra8_err_t cfg_valid = internal_ceu_cfg_valid(cfg);
+  if (cfg_valid != k_ra8_ok) {
+    return cfg_valid;
   }
   ra8_err_t err = ra8_ceu_init(&cfg->ceu);
   if (err != k_ra8_ok) {

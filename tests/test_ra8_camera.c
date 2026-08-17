@@ -523,6 +523,12 @@ static void test_jpeg_passthrough(void)
   TEST_END("camera JPEG passthrough");
 }
 
+/** @brief Forward declaration: see the definition below for the full contract. */
+RA8_INTERNAL static void internal_test_jpeg_sw_backend_more(ra8_camera_codec_t*        codec,
+                                                            const ra8_camera_frame_t*  input,
+                                                            const ra8_camera_buffer_t* output,
+                                                            uint8_t*                   jpeg);
+
 /**
  * @brief Verify software JPEG encoding for RGB and UYVY input.
  * @details Confirms output markers, configured dimensions, and small-buffer failure.
@@ -562,6 +568,20 @@ static void test_jpeg_sw_backend(void)
   TEST_ASSERT_EQ(k_t_output_width, width);
   TEST_ASSERT_EQ(k_t_output_height, height);
 
+  internal_test_jpeg_sw_backend_more(&codec, &input, &output, jpeg);
+  TEST_END("camera software JPEG backend");
+}
+
+/** @brief Encode UYVY input and prove an undersized output is refused. @details Performs one bounded, deterministic operation for this host test. @param[in,out] codec Bound software JPEG codec under test. @param[in] input RGB frame reused by the undersized-buffer vector. @param[in] output Full-capacity output buffer used for the UYVY encode. @param[in] jpeg Backing storage for both @p output and the tiny buffer. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_jpeg_sw_backend_more(ra8_camera_codec_t*        codec,
+                                                            const ra8_camera_frame_t*  input,
+                                                            const ra8_camera_buffer_t* output,
+                                                            uint8_t*                   jpeg)
+{
+  ra8_camera_frame_t encoded = {};
+  uint16_t           width   = 0U;
+  uint16_t           height  = 0U;
+
   uint8_t uyvy[(size_t)k_t_uyvy_bytes] = {};
   for (uint32_t i = 0U; i < (uint32_t)sizeof uyvy; i += 4U) {
     uyvy[i]      = 128U;
@@ -575,15 +595,14 @@ static void test_jpeg_sw_backend(void)
                                          .width        = (uint16_t)k_t_width,
                                          .height       = (uint16_t)k_t_height,
                                          .format       = k_ra8_camera_format_uyvy422};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_camera_codec_encode(&codec, &uyvy_input, &output, &encoded));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_camera_codec_encode(codec, &uyvy_input, output, &encoded));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_jpeg_sw_get_dimensions(jpeg, encoded.bytes, &width, &height));
   TEST_ASSERT_EQ(k_t_output_width, width);
   TEST_ASSERT_EQ(k_t_output_height, height);
 
   const ra8_camera_buffer_t tiny = {jpeg, 4U};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_camera_codec_encode(&codec, &input, &tiny, &encoded));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_camera_codec_encode(codec, input, &tiny, &encoded));
   TEST_ASSERT_NULL(encoded.data);
-  TEST_END("camera software JPEG backend");
 }
 
 /**
@@ -957,6 +976,8 @@ static void test_jpeg_sw_color_clamp(void)
  * libs/ra8_camera/src/ra8_camera_codec_jpeg_sw.c@ra8_camera_codec_jpeg_sw_init,
  * libs/ra8_camera/src/ra8_camera_codec_passthrough.c@internal_passthrough_encode,
  * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_capture,
+ * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_cfg_valid,
+ * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_frame_bytes,
  * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_get_info,
  * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_wait_for_frame,
  * libs/ra8_camera/src/ra8_camera_source_ceu.c@ra8_camera_source_ceu_init,
