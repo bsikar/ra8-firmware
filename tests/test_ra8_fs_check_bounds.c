@@ -82,9 +82,9 @@ static void internal_test_check_fat16_exact_bound_dir_tail(void)
   const uint32_t cbytes = h->sectors_per_cluster * (uint32_t)k_fmt_block_size;
   for (uint32_t i = 0U; i < (uint32_t)k_chk_bound_clusters; i++) {
     const uint32_t cluster = first + i;
-    const uint32_t base =
-      (h->partition_base_lba + h->first_data_lba + (i * h->sectors_per_cluster)) *
-      (uint32_t)k_fmt_block_size;
+    const uint32_t base    = (uint32_t)((h->partition_base_lba + h->first_data_lba +
+                                         ((uint64_t)i * h->sectors_per_cluster)) *
+                                        (uint64_t)k_fmt_block_size);
     memset(&s_disk.bytes[base], (int)k_chk_fat_deleted, cbytes);
     const uint16_t next = (i + 1U < (uint32_t)k_chk_bound_clusters) ? (uint16_t)(cluster + 1U)
                                                                     : (uint16_t)k_chk_eoc_fat16;
