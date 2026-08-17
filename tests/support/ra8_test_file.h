@@ -638,6 +638,62 @@ internal_ra8_test_file_verify_identity(const ra8_test_file_ops_t* ops,
  * @pre Scalar arguments satisfy the bounds asserted by this test helper.
  * @note Test-only helper with no production ABI.
 */
+/**
+ * @brief Stat, validate, read, and verify an already-open regular fixture.
+ * @details Stats the descriptor and rejects a non-regular or oversized file,
+ * rejects a required size beyond the caller's supplied capacity or an
+ * overlapping destination/staging span, reads exactly `result->required`
+ * bytes into @p staging, probes for a stable EOF, and re-stats to detect a
+ * concurrent mutation. Every stage after the first failure is a no-op.
+ * @param[in] ops Complete caller-owned operation table.
+ * @param[in] descriptor Already-open descriptor being validated and read.
+ * @param[in] destination Destination span, used only for the overlap check.
+ * @param[in,out] staging Distinct caller-owned read staging area.
+ * @param[in,out] result In: `status == k_ra8_test_file_ok` and `supplied`
+ * capacity. Out: `required`, staged bytes in @p staging, and terminal status.
+ * @return Nothing; every outcome is reported through @p result.
+ * @pre @p descriptor is open and owned by this call.
+ * @pre @p result->status is `k_ra8_test_file_ok` on entry.
+ * @post @p result->status names the first failing stage, if any.
+ * @post Success leaves the read bytes staged in @p staging, not yet committed
+ * to @p destination.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static inline void internal_test_file_validate_and_read(const ra8_test_file_ops_t* ops,
+                                                                     int            descriptor,
+                                                                     const uint8_t* destination,
+                                                                     uint8_t*       staging,
+                                                                     ra8_test_file_result_t* result)
+{
+  struct stat before = {};
+  if (internal_ra8_test_file_stat(ops, descriptor, &before) != 0) {
+    internal_ra8_test_file_fail(result, k_ra8_test_file_error, errno);
+  } else if (!S_ISREG(before.st_mode)) {
+    internal_ra8_test_file_fail(result, k_ra8_test_file_nonregular, 0);
+  } else if ((before.st_size < 0) || ((uintmax_t)before.st_size > (uintmax_t)SIZE_MAX)) {
+    internal_ra8_test_file_fail(result, k_ra8_test_file_invalid, 0);
+  } else {
+    result->required = (size_t)before.st_size;
+  }
+  if ((result->status == k_ra8_test_file_ok) && (result->required > result->supplied)) {
+    internal_ra8_test_file_fail(result, k_ra8_test_file_capacity, 0);
+  }
+  if ((result->status == k_ra8_test_file_ok) &&
+      !internal_ra8_test_file_spans_valid(destination, staging, result->required)) {
+    internal_ra8_test_file_fail(result, k_ra8_test_file_invalid, 0);
+  }
+  if (result->status == k_ra8_test_file_ok) {
+    internal_ra8_test_file_read_exact(ops, descriptor, staging, result->required, result);
+  }
+  if (result->status == k_ra8_test_file_ok) {
+    internal_ra8_test_file_probe_eof(ops, descriptor, result->required, result);
+  }
+  if ((result->status == k_ra8_test_file_ok) || (result->status == k_ra8_test_file_capacity)) {
+    internal_ra8_test_file_verify_identity(ops, descriptor, &before, result);
+  }
+}
+
 RA8_INTERNAL static inline ra8_test_file_result_t
 internal_test_file_read_with_ops(const ra8_test_file_ops_t* ops,
                                  const char*                path,
@@ -664,32 +720,7 @@ internal_test_file_read_with_ops(const ra8_test_file_ops_t* ops,
     internal_ra8_test_file_fail(&result, k_ra8_test_file_error, errno);
     return result;
   }
-  struct stat before = {};
-  if (internal_ra8_test_file_stat(ops, descriptor, &before) != 0) {
-    internal_ra8_test_file_fail(&result, k_ra8_test_file_error, errno);
-  } else if (!S_ISREG(before.st_mode)) {
-    internal_ra8_test_file_fail(&result, k_ra8_test_file_nonregular, 0);
-  } else if ((before.st_size < 0) || ((uintmax_t)before.st_size > (uintmax_t)SIZE_MAX)) {
-    internal_ra8_test_file_fail(&result, k_ra8_test_file_invalid, 0);
-  } else {
-    result.required = (size_t)before.st_size;
-  }
-  if ((result.status == k_ra8_test_file_ok) && (result.required > result.supplied)) {
-    internal_ra8_test_file_fail(&result, k_ra8_test_file_capacity, 0);
-  }
-  if ((result.status == k_ra8_test_file_ok) &&
-      !internal_ra8_test_file_spans_valid(destination, staging, result.required)) {
-    internal_ra8_test_file_fail(&result, k_ra8_test_file_invalid, 0);
-  }
-  if (result.status == k_ra8_test_file_ok) {
-    internal_ra8_test_file_read_exact(ops, descriptor, staging, result.required, &result);
-  }
-  if (result.status == k_ra8_test_file_ok) {
-    internal_ra8_test_file_probe_eof(ops, descriptor, result.required, &result);
-  }
-  if ((result.status == k_ra8_test_file_ok) || (result.status == k_ra8_test_file_capacity)) {
-    internal_ra8_test_file_verify_identity(ops, descriptor, &before, &result);
-  }
+  internal_test_file_validate_and_read(ops, descriptor, destination, staging, &result);
   internal_ra8_test_file_close(ops, descriptor, &result);
   if (result.status == k_ra8_test_file_ok) {
     if (result.required != 0U) {
