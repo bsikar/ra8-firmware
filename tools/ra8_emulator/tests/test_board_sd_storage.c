@@ -21,7 +21,7 @@
 #include "emu_host_io_internal.h"
 
 /** @brief Test-owned card state normally supplied by the protocol TU. */
-board_sd_state_t local_sd = {.image_fd = -1};
+board_sd_state_t g_board_sd = {.image_fd = -1};
 
 /** @brief Force positioned writes to fail when set. */
 RA8_INTERNAL static bool s_fail_pwrite;
@@ -285,7 +285,7 @@ RA8_INTERNAL static bool internal_test_formats_and_zero(void)
       return false;
     }
   }
-  return !priv_board_sd_storage_read(local_sd.image_len, block, 1U);
+  return !priv_board_sd_storage_read(g_board_sd.image_len, block, 1U);
 }
 
 /**

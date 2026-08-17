@@ -56,8 +56,8 @@ void board_usb_roles_swap(uc_engine* uc)
    * FS host driver's first window write is the SYSCFG.DCFM=1 that triggers
    * this swap, and the HS DPRPU=1 trigger fires before any FS host activity). */
   (void)board_usbhs_host_shadow_handoff(s_usb.reg, (uint32_t)k_usb_reg_words);
-  s_roles_swapped     = true;
-  local_dev_irq_event = (uint16_t)k_ra8_elc_event_usbhs_int_resume;
+  s_roles_swapped = true;
+  g_dev_irq_event = (uint16_t)k_ra8_elc_event_usbhs_int_resume;
   priv_usb_log_line("role swap: FS window = host model, HS window = device model (Config B)");
 }
 

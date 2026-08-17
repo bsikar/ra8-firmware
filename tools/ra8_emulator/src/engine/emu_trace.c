@@ -49,11 +49,11 @@ void eth_seam_hook(uc_engine* uc, const emu_elf_source_t* elf, const char* name,
   enum : uint8_t {
     k_seam_hook_slots = 24U, /**< Max symbols the seam can hook across one run. */
   };
-  static uc_hook  local_handles[k_seam_hook_slots];
-  static uint32_t local_n;
-  if (local_n < (uint32_t)(sizeof(local_handles) / sizeof(local_handles[0]))) {
-    (void)uc_hook_add(uc, &local_handles[local_n], UC_HOOK_CODE, cb, nullptr, addr, addr);
-    local_n++;
+  static uc_hook  s_handles[k_seam_hook_slots];
+  static uint32_t s_handle_n;
+  if (s_handle_n < (uint32_t)(sizeof(s_handles) / sizeof(s_handles[0]))) {
+    (void)uc_hook_add(uc, &s_handles[s_handle_n], UC_HOOK_CODE, cb, nullptr, addr, addr);
+    s_handle_n++;
   }
 }
 
@@ -101,7 +101,7 @@ void sym_trace_install(uc_engine*              uc,
                        const char* const*      names,
                        uint32_t                count)
 {
-  static uc_hook local_th[k_trace_sym_max];
+  static uc_hook s_th[k_trace_sym_max];
   for (uint32_t i = 0U; (i < count) && (i < (uint32_t)k_trace_sym_max); i++) {
     const uint32_t addr = elf_sym_addr(elf, names[i], nullptr);
     if (addr == 0U) {
@@ -109,7 +109,7 @@ void sym_trace_install(uc_engine*              uc,
       continue;
     }
     (void)uc_hook_add(uc,
-                      &local_th[i],
+                      &s_th[i],
                       UC_HOOK_CODE,
                       (void*)internal_on_sym_trace,
                       (void*)names[i],
