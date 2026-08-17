@@ -54,8 +54,8 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 
 | Acronym | Expansion | HAL driver |
 |---------|-----------|------------|
-| SCI   | Serial Communications Interface (UART/I2C/SPI super-mode) | `ra8_sci.c`, `uart.c` |
-| UART  | Universal Asynchronous Receiver/Transmitter               | `uart.c` |
+| SCI   | Serial Communications Interface (UART/I2C/SPI super-mode) | `ra8_sci.c` |
+| UART  | Universal Asynchronous Receiver/Transmitter               | `ra8_sci.c` |
 | SPI   | Serial Peripheral Interface (controller/peripheral)       | `ra8_spi_b.c` |
 | IIC_B | I2C bus controller, version B (RIIC)                     | `ra8_i2c.c`, `ra8_i2c_peripheral.c` |
 | I3C   | Improved Inter-Integrated Circuit (MIPI I3C)              | `ra8_i3c.c` |
@@ -105,7 +105,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | MIPI PHY| Shared MIPI D-PHY                                       | `ra8_mipi_phy.c` |
 | CEU     | Capture Engine Unit (parallel-camera input)             | `ra8_ceu.c` |
 | VIN     | Video INput module                                      | `ra8_vin.c` |
-| JPEG_SW | Software JPEG codec (no JPEG HW IP on RA8D2)            | `ra8_jpeg_sw.c` |
+| JPEG_SW | Software JPEG codec (no JPEG HW IP on RA8D2)            | `libs/ra8_jpeg/src/ra8_jpeg_sw.c` |
 | EPAPER  | E-Paper / EPD framebuffer driver                        | `ra8_epaper.c` |
 | TCON    | Timing CONtroller (GLCDC TCON0..3 outputs)              | `ra8_glcdc.c` |
 
@@ -145,7 +145,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 |---------|-----------|------------|
 | MRAM  | Magnetoresistive RAM (1 MiB on-chip, code memory)         | `ra8_flash.c` |
 | MRMS  | MRAM Module Sequencer (MRAM controller)                   | `ra8_flash.c` |
-| SRAM  | Static RAM (2 MiB on-chip, ECC-protected)                 | `ra8_sram.c` |
+| SRAM  | Static RAM (1664 KiB on-chip, ECC-protected)              | `ra8_sram.c` |
 | ECC   | Error-Correcting Code (SRAM/MRAM single-bit correction)   | `ra8_sram.c`, `ra8_cnecc.c` |
 | DTCM  | Data Tightly-Coupled Memory                               | (linker only) |
 | ITCM  | Instruction Tightly-Coupled Memory                        | (linker only) |
@@ -168,7 +168,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | Acronym | Expansion | HAL driver |
 |---------|-----------|------------|
 | BSCAN | Boundary Scan controller                                  | `ra8_bscan.c` |
-| HW ERR| Hardware-Error reporter                                   | `ra8_hw_err.c` |
+| HW ERR| Hardware-Error reporter                                   | `ra8_hw_err.h` |
 | MMIO  | Memory-Mapped I/O (generic term, not a Renesas IP)        | -- |
 | NVIC  | Nested Vectored Interrupt Controller (Cortex-M core)      | (used by `ra8_icu.c`) |
 | SCB   | System Control Block (Cortex-M core)                      | (used by HAL fault handlers) |

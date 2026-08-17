@@ -461,7 +461,7 @@ analogous structure in the STAR project for cross-pollination.
 - **Implementations are interchangeable.** A bus manager accepts any
   bus type (I2C/SPI/1-Wire) through the same vtable shape.
 - **Mocks substitute real implementations.** Tests use
-  `mock_ra8_bus_iic` in place of real hardware -- the HAL's mock vs.
+  `ra8_fake_mmio` in place of real hardware -- the HAL's mock vs.
   prod selection is at link time, not source time.
 - **Consistent error handling.** All drivers return `ra8_err_t` with
   the same semantics. A caller can write a generic error handler

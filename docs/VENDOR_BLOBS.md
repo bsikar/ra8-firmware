@@ -37,7 +37,8 @@ vendor-controlled implementation", not literally a binary file.
   `*_install_plain` and `key_wrap` / `key_unwrap` flows backed by
   Renesas-managed key infrastructure rather than a software MAC).
 - Signed key import as offered by the secure-side `key_import`
-  veneers (`libs/ra8_secure_app/src/key_import.c`).
+  veneers (`libs/ra8_secure_app/src/key_import.c`, declared in
+  `libs/ra8_secure_app/src/key_import_internal.h`).
 - Renesas-managed attestation flows.
 - Production-grade RSIP-E50D state machine (raw AES-GCM / SHA / TRNG
   calls do NOT need the blobs and are achievable from datasheet-only
@@ -82,9 +83,11 @@ genuine RSIP-E50D firmware blobs:
 
 ### Affected source files / functions
 
-Public RSIP key-install / wrap surface (declarations in
-`libs/ra8_hal/inc/ra8_rsip.h`, implementations in
-`libs/ra8_hal/src/ra8_rsip.c`):
+Public RSIP key-install / wrap surface (declared via the umbrella
+`libs/ra8_hal/inc/ra8_rsip.h`, which pulls in `ra8_rsip_keys.h` and
+`ra8_rsip_mgmt.h`; the `*_install_plain` bodies live in
+`libs/ra8_hal/src/ra8_rsip_cipher.c` and the wrap / unwrap bodies in
+`libs/ra8_hal/src/ra8_rsip_asym.c`):
 
 - `ra8_rsip_aes128_install_plain`
 - `ra8_rsip_aes192_install_plain`
@@ -105,11 +108,13 @@ Wrapper / consumer layers:
   (Ring-5 secure-side veneers that would call the RSIP wrap path
   in a production build)
 
-A grep for `k_ra8_err_not_supported` / `k_ra8_err_unsupported` in
-`libs/ra8_hal/src/ra8_rsip*.c` returns no hits today: the software
-backend silently substitutes for the missing blobs. There is no
-hard-fail return code at the RSIP layer that signals "blob missing";
-the failure mode is "not Renesas-signed".
+`libs/ra8_hal/src/ra8_rsip*.c` does return `k_ra8_err_not_supported`
+today, but only from the paths whose RSIP-E50D register interface is
+undocumented (TRNG, hash, HMAC) and which therefore fail closed rather
+than hand back a plausible-looking wrong answer. There is still no
+return code anywhere at the RSIP layer that signals "blob missing":
+on the key-install / wrap surface the software backend substitutes
+silently, and the failure mode is "not Renesas-signed".
 
 ### Cross-references
 

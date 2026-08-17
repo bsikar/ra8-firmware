@@ -113,13 +113,12 @@ reviewed at every release and never grow without justification.
 
 All entries above are `static` (no VLAs / `alloca`) and none belong
 to a critical-path module. The miniz frames are vendored third-party
-code in `libs/third_party/miniz/` and only link into the `ereader`
-demo; the project policy is "vendor 3rd-party libs directly and
+code in `libs/third_party/miniz/` and only link into the `ereader_*`
+demos; the project policy is "vendor 3rd-party libs directly and
 hand-write integration shims" (see CLAUDE.md), so we accept the
 upstream frames without modification and rely on the per-app
-`STACK_USAGE_BYTES` override in
-`examples/ek_ra8d2/ereader/CMakeLists.txt` to size its main stack
-accordingly.
+`STACK_USAGE_BYTES` override in the consuming app's `CMakeLists.txt`
+to size its main stack accordingly.
 
 Highest-frame project-owned (non-third-party) functions, all of
 which carry an inline `RA8_STACK_BUDGET(N)` annotation matching the
@@ -139,8 +138,9 @@ material is scrubbed via `p_scrub` when the frame unwinds; moving
 the buffers into `.bss` would either persist the secret across calls
 or require an explicit clear-on-exit path that doubles the attack
 surface. See the `@par Stack-budget deviation:` block on each
-function and the `STACK_USAGE_BYTES 2200` override in
-`examples/ek_ra8d2/blink/CMakeLists.txt`.
+function and the per-app `STACK_USAGE_BYTES` override (e.g.
+`STACK_USAGE_BYTES 2200` in
+`examples/ek_ra8d2/hw_pending/tz_threadx_demo/CMakeLists.txt`).
 
 Across the entire 61k-function aggregated report there are zero
 functions with a `dynamic` qualifier (no VLAs, no `alloca`) and

@@ -674,7 +674,8 @@ footprint unchanged.
 Container memory caps are **ceilings, not reservations**, so the 8 GB divisor
 protects the case where several heavy jobs coincide on one host -- it is not a
 claim about one job's typical draw. Measured on `win-ci`: a full cross-build of
-all 218 apps peaked at **4.06 GiB RSS**, and an idle runner listener holds
+all apps peaked at **4.06 GiB RSS** (218 apps at the time of measurement;
+the tree grows, the shape does not), and an idle runner listener holds
 about **95 MiB**.
 
 If per-job peak RSS is ever measured properly across the whole gate set and
@@ -700,7 +701,7 @@ real use. Adding ARC pods there adds contention, not throughput. The same
 
 | gate | `win-ci` | `truenas` | a `k3s-pve` pod |
 |---|---|---|---|
-| cross-build, all 218 apps | **258s** | 808s | 1689s |
+| cross-build, all apps (218 when measured) | **258s** | 808s | 1689s |
 | clang-tidy, full width | **96s** | ~330s | ~981s (contended) |
 
 Real capacity comes from machines that are not `pve1`. That is what `truenas`

@@ -376,7 +376,7 @@ every per-peripheral driver that follows.
 [x] Register coverage-- HUM Ch 18 p 784 (DTCCR / DTCVBR / DTCST / DTCSTS all touched)
 [x] Unit tests -- tests/test_ra8_dtc.c (8 cases)
 [x] World tag -- {World: S}
-[x] HUM cross-ref -- every register access in src/ra8_dtc.c cites Ch 18
+[x] HUM cross-ref -- every register access in libs/ra8_hal/src/ra8_dtc.c cites Ch 18
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -426,7 +426,7 @@ every per-peripheral driver that follows.
 [x] Register coverage-- HUM Ch 38 p 2174
 [x] Unit tests -- tests/test_ra8_sci.c (21 cases)
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 38 register notes in src/ra8_sci.c
+[x] HUM cross-ref -- all Ch 38 register notes in libs/ra8_hal/src/ra8_sci.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -472,7 +472,7 @@ every per-peripheral driver that follows.
 [x] Register coverage-- HUM Ch 43 p 2877
 [x] Unit tests -- tests/test_ra8_spi.c (20 cases)
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 43 register notes in src/spi.c
+[x] HUM cross-ref -- all Ch 43 register notes in libs/ra8_hal/src/ra8_spi_b.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -495,7 +495,7 @@ every per-peripheral driver that follows.
 [x] Register coverage-- HUM Ch 20 p 837
 [x] Unit tests -- tests/test_ra8_gpio.c (37 cases)
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 20 / Ch 14 notes in src/gpio.c
+[x] HUM cross-ref -- all Ch 20 / Ch 14 notes in libs/ra8_hal/src/gpio.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -518,7 +518,7 @@ every per-peripheral driver that follows.
 [x] Register coverage-- HUM Ch 22 p 878
 [x] Unit tests -- tests/test_ra8_gpt.c (26 cases)
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 22 register notes in src/ra8_gpt.c
+[x] HUM cross-ref -- all Ch 22 register notes in libs/ra8_hal/src/ra8_gpt.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -557,7 +557,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 21 p 871
 [x] Unit tests -- tests/test_ra8_poeg.c (13 cases)
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 21 register notes in src/ra8_poeg.c
+[x] HUM cross-ref -- all Ch 21 register notes in libs/ra8_hal/src/ra8_poeg.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -584,7 +584,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 53 p 3308 (ADCSR/ADCER/ADANSA0/ADSSTRn/ADDRxx)
 [x] Unit tests -- tests/test_ra8_adc.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 53 register notes in src/adc.c
+[x] HUM cross-ref -- all Ch 53 register notes in libs/ra8_hal/src/adc.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -607,7 +607,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 54 p 3490 (DADR0/DADR1/DACR/DADPR/DAADSCR/DAVREFCR)
 [x] Unit tests -- tests/test_ra8_dac_b.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 54 register notes in src/ra8_dac_b.c
+[x] HUM cross-ref -- all Ch 54 register notes in libs/ra8_hal/src/ra8_dac_b.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -630,7 +630,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 56 p 3508 (CMPCTL/CMPSEL/CMPSEL+/CMPMON)
 [x] Unit tests -- tests/test_ra8_acmphs.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 56 register notes in src/ra8_acmphs.c
+[x] HUM cross-ref -- all Ch 56 register notes in libs/ra8_hal/src/ra8_acmphs.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -653,7 +653,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 26 p 1219 (RCR1/RCR2/R*CNT all reachable)
 [x] Unit tests -- tests/test_ra8_rtc.c
 [x] World tag -- {World: S}
-[x] HUM cross-ref -- all Ch 26 register notes in src/ra8_rtc.c
+[x] HUM cross-ref -- all Ch 26 register notes in libs/ra8_hal/src/ra8_rtc.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -676,7 +676,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 27 p 1256 (WDTRR + WDTSR; WDTCR/WDTRCR locked by OFS0)
 [x] Unit tests -- tests/test_ra8_wdt.c
 [x] World tag -- {World: S}
-[x] HUM cross-ref -- all Ch 27 register notes in src/ra8_wdt.c
+[x] HUM cross-ref -- all Ch 27 register notes in libs/ra8_hal/src/ra8_wdt.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -699,7 +699,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 28 p 1271 (IWDTRR + IWDTSR)
 [x] Unit tests -- tests/test_ra8_iwdt.c
 [x] World tag -- {World: S}
-[x] HUM cross-ref -- all Ch 28 register notes in src/ra8_iwdt.c
+[x] HUM cross-ref -- all Ch 28 register notes in libs/ra8_hal/src/ra8_iwdt.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -722,7 +722,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 25 p 1187 (ULPTCR/MR1-3/IOC/ULPT)
 [x] Unit tests -- tests/test_ra8_ulpt.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 25 register notes in src/ra8_ulpt.c
+[x] HUM cross-ref -- all Ch 25 register notes in libs/ra8_hal/src/ra8_ulpt.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -745,7 +745,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 24 p 1164 (AGTCR/MR1/MR2/AGT)
 [x] Unit tests -- tests/test_ra8_agt.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 24 register notes in src/ra8_agt.c
+[x] HUM cross-ref -- all Ch 24 register notes in libs/ra8_hal/src/ra8_agt.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -768,7 +768,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 10 p 420 (CACR0/1/2 + CAULVR/CALLVR + CASTR + CAICR + CACNTBR)
 [x] Unit tests -- tests/test_ra8_cac.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 10 register notes in src/ra8_cac.c
+[x] HUM cross-ref -- all Ch 10 register notes in libs/ra8_hal/src/ra8_cac.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -791,7 +791,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 48 p 3180 (CRCCR0/CRCCR1/CRCDIR/CRCDOR)
 [x] Unit tests -- tests/test_ra8_crc.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 48 register notes in src/ra8_crc.c
+[x] HUM cross-ref -- all Ch 48 register notes in libs/ra8_hal/src/ra8_crc.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -818,7 +818,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 44 p 2986 (WRAPCFG/COMCFG/LIOCFG/INTC/CMDCFG0..2/CMDBUF/RDBUF/COMSTT)
 [x] Unit tests -- tests/test_ra8_xspi.c (emu-flash round trip)
 [x] World tag -- {World: S}
-[x] HUM cross-ref -- all Ch 44 register notes in src/ra8_xspi.c
+[x] HUM cross-ref -- all Ch 44 register notes in libs/ra8_hal/src/ra8_xspi.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -841,7 +841,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 15 p 583 (SDCCR/SDCMOD/SDAMOD/SDTR/SDRFCR/SDRFEN/SDICR)
 [x] Unit tests -- tests/test_ra8_sdramc.c
 [x] World tag -- {World: S}
-[x] HUM cross-ref -- all Ch 15 register notes in src/ra8_sdramc.c
+[x] HUM cross-ref -- all Ch 15 register notes in libs/ra8_hal/src/ra8_sdramc.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -864,7 +864,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 41 p 2702 (CFDC*+CFDG*+CFDRF*+CFDTM* covered)
 [x] Unit tests -- tests/test_ra8_canfd.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 41 register notes in src/ra8_canfd.c
+[x] HUM cross-ref -- all Ch 41 register notes in libs/ra8_hal/src/ra8_canfd.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -887,7 +887,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 47 p 3122 (SD_CMD/ARG/RSP*/INFO1/INFO2/CLK_CTRL)
 [x] Unit tests -- tests/test_ra8_sdhi.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 47 register notes in src/ra8_sdhi.c
+[x] HUM cross-ref -- all Ch 47 register notes in libs/ra8_hal/src/ra8_sdhi.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -910,7 +910,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 40 p 2445 (PRTS/BCTL/MSDVAD/INST/INSTE/IE/BST/BSTE/BIE)
 [x] Unit tests -- tests/test_ra8_i3c.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 40 register notes in src/ra8_i3c.c
+[x] HUM cross-ref -- all Ch 40 register notes in libs/ra8_hal/src/ra8_i3c.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -937,7 +937,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 63 p 3744 (sys_cfg/bg_*/gr1_*/panel_clk/sys_stat)
 [x] Unit tests -- tests/test_ra8_glcdc.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 63 register notes in src/ra8_glcdc.c
+[x] HUM cross-ref -- all Ch 63 register notes in libs/ra8_hal/src/ra8_glcdc.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -960,7 +960,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 49 p 3190 (PDM_CTRL/PDM_CFG/PDM_STAT/PDM_IER)
 [x] Unit tests -- tests/test_ra8_pdm.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 49 register notes in src/ra8_pdm.c
+[x] HUM cross-ref -- all Ch 49 register notes in libs/ra8_hal/src/ra8_pdm.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -988,7 +988,7 @@ layout, so one source file multiplexes both speeds via
 [x] Register coverage-- HUM Ch 36 p 1965 (SYSCFG/DCPCFG/DCPMAXP/DCPCTR/INTSTS0/INTENB0/1)
 [x] Unit tests -- tests/test_ra8_usb.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 36 register notes in src/ra8_usb.c
+[x] HUM cross-ref -- all Ch 36 register notes in libs/ra8_hal/src/ra8_usb.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -1015,7 +1015,7 @@ SYSCFG.HSE which the driver sets when ``speed == k_ra8_usb_speed_hs``.
 [x] Register coverage-- HUM Ch 37 p 2059 (SYSCFG.HSE + FS layout)
 [x] Unit tests -- tests/test_ra8_usb.c (HS path covered)
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 37 register notes in src/ra8_usb.c
+[x] HUM cross-ref -- all Ch 37 register notes in libs/ra8_hal/src/ra8_usb.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -1038,7 +1038,7 @@ SYSCFG.HSE which the driver sets when ``speed == k_ra8_usb_speed_hs``.
 [x] Register coverage-- HUM Ch 29 p 1287 (CTRL / STS / IE / ICLR all touched)
 [x] Unit tests -- tests/test_ra8_eth.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- every register access in src/ra8_eth.c cites Ch 29
+[x] HUM cross-ref -- every register access in libs/ra8_hal/src/ra8_eth.c cites Ch 29
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -1061,7 +1061,7 @@ SYSCFG.HSE which the driver sets when ``speed == k_ra8_usb_speed_hs``.
 [x] Register coverage-- HUM Ch 30 p 1321 (CTRL / STS / IE / ICLR all touched)
 [x] Unit tests -- tests/test_ra8_eth_mfwd.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- every register access in src/ra8_eth_mfwd.c cites Ch 30
+[x] HUM cross-ref -- every register access in libs/ra8_hal/src/ra8_eth_mfwd.c cites Ch 30
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -1084,7 +1084,7 @@ SYSCFG.HSE which the driver sets when ``speed == k_ra8_usb_speed_hs``.
 [x] Register coverage-- HUM Ch 31 p 1590 (CTRL / STS / IE / ICLR all touched)
 [x] Unit tests -- tests/test_ra8_eth_coma.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- every register access in src/ra8_eth_coma.c cites Ch 31
+[x] HUM cross-ref -- every register access in libs/ra8_hal/src/ra8_eth_coma.c cites Ch 31
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -1107,7 +1107,7 @@ SYSCFG.HSE which the driver sets when ``speed == k_ra8_usb_speed_hs``.
 [x] Register coverage-- HUM Ch 34 p 1787 (CTRL / STS / IE / ICLR all touched)
 [x] Unit tests -- tests/test_ra8_eth_gwca.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- every register access in src/ra8_eth_gwca.c cites Ch 34
+[x] HUM cross-ref -- every register access in libs/ra8_hal/src/ra8_eth_gwca.c cites Ch 34
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -1135,7 +1135,7 @@ SYSCFG.HSE which the driver sets when ``speed == k_ra8_usb_speed_hs``.
     PTPTIVCt, PTPTOVCtL/M/U, PTPAVTPTMtL/U, PTPGPTPTMtL/M/U
 [x] Unit tests -- tests/test_ra8_eth_gptp.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- every register access in src/ra8_eth_gptp.c cites the
+[x] HUM cross-ref -- every register access in libs/ra8_hal/src/ra8_eth_gptp.c cites the
     subsection of Ch 35 that describes that exact register
 [x] Doxygen -- full file + member coverage
 ```
@@ -1442,7 +1442,7 @@ both speeds before the next class begins.
 
 | # | Capability                     | FS (J11) | HS (J7) | Demo path                                            |
 |---|--------------------------------|---------|---------|------------------------------------------------------|
-| 1 | CDC ACM device (USB serial)    | DONE    | WIP     | `examples/ek_ra8d2/tz_secure_only_usb_fs{,_hs}/`        |
+| 1 | CDC ACM device (USB serial)    | DONE    | WIP     | `examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_fs{,_hs}/`        |
 | 2 | USB host (CDC ACM enumerator)  | DONE    | DONE    | `examples/ek_ra8d2/hw_validated/hil/usb_selftest_cdc/` (self-loop) |
 | 3 | MSC device (mass storage)      | TODO    | TODO    | `examples/ek_ra8d2/usb_msc_device/`                  |
 | 4 | HID device (keyboard / mouse)  | TODO    | TODO    | `examples/ek_ra8d2/usb_hid_device/`                  |

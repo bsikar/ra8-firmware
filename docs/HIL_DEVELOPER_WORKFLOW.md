@@ -9,13 +9,14 @@ file covers the developer-side workflow that surrounds that suite.
 ## How HIL CI is wired
 
 The project runs a self-hosted **Raspberry Pi 5 runner** (labels
-`self-hosted, hil, pi5, ra8d2`, host alias `star@star.local`) that has
+`self-hosted, hil, ra8d2`, host alias `star@star.local`) that has
 the EK-RA8D2 wired to it. The runner exists -- this is not a
 deferred / planned workflow.
 
 The authoritative driver is
-[`scripts/hil/all.sh`](../scripts/hil/all.sh) (invoked from
-[`.github/workflows/hil.yml`](../.github/workflows/hil.yml)), which
+[`scripts/hil/all.sh`](../scripts/hil/all.sh), which
+[`.github/workflows/hil.yml`](../.github/workflows/hil.yml) reaches through
+the `hil-all` gate (`bash scripts/ci.sh --gate hil-all`). It
 auto-discovers every app under
 `examples/ek_ra8d2/hw_validated/hil/` and verifies each app against
 its `hil.conf` manifest. The per-mode helper scripts are:
@@ -28,6 +29,10 @@ its `hil.conf` manifest. The per-mode helper scripts are:
   (`HIL_MODE=hil_eth_tcp`).
 - `scripts/hil/check_alive.sh` -- fault-recovery demo
   (`HIL_MODE=alive`).
+- `scripts/hil/rtt_scrape.sh` -- SEGGER RTT scrape
+  (`HIL_MODE=rtt_scrape`).
+- `scripts/hil/camera_livestream.sh` -- the C6 camera lane
+  (`HIL_MODE=c6_camera_livestream`).
 
 Flashing always goes through `scripts/hil/flash.sh`, which ships
 auto-recovery for the AHB-AP-gated / TrustZone-locked / LPM-stuck
@@ -41,7 +46,7 @@ runner), you can pre-check your changes before pushing:
 
 1. Build every EVM app:
    ```sh
-   make apps
+   make build-all
    ```
 2. Confirm the EK-RA8D2 is detected (see "Detecting the J-Link OB"
    below).
@@ -59,9 +64,11 @@ runner), you can pre-check your changes before pushing:
 
 Contributors **without** an EK-RA8D2 may still open PRs; the host
 unit-test build (`make test`) and the cross-build CI
-(`firmware.yml`) gate those PRs locally, and the Pi-attached
-`hil.yml` runs on every push to `main` and on every PR that
-touches HIL-relevant paths.
+(`firmware.yml`) gate those PRs. The Pi-attached `hil.yml` does NOT
+gate them today: its `push:` and `pull_request:` triggers are
+commented out until the Pi runner is wired back up, so the suite runs
+only on a manual `workflow_dispatch` (Actions tab -> Run workflow).
+Re-enabling it is uncommenting those two blocks.
 
 ## Detecting the J-Link OB
 

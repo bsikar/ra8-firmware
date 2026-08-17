@@ -1,7 +1,16 @@
 # Driver Status Matrix
 
-Audit date: 2026-04-29 (post-sweep-11 commit `ba54974`, plus
-closure commits `f4fb1a6`, `7551634`, `f272dc7`, `ce76aa4`, `87b606f`).
+Audit date: 2026-04-29.
+
+> **This is a frozen snapshot, not a live map.** It has not been re-derived
+> since that date and the tree has moved under it: 33 of the rows below name a
+> `.c` file that no longer exists (most of the `placeholder` class was deleted
+> under the no-stubs policy), `libs/ra8_net/` is gone, every rollup count is
+> low, and the sweep SHAs it cites were rewritten out of history. Read it as a
+> record of where the drivers stood in April 2026. `ls libs/ra8_hal/src/` is
+> the current driver list; each driver's own file header carries its state.
+> Re-deriving this matrix mechanically -- it is a good candidate for a
+> generated document -- is the fix.
 
 This file is the at-a-glance map of every driver in
 `libs/ra8_hal/src/` plus the new top-level libraries (`libs/ra8_net/`,

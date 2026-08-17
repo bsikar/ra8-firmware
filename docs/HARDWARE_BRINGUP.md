@@ -162,17 +162,21 @@ Applications under `examples/` are organised by hardware-support tier
 so a developer can see at a glance which apps the project can
 hardware-validate on the stock EVM:
 
-| Path                            | Meaning                                                                 |
-|---------------------------------|-------------------------------------------------------------------------|
-| `examples/ek_ra8d2/<app>/`      | Validates on a stock EK-RA8D2 v1 with no extra peripherals (or only a $5 USB device for the host-port demos). The pre-commit hook and CI smoke-test apps from this tier. |
-| `examples/_unsupported/<app>/`  | Requires extra hardware we do not have (audio amp, an off-chip BLE controller, RSIP BIST firmware, PTP switch, MCK motor board, SD card slot). Cross-builds in CI but is not flashed; expect bit-rot until somebody acquires the hardware. |
+| Path                                             | Meaning                                                                 |
+|--------------------------------------------------|-------------------------------------------------------------------------|
+| `examples/ek_ra8d2/hw_validated/<lane>/<app>/`    | Flashed and confirmed working on a stock EK-RA8D2 v1. The lanes are `hil/` (auto-discovered by the HIL suite), `manual/` (needs a human step) and `c6/` (the ESP32-C6 lane, which needs a different SW4 bank). |
+| `examples/ek_ra8d2/hw_pending/<app>/`             | Compiles and passes CI; not yet confirmed on hardware. |
+| `examples/ek_ra8d2/hil_needs_revalidation/<app>/` | Was validated, did not pass the most recent bench run. |
+| `examples/ra8p1_foundation/<app>/`                | Targets the RA8P1 (R7KA8P1KFLCAC), not the RA8D2. |
+| `examples/_unsupported/<app>/`                    | Requires extra hardware we do not have (audio amp, an off-chip BLE controller, RSIP BIST firmware, PTP switch, MCK motor board, SD card slot). Cross-builds in CI but is not flashed; expect bit-rot until somebody acquires the hardware. |
 
 The build-target name is just the bare app directory name; the tier
 directory is purely organisational. `make blink` builds
-`examples/ek_ra8d2/blink/build/blink.elf`; `make motor_3phase` builds
+`examples/ek_ra8d2/hw_validated/hil/blink/build/blink.elf`;
+`make motor_3phase` builds
 `examples/_unsupported/motor_3phase/build/motor_3phase.elf`. The
-top-level `Makefile` and `CMakeLists.txt` auto-discover apps under
-`examples/<tier>/<app>/`.
+top-level `Makefile` and `CMakeLists.txt` auto-discover apps two to
+four directories below `examples/`.
 
 When adding a new app, drop it under whichever tier matches the
 hardware story. See [`examples/ek_ra8d2/README.md`](../examples/ek_ra8d2/README.md)

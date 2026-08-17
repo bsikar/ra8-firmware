@@ -19,7 +19,7 @@ versa) -- the cause is almost always a version skew documented below.
 | Environment | Role | Can do | Cannot do |
 |-------------|------|--------|-----------|
 | **Mac** (Apple Silicon, this repo's authoring box) | ARM cross-builds + code authoring + `.py`/`.sh` lint | `arm-none-eabi-gcc` (Cortex-M85), clang-format/clang-tidy, ruff, shfmt, shellcheck, git | Run host unit tests / coverage (macOS arm64 SIGKILLs the `mmap MAP_FIXED <4 GiB` peripheral mock before `main`); `make ci` (Docker + resources) is unreliable |
-| **dev box** (`ssh dev`, x86-64 Debian 12, 6 cores) | Host unit tests, coverage, cppcheck, clang-format/tidy, the `check_*.py` suite, ARM cross-build (pinned 13.3 at `~/opt/arm-gnu-toolchain-13.3`) | Everything host-side + cross-build, FAST -- `make ci-native` runs every gate with no container at all | no Docker (which is fine: `make ci` falls back to native on Linux) |
+| **dev box** (`ssh dev`, x86-64 Debian 12, 12 cores) | Host unit tests, coverage, cppcheck, clang-format/tidy, the `check_*.py` suite, ARM cross-build (pinned 13.3 at `~/opt/arm-gnu-toolchain-13.3`) | Everything host-side + cross-build, FAST -- `make ci-native` runs every gate with no container at all | no Docker (which is fine: `make ci` falls back to native on Linux) |
 | **CI** (the self-hosted `ra8-ci` fleet; `.github/workflows/`) | The authority -- every gate runs here on push/PR | All gates in the Ubuntu 24.04 devcontainer image the runners boot, cross toolchain included | -- |
 | **HIL rig** (`ssh star@star.local`, Pi + on-board J-Link) | Silicon validation (flash + read the real EK-RA8D2) | The only oracle for cache/power/TZ/timing | -- |
 
@@ -46,7 +46,7 @@ target; the "status" column flags the known skews.
 | `arm-none-eabi-gcc` (ship binaries) | **13.3.rel1** (`/opt/arm-gnu-toolchain-13.3`: runner + devcontainer, latter by URL+sha256) | **13.3.1** (`~/opt/arm-gnu-toolchain-13.3`) | **13.3.1** (`~/opt/arm-gnu-toolchain-13.3`) | **CONVERGED** -- pinned 13.3.rel1, enforced; see 3.1 |
 | host `gcc` (coverage / host tests) | **gcc-14** (Ubuntu 24.04 devcontainer) | n/a (host tests SIGKILL) | **gcc-14.2.0** (built from source, `/usr/local/bin`) | CONVERGED -- Std-A, see the `dev-gcc14-coverage-parity` memory |
 | `clang-format` | **22.1.8** (`clang-format-22`) | 22.1.7 (Homebrew LLVM) | 22.1.8 (`clang-format-22`) | Mac PATCH-behind -- see 3.2 |
-| `clang-tidy` | **22.1.8** | 22.1.7 (Homebrew LLVM) | 22.1.8 | Mac PATCH-behind (same LLVM as clang-format) |
+| `clang-tidy` | **18.1.8** (`clang-tidy-18`, from `clang-tools-18`) | 22.1.7 (Homebrew LLVM) | 18.1.8 (`clang-tidy-18`) | Mac is on a DIFFERENT MAJOR -- not the same LLVM as clang-format; see 3.2 |
 | `ruff` | **0.15.19** (`firmware.yml`) | 0.15.20 | (install per section 3.4) | Mac PATCH-ahead -- see 3.4 |
 | `shfmt` | **3.13.1** | 3.13.1 | (install per section 3.4) | Mac CONVERGED |
 | `shellcheck` | **0.11.0** | 0.11.x (Homebrew) | (install per section 3.4) | confirm patch |
@@ -54,7 +54,7 @@ target; the "status" column flags the known skews.
 | `cmake-format` / `cmake-lint` | **0.6.13** (`cmakelang`, `firmware.yml` + devcontainer) | (install per section 3.5) | 0.6.13 (`~/.local/bin`) | CONVERGED -- see 3.5 |
 | `yamllint` | **1.37.1** | (install per section 3.5) | 1.37.1 (`~/.local/bin`) | CONVERGED -- see 3.5 |
 | `actionlint` | **1.7.7** | (install per section 3.5) | 1.7.7 (`~/.local/bin`) | CONVERGED -- see 3.5 |
-| `gcovr` | 8.6 (pip) | 8.6 | 8.6 (`~/.local/bin` + `/usr/bin`) | CONVERGED |
+| `gcovr` | **7.0** (`GCOVR_VERSION=7.0-1`, devcontainer apt) | 8.6 | 8.6 (`~/.local/bin` + `/usr/bin`) | min-major floor 7 -- the container pins 7.0, the native boxes carry 8.x, both pass |
 | `libunicorn` (ra8_emulator) | **2.1.4** (source build -> `/usr/local`) | 2.1.4 (source build) | **2.1.4** (source build -> `/usr/local`) | pinned + FAIL-LOUD; dev box needs the source build -- see 3.6 (#354) |
 
 ---
@@ -103,7 +103,7 @@ path by URL + sha256 in `.devcontainer/Dockerfile`. Bumping the pin there and
 rebuilding the image reprovisions the whole fleet; the assertion + strict
 default still catch a box that drifts off 13.3.
 
-### 3.2 clang-format / clang-tidy: Mac 22.1.7 vs CI/dev 22.1.8
+### 3.2 clang-format: Mac 22.1.7 vs CI/dev 22.1.8 (clang-tidy is pinned separately)
 
 Homebrew LLVM on the Mac is one patch behind CI's `clang-format-22` (22.1.8).
 For ordinary code they agree (verified: 22.1.7 output passes 22.1.8's
@@ -112,6 +112,11 @@ Handling: format on the Mac for speed, then **verify format on the dev box
 (22.1.8) before every push** (section 4). Exact 22.1.8 is not readily installable
 on macOS arm64 (LLVM 22 is a pre-release snapshot); revisit if Homebrew catches
 up. `scripts/checks/format_code.sh` honors `CLANG_FORMAT=<binary>`.
+
+`clang-tidy` does **not** share that pin. The `tidy` gate resolves
+`clang-tidy-18` -- the `clang-tools-18` major the devcontainer installs -- and
+`require_tool_versions clang-tidy-18` fails the gate under any other major, so a
+Homebrew clang-tidy from the LLVM 22 snapshot is not a substitute for it.
 
 ### 3.3 cppcheck: Mac 2.21 vs CI/dev 2.13
 
@@ -318,9 +323,10 @@ Gotchas (each has bitten a push):
   (all trees, incl. `build/asan`/`build/clean`) before a coverage run.
 - **The SIGALRM/setitimer test-injection flake** (i2c/adc/rtc/sdhi/i3c and
   others) aborts ~random tests under coverage instrumentation and kills
-  `tree_coverage.sh` at its `set -e` ctest step BEFORE the policy runs. Defeat
-  with `ctest --repeat until-pass:4` then run the gcovr +
-  `check_tree_coverage.py` steps by hand. Root fix: the T1-01 deterministic MMIO seam (`ra8_fake_mmio_*`).
+  `tree_coverage.sh` at its `set -e` ctest step BEFORE the policy runs.
+  Defeat with `ctest --repeat until-pass:4` then run the gcovr +
+  `check_tree_coverage.py` steps by hand. Root fix: the T1-01
+  deterministic MMIO seam (`ra8_fake_mmio_*`).
 - **The dev box is shared** -- another session may `git reset --hard` it between
   your ssh calls, wiping untracked files. Sync + validate in ONE session.
 

@@ -149,9 +149,10 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
 ### 10. `RA8_ISR_SAFE`
 
 - **Purpose:** the function is safe to call from interrupt context.
-- **Enforcement:** libclang call-graph walk: every callee reachable from
-  an ISR-tagged function (file matches `*_isr.c`, or function is tagged
-  `RA8_ISR_HANDLER`) must itself be `RA8_ISR_SAFE`.
+- **Enforcement:** marker only -- see the Rule 10 note under
+  "Rule-by-rule notes". The transitive ISR-chain walk this used to feed
+  was keyed on `ra8_isr_handler`, an annotation no macro emits, so it
+  never ran; it was deleted rather than left looking enforced.
 - **Example:**
 
   ```c
@@ -164,9 +165,13 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
 ### 11. `RA8_EXPECTS_LOCK(name)`
 
 - **Purpose:** function expects the named lock to be held on entry.
-- **Enforcement:** libclang verifies the caller wraps the call in
-  `RA8_TAKE_LOCK(name)` / `RA8_RELEASE_LOCK(name)`, or is itself tagged
-  `RA8_EXPECTS_LOCK(name)` (propagating the contract upward).
+- **Enforcement:** libclang verifies every caller either acquires the
+  lock for its own body with `RA8_OWNS_RESOURCE(name)` -- which the
+  acquire/release rule separately pairs with `RA8_RELEASES_RESOURCE(name)`
+  -- or is itself tagged `RA8_EXPECTS_LOCK(name)`, propagating the
+  contract upward. It used to look for a preceding `RA8_TAKE_LOCK` call;
+  nothing of that name has ever existed in this tree, which made the
+  annotation unsatisfiable and therefore unused.
 - **Example:**
 
   ```c
@@ -500,7 +505,7 @@ invokes the script after the existing static gates (`cite_check`,
 | 8  | `ra8_mcdc_deactivated:<reason>` | reason-string regex                     |
 | 9  | `ra8_max_stack:<bytes>`         | reads `examples/*/build*/*.su`          |
 | 10 | `ra8_isr_safe`                  | marker; no static check yet (see below) |
-| 11 | `ra8_expects_lock:<name>`       | preceding `RA8_TAKE_LOCK("<name>")`     |
+| 11 | `ra8_expects_lock:<name>`       | caller owns or propagates the lock      |
 | 12 | `ra8_host_friendly`             | rejects calls into MMIO accessors       |
 | 13 | `ra8_latency_budget_ns:<n>`     | informational until a WCET pass exists  |
 | 14 | `ra8_no_recursion`              | transitive call-closure walk            |

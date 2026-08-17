@@ -29,7 +29,7 @@ neither) and derives:
 
 - **Feature-presence macros** for `#if` guards: `RA8_HAS_NPU`, `RA8_HAS_NPUCLK`
   (RA8P1 only).
-- **A typed-enum runtime mirror** `k_ra8_feat_*` (0/1) and `k_ra8_device_t`
+- **A typed-enum runtime mirror** `k_ra8_feat_*` (0/1) and `ra8_device_id_t`
   (`k_ra8_device_ra8d2 = 0x8D2`, `k_ra8_device_ra8p1 = 0x8F1`) for code that needs
   the selection at run time rather than in the preprocessor.
 
