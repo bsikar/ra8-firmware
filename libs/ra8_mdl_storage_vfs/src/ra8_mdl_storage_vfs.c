@@ -500,6 +500,42 @@ RA8_INTERNAL static ra8_err_t internal_close_writer(ra8_mdl_storage_vfs_t* ctx)
 }
 
 /**
+ * @brief Stage-preparation chain: leaf check, build, parent check, and cleanup.
+ * @details Runs the ordered stage-preparation steps, stopping at the first
+ *          failure so no later step observes a half-prepared stage.
+ * @param[in,out] ctx Adapter context whose stage fields this chain populates.
+ * @param[in] facts Parsed destination-path facts from ::internal_path_facts.
+ * @return First failing step's status, or k_ra8_ok when every step succeeded.
+ * @retval k_ra8_ok Every preparation step succeeded.
+ * @retval other The first failing step's status.
+ * @pre @p ctx->destination and @p ctx->stage_leaf are already populated.
+ * @pre @p facts describes the same destination as @p ctx->destination.
+ * @post On success @p ctx->staging_path names an absent, ready-to-open path.
+ * @post On failure no VFS file has been opened by this chain.
+ * @note Not thread-safe through one adapter instance.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_begin_prepare_stage(ra8_mdl_storage_vfs_t* ctx,
+                                                           const path_facts_t*    facts)
+{
+  uint16_t  stage_len = 0U;
+  ra8_err_t err       = internal_stage_leaf_check(ctx->stage_leaf, &stage_len);
+  if (err == k_ra8_ok) {
+    err = internal_build_stage(ctx, facts, stage_len);
+  }
+  if (err == k_ra8_ok) {
+    err = internal_parent_check(ctx, facts->last_slash);
+  }
+  if (err == k_ra8_ok) {
+    err = internal_final_absent(ctx->destination);
+  }
+  if (err == k_ra8_ok) {
+    err = internal_remove_stale_stage(ctx->staging_path);
+  }
+  return err;
+}
+
+/**
  * @brief Coordinator callback: create the private sibling transaction file.
  * @details Validates paths and parent policy before removing an owned stale stage
  * and opening a fresh bounded writer on the selected VFS mount.
@@ -538,20 +574,7 @@ RA8_INTERNAL static ra8_err_t internal_begin(void* opaque, const char* destinati
     return err;
   }
   internal_copy(ctx->destination, destination, facts.length);
-  uint16_t stage_len = 0U;
-  err                = internal_stage_leaf_check(ctx->stage_leaf, &stage_len);
-  if (err == k_ra8_ok) {
-    err = internal_build_stage(ctx, &facts, stage_len);
-  }
-  if (err == k_ra8_ok) {
-    err = internal_parent_check(ctx, facts.last_slash);
-  }
-  if (err == k_ra8_ok) {
-    err = internal_final_absent(ctx->destination);
-  }
-  if (err == k_ra8_ok) {
-    err = internal_remove_stale_stage(ctx->staging_path);
-  }
+  err = internal_begin_prepare_stage(ctx, &facts);
   if (err != k_ra8_ok) {
     return err;
   }

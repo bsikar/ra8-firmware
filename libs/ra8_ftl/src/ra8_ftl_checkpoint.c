@@ -369,6 +369,43 @@ RA8_INTERNAL static bool internal_bit_is_set(const uint8_t* bitmap, uint32_t bit
 }
 
 /**
+ * @brief Mark one mapped physical index against a bounded scratch window.
+ * @details Rejects an index outside the physical geometry outright; an index
+ *          outside the current window is left for a later window's pass and
+ *          reported as legal here. An index inside the window is rejected
+ *          only if some earlier map entry already claimed it.
+ * @param[in] ftl Initialized FTL geometry and scratch workspace.
+ * @param[in] base First physical-block index in the window.
+ * @param[in] count Number of physical blocks represented by scratch.
+ * @param[in] phys Physical block index read from one map entry.
+ * @return Map-entry validation status.
+ * @retval k_ra8_ok The index is legal; scratch gained a mark when in-window.
+ * @retval k_ra8_err_invalid_state The index is out of range or a duplicate.
+ * @pre @p phys was read from a live or canonical wire map entry.
+ * @pre ftl->scratch addresses the same window as every other call this pass.
+ * @post Scratch gains one marked bit when @p phys falls in the window.
+ * @note Not thread-safe; shares the caller's scratch workspace.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_window_mark(const ra8_ftl_t* ftl, uint32_t base, uint32_t count, uint16_t phys)
+{
+  if ((uint32_t)phys >= ftl->physical_blocks) {
+    return k_ra8_err_invalid_state;
+  }
+  if ((uint32_t)phys < base) {
+    return k_ra8_ok;
+  }
+  if ((uint32_t)phys - base >= count) {
+    return k_ra8_ok;
+  }
+  if (internal_bit_was_set(ftl->scratch, (uint32_t)phys - base)) {
+    return k_ra8_err_invalid_state;
+  }
+  return k_ra8_ok;
+}
+
+/**
  * @brief Validate one window of the live native mapping into scratch.
  * @details Marks mapped physical blocks within the window, rejects duplicates
  *          and out-of-range indices, then cross-checks every physical state.
@@ -394,15 +431,9 @@ internal_native_window(const ra8_ftl_t* ftl, uint32_t base, uint32_t count)
     if (phys == (uint16_t)k_ra8_ftl_unmapped) {
       continue;
     }
-    if ((uint32_t)phys >= ftl->physical_blocks) {
-      return k_ra8_err_invalid_state;
-    }
-    if ((uint32_t)phys >= base) {
-      if ((uint32_t)phys - base < count) {
-        if (internal_bit_was_set(ftl->scratch, (uint32_t)phys - base)) {
-          return k_ra8_err_invalid_state;
-        }
-      }
+    const ra8_err_t marked = internal_window_mark(ftl, base, count, phys);
+    if (marked != k_ra8_ok) {
+      return marked;
     }
   }
   for (uint32_t rel = 0U; rel < count; ++rel) {
@@ -480,15 +511,9 @@ RA8_INTERNAL static ra8_err_t internal_wire_window(const ra8_ftl_t* ftl,
     if (phys == (uint16_t)k_ra8_ftl_unmapped) {
       continue;
     }
-    if ((uint32_t)phys >= ftl->physical_blocks) {
-      return k_ra8_err_invalid_state;
-    }
-    if ((uint32_t)phys >= base) {
-      if ((uint32_t)phys - base < count) {
-        if (internal_bit_was_set(ftl->scratch, (uint32_t)phys - base)) {
-          return k_ra8_err_invalid_state;
-        }
-      }
+    const ra8_err_t marked = internal_window_mark(ftl, base, count, phys);
+    if (marked != k_ra8_ok) {
+      return marked;
     }
   }
   for (uint32_t rel = 0U; rel < count; ++rel) {
