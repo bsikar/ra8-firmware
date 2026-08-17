@@ -14,6 +14,9 @@ Two domains, two contracts, one enforced boundary (#707):
   the entry point is ``void main(void)``, declared once in
   ``libs/ra8_core/inc/ra8_boot_entry.h``.
 
+``apps/`` -- the products tier -- is the one root that carries BOTH, so it
+cannot be classified by its name: see ``FIRMWARE_APPS`` below.
+
 WHY A GATE RATHER THAN TRUSTING THE COMPILER
 
 The compiler catches a *disagreement it can see*. It could not see this one.
@@ -60,7 +63,10 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from lint_targets import first_party_paths  # needs the sys.path line above
+from lint_targets import (  # needs the sys.path line above
+    firmware_app_dirs,
+    first_party_paths,
+)
 from selftest_assert import expect, report  # needs the sys.path line above
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -74,10 +80,29 @@ BOOT_HEADER_REL = "libs/ra8_core/inc/ra8_boot_entry.h"
 
 # Roots whose entry points are reached from Reset_Handler rather than from a C
 # runtime. Derived from where the build actually cross-compiles: the app
-# discovery in the top-level CMakeLists globs examples/, `src/app` is the
-# ereader image, and port/ is RTOS glue compiled into firmware images.
+# discovery in the top-level CMakeLists globs examples/, src/ is the platform
+# substrate compiled into every image, and port/ is RTOS glue compiled into
+# firmware images.
 FIRMWARE_ROOTS = ("examples/", "src/", "port/")
 HOSTED_ROOTS = ("tests/", "tools/", "apps/")
+
+# ...and the one root where the name settles nothing. `apps/` is the PRODUCTS
+# tier and it carries both domains: the media_dl CLI is a host program the C
+# runtime starts and whose exit status something reads, while the e-reader is a
+# two-image TrustZone composition reached from Reset_Handler. Classifying the
+# whole root either way is wrong for half of it -- calling the e-reader hosted
+# demands `int main(void)` of a freestanding image and drops the
+# `ra8_boot_entry.h` include that makes the cross-TU check happen at all, which
+# is precisely the #707 hole.
+#
+# So the firmware products are NAMED here, and `check_firmware_apps()` re-derives
+# the same set from the tree on every whole-tree run. The declaration is what
+# keeps classification textual (this gate must reach translation units that
+# never appear in a compile database); the derivation is what stops the
+# declaration from drifting -- a new firmware product nobody listed FAILS, and a
+# listed path that stopped being one FAILS too. Neither half is load-bearing
+# alone.
+FIRMWARE_APPS = ("apps/stand_alone/ereader/",)
 
 # Measured 2026-08-15 on dev @ ad515de20: 234 firmware entry points, 637
 # hosted ones. A tree this size cannot legitimately fall to a handful; an
@@ -90,7 +115,7 @@ HOSTED_FLOOR = 400
 # catches a subtler one where a root stops being enumerated but the others keep
 # the count above the floor.
 MUST_DISCOVER = (
-    "src/app/main.c",
+    "apps/stand_alone/ereader/main.c",
     "libs/ra8_core/inc/ra8_boot_entry.h",
 )
 
@@ -120,8 +145,14 @@ class ScanError(RuntimeError):
     """The scan stopped being a measurement."""
 
 
-def domain_of(rel: str) -> str | None:
-    """Which build domain owns this path, or None if it is neither."""
+def domain_of(rel: str, firmware_apps: tuple[str, ...] = FIRMWARE_APPS) -> str | None:
+    """Which build domain owns this path, or None if it is neither.
+
+    A named firmware product is tested BEFORE the hosted roots: every one of
+    them sits under ``apps/``, so the general rule would otherwise win.
+    """
+    if rel.startswith(firmware_apps):
+        return "firmware"
     if rel.startswith(HOSTED_ROOTS):
         return "hosted"
     if rel.startswith(FIRMWARE_ROOTS):
@@ -177,7 +208,9 @@ def copied_main_declarations(rel: str, lines: list[str]) -> list[str]:
     ]
 
 
-def check_file(rel: str, text: str) -> tuple[list[str], str | None]:
+def check_file(
+    rel: str, text: str, firmware_apps: tuple[str, ...] = FIRMWARE_APPS
+) -> tuple[list[str], str | None]:
     """Findings for one file, plus the domain of any entry point it defines."""
     findings: list[str] = []
     lines = text.splitlines()
@@ -195,7 +228,7 @@ def check_file(rel: str, text: str) -> tuple[list[str], str | None]:
     if found is None:
         return findings, None
     sig, ret, args = found
-    domain = domain_of(rel)
+    domain = domain_of(rel, firmware_apps)
 
     if domain is None:
         findings.append(
@@ -283,6 +316,46 @@ def check_shared_declaration() -> list[str]:
     return findings
 
 
+def check_firmware_apps(paths: list[str] | None = None) -> list[str]:
+    """``FIRMWARE_APPS`` must still name exactly the firmware products present.
+
+    ``lint_targets.firmware_app_dirs()`` derives the set from what the build
+    does with a directory -- an app dir under ``apps/`` holding both a linker
+    script and a ``vector_table.c`` is linked into an image, not started by a C
+    runtime. Both directions of a disagreement are silent failures, which is
+    why this is a hard error rather than a warning:
+
+    * a firmware product missing from the tuple is classified HOSTED, so the
+      gate demands ISO ``int main`` of a freestanding image and stops requiring
+      the ``ra8_boot_entry.h`` include;
+    * a stale entry classifies nothing at all, and goes on reporting success
+      forever.
+
+    ``paths`` defaults to the whole tracked tree deliberately: this gate's own
+    scan carries only C/C++ sources, and a linker script is half the evidence.
+    Pass a list only from a selftest fixture.
+    """
+    derived = tuple(f"{d}/" for d in firmware_app_dirs(paths))
+    if derived == FIRMWARE_APPS:
+        return []
+    missing = [
+        f"{d}: a firmware product (linker script + vector_table.c) that "
+        f"FIRMWARE_APPS does not name, so this gate classifies it as a hosted "
+        f"program and applies the wrong entry-point contract to it. Add it to "
+        f"FIRMWARE_APPS in check_entry_points.py."
+        for d in derived
+        if d not in FIRMWARE_APPS
+    ]
+    stale = [
+        f"{d}: named in FIRMWARE_APPS but no longer a firmware product (no "
+        f"linker script + vector_table.c pair). A stale entry classifies "
+        f"nothing and reports success forever; drop it."
+        for d in FIRMWARE_APPS
+        if d not in derived
+    ]
+    return missing + stale
+
+
 def enforce_floors(counts: dict[str, int], paths: list[str]) -> None:
     """Raise unless the sweep still reached enough to be a measurement."""
     if counts["firmware"] < FIRMWARE_FLOOR:
@@ -315,6 +388,21 @@ def _selftest_quiet(failures: list[str]) -> None:
     quiet, domain = check_file("tests/test_x.c", good_hosted)
     expect(not quiet, f"a conforming hosted entry point is silent (got {quiet})", failures)
     expect(domain == "hosted", f"classified hosted (got {domain})", failures)
+
+    good_product_fw = '#include "ra8_boot_entry.h"\nvoid main(void)\n{\n  for (;;) {\n  }\n}\n'
+    quiet, domain = check_file("apps/stand_alone/ereader/main.c", good_product_fw)
+    expect(not quiet, f"a conforming firmware PRODUCT is silent (got {quiet})", failures)
+    expect(
+        domain == "firmware",
+        f"a named firmware product classifies firmware (got {domain})",
+        failures,
+    )
+
+    quiet, domain = check_file(
+        "apps/stand_alone/media_dl/src/main.c", "int main(void)\n{\n  return 0;\n}\n"
+    )
+    expect(not quiet, f"a conforming hosted PRODUCT is silent (got {quiet})", failures)
+    expect(domain == "hosted", f"an unnamed product stays hosted (got {domain})", failures)
 
     argv_main = "int main(int argc, char** argv)\n{\n  return 0;\n}\n"
     expect(
@@ -368,6 +456,14 @@ def _selftest_fires(failures: list[str]) -> None:
             "examples/x/vector_table.c",
             "extern int32_t main(void);\n",
         ),
+        "a firmware PRODUCT written to the hosted contract": (
+            "apps/stand_alone/ereader/main.c",
+            '#include "ra8_boot_entry.h"\nint main(void)\n{\n  return 0;\n}\n',
+        ),
+        "a hosted PRODUCT written to the freestanding contract": (
+            "apps/stand_alone/media_dl/src/main.c",
+            "void main(void)\n{\n}\n",
+        ),
     }
     for label, (rel, text) in fires.items():
         expect(bool(check_file(rel, text)[0]), f"MUST FIRE: {label}", failures)
@@ -400,6 +496,39 @@ def _selftest_scope(failures: list[str]) -> None:
         failures,
     )
 
+    # The products tier carries both domains, and the live tree must still say
+    # so -- if apps/ ever held only hosted products this gate's extra rule
+    # would be dead weight nobody would notice.
+    expect(
+        not check_firmware_apps(),
+        "FIRMWARE_APPS agrees with the products actually in the tree",
+        failures,
+    )
+    expect(
+        bool(check_firmware_apps(["libs/ra8_core/src/x.c"])),
+        "MUST FIRE: a stale FIRMWARE_APPS entry is rejected",
+        failures,
+    )
+    expect(
+        bool(
+            check_firmware_apps(
+                [
+                    "apps/stand_alone/ereader/vector_table.c",
+                    "apps/stand_alone/ereader/linker_script.ld",
+                    "apps/stand_alone/invented/vector_table.c",
+                    "apps/stand_alone/invented/invented.ld",
+                ]
+            )
+        ),
+        "MUST FIRE: an unlisted firmware product is rejected",
+        failures,
+    )
+    expect(
+        domain_of("apps/stand_alone/ereader/main.c", ()) == "hosted",
+        "without its FIRMWARE_APPS entry the e-reader would be misclassified",
+        failures,
+    )
+
 
 def selftest() -> int:
     """Assert both directions: the rules fire, and they stay quiet."""
@@ -427,7 +556,7 @@ def main(argv: list[str]) -> int:
 
     findings, counts = scan(paths)
     if not explicit:
-        findings = check_shared_declaration() + findings
+        findings = check_shared_declaration() + check_firmware_apps() + findings
 
     if "--list" in args:
         for rel in paths:

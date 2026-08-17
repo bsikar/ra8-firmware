@@ -17,7 +17,7 @@ examples do not do together:
    the two cores exchange messages through a shared-SRAM mailbox.
 
 > If you want the *Secure + Non-Secure* flavour of "two images" (TrustZone),
-> see `src/app` (the e-reader) -- that splits one core into a Secure and a
+> see `apps/stand_alone/ereader` -- that splits one core into a Secure and a
 > Non-Secure image. This example is about the *other* axis: two **cores**.
 
 ## How it works

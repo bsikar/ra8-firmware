@@ -85,9 +85,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # addresses; flagging it would bury real application magic numbers under
 # ~200 boilerplate hits per app.  Pass such a file explicitly to scan it.
 # Per-app boot boilerplate -- copied verbatim into every app under examples/
-# AND src/app/, and full of sequential IRQ-slot indices and fixed vector
-# addresses. Exempt by filename anywhere (not just examples/), matching the
-# examples/<app> main.c-only scope above. Pass such a file explicitly to scan.
+# AND into the firmware products under apps/, and full of sequential IRQ-slot
+# indices and fixed vector addresses. Exempt by filename anywhere (not just
+# examples/), matching the examples/<app> main.c-only scope above. Pass such a
+# file explicitly to scan it.
 BOOT_BOILERPLATE = frozenset(
     {"vector_table.c", "system_init.c", "secure_exception.c", "trustzone_init.c"}
 )

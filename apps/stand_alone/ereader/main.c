@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file apps/stand_alone/ereader/main.c
  * @brief CPU0 (M85) Secure world bootloader/fallback for the e-reader.
  *
  * @par Tag

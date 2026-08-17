@@ -29,6 +29,7 @@
 # DELETED -- never regenerated larger.
 #
 # file<TAB>function<TAB>count
+apps/stand_alone/ereader/trustzone_init.c	tz_usb_route_pins	1
 libs/ra8_app/src/ra8_app.c	ra8_app_find	1
 libs/ra8_app/src/ra8_app.c	ra8_app_launch	2
 libs/ra8_app/src/ra8_app.c	ra8_app_render	1
@@ -634,7 +635,6 @@ port/usbx/src/ux_dcd_ra8_usb_xfer.c	internal_ep0_transfer	1
 port/usbx/src/ux_hcd_ra8_usb.c	internal_control_xfer	1
 port/usbx/src/ux_hcd_ra8_usb.c	internal_transfer_request	1
 port/usbx/src/ux_hcd_ra8_usb.c	ux_hcd_ra8_usb_initialize	1
-src/app/trustzone_init.c	tz_usb_route_pins	1
 src/secure_app/key_import.c	priv_ra8_key_import_resolve	1
 src/secure_app/key_vault.c	ra8_key_vault_set_mac_key	1
 src/secure_app/ota_commit.c	ra8_ota_commit_swap_bank	1

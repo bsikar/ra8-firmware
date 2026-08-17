@@ -37,6 +37,10 @@
 # DELETED -- never regenerated larger.
 #
 # file<TAB>count
+apps/stand_alone/ereader/ns_main.c	3
+apps/stand_alone/ereader/secure_exception.c	1
+apps/stand_alone/ereader/system_init.c	2
+apps/stand_alone/ereader/trustzone_init.c	1
 examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/cpu1_main.c	29
 examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/ns_main.c	3
 examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/system_init.c	2
@@ -136,10 +140,6 @@ port/usbx/src/ux_dcd_ra8_usb_dvst_default.c	9
 port/usbx/src/ux_dcd_ra8_usb_irq.c	4
 port/usbx/src/ux_dcd_ra8_usb_isr.c	1
 port/usbx/src/ux_dcd_ra8_usb_setup.c	4
-src/app/ns_main.c	3
-src/app/secure_exception.c	1
-src/app/system_init.c	2
-src/app/trustzone_init.c	1
 tests/fuzz/fuzz_ra8_canfd.c	5
 tests/mocks/ra8_fake_dma.c	4
 tests/test_app_can_classic_loopback.c	2

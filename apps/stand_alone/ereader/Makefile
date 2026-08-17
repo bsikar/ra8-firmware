@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# Makefile for the main e-reader application (src/app).
+# Makefile for the main e-reader application (apps/stand_alone/ereader).
 #
 # Standalone use:
-#   cd src/app/
-#   make             # configure + build -> src/app/build/ra8d2-ereader.elf
+#   cd apps/stand_alone/ereader/
+#   make             # configure + build -> apps/stand_alone/ereader/build/ra8d2-ereader.elf
 #   make flash       # JLinkExe load via scripts/dev/flash.sh
-#   make clean       # rm -rf src/app/build
+#   make clean       # rm -rf apps/stand_alone/ereader/build
 #
 
 SHELL     := /bin/bash

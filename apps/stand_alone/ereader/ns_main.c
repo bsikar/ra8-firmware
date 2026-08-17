@@ -1,5 +1,5 @@
 /**
- * @file ns_main.c
+ * @file apps/stand_alone/ereader/ns_main.c
  * @brief Non-Secure main entry point: launches ThreadX and the e-reader UI.
  *
  * @par Tag

@@ -263,7 +263,7 @@ RA8_INTERNAL static bool internal_args_try_input(int argc, char** argv, int* i, 
 {
   const int idx = *i;
   if ((strncmp(argv[idx], "--ns", sizeof("--ns")) == 0) && ((idx + 1) < argc)) {
-    /* Second ELF: the Non-Secure image of a two-image TrustZone app (src/app).
+    /* Second ELF: the Non-Secure image of a two-image TrustZone app (the e-reader).
      * Loaded at its LMA so the Secure boot's NS-image copy + BLXNS land on it. */
     out->ns_elf_path = argv[idx + 1];
     (*i)++;
