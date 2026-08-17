@@ -12,6 +12,11 @@
  */
 
 /** @brief Request hosted POSIX extension declarations used by this test. */
+/* glibc fixes the spelling of its feature-test macros, so the
+ * reserved-identifier rule cannot apply: the hosted extensions this test
+ * calls are only declared when _GNU_SOURCE precedes the first system
+ * header. */
+// NOLINTNEXTLINE(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
 #define _GNU_SOURCE
 
 #include <stddef.h>
@@ -586,7 +591,17 @@ static void internal_init_mdl_storage(const fw_fs_t* fs, internal_mdl_storage_fi
                                   sizeof(fixture->file_work.bytes),
                                   fixture->io_buffer,
                                   sizeof(fixture->io_buffer)));
-  TEST_ASSERT(memcmp(&fixture->storage, &preserved, sizeof(fixture->storage)) == 0);
+  /* Field by field, not byte by byte: `mdl_storage_t` pads between its
+     pointer and uint32_t halves, and the struct assignment above is not
+     required to carry that padding across. */
+  TEST_ASSERT(fixture->storage.fs == preserved.fs);
+  TEST_ASSERT(fixture->storage.file_workspace == preserved.file_workspace);
+  TEST_ASSERT(fixture->storage.transaction_workspace == preserved.transaction_workspace);
+  TEST_ASSERT(fixture->storage.io_buffer == preserved.io_buffer);
+  TEST_ASSERT_EQ(preserved.file_workspace_bytes, fixture->storage.file_workspace_bytes);
+  TEST_ASSERT_EQ(preserved.transaction_workspace_bytes,
+                 fixture->storage.transaction_workspace_bytes);
+  TEST_ASSERT_EQ(preserved.io_buffer_bytes, fixture->storage.io_buffer_bytes);
   TEST_ASSERT_EQ(k_ra8_ok,
                  mdl_storage_init(&fixture->storage,
                                   fs,

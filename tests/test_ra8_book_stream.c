@@ -256,6 +256,48 @@ RA8_INTERNAL static void internal_test_production_rbkc_round_trip_and_chunk_corr
   TEST_END("strict stream production RBKC round trip and chunk corruption");
 }
 
+/**
+ * @brief Report whether a chunked reader still holds its saved fields.
+ * @details Member-wise rather than byte-wise: ::ra8_book_chunked_t interleaves
+ *          32-bit counts with pointers and 64-bit offsets, so it carries
+ *          padding that the struct assignment snapshotting it is not required
+ *          to copy. Comparing the object representation would therefore be
+ *          asserting something about padding, not about the reader.
+ * @param[in] reader Reader observed after the rejected call.
+ * @param[in] saved Reader snapshot taken before it.
+ * @return Whether every field is unchanged.
+ * @retval true The rejected call wrote nothing.
+ * @retval false At least one field moved.
+ * @pre Both pointers address initialized readers.
+ * @pre Neither pointer is null.
+ * @post Neither reader is modified.
+ * @post The result depends only on the reader fields.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static bool internal_reader_unchanged(const ra8_book_chunked_t* reader,
+                                      const ra8_book_chunked_t* saved)
+{
+  if ((reader->file_read != saved->file_read) || (reader->file_ctx != saved->file_ctx)) {
+    return false;
+  }
+  if ((reader->inflate != saved->inflate) || (reader->table != saved->table)) {
+    return false;
+  }
+  if ((reader->staging != saved->staging) || (reader->staging_cap != saved->staging_cap)) {
+    return false;
+  }
+  if (reader->table_cap_entries != saved->table_cap_entries) {
+    return false;
+  }
+  if ((reader->payload_off != saved->payload_off) ||
+      (reader->inflated_total != saved->inflated_total)) {
+    return false;
+  }
+  return (reader->chunk_bytes == saved->chunk_bytes) && (reader->chunk_count == saved->chunk_count);
+}
+
 /** @brief Prove every known reader/workspace/output alias fails before I/O. */
 RA8_INTERNAL
 static void internal_check_chunked_alias_guards(stream_guard_fixture_t* fixture)
@@ -288,15 +330,21 @@ static void internal_check_chunked_alias_guards(stream_guard_fixture_t* fixture)
                                                   &hdr));
   TEST_ASSERT_EQ(0U, hdr.total_size);
 
-  const ra8_book_chunked_t saved = fixture->reader;
+  union {
+    /** @brief Reader view used as the source object. */
+    ra8_book_chunked_t reader;
+    /** @brief Aliased header destination under test. */
+    ra8_book_header_t header;
+  } reader_header_alias          = {.reader = fixture->reader};
+  const ra8_book_chunked_t saved = reader_header_alias.reader;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_book_chunked_validate_strict(&fixture->reader,
+                 ra8_book_chunked_validate_strict(&reader_header_alias.reader,
                                                   g_reader_chunk,
                                                   sizeof(g_reader_chunk),
                                                   g_validate_work,
                                                   sizeof(g_validate_work),
-                                                  (ra8_book_header_t*)(void*)&fixture->reader));
-  TEST_ASSERT_EQ(0, memcmp(&saved, &fixture->reader, sizeof(saved)));
+                                                  &reader_header_alias.header));
+  TEST_ASSERT(internal_reader_unchanged(&reader_header_alias.reader, &saved));
 
   union {
     /** @brief Reader view used as the source object. */
