@@ -168,11 +168,11 @@ prepare_head_snapshot() {
 
 # Reclaim reproducible build trees once the full suite has consumed them.
 #
-# Static analysis, unit, UBSan, and the two gcov gates each leave reproducible
+# Static analysis, unit, UBSan, and the gcov gate each leave reproducible
 # CMake trees. No later gate consumes them after the boundary table below.
 # Keeping every completed tree resident made the suite exceed the shared
-# runner's free space before coverage-report, then again while clang-18 built
-# MC/DC, even though each gate passed alone.
+# runner's free space before the coverage gate, then again while clang-18
+# built MC/DC, even though each gate passed alone.
 #
 # This is deliberately restricted to the owned, disposable HEAD snapshot.
 # `bash scripts/ci.sh --gate <name>` and direct make targets run in place and
@@ -181,8 +181,7 @@ prepare_head_snapshot() {
 RA8_CI_RECLAIM_BOUNDARIES=(
   "unit-tests"
   "ubsan"
-  "coverage"
-  "coverage-report"
+  "coverage-tree"
   "mcdc"
   "cache-bench"
 )
@@ -197,9 +196,8 @@ suite_reclaim_targets() {
         build/tidy-reflow-v2 build/xtidy
       ;;
     ubsan) printf '%s\n' tests/build ;;
-    coverage) printf '%s\n' tests/build-ubsan ;;
-    coverage-report) printf '%s\n' build/coverage ;;
-    mcdc) printf '%s\n' tests/build-cov build/coverage ;;
+    coverage-tree) printf '%s\n' tests/build-ubsan ;;
+    mcdc) printf '%s\n' tests/build-cov build/tree-coverage ;;
     cache-bench) printf '%s\n' tests/build-cov build/mcdc-report ;;
     *) return 0 ;;
   esac
@@ -275,7 +273,7 @@ suite_build_lifecycle_boundary_selftest() {
 suite_build_lifecycle_selftest() {
   local probe boundary failures=0
   probe="$(mktemp -d "${TMPDIR:-/tmp}/ra8-storage-probe.XXXXXXXX")"
-  if [[ "${#RA8_CI_RECLAIM_BOUNDARIES[@]}" -lt 6 ]]; then
+  if [[ "${#RA8_CI_RECLAIM_BOUNDARIES[@]}" -lt 5 ]]; then
     echo "ERROR: suite build lifecycle boundary set collapsed below its floor." >&2
     failures=1
   fi

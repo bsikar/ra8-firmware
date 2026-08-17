@@ -332,40 +332,12 @@ jobs:
 
       - run: bash scripts/ci.sh --gate tools-build
 
-  tools-coverage:
-    name: Host tools coverage (media_dl per-file ratchet)
-    runs-on: ra8-ci
-    if: >-
-      github.event_name != 'pull_request'
-      || github.event.pull_request.head.repo.full_name == github.repository
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - run: bash scripts/ci.sh --gate tools-coverage
-
-  coverage:
-    name: Coverage (gcovr 90/80)
-    runs-on: ra8-ci
-    if: >-
-      github.event_name != 'pull_request'
-      || github.event.pull_request.head.repo.full_name == github.repository
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - name: Ensure gcovr on PATH
-        run: |
-          # ci-parity: infra -- runner PATH plumbing for a pip --user install of
-          # gcovr; runs no project check. The gate hard-fails when gcovr is
-          # still missing after this, so it can never silently skip.
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - run: bash scripts/ci.sh --gate coverage
-      - name: Upload HTML report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-html
-          path: build/coverage/coverage/
-          retention-days: 14
+  # Statement + branch coverage is scheduled ONCE, in coverage.yml, by the
+  # coverage-tree gate. There is one census, one baseline and one policy for
+  # every first-party translation unit, so there is one job that applies it --
+  # the two jobs that used to sit here (an aggregate 90/80 over the host suite
+  # and a media_dl-named per-file ratchet) each built the same translation
+  # units and answered the same question differently.
 
   # ---------------------------------------------------------------------------
   # MC/DC report (clang-18 source-based coverage with -fcoverage-mcdc), gated

@@ -279,7 +279,7 @@ ssh dev 'bash -lc "cd ~/ra8-firmware && make ws-new NAME=my-task"'
 # 2. gates -- the SAME functions the runner executes
 ssh dev 'bash -lc "cd ~/ra8-ws/my-task && make ci"'                     # container (works from a worktree, #334)
 ssh dev 'bash -lc "cd ~/ra8-ws/my-task && make ci-native"'              # every gate, no container
-ssh dev 'bash -lc "cd ~/ra8-ws/my-task && make ci-gate GATE=coverage-report"'   # just one
+ssh dev 'bash -lc "cd ~/ra8-ws/my-task && make ci-gate GATE=coverage-tree"'   # just one
 # 3. push (the pre-push hook runs the suite, which the Mac cannot; dev validated it)
 SKIP_CI_PUSH=1 git push origin dev
 ```
@@ -318,9 +318,9 @@ Gotchas (each has bitten a push):
   (all trees, incl. `build/asan`/`build/clean`) before a coverage run.
 - **The SIGALRM/setitimer test-injection flake** (i2c/adc/rtc/sdhi/i3c and
   others) aborts ~random tests under coverage instrumentation and kills
-  `coverage.sh` at its `set -e` ctest step BEFORE the floor check. Defeat with
-  `ctest --repeat until-pass:4` then run the gcovr + `check_coverage_floor.py`
-  steps by hand. Root fix: the T1-01 deterministic MMIO seam (`ra8_fake_mmio_*`).
+  `tree_coverage.sh` at its `set -e` ctest step BEFORE the policy runs. Defeat
+  with `ctest --repeat until-pass:4` then run the gcovr +
+  `check_tree_coverage.py` steps by hand. Root fix: the T1-01 deterministic MMIO seam (`ra8_fake_mmio_*`).
 - **The dev box is shared** -- another session may `git reset --hard` it between
   your ssh calls, wiping untracked files. Sync + validate in ONE session.
 
