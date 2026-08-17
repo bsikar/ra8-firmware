@@ -677,7 +677,7 @@ RA8_INTERNAL static void internal_test_robots_cache(void)
                                                     scratch,
                                                     sizeof(scratch));
   TEST_ASSERT(r2 == r);                            /* s_cache hit: same entry */
-  TEST_ASSERT_EQ((uint16_t)1, (uint16_t)ok.count); /* fetched exactly once  */
+  TEST_ASSERT_EQ((uint16_t)1, (uint16_t)ok.count); /* fetched exactly once    */
 
   fake_fetch_ctx_t    deny = {.count = 0, .body = nullptr, .result = k_mdl_robots_fetch_denied};
   const mdl_robots_t* rd   = mdl_robots_cache_consult(&s_cache,
