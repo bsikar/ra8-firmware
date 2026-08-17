@@ -27,7 +27,7 @@
 #       (divergent maps: dual-core, TrustZone, bootloader banks), else the
 #       selected board's canonical single-core map
 #       libs/ra8_board_<BOARD>/ld/linker_script.ld
-#   - the ra8_* libraries + src/secure_app
+#   - the ra8_* libraries (ra8_secure_app carries the Ring 5 secure substrate)
 #
 # Options:
 #   NAME <n>            (required) app + elf base name
@@ -196,7 +196,8 @@ macro(ra8_add_app)
   endforeach()
 
   # ---- insecure placeholder-crypto opt-in (issue #180) ------------------
-  # Several secure-side TUs (src/secure_app/{secure_trng,key_import,key_vault}.c
+  # Several secure-side TUs (libs/ra8_secure_app/src/{secure_trng,key_import,
+  # key_vault}.c
   # and libs/ra8_hal/src/ra8_rsip_key_injection.c) ship an INSECURE placeholder
   # body (a deterministic PRNG "TRNG", a forgeable key-import MAC, a plain-SRAM
   # key vault, a non-cryptographic RSIP key-wrap) that is only safe under an
@@ -218,7 +219,7 @@ macro(ra8_add_app)
   # (scripts/builders/all_examples.sh sets it for the "Cross-build all apps"
   # gate), link that archive instead of recompiling the ~180 universal
   # first-party sources (ra8_core / ra8_hal / ra8_net_pal / ra8_usb_pal /
-  # board / secure_app) into THIS executable -- they are compiled once for
+  # board / ra8_secure_app) into THIS executable -- they are compiled once for
   # the whole cross-build. --whole-archive pulls every member object (so the
   # link is identical to compiling the sources in) and the toolchain's
   # --gc-sections then prunes the unused ones, yielding the same final ELF
@@ -268,7 +269,7 @@ macro(ra8_add_app)
       "/libs/ra8_net_pal/src/"
       "/libs/ra8_usb_pal/src/"
       "/libs/ra8_board_${_RA8_APP_BOARD}/src/"
-      "/src/secure_app/"
+      "/libs/ra8_secure_app/src/"
     )
       list(
         FILTER
@@ -366,15 +367,12 @@ macro(ra8_add_app)
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
             ${CMAKE_CURRENT_SOURCE_DIR}/inc
             ${CMAKE_CURRENT_SOURCE_DIR}/src
-            ${RA8_REPO_ROOT}/src
-            ${RA8_REPO_ROOT}/src/inc
-            ${RA8_REPO_ROOT}/src/secure_app
-            ${RA8_REPO_ROOT}/src/secure_app/inc
             ${RA8_REPO_ROOT}/libs/ra8_core/inc
             ${RA8_REPO_ROOT}/libs/ra8_hal/inc
             ${RA8_REPO_ROOT}/libs/ra8_net_pal/inc
             ${RA8_REPO_ROOT}/libs/ra8_usb_pal/inc
             ${RA8_REPO_ROOT}/libs/ra8_nsc/inc
+            ${RA8_REPO_ROOT}/libs/ra8_secure_app/inc
             ${_ra8_board_dir}/inc
             ${_ra8_lib_inc}
             ${_ra8_extra_inc}

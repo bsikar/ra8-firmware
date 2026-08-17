@@ -91,7 +91,7 @@ from pathlib import Path
 
 # First-party roots. libs/third_party (SOUP) and libs/ra8_fonts (generated) are out
 # of scope, matching every other repo gate.
-ROOTS = ("libs", "src", "tools", "apps", "examples", "port")
+ROOTS = ("libs", "tools", "apps", "examples", "port")
 EXCLUDED = ("libs/third_party", "libs/ra8_fonts")
 
 # Error constants that mean "this operation has no implementation". A function

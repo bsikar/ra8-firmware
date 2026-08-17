@@ -100,9 +100,6 @@ _INCLUDE_ROOT_PATTERNS = (
     # remainder are per-library layouts (board boot code, reflow v2).
     "libs/*",
     "libs/*/*",
-    "src",
-    "src/*",
-    "src/*/inc",
     "tests",
     "tests/include",
     "tests/mocks",
@@ -215,8 +212,8 @@ def _include_args() -> list[str]:
     Widening it again is not cosmetic either. The linkage rule reads a
     function's published interface off the file its prototype lives in,
     so a public header the parse cannot reach turns every symbol it
-    declares into a phantom violation: ``src/secure_app/inc`` was absent,
-    and the whole key-vault and OTA-commit API looked undeclared.
+    declares into a phantom violation: the secure substrate's ``inc/`` was
+    absent, and the whole key-vault and OTA-commit API looked undeclared.
     """
     root = repo_root()
     roots: list[pathlib.Path] = []

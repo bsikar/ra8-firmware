@@ -56,11 +56,10 @@ from lint_targets import first_party_paths
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-#: The six first-party source roots. ``tests/`` is deliberately absent: it is
+#: The five first-party source roots. ``tests/`` is deliberately absent: it is
 #: the instrument. Trailing slashes so a root can never prefix-match a sibling.
 CENSUS_ROOTS: tuple[str, ...] = (
     "libs/",
-    "src/",
     "port/",
     "tools/",
     "apps/",
@@ -291,12 +290,11 @@ def structural_reason(rel: str, *, compiled: bool, firmware_dirs: tuple[str, ...
 # ---------------------------------------------------------------------------
 
 ROOT_CENSUS_FLOORS: dict[str, int] = {
-    "libs": 380,  # measured 435
+    "libs": 385,  # measured 440
     "examples": 300,  # measured 370
     "tools": 110,  # measured 134
     "apps": 50,  # measured 64
     "port": 28,  # measured 35
-    "src": 4,  # measured 5
 }
 
 MEASURED_FLOOR = 440

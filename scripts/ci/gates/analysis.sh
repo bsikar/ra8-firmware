@@ -97,7 +97,7 @@ gate_cppcheck() (
     --include="$compat_header" \
     -i libs/third_party \
     --std=c23 \
-    src libs tools "${apps[@]}"
+    libs tools "${apps[@]}"
 )
 
 # --- scan-build -----------------------------------------------------------

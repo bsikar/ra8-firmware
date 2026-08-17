@@ -12,7 +12,7 @@ header:
 This script:
 
     1. Walks every first-party C file, derived from git ls-files via
-       lint_targets (#358) rather than a hardcoded ("libs","src","tests")
+       lint_targets (#358) rather than a hardcoded ("libs","tests")
        + example-app list that silently omitted tools/ and port/. Vendored
        trees (libs/third_party/, port/threadx/) are dropped automatically.
     2. For Ring 3+ files (anything outside Ring 1 BSP and Ring 2 Core),
@@ -163,7 +163,7 @@ def file_is_in_ring1_or_ring2(rel_path: str) -> bool:
 def file_is_in_ring3_plus(rel_path: str) -> bool:
     """Whether a file is project-owned Ring 3+ code, where the World tag is required.
 
-    Covers libs/ra8_hal/, libs/ra8_*_pal/, libs/ra8_nsc/, src/secure_app/,
+    Covers libs/ra8_hal/, libs/ra8_*_pal/, libs/ra8_nsc/, libs/ra8_secure_app/,
     tests/, and per-app main.c (Ring 6 application code). These are the rings
     that can run in either TrustZone world, which is precisely why each file
     must declare which one it is written for.
@@ -174,7 +174,7 @@ def file_is_in_ring3_plus(rel_path: str) -> bool:
         return True
     if rel_path.startswith("libs/ra8_nsc/"):
         return True
-    if rel_path.startswith("src/secure_app/"):
+    if rel_path.startswith("libs/ra8_secure_app/"):
         return True
     if rel_path.startswith("tests/"):
         return True
@@ -347,7 +347,7 @@ def _build_parser() -> argparse.ArgumentParser:
 def _select_targets(paths: list[str]) -> list[pathlib.Path]:
     """Explicit paths, or the derived first-party C set (#358).
 
-    The old ("libs","src","tests") + APP_DIRS list silently omitted tools/ and
+    The old ("libs","tests") + APP_DIRS list silently omitted tools/ and
     port/. Host tooling (tools/) and vendored trees are enumerated but are NOT
     ring3+, so they require no World tag -- a documented scope decision, not an
     accident of a tuple; the NSC-location and cmse_nonsecure_entry bans still

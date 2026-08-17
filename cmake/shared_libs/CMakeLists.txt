@@ -6,7 +6,7 @@
 #
 # The "Cross-build all apps" gate used to recompile ~180 identical first-party
 # library sources (ra8_core / ra8_hal / ra8_net_pal / ra8_usb_pal / board /
-# secure_app) once per app across ~200 apps. This project compiles them a
+# ra8_secure_app) once per app across ~200 apps. This project compiles them a
 # single time into libra8_shared_<board>.a; the per-app recipe
 # (cmake/ra8_add_app.cmake) then links that archive with --whole-archive
 # instead of recompiling the sources (see the RA8_SHARED_LIB_ARCHIVE env-var

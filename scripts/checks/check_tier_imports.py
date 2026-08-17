@@ -6,7 +6,7 @@
 The tree has three tiers (#718), and the products tier has an internal layer of
 its own:
 
-* PLATFORM -- ``libs/``, ``port/``, ``src/``, ``tools/``. General-purpose,
+* PLATFORM -- ``libs/``, ``port/``, ``tools/``. General-purpose,
   reusable, knowing nothing about any one product.
 * PRODUCTS -- ``apps/``, split by FORM. ``apps/stand_alone/`` holds host-form
   products, ``apps/threadx_modules/`` holds module-form products, and
@@ -507,7 +507,7 @@ _FIRE_C_RULE1 = {
     "libs/ra8_tier/src/bare.c": '#include "mdl_cache.h"\n',
     "tools/tier_tool/src/angle.c": "#include <mdl_cache.h>\n",
     "port/posix/src/nested.c": '#include "media_dl/inc/mdl_cache.h"\n',
-    "src/secure_app/src/deep.c": '#include "apps/threadx_modules/dl/inc/dl.h"\n',
+    "libs/ra8_secure_app/src/deep.c": '#include "apps/threadx_modules/dl/inc/dl.h"\n',
 }
 
 # Rule 2 -- shared product code reaching up into a product FORM.

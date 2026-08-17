@@ -46,7 +46,7 @@ hand-traced decisions, and so on.
 |                                 | `13.3` and is a FATAL configure error on a mismatch by             |
 |                                 | default (`RA8_STRICT_TOOLCHAIN`, ON); the devcontainer fetches      |
 |                                 | the tarball by URL + sha256. See `docs/TOOLCHAIN.md` (3.1).        |
-| Intended use                    | Cross-compile every `.c` / `.cpp` source under `libs/`, `src/`,    |
+| Intended use                    | Cross-compile every `.c` / `.cpp` source under `libs/`,           |
 |                                 | `port/`, `examples/` to Cortex-M85 / M33 production object code.   |
 | TQL classification              | **TQL-5**                                                          |
 | DO-330 Criterion                | Criterion 3 ("output is verified by other means").                 |

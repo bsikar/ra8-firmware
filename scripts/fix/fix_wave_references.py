@@ -49,7 +49,6 @@ REPORT_MAX_LINES = 50
 
 SCAN_ROOTS = (
     "libs",
-    "src",
     "examples",
     "tests",
     "port",

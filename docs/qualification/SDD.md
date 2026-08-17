@@ -40,7 +40,7 @@ Per [`../RING_AND_WORLD.md`](../RING_AND_WORLD.md):
 | 2    | Register layouts | [`../../libs/ra8_hal/inc/ra8d2_*_regs.h`](../../libs/ra8_hal/inc/) (62 files) | REQ-CHIP-006      |
 | 3    | HAL drivers      | [`../../libs/ra8_hal/src/ra8_*.c`](../../libs/ra8_hal/src/) (93 TUs) + PALs    | REQ-DRV-XXX, REQ-HAL-XXX |
 | 4    | NSC veneers      | [`../../libs/ra8_nsc/`](../../libs/ra8_nsc/)                                  | REQ-PORT-001..009 |
-| 5    | Secure-app       | [`../../src/secure_app/`](../../src/secure_app/)                            | REQ-PORT-010..013 |
+| 5    | Secure-app       | [`../../libs/ra8_secure_app/`](../../libs/ra8_secure_app/)                  | REQ-PORT-010..013 |
 | 6    | Application      | [`../../examples/ek_ra8d2/`](../../examples/ek_ra8d2/) (27 apps)             | REQ-APP-XXX       |
 
 Higher rings may include lower-ring headers freely; the inverse is a
@@ -167,12 +167,12 @@ rejected by `check_world_tags.py`.
 
 ### 2.7 Ring 5 -- secure-app
 
-| Module             | Public API (`src/secure_app/`) | Implements                                                       |
+| Module             | Header (`libs/ra8_secure_app/`) | Implements                                                       |
 |--------------------|---------------------------------|------------------------------------------------------------------|
-| key_vault          | `key_vault.h`                   | REQ-PORT-010 (256-bit symmetric key store)                       |
-| key_import         | `key_import.h`                  | REQ-PORT-011 (wrapped-blob import + key-class enum)              |
-| ota_commit         | `ota_commit.h`                  | REQ-PORT-012 (atomic MRAM bank swap)                              |
-| secure_trng        | `secure_trng.h`                 | REQ-PORT-013 (entropy source for PSA-Crypto)                     |
+| key_vault          | `inc/key_vault.h`               | REQ-PORT-010 (256-bit symmetric key store)                       |
+| key_import         | `src/key_import_internal.h`     | REQ-PORT-011 (wrapped-blob import + key-class enum)              |
+| ota_commit         | `inc/ota_commit.h`              | REQ-PORT-012 (atomic MRAM bank swap)                              |
+| secure_trng        | `src/secure_trng_internal.h`    | REQ-PORT-013 (entropy source for PSA-Crypto)                     |
 
 ### 2.8 Ring 6 -- applications
 
@@ -217,8 +217,8 @@ exceeds its declared bucket (REQ-PERF-008).
 
 | Asset                       | Location                                | Owner                                                    |
 |-----------------------------|-----------------------------------------|----------------------------------------------------------|
-| Active firmware image       | MRAM bank A or B at `0x02000000`         | `libs/ra8_ota/` + `src/secure_app/ota_commit.c`           |
-| Wrapped key blobs           | Last MRAM block, S-only                  | `src/secure_app/key_import.c` + `key_vault.c`            |
+| Active firmware image       | MRAM bank A or B at `0x02000000`         | `libs/ra8_ota/` + `libs/ra8_secure_app/src/ota_commit.c`  |
+| Wrapped key blobs           | Last MRAM block, S-only                  | `libs/ra8_secure_app/src/key_import.c` + `key_vault.c`   |
 | OFS bytes                   | MRAM offset per HUM Ch 6                 | `libs/ra8_hal/src/ra8_ofs.c` + per-app linker script        |
 | TSN factory cal             | `0x02C1EDA0`                             | `libs/ra8_hal/src/ra8_tsn.c`                                |
 | External NOR (LevelX-backed) | xSPI memory window                       | LevelX SOUP via `port/levelx/` + `libs/ra8_cache_store/`     |
@@ -359,9 +359,9 @@ Per [`./PSAC.md`](./PSAC.md) Section 2.4 the crypto stack is Mbed TLS
 | Use                     | PSA key type                              | Algorithm                                  | Source                               |
 |-------------------------|-------------------------------------------|--------------------------------------------|--------------------------------------|
 | TLS handshake signing   | `PSA_KEY_TYPE_ECC_KEY_PAIR(SECP256R1)`    | `PSA_ALG_ECDSA(PSA_ALG_SHA_256)`           | `libs/ra8_tls/src/ra8_tls.c`           |
-| OTA image authenticity  | `PSA_KEY_TYPE_ECC_PUBLIC_KEY(SECP256R1)`  | `PSA_ALG_ECDSA(PSA_ALG_SHA_256)`           | `src/secure_app/ota_commit.c`        |
-| Symmetric key wrap      | `PSA_KEY_TYPE_AES`                        | `PSA_ALG_GCM`                              | `src/secure_app/key_import.c`        |
-| Entropy                 | n/a                                       | TRNG via `secure_trng.c`                   | `src/secure_app/secure_trng.c`       |
+| OTA image authenticity  | `PSA_KEY_TYPE_ECC_PUBLIC_KEY(SECP256R1)`  | `PSA_ALG_ECDSA(PSA_ALG_SHA_256)`           | `libs/ra8_secure_app/src/ota_commit.c` |
+| Symmetric key wrap      | `PSA_KEY_TYPE_AES`                        | `PSA_ALG_GCM`                              | `libs/ra8_secure_app/src/key_import.c` |
+| Entropy                 | n/a                                       | TRNG via `secure_trng.c`                   | `libs/ra8_secure_app/src/secure_trng.c` |
 
 The RSIP HW path for key wrap is BLOCKED-VENDOR (REQ-DRV-061/062); the
 software fallback (`RA8_RSIP_SOFTWARE_BACKEND`) is emulator-only and

@@ -148,7 +148,7 @@ follow-up: UART working".
 ### 3.1 Bare-metal HAL written from the HUM
 
 Per [`../../CLAUDE.md`](../../CLAUDE.md) "Development Approach", every
-source file in `src/` and `libs/` is hand-written against the Renesas
+source file in `libs/` is hand-written against the Renesas
 Hardware User's Manual R01UH1065EJ. Renesas FSP source is reference-
 only and is **not** copied into this tree. The cite-check script
 (`scripts/checks/cite_check.py`) verifies that register-level
@@ -377,7 +377,7 @@ overflow).
 
 ### 6.7 Doxygen audit
 
-`scripts/checks/doxy_audit.py` walks `libs/`, `src/`, `port/` (third
+`scripts/checks/doxy_audit.py` walks `libs/`, `port/`, `tools/`, `apps/` (third
 party excluded) and reports per-function missing-tag counts to
 [`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md). Current gap: **0 functions
 with gaps** out of 2747 audited (Phase 3 acceptance gate met).

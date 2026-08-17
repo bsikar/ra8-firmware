@@ -14,8 +14,8 @@ This checker freezes the existing debt per ``(file, family)`` in
 shrinkage passes and asks for a re-baseline.  Counts ignore comments and string
 literals, so documentation does not masquerade as a dependency.
 
-Scope is first-party C/C++ production code under ``libs/``, ``src/``,
-``port/``, ``examples/`` and ``tools/``.  Concrete HAL implementations, named
+Scope is first-party C/C++ production code under ``libs/``, ``port/``,
+``examples/``, ``tools/`` and ``apps/``.  Concrete HAL implementations, named
 backend translation units, and board composition libraries are allowed to name
 the concrete symbols.  Tests are outside the production layering policy and
 may exercise a concrete driver directly.  Vendored and generated sources
@@ -55,7 +55,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 BASELINE_FILE = REPO_ROOT / ".github" / "agnostic-register-baseline.txt"
 
 SOURCE_SUFFIXES = (".c", ".h", ".cpp", ".hpp", ".cc", ".cxx", ".hh", ".hxx")
-POLICY_ROOTS = frozenset({"libs", "src", "port", "examples", "tools", "apps"})
+POLICY_ROOTS = frozenset({"libs", "port", "examples", "tools", "apps"})
 EXCLUDED_PREFIXES = ("libs/ra8_hal/", "libs/third_party/", "libs/ra8_fonts/")
 EXCLUDED_BACKEND_FILES = frozenset(
     {

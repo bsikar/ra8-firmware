@@ -386,7 +386,8 @@ RA8_NSC_VENEER void ra8_nsc_wdt_refresh(void);
  * entry point that misrepresents the trust-boundary surface. They are removed
  * until a real definition exists (enforced by
  * scripts/checks/check_nsc_veneer_defs.py). The secure-side backing code lives
- * in src/secure_app/{key_import,secure_trng}.c; re-add each declaration in the
+ * in libs/ra8_secure_app/src/{key_import,secure_trng}.c; re-add each
+ * declaration in the
  * same change that adds its RA8_NSC_VENEER definition. */
 
 /* =============================================================================
@@ -410,7 +411,7 @@ typedef enum : uint32_t {
 } ra8_nsc_limits_t;
 
 /* =============================================================================
- * OTA bank-commit veneers (forwarded to src/secure_app/ota_commit.c)
+ * OTA bank-commit veneers (forwarded to libs/ra8_secure_app/src/ota_commit.c)
  * =============================================================================
  */
 

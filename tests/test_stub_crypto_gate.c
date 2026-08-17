@@ -27,7 +27,7 @@
  * deterministic / round-trip properties asserted here are exactly the INSECURE
  * behaviour a real backend must replace.
  *
- * Note: the sealed-key importer (src/secure_app/key_import.c) is no longer part
+ * Note: the sealed-key importer (libs/ra8_secure_app/src/key_import.c) is no longer part
  * of this set -- its forgeable XOR-fold MAC was replaced by a real AES-CMAC
  * (issue #291), so it is no longer a stub crypto TU. Its own tests live in
  * test_secure_app_key_import.c / test_secure_app_sec_cmac.c.

@@ -228,7 +228,7 @@ def report(current: Counter, baseline: Counter) -> int:
             print(f"  ... and {len(grown) - MAX_DETAIL_LINES} more bucket(s)", file=sys.stderr)
         print(file=sys.stderr)
         print(
-            "Every compound boolean decision under libs/ src/ port/ needs MC/DC\n"
+            "Every compound boolean decision under libs/ port/ needs MC/DC\n"
             "vectors: add a `test_mcdc_<decision>` function with N+1 vectors to\n"
             "the matching tests/test_<module>.{c,cpp} and cite the decision as\n"
             "`path@function` in its `@par MC/DC:` block (see docs/MCDC.md).\n"

@@ -24,7 +24,7 @@ works when the application is broken, `ra8_dfu`. They are not alternatives to
 each other so much as different moments.
 
 One thing that looks like a third mechanism and is not: `ra8_nsc_ota_commit`
-(and `src/secure_app/`) is the secure-world half of `ra8_ota`'s bank latch, not
+(and `libs/ra8_secure_app/`) is the secure-world half of `ra8_ota`'s bank latch, not
 a separate updater.
 
 <!-- disambig

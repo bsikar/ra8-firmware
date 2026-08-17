@@ -49,8 +49,18 @@
  * so our overrides must come AFTER it but the include itself is here
  * to avoid unguarded symbols leaking. NimBLE's build wrapper expects
  * a single syscfg.h on the include path; including the upstream copy
- * here keeps every other knob at its documented default. */
-#include "../../libs/third_party/nimble/porting/nimble/include/syscfg/syscfg.h"
+ * here keeps every other knob at its documented default.
+ *
+ * The path is relative to THIS FILE's directory (port/nimble/inc), which is
+ * three levels below the repository root -- so the quoted-include rule
+ * resolves it with no -I at all. It read ``../../`` until #724: that is
+ * port/libs/... , which does not exist, and it only ever resolved because
+ * some unrelated -I happened to sit exactly two levels below the repo root
+ * (the app include path carried ${RA8_REPO_ROOT}/src/secure_app, and a
+ * phantom ${RA8_REPO_ROOT}/src/inc besides). Dissolving src/ removed both
+ * and the include stopped resolving, which is the latent defect surfacing,
+ * not a new one. Anchoring on the including file cannot break that way. */
+#include "../../../libs/third_party/nimble/porting/nimble/include/syscfg/syscfg.h"
 
 /* ----------------------------------------------------------------------- */
 /* Security Manager Protocol (SMP) */

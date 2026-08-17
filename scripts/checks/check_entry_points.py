@@ -9,7 +9,7 @@ Two domains, two contracts, one enforced boundary (#707):
   status, so ISO C applies: ``int main(void)`` or ``int main(int, char**)``.
   Both host compilers enforce this themselves; this gate exists so the
   spelling cannot drift back to ``int32_t`` where nothing would notice.
-* **Freestanding** -- ``examples/``, ``src/`` and ``port/`` are bare metal
+* **Freestanding** -- ``examples/`` and ``port/`` are bare metal
   reached from ``Reset_Handler``. There is no process and no exit status, so
   the entry point is ``void main(void)``, declared once in
   ``libs/ra8_core/inc/ra8_boot_entry.h``.
@@ -80,10 +80,11 @@ BOOT_HEADER_REL = "libs/ra8_core/inc/ra8_boot_entry.h"
 
 # Roots whose entry points are reached from Reset_Handler rather than from a C
 # runtime. Derived from where the build actually cross-compiles: the app
-# discovery in the top-level CMakeLists globs examples/, src/ is the platform
-# substrate compiled into every image, and port/ is RTOS glue compiled into
-# firmware images.
-FIRMWARE_ROOTS = ("examples/", "src/", "port/")
+# discovery in the top-level CMakeLists globs examples/, and port/ is RTOS glue
+# compiled into firmware images. The Ring 5 secure substrate that used to sit
+# under src/ is now libs/ra8_secure_app -- pure library code with no entry
+# point, so libs/ needs no row here (#724).
+FIRMWARE_ROOTS = ("examples/", "port/")
 HOSTED_ROOTS = ("tests/", "tools/", "apps/")
 
 # ...and the one root where the name settles nothing. `apps/` is the PRODUCTS

@@ -100,7 +100,7 @@ committed summary.
 
 ### Documentation (Doxygen audit)
 
-From `docs/DOXYGEN_GAPS.md`, scope `libs/`, `src/`, `port/`
+From `docs/DOXYGEN_GAPS.md`, scope `libs/`, `port/`
 (third-party excluded):
 
 - **Functions audited**: 2588.
@@ -146,7 +146,7 @@ From `docs/MISRA.md` and `docs/MISRA_GAPS.csv`:
 ### Test corpus
 
 - **Test files**: 157 under `tests/` (matching `test_*.c`).
-- **First-party C/C++ source files**: 143 under `libs/` + `src/`
+- **First-party C/C++ source files**: 143 under `libs/`
   (third-party excluded).
 - **Test-to-source ratio**: roughly 1.10 : 1 today (target 1 : 1
   minimum maintained). The roadmap-quoted 0.76 : 1 figure is

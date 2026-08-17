@@ -189,16 +189,14 @@ target_include_directories(
          ${FW_ROOT}/libs/third_party/libwebp
          ${FW_ROOT}/libs/ra8_webp/inc
          ${FW_ROOT}/libs/ra8_webp/src
-         ${FW_ROOT}/src
-         ${FW_ROOT}/src/inc
-         ${FW_ROOT}/src/secure_app
-         ${FW_ROOT}/src/secure_app/inc
+         ${FW_ROOT}/libs/ra8_secure_app/inc
          # Per-module src/ directories exposed for MC/DC test access to
          # internal helpers (see CLAUDE.md "Test access to internal symbols").
          # Tests under tests/ MAY include "<module>_internal.h" to drive MC/DC
          # vectors on production source text. Only first-party libs are listed.
          ${FW_ROOT}/libs/ra8_core/src
          ${FW_ROOT}/libs/ra8_hal/src
+         ${FW_ROOT}/libs/ra8_secure_app/src
          ${FW_ROOT}/libs/ra8_jpeg/src
          ${FW_ROOT}/libs/ra8_net_pal/src
          ${FW_ROOT}/libs/ra8_modem_at/src

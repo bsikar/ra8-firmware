@@ -353,8 +353,8 @@ cleanly.
 
 The static enforcement framework lives at
 [`scripts/checks/check_annotations.py`](../scripts/checks/check_annotations.py).
-It walks the AST of every C/C++ TU under `libs/`, `src/`, `examples/`,
-`tests/`, `port/`, and `tools/` via the Python `libclang` bindings and applies
+It walks the AST of every C/C++ TU under `libs/`, `examples/`,
+`tests/`, `port/`, `tools/` and `apps/` via the Python `libclang` bindings and applies
 the rules documented above, plus the linkage rule below. Excluded
 subtrees: `build/`, `_deps/`, `third_party/`, and the various `build-*/`
 host-test directories.

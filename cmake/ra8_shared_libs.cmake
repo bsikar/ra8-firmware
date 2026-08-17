@@ -5,7 +5,7 @@
 #
 # Every example app compiles the SAME first-party library sources
 # (ra8_core, ra8_hal, ra8_net_pal, ra8_usb_pal, the board layer, and the
-# secure_app substrate) into its own executable via cmake/ra8_add_app.cmake.
+# ra8_secure_app substrate) into its own executable via cmake/ra8_add_app.cmake.
 # In the CI cross-build that is ~180 identical source files recompiled once
 # per app across ~200 apps -- the dominant cost of the "Cross-build all apps"
 # gate. Nothing about those objects varies between the eligible apps (same
@@ -40,7 +40,7 @@ function(ra8_shared_lib_sources out_var repo_root board_dir)
   file(GLOB_RECURSE _net_pal CONFIGURE_DEPENDS ${repo_root}/libs/ra8_net_pal/src/*.c)
   file(GLOB_RECURSE _usb_pal CONFIGURE_DEPENDS ${repo_root}/libs/ra8_usb_pal/src/*.c)
   file(GLOB_RECURSE _board CONFIGURE_DEPENDS ${board_dir}/src/*.c)
-  file(GLOB_RECURSE _secure CONFIGURE_DEPENDS ${repo_root}/src/secure_app/*.c)
+  file(GLOB_RECURSE _secure CONFIGURE_DEPENDS ${repo_root}/libs/ra8_secure_app/src/*.c)
   set(${out_var}
       ${_core}
       ${_hal}
@@ -59,15 +59,12 @@ endfunction()
 # a layering violation.
 function(ra8_shared_lib_includes out_var repo_root board_dir)
   set(${out_var}
-      ${repo_root}/src
-      ${repo_root}/src/inc
-      ${repo_root}/src/secure_app
-      ${repo_root}/src/secure_app/inc
       ${repo_root}/libs/ra8_core/inc
       ${repo_root}/libs/ra8_hal/inc
       ${repo_root}/libs/ra8_net_pal/inc
       ${repo_root}/libs/ra8_usb_pal/inc
       ${repo_root}/libs/ra8_nsc/inc
+      ${repo_root}/libs/ra8_secure_app/inc
       ${board_dir}/inc
       PARENT_SCOPE
   )

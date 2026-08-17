@@ -86,7 +86,7 @@ mode, scheduled to flip to STRICT during Phase 4). The rings are:
 - Ring 2 -- driver state machines (HAL on top of Ring 1).
 - Ring 3 -- platform abstraction layers (`libs/ra8_*_pal/`).
 - Ring 4 -- middleware (TLS, OTA, filesystem wrappers, USB classes).
-- Ring 5 -- secure-side substrate (`src/secure_app/`, key vault).
+- Ring 5 -- secure-side substrate (`libs/ra8_secure_app/`, key vault).
 - Ring 6 -- application binaries under `examples/`.
 
 Higher rings may only call lower rings; sibling-ring calls are flagged
@@ -278,7 +278,7 @@ authoritative location in the live tree.
 | Software coding standards          | [`../../CLAUDE.md`](../../CLAUDE.md), [`../STYLE_GUIDE.md`](../STYLE_GUIDE.md), [`../MISRA.md`](../MISRA.md) | 11.8 |
 | Software requirements data         | per-module `@brief`/`@details` blocks; `docs/ARCHITECTURE.md` | 11.9         |
 | Design description                 | [`../RING_AND_WORLD.md`](../RING_AND_WORLD.md), [`../MEMORY_MAP.md`](../MEMORY_MAP.md) | 11.10 |
-| Source code                        | `libs/`, `src/`, `examples/`, `port/`                      | 11.11           |
+| Source code                        | `libs/`, `examples/`, `port/`, `apps/`                     | 11.11           |
 | Executable object code             | per-app `build/<app>.elf` / `.hex`                         | 11.12           |
 | Software verif. cases & procedures | [`./SVCP.md`](./SVCP.md), `tests/test_*.c`                 | 11.13           |
 | Software verification results      | [`./SVR.md`](./SVR.md), `build/mcdc-report/`, `build/smoke/`, `build/misra/` | 11.14 |

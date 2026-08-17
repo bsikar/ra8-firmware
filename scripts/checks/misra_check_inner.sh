@@ -63,7 +63,7 @@ RESULTS="$OUT_DIR/results.txt"
 # 11.x, 18.4, 20.1 and 21.15 findings it can only raise once the types in
 # those headers are known. A net drop in findings is the dangerous direction
 # of that failure -- it reads as a burn-down.
-RA8_MISRA_ROOTS=(libs src port tools apps)
+RA8_MISRA_ROOTS=(libs port tools apps)
 
 # ---------------------------------------------------------------------------
 # BUILD OUTPUT IS NOT SOURCE -- and `build/` does not mean the same thing
@@ -81,7 +81,7 @@ RA8_MISRA_ROOTS=(libs src port tools apps)
 # A blanket `*/build/*` exclusion is the WRONG fix, and lint_targets.py already
 # says why. `build` names build OUTPUT only beneath the roots that produce it
 # (tools/<t>/build, apps/<cat>/<p>/build, examples/**/<app>/build, tests/build,
-# docs/build, port/**, src/app/build). Under libs/ it is an ordinary directory
+# docs/build, port/**). Under libs/ it is an ordinary directory
 # name a module is entitled to use for real source, and `builders/` is not a
 # build tree at all despite the prefix. A glob cannot tell those apart, and a
 # glob that swallows source is the dangerous direction: the audit goes quieter
@@ -198,7 +198,7 @@ _ra8_misra_selftest_fixture() {
 }
 
 _ra8_misra_selftest_roots() {
-  (cd "$1" && ra8_misra_build_output_dirs libs src port tools apps examples tests)
+  (cd "$1" && ra8_misra_build_output_dirs libs port tools apps examples tests)
 }
 
 # Both directions over the dirty fixture, plus the non-vacuity floor: an
@@ -343,7 +343,7 @@ JOBS="${JOBS:-$(ra8_max_jobs)}"
 # Header roots, enumerated FROM the scan roots above rather than hand-picked,
 # and at ANY depth beneath them.
 #
-# The list used to name five directories while the audit scanned libs/, src/
+# The list used to name five directories while the audit scanned libs/
 # AND port/, so every header under port/*/inc was invisible: cppcheck saw
 # the calls into those interfaces as implicitly-declared functions and
 # charged the caller MISRA 17.3 for them. That is a defect in the audit's

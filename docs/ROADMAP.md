@@ -1375,7 +1375,7 @@ no-ops so the host-test build keeps working unchanged.
 
 `[x]` Status: DONE.
 
-- [x] `src/secure_app/key_vault.{h,c}` -- Secure-only symmetric
+- [x] `libs/ra8_secure_app/` key vault -- Secure-only symmetric
       key store (8 slots, 256-bit keys) backed by a static
       array. Includes a tiny single-block FIPS 180-4 SHA-256
       implementation so the only operation that crosses the

@@ -67,11 +67,11 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 ## Risk mitigation
 
 - Signature verification is the gate on secure boot, and the RoT public key
-  it verifies against is held on the secure side under `src/secure_app/`.
+  it verifies against is held on the secure side under `libs/ra8_secure_app/`.
 - Two boundaries that this record previously claimed do NOT exist, and are
   recorded here so the gap is visible rather than assumed away:
   - PSA key handles are **not** brokered by the key vault or the NSC
-    veneers. `src/secure_app/key_vault.c` and `libs/ra8_nsc/` contain zero
+    veneers. `libs/ra8_secure_app/src/key_vault.c` and `libs/ra8_nsc/` contain zero
     PSA references; keys are imported transiently at the call site.
   - `libs/ra8_psa_crypto/` is **not** a mandatory chokepoint. It is one
     shim among several callers; `psa_crypto_hil`, `threadx_https_client`

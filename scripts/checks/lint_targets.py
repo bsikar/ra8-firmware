@@ -89,7 +89,7 @@ LANGUAGE_EXCLUDED_PREFIXES = {
 
 # Top-level directories beneath which a per-target build tree legitimately
 # appears, at any depth. Deliberately NOT "any directory anywhere": that is the
-# behaviour being removed. `scripts/`, `libs/`, `src/inc/` and friends are
+# behaviour being removed. `scripts/`, `libs/` and friends are
 # absent because nothing builds into them, so a `build` directory appearing
 # there is source and must stay visible to the checkers.
 BUILD_TREE_ROOTS = frozenset(
@@ -98,7 +98,6 @@ BUILD_TREE_ROOTS = frozenset(
         "examples",  # examples/**/<app>/build/ -- per-app CMake output
         "local-poc",  # local-poc/**/build/ -- git-excluded PoC tree
         "port",  # port/**/build/
-        "src",  # src/**/build/
         "tests",  # tests/build/, tests/build-cov/, tests/build-fuzz/
         "tools",  # tools/<tool>/build/ -- host tool output
         "apps",  # apps/<category>/<product>/build/ -- product build output
@@ -347,8 +346,8 @@ def first_party_paths(
 # FIRMWARE PRODUCTS -- the single definition, shared by every checker that has
 # to tell a cross-compiled image from a host program.
 #
-# Top-level roots used to classify build domain on their own: examples/, src/
-# and port/ were firmware, tests/ and tools/ were hosted. apps/ -- the products
+# Top-level roots used to classify build domain on their own: examples/ and
+# port/ were firmware, tests/ and tools/ were hosted. apps/ -- the products
 # tier -- breaks that, because it carries BOTH kinds. The media_dl CLI is a
 # host program the C runtime starts and whose exit status something reads; the
 # e-reader is a two-image TrustZone composition reached from Reset_Handler,

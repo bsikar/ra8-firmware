@@ -138,9 +138,9 @@ preserved below for trend comparison; the live per-file table is in
 | `libs/ra8_touch_cal/src/ra8_touch_cal.c`          | 30               | 11     | 63.33%  |
 | `libs/ra8_usb_pal/src/ra8_usb_pal.c`              | 18               | 2      | 88.89%  |
 | `libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c`| 4                | 1      | 75.00%  |
-| `src/secure_app/key_import.c`                   | 2                | 0      | 100.00% |
-| `src/secure_app/ota_commit.c`                   | 2                | 0      | 100.00% |
-| `src/secure_app/secure_trng.c`                  | 4                | 0      | 100.00% |
+| `libs/ra8_secure_app/src/key_import.c`                   | 2                | 0      | 100.00% |
+| `libs/ra8_secure_app/src/ota_commit.c`                   | 2                | 0      | 100.00% |
+| `libs/ra8_secure_app/src/secure_trng.c`                  | 4                | 0      | 100.00% |
 | **TOTAL (2026-05-03 )** | - | - | **92.29% absolute / 100.00% reachable** |
 
 The complete per-file table (~150 rows) is preserved in

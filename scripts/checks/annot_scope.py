@@ -45,7 +45,7 @@ _repo_root = _REAL_REPO_ROOT
 #: ra8_emulator, media_dl, ra8_viewer and the rest were never annotation-checked
 #: at all. `scripts/` holds no C. Vendored SOUP under `libs/third_party/` is
 #: dropped by is_excluded(), not by omission from this tuple.
-SCAN_DIRS = ("libs", "src", "examples", "tests", "port", "tools", "apps")
+SCAN_DIRS = ("libs", "examples", "tests", "port", "tools", "apps")
 
 EXCLUDED_PATH_PARTS = {
     "build",

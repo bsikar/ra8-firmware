@@ -117,7 +117,6 @@ WARN_LOGFILE           = build/docs/doxygen-warnings.log
 INPUT                  = README.md \
                          docs \
                          libs \
-                         src \
                          examples \
                          scripts \
                          tools \

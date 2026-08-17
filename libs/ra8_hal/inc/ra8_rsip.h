@@ -30,7 +30,7 @@
  *   authorisation, tamper subsystem, DOTF key routing.
  *
  * The NSC veneer ``libs/ra8_nsc/src/ra8_nsc_key_vault.c`` calls into
- * the secure-side key vault layer (``src/secure_app/key_vault.c``)
+ * the secure-side key vault layer (``libs/ra8_secure_app/src/key_vault.c``)
  * which in turn drives this HAL; the veneer is unaware of the
  * register window and that mapping must remain stable.
  *

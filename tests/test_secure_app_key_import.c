@@ -1,6 +1,6 @@
 /**
  * @file test_secure_app_key_import.c
- * @brief Unit + MC/DC tests for src/secure_app/key_import.c
+ * @brief Unit + MC/DC tests for libs/ra8_secure_app/src/key_import.c
  *
  * @details
  * Exercises the sealed-key import + opaque-handle vending API now that the
@@ -234,7 +234,7 @@ static void test_resolve_unknown_handle(void)
  *
  * @par MC/DC:
  * Decision: `if (((s_slot_used & bit) != 0U) && (internal_handle_for_slot(i) == handle))`
- * (2 conditions, src/secure_app/key_import.c priv_ra8_key_import_resolve)
+ * (2 conditions, libs/ra8_secure_app/src/key_import.c priv_ra8_key_import_resolve)
  *  - C1 = slot ``i`` is currently allocated (bit set in s_slot_used)
  *  - C2 = the handle vended for slot ``i`` matches ``handle``
  *
