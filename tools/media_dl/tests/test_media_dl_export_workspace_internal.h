@@ -13,7 +13,8 @@
 /**
  * @brief Run the exporter workspace-capacity test group.
  * @details Proves the exact CBZ and EPUB high-water marks, one-byte-short
- *          refusal, and preservation of an existing destination.
+ *          refusal, preservation of an existing destination, the EPUB
+ *          accumulator-carve refusals, and the JOF work-arena refusal.
  * @pre The process-local downloader storage binding is initialized.
  * @pre The `/tmp` fixture root can be created and removed.
  * @post Normal return means every workspace assertion passed.

@@ -11,9 +11,11 @@
 #include "ra8_attributes.h"
 
 /**
- * @brief Run the export XML escaping test group.
+ * @brief Run the export XML escaping and document-composition test group.
  * @details Verifies exact metacharacter escaping, ordinary-name preservation,
- *          and refusal when the destination cannot hold the complete result.
+ *          refusal when a destination cannot hold the complete result, the
+ *          bounded package and ComicInfo document rejections, and the EPUB
+ *          manifest media-type decisions of one produced publication.
  * @pre The unity-minimal assertion process is initialized.
  * @pre The caller owns any process-wide fixture binding used by the group.
  * @post Normal return means every group assertion passed.
