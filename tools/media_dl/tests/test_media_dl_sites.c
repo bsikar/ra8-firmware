@@ -17,6 +17,7 @@
 #include "mdl_search.h"
 #include "mdl_test_storage.h"
 #include "mdl_urlname.h"
+#include "support/ra8_test_output.h"
 #include "unity_minimal.h"
 
 #ifndef MDL_SITE_CONFIG_DIR
@@ -348,8 +349,6 @@ int main(void)
   internal_test_manhwaus_descriptor();
   internal_test_peppercarrot_descriptor();
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_deinit());
-  (void)write(STDERR_FILENO,
-              "[OK  ] test_media_dl_sites.c\n",
-              sizeof("[OK  ] test_media_dl_sites.c\n") - 1U);
+  (void)internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_media_dl_sites.c\n");
   return 0;
 }
