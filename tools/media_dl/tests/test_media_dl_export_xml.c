@@ -104,6 +104,15 @@ typedef struct {
   const char*    media;    /**< Media type the EPUB manifest must declare.   */
 } mdl_export_xml_media_case_t;
 
+/** @brief Archive sink that refuses exactly one recognizable archive write. */
+typedef struct {
+  const char* refuse;   /**< Byte run whose write must be refused.        */
+  const char* expect;   /**< Byte run that must reach the sink untouched. */
+  size_t      accepted; /**< Bytes accepted before the refusal.           */
+  bool        refused;  /**< Whether the refused run was seen.            */
+  bool        observed; /**< Whether the expected run was stored first.   */
+} mdl_export_xml_sink_t;
+
 /** @brief Page fixtures covering signature typing, suffix typing, and default. */
 static const mdl_export_xml_media_case_t s_xml_media_cases[] = {
   {"a_magic.png", s_xml_png_head, sizeof(s_xml_png_head), "image/png"},
@@ -360,6 +369,111 @@ RA8_INTERNAL static void internal_test_epub_package_document_rejects(void)
 }
 
 /**
+ * @brief Store archive bytes, refusing exactly the configured byte run.
+ * @details Stands in for the exporter's own transaction sink so one chosen
+ *          archive write fails while every earlier write is stored. Reporting
+ *          fewer bytes than requested is miniz's write-failure contract.
+ * @param[in,out] opaque Borrowed ::mdl_export_xml_sink_t callback state.
+ * @param[in] file_offset Absolute archive offset chosen by the writer.
+ * @param[in] bytes Readable archive bytes.
+ * @param[in] length Requested byte count.
+ * @return Bytes accepted by the sink.
+ * @retval 0 The write carried the refused run and was rejected.
+ * @retval length The write was stored completely.
+ * @pre @p opaque addresses one live configured sink.
+ * @pre @p bytes addresses @p length readable bytes.
+ * @post A refusal records the event and stores nothing.
+ * @post An accepted write advances the accepted-byte tally exactly.
+ * @note Called synchronously by one archive writer.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static size_t
+internal_xml_sink_write(void* opaque, mz_uint64 file_offset, const void* bytes, size_t length)
+{
+  mdl_export_xml_sink_t* sink   = (mdl_export_xml_sink_t*)opaque;
+  const uint8_t*         source = (const uint8_t*)bytes;
+  (void)file_offset;
+  if (internal_xml_bytes_contain(source, length, sink->refuse)) {
+    sink->refused = true;
+    return 0U;
+  }
+  if (internal_xml_bytes_contain(source, length, sink->expect)) {
+    sink->observed = true;
+  }
+  sink->accepted += length;
+  return length;
+}
+
+/**
+ * @brief Render the package documents into an archive whose sink fails once.
+ * @details Binds a caller-arena archive writer to the configured sink and runs
+ *          the real metadata seam over it, so the failure appears exactly where
+ *          a storage failure would appear during publication.
+ * @param[in,out] sink Sink state configured with the runs to refuse and expect.
+ * @return Metadata rendering status.
+ * @retval k_ra8_ok Both documents were stored and the archive was finalized.
+ * @retval k_ra8_fail The archive writer rejected a document or the directory.
+ * @pre @p sink names a run the writer really emits, or the vector proves nothing.
+ * @pre The group arena and document workspaces are exclusively owned.
+ * @post The archive writer is ended and the arena cursor restored.
+ * @post The sink records whether the refusal and the expected write happened.
+ * @note Test-only adapter; assertion failure terminates the test process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_xml_add_meta_over_sink(mdl_export_xml_sink_t* sink)
+{
+  mz_zip_archive         zip;
+  mdl_zip_allocator_t    allocator;
+  mdl_export_workspace_t workspace;
+  mdl_export_workspace_init(&workspace, s_xml_arena, sizeof(s_xml_arena));
+  priv_mdl_zip_workspace_bind(&zip, &allocator, &workspace);
+  zip.m_pWrite     = internal_xml_sink_write;
+  zip.m_pIO_opaque = sink;
+  TEST_ASSERT(mz_zip_writer_init(&zip, 0) != MZ_FALSE);
+  mdl_export_meta_t meta;
+  mdl_meta_init(&meta);
+  const ra8_err_t rc = internal_xml_add_meta(&zip, &meta, sizeof(s_xml_opf), sizeof(s_xml_navdoc));
+  (void)mz_zip_writer_end(&zip);
+  priv_mdl_zip_workspace_release(&allocator);
+  return rc;
+}
+
+/**
+ * @test A refused navigation member or central directory is never a success.
+ * @brief Exercise the epub package write-failure scenario.
+ * @details The package document is stored before the navigation document, and
+ *          both are stored before the central directory. Failing each of those
+ *          later writes in turn proves the metadata seam reports the failure
+ *          instead of treating an archive that is missing its navigation
+ *          document, or that was never finalized, as a complete publication.
+ *          The expected-run flag proves the earlier member really was stored,
+ *          so neither vector can pass by failing everything.
+ * @pre Assertions are enabled for contract verification.
+ * @pre The group arena and document workspaces are exclusively owned.
+ * @post Normal return means every reached contract assertion passed.
+ * @post No archive survives either vector.
+ * @note Test helper; an assertion failure terminates the test process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_epub_package_write_failures(void)
+{
+  TEST_BEGIN("epub package write failures");
+  /* The package document is stored; the navigation member is refused. */
+  mdl_export_xml_sink_t navigation = {.refuse = "OEBPS/nav.xhtml", .expect = "OEBPS/content.opf"};
+  TEST_ASSERT_EQ(k_ra8_fail, internal_xml_add_meta_over_sink(&navigation));
+  TEST_ASSERT(navigation.observed);
+  TEST_ASSERT(navigation.refused);
+  TEST_ASSERT(navigation.accepted > 0U);
+  /* Both members are stored; the central directory record is refused. */
+  mdl_export_xml_sink_t directory = {.refuse = "PK\x01\x02", .expect = "OEBPS/nav.xhtml"};
+  TEST_ASSERT_EQ(k_ra8_fail, internal_xml_add_meta_over_sink(&directory));
+  TEST_ASSERT(directory.observed);
+  TEST_ASSERT(directory.refused);
+  TEST_ASSERT(directory.accepted > navigation.accepted);
+  TEST_END("epub package write failures");
+}
+
+/**
  * @test ComicInfo defaults to zero pages and refuses an unusable destination.
  * @brief Exercise the comicinfo document scenario.
  * @details Proves the page-free generator is exactly the page-aware generator at
@@ -605,6 +719,7 @@ RA8_PRIV void priv_test_mdl_export_xml_run(void)
   internal_test_xml_escape();
   internal_test_epub_accumulator_bounds();
   internal_test_epub_package_document_rejects();
+  internal_test_epub_package_write_failures();
   internal_test_comicinfo_document();
   internal_test_epub_manifest_media_types();
   internal_test_epub_without_metadata();
