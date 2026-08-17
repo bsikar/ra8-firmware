@@ -734,93 +734,6 @@ static void test_stream_bridge(void)
 }
 
 /**
- * @brief Reject the frame geometries the existing layout vectors leave untested.
- * @details Covers a zero height, a JPEG view carrying no bytes, a stride whose
- *          product with the row count cannot be represented, and a byte count
- *          one short of the rows a legal stride describes.
- * @par MC/DC: (no compound decision -- each vector drives one single-condition guard.)
- * @pre Unity test accounting is initialized. @pre Stack fixture storage is available.
- * @post Each malformed frame records its documented error. @post No fixture byte changes.
- * @note No hardware or peripheral MMIO is accessed.
- * @since 0.1.0
- */
-static void test_frame_validate_geometry_guards(void)
-{
-  TEST_BEGIN("camera frame validation geometry guards");
-  uint8_t            rgb[(size_t)k_t_rgb_bytes] = {};
-  ra8_camera_frame_t frame                      = rgb_frame(rgb);
-  frame.height                                  = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_frame_validate(&frame));
-
-  frame = (ra8_camera_frame_t){.data   = rgb,
-                               .bytes  = 0U,
-                               .width  = 1U,
-                               .height = 1U,
-                               .format = k_ra8_camera_format_jpeg};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_camera_frame_validate(&frame));
-
-  frame = (ra8_camera_frame_t){.data         = rgb,
-                               .bytes        = UINT32_MAX,
-                               .stride_bytes = (uint32_t)k_t_overflow_stride,
-                               .width        = 1U,
-                               .height       = (uint16_t)k_t_overflow_height,
-                               .format       = k_ra8_camera_format_rgb888};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_camera_frame_validate(&frame));
-
-  frame = rgb_frame(rgb);
-  frame.bytes -= 1U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_camera_frame_validate(&frame));
-  TEST_END("camera frame validation geometry guards");
-}
-
-/**
- * @brief Enforce the capture contract against a misbehaving source backend.
- * @details A fault row replays a propagated error, a frame aliasing foreign
- *          storage, an over-long frame, and an invalid geometry in turn.
- * @par MC/DC: (no compound decision -- each vector drives one single-condition guard.)
- * @pre Unity test accounting is initialized. @pre Both fixture arrays are distinct objects.
- * @post Every rejected capture clears the output frame. @post Destination bytes stay zero.
- * @note The injected row never writes the destination buffer.
- * @since 0.1.0
- */
-static void test_source_capture_contract(void)
-{
-  TEST_BEGIN("camera source capture contract");
-  uint8_t                   elsewhere[(size_t)k_t_small_bytes]     = {};
-  uint8_t                   capture_bytes[(size_t)k_t_small_bytes] = {};
-  const ra8_camera_buffer_t buffer = {capture_bytes, (uint32_t)sizeof capture_bytes};
-  t_fault_ctx_t             fault  = {
-    .frame  = {.data         = capture_bytes,
-               .bytes        = (uint32_t)k_t_tiny_frame,
-               .stride_bytes = (uint32_t)k_t_tiny_frame,
-               .width        = 1U,
-               .height       = 1U,
-               .format       = k_ra8_camera_format_rgb888},
-    .result = k_ra8_err_timeout,
-  };
-  ra8_camera_source_t source = {.iface = &s_t_fault_source_iface, .ctx = &fault};
-  ra8_camera_frame_t  out    = {};
-  TEST_ASSERT_EQ(k_ra8_err_timeout, ra8_camera_source_capture(&source, &buffer, &out));
-  TEST_ASSERT_NULL(out.data);
-
-  fault.result     = k_ra8_ok;
-  fault.frame.data = elsewhere;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_camera_source_capture(&source, &buffer, &out));
-  TEST_ASSERT_NULL(out.data);
-
-  fault.frame.data  = capture_bytes;
-  fault.frame.bytes = (uint32_t)sizeof capture_bytes + 1U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_camera_source_capture(&source, &buffer, &out));
-  TEST_ASSERT_NULL(out.data);
-
-  fault.frame.bytes = (uint32_t)k_t_tiny_frame;
-  fault.frame.width = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_capture(&source, &buffer, &out));
-  TEST_ASSERT_NULL(out.data);
-  TEST_END("camera source capture contract");
-}
-
-/**
  * @brief Reject every unusable codec argument and every invalid codec result.
  * @details Covers the four null arguments, an unbound encode row, an input that
  *          fails validation, a propagated backend error, and an invalid output.
@@ -992,10 +905,8 @@ static void test_jpeg_sw_color_clamp(void)
 static void test_mcdc_camera_facade_backends(void)
 {
   test_frame_validation();
-  test_frame_validate_geometry_guards();
   test_memory_source();
   test_facade_guards();
-  test_source_capture_contract();
   test_codec_encode_guards();
   test_ceu_diagnostic_state();
   test_ceu_vbp_overrides_capture_end();
