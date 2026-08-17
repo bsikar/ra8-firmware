@@ -90,7 +90,7 @@
     <text x="422" y="606" text-anchor="middle" fill="#57606a" font-size="9">(apps/stand_alone form, M33 build)</text>
 
     <!-- mailbox across the core boundary; label sits in the clear band, not across the container borders -->
-    <line x1="422" y1="546" x2="422" y2="362" stroke="#0969da" stroke-width="1.4" marker-end="url(#aAcc)"/>
+    <line x1="422" y1="546" x2="422" y2="380" stroke="#0969da" stroke-width="1.4" marker-end="url(#aAcc)"/>
     <text x="440" y="424" fill="#0969da" font-size="9">mailbox IPC (ra8_ipc,</text>
     <text x="440" y="438" fill="#0969da" font-size="9">shared SRAM @ 0x22100000)</text>
 
@@ -111,18 +111,22 @@
     <line x1="910" y1="400" x2="910" y2="458" stroke="#1b1f24" stroke-width="1.1" marker-end="url(#aInk)"/>
     <text x="926" y="433" fill="#57606a" font-size="9">HTTPS</text>
 
-    <!-- ================= numbered longest path ================= -->
+    <!-- ================= numbered longest path =================
+         3 is the only hop with no arrow of its own: it marks an arrival,
+         not a wire. So it sits ON the mailbox terminus, straddling the
+         media-service border, instead of floating in the box interior where
+         it read as a label for the purple veneer arrow. -->
     <g fill="#0969da">
       <circle cx="290" cy="523" r="10"/>
       <circle cx="422" cy="454" r="10"/>
-      <circle cx="250" cy="316" r="10"/>
+      <circle cx="422" cy="366" r="10"/>
       <circle cx="752" cy="316" r="10"/>
       <circle cx="910" cy="429" r="10"/>
     </g>
     <g fill="#fdfdfb" font-size="10" font-weight="bold" text-anchor="middle">
       <text x="290" y="527">1</text>
       <text x="422" y="458">2</text>
-      <text x="250" y="320">3</text>
+      <text x="422" y="370">3</text>
       <text x="752" y="320">4</text>
       <text x="910" y="433">5</text>
     </g>
