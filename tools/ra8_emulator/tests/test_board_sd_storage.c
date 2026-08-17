@@ -319,7 +319,7 @@ int main(void)
                       internal_test_formats_and_zero() && internal_test_maximum_geometry();
   if (!passed) {
     static const char k_failure[] = "test_board_sd_storage: failed\n";
-    (void)write(STDERR_FILENO, k_failure, sizeof(k_failure) - 1U);
+    (void)priv_emu_io_write_exact(STDERR_FILENO, (const uint8_t*)k_failure, sizeof(k_failure) - 1U);
     return 1;
   }
   return 0;

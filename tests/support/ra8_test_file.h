@@ -621,26 +621,6 @@ internal_ra8_test_file_verify_identity(const ra8_test_file_ops_t* ops,
 }
 
 /**
- * @brief Read one regular fixture through injected raw operations.
- * @param[in] ops Complete caller-owned operation table.
- * @param[in] path Bounded host path.
- * @param[out] destination Receives bytes only after every check and close
- * succeeds.
- * @param[in] destination_capacity Writable destination bytes.
- * @param[in,out] staging Distinct caller-owned read staging area.
- * @param[in] staging_capacity Writable staging bytes.
- * @return Exact result, required size, effective supplied size, and host error.
- * @pre Nonzero files require disjoint destination and staging spans.
- * @post A failed operation leaves @p destination unchanged.
- * @post Success commits exactly `result.transferred == result.required` bytes.
- * @since 0.1.0
-
- * @details Performs one bounded, deterministic operation for this host test.
- * @retval 0 Zero or false result; nonzero values describe the alternate result.
- * @pre Scalar arguments satisfy the bounds asserted by this test helper.
- * @note Test-only helper with no production ABI.
-*/
-/**
  * @brief Stat, validate, read, and verify an already-open regular fixture.
  * @details Stats the descriptor and rejects a non-regular or oversized file,
  * rejects a required size beyond the caller's supplied capacity or an

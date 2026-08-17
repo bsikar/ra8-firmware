@@ -34,6 +34,9 @@ extern "C" {
 #include "litehtml.h"
 
 namespace {
+// NOLINTBEGIN(readability-static-definition-in-anonymous-namespace) -- the
+// RA8_INTERNAL contract requires literal static linkage so the annotations
+// gate can verify it; the anonymous namespace alone does not satisfy it.
 
 typedef enum : uint8_t {
   k_v2_glyph_w_px           = 8U,  /**< Fallback glyph advance, in pixels. */
@@ -216,7 +219,7 @@ struct v2_state {
  * @pre Bounded working storage remains available for the complete operation.
  * @post No state outside the documented outputs is modified by this helper.
  */
-RA8_INTERNAL inline void internal_v2_state_clear(v2_state& s)
+RA8_INTERNAL static inline void internal_v2_state_clear(v2_state& s)
 {
   s.document.reset();
   s.container.reset();
@@ -249,7 +252,7 @@ v2_cache_slot s_v2_cache[k_v2_max_engines];
  * @note The cache owns at most ::k_v2_max_engines state objects.
  * @since 0.1.0
  */
-RA8_INTERNAL v2_state* internal_v2_state_for(const ra8_reflow_t* engine, bool create)
+RA8_INTERNAL static v2_state* internal_v2_state_for(const ra8_reflow_t* engine, bool create)
 {
   for (uint8_t i = 0; i < (uint8_t)k_v2_max_engines; ++i) {
     if (s_v2_cache[i].engine == engine) {
@@ -280,7 +283,7 @@ RA8_INTERNAL v2_state* internal_v2_state_for(const ra8_reflow_t* engine, bool cr
  * @pre Bounded working storage remains available for the complete operation.
  * @post No state outside the documented outputs is modified by this helper.
  */
-RA8_INTERNAL void internal_v2_state_drop(const ra8_reflow_t* engine)
+RA8_INTERNAL static void internal_v2_state_drop(const ra8_reflow_t* engine)
 {
   for (uint8_t i = 0; i < (uint8_t)k_v2_max_engines; ++i) {
     if (s_v2_cache[i].engine == engine) {
@@ -305,7 +308,7 @@ RA8_INTERNAL void internal_v2_state_drop(const ra8_reflow_t* engine)
  * @pre Bounded working storage remains available for the complete operation.
  * @post No state outside the documented outputs is modified by this helper.
  */
-RA8_INTERNAL ra8_err_t internal_check_engine(const ra8_reflow_t* engine)
+RA8_INTERNAL static ra8_err_t internal_check_engine(const ra8_reflow_t* engine)
 {
   if (engine == nullptr) {
     return k_ra8_err_null_ptr;
@@ -333,7 +336,8 @@ RA8_INTERNAL ra8_err_t internal_check_engine(const ra8_reflow_t* engine)
  * @pre Bounded working storage remains available for the complete operation.
  * @post No state outside the documented outputs is modified by this helper.
  */
-RA8_INTERNAL ra8_err_t internal_v2_build_document(v2_state* state, const ra8_reflow_t* engine)
+RA8_INTERNAL static ra8_err_t internal_v2_build_document(v2_state*           state,
+                                                         const ra8_reflow_t* engine)
 {
   state->document.reset();
   state->container.reset();
@@ -367,7 +371,7 @@ RA8_INTERNAL ra8_err_t internal_v2_build_document(v2_state* state, const ra8_ref
  * @pre Bounded working storage remains available for the complete operation.
  * @post No state outside the documented outputs is modified by this helper.
  */
-RA8_INTERNAL void internal_v2_paginate(ra8_reflow_t* engine, int content_height)
+RA8_INTERNAL static void internal_v2_paginate(ra8_reflow_t* engine, int content_height)
 {
   const int vh    = static_cast<int>(engine->viewport_h);
   int       pages = (content_height + vh - 1) / vh;
@@ -399,7 +403,8 @@ RA8_INTERNAL void internal_v2_paginate(ra8_reflow_t* engine, int content_height)
  * @pre Bounded working storage remains available for the complete operation.
  * @post No state outside the documented outputs is modified by this helper.
  */
-RA8_INTERNAL ra8_err_t internal_v2_run_layout(ra8_reflow_t* engine, uint32_t* out_total_pages)
+RA8_INTERNAL static ra8_err_t internal_v2_run_layout(ra8_reflow_t* engine,
+                                                     uint32_t*     out_total_pages)
 {
   v2_state* state = internal_v2_state_for(engine, true);
   if (state == nullptr) {
@@ -423,6 +428,7 @@ RA8_INTERNAL ra8_err_t internal_v2_run_layout(ra8_reflow_t* engine, uint32_t* ou
   return k_ra8_ok;
 }
 
+// NOLINTEND(readability-static-definition-in-anonymous-namespace)
 } // namespace
 
 extern "C" {

@@ -189,28 +189,6 @@ RA8_INTERNAL static inline void internal_stream_write_pattern(ra8_fs_file_t* f,
 }
 
 /**
- * @brief Assert @p len bytes at file offset @p pos match the @p seed stream.
- *
- * @details Split out of ::internal_stream_expect_contents so neither function carries
- *          five levels of nesting: the caller owns the chunked read, this owns
- *          the compare.
- *
- * @param[in] got  Bytes that came back from the driver.
- * @param[in] len  Number of bytes in @p got.
- * @param[in] pos  File offset @p got[0] corresponds to.
- * @param[in] seed Generator seed the bytes must match.
- *
- * @return Nothing; a mismatch fails the test at the offset it happened.
- *
- * @pre @p got is non-NULL and holds @p len bytes.
- * @pre @p pos is the file offset of @p got[0], not a buffer index.
- * @post No state is modified.
- * @post The first mismatch is reported and the scan stops.
- *
- * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
- */
-/**
  * @brief Report one content-mismatch offset and fail the enclosing test.
  * @details Isolated in its own frame so the shared ::TEST_FAIL_FMT macro's
  *          internal control flow does not compound with the caller's loop
