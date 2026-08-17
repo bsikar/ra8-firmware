@@ -46,7 +46,7 @@ how instance counts are derived rather than guessed.
                                                                                |
    Independent machines (NOT on pve1):                                         |
                                                                                |
-   truenas ....... NAS + one CI runner in Docker                               |
+   truenas ....... NAS + two CI runners in Docker                              |
    gaming PC ..... Ryzen 9 7900X, Windows + WSL2, three CI runners             |
    star .......... Raspberry Pi -- the HIL bench (board, J-Link, C6, AD2)      |
    FortiGate+AP .. the isolated 10.0.40.0/24 bench LAN (no uplink, by design)  |
@@ -72,7 +72,7 @@ already encoded in the roles rather than left as folklore:
   that value; the answer is almost certainly "no".
 - **Real capacity comes from machines that are not pve1.** That is exactly what
   `truenas` and the gaming PC are for. Both answer the same `ra8-ci` label, so
-  GitHub spreads `runs-on: ra8-ci` across four independent machines instead of
+  GitHub spreads `runs-on: ra8-ci` across three independent machines instead of
   piling it onto the one that is already oversubscribed at the hypervisor level.
 
 If pve1's headroom ever genuinely improves, the number to re-check first is
@@ -94,15 +94,17 @@ one remaining hole in the rebuild story -- see section 5.
 ### VM 300 `k3s` -- CI cluster and vault
 
 16 vCPU, 64 GB, 500 GB, Ubuntu 24.04, two PCIe devices passed through. Reachable
-as `ssh k3s-pve`, **from the Mac only** -- the dev box has no key for it and does
-not even resolve the name.
+as `ssh k3s-pve` from any control node: `infra/fleet.yml` declares its tailnet
+address (`100.64.0.1`, user `ubuntu`) and `make infra-ssh-config` generates the
+alias from it.
 
 Runs:
 
-- **k3s** v1.34.5+k3s1, single node. `make infra-apply HOST=k3s`.
+- **k3s** v1.34.5+k3s1, single node. `make infra-apply HOST=k3s-pve`
+  (or `python3 scripts/dev/fleet.py apply k3s-pve k3s-node` for that play alone).
 - **ARC** (Actions Runner Controller) and the `ra8-ci` runner scale set, min 0 /
   max 6, pods booting the pinned toolchain image.
-  `make infra-apply HOST=ci-runner`.
+  `python3 scripts/dev/fleet.py apply k3s-pve ci-runner`.
 - **OpenBao** -- the vault everything else reads credentials from.
 - The owner's unrelated homelab (section 6).
 
@@ -127,9 +129,9 @@ poller and the workspace reaper.
 **Never work directly in `~/ra8-firmware` on this box.** Use `make ws-new
 NAME=...`; improvised checkouts have clobbered other agents' work.
 
-### `truenas` -- NAS, and a CI runner
+### `truenas` -- NAS, and two CI runners
 
-A plain (non-ARC) self-hosted runner in a Docker container, deployed by the
+Two plain (non-ARC) self-hosted runners in Docker containers, deployed by the
 `ci_runner_docker` role. Measured roughly **2x faster per job** than a pve1 pod,
 which is the oversubscription in section 1 stated from the other direction.
 
@@ -140,7 +142,7 @@ put CI I/O on the appliance's known-degraded 100T pool.
 It is the one host class with a real one-command teardown:
 
 ```sh
-make infra-remove HOST=ci-runner-docker
+make infra-remove HOST=truenas
 ```
 
 ### The gaming PC -- Ryzen 9 7900X, WSL2
@@ -169,7 +171,7 @@ Raspberry Pi 5, Ubuntu 24.04, `ssh star`. Everything physical hangs off it:
 - the FortiGate console cable
 - Tapo smart plugs for power-cycling the board and the Pi
 
-`make infra-apply HOST=bench` provisions all of it. One package cannot be
+`make infra-apply HOST=star` provisions all of it. One package cannot be
 fetched unattended -- Digilent WaveForms sits behind a click-through licence
 gate -- so the role **fails with download instructions** rather than skipping,
 because a bench reporting success without `libdwf` would be a lie.
@@ -231,19 +233,19 @@ Order matters, because each step is the next one's prerequisite.
 make infra-doctor                      # can this machine drive any of it?
 make infra-ssh-config                  # the fleet's host aliases, from the declaration
 make infra-setup                       # inventory + credentials (git-ignored)
-make infra-check HOST=<class>          # ALWAYS dry-run first
-make infra-apply HOST=<class>
+make infra-check HOST=<host>           # ALWAYS dry-run first (`make infra-list`)
+make infra-apply HOST=<host>
 ```
 
 | # | Rebuild | Command | Notes |
 |---|---|---|---|
 | 1 | the Proxmox host | -- | **manual, not codified** (section 5) |
 | 2 | VM 300 + CT 107 | -- | **manual, not codified** (section 5) |
-| 3 | k3s + helm + vault | `make infra-apply HOST=k3s` | then init + unseal by hand |
-| 4 | the ARC runner pool | `make infra-apply HOST=ci-runner` | needs 3 |
+| 3 | k3s + helm + vault | `python3 scripts/dev/fleet.py apply k3s-pve k3s-node` | then init + unseal by hand |
+| 4 | the ARC runner pool | `python3 scripts/dev/fleet.py apply k3s-pve ci-runner` | needs 3 |
 | 5 | the dev box | `make infra-apply HOST=dev` | slow: two source builds |
-| 6 | extra runner hosts | `make infra-apply HOST=ci-runner-docker` | NAS, gaming PC |
-| 7 | the HIL bench | `make infra-apply HOST=bench` | needs the board attached |
+| 6 | extra runner hosts | `make infra-apply HOST=truenas` / `HOST=win-ci` | NAS, gaming PC |
+| 7 | the HIL bench | `make infra-apply HOST=star` | needs the board attached |
 | 8 | the bench LAN | `python3 infra/network/fg_bringup.py bootstrap` | from `ssh star` |
 
 **Where do you run these from?** Any machine with ansible and a key the hosts
@@ -255,7 +257,7 @@ each machine's real address, `fleet.py` builds every command from it, and
 node is `pipx install ansible-core` plus one command. `make infra-doctor` says
 which half you are missing.
 
-The first run of a class takes far longer than later ones. `make infra-apply
+The first run against a host takes far longer than later ones. `make infra-apply
 HOST=dev` compiles gcc and cppcheck from source; re-runs skip both once the
 pinned versions are present and cost a handful of version probes.
 

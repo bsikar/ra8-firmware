@@ -8,21 +8,21 @@ population is from the EK-RA8D2 v1 User's Manual (R20UT5523EG0101 Rev
 
 This document only lists addresses that are actually referenced by code
 in this tree (linker scripts under `examples/<tier>/.../<app>/linker_script.ld`
-and the typed `_base_addr` enums under `libs/ra8_hal/inc/ra8d2_*_regs.h`).
+and the typed `_base_addr` enums under `libs/ra8_hal/inc/ra8_*_regs.h`).
 Anything not grounded in the codebase is intentionally omitted.
 
 ## 1. System memory regions
 
 | Region        | Base         | Length on RA8D2 | Notes                                        | Code reference                          |
 |---------------|--------------|-----------------|----------------------------------------------|------------------------------------------|
-| ITCM          | `0x00000000` | 64 KiB          | Cortex-M85 instruction tightly-coupled mem   | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld:11,30` |
-| MRAM (code)   | `0x02000000` | 1 MiB           | Non-volatile code + rodata + vectors + OFS   | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld:9,28`  |
+| ITCM          | `0x00000000` | 64 KiB          | Cortex-M85 instruction tightly-coupled mem   | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld` (`ITCM`) |
+| MRAM (code)   | `0x02000000` | 1 MiB           | Non-volatile code + rodata + vectors + OFS   | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld` (`MRAM`) |
 | Factory cal   | `0x02C1EDA0` | (TSN cal block) | TSN factory-calibration data window          | `libs/ra8_hal/inc/ra8_tsn_regs.h`      |
-| DTCM          | `0x20000000` | 64 KiB          | Cortex-M85 data tightly-coupled mem          | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld:12,31` |
-| SRAM (ECC)    | `0x22000000` | 2 MiB           | Main SRAM, ECC-protected, secure alias       | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld:13,32` |
-| SRAM NS alias | `0x22100000` | 1 MiB           | Non-secure single-image alias of SRAM        | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld:42`    |
-| MRAM NS alias | `0x02080000` | 512 KiB         | Non-secure single-image alias of MRAM        | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld:41`    |
-| External SDRAM| `0x68000000` | 64 MiB on EK    | Driven by SDRAMC, EK-RA8D2 v1 populates 64MB | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld:17,33` |
+| DTCM          | `0x20000000` | 64 KiB          | Cortex-M85 data tightly-coupled mem          | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld` (`DTCM`) |
+| SRAM (ECC)    | `0x22000000` | 1664 KiB        | Main SRAM, ECC-protected, secure alias       | `k_ra8_mem_sram_size` in `libs/ra8_core/inc/ra8_device.h`; `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld` (`SRAM`, the 1024 KiB single-core slice) |
+| SRAM NS alias | `0x22100000` | 640 KiB         | Non-secure single-image alias of SRAM        | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld` (`NS_SRAM`) |
+| MRAM NS alias | `0x02080000` | 512 KiB         | Non-secure single-image alias of MRAM        | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld` (`NS_MRAM`) |
+| External SDRAM| `0x68000000` | 64 MiB on EK    | Driven by SDRAMC, EK-RA8D2 v1 populates 64MB | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld` (`SDRAM`) |
 | System ctrl   | `0xE000ED90` | (MPU/SCS)       | Cortex-M85 MPU control (core MPU)            | `libs/ra8_hal/inc/ra8_mpu_regs.h`      |
 
 Notes on the core memory layout:
@@ -34,23 +34,27 @@ Notes on the core memory layout:
 - SRAM is mapped at the secure alias `0x22000000` (also exposed via the
   data alias enum `k_ra8_sram_data_base_addr = 0x22000000` in
   `libs/ra8_hal/inc/ra8_sram_regs.h`). The non-secure alias is at
-  `0x22100000`.
+  `0x22100000`. The part carries 1664 KiB of system SRAM
+  (`k_ra8_mem_sram_size = 0x001A0000`); the single-core linker scripts claim
+  only the low 1024 KiB, leaving the upper banks to the M33 and to the
+  cross-core mailbox.
 - External SDRAM is at `0x68000000` (NOT `0x90000000`). On EK-RA8D2 v1
   the SDRAM controller drives a populated 64 MiB SDRAM at this address;
   see `libs/ra8_hal/src/ra8_sdramc.c`
   (`"sdramc_init (64 MiB @ 0x68000000)"`).
-- The xSPI / Octo-SPI memory-mapped (XIP) read window address is NOT
-  defined as a typed enum anywhere in this tree. Only the xSPI register
-  windows (`0x40268000` / `0x40268400`) are pinned in code (see
-  `libs/ra8_hal/inc/ra8_ospi_regs.h`). Treat the XIP base as
-  "look up in HUM Ch 5 once we add an XIP example" rather than
-  hard-coding a guess here.
+- The xSPI / Octo-SPI memory-mapped (XIP) read windows are pinned as typed
+  enums in `libs/ra8_core/inc/ra8_device.h`: `k_ra8_mem_ospi_cs0_base =
+  0x80000000` and `k_ra8_mem_ospi_cs1_base = 0x90000000`. The board layer
+  names the populated part at CS0 (`k_ra8_board_xspi_flash_base` in
+  `libs/ra8_board_ek_ra8d2/inc/ra8_board_ek_ra8d2_peripherals.h`). The xSPI
+  register windows (`0x40268000` / `0x40268400`) are separate and live in
+  `libs/ra8_hal/inc/ra8_ospi_regs.h`.
 
 ## 2. Peripheral base addresses (cited from `libs/ra8_hal/inc/`)
 
 Every value below is a verbatim copy of a typed enum
 `k_ra8_<peripheral>_base_addr` declared in
-`libs/ra8_hal/inc/ra8d2_<peripheral>_regs.h`. The "HAL driver" column is
+`libs/ra8_hal/inc/ra8_<peripheral>_regs.h`. The "HAL driver" column is
 the corresponding driver source under `libs/ra8_hal/src/`.
 
 ### 2.1 Bus / system / DMA
@@ -117,10 +121,10 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 
 | Peripheral | Secure base | Notes                        | HAL driver        |
 |------------|-------------|------------------------------|-------------------|
-| SCI0..SCI9 | `0x40358000` + `n*0x100` | UART/I2C/SPI super-mode | `ra8_sci.c`, `uart.c` |
+| SCI0..SCI9 | `0x40358000` + `n*0x100` | UART/I2C/SPI super-mode | `ra8_sci.c`        |
 | SPI0       | `0x4035C000`| HUM Ch 43, SPI0              | `ra8_spi_b.c`      |
 | SPI1       | `0x4035C100`|                              | `ra8_spi_b.c`      |
-| IIC_B0     | `0x4035F000`| HUM Ch 40.2 p 2452           | `ra8_iic_b.c`      |
+| IIC_B0     | `0x4035F000`| HUM Ch 40.2 p 2452           | `ra8_i2c.c`        |
 | I3C0       | `0x4035F000`| Shares window with IIC_B0    | `ra8_i3c.c`        |
 | I3C1       | `0x4035F100`|                              | `ra8_i3c.c`        |
 | CANFD0     | `0x40380000`| HUM Ch 41 p 2702             | `ra8_canfd.c`      |
@@ -191,17 +195,17 @@ notes in `docs/reference/EK-RA8D2-board-manual-PLACEHOLDER.md`.
 | Region / IP      | Address                         | EK-RA8D2 v1 status                                                    |
 |------------------|---------------------------------|------------------------------------------------------------------------|
 | MRAM (1 MiB)     | `0x02000000`                    | On-chip, always present                                                |
-| SRAM ECC (2 MiB) | `0x22000000`                    | On-chip, always present                                                |
+| SRAM ECC (1664 KiB) | `0x22000000`                 | On-chip, always present                                                |
 | ITCM / DTCM      | `0x00000000` / `0x20000000`     | On-chip                                                                |
 | External SDRAM   | `0x68000000`                    | Populated, 64 MiB, driven by SDRAMC (`ra8_sdramc.c`)                    |
-| External xSPI    | xSPI0 regs at `0x40268000`      | xSPI controller present; XIP memory window not pinned in this tree    |
+| External xSPI    | XIP window `0x80000000` (CS0)   | 64 MB IS25LX512M; regs at `0x40268000`                                 |
 | GLCDC parallel   | `0x40342000` -> connector J1    | Parallel Graphics Expansion Port; 7.0" 1024x600 TFT via add-on board   |
 | MIPI DSI / CSI   | `0x40346000` / `0x40347000`     | Pads brought out via MIPI Graphics Expansion Board (separate add-on)   |
 | OV5640 camera    | CEU `0x40348000` or VIN `0x40347400` | Wired to parallel camera connector                                |
 | SDHI             | `0x40252000`                    | NOT POPULATED on EK-RA8D2 v1 -- no microSD socket on board             |
 | USB FS / HS      | `0x40250000` / `0x40351000`     | Both USB connectors populated                                          |
 | Ethernet         | ETHA + RMAC + GWCA              | RJ-45 populated                                                        |
-| BLE              | `0x40700000` (placeholder)      | On-board BLE transceiver, vendor patch loaded via RPC                  |
+| BLE              | (no on-chip radio)              | RA8D2 has no BLE radio; controller is the ESP32-C6 companion over PMOD |
 | Audio CODEC      | SSIE0 `0x4025D000`              | DA7212 (U14), wired per board UM Table 32                              |
 | User switches    | PORT regs + ICU                 | SW1 -> P009 / IRQ13-DS, SW2 -> P008 / IRQ12-DS                         |
 

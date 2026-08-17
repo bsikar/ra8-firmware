@@ -43,7 +43,7 @@ on every published page and mangles the `<head>`. The vendored
 doxygen-awesome theme likewise supports a bounded range of doxygen
 releases. Building with the distro or Homebrew doxygen of the day is
 therefore not supported -- always go through `make docs` /
-`build_docs.sh`, which enforce the pin.
+`scripts/builders/docs.sh`, which enforce the pin.
 
 ## Theme (doxygen-awesome)
 
@@ -153,8 +153,8 @@ When you add a new function, struct, enum, or file:
    the rendered HTML.
 3. Tail `build/docs/doxygen-warnings.log` for any new warnings
    triggered by your change. The repository goal is **zero new
-   warnings** (the existing log baseline is documented under
-   `docs/MCDC_GAPS.md` along with the wider quality sweep).
+   warnings** (the standing tag-coverage baseline is reported in
+   `docs/DOXYGEN_GAPS.md`).
 4. Open `build/docs/html/index.html` in a browser and verify the
    page renders, links resolve, and any `@code ... @endcode`
    examples are syntax-highlighted.
@@ -188,8 +188,8 @@ Common tweaks (edit `Doxyfile`):
 
 ## Continuous integration
 
-Two workflows build the docs, both through `build_docs.sh` and the
-same pinned doxygen:
+Two workflows build the docs, both through `scripts/builders/docs.sh`
+and the same pinned doxygen:
 
 - `.github/workflows/docs-publish.yml` -- on every push to `main`
   (and manual dispatch), runs `make docs` and force-publishes

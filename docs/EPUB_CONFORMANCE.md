@@ -38,7 +38,7 @@ opened" page; it never aborts the book.
 ## 2. XHTML element subset (rendered)
 
 The `ra8_reflow` v1 tokenizer recognizes the tags below
-(`libs/ra8_reflow/src/ra8_reflow_tokenize.c`). This list is the **ratified element
+(`libs/ra8_reflow/src/ra8_reflow_tokenize_lex.c`). This list is the **ratified element
 contract**:
 
 - **Block:** `<p>`, `<h1>`..`<h6>`, `<blockquote>`, `<ul>`, `<ol>`, `<li>`, `<hr>`.
@@ -116,7 +116,7 @@ Each unsupported feature has one defined behavior. None is undefined.
 | Contract clause | Source of truth |
 |-----------------|-----------------|
 | Container / package | `libs/ra8_epub/` |
-| Element subset + flow-through | `libs/ra8_reflow/src/ra8_reflow_tokenize.c` (tag table) |
+| Element subset + flow-through | `libs/ra8_reflow/src/ra8_reflow_tokenize_lex.c` (tag table) |
 | Block/heading/inline layout | `libs/ra8_reflow/src/ra8_reflow_layout.c` |
 | CSS off by default | `RA8_REFLOW_USE_LITEHTML` (CMake option, default OFF) |
 | litehtml content-only scope | `docs/SOUP/litehtml.md` |

@@ -26,6 +26,10 @@ the device (network, modem, removable media):
 | `fuzz_ra8_stb_image` | `stbi_load_from_memory()` (PNG/JPEG/GIF/BMP, stb_image) | EPUB cover / figure images   |
 | `fuzz_ra8_reflow_xml`| Bounded pull-reader + EPUB OPF/NCX/nav consumers         | EPUB manifest / TOC (XML)    |
 | `fuzz_ra8_stbtt`     | `stbtt_InitFont()` + glyph raster (stb_truetype font)   | EPUB embedded fonts          |
+| `fuzz_ra8_rar`       | `ra8_rar_open/next/extract()` + `ra8_rar5_decompress()`  | `.cbr` comics                |
+| `fuzz_ra8_webp`      | `ra8_webp_get_info()` / `ra8_webp_decode_rgba()` (libwebp) | EPUB / longstrip images     |
+| `fuzz_ra8_jof`       | `ra8_jof_parse()` + `ra8_jof_read_tile()` atlas reader    | Pre-baked EPUB tile atlas    |
+| `fuzz_ra8_jof_produce` | `ra8_jof_produce()` import-time transcode producer      | EPUB cover / figure images   |
 | `fuzz_ra8_unarch_xz` | `ra8_unarch_xz_unwrap()` (bounded XZ/LZMA2 over SOUP)   | `.tar.xz` comics             |
 | `fuzz_ra8_unarch_tar`| `ra8_unarch_tar_open/next/read()` (ustar/pax/GNU walk)  | `.cbt` / unwrapped tar       |
 | `fuzz_ra8_unarch_gzip`| `ra8_unarch_gzip_unwrap()` (RFC 1952 over miniz DEFLATE)| `.tar.gz` comics             |
@@ -74,10 +78,12 @@ non-zero listing every failed harness.
 
 ### Nightly CI sweep
 
-`.github/workflows/fuzz-nightly.yml` runs `run_fuzz.sh --all` every
-night (and on manual `workflow_dispatch`, where the per-target budget
-is an input; default 600 s). The job fails on any crash and uploads
-`tests/build-fuzz/crashes/` plus the full sweep log as artifacts.
+`.github/workflows/fuzz-nightly.yml` is a thin driver for the
+`fuzz-sweep` gate (`bash scripts/ci.sh --gate fuzz-sweep`), which runs
+`run_fuzz.sh --all` every night (and on manual `workflow_dispatch`,
+where the per-target budget is `RA8_FUZZ_SECONDS`; default 600 s).
+The job fails on any crash and uploads `tests/build-fuzz/crashes/`
+plus the full sweep log as artifacts.
 
 ## Toolchain requirements
 
@@ -142,8 +148,8 @@ crash reproducers added by the fuzzer or by hand.
 | `fuzz_ra8_jpeg_sw`   | 5     | `scripts/gen/gen_jpeg_fixture.py` at five (W,H) sizes             |
 | `fuzz_ra8_epub`      | 2     | Hand-crafted minimal EPUB ZIPs via Python `zipfile`                 |
 | `fuzz_ra8_modem_at`  | 10    | Plain-text AT response strings (`OK`, `+CSQ:`, `+CME ERROR:`, ...)  |
-| `fuzz_ra8_usb_pal`   | 4     | Endpoint-descriptor + payload packets (bulk in/out, intr, iso)      |
-| `fuzz_ra8_tls`       | 4     | TLS record headers (ClientHello, Alert close, AppData, Finished)    |
+| `fuzz_ra8_usb_pal`   | 0     | Directory created empty -- `init_fuzz_corpora.sh` generates no seed |
+| `fuzz_ra8_tls`       | 0     | Directory created empty -- `init_fuzz_corpora.sh` generates no seed |
 | `fuzz_ra8_canfd`     | 5     | Raw `CFDRF[0]` frame blobs (classic, extended, FD, min, max DLC)    |
 | `fuzz_ra8_etha`      | 5     | Short Ethernet frames (ARP, IPv4, VLAN, runt, min header)           |
 | `fuzz_ra8_fs_fat`    | 4     | Sparse FAT BPB seeds (FAT16 basic / 4 KiB cluster / minimal / zero) |
@@ -151,6 +157,14 @@ crash reproducers added by the fuzzer or by hand.
 | `fuzz_ra8_stb_image` | 2     | A minimal 1x1 BMP (valid) plus a truncated/garbage header (malformed) |
 | `fuzz_ra8_reflow_xml`| 2     | A minimal valid OPF package plus a malformed XML fragment           |
 | `fuzz_ra8_stbtt`     | 2     | The bundled `libs/ra8_fonts/literata_latin1.ttf` plus a garbage blob    |
+| `fuzz_ra8_rar`       | 0     | Directory created empty -- `init_fuzz_corpora.sh` generates no seed |
+| `fuzz_ra8_webp`      | 5     | The four committed `tests/fixtures/webp/` fixtures plus a truncated RIFF |
+| `fuzz_ra8_jof`       | 2     | A hand-built valid 16x16 raw-codec atlas plus a truncated blob       |
+| `fuzz_ra8_jof_produce` | 3   | A small gray8 PNG, a small baseline JPEG, and a signature-only blob  |
+| `fuzz_ra8_unarch_tar`| 1     | A two-member ustar comic                                            |
+| `fuzz_ra8_unarch_xz` | 1     | The same tar as an XZ/LZMA2 stream at the wrapper's dictionary scale |
+| `fuzz_ra8_unarch_gzip`| 1    | The same tar as a gzip member                                       |
+| `fuzz_ra8_decomp_limits`| 1  | Eight LE64 policy words: a valid pair followed by a hostile one      |
 
 The corpus directory is passed to libFuzzer as a positional argument.
 libFuzzer also writes any *new* coverage-expanding inputs back into
@@ -171,7 +185,7 @@ For each crash:
 2. Add a regression test under `tests/test_<module>.c` that loads the
    reproducer (or a hand-minimised version) and asserts the parser
    returns an error code instead of crashing.
-3. Fix the parser. The existing 190-test host suite plus the
+3. Fix the parser. The existing host suite (650+ test files) plus the
    regression test must pass before the commit lands.
 4. Keep the reproducer in version control under
    `tests/fuzz/corpus/<target>/` (create the directory on demand) so
