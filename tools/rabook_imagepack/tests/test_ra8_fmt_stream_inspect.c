@@ -224,6 +224,121 @@ static bool internal_contains(const test_sink_t* sink, const char* text)
 }
 
 /**
+ * @brief Check the exact legacy report bytes over a valid baseline fixture.
+ * @details Runs non-verbose inspection once and compares status, length, and
+ * the complete captured span against the golden legacy text byte for byte.
+ * @param[in] source Bound fixture source.
+ * @param[in,out] workspace Inspection workspace at its full capacity.
+ * @param[in,out] sink Capture sink reset to its full capacity before the call.
+ * @param[in] report Bound diagnostic sink wrapping @p sink.
+ * @param[in] expected Golden legacy report text.
+ * @param[in] expected_len Exact expected byte count.
+ * @pre Every pointer argument is non-null.
+ * @pre @p sink is empty and @p workspace covers the complete fixture.
+ * @post Any mismatch contributes exactly one failure through CHECK.
+ * @post @p sink holds the captured report on return.
+ * @note Test-only and intentionally single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void internal_test_golden(const ra8_fmt_source_t*          source,
+                                 ra8_fmt_jof_inspect_workspace_t* workspace,
+                                 test_sink_t*                     sink,
+                                 const ra8_fmt_sink_t*            report,
+                                 const char*                      expected,
+                                 size_t                           expected_len)
+{
+  CHECK(ra8_fmt_jof_inspect_stream(source, false, workspace, report) == k_ra8_ok);
+  CHECK(sink->len == expected_len);
+  CHECK(memcmp(sink->bytes, expected, expected_len) == 0);
+}
+
+/**
+ * @brief Check that verbose inspection includes the optional header/tile sections.
+ * @details Resets the sink, runs verbose inspection, and looks for two literal
+ * section markers rather than the complete byte-exact text.
+ * @param[in] source Bound fixture source.
+ * @param[in,out] workspace Inspection workspace at its full capacity.
+ * @param[in,out] sink Capture sink; reset to full capacity by this call.
+ * @param[in] report Bound diagnostic sink wrapping @p sink.
+ * @pre Every pointer argument is non-null.
+ * @pre @p workspace covers the complete fixture.
+ * @post Any missing section marker contributes exactly one failure through CHECK.
+ * @post @p sink holds the captured verbose report on return.
+ * @note Test-only and intentionally single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void internal_test_verbose(const ra8_fmt_source_t*          source,
+                                  ra8_fmt_jof_inspect_workspace_t* workspace,
+                                  test_sink_t*                     sink,
+                                  const ra8_fmt_sink_t*            report)
+{
+  *sink = (test_sink_t){.fail_at = sizeof(sink->bytes)};
+  CHECK(ra8_fmt_jof_inspect_stream(source, true, workspace, report) == k_ra8_ok);
+  CHECK(internal_contains(sink, "header (32 bytes at +0):"));
+  CHECK(internal_contains(sink, "  tile      offset"));
+}
+
+/**
+ * @brief Check that an undersized tile workspace rejects inspection cleanly.
+ * @details Shrinks the workspace tile capacity below one raw tile, confirms
+ * the invalid-size rejection with no partial report, then restores capacity.
+ * @param[in] source Bound fixture source.
+ * @param[in,out] workspace Inspection workspace; tile_cap is shrunk then restored.
+ * @param[in,out] sink Capture sink; reset to full capacity by this call.
+ * @param[in] report Bound diagnostic sink wrapping @p sink.
+ * @param[in] tile_bytes Exact bytes needed for one raw tile.
+ * @param[in] full_tile_cap Tile capacity to restore afterward.
+ * @pre Every pointer argument is non-null.
+ * @pre @p tile_bytes is at least one, so the shrunk capacity underflows to zero.
+ * @post Rejection or a non-empty capture contributes exactly one failure through CHECK.
+ * @post @p workspace tile_cap is @p full_tile_cap on return.
+ * @note Test-only and intentionally single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void internal_test_undersized_workspace(const ra8_fmt_source_t*          source,
+                                               ra8_fmt_jof_inspect_workspace_t* workspace,
+                                               test_sink_t*                     sink,
+                                               const ra8_fmt_sink_t*            report,
+                                               size_t                           tile_bytes,
+                                               size_t                           full_tile_cap)
+{
+  workspace->tile_cap = tile_bytes - 1U;
+  *sink               = (test_sink_t){.fail_at = sizeof(sink->bytes)};
+  CHECK(ra8_fmt_jof_inspect_stream(source, false, workspace, report) == k_ra8_err_invalid_size);
+  CHECK(sink->len == 0U);
+  workspace->tile_cap = full_tile_cap;
+}
+
+/**
+ * @brief Check that a sink rejecting mid-report stops the capture in place.
+ * @details Arms the sink to fail at a fixed byte position and confirms the
+ * inspection call fails while the capture never exceeds that position.
+ * @param[in] source Bound fixture source.
+ * @param[in,out] workspace Inspection workspace at its full capacity.
+ * @param[in,out] sink Capture sink; armed with a low fail threshold by this call.
+ * @param[in] report Bound diagnostic sink wrapping @p sink.
+ * @pre Every pointer argument is non-null.
+ * @pre @p workspace covers the complete fixture.
+ * @post A missing failure or an over-length capture contributes exactly one
+ * failure through CHECK.
+ * @note Test-only and intentionally single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void internal_test_sink_fault(const ra8_fmt_source_t*          source,
+                                     ra8_fmt_jof_inspect_workspace_t* workspace,
+                                     test_sink_t*                     sink,
+                                     const ra8_fmt_sink_t*            report)
+{
+  *sink = (test_sink_t){.fail_at = k_test_sink_fail_at};
+  CHECK(ra8_fmt_jof_inspect_stream(source, false, workspace, report) == k_ra8_fail);
+  CHECK(sink->len <= k_test_sink_fail_at);
+}
+
+/**
  * @brief Run the complete golden, verbose, capacity, and sink-fault vectors.
  * @details Exercises exact legacy output, optional sections, workspace rejection,
  * and deterministic sink failure through real portable inspection.
@@ -260,24 +375,16 @@ static void internal_test(void)
                                                .tile_cap   = sizeof(tile)};
   test_sink_t                     sink      = {.fail_at = sizeof(sink.bytes)};
   ra8_fmt_sink_t                  report    = {.write = internal_write, .ctx = &sink};
-  CHECK(ra8_fmt_jof_inspect_stream(&source, false, &workspace, &report) == k_ra8_ok);
-  CHECK(sink.len == (sizeof(expected) - 1U));
-  CHECK(memcmp(sink.bytes, expected, sizeof(expected) - 1U) == 0);
 
-  sink = (test_sink_t){.fail_at = sizeof(sink.bytes)};
-  CHECK(ra8_fmt_jof_inspect_stream(&source, true, &workspace, &report) == k_ra8_ok);
-  CHECK(internal_contains(&sink, "header (32 bytes at +0):"));
-  CHECK(internal_contains(&sink, "  tile      offset"));
-
-  workspace.tile_cap = k_test_tile_bytes - 1U;
-  sink               = (test_sink_t){.fail_at = sizeof(sink.bytes)};
-  CHECK(ra8_fmt_jof_inspect_stream(&source, false, &workspace, &report) == k_ra8_err_invalid_size);
-  CHECK(sink.len == 0U);
-
-  workspace.tile_cap = sizeof(tile);
-  sink               = (test_sink_t){.fail_at = k_test_sink_fail_at};
-  CHECK(ra8_fmt_jof_inspect_stream(&source, false, &workspace, &report) == k_ra8_fail);
-  CHECK(sink.len <= k_test_sink_fail_at);
+  internal_test_golden(&source, &workspace, &sink, &report, expected, sizeof(expected) - 1U);
+  internal_test_verbose(&source, &workspace, &sink, &report);
+  internal_test_undersized_workspace(&source,
+                                     &workspace,
+                                     &sink,
+                                     &report,
+                                     k_test_tile_bytes,
+                                     sizeof(tile));
+  internal_test_sink_fault(&source, &workspace, &sink, &report);
 }
 
 int main(void)
