@@ -131,6 +131,45 @@ RA8_INTERNAL static surface_layer_t internal_layer(uint16_t panel_width, uint16_
   };
 }
 
+/** @brief One bounded source tile inside the live GLCDC layer. */
+typedef struct {
+  uint16_t x;      /**< Tile origin column in the source layer. */
+  uint16_t y;      /**< Tile origin row in the source layer.    */
+  uint16_t width;  /**< Tile width in source pixels.            */
+  uint16_t height; /**< Tile height in source rows.             */
+} surface_tile_t;
+
+/**
+ * @brief Read one bounded tile of the live layer into the scratch pixels.
+ * @details Copies @p tile row by row out of emulated memory through the authoritative memory seam, packing the rows tightly so the rotation stage sees a contiguous tile.
+ * @param[in,out] uc Unicorn engine whose emulated state is read or updated.
+ * @param[in] layer Decoded and clipped live GLCDC source layer.
+ * @param[in] tile Bounded tile origin and extent inside @p layer.
+ * @param[out] source Scratch tile receiving the packed tile pixels.
+ * @return The read tile result produced by the emu view surface model.
+ * @retval true The read tile condition holds or completed successfully; false otherwise.
+ * @pre Arguments satisfy the ranges documented for read tile. @pre The call executes on the emulator's single owning thread.
+ * @post State changes remain confined to the emu view surface model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_read_tile(uc_engine*             uc,
+                                            const surface_layer_t* layer,
+                                            const surface_tile_t*  tile,
+                                            uint16_t*              source)
+{
+  for (uint16_t row = 0U; row < tile->height; row++) {
+    if (emu_mem_read(uc,
+                     (uint64_t)layer->address + ((uint64_t)(tile->y + row) * layer->stride) +
+                       ((uint64_t)tile->x * sizeof(uint16_t)),
+                     &source[(size_t)row * tile->width],
+                     (size_t)tile->width * sizeof(uint16_t)) != UC_ERR_OK) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
  * @brief Read, rotate, and write every active GLCDC tile.
  * @details Read, rotate, and write every active glcdc tile; this step is contained within the emu view surface model and uses bounded caller or module-owned storage.
@@ -151,23 +190,26 @@ RA8_INTERNAL static bool internal_write_layer(uc_engine*                    uc,
   if (!layer->active) {
     return true;
   }
-  uint16_t* const source = (uint16_t*)(void*)presentation->scratch;
+  /* The borrowed scratch is a byte buffer that holds a run of RGB565 pixels, and
+   * emu_presentation_open() rejects any scratch not aligned to alignof(uint16_t),
+   * so the two members name one storage. The union states that aliasing instead
+   * of casting a uint8_t* through void*. */
+  const union {
+    uint8_t*  bytes;  /**< Borrowed scratch as raw bytes.     */
+    uint16_t* pixels; /**< The same storage as RGB565 pixels. */
+  } scratch              = {.bytes = presentation->scratch};
+  uint16_t* const source = scratch.pixels;
   for (uint16_t y0 = 0U; y0 < layer->height;) {
     const uint16_t height = ((uint32_t)layer->height - y0 < k_emu_presentation_tile_px)
                               ? (uint16_t)(layer->height - y0)
                               : (uint16_t)k_emu_presentation_tile_px;
     for (uint16_t x0 = 0U; x0 < layer->width;) {
-      const uint16_t width = ((uint32_t)layer->width - x0 < k_emu_presentation_tile_px)
-                               ? (uint16_t)(layer->width - x0)
-                               : (uint16_t)k_emu_presentation_tile_px;
-      for (uint16_t row = 0U; row < height; row++) {
-        if (emu_mem_read(uc,
-                         (uint64_t)layer->address + ((uint64_t)(y0 + row) * layer->stride) +
-                           ((uint64_t)x0 * sizeof(uint16_t)),
-                         &source[(size_t)row * width],
-                         (size_t)width * sizeof(uint16_t)) != UC_ERR_OK) {
-          return false;
-        }
+      const uint16_t       width = ((uint32_t)layer->width - x0 < k_emu_presentation_tile_px)
+                                     ? (uint16_t)(layer->width - x0)
+                                     : (uint16_t)k_emu_presentation_tile_px;
+      const surface_tile_t tile  = {.x = x0, .y = y0, .width = width, .height = height};
+      if (!internal_read_tile(uc, layer, &tile, source)) {
+        return false;
       }
       if (!priv_emu_view_tile_write(presentation, source, x0, y0, width, height)) {
         return false;
