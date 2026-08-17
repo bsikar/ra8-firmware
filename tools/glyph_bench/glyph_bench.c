@@ -548,34 +548,46 @@ RA8_INTERNAL static ra8_err_t internal_report_header(void)
 {
   const char* const prefix[] = {"# #147/#164 glyph-cache budget sweep\n\nWorkload: "};
   ra8_err_t         error    = internal_write_parts(&s_gb_output, prefix, 1U);
-  if (error == k_ra8_ok)
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_put_u32(&s_gb_output, (uint32_t)k_gb_pages);
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_puts(&s_gb_output, " pages x ");
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_put_u32(&s_gb_output, (uint32_t)k_gb_reread_pages);
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_puts(&s_gb_output, " re-renders x ");
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_put_u32(&s_gb_output, (uint32_t)k_gb_page_glyphs);
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_puts(&s_gb_output, " glyphs = ");
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_put_u64(&s_gb_output, s_gb_access_total);
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error =
       ra8_io_stream_puts(&s_gb_output,
                          " glyph gets\n(English letter frequencies + caps/punct/digits; body ");
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_put_u32(&s_gb_output, (uint32_t)k_gb_body_px);
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_puts(&s_gb_output, "px, heading ");
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_put_u32(&s_gb_output, (uint32_t)k_gb_heading_px);
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_puts(
       &s_gb_output,
       "px)\n\n| cells | RAM @36KiB/cell | hit rate % | rasterisations |\n|------:|----------------:|-----------:|---------------:|\n");
+  }
   return error;
 }
 
@@ -605,30 +617,41 @@ RA8_INTERNAL static ra8_err_t internal_report_row(uint32_t budget, uint32_t hits
   const uint64_t whole    = scaled / (uint64_t)k_gb_decimal_scale;
   const uint32_t fraction = (uint32_t)(scaled % (uint64_t)k_gb_decimal_scale);
   ra8_err_t      error    = ra8_io_stream_puts(&s_gb_output, "| ");
-  if (error == k_ra8_ok)
+  if (error == k_ra8_ok) {
     error = internal_put_padded_u64(&s_gb_output, budget, (uint32_t)k_gb_budget_width);
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_puts(&s_gb_output, " | ");
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = internal_put_padded_u64(&s_gb_output,
                                     (uint64_t)budget * (uint64_t)k_gb_prod_cell_kib,
                                     (uint32_t)k_gb_ram_width);
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_puts(&s_gb_output, " KiB | ");
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = internal_put_padded_u64(&s_gb_output, whole, (uint32_t)k_gb_hit_width);
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_putc(&s_gb_output, '.');
-  if ((error == k_ra8_ok) && (fraction < (uint32_t)k_gb_dec_radix))
+  }
+  if ((error == k_ra8_ok) && (fraction < (uint32_t)k_gb_dec_radix)) {
     error = ra8_io_stream_putc(&s_gb_output, '0');
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_put_u32(&s_gb_output, fraction);
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_puts(&s_gb_output, " | ");
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = internal_put_padded_u64(&s_gb_output, rasters, (uint32_t)k_gb_raster_width);
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_puts(&s_gb_output, " |\n");
+  }
   return error;
 }
 
@@ -662,10 +685,12 @@ RA8_INTERNAL static ra8_err_t internal_run_report(void)
     error = ra8_io_stream_puts(&s_gb_output,
                                "\nWithout a cache the renderer rasterises once per glyph get (");
   }
-  if (error == k_ra8_ok)
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_put_u64(&s_gb_output, s_gb_access_total);
-  if (error == k_ra8_ok)
+  }
+  if (error == k_ra8_ok) {
     error = ra8_io_stream_puts(&s_gb_output, ").\n");
+  }
   return error;
 }
 
