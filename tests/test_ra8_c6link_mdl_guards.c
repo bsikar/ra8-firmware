@@ -427,6 +427,47 @@ static void internal_test_dispatch_pointer_guard(void)
   TEST_END("mdl service dispatch pointer MC/DC");
 }
 
+/** @brief Drive the Cancel arm's three correlation operands and the shared
+ * inactive-service vector. @details Implements the cancel arm fixture
+ * operation used only by this focused test executable. @param[in] job Fixture
+ * argument governed by the exercised interface contract. @param[in,out] base
+ * Fixture argument governed by the exercised interface contract. @pre
+ * Fixed-capacity fixture storage required by this operation is available. @pre
+ * Arguments follow the interface contract exercised by this helper. @post
+ * Documented outputs contain the exercised result when the operation succeeds.
+ * @post Mutations remain confined to documented outputs and file-local fixture
+ * state. @note File-local helper; no ownership escapes this focused test
+ * executable. @since Version 0.1.0 */
+RA8_INTERNAL
+static void internal_cancel_arm(uint32_t job, Ra8__Mdl__NextRequest* base)
+{
+  Ra8__Mdl__CancelRequest cancel = RA8__MDL__CANCEL_REQUEST__INIT;
+  cancel.protocol_version        = k_ra8_mdl_protocol_version;
+  cancel.job_id                  = job;
+  Ra8__Mdl__CancelRequest cvec   = cancel;
+  cvec.protocol_version          = k_internal_bad_version;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, internal_cancel(&cvec));
+  cvec        = cancel;
+  cvec.job_id = k_internal_bad_job;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, internal_cancel(&cvec));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_cancel(&cancel));
+
+  /* The service is now inactive: the same shapes select the activity operand
+     alone in both arms. */
+  Ra8__Mdl__NextRequest vector = *base;
+  vector.acknowledged_offset   = k_internal_max_bytes;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, internal_next(&vector));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, internal_cancel(&cancel));
+
+  internal_reset();
+  const uint32_t restarted  = internal_start();
+  cancel.job_id             = restarted;
+  base->job_id              = restarted;
+  base->acknowledged_offset = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, internal_next(base));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_cancel(&cancel));
+}
+
 /**
  * @test priv_test_c6link_mdl_guards_run
  * @brief Prove each Next correlation operand independently decides rejection.
@@ -465,7 +506,7 @@ static void internal_test_correlation_guards(void)
 {
   TEST_BEGIN("mdl service correlation MC/DC");
   internal_reset();
-  uint32_t              job  = internal_start();
+  const uint32_t        job  = internal_start();
   Ra8__Mdl__NextRequest base = RA8__MDL__NEXT_REQUEST__INIT;
   base.protocol_version      = k_ra8_mdl_protocol_version;
   base.job_id                = job;
@@ -497,31 +538,7 @@ static void internal_test_correlation_guards(void)
   vector.max_bytes           = k_internal_max_over;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, internal_next(&vector));
 
-  Ra8__Mdl__CancelRequest cancel = RA8__MDL__CANCEL_REQUEST__INIT;
-  cancel.protocol_version        = k_ra8_mdl_protocol_version;
-  cancel.job_id                  = job;
-  Ra8__Mdl__CancelRequest cvec   = cancel;
-  cvec.protocol_version          = k_internal_bad_version;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, internal_cancel(&cvec));
-  cvec        = cancel;
-  cvec.job_id = k_internal_bad_job;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, internal_cancel(&cvec));
-  TEST_ASSERT_EQ(k_ra8_ok, internal_cancel(&cancel));
-
-  /* The service is now inactive: the same shapes select the activity operand
-     alone in both arms. */
-  vector                     = base;
-  vector.acknowledged_offset = k_internal_max_bytes;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, internal_next(&vector));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, internal_cancel(&cancel));
-
-  internal_reset();
-  job                      = internal_start();
-  cancel.job_id            = job;
-  base.job_id              = job;
-  base.acknowledged_offset = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, internal_next(&base));
-  TEST_ASSERT_EQ(k_ra8_ok, internal_cancel(&cancel));
+  internal_cancel_arm(job, &base);
   TEST_END("mdl service correlation MC/DC");
 }
 
