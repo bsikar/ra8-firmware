@@ -203,11 +203,11 @@ RA8_INTERNAL static void internal_test_large_media_file_io(void)
   ra8_fs_mount_t*        m  = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&be, &m));
 
-  static uint8_t out[k_lm_payload];
-  static uint8_t in[k_lm_payload];
-  internal_lm_pattern(out, (uint32_t)k_lm_payload, (uint8_t)k_lm_seed);
+  static uint8_t s_out[k_lm_payload];
+  static uint8_t s_in[k_lm_payload];
+  internal_lm_pattern(s_out, (uint32_t)k_lm_payload, (uint8_t)k_lm_seed);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(m, "/logs"));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(m, "/logs/run.bin", out, (uint32_t)k_lm_payload));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(m, "/logs/run.bin", s_out, (uint32_t)k_lm_payload));
 
   ra8_fs_stat_t st = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_stat(m, "/logs/run.bin", &st));
@@ -216,9 +216,9 @@ RA8_INTERNAL static void internal_test_large_media_file_io(void)
   ra8_fs_file_t* f   = nullptr;
   uint32_t       got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(m, "/logs/run.bin", k_ra8_fs_mode_read, &f));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, in, (uint32_t)k_lm_payload, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_in, (uint32_t)k_lm_payload, &got));
   TEST_ASSERT_EQ(k_lm_payload, got);
-  TEST_ASSERT_EQ(0, memcmp(in, out, (size_t)k_lm_payload));
+  TEST_ASSERT_EQ(0, memcmp(s_in, s_out, (size_t)k_lm_payload));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(m));
 

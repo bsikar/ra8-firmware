@@ -519,7 +519,7 @@ RA8_PRIV void priv_handle_ctrl_out_data(ra8_usb_speed_t speed);
  * @pre Caller confirmed dvsq == k_ra8_dvsq_default.
  * @pre ::g_dcd is past ux_dcd_ra8_usb_initialize.
  * @post DCP re-armed via ra8_usb_device_busreset_rearm.
- * @post ::priv_busreset_rearm_count incremented.
+ * @post ::g_busreset_rearm_count incremented.
  * @note ISR-callback context; must not block.
  * @since 0.1.0
  */

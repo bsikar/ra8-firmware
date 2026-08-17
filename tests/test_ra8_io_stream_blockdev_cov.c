@@ -246,11 +246,11 @@ RA8_INTERNAL static void internal_fixture_fault_init(ra8_io_blockdev_t*  bd,
 RA8_INTERNAL static void internal_test_bdsink_flush_no_pending_bytes(void)
 {
   TEST_BEGIN("bdsink_flush fill==0 early return (line 227)");
-  static uint8_t local_disk[(size_t)k_cov_bd_ram_blocks * (size_t)k_ra8_io_block_size_bytes];
+  static uint8_t s_disk[(size_t)k_cov_bd_ram_blocks * (size_t)k_ra8_io_block_size_bytes];
   ra8_io_blockdev_ram_state_t bstate = {};
   ra8_io_blockdev_t           bd     = {};
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_io_blockdev_ram_init(&bd, &bstate, local_disk, k_cov_bd_ram_blocks, false));
+                 ra8_io_blockdev_ram_init(&bd, &bstate, s_disk, k_cov_bd_ram_blocks, false));
   ra8_io_stream_blockdev_state_t sstate = {};
   ra8_io_stream_t                s      = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_blockdev_init(&s, &sstate, &bd, k_cov_bd_start_lba));
@@ -279,11 +279,11 @@ RA8_INTERNAL static void internal_test_bdsink_flush_no_pending_bytes(void)
 RA8_INTERNAL static void internal_test_bdsink_write_out_written_nonnull_success(void)
 {
   TEST_BEGIN("bdsink_write success *out_written = len (lines 193-195)");
-  static uint8_t local_disk[(size_t)k_cov_bd_ram_blocks * (size_t)k_ra8_io_block_size_bytes];
+  static uint8_t s_disk[(size_t)k_cov_bd_ram_blocks * (size_t)k_ra8_io_block_size_bytes];
   ra8_io_blockdev_ram_state_t bstate = {};
   ra8_io_blockdev_t           bd     = {};
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_io_blockdev_ram_init(&bd, &bstate, local_disk, k_cov_bd_ram_blocks, false));
+                 ra8_io_blockdev_ram_init(&bd, &bstate, s_disk, k_cov_bd_ram_blocks, false));
   ra8_io_stream_blockdev_state_t sstate = {};
   ra8_io_stream_t                s      = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_blockdev_init(&s, &sstate, &bd, k_cov_bd_start_lba));

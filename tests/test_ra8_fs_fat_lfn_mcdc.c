@@ -391,13 +391,13 @@ RA8_INTERNAL static void internal_test_mcdc_free_chain_walk_bound(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   /* A real multi-cluster file gives a valid chain to walk (dec T). */
-  static uint8_t payload[k_lt_chain_payload] = {};
+  static uint8_t s_payload[k_lt_chain_payload] = {};
   for (uint32_t i = 0U; i < (uint32_t)k_lt_chain_payload; i++) {
-    payload[i] = (uint8_t)(i & (uint32_t)k_lt_byte_mask);
+    s_payload[i] = (uint8_t)(i & (uint32_t)k_lt_byte_mask);
   }
   ra8_fs_file_t* wf = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "CHAIN.BIN", k_ra8_fs_mode_write, &wf));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(wf, payload, (uint32_t)k_lt_chain_payload));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(wf, s_payload, (uint32_t)k_lt_chain_payload));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(wf));
   ra8_fs_file_t* rf = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "CHAIN.BIN", k_ra8_fs_mode_read, &rf));

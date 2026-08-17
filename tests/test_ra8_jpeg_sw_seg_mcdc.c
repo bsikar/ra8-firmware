@@ -231,24 +231,24 @@ RA8_INTERNAL static void internal_test_mcdc_get_dimensions_pad_and_marker(void)
 RA8_INTERNAL static void internal_test_mcdc_decode_pad_and_rst_marker(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC decode: pad-skip + sof unsupported + RST marker");
-  static uint8_t local_rgb_in[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t local_rgb_out[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t local_jpeg[(uint32_t)k_jt_jpeg_cap];
-  internal_fill_gradient(local_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  static uint8_t s_rgb_in[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t s_rgb_out[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t s_jpeg[(uint32_t)k_jt_jpeg_cap];
+  internal_fill_gradient(s_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
   uint32_t produced = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_jpeg_sw_encode(local_rgb_in,
+                 ra8_jpeg_sw_encode(s_rgb_in,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                    local_jpeg,
+                                    s_jpeg,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &produced));
   uint16_t dw = 0U;
   uint16_t dh = 0U;
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_jpeg_sw_decode(local_jpeg, produced, local_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
+    ra8_jpeg_sw_decode(s_jpeg, produced, s_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
   static const uint8_t prog_jpeg[] = {
     0xFFU,
     0xD8U,
@@ -377,36 +377,36 @@ RA8_INTERNAL static void internal_test_mcdc_decode_dqt_dht_validation(void)
 RA8_INTERNAL static void internal_test_mcdc_decode_sof0_chroma_subsampling(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC dec_parse_sof0: ncomp + 4:4:4/4:2:0 disambig");
-  static uint8_t local_rgb_in[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t local_rgb_out[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t local_jpeg[(uint32_t)k_jt_jpeg_cap];
-  internal_fill_gradient(local_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  static uint8_t s_rgb_in[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t s_rgb_out[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t s_jpeg[(uint32_t)k_jt_jpeg_cap];
+  internal_fill_gradient(s_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
   uint32_t produced = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_jpeg_sw_encode(local_rgb_in,
+                 ra8_jpeg_sw_encode(s_rgb_in,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                    local_jpeg,
+                                    s_jpeg,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &produced));
   uint16_t dw = 0U;
   uint16_t dh = 0U;
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_jpeg_sw_decode(local_jpeg, produced, local_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
+    ra8_jpeg_sw_decode(s_jpeg, produced, s_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
   produced = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_jpeg_sw_encode(local_rgb_in,
+                 ra8_jpeg_sw_encode(s_rgb_in,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_ra8_jpeg_sw_quality_min,
-                                    local_jpeg,
+                                    s_jpeg,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &produced));
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_jpeg_sw_decode(local_jpeg, produced, local_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
+    ra8_jpeg_sw_decode(s_jpeg, produced, s_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
   static const uint8_t sof0_ncomp2[] = {
     0xFFU, 0xD8U, 0xFFU, 0xC0U, 0x00U, 0x0EU, 0x08U, 0x00U, 0x10U, 0x00U,
     0x10U, 0x02U, 0x01U, 0x11U, 0x00U, 0x02U, 0x11U, 0x00U, 0xFFU, 0xD9U,
