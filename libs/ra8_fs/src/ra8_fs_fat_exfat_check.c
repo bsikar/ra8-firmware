@@ -595,6 +595,92 @@ static ra8_err_t internal_exchk_set(ra8_fs_check_ctx_t* ctx,
  * @note Bounded loop (NASA Rule 2): `k_exfat_scan_limit` entries.
  * @since 0.1.0
  */
+/**
+ * @brief Dispatch one live File entry: truncation-checked, then set-verified.
+ * @details A File entry's SecondaryCount declares how many more stream/name
+ *          entries follow as one set. When that count would run past the
+ *          scan ceiling, the walk is a truncation, not a malformed set, and
+ *          is reported and stopped here rather than inside set assembly.
+ *          Otherwise the full set is read and verified through
+ *          ::internal_exchk_set.
+ * @param[in,out] ctx The scan context.
+ * @param[in,out] cur Cursor positioned just past the File entry itself.
+ * @param[in] e The just-read File entry bytes.
+ * @param[in,out] stack Directory worklist for referenced subdirectories.
+ * @param[in] dir_cluster Cluster of the directory being scanned, for the
+ *            truncation fault report.
+ * @param[out] out_stop Whether the caller's scan loop must return immediately
+ *             with the returned status.
+ * @return Status to return from the scan loop when @p out_stop is true;
+ *         k_ra8_ok (continue scanning) when false.
+ * @retval k_ra8_ok The set fit and verified, or a truncation was reported.
+ * @retval k_ra8_err_* Backend read failure while assembling the set.
+ * @pre @p ctx, @p cur, @p e, @p stack, and @p out_stop are non-NULL.
+ * @post @p out_stop is always written.
+ * @note Bounded by the caller's scan ceiling (NASA Rule 2).
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_exchk_scan_dir_file_entry(ra8_fs_check_ctx_t* ctx,
+                                                    exfat_cursor_t*     cur,
+                                                    const uint8_t*      e,
+                                                    exfat_dir_stack_t*  stack,
+                                                    uint32_t            dir_cluster,
+                                                    bool*               out_stop)
+{
+  const uint32_t count     = 1U + (uint32_t)e[k_exfat_off_file_secnt];
+  const uint32_t remaining = (uint32_t)k_exfat_scan_limit - cur->scanned;
+  if (count <= (uint32_t)k_exfat_set_max_entries) {
+    if (count > 1U) {
+      if ((count - 1U) > remaining) {
+        priv_check_fault(ctx, k_ra8_fs_check_fault_scan_truncated, dir_cluster, 0U, 0U);
+        *out_stop = true;
+        return k_ra8_ok;
+      }
+    }
+  }
+  const ra8_err_t se = internal_exchk_set(ctx, cur, e, stack);
+  *out_stop          = (se != k_ra8_ok);
+  return se;
+}
+
+/**
+ * @brief Probe exactly one entry past the scan ceiling to classify the walk.
+ * @details An exhausted allocation or an immediate end-of-directory marker
+ *          proves the directory ended exactly on the scan bound; any other
+ *          live or deleted entry proves the walk was truncated.
+ * @param[in,out] ctx The scan context.
+ * @param[in,out] cur Cursor positioned at the scan ceiling.
+ * @param[in] dir The directory being scanned, for the truncation fault report.
+ * @return Error code.
+ * @retval k_ra8_ok The directory ended exactly at the bound, or a truncation
+ *         was reported.
+ * @retval k_ra8_err_* Backend read failure.
+ * @pre @p ctx, @p cur, and @p dir are non-NULL.
+ * @post No volume state is modified.
+ * @note Exactly one bounded read (NASA Rule 2).
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_exchk_scan_dir_terminal(ra8_fs_check_ctx_t* ctx,
+                                                  exfat_cursor_t*     cur,
+                                                  const exfat_dir_t*  dir)
+{
+  uint8_t         terminal[k_exfat_entry_bytes] = {};
+  const ra8_err_t probe                         = priv_exfat_next_entry(ctx->m, cur, terminal);
+  if (probe == k_ra8_err_not_found) {
+    return k_ra8_ok;
+  }
+  if (probe != k_ra8_ok) {
+    return probe;
+  }
+  if (terminal[0] == (uint8_t)k_exfat_entry_eod) {
+    return k_ra8_ok;
+  }
+  priv_check_fault(ctx, k_ra8_fs_check_fault_scan_truncated, dir->cluster, 0U, 0U);
+  return k_ra8_ok;
+}
+
 RA8_INTERNAL
 static ra8_err_t
 internal_exchk_scan_dir(ra8_fs_check_ctx_t* ctx, const exfat_dir_t* dir, exfat_dir_stack_t* stack)
@@ -623,35 +709,15 @@ internal_exchk_scan_dir(ra8_fs_check_ctx_t* ctx, const exfat_dir_t* dir, exfat_d
       continue;
     }
     if (e[0] == (uint8_t)k_exfat_entry_file) {
-      const uint32_t count     = 1U + (uint32_t)e[k_exfat_off_file_secnt];
-      const uint32_t remaining = (uint32_t)k_exfat_scan_limit - cur.scanned;
-      if (count <= (uint32_t)k_exfat_set_max_entries) {
-        if (count > 1U) {
-          if ((count - 1U) > remaining) {
-            priv_check_fault(ctx, k_ra8_fs_check_fault_scan_truncated, dir->cluster, 0U, 0U);
-            return k_ra8_ok;
-          }
-        }
-      }
-      const ra8_err_t se = internal_exchk_set(ctx, &cur, e, stack);
-      if (se != k_ra8_ok) {
-        return se;
+      bool            stop = false;
+      const ra8_err_t fe =
+        internal_exchk_scan_dir_file_entry(ctx, &cur, e, stack, dir->cluster, &stop);
+      if (stop) {
+        return fe;
       }
     }
   }
-  uint8_t         terminal[k_exfat_entry_bytes] = {};
-  const ra8_err_t probe                         = priv_exfat_next_entry(ctx->m, &cur, terminal);
-  if (probe == k_ra8_err_not_found) {
-    return k_ra8_ok;
-  }
-  if (probe != k_ra8_ok) {
-    return probe;
-  }
-  if (terminal[0] == (uint8_t)k_exfat_entry_eod) {
-    return k_ra8_ok;
-  }
-  priv_check_fault(ctx, k_ra8_fs_check_fault_scan_truncated, dir->cluster, 0U, 0U);
-  return k_ra8_ok;
+  return internal_exchk_scan_dir_terminal(ctx, &cur, dir);
 }
 
 /**
@@ -676,20 +742,20 @@ static ra8_err_t internal_exchk_tree(ra8_fs_check_ctx_t* ctx)
   /* Explicit DFS worklist (~2 KiB) kept in module-static storage so this frame
    * stays within the stack-usage budget; the walk is iterative (no recursion)
    * and single-threaded under the fs lock, so the shared buffer never overlaps. */
-  static exfat_dir_stack_t worklist;
-  worklist.top       = 0U;
-  worklist.truncated = 0U;
-  priv_exfat_dir_root(ctx->m, &worklist.items[0]);
-  worklist.top = 1U;
-  while (worklist.top > 0U) {
-    worklist.top--;
-    const exfat_dir_t dir = worklist.items[worklist.top];
+  static exfat_dir_stack_t s_worklist;
+  s_worklist.top       = 0U;
+  s_worklist.truncated = 0U;
+  priv_exfat_dir_root(ctx->m, &s_worklist.items[0]);
+  s_worklist.top = 1U;
+  while (s_worklist.top > 0U) {
+    s_worklist.top--;
+    const exfat_dir_t dir = s_worklist.items[s_worklist.top];
     ctx->rep->dirs_visited++;
     ra8_err_t err = internal_exchk_mark_dir_alloc(ctx, &dir);
     if (err != k_ra8_ok) {
       return err;
     }
-    err = internal_exchk_scan_dir(ctx, &dir, &worklist);
+    err = internal_exchk_scan_dir(ctx, &dir, &s_worklist);
     if (err != k_ra8_ok) {
       return err;
     }
