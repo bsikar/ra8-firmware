@@ -59,9 +59,6 @@ static ULONG s_ram_backing[k_lx_nor_ram_total_words];
  */
 static ULONG s_ram_sector_buf[LX_NOR_SECTOR_SIZE];
 
-/* Signature is fixed by the LevelX driver-read callback type (non-const). */
-/* cppcheck-suppress constParameterCallback -- bound to the LevelX LX_NOR_FLASH read callback typedef; the ULONG* signature is fixed by the driver seam. */
-/* NOLINTNEXTLINE(readability-non-const-parameter) -- LevelX driver callback signature is fixed by the vendor seam. */
 /**
  * @brief Read @p words ULONGs from the backing pointer into @p destination.
  * @details Copies the requested contiguous range without allocating storage or
@@ -79,6 +76,9 @@ static ULONG s_ram_sector_buf[LX_NOR_SECTOR_SIZE];
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
+/* Signature is fixed by the LevelX driver-read callback type (non-const). */
+/* cppcheck-suppress constParameterCallback -- bound to the LevelX LX_NOR_FLASH read callback typedef; the ULONG* signature is fixed by the driver seam. */
+/* NOLINTNEXTLINE(readability-non-const-parameter) -- LevelX driver callback signature is fixed by the vendor seam. */
 RA8_INTERNAL static UINT internal_ram_read(ULONG* flash_address, ULONG* destination, ULONG words)
 {
   if (flash_address == LX_NULL) {
@@ -93,9 +93,6 @@ RA8_INTERNAL static UINT internal_ram_read(ULONG* flash_address, ULONG* destinat
   return (UINT)LX_SUCCESS;
 }
 
-/* Signature is fixed by the LevelX driver-write callback type (non-const). */
-/* cppcheck-suppress constParameterCallback -- bound to the LevelX LX_NOR_FLASH write callback typedef; the ULONG* signature is fixed by the driver seam. */
-/* NOLINTNEXTLINE(readability-non-const-parameter) -- LevelX driver callback signature is fixed by the vendor seam. */
 /**
  * @brief Write @p words ULONGs from @p source to the backing pointer.
  * @details Programs the requested contiguous range directly in the RAM-backed
@@ -113,6 +110,9 @@ RA8_INTERNAL static UINT internal_ram_read(ULONG* flash_address, ULONG* destinat
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
+/* Signature is fixed by the LevelX driver-write callback type (non-const). */
+/* cppcheck-suppress constParameterCallback -- bound to the LevelX LX_NOR_FLASH write callback typedef; the ULONG* signature is fixed by the driver seam. */
+/* NOLINTNEXTLINE(readability-non-const-parameter) -- LevelX driver callback signature is fixed by the vendor seam. */
 RA8_INTERNAL static UINT internal_ram_write(ULONG* flash_address, ULONG* source, ULONG words)
 {
   if (flash_address == LX_NULL) {
