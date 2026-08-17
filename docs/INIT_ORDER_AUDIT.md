@@ -221,8 +221,8 @@ Source: ``examples/ek_ra8d2/hil_needs_revalidation/ra8_io_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hil_needs_revalidation/ra8_io_fsfmt_demo/main.c``
 
-- L627: ra8_log_init  (rank 100)
-- L629: ra8_io_stream_uart_init  (rank 100)
+- L626: ra8_log_init  (rank 100)
+- L628: ra8_io_stream_uart_init  (rank 100)
 
 ### ra8_io_sd_demo
 

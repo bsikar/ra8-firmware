@@ -257,20 +257,6 @@ RA8_INTERNAL static void internal_bind_vfs(fw_fs_t* fs, fw_fs_ra8_vfs_state_t* s
 }
 
 /**
- * @brief Prove exporter bytes and validation match across both real adapters.
- * @details Produces all supported export formats once through root-bound POSIX
- *          storage and once through RAM blockdev, FAT12, and firmware VFS, then
- *          compares independent verifier results and complete-file hashes.
- * @pre The POSIX adapter can create an isolated root directory.
- * @pre The caller-owned RAM disk, mount state, and exporter arena are writable.
- * @post All five formats validate and hash identically on both adapters.
- * @post Unsupported VFS replacement preserves the prior archive and all mounts
- * close.
- * @note Test-only; no power-loss durability claim is made for the VFS adapter.
- * @test Export bytes and reader semantics match across POSIX and RAM/FAT/VFS.
- * @since 0.1.0
- */
-/**
  * @brief Prove an unsupported chapter export leaves a prior archive untouched.
  * @details Requests a CBZ chapter-metadata export the RAM/FAT/VFS adapter
  *          cannot service, requires the rejection, then rehashes the
