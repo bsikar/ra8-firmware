@@ -800,7 +800,7 @@ static void test_board_camera_reset_pulses_pin(void)
   /* PCNTR3 low half is POSR: the release wrote the CAM_RST set bit last. */
   volatile const r_port_regs_t* port = ra8_port(RA8_PIN_PORT(rst));
   TEST_ASSERT_NOT_NULL(port);
-  TEST_ASSERT_EQ((uint32_t)(1UL << (uint32_t)RA8_PIN_PIN(rst)), port->PCNTR3);
+  TEST_ASSERT_EQ((1UL << (uint32_t)RA8_PIN_PIN(rst)), port->PCNTR3);
 
   TEST_ASSERT_EQ(k_ra8_err_gpio_conflict, ra8_board_camera_reset());
   TEST_END("board camera: reset pulses CAM_RST and releases it");
@@ -829,7 +829,7 @@ static void test_board_camera_sccb_transfers(void)
   ra8_fake_mmio_set_poll_hook(nullptr);
   volatile const r_i2c_regs_t* reg = ra8_i2c_regs((uint8_t)k_ra8_board_camera_i2c_channel);
   TEST_ASSERT(s_board_cam_trace_len >= 4U);
-  TEST_ASSERT_EQ((uint32_t)k_board_cam_addr << 1U, s_board_cam_trace[1]);
+  TEST_ASSERT_EQ(k_board_cam_addr << 1U, s_board_cam_trace[1]);
   TEST_ASSERT_EQ(k_board_cam_reg_hi, s_board_cam_trace[2]);
   TEST_ASSERT_EQ(k_board_cam_reg_lo, s_board_cam_trace[3]);
   TEST_ASSERT_EQ(k_board_cam_value, reg->ICDRT);
@@ -847,7 +847,7 @@ static void test_board_camera_sccb_transfers(void)
   ra8_fake_mmio_set_poll_hook(nullptr);
   TEST_ASSERT_EQ(k_board_cam_rx_byte, value);
   TEST_ASSERT(s_board_cam_trace_len >= 4U);
-  TEST_ASSERT_EQ((uint32_t)k_board_cam_addr << 1U, s_board_cam_trace[1]);
+  TEST_ASSERT_EQ(k_board_cam_addr << 1U, s_board_cam_trace[1]);
   TEST_ASSERT_EQ(k_board_cam_reg_hi, s_board_cam_trace[2]);
   TEST_ASSERT_EQ(k_board_cam_reg_lo, s_board_cam_trace[3]);
 
