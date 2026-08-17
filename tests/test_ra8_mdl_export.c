@@ -15,7 +15,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../apps/stand_alone/media_dl/tests/tiny_jpeg_fixture.h"
+#include "../apps/shared/media_dl/tests/tiny_jpeg_fixture.h"
 #include "fw_if_fs_posix.h"
 #include "fw_if_fs_ra8_vfs.h"
 #include "mdl_export.h"

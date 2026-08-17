@@ -44,9 +44,10 @@ through it, not one:
 - `libs/ra8_io/src/ra8_io_compress.c` and `ra8_io_vfs_compress.c` -- the
   compress-on-write / decompress-on-read fabric seam that RBKC chunks ride.
 
-The host tools `apps/stand_alone/media_dl` (`mz_zip_writer` + `tdefl`, the one
-COMPRESSION consumer, run on downloaded media) and `tools/cache_bench` also
-compile it.
+The media_dl downloader core `apps/shared/media_dl` (`mz_zip_writer` +
+`tdefl`, the one COMPRESSION consumer, run on downloaded media) and
+`tools/cache_bench` also compile it. media_dl's core is built by every form of
+that product, today only the host CLI at `apps/stand_alone/media_dl`.
 
 - Integrity claim category: data-handling (decompression of locally staged,
   attacker-authored book and archive payloads -- a book is authored by whoever
@@ -70,8 +71,8 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 - Every firmware consumer decodes locally staged content (SD card, MRAM,
   Octo-SPI); no network payload feeds a decoder on the target. The one
-  network-fed consumer, `apps/stand_alone/media_dl`, is a host tool and is not part of
-  the firmware image.
+  network-fed consumer, the media_dl downloader core `apps/shared/media_dl`,
+  is built today only into a host tool and is not part of the firmware image.
 - Decompression limits are charged across the whole surface rather than in the
   EPUB wrapper alone: `libs/ra8_epub/src/ra8_epub_zip_guard.c` is the
   decompression-limits retrofit for every miniz ZIP consumer, and it plus
