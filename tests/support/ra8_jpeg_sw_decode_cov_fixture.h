@@ -200,7 +200,7 @@ static const uint8_t s_sos_444_cr_fail[] = {
  * @note Not thread-safe; single-threaded test context only.
  * @since 0.1.0
  */
-RA8_INTERNAL static void
+[[maybe_unused]] RA8_INTERNAL static void
 internal_cov_append(uint8_t* dst, uint32_t cap, uint32_t* off, const uint8_t* seg, uint32_t n)
 {
   TEST_ASSERT_NOT_NULL(dst);

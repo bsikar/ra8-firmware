@@ -161,8 +161,12 @@ RA8_HW_REGISTER_ACCESS RA8_INTERNAL static inline volatile uint32_t* internal_it
  */
 RA8_INTERNAL static inline bool internal_itm_ready(void)
 {
-  /* A redirected byte sink needs no ITM/debugger -- it is always ready. */
+  /* A redirected byte sink needs no ITM/debugger -- it is always ready.
+   * Collapsing this to `return s_byte_sink != nullptr;` is only equivalent
+   * under RA8_OFF_TARGET, where the #else arm below does not exist; on
+   * target that arm must still run when the condition is false. */
   if (s_byte_sink != nullptr) {
+    // NOLINTNEXTLINE(readability-simplify-boolean-expr)
     return true;
   }
 #ifdef RA8_OFF_TARGET
