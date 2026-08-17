@@ -16,7 +16,6 @@
 # Rows at this baseline: 19
 
 scripts/checks/check_assert_casts.py
-scripts/checks/check_coverage.py
 scripts/checks/check_header_file_placement.py
 scripts/checks/check_hil_alive_policy.py
 scripts/checks/check_hil_eil_parity.py
@@ -29,7 +28,6 @@ scripts/checks/check_nsc_veneer_defs.py
 scripts/checks/check_sg_offsets.py
 scripts/checks/check_stub_crypto_guarded.py
 scripts/checks/check_tz_boundary_discard.py
-scripts/checks/coverage.sh
 scripts/checks/format_code.sh
 scripts/checks/lint_selftest.sh
 scripts/checks/lint_targets.py

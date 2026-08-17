@@ -89,7 +89,7 @@ explicit design goal:
 | `scripts/checks/check-since-version.py`     | Doxygen `@since` enforcement.                        |
 | `scripts/checks/check-copyright.py`         | Copyright + SPDX header enforcement.                 |
 | `scripts/report/roadmap_stats.py`           | ROADMAP.md summary block freshness gate.             |
-| `scripts/checks/coverage.sh`                      | gcovr coverage gate.                                 |
+| `scripts/report/tree_coverage.sh`                 | gcovr whole-tree coverage measurement.               |
 | `scripts/checks/format_code.sh`                   | clang-format wrapper.                                |
 | `scripts/checks/clang_tidy.sh`                    | clang-tidy wrapper.                                  |
 | `scripts/dev/flash.sh`                         | J-Link flash wrapper (HW operations).                |

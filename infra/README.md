@@ -211,8 +211,12 @@ the number that matters:
 | `Pre-commit gate suite` | 787s | 1331s / 1009s |
 | `clang-tidy` | 329s / 331s | 982s / 981s |
 | `MC/DC coverage gate` | 237s | 674s / 771s |
-| `Coverage (gcovr 90/80)` | 118s | 407s / 429s |
+| `Coverage (whole-tree per-file ratchet)` | 118s | 407s / 429s |
 | `Unit tests (host)` | 83s | 355s / 348s |
+
+The coverage row's numbers predate the whole-tree unification, when that job
+measured one build instead of every measurement project; the ratio between
+hosts is still the point, not the absolute.
 
 The `Cross-build all apps` row is the cleanest of these: both numbers are two
 attempts of the *same workflow run* on the same commit, so the only variable is

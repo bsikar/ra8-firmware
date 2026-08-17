@@ -43,92 +43,146 @@ Statement  <  Branch  <  Decision  <  Condition  <  MC/DC  <  Multiple-Condition
   independently affect the outcome. Required by DO-178C Level B,
   IEC 61508 SIL 3, ISO 26262 ASIL C/D.
 
+
+## One census, one baseline, one bar
+
+There is **one** statement+branch policy for the whole first-party codebase.
+Every `.c` / `.cc` / `.cpp` under `libs/`, `src/`, `port/`, `tools/`, `apps/`
+and `examples/` is enrolled in it, and no tier gets a softer bar. It replaced
+three overlapping regimes -- an aggregate `gcovr --fail-under-line 90
+--fail-under-branch 80` plus a `libs/`+`src/`-only per-file line floor, a
+second full coverage build ratcheted against a two-number project-wide
+baseline, and a media_dl-specific per-file ratchet -- which between them built
+the same translation units twice and still left most of the tree unmentioned by
+any policy.
+
+The census is derived from `git ls-files` via
+`scripts/checks/lint_targets.py`, so a directory added tomorrow is enrolled the
+day it lands. Only three things are subtracted, and each is subtracted
+elsewhere first:
+
+- vendored SOUP and generated tables (`libs/third_party/`, `libs/ra8_fonts/`,
+  `tools/vela/generated/`, `port/threadx/`);
+- the individually registered generated sources in
+  `scripts/checks/lint_coverage_rules.py`;
+- test sources -- a file under a `tests/` directory at any depth is the
+  instrument, not the thing measured.
+
+Headers carry no row: inline code in a header is measured through the TUs that
+include it.
+
+## Row kinds
+
+`.github/tree-coverage-baseline.txt` carries exactly one row per census unit,
+TAB-separated and sorted by path. It is emitted by the checker; never hand-edit
+it.
+
+```
+<file>	MEASURED	<line-covered>	<line-total>	<branch-covered>	<branch-total>
+<file>	UNMEASURED	<reason-class>
+```
+
+**MEASURED** freezes what the unit measures today. Uncovered debt may not grow
+and the ratio may not fall, so a unit at 100% keeps 100% and a unit at 41%
+burns down toward the 90% line / 80% branch floor instead of sliding. An
+improvement is welcome and silent; `--update` is how it gets frozen in, and it
+only ever tightens. A unit with **no row at all** is new and must enter at the
+full 90/80 floor -- historical debt is not something a new file can inherit.
+
+**UNMEASURED** is explicit, so nothing is silently absent. The reason is one of
+four machine-derived classes, re-derived from the tree on every run so a row
+cannot be hand-written into something friendlier:
+
+| Class | Meaning |
+|---|---|
+| `firmware-composition` | Only ever cross-compiled into an image (`examples/`, the firmware products under `apps/`). No host process, no exit status. |
+| `platform-cross-only`  | Platform code (`libs/`, `src/`, `port/`) no host coverage build compiles: board boot code, RTOS/USB stack ports, drivers with no host double. |
+| `hosted-no-coverage-build` | Host tool or product code whose CMake project is not wired into a measurement project. Pure debt -- the fix is to add the project. |
+| `compiled-not-executed` | A measurement build compiled it and no test executed it, so gcov wrote a `.gcno` and never a `.gcda`. Usually a static-archive member no test binary pulls in. |
+
+Gaining measurement is **one-way**: a unit that starts producing execution data
+must move to MEASURED and can never move back.
+
 ## Running locally
 
 ```sh
 make coverage
 ```
 
-This wraps `scripts/report/coverage_report.sh`, which:
+That runs `scripts/report/tree_coverage.sh` (which MEASURES) and then
+`scripts/checks/check_tree_coverage.py` (which JUDGES). Keeping the two apart
+is what keeps the tree at one policy surface.
 
-1. Configures `tests/build-cov/` with `cmake -DRA8_COVERAGE=ON
-   -DRA8_MCDC=OFF`.
-2. Builds the host test suite with `--coverage -fprofile-arcs
-   -ftest-coverage`.
-3. Runs every test via ctest.
-4. Invokes `gcovr` filtered to first-party `libs/ra8_*` and `src/`.
-5. Emits:
-   - `build/coverage/index.html` -- per-file annotated source
-   - `build/coverage/coverage.xml` -- Cobertura XML (consumed by the gate)
-   - `build/coverage/summary.txt` -- text summary
+The producer builds every project in `tree_coverage_model.PROJECTS`
+separately -- the host test suite and the media_dl form today -- runs each
+under ctest, reports each into its own gcovr trace, and then **merges the
+traces**. The merge is the point, not an optimisation: the media_dl core is
+compiled by both builds, so a single sweep over one build tree reports
+whichever half it happened to see (`mdl_config.c` measures 77.3% from the host
+suite alone and 90.1% from the union). One row per unit means one number per
+unit.
 
-After the report is generated, `make coverage` also runs the gate:
+Outputs land under `build/tree-coverage/`:
+
+| Path | What |
+|---|---|
+| `summary.json` | the merged per-file summary the checker reads |
+| `traces/<project>.json` | per-project gcovr trace (the merge input) |
+| `summaries/<project>.json` | per-project summary (its non-vacuity floor) |
+| `<project>/` | the CMake build tree, incl. `compile_commands.json` |
+| `html/index.html`, `summary.txt` | human-readable forms |
+
+Re-freezing after you have improved something:
 
 ```sh
-python3 scripts/checks/check_coverage.py
+python3 scripts/checks/check_tree_coverage.py --update
 ```
+
+`--update` refuses to write over a real regression, so it can only tighten.
+
+## What keeps the gate honest
+
+- **Non-vacuity floors per root.** A checker that enumerates nothing reports a
+  clean tree because it looked at nothing. Each census root has its own floor,
+  so a collapse confined to a single root still fails; a tree-wide total would
+  stay healthy while `tools/` silently dropped to zero.
+- **Per-project floors.** Each measurement project's own report must carry a
+  minimum number of census units, so a build that silently stopped
+  instrumenting cannot merge cleanly into a healthy-looking total.
+- **A scope guard.** Any listfile declaring `option(RA8_COVERAGE ...)` must be
+  claimed by a measurement project. A new measurable product cannot land and
+  then never be measured.
+- **A both-directions `--selftest`**, run by the gate before the scan.
 
 ## On macOS
 
-The host test fake uses `MAP_FIXED` below 4 GiB, which arm64
-macOS rejects with SIGKILL. The script transparently re-execs
-itself inside the project's Linux devcontainer (Ubuntu 24.04 with
-gcc 13.3 and gcovr 7.0). Docker (and colima, if installed) is
-auto-started.
+The host test fake uses `MAP_FIXED` below 4 GiB, which arm64 macOS rejects with
+SIGKILL, and the counts are gcc-14-specific. Run the gate through the
+containerised suite (`make ci-gate GATE=coverage-tree`) rather than natively.
 
 ## Targets
 
-| Goal                       | Today  | Target |
-|----------------------------|--------|--------|
-| Statement coverage         | 89.9%  | 100%   |
-| Branch coverage            | 81.1%  | 100%   |
-| MC/DC                      | tracked separately in `docs/MCDC_GAPS.md` | 100% |
+| Goal | Today | Target |
+|---|---|---|
+| Census units measured | 507 of 1043 | every host-reachable unit |
+| MC/DC | tracked separately in `docs/MCDC_GAPS.md` | 100% |
 
-100% statement and branch coverage on first-party code is a
-hard goal but is feasible -- the existing 227+ test suite already
-exercises most code paths. The remaining gaps are:
-
-- Defensive `assert(false)` / "unreachable" branches that exist
-  only to satisfy NASA Power of 10 Rule 5 (validation).
-- Hardware-only error paths that cannot be triggered from the host
-  test harness.
-
-## Ratchet policy
-
-The baseline lives in `.github/coverage-baseline.txt` as two
-whitespace-separated numbers:
-
-```
-<statement_pct> <branch_pct>
-```
-
-`scripts/checks/check_coverage.py` enforces:
-
-- statement coverage MUST NOT drop below baseline (slack 0.5pp)
-- branch coverage MUST NOT drop below baseline (slack 0.5pp)
-
-If a PR earns more than 1pp over baseline on both metrics, the
-gate prints a `HINT` suggesting the new numbers. Updating the
-baseline downward is forbidden; the only acceptable direction is
-upward.
-
-The gate is **blocking**: `check_coverage.py` exits non-zero when
-either metric regresses below baseline by more than the 0.5pp
-slack band, and the `coverage-report` CI gate fails the run. It
-ran advisory only during initial baseline bring-up on GitHub
-Actions; that period is over and the baseline has been stable
-across CI runs.
+The two largest unmeasured populations are `examples/` (firmware compositions,
+covered instead by the emulator matrix and the HIL suite) and `tools/`
+(host-executable, and therefore real debt: those projects have ctest suites but
+no coverage instrumentation wired up yet).
 
 ## CI
 
-`.github/workflows/coverage.yml` runs `make coverage` on every PR
-and push to main, uploads the HTML report as a workflow artifact,
-and runs the gate.
+`.github/workflows/coverage.yml` runs `bash scripts/ci.sh --gate coverage-tree`
+on every push to `main`/`dev` and every PR to either, and uploads the merged
+HTML report and summary as workflow artifacts.
 
 ## See also
 
 - `docs/MCDC.md` -- the DO-178C Level B MC/DC flow
 - `docs/MCDC_GAPS.md` -- per-file MC/DC coverage gap list
-- `scripts/report/coverage_report.sh` -- coverage report generator
-- `scripts/checks/check_coverage.py` -- coverage gate
-- `.github/coverage-baseline.txt` -- baseline numbers
+- `scripts/report/tree_coverage.sh` -- the measurement
+- `scripts/checks/check_tree_coverage.py` -- the policy
+- `scripts/checks/tree_coverage_model.py` -- the census and its reason classes
+- `.github/tree-coverage-baseline.txt` -- the one baseline

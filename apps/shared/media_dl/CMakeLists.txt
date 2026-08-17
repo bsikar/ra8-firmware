@@ -37,7 +37,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # The repository root, stated ONCE. This listfile reaches out of its own tree
 # for the firmware libraries, the POSIX port, the shared test support and the
 # vendored WebP recipe, and it is configured standalone (its own
-# CMAKE_SOURCE_DIR) by the tools-build and tools-coverage gates, so
+# CMAKE_SOURCE_DIR) by the tools-build and coverage-tree gates, so
 # CMAKE_SOURCE_DIR cannot serve. Every such reference goes through this
 # variable: when the product moved from tools/media_dl to
 # apps/stand_alone/media_dl, 59 hand-written ../.. prefixes all became wrong
@@ -236,7 +236,7 @@ target_link_libraries(mdl_rabook_runtime PUBLIC m)
 # ---------------------------------------------------------------------------
 # The core, as one library target a form links instead of restating 40 source
 # paths. It is an OBJECT library rather than a STATIC one on purpose: the
-# tools-coverage ratchet measures gcov counters PER PRODUCTION FILE, and a
+# coverage-tree ratchet measures gcov counters PER PRODUCTION FILE, and a
 # static archive lets the linker drop any member the form happens not to
 # reference -- that member's .gcda is then never written and its coverage
 # silently vanishes from the report, which reads as a regression in a file
