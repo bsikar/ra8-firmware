@@ -149,7 +149,9 @@ ra8_err_t mdl_report_progress(void* ctx, const mdl_fetch_progress_t* ev)
  * @retval 1 @p pct is two digits.
  * @retval 0 @p pct is three digits.
  * @pre @p pct is at most ::k_percent_scale.
+ * @pre ::k_percent_two_digits is less than ::k_percent_scale.
  * @post No state is modified.
+ * @post The returned width plus @p pct's digit count is always three.
  * @note Pure and thread-safe.
  * @since 0.1.0
  */

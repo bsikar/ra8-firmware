@@ -240,6 +240,7 @@ RA8_INTERNAL static ra8_err_t internal_component(const char* path, uint16_t star
  * @pre @p path is NUL-terminated within `caps->path_max_bytes` bytes, or this
  *      returns k_ra8_err_invalid_size.
  * @post The path buffer is unchanged.
+ * @post On success no component is empty, `.`, `..`, or over `caps->name_max_bytes`.
  * @note Pure and thread-safe.
  * @since Version 0.1.0
  */
@@ -381,6 +382,7 @@ RA8_INTERNAL static ra8_err_t internal_interfaces(const fw_fs_namespace_iface_t*
  * @pre @p namespace_iface, @p stream_iface, and @p caps are non-NULL.
  * @pre @p transaction_iface is NULL or addresses a readable interface object.
  * @post No interface table or backend state is modified.
+ * @post Success proves every advertised optional capability has its backing operation.
  * @note Pure and thread-safe for immutable interface and capability tables.
  * @since Version 0.1.0
  */
@@ -810,7 +812,9 @@ ra8_err_t fw_fs_close(fw_fs_file_t* file)
  * @retval k_ra8_err_busy @p transaction already has an active transaction.
  * @retval k_ra8_err_invalid_arg @p policy is out of range.
  * @pre @p port and @p transaction are non-NULL.
+ * @pre @p transaction was zero-initialized or fully completed, so `active` is truthful.
  * @post No transaction, workspace, or backend state is modified.
+ * @post Success proves `port->iface` is bound and the policy's atomic bit is set.
  * @note Pure and thread-safe for immutable port and policy inputs.
  * @since Version 0.1.0
  */

@@ -396,7 +396,10 @@ RA8_INTERNAL static ra8_err_t internal_select(const uint8_t*       source,
  * @retval k_ra8_ok The element was emitted.
  * @retval k_ra8_err_no_mem Bounded builder capacity failed.
  * @pre @p event->kind is ::k_ra8_xml_event_start.
+ * @pre @p selection came from ::internal_select on this same source.
  * @post Success may advance @p out_root and close a self-closing root.
+ * @post @p out_root is written whenever the event starts the selected root, even
+ *       when the element emission itself then fails.
  * @note Not thread-safe; caller owns the reader state.
  * @since 0.1.0
  */
@@ -449,6 +452,7 @@ RA8_INTERNAL static ra8_err_t internal_emit_start(const uint8_t*              so
  * @pre @p event came from the same reader driving this emission.
  * @post Success may advance @p out_root, mutate the builder, or update
  *       @p active per the event's kind.
+ * @post @p active becomes false on the end event whose depth matches the selection.
  * @note Not thread-safe; caller owns the reader state.
  * @since 0.1.0
  */
@@ -544,7 +548,9 @@ RA8_INTERNAL static ra8_err_t internal_emit(const uint8_t*              source,
  * @retval k_ra8_err_null_ptr A required pointer argument is NULL.
  * @retval k_ra8_err_invalid_size @p xhtml_len is zero.
  * @pre None; every argument is treated as untrusted.
+ * @pre @p ctx and @p workspace need not be initialized; only addresses are read.
  * @post No argument or builder state is modified.
+ * @post Success proves every later dereference in the parse path has a non-NULL base.
  * @note Not thread-safe with respect to concurrent callers sharing @p ctx.
  * @since 0.1.0
  */

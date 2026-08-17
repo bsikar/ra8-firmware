@@ -769,8 +769,9 @@ RA8_INTERNAL static ra8_err_t internal_meta_candidate_path(const char* directory
  * @return Candidate status.
  * @retval k_ra8_ok The candidate was absent, empty, or parsed successfully.
  * @retval other Path resolution, stat, read, or parse failed.
- * @pre @p dir and @p candidate resolve to a path under @p storage.
+ * @pre @p storage and @p meta are non-NULL. @pre @p dir and @p candidate resolve under @p storage.
  * @post On success @p meta reflects the parsed candidate, if any was found.
+ * @post No file under @p dir is created, modified, or removed.
  * @note Not thread-safe with respect to concurrent mutation of @p storage.
  * @since 0.1.0
  */

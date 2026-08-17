@@ -101,6 +101,7 @@ static bool internal_path_is_root(const char* path)
  * @pre @p v is non-NULL.
  * @pre @p v was decoded from a raw packed FAT date/time pair.
  * @post No state is modified.
+ * @post The result is purely a function of @p v, @p tenth, and @p have_tenth.
  *
  * @note Pure predicate.
  * @since 0.1.0

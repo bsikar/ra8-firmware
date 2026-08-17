@@ -419,9 +419,11 @@ RA8_INTERNAL static ra8_err_t internal_library_first_child(mdl_storage_t*       
  * @retval k_ra8_err_invalid_size The DFS depth budget was exhausted.
  * @retval k_ra8_err_invalid_arg The node is neither a directory, symlink,
  * nor a regular file.
+ * @pre @p storage, @p policy, @p workspace, and @p path are non-NULL.
  * @pre @p node was produced by a fresh `fw_fs_stat` on @p path.
  * @post Success either increments @p workspace->depth exactly once or
  * removes exactly one file.
+ * @post A symlink is rejected without being followed, opened, or unlinked.
  * @note Not thread-safe with respect to concurrent mutation of @p storage.
  * @since 0.1.0
  */
