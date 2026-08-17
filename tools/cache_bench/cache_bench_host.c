@@ -201,6 +201,56 @@ internal_split_path(const char* path, char* parent, size_t parent_capacity, cons
   return k_cb_io_ok;
 }
 
+/**
+ * @brief Create a uniquely-named exclusive temp file beside the destination.
+ * @details Retries EEXIST collisions up to ::k_cb_host_retry_limit, each time
+ *          formatting a new PID- and attempt-qualified temporary name into
+ *          @p binding's temporary-name buffer before an O_EXCL create.
+ * @param[in,out] binding Output binding; receives the created descriptor and
+ *        the accepted temporary-name bytes on success.
+ * @param[in] parent NUL-terminated parent directory path.
+ * @param[in] base Borrowed leaf-name pointer within the original path.
+ * @return Tool-local I/O status.
+ * @retval k_cb_io_ok A new exclusive temp file was created and bound.
+ * @retval k_cb_io_capacity The formatted temporary name did not fit.
+ * @retval k_cb_io_fault Every retry was exhausted or a non-EEXIST error hit.
+ * @pre @p binding, @p parent, and @p base are non-NULL.
+ * @pre @p binding's temporary-name buffer has capacity for a candidate name.
+ * @post On success, @p binding->fd is open and @p binding->transactional is true.
+ * @post On failure, @p binding->fd is left as this helper set it; the caller
+ *       still owns cleanup of @p binding->dir_fd.
+ * @note Not thread-safe against a concurrent creator of the same destination.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static cb_io_status_t
+internal_create_temp_exclusive(cb_host_output_t* binding, const char* parent, const char* base)
+{
+  for (uint8_t attempt = 0U; attempt < (uint8_t)k_cb_host_retry_limit; ++attempt) {
+    const int length = snprintf(binding->temporary,
+                                sizeof(binding->temporary),
+                                "%s/.%s.cache-bench.%ld.%u",
+                                parent,
+                                base,
+                                (long)getpid(),
+                                (unsigned int)attempt);
+    if ((length < 0) || ((size_t)length >= sizeof(binding->temporary))) {
+      return k_cb_io_capacity;
+    }
+    binding->fd = open(binding->temporary,
+                       O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC,
+                       (mode_t)k_cb_host_create_mode);
+    if (binding->fd >= 0) {
+      binding->transactional = true;
+      return k_cb_io_ok;
+    }
+    if (errno != EEXIST) {
+      break;
+    }
+  }
+  return k_cb_io_fault;
+}
+
 cb_io_status_t cb_host_output_open(const char* path, cb_host_output_t* binding, cb_sink_t* sink)
 {
   if ((binding == nullptr) || (sink == nullptr)) {
@@ -227,30 +277,10 @@ cb_io_status_t cb_host_output_open(const char* path, cb_host_output_t* binding, 
   if (binding->dir_fd < 0) {
     return k_cb_io_fault;
   }
-  status = k_cb_io_fault;
-  for (uint8_t attempt = 0U; attempt < (uint8_t)k_cb_host_retry_limit; ++attempt) {
-    const int length = snprintf(binding->temporary,
-                                sizeof(binding->temporary),
-                                "%s/.%s.cache-bench.%ld.%u",
-                                parent,
-                                base,
-                                (long)getpid(),
-                                (unsigned int)attempt);
-    if ((length < 0) || ((size_t)length >= sizeof(binding->temporary))) {
-      status = k_cb_io_capacity;
-      break;
-    }
-    binding->fd = open(binding->temporary,
-                       O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC,
-                       (mode_t)k_cb_host_create_mode);
-    if (binding->fd >= 0) {
-      binding->transactional = true;
-      *sink                  = (cb_sink_t){.write = internal_sink_write, .ctx = &binding->fd};
-      return k_cb_io_ok;
-    }
-    if (errno != EEXIST) {
-      break;
-    }
+  status = internal_create_temp_exclusive(binding, parent, base);
+  if (status == k_cb_io_ok) {
+    *sink = (cb_sink_t){.write = internal_sink_write, .ctx = &binding->fd};
+    return k_cb_io_ok;
   }
   cb_host_output_abort(binding);
   return status;
