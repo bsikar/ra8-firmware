@@ -20,8 +20,8 @@
  * @details Checks the reader lifecycle plus every builder and scratch span
  *          required by the buffer compiler before it mutates output state.
  * @param[in] epub Open streamed or resident EPUB reader.
- * @param[in] buffers Complete caller-owned builder arenas.
- * @param[in] scratch Complete caller-owned parser/raster scratch.
+ * @param[in] bufs Complete caller-owned builder arenas.
+ * @param[in] scr Complete caller-owned parser/raster scratch.
  * @return Shared argument and lifecycle status.
  * @retval k_ra8_ok The compiler may consume every supplied view.
  * @retval k_ra8_err_null_ptr A required pointer or nested span is NULL.
@@ -34,5 +34,5 @@
  * @since 0.1.0
  */
 RA8_PRIV ra8_err_t priv_rabook_pipeline_check_common(const ra8_epub_book_t*               epub,
-                                                     const ra8_rabook_buffers_t*          buffers,
-                                                     const ra8_rabook_pipeline_scratch_t* scratch);
+                                                     const ra8_rabook_buffers_t*          bufs,
+                                                     const ra8_rabook_pipeline_scratch_t* scr);
