@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 612" width="900" role="img" aria-label="Networking -- one radio behind one boundary library. coupling derived from #include edges between libs/, port/ and src/; the number on an arrow is how many files carry it down: port/esp-hosted - to  ra8_core (62), ra8_c6link - to  ra8_core (24), port/esp-hosted - to  ra8_hal (9)       port/esp-hosted - to  ra8_io (3), port/esp-hosted - to  ra8_board_ek_ra8d2 (3), ra8_c6link - to  ra8_mdl (1) in:   ra8_mdl_storage_vfs - to  ra8_c6link (2), ra8_nsc - to  ra8_net_pal (1) Every path to the radio converges on ra8_c6link -- the facade, the NetX driver and the RPC contract all include it, and nothing reaches esp-hosted without going through it. The grey libraries are the honest part: ra8_net_pal, ra8_tls and ra8_modem_at are networking by subject but share no include edge with the C6 stack or with each other. Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are">
+  <defs>
+    <marker id="aInk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1b1f24"/></marker>
+    <marker id="aAcc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0969da"/></marker>
+    <marker id="aGrn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a7f37"/></marker>
+    <marker id="aWrm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#bc4c00"/></marker>
+  </defs>
+  <rect x="0" y="0" width="900" height="612" fill="#fdfdfb"/>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
+    <text x="24" y="32" fill="#1b1f24" font-size="14" font-weight="bold">Networking -- one radio behind one boundary library</text>
+    <text x="24" y="52" fill="#57606a" font-size="9">coupling derived from #include edges between libs/, port/ and src/; the number on an arrow is how many files carry it</text>
+    <rect x="20" y="70" width="860" height="348" rx="8" fill="none" stroke="#aeb4bb" stroke-width="1.2"/>
+    <line x1="168" y1="140" x2="450" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="242" y="152" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
+    <line x1="168" y1="140" x2="450" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="320" y="201" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
+    <line x1="450" y1="140" x2="450" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="439" y="158" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
+    <line x1="610" y1="140" x2="610" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="621" y="213" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
+    <line x1="732" y1="140" x2="450" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="580" y="201" text-anchor="middle" fill="#1b1f24" font-size="9">3</text>
+    <line x1="450" y1="226" x2="450" y2="256" stroke="#1a7f37" stroke-width="1.2" marker-end="url(#aGrn)"/>
+    <text x="439" y="244" text-anchor="middle" fill="#1a7f37" font-size="9">3</text>
+    <rect x="34" y="86" width="268" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="168" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">port/netxduo</text>
+    <text x="168" y="126" text-anchor="middle" fill="#57606a" font-size="9">NetX Duo driver</text>
+    <rect x="316" y="86" width="268" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="450" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">port/esp32_c6</text>
+    <text x="450" y="126" text-anchor="middle" fill="#57606a" font-size="9">media RPC contract</text>
+    <rect x="598" y="86" width="268" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="732" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_wifi</text>
+    <text x="732" y="126" text-anchor="middle" fill="#57606a" font-size="9">uniform Wi-Fi facade</text>
+    <rect x="316" y="172" width="268" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="450" y="196" text-anchor="middle" fill="#1b1f24" font-size="10">port/esp-hosted</text>
+    <text x="450" y="212" text-anchor="middle" fill="#57606a" font-size="9">vendored core port</text>
+    <rect x="316" y="258" width="268" height="52" rx="5" fill="#fdfdfb" stroke="#1a7f37" stroke-width="1.4"/>
+    <text x="450" y="282" text-anchor="middle" fill="#1a7f37" font-size="10">ra8_c6link</text>
+    <text x="450" y="298" text-anchor="middle" fill="#57606a" font-size="9">the one C6 boundary</text>
+    <rect x="34" y="344" width="268" height="52" rx="5" fill="#fdfdfb" stroke="#57606a" stroke-width="1.4"/>
+    <text x="168" y="368" text-anchor="middle" fill="#57606a" font-size="10">ra8_net_pal</text>
+    <text x="168" y="384" text-anchor="middle" fill="#57606a" font-size="9">Ethernet PAL</text>
+    <rect x="316" y="344" width="268" height="52" rx="5" fill="#fdfdfb" stroke="#57606a" stroke-width="1.4"/>
+    <text x="450" y="368" text-anchor="middle" fill="#57606a" font-size="10">ra8_tls</text>
+    <text x="450" y="384" text-anchor="middle" fill="#57606a" font-size="9">Mbed TLS facade</text>
+    <rect x="598" y="344" width="268" height="52" rx="5" fill="#fdfdfb" stroke="#57606a" stroke-width="1.4"/>
+    <text x="732" y="368" text-anchor="middle" fill="#57606a" font-size="10">ra8_modem_at</text>
+    <text x="732" y="384" text-anchor="middle" fill="#57606a" font-size="9">cellular AT</text>
+    <rect x="20" y="442" width="860" height="74" rx="6" fill="none" stroke="#aeb4bb" stroke-width="1" stroke-dasharray="5 3"/>
+    <text x="34" y="460" fill="#1b1f24" font-size="10" font-weight="bold">seams to the rest of the tree</text>
+    <text x="34" y="478" fill="#57606a" font-size="9">down: port/esp-hosted -&gt; ra8_core (62), ra8_c6link -&gt; ra8_core (24), port/esp-hosted -&gt; ra8_hal (9)</text>
+    <text x="34" y="494" fill="#57606a" font-size="9">      port/esp-hosted -&gt; ra8_io (3), port/esp-hosted -&gt; ra8_board_ek_ra8d2 (3), ra8_c6link -&gt; ra8_mdl (1)</text>
+    <text x="34" y="510" fill="#57606a" font-size="9">in:   ra8_mdl_storage_vfs -&gt; ra8_c6link (2), ra8_nsc -&gt; ra8_net_pal (1)</text>
+    <text x="24" y="538" fill="#57606a" font-size="9">Every path to the radio converges on ra8_c6link -- the facade, the NetX driver and the RPC contract all include it, and</text>
+    <text x="24" y="554" fill="#57606a" font-size="9">nothing reaches esp-hosted without going through it. The grey libraries are the honest part: ra8_net_pal, ra8_tls and</text>
+    <text x="24" y="570" fill="#57606a" font-size="9">ra8_modem_at are networking by subject but share no include edge with the C6 stack or with each other.</text>
+    <text x="24" y="586" fill="#57606a" font-size="9">Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are</text>
+  </g>
+</svg>

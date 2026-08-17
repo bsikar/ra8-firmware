@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 612" width="900" role="img" aria-label="I/O fabric -- block devices, filesystems, adapters. coupling derived from #include edges between libs/, port/ and src/; the number on an arrow is how many files carry it down: ra8_io - to  ra8_core (111), ra8_fs - to  ra8_core (51), ra8_io - to  ra8_hal (24), ra8_io - to  ra8_mem (2) in:   ra8_rabook_import - to  ra8_fs (4), port/esp-hosted - to  ra8_io (3), ra8_rabook_compile - to  ra8_fs (3)       ra8_jof - to  ra8_io (2), ra8_camera_io - to  ra8_io (2), ra8_sdfont - to  ra8_fs (1) ra8_io is the hub: it is the only unit here every adapter depends on. The dashed edge is the one that runs against the layering -- ra8_sdmmc_spi's public header pulls an ra8_fs type rather than the other way round. Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are no-ops and consumers glob libs/ lib to /src/*.c into one object library, so there are no target_link_libraries edges to read.">
+  <defs>
+    <marker id="aInk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1b1f24"/></marker>
+    <marker id="aAcc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0969da"/></marker>
+    <marker id="aGrn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a7f37"/></marker>
+    <marker id="aWrm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#bc4c00"/></marker>
+  </defs>
+  <rect x="0" y="0" width="900" height="612" fill="#fdfdfb"/>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
+    <text x="24" y="32" fill="#1b1f24" font-size="14" font-weight="bold">I/O fabric -- block devices, filesystems, adapters</text>
+    <text x="24" y="52" fill="#57606a" font-size="9">coupling derived from #include edges between libs/, port/ and src/; the number on an arrow is how many files carry it</text>
+    <rect x="20" y="70" width="860" height="348" rx="8" fill="none" stroke="#aeb4bb" stroke-width="1.2"/>
+    <line x1="112" y1="140" x2="450" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="270" y="158" text-anchor="middle" fill="#1b1f24" font-size="9">4</text>
+    <line x1="280" y1="140" x2="450" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="376" y="158" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
+    <line x1="280" y1="140" x2="450" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="307" y="169" text-anchor="middle" fill="#1b1f24" font-size="9">3</text>
+    <line x1="450" y1="140" x2="450" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="438" y="164" text-anchor="middle" fill="#1b1f24" font-size="9">3</text>
+    <line x1="618" y1="140" x2="450" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="523" y="158" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
+    <line x1="788" y1="140" x2="450" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="724" y="169" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
+    <line x1="450" y1="226" x2="450" y2="256" stroke="#1a7f37" stroke-width="1.2" marker-end="url(#aGrn)"/>
+    <text x="438" y="244" text-anchor="middle" fill="#1a7f37" font-size="9">9</text>
+    <line x1="450" y1="226" x2="450" y2="342" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="438" y="329" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
+    <line x1="496" y1="342" x2="496" y2="312" stroke="#1b1f24" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#aInk)"/>
+    <text x="506" y="330" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
+    <rect x="34" y="86" width="155" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="112" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_mdl_storage_vfs</text>
+    <text x="112" y="126" text-anchor="middle" fill="#57606a" font-size="9">RBKC over mounts</text>
+    <rect x="203" y="86" width="155" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="280" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">if_ra8_vfs</text>
+    <text x="280" y="126" text-anchor="middle" fill="#57606a" font-size="9">fw_if_fs adapter</text>
+    <rect x="372" y="86" width="155" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="450" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_ftl</text>
+    <text x="450" y="126" text-anchor="middle" fill="#57606a" font-size="9">erase-before-write</text>
+    <rect x="541" y="86" width="155" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="618" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">port/posix</text>
+    <text x="618" y="126" text-anchor="middle" fill="#57606a" font-size="9">hosted adapter</text>
+    <rect x="710" y="86" width="155" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="788" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">port/levelx</text>
+    <text x="788" y="126" text-anchor="middle" fill="#57606a" font-size="9">NOR backend</text>
+    <rect x="372" y="172" width="155" height="52" rx="5" fill="#fdfdfb" stroke="#1a7f37" stroke-width="1.4"/>
+    <text x="450" y="196" text-anchor="middle" fill="#1a7f37" font-size="10">ra8_io</text>
+    <text x="450" y="212" text-anchor="middle" fill="#57606a" font-size="9">the fabric</text>
+    <rect x="372" y="258" width="155" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="450" y="282" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_fs</text>
+    <text x="450" y="298" text-anchor="middle" fill="#57606a" font-size="9">FAT + exFAT</text>
+    <rect x="372" y="344" width="155" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="450" y="368" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_sdmmc_spi</text>
+    <text x="450" y="384" text-anchor="middle" fill="#57606a" font-size="9">SD over SPI</text>
+    <rect x="20" y="442" width="860" height="74" rx="6" fill="none" stroke="#aeb4bb" stroke-width="1" stroke-dasharray="5 3"/>
+    <text x="34" y="460" fill="#1b1f24" font-size="10" font-weight="bold">seams to the rest of the tree</text>
+    <text x="34" y="478" fill="#57606a" font-size="9">down: ra8_io -&gt; ra8_core (111), ra8_fs -&gt; ra8_core (51), ra8_io -&gt; ra8_hal (24), ra8_io -&gt; ra8_mem (2)</text>
+    <text x="34" y="494" fill="#57606a" font-size="9">in:   ra8_rabook_import -&gt; ra8_fs (4), port/esp-hosted -&gt; ra8_io (3), ra8_rabook_compile -&gt; ra8_fs (3)</text>
+    <text x="34" y="510" fill="#57606a" font-size="9">      ra8_jof -&gt; ra8_io (2), ra8_camera_io -&gt; ra8_io (2), ra8_sdfont -&gt; ra8_fs (1)</text>
+    <text x="24" y="538" fill="#57606a" font-size="9">ra8_io is the hub: it is the only unit here every adapter depends on. The dashed edge is the one that runs against the</text>
+    <text x="24" y="554" fill="#57606a" font-size="9">layering -- ra8_sdmmc_spi's public header pulls an ra8_fs type rather than the other way round.</text>
+    <text x="24" y="570" fill="#57606a" font-size="9">Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are</text>
+    <text x="24" y="586" fill="#57606a" font-size="9">no-ops and consumers glob libs/&lt;lib&gt;/src/*.c into one object library, so there are no target_link_libraries edges to read.</text>
+  </g>
+</svg>

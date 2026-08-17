@@ -72,3 +72,7 @@ history always contains every key you have ever used.
 python3 tools/rot_sign.py sign --key ~/ra8d2-rot-signing-key.pem \
   --image app.bin --out app.signed.bin --img-version N
 ```
+
+Where this sits in the security cluster, and what it couples to:
+
+<img src="diagrams/security_tz.svg" alt="Security and TrustZone coupling map: the secure app, the NSC veneers, secure boot, DFU and the PSA facade" width="100%">
