@@ -1391,96 +1391,17 @@ no-ops so the host-test build keeps working unchanged.
       different challenge yields different digest, arg
       validation, NSC veneer round-trip matches direct call.
 
-## Final-sweep status (2026-05-03)
+## Status beyond the driver matrix
 
-All previously-tracked roadmap items closed. The repository is at the
-`0.2.0` qualification baseline:
+The Summary block above is the only status this file states, because it is the
+only one anything re-derives. Everything else lives where it can be checked:
+what a driver supports is `docs/DRIVER_STATUS.md`, which is generated; whether
+an app works on hardware is the tier its directory sits in under `examples/`,
+with its own `hil.conf` as the assertion; and what is still blocked, on what,
+is the issue tracker.
 
-- **Quality gates** (all STRICT, all at zero findings):
-  `doxy_audit --check`, `check_obsolete_standards.py`,
-  `check_mcdc_block.py`, `check_new_compound_has_mcdc.py`,
-  `cite_check.py`, `check_world_tags.py`, `check_line_citations.py`,
-  `stack_usage_check.py` (warn-only, expected SOFT findings in
-  `libs/third_party/miniz` and `libs/ra8_epub` only).
-- **Test suite**: 190/190 host tests passing
-  (`bash scripts/ci/test-docker.sh`).
-- **Reachable MC/DC**: 100.00% (`make mcdc` --
-  473/473 reachable decisions covered, 58 deactivated decisions
-  documented in `docs/MCDC_DEACTIVATIONS.md`); absolute MC/DC 89.08%.
-- **Citation gate STRICT**: every register write carries a
-  `/* HUM Ch X.Y p NNNN */` reference; `check_line_citations.py`
-  enforces line-level cites.
-- **Vendor blob procurement**: `RSIP` blob vendored under
-  `libs/third_party/`; BLE controller blob remains
-  blocked-license and is documented in `docs/VENDOR_BLOBS.md`.
-- **Qualification artifacts refreshed**: `docs/SOUP/`,
-  `docs/MCDC_GAPS.md`, `docs/MCDC_DEACTIVATIONS.md`,
-  `docs/VENDOR_BLOBS.md`, `docs/DRIVER_STATUS.md`.
-- **User-policy decisions codified**:
-  1. MISRA enforcement is cppcheck-only (no commercial Coverity).
-  2. Renesas FSP code is reference-only; no FSP source enters this tree.
-  3. HIL is dev-laptop based; no dedicated lab rig in this phase.
-  4. No third-party assessor in this phase; SIL 3 / DO-178C Level B
-     is the self-assessed bar.
-
-## USB capability matrix (post-0.2.0)
-
-Each capability ships first on **USB-FS** (J11), then mirrored to **USB-HS** (J7)
-before moving on. The HAL + bridge are speed-parameterised so the HS port is
-mostly a wiring + clock change, not a fresh integration. Order is strictly
-**FS-A -> HS-A -> FS-B -> HS-B -> ...** -- each capability reaches parity on
-both speeds before the next class begins.
-
-| # | Capability                     | FS (J11) | HS (J7) | Demo path                                            |
-|---|--------------------------------|---------|---------|------------------------------------------------------|
-| 1 | CDC ACM device (USB serial)    | DONE    | WIP     | `examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_fs{,_hs}/`        |
-| 2 | USB host (CDC ACM enumerator)  | DONE    | DONE    | `examples/ek_ra8d2/hw_validated/hil/usb_selftest_cdc/` (self-loop) |
-| 3 | MSC device (mass storage)      | TODO    | TODO    | `examples/ek_ra8d2/usb_msc_device/`                  |
-| 4 | HID device (keyboard / mouse)  | TODO    | TODO    | `examples/ek_ra8d2/usb_hid_device/`                  |
-| 5 | Audio device (UAC1)            | TODO    | TODO    | `examples/_unsupported/usb_audio_device/`            |
-| 6 | USB host (HID keyboard)        | TODO    | TODO    | `examples/ek_ra8d2/usb_host_keyboard/`               |
-| 7 | USB host (MSC browse)          | TODO    | TODO    | `examples/ek_ra8d2/usb_host_msc_browse/`             |
-
-**Definition of "DONE"** for each row, both speeds:
-
-- macOS enumerates the device cleanly (`ioreg -p IOUSB` shows
-  `registered, matched, active`, `kUSBCurrentConfiguration=1`,
-  `busy 0 (<1s)`); class-specific driver binds (`UsbExclusiveOwner`).
-- For data classes (CDC, MSC, HID, audio): a host-side script writes a
-  test payload and the firmware echoes / handles it correctly. For host
-  classes: the EK-RA8D2 is the host and a known peripheral plugged into
-  J7/J11 enumerates and returns its report / data.
-- Both `make build` and `make flash` succeed clean for the demo app.
-- All 10 strict pre-commit gates remain at zero findings.
-
-**Resolved technical references** (from the FS bring-up that informs HS + later classes):
-
-- Bridge synchronous-DCD contract: `port/usbx/src/ux_dcd_ra8_usb.c::internal_transfer_request`
-  blocks on `tx_semaphore_get` before returning; matches `ux_dcd_sim_slave`.
-- FIT-style pipe configure: `libs/ra8_hal/src/ra8_usb.c::ra8_usb_configure_endpoint`
-  does quiesce -> windowed PIPECFG/PIPEMAXP/PIPEPERI write -> finalize (SQCLR
-  + ACLRM pulse + clear BRDYSTS/BEMPSTS + PID=BUF on OUT) -> arm IRQ
-  (BRDYENB / BEMPENB).
-- DVSQ-state ownership: polled from the dispatch worker via
-  `internal_sync_state_from_dvsq` (writes through unconditionally; the
-  IRQ-driven DVST handler now only writes SUSPENDED).
-- Demo-loop unblock: `tx_thread_sleep(N)` was observed to never return on
-  this silicon under polled-dispatch worker load (SysTick callback not
-  advancing the delayed list). Use a `TX_SEMAPHORE` posted by the activate
-  callback instead.
-
-### Hardware-blocked items (HW-BLOCKED)
-
-These items are code-complete in the host-mock world but cannot be
-end-to-end validated until the noted hardware is on the bench:
-
-- **USB enumeration end-to-end verification** -- HW-BLOCKED;
-  `requires:` USB-C host PC + bus analyzer (Total Phase Beagle 480 or
-  equivalent) connected to the EK-RA8D2 USBHS port.
-- **LevelX IS25LX512M xSPI bring-up** -- HW-BLOCKED;
-  `requires:` logic analyzer (Saleae Logic Pro 16 or equivalent) on
-  the OSPI clock/data lines plus the IS25LX512M device populated on
-  the board.
-- **`lcd_demo` and `ereader` graphics demos** -- HW-BLOCKED;
-  `requires:` Renesas Parallel Graphics Expansion Board
-  (RTK7EKAGLEXB00000BJ) plus the EK-RA8D2 7.0-inch panel cable.
+This section previously carried a dated snapshot of gate results and test
+counts, a USB capability matrix, and a hardware-blocked list. All three had
+drifted -- the USB matrix still called classes "TODO" that had since been
+validated on the bench, and pointed at example paths that no longer existed.
+Nothing regenerated any of them, so nothing could catch that.

@@ -7,7 +7,7 @@ How the firmware is put together, from reset vector to `main()`.
 ```mermaid
 graph TD
     APP["application main()<br/>an examples/ app or an apps/ product"]
-    DRV["peripheral drivers<br/>libs/ra8_hal/src/ -- gpio, sci, i2c, spi, adc, gpt, agt, cgc,<br/>iwdt, crc, rtc, cac, elc, icu, dmac, dtc, canfd, xspi, usb,<br/>glcdc, sdramc, register_protection"]
+    DRV["peripheral drivers<br/>libs/ra8_hal/src/ -- one per on-chip peripheral<br/>(timers, serial, analog, storage, graphics, DMA, ...)"]
     REG["register headers<br/>libs/ra8_hal/inc/ra8_*_regs.h -- hand-written from the HUM"]
     CORE["ra8_core<br/>err, check, log, time, pin validator, register guards,<br/>error handler, exception, infrastructure"]
     BOOT["boot<br/>libs/ra8_board_*/boot/ and ld/"]
