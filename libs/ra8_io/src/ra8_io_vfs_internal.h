@@ -47,6 +47,31 @@ typedef struct {
 } vfs_slot_t;
 
 /**
+ * @brief Test-only entry point for `internal_vfs_init_slot()`.
+ * @details Exists so the reset-and-conditionally-unmount decision can be
+ *          driven directly against a caller-built ::vfs_slot_t, without
+ *          routing through ::ra8_io_vfs_mount / ::ra8_io_vfs_mount_auto to
+ *          reach every `in_use` / `owned` combination.
+ * @param[in,out] slot Mount slot to tear down and reset.
+ * @return The owned unmount's status, or k_ra8_ok when no unmount was needed.
+ * @retval k_ra8_ok The slot was already idle, borrowed, or unmounted cleanly.
+ * @retval other The bound format's unmount reported a failure.
+ * @pre @p slot is non-NULL.
+ * @pre When `slot->in_use && slot->owned`, `slot->format->ops->unmount` is
+ *      non-NULL.
+ * @post @p slot is zero-initialized.
+ * @post An owned mount's format unmount is invoked exactly once.
+ * @note Not thread-safe; single-threaded host test use only.
+ * @par MC/DC:
+ * Exposes `internal_vfs_init_slot()`'s `slot->in_use && slot->owned` decision
+ * (`libs/ra8_io/src/ra8_io_vfs.c@internal_vfs_init_slot`) for direct N+1
+ * vectors; see `internal_test_vfs_init_slot_mcdc` in
+ * `tests/test_ra8_io_vfs.c`.
+ * @since Version 0.1.0
+ */
+RA8_TEST_HELPER ra8_err_t ra8_io_vfs_init_slot_test(vfs_slot_t* slot);
+
+/**
  * @brief Compare two mount names within the fixed bound.
  * @details Stops at the first mismatch or shared terminator.
  * @param[in] a First name.
