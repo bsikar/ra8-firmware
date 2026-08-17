@@ -15,6 +15,7 @@
 #include <stdint.h>
 
 #include "c6_camera_server.h"
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_camera.h"
 #include "ra8_camera_codec_passthrough.h"
@@ -203,7 +204,19 @@ static ra8_camera_source_ceu_cfg_t sensor_ceu_config(void)
   };
 }
 
-ra8_err_t c6_cam_camera_init(void)
+/**
+ * @brief Reset every camera diagnostic and lifecycle flag to its cold state.
+ * @details Runs first in `c6_cam_camera_init` so a re-init after a partial
+ *          failure never reports stale SCCB or streaming state.
+ * @pre No capture or diagnostic report is concurrently in progress.
+ * @pre Static camera state was previously left in a defined state (init or
+ *      a prior failed init).
+ * @post Every static diagnostic and lifecycle flag holds its cold-start value.
+ * @post No hardware register or bus transfer is touched.
+ * @note Not thread-safe with concurrent capture or diagnostic reporting.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_reset_camera_diagnostics(void)
 {
   s_camera_initialized = false;
   s_sensor_bound       = false;
@@ -211,7 +224,26 @@ ra8_err_t c6_cam_camera_init(void)
   s_last_sccb_reg      = 0U;
   s_last_sccb_err      = k_ra8_ok;
   s_sensor_streaming   = false;
-  ra8_err_t err        = ra8_board_camera_xclk_start((uint32_t)k_sensor_jpeg_xclk_hz);
+}
+
+/**
+ * @brief Bring the OV5640 sensor up to streaming hardware-JPEG mode.
+ * @details Sequences clock start, board reset, SCCB bind, chip-id probe, and
+ *          VGA-JPEG mode configuration, stopping at the first failure.
+ * @return Repository error code from the first failed step, or success.
+ * @retval k_ra8_ok The sensor is bound, probed, and streaming VGA JPEG.
+ * @retval k_ra8_err_hw_init_failed The probed chip id did not match OV5640.
+ * @retval other The board or sensor step that failed reported this code.
+ * @pre The board camera pins and clock are not already owned by another user.
+ * @pre `s_sensor` is not concurrently accessed by another init or capture.
+ * @post On success `s_sensor_bound` and `s_sensor_streaming` are both true.
+ * @post On any failure the function returns before later steps run.
+ * @note Not thread-safe with concurrent sensor access.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_bring_up_sensor(void)
+{
+  ra8_err_t err = ra8_board_camera_xclk_start((uint32_t)k_sensor_jpeg_xclk_hz);
   if (err == k_ra8_ok) {
     err = ra8_board_camera_select_parallel();
   }
@@ -236,15 +268,43 @@ ra8_err_t c6_cam_camera_init(void)
     err                = ra8_ov5640_configure(&s_sensor, k_ra8_ov5640_mode_vga_jpeg);
     s_sensor_streaming = (err == k_ra8_ok);
   }
-  if (err == k_ra8_ok) {
-    err = ra8_board_camera_route_parallel_pins();
-  }
+  return err;
+}
+
+/**
+ * @brief Route the parallel capture pins and bind the CEU source and codec.
+ * @details Runs after the sensor is streaming: routes the DVP pins away from
+ *          their bring-up owner, then binds the CEU capture source and the
+ *          passthrough JPEG codec.
+ * @return Repository error code from the first failed step, or success.
+ * @retval k_ra8_ok The capture pipeline is bound and ready to capture.
+ * @retval other The pin-routing, CEU, or codec step that failed reported this.
+ * @pre `internal_bring_up_sensor` has already completed successfully.
+ * @pre `s_source`, `s_source_state`, and `s_codec` are not concurrently used.
+ * @post On success `s_source` and `s_codec` are initialized for capture.
+ * @post On any failure the function returns before later steps run.
+ * @note Not thread-safe with concurrent capture or re-initialization.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_bring_up_capture_pipeline(void)
+{
+  ra8_err_t err = ra8_board_camera_route_parallel_pins();
   if (err == k_ra8_ok) {
     const ra8_camera_source_ceu_cfg_t cfg = sensor_ceu_config();
     err = ra8_camera_source_ceu_init(&s_source, &s_source_state, &cfg);
   }
   if (err == k_ra8_ok) {
     err = ra8_camera_codec_passthrough_init(&s_codec);
+  }
+  return err;
+}
+
+ra8_err_t c6_cam_camera_init(void)
+{
+  internal_reset_camera_diagnostics();
+  ra8_err_t err = internal_bring_up_sensor();
+  if (err == k_ra8_ok) {
+    err = internal_bring_up_capture_pipeline();
   }
   s_camera_initialized = (err == k_ra8_ok);
   return err;
@@ -355,7 +415,19 @@ static void sensor_report_register(const char* label, uint16_t reg)
   }
 }
 
-void c6_cam_camera_report_last_error(void)
+/**
+ * @brief Report the most recent SCCB transfer direction, register, and result.
+ * @details Always emitted regardless of camera or sensor bring-up state,
+ *          since a bring-up failure is exactly when this is most needed.
+ * @pre The diagnostic console is initialized.
+ * @pre `s_last_sccb_op`, `s_last_sccb_reg`, and `s_last_sccb_err` describe
+ *      one complete SCCB transfer attempt (or the cold-start "none" state).
+ * @post One `sccb_op=`/`sccb_reg=`/`sccb_err=` triple is emitted.
+ * @post No static diagnostic state is modified.
+ * @note Not thread-safe with a concurrent SCCB transfer.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_report_sccb_state(void)
 {
   c6_cam_puts(" sccb_op=");
   if (s_last_sccb_op == k_sccb_op_read) {
@@ -369,49 +441,106 @@ void c6_cam_camera_report_last_error(void)
   c6_cam_put_u32(s_last_sccb_reg);
   c6_cam_puts(" sccb_err=");
   c6_cam_puts(ra8_err_to_str(s_last_sccb_err));
-  if (s_sensor_bound) {
-    sensor_report_register(" r3000=", (uint16_t)k_sensor_reg_system_reset00);
-    sensor_report_register(" r3002=", (uint16_t)k_sensor_reg_system_reset02);
-    sensor_report_register(" r3006=", (uint16_t)k_sensor_reg_clock_enable02);
-    sensor_report_register(" r3008=", (uint16_t)k_sensor_reg_system_ctrl0);
-    sensor_report_register(" r3034=", (uint16_t)k_sensor_reg_pll_ctrl0);
-    sensor_report_register(" r3035=", (uint16_t)k_sensor_reg_pll_ctrl1);
-    sensor_report_register(" r3036=", (uint16_t)k_sensor_reg_pll_ctrl2);
-    sensor_report_register(" r3037=", (uint16_t)k_sensor_reg_pll_ctrl3);
-    sensor_report_register(" r3103=", (uint16_t)k_sensor_reg_system_root);
-    sensor_report_register(" r3108=", (uint16_t)k_sensor_reg_clock_root);
-    sensor_report_register(" r3824=", (uint16_t)k_sensor_reg_pclk_divider);
-  }
-  if (!s_camera_initialized) {
+}
+
+/**
+ * @brief Report the OV5640 clock and stream registers when the sensor bound.
+ * @details No-op when `sensor_bind` never succeeded, since the registers
+ *          would not be readable.
+ * @pre The diagnostic console is initialized.
+ * @pre `s_sensor` was bound by a prior `internal_bring_up_sensor` call.
+ * @post When `s_sensor_bound`, every diagnostic register in
+ *       ::sensor_diagnostic_register_t is emitted once.
+ * @post No static diagnostic state is modified.
+ * @note Not thread-safe with concurrent sensor access.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_report_sensor_registers(void)
+{
+  if (!s_sensor_bound) {
     return;
   }
+  sensor_report_register(" r3000=", (uint16_t)k_sensor_reg_system_reset00);
+  sensor_report_register(" r3002=", (uint16_t)k_sensor_reg_system_reset02);
+  sensor_report_register(" r3006=", (uint16_t)k_sensor_reg_clock_enable02);
+  sensor_report_register(" r3008=", (uint16_t)k_sensor_reg_system_ctrl0);
+  sensor_report_register(" r3034=", (uint16_t)k_sensor_reg_pll_ctrl0);
+  sensor_report_register(" r3035=", (uint16_t)k_sensor_reg_pll_ctrl1);
+  sensor_report_register(" r3036=", (uint16_t)k_sensor_reg_pll_ctrl2);
+  sensor_report_register(" r3037=", (uint16_t)k_sensor_reg_pll_ctrl3);
+  sensor_report_register(" r3103=", (uint16_t)k_sensor_reg_system_root);
+  sensor_report_register(" r3108=", (uint16_t)k_sensor_reg_clock_root);
+  sensor_report_register(" r3824=", (uint16_t)k_sensor_reg_pclk_divider);
+}
+
+/**
+ * @brief Report the CEU event mask observed by the most recent capture.
+ * @details Silent when the CEU source cannot report an event mask, e.g.
+ *          before any capture has run.
+ * @pre The diagnostic console is initialized.
+ * @pre `s_source_state` was initialized by `c6_cam_camera_init`.
+ * @post On success one `ceu_events=` field is emitted.
+ * @post No static diagnostic state is modified.
+ * @note Not thread-safe with a concurrent capture.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_report_capture_events(void)
+{
   uint32_t events = 0U;
   if (ra8_camera_source_ceu_get_last_events(&s_source_state, &events) == k_ra8_ok) {
     c6_cam_puts(" ceu_events=");
     c6_cam_put_u32(events);
   }
+}
+
+/**
+ * @brief Report the OV5640 hardware-JPEG status block from the last capture.
+ * @details No-op unless the last `ra8_ov5640_jpeg_status_get` succeeded,
+ *          since the status fields are undefined otherwise.
+ * @pre The diagnostic console is initialized.
+ * @pre `s_last_jpeg_status` was populated by the most recent capture attempt.
+ * @post When `s_last_jpeg_status_err == k_ra8_ok`, every field of
+ *       `s_last_jpeg_status` is emitted once.
+ * @post No static diagnostic state is modified.
+ * @note Not thread-safe with a concurrent capture.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_report_jpeg_status_detail(void)
+{
+  if (s_last_jpeg_status_err != k_ra8_ok) {
+    return;
+  }
+  c6_cam_puts(" sensor_jpeg_bytes=");
+  c6_cam_put_u32(s_last_jpeg_status.encoded_bytes);
+  c6_cam_puts(" overflow=");
+  c6_cam_put_u32(s_last_jpeg_status.fifo_overflow ? 1U : 0U);
+  c6_cam_puts(" yuv422=");
+  c6_cam_put_u32(s_last_jpeg_status.input_is_yuv422 ? 1U : 0U);
+  c6_cam_puts(" header=");
+  c6_cam_put_u32(s_last_jpeg_status.header_output ? 1U : 0U);
+  c6_cam_puts(" jpeg_enabled=");
+  c6_cam_put_u32(s_last_jpeg_status.compression_enabled ? 1U : 0U);
+  c6_cam_puts(" width=");
+  c6_cam_put_u32(s_last_jpeg_status.compression_width);
+  c6_cam_puts(" height=");
+  c6_cam_put_u32(s_last_jpeg_status.compression_height);
+  c6_cam_puts(" ctrl01=");
+  c6_cam_put_u32(s_last_jpeg_status.jpeg_ctrl01);
+  c6_cam_puts(" vfifo00=");
+  c6_cam_put_u32(s_last_jpeg_status.vfifo_ctrl00);
+  c6_cam_puts(" href_min=");
+  c6_cam_put_u32(s_last_jpeg_status.href_minimum_blanking);
+}
+
+void c6_cam_camera_report_last_error(void)
+{
+  internal_report_sccb_state();
+  internal_report_sensor_registers();
+  if (!s_camera_initialized) {
+    return;
+  }
+  internal_report_capture_events();
   c6_cam_puts(" sensor_status=");
   c6_cam_puts(ra8_err_to_str(s_last_jpeg_status_err));
-  if (s_last_jpeg_status_err == k_ra8_ok) {
-    c6_cam_puts(" sensor_jpeg_bytes=");
-    c6_cam_put_u32(s_last_jpeg_status.encoded_bytes);
-    c6_cam_puts(" overflow=");
-    c6_cam_put_u32(s_last_jpeg_status.fifo_overflow ? 1U : 0U);
-    c6_cam_puts(" yuv422=");
-    c6_cam_put_u32(s_last_jpeg_status.input_is_yuv422 ? 1U : 0U);
-    c6_cam_puts(" header=");
-    c6_cam_put_u32(s_last_jpeg_status.header_output ? 1U : 0U);
-    c6_cam_puts(" jpeg_enabled=");
-    c6_cam_put_u32(s_last_jpeg_status.compression_enabled ? 1U : 0U);
-    c6_cam_puts(" width=");
-    c6_cam_put_u32(s_last_jpeg_status.compression_width);
-    c6_cam_puts(" height=");
-    c6_cam_put_u32(s_last_jpeg_status.compression_height);
-    c6_cam_puts(" ctrl01=");
-    c6_cam_put_u32(s_last_jpeg_status.jpeg_ctrl01);
-    c6_cam_puts(" vfifo00=");
-    c6_cam_put_u32(s_last_jpeg_status.vfifo_ctrl00);
-    c6_cam_puts(" href_min=");
-    c6_cam_put_u32(s_last_jpeg_status.href_minimum_blanking);
-  }
+  internal_report_jpeg_status_detail();
 }
