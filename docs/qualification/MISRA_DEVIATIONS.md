@@ -148,7 +148,9 @@ family or ghost bullet = gate failure); justifications live with the rows.
 - `misra-c2012-11.2` (1 row, 1 path): `tools/ra8_emulator` block.
 - `misra-c2012-11.3` (1 row, 1 path): `tools/ra8_emulator` block.
 - `misra-c2012-11.5` (1 row, 1 path): `tools/ra8_emulator` block; distinct from D-010.
-- `misra-c2012-11.6` (1 row, 1 path): `tools/ra8_emulator` block.
+- `misra-c2012-11.6` (2 rows, 2 paths): `tools/ra8_emulator` block, plus the
+  caller-workspace alignment predicate in `ra8_io_vfs_namespace.c`, which has
+  no conforming alternative and is already accepted at two sibling sites.
 - `misra-c2012-11.8` (1 row, 1 path): `tools/ra8_emulator` block.
 - `misra-c2012-12.1` (70 rows, 10 paths): D-004 review anchors (line-decayed; see D-004).
 - `misra-c2012-15.5` (2 rows, 2 paths): emulator block + `nx_ether_driver_c6.c` (D-001 idiom).
@@ -156,7 +158,9 @@ family or ghost bullet = gate failure); justifications live with the rows.
 - `misra-c2012-17.7` (1 row, 1 path): `tools/ra8_emulator` block.
 - `misra-c2012-18.4` (1 row, 1 path): `nx_ether_driver_c6.c` header assembly (Advisory).
 - `misra-c2012-21.3` (1 row, 1 path): `tools/ra8_emulator` block.
-- `misra-c2012-21.6` (1 row, 1 path): `tools/ra8_emulator` block.
+- `misra-c2012-21.6` (2 rows, 2 paths): `tools/ra8_emulator` block, plus the
+  host-CLI `<stdio.h>` in `mdl_export_epub_meta.c`, the split half of a file
+  whose own row is accepted in the baseline.
 - `misra-c2012-21.16` (1 row, 1 path): `char`-typed `memcmp` operand forced
   by `mdl_net_get_buf()`'s `char*` contract, compared only against zero.
 
