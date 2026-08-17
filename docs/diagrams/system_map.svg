@@ -9,6 +9,12 @@
     <marker id="aWarm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="#bc4c00"/>
     </marker>
+    <marker id="aGrn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1a7f37"/>
+    </marker>
+    <marker id="aVnr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8250df"/>
+    </marker>
   </defs>
 
   <rect x="0" y="0" width="1060" height="880" fill="#fdfdfb"/>
@@ -64,8 +70,8 @@
     <text x="422" y="328" text-anchor="middle" fill="#57606a" font-size="9">sole owner of c6link, SPI bus, VFS mounts, display</text>
     <text x="422" y="344" text-anchor="middle" fill="#57606a" font-size="9">(apps/stand_alone form)</text>
 
-    <!-- NS -> Secure veneer -->
-    <line x1="212" y1="300" x2="202" y2="300" stroke="#8250df" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <!-- NS -> Secure veneer: starts on the resident base image, crosses the world boundary -->
+    <line x1="228" y1="300" x2="202" y2="300" stroke="#8250df" stroke-width="1.2" marker-end="url(#aVnr)"/>
 
     <!-- M33 -->
     <rect x="36" y="408" width="608" height="228" rx="6" fill="none" stroke="#1b1f24" stroke-width="1.2"/>
@@ -76,17 +82,17 @@
     <text x="290" y="486" text-anchor="middle" fill="#57606a" font-size="9">e.g. EPUB compile</text>
 
     <line x1="290" y1="500" x2="290" y2="546" stroke="#1b1f24" stroke-width="1.1" marker-end="url(#aInk)"/>
-    <text x="300" y="524" fill="#57606a" font-size="9">module-mgr queues</text>
+    <text x="306" y="527" fill="#57606a" font-size="9">module-mgr queues</text>
 
     <rect x="228" y="548" width="388" height="72" rx="5" fill="none" stroke="#1b1f24" stroke-width="1.2"/>
     <text x="422" y="572" text-anchor="middle" fill="#1b1f24" font-size="11" font-weight="bold">M33 resident image</text>
     <text x="422" y="590" text-anchor="middle" fill="#57606a" font-size="9">its own module manager; no radio, no c6link</text>
     <text x="422" y="606" text-anchor="middle" fill="#57606a" font-size="9">(apps/stand_alone form, M33 build)</text>
 
-    <!-- mailbox across the core boundary -->
+    <!-- mailbox across the core boundary; label sits in the clear band, not across the container borders -->
     <line x1="422" y1="546" x2="422" y2="362" stroke="#0969da" stroke-width="1.4" marker-end="url(#aAcc)"/>
-    <text x="434" y="369" fill="#0969da" font-size="9">mailbox IPC (ra8_ipc,</text>
-    <text x="434" y="383" fill="#0969da" font-size="9">shared SRAM @ 0x22100000)</text>
+    <text x="440" y="424" fill="#0969da" font-size="9">mailbox IPC (ra8_ipc,</text>
+    <text x="440" y="438" fill="#0969da" font-size="9">shared SRAM @ 0x22100000)</text>
 
     <!-- ================= ESP32-C6 ================= -->
     <rect x="780" y="250" width="260" height="150" rx="6" fill="none" stroke="#bc4c00" stroke-width="1.4"/>
@@ -96,14 +102,14 @@
     <text x="910" y="330" text-anchor="middle" fill="#57606a" font-size="9">esp_http_client + mbedTLS</text>
     <text x="910" y="352" text-anchor="middle" fill="#57606a" font-size="9">(coprocessor/esp32c6/)</text>
 
-    <line x1="630" y1="316" x2="778" y2="316" stroke="#bc4c00" stroke-width="1.4" marker-end="url(#aWarm)"/>
+    <line x1="616" y1="316" x2="778" y2="316" stroke="#bc4c00" stroke-width="1.4" marker-end="url(#aWarm)"/>
     <text x="700" y="294" text-anchor="middle" fill="#bc4c00" font-size="10">SPI</text>
     <text x="700" y="306" text-anchor="middle" fill="#bc4c00" font-size="9">protobuf RPC</text>
 
     <rect x="837" y="460" width="146" height="44" rx="22" fill="none" stroke="#1b1f24" stroke-width="1.2"/>
     <text x="910" y="488" text-anchor="middle" fill="#1b1f24" font-size="10">internet</text>
     <line x1="910" y1="400" x2="910" y2="458" stroke="#1b1f24" stroke-width="1.1" marker-end="url(#aInk)"/>
-    <text x="922" y="434" fill="#57606a" font-size="9">HTTPS</text>
+    <text x="926" y="433" fill="#57606a" font-size="9">HTTPS</text>
 
     <!-- ================= numbered longest path ================= -->
     <g fill="#0969da">
@@ -144,8 +150,8 @@
     <text x="875" y="770" text-anchor="middle" fill="#57606a" font-size="9">module-form -- loadable .txm,</text>
     <text x="875" y="786" text-anchor="middle" fill="#57606a" font-size="9">MPU-isolated, no main()</text>
 
-    <line x1="383" y1="768" x2="332" y2="768" stroke="#1a7f37" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <line x1="677" y1="768" x2="728" y2="768" stroke="#1a7f37" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <line x1="383" y1="768" x2="332" y2="768" stroke="#1a7f37" stroke-width="1.2" marker-end="url(#aGrn)"/>
+    <line x1="677" y1="768" x2="728" y2="768" stroke="#1a7f37" stroke-width="1.2" marker-end="url(#aGrn)"/>
     <text x="357" y="756" text-anchor="middle" fill="#1a7f37" font-size="9">used by</text>
     <text x="702" y="756" text-anchor="middle" fill="#1a7f37" font-size="9">used by</text>
 

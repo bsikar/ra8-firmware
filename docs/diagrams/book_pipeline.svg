@@ -1,94 +1,117 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 682" width="980" role="img" aria-label="Book pipeline -- EPUB and comics into a paged container. coupling derived from #include edges between libs/, port/ and src/; the number on an arrow is how many files carry it down: ra8_epub - to  ra8_core (31), ra8_comic - to  ra8_core (28), ra8_rabook_compile - to  ra8_core (25), ra8_jof - to  ra8_core (23)       ra8_rabook_compile - to  ra8_reflow (5), ra8_rabook_import - to  ra8_fs (4), ra8_rabook_import - to  ra8_mem (4) in:   ra8_mdl_storage_vfs - to  ra8_book (2), ra8_camera - to  ra8_jpeg (1), ra8_c6link - to  ra8_mdl (1) The densest cluster in the tree: 16 internal edges, and every one points downward -- producers above, containers in the middle, codecs at the bottom. ra8_mdl and ra8_cache_store sit in this subject area but have no include edge to any of it. Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 762" width="980" role="img" aria-label="Book pipeline -- EPUB and comics into a paged container. coupling derived from #include edges between libs/, port/ and src/; the number on an arrow is how many files carry it down: ra8_epub -to ra8_core (31), ra8_comic -to ra8_core (28), ra8_rabook_compile -to ra8_core (25), ra8_jof -to ra8_core (23)       ra8_rabook_compile -to ra8_reflow (5), ra8_rabook_import -to ra8_fs (4), ra8_rabook_import -to ra8_mem (4) in:   ra8_mdl_storage_vfs -to ra8_book (2), ra8_camera -to ra8_jpeg (1), ra8_c6link -to ra8_mdl (1) The densest cluster in the tree: 16 internal edges, and every one points downward -- producers above, containers in the middle, codecs at the bottom. ra8_mdl and ra8_cache_store sit in this subject area but have no include edge to any of it. Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are no-ops and consumers glob libs/libto/src/*.c into one object library, so there are no target_link_libraries edges to read.">
   <defs>
     <marker id="aInk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1b1f24"/></marker>
     <marker id="aAcc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0969da"/></marker>
     <marker id="aGrn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a7f37"/></marker>
     <marker id="aWrm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#bc4c00"/></marker>
   </defs>
-  <rect x="0" y="0" width="980" height="682" fill="#fdfdfb"/>
+  <rect x="0" y="0" width="980" height="762" fill="#fdfdfb"/>
   <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
     <text x="24" y="32" fill="#1b1f24" font-size="14" font-weight="bold">Book pipeline -- EPUB and comics into a paged container</text>
     <text x="24" y="52" fill="#57606a" font-size="9">coupling derived from #include edges between libs/, port/ and src/; the number on an arrow is how many files carry it</text>
-    <rect x="20" y="70" width="940" height="434" rx="8" fill="none" stroke="#aeb4bb" stroke-width="1.2"/>
-    <line x1="490" y1="140" x2="144" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <rect x="301" y="149" width="10" height="11" fill="#fdfdfb"/>
-    <text x="306" y="158" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
-    <line x1="490" y1="140" x2="374" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="443" y="201" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
-    <line x1="490" y1="140" x2="606" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="535" y="178" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
-    <line x1="144" y1="226" x2="606" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <rect x="414" y="239" width="10" height="11" fill="#fdfdfb"/>
-    <text x="419" y="248" text-anchor="middle" fill="#1b1f24" font-size="9">6</text>
-    <line x1="144" y1="226" x2="374" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <rect x="307" y="240" width="10" height="11" fill="#fdfdfb"/>
-    <text x="312" y="249" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
-    <line x1="144" y1="226" x2="490" y2="342" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="202" y="252" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
-    <line x1="144" y1="226" x2="374" y2="428" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="248" y="330" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
-    <line x1="374" y1="226" x2="720" y2="342" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="503" y="268" text-anchor="middle" fill="#1b1f24" font-size="9">7</text>
-    <line x1="374" y1="226" x2="258" y2="342" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="323" y="270" text-anchor="middle" fill="#1b1f24" font-size="9">4</text>
-    <line x1="374" y1="226" x2="374" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="364" y="250" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
-    <line x1="606" y1="226" x2="606" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="616" y="244" text-anchor="middle" fill="#1b1f24" font-size="9">4</text>
-    <line x1="836" y1="226" x2="258" y2="342" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="558" y="287" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
-    <line x1="374" y1="312" x2="490" y2="342" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="421" y="330" text-anchor="middle" fill="#1b1f24" font-size="9">6</text>
-    <line x1="374" y1="312" x2="258" y2="342" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="330" y="339" text-anchor="middle" fill="#1b1f24" font-size="9">5</text>
-    <line x1="258" y1="398" x2="374" y2="428" stroke="#1a7f37" stroke-width="1.2" marker-end="url(#aGrn)"/>
-    <text x="306" y="416" text-anchor="middle" fill="#1a7f37" font-size="9">3</text>
-    <line x1="258" y1="398" x2="606" y2="428" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <rect x="438" y="407" width="10" height="11" fill="#fdfdfb"/>
-    <text x="443" y="416" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
+    <rect x="20" y="70" width="940" height="514" rx="8" fill="none" stroke="#aeb4bb" stroke-width="1.2"/>
+    <!-- import -> compile (2) -->
+    <line x1="450" y1="138" x2="200" y2="191" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="324" y="157" width="12" height="12" fill="#fdfdfb"/>
+    <text x="330" y="166" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
+    <!-- import -> epub (2) -->
+    <polyline points="490,138 490,252 452,252 452,297" fill="none" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="479" y="178" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
+    <!-- import -> book (1) -->
+    <polyline points="560,138 560,165 721,165 721,278 660,278 660,297" fill="none" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="634" y="160" width="12" height="12" fill="#fdfdfb"/>
+    <text x="640" y="169" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
+    <!-- compile -> book (6) -->
+    <line x1="200" y1="244" x2="540" y2="297" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="414" y="272" width="12" height="12" fill="#fdfdfb"/>
+    <text x="420" y="281" text-anchor="middle" fill="#1b1f24" font-size="9">6</text>
+    <!-- compile -> epub (2) -->
+    <line x1="144" y1="244" x2="340" y2="297" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="244" y="266" width="12" height="12" fill="#fdfdfb"/>
+    <text x="250" y="275" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
+    <!-- compile -> xml (1) -->
+    <polyline points="100,244 100,362 430,362 430,403" fill="none" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="111" y="320" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
+    <!-- compile -> webp (2) -->
+    <polyline points="70,244 70,536 265,536" fill="none" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="81" y="460" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
+    <!-- comic -> unarch (7) -->
+    <polyline points="470,244 470,264 745,264 745,403" fill="none" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="756" y="340" text-anchor="middle" fill="#1b1f24" font-size="9">7</text>
+    <!-- comic -> jof (4) -->
+    <polyline points="300,244 300,262 200,262 200,403" fill="none" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="211" y="340" text-anchor="middle" fill="#1b1f24" font-size="9">4</text>
+    <!-- comic -> epub (2) -->
+    <line x1="374" y1="244" x2="374" y2="297" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="368" y="247" width="12" height="12" fill="#fdfdfb"/>
+    <text x="374" y="256" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
+    <!-- zoom -> book (4) -->
+    <line x1="606" y1="244" x2="606" y2="297" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="600" y="247" width="12" height="12" fill="#fdfdfb"/>
+    <text x="606" y="256" text-anchor="middle" fill="#1b1f24" font-size="9">4</text>
+    <!-- longstrip -> jof (2) -->
+    <polyline points="800,244 800,383 330,383 330,403" fill="none" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="811" y="320" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
+    <!-- epub -> xml (6) -->
+    <line x1="420" y1="350" x2="500" y2="403" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="439" y="360" width="12" height="12" fill="#fdfdfb"/>
+    <text x="445" y="369" text-anchor="middle" fill="#1b1f24" font-size="9">6</text>
+    <!-- epub -> jof (5) -->
+    <line x1="340" y1="350" x2="300" y2="403" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="304" y="383" width="12" height="12" fill="#fdfdfb"/>
+    <text x="310" y="392" text-anchor="middle" fill="#1b1f24" font-size="9">5</text>
+    <!-- jof -> webp (3) -->
+    <line x1="280" y1="456" x2="374" y2="509" stroke="#1a7f37" stroke-width="1.2" marker-end="url(#aGrn)"/>
+    <rect x="314" y="472" width="12" height="12" fill="#fdfdfb"/>
+    <text x="320" y="481" text-anchor="middle" fill="#1a7f37" font-size="9">3</text>
+    <!-- jof -> jpeg (1) -->
+    <line x1="310" y1="456" x2="606" y2="509" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="474" y="480" width="12" height="12" fill="#fdfdfb"/>
+    <text x="480" y="489" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
     <rect x="381" y="86" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
-    <text x="490" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_rabook_import</text>
-    <text x="490" y="126" text-anchor="middle" fill="#57606a" font-size="9">on-device import seam</text>
-    <rect x="35" y="172" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1a7f37" stroke-width="1.4"/>
-    <text x="144" y="196" text-anchor="middle" fill="#1a7f37" font-size="10">ra8_rabook_compile</text>
-    <text x="144" y="212" text-anchor="middle" fill="#57606a" font-size="9">EPUB -&gt; RABOOK1</text>
-    <rect x="266" y="172" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
-    <text x="374" y="196" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_comic</text>
-    <text x="374" y="212" text-anchor="middle" fill="#57606a" font-size="9">CBZ / CBR</text>
-    <rect x="497" y="172" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
-    <text x="606" y="196" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_zoom</text>
-    <text x="606" y="212" text-anchor="middle" fill="#57606a" font-size="9">tap-to-zoom</text>
-    <rect x="728" y="172" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
-    <text x="836" y="196" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_longstrip</text>
-    <text x="836" y="212" text-anchor="middle" fill="#57606a" font-size="9">manhwa scroll</text>
-    <rect x="266" y="258" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
-    <text x="374" y="282" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_epub</text>
-    <text x="374" y="298" text-anchor="middle" fill="#57606a" font-size="9">reader + chapters</text>
-    <rect x="497" y="258" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1a7f37" stroke-width="1.4"/>
-    <text x="606" y="282" text-anchor="middle" fill="#1a7f37" font-size="10">ra8_book</text>
-    <text x="606" y="298" text-anchor="middle" fill="#57606a" font-size="9">XIP container</text>
-    <rect x="150" y="344" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1a7f37" stroke-width="1.4"/>
-    <text x="258" y="368" text-anchor="middle" fill="#1a7f37" font-size="10">ra8_jof</text>
-    <text x="258" y="384" text-anchor="middle" fill="#57606a" font-size="9">band-tile atlas</text>
-    <rect x="381" y="344" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
-    <text x="490" y="368" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_xml</text>
-    <text x="490" y="384" text-anchor="middle" fill="#57606a" font-size="9">no-heap pull reader</text>
-    <rect x="612" y="344" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
-    <text x="720" y="368" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_unarch</text>
-    <text x="720" y="384" text-anchor="middle" fill="#57606a" font-size="9">xz / gzip / tar</text>
-    <rect x="266" y="430" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
-    <text x="374" y="454" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_webp</text>
-    <text x="374" y="470" text-anchor="middle" fill="#57606a" font-size="9">libwebp wrapper</text>
-    <rect x="497" y="430" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
-    <text x="606" y="454" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_jpeg</text>
-    <text x="606" y="470" text-anchor="middle" fill="#57606a" font-size="9">software JPEG</text>
-    <rect x="20" y="528" width="940" height="74" rx="6" fill="none" stroke="#aeb4bb" stroke-width="1" stroke-dasharray="5 3"/>
-    <text x="34" y="546" fill="#1b1f24" font-size="10" font-weight="bold">seams to the rest of the tree</text>
-    <text x="34" y="564" fill="#57606a" font-size="9">down: ra8_epub -&gt; ra8_core (31), ra8_comic -&gt; ra8_core (28), ra8_rabook_compile -&gt; ra8_core (25), ra8_jof -&gt; ra8_core (23)</text>
-    <text x="34" y="580" fill="#57606a" font-size="9">      ra8_rabook_compile -&gt; ra8_reflow (5), ra8_rabook_import -&gt; ra8_fs (4), ra8_rabook_import -&gt; ra8_mem (4)</text>
-    <text x="34" y="596" fill="#57606a" font-size="9">in:   ra8_mdl_storage_vfs -&gt; ra8_book (2), ra8_camera -&gt; ra8_jpeg (1), ra8_c6link -&gt; ra8_mdl (1)</text>
-    <text x="24" y="624" fill="#57606a" font-size="9">The densest cluster in the tree: 16 internal edges, and every one points downward -- producers above, containers in the</text>
-    <text x="24" y="640" fill="#57606a" font-size="9">middle, codecs at the bottom. ra8_mdl and ra8_cache_store sit in this subject area but have no include edge to any of it.</text>
-    <text x="24" y="656" fill="#57606a" font-size="9">Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are</text>
+    <text x="489" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_rabook_import</text>
+    <text x="489" y="126" text-anchor="middle" fill="#57606a" font-size="9">on-device import seam</text>
+    <rect x="35" y="192" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1a7f37" stroke-width="1.4"/>
+    <text x="143" y="216" text-anchor="middle" fill="#1a7f37" font-size="10">ra8_rabook_compile</text>
+    <text x="143" y="232" text-anchor="middle" fill="#57606a" font-size="9">EPUB -&gt; RABOOK1</text>
+    <rect x="266" y="192" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="374" y="216" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_comic</text>
+    <text x="374" y="232" text-anchor="middle" fill="#57606a" font-size="9">CBZ / CBR</text>
+    <rect x="497" y="192" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="605" y="216" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_zoom</text>
+    <text x="605" y="232" text-anchor="middle" fill="#57606a" font-size="9">tap-to-zoom</text>
+    <rect x="728" y="192" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="836" y="216" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_longstrip</text>
+    <text x="836" y="232" text-anchor="middle" fill="#57606a" font-size="9">manhwa scroll</text>
+    <rect x="266" y="298" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="374" y="322" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_epub</text>
+    <text x="374" y="338" text-anchor="middle" fill="#57606a" font-size="9">reader + chapters</text>
+    <rect x="497" y="298" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1a7f37" stroke-width="1.4"/>
+    <text x="605" y="322" text-anchor="middle" fill="#1a7f37" font-size="10">ra8_book</text>
+    <text x="605" y="338" text-anchor="middle" fill="#57606a" font-size="9">XIP container</text>
+    <rect x="150" y="404" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1a7f37" stroke-width="1.4"/>
+    <text x="258" y="428" text-anchor="middle" fill="#1a7f37" font-size="10">ra8_jof</text>
+    <text x="258" y="444" text-anchor="middle" fill="#57606a" font-size="9">band-tile atlas</text>
+    <rect x="381" y="404" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="489" y="428" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_xml</text>
+    <text x="489" y="444" text-anchor="middle" fill="#57606a" font-size="9">no-heap pull reader</text>
+    <rect x="612" y="404" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="720" y="428" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_unarch</text>
+    <text x="720" y="444" text-anchor="middle" fill="#57606a" font-size="9">xz / gzip / tar</text>
+    <rect x="266" y="510" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="374" y="534" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_webp</text>
+    <text x="374" y="550" text-anchor="middle" fill="#57606a" font-size="9">libwebp wrapper</text>
+    <rect x="497" y="510" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="605" y="534" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_jpeg</text>
+    <text x="605" y="550" text-anchor="middle" fill="#57606a" font-size="9">software JPEG</text>
+    <rect x="20" y="608" width="940" height="74" rx="6" fill="none" stroke="#aeb4bb" stroke-width="1" stroke-dasharray="5 3"/>
+    <text x="34" y="626" fill="#1b1f24" font-size="10" font-weight="bold">seams to the rest of the tree</text>
+    <text x="34" y="644" fill="#57606a" font-size="9">down: ra8_epub -&gt; ra8_core (31), ra8_comic -&gt; ra8_core (28), ra8_rabook_compile -&gt; ra8_core (25), ra8_jof -&gt; ra8_core (23)</text>
+    <text x="34" y="660" fill="#57606a" font-size="9">      ra8_rabook_compile -&gt; ra8_reflow (5), ra8_rabook_import -&gt; ra8_fs (4), ra8_rabook_import -&gt; ra8_mem (4)</text>
+    <text x="34" y="676" fill="#57606a" font-size="9">in:   ra8_mdl_storage_vfs -&gt; ra8_book (2), ra8_camera -&gt; ra8_jpeg (1), ra8_c6link -&gt; ra8_mdl (1)</text>
+    <text x="24" y="704" fill="#57606a" font-size="9">The densest cluster in the tree: 16 internal edges, and every one points downward -- producers above, containers in the</text>
+    <text x="24" y="720" fill="#57606a" font-size="9">middle, codecs at the bottom. ra8_mdl and ra8_cache_store sit in this subject area but have no include edge to any of it.</text>
+    <text x="24" y="736" fill="#57606a" font-size="9">Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are</text>
+    <text x="24" y="752" fill="#57606a" font-size="9">no-ops and consumers glob libs/&lt;lib&gt;/src/*.c into one object library, so there are no target_link_libraries edges to read.</text>
   </g>
 </svg>

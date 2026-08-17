@@ -1,26 +1,34 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 612" width="900" role="img" aria-label="Display and render -- two halves that do not touch. coupling derived from #include edges between libs/, port/ and src/; the number on an arrow is how many files carry it down: ra8_reflow - to  ra8_core (50), ra8_widget - to  ra8_core (22), ra8_display_pal - to  ra8_core (19), ra8_gfx - to  ra8_core (9)       ra8_display_pal - to  ra8_hal (3), ra8_reflow - to  ra8_mem (3), ra8_display_pal - to  ra8_board_ek_ra8d2 (1) in:   ra8_rabook_compile - to  ra8_reflow (5), ra8_zoom - to  ra8_ui (3), ra8_zoom - to  ra8_gfx (2), ra8_epub - to  ra8_reflow (1) The honest finding: there is no include edge between the DISPLAY half (grey) and the RENDER half. ra8_display_pal reaches ra8_hal and ra8_core and nothing else in this cluster; ra8_fonts is generated data with no edges at all. The two halves meet only in an application, which owns the framebuffer and hands it to both. 5 internal edges across 9 libraries. Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 628" width="900" role="img" aria-label="Display and render -- two halves that do not touch. coupling derived from #include edges between libs/, port/ and src/; the number on an arrow is how many files carry it down: ra8_reflow - to  ra8_core (50), ra8_widget - to  ra8_core (22), ra8_display_pal - to  ra8_core (19), ra8_gfx - to  ra8_core (9)       ra8_display_pal - to  ra8_hal (3), ra8_reflow - to  ra8_mem (3), ra8_display_pal - to  ra8_board_ek_ra8d2 (1) in:   ra8_rabook_compile - to  ra8_reflow (5), ra8_zoom - to  ra8_ui (3), ra8_zoom - to  ra8_gfx (2), ra8_epub - to  ra8_reflow (1) The honest finding: there is no include edge between the DISPLAY half (grey) and the RENDER half. ra8_display_pal reaches ra8_hal and ra8_core and nothing else in this cluster; ra8_fonts is generated data with no edges at all. The two halves meet only in an application, which owns the framebuffer and hands it to both. 5 internal edges across 9 libraries. Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are no-ops and consumers glob libs/ lib to /src/*.c into one object library, so there are no target_link_libraries edges to read.">
   <defs>
     <marker id="aInk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1b1f24"/></marker>
     <marker id="aAcc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0969da"/></marker>
     <marker id="aGrn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a7f37"/></marker>
     <marker id="aWrm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#bc4c00"/></marker>
   </defs>
-  <rect x="0" y="0" width="900" height="612" fill="#fdfdfb"/>
+  <rect x="0" y="0" width="900" height="628" fill="#fdfdfb"/>
   <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
     <text x="24" y="32" fill="#1b1f24" font-size="14" font-weight="bold">Display and render -- two halves that do not touch</text>
     <text x="24" y="52" fill="#57606a" font-size="9">coupling derived from #include edges between libs/, port/ and src/; the number on an arrow is how many files carry it</text>
     <rect x="20" y="70" width="860" height="348" rx="8" fill="none" stroke="#aeb4bb" stroke-width="1.2"/>
-    <line x1="238" y1="140" x2="344" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="280" y="201" text-anchor="middle" fill="#1b1f24" font-size="9">7</text>
-    <line x1="238" y1="140" x2="450" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <rect x="350" y="149" width="10" height="11" fill="#fdfdfb"/>
-    <text x="355" y="158" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
-    <line x1="450" y1="140" x2="344" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="386" y="201" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
-    <line x1="660" y1="140" x2="556" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="597" y="201" text-anchor="middle" fill="#1b1f24" font-size="9">3</text>
-    <line x1="450" y1="226" x2="344" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="386" y="244" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
+    <!-- ra8_widget -> ra8_ui (7) : lands top edge x=344 -->
+    <line x1="250" y1="138" x2="344" y2="257" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="274" y="170" width="12" height="12" fill="#fdfdfb"/>
+    <text x="280" y="179" text-anchor="middle" fill="#1b1f24" font-size="9">7</text>
+    <!-- ra8_widget -> ra8_box (1) : lands top edge x=420 -->
+    <line x1="300" y1="138" x2="420" y2="171" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="384" y="156" width="12" height="12" fill="#fdfdfb"/>
+    <text x="390" y="166" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
+    <!-- ra8_keyboard -> ra8_ui (2) : routed left of ra8_box, not through it -->
+    <polyline points="360,138 360,160 300,160 300,257" fill="none" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="289" y="233" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
+    <!-- ra8_reflow -> ra8_gfx (3) : lands top edge x=556 -->
+    <line x1="660" y1="138" x2="556" y2="257" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="594" y="200" width="12" height="12" fill="#fdfdfb"/>
+    <text x="600" y="209" text-anchor="middle" fill="#1b1f24" font-size="9">3</text>
+    <!-- ra8_box -> ra8_ui (2) : lands top edge x=400 -->
+    <line x1="420" y1="224" x2="400" y2="257" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="407" y="229" width="12" height="12" fill="#fdfdfb"/>
+    <text x="413" y="238" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
     <rect x="140" y="86" width="197" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
     <text x="238" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_widget</text>
     <text x="238" y="126" text-anchor="middle" fill="#57606a" font-size="9">toolbar, nav, views</text>
@@ -60,5 +68,6 @@
     <text x="24" y="554" fill="#57606a" font-size="9">ra8_hal and ra8_core and nothing else in this cluster; ra8_fonts is generated data with no edges at all. The two halves meet</text>
     <text x="24" y="570" fill="#57606a" font-size="9">only in an application, which owns the framebuffer and hands it to both. 5 internal edges across 9 libraries.</text>
     <text x="24" y="586" fill="#57606a" font-size="9">Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are</text>
+    <text x="24" y="602" fill="#57606a" font-size="9">no-ops and consumers glob libs/&lt;lib&gt;/src/*.c into one object library, so there are no target_link_libraries edges to read.</text>
   </g>
 </svg>
