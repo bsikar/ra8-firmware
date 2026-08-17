@@ -96,25 +96,25 @@ extern "C" {
 
 namespace {
 
-static ra8_rabook_xml_workspace_t s_xml_workspace = {};
+ra8_rabook_xml_workspace_t s_xml_workspace = {};
 
 /** @brief Provide the file-local parse chapter test helper. @details Implements the parse chapter fixture operation used only by this focused test executable. @param[in] bytes Fixture argument governed by the exercised interface contract. @param[in] length Fixture argument governed by the exercised interface contract. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] href Fixture argument governed by the exercised interface contract. @param[in] title Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static ra8_err_t internal_parse_chapter(const uint8_t*    bytes,
-                                                     size_t            length,
-                                                     ra8_rabook_ctx_t* ctx,
-                                                     const char*       href,
-                                                     const char*       title)
+RA8_INTERNAL ra8_err_t internal_parse_chapter(const uint8_t*    bytes,
+                                              size_t            length,
+                                              ra8_rabook_ctx_t* ctx,
+                                              const char*       href,
+                                              const char*       title)
 {
   return ra8_rabook_xml_parse_chapter(bytes, length, ctx, href, title, &s_xml_workspace);
 }
 
 /** @brief Call the production parser with an explicitly chosen workspace. @details The object-like macro below rewrites every later call site to the five-argument wrapper, so the workspace guard needs an entry point declared before it that still forwards the caller's own pointer. @param[in] bytes Immutable XHTML bytes. @param[in] length Readable extent of the source. @param[in,out] ctx Builder receiving one chapter. @param[in] href Chapter identity string. @param[in] title Chapter title string. @param[in,out] workspace Caller workspace, or NULL for the workspace guard. @return RA8 status from the production parser. @retval k_ra8_ok The chapter was appended. @retval k_ra8_err_null_ptr A required pointer was NULL. @pre Fixed-capacity fixture storage required by this operation is available. @pre Non-NULL arguments follow the production interface contract. @post The production result is returned unchanged. @post No file-local fixture state is modified by the wrapper. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static ra8_err_t internal_parse_chapter_ws(const uint8_t*              bytes,
-                                                        size_t                      length,
-                                                        ra8_rabook_ctx_t*           ctx,
-                                                        const char*                 href,
-                                                        const char*                 title,
-                                                        ra8_rabook_xml_workspace_t* workspace)
+RA8_INTERNAL ra8_err_t internal_parse_chapter_ws(const uint8_t*              bytes,
+                                                 size_t                      length,
+                                                 ra8_rabook_ctx_t*           ctx,
+                                                 const char*                 href,
+                                                 const char*                 title,
+                                                 ra8_rabook_xml_workspace_t* workspace)
 {
   return ra8_rabook_xml_parse_chapter(bytes, length, ctx, href, title, workspace);
 }
@@ -162,7 +162,7 @@ uint32_t s_total = 0U;
 uint32_t s_pass  = 0U;
 
 /** @brief Provide the file-local check test helper. @details Implements the check fixture operation used only by this focused test executable. @param[in] cond Fixture argument governed by the exercised interface contract. @param[in] name Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_check(bool cond, const char* name)
+RA8_INTERNAL void internal_check(bool cond, const char* name)
 {
   (void)name;
   ++s_total;
@@ -173,7 +173,7 @@ RA8_INTERNAL static void internal_check(bool cond, const char* name)
 
 /* Prepare a fresh builder context over the static arenas. */
 /** @brief Prepare the fixture's make ctx state. @details Implements the make ctx fixture operation used only by this focused test executable. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static ra8_rabook_ctx_t internal_make_ctx()
+RA8_INTERNAL ra8_rabook_ctx_t internal_make_ctx()
 {
   const ra8_rabook_buffers_t bufs = {
     .chapters       = s_chapters,
@@ -199,7 +199,7 @@ RA8_INTERNAL static ra8_rabook_ctx_t internal_make_ctx()
 }
 
 /* Return the string-pool content at offset @p off. */
-RA8_INTERNAL static const char* internal_pool_str(const ra8_rabook_ctx_t& ctx, uint32_t off)
+RA8_INTERNAL const char* internal_pool_str(const ra8_rabook_ctx_t& ctx, uint32_t off)
 {
   if (off == k_ra8_book_nil || off >= ctx.string_size) {
     return "<NIL>";
@@ -208,8 +208,7 @@ RA8_INTERNAL static const char* internal_pool_str(const ra8_rabook_ctx_t& ctx, u
 }
 
 /** @brief Compare all logical builder state that a failed parse must restore. @details Implements the same ctx state fixture operation used only by this focused test executable. @param[in] lhs Fixture argument governed by the exercised interface contract. @param[in] rhs Fixture argument governed by the exercised interface contract. @return Whether the named fixture condition holds. @retval true The named fixture condition holds. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static bool internal_same_ctx_state(const ra8_rabook_ctx_t& lhs,
-                                                 const ra8_rabook_ctx_t& rhs)
+RA8_INTERNAL bool internal_same_ctx_state(const ra8_rabook_ctx_t& lhs, const ra8_rabook_ctx_t& rhs)
 {
   return (lhs.chapter_count == rhs.chapter_count) && (lhs.node_count == rhs.node_count) &&
          (lhs.attr_count == rhs.attr_count) && (lhs.stylesheet_count == rhs.stylesheet_count) &&
@@ -271,7 +270,7 @@ constexpr const char* s_xhtml_empty_text = "<?xml version=\"1.0\"?><body><p></p>
 /* -------------------------------------------------------------------------- */
 
 /** @brief Verify null xhtml bytes behavior. @details Executes the null xhtml bytes scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_null_xhtml_bytes()
+RA8_INTERNAL void internal_test_null_xhtml_bytes()
 {
   ra8_rabook_ctx_t ctx = internal_make_ctx();
   const ra8_err_t  err =
@@ -280,7 +279,7 @@ RA8_INTERNAL static void internal_test_null_xhtml_bytes()
 }
 
 /** @brief Verify null ctx behavior. @details Executes the null ctx scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_null_ctx()
+RA8_INTERNAL void internal_test_null_ctx()
 {
   const uint8_t          dummy = 0U;
   const ra8_rabook_ctx_t ctx   = internal_make_ctx();
@@ -290,7 +289,7 @@ RA8_INTERNAL static void internal_test_null_ctx()
 }
 
 /** @brief Verify null href behavior. @details Executes the null href scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_null_href()
+RA8_INTERNAL void internal_test_null_href()
 {
   ra8_rabook_ctx_t ctx   = internal_make_ctx();
   const uint8_t    dummy = 0U;
@@ -299,7 +298,7 @@ RA8_INTERNAL static void internal_test_null_href()
 }
 
 /** @brief Verify null title behavior. @details Executes the null title scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_null_title()
+RA8_INTERNAL void internal_test_null_title()
 {
   ra8_rabook_ctx_t ctx   = internal_make_ctx();
   const uint8_t    dummy = 0U;
@@ -308,7 +307,7 @@ RA8_INTERNAL static void internal_test_null_title()
 }
 
 /** @brief Verify malformed xml behavior. @details Executes the malformed xml scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_malformed_xml()
+RA8_INTERNAL void internal_test_malformed_xml()
 {
   ra8_rabook_ctx_t       ctx    = internal_make_ctx();
   const ra8_rabook_ctx_t before = ctx;
@@ -323,7 +322,7 @@ RA8_INTERNAL static void internal_test_malformed_xml()
 }
 
 /** @brief Verify empty body behavior. @details Executes the empty body scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_empty_body()
+RA8_INTERNAL void internal_test_empty_body()
 {
   ra8_rabook_ctx_t ctx = internal_make_ctx();
   const ra8_err_t  err =
@@ -344,7 +343,7 @@ RA8_INTERNAL static void internal_test_empty_body()
 }
 
 /** @brief Verify simple p with text behavior. @details Executes the simple p with text scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_simple_p_with_text()
+RA8_INTERNAL void internal_test_simple_p_with_text()
 {
   ra8_rabook_ctx_t ctx = internal_make_ctx();
   const ra8_err_t  err =
@@ -388,7 +387,7 @@ RA8_INTERNAL static void internal_test_simple_p_with_text()
 }
 
 /** @brief Verify nested siblings preorder behavior. @details Executes the nested siblings preorder scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_nested_siblings_preorder()
+RA8_INTERNAL void internal_test_nested_siblings_preorder()
 {
   ra8_rabook_ctx_t ctx = internal_make_ctx();
   const ra8_err_t  err =
@@ -444,7 +443,7 @@ RA8_INTERNAL static void internal_test_nested_siblings_preorder()
 }
 
 /** @brief Verify html wrapper body fallback behavior. @details Executes the html wrapper body fallback scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_html_wrapper_body_fallback()
+RA8_INTERNAL void internal_test_html_wrapper_body_fallback()
 {
   ra8_rabook_ctx_t ctx = internal_make_ctx();
   const ra8_err_t  err =
@@ -468,7 +467,7 @@ RA8_INTERNAL static void internal_test_html_wrapper_body_fallback()
  * @par MC/DC:
  * Exercises comment-event filtering before builder mutation. Two
  * comments + one element + its text -> exactly 3 emitted nodes. @details Executes the comment skipped scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_comment_skipped()
+RA8_INTERNAL void internal_test_comment_skipped()
 {
   ra8_rabook_ctx_t ctx = internal_make_ctx();
   const ra8_err_t  err =
@@ -499,7 +498,7 @@ RA8_INTERNAL static void internal_test_comment_skipped()
  * the node_count would be 4. Asserting node_count == 3 (body, p, "After") and
  * that no text node carries the CDATA content proves the skip. Complements the
  * FALSE arm (real text -> emitted) covered by internal_test_simple_p_with_text. @details Executes the cdata skipped scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_cdata_skipped()
+RA8_INTERNAL void internal_test_cdata_skipped()
 {
   ra8_rabook_ctx_t ctx = internal_make_ctx();
   const ra8_err_t  err =
@@ -544,7 +543,7 @@ RA8_INTERNAL static void internal_test_cdata_skipped()
  * @c val != nullptr && val[0] != '\0' decision (internal_emit_node): @c <p></p> yields
  * an empty Value() string, so @c val[0] == '\0' and no text node is added.
  * The TRUE arm (non-empty text emitted) is covered by internal_test_simple_p_with_text. @details Executes the empty text skipped scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_empty_text_skipped()
+RA8_INTERNAL void internal_test_empty_text_skipped()
 {
   ra8_rabook_ctx_t ctx = internal_make_ctx();
   const ra8_err_t  err =
@@ -571,7 +570,7 @@ typedef enum : uint16_t {
 } edge_dim_t;
 
 /** @brief Build a builder context whose node table is capped at @p node_cap. @details Implements the make ctx capped fixture operation used only by this focused test executable. @param[in] node_cap Fixture argument governed by the exercised interface contract. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static ra8_rabook_ctx_t internal_make_ctx_capped(uint32_t node_cap)
+RA8_INTERNAL ra8_rabook_ctx_t internal_make_ctx_capped(uint32_t node_cap)
 {
   const ra8_rabook_buffers_t bufs = {
     .chapters       = s_chapters,
@@ -605,7 +604,7 @@ RA8_INTERNAL static ra8_rabook_ctx_t internal_make_ctx_capped(uint32_t node_cap)
  * k_xhtml_max_siblings` in internal_find_body: a `<root>` with 257 non-`<body>`
  * children crosses the bounded selection workspace. The parser returns a
  * validation error instead of changing policy and silently selecting the root. @details Executes the find body many siblings scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_find_body_many_siblings()
+RA8_INTERNAL void internal_test_find_body_many_siblings()
 {
   ra8_rabook_ctx_t ctx    = internal_make_ctx();
   const auto       before = ctx;
@@ -624,7 +623,7 @@ RA8_INTERNAL static void internal_test_find_body_many_siblings()
 }
 
 /** @test internal_test_find_body_sibling_cap accepts the documented bound exactly. @brief Verify find body sibling cap behavior. @details Executes the find body sibling cap scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_find_body_sibling_cap()
+RA8_INTERNAL void internal_test_find_body_sibling_cap()
 {
   ra8_rabook_ctx_t ctx = internal_make_ctx();
   std::string      xml = "<?xml version=\"1.0\"?><root>";
@@ -655,7 +654,7 @@ RA8_INTERNAL static void internal_test_find_body_sibling_cap()
  * attributes) and the (false, true) no-more-attributes leg are supplied here and
  * by the attribute-bearing fixture. The reader's documented attribute cap makes a
  * 33-attribute element is a reachable input. @details Executes the collect attrs overflow scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_collect_attrs_overflow()
+RA8_INTERNAL void internal_test_collect_attrs_overflow()
 {
   ra8_rabook_ctx_t ctx    = internal_make_ctx();
   const auto       before = ctx;
@@ -689,7 +688,7 @@ RA8_INTERNAL static void internal_test_collect_attrs_overflow()
  * its children are not descended into. The (true, true) element-emitted control
  * and the (false, true) text-node leg are supplied by the nested-siblings
  * fixture. A book that overruns the builder node budget is a reachable input. @details Executes the walk builder overflow scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_walk_builder_overflow()
+RA8_INTERNAL void internal_test_walk_builder_overflow()
 {
   ra8_rabook_ctx_t      ctx    = internal_make_ctx_capped((uint32_t)k_ovf_node_cap);
   const auto            before = ctx;
@@ -710,7 +709,7 @@ RA8_INTERNAL static void internal_test_walk_builder_overflow()
 /* Arena-starvation and lifecycle edges of the public entry point. */
 /* -------------------------------------------------------------------------- */
 
-typedef enum : uint16_t {
+typedef enum : uint8_t {
   k_attr_string_cap   = 2U, /**< Pool holding the empty sentinel plus one byte. */
   k_text_node_cap     = 2U, /**< Root and one element; no room for a text node. */
   k_no_chapter_cap    = 0U, /**< Chapter table that cannot hold one entry.      */
@@ -719,8 +718,9 @@ typedef enum : uint16_t {
 } edge_limit_t;
 
 /** @brief Build a builder context with chosen node, string, and chapter caps. @details Initialises against the shared arenas and then narrows only the three capacities under test, so a starved vector can fail in exactly one table; the empty-string sentinel interned by init still fits every narrowed pool. @param[in] node_cap DOM node-table capacity. @param[in] string_cap String-pool byte capacity. @param[in] chapter_cap Chapter-table capacity. @return The initialised builder context. @retval value A context bound to the shared fixture arenas. @pre Fixed-capacity fixture storage required by this operation is available. @pre Each requested capacity still admits the already-interned sentinel. @post The context carries the requested capacities and zero live rows. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static ra8_rabook_ctx_t
-internal_make_ctx_limits(uint32_t node_cap, uint32_t string_cap, uint32_t chapter_cap)
+RA8_INTERNAL ra8_rabook_ctx_t internal_make_ctx_limits(uint32_t node_cap,
+                                                       uint32_t string_cap,
+                                                       uint32_t chapter_cap)
 {
   ra8_rabook_ctx_t ctx = internal_make_ctx();
   ctx.buf.node_cap     = node_cap;
@@ -737,7 +737,7 @@ constexpr const char* s_xhtml_self_closing_body = "<?xml version=\"1.0\"?>"
 constexpr const char* s_xhtml_attr = "<?xml version=\"1.0\"?><body a=\"v\"/>";
 
 /** @test internal_test_entry_guards @brief The workspace pointer and the source length are each rejected alone. @details Every other required pointer stays valid in both vectors, so the observed status names the one argument under test: a missing workspace is a null-pointer error and a zero-length source is a size error, never a parse error. @pre Fixed-capacity fixture storage required by this operation is available. @pre The source pointer addresses at least one readable byte. @post Each vector returns its own canonical status. @post The builder is left exactly as it was constructed. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_entry_guards()
+RA8_INTERNAL void internal_test_entry_guards()
 {
   ra8_rabook_ctx_t ctx    = internal_make_ctx();
   const auto       before = ctx;
@@ -757,8 +757,7 @@ RA8_INTERNAL static void internal_test_entry_guards()
 }
 
 /** @brief Parse one document into a deliberately starved builder. @details Every vector must report the exhaustion rather than emit a partial chapter, and must restore the complete logical builder state it started from. @param[in] ctx Builder whose arenas were narrowed for this vector. @param[in] doc NUL-terminated XHTML source. @param[in] label Vector name used in the assertion record. @pre Fixed-capacity fixture storage required by this operation is available. @pre The document is well formed, so only an arena can fail. @post The parse returns the no-memory status. @post The builder is restored to its entry state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void
-internal_expect_starved(ra8_rabook_ctx_t ctx, const char* doc, const char* label)
+RA8_INTERNAL void internal_expect_starved(ra8_rabook_ctx_t ctx, const char* doc, const char* label)
 {
   const auto      before = ctx;
   const ra8_err_t err    = ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(doc),
@@ -771,7 +770,7 @@ internal_expect_starved(ra8_rabook_ctx_t ctx, const char* doc, const char* label
 }
 
 /** @test internal_test_starved_arenas @brief Each starved builder arena stops the chapter with no-memory. @details The string pool holds only the empty sentinel, so an attribute name exhausts it and the following value intern observes the latched failure; the node table holds the body and its element child exactly, so the first text run is the allocation that fails; the chapter table cannot hold a row, so a completely emitted DOM is still rejected. Each vector must undo every node and string it appended. @pre Fixed-capacity fixture storage required by this operation is available. @pre Every document is well formed and every other arena is sufficient. @post Every vector returns the no-memory status. @post Every failure is atomic: the builder is restored to its entry state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_starved_arenas()
+RA8_INTERNAL void internal_test_starved_arenas()
 {
   internal_expect_starved(
     internal_make_ctx_limits(k_node_cap, (uint32_t)k_attr_string_cap, k_chapter_cap),
@@ -788,7 +787,7 @@ RA8_INTERNAL static void internal_test_starved_arenas()
 }
 
 /** @test internal_test_self_closing_body_ends_subtree @brief A self-closing selected root closes the subtree immediately. @details `<body/>` under `<html>` is selected, emitted, and finished by the same event, so the sibling `<p>` that follows it is outside the chapter. If the emitter stayed active the sibling and its text would land in the chapter, so the exact node count is what distinguishes the two behaviours. @pre Fixed-capacity fixture storage required by this operation is available. @pre The document has a body sibling that would otherwise be emitted. @post The parse succeeds with exactly the self-closing body emitted. @post The chapter root is that body element. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_self_closing_body_ends_subtree()
+RA8_INTERNAL void internal_test_self_closing_body_ends_subtree()
 {
   ra8_rabook_ctx_t ctx = internal_make_ctx();
   const ra8_err_t  err =
@@ -812,7 +811,7 @@ RA8_INTERNAL static void internal_test_self_closing_body_ends_subtree()
 /* -------------------------------------------------------------------------- */
 
 /** @brief Build a builder context over the roomy deep-nesting node arena. @details Implements the make ctx deep fixture operation used only by this focused test executable. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static ra8_rabook_ctx_t internal_make_ctx_deep()
+RA8_INTERNAL ra8_rabook_ctx_t internal_make_ctx_deep()
 {
   const ra8_rabook_buffers_t bufs = {
     .chapters       = s_chapters,
@@ -853,7 +852,7 @@ RA8_INTERNAL static ra8_rabook_ctx_t internal_make_ctx_deep()
  * @pre @p depth is at least 1.
  * @post The result contains 2 * @p depth elements including `<body>`.
  */
-RA8_INTERNAL static std::string internal_make_deep_doc(int depth)
+RA8_INTERNAL std::string internal_make_deep_doc(int depth)
 {
   std::string s = "<?xml version=\"1.0\"?><body>";
   for (int i = 0; i < depth - 1; ++i) {
@@ -883,7 +882,7 @@ RA8_INTERNAL static std::string internal_make_deep_doc(int depth)
  * numbers with the real cap this document would have demanded 1000 frames and
  * overrun the stack, so this case is precisely the one the false rationale
  * hid. @details Executes the deep at reader cap scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_deep_at_reader_cap()
+RA8_INTERNAL void internal_test_deep_at_reader_cap()
 {
   /* The reader rejects input beyond its public element-depth contract. */
   const int         depth = (int)k_ra8_xml_max_element_depth - 1;
@@ -913,7 +912,7 @@ RA8_INTERNAL static void internal_test_deep_at_reader_cap()
  * internal_test_deep_at_reader_cap this brackets the true cap from both sides, which is
  * the evidence the deactivation rationale now cites in place of the false
  * cap-of-100 claim. @details Executes the deep beyond reader cap scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_deep_beyond_reader_cap()
+RA8_INTERNAL void internal_test_deep_beyond_reader_cap()
 {
   const int         depth = (int)k_ra8_xml_max_element_depth;
   const std::string doc   = internal_make_deep_doc(depth);
@@ -935,7 +934,7 @@ RA8_INTERNAL static void internal_test_deep_beyond_reader_cap()
 /* -------------------------------------------------------------------------- */
 
 /** @brief Provide the file-local log sink test helper. @details Implements the log sink fixture operation used only by this focused test executable. @param[in,out] arg0 Fixture argument governed by the exercised interface contract. @param[in] byte Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_log_sink(void* /*ctx*/, uint8_t byte)
+RA8_INTERNAL void internal_log_sink(void* /*ctx*/, uint8_t byte)
 {
   (void)byte;
 }
