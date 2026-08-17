@@ -824,42 +824,6 @@ RA8_INTERNAL static void internal_check_vfs_adapter_guards(const fw_fs_t* fs)
   TEST_END("fw_if_fs VFS adapter guards");
 }
 
-/** @brief Reject every unusable VFS binding request and honour media policy. @details Runs the firmware VFS initializer vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
-RA8_INTERNAL static void internal_test_vfs_init_guards(void)
-{
-  fw_fs_t               removable = {};
-  fw_fs_ra8_vfs_state_t state     = {};
-  ra8_fs_mount_t        idle      = {};
-  fw_fs_ra8_vfs_cfg_t   cfg       = {.mount_name = "ram", .mount = s_mount};
-  TEST_BEGIN("fw_if_fs VFS init guards");
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_ra8_vfs_init(nullptr, &state, &cfg));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_ra8_vfs_init(&removable, nullptr, &cfg));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_ra8_vfs_init(&removable, &state, nullptr));
-  cfg.mount_name = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
-  cfg.mount_name = "ram";
-  cfg.mount      = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
-  cfg.mount = &idle;
-  TEST_ASSERT_EQ(k_ra8_err_not_initialized, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
-  cfg.mount      = s_mount;
-  cfg.mount_name = "ra:m";
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
-  cfg.mount_name = "ra/m";
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
-  cfg.mount_name = "";
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
-  cfg.mount_name = "0123456789abcdef";
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
-  cfg.mount_name = "absent";
-  TEST_ASSERT_EQ(k_ra8_err_not_found, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
-  cfg.mount_name      = "ram";
-  cfg.removable_media = true;
-  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
-  TEST_ASSERT((removable.caps.flags & (uint32_t)k_fw_fs_cap_removable_media) != 0U);
-  TEST_END("fw_if_fs VFS init guards");
-}
-
 /** @brief POSIX-specific proof that final/intermediate symlinks are never
  * followed. @details Implements the bounded check posix symlinks fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @param[in] root Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
@@ -988,7 +952,7 @@ RA8_INTERNAL static void internal_test_vfs_conformance(void)
   internal_check_mdl_storage_portability("media_dl RAM/FAT/VFS storage", &fs);
   internal_check_vfs_full_media(&fs);
   internal_check_vfs_adapter_guards(&fs);
-  internal_test_vfs_init_guards();
+  ra8_test_fw_if_fs_vfs_init_guards(s_mount);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_unmount("ram"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(s_mount));
   s_mount = nullptr;
