@@ -377,6 +377,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_take_response(void* ctx, const void* 
   if (remote != k_ra8_ok) {
     return remote;
   }
+  // mcdc-deactivated: internal_mdl_take_response empty-body guard; the length operand is constant-false whenever it is evaluated. protobuf-c's unpack sets a bytes field's `data` pointer to NULL for every zero-length field (`else { bd->data = NULL; }` in parse_required_member), so a decoded body of length zero always arrives with a null pointer and is consumed by the first operand; reaching the second requires a non-null pointer, which the same code only produces when `len > 0`. A modelled co-processor that puts a present but empty body on the wire -- exercised by test_ra8_c6link_mdl_decode.c -- decodes to (null, 0) like an omitted one.
   if ((body->data.data == nullptr) || (body->data.len == 0U)) {
     return k_ra8_err_protocol_error;
   }

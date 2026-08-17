@@ -455,17 +455,20 @@ static void internal_test_cancel_ack(void)
  * (2 conditions)
  * - Vector 1: a normal response carrying bytes -> F,F -> false (control,
  *   supplied by every other modelled exchange in this executable).
- * - Vector 2: the modelled co-processor omits the inner body entirely ->
- *   T,- -> true (supplied by the omitted-body fault in the media suite).
- * - Vector 3: the co-processor sends a present but zero-length body ->
- *   F,T -> true (supplied here).
- * Vectors 1+2 prove the pointer condition independently decides; 1+3 prove
- * the same for the length. N+1 = 3 vectors for N=2.
+ * - Vector 2: a present but zero-length body on the wire -> T,- -> true
+ *   (supplied here).
+ * The F,T vector is unreachable and the decision carries the matching
+ * `mcdc-deactivated` rationale in the source. This scenario is the evidence
+ * for it: protobuf-c packs a non-null zero-length bytes field onto the wire
+ * (only a NULL pointer counts as absent to `field_is_zeroish`), but its
+ * unpack hands every zero-length field back as a NULL pointer, so the two
+ * empty shapes are distinct on the wire and identical once decoded. A
+ * mutation that deletes the length operand leaves this vector passing, which
+ * is exactly what deactivation records.
  * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_response
- * @details protobuf-c treats only a null pointer as an absent bytes field, so
- * a non-null zero-length span really is packed onto the wire and decodes back
- * to a non-null span of length zero -- the two empty shapes are distinct on
- * the wire and the client has to reject both.
+ * @details Keeps the fail-closed behaviour pinned even though the operand
+ * behind it cannot be selected independently: a co-processor that answers with
+ * an empty body must not be read as a successful start.
  * @pre The shared C6 model fixture can be reset and brought up.
  * @pre The injected fault is consumed by the first Start response.
  * @post The Start is rejected as a protocol error, not accepted as empty.
