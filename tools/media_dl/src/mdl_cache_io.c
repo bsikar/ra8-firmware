@@ -451,30 +451,32 @@ RA8_INTERNAL static ra8_err_t internal_cache_read_record(fw_fs_file_t*          
 RA8_INTERNAL static ra8_err_t
 internal_cache_decode(mdl_cache_t* cache, const mdl_cache_paths_t* paths, uint64_t size_bytes)
 {
-  fw_fs_file_t file  = {};
-  ra8_err_t    error = fw_fs_open(&cache->storage->fs->streams,
-                                  paths->index_path,
-                                  k_fw_fs_open_read,
-                                  &file,
-                                  cache->storage->file_workspace,
-                                  cache->storage->file_workspace_bytes);
-  uint32_t     calls = 0U;
-  uint8_t      header[k_cache_header_bytes];
+  fw_fs_file_t file                         = {};
+  ra8_err_t    error                        = fw_fs_open(&cache->storage->fs->streams,
+                                                         paths->index_path,
+                                                         k_fw_fs_open_read,
+                                                         &file,
+                                                         cache->storage->file_workspace,
+                                                         cache->storage->file_workspace_bytes);
+  uint32_t     calls                        = 0U;
+  uint8_t      header[k_cache_header_bytes] = {};
   if (error == k_ra8_ok) {
     error = internal_cache_read_all(&file, header, sizeof(header), &calls);
   }
-  const uint16_t count         = internal_cache_get_u16(&header[k_cache_header_count]);
-  const uint64_t payload_bytes = internal_cache_get_u64(&header[16]);
-  const uint64_t expected_size =
-    (uint64_t)k_cache_header_bytes + payload_bytes + (uint64_t)k_cache_trailer_bytes;
-  if ((error == k_ra8_ok) &&
-      ((memcmp(header, s_cache_magic, sizeof(s_cache_magic)) != 0) ||
-       (internal_cache_get_u16(&header[8]) != (uint16_t)k_mdl_cache_schema_version) ||
-       (internal_cache_get_u16(&header[10]) != (uint16_t)k_cache_header_bytes) ||
-       (count > (uint16_t)k_mdl_cache_record_max) || (internal_cache_get_u16(&header[14]) != 0U) ||
-       (expected_size != size_bytes) ||
-       (internal_cache_get_u64(&header[k_cache_header_host]) != paths->host_hash))) {
-    error = k_ra8_err_invalid_state;
+  uint16_t count = 0U;
+  if (error == k_ra8_ok) {
+    count                        = internal_cache_get_u16(&header[k_cache_header_count]);
+    const uint64_t payload_bytes = internal_cache_get_u64(&header[16]);
+    const uint64_t expected_size =
+      (uint64_t)k_cache_header_bytes + payload_bytes + (uint64_t)k_cache_trailer_bytes;
+    if ((memcmp(header, s_cache_magic, sizeof(s_cache_magic)) != 0) ||
+        (internal_cache_get_u16(&header[8]) != (uint16_t)k_mdl_cache_schema_version) ||
+        (internal_cache_get_u16(&header[10]) != (uint16_t)k_cache_header_bytes) ||
+        (count > (uint16_t)k_mdl_cache_record_max) || (internal_cache_get_u16(&header[14]) != 0U) ||
+        (expected_size != size_bytes) ||
+        (internal_cache_get_u64(&header[k_cache_header_host]) != paths->host_hash)) {
+      error = k_ra8_err_invalid_state;
+    }
   }
   *cache->index = (mdl_cache_index_t){.host_hash      = paths->host_hash,
                                       .schema_version = k_mdl_cache_schema_version};
@@ -739,6 +741,57 @@ RA8_PRIV ra8_err_t priv_mdl_cache_save(mdl_cache_t* cache, const mdl_cache_paths
   return (aborted == k_ra8_ok) ? error : aborted;
 }
 
+/**
+ * @brief Read a body file's exact declared extent and confirm no trailer.
+ * @details Opens @p body_path, reads exactly @p size_bytes into @p buffer,
+ *          then probes for one more byte to reject a file that grew past its
+ *          recorded size between stat and read, and always closes the
+ *          handle even on a read failure.
+ * @param[in,out] storage Bound filesystem interface and shared read workspace.
+ * @param[in] body_path Complete path of the body file.
+ * @param[out] buffer Destination of exactly @p size_bytes on success.
+ * @param[in] size_bytes Exact expected body length in bytes.
+ * @return Read-and-close status.
+ * @retval k_ra8_ok Exactly @p size_bytes were read and the file closed cleanly.
+ * @retval k_ra8_err_invalid_state A byte remained after @p size_bytes.
+ * @retval other The open, read, or close call failed.
+ * @pre @p storage, @p body_path, and @p buffer are non-NULL.
+ * @pre @p buffer holds at least @p size_bytes writable bytes.
+ * @post The file handle is closed on every return path.
+ * @note Not thread-safe; shares the caller's file workspace.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_cache_read_body_exact(mdl_storage_t* storage,
+                                                             const char*    body_path,
+                                                             char*          buffer,
+                                                             uint64_t       size_bytes)
+{
+  fw_fs_file_t file  = {};
+  ra8_err_t    error = fw_fs_open(&storage->fs->streams,
+                                  body_path,
+                                  k_fw_fs_open_read,
+                                  &file,
+                                  storage->file_workspace,
+                                  storage->file_workspace_bytes);
+  uint32_t     calls = 0U;
+  if (error == k_ra8_ok) {
+    error = internal_cache_read_all(&file, (uint8_t*)buffer, (uint32_t)size_bytes, &calls);
+  }
+  uint8_t  extra = 0U;
+  uint32_t got   = 0U;
+  if (error == k_ra8_ok) {
+    error = fw_fs_read(&file, &extra, 1U, &got);
+  }
+  if ((error == k_ra8_ok) && (got != 0U)) {
+    error = k_ra8_err_invalid_state;
+  }
+  const ra8_err_t closed = file.is_open ? fw_fs_close(&file) : k_ra8_ok;
+  if (error == k_ra8_ok) {
+    error = closed;
+  }
+  return error;
+}
+
 RA8_PRIV ra8_err_t priv_mdl_cache_read_body(mdl_storage_t*            storage,
                                             const mdl_cache_paths_t*  paths,
                                             const mdl_cache_record_t* record,
@@ -763,29 +816,7 @@ RA8_PRIV ra8_err_t priv_mdl_cache_read_body(mdl_storage_t*            storage,
   if ((node.size_bytes == 0U) || (node.size_bytes > capacity) || (node.size_bytes > UINT32_MAX)) {
     return k_ra8_err_invalid_size;
   }
-  fw_fs_file_t file = {};
-  error             = fw_fs_open(&storage->fs->streams,
-                                 body_path,
-                                 k_fw_fs_open_read,
-                                 &file,
-                                 storage->file_workspace,
-                                 storage->file_workspace_bytes);
-  uint32_t calls    = 0U;
-  if (error == k_ra8_ok) {
-    error = internal_cache_read_all(&file, (uint8_t*)buffer, (uint32_t)node.size_bytes, &calls);
-  }
-  uint8_t  extra = 0U;
-  uint32_t got   = 0U;
-  if (error == k_ra8_ok) {
-    error = fw_fs_read(&file, &extra, 1U, &got);
-  }
-  if ((error == k_ra8_ok) && (got != 0U)) {
-    error = k_ra8_err_invalid_state;
-  }
-  const ra8_err_t closed = file.is_open ? fw_fs_close(&file) : k_ra8_ok;
-  if (error == k_ra8_ok) {
-    error = closed;
-  }
+  error = internal_cache_read_body_exact(storage, body_path, buffer, node.size_bytes);
   if ((error == k_ra8_ok) &&
       (mdl_hash_bytes(buffer, (size_t)node.size_bytes) != record->content_hash)) {
     error = k_ra8_err_validation_failed;
