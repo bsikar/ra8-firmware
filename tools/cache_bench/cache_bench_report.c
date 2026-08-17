@@ -272,8 +272,6 @@ typedef struct {
   uint64_t after;                               /**< Detect setup overflow.  */
 } cb_sweep_backing_t;
 
-static cb_sweep_backing_t s_cb_sweep_backing;
-
 typedef enum : uint64_t {
   k_cb_sweep_canary_before = 0x0CACEB00C0FFEE11ULL, /**< Leading guard value.  */
   k_cb_sweep_canary_after  = 0xA11CE55E0BADC0DEULL, /**< Trailing guard value. */
@@ -282,21 +280,21 @@ typedef enum : uint64_t {
 /**
  * @brief Load the extra captured traces named on the command line.
  * @details Each argv of the form `<name>=<path>` (e.g. `hw-reader=t.trace`)
- *          is split in place and loaded via ::cb_trace_load; arguments
- *          without `=` are ignored (they are mode flags). Traces that fail
- *          to load (n == 0) are dropped silently, exactly as before.
+ *          is split at the first `=` and loaded via ::cb_trace_load;
+ *          arguments without `=` are ignored (they are mode flags). Traces
+ *          that fail to load (n == 0) are dropped silently, exactly as before.
  * @param[in]  argc   Argument count from main.
- * @param[in]  argv   Argument vector from main (mutated at the `=` split).
+ * @param[in]  argv   Argument vector from main (read, never modified).
  * @param[out] loaded Receives up to ::k_cb_max_loaded loaded traces.
  * @param[out] sources Receives the corresponding open host bindings.
  * @return uint32_t Number of traces actually loaded (0 .. ::k_cb_max_loaded).
  * @retval 0     No argv held a loadable `<name>=<path>` pair.
  * @retval other The count of successfully loaded traces.
  * @pre @p loaded has capacity ::k_cb_max_loaded.
- * @pre @p argv is writable (the `=` is overwritten with a NUL).
+ * @pre Every `argv[a]` is NUL-terminated.
  * @post Entries `loaded[0..return)` all have `n > 0`.
- * @post Every processed `<name>=<path>` argv has its `=` replaced by a NUL.
- * @note Not thread-safe (mutates argv in place).
+ * @post No argument string is modified.
+ * @note Not thread-safe (the host source bindings are caller-owned).
  * @since 0.1.0
  */
 RA8_INTERNAL
@@ -305,16 +303,20 @@ internal_load_argv_traces(int argc, char** argv, cb_trace_t* loaded, cb_host_sou
 {
   uint32_t nloaded = 0U;
   for (int a = 1; (a < argc) && (nloaded < (uint32_t)k_cb_max_loaded); ++a) {
-    const char* eq = strchr(argv[a], '=');
-    if ((eq == nullptr) || (strncmp(argv[a], "--output=", (size_t)k_cb_output_prefix_bytes) == 0)) {
+    const size_t name_length = strcspn(argv[a], "=");
+    if ((argv[a][name_length] != '=') ||
+        (strncmp(argv[a], "--output=", (size_t)k_cb_output_prefix_bytes) == 0)) {
       continue;
     }
     cb_source_t source = {};
-    if ((cb_host_source_open(eq + 1, &sources[nloaded], &source) == k_cb_io_ok) &&
-        (cb_trace_bind(&source, argv[a], (size_t)(eq - argv[a]), &loaded[nloaded]) == k_cb_io_ok)) {
+    if ((cb_host_source_open(&argv[a][name_length + 1U], &sources[nloaded], &source) ==
+         k_cb_io_ok) &&
+        (cb_trace_bind(&source, argv[a], name_length, &loaded[nloaded]) == k_cb_io_ok)) {
       nloaded++;
     } else if (sources[nloaded].fd >= 0) {
       (void)cb_host_source_close(&sources[nloaded]);
+    } else {
+      /* The open bound no descriptor, so there is nothing to close here. */
     }
   }
   return nloaded;
@@ -371,6 +373,8 @@ static int internal_run_sweep(cb_sink_t* output, cb_sink_t* error)
   if (cb_host_scratch_open(&scratch_binding, &scratch) != k_cb_io_ok) {
     return 1;
   }
+  /** @brief Fixed cache backing owned by this translation unit alone. */
+  static cb_sweep_backing_t s_cb_sweep_backing;
   s_cb_sweep_backing.before = (uint64_t)k_cb_sweep_canary_before;
   s_cb_sweep_backing.after  = (uint64_t)k_cb_sweep_canary_after;
   cb_sweep_config_t config  = {.cache_backing      = s_cb_sweep_backing.bytes,
@@ -448,12 +452,14 @@ static int internal_run_capacity(int argc, char** argv, cb_sink_t* output, cb_si
   const uint32_t nloaded   = internal_load_argv_traces(argc, argv, loaded, sources);
   cb_workspace_t workspace = {.data     = s_cb_composition_workspace,
                               .capacity = sizeof(s_cb_composition_workspace)};
-  int            result =
-    (cb_sink_format(output, "# #147 eviction-policy benchmark\n") == k_cb_io_ok &&
-     cb_sink_format(output, "\nHit rate (%%) by cache size (frames). Higher is better.\n") ==
-       k_cb_io_ok)
-      ? 0
-      : 1;
+  const bool     banner_ok =
+    (cb_sink_format(output, "# #147 eviction-policy benchmark\n") == k_cb_io_ok) &&
+    (cb_sink_format(output, "\nHit rate (%%) by cache size (frames). Higher is better.\n") ==
+     k_cb_io_ok);
+  int result = 1;
+  if (banner_ok) {
+    result = 0;
+  }
   for (uint32_t t = 0U; (t < (uint32_t)k_cb_synthetic_trace_count) && (result == 0); ++t) {
     result = internal_report_trace(&traces[t], &workspace, output);
   }
