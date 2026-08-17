@@ -15,6 +15,7 @@
 
 #include "fw_if_fs_backend.h"
 #include "mdl_export.h"
+#include "mdl_export_internal.h"
 #include "mdl_export_io_internal.h"
 #include "mdl_test_storage.h"
 #include "mdl_verify.h"
@@ -29,6 +30,15 @@ typedef enum : uint32_t {
   k_fault_storage_bytes      = 8192U,               /**< Backend workspace.   */
   k_fault_path_bytes         = 512U,                /**< Test path storage.   */
 } mdl_export_fault_limit_t;
+
+/** @brief Bounded page-table geometry used by the direct EPUB writer vectors. */
+typedef enum : uint16_t {
+  k_fault_epub_rows  = 2U,    /**< Page rows handed to the writer directly. */
+  k_fault_cover_rows = 1U,    /**< Page rows used by the cover vector.      */
+  k_fault_row_first  = 0U,    /**< First page row.                          */
+  k_fault_row_second = 1U,    /**< Second page row.                         */
+  k_fault_dir_mode   = 0755U, /**< rwxr-xr-x fixture directory.             */
+} mdl_export_fault_page_t;
 
 /** @brief Maximally aligned portable backend workspace. */
 typedef struct {
@@ -706,6 +716,113 @@ RA8_INTERNAL static void internal_test_jof_page_two_partial_failure(void)
   TEST_END("JOF page-two partial publication");
 }
 
+/**
+ * @brief Prove an unusable page source stops the EPUB writer mid-archive.
+ * @details Hands the EPUB writer a page table whose second row names a page that
+ *          exists but holds no bytes -- a truncated download. The writer has
+ *          already staged the first page and the second page's XHTML wrapper
+ *          when it opens that source, so this proves the source failure is
+ *          reported exactly rather than packaged around, and that the partially
+ *          staged archive never becomes a publication.
+ * @pre The process-local POSIX storage binding is initialized.
+ * @pre The first page holds bytes and the second page is empty.
+ * @post The writer reports the unusable source rather than packaging without it.
+ * @post The staged archive is aborted and the destination remains absent.
+ * @note Test-only; the fixture directory is removed by this vector.
+ * @test An empty page source aborts the EPUB writer without publishing.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_epub_unusable_page_source(void)
+{
+  TEST_BEGIN("epub unusable page source");
+  const char*   directory = "/tmp/mdl_export_epub_gap";
+  const char*   output    = "/tmp/mdl_export_epub_gap/book.epub";
+  const char*   empty     = "/tmp/mdl_export_epub_gap/002.jpg";
+  const uint8_t page[]    = {'p', 'a', 'g', 'e'};
+  (void)mkdir(directory, (mode_t)k_fault_dir_mode);
+  internal_write_bytes("/tmp/mdl_export_epub_gap/001.jpg", page, sizeof(page));
+  internal_write_bytes(empty, page, 0U);
+  char names[k_fault_epub_rows][k_name_max] = {};
+  (void)__builtin_snprintf(names[k_fault_row_first], (size_t)k_name_max, "001.jpg");
+  (void)__builtin_snprintf(names[k_fault_row_second], (size_t)k_name_max, "002.jpg");
+  mdl_export_output_t stage = {};
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    priv_mdl_export_output_begin(&stage, mdl_test_storage_get(), output, k_ra8_mdl_format_epub));
+  mdl_export_workspace_t workspace;
+  mdl_export_workspace_init(&workspace, s_fault_arena, sizeof(s_fault_arena));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 priv_mdl_export_epub(mdl_test_storage_get(),
+                                      directory,
+                                      names,
+                                      (size_t)k_fault_epub_rows,
+                                      &stage,
+                                      nullptr,
+                                      &workspace));
+  TEST_ASSERT(stage.extent > 0U); /* the first page was already staged */
+  TEST_ASSERT_EQ(k_ra8_ok, priv_mdl_export_output_abort(&stage));
+  TEST_ASSERT(access(output, F_OK) != 0);
+  internal_assert_no_stage(directory);
+  (void)unlink("/tmp/mdl_export_epub_gap/001.jpg");
+  (void)unlink(empty);
+  (void)rmdir(directory);
+  TEST_END("epub unusable page source");
+}
+
+/**
+ * @brief Prove an external cover that is not an image refuses the whole EPUB.
+ * @details Points the cover metadata at a real file outside the page set whose
+ *          bytes carry no image signature. Cover validation runs before the
+ *          archive writer, so the export must fail validation with nothing
+ *          staged rather than publish a book whose cover cannot be decoded.
+ * @pre The process-local POSIX storage binding is initialized.
+ * @pre The named cover file exists and is not a recognized image.
+ * @post The writer reports validation failure and stages no byte.
+ * @post The destination remains absent and no stage is leaked.
+ * @note Test-only; the fixture directory is removed by this vector.
+ * @test A non-image external cover is refused before any archive byte.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_epub_external_cover_rejected(void)
+{
+  TEST_BEGIN("epub external cover rejected");
+  const char*   directory = "/tmp/mdl_export_epub_cover";
+  const char*   output    = "/tmp/mdl_export_epub_cover/book.epub";
+  const char*   cover     = "/tmp/mdl_export_epub_cover/cover.dat";
+  const uint8_t page[]    = {'p', 'a', 'g', 'e'};
+  const uint8_t opaque[]  = {'n', 'o', 'p', 'e'};
+  (void)mkdir(directory, (mode_t)k_fault_dir_mode);
+  internal_write_bytes("/tmp/mdl_export_epub_cover/001.jpg", page, sizeof(page));
+  internal_write_bytes(cover, opaque, sizeof(opaque));
+  char names[k_fault_cover_rows][k_name_max] = {};
+  (void)__builtin_snprintf(names[k_fault_row_first], (size_t)k_name_max, "001.jpg");
+  mdl_export_meta_t meta;
+  mdl_meta_init(&meta);
+  (void)__builtin_snprintf(meta.cover_path, sizeof(meta.cover_path), "%s", cover);
+  mdl_export_output_t stage = {};
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    priv_mdl_export_output_begin(&stage, mdl_test_storage_get(), output, k_ra8_mdl_format_epub));
+  mdl_export_workspace_t workspace;
+  mdl_export_workspace_init(&workspace, s_fault_arena, sizeof(s_fault_arena));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 priv_mdl_export_epub(mdl_test_storage_get(),
+                                      directory,
+                                      names,
+                                      (size_t)k_fault_cover_rows,
+                                      &stage,
+                                      &meta,
+                                      &workspace));
+  TEST_ASSERT_EQ(0U, stage.extent);
+  TEST_ASSERT_EQ(k_ra8_ok, priv_mdl_export_output_abort(&stage));
+  TEST_ASSERT(access(output, F_OK) != 0);
+  internal_assert_no_stage(directory);
+  (void)unlink("/tmp/mdl_export_epub_cover/001.jpg");
+  (void)unlink(cover);
+  (void)rmdir(directory);
+  TEST_END("epub external cover rejected");
+}
+
 int main(void)
 {
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_init());
@@ -727,6 +844,8 @@ int main(void)
   internal_test_backfill_seek_fault();
   internal_test_symlink_rejection();
   internal_test_jof_page_two_partial_failure();
+  internal_test_epub_unusable_page_source();
+  internal_test_epub_external_cover_rejected();
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_deinit());
   return 0;
 }
