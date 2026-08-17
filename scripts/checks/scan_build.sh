@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 #
 # scan_build.sh -- Run clang's static analyzer against the host unit-test build
-# and every first-party CMake host tool.
+# and every first-party host CMake project (tools/ plus the host half of apps/).
 #
 # Background
 # ----------
@@ -12,11 +12,12 @@
 # pattern) by finding null-deref, use-after-free, dead-store and
 # logic-error paths through symbolic execution.
 #
-# We point it at the host test build and every CMake host tool (all built OUT of
-# the source tree; see BUILD_DIR / TOOL_BUILD_ROOT below) rather than the
+# We point it at the host test build and every CMake host project (all built
+# OUT of the source tree; see BUILD_DIR / TOOL_BUILD_ROOT below) rather than the
 # cross-compile firmware build because clang cannot consume the arm-none-eabi
-# sysroot reliably. Together those builds cover first-party libs/, src/, port/
-# and tools/ TUs.
+# sysroot reliably. Together those builds cover first-party libs/, src/, port/,
+# tools/ and the HOST half of apps/ TUs -- the firmware half of apps/ is
+# excluded for the same sysroot reason (see host-project discovery below).
 #
 # Findings under libs/third_party/ are filtered out (SOUP -- see
 # CLAUDE.md, docs/SOUP/). First-party findings are recorded in
@@ -69,7 +70,7 @@
 #     RA8_SCAN_BUILD_OUT_DIR -- out-of-tree dir holding the build + report trees
 #                               (default: a per-checkout dir under $TMPDIR)
 #     MIN_TRANSLATION_UNITS  -- vacuity floor on the analysed TU count
-#     MIN_TOOL_PROJECTS      -- vacuity floor on discovered CMake host tools
+#     MIN_TOOL_PROJECTS      -- vacuity floor on discovered host CMake projects
 #
 
 set -uo pipefail
@@ -121,20 +122,24 @@ unset _sb_base _sb_ver
 # configure or a no-op incremental build, not a policy on suite size.
 MIN_TRANSLATION_UNITS="${MIN_TRANSLATION_UNITS:-800}"
 
-# Measured eight host CMake projects: seven under tools/ and one product under
-# apps/. Discovery is derived, so adding a ninth automatically puts it under
-# scan-build; the floor turns a missing/collapsed root into a loud
-# infrastructure failure -- as it did when media_dl moved out of tools/ and
-# left the tools-only glob discovering seven.
-MIN_TOOL_PROJECTS="${MIN_TOOL_PROJECTS:-8}"
+# Measured nine HOST CMake projects: seven under tools/ and two under apps/
+# (the shared media_dl core and the stand_alone CLI form that composes it).
+# The firmware products under apps/ are NOT in that count -- see
+# host_project_dirs below. Discovery is derived, so adding a tenth
+# automatically puts it under scan-build; the floor turns a missing/collapsed
+# root into a loud infrastructure failure -- as it did when media_dl moved out
+# of tools/ and left the tools-only glob discovering seven.
+MIN_TOOL_PROJECTS="${MIN_TOOL_PROJECTS:-9}"
 
 # ===========================================================================
-# THE TWO DECISIONS, FACTORED OUT SO --selftest CAN DRIVE THEM
+# THE THREE DECISIONS, FACTORED OUT SO --selftest CAN DRIVE THEM
 #
 # Everything else in this script is orchestration: configure, build, print.
-# These two are the judgement, and both can fail silently -- the classifier by
-# binning a real finding as suppressed, the floor by accepting a scan too
-# small to mean anything. Both are asserted in both directions below.
+# These three are the judgement, and each can fail silently -- the classifier
+# by binning a real finding as suppressed, the floor by accepting a scan too
+# small to mean anything, discovery by handing the analyzer a project it
+# cannot build or by collapsing two projects into one build tree. All three
+# are asserted in both directions below.
 # ===========================================================================
 
 #: Findings, by partition. Globals because `classify_reports` fills them and
@@ -191,6 +196,62 @@ scan_is_big_enough() { [[ "$1" -ge "$MIN_TRANSLATION_UNITS" ]]; }
 
 # Whether discovery reached enough CMake tools for that scope to be credible.
 tool_scope_is_big_enough() { [[ "$1" -ge "$MIN_TOOL_PROJECTS" ]]; }
+
+# --- host-project discovery -----------------------------------------------
+# apps/ -- the products tier -- carries BOTH kinds of build, and a glob over it
+# cannot tell them apart on its own. apps/*/media_dl is a host CLI clang builds
+# for x86_64 exactly like a tool; apps/stand_alone/ereader is a cross-compiled
+# TrustZone image. clang cannot consume the arm-none-eabi sysroot -- which is
+# the whole reason this script analyses the host builds rather than the
+# firmware one -- so configuring a firmware app here kills the run.
+#
+# The discriminator is NOT re-derived here. lint_targets.firmware_app_dirs() is
+# the ONE definition ("an app directory holding both a linker script and a
+# vector_table.c is linked into an image"), shared with the tier gates. This
+# asks it, the way misra_check_inner.sh asks lint_targets.is_build_output for
+# the one definition of build output. A second, hand-written notion of
+# "firmware app" is how the two would drift.
+
+# Print every repo-relative firmware app directory, one per line.
+ra8_scan_firmware_app_dirs() {
+  RA8_SCAN_CHECKS_DIR="$SCRIPT_DIR" python3 - <<'PYEOF'
+import os
+import sys
+
+sys.path.insert(0, os.environ["RA8_SCAN_CHECKS_DIR"])
+
+from lint_targets import firmware_app_dirs
+
+for rel in firmware_app_dirs():
+    print(rel)
+PYEOF
+}
+
+# Build-directory key for the repo-relative project path $1.
+#
+# The PATH, flattened -- never the basename. Two products may legitimately
+# carry the same name in different categories (apps/shared/media_dl is the
+# portable core, apps/stand_alone/media_dl the CLI form that composes it), and
+# a basename key configured the second into the first's build tree. CMake
+# refuses to reuse a cache generated from a different source directory, so the
+# second configure died and took the gate with it.
+project_key() { printf '%s\n' "${1//\//_}"; }
+
+# Filter firmware apps out of a candidate project list.
+#
+# $1  newline-separated repo-relative firmware app directories (may be empty)
+# $2+ candidate repo-relative project directories
+# Prints the host projects, in the order given.
+select_host_projects() {
+  local firmware="$1" rel
+  shift
+  for rel in "$@"; do
+    if [[ -n "$firmware" ]] && grep -qxF -- "$rel" <<<"$firmware"; then
+      continue
+    fi
+    printf '%s\n' "$rel"
+  done
+}
 
 # --- selftest -------------------------------------------------------------
 # Both directions for both decisions, because this script decides what counts
@@ -256,17 +317,69 @@ _sb_selftest_fail_loud() {
   _sb_expect "a missing analyzer exits 2, never 0" 2 "$rc"
 }
 
+# yes/no whether $2 appears as a whole line in $1.
+_sb_has_line() { grep -qxF -- "$2" <<<"$1" && echo yes || echo no; }
+
+# Discovery, both directions, over a FIXTURE list -- the categories are named
+# here rather than read off the tree so the assertions stay true when the tree
+# grows another product.
+_sb_selftest_discovery() {
+  local firmware kept shared_key stand_key
+  firmware=$'apps/stand_alone/ereader'
+  kept="$(select_host_projects "$firmware" \
+    tools/cache_bench apps/shared/media_dl apps/stand_alone/ereader \
+    apps/stand_alone/media_dl)"
+  _sb_expect "a firmware app is excluded from the host scope" \
+    no "$(_sb_has_line "$kept" apps/stand_alone/ereader)"
+  _sb_expect "a host product at category depth is discovered" \
+    yes "$(_sb_has_line "$kept" apps/shared/media_dl)"
+  _sb_expect "the other category's host product is discovered too" \
+    yes "$(_sb_has_line "$kept" apps/stand_alone/media_dl)"
+  _sb_expect "a plain tools/ project is discovered" \
+    yes "$(_sb_has_line "$kept" tools/cache_bench)"
+  _sb_expect "exactly the three host projects survive" 3 "$(grep -c . <<<"$kept")"
+  # Identity is the PATH: two same-named products in different categories must
+  # not land in one build tree, which is what killed the run.
+  shared_key="$(project_key apps/shared/media_dl)"
+  stand_key="$(project_key apps/stand_alone/media_dl)"
+  _sb_expect "same-named products get distinct build-dir keys" different \
+    "$([[ "$shared_key" == "$stand_key" ]] && echo same || echo different)"
+  _sb_expect "a build-dir key carries no path separator" yes \
+    "$([[ "$stand_key" == */* ]] && echo no || echo yes)"
+}
+
+# The firmware discriminator against the LIVE tree. The fixture cases above
+# prove the filter works; they cannot prove it is being fed anything. A
+# classifier that matched nothing would exclude nothing and read as clean.
+_sb_selftest_live_discriminator() {
+  local firmware rel
+  if ! firmware="$(ra8_scan_firmware_app_dirs)"; then
+    _sb_expect "the firmware discriminator runs against the tree" ran failed
+    return
+  fi
+  _sb_expect "the tree holds at least one firmware app" yes \
+    "$([[ "$(grep -c . <<<"$firmware")" -ge 1 ]] && echo yes || echo no)"
+  while IFS= read -r rel; do
+    [[ -n "$rel" ]] || continue
+    _sb_expect "a classified firmware app lives under apps/ ($rel)" yes \
+      "$([[ "$rel" == apps/* ]] && echo yes || echo no)"
+  done <<<"$firmware"
+}
+
 run_selftest() {
   SELFTEST_FAILURES=0
   echo "scan_build.sh --selftest:"
   _sb_selftest_classifier
   _sb_selftest_floor
+  _sb_selftest_discovery
+  _sb_selftest_live_discriminator
   _sb_selftest_fail_loud
   if [[ "$SELFTEST_FAILURES" -ne 0 ]]; then
     echo "scan_build.sh: SELFTEST FAILED ($SELFTEST_FAILURES assertion(s))" >&2
     exit 1
   fi
-  echo "scan_build.sh: selftest OK (both directions, classifier + floor + fail-loud)."
+  echo "scan_build.sh: selftest OK (both directions, classifier + floor +" \
+    "discovery + fail-loud)."
   exit 0
 }
 
@@ -356,30 +469,46 @@ if ! "$SCAN_BUILD" --use-cc="$USE_CC" --use-c++="$USE_CXX" \
   exit 2
 fi
 
-# Discover every immediate CMake host tool rather than maintaining a second
+# Discover every immediate CMake host project rather than maintaining a second
 # hand-list beside tools-build. Each gets its own build tree because CMake
 # projects are independent roots. A configure failure is as fatal here as it is
 # for the host tests: an analyzer cannot judge a TU it never compiled.
 # tools/<tool>/ and apps/<category>/<product>/ nest differently, so the two
-# globs differ by exactly one level. A product is a host CMake project like
-# any tool and gets the same analyzer treatment.
-TOOL_PROJECTS=()
+# globs differ by exactly one level. A host product is a CMake project like any
+# tool and gets the same analyzer treatment; a FIRMWARE product is not one at
+# all and is filtered out by select_host_projects above.
+TOOL_CANDIDATES=()
 for cmake_file in "$REPO_ROOT"/tools/*/CMakeLists.txt \
   "$REPO_ROOT"/apps/*/*/CMakeLists.txt; do
-  [[ -f "$cmake_file" ]] && TOOL_PROJECTS+=("${cmake_file%/CMakeLists.txt}")
+  [[ -f "$cmake_file" ]] || continue
+  _sb_dir="${cmake_file%/CMakeLists.txt}"
+  TOOL_CANDIDATES+=("${_sb_dir#"$REPO_ROOT"/}")
 done
-if ! tool_scope_is_big_enough "${#TOOL_PROJECTS[@]}"; then
-  echo "scan_build.sh: FATAL -- discovered ${#TOOL_PROJECTS[@]} CMake tool" >&2
-  echo "  project(s); the floor is $MIN_TOOL_PROJECTS. The tools scope collapsed." >&2
+unset _sb_dir
+if ! FIRMWARE_APP_DIRS="$(ra8_scan_firmware_app_dirs)"; then
+  echo "scan_build.sh: FATAL -- could not classify the apps/ tier; the firmware" >&2
+  echo "  products cannot be told from the host ones, and a firmware app" >&2
+  echo "  configured under clang dies with no bearing on the tree under test." >&2
   exit 2
 fi
-for tool_dir in "${TOOL_PROJECTS[@]}"; do
-  tool="$(basename "$tool_dir")"
-  echo "==> scan-build: configuring host tool $tool"
+TOOL_PROJECTS=()
+while IFS= read -r _sb_rel; do
+  [[ -n "$_sb_rel" ]] && TOOL_PROJECTS+=("$_sb_rel")
+done < <(select_host_projects "$FIRMWARE_APP_DIRS" \
+  ${TOOL_CANDIDATES[@]+"${TOOL_CANDIDATES[@]}"})
+unset _sb_rel
+if ! tool_scope_is_big_enough "${#TOOL_PROJECTS[@]}"; then
+  echo "scan_build.sh: FATAL -- discovered ${#TOOL_PROJECTS[@]} host CMake" >&2
+  echo "  project(s); the floor is $MIN_TOOL_PROJECTS. The host scope collapsed." >&2
+  exit 2
+fi
+for tool_rel in "${TOOL_PROJECTS[@]}"; do
+  tool_key="$(project_key "$tool_rel")"
+  echo "==> scan-build: configuring host project $tool_rel"
   if ! CC="$USE_CC" CXX="$USE_CXX" "$CMAKE" \
-    -B "$TOOL_BUILD_ROOT/$tool" -S "$tool_dir" \
+    -B "$TOOL_BUILD_ROOT/$tool_key" -S "$REPO_ROOT/$tool_rel" \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -Wno-dev >/dev/null; then
-    echo "scan_build.sh: FATAL -- $tool configure failed; nothing was analysed." >&2
+    echo "scan_build.sh: FATAL -- $tool_rel configure failed; nothing was analysed." >&2
     exit 2
   fi
 done

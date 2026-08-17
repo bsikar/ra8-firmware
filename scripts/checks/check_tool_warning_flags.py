@@ -46,6 +46,19 @@ pinned compilers and passes both sets of databases here. ``--require-compilers
 clang,gcc`` makes a silently-dropped arm a hard failure rather than a vacuous
 pass (the #348/#355 class): each named family must drive at least one database.
 
+The apps tier (#718)
+--------------------
+``--require-all-cmake-tools`` discovers the host CMake projects itself so the
+gate cannot quietly stop covering one. When the products tier landed, that
+discovery predated it: the ``apps/*/*/CMakeLists.txt`` glob swept in
+``apps/stand_alone/ereader`` -- a cross-compiled TrustZone image no host build
+produces -- and the gate failed demanding a tools-build database that must
+never exist. Firmware products are now excluded by
+``lint_targets.firmware_app_dirs()``, the tree's one definition of "linked into
+an image rather than started by a C runtime", and representation is decided by
+the sources the databases record rather than by build-tree names, because two
+products may legitimately share a name across categories.
+
 Usage
 -----
     check_tool_warning_flags.py COMPILE_COMMANDS_JSON [...]
@@ -58,13 +71,30 @@ from __future__ import annotations
 
 import argparse
 import json
+import posixpath
 import shlex
 import sys
+import tempfile
+from collections.abc import Iterable
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lint_targets import firmware_app_dirs  # needs the sys.path line above
 
 # Path fragments whose sources are not hand-authored under this project's
 # style rules. Kept identical in spirit to check_no_silent_stubs.py's EXCLUDED.
 EXEMPT_FRAGMENTS = ("libs/third_party/", "libs/ra8_fonts/")
+
+#: Non-vacuity floor on host-project discovery. Measured 9 on the current tree:
+#: seven under ``tools/`` plus two under ``apps/`` (the shared media_dl core and
+#: the stand_alone CLI form that composes it), with the firmware products
+#: excluded. The floor exists because a collapsed glob reports "no project is
+#: missing" and reads as a pass -- the scope-collapse failure this file's
+#: sibling checkers have hit repeatedly. At-count, not below: this is a
+#: trip-wire on discovery, not a policy on how many tools the tree may hold, so
+#: it is re-derived when the tree gains one.
+MIN_CMAKE_TOOL_PROJECTS = 9
 
 
 def is_exempt(source: str) -> bool:
@@ -112,14 +142,52 @@ def missing_required_compilers(seen: set[str], required: list[str]) -> list[str]
     return sorted(set(required) - set(seen))
 
 
-def missing_tool_projects(expected: set[str], database_paths: list[str]) -> list[str]:
-    """Return CMake tool directories with no compile database in the gate."""
-    observed = {Path(path).parent.name for path in database_paths}
-    return sorted(expected - observed)
+def missing_tool_projects(projects: Iterable[str], sources: Iterable[str]) -> list[str]:
+    """Return host CMake project directories whose code the gate never compiled.
+
+    Representation is decided by the SOURCES the compile databases record, not
+    by the name of the build tree a database sits in. Two things follow, and
+    both are the point:
+
+      * two products may legitimately share a name in different categories
+        (``apps/shared/media_dl`` is the portable core, ``apps/stand_alone/
+        media_dl`` the CLI form). A basename key cannot tell them apart, so it
+        silently reports the second covered because the first was built -- the
+        same collapse that made scan_build.sh configure one into the other's
+        cache;
+      * a project a sibling COMPOSES with ``add_subdirectory`` has no build
+        tree of its own, yet its translation units really are compiled and
+        really are held to the warning bar here. That is exactly the shared
+        media_dl core, and a build-tree-name test would demand a standalone
+        build that has no reason to exist.
+
+    Paths are collapsed before matching. A form reaches its shared core through
+    a repo-root variable spelled ``${CMAKE_CURRENT_SOURCE_DIR}/../../..``, so a
+    database entry can name a source as ``.../apps/stand_alone/media_dl/../../
+    ../apps/shared/media_dl/src/x.c`` -- which contains BOTH project paths as
+    substrings and would mark a project represented by a file that is not its
+    own.
+
+    Args:
+        projects: Repo-relative host CMake project directories.
+        sources: Every ``file`` entry across the databases handed to the gate.
+
+    Returns:
+        The project directories no database compiled a single file from,
+        sorted.
+    """
+    normalised = {posixpath.normpath(str(source).replace("\\", "/")) for source in sources}
+    return sorted(
+        project
+        for project in projects
+        if not any(
+            f"/{project}/" in source or source.startswith(f"{project}/") for source in normalised
+        )
+    )
 
 
-def cmake_tool_projects(repo_root: Path) -> set[str]:
-    """Discover every host CMake project under ``tools/`` and ``apps/``.
+def cmake_tool_projects(repo_root: Path, firmware: Iterable[str] | None = None) -> tuple[str, ...]:
+    """Discover every HOST CMake project under ``tools/`` and ``apps/``.
 
     The two roots nest differently and the glob has to say so. A tool is a
     direct child of ``tools/``; a product sits one level deeper, beneath a
@@ -129,15 +197,35 @@ def cmake_tool_projects(repo_root: Path) -> set[str]:
     directories, which carry none, and so discover nothing at all -- read
     here as "no product needs its warning flags checked" rather than as the
     scope collapse it is.
+
+    Matching the glob is not enough to be a host tool, though, and that is the
+    half this originally got wrong. ``apps/`` carries BOTH kinds of build:
+    ``apps/stand_alone/ereader`` is a cross-compiled TrustZone image with a
+    linker script and a reset path, built by the firmware gates and by nothing
+    here, and demanding a tools-build database for it failed the gate on a
+    project that must never have one. The discriminator is not re-derived --
+    ``lint_targets.firmware_app_dirs()`` is the one definition of "linked into
+    an image rather than started by a C runtime", shared with the tier gates.
+
+    Args:
+        repo_root: Tree to discover in.
+        firmware: Repo-relative firmware app directories to exclude. Defaults
+            to the live tree's; the parameter exists so the selftest can drive
+            the rule with a fixture.
+
+    Returns:
+        The repo-relative host project directories, sorted.
     """
-    return {
-        path.parent.name
+    excluded = set(firmware_app_dirs() if firmware is None else firmware)
+    found = {
+        path.parent.relative_to(repo_root).as_posix()
         for root, pattern in (
             (repo_root / "tools", "*/CMakeLists.txt"),
             (repo_root / "apps", "*/*/CMakeLists.txt"),
         )
         for path in root.glob(pattern)
     }
+    return tuple(sorted(found - excluded))
 
 
 def flag_problem(argv: list[str]) -> str | None:
@@ -161,12 +249,16 @@ def flag_problem(argv: list[str]) -> str | None:
     return None
 
 
-def check_database(path: Path) -> tuple[list[str], set[str]]:
-    """Return (violation lines, compiler families seen) for one database.
+def check_database(path: Path) -> tuple[list[str], set[str], set[str]]:
+    """Return (violation lines, compiler families, compiled sources) for one database.
 
     The compiler set is the #356 second-arm evidence: every translation unit in
     one database is compiled by the same driver, so the union across the clang
     and gcc databases the gate passes must contain both families.
+
+    The source set is the project-scope evidence: it is what
+    ``missing_tool_projects`` reads to decide whether a host CMake project's
+    code reached the gate at all.
     """
     try:
         entries = json.loads(path.read_text())
@@ -184,16 +276,20 @@ def check_database(path: Path) -> tuple[list[str], set[str]]:
 
     violations: list[str] = []
     compilers: set[str] = set()
+    sources: set[str] = set()
     for entry in entries:
         argv = tokens_of(entry)
         compilers.add(compiler_of(argv))
         source = str(entry.get("file", ""))
-        if not source or is_exempt(source):
+        if not source:
+            continue
+        sources.add(source)
+        if is_exempt(source):
             continue
         problem = flag_problem(argv)
         if problem is not None:
             violations.append(f"{source}: {problem}")
-    return violations, compilers
+    return violations, compilers, sources
 
 
 # ---------------------------------------------------------------------------
@@ -281,23 +377,85 @@ COVERAGE_SELFTEST_CASES: list[tuple[str, set[str], list[str], list[str]]] = [
     ("both seen -> nothing missing", {"clang", "gcc"}, ["clang", "gcc"], []),
 ]
 
-PROJECT_SELFTEST_CASES: list[tuple[str, set[str], list[str], list[str]]] = [
+# Project-scope cases: a host CMake project whose code the gate never compiled
+# must be reported, and one whose code it did -- including a shared core reached
+# only through a sibling's build tree -- must stay quiet. The two same-named
+# products are the case a basename key gets wrong, so they are asserted apart.
+PROJECT_SELFTEST_CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
-        "an omitted CMake tool is reported",
-        {"media_dl", "ra8_emulator"},
-        ["build/media_dl/compile_commands.json"],
-        ["ra8_emulator"],
+        "a host project nothing compiled is reported",
+        ["tools/ra8_emulator", "apps/stand_alone/media_dl"],
+        ["/w/apps/stand_alone/media_dl/src/main.c"],
+        ["tools/ra8_emulator"],
     ),
     (
-        "all CMake tools represented stays quiet",
-        {"media_dl", "ra8_emulator"},
+        "a shared core composed into a sibling's build tree stays quiet",
+        ["apps/shared/media_dl", "apps/stand_alone/media_dl"],
         [
-            "build/media_dl/compile_commands.json",
-            "build/ra8_emulator/compile_commands.json",
+            "/w/apps/stand_alone/media_dl/src/main.c",
+            "/w/apps/shared/media_dl/src/mdl_cache.c",
         ],
         [],
     ),
+    (
+        "a same-named product in another category is NOT covered by its twin",
+        ["apps/shared/media_dl", "apps/stand_alone/media_dl"],
+        ["/w/apps/stand_alone/media_dl/src/main.c"],
+        ["apps/shared/media_dl"],
+    ),
+    (
+        "every project compiled stays quiet",
+        ["tools/ra8_emulator", "tools/mkbookimg"],
+        [
+            "/w/tools/ra8_emulator/src/emu.c",
+            "/w/tools/mkbookimg/src/mkbookimg.c",
+        ],
+        [],
+    ),
+    (
+        "a source reached through .. counts only for the project it resolves to",
+        ["apps/shared/media_dl", "apps/stand_alone/media_dl"],
+        ["/w/apps/stand_alone/media_dl/../../../apps/shared/media_dl/src/mdl_cache.c"],
+        ["apps/stand_alone/media_dl"],
+    ),
 ]
+
+
+def _discovery_fixture(root: Path) -> None:
+    """Write the smallest tree that exercises both discovery depths.
+
+    A host tool at ``tools/<tool>/``, a host product one level deeper under a
+    category, and a firmware product at the same depth carrying the linker
+    script + vector table that mark an image.
+    """
+    for rel in ("tools/widget", "apps/shared/core", "apps/stand_alone/blinky"):
+        (root / rel).mkdir(parents=True)
+        (root / rel / "CMakeLists.txt").write_text("project(x C)\n")
+    (root / "apps/stand_alone/blinky/linker_script.ld").write_text("MEMORY {}\n")
+    (root / "apps/stand_alone/blinky/vector_table.c").write_text("int v;\n")
+
+
+def _discovery_selftest() -> list[str]:
+    """Drive discovery over a fixture tree; return failure lines.
+
+    Both directions, and through the REAL discriminator: the firmware set is
+    computed by ``lint_targets.firmware_app_dirs()`` over the fixture's paths
+    rather than hand-written here, so a change that stopped classifying
+    firmware apps fails this test instead of sailing through it.
+    """
+    failures: list[str] = []
+    with tempfile.TemporaryDirectory() as name:
+        root = Path(name)
+        _discovery_fixture(root)
+        paths = [str(path.relative_to(root)) for path in root.rglob("*") if path.is_file()]
+        firmware = firmware_app_dirs(paths)
+        if firmware != ("apps/stand_alone/blinky",):
+            failures.append(f"  discovery: firmware apps {firmware}, want the blinky image")
+        got = cmake_tool_projects(root, firmware=firmware)
+        want = ("apps/shared/core", "tools/widget")
+        if got != want:
+            failures.append(f"  discovery: host projects {got}, want {want}")
+    return failures
 
 
 def selftest() -> int:
@@ -323,12 +481,14 @@ def selftest() -> int:
                 f"  coverage {name}: expected missing {want_missing}, got {got_missing}"
             )
 
-    for name, expected, paths, want_missing in PROJECT_SELFTEST_CASES:
-        got_missing = missing_tool_projects(expected, paths)
+    for name, projects, sources, want_missing in PROJECT_SELFTEST_CASES:
+        got_missing = missing_tool_projects(projects, sources)
         if got_missing != want_missing:
             failures.append(
                 f"  project scope {name}: expected missing {want_missing}, got {got_missing}"
             )
+
+    failures += _discovery_selftest()
 
     if failures:
         sys.stderr.write("check_tool_warning_flags.py --selftest: FAILED\n")
@@ -342,13 +502,17 @@ def selftest() -> int:
         f"({fires} must-fire, {quiet} must-stay-quiet flag cases; "
         f"{len(COMPILER_SELFTEST_CASES)} classifier, "
         f"{len(COVERAGE_SELFTEST_CASES)} second-arm coverage, "
-        f"{len(PROJECT_SELFTEST_CASES)} project-scope cases)"
+        f"{len(PROJECT_SELFTEST_CASES)} project-scope cases; "
+        "discovery excludes firmware apps and keeps host products at "
+        "category depth)"
     )
     return 0
 
 
-def _scan_databases(paths: list[str]) -> tuple[list[str], set[str]]:
-    """Scan every database path; return (violations, compiler families seen).
+def _scan_databases(paths: list[str]) -> tuple[list[str], set[str], set[str]]:
+    """Scan every database path.
+
+    Returns (violations, compiler families seen, sources compiled).
 
     Exits (SystemExit 2) when a path is missing, matching check_database's
     fatal handling of an empty or unreadable database -- a gate must never
@@ -356,6 +520,7 @@ def _scan_databases(paths: list[str]) -> tuple[list[str], set[str]]:
     """
     violations: list[str] = []
     seen: set[str] = set()
+    sources: set[str] = set()
     for name in paths:
         path = Path(name)
         if not path.is_file():
@@ -364,10 +529,11 @@ def _scan_databases(paths: list[str]) -> tuple[list[str], set[str]]:
                 "  Configure the tool with -DCMAKE_EXPORT_COMPILE_COMMANDS=ON first.\n"
             )
             raise SystemExit(2)
-        db_violations, db_compilers = check_database(path)
+        db_violations, db_compilers, db_sources = check_database(path)
         violations += db_violations
         seen |= db_compilers
-    return violations, seen
+        sources |= db_sources
+    return violations, seen, sources
 
 
 def _report_violations(violations: list[str]) -> None:
@@ -382,6 +548,44 @@ def _report_violations(violations: list[str]) -> None:
         "\nFirst-party sources are held to -Wall -Wextra -Werror everywhere\n"
         "else in this tree (NASA Power of 10 Rule 10). Only libs/third_party/\n"
         "SOUP may be compiled -w. Fix the warning; do not re-suppress it.\n"
+    )
+
+
+def _discover_projects() -> tuple[str, ...]:
+    """Host CMake projects in the tree, enforcing the non-vacuity floor.
+
+    The floor is checked here rather than at the call site so a collapsed glob
+    can never be mistaken for "nothing is missing": `cmake_tool_projects`
+    returning an empty tuple makes `missing_tool_projects` return an empty
+    list, which is indistinguishable from a clean pass.
+
+    Raises:
+        SystemExit: 2 when discovery falls below MIN_CMAKE_TOOL_PROJECTS,
+            matching _scan_databases' fatal handling of an input it could not
+            trust.
+    """
+    projects = cmake_tool_projects(Path.cwd())
+    if len(projects) >= MIN_CMAKE_TOOL_PROJECTS:
+        return projects
+    sys.stderr.write(
+        f"check_tool_warning_flags.py: FATAL -- discovered {len(projects)} host "
+        f"CMake project(s); the floor is {MIN_CMAKE_TOOL_PROJECTS}.\n"
+        f"  found: {', '.join(projects) or '(none)'}\n"
+        "  Discovery collapsed. An empty scope reports no missing project and\n"
+        "  reads as a pass, which is the failure this floor exists to catch.\n"
+    )
+    raise SystemExit(2)
+
+
+def _report_missing_projects(missing: list[str]) -> None:
+    """Print the host CMake projects whose code the gate never compiled."""
+    sys.stderr.write(
+        "check_tool_warning_flags.py: FATAL -- host CMake project(s) whose "
+        f"sources tools-build never compiled: {', '.join(missing)}\n"
+        "  Every host CMake project must reach the gate, either through its\n"
+        "  own build tree or by being composed into a sibling's with\n"
+        "  add_subdirectory. A project nothing builds is a project nothing\n"
+        "  holds to -Wall -Wextra -Werror.\n"
     )
 
 
@@ -419,7 +623,7 @@ def main() -> int:
     parser.add_argument(
         "--require-all-cmake-tools",
         action="store_true",
-        help="fail when any tools/*/CMakeLists.txt project has no database",
+        help="fail when any host CMake project's sources are absent from the databases",
     )
     args = parser.parse_args()
 
@@ -433,17 +637,16 @@ def main() -> int:
         )
         return 2
 
+    projects: tuple[str, ...] = ()
     if args.require_all_cmake_tools:
-        missing_projects = missing_tool_projects(cmake_tool_projects(Path.cwd()), args.databases)
-        if missing_projects:
-            sys.stderr.write(
-                "check_tool_warning_flags.py: FATAL -- CMake tool project(s) "
-                f"absent from tools-build: {', '.join(missing_projects)}\n"
-            )
-            return 2
+        projects = _discover_projects()
 
     required = [fam for fam in args.require_compilers.split(",") if fam]
-    violations, seen = _scan_databases(args.databases)
+    violations, seen, sources = _scan_databases(args.databases)
+    missing_projects = missing_tool_projects(projects, sources)
+    if missing_projects:
+        _report_missing_projects(missing_projects)
+        return 2
     if violations:
         _report_violations(violations)
         return 1
