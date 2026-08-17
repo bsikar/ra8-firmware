@@ -121,6 +121,62 @@ internal_dispatch_next(uint32_t job, uint64_t offset, uint32_t max_bytes)
   return ra8__mdl__chunk__unpack(nullptr, response_len, s_response);
 }
 
+/** @brief Start the multi-chunk job and check the correlated bring-up state. @details Performs one bounded, deterministic operation for this host test. @return uint32_t Job identifier issued by the started dispatch. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static uint32_t internal_test_service_multichunk_setup(void)
+{
+  const uint32_t job = internal_dispatch_start();
+  TEST_ASSERT_EQ(1, s_backend.begins);
+  TEST_ASSERT_EQ(k_ra8_mdl_format_rabook, s_backend.format);
+  TEST_ASSERT_EQ(k_ra8_mdl_format_rabook, s_service.active_format);
+  return job;
+}
+
+/** @brief Check the two non-terminal ordered pulls of the multi-chunk job. @details Performs one bounded, deterministic operation for this host test. @param[in] job Job identifier from internal_test_service_multichunk_setup. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_service_multichunk_nonterminal(uint32_t job)
+{
+  Ra8__Mdl__Chunk* first = internal_dispatch_next(job, 0U, 4U);
+  TEST_ASSERT(first != nullptr);
+  TEST_ASSERT_EQ(0, first->sequence);
+  TEST_ASSERT_EQ(0, first->offset);
+  TEST_ASSERT_EQ(4, first->data.len);
+  TEST_ASSERT(memcmp(first->data.data, "abcd", 4U) == 0);
+  TEST_ASSERT_EQ(RA8__MDL__STATE__STATE_DOWNLOADING, first->state);
+  TEST_ASSERT_EQ(0, first->sha256.len);
+  ra8__mdl__chunk__free_unpacked(first, nullptr);
+
+  Ra8__Mdl__Chunk* second = internal_dispatch_next(job, 4U, 4U);
+  TEST_ASSERT(second != nullptr);
+  TEST_ASSERT_EQ(1, second->sequence);
+  TEST_ASSERT_EQ(4, second->offset);
+  TEST_ASSERT_EQ(2, second->data.len);
+  TEST_ASSERT(memcmp(second->data.data, "ef", 2U) == 0);
+  TEST_ASSERT_EQ(RA8__MDL__STATE__STATE_DOWNLOADING, second->state);
+  TEST_ASSERT_EQ(0, second->sha256.len);
+  ra8__mdl__chunk__free_unpacked(second, nullptr);
+}
+
+/** @brief Check the terminal pull's digest, headers, and job deactivation. @details Performs one bounded, deterministic operation for this host test. @param[in] job Job identifier from internal_test_service_multichunk_setup. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_service_multichunk_terminal(uint32_t job)
+{
+  Ra8__Mdl__Chunk* terminal = internal_dispatch_next(job, 6U, 4U);
+  TEST_ASSERT(terminal != nullptr);
+  TEST_ASSERT_EQ(2, terminal->sequence);
+  TEST_ASSERT_EQ(6, terminal->offset);
+  TEST_ASSERT_EQ(0, terminal->data.len);
+  TEST_ASSERT_EQ(RA8__MDL__STATE__STATE_COMPLETE, terminal->state);
+  TEST_ASSERT_EQ(k_ra8_mdl_sha256_bytes, terminal->sha256.len);
+  TEST_ASSERT_EQ(200, terminal->http_status);
+  TEST_ASSERT(strcmp(terminal->retry_after, "3") == 0);
+  TEST_ASSERT(strcmp(terminal->etag, "\"fixture-etag\"") == 0);
+  TEST_ASSERT(strcmp(terminal->last_modified, "Wed, 21 Oct 2015 07:28:00 GMT") == 0);
+  TEST_ASSERT(strcmp(terminal->content_type, "application/x-rabook") == 0);
+  for (size_t i = 0U; i < terminal->sha256.len; ++i) {
+    TEST_ASSERT_EQ(0xA5, terminal->sha256.data[i]);
+  }
+  ra8__mdl__chunk__free_unpacked(terminal, nullptr);
+  TEST_ASSERT(!s_service.active);
+}
+
 /**
  * @par MC/DC:
  * These are the successful control vectors for the service guards. For the
@@ -148,48 +204,9 @@ RA8_INTERNAL static void internal_test_service_multichunk_and_digest(void)
 {
   TEST_BEGIN("mdl protobuf service multi-chunk");
   internal_reset_service();
-  const uint32_t job = internal_dispatch_start();
-  TEST_ASSERT_EQ(1, s_backend.begins);
-  TEST_ASSERT_EQ(k_ra8_mdl_format_rabook, s_backend.format);
-  TEST_ASSERT_EQ(k_ra8_mdl_format_rabook, s_service.active_format);
-
-  Ra8__Mdl__Chunk* first = internal_dispatch_next(job, 0U, 4U);
-  TEST_ASSERT(first != nullptr);
-  TEST_ASSERT_EQ(0, first->sequence);
-  TEST_ASSERT_EQ(0, first->offset);
-  TEST_ASSERT_EQ(4, first->data.len);
-  TEST_ASSERT(memcmp(first->data.data, "abcd", 4U) == 0);
-  TEST_ASSERT_EQ(RA8__MDL__STATE__STATE_DOWNLOADING, first->state);
-  TEST_ASSERT_EQ(0, first->sha256.len);
-  ra8__mdl__chunk__free_unpacked(first, nullptr);
-
-  Ra8__Mdl__Chunk* second = internal_dispatch_next(job, 4U, 4U);
-  TEST_ASSERT(second != nullptr);
-  TEST_ASSERT_EQ(1, second->sequence);
-  TEST_ASSERT_EQ(4, second->offset);
-  TEST_ASSERT_EQ(2, second->data.len);
-  TEST_ASSERT(memcmp(second->data.data, "ef", 2U) == 0);
-  TEST_ASSERT_EQ(RA8__MDL__STATE__STATE_DOWNLOADING, second->state);
-  TEST_ASSERT_EQ(0, second->sha256.len);
-  ra8__mdl__chunk__free_unpacked(second, nullptr);
-
-  Ra8__Mdl__Chunk* terminal = internal_dispatch_next(job, 6U, 4U);
-  TEST_ASSERT(terminal != nullptr);
-  TEST_ASSERT_EQ(2, terminal->sequence);
-  TEST_ASSERT_EQ(6, terminal->offset);
-  TEST_ASSERT_EQ(0, terminal->data.len);
-  TEST_ASSERT_EQ(RA8__MDL__STATE__STATE_COMPLETE, terminal->state);
-  TEST_ASSERT_EQ(k_ra8_mdl_sha256_bytes, terminal->sha256.len);
-  TEST_ASSERT_EQ(200, terminal->http_status);
-  TEST_ASSERT(strcmp(terminal->retry_after, "3") == 0);
-  TEST_ASSERT(strcmp(terminal->etag, "\"fixture-etag\"") == 0);
-  TEST_ASSERT(strcmp(terminal->last_modified, "Wed, 21 Oct 2015 07:28:00 GMT") == 0);
-  TEST_ASSERT(strcmp(terminal->content_type, "application/x-rabook") == 0);
-  for (size_t i = 0U; i < terminal->sha256.len; ++i) {
-    TEST_ASSERT_EQ(0xA5, terminal->sha256.data[i]);
-  }
-  ra8__mdl__chunk__free_unpacked(terminal, nullptr);
-  TEST_ASSERT(!s_service.active);
+  const uint32_t job = internal_test_service_multichunk_setup();
+  internal_test_service_multichunk_nonterminal(job);
+  internal_test_service_multichunk_terminal(job);
   TEST_END("mdl protobuf service multi-chunk");
 }
 
