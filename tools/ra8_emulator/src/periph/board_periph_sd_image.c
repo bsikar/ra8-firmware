@@ -12,6 +12,7 @@
  */
 
 #ifndef _GNU_SOURCE
+/** @brief Request GNU descriptor-relative syscall declarations on Linux. */
 #define _GNU_SOURCE
 #endif
 
