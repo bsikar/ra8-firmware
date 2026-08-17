@@ -266,7 +266,9 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media_decoder.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media_http.c)
-list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_transfer_coordinator.c)
+list(REMOVE_ITEM RA8_TEST_SOURCES
+     ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_transfer_coordinator.c
+)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl_decode.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_wire.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl.c)
@@ -307,9 +309,7 @@ endforeach()
 # `--coverage` under gcc and is a -Werror unused-argument error under clang.
 # See the RA8_SKIP_COVERAGE_INSTRUMENTATION block in host_config.cmake.
 if(TARGET test_ra8_unity_output)
-  set_target_properties(
-    test_ra8_unity_output PROPERTIES RA8_SKIP_COVERAGE_INSTRUMENTATION ON
-  )
+  set_target_properties(test_ra8_unity_output PROPERTIES RA8_SKIP_COVERAGE_INSTRUMENTATION ON)
 endif()
 
 # The strict book-stream MC/DC vectors call documented private validator seams

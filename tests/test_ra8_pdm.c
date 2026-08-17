@@ -216,6 +216,7 @@ static void test_configure(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_configure(k_test_ch, &cfg));
 
   volatile r_pdm_ch_regs_t* reg = ra8_pdm_ch(k_test_ch);
+  /* HUM Ch 49.2.19 "PDMDSRCHn : Mode Setting Register" p 3208 */
   TEST_ASSERT_EQ(0x00000040U, reg->PDMDSR);   /* SFMD=4 << 4                */
   TEST_ASSERT_EQ(0x057C0000U, reg->PDSFCR);   /* SINCDEC=0x7C, SINCRNG=0x05 */
   TEST_ASSERT_EQ(0x00003F61U, reg->PDHFCS0R); /* HPF s0                     */
@@ -249,9 +250,11 @@ static void test_start_and_read_enable(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_start(k_test_ch));
+  /* HUM Ch 49.2.2 "PDCSTRTR : Channel Software Start Trigger Register" p 3196 */
   TEST_ASSERT_EQ((1U << k_test_ch), ra8_pdm()->PDCSTRTR);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_read_enable(k_test_ch));
+  /* HUM Ch 49.2.63 "PDDRCRCHn : Data Read Control Register" p 3227 */
   TEST_ASSERT_EQ(0x1U, ra8_pdm_ch(k_test_ch)->PDDRCR);
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_pdm_start((uint8_t)k_ra8_pdm_ch_count));
@@ -282,21 +285,27 @@ static void test_read_samples(void)
   uint32_t                  got    = 0U;
 
   /* Positive sample, FIFO fill (3) below buffer capacity (8). */
+  /* HUM Ch 49.2.66 "PDDSRCHn : Data Status Register" p 3228 */
   reg->PDDSR = 3U;
+  /* HUM Ch 49.2.65 "PDDRRCHn : Data Read Register" p 3227 */
   reg->PDDRR = k_t_sample_pos;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_read(k_test_ch, buf, 8U, &got));
   TEST_ASSERT_EQ(3U, got);
   TEST_ASSERT_EQ(0x12345, buf[0]);
 
   /* Negative sample (bit19 set) -> sign extended to -1. */
+  /* HUM Ch 49.2.66 "PDDSRCHn : Data Status Register" p 3228 */
   reg->PDDSR = 1U;
+  /* HUM Ch 49.2.65 "PDDRRCHn : Data Read Register" p 3227 */
   reg->PDDRR = k_t_sample_neg1;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_read(k_test_ch, buf, 8U, &got));
   TEST_ASSERT_EQ(1U, got);
   TEST_ASSERT_EQ(-1, buf[0]);
 
   /* FIFO count (10) above capacity (4) -> capped. */
+  /* HUM Ch 49.2.66 "PDDSRCHn : Data Status Register" p 3228 */
   reg->PDDSR = k_t_fifo_over_cap;
+  /* HUM Ch 49.2.65 "PDDRRCHn : Data Read Register" p 3227 */
   reg->PDDRR = k_t_sample_min; /* -524288 */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_read(k_test_ch, buf, 4U, &got));
   TEST_ASSERT_EQ(4U, got);
@@ -351,12 +360,16 @@ static void test_stop(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_init());
 
   /* STATE bit clear -> channel reports halted immediately. */
+  /* HUM Ch 49.2.6 "PDCSR : Channel Status Register" p 3199 */
   ra8_pdm()->PDCSR = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_stop(k_test_ch));
+  /* HUM Ch 49.2.3 "PDCSTPTR : Channel Software Stop Trigger Register" p 3197 */
   TEST_ASSERT_EQ((1U << k_test_ch), ra8_pdm()->PDCSTPTR);
+  /* HUM Ch 49.2.63 "PDDRCRCHn : Data Read Control Register" p 3227 */
   TEST_ASSERT_EQ(0U, ra8_pdm_ch(k_test_ch)->PDDRCR);
 
   /* STATE bit stuck set -> bounded poll expires with timeout. */
+  /* HUM Ch 49.2.6 "PDCSR : Channel Status Register" p 3199 */
   ra8_pdm()->PDCSR = (uint32_t)(1U << k_test_ch);
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_pdm_stop(k_test_ch));
 
@@ -492,7 +505,9 @@ RA8_INTERNAL static void frame_callback(void* ctx, const ra8_audio_frame_t* fram
  */
 RA8_INTERNAL static void stage_fifo(uint32_t count, uint32_t word)
 {
+  /* HUM Ch 49.2.66 "PDDSRCHn : Data Status Register" p 3228 */
   ra8_pdm_ch(k_test_ch)->PDDSR = count;
+  /* HUM Ch 49.2.65 "PDDRRCHn : Data Read Register" p 3227 */
   ra8_pdm_ch(k_test_ch)->PDDRR = word;
 }
 
@@ -586,6 +601,7 @@ static void test_source_cfg_validation(void)
   make_source_cfg(&cfg);
   cfg.samples_per_frame = (uint32_t)k_t_src_overflow;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_audio_source_pdm_init(&source, &state, &cfg));
+  /* HUM Ch 49.2.2 "PDCSTRTR : Channel Software Start Trigger Register" p 3196 */
   TEST_ASSERT_EQ(0U, ra8_pdm()->PDCSTRTR);
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_pdm_deinit());
   TEST_END("pdm source config validation");
@@ -615,7 +631,7 @@ static void test_source_init_and_info(void)
   make_source_cfg(&cfg);
   stage_fifo((uint32_t)k_t_src_samples, (uint32_t)k_t_sample_pos);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_audio_source_pdm_init(&source, &state, &cfg));
-  /* HUM Ch 49.4.1 "Start Flow": configure, start trigger, read enable. */
+  /* HUM Ch 49.4.1 "Start Flow" p 3249 */
   TEST_ASSERT_EQ(0x00000040U, ra8_pdm_ch(k_test_ch)->PDMDSR); /* SFMD=4 << 4 */
   TEST_ASSERT_EQ((1U << k_test_ch), ra8_pdm()->PDCSTRTR);
   TEST_ASSERT_EQ(k_ra8_pdm_pddrcr_datre, ra8_pdm_ch(k_test_ch)->PDDRCR);
@@ -762,6 +778,7 @@ static void test_source_stop_paths(void)
 
   /* Module-stop reference stolen: the channel stops but the release fails,
    * which must leave the source initialized rather than half-torn-down. */
+  /* HUM Ch 49.2.6 "PDCSR : Channel Status Register" p 3199 */
   ra8_pdm()->PDCSR = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_deinit());
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_audio_source_stop(&source));
@@ -849,6 +866,7 @@ static void test_source_stream_delivery(void)
   TEST_ASSERT_EQ(2U, s_frame_calls);
   state.streaming = true;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_audio_source_stop(&source));
+  /* HUM Ch 49.2.15 "PDICRCHn : Interrupt Control Register" p 3205 */
   TEST_ASSERT_EQ(0U, ra8_pdm_ch(k_test_ch)->PDICR & (uint32_t)k_ra8_pdm_pdicr_idre);
   TEST_END("pdm source stream delivery");
 }
@@ -900,6 +918,7 @@ static void test_source_stream_start_faults(void)
   TEST_ASSERT_NULL(state.stream_data);
   TEST_ASSERT(state.stream_callback == nullptr);
   TEST_ASSERT_NULL(state.stream_ctx);
+  /* HUM Ch 49.2.15 "PDICRCHn : Interrupt Control Register" p 3205 */
   TEST_ASSERT_EQ(0U, ra8_pdm_ch(k_test_ch)->PDICR & (uint32_t)k_ra8_pdm_pdicr_idre);
 
   state.irq_priority = (uint8_t)k_t_src_priority;
@@ -937,9 +956,12 @@ static void test_source_prepare_faults(void)
   make_source_cfg(&cfg);
 
   /* MSTPCRC read-back never settles: the block never leaves module stop. */
+  /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 447 */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait(&ra8_mstp()->MSTPCRC));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_audio_source_pdm_init(&source, &state, &cfg));
+  /* HUM Ch 49.2.19 "PDMDSRCHn : Mode Setting Register" p 3208 */
   TEST_ASSERT_EQ(0U, ra8_pdm_ch(k_test_ch)->PDMDSR);
+  /* HUM Ch 49.2.2 "PDCSTRTR : Channel Software Start Trigger Register" p 3196 */
   TEST_ASSERT_EQ(0U, ra8_pdm()->PDCSTRTR);
   TEST_ASSERT(!state.initialized);
   TEST_ASSERT_NULL(source.iface);
@@ -949,6 +971,7 @@ static void test_source_prepare_faults(void)
    * expires, and the channel is stopped and the module released. */
   stage_fifo(0U, 0U);
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_audio_source_pdm_init(&source, &state, &cfg));
+  /* HUM Ch 49.2.3 "PDCSTPTR : Channel Software Stop Trigger Register" p 3197 */
   TEST_ASSERT_EQ((1U << k_test_ch), ra8_pdm()->PDCSTPTR);
   TEST_ASSERT(!state.initialized);
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_pdm_deinit());

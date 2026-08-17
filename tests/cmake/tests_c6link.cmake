@@ -166,9 +166,7 @@ if(NOT TARGET test_ra8_c6link_mdl_codec)
     ${FW_ROOT}/libs/ra8_c6link/src/ra8_media_download.pb-c.c
     ${RA8_C6LINK_VENDOR_DIR}/common/protobuf-c/protobuf-c/protobuf-c.c
   )
-  target_compile_options(
-    test_ra8_c6link_mdl_codec PRIVATE -Wall -Wextra -Wno-unused-parameter
-  )
+  target_compile_options(test_ra8_c6link_mdl_codec PRIVATE -Wall -Wextra -Wno-unused-parameter)
   target_include_directories(test_ra8_c6link_mdl_codec PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
   add_test(NAME test_ra8_c6link_mdl_codec COMMAND test_ra8_c6link_mdl_codec)
 endif()

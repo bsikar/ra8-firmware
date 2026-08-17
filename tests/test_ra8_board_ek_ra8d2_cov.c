@@ -576,6 +576,7 @@ static void test_pdm_mic_get_config(void)
   TEST_ASSERT_EQ(k_pdm_comp_tap, cfg.pdm.comp_h[k_pdm_comp_last]);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_configure(cfg.channel, &cfg.pdm));
+  /* HUM Ch 49.2.19 "PDMDSRCHn : Mode Setting Register" p 3208 */
   TEST_ASSERT_EQ(k_pdm_mic1_dsr, ra8_pdm_ch(k_ra8_pdm_ch2)->PDMDSR);
 
   /* MIC2 shares the whole SPH0690 filter set and flips only the edge. */
@@ -584,6 +585,7 @@ static void test_pdm_mic_get_config(void)
   TEST_ASSERT_EQ(k_pdm_sinc_dec, cfg.pdm.sinc_dec);
   TEST_ASSERT_EQ(k_pdm_comp_tap, cfg.pdm.comp_h[k_pdm_comp_last]);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_configure(cfg.channel, &cfg.pdm));
+  /* HUM Ch 49.2.19 "PDMDSRCHn : Mode Setting Register" p 3208 */
   TEST_ASSERT_EQ(k_pdm_mic2_dsr, ra8_pdm_ch(k_ra8_pdm_ch2)->PDMDSR);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_deinit());
   TEST_END("pdm_mic_get_config returns per-microphone edge policy");

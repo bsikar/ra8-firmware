@@ -181,10 +181,9 @@ elseif(RA8_COVERAGE)
   # expands --coverage independently of the later negation. It is also a hard
   # error under clang (`argument unused during compilation` with -Werror), which
   # is what broke the scan-build gate.
+  set(_ra8_cov_skip "$<TARGET_PROPERTY:RA8_SKIP_COVERAGE_INSTRUMENTATION>")
   add_compile_options(
-    -O0
-    -g
-    "$<$<NOT:$<BOOL:$<TARGET_PROPERTY:RA8_SKIP_COVERAGE_INSTRUMENTATION>>>:--coverage;-fprofile-arcs;-ftest-coverage>"
+    -O0 -g "$<$<NOT:$<BOOL:${_ra8_cov_skip}>>:--coverage;-fprofile-arcs;-ftest-coverage>"
   )
   add_link_options(--coverage -fprofile-arcs -ftest-coverage)
 endif()
