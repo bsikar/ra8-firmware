@@ -433,6 +433,68 @@ internal_write_clusters(ra8_fs_mount_t* h, const char* path, uint32_t clusters)
  *
  * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
+/**
+ * @brief Print the small- and large-write read counts for this run.
+ * @details Pure diagnostic output isolated in its own frame so its chain of
+ *          ::internal_test_output_text / ::internal_test_output_u64 calls is
+ *          counted against a dedicated function rather than the test body.
+ * @param[in] small_reads Backend reads measured for the small write.
+ * @param[in] large_reads Backend reads measured for the large write.
+ * @return Nothing; failures to write the report are silently ignored.
+ * @pre None beyond the caller having already measured both counts.
+ * @post Nothing outside stdout is modified.
+ * @note Not thread-safe; the fixture is single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_report_alloc_perf_reads(uint32_t small_reads,
+                                                          uint32_t large_reads)
+{
+  ra8_test_output_t    output = {};
+  ra8_test_output_fd_t state  = {};
+  (void)internal_test_output_fd_init(&output, &state, STDOUT_FILENO);
+  (void)internal_test_output_text(&output, "      reads: ");
+  (void)internal_test_output_u64(&output, (uint64_t)k_ap_small_clus);
+  (void)internal_test_output_text(&output, " clusters -> ");
+  (void)internal_test_output_u64(&output, small_reads);
+  (void)internal_test_output_text(&output, ", ");
+  (void)internal_test_output_u64(&output, (uint64_t)k_ap_large_clus);
+  (void)internal_test_output_text(&output, " clusters -> ");
+  (void)internal_test_output_u64(&output, large_reads);
+  (void)internal_test_output_text(&output, "\n");
+}
+
+/**
+ * @brief Assert the absolute and doubling-growth read-count bounds.
+ * @details The absolute bound catches a return to quadratic scanning
+ *          outright; the growth bound catches a milder super-linear
+ *          regression that still passes the absolute bound.
+ * @param[in] small_reads Backend reads measured for the small write.
+ * @param[in] large_reads Backend reads measured for the large write.
+ * @return Nothing; a bound violation fails the enclosing test.
+ * @pre None beyond the caller having already measured both counts.
+ * @post Nothing is modified; this only asserts.
+ * @note Not thread-safe; the fixture is single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_check_alloc_perf_bounds(uint32_t small_reads,
+                                                          uint32_t large_reads)
+{
+  /* The absolute bound: the old allocator needed well over 4000 reads for the
+   * 64-cluster write alone (roughly sum(1..64) for the scans plus sum(0..63)
+   * for the chain re-walks). */
+  if (small_reads > (uint32_t)k_ap_read_budget) {
+    TEST_FAIL_FMT("64-cluster write took %u reads, budget %u",
+                  (unsigned)small_reads,
+                  (unsigned)k_ap_read_budget);
+  }
+  /* The shape bound: doubling the work may not triple the reads. */
+  if (large_reads > (small_reads * (uint32_t)k_ap_growth_cap)) {
+    TEST_FAIL_FMT("doubling the size took %u reads vs %u -- growth is not linear",
+                  (unsigned)large_reads,
+                  (unsigned)small_reads);
+  }
+}
+
 RA8_INTERNAL static void internal_test_sequential_alloc_is_amortised_constant(void)
 {
   TEST_BEGIN("fs alloc: sequential allocation is amortised constant");
@@ -448,33 +510,8 @@ RA8_INTERNAL static void internal_test_sequential_alloc_is_amortised_constant(vo
   internal_write_clusters(h, "LARGE.BIN", (uint32_t)k_ap_large_clus);
   const uint32_t large_reads = s_reads;
 
-  ra8_test_output_t    output = {};
-  ra8_test_output_fd_t state  = {};
-  (void)internal_test_output_fd_init(&output, &state, STDOUT_FILENO);
-  (void)internal_test_output_text(&output, "      reads: ");
-  (void)internal_test_output_u64(&output, (uint64_t)k_ap_small_clus);
-  (void)internal_test_output_text(&output, " clusters -> ");
-  (void)internal_test_output_u64(&output, small_reads);
-  (void)internal_test_output_text(&output, ", ");
-  (void)internal_test_output_u64(&output, (uint64_t)k_ap_large_clus);
-  (void)internal_test_output_text(&output, " clusters -> ");
-  (void)internal_test_output_u64(&output, large_reads);
-  (void)internal_test_output_text(&output, "\n");
-
-  /* The absolute bound: the old allocator needed well over 4000 reads for the
-   * 64-cluster write alone (roughly sum(1..64) for the scans plus sum(0..63)
-   * for the chain re-walks). */
-  if (small_reads > (uint32_t)k_ap_read_budget) {
-    TEST_FAIL_FMT("64-cluster write took %u reads, budget %u",
-                  (unsigned)small_reads,
-                  (unsigned)k_ap_read_budget);
-  }
-  /* The shape bound: doubling the work may not triple the reads. */
-  if (large_reads > (small_reads * (uint32_t)k_ap_growth_cap)) {
-    TEST_FAIL_FMT("doubling the size took %u reads vs %u -- growth is not linear",
-                  (unsigned)large_reads,
-                  (unsigned)small_reads);
-  }
+  internal_report_alloc_perf_reads(small_reads, large_reads);
+  internal_check_alloc_perf_bounds(small_reads, large_reads);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   internal_free_vol();
@@ -717,13 +754,13 @@ RA8_INTERNAL static void internal_test_full_volume_wraps_once_then_reports_full(
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_cnt_backend, &h));
 
-  static uint8_t chunk[k_ap_chunk] = {};
-  ra8_fs_file_t* f                 = nullptr;
+  static uint8_t s_chunk[k_ap_chunk] = {};
+  ra8_fs_file_t* f                   = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "FILL.BIN", k_ra8_fs_mode_write, &f));
   ra8_err_t e      = k_ra8_ok;
   uint32_t  rounds = 0U;
   while ((e == k_ra8_ok) && (rounds < (uint32_t)k_ap_fill_cap)) {
-    e = ra8_fs_write(f, chunk, (uint32_t)k_ap_chunk);
+    e = ra8_fs_write(f, s_chunk, (uint32_t)k_ap_chunk);
     rounds++;
   }
   TEST_ASSERT_EQ(k_ra8_err_no_mem, e);
@@ -732,7 +769,7 @@ RA8_INTERNAL static void internal_test_full_volume_wraps_once_then_reports_full(
   /* The hint now sits past the last cluster. One more allocation attempt must
    * restart at cluster 2, walk the whole volume, and report it full -- not
    * index off the end of the FAT. */
-  TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_fs_write(f, chunk, (uint32_t)k_ap_clus_bytes));
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_fs_write(f, s_chunk, (uint32_t)k_ap_clus_bytes));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   /* Freeing everything makes the volume usable again through the same hint. */
