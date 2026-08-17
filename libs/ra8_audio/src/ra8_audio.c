@@ -137,9 +137,30 @@ RA8_INTERNAL static ra8_err_t internal_audio_frame_matches_info(const ra8_audio_
   return (frame->format == info->format) ? k_ra8_ok : k_ra8_err_invalid_state;
 }
 
-ra8_err_t ra8_audio_source_capture(ra8_audio_source_t*       source,
-                                   const ra8_audio_buffer_t* buffer,
-                                   ra8_audio_frame_t*        out_frame)
+/**
+ * @brief Validate capture arguments before touching source geometry.
+ * @details Confirms every caller-owned pointer is non-null, the source is
+ * bound to a capture-capable interface, and the caller's buffer is usable.
+ * Zeroes @p out_frame once every pointer is known non-null, matching the
+ * failure contract of ::ra8_audio_source_capture itself.
+ * @param[in] source Candidate audio source handle.
+ * @param[in] buffer Candidate caller-owned capture buffer.
+ * @param[out] out_frame Candidate output frame descriptor; zeroed on success.
+ * @return Repository error code.
+ * @retval k_ra8_ok Every argument is present and the buffer is usable.
+ * @retval k_ra8_err_null_ptr A required pointer, or the buffer's data, is null.
+ * @retval k_ra8_err_not_initialized The source has no bound capture backend.
+ * @pre @p source, @p buffer, and @p out_frame may be null; this function
+ *      validates them.
+ * @pre No capture is in progress on @p source.
+ * @post On success @p out_frame is zeroed.
+ * @post Success guarantees `source->iface->capture` is callable.
+ * @note Not thread-safe; caller serializes access to @p source.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_audio_capture_args_valid(ra8_audio_source_t*       source,
+                                                                const ra8_audio_buffer_t* buffer,
+                                                                ra8_audio_frame_t*        out_frame)
 {
   if (source == nullptr) {
     return k_ra8_err_null_ptr;
@@ -162,6 +183,17 @@ ra8_err_t ra8_audio_source_capture(ra8_audio_source_t*       source,
   }
   if (buffer->capacity == 0U) {
     return k_ra8_err_null_ptr;
+  }
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_audio_source_capture(ra8_audio_source_t*       source,
+                                   const ra8_audio_buffer_t* buffer,
+                                   ra8_audio_frame_t*        out_frame)
+{
+  const ra8_err_t args_valid = internal_audio_capture_args_valid(source, buffer, out_frame);
+  if (args_valid != k_ra8_ok) {
+    return args_valid;
   }
   ra8_audio_source_info_t info = {};
   ra8_err_t               err  = source->iface->get_info(source->ctx, &info);
